@@ -1,0 +1,81 @@
+{
+  "name": "@kb-labs/product-template",
+  "version": "0.1.0",
+  "private": true,
+  "description": "KB Labs product template",
+  "type": "module",
+  "author": {
+    "name": "Kirill Baranov",
+    "url": "https://github.com/kirill-baranov"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kirill-baranov/kb-labs-product-template.git"
+  },
+  "bugs": {
+    "url": "https://github.com/kirill-baranov/kb-labs-product-template/issues"
+  },
+  "homepage": "https://github.com/kirill-baranov/kb-labs-product-template#readme",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "// ——— core": "────────────────────────────────────────",
+    "build": "pnpm -r run build",
+    "build:clean": "pnpm -r run clean && pnpm -r run build",
+    "dev": "pnpm -r --parallel --filter @sentinel/core --filter @sentinel/analytics --filter @sentinel/provider-* --filter @sentinel/cli run dev",
+    "// ——— quality": "────────────────────────────────────────",
+    "lint": "pnpm -r run lint",
+    "lint:fix": "pnpm -r run lint:fix",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "type-check": "tsc -b tsconfig.tools.json",
+    "// ——— ci/qa": "────────────────────────────────────────",
+    "check": "pnpm lint && pnpm type-check && pnpm test -- --run",
+    "ci": "pnpm clean && pnpm build && pnpm check",
+    "// ——— cleanup": "────────────────────────────────────────",
+    "clean": "pnpm -r run clean",
+    "clean:all": "rimraf node_modules packages/*/node_modules apps/*/node_modules dist .sentinel",
+    "clean:analytics": "rimraf .sentinel/analytics dist/analytics dist/analytics-export"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,json,md,yml,yaml}": [
+      "prettier -w"
+    ],
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix"
+    ]
+  },
+  "devDependencies": {
+    "@actions/core": "^1",
+    "@actions/github": "^6",
+    "@types/node": "^24.3.3",
+    "@types/picomatch": "^4",
+    "@typescript-eslint/eslint-plugin": "^8.8.0",
+    "@typescript-eslint/parser": "^8.8.0",
+    "@vitest/coverage-v8": "2.1.9",
+    "better-sqlite3": "^12.2.0",
+    "colorette": "^2.0.20",
+    "eslint": "^9.16.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-jsonc": "^2.15.1",
+    "eslint-plugin-markdown": "^3.0.1",
+    "eslint-plugin-n": "^17.10.3",
+    "eslint-plugin-unused-imports": "^4.0.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.10",
+    "vitest": "^2.1.4"
+  },
+  "engines": {
+    "node": ">=18.18.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.11.0",
+  "dependencies": {
+    "zod": "^4.1.5"
+  }
+}
