@@ -14,8 +14,8 @@ KB Labs products must be consistent across repositories. Each repository should 
 - Repository root must contain:
   - `/apps` — example/demo apps or product UI
   - `/packages` — core logic, reusable libraries, domain modules
-  - `/fixtures` — sample diffs, test inputs, reference data
   - `/docs` — ADRs, handbook, guides
+  - `/fixtures` — sample diffs, test inputs, reference data *(optional, for testing)*
 - Shared configs (tsconfig, eslint, prettier, vitest) live in root
 
 ## Consequences
