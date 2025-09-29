@@ -29,20 +29,21 @@ pnpm build
 ## 📦 Architecture
 
 ### Core Platform
-- **@kb-labs/core** — Infrastructure kernel with abstractions (CLI-kit, config runtime, plugin API, telemetry)
-- **@kb-labs/shared** — Shared knowledge layer (models, loaders, operations, retrieval, context-assembly)
-- **@kb-labs/cli** — Unified CLI to run/manage all KB Labs tools
-- **@kb-labs/devkit** — Development toolkit with presets (TS, ESLint, Vitest, Tsup, CI)
+- **@kb-labs/core** — Runtime core with profiles resolver/validator and infrastructure abstractions
+- **@kb-labs/cli** — UX wrapper over core providing unified CLI commands (kb *)
+- **@kb-labs/shared** — Common types and utilities without side effects
+- **@kb-labs/devkit** — Bootstrap and standards (CI templates, configs, sync)
+- **@kb-labs/profile-schemas** — JSON Schema definitions for profiles, rules, and products
 
 ### AI Products
-- **@kb-labs/ai-review** — AI-driven code review with rule enforcement and CI/CD integration
+- **@kb-labs/ai-review** — AI-driven code review with rule enforcement and CI/CD integration (migrating to core/cli)
 - **@kb-labs/ai-docs** — Automated documentation generation from code, ADRs, and profiles *(Q1 2026)*
 - **@kb-labs/ai-tests** — AI-assisted test generation and maintenance *(Q1 2026)*
 - **@kb-labs/ai-project-assistant** — Project management and workflow automation *(Q4 2026)*
 - **@kb-labs/ai-content** — Content generation and management system *(Q1 2027)*
 
 ### Templates & Tools
-- **@kb-labs/product-template** — Starter template for new products with shared setup and architecture
+- **@kb-labs/product-template** — Project scaffolding for 5-minute deployment with shared setup and architecture
 
 ## 🔑 Key Concepts
 
@@ -73,6 +74,9 @@ All architectural decisions are documented in [docs/adr/](./docs/adr/):
 - [ADR-0005: Layering & Stability Policy](./docs/adr/0005-layering-stability-police.md)
 - [ADR-0006: Local Development Linking Policy](./docs/adr/0006-local-development-linking-policy.md)
 - [ADR-0007: AI Budget and ROI Tracking](./docs/adr/0007-ai-budget-roi-calculating.md)
+- [ADR-0008: AI Usage Optimization](./docs/adr/0008-ai-usage-optimization.md)
+- [ADR-0009: Self-Sustaining Engineering Ecosystem](./docs/adr/0009-self-sustaining-engineering-ecosystem.md)
+- [ADR-0010: One Package = One Responsibility](./docs/adr/0010-one-package-one-responsibility.md)
 
 ## 📅 Strategic Roadmap (2025-2027)
 
@@ -113,4 +117,4 @@ MIT License - see [LICENSE](./LICENSE) for details.
 
 ---
 
-*Last updated: September 20, 2025*
+*Last updated: September 30, 2025*
