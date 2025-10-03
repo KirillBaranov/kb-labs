@@ -13,18 +13,23 @@ KB Labs is building a comprehensive AI-powered development ecosystem that transf
 ## 🚀 Quick Start
 
 ```bash
-# Install dependencies
-pnpm install
+# Install all dependencies across workspace
+pnpm -w install
+
+# Build all packages in workspace
+pnpm -r run build
 
 # Run development mode
 pnpm dev
 
-# Run tests
-pnpm test
+# Run tests across all packages
+pnpm -r run test
 
-# Build all packages
-pnpm build
+# Lint all packages
+pnpm -r run lint
 ```
+
+> **Note**: This project uses a PNPM meta-workspace to manage multiple repositories. See [ADR-0012](./docs/adr/0012-meta-workspace.md) for details.
 
 ## 📦 Architecture
 
@@ -77,6 +82,7 @@ All architectural decisions are documented in [docs/adr/](./docs/adr/):
 - [ADR-0008: AI Usage Optimization](./docs/adr/0008-ai-usage-optimization.md)
 - [ADR-0009: Self-Sustaining Engineering Ecosystem](./docs/adr/0009-self-sustaining-engineering-ecosystem.md)
 - [ADR-0011: CLI and Directory Naming](./docs/adr/0011-cli-and-directory-naming.md)
+- [ADR-0012: PNPM Meta-Workspace Setup](./docs/adr/0012-meta-workspace.md)
 
 ## 📅 Strategic Roadmap (2025-2027)
 
