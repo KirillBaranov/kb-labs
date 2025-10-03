@@ -1,5 +1,5 @@
 {
-  "name": "@kb-labs/root",
+  "name": "@kb-labs/workspace-root",
   "version": "0.1.0",
   "private": true,
   "description": "KB Labs ecosystem - AI-powered developer tools",
