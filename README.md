@@ -76,7 +76,7 @@ All architectural decisions are documented in [docs/adr/](./docs/adr/):
 - [ADR-0007: AI Budget and ROI Tracking](./docs/adr/0007-ai-budget-roi-calculating.md)
 - [ADR-0008: AI Usage Optimization](./docs/adr/0008-ai-usage-optimization.md)
 - [ADR-0009: Self-Sustaining Engineering Ecosystem](./docs/adr/0009-self-sustaining-engineering-ecosystem.md)
-- [ADR-0010: One Package = One Responsibility](./docs/adr/0010-one-package-one-responsibility.md)
+- [ADR-0011: CLI and Directory Naming](./docs/adr/0011-cli-and-directory-naming.md)
 
 ## 📅 Strategic Roadmap (2025-2027)
 
