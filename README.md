@@ -83,6 +83,7 @@ All architectural decisions are documented in [docs/adr/](./docs/adr/):
 - [ADR-0009: Self-Sustaining Engineering Ecosystem](./docs/adr/0009-self-sustaining-engineering-ecosystem.md)
 - [ADR-0011: CLI and Directory Naming](./docs/adr/0011-cli-and-directory-naming.md)
 - [ADR-0012: PNPM Meta-Workspace Setup](./docs/adr/0012-meta-workspace.md)
+- [ADR-0013: Automation as a Survival Constraint](./docs/adr/0013-automation-surival-constraint.md)
 
 ## 📅 Strategic Roadmap (2025-2027)
 
