@@ -86,6 +86,7 @@ All architectural decisions are documented in [docs/adr/](./docs/adr/):
 - [ADR-0012: PNPM Meta-Workspace Setup](./docs/adr/0012-meta-workspace.md)
 - [ADR-0013: Automation as a Survival Constraint](./docs/adr/0013-automation-surival-constraint.md)
 - [ADR-0014: Core Profiles and CLI Integration](./docs/adr/0014-core-profiles-cli-integration.md)
+- [ADR-0015: KB Labs DevLink Integration](./docs/adr/0015-devlink-integration.md)
 
 ## 📅 Strategic Roadmap (2025-2027)
 
