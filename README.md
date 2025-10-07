@@ -87,6 +87,7 @@ All architectural decisions are documented in [docs/adr/](./docs/adr/):
 - [ADR-0013: Automation as a Survival Constraint](./docs/adr/0013-automation-surival-constraint.md)
 - [ADR-0014: Core Profiles and CLI Integration](./docs/adr/0014-core-profiles-cli-integration.md)
 - [ADR-0015: KB Labs DevLink Integration](./docs/adr/0015-devlink-integration.md)
+- [ADR-0016: Layered Ecosystem Model](./docs/adr/0016-layered-ecosystem-model.md)
 
 ## 📅 Strategic Roadmap (2025-2027)
 
