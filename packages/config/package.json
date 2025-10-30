@@ -1,0 +1,21 @@
+{
+  "name": "@kb-labs/config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --dts",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@kb-labs/profile-schemas": "*",
+    "ajv": "^8.17.1"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.0",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.4"
+  }
+}
