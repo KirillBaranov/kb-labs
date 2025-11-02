@@ -1,8 +1,10 @@
 # ADR-0010: One Package = One Responsibility
 
-**Date:** 2025-09-30  
-**Status:** Proposed  
-**Deciders:** KB Labs Team  
+**Date:** 2025-09-30
+**Status:** Proposed
+**Deciders:** KB Labs Team
+**Last Reviewed:** 2025-11-03
+**Tags:** [architecture, process]  
 
 ## Context
 

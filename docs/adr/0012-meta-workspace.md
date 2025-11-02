@@ -1,8 +1,10 @@
 # ADR-0012: PNPM Meta-Workspace Setup
 
-**Date:** 2025-10-04  
-**Status:** Accepted  
-**Deciders:** KB Labs Team  
+**Date:** 2025-10-04
+**Status:** Accepted
+**Deciders:** KB Labs Team
+**Last Reviewed:** 2025-11-03
+**Tags:** [tooling, process]  
 
 ## Context
 

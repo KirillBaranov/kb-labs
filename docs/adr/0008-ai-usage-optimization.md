@@ -1,9 +1,11 @@
 
 # ADR-0008: AI Usage Optimization
 
-**Date:** 2025-09-22  
-**Status:** Accepted  
-**Deciders:** KB Labs Team  
+**Date:** 2025-09-22
+**Status:** Accepted
+**Deciders:** KB Labs Team
+**Last Reviewed:** 2025-11-03
+**Tags:** [process, observability]  
 
 ## Context
 

@@ -1,8 +1,10 @@
 # ADR-0013: Automation as a Survival Constraint
 
-**Date:** 2025-10-04  
-**Status:** Accepted  
-**Deciders:** KB Labs Team  
+**Date:** 2025-10-04
+**Status:** Accepted
+**Deciders:** KB Labs Team
+**Last Reviewed:** 2025-11-03
+**Tags:** [process, automation]  
 
 ## Context
 

@@ -1,8 +1,10 @@
 # ADR-0003: Package and Module Boundaries
 
-**Date:** 2025-09-13  
-**Status:** Accepted  
-**Deciders:** KB Labs Team  
+**Date:** 2025-09-13
+**Status:** Accepted
+**Deciders:** KB Labs Team
+**Last Reviewed:** 2025-11-03
+**Tags:** [architecture, process]  
 
 ## Context
 
