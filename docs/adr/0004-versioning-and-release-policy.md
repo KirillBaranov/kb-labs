@@ -1,8 +1,10 @@
 # ADR-0004: Versioning and Release Policy
 
-**Date:** 2025-09-13  
-**Status:** Accepted  
-**Deciders:** KB Labs Team  
+**Date:** 2025-09-13
+**Status:** Accepted
+**Deciders:** KB Labs Team
+**Last Reviewed:** 2025-11-03
+**Tags:** [process, deployment]  
 
 ## Context
 

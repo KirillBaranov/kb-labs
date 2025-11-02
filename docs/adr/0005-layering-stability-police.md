@@ -1,8 +1,10 @@
 # ADR-0005: Layering & Stability Policy
 
-**Status:** Accepted  
-**Context:** KB Labs ecosystem (core, shared, products)  
 **Date:** 2025-09-15
+**Status:** Accepted
+**Deciders:** KB Labs Team
+**Last Reviewed:** 2025-11-03
+**Tags:** [architecture, process]
 
 ---
 
