@@ -1,23 +1,58 @@
 # KB Labs Roadmap 2027
 
-> **Year Focus:** Public Expansion - Building brand presence, ecosystem maturity, and advanced features
+> **Year Focus:** Maturity & Public Presence - Completing Version 2.0, launching AI Content Conveyor, and establishing strong public presence
+
+## Executive Summary
+
+**Period:** January 2027 - December 2027  
+**Status:** 🔴 Planned  
+**Strategic Transition:**
+- Complete Version 2.0 stabilization across all packages
+- Launch AI Content Conveyor MVP
+- Establish strong public presence and brand
+- Achieve ecosystem maturity
+
+**Key Objectives:**
+- Complete Version 2.0 (beta/first users) for all packages
+- Launch AI Content Conveyor MVP
+- Studio maturity (final polish)
+- Public expansion and brand building
 
 ## 📍 Starting Point (January 2027)
 
 - **DevKit + Template**: Mature and stable
-- **Products**: 4 products (ai-review, ai-docs, ai-tests, ai-project-assistant) in production
+- **Packages**: 17 packages progressing from MVP 1.0 to Version 2.0
+- **Products**: 4+ products (ai-review, ai-docs, ai-tests, ai-project-assistant) in production
+- **Studio**: Pluggable architecture, permissions, roles, plugin sandbox (from 2026)
 - **Plugin System**: Operational and functional
-- **Public Presence**: Strong (25+ articles in 2026)
-- **ADR & Docs**: >50 ADRs documented
+- **ADR & Docs**: 193+ ADRs baseline, continuing documentation
+- **Public Presence**: Foundation established (25+ articles in 2026)
+- **Budget**: $100-150/month with maintained ROI
 
 ---
 
 ## 🎯 Annual Goals (2027)
 
-- ✅ Strengthen **public brand** (case studies, speaking engagements, meetups)
-- ✅ Launch **1–2 additional products** (e.g., ai-content or ai-insights)
-- ✅ Enhance **analytics** (dashboards + predictive models)
-- ✅ Prepare for **Head/CTO level interviews**
+### Version 2.0 Completion
+- **Complete Version 2.0** for all 17 packages (beta/first users)
+- **Studio Maturity**: Final polish on Studio features
+- **Product Stability**: All products production-ready
+
+### Product Launch
+- **AI Content Conveyor MVP**: Launch content generation/management platform
+- **Product Expansion**: Continue product ecosystem growth
+
+### Public Expansion
+- **Brand Building**: Strengthen public brand (case studies, speaking engagements, meetups)
+- **Content Platform**: Launch public content publication platform
+- **Public Presence**: Establish regular publishing and speaking schedule
+
+### Platform Enhancement
+- **Analytics**: Enhance analytics (dashboards + predictive models)
+- **Ecosystem Maturity**: Achieve full ecosystem maturity
+
+### Professional Development
+- **CTO Preparation**: Prepare for Head/CTO level interviews
 
 ---
 
@@ -33,8 +68,9 @@
 - Update documentation and wiki for showcase
 
 **Success Metrics:**
-- ai-content working at basic level
-- ADR ≥60
+- AI Content Conveyor MVP working at basic level
+- Version 2.0 progress on key packages
+- ADR ≥60 (continue from 193+ baseline)
 - 30+ articles published
 - First speaking engagements documented
 
@@ -43,18 +79,21 @@
 ---
 
 ### Q2 2027 - Ecosystem Maturity
-**Focus:** Product finalization and platform showcase
+**Focus:** Version 2.0 completion, Studio maturity, and public showcase
 
 **Key Deliverables:**
-- Finalize key products (ai-review, ai-docs, ai-tests, ai-project-assistant)
-- Create additional 2–3 plugins for analytics, storage (S3, DB), integrations
+- Complete Version 2.0 for all packages
+- Studio maturity (final polish)
+- AI Content Conveyor launch
 - Form public KB Labs "showcase" (documentation, demos, showcase repositories)
 - Automated quality control: metrics, self-checks, drift-check, budget-tracking
 - Prepare KB Labs 2.0 vision (major architectural update + public article)
 
 **Success Metrics:**
-- 4 key products working stably on new architecture
-- ADR ≥65 published
+- All 17 packages at Version 2.0 (beta/first users)
+- Studio fully mature
+- AI Content Conveyor operational
+- ADR ≥65 published (continue from 193+ baseline)
 - ≥1 public showcase (demo site or GitHub Pages with examples)
 - Budget-analytics system integrated into CI (automatic monitoring and reports)
 - KB Labs 2.0 vision document prepared
@@ -73,7 +112,37 @@
 | **Documentation** | 65+ ADRs, showcase platform | 🔴 Pending |
 | **Vision** | KB Labs 2.0 architecture ready | 🔴 Pending |
 
+## 📊 Business Impact Metrics
+
+- **Platform Maturity**: Full Version 2.0 across all packages
+- **Public Presence**: Regular publishing and speaking engagements
+- **Ecosystem Health**: Mature, stable ecosystem ready for users
+- **Brand Recognition**: Established public brand in AI development tools space
+
+## 🔮 Long-term Vision
+
+**2027 Goals:**
+- Complete transition from MVP 1.0 to Version 2.0
+- Establish strong public presence and brand
+- Launch AI Content Conveyor as major product
+- Achieve ecosystem maturity across all packages
+
+**Beyond 2027:**
+- Continued ecosystem growth and innovation
+- Public platform expansion
+- Community building and engagement
+- Strategic partnerships and opportunities
+
+## 💰 Resource Planning
+
+- **Estimated Budget:** $100-150/month (as per ADR-0007)
+- **Public Activities:** Allocated budget for public speaking and content
+- **Product Launch:** Resource allocation for AI Content Conveyor launch
+- **ROI Target:** Maintain ~25:1 ratio with public expansion activities
+
+📋 **[Budget Details](../../BUDGET.md)**
+
 ---
 
-*Last updated: September 20, 2025*  
-*Next review: October 20, 2025*  
+*Last updated: November 3, 2025*  
+*Next review: December 3, 2025*  
