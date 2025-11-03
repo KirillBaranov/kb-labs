@@ -39,6 +39,30 @@ KB Labs provides a unified ecosystem that addresses these challenges:
 - **Self-Documenting**: Comprehensive ADRs (193+), documentation, and transparent decision-making
 - **Open Source First**: All tools built with open-source principles and community in mind
 
+### Future Vision: Agent-Based Pluggable System
+
+KB Labs is evolving toward an **agent-based pluggable system** where the entire ecosystem becomes a composable platform for building AI-powered development workflows.
+
+**Pluggable Architecture:**
+- **Open Plugin System**: Anyone can write custom plugins for their specific needs
+- **Plugin Composition**: Chain together plugins from KB Labs core plugins or community-contributed plugins
+- **Plugin Marketplace**: Discover and share plugins with the community
+- **Cross-Plugin Communication**: Plugins can communicate and build upon each other's functionality
+
+**Security & Safety:**
+- **Sandbox Execution**: All plugins execute in isolated sandbox environments by default
+- **Permission System**: Fine-grained permissions control what each plugin can access
+- **Resource Limits**: Automatic resource constraints prevent abuse
+- **Audit Trail**: Complete audit logging for all plugin executions
+
+**Agent Workflows:**
+- **Composable Agents**: Build complex workflows by chaining simple agent plugins
+- **Custom Workflows**: Create personalized development workflows by combining existing plugins
+- **Community Contributions**: Share and reuse agent workflows from the community
+- **Enterprise Ready**: Support for private plugin registries and custom workflows
+
+This future architecture will transform KB Labs into a true platform where developers can build their own AI-powered tools on top of a secure, composable foundation.
+
 ## 🏛️ Ecosystem Architecture
 
 KB Labs ecosystem follows a layered architecture model with clear boundaries and dependencies:
@@ -313,10 +337,24 @@ kb-labs/                          # Meta-workspace root
 
 **Plugin System** enables extensible architecture with isolated, composable, and discoverable plugins. Products can be extended without modifying core code.
 
+**Current Capabilities:**
 - **Isolation**: Plugins run in isolated contexts
 - **Composability**: Plugins can be combined and chained
 - **Discovery**: Automatic plugin discovery and registration
 - **Extensibility**: Products expose plugin interfaces for customization
+
+**Future Evolution (2026-2027):**
+- **Open Plugin Marketplace**: Public registry for sharing and discovering plugins
+- **Community Contributions**: Anyone can create and publish plugins for specific use cases
+- **Plugin Composition**: Chain together plugins from KB Labs or community contributors
+- **Cross-Plugin Communication**: Plugins communicate and build upon each other's functionality
+- **Agent-Based Workflows**: Build complex workflows by composing simple agent plugins
+- **Sandbox Execution**: All plugins execute in isolated sandbox environments by default for security
+- **Permission System**: Fine-grained permissions control what each plugin can access
+- **Resource Limits**: Automatic resource constraints prevent abuse
+- **Audit Trail**: Complete audit logging for all plugin executions
+
+The plugin system will evolve into a true platform where developers can build their own AI-powered tools by composing existing plugins or creating new ones.
 
 ### AI Agents
 
@@ -404,8 +442,10 @@ kb-labs/
 
 **Planned:**
 - 🔜 **ai-docs & ai-tests** — Launch documentation and testing products (Q1 2026)
-- 🔜 **Plugin System** — Extensible architecture with profile plugins (Q2 2026)
+- 🔜 **Plugin System MVP** — Extensible architecture with profile plugins (Q2 2026)
+- 🔜 **Plugin Marketplace** — Public registry for plugin discovery and sharing (Q3 2026)
 - 🔜 **Advanced Analytics** — Dashboard and S3 integration (Q3 2026)
+- 🔜 **Agent-Based Workflows** — Composable agent plugins with sandbox execution (Q4 2026)
 - 🔜 **Public Presence** — Brand building and community engagement (Q4 2026)
 
 ### 2027 - Public Expansion 🔜
@@ -414,8 +454,10 @@ kb-labs/
 
 **Planned:**
 - 🔜 **ai-content** — Content generation and management (Q1 2027)
+- 🔜 **Security & Permissions** — Advanced permission system and enhanced sandbox security (Q1 2027)
+- 🔜 **Plugin Ecosystem Maturity** — Full agent-based pluggable platform with community plugins (Q2 2027)
 - 🔜 **Public Showcase** — Brand building and speaking engagements (Q1-Q2 2027)
-- 🔜 **KB Labs 2.0** — Major architectural evolution (Q2+ 2027)
+- 🔜 **KB Labs 2.0** — Major architectural evolution with fully realized pluggable agent system (Q2+ 2027)
 
 📋 **[View Detailed Roadmap](./docs/roadmap/README.md)** — Complete roadmap with quarterly breakdowns
 
