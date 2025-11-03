@@ -26,19 +26,20 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "ajv": "^8.17.1",
-    "ajv-formats": "^3.0.1",
-    "picomatch": "^4.0.2",
-    "yaml": "^2.5.1"
+    "ajv": "*",
+    "ajv-formats": "*",
+    "picomatch": "*",
+    "yaml": "*"
   },
   "devDependencies": {
-    "@types/node": "^24.3.3",
-    "@types/picomatch": "^4",
-    "cpy-cli": "^4.2.0",
-    "rimraf": "^6.0.1",
-    "tsup": "^8.5.0",
-    "typescript": "^5.6.3",
-    "vitest": "^2.1.4",
-    "@kb-labs/devkit": "link:../../../kb-labs-devkit"
+    "@types/node": "*",
+    "@types/picomatch": "*",
+    "cpy-cli": "*",
+    "rimraf": "*",
+    "tsup": "*",
+    "typescript": "*",
+    "vitest": "*",
+    "@kb-labs/devkit": "link:../../../kb-labs-devkit",
+    "tsx": "*"
   }
 }
