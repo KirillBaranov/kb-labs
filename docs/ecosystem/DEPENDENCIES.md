@@ -113,7 +113,7 @@ This document maps dependencies between products in the KB Labs ecosystem. Under
 
 **Enforced via:** ESLint rules (no-restricted-imports)
 
-**Related:** [ADR-0005: Layering & Stability Policy](../adr/0005-layering-stability-police.md)
+**Related:** [ADR-0005: Layering & Stability Policy](../adr/0005-layering-stability-policy.md)
 
 ## Version Pinning
 
@@ -126,7 +126,7 @@ This document maps dependencies between products in the KB Labs ecosystem. Under
 - **AI Products:** Fast-moving, pinned against major versions of core and shared
 - **Tools:** Similar to AI Products
 
-**Related:** [ADR-0005: Layering & Stability Policy](../adr/0005-layering-stability-police.md)
+**Related:** [ADR-0005: Layering & Stability Policy](../adr/0005-layering-stability-policy.md)
 
 ## Dependency Management
 

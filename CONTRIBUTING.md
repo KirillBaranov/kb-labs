@@ -82,11 +82,11 @@ When extending functionality, follow [ADR-0002](./docs/adr/0002-plugins-and-exte
 
 Before making significant changes, review relevant ADRs:
 
-- **[ADR-0001: Architecture and Repository Layout](./docs/adr/0001-architecture-and-reposity-layout.md)** — Repository structure and organization
+- **[ADR-0001: Architecture and Repository Layout](./docs/adr/0001-architecture-and-repository-layout.md)** — Repository structure and organization
 - **[ADR-0002: Plugins and Extensibility](./docs/adr/0002-plugins-and-extensibility.md)** — Plugin system design
 - **[ADR-0003: Package and Module Boundaries](./docs/adr/0003-package-and-module-boundaries.md)** — Package dependencies and boundaries
 - **[ADR-0004: Versioning and Release Policy](./docs/adr/0004-versioning-and-release-policy.md)** — Versioning strategy
-- **[ADR-0005: Layering & Stability Policy](./docs/adr/0005-layering-stability-police.md)** — API stability and layering
+- **[ADR-0005: Layering & Stability Policy](./docs/adr/0005-layering-stability-policy.md)** — API stability and layering
 - **[ADR-0006: Local Development Linking Policy](./docs/adr/0006-local-development-linking-policy.md)** — Development workflow
 
 ### Creating New ADRs
