@@ -90,10 +90,24 @@ Before making significant changes, review relevant ADRs:
 - **[ADR-0006: Local Development Linking Policy](./docs/adr/0006-local-development-linking-policy.md)** — Development workflow
 
 ### Creating New ADRs
+
 For architectural changes:
-1. Create a new ADR file in `docs/adr/` following the template
-2. Include context, decision rationale, and consequences
-3. Get team review before implementation
+
+1. Create a new ADR file in `docs/adr/` following the template in `docs/adr/0000-template.md`
+2. Include required metadata:
+   - **Date**: When the decision was made
+   - **Status**: Proposed | Accepted | Deprecated | Superseded
+   - **Deciders**: Decision makers
+   - **Last Reviewed**: Date of last review (required)
+   - **Reviewers**: Optional list of reviewers
+   - **Tags**: 1-5 tags from approved list (required)
+3. Include context, decision rationale, and consequences
+4. See [Documentation Standard](./docs/DOCUMENTATION.md) for complete ADR format requirements
+5. Get team review before implementation
+
+---
+
+**See [Documentation Standard](./docs/DOCUMENTATION.md) for complete documentation guidelines.**
 
 ## 🔄 Pull Request Process
 
