@@ -58,7 +58,7 @@ All projects enforce quality through:
 - **Reverse Dependencies:** ❌ None detected
 - **Circular Dependencies:** ❌ None detected
 
-**Related:** [ADR-0005: Layering & Stability Policy](../adr/0005-layering-stability-police.md)
+**Related:** [ADR-0005: Layering & Stability Policy](../adr/0005-layering-stability-policy.md)
 
 ### API Stability
 
@@ -66,7 +66,7 @@ All projects enforce quality through:
 - **@experimental APIs:** ⚠️ Marked and documented
 - **Deprecations:** ✅ Follow 2-release deprecation policy
 
-**Related:** [ADR-0005: Layering & Stability Policy](../adr/0005-layering-stability-police.md)
+**Related:** [ADR-0005: Layering & Stability Policy](../adr/0005-layering-stability-policy.md)
 
 ## Dependency Health
 

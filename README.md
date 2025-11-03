@@ -388,7 +388,7 @@ kb-labs/
 │   └── package-name/             # Example package template
 ├── docs/                         # Central documentation hub
 │   ├── adr/                      # Architecture Decision Records (193+)
-│   │   ├── 0001-architecture-and-reposity-layout.md
+│   │   ├── 0001-architecture-and-repository-layout.md
 │   │   ├── 0002-plugins-and-extensibility.md
 │   │   └── ...                   # 193+ ADRs total
 │   ├── products/                 # Product documentation
@@ -528,11 +528,11 @@ All architectural decisions are documented in [docs/adr/](./docs/adr/) with 193+
 
 **Key ADRs:**
 
-- [ADR-0001: Architecture and Repository Layout](./docs/adr/0001-architecture-and-reposity-layout.md)
+- [ADR-0001: Architecture and Repository Layout](./docs/adr/0001-architecture-and-repository-layout.md)
 - [ADR-0002: Plugins and Extensibility](./docs/adr/0002-plugins-and-extensibility.md)
 - [ADR-0003: Package and Module Boundaries](./docs/adr/0003-package-and-module-boundaries.md)
 - [ADR-0004: Versioning and Release Policy](./docs/adr/0004-versioning-and-release-policy.md)
-- [ADR-0005: Layering & Stability Policy](./docs/adr/0005-layering-stability-police.md)
+- [ADR-0005: Layering & Stability Policy](./docs/adr/0005-layering-stability-policy.md)
 - [ADR-0006: Local Development Linking Policy](./docs/adr/0006-local-development-linking-policy.md)
 - [ADR-0007: AI Budget and ROI Tracking](./docs/adr/0007-ai-budget-roi-calculating.md)
 - [ADR-0008: AI Usage Optimization](./docs/adr/0008-ai-usage-optimization.md)
@@ -540,7 +540,7 @@ All architectural decisions are documented in [docs/adr/](./docs/adr/) with 193+
 - [ADR-0010: One Package = One Responsibility](./docs/adr/0010-one-package-one-responsibility.md)
 - [ADR-0011: CLI and Directory Naming](./docs/adr/0011-cli-and-directory-naming.md)
 - [ADR-0012: PNPM Meta-Workspace Setup](./docs/adr/0012-meta-workspace.md)
-- [ADR-0013: Automation as a Survival Constraint](./docs/adr/0013-automation-surival-constraint.md)
+- [ADR-0013: Automation as a Survival Constraint](./docs/adr/0013-automation-survival-constraint.md)
 - [ADR-0014: Core Profiles and CLI Integration](./docs/adr/0014-core-profiles-cli-integration.md)
 - [ADR-0015: KB Labs DevLink Integration](./docs/adr/0015-devlink-integration.md)
 - [ADR-0016: Layered Ecosystem Model](./docs/adr/0016-layered-ecosystem-model.md)

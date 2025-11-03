@@ -23,7 +23,7 @@ All ADRs must have the following fields:
 
 ### kb-labs
 
-- ✅ `kb-labs/docs/adr/0001-architecture-and-reposity-layout.md`
+- ✅ `kb-labs/docs/adr/0001-architecture-and-repository-layout.md`
 
 - ✅ `kb-labs/docs/adr/0002-plugins-and-extensibility.md`
 
@@ -31,7 +31,7 @@ All ADRs must have the following fields:
 
 - ✅ `kb-labs/docs/adr/0004-versioning-and-release-policy.md`
 
-- ✅ `kb-labs/docs/adr/0005-layering-stability-police.md`
+- ✅ `kb-labs/docs/adr/0005-layering-stability-policy.md`
 
 - ✅ `kb-labs/docs/adr/0006-local-development-linking-policy.md`
 
@@ -47,7 +47,7 @@ All ADRs must have the following fields:
 
 - ✅ `kb-labs/docs/adr/0012-meta-workspace.md`
 
-- ✅ `kb-labs/docs/adr/0013-automation-surival-constraint.md`
+- ✅ `kb-labs/docs/adr/0013-automation-survival-constraint.md`
 
 - ✅ `kb-labs/docs/adr/0014-core-profiles-cli-integration.md`
 

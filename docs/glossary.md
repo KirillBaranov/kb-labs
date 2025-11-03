@@ -53,7 +53,7 @@ Strict import boundaries between layers:
 **Allowed:** products → shared → core  
 **Forbidden:** Reverse dependencies
 
-**Related:** [ADR-0005: Layering & Stability Policy](./adr/0005-layering-stability-police.md)
+**Related:** [ADR-0005: Layering & Stability Policy](./adr/0005-layering-stability-policy.md)
 
 ### Stable API
 APIs marked with `@stable` guarantee compatibility across minor releases. Minor releases cannot break `@stable` APIs.
@@ -150,7 +150,7 @@ Ecosystem that minimizes operational overhead through automation: auto-documenta
 ### Automation Survival Constraint
 Principle that any manual process must have an automated alternative to ensure ecosystem scalability.
 
-**Related:** [ADR-0013: Automation Survival Constraint](./adr/0013-automation-surival-constraint.md)
+**Related:** [ADR-0013: Automation Survival Constraint](./adr/0013-automation-survival-constraint.md)
 
 ## Status Terms
 
