@@ -11,6 +11,8 @@
 
 KB Labs is building a comprehensive AI-powered development ecosystem that transforms how developers work with code, documentation, and testing. Our vision is to create a self-sustaining engineering ecosystem where AI agents handle routine tasks, allowing developers to focus on creative problem-solving and architectural decisions.
 
+**Current Stage**: MVP 1.0 — All core products operational, agent-based pluggable system in development (2026-2027). We maintain transparent planning and budget tracking to ensure sustainable growth and measurable ROI.
+
 ### Problem Statement
 
 Modern software development faces several critical challenges:
@@ -38,6 +40,8 @@ KB Labs provides a unified ecosystem that addresses these challenges:
 - **Profile-Driven**: Knowledge captured in profiles drives all AI products
 - **Self-Documenting**: Comprehensive ADRs (193+), documentation, and transparent decision-making
 - **Open Source First**: All tools built with open-source principles and community in mind
+- **Data-Driven Planning**: Strategic roadmap with clear milestones and measurable outcomes
+- **Sustainable Budgeting**: Transparent ROI tracking ensures efficient resource allocation
 
 ### Future Vision: Agent-Based Pluggable System
 
@@ -416,6 +420,8 @@ kb-labs/
 
 ## 📅 Strategic Roadmap (2025-2027)
 
+> **Planning Philosophy**: KB Labs follows a data-driven planning approach with clear milestones, measurable outcomes, and transparent budget tracking. All decisions are documented in ADRs and tracked through our roadmap system.
+
 ### 2025 - Foundation & Migration ✅
 
 **Status**: 🟢 On Track - Exceeding Expectations
@@ -463,7 +469,9 @@ kb-labs/
 
 ## 💰 Budget & ROI Tracking
 
-We maintain transparency in our AI tool investments and measure their impact on development productivity.
+> **Budgeting Philosophy**: We maintain transparency in our AI tool investments and measure their impact on development productivity. All spending decisions are evaluated against ROI metrics to ensure sustainable growth.
+
+We track all investments and measure their impact on development productivity.
 
 ### Current Status
 
