@@ -1,7 +1,7 @@
 # KB Labs Ecosystem Dependencies
 
 > **Dependency graph and relationships between KB Labs products**  
-> **Last Updated:** 2025-01-28
+> **Last Updated:** 2025-11-03
 
 ## Dependency Overview
 
