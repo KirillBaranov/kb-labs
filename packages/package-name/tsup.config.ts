@@ -1,15 +1,10 @@
-import { defineConfig } from 'tsup'
+import config from "@kb-labs/devkit/tsup/node.js";
 
-export default defineConfig({
+export default {
+  ...config,
   entry: {
-    index: 'src/index.ts',
+    index: "src/index.ts",
   },
-  outDir: 'dist',
-  format: ['esm'],
-  sourcemap: true,
-  clean: true,
-  dts: false,
-  treeshake: true,
-  target: 'es2022',
-  external: ['ajv', 'ajv-formats', 'yaml', 'picomatch']
-})
+  external: [/^@kb-labs\//, "ajv", "ajv-formats", "yaml", "picomatch"],
+  skipNodeModulesBundle: true,
+};
