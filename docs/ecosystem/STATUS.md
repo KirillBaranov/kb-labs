@@ -1,7 +1,7 @@
 # KB Labs Ecosystem Status
 
-> **Status overview of all products in the KB Labs ecosystem**  
-> **Last Updated:** 2025-11-03
+> **Status overview of all products in the KB Labs ecosystem**
+> **Last Updated:** 2025-12-02
 
 ## Overview
 
@@ -12,10 +12,11 @@ This document provides a high-level status overview of all products in the KB La
 | Category | Total | MVP 1.0 | Planning | In Progress |
 |----------|-------|---------|----------|-------------|
 | Core Platform | 5 | 5 | 0 | 0 |
-| AI Products | 7 | 3 | 4 | 0 |
-| Tools & Infrastructure | 7 | 7 | 0 | 0 |
-| Templates | 1 | 1 | 0 | 0 |
-| **Total** | **20** | **16** | **4** | **0** |
+| AI Products | 7 | 5 | 2 | 0 |
+| Orchestration | 3 | 3 | 0 | 0 |
+| Tools & Infrastructure | 6 | 6 | 0 | 0 |
+| Templates | 2 | 2 | 0 | 0 |
+| **Total** | **23** | **21** | **2** | **0** |
 
 ## Core Platform (All MVP 1.0)
 
@@ -25,7 +26,7 @@ This document provides a high-level status overview of all products in the KB La
 | [@kb-labs/cli](../products/cli.md) | MVP 1.0 | Unified CLI commands (kb *) |
 | [@kb-labs/shared](../products/shared.md) | MVP 1.0 | Common types and utilities |
 | [@kb-labs/devkit](../products/devkit.md) | MVP 1.0 | Bootstrap and standards |
-| [@kb-labs/profile-schemas](../products/profile-schemas.md) | MVP 1.0 | JSON Schema definitions |
+| [@kb-labs/knowledge](../products/knowledge.md) | MVP 1.0 | Knowledge management contracts |
 
 **Status:** ✅ All stable and production-ready
 
@@ -35,18 +36,28 @@ This document provides a high-level status overview of all products in the KB La
 
 | Product | Status | Notes |
 |---------|--------|-------|
-| [@kb-labs/ai-review](../products/ai-review.md) | MVP 1.0 | Migrating to new architecture |
+| [@kb-labs/ai-review](../products/ai-review.md) | MVP 1.0 | Plugin-based code review |
+| [@kb-labs/ai-docs](../products/ai-docs.md) | MVP 1.0 | Documentation assistant |
+| [@kb-labs/ai-tests](../products/ai-tests.md) | MVP 1.0 | Test generation and maintenance |
 | [@kb-labs/analytics](../products/analytics.md) | MVP 1.0 | Event pipeline operational |
-| [@kb-labs/mind](../products/mind.md) | MVP 1.0 | Context layer active |
+| [@kb-labs/mind](../products/mind.md) | MVP 1.0 | RAG context layer with hybrid search |
 
 ### Planned Products
 
 | Product | Status | Planned Release |
 |---------|--------|-----------------|
-| [@kb-labs/ai-docs](../products/ai-docs.md) | Planning | Q1 2026 |
-| [@kb-labs/ai-tests](../products/ai-tests.md) | Planning | Q1 2026 |
 | [@kb-labs/ai-project-assistant](../products/ai-project-assistant.md) | Planning | Q4 2026 |
 | [@kb-labs/ai-content](../products/ai-content.md) | Planning | Q1 2027 |
+
+## Orchestration Layer (All MVP 1.0)
+
+| Product | Status | Notes |
+|---------|--------|-------|
+| [@kb-labs/workflow](../products/workflow.md) | MVP 1.0 | Workflow orchestration engine |
+| [@kb-labs/plugin](../products/plugin.md) | MVP 1.0 | Plugin system infrastructure |
+| [@kb-labs/setup-engine](../products/setup-engine.md) | MVP 1.0 | Setup workflows with rollback |
+
+**Status:** ✅ All stable and production-ready
 
 ## Tools & Infrastructure (All MVP 1.0)
 
@@ -58,15 +69,15 @@ This document provides a high-level status overview of all products in the KB La
 | [@kb-labs/ui](../products/ui.md) | MVP 1.0 | Shared UI components |
 | [@kb-labs/devlink](../products/devlink.md) | MVP 1.0 | Package linking tool |
 | [@kb-labs/release-manager](../products/release-manager.md) | MVP 1.0 | Release orchestration |
-| [@kb-labs/tox](../products/tox.md) | MVP 1.0 | TOX format library |
 
 **Status:** ✅ All stable and production-ready
 
-## Templates (MVP 1.0)
+## Templates (All MVP 1.0)
 
 | Product | Status | Notes |
 |---------|--------|-------|
 | [@kb-labs/product-template](../products/product-template.md) | MVP 1.0 | Project scaffolding template |
+| [@kb-labs/plugin-template](../products/plugin-template.md) | MVP 1.0 | Gold standard plugin template |
 
 ## Key Metrics
 
@@ -76,16 +87,13 @@ This document provides a high-level status overview of all products in the KB La
 - **Standard Compliance:** All projects follow KB Labs Documentation Standard
 
 ### Development Status
-- **Core Platform:** ✅ Complete and stable
-- **AI Products:** 🚧 3 active, 4 planned
-- **Infrastructure:** ✅ Complete and stable
-- **Templates:** ✅ Complete and stable
+- **Core Platform:** ✅ Complete and stable (5 products)
+- **AI Products:** ✅ 5 active, 2 planned
+- **Orchestration:** ✅ Complete and stable (3 products)
+- **Infrastructure:** ✅ Complete and stable (6 products)
+- **Templates:** ✅ Complete and stable (2 products)
 
 ## Next Steps
-
-### Q1 2026
-- Launch ai-docs MVP
-- Launch ai-tests architecture
 
 ### Q4 2026
 - Launch ai-project-assistant MVP
