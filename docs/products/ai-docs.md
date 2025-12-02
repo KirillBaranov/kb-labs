@@ -1,29 +1,41 @@
 # @kb-labs/ai-docs
 
-**Status:** Planning  
-**Category:** AI Products  
-**Planned Release:** Q1 2026  
-**Repository:** —
+**Status:** MVP 1.0
+**Category:** AI Products
+**Repository:** [kb-labs-ai-docs](https://github.com/KirillBaranov/kb-labs-ai-docs)
 
 ## Overview
 
-Automated documentation generation from code, ADRs, and profiles. AI-powered tool that generates comprehensive documentation from project artifacts.
+Engineering-first documentation assistant for KB Labs projects. Bootstrap, plan, generate, and audit technical docs without silent overwrites, powered by Mind context and LLMs.
 
-## Planned Features
+## Key Features
 
-- **Code Analysis** - Analyzes codebase structure and patterns
-- **ADR Integration** - Incorporates architecture decisions into documentation
-- **Profile-Based** - Uses profiles for documentation templates and rules
-- **Multi-Format** - Generates documentation in multiple formats (Markdown, HTML, PDF)
+- **Bootstrap** - Initialize documentation workspace with `kb ai-docs:init`
+- **Planning** - Build machine-readable plan/TOC from existing code and docs with `kb ai-docs:plan`
+- **Generation** - Generate or sync sections with Mind context integration using `kb ai-docs:generate`
+- **Drift Detection** - Monitor drift between code and documentation with `kb ai-docs:audit`
+- **No Silent Overwrites** - Explicit control over documentation changes
+- **Mind Integration** - Uses Mind RAG for accurate, context-aware generation
+- **Dry-Run Support** - Preview changes before applying
+
+## Commands
+
+| Command | Purpose |
+|---------|---------|
+| `kb ai-docs:init` | Bootstrap documentation workspace |
+| `kb ai-docs:plan` | Plan/restructure documentation |
+| `kb ai-docs:generate` | Generate/sync documentation sections |
+| `kb ai-docs:audit` | Detect drift between code and docs |
 
 ## Documentation
 
-- Repository: TBD
-- Status: In planning phase
+- [README](https://github.com/KirillBaranov/kb-labs-ai-docs/blob/main/README.md) - Full documentation and quick start guide
+- [Contributing Guide](https://github.com/KirillBaranov/kb-labs-ai-docs/blob/main/CONTRIBUTING.md) - Development guidelines
+- [Architecture Decisions](https://github.com/KirillBaranov/kb-labs-ai-docs/tree/main/docs/adr) - ADRs for this project
 
 ## Related Packages
 
-- Will depend on: @kb-labs/core, @kb-labs/shared, @kb-labs/mind
-- Will be used by: Development teams, documentation workflows
+- Depends on: @kb-labs/core, @kb-labs/mind, @kb-labs/plugin
+- Used by: Documentation workflows, AI-powered documentation generation
 
 
