@@ -1,7 +1,7 @@
 # KB Labs Glossary
 
 > **Glossary of terms and concepts used across the KB Labs ecosystem**  
-> **Last Updated:** 2025-11-03
+> **Last Updated:** 2025-12-02
 
 ## Core Concepts
 
