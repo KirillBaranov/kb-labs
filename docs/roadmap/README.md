@@ -156,5 +156,5 @@
 
 ---
 
-*Last updated: November 3, 2025*  
-*Next review: December 3, 2025*
+*Last updated: December 2, 2025*
+*Next review: January 2, 2026*
