@@ -1,7 +1,7 @@
 # KB Labs
 
-> **Ecosystem of AI-powered developer tools** focused on Engineering Productivity, AI in SDLC, and Developer Experience.  
-> **Central hub for the KB Labs ecosystem** — unified meta-workspace managing 17+ repositories with 20+ products.
+> **Ecosystem of AI-powered developer tools** focused on Engineering Productivity, AI in SDLC, and Developer Experience.
+> **Central hub for the KB Labs ecosystem** — unified meta-workspace managing 21 repositories with 25+ products.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Node.js](https://img.shields.io/badge/Node.js-18.18.0+-green.svg)](https://nodejs.org/)
@@ -72,25 +72,30 @@ This future architecture will transform KB Labs into a true platform where devel
 KB Labs ecosystem follows a layered architecture model with clear boundaries and dependencies:
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Applications Layer                        │
-│  Studio (Web UI)  |  REST API  |  CLI  |  Third-party Apps  │
-└─────────────────────────────────────────────────────────────┘
-                              │
-┌─────────────────────────────────────────────────────────────┐
-│                    AI Products Layer                          │
-│  AI Review  |  AI Docs  |  AI Tests  |  Mind  |  Analytics  │
-└─────────────────────────────────────────────────────────────┘
-                              │
-┌─────────────────────────────────────────────────────────────┐
-│                    Core Platform Layer                        │
-│     Core     |    CLI     |   Shared   |  DevKit  |  Schemas │
-└─────────────────────────────────────────────────────────────┘
-                              │
-┌─────────────────────────────────────────────────────────────┐
-│              Infrastructure & Tools Layer                     │
-│  DevLink  |  Release Manager  |  Audit  |  TOX  |  UI         │
-└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                      Applications Layer                          │
+│   Studio (Web UI)  |  REST API  |  CLI  |  Third-party Apps     │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+┌─────────────────────────────────────────────────────────────────┐
+│                      AI Products Layer                           │
+│  AI Review  |  AI Docs  |  AI Tests  |  Mind  |  Analytics      │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+┌─────────────────────────────────────────────────────────────────┐
+│                    Orchestration Layer                           │
+│         Workflow Engine  |  Plugin System  |  Setup Engine      │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+┌─────────────────────────────────────────────────────────────────┐
+│                      Core Platform Layer                         │
+│       Core    |    CLI    |   Shared   |  DevKit  |  Knowledge  │
+└─────────────────────────────────────────────────────────────────┘
+                                │
+┌─────────────────────────────────────────────────────────────────┐
+│                Infrastructure & Tools Layer                      │
+│     DevLink   |  Release Manager  |  Audit  |  UI               │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ### Core Platform
@@ -122,11 +127,10 @@ The foundation of the KB Labs ecosystem:
   - Reusable GitHub Actions workflows
   - Zero-maintenance tooling
 
-- **@kb-labs/profile-schemas** — JSON Schema definitions for profiles, rules, and products
-  - Standardized profile validation
-  - Reusable profile presets
-  - Product schema definitions
-  - CI integration for validation
+- **@kb-labs/knowledge** — Knowledge management contracts and runtime
+  - Standardized knowledge artifacts
+  - Reusable knowledge presets
+  - Integration with AI products
 
 ### AI Products
 
@@ -140,6 +144,16 @@ AI-powered tools that leverage the core platform:
   - Multiple LLM provider support
   - Analytics integration
 
+- **@kb-labs/ai-docs** — Engineering-first documentation assistant
+  - Bootstrap, plan, generate, and audit technical docs
+  - Mind context integration for accurate generation
+  - Drift detection between code and docs
+
+- **@kb-labs/ai-tests** — AI-powered test generation and maintenance
+  - Plan, generate, run, repair, and audit automated tests
+  - Mind context for intelligent test generation
+  - Multi-framework support
+
 - **@kb-labs/analytics** — Analytics and tracking system
   - Event pipeline
   - Storage backends (SQLite, S3)
@@ -147,17 +161,36 @@ AI-powered tools that leverage the core platform:
   - Privacy-first design
 
 - **@kb-labs/mind** — AI-powered code analysis and context layer
-  - Knowledge graph building
-  - Query system for code understanding
-  - TOX compression for token efficiency
-  - Integration with AI Review
+  - Hybrid search (BM25 + vector)
+  - RAG system for code understanding
+  - Anti-hallucination verification
+  - Integration with all AI products
 
 **Planned Products:**
 
-- **@kb-labs/ai-docs** — Automated documentation generation *(Q1 2026)*
-- **@kb-labs/ai-tests** — AI-assisted test generation and maintenance *(Q1 2026)*
 - **@kb-labs/ai-project-assistant** — Project management and workflow automation *(Q4 2026)*
 - **@kb-labs/ai-content** — Content generation and management system *(Q1 2027)*
+
+### Orchestration Layer
+
+Systems for workflow execution and plugin management:
+
+- **@kb-labs/workflow** — Workflow orchestration engine
+  - Declarative workflow definitions
+  - Job scheduling and step execution
+  - Distributed coordination through Redis
+  - Multi-tenancy support
+
+- **@kb-labs/plugin** — Plugin system infrastructure
+  - Manifest V1/V2 format definitions
+  - Runtime execution with sandboxing
+  - CLI, REST, and Studio adapters
+  - Developer tools for plugin development
+
+- **@kb-labs/setup-engine** — Setup workflows engine
+  - Declarative operations with rollback support
+  - Idempotent execution
+  - Plugin and CLI installers
 
 ### Tools & Infrastructure
 
@@ -169,12 +202,11 @@ Supporting tools and infrastructure for the ecosystem:
 - **@kb-labs/ui** — Shared UI component library
 - **@kb-labs/devlink** — Development linking tool for multi-repo workflows
 - **@kb-labs/release-manager** — Release orchestration and automation
-- **@kb-labs/tox** — TOX (Terse Object eXchange) format for LLM token efficiency
-- **@kb-labs/api-contracts** — Shared API contracts with Zod validation
 
 ### Templates
 
 - **@kb-labs/product-template** — Project scaffolding for 5-minute deployment with shared setup and architecture
+- **@kb-labs/plugin-template** — Gold standard reference template for production-ready KB Labs plugins
 
 ## 🚀 Quick Start
 
@@ -236,29 +268,33 @@ kb-labs/                          # Meta-workspace root
 ├── kb-labs-cli/                  # CLI repository
 ├── kb-labs-shared/               # Shared utilities repository
 ├── kb-labs-devkit/               # DevKit repository
+├── kb-labs-knowledge/            # Knowledge contracts repository
 ├── kb-labs-ai-review/            # AI Review repository
+├── kb-labs-ai-docs/              # AI Docs repository
+├── kb-labs-ai-tests/             # AI Tests repository
 ├── kb-labs-analytics/            # Analytics repository
 ├── kb-labs-mind/                 # Mind repository
+├── kb-labs-workflow/             # Workflow engine repository
+├── kb-labs-plugin/               # Plugin system repository
+├── kb-labs-setup-engine/         # Setup engine repository
 ├── kb-labs-audit/                # Audit repository
 ├── kb-labs-rest-api/             # REST API repository
 ├── kb-labs-studio/               # Studio repository
 ├── kb-labs-ui/                   # UI repository
 ├── kb-labs-devlink/              # DevLink repository
-├── kb-labs-release-manager/     # Release Manager repository
-├── kb-labs-tox/                  # TOX repository
-├── kb-labs-profile-schemas/      # Profile Schemas repository
-├── kb-labs-api-contracts/        # API Contracts repository
+├── kb-labs-release-manager/      # Release Manager repository
 ├── kb-labs-product-template/     # Product Template repository
+├── kb-labs-plugin-template/      # Plugin Template repository
 └── kb-labs/                      # Main ecosystem repository (this one)
     ├── apps/                     # Demo applications
     ├── packages/                 # Example packages
     ├── docs/                     # Central documentation hub
-    │   ├── adr/                  # Architecture Decision Records (193+)
+    │   ├── adr/                  # Architecture Decision Records
     │   ├── products/             # Product documentation
     │   ├── ecosystem/            # Ecosystem status and health
     │   ├── roadmap/              # Strategic roadmap
     │   └── templates/            # Documentation templates
-    └── scripts/                   # Utility scripts
+    └── scripts/                  # Utility scripts
 ```
 
 > **Note**: See [ADR-0012: PNPM Meta-Workspace Setup](./docs/adr/0012-meta-workspace.md) for detailed information about the meta-workspace architecture.
@@ -269,42 +305,49 @@ kb-labs/                          # Meta-workspace root
 
 | Product | Status | Repository | Description |
 |---------|--------|------------|-------------|
-| [@kb-labs/core](../products/core.md) | MVP 1.0 | [kb-labs-core](https://github.com/KirillBaranov/kb-labs-core) | Runtime core with profiles resolver/validator and infrastructure abstractions |
-| [@kb-labs/cli](../products/cli.md) | MVP 1.0 | [kb-labs-cli](https://github.com/KirillBaranov/kb-labs-cli) | Unified CLI commands (kb *) |
-| [@kb-labs/shared](../products/shared.md) | MVP 1.0 | [kb-labs-shared](https://github.com/KirillBaranov/kb-labs-shared) | Common types and utilities without side effects |
-| [@kb-labs/devkit](../products/devkit.md) | MVP 1.0 | [kb-labs-devkit](https://github.com/KirillBaranov/kb-labs-devkit) | Bootstrap and standards (CI templates, configs, sync) |
-| [@kb-labs/profile-schemas](../products/profile-schemas.md) | MVP 1.0 | [kb-labs-profile-schemas](https://github.com/KirillBaranov/kb-labs-profile-schemas) | JSON Schema definitions for profiles, rules, and products |
+| [@kb-labs/core](./docs/products/core.md) | MVP 1.0 | [kb-labs-core](https://github.com/KirillBaranov/kb-labs-core) | Runtime core with profiles resolver/validator and infrastructure abstractions |
+| [@kb-labs/cli](./docs/products/cli.md) | MVP 1.0 | [kb-labs-cli](https://github.com/KirillBaranov/kb-labs-cli) | Unified CLI commands (kb *) |
+| [@kb-labs/shared](./docs/products/shared.md) | MVP 1.0 | [kb-labs-shared](https://github.com/KirillBaranov/kb-labs-shared) | Common types and utilities without side effects |
+| [@kb-labs/devkit](./docs/products/devkit.md) | MVP 1.0 | [kb-labs-devkit](https://github.com/KirillBaranov/kb-labs-devkit) | Bootstrap and standards (CI templates, configs, sync) |
+| [@kb-labs/knowledge](./docs/products/knowledge.md) | MVP 1.0 | [kb-labs-knowledge](https://github.com/KirillBaranov/kb-labs-knowledge) | Knowledge management contracts and runtime |
 
 ### AI Products
 
 | Product | Status | Repository | Description |
 |---------|--------|------------|-------------|
-| [@kb-labs/ai-review](../products/ai-review.md) | MVP 1.0 | [kb-labs-ai-review](https://github.com/KirillBaranov/kb-labs-ai-review) | AI-driven code review with rule enforcement and CI/CD integration |
-| [@kb-labs/analytics](../products/analytics.md) | MVP 1.0 | [kb-labs-analytics](https://github.com/KirillBaranov/kb-labs-analytics) | Analytics and tracking system with event pipeline |
-| [@kb-labs/mind](../products/mind.md) | MVP 1.0 | [kb-labs-mind](https://github.com/KirillBaranov/kb-labs-mind) | AI-powered code analysis and context layer |
-| [@kb-labs/ai-docs](../products/ai-docs.md) | Planning | - | Automated documentation generation *(Q1 2026)* |
-| [@kb-labs/ai-tests](../products/ai-tests.md) | Planning | - | AI-assisted test generation and maintenance *(Q1 2026)* |
-| [@kb-labs/ai-project-assistant](../products/ai-project-assistant.md) | Planning | - | Project management and workflow automation *(Q4 2026)* |
-| [@kb-labs/ai-content](../products/ai-content.md) | Planning | - | Content generation and management system *(Q1 2027)* |
+| [@kb-labs/ai-review](./docs/products/ai-review.md) | MVP 1.0 | [kb-labs-ai-review](https://github.com/KirillBaranov/kb-labs-ai-review) | AI-driven code review with rule enforcement and CI/CD integration |
+| [@kb-labs/ai-docs](./docs/products/ai-docs.md) | MVP 1.0 | [kb-labs-ai-docs](https://github.com/KirillBaranov/kb-labs-ai-docs) | Engineering-first documentation assistant |
+| [@kb-labs/ai-tests](./docs/products/ai-tests.md) | MVP 1.0 | [kb-labs-ai-tests](https://github.com/KirillBaranov/kb-labs-ai-tests) | AI-powered test generation and maintenance |
+| [@kb-labs/analytics](./docs/products/analytics.md) | MVP 1.0 | [kb-labs-analytics](https://github.com/KirillBaranov/kb-labs-analytics) | Analytics and tracking system with event pipeline |
+| [@kb-labs/mind](./docs/products/mind.md) | MVP 1.0 | [kb-labs-mind](https://github.com/KirillBaranov/kb-labs-mind) | AI-powered code analysis and RAG context layer |
+| [@kb-labs/ai-project-assistant](./docs/products/ai-project-assistant.md) | Planning | - | Project management and workflow automation *(Q4 2026)* |
+| [@kb-labs/ai-content](./docs/products/ai-content.md) | Planning | - | Content generation and management system *(Q1 2027)* |
+
+### Orchestration Layer
+
+| Product | Status | Repository | Description |
+|---------|--------|------------|-------------|
+| [@kb-labs/workflow](./docs/products/workflow.md) | MVP 1.0 | [kb-labs-workflow](https://github.com/KirillBaranov/kb-labs-workflow) | Workflow orchestration engine with Redis coordination |
+| [@kb-labs/plugin](./docs/products/plugin.md) | MVP 1.0 | [kb-labs-plugin](https://github.com/KirillBaranov/kb-labs-plugin) | Plugin system infrastructure with manifest V1/V2 |
+| [@kb-labs/setup-engine](./docs/products/setup-engine.md) | MVP 1.0 | [kb-labs-setup-engine](https://github.com/KirillBaranov/kb-labs-setup-engine) | Setup workflows with idempotent execution |
 
 ### Tools & Infrastructure
 
 | Product | Status | Repository | Description |
 |---------|--------|------------|-------------|
-| [@kb-labs/audit](../products/audit.md) | MVP 1.0 | [kb-labs-audit](https://github.com/KirillBaranov/kb-labs-audit) | Unified quality checks and compliance |
-| [@kb-labs/rest-api](../products/rest-api.md) | MVP 1.0 | [kb-labs-rest-api](https://github.com/KirillBaranov/kb-labs-rest-api) | HTTP API layer for web applications |
-| [@kb-labs/studio](../products/studio.md) | MVP 1.0 | [kb-labs-studio](https://github.com/KirillBaranov/kb-labs-studio) | Web-based development environment and dashboard |
-| [@kb-labs/ui](../products/ui.md) | MVP 1.0 | [kb-labs-ui](https://github.com/KirillBaranov/kb-labs-ui) | Shared UI component library |
-| [@kb-labs/devlink](../products/devlink.md) | MVP 1.0 | [kb-labs-devlink](https://github.com/KirillBaranov/kb-labs-devlink) | Development linking tool for multi-repo workflows |
-| [@kb-labs/release-manager](../products/release-manager.md) | MVP 1.0 | [kb-labs-release-manager](https://github.com/KirillBaranov/kb-labs-release-manager) | Release orchestration and automation |
-| [@kb-labs/tox](../products/tox.md) | MVP 1.0 | [kb-labs-tox](https://github.com/KirillBaranov/kb-labs-tox) | TOX format for LLM token efficiency |
-| [@kb-labs/api-contracts](../products/api-contracts.md) | MVP 1.0 | [kb-labs-api-contracts](https://github.com/KirillBaranov/kb-labs-api-contracts) | Shared API contracts with Zod validation |
+| [@kb-labs/audit](./docs/products/audit.md) | MVP 1.0 | [kb-labs-audit](https://github.com/KirillBaranov/kb-labs-audit) | Unified quality checks and compliance |
+| [@kb-labs/rest-api](./docs/products/rest-api.md) | MVP 1.0 | [kb-labs-rest-api](https://github.com/KirillBaranov/kb-labs-rest-api) | HTTP API layer for web applications |
+| [@kb-labs/studio](./docs/products/studio.md) | MVP 1.0 | [kb-labs-studio](https://github.com/KirillBaranov/kb-labs-studio) | Web-based development environment and dashboard |
+| [@kb-labs/ui](./docs/products/ui.md) | MVP 1.0 | [kb-labs-ui](https://github.com/KirillBaranov/kb-labs-ui) | Shared UI component library |
+| [@kb-labs/devlink](./docs/products/devlink.md) | MVP 1.0 | [kb-labs-devlink](https://github.com/KirillBaranov/kb-labs-devlink) | Development linking tool for multi-repo workflows |
+| [@kb-labs/release-manager](./docs/products/release-manager.md) | MVP 1.0 | [kb-labs-release-manager](https://github.com/KirillBaranov/kb-labs-release-manager) | Release orchestration and automation |
 
 ### Templates
 
 | Product | Status | Repository | Description |
 |---------|--------|------------|-------------|
-| [@kb-labs/product-template](../products/product-template.md) | MVP 1.0 | [kb-labs-product-template](https://github.com/KirillBaranov/kb-labs-product-template) | Project scaffolding template |
+| [@kb-labs/product-template](./docs/products/product-template.md) | MVP 1.0 | [kb-labs-product-template](https://github.com/KirillBaranov/kb-labs-product-template) | Project scaffolding template |
+| [@kb-labs/plugin-template](./docs/products/plugin-template.md) | MVP 1.0 | [kb-labs-plugin-template](https://github.com/KirillBaranov/kb-labs-plugin-template) | Gold standard plugin reference template |
 
 📋 **[View Complete Products Overview](./docs/products/README.md)** — Detailed information about each product
 
@@ -335,7 +378,7 @@ kb-labs/                          # Meta-workspace root
 - **Type Safety**: Zod schemas with TypeScript types
 - **Versioning**: Versioned APIs with standardized envelope formats
 - **Validation**: Runtime validation with clear error messages
-- **Integration**: Shared contracts via `@kb-labs/api-contracts`
+- **Integration**: Contracts defined within each product package
 
 ### Plugin System
 
@@ -559,29 +602,45 @@ Core Platform Layer:
   @kb-labs/cli
     └── @kb-labs/core
     └── @kb-labs/shared
-  @kb-labs/profile-schemas
+    └── @kb-labs/plugin
+  @kb-labs/knowledge
+    └── @kb-labs/core
+
+Orchestration Layer:
+  @kb-labs/workflow
+    └── @kb-labs/core
+    └── @kb-labs/plugin
+  @kb-labs/plugin
+    └── @kb-labs/core
+    └── @kb-labs/shared
+  @kb-labs/setup-engine
     └── @kb-labs/core
 
 AI Products Layer:
   @kb-labs/ai-review
     └── @kb-labs/core
-    └── @kb-labs/shared
-    └── @kb-labs/cli
+    └── @kb-labs/plugin
+  @kb-labs/ai-docs
+    └── @kb-labs/core
+    └── @kb-labs/mind
+    └── @kb-labs/plugin
+  @kb-labs/ai-tests
+    └── @kb-labs/core
+    └── @kb-labs/mind
+    └── @kb-labs/plugin
   @kb-labs/analytics
     └── @kb-labs/core
     └── @kb-labs/shared
   @kb-labs/mind
     └── @kb-labs/core
     └── @kb-labs/shared
-    └── @kb-labs/tox
 
 Infrastructure Layer:
   @kb-labs/rest-api
-    └── @kb-labs/api-contracts
     └── @kb-labs/core
+    └── @kb-labs/plugin
   @kb-labs/studio
     └── @kb-labs/ui
-    └── @kb-labs/api-contracts
     └── @kb-labs/rest-api
   @kb-labs/devlink
     └── @kb-labs/core
@@ -599,10 +658,11 @@ Infrastructure Layer:
 | Category | Total | MVP 1.0 | Planning | In Progress |
 |----------|-------|---------|----------|-------------|
 | Core Platform | 5 | 5 | 0 | 0 |
-| AI Products | 7 | 3 | 4 | 0 |
-| Tools & Infrastructure | 8 | 8 | 0 | 0 |
-| Templates | 1 | 1 | 0 | 0 |
-| **Total** | **21** | **17** | **4** | **0** |
+| AI Products | 7 | 5 | 2 | 0 |
+| Orchestration | 3 | 3 | 0 | 0 |
+| Tools & Infrastructure | 6 | 6 | 0 | 0 |
+| Templates | 2 | 2 | 0 | 0 |
+| **Total** | **23** | **21** | **2** | **0** |
 
 ### Health Metrics
 
@@ -645,4 +705,4 @@ All KB Labs products are released under the MIT License, ensuring maximum compat
 
 **KB Labs** — *Building the future of AI-powered development*
 
-*Last updated: November 2025*
+*Last updated: December 2025*
