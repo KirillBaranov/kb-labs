@@ -53,7 +53,7 @@ KB Labs provides a unified ecosystem that addresses these challenges:
 - **Layered Architecture**: Clear separation between core platform, AI products, and infrastructure
 - **Profile-Driven**: Knowledge captured in profiles drives all AI products
 - **Self-Documenting**: Comprehensive ADRs (193+), documentation, and transparent decision-making
-- **Open Source First**: All tools built with open-source principles and community in mind
+- **Open Development**: Transparent development process and architecture shared publicly for learning and future collaboration
 - **Data-Driven Planning**: Strategic roadmap with clear milestones and measurable outcomes
 - **Sustainable Budgeting**: Transparent ROI tracking ensures efficient resource allocation
 
@@ -224,12 +224,17 @@ Supporting tools and infrastructure for the ecosystem:
 
 ## 🚀 Quick Start
 
+> [!NOTE]
+> **For Explorers & Future Contributors Only**
+>
+> These instructions are for developers who want to explore the codebase architecture, study the implementation, or prepare for future contributions. This is **not** a production installation guide—the platform is in active development and not ready for external deployment.
+
 ### Prerequisites
 
 - **Node.js**: >= 18.18.0
 - **pnpm**: >= 9.0.0
 
-### Installation
+### Local Setup (For Exploration)
 
 ```bash
 # Clone the meta-workspace repository
@@ -264,6 +269,33 @@ pnpm type-check
 # Full CI pipeline
 pnpm check
 ```
+
+### Example: AI-Powered Commit Generation
+
+One of KB Labs' AI products is the commit plugin that automatically generates conventional commits:
+
+```bash
+$ pnpm kb commit commit --scope="@kb-labs/package-name"
+
+OK Git status analyzed
+OK Generated commit plan with 1 commit(s)
+OK Applied 1 commit(s)
+
+Applied commits:
+  [df48073] docs(kb-labs): add license files and readme for kb-labs
+
+┌── Done
+│
+│ Summary
+│  Commits:  1
+│  Pushed:   No
+│  LLM:      Phase 1
+│  Tokens:   1022
+│
+└── OK Success
+```
+
+This showcases the ecosystem's core principle: **AI-powered automation for routine development tasks**.
 
 ### Meta-Workspace Structure
 
@@ -524,39 +556,61 @@ kb-labs/
 
 📋 **[View Detailed Roadmap](./docs/roadmap/README.md)** — Complete roadmap with quarterly breakdowns
 
-## 💰 Budget & ROI Tracking
+## 💡 Development Efficiency & AI-Powered Workflow
 
-> **Budgeting Philosophy**: We maintain transparency in our AI tool investments and measure their impact on development productivity. All spending decisions are evaluated against ROI metrics to ensure sustainable growth.
+> **Philosophy**: KB Labs validates the "automation as survival constraint" principle through metrics. We track how AI-assisted development enables sustainable solo engineering at scale.
 
-We track all investments and measure their impact on development productivity.
+### AI-Assisted Development Stack
 
-### Current Status
+KB Labs is built using an AI-first development approach:
 
-- **Budget**: $40-80/month (Cursor Pro + ChatGPT Plus)
-- **ROI**: ~25:1 (saving 20-30 hours/month)
-- **Key Tools**: 
-  - Cursor Pro ($20/month) — Primary IDE with AI assistance
-  - ChatGPT Plus ($20/month) — Strategic planning and complex reasoning
-  - Planned: Cursor Enterprise, additional AI tools as needed
+- **Claude AI (Sonnet 4.5)** — Primary development assistant for architecture, coding, and problem-solving
+  - Claude Max subscription: $100/month
+- **ChatGPT Plus (GPT-4)** — Strategic planning, complex reasoning, and alternative perspectives
+  - Cost: $20/month
+- **Infrastructure** — API costs for platform operations (embeddings, LLM calls for automation)
+  - Cost: ~$5-10/month
 
-### ROI Calculation
+**Total Investment**: ~$125-130/month for AI tooling and infrastructure
 
-- **Time Saved**: 20-30 hours/month through AI assistance
-- **Developer Hourly Rate**: Estimated $50-100/hour (varies by market)
-- **Monthly Value**: $1,000-3,000 in saved development time
-- **Monthly Cost**: $40-80
-- **ROI Ratio**: 12.5:1 to 75:1 (average ~25:1)
+### Productivity Metrics
 
-### Investment Strategy
+Real-world impact of AI-assisted development on KB Labs ecosystem:
 
-We continuously evaluate and optimize our AI tool investments:
+- **Development Velocity**: 30-40 hours/month of effective development time saved
+- **Code Quality**: AI-powered reviews catch issues before commit
+- **Documentation**: Automated generation maintains 100% coverage across 21 repositories
+- **Architecture**: AI assists in exploring tradeoffs and validating decisions (193+ ADRs)
 
-- **Productivity Focus**: Tools that directly impact development velocity
-- **Strategic Planning**: AI assistance for architectural decisions
-- **Automation**: Tools that enable self-sustaining ecosystem
-- **Measurable Impact**: ROI tracking ensures value delivery
+**Efficiency Multiplier**: ~12-30x ROI on AI tool investment (depending on developer rate assumptions)
 
-📊 **[View Budget Details](./docs/BUDGET.md)** — Complete budget breakdown and ROI analysis
+This demonstrates that **sustainable solo development at scale** is achievable through intelligent automation—the core thesis of KB Labs.
+
+### Why This Matters
+
+KB Labs isn't just building AI tools—it's **built with** AI tools, and now **builds itself** using its own tools:
+
+1. **Dogfooding at scale**: KB Labs is its own first and most active user
+   - Commit plugin generates conventional commits for the platform itself
+   - Mind RAG searches the platform's own codebase for faster development
+   - DevKit tools maintain consistency across all 21 repositories
+   - Analytics tracks platform development metrics
+
+2. **Self-improving ecosystem**: The platform has reached a stage where it accelerates its own development
+   - Less manual work, more automation with each iteration
+   - Tools built with the platform become tools that improve the platform
+   - Each new feature makes building the next feature faster
+
+3. **Validation through use**: Every tool is battle-tested on real development workflows
+   - If it works for building KB Labs, it will work for building your projects
+   - Continuous feedback loop drives quality improvements
+   - Real-world usage metrics inform feature priorities
+
+4. **Automation enables sustainability**: One developer maintaining 21+ repositories through AI assistance and self-sustaining automation
+
+**The flywheel effect**: As KB Labs matures, it becomes increasingly efficient at improving itself—demonstrating that self-sustaining engineering ecosystems are not just possible, but practical.
+
+📊 **[View Detailed Metrics](./docs/BUDGET.md)** — Complete efficiency analysis and ROI breakdown
 
 ## 📚 Documentation
 
@@ -690,24 +744,36 @@ Infrastructure Layer:
 
 ## 🤝 Contributing
 
-KB Labs welcomes contributions! We maintain high standards for code quality, documentation, and architecture decisions.
+> [!IMPORTANT]
+> **Early Development Phase**
+>
+> KB Labs is currently in active development and **not accepting external contributions** at this time. The architecture is evolving rapidly with frequent breaking changes.
+>
+> **When we're ready for contributions (2026-2027):**
+> - We'll announce on GitHub and social media
+> - Contribution guidelines will be finalized
+> - Stable APIs and architecture will be in place
+>
+> **For now**, you're welcome to explore the codebase, study the architecture, and provide feedback through GitHub Issues.
 
-### Getting Started
+### Future Contribution Areas (Post-Public Release)
 
-1. **Read the Documentation**: Start with [CONTRIBUTING.md](./CONTRIBUTING.md) and [Documentation Standard](./docs/DOCUMENTATION.md)
-2. **Review ADRs**: Check relevant ADRs before making architectural changes
-3. **Follow Standards**: Use DevKit presets, follow naming conventions, maintain documentation
-4. **Submit Changes**: Create PRs with clear descriptions and documentation updates
-
-### Contribution Areas
+Once the platform stabilizes, we'll welcome contributions in:
 
 - **Code**: Bug fixes, new features, performance improvements
 - **Documentation**: ADRs, guides, examples, API documentation
 - **Architecture**: Propose new ADRs, review existing decisions
 - **Testing**: Test coverage, integration tests, fixtures
 - **Tooling**: DevKit improvements, CI/CD enhancements
+- **Plugins**: Community-contributed plugins for the plugin marketplace
 
-📖 **[Read Contributing Guide](./CONTRIBUTING.md)** — Complete contribution guidelines
+**Contribution Standards** (when accepting PRs):
+- Follow DevKit presets and naming conventions
+- Maintain comprehensive documentation
+- Review relevant ADRs before architectural changes
+- Submit PRs with clear descriptions and tests
+
+📖 **[Read Contributing Guide](./CONTRIBUTING.md)** — Detailed guidelines (for future reference)
 
 ## 📄 License
 
