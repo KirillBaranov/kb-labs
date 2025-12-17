@@ -132,12 +132,12 @@
 
 ## 💰 Budget & ROI Overview
 
-**Current Status:** 🟡 Yellow Zone ($50-80/month)
+**Current Status:** 🟡 Yellow Zone ($125-130/month)
 
-- **AI Tools Budget:** $80/month (Cursor Pro $60 + ChatGPT Plus $20)
+- **AI Tools Budget:** $125-130/month (Claude Max $100 + ChatGPT Plus $20 + Infrastructure $5-10)
 - **Target Budget:** $100-150/month in 2026
-- **ROI:** ~25:1 (20-30 hours/month saved, $1,000-3,000 value created)
-- **Key Tools:** Cursor Pro ($60), ChatGPT Plus ($20)
+- **ROI:** ~12-30x efficiency multiplier (30-40 hours/month saved, $1,500-4,000 value created)
+- **Key Tools:** Claude Max ($100), ChatGPT Plus ($20), Infrastructure ($5-10)
 - **Budget Efficiency:** Systematic tracking and optimization practices in place
 
 📋 **[Full Budget Details](../BUDGET.md)**
