@@ -1,6 +1,25 @@
 # Contributing Guide
 
-Thanks for considering a contribution to **KB Labs**! This guide will help you get started with development and ensure your contributions align with our architecture and standards.
+> [!IMPORTANT]
+> **🚧 Early Development Phase — Not Accepting Contributions**
+>
+> KB Labs is currently in **active development** and **not accepting external contributions** at this time. The architecture is evolving rapidly with frequent breaking changes, incomplete features, and experimental designs.
+>
+> **When we're ready for contributions (2026-2027):**
+> - We'll announce on GitHub and social media
+> - Contribution guidelines will be finalized
+> - Stable APIs and architecture will be in place
+>
+> **For now**, you're welcome to:
+> - ✅ Explore the codebase and study the architecture
+> - ✅ Provide feedback through GitHub Issues
+> - ✅ Prepare for future contributions by understanding our standards
+>
+> This guide is maintained for **future reference** and to document our development standards for when we're ready to accept contributions.
+
+---
+
+Thanks for your interest in **KB Labs**! This guide documents our development standards and will serve as the contribution guide when we open the project to external contributors.
 
 ## 🚀 Development Setup
 
