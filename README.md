@@ -7,6 +7,20 @@
 [![Node.js](https://img.shields.io/badge/Node.js-18.18.0+-green.svg)](https://nodejs.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-9.0.0+-orange.svg)](https://pnpm.io/)
 
+> [!WARNING]
+> **🚧 Active Development — Not Ready for External Use**
+>
+> KB Labs is currently in **active development** and is **not distributed to external users or customers**. This is a personal development ecosystem being built and tested internally. The platform is evolving rapidly with breaking changes, incomplete features, and experimental architectures.
+>
+> **What this means:**
+> - ❌ **No installation packages** — Not available via npm, not ready for external installation
+> - ❌ **No stability guarantees** — APIs and architecture change frequently without notice
+> - ❌ **No support** — This is not a product available for public use
+> - ✅ **Open development** — Code is public for transparency and future collaboration
+> - ✅ **Learning resource** — Feel free to explore the architecture and ideas
+>
+> **Timeline:** Public release and distribution are planned for **2026-2027** after core platform stabilization and plugin ecosystem maturity. See [Strategic Roadmap](#-strategic-roadmap-2025-2027) for details.
+
 ## 🎯 Vision
 
 KB Labs is building a comprehensive AI-powered development ecosystem that transforms how developers work with code, documentation, and testing. Our vision is to create a self-sustaining engineering ecosystem where AI agents handle routine tasks, allowing developers to focus on creative problem-solving and architectural decisions.
@@ -697,9 +711,33 @@ KB Labs welcomes contributions! We maintain high standards for code quality, doc
 
 ## 📄 License
 
-MIT License - see [LICENSE](./LICENSE) for details.
+**This repository** (kb-labs meta-workspace) is licensed under **MIT License** - see [LICENSE](./LICENSE) for details.
 
-All KB Labs products are released under the MIT License, ensuring maximum compatibility and adoption potential.
+### Dual Licensing Across Ecosystem
+
+KB Labs ecosystem uses a **dual-licensing approach** to balance community growth and business protection:
+
+- **MIT License** — Developer tools and libraries (DevKit, Shared, SDK, Templates, Audit)
+  - 6 repositories (29% of ecosystem)
+  - Freely usable, modifiable, distributable
+  - Encourages ecosystem growth and adoption
+
+- **KB Public License v1.1** — Core platform components (Mind, CLI, REST API, Workflow, etc.)
+  - 15 repositories (71% of ecosystem)
+  - Open source with restrictions on SaaS and competing products
+  - ✅ Use, modify, self-host freely
+  - ❌ No hosted services without permission
+  - ❌ No competing products
+
+**License Resources:**
+- [LICENSE-SUMMARY.md](./LICENSE-SUMMARY.md) — Complete licensing breakdown
+- [MIT License](./LICENSE-MIT) — Full MIT license text
+- [KB Public License v1.1](./LICENSE-KB-PUBLIC) — Full KB Public license text
+- [License Guide (English)](./LICENSE-GUIDE.en.md) — Detailed usage guide
+- [Руководство по лицензии (Русский)](./LICENSE-GUIDE.ru.md) — Детальное руководство
+
+**Commercial Licensing:**
+For commercial licensing inquiries: contact@kblabs.dev
 
 ---
 

@@ -1,0 +1,186 @@
+KB Public License v1.1
+
+Copyright (c) KB Labs. All rights reserved.
+
+This software is open for public use under the terms described below.
+
+================================================================================
+
+1. Permitted Use
+
+You may:
+a) Use the software for personal, educational, research, and commercial projects
+b) Modify, extend, and build plugins, adapters, or integrations
+c) Self-host and run the software on your own infrastructure (on-premises)
+d) Redistribute modified versions, provided this license remains intact
+e) Use internally within your organization for your own employees and contractors
+
+================================================================================
+
+2. Restrictions
+
+You may NOT, without written permission from KB Labs:
+
+a) HOSTED SERVICES - Offer the software or modified versions as a hosted service
+   where third-party users or customers access KB Labs functionality through
+   your infrastructure (SaaS, PaaS, API-as-a-Service, or similar models)
+
+b) COMPETING PRODUCTS - Create or sell a product that replicates KB Labs core
+   value proposition as an integrated platform (see Section 6 for definition)
+
+c) BRANDING - Remove or replace copyright notices, or use KB Labs name,
+   branding, or trademarks without permission
+
+d) MISREPRESENTATION - Misrepresent modified versions as official KB Labs software
+
+================================================================================
+
+3. Source Code Visibility
+
+If you distribute modified versions publicly, you must:
+a) Clearly disclose that the version is modified
+b) Include this license file unchanged
+c) Document significant changes you made
+
+================================================================================
+
+4. No Warranty
+
+This software is provided "as is," without warranty of any kind, express or
+implied, including but not limited to warranties of merchantability, fitness
+for a particular purpose, or non-infringement.
+
+KB Labs is not liable for any damages (direct, indirect, incidental, special,
+exemplary, or consequential) arising from the use or inability to use this
+software.
+
+================================================================================
+
+5. Commercial License
+
+Organizations that wish to:
+- Offer hosted versions of KB Labs (SaaS, PaaS, managed service)
+- Build commercial products that compete with KB Labs platform
+- Bundle KB Labs into proprietary systems for resale
+- Remove or modify this license for their distribution
+
+Must obtain a commercial license by contacting: contact@kblabs.dev
+
+================================================================================
+
+6. Definitions
+
+6.1 "COMPETING PRODUCT" means a product that replicates the core value
+proposition of KB Labs as an integrated platform that combines:
+- AI-powered code search and knowledge management (Mind Engine) AND
+- Plugin-based extensibility system (Plugin Runtime) AND
+- Workflow orchestration capabilities
+
+6.2 "HOSTED SERVICE" means any scenario where:
+- The software runs on infrastructure you control or a cloud provider you manage
+- AND third-party users or customers access KB Labs functionality
+  (directly or indirectly)
+- AND you charge fees or offer as a free service to acquire customers
+
+EXCEPTION: Internal use within a single organization for its own employees,
+contractors, and subsidiaries is NOT a hosted service, even if those employees
+work on client projects.
+
+================================================================================
+
+7. Governing Law and Jurisdiction
+
+7.1 This license is governed by the laws of Russian Federation, without
+    regard to conflict of law provisions.
+
+7.2 Any disputes arising from this license shall be resolved exclusively in
+    the courts of Moscow, Russia.
+
+7.3 If any provision of this license is found unenforceable, the remaining
+    provisions remain in full effect.
+
+================================================================================
+
+8. License Termination and Enforcement
+
+8.1 AUTOMATIC TERMINATION
+This license automatically terminates if you violate any of its terms.
+Upon termination, you must immediately:
+- Stop all use and distribution of the software
+- Destroy all copies in your possession or control
+- Notify any downstream users of the termination
+
+8.2 CURE PERIOD
+For unintentional or minor violations, you have 30 days from written notice
+by KB Labs to cure the violation. If you cure it within 30 days, the license
+is automatically reinstated. Failure to cure results in permanent termination.
+
+8.3 REMEDIES
+KB Labs reserves all legal remedies for license violations, including but
+not limited to:
+- Injunctive relief to stop unauthorized use
+- Monetary damages (actual, consequential, and punitive)
+- Attorneys' fees and costs
+- Disgorgement of profits from unauthorized use
+
+8.4 SURVIVAL
+Sections 2 (Restrictions), 4 (No Warranty), 7 (Jurisdiction), and 8 (Enforcement)
+survive license termination.
+
+================================================================================
+
+9. Contributions
+
+By submitting code, documentation, or other materials ("Contribution") to the
+KB Labs project (via pull request, issue, email, or any other means), you agree:
+
+a) You grant KB Labs a perpetual, worldwide, non-exclusive, royalty-free,
+   irrevocable, transferable license to use, modify, reproduce, distribute,
+   display, and create derivative works from your Contribution
+
+b) You grant KB Labs the right to relicense your Contribution under different
+   terms, including proprietary commercial licenses
+
+c) You represent and warrant that:
+   - You have the legal right to make this Contribution
+   - Your Contribution does not violate any third-party rights
+   - You have not included any third-party code without proper attribution
+
+d) You agree your Contribution will be distributed under this KB Public License
+
+e) To confirm acceptance of these terms, include in your pull request:
+   "I accept the KB Labs Contributor License Agreement (CLA) as described in LICENSE section 9"
+
+================================================================================
+
+10. Updates to This License
+
+10.1 KB Labs may publish updated versions of this license with different terms.
+
+10.2 Each version is identified by a unique version number (e.g., v1.1, v2.0).
+
+10.3 Unless explicitly stated otherwise, you may choose to use the software
+     under the terms of the version under which you originally received it,
+     or any later version published by KB Labs.
+
+10.4 New releases of KB Labs software may specify a minimum license version required.
+
+================================================================================
+
+11. Contact
+
+For questions about this license, commercial licensing, or permitted use cases:
+
+Email: contact@kblabs.dev
+
+We are open to reasonable discussions about commercial licensing and will work
+with you to find terms that work for both parties.
+
+================================================================================
+
+By using this software, you accept the terms above.
+
+For a user-friendly guide to this license, see LICENSE-GUIDE.md
+
+KB Public License v1.1
+Copyright (c) KB Labs. All rights reserved.
