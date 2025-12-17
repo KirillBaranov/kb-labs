@@ -7,6 +7,15 @@
 [![Node.js](https://img.shields.io/badge/Node.js-18.18.0+-green.svg)](https://nodejs.org/)
 [![pnpm](https://img.shields.io/badge/pnpm-9.0.0+-orange.svg)](https://pnpm.io/)
 
+**Quick Navigation:**
+[🚀 Quick Start](#-quick-start) •
+[💡 Platform Philosophy](#platform-first-philosophy-focus-on-business-logic-not-infrastructure) •
+[📦 Products](#-product-overview) •
+[🗺️ Roadmap](#-strategic-roadmap-2025-2027) •
+[📄 License](#-license)
+
+---
+
 > [!WARNING]
 > **🚧 Active Development — Not Ready for External Use**
 >
