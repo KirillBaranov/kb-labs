@@ -36,6 +36,7 @@ Modern software development faces several critical challenges:
 3. **Knowledge Silos**: Project knowledge (rules, ADRs, boundaries) is scattered across files and repositories
 4. **Limited Automation**: Most development workflows require manual intervention at multiple stages
 5. **Tool Fragmentation**: Multiple disconnected tools create context switching overhead
+6. **Infrastructure Overhead**: Building AI-powered tools requires reinventing rate limiting, error handling, multi-tenancy, and observability for each project
 
 ### Our Solution
 
@@ -44,6 +45,7 @@ KB Labs provides a unified ecosystem that addresses these challenges:
 - **AI-Powered Automation**: Intelligent agents for code review, documentation, testing, and project management
 - **Unified Platform**: Single core platform with consistent APIs, configuration, and tooling across all products
 - **Profile-Based Knowledge**: Project knowledge is captured in reusable profiles (rules, ADRs, boundaries) shared across products
+- **Platform-First Architecture**: Infrastructure concerns (rate limiting, error handling, multi-tenancy, observability) handled by the platform—plugins focus purely on business logic
 - **Self-Sustaining Architecture**: Tools that maintain themselves through automation and AI assistance
 - **Developer Experience First**: All tools designed with developer productivity and ease of use as primary goals
 
@@ -80,6 +82,51 @@ KB Labs is evolving toward an **agent-based pluggable system** where the entire 
 - **Enterprise Ready**: Support for private plugin registries and custom workflows
 
 This future architecture will transform KB Labs into a true platform where developers can build their own AI-powered tools on top of a secure, composable foundation.
+
+### Platform-First Philosophy: Focus on Business Logic, Not Infrastructure
+
+KB Labs is designed as a **platform ecosystem** where plugins gather around unified rules and infrastructure:
+
+**What the Platform Handles (99% of the pain):**
+- ✅ **Rate Limiting & Quotas**: Built-in 429 error handling, automatic retries, backoff strategies
+- ✅ **Graceful Degradation**: Fallback mechanisms when LLM providers are unavailable
+- ✅ **Multi-Tenancy**: Tenant isolation, quotas, and resource management out of the box
+- ✅ **Observability**: Logging, metrics, tracing, and error tracking automatically configured
+- ✅ **State Management**: Persistent cache, session management, cross-invocation state
+- ✅ **Scalability**: From single developer to distributed enterprise deployment
+- ✅ **Security**: Sandboxing, permissions, audit trails, secrets management
+- ✅ **Integration**: Unified CLI, REST API, webhooks, and Studio UI adapters
+
+**What Plugins Focus On (business value):**
+- 💡 **Your Business Logic**: Solve your specific problem, not infrastructure concerns
+- 💡 **Domain Expertise**: Code review rules, documentation styles, test strategies
+- 💡 **Custom Workflows**: Your team's unique development processes
+- 💡 **Integrations**: Connect to your tools and services
+
+**The Value Proposition:**
+
+Instead of spending weeks building:
+- Rate limiting for OpenAI/Anthropic APIs
+- Retry logic with exponential backoff
+- Multi-tenant quota enforcement
+- Graceful degradation when LLM providers fail
+- Logging, monitoring, and alerting infrastructure
+
+**You write:**
+```typescript
+import { defineCommand, useLLM } from '@kb-labs/sdk';
+
+export const analyze = defineCommand({
+  name: 'analyze',
+  async handler(ctx, argv, flags) {
+    const llm = useLLM(); // Platform handles rate limits, retries, degradation
+    const result = await llm.complete(prompt); // Just focus on your logic
+    return { analysis: result.content };
+  }
+});
+```
+
+The platform handles everything else. You focus on **what makes your plugin unique**, not reinventing infrastructure.
 
 ## 🏛️ Ecosystem Architecture
 
