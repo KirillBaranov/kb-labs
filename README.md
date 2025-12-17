@@ -114,19 +114,33 @@ Instead of spending weeks building:
 
 **You write:**
 ```typescript
-import { defineCommand, useLLM } from '@kb-labs/sdk';
+import { defineCommand, useLLM, useLogger, useStorage } from '@kb-labs/sdk';
 
 export const analyze = defineCommand({
   name: 'analyze',
   async handler(ctx, argv, flags) {
-    const llm = useLLM(); // Platform handles rate limits, retries, degradation
-    const result = await llm.complete(prompt); // Just focus on your logic
+    const llm = useLLM();           // Composable: LLM with rate limiting
+    const logger = useLogger();     // Composable: Structured logging
+    const storage = useStorage();   // Composable: Persistent storage
+
+    const result = await llm.complete(prompt);
+    await storage.set('last-analysis', result);
+    logger.info('Analysis completed', { tokens: result.usage });
+
     return { analysis: result.content };
   }
 });
 ```
 
 The platform handles everything else. You focus on **what makes your plugin unique**, not reinventing infrastructure.
+
+> **Design Philosophy**: Inspired by **Vue 3's Composition API**
+>
+> KB Labs SDK uses composable helper functions (`useLLM`, `useLogger`, `useStorage`, etc.) that encapsulate complexity and provide clean, testable abstractions. Like Vue 3 composables, these utilities are:
+> - **Composable**: Mix and match functionality as needed
+> - **Typed**: Full TypeScript support with inference
+> - **Testable**: Easy to mock in unit tests
+> - **Declarative**: Clear, readable code that expresses intent
 
 ## 🏛️ Ecosystem Architecture
 
@@ -192,6 +206,15 @@ The foundation of the KB Labs ecosystem:
   - Standardized knowledge artifacts
   - Reusable knowledge presets
   - Integration with AI products
+
+- **@kb-labs/sdk** — Unified plugin development SDK with Vue 3-inspired composables
+  - **Composable helpers**: `useLLM`, `useLogger`, `useStorage`, `useAnalytics`, `usePlatform`
+  - **Command builders**: `defineCommand`, `defineFlags`, `validateFlags`
+  - **Manifest utilities**: `defineManifest`, `defineCommandFlags`, permissions system
+  - **REST handlers**: `defineRestHandler` for HTTP endpoints
+  - **Lifecycle hooks**: `defineSetupHandler`, `defineDestroyHandler`
+  - **Full TypeScript support** with type inference
+  - Single import point — no deep imports into internal packages
 
 ### AI Products
 
