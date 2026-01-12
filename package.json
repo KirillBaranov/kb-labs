@@ -1,7 +1,6 @@
 {
-  "name": "@kb-labs/workspace-root",
+  "name": "@kb-labs/kb-labs",
   "version": "0.1.0",
-  "private": true,
   "description": "KB Labs ecosystem - AI-powered developer tools",
   "type": "module",
   "author": {
@@ -11,12 +10,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/kirill-baranov/kb-labs-product-template.git"
+    "url": "https://github.com/kirill-baranov/kb-labs.git"
   },
   "bugs": {
-    "url": "https://github.com/kirill-baranov/kb-labs-product-template/issues"
+    "url": "https://github.com/kirill-baranov/kb-labs/issues"
   },
-  "homepage": "https://github.com/kirill-baranov/kb-labs-product-template#readme",
+  "homepage": "https://github.com/kirill-baranov/kb-labs#readme",
   "workspaces": [
     "apps/*",
     "packages/*"
