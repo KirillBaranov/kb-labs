@@ -2,13 +2,30 @@
 
 > Internal Developer Platform with Zero Vendor Lock-In — swap any infrastructure component without code changes
 
-**Status:** 🚧 Active Development | **License:** Dual (71% KB Public License v1.1, 29% MIT) | **Stage:** Private Beta
+**Status:** 🚧 Active Development | **Scale:** ~80 packages · 18 repos · 18 DevKit tools | **Type Coverage:** 93.9% | **License:** Dual (71% KB Public, 29% MIT)
 
 **TL;DR:** Adapter-first IDP where you can swap Redis → Memcached, PostgreSQL → MySQL, OpenAI → Anthropic in a config file. Built-in workflow engine, AI code search (Mind RAG), observability dashboard, and 18 DevKit tools for monorepo management. Not production-ready yet (Q2 2026 target), but actively developed with real working demos.
 
 [![GitHub](https://img.shields.io/badge/GitHub-kb--labs-blue)](https://github.com/kb-labs/kb-labs)
 [![Discussions](https://img.shields.io/badge/Discussions-Ask%20Questions-green)](https://github.com/kb-labs/kb-labs/discussions)
 [![Contact](https://img.shields.io/badge/Email-contact%40kblabs.dev-red)](mailto:contact@kblabs.dev)
+
+---
+
+## Who Is This For?
+
+KB Labs is for you if:
+
+- ✅ You run a **monorepo with 30+ packages** and struggle with build order, circular deps, type safety across packages
+- ✅ You want to **swap infrastructure** (LLM/vector/cache/db) without rewriting core logic or touching business code
+- ✅ You need **workflow engine + observability + plugins** in one cohesive internal platform
+- ✅ You build **AI-assisted dev tooling** and need clean adapters with permission isolation and sandbox security
+- ✅ You're tired of **vendor lock-in** and want architectural flexibility without paying enterprise consulting fees
+
+**Not for you if:**
+- ❌ You need production-ready platform **today** (we're Q2 2026 target)
+- ❌ You run 1-5 packages total (KB Labs is overkill, use standard tooling instead)
+- ❌ You want plug-and-play SaaS (we're self-hosted, you own the infrastructure)
 
 ---
 
@@ -95,18 +112,16 @@ Modern development platforms force you into architectural decisions that become 
 
 ## How KB Labs Compares
 
+**Key Differentiator:** KB Labs is the only platform where you can swap **every** infrastructure component (cache, DB, LLM, vector store, metrics, logger) in a config file. No code changes, no vendor lock-in.
+
 | Feature | KB Labs | Temporal | Backstage | n8n |
 |---------|---------|----------|-----------|-----|
-| **Adapter-first** | ✅ All infrastructure | ❌ Locked to Cassandra/PostgreSQL | ❌ Hard-coded integrations | ⚠️ Partial |
-| **Workflow Engine** | ✅ DAG-based | ✅ Full-featured | ❌ No | ✅ Visual builder |
-| **Developer Portal** | ✅ Built-in (Studio UI) | ❌ No | ✅ Full portal | ❌ No |
-| **Plugin System** | ✅ Extensible | ⚠️ Limited | ✅ Plugin-based | ✅ Nodes |
-| **AI Integration** | ✅ Built-in (Mind RAG) | ❌ No | ❌ No | ⚠️ Via plugins |
-| **DevKit Tools** | ✅ 18 monorepo tools | ❌ No | ⚠️ Basic | ❌ No |
-| **Self-hosted** | ✅ Free | ✅ OSS | ✅ OSS | ✅ OSS |
+| **Adapter-first** | ✅ All infrastructure | ❌ Locked to Cassandra/PostgreSQL | ❌ Hard-coded | ⚠️ Partial |
+| **Workflow Engine** | ✅ DAG-based | ✅ Full | ❌ No | ✅ Visual |
+| **Developer Portal** | ✅ Built-in | ❌ No | ✅ Full | ❌ No |
+| **AI Integration** | ✅ Mind RAG | ❌ No | ❌ No | ⚠️ Plugins |
+| **DevKit Tools** | ✅ 18 tools | ❌ No | ⚠️ Basic | ❌ No |
 | **Production Ready** | ⚠️ Q2 2026 | ✅ Yes | ✅ Yes | ✅ Yes |
-
-**Key Differentiator:** KB Labs is the only platform where you can swap **every** infrastructure component (cache, DB, LLM, vector store, metrics, logger) in a config file. No code changes, no vendor lock-in.
 
 ---
 
@@ -270,6 +285,19 @@ React-based web UI for platform management — workflow visualization, system he
 >
 > **Screenshots:** Real screenshots from KB Labs platform are available in [`docs/screenshots/`](./docs/screenshots/README.md)
 
+### Want to Try KB Labs?
+
+**Current status:** Active development, not ready for external setup yet (Q2 2026 target).
+
+**Instead, explore:**
+- 📸 **[Real screenshots](./docs/screenshots/)** — Dashboard, commit generation, infrastructure swap demos
+- 🎬 **[Platform in action](#platform-in-action-real-screenshots)** — Working features with detailed explanations
+- 🔧 **[Dogfooding section](#-dogfooding-building-kb-labs-with-kb-labs)** — How we use KB Labs to build KB Labs itself
+
+**Coming Q2 2026:** Docker Compose setup, one-command demo environment, interactive playground.
+
+---
+
 ### 1. Infrastructure Swap in 30 Seconds
 
 **Problem:** Need to switch from Redis to in-memory cache for local development?
@@ -384,9 +412,14 @@ pnpm kb mind rag-query --text "Where is authentication implemented?" --agent
 
 ---
 
-### 3. LLM-Powered Commits (99% Cheaper)
+### 3. LLM-Powered Commits (99% Cheaper Than Copilot)
 
 **Problem:** Writing meaningful commit messages is tedious and inconsistent.
+
+**Cost comparison:**
+- **GitHub Copilot:** ~$20/month subscription (includes commit suggestions as part of broader autocomplete features)
+- **KB Labs commit plugin:** ~$0.01 per batch with GPT-4o mini (example: 4,832 tokens = 3-4 commits)
+- **Savings:** $19.99/month if using daily (99% cheaper), pay only for what you use
 
 **KB Labs commit plugin:**
 ```bash
@@ -427,13 +460,13 @@ Apply commits? (y/n): y
 - **Two-Phase LLM** — Fast analysis, escalates to full diff if needed
 - **Secrets Detection** — Blocks commits with API keys, tokens, passwords
 - **Scope Support** — `--scope="package-name"` prevents accidental commits
-- **99% cheaper** — ~$0.01 per batch vs GitHub Copilot (~$1/month subscription)
+- **99% cheaper** — ~$0.01 per batch vs GitHub Copilot ($20/month subscription)
 
 ---
 
 ### 4. DevKit: Monorepo Health Check
 
-**Problem:** Managing 90+ packages across 18 repositories — standard linters and type checkers don't scale. You can't run `tsc` in 90 packages manually. Circular dependencies hide until production. Unused deps accumulate. One bad import breaks 20 packages downstream.
+**Problem:** Managing ~80 packages across 18 repositories — standard linters and type checkers don't scale. You can't run `tsc` in ~80 packages manually. Circular dependencies hide until production. Unused deps accumulate. One bad import breaks 20 packages downstream.
 
 **The Reality:** At this scale, you don't die from bad code — you die from **organizational chaos**. Which package depends on which? What's the build order? Which packages have type errors? Standard tools don't answer these questions across the entire monorepo.
 
@@ -482,7 +515,7 @@ Recommendations:
 
 **Why DevKit exists:**
 
-Standard tools (ESLint, Prettier, `tsc`) work great for **single packages**. But when you have 90+ packages across 18 repos:
+Standard tools (ESLint, Prettier, `tsc`) work great for **single packages**. But when you have ~80 packages across 18 repos:
 
 - ❌ **ESLint** doesn't know if you're importing from a package that doesn't exist yet
 - ❌ **TypeScript** doesn't show you the **impact** of type errors (which 20 packages will break if you change this interface?)
@@ -613,7 +646,7 @@ See the full collection in [`docs/screenshots/`](./docs/screenshots/README.md)
 
 We use our own platform to develop KB Labs itself. Every day, we:
 
-- 🔍 **Search with Mind RAG** — "Where is adapter validation logic?" (finds it in 5-10s across 90+ packages)
+- 🔍 **Search with Mind RAG** — "Where is adapter validation logic?" (finds it in 5-10s across ~80 packages)
 - ✅ **Generate commits with commit plugin** — All recent commits generated by LLM (~$0.01 per session)
 - 📊 **Monitor with DevKit** — `npx kb-devkit-health` before every release (catches type errors, missing deps)
 - 🚀 **Release with release-manager** — Automated semantic versioning, changelog, npm publish
@@ -621,7 +654,7 @@ We use our own platform to develop KB Labs itself. Every day, we:
 
 **Real example:** This README was reviewed using Mind RAG queries about architecture, benchmarks updated via DevKit stats, and commits generated via commit plugin.
 
-**Why this matters:** If KB Labs can manage itself (90+ packages, 18 repos, active development), it can handle your monorepo. We feel the pain first—you get the solution second.
+**Why this matters:** If KB Labs can manage itself (~80 packages, 18 repos, active development), it can handle your monorepo. We feel the pain first—you get the solution second.
 
 ---
 
@@ -1052,6 +1085,6 @@ Need to offer KB Labs as a hosted service or build a competing product? Contact 
 - **Email:** kirillBaranovJob@yandex.ru
 - **Telegram:** [@kirill_baranov](https://t.me/kirill_baranov)
 
-💡 **Why follow?** Get behind-the-scenes insights on building an adapter-first IDP, architectural decisions, and lessons learned from managing 90+ packages across 18 repos.
+💡 **Why follow?** Get behind-the-scenes insights on building an adapter-first IDP, architectural decisions, and lessons learned from managing ~80 packages across 18 repos.
 
 For project inquiries or collaboration opportunities, feel free to reach out.
