@@ -1,7 +1,7 @@
 # KB Labs Documentation
 
-> **Welcome to KB Labs documentation**  
-> **Last Updated:** 2025-12-02
+> **Welcome to KB Labs documentation**
+> **Last Updated:** 2026-01-12
 
 This directory contains comprehensive documentation for the KB Labs ecosystem. Use this index to navigate to different sections.
 

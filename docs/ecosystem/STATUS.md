@@ -1,7 +1,7 @@
 # KB Labs Ecosystem Status
 
 > **Status overview of all products in the KB Labs ecosystem**
-> **Last Updated:** 2025-12-02
+> **Last Updated:** 2026-01-12
 
 ## Overview
 
@@ -16,7 +16,7 @@ This document provides a high-level status overview of all products in the KB La
 | Orchestration | 3 | 3 | 0 | 0 |
 | Tools & Infrastructure | 6 | 6 | 0 | 0 |
 | Templates | 2 | 2 | 0 | 0 |
-| **Total** | **23** | **21** | **2** | **0** |
+| **Total** | **25** | **23** | **2** | **0** |
 
 ## Core Platform (All MVP 1.0)
 
@@ -83,8 +83,8 @@ This document provides a high-level status overview of all products in the KB La
 
 ### Ecosystem Health
 - **Documentation Coverage:** 100% (all products have README, CONTRIBUTING, docs/DOCUMENTATION.md)
-- **ADR Coverage:** 193+ ADRs across all projects
-- **Standard Compliance:** All projects follow KB Labs Documentation Standard
+- **ADR Coverage:** 265+ ADRs across all repositories
+- **Standard Compliance:** All repositories follow KB Labs Documentation Standard
 
 ### Development Status
 - **Core Platform:** ✅ Complete and stable (5 products)

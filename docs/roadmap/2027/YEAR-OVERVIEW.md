@@ -21,11 +21,11 @@
 ## 📍 Starting Point (January 2027)
 
 - **DevKit + Template**: Mature and stable
-- **Packages**: 17 packages progressing from MVP 1.0 to Version 2.0
+- **Packages**: ~80 packages progressing from MVP 1.0 to Version 2.0
 - **Products**: 4+ products (ai-review, ai-docs, ai-tests, ai-project-assistant) in production
 - **Studio**: Pluggable architecture, permissions, roles, plugin sandbox (from 2026)
 - **Plugin System**: Operational and functional
-- **ADR & Docs**: 193+ ADRs baseline, continuing documentation
+- **ADR & Docs**: 265+ ADRs baseline, continuing documentation
 - **Public Presence**: Foundation established (25+ articles in 2026)
 - **Budget**: $100-150/month with maintained ROI
 
@@ -34,7 +34,7 @@
 ## 🎯 Annual Goals (2027)
 
 ### Version 2.0 Completion
-- **Complete Version 2.0** for all 17 packages (beta/first users)
+- **Complete Version 2.0** for all ~80 packages (beta/first users)
 - **Studio Maturity**: Final polish on Studio features
 - **Product Stability**: All products production-ready
 
@@ -90,7 +90,7 @@
 - Prepare KB Labs 2.0 vision (major architectural update + public article)
 
 **Success Metrics:**
-- All 17 packages at Version 2.0 (beta/first users)
+- All ~80 packages at Version 2.0 (beta/first users)
 - Studio fully mature
 - AI Content Conveyor operational
 - ADR ≥65 published (continue from 193+ baseline)
