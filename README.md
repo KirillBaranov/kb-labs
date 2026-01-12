@@ -6,8 +6,8 @@
 
 **TL;DR:** Adapter-first IDP where you can swap Redis → Memcached, PostgreSQL → MySQL, OpenAI → Anthropic in a config file. Built-in workflow engine, AI code search (Mind RAG), observability dashboard, and 18 DevKit tools for monorepo management. Not production-ready yet (Q2 2026 target), but actively developed with real working demos.
 
-[![GitHub](https://img.shields.io/badge/GitHub-kb--labs-blue)](https://github.com/kb-labs/kb-labs)
-[![Discussions](https://img.shields.io/badge/Discussions-Ask%20Questions-green)](https://github.com/kb-labs/kb-labs/discussions)
+[![GitHub](https://img.shields.io/badge/GitHub-kb--labs-blue)](https://github.com/KirillBaranov/kb-labs)
+[![Discussions](https://img.shields.io/badge/Discussions-Ask%20Questions-green)](https://github.com/KirillBaranov/kb-labs/discussions)
 [![Contact](https://img.shields.io/badge/Email-contact%40kblabs.dev-red)](mailto:contact@kblabs.dev)
 
 ---
@@ -41,7 +41,7 @@ KB Labs is for you if:
   - ⚡ **10-50x faster** than manual migration (automated path updates, import rewrites, config synchronization)
   - ⏱️ **Saves 2-3 hours/week** per developer (automated health checks vs manual validation)
   - 🔧 **Single command** to fix 90% of common issues (unused deps, broken imports, duplicate versions)
-- **Type safety** — 93.9% type coverage across 79 packages, find all 2,041 type errors in one command
+- **Type safety** — 93.9% type coverage across ~80 packages, find all 2,041 type errors in one command
 - **Engineering culture** — ADRs, best practices, documented trade-offs, production-ready patterns
 
 **👨‍💻 For Developers:**
@@ -508,7 +508,7 @@ Recommendations:
 ```
 
 **Other DevKit tools:**
-- `kb-devkit-types-audit` — Find all 2,041 type errors across 79 packages in one command (vs running `tsc` in each package)
+- `kb-devkit-types-audit` — Find all 2,041 type errors across ~80 packages in one command (vs running `tsc` in each package)
 - `kb-devkit-fix-deps` — Auto-remove unused dependencies, align versions
 - `kb-devkit-build-order` — Calculate correct build order with parallel layers (prevents "package X not built yet" errors)
 - `kb-devkit-ci` — Run all 7 core checks before commit
@@ -954,8 +954,8 @@ A world where engineering teams own their infrastructure choices. Where migratio
 - [Roadmap](./docs/roadmap/) — Platform development roadmap
 
 **Getting Started:**
-- [CLAUDE.md](./CLAUDE.md) — Developer onboarding, Mind RAG usage, DevKit tools
-- [CLI Reference](./CLI-REFERENCE.md) — Complete command reference for all CLI commands
+- [CLAUDE.md](./docs/CLAUDE.md) — Developer onboarding, Mind RAG usage, DevKit tools
+- [CLI Reference](./docs/CLI-REFERENCE.md) — Complete command reference for all CLI commands
 
 **For Developers:**
 - Package-specific READMEs in each monorepo (`kb-labs-*/packages/*/README.md`)
@@ -988,9 +988,9 @@ A world where engineering teams own their infrastructure choices. Where migratio
 
 ### Need Help?
 
-- **GitHub Issues:** [Report bugs or request features](https://github.com/kb-labs/kb-labs/issues)
-- **Discussions:** [Ask questions or share ideas](https://github.com/kb-labs/kb-labs/discussions)
-- **Email:** contact@kb-labs.dev (planned for public beta)
+- **GitHub Issues:** [Report bugs or request features](https://github.com/KirillBaranov/kb-labs/issues)
+- **Discussions:** [Ask questions or share ideas](https://github.com/KirillBaranov/kb-labs/discussions)
+- **Email:** contact@kblabs.dev (planned for public beta)
 
 ---
 
@@ -1015,8 +1015,8 @@ Once the platform reaches stability (Q2-Q3 2026), I'll gladly welcome contributi
 
 **Stay tuned:**
 - ⭐ Star the repo to get notified when contributions open
-- 📧 Email contact@kb-labs.dev (planned for public beta) if you want early access
-- 💬 Follow development progress in [GitHub Discussions](https://github.com/kb-labs/kb-labs/discussions)
+- 📧 Email contact@kblabs.dev (planned for public beta) if you want early access
+- 💬 Follow development progress in [GitHub Discussions](https://github.com/KirillBaranov/kb-labs/discussions)
 
 **Thank you for your interest!** Your future contributions will help make KB Labs better for everyone.
 

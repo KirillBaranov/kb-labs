@@ -1,7 +1,7 @@
 # KB Labs Ecosystem Health
 
 > **Health metrics and monitoring for the KB Labs ecosystem**
-> **Last Updated:** 2025-12-02
+> **Last Updated:** 2026-01-12
 
 ## Overview
 
@@ -13,17 +13,17 @@ This document tracks the health of the KB Labs ecosystem, including documentatio
 
 | Metric | Status | Details |
 |--------|--------|---------|
-| **README.md** | ✅ 100% | All 21 projects have README.md |
-| **CONTRIBUTING.md** | ✅ 100% | All 21 projects have CONTRIBUTING.md |
-| **docs/DOCUMENTATION.md** | ✅ 100% | All 20 applicable projects have documentation standard |
-| **ADR Templates** | ✅ 100% | All 20 applicable projects have ADR templates |
-| **Products Documentation** | ✅ 100% | All 23 products documented |
+| **README.md** | ✅ 100% | All 18 repositories have README.md |
+| **CONTRIBUTING.md** | ✅ 100% | All 18 repositories have CONTRIBUTING.md |
+| **docs/DOCUMENTATION.md** | ✅ 100% | All applicable repositories have documentation standard |
+| **ADR Templates** | ✅ 100% | All applicable repositories have ADR templates |
+| **Products Documentation** | ✅ 100% | All 25 products documented |
 
 ### ADR Coverage
 
-- **Total ADRs:** 193+
+- **Total ADRs:** 265+
 - **Standardized:** ✅ 100% (all ADRs have Last Reviewed, Tags, Deciders)
-- **Projects with ADRs:** 20+
+- **Repositories with ADRs:** 18
 
 **Related:** [ADR Audit](./ADR_AUDIT.md)
 
@@ -153,7 +153,7 @@ All projects enforce quality through:
 ### Key Indicators
 
 - **Documentation Coverage:** ✅ 100%
-- **ADR Coverage:** ✅ 193+ ADRs
+- **ADR Coverage:** ✅ 265+ ADRs
 - **Standard Compliance:** ✅ 100%
 - **Automation:** ✅ High level
 - **Quality:** ✅ High standards

@@ -1,7 +1,7 @@
 # ADR Format Audit Report
 
-**Generated:** 1762118889.5780725
-**Total ADR Files:** 193
+**Generated:** 2026-01-12
+**Total ADR Files:** 265+
 
 ## Summary
 

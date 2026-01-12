@@ -1,7 +1,7 @@
 # KB Labs Products
 
 > **Overview of all products in the KB Labs ecosystem**
-> **Last Updated:** 2025-12-02
+> **Last Updated:** 2026-01-12
 
 ## Products
 
