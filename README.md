@@ -1,895 +1,1057 @@
 # KB Labs
 
-> **Ecosystem of AI-powered developer tools** focused on Engineering Productivity, AI in SDLC, and Developer Experience.
-> **Central hub for the KB Labs ecosystem** — unified meta-workspace managing 21 repositories with 25+ products.
+> Internal Developer Platform with Zero Vendor Lock-In — swap any infrastructure component without code changes
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js](https://img.shields.io/badge/Node.js-18.18.0+-green.svg)](https://nodejs.org/)
-[![pnpm](https://img.shields.io/badge/pnpm-9.0.0+-orange.svg)](https://pnpm.io/)
+**Status:** 🚧 Active Development | **License:** Dual (71% KB Public License v1.1, 29% MIT) | **Stage:** Private Beta
 
-**Quick Navigation:**
-[🚀 Quick Start](#-quick-start) •
-[💡 Platform Philosophy](#platform-first-philosophy-focus-on-business-logic-not-infrastructure) •
-[📦 Products](#-product-overview) •
-[🗺️ Roadmap](#-strategic-roadmap-2025-2027) •
-[📄 License](#-license)
+**TL;DR:** Adapter-first IDP where you can swap Redis → Memcached, PostgreSQL → MySQL, OpenAI → Anthropic in a config file. Built-in workflow engine, AI code search (Mind RAG), observability dashboard, and 18 DevKit tools for monorepo management. Not production-ready yet (Q2 2026 target), but actively developed with real working demos.
+
+[![GitHub](https://img.shields.io/badge/GitHub-kb--labs-blue)](https://github.com/kb-labs/kb-labs)
+[![Discussions](https://img.shields.io/badge/Discussions-Ask%20Questions-green)](https://github.com/kb-labs/kb-labs/discussions)
+[![Contact](https://img.shields.io/badge/Email-contact%40kblabs.dev-red)](mailto:contact@kblabs.dev)
 
 ---
 
-> [!WARNING]
-> **🚧 Active Development — Not Ready for External Use**
->
-> KB Labs is currently in **active development** and is **not distributed to external users or customers**. This is a personal development ecosystem being built and tested internally. The platform is evolving rapidly with breaking changes, incomplete features, and experimental architectures.
->
-> **What this means:**
-> - ❌ **No installation packages** — Not available via npm, not ready for external installation
-> - ❌ **No stability guarantees** — APIs and architecture change frequently without notice
-> - ❌ **No support** — This is not a product available for public use
-> - ✅ **Open development** — Code is public for transparency and future collaboration
-> - ✅ **Learning resource** — Feel free to explore the architecture and ideas
->
-> **Timeline:** Public release and distribution are planned for **2026-2027** after core platform stabilization and plugin ecosystem maturity. See [Strategic Roadmap](#-strategic-roadmap-2025-2027) for details.
-
-## 🎯 Vision
-
-KB Labs is building a comprehensive AI-powered development ecosystem that transforms how developers work with code, documentation, and testing. Our vision is to create a self-sustaining engineering ecosystem where AI agents handle routine tasks, allowing developers to focus on creative problem-solving and architectural decisions.
-
-**Current Stage**: MVP 1.0 — All core products operational, agent-based pluggable system in development (2026-2027). We maintain transparent planning and budget tracking to ensure sustainable growth and measurable ROI.
-
-### Problem Statement
-
-Modern software development faces several critical challenges:
-
-1. **Repetitive Tasks**: Developers spend significant time on repetitive code review, documentation updates, and test maintenance
-2. **Inconsistent Standards**: Different projects use different tools and configurations, making it hard to maintain consistency
-3. **Knowledge Silos**: Project knowledge (rules, ADRs, boundaries) is scattered across files and repositories
-4. **Limited Automation**: Most development workflows require manual intervention at multiple stages
-5. **Tool Fragmentation**: Multiple disconnected tools create context switching overhead
-6. **Infrastructure Overhead**: Building AI-powered tools requires reinventing rate limiting, error handling, multi-tenancy, and observability for each project
-
-### Our Solution
-
-KB Labs provides a unified ecosystem that addresses these challenges:
-
-- **AI-Powered Automation**: Intelligent agents for code review, documentation, testing, and project management
-- **Unified Platform**: Single core platform with consistent APIs, configuration, and tooling across all products
-- **Profile-Based Knowledge**: Project knowledge is captured in reusable profiles (rules, ADRs, boundaries) shared across products
-- **Platform-First Architecture**: Infrastructure concerns (rate limiting, error handling, multi-tenancy, observability) handled by the platform—plugins focus purely on business logic
-- **Self-Sustaining Architecture**: Tools that maintain themselves through automation and AI assistance
-- **Developer Experience First**: All tools designed with developer productivity and ease of use as primary goals
-
-### Ecosystem Principles
-
-- **Automation as Survival Constraint**: Automation is not optional—it's essential for sustainability
-- **Layered Architecture**: Clear separation between core platform, AI products, and infrastructure
-- **Profile-Driven**: Knowledge captured in profiles drives all AI products
-- **Self-Documenting**: Comprehensive ADRs (193+), documentation, and transparent decision-making
-- **Open Development**: Transparent development process and architecture shared publicly for learning and future collaboration
-- **Data-Driven Planning**: Strategic roadmap with clear milestones and measurable outcomes
-- **Sustainable Budgeting**: Transparent ROI tracking ensures efficient resource allocation
-
-### Future Vision: Agent-Based Pluggable System
-
-KB Labs is evolving toward an **agent-based pluggable system** where the entire ecosystem becomes a composable platform for building AI-powered development workflows.
-
-**Pluggable Architecture:**
-- **Open Plugin System**: Anyone can write custom plugins for their specific needs
-- **Plugin Composition**: Chain together plugins from KB Labs core plugins or community-contributed plugins
-- **Plugin Marketplace**: Discover and share plugins with the community
-- **Cross-Plugin Communication**: Plugins can communicate and build upon each other's functionality
-
-**Security & Safety:**
-- **Sandbox Execution**: All plugins execute in isolated sandbox environments by default
-- **Permission System**: Fine-grained permissions control what each plugin can access
-- **Resource Limits**: Automatic resource constraints prevent abuse
-- **Audit Trail**: Complete audit logging for all plugin executions
-
-**Agent Workflows:**
-- **Composable Agents**: Build complex workflows by chaining simple agent plugins
-- **Custom Workflows**: Create personalized development workflows by combining existing plugins
-- **Community Contributions**: Share and reuse agent workflows from the community
-- **Enterprise Ready**: Support for private plugin registries and custom workflows
-
-This future architecture will transform KB Labs into a true platform where developers can build their own AI-powered tools on top of a secure, composable foundation.
-
-### Platform-First Philosophy: Focus on Business Logic, Not Infrastructure
-
-KB Labs is designed as a **platform ecosystem** where plugins gather around unified rules and infrastructure:
-
-**What the Platform Handles (99% of the pain):**
-- ✅ **Rate Limiting & Quotas**: Built-in 429 error handling, automatic retries, backoff strategies
-- ✅ **Graceful Degradation**: Fallback mechanisms when LLM providers are unavailable
-- ✅ **Multi-Tenancy**: Tenant isolation, quotas, and resource management out of the box
-- ✅ **Observability**: Logging, metrics, tracing, and error tracking automatically configured
-- ✅ **State Management**: Persistent cache, session management, cross-invocation state
-- ✅ **Scalability**: From single developer to distributed enterprise deployment
-- ✅ **Security**: Sandboxing, permissions, audit trails, secrets management
-- ✅ **Integration**: Unified CLI, REST API, webhooks, and Studio UI adapters
-
-**What Plugins Focus On (business value):**
-- 💡 **Your Business Logic**: Solve your specific problem, not infrastructure concerns
-- 💡 **Domain Expertise**: Code review rules, documentation styles, test strategies
-- 💡 **Custom Workflows**: Your team's unique development processes
-- 💡 **Integrations**: Connect to your tools and services
-
-**The Value Proposition:**
-
-Instead of spending weeks building:
-- Rate limiting for OpenAI/Anthropic APIs
-- Retry logic with exponential backoff
-- Multi-tenant quota enforcement
-- Graceful degradation when LLM providers fail
-- Logging, monitoring, and alerting infrastructure
-
-**You write:**
-```typescript
-import { defineCommand, useLLM, useLogger, useStorage } from '@kb-labs/sdk';
-
-export const analyze = defineCommand({
-  name: 'analyze',
-  async handler(ctx, argv, flags) {
-    const llm = useLLM();           // Composable: LLM with rate limiting
-    const logger = useLogger();     // Composable: Structured logging
-    const storage = useStorage();   // Composable: Persistent storage
-
-    const result = await llm.complete(prompt);
-    await storage.set('last-analysis', result);
-    logger.info('Analysis completed', { tokens: result.usage });
-
-    return { analysis: result.content };
-  }
-});
-```
-
-The platform handles everything else. You focus on **what makes your plugin unique**, not reinventing infrastructure.
-
-> **Design Philosophy**: Inspired by **Vue 3's Composition API**
->
-> KB Labs SDK uses composable helper functions (`useLLM`, `useLogger`, `useStorage`, etc.) that encapsulate complexity and provide clean, testable abstractions. Like Vue 3 composables, these utilities are:
-> - **Composable**: Mix and match functionality as needed
-> - **Typed**: Full TypeScript support with inference
-> - **Testable**: Easy to mock in unit tests
-> - **Declarative**: Clear, readable code that expresses intent
-
-## 🏛️ Ecosystem Architecture
-
-KB Labs ecosystem follows a layered architecture model with clear boundaries and dependencies:
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                      Applications Layer                          │
-│   Studio (Web UI)  |  REST API  |  CLI  |  Third-party Apps     │
-└─────────────────────────────────────────────────────────────────┘
-                                │
-┌─────────────────────────────────────────────────────────────────┐
-│                      AI Products Layer                           │
-│  AI Review  |  AI Docs  |  AI Tests  |  Mind  |  Analytics      │
-└─────────────────────────────────────────────────────────────────┘
-                                │
-┌─────────────────────────────────────────────────────────────────┐
-│                    Orchestration Layer                           │
-│         Workflow Engine  |  Plugin System  |  Setup Engine      │
-└─────────────────────────────────────────────────────────────────┘
-                                │
-┌─────────────────────────────────────────────────────────────────┐
-│                      Core Platform Layer                         │
-│       Core    |    CLI    |   Shared   |  DevKit  |  Knowledge  │
-└─────────────────────────────────────────────────────────────────┘
-                                │
-┌─────────────────────────────────────────────────────────────────┐
-│                Infrastructure & Tools Layer                      │
-│     DevLink   |  Release Manager  |  Audit  |  UI               │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Core Platform
-
-The foundation of the KB Labs ecosystem:
-
-- **@kb-labs/core** — Runtime core with profiles resolver/validator and infrastructure abstractions
-  - 6-layer configuration system
-  - Profile resolution with cycle detection
-  - Bundle orchestration
-  - System interfaces (logging, filesystem, repository)
-  - Policy engine for fine-grained permissions
-
-- **@kb-labs/cli** — UX wrapper over core providing unified CLI commands (`kb *`)
-  - Single entry point for all KB Labs tools
-  - Command registration system
-  - Consistent interface across all products
-  - JSON output support for automation
-
-- **@kb-labs/shared** — Common types and utilities without side effects
-  - Diff parsing utilities
-  - Text operations
-  - Boundary checking
-  - Pure functions only (no side effects)
-
-- **@kb-labs/devkit** — Bootstrap and standards (CI templates, configs, sync)
-  - Preset configurations (TypeScript, ESLint, Prettier, Vitest, Tsup)
-  - Automatic sync system for keeping projects up-to-date
-  - Reusable GitHub Actions workflows
-  - Zero-maintenance tooling
-
-- **@kb-labs/knowledge** — Knowledge management contracts and runtime
-  - Standardized knowledge artifacts
-  - Reusable knowledge presets
-  - Integration with AI products
-
-- **@kb-labs/sdk** — Unified plugin development SDK with Vue 3-inspired composables
-  - **Composable helpers**: `useLLM`, `useLogger`, `useStorage`, `useAnalytics`, `usePlatform`
-  - **Command builders**: `defineCommand`, `defineFlags`, `validateFlags`
-  - **Manifest utilities**: `defineManifest`, `defineCommandFlags`, permissions system
-  - **REST handlers**: `defineRestHandler` for HTTP endpoints
-  - **Lifecycle hooks**: `defineSetupHandler`, `defineDestroyHandler`
-  - **Full TypeScript support** with type inference
-  - Single import point — no deep imports into internal packages
-
-### AI Products
-
-AI-powered tools that leverage the core platform:
-
-**Active Products (MVP 1.0):**
-
-- **@kb-labs/ai-review** — AI-driven code review with rule enforcement and CI/CD integration
-  - Profile-based rule sets
-  - Dual output (JSON + Markdown)
-  - Multiple LLM provider support
-  - Analytics integration
-
-- **@kb-labs/ai-docs** — Engineering-first documentation assistant
-  - Bootstrap, plan, generate, and audit technical docs
-  - Mind context integration for accurate generation
-  - Drift detection between code and docs
-
-- **@kb-labs/ai-tests** — AI-powered test generation and maintenance
-  - Plan, generate, run, repair, and audit automated tests
-  - Mind context for intelligent test generation
-  - Multi-framework support
-
-- **@kb-labs/analytics** — Analytics and tracking system
-  - Event pipeline
-  - Storage backends (SQLite, S3)
-  - Metrics aggregation
-  - Privacy-first design
-
-- **@kb-labs/mind** — AI-powered code analysis and context layer
-  - Hybrid search (BM25 + vector)
-  - RAG system for code understanding
-  - Anti-hallucination verification
-  - Integration with all AI products
-
-**Planned Products:**
-
-- **@kb-labs/ai-project-assistant** — Project management and workflow automation *(Q4 2026)*
-- **@kb-labs/ai-content** — Content generation and management system *(Q1 2027)*
-
-### Orchestration Layer
-
-Systems for workflow execution and plugin management:
-
-- **@kb-labs/workflow** — Workflow orchestration engine
-  - Declarative workflow definitions
-  - Job scheduling and step execution
-  - Distributed coordination through Redis
-  - Multi-tenancy support
-
-- **@kb-labs/plugin** — Plugin system infrastructure
-  - Manifest V1/V2 format definitions
-  - Runtime execution with sandboxing
-  - CLI, REST, and Studio adapters
-  - Developer tools for plugin development
-
-- **@kb-labs/setup-engine** — Setup workflows engine
-  - Declarative operations with rollback support
-  - Idempotent execution
-  - Plugin and CLI installers
-
-### Tools & Infrastructure
-
-Supporting tools and infrastructure for the ecosystem:
-
-- **@kb-labs/audit** — Unified quality checks and compliance
-- **@kb-labs/rest-api** — HTTP API layer for web applications
-- **@kb-labs/studio** — Web-based development environment and dashboard
-- **@kb-labs/ui** — Shared UI component library
-- **@kb-labs/devlink** — Development linking tool for multi-repo workflows
-- **@kb-labs/release-manager** — Release orchestration and automation
-
-### Templates
-
-- **@kb-labs/product-template** — Project scaffolding for 5-minute deployment with shared setup and architecture
-- **@kb-labs/plugin-template** — Gold standard reference template for production-ready KB Labs plugins
-
-## 🚀 Quick Start
-
-> [!NOTE]
-> **For Explorers & Future Contributors Only**
->
-> These instructions are for developers who want to explore the codebase architecture, study the implementation, or prepare for future contributions. This is **not** a production installation guide—the platform is in active development and not ready for external deployment.
-
-### Prerequisites
-
-- **Node.js**: >= 18.18.0
-- **pnpm**: >= 9.0.0
-
-### Local Setup (For Exploration)
-
-```bash
-# Clone the meta-workspace repository
-git clone https://github.com/kirill-baranov/kb-labs.git
-cd kb-labs
-
-# Install all dependencies across workspace
-pnpm -w install
-
-# Build all packages in workspace
-pnpm -r run build
-```
-
-### Development
-
-```bash
-# Run development mode (parallel across all packages)
-pnpm dev
-
-# Build all packages
-pnpm build
-
-# Run tests across all packages
-pnpm -r run test
-
-# Lint all packages
-pnpm -r run lint
-
-# Type check all packages
-pnpm type-check
-
-# Full CI pipeline
-pnpm check
-```
-
-### Example: AI-Powered Commit Generation
-
-One of KB Labs' AI products is the commit plugin that automatically generates conventional commits:
-
-```bash
-$ pnpm kb commit commit --scope="@kb-labs/package-name"
-
-OK Git status analyzed
-OK Generated commit plan with 1 commit(s)
-OK Applied 1 commit(s)
-
-Applied commits:
-  [df48073] docs(kb-labs): add license files and readme for kb-labs
-
-┌── Done
-│
-│ Summary
-│  Commits:  1
-│  Pushed:   No
-│  LLM:      Phase 1
-│  Tokens:   1022
-│
-└── OK Success
-```
-
-This showcases the ecosystem's core principle: **AI-powered automation for routine development tasks**.
-
-### Meta-Workspace Structure
-
-KB Labs uses a **PNPM meta-workspace** to manage multiple repositories. Each repository is managed independently but shares:
-
-- Common tooling configurations (via DevKit)
-- Consistent repository structure
-- Unified documentation standards
-- Shared development workflows
-
-**Workspace Layout:**
+## Why You Should Care
+
+**👔 For CTOs:**
+- **Zero migration risk** — Swap infrastructure without code changes (Redis → Memcached, PostgreSQL → MySQL in a config file)
+- **Progressive scaling** — Start at $0, scale to enterprise without rewrites ($0 → $100 → $1K+/month, same codebase)
+- **No vendor lock-in** — Own your architectural choices, change your mind later without penalty
+
+**🛠️ For Engineering Managers:**
+- **18 DevKit tools** — Monorepo health checks, dependency auto-fixing, build order calculation, type safety audits
+  - ⚡ **10-50x faster** than manual migration (automated path updates, import rewrites, config synchronization)
+  - ⏱️ **Saves 2-3 hours/week** per developer (automated health checks vs manual validation)
+  - 🔧 **Single command** to fix 90% of common issues (unused deps, broken imports, duplicate versions)
+- **Type safety** — 93.9% type coverage across 79 packages, find all 2,041 type errors in one command
+- **Engineering culture** — ADRs, best practices, documented trade-offs, production-ready patterns
+
+**👨‍💻 For Developers:**
+- **Fast iteration** — Hot reload, clear errors, good debugging, no magic
+- **AI-powered tools** — Semantic code search (Mind RAG), LLM commit generation (99% cheaper than Copilot), release automation
+- **Plugin ecosystem** — Extend capabilities without forking, marketplace-ready architecture
+
+---
+
+## Table of Contents
+
+- [Why KB Labs](#why-kb-labs)
+- [What KB Labs Is (and Is Not)](#what-kb-labs-is-and-is-not)
+- [Core Concepts](#core-concepts)
+- [Architecture Overview](#architecture-overview)
+- [Core Components](#core-components)
+- [Use Cases](#use-cases)
+- [Demo](#demo)
+  - [Infrastructure Swap in 30 Seconds](#1-infrastructure-swap-in-30-seconds)
+  - [Mind RAG: AI Code Search](#2-mind-rag-ai-code-search-with-auto-escalation)
+  - [LLM-Powered Commits (99% Cheaper)](#3-llm-powered-commits-99-cheaper)
+  - [DevKit: Monorepo Health Check](#4-devkit-monorepo-health-check)
+  - [Platform in Action: Real Screenshots](#platform-in-action-real-screenshots)
+- [Project Status](#project-status)
+- [Roadmap (High-Level)](#roadmap-high-level)
+  - [Near-Term (Q1-Q2 2026)](#near-term-q1-q2-2026---stabilization--hardening)
+  - [Mid-Term (Q3-Q4 2026)](#mid-term-q3-q4-2026---ecosystem-growth)
+  - [Long-Term (2027+)](#long-term-2027---public-beta--enterprise-adoption)
+- [Philosophy & Principles](#philosophy--principles)
+  - [Open the Closed](#open-the-closed)
+  - [Design Principles](#design-principles)
+  - [Engineering Values](#engineering-values)
+  - [Trade-Offs We've Made](#trade-offs-weve-made)
+  - [Why This Matters](#why-this-matters)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
+## Why KB Labs
+
+**The Problem:**
+
+Modern development platforms force you into architectural decisions that become expensive to change:
+
+- **Vendor lock-in** — Switching from PostgreSQL to MySQL? Redis to Memcached? Prometheus to Datadog? Each requires code changes across the entire system
+- **Rigid infrastructure** — LLM provider, vector database, metrics backend are hard-coded into the platform
+- **All-or-nothing adoption** — Can't replace just one piece without forking the entire codebase
+- **High switching costs** — What starts as "it's just Postgres" becomes "we can't migrate without rewriting 50% of the code"
+
+**Why existing tools fall short:**
+
+| Platform | Problem |
+|----------|---------|
+| **Temporal** | Hard-coded to PostgreSQL/Cassandra. Want MySQL? Fork the codebase. |
+| **Backstage** | Tightly coupled to specific integrations. Custom analytics? Rewrite plugins. |
+| **Internal tools** | Built for today's requirements. Tomorrow's needs require rewrites. |
+
+**What KB Labs addresses:**
+
+- **Adapter-first architecture** — Every infrastructure dependency (cache, DB, logger, metrics, LLM, vector store) is a swappable adapter
+- **No vendor lock-in** — Change Redis → Memcached, OpenAI → Anthropic, Prometheus → Datadog in a config file
+- **Future-proof** — New requirements don't require code changes, just new adapters
+- **Pay for what you need** — Use free InMemory cache in dev, Redis in staging, AWS ElastiCache in production
+
+---
+
+## How KB Labs Compares
+
+| Feature | KB Labs | Temporal | Backstage | n8n |
+|---------|---------|----------|-----------|-----|
+| **Adapter-first** | ✅ All infrastructure | ❌ Locked to Cassandra/PostgreSQL | ❌ Hard-coded integrations | ⚠️ Partial |
+| **Workflow Engine** | ✅ DAG-based | ✅ Full-featured | ❌ No | ✅ Visual builder |
+| **Developer Portal** | ✅ Built-in (Studio UI) | ❌ No | ✅ Full portal | ❌ No |
+| **Plugin System** | ✅ Extensible | ⚠️ Limited | ✅ Plugin-based | ✅ Nodes |
+| **AI Integration** | ✅ Built-in (Mind RAG) | ❌ No | ❌ No | ⚠️ Via plugins |
+| **DevKit Tools** | ✅ 18 monorepo tools | ❌ No | ⚠️ Basic | ❌ No |
+| **Self-hosted** | ✅ Free | ✅ OSS | ✅ OSS | ✅ OSS |
+| **Production Ready** | ⚠️ Q2 2026 | ✅ Yes | ✅ Yes | ✅ Yes |
+
+**Key Differentiator:** KB Labs is the only platform where you can swap **every** infrastructure component (cache, DB, LLM, vector store, metrics, logger) in a config file. No code changes, no vendor lock-in.
+
+---
+
+## What KB Labs Is (and Is Not)
+
+### What It Is
+- Adapter-first platform where ALL infrastructure is pluggable
+- Workflow engine for complex DAG-based automation
+- Developer portal with observability, analytics, and real-time monitoring
+- Plugin system for extending capabilities (AI search, DevKit tools, analytics)
+- Multi-tenant by design (free tier → enterprise scale)
+
+### What It Is Not
+- Not another Backstage clone (no hard-coded integrations)
+- Not a workflow-only tool like Temporal (it's a full IDP)
+- Not production-ready yet (active development, Q2 2026 target)
+- Not trying to replace your entire stack (works alongside existing tools)
+
+---
+
+## Core Concepts
+
+**Big Tech DX, Startup Budget**
+
+KB Labs brings enterprise-grade developer experience to teams of any size — without enterprise budgets or infrastructure teams.
+
+**Adapter-First Architecture**
+
+Every infrastructure dependency is an interface. Swap Redis for Memcached, PostgreSQL for MySQL, OpenAI for Anthropic — all in a config file. No code changes. No vendor lock-in.
+
+**Automation for Everyone**
+
+Plugin system extends beyond dev tools. Workflows, analytics, observability — even business automation (analytics for PMs, compliance workflows for legal, expense automation for finance). If it can be automated, there's (or will be) a plugin for it.
+
+**Scale on Your Terms**
+
+- **Development**: Run on laptop with InMemory adapters ($0/month)
+- **Startup**: 3-node cluster, Redis, PostgreSQL (~$100/month)
+- **Enterprise**: Auto-scaling, managed services, dedicated execution clusters (~$1K+/month)
+
+Same codebase, different configs. Grow without rewrites.
+
+---
+
+## Architecture Overview
+
+**Layered, Adapter-First Design**
 
 ```
-kb-labs/                          # Meta-workspace root
-├── kb-labs-core/                 # Core platform repository
-├── kb-labs-cli/                  # CLI repository
-├── kb-labs-shared/               # Shared utilities repository
-├── kb-labs-devkit/               # DevKit repository
-├── kb-labs-knowledge/            # Knowledge contracts repository
-├── kb-labs-ai-review/            # AI Review repository
-├── kb-labs-ai-docs/              # AI Docs repository
-├── kb-labs-ai-tests/             # AI Tests repository
-├── kb-labs-analytics/            # Analytics repository
-├── kb-labs-mind/                 # Mind repository
-├── kb-labs-workflow/             # Workflow engine repository
-├── kb-labs-plugin/               # Plugin system repository
-├── kb-labs-setup-engine/         # Setup engine repository
-├── kb-labs-audit/                # Audit repository
-├── kb-labs-rest-api/             # REST API repository
-├── kb-labs-studio/               # Studio repository
-├── kb-labs-ui/                   # UI repository
-├── kb-labs-devlink/              # DevLink repository
-├── kb-labs-release-manager/      # Release Manager repository
-├── kb-labs-product-template/     # Product Template repository
-├── kb-labs-plugin-template/      # Plugin Template repository
-└── kb-labs/                      # Main ecosystem repository (this one)
-    ├── apps/                     # Demo applications
-    ├── packages/                 # Example packages
-    ├── docs/                     # Central documentation hub
-    │   ├── adr/                  # Architecture Decision Records
-    │   ├── products/             # Product documentation
-    │   ├── ecosystem/            # Ecosystem status and health
-    │   ├── roadmap/              # Strategic roadmap
-    │   └── templates/            # Documentation templates
-    └── scripts/                  # Utility scripts
+┌─────────────────────────────────────────────────────────┐
+│          Interfaces (CLI / REST API / Webhooks)         │
+│  How users/systems interact with the platform           │
+└────────────────────────┬────────────────────────────────┘
+                         │
+┌────────────────────────▼────────────────────────────────┐
+│                   Core Platform                         │
+│  • Plugin System        • Workflow Engine               │
+│  • State Management     • Multi-Tenancy                 │
+│  • Event Bus            • Security/Auth                 │
+└────────────────────────┬────────────────────────────────┘
+                         │
+         ┌───────────────┴───────────────┐
+         │                               │
+┌────────▼──────────-┐        ┌──────────▼───────────────┐
+│ Infrastructure     │        │   Execution Layer        │
+│ Adapters           │        │   (Plugin Runtime)       │
+│ (Your Choice)      │        │                          │
+│                    │        │  • InProcess (dev)       │
+│ ICache    ILogger  │        │  • Subprocess (prod)     │
+│ IDatabase IMetrics │        │  • WorkerPool (scale)    │
+│ ILLMProvider       │        │  • Remote (enterprise)   │
+│ IVectorStore       │        │                          │
+└────────────────────┘        └──────────────────────────┘
+     Your infrastructure            Where code runs
 ```
 
-> **Note**: See [ADR-0012: PNPM Meta-Workspace Setup](./docs/adr/0012-meta-workspace.md) for detailed information about the meta-workspace architecture.
+**Key Architectural Principles:**
 
-## 📦 Product Overview
+- **Separation of Concerns** — Interfaces, business logic, infrastructure, and execution are independent layers
+- **Dependency Injection** — All infrastructure adapters injected at runtime via config, not hardcoded
+- **Execution Flexibility** — Plugins execute in-process (dev), subprocess (prod isolation), worker pool (horizontal scale), or remote cluster (enterprise)
+- **Universal Execution** — REST API handlers, CLI commands, workflows, background jobs — all use the same execution layer
 
-### Core Platform Products
+> **Deep Dive:** See [ARCHITECTURE.md](./demo/ARCHITECTURE.md) for detailed diagrams, adapter interfaces, and scaling strategies
 
-| Product | Status | Repository | Description |
-|---------|--------|------------|-------------|
-| [@kb-labs/core](./docs/products/core.md) | MVP 1.0 | [kb-labs-core](https://github.com/KirillBaranov/kb-labs-core) | Runtime core with profiles resolver/validator and infrastructure abstractions |
-| [@kb-labs/cli](./docs/products/cli.md) | MVP 1.0 | [kb-labs-cli](https://github.com/KirillBaranov/kb-labs-cli) | Unified CLI commands (kb *) |
-| [@kb-labs/shared](./docs/products/shared.md) | MVP 1.0 | [kb-labs-shared](https://github.com/KirillBaranov/kb-labs-shared) | Common types and utilities without side effects |
-| [@kb-labs/devkit](./docs/products/devkit.md) | MVP 1.0 | [kb-labs-devkit](https://github.com/KirillBaranov/kb-labs-devkit) | Bootstrap and standards (CI templates, configs, sync) |
-| [@kb-labs/knowledge](./docs/products/knowledge.md) | MVP 1.0 | [kb-labs-knowledge](https://github.com/KirillBaranov/kb-labs-knowledge) | Knowledge management contracts and runtime |
+---
 
-### AI Products
+## Core Components
 
-| Product | Status | Repository | Description |
-|---------|--------|------------|-------------|
-| [@kb-labs/ai-review](./docs/products/ai-review.md) | MVP 1.0 | [kb-labs-ai-review](https://github.com/KirillBaranov/kb-labs-ai-review) | AI-driven code review with rule enforcement and CI/CD integration |
-| [@kb-labs/ai-docs](./docs/products/ai-docs.md) | MVP 1.0 | [kb-labs-ai-docs](https://github.com/KirillBaranov/kb-labs-ai-docs) | Engineering-first documentation assistant |
-| [@kb-labs/ai-tests](./docs/products/ai-tests.md) | MVP 1.0 | [kb-labs-ai-tests](https://github.com/KirillBaranov/kb-labs-ai-tests) | AI-powered test generation and maintenance |
-| [@kb-labs/analytics](./docs/products/analytics.md) | MVP 1.0 | [kb-labs-analytics](https://github.com/KirillBaranov/kb-labs-analytics) | Analytics and tracking system with event pipeline |
-| [@kb-labs/mind](./docs/products/mind.md) | MVP 1.0 | [kb-labs-mind](https://github.com/KirillBaranov/kb-labs-mind) | AI-powered code analysis and RAG context layer |
-| [@kb-labs/ai-project-assistant](./docs/products/ai-project-assistant.md) | Planning | - | Project management and workflow automation *(Q4 2026)* |
-| [@kb-labs/ai-content](./docs/products/ai-content.md) | Planning | - | Content generation and management system *(Q1 2027)* |
+**Built-In Platform Capabilities**
 
-### Orchestration Layer
+### Workflow Engine
+DAG-based orchestration for complex automation — job scheduling, dependency resolution, retry logic, distributed state coordination via Redis
 
-| Product | Status | Repository | Description |
-|---------|--------|------------|-------------|
-| [@kb-labs/workflow](./docs/products/workflow.md) | MVP 1.0 | [kb-labs-workflow](https://github.com/KirillBaranov/kb-labs-workflow) | Workflow orchestration engine with Redis coordination |
-| [@kb-labs/plugin](./docs/products/plugin.md) | MVP 1.0 | [kb-labs-plugin](https://github.com/KirillBaranov/kb-labs-plugin) | Plugin system infrastructure with manifest V1/V2 |
-| [@kb-labs/setup-engine](./docs/products/setup-engine.md) | MVP 1.0 | [kb-labs-setup-engine](https://github.com/KirillBaranov/kb-labs-setup-engine) | Setup workflows with idempotent execution |
-
-### Tools & Infrastructure
-
-| Product | Status | Repository | Description |
-|---------|--------|------------|-------------|
-| [@kb-labs/audit](./docs/products/audit.md) | MVP 1.0 | [kb-labs-audit](https://github.com/KirillBaranov/kb-labs-audit) | Unified quality checks and compliance |
-| [@kb-labs/rest-api](./docs/products/rest-api.md) | MVP 1.0 | [kb-labs-rest-api](https://github.com/KirillBaranov/kb-labs-rest-api) | HTTP API layer for web applications |
-| [@kb-labs/studio](./docs/products/studio.md) | MVP 1.0 | [kb-labs-studio](https://github.com/KirillBaranov/kb-labs-studio) | Web-based development environment and dashboard |
-| [@kb-labs/ui](./docs/products/ui.md) | MVP 1.0 | [kb-labs-ui](https://github.com/KirillBaranov/kb-labs-ui) | Shared UI component library |
-| [@kb-labs/devlink](./docs/products/devlink.md) | MVP 1.0 | [kb-labs-devlink](https://github.com/KirillBaranov/kb-labs-devlink) | Development linking tool for multi-repo workflows |
-| [@kb-labs/release-manager](./docs/products/release-manager.md) | MVP 1.0 | [kb-labs-release-manager](https://github.com/KirillBaranov/kb-labs-release-manager) | Release orchestration and automation |
-
-### Templates
-
-| Product | Status | Repository | Description |
-|---------|--------|------------|-------------|
-| [@kb-labs/product-template](./docs/products/product-template.md) | MVP 1.0 | [kb-labs-product-template](https://github.com/KirillBaranov/kb-labs-product-template) | Project scaffolding template |
-| [@kb-labs/plugin-template](./docs/products/plugin-template.md) | MVP 1.0 | [kb-labs-plugin-template](https://github.com/KirillBaranov/kb-labs-plugin-template) | Gold standard plugin reference template |
-
-📋 **[View Complete Products Overview](./docs/products/README.md)** — Detailed information about each product
-
-## 🔑 Key Concepts
-
-### Profiles
-
-**Profiles** are project knowledge containers that capture rules, ADRs, documentation, and boundaries. They are reusable across all AI products, enabling consistent behavior and knowledge sharing.
-
-- **Structure**: JSON Schema validated profiles with manifest format
-- **Artifacts**: Rules, handbooks, ADRs, boundaries stored as profile artifacts
-- **Resolution**: Hierarchical resolution with cycle detection and security constraints
-- **Defaults**: Profile-level configuration defaults merged with workspace config
-
-### Diff Parsers
-
-**Diff Parsers** provide a neutral unified-diff AST used across review, tests, and documentation products. They enable consistent diff analysis regardless of the source.
-
-- **Format**: Standard unified-diff format parsing
-- **AST**: Abstract syntax tree for structured diff analysis
-- **Utilities**: Helper functions for changed files, hunks, and line ranges
-- **Integration**: Used by AI Review, AI Tests (planned), and AI Docs (planned)
-
-### Contracts
-
-**Contracts** provide stable interfaces for providers, plugins, and telemetry. They ensure consistency and enable extensibility across the ecosystem.
-
-- **Type Safety**: Zod schemas with TypeScript types
-- **Versioning**: Versioned APIs with standardized envelope formats
-- **Validation**: Runtime validation with clear error messages
-- **Integration**: Contracts defined within each product package
+### Observability & Analytics
+Real-time system monitoring (CPU, memory, incidents), metrics collection (Prometheus-compatible), historical analytics, automated incident detection with root cause analysis
 
 ### Plugin System
+Extensible architecture for adding capabilities — Mind RAG (AI code search), DevKit (monorepo tools), Commit (AI commits), Release (semantic releases), custom business automation
 
-**Plugin System** enables extensible architecture with isolated, composable, and discoverable plugins. Products can be extended without modifying core code.
+### Developer Portal (Studio)
+React-based web UI for platform management — workflow visualization, system health dashboards, incident tracking, real-time metrics, plugin galleries
 
-**Current Capabilities:**
-- **Isolation**: Plugins run in isolated contexts
-- **Composability**: Plugins can be combined and chained
-- **Discovery**: Automatic plugin discovery and registration
-- **Extensibility**: Products expose plugin interfaces for customization
+### DevKit
+18 monorepo management tools — import/export analysis, duplicate detection, dependency auto-fixing, build order calculation, TypeScript types audit, CI health checks
 
-**Future Evolution (2026-2027):**
-- **Open Plugin Marketplace**: Public registry for sharing and discovering plugins
-- **Community Contributions**: Anyone can create and publish plugins for specific use cases
-- **Plugin Composition**: Chain together plugins from KB Labs or community contributors
-- **Cross-Plugin Communication**: Plugins communicate and build upon each other's functionality
-- **Agent-Based Workflows**: Build complex workflows by composing simple agent plugins
-- **Sandbox Execution**: All plugins execute in isolated sandbox environments by default for security
-- **Permission System**: Fine-grained permissions control what each plugin can access
-- **Resource Limits**: Automatic resource constraints prevent abuse
-- **Audit Trail**: Complete audit logging for all plugin executions
+---
 
-The plugin system will evolve into a true platform where developers can build their own AI-powered tools by composing existing plugins or creating new ones.
+## Use Cases
 
-### AI Agents
+**Real-World Scenarios**
 
-**AI Agents** are automated workflows for testing, documentation, and release management. They leverage AI to handle routine tasks and make intelligent decisions.
+### AI-Powered Commit Generation (Built-In Plugin)
 
-- **Automation**: Routine task automation with AI assistance
-- **Decision Making**: Intelligent decision-making based on context and rules
-- **Integration**: Deep integration with core platform and profiles
-- **Observability**: Comprehensive logging and analytics for agent actions
+**Problem:** Developers spend time writing commit messages, often inconsistent or too vague. Manual conventional commits are tedious.
 
-## 🏗️ Repository Structure
+**Solution:** Commit plugin analyzes `git diff` and `git status` using LLM, generates conventional commits (`feat`, `fix`, `refactor`) with proper scope and descriptions. Two-phase analysis escalates to full diff when confidence is low. Secrets detection prevents leaking API keys.
 
-This repository serves as the **central hub** for the KB Labs ecosystem. It contains:
+**Outcome:**
+- ✅ Consistent, conventional commits across the team
+- ⏱️ **Saves ~15 min/day per developer** (vs manual commit messages)
+- 💰 **99% cheaper than GitHub Copilot** (~$0.01 per batch vs $20/month subscription)
+- 📊 Enables automatic changelog generation and semantic versioning
+- 🔒 Zero accidental secrets leaks (built-in detection)
 
-- **Documentation Hub**: Comprehensive documentation, ADRs, roadmaps, and guides
-- **Ecosystem Status**: Centralized status tracking for all products
-- **Templates**: Documentation and contribution templates
-- **Meta-Workspace Configuration**: PNPM workspace configuration for managing all repositories
+---
 
-### Directory Structure
+### Automated Release Management (Built-In Plugin)
 
+**Problem:** Manual semantic versioning is error-prone. Changelog generation, git tagging, npm publishing, GitHub releases — too many manual steps, easy to forget or mess up.
+
+**Solution:** Release Manager plugin automates the entire release workflow — parses conventional commits, determines version bump (major/minor/patch), generates changelog from commits, creates git tag, publishes to npm, creates GitHub release with notes. All in one command.
+
+**Outcome:**
+- ✅ Zero manual steps from commit → npm publish
+- ⏱️ **Release time: 30s vs 15 min manual** (30x faster)
+- 🔒 **Zero human errors** in versioning, tagging, changelog
+- 📈 Faster release cycles (from weekly to daily releases)
+- 📝 Always up-to-date changelog with proper semantic versioning
+
+---
+
+### ClickUp Task Sync for Product Teams (Hypothetical Plugin)
+
+**Problem:** Engineering work happens in GitHub/Git, but PMs track progress in ClickUp. Manual status updates waste time and get out of sync. No single source of truth.
+
+**Solution:** Custom ClickUp plugin syncs workflow runs with ClickUp tasks — monitors workflow events via platform event bus, maps workflow IDs to ClickUp task IDs, auto-updates task status (In Progress → Testing → Done) based on workflow state. Uses adapter pattern for ClickUp API client.
+
+**Outcome:**
+- ✅ PMs see real-time engineering progress without manual status updates
+- ⏱️ **Saves ~2 hours/week per developer** (no more "update the ticket" reminders)
+- 📊 **Automatic cycle time metrics** from code → deployment visible in both systems
+- 🔄 Single source of truth (Git drives ClickUp, not the other way around)
+- 🤝 Better PM-Engineering collaboration (no more "is this done yet?" messages)
+
+---
+
+## Demo
+
+> **Note:** KB Labs is in active development. These examples demonstrate current capabilities, not a finalized product.
+>
+> **Screenshots:** Real screenshots from KB Labs platform are available in [`docs/screenshots/`](./docs/screenshots/README.md)
+
+### 1. Infrastructure Swap in 30 Seconds
+
+**Problem:** Need to switch from Redis to in-memory cache for local development?
+
+**Solution:** Edit one line in `.kb/kb.config.json`:
+
+```diff
+{
+  "platform": {
+    "adapters": {
+-     "cache": "@kb-labs/adapters-redis"
++     "cache": "@kb-labs/adapters-memory"
+    },
+    "adapterOptions": {
+-     "cache": {
+-       "url": "redis://localhost:6379"
+-     }
++     "cache": {}
+    }
+  }
+}
 ```
-kb-labs/
-├── apps/                         # Demo applications
-│   └── demo/                     # Example demo application
-├── packages/                     # Example packages
-│   └── package-name/             # Example package template
-├── docs/                         # Central documentation hub
-│   ├── adr/                      # Architecture Decision Records (193+)
-│   │   ├── 0001-architecture-and-repository-layout.md
-│   │   ├── 0002-plugins-and-extensibility.md
-│   │   └── ...                   # 193+ ADRs total
-│   ├── products/                 # Product documentation
-│   │   ├── README.md             # Products overview
-│   │   ├── core.md               # Core product details
-│   │   ├── cli.md                # CLI product details
-│   │   └── ...                   # All products documented
-│   ├── ecosystem/                # Ecosystem status and health
-│   │   ├── STATUS.md             # Ecosystem status overview
-│   │   ├── HEALTH.md             # Health metrics
-│   │   └── DEPENDENCIES.md       # Dependency mapping
-│   ├── roadmap/                  # Strategic roadmap
-│   │   ├── README.md             # Roadmap overview
-│   │   ├── 2025/                 # 2025 roadmap
-│   │   ├── 2026/                 # 2026 roadmap
-│   │   └── 2027/                 # 2027 roadmap
-│   ├── templates/                # Documentation templates
-│   │   ├── ADR.template.md       # ADR template
-│   │   ├── README.template.md    # README template
-│   │   ├── CONTRIBUTING.template.md  # Contributing template
-│   │   └── DOCUMENTATION.template.md  # Documentation template
-│   ├── README.md                 # Documentation index
-│   ├── DOCUMENTATION.md          # Documentation standard
-│   ├── BUDGET.md                 # Budget and ROI tracking
-│   └── glossary.md               # Key terms and concepts
-└── scripts/                      # Utility scripts
-    └── adr_audit.py              # ADR audit script
+
+**Result:** Restart your CLI. No code changes, no npm installs, no environment variables. Just config.
+
+**Other common swaps:**
+- **Database:** SQLite → PostgreSQL (change `adapters.db` + `adapterOptions.db`)
+- **Vector Store:** Local → Qdrant (change `adapters.vectorStore` + `adapterOptions.vectorStore`)
+- **LLM Provider:** OpenAI → Anthropic (change `adapters.llm` + `adapterOptions.llm`)
+- **Logger:** Pino → Winston (change `adapters.logger`)
+
+**Development → Startup → Enterprise, same codebase:**
+```json
+// Development ($0/month)
+{
+  "adapters": {
+    "cache": "@kb-labs/adapters-memory",
+    "db": "@kb-labs/adapters-sqlite",
+    "vectorStore": "@kb-labs/adapters-local",
+    "logger": "@kb-labs/adapters-console"
+  }
+}
+
+// Startup (~$100/month)
+{
+  "adapters": {
+    "cache": "@kb-labs/adapters-redis",
+    "db": "@kb-labs/adapters-postgres",
+    "vectorStore": "@kb-labs/adapters-qdrant",
+    "logger": "@kb-labs/adapters-pino"
+  }
+}
+
+// Enterprise (~$1K+/month)
+{
+  "adapters": {
+    "cache": "@kb-labs/adapters-redis",
+    "db": "@kb-labs/adapters-postgres",
+    "vectorStore": "@kb-labs/adapters-qdrant",
+    "logger": "@kb-labs/adapters-datadog",
+    "metrics": "@kb-labs/adapters-prometheus"
+  }
+}
 ```
 
-## 📅 Strategic Roadmap (2025-2027)
+---
 
-> **Planning Philosophy**: KB Labs follows a data-driven planning approach with clear milestones, measurable outcomes, and transparent budget tracking. All decisions are documented in ADRs and tracked through our roadmap system.
+### 2. Mind RAG: AI Code Search with Auto-Escalation
 
-### 2025 - Foundation & Migration ✅
+**Problem:** "Where is the authentication logic implemented?"
 
-**Status**: 🟢 On Track - Exceeding Expectations
+**Traditional approach:**
+```bash
+# Grep through thousands of files
+grep -r "authentication" src/
+# Returns 500+ matches, most irrelevant
+```
 
-**Key Achievements:**
-- ✅ **17 packages created** (target: ~5) — 340% of plan
-- ✅ **193+ ADRs documented** (target: 20+) — 965% of plan
-- ✅ **Complete DevKit migration** across all platform components
-- ✅ **MVP 1.0 achieved** for all products (alpha quality)
+**KB Labs Mind RAG:**
+```bash
+pnpm kb mind rag-query --text "Where is authentication implemented?" --agent
+```
 
-**Completed:**
-- ✅ DevKit Migration — Complete platform migration to DevKit architecture
-- ✅ Core Platform Stabilization — Core, CLI, Shared, DevKit all stable
-- ✅ Profile System — v1.0 manifest format implemented
-- ✅ First AI Products — AI Review, Analytics, Mind all operational
+**Output:**
+```json
+{
+  "answer": "Authentication is handled by AuthService in packages/auth/src/auth-service.ts:42-156...",
+  "confidence": 0.78,
+  "sources": [
+    "packages/auth/src/auth-service.ts:42-156",
+    "packages/api/src/middleware/auth.ts:18-67"
+  ],
+  "mode": "auto"
+}
+```
 
-**In Progress:**
-- 🚧 ai-review — Migrating to new architecture and deploying first agents
-- 🚧 Analytics MVP — Basic events and storage system operational
+**Why it's better:**
+- **Semantic understanding** — Knows "authentication" = login, tokens, middleware, sessions
+- **Confidence scores** — 0.78 = reliable (≥0.7 threshold)
+- **Source verification** — Links directly to relevant code with line numbers
+- **Anti-hallucination** — Verifies answers against actual codebase
+- **Auto-escalation** — Automatically escalates query complexity if confidence is low
+  - Starts with **instant** mode (fast, simple queries)
+  - Escalates to **auto** mode if confidence < threshold (balanced analysis)
+  - Escalates to **thinking** mode if still uncertain (deep multi-step reasoning)
+  - You get the best answer without manual mode selection
 
-### 2026 - Product Expansion 🔜
+**Query complexity examples:**
+- **Simple lookup** → "What is VectorStore interface?" → instant mode (~5-10s)
+- **Concept understanding** → "How does hybrid search work?" → auto mode (~10-30s)
+- **Architecture analysis** → "Explain workflow orchestration flow" → thinking mode (~30-50s)
 
-**Focus**: Multiple AI products, plugin system, analytics, public presence
+---
 
-**Planned:**
-- 🔜 **ai-docs & ai-tests** — Launch documentation and testing products (Q1 2026)
-- 🔜 **Plugin System MVP** — Extensible architecture with profile plugins (Q2 2026)
-- 🔜 **Plugin Marketplace** — Public registry for plugin discovery and sharing (Q3 2026)
-- 🔜 **Advanced Analytics** — Dashboard and S3 integration (Q3 2026)
-- 🔜 **Agent-Based Workflows** — Composable agent plugins with sandbox execution (Q4 2026)
-- 🔜 **Public Presence** — Brand building and community engagement (Q4 2026)
+### 3. LLM-Powered Commits (99% Cheaper)
 
-### 2027 - Public Expansion 🔜
+**Problem:** Writing meaningful commit messages is tedious and inconsistent.
 
-**Focus**: Brand building, ecosystem maturity, advanced features
+**KB Labs commit plugin:**
+```bash
+# Stage your changes
+git add .
 
-**Planned:**
-- 🔜 **ai-content** — Content generation and management (Q1 2027)
-- 🔜 **Security & Permissions** — Advanced permission system and enhanced sandbox security (Q1 2027)
-- 🔜 **Plugin Ecosystem Maturity** — Full agent-based pluggable platform with community plugins (Q2 2027)
-- 🔜 **Public Showcase** — Brand building and speaking engagements (Q1-Q2 2027)
-- 🔜 **KB Labs 2.0** — Major architectural evolution with fully realized pluggable agent system (Q2+ 2027)
+# Generate commits with LLM
+pnpm kb commit commit --scope="@kb-labs/workflow-runtime"
+```
 
-📋 **[View Detailed Roadmap](./docs/roadmap/README.md)** — Complete roadmap with quarterly breakdowns
+**Output:**
+```
+📝 Analyzing changes...
+✅ Generated 3 commits:
+   1. feat(workflow): add DAG validation for circular dependencies
+   2. refactor(workflow): extract job executor to separate module
+   3. chore(workflow): update dependencies
 
-## 💡 Development Efficiency & AI-Powered Workflow
+Apply commits? (y/n): y
 
-> **Philosophy**: KB Labs validates the "automation as survival constraint" principle through metrics. We track how AI-assisted development enables sustainable solo engineering at scale.
+✅ Applied commits:
+  [ae96418] feat(workflow): add DAG validation for circular dependencies
+  [cbd2ed6] refactor(workflow): extract job executor to separate module
+  [7f23c9a] chore(workflow): update dependencies
 
-### AI-Assisted Development Stack
+┌─ Done ─────────────────────────┐
+│ Summary                        │
+│ Commits:  3                    │
+│ Pushed:   No                   │
+│ LLM:      Phase 2              │
+│ Tokens:   4,832                │
+│ Cost:     ~$0.01               │
+└────────────────────────────────┘
+```
 
-KB Labs is built using an AI-first development approach:
+**Features:**
+- **Conventional Commits** — Automatic `feat`, `fix`, `refactor`, `chore` detection
+- **Two-Phase LLM** — Fast analysis, escalates to full diff if needed
+- **Secrets Detection** — Blocks commits with API keys, tokens, passwords
+- **Scope Support** — `--scope="package-name"` prevents accidental commits
+- **99% cheaper** — ~$0.01 per batch vs GitHub Copilot (~$1/month subscription)
 
-- **Claude AI (Sonnet 4.5)** — Primary development assistant for architecture, coding, and problem-solving
-  - Claude Max subscription: $100/month
-- **ChatGPT Plus (GPT-4)** — Strategic planning, complex reasoning, and alternative perspectives
-  - Cost: $20/month
-- **Infrastructure** — API costs for platform operations (embeddings, LLM calls for automation)
-  - Cost: ~$5-10/month
+---
 
-**Total Investment**: ~$125-130/month for AI tooling and infrastructure
+### 4. DevKit: Monorepo Health Check
 
-### Productivity Metrics
+**Problem:** Managing 90+ packages across 18 repositories — standard linters and type checkers don't scale. You can't run `tsc` in 90 packages manually. Circular dependencies hide until production. Unused deps accumulate. One bad import breaks 20 packages downstream.
 
-Real-world impact of AI-assisted development on KB Labs ecosystem:
+**The Reality:** At this scale, you don't die from bad code — you die from **organizational chaos**. Which package depends on which? What's the build order? Which packages have type errors? Standard tools don't answer these questions across the entire monorepo.
 
-- **Development Velocity**: 30-40 hours/month of effective development time saved
-- **Code Quality**: AI-powered reviews catch issues before commit
-- **Documentation**: Automated generation maintains 100% coverage across 21 repositories
-- **Architecture**: AI assists in exploring tradeoffs and validating decisions (193+ ADRs)
+**KB Labs DevKit:**
+```bash
+npx kb-devkit-health
+```
 
-**Efficiency Multiplier**: ~12-30x ROI on AI tool investment (depending on developer rate assumptions)
+**Output:**
+```
+📊 KB Labs Monorepo Health Check
 
-This demonstrates that **sustainable solo development at scale** is achievable through intelligent automation—the core thesis of KB Labs.
+✅ Passed Checks (5):
+   ✓ No circular dependencies
+   ✓ All packages buildable
+   ✓ TypeScript types generated
+   ✓ No broken imports
+   ✓ Naming conventions followed
+
+⚠️  Warnings (2):
+   ! 12 packages missing README
+   ! 5 packages with unused dependencies
+
+❌ Errors (1):
+   ✗ @kb-labs/workflow-runtime: 3 type errors
+
+📈 Type Coverage:
+   Average: 91.1%
+   Excellent (≥90%): 67 packages
+   Good (70-90%):    19 packages
+   Poor (<70%):      5 packages
+
+💚 Health Score: 68/100 (Grade D)
+
+Recommendations:
+  1. Fix type errors in workflow-runtime
+  2. Run: npx kb-devkit-fix-deps --remove-unused --dry-run
+  3. Add READMEs to new packages
+```
+
+**Other DevKit tools:**
+- `kb-devkit-types-audit` — Find all 2,041 type errors across 79 packages in one command (vs running `tsc` in each package)
+- `kb-devkit-fix-deps` — Auto-remove unused dependencies, align versions
+- `kb-devkit-build-order` — Calculate correct build order with parallel layers (prevents "package X not built yet" errors)
+- `kb-devkit-ci` — Run all 7 core checks before commit
+
+**Why DevKit exists:**
+
+Standard tools (ESLint, Prettier, `tsc`) work great for **single packages**. But when you have 90+ packages across 18 repos:
+
+- ❌ **ESLint** doesn't know if you're importing from a package that doesn't exist yet
+- ❌ **TypeScript** doesn't show you the **impact** of type errors (which 20 packages will break if you change this interface?)
+- ❌ **npm/pnpm** won't tell you which packages have **unused dependencies** (you accumulate 500+ deps over time)
+- ❌ **Git** won't prevent you from committing **circular dependencies** that break the build order
+
+**DevKit fills the gap:** It's the **organizational health layer** that standard tools don't provide. Think of it as "monorepo-aware tooling" that prevents chaos at scale.
+
+---
+
+### Platform in Action: Real Screenshots
+
+Here are real screenshots from KB Labs platform showing observability dashboards and commit generation:
+
+#### Observability Dashboard
+
+Real-time monitoring of platform health, system metrics, and incidents.
+
+![Dashboard Overview](./docs/screenshots/dashboard/dashboards.jpg)
+*Studio UI dashboard showing:*
+- *Real-time system health (CPU, memory, uptime across all instances)*
+- *Active/stale/dead instance visualization with health categorization*
+- *Prometheus metrics integration with historical charts*
+- *Incident timeline with severity levels and resolution tracking*
+- *Automated incident detection with root cause analysis*
+
+---
+
+#### LLM-Powered Commit Generation
+
+Watch KB Labs automatically generate conventional commits from your changes:
+
+![Generated Commits](./docs/screenshots/commit-plugin/generated-commits.jpg)
+*AI-generated conventional commits showing:*
+- *Automatic type detection (feat, fix, refactor, chore) based on file changes*
+- *Proper scope extraction from package names and file paths*
+- *Confidence scores and two-phase LLM analysis (Phase 1 → Phase 2 escalation)*
+- *Token usage and cost estimation (~$0.01 per batch)*
+
+![Commit Details](./docs/screenshots/commit-plugin/generated-commit-details.jpg)
+*Detailed commit message with:*
+- *Human-readable description explaining what changed and why*
+- *File changes summary with additions/deletions count*
+- *Conventional commit format (type, scope, description)*
+
+![Files Summary](./docs/screenshots/commit-plugin/generated-commit-files-summary.jpg)
+*File-by-file breakdown showing:*
+- *Which files are included in each commit group*
+- *Logical grouping of related changes (e.g., all dependency updates together)*
+- *Secrets detection warnings if sensitive data detected*
+
+![Diff Preview](./docs/screenshots/commit-plugin/generated-commits-diff-files-preview.jpg)
+*Interactive diff preview before applying:*
+- *Full git diff for each proposed commit*
+- *Review changes before confirming application*
+- *Ability to edit commit messages before applying*
+
+---
+
+#### Infrastructure Configuration
+
+Swap infrastructure adapters with a simple config change:
+
+![Adapter Configuration](./docs/screenshots/infrastructure/adapter-configuration-displaying.gif)
+*Live demonstration showing:*
+- *Real-time config editing in kb.config.json*
+- *Swapping adapters (e.g., Redis → InMemory, PostgreSQL → SQLite)*
+- *No code changes required, just config file updates*
+- *Platform automatically picks up changes on restart*
+- *Same workflow across all infrastructure types (cache, DB, LLM, logger, metrics)*
+
+---
+
+#### Additional Screenshots
+
+For more screenshots including:
+- Mind RAG semantic code search results
+- DevKit health checks and type audits
+- System metrics and monitoring
+
+See the full collection in [`docs/screenshots/`](./docs/screenshots/README.md)
+
+---
+
+> **Full documentation** and interactive playground coming Q2 2026
+
+---
+
+## Project Status
+
+**🚧 Active Development - Private Beta**
+
+**Current State (January 2026):**
+
+**✅ Core Platform (Stable)**
+- Adapter-first architecture fully implemented
+- Plugin system with manifest-based registration
+- Multi-tenant primitives (quotas, rate limiting, isolation)
+- Execution layer (InProcess, Subprocess modes working)
+
+**✅ Infrastructure Adapters (Production-Ready)**
+- Cache: InMemory, Redis, StateBroker
+- Database: PostgreSQL, SQLite (via Drizzle ORM)
+- Logger: Pino, Winston, Console
+- LLM: OpenAI, Anthropic integration
+- Vector: Qdrant integration
+
+**🔨 In Active Development**
+- Workflow Engine (DAG orchestration, job scheduling) - 80% complete
+- Observability (metrics, incidents, system monitoring) - 70% complete
+- Developer Portal (Studio UI) - 60% complete
+- WorkerPool execution mode - 40% complete
+- Remote execution backend - planned Q2 2026
+
+**🧪 Experimental (Use with Caution)**
+- Mind RAG plugin (AI code search) - functional but needs polish
+- DevKit tooling - 18 tools working, some edge cases
+- Commit plugin - works well, ~5K tokens/3-4 commits (~$0.01 with GPT-4o mini)
+- Release Manager - basic features work, advanced flows WIP
+
+**❌ Not Production-Ready**
+- No comprehensive test coverage yet (in progress)
+- Missing Docker/Kubernetes deployment guides
+- Documentation incomplete (wiki + demos planned Q2 2026)
+- No official support or SLA
+
+**🔧 Dogfooding: Building KB Labs with KB Labs**
+
+We use our own platform to develop KB Labs itself. Every day, we:
+
+- 🔍 **Search with Mind RAG** — "Where is adapter validation logic?" (finds it in 5-10s across 90+ packages)
+- ✅ **Generate commits with commit plugin** — All recent commits generated by LLM (~$0.01 per session)
+- 📊 **Monitor with DevKit** — `npx kb-devkit-health` before every release (catches type errors, missing deps)
+- 🚀 **Release with release-manager** — Automated semantic versioning, changelog, npm publish
+- 📈 **Track with observability** — Studio UI shows platform health, system metrics, incidents
+
+**Real example:** This README was reviewed using Mind RAG queries about architecture, benchmarks updated via DevKit stats, and commits generated via commit plugin.
+
+**Why this matters:** If KB Labs can manage itself (90+ packages, 18 repos, active development), it can handle your monorepo. We feel the pain first—you get the solution second.
+
+---
+
+## Roadmap (High-Level)
+
+> **Note:** This roadmap represents current intentions, not firm commitments. Priorities may shift based on feedback and real-world usage.
+
+### Near-Term (Q1-Q2 2026) - Stabilization & Hardening
+
+**Focus:** Move from active development to production-ready foundation
+
+- **Contract Stabilization** — Freeze core interfaces (ICache, IDatabase, IExecutionBackend, etc.) to prevent breaking changes
+- **Test Coverage** — Comprehensive unit, integration, and E2E tests across all core packages
+- **Bug Fixes & Polish** — Address edge cases, improve error messages, fix known issues
+- **Documentation** — Complete API docs, architecture guides, deployment playbooks
+- **Performance Optimization** — Profile and optimize hot paths, reduce memory usage, improve startup time
+- **DevKit Maturity** — Stabilize all 18 tools, handle edge cases, improve error reporting
+
+**Deliverables:**
+- ✅ Core platform ready for production pilot deployments
+- ✅ Comprehensive test suite (target: 80%+ coverage)
+- ✅ Complete documentation wiki
+- ✅ Docker/Kubernetes deployment guides
+
+---
+
+### Mid-Term (Q3-Q4 2026) - Ecosystem Growth
+
+**Focus:** Build plugin marketplace and expand official plugin catalog
+
+- **Plugin Marketplace** — Discovery, installation, versioning, and updates for community plugins
+- **Official Plugins (KB Labs Team)** — Expand beyond Mind RAG, DevKit, Commit, Release
+  - **AI Code Review** — Automated PR reviews, security analysis, best practices checks
+  - **AI Documentation** — Auto-generate API docs, architecture diagrams, code explanations
+  - **AI Audit** — Code quality analysis, technical debt detection, refactoring suggestions
+  - **GitHub Integration** — Issues, PRs, Actions sync
+  - **Slack/Discord** — Notifications, workflow triggers, bot commands
+  - **Analytics** — Custom dashboards for PMs, business metrics tracking
+  - **Compliance** — SOC2, GDPR workflow automation for legal teams
+- **Multi-Tenancy Enhancements** — Per-tenant quotas, billing integration, usage analytics
+- **Observability Improvements** — Distributed tracing, advanced incident analysis, anomaly detection
+- **Developer Experience** — Plugin scaffolding CLI, debugging tools, local dev improvements
+
+**Deliverables:**
+- 🎯 Plugin marketplace with 10+ official plugins
+- 🎯 Multi-tenant SaaS-ready infrastructure
+- 🎯 Enhanced observability and monitoring
+
+---
+
+### Long-Term (2027+) - Public Beta & Enterprise Adoption
+
+**Focus:** Production deployments, enterprise features, community growth, knowledge sharing
+
+- **Public Beta Launch** — Open registration, free tier, community support
+- **Enterprise Pilots** — Deploy in 3-5 companies for real-world validation
+  - Startups (3-10 person teams)
+  - Mid-size companies (50-200 person teams)
+  - Enterprise (500+ person teams)
+- **Enterprise Features**
+  - SSO/SAML authentication
+  - Audit logs and compliance reports
+  - Dedicated execution clusters
+  - Priority support and SLA
+- **Horizontal Scaling** — Multi-region deployments, geo-distributed workflows
+- **Community Growth** — OSS contributions, plugin ecosystem, case studies
+- **Business Automation Expansion** — Plugins beyond dev tools (finance, legal, HR, operations)
+- **Knowledge Wiki & Education** — Comprehensive learning platform
+  - Engineering culture best practices
+  - Platform engineering patterns
+  - Architecture decision records (ADRs)
+  - Real-world case studies and tutorials
+  - "Open the Closed" philosophy — democratizing knowledge and breaking vendor lock-in
+
+**Deliverables:**
+- 🚀 Public beta with 100+ registered teams
+- 🚀 5+ enterprise pilot deployments
+- 🚀 50+ community plugins in marketplace
+- 🚀 Proven ROI case studies
+- 🚀 Comprehensive knowledge wiki with engineering best practices
+
+---
+
+## Philosophy & Principles
+
+### Open the Closed
+
+**The Core Philosophy:** Return control to engineers. Break vendor lock-in. Share knowledge freely.
+
+KB Labs was born from frustration with modern development platforms that trap teams in architectural decisions made years ago. What starts as "we'll just use Postgres" becomes "we can't migrate without rewriting 50% of the codebase and spending $200K on consulting."
+
+**We believe:**
+
+- **Engineers should own their infrastructure choices** — Not be held hostage by platform decisions made 5 years ago
+- **Migration should be a config change** — Not a 6-month rewrite project
+- **Knowledge should be open** — Engineering culture, best practices, and platform patterns shouldn't be gatekept
+- **Flexibility shouldn't cost enterprise budgets** — Big Tech DX should be accessible to everyone
+
+**"Open the Closed"** means:
+
+1. **Breaking Vendor Lock-In** — Every infrastructure dependency is swappable. Redis today, Memcached tomorrow. No code changes.
+2. **Democratizing Knowledge** — Comprehensive wiki with engineering best practices, platform patterns, ADRs, case studies. Learn from real-world implementations.
+3. **Sharing Engineering Culture** — How to build platforms, make architectural decisions, grow teams. Not just tools, but the thinking behind them.
+4. **Giving Teams Real Choice** — Choose what works for your team and budget. Change your mind later without penalty.
+
+---
+
+### Design Principles
+
+**1. Interfaces Over Implementations**
+
+Every infrastructure dependency (cache, database, logger, metrics, LLM, vector store) is defined as an interface. Implementations are injected at runtime via config. This isn't just "good architecture" — it's **freedom from vendor lock-in**.
+
+```typescript
+// You control this choice via config, not code
+platform.cache → ICache → InMemoryCache | RedisCache | StateBrokerCache
+platform.database → IDatabase → PostgreSQL | SQLite | MySQL
+platform.llm → ILLMProvider → OpenAI | Anthropic | Local
+```
+
+**2. Separation of Concerns**
+
+- **Interfaces** (CLI, REST API, Webhooks) — How users interact
+- **Core Platform** (plugins, workflows, multi-tenancy) — Business logic
+- **Infrastructure Adapters** (cache, DB, logger) — What backends you use
+- **Execution Layer** (in-process, subprocess, worker pool, remote) — Where code runs
+
+Each layer is independent. Change one without touching others.
+
+**3. Progressive Complexity**
+
+Start simple, scale when needed. Don't force enterprise architecture on day one.
+
+- **Day 1:** Run on laptop with InMemory adapters ($0/month)
+- **Month 3:** Add Redis and PostgreSQL (~$100/month)
+- **Year 1:** Horizontal scaling, worker pools, dedicated clusters (~$1K+/month)
+
+Same codebase. Different configs. No rewrites.
+
+**4. Explicit Over Implicit**
+
+No magic. No hidden behavior. If a plugin needs cache access, it declares it in the manifest. If a workflow has dependencies, they're explicit in the DAG. Debugging should never feel like archaeology.
+
+**5. Platform Handles Infrastructure, You Handle Business Logic**
+
+Plugin authors shouldn't worry about resource management, metrics collection, logging, error handling, or scaling. The platform provides all infrastructure primitives out of the box:
+
+- **Automatic resource tracking** — CPU, memory, execution time monitored by platform
+- **Built-in observability** — Structured logging, metrics, distributed tracing provided automatically
+- **Error handling** — Graceful degradation, retry logic, circuit breakers handled by execution layer
+- **Scaling** — Platform manages execution (in-process → subprocess → worker pool → remote cluster)
+- **Multi-tenancy** — Quotas, rate limiting, tenant isolation handled by platform
+
+Plugin authors write pure business logic:
+
+```typescript
+// Plugin author writes THIS:
+export async function analyzeCode(input: { repo: string }) {
+  const files = await scanRepo(input.repo);
+  return { issues: analyzeForIssues(files) };
+}
+
+// Platform handles THIS automatically:
+// ✅ Logging (structured, with context)
+// ✅ Metrics (execution time, success/failure)
+// ✅ Resource tracking (CPU, memory)
+// ✅ Error handling (retries, circuit breakers)
+// ✅ Tenant isolation (quotas, rate limits)
+// ✅ Scaling (execute in-process, subprocess, or remote)
+```
+
+**Result:** Plugin marketplace can scale to hundreds of plugins without every author reinventing infrastructure wheels.
+
+**6. Security Through Isolation (Optional Sandbox Mode)**
+
+For security-conscious organizations (especially on-prem enterprise deployments), KB Labs supports **sandbox isolation** for plugin execution. Plugins can only access what's explicitly declared in their manifest.
+
+**Execution modes with different security/performance trade-offs:**
+
+- **InProcess** (dev) — No isolation, direct function calls, lowest latency (~1ms overhead)
+- **Subprocess** (production) — Process isolation, fault tolerance, medium latency (~10ms overhead)
+- **Sandbox** (high security) — Full sandboxing, strict permissions, higher latency (~50-100ms overhead)
+- **Remote** (enterprise) — Distributed execution clusters, horizontal scale
+
+**Manifest-based permissions:**
+
+```typescript
+// plugin.manifest.json
+{
+  "permissions": {
+    "cache": ["read", "write"],           // ✅ Allowed
+    "database": ["read"],                 // ✅ Read-only
+    "filesystem": false,                  // ❌ No FS access
+    "network": ["https://api.github.com"] // ✅ Only specific domains
+  }
+}
+```
+
+**Security guarantees in Sandbox mode:**
+- ✅ Plugin can only access declared resources
+- ✅ Network requests limited to whitelisted domains
+- ✅ Filesystem access blocked (unless explicitly granted)
+- ✅ CPU/memory limits enforced (prevents resource exhaustion)
+- ✅ Execution timeout enforced (prevents infinite loops)
+
+**Trade-off:** Higher latency (~50-100ms) vs maximum security. Choose your mode based on trust level:
+- **Dev/testing** → InProcess (fast iteration)
+- **Production (trusted plugins)** → Subprocess (fault isolation)
+- **Production (untrusted plugins)** → Sandbox (maximum security)
+- **Enterprise (scale)** → Remote (distributed clusters)
+
+---
+
+### Engineering Values
+
+**1. Developer Experience First**
+
+If a feature makes the codebase harder to understand, it doesn't ship. Clarity > cleverness. Simple > powerful. Debuggable > elegant.
+
+**2. Production-Ready by Default**
+
+Graceful degradation, proper error handling, structured logging, metrics collection. These aren't "nice to haves" — they're table stakes. Every feature should work in production on day one.
+
+**3. Honest About Trade-Offs**
+
+No silver bullets. Every architectural decision is a trade-off. We document them in ADRs (Architecture Decision Records), explain why we chose A over B, and what we're giving up.
+
+**4. Community Over Profit**
+
+KB Labs core will always be free and open source (MIT license). No bait-and-switch. No "Community Edition" vs "Enterprise Edition" feature splits. The core platform, plugin system, adapters, execution layer — all open source, forever.
+
+Enterprise tier adds **scale and support**, not **capabilities**:
+- ✅ Dedicated execution clusters (scale)
+- ✅ Priority support and SLA (support)
+- ✅ SSO/SAML authentication (enterprise requirements)
+- ❌ No exclusive features locked behind paywalls
+- ❌ No "upgrade to unlock this plugin" nonsense
+
+Knowledge is shared freely. Engineering culture, best practices, platform patterns — all public in the wiki.
+
+---
+
+### Trade-Offs We've Made
+
+**✅ What We Optimize For:**
+
+- **Flexibility** — Swap any infrastructure component without code changes
+- **Simplicity** — Clear interfaces, explicit dependencies, no magic
+- **Scalability Path** — Start small, grow without rewrites
+- **Developer Experience** — Fast iteration, clear errors, good debugging
+
+**❌ What We Don't Optimize For:**
+
+- **Performance at All Costs** — Adapters add a thin abstraction layer (~1-2% overhead). Worth it for flexibility.
+- **Feature Density** — We'd rather have 10 well-designed features than 50 half-baked ones.
+- **Enterprise-First** — We design for solo developers and small teams first. Enterprise features come later, not the other way around.
+- **Bleeding Edge** — Stable, boring tech over latest trends. TypeScript, Node.js, PostgreSQL, Redis. Proven, documented, well-understood.
+
+---
 
 ### Why This Matters
 
-KB Labs isn't just building AI tools—it's **built with** AI tools, and now **builds itself** using its own tools:
+**The Problem We're Solving:**
 
-1. **Dogfooding at scale**: KB Labs is its own first and most active user
-   - Commit plugin generates conventional commits for the platform itself
-   - Mind RAG searches the platform's own codebase for faster development
-   - DevKit tools maintain consistency across all 21 repositories
-   - Analytics tracks platform development metrics
+You chose Temporal 3 years ago because it solved your workflow problem. Now you're locked into Cassandra, paying $5K/month for infrastructure you don't need, and can't migrate to PostgreSQL without forking Temporal's codebase.
 
-2. **Self-improving ecosystem**: The platform has reached a stage where it accelerates its own development
-   - Less manual work, more automation with each iteration
-   - Tools built with the platform become tools that improve the platform
-   - Each new feature makes building the next feature faster
+You chose Backstage for your developer portal. Now you're rewriting plugins every time you want custom analytics because integrations are hard-coded.
 
-3. **Validation through use**: Every tool is battle-tested on real development workflows
-   - If it works for building KB Labs, it will work for building your projects
-   - Continuous feedback loop drives quality improvements
-   - Real-world usage metrics inform feature priorities
+You built an internal tool for your startup. Now you're a Series B company and that tool can't scale, but rewriting it will take 6 months.
 
-4. **Automation enables sustainability**: One developer maintaining 21+ repositories through AI assistance and self-sustaining automation
+**How KB Labs Fixes This:**
 
-**The flywheel effect**: As KB Labs matures, it becomes increasingly efficient at improving itself—demonstrating that self-sustaining engineering ecosystems are not just possible, but practical.
+- **Adapter-first architecture** — Change infrastructure without code changes
+- **Plugin system** — Extend capabilities without forking
+- **Execution flexibility** — Scale from laptop to enterprise cluster with config changes
+- **Knowledge sharing** — Learn from others' mistakes, ship faster
 
-> 💡 **Meta moment**: This entire README—including the documentation you're reading right now—was committed using KB Labs' own commit plugin. Every architectural decision, every code change, every documentation update goes through the same AI-powered workflow that the platform provides to users.
->
-> **We eat our own dog food, daily.** If a tool isn't good enough for building KB Labs itself, it's not good enough for release.
+**The Vision:**
 
-📊 **[View Detailed Metrics](./docs/BUDGET.md)** — Complete efficiency analysis and ROI breakdown
+A world where engineering teams own their infrastructure choices. Where migration is a config change, not a migration project. Where knowledge flows freely, and vendor lock-in is a thing of the past.
 
-## 📚 Documentation
-
-KB Labs maintains comprehensive documentation across all repositories:
-
-### Central Documentation
-
-- **[Documentation Index](./docs/README.md)** — Complete documentation navigation
-- **[Documentation Standard](./docs/DOCUMENTATION.md)** — Full documentation guidelines
-- **[Contributing Guide](./CONTRIBUTING.md)** — How to contribute
-- **[Products Overview](./docs/products/README.md)** — All KB Labs products with status and links
-- **[Ecosystem Status](./docs/ecosystem/STATUS.md)** — Status of all products
-- **[Glossary](./docs/glossary.md)** — Key terms and concepts
-- **[Strategic Roadmap](./docs/roadmap/README.md)** — Long-term roadmap (2025-2027)
-- **[Budget & ROI Tracking](./docs/BUDGET.md)** — AI tool investments and ROI metrics
-
-### Architecture Decisions
-
-All architectural decisions are documented in [docs/adr/](./docs/adr/) with 193+ ADRs covering:
-
-- **Architecture**: Repository layout, layering, stability policies
-- **Tooling**: Build conventions, DevKit integration, CI/CD
-- **Development**: Linking policies, automation strategies
-- **Products**: AI products, plugins, profiles, contracts
-- **Strategy**: Budget, ROI, ecosystem sustainability
-
-**Key ADRs:**
-
-- [ADR-0001: Architecture and Repository Layout](./docs/adr/0001-architecture-and-repository-layout.md)
-- [ADR-0002: Plugins and Extensibility](./docs/adr/0002-plugins-and-extensibility.md)
-- [ADR-0003: Package and Module Boundaries](./docs/adr/0003-package-and-module-boundaries.md)
-- [ADR-0004: Versioning and Release Policy](./docs/adr/0004-versioning-and-release-policy.md)
-- [ADR-0005: Layering & Stability Policy](./docs/adr/0005-layering-stability-policy.md)
-- [ADR-0006: Local Development Linking Policy](./docs/adr/0006-local-development-linking-policy.md)
-- [ADR-0007: AI Budget and ROI Tracking](./docs/adr/0007-ai-budget-roi-calculating.md)
-- [ADR-0008: AI Usage Optimization](./docs/adr/0008-ai-usage-optimization.md)
-- [ADR-0009: Self-Sustaining Engineering Ecosystem](./docs/adr/0009-self-sustaining-engineering-ecosystem.md)
-- [ADR-0010: One Package = One Responsibility](./docs/adr/0010-one-package-one-responsibility.md)
-- [ADR-0011: CLI and Directory Naming](./docs/adr/0011-cli-and-directory-naming.md)
-- [ADR-0012: PNPM Meta-Workspace Setup](./docs/adr/0012-meta-workspace.md)
-- [ADR-0013: Automation as a Survival Constraint](./docs/adr/0013-automation-survival-constraint.md)
-- [ADR-0014: Core Profiles and CLI Integration](./docs/adr/0014-core-profiles-cli-integration.md)
-- [ADR-0015: KB Labs DevLink Integration](./docs/adr/0015-devlink-integration.md)
-- [ADR-0016: Layered Ecosystem Model](./docs/adr/0016-layered-ecosystem-model.md)
-
-📋 **[View All ADRs](./docs/adr/)** — Complete list of 193+ architecture decision records
-
-## 🔗 Ecosystem Dependencies
-
-### Dependency Graph
-
-```
-Core Platform Layer:
-  @kb-labs/core
-    └── @kb-labs/shared
-    └── @kb-labs/devkit
-  @kb-labs/cli
-    └── @kb-labs/core
-    └── @kb-labs/shared
-    └── @kb-labs/plugin
-  @kb-labs/knowledge
-    └── @kb-labs/core
-
-Orchestration Layer:
-  @kb-labs/workflow
-    └── @kb-labs/core
-    └── @kb-labs/plugin
-  @kb-labs/plugin
-    └── @kb-labs/core
-    └── @kb-labs/shared
-  @kb-labs/setup-engine
-    └── @kb-labs/core
-
-AI Products Layer:
-  @kb-labs/ai-review
-    └── @kb-labs/core
-    └── @kb-labs/plugin
-  @kb-labs/ai-docs
-    └── @kb-labs/core
-    └── @kb-labs/mind
-    └── @kb-labs/plugin
-  @kb-labs/ai-tests
-    └── @kb-labs/core
-    └── @kb-labs/mind
-    └── @kb-labs/plugin
-  @kb-labs/analytics
-    └── @kb-labs/core
-    └── @kb-labs/shared
-  @kb-labs/mind
-    └── @kb-labs/core
-    └── @kb-labs/shared
-
-Infrastructure Layer:
-  @kb-labs/rest-api
-    └── @kb-labs/core
-    └── @kb-labs/plugin
-  @kb-labs/studio
-    └── @kb-labs/ui
-    └── @kb-labs/rest-api
-  @kb-labs/devlink
-    └── @kb-labs/core
-  @kb-labs/release-manager
-    └── @kb-labs/core
-    └── @kb-labs/shared
-```
-
-📊 **[View Dependency Details](./docs/ecosystem/DEPENDENCIES.md)** — Complete dependency mapping
-
-## 📊 Ecosystem Health
-
-### Status Overview
-
-| Category | Total | MVP 1.0 | Planning | In Progress |
-|----------|-------|---------|----------|-------------|
-| Core Platform | 5 | 5 | 0 | 0 |
-| AI Products | 7 | 5 | 2 | 0 |
-| Orchestration | 3 | 3 | 0 | 0 |
-| Tools & Infrastructure | 6 | 6 | 0 | 0 |
-| Templates | 2 | 2 | 0 | 0 |
-| **Total** | **23** | **21** | **2** | **0** |
-
-### Health Metrics
-
-- **Documentation Coverage**: 100% (all products have README, CONTRIBUTING, docs/DOCUMENTATION.md)
-- **ADR Coverage**: 193+ ADRs across all projects
-- **Standard Compliance**: All projects follow KB Labs Documentation Standard
-- **Build Status**: All packages build successfully
-- **Test Coverage**: Comprehensive test coverage across all packages
-
-📈 **[View Ecosystem Health](./docs/ecosystem/HEALTH.md)** — Detailed health metrics and status
-
-## 🤝 Contributing
-
-> [!IMPORTANT]
-> **Early Development Phase**
->
-> KB Labs is currently in active development and **not accepting external contributions** at this time. The architecture is evolving rapidly with frequent breaking changes.
->
-> **When we're ready for contributions (2026-2027):**
-> - We'll announce on GitHub and social media
-> - Contribution guidelines will be finalized
-> - Stable APIs and architecture will be in place
->
-> **For now**, you're welcome to explore the codebase, study the architecture, and provide feedback through GitHub Issues.
-
-### Future Contribution Areas (Post-Public Release)
-
-Once the platform stabilizes, we'll welcome contributions in:
-
-- **Code**: Bug fixes, new features, performance improvements
-- **Documentation**: ADRs, guides, examples, API documentation
-- **Architecture**: Propose new ADRs, review existing decisions
-- **Testing**: Test coverage, integration tests, fixtures
-- **Tooling**: DevKit improvements, CI/CD enhancements
-- **Plugins**: Community-contributed plugins for the plugin marketplace
-
-**Contribution Standards** (when accepting PRs):
-- Follow DevKit presets and naming conventions
-- Maintain comprehensive documentation
-- Review relevant ADRs before architectural changes
-- Submit PRs with clear descriptions and tests
-
-📖 **[Read Contributing Guide](./CONTRIBUTING.md)** — Detailed guidelines (for future reference)
-
-## 📄 License
-
-**This repository** (kb-labs meta-workspace) is licensed under **MIT License** - see [LICENSE](./LICENSE) for details.
-
-### Dual Licensing Across Ecosystem
-
-KB Labs ecosystem uses a **dual-licensing approach** to balance community growth and business protection:
-
-- **MIT License** — Developer tools and libraries (DevKit, Shared, SDK, Templates, Audit)
-  - 6 repositories (29% of ecosystem)
-  - Freely usable, modifiable, distributable
-  - Encourages ecosystem growth and adoption
-
-- **KB Public License v1.1** — Core platform components (Mind, CLI, REST API, Workflow, etc.)
-  - 15 repositories (71% of ecosystem)
-  - Open source with restrictions on SaaS and competing products
-  - ✅ Use, modify, self-host freely
-  - ❌ No hosted services without permission
-  - ❌ No competing products
-
-**License Resources:**
-- [LICENSE-SUMMARY.md](./LICENSE-SUMMARY.md) — Complete licensing breakdown
-- [MIT License](./LICENSE-MIT) — Full MIT license text
-- [KB Public License v1.1](./LICENSE-KB-PUBLIC) — Full KB Public license text
-- [License Guide (English)](./LICENSE-GUIDE.en.md) — Detailed usage guide
-- [Руководство по лицензии (Русский)](./LICENSE-GUIDE.ru.md) — Детальное руководство
-
-**Commercial Licensing:**
-For commercial licensing inquiries: contact@kblabs.dev
+**Open the Closed.**
 
 ---
 
-**KB Labs** — *Building the future of AI-powered development*
+## Documentation
 
-*Last updated: December 2025*
+> **Note:** Comprehensive documentation wiki is planned for Q2 2026. Current documentation is in-repo, organized in `docs/` folder.
+
+### Available Now
+
+**Core Documentation:**
+- [Documentation Index](./docs/README.md) — Overview of all available documentation
+- [Glossary](./docs/glossary.md) — Platform terminology and concepts
+- [Architecture Decision Records (ADRs)](./docs/adr/) — Design decisions and rationale
+- [Product Documentation](./docs/products/) — Individual product guides
+- [Roadmap](./docs/roadmap/) — Platform development roadmap
+
+**Getting Started:**
+- [CLAUDE.md](./CLAUDE.md) — Developer onboarding, Mind RAG usage, DevKit tools
+- [CLI Reference](./CLI-REFERENCE.md) — Complete command reference for all CLI commands
+
+**For Developers:**
+- Package-specific READMEs in each monorepo (`kb-labs-*/packages/*/README.md`)
+- [Documentation Audit](./docs/DOCUMENTATION_AUDIT.md) — Current documentation coverage
+- [ADR Audit](./docs/ADR_AUDIT.md) — Architecture decision coverage
+
+### Coming in Q2 2026
+
+**Comprehensive Wiki:**
+- **Quick Start Guide** — Get KB Labs running in 5 minutes
+- **Architecture Deep Dive** — Layered design, adapters, execution layer, plugin system
+- **Adapter Development** — Build custom infrastructure adapters (ICache, IDatabase, ILogger, etc.)
+- **Plugin Development** — Build and publish plugins for the marketplace
+- **Deployment Guides** — Docker, Kubernetes, on-prem, cloud deployments
+- **API Reference** — Complete REST API documentation with examples
+- **Case Studies** — Real-world implementations and lessons learned
+
+**Engineering Best Practices:**
+- **Platform Engineering Patterns** — How to build internal developer platforms
+- **"Open the Closed" Philosophy** — Breaking vendor lock-in, democratizing knowledge
+- **Multi-Tenancy Design** — Quotas, isolation, rate limiting strategies
+- **Observability Strategies** — Metrics, logging, incident response
+- **Security & Sandboxing** — Manifest-based permissions, execution isolation
+
+**Community Resources:**
+- **Tutorials** — Step-by-step guides for common tasks
+- **Video Walkthroughs** — Platform overview, plugin development, deployment
+- **FAQ** — Common questions and troubleshooting
+- **Community Forum** — Ask questions, share knowledge, showcase plugins
+
+### Need Help?
+
+- **GitHub Issues:** [Report bugs or request features](https://github.com/kb-labs/kb-labs/issues)
+- **Discussions:** [Ask questions or share ideas](https://github.com/kb-labs/kb-labs/discussions)
+- **Email:** contact@kb-labs.dev (planned for public beta)
+
+---
+
+## Contributing
+
+**Current Status:** KB Labs is in **active development** and not yet open for external contributions.
+
+**Why contributions are paused:**
+- Core contracts are still evolving (interfaces may break between releases)
+- Architecture is stabilizing but not frozen
+- Test coverage and documentation are being built out
+- I want to ensure a smooth contributor experience before opening up
+
+**Future plans:**
+
+Once the platform reaches stability (Q2-Q3 2026), I'll gladly welcome contributions from anyone interested in:
+- Building new plugins for the marketplace
+- Improving core platform features
+- Writing documentation and tutorials
+- Adding infrastructure adapters (new cache backends, databases, LLM providers)
+- Fixing bugs and improving performance
+
+**Stay tuned:**
+- ⭐ Star the repo to get notified when contributions open
+- 📧 Email contact@kb-labs.dev (planned for public beta) if you want early access
+- 💬 Follow development progress in [GitHub Discussions](https://github.com/kb-labs/kb-labs/discussions)
+
+**Thank you for your interest!** Your future contributions will help make KB Labs better for everyone.
+
+---
+
+## License
+
+KB Labs uses **dual licensing** to balance ecosystem growth and business sustainability.
+
+### Dual-License Structure
+
+**71% KB Public License v1.1** — Core platform components
+- Core runtime, CLI, REST API
+- Mind RAG, Knowledge, Playbooks
+- Plugin system, Adapters, Workflow engine
+- Studio UI, Analytics, Release Manager
+
+**29% MIT License** — Generic reusable libraries
+- DevKit (18 monorepo tools)
+- Plugin SDK and templates
+- Shared utilities
+
+### KB Public License v1.1
+
+**In simple terms:**
+
+✅ **You CAN (free):**
+- Use KB Labs **internally** in your company (any size, unlimited employees)
+- Self-host on your infrastructure
+- Modify, create plugins, build features
+- Work on client projects using KB Labs
+- Contribute to open source
+
+❌ **You CANNOT (without commercial license):**
+- Offer KB Labs as a **hosted service** (SaaS/PaaS) to other companies
+- Create a **competing platform** product
+- White-label and resell KB Labs
+
+**Key principle:** If KB Labs runs for **your team's benefit** → it's free to use. If you're selling KB Labs **as a service to others** → you need a commercial license.
+
+### MIT License
+
+DevKit, SDK, templates, and shared utilities are **MIT licensed** — fully permissive, use however you want.
+
+### Full License Texts
+
+- **KB Public License v1.1**: [LICENSE-KB-PUBLIC](LICENSE-KB-PUBLIC)
+  - **User Guide (English)**: [LICENSE-GUIDE.en.md](LICENSE-GUIDE.en.md)
+  - **Руководство (Русский)**: [LICENSE-GUIDE.ru.md](LICENSE-GUIDE.ru.md)
+- **MIT License**: [LICENSE-MIT](LICENSE-MIT)
+- **Licensing Summary**: [LICENSE-SUMMARY.md](LICENSE-SUMMARY.md)
+
+### Commercial Licensing
+
+Need to offer KB Labs as a hosted service or build a competing product? Contact **contact@kblabs.dev** for commercial licensing options.
+
+---
+
+## Contact
+
+**Kirill Baranov** — Development Lead / Platform Architect
+
+- **GitHub:** [@KirillBaranov](https://github.com/KirillBaranov)
+- **LinkedIn:** [Kirill Baranov](https://www.linkedin.com/in/k-baranov/)
+- **Engineering Blog:** [Real-time KB Labs development](https://t.me/kirill_baranov_official) (Russian)
+- **Email:** kirillBaranovJob@yandex.ru
+- **Telegram:** [@kirill_baranov](https://t.me/kirill_baranov)
+
+💡 **Why follow?** Get behind-the-scenes insights on building an adapter-first IDP, architectural decisions, and lessons learned from managing 90+ packages across 18 repos.
+
+For project inquiries or collaboration opportunities, feel free to reach out.
