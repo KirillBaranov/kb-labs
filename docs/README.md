@@ -7,10 +7,13 @@ This directory contains comprehensive documentation for the KB Labs ecosystem. U
 
 ## 📚 Core Documentation
 
+### Architecture & Design
+- **[Architecture Deep Dive](./ARCHITECTURE.md)** - Complete architectural breakdown with diagrams and implementation details
+- **[Architecture Decisions](./adr/)** - Architecture Decision Records (ADRs) documenting key decisions
+
 ### Standards & Guidelines
 - **[Documentation Standard](./DOCUMENTATION.md)** - Complete documentation guidelines and standards for all KB Labs projects
 - **[Contributing Guide](../CONTRIBUTING.md)** - How to contribute to KB Labs projects
-- **[Architecture Decisions](./adr/)** - Architecture Decision Records (ADRs) documenting key decisions
 
 ### Project Information
 - **[Products Overview](./products/README.md)** - All KB Labs products with status and documentation links
