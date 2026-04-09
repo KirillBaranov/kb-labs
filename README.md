@@ -1,218 +1,190 @@
 # KB Labs
 
-> OSS platform for building company automations where teams write business logic, and the platform handles infrastructure, observability, and cost control.
+**Open-source platform for dev and release automation.** Write business logic as plugins. The platform handles execution, observability, infrastructure, and cost control.
 
-**Status:** Active development (private beta)  
-**Deployment:** On-prem now, managed SaaS planned  
-**Focus today:** Engineering automations (commits, releases, quality checks, internal agents)  
-**Core principle:** No vendor lock-in via adapter-first infrastructure
+[![GitHub Discussions](https://img.shields.io/badge/Discussions-Join-green)](https://github.com/KirillBaranov/kb-labs/discussions)
+[![Issues](https://img.shields.io/badge/Issues-Open-blue)](https://github.com/KirillBaranov/kb-labs/issues)
+[![License](https://img.shields.io/badge/License-KB%20Public-orange)](./LICENSE-KB-PUBLIC)
+[![Email](https://img.shields.io/badge/Email-contact%40kblabs.dev-red)](mailto:contact@kblabs.dev)
 
-[![GitHub](https://img.shields.io/badge/GitHub-kb--labs-blue)](https://github.com/KirillBaranov/kb-labs)
-[![Discussions](https://img.shields.io/badge/Discussions-Ask%20Questions-green)](https://github.com/KirillBaranov/kb-labs/discussions)
-[![Contact](https://img.shields.io/badge/Email-contact%40kblabs.dev-red)](mailto:contact@kblabs.dev)
+---
 
-## What KB Labs Is
+## What is KB Labs
 
-KB Labs is a platform for internal automation in companies.
+KB Labs is an open-source platform for engineering teams who are tired of fragile automation stacks — shell scripts scattered across repos, CI YAML that nobody wants to touch, manual release steps that live in someone's head, and AI agents that run ungoverned on a laptop.
 
-You build automations as plugins. Plugin authors focus on business logic only. The platform provides:
+The idea is simple: **you write the business logic, the platform handles the rest.**
 
-- execution runtime
-- observability (logs, metrics, incidents)
-- analytics
-- permissions and isolation
-- infrastructure adapters (cache, DB, LLM, vector store, logger, metrics)
+```typescript
+// A release workflow. No infra code, no boilerplate.
+export const releaseWorkflow = defineWorkflow({
+  steps: [
+    runTests(),
+    runQAGate(),
+    aiReview({ mode: 'full' }),
+    requireApproval({ from: 'team-lead' }),
+    publish({ tag: 'latest' }),
+  ],
+});
+```
 
-Result: teams deliver automations faster and keep centralized control over reliability and cost.
+Platform provides: execution runtime, observability, analytics, permissions, and a unified adapter layer for every external dependency (LLM, cache, DB, vector store, event bus, etc.).
 
-## Who It Is For
-
-KB Labs is for teams that:
-
-- build many internal automations and want one platform instead of many scripts/services
-- need centralized visibility for automation health and spending
-- want to avoid vendor lock-in and keep infrastructure choices flexible
-- have platform/infra engineering maturity (or are building it)
-
-Not a fit if you need a fully production-ready, plug-and-play SaaS right now.
-
-## 30-Second Explanation
-
-Most automation stacks force teams to repeatedly solve infra problems: runtime, retries, logging, metrics, cost visibility, and migrations.
-
-KB Labs separates concerns:
-
-- plugin = business logic
-- platform = infra and operations
-
-So teams can ship automations faster, while platform owners keep control and can swap infrastructure without rewriting modules.
-
-## Why Teams Choose KB Labs
-
-- **Faster TTM:** less time on platform plumbing for each new automation
-- **Lower costs:** shared runtime and centralized governance instead of duplicated infra
-- **Centralized control:** one place for observability and analytics across automations
-- **Vendor freedom:** adapters let you switch infra backends via config, not rewrites
-- **Scalable model:** internal plugin ecosystem now, marketplace-ready model later
-
-## How It Works
-
-### 1. Build plugins
-Teams implement only domain logic for their automation.
-
-### 2. Run on shared platform runtime
-Platform handles execution modes, integration surface, and operational concerns.
-
-### 3. Observe and control centrally
-You get unified telemetry, incident visibility, and analytics for all automations.
-
-### 4. Swap infrastructure safely
-Infrastructure dependencies are abstracted by adapters.
+Switch infrastructure without touching your automation code:
 
 ```json
 {
-  "platform": {
-    "adapters": {
-      "cache": "@kb-labs/adapters-redis",
-      "db": "@kb-labs/adapters-postgres",
-      "vectorStore": "@kb-labs/adapters-qdrant",
-      "llm": "@kb-labs/adapters-openai"
-    }
+  "adapters": {
+    "llm": "@kb-labs/adapters-openai",
+    "cache": "@kb-labs/adapters-redis",
+    "db": "@kb-labs/adapters-sqlite"
   }
 }
 ```
 
-Change adapter config, keep business modules working.
+## What It Does Today
 
-## Current Real Use Cases
+KB Labs ships with a growing set of built-in plugins, adapters, and workflows. These are the things we already use internally every day:
 
-KB Labs is already used internally to automate:
+- **Commit plugin** — generates conventional commits using LLM, with secrets detection and two-phase analysis
+- **Release manager** — orchestrates multi-repo release cycles with changelogs, QA gates, and AI review
+- **QA plugin** — runs regression checks across 100+ packages, tracks trends, detects failures at commit time
+- **AI review** — pluggable code review gate with ESLint + LLM combined analysis
+- **Mind** — semantic code search and RAG across the entire codebase
+- **DevKit** — 18 tools for monorepo health: imports, exports, types, build order, dependency fixing
+- **Gateway** — unified adapter contracts for LLMs, databases, caches, vector stores, event buses, and more
 
-- commit generation
-- release workflows
-- quality control checks
-- internal agent workflows
-- monorepo health operations
+**~21 adapters available out of the box:** OpenAI, SQLite, MongoDB, Redis, Qdrant, Pino, Docker, filesystem, git, and more.
 
-These are the current dogfooding scenarios that drive the platform roadmap.
+## Current Status
 
-## What You Can Expect Today
+**Honest assessment:** KB Labs is in active development. It works end-to-end and we run it on real workloads, but it's not yet polished for broad external use. Setup takes effort. Documentation has gaps. Some APIs will change.
 
-### Working now
+If you're evaluating: this is the right time to explore, give feedback, and influence the direction — before things solidify.
 
-- adapter-first platform architecture
-- plugin-based automation model
-- DevKit tooling for monorepo operations
-- observability and monitoring foundation
-- internal workflow and automation tooling
+**Working now:**
+- Adapter-first platform architecture (zero-lock-in by design)
+- Plugin execution runtime with sandbox, permissions, audit
+- Workflow engine with dependency resolution and state management
+- CLI + REST API + Studio dashboard
+- Built-in plugins (commit, release, QA, AI review, Mind, DevKit)
+- DevLink — cross-repo dependency management
+- Multi-tenancy primitives (quotas, rate limiting, tenant isolation)
 
-### In progress
+**In progress:**
+- Better onboarding and quickstart experience
+- Broader test coverage and production hardening
+- Plugin marketplace and public registry
+- Managed SaaS (self-hosted is the primary path today)
 
-- production hardening and broader test coverage
-- smoother external onboarding and setup experience
-- expanded documentation and quick-start paths
-- plugin ecosystem expansion
+## Architecture Overview
 
-## What Makes KB Labs Different
+```
+CLI / REST API / Studio
+        ↓
+  Gateway (:4000)
+        ↓
+  Platform Core
+  ├── Workflow Engine
+  ├── Plugin Runtime (sandbox + permissions)
+  ├── Adapter Layer (LLM / DB / Cache / ...)
+  └── Observability (logs, metrics, incidents)
+```
 
-### Plugin-first, not script-first
-Automations are platform-native plugins, not disconnected scripts.
+Plugins are isolated units of business logic. The platform handles execution, lifecycle, and all infrastructure dependencies through registered adapters.
 
-### Platform-owned infrastructure
-Automation developers do not re-implement infra concerns every time.
-
-### Centralized observability and cost visibility
-Platform owners see health and economics of automations in one place.
-
-### Adapter-first by design
-Infrastructure choices are decoupled from business automation code.
-
-## Quick Product Map
-
-- **Core platform:** runtime, contracts, plugin system
-- **CLI + REST API:** interfaces for users and integrations
-- **Mind / AI tools:** semantic and automation-assist features
-- **DevKit:** monorepo and package operations
-- **Studio:** observability and platform visibility
-- **Release and quality modules:** automation for delivery workflows
-
-## Architecture
-
-High-level architecture and deep technical breakdown:
-
+Deeper reads:
 - [Architecture Deep Dive](./docs/ARCHITECTURE.md)
-
-Ecosystem references:
-
 - [Products Overview](./docs/products/README.md)
-- [Roadmap](./docs/roadmap/README.md)
-- [Ecosystem Status](./docs/ecosystem/STATUS.md)
-- [Ecosystem Health](./docs/ecosystem/HEALTH.md)
+- [ADR Index](./docs/adr/) — architecture decisions with full context
 
-## Screenshots and Demos
+## Getting Started
 
-Real screenshots and demo artifacts:
+> Full setup guide is coming. For now, here's the shape of it.
 
-- [Screenshots Index](./docs/screenshots/README.md)
+**Prerequisites:** Node.js ≥ 18.18, pnpm ≥ 9
 
-Includes:
+```bash
+# Install KB Labs globally
+npm install -g @kb-labs/cli
 
-- Studio dashboard views
-- commit automation output
-- infrastructure adapter swap demo
+# Initialize a new project
+kb init my-project
+cd my-project
 
-## Documentation
+# Start the dev environment (local services)
+kb-dev start
 
-Start here:
+# Run your first workflow
+kb workflow:run --workflow-id=example
+```
 
-- [Documentation Index](./docs/README.md)
-- [CLI Reference](./docs/CLI-REFERENCE.md)
-- [ADR Index](./docs/adr/)
+Plugin development quickstart and full CLI reference: [CLI-REFERENCE.md](./docs/CLI-REFERENCE.md)
 
 ## Contributing
 
-KB Labs is in active development and external contributions are temporarily paused while contracts and architecture continue to stabilize.
+KB Labs is open-source and we want your involvement — even right now, before the project is "ready."
 
-You can still:
+**Things you can do today:**
 
-- explore the codebase
-- open issues and feedback
-- follow progress in discussions
+- **Open an issue** — bugs, confusing design decisions, missing docs, feature requests. We read everything.
+- **Start a discussion** — questions about architecture, ideas, use cases. [GitHub Discussions](https://github.com/KirillBaranov/kb-labs/discussions)
+- **Build an adapter** — the adapter interface is stable. If you need Kafka, RabbitMQ, NATS, DynamoDB, or anything else, you can build it today. We'll help.
+- **Build a plugin** — plugins are TypeScript packages with a declared manifest. If you have an automation use case, it belongs here.
+- **Review ADRs** — architectural decisions are documented. Disagree with something? Open a discussion.
+- **Improve docs** — if something is unclear, a PR with clarification is always welcome.
 
-Details:
+For code contributions (new features, core changes): the architecture is still evolving, so please open an issue first before investing significant time. We want to make sure the direction is aligned.
 
-- [Contributing Guide](./CONTRIBUTING.md)
-- [GitHub Discussions](https://github.com/KirillBaranov/kb-labs/discussions)
+Full guide: [CONTRIBUTING.md](./CONTRIBUTING.md)
+
+## Project Structure
+
+KB Labs is a multi-repo monorepo. Here's what lives where:
+
+```
+platform/   — core (runtime, CLI, workflow engine, REST API, Studio, SDK, marketplace)
+plugins/    — built-in plugins (agents, mind, devlink, commit, ai-review, QA, ...)
+infra/      — infrastructure (plugin system, adapters, gateway, devkit)
+templates/  — starter templates for plugins and products
+installer/  — Go-based CLI launcher (kb-create)
+```
+
+Most code you'd want to explore lives in `platform/` and `plugins/`.
+
+## Roadmap
+
+KB Labs is building toward a public launch in mid-2026. High-level priorities:
+
+1. **Stabilize core APIs** — plugin contracts, adapter interfaces, workflow schema
+2. **Public onboarding** — quickstart, templates, example projects
+3. **Plugin marketplace** — public registry for discovering and installing plugins/adapters
+4. **Managed SaaS** — hosted option for teams who don't want to self-host
+5. **Enterprise features** — SSO, audit logs, RBAC, compliance
+
+Full roadmap: [docs/roadmap/README.md](./docs/roadmap/README.md)
 
 ## License
 
-KB Labs uses dual licensing.
+KB Labs uses dual licensing:
 
-In short:
+- **Core platform** → [KB Public License](./LICENSE-KB-PUBLIC) — use freely, including internal company deployments. Hosting KB Labs as a competing commercial service requires a separate license.
+- **Libraries and tooling** → [MIT](./LICENSE-MIT) — no restrictions.
 
-- Most core KB Labs components are under KB Public License.
-- Reusable libraries and tooling are under MIT.
-- Internal company use is allowed.
-- Offering KB Labs as a hosted competing service requires a commercial license.
+Quick read: [License Summary](./LICENSE-SUMMARY.md) | [License Guide EN](./LICENSE-GUIDE.en.md)
 
-- [KB Public License](./LICENSE-KB-PUBLIC)
-- [MIT License](./LICENSE-MIT)
-- [License Summary](./LICENSE-SUMMARY.md)
-- [License Guide (EN)](./LICENSE-GUIDE.en.md)
-- [License Guide (RU)](./LICENSE-GUIDE.ru.md)
+## Community
 
-## Contact
+- [GitHub Discussions](https://github.com/KirillBaranov/kb-labs/discussions) — questions, ideas, architecture discussions
+- [GitHub Issues](https://github.com/KirillBaranov/kb-labs/issues) — bugs, feature requests
+- Email: [contact@kblabs.dev](mailto:contact@kblabs.dev)
 
-**Kirill Baranov**
+## About
 
-- [GitHub](https://github.com/KirillBaranov)
+KB Labs is built by [Kirill Baranov](https://github.com/KirillBaranov) — a solo founder building the platform I always wanted as an engineer.
+
+The goal: give developers back control over their automation stack. One engine for the dev loop. No vendor lock-in. No platform tax every time you need a new automation. Open-source, self-hosted by default, honest about what it is.
+
 - [LinkedIn](https://www.linkedin.com/in/k-baranov/)
-- [Telegram channel (RU)](https://t.me/kirill_baranov_official)
-- [Telegram](https://t.me/kirill_baranov)
-- Email: kirillBaranovJob@yandex.ru
-
----
-
-If you evaluate KB Labs, the quickest mental model is:
-
-**"Platform for company automations: plugin business logic in, infrastructure/observability/cost control out."**
+- [Telegram (RU)](https://t.me/kirill_baranov_official)
+- [kblabs.dev](https://kblabs.dev)

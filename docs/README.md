@@ -1,67 +1,33 @@
 # KB Labs Documentation
 
-> **Welcome to KB Labs documentation**
-> **Last Updated:** 2026-01-12
+Navigate to what you need:
 
-This directory contains comprehensive documentation for the KB Labs ecosystem. Use this index to navigate to different sections.
+## Start Here
 
-## 📚 Core Documentation
+- [Main README](../README.md) — project overview, what it does, how to get started
+- [Contributing Guide](../CONTRIBUTING.md) — how to contribute (adapters, plugins, issues, docs)
+- [CLI Reference](../CLI-REFERENCE.md) — all available CLI commands
 
-### Architecture & Design
-- **[Architecture Deep Dive](./ARCHITECTURE.md)** - Complete architectural breakdown with diagrams and implementation details
-- **[Architecture Decisions](./adr/)** - Architecture Decision Records (ADRs) documenting key decisions
+## Architecture
 
-### Standards & Guidelines
-- **[Documentation Standard](./DOCUMENTATION.md)** - Complete documentation guidelines and standards for all KB Labs projects
-- **[Contributing Guide](../CONTRIBUTING.md)** - How to contribute to KB Labs projects
+- [Architecture Deep Dive](./ARCHITECTURE.md) — complete breakdown of the platform: runtime, plugin system, adapter layer, workflow engine
+- [Architecture Decisions](./adr/) — ADRs documenting key design choices and the reasoning behind them
+- [Glossary](./glossary.md) — terminology used across the project
 
-### Project Information
-- **[Products Overview](./products/README.md)** - All KB Labs products with status and documentation links
-- **[Strategic Roadmap](./roadmap/README.md)** - Long-term roadmap and strategic plans (2025-2027)
-- **[Budget & ROI Tracking](./BUDGET.md)** - AI tool investments and ROI metrics
-- **[Documentation Audit](./DOCUMENTATION_AUDIT.md)** - Status of documentation across all projects
-- **[ADR Audit](./ADR_AUDIT.md)** - Audit of Architecture Decision Records across ecosystem
+## Product Reference
 
-## 🏗️ Architecture & Design
+- [Products Overview](./products/README.md) — all KB Labs products with status and links
+- [Roadmap](./roadmap/README.md) — where the project is going (2025–2027)
+- [Ecosystem Status](./ecosystem/STATUS.md) — current state of all packages and repos
+- [Ecosystem Health](./ecosystem/HEALTH.md) — health metrics across the monorepo
 
-- **[Architecture Decisions](./adr/)** - ADRs documenting architectural decisions
-  - See individual ADR files for detailed decisions
-  - [ADR Template](./templates/ADR.template.md) - Template for creating new ADRs
+## For Contributors
 
-## 📦 Products
+- [ADR Template](./templates/ADR.template.md) — how to document architectural decisions
+- [Documentation Standard](./DOCUMENTATION.md) — documentation guidelines for KB Labs projects
 
-- **[Products Overview](./products/README.md)** - Quick reference table of all products
-- Individual product pages in `./products/` directory
+## Screenshots & Demos
 
-## 📅 Planning & Roadmap
+Real screenshots from the running platform:
 
-- **[Roadmap Overview](./roadmap/README.md)** - Strategic roadmap for 2025-2027
-- **[2025 Overview](./roadmap/2025/YEAR-OVERVIEW.md)** - Foundation & Migration phase
-- **[2026 Overview](./roadmap/2026/YEAR-OVERVIEW.md)** - Product Expansion phase
-- **[2027 Overview](./roadmap/2027/YEAR-OVERVIEW.md)** - Public Expansion phase
-
-## 📋 Templates
-
-Documentation templates for creating new documents:
-
-- **[ADR Template](./templates/ADR.template.md)** - Template for Architecture Decision Records
-- **[README Template](./templates/README.template.md)** - Template for README.md files
-- **[CONTRIBUTING Template](./templates/CONTRIBUTING.template.md)** - Template for CONTRIBUTING.md files
-- **[DOCUMENTATION Template](./templates/DOCUMENTATION.template.md)** - Template for project-specific documentation standards
-
-## 🔗 Quick Links
-
-### Main Entry Points
-- [Main README](../README.md) - Project overview and quick start
-- [Contributing Guide](../CONTRIBUTING.md) - Contribution guidelines
-
-### Key Documents
-- [Documentation Standard](./DOCUMENTATION.md) - Complete standards reference
-- [Budget & ROI](./BUDGET.md) - AI tool investments
-- [Products](./products/README.md) - All products overview
-
----
-
-*For questions or suggestions about documentation, please open an issue or see the [Contributing Guide](../CONTRIBUTING.md).*
-
-
+- [Screenshots Index](./screenshots/README.md) — Studio dashboard, commit automation, adapter swap demo

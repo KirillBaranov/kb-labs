@@ -1,178 +1,149 @@
-# Contributing Guide
+# Contributing to KB Labs
 
-> [!IMPORTANT]
-> **🚧 Early Development Phase — Not Accepting Contributions**
->
-> KB Labs is currently in **active development** and **not accepting external contributions** at this time. The architecture is evolving rapidly with frequent breaking changes, incomplete features, and experimental designs.
->
-> **When we're ready for contributions (2026-2027):**
-> - We'll announce on GitHub and social media
-> - Contribution guidelines will be finalized
-> - Stable APIs and architecture will be in place
->
-> **For now**, you're welcome to:
-> - ✅ Explore the codebase and study the architecture
-> - ✅ Provide feedback through GitHub Issues
-> - ✅ Prepare for future contributions by understanding our standards
->
-> This guide is maintained for **future reference** and to document our development standards for when we're ready to accept contributions.
+KB Labs is an open-source project and we're actively looking for people to explore it, break it, question it, and eventually build on top of it.
+
+**We're in active development.** Some things are stable, some things are still moving. This guide explains what you can do right now and what to expect.
 
 ---
 
-Thanks for your interest in **KB Labs**! This guide documents our development standards and will serve as the contribution guide when we open the project to external contributors.
+## How to Contribute (Right Now)
 
-## 🚀 Development Setup
+### Report Issues
+
+If something breaks, behaves unexpectedly, or doesn't make sense — open an issue. We read every one.
+
+Good issue = clear description + steps to reproduce + what you expected vs what happened.
+
+[Open an issue →](https://github.com/KirillBaranov/kb-labs/issues)
+
+### Start a Discussion
+
+Architecture questions, use case feedback, "why did you design it this way", ideas for features, things you'd do differently — all of this belongs in Discussions.
+
+[GitHub Discussions →](https://github.com/KirillBaranov/kb-labs/discussions)
+
+### Build an Adapter
+
+The adapter interface is stable and this is the most impactful thing you can do right now if you have a specific infrastructure need.
+
+KB Labs ships with ~21 adapters (OpenAI, SQLite, MongoDB, Redis, Qdrant, Pino, Docker, etc.). But the adapter contract is open, and you can implement any backend you need.
+
+Common requests: Kafka, RabbitMQ, NATS, DynamoDB, Postgres, Pinecone, Anthropic, Vertex AI.
+
+Adapter interface lives in `@kb-labs/core-contracts`. Look at any existing adapter in `infra/kb-labs-adapters/` for a working reference.
+
+**Process:** Open an issue describing what you're building → we'll confirm the interface is the right one → build and submit PR.
+
+### Build a Plugin
+
+Plugins are TypeScript packages with a declared manifest. If you have an automation use case (code quality, deployment, notifications, data sync, anything), it probably belongs as a plugin.
+
+Reference structure: `plugins/kb-labs-commit-plugin/` — clean three-package layout (contracts, core, cli).
+
+**Process:** Open an issue with a short description of what the plugin does → discuss scope → build.
+
+### Improve Documentation
+
+If you read a doc and came away confused, a PR with clarification is immediately useful. No need to ask first.
+
+### Review Architecture Decisions
+
+ADRs are in [docs/adr/](./docs/adr/). If you disagree with a decision or see a case we didn't consider, open a discussion. Architecture is still evolving and outside perspective is valuable.
+
+---
+
+## Code Contributions (Features & Core Changes)
+
+The architecture is still stabilizing in some areas. Before investing significant time in a feature or refactor, **open an issue first** to align on scope and approach.
+
+What we're currently careful about:
+- Plugin contracts and adapter interfaces (stable, but we want to keep them clean)
+- Workflow engine internals (in active development)
+- CLI command structure (evolving)
+
+What's relatively safe to touch:
+- Adapters
+- Individual plugins
+- Documentation
+- Tests
+- DevKit tooling
+
+---
+
+## Development Setup
 
 ### Prerequisites
-- Node.js ≥ 18.18.0
-- pnpm ≥ 9.0.0
 
-### Initial Setup
+- Node.js ≥ 18.18
+- pnpm ≥ 9
+
+### Setup
+
 ```bash
-# Clone the repository
-git clone <repository-url>
+git clone https://github.com/KirillBaranov/kb-labs.git
 cd kb-labs
-
-# Install dependencies
 pnpm install
-
-# Start development mode
-pnpm dev
+pnpm build
 ```
 
-### Available Scripts
+### Common Commands
+
 ```bash
-# Development
-pnpm dev              # Start all packages in development mode
 pnpm build            # Build all packages
-pnpm build:clean      # Clean and build all packages
-
-# Quality Assurance
-pnpm lint             # Run ESLint on all packages
-pnpm lint:fix         # Fix ESLint issues automatically
-pnpm test             # Run all tests
-pnpm test:watch       # Run tests in watch mode
+pnpm lint             # ESLint across all packages
 pnpm type-check       # TypeScript type checking
-pnpm check            # Run lint + type-check + tests
-
-# Cleanup
-pnpm clean            # Clean build artifacts
-pnpm clean:all        # Clean all node_modules and build artifacts
+pnpm test             # Run tests
+pnpm check            # lint + type-check + test
 ```
 
-## 📋 Development Guidelines
+### After Building a Plugin
 
-### Code Style
-- Follow ESLint + Prettier rules configured in the project
-- Run `pnpm lint` before committing
-- Use TypeScript for all new code
-- Follow the established naming conventions
+If you build or modify a CLI plugin, always clear the cache:
 
-### Testing
-- Write tests for all new functionality using Vitest
-- Maintain test coverage for critical paths
-- Use descriptive test names and organize tests logically
-- Run `pnpm test` to ensure all tests pass
+```bash
+pnpm kb marketplace clear-cache
+```
 
-### Commit Messages
+---
+
+## Commit Messages
+
 Use conventional commit format:
+
 ```
-feat: add new feature
-fix: resolve bug in component
-docs: update documentation
-refactor: restructure code without changing behavior
-test: add or update tests
-chore: maintenance tasks
+feat: add Kafka adapter
+fix: resolve timeout in workflow executor
+docs: clarify adapter interface
+refactor: extract retry logic to shared utility
+test: add coverage for budget middleware
+chore: bump pnpm to 9.5
 ```
-
-### Package Boundaries
-Follow the architecture defined in [ADR-0003](./docs/adr/0003-package-and-module-boundaries.md):
-- Each package must have clear public API in `index.ts`
-- Use workspace aliases (`@kb-labs/<pkg>`) for cross-package imports
-- Keep core logic in `@kb-labs/core`, product-specific code in `@kb-labs/<product>`
-
-### Plugin Development
-When extending functionality, follow [ADR-0002](./docs/adr/0002-plugins-and-extensibility.md):
-- Create isolated, composable plugins
-- Use TypeScript types and Zod schemas from `@kb-labs/core`
-- Register plugins via central registry or configuration
-
-## 🏗️ Architecture Decisions
-
-Before making significant changes, review relevant ADRs:
-
-- **[ADR-0001: Architecture and Repository Layout](./docs/adr/0001-architecture-and-repository-layout.md)** — Repository structure and organization
-- **[ADR-0002: Plugins and Extensibility](./docs/adr/0002-plugins-and-extensibility.md)** — Plugin system design
-- **[ADR-0003: Package and Module Boundaries](./docs/adr/0003-package-and-module-boundaries.md)** — Package dependencies and boundaries
-- **[ADR-0004: Versioning and Release Policy](./docs/adr/0004-versioning-and-release-policy.md)** — Versioning strategy
-- **[ADR-0005: Layering & Stability Policy](./docs/adr/0005-layering-stability-policy.md)** — API stability and layering
-- **[ADR-0006: Local Development Linking Policy](./docs/adr/0006-local-development-linking-policy.md)** — Development workflow
-
-### Creating New ADRs
-
-For architectural changes:
-
-1. Create a new ADR file in `docs/adr/` following the template in `docs/adr/0000-template.md`
-2. Include required metadata:
-   - **Date**: When the decision was made
-   - **Status**: Proposed | Accepted | Deprecated | Superseded
-   - **Deciders**: Decision makers
-   - **Last Reviewed**: Date of last review (required)
-   - **Reviewers**: Optional list of reviewers
-   - **Tags**: 1-5 tags from approved list (required)
-3. Include context, decision rationale, and consequences
-4. See [Documentation Standard](./docs/DOCUMENTATION.md) for complete ADR format requirements
-5. Get team review before implementation
 
 ---
 
-**See [Documentation Standard](./docs/DOCUMENTATION.md) for complete documentation guidelines.**
+## Pull Request Guidelines
 
-## 🔄 Pull Request Process
-
-### Before Submitting
-1. **Fork** the repository and create a feature branch
-2. **Make your changes** following the guidelines above
-3. **Run quality checks**: `pnpm check`
-4. **Update documentation** if needed
-5. **Add tests** for new functionality
-
-### PR Requirements
-- Clear, descriptive title and description
-- Reference any related issues
-- Include screenshots for UI changes
-- Ensure all CI checks pass
-- Request review from maintainers
-
-### Review Process
-- All PRs require at least one review
-- Address feedback promptly
-- Keep PRs focused and reasonably sized
-- Update branch if conflicts arise
-
-## 🐛 Bug Reports
-
-When reporting bugs, include:
-- Clear description of the issue
-- Steps to reproduce
-- Expected vs actual behavior
-- Environment details (OS, Node.js version, etc.)
-- Relevant logs or error messages
-
-## 💡 Feature Requests
-
-For new features:
-- Check existing issues and ADRs first
-- Provide clear use case and motivation
-- Consider impact on existing architecture
-- Discuss with maintainers before implementation
-
-## 📞 Getting Help
-
-- Check existing [issues](https://github.com/kirill-baranov/kb-labs/issues)
-- Review ADRs for architectural guidance
-- Ask questions in discussions or issues
+- Open an issue first for anything non-trivial
+- Keep PRs focused — one thing per PR
+- Include what you changed and why in the description
+- Add tests for new functionality where applicable
+- Make sure `pnpm check` passes before submitting
 
 ---
 
-Thank you for contributing to KB Labs! 🎉
+## Architecture
+
+Before making significant changes, read the relevant ADRs:
+
+- [ADR-0001: Architecture and Repository Layout](./docs/adr/0001-architecture-and-repository-layout.md)
+- [ADR-0002: Plugins and Extensibility](./docs/adr/0002-plugins-and-extensibility.md)
+- [ADR-0003: Package and Module Boundaries](./docs/adr/0003-package-and-module-boundaries.md)
+- [ADR-0005: Layering & Stability Policy](./docs/adr/0005-layering-stability-policy.md)
+
+---
+
+## Questions?
+
+Open a [GitHub Discussion](https://github.com/KirillBaranov/kb-labs/discussions) or email [contact@kblabs.dev](mailto:contact@kblabs.dev).
+
+The project is built by one person right now. Response times may vary, but everything gets read.
