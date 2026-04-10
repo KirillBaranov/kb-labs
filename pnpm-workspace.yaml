@@ -9,3 +9,4 @@ packages:
   - studio/*
   - sites/*
   - templates/*
+  - templates/*/packages/*

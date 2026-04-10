@@ -1,11 +1,4 @@
 import { defineConfig } from 'tsup';
+import nodePreset from '@kb-labs/devkit/tsup/node.js';
 
-export default defineConfig({
-  entry: ['src/index.ts', 'src/manifest.ts'],
-  format: ['esm'],
-  dts: true,
-  sourcemap: true,
-  clean: true,
-  target: 'es2022',
-  external: [/^@kb-labs\/.*/],
-});
+export default defineConfig({ ...nodePreset });

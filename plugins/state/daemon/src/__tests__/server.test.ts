@@ -14,7 +14,7 @@ import { StateDaemonServer } from '../server.js';
 
 describe('StateDaemonServer', () => {
   let server: StateDaemonServer;
-  const port = 9876;
+  const port = 9877;
   const baseURL = `http://localhost:${port}`;
 
   beforeAll(async () => {

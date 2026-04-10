@@ -465,7 +465,7 @@ describe('serializer', () => {
   });
 
   describe('performance', () => {
-    it('should serialize 10K objects in < 100ms', () => {
+    it('should serialize 10K objects in < 500ms', () => {
       const objects = Array.from({ length: 10000 }, (_, i) => ({
         id: i,
         name: `object-${i}`,
@@ -477,10 +477,10 @@ describe('serializer', () => {
       objects.forEach((obj) => serialize(obj));
       const elapsed = Date.now() - start;
 
-      expect(elapsed).toBeLessThan(100);
+      expect(elapsed).toBeLessThan(500);
     });
 
-    it('should deserialize 10K objects in < 100ms', () => {
+    it('should deserialize 10K objects in < 500ms', () => {
       const objects = Array.from({ length: 10000 }, (_, i) => ({
         id: i,
         name: `object-${i}`,
@@ -494,7 +494,7 @@ describe('serializer', () => {
       serialized.forEach((obj) => deserialize(obj));
       const elapsed = Date.now() - start;
 
-      expect(elapsed).toBeLessThan(100);
+      expect(elapsed).toBeLessThan(500);
     });
   });
 

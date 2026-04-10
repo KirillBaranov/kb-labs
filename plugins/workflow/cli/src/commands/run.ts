@@ -70,9 +70,8 @@ export default defineCommand<unknown, RunInput, { exitCode: number }>({
           // Poll job status until completion
           let maxAttempts = 60; // 60 * 2s = 2 minutes max
           // IMPORTANT: This is a polling loop, must run sequentially
-          /* eslint-disable no-await-in-loop, no-promise-executor-return */
           while (maxAttempts > 0) {
-            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2s
+            await new Promise<void>(resolve => { setTimeout(resolve, 2000); }); // Wait 2s
 
             const status = await client.getJobStatus(result.id);
 
@@ -92,7 +91,6 @@ export default defineCommand<unknown, RunInput, { exitCode: number }>({
 
             maxAttempts--;
           }
-          /* eslint-enable no-await-in-loop, no-promise-executor-return */
 
           if (maxAttempts === 0) {
             waitLoader.fail('Timeout waiting for job completion');

@@ -58,22 +58,35 @@ func readInternalDeps(dir string, nameToDir map[string]string) []string {
 		return nil
 	}
 	var pkg struct {
-		Dependencies    map[string]string `json:"dependencies"`
-		DevDependencies map[string]string `json:"devDependencies"`
+		Dependencies     map[string]string `json:"dependencies"`
+		DevDependencies  map[string]string `json:"devDependencies"`
+		PeerDependencies map[string]string `json:"peerDependencies"`
 	}
 	if err := json.Unmarshal(data, &pkg); err != nil {
 		return nil
 	}
 
+	seen := make(map[string]struct{})
 	var result []string
 	for name := range pkg.Dependencies {
 		if target, ok := nameToDir[name]; ok {
+			seen[target] = struct{}{}
 			result = append(result, target)
 		}
 	}
 	for name := range pkg.DevDependencies {
 		if target, ok := nameToDir[name]; ok {
-			result = append(result, target)
+			if _, dup := seen[target]; !dup {
+				seen[target] = struct{}{}
+				result = append(result, target)
+			}
+		}
+	}
+	for name := range pkg.PeerDependencies {
+		if target, ok := nameToDir[name]; ok {
+			if _, dup := seen[target]; !dup {
+				result = append(result, target)
+			}
 		}
 	}
 	return result

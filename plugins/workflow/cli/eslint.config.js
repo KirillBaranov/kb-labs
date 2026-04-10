@@ -11,7 +11,7 @@
  *
  * @see https://github.com/kb-labs/devkit#eslint-configuration
  */
-import nodePreset from '@kb-labs/devkit/eslint/react.js';
+import nodePreset from '@kb-labs/devkit/eslint/node.js';
 
 export default [
   ...nodePreset,

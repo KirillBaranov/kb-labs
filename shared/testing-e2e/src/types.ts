@@ -6,7 +6,7 @@
  */
 
 /**
- * Known service IDs defined in `.kb/dev.config.json`.
+ * Known service IDs defined in `.kb/devservices.yaml`.
  * Tests should reference services by ID; the controller resolves the URL.
  */
 export type ServiceId =
@@ -84,7 +84,7 @@ export interface KbDevResult {
 
 /** Options for booting a KbDevController. */
 export interface KbDevControllerOptions {
-  /** Absolute path to the project root (directory containing `.kb/dev.config.json`). */
+  /** Absolute path to the project root (directory containing `.kb/devservices.yaml`). */
   projectRoot?: string;
   /** Absolute path to the kb-dev binary. Defaults to `<projectRoot>/scripts/kb-dev`. */
   kbDevBin?: string;

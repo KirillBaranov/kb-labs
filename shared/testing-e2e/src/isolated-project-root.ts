@@ -14,7 +14,7 @@ import { join, resolve } from 'node:path';
 export interface IsolatedProjectRoot {
   /** Absolute path to the temp project root. */
   root: string;
-  /** Absolute path to `<root>/.kb/dev.config.json`. */
+  /** Absolute path to `<root>/.kb/devservices.yaml`. */
   devConfigPath: string;
   /** Delete the temp dir. Safe to call multiple times. */
   cleanup(): Promise<void>;
@@ -22,7 +22,7 @@ export interface IsolatedProjectRoot {
 
 export interface IsolatedProjectRootOptions {
   /**
-   * If given, copies the dev.config.json from this existing workspace root.
+   * If given, copies the devservices.yaml from this existing workspace root.
    * If omitted, a minimal config with only `state-daemon` is written.
    */
   copyDevConfigFrom?: string;
@@ -30,36 +30,31 @@ export interface IsolatedProjectRootOptions {
   prefix?: string;
 }
 
-const MINIMAL_DEV_CONFIG = {
-  version: '1.0.0',
-  name: 'KB Labs E2E Isolated Root',
-  description: 'Temporary project root for e2e tests',
-  groups: {
-    infra: ['state-daemon'],
-  },
-  services: {
-    'state-daemon': {
-      name: 'State Daemon',
-      description: 'Distributed state management',
-      group: 'infra',
-      type: 'node',
-      command: 'node ./platform/kb-labs-core/packages/core-state-daemon/dist/bin.cjs',
-      healthCheck: 'http://localhost:7777/health',
-      port: 7777,
-      url: 'http://localhost:7777',
-      env: {
-        KB_STATE_DAEMON_PORT: '7777',
-        KB_STATE_DAEMON_HOST: 'localhost',
-      },
-    },
-  },
-  settings: {
-    logsDir: '.kb/logs/tmp',
-    pidDir: '.kb/tmp',
-    startTimeout: 30000,
-    healthCheckInterval: 1000,
-  },
-};
+const MINIMAL_DEV_CONFIG = `name: KB Labs E2E Isolated Root
+
+groups:
+  infra: [state-daemon]
+
+services:
+  state-daemon:
+    name: State Daemon
+    description: Distributed state management
+    group: infra
+    type: node
+    command: node ./plugins/state/daemon/core-state-daemon/dist/bin.cjs
+    healthCheck: http://localhost:7777/health
+    port: 7777
+    url: http://localhost:7777
+    env:
+      KB_STATE_DAEMON_PORT: "7777"
+      KB_STATE_DAEMON_HOST: localhost
+
+settings:
+  logsDir: .kb/logs/tmp
+  pidDir: .kb/tmp
+  startTimeout: 30000
+  healthCheckInterval: 1000
+`;
 
 export async function createIsolatedProjectRoot(
   opts: IsolatedProjectRootOptions = {},
@@ -71,19 +66,18 @@ export async function createIsolatedProjectRoot(
   await mkdir(join(kbDir, 'tmp'), { recursive: true });
   await mkdir(join(kbDir, 'logs', 'tmp'), { recursive: true });
 
-  const devConfigPath = join(kbDir, 'dev.config.json');
+  const devConfigPath = join(kbDir, 'devservices.yaml');
 
   if (opts.copyDevConfigFrom) {
-    const source = resolve(opts.copyDevConfigFrom, '.kb/dev.config.json');
+    const source = resolve(opts.copyDevConfigFrom, '.kb/devservices.yaml');
     if (!existsSync(source)) {
-      throw new Error(`copyDevConfigFrom: no dev.config.json at ${source}`);
+      throw new Error(`copyDevConfigFrom: no devservices.yaml at ${source}`);
     }
-    // Parse and re-serialize to validate.
-    const raw = await readFile(source, 'utf8');
-    JSON.parse(raw);
+    // Read to validate it exists and is readable.
+    await readFile(source, 'utf8');
     await copyFile(source, devConfigPath);
   } else {
-    await writeFile(devConfigPath, JSON.stringify(MINIMAL_DEV_CONFIG, null, 2), 'utf8');
+    await writeFile(devConfigPath, MINIMAL_DEV_CONFIG, 'utf8');
   }
 
   let disposed = false;

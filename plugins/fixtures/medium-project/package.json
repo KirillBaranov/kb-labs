@@ -1,0 +1,23 @@
+{
+  "name": "@test/medium-project",
+  "version": "1.2.0",
+  "description": "Medium complexity test project for Mind fixtures",
+  "type": "module",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run --passWithNoTests",
+    "dev": "tsc --watch",
+    "lint": "eslint . --ignore-pattern 'dist/**'",
+    "lint:fix": "eslint . --fix --ignore-pattern 'dist/**'"
+  },
+  "dependencies": {
+    "lodash": "^4.17.21",
+    "typescript": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/lodash": "^4.14.0",
+    "vitest": "^1.0.0"
+  },
+  "private": true
+}

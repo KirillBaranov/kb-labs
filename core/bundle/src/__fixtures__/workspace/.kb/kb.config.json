@@ -1,0 +1,55 @@
+{
+  "platform": {
+    "adapters": {
+      "llm": "@kb-labs/adapters-openai",
+      "embeddings": "@kb-labs/adapters-openai/embeddings",
+      "storage": "@kb-labs/adapters-fs",
+      "logger": "@kb-labs/adapters-pino",
+      "analytics": "@kb-labs/adapters-analytics-file"
+    },
+    "adapterOptions": {
+      "llm": {
+        "defaultModel": "gpt-4o-mini"
+      }
+    },
+    "execution": {
+      "mode": "in-process"
+    }
+  },
+  "profiles": [
+    {
+      "id": "default",
+      "label": "Default Profile",
+      "products": {
+        "aiReview": {
+          "maxFiles": 25,
+          "debug": true,
+          "rules": ["custom-rules.yml"]
+        },
+        "release": {
+          "version": "1.0.0",
+          "prerelease": false
+        }
+      }
+    },
+    {
+      "id": "production",
+      "label": "Production Profile",
+      "products": {
+        "aiReview": {
+          "maxFiles": 100,
+          "debug": false
+        }
+      }
+    }
+  ],
+  "plugins": {
+    "commit": {
+      "enabled": true,
+      "llm": {
+        "enabled": true,
+        "temperature": 0.3
+      }
+    }
+  }
+}

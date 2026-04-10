@@ -23,7 +23,6 @@ interface StepRunRuntime extends StepRun {
 }
 
 function getPhaseStatuses(run: WorkflowRun): PhaseStatus[] {
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const model = usePipelineModel(run);
   return model.phases.map((phase) => {
     const allDone = phase.steps.every((s) => s.stepRun.status === 'success');

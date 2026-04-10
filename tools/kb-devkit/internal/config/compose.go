@@ -86,5 +86,13 @@ func mergeConfigs(base, child *DevkitConfig) *DevkitConfig {
 			out.Checks.Packages[k] = v
 		}
 	}
+	if len(child.Scaffolding.Templates) > 0 {
+		if out.Scaffolding.Templates == nil {
+			out.Scaffolding.Templates = map[string]ScaffoldTemplate{}
+		}
+		for k, v := range child.Scaffolding.Templates {
+			out.Scaffolding.Templates[k] = v
+		}
+	}
 	return &out
 }

@@ -92,11 +92,18 @@ func expandPattern(root, pattern string, maxDepth int) []string {
 	segments := strings.Split(pattern, "/")
 	candidates := expandSegments(root, segments)
 
+	isWildcard := strings.ContainsAny(pattern, "*?")
+
 	var result []string
 	for _, dir := range candidates {
 		if isRecursive {
 			// Recursive glob — only dirs with package.json are packages.
 			result = append(result, collectPackageDirs(dir, maxDepth)...)
+		} else if isWildcard {
+			// Wildcard pattern — only include dirs that have a package.json.
+			if hasPackageJSON(dir) {
+				result = append(result, dir)
+			}
 		} else {
 			// Literal path — the user explicitly named this directory.
 			// Accept it if it exists, regardless of package.json presence.

@@ -68,7 +68,7 @@ async function createFakePlugin(root: string, id: string, opts?: {
     };
   }
   if (opts?.widgets?.length) {
-    manifest.studio = { widgets: opts.widgets.map(w => ({ id: w.id, component: `./dist/${w.id}.js` })) };
+    manifest.studio = { pages: opts.widgets.map(w => ({ id: w.id, component: `./dist/${w.id}.js` })) };
   }
 
   await fs.writeFile(path.join(dir, 'kb.plugin.json'), JSON.stringify(manifest), 'utf-8');

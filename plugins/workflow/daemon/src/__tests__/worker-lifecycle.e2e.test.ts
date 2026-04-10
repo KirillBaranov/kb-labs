@@ -260,8 +260,9 @@ describe('workflow worker lifecycle', () => {
     await startPromise;
 
     expect(run.jobs[0].status).toBe('success');
-    // Job has no steps — workspace provisioning should not be triggered
-    expect(platformObj.getAdapter).not.toHaveBeenCalled();
+    // getAdapter is called to check for a workspace provider, but since it returns
+    // undefined no materialization happens — execution backend is NOT bypassed.
+    expect(platformObj.executionBackend.execute).not.toHaveBeenCalled(); // no steps to execute
   });
 
   it('emits structured diagnostic log when workspace provisioning fails', async () => {
@@ -310,6 +311,11 @@ describe('workflow worker lifecycle', () => {
       child: vi.fn(() => logger),
     };
 
+    const failingWsProvider = {
+      materialize: vi.fn().mockRejectedValue(new Error('ETIMEDOUT: connection timed out')),
+      release: vi.fn(),
+    };
+
     const worker = await createWorkflowWorker({
       engine,
       cliApi: {} as any,
@@ -318,7 +324,7 @@ describe('workflow worker lifecycle', () => {
       platform: {
         executionBackend: { execute: vi.fn() } as any,
         hasExecutionBackend: true,
-        getAdapter: vi.fn().mockReturnValue(undefined),
+        getAdapter: vi.fn().mockReturnValue(failingWsProvider),
       },
       concurrency: 1,
     });

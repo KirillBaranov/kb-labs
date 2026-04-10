@@ -217,7 +217,10 @@ export async function createWorkflowWorker(
             workspaceId: wsId,
           },
         });
-        throw new Error(`Workspace provisioning failed: ${msg}`);
+        const provisionErr = new Error(`Workspace provisioning failed: ${msg}`);
+        await engine.markJobFailed(run.id, job.id, provisionErr);
+        claimedJobs.delete(jobKey);
+        return true;
       }
     }
 

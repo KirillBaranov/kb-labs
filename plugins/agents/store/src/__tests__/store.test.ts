@@ -2,8 +2,8 @@ import { mkdtemp, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { createKernelState } from '../../../agent-kernel/src/index.js';
-import { SessionArtifactStore } from '../index.js';
+import { createKernelState } from '@kb-labs/agent-kernel';
+import { SessionArtifactStore } from '../index';
 
 describe('SessionArtifactStore', () => {
   it('creates canonical artifacts and persists kernel snapshots', async () => {
