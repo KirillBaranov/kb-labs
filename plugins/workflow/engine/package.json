@@ -47,7 +47,7 @@
     "@kb-labs/workflow-runtime": "workspace:*",
     "nanoid": "^5.1.6",
     "yaml": "^2.8.0",
-    "zod": "^3.23.8"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",

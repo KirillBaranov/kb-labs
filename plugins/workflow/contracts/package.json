@@ -37,7 +37,7 @@
   "dependencies": {
     "@kb-labs/sdk": "workspace:*",
     "@kb-labs/workflow-constants": "workspace:*",
-    "zod": "^3.23.8"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",

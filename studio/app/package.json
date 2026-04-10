@@ -32,7 +32,7 @@
     "react-resizable": "^3.0.5",
     "react-router-dom": "^7.1.4",
     "reactflow": "^11.11.4",
-    "zod": "^3.23.8",
+    "zod": "^4.3.6",
     "zustand": "^5.0.2"
   },
   "description": "KB Labs Studio application",
