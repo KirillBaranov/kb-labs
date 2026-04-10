@@ -114,7 +114,12 @@ export function DocsLayout({ children, toc, slug, pageTitle, pageDescription, pa
               {children}
             </article>
             <footer className={s.pageFooter}>
-              <a href="https://github.com/KirillBaranov/kb-labs" className={s.editLink} target="_blank" rel="noopener noreferrer">
+              <a
+                href={`https://github.com/KirillBaranov/kb-labs/blob/main/sites/kb-labs-web/apps/docs/content/${slug.join('/')}.mdx`}
+                className={s.editLink}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
                 Edit this page on GitHub →
               </a>
             </footer>
