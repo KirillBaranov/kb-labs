@@ -33,7 +33,7 @@ targets:
       - sites/kb-labs-web/**
     image: kb-labs-web
     dockerfile: sites/kb-labs-web/apps/web/Dockerfile
-    context: sites/kb-labs-web
+    context: .
     ssh:
       host: ${SSH_HOST}
       user: ${SSH_USER}
@@ -53,7 +53,7 @@ targets:
       - sites/kb-labs-web/apps/docs/**
     image: kb-labs-docs
     dockerfile: sites/kb-labs-web/apps/docs/Dockerfile
-    context: sites/kb-labs-web
+    context: .
     ssh:
       host: ${SSH_HOST}
       user: ${SSH_USER}

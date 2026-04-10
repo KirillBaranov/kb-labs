@@ -5,13 +5,17 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Copy workspace manifests so pnpm can install correctly
+# Root workspace manifests
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/web/package.json ./apps/web/
-COPY apps/docs/package.json ./apps/docs/
-COPY packages/config/package.json ./packages/config/
-COPY packages/i18n/package.json ./packages/i18n/
-COPY packages/og/package.json ./packages/og/
+
+# sites/kb-labs-web packages
+COPY sites/kb-labs-web/package.json                          ./sites/kb-labs-web/
+COPY sites/kb-labs-web/apps/web/package.json                 ./sites/kb-labs-web/apps/web/
+COPY sites/kb-labs-web/apps/docs/package.json                ./sites/kb-labs-web/apps/docs/
+COPY sites/kb-labs-web/packages/config/package.json          ./sites/kb-labs-web/packages/config/
+COPY sites/kb-labs-web/packages/i18n/package.json            ./sites/kb-labs-web/packages/i18n/
+COPY sites/kb-labs-web/packages/og/package.json              ./sites/kb-labs-web/packages/og/
+COPY sites/kb-labs-web/packages/web-data-source/package.json ./sites/kb-labs-web/packages/web-data-source/
 
 RUN corepack enable pnpm && pnpm install --frozen-lockfile --filter @kb-labs/web-site...
 
@@ -19,10 +23,12 @@ RUN corepack enable pnpm && pnpm install --frozen-lockfile --filter @kb-labs/web
 FROM base AS builder
 WORKDIR /app
 
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
-COPY --from=deps /app/packages/og/node_modules ./packages/og/node_modules
-COPY . .
+COPY --from=deps /app/node_modules                                    ./node_modules
+COPY --from=deps /app/sites/kb-labs-web/node_modules                 ./sites/kb-labs-web/node_modules
+COPY --from=deps /app/sites/kb-labs-web/apps/web/node_modules        ./sites/kb-labs-web/apps/web/node_modules
+COPY --from=deps /app/sites/kb-labs-web/packages/og/node_modules     ./sites/kb-labs-web/packages/og/node_modules
+
+COPY sites/kb-labs-web ./sites/kb-labs-web
 
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN corepack enable pnpm && pnpm --filter @kb-labs/web-site run build
@@ -37,9 +43,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && \
     adduser  --system --uid 1001 nextjs
 
-# standalone output
-COPY --from=builder /app/apps/web/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
+COPY --from=builder /app/sites/kb-labs-web/apps/web/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/sites/kb-labs-web/apps/web/.next/static ./sites/kb-labs-web/apps/web/.next/static
 
 USER nextjs
 
@@ -47,4 +52,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-CMD ["node", "apps/web/server.js"]
+CMD ["node", "sites/kb-labs-web/apps/web/server.js"]
