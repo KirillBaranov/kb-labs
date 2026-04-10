@@ -41,7 +41,7 @@
   "dependencies": {
     "@kb-labs/impact-contracts": "workspace:*",
     "@kb-labs/sdk": "workspace:*",
-    "zod": "^3.23.8"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",

@@ -10,7 +10,7 @@
     "@kb-labs/shared-http": "workspace:*",
     "fastify": "^5.3.3",
     "fastify-type-provider-zod": "^6.0.0",
-    "zod": "^3.23.8"
+    "zod": "^4.3.6"
   },
   "description": "Fastify routes for KB Labs marketplace service",
   "devDependencies": {

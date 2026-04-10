@@ -50,7 +50,7 @@
     "@kb-labs/agent-tools": "workspace:*",
     "@kb-labs/agent-tracing": "workspace:*",
     "@kb-labs/sdk": "workspace:*",
-    "zod": "^3.23.8"
+    "zod": "^4.3.6"
   },
   "peerDependencies": {
     "@ant-design/icons": "^5.0.0",
