@@ -28,7 +28,7 @@
     "test:watch": "vitest --passWithNoTests -c ../../vitest.config.ts"
   },
   "dependencies": {
-    "zod": "^3.23.8",
+    "zod": "^4.3.6",
     "@kb-labs/core-bundle": "workspace:*",
     "@kb-labs/core-config": "workspace:*",
     "@kb-labs/plugin-contracts": "workspace:*",

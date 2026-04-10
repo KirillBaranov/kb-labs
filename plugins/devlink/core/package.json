@@ -51,7 +51,7 @@
     "@kb-labs/devlink-contracts": "workspace:*",
     "@kb-labs/sdk": "workspace:*",
     "js-yaml": "^4.1.0",
-    "zod": "^3.23.8"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",

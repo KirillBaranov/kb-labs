@@ -54,7 +54,7 @@
     "@kb-labs/plugin-contracts": "workspace:*",
     "@kb-labs/plugin-runtime": "workspace:*",
     "@kb-labs/shared-cli-ui": "workspace:*",
-    "zod": "^3.23.8",
+    "zod": "^4.3.6",
     "glob": "^11.0.0"
   },
   "devDependencies": {
