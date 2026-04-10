@@ -3,6 +3,12 @@
 </p>
 
 <p align="center">
+  <a href="https://kblabs.ru/en">Website</a> ·
+  <a href="https://twitter.com/kblabsdev">Twitter</a> ·
+  <a href="https://discord.gg/kblabs">Discord</a>
+</p>
+
+<p align="center">
   <a href="https://github.com/KirillBaranov/kb-labs/blob/main/LICENSE-MIT">
     <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT">
   </a>
