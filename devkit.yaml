@@ -442,3 +442,24 @@ tasks:
         - "coverage/**"
       deps:
         - "build"
+
+  test:coverage:
+    - categories: [ts-lib, ts-app]
+      command: sh -c 'vitest run --passWithNoTests --coverage; exit 0'
+      inputs:
+        - "src/**"
+        - "test/**"
+        - "__tests__/**"
+        - "vitest.config.*"
+      outputs:
+        - "coverage/**"
+      deps:
+        - "build"
+
+    - categories: [go-binary]
+      command: go test -coverprofile=coverage.out -covermode=atomic ./...
+      inputs:
+        - "**/*.go"
+        - "go.mod"
+      outputs:
+        - "coverage.out"
