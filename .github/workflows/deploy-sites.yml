@@ -1,0 +1,53 @@
+name: Deploy Sites
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'sites/kb-labs-web/**'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-sites
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build & Deploy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build images
+        working-directory: sites/kb-labs-web
+        run: docker compose build
+
+      - name: Save images
+        run: |
+          docker save kb-labs-web:latest | gzip > /tmp/kb-labs-web.tar.gz
+          docker save kb-labs-docs:latest | gzip > /tmp/kb-labs-docs.tar.gz
+
+      - name: Copy images to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          source: /tmp/kb-labs-web.tar.gz,/tmp/kb-labs-docs.tar.gz
+          target: /tmp/
+
+      - name: Deploy on VPS
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_KEY }}
+          script: |
+            docker load < /tmp/kb-labs-web.tar.gz
+            docker load < /tmp/kb-labs-docs.tar.gz
+            rm /tmp/kb-labs-web.tar.gz /tmp/kb-labs-docs.tar.gz
+
+            cd ~/kb-labs/sites/kb-labs-web
+            docker compose up -d --no-build
+
+            docker image prune -f
