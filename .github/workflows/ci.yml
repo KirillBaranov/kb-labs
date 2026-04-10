@@ -37,12 +37,15 @@ jobs:
       - name: Build kb-dev
         run: make build
         working-directory: tools/kb-dev
+      - name: Collect binaries
+        run: |
+          mkdir -p go-tools
+          cp tools/kb-devkit/kb-devkit go-tools/kb-devkit
+          cp tools/kb-dev/kb-dev go-tools/kb-dev
       - uses: actions/upload-artifact@v4
         with:
           name: go-tools
-          path: |
-            tools/kb-devkit/kb-devkit
-            tools/kb-dev/kb-dev
+          path: go-tools/
           retention-days: 1
 
   # ── 2. Build all TS packages (topological via kb-devkit) ─────────────────────
@@ -65,10 +68,9 @@ jobs:
         with:
           name: go-tools
           path: tools-bin/
-      - name: Make tools executable
-        run: chmod +x tools-bin/kb-devkit tools-bin/kb-dev
-      - name: Symlink tools into place
+      - name: Install Go tools
         run: |
+          chmod +x tools-bin/kb-devkit tools-bin/kb-dev
           cp tools-bin/kb-devkit tools/kb-devkit/kb-devkit
           cp tools-bin/kb-dev tools/kb-dev/kb-dev
       - name: Install dependencies
