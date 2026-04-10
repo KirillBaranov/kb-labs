@@ -1,0 +1,30 @@
+registry: ghcr.io/kirillbaranov
+
+targets:
+  kb-labs-web:
+    watch:
+      - sites/kb-labs-web/**
+    image: kb-labs-web
+    dockerfile: sites/kb-labs-web/apps/web/Dockerfile
+    context: sites/kb-labs-web
+    ssh:
+      host: ${SSH_HOST}
+      user: ${SSH_USER}
+      key_env: SSH_KEY
+    remote:
+      compose_file: ~/kb-labs/sites/kb-labs-web/docker-compose.yml
+      service: web
+
+  kb-labs-docs:
+    watch:
+      - sites/kb-labs-web/apps/docs/**
+    image: kb-labs-docs
+    dockerfile: sites/kb-labs-web/apps/docs/Dockerfile
+    context: sites/kb-labs-web
+    ssh:
+      host: ${SSH_HOST}
+      user: ${SSH_USER}
+      key_env: SSH_KEY
+    remote:
+      compose_file: ~/kb-labs/sites/kb-labs-web/docker-compose.yml
+      service: docs

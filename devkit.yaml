@@ -53,6 +53,7 @@ workspace:
         - "tools/kb-dev"
         - "tools/kb-devkit"
         - "tools/kb-create"
+        - "tools/kb-deploy"
       language: go
       preset: go-binary
 
@@ -229,6 +230,34 @@ structure_checks:
           - no_runtime_deps
 
 # ──────────────────────────────────────────────────────────────────────────────
+# SCAFFOLDING — kb-devkit generate <template> --dest <path> --name <pkg-name>
+# Sources: local | npm | git | url
+# ──────────────────────────────────────────────────────────────────────────────
+
+scaffolding:
+  templates:
+    node-lib:
+      source: local
+      path: templates/node-lib
+
+    go-binary:
+      source: local
+      path: templates/go-binary
+
+    # plugin:
+    #   source: local
+    #   path: infra/devkit/templates/plugin
+    #
+    # adapter:
+    #   source: npm
+    #   package: "@kb-labs/template-adapter"
+    #
+    # starter:
+    #   source: git
+    #   url: "https://github.com/org/repo"
+    #   ref: "main"
+
+# ──────────────────────────────────────────────────────────────────────────────
 # SYNC — devkit assets
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -315,6 +344,7 @@ tasks:
         - "kb-devkit"
         - "kb-dev"
         - "kb-create"
+        - "kb-deploy"
 
     - categories: [site]
       command: pnpm build
