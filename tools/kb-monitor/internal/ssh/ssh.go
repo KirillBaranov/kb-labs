@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"time"
 
 	gossh "golang.org/x/crypto/ssh"
 )
+
 
 // Client wraps an active SSH connection.
 type Client struct {
@@ -24,9 +26,10 @@ func New(host, user, keyPEM string) (*Client, error) {
 	}
 
 	cfg := &gossh.ClientConfig{
-		User: user,
-		Auth: []gossh.AuthMethod{gossh.PublicKeys(signer)},
+		User:            user,
+		Auth:            []gossh.AuthMethod{gossh.PublicKeys(signer)},
 		HostKeyCallback: gossh.InsecureIgnoreHostKey(), //nolint:gosec // VPS monitoring tool
+		Timeout:         15 * time.Second,
 	}
 
 	addr := net.JoinHostPort(host, "22")
@@ -47,14 +50,29 @@ func (c *Client) Run(cmd string) (string, error) {
 	}
 	defer sess.Close()
 
-	var buf bytes.Buffer
-	sess.Stdout = &buf
-	sess.Stderr = &buf
-
-	if err := sess.Run(cmd); err != nil {
-		return buf.String(), fmt.Errorf("run %q: %w", cmd, err)
+	stdout, err := sess.StdoutPipe()
+	if err != nil {
+		return "", fmt.Errorf("stdout pipe: %w", err)
 	}
-	return buf.String(), nil
+	stderr, err := sess.StderrPipe()
+	if err != nil {
+		return "", fmt.Errorf("stderr pipe: %w", err)
+	}
+
+	if err := sess.Start(cmd); err != nil {
+		return "", fmt.Errorf("start %q: %w", cmd, err)
+	}
+
+	var buf bytes.Buffer
+	io.Copy(&buf, stdout) //nolint:errcheck
+	io.Copy(&buf, stderr) //nolint:errcheck
+
+	waitErr := sess.Wait()
+	out := buf.String()
+	if waitErr != nil {
+		return out, fmt.Errorf("run %q: %w", cmd, waitErr)
+	}
+	return out, nil
 }
 
 // Stream executes cmd, writing output to w until completion or ctx cancellation.

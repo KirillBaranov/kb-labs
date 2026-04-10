@@ -32,7 +32,43 @@ func loadConfig() (*config.Config, string, error) {
 	return cfg, repoRoot, nil
 }
 
+// clientPool holds one SSH connection per unique user@host.
+// Use newClientPool() per command invocation — never share across commands.
+type clientPool struct {
+	clients map[string]*ssh.Client
+}
+
+func newClientPool() *clientPool {
+	return &clientPool{clients: make(map[string]*ssh.Client)}
+}
+
+// get returns an existing connection for this target's host, or dials a new one.
+func (p *clientPool) get(t config.Target) (*ssh.Client, error) {
+	key := t.SSH.User + "@" + t.SSH.Host
+	if c, ok := p.clients[key]; ok {
+		return c, nil
+	}
+	keyPEM := os.Getenv(t.SSH.KeyEnv)
+	if keyPEM == "" {
+		return nil, fmt.Errorf("$%s is empty — SSH key not set", t.SSH.KeyEnv)
+	}
+	c, err := ssh.New(t.SSH.Host, t.SSH.User, keyPEM)
+	if err != nil {
+		return nil, fmt.Errorf("ssh connect: %w", err)
+	}
+	p.clients[key] = c
+	return c, nil
+}
+
+// closeAll closes all pooled connections.
+func (p *clientPool) closeAll() {
+	for _, c := range p.clients {
+		c.Close()
+	}
+}
+
 // connectTarget dials SSH for the given target using its key_env variable.
+// Used by commands that work with a single target (logs, exec).
 func connectTarget(t config.Target) (*ssh.Client, error) {
 	keyPEM := os.Getenv(t.SSH.KeyEnv)
 	if keyPEM == "" {

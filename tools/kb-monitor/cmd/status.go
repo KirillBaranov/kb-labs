@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/kb-labs/kb-monitor/internal/config"
 	"github.com/kb-labs/kb-monitor/internal/monitor"
 	"github.com/spf13/cobra"
 )
@@ -32,28 +33,59 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	o := newOutput()
-	results := make([]monitor.StatusResult, 0, len(names))
+	pool := newClientPool()
+	defer pool.closeAll()
 
+	// Group targets by host key.
+	type group struct {
+		target     config.Target
+		names      []string
+		containers []string
+	}
+	hostOrder := []string{}
+	groups := map[string]*group{}
 	for _, name := range names {
 		t := cfg.Targets[name]
+		key := t.SSH.User + "@" + t.SSH.Host
+		if _, ok := groups[key]; !ok {
+			hostOrder = append(hostOrder, key)
+			groups[key] = &group{target: t}
+		}
+		groups[key].names = append(groups[key].names, name)
+		groups[key].containers = append(groups[key].containers, t.Remote.Container())
+	}
 
-		client, err := connectTarget(t)
+	// Collect results indexed by target name.
+	byName := map[string]monitor.StatusResult{}
+
+	for _, key := range hostOrder {
+		g := groups[key]
+		client, err := pool.get(g.target)
 		if err != nil {
-			res := monitor.StatusResult{Service: name, Health: "unknown"}
-			results = append(results, res)
-			if !jsonMode {
-				o.Err(Pad(name, 20) + "  " + err.Error())
+			for _, name := range g.names {
+				byName[name] = monitor.StatusResult{Service: name, Health: "unknown"}
+				if !jsonMode {
+					o.Err(Pad(name, 20) + "  " + err.Error())
+				}
 			}
 			continue
 		}
 
-		res, err := monitor.FetchStatus(client, t.Remote.ComposeFile, t.Remote.Service)
-		client.Close()
-		res.Service = name
-
-		if err != nil {
-			res.Health = "unknown"
+		fetched, _ := monitor.FetchStatusAll(client, g.containers)
+		for i, name := range g.names {
+			res := monitor.StatusResult{Service: name, Health: "unknown"}
+			if i < len(fetched) {
+				res = fetched[i]
+				res.Service = name
+			}
+			byName[name] = res
 		}
+	}
+
+	// Output in original sorted order.
+	results := make([]monitor.StatusResult, 0, len(names))
+	for _, name := range names {
+		res := byName[name]
 		results = append(results, res)
 
 		if !jsonMode {

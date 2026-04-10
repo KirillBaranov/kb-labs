@@ -54,6 +54,12 @@ func Load(path, repoRoot string) (*Config, error) {
 			env[parts[0]] = parts[1]
 		}
 	}
+	// Inject .env values into the process environment so key_env lookups work.
+	for k, v := range env {
+		if os.Getenv(k) == "" {
+			_ = os.Setenv(k, v)
+		}
+	}
 
 	expanded := os.Expand(string(data), func(key string) string { return env[key] })
 
@@ -84,21 +90,62 @@ func loadDotEnv(path string) map[string]string {
 	defer f.Close()
 
 	scanner := bufio.NewScanner(f)
+	scanner.Buffer(make([]byte, 64*1024), 64*1024)
+
+	var (
+		pendingKey   string
+		pendingVal   strings.Builder
+		pendingQuote byte
+	)
+
 	for scanner.Scan() {
-		line := strings.TrimSpace(scanner.Text())
-		if line == "" || strings.HasPrefix(line, "#") {
+		line := scanner.Text()
+
+		// Inside a multiline quoted value — look for closing quote.
+		if pendingKey != "" {
+			if len(line) > 0 && line[len(line)-1] == pendingQuote {
+				pendingVal.WriteString(line[:len(line)-1])
+				env[pendingKey] = pendingVal.String()
+				pendingKey = ""
+				pendingVal.Reset()
+			} else {
+				pendingVal.WriteString(line)
+				pendingVal.WriteByte('\n')
+			}
 			continue
 		}
-		parts := strings.SplitN(line, "=", 2)
+
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+			continue
+		}
+		parts := strings.SplitN(trimmed, "=", 2)
 		if len(parts) != 2 {
 			continue
 		}
 		key := strings.TrimSpace(parts[0])
-		val := strings.TrimSpace(parts[1])
-		if len(val) >= 2 && ((val[0] == '"' && val[len(val)-1] == '"') || (val[0] == '\'' && val[len(val)-1] == '\'')) {
-			val = val[1 : len(val)-1]
+		val := parts[1]
+
+		// Single-line quoted value.
+		if len(val) >= 2 && val[0] == '"' && val[len(val)-1] == '"' {
+			env[key] = val[1 : len(val)-1]
+			continue
 		}
-		env[key] = val
+		if len(val) >= 2 && val[0] == '\'' && val[len(val)-1] == '\'' {
+			env[key] = val[1 : len(val)-1]
+			continue
+		}
+
+		// Start of a multiline quoted value.
+		if len(val) > 0 && (val[0] == '"' || val[0] == '\'') {
+			pendingKey = key
+			pendingQuote = val[0]
+			pendingVal.WriteString(val[1:])
+			pendingVal.WriteByte('\n')
+			continue
+		}
+
+		env[key] = strings.TrimSpace(val)
 	}
 	return env
 }

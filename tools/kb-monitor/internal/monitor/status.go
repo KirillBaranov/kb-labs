@@ -16,50 +16,46 @@ type StatusResult struct {
 	ImageSHA  string `json:"image_sha"`
 }
 
-// FetchStatus returns the current state of a compose service.
-func FetchStatus(client *ssh.Client, composeFile, service string) (StatusResult, error) {
-	res := StatusResult{Service: service}
-
-	id, err := resolveContainer(client, composeFile, service)
-	if err != nil {
-		// Container not running — return stopped state, not an error.
-		res.Running = false
-		res.Health = "stopped"
-		return res, nil
+// FetchStatusAll fetches status for multiple containers in a single SSH session.
+func FetchStatusAll(client *ssh.Client, containers []string) ([]StatusResult, error) {
+	if len(containers) == 0 {
+		return nil, nil
 	}
 
-	out, err := client.Run(fmt.Sprintf(
-		"docker inspect %s --format '{{.State.Running}}|{{.State.Health.Status}}|{{.State.StartedAt}}|{{.Image}}'",
-		id,
-	))
-	if err != nil {
-		return res, fmt.Errorf("docker inspect: %w", err)
+	// Build one shell script: cmd ; echo SEP ; cmd ; echo SEP ; ...
+	parts := make([]string, 0, len(containers)*2)
+	for _, c := range containers {
+		parts = append(parts,
+			fmt.Sprintf("docker inspect %s --format {{.State.Running}}@{{.State.StartedAt}}@{{.Image}} 2>/dev/null || echo false@@", c),
+			"echo "+sep,
+		)
 	}
+	script := strings.Join(parts, "; ")
 
-	parts := strings.SplitN(strings.TrimSpace(strings.Trim(out, "'")), "|", 4)
-	if len(parts) < 4 {
-		return res, fmt.Errorf("unexpected inspect output: %q", out)
-	}
+	out, err := client.Run(script)
 
-	res.Running = strings.TrimSpace(parts[0]) == "true"
-	res.Health = healthLabel(strings.TrimSpace(parts[1]), res.Running)
-	res.StartedAt = strings.TrimSpace(parts[2])
-	res.ImageSHA = strings.TrimSpace(parts[3])
-
-	return res, nil
-}
-
-// healthLabel normalises the docker health status string.
-func healthLabel(raw string, running bool) string {
-	switch raw {
-	case "healthy", "unhealthy", "starting":
-		return raw
-	case "":
-		if running {
-			return "running"
+	segments := strings.Split(out, sep+"\n")
+	results := make([]StatusResult, len(containers))
+	for i, c := range containers {
+		results[i] = StatusResult{Service: c}
+		if i >= len(segments) {
+			results[i].Health = "unknown"
+			continue
 		}
-		return "stopped"
-	default:
-		return "unknown"
+		line := strings.TrimSpace(segments[i])
+		fields := strings.SplitN(line, "@", 3)
+		if len(fields) < 3 {
+			results[i].Health = "unknown"
+			continue
+		}
+		results[i].Running = strings.TrimSpace(fields[0]) == "true"
+		if results[i].Running {
+			results[i].Health = "running"
+		} else {
+			results[i].Health = "stopped"
+		}
+		results[i].StartedAt = strings.TrimSpace(fields[1])
+		results[i].ImageSHA = strings.TrimSpace(fields[2])
 	}
+	return results, err
 }

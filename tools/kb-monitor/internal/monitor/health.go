@@ -8,49 +8,43 @@ import (
 	"github.com/kb-labs/kb-monitor/internal/ssh"
 )
 
-// CheckHealth returns the health status of a compose service.
-// Possible values: healthy / unhealthy / starting / running / stopped / unknown.
-func CheckHealth(client *ssh.Client, composeFile, service string) (string, error) {
-	id, err := resolveContainer(client, composeFile, service)
-	if err != nil {
-		return "stopped", nil //nolint:nilerr // container not running is a valid state
+const sep = "---SEP---"
+
+// CheckHealthAll checks health for multiple containers in a single SSH session.
+// Returns one status per container in the same order: running / stopped / unknown.
+func CheckHealthAll(client *ssh.Client, containers []string) ([]string, error) {
+	if len(containers) == 0 {
+		return nil, nil
 	}
 
-	out, err := client.Run(fmt.Sprintf(
-		"docker inspect %s --format '{{.State.Health.Status}}'", id,
-	))
-	status := strings.TrimSpace(strings.Trim(out, "'"))
+	// Build one shell script: cmd ; echo SEP ; cmd ; echo SEP ; ...
+	parts := make([]string, 0, len(containers)*2)
+	for _, c := range containers {
+		parts = append(parts,
+			fmt.Sprintf("docker inspect %s --format {{.State.Running}} 2>/dev/null || echo false", c),
+			"echo "+sep,
+		)
+	}
+	script := strings.Join(parts, "; ")
 
-	if err != nil || status == "" {
-		// No healthcheck configured — fall back to running state.
-		out2, err2 := client.Run(fmt.Sprintf(
-			"docker inspect %s --format '{{.State.Running}}'", id,
-		))
-		if err2 != nil {
-			return "unknown", err2
+	out, err := client.Run(script)
+
+	// Parse regardless of error — partial output is still useful.
+	segments := strings.Split(out, sep+"\n")
+	results := make([]string, len(containers))
+	for i := range containers {
+		if i >= len(segments) {
+			results[i] = "unknown"
+			continue
 		}
-		if strings.TrimSpace(strings.Trim(out2, "'")) == "true" {
-			return "running", nil
+		switch strings.TrimSpace(segments[i]) {
+		case "true":
+			results[i] = "running"
+		case "false":
+			results[i] = "stopped"
+		default:
+			results[i] = "unknown"
 		}
-		return "stopped", nil
 	}
-
-	switch status {
-	case "healthy", "unhealthy", "starting":
-		return status, nil
-	default:
-		return "unknown", nil
-	}
-}
-
-// resolveContainer returns the container ID for a compose service.
-func resolveContainer(client *ssh.Client, composeFile, service string) (string, error) {
-	out, err := client.Run(fmt.Sprintf(
-		"docker compose -f %s ps -q %s", composeFile, service,
-	))
-	id := strings.TrimSpace(out)
-	if err != nil || id == "" {
-		return "", fmt.Errorf("container for service %q not found (not running?)", service)
-	}
-	return id, nil
+	return results, err
 }
