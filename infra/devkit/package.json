@@ -62,6 +62,7 @@
     "./tsconfig/node.json": "./tsconfig/node.json",
     "./tsconfig/react-lib.json": "./tsconfig/react-lib.json",
     "./tsconfig/react-app.json": "./tsconfig/react-app.json",
+    "./tsconfig/spa.json": "./tsconfig/spa.json",
     "./tsconfig/test.json": "./tsconfig/test.json",
     "./eslint/": "./eslint/",
     "./eslint/node.js": "./eslint/node.js",

@@ -1,10 +1,17 @@
 {
-  "name": "@kb-labs/shared-tool-kit",
-  "version": "1.4.0",
-  "type": "module",
   "description": "Tool factory and mock utilities for KB Labs agent tool development",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.3.3",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": "\u003e=20.0.0",
+    "pnpm": "\u003e=9.0.0"
+  },
   "exports": {
     ".": {
       "import": "./dist/index.js",
@@ -19,29 +26,23 @@
     "dist",
     "README.md"
   ],
-  "sideEffects": false,
-  "scripts": {
-    "clean": "rimraf dist",
-    "build": "tsup --config tsup.config.ts",
-    "dev": "tsup --config tsup.config.ts --watch",
-    "type-check": "tsc --noEmit",
-    "lint": "eslint src",
-    "lint:fix": "eslint src --fix"
-  },
-  "devDependencies": {
-    "@kb-labs/devkit": "workspace:*",
-    "@types/node": "^24.3.3",
-    "rimraf": "^6.0.1",
-    "tsup": "^8.5.0",
-    "typescript": "^5.6.3",
-    "vitest": "^3.2.4"
-  },
-  "engines": {
-    "node": ">=20.0.0",
-    "pnpm": ">=9.0.0"
-  },
+  "main": "./dist/index.js",
+  "name": "@kb-labs/shared-tool-kit",
   "packageManager": "pnpm@9.11.0",
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "scripts": {
+    "build": "tsup --config tsup.config.ts",
+    "clean": "rimraf dist",
+    "dev": "tsup --config tsup.config.ts --watch",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "test": "echo 'todo: test'",
+    "type-check": "tsc --noEmit"
+  },
+  "sideEffects": false,
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "1.4.0"
 }

@@ -1,10 +1,19 @@
 {
-  "name": "@kb-labs/marketplace-cli",
-  "version": "0.1.4",
+  "dependencies": {
+    "@kb-labs/sdk": "workspace:*"
+  },
   "description": "Marketplace CLI plugin — commands for managing plugins, adapters, and other marketplace entities",
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.3.3",
+    "tsup": "^8.5.0",
+    "typescript": "^5",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": "\u003e=20.0.0",
+    "pnpm": "\u003e=9.0.0"
+  },
   "exports": {
     ".": {
       "import": "./dist/index.js",
@@ -14,29 +23,25 @@
       "import": "./dist/manifest.js"
     }
   },
-  "kb": {
-    "manifest": "./dist/manifest.js"
-  },
   "files": [
     "dist"
   ],
-  "sideEffects": false,
+  "kb": {
+    "manifest": "./dist/manifest.js"
+  },
+  "main": "./dist/index.js",
+  "name": "@kb-labs/marketplace-cli",
   "scripts": {
-    "clean": "rimraf dist",
     "build": "tsup",
+    "clean": "rimraf dist",
     "dev": "tsup --watch",
-    "type-check": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "test": "vitest run --passWithNoTests -c ../../vitest.config.ts"
+    "test": "vitest run --passWithNoTests -c ../../vitest.config.ts",
+    "type-check": "tsc --noEmit"
   },
-  "dependencies": {
-    "@kb-labs/sdk": "workspace:*"
-  },
-  "devDependencies": {
-    "tsup": "^8.5.0",
-    "vitest": "^3.2.4",
-    "@kb-labs/devkit": "workspace:*",
-    "@types/node": "^24.3.3"
-  }
+  "sideEffects": false,
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "0.1.4"
 }

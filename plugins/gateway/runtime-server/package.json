@@ -1,11 +1,23 @@
 {
-  "name": "@kb-labs/gateway-runtime-server",
-  "version": "0.5.0",
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
   "bin": {
     "kb-runtime-server": "./dist/cli.js"
+  },
+  "dependencies": {
+    "@kb-labs/host-agent-contracts": "workspace:*",
+    "@kb-labs/host-agent-core": "workspace:*",
+    "@kb-labs/plugin-contracts": "workspace:*",
+    "@kb-labs/plugin-runtime": "workspace:*"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^22.0.0",
+    "tsup": "^8.5.0",
+    "typescript": "^5",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": "\u003e=20.0.0",
+    "pnpm": "\u003e=9.0.0"
   },
   "exports": {
     ".": {
@@ -16,29 +28,22 @@
   "files": [
     "dist"
   ],
-  "sideEffects": false,
+  "main": "./dist/index.js",
+  "name": "@kb-labs/gateway-runtime-server",
   "scripts": {
-    "clean": "rimraf dist",
     "build": "tsup",
+    "build:docker": "DOCKER_BUILD=1 tsup",
+    "clean": "rimraf dist",
     "dev": "tsup --watch",
-    "type-check": "tsc --noEmit",
+    "docker:build": "pnpm run build:docker \u0026\u0026 docker build -t kb-runtime-server:local .",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "vitest run -c ../../vitest.config.ts",
     "test:watch": "vitest -c ../../vitest.config.ts",
-    "build:docker": "DOCKER_BUILD=1 tsup",
-    "docker:build": "pnpm run build:docker && docker build -t kb-runtime-server:local ."
+    "type-check": "tsc --noEmit"
   },
-  "dependencies": {
-    "@kb-labs/host-agent-core": "workspace:*",
-    "@kb-labs/host-agent-contracts": "workspace:*",
-    "@kb-labs/plugin-runtime": "workspace:*",
-    "@kb-labs/plugin-contracts": "workspace:*"
-  },
-  "devDependencies": {
-    "@kb-labs/devkit": "workspace:*",
-    "@types/node": "^22.0.0",
-    "tsup": "^8.5.0",
-    "vitest": "^3.2.4"
-  }
+  "sideEffects": false,
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "0.5.0"
 }

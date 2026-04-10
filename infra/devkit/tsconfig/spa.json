@@ -1,0 +1,7 @@
+{
+  "extends": "./react-app.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "declaration": false
+  }
+}

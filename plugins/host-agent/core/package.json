@@ -1,30 +1,4 @@
 {
-  "name": "@kb-labs/host-agent-core",
-  "version": "0.3.0",
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
-  },
-  "files": [
-    "dist",
-    "README.md"
-  ],
-  "sideEffects": false,
-  "scripts": {
-    "clean": "rimraf dist",
-    "build": "tsup",
-    "dev": "tsup --watch",
-    "type-check": "tsc --noEmit",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "test": "vitest run -c ../../vitest.config.ts",
-    "test:watch": "vitest -c ../../vitest.config.ts"
-  },
   "dependencies": {
     "@kb-labs/gateway-contracts": "workspace:*",
     "@kb-labs/host-agent-contracts": "workspace:*",
@@ -36,6 +10,37 @@
     "@types/ws": "^8.5.13",
     "rimraf": "^6",
     "tsup": "^8.5.0",
+    "typescript": "^5",
     "vitest": "^3.2.4"
-  }
+  },
+  "engines": {
+    "node": "\u003e=20.0.0",
+    "pnpm": "\u003e=9.0.0"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "main": "./dist/index.js",
+  "name": "@kb-labs/host-agent-core",
+  "scripts": {
+    "build": "tsup",
+    "clean": "rimraf dist",
+    "dev": "tsup --watch",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run -c ../../vitest.config.ts",
+    "test:watch": "vitest -c ../../vitest.config.ts",
+    "type-check": "tsc --noEmit"
+  },
+  "sideEffects": false,
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "0.3.0"
 }

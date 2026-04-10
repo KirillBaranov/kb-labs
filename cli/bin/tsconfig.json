@@ -2,16 +2,9 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "extends": "@kb-labs/devkit/tsconfig/node.json",
   "compilerOptions": {
-    "outDir": "dist",
-    "baseUrl": "../..",
-    "paths": {
-      "@kb-labs/cli-runtime": [
-        "packages/cli-runtime/src/index.ts"
-      ],
-      "@kb-labs/cli-runtime/*": [
-        "packages/cli-runtime/src/*"
-      ]
-    }
+    "outDir": "dist"
   },
-  "include": ["src"]
+  "include": [
+    "src"
+  ]
 }
