@@ -6,7 +6,8 @@
   <a href="https://kblabs.ru" target="_blank">Website</a> ·
   <a href="https://kblabs.ru/docs" target="_blank">Docs</a> ·
   <a href="https://twitter.com/kblabsdev" target="_blank">Twitter</a> ·
-  <a href="https://discord.gg/kblabs" target="_blank">Discord</a>
+  <a href="https://discord.gg/kblabs" target="_blank">Discord</a> ·
+  <a href="https://t.me/kirill_baranov_official" target="_blank">Telegram</a>
 </p>
 
 <p align="center">
