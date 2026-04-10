@@ -31,7 +31,7 @@ func runStatus(cmd *cobra.Command, args []string) error {
 	}
 
 	if jsonMode {
-		return JSONOut(s)
+		return JSONOut(map[string]any{"ok": true, "targets": s.Targets})
 	}
 
 	o := newOutput()

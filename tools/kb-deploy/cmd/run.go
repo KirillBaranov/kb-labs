@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -87,85 +88,131 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	}
 
 	ctx := context.Background()
-	ok := true
+
+	type deployResult struct {
+		Target string `json:"target"`
+		SHA    string `json:"sha"`
+		OK     bool   `json:"ok"`
+		Error  string `json:"error,omitempty"`
+	}
+	results := make([]deployResult, 0, len(targets))
+	allOK := true
+
+	// In JSON mode suppress docker streaming output — capture to discard.
+	buildOut := io.Writer(os.Stdout)
+	if jsonMode {
+		buildOut = io.Discard
+	}
 
 	for _, name := range targets {
 		t := cfg.Targets[name]
 		tag := docker.ImageTag(cfg.Registry, t.Image, sha)
+		res := deployResult{Target: name, SHA: sha, OK: true}
 
-		o.Section(name)
+		if !jsonMode {
+			o.Section(name)
+		}
 
 		// Build.
-		o.Info("building " + tag)
-		if err := docker.Build(ctx, tag, t.Dockerfile, t.Context, os.Stdout); err != nil {
-			o.Err("build failed: " + err.Error())
-			ok = false
+		if !jsonMode {
+			o.Info("building " + tag)
+		}
+		if err := docker.Build(ctx, tag, t.Dockerfile, t.Context, buildOut); err != nil {
+			res.OK, res.Error = false, "build: "+err.Error()
+			if !jsonMode {
+				o.Err("build failed: " + err.Error())
+			}
+			results = append(results, res)
+			allOK = false
 			continue
 		}
-		o.OK("built " + tag)
+		if !jsonMode {
+			o.OK("built " + tag)
+			o.Info("pushing " + tag)
+		}
 
 		// Push.
-		o.Info("pushing " + tag)
-		if err := docker.Push(ctx, tag, os.Stdout); err != nil {
-			o.Err("push failed: " + err.Error())
-			ok = false
+		if err := docker.Push(ctx, tag, buildOut); err != nil {
+			res.OK, res.Error = false, "push: "+err.Error()
+			if !jsonMode {
+				o.Err("push failed: " + err.Error())
+			}
+			results = append(results, res)
+			allOK = false
 			continue
 		}
-		o.OK("pushed " + tag)
+		if !jsonMode {
+			o.OK("pushed " + tag)
+		}
 
 		// SSH deploy.
 		keyPEM := os.Getenv(t.SSH.KeyEnv)
-		if keyPEM == "" {
-			o.Err("env var " + t.SSH.KeyEnv + " is empty — cannot connect")
-			ok = false
-			continue
-		}
-
 		client, err := ssh.New(t.SSH.Host, t.SSH.User, keyPEM)
 		if err != nil {
-			o.Err("ssh connect failed: " + err.Error())
-			ok = false
+			res.OK, res.Error = false, "ssh: "+err.Error()
+			if !jsonMode {
+				o.Err("ssh connect failed: " + err.Error())
+			}
+			results = append(results, res)
+			allOK = false
 			continue
 		}
 
-		o.Info("pulling on remote")
+		if !jsonMode {
+			o.Info("pulling on remote")
+		}
 		if out, err := client.Run("docker pull " + tag); err != nil {
-			o.Err("docker pull failed: " + err.Error())
-			if strings.TrimSpace(out) != "" {
-				o.Detail(out)
+			res.OK, res.Error = false, "docker pull: "+err.Error()
+			if !jsonMode {
+				o.Err("docker pull failed: " + err.Error())
+				if strings.TrimSpace(out) != "" {
+					o.Detail(out)
+				}
 			}
 			client.Close()
-			ok = false
+			results = append(results, res)
+			allOK = false
 			continue
 		}
 
-		o.Info("restarting service")
+		if !jsonMode {
+			o.Info("restarting service")
+		}
 		upCmd := fmt.Sprintf("IMAGE_TAG=%s docker compose -f %s up -d %s",
 			sha, t.Remote.ComposeFile, t.Remote.Service)
 		if out, err := client.Run(upCmd); err != nil {
-			o.Err("docker compose up failed: " + err.Error())
-			if strings.TrimSpace(out) != "" {
-				o.Detail(out)
+			res.OK, res.Error = false, "docker compose up: "+err.Error()
+			if !jsonMode {
+				o.Err("docker compose up failed: " + err.Error())
+				if strings.TrimSpace(out) != "" {
+					o.Detail(out)
+				}
 			}
 			client.Close()
-			ok = false
+			results = append(results, res)
+			allOK = false
 			continue
 		}
 		client.Close()
 
-		o.OK("deployed " + name + " @ " + sha)
+		if !jsonMode {
+			o.OK("deployed " + name + " @ " + sha)
+		}
 
 		// Update state.
-		s.Targets[name] = state.TargetState{
-			SHA:        sha,
-			DeployedAt: time.Now().UTC(),
-		}
+		s.Targets[name] = state.TargetState{SHA: sha, DeployedAt: time.Now().UTC()}
 		if err := state.Save(stPath, s); err != nil {
-			o.Warn("could not save state: " + err.Error())
+			if !jsonMode {
+				o.Warn("could not save state: " + err.Error())
+			}
 		}
+		results = append(results, res)
 	}
 
-	if !ok {
+	if jsonMode {
+		return JSONOut(map[string]any{"ok": allOK, "sha": sha, "results": results})
+	}
+	if !allOK {
 		return fmt.Errorf("one or more targets failed")
 	}
 	return nil
