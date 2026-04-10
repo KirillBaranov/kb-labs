@@ -127,7 +127,7 @@ Connect what you already have. Core doesn't know what's outside — adapters spe
 | Environment | Docker |
 | Workspace | LocalFS, Worktree, Agent |
 
-[Write your own adapter](https://docs.kblabs.ru/adapters) — including Datadog, Kafka, 1C, or any HTTP service.
+[Write your own adapter](https://docs.kblabs.ru/adapters/custom-adapter) — including Datadog, Kafka, 1C, or any HTTP service.
 
 ---
 
