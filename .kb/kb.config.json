@@ -1,0 +1,626 @@
+{
+  "platform": {
+    "adapters": {
+      "llm": [
+        "@kb-labs/adapters-openai",
+        "@kb-labs/adapters-vibeproxy"
+      ],
+      "embeddings": "@kb-labs/adapters-openai/embeddings",
+      "storage": "@kb-labs/adapters-fs",
+      "db": "@kb-labs/adapters-sqlite",
+      "documentDb": "@kb-labs/adapters-mongodb",
+      "logger": "@kb-labs/adapters-pino",
+      "logRingBuffer": "@kb-labs/adapters-log-ringbuffer",
+      "logPersistence": "@kb-labs/adapters-log-sqlite",
+      "analytics": "@kb-labs/adapters-analytics-sqlite",
+      "vectorStore": "@kb-labs/adapters-qdrant",
+      "cache": "@kb-labs/adapters-redis",
+      "eventBus": "@kb-labs/adapters-eventbus-cache",
+      "workspace": "@kb-labs/adapters-workspace-worktree",
+      "environment": "@kb-labs/adapters-environment-docker"
+    },
+    "adapterOptions": {
+      "llm": {
+        "defaultTier": "small",
+        "tierMapping": {
+          "small": [
+            {
+              "adapter": "@kb-labs/adapters-openai",
+              "model": "gpt-4o-mini",
+              "priority": 1,
+              "capabilities": ["fast"]
+            }
+          ],
+          "medium": [
+            {
+              "adapter": "@kb-labs/adapters-vibeproxy",
+              "model": "claude-sonnet-4-6",
+              "priority": 1,
+              "capabilities": ["coding", "reasoning", "vision"]
+            },
+            {
+              "adapter": "@kb-labs/adapters-vibeproxy",
+              "model": "gpt-5-codex",
+              "priority": 2,
+              "capabilities": ["coding"]
+            }
+          ],
+          "large": [
+            {
+              "adapter": "@kb-labs/adapters-vibeproxy",
+              "model": "gpt-5.1-codex-max",
+              "priority": 1,
+              "capabilities": ["reasoning", "coding"]
+            },
+            {
+              "adapter": "@kb-labs/adapters-vibeproxy",
+              "model": "claude-opus-4-6",
+              "priority": 2,
+              "capabilities": ["reasoning", "coding", "vision"]
+            }
+          ]
+        }
+      },
+      "storage": {
+        "basePath": ".kb/storage"
+      },
+      "db": {
+        "filename": ".kb/database/kb.sqlite"
+      },
+      "documentDb": {
+        "uri": "mongodb://admin:password@localhost:27017",
+        "database": "kb-labs"
+      },
+      "vectorStore": {
+        "url": "http://localhost:6333"
+      },
+      "cache": {
+        "url": "redis://localhost:6379"
+      },
+      "analytics": {
+        "filename": ".kb/analytics/analytics.sqlite"
+      },
+      "logger": {
+        "level": "info",
+        "streaming": {
+          "enabled": true,
+          "bufferSize": 1000,
+          "bufferMaxAge": 3600000
+        }
+      },
+      "logRingBuffer": {
+        "maxSize": 100
+      },
+      "logPersistence": {
+        "tableName": "logs",
+        "batchSize": 100,
+        "flushInterval": 5000,
+        "retention": {
+          "maxAge": 604800000,
+          "maxAgeDebug": 3600000,
+          "maxAgeInfo": 86400000,
+          "maxSizeBytes": 3221225472,
+          "cleanupIntervalMs": 300000
+        }
+      },
+      "workspace": {
+        "gatewayUrl": "http://localhost:4000",
+        "namespaceId": "default",
+        "cacheDir": ".kb/runtime/workspaces"
+      },
+      "environment": {
+        "defaultImage": "kb-runtime-server:local",
+        "autoRemove": true,
+        "mountWorkspace": true,
+        "workspaceMountPath": "/workspace",
+        "network": "kb-labs",
+        "extraHosts": ["host.docker.internal:host-gateway"],
+        "runtimeCommand": ["node", "/app/dist/cli.cjs"],
+        "gateway": {
+          "wsUrl": "ws://host.docker.internal:4000",
+          "jwtSecret": "${GATEWAY_JWT_SECRET}",
+          "dispatchSecret": "${GATEWAY_INTERNAL_SECRET}",
+          "dispatchUrl": "http://host.docker.internal:4000/internal/dispatch"
+        }
+      }
+    },
+    "execution": {
+      "mode": "in-process"
+    }
+  },
+  "profiles": [
+    {
+      "id": "default",
+      "label": "Default Profile",
+      "products": {
+        "mind": {
+          "sources": [
+            {
+              "id": "codebase",
+              "kind": "code",
+              "language": "typescript",
+              "paths": [
+                "core/*/src/**/*.ts",
+                "sdk/*/src/**/*.ts",
+                "cli/*/src/**/*.ts",
+                "shared/*/src/**/*.ts",
+                "plugins/*/*/src/**/*.ts",
+                "adapters/*/src/**/*.ts",
+                "studio/*/src/**/*.ts"
+              ],
+              "exclude": [
+                "**/node_modules/**",
+                "**/dist/**",
+                "**/.git/**",
+                "**/*.test.ts",
+                "**/*.spec.ts"
+              ]
+            },
+            {
+              "id": "docs",
+              "kind": "docs",
+              "paths": [
+                "docs/**/*.md",
+                "*/docs/**/*.md",
+                "*/*/docs/**/*.md",
+                "README.md",
+                "CONTRIBUTING.md",
+                "CLAUDE.md"
+              ]
+            }
+          ],
+          "scopes": [
+            {
+              "id": "default",
+              "label": "Full Codebase",
+              "sources": ["codebase", "docs"],
+              "defaultEngine": "mind-prod"
+            }
+          ],
+          "engines": [
+            {
+              "id": "mind-prod",
+              "type": "mind",
+              "options": {
+                "embedding": {
+                  "type": "openai",
+                  "provider": {
+                    "openai": {
+                      "model": "text-embedding-3-small",
+                      "dimension": 1536,
+                      "batchSize": 100
+                    }
+                  }
+                },
+                "vectorStore": {
+                  "type": "local",
+                  "local": {
+                    "indexDir": ".kb/mind/index"
+                  }
+                },
+                "chunk": {
+                  "codeLines": 150,
+                  "docLines": 100,
+                  "overlap": 25
+                },
+                "search": {
+                  "hybrid": true,
+                  "vectorWeight": 0.7,
+                  "keywordWeight": 0.3,
+                  "rrfK": 60,
+                  "optimization": {
+                    "deduplication": true,
+                    "deduplicationThreshold": 0.9,
+                    "diversification": true,
+                    "diversityThreshold": 0.3,
+                    "maxChunksPerFile": 3
+                  }
+                }
+              }
+            }
+          ],
+          "defaults": {
+            "maxChunks": 20,
+            "fallbackScopeId": "default",
+            "fallbackEngineId": "mind-prod"
+          },
+          "sync": {
+            "registry": {
+              "type": "filesystem",
+              "path": ".kb/mind/sync/registry.json"
+            },
+            "softDelete": {
+              "enabled": true,
+              "ttlDays": 30
+            },
+            "partialUpdates": {
+              "enabled": true
+            },
+            "batch": {
+              "maxSize": 100
+            }
+          }
+        },
+        "release": {
+          "versioningStrategy": "lockstep",
+          "workspace": {
+            "type": "pnpm",
+            "root": "."
+          },
+          "git": {},
+          "changelog": {
+            "locale": "en"
+          },
+          "checks": [
+            {
+              "id": "build",
+              "command": "pnpm",
+              "args": ["run", "build"],
+              "timeoutMs": 300000,
+              "runIn": "scopePath"
+            },
+            {
+              "id": "dist-exports",
+              "name": "dist/index.js — no directory imports",
+              "command": "bash",
+              "args": ["scripts/gates/check-dist-exports.sh"],
+              "timeoutMs": 30000,
+              "runIn": "perPackage"
+            },
+            {
+              "id": "pack-install",
+              "name": "npm pack + import verification",
+              "command": "bash",
+              "args": ["scripts/gates/check-pack-install.sh"],
+              "timeoutMs": 60000,
+              "runIn": "perPackage"
+            },
+            {
+              "id": "typecheck",
+              "command": "pnpm",
+              "args": ["run", "type-check"],
+              "timeoutMs": 120000,
+              "optional": true,
+              "runIn": "scopePath"
+            },
+            {
+              "id": "lint",
+              "command": "pnpm",
+              "args": ["run", "lint"],
+              "timeoutMs": 60000,
+              "optional": true,
+              "runIn": "scopePath"
+            },
+            {
+              "id": "tests",
+              "command": "pnpm",
+              "args": ["run", "test", "--", "--run"],
+              "timeoutMs": 120000,
+              "optional": true,
+              "runIn": "scopePath"
+            }
+          ]
+        },
+        "review": {
+          "defaultPreset": "kb-labs-full",
+          "presetsDir": "ai-review/presets",
+          "presets": ["ai-review/presets/kb-labs-full.json"],
+          "llm": {
+            "minTurns": 3,
+            "maxTurns": 25,
+            "filesPerTurn": 10,
+            "linesPerTurn": 500
+          }
+        },
+        "qa": {
+          "packages": {
+            "paths": [
+              "core/*",
+              "sdk/*",
+              "cli/*",
+              "shared/*",
+              "plugins/*/*",
+              "adapters/*",
+              "studio/*"
+            ]
+          },
+          "checks": [
+            {
+              "id": "build",
+              "command": "pnpm",
+              "args": ["run", "build"],
+              "runIn": "perPackage",
+              "timeoutMs": 120000,
+              "ordered": true
+            },
+            {
+              "id": "lint",
+              "command": "pnpm",
+              "args": ["run", "lint"],
+              "runIn": "perPackage",
+              "timeoutMs": 60000
+            },
+            {
+              "id": "typecheck",
+              "command": "pnpm",
+              "args": ["run", "type-check"],
+              "runIn": "perPackage",
+              "timeoutMs": 60000
+            },
+            {
+              "id": "test",
+              "command": "pnpm",
+              "args": ["run", "test"],
+              "runIn": "perPackage",
+              "timeoutMs": 60000
+            }
+          ],
+          "categories": {
+            "core": {
+              "label": "Core",
+              "packages": ["core/*"]
+            },
+            "sdk": {
+              "label": "SDK & Shared",
+              "packages": ["sdk/*", "shared/*"]
+            },
+            "cli": {
+              "label": "CLI",
+              "packages": ["cli/*"]
+            },
+            "adapters": {
+              "label": "Adapters",
+              "packages": ["adapters/*"]
+            },
+            "plugins": {
+              "label": "Plugins",
+              "packages": ["plugins/*/*"]
+            },
+            "studio": {
+              "label": "Studio",
+              "packages": ["studio/*"]
+            },
+            "templates": {
+              "label": "Templates",
+              "packages": ["templates/*/*"]
+            }
+          }
+        },
+        "commit": {
+          "scope": {
+            "default": "root",
+            "scopes": [
+              {
+                "id": "root",
+                "label": "workspace root",
+                "path": ".",
+                "description": "Workspace-level files (configs, docs, CI)"
+              },
+              {
+                "id": "core",
+                "label": "Core",
+                "path": "core",
+                "description": "Foundation packages — types, runtime, config, registry"
+              },
+              {
+                "id": "sdk",
+                "label": "SDK",
+                "path": "sdk",
+                "description": "Public API for plugin authors"
+              },
+              {
+                "id": "cli",
+                "label": "CLI",
+                "path": "cli",
+                "description": "The kb command"
+              },
+              {
+                "id": "shared",
+                "label": "Shared",
+                "path": "shared",
+                "description": "Shared utilities (cli-ui, http, testing)"
+              },
+              {
+                "id": "adapters",
+                "label": "Adapters",
+                "path": "adapters",
+                "description": "Pluggable backends (OpenAI, Redis, MongoDB, Qdrant...)"
+              },
+              {
+                "id": "plugins/mind",
+                "label": "Mind",
+                "path": "plugins/mind",
+                "description": "RAG-powered semantic code search"
+              },
+              {
+                "id": "plugins/agents",
+                "label": "Agents",
+                "path": "plugins/agents",
+                "description": "Autonomous AI agents with planning, tool use, MCP"
+              },
+              {
+                "id": "plugins/workflow",
+                "label": "Workflow",
+                "path": "plugins/workflow",
+                "description": "Multi-step workflow engine with daemon"
+              },
+              {
+                "id": "plugins/gateway",
+                "label": "Gateway",
+                "path": "plugins/gateway",
+                "description": "API gateway — auth, routing, LLM proxy"
+              },
+              {
+                "id": "plugins/rest-api",
+                "label": "REST API",
+                "path": "plugins/rest-api",
+                "description": "Main platform REST API"
+              },
+              {
+                "id": "plugins/marketplace",
+                "label": "Marketplace",
+                "path": "plugins/marketplace",
+                "description": "Install and manage plugins, adapters, workflows"
+              },
+              {
+                "id": "plugins/state",
+                "label": "State",
+                "path": "plugins/state",
+                "description": "Distributed state management daemon"
+              },
+              {
+                "id": "plugins/commit",
+                "label": "Commit",
+                "path": "plugins/commit",
+                "description": "AI-powered conventional commit generation"
+              },
+              {
+                "id": "plugins/review",
+                "label": "Review",
+                "path": "plugins/review",
+                "description": "Automated code review (heuristic + LLM)"
+              },
+              {
+                "id": "plugins/release",
+                "label": "Release",
+                "path": "plugins/release",
+                "description": "Release orchestration (versioning, changelogs, publish)"
+              },
+              {
+                "id": "plugins/quality",
+                "label": "Quality",
+                "path": "plugins/quality",
+                "description": "Monorepo health checks and workspace scoring"
+              },
+              {
+                "id": "plugins/host-agent",
+                "label": "Host Agent",
+                "path": "plugins/host-agent",
+                "description": "Remote workspace agent"
+              },
+              {
+                "id": "plugins/devlink",
+                "label": "DevLink",
+                "path": "plugins/devlink",
+                "description": "Cross-repo dependency manager (legacy)"
+              },
+              {
+                "id": "studio",
+                "label": "Studio",
+                "path": "studio",
+                "description": "Web UI"
+              },
+              {
+                "id": "tools",
+                "label": "Tools",
+                "path": "tools",
+                "description": "Go binaries (kb-devkit, kb-dev, kb-create)"
+              },
+              {
+                "id": "infra/devkit",
+                "label": "DevKit (infra)",
+                "path": "infra/devkit",
+                "description": "Build configs: tsconfig, eslint presets"
+              },
+              {
+                "id": "templates",
+                "label": "Templates",
+                "path": "templates",
+                "description": "Plugin/product starter templates"
+              },
+              {
+                "id": "sites",
+                "label": "Sites",
+                "path": "sites",
+                "description": "Product websites"
+              }
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "gateway": {
+    "port": 4000,
+    "upstreams": {
+      "rest": {
+        "url": "http://localhost:5050",
+        "prefix": "/api/v1",
+        "websocket": true,
+        "description": "REST API — main platform BFF"
+      },
+      "workflow": {
+        "url": "http://localhost:7778",
+        "prefix": "/api/exec",
+        "rewritePrefix": "",
+        "description": "Workflow Daemon — direct access"
+      },
+      "marketplace": {
+        "url": "http://localhost:5070",
+        "prefix": "/api/v1/marketplace",
+        "description": "Marketplace Service — unified entity management"
+      },
+      "widgets": {
+        "url": "http://localhost:5050",
+        "prefix": "/plugins",
+        "description": "Plugin widget bundles — served by REST API"
+      }
+    },
+    "staticTokens": {
+      "dev-studio-token": {
+        "hostId": "studio",
+        "namespaceId": "default"
+      },
+      "dev-runtime-server-token": {
+        "hostId": "runtime-server-local",
+        "namespaceId": "default"
+      }
+    }
+  },
+  "plugins": {
+    "commit": {
+      "enabled": true,
+      "llm": {
+        "enabled": true,
+        "temperature": 0.3,
+        "maxTokens": 5000
+      },
+      "storage": {
+        "directory": ".kb/commit"
+      },
+      "git": {
+        "protectedBranches": ["main", "master"],
+        "autoStage": false
+      }
+    },
+    "impact": {
+      "docRules": [
+        {
+          "match": "@kb-labs/sdk",
+          "docs": ["CLAUDE.md", "CONTRIBUTING.md"],
+          "action": "review"
+        },
+        {
+          "match": "*-cli",
+          "docs": ["docs/CLI-REFERENCE.md"],
+          "action": "regenerate",
+          "command": "pnpm kb docs generate-cli-reference"
+        },
+        {
+          "match": "@kb-labs/mind-*",
+          "action": "reindex",
+          "command": "pnpm kb mind rag-index --scope default"
+        }
+      ]
+    }
+  },
+  "marketplace": {
+    "sync": {
+      "include": [
+        "plugins/*/entry",
+        "plugins/*/core",
+        "adapters/*"
+      ]
+    }
+  }
+}
