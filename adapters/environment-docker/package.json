@@ -34,6 +34,7 @@
   },
   "devDependencies": {
     "@kb-labs/core-platform": "workspace:*",
+    "@kb-labs/gateway-auth": "workspace:*",
     "@types/node": "^24.3.3",
     "eslint": "^9",
     "tsup": "^8.5.0",

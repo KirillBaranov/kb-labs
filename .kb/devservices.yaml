@@ -4,7 +4,7 @@ groups:
   infra:     [qdrant, redis, state-daemon]
   backend:   [workflow, rest, marketplace, gateway]
   ui:        [studio]
-  ui-web:    [kb-web]
+  ui-web:    [kb-web, kb-docs]
   local:     [host-agent]
   execution: [runtime-server]
 
@@ -134,10 +134,22 @@ services:
     description: Product website
     group: ui-web
     type: node
-    command: cd sites/kb-labs-web/apps/web && pnpm exec next dev -p 3010
+    command: pnpm --filter @kb-labs/web-site dev
     health_check: http://localhost:3010
     port: 3010
     url: http://localhost:3010
+    start_timeout_ms: 120000
+
+  kb-docs:
+    name: KB Labs Docs
+    description: Documentation site
+    group: ui-web
+    type: node
+    command: pnpm --filter @kb-labs/docs-site dev
+    health_check: http://localhost:3001
+    port: 3001
+    url: http://localhost:3001
+    start_timeout_ms: 120000
 
   host-agent:
     name: Host Agent
