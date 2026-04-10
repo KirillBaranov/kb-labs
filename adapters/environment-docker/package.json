@@ -27,10 +27,13 @@
     "lint:fix": "eslint . --fix"
   },
   "peerDependencies": {
-    "@kb-labs/core-platform": "workspace:*"
-  },
-  "optionalDependencies": {
+    "@kb-labs/core-platform": "workspace:*",
     "@kb-labs/gateway-auth": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "@kb-labs/gateway-auth": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "@kb-labs/core-platform": "workspace:*",
