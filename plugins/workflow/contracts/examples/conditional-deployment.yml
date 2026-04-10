@@ -1,0 +1,46 @@
+name: conditional-deployment
+version: 1.0.0
+description: Example of conditional execution with step outputs
+on:
+  push: true
+  manual: true
+jobs:
+  verify:
+    runsOn: local
+    steps:
+      - name: Run Tests
+        id: tests
+        uses: builtin:shell
+        with:
+          command: npm test
+      
+      - name: Run Linter
+        id: linter
+        uses: builtin:shell
+        with:
+          command: npm run lint
+      
+      - name: Check Coverage
+        id: coverage
+        uses: builtin:shell
+        with:
+          command: npm run coverage
+        continueOnError: true
+  
+  deploy:
+    runsOn: local
+    needs: [verify]
+    if: ${{ trigger.type == 'push' && trigger.payload.ref == 'refs/heads/main' }}
+    steps:
+      - name: Deploy to Production
+        uses: builtin:shell
+        with:
+          command: npm run deploy
+        if: ${{ steps.tests.outputs.exitCode == 0 && steps.linter.outputs.exitCode == 0 }}
+      
+      - name: Notify Team
+        uses: builtin:shell
+        with:
+          command: echo "Deployment completed"
+        if: ${{ steps.deploy.outputs.status == 'success' }}
+

@@ -1,0 +1,136 @@
+{
+  "version": "1.0.0",
+  "createdAt": "2025-12-19T00:00:00.000Z",
+  "description": "Test cases for refactor modification pattern (modified files with low addition ratio)",
+  "cases": [
+    {
+      "id": "refactor-modify-001-commit-generators",
+      "description": "Modified commit-plan.ts and llm-prompt.ts - structural refactoring",
+      "category": "refactor-modify",
+      "difficulty": "medium",
+      "files": [
+        {
+          "path": "packages/commit-core/src/generator/commit-plan.ts",
+          "status": "modified",
+          "additions": 150,
+          "deletions": 120,
+          "isNewFile": false
+        },
+        {
+          "path": "packages/commit-core/src/generator/llm-prompt.ts",
+          "status": "modified",
+          "additions": 80,
+          "deletions": 60,
+          "isNewFile": false
+        }
+      ],
+      "expected": {
+        "commits": [
+          {
+            "type": "refactor",
+            "scope": "commit-core",
+            "message": "update commit plan and llm prompt logic",
+            "files": [
+              "packages/commit-core/src/generator/commit-plan.ts",
+              "packages/commit-core/src/generator/llm-prompt.ts"
+            ],
+            "releaseHint": "none"
+          }
+        ]
+      },
+      "baseline": {
+        "type": "feat",
+        "correct": false,
+        "confidence": 0.68,
+        "phase": 1
+      },
+      "tags": ["refactor", "modified-files", "common-error"]
+    },
+    {
+      "id": "refactor-modify-002-low-addition-ratio",
+      "description": "Mostly deletions with minimal additions - code cleanup",
+      "category": "refactor-modify",
+      "difficulty": "easy",
+      "files": [
+        {
+          "path": "src/utils/helpers.ts",
+          "status": "modified",
+          "additions": 20,
+          "deletions": 80,
+          "isNewFile": false
+        },
+        {
+          "path": "src/utils/validators.ts",
+          "status": "modified",
+          "additions": 15,
+          "deletions": 60,
+          "isNewFile": false
+        }
+      ],
+      "expected": {
+        "commits": [
+          {
+            "type": "refactor",
+            "scope": "utils",
+            "message": "simplify helper and validator utilities",
+            "files": [
+              "src/utils/helpers.ts",
+              "src/utils/validators.ts"
+            ],
+            "releaseHint": "none"
+          }
+        ]
+      },
+      "baseline": {
+        "type": "feat",
+        "correct": false,
+        "confidence": 0.72,
+        "phase": 1
+      },
+      "tags": ["refactor", "cleanup", "low-addition-ratio"]
+    },
+    {
+      "id": "refactor-modify-003-balanced-changes",
+      "description": "Balanced additions/deletions (40-60% ratio) - still refactor",
+      "category": "refactor-modify",
+      "difficulty": "medium",
+      "files": [
+        {
+          "path": "src/engine/search.ts",
+          "status": "modified",
+          "additions": 55,
+          "deletions": 45,
+          "isNewFile": false
+        },
+        {
+          "path": "src/engine/indexer.ts",
+          "status": "modified",
+          "additions": 50,
+          "deletions": 50,
+          "isNewFile": false
+        }
+      ],
+      "expected": {
+        "commits": [
+          {
+            "type": "refactor",
+            "scope": "engine",
+            "message": "restructure search and indexer modules",
+            "files": [
+              "src/engine/search.ts",
+              "src/engine/indexer.ts"
+            ],
+            "releaseHint": "none"
+          }
+        ]
+      },
+      "baseline": {
+        "type": "feat",
+        "correct": false,
+        "confidence": 0.65,
+        "phase": 1
+      },
+      "tags": ["refactor", "balanced-ratio", "medium-difficulty"]
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "name": "@kb-labs/marketplace-app",
+  "version": "0.1.4",
+  "description": "KB Labs Marketplace service — Fastify entrypoint",
+  "type": "module",
+  "main": "./dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsup",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run --passWithNoTests -c ../../vitest.config.ts"
+  },
+  "dependencies": {
+    "@kb-labs/marketplace-api": "workspace:*",
+    "@kb-labs/marketplace-core": "workspace:*",
+    "@kb-labs/marketplace-npm": "workspace:*",
+    "@kb-labs/shared-http": "workspace:*",
+    "@kb-labs/core-runtime": "workspace:*",
+    "@kb-labs/core-platform": "workspace:*",
+    "@kb-labs/core-sys": "workspace:*",
+    "fastify": "^5.3.3",
+    "@kb-labs/plugin-contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.5",
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.3.3"
+  },
+  "kb": {
+    "manifest": "./dist/manifest.js"
+  }
+}

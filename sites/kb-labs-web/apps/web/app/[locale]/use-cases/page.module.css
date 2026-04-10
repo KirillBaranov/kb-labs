@@ -1,0 +1,158 @@
+/* ── Hero ─────────────────────────────────────────────────────────── */
+.hero {
+  text-align: center;
+  padding: clamp(4rem, 8vw, 7rem) 1.5rem clamp(3rem, 6vw, 5rem);
+  border-bottom: 1px solid var(--line);
+}
+
+.heroEyebrow {
+  margin: 0 0 1rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #a0a8b8;
+}
+
+.hero h1 {
+  font-size: clamp(2.2rem, 5vw, 3.6rem);
+  font-weight: 740;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+  margin: 0 0 1rem;
+  max-width: 18ch;
+  margin-inline: auto;
+}
+
+.heroSub {
+  font-size: clamp(1rem, 1.6vw, 1.15rem);
+  color: var(--muted);
+  margin: 0;
+  max-width: 52ch;
+  margin-inline: auto;
+  line-height: 1.65;
+}
+
+/* ── Story list ───────────────────────────────────────────────────── */
+.list {
+  width: min(100% - 2.4rem, var(--container));
+  margin-inline: auto;
+  padding-block: clamp(3rem, 6vw, 5rem);
+  display: grid;
+  gap: 0;
+}
+
+.story {
+  display: grid;
+  grid-template-columns: 4rem 1fr;
+  gap: 0 2rem;
+  padding-block: clamp(2.5rem, 5vw, 4rem);
+  border-bottom: 1px solid var(--line);
+}
+
+.story:first-child {
+  padding-top: 0;
+}
+
+/* ── Index column ─────────────────────────────────────────────────── */
+.storyIndex {
+  padding-top: 0.2rem;
+}
+
+.storyNum {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #c4cad8;
+}
+
+/* ── Body column ──────────────────────────────────────────────────── */
+.storyBody {
+  display: grid;
+  gap: 1rem;
+}
+
+.storyHook {
+  margin: 0;
+  font-size: clamp(1.1rem, 2vw, 1.35rem);
+  font-weight: 500;
+  color: var(--muted);
+  font-style: italic;
+  line-height: 1.45;
+}
+
+.storyTitle {
+  margin: 0;
+  font-size: clamp(1.5rem, 2.8vw, 2.1rem);
+  font-weight: 730;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+/* ── Three-column detail grid ─────────────────────────────────────── */
+.storyGrid {
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr 1px 1fr;
+  gap: 0 2rem;
+  margin-top: 0.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+
+.storyColDivider {
+  background: var(--line);
+  width: 1px;
+}
+
+.storyCol {
+  display: grid;
+  gap: 0.45rem;
+  align-content: start;
+}
+
+.storyLabel {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #a0a8b8;
+}
+
+.storyText {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.storyResult {
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .story {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+
+  .storyIndex {
+    padding-top: 0;
+  }
+
+  .storyGrid {
+    grid-template-columns: 1fr;
+    gap: 1.25rem 0;
+  }
+
+  .storyColDivider {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero h1 {
+    max-width: none;
+  }
+}

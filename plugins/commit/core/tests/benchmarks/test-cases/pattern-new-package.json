@@ -1,0 +1,202 @@
+{
+  "version": "1.0.0",
+  "createdAt": "2025-12-19T00:00:00.000Z",
+  "description": "Test cases for new package pattern detection (should be feat, not chore)",
+  "cases": [
+    {
+      "id": "new-package-001-resource-broker",
+      "description": "New package: core-resource-broker with 21 files",
+      "category": "new-package",
+      "difficulty": "medium",
+      "files": [
+        {
+          "path": "kb-labs-core/packages/core-resource-broker/package.json",
+          "status": "added",
+          "additions": 50,
+          "deletions": 0,
+          "isNewFile": true
+        },
+        {
+          "path": "kb-labs-core/packages/core-resource-broker/src/broker/index.ts",
+          "status": "added",
+          "additions": 20,
+          "deletions": 0,
+          "isNewFile": true
+        },
+        {
+          "path": "kb-labs-core/packages/core-resource-broker/src/broker/resource-broker.ts",
+          "status": "added",
+          "additions": 200,
+          "deletions": 0,
+          "isNewFile": true
+        },
+        {
+          "path": "kb-labs-core/packages/core-resource-broker/src/index.ts",
+          "status": "added",
+          "additions": 10,
+          "deletions": 0,
+          "isNewFile": true
+        },
+        {
+          "path": "kb-labs-core/packages/core-resource-broker/src/queue/index.ts",
+          "status": "added",
+          "additions": 15,
+          "deletions": 0,
+          "isNewFile": true
+        },
+        {
+          "path": "kb-labs-core/packages/core-resource-broker/src/queue/priority-queue.ts",
+          "status": "added",
+          "additions": 150,
+          "deletions": 0,
+          "isNewFile": true
+        },
+        {
+          "path": "kb-labs-core/packages/core-resource-broker/src/rate-limit/in-memory-backend.ts",
+          "status": "added",
+          "additions": 100,
+          "deletions": 0,
+          "isNewFile": true
+        },
+        {
+          "path": "kb-labs-core/packages/core-resource-broker/src/rate-limit/index.ts",
+          "status": "added",
+          "additions": 20,
+          "deletions": 0,
+          "isNewFile": true
+        },
+        {
+          "path": "kb-labs-core/packages/core-resource-broker/src/rate-limit/presets.ts",
+          "status": "added",
+          "additions": 80,
+          "deletions": 0,
+          "isNewFile": true
+        },
+        {
+          "path": "kb-labs-core/packages/core-resource-broker/src/rate-limit/state-broker-backend.ts",
+          "status": "added",
+          "additions": 120,
+          "deletions": 0,
+          "isNewFile": true
+        },
+        {
+          "path": "kb-labs-core/packages/core-resource-broker/src/retry/error-classifier.ts",
+          "status": "added",
+          "additions": 90,
+          "deletions": 0,
+          "isNewFile": true
+        },
+        {
+          "path": "kb-labs-core/packages/core-resource-broker/src/retry/index.ts",
+          "status": "added",
+          "additions": 15,
+          "deletions": 0,
+          "isNewFile": true
+        },
+        {
+          "path": "kb-labs-core/packages/core-resource-broker/src/retry/retry-strategy.ts",
+          "status": "added",
+          "additions": 110,
+          "deletions": 0,
+          "isNewFile": true
+        },
+        {
+          "path": "kb-labs-core/packages/core-resource-broker/src/types.ts",
+          "status": "added",
+          "additions": 60,
+          "deletions": 0,
+          "isNewFile": true
+        },
+        {
+          "path": "kb-labs-core/packages/core-resource-broker/src/wrappers/index.ts",
+          "status": "added",
+          "additions": 25,
+          "deletions": 0,
+          "isNewFile": true
+        },
+        {
+          "path": "kb-labs-core/packages/core-resource-broker/src/wrappers/queued-embeddings.ts",
+          "status": "added",
+          "additions": 70,
+          "deletions": 0,
+          "isNewFile": true
+        },
+        {
+          "path": "kb-labs-core/packages/core-resource-broker/src/wrappers/queued-llm.ts",
+          "status": "added",
+          "additions": 75,
+          "deletions": 0,
+          "isNewFile": true
+        },
+        {
+          "path": "kb-labs-core/packages/core-resource-broker/src/wrappers/queued-vector-store.ts",
+          "status": "added",
+          "additions": 65,
+          "deletions": 0,
+          "isNewFile": true
+        },
+        {
+          "path": "kb-labs-core/packages/core-resource-broker/tsconfig.build.json",
+          "status": "added",
+          "additions": 15,
+          "deletions": 0,
+          "isNewFile": true
+        },
+        {
+          "path": "kb-labs-core/packages/core-resource-broker/tsconfig.json",
+          "status": "added",
+          "additions": 10,
+          "deletions": 0,
+          "isNewFile": true
+        },
+        {
+          "path": "kb-labs-core/packages/core-resource-broker/tsup.config.ts",
+          "status": "added",
+          "additions": 20,
+          "deletions": 0,
+          "isNewFile": true
+        }
+      ],
+      "expected": {
+        "commits": [
+          {
+            "type": "feat",
+            "scope": "core-resource-broker",
+            "message": "add resource broker package",
+            "files": [
+              "kb-labs-core/packages/core-resource-broker/package.json",
+              "kb-labs-core/packages/core-resource-broker/src/broker/index.ts",
+              "kb-labs-core/packages/core-resource-broker/src/broker/resource-broker.ts",
+              "kb-labs-core/packages/core-resource-broker/src/index.ts",
+              "kb-labs-core/packages/core-resource-broker/src/queue/index.ts",
+              "kb-labs-core/packages/core-resource-broker/src/queue/priority-queue.ts",
+              "kb-labs-core/packages/core-resource-broker/src/rate-limit/in-memory-backend.ts",
+              "kb-labs-core/packages/core-resource-broker/src/rate-limit/index.ts",
+              "kb-labs-core/packages/core-resource-broker/src/rate-limit/presets.ts",
+              "kb-labs-core/packages/core-resource-broker/src/rate-limit/state-broker-backend.ts",
+              "kb-labs-core/packages/core-resource-broker/src/retry/error-classifier.ts",
+              "kb-labs-core/packages/core-resource-broker/src/retry/index.ts",
+              "kb-labs-core/packages/core-resource-broker/src/retry/retry-strategy.ts",
+              "kb-labs-core/packages/core-resource-broker/src/types.ts",
+              "kb-labs-core/packages/core-resource-broker/src/wrappers/index.ts",
+              "kb-labs-core/packages/core-resource-broker/src/wrappers/queued-embeddings.ts",
+              "kb-labs-core/packages/core-resource-broker/src/wrappers/queued-llm.ts",
+              "kb-labs-core/packages/core-resource-broker/src/wrappers/queued-vector-store.ts",
+              "kb-labs-core/packages/core-resource-broker/tsconfig.build.json",
+              "kb-labs-core/packages/core-resource-broker/tsconfig.json",
+              "kb-labs-core/packages/core-resource-broker/tsup.config.ts"
+            ],
+            "releaseHint": "minor"
+          }
+        ]
+      },
+      "baseline": {
+        "type": "chore",
+        "correct": false,
+        "confidence": 0.75,
+        "phase": 1
+      },
+      "tags": ["new-package", "high-priority", "common-error"]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "extends": "@kb-labs/devkit/tsconfig/cli.json",
+  "compilerOptions": {
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": "dist",
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "src"
+  ]
+}

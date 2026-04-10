@@ -1,0 +1,99 @@
+{
+  "version": "3.0.0",
+  "registryUrl": "https://registry.npmjs.org",
+  "core": [
+    {
+      "name": "@kb-labs/cli-bin"
+    },
+    {
+      "name": "@kb-labs/sdk"
+    },
+    {
+      "name": "@kb-labs/core-runtime"
+    },
+    {
+      "name": "@kb-labs/core-contracts"
+    },
+    {
+      "name": "@kb-labs/shared-cli-ui"
+    },
+    {
+      "name": "@kb-labs/core-state-daemon"
+    },
+    {
+      "name": "@kb-labs/adapters-kblabs-gateway"
+    }
+  ],
+  "services": [
+    {
+      "id": "rest",
+      "pkg": "@kb-labs/rest-api-app",
+      "description": "REST API (port 5050)",
+      "default": true
+    },
+    {
+      "id": "workflow",
+      "pkg": "@kb-labs/workflow-daemon",
+      "description": "Workflow engine (port 7778)",
+      "default": true
+    },
+    {
+      "id": "gateway",
+      "pkg": "@kb-labs/gateway-app",
+      "description": "Central router (port 4000)",
+      "default": true
+    },
+    {
+      "id": "marketplace",
+      "pkg": "@kb-labs/marketplace-app",
+      "description": "Marketplace (port 5070)",
+      "default": true
+    },
+    {
+      "id": "studio",
+      "pkg": "@kb-labs/studio-app",
+      "description": "Web UI (port 3000)",
+      "default": true
+    }
+  ],
+  "plugins": [
+    {
+      "id": "marketplace",
+      "pkg": "@kb-labs/marketplace-cli",
+      "description": "Install, list, enable plugins",
+      "default": true
+    },
+    {
+      "id": "mind",
+      "pkg": "@kb-labs/mind-cli",
+      "description": "AI code search (RAG)",
+      "default": true
+    },
+    {
+      "id": "agents",
+      "pkg": "@kb-labs/agent-cli",
+      "description": "Autonomous agents",
+      "default": true
+    },
+    {
+      "id": "ai-review",
+      "pkg": "@kb-labs/review-cli",
+      "description": "AI code review",
+      "default": true
+    },
+    {
+      "id": "commit",
+      "pkg": "@kb-labs/commit-cli",
+      "description": "AI commit generation",
+      "default": true
+    }
+  ],
+  "binaries": [
+    {
+      "id": "kb-dev",
+      "repo": "KirillBaranov/kb-labs-dev",
+      "name": "kb-dev",
+      "description": "Service manager"
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+/* Theme variables and base styles - must be first */
+@import './styles/variables.css';
+@import './styles/base.css';
+@import './styles/antd-overrides.css';
+@import './styles/settings.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+

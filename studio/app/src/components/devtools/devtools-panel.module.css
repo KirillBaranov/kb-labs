@@ -1,0 +1,121 @@
+/* ── Toggle button ───────────────────────────────────────────────────── */
+
+.toggleBtn {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  transition: bottom 0.2s ease;
+  width: 96px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 10px;
+  background: var(--bg-spotlight, #1f1f1f);
+  color: var(--text-inverse);
+  border: none;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  box-shadow: 0 -2px 8px var(--shadow-elevated);
+  user-select: none;
+  border-radius: 6px 6px 0 0;
+}
+
+.toggleBtn.open {
+  border-radius: 0 0 6px 6px;
+}
+
+.toggleArrow {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  flex-shrink: 0;
+}
+
+.toggleArrow.arrowUp {
+  border-bottom: 5px solid var(--text-inverse);
+}
+
+.toggleArrow.arrowDown {
+  border-top: 5px solid var(--text-inverse);
+}
+
+/* ── Floating panel ──────────────────────────────────────────────────── */
+
+.panel {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9998;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-primary);
+  box-shadow: 0 -4px 20px var(--shadow-elevated);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Drag handle ─────────────────────────────────────────────────────── */
+
+.dragHandle {
+  height: 6px;
+  cursor: ns-resize;
+  background: transparent;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.dragGrip {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 36px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border-secondary);
+  pointer-events: none;
+}
+
+/* ── Top bar ─────────────────────────────────────────────────────────── */
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  padding: 0 8px;
+  height: 28px;
+  border-bottom: 1px solid var(--border-primary);
+  flex-shrink: 0;
+}
+
+.iconBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  border-radius: 4px;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+}
+
+.iconBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+/* ── Content ─────────────────────────────────────────────────────────── */
+
+.content {
+  flex: 1;
+  overflow: hidden;
+}

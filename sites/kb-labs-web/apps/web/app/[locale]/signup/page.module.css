@@ -1,0 +1,149 @@
+.main {
+  min-height: calc(100svh - 74px - 1px);
+  display: grid;
+  place-items: center;
+  padding: clamp(2rem, 5vw, 4rem) clamp(1rem, 3vw, 2rem);
+}
+
+.card {
+  width: 100%;
+  max-width: 960px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: 0 8px 40px rgba(15, 17, 21, 0.07), 0 2px 8px rgba(15, 17, 21, 0.04);
+}
+
+/* ── Left col ── */
+.left {
+  padding: clamp(2rem, 4vw, 3.5rem);
+  background: #f7f8fa;
+  border-right: 1px solid var(--line);
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+}
+
+.eyebrow {
+  display: inline-block;
+  width: fit-content;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  border: 1px solid rgba(12, 102, 255, 0.2);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  background: rgba(12, 102, 255, 0.05);
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(1.5rem, 2.8vw, 2.1rem);
+  font-weight: 720;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--text);
+}
+
+.desc {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.perks {
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 1.25rem;
+}
+
+.perk {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.875rem;
+}
+
+.perkIcon {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+  color: var(--accent);
+}
+
+.perkLabel {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 640;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.perkDesc {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.55;
+  margin-top: 0.2rem;
+}
+
+/* ── Right col ── */
+.right {
+  padding: clamp(2rem, 4vw, 3.5rem);
+  display: grid;
+  align-content: center;
+  gap: 1rem;
+}
+
+.formTitle {
+  margin: 0;
+  font-size: clamp(1.2rem, 2vw, 1.6rem);
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+
+.formDesc {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.formNote {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #9299a8;
+  line-height: 1.55;
+}
+
+.formNote a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: rgba(12, 102, 255, 0.35);
+  text-underline-offset: 2px;
+}
+
+.formNote a:hover {
+  text-decoration-color: var(--accent);
+}
+
+/* ── Responsive ── */
+@media (max-width: 680px) {
+  .card {
+    grid-template-columns: 1fr;
+    border-radius: 16px;
+  }
+
+  .left {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+}

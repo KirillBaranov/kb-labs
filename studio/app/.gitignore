@@ -1,0 +1,29 @@
+# Environment variables (local overrides)
+.env.local
+.env.*.local
+
+# Build outputs
+dist/
+*.local
+
+# Compiled JavaScript files (should not be in src/)
+# But allow config files like studio.config.js
+src/**/*.js
+src/**/*.js.map
+!src/**/*.config.js
+!src/**/vite.config.js
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Dependencies
+node_modules/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+

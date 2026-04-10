@@ -1,0 +1,194 @@
+---
+title: "Host Agent"
+description: "Daemon on the developer's machine that bridges local filesystem and git to cloud-hosted workflows."
+updatedAt: "2026-04-07"
+order: 6
+---
+
+The host agent is a daemon you run on your own machine. It connects to a remote KB Labs Gateway over an authenticated WebSocket tunnel and exposes local capabilities — filesystem reads and writes, git operations — to server-side workflows and plugins. It's the bridge between "I'm running my tools on a cloud agent somewhere" and "the code lives on my laptop".
+
+Source lives in [infra/kb-labs-host-agent/](infra/kb-labs-host-agent/). There's no `ServiceManifest` for it — the host agent is not managed by `kb-dev` because it's meant to run on end-user machines, not inside the platform's service stack.
+
+## Why it exists
+
+When a cloud-hosted workflow wants to run `git diff`, read your `src/` directory, or analyze your local changes, it has three bad options:
+
+1. **Mount the laptop's filesystem over the network** — brittle, slow, massive security surface.
+2. **Copy everything into the cloud** — huge data transfer, privacy problem.
+3. **Run every tool locally** — defeats the point of cloud agents.
+
+The host agent is the fourth option: **run the agent in the cloud, run the tool on the laptop, tunnel capability calls between them**. The tunnel is a single outbound WebSocket — no inbound ports, no firewall holes. The cloud agent sends "please read this file" calls; the daemon executes them locally and streams results back.
+
+## Architecture
+
+```
+Developer's machine:
+  CLI / Studio / IDE
+       │ (IPC — Unix socket ~/.kb/agent.sock)
+  Host Agent daemon
+       │ (WSS + JWT Bearer)
+═══════════════════════════════════
+  Gateway :4000  (cloud server)
+       │
+  REST API / Workflow / Mind
+```
+
+**The host agent is the only process with outbound network access from the laptop.** Everything else on the machine (CLI, Studio, IDE extensions) talks to the daemon over a local Unix socket. Local file operations happen on the machine; only the results travel over the encrypted tunnel to the gateway.
+
+## Packages
+
+The host agent is its own mini-monorepo:
+
+| Package | Purpose |
+|---|---|
+| `@kb-labs/host-agent-contracts` | Zod schemas — config, capability calls, IPC protocol |
+| `@kb-labs/host-agent-core` | `GatewayClient` (WS + reconnect), `IpcServer`, `TokenManager` |
+| `@kb-labs/host-agent-fs` | Filesystem capability handler (read/write/list/stat/exists) |
+| `@kb-labs/host-agent-app` | Daemon binary — wires everything together |
+
+## Config
+
+Stored at `~/.kb/agent.json` after a one-time registration:
+
+```json
+{
+  "clientId":    "clt_...",
+  "clientSecret": "cs_...",
+  "hostId":      "host_...",
+  "gatewayUrl":  "https://gateway.example.com",
+  "namespaceId": "default",
+  "publicKey":   "base64url-x25519-public-key"
+}
+```
+
+`clientSecret` and the x25519 private key **never leave the machine**. The gateway stores only the `clientId` and `publicKey`; every authentication handshake uses a signed challenge based on the local private key.
+
+## Registration
+
+```bash
+kb agent register --gateway https://gateway.example.com
+```
+
+One-time setup. Generates a new keypair, registers with the gateway, writes `~/.kb/agent.json`. You do this once per machine per gateway.
+
+## Daemon lifecycle
+
+On startup:
+
+1. **Load config** from `~/.kb/agent.json`.
+2. **Authenticate** — `POST /auth/token` to the gateway with the client credentials, receive `{ accessToken, refreshToken }`.
+3. **Open WebSocket** — `WSS /hosts/connect` with `Authorization: Bearer <accessToken>`.
+4. **Handshake** — send `hello { protocolVersion, agentVersion, hostId }`, receive `connected { hostId, sessionId }`.
+5. **Heartbeat** every 30 seconds.
+6. **Process incoming calls** — each message arrives with a `requestId`; the daemon dispatches it to the matching capability handler and streams results back as `chunk` events followed by a final `result`.
+7. **Token refresh** — 5 minutes before expiry, `POST /auth/refresh` and reconnect the WebSocket with the new token.
+8. **Reconnect on disconnect** — exponential backoff: 1s → 2s → 4s → … → capped at 60s. The tunnel is expected to flap on flaky networks, so reconnects aren't treated as errors.
+
+## Running the daemon
+
+```bash
+kb agent start                 # start in background
+kb agent status                # check connection
+kb agent stop                  # stop the daemon
+```
+
+`kb agent status` output:
+
+```json
+{ "connected": true, "hostId": "host_...", "gatewayUrl": "https://..." }
+```
+
+For debugging, run in the foreground:
+
+```bash
+node apps/host-agent-app/dist/index.js
+```
+
+## Capabilities
+
+### Filesystem
+
+Registered as capability `filesystem`. Every method operates on absolute paths that must pass an allowlist check.
+
+| Method | Args | Returns |
+|---|---|---|
+| `readFile` | `path: string` | `string` (utf-8) |
+| `writeFile` | `path: string, content: string` | `void` |
+| `listDir` | `path: string` | `string[]` |
+| `stat` | `path: string` | `{ size, isFile, isDir, mtime }` |
+| `exists` | `path: string` | `boolean` |
+
+**Path allowlist.** Every filesystem request is validated against the `allowedPaths` list in `~/.kb/agent.json`. Paths outside the allowlist are rejected with `Access denied` — a cloud agent can't stealthily read `~/.ssh` or `~/.aws` even if it tries.
+
+The allowlist is set at registration time and can be edited in the config file.
+
+### Git (future)
+
+A `git` capability is on the roadmap — `status`, `log`, `diff`, `show`. The same allowlist model applies.
+
+## IPC protocol
+
+The daemon listens on `~/.kb/agent.sock` (Unix domain socket) with a simple newline-delimited JSON protocol. Clients like the KB Labs CLI and Studio talk to it over this socket, not over the WebSocket.
+
+### Status check
+
+```jsonc
+→ { "type": "status" }
+← { "type": "status", "connected": true, "hostId": "host_...", "latencyMs": 12 }
+```
+
+### Execute (future)
+
+Tunnels a call through to the gateway:
+
+```jsonc
+→ { "type": "execute", "requestId": "...", "command": "workflow:run", "params": {...}, "stream": true }
+← { "type": "event", "requestId": "...", "data": {...} }
+← { "type": "done",  "requestId": "...", "result": {...} }
+```
+
+The `execute` path isn't wired up for every command yet — today it's primarily for workflow runs that need local context.
+
+## How it's used from workflows
+
+From a workflow's perspective, the host agent is one of several workspace providers. Install `@kb-labs/adapters-workspace-agent`:
+
+```json
+{
+  "platform": {
+    "adapters": {
+      "workspace": "@kb-labs/adapters-workspace-agent"
+    },
+    "adapterOptions": {
+      "workspace": {
+        "gatewayUrl": "http://localhost:4000",
+        "namespaceId": "default",
+        "cacheDir": ".kb/runtime/workspaces"
+      }
+    }
+  }
+}
+```
+
+When a workflow materializes a workspace, the adapter asks the gateway to find a connected host agent in the matching namespace. The agent provides the workspace; jobs running in the cloud execute against paths exposed by the agent. See [`IWorkspaceProvider`](/adapters/interfaces/workspace) for the interface.
+
+## Security model
+
+- **No inbound network access on the laptop.** The daemon only opens one outbound WebSocket.
+- **Allowlisted filesystem.** Every read and write is checked against `~/.kb/agent.json`.
+- **Local secrets stay local.** The client secret and private key never leave the machine.
+- **JWT bearer auth.** Every WebSocket connection is authenticated with a short-lived JWT; long-lived credentials are never on the wire.
+- **No plugin execution on the laptop.** The host agent only runs capability handlers — the ones in `host-agent-fs`. It does **not** execute arbitrary plugin code. Plugin execution happens in the cloud, and the agent just serves file I/O.
+
+## Limitations
+
+- **One gateway per machine.** The config at `~/.kb/agent.json` binds the agent to a single gateway. Switching gateways means re-registering.
+- **Single namespace.** The agent joins one namespace at connection time. Multi-namespace access would require multiple agent instances.
+- **Not managed by `kb-dev`.** The host agent is meant to run as a user-level daemon on end-user machines, not as part of a platform deployment. There's no service manifest, no `kb-dev start host-agent` command. Use `kb agent start` instead.
+- **Stale sockets possible.** Repeatedly killing and restarting the daemon without cleanup can leave stale sockets in `~/.kb/`. If `kb agent status` hangs, check for `agent.sock` and remove it.
+
+## What to read next
+
+- [Gateway](/gateway) — the remote side of the tunnel.
+- [IWorkspaceProvider](/adapters/interfaces/workspace) — the adapter interface the agent implements.
+- [Concepts → Execution Model](/concepts/execution-model) — where cloud-side execution fits.

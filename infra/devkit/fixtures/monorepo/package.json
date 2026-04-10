@@ -1,0 +1,25 @@
+{
+  "name": "@fixture/monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Monorepo fixture demonstrating DevKit usage across multiple packages",
+  "scripts": {
+    "clean": "pnpm -r clean",
+    "build": "pnpm -r build",
+    "type-check": "pnpm -r type-check",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "check": "pnpm run lint && pnpm run type-check && pnpm run test && pnpm run build"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4",
+    "tsup": "^8.5.0",
+    "eslint": "^9.35.0",
+    "prettier": "^3.6.2",
+    "rimraf": "^6.0.1",
+    "jiti": "^2.0.0"
+  }
+}

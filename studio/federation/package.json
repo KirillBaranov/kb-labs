@@ -1,0 +1,55 @@
+{
+  "name": "@kb-labs/studio-federation",
+  "version": "0.7.0",
+  "description": "Studio Module Federation host logic — page loader, container, error boundary",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "lint": "eslint . --max-warnings=0"
+  },
+  "dependencies": {
+    "@kb-labs/plugin-contracts": "workspace:*",
+    "@kb-labs/studio-devtools": "workspace:*",
+    "@kb-labs/studio-hooks": "workspace:*",
+    "@kb-labs/studio-event-bus": "workspace:*",
+    "@module-federation/runtime": "^2.3.0"
+  },
+  "peerDependencies": {
+    "@ant-design/icons": "^5.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "antd": "^5.21.0"
+  },
+  "devDependencies": {
+    "@ant-design/icons": "^5.0.0",
+    "@kb-labs/devkit": "workspace:*",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "antd": "^5.21.0",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

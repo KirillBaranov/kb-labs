@@ -1,0 +1,75 @@
+{
+  "name": "@kb-labs/plugin-template-core",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Reference plugin package for KB Labs plugin template with manifest, CLI, REST, and Studio layers.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./plugin-manifest": {
+      "import": "./dist/manifest.v3.js",
+      "types": "./dist/manifest.v3.d.ts"
+    },
+    "./plugin-manifest-v2": {
+      "import": "./dist/manifest.v2.js",
+      "types": "./dist/manifest.v2.d.ts"
+    },
+    "./cli": "./dist/cli/index.js",
+    "./rest": "./dist/rest/index.js",
+    "./studio": "./dist/studio/index.js",
+    "./core": "./dist/core/index.js",
+    "./utils": "./dist/utils/index.js",
+    "./lifecycle": "./dist/lifecycle/index.js",
+    "./studio/widgets/hello": {
+      "import": "./dist/studio/widgets/hello-widget.js",
+      "types": "./dist/studio/widgets/hello-widget.d.ts"
+    },
+    "./dist/*": "./dist/*"
+  },
+  "kb": {
+    "manifest": "./dist/manifest.v3.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "pretype-check": "pnpm --filter @kb-labs/plugin-template-core build",
+    "clean": "rimraf dist",
+    "build": "tsup --config tsup.config.ts",
+    "dev": "tsup --config tsup.config.ts --watch",
+    "lint": "eslint src --ext .ts,.tsx",
+    "lint:fix": "eslint . --fix",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@kb-labs/plugin-contracts": "workspace:*",
+    "@kb-labs/plugin-template-contracts": "workspace:*",
+    "@kb-labs/sdk": "workspace:*",
+    "react": "^18.3.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@kb-labs/plugin-runtime": "workspace:*",
+    "@types/node": "^24.3.3",
+    "@types/react": "^18.3.8",
+    "@types/react-dom": "^18.3.0",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

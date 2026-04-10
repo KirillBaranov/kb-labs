@@ -1,0 +1,212 @@
+---
+title: "IEnvironmentProvider"
+description: "Long-lived execution environments — create, reserve, start, destroy."
+updatedAt: "2026-04-07"
+order: 11
+---
+
+`IEnvironmentProvider` manages the lifecycle of **long-lived execution environments** — containers, pods, VMs, sandboxes — that plugin code runs inside. Each provider maps onto a specific infrastructure backend (Docker, Kubernetes, Firecracker, etc.).
+
+Crucially, this interface does **not** execute plugin jobs itself. That's the execution backend's job. The provider just creates the environment, hands back an identifier, and tears it down when done.
+
+Source of truth: [platform/kb-labs-core/packages/core-platform/src/environment/environment-provider.ts](platform/kb-labs-core/packages/core-platform/src/environment/environment-provider.ts).
+
+## Responsibilities (and non-responsibilities)
+
+**In scope:**
+- Provision, inspect, and destroy environments.
+- Manage lease lifecycle (reserve slots, track expiration).
+- Report status and expose network endpoints.
+
+**Not in scope:**
+- Plugin/job dispatch.
+- Horizontal runner scaling.
+- Workspace materialization (that's `IWorkspaceProvider`).
+
+The separation matters: the execution backend (in-process / worker-pool / container / remote) handles "what to run", and `IEnvironmentProvider` handles "where the process lives". You can pair any execution backend with any environment provider.
+
+## Interface
+
+```ts
+interface IEnvironmentProvider {
+  create(request: CreateEnvironmentRequest): Promise<EnvironmentDescriptor>;
+  getStatus(environmentId: string): Promise<EnvironmentStatusResult>;
+  destroy(environmentId: string, reason?: string): Promise<void>;
+
+  // Optional — two-phase provisioning
+  reserve?(request: ReserveEnvironmentRequest): Promise<ReservedEnvironment>;
+  start?(environmentId: string, request: StartEnvironmentRequest): Promise<EnvironmentDescriptor>;
+
+  // Optional — lease management
+  renewLease?(environmentId: string, ttlMs: number): Promise<EnvironmentLease>;
+
+  // Optional — capability declaration
+  getCapabilities?(): EnvironmentProviderCapabilities;
+}
+```
+
+## Lifecycle states
+
+```ts
+type EnvironmentStatus =
+  | 'pending'
+  | 'provisioning'
+  | 'ready'
+  | 'degraded'
+  | 'terminating'
+  | 'terminated'
+  | 'failed';
+```
+
+`degraded` is a real state — an environment can be partially functional (e.g., networking up but disk failing) without being fully failed. Callers should treat `degraded` as "usable but risky, consider migrating soon".
+
+## Methods
+
+### `create(request)`
+
+Single-shot provisioning. Creates and starts an environment in one call.
+
+```ts
+interface CreateEnvironmentRequest {
+  tenantId?: string;
+  namespace?: string;
+  runId?: string;
+  templateId?: string;              // named environment template
+  image?: string;                   // container image
+  workspacePath?: string;           // path to mount
+  command?: string[];               // entrypoint
+  env?: Record<string, string>;
+  resources?: EnvironmentResources; // cpu, memory, disk, gpu
+  ttlMs?: number;                   // lease TTL
+  metadata?: Record<string, unknown>;
+}
+
+interface EnvironmentDescriptor {
+  environmentId: string;
+  provider: string;
+  status: EnvironmentStatus;
+  createdAt: string;
+  updatedAt: string;
+  lease?: EnvironmentLease;
+  endpoints?: EnvironmentEndpoint[];
+  metadata?: Record<string, unknown>;
+}
+```
+
+### `reserve(request)` + `start(environmentId, request)` (optional, two-phase)
+
+Some providers support explicit reservation — grab a slot without actually starting the process, then fill in the details later:
+
+```ts
+interface ReserveEnvironmentRequest {
+  namespace?: string;
+  runId?: string;
+  ttlMs?: number;
+  metadata?: Record<string, unknown>;
+}
+
+interface StartEnvironmentRequest {
+  image?: string;
+  workspacePath?: string;
+  env?: Record<string, string>;
+  metadata?: Record<string, unknown>;
+}
+```
+
+This is useful for quota accounting (reserve first, then retry the image pull) and for providers that need to allocate network resources before the workload is known. Providers that don't support it just implement `create` and skip these.
+
+### `destroy(environmentId, reason?)`
+
+Tears down the environment. **Must be idempotent** — double-destroy is not an error. The provider releases all associated resources (disk, network, lease).
+
+### `getStatus(environmentId)`
+
+```ts
+interface EnvironmentStatusResult {
+  environmentId: string;
+  status: EnvironmentStatus;
+  reason?: string;
+  updatedAt: string;
+  lease?: EnvironmentLease;
+}
+```
+
+### `renewLease(environmentId, ttlMs)` (optional)
+
+Extends the lease on a long-running environment. Providers that don't support lease renewal (because they don't have leases, or because renewal would be trivial) can skip this.
+
+```ts
+interface EnvironmentLease {
+  leaseId: string;
+  acquiredAt: string;
+  expiresAt: string;
+  owner?: string;
+}
+```
+
+### `getCapabilities?()`
+
+```ts
+interface EnvironmentProviderCapabilities {
+  supportsLeaseRenewal?: boolean;
+  supportsSnapshots?: boolean;
+  supportsExecProbe?: boolean;
+  supportsLogs?: boolean;
+  custom?: Record<string, unknown>;
+}
+```
+
+## Related types
+
+```ts
+interface EnvironmentResources {
+  cpu?:    string;   // e.g. '500m', '2'
+  memory?: string;   // e.g. '512Mi', '4Gi'
+  disk?:   string;
+  gpu?:    string;
+}
+
+interface EnvironmentEndpoint {
+  name: string;
+  protocol?: 'http' | 'https' | 'tcp' | 'udp' | 'unix';
+  host?: string;
+  port?: number;
+  path?: string;
+}
+```
+
+Endpoints are how the provider tells callers how to reach the environment — e.g., a Docker adapter might return `{ name: 'main', protocol: 'http', host: 'localhost', port: 5050 }`.
+
+## Contract rules
+
+- **`create` / `reserve` / `start` / `destroy` must be idempotent on the same IDs.**
+- **Destroyed environments disappear from `getStatus`.** Looking up a destroyed environment either returns `status: 'terminated'` or throws a not-found error — adapters pick one and stick with it.
+- **Leases are best-effort.** Expired environments may linger briefly before the provider GCs them.
+- **Resource limits are advisory for some providers.** Docker enforces cgroups strictly, Kubernetes does the same, but local adapters often ignore them.
+
+## Built-in adapters implementing `IEnvironmentProvider`
+
+| Package | Notes |
+|---|---|
+| `@kb-labs/adapters-environment-docker` | Docker. Two-phase provisioning, supports bind-mount workspaces, lease-based TTL via auto-remove. |
+
+Configured in `kb.config.json` under `platform.adapterOptions.environment`:
+
+```json
+{
+  "environment": {
+    "defaultImage": "kb-runtime-server:local",
+    "autoRemove": true,
+    "mountWorkspace": true,
+    "workspaceMountPath": "/workspace",
+    "network": "kb-labs",
+    "extraHosts": ["host.docker.internal:host-gateway"]
+  }
+}
+```
+
+## What to read next
+
+- [IWorkspaceProvider](/adapters/interfaces/workspace) — workspaces are attached to environments.
+- [Concepts → Execution Model](/concepts/execution-model) — where `container` mode fits.
+- [Services → Gateway](/gateway) — in container mode, the gateway mints JWTs for environment dispatch.

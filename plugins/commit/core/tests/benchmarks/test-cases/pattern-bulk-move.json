@@ -1,0 +1,189 @@
+{
+  "version": "1.0.0",
+  "createdAt": "2025-12-19T00:00:00.000Z",
+  "description": "Test cases for bulk move/reorganization pattern (added but isNewFile=false)",
+  "cases": [
+    {
+      "id": "bulk-move-001-analytics-reorganization",
+      "description": "100 analytics files moved to new structure",
+      "category": "refactor-move",
+      "difficulty": "hard",
+      "files": [
+        {
+          "path": "packages/analytics-core/src/index.ts",
+          "status": "added",
+          "additions": 50,
+          "deletions": 0,
+          "isNewFile": false
+        },
+        {
+          "path": "packages/analytics-core/src/collectors/event-collector.ts",
+          "status": "added",
+          "additions": 120,
+          "deletions": 0,
+          "isNewFile": false
+        },
+        {
+          "path": "packages/analytics-core/src/collectors/metric-collector.ts",
+          "status": "added",
+          "additions": 110,
+          "deletions": 0,
+          "isNewFile": false
+        },
+        {
+          "path": "packages/analytics-core/src/processors/event-processor.ts",
+          "status": "added",
+          "additions": 90,
+          "deletions": 0,
+          "isNewFile": false
+        },
+        {
+          "path": "packages/analytics-core/src/types.ts",
+          "status": "added",
+          "additions": 80,
+          "deletions": 0,
+          "isNewFile": false
+        },
+        {
+          "path": "packages/analytics-storage/src/index.ts",
+          "status": "added",
+          "additions": 40,
+          "deletions": 0,
+          "isNewFile": false
+        },
+        {
+          "path": "packages/analytics-storage/src/stores/event-store.ts",
+          "status": "added",
+          "additions": 150,
+          "deletions": 0,
+          "isNewFile": false
+        },
+        {
+          "path": "packages/analytics-storage/src/stores/metric-store.ts",
+          "status": "added",
+          "additions": 140,
+          "deletions": 0,
+          "isNewFile": false
+        },
+        {
+          "path": "packages/analytics-api/src/index.ts",
+          "status": "added",
+          "additions": 30,
+          "deletions": 0,
+          "isNewFile": false
+        },
+        {
+          "path": "packages/analytics-api/src/routes/events.ts",
+          "status": "added",
+          "additions": 100,
+          "deletions": 0,
+          "isNewFile": false
+        }
+      ],
+      "expected": {
+        "commits": [
+          {
+            "type": "refactor",
+            "scope": "analytics",
+            "message": "reorganize analytics packages structure",
+            "files": [
+              "packages/analytics-core/src/index.ts",
+              "packages/analytics-core/src/collectors/event-collector.ts",
+              "packages/analytics-core/src/collectors/metric-collector.ts",
+              "packages/analytics-core/src/processors/event-processor.ts",
+              "packages/analytics-core/src/types.ts",
+              "packages/analytics-storage/src/index.ts",
+              "packages/analytics-storage/src/stores/event-store.ts",
+              "packages/analytics-storage/src/stores/metric-store.ts",
+              "packages/analytics-api/src/index.ts",
+              "packages/analytics-api/src/routes/events.ts"
+            ],
+            "releaseHint": "none"
+          }
+        ]
+      },
+      "baseline": {
+        "type": "feat",
+        "correct": false,
+        "confidence": 0.78,
+        "phase": 1
+      },
+      "tags": ["bulk-move", "refactor", "high-priority", "hard"]
+    },
+    {
+      "id": "bulk-move-002-package-split",
+      "description": "Package split into multiple packages (files moved, not new)",
+      "category": "refactor-move",
+      "difficulty": "hard",
+      "files": [
+        {
+          "path": "packages/core-types/src/index.ts",
+          "status": "added",
+          "additions": 20,
+          "deletions": 0,
+          "isNewFile": false
+        },
+        {
+          "path": "packages/core-types/src/plugin-types.ts",
+          "status": "added",
+          "additions": 100,
+          "deletions": 0,
+          "isNewFile": false
+        },
+        {
+          "path": "packages/core-types/src/workflow-types.ts",
+          "status": "added",
+          "additions": 90,
+          "deletions": 0,
+          "isNewFile": false
+        },
+        {
+          "path": "packages/core-utils/src/index.ts",
+          "status": "added",
+          "additions": 15,
+          "deletions": 0,
+          "isNewFile": false
+        },
+        {
+          "path": "packages/core-utils/src/string-utils.ts",
+          "status": "added",
+          "additions": 80,
+          "deletions": 0,
+          "isNewFile": false
+        },
+        {
+          "path": "packages/core-utils/src/path-utils.ts",
+          "status": "added",
+          "additions": 70,
+          "deletions": 0,
+          "isNewFile": false
+        }
+      ],
+      "expected": {
+        "commits": [
+          {
+            "type": "refactor",
+            "scope": "core",
+            "message": "split core package into types and utils",
+            "files": [
+              "packages/core-types/src/index.ts",
+              "packages/core-types/src/plugin-types.ts",
+              "packages/core-types/src/workflow-types.ts",
+              "packages/core-utils/src/index.ts",
+              "packages/core-utils/src/string-utils.ts",
+              "packages/core-utils/src/path-utils.ts"
+            ],
+            "releaseHint": "none"
+          }
+        ]
+      },
+      "baseline": {
+        "type": "feat",
+        "correct": false,
+        "confidence": 0.82,
+        "phase": 1
+      },
+      "tags": ["bulk-move", "package-split", "refactor"]
+    }
+  ]
+}

@@ -1,0 +1,243 @@
+---
+title: "Self-Hosted Deployments"
+description: "Running the gateway in your own network — TLS, secrets, reverse proxies, scaling."
+updatedAt: "2026-04-07"
+order: 5
+---
+
+KB Labs is designed to be self-hosted. Every service — gateway, REST API, workflow daemon, marketplace, state daemon — is a plain Node process with a known port and a `ServiceManifest`. This page walks through what you actually need to wire up when running the gateway in your own infrastructure, including the bits that the dev-mode defaults hide from you.
+
+## What you're deploying
+
+A minimum production deployment is one process per service:
+
+- **Gateway** on port 4000 — the only port you expose externally.
+- **REST API** on 5050 — internal only.
+- **Workflow daemon** on 7778 — internal only.
+- **Marketplace** on 5070 — internal only.
+- **State daemon** on 7777 — internal only, optional (required when `resourceBroker.distributed: true`).
+- **Qdrant** (or whichever vector store) on 6333 — internal.
+- **Redis** (optional) — used by the cache adapter when configured.
+
+Only the gateway should be reachable from outside. Everything else lives on a private network.
+
+## Required env vars
+
+Set these on the gateway process:
+
+| Env var | Why |
+|---|---|
+| `GATEWAY_JWT_SECRET` | HMAC signing key for all JWTs. Without it the gateway runs with an insecure default and will warn loudly. |
+| `GATEWAY_INTERNAL_SECRET` | Shared secret for `/internal/dispatch`. Required if you're using container-mode plugin execution. |
+| `NODE_ENV=production` | Disables Swagger UI and verbose dev logging. |
+| `PORT` | Override the default 4000 if needed. |
+
+And on every service (not just the gateway):
+
+| Env var | Why |
+|---|---|
+| `KB_PROJECT_ROOT` | Where `.kb/kb.config.json` lives, if it isn't in the process CWD. |
+| `KB_PLATFORM_ROOT` | Where `node_modules/@kb-labs/*` lives, if different from `KB_PROJECT_ROOT`. |
+| Adapter-specific secrets | `OPENAI_API_KEY`, `QDRANT_API_KEY`, etc. — whatever your adapters need. |
+
+Secrets should come from a secret manager (Vault, AWS Secrets Manager, Kubernetes secrets), not from `.env` files in production. The bootstrap supports `.env` for dev convenience but treats env vars as the source of truth.
+
+<Callout type="danger">
+**Never ship without setting `GATEWAY_JWT_SECRET`.** The dev fallback (`'dev-insecure-secret-change-me'`) is logged as a warning but doesn't prevent startup. Anyone who knows the default string can mint JWTs for any host in your deployment.
+</Callout>
+
+## Reverse proxy in front of the gateway
+
+The gateway itself does **not** do TLS termination, rate limiting, DDoS protection, IP allow-listing, or web-application firewalling. Put it behind a reverse proxy that does.
+
+### Caddy example
+
+```
+gateway.example.com {
+  reverse_proxy localhost:4000 {
+    transport http {
+      versions h1 h2
+    }
+  }
+
+  # WebSocket upgrades need no special handling — Caddy proxies them by default
+  # with the reverse_proxy directive.
+
+  tls your-email@example.com
+
+  # Rate limit per source IP
+  rate_limit {
+    zone per_ip {
+      key {remote_host}
+      events 100
+      window 1m
+    }
+  }
+}
+```
+
+### nginx example
+
+```nginx
+upstream kb_gateway {
+  server 127.0.0.1:4000;
+}
+
+server {
+  listen 443 ssl http2;
+  server_name gateway.example.com;
+
+  ssl_certificate     /etc/letsencrypt/live/gateway.example.com/fullchain.pem;
+  ssl_certificate_key /etc/letsencrypt/live/gateway.example.com/privkey.pem;
+
+  # Forward everything to the gateway
+  location / {
+    proxy_pass http://kb_gateway;
+
+    # WebSocket upgrade support
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade    $http_upgrade;
+    proxy_set_header Connection "upgrade";
+
+    # Forward client info
+    proxy_set_header Host              $host;
+    proxy_set_header X-Real-IP         $remote_addr;
+    proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-Host  $host;
+
+    # WebSockets can be long-lived — bump the timeouts
+    proxy_read_timeout  3600s;
+    proxy_send_timeout  3600s;
+  }
+}
+```
+
+Two things to get right when proxying WebSockets: `proxy_http_version 1.1` and the `Upgrade` / `Connection` headers. The gateway's WS endpoints (`/hosts/connect` plus any plugin WS channels) won't work without them.
+
+## TLS termination
+
+Terminate TLS at the reverse proxy. The gateway speaks plain HTTP to the proxy on `127.0.0.1` or an internal network. This is simpler than running TLS inside Node and lets you use standard cert tooling (Let's Encrypt via Caddy, cert-manager in Kubernetes).
+
+If you really need end-to-end TLS to the gateway process, Fastify supports TLS natively — but you'll have to patch the bootstrap to pass `https: { cert, key }` options when creating the Fastify instance. It's not a supported config knob today.
+
+## Upstream connectivity
+
+The gateway talks to the REST API, workflow daemon, and marketplace over HTTP. By default these are localhost URLs (`http://localhost:5050`, etc.). In a distributed deployment you'd point them at internal service names:
+
+```json
+{
+  "gateway": {
+    "upstreams": {
+      "rest": {
+        "url": "http://rest-api.internal:5050",
+        "prefix": "/api/v1",
+        "websocket": true
+      },
+      "workflow": {
+        "url": "http://workflow-daemon.internal:7778",
+        "prefix": "/api/exec",
+        "rewritePrefix": ""
+      },
+      "marketplace": {
+        "url": "http://marketplace.internal:5070",
+        "prefix": "/api/v1/marketplace"
+      }
+    }
+  }
+}
+```
+
+The gateway doesn't do service discovery — you give it static URLs and it uses them. This keeps the implementation simple; integrate with your own service discovery (DNS, Consul, Kubernetes service names) by pointing the URLs at the discovery layer's hostnames.
+
+## Host store persistence
+
+If you want host agents to survive a gateway restart without reconnecting, configure a SQL adapter so the gateway can use `SqliteHostStore` for persistence:
+
+```json
+{
+  "platform": {
+    "adapters": {
+      "db": "@kb-labs/adapters-sqlite"
+    },
+    "adapterOptions": {
+      "db": { "filename": "/var/lib/kb-labs/gateway.sqlite" }
+    }
+  }
+}
+```
+
+Without this, the gateway logs `Host store: none (cache-only, hosts will be lost on restart)` at startup and operates in cache-only mode. That's fine for dev and for deployments with only short-lived host connections; it's a problem if you're running a fleet of host agents that expect to stay connected across gateway rolling updates.
+
+The SQLite file needs to be on a persistent volume (not a container-local tmpfs). For higher-availability setups, you can point the `db` adapter at Postgres or another remote database.
+
+## Scaling
+
+**A single gateway process handles thousands of requests per second on modest hardware.** Most deployments don't need to scale the gateway horizontally; scale the upstream services instead.
+
+If you do need multiple gateway instances (for availability or for load), put a network load balancer in front of them and make sure:
+
+- **JWT secrets are identical** across all instances. The gateway uses symmetric HMAC, so any instance can verify any token minted by any other instance.
+- **Host registry is shared** — either via a shared SQL database (multiple gateway instances pointed at the same Postgres) or by pinning host agents to specific gateway instances at the load-balancer layer. Sticky sessions keyed on `hostId` work well for this.
+- **Static tokens are seeded identically** — same config file, same startup behavior.
+
+The gateway is mostly stateless (requests don't require server-side session state beyond what's in the token), so horizontal scaling is straightforward once the shared state is handled.
+
+## Container deployment
+
+The gateway ships a `Dockerfile` under `infra/kb-labs-gateway/apps/gateway-app/`. The image bundles the built artifact and exposes port 4000. In a container orchestrator:
+
+```yaml
+services:
+  gateway:
+    image: kb-labs/gateway:latest
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=production
+      - GATEWAY_JWT_SECRET=${GATEWAY_JWT_SECRET}
+      - GATEWAY_INTERNAL_SECRET=${GATEWAY_INTERNAL_SECRET}
+    volumes:
+      - ./kb.config.json:/app/.kb/kb.config.json:ro
+      - gateway-data:/var/lib/kb-labs
+    depends_on:
+      - rest-api
+      - workflow-daemon
+```
+
+The `depends_on` mirrors what `kb-dev` does locally — start the upstreams before the gateway.
+
+## Observability in production
+
+Standard pattern:
+
+- **Logs** — ship to your log aggregator (Loki, Elasticsearch, Datadog). The gateway emits structured JSON with correlation IDs.
+- **Metrics** — Prometheus scrape of `/metrics`. Add a ServiceMonitor in Kubernetes or a Prometheus scrape config elsewhere.
+- **Traces** — the gateway populates correlation IDs but doesn't emit OpenTelemetry traces out of the box. You can wire that in at the reverse proxy layer (nginx has an OpenTelemetry module, Caddy has a plugin) or by editing the gateway bootstrap.
+
+Diagnostic events go through the same logging pipeline with `level: 'error'` and a machine-readable `code` — good candidates for alerting rules.
+
+## Health and readiness
+
+The service manifest declares `healthCheck: '/health'`. This is a plain liveness probe — if the process is running, `/health` returns 200. It doesn't check upstream reachability.
+
+For readiness checks (the gateway is running **and** its upstreams are reachable), use `/ready` if available in your build, or implement a health-check endpoint in your reverse proxy that probes an upstream via the gateway.
+
+## Rollout strategy
+
+The gateway is a stateless proxy (plus a host registry). Rolling updates work:
+
+1. Deploy new gateway version alongside the old one.
+2. Shift traffic via the load balancer.
+3. Drain the old instance: stop accepting new connections, wait for in-flight requests.
+4. Shut down the old instance.
+
+Host agents reconnect during the cutover with exponential backoff. As long as the new gateway has the same JWT secret, the existing access tokens remain valid and agents resume without re-authenticating.
+
+## What to read next
+
+- [Overview](/gateway) — what the gateway does and why.
+- [Authentication](/gateway/authentication) — JWT secret management and rotation.
+- [Routing](/gateway/routing) — upstream matching rules.
+- [Operations → Deployment](/operations/deployment) — broader deployment guidance for the whole platform, not just the gateway.
+- [Operations → Security](/operations/security) — secrets, sandboxing, threat model.

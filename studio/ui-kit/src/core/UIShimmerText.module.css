@@ -1,0 +1,27 @@
+/**
+ * UIShimmerText - Animated gradient shimmer on text
+ * Classic "Cursor / ClickUp" loading text effect.
+ */
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--shimmer-color-1, #888) 0%,
+    var(--shimmer-color-2, #888) 25%,
+    var(--shimmer-highlight, #fff) 50%,
+    var(--shimmer-color-2, #888) 75%,
+    var(--shimmer-color-1, #888) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: shimmerMove var(--shimmer-duration, 2s) linear infinite;
+  display: inline-block;
+}
+
+@keyframes shimmerMove {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}

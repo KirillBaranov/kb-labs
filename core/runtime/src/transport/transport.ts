@@ -1,0 +1,224 @@
+/**
+ * @module @kb-labs/core-runtime/transport
+ * Abstract transport layer for cross-process adapter communication.
+ *
+ * Provides a transport-agnostic interface for sending adapter calls
+ * between parent and child processes. Implementations can use:
+ * - IPC (process.send/process.on('message'))
+ * - HTTP REST API
+ * - Docker exec
+ * - gRPC
+ * - WebSockets
+ *
+ * @example
+ * ```typescript
+ * import { ITransport, IPCTransport } from '@kb-labs/core-runtime/transport';
+ *
+ * const transport: ITransport = new IPCTransport();
+ * const response = await transport.send({
+ *   type: 'adapter:call',
+ *   requestId: 'uuid-123',
+ *   adapter: 'vectorStore',
+ *   method: 'search',
+ *   args: [[0.1, 0.2, 0.3], 10],
+ * });
+ * ```
+ */
+
+import type { AdapterCall, AdapterResponse } from '@kb-labs/core-platform/serializable';
+
+/**
+ * Transport configuration options.
+ */
+export interface TransportConfig {
+  /**
+   * Default timeout for adapter calls in milliseconds.
+   * @default 30000 (30 seconds)
+   */
+  timeout?: number;
+
+  /**
+   * Number of retry attempts for transient errors.
+   * @default 0 (no retries)
+   */
+  retries?: number;
+
+  /**
+   * Delay between retry attempts in milliseconds.
+   * @default 1000 (1 second)
+   */
+  retryDelay?: number;
+
+  /**
+   * Exponential backoff multiplier for retries.
+   * @default 2 (doubles delay each retry)
+   */
+  backoffMultiplier?: number;
+}
+
+/**
+ * Abstract transport for sending adapter calls.
+ *
+ * Implementations must handle:
+ * - Reliable message delivery
+ * - Timeout enforcement
+ * - Error propagation
+ * - Resource cleanup
+ *
+ * Thread-safety: Implementations must be safe to call concurrently
+ * from multiple async contexts.
+ */
+export interface ITransport {
+  /**
+   * Send adapter call and await response.
+   *
+   * @param call - Adapter method call to send
+   * @returns Response with result or error
+   * @throws TransportError if communication fails
+   * @throws TimeoutError if timeout exceeded
+   * @throws SerializationError if message cannot be serialized
+   *
+   * @example
+   * ```typescript
+   * const call: AdapterCall = {
+   *   type: 'adapter:call',
+   *   requestId: 'uuid-123',
+   *   adapter: 'vectorStore',
+   *   method: 'search',
+   *   args: [[0.1, 0.2, 0.3], 10],
+   *   timeout: 5000,
+   * };
+   *
+   * const response = await transport.send(call);
+   * if (response.error) {
+   *   throw deserialize(response.error);
+   * }
+   * return deserialize(response.result);
+   * ```
+   */
+  send(call: AdapterCall): Promise<AdapterResponse>;
+
+  /**
+   * Close transport and cleanup resources.
+   *
+   * After close():
+   * - No new calls can be sent
+   * - Pending calls are rejected with TransportError
+   * - Listeners/connections are cleaned up
+   *
+   * @example
+   * ```typescript
+   * await transport.close();
+   * // All pending calls rejected
+   * // transport.send() will throw TransportError
+   * ```
+   */
+  close(): Promise<void>;
+
+  /**
+   * Check if transport is closed.
+   */
+  isClosed(): boolean;
+}
+
+/**
+ * Base error for transport failures.
+ */
+export class TransportError extends Error {
+  public override readonly cause?: Error;
+
+  constructor(message: string, cause?: Error) {
+    super(message);
+    this.name = 'TransportError';
+    this.cause = cause;
+    if (cause) {
+      this.stack = `${this.stack}\nCaused by: ${cause.stack}`;
+    }
+  }
+}
+
+/**
+ * Error thrown when adapter call times out.
+ */
+export class TimeoutError extends TransportError {
+  public readonly timeoutMs: number;
+
+  constructor(message: string, timeoutMs: number) {
+    super(message);
+    this.name = 'TimeoutError';
+    this.timeoutMs = timeoutMs;
+  }
+}
+
+/**
+ * Error thrown when circuit breaker is open.
+ */
+export class CircuitOpenError extends TransportError {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CircuitOpenError';
+  }
+}
+
+/**
+ * Check if error is retryable (transient failure).
+ *
+ * Retryable errors:
+ * - Network timeouts (TimeoutError)
+ * - Connection errors (ECONNRESET, ECONNREFUSED, ETIMEDOUT)
+ * - Temporary server errors (503 Service Unavailable)
+ *
+ * Non-retryable errors:
+ * - Invalid requests (400 Bad Request)
+ * - Authentication failures (401, 403)
+ * - Not found (404)
+ * - Application errors from adapter (e.g., VectorStoreError)
+ *
+ * @param error - Error to check
+ * @returns true if error should be retried
+ */
+export function isRetryableError(error: Error): boolean {
+  // Timeout errors are retryable
+  if (error instanceof TimeoutError) {
+    return true;
+  }
+
+  // Circuit breaker open is NOT retryable (wait for half-open state)
+  if (error instanceof CircuitOpenError) {
+    return false;
+  }
+
+  // Check error code for network errors
+  const code = (error as any).code;
+  if (code) {
+    const retryableCodes = [
+      'ECONNRESET',   // Connection reset
+      'ECONNREFUSED', // Connection refused
+      'ETIMEDOUT',    // Operation timed out
+      'ENOTFOUND',    // DNS lookup failed
+      'EAI_AGAIN',    // DNS temporary failure
+    ];
+    return retryableCodes.includes(code);
+  }
+
+  // Check HTTP status for server errors
+  const status = (error as any).status || (error as any).statusCode;
+  if (status) {
+    // 503 Service Unavailable is retryable
+    // 429 Too Many Requests is retryable
+    return status === 503 || status === 429;
+  }
+
+  // Default: not retryable
+  return false;
+}
+
+/**
+ * Internal pending request tracking.
+ * Used by transport implementations to match responses with requests.
+ */
+export interface PendingRequest {
+  resolve: (response: AdapterResponse) => void;
+  reject: (error: Error) => void;
+  timer: NodeJS.Timeout;
+}

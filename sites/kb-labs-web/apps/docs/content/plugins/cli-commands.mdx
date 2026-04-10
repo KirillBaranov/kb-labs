@@ -1,0 +1,440 @@
+---
+title: "CLI Commands"
+description: "Declaring CLI commands in your plugin: manifest, flags, handlers, results."
+updatedAt: "2026-04-07"
+order: 3
+---
+
+CLI commands are how most plugins surface their functionality to developers. You declare them in the plugin manifest, implement a handler, and the runtime takes care of dispatch, flag parsing, and result rendering.
+
+This page covers the authoring side. The manifest schema is documented in full at [Manifest Reference → cli](/plugins/manifest-reference#cli); this page focuses on the practical flow.
+
+## The three pieces
+
+Every CLI command has:
+
+1. **A manifest declaration** — entry in `cli.commands[]` with `id`, `handler` path, flags, examples.
+2. **A flag schema** — typed declaration of the command's flags, built with `defineFlags` or `defineCommandFlags`.
+3. **A handler** — the actual function that runs when the command is invoked, built with `defineCommand`.
+
+All three live in your plugin's CLI package. The canonical example is [kb-labs-commit-plugin](plugins/kb-labs-commit-plugin/packages/commit-cli/src/).
+
+## 1 — The manifest entry
+
+From [kb-labs-commit-plugin's manifest](plugins/kb-labs-commit-plugin/packages/commit-cli/src/manifest.ts):
+
+```ts
+cli: {
+  commands: [
+    {
+      id: 'commit:commit',
+      group: 'commit',
+      describe: 'Generate and apply commits (default flow).',
+      longDescription:
+        'Analyzes changes, generates commit plan with LLM, applies commits locally. ' +
+        'Use --dry-run to preview without applying, --with-push to push after applying.',
+
+      handler: './cli/commands/run.js#default',
+      handlerPath: './cli/commands/run.js',
+
+      flags: defineCommandFlags(runFlags),
+
+      examples: [
+        'kb commit commit',
+        'kb commit commit --dry-run',
+        'kb commit commit --with-push',
+      ],
+    },
+    // ... more commands
+  ],
+}
+```
+
+### `id`
+
+Format: `<group>:<action>` or just `<action>`. The group prefix is what a user types first (`pnpm kb commit commit` or `pnpm kb commit generate`); the runtime dispatches by exact ID match.
+
+IDs must be unique across all installed plugins. Two plugins declaring `commit:commit` is a conflict — the registry warns and keeps the first one loaded.
+
+### `group`
+
+The logical group the command belongs to, used for help output (`pnpm kb commit --help` lists all commands with `group: 'commit'`). Should match the first segment of `id` by convention.
+
+### `handler`
+
+A path string in the form `<relative-path>#<export-name>`. The path is relative to the plugin package root, and points to the **built** output (`.js`, not `.ts`). `#default` means the default export; any other name targets a named export.
+
+The runtime resolves handlers relative to the plugin's package root as determined by discovery. If your build outputs to `dist/`, the path is typically `./dist/cli/commands/run.js#default`. In the canonical example, the path is `./cli/commands/run.js#default` because the plugin's `package.json` has `main: './dist/cli/...` and the relative path is computed from that.
+
+### `describe` and `longDescription`
+
+`describe` is a short one-liner shown in `pnpm kb --help` listings. `longDescription` is the full help text shown when the user types `pnpm kb commit:commit --help`. Use `longDescription` to explain flags, edge cases, and common patterns.
+
+### `flags`
+
+The result of `defineCommandFlags(schema)`. See below.
+
+### `examples`
+
+An array of strings shown in the `--help` output. Keep them short and practical — the first example should be the simplest invocation, the last should show a typical non-trivial flag combination.
+
+## 2 — Declaring flags
+
+Flags are declared with `defineFlags` (general purpose) or `defineCommandFlags` (CLI-specific wrapper). Both come from `@kb-labs/sdk`.
+
+```ts
+// src/cli/commands/flags.ts
+import { defineFlags } from '@kb-labs/sdk';
+
+export const runFlags = defineFlags({
+  'dry-run': {
+    type: 'boolean',
+    description: 'Preview commits without applying them',
+    default: false,
+  },
+  'with-push': {
+    type: 'boolean',
+    description: 'Push commits after applying',
+    default: false,
+  },
+  scope: {
+    type: 'string',
+    description: 'Restrict to files matching this glob',
+  },
+  json: {
+    type: 'boolean',
+    description: 'Emit structured JSON output',
+    default: false,
+  },
+  yes: {
+    type: 'boolean',
+    alias: 'y',
+    description: 'Skip all confirmations',
+    default: false,
+  },
+});
+```
+
+### Flag types
+
+```ts
+type FlagType = 'string' | 'number' | 'boolean' | 'array';
+```
+
+- **`string`** — free-form value. `--scope=packages/**`.
+- **`number`** — parsed as a number. `--max-chunks=50`.
+- **`boolean`** — no value; presence means `true`. `--dry-run`.
+- **`array`** — repeatable. `--include=src --include=tests` produces `['src', 'tests']`.
+
+### Flag fields
+
+```ts
+interface FlagSchema {
+  type: FlagType;
+  description?: string;
+  default?: unknown;          // must match the declared type
+  alias?: string;             // short form, e.g. 'y' for '--yes'
+  required?: boolean;
+  choices?: readonly string[]; // enum validation for string flags
+}
+```
+
+### Type inference
+
+`defineFlags` is fully typed — `runFlags` has a TypeScript type you can read back to shape your handler input:
+
+```ts
+import type { InferFlags } from '@kb-labs/sdk';
+
+type RunFlags = InferFlags<typeof runFlags>;
+// {
+//   'dry-run': boolean;
+//   'with-push': boolean;
+//   scope: string | undefined;
+//   json: boolean;
+//   yes: boolean;
+// }
+```
+
+Use `InferFlags<>` when defining the handler's input type.
+
+## 3 — The handler
+
+Handlers are built with `defineCommand` from `@kb-labs/sdk`. The result is what you export as the module's default — the runtime imports it, looks for `execute()`, and calls it with the context and input.
+
+```ts
+// src/cli/commands/run.ts
+import {
+  defineCommand,
+  useLLM,
+  useLogger,
+  type PluginContextV3,
+  type CLIInput,
+} from '@kb-labs/sdk';
+import type { InferFlags } from '@kb-labs/sdk';
+import { runFlags } from './flags';
+
+type RunFlags = InferFlags<typeof runFlags>;
+
+interface RunResult {
+  commits: string[];
+  pushed: boolean;
+  tokens?: number;
+}
+
+export default defineCommand<unknown, CLIInput<RunFlags>, RunResult>({
+  id: 'commit:commit',
+  description: 'Generate and apply commits',
+  handler: {
+    async execute(ctx, input) {
+      const logger = useLogger();
+      const llm = useLLM();
+
+      if (!llm) {
+        return {
+          exitCode: 1,
+          error: { message: 'LLM adapter not configured' },
+        };
+      }
+
+      const flags = input.flags;  // typed as RunFlags
+      logger.info('Generating commit plan', {
+        dryRun: flags['dry-run'],
+        scope: flags.scope,
+      });
+
+      const commits = await generateCommits(ctx, flags);
+
+      if (flags['dry-run']) {
+        return {
+          exitCode: 0,
+          result: { commits: commits.map(c => c.message), pushed: false },
+          meta: { dryRun: true },
+        };
+      }
+
+      await applyCommits(ctx, commits);
+
+      if (flags['with-push']) {
+        await pushCommits(ctx);
+      }
+
+      return {
+        exitCode: 0,
+        result: {
+          commits: commits.map(c => c.message),
+          pushed: flags['with-push'],
+        },
+      };
+    },
+  },
+});
+```
+
+### Signature
+
+```ts
+defineCommand<TConfig, TInput, TResult>({
+  id: string;
+  description?: string;
+  handler: {
+    execute(ctx: PluginContextV3<TConfig>, input: TInput): Promise<CommandResult<TResult>>;
+    cleanup?(): Promise<void>;
+  };
+  schema?: unknown;  // future: Zod input validation
+})
+```
+
+- **`TConfig`** — the shape of `ctx.config`. Use `unknown` if you don't care, or a specific type to get typed config access.
+- **`TInput`** — the shape of the `input` parameter. For CLI commands, wrap your flags type in `CLIInput<T>`, which produces `{ flags: T; argv: string[] }`.
+- **`TResult`** — the shape of the `result` field in your return value.
+
+### Host guard
+
+`defineCommand` wraps your handler in a host guard that throws if the command is invoked from a non-CLI / non-workflow host:
+
+```ts
+if (context.host !== 'cli' && context.host !== 'workflow') {
+  throw new Error(
+    `Command ${definition.id} can only run in CLI or workflow host (current: ${context.host})`
+  );
+}
+```
+
+This means the same command can be run both from the CLI and as a workflow step, but not from a REST route (use `defineRoute` for those) or a webhook (use `defineWebhook`).
+
+### `cleanup`
+
+Optional. Runs after `execute` completes (successfully or otherwise). Use it to close connections, remove temp files, or cancel timers that the handler created.
+
+```ts
+handler: {
+  async execute(ctx, input) { /* ... */ },
+  async cleanup() { /* ... */ },
+}
+```
+
+## `CommandResult`
+
+The return shape from `execute()`:
+
+```ts
+interface CommandResult<T = unknown> {
+  exitCode: number;          // 0 on success, non-zero on failure
+  result?: T;                // structured output
+  meta?: Record<string, unknown>;  // diagnostic metadata
+  error?: {
+    message: string;
+    code?: string;
+    details?: Record<string, unknown>;
+  };
+}
+```
+
+- **`exitCode`** — becomes the process exit code when the CLI exits. `0` is success; anything else is a failure.
+- **`result`** — the payload rendered to the user. In text mode, the presenter formats it according to its shape (tables, cards, diffs, etc.); in JSON mode, it's emitted as-is.
+- **`meta`** — ancillary data (timings, token counts, cache hit rates) that the presenter shows in a summary box.
+- **`error`** — populated when the command failed in a recoverable way. The presenter renders it as a user-facing error message instead of a stack trace.
+
+Throwing an exception is different from returning `{ exitCode: 1, error }`:
+
+- **Return with `error`** — the CLI prints the formatted error and exits with the given code. User knows what went wrong.
+- **Throw** — the CLI catches, logs, and maps the exception to an exit code via `mapCliErrorToExitCode`. For unexpected failures, not for handled error cases.
+
+Use the return path for business logic errors (missing config, invalid input, LLM rate limit); throw for bugs and invariant violations.
+
+## Command groups and subgroups
+
+The manifest entry has two optional fields that affect how the command is routed in the CLI hierarchy:
+
+```ts
+{
+  id: 'marketplace:install',
+  group: 'marketplace',
+  subgroup: 'plugins',   // optional
+  // ...
+}
+```
+
+- **`group`** — the top-level command group. Users invoke commands in the group as `pnpm kb <group> <action>`.
+- **`subgroup`** — when set, the command is nested further: `pnpm kb <group> <subgroup> <action>`. For `marketplace:install` with `subgroup: 'plugins'`, the user types `pnpm kb marketplace plugins install`.
+
+This is how `kb marketplace plugins list`, `kb marketplace plugins enable`, etc. work — they're one `marketplace` group with a `plugins` subgroup.
+
+Subgroups are optional. Most plugins don't need them.
+
+## Examples and `--help`
+
+When the user types `pnpm kb commit:commit --help`, the CLI renders:
+
+```
+kb commit commit — Generate and apply commits (default flow).
+
+Analyzes changes, generates commit plan with LLM, applies commits locally.
+Use --dry-run to preview without applying, --with-push to push after applying.
+
+Flags:
+  --dry-run          Preview commits without applying them
+  --with-push        Push commits after applying
+  --scope <string>   Restrict to files matching this glob
+  --json             Emit structured JSON output
+  --yes, -y          Skip all confirmations
+
+Examples:
+  kb commit commit
+  kb commit commit --dry-run
+  kb commit commit --with-push
+```
+
+The renderer pulls `describe`, `longDescription`, `flags[*].description`, and `examples` directly from the manifest.
+
+## Per-command permissions
+
+Every command in `cli.commands[]` can declare its own `permissions` to override the plugin-wide defaults:
+
+```ts
+{
+  id: 'commit:push',
+  handler: './cli/commands/push.js#default',
+  permissions: combinePermissions()
+    .with(gitWorkflowPreset)
+    .withShell({ allow: ['git push', 'git push --force'] })
+    .build(),
+}
+```
+
+This is how you give one command broader access than the rest of your plugin — `commit:push` needs shell access to `git push`, but most commit commands don't, so the plugin-wide permissions stay tight and only this command gets the extra grant.
+
+See [Plugins → Permissions](/plugins/permissions) for the full model.
+
+## Input: `CLIInput<T>`
+
+For CLI commands, the second argument to `execute` is `CLIInput<T>`, a wrapper around the flag type:
+
+```ts
+interface CLIInput<TFlags> {
+  flags: TFlags;
+  argv: string[];
+}
+```
+
+- **`flags`** — parsed, typed flag values.
+- **`argv`** — the raw positional arguments after the command ID. `kb commit:commit some/file.ts` produces `argv: ['some/file.ts']`.
+
+When the same command is invoked from a workflow step (not the CLI), `flags` contains the `with` values from the step spec, and `argv` is empty. Your handler can usually treat both the same way — the `flags` shape is identical.
+
+## Rendering output
+
+The CLI's presenter layer knows how to render `CommandResult.result` in both text and JSON mode, as long as the shape matches one of the known UI data contracts (`TableData`, `SelectData`, `MetricData`, `ListData`) or falls back to generic pretty-printing for arbitrary objects.
+
+For custom rendering during execution (progress spinners, intermediate prints), use `ctx.ui`:
+
+```ts
+import { useLoader } from '@kb-labs/sdk';
+
+async execute(ctx, input) {
+  const loader = useLoader('Generating commit plan...');
+  loader.start();
+
+  try {
+    const result = await doWork();
+    loader.succeed('Plan generated');
+    return { exitCode: 0, result };
+  } catch (err) {
+    loader.fail('Failed to generate plan');
+    throw err;
+  }
+}
+```
+
+`useLoader` is a SDK helper for spinner-style progress indicators. In JSON mode, it's a silent no-op — the spinner doesn't pollute the structured output.
+
+## Registering the manifest
+
+The CLI commands don't get picked up until the plugin's manifest is loaded. After:
+
+1. Building the plugin (`pnpm --filter your-plugin build`),
+2. Linking it to the workspace (`pnpm kb marketplace link ./path/to/your-plugin`),
+3. Clearing the registry cache (`pnpm kb marketplace clear-cache`),
+
+...the command is available at `pnpm kb <your-command-id>`. Skipping step 3 is the most common reason new commands don't show up — the CLI caches the registry aggressively.
+
+## Debugging handler loads
+
+If your command fails to load with an error like `INVALID_HANDLER` or `Handler at ... does not export an execute function`, check:
+
+- **The `handler` path** in the manifest points to the built `.js`, not the source `.ts`.
+- **The path is relative to the package root**, not to `src/`.
+- **The file actually exists** in `dist/`.
+- **The export name** (after `#`) matches what's in the file. Missing `#default` and the file using `export default ...` is a common mismatch.
+- **`execute` is on the right object.** If you wrapped with `defineCommand({ handler: { execute: ... } })`, the runtime expects `module.default.execute`, not `module.default`. This is what `defineCommand` gives you automatically.
+
+Turning on `LOG_LEVEL=debug` shows the resolved handler paths at plugin load time.
+
+## What to read next
+
+- [Manifest Reference → cli](/plugins/manifest-reference#cli) — the full schema.
+- [SDK → Commands](/sdk/commands) — `defineCommand` and `defineFlags` in full.
+- [SDK → Handler Context](/sdk/handler-context) — everything in `ctx`.
+- [SDK → Hooks](/sdk/hooks) — `useLLM`, `useCache`, etc.
+- [Plugins → Permissions](/plugins/permissions) — per-command permission overrides.

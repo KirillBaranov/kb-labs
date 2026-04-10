@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@kb-labs/plugin-contracts": [
+        "../../core/plugin-contracts/src/index.ts"
+      ],
+      "@kb-labs/plugin-contracts/*": [
+        "../../core/plugin-contracts/src/*"
+      ],
+      "@kb-labs/plugin-runtime": [
+        "../../core/plugin-runtime/src/index.ts"
+      ],
+      "@kb-labs/plugin-runtime/*": [
+        "../../core/plugin-runtime/src/*"
+      ],
+      "@kb-labs/sdk": [
+        "../../sdk/sdk/src/index.ts"
+      ],
+      "@kb-labs/sdk/*": [
+        "../../sdk/sdk/src/*"
+      ]
+    }
+  }
+}

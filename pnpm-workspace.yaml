@@ -1,4 +1,11 @@
 packages:
-  - apps/*
-  - packages/*
-  - ../../infra/kb-labs-devkit
+  - core/*
+  - sdk/*
+  - cli/*
+  - shared/*
+  - plugins/*/*
+  - adapters/*
+  - infra/devkit
+  - studio/*
+  - sites/*
+  - templates/*

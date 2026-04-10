@@ -1,0 +1,53 @@
+/**
+ * Unit tests for workflow-constants additions.
+ *
+ * Verifies that `waiting_approval` was added to STEP_STATES and that the
+ * derived StepState type includes it.
+ */
+import { describe, it, expect } from 'vitest'
+import { STEP_STATES, RUN_STATES, JOB_STATES } from '@kb-labs/workflow-constants'
+import type { StepState } from '@kb-labs/workflow-constants'
+
+describe('STEP_STATES', () => {
+  it('includes waiting_approval', () => {
+    expect(STEP_STATES).toContain('waiting_approval')
+  })
+
+  it('includes all RUN_STATES values', () => {
+    for (const state of RUN_STATES) {
+      expect(STEP_STATES).toContain(state)
+    }
+  })
+
+  it('does not contain waiting_approval in RUN_STATES', () => {
+    // waiting_approval is step-specific; it should not appear in run-level states
+    expect(RUN_STATES).not.toContain('waiting_approval')
+  })
+
+  it('does not contain waiting_approval in JOB_STATES', () => {
+    // waiting_approval is step-specific; it should not appear in job-level states
+    expect(JOB_STATES).not.toContain('waiting_approval')
+  })
+
+  it('StepState type accepts waiting_approval as a value at runtime', () => {
+    // TypeScript compile-time check: this assignment must not produce a type error
+    const state: StepState = 'waiting_approval'
+    expect(state).toBe('waiting_approval')
+  })
+
+  it('contains all expected states', () => {
+    const expected = [
+      'queued',
+      'running',
+      'success',
+      'failed',
+      'cancelled',
+      'skipped',
+      'dlq',
+      'waiting_approval',
+    ]
+    for (const s of expected) {
+      expect(STEP_STATES).toContain(s)
+    }
+  })
+})

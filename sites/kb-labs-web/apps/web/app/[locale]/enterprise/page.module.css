@@ -1,0 +1,200 @@
+.hero {
+  text-align: center;
+  padding: clamp(4rem, 8vw, 7rem) 1.5rem clamp(2.5rem, 5vw, 4rem);
+}
+
+.hero h1 {
+  font-size: clamp(2rem, 4.5vw, 3.2rem);
+  font-weight: 740;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  margin: 0 0 0.75rem;
+}
+
+.hero p {
+  font-size: clamp(1rem, 1.6vw, 1.2rem);
+  color: var(--muted);
+  margin: 0;
+  max-width: 580px;
+  margin-inline: auto;
+}
+
+/* Value props */
+.values {
+  width: min(100% - 3rem, 1100px);
+  margin-inline: auto;
+  margin-bottom: clamp(4rem, 8vw, 6rem);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+.valueCard {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.valueIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
+  background: #f0f4ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--accent);
+  flex-shrink: 0;
+  margin-bottom: 0.25rem;
+}
+
+.valueCard h3 {
+  font-size: 1rem;
+  font-weight: 660;
+  margin: 0;
+  letter-spacing: -0.015em;
+}
+
+.valueCard p {
+  font-size: 0.88rem;
+  color: var(--muted);
+  line-height: 1.65;
+  margin: 0;
+}
+
+/* Divider */
+.divider {
+  width: min(100% - 3rem, 1100px);
+  margin-inline: auto;
+  border: none;
+  border-top: 1px solid var(--line);
+  margin-bottom: clamp(4rem, 8vw, 6rem);
+}
+
+/* Feature table */
+.featureSection {
+  width: min(100% - 3rem, 1100px);
+  margin-inline: auto;
+  margin-bottom: clamp(4rem, 8vw, 6rem);
+}
+
+.featureSection h2 {
+  font-size: clamp(1.4rem, 2.5vw, 1.8rem);
+  font-weight: 720;
+  letter-spacing: -0.025em;
+  margin: 0 0 2rem;
+}
+
+.featureList {
+  display: flex;
+  flex-direction: column;
+}
+
+.featureRow {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 2rem;
+  padding: 1.35rem 0;
+  border-top: 1px solid var(--line);
+}
+
+.featureRow:last-child {
+  border-bottom: 1px solid var(--line);
+}
+
+.featureTitle {
+  font-size: 0.95rem;
+  font-weight: 640;
+  color: var(--text);
+}
+
+.featureDesc {
+  font-size: 0.88rem;
+  color: var(--muted);
+  line-height: 1.65;
+  margin: 0;
+}
+
+/* Contact panel */
+.contact {
+  width: min(100% - 3rem, 1100px);
+  margin-inline: auto;
+  margin-bottom: clamp(4rem, 8vw, 6rem);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(2rem, 5vw, 5rem);
+  align-items: start;
+}
+
+.contactText h2 {
+  font-size: clamp(1.4rem, 2.5vw, 1.8rem);
+  font-weight: 720;
+  letter-spacing: -0.025em;
+  margin: 0 0 0.75rem;
+}
+
+.contactText p {
+  font-size: 0.97rem;
+  color: var(--muted);
+  line-height: 1.7;
+  margin: 0 0 1.5rem;
+}
+
+.contactActions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.contactMeta {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.contactMetaItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1.25rem;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.contactMetaLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.contactMetaValue {
+  font-size: 0.9rem;
+  color: var(--text);
+  font-weight: 560;
+}
+
+@media (max-width: 900px) {
+  .values {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .featureRow {
+    grid-template-columns: 1fr;
+    gap: 0.4rem;
+  }
+
+  .contact {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .values {
+    grid-template-columns: 1fr;
+  }
+}

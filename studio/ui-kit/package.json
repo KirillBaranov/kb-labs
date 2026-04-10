@@ -1,0 +1,66 @@
+{
+  "name": "@kb-labs/studio-ui-kit",
+  "version": "0.7.0",
+  "description": "KB Labs Studio UI Kit — React components using Ant Design and design tokens",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "style": "./dist/index.css",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./dist/index.css": "./dist/index.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsup",
+    "postbuild": "pnpm docs:generate",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "lint": "eslint . --max-warnings=0",
+    "dev": "tsup --config tsup.config.ts --watch",
+    "lint:fix": "eslint . --fix",
+    "test:watch": "vitest",
+    "docs:generate": "tsx scripts/generate-component-docs.ts"
+  },
+  "dependencies": {
+    "@kb-labs/studio-ui-core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@ant-design/charts": "^2.0.0",
+    "antd": "^5.22.5",
+    "dayjs": "^1.11.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.0.0"
+  },
+  "devDependencies": {
+    "@ant-design/charts": "^2.6.6",
+    "@kb-labs/devkit": "workspace:*",
+    "@testing-library/jest-dom": "^6.6.0",
+    "@testing-library/react": "^16.1.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^24.3.3",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "react-router-dom": "^7.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "dayjs": "^1.11.19",
+    "eslint": "^9",
+    "jsdom": "^24.1.0",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

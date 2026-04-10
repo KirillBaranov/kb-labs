@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Pre-commit hook — managed by kb-labs-devkit, do not edit manually.
+#
+# Note: DevLink npm switch was removed — npm mode is only needed
+# for `npm publish`, not for git commits. Release Manager handles
+# the npm switch during the publish flow.
+
+# No-op for now. Add project-specific pre-commit checks here if needed.
+exit 0

@@ -1,82 +1,79 @@
 {
-  "name": "@kb-labs/kb-labs",
-  "version": "0.1.0",
-  "description": "KB Labs ecosystem - AI-powered developer tools",
+  "name": "@kb-labs/monorepo",
+  "version": "0.0.1",
+  "private": true,
+  "description": "KB Labs — open-source AI/infra control plane for developers.",
   "type": "module",
   "author": {
     "name": "Kirill Baranov",
-    "url": "https://github.com/kirill-baranov"
+    "url": "https://github.com/KirillBaranov"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/kirill-baranov/kb-labs.git"
+    "url": "https://github.com/KirillBaranov/kb-labs.git"
   },
-  "bugs": {
-    "url": "https://github.com/kirill-baranov/kb-labs/issues"
-  },
-  "homepage": "https://github.com/kirill-baranov/kb-labs#readme",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "scripts": {
-    "// ——— core": "────────────────────────────────────────",
-    "build": "pnpm -r run build",
-    "build:clean": "pnpm -r run clean && pnpm -r run build",
-    "dev": "pnpm -r --parallel run dev",
-    "// ——— quality": "────────────────────────────────────────",
-    "lint": "pnpm -r run lint",
-    "lint:fix": "pnpm -r run lint:fix",
-    "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest",
-    "type-check": "tsc -b tsconfig.tools.json",
-    "// ——— ci/qa": "────────────────────────────────────────",
-    "check": "pnpm lint && pnpm type-check && pnpm test -- --run",
-    "ci": "pnpm clean && pnpm build && pnpm check",
-    "// ——— cleanup": "────────────────────────────────────────",
+    "// ——— build": "──────────────────────────────────────",
+    "build": "./tools/kb-devkit/kb-devkit run build",
+    "build:affected": "./tools/kb-devkit/kb-devkit run build --affected",
+    "build:clean": "pnpm clean && pnpm build",
+
+    "// ——— quality": "──────────────────────────────────────",
+    "lint": "./tools/kb-devkit/kb-devkit run lint",
+    "lint:fix": "pnpm -r exec eslint . --fix",
+    "test": "./tools/kb-devkit/kb-devkit run test",
+    "test:coverage": "pnpm -r --if-present run test -- --coverage",
+    "type-check": "./tools/kb-devkit/kb-devkit run type-check",
+    "check": "./tools/kb-devkit/kb-devkit run build lint type-check test",
+    "check:affected": "./tools/kb-devkit/kb-devkit run build lint type-check test --affected",
+
+    "// ——— workspace health": "──────────────────────────────────────",
+    "health": "./tools/kb-devkit/kb-devkit stats",
+    "health:json": "./tools/kb-devkit/kb-devkit stats --json",
+    "ws:check": "./tools/kb-devkit/kb-devkit check",
+    "ws:fix": "./tools/kb-devkit/kb-devkit fix --safe",
+    "ws:status": "./tools/kb-devkit/kb-devkit status",
+
+    "// ——— formatting": "──────────────────────────────────────",
+    "format": "prettier -w .",
+    "format:check": "prettier -c .",
+
+    "// ——— cleanup": "──────────────────────────────────────",
     "clean": "pnpm -r run clean",
-    "clean:all": "rimraf node_modules packages/*/node_modules apps/*/node_modules dist .kblabs"
-  },
-  "lint-staged": {
-    "*.{ts,tsx,js,jsx,json,md,yml,yaml}": [
-      "prettier -w"
-    ],
-    "*.{ts,tsx,js,jsx}": [
-      "eslint --fix"
-    ]
+    "clean:all": "pnpm -r run clean && rimraf node_modules",
+
+    "// ——— kb cli": "──────────────────────────────────────",
+    "kb": "node ./cli/bin/dist/bin.js",
+
+    "// ——— services (kb-dev)": "──────────────────────────────────────",
+    "dev:start": "./tools/kb-dev/kb-dev start",
+    "dev:stop": "./tools/kb-dev/kb-dev stop",
+    "dev:restart": "./tools/kb-dev/kb-dev restart",
+    "dev:status": "./tools/kb-dev/kb-dev status",
+    "dev:health": "./tools/kb-dev/kb-dev health",
+    "dev:doctor": "./tools/kb-dev/kb-dev doctor",
+    "dev:logs": "./tools/kb-dev/kb-dev logs",
+
+    "// ——— release": "──────────────────────────────────────",
+    "changeset": "changeset",
+    "version": "changeset version",
+    "release": "changeset publish"
   },
   "devDependencies": {
-    "@actions/core": "^1",
-    "@actions/github": "^6",
-    "@types/node": "^24.3.3",
-    "@types/picomatch": "^4",
-    "@typescript-eslint/eslint-plugin": "^8.8.0",
-    "@typescript-eslint/parser": "^8.8.0",
-    "@vitest/coverage-v8": "^2.1.9",
-    "better-sqlite3": "^12.2.0",
-    "colorette": "^2.0.20",
-    "eslint": "^9.16.0",
-    "eslint-config-prettier": "^9.1.0",
-    "eslint-plugin-import": "^2.29.1",
-    "eslint-plugin-jsonc": "^2.15.1",
-    "eslint-plugin-markdown": "^3.0.1",
-    "eslint-plugin-n": "^17.10.3",
-    "eslint-plugin-unused-imports": "^4.0.0",
-    "prettier": "^3.3.3",
-    "typescript": "^5.6.3",
-    "vite": "^5.4.10",
-    "vitest": "^2.1.4",
-    "@kb-labs/devkit": "link:../../infra/kb-labs-devkit",
-    "rimraf": "^6.0.1",
-    "tsup": "^8.5.0"
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^22.0.0",
+    "@vitest/coverage-v8": "^3",
+    "eslint": "^9.39.1",
+    "prettier": "^3",
+    "rimraf": "^6",
+    "tsup": "^8",
+    "typescript": "^5",
+    "vitest": "^3.2.4"
   },
   "engines": {
-    "node": ">=18.18.0",
+    "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
   },
-  "packageManager": "pnpm@9.11.0",
-  "dependencies": {
-    "zod": "^4.1.5"
-  }
+  "packageManager": "pnpm@9.11.0"
 }
