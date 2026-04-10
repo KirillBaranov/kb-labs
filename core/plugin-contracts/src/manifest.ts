@@ -670,7 +670,7 @@ export function getHandlerPermissions(
  *
  * Each service declares how to start itself, what port it listens on,
  * and what health check endpoint to probe. kb-create uses this to
- * generate `dev.config.json` automatically after installation.
+ * generate `devservices.yaml` automatically after installation.
  *
  * @example
  * ```ts
@@ -693,7 +693,7 @@ export interface ServiceManifest {
   /** Schema version identifier */
   schema: 'kb.service/1';
 
-  /** Unique service identifier (used as key in dev.config.json) */
+  /** Unique service identifier (used as key in devservices.yaml) */
   id: string;
 
   /** Human-readable service name */

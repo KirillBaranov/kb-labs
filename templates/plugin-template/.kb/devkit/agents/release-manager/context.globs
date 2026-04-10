@@ -1,0 +1,7 @@
+packages/**/*
+apps/**/*
+CHANGELOG.md
+README.md
+package.json
+pnpm-lock.yaml
+.github/workflows/*

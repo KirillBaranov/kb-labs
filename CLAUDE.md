@@ -72,7 +72,7 @@ Some have daemons (HTTP ports) — that's an implementation detail, not an archi
 - Ports: gateway :4000, rest-api :5050, workflow :7778, marketplace :5070, state :7777
 
 ### Config Files — DO NOT MODIFY
-- `dev.config.json` — port assignments (change scripts, not ports)
+- `devservices.yaml` — port assignments (change scripts, not ports)
 - `devkit.yaml` — task runner config (categories, presets)
 - `pnpm-workspace.yaml` — workspace package globs
 
@@ -121,4 +121,4 @@ pnpm kb marketplace install <entity>
 - **DO NOT** add `link:` dependencies — always `workspace:*`
 - **DO NOT** import Studio internals from plugin pages — only `@kb-labs/sdk` + contracts
 - **DO NOT** run services with `node ./path` — use `kb-dev start`
-- **DO NOT** modify ports in `dev.config.json` — fix the scripts instead
+- **DO NOT** modify ports in `devservices.yaml` — fix the scripts instead

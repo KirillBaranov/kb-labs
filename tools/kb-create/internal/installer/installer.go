@@ -122,7 +122,7 @@ func (ins *Installer) Install(sel *Selection, m *manifest.Manifest) (*Result, er
 		}
 	}
 
-	// Step 3: Scan installed packages for manifests → generate marketplace.lock + dev.config.json.
+	// Step 3: Scan installed packages for manifests → generate marketplace.lock + devservices.yaml.
 	step++
 	ins.step(step, totalSteps, "Scanning manifests")
 	scanResult, scanErr := scan.Run(sel.PlatformDir)

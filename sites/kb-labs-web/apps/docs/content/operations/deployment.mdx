@@ -51,7 +51,7 @@ The lowest-overhead setup. Use for plugin development and testing.
 kb-dev start
 ```
 
-`kb-dev` reads `.kb/dev.config.json`, resolves the service dependency graph, starts Docker containers for infrastructure, and spawns Node processes for the platform services. Status:
+`kb-dev` reads `.kb/devservices.yaml`, resolves the service dependency graph, starts Docker containers for infrastructure, and spawns Node processes for the platform services. Status:
 
 ```bash
 kb-dev status
@@ -71,7 +71,7 @@ The dependency graph is respected automatically. Starting `studio` boots `gatewa
 
 ### Dev config
 
-Local dev uses `.kb/dev.config.json` for service management and `.kb/kb.config.json` for platform config. Both files live in the workspace root. See [Configuration → dev.config.json](/configuration/dev-config) and [Configuration → kb.config.json](/configuration/kb-config) for the full schemas.
+Local dev uses `.kb/devservices.yaml` for service management and `.kb/kb.config.json` for platform config. Both files live in the workspace root. See [Configuration → devservices.yaml](/configuration/dev-config) and [Configuration → kb.config.json](/configuration/kb-config) for the full schemas.
 
 Dev mode reads `.env` automatically, so put your `OPENAI_API_KEY`, `QDRANT_URL`, and other secrets there.
 

@@ -41,7 +41,7 @@ func Discover(dir string) (string, error) {
 
 	return "", fmt.Errorf(
 		"no config found (searched %s upward); "+
-			"create .kb/dev.config.json or devservices.yaml",
+			"create .kb/devservices.yaml or devservices.yaml",
 		dir,
 	)
 }

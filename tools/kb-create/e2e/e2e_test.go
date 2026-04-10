@@ -158,15 +158,15 @@ func TestInstallYes(t *testing.T) {
 		}
 	}
 
-	// dev.config.json must exist and be valid JSON.
-	dev := filepath.Join(platformDir, ".kb", "dev.config.json")
+	// devservices.yaml must exist and be valid JSON.
+	dev := filepath.Join(platformDir, ".kb", "devservices.yaml")
 	data, err = os.ReadFile(dev) // #nosec G304
 	if err != nil {
-		t.Errorf("dev.config.json not found: %v", err)
+		t.Errorf("devservices.yaml not found: %v", err)
 	} else {
 		var v map[string]any
 		if err := json.Unmarshal(data, &v); err != nil {
-			t.Errorf("dev.config.json invalid JSON: %v", err)
+			t.Errorf("devservices.yaml invalid JSON: %v", err)
 		}
 	}
 
@@ -199,7 +199,7 @@ func TestInstallYes(t *testing.T) {
 	})
 
 	// kb-dev smoke: verify the installer dropped a working kb-dev binary
-	// and the generated dev.config.json is consumable by it.
+	// and the generated devservices.yaml is consumable by it.
 	// See plan twinkling-toasting-kernighan Phase 6 for scope rationale.
 	t.Run("kb_dev_smoke", func(t *testing.T) {
 		kbDevPath := kbDevBinary(platformDir)
@@ -241,19 +241,19 @@ func TestInstallYes(t *testing.T) {
 			t.Fatalf("kb-dev status --json missing 'services' map: %v", status)
 		}
 
-		// 5. The generated dev.config.json is parseable and has a services map.
-		devCfgPath := filepath.Join(platformDir, ".kb", "dev.config.json")
+		// 5. The generated devservices.yaml is parseable and has a services map.
+		devCfgPath := filepath.Join(platformDir, ".kb", "devservices.yaml")
 		devCfgBytes, err := os.ReadFile(devCfgPath) // #nosec G304 -- path is under t.TempDir()
 		if err != nil {
-			t.Fatalf("dev.config.json not readable: %v", err)
+			t.Fatalf("devservices.yaml not readable: %v", err)
 		}
 		var devCfg map[string]any
 		if err := json.Unmarshal(devCfgBytes, &devCfg); err != nil {
-			t.Fatalf("dev.config.json invalid JSON: %v", err)
+			t.Fatalf("devservices.yaml invalid JSON: %v", err)
 		}
 		cfgServices, ok := devCfg["services"].(map[string]any)
 		if !ok {
-			t.Fatalf("dev.config.json has no 'services' map")
+			t.Fatalf("devservices.yaml has no 'services' map")
 		}
 
 		// 6. If any services were found during scan, they should have schema-complete entries
@@ -261,12 +261,12 @@ func TestInstallYes(t *testing.T) {
 		for id, raw := range cfgServices {
 			svc, ok := raw.(map[string]any)
 			if !ok {
-				t.Errorf("dev.config.json service %q is not an object", id)
+				t.Errorf("devservices.yaml service %q is not an object", id)
 				continue
 			}
 			for _, field := range []string{"name", "type", "command"} {
 				if _, hasField := svc[field]; !hasField {
-					t.Errorf("dev.config.json service %q missing required field %q", id, field)
+					t.Errorf("devservices.yaml service %q missing required field %q", id, field)
 				}
 			}
 		}
@@ -275,7 +275,7 @@ func TestInstallYes(t *testing.T) {
 		//    kb-dev's status snapshot. (Even if dead, it must be known.)
 		for id := range cfgServices {
 			if _, known := services[id]; !known {
-				t.Errorf("kb-dev status --json does not know about service %q from dev.config.json", id)
+				t.Errorf("kb-dev status --json does not know about service %q from devservices.yaml", id)
 			}
 		}
 

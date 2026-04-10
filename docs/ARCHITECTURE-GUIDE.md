@@ -276,7 +276,7 @@ pnpm kb plugins clear-cache --deep
 
 | Path | Purpose |
 |------|---------|
-| `.kb/dev.config.json` | Service definitions (ports, commands, deps) |
+| `.kb/devservices.yaml` | Service definitions (ports, commands, deps) |
 | `.kb/kb.config.json` | Platform config (adapters, profiles, scopes) |
 | `.kb/logs/tmp/<service>.log` | Service logs (cleared on start) |
 | `.kb/tmp/<service>.pid` | PID files (kill handle, not status source) |

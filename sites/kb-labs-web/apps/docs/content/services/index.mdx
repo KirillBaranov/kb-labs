@@ -83,7 +83,7 @@ Every long-running daemon (except the host agent) ships with a `ServiceManifest`
 ```ts
 interface ServiceManifest {
   schema: 'kb.service/1';
-  id: string;                     // used as key in dev.config.json
+  id: string;                     // used as key in devservices.yaml
   name: string;
   version: string;
   description?: string;
@@ -100,7 +100,7 @@ interface ServiceManifest {
 
 Source: [infra/kb-labs-plugin/packages/plugin-contracts/src/manifest.ts](infra/kb-labs-plugin/packages/plugin-contracts/src/manifest.ts).
 
-`kb-dev` reads these manifests, generates a `dev.config.json`, and uses it to manage the process lifecycle. See [Configuration → dev.config.json](/configuration/dev-config) for the consumer side.
+`kb-dev` reads these manifests, generates a `devservices.yaml`, and uses it to manage the process lifecycle. See [Configuration → devservices.yaml](/configuration/dev-config) for the consumer side.
 
 ## Starting everything
 
@@ -131,5 +131,5 @@ Two things you might expect to find in this list but won't:
 
 - [Gateway](/gateway) — the service everything else sits behind.
 - [Configuration → kb.config.json](/configuration/kb-config) — the platform config every service loads.
-- [Configuration → dev.config.json](/configuration/dev-config) — the `kb-dev` service definitions.
+- [Configuration → devservices.yaml](/configuration/dev-config) — the `kb-dev` service definitions.
 - The individual service pages linked in the table above.

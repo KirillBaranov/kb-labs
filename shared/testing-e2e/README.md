@@ -35,7 +35,7 @@ describe('gateway health', () => {
 - **`connectWs(url, opts)`** — WebSocket client with message tracking + `closeAllTrackedSockets()` for `afterEach`.
 - **`readSse(url)`** — async iterator over Server-Sent Events.
 - **`registerAgent(client, { namespaceId })` / `registerHost(...)`** — gateway auth helpers (JWT via `/auth/register` → `/auth/token`).
-- **`createIsolatedProjectRoot()`** — temp dir with its own `.kb/dev.config.json` for tests that mutate marketplace lock / plugins.
+- **`createIsolatedProjectRoot()`** — temp dir with its own `.kb/devservices.yaml` for tests that mutate marketplace lock / plugins.
 - **`makeTestNamespace(import.meta.url)`** — unique-per-test resource namespace for isolation across shared services.
 
 ## Lifecycle rules
