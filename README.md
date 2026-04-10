@@ -161,8 +161,13 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ## License
 
-Core platform — [MIT](LICENSE-MIT)  
-KB Labs ecosystem — [KB-Public License](LICENSE-KB-PUBLIC)
+| What | License |
+|------|---------|
+| `core/`, `sdk/`, `shared/`, `infra/`, `tools/` | [MIT](LICENSE-MIT) — use freely, including in commercial products |
+| `plugins/`, `cli/`, `adapters/`, `studio/` | [KB-Public License v1](LICENSE-KB-PUBLIC) — free for personal and internal use, commercial hosting requires a license |
+
+If you're building on top of KB Labs — MIT covers everything you need.  
+If you want to sell hosted access to KB Labs — [get in touch](https://kblabs.ru/en).
 
 ---
 
