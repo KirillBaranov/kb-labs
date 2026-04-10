@@ -1,13 +1,10 @@
 {
-  "extends": "../../tsconfig.base.json",
+  "extends": "@kb-labs/devkit/tsconfig/spa.json",
   "compilerOptions": {
     "baseUrl": ".",
-    "noEmit": true,
     "paths": {
-      "@/*": ["./src/*"],
-      "@kb-labs/studio-ui-core": ["../../packages/studio-ui-core/src"],
-"@kb-labs/studio-data-client": ["../../packages/studio-data-client/src"]
+      "@/*": ["./src/*"]
     }
   },
-  "include": ["src", "vite.config.ts"]
+  "include": ["src", "rspack.config.mjs"]
 }

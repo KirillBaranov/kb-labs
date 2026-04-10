@@ -1,24 +1,6 @@
 {
-  "name": "@kb-labs/host-agent-app",
-  "version": "0.3.0",
-  "type": "module",
   "bin": {
     "kb-host-agent": "./dist/index.js"
-  },
-  "main": "./dist/index.js",
-  "files": [
-    "dist"
-  ],
-  "scripts": {
-    "clean": "rimraf dist",
-    "build": "tsup",
-    "dev": "tsup --watch",
-    "type-check": "tsc --noEmit",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "start": "node dist/index.js",
-    "test": "vitest run -c ../../vitest.config.ts",
-    "test:watch": "vitest -c ../../vitest.config.ts"
   },
   "dependencies": {
     "@kb-labs/core-runtime": "workspace:*",
@@ -36,5 +18,27 @@
     "tsup": "^8.5.0",
     "typescript": "^5",
     "vitest": "^3.2.4"
-  }
+  },
+  "engines": {
+    "node": "\u003e=20.0.0",
+    "pnpm": "\u003e=9.0.0"
+  },
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.js",
+  "name": "@kb-labs/host-agent-app",
+  "scripts": {
+    "build": "tsup",
+    "clean": "rimraf dist",
+    "dev": "tsup --watch",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "start": "node dist/index.js",
+    "test": "vitest run -c ../../vitest.config.ts",
+    "test:watch": "vitest -c ../../vitest.config.ts",
+    "type-check": "tsc --noEmit"
+  },
+  "type": "module",
+  "version": "0.3.0"
 }

@@ -1,12 +1,12 @@
-name: CI (split)
+name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     paths-ignore:
       - '**/*.md'
-      - '**/.vscode/**'
-      - '**/.idea/**'
+      - '.vscode/**'
+      - '.idea/**'
   pull_request:
     types: [opened, synchronize, reopened]
   workflow_dispatch: {}
@@ -15,44 +15,100 @@ permissions:
   contents: read
 
 concurrency:
-  group: ci-split-${{ github.event.pull_request.number || github.sha }}
+  group: ci-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build
+  # ── 1. Build Go tools ────────────────────────────────────────────────────────
+  build-tools:
+    name: Build Go tools
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/kb-devkit/go.mod
+          cache-dependency-path: |
+            tools/kb-devkit/go.sum
+            tools/kb-dev/go.sum
+      - name: Build kb-devkit
+        run: make build
+        working-directory: tools/kb-devkit
+      - name: Build kb-dev
+        run: make build
+        working-directory: tools/kb-dev
+      - uses: actions/upload-artifact@v4
+        with:
+          name: go-tools
+          path: |
+            tools/kb-devkit/kb-devkit
+            tools/kb-dev/kb-dev
+          retention-days: 1
+
+  # ── 2. Build all TS packages (topological via kb-devkit) ─────────────────────
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: build-tools
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
         with: { run_install: false }
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
-      - name: Install
+      - name: Restore Go tools
+        uses: actions/download-artifact@v4
+        with:
+          name: go-tools
+          path: tools-bin/
+      - name: Make tools executable
+        run: chmod +x tools-bin/kb-devkit tools-bin/kb-dev
+      - name: Symlink tools into place
+        run: |
+          cp tools-bin/kb-devkit tools/kb-devkit/kb-devkit
+          cp tools-bin/kb-dev tools/kb-dev/kb-dev
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Build (all packages)
-        run: pnpm -r run build
+      - name: Build (topological order)
+        run: pnpm build
+      - name: Upload dist artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: |
+            **/dist/
+            !**/node_modules/**/dist/
+          retention-days: 1
 
+  # ── 3. Lint, Type-check, Test (parallel, reuse dist) ────────────────────────
   lint:
     name: Lint
     runs-on: ubuntu-latest
     needs: build
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
       - uses: pnpm/action-setup@v4
         with: { run_install: false }
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
-      - name: Install
-        run: pnpm install --frozen-lockfile
-      - name: Lint
-        run: pnpm -r run lint
+      - name: Restore Go tools
+        uses: actions/download-artifact@v4
+        with:
+          name: go-tools
+          path: tools-bin/
+      - run: chmod +x tools-bin/kb-devkit && cp tools-bin/kb-devkit tools/kb-devkit/kb-devkit
+      - name: Restore dist artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
 
   typecheck:
     name: Type Check
@@ -60,17 +116,24 @@ jobs:
     needs: build
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
       - uses: pnpm/action-setup@v4
         with: { run_install: false }
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
-      - name: Install
-        run: pnpm install --frozen-lockfile
-      - name: TS type-check
-        run: pnpm type-check
+      - name: Restore Go tools
+        uses: actions/download-artifact@v4
+        with:
+          name: go-tools
+          path: tools-bin/
+      - run: chmod +x tools-bin/kb-devkit && cp tools-bin/kb-devkit tools/kb-devkit/kb-devkit
+      - name: Restore dist artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm type-check
 
   test:
     name: Tests
@@ -78,21 +141,28 @@ jobs:
     needs: build
     steps:
       - uses: actions/checkout@v4
-        with: { fetch-depth: 0 }
       - uses: pnpm/action-setup@v4
         with: { run_install: false }
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
-      - name: Install
-        run: pnpm install --frozen-lockfile
-      - name: Run tests (no-watch)
-        run: pnpm test -- --run
+      - name: Restore Go tools
+        uses: actions/download-artifact@v4
+        with:
+          name: go-tools
+          path: tools-bin/
+      - run: chmod +x tools-bin/kb-devkit && cp tools-bin/kb-devkit tools/kb-devkit/kb-devkit
+      - name: Restore dist artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
       - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage
-          path: coverage/**
+          path: '**/coverage/**'
           if-no-files-found: ignore

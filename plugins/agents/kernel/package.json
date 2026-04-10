@@ -1,10 +1,23 @@
 {
-  "name": "@kb-labs/agent-kernel",
-  "version": "0.6.0",
-  "type": "module",
+  "dependencies": {
+    "@kb-labs/agent-contracts": "workspace:*",
+    "@kb-labs/agent-sdk": "workspace:*",
+    "@kb-labs/sdk": "workspace:*"
+  },
   "description": "Kernel state and continuity model for KB Labs Agents.",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.3.3",
+    "eslint": "^9",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": "\u003e=20.0.0",
+    "pnpm": "\u003e=9.0.0"
+  },
   "exports": {
     ".": {
       "import": "./dist/index.js",
@@ -16,27 +29,18 @@
     "dist",
     "README.md"
   ],
-  "sideEffects": false,
+  "main": "./dist/index.js",
+  "name": "@kb-labs/agent-kernel",
   "scripts": {
-    "clean": "rimraf dist",
     "build": "tsup --config tsup.config.ts",
+    "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
     "lint": "eslint src --ext .ts",
-    "type-check": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "type-check": "tsc --noEmit"
   },
-  "dependencies": {
-    "@kb-labs/agent-contracts": "workspace:*",
-    "@kb-labs/agent-sdk": "workspace:*",
-    "@kb-labs/sdk": "workspace:*"
-  },
-  "devDependencies": {
-    "@kb-labs/devkit": "workspace:*",
-    "@types/node": "^24.3.3",
-    "eslint": "^9",
-    "rimraf": "^6.0.1",
-    "tsup": "^8.5.0",
-    "typescript": "^5.6.3",
-    "vitest": "^3.2.4"
-  }
+  "sideEffects": false,
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "0.6.0"
 }

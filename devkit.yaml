@@ -6,6 +6,26 @@ workspace:
   packageManager: pnpm
   maxDepth: 3  # max recursion depth for ** globs; increase if packages are nested deeper
   categories:
+    # SPA apps (Rspack / Vite) — pnpm build, not tsup
+    # Must come before ts-lib since categories use first-match semantics
+    spa:
+      match:
+        - "studio/app"
+        - "plugins/workflow/studio"
+      language: typescript
+      preset: spa-app
+
+    # Backend app entrypoints (daemons, servers)
+    # Must come before ts-lib — plugins/*/*  would otherwise match first
+    ts-app:
+      match:
+        - "plugins/*/daemon"
+        - "plugins/*/server"
+        - "plugins/*/app"
+        - "plugins/rest-api/core"
+      language: typescript
+      preset: node-app
+
     # TypeScript libraries — full ruleset
     ts-lib:
       match:
@@ -20,25 +40,6 @@ workspace:
         - "templates/*"
       language: typescript
       preset: node-lib
-
-    # SPA apps (Rspack / Vite) — pnpm build, not tsup
-    # Must come before ts-app since categories use first-match semantics
-    spa:
-      match:
-        - "studio/app"
-      language: typescript
-      preset: node-app
-
-    # Backend app entrypoints (daemons, servers)
-    # Lighter rules: no tsup/vitest requirement, no exports field
-    ts-app:
-      match:
-        - "plugins/*/daemon"
-        - "plugins/*/server"
-        - "plugins/*/app"
-        - "plugins/rest-api/core"
-      language: typescript
-      preset: node-app
 
     # Next.js / Nuxt site apps
     site:
@@ -117,6 +118,24 @@ presets:
         "@kb-labs/devkit": "*"
     tsconfig:
       must_extend_pattern: "@kb-labs/devkit/tsconfig/"
+      forbid_paths: false
+    eslint:
+      must_use_preset: true
+    dependencies:
+      check_links: true
+      check_circular: true
+
+  # SPA apps (Rspack / Vite) — no tsup, no exports, paths allowed
+  spa-app:
+    language: typescript
+    package_json:
+      required_scripts:
+        - build
+        - dev
+      required_fields:
+        - name
+        - version
+    tsconfig:
       forbid_paths: false
     eslint:
       must_use_preset: true

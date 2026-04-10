@@ -1,36 +1,45 @@
 {
-  "name": "@kb-labs/workflow-studio",
-  "version": "1.6.0",
-  "type": "module",
-  "scripts": {
-    "clean": "rimraf dist",
-    "build": "rspack build --config rspack.studio.config.mjs",
-    "dev": "rspack serve --config rspack.studio.config.mjs",
-    "type-check": "tsc --noEmit"
-  },
   "dependencies": {
-    "@kb-labs/workflow-contracts": "workspace:*",
-    "@kb-labs/sdk": "workspace:*"
+    "@kb-labs/sdk": "workspace:*",
+    "@kb-labs/workflow-contracts": "workspace:*"
   },
   "devDependencies": {
+    "@kb-labs/devkit": "*",
     "@kb-labs/studio-plugin-tools": "workspace:*",
-    "@types/node": "^24.3.3",
     "@rspack/cli": "^1.7.0",
     "@rspack/core": "^1.7.0",
+    "@types/node": "^24.3.3",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "rimraf": "^6.0.1",
-    "typescript": "^5.6.3"
+    "tsup": "^8",
+    "typescript": "^5.6.3",
+    "vitest": "^3"
   },
-  "peerDependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "antd": "^5.21.0",
-    "@ant-design/icons": "^5.4.0",
-    "@tanstack/react-query": "^5.0.0",
-    "react-router-dom": "^7.0.0"
+  "engines": {
+    "node": "\u003e=20.0.0",
+    "pnpm": "\u003e=9.0.0"
   },
   "files": [
     "dist"
-  ]
+  ],
+  "name": "@kb-labs/workflow-studio",
+  "peerDependencies": {
+    "@ant-design/icons": "^5.4.0",
+    "@tanstack/react-query": "^5.0.0",
+    "antd": "^5.21.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.0.0"
+  },
+  "scripts": {
+    "build": "rspack build --config rspack.studio.config.mjs",
+    "clean": "rimraf dist",
+    "dev": "rspack serve --config rspack.studio.config.mjs",
+    "lint": "echo 'todo: lint'",
+    "test": "echo 'todo: test'",
+    "type-check": "tsc --noEmit"
+  },
+  "type": "module",
+  "version": "1.6.0"
 }

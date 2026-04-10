@@ -1,9 +1,17 @@
 {
-  "name": "@kb-labs/gateway-contracts",
-  "version": "0.5.0",
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "tsup": "^8.5.0",
+    "typescript": "^5",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": "\u003e=20.0.0",
+    "pnpm": "\u003e=9.0.0"
+  },
   "exports": {
     ".": {
       "import": "./dist/index.js",
@@ -14,23 +22,20 @@
     "dist",
     "README.md"
   ],
-  "sideEffects": false,
+  "main": "./dist/index.js",
+  "name": "@kb-labs/gateway-contracts",
   "scripts": {
-    "clean": "rimraf dist",
     "build": "tsup",
+    "clean": "rimraf dist",
     "dev": "tsup --watch",
-    "type-check": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "vitest run -c ../../vitest.config.ts",
-    "test:watch": "vitest -c ../../vitest.config.ts"
+    "test:watch": "vitest -c ../../vitest.config.ts",
+    "type-check": "tsc --noEmit"
   },
-  "dependencies": {
-    "zod": "^3.23.8"
-  },
-  "devDependencies": {
-    "@kb-labs/devkit": "workspace:*",
-    "tsup": "^8.5.0",
-    "vitest": "^3.2.4"
-  }
+  "sideEffects": false,
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "0.5.0"
 }

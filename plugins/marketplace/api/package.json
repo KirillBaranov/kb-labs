@@ -1,10 +1,29 @@
 {
-  "name": "@kb-labs/marketplace-api",
-  "version": "0.1.4",
+  "dependencies": {
+    "@fastify/swagger": "\u003e=9.5.1",
+    "@fastify/swagger-ui": "^5.2.0",
+    "@kb-labs/core-contracts": "workspace:*",
+    "@kb-labs/core-discovery": "workspace:*",
+    "@kb-labs/core-platform": "workspace:*",
+    "@kb-labs/marketplace-contracts": "workspace:*",
+    "@kb-labs/marketplace-core": "workspace:*",
+    "@kb-labs/shared-http": "workspace:*",
+    "fastify": "^5.3.3",
+    "fastify-type-provider-zod": "^6.0.0",
+    "zod": "^3.23.8"
+  },
   "description": "Fastify routes for KB Labs marketplace service",
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.3.3",
+    "tsup": "^8.5.0",
+    "typescript": "^5",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": "\u003e=20.0.0",
+    "pnpm": "\u003e=9.0.0"
+  },
   "exports": {
     ".": {
       "import": "./dist/index.js",
@@ -14,33 +33,19 @@
   "files": [
     "dist"
   ],
-  "sideEffects": false,
+  "main": "./dist/index.js",
+  "name": "@kb-labs/marketplace-api",
   "scripts": {
-    "clean": "rimraf dist",
     "build": "tsup",
+    "clean": "rimraf dist",
     "dev": "tsup --watch",
-    "type-check": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "test": "vitest run --passWithNoTests -c ../../vitest.config.ts"
+    "test": "vitest run --passWithNoTests -c ../../vitest.config.ts",
+    "type-check": "tsc --noEmit"
   },
-  "dependencies": {
-    "@kb-labs/core-contracts": "workspace:*",
-    "@kb-labs/core-discovery": "workspace:*",
-    "@kb-labs/core-platform": "workspace:*",
-    "@kb-labs/marketplace-contracts": "workspace:*",
-    "@kb-labs/marketplace-core": "workspace:*",
-    "@kb-labs/shared-http": "workspace:*",
-    "fastify": "^5.3.3",
-    "@fastify/swagger": ">=9.5.1",
-    "@fastify/swagger-ui": "^5.2.0",
-    "fastify-type-provider-zod": "^6.0.0",
-    "zod": "^3.23.8"
-  },
-  "devDependencies": {
-    "tsup": "^8.5.0",
-    "vitest": "^3.2.4",
-    "@kb-labs/devkit": "workspace:*",
-    "@types/node": "^24.3.3"
-  }
+  "sideEffects": false,
+  "type": "module",
+  "types": "./dist/index.d.ts",
+  "version": "0.1.4"
 }

@@ -1,68 +1,15 @@
 {
-  "name": "@kb-labs/plugin-template",
-  "version": "0.1.0",
-  "private": true,
-  "description": "Reference plugin template for the KB Labs ecosystem with devkit-powered tooling.",
-  "type": "module",
   "author": {
     "name": "Kirill Baranov",
     "url": "https://github.com/kirill-baranov"
   },
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/kirill-baranov/kb-labs-plugin-template.git"
-  },
   "bugs": {
     "url": "https://github.com/kirill-baranov/kb-labs-plugin-template/issues"
   },
-  "homepage": "https://github.com/kirill-baranov/kb-labs-plugin-template#readme",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
-  "scripts": {
-    "devkit:sync": "node scripts/devkit-sync.mjs",
-    "predevkit:sync": "pnpm devkit:paths",
-    "devkit:paths": "pnpm exec kb-devkit-paths",
-    "devkit:sync:ci": "node scripts/devkit-sync.mjs --ci-only",
-    "predevkit:sync:ci": "pnpm devkit:paths",
-    "devkit:check": "node scripts/devkit-sync.mjs --check",
-    "predevkit:check": "pnpm devkit:paths",
-    "devkit:force": "node scripts/devkit-sync.mjs --force",
-    "predevkit:force": "pnpm devkit:paths",
-    "devkit:help": "node scripts/devkit-sync.mjs --help",
-    "postinstall": "pnpm -s devkit:sync || true",
-    "// ——— core": "────────────────────────────────────────",
-    "build": "pnpm -r --filter ./packages/... run build",
-    "build:clean": "pnpm -r --filter ./packages/... run clean && pnpm run build",
-    "dev": "pnpm -r --parallel --filter ./packages/... run dev",
-    "// ——— quality": "────────────────────────────────────────",
-    "lint": "pnpm -r exec eslint .",
-    "lint:fix": "pnpm -r exec eslint . --fix",
-    "test": "pnpm -r --if-present run test",
-    "test:coverage": "pnpm -r --if-present run test --coverage",
-    "test:watch": "pnpm -r --parallel --if-present run test:watch",
-    "type-check": "pnpm -r run type-check",
-    "format": "prettier -w .",
-    "format:check": "prettier -c .",
-    "// ——— ci/qa": "────────────────────────────────────────",
-    "check": "pnpm lint && pnpm type-check && pnpm test",
-    "ci": "pnpm clean && pnpm build && pnpm check",
-    "// ——— cleanup": "────────────────────────────────────────",
-    "clean": "pnpm -r run clean",
-    "clean:all": "rimraf node_modules packages/*/node_modules apps/*/node_modules dist"
-  },
-  "lint-staged": {
-    "*.{ts,tsx,js,jsx,json,md,yml,yaml}": [
-      "prettier -w"
-    ],
-    "*.{ts,tsx,js,jsx}": [
-      "eslint --fix"
-    ]
-  },
+  "description": "Reference plugin template for the KB Labs ecosystem with devkit-powered tooling.",
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.3.3",
     "@typescript-eslint/eslint-plugin": "^8",
     "@typescript-eslint/parser": "^8",
     "@vitest/coverage-v8": "^3",
@@ -71,12 +18,65 @@
     "rimraf": "^6",
     "tsup": "^8",
     "typescript": "^5",
-    "vitest": "^3.2.4",
-    "@types/node": "^24.3.3"
+    "vitest": "^3.2.4"
   },
   "engines": {
-    "node": ">=18.18.0",
-    "pnpm": ">=9.0.0"
+    "node": "\u003e=18.18.0",
+    "pnpm": "\u003e=9.0.0"
   },
-  "packageManager": "pnpm@9.11.0"
+  "homepage": "https://github.com/kirill-baranov/kb-labs-plugin-template#readme",
+  "license": "MIT",
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,json,md,yml,yaml}": [
+      "prettier -w"
+    ],
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix"
+    ]
+  },
+  "name": "@kb-labs/plugin-template",
+  "packageManager": "pnpm@9.11.0",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kirill-baranov/kb-labs-plugin-template.git"
+  },
+  "scripts": {
+    "// ——— ci/qa": "────────────────────────────────────────",
+    "// ——— cleanup": "────────────────────────────────────────",
+    "// ——— core": "────────────────────────────────────────",
+    "// ——— quality": "────────────────────────────────────────",
+    "build": "pnpm -r --filter ./packages/... run build",
+    "build:clean": "pnpm -r --filter ./packages/... run clean \u0026\u0026 pnpm run build",
+    "check": "pnpm lint \u0026\u0026 pnpm type-check \u0026\u0026 pnpm test",
+    "ci": "pnpm clean \u0026\u0026 pnpm build \u0026\u0026 pnpm check",
+    "clean": "pnpm -r run clean",
+    "clean:all": "rimraf node_modules packages/*/node_modules apps/*/node_modules dist",
+    "dev": "pnpm -r --parallel --filter ./packages/... run dev",
+    "devkit:check": "node scripts/devkit-sync.mjs --check",
+    "devkit:force": "node scripts/devkit-sync.mjs --force",
+    "devkit:help": "node scripts/devkit-sync.mjs --help",
+    "devkit:paths": "pnpm exec kb-devkit-paths",
+    "devkit:sync": "node scripts/devkit-sync.mjs",
+    "devkit:sync:ci": "node scripts/devkit-sync.mjs --ci-only",
+    "format": "prettier -w .",
+    "format:check": "prettier -c .",
+    "lint": "pnpm -r exec eslint .",
+    "lint:fix": "pnpm -r exec eslint . --fix",
+    "postinstall": "pnpm -s devkit:sync || true",
+    "predevkit:check": "pnpm devkit:paths",
+    "predevkit:force": "pnpm devkit:paths",
+    "predevkit:sync": "pnpm devkit:paths",
+    "predevkit:sync:ci": "pnpm devkit:paths",
+    "test": "pnpm -r --if-present run test",
+    "test:coverage": "pnpm -r --if-present run test --coverage",
+    "test:watch": "pnpm -r --parallel --if-present run test:watch",
+    "type-check": "pnpm -r run type-check"
+  },
+  "type": "module",
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
 }
