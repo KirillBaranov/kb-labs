@@ -33,7 +33,11 @@ func FetchStatusAll(client *ssh.Client, containers []string) ([]StatusResult, er
 	script := strings.Join(parts, "; ")
 
 	out, err := client.Run(script)
+	return parseStatusOutput(out, containers), err
+}
 
+// parseStatusOutput parses the SEP-delimited output of FetchStatusAll.
+func parseStatusOutput(out string, containers []string) []StatusResult {
 	segments := strings.Split(out, sep+"\n")
 	results := make([]StatusResult, len(containers))
 	for i, c := range containers {
@@ -57,5 +61,5 @@ func FetchStatusAll(client *ssh.Client, containers []string) ([]StatusResult, er
 		results[i].StartedAt = strings.TrimSpace(fields[1])
 		results[i].ImageSHA = strings.TrimSpace(fields[2])
 	}
-	return results, err
+	return results
 }

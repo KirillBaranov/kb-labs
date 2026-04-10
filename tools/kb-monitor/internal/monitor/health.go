@@ -28,11 +28,15 @@ func CheckHealthAll(client *ssh.Client, containers []string) ([]string, error) {
 	script := strings.Join(parts, "; ")
 
 	out, err := client.Run(script)
-
 	// Parse regardless of error — partial output is still useful.
+	return parseHealthOutput(out, len(containers)), err
+}
+
+// parseHealthOutput parses the SEP-delimited output of CheckHealthAll.
+func parseHealthOutput(out string, n int) []string {
 	segments := strings.Split(out, sep+"\n")
-	results := make([]string, len(containers))
-	for i := range containers {
+	results := make([]string, n)
+	for i := range results {
 		if i >= len(segments) {
 			results[i] = "unknown"
 			continue
@@ -46,5 +50,5 @@ func CheckHealthAll(client *ssh.Client, containers []string) ([]string, error) {
 			results[i] = "unknown"
 		}
 	}
-	return results, err
+	return results
 }
