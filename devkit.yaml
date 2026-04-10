@@ -445,7 +445,7 @@ tasks:
 
   test:coverage:
     - categories: [ts-lib, ts-app]
-      command: sh -c 'vitest run --passWithNoTests --coverage; exit 0'
+      command: npx vitest run --passWithNoTests --coverage
       inputs:
         - "src/**"
         - "test/**"
