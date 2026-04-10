@@ -1,0 +1,388 @@
+schemaVersion: 2
+extends:
+  - builtin:kb-labs
+
+workspace:
+  packageManager: pnpm
+  maxDepth: 3  # max recursion depth for ** globs; increase if packages are nested deeper
+  categories:
+    # TypeScript libraries — full ruleset
+    ts-lib:
+      match:
+        - "core/*"
+        - "sdk/*"
+        - "cli/*"
+        - "shared/*"
+        - "plugins/*/*"
+        - "adapters/*"
+        - "infra/devkit"
+        - "studio/*"
+        - "templates/*"
+      language: typescript
+      preset: node-lib
+
+    # SPA apps (Rspack / Vite) — pnpm build, not tsup
+    # Must come before ts-app since categories use first-match semantics
+    spa:
+      match:
+        - "studio/app"
+      language: typescript
+      preset: node-app
+
+    # Backend app entrypoints (daemons, servers)
+    # Lighter rules: no tsup/vitest requirement, no exports field
+    ts-app:
+      match:
+        - "plugins/*/daemon"
+        - "plugins/*/server"
+        - "plugins/*/app"
+        - "plugins/rest-api/core"
+      language: typescript
+      preset: node-app
+
+    # Next.js / Nuxt site apps
+    site:
+      match:
+        - "sites/*"
+      language: typescript
+      preset: site
+
+    go-binary:
+      match:
+        - "tools/kb-dev"
+        - "tools/kb-devkit"
+        - "tools/kb-create"
+      language: go
+      preset: go-binary
+
+# ──────────────────────────────────────────────────────────────────────────────
+# PRESETS
+# ──────────────────────────────────────────────────────────────────────────────
+
+presets:
+  node-lib:
+    language: typescript
+    package_json:
+      required_scripts:
+        - build
+        - dev
+        - test
+        - lint
+        - type-check
+        - clean
+      required_dev_deps:
+        typescript: "^5"
+        tsup: "^8"
+        vitest: "^3"
+        "@kb-labs/devkit": "*"
+      required_fields:
+        - name
+        - version
+        - type
+        - engines
+        - exports
+      type: module
+      engines:
+        node: ">=20.0.0"
+        pnpm: ">=9.0.0"
+    tsconfig:
+      must_extend_pattern: "@kb-labs/devkit/tsconfig/"
+      forbid_paths: true
+    tsup:
+      must_use_preset: true
+      dts_required: true
+      tsconfig_must_be_build: false  # not all packages have tsconfig.build.json yet
+    eslint:
+      must_use_preset: true
+    structure:
+      required_files:
+        - src/index.ts
+        - README.md
+    dependencies:
+      check_links: true
+      check_circular: true
+      check_version_consistency: true
+
+  node-app:
+    language: typescript
+    package_json:
+      required_scripts:
+        - build
+        - dev
+      required_fields:
+        - name
+        - version
+      required_dev_deps:
+        typescript: "^5"
+        "@kb-labs/devkit": "*"
+    tsconfig:
+      must_extend_pattern: "@kb-labs/devkit/tsconfig/"
+      forbid_paths: false
+    eslint:
+      must_use_preset: true
+    dependencies:
+      check_links: true
+      check_circular: true
+
+  # Next.js/Nuxt apps and their utility packages.
+  # Only 'build' is universally required — apps have 'dev', utility packages don't.
+  site:
+    language: typescript
+    package_json:
+      required_scripts:
+        - build
+      required_fields:
+        - name
+        - version
+    dependencies:
+      check_links: false
+      check_circular: false
+
+  go-binary:
+    language: go
+    structure:
+      required_files:
+        - go.mod
+        - Makefile
+    go:
+      min_version: "1.22"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# STRUCTURE CHECKS — plugin/core package conventions
+# ──────────────────────────────────────────────────────────────────────────────
+
+structure_checks:
+  # Every plugin group MUST have entry/, contracts/, core/
+  plugin:
+    scope: "plugins/*"
+    required_packages:
+      - name: entry
+        description: "Plugin entry point — manifest, registerPlugin(), CLI commands, Studio pages"
+        required_files:
+          - src/index.ts
+        must_depend_on:
+          - "@kb-labs/sdk"
+      - name: contracts
+        description: "Type definitions — zero runtime dependencies"
+        required_files:
+          - src/index.ts
+        rules:
+          - no_runtime_deps   # only devDependencies + types allowed
+      - name: core
+        description: "Business logic"
+        required_files:
+          - src/index.ts
+    optional_packages:
+      - name: daemon
+        description: "HTTP service (long-running process with port)"
+        required_files:
+          - src/bootstrap.ts
+        must_depend_on:
+          - "@kb-labs/gateway-contracts"
+    dependency_rules:
+      # contracts has zero internal deps
+      - from: contracts
+        to: []
+      # core depends on contracts only (within the plugin)
+      - from: core
+        to: [contracts]
+      # entry wires everything together
+      - from: entry
+        to: [contracts, core]
+      # daemon depends on core + contracts
+      - from: daemon
+        to: [contracts, core]
+      # nothing depends on entry (it's the leaf)
+      - from: "*"
+        not_to: [entry]
+
+  # Core packages MUST have contracts/ (types/) as foundation
+  core:
+    scope: "core"
+    required_packages:
+      - name: types
+        description: "Base type definitions for entire platform"
+        rules:
+          - no_runtime_deps
+      - name: contracts
+        description: "Platform contracts"
+        rules:
+          - no_runtime_deps
+
+# ──────────────────────────────────────────────────────────────────────────────
+# SYNC — devkit assets
+# ──────────────────────────────────────────────────────────────────────────────
+
+sync:
+  sources:
+    devkit:
+      type: local
+      path: infra/devkit
+
+  targets:
+    - source: devkit
+      from: agents/
+      to: .kb/devkit/agents/
+    - source: devkit
+      from: assets/claude/skills/
+      to: skills/
+
+  exclude:
+    - skills/my-custom-skill.ts
+    - .vscode/launch.json
+
+# ──────────────────────────────────────────────────────────────────────────────
+# AFFECTED — how `kb-devkit run --affected` detects changed packages
+# ──────────────────────────────────────────────────────────────────────────────
+
+affected:
+  # strategy: git (default) | submodules | command
+  #   git        — single `git diff --name-only HEAD` from workspace root
+  #                good for plain monorepos (no submodules)
+  #   submodules — walks .gitmodules, runs git diff inside each submodule
+  #   command    — runs `command`, reads one file path per line from stdout
+  strategy: git
+
+# ──────────────────────────────────────────────────────────────────────────────
+# BUILD
+# ──────────────────────────────────────────────────────────────────────────────
+
+run:
+  concurrency: 8
+
+# ──────────────────────────────────────────────────────────────────────────────
+# TASKS — execution engine (kb-devkit run <task>)
+# content-addressable cache: hash(inputs) → skip if unchanged
+# ──────────────────────────────────────────────────────────────────────────────
+
+tasks:
+  build:
+    - categories: [ts-lib, ts-app]
+      command: tsup
+      inputs:
+        - "src/**"
+        - "tsup.config.ts"
+        - "tsup.config.js"
+        - "tsconfig*.json"
+      outputs:
+        - "dist/**"
+      deps:
+        - "^build"   # deps' build must finish first
+
+    - categories: [spa]
+      command: pnpm build
+      inputs:
+        - "src/**"
+        - "public/**"
+        - "rspack.config.*"
+        - "vite.config.*"
+        - "tailwind.config.*"
+        - "postcss.config.*"
+        - "index.html"
+        - "package.json"
+      outputs:
+        - "dist/**"
+      deps:
+        - "^build"
+
+    - categories: [go-binary]
+      command: make build
+      inputs:
+        - "**/*.go"
+        - "go.mod"
+        - "go.sum"
+        - "Makefile"
+      outputs:
+        - "kb-devkit"
+        - "kb-dev"
+        - "kb-create"
+
+    - categories: [site]
+      command: pnpm build
+      inputs:
+        - "app/**"
+        - "components/**"
+        - "messages/**"
+        - "public/**"
+        - "next.config.*"
+        - "tailwind.config.*"
+        - "package.json"
+      outputs:
+        - ".next/**"
+      deps:
+        - "^build"   # wait for ts-lib deps (e.g. @kb-labs/sdk)
+
+    - categories: [site-pkg]
+      command: tsc --noEmit
+      inputs:
+        - "src/**"
+        - "tsconfig*.json"
+      outputs: []
+      deps:
+        - "^build"
+
+  lint:
+    - categories: [ts-lib, ts-app]
+      command: eslint src/
+      inputs:
+        - "src/**"
+        - "eslint.config.*"
+        - ".eslintrc*"
+      outputs: []
+
+    - categories: [site]
+      command: eslint app/ components/
+      inputs:
+        - "app/**"
+        - "components/**"
+        - "eslint.config.*"
+      outputs: []
+
+    - categories: [site-pkg]
+      command: eslint --no-error-on-unmatched-pattern src/
+      inputs:
+        - "src/**"
+        - "eslint.config.*"
+      outputs: []
+
+  type-check:
+    - categories: [ts-lib, ts-app]
+      command: tsc --noEmit
+      inputs:
+        - "src/**"
+        - "tsconfig*.json"
+      outputs: []
+      deps:
+        - "^build"   # needs deps' dist/**/*.d.ts
+
+    - categories: [site]
+      command: tsc --noEmit
+      inputs:
+        - "app/**"
+        - "components/**"
+        - "tsconfig*.json"
+      outputs: []
+      deps:
+        - "^build"
+
+    - categories: [site-pkg]
+      command: tsc --noEmit
+      inputs:
+        - "src/**"
+        - "tsconfig*.json"
+      outputs: []
+      deps:
+        - "^build"
+
+  test:
+    - categories: [ts-lib, ts-app]
+      command: vitest run --passWithNoTests
+      inputs:
+        - "src/**"
+        - "test/**"
+        - "__tests__/**"
+        - "vitest.config.*"
+      outputs:
+        - "coverage/**"
+      deps:
+        - "build"

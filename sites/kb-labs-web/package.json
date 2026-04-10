@@ -1,0 +1,27 @@
+{
+  "name": "kb-labs-web",
+  "version": "0.1.0",
+  "private": true,
+  "description": "KB Labs web monorepo: corporate site, docs, and SaaS shell.",
+  "packageManager": "pnpm@9.11.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "infra:start": "./dev-start.sh",
+    "dev": "turbo dev --parallel",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "check": "pnpm lint && pnpm typecheck && pnpm build",
+    "clean": "turbo clean && rimraf node_modules"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "rimraf": "^6.0.1",
+    "turbo": "^2.5.8",
+    "typescript": "^5.6.3"
+  }
+}

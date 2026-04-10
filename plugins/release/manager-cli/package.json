@@ -1,0 +1,81 @@
+{
+  "name": "@kb-labs/release-manager-cli",
+  "version": "0.6.0",
+  "description": "KB Labs Release Manager - CLI commands for release management",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "author": {
+    "name": "Kirill Baranov",
+    "url": "https://github.com/kirill-baranov"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kirill-baranov/kb-labs-release-manager.git",
+    "directory": "packages/release-cli"
+  },
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsup && pnpm build:studio",
+    "build:studio": "rspack build --config rspack.studio.config.mjs",
+    "dev": "tsup --watch",
+    "dev:studio": "rspack build --config rspack.studio.config.mjs --watch",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run --passWithNoTests -c ../../vitest.config.ts",
+    "test:watch": "vitest -c ../../vitest.config.ts"
+  },
+  "dependencies": {
+    "@kb-labs/release-manager-changelog": "workspace:*",
+    "@kb-labs/release-manager-checks": "workspace:*",
+    "@kb-labs/release-manager-contracts": "workspace:*",
+    "@kb-labs/release-manager-core": "workspace:*",
+    "@kb-labs/sdk": "workspace:*",
+    "@kb-labs/studio-plugin-tools": "workspace:*",
+    "glob": "^11.0.0",
+    "globby": "^11.0.0",
+    "npm-packlist": "^10.0.3",
+    "zod": "^3.23.8"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-router-dom": ">=6.0.0"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@rspack/cli": "latest",
+    "@rspack/core": "latest",
+    "@types/node": "^24.3.3",
+    "@types/npm-packlist": "^7.0.3",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "eslint": "^9",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
+  },
+  "kb": {
+    "manifest": "./dist/manifest.js"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

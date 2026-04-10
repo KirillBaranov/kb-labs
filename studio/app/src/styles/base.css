@@ -1,0 +1,190 @@
+/* Base element styles and layout utilities */
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-family: var(--font-heading);
+  letter-spacing: -0.02em;
+}
+
+p {
+  color: var(--text-secondary);
+}
+
+a {
+  color: var(--link);
+  text-decoration: none;
+  transition: color 0.15s ease-in-out;
+}
+
+a:hover {
+  color: var(--link-hover);
+}
+
+/* Text utilities */
+.text-primary {
+  color: var(--text-primary);
+}
+
+.text-secondary {
+  color: var(--text-secondary);
+}
+
+.text-tertiary {
+  color: var(--text-tertiary);
+}
+
+/* Border utilities */
+.border-theme {
+  border-color: var(--border-primary);
+}
+
+/* Status colors */
+.text-success {
+  color: var(--success);
+}
+
+.text-warning {
+  color: var(--warning);
+}
+
+.text-error {
+  color: var(--error);
+}
+
+.text-info {
+  color: var(--info);
+}
+
+/* Background utilities */
+.bg-theme-primary {
+  background-color: var(--bg-primary);
+}
+
+.bg-theme-secondary {
+  background-color: var(--bg-secondary);
+}
+
+.bg-theme-tertiary {
+  background-color: var(--bg-tertiary);
+}
+
+/* Spacing CSS variables */
+:root {
+  --spacing-page: 2rem;      /* 32px - Space between main page sections */
+  --spacing-section: 1.5rem;  /* 24px - Space between subsections */
+  --spacing-item: 1rem;       /* 16px - Space between related items */
+  --spacing-tight: 0.5rem;    /* 8px - Minimal space between tightly related items */
+}
+
+/* Spacing utility classes for gap */
+.gap-page {
+  gap: var(--spacing-page);
+}
+
+.gap-section {
+  gap: var(--spacing-section);
+}
+
+.gap-item {
+  gap: var(--spacing-item);
+}
+
+.gap-tight {
+  gap: var(--spacing-tight);
+}
+
+/* Typography CSS variables */
+:root {
+  /* Page title */
+  --typo-page-title-size: 2.25rem;      /* 36px */
+  --typo-page-title-line-height: 2.5rem; /* 40px */
+  --typo-page-title-weight: 700;
+
+  /* Section title */
+  --typo-section-title-size: 1.875rem;      /* 30px */
+  --typo-section-title-line-height: 2.25rem; /* 36px */
+  --typo-section-title-weight: 600;
+
+  /* Card title */
+  --typo-card-title-size: 1.5rem;      /* 24px */
+  --typo-card-title-line-height: 2rem; /* 32px */
+  --typo-card-title-weight: 600;
+
+  /* Body text */
+  --typo-body-size: 1rem;           /* 16px */
+  --typo-body-line-height: 1.5rem;  /* 24px */
+  --typo-body-weight: 400;
+
+  /* Description text */
+  --typo-description-size: 0.875rem;     /* 14px */
+  --typo-description-line-height: 1.25rem; /* 20px */
+  --typo-description-weight: 400;
+
+  /* Label text */
+  --typo-label-size: 0.875rem;       /* 14px */
+  --typo-label-line-height: 1.25rem; /* 20px */
+  --typo-label-weight: 500;
+
+  /* Caption text */
+  --typo-caption-size: 0.75rem;      /* 12px */
+  --typo-caption-line-height: 1rem;  /* 16px */
+  --typo-caption-weight: 400;
+}
+
+/* Typography component classes */
+.typo-page-title {
+  font-size: var(--typo-page-title-size);
+  line-height: var(--typo-page-title-line-height);
+  font-weight: var(--typo-page-title-weight);
+  color: var(--text-primary);
+}
+
+.typo-section-title {
+  font-size: var(--typo-section-title-size);
+  line-height: var(--typo-section-title-line-height);
+  font-weight: var(--typo-section-title-weight);
+  color: var(--text-primary);
+}
+
+.typo-card-title {
+  font-size: var(--typo-card-title-size);
+  line-height: var(--typo-card-title-line-height);
+  font-weight: var(--typo-card-title-weight);
+  color: var(--text-primary);
+}
+
+.typo-body {
+  font-size: var(--typo-body-size);
+  line-height: var(--typo-body-line-height);
+  font-weight: var(--typo-body-weight);
+  color: var(--text-primary);
+}
+
+.typo-description {
+  font-size: var(--typo-description-size);
+  line-height: var(--typo-description-line-height);
+  font-weight: var(--typo-description-weight);
+  color: var(--text-secondary);
+}
+
+.typo-label {
+  font-size: var(--typo-label-size);
+  line-height: var(--typo-label-line-height);
+  font-weight: var(--typo-label-weight);
+  color: var(--text-secondary);
+}
+
+.typo-caption {
+  font-size: var(--typo-caption-size);
+  line-height: var(--typo-caption-line-height);
+  font-weight: var(--typo-caption-weight);
+  color: var(--text-tertiary);
+}

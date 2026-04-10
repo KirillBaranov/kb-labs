@@ -1,0 +1,153 @@
+---
+title: "IWorkspaceProvider"
+description: "Workspace lifecycle — materialize, attach, release."
+updatedAt: "2026-04-07"
+order: 10
+---
+
+`IWorkspaceProvider` manages the lifecycle of **workspaces** — filesystem trees that plugin code will execute against. A workspace can be a clone of a git repo, a git worktree, a filesystem snapshot, or a remote directory exposed by the host agent. The provider materializes them on demand and attaches them to execution environments.
+
+Source of truth: [platform/kb-labs-core/packages/core-platform/src/workspace/workspace-provider.ts](platform/kb-labs-core/packages/core-platform/src/workspace/workspace-provider.ts).
+
+## Why workspaces matter
+
+Plugin code needs a working directory. For local dev that's just `process.cwd()`, but production is more complex:
+
+- **Isolation** — two runs of the same workflow should not see each other's changes. Workspaces give each run its own filesystem.
+- **Parallelism** — a single source repo can be checked out into many workspaces at different refs simultaneously.
+- **Remote execution** — when a workflow runs inside a Docker container, the workspace needs to be mounted into the container's filesystem.
+- **Remote sources** — when code lives on a developer's machine and a workflow runs in the cloud, the workspace provider bridges the two via the host agent.
+
+`IWorkspaceProvider` is the abstraction that makes all this look the same to plugin code.
+
+## Interface
+
+```ts
+interface IWorkspaceProvider {
+  materialize(request: MaterializeWorkspaceRequest): Promise<WorkspaceDescriptor>;
+  attach(request: AttachWorkspaceRequest): Promise<WorkspaceAttachment>;
+  release(workspaceId: string, environmentId?: string): Promise<void>;
+  getStatus(workspaceId: string): Promise<WorkspaceStatusResult>;
+  getCapabilities?(): WorkspaceProviderCapabilities;
+}
+```
+
+## Lifecycle states
+
+```ts
+type WorkspaceStatus =
+  | 'pending'
+  | 'materializing'
+  | 'ready'
+  | 'attaching'
+  | 'attached'
+  | 'releasing'
+  | 'released'
+  | 'failed';
+```
+
+A workspace flows `pending → materializing → ready → attaching → attached → releasing → released`, with `failed` as a terminal sink from any state.
+
+## Methods
+
+### `materialize(request)`
+
+Creates a new workspace from a source reference (git ref, snapshot ID, directory path, etc.) and returns a descriptor.
+
+```ts
+interface MaterializeWorkspaceRequest {
+  workspaceId?: string;             // optional caller-supplied ID
+  tenantId?: string;
+  namespace?: string;
+  sourceRef?: string;               // 'main', 'v1.0.0', snapshot ID, etc.
+  basePath?: string;
+  metadata?: Record<string, unknown>;
+  onProgress?: (event: WorkspaceProgressEvent) => void;
+}
+
+interface WorkspaceDescriptor {
+  workspaceId: string;
+  provider: string;
+  status: WorkspaceStatus;
+  rootPath?: string;                // absolute path to the workspace root
+  mount?: WorkspaceMount;
+  createdAt: string;
+  updatedAt: string;
+  metadata?: Record<string, unknown>;
+}
+```
+
+The `onProgress` callback is how long-running materializations report intermediate stages — `'worktree'`, `'submodules'`, `'dependencies'`, whatever the adapter wants to surface. The workflow daemon and Studio pipe these through so users can see "creating worktree... installing deps..." as it happens.
+
+### `attach(request)`
+
+Mounts the workspace into a specific execution environment.
+
+```ts
+interface AttachWorkspaceRequest {
+  workspaceId: string;
+  environmentId: string;
+  mountPath?: string;
+  readOnly?: boolean;
+}
+
+interface WorkspaceAttachment {
+  workspaceId: string;
+  environmentId: string;
+  mountPath?: string;
+  attachedAt: string;
+  metadata?: Record<string, unknown>;
+}
+```
+
+For local workspaces this is effectively a no-op with metadata. For Docker environments it translates into a bind mount. The provider knows which adapter it's talking to and does the right thing.
+
+### `release(workspaceId, environmentId?)`
+
+Detaches a workspace from an environment (when `environmentId` is provided) or releases the workspace entirely. Idempotent.
+
+### `getStatus(workspaceId)`
+
+Returns the current `WorkspaceStatusResult`:
+
+```ts
+interface WorkspaceStatusResult {
+  workspaceId: string;
+  status: WorkspaceStatus;
+  reason?: string;         // failure reason if status === 'failed'
+  updatedAt: string;
+}
+```
+
+### `getCapabilities?()`
+
+```ts
+interface WorkspaceProviderCapabilities {
+  supportsAttach?: boolean;
+  supportsRelease?: boolean;
+  supportsReadOnlyMounts?: boolean;
+  custom?: Record<string, unknown>;
+}
+```
+
+## Contract rules
+
+- **`materialize` should be idempotent on the same `workspaceId`.** If the caller supplies a known ID, the provider should reuse the existing workspace.
+- **`release` must tolerate already-released workspaces.** Double-release is not an error.
+- **Progress events are best-effort.** Callers shouldn't rely on seeing any particular stage.
+- **The provider is responsible for cleanup.** Workspaces that aren't released should be garbage collected eventually.
+- **`rootPath` is absolute** when present.
+
+## Built-in adapters implementing `IWorkspaceProvider`
+
+| Package | Notes |
+|---|---|
+| `@kb-labs/adapters-workspace-localfs` | Plain local filesystem directories. For dev and simple deployments. |
+| `@kb-labs/adapters-workspace-worktree` | Git worktree-based. Each workspace is a cheap git worktree; fast materialization from existing repos. |
+| `@kb-labs/adapters-workspace-agent` | Delegates to the host agent. Used when the workflow runs on a different machine than the source code. |
+
+## What to read next
+
+- [IEnvironmentProvider](/adapters/interfaces/environment) — workspaces are attached to environments.
+- [Concepts → Execution Model](/concepts/execution-model) — how workspaces, environments, and backends compose.
+- [Services → Host Agent](/services/host-agent) — the bridge behind `adapters-workspace-agent`.

@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Post-push hook — managed by kb-labs-devkit, do not edit manually.
+#
+# Note: DevLink undo was removed here — npm switch no longer runs
+# during push, so there is nothing to restore. npm mode is only
+# used during `npm publish` (managed by Release Manager).
+
+# No-op for now. Add project-specific post-push actions here if needed.
+exit 0

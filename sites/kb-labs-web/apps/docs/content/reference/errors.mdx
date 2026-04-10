@@ -1,0 +1,169 @@
+---
+title: "Error Codes"
+description: "Platform error codes, their meanings, and recovery actions."
+updatedAt: "2026-04-07"
+order: 4
+---
+
+KB Labs uses structured error codes throughout — in CLI output, REST API responses, and workflow logs. This page catalogs the known codes by subsystem.
+
+## Error shape
+
+**CLI output** (JSON mode):
+```json
+{
+  "exitCode": 1,
+  "error": {
+    "code": "CONFIG_NOT_RESOLVED",
+    "message": "No profile matched the current environment",
+    "details": { "profileId": "production" }
+  }
+}
+```
+
+**REST API**:
+```json
+{
+  "error": {
+    "code": "WORKFLOW_NOT_FOUND",
+    "message": "Workflow run abc123 not found",
+    "details": {}
+  }
+}
+```
+
+**Thrown exceptions** (caught by the runtime and mapped to one of the above):
+```ts
+throw new PluginError('INVALID_HANDLER', 'Handler at ./dist/run.js does not export execute');
+```
+
+## Defining errors in plugins
+
+Use `defineError` from `@kb-labs/sdk` to declare typed error codes in your plugin:
+
+```ts
+import { defineError } from '@kb-labs/sdk';
+
+export const MyPluginErrors = {
+  CONFIG_MISSING: defineError('CONFIG_MISSING', 400, 'Plugin configuration is missing'),
+  LLM_UNAVAILABLE: defineError('LLM_UNAVAILABLE', 503, 'LLM adapter not configured'),
+  PARSE_FAILED: defineError('PARSE_FAILED', 422, 'Failed to parse LLM response'),
+};
+```
+
+`commonErrors` from `@kb-labs/sdk` provides pre-defined codes for the most frequent cases.
+
+## Platform error codes
+
+### Plugin loading
+
+| Code | HTTP | Meaning | Fix |
+|------|------|---------|-----|
+| `INVALID_MANIFEST` | 400 | Manifest failed schema validation | Check `schema`, `id`, `version` fields are correct |
+| `INVALID_HANDLER` | 400 | Handler file not found or missing `execute` export | Verify the `handler` path in the manifest points to built `.js` output |
+| `PLUGIN_NOT_FOUND` | 404 | Plugin ID not in registry | Install the plugin or clear registry cache |
+| `PLUGIN_CONFLICT` | 409 | Two plugins declare the same command ID | Rename one command's `id` |
+| `CIRCULAR_DEPENDENCY` | 400 | Plugin dependency graph has a cycle | Check `dependencies[]` in manifests |
+| `MISSING_DEPENDENCY` | 400 | Required plugin not installed | Install the dependency listed in `plugin.dependencies` |
+
+### Configuration
+
+| Code | HTTP | Meaning | Fix |
+|------|------|---------|-----|
+| `CONFIG_NOT_FOUND` | 404 | `.kb/kb.config.json` missing | Run `pnpm kb init` or restore from backup |
+| `CONFIG_NOT_RESOLVED` | 400 | No profile matched current environment | Check `profiles` in `kb.config.json` |
+| `CONFIG_PARSE_ERROR` | 400 | `kb.config.json` is invalid JSON | Fix JSON syntax |
+| `ADAPTER_NOT_CONFIGURED` | 400 | Required adapter missing from config | Add adapter to `kb.config.json` |
+
+### Execution
+
+| Code | HTTP | Meaning | Fix |
+|------|------|---------|-----|
+| `EXECUTION_TIMEOUT` | 504 | Handler exceeded `timeoutMs` | Increase timeout in manifest or optimize handler |
+| `EXECUTION_ERROR` | 500 | Handler threw an unhandled exception | Check logs: `kb-dev logs rest` |
+| `HOST_MISMATCH` | 400 | Handler invoked from wrong host type | Use `defineRoute` for REST handlers, `defineCommand` for CLI |
+| `SANDBOX_ERROR` | 500 | Plugin sandbox failed to initialize | Run `pnpm kb marketplace plugins doctor` |
+
+### Workflow
+
+| Code | HTTP | Meaning | Fix |
+|------|------|---------|-----|
+| `WORKFLOW_NOT_FOUND` | 404 | Workflow ID not registered | Check workflow handler declarations in manifests |
+| `WORKFLOW_RUN_NOT_FOUND` | 404 | Run ID doesn't exist | Verify run ID |
+| `WORKFLOW_ALREADY_CANCELLED` | 409 | Run was already cancelled | — |
+| `JOB_NOT_FOUND` | 404 | Job handler ID not registered | Check `jobs.handlers[]` in manifest |
+| `STEP_FAILED` | 500 | A workflow step threw | Check run logs for step error |
+
+### Rate limiting and quotas
+
+| Code | HTTP | Meaning | Fix |
+|------|------|---------|-----|
+| `RATE_LIMIT_EXCEEDED` | 429 | Too many requests for tenant | Check `Retry-After` header; reduce request rate |
+| `QUOTA_EXCEEDED` | 429 | Tenant exceeded daily/monthly quota | Upgrade tier or wait for quota reset |
+| `CONCURRENT_LIMIT_EXCEEDED` | 429 | Too many concurrent workflow runs | Wait for running workflows to finish |
+
+### Authentication and authorization
+
+| Code | HTTP | Meaning | Fix |
+|------|------|---------|-----|
+| `UNAUTHORIZED` | 401 | Missing or invalid auth token | Provide `Authorization: Bearer <token>` header |
+| `FORBIDDEN` | 403 | Token valid but insufficient permissions | Check plugin permissions and tenant tier |
+| `PERMISSION_DENIED` | 403 | Plugin permission check failed | Check `permissions` in manifest; request needed grants |
+
+## Exit codes (CLI)
+
+| Exit code | Meaning |
+|-----------|---------|
+| `0` | Success |
+| `1` | Command failed (expected error: bad input, missing config, etc.) |
+| `2` | CLI infrastructure error (plugin load failure, dispatch error) |
+| `130` | Interrupted by user (Ctrl+C) |
+
+The mapping from error codes to exit codes lives in `mapCliErrorToExitCode` in the CLI runtime. Plugins control exit codes by returning `{ exitCode: N }` from their handlers.
+
+## Diagnosing errors
+
+**Get more context:**
+```bash
+LOG_LEVEL=debug pnpm kb <command>     # verbose output
+kb-dev logs rest                       # last 50 lines from REST API
+kb-dev logs rest -f                    # follow in real time
+```
+
+**Plugin loading issues:**
+```bash
+pnpm kb marketplace plugins doctor     # diagnose all installed plugins
+pnpm kb marketplace clear-cache --deep # clear all caches and retry
+```
+
+**Workflow failures:**
+```bash
+pnpm kb workflow:logs --run-id <id>    # full run log
+# Or via REST:
+GET http://localhost:5050/api/v1/workflows/runs/<id>
+GET http://localhost:5050/api/v1/workflows/runs/<id>/logs
+```
+
+## Common error patterns and fixes
+
+**"Plugin not found: @kb-labs/qa" / showing only test plugins**
+
+Zombie host-agent daemon processes are intercepting plugin execution:
+```bash
+pkill -9 -f "host-agent-app/dist/index.js"
+pnpm kb marketplace clear-cache --deep
+```
+
+**"Command not found" after building a plugin**
+
+Registry cache is stale:
+```bash
+pnpm kb marketplace clear-cache
+```
+
+**"Cannot find module '@kb-labs/...'"**
+
+Dependencies not built in the right order:
+```bash
+npx kb-devkit-build-order --package=your-package
+```

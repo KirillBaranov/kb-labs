@@ -1,0 +1,13 @@
+**/.git
+**/.gitignore
+**/.next
+**/node_modules
+**/.turbo
+**/dist
+**/*.log
+**/coverage
+**/.env
+**/.env.*
+!**/.env.example
+**/Dockerfile
+**/.dockerignore

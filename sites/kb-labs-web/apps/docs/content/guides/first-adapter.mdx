@@ -1,0 +1,348 @@
+---
+title: "Writing Your First Adapter"
+description: "Build a custom ICache adapter, register it, and use it from a plugin."
+updatedAt: "2026-04-07"
+order: 3
+---
+
+Adapters are the platform's backend layer — every service the runtime depends on (LLM, cache, vector store, storage, logger) is an adapter implementing a TypeScript interface. Writing a custom one means picking an interface, implementing it, packaging it, and registering it in `kb.config.json`.
+
+This guide builds a minimal cache adapter with an in-memory backend. The same flow applies to any interface. For the complete walkthrough with all the options, see [Adapters → Writing a Custom Adapter](/adapters/custom-adapter). This page is the guided version.
+
+## Prerequisites
+
+- A running KB Labs workspace.
+- Familiarity with TypeScript and `pnpm`.
+- 20 minutes.
+
+## What we're building
+
+A simple `ICache` adapter called `@example/adapters-memcache` — a plain in-memory KV store with TTL support. Real production caches would wrap Redis or Memcached; this one is deliberately minimal so the focus stays on the adapter structure.
+
+## Step 1 — Create the package
+
+```bash
+mkdir -p packages/memcache-adapter/src
+cd packages/memcache-adapter
+pnpm init
+```
+
+Edit `package.json`:
+
+```json
+{
+  "name": "@example/adapters-memcache",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "type-check": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@kb-labs/core-platform": "^1.0.0"
+  },
+  "devDependencies": {
+    "@kb-labs/core-platform": "^1.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.5.0"
+  }
+}
+```
+
+Note the dependency model: `@kb-labs/core-platform` is a **peer** dependency (the host runtime provides it at runtime) plus a **dev** dependency (you need the types at build time).
+
+## Step 2 — Write the adapter
+
+`src/index.ts`:
+
+```ts
+import type {
+  AdapterManifest,
+  AdapterFactory,
+  ICache,
+} from '@kb-labs/core-platform';
+
+// ─── Adapter manifest ──────────────────────────────────────────────────
+
+export const manifest: AdapterManifest = {
+  manifestVersion: '1.0.0',
+  id: 'memcache',
+  name: 'In-Memory Cache',
+  version: '0.1.0',
+  type: 'core',
+  implements: 'ICache',
+  capabilities: { batch: false, streaming: false },
+  description: 'A simple in-memory ICache implementation',
+};
+
+// ─── Config schema ──────────────────────────────────────────────────────
+
+interface MemcacheConfig {
+  maxEntries?: number;  // default 10000
+}
+
+// ─── Implementation ─────────────────────────────────────────────────────
+
+interface Entry<T> {
+  value: T;
+  expiresAt: number | null;
+}
+
+class MemCache implements ICache {
+  private store = new Map<string, Entry<unknown>>();
+  private sortedSets = new Map<string, Map<string, number>>();
+
+  constructor(private config: MemcacheConfig) {}
+
+  private isExpired(entry: Entry<unknown>): boolean {
+    return entry.expiresAt !== null && entry.expiresAt < Date.now();
+  }
+
+  async get<T>(key: string): Promise<T | null> {
+    const entry = this.store.get(key);
+    if (!entry || this.isExpired(entry)) {
+      this.store.delete(key);
+      return null;
+    }
+    return entry.value as T;
+  }
+
+  async set<T>(key: string, value: T, ttl?: number): Promise<void> {
+    if (this.store.size >= (this.config.maxEntries ?? 10000)) {
+      const oldest = this.store.keys().next().value;
+      if (oldest) this.store.delete(oldest);
+    }
+    this.store.set(key, {
+      value,
+      expiresAt: ttl ? Date.now() + ttl : null,
+    });
+  }
+
+  async delete(key: string): Promise<void> {
+    this.store.delete(key);
+  }
+
+  async clear(pattern?: string): Promise<void> {
+    if (!pattern) {
+      this.store.clear();
+      this.sortedSets.clear();
+      return;
+    }
+    const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
+    for (const key of this.store.keys()) {
+      if (regex.test(key)) this.store.delete(key);
+    }
+  }
+
+  async zadd(key: string, score: number, member: string): Promise<void> {
+    let set = this.sortedSets.get(key);
+    if (!set) {
+      set = new Map();
+      this.sortedSets.set(key, set);
+    }
+    set.set(member, score);
+  }
+
+  async zrangebyscore(key: string, min: number, max: number): Promise<string[]> {
+    const set = this.sortedSets.get(key);
+    if (!set) return [];
+    return [...set.entries()]
+      .filter(([, score]) => score >= min && score <= max)
+      .sort(([, a], [, b]) => a - b)
+      .map(([member]) => member);
+  }
+
+  async zrem(key: string, member: string): Promise<void> {
+    this.sortedSets.get(key)?.delete(member);
+  }
+
+  async setIfNotExists<T>(key: string, value: T, ttl?: number): Promise<boolean> {
+    if (this.store.has(key)) {
+      const entry = this.store.get(key)!;
+      if (!this.isExpired(entry)) return false;
+    }
+    await this.set(key, value, ttl);
+    return true;
+  }
+}
+
+// ─── Factory ────────────────────────────────────────────────────────────
+
+export const createAdapter: AdapterFactory<MemcacheConfig, Record<string, never>, ICache> = (config) => {
+  return new MemCache(config ?? {});
+};
+```
+
+A few things to notice:
+
+- **The manifest** is a plain object export. The platform's adapter loader reads it to know the adapter's metadata.
+- **`createAdapter`** is the factory function the platform calls to instantiate the adapter. Takes config and deps, returns an instance.
+- **Every method** in `ICache` is implemented, even ones we don't really need (sorted sets). The interface is strict — you can't partial-implement.
+- **`get`** returns `null` (not `undefined`) when a key is missing. Matches Redis semantics.
+- **`clear(pattern?)`** handles both the clear-all case and glob-pattern filtering.
+
+See [Adapters → ICache](/adapters/interfaces/cache) for the interface reference.
+
+## Step 3 — Add tsconfig and tsup
+
+`tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true
+  },
+  "include": ["src"]
+}
+```
+
+`tsup.config.ts`:
+
+```ts
+import { defineConfig } from 'tsup';
+
+export default defineConfig({
+  entry: ['src/index.ts'],
+  format: ['esm'],
+  dts: true,
+  clean: true,
+});
+```
+
+## Step 4 — Build
+
+```bash
+pnpm install
+pnpm build
+```
+
+Check that `dist/index.js` and `dist/index.d.ts` exist.
+
+## Step 5 — Register the adapter
+
+Edit your workspace's `.kb/kb.config.json` and swap the `cache` entry:
+
+```json
+{
+  "platform": {
+    "adapters": {
+      "llm": "@kb-labs/adapters-openai",
+      "cache": "@example/adapters-memcache",
+      "storage": "@kb-labs/adapters-fs"
+    },
+    "adapterOptions": {
+      "cache": {
+        "maxEntries": 5000
+      }
+    }
+  }
+}
+```
+
+The adapter package name in `platform.adapters.cache` must match your published package name. For local development, link the package into your workspace:
+
+```bash
+pnpm link /absolute/path/to/packages/memcache-adapter
+```
+
+Or, if you're using pnpm workspaces, add the package to the workspace and reference it via `workspace:*`.
+
+## Step 6 — Restart services
+
+Adapters load at service startup:
+
+```bash
+kb-dev restart
+```
+
+Check the REST API logs for adapter init:
+
+```bash
+kb-dev logs rest | grep -i cache
+```
+
+You should see something like:
+
+```
+[rest] Loaded adapter: cache (memcache, v0.1.0)
+```
+
+## Step 7 — Test it from a plugin
+
+Write a tiny plugin handler that uses the cache:
+
+```ts
+import { defineCommand, useCache, type CLIInput } from '@kb-labs/sdk';
+
+export default defineCommand({
+  id: 'test:cache',
+  handler: {
+    async execute(ctx, input) {
+      const cache = useCache();
+      if (!cache) {
+        return { exitCode: 1, error: { message: 'Cache not configured' } };
+      }
+
+      await cache.set('greeting', { value: 'hello', when: Date.now() }, 60_000);
+      const hit = await cache.get<{ value: string; when: number }>('greeting');
+
+      return { exitCode: 0, result: hit };
+    },
+  },
+});
+```
+
+Run it:
+
+```bash
+pnpm kb test:cache
+# → { value: 'hello', when: 1729500000000 }
+```
+
+Your custom adapter is now the backing store for `useCache()` across the entire platform — every plugin that calls `useCache()` sees your implementation.
+
+## What just happened
+
+The same flow works for every adapter interface:
+
+1. **Pick an interface** from `@kb-labs/core-platform` — `ICache`, `ILLM`, `IStorage`, `ILogger`, `IVectorStore`, `IEmbeddings`, `IAnalytics`, `IEventBus`.
+2. **Implement every method.** Partial implementations are rejected by the type checker.
+3. **Export `manifest`** with metadata about your adapter.
+4. **Export `createAdapter`** as the factory function.
+5. **Build the package** to `dist/`.
+6. **Register in `kb.config.json`** under `platform.adapters[<token>]`.
+7. **Pass options** via `platform.adapterOptions[<token>]`.
+8. **Restart services** to load the new adapter.
+
+## What's next
+
+- **Persist the data.** Real caches don't lose state on restart. Swap the `Map` for Redis, SQLite, or any other backend.
+- **Add metrics.** Count hits, misses, evictions. Expose them via a `/metrics`-like endpoint.
+- **Handle errors gracefully.** Network failures, connection pooling, reconnection logic.
+- **Publish to npm.** Once it's production-ready, publish the package and let other deployments use it.
+- **Write tests.** Use Vitest directly — the adapter is a plain class, no special test harness needed.
+
+## What to read next
+
+- **[Adapters → Writing a Custom Adapter](/adapters/custom-adapter)** — the complete walkthrough with all options and edge cases.
+- **[Adapters → Overview](/adapters)** — conceptual picture of the adapter layer.
+- **[Adapters → ICache](/adapters/interfaces/cache)** — full interface reference.
+- **[Adapters → Service Interfaces](/adapters/interfaces)** — every interface you can implement.
+- **[Configuration → kb.config.json](/configuration/kb-config)** — adapter registration and options.

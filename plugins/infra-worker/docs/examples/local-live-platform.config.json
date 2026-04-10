@@ -1,0 +1,23 @@
+{
+  "adapters": {
+    "environment": "@kb-labs/adapters-environment-docker",
+    "workspace": "@kb-labs/adapters-workspace-localfs",
+    "snapshot": "@kb-labs/adapters-snapshot-localfs"
+  },
+  "adapterOptions": {
+    "environment": {
+      "defaultImage": "node:20-alpine",
+      "defaultTtlMs": 3600000,
+      "mountWorkspace": true,
+      "workspaceMountPath": "/workspace"
+    },
+    "workspace": {
+      "rootDir": ".kb/runtime/workspaces",
+      "registryDir": ".kb/runtime/workspace-registry"
+    },
+    "snapshot": {
+      "storageDir": ".kb/runtime/snapshots",
+      "workspaceRegistryDir": ".kb/runtime/workspace-registry"
+    }
+  }
+}

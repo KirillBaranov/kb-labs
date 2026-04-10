@@ -1,0 +1,318 @@
+---
+title: "Jobs"
+description: "Execution target, concurrency, dependencies, and hooks."
+updatedAt: "2026-04-07"
+order: 4
+---
+
+A job is one unit of scheduling inside a workflow. Every job picks where it runs (local or sandboxed), what isolation profile to use, which other jobs it depends on, and how it retries on failure. Steps inside a job run sequentially; jobs themselves run according to the DAG the engine builds from their `needs`.
+
+This page is the practical walkthrough. For every field and every Zod rule see [Spec Reference → JobSpec](/workflows/spec-reference#jobspec).
+
+## Where jobs run: `runsOn`
+
+```ts
+runsOn: 'local' | 'sandbox'
+```
+
+- **`'local'`** — the job runs in the workflow daemon's own process. No isolation, no IPC, no container overhead. Use for coordination-only work that doesn't touch user code: reading outputs from previous jobs, posting Slack notifications, deciding which downstream job to fire.
+- **`'sandbox'`** — the job runs in an isolated execution backend. Which backend is chosen depends on `platform.execution.mode` in `kb.config.json` — `worker-pool`, `container`, or `remote`. Plugins don't pick this; deployment does.
+
+Rule of thumb: if the job runs **plugin code** or **shell commands that touch the workspace**, make it `'sandbox'`. If it's pure engine-level orchestration, make it `'local'`.
+
+## Isolation profiles
+
+```ts
+isolation?: 'strict' | 'balanced' | 'relaxed'
+```
+
+Isolation is a sandbox hint, not an enforcement mode. Exactly how it translates depends on the execution backend and the environment provider — see [Concepts → Execution Model](/concepts/execution-model) for the full story.
+
+Declared at job level (overrides workflow-level default):
+
+```json
+{
+  "jobs": {
+    "build": {
+      "runsOn": "sandbox",
+      "isolation": "strict",
+      "steps": [...]
+    }
+  }
+}
+```
+
+## Execution target
+
+```ts
+target?: {
+  environmentId?: string;
+  workspaceId?: string;
+  namespace?: string;
+  workdir?: string;
+}
+```
+
+Pins the job to a specific environment or workspace. Most workflows don't set this at the job level — they either inherit from the workflow-level target or let the engine allocate fresh resources per run.
+
+When you **do** want to pin: deploy jobs that must hit a specific cluster, test jobs that need a pre-warmed environment, analysis jobs that operate on a shared read-only workspace.
+
+## Dependencies: `needs`
+
+```json
+{
+  "jobs": {
+    "build": { "runsOn": "sandbox", "steps": [...] },
+    "test":  { "runsOn": "sandbox", "needs": ["build"],          "steps": [...] },
+    "lint":  { "runsOn": "sandbox", "needs": ["build"],          "steps": [...] },
+    "deploy":{ "runsOn": "local",   "needs": ["test", "lint"],   "steps": [...] }
+  }
+}
+```
+
+The engine builds a directed graph: each entry in `needs` becomes an edge from the dependency to the dependent. At run creation, the graph is topologically sorted and cycles are rejected.
+
+**Propagation rules:**
+
+- If a dependency reaches `'success'`, the dependent becomes eligible.
+- If a dependency is `'skipped'` (its `if` evaluated false), dependents still run.
+- If a dependency is `'failed'` or `'cancelled'`, dependents are **not** scheduled — they're marked `'skipped'` with a pending-dependency reason.
+
+There's no "run anyway on failure" override at the `needs` level. Use `hooks.onFailure` in the failing job if you want cleanup, or restructure the DAG if you want an "always runs" job.
+
+## Concurrency
+
+```ts
+concurrency?: {
+  group: string;              // min 1, max 256
+  cancelInProgress?: boolean;
+}
+```
+
+All jobs with the same `concurrency.group` are **serialized by the scheduler** — at most one runs at a time, across all runs of all workflows. This is a global coordinator, not a per-run limit.
+
+### Serialized mode
+
+```json
+{
+  "jobs": {
+    "deploy": {
+      "concurrency": { "group": "prod-deploy" }
+    }
+  }
+}
+```
+
+A second run that tries to start `deploy` while the first is still running waits in the queue until the first finishes. Both runs complete; they just don't overlap.
+
+### Cancel-in-progress mode
+
+```json
+{
+  "jobs": {
+    "ci": {
+      "concurrency": { "group": "pr-123-ci", "cancelInProgress": true }
+    }
+  }
+}
+```
+
+A second run cancels the first. This is the pattern for CI pipelines: a new push to the same PR should cancel the in-flight build. Typically the group is parameterized by something like the PR number or branch name (via env interpolation at run creation time).
+
+## Hooks
+
+Every job can declare four kinds of hooks:
+
+```ts
+hooks?: {
+  pre?:       StepSpec[];
+  post?:      StepSpec[];
+  onSuccess?: StepSpec[];
+  onFailure?: StepSpec[];
+}
+```
+
+Execution order for a successful job: `pre` → `steps` → `onSuccess` → `post`.
+For a failed job: `pre` → `steps` → `onFailure` → `post`.
+
+- **`pre`** — runs before the main `steps`. If any `pre` step fails, the main steps are **skipped** and the job fails.
+- **`post`** — runs after the main steps and the success/failure hooks, regardless of outcome. Use for cleanup that must always happen (releasing locks, tearing down resources, flushing logs).
+- **`onSuccess`** — runs only on success. Typical use: post success notifications, publish artifacts.
+- **`onFailure`** — runs only on failure. Typical use: post failure notifications, capture diagnostics, roll back partial changes.
+
+Hook steps have the same `StepSpec` shape as main steps — they can use builtin handlers, plugin handlers, or anything else. They're not a special step type.
+
+```json
+{
+  "jobs": {
+    "deploy": {
+      "runsOn": "sandbox",
+      "steps": [
+        { "name": "Deploy", "uses": "plugin:release:deploy", "with": { "env": "production" } }
+      ],
+      "hooks": {
+        "pre": [
+          { "name": "Lock", "uses": "builtin:shell", "with": { "command": "./scripts/acquire-deploy-lock.sh" } }
+        ],
+        "onSuccess": [
+          { "name": "Notify Slack", "uses": "plugin:notify:slack", "with": { "message": "Deploy successful" } }
+        ],
+        "onFailure": [
+          { "name": "Rollback",     "uses": "plugin:release:rollback" },
+          { "name": "Notify Slack", "uses": "plugin:notify:slack", "with": { "message": "Deploy FAILED, rolled back" } }
+        ],
+        "post": [
+          { "name": "Release lock", "uses": "builtin:shell", "with": { "command": "./scripts/release-deploy-lock.sh" } }
+        ]
+      }
+    }
+  }
+}
+```
+
+## Conditional execution: `if`
+
+```ts
+if?: string
+```
+
+A boolean expression evaluated at schedule time. If it evaluates false, the entire job — including its hooks — is marked `'skipped'` and does not execute. Dependent jobs still run (skipped ≠ failed).
+
+```json
+{
+  "jobs": {
+    "deploy-prod": {
+      "if": "${{ trigger.type == 'manual' && trigger.actor == 'release-bot' }}",
+      "needs": ["test"],
+      "steps": [...]
+    }
+  }
+}
+```
+
+See [Overview → Expression language](/workflows#expression-language) for what you can put in the expression.
+
+## Environment and secrets
+
+```ts
+env?:     Record<string, string>;
+secrets?: string[];
+```
+
+Job-level values are merged with workflow-level values. Overlapping keys: **job wins**.
+
+`secrets` declares the names the job needs; values are resolved at runtime from the platform secret store and injected as environment variables inside the sandbox.
+
+```json
+{
+  "env": { "NODE_ENV": "test" },
+  "jobs": {
+    "deploy": {
+      "env":     { "NODE_ENV": "production" },
+      "secrets": ["DEPLOY_KEY", "SENTRY_AUTH_TOKEN"],
+      "steps": [...]
+    }
+  }
+}
+```
+
+Inside `deploy`, `NODE_ENV === 'production'` (overrides the workflow-level value), plus `DEPLOY_KEY` and `SENTRY_AUTH_TOKEN` are available as env vars.
+
+## Timeouts and retries
+
+```ts
+timeoutMs?: number;        // ≤ 24h
+retries?: RetryPolicy;
+```
+
+The job timeout is a hard cap — if the main steps plus hooks exceed it, the job is terminated and marked `'failed'`. No default.
+
+Retries apply when the **job** fails — the entire job re-runs, not individual steps. See [Retries & Error Handling](/workflows/retry-and-errors) for the full policy shape and for the distinction between "job failed, retry" and "step failed, continue".
+
+## Priority
+
+```ts
+priority?: 'high' | 'normal' | 'low'
+```
+
+A hint to the scheduler when many jobs are ready to run simultaneously and the execution backend has limited slots. No default value — unset is treated as `'normal'` by the scheduler.
+
+Priorities only matter when you're bandwidth-limited (small worker pool, constrained compute budget). If your execution backend has plenty of headroom, priority has no visible effect.
+
+## Artifacts
+
+```ts
+artifacts?: {
+  produce?: string[];
+  consume?: string[];
+  merge?: ArtifactMergeConfig;
+}
+```
+
+See [Artifacts](/workflows/artifacts) for the full model, including merge strategies and how artifacts flow between jobs and across runs.
+
+## A worked example
+
+Three jobs: build, test in parallel with lint, deploy after both. Production deploy only on manual trigger. Retries on flaky tests.
+
+```json
+{
+  "name": "ci-cd",
+  "version": "1",
+  "on": { "push": true, "manual": true },
+  "env": { "CI": "true" },
+  "jobs": {
+    "build": {
+      "runsOn": "sandbox",
+      "isolation": "balanced",
+      "timeoutMs": 600000,
+      "steps": [
+        { "name": "Install", "uses": "builtin:shell", "with": { "command": "pnpm install --frozen-lockfile" } },
+        { "name": "Build",   "uses": "builtin:shell", "with": { "command": "pnpm build" } }
+      ],
+      "artifacts": { "produce": ["dist"] }
+    },
+    "test": {
+      "runsOn": "sandbox",
+      "needs": ["build"],
+      "retries": { "max": 2, "backoff": "exp", "initialIntervalMs": 5000 },
+      "steps": [
+        { "name": "Test", "uses": "builtin:shell", "with": { "command": "pnpm test" } }
+      ],
+      "artifacts": { "consume": ["dist"] }
+    },
+    "lint": {
+      "runsOn": "sandbox",
+      "needs": ["build"],
+      "steps": [
+        { "name": "Lint", "uses": "builtin:shell", "with": { "command": "pnpm lint" } }
+      ]
+    },
+    "deploy": {
+      "runsOn": "sandbox",
+      "needs": ["test", "lint"],
+      "if": "${{ trigger.type == 'manual' }}",
+      "concurrency": { "group": "prod-deploy" },
+      "secrets": ["DEPLOY_KEY"],
+      "steps": [
+        { "name": "Deploy", "uses": "plugin:release:deploy", "with": { "env": "production" } }
+      ],
+      "hooks": {
+        "onSuccess": [
+          { "name": "Tag release", "uses": "plugin:release:tag" }
+        ],
+        "onFailure": [
+          { "name": "Alert", "uses": "plugin:notify:slack", "with": { "message": "Prod deploy failed" } }
+        ]
+      }
+    }
+  }
+}
+```
+
+## What to read next
+
+- [Steps](/workflows/steps) — what goes inside `steps[]`.
+- [Retries & Error Handling](/workflows/retry-and-errors) — the full `RetryPolicy` shape.
+- [Artifacts](/workflows/artifacts) — producing and consuming named outputs.
+- [Spec Reference → JobSpec](/workflows/spec-reference#jobspec) — every field with Zod rules.

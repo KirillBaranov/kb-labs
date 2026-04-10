@@ -1,0 +1,76 @@
+{
+  "name": "@kb-labs/shared-command-kit",
+  "version": "1.4.0",
+  "type": "module",
+  "description": "Command Kit for KB Labs CLI - utilities and high-level API for building commands",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./flags": {
+      "import": "./dist/flags/index.js",
+      "types": "./dist/flags/index.d.ts"
+    },
+    "./analytics": {
+      "import": "./dist/analytics/index.js",
+      "types": "./dist/analytics/index.d.ts"
+    },
+    "./errors": {
+      "import": "./dist/errors/index.js",
+      "types": "./dist/errors/index.d.ts"
+    },
+    "./helpers": {
+      "import": "./dist/helpers/index.js",
+      "types": "./dist/helpers/index.d.ts"
+    },
+    "./studio": {
+      "import": "./dist/studio/index.js",
+      "types": "./dist/studio/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsup --config tsup.config.ts",
+    "dev": "tsup --config tsup.config.ts --watch",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@kb-labs/core-platform": "workspace:*",
+    "@kb-labs/core-resource-broker": "workspace:*",
+    "@kb-labs/core-runtime": "workspace:*",
+    "@kb-labs/plugin-contracts": "workspace:*",
+    "@kb-labs/plugin-runtime": "workspace:*",
+    "@kb-labs/shared-cli-ui": "workspace:*",
+    "zod": "^3.23.8",
+    "glob": "^11.0.0"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.3.3",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.11.0",
+  "publishConfig": {
+    "access": "public"
+  }
+}

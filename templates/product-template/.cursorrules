@@ -1,0 +1,32 @@
+# Global Cursor rules for KB Labs projects
+allow:
+  - read: "src/**/*"
+  - read: "packages/**/*"
+  - read: "apps/**/*"
+  - read: "docs/**/*"
+  - read: "README.md"
+  - read: "package.json"
+  - read: "tsconfig*.json"
+  - read: ".github/**/*"
+  - read: ".cursorrules"
+  - read: "agents/**/*"
+  - write: "src/**/*"
+  - write: "packages/**/*"
+  - write: "apps/**/*"
+  - write: "docs/**/*"
+  - write: "README.md"
+  - write: "CONTRIBUTING.md"
+  - write: "AGENTS.md"
+  - write: "docs/adr/**/*"
+  - run: "pnpm *"
+  - run: "git *"
+deny:
+  - write: "node_modules/**/*"
+  - write: "dist/**/*"
+  - write: "coverage/**/*"
+  - write: ".yalc/**/*"
+  - run: "rm -rf *"
+notes:
+  - Always prefer presets from @kb-labs/devkit (tsconfig/eslint/prettier/vitest/tsup).
+  - Keep local configs as thin wrappers (import/extends from devkit).
+  - Respect package.json "exports" (no deep imports).

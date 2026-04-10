@@ -1,0 +1,287 @@
+---
+title: "Routes & Actions"
+description: "defineRoute, defineAction, defineWebhook, defineWebSocket — host-specific handler helpers."
+updatedAt: "2026-04-07"
+order: 4
+---
+
+`@kb-labs/sdk` exposes four `define*` helpers that complement `defineCommand` for non-CLI hosts: REST routes, actions, webhooks, and WebSocket channels. They share the same basic shape — a wrapper with a host guard that returns an object with an `execute(ctx, input)` method — but each enforces the correct host and validates the appropriate context.
+
+This page documents all four, with the differences between them. For the CLI counterpart, see [SDK → Commands](/sdk/commands).
+
+## `defineRoute`
+
+```ts
+import { defineRoute } from '@kb-labs/sdk';
+
+export default defineRoute<TConfig, TInput>({
+  path: string;
+  method: string;            // 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+  description?: string;
+  handler: {
+    async execute(ctx, input) { ... }
+    async cleanup?() { ... }
+  };
+  schema?: unknown;          // reserved for future Zod validation
+});
+```
+
+### What it does
+
+1. **Wraps the handler with a host guard** — throws if `ctx.host !== 'rest'`.
+2. **Validates the HTTP method** — if `ctx.hostContext` carries a method (which it does for real requests), the wrapper throws when the declared `method` doesn't match. This catches the case where the manifest declares `POST` but the handler file was wired to a `GET` route.
+3. **Always calls `cleanup`** in a `finally` block after `execute` completes (success or throw).
+
+### Input
+
+The `input` parameter is the parsed request body (for POST/PUT/PATCH) or query string (for GET/DELETE). The REST API service runs the incoming payload through the Zod schema declared in the manifest **before** calling your handler, so `input` is always valid against your schema.
+
+### Output
+
+Return a `CommandResult<T>`. The REST API unwraps it:
+
+- **`exitCode: 0`** → `200 OK` with `result` as the response body.
+- **`exitCode` non-zero + `error: { code }`** → error response with the HTTP status from the matching `errors[]` entry in the manifest.
+
+See [Plugins → REST Routes](/plugins/rest-routes) for the full picture including schema references and error codes.
+
+### Example
+
+```ts
+import { defineRoute, useLLM, useLogger } from '@kb-labs/sdk';
+import type { GenerateRequest, GenerateResponse } from '@example/commit-contracts';
+
+export default defineRoute<unknown, GenerateRequest>({
+  path: '/generate',
+  method: 'POST',
+  description: 'Generate a commit plan',
+  handler: {
+    async execute(ctx, input) {
+      const llm = useLLM();
+      const logger = useLogger();
+
+      if (!llm) {
+        return {
+          exitCode: 1,
+          error: { code: 'LLM_UNAVAILABLE', message: 'LLM not configured' },
+        };
+      }
+
+      logger.info('generating plan', { scope: input.scope });
+
+      const response = await llm.complete(buildPrompt(input));
+      const commits = parseCommits(response.content);
+
+      const result: GenerateResponse = {
+        commits,
+        tokens: response.usage?.totalTokens ?? 0,
+      };
+
+      return { exitCode: 0, result };
+    },
+  },
+});
+```
+
+### Source
+
+[`packages/shared-command-kit/src/define-route.ts`](platform/kb-labs-shared/packages/shared-command-kit/src/define-route.ts).
+
+## `defineAction`
+
+Actions are higher-level than routes — they're designed for complex operations that may fan out to multiple services or run as a unit with specific state management. The shape is intentionally similar to `defineRoute` so plugin authors can move between them without re-learning the API.
+
+```ts
+import { defineAction } from '@kb-labs/sdk';
+
+export default defineAction<TConfig, TInput, TResult>({
+  id: string;                // action identifier
+  description?: string;
+  handler: {
+    async execute(ctx, input) { ... }
+  };
+});
+```
+
+The handler runs under the `'rest'` host (like `defineRoute`). The difference is semantic: actions are invoked by ID rather than by HTTP path, and they're meant for operations that don't fit the REST resource model (trigger-style endpoints, batch jobs, workflow kickoffs).
+
+Most plugins use `defineRoute` for HTTP endpoints and reserve `defineAction` for the cases where a route doesn't make sense. If you're not sure which to use, default to `defineRoute`.
+
+## `defineWebhook`
+
+Webhook handlers process incoming events from external systems (GitHub, Slack, Stripe, etc.). They run under a dedicated `'webhook'` host with a guard that enforces it.
+
+```ts
+import { defineWebhook } from '@kb-labs/sdk';
+
+export default defineWebhook<TConfig, TPayload>({
+  event: string;             // event pattern, e.g. 'github:push'
+  description?: string;
+  handler: {
+    async execute(ctx, input) { ... }
+  };
+});
+```
+
+### Event pattern
+
+The `event` field is a string matching the event the webhook fires on. For GitHub it's typically `github:<event-name>` (`github:push`, `github:pull_request`, `github:issues`). The exact convention is up to the webhook integration layer that routes incoming HTTP calls to your handler.
+
+### Input
+
+The parsed webhook payload, validated against the Zod schema declared in the manifest's `webhooks.handlers[].input`. Your handler sees the fully validated payload.
+
+### Example
+
+```ts
+import { defineWebhook, useLogger, useEventBus } from '@kb-labs/sdk';
+import type { GitHubPushPayload } from '@example/github-contracts';
+
+export default defineWebhook<unknown, GitHubPushPayload>({
+  event: 'github:push',
+  description: 'React to pushes on watched branches',
+  handler: {
+    async execute(ctx, payload) {
+      const logger = useLogger();
+      const events = useEventBus();
+
+      if (payload.ref !== 'refs/heads/main') {
+        logger.debug('ignoring push to non-main branch', { ref: payload.ref });
+        return { exitCode: 0 };
+      }
+
+      logger.info('main branch push', {
+        sha: payload.after,
+        commits: payload.commits.length,
+      });
+
+      if (events) {
+        await events.publish('ci:push-to-main', {
+          sha: payload.after,
+          commits: payload.commits,
+        });
+      }
+
+      return { exitCode: 0, result: { processed: payload.commits.length } };
+    },
+  },
+});
+```
+
+Webhooks are fire-and-forget from the external system's perspective — the external sender doesn't care about your result, just the HTTP status. The platform still expects a `CommandResult` so errors propagate correctly and analytics get recorded.
+
+## `defineWebSocket`
+
+WebSocket channels for bidirectional streaming. Unlike routes and webhooks, WebSocket handlers maintain a long-lived connection and can send multiple messages over the lifetime of the session.
+
+```ts
+import { defineWebSocket } from '@kb-labs/sdk';
+
+export default defineWebSocket<TConfig, TInput>({
+  channel: string;           // channel path
+  description?: string;
+  handler: {
+    async onConnect?(ctx, sender) { ... }
+    async onMessage(ctx, input, sender) { ... }
+    async onDisconnect?(ctx) { ... }
+  };
+});
+```
+
+### Lifecycle callbacks
+
+- **`onConnect`** — called when a client connects. Send any initial messages via `sender`.
+- **`onMessage`** — called for each incoming message. The shape of `input` depends on your channel's input schema.
+- **`onDisconnect`** — called when the client disconnects. Use it to clean up any session state.
+
+### `TypedSender`
+
+The `sender` parameter is a typed function for pushing messages back to the client. The shape of the message is enforced by the channel's output schema declared in the manifest:
+
+```ts
+handler: {
+  async onMessage(ctx, input, sender) {
+    await sender.send({ type: 'ack', id: input.id });
+
+    // Later, after processing:
+    await sender.send({ type: 'result', id: input.id, data: result });
+  },
+}
+```
+
+The WebSocket host maintains one connection per client and routes incoming frames to `onMessage` with the parsed payload.
+
+### Example
+
+```ts
+import { defineWebSocket, useLogger, type WSInput, type WSSender } from '@kb-labs/sdk';
+
+interface QueryMessage {
+  type: 'query';
+  id: string;
+  text: string;
+}
+
+interface ResponseMessage {
+  type: 'response';
+  id: string;
+  content: string;
+}
+
+export default defineWebSocket<unknown, QueryMessage>({
+  channel: '/live-query',
+  description: 'Streaming LLM queries',
+  handler: {
+    async onConnect(ctx, sender: WSSender<ResponseMessage>) {
+      const logger = useLogger();
+      logger.info('client connected');
+      await sender.send({ type: 'response', id: 'welcome', content: 'Ready' });
+    },
+
+    async onMessage(ctx, input: WSInput<QueryMessage>, sender) {
+      if (input.type !== 'query') return;
+      const response = await answer(input.text);
+      await sender.send({
+        type: 'response',
+        id: input.id,
+        content: response,
+      });
+    },
+  },
+});
+```
+
+For most plugins, WebSockets are overkill — REST routes with polling or SSE are simpler. Use WebSockets when you genuinely need bidirectional streaming or when the client demands it (like a live dashboard subscribing to progress updates).
+
+## Host guards summary
+
+Each helper enforces a specific host:
+
+| Helper | Required host |
+|---|---|
+| `defineCommand` | `'cli'` or `'workflow'` |
+| `defineRoute` | `'rest'` |
+| `defineAction` | `'rest'` |
+| `defineWebhook` | `'webhook'` |
+| `defineWebSocket` | `'ws'` |
+
+Calling a handler from the wrong host throws immediately. This is good — it catches routing mistakes at the earliest possible point, not deep inside business logic.
+
+The type guards (`isCLIHost`, `isRESTHost`, `isWorkflowHost`, `isWebhookHost`, `isWSHost`) are exported for manual narrowing when you need access to host-specific context fields.
+
+## Picking the right helper
+
+- **CLI command** → `defineCommand`.
+- **HTTP endpoint** → `defineRoute`.
+- **Operation that doesn't fit HTTP resource model** → `defineAction`.
+- **Reacting to external system events** → `defineWebhook`.
+- **Streaming bidirectional data** → `defineWebSocket`.
+
+If you're building a plugin that has CLI commands AND REST endpoints AND responds to webhooks, you'll end up with one handler file per capability, each using the right `define*` helper. The manifest wires them all into the same plugin under their respective sections.
+
+## What to read next
+
+- **[Plugins → REST Routes](/plugins/rest-routes)** — the authoring walkthrough for `defineRoute`.
+- **[Plugins → CLI Commands](/plugins/cli-commands)** — the parallel walkthrough for `defineCommand`.
+- **[SDK → Handler Context](/sdk/handler-context)** — what's in `ctx` across all host types.
+- **[SDK → Commands](/sdk/commands)** — `defineCommand` reference.

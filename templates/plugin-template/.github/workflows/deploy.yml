@@ -1,0 +1,28 @@
+name: Deploy
+
+# Deploys all services to VPS via docker compose
+# Triggered manually with a specific image tag
+#
+# Prerequisites:
+#   Add secrets in GitHub → Settings → Secrets → Actions:
+#     VPS_HOST     - server IP or hostname
+#     VPS_USER     - SSH username (e.g. deploy)
+#     VPS_SSH_KEY  - SSH private key
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Image tag to deploy (e.g. release-1.0.0)
+        required: true
+        type: string
+
+jobs:
+  call:
+    uses: KirillBaranov/kb-labs-devkit/.github/workflows/deploy-reusable.yml@main
+    with:
+      image-tag: ${{ inputs.tag }}
+      compose-file: docker-compose.production.yml
+      deploy-dir: /opt/kb-labs
+      health-check-url: http://localhost:5050/api/v1/health
+    secrets: inherit

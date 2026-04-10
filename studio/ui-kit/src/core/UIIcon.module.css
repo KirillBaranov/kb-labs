@@ -1,0 +1,143 @@
+/**
+ * UIIcon styles - Proper SVG and icon font theming
+ *
+ * Ensures all icons (Ant Design icons, lucide-react, custom SVG)
+ * inherit colors from CSS variables and work in both light and dark themes.
+ */
+
+.uiIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+}
+
+/*
+ * SVG icons (lucide-react, custom SVG)
+ * Use currentColor to inherit from parent color
+ */
+.uiIcon svg {
+  color: currentColor;
+  stroke: currentColor;
+  fill: none; /* Most icon libraries use stroke, not fill */
+  display: block; /* Remove inline spacing */
+}
+
+/*
+ * Ant Design icons (icon fonts)
+ * Already use currentColor by default, but ensure it's explicit
+ */
+.uiIcon .anticon {
+  color: currentColor;
+}
+
+/*
+ * Clickable icons (icon buttons)
+ */
+.uiIcon.clickable {
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.1s ease;
+}
+
+.uiIcon.clickable:hover {
+  opacity: 0.8;
+}
+
+.uiIcon.clickable:active {
+  transform: scale(0.95);
+}
+
+/*
+ * Size variants
+ */
+.uiIcon.size-xs {
+  font-size: 12px;
+  width: 12px;
+  height: 12px;
+}
+
+.uiIcon.size-sm {
+  font-size: 14px;
+  width: 14px;
+  height: 14px;
+}
+
+.uiIcon.size-base {
+  font-size: 16px;
+  width: 16px;
+  height: 16px;
+}
+
+.uiIcon.size-lg {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+}
+
+.uiIcon.size-xl {
+  font-size: 24px;
+  width: 24px;
+  height: 24px;
+}
+
+.uiIcon.size-2xl {
+  font-size: 32px;
+  width: 32px;
+  height: 32px;
+}
+
+/*
+ * Color variants using CSS variables
+ */
+.uiIcon.color-primary {
+  color: var(--link, #2563EB);
+}
+
+.uiIcon.color-secondary {
+  color: var(--text-secondary, #6B7280);
+}
+
+.uiIcon.color-success {
+  color: var(--success, #16A34A);
+}
+
+.uiIcon.color-warning {
+  color: var(--warning, #F59E0B);
+}
+
+.uiIcon.color-error {
+  color: var(--error, #DC2626);
+}
+
+.uiIcon.color-info {
+  color: var(--info, #0EA5E9);
+}
+
+.uiIcon.color-inherit {
+  color: inherit;
+}
+
+/*
+ * Spin animation
+ */
+.uiIcon.spin {
+  animation: uiIconSpin 1s linear infinite;
+}
+
+@keyframes uiIconSpin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/*
+ * Disabled state
+ */
+.uiIcon.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}

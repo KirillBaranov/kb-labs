@@ -1,0 +1,13 @@
+{
+  "extends": "./base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "declaration": true,
+    "declarationMap": true,
+    "skipLibCheck": true,
+    "types": ["node"]
+  },
+  "include": [
+    "src"
+  ]
+}

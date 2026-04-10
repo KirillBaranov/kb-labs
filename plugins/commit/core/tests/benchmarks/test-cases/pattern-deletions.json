@@ -1,0 +1,101 @@
+{
+  "version": "1.0.0",
+  "createdAt": "2025-12-19T00:00:00.000Z",
+  "description": "Test cases for deletion pattern (should be chore or refactor, not feat)",
+  "cases": [
+    {
+      "id": "deletions-001-all-deleted",
+      "description": "All files deleted - cleanup/removal",
+      "category": "deletions",
+      "difficulty": "easy",
+      "files": [
+        {
+          "path": "src/deprecated/old-api.ts",
+          "status": "deleted",
+          "additions": 0,
+          "deletions": 150,
+          "isNewFile": false
+        },
+        {
+          "path": "src/deprecated/legacy-utils.ts",
+          "status": "deleted",
+          "additions": 0,
+          "deletions": 80,
+          "isNewFile": false
+        },
+        {
+          "path": "src/deprecated/index.ts",
+          "status": "deleted",
+          "additions": 0,
+          "deletions": 20,
+          "isNewFile": false
+        }
+      ],
+      "expected": {
+        "commits": [
+          {
+            "type": "chore",
+            "scope": "deprecated",
+            "message": "remove deprecated API and utilities",
+            "files": [
+              "src/deprecated/old-api.ts",
+              "src/deprecated/legacy-utils.ts",
+              "src/deprecated/index.ts"
+            ],
+            "releaseHint": "none"
+          }
+        ]
+      },
+      "baseline": {
+        "type": "feat",
+        "correct": false,
+        "confidence": 0.55,
+        "phase": 1
+      },
+      "tags": ["deletions", "cleanup", "easy"]
+    },
+    {
+      "id": "deletions-002-mostly-deleted",
+      "description": "Mostly deletions (>80%) with few additions",
+      "category": "deletions",
+      "difficulty": "medium",
+      "files": [
+        {
+          "path": "src/utils/helpers.ts",
+          "status": "modified",
+          "additions": 10,
+          "deletions": 100,
+          "isNewFile": false
+        },
+        {
+          "path": "src/config/settings.ts",
+          "status": "modified",
+          "additions": 5,
+          "deletions": 80,
+          "isNewFile": false
+        }
+      ],
+      "expected": {
+        "commits": [
+          {
+            "type": "refactor",
+            "scope": "core",
+            "message": "simplify helpers and settings",
+            "files": [
+              "src/utils/helpers.ts",
+              "src/config/settings.ts"
+            ],
+            "releaseHint": "none"
+          }
+        ]
+      },
+      "baseline": {
+        "type": "feat",
+        "correct": false,
+        "confidence": 0.62,
+        "phase": 1
+      },
+      "tags": ["deletions", "refactor", "high-deletion-ratio"]
+    }
+  ]
+}

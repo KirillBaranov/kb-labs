@@ -1,0 +1,75 @@
+/* Settings-related styles */
+
+/* Compact Mode - reduce spacing */
+html.compact-mode {
+  /* Override Ant Design token values */
+  --ant-padding: 12px;
+  --ant-padding-lg: 16px;
+  --ant-padding-sm: 8px;
+  --ant-margin: 12px;
+  --ant-margin-lg: 16px;
+  --ant-margin-sm: 8px;
+}
+
+/* Font Size - Small */
+html.font-small {
+  font-size: 13px;
+}
+
+html.font-small .ant-typography {
+  font-size: 13px;
+}
+
+html.font-small h1, html.font-small .ant-typography h1 {
+  font-size: 32px !important;
+}
+
+html.font-small h2, html.font-small .ant-typography h2 {
+  font-size: 26px !important;
+}
+
+html.font-small h3, html.font-small .ant-typography h3 {
+  font-size: 20px !important;
+}
+
+html.font-small h4, html.font-small .ant-typography h4 {
+  font-size: 17px !important;
+}
+
+html.font-small h5, html.font-small .ant-typography h5 {
+  font-size: 14px !important;
+}
+
+/* Font Size - Medium (default) */
+html.font-medium {
+  font-size: 14px;
+}
+
+/* Font Size - Large */
+html.font-large {
+  font-size: 16px;
+}
+
+html.font-large .ant-typography {
+  font-size: 16px;
+}
+
+html.font-large h1, html.font-large .ant-typography h1 {
+  font-size: 42px !important;
+}
+
+html.font-large h2, html.font-large .ant-typography h2 {
+  font-size: 34px !important;
+}
+
+html.font-large h3, html.font-large .ant-typography h3 {
+  font-size: 28px !important;
+}
+
+html.font-large h4, html.font-large .ant-typography h4 {
+  font-size: 22px !important;
+}
+
+html.font-large h5, html.font-large .ant-typography h5 {
+  font-size: 18px !important;
+}

@@ -6,7 +6,6 @@ node_modules/
 .pnp.*
 .pnp.js
 *.log
-*.lock
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
@@ -48,14 +47,19 @@ Thumbs.db
 *.local
 
 # ───────────────
-# Monorepo / Workspaces
+# Private / local-only
 # ───────────────
-packages/*/lib/
-apps/*/lib/
-apps/*/dist/
-packages/*/dist/
-apps/*/coverage/
-packages/*/coverage/
+_private/
+
+# ───────────────
+# KB Labs runtime data
+# ───────────────
+.kb/cache/
+.kb/logs/
+.kb/tmp/
+.kb/mind/
+.kb/devkit/
+.kb/verdaccio/
 
 # ───────────────
 # custom

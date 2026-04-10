@@ -1,0 +1,381 @@
+---
+title: "Runbooks"
+description: "Copy-paste procedures for common operational tasks."
+updatedAt: "2026-04-07"
+order: 4
+---
+
+Runbooks are the "when X happens, do Y" cookbook for operators. Each entry is a specific scenario with concrete steps. Keep them short and actionable — runbooks aren't documentation of how things work, they're documentation of what to do.
+
+For general operational guidance see [Deployment](/operations/deployment), [Observability](/operations/observability), and [Security](/operations/security). For incidents specifically, see [Incident Response](/operations/incident-response).
+
+## Service lifecycle
+
+### Restart a service
+
+```bash
+kb-dev restart rest
+```
+
+For production deployments with `systemd`:
+
+```bash
+sudo systemctl restart kb-rest
+```
+
+Or with Kubernetes:
+
+```bash
+kubectl rollout restart deployment/kb-rest-api
+```
+
+Check the service came back up:
+
+```bash
+kb-dev status
+# Or:
+curl -f http://localhost:5050/api/v1/health
+```
+
+### Stop everything
+
+```bash
+kb-dev stop
+```
+
+Stops services in reverse dependency order. Safe — drains in-flight requests before killing processes.
+
+### Start in a specific order
+
+`kb-dev` already respects `dependsOn`, but if you need to bring up a subset:
+
+```bash
+kb-dev start infra           # Qdrant, Redis, state-daemon
+kb-dev start backend         # REST, workflow, marketplace, gateway
+kb-dev start studio          # UI
+```
+
+### Check which services are running
+
+```bash
+kb-dev status
+```
+
+Shows every declared service with current state (`running`, `stopped`, `unhealthy`) and the last health check result.
+
+## Rolling updates
+
+### Deploy a new platform version
+
+For stateless services (gateway, REST API, marketplace):
+
+1. Deploy new version alongside the old.
+2. Shift traffic on the load balancer.
+3. Drain the old version (stop accepting new requests, wait for in-flight to complete).
+4. Shut down.
+
+Connected host agents reconnect during cutover. See [Gateway → Self-Hosted → Rollout strategy](/gateway/self-hosted).
+
+### Upgrade the workflow daemon
+
+The workflow daemon is stateful — runs in progress survive a restart via the `'interrupted'` state:
+
+1. Deploy new version.
+2. `sudo systemctl restart kb-workflow` (or equivalent).
+3. The old daemon exits; in-flight runs are marked `'interrupted'`.
+4. The new daemon starts; its recovery path picks up interrupted runs and resumes them.
+
+For the zero-downtime version, you'd need two workflow daemons pointing at a shared job queue — not currently supported. For now: brief downtime during the restart is the expected behavior.
+
+### Upgrade a plugin
+
+```bash
+pnpm kb marketplace update @scope/plugin-cli
+pnpm kb marketplace clear-cache
+# Restart whichever service hosts the plugin's handlers:
+kb-dev restart rest     # if the plugin has REST routes
+# Or no restart needed for CLI-only plugins
+```
+
+## Plugin management
+
+### Install a new plugin
+
+```bash
+pnpm kb marketplace install @scope/plugin-cli
+pnpm kb marketplace clear-cache
+```
+
+After install, the plugin is immediately available from the CLI. For REST routes and Studio pages, restart the hosting service:
+
+```bash
+kb-dev restart rest
+```
+
+### Disable a plugin without uninstalling
+
+```bash
+pnpm kb marketplace plugins disable @scope/plugin-cli
+```
+
+Sets `enabled: false` in `.kb/marketplace.lock`. The plugin stays installed but doesn't load on the next service startup. Re-enable:
+
+```bash
+pnpm kb marketplace plugins enable @scope/plugin-cli
+```
+
+### Uninstall a plugin completely
+
+```bash
+pnpm kb marketplace uninstall @scope/plugin-cli
+pnpm kb marketplace clear-cache
+```
+
+Removes from `marketplace.lock` and runs `pnpm remove` to drop the package from `node_modules`.
+
+### Clear the plugin registry cache
+
+```bash
+pnpm kb marketplace clear-cache
+```
+
+Every long-running service caches the plugin registry in memory. If a plugin was installed, updated, or linked and isn't showing up, clear the cache and restart. This is the single most common fix for "my plugin doesn't appear".
+
+## Logs
+
+### Tail a service's logs
+
+```bash
+kb-dev logs rest -f
+```
+
+Follows stdout/stderr from the `rest` service. `-f` for follow, omit for snapshot.
+
+For `systemd`:
+
+```bash
+sudo journalctl -u kb-rest -f
+```
+
+For Kubernetes:
+
+```bash
+kubectl logs -f deployment/kb-rest-api
+```
+
+### Query logs by request ID
+
+With Loki / Elasticsearch / Datadog set up, filter by `requestId`:
+
+```
+serviceId:* AND requestId:req_abc123
+```
+
+You'll see every log line for that request across every service it touched. This is the fastest way to debug a specific failure — get the `requestId` from the error, paste it into the log query.
+
+### Increase log verbosity temporarily
+
+Set `KB_LOG_LEVEL=debug` in the service env and restart:
+
+```bash
+sudo systemctl edit kb-rest
+# Add:
+# [Service]
+# Environment=KB_LOG_LEVEL=debug
+
+sudo systemctl daemon-reload
+sudo systemctl restart kb-rest
+```
+
+Revert when you're done. `debug` is very verbose and will flood your log aggregator.
+
+## Config changes
+
+### Apply a `kb.config.json` change
+
+Platform services read `kb.config.json` at startup. To apply a change:
+
+1. Edit `.kb/kb.config.json`.
+2. Restart every service that reads the changed section:
+   - Changed `platform.adapters.*` → restart everything.
+   - Changed `platform.execution.*` → restart REST, workflow, marketplace.
+   - Changed `platform.core.*` → restart whichever service owns that concern.
+   - Changed `profiles.*` → plugins pick up changes via `useConfig()`, which is cache-aware but doesn't auto-refresh. Restart to be safe.
+   - Changed `gateway.*` → restart the gateway.
+
+```bash
+kb-dev restart
+```
+
+Restarts all managed services in dependency order.
+
+### Rotate a secret
+
+1. Update the secret in your secret manager.
+2. Update the env var on the service process.
+3. Restart the service.
+
+For `GATEWAY_JWT_SECRET` specifically: rotation invalidates all outstanding JWTs simultaneously. Clients will get 401s until they re-authenticate. Coordinate the rotation with your clients if you have long-running sessions.
+
+## Infrastructure
+
+### Reindex Mind RAG
+
+After adding new files or making significant changes:
+
+```bash
+rm -rf .kb/cache/*                              # clear stale cache
+pnpm kb mind rag-index --scope default          # reindex
+```
+
+For scope-specific reindexing:
+
+```bash
+pnpm kb mind rag-index --scope default \
+  --include "packages/core/**/*.ts"
+```
+
+See the [kb-labs-mind plugin README](plugins/kb-labs-mind/) for the full command surface.
+
+### Back up SQLite data
+
+Single-host deployments often use SQLite for analytics, logs, databases, and the gateway host store. Back them up with standard file-system tools:
+
+```bash
+# Stop services before backing up SQLite files to get a consistent snapshot:
+kb-dev stop
+
+tar czf kb-labs-backup-$(date +%Y%m%d).tar.gz \
+  .kb/database/ \
+  .kb/analytics/ \
+  .kb/storage/ \
+  .kb/mind/
+
+kb-dev start
+```
+
+Or use SQLite's `.backup` command for online backups without stopping services:
+
+```bash
+sqlite3 .kb/database/kb.sqlite ".backup 'kb.sqlite.backup'"
+```
+
+SQLite `.backup` is consistent under concurrent writes.
+
+### Restore from a SQLite backup
+
+```bash
+kb-dev stop
+mv .kb/database/kb.sqlite .kb/database/kb.sqlite.old
+cp /path/to/backup.sqlite .kb/database/kb.sqlite
+kb-dev start
+```
+
+Verify the restore by checking that services come up healthy (`kb-dev status`) and that analytics queries return expected data.
+
+### Clear stale workspaces
+
+The workspace adapter (worktree or local-fs) creates per-run workspaces under `.kb/runtime/workspaces/`. They're supposed to be GC'd after the run completes, but crashes can leave orphans:
+
+```bash
+# List current workspaces:
+ls .kb/runtime/workspaces/
+
+# Remove orphans (safe when services are stopped):
+kb-dev stop workflow
+rm -rf .kb/runtime/workspaces/ws_*
+kb-dev start workflow
+```
+
+If you're using the worktree adapter, also prune the git worktree list:
+
+```bash
+cd <your-repo>
+git worktree prune
+```
+
+## Host agent
+
+### Register a new host agent
+
+On the developer's machine:
+
+```bash
+kb agent register --gateway https://gateway.example.com
+```
+
+Prompts for authentication, writes `~/.kb/agent.json`, and registers with the gateway.
+
+### Start / stop the host agent
+
+```bash
+kb agent start
+kb agent stop
+kb agent status
+```
+
+For debugging, run in the foreground:
+
+```bash
+node infra/kb-labs-host-agent/apps/host-agent-app/dist/index.js
+```
+
+### Revoke a host agent
+
+From the server side:
+
+```bash
+# Via the REST API:
+curl -X DELETE https://gateway.example.com/api/v1/hosts/host_abc123 \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+The host's client ID is marked invalid in the gateway's host store; future connections with that ID are refused.
+
+## Health checks
+
+### Verify platform is healthy
+
+```bash
+kb-dev status           # dev mode
+```
+
+Or query each service's `/health` endpoint:
+
+```bash
+curl -f http://localhost:4000/health       # gateway
+curl -f http://localhost:5050/api/v1/health # rest
+curl -f http://localhost:7778/health       # workflow
+curl -f http://localhost:5070/health       # marketplace
+curl -f http://localhost:7777/health       # state daemon
+```
+
+200 means alive; anything else (or connection refused) means broken.
+
+### Diagnose why a service won't start
+
+1. Tail the service's logs (`kb-dev logs <service>` or `journalctl -u kb-<service>`).
+2. Look for the first error during bootstrap — usually it's a missing env var, bad config, or unreachable dependency.
+3. Verify infrastructure dependencies: `curl http://localhost:6333/` (Qdrant), `redis-cli ping` (Redis).
+4. Check `kb.config.json` is valid JSON: `jq . .kb/kb.config.json`.
+5. Run `pnpm kb doctor` if available — it diagnoses common issues.
+
+## Troubleshooting shortcuts
+
+| Symptom | Likely fix |
+|---|---|
+| Plugin doesn't appear after install | `pnpm kb marketplace clear-cache` |
+| REST API returns 401 | Check `Authorization` header; check `GATEWAY_JWT_SECRET` didn't rotate |
+| Workflow runs stuck in `queued` | Check workflow daemon logs; verify broker isn't backed up |
+| Studio pages show "Failed to load" | Hard-reload browser; plugin Studio remotes are cached aggressively |
+| LLM calls fail with "not configured" | Check `platform.adapters.llm` in `kb.config.json`; verify `OPENAI_API_KEY` is set |
+| "Module not found" in a plugin | Plugin was rebuilt but cache wasn't cleared; `pnpm kb marketplace clear-cache` |
+| Port already in use | Another service is on that port; `lsof -i :5050` to find it |
+| High memory usage | Reindex Mind RAG; check for plugins without quota limits |
+| Slow CLI startup | Clear registry cache; check for slow adapter init (network timeouts) |
+
+## What to read next
+
+- **[Incident Response](/operations/incident-response)** — specific incident playbooks.
+- **[Observability](/operations/observability)** — detailed metrics, logs, traces setup.
+- **[Deployment](/operations/deployment)** — for new deployments, not for operating existing ones.

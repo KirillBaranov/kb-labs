@@ -1,0 +1,128 @@
+---
+title: "Adapter System"
+description: "What adapters are and why the platform uses them."
+updatedAt: "2026-04-07"
+order: 4
+---
+
+Adapters implement the concrete backends that the KB Labs platform depends on: LLM providers, caches, vector stores, databases, loggers, and more. You choose which adapters to use in `kb.config.json`. Plugins never reference adapters directly — they call `useLLM()`, `useCache()`, `useStorage()`, and the platform injects whatever is configured.
+
+This page explains the design. For hands-on usage see [Guides → Writing Your First Adapter](/guides/writing-your-first-adapter).
+
+## Interface-first design
+
+Every platform capability has a TypeScript interface that defines the contract:
+
+- `ILLM` — `chat()`, `chatWithTools()`, `embed()`, `countTokens()`
+- `ICache` — `get()`, `set()`, `delete()`, `clear()`
+- `IVectorStore` — `upsert()`, `search()`, `delete()`, `createCollection()`
+- `IStorage` — `read()`, `write()`, `delete()`, `list()`, `exists()`
+- `ILogger` — `debug()`, `info()`, `warn()`, `error()`, `child()`
+- `IAnalytics` — `track()`, `identify()`, `flush()`
+- `IEnvironmentAdapter` — provision, start, attach, release sandbox environments
+
+These interfaces live in `@kb-labs/core-platform`. Adapters live in separate packages and implement one or more interfaces. The platform runtime holds references to the interface type, not the adapter class — which is how you can swap OpenAI for Anthropic without touching any plugin code.
+
+## Shipped adapters
+
+The platform ships adapters for common backends out of the box:
+
+| Interface | Adapter | Package |
+|-----------|---------|---------|
+| `ILLM` | OpenAI (GPT-4o, o1, ...) | `@kb-labs/adapter-llm-openai` |
+| `ILLM` | Anthropic (Claude 3.x, 4.x) | `@kb-labs/adapter-llm-anthropic` |
+| `ICache` | In-memory | `@kb-labs/adapter-cache-memory` |
+| `ICache` | Redis | `@kb-labs/adapter-cache-redis` |
+| `IVectorStore` | Qdrant | `@kb-labs/adapter-vector-qdrant` |
+| `IVectorStore` | In-memory | `@kb-labs/adapter-vector-memory` |
+| `IStorage` | Local filesystem | `@kb-labs/adapter-storage-fs` |
+| `ILogger` | Console (structured JSON) | `@kb-labs/adapter-logger-console` |
+| `IEnvironmentAdapter` | Docker | `@kb-labs/adapter-environment-docker` |
+
+In-memory adapters (`adapter-cache-memory`, `adapter-vector-memory`) are the default in dev — no external services required. For production you swap to Redis and Qdrant by changing two lines in `kb.config.json`.
+
+## How adapters are loaded
+
+The platform reads `.kb/kb.config.json` at startup. The `adapters` section maps each interface to a package reference and optional configuration:
+
+```json
+{
+  "adapters": {
+    "llm": {
+      "package": "@kb-labs/adapter-llm-openai",
+      "options": {
+        "model": "gpt-4o",
+        "temperature": 0.2
+      }
+    },
+    "cache": {
+      "package": "@kb-labs/adapter-cache-redis",
+      "options": {
+        "url": "redis://localhost:6379"
+      }
+    },
+    "vectorStore": {
+      "package": "@kb-labs/adapter-vector-qdrant",
+      "options": {
+        "url": "http://localhost:6333"
+      }
+    }
+  }
+}
+```
+
+At startup `loadPlatformConfig()` reads this, dynamically imports each adapter package, instantiates the adapter with its options, and registers it in the platform singleton. From that point on, `useLLM()` returns the OpenAI adapter, `useCache()` returns Redis, and so on — regardless of which plugin or service is calling.
+
+## Adapters vs plugins
+
+This distinction trips people up at first:
+
+| | Adapter | Plugin |
+|---|---------|--------|
+| **What it is** | Concrete backend for a platform interface | Feature contributed to the platform |
+| **Examples** | OpenAI LLM, Redis cache, Qdrant vector store | Commit assistant, QA runner, AI review |
+| **How it's configured** | `kb.config.json` → `adapters.*` | `kb marketplace install` |
+| **Who uses it** | The platform runtime, other adapters | End users, CI pipelines |
+| **Sandbox** | No — adapters run with host-level access | Yes — always runs in the plugin sandbox |
+
+If you want to change *what LLM provider* the platform uses, that's an adapter. If you want to add a new AI-powered command, that's a plugin. A plugin calls `useLLM()` and is blissfully unaware of whether it ends up talking to OpenAI or Anthropic.
+
+## Writing a custom adapter
+
+Implement the relevant interface, export a factory function, and reference your package in `kb.config.json`:
+
+```typescript
+// my-custom-cache/src/index.ts
+import type { ICache } from '@kb-labs/core-platform';
+
+export function createAdapter(options: { url: string }): ICache {
+  return {
+    async get(key) { /* ... */ },
+    async set(key, value, ttlMs) { /* ... */ },
+    async delete(key) { /* ... */ },
+    async clear() { /* ... */ },
+  };
+}
+```
+
+```json
+{
+  "adapters": {
+    "cache": {
+      "package": "./my-custom-cache",
+      "options": { "url": "..." }
+    }
+  }
+}
+```
+
+The platform calls `createAdapter(options)` and uses the returned object for all cache operations. Your adapter doesn't need to register anywhere or extend a base class — the interface contract is the only requirement.
+
+See [Guides → Writing Your First Adapter](/guides/writing-your-first-adapter) for a step-by-step walkthrough.
+
+## What to read next
+
+- [Configuration → kb.config.json](/configuration/kb-config) — full reference for the adapters section.
+- [Plugin System](/concepts/plugin-system) — the other extension point (features, not backends).
+- [Execution Model](/concepts/execution-model) — how the platform provisions sandboxed environments (uses `IEnvironmentAdapter` internally).
+- [Guides → Writing Your First Adapter](/guides/writing-your-first-adapter) — hands-on walkthrough.

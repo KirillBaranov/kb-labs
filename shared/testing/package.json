@@ -1,0 +1,51 @@
+{
+  "name": "@kb-labs/shared-testing",
+  "version": "1.4.0",
+  "type": "module",
+  "description": "Test utilities for KB Labs plugin development — mock builders, platform setup, test context",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsup --config tsup.config.ts",
+    "dev": "tsup --config tsup.config.ts --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix"
+  },
+  "dependencies": {
+    "@kb-labs/core-platform": "workspace:*",
+    "@kb-labs/core-runtime": "workspace:*",
+    "@kb-labs/plugin-contracts": "workspace:*",
+    "vitest": "^3.2.4"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.3.3",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.11.0",
+  "publishConfig": {
+    "access": "public"
+  }
+}

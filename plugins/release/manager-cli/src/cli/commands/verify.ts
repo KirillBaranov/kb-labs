@@ -1,0 +1,130 @@
+/**
+ * Release verify command — validate release readiness via flag gates.
+ * Package verification and release checks belong in release:run pipeline.
+ */
+
+import { defineCommand, type CLIInput, type CommandResult, type PluginContextV3, useConfig } from '@kb-labs/sdk';
+import { planRelease, type VersionBump, type ReleaseConfig } from '@kb-labs/release-manager-core';
+import { resolveGitRange, parseCommits } from '@kb-labs/release-manager-changelog';
+import { findRepoRoot } from '../../shared/utils';
+
+interface VerifyFlags {
+  scope?: string;
+  bump?: 'patch' | 'minor' | 'major' | 'auto';
+  'fail-if-empty'?: boolean;
+  'fail-on-breaking'?: boolean;
+  'allow-types'?: string;
+  json?: boolean;
+}
+
+type ReleaseVerifyResult = CommandResult & {
+  plan?: {
+    packages: Array<{ name: string }>;
+  };
+  breakingDetected?: boolean;
+  valid?: boolean;
+  issues?: string[];
+};
+
+export default defineCommand({
+  id: 'release:verify',
+  description: 'Validate release readiness',
+
+  handler: {
+    async execute(ctx: PluginContextV3, input: CLIInput<VerifyFlags>): Promise<ReleaseVerifyResult> {
+      const { flags } = input;
+      const cwd = ctx.cwd || process.cwd();
+      const repoRoot = await findRepoRoot(cwd);
+
+      const fileConfig = await useConfig<ReleaseConfig>();
+      const config: ReleaseConfig = {
+        ...fileConfig,
+        ...(flags.bump && { bump: flags.bump }),
+      };
+
+      const plan = await planRelease({
+        cwd: repoRoot,
+        config,
+        scope: flags.scope,
+        bumpOverride: flags.bump as VersionBump | undefined,
+      });
+
+      const hasPackages = plan.packages.length > 0;
+      const hasBreaking = plan.packages.some(pkg => {
+        if (!pkg.currentVersion || !pkg.nextVersion) {return false;}
+        const currentMajor = parseInt(pkg.currentVersion.split('.')[0] || '0');
+        const nextMajor = parseInt(pkg.nextVersion.split('.')[0] || '0');
+        return nextMajor > currentMajor;
+      });
+
+      let isValid = true;
+      const issues: string[] = [];
+
+      if (flags['fail-if-empty'] && !hasPackages) {
+        isValid = false;
+        issues.push('No packages to release (--fail-if-empty)');
+      }
+
+      if (flags['fail-on-breaking'] && hasBreaking) {
+        isValid = false;
+        issues.push('Breaking changes detected (--fail-on-breaking)');
+      }
+
+      if (flags['allow-types']) {
+        const allowedTypes = flags['allow-types'].split(',');
+        const range = await resolveGitRange({
+          cwd: repoRoot,
+          sinceTag: undefined,
+          autoUnshallow: config.git?.autoUnshallow,
+        });
+        const changes = await parseCommits({
+          cwd: repoRoot,
+          from: range.from,
+          to: range.to,
+          ignoreAuthors: config.changelog?.ignoreAuthors || [],
+        });
+        const hasAllowedTypes = changes.some(change => allowedTypes.includes(change.type));
+        if (!hasAllowedTypes) {
+          isValid = false;
+          issues.push(`Required types not found: ${allowedTypes.join(', ')}`);
+        }
+      }
+
+      if (flags.json) {
+        ctx.ui?.json?.({ valid: isValid, hasPackages, hasBreaking, issues, plan });
+      } else {
+        const sections: Array<{ header?: string; items: string[] }> = [
+          {
+            header: 'Status',
+            items: [
+              `Has Packages: ${hasPackages ? 'Yes' : 'No'}`,
+              `Has Breaking Changes: ${hasBreaking ? 'Yes' : 'No'}`,
+              `Result: ${isValid ? 'Valid for release' : 'Blocked'}`,
+            ],
+          },
+        ];
+
+        if (issues.length > 0) {
+          sections.push({
+            header: 'Issues',
+            items: issues.map(issue => `${ctx.ui.symbols.error} ${issue}`),
+          });
+        }
+
+        ctx.ui.sideBox({
+          title: 'Release Verification',
+          sections,
+          status: isValid ? 'success' : 'error',
+        });
+      }
+
+      return {
+        exitCode: isValid ? 0 : 2,
+        valid: isValid,
+        plan,
+        issues,
+        breakingDetected: hasBreaking,
+      };
+    },
+  },
+});

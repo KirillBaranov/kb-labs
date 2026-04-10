@@ -1,0 +1,184 @@
+---
+title: "Workflow Daemon"
+description: "The service that runs workflows — engine, job broker, cron scheduler, HTTP API."
+updatedAt: "2026-04-07"
+order: 5
+---
+
+The workflow daemon is the long-running process that executes workflows, schedules recurring work, and exposes HTTP endpoints for runs, jobs, cron schedules, and approvals. It hosts the workflow engine — the actual orchestrator that turns a `WorkflowSpec` into `WorkflowRun` / `JobRun` / `StepRun` records and drives them to completion.
+
+Source lives in [platform/kb-labs-workflow/packages/workflow-daemon/](platform/kb-labs-workflow/packages/workflow-daemon/). The engine itself is in a sibling package, `@kb-labs/workflow-engine`.
+
+## Service manifest
+
+```ts
+{
+  schema: 'kb.service/1',
+  id: 'workflow',
+  name: 'Workflow Engine',
+  version: '1.2.0',
+  description: 'Workflow orchestration daemon — runs, schedules, cron',
+  runtime: {
+    entry: 'dist/index.js',
+    port: 7778,
+    healthCheck: '/health',
+  },
+  env: {
+    PORT: { description: 'HTTP port', default: '7778' },
+    NODE_ENV: { description: 'Environment mode', default: 'development' },
+  },
+}
+```
+
+No `dependsOn` — the daemon is self-contained from `kb-dev`'s perspective. It pulls adapters (workspace, environment, state broker) from the platform config on its own.
+
+Source: [packages/workflow-daemon/src/manifest.ts](platform/kb-labs-workflow/packages/workflow-daemon/src/manifest.ts).
+
+## Architecture
+
+```
+                    HTTP :7778
+                        │
+                   Fastify server
+                        │
+       ┌────────────────┼────────────────┬───────────────┐
+       ▼                ▼                ▼               ▼
+   jobs-api       workflows-api     cron-api     approvals-api   stats-api
+       │                │                │               │           │
+       └──────┬─────────┴────────┬───────┴───────────────┘           │
+              ▼                  ▼                                   │
+         JobBroker        WorkflowEngine  ◀──────────────────────────┘
+              │                  │
+              ▼                  ▼
+         Worker pool       WorkflowService
+                                  │
+                                  ▼
+                            CronScheduler + CronDiscovery
+```
+
+The daemon has five main components glued together in `bootstrap.ts`:
+
+1. **`WorkflowEngine`** (from `@kb-labs/workflow-engine`) — the actual spec-to-runs execution core. Validates specs, creates runs, walks the job DAG, calls handlers.
+2. **`WorkflowWorker`** — the consumer loop that picks jobs from the broker and dispatches them to the execution backend.
+3. **`JobBroker`** — the queue. Jobs sit here until the worker pulls them. Handles concurrency groups, priorities, and job state transitions.
+4. **`CronScheduler` + `CronDiscovery`** — the recurring-job side. Discovery finds cron declarations in plugin manifests and registered workflows; scheduler fires them on their cron expressions.
+5. **Fastify HTTP server** — the public API surface covering runs, jobs, cron, approvals, and stats.
+
+## Bootstrap sequence
+
+From [`bootstrap.ts`](platform/kb-labs-workflow/packages/workflow-daemon/src/bootstrap.ts):
+
+1. Detect monorepo root via `findRepoRoot()`.
+2. `createServiceBootstrap({ appId: 'workflow-daemon', repoRoot })` — init the platform singleton (adapters, logger, cache, storage).
+3. Check for workspace and environment adapters; log warnings if they're missing.
+4. Build a correlated logger with `serviceId: 'workflow'` bindings.
+5. Create the engine, worker, job broker, cron discovery, and cron scheduler.
+6. Start the Fastify server and bind HTTP routes.
+7. Register shutdown handlers for `SIGTERM` / `SIGINT`.
+
+<Callout type="warning">
+The bootstrap checks that the workspace adapter is configured and writes a warning to `stderr` when it isn't. Workflows with default (`balanced`) or `strict` isolation will **fail at execution time** if no workspace adapter is available — set `platform.adapters.workspace` in `kb.config.json`, or declare `isolation: 'relaxed'` on the workflow spec to bypass. The same warning pattern applies to the environment adapter for `strict` isolation.
+</Callout>
+
+## HTTP API surface
+
+Routes are registered in [`server.ts`](platform/kb-labs-workflow/packages/workflow-daemon/src/server.ts). Five sub-APIs, plus health and OpenAPI:
+
+| Mount | File | Covers |
+|---|---|---|
+| `/workflows/*` | `api/workflows-api.ts` | Create, get, list, cancel runs |
+| `/jobs/*` | `api/jobs-api.ts` | Job lifecycle, queue inspection |
+| `/cron/*` | `api/cron-api.ts` | Register, list, pause, trigger cron schedules |
+| `/approvals/*` | `api/approvals-api.ts` | Resolve `builtin:approval` steps |
+| `/stats/*` | `api/stats-api.ts` | Run/job statistics for dashboards |
+| `/health` | built-in | Liveness probe |
+| `/docs`, `/openapi.json` | `registerOpenAPI()` | Swagger UI and the generated spec |
+
+The server uses `@kb-labs/shared-http` for the observability collector, correlated logger, and OpenAPI integration — same shared utilities as the REST API and marketplace.
+
+### Body limit
+
+The server sets `bodyLimit: 1048576` (1 MB) on incoming requests to guard against huge payload parsing. Workflow specs are JSON and rarely approach this, but it's there.
+
+### Request logging
+
+Like the REST API, the workflow daemon disables Fastify's own request logging (`logger: false`) and routes all application logging through the platform logger. Every request is logged with correlation IDs (`requestId`, `traceId`, `spanId`) so you can stitch together a single workflow run across the HTTP, engine, and worker layers in the log store.
+
+## Engine responsibilities
+
+The `WorkflowEngine` (not in this package — in `@kb-labs/workflow-engine`) is what actually turns a spec into execution. It implements the `IWorkflowEngine` contract from `@kb-labs/workflow-contracts`:
+
+```ts
+interface IWorkflowEngine {
+  createRun(input: CreateRunInput): Promise<WorkflowRun>;
+  getRun(runId: string): Promise<WorkflowRun | null>;
+  cancelRun(runId: string): Promise<void>;
+  listRuns?(filter?: ListRunsFilter): Promise<WorkflowRun[]>;
+}
+```
+
+The daemon wraps the engine in a `WorkflowService` (helpers and policy) and exposes it over HTTP. The worker uses the engine directly to transition state as jobs start and finish.
+
+## Job broker and worker
+
+The `JobBroker` is the queue. Jobs enter the queue when a run transitions a job to `'queued'` — either because its dependencies are satisfied or because it's the first job in a freshly created run. The broker knows about:
+
+- **Concurrency groups** — at most one job per group runs at a time (serialized by the broker, not the worker).
+- **Cancel-in-progress** — a new job in an existing group with `cancelInProgress: true` cancels the running one.
+- **Priorities** — `'high' | 'normal' | 'low'` affects pull order when the worker has capacity.
+
+The `WorkflowWorker` is the consumer loop. It pulls eligible jobs from the broker, dispatches them to the execution backend (in-process, worker pool, or container per `platform.execution.mode`), and writes the results back to the engine. Multiple jobs execute in parallel up to the backend's concurrency ceiling.
+
+## Cron
+
+Two pieces:
+
+- **`CronDiscovery`** walks installed plugins and registered workflows, collects every `cron` declaration (`manifest.cron.schedules[]` for plugins, `on.schedule` for workflows), and registers each one with the scheduler.
+- **`CronScheduler`** holds the set of registered schedules and fires them when their cron expression matches. Each firing creates a new run via the engine with `trigger.type: 'schedule'`.
+
+Cron expressions are standard 5-field format. Timezones come from the declaration (`schedule.timezone`) or default to the daemon's own timezone when unspecified.
+
+## Approvals
+
+The approvals API resolves `builtin:approval` steps that are waiting for human input. When a step hits `builtin:approval`, the worker transitions it to `'waiting_approval'` and waits. A client (Studio, CLI, or REST) calls `POST /approvals/<runId>/<stepId>` with `{ action: 'approve' | 'reject', comment? }`, which calls `engine.resolveApproval()` under the hood.
+
+The resolved approval's output becomes the step's `outputs` field, so later steps can branch on it.
+
+See [Gates & Approvals](/workflows/gates) for the full flow.
+
+## Starting the daemon
+
+```bash
+kb-dev start workflow
+```
+
+Or directly:
+
+```bash
+cd platform/kb-labs-workflow/packages/workflow-daemon
+node ./dist/index.js
+```
+
+The daemon reads `kb.config.json` from the repo root. There is no daemon-specific config file — it consumes `platform.core.workflows`, `platform.execution`, and any required adapters.
+
+## Graceful shutdown
+
+On `SIGTERM` / `SIGINT`:
+
+1. Stop the cron scheduler — no new scheduled runs.
+2. Stop accepting new HTTP requests.
+3. Drain in-flight HTTP requests.
+4. Wait for the worker to finish its current job (bounded by a timeout).
+5. Close the broker, scheduler, and discovery.
+6. Close the Fastify server.
+7. Call `platform.shutdown()` to flush adapters.
+
+In-flight workflow runs that don't complete in the shutdown window are left in the run store with whatever state they had. The engine can resume them on the next startup if the `'interrupted'` recovery path is wired up — otherwise they remain visible in Studio and can be re-run manually.
+
+## What to read next
+
+- [Workflows → Overview](/workflows) — the conceptual picture.
+- [Workflows → Spec Reference](/workflows/spec-reference) — the full schema.
+- [Workflows → Gates & Approvals](/workflows/gates) — deep dive on the approval flow.
+- [Services → REST API](/services/rest-api) — sibling service with a similar Fastify bootstrap.
+- [Concepts → Execution Model](/concepts/execution-model) — where the worker dispatches jobs to.

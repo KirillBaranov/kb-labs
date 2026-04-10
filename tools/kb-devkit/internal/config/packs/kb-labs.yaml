@@ -1,0 +1,58 @@
+schemaVersion: 2
+extends:
+  - builtin:generic
+
+presets:
+  node-lib:
+    package_json:
+      required_scripts: [build, dev, test, lint, type-check, clean]
+      required_dev_deps:
+        typescript: "^5"
+        tsup: "^8"
+        vitest: "^3"
+        "@kb-labs/devkit": "*"
+      required_fields: [name, version, type, engines, exports]
+      engines:
+        node: ">=20.0.0"
+        pnpm: ">=9.0.0"
+    tsconfig:
+      must_extend_pattern: "@kb-labs/devkit/tsconfig/"
+      forbid_paths: true
+    tsup:
+      must_use_preset: true
+      dts_required: true
+      tsconfig_must_be_build: true
+      must_import_pattern: "@kb-labs/devkit/tsup"
+    eslint:
+      must_use_preset: true
+      must_import_pattern: "@kb-labs/devkit"
+
+  node-cli:
+    extends: node-lib
+    tsup:
+      must_use_preset: true
+      dts_required: true
+      tsconfig_must_be_build: true
+      preset_pattern: "binPreset|cliPreset"
+      must_import_pattern: "@kb-labs/devkit/tsup"
+
+  site:
+    package_json:
+      required_scripts: [build, dev]
+
+sync:
+  sources:
+    devkit:
+      type: npm
+      package: "@kb-labs/devkit"
+  targets:
+    - source: devkit
+      from: agents/
+      to: .kb/devkit/agents/
+      mode: managed
+      signal: normal
+    - source: devkit
+      from: assets/claude/skills/
+      to: skills/
+      mode: managed
+      signal: normal

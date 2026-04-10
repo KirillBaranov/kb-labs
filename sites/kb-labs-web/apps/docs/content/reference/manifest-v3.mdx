@@ -1,0 +1,175 @@
+---
+title: "Manifest v3 Schema"
+description: "JSON Schema for kb.plugin/3 manifests — for tooling, IDE support, and validation."
+updatedAt: "2026-04-07"
+order: 5
+---
+
+The `kb.plugin/3` manifest is the declarative contract between a plugin and the KB Labs runtime. This page is the tooling-oriented companion to the detailed [Plugins → Manifest Reference](/plugins/manifest-reference) — use this for IDE integration, programmatic validation, and a quick field lookup.
+
+<Callout type="info">
+The [Manifest Reference](/plugins/manifest-reference) page is the canonical human-readable documentation. This page focuses on validation, IDE setup, and a quick-reference summary.
+</Callout>
+
+## Quick-reference shape
+
+```ts
+interface ManifestV3 {
+  schema: 'kb.plugin/3';   // required — literal string
+  id: string;              // required — '@scope/name' format
+  version: string;         // required — semver 'MAJOR.MINOR.PATCH'
+  configSection?: string;
+  display?: DisplayMetadata;
+  permissions?: PermissionSpec;
+  dependencies?: PluginDependency[];
+  platform?: PlatformRequirements;
+  setup?: SetupSpec;
+  lifecycle?: LifecycleHooks;
+  cli?: { commands: CliCommandDecl[]; groupMeta?: CliGroupMeta[] };
+  rest?: RestConfig;
+  ws?: WebSocketConfig;
+  workflows?: { handlers: WorkflowHandlerDecl[] };
+  webhooks?: { handlers: WebhookHandlerDecl[] };
+  jobs?: JobsConfig;
+  cron?: { schedules: CronDecl[] };
+  studio?: StudioConfig;
+}
+```
+
+Only `schema`, `id`, and `version` are required. Every other section is optional.
+
+## Source of truth
+
+The TypeScript types live in:
+
+```
+infra/kb-labs-plugin/packages/plugin-contracts/src/manifest.ts
+```
+
+Validation logic lives in:
+
+```
+infra/kb-labs-plugin/packages/plugin-contracts/src/manifest-loader.ts
+```
+
+If this page disagrees with those files, the code wins.
+
+## Validation rules
+
+The loader runs these checks on every manifest:
+
+| Field | Rule |
+|-------|------|
+| `schema` | Must be exactly `'kb.plugin/3'` |
+| `id` | Must match `/^@[a-z0-9-]+\/[a-z0-9-]+$/` |
+| `version` | Must match `/^\d+\.\d+\.\d+/` (MAJOR.MINOR.PATCH prefix) |
+| `cli.commands[i].handler` | Must be present |
+| `rest.routes[i].handler` | Must be present |
+| `workflows.handlers[i].handler` | Must be present |
+| `webhooks.handlers[i].handler` | Must be present |
+| `jobs.handlers[i].handler` | Must be present |
+| `cron.schedules[i].schedule` | Must be present |
+| `cron.schedules[i].job.type` | Must be present |
+
+Validation errors are collected and returned as a list — a single run surfaces every problem at once.
+
+## IDE setup
+
+### VS Code
+
+Add the schema to your workspace settings for autocompletion and inline validation in manifest files:
+
+```json
+// .vscode/settings.json
+{
+  "json.schemas": [
+    {
+      "fileMatch": ["*/manifest.json"],
+      "url": "./path/to/manifest-schema.json"
+    }
+  ]
+}
+```
+
+If you author manifests in TypeScript (the preferred approach), you get full type checking automatically when importing from `@kb-labs/sdk`:
+
+```ts
+import { defineManifest } from '@kb-labs/sdk';
+
+export default defineManifest({
+  schema: 'kb.plugin/3',
+  id: '@my-scope/my-plugin',
+  version: '1.0.0',
+  // TypeScript will validate all fields
+});
+```
+
+## Programmatic validation
+
+Validate a manifest from code using the contracts package:
+
+```ts
+import { validateManifest, loadManifest } from '@kb-labs/plugin-contracts';
+
+// Validate only
+const errors = validateManifest(manifestObject);
+if (errors.length > 0) {
+  console.error('Manifest validation failed:', errors);
+}
+
+// Load + validate (throws on error)
+const manifest = await loadManifest('./packages/my-cli/dist/manifest.js');
+```
+
+## Handler path format
+
+Handler strings follow the format `<path>#<export>`:
+
+```ts
+handler: './cli/commands/run.js#default'
+//        └─ path relative to package root   └─ export name
+```
+
+- Path is relative to the plugin's package root (the built `dist/` dir)
+- `#default` targets the default export
+- Any other name targets a named export
+- Extension must be `.js` (point to built output, not `.ts` source)
+
+## Authoring approach
+
+Most plugins author the manifest in TypeScript for type safety:
+
+```
+packages/your-plugin-cli/
+  src/
+    manifest.ts      ← authored here (TypeScript)
+  dist/
+    manifest.js      ← built output (what the loader reads)
+```
+
+The manifest is exported as the default export of `manifest.ts`. The loader imports `manifest.js` from the built output.
+
+## Capabilities summary
+
+| Manifest section | What it enables |
+|-----------------|-----------------|
+| `cli.commands` | `pnpm kb <group> <command>` |
+| `rest.routes` | `GET/POST/... /api/v1/plugins/<id>/...` |
+| `ws.channels` | WebSocket at `/api/v1/ws/plugins/<id>/...` |
+| `workflows.handlers` | Callable from workflow step specs |
+| `webhooks.handlers` | Triggered by external events |
+| `jobs.handlers` | On-demand background tasks |
+| `cron.schedules` | Recurring job execution |
+| `studio.pages` | Pages in Studio UI (Module Federation) |
+| `studio.menus` | Sidebar menu entries in Studio |
+
+## Full documentation
+
+Every section of the manifest is documented with examples in [Plugins → Manifest Reference](/plugins/manifest-reference).
+
+The most exercised real-world manifest in the monorepo is:
+```
+plugins/kb-labs-commit-plugin/packages/commit-cli/src/manifest.ts
+```
+
+It demonstrates permissions via `combinePermissions()`, six CLI commands with typed flags, 14 REST routes with Zod schemas, and a Studio v2 page. Copy it as a starting point.

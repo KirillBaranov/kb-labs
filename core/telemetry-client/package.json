@@ -1,0 +1,33 @@
+{
+  "name": "@kb-labs/telemetry-client",
+  "version": "1.9.0",
+  "description": "Lightweight telemetry client for KB Labs platform. Zero dependencies. Use in any Node.js/browser product to send events to the platform.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsup",
+    "lint": "eslint . --ignore-pattern 'dist/**' --ignore-pattern 'coverage/**'",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^22.0.0",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.4.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.4"
+  }
+}

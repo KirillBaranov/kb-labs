@@ -1,0 +1,21 @@
+{
+  "ts": "2025-01-01T12:00:00.000Z",
+  "totals": {
+    "packages": 45,
+    "ok": 32,
+    "warn": 8,
+    "fail": 5,
+    "durationMs": 125000
+  },
+  "topFailures": [
+    {
+      "pkg": "@kb-labs/cli",
+      "checks": ["style", "types", "tests"]
+    },
+    {
+      "pkg": "@kb-labs/analytics",
+      "checks": ["build", "types"]
+    }
+  ]
+}
+

@@ -1,0 +1,22 @@
+name: ai-ci
+version: 1.0.0
+on:
+  manual: true
+jobs:
+  review:
+    runsOn: sandbox
+    concurrency:
+      group: "repo:${{ env.REPO }}-branch:${{ env.BRANCH }}"
+      cancelInProgress: true
+    steps:
+      - name: Analyze PR
+        uses: "plugin:@kb-labs/ai-review#run"
+        with:
+          target: "./"
+    artifacts:
+      produce:
+        - "reports/ai-review.json"
+
+
+
+

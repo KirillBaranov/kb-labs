@@ -1,0 +1,98 @@
+.wrapper {
+  position: relative;
+  margin: 1.25rem 0;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #27272a;
+  background: #22272e; /* matches github-dark-dimmed */
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 36px;
+  padding: 0 0.5rem 0 0.875rem;
+  background: #1c2128;
+  border-bottom: 1px solid #2d333b;
+}
+
+.lang {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #768390;
+  font-family: 'Geist Mono', 'SF Mono', 'Fira Code', monospace;
+}
+
+.copyBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 26px;
+  padding: 0 0.625rem;
+  border: 1px solid #2d333b;
+  border-radius: 6px;
+  background: transparent;
+  color: #adbac7;
+  font-size: 0.72rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+  margin-left: auto;
+}
+
+.copyBtn:hover {
+  background: #2d333b;
+  color: #fff;
+  border-color: #444c56;
+}
+
+.copyBtn svg {
+  flex-shrink: 0;
+}
+
+/* Reset our prose `pre` styles so rehype-pretty-code's tokens render cleanly */
+.pre {
+  margin: 0 !important;
+  padding: 1rem 0 !important;
+  background: #22272e !important;
+  color: #adbac7 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  font-size: 0.8125rem;
+  line-height: 1.65;
+  overflow-x: auto;
+}
+
+.pre code {
+  display: grid;
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  font-size: inherit;
+  color: inherit;
+  font-family: 'Geist Mono', 'SF Mono', 'Fira Code', monospace;
+  counter-reset: line;
+}
+
+/* Each line is wrapped in <span data-line> by rehype-pretty-code */
+.pre code [data-line] {
+  display: block;
+  padding: 0 1.25rem;
+  border-left: 2px solid transparent;
+}
+
+/* Highlighted lines support (`{1,3-5}` after the lang) */
+.pre code [data-highlighted-line] {
+  background: rgba(99, 110, 123, 0.15);
+  border-left-color: #539bf5;
+}
+
+/* Inline highlighted words */
+.pre code [data-highlighted-chars] {
+  background: rgba(99, 110, 123, 0.25);
+  border-radius: 3px;
+  padding: 0 2px;
+}

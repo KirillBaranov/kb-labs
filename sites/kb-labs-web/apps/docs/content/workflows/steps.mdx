@@ -1,0 +1,370 @@
+---
+title: "Steps"
+description: "The unit of execution: built-in handlers, plugin handlers, outputs, conditions."
+updatedAt: "2026-04-07"
+order: 5
+---
+
+Steps are the units of execution inside a job. Each step runs a handler — either a built-in (`builtin:shell`, `builtin:approval`, `builtin:gate`) or a plugin-provided one. Steps execute sequentially inside a job, can be conditional, and can pass data to later steps via outputs.
+
+This page covers step mechanics and the three built-ins. For every field see [Spec Reference → StepSpec](/workflows/spec-reference#stepspec).
+
+## Shape
+
+```ts
+interface StepSpec {
+  name: string;
+  uses?: StepUses;
+  id?: string;
+  if?: string;
+  with?: Record<string, unknown>;
+  env?: Record<string, string>;
+  secrets?: string[];
+  timeoutMs?: number;
+  continueOnError?: boolean;
+
+  // Presentation (don't affect execution)
+  summary?: string;
+  phase?: string;
+  progress?: StepProgress;
+  artifacts?: Record<string, StepArtifact>;
+}
+```
+
+Only `name` is strictly required. Steps without `uses` are allowed by the schema — they're typically placeholders in drafts or special markers consumed by external tooling.
+
+## `uses`: what the step actually runs
+
+Four forms:
+
+```ts
+'builtin:shell'
+'builtin:approval'
+'builtin:gate'
+'plugin:<plugin-id>:<handler-id>'
+'workflow:<workflow-id>'
+```
+
+### `builtin:shell`
+
+Runs a shell command via [execa](platform/kb-labs-workflow/packages/workflow-builtins/src/shell.ts). Parameters:
+
+```ts
+interface ShellInput {
+  command: string;                    // required
+  env?: Record<string, string>;
+  timeout?: number;                   // default 300000 (5 minutes)
+  throwOnError?: boolean;             // default false
+}
+```
+
+```json
+{
+  "name": "Run tests",
+  "uses": "builtin:shell",
+  "with": {
+    "command": "pnpm test",
+    "timeout": 120000,
+    "throwOnError": true
+  }
+}
+```
+
+**Working directory.** The command runs in `ctx.cwd`, which is the workspace path for the current job. You can't override it through `with` — the parameter doesn't exist. If you need a subdirectory, `cd` inside the command: `"command": "cd packages/core && pnpm test"`.
+
+**Environment.** The command sees `process.env` plus any extra variables in `with.env`, job-level `env`, and workflow-level `env` (in that precedence order — closest wins).
+
+**Output.** The handler returns an object with `{ stdout, stderr, exitCode, ok }`. By default a non-zero exit code does **not** throw — the step succeeds, and your later steps see `steps.<id>.outputs.ok === false`. Set `throwOnError: true` to make a non-zero exit fail the step.
+
+**Blocked commands.** A handful of obviously destructive commands are statically blocked: `rm -rf /`, `rm -rf /*`, `mkfs`, `dd if=`, the classic fork bomb, `chmod -R 777 /`, `chown -R`, `> /dev/sda`, `mv /* `, `fdisk`. These are caught before execution and the step fails with `Dangerous command blocked: "<pattern>"`.
+
+**Structured outputs.** Shell commands can emit structured data that becomes part of `steps.<id>.outputs`:
+
+```bash
+# Inside your script
+echo '::kb-output::{"passed":true,"failures":0}'
+```
+
+Lines with the `::kb-output::` marker are parsed as JSON and merged into the step outputs. A later step can then reference `steps.test.outputs.passed`. This is modeled on the GitHub Actions `::set-output::` pattern.
+
+If no marker lines are present and `stdout` is valid JSON, the whole stdout is parsed as outputs (backward compat). Otherwise the outputs are just `{ stdout, stderr, exitCode, ok }`.
+
+**Real-time log streaming.** The handler streams `stdout`/`stderr` line-by-line via `ctx.api.events.emit('log.line', ...)`. Studio and the CLI subscribe to these events and render logs live.
+
+### `builtin:approval`
+
+Pauses the run until a human decides. Parameters:
+
+```ts
+interface ApprovalInput {
+  title: string;                      // required
+  context?: Record<string, unknown>;
+  instructions?: string;
+}
+```
+
+```json
+{
+  "name": "Approve deploy",
+  "uses": "builtin:approval",
+  "with": {
+    "title": "Deploy v${{ trigger.payload.version }} to production?",
+    "context": {
+      "version": "${{ trigger.payload.version }}",
+      "artifacts": "${{ steps.build.outputs.artifactUrls }}"
+    },
+    "instructions": "Check the staging deploy at https://staging.example.com before approving."
+  }
+}
+```
+
+An approval step doesn't execute a handler — it transitions the step to `'waiting_approval'` and the worker polls until `engine.resolveApproval()` is called (via Studio, the CLI, or the REST API).
+
+Output shape when resolved:
+
+```ts
+interface ApprovalOutput {
+  approved: boolean;
+  action: 'approve' | 'reject';
+  comment?: string;
+  [key: string]: unknown;             // extra data from the approver
+}
+```
+
+Later steps can branch on the decision:
+
+```ts
+if: "${{ steps.approve-deploy.outputs.approved == 'true' }}"
+```
+
+Rejection fails the step; the job fails; dependents are skipped. To keep going after rejection, use `continueOnError: true` on the approval step and check the outcome in a following step.
+
+See [Gates & Approvals](/workflows/gates) for patterns and the resolver API.
+
+### `builtin:gate`
+
+A **decision router**, not a boolean check. Reads a value from previous step outputs and routes the pipeline accordingly. Parameters:
+
+```ts
+interface GateInput {
+  decision: string;                   // expression path, e.g. 'steps.review.outputs.passed'
+  routes: Record<string, GateRouteAction>;
+  default?: 'continue' | 'fail';
+  maxIterations?: number;             // default 3
+}
+
+type GateRouteAction =
+  | 'continue'
+  | 'fail'
+  | { restartFrom: string; context?: Record<string, unknown> };
+```
+
+The gate reads `decision` from the expression context, looks up the value in `routes`, and takes the matching action. If the value doesn't match any route, `default` is used (or the gate fails if `default` is unset).
+
+Three actions:
+
+- **`'continue'`** — proceed to the next step.
+- **`'fail'`** — fail the pipeline immediately.
+- **`{ restartFrom: '<step-id>', context? }`** — reset steps back to the given ID and re-run from there. Optional `context` is merged into `trigger.payload` for the replay. Bounded by `maxIterations` to prevent infinite loops — when the cap is reached, the gate fails.
+
+```json
+{
+  "name": "Route on review outcome",
+  "uses": "builtin:gate",
+  "with": {
+    "decision": "steps.review.outputs.verdict",
+    "routes": {
+      "approved":  "continue",
+      "rejected":  "fail",
+      "needs-fix": { "restartFrom": "apply-fixes", "context": { "retry": true } }
+    },
+    "default": "fail",
+    "maxIterations": 5
+  }
+}
+```
+
+Output:
+
+```ts
+interface GateOutput {
+  decisionValue: unknown;
+  action: 'continue' | 'fail' | 'restart';
+  restartFrom?: string;
+  iteration: number;
+}
+```
+
+See [Gates & Approvals](/workflows/gates) for full examples.
+
+### `plugin:<plugin-id>:<handler-id>`
+
+Calls a workflow handler declared in a plugin's manifest under `workflows.handlers[]`. The platform resolves the handler and executes it with whatever `with` parameters you pass.
+
+```json
+{
+  "name": "Generate release notes",
+  "uses": "plugin:release:generate-notes",
+  "with": {
+    "fromTag": "${{ steps.find-last-tag.outputs.tag }}",
+    "toTag":   "HEAD"
+  }
+}
+```
+
+The step outputs are whatever the handler returns.
+
+### `workflow:<workflow-id>`
+
+Invokes another workflow as a step. Internally this creates a child run and (by default) waits for it to complete before the parent step finishes.
+
+```json
+{
+  "name": "Run security audit",
+  "uses": "workflow:security-audit",
+  "with": {
+    "target": "production"
+  }
+}
+```
+
+Via [`parseWorkflowUses()`](platform/kb-labs-workflow/packages/workflow-contracts/src/expressions.ts), this resolves to `{ type: 'workflow', workflowId: 'security-audit', mode: 'wait', inheritEnv: true }`. The child run's trigger records `parentRunId`, `parentJobId`, `parentStepId`, and `invokedByWorkflowId` so you can trace the call stack.
+
+## `id`: making outputs referenceable
+
+Without an `id`, a step's outputs are anonymous — later steps can't reference them. Adding an `id` makes the outputs addressable via `${{ steps.<id>.outputs.* }}`:
+
+```json
+{
+  "jobs": {
+    "ci": {
+      "runsOn": "sandbox",
+      "steps": [
+        {
+          "name": "Count files",
+          "id": "counter",
+          "uses": "builtin:shell",
+          "with": { "command": "echo '::kb-output::{\"count\":'$(ls -1 src | wc -l)'}'" }
+        },
+        {
+          "name": "Report",
+          "if": "${{ steps.counter.outputs.count > 0 }}",
+          "uses": "builtin:shell",
+          "with": { "command": "echo Found files" }
+        }
+      ]
+    }
+  }
+}
+```
+
+IDs are constrained to `[a-zA-Z0-9_-]`, 1–64 characters.
+
+## `if`: conditional execution
+
+A boolean expression evaluated at step scheduling time. When it's false, the step is `'skipped'` and follow-up steps still run.
+
+```ts
+if: "${{ env.DEPLOY_ENV == 'production' }}"
+if: "${{ steps.tests.outputs.ok == true }}"
+if: "${{ trigger.type == 'manual' || contains(trigger.payload.labels, 'deploy') }}"
+```
+
+Available contexts:
+
+- `env.*` — environment variables visible to the step.
+- `trigger.*` — `type`, `actor`, `payload`.
+- `steps.<id>.outputs.*` — outputs from earlier steps (only those with an `id`).
+- `matrix.*` — matrix values (if the job is running inside a matrix).
+
+Supported operators: `==`, `!=`, `&&`, `||`, `!`, parentheses.
+Supported functions: `contains(string, substr)`, `startsWith(string, prefix)`, `endsWith(string, suffix)`.
+
+Expression evaluation is boolean-only in `if`. String interpolation (`${{ … }}` inside other string fields) is a separate pass that resolves values to strings at step execution time.
+
+## `with`: handler parameters
+
+Free-form object passed to the handler. Values can be any JSON type. The handler's input shape determines what's accepted — the schema doesn't validate this, so typos in `with` keys silently become undefined at runtime.
+
+String values inside `with` support interpolation:
+
+```json
+{
+  "with": {
+    "command": "echo Processing ${{ trigger.payload.name }}",
+    "env": {
+      "RELEASE_VERSION": "${{ trigger.payload.version }}"
+    }
+  }
+}
+```
+
+Interpolation happens before the step runs. The resolved values are what the handler sees.
+
+## `env` and `secrets`
+
+```ts
+env?:     Record<string, string>;
+secrets?: string[];
+```
+
+Step-level `env` is merged on top of job-level and workflow-level `env`. Step-level `secrets` adds to whatever the job already has.
+
+## `timeoutMs`
+
+Positive integer, ≤ 24 hours. If the step exceeds the timeout, the handler is killed and the step is marked `'failed'`. Without `continueOnError`, the job also fails. Step timeouts are independent of the job's own timeout.
+
+Omit for "no timeout" — the step runs as long as it needs to (bounded only by the job timeout, if set).
+
+## `continueOnError`
+
+```ts
+continueOnError?: boolean   // default false
+```
+
+When `true`, a failed step is recorded as failed in the run history but **does not fail the job**. Subsequent steps run normally. Useful for non-critical steps like analytics reporting, notification posting, or advisory lint checks.
+
+```json
+{
+  "name": "Post coverage to codecov",
+  "uses": "plugin:codecov:upload",
+  "continueOnError": true
+}
+```
+
+This does not apply to `builtin:shell`'s `throwOnError`. Those are independent:
+
+| `throwOnError` | `continueOnError` | Exit ≠ 0 behavior |
+|---|---|---|
+| `false` | any | Step succeeds; outputs.ok = false |
+| `true`  | `false` | Step fails; job fails |
+| `true`  | `true`  | Step fails; job continues |
+
+## Presentation fields
+
+**`summary`**, **`phase`**, **`progress`**, **`artifacts`** are consumed by Studio and CLI for human output. None affect execution — you can omit them entirely and the workflow runs fine. See [Spec Reference → StepSpec → Presentation fields](/workflows/spec-reference#presentation-fields) for the exact shapes.
+
+## Step lifecycle states
+
+A `StepRun` transitions through the following states (from [workflow-constants](platform/kb-labs-workflow/packages/workflow-constants/src/index.ts)):
+
+```ts
+type StepState =
+  | 'queued'
+  | 'running'
+  | 'success'
+  | 'failed'
+  | 'cancelled'
+  | 'skipped'
+  | 'dlq'
+  | 'waiting_approval';   // only for builtin:approval
+```
+
+Each `StepRun` carries: `queuedAt`, `startedAt?`, `finishedAt?`, `durationMs?`, `attempt` (for retried jobs), `outputs`, and an optional `error` object.
+
+## What to read next
+
+- [Gates & Approvals](/workflows/gates) — deep dive on `builtin:approval` and `builtin:gate`.
+- [Artifacts](/workflows/artifacts) — what `StepArtifact` is for.
+- [Retries & Error Handling](/workflows/retry-and-errors) — when `continueOnError` isn't enough.
+- [Spec Reference → StepSpec](/workflows/spec-reference#stepspec) — every field with Zod rules.

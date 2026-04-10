@@ -1,0 +1,43 @@
+schemaVersion: 2
+
+presets:
+  node-lib:
+    language: typescript
+    package_json:
+      required_scripts: [build, test, lint, type-check]
+      required_dev_deps:
+        typescript: "^5"
+      required_fields: [name, version, type]
+      type: module
+    structure:
+      required_files: [src/index.ts, README.md]
+    dependencies:
+      check_links: true
+      check_circular: true
+      check_version_consistency: true
+
+  node-app:
+    language: typescript
+    package_json:
+      required_scripts: [build]
+      required_fields: [name, version]
+    dependencies:
+      check_links: true
+      check_circular: true
+
+  node-cli:
+    extends: node-lib
+    language: typescript
+
+  go-binary:
+    language: go
+    structure:
+      required_files: [go.mod, Makefile]
+    go:
+      min_version: "1.21"
+
+  site:
+    language: typescript
+    package_json:
+      required_scripts: [build]
+      required_fields: [name, version]

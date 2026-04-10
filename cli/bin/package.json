@@ -1,0 +1,72 @@
+{
+  "name": "@kb-labs/cli-bin",
+  "version": "2.5.1",
+  "type": "module",
+  "description": "KB Labs CLI tool for project management and automation",
+  "bin": {
+    "kb": "dist/bin.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsup --config tsup.config.ts && pnpm run copy-bootstrap",
+    "copy-bootstrap": "mkdir -p dist && cp ../../../../infra/kb-labs-plugin/packages/plugin-runtime/dist/sandbox/bootstrap.js dist/bootstrap.js",
+    "dev": "tsup --config tsup.config.ts --watch",
+    "smoke": "node ./dist/bin.js hello",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "type-check": "tsc --noEmit -p tsconfig.typecheck.json",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@kb-labs/cli-commands": "workspace:*",
+    "@kb-labs/cli-runtime": "workspace:*",
+    "@kb-labs/core-config": "workspace:*",
+    "@kb-labs/core-runtime": "workspace:*",
+    "@kb-labs/core-sandbox": "workspace:*",
+    "@kb-labs/core-sys": "workspace:*",
+    "@kb-labs/plugin-contracts": "workspace:*",
+    "@kb-labs/plugin-runtime": "workspace:*",
+    "@kb-labs/shared-cli-ui": "workspace:*",
+    "@kb-labs/shared-command-kit": "workspace:*",
+    "ajv": "^8.17.1",
+    "chokidar": "^4.0.3",
+    "cli-table3": "^0.6.5",
+    "colorette": "^2.0.20",
+    "glob": "^11.0.0",
+    "semver": "^7.6.3",
+    "yaml": "^2.8.2",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.27.0",
+    "eslint": "^9",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "vitest": "^3.2.4",
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.3.3",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

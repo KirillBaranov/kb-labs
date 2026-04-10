@@ -1,0 +1,166 @@
+name: KB Labs Development Environment
+
+groups:
+  infra:     [qdrant, redis, state-daemon]
+  backend:   [workflow, rest, marketplace, gateway]
+  ui:        [studio]
+  ui-web:    [kb-web]
+  local:     [host-agent]
+  execution: [runtime-server]
+
+services:
+  qdrant:
+    name: Qdrant Vector DB
+    description: Vector database for Mind RAG search
+    group: infra
+    type: docker
+    container: qdrant
+    command: >-
+      docker stop qdrant 2>/dev/null || true &&
+      docker rm qdrant 2>/dev/null || true &&
+      docker compose up -d qdrant
+    stop_command: docker stop qdrant
+    health_check: http://localhost:6333/
+    port: 6333
+    url: http://localhost:6333
+
+  redis:
+    name: Redis Cache
+    description: Optional cache for State Daemon
+    group: infra
+    type: docker
+    container: redis
+    command: docker compose up -d redis
+    stop_command: docker compose stop redis
+    health_check: redis-cli ping
+    port: 6379
+    optional: true
+
+  state-daemon:
+    name: State Daemon
+    description: Distributed state management
+    group: infra
+    type: node
+    command: node ./plugins/state/daemon/dist/bin.cjs
+    health_check: http://localhost:7777/health
+    port: 7777
+    url: http://localhost:7777
+    depends_on: [redis]
+    env:
+      KB_STATE_DAEMON_PORT: "7777"
+      KB_STATE_DAEMON_HOST: localhost
+
+  workflow:
+    name: Workflow Daemon
+    description: Workflow engine REST API
+    group: backend
+    type: node
+    command: node ./plugins/workflow/daemon/dist/index.js
+    health_check: http://localhost:7778/health
+    port: 7778
+    url: http://localhost:7778
+    depends_on: [state-daemon]
+    api:
+      docs: http://localhost:7778/openapi.json
+      endpoints:
+        - POST /workflows/runs
+        - GET /jobs/:jobId
+
+  rest:
+    name: REST API
+    description: Main platform REST API
+    group: backend
+    type: node
+    command: node ./plugins/rest-api/core/dist/index.js
+    health_check: http://localhost:5050/api/v1/health
+    port: 5050
+    url: http://localhost:5050
+    depends_on: [workflow]
+    api:
+      docs: http://localhost:5050/openapi.json
+      endpoints:
+        - GET /api/v1/health
+        - GET /api/v1/routes
+        - POST /api/v1/workflows/runs
+
+  marketplace:
+    name: Marketplace Service
+    description: Unified entity marketplace — install, manage, discover
+    group: backend
+    type: node
+    command: node ./plugins/marketplace/daemon/dist/index.js
+    health_check: http://localhost:5070/health
+    port: 5070
+    url: http://localhost:5070
+    depends_on: [state-daemon]
+    api:
+      docs: http://localhost:5070/openapi.json
+      endpoints:
+        - GET /health
+        - POST /api/v1/marketplace/install
+        - POST /api/v1/marketplace/uninstall
+        - GET /api/v1/marketplace/list
+
+  gateway:
+    name: Gateway
+    description: Central router — single entry point for all platform clients
+    group: backend
+    type: node
+    command: node ./plugins/gateway/server/dist/index.js
+    health_check: http://localhost:4000/health
+    port: 4000
+    url: http://localhost:4000
+    depends_on: [state-daemon]
+    api:
+      endpoints:
+        - GET /health
+        - POST /hosts/register
+        - WS /hosts/connect
+        - GET /hosts
+
+  studio:
+    name: Studio Web App
+    description: Web UI for KB Labs platform
+    group: ui
+    type: node
+    command: cd studio/app && pnpm dev
+    health_check: http://localhost:3000/
+    port: 3000
+    url: http://localhost:3000
+    depends_on: [rest, gateway]
+
+  kb-web:
+    name: KB Labs Web
+    description: Product website
+    group: ui-web
+    type: node
+    command: cd sites/kb-labs-web/apps/web && pnpm exec next dev -p 3010
+    health_check: http://localhost:3010
+    port: 3010
+    url: http://localhost:3010
+
+  host-agent:
+    name: Host Agent
+    description: Local daemon — connects this machine to Gateway
+    group: local
+    type: node
+    command: node ./plugins/host-agent/app/dist/index.js
+    depends_on: [gateway]
+
+  runtime-server:
+    name: Runtime Server
+    description: Plugin execution host — connects to Gateway
+    group: execution
+    type: node
+    command: node ./plugins/gateway/server/dist/cli.js
+    depends_on: [gateway]
+    env:
+      GATEWAY_WS_URL: ws://localhost:4000
+      RUNTIME_HOST_ID: runtime-server-local
+      GATEWAY_TOKEN: dev-runtime-server-token
+
+settings:
+  logs_dir: .kb/logs/tmp
+  pid_dir: .kb/tmp
+  start_timeout_ms: 30000
+  health_check_interval_ms: 1000

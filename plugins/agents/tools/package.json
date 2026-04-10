@@ -1,0 +1,54 @@
+{
+  "name": "@kb-labs/agent-tools",
+  "version": "0.6.0",
+  "description": "Agent management tools for planning, coordination, and execution",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rimraf dist",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@kb-labs/agent-contracts": "workspace:*",
+    "@kb-labs/core-platform": "workspace:*",
+    "@kb-labs/sdk": "workspace:*",
+    "glob": "^11.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.3",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "@kb-labs/devkit": "workspace:*",
+    "vitest": "^3.2.4"
+  },
+  "keywords": [
+    "kb-labs",
+    "agents",
+    "tools",
+    "planning",
+    "coordination"
+  ],
+  "author": "KB Labs",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

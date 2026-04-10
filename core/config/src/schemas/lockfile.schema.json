@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.kb-labs.dev/lockfile.schema.json",
+  "title": "KB Labs Lockfile",
+  "description": "Lockfile for KB Labs configuration system",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "https://schemas.kb-labs.dev/lockfile.schema.json"
+    },
+    "schemaVersion": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "orgPreset": {
+      "type": "string",
+      "description": "Org preset package reference",
+      "pattern": "^@[^/]+/[^@]+@[^@]+$"
+    },
+    "profile": {
+      "type": "string",
+      "description": "Profile reference from workspace",
+      "pattern": "^[^@]+@[^@]+$"
+    },
+    "policyBundle": {
+      "type": "string",
+      "description": "Policy bundle reference",
+      "pattern": "^[^@]+@[^@]+$"
+    },
+    "hashes": {
+      "type": "object",
+      "description": "Configuration hashes by product",
+      "patternProperties": {
+        "^[a-z-]+$": {
+          "type": "string",
+          "pattern": "^sha256-[a-f0-9]{64}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO 8601 timestamp when lockfile was generated"
+    }
+  },
+  "required": ["schemaVersion", "hashes", "generatedAt"],
+  "additionalProperties": false
+}

@@ -1,0 +1,319 @@
+---
+title: "Execution Model"
+description: "How plugin code actually runs — in-process, worker pool, container, or remote."
+updatedAt: "2026-04-07"
+order: 2
+---
+
+When a user runs `pnpm kb commit:commit`, something has to actually execute the commit plugin's handler function. Where that happens is a deployment-time choice, not a plugin-time choice. The same handler code can run in-process (fastest, no isolation), in a worker pool (fault isolation, single-node production), in a Docker container (full OS isolation, multi-tenant), or on a remote executor (distributed fleet, roadmap).
+
+Plugin code doesn't know or care which one it is. The SDK sandboxes every operation through permission-gated shims, so the plugin sees the same `ctx.runtime.fs`, `ctx.runtime.fetch`, and `ctx.runtime.env` regardless of the underlying execution backend. This page covers how the four modes differ and how to pick one.
+
+Source of truth: [`ExecutionConfig` in `core-runtime/src/config.ts`](platform/kb-labs-core/packages/core-runtime/src/config.ts).
+
+## The four modes
+
+```ts
+mode?: 'auto' | 'in-process' | 'worker-pool' | 'remote' | 'container';
+```
+
+- **`in-process`** — the plugin handler runs in the same Node process as the service (REST API, workflow daemon, CLI) that invoked it. Fastest path, no process boundary, no isolation. Use for dev and trusted first-party plugins.
+- **`worker-pool`** — plugins run in a pool of worker threads. Each worker has its own V8 isolate. A plugin crash takes down one worker, not the whole service. Default for single-node production.
+- **`container`** — plugins run inside Docker containers provisioned on demand. Full OS-level isolation, enforced resource limits, network namespaces. Use for multi-tenant deployments or untrusted plugins. Requires `container.gatewayDispatchUrl` and `container.gatewayInternalSecret`.
+- **`remote`** — type is defined in the config schema, but the adapters are not shipped. Roadmap for distributed fleets.
+- **`auto`** — default. Detects the mode from environment variables (`EXECUTION_MODE`, `KUBERNETES_SERVICE_HOST`). Picks `container` in Kubernetes, `worker-pool` elsewhere.
+
+## In-process
+
+The handler file is dynamically imported into the calling service's process. `handler.execute(ctx, input)` is a plain async function call.
+
+```
+Service process (REST API)
+  │
+  └─► import('./dist/cli/commands/commit.js')
+      │
+      └─► handler.execute(ctx, input)
+          │
+          └─► runs here, same process
+```
+
+**Pros:**
+
+- Zero overhead. No IPC, no serialization, no process boundary.
+- Fastest startup. Module imports happen on first call and are cached.
+- Easy debugging. Single process, single stack trace.
+
+**Cons:**
+
+- **No isolation.** A plugin throwing or crashing takes down the whole service.
+- **No resource limits.** `quotas.memoryMb` is advisory; plugins can use as much memory as the Node heap allows.
+- **Shared module state.** Two plugins loaded in-process share the same V8 heap, which can leak state between them in subtle ways.
+
+**When to use:** dev mode, CI smoke tests, trusted first-party plugins in single-tenant deployments where you know every plugin is safe. Never use for untrusted or marketplace plugins.
+
+## Worker pool
+
+The service maintains a pool of worker threads. Each worker is a pre-initialized Node isolate. When a handler is invoked, the pool picks an idle worker, sends the invocation via `postMessage`, and awaits the result.
+
+```
+Service process (REST API)
+  │
+  ├─► Worker pool (N workers)
+  │     │
+  │     ├─► Worker 1 (idle)
+  │     ├─► Worker 2 (running plugin A)
+  │     └─► Worker 3 (running plugin B)
+  │
+  └─► Dispatch: send message to an idle worker
+```
+
+Configured under `platform.execution.workerPool`:
+
+```ts
+interface WorkerPoolConfig {
+  min?: number;                          // default 2
+  max?: number;                          // default 10
+  maxRequestsPerWorker?: number;         // default 1000
+  maxUptimeMsPerWorker?: number;         // default 1800000 (30 min)
+  maxConcurrentPerPlugin?: number;       // optional per-plugin cap
+  warmup?: {
+    mode?: 'none' | 'top-n' | 'marked';  // default 'none'
+    topN?: number;                       // default 5
+    maxHandlers?: number;                // default 20
+  };
+}
+```
+
+**Pros:**
+
+- **Fault isolation.** A plugin crash kills the worker, not the service. The pool replaces crashed workers automatically.
+- **Resource recycling.** Workers are recycled after `maxRequestsPerWorker` or `maxUptimeMsPerWorker` — bounds memory leaks in long-running plugins.
+- **Concurrency control.** `maxConcurrentPerPlugin` prevents one chatty plugin from monopolizing the pool.
+- **Warmup support.** Pre-initialize hot handlers (`warmup.mode: 'top-n'` or `'marked'`) to avoid cold-start latency on the first call.
+
+**Cons:**
+
+- **IPC overhead.** Every call serializes input and output across the worker boundary. Large payloads become a bottleneck.
+- **No OS-level sandboxing.** Workers share the process's filesystem access, network access, and env vars. Permissions are enforced by the runtime shims, not by the OS.
+- **Harder to debug.** Stack traces cross worker boundaries; symptoms from one worker can show up in others via shared resources.
+
+**When to use:** single-node production deployments with trusted plugins. This is the default mode in `auto` selection outside Kubernetes.
+
+### Warmup
+
+Cold starts are the worst-case latency — the first time a plugin runs, the worker has to import the handler module, which for large plugins can take 200–500ms. Warmup pre-imports handlers during startup so the first real invocation is instant.
+
+```ts
+warmup: {
+  mode: 'top-n',
+  topN: 5,         // pre-warm the 5 most-used handlers from analytics
+  maxHandlers: 20, // safety cap
+}
+```
+
+`'top-n'` reads recent analytics events to pick the hottest handlers; `'marked'` warms up handlers that declare `warmup: true` in their manifest (if supported). Use `'top-n'` for deployments with stable traffic patterns; `'marked'` for known-critical handlers regardless of traffic.
+
+## Container
+
+Each handler invocation runs in a freshly-provisioned Docker container. The container has its own filesystem, network namespace, memory limits, and CPU limits. When the handler finishes, the container is torn down.
+
+```
+Service process (REST API)
+  │
+  └─► Gateway /internal/dispatch (POST)
+      │
+      └─► Docker environment adapter: create + start container
+          │
+          └─► Container (runtime server)
+              │
+              └─► handler.execute(ctx, input)
+```
+
+Configured under `platform.execution`:
+
+```ts
+{
+  mode: 'container',
+  container: {
+    gatewayDispatchUrl: string;           // e.g. http://gateway:4000/internal/dispatch
+    gatewayInternalSecret: string;        // must match gateway's GATEWAY_INTERNAL_SECRET
+  }
+}
+```
+
+With adapter options for the Docker environment provider configured under `platform.adapterOptions.environment`:
+
+```json
+{
+  "environment": {
+    "defaultImage": "kb-runtime-server:local",
+    "autoRemove": true,
+    "mountWorkspace": true,
+    "workspaceMountPath": "/workspace",
+    "network": "kb-labs",
+    "gateway": {
+      "wsUrl": "ws://host.docker.internal:4000",
+      "jwtSecret": "${GATEWAY_JWT_SECRET}",
+      "dispatchSecret": "${GATEWAY_INTERNAL_SECRET}",
+      "dispatchUrl": "http://host.docker.internal:4000/internal/dispatch"
+    }
+  }
+}
+```
+
+**Pros:**
+
+- **Full OS isolation.** Kernel-enforced process, filesystem, and network namespaces. A plugin can't escape its container except through declared mounts and network rules.
+- **Hard resource limits.** cgroups enforce `memoryMb` and `cpuMs` from the permission spec.
+- **Per-tenant isolation.** Each container is fresh, so multi-tenant deployments don't share state between tenants.
+- **Untrusted code is safe.** Containers are designed to run code you don't trust.
+
+**Cons:**
+
+- **Latency overhead.** Container startup is 100–500ms depending on image size and Docker setup. Per-invocation cost.
+- **Operational complexity.** Requires a Docker daemon on the host, image management, container orchestration.
+- **Resource overhead.** Each container reserves memory even while idle (until torn down).
+- **Requires the gateway.** Container-mode dispatch goes through the gateway's `/internal/dispatch` endpoint, so the gateway has to be up and reachable.
+
+**When to use:** multi-tenant deployments, untrusted marketplace plugins, deployments where regulatory or security requirements mandate OS-level isolation. Also useful for plugins that need unusual system tools that don't fit in the host's base image.
+
+### Gateway dispatch
+
+In container mode, the flow is:
+
+1. Service receives the invocation (CLI, REST, workflow step).
+2. Service calls `POST /internal/dispatch` on the gateway with `{ handlerRef, input, context }`.
+3. Gateway mints a short-lived JWT for the container to call back with.
+4. Gateway asks the Docker environment adapter to provision a container with the JWT in its env.
+5. Container starts, connects to the gateway via WebSocket using the JWT, imports the handler, runs it.
+6. Handler results stream back through the gateway to the calling service.
+7. Container is torn down.
+
+See [Gateway → Architecture → Internal dispatch endpoint](/gateway/architecture#internal-dispatch-endpoint) for details.
+
+## Remote
+
+The `'remote'` mode is defined in the config schema but no adapter ships today. The intended use case is a dedicated execution service that handles all plugin invocations for a distributed fleet of platform instances — think "a serverless function runtime for plugin handlers".
+
+```ts
+remote?: {
+  endpoint?: string;
+}
+```
+
+Right now, attempting to use this mode fails at startup because no adapter is registered. Treat it as "coming eventually, don't plan around it".
+
+## Auto-detection
+
+Default is `mode: 'auto'`. The runtime inspects the environment:
+
+- **`process.env.EXECUTION_MODE`** — explicit override. If set, uses that mode directly.
+- **`process.env.KUBERNETES_SERVICE_HOST`** — if present, assumes Kubernetes and picks `container`.
+- **Otherwise** — picks `worker-pool`.
+
+In practice: set an explicit `mode` in `kb.config.json` for production. Auto-detect is a convenience for dev.
+
+## Isolation profiles
+
+Workflows have an orthogonal concept of **isolation profile** on each job:
+
+```ts
+type IsolationProfile = 'strict' | 'balanced' | 'relaxed';
+```
+
+This is separate from the execution mode. Isolation profile is a hint from the workflow author about how much isolation the job needs; the execution backend translates it into concrete choices (worker vs container, shared vs dedicated workspace, etc.).
+
+- **`strict`** — full isolation. Requires both workspace and environment adapters. Each job runs in a fresh container with a fresh workspace. No sharing with other jobs.
+- **`balanced`** — default. Requires a workspace adapter. Jobs run in their own workspace but may share worker threads or containers if the backend allows.
+- **`relaxed`** — no workspace required. Jobs run in-process against the shared cwd. Fastest, least isolated.
+
+The workflow daemon warns at startup if the workspace or environment adapters are missing for the isolation levels declared in workflow specs. See [Services → Workflow Daemon](/services/workflow-daemon) for the warning behavior.
+
+## Execution target
+
+Every workflow job (and some REST requests) can specify an `ExecutionTarget`:
+
+```ts
+interface ExecutionTarget {
+  environmentId?: string;              // specific environment to use
+  workspaceId?: string;                // specific workspace to attach
+  namespace?: string;                  // namespace for routing
+  workdir?: string;                    // working directory inside the workspace
+}
+```
+
+Targets are pins. A job with `target.environmentId: 'prod-env-1'` runs specifically in that environment, not in a freshly provisioned one. Useful for jobs that need access to a persistent environment (e.g. a long-lived browser session, a stateful service, a pre-warmed ML model).
+
+Without a target, the execution backend provisions fresh resources per invocation (or picks an idle one from the pool).
+
+## What plugin code sees
+
+Plugin handlers **don't** see the execution mode directly. They see a standard `ctx: PluginContextV3` with:
+
+- `ctx.runtime.fs` — sandboxed filesystem access, permission-gated.
+- `ctx.runtime.fetch` — sandboxed network access, permission-gated.
+- `ctx.runtime.env` — sandboxed env var access, permission-gated.
+- `ctx.platform.*` — platform services (LLM, cache, storage, etc.), which may be RPC proxies in container mode.
+
+The shims enforce declared permissions identically in every mode. `ctx.runtime.fs.readFile('/etc/passwd')` throws a permission error in-process and in a container — the only difference is that in a container, the `/etc/passwd` read wouldn't have been allowed by the OS either, so you get defense-in-depth.
+
+In container mode, `ctx.platform.llm.complete(...)` is an RPC call back through the gateway to the parent service, which calls the real LLM adapter and streams the response back. The plugin doesn't know.
+
+## Picking a mode
+
+Decision tree:
+
+- **Dev environment?** → `in-process`. Fast iteration, easy debugging.
+- **Single-node production, trusted plugins?** → `worker-pool`. Fault isolation without Docker.
+- **Multi-tenant or untrusted plugins?** → `container`. Full OS isolation.
+- **Kubernetes?** → `auto` (which will pick `container`) or explicit `container`.
+- **Don't know yet?** → start with `worker-pool` and switch if you need more isolation.
+
+## Changing modes
+
+Mode is set in `kb.config.json` under `platform.execution.mode`. Changing it requires restarting every service that executes plugin handlers (REST API, workflow daemon, CLI). Plugins don't need to change — the same handler code works across all modes.
+
+```json
+{
+  "platform": {
+    "execution": {
+      "mode": "worker-pool",
+      "workerPool": {
+        "min": 2,
+        "max": 10,
+        "warmup": { "mode": "top-n", "topN": 5 }
+      }
+    }
+  }
+}
+```
+
+Switch to container:
+
+```json
+{
+  "platform": {
+    "execution": {
+      "mode": "container",
+      "container": {
+        "gatewayDispatchUrl": "http://gateway:4000/internal/dispatch",
+        "gatewayInternalSecret": "${GATEWAY_INTERNAL_SECRET}"
+      }
+    }
+  }
+}
+```
+
+Restart:
+
+```bash
+kb-dev restart
+```
+
+## What to read next
+
+- **[Concepts → Plugin System](/concepts/plugin-system)** — the lifecycle plugins go through.
+- **[Configuration → kb.config.json → execution](/configuration/kb-config#platformexecution)** — the full execution config schema.
+- **[Gateway → Architecture → Internal dispatch](/gateway/architecture#internal-dispatch-endpoint)** — container-mode dispatch details.
+- **[Services → Workflow Daemon](/services/workflow-daemon)** — isolation profile warnings at startup.
+- **[Adapters → IEnvironmentProvider](/adapters/interfaces/environment)** — how container environments are provisioned.

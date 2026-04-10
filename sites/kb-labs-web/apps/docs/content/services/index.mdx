@@ -1,0 +1,135 @@
+---
+title: "Services"
+description: "The platform services: what runs, what ports they bind, how they compose."
+updatedAt: "2026-04-07"
+---
+
+KB Labs is not a monolith. It's a small collection of focused services that talk to each other over HTTP (and one WebSocket tunnel for the host agent). Each service is independently deployable, has its own manifest, and can be started via [`kb-dev`](https://github.com/kb-labs/kb-labs-dev).
+
+## The service map
+
+```
+             ┌──────────────────┐
+             │   Studio  :3000  │   ← browser SPA
+             └────────┬─────────┘
+                      │ HTTP + WSS
+                      ▼
+             ┌──────────────────┐
+             │  Gateway  :4000  │   ← central router
+             └────────┬─────────┘
+                      │
+        ┌─────────────┼─────────────┬──────────────┐
+        ▼             ▼             ▼              ▼
+  ┌─────────┐   ┌──────────┐  ┌───────────┐   ┌────────────┐
+  │  REST   │   │ Workflow │  │Marketplace│   │ Host Agent │
+  │ :5050   │   │  :7778   │  │   :5070   │   │(user laptop)│
+  └─────────┘   └──────────┘  └───────────┘   └────────────┘
+        │             │             │              │
+        └─────────────┼─────────────┘              │
+                      ▼                            │
+              ┌───────────────┐                    │
+              │ State Daemon  │                    │
+              │    :7777      │                    │
+              └───────────────┘                    │
+                                                   │
+                          ◀───  WSS tunnel  ───────┘
+```
+
+## The services
+
+### Long-running daemons
+
+| Service | Port | Entry | What it does |
+|---|---|---|---|
+| [**Gateway**](/gateway) | 4000 | `infra/kb-labs-gateway` | Central HTTP router, aggregates upstreams, auth termination, WebSocket dispatch |
+| [**REST API**](/services/rest-api) | 5050 | `platform/kb-labs-rest-api` | Fastify service hosting plugin REST routes, platform endpoints, OpenAPI |
+| [**Workflow Daemon**](/services/workflow-daemon) | 7778 | `platform/kb-labs-workflow/packages/workflow-daemon` | Workflow engine, job broker, cron scheduler, approvals API |
+| [**Marketplace**](/services/marketplace) | 5070 | `platform/kb-labs-marketplace` | Install, uninstall, discover entities; manages `.kb/marketplace.lock` |
+| **State Daemon** | 7777 | `platform/kb-labs-core/packages/core-state-daemon` | State Broker HTTP server for distributed rate limiting and quotas |
+
+### User-invoked
+
+| Service | Entry | What it does |
+|---|---|---|
+| [**CLI**](/services/cli) | `platform/kb-labs-cli` | The `kb` command — loads plugins, dispatches commands, renders output |
+| [**Studio**](/services/studio) | `platform/kb-labs-studio/apps/studio` | React SPA, hosts plugin pages via Module Federation |
+
+### End-user daemons
+
+| Service | Entry | What it does |
+|---|---|---|
+| [**Host Agent**](/services/host-agent) | `infra/kb-labs-host-agent` | Runs on developer laptops, tunnels local filesystem and git to cloud workflows |
+
+## Shared patterns
+
+Every daemon in the platform follows the same bootstrap template:
+
+1. Detect the monorepo root (walk up from `cwd` looking for `pnpm-workspace.yaml`).
+2. Load `.env` from the repo root.
+3. Call `createServiceBootstrap({ appId, repoRoot })` from `@kb-labs/core-runtime` — this initializes the global platform singleton (adapters, logger, cache, storage, everything from `kb.config.json`).
+4. Build a correlated logger with `serviceId: '<name>'` bindings — every log line from the service has the same `serviceId`, `logsSource`, and `layer` fields.
+5. Construct whatever business logic the service owns (registry, engine, job broker, whatever).
+6. Create a Fastify instance with `@kb-labs/shared-http` helpers (OpenAPI, health, readiness, metrics).
+7. Register routes.
+8. Listen on the configured port.
+9. Wire `SIGTERM` / `SIGINT` for graceful shutdown.
+
+This sameness is deliberate. If you've read one service's bootstrap, you've read them all — the differences are in the routes and the business logic, not in the plumbing.
+
+## Service manifests
+
+Every long-running daemon (except the host agent) ships with a `ServiceManifest` that tells `kb-dev` how to manage it:
+
+```ts
+interface ServiceManifest {
+  schema: 'kb.service/1';
+  id: string;                     // used as key in dev.config.json
+  name: string;
+  version: string;
+  description?: string;
+  runtime: {
+    entry: string;                // dist/index.js
+    port: number;
+    healthCheck: string;          // path, appended to http://localhost:<port>
+    protocol?: 'http' | 'ws';     // default 'http'
+  };
+  dependsOn?: string[];           // service IDs that must start first
+  env?: Record<string, ServiceEnvVar>;
+}
+```
+
+Source: [infra/kb-labs-plugin/packages/plugin-contracts/src/manifest.ts](infra/kb-labs-plugin/packages/plugin-contracts/src/manifest.ts).
+
+`kb-dev` reads these manifests, generates a `dev.config.json`, and uses it to manage the process lifecycle. See [Configuration → dev.config.json](/configuration/dev-config) for the consumer side.
+
+## Starting everything
+
+```bash
+kb-dev start                     # start all services + infrastructure (Qdrant, Redis, etc.)
+kb-dev status                    # see what's running
+kb-dev logs rest -f              # tail REST API logs
+kb-dev stop                      # stop everything
+```
+
+Or start individual services:
+
+```bash
+kb-dev start rest
+kb-dev start workflow --force    # kill any conflicting process on the port first
+```
+
+`dependsOn` is respected — starting `rest` will boot `qdrant` first because REST depends on it.
+
+## What's NOT a service
+
+Two things you might expect to find in this list but won't:
+
+- **Plugins** are not services. Plugins are loaded *inside* the CLI, REST API, and workflow daemon. Their code runs as part of those services, not as separate processes.
+- **Adapters** are not services. Adapters are libraries loaded at service bootstrap time. Each service has its own adapter instances, sharing config but not runtime state.
+
+## What to read next
+
+- [Gateway](/gateway) — the service everything else sits behind.
+- [Configuration → kb.config.json](/configuration/kb-config) — the platform config every service loads.
+- [Configuration → dev.config.json](/configuration/dev-config) — the `kb-dev` service definitions.
+- The individual service pages linked in the table above.

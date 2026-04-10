@@ -1,0 +1,236 @@
+/* Platform API — clean narrative design */
+
+/* ── Hero ── */
+.hero {
+  text-align: center;
+  padding: clamp(4rem, 8vw, 7rem) 1.5rem clamp(2rem, 4vw, 3rem);
+}
+
+.badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 100px;
+  padding: 0.35rem 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.hero h1 {
+  font-size: clamp(2.2rem, 5vw, 3.5rem);
+  font-weight: 760;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+  margin: 0 0 0.75rem;
+}
+
+.hero p {
+  font-size: clamp(1rem, 1.6vw, 1.2rem);
+  color: var(--muted);
+  margin: 0 auto 2.5rem;
+  max-width: 540px;
+  line-height: 1.6;
+}
+
+.heroCta {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 2rem;
+}
+
+/* ── Container ── */
+.container {
+  width: min(100% - 2.4rem, var(--container, 1140px));
+  margin-inline: auto;
+}
+
+/* ── Animated Config Block ── */
+.configWrapper {
+  max-width: 440px;
+  margin: 0 auto 1rem;
+}
+
+.configBlock {
+  background: #1a1d23;
+  border-radius: 12px;
+  padding: 0;
+  overflow: hidden;
+  text-align: left;
+}
+
+.configDots {
+  display: flex;
+  gap: 6px;
+  padding: 14px 16px 0;
+}
+
+.configDots span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.configDots span:nth-child(1) { background: #ff5f57; }
+.configDots span:nth-child(2) { background: #febc2e; }
+.configDots span:nth-child(3) { background: #28c840; }
+
+.configPre {
+  margin: 0;
+  padding: 1rem 1.5rem 1.25rem;
+  overflow-x: auto;
+}
+
+.configPre code {
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: #8b949e;
+  white-space: pre;
+}
+
+.configKey {
+  color: #7ee787;
+}
+
+.configValue {
+  color: #a5d6ff;
+  display: inline-block;
+  transition: opacity 400ms ease, transform 400ms ease;
+}
+
+.configValue.fading {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+.configCaption {
+  text-align: center;
+  font-size: 0.88rem;
+  color: var(--muted);
+  margin-top: 2.5rem;
+  font-style: italic;
+}
+
+/* ── Narrative adapter list ── */
+.narrativeSection {
+  padding: clamp(3rem, 6vw, 5rem) 1.5rem;
+}
+
+.narrativeSection h2 {
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  font-weight: 740;
+  letter-spacing: -0.025em;
+  margin-bottom: clamp(2rem, 4vw, 3.5rem);
+}
+
+.narrativeList {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.narrativeItem {
+  display: flex;
+  gap: 1.5rem;
+  padding: clamp(1.5rem, 3vw, 2.25rem) 0;
+  border-top: 1px solid var(--line);
+}
+
+.narrativeItem:last-child {
+  border-bottom: 1px solid var(--line);
+}
+
+.narrativeNum {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--accent);
+  flex-shrink: 0;
+  padding-top: 0.15rem;
+  min-width: 2rem;
+}
+
+.narrativeName {
+  font-size: clamp(1.1rem, 1.8vw, 1.3rem);
+  font-weight: 660;
+  margin: 0 0 0.4rem;
+}
+
+.narrativeDesc {
+  font-size: clamp(0.9rem, 1.3vw, 1rem);
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0 0 0.5rem;
+  max-width: 600px;
+}
+
+.narrativeProviders {
+  font-size: 0.85rem;
+  color: var(--accent);
+  font-weight: 500;
+  margin: 0;
+}
+
+/* ── Code example ── */
+.codeSection {
+  padding: clamp(3rem, 6vw, 5rem) 1.5rem;
+  background: var(--surface-alt, #f7f7f8);
+}
+
+.codeBlock {
+  width: min(100%, 700px);
+  margin-inline: auto;
+  background: #1a1d23;
+  border-radius: 12px;
+  padding: 0;
+  overflow: hidden;
+}
+
+.codeDots {
+  display: flex;
+  gap: 6px;
+  padding: 14px 16px 0;
+}
+
+.codeDots span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.codeDots span:nth-child(1) { background: #ff5f57; }
+.codeDots span:nth-child(2) { background: #febc2e; }
+.codeDots span:nth-child(3) { background: #28c840; }
+
+.codeBlock pre {
+  margin: 0;
+  padding: 1.25rem 1.5rem 1.5rem;
+  overflow-x: auto;
+}
+
+.codeBlock code {
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: #c9d1d9;
+  white-space: pre;
+}
+
+/* ── Syntax highlighting ── */
+.cKw      { color: #ff7b72; }       /* keywords: import, const, await, new, from */
+.cType    { color: #ffa657; }       /* types: KBPlatform */
+.cStr     { color: #a5d6ff; }       /* strings */
+.cNum     { color: #79c0ff; }       /* numbers */
+.cFn      { color: #d2a8ff; }       /* methods: llm, complete, cache, set */
+.cVar     { color: #ffa657; }       /* variables: process, KB_API_KEY */
+.cComment { color: #8b949e; font-style: italic; }  /* comments */
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .configValue { transition: none; }
+  .configValue.fading { opacity: 1; transform: none; }
+}

@@ -1,0 +1,49 @@
+{
+  "name": "@kb-labs/adapters-workspace-agent",
+  "version": "0.8.0",
+  "description": "Workspace adapter that materializes workspaces from a remote Host Agent via Gateway",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint . --fix"
+  },
+  "peerDependencies": {
+    "@kb-labs/core-platform": "workspace:*"
+  },
+  "devDependencies": {
+    "@kb-labs/core-platform": "workspace:*",
+    "@types/node": "^24.3.3",
+    "eslint": "^9",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4",
+    "@kb-labs/devkit": "workspace:*",
+    "rimraf": "^6.0.1"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "kb": {
+    "manifest": "./dist/manifest.js"
+  }
+}

@@ -1,0 +1,446 @@
+---
+title: "Writing a Custom Adapter"
+description: "End-to-end tutorial — package layout, manifest, factory, registration, and testing."
+updatedAt: "2026-04-07"
+order: 3
+---
+
+This is a hands-on walkthrough for building a custom adapter. We'll build a simple cache adapter backed by a Memcached-like TCP service to illustrate the full shape. The same pattern applies to any interface — just swap `ICache` for `ILLM`, `IStorage`, or whichever service you're implementing.
+
+Before starting, skim [Adapters → Overview](/adapters). It covers the architecture (manifest + factory, dependency ordering, extension points) that this tutorial builds on.
+
+## Prerequisites
+
+- A working KB Labs install (monorepo or installer-based).
+- `@kb-labs/core-platform` in your dependencies — it provides the interfaces and manifest types.
+- An interface you're implementing, picked from the [Service Interfaces](/adapters/interfaces) list.
+
+## Step 1 — Pick an interface
+
+Your adapter implements exactly one platform interface (or extends another adapter — see step 7 on extensions).
+
+For this tutorial we'll implement [`ICache`](/adapters/interfaces/cache), which has 10 methods: `get`, `set`, `delete`, `clear`, three sorted-set operations (`zadd`, `zrangebyscore`, `zrem`), and one atomic operation (`setIfNotExists`).
+
+All 10 are required. There are no optional methods on `ICache` — even an in-memory adapter has to satisfy the full surface.
+
+## Step 2 — Create the package
+
+A minimal adapter package layout:
+
+```
+packages/my-cache-adapter/
+├── src/
+│   ├── index.ts           # exports manifest + createAdapter
+│   ├── adapter.ts         # the class implementing ICache
+│   └── config.ts          # Zod schema for options
+├── package.json
+├── tsconfig.json
+└── tsup.config.ts
+```
+
+`package.json`:
+
+```json
+{
+  "name": "@example/kb-adapter-mycache",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@kb-labs/core-platform": "^1.0.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.0",
+    "tsup": "^8.0.0"
+  },
+  "peerDependencies": {
+    "@kb-labs/core-platform": "^1.0.0"
+  }
+}
+```
+
+Key points:
+
+- **`@kb-labs/core-platform` is both a dependency and a peer dependency.** The adapter needs it at build time for types; the host process provides the shared singleton at runtime. Peer dependency is the idiomatic way to express "use the host's copy".
+- **`type: "module"`** — adapters are ESM-only. The runtime uses `import()` to load them; CommonJS modules won't work with the async import path.
+- **Export a single entry** — the runtime always imports from the package root. Don't expose sub-paths unless you have a specific reason.
+
+## Step 3 — Write the config schema
+
+Use Zod for config validation. Adapters validate their own options — the runtime doesn't do it for you.
+
+`src/config.ts`:
+
+```ts
+import { z } from 'zod';
+
+export const MyCacheConfigSchema = z.object({
+  host:    z.string().default('localhost'),
+  port:    z.number().int().positive().default(11211),
+  timeoutMs: z.number().int().positive().default(5000),
+  namespace: z.string().default('kb'),
+});
+
+export type MyCacheConfig = z.infer<typeof MyCacheConfigSchema>;
+```
+
+Keep the schema tight: every field has a type, a positive bound where applicable, and a default. The adapter should be usable with an empty `{}` config in dev.
+
+## Step 4 — Implement the interface
+
+`src/adapter.ts`:
+
+```ts
+import type { ICache } from '@kb-labs/core-platform';
+import type { MyCacheConfig } from './config.js';
+
+export class MyCacheAdapter implements ICache {
+  constructor(private config: MyCacheConfig) {}
+
+  private key(k: string): string {
+    return `${this.config.namespace}:${k}`;
+  }
+
+  async get<T>(key: string): Promise<T | null> {
+    // Replace with your backend call.
+    const raw = await this.backendGet(this.key(key));
+    if (raw === null) return null;
+    return JSON.parse(raw) as T;
+  }
+
+  async set<T>(key: string, value: T, ttl?: number): Promise<void> {
+    const serialized = JSON.stringify(value);
+    await this.backendSet(this.key(key), serialized, ttl);
+  }
+
+  async delete(key: string): Promise<void> {
+    await this.backendDelete(this.key(key));
+  }
+
+  async clear(pattern?: string): Promise<void> {
+    if (pattern) {
+      const keys = await this.backendKeys(this.key(pattern));
+      for (const k of keys) await this.backendDelete(k);
+    } else {
+      await this.backendClear(this.config.namespace);
+    }
+  }
+
+  async zadd(key: string, score: number, member: string): Promise<void> {
+    await this.backendZAdd(this.key(key), score, member);
+  }
+
+  async zrangebyscore(key: string, min: number, max: number): Promise<string[]> {
+    return this.backendZRangeByScore(this.key(key), min, max);
+  }
+
+  async zrem(key: string, member: string): Promise<void> {
+    await this.backendZRem(this.key(key), member);
+  }
+
+  async setIfNotExists<T>(key: string, value: T, ttl?: number): Promise<boolean> {
+    const serialized = JSON.stringify(value);
+    return this.backendSetNX(this.key(key), serialized, ttl);
+  }
+
+  // --- Replace these with real backend calls ---
+  private async backendGet(_k: string): Promise<string | null> { return null; }
+  private async backendSet(_k: string, _v: string, _ttl?: number): Promise<void> {}
+  private async backendDelete(_k: string): Promise<void> {}
+  private async backendKeys(_pattern: string): Promise<string[]> { return []; }
+  private async backendClear(_ns: string): Promise<void> {}
+  private async backendZAdd(_k: string, _score: number, _member: string): Promise<void> {}
+  private async backendZRangeByScore(_k: string, _min: number, _max: number): Promise<string[]> { return []; }
+  private async backendZRem(_k: string, _k2: string): Promise<void> {}
+  private async backendSetNX(_k: string, _v: string, _ttl?: number): Promise<boolean> { return true; }
+}
+```
+
+A few things to get right:
+
+- **`get` returns `null`, not `undefined`.** This matches Redis semantics and is what [`ICache`](/adapters/interfaces/cache) specifies.
+- **TTLs are in milliseconds.** If your backend uses seconds (Memcached does), divide inside the adapter; callers should never have to think about the unit.
+- **Namespace the keys.** Every adapter should support multiple concurrent users without key collisions. A `namespace` prefix on every key is the cheap way to do it.
+- **Don't throw on missing keys.** `get(missing)` returns `null`; `delete(missing)` is a silent no-op. The ICache contract rules this out as an error condition.
+- **Clear without a pattern wipes everything.** Don't silently scope it to a namespace — if a caller wants scoped clearing, they pass a pattern.
+
+## Step 5 — Write the manifest and factory
+
+`src/index.ts`:
+
+```ts
+import type { AdapterManifest, AdapterFactory, ICache } from '@kb-labs/core-platform';
+import { MyCacheAdapter } from './adapter.js';
+import { MyCacheConfigSchema, type MyCacheConfig } from './config.js';
+
+export const manifest: AdapterManifest = {
+  manifestVersion: '1.0.0',
+  id: 'my-cache',
+  name: 'MyCache',
+  version: '0.1.0',
+  description: 'A simple networked cache adapter for KB Labs',
+  type: 'core',
+  implements: 'ICache',
+  capabilities: {
+    batch: false,
+    transactions: false,
+  },
+  configSchema: {
+    host:      { type: 'string', default: 'localhost', description: 'Backend host' },
+    port:      { type: 'number', default: 11211, description: 'Backend port' },
+    timeoutMs: { type: 'number', default: 5000, description: 'Request timeout in ms' },
+    namespace: { type: 'string', default: 'kb', description: 'Key namespace prefix' },
+  },
+};
+
+export const createAdapter: AdapterFactory<unknown, {}, ICache> = (rawConfig) => {
+  // Validate config through Zod (runtime doesn't do this for you).
+  const config: MyCacheConfig = MyCacheConfigSchema.parse(rawConfig ?? {});
+  return new MyCacheAdapter(config);
+};
+```
+
+The runtime imports this module, reads `manifest`, and calls `createAdapter(config, deps)`. The `config` is whatever's under `platform.adapterOptions.cache` in `kb.config.json`; `deps` is an object populated from `manifest.requires.adapters` (empty here because we don't depend on anything).
+
+**Notes on `configSchema`.** This is the manifest-level documentation of the config shape, used by IDE completion and auto-generated docs. It's **informational only** — the runtime doesn't validate against it. Actual validation is your Zod schema. Keep them in sync manually.
+
+## Step 6 — Build and link
+
+```bash
+cd packages/my-cache-adapter
+pnpm install
+pnpm build
+```
+
+Then link the package from your KB Labs workspace:
+
+```bash
+cd /path/to/kb-labs-workspace
+pnpm kb marketplace link /path/to/packages/my-cache-adapter
+```
+
+`marketplace link` adds an entry to `.kb/marketplace.lock` with `source: 'local'`, which means integrity mismatches auto-refresh on rebuild.
+
+## Step 7 — Configure and use
+
+Edit `.kb/kb.config.json`:
+
+```json
+{
+  "platform": {
+    "adapters": {
+      "cache": "@example/kb-adapter-mycache"
+    },
+    "adapterOptions": {
+      "cache": {
+        "host": "cache.example.internal",
+        "port": 11211,
+        "namespace": "myapp"
+      }
+    }
+  }
+}
+```
+
+Restart any running services to pick up the change:
+
+```bash
+kb-dev restart rest workflow
+# or
+pnpm kb marketplace clear-cache
+```
+
+In a plugin handler, use it through the standard hook:
+
+```ts
+import { useCache } from '@kb-labs/sdk';
+
+const cache = useCache();
+if (cache) {
+  await cache.set('user:123', { name: 'Alice' }, 60_000);
+  const value = await cache.get<{ name: string }>('user:123');
+}
+```
+
+The plugin code doesn't know which adapter it's calling — `useCache()` returns whatever's registered at runtime. Swapping `@example/kb-adapter-mycache` for `@kb-labs/adapters-redis` is a one-line change in `kb.config.json`.
+
+## Step 8 — Test the adapter
+
+Unit tests for adapters are straightforward — construct an instance with a test config and call methods on it. For integration tests you'll need a real backend.
+
+`src/__tests__/adapter.test.ts`:
+
+```ts
+import { describe, it, expect, beforeEach } from 'vitest';
+import { MyCacheAdapter } from '../adapter.js';
+
+describe('MyCacheAdapter', () => {
+  let cache: MyCacheAdapter;
+
+  beforeEach(() => {
+    cache = new MyCacheAdapter({
+      host: 'localhost',
+      port: 11211,
+      timeoutMs: 5000,
+      namespace: 'test',
+    });
+  });
+
+  it('returns null for missing keys', async () => {
+    expect(await cache.get('missing')).toBe(null);
+  });
+
+  it('roundtrips a value', async () => {
+    await cache.set('key', { foo: 'bar' });
+    const value = await cache.get<{ foo: string }>('key');
+    expect(value).toEqual({ foo: 'bar' });
+  });
+
+  it('respects TTL', async () => {
+    await cache.set('temp', 'value', 100);
+    await new Promise((r) => setTimeout(r, 150));
+    expect(await cache.get('temp')).toBe(null);
+  });
+});
+```
+
+For the cache adapter specifically, you can run your tests against a real Memcached / Redis container in CI. For LLM, vector store, or storage adapters, pick a real backend and point it at a test instance.
+
+## Writing an extension adapter
+
+The walkthrough above is for a **core** adapter — one that implements an interface directly. The other type is an **extension** adapter, which hooks into another adapter's callback surface without implementing the interface itself.
+
+The canonical example is the log ring buffer: it doesn't implement `ILogger`, it extends the logger by registering a callback via `logger.onLog(callback)`. The platform wires this up automatically when the extension adapter declares:
+
+```ts
+export const manifest: AdapterManifest = {
+  manifestVersion: '1.0.0',
+  id: 'log-ringbuffer',
+  name: 'Log Ring Buffer',
+  version: '0.1.0',
+  type: 'extension',               // ← not 'core'
+  implements: 'ILogRingBuffer',
+  extends: {
+    adapter: 'logger',             // the target runtime token
+    hook: 'onLog',                 // method on the target that accepts a callback
+    method: 'append',              // method on this adapter to wire in
+    priority: 10,                  // higher = called first
+  },
+  capabilities: { streaming: true },
+};
+```
+
+After all core adapters load, the runtime finds every extension, looks up its target, and calls `target[hook](event => this[method](event))`. Multiple extensions can hook the same target — they fire in priority order.
+
+The adapter factory still needs to return an object that has the declared `method`:
+
+```ts
+export class LogRingBufferAdapter {
+  private buffer: LogRecord[] = [];
+
+  append(record: LogRecord): void {
+    this.buffer.push(record);
+    if (this.buffer.length > 1000) this.buffer.shift();
+  }
+
+  query(q?: LogQuery): LogRecord[] { /* ... */ }
+}
+
+export const createAdapter: AdapterFactory<unknown, {}, LogRingBufferAdapter> = () => {
+  return new LogRingBufferAdapter();
+};
+```
+
+Extensions are declared under their own token in `kb.config.json`, same as core adapters:
+
+```json
+{
+  "platform": {
+    "adapters": {
+      "logger": "@kb-labs/adapters-pino",
+      "logRingBuffer": "@kb-labs/adapters-log-ringbuffer"
+    }
+  }
+}
+```
+
+## Writing an adapter with dependencies
+
+Some adapters need another adapter to work. For example, an event-bus adapter backed by the cache would depend on the cache adapter.
+
+Declare the dependency in the manifest:
+
+```ts
+export const manifest: AdapterManifest = {
+  manifestVersion: '1.0.0',
+  id: 'eventbus-cache',
+  name: 'Cache-backed Event Bus',
+  version: '0.1.0',
+  type: 'core',
+  implements: 'IEventBus',
+  requires: {
+    adapters: ['cache'],           // runtime token, not manifest id
+  },
+};
+```
+
+The runtime resolves `cache` to whatever's configured under `platform.adapters.cache` and passes it to your factory as a dependency:
+
+```ts
+export const createAdapter: AdapterFactory<
+  EventBusConfig,
+  { cache: ICache },              // ← typed deps
+  IEventBus
+> = (config, deps) => {
+  return new CacheEventBus(config, deps.cache);
+};
+```
+
+Key point: **`requires.adapters` uses runtime tokens, not manifest IDs.** The value `'cache'` refers to "the adapter bound to the `cache` token in config", not "an adapter whose `manifest.id` is `cache`". This trips people up on the first adapter with dependencies — re-read [Adapters → Overview → Dependencies](/adapters#dependencies) if this is confusing.
+
+## Publishing the adapter
+
+Once the adapter is working locally, you can publish it to npm and install it elsewhere:
+
+```bash
+cd packages/my-cache-adapter
+pnpm publish --access public
+```
+
+Users install it via the marketplace:
+
+```bash
+pnpm kb marketplace install @example/kb-adapter-mycache
+```
+
+The marketplace resolves the package, writes an entry to `.kb/marketplace.lock`, and the next service startup picks it up automatically.
+
+## Common pitfalls
+
+- **Forgetting to validate config.** The runtime passes `adapterOptions[token]` verbatim to your factory. If a user types `"timoutMs"` (typo), you'll get `undefined` with no warning — unless you validate via Zod and throw.
+- **Throwing for normal conditions.** `get(missing)` should return `null`, not throw. `delete(missing)` should succeed. `clear` on an empty backend should succeed. Reserve exceptions for actual failures (network errors, backend unreachable).
+- **Coupling to a specific product.** Don't hard-code `product: '@kb-labs/commit'` in your adapter — it's meant to serve all plugins. The platform wrapper layer handles source attribution.
+- **Skipping the sorted-set operations.** If you're implementing `ICache` with a backend that doesn't have sorted sets natively (e.g. plain Memcached), you still have to provide working `zadd`/`zrangebyscore`/`zrem`. Emulate them with an in-memory index or a secondary key pattern; don't throw.
+- **Ignoring `ttl`.** Even if your backend doesn't support TTLs, implement them with a wrapper timer or a "expires-at" field you check on read. Plugins rely on TTL semantics.
+- **Returning `undefined` from `get`.** The contract says `null`. Yes, it matters — the type system will tell you, but tests are the real check.
+
+## What to read next
+
+- [Adapters → Overview](/adapters) — the architecture this tutorial builds on.
+- [Service Interfaces](/adapters/interfaces) — every other interface you might implement.
+- [Configuration → kb.config.json](/configuration/kb-config) — the full adapter config schema.
+- [Plugins → Publishing](/plugins/publishing) — similar workflow for plugins, mostly the same marketplace commands.

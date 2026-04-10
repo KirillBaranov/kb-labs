@@ -1,0 +1,122 @@
+/* Demo page */
+
+.hero {
+  text-align: center;
+  padding: clamp(4rem, 8vw, 7rem) 1.5rem clamp(2rem, 4vw, 3rem);
+}
+
+.badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent, #0c66ff);
+  background: color-mix(in oklab, var(--accent, #0c66ff) 8%, transparent);
+  padding: 0.3rem 0.7rem;
+  border-radius: 20px;
+  margin-bottom: 1rem;
+}
+
+.hero h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 760;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+  margin: 0 0 0.75rem;
+}
+
+.hero p {
+  font-size: clamp(0.95rem, 1.4vw, 1.1rem);
+  color: var(--muted, #5c616d);
+  margin: 0 auto;
+  max-width: 580px;
+  line-height: 1.6;
+}
+
+/* ── Demo wrapper ── */
+.demoWrap {
+  width: min(100% - 3rem, 1100px);
+  margin-inline: auto;
+  margin-bottom: clamp(4rem, 8vw, 6rem);
+}
+
+/* ── Explainer grid ── */
+.explainer {
+  width: min(100% - 3rem, 1100px);
+  margin-inline: auto;
+  margin-bottom: clamp(4rem, 8vw, 6rem);
+}
+
+.explainer h2 {
+  font-size: clamp(1.3rem, 2.5vw, 1.8rem);
+  font-weight: 720;
+  letter-spacing: -0.025em;
+  margin: 0 0 2rem;
+  text-align: center;
+}
+
+.explainerGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.25rem;
+}
+
+.explainerCard {
+  border: 1px solid var(--line, #d9dde6);
+  border-radius: 12px;
+  padding: 1.5rem 1.25rem;
+  background: var(--surface, #fff);
+  transition: border-color 200ms ease;
+}
+
+.explainerCard:hover {
+  border-color: var(--line-strong, #c4cad8);
+}
+
+.explainerIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--accent, #0c66ff) 8%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 0.75rem;
+  color: var(--accent, #0c66ff);
+}
+
+.explainerCard h3 {
+  font-size: 0.9rem;
+  font-weight: 640;
+  margin: 0 0 0.4rem;
+  color: var(--text, #0f1115);
+}
+
+.explainerCard p {
+  font-size: 0.82rem;
+  color: var(--muted, #5c616d);
+  line-height: 1.55;
+  margin: 0;
+}
+
+.explainerCard code {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.78rem;
+  background: #f5f6f8;
+  padding: 0.1rem 0.3rem;
+  border-radius: 3px;
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .explainerGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .explainerGrid {
+    grid-template-columns: 1fr;
+  }
+}

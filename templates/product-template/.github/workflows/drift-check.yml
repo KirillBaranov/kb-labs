@@ -1,0 +1,10 @@
+name: Drift Check
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: '0 3 * * *' # nightly
+jobs:
+  drift:
+    uses: KirillBaranov/kb-labs-devkit/.github/workflows/drift-check-reusable.yml@main
+    with:
+      node-version: '20'

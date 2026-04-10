@@ -1,0 +1,47 @@
+.sider {
+  overflow: hidden;
+  height: calc(100vh - 28px);
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 28px;
+  background-color: var(--bg-sidebar);
+  border-right: none;
+  box-shadow: 1px 0 0 var(--border-primary), 2px 0 8px rgba(0, 0, 0, 0.03);
+  z-index: var(--z-sidebar);
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid var(--border-primary);
+  flex-shrink: 0;
+}
+
+.scrollArea {
+  position: absolute;
+  top: 64px;
+  left: 0;
+  right: 0;
+  bottom: 48px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.menu {
+  border-right: 0 !important;
+  padding: 4px 8px;
+}
+
+.settingsArea {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  border-top: 1px solid var(--border-primary);
+  background-color: var(--bg-sidebar);
+}

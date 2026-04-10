@@ -1,0 +1,69 @@
+{
+  "name": "@kb-labs/commit-core",
+  "version": "0.6.0",
+  "type": "module",
+  "description": "Core business logic for KB Labs Commit plugin - git analysis, plan generation, and commit application.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./analyzer": {
+      "import": "./dist/analyzer/index.js",
+      "types": "./dist/analyzer/index.d.ts"
+    },
+    "./generator": {
+      "import": "./dist/generator/index.js",
+      "types": "./dist/generator/index.d.ts"
+    },
+    "./applier": {
+      "import": "./dist/applier/index.js",
+      "types": "./dist/applier/index.d.ts"
+    },
+    "./storage": {
+      "import": "./dist/storage/index.js",
+      "types": "./dist/storage/index.d.ts"
+    },
+    "./dist/*": "./dist/*"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "pretype-check": "pnpm --filter @kb-labs/commit-core build",
+    "clean": "rimraf dist",
+    "build": "tsup --config tsup.config.ts",
+    "dev": "tsup --config tsup.config.ts --watch",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint . --fix",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "test:benchmarks": "vitest run tests/benchmarks/commit-type-accuracy.test.ts",
+    "test:all": "vitest run && vitest run tests/benchmarks/commit-type-accuracy.test.ts"
+  },
+  "dependencies": {
+    "@kb-labs/commit-contracts": "workspace:*",
+    "@kb-labs/sdk": "workspace:*",
+    "globby": "^11.0.0",
+    "minimatch": "^10.0.1",
+    "simple-git": "^3.25.0"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.3.3",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
