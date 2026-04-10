@@ -30,7 +30,7 @@ var rootCmd = &cobra.Command{
 	Short: "Local service manager for KB Labs platform",
 	Long: `kb-dev manages local development services for the KB Labs platform.
 
-It reads service definitions from .kb/dev.config.json and provides reliable
+It reads service definitions from .kb/devservices.yaml and provides reliable
 process management with health checks, dependency ordering, and auto-restart.
 
 Commands:
@@ -90,7 +90,7 @@ func Execute() {
 func init() {
 	rootCmd.PersistentFlags().BoolVar(&jsonMode, "json", false, "output as structured JSON")
 	rootCmd.PersistentFlags().BoolVar(&forceFlag, "force", false, "kill port conflicts before starting")
-	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "path to dev.config.json (default: .kb/dev.config.json)")
+	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "path to devservices.yaml (default: .kb/devservices.yaml)")
 
 	// Cascade flags — mutually exclusive.
 	rootCmd.PersistentFlags().Bool("cascade", false, "cascade to dependent services")

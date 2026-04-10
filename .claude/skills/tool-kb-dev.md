@@ -83,6 +83,6 @@ Supports `${VAR}` substitution in any string field:
 ## Important
 
 - **Never use `node ./path` to start services** — always `kb-dev start`
-- **Never change ports in `dev.config.json`** — fix the scripts instead
+- **Never change ports in `devservices.yaml`** — fix the scripts instead
 - Logs are stored in `.kb/logs/tmp/`
 - PID files in `.kb/tmp/`

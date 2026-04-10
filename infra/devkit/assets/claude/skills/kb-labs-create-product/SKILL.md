@@ -16,7 +16,7 @@ Before scaffolding, confirm:
 
 - **Service name** — kebab-case (e.g. `audit`, `notifier`).
 - **Kind** — HTTP API (Fastify), background daemon, or worker.
-- **Port** — must not collide with existing services in `.kb/dev.config.json`.
+- **Port** — must not collide with existing services in `.kb/devservices.yaml`.
 - **Dependencies** — does it need Redis, qdrant, state-daemon, gateway?
 
 ## Step 2: Pick the closest reference service
@@ -77,7 +77,7 @@ Routes without `tags:` are hidden — this is the visibility model.
 
 ## Step 5: Register the service with kb-dev
 
-Add an entry to `.kb/dev.config.json` so the service can be started/stopped/
+Add an entry to `.kb/devservices.yaml` so the service can be started/stopped/
 restarted via the unified manager:
 
 ```json
@@ -141,4 +141,4 @@ pnpm kb-dev health
 - Do not invent a per-service observability format
 - Do not duplicate platform types — always import from `@kb-labs/core-*`
 - Do not run the service via raw `node` or `pnpm *:dev` — always go through `kb-dev`
-- Do not commit secrets or hard-coded ports outside `.kb/dev.config.json`
+- Do not commit secrets or hard-coded ports outside `.kb/devservices.yaml`

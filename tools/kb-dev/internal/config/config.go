@@ -1,5 +1,5 @@
 // Package config loads and validates service definitions from either
-// .kb/dev.config.json (KB Labs native) or devservices.yaml (standalone).
+// .kb/devservices.yaml (KB Labs native) or devservices.yaml (standalone).
 package config
 
 import (

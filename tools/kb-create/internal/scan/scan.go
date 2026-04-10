@@ -317,7 +317,7 @@ func filterKnownDeps(deps []string, known map[string]struct{}) []string {
 	return filtered
 }
 
-// WriteConfigs writes marketplace.lock and dev.config.json to <platformDir>/.kb/.
+// WriteConfigs writes marketplace.lock and devservices.yaml to <platformDir>/.kb/.
 func WriteConfigs(platformDir string, r *ScanResult) error {
 	kbDir := filepath.Join(platformDir, ".kb")
 	if err := os.MkdirAll(kbDir, 0o750); err != nil {

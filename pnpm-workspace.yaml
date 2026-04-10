@@ -4,6 +4,7 @@ packages:
   - cli/*
   - shared/*
   - plugins/*/*
+  - '!plugins/fixtures/*'
   - adapters/*
   - infra/devkit
   - studio/*

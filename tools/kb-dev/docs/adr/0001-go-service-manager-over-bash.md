@@ -87,7 +87,7 @@ Manager works through `service.Runner` interface. Currently `LocalRunner` only. 
 ## Implementation
 
 1. Go binary at `infra/kb-labs-dev/` with same conventions as `installer/kb-labs-create/`
-2. Reads existing `.kb/dev.config.json` — no config migration needed
+2. Reads existing `.kb/devservices.yaml` — no config migration needed
 3. `scripts/dev.sh` gets a preamble that delegates to `kb-dev` if on PATH
 4. Gradual migration: both tools work during transition period
 

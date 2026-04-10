@@ -1,15 +1,15 @@
 ---
-title: "dev.config.json"
+title: "devservices.yaml"
 description: "kb-dev service definitions — ports, commands, dependencies, health checks, groups."
 updatedAt: "2026-04-07"
 order: 2
 ---
 
-`.kb/dev.config.json` is the service catalog consumed by [`kb-dev`](infra/kb-labs-dev/), the Go binary that manages local development processes. Every long-running daemon in a KB Labs deployment (REST API, workflow daemon, marketplace, gateway, state daemon, Studio, etc.) plus its infrastructure dependencies (Qdrant, Redis, Docker containers) is declared here.
+`.kb/devservices.yaml` is the service catalog consumed by [`kb-dev`](infra/kb-labs-dev/), the Go binary that manages local development processes. Every long-running daemon in a KB Labs deployment (REST API, workflow daemon, marketplace, gateway, state daemon, Studio, etc.) plus its infrastructure dependencies (Qdrant, Redis, Docker containers) is declared here.
 
-This is **not** the platform config. `kb.config.json` tells the platform which adapters to load; `dev.config.json` tells `kb-dev` which processes to start, how to health-check them, and what they depend on. They're separate files with separate schemas.
+This is **not** the platform config. `kb.config.json` tells the platform which adapters to load; `devservices.yaml` tells `kb-dev` which processes to start, how to health-check them, and what they depend on. They're separate files with separate schemas.
 
-The reference file in this repo is [.kb/dev.config.json](.kb/dev.config.json) — read it alongside this page for a real example.
+The reference file in this repo is [.kb/devservices.yaml](.kb/devservices.yaml) — read it alongside this page for a real example.
 
 ## Top-level shape
 
@@ -260,16 +260,16 @@ A Docker infrastructure service:
 
 1. **Pick a group.** Usually one that already exists; make a new one only if nothing fits.
 2. **Pick a port.** Make sure it doesn't collide with other services. The convention is backend on 4000–8000, UI on 3000s.
-3. **Add an entry** to `dev.config.json` with the required fields (`name`, `group`, `type`, `command`, `healthCheck`, `port`).
+3. **Add an entry** to `devservices.yaml` with the required fields (`name`, `group`, `type`, `command`, `healthCheck`, `port`).
 4. **Update the group's list** to include your new service ID.
 5. **Add `dependsOn`** if your service needs another service to be healthy first.
 6. **Run `kb-dev start <your-service>`** to verify it boots.
 
-If the service is a platform daemon, it should also have a [`ServiceManifest`](/services#service-manifests) (`kb.service/1`) in its source — that manifest is what lets `kb-dev` know how to install and update it when the service is published to npm. See [Services → Overview](/services) for the relationship between `ServiceManifest` and `dev.config.json`.
+If the service is a platform daemon, it should also have a [`ServiceManifest`](/services#service-manifests) (`kb.service/1`) in its source — that manifest is what lets `kb-dev` know how to install and update it when the service is published to npm. See [Services → Overview](/services) for the relationship between `ServiceManifest` and `devservices.yaml`.
 
 ## kb-dev commands that read this file
 
-Everything in `kb-dev` reads `dev.config.json`:
+Everything in `kb-dev` reads `devservices.yaml`:
 
 | Command | Uses |
 |---|---|
@@ -282,7 +282,7 @@ Everything in `kb-dev` reads `dev.config.json`:
 | `kb-dev ready [service]` | `services`, `healthCheck` — block until healthy |
 | `kb-dev doctor` | `services` — check env, ports, dependencies |
 
-None of them modify the file. To change the environment, edit `dev.config.json` and re-run the command.
+None of them modify the file. To change the environment, edit `devservices.yaml` and re-run the command.
 
 ## Gotchas
 
@@ -290,10 +290,10 @@ None of them modify the file. To change the environment, edit `dev.config.json` 
 - **Commands run in a shell.** Use `&&` and `|| true` for chaining, but be aware that this isn't a cross-platform shell — the dev config assumes Unix-style shells. Windows users need WSL or similar.
 - **Port collisions are silent.** If two services declare the same `port`, `kb-dev` won't warn you at startup — it'll just fail health-checking the second one. Run `kb-dev doctor` to detect collisions explicitly.
 - **Docker cleanup is your responsibility.** `stopCommand` runs when you say `kb-dev stop`, but if `kb-dev` crashes mid-run, you may end up with orphaned containers. `docker ps -a` and manual cleanup.
-- **`dev.config.json` is not versioned by plugins.** Plugin services need to be added manually. Future versions may auto-generate the file from `ServiceManifest` declarations at install time.
+- **`devservices.yaml` is not versioned by plugins.** Plugin services need to be added manually. Future versions may auto-generate the file from `ServiceManifest` declarations at install time.
 
 ## What to read next
 
-- [Services → Overview](/services) — how `ServiceManifest` and `dev.config.json` relate.
+- [Services → Overview](/services) — how `ServiceManifest` and `devservices.yaml` relate.
 - [Configuration → kb.config.json](/configuration/kb-config) — the platform config, distinct from this file.
 - [Configuration → Environment Variables](/configuration/environment-variables) — what the platform reads from env.
