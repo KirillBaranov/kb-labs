@@ -159,11 +159,29 @@ func loadDotEnv(path string) (map[string]string, error) {
 		key := strings.TrimSpace(line[:idx])
 		val := strings.TrimSpace(line[idx+1:])
 
-		// Strip optional surrounding quotes (" or ').
-		if len(val) >= 2 {
-			if (val[0] == '"' && val[len(val)-1] == '"') ||
-				(val[0] == '\'' && val[len(val)-1] == '\'') {
+		// Multiline quoted value: collect lines until closing quote.
+		if len(val) >= 1 && (val[0] == '"' || val[0] == '\'') {
+			quote := val[0]
+			if len(val) >= 2 && val[len(val)-1] == quote {
+				// Single-line quoted value.
 				val = val[1 : len(val)-1]
+			} else {
+				// Multiline: accumulate until closing quote on its own.
+				var buf strings.Builder
+				buf.WriteString(val[1:]) // first line without opening quote
+				for scanner.Scan() {
+					lineNum++
+					next := scanner.Text()
+					trimmed := strings.TrimRight(next, " \t")
+					if len(trimmed) > 0 && trimmed[len(trimmed)-1] == quote {
+						buf.WriteByte('\n')
+						buf.WriteString(trimmed[:len(trimmed)-1])
+						break
+					}
+					buf.WriteByte('\n')
+					buf.WriteString(next)
+				}
+				val = buf.String()
 			}
 		}
 
