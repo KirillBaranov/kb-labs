@@ -94,12 +94,27 @@ Swap backends without changing your code:
 
 ---
 
-## Tooling
+## Toolchain
 
-KB Labs ships three Go binaries that work independently of the Node.js platform:
+Four Go binaries. No Node.js required. Work standalone or as part of the platform.
+
+| Tool | What it does |
+|------|-------------|
+| **[kb-devkit](tools/kb-devkit)** | Monorepo orchestrator — topological builds, content-addressable cache, workspace health |
+| **[kb-dev](tools/kb-dev)** | Local service manager — start/stop/restart with health probes and dependency ordering |
+| **[kb-deploy](tools/kb-deploy)** | Deploy to any VPS — affected-based, Docker + registry, no Kubernetes required |
+| **[kb-monitor](tools/kb-monitor)** | Remote observability — logs, health checks, container exec over SSH |
+
+Install `kb-dev` standalone:
 
 ```bash
-pnpm build              # build all packages (cached, topological order)
+curl -sf https://raw.githubusercontent.com/KirillBaranov/kb-labs/main/tools/kb-dev/install.sh | sh
+```
+
+Or use within the monorepo:
+
+```bash
+pnpm build              # topological build, cached
 pnpm build:affected     # only changed packages + downstream
 pnpm check              # build + lint + type-check + test
 
