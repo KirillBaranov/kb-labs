@@ -190,5 +190,12 @@ Selling hosted access? [Get in touch](https://kblabs.ru/enterprise).
 ---
 
 <p align="center">
+  KB Labs is built with KB Labs — dogfooding all the way down.<br>
+  Every workflow, every deploy, every agent run you see in this repo goes through the platform itself.
+</p>
+
+---
+
+<p align="center">
   Built by <a href="https://k-baranov.ru">Kirill Baranov</a> · <a href="https://github.com/KirillBaranov">GitHub</a>
 </p>
