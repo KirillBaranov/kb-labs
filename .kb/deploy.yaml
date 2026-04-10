@@ -12,8 +12,9 @@ targets:
       user: ${SSH_USER}
       key_env: SSH_KEY
     remote:
-      compose_file: ~/kb-labs/sites/kb-labs-web/docker-compose.yml
+      compose_file: ~/kb-labs/docker-compose.yml
       service: web
+      container_name: kb-labs-web
     permissions:
       logs: true
       health: true
@@ -31,8 +32,9 @@ targets:
       user: ${SSH_USER}
       key_env: SSH_KEY
     remote:
-      compose_file: ~/kb-labs/sites/kb-labs-web/docker-compose.yml
+      compose_file: ~/kb-labs/docker-compose.yml
       service: docs
+      container_name: kb-labs-docs
     permissions:
       logs: true
       health: true

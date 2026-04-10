@@ -27,8 +27,17 @@ type SSHConfig struct {
 
 // RemoteConfig describes the remote docker compose setup.
 type RemoteConfig struct {
-	ComposeFile string `yaml:"compose_file"`
-	Service     string `yaml:"service"`
+	ComposeFile   string `yaml:"compose_file"`
+	Service       string `yaml:"service"`
+	ContainerName string `yaml:"container_name"` // optional; defaults to Service if empty
+}
+
+// Container returns the effective container name for docker inspect/exec.
+func (r RemoteConfig) Container() string {
+	if r.ContainerName != "" {
+		return r.ContainerName
+	}
+	return r.Service
 }
 
 // Permissions controls which monitor operations are allowed per target.
