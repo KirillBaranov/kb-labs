@@ -3,9 +3,9 @@
 </p>
 
 <p align="center">
-  <a href="https://kblabs.ru/en">Website</a> ·
-  <a href="https://twitter.com/kblabsdev">Twitter</a> ·
-  <a href="https://discord.gg/kblabs">Discord</a>
+  <a href="https://kblabs.ru/en" target="_blank">Website</a> ·
+  <a href="https://twitter.com/kblabsdev" target="_blank">Twitter</a> ·
+  <a href="https://discord.gg/kblabs" target="_blank">Discord</a>
 </p>
 
 <p align="center">
