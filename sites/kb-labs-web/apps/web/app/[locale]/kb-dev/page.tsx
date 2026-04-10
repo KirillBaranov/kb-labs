@@ -60,7 +60,7 @@ export default async function KbDevPage({ params }: Props) {
             </a>
             <a
               className="btn secondary"
-              href="https://github.com/KirillBaranov/kb-labs-dev/releases/latest"
+              href="https://github.com/KirillBaranov/kb-labs/releases/latest"
               target="_blank"
               rel="noopener noreferrer"
             >
@@ -159,7 +159,7 @@ export default async function KbDevPage({ params }: Props) {
                   <span>{item.platform}</span>
                   <code>{item.file}</code>
                   <a
-                    href={`https://github.com/KirillBaranov/kb-labs-dev/releases/latest/download/${item.file}`}
+                    href={`https://github.com/KirillBaranov/kb-labs/releases/latest/download/${item.file}`}
                     target="_blank"
                     rel="noopener noreferrer"
                   >

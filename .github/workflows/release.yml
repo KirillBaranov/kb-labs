@@ -14,27 +14,73 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release:
-    name: Version & Publish
+  # ── 1. Cross-compile all Go tools ────────────────────────────────────────────
+  build-go:
+    name: Build Go tools
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - { goos: linux,   goarch: amd64  }
+          - { goos: linux,   goarch: arm64  }
+          - { goos: darwin,  goarch: amd64  }
+          - { goos: darwin,  goarch: arm64  }
+          - { goos: windows, goarch: amd64  }
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # ── Go tools ──────────────────────────────────────────────────────────────
       - uses: actions/setup-go@v5
         with:
           go-version-file: tools/kb-devkit/go.mod
           cache-dependency-path: |
             tools/kb-devkit/go.sum
             tools/kb-dev/go.sum
-      - name: Build Go tools
-        run: |
-          make build -C tools/kb-devkit
-          make build -C tools/kb-dev
+            tools/kb-deploy/go.sum
+            tools/kb-monitor/go.sum
 
-      # ── Node + pnpm ───────────────────────────────────────────────────────────
+      - name: Build all tools
+        env:
+          GOOS:   ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+        run: |
+          VERSION=$(git describe --tags --always --dirty 2>/dev/null || echo "dev")
+          COMMIT=$(git rev-parse --short HEAD)
+          DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          LDFLAGS="-s -w -X main.version=$VERSION -X main.commit=$COMMIT -X main.date=$DATE"
+
+          mkdir -p dist
+
+          for TOOL in kb-devkit kb-dev kb-deploy kb-monitor; do
+            EXT=""
+            [ "$GOOS" = "windows" ] && EXT=".exe"
+            OUT="dist/${TOOL}-${{ matrix.goos }}-${{ matrix.goarch }}${EXT}"
+            go build -ldflags "$LDFLAGS" -o "$OUT" "./tools/$TOOL"
+            echo "built $OUT"
+          done
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum * > checksums-${{ matrix.goos }}-${{ matrix.goarch }}.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: go-dist-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/
+          retention-days: 1
+
+  # ── 2. Build Node packages ───────────────────────────────────────────────────
+  build-node:
+    name: Build Node packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: pnpm/action-setup@v4
         with:
           run_install: false
@@ -51,13 +97,97 @@ jobs:
           key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: pnpm-store-${{ runner.os }}-
 
+      # Need a host-platform Go binary for kb-devkit to drive the TS build.
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/kb-devkit/go.mod
+      - name: Build kb-devkit (host)
+        run: make build -C tools/kb-devkit
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Build (topological order)
         run: pnpm build
 
-      # ── Changesets: create Release PR or publish ──────────────────────────────
+      - uses: actions/upload-artifact@v4
+        with:
+          name: node-dist
+          path: |
+            **/dist/
+            !**/node_modules/**/dist/
+          retention-days: 1
+
+  # ── 3. Create GitHub Release + upload all assets ─────────────────────────────
+  release:
+    name: GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build-go, build-node]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all Go dist artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: go-dist-*
+          path: all-dist/
+          merge-multiple: true
+
+      - name: Merge checksums
+        run: |
+          cd all-dist
+          cat checksums-*.txt | sort > checksums.txt
+          rm checksums-*.txt
+
+      - name: List artifacts
+        run: ls -lh all-dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          generate_release_notes: true
+          files: all-dist/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ── 4. Publish npm packages (Changesets) ─────────────────────────────────────
+  publish-npm:
+    name: Publish npm
+    runs-on: ubuntu-latest
+    needs: [build-go, build-node]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+          cache: pnpm
+
+      - name: Restore pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ~/.pnpm-store
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: pnpm-store-${{ runner.os }}-
+
+      - name: Restore Node dist
+        uses: actions/download-artifact@v4
+        with:
+          name: node-dist
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Create Release PR or Publish
         uses: changesets/action@v1
         with:

@@ -15,7 +15,7 @@ It works with any project via `devservices.yaml`. When you install KB Labs, `kb-
 curl -fsSL https://kblabs.ru/kb-dev/install.sh | sh
 ```
 
-The script detects your OS and architecture, downloads the right binary from [GitHub Releases](https://github.com/KirillBaranov/kb-labs-dev/releases), verifies the SHA256 checksum, and installs to `~/.local/bin/kb-dev`. Supports macOS, Linux, and Windows (Git Bash / WSL).
+The script detects your OS and architecture, downloads the right binary from [GitHub Releases](https://github.com/KirillBaranov/kb-labs/releases), verifies the SHA256 checksum, and installs to `~/.local/bin/kb-dev`. Supports macOS, Linux, and Windows (Git Bash / WSL).
 
 **Pin a specific version:**
 
@@ -39,8 +39,8 @@ curl -fsSL https://kblabs.ru/kb-dev/install.sh | sh
 **Build from source:**
 
 ```bash
-git clone https://github.com/KirillBaranov/kb-labs-dev
-cd kb-labs-dev && make build
+git clone https://github.com/KirillBaranov/kb-labs
+cd kb-labs/tools/kb-dev && make build
 ```
 
 ## Quick start
@@ -360,4 +360,4 @@ kb-dev start rest        # boots the REST API (+ its deps)
 
 - [Services overview](/services) — the full KB Labs service map.
 - [Configuration → devservices.yaml](/configuration/devservices) — complete field reference.
-- [Source on GitHub](https://github.com/KirillBaranov/kb-labs-dev) — Go source, issues, releases.
+- [Source on GitHub](https://github.com/KirillBaranov/kb-labs/tree/main/tools/kb-dev) — Go source, issues, releases.
