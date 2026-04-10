@@ -26,9 +26,7 @@
 
 KB Labs covers the entire development workflow in one ecosystem — from scaffolding to production observability. Every tool shares the same config, the same permissions, and the same agent context. No glue code, no switching between five CLIs.
 
-**TL;DR** — install alongside your stack, get the full dev cycle (build → run → deploy → observe → automate) in one config. Your existing tools stay. You decide what to replace and when.
-
-Try it alongside what you have. Migrate when you're ready — or never.
+**TL;DR** — install alongside your stack, get the full dev cycle (build → run → deploy → observe → automate) in one config. Your existing tools stay. Migrate when you're ready — or never.
 
 > **For CTOs:** Self-hosted, MIT core, your data stays on your VPS. Fork it, modify it, or walk away — the code goes with you. Zero vendor lock-in by design.
 
