@@ -48,6 +48,10 @@
     "deploy:all":     "./tools/kb-deploy/kb-deploy run --all",
     "deploy:status":  "./tools/kb-deploy/kb-deploy status",
 
+    "monitor":        "./tools/kb-monitor/kb-monitor status",
+    "monitor:health": "./tools/kb-monitor/kb-monitor health",
+    "monitor:logs":   "./tools/kb-monitor/kb-monitor logs",
+
     "changeset":      "changeset",
     "version":        "changeset version",
     "release":        "changeset publish"
