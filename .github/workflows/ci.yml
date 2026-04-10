@@ -32,6 +32,7 @@ jobs:
             tools/kb-devkit/go.sum
             tools/kb-dev/go.sum
             tools/kb-deploy/go.sum
+            tools/kb-monitor/go.sum
       - name: Build kb-devkit
         run: make build
         working-directory: tools/kb-devkit
@@ -44,12 +45,19 @@ jobs:
       - name: Test kb-deploy
         run: go test -race -count=1 ./...
         working-directory: tools/kb-deploy
+      - name: Build kb-monitor
+        run: make build
+        working-directory: tools/kb-monitor
+      - name: Test kb-monitor
+        run: go test -race -count=1 ./...
+        working-directory: tools/kb-monitor
       - name: Collect binaries
         run: |
           mkdir -p go-tools
           cp tools/kb-devkit/kb-devkit go-tools/kb-devkit
           cp tools/kb-dev/kb-dev go-tools/kb-dev
           cp tools/kb-deploy/kb-deploy go-tools/kb-deploy
+          cp tools/kb-monitor/kb-monitor go-tools/kb-monitor
       - uses: actions/upload-artifact@v4
         with:
           name: go-tools

@@ -54,6 +54,7 @@ workspace:
         - "tools/kb-devkit"
         - "tools/kb-create"
         - "tools/kb-deploy"
+        - "tools/kb-monitor"
       language: go
       preset: go-binary
 
@@ -345,6 +346,7 @@ tasks:
         - "kb-dev"
         - "kb-create"
         - "kb-deploy"
+        - "kb-monitor"
 
     - categories: [site]
       command: pnpm build
