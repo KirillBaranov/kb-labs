@@ -48,8 +48,7 @@ export async function getDocPage(slugParts: string[]) {
 
   const compiled = await compileMDX<Frontmatter>({
     source: content,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    components: MdxComponents as any,
+    components: MdxComponents as Record<string, unknown>,
     options: {
       parseFrontmatter: false,
       mdxOptions: {
