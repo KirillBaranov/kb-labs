@@ -2258,11 +2258,11 @@
   "roadmap": {
     "meta": {
       "title": "Product Roadmap — KB Labs",
-      "description": "See what's coming next for KB Labs — quarterly product development timeline."
+      "description": "What we're building and when — quarterly development plan."
     },
     "hero": {
       "title": "Product Roadmap",
-      "description": "Our development plan for the next two years. Updated quarterly."
+      "description": "What we're building, what's next, and where we're headed. Updated quarterly."
     },
     "legend": {
       "shipped": "Shipped",
@@ -2274,27 +2274,37 @@
       {
         "id": "q2-2026",
         "label": "Q2 2026",
-        "theme": "Foundation & GA",
+        "theme": "Stabilization & Closed Beta",
         "status": "in-progress",
         "items": [
           {
-            "title": "Plugin System GA",
-            "description": "Stable API, versioned plugin runtime, and marketplace distribution.",
+            "title": "Go Tooling Stabilization",
+            "description": "kb-devkit, kb-dev, kb-deploy, kb-monitor — stable releases with cross-platform binaries and install scripts.",
             "status": "in-progress"
           },
           {
-            "title": "Mind RAG v1.0",
-            "description": "Semantic code search with anti-hallucination verification, hardened for daily use.",
+            "title": "E2E Testing on Critical Paths",
+            "description": "End-to-end coverage for installation, service startup, and core product workflows.",
             "status": "in-progress"
           },
           {
-            "title": "Studio v1.0",
-            "description": "Web UI for workflow monitoring, execution history, and plugin management.",
+            "title": "Demo Scenario",
+            "description": "kb-create --demo: install the platform and see the full cycle (commit plugin + gateway) working on your own codebase.",
             "status": "in-progress"
+          },
+          {
+            "title": "Public Launch on GitHub",
+            "description": "Open-source monorepo, npm packages (core/sdk/shared under MIT), GitHub Releases with binaries.",
+            "status": "planned"
           },
           {
             "title": "REST API v1",
-            "description": "OpenAPI-documented public API with authentication and rate limiting.",
+            "description": "OpenAPI-documented platform API with authentication and rate limiting.",
+            "status": "shipped"
+          },
+          {
+            "title": "Documentation",
+            "description": "90+ pages of docs covering architecture, SDK, guides, and operations.",
             "status": "shipped"
           }
         ]
@@ -2302,27 +2312,27 @@
       {
         "id": "q3-2026",
         "label": "Q3 2026",
-        "theme": "Developer Experience",
+        "theme": "Plugin Ecosystem",
         "status": "planned",
         "items": [
           {
-            "title": "TypeScript SDK v2",
-            "description": "Improved SDK with code generation, better types, and comprehensive examples.",
+            "title": "Utility Plugin Pack",
+            "description": "A set of broadly useful plugins: notifications, scheduling, environment management, and more.",
             "status": "planned"
           },
           {
-            "title": "CLI v2",
-            "description": "Interactive mode, auto-complete, and context-aware suggestions.",
+            "title": "Plugin SDK Stabilization",
+            "description": "Stable plugin API, versioned contracts, comprehensive SDK documentation and examples.",
             "status": "planned"
           },
           {
-            "title": "Workflow Templates",
-            "description": "Pre-built workflow templates for common automation patterns.",
+            "title": "Community Adapters",
+            "description": "Extension points are open today — anyone can write a Kafka, RabbitMQ, NATS, or any HTTP adapter.",
             "status": "planned"
           },
           {
-            "title": "Enhanced CI/CD",
-            "description": "Advanced pipeline automation with parallel execution and caching.",
+            "title": "Studio v1.0",
+            "description": "Web UI for workflow monitoring, execution history, and plugin management.",
             "status": "planned"
           }
         ]
@@ -2330,27 +2340,27 @@
       {
         "id": "q4-2026",
         "label": "Q4 2026",
-        "theme": "Scale & Enterprise",
+        "theme": "Platform Contracts",
         "status": "planned",
         "items": [
           {
-            "title": "Multi-Tenant Production",
-            "description": "Redis-backed state broker for multi-tenant production deployments.",
+            "title": "Notification Contract",
+            "description": "Unified notification interface — plugins send notifications, adapters deliver them (Slack, Telegram, email, webhooks).",
             "status": "planned"
           },
           {
-            "title": "SSO & SAML",
-            "description": "Enterprise single sign-on with SAML 2.0 and OIDC support.",
+            "title": "RBAC — Role-Based Access Control",
+            "description": "Permission system for platform resources: who can run what, access which services, and manage which plugins.",
             "status": "planned"
           },
           {
-            "title": "Audit Log Export",
-            "description": "Export audit logs to SIEM systems for compliance and monitoring.",
+            "title": "Mind RAG v2",
+            "description": "Multi-repo search, improved anti-hallucination, and cross-project intelligence.",
             "status": "planned"
           },
           {
-            "title": "On-Prem Hardening",
-            "description": "Air-gapped deployment, private registry support, and backup automation.",
+            "title": "Workflow Templates",
+            "description": "Pre-built workflow templates for common automation patterns: CI, releases, code review, onboarding.",
             "status": "planned"
           }
         ]
@@ -2358,139 +2368,55 @@
       {
         "id": "q1-2027",
         "label": "Q1 2027",
-        "theme": "AI & Intelligence",
+        "theme": "KB Labs Registry & Marketplace",
         "status": "exploring",
         "items": [
           {
-            "title": "Mind RAG v2",
-            "description": "Multi-repo search, code generation suggestions, and cross-project intelligence.",
+            "title": "KB Labs Registry",
+            "description": "Own package registry for plugins and adapters — publish, version, and distribute without npm.",
             "status": "exploring"
           },
           {
-            "title": "AI Workflow Builder",
-            "description": "Generate workflow definitions from natural language descriptions.",
+            "title": "Marketplace v2",
+            "description": "Full marketplace experience: discover, install, rate, and review plugins from the registry.",
             "status": "exploring"
           },
           {
-            "title": "Code Review v2",
-            "description": "Context-aware AI code review with codebase-specific rules.",
+            "title": "Plugin Verification",
+            "description": "Automated security and compatibility checks for published plugins.",
             "status": "exploring"
           },
           {
-            "title": "Smart Recommendations",
-            "description": "AI-powered plugin and workflow recommendations based on team patterns.",
+            "title": "ABAC — Attribute-Based Access Control",
+            "description": "Fine-grained permissions beyond roles: conditions based on resource attributes, time, environment.",
             "status": "exploring"
           }
         ]
       },
       {
         "id": "q2-2027",
-        "label": "Q2 2027",
-        "theme": "Platform Maturity",
+        "label": "Q2 2027+",
+        "theme": "Enterprise & SaaS",
         "status": "exploring",
         "items": [
           {
-            "title": "Distributed Execution",
-            "description": "Run workflow steps across multiple nodes for horizontal scaling.",
+            "title": "Hosted Platform",
+            "description": "Managed KB Labs — same platform, zero ops. For teams that want the product without running infrastructure.",
             "status": "exploring"
           },
           {
-            "title": "Plugin Dev SDK",
-            "description": "Standalone plugin development kit with testing, debugging, and publishing tools.",
+            "title": "Multi-Tenant Production",
+            "description": "Isolated tenants, resource quotas, and org-level administration.",
             "status": "exploring"
           },
           {
-            "title": "Analytics Dashboard",
-            "description": "Team-level automation metrics, trends, and productivity insights.",
-            "status": "exploring"
-          },
-          {
-            "title": "API Versioning",
-            "description": "Formal API versioning with deprecation policy and migration guides.",
-            "status": "exploring"
-          }
-        ]
-      },
-      {
-        "id": "q3-2027",
-        "label": "Q3 2027",
-        "theme": "Ecosystem",
-        "status": "exploring",
-        "items": [
-          {
-            "title": "Third-Party Plugins",
-            "description": "Open plugin ecosystem with community contributions and review process.",
-            "status": "exploring"
-          },
-          {
-            "title": "Integrations Marketplace",
-            "description": "Native integrations with GitHub, GitLab, Jira, Slack, and more.",
-            "status": "exploring"
-          },
-          {
-            "title": "Webhook Automation",
-            "description": "Event-driven automation with webhook triggers and custom event sources.",
-            "status": "exploring"
-          },
-          {
-            "title": "Community Framework",
-            "description": "Contribution guidelines, plugin templates, and community governance.",
-            "status": "exploring"
-          }
-        ]
-      },
-      {
-        "id": "q4-2027",
-        "label": "Q4 2027",
-        "theme": "Enterprise Scale",
-        "status": "exploring",
-        "items": [
-          {
-            "title": "Multi-Region",
-            "description": "Deploy across multiple regions with automatic failover and data residency.",
-            "status": "exploring"
-          },
-          {
-            "title": "Disaster Recovery",
-            "description": "Automated backup, restore, and disaster recovery procedures.",
-            "status": "exploring"
-          },
-          {
-            "title": "Enterprise SLA",
-            "description": "Tiered SLA options with dedicated support and guaranteed uptime.",
-            "status": "exploring"
-          },
-          {
-            "title": "Compliance Certs",
-            "description": "SOC 2 Type II and ISO 27001 certification for enterprise customers.",
-            "status": "exploring"
-          }
-        ]
-      },
-      {
-        "id": "q1-2028",
-        "label": "Q1 2028",
-        "theme": "Next Generation",
-        "status": "exploring",
-        "items": [
-          {
-            "title": "Visual Designer",
-            "description": "Drag-and-drop workflow designer for non-technical team members.",
+            "title": "Enterprise Integrations",
+            "description": "SSO (SAML/OIDC), audit log export, and compliance tooling — driven by customer needs.",
             "status": "exploring"
           },
           {
             "title": "Agent Marketplace",
-            "description": "Marketplace for pre-built AI agents with governed execution.",
-            "status": "exploring"
-          },
-          {
-            "title": "Cross-Org Collaboration",
-            "description": "Share workflows and plugins across organizations securely.",
-            "status": "exploring"
-          },
-          {
-            "title": "Platform API v2",
-            "description": "Next-generation API with GraphQL support and real-time subscriptions.",
+            "description": "Pre-built AI agents with governed execution — install, configure, and run from the marketplace.",
             "status": "exploring"
           }
         ]
