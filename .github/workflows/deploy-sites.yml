@@ -5,7 +5,17 @@ on:
     branches: [main]
     paths:
       - 'sites/kb-labs-web/**'
+      - '.kb/deploy.yaml'
   workflow_dispatch:
+    inputs:
+      target:
+        description: 'Target to deploy (leave empty for affected)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  packages: write  # required for docker push to ghcr.io
 
 concurrency:
   group: deploy-sites
@@ -13,41 +23,36 @@ concurrency:
 
 jobs:
   deploy:
-    name: Build & Deploy
+    name: Deploy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # needed for git diff HEAD~1 affected detection
 
-      - name: Build images
-        working-directory: sites/kb-labs-web
-        run: docker compose build
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/kb-deploy/go.mod
+          cache-dependency-path: tools/kb-deploy/go.sum
 
-      - name: Save images
+      - name: Build kb-deploy
+        run: make build
+        working-directory: tools/kb-deploy
+
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Deploy
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
         run: |
-          docker save kb-labs-web:latest | gzip > /tmp/kb-labs-web.tar.gz
-          docker save kb-labs-docs:latest | gzip > /tmp/kb-labs-docs.tar.gz
+          if [ -n "${{ inputs.target }}" ]; then
+            ./tools/kb-deploy/kb-deploy run ${{ inputs.target }}
+          else
+            ./tools/kb-deploy/kb-deploy run
+          fi
 
-      - name: Copy images to VPS
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          source: /tmp/kb-labs-web.tar.gz,/tmp/kb-labs-docs.tar.gz
-          target: /tmp/
-
-      - name: Deploy on VPS
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          script: |
-            docker load < /tmp/kb-labs-web.tar.gz
-            docker load < /tmp/kb-labs-docs.tar.gz
-            rm /tmp/kb-labs-web.tar.gz /tmp/kb-labs-docs.tar.gz
-
-            cd ~/kb-labs/sites/kb-labs-web
-            docker compose up -d --no-build
-
-            docker image prune -f
+      - name: Show status
+        run: ./tools/kb-deploy/kb-deploy status
