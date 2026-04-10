@@ -3,7 +3,8 @@
 </p>
 
 <p align="center">
-  <a href="https://kblabs.ru/en" target="_blank">Website</a> ·
+  <a href="https://kblabs.ru" target="_blank">Website</a> ·
+  <a href="https://kblabs.ru/docs" target="_blank">Docs</a> ·
   <a href="https://twitter.com/kblabsdev" target="_blank">Twitter</a> ·
   <a href="https://discord.gg/kblabs" target="_blank">Discord</a>
 </p>
@@ -16,158 +17,171 @@
     <img src="https://img.shields.io/badge/ecosystem-KB--Public-7C3AED.svg" alt="Ecosystem: KB-Public">
   </a>
   <img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg" alt="Node >= 20">
-  <img src="https://img.shields.io/badge/pnpm-%3E%3D9-orange.svg" alt="pnpm >= 9">
+  <img src="https://img.shields.io/badge/go-%3E%3D1.22-00ADD8.svg" alt="Go >= 1.22">
 </p>
 
 ---
 
-Google has Borg. Meta has Buck. Stripe has their internal dev platform.  
-You have bash scripts and a growing list of SaaS subscriptions.
+**Full-cycle development platform. Self-hosted. Open source.**
 
-**KB Labs is the platform you were never supposed to have.**  
-Self-hosted. Open source. Yours.
+KB Labs covers the entire development workflow in one ecosystem — from scaffolding to production observability. Every tool shares the same config, the same permissions, and the same agent context. No glue code, no switching between five CLIs.
 
 ---
 
-## What it is
+## Overview
 
-A unified control plane for your dev infrastructure — CLI, workflow engine, plugin system, and an infrastructure gateway that ties it all together.
+```mermaid
+flowchart TD
+    subgraph tools["Your Project — Toolchain"]
+        direction LR
+        A["kb-create\ninstall"] --> B["kb-devkit\nbuild"]
+        B --> C["kb-dev\nlocal"]
+        C --> D["kb-deploy\nship"]
+        D --> E["kb-monitor\nobserve"]
+    end
 
-- **Workflows** — automate any multi-step process: CI, releases, code review, onboarding
-- **Gateway** — wire your infrastructure once, use it everywhere. Plug in any adapter (LLM, storage, cache, DB) and every plugin speaks to it through a single interface. Or use `@kb-labs/platform-client` directly — same contracts, zero rewiring
-- **Plugin System** — extend everything via SDK. If it has a manifest and uses the SDK, it's a plugin
-- **CLI** — one `kb` command to run workflows, search code, manage plugins, and more
-- **Studio** — web UI for monitoring workflows, services, and plugin state
+    cfg[".kb/deploy.yaml\none config for all"]
 
-No lock-in. No SaaS tax. Runs on your machine or your VPS.
+    subgraph platform["KB Labs Platform"]
+        direction TB
+        subgraph services["Services"]
+            direction LR
+            W["Workflow\nEngine"]
+            AG["Agents\n+ MCP"]
+            MP["Marketplace\nPlugins"]
+            ST["Studio\nWeb UI"]
+        end
+        GW["Gateway\nauth · routing · adapter registry"]
+        AD["Adapters\nOpenAI · Redis · MongoDB · Qdrant · Docker · Pino · …"]
+        services --> GW --> AD
+    end
+
+    subgraph infra["Your Infrastructure"]
+        direction LR
+        EX["Datadog · 1C · any HTTP service"]
+    end
+
+    tools --> cfg --> platform
+    AD --> infra
+```
 
 ---
 
-## Quick Start
+## Get started
 
 ```bash
-git clone https://github.com/KirillBaranov/kb-labs.git
-cd kb-labs
-pnpm install
-pnpm build
-pnpm dev:start    # starts gateway, workflow, rest-api, marketplace
-pnpm kb --help
+curl -fsSL https://kblabs.ru/install.sh | sh
 ```
+
+This installs `kb-create` — the platform launcher. It runs a setup wizard, installs the platform on your machine or VPS, and optionally activates a **demo** (commit-plugin + 50 free gateway requests) so you can see the full cycle immediately:
+
+```bash
+kb-create --demo     # install + see it working on your own codebase
+kb-create --yes      # install with defaults, no wizard
+```
+
+---
+
+## The toolchain
+
+Four Go binaries. Work standalone or as part of the platform. No Node.js required.
+
+| Tool | Install | What it does |
+|------|---------|-------------|
+| [kb-devkit](tools/kb-devkit) | `curl -fsSL https://kblabs.ru/kb-devkit/install.sh \| sh` | Monorepo builds — topological ordering, content-addressable cache, workspace health |
+| [kb-dev](tools/kb-dev) | `curl -fsSL https://kblabs.ru/kb-dev/install.sh \| sh` | Local service manager — start, stop, health probes, dependency ordering |
+| [kb-deploy](tools/kb-deploy) | `curl -fsSL https://kblabs.ru/kb-deploy/install.sh \| sh` | Deploy to any VPS — Docker + registry, affected detection, infra management |
+| [kb-monitor](tools/kb-monitor) | `curl -fsSL https://kblabs.ru/kb-monitor/install.sh \| sh` | Remote observability — health, logs, exec over SSH, no sidecar needed |
+
+---
+
+## The platform
+
+The Node.js/TS layer. Installed by `kb-create`, runs alongside your services.
+
+| | |
+|---|---|
+| **Workflow engine** | Automate any multi-step process: CI, releases, code review, onboarding |
+| **AI agents** | Autonomous agents with planning, tool use, and MCP support |
+| **Gateway** | Single entry point — auth, routing, adapter registry. Everything talks through it |
+| **Plugin system** | Extend via SDK. Manifest + SDK = plugin. That's it |
+| **Marketplace** | Install plugins, adapters, workflows from registry |
+| **Studio** | Web UI for workflows, services, and plugin state |
+
+---
+
+## Adapters
+
+Connect what you already have. Core doesn't know what's outside — adapters speak the language of your infrastructure.
+
+| Category | Available |
+|----------|-----------|
+| LLM | OpenAI, VibeProxy |
+| Storage | MongoDB, Redis, Qdrant |
+| Logging | Pino, SQLite, Ring Buffer |
+| Environment | Docker |
+| Workspace | LocalFS, Worktree, Agent |
+
+[Write your own adapter](https://kblabs.ru/docs/adapters) — including Datadog, Kafka, 1C, or any HTTP service.
+
+---
+
+## How services connect
+
+Your service doesn't need to be rewritten to join the platform:
+
+```
+Push model   →  support the contract (manifest)
+                platform finds it, wires it, collects observability automatically
+
+SDK model    →  import @kb-labs/sdk
+                access workflows, agents, gateway directly
+
+HTTP model   →  expose any HTTP endpoint
+                platform polls it, no changes needed
+```
+
+Three models. Zero rewrites. Existing infrastructure stays.
 
 ---
 
 ## Architecture
 
 ```
-core/              Foundation: types, runtime, config, plugin system
-sdk/               Public API for plugin authors
-cli/               The `kb` command
-shared/            Shared utilities
-plugins/           Everything optional — AI agents, gateway, workflows, marketplace
-adapters/          Pluggable backends (OpenAI, Redis, MongoDB, Qdrant, Docker...)
-studio/            Web UI
-tools/             Go binaries (kb-devkit, kb-dev, kb-deploy, kb-monitor)
+core/        Foundation: types, runtime, config, plugin system   MIT
+sdk/         Public API for plugin authors                        MIT
+shared/      Utilities: http, testing, cli-ui                     MIT
+tools/       Go binaries: kb-devkit, kb-dev, kb-deploy, kb-monitor  MIT
+─────────────────────────────────────────────────────────────────────
+plugins/     All optional features: agents, workflow, gateway…   KB-Public
+adapters/    Pluggable backends                                   KB-Public
+cli/         The kb command                                       KB-Public
+studio/      Web UI                                               KB-Public
 ```
 
-Dependencies flow strictly downward: `core → sdk → plugins → studio`.  
-Everything beyond core is a plugin. If it uses the SDK and has a manifest — it's a plugin.
-
----
-
-## First-Party Plugins
-
-| Plugin | What it does |
-|--------|-------------|
-| **mind** | RAG-powered semantic code search with embeddings and vector storage |
-| **agents** | Autonomous AI agents with planning, tool use, and MCP |
-| **workflow** | Multi-step workflow engine with daemon and job scheduling |
-| **gateway** | Infrastructure gateway — adapters, routing, unified platform interface |
-| **commit** | AI-powered conventional commit generation |
-| **review** | Automated code review (heuristic + LLM) |
-| **marketplace** | Install and manage plugins, adapters, workflows from registry |
-| **release** | Release orchestration (versioning, changelogs, npm publish) |
-| **quality** | Monorepo health checks and workspace scoring |
-
-## Adapters
-
-Swap backends without changing your code:
-
-| Category | Available |
-|----------|-----------|
-| **LLM** | OpenAI, VibeProxy |
-| **Analytics** | DuckDB, SQLite, File |
-| **Logging** | Pino, SQLite, Ring Buffer |
-| **Storage** | MongoDB, Redis, Qdrant |
-| **Environment** | Docker |
-| **Workspace** | LocalFS, Worktree, Agent |
-
----
-
-## Toolchain
-
-Four Go binaries. No Node.js required. Work standalone or as part of the platform.
-
-| Tool | What it does |
-|------|-------------|
-| **[kb-devkit](tools/kb-devkit)** | Monorepo orchestrator — topological builds, content-addressable cache, workspace health |
-| **[kb-dev](tools/kb-dev)** | Local service manager — start/stop/restart with health probes and dependency ordering |
-| **[kb-deploy](tools/kb-deploy)** | Deploy to any VPS — affected-based, Docker + registry, no Kubernetes required |
-| **[kb-monitor](tools/kb-monitor)** | Remote observability — logs, health checks, container exec over SSH |
-
-Install `kb-dev` standalone:
-
-```bash
-curl -sf https://raw.githubusercontent.com/KirillBaranov/kb-labs/main/tools/kb-dev/install.sh | sh
-```
-
-Or use within the monorepo:
-
-```bash
-pnpm build              # topological build, cached
-pnpm build:affected     # only changed packages + downstream
-pnpm check              # build + lint + type-check + test
-
-pnpm dev:start          # start all services
-pnpm dev:status         # health table with latency
-pnpm dev:logs workflow  # tail service logs
-
-pnpm deploy             # deploy affected targets to VPS
-pnpm deploy:status      # what's deployed and at which sha
-pnpm monitor:health     # health check all remote services
-```
-
----
-
-## Contributing
-
-```bash
-git clone https://github.com/KirillBaranov/kb-labs.git
-cd kb-labs
-pnpm install
-pnpm build
-pnpm check
-```
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Core defines contracts. Adapters implement them. Plugins use them.  
+Core never knows what's above or outside it.
 
 ---
 
 ## Requirements
 
-- **Node.js** >= 20
-- **pnpm** >= 9
-- **Docker** (optional, for Qdrant, Redis, and environment isolation)
+- **Node.js** >= 20, **pnpm** >= 9
+- **Go** >= 1.22 (toolchain only — pre-built binaries available)
+- **Docker** (optional — local infra and environment isolation)
 - macOS or Linux
+
+---
 
 ## License
 
 | What | License |
 |------|---------|
-| `core/`, `sdk/`, `shared/`, `infra/`, `tools/` | [MIT](LICENSE-MIT) — use freely, including in commercial products |
-| `plugins/`, `cli/`, `adapters/`, `studio/` | [KB-Public License v1](LICENSE-KB-PUBLIC) — free for personal and internal use, commercial hosting requires a license |
+| `core/`, `sdk/`, `shared/`, `tools/` | [MIT](LICENSE-MIT) — use freely, including commercially |
+| `plugins/`, `cli/`, `adapters/`, `studio/` | [KB-Public v1](LICENSE-KB-PUBLIC) — free for personal and internal use |
 
-If you're building on top of KB Labs — MIT covers everything you need.  
-If you want to sell hosted access to KB Labs — [get in touch](https://kblabs.ru/en).
+Building on KB Labs? MIT covers everything you need.  
+Selling hosted access? [Get in touch](https://kblabs.ru/enterprise).
 
 ---
 
