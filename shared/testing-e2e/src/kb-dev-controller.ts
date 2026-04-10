@@ -58,11 +58,11 @@ export class KbDevController {
 
   constructor(opts: KbDevControllerOptions = {}) {
     this.projectRoot = opts.projectRoot ?? resolveWorkspaceRoot();
-    this.kbDevBin = opts.kbDevBin ?? resolve(this.projectRoot, 'scripts/kb-dev');
+    this.kbDevBin = opts.kbDevBin ?? resolve(this.projectRoot, 'tools/kb-dev/kb-dev');
     if (!existsSync(this.kbDevBin)) {
       throw new Error(
         `kb-dev binary not found at ${this.kbDevBin}. ` +
-          'Build it with: cd infra/kb-labs-dev && make build',
+          'Build it with: cd tools/kb-dev && make build',
       );
     }
     this.env = {

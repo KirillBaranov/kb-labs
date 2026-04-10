@@ -9,6 +9,7 @@ type DevkitConfig struct {
 	Workspace     WorkspaceConfig       `yaml:"workspace"`
 	Categories    []NamedCategory       `yaml:"categories"`
 	Sync          SyncConfig            `yaml:"sync"`
+	Scaffolding   ScaffoldingConfig     `yaml:"scaffolding"`
 	Run           RunConfig             `yaml:"run"`
 	Tasks         map[string]TaskConfig `yaml:"tasks"`
 	Affected      AffectedConfig        `yaml:"affected"`
@@ -171,6 +172,22 @@ type DepsRules struct {
 // GoRules defines rules for Go packages.
 type GoRules struct {
 	MinVersion string `yaml:"min_version"`
+}
+
+// ─── Scaffolding ─────────────────────────────────────────────────────────────
+
+// ScaffoldingConfig holds named templates for `kb-devkit generate`.
+type ScaffoldingConfig struct {
+	Templates map[string]ScaffoldTemplate `yaml:"templates"`
+}
+
+// ScaffoldTemplate describes a single scaffold template source.
+type ScaffoldTemplate struct {
+	Source  string `yaml:"source"`  // local | npm | git | url
+	Path    string `yaml:"path"`    // local: path relative to workspace root
+	Package string `yaml:"package"` // npm: package name
+	URL     string `yaml:"url"`     // git | url: remote address
+	Ref     string `yaml:"ref"`     // git: branch or tag (optional)
 }
 
 // ─── Sync ────────────────────────────────────────────────────────────────────

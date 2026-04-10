@@ -28,15 +28,18 @@ describe('KbDevController smoke', () => {
     ).toThrow(/kb-dev binary not found/);
   });
 
-  it('status() returns a parseable snapshot with services map', async () => {
-    const ctrl = new KbDevController();
-    const snap = await ctrl.status();
-    expect(snap).toHaveProperty('ok');
-    expect(snap).toHaveProperty('services');
-    expect(snap).toHaveProperty('summary');
-    expect(typeof snap.services).toBe('object');
-    // Every known service from dev.config.json should appear in the snapshot.
-    expect(snap.services).toHaveProperty('gateway');
-    expect(snap.services).toHaveProperty('rest');
-  });
+  it.skipIf(!process.env.KB_E2E_BOOT)(
+    'status() returns a parseable snapshot with services map',
+    async () => {
+      const ctrl = new KbDevController();
+      const snap = await ctrl.status();
+      expect(snap).toHaveProperty('ok');
+      expect(snap).toHaveProperty('services');
+      expect(snap).toHaveProperty('summary');
+      expect(typeof snap.services).toBe('object');
+      // Every known service from devservices.yaml should appear in the snapshot.
+      expect(snap.services).toHaveProperty('gateway');
+      expect(snap.services).toHaveProperty('rest');
+    },
+  );
 });

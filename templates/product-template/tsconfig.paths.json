@@ -2,6 +2,13 @@
   "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
     "baseUrl": ".",
-    "paths": {}
+    "paths": {
+      "@kb-labs/devkit": [
+        "../../infra/devkit/src/index.ts"
+      ],
+      "@kb-labs/devkit/*": [
+        "../../infra/devkit/src/*"
+      ]
+    }
   }
 }

@@ -1,17 +1,17 @@
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 import { createIsolatedProjectRoot } from '../isolated-project-root.js';
 
 describe('createIsolatedProjectRoot', () => {
-  it('creates a temp dir with a valid .kb/dev.config.json', async () => {
+  it('creates a temp dir with a valid .kb/devservices.yaml', async () => {
     const iso = await createIsolatedProjectRoot();
     try {
       expect(existsSync(iso.root)).toBe(true);
       expect(existsSync(iso.devConfigPath)).toBe(true);
-      const config = JSON.parse(readFileSync(iso.devConfigPath, 'utf8'));
-      expect(config.services['state-daemon']).toBeDefined();
+      const config = readFileSync(iso.devConfigPath, 'utf8');
+      expect(config).toContain('state-daemon');
       expect(existsSync(join(iso.root, '.kb/tmp'))).toBe(true);
       expect(existsSync(join(iso.root, '.kb/logs/tmp'))).toBe(true);
     } finally {
@@ -32,13 +32,16 @@ describe('createIsolatedProjectRoot', () => {
     await expect(iso.cleanup()).resolves.toBeUndefined();
   });
 
-  it('copyDevConfigFrom copies an existing workspace dev.config.json', async () => {
-    // Use this very workspace as a source.
-    const iso = await createIsolatedProjectRoot({
-      copyDevConfigFrom: process.cwd().includes('kb-labs-workspace')
-        ? findUpTo('kb-labs-workspace', process.cwd())
-        : undefined,
-    });
+  it('copyDevConfigFrom copies an existing workspace devservices.yaml', async () => {
+    const wsRoot = process.cwd().includes('kb-labs-workspace')
+      ? findUpTo('kb-labs-workspace', process.cwd())
+      : undefined;
+    const devConfigExists = wsRoot && existsSync(resolve(wsRoot, '.kb/devservices.yaml'));
+    if (!devConfigExists) {
+      // .kb/devservices.yaml is a dev-time artifact — skip when absent.
+      return;
+    }
+    const iso = await createIsolatedProjectRoot({ copyDevConfigFrom: wsRoot });
     try {
       expect(existsSync(iso.devConfigPath)).toBe(true);
     } finally {

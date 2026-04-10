@@ -3,10 +3,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { AgentEvent } from '@kb-labs/agent-contracts';
-import { recordDecision } from '../../../agent-kernel/src/index.js';
-import { AgentSDK } from '../../../agent-sdk/src/index.js';
-import { SessionArtifactStore } from '../../../agent-store/src/index.js';
-import { RuntimeEngine } from '../index.js';
+import { recordDecision } from '@kb-labs/agent-kernel';
+import { AgentSDK } from '@kb-labs/agent-sdk';
+import { SessionArtifactStore } from '@kb-labs/agent-store';
+import { RuntimeEngine } from '../index';
 
 const tempDirs: string[] = [];
 

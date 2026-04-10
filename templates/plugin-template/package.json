@@ -68,9 +68,9 @@
     "predevkit:force": "pnpm devkit:paths",
     "predevkit:sync": "pnpm devkit:paths",
     "predevkit:sync:ci": "pnpm devkit:paths",
-    "test": "pnpm -r --if-present run test",
-    "test:coverage": "pnpm -r --if-present run test --coverage",
-    "test:watch": "pnpm -r --parallel --if-present run test:watch",
+    "test": "vitest run --passWithNoTests",
+    "test:coverage": "vitest run --passWithNoTests --coverage",
+    "test:watch": "vitest --passWithNoTests",
     "type-check": "pnpm -r run type-check"
   },
   "type": "module",

@@ -382,11 +382,12 @@ tasks:
       outputs: []
 
     - categories: [site]
-      command: eslint app/ components/
+      command: pnpm lint
       inputs:
         - "app/**"
         - "components/**"
         - "eslint.config.*"
+        - "package.json"
       outputs: []
 
     - categories: [site-pkg]
@@ -407,11 +408,12 @@ tasks:
         - "^build"   # needs deps' dist/**/*.d.ts
 
     - categories: [site]
-      command: tsc --noEmit
+      command: pnpm typecheck
       inputs:
         - "app/**"
         - "components/**"
         - "tsconfig*.json"
+        - "package.json"
       outputs: []
       deps:
         - "^build"

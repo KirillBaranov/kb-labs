@@ -142,20 +142,20 @@ func colorCount(n int, o output) string {
 
 func printTaskResult(o output, r engine.TaskResult, done, total int) {
 	counter := o.dim.Render(fmt.Sprintf("[%3d/%-3d]", done, total))
-	ts := o.dim.Render(time.Now().Format("15:04:05"))
-
-	var icon, status string
-	switch {
-	case r.Cached:
-		icon = o.dim.Render("-")
-		status = o.dim.Render("cached")
-	case r.OK:
+	var icon, result, cache, elapsed string
+	if r.OK {
 		icon = o.StatusIcon("healthy")
-		status = o.dim.Render(r.Elapsed.Round(time.Millisecond).String())
-	default:
+		result = o.dim.Render("success")
+	} else {
 		icon = o.StatusIcon("error")
-		status = o.errStyle.Render("FAILED")
+		result = o.errStyle.Render("failed")
 	}
+	if r.Cached {
+		cache = o.dim.Render("cached")
+	} else {
+		cache = o.dim.Render("-")
+	}
+	elapsed = o.dim.Render(r.Elapsed.Round(time.Millisecond).String())
 
 	// Truncate long package names.
 	name := r.Package
@@ -163,13 +163,14 @@ func printTaskResult(o output, r engine.TaskResult, done, total int) {
 		name = "…" + name[len(name)-41:]
 	}
 
-	fmt.Printf("  %s %s %s %-42s  %-12s  %s\n",
-		ts,
+	fmt.Printf("  %s %s %-42s  %-12s  %-9s  %-7s  %s\n",
 		counter,
 		icon,
 		name,
 		o.dim.Render("["+r.Task+"]"),
-		status,
+		result,
+		cache,
+		elapsed,
 	)
 
 	// Print error output inline.

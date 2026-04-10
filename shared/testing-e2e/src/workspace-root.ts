@@ -3,14 +3,14 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
- * Walk up from a starting directory until we find `.kb/dev.config.json`.
+ * Walk up from a starting directory until we find `.kb/devservices.yaml`.
  * Returns the absolute path of the project root, or `null` if not found.
  */
 export function findWorkspaceRoot(startDir?: string): string | null {
   let dir = startDir ?? process.cwd();
   // Safety: bail after 20 levels so we never climb past `/`.
   for (let i = 0; i < 20; i++) {
-    if (existsSync(resolve(dir, '.kb/dev.config.json'))) {
+    if (existsSync(resolve(dir, '.kb/devservices.yaml'))) {
       return dir;
     }
     const parent = dirname(dir);
@@ -34,7 +34,7 @@ export function findWorkspaceRoot(startDir?: string): string | null {
  */
 export function resolveWorkspaceRoot(): string {
   const fromEnv = process.env.KB_PROJECT_ROOT;
-  if (fromEnv && existsSync(resolve(fromEnv, '.kb/dev.config.json'))) {
+  if (fromEnv && existsSync(resolve(fromEnv, '.kb/devservices.yaml'))) {
     return fromEnv;
   }
   const fromCwd = findWorkspaceRoot(process.cwd());
@@ -47,7 +47,7 @@ export function resolveWorkspaceRoot(): string {
     return fromHere;
   }
   throw new Error(
-    'Could not locate KB Labs workspace root (.kb/dev.config.json). ' +
+    'Could not locate KB Labs workspace root (.kb/devservices.yaml). ' +
       'Set KB_PROJECT_ROOT or run from inside the workspace.',
   );
 }

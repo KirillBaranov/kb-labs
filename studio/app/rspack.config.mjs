@@ -40,8 +40,8 @@ export default defineConfig({
     extensions: ['.tsx', '.ts', '.jsx', '.js'],
     alias: {
       '@': path.resolve(__dirname, 'src'),
-      '@kb-labs/studio-ui-core': path.resolve(__dirname, '../../packages/studio-ui-core/src'),
-      '@kb-labs/studio-data-client': path.resolve(__dirname, '../../packages/studio-data-client/src'),
+      '@kb-labs/studio-ui-core': path.resolve(__dirname, '../ui-core/src'),
+      '@kb-labs/studio-data-client': path.resolve(__dirname, '../data-client/src'),
     },
   },
   module: {

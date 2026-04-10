@@ -52,6 +52,7 @@ type yamlConfig struct {
 	Workspace     yamlWorkspace         `yaml:"workspace"`
 	Categories    yamlOrderedCategories `yaml:"categories"`
 	Sync          yamlSync              `yaml:"sync"`
+	Scaffolding   yamlScaffolding       `yaml:"scaffolding"`
 	Run           yamlRun               `yaml:"run"`
 	Tasks         map[string]yamlTask   `yaml:"tasks"`
 	Affected      yamlAffected          `yaml:"affected"`
@@ -171,6 +172,18 @@ type yamlDeps struct {
 
 type yamlGo struct {
 	MinVersion string `yaml:"min_version"`
+}
+
+type yamlScaffolding struct {
+	Templates map[string]yamlScaffoldTemplate `yaml:"templates"`
+}
+
+type yamlScaffoldTemplate struct {
+	Source  string `yaml:"source"`
+	Path    string `yaml:"path"`
+	Package string `yaml:"package"`
+	URL     string `yaml:"url"`
+	Ref     string `yaml:"ref"`
 }
 
 type yamlSync struct {
@@ -370,6 +383,20 @@ func mapYAML(raw yamlConfig) *DevkitConfig {
 			Mode:   t.Mode,
 			Signal: t.Signal,
 		})
+	}
+
+	// Scaffolding
+	if raw.Scaffolding.Templates != nil {
+		cfg.Scaffolding.Templates = make(map[string]ScaffoldTemplate, len(raw.Scaffolding.Templates))
+		for k, v := range raw.Scaffolding.Templates {
+			cfg.Scaffolding.Templates[k] = ScaffoldTemplate{
+				Source:  v.Source,
+				Path:    v.Path,
+				Package: v.Package,
+				URL:     v.URL,
+				Ref:     v.Ref,
+			}
+		}
 	}
 
 	// Tasks

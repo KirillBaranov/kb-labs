@@ -16,12 +16,11 @@ import nodePreset from '@kb-labs/devkit/eslint/node.js';
 export default [
   ...nodePreset,
 
-  // OPTIONAL: Add project-specific ignores only if needed
-  // DevKit preset already ignores: dist/, coverage/, node_modules/, *.d.ts, scripts/, etc.
-  // {
-  //   ignores: [
-  //     // Add ONLY project-specific patterns here
-  //     // Example: '**/*.generated.ts',
-  //   ]
-  // }
+  // Plain .js files use explicit ESM extensions — required by Node ESM resolution
+  {
+    files: ['src/**/*.js'],
+    rules: {
+      'import/extensions': 'off',
+    },
+  },
 ];
