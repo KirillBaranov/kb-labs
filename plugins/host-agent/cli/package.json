@@ -1,0 +1,56 @@
+{
+  "name": "@kb-labs/host-agent-cli",
+  "version": "0.3.0",
+  "type": "module",
+  "description": "CLI commands for Host Agent — register and status.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./plugin-manifest": {
+      "import": "./dist/manifest.js",
+      "types": "./dist/manifest.d.ts"
+    },
+    "./dist/*": "./dist/*"
+  },
+  "kb": {
+    "manifest": "./dist/manifest.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsup --config tsup.config.ts && node -e \"const fs=require('fs'),p=require('path');const f=p.join(process.cwd(),'../../../.kb/cache/cli-manifests.json');try{fs.unlinkSync(f);console.log('[host-agent-cli] plugin cache cleared')}catch{}\"",
+    "dev": "tsup --config tsup.config.ts --watch",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@kb-labs/host-agent-client": "workspace:*",
+    "@kb-labs/host-agent-contracts": "workspace:*",
+    "@kb-labs/host-agent-transport": "workspace:*",
+    "@kb-labs/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.3.3",
+    "eslint": "^9",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

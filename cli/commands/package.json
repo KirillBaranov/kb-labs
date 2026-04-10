@@ -1,0 +1,85 @@
+{
+  "name": "@kb-labs/cli-commands",
+  "version": "2.5.1",
+  "type": "module",
+  "description": "Command implementations for KB Labs CLI",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./registry": {
+      "types": "./dist/registry/index.d.ts",
+      "default": "./dist/registry/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsup --config tsup.config.ts",
+    "dev": "tsup --config tsup.config.ts --watch",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "type-check": "tsc --noEmit -p tsconfig.build.json",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@kb-labs/core-discovery": "workspace:*",
+    "@kb-labs/core-registry": "workspace:*",
+    "@kb-labs/cli-contracts": "workspace:*",
+    "@kb-labs/cli-runtime": "workspace:*",
+    "@kb-labs/core-platform": "workspace:*",
+    "@kb-labs/core-ipc": "workspace:*",
+    "@kb-labs/core-resource-broker": "workspace:*",
+    "@kb-labs/core-runtime": "workspace:*",
+    "@kb-labs/core-state-broker": "workspace:*",
+    "@kb-labs/core-sys": "workspace:*",
+    "@kb-labs/plugin-contracts": "workspace:*",
+    "@kb-labs/plugin-execution": "workspace:*",
+    "@kb-labs/plugin-runtime": "workspace:*",
+    "@kb-labs/shared-cli-ui": "workspace:*",
+    "@kb-labs/shared-command-kit": "workspace:*",
+    "@kb-labs/workflow-artifacts": "workspace:*",
+    "@kb-labs/workflow-constants": "workspace:*",
+    "@kb-labs/workflow-contracts": "workspace:*",
+    "@kb-labs/workflow-engine": "workspace:*",
+    "@kb-labs/workflow-runtime": "workspace:*",
+    "ajv": "^8.17.1",
+    "glob": "^11.0.0",
+    "yaml": "^2.8.0",
+    "zod": "^3.23.8",
+    "minimatch": "^10.0.1",
+    "semver": "^7.6.3",
+    "pino": "^9.0.0",
+    "execa": "^8.0.0",
+    "chokidar": "^4.0.0",
+    "colorette": "^2.0.20",
+    "fast-glob": "^3.3.2",
+    "pathe": "^1.1.2"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.3.3",
+    "@types/picomatch": "^4",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "vitest": "^3.2.4",
+    "typescript": "^5.6.3"
+  },
+  "module": "./dist/index.js",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

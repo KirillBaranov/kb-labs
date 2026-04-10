@@ -1,0 +1,120 @@
+{
+  "name": "@kb-labs/sdk",
+  "version": "1.5.0",
+  "description": "Core SDK - Helpers for command/route/action/webhook definitions and testing",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./command": {
+      "types": "./dist/command/index.d.ts",
+      "import": "./dist/command/index.js",
+      "require": "./dist/command/index.cjs"
+    },
+    "./manifest": {
+      "types": "./dist/manifest/index.d.ts",
+      "import": "./dist/manifest/index.js",
+      "require": "./dist/manifest/index.cjs"
+    },
+    "./hooks": {
+      "types": "./dist/hooks/index.d.ts",
+      "import": "./dist/hooks/index.js",
+      "require": "./dist/hooks/index.cjs"
+    },
+    "./contracts": {
+      "types": "./dist/contracts/index.d.ts",
+      "import": "./dist/contracts/index.js",
+      "require": "./dist/contracts/index.cjs"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/types/index.js",
+      "require": "./dist/types/index.cjs"
+    },
+    "./studio": {
+      "types": "./dist/studio/index.d.ts",
+      "import": "./dist/studio/index.js",
+      "require": "./dist/studio/index.cjs"
+    },
+    "./studio-build": {
+      "types": "./dist/studio-build/index.d.ts",
+      "import": "./dist/studio-build/index.js",
+      "require": "./dist/studio-build/index.cjs"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "import": "./dist/testing/index.js",
+      "require": "./dist/testing/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "docs:exports": "node scripts/generate-export-glossary.mjs",
+    "check:api-removals": "node scripts/check-api-removals.mjs",
+    "lint": "eslint src --ext .ts --max-warnings 0",
+    "lint:fix": "eslint . --fix"
+  },
+  "dependencies": {
+    "@kb-labs/core-platform": "workspace:*",
+    "@kb-labs/core-runtime": "workspace:*",
+    "@kb-labs/core-sys": "workspace:*",
+    "@kb-labs/perm-presets": "workspace:*",
+    "@kb-labs/plugin-contracts": "workspace:*",
+    "@kb-labs/shared-cli-ui": "workspace:*",
+    "@kb-labs/shared-command-kit": "workspace:*",
+    "@kb-labs/shared-testing": "workspace:*",
+    "@kb-labs/shared-tool-kit": "workspace:*",
+    "@kb-labs/studio-hooks": "workspace:*",
+    "@kb-labs/studio-event-bus": "workspace:*",
+    "@kb-labs/studio-ui-kit": "workspace:*",
+    "@kb-labs/studio-ui-core": "workspace:*",
+    "@kb-labs/studio-devtools": "workspace:*",
+    "@kb-labs/studio-plugin-tools": "workspace:*"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.3.3",
+    "@vitest/ui": "^3.0.0",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
+  },
+  "keywords": [
+    "kb-labs",
+    "plugin",
+    "sdk",
+    "v3",
+    "helpers",
+    "testing"
+  ],
+  "author": "KB Labs Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kb-labs/kb-labs-sdk.git",
+    "directory": "packages/sdk"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

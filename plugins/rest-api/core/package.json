@@ -1,0 +1,52 @@
+{
+  "name": "@kb-labs/rest-api-core",
+  "version": "1.6.0",
+  "description": "Core REST API functionality for KB Labs, including request handling and routing",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run --passWithNoTests -c ../../vitest.config.ts",
+    "test:watch": "vitest --passWithNoTests -c ../../vitest.config.ts"
+  },
+  "dependencies": {
+    "zod": "^3.23.8",
+    "@kb-labs/core-bundle": "workspace:*",
+    "@kb-labs/core-config": "workspace:*",
+    "@kb-labs/plugin-contracts": "workspace:*",
+    "@kb-labs/rest-api-contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "vitest": "^3.2.4",
+    "@kb-labs/devkit": "workspace:*",
+    "tsup": "^8.5.0",
+    "@types/node": "^24.3.3",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.6.3"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

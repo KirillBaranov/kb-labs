@@ -1,0 +1,49 @@
+.bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 28px;
+  background-color: var(--bg-secondary);
+  border-top: 1px solid var(--border-primary);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px;
+  z-index: var(--z-sticky);
+  font-size: 12px;
+  transition: background-color 150ms ease-in-out, border-color 150ms ease-in-out;
+}
+
+.side {
+  display: flex;
+  align-items: center;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  height: 28px;
+  font-size: 12px;
+  cursor: default;
+  color: var(--text-secondary);
+  transition: background-color 150ms ease-in-out, color 150ms ease-in-out;
+  border-radius: 4px;
+  user-select: none;
+}
+
+.item.clickable {
+  cursor: pointer;
+}
+
+.item.clickable:hover {
+  background-color: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.itemIcon {
+  display: flex;
+  align-items: center;
+}

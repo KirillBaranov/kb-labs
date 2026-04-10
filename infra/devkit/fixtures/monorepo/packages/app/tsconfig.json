@@ -1,0 +1,21 @@
+{
+  "extends": "@kb-labs/devkit/tsconfig/node.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "types": [
+      "node",
+      "vitest/globals"
+    ]
+  },
+  "include": [
+    "src",
+    "tests",
+    "types",
+    "vitest.config.ts",
+    "eslint.config.ts",
+    "tsup.config.ts"
+  ],
+  "ts-node": {
+    "esm": true
+  }
+}

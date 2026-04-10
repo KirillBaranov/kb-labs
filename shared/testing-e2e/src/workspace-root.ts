@@ -1,0 +1,53 @@
+import { existsSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+/**
+ * Walk up from a starting directory until we find `.kb/dev.config.json`.
+ * Returns the absolute path of the project root, or `null` if not found.
+ */
+export function findWorkspaceRoot(startDir?: string): string | null {
+  let dir = startDir ?? process.cwd();
+  // Safety: bail after 20 levels so we never climb past `/`.
+  for (let i = 0; i < 20; i++) {
+    if (existsSync(resolve(dir, '.kb/dev.config.json'))) {
+      return dir;
+    }
+    const parent = dirname(dir);
+    if (parent === dir) {
+      return null;
+    }
+    dir = parent;
+  }
+  return null;
+}
+
+/**
+ * Resolve the workspace root for the current package, honoring env overrides.
+ * Precedence:
+ *   1. `KB_PROJECT_ROOT` env var (matches kb-dev itself).
+ *   2. Walk up from `process.cwd()`.
+ *   3. Walk up from this source file's directory (handles running tests
+ *      from deeply nested package dirs).
+ *
+ * Throws if no root can be located.
+ */
+export function resolveWorkspaceRoot(): string {
+  const fromEnv = process.env.KB_PROJECT_ROOT;
+  if (fromEnv && existsSync(resolve(fromEnv, '.kb/dev.config.json'))) {
+    return fromEnv;
+  }
+  const fromCwd = findWorkspaceRoot(process.cwd());
+  if (fromCwd) {
+    return fromCwd;
+  }
+  const here = dirname(fileURLToPath(import.meta.url));
+  const fromHere = findWorkspaceRoot(here);
+  if (fromHere) {
+    return fromHere;
+  }
+  throw new Error(
+    'Could not locate KB Labs workspace root (.kb/dev.config.json). ' +
+      'Set KB_PROJECT_ROOT or run from inside the workspace.',
+  );
+}

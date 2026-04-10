@@ -1,0 +1,456 @@
+---
+title: "Incident Response"
+description: "Playbooks for common incidents: outages, leaks, rogue plugins, data loss."
+updatedAt: "2026-04-07"
+order: 5
+---
+
+This page is the "oh shit" manual. Each incident below has a detection signal, an immediate action, and a recovery path. Keep it terse — when things are on fire, you want the steps, not the explanation.
+
+For general operational procedures see [Runbooks](/operations/runbooks). For architectural context see [Security](/operations/security) and [Observability](/operations/observability).
+
+## General response framework
+
+Every incident follows the same loop:
+
+1. **Acknowledge** — identify the incident, note the time, start a log.
+2. **Stabilize** — stop the bleeding. Disable the failing component, shift traffic, apply the tourniquet.
+3. **Diagnose** — understand what happened. Logs, metrics, analytics events.
+4. **Recover** — restore full service. Restart, redeploy, rollback.
+5. **Post-mortem** — write it up. What broke, what we did, what we'll do differently.
+
+Skip steps 2 and 3 at your peril. "Just restart it" without diagnosing means you'll be back in 20 minutes.
+
+---
+
+## Outage: gateway down
+
+**Symptoms**
+
+- All external clients get connection refused or 502.
+- `kb-dev status` shows gateway as `unhealthy` or `stopped`.
+- Prometheus alert `KbGatewayDown` firing.
+
+**Stabilize**
+
+```bash
+# Quick restart:
+kb-dev restart gateway
+# Or with systemd:
+sudo systemctl restart kb-gateway
+```
+
+If it comes back healthy, proceed to diagnose. If not:
+
+```bash
+# Tail startup logs:
+kb-dev logs gateway
+# Or:
+sudo journalctl -u kb-gateway -n 200
+```
+
+**Diagnose**
+
+Look for the first error during bootstrap. Common causes:
+
+- **Invalid `kb.config.json`.** JSON parse error or schema validation failure. Fix the file and restart.
+- **`GATEWAY_JWT_SECRET` unset or malformed.** Warning logged at startup; set the env var properly and restart.
+- **Upstream services unreachable.** The gateway starts fine without upstreams, but health checks fail. Start `rest` and `workflow` first.
+- **Port 4000 in use.** `lsof -i :4000` to find the conflicting process.
+- **Persistent state corruption.** Rare. The host store SQLite file may be locked or corrupted. Move it aside and restart.
+
+**Recover**
+
+Once the cause is fixed:
+
+```bash
+kb-dev restart gateway
+kb-dev status
+```
+
+Verify with a real request:
+
+```bash
+curl -f http://localhost:4000/health
+```
+
+Reconnection of host agents is automatic — they retry with exponential backoff.
+
+---
+
+## Outage: REST API errors
+
+**Symptoms**
+
+- Specific API endpoints return 500 or time out.
+- Studio pages fail to load data.
+- Prometheus alert `KbHighErrorRate` firing for `kb-rest-api`.
+
+**Stabilize**
+
+Check if it's a specific plugin or all plugins:
+
+```bash
+curl -f http://localhost:5050/api/v1/health
+curl -f http://localhost:5050/api/v1/routes
+```
+
+If the health endpoint is OK but specific routes fail, it's a plugin. If `/health` itself fails, it's the service.
+
+**Plugin-specific failure:**
+
+```bash
+# Disable the offending plugin:
+pnpm kb marketplace plugins disable @scope/bad-plugin
+kb-dev restart rest
+```
+
+**Service-wide failure:**
+
+```bash
+# Restart:
+kb-dev restart rest
+# Tail logs:
+kb-dev logs rest -f
+```
+
+**Diagnose**
+
+Look for:
+
+- **Adapter failures** — logged at bootstrap. LLM / vector store / cache couldn't connect.
+- **Memory pressure** — check `kb_process_memory_rss_bytes` in Prometheus. OOM kills show up as hard restarts.
+- **Event loop lag** — `kb_event_loop_lag_seconds` above 100ms means the service is saturated.
+- **Specific plugin throwing** — grep logs for `pluginId:*.*` and look for stack traces.
+
+Grab the `requestId` from a failing response and query logs for the full trace:
+
+```
+serviceId:* AND requestId:req_abc123
+```
+
+**Recover**
+
+- If plugin-specific: keep plugin disabled, investigate offline, push a fix, re-enable.
+- If adapter-specific: verify adapter config; rotate credentials if needed.
+- If memory leak: restart to reclaim memory; file a bug.
+- If it's a code regression in a recent deploy: **rollback**.
+
+---
+
+## Outage: workflow daemon stuck
+
+**Symptoms**
+
+- Workflow runs stuck in `queued` state.
+- New runs aren't starting.
+- `kb_workflow_jobs_in_flight` plateaued at 0 or pegged at the worker limit.
+
+**Stabilize**
+
+```bash
+kb-dev restart workflow
+```
+
+In-flight runs are interrupted and marked `'interrupted'`; they resume on restart via the recovery path.
+
+**Diagnose**
+
+Tail the logs and look for:
+
+- **Broker deadlock** — all workers stuck waiting on a specific job. Rare; usually a plugin handler in an infinite loop.
+- **State daemon unreachable** — if `core.resourceBroker.distributed: true` and the state daemon is down, the workflow daemon can't acquire rate limit slots.
+- **Workspace adapter failing** — check warnings in logs about workspace adapter missing (see [workflow-daemon bootstrap](platform/kb-labs-workflow/packages/workflow-daemon/src/bootstrap.ts) for the exact warning).
+- **Runaway job consuming workers** — inspect `kb_workflow_jobs_in_flight` by pluginId and cancel the offender.
+
+Cancel a specific run:
+
+```bash
+curl -X POST http://localhost:7778/workflows/runs/<runId>/cancel \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Recover**
+
+- If a specific workflow is the problem: cancel it, disable the plugin that owns it.
+- If it's broker backed up: after restart, runs resume from `'interrupted'` state automatically.
+- If the state daemon is the issue: restart it first, then the workflow daemon.
+
+---
+
+## Outage: marketplace install failing
+
+**Symptoms**
+
+- `pnpm kb marketplace install` hangs or errors.
+- Users can't install new plugins.
+
+**Stabilize**
+
+Check the marketplace service:
+
+```bash
+curl -f http://localhost:5070/health
+kb-dev logs marketplace
+```
+
+If the service is up but installs fail, the issue is downstream — npm registry, disk space, or `.kb/marketplace.lock` corruption.
+
+**Diagnose**
+
+- **npm registry down** — try `npm ping` or `curl https://registry.npmjs.org`. If npm is down, wait it out.
+- **Disk full** — `df -h`. Plugin installs can fill up `node_modules` fast.
+- **Lock file corruption** — `jq . .kb/marketplace.lock` — should parse. If not, restore from git or backup.
+- **Package not found** — check the exact package name and whether you have registry access.
+
+**Recover**
+
+- Fix the underlying issue (free disk, wait for npm, restore lock file).
+- Retry the install.
+- If the lock file is corrupted and there's no backup, you may need to re-link every locally-linked plugin:
+
+```bash
+mv .kb/marketplace.lock .kb/marketplace.lock.broken
+# Re-link each local plugin:
+pnpm kb marketplace link /path/to/plugin
+```
+
+---
+
+## Rogue plugin
+
+**Symptoms**
+
+- Unexpected resource usage (memory, CPU, network).
+- Suspicious file writes or network connections.
+- Diagnostic events tagged with a specific `pluginId`.
+
+**Stabilize**
+
+Disable the plugin immediately:
+
+```bash
+pnpm kb marketplace plugins disable @scope/suspicious-plugin
+kb-dev restart rest workflow
+```
+
+This prevents the plugin from loading on the next startup. Existing invocations complete; no new ones start.
+
+**Diagnose**
+
+1. **Query analytics** for events from this plugin over the incident window.
+2. **Check logs** for `pluginId:@scope/suspicious-plugin` to see what it was doing.
+3. **Review its permissions** in its manifest. Anything the plugin did within declared permissions is "technically allowed" — the permissions were too loose.
+4. **Check `ctx.runtime.fs` calls** for unusual paths. File read/write patterns are the most likely vector.
+5. **Check `ctx.runtime.fetch` calls** for unexpected hosts.
+
+**Recover**
+
+- If the plugin is from an untrusted source: uninstall, don't reinstall.
+- If the plugin is first-party and broken: push a fix, upgrade.
+- Review and tighten the plugin's permissions if the scope was too broad.
+- If the plugin had access to sensitive data: rotate whatever secrets it had access to.
+- Write a post-mortem covering what the plugin did, what we missed in review, what review process changes prevent this next time.
+
+---
+
+## Data loss: SQLite corruption
+
+**Symptoms**
+
+- Services log `SQLITE_CORRUPT` errors.
+- Analytics queries return stale or missing data.
+- Gateway host store lost recent hosts.
+
+**Stabilize**
+
+Stop the service that owns the corrupted database:
+
+```bash
+kb-dev stop rest   # or whichever service
+```
+
+Don't restart yet — the new service would also fail on the corrupted file.
+
+**Diagnose**
+
+```bash
+# Integrity check:
+sqlite3 .kb/database/kb.sqlite "PRAGMA integrity_check;"
+```
+
+If it reports errors, the file is corrupted and needs recovery or restoration.
+
+**Recover**
+
+1. **Backup the corrupted file** before any recovery attempts: `cp kb.sqlite kb.sqlite.corrupted`.
+2. **Try SQLite's built-in recovery**:
+   ```bash
+   sqlite3 kb.sqlite ".dump" > dump.sql
+   sqlite3 kb.sqlite.recovered < dump.sql
+   ```
+   If the dump produces a valid file, use it.
+3. **Restore from backup** if dump fails. See [Runbooks → Restore from a SQLite backup](/operations/runbooks#restore-from-a-sqlite-backup).
+4. **If no backup exists**, delete the file and let the service recreate it empty. You lose historical data but services come back up.
+
+Restart the service and verify.
+
+**Post-recovery**
+
+Set up regular backups if you don't already. See [Runbooks → Back up SQLite data](/operations/runbooks#back-up-sqlite-data).
+
+---
+
+## Secret leak
+
+**Symptoms**
+
+- API key shows up in a commit, a log, a Slack message, or anywhere it shouldn't.
+- Unusual activity on the account the key belongs to.
+
+**Stabilize — every step is urgent**
+
+1. **Revoke the compromised secret immediately** via the provider's console (OpenAI, Anthropic, GitHub, etc.). Don't wait to finish this list.
+2. **Rotate `GATEWAY_JWT_SECRET`** if the leaked secret was used to sign tokens. This invalidates all outstanding JWTs.
+3. **Generate a replacement** in your secret manager.
+4. **Update service env** to use the new value.
+5. **Restart services** so they pick up the new value.
+
+**Diagnose**
+
+- **Where did the leak happen?** Git history (`git log -S` for the secret value), logs (grep for patterns), CI logs, chat transcripts.
+- **What could have been accessed with the leaked secret?** Check the provider's audit log for the compromised account.
+- **Is anything else at risk?** If a plugin was granted access to that secret, check every other secret in the same scope.
+
+**Recover**
+
+- Clean git history if the secret was committed: use `git filter-repo` or BFG Repo-Cleaner to rewrite history. Force-push after notifying the team.
+- Tighten process: add pre-commit hooks to scan for secret patterns, add secret detection to CI.
+- Audit every recent commit in the affected repo for similar exposure.
+- Write up the incident and the mitigation steps.
+
+---
+
+## High latency / slow responses
+
+**Symptoms**
+
+- p99 latency on `kb_http_request_duration_ms` above normal baseline.
+- Users report slow CLI commands or Studio page loads.
+
+**Diagnose**
+
+1. **Is it all services or one?** Compare p99 across services in Prometheus.
+2. **Is it all endpoints or one?** Group by `route` label.
+3. **Is it the plugin or the platform?** Check `kb_rest_domain_operation_*` metrics — they separate plugin execution from HTTP overhead.
+4. **Adapter call duration** — check analytics events for LLM/vector store/cache latency spikes.
+
+Common causes:
+
+- **LLM provider slowdown.** OpenAI/Anthropic have occasional latency spikes. Check their status pages.
+- **Vector store at capacity.** Qdrant memory pressure can tank query performance.
+- **Cache backend unreachable.** Every cache miss hits the upstream instead.
+- **Event loop lag.** Something is blocking the event loop in the service process. Check `kb_event_loop_lag_seconds`.
+- **Database lock contention.** SQLite under heavy write load can serialize everything.
+
+**Stabilize**
+
+- **If one specific plugin is slow**: disable it.
+- **If one specific endpoint is slow**: quick fix is to cache more aggressively.
+- **If an adapter is slow**: swap to a faster alternative if one exists, or throttle upstream calls.
+
+**Recover**
+
+After the immediate fire is out, investigate root cause and file a followup.
+
+---
+
+## Unknown failure mode
+
+**Symptoms**
+
+- Something is wrong but none of the above playbooks apply.
+
+**Diagnose**
+
+1. **Collect state**:
+   ```bash
+   kb-dev status > /tmp/kb-status.txt
+   kb-dev logs rest 2>&1 > /tmp/kb-rest.log
+   kb-dev logs workflow 2>&1 > /tmp/kb-workflow.log
+   kb-dev logs gateway 2>&1 > /tmp/kb-gateway.log
+   ```
+2. **Check Prometheus** for anomalies — sudden error spikes, resource exhaustion, missing scrapes.
+3. **Check the analytics events** for the time window in question.
+4. **Reproduce if possible**. If you can trigger the failure, you can debug it.
+
+**Stabilize**
+
+- **Rollback** if this started after a recent deploy. When in doubt, rollback first.
+- **Scale down** traffic if the service is being hammered — take instances out of the load balancer rotation.
+- **Restart** as a last resort. Some bugs are cleared by a fresh process.
+
+**Recover**
+
+Once stable, file a detailed incident report with the state dump. The platform team (or you, if you are the platform team) uses it as the starting point for a fix.
+
+---
+
+## Post-mortem template
+
+After every significant incident:
+
+```
+# Incident: <short title>
+
+Date: <YYYY-MM-DD>
+Duration: <start> — <end>
+Severity: <low | medium | high | critical>
+Affected services: <list>
+
+## Timeline
+
+- HH:MM — detection signal
+- HH:MM — acknowledged
+- HH:MM — stabilization step 1
+- HH:MM — stabilization step 2
+- HH:MM — root cause identified
+- HH:MM — fix deployed
+- HH:MM — service fully restored
+
+## Root cause
+
+<what actually broke, in terms of the code or config change that led to the failure>
+
+## Detection
+
+<how we found out, and how long after the failure started>
+
+## Response
+
+<what we did, in order, with timings>
+
+## Impact
+
+<who was affected, what operations failed, any data loss>
+
+## Lessons learned
+
+### What went well
+- ...
+
+### What went wrong
+- ...
+
+### Action items
+- [ ] <owner> <concrete action>
+- [ ] ...
+```
+
+Blameless. Focus on systems, not people.
+
+## What to read next
+
+- **[Runbooks](/operations/runbooks)** — non-incident operational procedures.
+- **[Observability](/operations/observability)** — how to set up the detection layer this page assumes.
+- **[Security](/operations/security)** — threat model and sandbox layers.

@@ -1,0 +1,25 @@
+name: nested-workflow-example
+version: 1.0.0
+description: Example of nested workflows with conditional execution
+on:
+  manual: true
+jobs:
+  orchestration:
+    runsOn: local
+    steps:
+      - name: Run Full Audit
+        id: audit
+        uses: workflow:plugin:@kb-labs/ai-review/full-audit
+        with:
+          profile: strict
+      
+      - name: Run Release
+        uses: workflow:plugin:@kb-labs/release-manager/standard-release
+        if: ${{ steps.audit.outputs.status == 'success' }}
+      
+      - name: Notify on Failure
+        uses: builtin:shell
+        with:
+          command: echo "Workflow failed"
+        if: ${{ steps.audit.outputs.status != 'success' }}
+

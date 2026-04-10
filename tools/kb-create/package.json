@@ -1,0 +1,11 @@
+{
+  "name": "kb-create",
+  "version": "0.1.0",
+  "description": "Standalone Go installer for the KB Labs platform",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KirillBaranov/kb-labs-create"
+  },
+  "license": "MIT"
+}

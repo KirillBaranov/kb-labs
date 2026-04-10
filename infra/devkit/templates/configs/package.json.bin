@@ -1,0 +1,25 @@
+{
+  "name": "@kb-labs/your-package",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Your package description",
+  "bin": {
+    "your-cli": "./dist/bin.cjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "lint": "eslint .",
+    "test": "vitest"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4"
+  }
+}

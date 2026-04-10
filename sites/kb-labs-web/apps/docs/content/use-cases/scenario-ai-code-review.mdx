@@ -1,0 +1,155 @@
+---
+title: "AI code review on every PR"
+description: "Wire kb review run into CI so every PR gets deterministic linting plus LLM feedback — with a team-specific preset."
+updatedAt: "2026-04-07"
+order: 20
+---
+
+## The problem
+
+You have a team of four to twenty engineers. You want every PR to get reviewed against:
+
+1. **Deterministic rules** — ESLint, type checks, obvious bugs. Fast, runs on every push.
+2. **Team-specific rules** — naming, architecture, the stuff you've written down in ADRs but nobody remembers to check.
+3. **Human judgment** — the things only a person can catch.
+
+You already have #1 via ESLint. You want #3 to stay focused on what it's best at. #2 is the gap: the rules exist, but they only get enforced when a senior engineer happens to be reviewing.
+
+An LLM is *almost* right for #2, but the naive version ("send the diff to GPT, ask for comments") produces garbage — it reviews things that aren't in the diff, hallucinates APIs, and has no idea what your team cares about.
+
+## The solution
+
+Use the [AI Review plugin](/use-cases/showcase-ai-review) with a custom preset that encodes your team's rules, and wire it into CI.
+
+The key idea: **separate fast checks from deep checks**. Heuristic mode runs on every push (CI gate). Full mode runs once per PR (non-blocking, posts a comment). The cache makes repeated runs free.
+
+### Architecture
+
+```
+PR opened / updated
+  │
+  ├─ CI: kb review run --mode=heuristic --scope=changed
+  │     └─ blocks merge on ESLint/type errors (existing behavior)
+  │
+  └─ CI: kb review run --mode=full --scope=changed --preset=team-rules --agent
+        └─ parses agent-format output ({ passed, issues, summary })
+        └─ posts findings as PR comment (non-blocking)
+```
+
+## The code that matters
+
+**1. Team preset in `.kb/kb.config.json`:**
+
+```json
+{
+  "profiles": [{
+    "id": "default",
+    "products": {
+      "review": {
+        "defaultPreset": "team-rules",
+        "presets": [{
+          "id": "team-rules",
+          "extends": "typescript-strict",
+          "llm": {
+            "enabled": true,
+            "analyzers": ["naming", "architecture", "security"]
+          },
+          "context": {
+            "conventions": {
+              "naming": "Functions: verb-noun (createUser, not userCreate). No abbreviations except id/url/api.",
+              "architecture": "Types live in *-contracts packages. Handlers live in *-cli. Never cross-import between plugins.",
+              "security": "Never log request bodies. Use parameterized queries. Validate input at boundaries only."
+            }
+          }
+        }]
+      }
+    }
+  }]
+}
+```
+
+The `context.conventions` block is what turns a generic LLM reviewer into a team-specific one. Be specific. Give examples. Reference ADRs by number if you have them — the LLM will read them if you include them in the permission scope.
+
+**2. CI job (GitHub Actions):**
+
+```yaml
+name: AI Review
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  fast-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # needed for --scope=changed
+      - uses: pnpm/action-setup@v3
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm kb review run --mode=heuristic --scope=changed
+      # exits non-zero on errors — blocks merge
+
+  deep-review:
+    runs-on: ubuntu-latest
+    needs: fast-check  # don't waste LLM budget on broken code
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v3
+      - run: pnpm install --frozen-lockfile
+      - id: review
+        run: |
+          pnpm kb review run \
+            --mode=full \
+            --scope=changed \
+            --preset=team-rules \
+            --agent > review.json
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        continue-on-error: true   # never block on LLM output
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const review = require('./review.json');
+            if (review.passed && review.issues.length === 0) return;
+            const body = review.issues
+              .map(i => `- **${i.severity}** [\`${i.file}:${i.line}\`]: ${i.problem}\n  **Fix:** ${i.fix}`)
+              .join('\n');
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `### AI Review\n\n${body}`
+            });
+```
+
+Two jobs, not one: the fast check gates the merge, the deep review posts comments but never blocks. This is deliberate — LLM reviewers should **inform**, not **gate**. A blocked merge because the LLM didn't like a variable name is how teams end up disabling AI review within a month.
+
+## Variations
+
+- **Swap the LLM provider.** AI Review uses the platform's `llm` adapter. Change the adapter in `.kb/kb.config.json` and your CI job is unchanged. Works with OpenAI, Anthropic, local models via Ollama.
+- **Add more analyzers.** The `analyzers` array in the preset is open-ended — `performance`, `accessibility`, `tests`, whatever your team argues about in review.
+- **Run locally too.** Drop `pnpm kb review run --mode=full` into a git pre-push hook and get the feedback before CI does.
+- **Pull in Mind.** If your team rules reference architecture that's documented in the codebase, give the LLM access to [Mind](/use-cases/showcase-mind) so it can look up context instead of guessing.
+
+## Reproduce this
+
+1. **Install AI Review.** Follow [Guides → First Plugin](/guides/first-plugin) to get your workspace set up, then install the plugin with `pnpm kb marketplace install @kb-labs/review`.
+2. **Write your preset.** Copy the JSON above into `.kb/kb.config.json`. Replace the `context.conventions` text with rules your team actually cares about — this is the hour of work that determines whether the whole thing is useful.
+3. **Test locally.** Run `pnpm kb review run --mode=full --scope=changed --preset=team-rules` on an in-progress branch. If it's too noisy, tighten the preset. If it's too quiet, loosen it.
+4. **Wire up CI.** Copy the GitHub Actions workflow above. Add `OPENAI_API_KEY` (or your provider of choice) to repo secrets.
+5. **Decide what's gating.** Recommended: heuristic blocks, full comments. Resist the urge to gate on LLM output.
+
+## What goes wrong
+
+- **Preset too vague → noisy reviews.** "Write clean code" doesn't help the LLM. "Functions over 30 lines should be broken up unless they're pure data transformations" does.
+- **No cache → expensive CI.** Make sure `.kb/cache/**` is restored between CI runs (GitHub Actions cache, or persistent runners). The cache keys on file content, so unchanged files cost nothing.
+- **Blocking on LLM output → revolt.** The LLM will sometimes be wrong. If it's blocking merges, people will disable it. Comment, don't block.
+
+## Related
+
+- [Showcase: AI Review](/use-cases/showcase-ai-review) — what's inside the plugin
+- [Guide: Your First Plugin](/guides/first-plugin) — if you want to build a custom review analyzer
+- [Configuration: Profiles and presets](/configuration) — how preset inheritance works

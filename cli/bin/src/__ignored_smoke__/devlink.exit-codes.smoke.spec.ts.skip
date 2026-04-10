@@ -1,0 +1,26 @@
+// TODO: Fix - see docs/tasks/cli-smoke-tests-fix.md
+import { describe, it, expect, beforeEach } from 'vitest';
+import { run } from '../index';
+import { promises as fs } from 'fs';
+import { join } from 'path';
+
+describe("Legacy devlink commands", () => {
+  beforeEach(async () => {
+    const planPath = join(process.cwd(), ".kb", "devlink", "last-plan.json");
+    try {
+      await fs.unlink(planPath);
+    } catch {
+      // Ignore if the plan doesn't exist
+    }
+  });
+
+  it("should return 1 when devlink apply command is unavailable", async () => {
+    const code = await run(["devlink", "apply"]);
+    expect(code).toBe(1);
+  });
+
+  it("should return 1 when devlink status command is unavailable", async () => {
+    const code = await run(["devlink", "status"]);
+    expect(code).toBe(1);
+  });
+});

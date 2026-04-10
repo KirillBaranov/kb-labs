@@ -1,0 +1,190 @@
+---
+title: "Authentication"
+description: "Token types, JWT claims, static tokens, and the internal dispatch secret."
+updatedAt: "2026-04-07"
+order: 3
+---
+
+The gateway authenticates every incoming request. It supports several client types — browser SPAs, CLIs, host agents, internal container-mode executions — each with slightly different token characteristics. This page walks through what kinds of tokens exist, how they're minted, and where to put them when you're calling the gateway.
+
+Source: [infra/kb-labs-gateway/apps/gateway-app/src/auth/](infra/kb-labs-gateway/apps/gateway-app/src/auth/).
+
+## Client types
+
+| Client | Auth method |
+|---|---|
+| **Studio (browser)** | Bearer static token or runtime-issued JWT |
+| **CLI** | Bearer static token or runtime-issued JWT (depending on deployment) |
+| **Host agent** | JWT bearer on WebSocket upgrade; initial handshake exchanges client credentials |
+| **Container (plugin execution)** | Short-lived JWT minted by the gateway per execution |
+| **Internal dispatch** | Shared secret in `X-Internal-Secret` header (not a JWT) |
+
+Different modes, same entry point — all of them go through the auth middleware before any upstream routing happens.
+
+## Bearer tokens
+
+Every HTTP request to a proxied upstream must carry an `Authorization: Bearer <token>` header. The auth middleware checks the token against two pools:
+
+1. **Static tokens** — seeded into the cache at bootstrap from `gateway.staticTokens` in `kb.config.json`.
+2. **Minted tokens** — short-lived JWTs issued by the `/auth/token` endpoint after a successful client-credentials exchange.
+
+Both types resolve to a `{ hostId, namespaceId }` pair that the middleware attaches to the request context. Upstream routes (and the internal dispatch endpoint) trust this context and don't re-validate.
+
+### Static tokens
+
+From the reference config:
+
+```json
+{
+  "gateway": {
+    "staticTokens": {
+      "dev-studio-token": {
+        "hostId": "studio",
+        "namespaceId": "default"
+      },
+      "dev-runtime-server-token": {
+        "hostId": "runtime-server-local",
+        "namespaceId": "default"
+      }
+    }
+  }
+}
+```
+
+At bootstrap, the gateway writes each entry into the cache as `host:token:<token>` → `{ hostId, namespaceId }`. The auth middleware looks up this key for every incoming Bearer token — a cache hit means the token is valid.
+
+Static tokens have no expiry. They're intended for development and for service-to-service authentication where rotation is handled out-of-band (deploy a new config and restart the gateway to rotate). **Never ship static tokens that aren't deployment-controlled.**
+
+### Runtime-issued JWTs
+
+The `POST /auth/token` endpoint mints a short-lived JWT in exchange for client credentials (a `clientId` + `clientSecret` the client registered with the gateway beforehand). The flow:
+
+```
+Client
+  │ POST /auth/token
+  │ { clientId, clientSecret }
+  ▼
+Gateway
+  │ 1. Verify clientSecret against the stored hash for clientId
+  │ 2. Mint a JWT with { hostId, namespaceId, exp, ... }
+  │ 3. Mint a refresh token (longer-lived)
+  │ 4. Return { accessToken, refreshToken }
+  ▼
+Client
+  │ (uses accessToken for subsequent requests)
+```
+
+The access token expires quickly (typically 1 hour). Clients refresh before expiry with `POST /auth/refresh { refreshToken }`, which mints a new access token and returns it.
+
+This is the flow the host agent uses — it's registered once per machine, stores `clientId` + `clientSecret` in `~/.kb/agent.json`, and mints a fresh JWT on startup and before every expiry.
+
+## JWT claims
+
+The gateway uses symmetric HMAC JWTs signed with `GATEWAY_JWT_SECRET`. Claims include:
+
+- **`hostId`** — the identity of the authenticated host.
+- **`namespaceId`** — the tenant or namespace the host is scoped to.
+- **`exp`** — expiration timestamp.
+- **`iat`** — issued at.
+- **`sub`** — typically the same as `hostId`.
+
+The gateway intentionally uses a minimal claim set — no scopes, no role names, no complex permission models. Authorization decisions happen at the upstream service layer, not at the gateway, so the gateway only needs enough to identify the caller.
+
+## `GATEWAY_JWT_SECRET`
+
+The HMAC secret used to sign and verify all JWTs. Required in production; the bootstrap logs a warning and falls back to an insecure default if unset:
+
+```ts
+const jwtSecret = process.env.GATEWAY_JWT_SECRET;
+if (!jwtSecret) {
+  logger.warn('GATEWAY_JWT_SECRET not set — using insecure default (dev only!)');
+}
+```
+
+In any deployment that isn't `NODE_ENV=development` on a developer's own machine, **set this variable**. A compromised `GATEWAY_JWT_SECRET` means anyone can mint tokens for any host.
+
+Rotation is manual: update the env var, restart the gateway, and all existing JWTs become invalid simultaneously. For zero-downtime rotation you'd need to implement dual-secret verification (accept old and new during a window), which the current gateway doesn't support.
+
+## Host agent authentication
+
+The host agent has its own flow. On registration (one-time, via `kb agent register`), the agent:
+
+1. Generates an x25519 keypair locally.
+2. Sends the public key + metadata to the gateway.
+3. Receives `clientId` and `clientSecret` from the gateway.
+4. Writes everything to `~/.kb/agent.json`.
+
+On each startup, the agent:
+
+1. Reads `clientId` + `clientSecret` from `~/.kb/agent.json`.
+2. Calls `POST /auth/token` to mint a JWT.
+3. Opens `WSS /hosts/connect` with `Authorization: Bearer <jwt>`.
+4. Receives back a session ID from the gateway and starts heartbeating.
+5. Refreshes the JWT 5 minutes before expiry.
+
+The private key never leaves the laptop. See [Services → Host Agent](/services/host-agent) for the full lifecycle.
+
+## Internal dispatch secret
+
+The `/internal/dispatch` endpoint (used for container-mode plugin execution) does **not** use Bearer tokens. Instead it requires an `X-Internal-Secret` header matching `GATEWAY_INTERNAL_SECRET`. This is a separate shared secret from the JWT signing key.
+
+The split is deliberate. `/internal/dispatch` is not a public endpoint — it's the internal seam between platform services and the container execution backend. Using a shared secret instead of JWTs keeps the dispatch path simple and rules out accidentally exposing it to untrusted clients.
+
+In `kb.config.json`:
+
+```json
+{
+  "platform": {
+    "execution": {
+      "mode": "container",
+      "container": {
+        "gatewayDispatchUrl":    "http://host.docker.internal:4000/internal/dispatch",
+        "gatewayInternalSecret": "${GATEWAY_INTERNAL_SECRET}"
+      }
+    }
+  }
+}
+```
+
+The environment adapter passes the same secret into spawned containers so that container-side code calling back through the gateway can authenticate.
+
+**Treat `GATEWAY_INTERNAL_SECRET` as a high-value credential** — anyone who knows it can execute arbitrary plugin handlers on the gateway's infrastructure. Rotate it via env var + restart, same as the JWT secret.
+
+## Container execution tokens
+
+When the gateway dispatches a plugin execution to a container, it mints a short-lived JWT specifically for that container. The JWT carries:
+
+- **`hostId`** — a synthetic ID for the container (e.g. `container:<execId>`).
+- **`namespaceId`** — the namespace of the caller.
+- **`exp`** — scoped to the expected lifetime of the execution (minutes, not hours).
+- **An execution ID** — ties the token to a specific run.
+
+The container uses this JWT to authenticate callbacks to the gateway (for platform services like LLM, cache, storage). Because the token is tightly scoped, a compromised container JWT is much less dangerous than a compromised long-lived token.
+
+## WebSocket auth
+
+WebSocket upgrades arrive with the `Authorization` header on the initial HTTP request. The gateway's WS handler validates the Bearer token the same way as regular HTTP requests, attaches `{ hostId, namespaceId }` to the connection context, and then upgrades the socket.
+
+For proxied WebSockets (REST API), the gateway forwards the upgraded socket to the upstream after validation. The upstream trusts the gateway and doesn't re-validate the token.
+
+For the host agent's own `/hosts/connect` endpoint, the gateway keeps the socket and handles it directly — no upstream.
+
+## Auth failure modes
+
+| Condition | Response |
+|---|---|
+| No `Authorization` header | 401 Unauthorized |
+| Malformed `Authorization` header | 401 Unauthorized |
+| Token not in cache and not a valid JWT | 401 Unauthorized |
+| JWT signature invalid | 401 Unauthorized |
+| JWT expired | 401 Unauthorized |
+| Internal dispatch without valid `X-Internal-Secret` | 403 Forbidden |
+
+The gateway logs every auth failure as a diagnostic event — useful for detecting misconfiguration (clients with stale tokens) or attack attempts (a surge of 401s on a single IP).
+
+## What to read next
+
+- [Architecture](/gateway/architecture) — where the auth middleware sits in the request lifecycle.
+- [Routing](/gateway/routing) — what authenticated requests get forwarded to.
+- [Self-Hosted Deployments](/gateway/self-hosted) — setting env vars in production.
+- [Services → Host Agent](/services/host-agent) — the client that uses `/auth/token` + WSS.

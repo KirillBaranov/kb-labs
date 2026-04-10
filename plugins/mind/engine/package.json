@@ -1,0 +1,78 @@
+{
+  "name": "@kb-labs/mind-engine",
+  "version": "1.5.0",
+  "type": "module",
+  "description": "Mind engine adapter for KB Labs Mind (RAG, embeddings, vector store integration).",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./sync": {
+      "types": "./dist/sync/index.d.ts",
+      "import": "./dist/sync/index.js",
+      "require": "./dist/sync/index.js"
+    },
+    "./adapters/runtime-adapter": {
+      "types": "./dist/adapters/runtime-adapter.d.ts",
+      "import": "./dist/adapters/runtime-adapter.js",
+      "require": "./dist/adapters/runtime-adapter.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsup --config tsup.config.ts",
+    "dev": "tsup --config tsup.config.ts --watch",
+    "lint": "eslint src --ext .ts,.tsx,.js,.jsx",
+    "lint:fix": "eslint . --fix",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest --passWithNoTests",
+    "benchmark:quality": "node ./scripts/run-quality-eval.mjs",
+    "benchmark:quality:all-modes": "node ./scripts/run-quality-eval.mjs --modes instant,auto,thinking --runs 1"
+  },
+  "dependencies": {
+    "@kb-labs/mind-core": "workspace:*",
+    "@kb-labs/mind-embeddings": "workspace:*",
+    "@kb-labs/mind-types": "workspace:*",
+    "@kb-labs/mind-vector-store": "workspace:*",
+    "@kb-labs/sdk": "workspace:*",
+    "fast-glob": "^3.3.2",
+    "fs-extra": "^11.0.0",
+    "picomatch": "^4.0.2",
+    "tree-sitter": "^0.21.1",
+    "tree-sitter-c": "latest",
+    "tree-sitter-c-sharp": "latest",
+    "tree-sitter-go": "^0.21.1",
+    "tree-sitter-java": "latest",
+    "tree-sitter-javascript": "^0.21.4",
+    "tree-sitter-python": "^0.21.0",
+    "tree-sitter-rust": "^0.21.0",
+    "tree-sitter-typescript": "^0.21.2",
+    "typescript": "^5.6.3"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@types/fs-extra": "^11.0.0",
+    "@types/node": "^24.3.3",
+    "@types/picomatch": "^4",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.11.0"
+}

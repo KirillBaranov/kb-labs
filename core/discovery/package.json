@@ -1,0 +1,51 @@
+{
+  "name": "@kb-labs/core-discovery",
+  "version": "1.9.0",
+  "description": "Marketplace-based entity discovery for KB Labs platform",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "pnpm clean && tsup --config tsup.config.ts",
+    "dev": "tsup --config tsup.config.ts --watch",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "lint": "eslint . --ignore-pattern 'dist/**' --ignore-pattern 'coverage/**' --ignore-pattern 'tsup.config.bundled_*.mjs'",
+    "lint:fix": "eslint . --fix --ignore-pattern 'dist/**' --ignore-pattern 'coverage/**' --ignore-pattern 'tsup.config.bundled_*.mjs'",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@kb-labs/plugin-contracts": "workspace:*",
+    "@kb-labs/core-sys": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.3",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4",
+    "@kb-labs/devkit": "workspace:*"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

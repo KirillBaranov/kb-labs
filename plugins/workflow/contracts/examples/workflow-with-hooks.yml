@@ -1,0 +1,46 @@
+name: workflow-with-hooks
+version: 1.0.0
+description: Example of workflow with job hooks
+on:
+  manual: true
+jobs:
+  main:
+    runsOn: local
+    hooks:
+      pre:
+        - name: Setup Environment
+          uses: builtin:shell
+          with:
+            command: echo "Setting up environment..."
+      
+      post:
+        - name: Cleanup
+          uses: builtin:shell
+          with:
+            command: echo "Cleaning up..."
+      
+      onSuccess:
+        - name: Notify Success
+          uses: builtin:shell
+          with:
+            command: echo "✓ Workflow completed successfully"
+      
+      onFailure:
+        - name: Notify Failure
+          uses: builtin:shell
+          with:
+            command: echo "✗ Workflow failed"
+    
+    steps:
+      - name: Main Task
+        id: main
+        uses: builtin:shell
+        with:
+          command: echo "Running main task..."
+      
+      - name: Process Results
+        uses: builtin:shell
+        with:
+          command: echo "Processing results..."
+        if: ${{ steps.main.outputs.exitCode == 0 }}
+

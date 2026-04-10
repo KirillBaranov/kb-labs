@@ -1,0 +1,219 @@
+---
+title: "Overview"
+description: "The platform-client package surface, constructor options, and the Unified Platform API it calls."
+updatedAt: "2026-04-07"
+order: 1
+---
+
+`@kb-labs/platform-client` exposes one main class — `KBPlatform` — plus four typed proxies for the most common adapter services, plus a generic `call()` method for anything else. Everything routes through the Gateway's **Unified Platform API**: one HTTP endpoint shape for every adapter method.
+
+This page covers the package surface and the API pattern. For concrete examples, see [Quickstart](/product-sdk/quickstart) and the per-service pages.
+
+## Package surface
+
+```ts
+import {
+  KBPlatform,
+  LLMProxy,
+  CacheProxy,
+  VectorStoreProxy,
+  AnalyticsProxy,
+  type KBPlatformOptions,
+  type PlatformCallResponse,
+  type LLMOptions,
+  type LLMResponse,
+  type LLMToolCallResponse,
+  type TelemetryEvent,
+} from '@kb-labs/platform-client';
+```
+
+The only class you normally construct is `KBPlatform`. The four proxy classes are exported for type references but you rarely instantiate them yourself — they're constructed for you inside `KBPlatform`.
+
+## `KBPlatform`
+
+```ts
+class KBPlatform {
+  readonly llm: LLMProxy;
+  readonly cache: CacheProxy;
+  readonly vectorStore: VectorStoreProxy;
+  readonly telemetry: AnalyticsProxy;
+
+  constructor(options: KBPlatformOptions);
+
+  async call<T = unknown>(adapter: string, method: string, ...args: unknown[]): Promise<T>;
+  async shutdown(): Promise<void>;
+}
+```
+
+### Constructor options
+
+```ts
+interface KBPlatformOptions {
+  endpoint: string;                                  // gateway URL
+  apiKey: string;                                    // bearer token for auth
+  defaultTags?: Record<string, string>;              // applied to every telemetry event
+  onError?: (error: Error) => void;                  // for non-critical failures
+}
+```
+
+- **`endpoint`** — base URL of the KB Labs gateway. Trailing slashes are stripped automatically.
+- **`apiKey`** — bearer token. Goes into the `Authorization: Bearer <token>` header on every request.
+- **`defaultTags`** — key-value pairs merged into every telemetry event's `tags` field. Use for identifying the emitting service (`source: 'my-backend'`) or the environment (`env: 'production'`).
+- **`onError`** — callback for telemetry flush failures and similar non-critical errors. Platform call failures (from `call()` or the typed proxies) throw normally; this is only for background operations the user doesn't directly await.
+
+The `source` of emitted telemetry events comes from `defaultTags.source`; if unset, it defaults to `'platform-client'`. Override it to distinguish events from different clients in your analytics.
+
+### Fields
+
+- **`llm`** — `LLMProxy` for LLM completions and tool calling.
+- **`cache`** — `CacheProxy` for KV cache operations.
+- **`vectorStore`** — `VectorStoreProxy` for vector search and upsert.
+- **`telemetry`** — `AnalyticsProxy` for events, metrics, and logs (both unbuffered `track`/`identify` and batched `event`/`metric`/`log`).
+
+All four are assigned in the constructor and can't be reassigned. They share a `call` binding with the platform instance, so every request inherits the same endpoint and auth.
+
+### `call(adapter, method, ...args)`
+
+```ts
+async call<T = unknown>(
+  adapter: string,
+  method: string,
+  ...args: unknown[]
+): Promise<T>
+```
+
+The generic escape hatch. For every adapter method the server exposes, `call` dispatches to `POST /platform/v1/{adapter}/{method}` with `{ args: [...] }` as the body.
+
+Use it when:
+
+- The built-in proxies don't cover what you need (e.g. calling a custom adapter).
+- You want tighter control over the exact request shape.
+- You're accessing a service that isn't in the core four (workflows, jobs, custom services).
+
+Example — triggering a workflow:
+
+```ts
+const result = await platform.call('workflows', 'run', {
+  workflowId: 'nightly-maintenance',
+  inputs: { dryRun: false },
+});
+```
+
+The typed proxies are sugar over `call` — they constrain the adapter name and method to known values and add per-method type hints.
+
+### `shutdown()`
+
+```ts
+async shutdown(): Promise<void>
+```
+
+Flushes any buffered telemetry and stops internal timers. Call this before your process exits in long-running scripts or server shutdown hooks — without it, buffered telemetry events are lost.
+
+## The Unified Platform API
+
+Every request — whether from a typed proxy or from the generic `call()` — goes to the same endpoint shape on the gateway:
+
+```
+POST /platform/v1/{adapter}/{method}
+Authorization: Bearer <apiKey>
+Content-Type: application/json
+
+{
+  "args": [arg1, arg2, ...]
+}
+```
+
+The server unpacks `args`, calls the matching adapter method on the platform, and returns:
+
+```ts
+interface PlatformCallResponse<T = unknown> {
+  ok: boolean;
+  result?: T;
+  error?: { message: string; code?: string };
+  durationMs: number;
+}
+```
+
+- **Success**: `ok: true`, `result: <whatever the method returned>`.
+- **Failure**: `ok: false`, `error: { message, code? }`. The client throws an `Error` with the message.
+
+HTTP non-2xx responses are also treated as failures — the client tries to parse the body as a `PlatformCallResponse`, and if it can, uses the error message from there; otherwise it falls back to `"Platform API error: {status} {body}"`.
+
+This unified shape means the client code is tiny (~100 lines total across all proxies) and every adapter method is reachable the same way.
+
+## Telemetry endpoint
+
+Telemetry events use a different endpoint — `POST /telemetry/v1/ingest` — because batching works best against a dedicated ingestion API:
+
+```
+POST /telemetry/v1/ingest
+Authorization: Bearer <apiKey>
+Content-Type: application/json
+
+{
+  "events": [
+    {
+      "source": "my-backend",
+      "type": "user.signup",
+      "timestamp": "2026-04-07T12:34:56.789Z",
+      "payload": { "plan": "pro" },
+      "tags": { "env": "production" }
+    }
+  ]
+}
+```
+
+The analytics proxy handles batching (50 events or 5s timer by default), retry via `onError`, and final flush on `shutdown()`. The direct methods `track()` and `identify()` bypass the buffer and go through the Unified Platform API (`POST /platform/v1/analytics/track`), so they always hit the server immediately.
+
+See [Telemetry](/product-sdk/streaming) for the batching model in detail.
+
+## What's covered by the typed proxies
+
+| Proxy | Methods |
+|---|---|
+| `llm` | `complete(prompt, options?)`, `chatWithTools(messages, options)` |
+| `cache` | `get<T>(key)`, `set<T>(key, value, ttl?)`, `delete(key)`, `clear(pattern?)` |
+| `vectorStore` | `search(query)`, `upsert(documents)`, `delete(ids)`, `count()` |
+| `telemetry` | `track(eventName, properties?)`, `identify(userId, traits?)`, `event(type, payload?, tags?)`, `metric(name, value, tags?)`, `log(level, message, data?)`, `flush()`, `shutdown()` |
+
+Notice the proxies are **smaller** than the full adapter interfaces on the server side:
+
+- `LLMProxy.complete` is the only full-fidelity method. `chatWithTools` takes untyped `messages` / `options` — the full typing lives in `@kb-labs/core-platform`.
+- `CacheProxy` only has 4 methods. The server-side `ICache` has 10 (including sorted sets and atomic ops) — the extra ones aren't wrapped in the client. Use `platform.call('cache', 'zadd', ...)` for anything beyond the basics.
+- `VectorStoreProxy.search` takes a generic `Record<string, unknown>` query — it's intentionally loose because vector query shapes vary across adapters.
+
+The proxies are optimized for the common path. For anything unusual, drop down to `platform.call()`.
+
+## What's NOT in the client
+
+- **Streaming.** `llm.complete()` is the only LLM method exposed; there's no `stream()` proxy. Streaming support over HTTP would need a separate protocol (SSE or WebSocket) that the current client doesn't implement.
+- **File uploads.** The client sends JSON bodies only; no multipart upload support. Files go through a separate storage endpoint (not yet wrapped).
+- **Workflows, jobs, cron.** No dedicated proxy. Use `platform.call('workflows', ...)` via the generic escape hatch.
+- **Marketplace, plugins.** Not covered. Use the REST API directly for now (or `platform.call()` if the gateway routes them through the unified API).
+- **WebSockets.** Client is HTTP-only.
+
+The package is intentionally **thin**. Expanding it means adding proxies without breaking the existing ones.
+
+## Zero dependencies
+
+The entire package has **no runtime dependencies**. It uses:
+
+- `fetch` (global, Node 18+, browsers, Deno, Bun).
+- Plain ES2022 TypeScript for types.
+
+This means the client works:
+
+- In **Node.js** 18+ without polyfills.
+- In **browsers** (if you wire up the auth correctly — more on this in [Authentication](/product-sdk/authentication)).
+- In **edge runtimes** (Cloudflare Workers, Vercel Edge Functions, Deno Deploy) that support native `fetch`.
+- In **Bun** and **Deno**.
+
+No WebSocket library, no HTTP client, no JSON schema validator, no polyfill. It's about 300 lines of code total.
+
+## What to read next
+
+- **[Quickstart](/product-sdk/quickstart)** — a working end-to-end example.
+- **[Authentication](/product-sdk/authentication)** — how to get a valid `apiKey`.
+- **[LLM, Cache, Vector Store](/product-sdk/commands)** — the typed proxies in detail.
+- **[Telemetry](/product-sdk/streaming)** — event batching and flush.
+- **[Error handling](/product-sdk/errors)** — `PlatformCallResponse`, retries, shutdown hooks.

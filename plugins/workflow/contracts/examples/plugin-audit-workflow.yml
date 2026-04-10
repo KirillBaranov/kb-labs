@@ -1,0 +1,44 @@
+# Example: AI Review plugin workflow
+# Declared in plugin manifest as:
+# workflows: [
+#   {
+#     id: 'full-audit',
+#     file: 'workflows/full-audit.yml',
+#     description: 'Complete AI code review and audit',
+#     tags: ['review', 'audit', 'quality']
+#   }
+# ]
+
+name: full-audit
+version: 1.0.0
+description: Complete AI code review and audit
+on:
+  manual: true
+  push: true
+jobs:
+  audit:
+    runsOn: local
+    hooks:
+      onSuccess:
+        - name: Notify Success
+          uses: builtin:shell
+          with:
+            command: echo "✓ Audit completed successfully"
+      onFailure:
+        - name: Notify Failure
+          uses: builtin:shell
+          with:
+            command: echo "✗ Audit failed"
+    steps:
+      - name: AI Review
+        id: review
+        uses: plugin:@kb-labs/ai-review/cli/run
+        with:
+          profile: strict
+      
+      - name: Generate Report
+        uses: plugin:@kb-labs/ai-review/cli/report
+        with:
+          format: markdown
+          output: .ai-review/report.md
+

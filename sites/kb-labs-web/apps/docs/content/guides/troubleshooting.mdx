@@ -1,0 +1,405 @@
+---
+title: "Troubleshooting"
+description: "Common issues and their fixes — the FAQ for KB Labs developers."
+updatedAt: "2026-04-07"
+order: 7
+---
+
+This page is the "my thing doesn't work" quickreference. Each entry describes a symptom, the probable cause, and the specific fix. Items are ordered roughly by how often they come up.
+
+For operational incidents (service outages, data loss, security leaks), see [Operations → Incident Response](/operations/incident-response) instead.
+
+## Plugin commands
+
+### "Command not found" after installing/building a plugin
+
+**Symptom.** You installed or rebuilt a plugin and `pnpm kb your-command` returns "command not found".
+
+**Cause.** The CLI caches the plugin registry in memory. Freshly built/installed plugins aren't picked up until the cache is cleared.
+
+**Fix.**
+
+```bash
+pnpm kb marketplace clear-cache
+```
+
+Then re-run your command. This is the single most common issue — if a command should work and doesn't, clear the cache first.
+
+### "Handler path not found" or "INVALID_HANDLER"
+
+**Symptom.** Command loads but fails immediately with `Handler at ... does not export an execute function` or similar.
+
+**Cause.** The manifest's `handler` path points at a file that doesn't exist or doesn't export what's expected.
+
+**Fix.**
+
+1. Verify the path in your manifest matches the built output: `ls dist/cli/commands/hello.js`.
+2. Confirm the file exports a default with an `execute` method: `node -e "import('./dist/cli/commands/hello.js').then(m => console.log(typeof m.default.execute))"`.
+3. If you renamed a file in `src/`, update the manifest to match.
+4. Rebuild: `pnpm build`.
+5. Clear cache: `pnpm kb marketplace clear-cache`.
+
+### Plugin handler throws "command can only run in CLI or workflow host"
+
+**Symptom.** Calling a handler directly from test code or from an unexpected context throws this error.
+
+**Cause.** `defineCommand` wraps handlers with a host guard. The handler refuses to run when `ctx.host` isn't `'cli'` or `'workflow'`.
+
+**Fix.**
+
+- If you're writing a test: use `createTestContext({ host: 'cli' })` to set the host.
+- If you're calling from a REST route: use `defineRoute`, not `defineCommand`.
+- If you're calling from a webhook: use `defineWebhook`.
+
+Each host has its own `define*` helper. Don't try to work around the guard.
+
+## Plugin permissions
+
+### "PermissionError: fs.read not allowed"
+
+**Symptom.** Plugin handler throws when trying to read a file.
+
+**Cause.** The path isn't in the plugin's declared `permissions.fs.read` / `fs.allow` list.
+
+**Fix.**
+
+1. Check the handler's effective permissions: run with `--debug` and look for the permission diagnostic.
+2. Decide if the access is legitimate:
+   - If yes, add the path to the manifest's `permissions.fs.allow`. Scope it tightly — don't use `**` unless you really mean it.
+   - If no, fix the handler to not read that file.
+
+See [Plugins → Permissions](/plugins/permissions) for the allow-list model.
+
+### "PermissionError: network.fetch not allowed"
+
+**Symptom.** `fetch()` from plugin code throws a permission error.
+
+**Cause.** The URL's host isn't in `permissions.network.fetch`.
+
+**Fix.**
+
+Add the host pattern to the manifest:
+
+```ts
+.withNetwork({ fetch: ['api.example.com'] })
+```
+
+Or, if you're calling an LLM/vector store, prefer the built-in hook (`useLLM()` / `useVectorStore()`) which routes through platform adapters with their own permission grants.
+
+### "PermissionError: env.read not allowed"
+
+**Symptom.** Plugin tries to read `process.env.XYZ` and gets a permission error.
+
+**Cause.** The env var name isn't declared in `permissions.env.read`.
+
+**Fix.** Declare it:
+
+```ts
+.withEnv(['OPENAI_API_KEY', 'MY_CUSTOM_VAR'])
+```
+
+Prefer presets when possible — `gitWorkflowPreset`, `kbPlatformPreset`, `llmAccessPreset` already declare common env vars for their domains.
+
+## Build issues
+
+### TypeScript errors after upgrading the SDK
+
+**Symptom.** `pnpm type-check` fails with new type errors after `pnpm update @kb-labs/sdk`.
+
+**Cause.** Either a real breaking change or stale type references.
+
+**Fix.**
+
+1. Check [SDK → Migration Guide](/sdk/migration) for the version you upgraded to.
+2. If the errors are from files in `node_modules` (not your code), it's usually a stale cache:
+   ```bash
+   rm -rf node_modules/.cache node_modules/.tsbuildinfo
+   pnpm type-check
+   ```
+3. If the errors are in your own code, follow the migration guide's specific fixes for that version.
+
+### "Cannot find module '@kb-labs/sdk/studio'" or "@kb-labs/sdk/testing"
+
+**Symptom.** TypeScript can't resolve SDK subpath imports.
+
+**Cause.** Your `tsconfig.json` is using an old `moduleResolution` that doesn't support subpath `exports`.
+
+**Fix.** Set `moduleResolution` to `"bundler"` or `"node16"` in `compilerOptions`:
+
+```json
+{
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "bundler"
+  }
+}
+```
+
+`"node"` and `"classic"` don't understand modern `exports` fields in `package.json`.
+
+### "Error: EACCES: permission denied" on build
+
+**Symptom.** `pnpm build` fails with filesystem permission errors.
+
+**Cause.** You're trying to write to a directory your user doesn't own (often `dist/` from a previous run as a different user).
+
+**Fix.**
+
+```bash
+rm -rf dist node_modules/.cache
+pnpm install
+pnpm build
+```
+
+Or fix the ownership directly: `sudo chown -R $USER dist`.
+
+## Studio
+
+### Studio page doesn't appear in the sidebar after building
+
+**Symptom.** You built a Studio page with `pnpm build:studio`, but it doesn't show up in Studio.
+
+**Cause.** Studio caches the plugin registry and the Module Federation remote list.
+
+**Fix.**
+
+1. Verify `dist/widgets/remoteEntry.js` exists.
+2. Verify the plugin is in `.kb/marketplace.lock`: `pnpm kb marketplace list`.
+3. Clear the cache: `pnpm kb marketplace clear-cache`.
+4. Restart the REST API: `kb-dev restart rest`.
+5. **Hard-reload Studio** in your browser (Cmd+Shift+R / Ctrl+Shift+R). Module Federation remotes are cached aggressively.
+
+### "Objects are not valid as a React child" at Studio page mount
+
+**Symptom.** Your Studio page crashes immediately when mounted.
+
+**Cause.** Your plugin bundled React 19. Studio host runs React 18. Module Federation can't reconcile element types across versions.
+
+**Fix.** Pin React 18 in your plugin's `devDependencies`:
+
+```json
+{
+  "devDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}
+```
+
+Then `pnpm install && pnpm build:studio`. `createStudioRemoteConfig` validates this at build time and throws a clearer error; if it slipped through, check that you're on SDK 1.5+.
+
+### "Shared module is not available for eager consumption"
+
+**Symptom.** Studio page fails to load with a shared scope error.
+
+**Cause.** A shared dependency version mismatch between the plugin and the Studio host. Your plugin bundled (say) `antd@5.10.0` but Studio has `antd@5.21.0`.
+
+**Fix.** Match versions in your `devDependencies` to the ones listed in `STUDIO_SHARED_DEPS` (documented in [Plugins → Studio Pages](/plugins/studio-pages#step-3--understand-shared-dependencies)).
+
+## Services
+
+### "Plugin not found" or services show "available: [...]" without your plugin
+
+**Symptom.** REST API, workflow daemon, or Studio reports the plugin isn't available even though it's installed.
+
+**Cause.** Zombie daemon processes from a previous session. Each `node dist/index.js &` spawns a new daemon; they accumulate and the wrong one may intercept your request.
+
+**Fix.**
+
+```bash
+# Kill every host-agent and workflow process:
+pkill -9 -f "host-agent-app/dist/index.js"
+pkill -9 -f "workflow-daemon/dist/index.js"
+
+# Verify:
+ps aux | grep -E "(host-agent|workflow)" | grep -v grep
+
+# Restart cleanly:
+kb-dev stop
+kb-dev start
+```
+
+Prevention: always use `kb-dev start/stop/restart`, never raw `node dist/index.js &`.
+
+### Service fails to start with "port already in use"
+
+**Symptom.** `kb-dev start rest` fails because port 5050 is in use.
+
+**Cause.** Another process (possibly a zombie from a previous run) is bound to the port.
+
+**Fix.**
+
+```bash
+# Find what's on the port:
+lsof -i :5050
+# Or on Linux:
+ss -tlnp | grep 5050
+
+# Kill it:
+kill -9 <PID>
+
+# Or use kb-dev's force flag if the zombie is a platform process:
+kb-dev start rest --force
+```
+
+### "Workspace adapter not configured" warning on workflow daemon startup
+
+**Symptom.** Workflow daemon logs a warning about missing workspace adapter.
+
+**Cause.** Workflows with `isolation: 'balanced'` (default) or `'strict'` require a workspace adapter. None is configured.
+
+**Fix.** Add a workspace adapter to `kb.config.json`:
+
+```json
+{
+  "platform": {
+    "adapters": {
+      "workspace": "@kb-labs/adapters-workspace-worktree"
+    }
+  }
+}
+```
+
+Or switch workflows to `isolation: 'relaxed'` if you don't need workspace isolation.
+
+## REST API
+
+### 401 Unauthorized on every request
+
+**Symptom.** REST API returns 401 for all requests.
+
+**Cause.** Gateway auth is rejecting the token.
+
+**Fix.**
+
+1. Check the token is present and correct in the `Authorization` header.
+2. If using static tokens: verify the token is in `gateway.staticTokens` in `kb.config.json`.
+3. If using runtime JWTs: check `GATEWAY_JWT_SECRET` didn't rotate. All tokens minted with the old secret are now invalid.
+4. If the token is expired: re-authenticate via `/auth/token`.
+
+### 404 on `/plugins/<name>/<route>`
+
+**Symptom.** Plugin REST route returns 404 even though the plugin is installed.
+
+**Cause.** You're probably missing the `/api/v1/` prefix.
+
+**Fix.** All plugin REST routes mount under `/api/v1/plugins/<name>/<route>`, not `/plugins/<name>/<route>`. Update your client to include the prefix:
+
+```
+POST /api/v1/plugins/commit/generate
+```
+
+## LLM / adapters
+
+### "LLM not configured" or `useLLM()` returns undefined
+
+**Symptom.** Handler expects an LLM but `useLLM()` returns `undefined`.
+
+**Cause.** No LLM adapter is registered in `platform.adapters.llm`.
+
+**Fix.** Add one:
+
+```json
+{
+  "platform": {
+    "adapters": {
+      "llm": "@kb-labs/adapters-openai"
+    },
+    "adapterOptions": {
+      "llm": {
+        "defaultTier": "small"
+      }
+    }
+  }
+}
+```
+
+And set `OPENAI_API_KEY` in the service env. Restart.
+
+### LLM calls hang for minutes then time out
+
+**Symptom.** `llm.complete()` doesn't return.
+
+**Cause.** Network issue, the provider is slow, or you hit a rate limit with long backoff.
+
+**Fix.**
+
+1. Check your network: `curl -I https://api.openai.com`.
+2. Check provider status page.
+3. Check logs for rate limit errors: `grep -i "rate" /path/to/logs`.
+4. Set a per-call timeout in the handler: `useLLM()` + `options.signal` with an `AbortController`.
+
+### Mind RAG returns stale results after editing source
+
+**Symptom.** `pnpm kb mind rag-query` returns results that don't reflect recent code changes.
+
+**Cause.** The Mind index hasn't been refreshed since the changes.
+
+**Fix.**
+
+```bash
+rm -rf .kb/cache/*
+pnpm kb mind rag-index --scope default
+```
+
+Then re-run your query.
+
+## Miscellaneous
+
+### "EACCES: permission denied" writing to `.kb/`
+
+**Symptom.** Services or CLI can't write to the `.kb/` directory.
+
+**Cause.** Ownership issue. The service user doesn't own `.kb/`.
+
+**Fix.**
+
+```bash
+sudo chown -R $(whoami) .kb/
+chmod -R u+rw .kb/
+```
+
+Or run services under the same user that owns the workspace.
+
+### `kb-dev` won't stop a service
+
+**Symptom.** `kb-dev stop <service>` hangs or doesn't actually stop the process.
+
+**Cause.** The service isn't responding to `SIGTERM` (maybe it's in a tight loop or crashed mid-shutdown).
+
+**Fix.**
+
+```bash
+kb-dev stop <service> --force
+# or directly:
+pkill -9 -f "<service-pattern>"
+```
+
+Force-kill as a last resort. Investigate why the service didn't respond to SIGTERM afterward.
+
+### My changes don't show up
+
+Generic case for most "it's not working" issues:
+
+1. **Did you rebuild?** `pnpm build` in the package you changed.
+2. **Did you clear the cache?** `pnpm kb marketplace clear-cache`.
+3. **Did you restart the service?** `kb-dev restart <service>`.
+4. **Did you hard-reload the browser?** (For Studio.)
+
+Most "it's not working" issues are one of these four. Check all four before going deeper.
+
+## When nothing in this list matches
+
+If you hit something not covered here:
+
+1. **Check logs** with `KB_LOG_LEVEL=debug` — the answer is usually in the first error during the failing operation.
+2. **Search the logs by `requestId`** to see the full cross-service trace.
+3. **Check Prometheus metrics** for anomalies around the same time.
+4. **Try reproducing on a fresh workspace** — dev state drift is a real thing.
+5. **Ask.** File an issue in the relevant repo with the error, the logs, and what you were doing.
+
+## What to read next
+
+- **[Operations → Runbooks](/operations/runbooks)** — operational procedures for common tasks.
+- **[Operations → Incident Response](/operations/incident-response)** — playbooks for production incidents.
+- **[Operations → Observability](/operations/observability)** — how to set up the logs, metrics, and traces this page assumes.

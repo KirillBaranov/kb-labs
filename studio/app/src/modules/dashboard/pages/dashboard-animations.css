@@ -1,0 +1,317 @@
+/* Dashboard Widget Animations */
+
+/* Fade-in animation for widgets */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Apply animations to widgets with staggered delays */
+.dashboard-widget {
+  animation: fadeInUp 0.6s ease-out forwards;
+  animation-delay: calc(var(--widget-index) * 0.08s);
+  opacity: 0;
+}
+
+/* Grid layout smooth transitions */
+.react-grid-item {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.react-grid-item.react-grid-placeholder {
+  background: rgba(24, 144, 255, 0.1) !important;
+  opacity: 0.8 !important;
+  transition: all 0.2s ease !important;
+  border: 2px dashed #1890ff !important;
+  border-radius: 8px !important;
+}
+
+/* Widget hover effect */
+.dashboard-widget:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Drag handle hover */
+.drag-handle {
+  transition: all 0.2s ease;
+  opacity: 0.5;
+}
+
+.dashboard-widget:hover .drag-handle {
+  opacity: 1;
+  color: #1890ff !important;
+}
+
+/* Loading shimmer effect for skeleton */
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.skeleton-loading {
+  animation: shimmer 2s infinite linear;
+  background: linear-gradient(
+    90deg,
+    #f0f0f0 25%,
+    #e0e0e0 37%,
+    #f0f0f0 63%
+  );
+  background-size: 1000px 100%;
+}
+
+/* Card content fade-in */
+.ant-card-body {
+  animation: fadeIn 0.4s ease-out 0.2s forwards;
+}
+
+/* Header animation */
+.kb-page-header {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+/* Smooth scroll behavior */
+.ant-card-body {
+  scroll-behavior: smooth;
+}
+
+/* Chart animations */
+.recharts-surface {
+  animation: fadeIn 0.6s ease-out;
+}
+
+/* Table row animation */
+.ant-table-tbody > tr {
+  animation: fadeIn 0.3s ease-out;
+  animation-delay: calc(var(--row-index) * 0.03s);
+}
+
+/* Badge pulse animation */
+@keyframes badgePulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.ant-badge-count {
+  animation: badgePulse 2s ease-in-out infinite;
+}
+
+/* Notification bell shake */
+@keyframes bellShake {
+  0%, 100% { transform: rotate(0deg); }
+  10%, 30%, 50%, 70%, 90% { transform: rotate(-10deg); }
+  20%, 40%, 60%, 80% { transform: rotate(10deg); }
+}
+
+.notification-bell-animated {
+  animation: bellShake 0.5s ease-in-out;
+}
+
+/* Progress bar animation */
+.ant-progress-line {
+  animation: fadeIn 0.5s ease-out;
+}
+
+/* Tag animation */
+.ant-tag {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Metric value count-up animation */
+@keyframes countUp {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.metric-value {
+  animation: countUp 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* Sparkline draw animation */
+@keyframes drawLine {
+  from {
+    stroke-dashoffset: 1000;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.sparkline-path {
+  stroke-dasharray: 1000;
+  animation: drawLine 1.5s ease-out forwards;
+}
+
+/* Hero card slide-in */
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.hero-metric-card {
+  animation: slideInRight 0.5s ease-out;
+  animation-delay: calc(var(--card-index) * 0.1s);
+  animation-fill-mode: backwards;
+}
+
+/* Glow effect for live indicators */
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 5px rgba(82, 196, 26, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(82, 196, 26, 0.8);
+  }
+}
+
+.live-indicator {
+  animation: glow 2s ease-in-out infinite;
+}
+
+/* Alert pulse */
+@keyframes alertPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.ant-alert-warning {
+  animation: alertPulse 2s ease-in-out infinite;
+}
+
+/* Topology node pulse */
+@keyframes nodePulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.react-flow__node {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.react-flow__edge {
+  animation: fadeIn 0.7s ease-out 0.3s backwards;
+}
+
+/* Heatmap cell animation */
+@keyframes heatmapReveal {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.heatmap-cell {
+  animation: heatmapReveal 0.3s ease-out;
+  animation-delay: calc(var(--cell-index) * 0.01s);
+  animation-fill-mode: backwards;
+}
+
+/* Modal entrance */
+.ant-modal {
+  animation: fadeInUp 0.3s ease-out !important;
+}
+
+/* Tooltip smooth appearance */
+.ant-tooltip {
+  animation: fadeIn 0.2s ease-out !important;
+}
+
+/* Loading spinner */
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+/* Success checkmark animation */
+@keyframes checkmark {
+  0% {
+    stroke-dashoffset: 100;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+.success-checkmark {
+  stroke-dasharray: 100;
+  animation: checkmark 0.5s ease-out forwards;
+}
+
+/* Responsive animations - disable on mobile for performance */
+@media (max-width: 768px) {
+  .dashboard-widget,
+  .hero-metric-card,
+  .ant-table-tbody > tr {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

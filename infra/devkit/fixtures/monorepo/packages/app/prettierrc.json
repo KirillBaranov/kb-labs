@@ -1,0 +1,4 @@
+{
+  "$schema": "https://json.schemastore.org/prettierrc",
+  "extends": "@kb-labs/devkit/prettier/index.json"
+}

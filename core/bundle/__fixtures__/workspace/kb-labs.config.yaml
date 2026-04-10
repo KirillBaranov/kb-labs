@@ -1,0 +1,39 @@
+schemaVersion: "1.0"
+$extends: "@kb-labs/org-preset@^1.0.0"
+profiles:
+  - id: "default"
+    label: "Default Profile"
+    scopes:
+      - id: "root"
+        include: ["**/*"]
+        default: true
+  - id: "production"
+    label: "Production Profile"
+    scopes:
+      - id: "root"
+        include: ["**/*"]
+        default: true
+  - id: "testing"
+    label: "Testing Profile"
+    scopes:
+      - id: "root"
+        include: ["**/*"]
+        default: true
+products:
+  ai-review:
+    rules:
+      - "custom-rules.yml"
+    maxFiles: 50
+    debug: true
+  release:
+    version: "1.0.0"
+    prerelease: false
+policy:
+  overrides:
+    roles:
+      developer:
+        - "aiReview.run"
+        - "devkit.sync"
+      maintainer:
+        - "release.publish"
+        - "profiles.materialize"

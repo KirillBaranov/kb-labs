@@ -1,0 +1,176 @@
+/**
+ * Platform initialization for KB Labs CLI.
+ *
+ * Thin wrapper around `loadPlatformConfig` + `initPlatform` from
+ * `@kb-labs/core-runtime`. The shared loader is responsible for resolving
+ * `platformRoot` and `projectRoot`, loading the `.env` file, reading both
+ * platform defaults and project config, and deep-merging them. This file
+ * only adds CLI-specific concerns: the UI provider, lifecycle hooks, and
+ * NoOp fallback on failure.
+ */
+
+import {
+  initPlatform,
+  loadPlatformConfig,
+  platform,
+  type PlatformConfig,
+  type PlatformContainer,
+  type PlatformLifecycleContext,
+  type PlatformLifecycleHooks,
+  type PlatformLifecyclePhase,
+} from '@kb-labs/core-runtime';
+import { noopUI } from '@kb-labs/plugin-contracts';
+import type { UIFacade } from '@kb-labs/plugin-contracts';
+import { createCLIUIFacade } from './ui-facade';
+
+const CLI_LIFECYCLE_HOOK_ID = 'cli-runtime';
+const LOG_SERVICE = 'platform-init';
+let lifecycleHooksRegistered = false;
+
+function lifecycleLogger() {
+  return platform.logger.child({
+    layer: 'cli',
+    service: 'platform-lifecycle',
+  });
+}
+
+function ensureLifecycleHooksRegistered(): void {
+  if (lifecycleHooksRegistered) {
+    return;
+  }
+
+  const hooks: PlatformLifecycleHooks = {
+    onStart: (ctx: PlatformLifecycleContext) => {
+      lifecycleLogger().debug('Platform lifecycle: start', {
+        app: 'cli',
+        cwd: ctx.cwd,
+        isChildProcess: ctx.isChildProcess,
+      });
+    },
+    onReady: (ctx: PlatformLifecycleContext) => {
+      lifecycleLogger().debug('Platform lifecycle: ready', {
+        app: 'cli',
+        durationMs: ctx.metadata?.durationMs,
+      });
+    },
+    onShutdown: () => {
+      lifecycleLogger().debug('Platform lifecycle: shutdown', { app: 'cli' });
+    },
+    onError: (error: unknown, phase: PlatformLifecyclePhase) => {
+      lifecycleLogger().warn('Platform lifecycle hook error', {
+        app: 'cli',
+        phase,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    },
+  };
+
+  platform.registerLifecycleHooks(CLI_LIFECYCLE_HOOK_ID, hooks);
+  lifecycleHooksRegistered = true;
+}
+
+/**
+ * Create CLI-specific UI provider.
+ * Returns rich UI for CLI host, noopUI for other hosts (REST, workflow, etc.)
+ */
+function createCLIUIProvider(): (hostType: string) => UIFacade {
+  return (hostType: string): UIFacade => {
+    if (hostType !== 'cli') {
+      return noopUI;
+    }
+    return createCLIUIFacade();
+  };
+}
+
+export interface PlatformInitResult {
+  /** The initialized platform singleton. */
+  platform: PlatformContainer;
+  /** The merged effective platform config. */
+  platformConfig: PlatformConfig;
+  /** Full raw project config (for `useConfig()` access). */
+  rawConfig?: Record<string, unknown>;
+  /** Where the KB Labs platform code lives (node_modules/@kb-labs/*). */
+  platformRoot: string;
+  /** Where the user's `.kb/kb.config.json` lives. */
+  projectRoot: string;
+}
+
+/**
+ * Initialize the platform for the CLI process.
+ *
+ * @param cwd        Starting directory for project-root discovery
+ *                   (typically `process.cwd()`).
+ * @param moduleUrl  `import.meta.url` of the CLI binary — lets us locate
+ *                   the platform installation in installed mode without
+ *                   guessing `..` levels. Optional in dev mode.
+ */
+export async function initializePlatform(
+  cwd: string,
+  moduleUrl?: string,
+): Promise<PlatformInitResult> {
+  ensureLifecycleHooksRegistered();
+
+  const uiProvider = createCLIUIProvider();
+
+  try {
+    const {
+      platformConfig,
+      rawConfig,
+      platformRoot,
+      projectRoot,
+      sources,
+    } = await loadPlatformConfig({
+      moduleUrl,
+      startDir: cwd,
+    });
+
+    // Relative adapter paths (e.g. ".kb/database/kb.sqlite") must resolve
+    // against the project root — this is where the user's .kb/ lives.
+    const platformInstance = await initPlatform(
+      platformConfig,
+      projectRoot,
+      uiProvider,
+    );
+
+    platformInstance.logger.info('Platform adapters initialized', {
+      layer: 'cli',
+      service: LOG_SERVICE,
+      platformRoot,
+      projectRoot,
+      sources,
+      adapters: Object.keys(platformConfig.adapters ?? {}),
+      hasAdapterOptions: !!platformConfig.adapterOptions,
+    });
+
+    return {
+      platform: platformInstance,
+      platformConfig,
+      rawConfig,
+      platformRoot,
+      projectRoot,
+    };
+  } catch (error) {
+    // Fallback: start with empty config + NoOp adapters so the CLI can still
+    // run commands that don't need real adapters (e.g. `kb --help`).
+    const fallbackConfig: PlatformConfig = { adapters: {} };
+    const platformInstance = await initPlatform(
+      fallbackConfig,
+      cwd,
+      uiProvider,
+    );
+    platformInstance.logger.warn(
+      'Platform initialization failed, using NoOp adapters',
+      {
+        layer: 'cli',
+        service: LOG_SERVICE,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    );
+    return {
+      platform: platformInstance,
+      platformConfig: fallbackConfig,
+      platformRoot: cwd,
+      projectRoot: cwd,
+    };
+  }
+}

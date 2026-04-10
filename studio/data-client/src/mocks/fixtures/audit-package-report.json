@@ -1,0 +1,70 @@
+{
+  "pkg": {
+    "name": "@kb-labs/cli",
+    "version": "1.0.0"
+  },
+  "lastRun": {
+    "id": "run-123",
+    "startedAt": "2025-01-01T12:00:00.000Z",
+    "endedAt": "2025-01-01T12:02:05.000Z",
+    "status": "fail"
+  },
+  "checks": [
+    {
+      "id": "style",
+      "ok": false,
+      "errors": 12,
+      "warnings": 3,
+      "meta": {
+        "eslint": "8.52.0",
+        "rules": ["no-console", "prefer-const"]
+      }
+    },
+    {
+      "id": "types",
+      "ok": false,
+      "errors": 5,
+      "warnings": 0,
+      "meta": {
+        "typescript": "5.3.0"
+      }
+    },
+    {
+      "id": "tests",
+      "ok": false,
+      "errors": 8,
+      "warnings": 2,
+      "meta": {
+        "vitest": "1.0.0",
+        "coverage": 75
+      }
+    },
+    {
+      "id": "build",
+      "ok": true,
+      "errors": 0,
+      "warnings": 0
+    },
+    {
+      "id": "devlink",
+      "ok": true,
+      "errors": 0,
+      "warnings": 1,
+      "meta": {
+        "cycles": []
+      }
+    },
+    {
+      "id": "mind",
+      "ok": true,
+      "errors": 0,
+      "warnings": 0
+    }
+  ],
+  "artifacts": {
+    "json": "{\"summary\":\"audit report\"}",
+    "md": "# Audit Report\n\n## Summary\n\nMultiple issues found in @kb-labs/cli.",
+    "txt": "Audit Report\n============\n\n@kb-labs/cli: FAILED\n\nStyle checks: 12 errors, 3 warnings\nTypes checks: 5 errors\nTests: 8 errors, 2 warnings"
+  }
+}
+

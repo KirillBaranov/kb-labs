@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "devkitVersion": "1.5.0",
+  "platformCompat": ">=0.10.0 <2.0.0",
+  "claudeMd": {
+    "snippetPath": "CLAUDE.md.snippet",
+    "markerId": "kb-labs"
+  },
+  "skills": [
+    {
+      "id": "kb-labs-quickstart",
+      "path": "skills/kb-labs-quickstart/SKILL.md",
+      "version": "1.0.0",
+      "description": "Quickstart for the KB Labs platform: verify install, locate state, find common commands"
+    },
+    {
+      "id": "kb-labs-create-plugin",
+      "path": "skills/kb-labs-create-plugin/SKILL.md",
+      "version": "1.0.0",
+      "description": "Scaffold a new KB Labs plugin (cli/core/contracts packages) following the platform-standard layout"
+    },
+    {
+      "id": "kb-labs-create-product",
+      "path": "skills/kb-labs-create-product/SKILL.md",
+      "version": "1.0.0",
+      "description": "Create a new KB Labs product/service with canonical bootstrap, health, observability, and tests"
+    },
+    {
+      "id": "kb-labs-troubleshoot",
+      "path": "skills/kb-labs-troubleshoot/SKILL.md",
+      "version": "1.0.0",
+      "description": "Diagnose KB Labs platform issues: stuck services, dirty submodules, port conflicts, broken builds"
+    },
+    {
+      "id": "kb-labs-explore",
+      "path": "skills/kb-labs-explore/SKILL.md",
+      "version": "1.0.0",
+      "description": "Discover what is installed in a KB Labs project: services, plugins, configuration, and entry points"
+    },
+    {
+      "id": "kb-labs-update",
+      "path": "skills/kb-labs-update/SKILL.md",
+      "version": "1.0.0",
+      "description": "Safely update the installed KB Labs platform via kb-create update, including diff review"
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+{
+  "name": "@kb-labs/shared-http",
+  "version": "1.4.0",
+  "type": "module",
+  "description": "Shared Fastify/OpenAPI utilities for KB Labs HTTP services",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsup --config tsup.config.ts",
+    "dev": "tsup --config tsup.config.ts --watch",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@kb-labs/core-contracts": "workspace:*",
+    "@kb-labs/core-platform": "workspace:*",
+    "zod": "^4.0.0",
+    "zod-to-json-schema": "^3.25.0"
+  },
+  "peerDependencies": {
+    "@fastify/swagger": ">=9.5.1",
+    "@fastify/swagger-ui": "^5.2.0",
+    "fastify": "^5.5.0",
+    "fastify-type-provider-zod": "^6.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@fastify/swagger": {
+      "optional": false
+    },
+    "@fastify/swagger-ui": {
+      "optional": false
+    },
+    "fastify-type-provider-zod": {
+      "optional": false
+    }
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.3.3",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.11.0",
+  "publishConfig": {
+    "access": "public"
+  }
+}

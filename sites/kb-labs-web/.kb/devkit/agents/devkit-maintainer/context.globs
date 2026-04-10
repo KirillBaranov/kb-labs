@@ -1,0 +1,15 @@
+src/**/*
+packages/**/*
+apps/**/*
+docs/**/*
+.eslintrc.*
+eslint.config.*
+vitest.config.*
+tsconfig*.json
+.prettierrc*
+.editorconfig
+package.json
+.github/**/*
+README.md
+CONTRIBUTING.md
+AGENTS.md

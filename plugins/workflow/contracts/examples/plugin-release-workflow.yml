@@ -1,0 +1,36 @@
+# Example: Release Manager plugin workflow
+# Declared in plugin manifest as:
+# workflows: [
+#   {
+#     id: 'standard-release',
+#     file: 'workflows/standard-release.yml',
+#     description: 'Standard release workflow (bump, tag, changelog)',
+#     tags: ['release', 'versioning']
+#   }
+# ]
+
+name: standard-release
+version: 1.0.0
+description: Standard release workflow (bump, tag, changelog)
+on:
+  manual: true
+jobs:
+  release:
+    runsOn: local
+    steps:
+      - name: Bump Version
+        id: bump
+        uses: plugin:@kb-labs/release-manager/cli/bump
+        with:
+          type: auto
+      
+      - name: Generate Changelog
+        uses: plugin:@kb-labs/release-manager/cli/changelog
+        with:
+          version: ${{ steps.bump.outputs.version }}
+      
+      - name: Create Git Tag
+        uses: builtin:shell
+        with:
+          command: git tag v${{ steps.bump.outputs.version }}
+
