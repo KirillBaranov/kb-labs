@@ -70,7 +70,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	}
 
 	// Validate env vars for all targets upfront — fail fast before any build.
-	if err := validateEnv(targets, cfg.Targets, o); err != nil {
+	if err := validateEnv(targets, cfg.Targets, o, jsonMode); err != nil {
 		return err
 	}
 
@@ -220,7 +220,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 
 // validateEnv checks that all required env vars are set for the given targets.
 // Reports all missing vars at once so the user can fix them in one go.
-func validateEnv(targets []string, all map[string]config.Target, o output) error {
+func validateEnv(targets []string, all map[string]config.Target, o output, silent bool) error {
 	var missing []string
 	for _, name := range targets {
 		t := all[name]
@@ -239,9 +239,11 @@ func validateEnv(targets []string, all map[string]config.Target, o output) error
 	if len(missing) == 0 {
 		return nil
 	}
-	o.Err("missing required env vars:")
-	for _, m := range missing {
-		o.Detail(m)
+	if !silent {
+		o.Err("missing required env vars:")
+		for _, m := range missing {
+			o.Detail(m)
+		}
 	}
 	return fmt.Errorf("env validation failed")
 }
