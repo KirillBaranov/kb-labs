@@ -190,5 +190,5 @@ Selling hosted access? [Get in touch](https://kblabs.ru/enterprise).
 ---
 
 <p align="center">
-  Built by <a href="https://github.com/KirillBaranov">Kirill Baranov</a>
+  Built by <a href="https://k-baranov.ru">Kirill Baranov</a> · <a href="https://github.com/KirillBaranov">GitHub</a>
 </p>
