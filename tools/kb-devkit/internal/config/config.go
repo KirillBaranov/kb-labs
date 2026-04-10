@@ -80,6 +80,12 @@ type WorkspaceConfig struct {
 	// MaxDepth controls how deep to recurse when expanding ** globs.
 	// Default: 3. Increase if your monorepo has deeply nested packages.
 	MaxDepth int `yaml:"maxDepth"`
+	// Include limits discovery to only these glob patterns (relative to workspace root).
+	// If empty, all directories matching category patterns are included.
+	Include []string `yaml:"include"`
+	// Exclude skips directories matching these glob patterns (relative to workspace root).
+	// Evaluated after Include. Supports the same glob syntax as category match patterns.
+	Exclude []string `yaml:"exclude"`
 }
 
 // NamedCategory is a category entry with its name preserved.

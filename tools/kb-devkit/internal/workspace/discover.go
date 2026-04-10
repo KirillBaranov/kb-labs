@@ -48,10 +48,15 @@ func discoverPackages(root string, cfg *config.DevkitConfig) ([]Package, error) 
 	for _, pattern := range patterns {
 		dirs := expandPattern(root, pattern, maxDepth)
 		for _, dir := range dirs {
-			if !seen[dir] {
-				seen[dir] = true
-				pkgDirs = append(pkgDirs, dir)
+			if seen[dir] {
+				continue
 			}
+			// Apply workspace.exclude early — before classify.
+			if cfg != nil && isExcluded(root, dir, cfg.Workspace.Exclude) {
+				continue
+			}
+			seen[dir] = true
+			pkgDirs = append(pkgDirs, dir)
 		}
 	}
 
@@ -191,6 +196,23 @@ func collectPackageDirsInto(dir string, depth, maxDepth int, result *[]string) {
 	}
 }
 
+// isExcluded returns true if dir matches any of the exclude patterns.
+func isExcluded(root, dir string, excludePatterns []string) bool {
+	if len(excludePatterns) == 0 {
+		return false
+	}
+	rel, err := filepath.Rel(root, dir)
+	if err != nil {
+		return false
+	}
+	for _, pat := range excludePatterns {
+		if matchPattern(pat, rel) {
+			return true
+		}
+	}
+	return false
+}
+
 func hasPackageJSON(dir string) bool {
 	_, err := os.Stat(filepath.Join(dir, "package.json"))
 	return err == nil
@@ -215,6 +237,32 @@ func classifyPackages(root string, dirs []string, cfg *config.DevkitConfig) []Pa
 	for _, dir := range dirs {
 		rel, _ := filepath.Rel(root, dir)
 		name := readPackageName(dir)
+
+		// Apply workspace.include filter (if any): rel must match at least one pattern.
+		if len(cfg.Workspace.Include) > 0 {
+			matched := false
+			for _, pat := range cfg.Workspace.Include {
+				if matchPattern(pat, rel) {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+		}
+
+		// Apply workspace.exclude filter: skip if rel matches any pattern.
+		excluded := false
+		for _, pat := range cfg.Workspace.Exclude {
+			if matchPattern(pat, rel) {
+				excluded = true
+				break
+			}
+		}
+		if excluded {
+			continue
+		}
 
 		category, preset, language := classify(rel, cfg)
 		if category == "" {

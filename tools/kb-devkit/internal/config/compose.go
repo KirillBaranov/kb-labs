@@ -25,6 +25,12 @@ func mergeConfigs(base, child *DevkitConfig) *DevkitConfig {
 	if child.Workspace.MaxDepth != 0 {
 		out.Workspace.MaxDepth = child.Workspace.MaxDepth
 	}
+	if len(child.Workspace.Include) > 0 {
+		out.Workspace.Include = append([]string(nil), child.Workspace.Include...)
+	}
+	if len(child.Workspace.Exclude) > 0 {
+		out.Workspace.Exclude = append(out.Workspace.Exclude, child.Workspace.Exclude...)
+	}
 	if len(child.Workspace.Categories) > 0 {
 		out.Workspace.Categories = append([]NamedCategory(nil), child.Workspace.Categories...)
 		out.Categories = append([]NamedCategory(nil), child.Workspace.Categories...)
