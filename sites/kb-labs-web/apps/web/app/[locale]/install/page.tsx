@@ -67,7 +67,7 @@ export default async function InstallPage({ params }: Props) {
             <a className="btn primary" href="/install.sh">
               {t('install.hero.downloadBtn')}
             </a>
-            <a className="btn secondary" href="https://github.com/KirillBaranov/kb-labs-create/releases/latest" target="_blank" rel="noopener noreferrer">
+            <a className="btn secondary" href="https://github.com/KirillBaranov/kb-labs/releases/latest" target="_blank" rel="noopener noreferrer">
               {t('install.hero.releasesBtn')}
             </a>
           </div>
@@ -110,9 +110,9 @@ export default async function InstallPage({ params }: Props) {
             <h3 className={s.subhead}>{t('install.pinVersion.checksumTitle')}</h3>
             <div className={s.codeWrap}>
               <pre className={s.codeBlock}>
-                <code>{'curl -fsSL https://github.com/KirillBaranov/kb-labs-create/releases/download/v1.2.3/checksums.txt | grep kb-create-linux-amd64'}</code>
+                <code>{'curl -fsSL https://github.com/KirillBaranov/kb-labs/releases/download/v1.2.3/checksums.txt | grep kb-create-linux-amd64'}</code>
               </pre>
-              <CopyButton text="curl -fsSL https://github.com/KirillBaranov/kb-labs-create/releases/download/v1.2.3/checksums.txt | grep kb-create-linux-amd64" />
+              <CopyButton text="curl -fsSL https://github.com/KirillBaranov/kb-labs/releases/download/v1.2.3/checksums.txt | grep kb-create-linux-amd64" />
             </div>
           </div>
           <div className={s.enterpriseNote}>
@@ -145,7 +145,7 @@ export default async function InstallPage({ params }: Props) {
               <div key={item.file} className={s.binaryRow}>
                 <span>{item.platform}</span>
                 <code>{item.file}</code>
-                <a href={`https://github.com/KirillBaranov/kb-labs-create/releases/latest/download/${item.file}`} target="_blank" rel="noopener noreferrer">{t('install.binaries.downloadBtn')}</a>
+                <a href={`https://github.com/KirillBaranov/kb-labs/releases/latest/download/${item.file}`} target="_blank" rel="noopener noreferrer">{t('install.binaries.downloadBtn')}</a>
               </div>
             ))}
           </div>

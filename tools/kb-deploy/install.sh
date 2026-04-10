@@ -2,7 +2,7 @@
 set -eu
 
 REPO="KirillBaranov/kb-labs"
-BINARY="kb-dev"
+BINARY="kb-deploy"
 DEST="${HOME}/.local/bin/${BINARY}"
 VERSION="latest"
 RESOLVED_VERSION=""
@@ -52,7 +52,7 @@ print_banner() {
  |_|\_\_.__/     \__,_|\___| \_/
 
 EOF
-  printf "%skb-dev — local service manager%s\n" "$C_BOLD" "$C_RESET"
+  printf "%skb-deploy — deploy Docker services to VPS over SSH%s\n" "$C_BOLD" "$C_RESET"
   echo ""
 }
 
@@ -245,4 +245,4 @@ printf "  %skb-dev start%s\n" "$C_DIM" "$C_RESET"
 printf "  %skb-dev status%s\n" "$C_DIM" "$C_RESET"
 printf "  %skb-dev doctor%s\n" "$C_DIM" "$C_RESET"
 echo ""
-printf "  %sDocs: https://kblabs.ru/docs/services/kb-dev%s\n" "$C_DIM" "$C_RESET"
+printf "  %sDocs: https://kblabs.ru/docs/services/kb-deploy%s\n" "$C_DIM" "$C_RESET"
