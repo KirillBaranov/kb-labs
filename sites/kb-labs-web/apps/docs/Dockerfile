@@ -5,9 +5,13 @@ FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
+# Root workspace manifests
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/docs/package.json ./apps/docs/
-COPY packages/og/package.json ./packages/og/
+
+# sites/kb-labs-web packages
+COPY sites/kb-labs-web/package.json                          ./sites/kb-labs-web/
+COPY sites/kb-labs-web/apps/docs/package.json                ./sites/kb-labs-web/apps/docs/
+COPY sites/kb-labs-web/packages/og/package.json              ./sites/kb-labs-web/packages/og/
 
 RUN corepack enable pnpm && pnpm install --frozen-lockfile --filter @kb-labs/docs-site...
 
@@ -15,10 +19,12 @@ RUN corepack enable pnpm && pnpm install --frozen-lockfile --filter @kb-labs/doc
 FROM base AS builder
 WORKDIR /app
 
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/docs/node_modules ./apps/docs/node_modules
-COPY --from=deps /app/packages/og/node_modules ./packages/og/node_modules
-COPY . .
+COPY --from=deps /app/node_modules                                    ./node_modules
+COPY --from=deps /app/sites/kb-labs-web/node_modules                 ./sites/kb-labs-web/node_modules
+COPY --from=deps /app/sites/kb-labs-web/apps/docs/node_modules       ./sites/kb-labs-web/apps/docs/node_modules
+COPY --from=deps /app/sites/kb-labs-web/packages/og/node_modules     ./sites/kb-labs-web/packages/og/node_modules
+
+COPY sites/kb-labs-web ./sites/kb-labs-web
 
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN corepack enable pnpm && pnpm --filter @kb-labs/docs-site run build
@@ -33,8 +39,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs && \
     adduser  --system --uid 1001 nextjs
 
-COPY --from=builder /app/apps/docs/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/apps/docs/.next/static ./apps/docs/.next/static
+COPY --from=builder /app/sites/kb-labs-web/apps/docs/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/sites/kb-labs-web/apps/docs/.next/static ./sites/kb-labs-web/apps/docs/.next/static
 
 USER nextjs
 
@@ -42,4 +48,4 @@ EXPOSE 3001
 ENV PORT=3001
 ENV HOSTNAME=0.0.0.0
 
-CMD ["node", "apps/docs/server.js"]
+CMD ["node", "sites/kb-labs-web/apps/docs/server.js"]
