@@ -24,7 +24,13 @@ export default defineConfig({
         '**/__tests__/**',
         '**/*.d.ts',
         '**/types.ts',
-        '**/types/**'
+        '**/types/**',
+        '**/contracts.ts',
+        '**/contracts/**',
+        '**/constants.ts',
+        '**/constants/**',
+        '**/*.config.ts',
+        '**/*.config.js'
       ],
       thresholds: {
         statements: 90,
