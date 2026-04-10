@@ -113,6 +113,8 @@ type yamlWorkspace struct {
 	Discovery      []string              `yaml:"discovery"`
 	Categories     yamlOrderedCategories `yaml:"categories"`
 	MaxDepth       int                   `yaml:"maxDepth"`
+	Include        []string              `yaml:"include"`
+	Exclude        []string              `yaml:"exclude"`
 }
 
 type yamlCategory struct {
@@ -330,6 +332,8 @@ func mapYAML(raw yamlConfig) *DevkitConfig {
 			PackageManager: raw.Workspace.PackageManager,
 			Discovery:      raw.Workspace.Discovery,
 			MaxDepth:       raw.Workspace.MaxDepth,
+			Include:        raw.Workspace.Include,
+			Exclude:        raw.Workspace.Exclude,
 		},
 		Run: RunConfig{
 			Concurrency: raw.Run.Concurrency,

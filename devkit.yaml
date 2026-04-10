@@ -5,6 +5,8 @@ extends:
 workspace:
   packageManager: pnpm
   maxDepth: 3  # max recursion depth for ** globs; increase if packages are nested deeper
+  exclude:
+    - plugins/fixtures/*   # test fixtures — not real packages, no build/lint/test tasks
   categories:
     # SPA apps (Rspack / Vite) — pnpm build, not tsup
     # Must come before ts-lib since categories use first-match semantics
