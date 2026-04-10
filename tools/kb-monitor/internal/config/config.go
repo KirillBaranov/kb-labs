@@ -3,8 +3,17 @@ package config
 
 // Config is the top-level configuration (shared with kb-deploy).
 type Config struct {
-	Registry string            `yaml:"registry"`
-	Targets  map[string]Target `yaml:"targets"`
+	Registry       string                   `yaml:"registry"`
+	Infrastructure map[string]InfraService  `yaml:"infrastructure"`
+	Targets        map[string]Target        `yaml:"targets"`
+}
+
+// InfraService mirrors kb-deploy's InfraService for read-only monitoring.
+type InfraService struct {
+	Type     string    `yaml:"type"`
+	Image    string    `yaml:"image"`
+	SSH      SSHConfig `yaml:"ssh"`
+	Strategy string    `yaml:"strategy"`
 }
 
 // Target describes a deployable service with optional monitor permissions.

@@ -1,5 +1,32 @@
 registry: ghcr.io/kirillbaranov
 
+infrastructure:
+  qdrant:
+    type: docker-image
+    image: qdrant/qdrant:latest
+    ssh:
+      host: ${SSH_HOST}
+      user: ${SSH_USER}
+      key_env: SSH_KEY
+    volumes:
+      - qdrant_data:/qdrant/storage
+    ports:
+      - "6333:6333"
+    restart: unless-stopped
+    strategy: manual
+
+  redis:
+    type: docker-image
+    image: redis:7-alpine
+    ssh:
+      host: ${SSH_HOST}
+      user: ${SSH_USER}
+      key_env: SSH_KEY
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    strategy: manual
+
 targets:
   kb-labs-web:
     watch:

@@ -3,11 +3,29 @@ package config
 
 // Config is the top-level deploy configuration.
 type Config struct {
-	Registry string            `yaml:"registry"`
-	Targets  map[string]Target `yaml:"targets"`
+	Registry       string                     `yaml:"registry"`
+	Infrastructure map[string]InfraService    `yaml:"infrastructure"`
+	Targets        map[string]Target          `yaml:"targets"`
 }
 
-// Target describes a single deployable service.
+// InfraService describes a stateful infrastructure component (db, cache, etc.)
+// managed independently from application targets.
+type InfraService struct {
+	// Type is the service kind. Currently only "docker-image" is supported.
+	Type     string            `yaml:"type"`
+	Image    string            `yaml:"image"`
+	SSH      SSHConfig         `yaml:"ssh"`
+	Volumes  []string          `yaml:"volumes"`
+	Ports    []string          `yaml:"ports"`
+	Env      map[string]string `yaml:"env"`
+	Restart  string            `yaml:"restart"`
+	// Strategy controls whether `kb-deploy run` touches this service.
+	// "manual" (default) — only explicit `infra up/down` commands.
+	// "diff"   — `infra up` is called during `run` if the image tag changed.
+	Strategy string            `yaml:"strategy"`
+}
+
+// Target describes a single deployable application service.
 type Target struct {
 	Watch      []string     `yaml:"watch"`
 	Image      string       `yaml:"image"`

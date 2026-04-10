@@ -67,6 +67,25 @@ func (p *clientPool) closeAll() {
 	}
 }
 
+// getSSH dials SSH using a raw SSHConfig. Used for infra services which
+// don't have a full Target wrapper.
+func (p *clientPool) getSSH(sshCfg config.SSHConfig) (*ssh.Client, error) {
+	key := sshCfg.User + "@" + sshCfg.Host
+	if c, ok := p.clients[key]; ok {
+		return c, nil
+	}
+	keyPEM := os.Getenv(sshCfg.KeyEnv)
+	if keyPEM == "" {
+		return nil, fmt.Errorf("$%s is empty — SSH key not set", sshCfg.KeyEnv)
+	}
+	c, err := ssh.New(sshCfg.Host, sshCfg.User, keyPEM)
+	if err != nil {
+		return nil, fmt.Errorf("ssh connect: %w", err)
+	}
+	p.clients[key] = c
+	return c, nil
+}
+
 // connectTarget dials SSH for the given target using its key_env variable.
 // Used by commands that work with a single target (logs, exec).
 func connectTarget(t config.Target) (*ssh.Client, error) {
