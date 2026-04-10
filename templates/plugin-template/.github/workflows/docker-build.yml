@@ -1,0 +1,25 @@
+name: Docker Build
+
+# Builds and pushes Docker image to ghcr.io
+#
+# Flow:
+#   rc branch   → build image tagged rc-<sha> (for testing)
+#   release tag → build image tagged release-x.y.z + latest (for deploy)
+#
+# Configure:
+#   - Set image-name to your service name (e.g. kb-labs-rest-api)
+#   - Set dockerfile path if not at repo root
+
+on:
+  push:
+    branches: [rc]
+    tags: ['release-*']
+  workflow_dispatch: {}
+
+jobs:
+  call:
+    uses: KirillBaranov/kb-labs-devkit/.github/workflows/docker-build-reusable.yml@main
+    with:
+      image-name: kb-labs-my-service  # TODO: change to your service name
+      dockerfile: Dockerfile
+      context: .

@@ -1,0 +1,334 @@
+---
+title: "Profiles"
+description: "Per-product configuration bundles — scopes, inheritance, and how useConfig reads them."
+updatedAt: "2026-04-07"
+order: 3
+---
+
+A profile is a named configuration bundle that groups per-product settings together. The canonical use case is "I want one config for dev, a different config for production, and a third for my staging sandbox" — each one becomes a profile, and you switch between them by setting `KB_PROFILE` or passing `--profile=<id>`.
+
+Profiles also carry **scopes**, which let a single profile apply different settings to different parts of a codebase. This is how Mind RAG, AI Review, and QA can all have per-package configuration without duplicating the entire profile.
+
+Source of truth for the schema: [platform/kb-labs-core/packages/core-config/src/profiles/types.ts](platform/kb-labs-core/packages/core-config/src/profiles/types.ts).
+
+## Where profiles live
+
+In `.kb/kb.config.json` under the top-level `profiles` array:
+
+```json
+{
+  "profiles": [
+    {
+      "id": "default",
+      "label": "Default Profile",
+      "products": {
+        "mind":    { /* mind plugin config */ },
+        "commit":  { /* commit plugin config */ },
+        "review":  { /* ai-review config */ }
+      }
+    },
+    {
+      "id": "production",
+      "extends": "default",
+      "products": {
+        "mind":   { /* overrides for production */ }
+      }
+    }
+  ]
+}
+```
+
+The `profiles` array is separate from the `platform` section — `platform` is for adapters (LLM, cache, storage, etc.) and is shared across all profiles; `profiles` is for per-product overrides.
+
+See [kb.config.json reference](/configuration/kb-config#profiles--profiles-v2) for the top-level layout.
+
+## `ProfileV2` schema
+
+```ts
+interface ProfileV2 {
+  id: string;                             // required, unique within the file
+  label?: string;                         // human-readable name
+  description?: string;
+  extends?: string;                       // id of another profile to inherit from
+  scopes?: ScopeV2[];
+  products?: Record<string, Record<string, unknown>>;
+  meta?: {
+    version?: string;
+    tags?: string[];
+    deprecated?: boolean;
+    owner?: string;
+  };
+}
+```
+
+The Zod schema (`ProfileV2Schema`) validates this at load time. Invalid profiles are rejected with specific errors — empty `id`, empty `extends`, malformed scopes all produce clear messages.
+
+### `id`
+
+Unique string identifier. Used as the key when selecting a profile (`KB_PROFILE=production`, `--profile=staging`).
+
+### `extends`
+
+Optional — references another profile `id` or a preset. When present, the child profile inherits the parent's `products` and `scopes`, and can override or add to them. Inheritance is single (one parent); multiple inheritance is not supported.
+
+```json
+{
+  "profiles": [
+    { "id": "base",       "products": { "mind":   { "scopes": [...] } } },
+    { "id": "dev",        "extends": "base" },
+    { "id": "production", "extends": "base", "products": { "mind": { /* prod overrides */ } } }
+  ]
+}
+```
+
+`production.products.mind` **replaces** `base.products.mind` for the `mind` product only — other products inherited from `base` remain unchanged.
+
+### `products`
+
+A `Record<string, Record<string, unknown>>`. The outer key is the product ID (`'mind'`, `'commit'`, `'review'`, `'qa'`, `'release'`, ...); the inner object is whatever that product's config looks like.
+
+The platform does not validate the inner structure — each plugin is responsible for its own schema. When you call `useConfig<T>()` inside a plugin, you supply `T` and cast at the boundary:
+
+```ts
+import { useConfig } from '@kb-labs/sdk';
+
+interface CommitConfig {
+  llm: { model: string; temperature: number };
+  git: { protectedBranches: string[] };
+}
+
+const config = await useConfig<CommitConfig>();
+// config is `CommitConfig | undefined` — the platform returns the slice, you pick the type
+```
+
+The product ID that `useConfig()` looks up defaults to the plugin's `manifest.configSection`. If that's `'commit'`, the hook reads `profiles[active].products.commit`. Pass an explicit product ID if you need to read another plugin's config (rare — don't do this unless you have a concrete reason).
+
+### `meta`
+
+Optional metadata for tooling. None of the fields affect runtime behavior — they're for profile catalogs, audit trails, and deprecation warnings.
+
+```json
+{
+  "meta": {
+    "version": "2.1.0",
+    "tags": ["production", "audited"],
+    "deprecated": false,
+    "owner": "platform-team@example.com"
+  }
+}
+```
+
+The schema is `.strict()` — unknown fields under `meta` are rejected. Add only the declared keys.
+
+## Scopes
+
+A **scope** is a filter over the codebase: "for paths matching this glob, use these settings". A profile can have zero or more scopes, and each scope can override product config just for the paths it matches.
+
+```ts
+interface ScopeV2 {
+  id: string;                             // required, unique within the profile
+  label?: string;
+  description?: string;
+  include: string[];                      // required, at least one glob
+  exclude?: string[];
+  products?: Record<string, Record<string, unknown>>;
+  default?: boolean;
+}
+```
+
+### `include` and `exclude`
+
+Both are arrays of glob patterns. `include` is required (min 1); `exclude` is optional. Paths are matched against each glob using standard glob semantics — `**` for recursive, `*` for any filename segment, etc.
+
+```json
+{
+  "id": "packages-core",
+  "label": "Core packages only",
+  "include": ["platform/kb-labs-core/**", "platform/kb-labs-shared/**"],
+  "exclude": ["**/node_modules/**", "**/dist/**"],
+  "products": {
+    "mind": { "engine": "mind-prod" }
+  }
+}
+```
+
+### `default: true`
+
+Marks a scope as the fallback when no other scope matches. You can have at most one default per profile. If multiple scopes match a given path, the **first** one wins (order matters in the array); if none match, the default scope applies.
+
+### `products` override
+
+When a scope defines `products.<productId>`, it shadows the profile-level `products.<productId>` for matching paths. Deep merging: the scope's keys overlay the profile's keys, so you only restate what's different.
+
+### Example: Mind with per-scope engines
+
+```json
+{
+  "id": "default",
+  "products": {
+    "mind": {
+      "engines": [
+        { "id": "mind-prod", "type": "mind", "options": { /* ... */ } },
+        { "id": "mind-fast", "type": "mind", "options": { /* ... */ } }
+      ],
+      "defaults": { "fallbackEngineId": "mind-prod" }
+    }
+  },
+  "scopes": [
+    {
+      "id": "core-packages",
+      "include": ["platform/kb-labs-core/**"],
+      "products": {
+        "mind": {
+          "scopes": [{ "id": "default", "defaultEngine": "mind-prod" }]
+        }
+      }
+    },
+    {
+      "id": "everything-else",
+      "include": ["**"],
+      "default": true,
+      "products": {
+        "mind": {
+          "scopes": [{ "id": "default", "defaultEngine": "mind-fast" }]
+        }
+      }
+    }
+  ]
+}
+```
+
+Files under `platform/kb-labs-core/**` get the full `mind-prod` engine; everything else falls back to the faster `mind-fast`. One profile, two behaviors.
+
+## Selecting a profile
+
+The profile ID used for a given CLI invocation or service boot comes from, in order:
+
+1. **`--profile=<id>` flag** on the CLI (overrides everything).
+2. **`KB_PROFILE` env var** in the process environment.
+3. **Default to `'default'`** if neither is set.
+
+If the selected profile ID doesn't exist in the config, the platform logs an error and falls back to the `'default'` profile. If there's no `'default'` either, product config is empty and `useConfig()` returns `undefined`.
+
+## Selecting a scope within a profile
+
+Scopes are matched against a `path` at resolution time. The path comes from:
+
+1. **Explicit** — the caller passed `{ scope: 'id' }` or `{ path: '...' }` to the underlying config API.
+2. **Auto** — the platform picks a scope based on `process.cwd()` or the plugin's working directory.
+3. **Default** — if nothing matches, the scope marked `default: true` is used.
+4. **None** — if there's no default, the profile-level `products` is returned without scope overrides.
+
+This is tracked in the `ScopeSelection` object attached to the resolved profile:
+
+```ts
+interface ScopeSelection {
+  strategy: 'explicit' | 'default' | 'auto' | 'none';
+  path?: string;
+}
+```
+
+You can inspect it if you want to show the user "which scope am I reading from" in diagnostic output.
+
+## Legacy flat structure
+
+Before profiles v2 existed, product config lived directly at the top level of `kb.config.json`:
+
+```json
+{
+  "knowledge": { /* legacy mind config */ },
+  "workflow":  { /* legacy workflow config */ }
+}
+```
+
+The platform still reads this format for backward compatibility, with one quirk: the legacy key `knowledge` maps to the new product ID `mind`. Every other key keeps its name.
+
+Legacy config is treated as a single implicit profile with `id: 'default'`. If both the legacy top-level keys and a `profiles` array are present, `profiles` wins.
+
+**New deployments should use profiles v2 exclusively.** The legacy path exists to avoid breaking existing installs; expect it to be removed in a future major version.
+
+## Working with profiles from plugin code
+
+Most plugin handlers never need to know which profile is active — `useConfig()` just returns the right slice:
+
+```ts
+import { useConfig } from '@kb-labs/sdk';
+
+interface MyConfig {
+  llm: { model: string };
+  storage: { directory: string };
+}
+
+const config = await useConfig<MyConfig>();
+if (config) {
+  // Use config.llm.model, etc.
+}
+```
+
+For cases where you need to know (diagnostic output, choosing between multiple internal code paths):
+
+```ts
+const profileId = process.env.KB_PROFILE ?? 'default';
+```
+
+There's no first-class API on the SDK for reading "what profile am I in" — use the env var directly. If you find yourself branching on profile ID inside plugin logic, reconsider: the right fix is almost always to move the per-profile difference into the config itself.
+
+## Writing multi-profile configs
+
+A pattern that works for most deployments:
+
+```json
+{
+  "profiles": [
+    {
+      "id": "default",
+      "label": "Local development",
+      "products": {
+        "commit": { "llm": { "model": "gpt-4o-mini" } },
+        "mind":   { "defaults": { "maxChunks": 10 } }
+      }
+    },
+    {
+      "id": "ci",
+      "extends": "default",
+      "label": "CI environment",
+      "products": {
+        "commit": { "llm": { "model": "gpt-4o-mini", "temperature": 0 } }
+      }
+    },
+    {
+      "id": "production",
+      "extends": "default",
+      "label": "Production",
+      "products": {
+        "commit": { "llm": { "model": "gpt-4o", "temperature": 0.2 } },
+        "mind":   { "defaults": { "maxChunks": 50 } }
+      }
+    }
+  ]
+}
+```
+
+Then:
+
+```bash
+pnpm kb commit:commit                             # uses 'default'
+KB_PROFILE=ci pnpm kb commit:commit               # uses CI overrides
+pnpm kb commit:commit --profile=production        # uses prod overrides
+```
+
+The `extends: "default"` inheritance avoids duplicating unchanged sections; only restate what's different.
+
+## Gotchas
+
+- **`products` is untyped from the platform's perspective.** A typo in a product ID (`'minnd'` instead of `'mind'`) silently creates dead config — no warning. Use the product IDs that match your plugins' `configSection`.
+- **Scopes are matched in order.** If you have two scopes whose globs overlap, the first one in the array wins. Put more specific scopes before more general ones.
+- **Scope overrides replace, not merge, per product.** If a scope declares `products.mind`, it replaces the profile-level `products.mind` entirely for matching paths. If you want to merge, restate the unchanged fields in the scope.
+- **`extends` is shallow per product.** Inheritance replaces the whole `products.<id>` object, not individual keys inside it. If you need fine-grained overrides, copy the parent's product config and modify it.
+- **Don't use profiles for secrets.** Secrets go in env vars (`OPENAI_API_KEY`, etc.) or a secret manager — never hardcoded in `kb.config.json`. Profiles are for non-sensitive config only.
+
+## What to read next
+
+- [kb.config.json](/configuration/kb-config) — the full config file schema.
+- [Environment Variables](/configuration/environment-variables) — including `KB_PROFILE`.
+- [SDK → Hooks → useConfig](/sdk/hooks#useconfigt-productid-profileid) — the hook plugins use to read profile slices.

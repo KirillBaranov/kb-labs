@@ -1,190 +1,221 @@
-# KB Labs
+<p align="center">
+  <strong>KB Labs</strong><br>
+  Open-source AI & infrastructure control plane for developers.
+</p>
 
-**Open-source platform for dev and release automation.** Write business logic as plugins. The platform handles execution, observability, infrastructure, and cost control.
-
-[![GitHub Discussions](https://img.shields.io/badge/Discussions-Join-green)](https://github.com/KirillBaranov/kb-labs/discussions)
-[![Issues](https://img.shields.io/badge/Issues-Open-blue)](https://github.com/KirillBaranov/kb-labs/issues)
-[![License](https://img.shields.io/badge/License-KB%20Public-orange)](./LICENSE-KB-PUBLIC)
-[![Email](https://img.shields.io/badge/Email-contact%40kblabs.dev-red)](mailto:contact@kblabs.dev)
+<p align="center">
+  <a href="https://github.com/KirillBaranov/kb-labs/blob/main/LICENSE-MIT">
+    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT">
+  </a>
+  <a href="https://github.com/KirillBaranov/kb-labs/blob/main/LICENSE-KB-PUBLIC">
+    <img src="https://img.shields.io/badge/license-KB--Public-7C3AED.svg" alt="License: KB-Public">
+  </a>
+  <img src="https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg" alt="Node >= 20">
+  <img src="https://img.shields.io/badge/pnpm-%3E%3D9-orange.svg" alt="pnpm >= 9">
+</p>
 
 ---
 
-## What is KB Labs
+## What is KB Labs?
 
-KB Labs is an open-source platform for engineering teams who are tired of fragile automation stacks — shell scripts scattered across repos, CI YAML that nobody wants to touch, manual release steps that live in someone's head, and AI agents that run ungoverned on a laptop.
+KB Labs is an **extensible platform** that gives you a unified CLI, plugin system, workflow engine, and AI gateway — all self-hosted, all open.
 
-The idea is simple: **you write the business logic, the platform handles the rest.**
+Instead of stitching together scripts, bots, and SaaS tools, you get one coherent system where everything works together:
 
-```typescript
-// A release workflow. No infra code, no boilerplate.
-export const releaseWorkflow = defineWorkflow({
-  steps: [
-    runTests(),
-    runQAGate(),
-    aiReview({ mode: 'full' }),
-    requireApproval({ from: 'team-lead' }),
-    publish({ tag: 'latest' }),
-  ],
-});
-```
+- **Workflows** — automate any multi-step process (CI, releases, code review, onboarding)
+- **AI Gateway** — route LLM calls through a single endpoint with cost tracking, caching, and fallbacks
+- **Plugin System** — extend everything via a simple SDK (`useCache`, `useLLM`, `useLogger`)
+- **CLI** — one `kb` command to run workflows, search code, manage plugins, and more
+- **Studio** — web UI for monitoring workflows, services, and plugin state
 
-Platform provides: execution runtime, observability, analytics, permissions, and a unified adapter layer for every external dependency (LLM, cache, DB, vector store, event bus, etc.).
+## Who is it for?
 
-Switch infrastructure without touching your automation code:
+- **Developers** tired of gluing together 10 tools that don't talk to each other
+- **Tech leads** who want a single control plane for their team's dev infrastructure
+- **Solo founders** building AI-powered products who need solid infra without the SaaS tax
 
-```json
-{
-  "adapters": {
-    "llm": "@kb-labs/adapters-openai",
-    "cache": "@kb-labs/adapters-redis",
-    "db": "@kb-labs/adapters-sqlite"
-  }
-}
-```
-
-## What It Does Today
-
-KB Labs ships with a growing set of built-in plugins, adapters, and workflows. These are the things we already use internally every day:
-
-- **Commit plugin** — generates conventional commits using LLM, with secrets detection and two-phase analysis
-- **Release manager** — orchestrates multi-repo release cycles with changelogs, QA gates, and AI review
-- **QA plugin** — runs regression checks across 100+ packages, tracks trends, detects failures at commit time
-- **AI review** — pluggable code review gate with ESLint + LLM combined analysis
-- **Mind** — semantic code search and RAG across the entire codebase
-- **DevKit** — 18 tools for monorepo health: imports, exports, types, build order, dependency fixing
-- **Gateway** — unified adapter contracts for LLMs, databases, caches, vector stores, event buses, and more
-
-**~21 adapters available out of the box:** OpenAI, SQLite, MongoDB, Redis, Qdrant, Pino, Docker, filesystem, git, and more.
-
-## Current Status
-
-**Honest assessment:** KB Labs is in active development. It works end-to-end and we run it on real workloads, but it's not yet polished for broad external use. Setup takes effort. Documentation has gaps. Some APIs will change.
-
-If you're evaluating: this is the right time to explore, give feedback, and influence the direction — before things solidify.
-
-**Working now:**
-- Adapter-first platform architecture (zero-lock-in by design)
-- Plugin execution runtime with sandbox, permissions, audit
-- Workflow engine with dependency resolution and state management
-- CLI + REST API + Studio dashboard
-- Built-in plugins (commit, release, QA, AI review, Mind, DevKit)
-- DevLink — cross-repo dependency management
-- Multi-tenancy primitives (quotas, rate limiting, tenant isolation)
-
-**In progress:**
-- Better onboarding and quickstart experience
-- Broader test coverage and production hardening
-- Plugin marketplace and public registry
-- Managed SaaS (self-hosted is the primary path today)
-
-## Architecture Overview
-
-```
-CLI / REST API / Studio
-        ↓
-  Gateway (:4000)
-        ↓
-  Platform Core
-  ├── Workflow Engine
-  ├── Plugin Runtime (sandbox + permissions)
-  ├── Adapter Layer (LLM / DB / Cache / ...)
-  └── Observability (logs, metrics, incidents)
-```
-
-Plugins are isolated units of business logic. The platform handles execution, lifecycle, and all infrastructure dependencies through registered adapters.
-
-Deeper reads:
-- [Architecture Deep Dive](./docs/ARCHITECTURE.md)
-- [Products Overview](./docs/products/README.md)
-- [ADR Index](./docs/adr/) — architecture decisions with full context
-
-## Getting Started
-
-> Full setup guide is coming. For now, here's the shape of it.
-
-**Prerequisites:** Node.js ≥ 18.18, pnpm ≥ 9
+## Quick Start
 
 ```bash
-# Install KB Labs globally
-npm install -g @kb-labs/cli
+# Clone and install
+git clone https://github.com/KirillBaranov/kb-labs.git
+cd kb-labs
+pnpm install
 
-# Initialize a new project
-kb init my-project
-cd my-project
+# Build all packages
+pnpm build
 
-# Start the dev environment (local services)
-kb-dev start
+# Start services (gateway, rest-api, workflow, etc.)
+pnpm dev:start
 
-# Run your first workflow
-kb workflow:run --workflow-id=example
+# Check everything is running
+pnpm dev:status
+
+# Try the CLI
+pnpm kb --help
 ```
 
-Plugin development quickstart and full CLI reference: [CLI-REFERENCE.md](./docs/CLI-REFERENCE.md)
+That's it. No submodules, no special tooling, no 15-minute setup.
+
+## Architecture
+
+```
+core/              Foundation: types, runtime, config, plugin system
+sdk/               Public API for plugin authors
+cli/               The `kb` command
+shared/            Shared utilities (CLI UI, HTTP helpers, testing)
+plugins/           Everything optional — from AI agents to the API gateway
+adapters/          Pluggable backends (OpenAI, Redis, MongoDB, Qdrant, Docker...)
+studio/            Web UI
+tools/             Go binaries (kb-devkit, kb-dev, kb-create)
+```
+
+### How it fits together
+
+```
+You (CLI / Studio / API)
+  │
+  ├── Gateway (:4000)        → auth, routing, LLM proxy
+  ├── REST API (:5050)       → platform API
+  ├── Workflow (:7778)       → run multi-step automations
+  ├── Marketplace (:5070)    → install plugins, adapters, workflows
+  └── State (:7777)          → distributed state management
+
+  All services are optional. Start with just the CLI.
+```
+
+### Plugin System
+
+Everything beyond core is a **plugin**. If it uses the SDK, registers commands, and has a manifest — it's a plugin. Whether it also runs an HTTP server is an implementation detail.
+
+```
+Level 1: CLI only         → core + sdk + cli + plugins (no servers needed)
+Level 2: + Gateway        → add auth, routing, LLM proxy
+Level 3: + Services       → add workflow, marketplace, rest-api (pick what you need)
+```
+
+## First-Party Plugins
+
+| Plugin | What it does |
+|--------|-------------|
+| **mind** | RAG-powered semantic code search with embeddings and vector storage |
+| **agents** | Autonomous AI agents with planning, tool use, and MCP |
+| **workflow** | Multi-step workflow engine with daemon and job scheduling |
+| **commit** | AI-powered conventional commit generation |
+| **review** | Automated code review (heuristic + LLM) |
+| **gateway** | API gateway — auth, routing, LLM proxy |
+| **marketplace** | Install and manage plugins, adapters, workflows from registry |
+| **release** | Release orchestration (versioning, changelogs, npm publish) |
+| **quality** | Monorepo health checks and workspace scoring |
+
+## Adapters
+
+Adapters are pluggable backends. Swap them without changing your code:
+
+| Category | Available |
+|----------|-----------|
+| **LLM** | OpenAI, VibeProxy |
+| **Analytics** | DuckDB, SQLite, File |
+| **Logging** | Pino, SQLite, Ring Buffer |
+| **Storage** | MongoDB, Redis, Qdrant |
+| **Environment** | Docker |
+| **Workspace** | LocalFS, Worktree, Agent |
+
+## Tooling
+
+KB Labs ships with two Go binaries that work independently of the Node.js platform:
+
+### kb-devkit — Build Orchestrator
+
+Content-addressable build caching, topological execution, workspace health scoring.
+
+```bash
+pnpm build                    # build all (cached, <1s if nothing changed)
+pnpm build:affected           # only changed packages + downstream
+pnpm check                    # build + lint + type-check + test
+pnpm health                   # workspace health score (A–F)
+```
+
+### kb-dev — Service Manager
+
+Process management with health probes, dependency ordering, auto-restart.
+
+```bash
+pnpm dev:start                # start all services
+pnpm dev:start backend        # start a group
+pnpm dev:status               # health table with latency
+pnpm dev:logs workflow        # tail service logs
+```
 
 ## Contributing
 
-KB Labs is open-source and we want your involvement — even right now, before the project is "ready."
+We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
-**Things you can do today:**
+### Development Setup
 
-- **Open an issue** — bugs, confusing design decisions, missing docs, feature requests. We read everything.
-- **Start a discussion** — questions about architecture, ideas, use cases. [GitHub Discussions](https://github.com/KirillBaranov/kb-labs/discussions)
-- **Build an adapter** — the adapter interface is stable. If you need Kafka, RabbitMQ, NATS, DynamoDB, or anything else, you can build it today. We'll help.
-- **Build a plugin** — plugins are TypeScript packages with a declared manifest. If you have an automation use case, it belongs here.
-- **Review ADRs** — architectural decisions are documented. Disagree with something? Open a discussion.
-- **Improve docs** — if something is unclear, a PR with clarification is always welcome.
-
-For code contributions (new features, core changes): the architecture is still evolving, so please open an issue first before investing significant time. We want to make sure the direction is aligned.
-
-Full guide: [CONTRIBUTING.md](./CONTRIBUTING.md)
-
-## Project Structure
-
-KB Labs is a multi-repo monorepo. Here's what lives where:
-
-```
-platform/   — core (runtime, CLI, workflow engine, REST API, Studio, SDK, marketplace)
-plugins/    — built-in plugins (agents, mind, devlink, commit, ai-review, QA, ...)
-infra/      — infrastructure (plugin system, adapters, gateway, devkit)
-templates/  — starter templates for plugins and products
-installer/  — Go-based CLI launcher (kb-create)
+```bash
+git clone https://github.com/KirillBaranov/kb-labs.git
+cd kb-labs
+pnpm install          # one command, ~20 seconds
+pnpm build            # build everything
+pnpm check            # verify lint + types + tests pass
 ```
 
-Most code you'd want to explore lives in `platform/` and `plugins/`.
+### Useful Commands
 
-## Roadmap
+```bash
+# Work on a specific package
+pnpm --filter @kb-labs/mind-engine test
+pnpm --filter @kb-labs/core-types type-check
 
-KB Labs is building toward a public launch in mid-2026. High-level priorities:
+# Build only what changed
+pnpm build:affected
 
-1. **Stabilize core APIs** — plugin contracts, adapter interfaces, workflow schema
-2. **Public onboarding** — quickstart, templates, example projects
-3. **Plugin marketplace** — public registry for discovering and installing plugins/adapters
-4. **Managed SaaS** — hosted option for teams who don't want to self-host
-5. **Enterprise features** — SSO, audit logs, RBAC, compliance
+# Check workspace health
+pnpm ws:check         # lint all packages against conventions
+pnpm ws:fix           # auto-fix safe violations
 
-Full roadmap: [docs/roadmap/README.md](./docs/roadmap/README.md)
+# Search code semantically (requires Mind plugin + Qdrant)
+pnpm kb mind rag-query --text "how does plugin loading work"
+```
+
+### Project Structure
+
+Every plugin follows the same pattern:
+
+```
+plugins/your-plugin/
+├── entry/          # manifest + CLI commands + Studio pages (thin wiring)
+├── contracts/      # types only, zero runtime deps
+├── core/           # business logic
+├── daemon/         # (optional) HTTP service
+└── docs/adr/       # architecture decision records
+```
+
+Dependencies flow strictly downward: `core → sdk → plugins → studio`.
+
+## Documentation
+
+- [CLAUDE.md](CLAUDE.md) — full platform context (for AI assistants and deep dives)
+- [CONTRIBUTING.md](CONTRIBUTING.md) — contribution guidelines
+- [docs/adr/](docs/adr/) — cross-cutting architecture decisions
+- Each module has its own `docs/adr/` for module-specific decisions
+
+## Requirements
+
+- **Node.js** >= 20
+- **pnpm** >= 9
+- **Docker** (optional, for Qdrant and Redis)
+- macOS or Linux
 
 ## License
 
-KB Labs uses dual licensing:
+Core platform — [MIT](LICENSE-MIT)
+KB Labs ecosystem — [KB-Public License](LICENSE-KB-PUBLIC)
+See [LICENSE-SUMMARY.md](LICENSE-SUMMARY.md) for details.
 
-- **Core platform** → [KB Public License](./LICENSE-KB-PUBLIC) — use freely, including internal company deployments. Hosting KB Labs as a competing commercial service requires a separate license.
-- **Libraries and tooling** → [MIT](./LICENSE-MIT) — no restrictions.
+---
 
-Quick read: [License Summary](./LICENSE-SUMMARY.md) | [License Guide EN](./LICENSE-GUIDE.en.md)
-
-## Community
-
-- [GitHub Discussions](https://github.com/KirillBaranov/kb-labs/discussions) — questions, ideas, architecture discussions
-- [GitHub Issues](https://github.com/KirillBaranov/kb-labs/issues) — bugs, feature requests
-- Email: [contact@kblabs.dev](mailto:contact@kblabs.dev)
-
-## About
-
-KB Labs is built by [Kirill Baranov](https://github.com/KirillBaranov) — a solo founder building the platform I always wanted as an engineer.
-
-The goal: give developers back control over their automation stack. One engine for the dev loop. No vendor lock-in. No platform tax every time you need a new automation. Open-source, self-hosted by default, honest about what it is.
-
-- [LinkedIn](https://www.linkedin.com/in/k-baranov/)
-- [Telegram (RU)](https://t.me/kirill_baranov_official)
-- [kblabs.dev](https://kblabs.dev)
+<p align="center">
+  Built by <a href="https://github.com/KirillBaranov">Kirill Baranov</a>
+</p>

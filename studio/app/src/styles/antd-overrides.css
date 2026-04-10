@@ -1,0 +1,211 @@
+/* Ant Design component overrides — theme-aware patches */
+
+/* Z-index overrides — must be above sidebar (--z-sidebar: 400) */
+.ant-modal-root .ant-modal-wrap,
+.ant-modal-root .ant-modal-mask {
+  z-index: var(--z-overlay) !important;
+}
+
+.ant-modal-root .ant-modal {
+  z-index: var(--z-modal) !important;
+}
+
+.ant-drawer-root .ant-drawer {
+  z-index: var(--z-modal) !important;
+}
+
+.ant-select-dropdown,
+.ant-dropdown,
+.ant-popover,
+.ant-tooltip {
+  z-index: var(--z-popover) !important;
+}
+
+.ant-message,
+.ant-notification {
+  z-index: var(--z-toast) !important;
+}
+
+/* Header buttons — consistent vertical alignment */
+.ant-layout-header .ant-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  line-height: 1 !important;
+  vertical-align: middle !important;
+}
+
+.ant-layout-header .ant-btn .ant-btn-icon {
+  line-height: 1 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+}
+
+/* Menu group titles — uppercase label style */
+.ant-menu-item-group-title {
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: var(--text-tertiary) !important;
+  padding-top: 16px !important;
+  padding-bottom: 4px !important;
+}
+
+/* Hide group labels when sidebar is collapsed */
+.ant-menu-inline-collapsed .ant-menu-item-group-title {
+  display: none !important;
+}
+
+.ant-menu-inline-collapsed .ant-menu-item-group-list {
+  padding-top: 4px !important;
+}
+
+/* Menu items — pill shape */
+.ant-menu-item,
+.ant-menu-submenu-title {
+  border-radius: 8px !important;
+}
+
+/* Layout content background */
+.ant-layout {
+  background: var(--bg-primary) !important;
+}
+
+/* Active menu item styles */
+.menu-item-active,
+.ant-menu-item-selected {
+  background-color: var(--accent-subtle) !important;
+  color: var(--link) !important;
+}
+
+.ant-menu-item-selected > .ant-menu-title-content {
+  color: var(--link) !important;
+}
+
+/* Submenu title should stay normal when child is selected */
+.ant-menu-submenu-selected > .ant-menu-submenu-title {
+  background-color: transparent !important;
+  color: var(--text-primary) !important;
+}
+
+/* But allow hover on submenu title even when child is selected */
+.ant-menu-submenu-selected > .ant-menu-submenu-title:hover {
+  background-color: var(--bg-hover) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Dark theme menu */
+.dark .menu-item-active,
+.dark .ant-menu-item-selected {
+  background-color: rgba(96, 165, 250, 0.25) !important;
+  color: var(--link) !important;
+}
+
+.dark .ant-menu-item-selected > .ant-menu-title-content {
+  color: var(--link) !important;
+}
+
+.dark .ant-menu-submenu-selected > .ant-menu-submenu-title {
+  background-color: transparent !important;
+  color: var(--text-primary) !important;
+}
+
+.dark .ant-menu-submenu-selected > .ant-menu-submenu-title:hover {
+  background-color: var(--bg-hover) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Fix radio button text color when checked */
+.ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+  color: var(--text-inverse) !important;
+}
+
+.ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) span {
+  color: var(--text-inverse) !important;
+}
+
+/* Fix dropdown menu selected item */
+.ant-dropdown-menu-item-selected,
+.ant-dropdown-menu-submenu-title-selected {
+  background-color: var(--accent-subtle) !important;
+  color: var(--link) !important;
+}
+
+.ant-dropdown-menu-item-selected .ant-dropdown-menu-title-content,
+.ant-dropdown-menu-submenu-title-selected .ant-dropdown-menu-title-content {
+  color: var(--link) !important;
+}
+
+/* Dark theme dropdown */
+.dark .ant-dropdown-menu-item-selected,
+.dark .ant-dropdown-menu-submenu-title-selected {
+  background-color: rgba(96, 165, 250, 0.15) !important;
+  color: var(--link-hover) !important;
+}
+
+.dark .ant-dropdown-menu-item-selected .ant-dropdown-menu-title-content,
+.dark .ant-dropdown-menu-submenu-title-selected .ant-dropdown-menu-title-content {
+  color: var(--link-hover) !important;
+}
+
+/* Dark theme improvements */
+.dark {
+  /* Better card shadows with subtle white glow for elevation */
+  .ant-card {
+    box-shadow: 0 1px 3px var(--shadow), 0 0 0 1px var(--shadow-elevated);
+  }
+
+  .ant-card:hover {
+    box-shadow: 0 2px 8px var(--shadow-hover), 0 0 0 1px var(--shadow-elevated);
+  }
+
+  /* Better dropdown shadows */
+  .ant-dropdown,
+  .ant-popover,
+  .ant-select-dropdown {
+    box-shadow: 0 4px 16px var(--shadow), 0 0 0 1px var(--shadow-elevated) !important;
+  }
+
+  /* Better button hover states */
+  .ant-btn:not(.ant-btn-primary):not(.ant-btn-text):hover {
+    background-color: var(--bg-hover) !important;
+    border-color: var(--border-secondary) !important;
+  }
+
+  /* Fix table row hover being too dark (only body rows, not header) */
+  .ant-table-tbody > tr.ant-table-row:hover > td {
+    background-color: var(--bg-hover) !important;
+  }
+
+  /* Fix table header hover - should stay same color */
+  .ant-table-thead > tr > th:hover {
+    background-color: var(--bg-tertiary) !important;
+  }
+
+  /* Better link contrast */
+  a:not(.ant-btn) {
+    color: var(--link);
+  }
+
+  a:not(.ant-btn):hover {
+    color: var(--link-hover);
+  }
+
+  /* Fix link button visibility in dark theme */
+  .ant-btn-link {
+    color: var(--link) !important;
+  }
+
+  .ant-btn-link:hover {
+    color: var(--link-hover) !important;
+  }
+
+  .ant-btn-link:not(:disabled):not(.ant-btn-disabled) {
+    color: var(--link) !important;
+  }
+
+  .ant-btn-link:not(:disabled):not(.ant-btn-disabled):hover {
+    color: var(--link-hover) !important;
+  }
+}

@@ -1,0 +1,221 @@
+---
+title: "Team linter as a plugin"
+description: "Wrap your internal style guide in a KB Labs plugin so everyone runs the exact same checks."
+updatedAt: "2026-04-07"
+order: 22
+---
+
+## The problem
+
+Most teams have an internal style guide. Most internal style guides live in:
+
+- A Notion page nobody opens.
+- A `STYLE.md` file in one of the older repos.
+- The head of one senior engineer.
+
+Some of the rules can be expressed as ESLint config. Some can't — they're things like "don't import from `*-internal` packages outside their own repo", "all REST handlers must call `auditLog()` before returning", "feature flags must be removed within 30 days of being added".
+
+You want one command — `pnpm kb team check` — that runs **all** of those, in CI and locally, and reports findings in a way that's easy to act on.
+
+## The solution
+
+Build a plugin. The plugin is mostly a host for **a list of small checks**, each of which is a function that takes a file (or the whole repo) and returns findings. A few of those checks shell out to ESLint; most are tiny scripts you write in TypeScript.
+
+This is the kind of plugin that justifies its existence on day one — it's a chore script you were going to write anyway, but as a plugin it has CLI integration, a manifest, scoped permissions, and it shows up in your workspace alongside everything else.
+
+## Architecture sketch
+
+```
+@example/team-checks  (plugin)
+  ├─ manifest.ts          → registers `team:check` command
+  ├─ commands/check.ts    → runs all checks, formats output
+  └─ checks/
+      ├─ no-internal-imports.ts
+      ├─ audit-log-on-handlers.ts
+      ├─ stale-feature-flags.ts
+      └─ index.ts          → exports list of checks
+```
+
+Each check has the same shape:
+
+```ts
+export interface Check {
+  id: string;
+  describe: string;
+  run(ctx: CheckContext): Promise<Finding[]>;
+}
+
+export interface Finding {
+  severity: 'error' | 'warning' | 'info';
+  file?: string;
+  line?: number;
+  message: string;
+  fix?: string;
+}
+```
+
+The command iterates the checks, collects findings, prints them. If any are `error`, it exits non-zero.
+
+## The code that matters
+
+The whole "check runner" is small enough to fit on this page:
+
+```ts
+// packages/team-checks-cli/src/commands/check.ts
+import { promises as fs } from 'node:fs';
+import fastGlob from 'fast-glob';
+import {
+  defineCommand,
+  useLogger,
+  type PluginContextV3,
+} from '@kb-labs/sdk';
+import { checks } from '../checks';
+
+interface CheckInput {
+  files?: string;
+  json?: boolean;
+}
+
+interface CheckResult {
+  findings: Array<{ checkId: string; severity: string; file?: string; line?: number; message: string; fix?: string }>;
+}
+
+export default defineCommand({
+  id: 'team:check',
+  description: 'Run team-specific checks.',
+
+  handler: {
+    async execute(ctx: PluginContextV3, input: CheckInput): Promise<CheckResult> {
+      const flags = (input as any).flags ?? input;
+      const log = useLogger();
+
+      const files = await fastGlob(flags.files ?? '**/*.{ts,tsx}', {
+        ignore: ['**/node_modules/**', '**/dist/**'],
+        cwd: ctx.cwd ?? process.cwd(),
+      });
+
+      const checkCtx = { fs, files };
+      const allFindings: CheckResult['findings'] = [];
+
+      for (const check of checks) {
+        const findings = await check.run(checkCtx);
+        allFindings.push(...findings.map(f => ({ ...f, checkId: check.id })));
+      }
+
+      if (!flags.json) {
+        for (const f of allFindings) {
+          const loc = f.file ? `${f.file}${f.line ? ':' + f.line : ''}` : '';
+          log.info(`${f.severity.toUpperCase()} [${f.checkId}] ${loc} — ${f.message}`);
+          if (f.fix) log.info(`  fix: ${f.fix}`);
+        }
+      }
+
+      const hasErrors = allFindings.some(f => f.severity === 'error');
+      if (hasErrors) {
+        // Non-zero exit signals CI to block.
+        process.exitCode = 1;
+      }
+
+      return { findings: allFindings };
+    },
+  },
+});
+```
+
+A single check is even smaller:
+
+```ts
+// packages/team-checks-cli/src/checks/no-internal-imports.ts
+import type { Check, Finding } from '../types';
+
+export const noInternalImports: Check = {
+  id: 'no-internal-imports',
+  describe: 'Internal packages (*-internal) cannot be imported from outside their owning repo.',
+  async run({ fs, files }) {
+    const findings: Finding[] = [];
+    for (const file of files) {
+      const content = await fs.readFile(file, 'utf8');
+      const lines = content.split('\n');
+      lines.forEach((line, i) => {
+        const match = line.match(/from\s+['"]([^'"]+-internal[^'"]*)['"]/);
+        if (!match) return;
+        const isOwnRepo = file.includes(match[1].split('/')[0]);
+        if (!isOwnRepo) {
+          findings.push({
+            severity: 'error',
+            file,
+            line: i + 1,
+            message: `Imports internal package '${match[1]}' from outside its repo.`,
+            fix: `Move the import to a public package, or move this file into the same repo.`,
+          });
+        }
+      });
+    }
+    return findings;
+  },
+};
+```
+
+Adding a new rule = adding a new file under `checks/`. No build pipeline changes, no CI changes, no documentation needed beyond the rule itself.
+
+## Manifest
+
+The plugin manifest is the boring part — borrow it from the [Commit Plugin](/use-cases/showcase-commit-plugin) and adjust:
+
+```ts
+import { combinePermissions, kbPlatformPreset, defineCommandFlags } from '@kb-labs/sdk';
+
+const pluginPermissions = combinePermissions()
+  .with(kbPlatformPreset)
+  .withFs({ mode: 'read', allow: ['**/*'] })
+  .build();
+
+export const manifest = {
+  schema: 'kb.plugin/3',
+  id: '@example/team-checks',
+  version: '0.1.0',
+  display: { name: 'Team Checks', description: 'Internal style guide checks.' },
+  platform: { requires: [], optional: ['logger'] },
+  permissions: pluginPermissions,
+  cli: {
+    commands: [{
+      id: 'team:check',
+      group: 'team',
+      describe: 'Run team-specific checks.',
+      handler: './commands/check.js#default',
+      handlerPath: './commands/check.js',
+      flags: defineCommandFlags({
+        files: { type: 'string', description: 'Glob to check' },
+        json: { type: 'boolean', description: 'Output JSON', default: false },
+      }),
+    }],
+  },
+};
+```
+
+Note what's *not* in the permissions: no LLM, no network, no write access. Team checks should be deterministic and side-effect-free.
+
+## Variations
+
+- **Add severity overrides per repo.** Read `.kb/team-checks.json` to let some repos downgrade specific checks to warnings during migration.
+- **Auto-fix.** Some checks know how to fix themselves. Add an optional `fix(ctx, finding)` method, expose `team:check --fix`.
+- **LLM fallback for "judgment" checks.** Some rules ("variable names should describe intent, not type") are too fuzzy for regex. Add a check that batches files and sends them to an LLM with the rule as system prompt — but ship this as a separate command (`team:review`) so the deterministic checks stay fast.
+
+## Reproduce this
+
+1. Read [Guides → Your First Plugin](/guides/first-plugin) end-to-end. The plugin you build there has the same shape as this one.
+2. Replace the `hello:greet` example command with `team:check`. Drop in the runner code above.
+3. Add **one** check first — pick the most-broken rule on your team. Get it running, get it green, get it into CI.
+4. Add the second check the next time someone breaks a rule in review. Repeat. After a month you'll have ten checks and the senior engineer who used to enforce them in review will have their evenings back.
+
+## What goes wrong
+
+- **Trying to write all the rules at once.** This is a slow burn project, not a sprint. Start with one rule. The hard part is the social adoption, not the code.
+- **Rules without fixes.** Every finding should suggest a fix. "X is forbidden" without "do Y instead" is what makes linters frustrating.
+- **No way to opt out per file.** Sometimes the rule is wrong for a specific file. Support a comment marker (`// team-check-disable: rule-id`) from day one — otherwise people will work around the plugin instead of with it.
+
+## Related
+
+- [Guide: Your First Plugin](/guides/first-plugin)
+- [Showcase: AI Review](/use-cases/showcase-ai-review) — for the LLM-powered version of the same idea
+- [Plugin SDK: Hooks](/sdk/hooks)

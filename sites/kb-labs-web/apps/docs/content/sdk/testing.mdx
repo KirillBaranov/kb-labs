@@ -1,0 +1,429 @@
+---
+title: "Testing"
+description: "Unit-testing plugin handlers with createTestContext and the mock builders."
+updatedAt: "2026-04-07"
+order: 8
+---
+
+`@kb-labs/sdk/testing` is a separate subpath that exports a full set of test utilities: a test-context factory, per-service mock builders (LLM, cache, storage, logger, tool), and a command test runner. It's designed for writing fast, deterministic unit tests for plugin handlers without booting the full platform.
+
+Source: [`platform/kb-labs-sdk/packages/sdk/src/testing/index.ts`](platform/kb-labs-sdk/packages/sdk/src/testing/index.ts). The underlying utilities come from `@kb-labs/shared-testing` and `@kb-labs/shared-tool-kit/testing` — both re-exported through the SDK so plugin tests only ever import from `@kb-labs/sdk/testing`.
+
+## The import
+
+```ts
+import {
+  createTestContext,
+  mockLLM,
+  mockCache,
+  mockStorage,
+  mockLogger,
+  testCommand,
+  setupTestPlatform,
+} from '@kb-labs/sdk/testing';
+```
+
+All test utilities come from this one subpath. Don't reach into `@kb-labs/shared-testing` directly — the SDK is the stable surface.
+
+## `createTestContext`
+
+Builds a `PluginContextV3` suitable for passing as the first argument to your handler's `execute`:
+
+```ts
+const { ctx, cleanup } = createTestContext({
+  host: 'cli',                          // default
+  platform: {
+    llm: mockLLM(),
+    cache: mockCache(),
+  },
+});
+
+await handler.execute(ctx, { flags: { ... }, argv: [] });
+
+cleanup();                              // reset the platform singleton
+```
+
+### Options
+
+```ts
+interface CreateTestContextOptions {
+  host?: HostType;                      // 'cli' | 'rest' | 'workflow' | 'webhook' | 'ws'
+  platform?: Partial<PlatformServices>; // override individual adapters
+  runtime?: Partial<RuntimeAPI>;        // override the sandboxed runtime
+  api?: Partial<PluginAPI>;             // override plugin APIs
+  ui?: Partial<UIFacade>;               // override the UI facade
+  cwd?: string;
+  outdir?: string;
+  tenantId?: string;
+  config?: unknown;                     // set ctx.config
+  hostContext?: HostContext;            // host-specific context
+  signal?: AbortSignal;
+}
+```
+
+Everything is optional. Defaults are sane for most unit tests — `host: 'cli'`, sensible tenant/cwd, fresh mock instances where adapters are omitted.
+
+### Return value
+
+```ts
+interface TestContextResult {
+  ctx: PluginContextV3;
+  cleanup: () => void;
+  platform: PlatformServices;
+  runtime: RuntimeAPI;
+  api: PluginAPI;
+  ui: UIFacade;
+}
+```
+
+`cleanup()` resets the platform singleton — important because `useLLM()`, `useCache()`, etc. read from a module-scoped singleton, and without cleanup, state leaks between tests. Call it in `afterEach`:
+
+```ts
+import { describe, it, expect, afterEach } from 'vitest';
+import { createTestContext, mockLLM } from '@kb-labs/sdk/testing';
+
+describe('my handler', () => {
+  let cleanup: () => void;
+
+  afterEach(() => cleanup?.());
+
+  it('uses the LLM', async () => {
+    const llm = mockLLM().onAnyComplete().respondWith('hi');
+    const test = createTestContext({ platform: { llm } });
+    cleanup = test.cleanup;
+
+    await handler.execute(test.ctx, { flags: {}, argv: [] });
+
+    expect(llm.complete).toHaveBeenCalled();
+  });
+});
+```
+
+Both `ctx.platform.llm` and `useLLM()` return the **same mock** after `createTestContext` — the hooks read from the platform singleton, which `createTestContext` swaps out. This is the key insight that makes hook-based handlers testable.
+
+## `mockLLM`
+
+Builder for an `ILLM` mock with a fluent API for scripting responses:
+
+```ts
+const llm = mockLLM()
+  .onAnyComplete()
+  .respondWith('generic answer');
+
+const llmWithSpecific = mockLLM()
+  .onComplete('What is 2+2?').respondWith('4')
+  .onComplete('What is 3+3?').respondWith('6')
+  .onAnyComplete().respondWith('Unknown');
+
+const llmWithToolCalls = mockLLM()
+  .onAnyChatWithTools()
+  .respondWith({
+    content: 'Calling search',
+    toolCalls: [
+      { id: '1', name: 'search', input: { query: 'hello' } },
+    ],
+  });
+```
+
+### The recorded surface
+
+Every call is recorded on `llm.calls`:
+
+```ts
+interface LLMCall {
+  method: 'complete' | 'stream' | 'chatWithTools';
+  prompt?: string;
+  messages?: LLMMessage[];
+  options?: LLMOptions;
+  response: LLMResponse | LLMToolCallResponse;
+  timestamp: number;
+}
+
+// Inspect in assertions:
+expect(llm.calls).toHaveLength(1);
+expect(llm.calls[0].method).toBe('complete');
+expect(llm.calls[0].prompt).toContain('commit');
+```
+
+### Mock instance methods
+
+Every `ICache`/`ILLM`/`IStorage` method is wrapped in a Vitest-style spy. You can assert on calls, reset the mock, and use it like a real adapter from handler code:
+
+```ts
+interface MockLLMInstance {
+  complete: Mock;
+  stream: Mock;
+  chatWithTools: Mock;
+
+  calls: LLMCall[];
+
+  onComplete(promptMatch: string | RegExp): ResponseBuilder;
+  onAnyComplete(): ResponseBuilder;
+  onStream(promptMatch: string | RegExp): ResponseBuilder;
+  onAnyStream(): ResponseBuilder;
+  onChatWithTools(matcher: (messages: LLMMessage[]) => boolean): ResponseBuilder;
+  onAnyChatWithTools(): ResponseBuilder;
+
+  reset(): void;
+}
+```
+
+The `respondWith` builder takes either a literal response (`string` for `complete`, `LLMResponse` for full control) or a function `(prompt, options) => LLMResponse` for dynamic responses.
+
+## `mockCache`, `mockStorage`, `mockLogger`
+
+Same shape as `mockLLM` — fluent builders plus recorded calls:
+
+```ts
+const cache = mockCache();
+// Every ICache method is spied; state is stored in memory
+
+const storage = mockStorage();
+// IStorage methods; internally uses a Map for file state
+
+const logger = mockLogger();
+// ILogger methods; log entries accumulate on logger.entries
+```
+
+### Cache
+
+```ts
+const cache = mockCache();
+const test = createTestContext({ platform: { cache } });
+
+await handler.execute(test.ctx, input);
+
+expect(cache.set).toHaveBeenCalledWith('key', expect.any(Object), 60_000);
+expect(await cache.get('key')).toBeDefined();
+```
+
+The mock cache is a real in-memory KV store — `get` returns what you `set`, TTLs are stored, sorted sets and atomic operations work.
+
+### Storage
+
+```ts
+const storage = mockStorage();
+const test = createTestContext({ platform: { storage } });
+
+await handler.execute(test.ctx, input);
+
+expect(await storage.read('reports/summary.md')).not.toBeNull();
+expect(storage.write).toHaveBeenCalled();
+```
+
+### Logger
+
+```ts
+const logger = mockLogger();
+const test = createTestContext({ platform: { logger } });
+
+await handler.execute(test.ctx, input);
+
+expect(logger.entries).toContainEqual(
+  expect.objectContaining({ level: 'info', message: 'task started' }),
+);
+```
+
+`logger.entries` is an array of `LogEntry` objects — level, message, and metadata fields for every log call.
+
+## `mockTool`
+
+From `@kb-labs/shared-tool-kit/testing`, re-exported through the SDK. Builder for mocking LLM tool-call responses when testing tool-use flows:
+
+```ts
+import { mockTool } from '@kb-labs/sdk/testing';
+
+const searchTool = mockTool('search')
+  .withInput({ query: 'hello' })
+  .returning({ results: [{ id: 1, title: 'Hello World' }] });
+```
+
+Use it when your handler uses native tool calls and you want to control what the tools return without spinning up real implementations.
+
+## `testCommand`
+
+A higher-level test runner for command handlers. Wraps `createTestContext` with a command-specific flow:
+
+```ts
+import { testCommand } from '@kb-labs/sdk/testing';
+import greetHandler from '../src/cli/commands/greet';
+
+describe('greet command', () => {
+  it('greets with a name', async () => {
+    const result = await testCommand(greetHandler, {
+      flags: { name: 'Alice' },
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.result).toEqual({
+      greeting: 'Hello, Alice!',
+      source: 'deterministic',
+    });
+  });
+
+  it('uses the LLM when --ai is passed', async () => {
+    const llm = mockLLM().onAnyComplete().respondWith('Hi Alice!');
+    const result = await testCommand(greetHandler, {
+      flags: { name: 'Alice', ai: true },
+      platform: { llm },
+    });
+
+    expect(result.result?.source).toBe('llm');
+    expect(llm.complete).toHaveBeenCalled();
+  });
+});
+```
+
+### Options
+
+```ts
+interface TestCommandOptions extends CreateTestContextOptions {
+  flags?: Record<string, unknown>;
+  argv?: string[];
+  input?: unknown;                   // override the full input for non-CLI commands
+}
+```
+
+### Return value
+
+```ts
+interface TestCommandResult {
+  exitCode: number;
+  result?: unknown;
+  meta?: Record<string, unknown>;
+  error?: { code?: string; message: string };
+  ctx: PluginContextV3;             // the context used for the call
+  cleanup: () => void;
+}
+```
+
+`testCommand` runs the handler, collects the result, and returns it alongside the context for further assertions. The context is still alive — call `cleanup()` when done (typically in `afterEach`).
+
+## `setupTestPlatform`
+
+Lower-level helper that sets up the platform singleton without building a full context. Use it when you want to test code that calls hooks directly but isn't a handler:
+
+```ts
+import { setupTestPlatform, mockLLM } from '@kb-labs/sdk/testing';
+import { useLLM } from '@kb-labs/sdk';
+
+describe('pure function using useLLM', () => {
+  let cleanup: () => void;
+  afterEach(() => cleanup?.());
+
+  it('calls useLLM correctly', async () => {
+    const llm = mockLLM().onAnyComplete().respondWith('result');
+    const setup = setupTestPlatform({ llm });
+    cleanup = setup.cleanup;
+
+    const result = await someUtilityThatCallsUseLLM();
+
+    expect(llm.complete).toHaveBeenCalled();
+    expect(result).toBe('result');
+  });
+});
+```
+
+It's the same mechanism `createTestContext` uses under the hood — swap out the platform singleton, return a cleanup function. Prefer `createTestContext` when you're testing handlers; use `setupTestPlatform` for helper functions that don't take a context.
+
+## Testing patterns
+
+### Unit-testing a handler with flag inputs
+
+```ts
+import { describe, it, expect, afterEach } from 'vitest';
+import { testCommand, mockLLM } from '@kb-labs/sdk/testing';
+import commitHandler from '../src/cli/commands/commit';
+
+describe('commit command', () => {
+  let cleanup: () => void;
+  afterEach(() => cleanup?.());
+
+  it('dry-runs without applying', async () => {
+    const result = await testCommand(commitHandler, {
+      flags: { 'dry-run': true },
+      platform: {
+        llm: mockLLM().onAnyComplete().respondWith('feat: add feature'),
+      },
+    });
+    cleanup = result.cleanup;
+
+    expect(result.exitCode).toBe(0);
+    expect(result.meta?.dryRun).toBe(true);
+  });
+});
+```
+
+### Asserting on platform calls
+
+```ts
+it('caches results', async () => {
+  const cache = mockCache();
+  const result = await testCommand(handler, {
+    flags: { query: 'test' },
+    platform: { cache },
+  });
+  cleanup = result.cleanup;
+
+  // First call should miss and set
+  expect(cache.get).toHaveBeenCalledWith('query:test');
+  expect(cache.set).toHaveBeenCalledWith(
+    'query:test',
+    expect.any(Object),
+    60_000,
+  );
+});
+```
+
+### Testing cancellation
+
+```ts
+it('handles abort signal', async () => {
+  const controller = new AbortController();
+  const testPromise = testCommand(longRunningHandler, {
+    flags: {},
+    signal: controller.signal,
+  });
+
+  setTimeout(() => controller.abort(), 10);
+  const result = await testPromise;
+  cleanup = result.cleanup;
+
+  expect(result.exitCode).toBe(1);
+  expect(result.error?.code).toBe('CANCELLED');
+});
+```
+
+### Testing REST handlers
+
+```ts
+import { createTestContext } from '@kb-labs/sdk/testing';
+import generateHandler from '../src/rest/handlers/generate';
+
+it('returns NO_CHANGES for clean working tree', async () => {
+  const test = createTestContext({ host: 'rest' });
+  const result = await generateHandler.execute(test.ctx, {
+    scope: undefined,
+    dryRun: false,
+  });
+
+  expect(result?.exitCode).toBe(1);
+  expect(result?.error?.code).toBe('NO_CHANGES');
+  test.cleanup();
+});
+```
+
+REST handlers are tested the same way as CLI handlers — different `host` value, different input shape, same context factory.
+
+## Things that are NOT in testing
+
+- **Integration tests against a real platform.** For end-to-end tests, spin up a test instance of the REST API or workflow daemon with an in-memory adapter stack. The mocks here are for unit tests.
+- **LLM response snapshotting.** If you want to test against real LLM output and snapshot it, use Vitest's snapshot support directly, not the SDK's mocks.
+- **Permission enforcement.** The mocked `runtime` bypasses permission checks. For permission testing, write integration tests that go through the real sandbox.
+
+## What to read next
+
+- **[SDK → Hooks](/sdk/hooks)** — the hooks that testing mocks swap out.
+- **[SDK → Handler Context](/sdk/handler-context)** — the shape `createTestContext` builds.
+- **[Plugins → Permissions](/plugins/permissions)** — permission checks that the mock runtime bypasses (tests don't enforce permissions).
+- **[Guides → Testing](/guides/testing)** — end-to-end testing patterns across the full stack.

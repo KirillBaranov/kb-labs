@@ -1,0 +1,26 @@
+{
+  "extends": "@kb-labs/devkit/tsconfig/lib.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "target": "ES2022",
+    "types": [
+      "node"
+    ]
+  },
+  "include": [
+    "src",
+    "tests",
+    "types",
+    "vitest.config.ts",
+    "eslint.config.ts",
+    "tsup.config.ts"
+  ],
+  "ts-node": {
+    "esm": true
+  }
+}

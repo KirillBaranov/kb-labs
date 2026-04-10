@@ -1,0 +1,16 @@
+{
+  "name": "@kb-labs/web-data-source",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Data source layer for kb-labs-web — interfaces, mocks, and HTTP stubs",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  }
+}

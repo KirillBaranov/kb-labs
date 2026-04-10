@@ -1,0 +1,44 @@
+{
+  "name": "@kb-labs/agent-runtime",
+  "version": "0.6.0",
+  "type": "module",
+  "description": "Shared runtime engine and mode routing for KB Labs Agents.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./dist/*": "./dist/*"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsup --config tsup.config.ts",
+    "dev": "tsup --config tsup.config.ts --watch",
+    "lint": "eslint src --ext .ts",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@kb-labs/agent-contracts": "workspace:*",
+    "@kb-labs/agent-kernel": "workspace:*",
+    "@kb-labs/agent-sdk": "workspace:*",
+    "@kb-labs/agent-store": "workspace:*",
+    "@kb-labs/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.3.3",
+    "eslint": "^9",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
+  }
+}

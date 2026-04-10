@@ -1,0 +1,396 @@
+/* Workflows page — unique section structure */
+
+/* ── Hero ── */
+.hero {
+  text-align: center;
+  padding: clamp(4rem, 8vw, 7rem) 1.5rem clamp(2rem, 4vw, 3rem);
+}
+
+.hero h1 {
+  font-size: clamp(2.2rem, 5vw, 3.5rem);
+  font-weight: 760;
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+  margin: 0 0 0.75rem;
+}
+
+.hero p {
+  font-size: clamp(1rem, 1.6vw, 1.2rem);
+  color: var(--muted);
+  margin: 0 auto 2rem;
+  max-width: 540px;
+  line-height: 1.6;
+}
+
+.heroCta {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* ── Stats bar ── */
+.statsBar {
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  padding: 2rem 1.5rem;
+  margin-bottom: clamp(4rem, 8vw, 6rem);
+}
+
+.statsInner {
+  width: min(100% - 3rem, 1100px);
+  margin-inline: auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+}
+
+.statItem {
+  text-align: center;
+}
+
+.statNumber {
+  display: block;
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  font-weight: 760;
+  letter-spacing: -0.03em;
+  color: var(--text);
+  line-height: 1.2;
+}
+
+.statLabel {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin-top: 0.3rem;
+  letter-spacing: 0.01em;
+}
+
+/* ── YAML code showcase ── */
+.codeShowcase {
+  width: min(100% - 3rem, 1100px);
+  margin-inline: auto;
+  margin-bottom: clamp(4rem, 8vw, 6rem);
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: clamp(2rem, 4vw, 4rem);
+  align-items: start;
+}
+
+.codeBlock {
+  background: #1a1a2e;
+  border-radius: 12px;
+  padding: 1.5rem;
+  overflow-x: auto;
+  position: relative;
+}
+
+.codeBlock::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  pointer-events: none;
+}
+
+.codeBlockHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.codeDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #3a3a52;
+}
+
+.codeFileName {
+  font-size: 0.75rem;
+  color: #8888aa;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  letter-spacing: 0.02em;
+}
+
+.codeBlock pre {
+  margin: 0;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 0.82rem;
+  line-height: 1.7;
+  color: #c8c8e0;
+  white-space: pre;
+  tab-size: 2;
+}
+
+/* Syntax highlighting */
+.yamlKey { color: #7dd3fc; }
+.yamlString { color: #86efac; }
+.yamlComment { color: #6b7280; font-style: italic; }
+.yamlBool { color: #fbbf24; }
+.yamlNumber { color: #c4b5fd; }
+
+.codeExplanation h2 {
+  font-size: clamp(1.3rem, 2.5vw, 1.8rem);
+  font-weight: 720;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  margin: 0 0 0.75rem;
+}
+
+.codeExplanation > p {
+  font-size: 0.95rem;
+  color: var(--muted);
+  line-height: 1.7;
+  margin: 0 0 1.5rem;
+}
+
+.bulletList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.bulletList li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  font-size: 0.9rem;
+  color: var(--text);
+  line-height: 1.55;
+}
+
+.bulletIcon {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: color-mix(in oklab, var(--accent) 10%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+}
+
+.bulletIcon svg {
+  width: 12px;
+  height: 12px;
+  color: var(--accent);
+}
+
+/* ── Benefits grid ── */
+.benefitsSection {
+  width: min(100% - 3rem, 1100px);
+  margin-inline: auto;
+  margin-bottom: clamp(4rem, 8vw, 6rem);
+}
+
+.benefitsTitle {
+  font-size: clamp(1.3rem, 2.5vw, 1.8rem);
+  font-weight: 720;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  margin: 0 0 0.5rem;
+  text-align: center;
+}
+
+.benefitsSubtitle {
+  font-size: 0.95rem;
+  color: var(--muted);
+  margin: 0 0 2.5rem;
+  text-align: center;
+}
+
+.benefitsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.benefitCard {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1.75rem 1.5rem;
+  background: var(--surface, #fff);
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.benefitCard:hover {
+  border-color: var(--line-strong, #c4cad8);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+}
+
+.benefitIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: color-mix(in oklab, var(--accent) 8%, transparent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.benefitIcon svg {
+  width: 20px;
+  height: 20px;
+  color: var(--accent);
+}
+
+.benefitCard h3 {
+  font-size: 0.95rem;
+  font-weight: 640;
+  margin: 0 0 0.5rem;
+  color: var(--text);
+}
+
+.benefitCard p {
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ── Interactive Demo section ── */
+.demoSection {
+  width: min(100% - 3rem, 1100px);
+  margin-inline: auto;
+  margin-bottom: clamp(4rem, 8vw, 6rem);
+}
+
+.demoHeader {
+  margin-bottom: 1.5rem;
+}
+
+.demoHeader h2 {
+  font-size: clamp(1.3rem, 2.5vw, 1.8rem);
+  font-weight: 720;
+  letter-spacing: -0.025em;
+  margin: 0 0 0.5rem;
+}
+
+.demoHeader p {
+  font-size: 0.95rem;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* ── Building Blocks section ── */
+.blocksSection {
+  width: min(100% - 3rem, 1100px);
+  margin-inline: auto;
+  margin-bottom: clamp(4rem, 8vw, 6rem);
+}
+
+.blocksTitle {
+  font-size: clamp(1.3rem, 2.5vw, 1.8rem);
+  font-weight: 720;
+  letter-spacing: -0.025em;
+  line-height: 1.2;
+  margin: 0 0 0.5rem;
+  text-align: center;
+}
+
+.blocksSubtitle {
+  font-size: 0.95rem;
+  color: var(--muted);
+  margin: 0 0 2.5rem;
+  text-align: center;
+  max-width: 540px;
+  margin-inline: auto;
+}
+
+.blocksGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.blockCard {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1.75rem 1.5rem;
+  background: var(--surface, #fff);
+  transition: border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.blockCard:hover {
+  border-color: var(--line-strong, #c4cad8);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+}
+
+.blockIconWrap {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #1a1a2e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.blockIcon {
+  font-size: 1rem;
+  color: #7dd3fc;
+}
+
+.blockCard h3 {
+  font-size: 0.95rem;
+  font-weight: 640;
+  margin: 0 0 0.5rem;
+  color: var(--text);
+}
+
+.blockCard h3 code {
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 0.88rem;
+  background: #f5f6f8;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}
+
+.blockCard p {
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .statsInner {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 2rem 1.5rem;
+  }
+
+  .codeShowcase {
+    grid-template-columns: 1fr;
+  }
+
+  .benefitsGrid, .blocksGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .statsInner {
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem 1rem;
+  }
+
+  .benefitsGrid, .blocksGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .codeBlock pre {
+    font-size: 0.74rem;
+  }
+}

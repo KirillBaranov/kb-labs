@@ -1,0 +1,30 @@
+## KB Labs Platform
+
+This project uses the [KB Labs](https://github.com/KirillBaranov/kb-labs) platform.
+A set of Claude Code skills is installed under `.claude/skills/kb-labs-*` to help
+you work with the platform efficiently.
+
+### Common tasks (just ask)
+
+- **Create a plugin** — "create a kb-labs plugin called my-plugin"
+- **Create a service** — "create a kb-labs service called my-service"
+- **Troubleshoot** — "kb-labs is not starting" / "kb-dev shows failed"
+- **Explore the project** — "what kb-labs services and plugins are installed here?"
+- **Update the platform** — "update kb-labs to the latest version"
+
+### Manual reference
+
+- `pnpm kb --help` — list all platform commands
+- `pnpm kb-dev status` — service status
+- `pnpm kb-dev doctor` — environment diagnostics
+- `pnpm kb plugins list` — installed plugins
+- `kb-create update` — update the platform
+- `kb-create doctor` — verify the installation
+
+### Where things live
+
+- `.kb/kb.config.jsonc` — project configuration (safe to edit)
+- `.kb/` — platform runtime state (do not edit by hand)
+- `.claude/skills/kb-labs-*` — managed skills (reinstalled by `kb-create update`)
+
+For full platform documentation see https://github.com/KirillBaranov/kb-labs.

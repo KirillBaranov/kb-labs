@@ -1,0 +1,7 @@
+{
+  "extends": "@kb-labs/devkit/tsconfig/test.json",
+  "include": [
+    "tests/**/*",
+    "**/*.{test,spec}.ts"
+  ]
+}

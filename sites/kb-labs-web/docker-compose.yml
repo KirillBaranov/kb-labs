@@ -1,0 +1,24 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    image: kb-labs-web:latest
+    container_name: kb-labs-web
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+
+  docs:
+    build:
+      context: .
+      dockerfile: apps/docs/Dockerfile
+    image: kb-labs-docs:latest
+    container_name: kb-labs-docs
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped

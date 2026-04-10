@@ -1,0 +1,48 @@
+/**
+ * @module @kb-labs/studio-app/modules/plugins/routes
+ * Plugins module routing configuration
+ */
+
+import type { RouteObject } from 'react-router-dom';
+import { PluginsPage } from '../pages/marketplace-page';
+import { PluginDetailPage } from '../pages/plugin-detail-page';
+import { ErrorBoundary } from '../../../components/error-boundary';
+import { renderIcon } from '../../../routes/helpers';
+import type { NavigationItem } from '@/components/ui';
+
+// Route paths
+const PATHS = {
+  ROOT: '/marketplace',
+  DETAIL: '/marketplace/:pluginId',
+} as const;
+
+// Route keys
+const KEYS = {
+  MODULE: 'plugins',
+} as const;
+
+/**
+ * Plugins routes
+ */
+export const pluginsRoutes: RouteObject[] = [
+  {
+    path: PATHS.ROOT,
+    element: <PluginsPage />,
+    errorElement: <ErrorBoundary />,
+  },
+  {
+    path: PATHS.DETAIL,
+    element: <PluginDetailPage />,
+    errorElement: <ErrorBoundary />,
+  },
+];
+
+/**
+ * Plugins navigation item for sidebar
+ */
+export const pluginsNavigation: NavigationItem = {
+  key: KEYS.MODULE,
+  label: 'Marketplace',
+  icon: renderIcon('AppstoreOutlined'),
+  path: PATHS.ROOT,
+};

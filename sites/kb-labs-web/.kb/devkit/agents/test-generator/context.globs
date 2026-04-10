@@ -1,0 +1,7 @@
+src/**/*
+packages/**/*
+apps/**/*
+tsconfig*.json
+vitest.config.*
+package.json
+README.md

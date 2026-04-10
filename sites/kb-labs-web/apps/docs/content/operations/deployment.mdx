@@ -1,0 +1,307 @@
+---
+title: "Deployment"
+description: "Running KB Labs in dev, single-host production, and distributed deployments."
+updatedAt: "2026-04-07"
+order: 1
+---
+
+KB Labs is a handful of Node processes plus some stateful infrastructure (Qdrant, Redis, optionally Postgres). Deployment boils down to running each process somewhere, wiring them together through the gateway, and pointing them at a shared `kb.config.json`.
+
+This page walks through the deployment modes in order of complexity: local dev, single-host production, and distributed production. For the gateway-specific deployment details (TLS, reverse proxies, scaling), see [Gateway → Self-Hosted](/gateway/self-hosted).
+
+## Architecture recap
+
+```
+                ┌─────────────────┐
+                │    Gateway      │ ← only process exposed externally
+                │    :4000        │
+                └────────┬────────┘
+                         │
+       ┌─────────────────┼─────────────────┐
+       ▼                 ▼                 ▼
+  ┌─────────┐      ┌──────────┐      ┌─────────────┐
+  │  REST   │      │ Workflow │      │ Marketplace │
+  │  :5050  │      │  :7778   │      │    :5070    │
+  └────┬────┘      └─────┬────┘      └──────┬──────┘
+       │                 │                  │
+       └─────────┬───────┴──────────────────┘
+                 │
+         ┌───────┴────────┐
+         │  State daemon  │ ← optional, for distributed setups
+         │     :7777      │
+         └────────┬───────┘
+                  │
+        ┌─────────┴──────────┐
+        ▼                    ▼
+  ┌─────────┐          ┌──────────┐
+  │ Qdrant  │          │  Redis   │
+  │  :6333  │          │  :6379   │
+  └─────────┘          └──────────┘
+```
+
+Five platform processes (gateway, REST, workflow, marketplace, state daemon), two stateful infrastructure services (Qdrant, Redis), and one optional UI (Studio). Everything else — plugins, adapters, Studio pages — rides inside these processes.
+
+## Mode 1 — Local dev
+
+The lowest-overhead setup. Use for plugin development and testing.
+
+### Start everything
+
+```bash
+kb-dev start
+```
+
+`kb-dev` reads `.kb/dev.config.json`, resolves the service dependency graph, starts Docker containers for infrastructure, and spawns Node processes for the platform services. Status:
+
+```bash
+kb-dev status
+```
+
+Shows each service with its port, health state, and URL. Once everything is green you can access Studio at `http://localhost:3000`, the REST API at `http://localhost:5050/api/v1/health`, etc.
+
+### Start only what you need
+
+```bash
+kb-dev start infra           # just Qdrant, Redis, state-daemon
+kb-dev start rest            # REST API + its dependencies
+kb-dev start studio          # Studio + its dependencies (boots everything it needs)
+```
+
+The dependency graph is respected automatically. Starting `studio` boots `gateway`, `rest`, `workflow`, and everything transitively required.
+
+### Dev config
+
+Local dev uses `.kb/dev.config.json` for service management and `.kb/kb.config.json` for platform config. Both files live in the workspace root. See [Configuration → dev.config.json](/configuration/dev-config) and [Configuration → kb.config.json](/configuration/kb-config) for the full schemas.
+
+Dev mode reads `.env` automatically, so put your `OPENAI_API_KEY`, `QDRANT_URL`, and other secrets there.
+
+## Mode 2 — Single-host production
+
+One server running all services. Fine for small deployments — a team of a few developers, an internal tool, a proof of concept. Scales to a few dozen concurrent users before you need to split services across hosts.
+
+### Setup
+
+1. **Install Node 20+** and `pnpm`.
+2. **Clone the KB Labs workspace** (or the subset you need — gateway, REST, workflow, marketplace).
+3. **Build**: `pnpm install && pnpm build` in each service package.
+4. **Install infrastructure**:
+   - Qdrant (Docker or standalone binary) on port 6333.
+   - Redis on port 6379.
+5. **Write `kb.config.json`** at the deployment root. Declare your adapters and their options. See [Configuration → kb.config.json](/configuration/kb-config).
+6. **Set environment variables**:
+   - `GATEWAY_JWT_SECRET` — **required** for production.
+   - `GATEWAY_INTERNAL_SECRET` — required if container-mode execution is enabled.
+   - `NODE_ENV=production`.
+   - `OPENAI_API_KEY` or whatever your LLM adapter needs.
+
+### Running
+
+The simplest approach: launch each service as a background process under `systemd`, `pm2`, or your init system of choice. Sample `systemd` unit for the REST API:
+
+```ini
+# /etc/systemd/system/kb-rest.service
+[Unit]
+Description=KB Labs REST API
+After=network.target kb-qdrant.service kb-redis.service
+
+[Service]
+Type=simple
+User=kb-labs
+WorkingDirectory=/opt/kb-labs
+ExecStart=/usr/bin/node ./platform/kb-labs-rest-api/apps/rest-api/dist/index.js
+Environment=NODE_ENV=production
+Environment=PORT=5050
+Environment=KB_PROJECT_ROOT=/opt/kb-labs
+EnvironmentFile=/etc/kb-labs/secrets.env
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Repeat for `workflow`, `marketplace`, `gateway`, and `state-daemon`. Enable and start them in dependency order:
+
+```bash
+sudo systemctl enable --now kb-qdrant kb-redis kb-state-daemon
+sudo systemctl enable --now kb-workflow kb-rest kb-marketplace
+sudo systemctl enable --now kb-gateway
+```
+
+### Reverse proxy
+
+Put Caddy, nginx, or Traefik in front of the gateway to terminate TLS and handle rate limiting. See [Gateway → Self-Hosted](/gateway/self-hosted) for full examples.
+
+### Persistence
+
+Single-host deployments can use SQLite for everything — `db`, `documentDb`, `analytics`, logs. Put the SQLite files on a persistent volume (not a tmpfs or container-local FS) and back them up regularly.
+
+## Mode 3 — Distributed production
+
+Services running on different hosts or in a container orchestrator (Kubernetes, Nomad, ECS). Use when you need horizontal scaling, isolation between services, or redundancy.
+
+### Architecture
+
+Each platform service becomes its own deployable unit. The gateway fronts them all; internal traffic flows on an internal network (or within a VPC); external clients hit the gateway.
+
+### Container images
+
+Every service that ships a `ServiceManifest` has a `Dockerfile` you can build from:
+
+- `platform/kb-labs-rest-api/Dockerfile`
+- `platform/kb-labs-workflow/packages/workflow-daemon/Dockerfile` (check for one)
+- `platform/kb-labs-marketplace/Dockerfile`
+- `infra/kb-labs-gateway/apps/gateway-app/Dockerfile`
+
+For services without a pre-made Dockerfile, use a multi-stage Node image pattern:
+
+```dockerfile
+FROM node:20-slim AS build
+WORKDIR /build
+COPY . .
+RUN pnpm install --frozen-lockfile
+RUN pnpm build
+
+FROM node:20-slim
+WORKDIR /app
+COPY --from=build /build/dist ./dist
+COPY --from=build /build/node_modules ./node_modules
+COPY --from=build /build/package.json ./
+EXPOSE 5050
+CMD ["node", "./dist/index.js"]
+```
+
+### Kubernetes
+
+Every service is a standard Deployment + Service pair. Example for the REST API:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kb-rest-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: kb-rest-api
+  template:
+    metadata:
+      labels:
+        app: kb-rest-api
+    spec:
+      containers:
+      - name: rest-api
+        image: your-registry/kb-rest-api:1.2.0
+        ports:
+        - containerPort: 5050
+        env:
+        - name: NODE_ENV
+          value: production
+        - name: PORT
+          value: "5050"
+        - name: KB_PROJECT_ROOT
+          value: /app
+        envFrom:
+        - secretRef:
+            name: kb-labs-secrets
+        volumeMounts:
+        - name: config
+          mountPath: /app/.kb
+          readOnly: true
+        readinessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 5050
+        livenessProbe:
+          httpGet:
+            path: /api/v1/health
+            port: 5050
+      volumes:
+      - name: config
+        configMap:
+          name: kb-labs-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kb-rest-api
+spec:
+  selector:
+    app: kb-rest-api
+  ports:
+  - port: 5050
+    targetPort: 5050
+```
+
+Similar Deployments for the workflow daemon, marketplace, and state daemon. The gateway is the only one that needs external exposure (via an Ingress or LoadBalancer).
+
+### Shared state
+
+In distributed mode, services need to share state (rate limits, locks, job queues). The state daemon provides this via the State Broker HTTP API — configure your `platform.core.resourceBroker.distributed: true` in `kb.config.json` and every service points at the state daemon.
+
+For the host registry on the gateway, use a shared Postgres or external SQLite-via-network (not ideal, but works). Without shared state, gateway restarts lose connected hosts.
+
+### Scaling
+
+- **Gateway**: scale horizontally. Ensure all instances share `GATEWAY_JWT_SECRET` so JWTs verify across instances. Pin host agents to specific gateway instances via sticky sessions if needed.
+- **REST API**: scale horizontally. Each instance is stateless except for the plugin registry, which is read-only after startup.
+- **Workflow daemon**: **don't** scale horizontally yet. The job broker is process-local. Run one instance, vertically scaled. A multi-instance workflow daemon is on the roadmap but requires a distributed job queue.
+- **Marketplace**: low load. One instance is plenty.
+- **State daemon**: one instance per region. Scale vertically.
+
+## Zero-downtime rolling updates
+
+For stateless services (gateway, REST API, marketplace):
+
+1. Deploy new version alongside the old.
+2. Shift traffic via the load balancer.
+3. Drain the old version: stop accepting new connections, wait for in-flight requests.
+4. Shut down.
+
+Connected host agents reconnect during cutover with exponential backoff (see [Services → Host Agent](/services/host-agent)).
+
+For the workflow daemon (stateful):
+
+1. Deploy new version.
+2. Stop the old daemon — in-flight runs are interrupted and marked `'interrupted'`.
+3. Start the new daemon — it picks up `'interrupted'` runs from persistent state and resumes them.
+
+The `'interrupted'` state and recovery path are documented in [Workflows → Retries & Error Handling](/workflows/retry-and-errors#job-states-vs-step-states).
+
+## Secrets management
+
+**Never put secrets in `kb.config.json`** — use environment variables. In production, pull them from a secret manager:
+
+- **Kubernetes**: Secrets + `envFrom` (shown above).
+- **Vault**: sidecar or init container that writes secrets to a shared volume or stdout.
+- **AWS Secrets Manager**: IAM role on the service + SDK call at startup (or via an init script that populates env vars).
+- **Plain systemd**: `EnvironmentFile=/etc/kb-labs/secrets.env` with `chmod 600` on the file.
+
+The platform itself doesn't integrate with any specific secret manager; it just reads env vars. Wrap the service startup in whatever secret-injection scheme fits your stack.
+
+## Monitoring
+
+Every platform service emits:
+
+- **Structured logs** through `platform.logger`. Ship to Loki, Elasticsearch, Datadog, or whatever.
+- **Prometheus metrics** at `/metrics`. Scrape with a Prometheus server.
+- **Diagnostic events** (errors, state changes) through `platform.analytics`. Query via the analytics adapter's read-side.
+
+See [Operations → Observability](/operations/observability) for the full observability story.
+
+## What NOT to do
+
+- **Don't run multiple workflow daemons yet.** The job broker is process-local. Multiple instances will race on the job queue and produce duplicate executions.
+- **Don't share SQLite files across hosts via NFS.** SQLite's locking semantics break over network filesystems. For distributed state, use the state daemon or a proper database.
+- **Don't commit `kb.config.json` with secrets.** Treat the config file as public — sensitive values go in env vars.
+- **Don't use the insecure JWT default in production.** The gateway warns about it at startup, but doesn't refuse to start. Set `GATEWAY_JWT_SECRET` explicitly.
+- **Don't expose internal services directly.** REST API, workflow daemon, marketplace should all be internal-only. Only the gateway is public.
+
+## What to read next
+
+- **[Gateway → Self-Hosted](/gateway/self-hosted)** — TLS, reverse proxies, gateway scaling.
+- **[Operations → Observability](/operations/observability)** — metrics, logs, traces.
+- **[Operations → Security](/operations/security)** — secrets, sandbox, threat model.
+- **[Configuration → kb.config.json](/configuration/kb-config)** — adapter and execution config.
+- **[Services → Overview](/services)** — per-service deep dives.

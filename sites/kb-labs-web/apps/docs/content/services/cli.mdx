@@ -1,0 +1,155 @@
+---
+title: "CLI"
+description: "The `kb` command, its runtime, plugin discovery, and gateway integration."
+updatedAt: "2026-04-07"
+order: 1
+---
+
+The CLI is the main developer-facing entry point for KB Labs. Every plugin command, every workflow run, every marketplace operation starts here. Unlike the REST API and the workflow daemon, the CLI is not a long-running service — each invocation boots, does its work, and exits.
+
+Source lives in [platform/kb-labs-cli/](platform/kb-labs-cli/).
+
+## Packages
+
+The CLI is a small monorepo of its own:
+
+| Package | Purpose |
+|---|---|
+| `@kb-labs/cli-bin` | The `kb` binary entrypoint (`bin.ts`) + runtime bootstrap |
+| `@kb-labs/cli-runtime` | Argument parsing, presenter selection, middleware, context creation |
+| `@kb-labs/cli-commands` | Built-in system commands, help rendering, command registry |
+| `@kb-labs/cli-contracts` | Shared types for commands, contexts, and results |
+
+You invoke the CLI through `pnpm kb <command>`, which `pnpm` routes to `cli-bin`'s `bin.ts`.
+
+## Startup sequence
+
+From [`packages/cli-bin/src/bin.ts`](platform/kb-labs-cli/packages/cli-bin/src/bin.ts) and [`packages/cli-bin/src/runtime/bootstrap.ts`](platform/kb-labs-cli/packages/cli-bin/src/runtime/bootstrap.ts):
+
+1. **Pre-import env setup.** Before anything else is imported, `bin.ts` sets `KB_LOG_LEVEL=silent` by default (unless `LOG_LEVEL` or `KB_LOG_LEVEL` is already set), and checks for `--json` in `process.argv` to set `KB_OUTPUT_MODE=json`. This has to happen before module imports because lazy-initialized loggers and sinks read these env vars during construction.
+2. **Capture `BIN_MODULE_URL`.** The `import.meta.url` of `bin.ts` is captured so `resolvePlatformRoot` can walk up from the bin's physical location to find `node_modules/@kb-labs/*` reliably — independent of `process.cwd()`.
+3. **Load `.env`** from the resolved project root.
+4. **Init the platform** via `initializePlatform` — adapters, logger, cache, storage, everything from `kb.config.json`.
+5. **Register built-in commands** from `@kb-labs/cli-commands` into the command registry.
+6. **Parse args** via `parseArgs` from `@kb-labs/cli-runtime`.
+7. **Find the command** — either a built-in or a plugin-contributed one (see below).
+8. **Resolve presenter** — text by default, JSON when `--json` is passed.
+9. **Build context** — `createContext()` wires the platform, UI facade, middleware, and presenter into a single `CliExecutionContext`.
+10. **Apply middleware** — default middlewares handle things like execution limits, timing, and telemetry.
+11. **Execute the command**. The run completes with an exit code or throws a `CliError`.
+12. **Shut down the platform** in a `finally` block — `platform.shutdown()` flushes the logger and closes adapters.
+13. **Forward the exit code** to `process.exit()`.
+
+## Plugin commands vs system commands
+
+The CLI has two command sources:
+
+- **System commands** — defined in `@kb-labs/cli-commands`. These ship with the CLI itself: help, marketplace, plugins, docs, debug, and a handful of others. They run in-process.
+- **Plugin commands** — declared in plugin manifests under `cli.commands[]`. Discovered at startup by reading `.kb/marketplace.lock` via `@kb-labs/core-discovery` and `@kb-labs/core-registry`.
+
+The registry walks each installed plugin's manifest and indexes its commands by the `id` field (e.g. `commit:commit`, `mind:rag-query`). When you type `pnpm kb commit:commit`, the CLI looks up the command in the registry, finds its handler path, and dispatches it.
+
+## Plugin execution path
+
+When the CLI runs a plugin command, it uses one of two execution paths:
+
+### In-process / local execution
+
+From [`plugin-executor.ts`](platform/kb-labs-cli/packages/cli-bin/src/runtime/plugin-executor.ts). The CLI imports the handler module directly via the plugin runtime's `runInProcess` / `runInSubprocess` paths. The plugin's handler executes under the current `kb.config.json` with local platform adapters.
+
+This is what happens by default in dev mode — the CLI, the plugin code, and the platform all live in the same Node process.
+
+### Gateway execution
+
+From [`gateway-executor.ts`](platform/kb-labs-cli/packages/cli-bin/src/runtime/gateway-executor.ts). When a gateway is configured and reachable, the CLI can dispatch the command to the gateway instead of running it locally. The gateway routes to whatever execution backend is configured server-side (worker pool, container).
+
+The decision happens via `tryResolveGateway`:
+
+- If `platform.execution.mode === 'container'` (or similar remote mode), gateway dispatch is the default.
+- Otherwise, local execution.
+- You can force one or the other with CLI flags.
+
+This is the mechanism behind "I ran `pnpm kb commit:commit` on my laptop, but the actual LLM call happened in the cloud" — the CLI is the same binary in both cases; only the execution target changes.
+
+## UI facade and presenters
+
+Every command talks to the user through `ctx.ui` — a UI facade that abstracts colors, spinners, tables, side boxes, and output sections. Plugin code never writes directly to `process.stdout`; it calls `ctx.ui.info(...)`, `ctx.ui.success(...)`, `ctx.ui.table(...)`, etc.
+
+Behind the facade sits a presenter:
+
+- **Text presenter** (default) — pretty colored output, spinners, unicode box drawing.
+- **JSON presenter** (`--json`) — structured machine-readable output. Spinners and tables are recorded but not rendered; the final result is emitted as a single JSON document.
+
+Switching presenters doesn't require the command to know which one is active. The presenter is chosen in `bootstrap.ts` based on `KB_OUTPUT_MODE`; the command just calls the facade and the right thing happens.
+
+See [`@kb-labs/shared-cli-ui`](platform/kb-labs-shared/packages/shared-cli-ui/) for the UI primitive surface.
+
+## Middleware
+
+`@kb-labs/cli-runtime` supports middleware that wraps command execution. The default set (from [`getDefaultMiddlewares()`](platform/kb-labs-cli/packages/cli-bin/src/runtime/middlewares/)):
+
+- **Limits** — `--limit` flag to cap tokens / requests / time.
+- **Telemetry** — records the command invocation with `track()` on the analytics adapter.
+- **Timing** — wall-clock timing of command execution.
+- **Error handling** — converts thrown errors to `CliError` instances and maps them to exit codes.
+
+Plugins can't currently register their own middleware — the set is fixed at bootstrap time. If you need plugin-local behavior around commands, put it inside the handler's `execute()` function.
+
+## Exit codes
+
+`mapCliErrorToExitCode()` in `@kb-labs/cli-runtime` maps `CliError` instances to standard exit codes:
+
+- **0** — success.
+- **1** — general error.
+- **2** — invalid arguments / usage error.
+
+Plugin commands can return `{ exitCode: N }` from their handler to set a specific code.
+
+## Profile system
+
+Every CLI invocation runs under a **profile** — a named configuration slice that controls which products, adapters, and settings apply. The default profile is `default`; override with `KB_PROFILE=<id>` in the env or with `--profile=<id>` on the command line.
+
+Profiles are defined in `kb.config.json` under `profiles[]`:
+
+```json
+{
+  "profiles": [
+    {
+      "id": "default",
+      "products": { "mind": {...}, "commit": {...} }
+    },
+    {
+      "id": "production",
+      "products": { "mind": {...} }
+    }
+  ]
+}
+```
+
+When a plugin calls `useConfig<T>()`, the runtime walks to the active profile's product config for that plugin. Different profiles can configure the same plugin differently — a `production` profile might use different LLM models, different cache TTLs, or different scopes than `default`.
+
+See [Configuration → Profiles](/configuration/profiles) for the full schema.
+
+## Debug and logging
+
+By default the CLI runs with `KB_LOG_LEVEL=silent` — no logs in normal output. To see logs:
+
+```bash
+# Everything at info and above
+LOG_LEVEL=info pnpm kb <command>
+
+# Debug level
+pnpm kb <command> --debug
+
+# JSON output with full logs
+pnpm kb <command> --json --debug
+```
+
+The CLI writes its own logs through the platform logger, so they land in the same log store as REST API and workflow daemon logs. In a full deployment you can correlate a CLI run with downstream service activity by `traceId`.
+
+## What to read next
+
+- [Plugins → CLI Commands](/plugins/cli-commands) — how to declare CLI commands in a plugin.
+- [SDK → Commands](/sdk/commands) — `defineCommand` and the handler shape.
+- [Services → REST API](/services/rest-api) — sibling service that hosts plugin routes.
+- [Gateway](/gateway) — where the CLI dispatches for remote execution.

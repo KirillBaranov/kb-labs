@@ -1,0 +1,205 @@
+---
+title: "Environment Variables"
+description: "Every env var the platform reads, grouped by purpose, with defaults and effects."
+updatedAt: "2026-04-07"
+order: 4
+---
+
+KB Labs reads a handful of environment variables at startup. Some control how the runtime finds its config files, some select a profile, some configure adapters, and a few are debug flags. This page lists them all, grouped by purpose. Entries marked with a file link are the ones I pulled directly from source; others are standard conventions that may or may not be enforced in every service.
+
+The rule of thumb: **env vars are for things that change per-deployment or per-environment**. Plugin and product configuration belongs in `kb.config.json`, not in env. Secrets belong in env or a secret manager, not in `kb.config.json`.
+
+## Root resolution
+
+These tell the runtime where to find `.kb/kb.config.json` and `node_modules/@kb-labs/*`. See [core-workspace README](platform/kb-labs-core/packages/core-workspace/README.md) for the full resolution algorithm.
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `KB_PLATFORM_ROOT` | Override the platform root — where `node_modules/@kb-labs/*` lives. Set by the installer wrapper in installed mode. | Walk up from the CLI binary's `import.meta.url`. |
+| `KB_PROJECT_ROOT` | Override the project root — where `.kb/kb.config.json` lives. | Walk up from `cwd` looking for `.kb/kb.config.json`. |
+| `KB_LABS_WORKSPACE_ROOT` | Legacy alias for `KB_PROJECT_ROOT`. | — |
+| `KB_LABS_REPO_ROOT` | Legacy alias for `KB_PROJECT_ROOT`. | — |
+
+Precedence: `KB_PROJECT_ROOT` > `KB_LABS_WORKSPACE_ROOT` > `KB_LABS_REPO_ROOT` > walk-up.
+
+In dev mode (monorepo workspace) both roots coincide and you don't usually need any of these. In installed mode (installer drops the platform into a shared location and your project's `.kb/` is elsewhere) the installer sets `KB_PLATFORM_ROOT` for you.
+
+## Profile selection
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `KB_PROFILE` | Select which profile to use from `kb.config.json`. Overridden by `--profile=<id>` on the CLI. | `'default'` |
+
+Read at `useConfig()` time in [`core-runtime/src/adapters/config-adapter.ts`](platform/kb-labs-core/packages/core-runtime/src/adapters/config-adapter.ts). Unknown profile IDs fall back to `'default'`.
+
+## Logging and output
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `KB_LOG_LEVEL` | Log level for the CLI and platform. `'silent'`, `'trace'`, `'debug'`, `'info'`, `'warn'`, `'error'`, `'fatal'`. | `'silent'` (CLI), `'info'` (services) |
+| `LOG_LEVEL` | Fallback when `KB_LOG_LEVEL` is unset. Standard Unix convention. | — |
+| `KB_OUTPUT_MODE` | CLI output mode. `'json'` switches the presenter to structured JSON; anything else uses the text presenter. Set automatically when `--json` is present on the command line. | (unset) |
+| `KB_QUIET` | When `'true'`, suppresses non-error output from the sandbox's console interceptor. | `'false'` |
+| `KB_LOG_DIR` | Directory where the sandbox bootstrap writes log files. | `/tmp` |
+| `KB_CRASH_DIR` | Directory where crash snapshots are written. | `/tmp` |
+
+The CLI deliberately defaults to silent — no logs appear unless you set `LOG_LEVEL`, `KB_LOG_LEVEL`, or pass `--debug`. This is so `pnpm kb <command>` output is clean by default and users can opt into verbosity. See [`cli-bin/src/bin.ts`](platform/kb-labs-cli/packages/cli-bin/src/bin.ts).
+
+## Multi-tenancy
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `KB_TENANT_ID` | Default tenant ID when an incoming request doesn't carry `X-Tenant-ID`. | `'default'` |
+
+Used by the REST API rate-limit middleware and metrics collector ([`rest-api/src/middleware/rate-limit.ts`](platform/kb-labs-rest-api/apps/rest-api/src/middleware/rate-limit.ts)). Requests carrying an explicit `X-Tenant-ID` header override the env var; requests without it fall back to this value.
+
+## Sandbox and plugin execution
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `KB_PLUGIN_DEV_MODE` | When `'true'`, forces in-process plugin execution and bypasses sandbox isolation. For debugging only. | `'false'` |
+| `KB_PLUGIN_ID` | Plugin identifier injected into the sandbox by the runner. Plugin code can read it for its own diagnostics. | (set by runner) |
+| `KB_PLUGIN_VERSION` | Plugin version injected by the runner. | (set by runner) |
+| `KB_JOBS_DEBUG` | When `'true'`, enables verbose path-resolver logging in the job runner. | `'false'` |
+
+## Gateway
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `GATEWAY_JWT_SECRET` | HMAC signing key for all gateway-issued JWTs. **Required in production.** When unset, the gateway logs a warning and falls back to an insecure default. | (insecure dev default) |
+| `GATEWAY_INTERNAL_SECRET` | Shared secret for the gateway's `/internal/dispatch` endpoint. Required when `platform.execution.mode === 'container'`. | — |
+| `PORT` | HTTP port the gateway listens on. | `4000` |
+
+See [`gateway-app/src/bootstrap.ts`](infra/kb-labs-gateway/apps/gateway-app/src/bootstrap.ts) and [Gateway → Authentication](/gateway/authentication).
+
+## Services
+
+Each long-running service reads its own port env var plus `NODE_ENV`:
+
+| Service | Port var | Default port |
+|---|---|---|
+| REST API | `PORT` | 5050 |
+| Workflow daemon | `PORT` | 7778 |
+| Marketplace | `KB_MARKETPLACE_PORT` / `PORT` | 5070 |
+| Marketplace bind | `KB_MARKETPLACE_HOST` | `0.0.0.0` |
+| Gateway | `PORT` | 4000 |
+| State daemon | `KB_STATE_DAEMON_PORT` | 7777 |
+| State daemon bind | `KB_STATE_DAEMON_HOST` | `localhost` |
+| Studio | `PORT` | 3000 |
+
+`NODE_ENV` is used consistently across services. `'production'` disables Swagger UI, enables stricter CORS, and tightens a few other knobs; any other value (or unset) is treated as dev mode.
+
+## Marketplace client
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `KB_MARKETPLACE_URL` | Direct URL to the marketplace service. When set, the CLI bypasses the gateway. | (unset) |
+| `KB_GATEWAY_URL` | Gateway URL used by the CLI marketplace client and other gateway-aware commands. | `http://localhost:4000` |
+
+From [`marketplace-cli/src/http.ts`](platform/kb-labs-marketplace/packages/marketplace-cli/src/http.ts). `KB_MARKETPLACE_URL` takes precedence when present.
+
+## State broker
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `KB_STATE_DAEMON_URL` | URL of the state daemon for distributed state broker mode. | `http://localhost:7777` |
+
+## Adapter credentials
+
+These are the env vars that first-party adapters read. Each adapter declares which vars it needs via its preset — `llmAccessPreset` grants the LLM ones, `vectorStorePreset` grants the vector-store ones, etc. See [Plugins → Permissions](/plugins/permissions#bundled-presets) for the full list.
+
+### LLM
+
+| Variable | Consumer |
+|---|---|
+| `OPENAI_API_KEY` | `@kb-labs/adapters-openai` |
+| `OPENAI_ORG_ID` | `@kb-labs/adapters-openai` |
+| `OPENAI_BASE_URL` | `@kb-labs/adapters-openai` (custom endpoints) |
+| `ANTHROPIC_API_KEY` | `@kb-labs/adapters-anthropic` (if installed) |
+| `AZURE_OPENAI_*` | Azure OpenAI adapters |
+| `LLM_*` | Generic LLM adapter config |
+
+### Vector stores
+
+| Variable | Consumer |
+|---|---|
+| `QDRANT_URL` | `@kb-labs/adapters-qdrant` |
+| `QDRANT_API_KEY` | `@kb-labs/adapters-qdrant` |
+| `QDRANT_*` | Qdrant advanced config |
+| `PINECONE_API_KEY` | Pinecone adapters |
+| `PINECONE_ENVIRONMENT` | Pinecone adapters |
+| `WEAVIATE_URL`, `WEAVIATE_API_KEY` | Weaviate adapters |
+| `VECTOR_STORE_*`, `EMBEDDING_*` | Generic |
+
+### Cache / storage
+
+| Variable | Consumer |
+|---|---|
+| Connection URL passed via `adapterOptions.cache` | Prefer config file over env |
+
+Most adapters take their primary config (connection URL, credentials) from `platform.adapterOptions.<token>` in `kb.config.json`. Env vars are for secrets that you don't want in the config file. The typical pattern is:
+
+```json
+{
+  "platform": {
+    "adapterOptions": {
+      "cache": {
+        "url": "redis://localhost:6379"
+      }
+    }
+  }
+}
+```
+
+...with sensitive credentials kept in a secret manager or a `.env` file that isn't committed.
+
+## Observability and debug
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `DEBUG` | Standard Node debug flag. When it includes `@kb-labs`, enables sandbox debug output. | (unset) |
+| `DEBUG_SANDBOX` | When `'1'`, forces sandbox debug mode. | (unset) |
+| `KB_OBSERVABILITY` | When `'false'`, disables the sandbox file logger. | `'true'` |
+| `KB_TRACING` | When `'true'`, enables tracing in the sandbox observability setup. | `'false'` |
+| `KB_HEAP_PROFILING` | When `'true'`, enables heap profiling. | `'false'` |
+| `KB_PATTERN_DETECTION` | When `'true'`, enables pattern detection in sandbox observability. | `'false'` |
+
+All four `KB_*` flags read by [`core-sandbox/src/runner/initialization/observability-setup.ts`](platform/kb-labs-core/packages/core-sandbox/src/runner/initialization/observability-setup.ts).
+
+## Version reporting
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `KB_LABS_VERSION` | KB Labs platform version. Reported by the REST API's health endpoint. | `'unknown'` |
+| `KB_VERSION` | Fallback for `KB_LABS_VERSION`. | — |
+
+## Loading `.env`
+
+Each service's bootstrap calls `loadEnvFromRoot(repoRoot)` before reading adapters or plugin config. This reads `<repoRoot>/.env` and populates `process.env` from it. Values already in the environment are not overwritten — an existing `OPENAI_API_KEY` in the parent shell wins over the one in `.env`.
+
+The `.env` file is a dev-time convenience. In production, use a secret manager (Vault, AWS Secrets Manager, Kubernetes secrets) and set env vars on the service process directly.
+
+## Precedence
+
+When multiple sources set the same variable, precedence is:
+
+1. Explicit `process.env` from the parent shell (whatever's already set when the service starts).
+2. `.env` file at the project root (loaded by `loadEnvFromRoot`).
+3. Defaults hardcoded in the source.
+
+CLI flags (`--profile=<id>`, `--debug`) override env vars for their respective settings.
+
+## Gotchas
+
+- **`KB_LOG_LEVEL` defaults to silent on the CLI only.** Services default to `'info'`. If you see no logs from the CLI, it's working as designed — set `LOG_LEVEL=debug` or pass `--debug` to see them.
+- **`KB_TENANT_ID` is a default, not an override.** Incoming HTTP requests carrying `X-Tenant-ID` use the header value, not the env var. The env var is the fallback.
+- **Secrets in `.env` are still visible to the process.** Adapter permissions (`env.read` in the plugin manifest) gate which env vars a plugin can read, but the service itself always has full access. Treat the service host as trusted.
+- **Legacy root vars work but are discouraged.** `KB_LABS_WORKSPACE_ROOT` and `KB_LABS_REPO_ROOT` exist for backwards compatibility. New configs should use `KB_PROJECT_ROOT`.
+- **`GATEWAY_JWT_SECRET` has a dev fallback.** Never rely on it in production — the gateway logs a prominent warning, but it doesn't refuse to start. Always set this explicitly in any non-dev deployment.
+
+## What to read next
+
+- [kb.config.json](/configuration/kb-config) — the file env vars are meant to complement, not replace.
+- [Profiles](/configuration/profiles) — how `KB_PROFILE` is resolved.
+- [dev.config.json](/configuration/dev-config) — where `kb-dev` reads service env vars from.
+- [Gateway → Authentication](/gateway/authentication) — full story on `GATEWAY_JWT_SECRET` and `GATEWAY_INTERNAL_SECRET`.

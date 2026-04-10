@@ -1,0 +1,30 @@
+.btn {
+  position: absolute;
+  top: 50%;
+  right: 0.6rem;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #8a93a6;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 150ms ease, background 150ms ease, color 150ms ease, border-color 150ms ease;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.btn:hover {
+  background: #fff;
+  border-color: #d9deea;
+  color: #202633;
+}
+
+.btn.visible {
+  opacity: 1;
+}

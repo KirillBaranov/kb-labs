@@ -1,0 +1,44 @@
+{
+  "name": "@fixture/cli",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Fixture package for testing CLI project structure with DevKit",
+  "type": "module",
+  "bin": {
+    "fixture-cli": "./dist/cli.js"
+  },
+  "main": "./dist/cli.js",
+  "types": "./dist/cli.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/cli.js",
+      "types": "./dist/cli.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsup --config ./tsup.config.ts && tsc -p tsconfig.types.json --emitDeclarationOnly",
+    "type-check": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint . --max-warnings=0 --ignore-pattern 'dist/**'",
+    "format": "prettier -c .",
+    "test": "vitest run --passWithNoTests --reporter=dot --coverage=false"
+  },
+  "dependencies": {
+    "commander": "^12.0.0"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4",
+    "tsup": "^8.5.0",
+    "eslint": "^9.35.0",
+    "prettier": "^3.6.2",
+    "rimraf": "^6.0.1",
+    "jiti": "^2.0.0"
+  }
+}

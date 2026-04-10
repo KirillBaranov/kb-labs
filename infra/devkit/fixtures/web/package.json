@@ -1,0 +1,39 @@
+{
+  "name": "@fixture/web",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Fixture package for testing web project structure with DevKit",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsup --config ../../tsup/node.js && tsc -p tsconfig.types.json --emitDeclarationOnly",
+    "type-check": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint . --max-warnings=0 --ignore-pattern 'dist/**'",
+    "format": "prettier -c .",
+    "test": "vitest run --passWithNoTests --reporter=dot --coverage=false"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4",
+    "tsup": "^8.5.0",
+    "eslint": "^9.35.0",
+    "prettier": "^3.6.2",
+    "rimraf": "^6.0.1",
+    "jiti": "^2.0.0",
+    "jsdom": "^25.0.0"
+  }
+}

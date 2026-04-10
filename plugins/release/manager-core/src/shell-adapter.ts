@@ -1,0 +1,40 @@
+/**
+ * @module @kb-labs/release-manager-core/shell-adapter
+ * Shell adapter for release-core - wraps execa with SDK types
+ */
+
+import { execa } from 'execa';
+import type { ShellAPI, ExecResult, ExecOptions } from '@kb-labs/sdk';
+
+/**
+ * Create a ShellAPI adapter using execa
+ * This is used in core libraries where ctx.runtime.shell is not available
+ */
+export function createExecaShellAdapter(): ShellAPI {
+  return {
+    async exec(command: string, args?: string[], options?: ExecOptions): Promise<ExecResult> {
+      try {
+        const result = await execa(command, args || [], {
+          cwd: options?.cwd,
+          timeout: options?.timeout,
+          preferLocal: true,
+          env: options?.env || process.env,
+        });
+        return {
+          ok: result.exitCode === 0,
+          code: result.exitCode,
+          stdout: result.stdout || '',
+          stderr: result.stderr || '',
+        };
+      } catch (error: any) {
+        return {
+          ok: false,
+          code: error.exitCode || 1,
+          stdout: error.stdout || '',
+          stderr: error.stderr || error.message || '',
+        };
+      }
+    },
+  };
+}
+

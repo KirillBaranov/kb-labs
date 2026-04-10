@@ -1,0 +1,91 @@
+[
+  {
+    "id": "code_partial_mode",
+    "group": "exact_code",
+    "query": "isPartialIndexMode",
+    "expectedAnyOf": [
+      "kb-labs-mind/packages/mind-engine/src/index.ts"
+    ]
+  },
+  {
+    "id": "code_stale_cleanup",
+    "group": "exact_code",
+    "query": "deleteStaleChunksByPath",
+    "expectedAnyOf": [
+      "kb-labs-mind/packages/mind-engine/src/indexing/stages/storage.ts"
+    ]
+  },
+  {
+    "id": "code_rag_index_stats",
+    "group": "exact_code",
+    "query": "Which stats are returned by rag-index command",
+    "expectedAnyOf": [
+      "kb-labs-mind/packages/mind-cli/src/cli/commands/rag-index.ts",
+      "kb-labs-mind/packages/mind-cli/src/application/rag.ts"
+    ]
+  },
+  {
+    "id": "code_embedding_invalid_input",
+    "group": "exact_code",
+    "query": "How embedding stage handles invalid input chunks",
+    "expectedAnyOf": [
+      "kb-labs-mind/packages/mind-engine/src/indexing/stages/embedding.ts"
+    ]
+  },
+  {
+    "id": "code_scoped_adapter",
+    "group": "exact_code",
+    "query": "Where createScopedAdapter is required in indexing pipeline",
+    "expectedAnyOf": [
+      "kb-labs-mind/packages/mind-engine/src/index.ts",
+      "kb-labs-mind/packages/mind-engine/src/vector-store/vector-store.ts"
+    ]
+  },
+  {
+    "id": "freshness_policy",
+    "group": "freshness",
+    "query": "freshness docsWeight staleThresholdHours hard",
+    "expectedAnyOf": [
+      "kb-labs-mind/packages/mind-engine/src/search/freshness.ts",
+      "kb-labs-mind/packages/mind-engine/src/index.ts"
+    ]
+  },
+  {
+    "id": "conflict_policy",
+    "group": "conflict",
+    "query": "conflict resolution freshness-first policy maxLosersPerTopic penalty",
+    "expectedAnyOf": [
+      "kb-labs-mind/packages/mind-engine/src/search/conflicts.ts",
+      "kb-labs-mind/packages/mind-engine/src/index.ts"
+    ]
+  },
+  {
+    "id": "reliability_policy",
+    "group": "reliability",
+    "query": "reliability hardStaleFailClosed confidenceFloor thinkingModeStrict",
+    "expectedAnyOf": [
+      "kb-labs-mind/packages/mind-engine/src/search/reliability.ts",
+      "kb-labs-mind/packages/mind-engine/src/index.ts"
+    ]
+  },
+  {
+    "id": "hybrid_search_design",
+    "group": "concept",
+    "query": "How does hybrid search work in mind-engine? What algorithms does it use?",
+    "expectedAnyOf": [
+      "kb-labs-mind/packages/mind-engine/src/search/adaptive-hybrid.ts",
+      "kb-labs-mind/packages/mind-engine/src/search/hybrid.ts",
+      "kb-labs-mind/docs/adr/0018-hybrid-search-rrf.md",
+      "kb-labs-mind/docs/adr/0033-adaptive-search-weights.md"
+    ]
+  },
+  {
+    "id": "vector_store_interface",
+    "group": "exact_code",
+    "query": "What is VectorStore interface and what methods does it have?",
+    "expectedAnyOf": [
+      "kb-labs-mind/packages/mind-engine/src/vector-store/vector-store.ts",
+      "kb-labs-mind/docs/adr/0016-vector-store-abstraction.md"
+    ]
+  }
+]

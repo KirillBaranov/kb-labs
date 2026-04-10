@@ -1,0 +1,93 @@
+/**
+ * UIButton styles - Proper SVG icon theming
+ *
+ * This ensures all SVG icons (lucide-react, etc.) inherit colors from CSS variables
+ * and work correctly in both light and dark themes.
+ */
+
+.uiButton {
+  /* Button inherits theme colors from Ant Design tokens */
+}
+
+/*
+ * CRITICAL: SVG icon color inheritance
+ *
+ * Force all SVG icons to inherit button text color automatically
+ * Works for lucide-react, heroicons, and any other icon libraries
+ */
+.uiButton svg {
+  color: inherit !important;
+  stroke: currentColor !important;
+  fill: currentColor !important;
+}
+
+/*
+ * Disabled state - reduce opacity
+ */
+.uiButton:disabled svg,
+.uiButton.ant-btn-disabled svg {
+  opacity: 0.4;
+}
+
+/*
+ * Size variants - ensure SVG scales properly
+ */
+.uiButton.ant-btn-sm svg {
+  /* Small button icons */
+  width: 14px;
+  height: 14px;
+}
+
+.uiButton svg {
+  /* Default (middle) button icons */
+  width: 16px;
+  height: 16px;
+}
+
+.uiButton.ant-btn-lg svg {
+  /* Large button icons */
+  width: 18px;
+  height: 18px;
+}
+
+/*
+ * Icon positioning within button
+ * Ensures proper spacing between icon and text
+ */
+.uiButton .ant-btn-icon {
+  /* Icon wrapper - CRITICAL: must inherit color for SVG to get correct color */
+  color: inherit !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.uiButton .ant-btn-icon svg {
+  /* SVG inside icon wrapper */
+  vertical-align: middle;
+  display: block; /* Remove inline spacing */
+}
+
+/*
+ * Primary button — subtle lift effect
+ */
+.uiButton.ant-btn-primary {
+  transition: transform 150ms ease, box-shadow 150ms ease;
+}
+
+.uiButton.ant-btn-primary:hover:not(:disabled):not(.ant-btn-disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(12, 102, 255, 0.3);
+}
+
+.uiButton.ant-btn-primary:active:not(:disabled):not(.ant-btn-disabled) {
+  transform: translateY(0);
+}
+
+/*
+ * RTL (Right-to-Left) support
+ */
+[dir='rtl'] .uiButton .ant-btn-icon {
+  /* Mirror icon position in RTL */
+  transform: scaleX(-1);
+}

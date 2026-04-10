@@ -1,149 +1,188 @@
 # Contributing to KB Labs
 
-KB Labs is an open-source project and we're actively looking for people to explore it, break it, question it, and eventually build on top of it.
+Thank you for your interest in contributing! KB Labs is an open-source project and we welcome contributions of all kinds — bug fixes, features, docs, plugins, and adapters.
 
-**We're in active development.** Some things are stable, some things are still moving. This guide explains what you can do right now and what to expect.
-
----
-
-## How to Contribute (Right Now)
-
-### Report Issues
-
-If something breaks, behaves unexpectedly, or doesn't make sense — open an issue. We read every one.
-
-Good issue = clear description + steps to reproduce + what you expected vs what happened.
-
-[Open an issue →](https://github.com/KirillBaranov/kb-labs/issues)
-
-### Start a Discussion
-
-Architecture questions, use case feedback, "why did you design it this way", ideas for features, things you'd do differently — all of this belongs in Discussions.
-
-[GitHub Discussions →](https://github.com/KirillBaranov/kb-labs/discussions)
-
-### Build an Adapter
-
-The adapter interface is stable and this is the most impactful thing you can do right now if you have a specific infrastructure need.
-
-KB Labs ships with ~21 adapters (OpenAI, SQLite, MongoDB, Redis, Qdrant, Pino, Docker, etc.). But the adapter contract is open, and you can implement any backend you need.
-
-Common requests: Kafka, RabbitMQ, NATS, DynamoDB, Postgres, Pinecone, Anthropic, Vertex AI.
-
-Adapter interface lives in `@kb-labs/core-contracts`. Look at any existing adapter in `infra/kb-labs-adapters/` for a working reference.
-
-**Process:** Open an issue describing what you're building → we'll confirm the interface is the right one → build and submit PR.
-
-### Build a Plugin
-
-Plugins are TypeScript packages with a declared manifest. If you have an automation use case (code quality, deployment, notifications, data sync, anything), it probably belongs as a plugin.
-
-Reference structure: `plugins/kb-labs-commit-plugin/` — clean three-package layout (contracts, core, cli).
-
-**Process:** Open an issue with a short description of what the plugin does → discuss scope → build.
-
-### Improve Documentation
-
-If you read a doc and came away confused, a PR with clarification is immediately useful. No need to ask first.
-
-### Review Architecture Decisions
-
-ADRs are in [docs/adr/](./docs/adr/). If you disagree with a decision or see a case we didn't consider, open a discussion. Architecture is still evolving and outside perspective is valuable.
-
----
-
-## Code Contributions (Features & Core Changes)
-
-The architecture is still stabilizing in some areas. Before investing significant time in a feature or refactor, **open an issue first** to align on scope and approach.
-
-What we're currently careful about:
-- Plugin contracts and adapter interfaces (stable, but we want to keep them clean)
-- Workflow engine internals (in active development)
-- CLI command structure (evolving)
-
-What's relatively safe to touch:
-- Adapters
-- Individual plugins
-- Documentation
-- Tests
-- DevKit tooling
-
----
-
-## Development Setup
-
-### Prerequisites
-
-- Node.js ≥ 18.18
-- pnpm ≥ 9
-
-### Setup
+## Getting Started
 
 ```bash
 git clone https://github.com/KirillBaranov/kb-labs.git
 cd kb-labs
-pnpm install
-pnpm build
+pnpm install          # ~20 seconds, one lockfile
+pnpm build            # build all packages
+pnpm check            # verify everything passes
 ```
 
-### Common Commands
+That's it. No submodules, no special setup scripts.
+
+## Development Workflow
+
+### 1. Find or create an issue
+
+Check [existing issues](https://github.com/KirillBaranov/kb-labs/issues) or create one. For non-trivial changes, discuss the approach in the issue first.
+
+### 2. Create a branch
 
 ```bash
-pnpm build            # Build all packages
-pnpm lint             # ESLint across all packages
-pnpm type-check       # TypeScript type checking
-pnpm test             # Run tests
-pnpm check            # lint + type-check + test
+git checkout -b feat/your-feature    # or fix/, docs/, refactor/
 ```
 
-### After Building a Plugin
-
-If you build or modify a CLI plugin, always clear the cache:
+### 3. Make your changes
 
 ```bash
-pnpm kb marketplace clear-cache
+# Work on a specific package
+pnpm --filter @kb-labs/your-package dev
+
+# Build + test what you changed
+pnpm build:affected
+pnpm check:affected
 ```
 
----
+### 4. Commit
 
-## Commit Messages
-
-Use conventional commit format:
+We use [Conventional Commits](https://www.conventionalcommits.org/):
 
 ```
-feat: add Kafka adapter
-fix: resolve timeout in workflow executor
-docs: clarify adapter interface
-refactor: extract retry logic to shared utility
-test: add coverage for budget middleware
-chore: bump pnpm to 9.5
+feat(mind): add semantic reranking to search results
+fix(gateway): handle timeout on upstream connection
+docs(contributing): add plugin development section
+refactor(core): simplify config loading
 ```
 
----
+### 5. Submit a PR
 
-## Pull Request Guidelines
+```bash
+git push -u origin feat/your-feature
+```
 
-- Open an issue first for anything non-trivial
-- Keep PRs focused — one thing per PR
-- Include what you changed and why in the description
-- Add tests for new functionality where applicable
-- Make sure `pnpm check` passes before submitting
+Then open a Pull Request on GitHub. The PR template will guide you through the checklist.
 
----
+## Project Structure
 
-## Architecture
+```
+core/          Foundation (types, runtime, config, plugin system)
+sdk/           Public API for plugin authors
+cli/           The `kb` command
+shared/        Shared utilities
+plugins/       All optional functionality
+adapters/      Pluggable backends (OpenAI, Redis, MongoDB, etc.)
+studio/        Web UI
+tools/         Go binaries (kb-devkit, kb-dev)
+```
 
-Before making significant changes, read the relevant ADRs:
+### Dependency Layers
 
-- [ADR-0001: Architecture and Repository Layout](./docs/adr/0001-architecture-and-repository-layout.md)
-- [ADR-0002: Plugins and Extensibility](./docs/adr/0002-plugins-and-extensibility.md)
-- [ADR-0003: Package and Module Boundaries](./docs/adr/0003-package-and-module-boundaries.md)
-- [ADR-0005: Layering & Stability Policy](./docs/adr/0005-layering-stability-policy.md)
+```
+Layer 0:  core/
+Layer 1:  sdk/  shared/
+Layer 2:  cli/  adapters/
+Layer 3:  plugins/
+Layer 4:  studio/
+```
 
----
+Dependencies flow **strictly downward**. A package in `core/` must never import from `plugins/`.
 
-## Questions?
+### Plugin Structure
 
-Open a [GitHub Discussion](https://github.com/KirillBaranov/kb-labs/discussions) or email [contact@kblabs.dev](mailto:contact@kblabs.dev).
+Every plugin follows the same pattern:
 
-The project is built by one person right now. Response times may vary, but everything gets read.
+```
+plugins/your-plugin/
+├── entry/              Manifest + CLI commands + Studio pages (thin wiring)
+├── contracts/          Types only, zero runtime dependencies
+├── core/               Business logic
+├── daemon/             (optional) HTTP service
+└── docs/adr/           Architecture decisions
+```
+
+## What to Contribute
+
+### Good first issues
+
+Look for issues labeled [`good first issue`](https://github.com/KirillBaranov/kb-labs/labels/good%20first%20issue).
+
+### Adapters
+
+Adding a new adapter is a great way to contribute. Adapters are self-contained and follow a simple interface:
+
+```
+adapters/
+├── llm-openai/          # existing
+├── llm-anthropic/       # you could add this!
+├── storage-postgresql/  # or this!
+```
+
+Each adapter implements an interface from `core/contracts/`. No changes to core needed.
+
+### Plugins
+
+Build your own plugin using the SDK:
+
+```bash
+# Scaffold a new plugin
+pnpm kb plugin create my-plugin
+
+# Or manually: create plugins/my-plugin/ with entry/, contracts/, core/
+```
+
+### Documentation
+
+Every module has its own `docs/` directory. ADRs (Architecture Decision Records) help us track why decisions were made. See `docs/templates/adr-template.md` for the format.
+
+## Quality Standards
+
+### Before submitting
+
+```bash
+pnpm check:affected      # build + lint + type-check + test (only changed packages)
+```
+
+### Key rules
+
+- **All internal deps use `workspace:*`** — never `link:` or pinned versions
+- **Types go in `contracts/`** — not in `core/` or `entry/`
+- **No `as any`, `@ts-ignore`** — fix the root cause
+- **No stub/mock files as workarounds** — fix the underlying issue
+- **Build with `pnpm build`** (uses kb-devkit) — not `pnpm -r run build`
+- **After building a CLI plugin**: `pnpm kb plugins clear-cache`
+
+### Workspace health
+
+```bash
+pnpm health              # health score A-F
+pnpm ws:check            # check all packages against conventions
+pnpm ws:fix              # auto-fix safe violations
+```
+
+## Running Services Locally
+
+If your change involves backend services:
+
+```bash
+pnpm dev:start           # start all services
+pnpm dev:start backend   # or just backend group
+pnpm dev:status          # check what's running
+pnpm dev:logs workflow   # tail logs
+```
+
+Services: Gateway (:4000), REST API (:5050), Workflow (:7778), Marketplace (:5070), State (:7777).
+
+## Architecture Decisions
+
+For non-trivial architectural changes, add an ADR:
+
+```bash
+cp docs/templates/adr-template.md core/docs/adr/XXXX-your-decision.md
+# or plugins/your-plugin/docs/adr/ for plugin-specific decisions
+```
+
+Cross-cutting decisions go in `docs/adr/`. Module-specific decisions go in `<module>/docs/adr/`.
+
+## Getting Help
+
+- **Issues**: [GitHub Issues](https://github.com/KirillBaranov/kb-labs/issues)
+- **Context**: [CLAUDE.md](CLAUDE.md) has full platform context
+- **Code search**: `pnpm kb mind rag-query --text "your question"` (requires Mind plugin + Qdrant)
+
+## License
+
+By contributing, you agree that your contributions will be licensed under the same licenses as the project — [MIT](LICENSE-MIT) for core, [KB-Public](LICENSE-KB-PUBLIC) for ecosystem.

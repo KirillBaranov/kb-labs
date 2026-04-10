@@ -1,0 +1,70 @@
+{
+  "name": "@kb-labs/devlink-core",
+  "version": "1.5.0",
+  "type": "module",
+  "description": "Core business logic for DevLink plugin \u2014 discovery, plan, apply, state, backup.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./discovery": {
+      "import": "./dist/discovery/index.js",
+      "types": "./dist/discovery/index.d.ts"
+    },
+    "./plan": {
+      "import": "./dist/plan/index.js",
+      "types": "./dist/plan/index.d.ts"
+    },
+    "./apply": {
+      "import": "./dist/apply/index.js",
+      "types": "./dist/apply/index.d.ts"
+    },
+    "./state": {
+      "import": "./dist/state/index.js",
+      "types": "./dist/state/index.d.ts"
+    },
+    "./backup": {
+      "import": "./dist/backup/index.js",
+      "types": "./dist/backup/index.d.ts"
+    },
+    "./dist/*": "./dist/*"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsup --config tsup.config.ts",
+    "dev": "tsup --config tsup.config.ts --watch",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint . --fix",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@kb-labs/devlink-contracts": "workspace:*",
+    "@kb-labs/sdk": "workspace:*",
+    "js-yaml": "^4.1.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@types/js-yaml": "^4.0.9",
+    "@types/node": "^24.3.3",
+    "eslint": "^9",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

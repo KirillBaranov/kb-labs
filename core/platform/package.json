@@ -1,0 +1,92 @@
+{
+  "name": "@kb-labs/core-platform",
+  "version": "1.9.0",
+  "description": "Pure abstractions for KB Labs platform with minimal dependencies.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./adapters": {
+      "types": "./dist/adapters/index.d.ts",
+      "import": "./dist/adapters/index.js",
+      "require": "./dist/adapters/index.cjs"
+    },
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "import": "./dist/core/index.js",
+      "require": "./dist/core/index.cjs"
+    },
+    "./serializable": {
+      "types": "./dist/serializable/index.d.ts",
+      "import": "./dist/serializable/index.js",
+      "require": "./dist/serializable/index.cjs"
+    },
+    "./noop": {
+      "types": "./dist/noop/index.d.ts",
+      "import": "./dist/noop/index.js",
+      "require": "./dist/noop/index.cjs"
+    },
+    "./noop/adapters": {
+      "types": "./dist/noop/adapters/index.d.ts",
+      "import": "./dist/noop/adapters/index.js",
+      "require": "./dist/noop/adapters/index.cjs"
+    },
+    "./noop/core": {
+      "types": "./dist/noop/core/index.d.ts",
+      "import": "./dist/noop/core/index.js",
+      "require": "./dist/noop/core/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "clean": "rimraf dist",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "dev": "tsup --config tsup.config.ts --watch",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint . --fix",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ulid": "^2.3.0"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "rimraf": "^6.0.1",
+    "vitest": "^3.2.4",
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.3.3"
+  },
+  "keywords": [
+    "kb-labs",
+    "platform",
+    "abstractions",
+    "interfaces",
+    "hexagonal-architecture"
+  ],
+  "author": "KB Labs",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kb-labs/kb-labs-core.git",
+    "directory": "packages/core-platform"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Pre-push hook — managed by kb-labs-devkit, do not edit manually.
+#
+# Note: DevLink npm switch was removed — git push only contains
+# submodule pointers or source code, not published package.json.
+# npm mode switch is only needed during `npm publish` (Release Manager).
+
+# No-op for now. Add project-specific pre-push checks here if needed.
+exit 0

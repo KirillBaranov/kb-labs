@@ -1,0 +1,67 @@
+{
+  "name": "@kb-labs/workflow-cli",
+  "version": "1.6.0",
+  "type": "module",
+  "description": "CLI commands for KB Labs Workflow Daemon - interact with workflow daemon via HTTP API.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./plugin-manifest": {
+      "import": "./dist/manifest.js",
+      "types": "./dist/manifest.d.ts"
+    },
+    "./dist/*": "./dist/*"
+  },
+  "kb": {
+    "manifest": "./dist/manifest.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsup --config tsup.config.ts && pnpm run build:studio",
+    "build:cli": "tsup --config tsup.config.ts",
+    "build:studio": "rspack build --config rspack.studio.config.mjs",
+    "dev": "tsup --config tsup.config.ts --watch",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@kb-labs/core-platform": "workspace:*",
+    "@kb-labs/sdk": "workspace:*",
+    "@kb-labs/workflow-contracts": "workspace:*"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@kb-labs/studio-plugin-tools": "workspace:*",
+    "@types/node": "^24.3.3",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "@rspack/cli": "^1.7.0",
+    "@rspack/core": "^1.7.0",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "antd": "^5.21.0",
+    "react-router-dom": "^7.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

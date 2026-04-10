@@ -1,0 +1,103 @@
+/* ── Health banner — compact top strip ───────────────────────────────── */
+
+.strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  font-size: 12px;
+  line-height: 1.4;
+  border-bottom: 1px solid transparent;
+}
+
+.stripError {
+  background: rgba(220, 38, 38, 0.07);
+  border-color: rgba(220, 38, 38, 0.2);
+  color: var(--error);
+}
+
+.stripWarning {
+  background: rgba(245, 158, 11, 0.07);
+  border-color: rgba(245, 158, 11, 0.2);
+  color: var(--warning);
+}
+
+.stripInfo {
+  background: rgba(14, 165, 233, 0.07);
+  border-color: rgba(14, 165, 233, 0.2);
+  color: var(--info);
+}
+
+.icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.message {
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.description {
+  color: var(--text-secondary);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detailsBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  color: inherit;
+  opacity: 0.75;
+  padding: 0 4px;
+  flex-shrink: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.detailsBtn:hover {
+  opacity: 1;
+}
+
+.retryBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  color: inherit;
+  opacity: 0.6;
+  flex-shrink: 0;
+  border-radius: 3px;
+}
+
+.retryBtn:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+/* ── Expanded details panel ──────────────────────────────────────────── */
+
+.details {
+  padding: 8px 16px 10px 40px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--border-primary);
+  background: var(--bg-tertiary);
+}
+
+.detailsList {
+  margin: 4px 0 0 12px;
+  padding: 0;
+  list-style: disc;
+  color: var(--text-secondary);
+}
+
+.detailsList li {
+  margin-bottom: 2px;
+}

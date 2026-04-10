@@ -1,0 +1,144 @@
+.header {
+  text-align: center;
+  padding: clamp(4rem, 8vw, 7rem) 1.5rem clamp(2rem, 4vw, 3rem);
+  max-width: 800px;
+  margin-inline: auto;
+}
+
+.tag {
+  display: inline-block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 1rem;
+}
+
+.header h1 {
+  font-size: clamp(1.6rem, 3.5vw, 2.6rem);
+  font-weight: 740;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin: 0 0 1.25rem;
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.25rem;
+  font-size: 0.83rem;
+  color: var(--muted);
+}
+
+.metaDot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--muted);
+  opacity: 0.4;
+  flex-shrink: 0;
+}
+
+/* Article body */
+.article {
+  width: min(100% - 3rem, 680px);
+  margin-inline: auto;
+  margin-bottom: clamp(4rem, 8vw, 7rem);
+}
+
+.article p {
+  font-size: 1rem;
+  color: var(--text);
+  line-height: 1.8;
+  margin: 0 0 1.5rem;
+}
+
+.article h2 {
+  font-size: 1.3rem;
+  font-weight: 680;
+  letter-spacing: -0.02em;
+  margin: 2.5rem 0 0.75rem;
+  color: var(--text);
+}
+
+.article h3 {
+  font-size: 1.05rem;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+  margin: 2rem 0 0.5rem;
+  color: var(--text);
+}
+
+.article ul,
+.article ol {
+  padding-left: 1.5rem;
+  margin: 0 0 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.article li {
+  font-size: 1rem;
+  color: var(--text);
+  line-height: 1.7;
+}
+
+.article pre {
+  background: #f4f6fa;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  overflow-x: auto;
+  margin: 0 0 1.5rem;
+  font-size: 0.875rem;
+  line-height: 1.65;
+}
+
+.article code {
+  font-family: 'Berkeley Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 0.875em;
+}
+
+.article p code,
+.article li code {
+  background: #f0f2f7;
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+}
+
+.article blockquote {
+  border-left: 3px solid var(--accent);
+  margin: 0 0 1.5rem;
+  padding: 0.25rem 0 0.25rem 1.25rem;
+}
+
+.article blockquote p {
+  color: var(--muted);
+  font-style: italic;
+  margin: 0;
+}
+
+.article hr {
+  border: none;
+  border-top: 1px solid var(--line);
+  margin: 2.5rem 0;
+}
+
+/* Back nav */
+.back {
+  width: min(100% - 3rem, 680px);
+  margin-inline: auto;
+  margin-bottom: 2rem;
+  display: block;
+  font-size: 0.875rem;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.back:hover {
+  color: var(--text);
+}
