@@ -93,14 +93,15 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build (topological order)
         run: pnpm build
+      - name: Pack dist artifacts
+        run: find . -path "*/dist" -not -path "*/node_modules/*" -type d | tar cf dist-artifacts.tar -T -
       - name: Upload dist artifacts
         uses: actions/upload-artifact@v4
         with:
           name: dist
-          path: |
-            **/dist/
-            !**/node_modules/**/dist/
+          path: dist-artifacts.tar
           retention-days: 1
+          compression-level: 3
 
   # ── 3. Lint, Type-check, Test (parallel, reuse dist) ────────────────────────
   lint:
@@ -125,6 +126,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: dist
+      - run: tar xf dist-artifacts.tar
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
 
@@ -150,6 +152,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: dist
+      - run: tar xf dist-artifacts.tar
       - run: pnpm install --frozen-lockfile
       - run: pnpm type-check
 
@@ -175,6 +178,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: dist
+      - run: tar xf dist-artifacts.tar
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
       - name: Upload coverage
