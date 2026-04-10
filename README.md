@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://kblabs.ru" target="_blank">Website</a> ·
-  <a href="https://kblabs.ru/docs" target="_blank">Docs</a> ·
+  <a href="https://docs.kblabs.ru/quick-start" target="_blank">Docs</a> ·
   <a href="https://twitter.com/kblabsdev" target="_blank">Twitter</a> ·
   <a href="https://discord.gg/kblabs" target="_blank">Discord</a> ·
   <a href="https://t.me/kirill_baranov_official" target="_blank">Telegram</a>
@@ -127,7 +127,7 @@ Connect what you already have. Core doesn't know what's outside — adapters spe
 | Environment | Docker |
 | Workspace | LocalFS, Worktree, Agent |
 
-[Write your own adapter](https://kblabs.ru/docs/adapters) — including Datadog, Kafka, 1C, or any HTTP service.
+[Write your own adapter](https://docs.kblabs.ru/adapters) — including Datadog, Kafka, 1C, or any HTTP service.
 
 ---
 
