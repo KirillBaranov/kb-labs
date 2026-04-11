@@ -9,8 +9,8 @@
     "vitest": "^3.2.4"
   },
   "engines": {
-    "node": "\u003e=20.0.0",
-    "pnpm": "\u003e=9.0.0"
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
   },
   "exports": {
     ".": {
@@ -34,5 +34,5 @@
   },
   "type": "module",
   "types": "./dist/index.d.ts",
-  "version": "1.5.0"
+  "version": "2.6.0"
 }
