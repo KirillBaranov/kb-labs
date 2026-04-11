@@ -20,8 +20,8 @@
     "vitest": "^3.2.4"
   },
   "engines": {
-    "node": "\u003e=20.0.0",
-    "pnpm": "\u003e=9.0.0"
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
   },
   "files": [
     "dist"
@@ -40,5 +40,5 @@
     "type-check": "tsc --noEmit"
   },
   "type": "module",
-  "version": "0.3.0"
+  "version": "2.6.0"
 }
