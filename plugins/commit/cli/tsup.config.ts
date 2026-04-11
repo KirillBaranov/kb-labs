@@ -7,7 +7,9 @@ export default defineConfig({
   entry: [
     'src/index.ts',
     'src/manifest.ts',
+    'src/lifecycle/index.ts',
     'src/lifecycle/setup.ts',
+    'src/cli/index.ts',
     'src/cli/commands/**/*.ts',    // Auto-include all CLI commands
     'src/rest/handlers/**/*.ts',   // Auto-include all REST API handlers
   ],

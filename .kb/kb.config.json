@@ -28,7 +28,9 @@
               "adapter": "@kb-labs/adapters-openai",
               "model": "gpt-4o-mini",
               "priority": 1,
-              "capabilities": ["fast"]
+              "capabilities": [
+                "fast"
+              ]
             }
           ],
           "medium": [
@@ -36,13 +38,19 @@
               "adapter": "@kb-labs/adapters-vibeproxy",
               "model": "claude-sonnet-4-6",
               "priority": 1,
-              "capabilities": ["coding", "reasoning", "vision"]
+              "capabilities": [
+                "coding",
+                "reasoning",
+                "vision"
+              ]
             },
             {
               "adapter": "@kb-labs/adapters-vibeproxy",
               "model": "gpt-5-codex",
               "priority": 2,
-              "capabilities": ["coding"]
+              "capabilities": [
+                "coding"
+              ]
             }
           ],
           "large": [
@@ -50,13 +58,20 @@
               "adapter": "@kb-labs/adapters-vibeproxy",
               "model": "gpt-5.1-codex-max",
               "priority": 1,
-              "capabilities": ["reasoning", "coding"]
+              "capabilities": [
+                "reasoning",
+                "coding"
+              ]
             },
             {
               "adapter": "@kb-labs/adapters-vibeproxy",
               "model": "claude-opus-4-6",
               "priority": 2,
-              "capabilities": ["reasoning", "coding", "vision"]
+              "capabilities": [
+                "reasoning",
+                "coding",
+                "vision"
+              ]
             }
           ]
         }
@@ -114,8 +129,13 @@
         "mountWorkspace": true,
         "workspaceMountPath": "/workspace",
         "network": "kb-labs",
-        "extraHosts": ["host.docker.internal:host-gateway"],
-        "runtimeCommand": ["node", "/app/dist/cli.cjs"],
+        "extraHosts": [
+          "host.docker.internal:host-gateway"
+        ],
+        "runtimeCommand": [
+          "node",
+          "/app/dist/cli.cjs"
+        ],
         "gateway": {
           "wsUrl": "ws://host.docker.internal:4000",
           "jwtSecret": "${GATEWAY_JWT_SECRET}",
@@ -173,7 +193,10 @@
             {
               "id": "default",
               "label": "Full Codebase",
-              "sources": ["codebase", "docs"],
+              "sources": [
+                "codebase",
+                "docs"
+              ],
               "defaultEngine": "mind-prod"
             }
           ],
@@ -247,23 +270,180 @@
             "type": "pnpm",
             "root": "."
           },
+          "packages": {
+            "exclude": [
+              "templates/*",
+              "{{.Name}}",
+              "@product-name/*"
+            ]
+          },
+          "flows": {
+            "sdk": {
+              "versioningStrategy": "independent",
+              "packages": {
+                "include": [
+                  "@kb-labs/sdk"
+                ]
+              },
+              "checks": [
+                {
+                  "id": "build",
+                  "command": "pnpm",
+                  "args": [
+                    "run",
+                    "build"
+                  ],
+                  "timeoutMs": 300000,
+                  "optional": true,
+                  "runIn": "scopePath"
+                },
+                {
+                  "id": "dist-exports",
+                  "name": "dist/index.js — no directory imports",
+                  "command": "bash",
+                  "args": [
+                    "scripts/gates/check-dist-exports.sh"
+                  ],
+                  "timeoutMs": 30000,
+                  "runIn": "perPackage"
+                },
+                {
+                  "id": "pack-install",
+                  "name": "npm pack + import verification",
+                  "command": "bash",
+                  "args": [
+                    "scripts/gates/check-pack-install.sh"
+                  ],
+                  "timeoutMs": 60000,
+                  "runIn": "perPackage"
+                }
+              ]
+            },
+            "platform": {
+              "versioningStrategy": "lockstep",
+              "packages": {
+                "exclude": [
+                  "@kb-labs/sdk",
+                  "templates/*",
+                  "{{.Name}}",
+                  "@product-name/*"
+                ]
+              },
+              "checks": [
+                {
+                  "id": "build",
+                  "command": "pnpm",
+                  "args": [
+                    "run",
+                    "build"
+                  ],
+                  "timeoutMs": 300000,
+                  "optional": true,
+                  "runIn": "scopePath"
+                },
+                {
+                  "id": "dist-exports",
+                  "name": "dist/index.js — no directory imports",
+                  "command": "bash",
+                  "args": [
+                    "scripts/gates/check-dist-exports.sh"
+                  ],
+                  "timeoutMs": 30000,
+                  "runIn": "perPackage"
+                }
+              ]
+            }
+          },
           "git": {},
           "changelog": {
-            "locale": "en"
+            "locale": "en",
+            "groups": [
+              {
+                "title": "Core & SDK",
+                "emoji": "🏗️",
+                "scopes": [
+                  "core",
+                  "sdk",
+                  "shared",
+                  "cli",
+                  "devkit",
+                  "platform-client",
+                  "llm-router",
+                  "telemetry"
+                ]
+              },
+              {
+                "title": "Gateway & API",
+                "emoji": "🌐",
+                "scopes": [
+                  "gateway",
+                  "rest-api"
+                ]
+              },
+              {
+                "title": "Adapters",
+                "emoji": "🔌",
+                "scopes": [
+                  "adapters",
+                  "adapters-openai",
+                  "adapters-redis",
+                  "adapters-mongodb",
+                  "adapters-qdrant",
+                  "adapters-pino",
+                  "adapters-fs",
+                  "adapters-sqlite",
+                  "adapters-vibeproxy"
+                ]
+              },
+              {
+                "title": "Plugins",
+                "emoji": "🧩",
+                "scopes": [
+                  "workflow",
+                  "marketplace",
+                  "agents",
+                  "mind",
+                  "commit",
+                  "review",
+                  "release",
+                  "quality",
+                  "qa",
+                  "impact",
+                  "policy",
+                  "state",
+                  "host-agent",
+                  "devlink",
+                  "infra-worker"
+                ]
+              },
+              {
+                "title": "Studio",
+                "emoji": "🎨",
+                "scopes": [
+                  "studio"
+                ]
+              }
+            ]
           },
           "checks": [
             {
               "id": "build",
               "command": "pnpm",
-              "args": ["run", "build"],
+              "args": [
+                "run",
+                "build"
+              ],
               "timeoutMs": 300000,
+              "optional": true,
               "runIn": "scopePath"
             },
             {
               "id": "dist-exports",
               "name": "dist/index.js — no directory imports",
               "command": "bash",
-              "args": ["scripts/gates/check-dist-exports.sh"],
+              "args": [
+                "scripts/gates/check-dist-exports.sh"
+              ],
               "timeoutMs": 30000,
               "runIn": "perPackage"
             },
@@ -271,14 +451,19 @@
               "id": "pack-install",
               "name": "npm pack + import verification",
               "command": "bash",
-              "args": ["scripts/gates/check-pack-install.sh"],
+              "args": [
+                "scripts/gates/check-pack-install.sh"
+              ],
               "timeoutMs": 60000,
               "runIn": "perPackage"
             },
             {
               "id": "typecheck",
               "command": "pnpm",
-              "args": ["run", "type-check"],
+              "args": [
+                "run",
+                "type-check"
+              ],
               "timeoutMs": 120000,
               "optional": true,
               "runIn": "scopePath"
@@ -286,7 +471,10 @@
             {
               "id": "lint",
               "command": "pnpm",
-              "args": ["run", "lint"],
+              "args": [
+                "run",
+                "lint"
+              ],
               "timeoutMs": 60000,
               "optional": true,
               "runIn": "scopePath"
@@ -294,7 +482,12 @@
             {
               "id": "tests",
               "command": "pnpm",
-              "args": ["run", "test", "--", "--run"],
+              "args": [
+                "run",
+                "test",
+                "--",
+                "--run"
+              ],
               "timeoutMs": 120000,
               "optional": true,
               "runIn": "scopePath"
@@ -304,7 +497,9 @@
         "review": {
           "defaultPreset": "kb-labs-full",
           "presetsDir": "ai-review/presets",
-          "presets": ["ai-review/presets/kb-labs-full.json"],
+          "presets": [
+            "ai-review/presets/kb-labs-full.json"
+          ],
           "llm": {
             "minTurns": 3,
             "maxTurns": 25,
@@ -328,7 +523,10 @@
             {
               "id": "build",
               "command": "pnpm",
-              "args": ["run", "build"],
+              "args": [
+                "run",
+                "build"
+              ],
               "runIn": "perPackage",
               "timeoutMs": 120000,
               "ordered": true
@@ -336,21 +534,30 @@
             {
               "id": "lint",
               "command": "pnpm",
-              "args": ["run", "lint"],
+              "args": [
+                "run",
+                "lint"
+              ],
               "runIn": "perPackage",
               "timeoutMs": 60000
             },
             {
               "id": "typecheck",
               "command": "pnpm",
-              "args": ["run", "type-check"],
+              "args": [
+                "run",
+                "type-check"
+              ],
               "runIn": "perPackage",
               "timeoutMs": 60000
             },
             {
               "id": "test",
               "command": "pnpm",
-              "args": ["run", "test"],
+              "args": [
+                "run",
+                "test"
+              ],
               "runIn": "perPackage",
               "timeoutMs": 60000
             }
@@ -358,31 +565,46 @@
           "categories": {
             "core": {
               "label": "Core",
-              "packages": ["core/*"]
+              "packages": [
+                "core/*"
+              ]
             },
             "sdk": {
               "label": "SDK & Shared",
-              "packages": ["sdk/*", "shared/*"]
+              "packages": [
+                "sdk/*",
+                "shared/*"
+              ]
             },
             "cli": {
               "label": "CLI",
-              "packages": ["cli/*"]
+              "packages": [
+                "cli/*"
+              ]
             },
             "adapters": {
               "label": "Adapters",
-              "packages": ["adapters/*"]
+              "packages": [
+                "adapters/*"
+              ]
             },
             "plugins": {
               "label": "Plugins",
-              "packages": ["plugins/*/*"]
+              "packages": [
+                "plugins/*/*"
+              ]
             },
             "studio": {
               "label": "Studio",
-              "packages": ["studio/*"]
+              "packages": [
+                "studio/*"
+              ]
             },
             "templates": {
               "label": "Templates",
-              "packages": ["templates/*/*"]
+              "packages": [
+                "templates/*/*"
+              ]
             }
           }
         },
@@ -593,7 +815,10 @@
         "directory": ".kb/commit"
       },
       "git": {
-        "protectedBranches": ["main", "master"],
+        "protectedBranches": [
+          "main",
+          "master"
+        ],
         "autoStage": false
       }
     },
@@ -601,12 +826,17 @@
       "docRules": [
         {
           "match": "@kb-labs/sdk",
-          "docs": ["CLAUDE.md", "CONTRIBUTING.md"],
+          "docs": [
+            "CLAUDE.md",
+            "CONTRIBUTING.md"
+          ],
           "action": "review"
         },
         {
           "match": "*-cli",
-          "docs": ["docs/CLI-REFERENCE.md"],
+          "docs": [
+            "docs/CLI-REFERENCE.md"
+          ],
           "action": "regenerate",
           "command": "pnpm kb docs generate-cli-reference"
         },

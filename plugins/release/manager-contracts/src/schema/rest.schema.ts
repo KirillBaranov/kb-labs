@@ -260,6 +260,7 @@ export type ReleaseReport = z.infer<typeof ReleaseReportSchema>;
 
 export const RunReleaseRequestSchema = z.object({
   scope: z.string(),
+  flow: z.string().optional(),
   strict: z.boolean().optional(),
   dryRun: z.boolean().optional(),
   skipChecks: z.boolean().optional(),

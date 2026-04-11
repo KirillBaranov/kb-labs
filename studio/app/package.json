@@ -58,10 +58,11 @@
     "vitest": "^3.2.4"
   },
   "engines": {
-    "node": "\u003e=20.0.0",
-    "pnpm": "\u003e=9.0.0"
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
   },
   "name": "@kb-labs/studio-app",
+  "private": true,
   "scripts": {
     "build": "rspack build",
     "clean": "rimraf dist",

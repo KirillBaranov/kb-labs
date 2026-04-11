@@ -20,6 +20,7 @@ import { createChangelogGenerator } from '../../shared/changelog-factory';
 export default defineHandler({
   async execute(ctx, input: RestInput<unknown, RunReleaseRequest>): Promise<RunReleaseResponse> {
     const scope = input.body?.scope || 'root';
+    const flow = input.body?.flow;
     const dryRun = input.body?.dryRun ?? false;
     const skipChecks = input.body?.skipChecks ?? false;
     const otp = input.body?.otp;
@@ -49,10 +50,13 @@ export default defineHandler({
       repoRoot,
       scopeCwd,
       scope,
+      flow,
       config,
       dryRun,
       skipChecks,
-      checks: config.scopes?.[scope]?.checks ?? config.checks ?? [],
+      checks: (flow ? config.flows?.[flow]?.checks : undefined)
+           ?? config.scopes?.[scope]?.checks
+           ?? config.checks ?? [],
       publisher,
       changelog,
       logger: ctx.platform?.logger,

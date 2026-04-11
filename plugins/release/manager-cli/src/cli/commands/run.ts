@@ -25,6 +25,7 @@ import {
   resolveScopePath,
   type ReleaseConfig,
   type ReleaseReport,
+  type CheckResult,
   type PublishablePackage,
   type PublishResult,
 } from '@kb-labs/release-manager-core';
@@ -35,6 +36,7 @@ import { publishPackagesWithOTP } from '../../shared/publish-with-otp';
 
 interface RunFlags {
   scope?: string;
+  flow?: string;
   bump?: 'patch' | 'minor' | 'major' | 'auto';
   strict?: boolean;
   'dry-run'?: boolean;
@@ -89,6 +91,7 @@ export default defineCommand({
         cwd: repoRoot,
         config,
         scope: flags.scope,
+        flow: flags.flow,
         bumpOverride: config.bump as any,
       });
       planLoader.succeed(`Found ${plan.packages.length} package(s)`);
@@ -114,7 +117,7 @@ export default defineCommand({
           title: dryRun ? 'Release Plan (dry-run)' : 'Release Plan',
           sections: [
             {
-              header: `${plan.packages.length} package(s) · strategy: ${config.versioningStrategy ?? 'independent'}`,
+              header: `${plan.packages.length} package(s) · strategy: ${config.versioningStrategy ?? 'independent'}${flags.flow ? ` · flow: ${flags.flow}` : ''}`,
               items: rows,
             },
           ],
@@ -176,13 +179,16 @@ export default defineCommand({
         repoRoot,
         scopeCwd,
         scope: flags.scope,
+        flow: flags.flow,
         config,
         dryRun,
         skipChecks: flags['skip-checks'],
         skipBuild: flags['skip-build'],
         skipVerify: flags['skip-verify'],
         noVerify: flags['no-verify'],
-        checks: (flags.scope ? config.scopes?.[flags.scope]?.checks : undefined) ?? config.checks ?? [],
+        checks: (flags.flow ? config.flows?.[flags.flow]?.checks : undefined)
+             ?? (flags.scope ? config.scopes?.[flags.scope]?.checks : undefined)
+             ?? config.checks ?? [],
         publisher,
         changelog,
         logger: ctx.platform?.logger,
@@ -214,7 +220,47 @@ export default defineCommand({
           });
         }
 
-        if (report.result.errors?.length) {
+        if (report.result.checks) {
+          const checkEntries = (Object.values(report.result.checks) as CheckResult[]).filter(Boolean);
+          const passed = checkEntries.filter(c => c.ok);
+          const failed = checkEntries.filter(c => !c.ok && c.hint !== 'optional');
+          const skipped = checkEntries.filter(c => !c.ok && c.hint === 'optional');
+
+          if (checkEntries.length > 0) {
+            const checkItems: string[] = [];
+
+            for (const c of checkEntries) {
+              const sym = c.ok ? ctx.ui.symbols.success : (c.hint === 'optional' ? ctx.ui.symbols.warning : ctx.ui.symbols.error);
+              const timing = c.timingMs ? ` (${(c.timingMs / 1000).toFixed(1)}s)` : '';
+              checkItems.push(`${sym} ${c.id}${timing}`);
+
+              if (!c.ok && c.hint !== 'optional') {
+                if (c.details?.packagePath) checkItems.push(`     package: ${c.details.packagePath}`);
+                if (c.details?.error) checkItems.push(`     reason:  ${c.details.error}`);
+                const output = (c.details?.stderr || c.details?.stdout || '').trim();
+                if (output) {
+                  const lines = output.split('\n').slice(0, 8);
+                  checkItems.push(`     output:`);
+                  for (const line of lines) checkItems.push(`       ${line}`);
+                }
+                if (c.packages?.filter(p => !p.ok).length) {
+                  const failedPkgs = c.packages.filter(p => !p.ok);
+                  checkItems.push(`     failed in ${failedPkgs.length}/${c.packages.length} package(s):`);
+                  for (const pkg of failedPkgs.slice(0, 10)) {
+                    checkItems.push(`       - ${pkg.path}${pkg.details?.error ? `: ${pkg.details.error}` : ''}`);
+                  }
+                }
+              }
+            }
+
+            sections.push({
+              header: `Checks — ${passed.length} passed, ${failed.length} failed${skipped.length ? `, ${skipped.length} skipped` : ''}`,
+              items: checkItems,
+            });
+          }
+        }
+
+        if (report.result.errors?.length && !report.result.checks) {
           sections.push({
             header: 'Errors',
             items: report.result.errors.map(e => `${ctx.ui.symbols.error} ${e}`),

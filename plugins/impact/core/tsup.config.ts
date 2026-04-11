@@ -7,6 +7,8 @@ export default defineConfig({
   entry: [
     'src/index.ts',
     'src/manifest.v3.ts',
+    'src/cli/index.ts',
+    'src/core/index.ts',
     'src/cli/commands/check.ts',
     'src/cli/commands/packages.ts',
     'src/cli/commands/docs.ts',

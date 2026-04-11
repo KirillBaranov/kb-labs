@@ -1,5 +1,6 @@
 {
   "name": "@kb-labs/plugin-template-contracts",
+  "private": true,
   "version": "0.1.0",
   "type": "module",
   "description": "Public contracts package for the KB Labs plugin template. Provides typed guarantees about artifacts, commands, workflows, and APIs.",

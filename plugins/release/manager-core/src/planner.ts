@@ -84,14 +84,40 @@ export interface PlannerOptions {
   cwd: string;
   config: ReleaseConfig;
   scope?: string;
+  /** Named flow — selects a release config profile. Completely replaces global packages/versioning/checks. */
+  flow?: string;
   bumpOverride?: VersionBump;
+}
+
+/**
+ * Merge base config with a named flow's config.
+ * Flow completely REPLACES packages, versioningStrategy, and checks — no array merging.
+ * All other config fields (registry, publish, rollback, git, changelog) remain from global.
+ */
+export function mergeConfigWithFlow(config: ReleaseConfig, flowName: string): ReleaseConfig {
+  const flow = config.flows?.[flowName];
+  if (!flow) {
+    throw new Error(`Flow "${flowName}" is not defined in config.flows`);
+  }
+  return {
+    ...config,
+    ...(flow.packages !== undefined && { packages: flow.packages }),
+    ...(flow.versioningStrategy && { versioningStrategy: flow.versioningStrategy }),
+    ...(flow.checks !== undefined && { checks: flow.checks }),
+  };
 }
 
 /**
  * Plan release by detecting changes and computing version bumps
  */
 export async function planRelease(options: PlannerOptions): Promise<ReleasePlan> {
-  const { cwd, config, scope, bumpOverride } = options;
+  const { cwd, scope, bumpOverride } = options;
+
+  // Flow resolution — completely replaces packages/versioningStrategy/checks in config.
+  // MUST happen before discoverPackages so globally-excluded packages can appear in a flow.
+  const config = options.flow
+    ? mergeConfigWithFlow(options.config, options.flow)
+    : options.config;
 
   // Step 1: discover all candidates according to config (paths/include/exclude)
   const allPackages = await discoverPackages(cwd, config);
@@ -163,8 +189,9 @@ export async function planRelease(options: PlannerOptions): Promise<ReleasePlan>
   }
 
   // Apply versioning strategy (lockstep/independent/adaptive)
-  // Top-level versioningStrategy takes priority over legacy changelog.bumpStrategy
-  const bumpStrategy = config.versioningStrategy || config.changelog?.bumpStrategy || 'independent';
+  // Scope-level override takes highest priority, then top-level, then legacy changelog.bumpStrategy
+  const scopeVersioningStrategy = scope ? config.scopes?.[scope]?.versioningStrategy : undefined;
+  const bumpStrategy = scopeVersioningStrategy || config.versioningStrategy || config.changelog?.bumpStrategy || 'independent';
   const versionStrategy = mapBumpStrategyToVersionStrategy(bumpStrategy);
 
   planPackages = applyVersionStrategy(planPackages, {
@@ -255,7 +282,17 @@ async function discoverPackages(cwd: string, config?: ReleaseConfig): Promise<Pa
     });
   }
 
-  return packages;
+  // Deduplicate by package name — keep the entry with the shortest path
+  // (avoids duplicates when nested package.json files share the same name)
+  const seen = new Map<string, PackageVersion>();
+  for (const pkg of packages) {
+    const existing = seen.get(pkg.name);
+    if (!existing || pkg.path.length < existing.path.length) {
+      seen.set(pkg.name, pkg);
+    }
+  }
+
+  return Array.from(seen.values());
 }
 
 /**

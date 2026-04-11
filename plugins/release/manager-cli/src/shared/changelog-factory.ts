@@ -37,6 +37,7 @@ export function createChangelogGenerator(config: ReleaseConfig, llm?: any): Chan
             collapseMerges: config.changelog?.collapseMerges,
             collapseReverts: config.changelog?.collapseReverts,
             preferMergeSummary: config.changelog?.preferMergeSummary,
+            groups: config.changelog?.groups,
           },
           git: {
             autoUnshallow: config.git?.autoUnshallow,

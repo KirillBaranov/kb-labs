@@ -1,5 +1,6 @@
 {
   "name": "@kb-labs/plugin-template-core",
+  "private": true,
   "version": "0.1.0",
   "type": "module",
   "description": "Reference plugin package for KB Labs plugin template with manifest, CLI, REST, and Studio layers.",
