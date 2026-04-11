@@ -29,7 +29,7 @@ class MockCache implements ICache {
     this.store.set(key, zset.filter((item: any) => item.member !== member));
   }
   async setIfNotExists<T>(key: string, value: T): Promise<boolean> {
-    if (this.store.has(key)) return false;
+    if (this.store.has(key)) { return false; }
     this.store.set(key, value);
     return true;
   }

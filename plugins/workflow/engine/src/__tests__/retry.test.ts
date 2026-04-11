@@ -8,7 +8,7 @@ describe('calculateBackoff', () => {
   });
 
   it('calculates exponential backoff (default)', () => {
-    const policy = { max: 5, initialIntervalMs: 1000 };
+    const policy = { max: 5, backoff: 'exp' as const, initialIntervalMs: 1000 };
 
     expect(calculateBackoff(0, policy)).toBe(1000);  // 1000 * 2^0
     expect(calculateBackoff(1, policy)).toBe(2000);  // 1000 * 2^1
@@ -25,7 +25,7 @@ describe('calculateBackoff', () => {
   });
 
   it('caps at maxIntervalMs', () => {
-    const policy = { max: 10, initialIntervalMs: 1000, maxIntervalMs: 5000 };
+    const policy = { max: 10, backoff: 'exp' as const, initialIntervalMs: 1000, maxIntervalMs: 5000 };
 
     expect(calculateBackoff(0, policy)).toBe(1000);
     expect(calculateBackoff(3, policy)).toBe(5000); // 8000 capped to 5000
@@ -46,7 +46,7 @@ describe('shouldRetry', () => {
   });
 
   it('returns true when under max retries', () => {
-    const policy = { max: 3, initialIntervalMs: 500 };
+    const policy = { max: 3, backoff: 'exp' as const, initialIntervalMs: 500 };
 
     const r0 = shouldRetry(0, policy);
     expect(r0.shouldRetry).toBe(true);
@@ -62,7 +62,7 @@ describe('shouldRetry', () => {
   });
 
   it('returns false when max retries reached', () => {
-    const policy = { max: 3, initialIntervalMs: 500 };
+    const policy = { max: 3, backoff: 'exp' as const, initialIntervalMs: 500 };
 
     const r3 = shouldRetry(3, policy);
     expect(r3.shouldRetry).toBe(false);

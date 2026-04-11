@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { serializeContext, type SerializableContext } from '../runner/ipc-serializer.js';
+import { serializeContext } from '../runner/ipc-serializer.js';
 import type { ExecutionContext } from '../types/index.js';
 
 function createMinimalContext(overrides: Partial<ExecutionContext> = {}): ExecutionContext {
@@ -87,10 +87,7 @@ describe('serializeContext', () => {
   it('skips large extensions (>100KB)', () => {
     const ctx = createMinimalContext({
       debug: true,
-      extensions: {
-        smallData: 'hello',
-        largeData: 'x'.repeat(200_000), // 200KB > 100KB limit
-      },
+      extensions: { smallData: 'hello', largeData: 'x'.repeat(200_000) } as any,
     });
 
     const result = serializeContext(ctx);
@@ -100,10 +97,7 @@ describe('serializeContext', () => {
 
   it('skips function extensions', () => {
     const ctx = createMinimalContext({
-      extensions: {
-        callback: () => {},
-        data: 'kept',
-      },
+      extensions: { callback: () => {}, data: 'kept' } as any,
     });
 
     const result = serializeContext(ctx);
@@ -113,9 +107,7 @@ describe('serializeContext', () => {
 
   it('omits extensionsData when no serializable extensions', () => {
     const ctx = createMinimalContext({
-      extensions: {
-        fn: () => {},
-      },
+      extensions: { fn: () => {} } as any,
     });
 
     const result = serializeContext(ctx);

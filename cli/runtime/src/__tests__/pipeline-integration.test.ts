@@ -20,6 +20,7 @@ function createTestPresenter(): Presenter & { written: string[]; errors: string[
     json: vi.fn(),
     isTTY: false,
     isQuiet: false,
+    isJSON: false,
     written,
     errors,
   };

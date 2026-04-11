@@ -13,7 +13,7 @@ class MockCache implements ICache {
   async zrangebyscore(): Promise<string[]> { return []; }
   async zrem(): Promise<void> {}
   async setIfNotExists<T>(key: string, value: T): Promise<boolean> {
-    if (this.store.has(key)) return false;
+    if (this.store.has(key)) { return false; }
     this.store.set(key, value);
     return true;
   }
