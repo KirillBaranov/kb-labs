@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import type { StateBroker } from '@kb-labs/core-state-broker';
 import { TenantRateLimiter } from '../rate-limiter.js';
 import { DEFAULT_QUOTAS, getDefaultTenantId, getDefaultTenantTier, getQuotasForTier } from '../types.js';
@@ -9,7 +9,7 @@ function createMockBroker(): StateBroker {
   return {
     async get<T>(key: string): Promise<T | null> {
       const entry = store.get(key);
-      if (!entry) return null;
+      if (!entry) { return null; }
       if (entry.expires && entry.expires < Date.now()) {
         store.delete(key);
         return null;
@@ -173,14 +173,14 @@ describe('types — helper functions', () => {
     const original = process.env.KB_TENANT_ID;
     delete process.env.KB_TENANT_ID;
     expect(getDefaultTenantId()).toBe('default');
-    if (original) process.env.KB_TENANT_ID = original;
+    if (original) { process.env.KB_TENANT_ID = original; }
   });
 
   it('getDefaultTenantTier returns "free" when no env var', () => {
     const original = process.env.KB_TENANT_DEFAULT_TIER;
     delete process.env.KB_TENANT_DEFAULT_TIER;
     expect(getDefaultTenantTier()).toBe('free');
-    if (original) process.env.KB_TENANT_DEFAULT_TIER = original;
+    if (original) { process.env.KB_TENANT_DEFAULT_TIER = original; }
   });
 
   it('getQuotasForTier returns a copy of tier quotas', () => {

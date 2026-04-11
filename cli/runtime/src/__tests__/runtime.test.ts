@@ -12,6 +12,7 @@ function createMinimalOptions(): RuntimeSetupOptions {
     json: vi.fn(),
     isTTY: false,
     isQuiet: false,
+    isJSON: false,
   };
   const output = {
     write: vi.fn(),

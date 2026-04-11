@@ -13,7 +13,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import * as crypto from 'node:crypto';
-import { DiscoveryManager, readMarketplaceLock, DiagnosticCollector } from '@kb-labs/core-discovery';
+import { DiscoveryManager } from '@kb-labs/core-discovery';
 import type { PackageSource, InstalledPackage, ResolvedPackage } from '@kb-labs/marketplace-contracts';
 import { MarketplaceService } from '../marketplace-service.js';
 

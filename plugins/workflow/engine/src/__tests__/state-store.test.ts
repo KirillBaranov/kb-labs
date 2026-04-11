@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { StateStore } from '../state-store.js';
-import type { WorkflowRun, JobRun, StepRun } from '@kb-labs/workflow-contracts';
+import type { WorkflowRun, JobRun } from '@kb-labs/workflow-contracts';
 import type { ICache } from '@kb-labs/core-platform';
 
 class MockCache implements ICache {
@@ -27,7 +27,7 @@ class MockCache implements ICache {
     this.store.set(key, zset.filter((i: any) => i.member !== member));
   }
   async setIfNotExists<T>(key: string, value: T): Promise<boolean> {
-    if (this.store.has(key)) return false;
+    if (this.store.has(key)) { return false; }
     this.store.set(key, value);
     return true;
   }
