@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/policy-contracts",
-  "version": "2.9.0",
+  "version": "2.10.0",
   "type": "module",
   "description": "Types, interfaces, and schemas for the KB Labs policy plugin.",
   "main": "./dist/index.js",
