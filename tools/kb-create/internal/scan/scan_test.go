@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -220,13 +221,13 @@ func TestGenerateMarketplaceLock(t *testing.T) {
 	}
 }
 
-// TestGenerateDevConfig verifies dev config generation from scan results.
+// TestGenerateDevServicesYAML verifies YAML config generation from scan results.
 //
 // Services declaring a dependency on another service that was NOT found
 // during scan (e.g. docker-only services like qdrant, or optional deps)
 // must have that dependency dropped — otherwise `kb-dev start` rejects
 // the whole config as invalid. See internal/scan.filterKnownDeps.
-func TestGenerateDevConfig(t *testing.T) {
+func TestGenerateDevServicesYAML(t *testing.T) {
 	r := &ScanResult{
 		Services: []ServiceEntry{{
 			ID: "api", Name: "API Server", Version: "1.0.0",
@@ -237,32 +238,29 @@ func TestGenerateDevConfig(t *testing.T) {
 		}},
 	}
 
-	cfg := GenerateDevConfig(r)
-	if cfg.Version != "1.0.0" {
-		t.Errorf("version = %q, want 1.0.0", cfg.Version)
+	yaml := GenerateDevServicesYAML(r)
+
+	if !strings.Contains(yaml, "api:") {
+		t.Error("YAML should contain service 'api'")
 	}
-	svc, ok := cfg.Services["api"]
-	if !ok {
-		t.Fatal("service 'api' not in config")
+	if !strings.Contains(yaml, "port: 3000") {
+		t.Error("YAML should contain port 3000")
 	}
-	if svc.Port != 3000 {
-		t.Errorf("port = %d, want 3000", svc.Port)
+	if !strings.Contains(yaml, "health_check: http://localhost:3000/health") {
+		t.Errorf("YAML should contain health_check URL, got:\n%s", yaml)
 	}
-	if svc.HealthCheck != "http://localhost:3000/health" {
-		t.Errorf("healthCheck = %q, want http://localhost:3000/health", svc.HealthCheck)
-	}
-	if svc.Command != "node ./node_modules/@test/api/dist/index.js" {
-		t.Errorf("command = %q", svc.Command)
+	if !strings.Contains(yaml, "command: node ./node_modules/@test/api/dist/index.js") {
+		t.Error("YAML should contain command")
 	}
 	// Unknown "db" dep must be filtered out so kb-dev accepts the config.
-	if len(svc.DependsOn) != 0 {
-		t.Errorf("dependsOn = %v, want empty (unknown dep should be filtered)", svc.DependsOn)
+	if strings.Contains(yaml, "depends_on") {
+		t.Errorf("YAML should not contain depends_on (unknown dep should be filtered), got:\n%s", yaml)
 	}
 }
 
-// TestGenerateDevConfig_KeepsKnownDeps verifies that when a dependency
-// target IS present in the scan, the DependsOn reference is preserved.
-func TestGenerateDevConfig_KeepsKnownDeps(t *testing.T) {
+// TestGenerateDevServicesYAML_KeepsKnownDeps verifies that when a dependency
+// target IS present in the scan, the depends_on reference is preserved.
+func TestGenerateDevServicesYAML_KeepsKnownDeps(t *testing.T) {
 	r := &ScanResult{
 		Services: []ServiceEntry{
 			{
@@ -281,16 +279,104 @@ func TestGenerateDevConfig_KeepsKnownDeps(t *testing.T) {
 		},
 	}
 
-	cfg := GenerateDevConfig(r)
-	rest, ok := cfg.Services["rest"]
-	if !ok {
-		t.Fatal("service 'rest' not in config")
+	yaml := GenerateDevServicesYAML(r)
+
+	if !strings.Contains(yaml, "depends_on: [state-daemon]") {
+		t.Errorf("YAML should contain depends_on with state-daemon only, got:\n%s", yaml)
 	}
-	if len(rest.DependsOn) != 1 {
-		t.Fatalf("dependsOn = %v, want exactly [state-daemon]", rest.DependsOn)
+	if strings.Contains(yaml, "qdrant") {
+		t.Error("YAML should not contain qdrant (unknown dep should be filtered)")
 	}
-	if rest.DependsOn[0] != "state-daemon" {
-		t.Errorf("dependsOn[0] = %q, want state-daemon", rest.DependsOn[0])
+}
+
+// TestGenerateDevServicesYAML_EmptyServices verifies YAML for empty service list.
+func TestGenerateDevServicesYAML_EmptyServices(t *testing.T) {
+	r := &ScanResult{}
+	yaml := GenerateDevServicesYAML(r)
+
+	if !strings.Contains(yaml, "name: KB Labs Platform") {
+		t.Error("YAML should contain header")
+	}
+	if !strings.Contains(yaml, "settings:") {
+		t.Error("YAML should contain settings section")
+	}
+}
+
+// TestComputeIntegrity verifies SRI hash computation.
+func TestComputeIntegrity(t *testing.T) {
+	dir := t.TempDir()
+	pkgDir := filepath.Join(dir, "my-pkg")
+	if err := os.MkdirAll(pkgDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(pkgDir, "package.json"), []byte(`{"name":"test"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	integrity := computeIntegrity(dir, "my-pkg")
+	if !strings.HasPrefix(integrity, "sha256-") {
+		t.Errorf("integrity = %q, want sha256- prefix", integrity)
+	}
+	if len(integrity) < 10 {
+		t.Errorf("integrity too short: %q", integrity)
+	}
+
+	// Deterministic
+	integrity2 := computeIntegrity(dir, "my-pkg")
+	if integrity != integrity2 {
+		t.Errorf("not deterministic: %q != %q", integrity, integrity2)
+	}
+}
+
+// TestComputeIntegrity_MissingFile returns empty string for missing package.json.
+func TestComputeIntegrity_MissingFile(t *testing.T) {
+	integrity := computeIntegrity(t.TempDir(), "nonexistent")
+	if integrity != "" {
+		t.Errorf("integrity = %q, want empty for missing file", integrity)
+	}
+}
+
+// TestWriteConfigs verifies that WriteConfigs creates both config files.
+func TestWriteConfigs(t *testing.T) {
+	dir := t.TempDir()
+
+	// Create fake package.json for integrity computation
+	pluginDir := filepath.Join(dir, "node_modules", "@test", "foo")
+	if err := os.MkdirAll(pluginDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(pluginDir, "package.json"), []byte(`{"name":"@test/foo"}`), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	r := &ScanResult{
+		Plugins: []PluginEntry{{
+			ID: "@test/foo", Version: "1.0.0",
+			ResolvedPath: "node_modules/@test/foo",
+			PrimaryKind:  "plugin",
+			Provides:     []string{"plugin"},
+		}},
+		Services: []ServiceEntry{{
+			ID: "api", Name: "API", Version: "1.0.0",
+			ResolvedPath: "./node_modules/@test/api",
+			Runtime:      ServiceRuntime{Entry: "dist/index.js", Port: 3000, HealthCheck: "/health"},
+		}},
+	}
+
+	if err := WriteConfigs(dir, r); err != nil {
+		t.Fatalf("WriteConfigs() error = %v", err)
+	}
+
+	// Check marketplace.lock exists
+	lockPath := filepath.Join(dir, ".kb", "marketplace.lock")
+	if _, err := os.Stat(lockPath); err != nil {
+		t.Errorf("marketplace.lock not created: %v", err)
+	}
+
+	// Check devservices.yaml exists
+	yamlPath := filepath.Join(dir, ".kb", "devservices.yaml")
+	if _, err := os.Stat(yamlPath); err != nil {
+		t.Errorf("devservices.yaml not created: %v", err)
 	}
 }
 
