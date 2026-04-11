@@ -108,6 +108,41 @@ func printSuccess(r *installer.Result) {
 
 // ── next steps ────────────────────────────────────────────────────────────────
 
+// nextStep is one line in the "What's next" section.
+type nextStep struct {
+	cmd  string
+	desc string
+}
+
+// buildNextSteps returns the ordered list of post-install commands to show.
+// Each step is only included when its prerequisites are actually satisfied,
+// so the user never sees a command that won't work.
+func buildNextSteps(r *installer.Result) []nextStep {
+	steps := []nextStep{
+		{"cd " + r.ProjectCWD, ""},
+	}
+
+	// Only suggest "kb-dev start" when kb-dev was actually installed.
+	// r.InstalledBinaries is populated by the installer after each binary
+	// is confirmed present in the user bin dir, so this is not a guess.
+	kbDevInstalled := false
+	for _, name := range r.InstalledBinaries {
+		if name == "kb-dev" {
+			kbDevInstalled = true
+			break
+		}
+	}
+	if kbDevInstalled && r.HasServices {
+		steps = append(steps, nextStep{"kb-dev start", "start all services"})
+	}
+
+	steps = append(steps,
+		nextStep{"kb --help", "explore commands"},
+		nextStep{"kb-create doctor", "check environment"},
+	)
+	return steps
+}
+
 func printNextSteps(r *installer.Result) {
 	fmt.Println(styleDivider)
 	fmt.Println()
@@ -115,14 +150,9 @@ func printNextSteps(r *installer.Result) {
 	fmt.Println()
 
 	arrow := styleAccent.Render("→")
-	cmd := func(c, desc string) {
-		fmt.Printf("  %s  %-26s%s\n", arrow, styleWhite.Render(c), styleMuted.Render(desc))
+	for _, s := range buildNextSteps(r) {
+		fmt.Printf("  %s  %-26s%s\n", arrow, styleWhite.Render(s.cmd), styleMuted.Render(s.desc))
 	}
-
-	cmd("cd "+r.ProjectCWD, "")
-	cmd("kb-dev start", "start all services")
-	cmd("kb --help", "explore commands")
-	cmd("kb-create doctor", "check environment")
 	fmt.Println()
 }
 

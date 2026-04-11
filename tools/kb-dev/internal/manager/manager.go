@@ -255,7 +255,7 @@ func (m *Manager) startDocker(ctx context.Context, svc *service.Service) Action 
 	_ = logger.Clear(logsDir, svc.ID)
 
 	// Run docker command via spawn.
-	_, err := process.Spawn(process.SpawnOpts{
+	spawnResult, err := process.Spawn(process.SpawnOpts{
 		Command:  svc.Config.Command,
 		Env:      m.spawnEnv(svc.Config.Env),
 		Dir:      m.rootDir,
@@ -266,6 +266,14 @@ func (m *Manager) startDocker(ctx context.Context, svc *service.Service) Action 
 		_ = svc.SetState(service.StateFailed, err.Error())
 		return Action{Service: svc.ID, Action: "failed", Error: err.Error()}
 	}
+
+	svc.PID = spawnResult.PID
+	svc.PGID = spawnResult.PGID
+	svc.StartedAt = start
+
+	pidDir := filepath.Join(m.rootDir, m.cfg.Settings.PIDDir)
+	pidInfo := process.NewPIDInfo(svc.ID, spawnResult.PID, spawnResult.PGID, svc.Config.Command)
+	_ = process.WritePID(pidDir, pidInfo)
 
 	// Wait for health.
 	if svc.Config.HealthCheck != "" {
@@ -286,7 +294,6 @@ func (m *Manager) startDocker(ctx context.Context, svc *service.Service) Action 
 	}
 
 	_ = svc.SetState(service.StateAlive, "")
-	svc.StartedAt = start
 	return Action{Service: svc.ID, Action: "started", Elapsed: time.Since(start).Truncate(time.Millisecond).String()}
 }
 

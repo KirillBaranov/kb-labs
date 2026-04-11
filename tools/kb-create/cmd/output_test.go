@@ -5,6 +5,8 @@ import (
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/kb-labs/create/internal/installer"
 )
 
 func TestColorEnabled_DisabledByNoColor(t *testing.T) {
@@ -77,6 +79,82 @@ func TestOutputInfo_NoColorPrefix(t *testing.T) {
 	}
 	if strings.Contains(got, "\x1b[") {
 		t.Fatalf("unexpected ANSI escapes in no-color mode: %q", got)
+	}
+}
+
+// ── buildNextSteps ────────────────────────────────────────────────────────────
+
+func TestBuildNextSteps_NoBinariesNoServices(t *testing.T) {
+	r := &installer.Result{ProjectCWD: "/proj"}
+	steps := buildNextSteps(r)
+
+	for _, s := range steps {
+		if strings.Contains(s.cmd, "kb-dev") {
+			t.Errorf("kb-dev step must not appear when no binaries installed, got: %q", s.cmd)
+		}
+	}
+	if steps[0].cmd != "cd /proj" {
+		t.Errorf("first step must be cd, got %q", steps[0].cmd)
+	}
+}
+
+func TestBuildNextSteps_KbDevShownWhenInstalledAndServicesPresent(t *testing.T) {
+	r := &installer.Result{
+		ProjectCWD:        "/proj",
+		InstalledBinaries: []string{"kb-dev"},
+		HasServices:       true,
+	}
+	steps := buildNextSteps(r)
+
+	found := false
+	for _, s := range steps {
+		if s.cmd == "kb-dev start" {
+			found = true
+		}
+	}
+	if !found {
+		t.Error("kb-dev start must appear when kb-dev is installed and services are present")
+	}
+}
+
+func TestBuildNextSteps_KbDevHiddenWhenInstalledButNoServices(t *testing.T) {
+	r := &installer.Result{
+		ProjectCWD:        "/proj",
+		InstalledBinaries: []string{"kb-dev"},
+		HasServices:       false,
+	}
+	steps := buildNextSteps(r)
+
+	for _, s := range steps {
+		if strings.Contains(s.cmd, "kb-dev") {
+			t.Errorf("kb-dev step must not appear when no services in manifest, got: %q", s.cmd)
+		}
+	}
+}
+
+func TestBuildNextSteps_AlwaysEndsWithDoctorAndHelp(t *testing.T) {
+	for _, r := range []*installer.Result{
+		{ProjectCWD: "/a"},
+		{ProjectCWD: "/b", InstalledBinaries: []string{"kb-dev"}, HasServices: true},
+	} {
+		steps := buildNextSteps(r)
+		cmds := make([]string, len(steps))
+		for i, s := range steps {
+			cmds[i] = s.cmd
+		}
+		last := cmds[len(cmds)-1]
+		if last != "kb-create doctor" {
+			t.Errorf("last step must be kb-create doctor, got %q (all: %v)", last, cmds)
+		}
+		found := false
+		for _, c := range cmds {
+			if c == "kb --help" {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("kb --help must always appear (all: %v)", cmds)
+		}
 	}
 }
 

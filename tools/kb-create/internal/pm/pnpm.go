@@ -77,6 +77,12 @@ func (p *PnpmManager) run(dir string, args []string, progress chan<- Progress) e
 	cmd := exec.CommandContext(context.Background(), "pnpm", args...)
 	cmd.Dir = dir
 
+	// Isolate pnpm from the user's global ~/.npmrc: point NPM_CONFIG_USERCONFIG
+	// at the platform-local .npmrc (written by ensureNpmrc). Without this,
+	// pnpm reads ~/.npmrc and emits "Failed to replace env in config: ${NPM_TOKEN}"
+	// warnings that clutter installer output and confuse users.
+	cmd.Env = append(os.Environ(), "NPM_CONFIG_USERCONFIG="+filepath.Join(dir, ".npmrc"))
+
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return err
@@ -109,13 +115,16 @@ func (p *PnpmManager) run(dir string, args []string, progress chan<- Progress) e
 	return cmd.Wait()
 }
 
-// ensureNpmrc writes a project-level .npmrc into dir when a custom registry is
-// configured. pnpm reads .npmrc by hierarchy (project → workspace → home), so
-// this takes precedence over ~/.npmrc and avoids unset-variable warnings there.
+// ensureNpmrc writes a platform-local .npmrc. It is always written (even when
+// no custom registry is configured) because the installer points pnpm's
+// NPM_CONFIG_USERCONFIG at this file to isolate it from the user's global
+// ~/.npmrc. Without an isolated config, pnpm surfaces warnings from unrelated
+// entries in ~/.npmrc (e.g. unresolved ${NPM_TOKEN}) during install.
 func (p *PnpmManager) ensureNpmrc(dir string) error {
-	if p.Registry == "" {
-		return nil
+	registry := p.Registry
+	if registry == "" {
+		registry = "https://registry.npmjs.org/"
 	}
-	content := "registry=" + p.Registry + "\n"
+	content := "registry=" + registry + "\n"
 	return os.WriteFile(filepath.Join(dir, ".npmrc"), []byte(content), 0o600)
 }

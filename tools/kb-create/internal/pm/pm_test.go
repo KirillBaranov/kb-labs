@@ -3,6 +3,7 @@ package pm
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -98,5 +99,52 @@ func TestEnsurePackageJSONCreatesDir(t *testing.T) {
 
 	if _, err := os.Stat(filepath.Join(dir, "package.json")); err != nil {
 		t.Errorf("package.json not created in nested dir: %v", err)
+	}
+}
+
+// TestEnsureNpmrcWritesDefaultWhenNoRegistry verifies that a platform-local
+// .npmrc is always written, even when the user didn't configure a custom
+// registry. This is required so the installer can point NPM_CONFIG_USERCONFIG
+// at it and isolate pnpm from the user's global ~/.npmrc (which may contain
+// unresolved ${NPM_TOKEN} references that produce noisy warnings).
+func TestEnsureNpmrcWritesDefaultWhenNoRegistry(t *testing.T) {
+	dir := t.TempDir()
+	p := &PnpmManager{}
+
+	if err := p.ensureNpmrc(dir); err != nil {
+		t.Fatalf("ensureNpmrc() error = %v", err)
+	}
+
+	// #nosec G304 -- path under t.TempDir().
+	data, err := os.ReadFile(filepath.Join(dir, ".npmrc"))
+	if err != nil {
+		t.Fatalf(".npmrc not written: %v", err)
+	}
+
+	const wantDefault = "registry=https://registry.npmjs.org/"
+	if !strings.Contains(string(data), wantDefault) {
+		t.Errorf(".npmrc missing default registry: got %q, want it to contain %q", string(data), wantDefault)
+	}
+}
+
+// TestEnsureNpmrcHonorsCustomRegistry verifies that a custom registry from
+// the manager config is written verbatim into the local .npmrc.
+func TestEnsureNpmrcHonorsCustomRegistry(t *testing.T) {
+	dir := t.TempDir()
+	p := &PnpmManager{Registry: "http://localhost:4873/"}
+
+	if err := p.ensureNpmrc(dir); err != nil {
+		t.Fatalf("ensureNpmrc() error = %v", err)
+	}
+
+	// #nosec G304 -- path under t.TempDir().
+	data, err := os.ReadFile(filepath.Join(dir, ".npmrc"))
+	if err != nil {
+		t.Fatalf(".npmrc not written: %v", err)
+	}
+
+	const want = "registry=http://localhost:4873/"
+	if !strings.Contains(string(data), want) {
+		t.Errorf(".npmrc missing custom registry: got %q, want it to contain %q", string(data), want)
 	}
 }
