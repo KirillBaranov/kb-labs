@@ -259,6 +259,10 @@ function publishSinglePackage(options: PublishSingleOptions): Promise<void> {
   return new Promise((resolve, reject) => {
     const args = ['publish'];
 
+    if (packageManager === 'pnpm') {
+      args.push('--no-git-checks');
+    }
+
     if (dryRun) {
       args.push('--dry-run');
     }
