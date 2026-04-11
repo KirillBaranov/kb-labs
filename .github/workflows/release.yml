@@ -198,3 +198,38 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  # ── 5. Post-publish launcher smoke (kb-create e2e) ──────────────────────────
+  # Runs the full kb-create end-to-end suite against the packages we just
+  # pushed to npm. This is the last-mile gate: if ANY transitive dep was
+  # published with broken workspace:* deps, missing versions, unreadable
+  # manifests, or similar publish-time regressions — this job turns red and
+  # we find out in minutes instead of from a user bug report.
+  #
+  # We intentionally run this AFTER publish because the e2e pulls real
+  # packages from the npm registry. A pre-publish smoke would install the
+  # previous release and tell us nothing about what we just shipped.
+  launcher-smoke:
+    name: kb-create post-publish smoke
+    runs-on: ubuntu-latest
+    needs: publish-npm
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with: { run_install: false }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/kb-create/go.mod
+          cache-dependency-path: tools/kb-create/go.sum
+      - name: Build host kb-devkit
+        run: make build
+        working-directory: tools/kb-devkit
+      - name: Run kb-create e2e against just-published packages
+        run: ./tools/kb-devkit/kb-devkit run e2e --packages kb-create --no-cache
