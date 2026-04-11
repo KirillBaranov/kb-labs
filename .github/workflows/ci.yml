@@ -181,13 +181,22 @@ jobs:
       - run: tar xf dist-artifacts.tar
       - run: pnpm install --frozen-lockfile
       - run: pnpm test
+      - name: Collect coverage
+        if: always()
+        run: |
+          mkdir -p .coverage-out
+          find . -type d -name coverage \
+            -not -path "*/node_modules/*" \
+            -not -path "*/.coverage-out/*" \
+            | while read dir; do
+              pkg=$(echo "$dir" | sed 's|^\./||; s|/coverage$||; s|/|__|g')
+              cp -r "$dir" ".coverage-out/${pkg}"
+            done
       - name: Upload coverage
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage
-          path: |
-            **/coverage/**
-            !**/node_modules/**
+          path: .coverage-out/
           if-no-files-found: ignore
           compression-level: 0
