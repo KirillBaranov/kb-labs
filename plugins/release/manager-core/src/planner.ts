@@ -158,6 +158,9 @@ export async function planRelease(options: PlannerOptions): Promise<ReleasePlan>
   if (isWorkspaceRoot) {
     // All sub-repos are candidates — change detection happens per-repo
     modifiedPackages = packages;
+  } else if (config.versioningStrategy === 'lockstep') {
+    // Lockstep: all packages release together regardless of individual changes
+    modifiedPackages = packages;
   } else {
     const git = simpleGit(cwd, { timeout: { block: 60000 } });
     modifiedPackages = await detectModifiedPackages(git, packages, cwd);
