@@ -1,0 +1,107 @@
+{
+  "schemaVersion": "1.0",
+  "ts": "2026-04-11T08:49:45.196Z",
+  "context": {
+    "repo": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+    "cwd": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+    "branch": "unknown",
+    "dryRun": true
+  },
+  "stage": "verifying",
+  "plan": {
+    "packages": [
+      {
+        "name": "@kb-labs/cli-bin",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/cli/bin",
+        "currentVersion": "2.5.1",
+        "nextVersion": "2.6.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/cli-runtime",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/cli/runtime",
+        "currentVersion": "2.5.0",
+        "nextVersion": "2.6.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/core-sandbox",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/sandbox",
+        "currentVersion": "1.9.0",
+        "nextVersion": "1.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/core-tenant",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/tenant",
+        "currentVersion": "1.9.0",
+        "nextVersion": "1.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/marketplace-core",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace/core",
+        "currentVersion": "0.1.4",
+        "nextVersion": "0.2.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/release-manager-cli",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-cli",
+        "currentVersion": "0.6.0",
+        "nextVersion": "0.7.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/release-manager-core",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-core",
+        "currentVersion": "0.6.0",
+        "nextVersion": "0.7.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/workflow-engine",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/workflow/engine",
+        "currentVersion": "1.6.0",
+        "nextVersion": "1.7.0",
+        "bump": "minor",
+        "isPublished": false
+      }
+    ],
+    "strategy": "semver",
+    "registry": "https://registry.npmjs.org",
+    "rollbackEnabled": true
+  },
+  "result": {
+    "ok": true,
+    "published": [
+      "@kb-labs/cli-bin@2.6.0",
+      "@kb-labs/cli-runtime@2.6.0",
+      "@kb-labs/core-sandbox@1.10.0",
+      "@kb-labs/core-tenant@1.10.0",
+      "@kb-labs/marketplace-core@0.2.0",
+      "@kb-labs/release-manager-cli@0.7.0",
+      "@kb-labs/release-manager-core@0.7.0",
+      "@kb-labs/workflow-engine@1.7.0"
+    ],
+    "skipped": [
+      "@kb-labs/cli-bin@2.6.0 (dry-run)",
+      "@kb-labs/cli-runtime@2.6.0 (dry-run)",
+      "@kb-labs/core-sandbox@1.10.0 (dry-run)",
+      "@kb-labs/core-tenant@1.10.0 (dry-run)",
+      "@kb-labs/marketplace-core@0.2.0 (dry-run)",
+      "@kb-labs/release-manager-cli@0.7.0 (dry-run)",
+      "@kb-labs/release-manager-core@0.7.0 (dry-run)",
+      "@kb-labs/workflow-engine@1.7.0 (dry-run)"
+    ],
+    "changelog": "## [2.6.0] - 2026-04-11\n\n> **@kb-labs/cli-bin** 2.5.1 → 2.6.0 (minor: new features)\n\n### ✨ New Features\n\n[Mock LLM Response] Received prompt of 791 characters.\n\n## [2.6.0] - 2026-04-11\n\n> **@kb-labs/cli-runtime** 2.5.0 → 2.6.0 (minor: new features)\n\n### ✨ New Features\n\n[Mock LLM Response] Received prompt of 791 characters.\n\n## [1.10.0] - 2026-04-11\n\n> **@kb-labs/core-sandbox** 1.9.0 → 1.10.0 (minor: new features)\n\n### ✨ New Features\n\n[Mock LLM Response] Received prompt of 791 characters.\n\n## [1.10.0] - 2026-04-11\n\n> **@kb-labs/core-tenant** 1.9.0 → 1.10.0 (minor: new features)\n\n### ✨ New Features\n\n[Mock LLM Response] Received prompt of 791 characters.\n\n## [0.2.0] - 2026-04-11\n\n> **@kb-labs/marketplace-core** 0.1.4 → 0.2.0 (minor: new features)\n\n### ✨ New Features\n\n[Mock LLM Response] Received prompt of 791 characters.\n\n## [0.7.0] - 2026-04-11\n\n> **@kb-labs/release-manager-cli** 0.6.0 → 0.7.0 (minor: new features)\n\n### ✨ New Features\n\n[Mock LLM Response] Received prompt of 791 characters.\n\n## [0.7.0] - 2026-04-11\n\n> **@kb-labs/release-manager-core** 0.6.0 → 0.7.0 (minor: new features)\n\n### ✨ New Features\n\n[Mock LLM Response] Received prompt of 791 characters.\n\n## [1.7.0] - 2026-04-11\n\n> **@kb-labs/workflow-engine** 1.6.0 → 1.7.0 (minor: new features)\n\n### ✨ New Features\n\n[Mock LLM Response] Received prompt of 791 characters.",
+    "timingMs": 20681
+  }
+}

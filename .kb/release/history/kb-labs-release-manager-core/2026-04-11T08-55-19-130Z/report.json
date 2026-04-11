@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "1.0",
+  "ts": "2026-04-11T08:55:19.130Z",
+  "context": {
+    "repo": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+    "cwd": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+    "branch": "unknown",
+    "dryRun": true
+  },
+  "stage": "verifying",
+  "plan": {
+    "packages": [
+      {
+        "name": "@kb-labs/release-manager-core",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-core",
+        "currentVersion": "0.7.0",
+        "nextVersion": "0.8.0",
+        "bump": "minor",
+        "isPublished": false
+      }
+    ],
+    "strategy": "semver",
+    "registry": "https://registry.npmjs.org",
+    "rollbackEnabled": true
+  },
+  "result": {
+    "ok": true,
+    "published": [
+      "@kb-labs/release-manager-core@0.8.0"
+    ],
+    "skipped": [
+      "@kb-labs/release-manager-core@0.8.0 (dry-run)"
+    ],
+    "changelog": "## [0.8.0] - 2026-04-11\n\n> **@kb-labs/release-manager-core** 0.7.0 → 0.8.0 (manual)",
+    "timingMs": 3216
+  }
+}

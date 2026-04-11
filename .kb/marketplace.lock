@@ -1,0 +1,271 @@
+{
+  "schema": "kb.marketplace/2",
+  "installed": {
+    "@kb-labs/adapters-workspace-worktree": {
+      "version": "0.8.0",
+      "integrity": "sha256-w+zQk94n3mZzDCe4dxE+7FsHxlGeaYjLy84Nxjsn01Y=",
+      "resolvedPath": "./adapters/workspace-worktree",
+      "installedAt": "2026-04-11T10:50:13.102Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": [
+        "adapter"
+      ],
+      "enabled": true
+    },
+    "@kb-labs/adapters-workspace-localfs": {
+      "version": "0.8.0",
+      "integrity": "sha256-ypfIGP08HxaLBurGRdUxcyzHLuyRD7LVwzmU+IcJW1g=",
+      "resolvedPath": "./adapters/workspace-localfs",
+      "installedAt": "2026-04-11T10:50:13.103Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": [
+        "adapter"
+      ],
+      "enabled": true
+    },
+    "@kb-labs/adapters-workspace-agent": {
+      "version": "0.8.0",
+      "integrity": "sha256-B/s4vVW1s19TDpYv0/JuIGlvkFu9qyxI6eGkziaxxcI=",
+      "resolvedPath": "./adapters/workspace-agent",
+      "installedAt": "2026-04-11T10:50:13.103Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": [
+        "adapter"
+      ],
+      "enabled": true
+    },
+    "@kb-labs/adapters-vibeproxy": {
+      "version": "0.8.0",
+      "integrity": "sha256-LeS4iN8cQ2ZwunPkpCGdx3DwQ6yxJ9MZxCqiHMK1HGA=",
+      "resolvedPath": "./adapters/vibeproxy",
+      "installedAt": "2026-04-11T10:50:13.104Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": [
+        "adapter"
+      ],
+      "enabled": true
+    },
+    "@kb-labs/adapters-sqlite": {
+      "version": "0.8.0",
+      "integrity": "sha256-lhbbfU/EjKdGHFeiFlvN3A0RqCDf/4b8oyVZX4gQFj4=",
+      "resolvedPath": "./adapters/sqlite",
+      "installedAt": "2026-04-11T10:50:13.105Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": [
+        "adapter"
+      ],
+      "enabled": true
+    },
+    "@kb-labs/adapters-snapshot-localfs": {
+      "version": "0.8.0",
+      "integrity": "sha256-/TGXxC3FdatepTbezkqBGaF54QCTPlAae+9UGvqVygI=",
+      "resolvedPath": "./adapters/snapshot-localfs",
+      "installedAt": "2026-04-11T10:50:13.105Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": [
+        "adapter"
+      ],
+      "enabled": true
+    },
+    "@kb-labs/adapters-redis": {
+      "version": "0.8.0",
+      "integrity": "sha256-gxFK8OGz6hQpqAsBXnXv4y6ocUeaGugZk04eGEXyIgA=",
+      "resolvedPath": "./adapters/redis",
+      "installedAt": "2026-04-11T10:50:13.106Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": [
+        "adapter"
+      ],
+      "enabled": true
+    },
+    "@kb-labs/adapters-qdrant": {
+      "version": "0.8.0",
+      "integrity": "sha256-BcRgDnVajFrOzPQnyOi9KZ+VcH2ftobvHBUSVIvJrFA=",
+      "resolvedPath": "./adapters/qdrant",
+      "installedAt": "2026-04-11T10:50:13.106Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": [
+        "adapter"
+      ],
+      "enabled": true
+    },
+    "@kb-labs/adapters-pino": {
+      "version": "0.8.0",
+      "integrity": "sha256-IY1LxGdEQuJsfTiGqwmxhfFr042TIPcARByaHzYIyUk=",
+      "resolvedPath": "./adapters/pino",
+      "installedAt": "2026-04-11T10:50:13.107Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": [
+        "adapter"
+      ],
+      "enabled": true
+    },
+    "@kb-labs/adapters-openai": {
+      "version": "0.8.0",
+      "integrity": "sha256-+cv5ZZzMKbj9cDiT4S4aAV5vW3Qw8WnDyzRIzNqS/UM=",
+      "resolvedPath": "./adapters/openai",
+      "installedAt": "2026-04-11T10:50:13.108Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": [
+        "adapter"
+      ],
+      "enabled": true
+    },
+    "@kb-labs/adapters-mongodb": {
+      "version": "0.8.0",
+      "integrity": "sha256-ASAmwWQlJhSG/pqzuitTZEaJdQJSgCdbnUpVJMAfRVY=",
+      "resolvedPath": "./adapters/mongodb",
+      "installedAt": "2026-04-11T10:50:13.109Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": [
+        "adapter"
+      ],
+      "enabled": true
+    },
+    "@kb-labs/adapters-log-sqlite": {
+      "version": "0.8.0",
+      "integrity": "sha256-OrXMlL7ejIyZwn+ZFvzYbkbJ2DRjqFpRy9rhwoIxnEY=",
+      "resolvedPath": "./adapters/log-sqlite",
+      "installedAt": "2026-04-11T10:50:13.109Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": [
+        "adapter"
+      ],
+      "enabled": true
+    },
+    "@kb-labs/adapters-log-ringbuffer": {
+      "version": "0.8.0",
+      "integrity": "sha256-4JEcTOfCVeB6ciE7NXEb2CIkRzJObn7d21Ol1Wp7/IQ=",
+      "resolvedPath": "./adapters/log-ringbuffer",
+      "installedAt": "2026-04-11T10:50:13.109Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": [
+        "adapter"
+      ],
+      "enabled": true
+    },
+    "@kb-labs/adapters-kblabs-gateway": {
+      "version": "0.1.0",
+      "integrity": "sha256-D6MmMII3kegRdlJ4OsRSk7Ic0k8t4sVAOFpMYwPqKNo=",
+      "resolvedPath": "./adapters/kblabs-gateway",
+      "installedAt": "2026-04-11T10:50:13.110Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": [
+        "adapter"
+      ],
+      "enabled": true
+    },
+    "@kb-labs/adapters-fs": {
+      "version": "0.8.0",
+      "integrity": "sha256-IItAMVEndDaMOLCUG/mt+kx3HoYvHZC82Hnc3IIqeuk=",
+      "resolvedPath": "./adapters/fs",
+      "installedAt": "2026-04-11T10:50:13.110Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": [
+        "adapter"
+      ],
+      "enabled": true
+    },
+    "@kb-labs/adapters-eventbus-cache": {
+      "version": "0.8.0",
+      "integrity": "sha256-vQauvLLYCPNa3DmJoqUPkIDgWo0TrQuwyATy7lh066s=",
+      "resolvedPath": "./adapters/eventbus-cache",
+      "installedAt": "2026-04-11T10:50:13.111Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": [
+        "adapter"
+      ],
+      "enabled": true
+    },
+    "@kb-labs/adapters-environment-docker": {
+      "version": "0.8.0",
+      "integrity": "sha256-WMoZYjZsaqEeiCXp6jPcNyQ5KWFj7UHPCP0iFGJHZA0=",
+      "resolvedPath": "./adapters/environment-docker",
+      "installedAt": "2026-04-11T10:50:13.111Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": [
+        "adapter"
+      ],
+      "enabled": true
+    },
+    "@kb-labs/adapters-analytics-sqlite": {
+      "version": "0.8.0",
+      "integrity": "sha256-WVFbvpHuaVXWpPP6oyEyZqyMxPe9SEp4kQIn2wHlY+s=",
+      "resolvedPath": "./adapters/analytics-sqlite",
+      "installedAt": "2026-04-11T10:50:13.112Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": [
+        "adapter"
+      ],
+      "enabled": true
+    },
+    "@kb-labs/adapters-analytics-file": {
+      "version": "0.8.0",
+      "integrity": "sha256-RF5/JOqRjze3wLC7vZrLLwytSKH/4UB3IhzH76bEtR0=",
+      "resolvedPath": "./adapters/analytics-file",
+      "installedAt": "2026-04-11T10:50:13.112Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": [
+        "adapter"
+      ],
+      "enabled": true
+    },
+    "@kb-labs/adapters-analytics-duckdb": {
+      "version": "0.8.0",
+      "integrity": "sha256-Y86qkbafBrEv8sU52sPUxY/nTtobACypVb6SDkIBLtA=",
+      "resolvedPath": "./adapters/analytics-duckdb",
+      "installedAt": "2026-04-11T10:50:13.112Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": [
+        "adapter"
+      ],
+      "enabled": true
+    },
+    "@kb-labs/policy-core": {
+      "version": "0.5.0",
+      "integrity": "sha256-cYKphmujlqHblu9jK18Qt8lJrHpGCHiWVuEmYEvOnNA=",
+      "resolvedPath": "./plugins/policy/core",
+      "installedAt": "2026-04-11T10:50:13.114Z",
+      "source": "local",
+      "primaryKind": "plugin",
+      "provides": [
+        "plugin",
+        "cli-command"
+      ],
+      "enabled": true
+    },
+    "@kb-labs/impact-core": {
+      "version": "0.5.0",
+      "integrity": "sha256-7om5TLU2kpG7A0CYxS8VPResCLup7nQ8+8frsShfk5Q=",
+      "resolvedPath": "./plugins/impact/core",
+      "installedAt": "2026-04-11T10:50:13.115Z",
+      "source": "local",
+      "primaryKind": "plugin",
+      "provides": [
+        "plugin",
+        "cli-command"
+      ],
+      "enabled": true
+    }
+  }
+}
