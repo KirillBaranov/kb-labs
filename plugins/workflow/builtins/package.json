@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/workflow-builtins",
-  "version": "2.9.0",
+  "version": "2.10.0",
   "description": "Built-in workflow handlers (shell, etc.)",
   "files": [
     "dist"
