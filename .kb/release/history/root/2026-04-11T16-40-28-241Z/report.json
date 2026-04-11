@@ -1,0 +1,117 @@
+{
+  "schemaVersion": "1.0",
+  "ts": "2026-04-11T16:40:28.241Z",
+  "context": {
+    "repo": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+    "cwd": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+    "branch": "unknown",
+    "dryRun": true
+  },
+  "stage": "verifying",
+  "plan": {
+    "packages": [
+      {
+        "name": "@kb-labs/commit-cli",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/commit/cli",
+        "currentVersion": "2.6.0",
+        "nextVersion": "2.7.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/impact-core",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/impact/core",
+        "currentVersion": "2.6.0",
+        "nextVersion": "2.7.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/infra-worker-core",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/infra-worker/plugin-template-core",
+        "currentVersion": "2.6.0",
+        "nextVersion": "2.7.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/marketplace-cli",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace/cli",
+        "currentVersion": "2.6.0",
+        "nextVersion": "2.7.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/release-manager-changelog",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-changelog",
+        "currentVersion": "2.6.0",
+        "nextVersion": "2.7.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/release-manager-cli",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-cli",
+        "currentVersion": "2.6.0",
+        "nextVersion": "2.7.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/release-manager-contracts",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-contracts",
+        "currentVersion": "2.6.0",
+        "nextVersion": "2.7.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/release-manager-core",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-core",
+        "currentVersion": "2.6.0",
+        "nextVersion": "2.7.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/core-state-daemon",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/state/daemon",
+        "currentVersion": "2.6.0",
+        "nextVersion": "2.7.0",
+        "bump": "minor",
+        "isPublished": false
+      }
+    ],
+    "strategy": "semver",
+    "registry": "https://registry.npmjs.org",
+    "rollbackEnabled": true
+  },
+  "result": {
+    "ok": true,
+    "published": [
+      "@kb-labs/commit-cli@2.7.0",
+      "@kb-labs/impact-core@2.7.0",
+      "@kb-labs/infra-worker-core@2.7.0",
+      "@kb-labs/marketplace-cli@2.7.0",
+      "@kb-labs/release-manager-changelog@2.7.0",
+      "@kb-labs/release-manager-cli@2.7.0",
+      "@kb-labs/release-manager-contracts@2.7.0",
+      "@kb-labs/release-manager-core@2.7.0",
+      "@kb-labs/core-state-daemon@2.7.0"
+    ],
+    "skipped": [
+      "@kb-labs/commit-cli@2.7.0 (dry-run)",
+      "@kb-labs/impact-core@2.7.0 (dry-run)",
+      "@kb-labs/infra-worker-core@2.7.0 (dry-run)",
+      "@kb-labs/marketplace-cli@2.7.0 (dry-run)",
+      "@kb-labs/release-manager-changelog@2.7.0 (dry-run)",
+      "@kb-labs/release-manager-cli@2.7.0 (dry-run)",
+      "@kb-labs/release-manager-contracts@2.7.0 (dry-run)",
+      "@kb-labs/release-manager-core@2.7.0 (dry-run)",
+      "@kb-labs/core-state-daemon@2.7.0 (dry-run)"
+    ],
+    "changelog": "## [2.7.0] - 2026-04-11\n\n**9 packages** bumped to v2.7.0\n\n| Package | Previous | Bump |\n|---------|----------|------|\n| `@kb-labs/commit-cli` | 2.6.0 | minor |\n| `@kb-labs/impact-core` | 2.6.0 | minor |\n| `@kb-labs/infra-worker-core` | 2.6.0 | minor |\n| `@kb-labs/marketplace-cli` | 2.6.0 | minor |\n| `@kb-labs/release-manager-changelog` | 2.6.0 | minor |\n| `@kb-labs/release-manager-cli` | 2.6.0 | minor |\n| `@kb-labs/release-manager-contracts` | 2.6.0 | minor |\n| `@kb-labs/release-manager-core` | 2.6.0 | minor |\n| `@kb-labs/core-state-daemon` | 2.6.0 | minor |\n\n### 🧩 Plugins\n\n- **plugins**: Introduces named flows and parallel checks, enhancing the organization and efficiency of your workflows for better performance and easier debugging.\n- **plugins**: Implements a commit step before publishing, ensuring that all necessary checks pass, which helps maintain the integrity of your code and prevents potential issues before deployment.\n- **plugins**: Utilizes workspace.type to intelligently choose between pnpm and npm for publishing, streamlining the process and reducing the chances of errors during package management.",
+    "timingMs": 54054
+  }
+}
