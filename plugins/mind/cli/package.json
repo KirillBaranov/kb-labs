@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/mind-cli",
-  "version": "1.5.0",
+  "version": "2.6.0",
   "type": "module",
   "description": "CLI commands for KB Labs Mind",
   "main": "./dist/index.js",
@@ -10,21 +10,6 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.js"
-    },
-    "./application/sync": {
-      "types": "./dist/application/sync.d.ts",
-      "import": "./dist/application/sync.js",
-      "require": "./dist/application/sync.js"
-    },
-    "./studio/widgets/query-widget": {
-      "types": "./dist/studio/widgets/query-widget.d.ts",
-      "import": "./dist/studio/widgets/query-widget.js",
-      "require": "./dist/studio/widgets/query-widget.js"
-    },
-    "./studio/widgets/verify-widget": {
-      "types": "./dist/studio/widgets/verify-widget.d.ts",
-      "import": "./dist/studio/widgets/verify-widget.js",
-      "require": "./dist/studio/widgets/verify-widget.js"
     },
     "./dist/*": "./dist/*"
   },
