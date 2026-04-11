@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/agent-history",
-  "version": "0.6.0",
+  "version": "2.6.0",
   "description": "File change history, snapshots and conflict resolution for KB Labs Agents",
   "files": [
     "dist"
