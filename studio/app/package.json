@@ -71,7 +71,7 @@
     "manifest": "./dist/manifest.js"
   },
   "scripts": {
-    "build": "rspack build && tsup",
+    "build": "rspack build && tsup src/manifest.ts",
     "clean": "rimraf dist",
     "dev": "rspack serve",
     "start": "node server.js",
