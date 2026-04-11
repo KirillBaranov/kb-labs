@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/release-manager-changelog",
-  "version": "2.10.0",
+  "version": "2.11.0",
   "description": "KB Labs Release Manager - conventional commits parser and changelog generator",
   "type": "module",
   "main": "./dist/index.js",
