@@ -11,7 +11,13 @@ set -euo pipefail
 
 DIST_ENTRY="dist/index.js"
 
-# 1. dist/index.js must exist
+# 1a. SPA packages (no dist/index.js but have dist/index.html) — skip JS checks
+if [[ ! -f "$DIST_ENTRY" ]] && [[ -f "dist/index.html" ]]; then
+  echo "OK: SPA package detected (dist/index.html exists), skipping JS dist checks."
+  exit 0
+fi
+
+# 1b. dist/index.js must exist for non-SPA packages
 if [[ ! -f "$DIST_ENTRY" ]]; then
   echo "ERROR: $DIST_ENTRY not found — did you run 'pnpm build'?" >&2
   exit 1

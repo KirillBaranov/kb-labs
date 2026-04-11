@@ -1,0 +1,42 @@
+{
+  "schemaVersion": "1.0",
+  "ts": "2026-04-11T16:36:42.732Z",
+  "context": {
+    "repo": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+    "cwd": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+    "branch": "unknown",
+    "dryRun": false
+  },
+  "stage": "verifying",
+  "plan": {
+    "packages": [
+      {
+        "name": "@kb-labs/sdk",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/sdk/sdk",
+        "currentVersion": "1.6.4",
+        "nextVersion": "1.6.5",
+        "bump": "patch",
+        "isPublished": false
+      }
+    ],
+    "strategy": "semver",
+    "registry": "https://registry.npmjs.org",
+    "rollbackEnabled": true
+  },
+  "result": {
+    "ok": true,
+    "published": [
+      "@kb-labs/sdk@1.6.5"
+    ],
+    "skipped": [],
+    "changelog": "## [1.6.5] - 2026-04-11\n\n> **@kb-labs/sdk** 1.6.4 → 1.6.5 (manual)",
+    "git": {
+      "committed": true,
+      "tagged": [
+        "@kb-labs/sdk@1.6.5"
+      ],
+      "pushed": true
+    },
+    "timingMs": 12963
+  }
+}

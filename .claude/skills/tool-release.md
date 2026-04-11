@@ -59,7 +59,7 @@ pnpm release:sdk
 
 Each script does:
 1. `kb-devkit run build` — full topological build of the entire monorepo
-2. `pnpm kb plugins clear-cache` — invalidate CLI plugin cache after rebuild
+2. `pnpm kb marketplace:clear-cache` — invalidate CLI plugin cache after rebuild
 3. `pnpm kb release run --flow <flow> --skip-build` — pipeline with `--skip-build` (already built)
 
 **Why not build inside the pipeline**: the release CLI is itself a plugin. If `kb-devkit build --affected`

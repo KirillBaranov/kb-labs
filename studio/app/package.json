@@ -62,11 +62,19 @@
     "pnpm": ">=9.0.0"
   },
   "name": "@kb-labs/studio-app",
-  "private": true,
+  "main": "./server.js",
+  "files": [
+    "dist",
+    "server.js"
+  ],
+  "kb": {
+    "manifest": "./src/manifest.ts"
+  },
   "scripts": {
     "build": "rspack build",
     "clean": "rimraf dist",
     "dev": "rspack serve",
+    "start": "node server.js",
     "lint": "eslint . --max-warnings=0",
     "preview": "rspack serve --mode production",
     "test": "vitest run --passWithNoTests",
@@ -74,5 +82,8 @@
     "type-check": "tsc --noEmit"
   },
   "type": "module",
-  "version": "0.7.0"
+  "version": "2.8.0",
+  "publishConfig": {
+    "access": "public"
+  }
 }
