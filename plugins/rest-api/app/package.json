@@ -1,0 +1,74 @@
+{
+  "name": "@kb-labs/rest-api-app",
+  "version": "1.6.0",
+  "description": "REST API application for KB Labs, providing HTTP endpoints for plugin functionality",
+  "type": "module",
+  "main": "./dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsup",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run --passWithNoTests -c ../../vitest.config.ts",
+    "test:watch": "vitest --passWithNoTests -c ../../vitest.config.ts"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.1",
+    "@fastify/rate-limit": "^10.1.1",
+    "@fastify/swagger": ">=9.5.1",
+    "@fastify/swagger-ui": "^5.2.0",
+    "@fastify/websocket": "^11.0.1",
+    "fastify": "^5.2.0",
+    "fastify-plugin": "^5.0.1",
+    "fastify-type-provider-zod": "^6.0.0",
+    "pino": "^9.0.0",
+    "pino-pretty": "^10.2.3",
+    "prom-client": "^15.1.3",
+    "ulid": "^2.3.0",
+    "ws": "^8.18.0",
+    "yaml": "^2.8.0",
+    "zod": "^3.23.8",
+    "@kb-labs/shared-http": "workspace:*",
+    "@kb-labs/core-contracts": "workspace:*",
+    "@kb-labs/core-registry": "workspace:*",
+    "@kb-labs/core-config": "workspace:*",
+    "@kb-labs/core-platform": "workspace:*",
+    "@kb-labs/core-runtime": "workspace:*",
+    "@kb-labs/core-sys": "workspace:*",
+    "@kb-labs/core-tenant": "workspace:*",
+    "@kb-labs/core-workspace": "workspace:*",
+    "@kb-labs/gateway-contracts": "workspace:*",
+    "@kb-labs/plugin-contracts": "workspace:*",
+    "@kb-labs/plugin-execution": "workspace:*",
+    "@kb-labs/plugin-execution-factory": "workspace:*",
+    "@kb-labs/plugin-runtime": "workspace:*",
+    "@kb-labs/rest-api-contracts": "workspace:*",
+    "@kb-labs/rest-api-core": "workspace:*",
+    "@kb-labs/workflow-constants": "workspace:*",
+    "@kb-labs/workflow-contracts": "workspace:*",
+    "@kb-labs/workflow-engine": "workspace:*"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.3.3",
+    "@types/ws": "^8.5.13",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "kb": {
+    "manifest": "./dist/manifest.js"
+  }
+}

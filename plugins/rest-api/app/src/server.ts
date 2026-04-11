@@ -1,0 +1,203 @@
+/**
+ * @module @kb-labs/rest-api-app/server
+ * Fastify server setup
+ */
+
+import Fastify from 'fastify';
+import type { FastifyInstance } from 'fastify';
+import type { RestApiConfig } from '@kb-labs/rest-api-core';
+import type { IEntityRegistry } from '@kb-labs/core-registry';
+import { registerRoutes } from './routes/index';
+import { registerPlugins } from './plugins/index';
+import { registerMiddleware } from './middleware/index';
+import { platform } from '@kb-labs/core-runtime';
+import { randomUUID } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
+import type { ILogger } from '@kb-labs/core-platform';
+
+/**
+ * Fastify internal symbol to disable request logging
+ */
+const kDisableRequestLogging = Symbol.for('fastify.disableRequestLogging');
+
+/**
+ * Create a Pino-compatible wrapper for ILogger
+ * Fastify 5 expects a Pino instance, but we want vendor independence
+ */
+function createPinoCompatibleLogger(logger: ILogger): any {
+  const levels = {
+    trace: 10,
+    debug: 20,
+    info: 30,
+    warn: 40,
+    error: 50,
+    fatal: 60,
+  };
+
+  return {
+    // Pino log levels
+    trace: (msg: string | object, ...args: any[]) => {
+      if (typeof msg === 'object') {
+        logger.debug(JSON.stringify(msg), msg as Record<string, unknown>);
+      } else {
+        logger.debug(msg, ...args);
+      }
+    },
+    debug: (msg: string | object, ...args: any[]) => {
+      if (typeof msg === 'object') {
+        logger.debug(JSON.stringify(msg), msg as Record<string, unknown>);
+      } else {
+        logger.debug(msg, ...args);
+      }
+    },
+    info: (msg: string | object, ...args: any[]) => {
+      if (typeof msg === 'object') {
+        logger.info(JSON.stringify(msg), msg as Record<string, unknown>);
+      } else {
+        logger.info(msg, ...args);
+      }
+    },
+    warn: (msg: string | object, ...args: any[]) => {
+      if (typeof msg === 'object') {
+        logger.warn(JSON.stringify(msg), msg as Record<string, unknown>);
+      } else {
+        logger.warn(msg, ...args);
+      }
+    },
+    error: (msg: string | object, ...args: any[]) => {
+      if (typeof msg === 'object') {
+        logger.error(JSON.stringify(msg), msg instanceof Error ? msg : undefined);
+      } else {
+        logger.error(msg, args[0] instanceof Error ? args[0] : undefined);
+      }
+    },
+    fatal: (msg: string | object, ...args: any[]) => {
+      if (typeof msg === 'object') {
+        logger.error(`[FATAL] ${JSON.stringify(msg)}`, msg instanceof Error ? msg : undefined);
+      } else {
+        logger.error(`[FATAL] ${msg}`, args[0] instanceof Error ? args[0] : undefined);
+      }
+    },
+    // Pino child method
+    child: (bindings: Record<string, unknown>) => {
+      const childLogger = logger.child(bindings);
+      return createPinoCompatibleLogger(childLogger);
+    },
+    // Pino required properties for Fastify 5
+    level: 'info',
+    levels: {
+      values: levels,
+      labels: { 10: 'trace', 20: 'debug', 30: 'info', 40: 'warn', 50: 'error', 60: 'fatal' },
+    },
+    silent: false,
+    // Pino version symbol (required by Fastify 5 validation)
+    [Symbol.for('pino.version')]: '8.0.0',
+  };
+}
+
+/**
+ * Create and configure Fastify server
+ */
+export async function createServer(
+  config: RestApiConfig,
+  repoRoot: string,
+  registry: IEntityRegistry
+): Promise<FastifyInstance> {
+  // HTTP/2 configuration (requires HTTPS)
+  const useHttp2 = config.http2?.enabled ?? false;
+  const allowHTTP1 = config.http2?.allowHTTP1 ?? true;
+
+  // SSL configuration
+  let httpsOptions: { allowHTTP1: boolean; key: Buffer; cert: Buffer } | undefined;
+  if (useHttp2 && config.ssl?.keyPath && config.ssl?.certPath) {
+    const keyPath = config.ssl.keyPath;
+    const certPath = config.ssl.certPath;
+
+    if (existsSync(keyPath) && existsSync(certPath)) {
+      httpsOptions = {
+        allowHTTP1,
+        key: readFileSync(keyPath),
+        cert: readFileSync(certPath),
+      };
+    } else {
+      platform.logger.warn('HTTP/2 enabled but SSL certificates not found, falling back to HTTP/1.1', {
+        keyPath,
+        certPath,
+      });
+    }
+  }
+
+  // Create platform logger child for REST layer
+  const restLogger = platform.logger.child({
+    layer: 'rest',
+    service: 'server',
+    traceId: randomUUID(),
+  });
+
+  // Fastify 5 is too strict with logger validation, so disable it and use hooks
+  const server = useHttp2 && httpsOptions
+    ? Fastify({
+        logger: false,
+        requestIdHeader: 'X-Request-Id',
+        requestIdLogLabel: 'requestId',
+        disableRequestLogging: true,
+        requestTimeout: config.timeouts?.requestTimeout || 30000,
+        bodyLimit: config.timeouts?.bodyLimit || 10485760,
+        http2: true,
+        https: httpsOptions,
+      })
+    : Fastify({
+        logger: false,
+        requestIdHeader: 'X-Request-Id',
+        requestIdLogLabel: 'requestId',
+        disableRequestLogging: true,
+        requestTimeout: config.timeouts?.requestTimeout || 30000,
+        bodyLimit: config.timeouts?.bodyLimit || 10485760,
+      });
+
+  // Add our own logger to server instance
+  (server as any).log = restLogger;
+
+  // Override child logger factory to return our custom logger with disable flag
+  server.setChildLoggerFactory((logger, bindings, opts, rawReq) => {
+    const customLogger = {
+      [kDisableRequestLogging]: true, // Disable Fastify's built-in request logging
+      debug: (obj: any, msg?: string) => {},
+      info: (obj: any, msg?: string) => {},
+      warn: (obj: any, msg?: string) => {},
+      error: (obj: any, msg?: string) => {},
+      fatal: (obj: any, msg?: string) => {},
+      trace: (obj: any, msg?: string) => {},
+      child: () => customLogger,
+      level: 'silent',
+    };
+    return customLogger as any;
+  });
+
+  // Log protocol being used
+  if (useHttp2 && httpsOptions) {
+    restLogger.info('HTTP/2 enabled with HTTPS', {
+      allowHTTP1Fallback: allowHTTP1,
+    });
+  } else if (useHttp2) {
+    restLogger.warn('HTTP/2 requested but SSL certificates missing, using HTTP/1.1');
+  } else {
+    restLogger.info('Using HTTP/1.1');
+  }
+
+  // Store registry in server instance
+  server.registry = registry;
+
+  // Register plugins
+  await registerPlugins(server as unknown as FastifyInstance, config);
+
+  // Register middleware
+  registerMiddleware(server as unknown as FastifyInstance, config);
+
+  // Register routes
+  await registerRoutes(server as unknown as FastifyInstance, config, repoRoot, registry);
+
+  return server as unknown as FastifyInstance;
+}
+
