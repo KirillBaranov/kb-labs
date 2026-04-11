@@ -24,6 +24,7 @@ export interface PackageToPublish {
 
 export interface ProgrammaticPublishOptions {
   packages: PackageToPublish[];
+  packageManager?: 'pnpm' | 'npm' | 'yarn';
   dryRun?: boolean;
   otp?: string;
   tag?: string;
@@ -60,6 +61,7 @@ function resolveToken(token?: string): string | undefined {
  */
 function publishSinglePackage(options: {
   packagePath: string;
+  packageManager: string;
   token: string | undefined;
   otp?: string;
   dryRun?: boolean;
@@ -67,7 +69,7 @@ function publishSinglePackage(options: {
   access?: string;
   registry?: string;
 }): Promise<void> {
-  const { packagePath, token, otp, dryRun, tag, access, registry } = options;
+  const { packagePath, packageManager, token, otp, dryRun, tag, access, registry } = options;
 
   return new Promise((resolve, reject) => {
     const args = ['publish'];
@@ -98,7 +100,7 @@ function publishSinglePackage(options: {
       env['NODE_AUTH_TOKEN'] = token;
     }
 
-    const child = spawn('npm', args, {
+    const child = spawn(packageManager, args, {
       cwd: packagePath,
       stdio: ['ignore', 'pipe', 'pipe'],
       shell: true,
@@ -120,7 +122,7 @@ function publishSinglePackage(options: {
       if (code === 0) {
         resolve();
       } else {
-        reject(new Error(stderr || stdout || `npm publish exited with code ${code}`));
+        reject(new Error(stderr || stdout || `${packageManager} publish exited with code ${code}`));
       }
     });
 
@@ -137,7 +139,7 @@ function publishSinglePackage(options: {
 export async function publishPackagesProgrammatic(
   options: ProgrammaticPublishOptions
 ): Promise<ProgrammaticPublishResult> {
-  const { packages, dryRun, otp, tag, access, registry } = options;
+  const { packages, packageManager = 'pnpm', dryRun, otp, tag, access, registry } = options;
   const logger = useLogger();
 
   const token = resolveToken(options.token);
@@ -195,34 +197,12 @@ export async function publishPackagesProgrammatic(
                 modified = true;
               }
             }
-          } else if (val.startsWith('workspace:')) {
-            // Intra-repo workspace:* → ^version (pnpm does this automatically, but npm doesn't)
+          } else if (val.startsWith('workspace:') && packageManager !== 'pnpm') {
+            // workspace:* → ^version only needed for npm/yarn (pnpm publish handles this automatically)
             const planVersion = versionMap.get(depName);
             if (planVersion) {
               deps[depName] = val === 'workspace:*' ? `^${planVersion}` : val.replace('workspace:', '');
               modified = true;
-            } else {
-              // Not in plan — resolve from current version in monorepo
-              try {
-                // Find the package in the same repo by scanning packages/*/package.json
-                const repoRoot = join(pkg.path, '..');
-                const candidates = readdirSync(repoRoot, { withFileTypes: true })
-                  .filter(d => d.isDirectory())
-                  .map(d => join(repoRoot, d.name, 'package.json'));
-                for (const candidate of candidates) {
-                  try {
-                    const cPkg = JSON.parse(readFileSync(candidate, 'utf-8'));
-                    if (cPkg.name === depName) {
-                      deps[depName] = `^${cPkg.version}`;
-                      modified = true;
-                      break;
-                    }
-                  } catch { /* skip */ }
-                }
-              } catch {
-                deps[depName] = '*';
-                modified = true;
-              }
             }
           }
         }
@@ -235,6 +215,7 @@ export async function publishPackagesProgrammatic(
 
       await publishSinglePackage({
         packagePath: pkg.path,
+        packageManager,
         token,
         otp,
         dryRun,

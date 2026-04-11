@@ -17,6 +17,7 @@ export interface PackageToPublish {
 
 export interface PublishWithOTPOptions {
   packages: PackageToPublish[];
+  packageManager?: 'pnpm' | 'npm' | 'yarn';
   dryRun?: boolean;
   otp?: string;
   tag?: string;
@@ -53,7 +54,7 @@ export interface PublishWithOTPResult {
 export async function publishPackagesWithOTP(
   options: PublishWithOTPOptions
 ): Promise<PublishWithOTPResult> {
-  const { packages, dryRun, tag, access, ui, logger } = options;
+  const { packages, packageManager = 'pnpm', dryRun, tag, access, ui, logger } = options;
   let otp = options.otp;
 
   const results: PublishResult[] = [];
@@ -96,31 +97,12 @@ export async function publishPackagesWithOTP(
                 modified = true;
               }
             }
-          } else if (val.startsWith('workspace:')) {
+          } else if (val.startsWith('workspace:') && packageManager !== 'pnpm') {
+            // workspace:* → ^version only needed for npm/yarn (pnpm publish handles this automatically)
             const planVersion = versionMap.get(depName);
             if (planVersion) {
               deps[depName] = val === 'workspace:*' ? `^${planVersion}` : val.replace('workspace:', '');
               modified = true;
-            } else {
-              try {
-                const repoRoot = join(pkg.path, '..');
-                const candidates = readdirSync(repoRoot, { withFileTypes: true })
-                  .filter(d => d.isDirectory())
-                  .map(d => join(repoRoot, d.name, 'package.json'));
-                for (const candidate of candidates) {
-                  try {
-                    const cPkg = JSON.parse(readFileSync(candidate, 'utf-8'));
-                    if (cPkg.name === depName) {
-                      deps[depName] = `^${cPkg.version}`;
-                      modified = true;
-                      break;
-                    }
-                  } catch { /* skip */ }
-                }
-              } catch {
-                deps[depName] = '*';
-                modified = true;
-              }
             }
           }
         }
@@ -144,6 +126,7 @@ export async function publishPackagesWithOTP(
         try {
           await publishSinglePackage({
             packagePath: pkg.path,
+            packageManager,
             otp,
             dryRun,
             tag,
@@ -260,6 +243,7 @@ export async function publishPackagesWithOTP(
 
 interface PublishSingleOptions {
   packagePath: string;
+  packageManager?: 'pnpm' | 'npm' | 'yarn';
   otp?: string;
   dryRun?: boolean;
   tag?: string;
@@ -270,7 +254,7 @@ interface PublishSingleOptions {
  * Publish a single package using npm CLI
  */
 function publishSinglePackage(options: PublishSingleOptions): Promise<void> {
-  const { packagePath, otp, dryRun, tag, access } = options;
+  const { packagePath, packageManager = 'pnpm', otp, dryRun, tag, access } = options;
 
   return new Promise((resolve, reject) => {
     const args = ['publish'];
@@ -291,7 +275,7 @@ function publishSinglePackage(options: PublishSingleOptions): Promise<void> {
       args.push(`--access=${access}`);
     }
 
-    const child = spawn('npm', args, {
+    const child = spawn(packageManager, args, {
       cwd: packagePath,
       stdio: ['inherit', 'pipe', 'pipe'],
       shell: true,

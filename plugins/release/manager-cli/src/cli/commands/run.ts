@@ -154,13 +154,15 @@ export default defineCommand({
       const changelog = createChangelogGenerator(config, llm ?? undefined);
 
       const token = process.env.NPM_TOKEN ?? process.env.NODE_AUTH_TOKEN;
+      const packageManager = config.workspace?.type ?? config.publish?.packageManager ?? 'pnpm';
       const publisher = {
         async publish(packages: PublishablePackage[], opts: { dryRun?: boolean; access?: string }): Promise<PublishResult> {
           if (token) {
-            return publishPackagesProgrammatic({ packages, dryRun: opts.dryRun }) as any;
+            return publishPackagesProgrammatic({ packages, packageManager, dryRun: opts.dryRun }) as any;
           }
           return publishPackagesWithOTP({
             packages,
+            packageManager,
             dryRun: opts.dryRun,
             access: opts.access ?? 'public',
             ui: ctx.ui,
