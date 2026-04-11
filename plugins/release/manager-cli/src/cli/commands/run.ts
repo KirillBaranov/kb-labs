@@ -1,8 +1,15 @@
 /**
  * Release run command — thin adapter over core runReleasePipeline().
  * Mirror of rest/handlers/run-handler.ts for CLI context.
+ *
+ * Flow:
+ *   1. Load config
+ *   2. Plan (discover packages, compute versions)
+ *   3. Show plan table + confirm [y/N]  (skipped with --yes or --dry-run)
+ *   4. Execute pipeline with elapsed-time progress
  */
 
+import * as readline from 'node:readline/promises';
 import {
   defineCommand,
   type CLIInput,
@@ -14,6 +21,7 @@ import {
 } from '@kb-labs/sdk';
 import {
   runReleasePipeline,
+  planRelease,
   resolveScopePath,
   type ReleaseConfig,
   type ReleaseReport,
@@ -33,11 +41,20 @@ interface RunFlags {
   'skip-checks'?: boolean;
   'skip-build'?: boolean;
   'skip-verify'?: boolean;
+  'no-verify'?: boolean;
+  yes?: boolean;
   json?: boolean;
 }
 
 type ReleaseRunResult = CommandResult & {
   report?: ReleaseReport;
+};
+
+const BUMP_SYMBOL: Record<string, string> = {
+  major: '!!',
+  minor: '+',
+  patch: '·',
+  auto: '?',
 };
 
 export default defineCommand({
@@ -50,7 +67,9 @@ export default defineCommand({
       const cwd = ctx.cwd || process.cwd();
       const repoRoot = await findRepoRoot(cwd);
       const dryRun = flags['dry-run'] === true;
+      const skipYes = flags.yes === true || dryRun;
 
+      // 1. Load config
       const configLoader = useLoader('Loading configuration...');
       configLoader.start();
       const fileConfig = await useConfig<ReleaseConfig>();
@@ -61,10 +80,76 @@ export default defineCommand({
       };
       configLoader.succeed('Configuration loaded');
 
+      const scopeCwd = await resolveScopePath(repoRoot, flags.scope || 'root');
+
+      // 2. Plan — run separately so we can show it before asking for confirm
+      const planLoader = useLoader('Discovering packages...');
+      planLoader.start();
+      const plan = await planRelease({
+        cwd: repoRoot,
+        config,
+        scope: flags.scope,
+        bumpOverride: config.bump as any,
+      });
+      planLoader.succeed(`Found ${plan.packages.length} package(s)`);
+
+      if (plan.packages.length === 0) {
+        ctx.ui.sideBox({
+          title: 'Release',
+          sections: [{ items: [`${ctx.ui.symbols.warning} No packages to release`] }],
+          status: 'info',
+        });
+        return { exitCode: 0 };
+      }
+
+      // 3. Show plan table
+      if (!flags.json) {
+        const rows = plan.packages.map(pkg => {
+          const bump = pkg.bump ?? 'auto';
+          const sym = BUMP_SYMBOL[bump] ?? '?';
+          return `  ${sym}  ${pkg.name.padEnd(40)} ${pkg.currentVersion.padStart(8)}  →  ${pkg.nextVersion}`;
+        });
+
+        ctx.ui.sideBox({
+          title: dryRun ? 'Release Plan (dry-run)' : 'Release Plan',
+          sections: [
+            {
+              header: `${plan.packages.length} package(s) · strategy: ${config.versioningStrategy ?? 'independent'}`,
+              items: rows,
+            },
+          ],
+          status: 'info',
+        });
+
+        if (flags['no-verify']) {
+          ctx.ui.write?.(`  ⚠️  --no-verify: git pre-push hooks will be skipped\n`);
+        }
+      }
+
+      // 4. Confirm (skip with --yes or --dry-run)
+      if (!skipYes) {
+        const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+        let answer: string;
+        try {
+          answer = await rl.question('\nProceed with release? [y/N] ');
+        } finally {
+          rl.close();
+        }
+
+        if (answer.trim().toLowerCase() !== 'y') {
+          ctx.ui.sideBox({
+            title: 'Release',
+            sections: [{ items: [`${ctx.ui.symbols.info} Cancelled`] }],
+            status: 'info',
+          });
+          return { exitCode: 0 };
+        }
+      }
+
+      // 5. Execute pipeline
       const llm = useLLM();
       const changelog = createChangelogGenerator(config, llm ?? undefined);
 
-      // Token-first publisher (same as REST), OTP fallback for interactive terminal
       const token = process.env.NPM_TOKEN ?? process.env.NODE_AUTH_TOKEN;
       const publisher = {
         async publish(packages: PublishablePackage[], opts: { dryRun?: boolean; access?: string }): Promise<PublishResult> {
@@ -84,7 +169,7 @@ export default defineCommand({
       const pipelineLoader = useLoader('Running release pipeline...');
       pipelineLoader.start();
 
-      const scopeCwd = await resolveScopePath(repoRoot, flags.scope || 'root');
+      const pipelineStart = Date.now();
 
       const result = await runReleasePipeline({
         cwd,
@@ -96,11 +181,15 @@ export default defineCommand({
         skipChecks: flags['skip-checks'],
         skipBuild: flags['skip-build'],
         skipVerify: flags['skip-verify'],
+        noVerify: flags['no-verify'],
         checks: (flags.scope ? config.scopes?.[flags.scope]?.checks : undefined) ?? config.checks ?? [],
         publisher,
         changelog,
         logger: ctx.platform?.logger,
-        onProgress: (_stage, message) => pipelineLoader.update({ text: message }),
+        onProgress: (_stage, message) => {
+          const elapsed = ((Date.now() - pipelineStart) / 1000).toFixed(1);
+          pipelineLoader.update({ text: `[${elapsed}s] ${message}` });
+        },
       });
 
       pipelineLoader.succeed(result.success ? 'Release completed' : 'Release failed');
@@ -111,17 +200,17 @@ export default defineCommand({
         const report = result.report;
         const sections: Array<{ header?: string; items: string[] }> = [];
 
-        if (report.result.published?.length) {
+        if (!dryRun && report.result.published?.length) {
           sections.push({
             header: 'Published',
             items: report.result.published.map(p => `${ctx.ui.symbols.success} ${p}`),
           });
         }
 
-        if (report.result.skipped?.length) {
+        if (dryRun && report.result.skipped?.length) {
           sections.push({
-            header: 'Skipped (dry-run)',
-            items: report.result.skipped.map(p => `${ctx.ui.symbols.info} ${p}`),
+            header: 'Would publish (dry-run)',
+            items: report.result.skipped.map(p => `${ctx.ui.symbols.info} ${p.replace(' (dry-run)', '')}`),
           });
         }
 

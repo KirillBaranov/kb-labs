@@ -135,18 +135,32 @@ export const manifest = {
         handlerPath: './cli/commands/run.js',
 
         flags: defineCommandFlags({
-          scope: { type: 'string', description: 'Package scope (glob pattern)' },
+          scope: { type: 'string', description: 'Package scope or glob pattern (e.g. @my-org/core, packages/*)' },
+          bump: {
+            type: 'string',
+            choices: ['patch', 'minor', 'major', 'auto'] as const,
+            default: 'auto',
+            description: 'Version bump override (default: auto-detect from commits)',
+          },
           strict: { type: 'boolean', description: 'Fail on any check failure' },
-          'dry-run': { type: 'boolean', description: 'Simulate release without publishing' },
+          'dry-run': { type: 'boolean', description: 'Simulate release without publishing or tagging' },
           'skip-checks': { type: 'boolean', description: 'Skip pre-release checks' },
+          'skip-build': { type: 'boolean', description: 'Skip build step' },
+          'skip-verify': { type: 'boolean', description: 'Skip artifact verification (npm pack check)' },
+          'no-verify': { type: 'boolean', description: 'Pass --no-verify to git push (bypasses pre-push hooks)' },
+          yes: { type: 'boolean', description: 'Skip confirmation prompt — for CI/headless mode' },
           json: { type: 'boolean', description: 'Print result as JSON' },
         }),
 
         examples: [
           'kb release run',
           'kb release run --dry-run',
+          'kb release run --yes',
+          'kb release run --yes --no-verify',
+          'kb release run --bump minor --yes',
+          'kb release run --scope @my-org/core',
+          'kb release run --skip-checks --skip-build',
           'kb release run --strict --json',
-          'kb release run --scope packages/core',
         ],
       },
 

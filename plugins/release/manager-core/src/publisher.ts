@@ -368,8 +368,10 @@ export async function commitAndTagRelease(options: {
   cwd: string;
   plan: ReleasePlan;
   dryRun?: boolean;
+  /** Pass --no-verify to git push and pushTags. Default: false — hooks run normally. */
+  noVerify?: boolean;
 }): Promise<{ committed: boolean; tagged: string[]; pushed: boolean }> {
-  const { cwd, plan, dryRun } = options;
+  const { cwd, plan, dryRun, noVerify = false } = options;
   const simpleGit = (await import('simple-git')).default;
 
   const result = {
@@ -429,12 +431,14 @@ export async function commitAndTagRelease(options: {
     }
 
     // 3. Push each package repo
+    const pushFlags: string[] = noVerify ? ['--no-verify'] : [];
+    const pushTagsOptions = noVerify ? ['--no-verify'] : undefined;
     for (const pkg of plan.packages) {
       const pkgGit = simpleGit(pkg.path);
       if (result.committed) {
-        await pkgGit.push(['--no-verify']);
+        await pkgGit.push(pushFlags);
       }
-      await pkgGit.pushTags('--no-verify');
+      await pkgGit.pushTags(pushTagsOptions);
     }
     result.pushed = true;
 
