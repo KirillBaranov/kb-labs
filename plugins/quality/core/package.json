@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/quality-core",
-  "version": "0.6.0",
+  "version": "2.6.0",
   "type": "module",
   "description": "Core business logic for KB Labs Quality plugin - monorepo analysis, dependency management, and health checks.",
   "main": "./dist/index.js",
@@ -21,10 +21,6 @@
     "./dependencies": {
       "import": "./dist/dependencies/index.js",
       "types": "./dist/dependencies/index.d.ts"
-    },
-    "./build-order": {
-      "import": "./dist/build-order/index.js",
-      "types": "./dist/build-order/index.d.ts"
     },
     "./graph": {
       "import": "./dist/graph/index.js",
