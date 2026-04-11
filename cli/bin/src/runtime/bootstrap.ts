@@ -518,6 +518,22 @@ function handleEarlyExits(p: EarlyExitParams): number | null {
     const groupPrefix = p.cmdPath[0];
     const matchingGroups = p.registryStore.getGroupsByPrefix?.(groupPrefix);
     if (matchingGroups && matchingGroups.length > 0) {
+      const decision = resolveGroupDisplay(groupPrefix, matchingGroups);
+      if (decision.kind === 'exact') {
+        if (p.global.json) {
+          p.presenter.json({
+            ok: true,
+            group: {
+              name: decision.group.name,
+              describe: decision.group.describe,
+              commands: decision.group.commands.map((c: any) => ({ name: c.name, describe: c.describe })),
+            },
+          });
+        } else {
+          p.presenter.write(renderGroupHelp(decision.group));
+        }
+        return 0;
+      }
       renderGroupsHelp(groupPrefix, matchingGroups, p.presenter, p.global.json);
       return 0;
     }
@@ -536,6 +552,30 @@ function handleEarlyExits(p: EarlyExitParams): number | null {
   return null;
 }
 
+/**
+ * Decide how to render the result of a prefix match against command groups.
+ *
+ * - `exact`: the prefix equals one of the group names → render that group's
+ *   commands (e.g. `kb info` shows hello/version/health/diag).
+ * - `list`: the prefix only matches subgroups (e.g. `marketplace:plugins`) →
+ *   render the list of matching groups.
+ *
+ * Pure function (no side effects) so it can be unit-tested in isolation.
+ * Regression guard for the `kb info` bug where exact matches were rendered
+ * as a one-item "info groups: info" list.
+ */
+export type GroupDisplayDecision =
+  | { kind: 'exact'; group: any }
+  | { kind: 'list'; groups: any[] };
+
+export function resolveGroupDisplay(groupPrefix: string, matchingGroups: any[]): GroupDisplayDecision {
+  const exact = matchingGroups.find((g) => g?.name === groupPrefix);
+  if (exact) {
+    return { kind: 'exact', group: exact };
+  }
+  return { kind: 'list', groups: matchingGroups };
+}
+
 function renderGroupsHelp(groupPrefix: string, matchingGroups: any[], presenter: any, json: boolean | undefined): void {
   if (json) {
     presenter.json({
@@ -552,7 +592,7 @@ function renderGroupsHelp(groupPrefix: string, matchingGroups: any[], presenter:
       lines.push(`  ${colors.cyan(group.name.padEnd(20))}  ${colors.dim(group.describe ?? '')}`);
     }
     lines.push('');
-    lines.push(colors.dim(`Use 'kb ${groupPrefix}:<group> --help' to see commands for a specific group.`));
+    lines.push(colors.dim(`Use 'kb ${groupPrefix} <group> --help' to see commands for a specific group.`));
     presenter.write(lines.join('\n'));
   }
 }

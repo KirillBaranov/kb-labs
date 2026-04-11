@@ -112,65 +112,85 @@ export async function initializePlatform(
 
   const uiProvider = createCLIUIProvider();
 
+  // Load config outside of the adapter-init try/catch so rawConfig survives
+  // even when initPlatform fails (e.g. Redis/Qdrant not running in dev).
+  let loadResult: Awaited<ReturnType<typeof loadPlatformConfig>> | undefined;
   try {
-    const {
-      platformConfig,
-      rawConfig,
-      platformRoot,
-      projectRoot,
-      sources,
-    } = await loadPlatformConfig({
+    loadResult = await loadPlatformConfig({
       moduleUrl,
       startDir: cwd,
     });
+  } catch {
+    // Config file missing or unreadable — proceed with full fallback below.
+  }
 
-    // Relative adapter paths (e.g. ".kb/database/kb.sqlite") must resolve
-    // against the project root — this is where the user's .kb/ lives.
-    const platformInstance = await initPlatform(
-      platformConfig,
-      projectRoot,
-      uiProvider,
-    );
+  if (loadResult) {
+    const { platformConfig, rawConfig, platformRoot, projectRoot, sources } =
+      loadResult;
+    try {
+      // Relative adapter paths (e.g. ".kb/database/kb.sqlite") must resolve
+      // against the project root — this is where the user's .kb/ lives.
+      const platformInstance = await initPlatform(
+        platformConfig,
+        projectRoot,
+        uiProvider,
+      );
 
-    platformInstance.logger.info('Platform adapters initialized', {
-      layer: 'cli',
-      service: LOG_SERVICE,
-      platformRoot,
-      projectRoot,
-      sources,
-      adapters: Object.keys(platformConfig.adapters ?? {}),
-      hasAdapterOptions: !!platformConfig.adapterOptions,
-    });
-
-    return {
-      platform: platformInstance,
-      platformConfig,
-      rawConfig,
-      platformRoot,
-      projectRoot,
-    };
-  } catch (error) {
-    // Fallback: start with empty config + NoOp adapters so the CLI can still
-    // run commands that don't need real adapters (e.g. `kb --help`).
-    const fallbackConfig: PlatformConfig = { adapters: {} };
-    const platformInstance = await initPlatform(
-      fallbackConfig,
-      cwd,
-      uiProvider,
-    );
-    platformInstance.logger.warn(
-      'Platform initialization failed, using NoOp adapters',
-      {
+      platformInstance.logger.info('Platform adapters initialized', {
         layer: 'cli',
         service: LOG_SERVICE,
-        error: error instanceof Error ? error.message : String(error),
-      },
-    );
-    return {
-      platform: platformInstance,
-      platformConfig: fallbackConfig,
-      platformRoot: cwd,
-      projectRoot: cwd,
-    };
+        platformRoot,
+        projectRoot,
+        sources,
+        adapters: Object.keys(platformConfig.adapters ?? {}),
+        hasAdapterOptions: !!platformConfig.adapterOptions,
+      });
+
+      return {
+        platform: platformInstance,
+        platformConfig,
+        rawConfig,
+        platformRoot,
+        projectRoot,
+      };
+    } catch (error) {
+      // Adapters failed to connect (Redis/Qdrant/MongoDB not running in dev).
+      // Fall back to NoOp adapters but preserve rawConfig so useConfig() works.
+      const fallbackConfig: PlatformConfig = { adapters: {} };
+      const platformInstance = await initPlatform(
+        fallbackConfig,
+        projectRoot,
+        uiProvider,
+      );
+      platformInstance.logger.warn(
+        'Platform adapters failed, using NoOp adapters',
+        {
+          layer: 'cli',
+          service: LOG_SERVICE,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      );
+      return {
+        platform: platformInstance,
+        platformConfig: fallbackConfig,
+        rawConfig,
+        platformRoot,
+        projectRoot,
+      };
+    }
   }
+
+  // Full fallback: config could not be loaded at all.
+  const fallbackConfig: PlatformConfig = { adapters: {} };
+  const platformInstance = await initPlatform(fallbackConfig, cwd, uiProvider);
+  platformInstance.logger.warn(
+    'Platform initialization failed, using NoOp adapters',
+    { layer: 'cli', service: LOG_SERVICE },
+  );
+  return {
+    platform: platformInstance,
+    platformConfig: fallbackConfig,
+    platformRoot: cwd,
+    projectRoot: cwd,
+  };
 }
