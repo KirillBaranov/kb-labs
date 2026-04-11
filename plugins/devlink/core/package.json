@@ -1,34 +1,14 @@
 {
   "name": "@kb-labs/devlink-core",
-  "version": "1.5.0",
+  "version": "2.6.0",
   "type": "module",
-  "description": "Core business logic for DevLink plugin \u2014 discovery, plan, apply, state, backup.",
+  "description": "Core business logic for DevLink plugin — discovery, plan, apply, state, backup.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
-    },
-    "./discovery": {
-      "import": "./dist/discovery/index.js",
-      "types": "./dist/discovery/index.d.ts"
-    },
-    "./plan": {
-      "import": "./dist/plan/index.js",
-      "types": "./dist/plan/index.d.ts"
-    },
-    "./apply": {
-      "import": "./dist/apply/index.js",
-      "types": "./dist/apply/index.d.ts"
-    },
-    "./state": {
-      "import": "./dist/state/index.js",
-      "types": "./dist/state/index.d.ts"
-    },
-    "./backup": {
-      "import": "./dist/backup/index.js",
-      "types": "./dist/backup/index.d.ts"
     },
     "./dist/*": "./dist/*"
   },
