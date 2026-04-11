@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/core-tenant",
-  "version": "2.6.0",
+  "version": "2.9.0",
   "description": "Multi-tenancy primitives for KB Labs",
   "type": "module",
   "main": "./dist/index.js",
