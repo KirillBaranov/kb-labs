@@ -1,4 +1,4 @@
-.PHONY: build test test-race cover vet lint clean snapshot help
+.PHONY: build test test-race e2e cover vet lint clean snapshot help
 
 BINARY   := kb-create
 VERSION  := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
@@ -13,9 +13,13 @@ LDFLAGS  := -s -w \
 build:
 	go build -ldflags "$(LDFLAGS)" -o $(BINARY) .
 
-## test: run tests with race detector
+## test: run fast unit tests (skips network-bound e2e)
 test:
-	go test -race -count=1 ./...
+	go test -race -count=1 -short ./...
+
+## e2e: run full end-to-end suite (installs platform from npm — requires network)
+e2e:
+	go test -race -count=1 -timeout 20m ./e2e/...
 
 ## cover: run tests and open coverage report in browser
 cover:
