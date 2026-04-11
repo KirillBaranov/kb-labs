@@ -1,56 +1,47 @@
 {
   "name": "@kb-labs/sdk",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Core SDK - Helpers for command/route/action/webhook definitions and testing",
   "type": "module",
-  "main": "./dist/index.cjs",
+  "main": "./dist/index.js",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": "./dist/index.js"
     },
     "./command": {
       "types": "./dist/command/index.d.ts",
-      "import": "./dist/command/index.js",
-      "require": "./dist/command/index.cjs"
+      "import": "./dist/command/index.js"
     },
     "./manifest": {
       "types": "./dist/manifest/index.d.ts",
-      "import": "./dist/manifest/index.js",
-      "require": "./dist/manifest/index.cjs"
+      "import": "./dist/manifest/index.js"
     },
     "./hooks": {
       "types": "./dist/hooks/index.d.ts",
-      "import": "./dist/hooks/index.js",
-      "require": "./dist/hooks/index.cjs"
+      "import": "./dist/hooks/index.js"
     },
     "./contracts": {
       "types": "./dist/contracts/index.d.ts",
-      "import": "./dist/contracts/index.js",
-      "require": "./dist/contracts/index.cjs"
+      "import": "./dist/contracts/index.js"
     },
     "./types": {
       "types": "./dist/types/index.d.ts",
-      "import": "./dist/types/index.js",
-      "require": "./dist/types/index.cjs"
+      "import": "./dist/types/index.js"
     },
     "./studio": {
       "types": "./dist/studio/index.d.ts",
-      "import": "./dist/studio/index.js",
-      "require": "./dist/studio/index.cjs"
+      "import": "./dist/studio/index.js"
     },
     "./studio-build": {
       "types": "./dist/studio-build/index.d.ts",
-      "import": "./dist/studio-build/index.js",
-      "require": "./dist/studio-build/index.cjs"
+      "import": "./dist/studio-build/index.js"
     },
     "./testing": {
       "types": "./dist/testing/index.d.ts",
-      "import": "./dist/testing/index.js",
-      "require": "./dist/testing/index.cjs"
+      "import": "./dist/testing/index.js"
     }
   },
   "files": [
