@@ -65,7 +65,8 @@
   "main": "./server.js",
   "files": [
     "dist",
-    "server.js"
+    "server.js",
+    "src/manifest.ts"
   ],
   "kb": {
     "manifest": "./src/manifest.ts"
@@ -82,7 +83,7 @@
     "type-check": "tsc --noEmit"
   },
   "type": "module",
-  "version": "2.9.0",
+  "version": "2.10.0",
   "publishConfig": {
     "access": "public"
   }
