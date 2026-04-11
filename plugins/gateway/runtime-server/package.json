@@ -16,8 +16,8 @@
     "vitest": "^3.2.4"
   },
   "engines": {
-    "node": "\u003e=20.0.0",
-    "pnpm": "\u003e=9.0.0"
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
   },
   "exports": {
     ".": {
@@ -35,7 +35,7 @@
     "build:docker": "DOCKER_BUILD=1 tsup",
     "clean": "rimraf dist",
     "dev": "tsup --watch",
-    "docker:build": "pnpm run build:docker \u0026\u0026 docker build -t kb-runtime-server:local .",
+    "docker:build": "pnpm run build:docker && docker build -t kb-runtime-server:local .",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "vitest run -c ../../vitest.config.ts",
@@ -45,5 +45,5 @@
   "sideEffects": false,
   "type": "module",
   "types": "./dist/index.d.ts",
-  "version": "0.5.0"
+  "version": "2.6.0"
 }
