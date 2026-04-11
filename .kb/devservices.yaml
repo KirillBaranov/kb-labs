@@ -18,7 +18,7 @@ services:
     command: >-
       docker stop qdrant 2>/dev/null || true &&
       docker rm qdrant 2>/dev/null || true &&
-      docker compose up -d qdrant
+      docker run --name qdrant --rm -p 6333:6333 -p 6334:6334 qdrant/qdrant
     stop_command: docker stop qdrant
     health_check: http://localhost:6333/
     port: 6333
@@ -30,9 +30,12 @@ services:
     group: infra
     type: docker
     container: redis
-    command: docker compose up -d redis
-    stop_command: docker compose stop redis
-    health_check: redis-cli ping
+    command: >-
+      docker stop redis 2>/dev/null || true &&
+      docker rm redis 2>/dev/null || true &&
+      docker run --name redis -p 6379:6379 redis:7-alpine
+    stop_command: docker stop redis
+    health_check: localhost:6379
     port: 6379
     optional: true
 
@@ -71,7 +74,7 @@ services:
     description: Main platform REST API
     group: backend
     type: node
-    command: node ./plugins/rest-api/core/dist/index.js
+    command: node ./plugins/rest-api/app/dist/index.js
     health_check: http://localhost:5050/api/v1/health
     port: 5050
     url: http://localhost:5050
@@ -106,7 +109,7 @@ services:
     description: Central router — single entry point for all platform clients
     group: backend
     type: node
-    command: node ./plugins/gateway/server/dist/index.js
+    command: node ./plugins/gateway/app/dist/index.js
     health_check: http://localhost:4000/health
     port: 4000
     url: http://localhost:4000
@@ -139,6 +142,8 @@ services:
     port: 3010
     url: http://localhost:3010
     start_timeout_ms: 120000
+    env:
+      PORT: "3010"
 
   kb-docs:
     name: KB Labs Docs
@@ -164,7 +169,7 @@ services:
     description: Plugin execution host — connects to Gateway
     group: execution
     type: node
-    command: node ./plugins/gateway/server/dist/cli.js
+    command: node ./plugins/gateway/runtime-server/dist/cli.js
     depends_on: [gateway]
     env:
       GATEWAY_WS_URL: ws://localhost:4000

@@ -574,6 +574,10 @@
       "dev-runtime-server-token": {
         "hostId": "runtime-server-local",
         "namespaceId": "default"
+      },
+      "dev-host-agent-token": {
+        "hostId": "host_local",
+        "namespaceId": "default"
       }
     }
   },

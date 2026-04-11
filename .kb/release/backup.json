@@ -1,0 +1,13 @@
+{
+  "ts": "2026-04-11T10:01:27.933Z",
+  "packages": [
+    {
+      "name": "@kb-labs/release-manager-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-core",
+      "currentVersion": "0.7.0",
+      "nextVersion": "0.7.0",
+      "bump": "patch",
+      "isPublished": false
+    }
+  ]
+}

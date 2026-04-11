@@ -23,7 +23,7 @@
   "scripts": {
     "clean": "rimraf dist",
     "build": "tsup --config tsup.config.ts && pnpm run copy-bootstrap",
-    "copy-bootstrap": "mkdir -p dist && cp ../../../../infra/kb-labs-plugin/packages/plugin-runtime/dist/sandbox/bootstrap.js dist/bootstrap.js",
+    "copy-bootstrap": "mkdir -p dist && cp ../../core/plugin-runtime/dist/sandbox/bootstrap.js dist/bootstrap.js",
     "dev": "tsup --config tsup.config.ts --watch",
     "smoke": "node ./dist/bin.js hello",
     "lint": "eslint src",
