@@ -25,6 +25,7 @@ tmp/
 # Testing
 # ───────────────
 coverage/
+coverage.out
 .vitest/
 .vscode-test/
 
