@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/adapters-workspace-localfs",
-  "version": "0.8.0",
+  "version": "2.6.0",
   "description": "Local filesystem adapter implementing IWorkspaceProvider",
   "type": "module",
   "main": "./dist/index.js",
