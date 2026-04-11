@@ -244,6 +244,9 @@ export interface PipelineOptions {
   /** Injected changelog generator (with or without LLM) */
   changelog?: ChangelogGenerator;
 
+  /** Pass --no-verify to git push and pushTags. Default: false (hooks run normally). */
+  noVerify?: boolean;
+
   logger?: { info?: (...args: any[]) => void; warn?: (...args: any[]) => void; error?: (...args: any[]) => void };
   onProgress?: (stage: ReleaseStage, message: string) => void;
 }

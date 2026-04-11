@@ -4,13 +4,81 @@
 
 import { readFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import simpleGit from 'simple-git';
 import semver from 'semver';
 import globby from 'globby';
 import { discoverSubRepoPaths } from '@kb-labs/sdk';
 import type { PackageVersion, VersionBump, ReleaseConfig, ReleasePlan } from './types';
 import { applyVersionStrategy, type VersionStrategy } from './versioning-strategies';
+
+/**
+ * Find the most recent git tag for a package.
+ * For scoped packages: looks for "<name>@<version>" tags.
+ * For lockstep repos: looks for "v<version>" tags.
+ * Returns null if no tag found (initial release).
+ */
+async function findLastReleaseTag(
+  git: ReturnType<typeof simpleGit>,
+  pkgName: string,
+): Promise<string | null> {
+  try {
+    // Try package-scoped tag first: @kb-labs/foo@1.2.3
+    const tags = await git.tags(['--sort=-version:refname', `--list`, `${pkgName}@*`]);
+    if (tags.all.length > 0) {
+      return tags.all[0]!;
+    }
+    // Try lockstep tag: v1.2.3
+    const vTags = await git.tags(['--sort=-version:refname', '--list', 'v*']);
+    if (vTags.all.length > 0) {
+      return vTags.all[0]!;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get commits since last release tag, scoped to a path.
+ * Returns empty array if git log fails.
+ */
+async function getCommitsSinceTag(
+  git: ReturnType<typeof simpleGit>,
+  pkgName: string,
+  relPath: string,
+): Promise<string[]> {
+  const lastTag = await findLastReleaseTag(git, pkgName);
+  try {
+    // git log [<tag>..HEAD] [--] <path>
+    // Without a tag (initial release): git log -- <path>
+    const args = ['log', '--format=%s', ...(lastTag ? [`${lastTag}..HEAD`] : []), '--', relPath];
+    const raw = await (git as any).raw(args) as string;
+    return raw.split('\n').map((s: string) => s.trim()).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Check if there are any file changes since last release tag.
+ * Covers: uncommitted, committed-not-pushed, committed-and-pushed.
+ */
+async function hasChangesSinceTag(
+  git: ReturnType<typeof simpleGit>,
+  pkgName: string,
+  pkgRelPath: string,
+): Promise<boolean> {
+  // 1. Uncommitted changes (working tree + index)
+  const status = await git.status();
+  const uncommitted = status.files.map(f => f.path);
+  const hasUncommitted = uncommitted.some(p => p === pkgRelPath || p.startsWith(pkgRelPath + '/'));
+  if (hasUncommitted) {return true;}
+
+  // 2. Committed changes since last tag
+  const commits = await getCommitsSinceTag(git, pkgName, pkgRelPath);
+  return commits.length > 0;
+}
 
 export interface PlannerOptions {
   cwd: string;
@@ -66,7 +134,7 @@ export async function planRelease(options: PlannerOptions): Promise<ReleasePlan>
     modifiedPackages = packages;
   } else {
     const git = simpleGit(cwd, { timeout: { block: 60000 } });
-    modifiedPackages = await detectModifiedPackages(git, packages);
+    modifiedPackages = await detectModifiedPackages(git, packages, cwd);
   }
 
   // Compute version bumps
@@ -75,15 +143,16 @@ export async function planRelease(options: PlannerOptions): Promise<ReleasePlan>
     const bump = bumpOverride || config.bump || 'auto';
 
     // For workspace root, use per-sub-repo git instance
-    const git = isWorkspaceRoot
-      ? simpleGit(pkg.path, { timeout: { block: 60000 } })
-      : simpleGit(cwd, { timeout: { block: 60000 } });
+    const gitCwd = isWorkspaceRoot ? pkg.path : cwd;
+    const git = simpleGit(gitCwd, { timeout: { block: 60000 } });
 
     const nextVersion = await computeNextVersion(
       pkg.path,
       pkg.currentVersion,
       bump,
-      git
+      git,
+      gitCwd,
+      pkg.name,
     );
 
     planPackages.push({
@@ -314,107 +383,69 @@ function shouldIgnoreFile(file: string): boolean {
 
 async function detectModifiedPackages(
   git: ReturnType<typeof simpleGit>,
-  packages: PackageVersion[]
+  packages: PackageVersion[],
+  cwd: string,
 ): Promise<PackageVersion[]> {
-
-  // Get list of modified files
-  const status = await git.status();
-  const diffSummary = await git.diffSummary(['HEAD']);
-
-  // Filter out node_modules and other build artifacts
-  const modifiedPaths = [
-    ...status.files.map(f => f.path),
-    ...diffSummary.files.map(f => f.file),
-  ].filter(path => !shouldIgnoreFile(path));
-
-
-  // Find packages that have changes
   const modified: PackageVersion[] = [];
+
   for (let i = 0; i < packages.length; i++) {
-    // Освобождаем event loop каждые 10 пакетов
     if (i % 10 === 0) {
-      await new Promise((resolve) => {
-        setImmediate(resolve);
-      });
+      await new Promise((res) => { setImmediate(res); });
     }
 
     const pkg = packages[i]!;
+    const pkgRel = relative(resolve(cwd), resolve(pkg.path));
+    const changed = await hasChangesSinceTag(git, pkg.name, pkgRel);
 
-    // Check if any file in this package is modified
-    const packageModified = modifiedPaths.some(path =>
-      path.startsWith(pkg.path) || path.includes(pkg.name)
-    );
-
-    if (packageModified) {
+    if (changed) {
       modified.push(pkg);
     }
   }
 
-
-  // If no modified packages detected, include all packages (for initial release)
-  return modified.length > 0 ? modified : packages;
+  return modified;
 }
 
 async function computeNextVersion(
   packagePath: string,
   currentVersion: string,
   bump: VersionBump,
-  git: ReturnType<typeof simpleGit>
+  git: ReturnType<typeof simpleGit>,
+  gitCwd: string,
+  pkgName: string,
 ): Promise<string> {
-
-  // If auto, detect from conventional commits
   if (bump === 'auto') {
-    const detectedBump = await detectVersionFromCommits(git, packagePath);
+    const detectedBump = await detectVersionFromCommits(git, packagePath, gitCwd, pkgName);
     return semver.inc(currentVersion, detectedBump) || currentVersion;
   }
-
-  // Manual bump
   return semver.inc(currentVersion, bump) || currentVersion;
 }
 
 async function detectVersionFromCommits(
   git: ReturnType<typeof simpleGit>,
-  packagePath: string
+  packagePath: string,
+  gitCwd: string,
+  pkgName: string,
 ): Promise<'major' | 'minor' | 'patch'> {
-
   try {
-    // Get recent commits for this package
-
-    const log = await git.log({
-      maxCount: 50,
-      file: packagePath,
-    });
-
+    const relPath = relative(resolve(gitCwd), resolve(packagePath));
+    const messages = await getCommitsSinceTag(git, pkgName, relPath);
 
     let hasMinor = false;
     let hasBreaking = false;
 
-    for (const commit of log.all) {
-      const message = commit.message.toLowerCase();
-
-      // Detect conventional commits
-      if (message.includes('!:')) {
+    for (const message of messages) {
+      const msg = message.toLowerCase();
+      if (msg.includes('!:') || msg.includes('breaking change')) {
         hasBreaking = true;
-      } else if (message.startsWith('feat') || message.startsWith('feature')) {
+      } else if (msg.startsWith('feat') || msg.startsWith('feature')) {
         hasMinor = true;
       }
-      // else if fix/bugfix -> patch level (default)
     }
 
-    // If breaking change detected
-    if (hasBreaking) {
-      return 'major';
-    }
-
-    // If feature added
-    if (hasMinor) {
-      return 'minor';
-    }
-
-    // Default to patch
+    if (hasBreaking) {return 'major';}
+    if (hasMinor) {return 'minor';}
     return 'patch';
-  } catch (error) {
-    // On error, default to patch
+  } catch {
     return 'patch';
   }
 }

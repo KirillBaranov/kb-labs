@@ -29,6 +29,7 @@ export async function runReleasePipeline(options: PipelineOptions): Promise<Pipe
   const {
     cwd, repoRoot, scopeCwd, scope, config, dryRun = false,
     skipChecks = false, skipBuild = false, skipVerify = false,
+    noVerify = false,
     checks: checkConfigs, publisher, changelog: changelogGen,
     logger, onProgress,
   } = options;
@@ -192,7 +193,7 @@ export async function runReleasePipeline(options: PipelineOptions): Promise<Pipe
   let gitResult: { committed: boolean; tagged: string[]; pushed: boolean } | undefined;
   if (!dryRun && publishResult.errors.length === 0) {
     progress('verifying', 'Committing and tagging release...');
-    gitResult = await commitAndTagRelease({ cwd: scopeCwd, plan, dryRun });
+    gitResult = await commitAndTagRelease({ cwd: scopeCwd, plan, dryRun, noVerify });
   }
 
   // 10. Report
