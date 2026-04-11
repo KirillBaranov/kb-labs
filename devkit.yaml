@@ -290,10 +290,15 @@ sync:
 affected:
   # strategy: git (default) | submodules | command
   #   git        — single `git diff --name-only HEAD` from workspace root
-  #                good for plain monorepos (no submodules)
+  #                (uncommitted changes only — CI checkouts have clean tree!)
   #   submodules — walks .gitmodules, runs git diff inside each submodule
   #   command    — runs `command`, reads one file path per line from stdout
-  strategy: git
+  #
+  # We use `command` + .devkit/affected.sh so CI can override the base ref via
+  # KB_DEVKIT_BASE_REF env var (e.g. origin/main...HEAD for PRs). Locally it
+  # falls through to the same behaviour as the built-in git strategy.
+  strategy: command
+  command: .devkit/affected.sh
 
 # ──────────────────────────────────────────────────────────────────────────────
 # BUILD
@@ -344,6 +349,7 @@ tasks:
         - "go.mod"
         - "go.sum"
         - "Makefile"
+        - "internal/manifest/manifest.json"
       outputs:
         - "kb-devkit"
         - "kb-dev"
@@ -382,6 +388,13 @@ tasks:
         - "src/**"
         - "eslint.config.*"
         - ".eslintrc*"
+      outputs: []
+
+    - categories: [go-binary]
+      command: go vet ./...
+      inputs:
+        - "**/*.go"
+        - "go.mod"
       outputs: []
 
     - categories: [site]
@@ -443,6 +456,16 @@ tasks:
       deps:
         - "build"
 
+    - categories: [go-binary]
+      command: make test
+      inputs:
+        - "**/*.go"
+        - "go.mod"
+        - "go.sum"
+        - "Makefile"
+        - "internal/manifest/manifest.json"
+      outputs: []
+
   test:coverage:
     - categories: [ts-lib, ts-app]
       command: npx vitest run --passWithNoTests --coverage
@@ -463,3 +486,18 @@ tasks:
         - "go.mod"
       outputs:
         - "coverage.out"
+
+  # e2e runs network-bound integration tests (real pnpm installs, downloads,
+  # service boot). Only kb-create actually has an e2e suite today; other Go
+  # tools implement `make e2e` as a no-op so the task is uniform across
+  # go-binary packages and affected-build machinery keeps working.
+  e2e:
+    - categories: [go-binary]
+      command: make e2e
+      inputs:
+        - "**/*.go"
+        - "go.mod"
+        - "go.sum"
+        - "Makefile"
+        - "internal/manifest/manifest.json"
+      outputs: []

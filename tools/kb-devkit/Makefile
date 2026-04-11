@@ -1,4 +1,4 @@
-.PHONY: build test test-race cover vet lint snapshot clean help
+.PHONY: build test test-race e2e cover vet lint snapshot clean help
 
 BINARY   := kb-devkit
 VERSION  := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
@@ -17,6 +17,10 @@ build:
 ## test: run tests with race detector
 test:
 	go test -race -count=1 ./...
+
+## e2e: no-op (this tool has no e2e suite) — defined for devkit task uniformity
+e2e:
+	@echo "no e2e suite for $$(basename $$(pwd))"
 
 ## cover: run tests and open coverage report in browser
 cover:
