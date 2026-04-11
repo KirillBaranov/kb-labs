@@ -68,10 +68,10 @@
     "server.js"
   ],
   "kb": {
-    "manifest": "./src/manifest.ts"
+    "manifest": "./dist/manifest.js"
   },
   "scripts": {
-    "build": "rspack build",
+    "build": "rspack build && tsup",
     "clean": "rimraf dist",
     "dev": "rspack serve",
     "start": "node server.js",
@@ -82,7 +82,7 @@
     "type-check": "tsc --noEmit"
   },
   "type": "module",
-  "version": "2.8.0",
+  "version": "2.13.0",
   "publishConfig": {
     "access": "public"
   }

@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/studio-event-bus",
-  "version": "2.6.0",
+  "version": "2.13.0",
   "description": "Studio EventBus — pub/sub communication between plugin pages",
   "type": "module",
   "main": "./dist/index.js",
