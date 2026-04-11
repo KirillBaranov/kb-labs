@@ -44,7 +44,11 @@
     "monitor:logs": "./tools/kb-monitor/kb-monitor logs",
     "changeset": "changeset",
     "version": "changeset version",
-    "release": "changeset publish"
+    "release": "changeset publish",
+    "release:platform": "chmod +x ./tools/kb-devkit/kb-devkit && ./tools/kb-devkit/kb-devkit run build && node ./cli/bin/dist/bin.js marketplace:clear-cache && node ./cli/bin/dist/bin.js release run --flow platform --skip-build",
+    "release:sdk": "chmod +x ./tools/kb-devkit/kb-devkit && ./tools/kb-devkit/kb-devkit run build && node ./cli/bin/dist/bin.js marketplace:clear-cache && node ./cli/bin/dist/bin.js release run --flow sdk --skip-build",
+    "release:platform:dry": "chmod +x ./tools/kb-devkit/kb-devkit && ./tools/kb-devkit/kb-devkit run build && node ./cli/bin/dist/bin.js marketplace:clear-cache && node ./cli/bin/dist/bin.js release run --flow platform --skip-build --dry-run",
+    "release:sdk:dry": "chmod +x ./tools/kb-devkit/kb-devkit && ./tools/kb-devkit/kb-devkit run build && node ./cli/bin/dist/bin.js marketplace:clear-cache && node ./cli/bin/dist/bin.js release run --flow sdk --skip-build --dry-run"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",

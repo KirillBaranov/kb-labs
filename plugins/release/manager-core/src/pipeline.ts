@@ -34,6 +34,8 @@ export async function runReleasePipeline(options: PipelineOptions): Promise<Pipe
     logger, onProgress,
   } = options;
 
+  const flow = options.flow;
+
   const startTime = Date.now();
   const progress = (stage: ReleaseStage, msg: string) => {
     logger?.info?.(msg);
@@ -47,6 +49,7 @@ export async function runReleasePipeline(options: PipelineOptions): Promise<Pipe
     cwd: repoRoot,
     config,
     scope,
+    flow,                                     // already includes defaultFlow fallback
     bumpOverride: config.bump as VersionBump | undefined,
   });
 
@@ -80,13 +83,31 @@ export async function runReleasePipeline(options: PipelineOptions): Promise<Pipe
     const failed = checkResults.filter(r => !r.ok && r.hint !== 'optional');
     if (failed.length > 0) {
       await restoreSnapshot(repoRoot);
+
+      // Build rich per-check error messages for both human and agent consumption
+      const errorLines = failed.flatMap(f => {
+        const lines: string[] = [`check "${f.id}" failed`];
+        if (f.details?.packagePath) lines.push(`  package: ${f.details.packagePath}`);
+        if (f.details?.error) lines.push(`  reason: ${f.details.error}`);
+        if (f.details?.stderr?.trim()) lines.push(`  stderr: ${f.details.stderr.trim().split('\n').slice(0, 5).join('\n          ')}`);
+        if (f.details?.stdout?.trim() && !f.details?.stderr?.trim()) lines.push(`  output: ${f.details.stdout.trim().split('\n').slice(0, 5).join('\n          ')}`);
+        if (f.packages?.filter(p => !p.ok).length) {
+          const failedPkgs = f.packages.filter(p => !p.ok);
+          lines.push(`  failed in ${failedPkgs.length}/${f.packages.length} package(s):`);
+          for (const pkg of failedPkgs.slice(0, 10)) {
+            lines.push(`    - ${pkg.path}${pkg.details?.error ? `: ${pkg.details.error}` : ''}`);
+          }
+        }
+        return lines;
+      });
+
       return {
         success: false,
         plan,
         report: buildReport('checking', plan, repoRoot, dryRun, startTime, {
           ok: false,
           checks: Object.fromEntries(checkResults.map(r => [r.id, r])),
-          errors: [`Pre-release checks failed: ${failed.map(f => f.id).join(', ')}`],
+          errors: errorLines,
           timingMs: Date.now() - startTime,
         }),
       };

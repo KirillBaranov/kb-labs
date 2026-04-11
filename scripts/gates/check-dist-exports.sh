@@ -21,10 +21,14 @@ fi
 #    pointing to a path that ends at a directory name (no .js/.ts/.json/.mjs/.cjs extension)
 #    We allow: ./foo.js  ./foo/index.js  @scope/package
 #    We disallow: ./foo  ../bar  ../../baz (no extension, not a bare specifier)
-BAD=$(grep -rEo "(from|import|require)\(['\"](\./|\.\./)([^'\"]+)['\"]" dist/ \
+#    We skip: comment lines (// or *) and JSDoc type annotations ({import(...)})
+BAD=$(grep -rE "(from|import|require)\(['\"](\./|\.\./)([^'\"]+)['\"]" dist/ \
   --include="*.js" --include="*.mjs" --include="*.cjs" 2>/dev/null \
   | grep -Ev "\.(js|ts|mjs|cjs|json|css|svg|png|wasm)(['\"]|\?)" \
   | grep -Ev "from ['\"][^./]" \
+  | grep -Ev "^\s*(//|\*)" \
+  | grep -Ev "\{import\(" \
+  | grep -Ev ":[[:space:]]*(//|\*)" \
   || true)
 
 if [[ -n "$BAD" ]]; then

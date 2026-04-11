@@ -31,12 +31,32 @@ export interface ReleasePlan {
   rollbackEnabled: boolean;
 }
 
+export interface CheckResultDetails {
+  /** Which package path this failure came from (for perPackage checks). */
+  packagePath?: string;
+  /** Full stdout from the check command. */
+  stdout?: string;
+  /** Full stderr from the check command. */
+  stderr?: string;
+  /** Exit code of the check command. */
+  exitCode?: number;
+  /** Short human-readable error summary. */
+  error?: string;
+}
+
 export interface CheckResult {
   id: CheckId;
   ok: boolean;
-  details?: unknown;
+  /** Structured failure details — present when ok=false. */
+  details?: CheckResultDetails;
   hint?: string;
   timingMs?: number;
+  /** Per-package breakdown for perPackage checks. */
+  packages?: Array<{
+    path: string;
+    ok: boolean;
+    details?: CheckResultDetails;
+  }>;
 }
 
 // CheckId is now dynamic - any string is allowed
@@ -96,6 +116,15 @@ export interface ReleaseReport {
   result: ReleaseResult;
 }
 
+export interface FlowConfig {
+  /** Completely replaces global packages config — no array merging with global exclude. */
+  packages?: PackagesFilter;
+  /** Replaces global versioningStrategy. */
+  versioningStrategy?: 'lockstep' | 'independent' | 'adaptive';
+  /** If set, replaces global checks for this flow. */
+  checks?: CustomCheckConfig[];
+}
+
 export interface PackagesFilter {
   /** Glob dirs to scan, e.g. ['packages/*', 'apps/*'].
    *  Defaults to full tree scan when omitted. */
@@ -129,7 +158,11 @@ export interface ReleaseConfig {
     packages?: PackagesFilter;
     /** If set, replaces global `checks` for this scope. */
     checks?: CustomCheckConfig[];
+    /** If set, overrides global versioningStrategy for this scope. */
+    versioningStrategy?: 'lockstep' | 'independent' | 'adaptive';
   }>;
+  /** Named release configuration profiles — completely replace (not merge) global packages/versioning/checks. */
+  flows?: Record<string, FlowConfig>;
   rollback?: {
     enabled?: boolean;
     maxHistory?: number;
@@ -145,6 +178,13 @@ export interface ReleaseConfig {
     excludeTypes?: string[];
     ignoreAuthors?: string[];
     scopeMap?: Record<string, string>;
+    /** Group commits by scope into named sections for the changelog template */
+    groups?: Array<{
+      title: string;
+      emoji?: string;
+      /** Scope values that belong to this group. Supports prefix matching (e.g. "adapters" matches "adapters-redis") */
+      scopes: string[];
+    }>;
     collapseMerges?: boolean;
     collapseReverts?: boolean;
     preferMergeSummary?: boolean;
@@ -229,6 +269,8 @@ export interface PipelineOptions {
   scopeCwd: string;
   /** Original scope name for display/reporting only */
   scope?: string;
+  /** Named flow — selects a release config profile. Completely replaces global packages/versioning/checks. */
+  flow?: string;
   config: ReleaseConfig;
   dryRun?: boolean;
   skipChecks?: boolean;

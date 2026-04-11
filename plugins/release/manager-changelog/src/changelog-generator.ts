@@ -49,6 +49,7 @@ export interface GenerateChangelogOptions {
     collapseMerges?: boolean;
     collapseReverts?: boolean;
     preferMergeSummary?: boolean;
+    groups?: Array<{ title: string; emoji?: string; scopes: string[] }>;
   };
   /** Git configuration */
   git?: {
@@ -265,7 +266,7 @@ export async function generateChangelog(
     };
 
     onProgress?.('Enhancing lockstep changelog with template...');
-    const templateData = packageToTemplateData(mergedRelease, locale, changelogConfig?.metadata);
+    const templateData = packageToTemplateData(mergedRelease, locale, changelogConfig?.metadata, changelogConfig?.groups);
     const result = template.render(templateData, platform);
     const rendered = typeof result === 'string' ? result : await result;
 
@@ -293,7 +294,7 @@ export async function generateChangelog(
 
       onProgress?.(`Formatting changelog for ${pkg.name} (${i + 1}/${packageReleases.length})...`);
 
-      const templateData = packageToTemplateData(pkg, locale, changelogConfig?.metadata);
+      const templateData = packageToTemplateData(pkg, locale, changelogConfig?.metadata, changelogConfig?.groups);
       const result = template.render(templateData, platform);
       const formatted = typeof result === 'string' ? result : await result;
 

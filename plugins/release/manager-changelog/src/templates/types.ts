@@ -6,6 +6,15 @@ import type { PackageRelease, Change, CommitType, BreakingChange, VersionBump } 
 import type { ILLM, ILogger, IAnalytics } from '@kb-labs/sdk';
 
 /**
+ * Changelog group definition — maps scopes to a named section
+ */
+export interface ChangelogGroup {
+  title: string;
+  emoji?: string;
+  scopes: string[];
+}
+
+/**
  * Template data structure passed to render function
  */
 export interface TemplateData {
@@ -21,6 +30,8 @@ export interface TemplateData {
   changes: Partial<Record<CommitType, Change[]>>;
   locale: 'en' | 'ru';
   metadata?: Record<string, unknown>; // Custom user metadata from config
+  /** Groups config from changelog.groups — if present, template should render by groups instead of by type */
+  groups?: ChangelogGroup[];
 }
 
 /**
@@ -76,7 +87,8 @@ export function groupChangesByType(changes: Change[]): Partial<Record<CommitType
 export function packageToTemplateData(
   pkg: PackageRelease,
   locale: 'en' | 'ru' = 'en',
-  metadata?: Record<string, unknown>
+  metadata?: Record<string, unknown>,
+  groups?: ChangelogGroup[]
 ): TemplateData {
   return {
     package: {
@@ -91,5 +103,6 @@ export function packageToTemplateData(
     changes: groupChangesByType(pkg.changes),
     locale,
     metadata,
+    groups,
   };
 }

@@ -17,6 +17,7 @@ import { findRepoRoot, scopeToDir } from '../../shared/utils';
 
 interface PlanFlags {
   scope?: string;
+  flow?: string;
   bump?: 'patch' | 'minor' | 'major' | 'auto';
   strict?: boolean;
   json?: boolean;
@@ -67,6 +68,7 @@ export default defineCommand({
         cwd: repoRoot,
         config,
         scope: flags.scope,
+        flow: flags.flow,
         bumpOverride: flags.bump as VersionBump | undefined,
       });
 

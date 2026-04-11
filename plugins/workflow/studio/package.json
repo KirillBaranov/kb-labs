@@ -17,13 +17,14 @@
     "vitest": "^3"
   },
   "engines": {
-    "node": "\u003e=20.0.0",
-    "pnpm": "\u003e=9.0.0"
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
   },
   "files": [
     "dist"
   ],
   "name": "@kb-labs/workflow-studio",
+  "private": true,
   "peerDependencies": {
     "@ant-design/icons": "^5.4.0",
     "@tanstack/react-query": "^5.0.0",

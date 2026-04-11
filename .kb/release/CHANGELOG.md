@@ -1,19 +1,152 @@
-## [0.7.1] - 2026-04-11
+## [2.6.0] - 2026-04-11
 
-> **@kb-labs/release-manager-core** 0.7.0 → 0.7.1 (manual)
+**144 packages** bumped to v2.6.0
 
-## [0.7.0] - 2026-04-11
+| Package | Previous | Bump |
+|---------|----------|------|
+| `@kb-labs/adapters-analytics-duckdb` | 0.8.0 | minor |
+| `@kb-labs/adapters-analytics-file` | 0.8.0 | minor |
+| `@kb-labs/adapters-environment-docker` | 0.8.0 | minor |
+| `@kb-labs/adapters-eventbus-cache` | 0.8.0 | minor |
+| `@kb-labs/adapters-analytics-sqlite` | 0.8.0 | minor |
+| `@kb-labs/adapters-fs` | 0.8.0 | minor |
+| `@kb-labs/adapters-kblabs-gateway` | 0.1.0 | minor |
+| `@kb-labs/adapters-log-ringbuffer` | 0.8.0 | minor |
+| `@kb-labs/adapters-openai` | 0.8.0 | minor |
+| `@kb-labs/adapters-log-sqlite` | 0.8.0 | minor |
+| `@kb-labs/adapters-mongodb` | 0.8.0 | minor |
+| `@kb-labs/adapters-pino` | 0.8.0 | minor |
+| `@kb-labs/adapters-qdrant` | 0.8.0 | minor |
+| `@kb-labs/adapters-pino-http` | 0.8.0 | minor |
+| `@kb-labs/adapters-snapshot-localfs` | 0.8.0 | minor |
+| `@kb-labs/adapters-redis` | 0.8.0 | minor |
+| `@kb-labs/adapters-transport` | 0.8.0 | minor |
+| `@kb-labs/adapters-sqlite` | 0.8.0 | minor |
+| `@kb-labs/adapters-workspace-localfs` | 0.8.0 | minor |
+| `@kb-labs/adapters-vibeproxy` | 0.8.0 | minor |
+| `@kb-labs/core-bundle` | 1.9.0 | minor |
+| `@kb-labs/adapters-workspace-worktree` | 0.8.0 | minor |
+| `@kb-labs/core-contracts` | 1.9.0 | minor |
+| `@kb-labs/adapters-workspace-agent` | 0.8.0 | minor |
+| `@kb-labs/core-config` | 1.9.0 | minor |
+| `@kb-labs/core-discovery` | 1.9.0 | minor |
+| `@kb-labs/core-ipc` | 1.9.0 | minor |
+| `@kb-labs/llm-router` | 1.9.0 | minor |
+| `@kb-labs/plugin-contracts` | 1.4.0 | minor |
+| `@kb-labs/plugin-execution` | 1.4.0 | minor |
+| `@kb-labs/plugin-execution-factory` | 1.4.0 | minor |
+| `@kb-labs/core-platform` | 1.9.0 | minor |
+| `@kb-labs/plugin-runtime` | 1.4.0 | minor |
+| `@kb-labs/core-policy` | 1.9.0 | minor |
+| `@kb-labs/core-registry` | 1.9.0 | minor |
+| `@kb-labs/core-resource-broker` | 1.9.0 | minor |
+| `@kb-labs/core-runtime` | 1.9.0 | minor |
+| `@kb-labs/core-state-broker` | 1.9.0 | minor |
+| `@kb-labs/core-sys` | 1.9.0 | minor |
+| `@kb-labs/core-sandbox` | 1.9.0 | minor |
+| `@kb-labs/telemetry-client` | 1.9.0 | minor |
+| `@kb-labs/core-tenant` | 1.9.0 | minor |
+| `@kb-labs/core-types` | 1.9.0 | minor |
+| `@kb-labs/core-workspace` | 1.9.0 | minor |
+| `@kb-labs/cli-commands` | 2.5.1 | minor |
+| `@kb-labs/cli-bin` | 2.5.1 | minor |
+| `@kb-labs/cli-runtime` | 2.5.0 | minor |
+| `@kb-labs/cli-contracts` | 2.5.0 | minor |
+| `@kb-labs/devkit` | 1.5.0 | minor |
+| `@kb-labs/platform-client` | 1.5.0 | minor |
+| `@kb-labs/shared-command-kit` | 1.4.0 | minor |
+| `@kb-labs/shared-testing` | 1.4.0 | minor |
+| `@kb-labs/perm-presets` | 1.4.0 | minor |
+| `@kb-labs/shared-http` | 1.4.0 | minor |
+| `@kb-labs/shared-tool-kit` | 1.4.0 | minor |
+| `@kb-labs/shared-testing-e2e` | 0.1.0 | minor |
+| `@kb-labs/shared-cli-ui` | 1.4.0 | minor |
+| `@kb-labs/studio-data-client` | 0.7.0 | minor |
+| `@kb-labs/studio-devtools` | 0.7.0 | minor |
+| `@kb-labs/studio-event-bus` | 0.7.0 | minor |
+| `@kb-labs/studio-federation` | 0.7.0 | minor |
+| `@kb-labs/studio-hooks` | 0.7.0 | minor |
+| `@kb-labs/studio-plugin-tools` | 0.7.0 | minor |
+| `@kb-labs/studio-ui-core` | 0.7.0 | minor |
+| `@kb-labs/studio-ui-kit` | 0.7.0 | minor |
+| `@kb-labs/commit-contracts` | 0.6.0 | minor |
+| `@kb-labs/commit-core` | 0.6.0 | minor |
+| `@kb-labs/agent-cli` | 0.6.0 | minor |
+| `@kb-labs/agent-contracts` | 0.6.0 | minor |
+| `@kb-labs/commit-cli` | 0.6.0 | minor |
+| `@kb-labs/agent-core` | 0.6.0 | minor |
+| `@kb-labs/agent-history` | 0.6.0 | minor |
+| `@kb-labs/agent-kernel` | 0.6.0 | minor |
+| `@kb-labs/agent-mcp` | 0.6.0 | minor |
+| `@kb-labs/agent-runtime` | 0.6.0 | minor |
+| `@kb-labs/agent-sdk` | 0.6.0 | minor |
+| `@kb-labs/agent-store` | 0.6.0 | minor |
+| `@kb-labs/agent-tools` | 0.6.0 | minor |
+| `@kb-labs/agent-tracing` | 0.6.0 | minor |
+| `@kb-labs/devlink-cli` | 1.5.0 | minor |
+| `@kb-labs/devlink-contracts` | 1.5.0 | minor |
+| `@kb-labs/devlink-core` | 1.5.0 | minor |
+| `@kb-labs/gateway-app` | 0.5.0 | minor |
+| `@kb-labs/gateway-auth` | 0.5.0 | minor |
+| `@kb-labs/gateway-contracts` | 0.5.0 | minor |
+| `@kb-labs/gateway-core` | 0.5.0 | minor |
+| `@kb-labs/gateway-runtime-server` | 0.5.0 | minor |
+| `@kb-labs/impact-contracts` | 0.5.0 | minor |
+| `@kb-labs/impact-core` | 0.5.0 | minor |
+| `@kb-labs/host-agent-app` | 0.3.0 | minor |
+| `@kb-labs/host-agent-cli` | 0.3.0 | minor |
+| `@kb-labs/host-agent-client` | 0.3.0 | minor |
+| `@kb-labs/host-agent-contracts` | 0.3.0 | minor |
+| `@kb-labs/host-agent-core` | 0.3.0 | minor |
+| `@kb-labs/host-agent-fs` | 0.3.0 | minor |
+| `@kb-labs/host-agent-transport` | 0.3.0 | minor |
+| `@kb-labs/infra-worker-contracts` | 0.5.0 | minor |
+| `@kb-labs/policy-core` | 0.5.0 | minor |
+| `@kb-labs/policy-contracts` | 0.5.0 | minor |
+| `@kb-labs/infra-worker-core` | 0.5.0 | minor |
+| `@kb-labs/mind-adapters` | 1.5.0 | minor |
+| `@kb-labs/mind-contracts` | 1.5.0 | minor |
+| `@kb-labs/mind-cli` | 1.5.0 | minor |
+| `@kb-labs/mind-core` | 1.5.0 | minor |
+| `@kb-labs/mind-embeddings` | 1.5.0 | minor |
+| `@kb-labs/mind-engine` | 1.5.0 | minor |
+| `@kb-labs/mind-indexer` | 1.5.0 | minor |
+| `@kb-labs/mind-orchestrator` | 1.5.0 | minor |
+| `@kb-labs/marketplace-api` | 0.1.4 | minor |
+| `@kb-labs/mind-types` | 1.5.0 | minor |
+| `@kb-labs/mind-vector-store` | 1.5.0 | minor |
+| `@kb-labs/marketplace-contracts` | 0.1.4 | minor |
+| `@kb-labs/marketplace-cli` | 0.1.4 | minor |
+| `@kb-labs/marketplace-core` | 0.1.4 | minor |
+| `@kb-labs/marketplace-npm` | 0.1.4 | minor |
+| `@kb-labs/quality-cli` | 0.6.0 | minor |
+| `@kb-labs/marketplace-app` | 0.1.4 | minor |
+| `@kb-labs/quality-contracts` | 0.6.0 | minor |
+| `@kb-labs/quality-core` | 0.6.0 | minor |
+| `@kb-labs/qa-cli` | 0.6.0 | minor |
+| `@kb-labs/qa-contracts` | 0.6.0 | minor |
+| `@kb-labs/qa-core` | 0.6.0 | minor |
+| `@kb-labs/release-manager-changelog` | 0.6.0 | minor |
+| `@kb-labs/release-manager-checks` | 0.6.0 | minor |
+| `@kb-labs/release-manager-contracts` | 0.6.0 | minor |
+| `@kb-labs/rest-api-app` | 1.6.0 | minor |
+| `@kb-labs/release-manager-cli` | 0.6.0 | minor |
+| `@kb-labs/release-manager-core` | 0.7.0 | minor |
+| `@kb-labs/rest-api-contracts` | 1.6.0 | minor |
+| `@kb-labs/rest-api-core` | 1.6.0 | minor |
+| `@kb-labs/review-cli` | 0.5.0 | minor |
+| `@kb-labs/review-core` | 0.5.0 | minor |
+| `@kb-labs/review-contracts` | 0.5.0 | minor |
+| `@kb-labs/review-heuristic` | 0.5.0 | minor |
+| `@kb-labs/review-llm` | 0.5.0 | minor |
+| `@kb-labs/workflow-artifacts` | 1.6.0 | minor |
+| `@kb-labs/workflow-builtins` | 1.6.0 | minor |
+| `@kb-labs/core-state-daemon` | 1.9.0 | minor |
+| `@kb-labs/workflow-contracts` | 1.6.0 | minor |
+| `@kb-labs/workflow-constants` | 1.6.0 | minor |
+| `@kb-labs/workflow-daemon` | 1.6.0 | minor |
+| `@kb-labs/workflow-cli` | 1.6.0 | minor |
+| `@kb-labs/workflow-runtime` | 1.6.0 | minor |
+| `@kb-labs/workflow-engine` | 1.6.0 | minor |
 
-> **@kb-labs/release-manager-core** 0.6.0 → 0.7.0 (minor: new features)
-
-### ✨ New Features
-
-[Mock LLM Response] Received prompt of 1325 characters.
-
-### ⚡ Performance Improvements
-
-[Mock LLM Response] Received prompt of 813 characters.
-
-### 🐛 Bug Fixes
-
-[Mock LLM Response] Received prompt of 1869 characters.
+*No functional changes.*

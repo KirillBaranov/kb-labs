@@ -11,6 +11,7 @@ import { createChangelogGenerator } from '../../shared/changelog-factory';
 
 interface ChangelogFlags {
   scope?: string;
+  flow?: string;
   from?: string;
   to?: string;
   'since-tag'?: string;
@@ -45,7 +46,7 @@ export default defineCommand({
 
       loader.update({ text: 'Discovering packages...' });
 
-      const plan = await planRelease({ cwd: repoRoot, config, scope: flags.scope });
+      const plan = await planRelease({ cwd: repoRoot, config, scope: flags.scope, flow: flags.flow });
 
       if (plan.packages.length === 0) {
         loader.fail(`No packages found matching scope: ${flags.scope || 'all'}`);
@@ -83,13 +84,29 @@ export default defineCommand({
         if (markdown && (format === 'md' || format === 'both')) {
           const changelogPath = join(outputDir, 'CHANGELOG.md');
 
-          // Read existing and prepend new content (newest first)
+          // Read existing, strip same-version block if present, then prepend new content
           let existing = '';
           try {
             existing = await readFile(changelogPath, 'utf-8');
             const footerStart = existing.indexOf('\n---\n\n*Generated automatically');
             if (footerStart !== -1) {
               existing = existing.substring(0, footerStart);
+            }
+            // Extract version from new markdown (first ## [x.y.z] line)
+            const newVersionMatch = markdown.match(/^## \[([^\]]+)\]/m);
+            if (newVersionMatch) {
+              const version = newVersionMatch[1];
+              // Find and remove the existing block for this version
+              // A block starts with ## [version] and ends before the next ## [ or EOF
+              const versionHeader = `## [${version}]`;
+              const blockStart = existing.indexOf(versionHeader);
+              if (blockStart !== -1) {
+                const nextBlockStart = existing.indexOf('\n## [', blockStart + 1);
+                const blockEnd = nextBlockStart !== -1 ? nextBlockStart : existing.length;
+                const before = existing.substring(0, blockStart).trimEnd();
+                const after = existing.substring(blockEnd).trimStart();
+                existing = before && after ? `${before}\n\n${after}` : before || after;
+              }
             }
           } catch { /* file doesn't exist yet */ }
 

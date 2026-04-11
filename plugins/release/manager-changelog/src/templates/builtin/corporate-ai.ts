@@ -1,19 +1,25 @@
 /**
  * AI-Enhanced Corporate Changelog Template
  *
- * Combines structured template format with LLM-powered descriptions:
- * - Template defines sections and hierarchy (Breaking > Features > Fixes)
- * - LLM enhances each group with human-friendly summaries
- * - Graceful degradation if LLM unavailable (falls back to basic descriptions)
+ * When `groups` are configured (via changelog.groups in kb.config.json):
+ *   - Renders sections by group (e.g. "Core & SDK", "Gateway & API", "Adapters")
+ *   - Each group gets an LLM-enhanced summary of its commits
+ *   - Commits not matching any group go to "Other"
+ *
+ * Without groups config (fallback):
+ *   - Renders sections by commit type (feat, fix, perf, revert)
+ *   - Same LLM enhancement per section
+ *
+ * Graceful degradation if LLM unavailable — falls back to basic bullet list.
  */
 
-import type { TemplateData, PlatformLike } from '../types';
+import type { TemplateData, PlatformLike, ChangelogGroup } from '../types';
 import type { Change } from '../../types';
 
 export const version = '1.0' as const;
 
 export async function render(data: TemplateData, platform?: PlatformLike): Promise<string> {
-  const { package: pkg, breaking, changes, locale } = data;
+  const { package: pkg, breaking, changes, locale, groups } = data;
   const lines: string[] = [];
 
   // Header: standard OSS format  ## [version] - YYYY-MM-DD
@@ -24,7 +30,7 @@ export async function render(data: TemplateData, platform?: PlatformLike): Promi
   lines.push(`> **${pkg.name}** ${pkg.prev} → ${pkg.next} (${reasonLabel})`);
   lines.push('');
 
-  // Breaking changes (critical section)
+  // Breaking changes always first (critical, always shown regardless of grouping)
   if (breaking.length > 0) {
     const breakingTitle = locale === 'ru' ? '⚠️ КРИТИЧЕСКИЕ ИЗМЕНЕНИЯ' : '⚠️ BREAKING CHANGES';
     lines.push(`### ${breakingTitle}`);
@@ -38,74 +44,150 @@ export async function render(data: TemplateData, platform?: PlatformLike): Promi
     lines.push('');
   }
 
-  // Features (AI-enhanced)
-  if (changes.feat && changes.feat.length > 0) {
-    const featTitle = locale === 'ru' ? '✨ Новые возможности' : '✨ New Features';
-    lines.push(`### ${featTitle}`);
-    lines.push('');
+  // Flatten all user-visible commits (feat, fix, perf, revert)
+  const allChanges: Change[] = [
+    ...(changes.feat ?? []),
+    ...(changes.fix ?? []),
+    ...(changes.perf ?? []),
+    ...(changes.revert ?? []),
+  ];
 
-    const featuresText = await enhanceGroup(platform, changes.feat, 'features', locale);
-    lines.push(featuresText);
-    lines.push('');
+  if (allChanges.length === 0) {
+    return lines.join('\n').trimEnd();
   }
 
-  // Performance improvements (AI-enhanced)
-  if (changes.perf && changes.perf.length > 0) {
-    const perfTitle = locale === 'ru' ? '⚡ Производительность' : '⚡ Performance Improvements';
-    lines.push(`### ${perfTitle}`);
-    lines.push('');
-
-    const perfText = await enhanceGroup(platform, changes.perf, 'performance', locale);
-    lines.push(perfText);
-    lines.push('');
+  if (groups && groups.length > 0) {
+    // ── Group mode: render by configured groups ──
+    const rendered = await renderByGroups(allChanges, groups, platform, locale);
+    lines.push(...rendered);
+  } else {
+    // ── Fallback: render by commit type ──
+    const rendered = await renderByType(changes, platform, locale);
+    lines.push(...rendered);
   }
-
-  // Bug fixes (AI-enhanced)
-  if (changes.fix && changes.fix.length > 0) {
-    const fixTitle = locale === 'ru' ? '🐛 Исправления' : '🐛 Bug Fixes';
-    lines.push(`### ${fixTitle}`);
-    lines.push('');
-
-    const fixesText = await enhanceGroup(platform, changes.fix, 'fixes', locale);
-    lines.push(fixesText);
-    lines.push('');
-  }
-
-  // Reverts — user-visible (something was undone)
-  if (changes.revert && changes.revert.length > 0) {
-    const revertTitle = locale === 'ru' ? '⏪ Откаты' : '⏪ Reverts';
-    lines.push(`### ${revertTitle}`);
-    lines.push('');
-
-    const revertText = await enhanceGroup(platform, changes.revert, 'reverts', locale);
-    lines.push(revertText);
-    lines.push('');
-  }
-
-  // chore / build / ci / test / style / refactor / docs intentionally omitted:
-  // they are internal changes and not relevant to package consumers.
 
   return lines.join('\n').trimEnd();
 }
 
+// ─── Group-based rendering ────────────────────────────────────────────────────
+
+async function renderByGroups(
+  allChanges: Change[],
+  groups: ChangelogGroup[],
+  platform: PlatformLike | undefined,
+  locale: 'en' | 'ru'
+): Promise<string[]> {
+  const lines: string[] = [];
+
+  // Assign each commit to the first matching group
+  const grouped = new Map<string, Change[]>();
+  const ungrouped: Change[] = [];
+
+  for (const change of allChanges) {
+    const scope = change.scope ?? '';
+    const matchedGroup = groups.find(g => scopeMatchesGroup(scope, g));
+    if (matchedGroup) {
+      const key = matchedGroup.title;
+      if (!grouped.has(key)) {grouped.set(key, []);}
+      grouped.get(key)!.push(change);
+    } else {
+      ungrouped.push(change);
+    }
+  }
+
+  // Render each group in config order (skip empty groups)
+  for (const group of groups) {
+    const commits = grouped.get(group.title);
+    if (!commits || commits.length === 0) {continue;}
+
+    const prefix = group.emoji ? `${group.emoji} ` : '';
+    lines.push(`### ${prefix}${group.title}`);
+    lines.push('');
+    const text = await enhanceGroup(platform, commits, group.title, locale);
+    lines.push(text);
+    lines.push('');
+  }
+
+  // Ungrouped commits go to "Other" section
+  if (ungrouped.length > 0) {
+    const otherTitle = locale === 'ru' ? '### 🔧 Прочее' : '### 🔧 Other';
+    lines.push(otherTitle);
+    lines.push('');
+    const text = await enhanceGroup(platform, ungrouped, 'other', locale);
+    lines.push(text);
+    lines.push('');
+  }
+
+  return lines;
+}
+
 /**
- * Enhance a group of changes with LLM
- * Falls back to basic formatting if LLM unavailable
+ * Match a commit scope to a group.
+ * "adapters" in scopes matches scope "adapters-redis" (prefix match).
+ * Exact match takes priority.
  */
+function scopeMatchesGroup(scope: string, group: ChangelogGroup): boolean {
+  if (!scope) {return false;}
+  return group.scopes.some(s => scope === s || scope.startsWith(`${s}-`) || scope.startsWith(`${s}/`));
+}
+
+// ─── Type-based rendering (fallback) ─────────────────────────────────────────
+
+async function renderByType(
+  changes: Partial<Record<string, Change[]>>,
+  platform: PlatformLike | undefined,
+  locale: 'en' | 'ru'
+): Promise<string[]> {
+  const lines: string[] = [];
+
+  if (changes.feat && changes.feat.length > 0) {
+    const title = locale === 'ru' ? '✨ Новые возможности' : '✨ New Features';
+    lines.push(`### ${title}`);
+    lines.push('');
+    lines.push(await enhanceGroup(platform, changes.feat, 'features', locale));
+    lines.push('');
+  }
+
+  if (changes.perf && changes.perf.length > 0) {
+    const title = locale === 'ru' ? '⚡ Производительность' : '⚡ Performance Improvements';
+    lines.push(`### ${title}`);
+    lines.push('');
+    lines.push(await enhanceGroup(platform, changes.perf, 'performance', locale));
+    lines.push('');
+  }
+
+  if (changes.fix && changes.fix.length > 0) {
+    const title = locale === 'ru' ? '🐛 Исправления' : '🐛 Bug Fixes';
+    lines.push(`### ${title}`);
+    lines.push('');
+    lines.push(await enhanceGroup(platform, changes.fix, 'fixes', locale));
+    lines.push('');
+  }
+
+  if (changes.revert && changes.revert.length > 0) {
+    const title = locale === 'ru' ? '⏪ Откаты' : '⏪ Reverts';
+    lines.push(`### ${title}`);
+    lines.push('');
+    lines.push(await enhanceGroup(platform, changes.revert, 'reverts', locale));
+    lines.push('');
+  }
+
+  return lines;
+}
+
+// ─── LLM enhancement ─────────────────────────────────────────────────────────
+
 async function enhanceGroup(
   platform: PlatformLike | undefined,
   commits: Change[],
-  groupType: string,
+  groupLabel: string,
   locale: 'en' | 'ru'
 ): Promise<string> {
-  // Fallback if no LLM
   if (!platform?.llm) {
-    platform?.logger?.info?.(`[corporate-ai] No LLM platform for ${groupType}, using basic format`);
     return formatBasicGroup(commits);
   }
 
   try {
-    // Prepare context for LLM
     const commitsContext = commits.map(c => ({
       scope: c.scope || 'general',
       subject: c.subject,
@@ -113,53 +195,38 @@ async function enhanceGroup(
       refs: c.refs && c.refs.length > 0 ? c.refs.map(r => `#${r.id}`).join(', ') : undefined,
     }));
 
-    const prompt = buildEnhancementPrompt(commitsContext, groupType, locale);
+    const prompt = buildEnhancementPrompt(commitsContext, groupLabel, locale);
 
-    const startTime = Date.now();
     const response = await platform.llm.complete(prompt, {
       temperature: 0.7,
       maxTokens: 500,
     });
-    const durationMs = Date.now() - startTime;
 
-    // Track LLM usage via analytics
     await platform?.analytics?.track?.('changelog.llm.enhanced', {
-      groupType,
+      groupLabel,
       locale,
       commitsCount: commits.length,
       contentLength: response.content.length,
       promptTokens: response.usage.promptTokens,
       completionTokens: response.usage.completionTokens,
       totalTokens: response.usage.promptTokens + response.usage.completionTokens,
-      durationMs,
       model: response.model,
     });
 
-    // Validate LLM output
     const enhanced = response.content.trim();
     if (enhanced.length === 0) {
-      platform?.logger?.warn?.(`[corporate-ai] LLM returned empty content for ${groupType}, using basic format`);
       return formatBasicGroup(commits);
     }
 
     return enhanced;
-
-  } catch (error) {
-    // Graceful degradation on error
-    platform?.logger?.error?.(
-      `[corporate-ai] LLM enhancement failed for ${groupType}, using basic format`,
-      error instanceof Error ? error : undefined
-    );
+  } catch {
     return formatBasicGroup(commits);
   }
 }
 
-/**
- * Build prompt for LLM to enhance a group
- */
 function buildEnhancementPrompt(
   commits: Array<{ scope: string; subject: string; body?: string; refs?: string }>,
-  groupType: string,
+  groupLabel: string,
   locale: 'en' | 'ru'
 ): string {
   const lang = locale === 'ru' ? 'Russian' : 'English';
@@ -170,10 +237,10 @@ function buildEnhancementPrompt(
 
   return `You are writing a professional changelog for a software release.
 
-Group type: ${groupType}
+Section: ${groupLabel}
 Language: ${lang}
 
-Commits in this group:
+Commits in this section:
 ${commitsText}
 
 Task: Write a clear, user-focused description for each commit as a markdown list.
@@ -190,10 +257,6 @@ Example output format:
 Write ONLY the markdown list, no explanations or meta-commentary.`;
 }
 
-/**
- * Basic formatting without LLM (fallback).
- * Includes issue/PR refs when present.
- */
 function formatBasicGroup(commits: Change[]): string {
   return commits
     .map(c => {
@@ -205,9 +268,6 @@ function formatBasicGroup(commits: Change[]): string {
     .join('\n');
 }
 
-/**
- * Render issue/PR refs as comma-separated links or plain numbers.
- */
 function formatRefs(change: Change): string {
   if (!change.refs || change.refs.length === 0) { return ''; }
 

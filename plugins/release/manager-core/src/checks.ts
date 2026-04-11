@@ -4,7 +4,7 @@
  */
 
 import { join } from 'node:path';
-import type { CustomCheckConfig, CheckResult } from './types';
+import type { CustomCheckConfig, CheckResult, CheckResultDetails } from './types';
 import { spawnCommand } from './build';
 
 export interface CheckRunnerOptions {
@@ -43,7 +43,6 @@ async function runSingleCheck(
   check: CustomCheckConfig,
   options: CheckRunnerOptions,
 ): Promise<CheckResult> {
-  // Determine which directories to run this check in
   const runIn = check.runIn ?? 'perPackage';
   let pathsToRun: string[];
 
@@ -55,36 +54,62 @@ async function runSingleCheck(
     pathsToRun = options.packagePaths.length > 0 ? options.packagePaths : [options.repoRoot];
   }
 
-  let checkOk = true;
-  let checkError: string | undefined;
-  let totalDurationMs = 0;
+  // Run perPackage checks in parallel (concurrency=8); single-path checks run sequentially.
+  const CONCURRENCY = 8;
 
-  for (const pkgPath of pathsToRun) {
-    // Resolve script paths in args relative to repo root
-    const resolvedArgs = (check.args ?? []).map(arg =>
-      arg.match(/\.(sh|js|ts|mjs|cjs)$/) ? join(options.repoRoot, arg) : arg
-    );
+  const resolvedArgs = (check.args ?? []).map(arg =>
+    arg.match(/\.(sh|js|ts|mjs|cjs)$/) ? join(options.repoRoot, arg) : arg
+  );
+  const fullCommand = [check.command, ...resolvedArgs].join(' ');
+  const timeoutMs = check.timeoutMs ?? 120_000;
 
-    const fullCommand = [check.command, ...resolvedArgs].join(' ');
-    const timeoutMs = check.timeoutMs ?? 120_000;
+  type PkgRunResult = { path: string; ok: boolean; details: CheckResultDetails; durationMs: number };
+
+  async function runForPath(pkgPath: string): Promise<PkgRunResult> {
     const result = await spawnCommand(fullCommand, pkgPath, timeoutMs);
-    totalDurationMs += result.durationMs;
-
     const ok = evaluateParser(check, result.stdout, result.stderr, result.exitCode);
-
-    if (!ok) {
-      checkOk = false;
-      checkError = result.error ?? (result.stderr || result.stdout || `exit code ${result.exitCode}`);
-      break;
-    }
+    return {
+      path: pkgPath,
+      ok,
+      durationMs: result.durationMs,
+      details: {
+        packagePath: pkgPath,
+        stdout: result.stdout || undefined,
+        stderr: result.stderr || undefined,
+        exitCode: result.exitCode,
+        error: result.error ?? (!ok ? `exit code ${result.exitCode}` : undefined),
+      },
+    };
   }
+
+  let pkgResults: PkgRunResult[];
+
+  if (runIn === 'perPackage' && pathsToRun.length > 1) {
+    // Parallel with concurrency limit
+    pkgResults = [];
+    for (let i = 0; i < pathsToRun.length; i += CONCURRENCY) {
+      const batch = pathsToRun.slice(i, i + CONCURRENCY);
+      pkgResults.push(...await Promise.all(batch.map(runForPath)));
+    }
+  } else {
+    pkgResults = [await runForPath(pathsToRun[0]!)];
+  }
+
+  const firstFailure = pkgResults.find(r => !r.ok)?.details;
+  const totalDurationMs = pkgResults.reduce((sum, r) => sum + r.durationMs, 0);
+  const perPackage: NonNullable<CheckResult['packages']> | undefined = pathsToRun.length > 1
+    ? pkgResults.map(r => ({ path: r.path, ok: r.ok, details: r.ok ? undefined : r.details }))
+    : undefined;
+
+  const allOk = !firstFailure;
 
   return {
     id: check.id,
-    ok: checkOk,
-    details: checkError ? { error: checkError } : undefined,
+    ok: allOk,
+    details: firstFailure,
     hint: check.optional ? 'optional' : undefined,
     timingMs: totalDurationMs,
+    packages: perPackage && perPackage.length > 0 ? perPackage : undefined,
   };
 }
 
