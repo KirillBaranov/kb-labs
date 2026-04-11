@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0",
+  "generator": "kb-labs-mind@0.1.0",
+  "project": "sample-project",
+  "products": [
+    {
+      "id": "sample-project",
+      "name": "sample-project",
+      "description": "Sample project fixture for testing Mind indexing functionality",
+      "maintainers": [
+        "unknown"
+      ],
+      "docs": []
+    }
+  ],
+  "generatedAt": "2026-04-11T07:44:35.747Z"
+}
