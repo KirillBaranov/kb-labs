@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/core-sandbox",
-  "version": "2.12.0",
+  "version": "2.13.0",
   "description": "Universal sandbox isolation for CLI and REST API",
   "type": "module",
   "main": "./dist/index.js",

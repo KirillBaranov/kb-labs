@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/mind-cli",
-  "version": "2.12.0",
+  "version": "2.13.0",
   "type": "module",
   "description": "CLI commands for KB Labs Mind",
   "main": "./dist/index.js",

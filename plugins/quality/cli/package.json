@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/quality-cli",
-  "version": "2.12.0",
+  "version": "2.13.0",
   "type": "module",
   "description": "Quality Plugin CLI commands for monorepo analysis, health checks, and automated fixes.",
   "main": "./dist/index.js",
