@@ -197,7 +197,14 @@ export async function runReleasePipeline(options: PipelineOptions): Promise<Pipe
     await writeFile(changelogPath, changelogMd, 'utf-8');
   }
 
-  // 8. Publish
+  // 8. Git commit + tag (before publish so tree is clean for pnpm publish git-checks)
+  let gitResult: { committed: boolean; tagged: string[]; pushed: boolean } | undefined;
+  if (!dryRun) {
+    progress('verifying', 'Committing and tagging release...');
+    gitResult = await commitAndTagRelease({ cwd: scopeCwd, plan, dryRun, noVerify });
+  }
+
+  // 9. Publish
   progress('publishing', dryRun ? 'Simulating publish (dry-run)...' : 'Publishing packages...');
   const packagesToPublish = plan.packages.map(pkg => ({
     name: pkg.name,
@@ -210,20 +217,13 @@ export async function runReleasePipeline(options: PipelineOptions): Promise<Pipe
     access: 'public',
   });
 
-  // 9. Git commit + tag
-  let gitResult: { committed: boolean; tagged: string[]; pushed: boolean } | undefined;
-  if (!dryRun && publishResult.errors.length === 0) {
-    progress('verifying', 'Committing and tagging release...');
-    gitResult = await commitAndTagRelease({ cwd: scopeCwd, plan, dryRun, noVerify });
-  }
-
   // 10. Report
   const report = buildReport('verifying', plan, repoRoot, dryRun, startTime, {
-    ok: publishResult.errors.length === 0,
+    ok: publishResult.errors.length === 0 && (!gitResult || gitResult.committed),
     published: publishResult.published,
     skipped: publishResult.skipped,
     changelog: changelogMd || undefined,
-    git: gitResult ?? undefined,
+    git: gitResult,
     errors: publishResult.errors.length > 0 ? publishResult.errors : undefined,
     timingMs: Date.now() - startTime,
   });

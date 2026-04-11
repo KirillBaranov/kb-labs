@@ -74,6 +74,12 @@ function publishSinglePackage(options: {
   return new Promise((resolve, reject) => {
     const args = ['publish'];
 
+    // pnpm checks git cleanliness before publish, but our pipeline already bumps versions
+    // (making the tree dirty) before calling publish — disable this check.
+    if (packageManager === 'pnpm') {
+      args.push('--no-git-checks');
+    }
+
     if (dryRun) {
       args.push('--dry-run');
     }
