@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/commit-cli",
-  "version": "0.6.0",
+  "version": "2.6.0",
   "type": "module",
   "description": "CLI commands and manifest for KB Labs Commit plugin - AI-powered commit generation.",
   "main": "./dist/index.js",
