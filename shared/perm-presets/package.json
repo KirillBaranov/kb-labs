@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/perm-presets",
-  "version": "1.4.0",
+  "version": "2.6.0",
   "description": "Composable permission presets for KB Labs plugins",
   "type": "module",
   "main": "./dist/index.js",
@@ -9,8 +9,7 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": "./dist/index.js"
     }
   },
   "files": [
