@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/quality-contracts",
-  "version": "0.6.0",
+  "version": "2.6.0",
   "type": "module",
   "description": "Type-safe contracts for Quality Plugin. Types, schemas, and constants for monorepo analysis and quality checks.",
   "main": "./dist/index.js",
@@ -13,10 +13,6 @@
     "./contract": {
       "import": "./dist/contract.js",
       "types": "./dist/contract.d.ts"
-    },
-    "./schema": {
-      "import": "./dist/schema.js",
-      "types": "./dist/schema.d.ts"
     },
     "./dist/*": "./dist/*"
   },
