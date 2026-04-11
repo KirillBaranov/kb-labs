@@ -15,6 +15,7 @@ import (
 	"github.com/kb-labs/create/internal/logger"
 	"github.com/kb-labs/create/internal/manifest"
 	"github.com/kb-labs/create/internal/pm"
+	"github.com/kb-labs/create/internal/userstate"
 )
 
 var updateCmd = &cobra.Command{
@@ -146,7 +147,17 @@ func confirmDestructive(prompt string) bool {
 	return line == "y" || line == "yes"
 }
 
-// resolvePlatformDir returns the platform dir from --platform flag or config in cwd.
+// resolvePlatformDir returns the platform dir, trying in order:
+//  1. --platform flag on this command
+//  2. --platform persistent flag on the root command
+//  3. .kb/kb.config.json in the current working directory
+//  4. user state file (last successful install)
+//
+// (4) makes `kb-create status` (and friends) work right after install
+// without requiring the user to remember where the platform was placed.
+// Stale state (dir no longer exists) is ignored — we fall through to the
+// "not specified" error so the user gets a clear message rather than a
+// confusing "config not found" further down the stack.
 func resolvePlatformDir(cmd *cobra.Command) (string, error) {
 	if p, _ := cmd.Flags().GetString("platform"); p != "" {
 		return p, nil
@@ -156,9 +167,14 @@ func resolvePlatformDir(cmd *cobra.Command) (string, error) {
 	}
 	// Try reading config from current directory.
 	cwd, _ := os.Getwd()
-	cfg, err := config.Read(cwd)
-	if err == nil {
+	if cfg, err := config.Read(cwd); err == nil {
 		return cfg.Platform, nil
+	}
+	// Fall back to the last known install.
+	if st, err := userstate.Read(); err == nil && st != nil && st.LastPlatformDir != "" {
+		if _, statErr := os.Stat(st.LastPlatformDir); statErr == nil {
+			return st.LastPlatformDir, nil
+		}
 	}
 	return "", fmt.Errorf("platform directory not specified — use --platform or run from the platform directory")
 }

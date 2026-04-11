@@ -10,6 +10,7 @@ import (
 	"github.com/kb-labs/create/internal/claude"
 	"github.com/kb-labs/create/internal/config"
 	"github.com/kb-labs/create/internal/platform"
+	"github.com/kb-labs/create/internal/userstate"
 )
 
 var flagUninstallYes bool
@@ -96,6 +97,12 @@ func runUninstall(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("remove platform dir: %w", err)
 	}
 	out.OK(fmt.Sprintf("Removed %s", platformDir))
+
+	// Clear the "last known install" pointer so subsequent kb-create
+	// commands don't auto-discover a platform that no longer exists.
+	if err := userstate.Clear(); err != nil {
+		out.Warn(fmt.Sprintf("clear user state: %v", err))
+	}
 
 	fmt.Println()
 	out.OK("Uninstall complete")

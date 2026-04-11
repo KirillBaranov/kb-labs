@@ -21,6 +21,7 @@ import (
 	"github.com/kb-labs/create/internal/pm"
 	"github.com/kb-labs/create/internal/scan"
 	"github.com/kb-labs/create/internal/types"
+	"github.com/kb-labs/create/internal/userstate"
 )
 
 // Selection holds what the user chose to install.
@@ -45,6 +46,17 @@ type Result struct {
 	ProjectCWD  string
 	ConfigPath  string
 	Duration    time.Duration
+
+	// InstalledBinaries lists Go binaries (e.g. "kb-dev") that were
+	// successfully installed into the platform bin dir. Consumers use this
+	// to decide which onboarding commands to suggest — an empty list means
+	// the service manager is not available, so "kb-dev start" must not be
+	// printed as a next step.
+	InstalledBinaries []string
+	// HasServices is true if the manifest declared at least one runnable
+	// service. Together with InstalledBinaries this is enough to decide
+	// whether "start services" makes sense as a next step.
+	HasServices bool
 }
 
 // UpdateDiff describes changes between the installed manifest and the current one.
@@ -110,14 +122,17 @@ func (ins *Installer) Install(sel *Selection, m *manifest.Manifest) (*Result, er
 	}
 
 	// Step 2: Go binaries from GitHub Releases.
+	var installedBinaries []string
 	if len(m.Binaries) > 0 {
 		step++
 		ins.step(step, totalSteps, fmt.Sprintf("Installing %d binaries", len(m.Binaries)))
-		if err := ins.installBinaries(sel.PlatformDir, m.Binaries); err != nil {
+		var binErr error
+		installedBinaries, binErr = ins.installBinaries(sel.PlatformDir, m.Binaries)
+		if binErr != nil {
 			// Non-fatal: log warning but continue. Services can be installed later.
-			ins.Log.Printf("  [WARN] binary install failed: %v", err)
+			ins.Log.Printf("  [WARN] binary install failed: %v", binErr)
 			if ins.OnLine != nil {
-				ins.OnLine(fmt.Sprintf("WARN: binary install failed: %v (services can be started manually)", err))
+				ins.OnLine(fmt.Sprintf("WARN: binary install failed: %v (services can be started manually)", binErr))
 			}
 		}
 	}
@@ -145,6 +160,16 @@ func (ins *Installer) Install(sel *Selection, m *manifest.Manifest) (*Result, er
 	// Symlink kb CLI into ~/.local/bin/ for PATH availability.
 	ins.symlinkCLI(sel.PlatformDir)
 
+	// Create the project .kb/ directory. The installer owns this so that
+	// all callers (CLI, tests) get a consistent project layout regardless
+	// of how they invoke Install. The scaffold step (kb.config.jsonc) is
+	// written by cmd/create.go on top of this foundation.
+	if sel.ProjectCWD != "" {
+		if err := os.MkdirAll(filepath.Join(sel.ProjectCWD, ".kb"), 0o750); err != nil {
+			return nil, fmt.Errorf("create project .kb dir: %w", err)
+		}
+	}
+
 	step++
 	ins.step(step, totalSteps, "Writing config")
 	cfg := config.NewConfig(sel.PlatformDir, sel.ProjectCWD, ins.PM.Name(), m, sel.Telemetry)
@@ -157,11 +182,26 @@ func (ins *Installer) Install(sel *Selection, m *manifest.Manifest) (*Result, er
 		return nil, fmt.Errorf("config: %w", err)
 	}
 
+	// Persist "last known install" so subsequent kb-create commands
+	// (status/doctor/update/uninstall) can auto-discover the platform
+	// without requiring --platform every time. Non-fatal: a failure here
+	// just means the user has to pass --platform manually.
+	if err := userstate.Write(&userstate.State{
+		LastPlatformDir: sel.PlatformDir,
+		LastProjectDir:  sel.ProjectCWD,
+	}); err != nil {
+		ins.Log.Printf("  [WARN] write user state: %v", err)
+	}
+
+	hasServices := scanErr == nil && len(scanResult.Services) > 0
+
 	return &Result{
-		PlatformDir: sel.PlatformDir,
-		ProjectCWD:  sel.ProjectCWD,
-		ConfigPath:  config.ConfigPath(sel.PlatformDir),
-		Duration:    time.Since(start),
+		PlatformDir:       sel.PlatformDir,
+		ProjectCWD:        sel.ProjectCWD,
+		ConfigPath:        config.ConfigPath(sel.PlatformDir),
+		Duration:          time.Since(start),
+		InstalledBinaries: installedBinaries,
+		HasServices:       hasServices,
 	}, nil
 }
 
@@ -273,9 +313,13 @@ func (ins *Installer) symlinkCLI(platformDir string) {
 }
 
 // installBinaries downloads Go binaries from GitHub Releases into <platformDir>/bin/
-// and symlinks them into ~/.local/bin/ for PATH availability.
-func (ins *Installer) installBinaries(platformDir string, bins []manifest.Binary) error {
+// and symlinks them into ~/.local/bin/ for PATH availability. The returned
+// slice contains the names of binaries that were successfully installed
+// AND also made it into the user bin dir — so callers can safely use it to
+// decide which follow-up commands (e.g. "kb-dev start") to suggest.
+func (ins *Installer) installBinaries(platformDir string, bins []manifest.Binary) ([]string, error) {
 	binDir := filepath.Join(platformDir, "bin")
+	installed := make([]string, 0, len(bins))
 
 	for _, b := range bins {
 		userBinDir, err := platform.UserBinDir()
@@ -289,7 +333,7 @@ func (ins *Installer) installBinaries(platformDir string, bins []manifest.Binary
 			ins.Log.Printf("  %s: local %s", b.Name, b.LocalPath)
 			copyRes, copyErr := platform.CopyBinary(b.LocalPath, binDir, b.Name)
 			if copyErr != nil {
-				return fmt.Errorf("binary %s (local): %w", b.Name, copyErr)
+				return installed, fmt.Errorf("binary %s (local): %w", b.Name, copyErr)
 			}
 			ins.Log.Printf("  %s → %s", b.LocalPath, copyRes.Path)
 			copyRes2, copyErr2 := platform.CopyBinary(copyRes.Path, userBinDir, b.Name)
@@ -297,6 +341,7 @@ func (ins *Installer) installBinaries(platformDir string, bins []manifest.Binary
 				ins.Log.Printf("  [WARN] install %s → %s: %v", b.Name, userBinDir, copyErr2)
 			} else {
 				ins.Log.Printf("  %s → %s", copyRes.Path, copyRes2.Path)
+				installed = append(installed, b.Name)
 			}
 			continue
 		}
@@ -320,7 +365,7 @@ func (ins *Installer) installBinaries(platformDir string, bins []manifest.Binary
 		<-done
 
 		if dlErr != nil {
-			return fmt.Errorf("binary %s: %w", b.Name, dlErr)
+			return installed, fmt.Errorf("binary %s: %w", b.Name, dlErr)
 		}
 
 		copyRes, copyErr := platform.CopyBinary(result.Path, userBinDir, b.Name)
@@ -332,8 +377,9 @@ func (ins *Installer) installBinaries(platformDir string, bins []manifest.Binary
 		if copyRes.Replaced {
 			ins.Log.Printf("  [WARN] replaced existing %s (was pointing at %s)", b.Name, copyRes.PreviousTarget)
 		}
+		installed = append(installed, b.Name)
 	}
-	return nil
+	return installed, nil
 }
 
 // installGroup installs pkgs into dir, draining progress lines to the log
