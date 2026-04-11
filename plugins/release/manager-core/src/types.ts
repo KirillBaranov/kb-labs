@@ -151,6 +151,11 @@ export interface ReleaseConfig {
     /** Package manager to use for publishing. Default: 'pnpm'. */
     packageManager?: 'pnpm' | 'npm' | 'yarn';
   };
+  /** Workspace configuration — package manager used for publishing. */
+  workspace?: {
+    type?: 'pnpm' | 'npm' | 'yarn';
+    root?: string;
+  };
   /** Filter which packages are discovered and released. */
   packages?: PackagesFilter;
   /** Per-scope overrides — packages filter merged with global, checks replace global entirely. */

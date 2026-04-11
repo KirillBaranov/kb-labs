@@ -39,6 +39,7 @@ export default defineHandler({
       async publish(packages: PublishablePackage[], opts: { dryRun?: boolean }): Promise<PublishResult> {
         return publishPackagesProgrammatic({
           packages,
+          packageManager: config.workspace?.type ?? config.publish?.packageManager ?? 'pnpm',
           dryRun: opts.dryRun,
           otp,
         });
