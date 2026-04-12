@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   pageExtensions: ['ts', 'tsx', 'mdx'],
   transpilePackages: ['@kb-labs/web-i18n', '@kb-labs/web-data-source'],
-  outputFileTracingRoot: path.join(currentDir, '../../../'),
+  outputFileTracingRoot: process.env.NEXT_TRACING_ROOT ?? path.join(currentDir, '../../'),
   // Ensure middleware is included in standalone output
   outputFileTracingIncludes: {
     '/': ['./middleware.ts'],

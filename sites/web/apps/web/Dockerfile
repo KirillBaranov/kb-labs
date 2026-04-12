@@ -25,6 +25,7 @@ COPY --from=deps /app/sites/web/packages/web-data-source/node_modules ./sites/we
 COPY .kb/bundle/web-site/full/ .
 
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_TRACING_ROOT=/app
 RUN corepack enable pnpm && pnpm --filter @kb-labs/web-site run build
 
 # ── runner ──────────────────────────────────────────────────────────────────
@@ -46,4 +47,4 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-CMD ["node", "apps/web/server.js"]
+CMD ["node", "sites/web/apps/web/server.js"]
