@@ -364,5 +364,17 @@ export function createGovernedPlatformServices(
 
     // Logs: pass through (system-level, restricted by runtime context)
     logs: raw.logs,
+
+    // Config: pass through (governed by platform, not plugin permissions)
+    config: raw.config,
+
+    // Invoke: pass through (cross-plugin invocation)
+    invoke: raw.invoke,
+
+    // SQL database: pass through
+    sqlDatabase: raw.sqlDatabase,
+
+    // Document database: pass through
+    documentDatabase: raw.documentDatabase,
   };
 }

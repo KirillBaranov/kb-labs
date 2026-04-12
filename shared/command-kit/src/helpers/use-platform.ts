@@ -1,70 +1,37 @@
 /**
  * @module @kb-labs/shared-command-kit/helpers/use-platform
- * Global platform singleton access helper
+ * Platform access hook with execution-scoped context.
  *
- * Provides clean access to platform services without context drilling.
- * Similar to React hooks pattern, but for KB Labs platform.
+ * Uses AsyncLocalStorage to return the correct platform for the current
+ * handler execution (governed, with correct permissions and proxy adapters).
+ * Falls back to global singleton for code running outside handler context.
  *
  * @example
  * ```typescript
  * import { usePlatform } from '@kb-labs/shared-command-kit';
  *
- * // In any command handler
+ * // In any command handler — automatically gets the right platform
  * async handler(ctx, argv, flags) {
  *   const platform = usePlatform();
- *
- *   if (platform.llm) {
- *     const result = await platform.llm.complete('prompt');
- *   }
- *
- *   await platform.logger.info('Task completed');
+ *   const result = await platform.llm.complete('prompt');
  * }
  * ```
  */
 
+import { platformContext } from '@kb-labs/plugin-contracts';
 import { platform as globalPlatform } from '@kb-labs/core-runtime';
 
 /**
- * Access global platform singleton
+ * Access platform services for the current execution context.
  *
- * Returns the initialized platform object with all registered adapters.
- * This is the single source of truth for platform services.
+ * Priority:
+ * 1. AsyncLocalStorage context (set by runInProcess) — per-execution, governed
+ * 2. Global singleton fallback (core-runtime) — for code outside handler context
  *
- * **What's available:**
- * - `platform.llm` - LLM adapter (OpenAI, Anthropic, etc.)
- * - `platform.embeddings` - Embeddings adapter
- * - `platform.vectorStore` - Vector storage (Qdrant, local, etc.)
- * - `platform.storage` - File/blob storage
- * - `platform.cache` - Caching layer
- * - `platform.analytics` - Analytics/telemetry
- * - `platform.logger` - Structured logging
- * - `platform.eventBus` - Event system
- * - `platform.workflows` - Workflow engine
- * - `platform.jobs` - Background jobs
- * - `platform.cron` - Scheduled tasks
- * - `platform.resources` - Resource management
- * - `platform.invoke` - Plugin invocation
- * - `platform.artifacts` - Build artifacts
- *
- * **Graceful degradation:**
- * Always check if adapter is available before using:
- * ```typescript
- * const platform = usePlatform();
- * if (platform.llm) {
- *   // Use LLM
- * } else {
- *   // Fallback logic
- * }
- * ```
- *
- * **Multi-tenancy:**
- * Currently returns global singleton (single-tenant).
- * Future: Will support tenant-scoped platform via AsyncLocalStorage.
- *
- * @returns Global platform singleton
+ * @returns Platform services with correct adapters for current context
  */
 export function usePlatform(): typeof globalPlatform {
-  return globalPlatform;
+  return (platformContext.getStore() as typeof globalPlatform) ?? globalPlatform;
 }
 
 /**

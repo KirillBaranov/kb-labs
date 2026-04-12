@@ -65,7 +65,8 @@ export class UnixSocketClient {
   private readonly authToken?: string;
 
   constructor(config: UnixSocketClientConfig = {}) {
-    this.socketPath = config.socketPath ?? '/tmp/kb-ipc.sock';
+    this.socketPath = config.socketPath
+      ?? (process.platform === 'win32' ? '\\\\?\\pipe\\kb-ipc' : '/tmp/kb-ipc.sock');
     this.authToken = config.authToken;
   }
 
