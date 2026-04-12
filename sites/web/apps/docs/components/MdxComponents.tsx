@@ -1,4 +1,5 @@
 import type { ComponentPropsWithoutRef } from 'react';
+import type { MDXComponents } from 'mdx/types';
 import { CodeBlock } from './CodeBlock';
 
 function slugify(text: string): string {
@@ -87,7 +88,7 @@ function Step({ title, children }: { title: string; children: React.ReactNode })
 
 type HeadingProps = ComponentPropsWithoutRef<'h2'> & { children?: React.ReactNode };
 
-export const MdxComponents = {
+export const MdxComponents: MDXComponents = {
   /* Headings with stable IDs for anchor links and ToC */
   h2: ({ children, ...props }: HeadingProps) => {
     const id = slugify(String(children));

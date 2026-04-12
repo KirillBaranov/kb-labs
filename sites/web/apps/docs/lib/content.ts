@@ -48,7 +48,7 @@ export async function getDocPage(slugParts: string[]) {
 
   const compiled = await compileMDX<Frontmatter>({
     source: content,
-    components: MdxComponents as Record<string, unknown>,
+    components: MdxComponents,
     options: {
       parseFrontmatter: false,
       mdxOptions: {
