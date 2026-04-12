@@ -17,10 +17,28 @@ function manifestToCommand(registered: RegisteredCommand): Command {
     flags: registered.manifest.flags,
     examples: registered.manifest.examples,
     async run() {
-      // This should never be called - plugin commands are executed via executePlugin() in bootstrap.ts
       throw new Error(`Command ${registered.manifest.id} should be executed via plugin-executor, not via legacy run() path.`);
     },
   };
+}
+
+/**
+ * Build canonical ID for a plugin command manifest.
+ *
+ * Format:
+ *   - 3-part: "group:subgroup:id"  (e.g., "marketplace:plugins:list")
+ *   - 2-part: "group:id"           (e.g., "marketplace:list")
+ *   - bare:   "id"                 (fallback when no group)
+ */
+function buildCanonicalId(manifest: RegisteredCommand['manifest']): string {
+  const { id, group, subgroup } = manifest;
+  if (group && subgroup) {
+    return `${group}:${subgroup}:${id}`;
+  }
+  if (group) {
+    return `${group}:${id}`;
+  }
+  return id;
 }
 
 export interface ProductGroup {
@@ -37,21 +55,24 @@ export interface CommandLookupResult {
 }
 
 class InMemoryRegistry implements CommandRegistry {
-  // Separate collections for security isolation
-  private systemCommands = new Map<string, Command>();  // System commands (in-process)
-  private pluginCommands = new Map<string, RegisteredCommand>();  // Plugin commands (subprocess)
+  // System commands (in-process): key = any registered name/alias
+  private systemCommands = new Map<string, Command>();
+  // Plugin commands: key = canonicalId only
+  private pluginByCanonical = new Map<string, RegisteredCommand>();
+  // Alias → canonicalId: covers all user-input variants that resolve to a plugin
+  private pluginAliases = new Map<string, string>();
 
-  // Legacy unified collection for backward compatibility
+  // Legacy unified collection for backward compatibility (display/get)
   private byName = new Map<string, Command | CommandGroup>();
   private groups = new Map<string, CommandGroup>();
+  // manifests: any key → RegisteredCommand (for listing/lookup; still stores multi-key for compat)
   private manifests = new Map<string, RegisteredCommand>();
   private partial = false;
 
-  register(cmd: Command): void {
-    // Store in systemCommands for type checking
-    this.systemCommands.set(cmd.name, cmd);
+  // ─── System command registration ────────────────────────────────────────
 
-    // Also keep in byName for backward compatibility
+  register(cmd: Command): void {
+    this.systemCommands.set(cmd.name, cmd);
     this.byName.set(cmd.name, cmd);
     for (const a of cmd.aliases || []) {
       this.systemCommands.set(a, cmd);
@@ -64,31 +85,25 @@ class InMemoryRegistry implements CommandRegistry {
     this.byName.set(group.name, group);
 
     for (const cmd of group.commands) {
-      // Store each command from group in systemCommands
       this.systemCommands.set(cmd.name, cmd);
-
       const fullName = `${group.name} ${cmd.name}`;
       this.systemCommands.set(fullName, cmd);
       this.byName.set(fullName, cmd);
-
       for (const alias of cmd.aliases || []) {
         this.systemCommands.set(alias, cmd);
         this.byName.set(alias, cmd);
       }
     }
 
-    // Register subgroups (e.g., marketplace → plugins, adapters)
     if (group.subgroups) {
       for (const sub of group.subgroups) {
         const subName = `${group.name} ${sub.name}`;
         this.groups.set(subName, sub);
         this.byName.set(subName, sub);
-
         for (const cmd of sub.commands) {
           const fullName = `${group.name} ${sub.name} ${cmd.name}`;
           this.systemCommands.set(fullName, cmd);
           this.byName.set(fullName, cmd);
-
           for (const alias of cmd.aliases || []) {
             this.systemCommands.set(alias, cmd);
             this.byName.set(alias, cmd);
@@ -98,18 +113,19 @@ class InMemoryRegistry implements CommandRegistry {
     }
   }
 
-  registerManifest(cmd: RegisteredCommand): void {
-    // Check for collision with system commands
-    const cmdId = cmd.manifest.id;
-    const hasCollision = this.systemCommands.has(cmdId);
+  // ─── Plugin command registration ────────────────────────────────────────
 
-    if (hasCollision) {
-      console.warn(`[registry] Plugin command "${cmdId}" collides with system command. System command takes priority.`);
-      // Mark plugin command as shadowed - it will NOT be executable
+  registerManifest(cmd: RegisteredCommand): void {
+    const canonicalId = buildCanonicalId(cmd.manifest);
+
+    // System commands ALWAYS win — check all variants of canonical
+    const collisionKey = this._findSystemCollision(cmd.manifest, canonicalId);
+    if (collisionKey) {
+      console.warn(`[registry] Plugin command "${canonicalId}" collides with system command "${collisionKey}". System command takes priority.`);
       cmd.shadowed = true;
     }
 
-    // Check aliases for collisions
+    // Check alias collisions
     const collisionAliases = new Set<string>();
     for (const alias of cmd.manifest.aliases || []) {
       if (this.systemCommands.has(alias)) {
@@ -118,75 +134,178 @@ class InMemoryRegistry implements CommandRegistry {
       }
     }
 
-    // Store in pluginCommands (even if shadowed, for manifest listing)
-    this.pluginCommands.set(cmdId, cmd);
-    this.manifests.set(cmdId, cmd);
+    // Always store in manifests for listing (even shadowed)
+    this.pluginByCanonical.set(canonicalId, cmd);
+    this.manifests.set(canonicalId, cmd);
+    this.manifests.set(cmd.manifest.id, cmd);
 
-    // Only add to byName if NO collision with system commands
-    // This ensures system commands always win in routing
-    if (!hasCollision) {
-      const commandAdapter = manifestToCommand(cmd);
+    if (cmd.shadowed) {
+      return; // Don't register aliases or byName for shadowed commands
+    }
 
-      this.byName.set(cmdId, commandAdapter);
-      this.byName.set(commandAdapter.name, commandAdapter);
+    // Register all alias variants → canonicalId
+    this._registerPluginAliases(cmd, canonicalId, collisionAliases);
 
-      // Also register with space-separated format for multi-part commands
-      // e.g., "agent:trace:stats" → "agent trace stats"
-      if (cmdId.includes(':')) {
-        const spaceSeparated = cmdId.replace(/:/g, ' ');
-        this.byName.set(spaceSeparated, commandAdapter);
+    // Register in byName for display/get
+    const commandAdapter = manifestToCommand(cmd);
+    this.byName.set(canonicalId, commandAdapter);
+
+    // Also register space-separated variants for legacy .get() calls
+    const spaceCanonical = canonicalId.replace(/:/g, ' ');
+    this.byName.set(spaceCanonical, commandAdapter);
+
+    // Synthetic subgroups for help display
+    this._registerSyntheticGroups(cmd, commandAdapter);
+  }
+
+  /**
+   * Check whether any system command already owns the canonical id or its parts.
+   * Returns the colliding key if found, null otherwise.
+   */
+  private _findSystemCollision(manifest: RegisteredCommand['manifest'], canonicalId: string): string | null {
+    // Check canonical id
+    if (this.systemCommands.has(canonicalId)) return canonicalId;
+    // Check bare id
+    if (this.systemCommands.has(manifest.id)) return manifest.id;
+    // Check space variants
+    const space = canonicalId.replace(/:/g, ' ');
+    if (this.systemCommands.has(space)) return space;
+    return null;
+  }
+
+  /**
+   * Register all lookup aliases for a plugin command.
+   *
+   * Priority (what beats what) is handled in resolveToCanonical at query time.
+   * Here we just build the mapping.
+   *
+   * Aliases registered:
+   *   - canonicalId itself        ("marketplace:plugins:list")
+   *   - bare id                   ("list")         ← low priority, may clash
+   *   - 2-part shorthand          ("marketplace:list", "marketplace list")
+   *   - manifest.aliases[]        (user-defined aliases, except collisions)
+   */
+  private _registerPluginAliases(
+    cmd: RegisteredCommand,
+    canonicalId: string,
+    collisionAliases: Set<string>,
+  ): void {
+    const { id, group, subgroup } = cmd.manifest;
+
+    const register = (key: string) => {
+      if (!this.systemCommands.has(key) && !this.systemCommands.has(key.replace(/:/g, ' '))) {
+        // Don't overwrite a more-specific canonical alias with a shorter one
+        if (!this.pluginAliases.has(key)) {
+          this.pluginAliases.set(key, canonicalId);
+          this.manifests.set(key, cmd);
+        }
       }
+    };
 
-      // Register with full group + command format for invocation
-      if (cmd.manifest.group && cmd.manifest.subgroup) {
-        // 3-part path: "marketplace plugins list"
-        const fullPath = `${cmd.manifest.group} ${cmd.manifest.subgroup} ${cmd.manifest.id}`;
-        const colonPath = `${cmd.manifest.group}:${cmd.manifest.subgroup}:${cmd.manifest.id}`;
-        this.byName.set(fullPath, commandAdapter);
-        this.byName.set(colonPath, commandAdapter);
-        this.manifests.set(fullPath, cmd);
-        this.manifests.set(colonPath, cmd);
-        this.pluginCommands.set(fullPath, cmd);
-        this.pluginCommands.set(colonPath, cmd);
+    // Canonical itself
+    this.pluginAliases.set(canonicalId, canonicalId);
+    const spaceCanonical = canonicalId.replace(/:/g, ' ');
+    this.pluginAliases.set(spaceCanonical, canonicalId);
+    this.manifests.set(spaceCanonical, cmd);
 
-        // Also register 2-part: "marketplace list" (without subgroup, for discoverability)
-        const twoPartName = `${cmd.manifest.group} ${cmd.manifest.id}`;
-        if (!this.byName.has(twoPartName)) {
-          this.byName.set(twoPartName, commandAdapter);
-        }
+    if (group && subgroup) {
+      // 3-part: also register 2-part shorthand "group:id" and "group id" as fallback aliases
+      const twoPartColon = `${group}:${id}`;
+      const twoPartSpace = `${group} ${id}`;
+      register(twoPartColon);
+      register(twoPartSpace);
+      this.manifests.set(twoPartColon, cmd);
+      this.manifests.set(twoPartSpace, cmd);
 
-        // Synthetic subgroup for help display
-        const subgroupKey = `${cmd.manifest.group} ${cmd.manifest.subgroup}`;
-        if (!this.groups.has(subgroupKey)) {
-          this.groups.set(subgroupKey, {
-            name: subgroupKey,
-            describe: cmd.manifest.subgroup,
-            commands: [],
-          });
-          this.byName.set(subgroupKey, this.groups.get(subgroupKey)!);
-        }
-        (this.groups.get(subgroupKey)! as any).commands.push(commandAdapter);
-      } else if (cmd.manifest.group) {
-        const fullName = `${cmd.manifest.group} ${cmd.manifest.id}`;
-        const colonName = `${cmd.manifest.group}:${cmd.manifest.id}`;
-        this.byName.set(fullName, commandAdapter);
-        this.byName.set(colonName, commandAdapter);
-        this.manifests.set(fullName, cmd);
-        this.manifests.set(colonName, cmd);
-        this.pluginCommands.set(fullName, cmd);
-        this.pluginCommands.set(colonName, cmd);
-      }
+      // Full group paths
+      const fullPath = `${group} ${subgroup} ${id}`;
+      this.pluginAliases.set(fullPath, canonicalId);
+      this.manifests.set(fullPath, cmd);
 
-      if (cmd.manifest.aliases) {
-        for (const alias of cmd.manifest.aliases) {
-          // Skip aliases that collide with system commands
-          if (!collisionAliases.has(alias)) {
-            this.byName.set(alias, commandAdapter);
-          }
-        }
+      // Subgroup group key for get() lookup
+      const colonPath = `${group}:${subgroup}:${id}`;
+      this.pluginAliases.set(colonPath, canonicalId);
+      this.manifests.set(colonPath, cmd);
+    } else if (group) {
+      const colonName = `${group}:${id}`;
+      const spaceName = `${group} ${id}`;
+      this.pluginAliases.set(colonName, canonicalId);
+      this.pluginAliases.set(spaceName, canonicalId);
+      this.manifests.set(colonName, cmd);
+      this.manifests.set(spaceName, cmd);
+    }
+
+    // Bare id (lowest priority — only if no collision)
+    register(id);
+
+    // User-defined manifest aliases
+    for (const alias of cmd.manifest.aliases || []) {
+      if (!collisionAliases.has(alias)) {
+        register(alias);
       }
     }
   }
+
+  /**
+   * Register synthetic subgroups for help display.
+   */
+  private _registerSyntheticGroups(cmd: RegisteredCommand, commandAdapter: Command): void {
+    const { id, group, subgroup } = cmd.manifest;
+
+    if (group && subgroup) {
+      const subgroupKey = `${group} ${subgroup}`;
+      if (!this.groups.has(subgroupKey)) {
+        this.groups.set(subgroupKey, {
+          name: subgroupKey,
+          describe: subgroup,
+          commands: [],
+        });
+        this.byName.set(subgroupKey, this.groups.get(subgroupKey)!);
+      }
+      (this.groups.get(subgroupKey)! as any).commands.push(commandAdapter);
+
+      // Also register 2-part in byName for display
+      const twoPartSpace = `${group} ${id}`;
+      if (!this.byName.has(twoPartSpace)) {
+        this.byName.set(twoPartSpace, commandAdapter);
+      }
+      const twoPartColon = `${group}:${id}`;
+      if (!this.byName.has(twoPartColon)) {
+        this.byName.set(twoPartColon, commandAdapter);
+      }
+
+      // Full space path for byName
+      const fullPath = `${group} ${subgroup} ${id}`;
+      this.byName.set(fullPath, commandAdapter);
+    } else if (group) {
+      const fullName = `${group} ${id}`;
+      const colonName = `${group}:${id}`;
+      this.byName.set(fullName, commandAdapter);
+      this.byName.set(colonName, commandAdapter);
+    }
+  }
+
+  // ─── Resolution ──────────────────────────────────────────────────────────
+
+  /**
+   * Resolve any user input to its canonical plugin ID.
+   *
+   * Returns canonicalId if found in plugin aliases, undefined otherwise.
+   */
+  private resolveToCanonical(input: string): string | undefined {
+    // Direct canonical match
+    if (this.pluginAliases.has(input)) {
+      return this.pluginAliases.get(input);
+    }
+    // Try with colon↔space conversion
+    const converted = input.includes(':') ? input.replace(/:/g, ' ') : input.replace(/ /g, ':');
+    if (this.pluginAliases.has(converted)) {
+      return this.pluginAliases.get(converted);
+    }
+    return undefined;
+  }
+
+  // ─── Public API ──────────────────────────────────────────────────────────
 
   markPartial(partial: boolean): void {
     this.partial = partial;
@@ -202,101 +321,105 @@ class InMemoryRegistry implements CommandRegistry {
 
   listManifests(): RegisteredCommand[] {
     const unique = new Set<RegisteredCommand>();
-    for (const cmd of this.manifests.values()) {
+    for (const cmd of this.pluginByCanonical.values()) {
       unique.add(cmd);
     }
     return Array.from(unique);
   }
 
   has(name: string): boolean {
-    return this.byName.has(name);
+    return this.byName.has(name) || this.pluginAliases.has(name);
   }
 
   /**
-   * Get command with type information for secure routing
+   * Get command with type information for secure routing.
    *
-   * Returns type='system' for commands from registerGroup() - execute in-process
-   * Returns type='plugin' for commands from registerManifest() - execute in subprocess
-   *
-   * This separation prevents malicious plugins from escaping the sandbox.
+   * System commands ALWAYS win — checked first before any plugin lookup.
+   * Returns type='system' for system commands (in-process execution).
+   * Returns type='plugin' for plugin commands (subprocess execution).
    */
   getWithType(nameOrPath: string | string[]): CommandLookupResult | undefined {
-    const cmd = this.get(nameOrPath);
-    if (!cmd) {
-      return undefined;
+    const normalized = typeof nameOrPath === 'string' ? nameOrPath : nameOrPath.join(' ');
+
+    // ── 1. System commands always win ──────────────────────────────────────
+    if (this.systemCommands.has(normalized)) {
+      return { cmd: this.systemCommands.get(normalized)!, type: 'system' };
+    }
+    // Try colon variant for system commands
+    const colonVariant = normalized.replace(/ /g, ':');
+    if (this.systemCommands.has(colonVariant)) {
+      return { cmd: this.systemCommands.get(colonVariant)!, type: 'system' };
+    }
+    // Check groups (always system)
+    if (this.groups.has(normalized)) {
+      return { cmd: this.groups.get(normalized)!, type: 'system' };
     }
 
-    // Groups are always system-level
+    // ── 2. Plugin lookup via canonical resolution ──────────────────────────
+    const canonicalId = this.resolveToCanonical(normalized);
+    if (canonicalId) {
+      const pluginCmd = this.pluginByCanonical.get(canonicalId);
+      if (pluginCmd && !pluginCmd.shadowed) {
+        const cmd = this.byName.get(canonicalId) ?? this.byName.get(normalized);
+        if (cmd) {
+          return { cmd, type: 'plugin' };
+        }
+      }
+    }
+
+    // ── 3. Fallback: legacy byName lookup (handles edge cases) ─────────────
+    const cmd = this.get(nameOrPath);
+    if (!cmd) {return undefined;}
+
     if ('commands' in cmd) {
       return { cmd, type: 'system' };
     }
 
-    // Check if command is in systemCommands (registered via register() or registerGroup())
-    const normalizedName = typeof nameOrPath === 'string' ? nameOrPath : nameOrPath.join(' ');
-
-    // Try direct lookup
-    if (this.systemCommands.has(normalizedName)) {
+    // Determine if it's a system or plugin command
+    if (this.systemCommands.has(normalized) || this.systemCommands.has(colonVariant)) {
       return { cmd, type: 'system' };
     }
 
-    // Try with colon-to-space conversion for system commands
-    if (normalizedName.includes(':')) {
-      const spaceVersion = normalizedName.replace(':', ' ');
-      if (this.systemCommands.has(spaceVersion)) {
-        return { cmd, type: 'system' };
-      }
-    }
-
-    // Check if it's a plugin command (has manifest)
-    const manifestCmd = this.getManifestCommand(normalizedName);
-    if (manifestCmd) {
+    // Check via manifest
+    const manifestCmd = this.getManifestCommand(normalized);
+    if (manifestCmd && !manifestCmd.shadowed) {
       return { cmd, type: 'plugin' };
     }
 
-    // Default to system if found in byName but not categorized
-    // This handles edge cases and ensures backward compatibility
     return { cmd, type: 'system' };
   }
 
   get(nameOrPath: string | string[]): Command | CommandGroup | undefined {
-    if (typeof nameOrPath === "string") {
+    if (typeof nameOrPath === 'string') {
       if (this.byName.has(nameOrPath)) {
         return this.byName.get(nameOrPath);
       }
-      if (nameOrPath.includes(":")) {
-        const parts = nameOrPath.split(":");
+      if (nameOrPath.includes(':')) {
+        const spaceKey = nameOrPath.replace(/:/g, ' ');
+        if (this.byName.has(spaceKey)) {
+          return this.byName.get(spaceKey);
+        }
+        // Try parts[0] group + rest for 2-part colon
+        const parts = nameOrPath.split(':');
         if (parts.length === 2) {
-          const exactMatch = this.byName.get(nameOrPath);
-          if (exactMatch) {
-            return exactMatch;
-          }
-
-          const spaceKey = parts.join(" ");
-          if (this.byName.has(spaceKey)) {
-            return this.byName.get(spaceKey);
+          const spaceKey2 = parts.join(' ');
+          if (this.byName.has(spaceKey2)) {
+            return this.byName.get(spaceKey2);
           }
         }
       }
     }
 
-    const key = Array.isArray(nameOrPath)
-      ? nameOrPath.join(" ")
-      : nameOrPath;
-
+    const key = Array.isArray(nameOrPath) ? nameOrPath.join(' ') : nameOrPath;
     if (this.byName.has(key)) {
       return this.byName.get(key);
     }
 
-    if (
-      Array.isArray(nameOrPath) &&
-      nameOrPath.length === 1 &&
-      nameOrPath[0]?.includes(":")
-    ) {
+    if (Array.isArray(nameOrPath) && nameOrPath.length === 1 && nameOrPath[0]?.includes(':')) {
       if (this.byName.has(nameOrPath[0])) {
         return this.byName.get(nameOrPath[0]);
       }
-
-      const [group, command] = nameOrPath[0].split(":");
+      const [group, command] = nameOrPath[0].split(':');
       const legacyKey = `${group} ${command}`;
       if (this.byName.has(legacyKey)) {
         return this.byName.get(legacyKey);
@@ -304,17 +427,15 @@ class InMemoryRegistry implements CommandRegistry {
     }
 
     if (Array.isArray(nameOrPath)) {
-      const dot = nameOrPath.join(".");
+      const dot = nameOrPath.join('.');
       if (this.byName.has(dot)) {
         return this.byName.get(dot);
       }
     }
 
-    // Try to find command in groups by prefix (e.g., ["system", "hello"] -> "system:info hello")
     if (Array.isArray(nameOrPath) && nameOrPath.length >= 2) {
       const [groupPrefix, ...cmdParts] = nameOrPath;
-      const cmdName = cmdParts.join(" ");
-
+      const cmdName = cmdParts.join(' ');
       for (const group of this.groups.values()) {
         if (group.name === groupPrefix || group.name.startsWith(groupPrefix + ':')) {
           const fullName = `${group.name} ${cmdName}`;
@@ -331,7 +452,7 @@ class InMemoryRegistry implements CommandRegistry {
   list(): Command[] {
     const commands = new Set<Command>();
     for (const value of this.byName.values()) {
-      if ("run" in value) {
+      if ('run' in value) {
         commands.add(value);
       }
     }
@@ -364,7 +485,6 @@ class InMemoryRegistry implements CommandRegistry {
 
   listProductGroups(): ProductGroup[] {
     const groups = new Map<string, ProductGroup>();
-
     for (const cmd of this.listManifests()) {
       const groupName = cmd.manifest.group;
       if (!groups.has(groupName)) {
@@ -376,7 +496,6 @@ class InMemoryRegistry implements CommandRegistry {
       }
       groups.get(groupName)!.commands.push(cmd);
     }
-
     return Array.from(groups.values());
   }
 
@@ -391,12 +510,17 @@ class InMemoryRegistry implements CommandRegistry {
       return this.manifests.get(idOrAlias);
     }
 
-    for (const cmd of this.manifests.values()) {
+    // Try canonical resolution
+    const canonicalId = this.resolveToCanonical(idOrAlias);
+    if (canonicalId) {
+      return this.pluginByCanonical.get(canonicalId);
+    }
+
+    for (const cmd of this.pluginByCanonical.values()) {
       if (cmd.manifest.aliases?.includes(idOrAlias)) {
         return cmd;
       }
-      // Support both colon and space separators (e.g., "agent:trace:stats" or "agent trace stats")
-      if (cmd.manifest.id.replace(/:/g, " ") === idOrAlias) {
+      if (cmd.manifest.id.replace(/:/g, ' ') === idOrAlias) {
         return cmd;
       }
     }
@@ -412,13 +536,14 @@ export function findCommand(nameOrPath: string | string[]) {
 }
 
 /**
- * Find command with type information for secure routing
+ * Find command with type information for secure routing.
  *
  * Use this in bootstrap.ts to determine execution path:
  * - type='system' → execute via cmd.run() in-process
  * - type='plugin' → execute via executePlugin() in plugin-executor
+ *
+ * System commands ALWAYS take priority over plugin commands.
  */
 export function findCommandWithType(nameOrPath: string | string[]): CommandLookupResult | undefined {
   return registry.getWithType(nameOrPath);
 }
-

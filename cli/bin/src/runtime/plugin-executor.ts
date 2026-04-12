@@ -58,6 +58,7 @@ export async function executePlugin(
       return c.group === parts[0] && c.subgroup === parts[1] && c.id === parts[2];
     }
     if (c.group && parts.length === 2) {
+      // Match group:id — works with or without subgroup (2-part alias for subgroup commands)
       return c.group === parts[0] && c.id === parts[1];
     }
     return c.id === bareId;
