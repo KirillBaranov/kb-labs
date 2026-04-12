@@ -488,6 +488,30 @@ export function createTestContext<TConfig = unknown>(
       publish: vi.fn(async () => {}),
       subscribe: vi.fn(() => () => {}),
     },
+    config: {
+      getConfig: vi.fn(async () => ({})),
+      getRawConfig: vi.fn(async () => ({})),
+    },
+    invoke: {
+      call: vi.fn(async () => ({ success: true, data: null })),
+      isAvailable: vi.fn(async () => false),
+    } as PlatformServices['invoke'],
+    sqlDatabase: {
+      query: vi.fn(async () => ({ rows: [], rowCount: 0 })),
+      transaction: vi.fn(async () => ({ query: vi.fn(), commit: vi.fn(), rollback: vi.fn() })),
+      close: vi.fn(async () => {}),
+    },
+    documentDatabase: {
+      find: vi.fn(async () => []),
+      findById: vi.fn(async () => null),
+      insertOne: vi.fn(async () => ({ id: 'mock', createdAt: 0, updatedAt: 0 })),
+      updateMany: vi.fn(async () => 0),
+      updateById: vi.fn(async () => null),
+      deleteMany: vi.fn(async () => 0),
+      deleteById: vi.fn(async () => false),
+      count: vi.fn(async () => 0),
+      close: vi.fn(async () => {}),
+    } as PlatformServices['documentDatabase'],
     logs: {
       query: vi.fn(async () => ({ logs: [], total: 0, hasMore: false, source: 'buffer' as const })),
       getById: vi.fn(async () => null),
