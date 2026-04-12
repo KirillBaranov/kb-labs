@@ -79,7 +79,7 @@ describe('createProxyPlatform', () => {
       await platform.llm.complete('hello', { temperature: 0.7 });
 
       expect(transport.send).toHaveBeenCalledTimes(1);
-      const call = transport.calls[0];
+      const call = transport.calls[0]!;
       expect(call.adapter).toBe('llm');
       expect(call.method).toBe('complete');
       expect(call.type).toBe('adapter:call');
@@ -93,7 +93,7 @@ describe('createProxyPlatform', () => {
       await platform.cache.get('my-key');
 
       expect(transport.send).toHaveBeenCalledTimes(1);
-      const call = transport.calls[0];
+      const call = transport.calls[0]!;
       expect(call.adapter).toBe('cache');
       expect(call.method).toBe('get');
     });
@@ -102,7 +102,7 @@ describe('createProxyPlatform', () => {
       const platform = createProxyPlatform({ transport });
       await platform.cache.set('key', 'value', 3600);
 
-      const call = transport.calls[0];
+      const call = transport.calls[0]!;
       expect(call.adapter).toBe('cache');
       expect(call.method).toBe('set');
     });
@@ -111,7 +111,7 @@ describe('createProxyPlatform', () => {
       const platform = createProxyPlatform({ transport });
       await platform.cache.zadd('zset', 1.0, 'member');
 
-      const call = transport.calls[0];
+      const call = transport.calls[0]!;
       expect(call.adapter).toBe('cache');
       expect(call.method).toBe('zadd');
     });
@@ -122,7 +122,7 @@ describe('createProxyPlatform', () => {
       const platform = createProxyPlatform({ transport });
       await platform.vectorStore.search([0.1, 0.2, 0.3], 10);
 
-      const call = transport.calls[0];
+      const call = transport.calls[0]!;
       expect(call.adapter).toBe('vectorStore');
       expect(call.method).toBe('search');
     });
@@ -133,7 +133,7 @@ describe('createProxyPlatform', () => {
       const platform = createProxyPlatform({ transport });
       await platform.storage.read('/path/to/file');
 
-      const call = transport.calls[0];
+      const call = transport.calls[0]!;
       expect(call.adapter).toBe('storage');
       expect(call.method).toBe('read');
     });

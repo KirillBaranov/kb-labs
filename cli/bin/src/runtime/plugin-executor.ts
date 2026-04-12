@@ -158,9 +158,13 @@ function createPlatformServices(platformContainer: PlatformContainer): PlatformS
     embeddings: platformContainer.embeddings,
     vectorStore: platformContainer.vectorStore,
     cache: platformContainer.cache,
+    config: platformContainer.config,
     storage: platformContainer.storage,
     analytics: platformContainer.analytics,
     eventBus: platformContainer.eventBus,
+    invoke: platformContainer.invoke,
+    sqlDatabase: platformContainer.sqlDatabase,
+    documentDatabase: platformContainer.documentDatabase,
     logs: platformContainer.logs,
   };
 }

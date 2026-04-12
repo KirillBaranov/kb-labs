@@ -66,6 +66,7 @@ describe('UnixSocketServer', () => {
       invoke: {} as any,
       sqlDatabase: {} as any,
       documentDatabase: {} as any,
+      logs: {} as any,
     };
   });
 
