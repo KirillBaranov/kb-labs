@@ -70,6 +70,29 @@ kb-devkit sync --dry-run           # preview changes
 kb-devkit sync                     # apply
 ```
 
+## Bundle (Docker build context pruning)
+
+```bash
+kb-devkit bundle @kb-labs/docs-site                          # minimal pnpm workspace slice
+kb-devkit bundle sites/web/apps/docs                         # by relative path
+kb-devkit bundle @kb-labs/docs-site --out /tmp/ctx           # custom output dir
+kb-devkit bundle @kb-labs/docs-site --docker                 # json/ + full/ for two-stage Docker
+kb-devkit bundle @kb-labs/sdk --include-sources              # also copy source files
+kb-devkit bundle @kb-labs/docs-site --json                   # JSON output
+```
+
+Equivalent to `turbo prune --scope=<pkg>`. Resolves the full transitive `workspace:*` closure (dependencies + devDependencies + peerDependencies) and emits:
+
+- `pnpm-workspace.yaml` — pruned: only closure packages, exact paths (no globs)
+- `<pkg>/package.json` — all needed `package.json` files with relative paths preserved
+- `package.json` + `pnpm-lock.yaml` — from root (full lockfile; pnpm ignores unused importers)
+
+Default output: `.kb/bundle/<pkg-slug>/`
+
+`--docker` splits into two subdirs for Docker layer caching:
+- `json/` — package.json files only → layer 1: `pnpm install --frozen-lockfile --filter <pkg>...`
+- `full/` — full sources of all closure packages → layer 2: `pnpm --filter <pkg> run build`
+
 ## Other Commands
 
 ```bash

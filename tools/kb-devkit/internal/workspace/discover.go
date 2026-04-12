@@ -10,6 +10,28 @@ import (
 
 const defaultMaxDepth = 3
 
+// DiscoverAll returns all packages declared in pnpm-workspace.yaml (or package.json workspaces),
+// without requiring devkit.yaml categories. Packages that have no matching category are included
+// with an empty Category field. Useful for tools like bundle that need the full workspace graph.
+// Respects workspace.exclude and workspace.maxDepth from cfg when cfg is provided.
+func DiscoverAll(root string, cfg *config.DevkitConfig) ([]Package, error) {
+	pkgDirs, err := resolveWorkspaceDirs(root, cfg)
+	if err != nil {
+		return nil, err
+	}
+	var result []Package
+	for _, dir := range pkgDirs {
+		rel, _ := filepath.Rel(root, dir)
+		name := readPackageName(dir)
+		result = append(result, Package{
+			Name:    name,
+			Dir:     dir,
+			RelPath: rel,
+		})
+	}
+	return result, nil
+}
+
 // discoverPackages expands pnpm-workspace.yaml patterns efficiently.
 //
 // Algorithm: instead of globbing the entire filesystem, we expand wildcards
@@ -22,6 +44,16 @@ const defaultMaxDepth = 3
 //
 // Recursion depth for ** is controlled by cfg.Workspace.MaxDepth (default 3).
 func discoverPackages(root string, cfg *config.DevkitConfig) ([]Package, error) {
+	pkgDirs, err := resolveWorkspaceDirs(root, cfg)
+	if err != nil {
+		return nil, err
+	}
+	return classifyPackages(root, pkgDirs, cfg), nil
+}
+
+// collectPackageDirs resolves the full list of package directories from workspace
+// patterns, respecting excludes and maxDepth from cfg.
+func resolveWorkspaceDirs(root string, cfg *config.DevkitConfig) ([]string, error) {
 	var patterns []string
 	var err error
 	if cfg != nil && len(cfg.Workspace.Discovery) > 0 {
@@ -36,22 +68,26 @@ func discoverPackages(root string, cfg *config.DevkitConfig) ([]Package, error) 
 		}
 	}
 
-	maxDepth := cfg.Workspace.MaxDepth
-	if maxDepth <= 0 {
-		maxDepth = defaultMaxDepth
+	maxDepth := defaultMaxDepth
+	if cfg != nil && cfg.Workspace.MaxDepth > 0 {
+		maxDepth = cfg.Workspace.MaxDepth
 	}
 
-	// Collect unique package dirs.
 	seen := make(map[string]bool)
 	var pkgDirs []string
 
 	for _, pattern := range patterns {
+		// Skip negation patterns (e.g. "!plugins/fixtures/*") — exclusions are
+		// handled by workspace.exclude in cfg; negation patterns in pnpm-workspace.yaml
+		// are applied via isExcluded below.
+		if strings.HasPrefix(pattern, "!") {
+			continue
+		}
 		dirs := expandPattern(root, pattern, maxDepth)
 		for _, dir := range dirs {
 			if seen[dir] {
 				continue
 			}
-			// Apply workspace.exclude early — before classify.
 			if cfg != nil && isExcluded(root, dir, cfg.Workspace.Exclude) {
 				continue
 			}
@@ -81,7 +117,7 @@ func discoverPackages(root string, cfg *config.DevkitConfig) ([]Package, error) 
 		}
 	}
 
-	return classifyPackages(root, pkgDirs, cfg), nil
+	return pkgDirs, nil
 }
 
 // expandPattern expands a single pnpm-workspace pattern into concrete package dirs.

@@ -35,6 +35,15 @@ jobs:
           go-version-file: tools/kb-deploy/go.mod
           cache-dependency-path: tools/kb-deploy/go.sum
 
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/kb-devkit/go.mod
+          cache-dependency-path: tools/kb-devkit/go.sum
+
+      - name: Build kb-devkit
+        run: go build -o kb-devkit .
+        working-directory: tools/kb-devkit
+
       - name: Build kb-deploy
         run: make build
         working-directory: tools/kb-deploy

@@ -31,6 +31,7 @@ type Target struct {
 	Image      string       `yaml:"image"`
 	Dockerfile string       `yaml:"dockerfile"`
 	Context    string       `yaml:"context"`
+	Bundle     string       `yaml:"bundle"`      // package name for kb-devkit bundle (optional)
 	SSH        SSHConfig    `yaml:"ssh"`
 	Remote     RemoteConfig `yaml:"remote"`
 }

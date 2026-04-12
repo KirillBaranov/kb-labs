@@ -34,6 +34,7 @@ targets:
     image: kb-labs-web
     dockerfile: sites/web/apps/web/Dockerfile
     context: .
+    bundle: "@kb-labs/web-site"
     ssh:
       host: ${SSH_HOST}
       user: ${SSH_USER}
@@ -54,6 +55,7 @@ targets:
     image: kb-labs-docs
     dockerfile: sites/web/apps/docs/Dockerfile
     context: .
+    bundle: "@kb-labs/docs-site"
     ssh:
       host: ${SSH_HOST}
       user: ${SSH_USER}

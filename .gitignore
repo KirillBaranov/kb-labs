@@ -61,6 +61,7 @@ _private/
 .kb/mind/
 .kb/devkit/
 .kb/verdaccio/
+.kb/bundle/
 
 # ───────────────
 # Deploy runtime data (docker volumes, db state)
