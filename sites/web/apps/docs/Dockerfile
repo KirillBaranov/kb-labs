@@ -23,6 +23,7 @@ COPY --from=deps /app/sites/web/packages/og/node_modules        ./sites/web/pack
 COPY .kb/bundle/docs-site/full/ .
 
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_TRACING_ROOT=/app
 RUN corepack enable pnpm && pnpm --filter @kb-labs/docs-site run build
 
 # ── runner ──────────────────────────────────────────────────────────────────
@@ -44,4 +45,4 @@ EXPOSE 3001
 ENV PORT=3001
 ENV HOSTNAME=0.0.0.0
 
-CMD ["node", "apps/docs/server.js"]
+CMD ["node", "sites/web/apps/docs/server.js"]
