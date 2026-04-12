@@ -1,7 +1,7 @@
 ---
 title: "Adapter System"
 description: "What adapters are and why the platform uses them."
-updatedAt: "2026-04-07"
+updatedAt: "2026-04-12"
 order: 4
 ---
 
@@ -86,6 +86,71 @@ This distinction trips people up at first:
 | **Sandbox** | No — adapters run with host-level access | Yes — always runs in the plugin sandbox |
 
 If you want to change *what LLM provider* the platform uses, that's an adapter. If you want to add a new AI-powered command, that's a plugin. A plugin calls `useLLM()` and is blissfully unaware of whether it ends up talking to OpenAI or Anthropic.
+
+## Platform transport adapters
+
+When plugins run outside the main process (worker pool, subprocess, container), they can't access platform services directly — the real adapters live in the parent process. The platform solves this with **platform transport adapters**: a pluggable IPC layer that forwards adapter calls across process boundaries.
+
+| Interface | Transport | Package / Module | Use case |
+|-----------|-----------|-----------------|----------|
+| `ITransport` | Node.js fork IPC | `@kb-labs/core-ipc` (`IPCTransport`) | Worker pool (default) |
+| `ITransport` | Unix socket / Windows named pipe | `@kb-labs/core-ipc` (`UnixSocketTransport`) | Subprocess mode |
+| `ITransport` | Gateway WebSocket | Roadmap | Remote / container execution |
+
+### How it works
+
+Each execution mode has two sides:
+
+- **Parent side** — a `PlatformTransportServer` that listens for `adapter:call` messages and dispatches them to real adapters. For worker pool this is `ChildIPCServer`; for subprocess it's `UnixSocketServer`.
+- **Child side** — an `ITransport` implementation that sends `adapter:call` and awaits `adapter:response`. For worker pool this is `IPCTransport` (via `process.send`); for subprocess it's `UnixSocketTransport`.
+
+The child creates proxy adapters (`LLMProxy`, `CacheProxy`, etc.) on top of the transport. Plugin code calls `useLLM().complete(...)`, which goes through the proxy → transport → parent → real adapter → back. The plugin never knows it's crossing a process boundary.
+
+### Configuring transport
+
+The transport is selected automatically based on execution mode. To override, pass a custom `PlatformTransportFactory` via `BackendOptions.platformTransport`:
+
+```typescript
+import { createExecutionBackend } from '@kb-labs/plugin-execution-factory';
+
+const backend = createExecutionBackend({
+  platform,
+  mode: 'worker-pool',
+  platformTransport: myCustomTransportFactory, // optional override
+});
+```
+
+The factory interface:
+
+```typescript
+interface PlatformTransportFactory {
+  readonly type: string; // e.g. 'ipc', 'unix-socket', 'grpc'
+  createServer(platform: PlatformServices, child: ChildProcess): PlatformTransportServer;
+  getChildEnv?(): Record<string, string>; // extra env vars for child process
+}
+```
+
+The `type` is passed to the child via `KB_PLATFORM_TRANSPORT` env var. The child process looks it up and creates the matching client transport. Built-in types: `ipc` (default), `unix-socket`.
+
+### Cross-platform support
+
+Socket paths are generated via `createSocketPath(id)` which returns:
+
+- Unix/macOS: `/tmp/kb-{id}.sock` (Unix domain socket)
+- Windows: `\\?\pipe\kb-{id}` (Named pipe)
+
+Node.js `net` API handles both transparently — no code changes between platforms.
+
+### Permission enforcement
+
+Platform transport includes two layers of permission enforcement:
+
+1. **Layer 1 (child side)** — `createGovernedPlatformServices()` wraps the proxy platform with permission checks. Calls to denied services throw `PermissionError` immediately, no IPC roundtrip.
+2. **Layer 2 (parent side)** — `ChildIPCServer` reads `call.context.permissions` from each incoming `adapter:call` and rejects denied adapters before dispatching. Defense in depth — can't be bypassed even if child code is compromised.
+
+### Writing a custom transport
+
+Implement `PlatformTransportFactory` and pass it to `BackendOptions.platformTransport`. Your factory creates the server side; the child side needs a matching `ITransport` implementation. Register the child-side transport type in `worker-script.ts`'s `createTransport()` switch, or use `KB_PLATFORM_TRANSPORT_MODULE` for dynamic import (roadmap).
 
 ## Writing a custom adapter
 
