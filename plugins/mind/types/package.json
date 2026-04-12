@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/mind-types",
-  "version": "2.14.0",
+  "version": "2.15.0",
   "type": "module",
   "description": "Shared types and contracts for KB Labs Mind",
   "main": "./dist/index.js",
