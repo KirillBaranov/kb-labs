@@ -234,9 +234,11 @@ export function CommitPlanTab({ scope }: CommitPlanTabProps) {
 
       {/* Generating */}
       {generate.isLoading && (
-        <UICard size="small" style={{ textAlign: 'center' }}>
-          <UISpin style={{ marginRight: 8 }} />
-          <Text type="secondary">Analyzing {filesChanged} files...</Text>
+        <UICard style={{ textAlign: 'center', padding: '48px 0' }}>
+          <UISpin size="large" />
+          <div style={{ marginTop: 16 }}>
+            <Text type="secondary">Analyzing {filesChanged} files...</Text>
+          </div>
         </UICard>
       )}
 
@@ -261,7 +263,7 @@ export function CommitPlanTab({ scope }: CommitPlanTabProps) {
       )}
 
       {/* Commit list */}
-      {commits.length > 0 && commits.map((commit) => {
+      {!generate.isLoading && commits.length > 0 && commits.map((commit) => {
         const isExpanded = expanded.has(commit.id);
         const isEditing = editingId === commit.id;
         const isRegenerating = regeneratingId === commit.id;

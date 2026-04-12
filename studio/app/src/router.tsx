@@ -164,7 +164,6 @@ function LayoutContent() {
           LinkComponent: Link as any,
           onLogout: handleLogout,
           userName: auth.role,
-          onSearchClick: () => commandPalette.open(),
           // Notifications
           notifications,
           unreadNotificationsCount: unreadCount,

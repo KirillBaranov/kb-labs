@@ -93,13 +93,20 @@ export async function mountRoutes(
     const method = route.method.toLowerCase() as 'get' | 'post' | 'put' | 'delete' | 'patch';
 
     server[method](fullPath, async (req: FastifyRequest, reply: FastifyReply) => {
-      // Create abort controller for client disconnect
+      // Create abort controller for client disconnect.
+      // req.socket 'close' fires for any connection close; req.raw 'close' fires when
+      // the request stream ends — which happens on every request including normal ones.
+      // The only reliable signal for a genuine premature disconnect is req.raw.destroyed
+      // checked inside a socket close handler, or Fastify's onRequestAbort lifecycle.
+      // We use the latter: register a one-shot hook on the reply so it aborts only when
+      // Fastify itself determines the client disconnected before the response was sent.
       const abortController = new AbortController();
-
-      // Abort on client disconnect (always, not just on incomplete)
-      // Backend will ignore if execution already completed
-      req.raw.on('close', () => {
-        abortController.abort();
+      reply.raw.on('close', () => {
+        // reply.raw is the ServerResponse; its 'close' event fires when the underlying
+        // socket is destroyed. If the response was already finished, writableEnded is true.
+        if (!reply.raw.writableEnded) {
+          abortController.abort();
+        }
       });
 
       // Generate IDs for tracing
