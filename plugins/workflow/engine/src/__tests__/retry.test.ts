@@ -33,7 +33,7 @@ describe('calculateBackoff', () => {
   });
 
   it('uses default 1000ms when initialIntervalMs not set', () => {
-    const policy = { max: 3 };
+    const policy = { max: 3, backoff: 'exp' as const, initialIntervalMs: 1000 };
     expect(calculateBackoff(0, policy)).toBe(1000); // default 1000 * 2^0
   });
 });
@@ -72,7 +72,7 @@ describe('shouldRetry', () => {
   });
 
   it('returns false for max=0 policy (no retries at all)', () => {
-    const policy = { max: 0 };
+    const policy = { max: 0, backoff: 'exp' as const, initialIntervalMs: 1000 };
     expect(shouldRetry(0, policy).shouldRetry).toBe(false);
   });
 });

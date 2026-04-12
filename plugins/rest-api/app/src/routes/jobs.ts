@@ -78,8 +78,9 @@ export async function registerJobsRoutes(
 
       let jobs = cronManager.list();
 
-      if (request.query.status) {
-        jobs = jobs.filter((job) => job.status === request.query.status);
+      const query = request.query as { status?: string };
+      if (query.status) {
+        jobs = jobs.filter((job) => job.status === query.status);
       }
 
       return reply.send({ jobs: jobs as any });
@@ -133,7 +134,7 @@ export async function registerJobsRoutes(
         throw createError(503, 'CRON_UNAVAILABLE', 'Cron manager not available');
       }
 
-      const jobId = request.params.id;
+      const jobId = (request.params as { id: string }).id;
       const jobs = cronManager.list();
       const job = jobs.find((j) => j.id === jobId);
 
@@ -167,7 +168,7 @@ export async function registerJobsRoutes(
         throw createError(503, 'CRON_UNAVAILABLE', 'Cron manager not available');
       }
 
-      const jobId = request.params.id;
+      const jobId = (request.params as { id: string }).id;
 
       try {
         await cronManager.trigger(jobId);
@@ -203,7 +204,7 @@ export async function registerJobsRoutes(
         throw createError(503, 'CRON_UNAVAILABLE', 'Cron manager not available');
       }
 
-      const jobId = request.params.id;
+      const jobId = (request.params as { id: string }).id;
       const jobs = cronManager.list();
       const job = jobs.find((j) => j.id === jobId);
       if (!job) {
@@ -237,7 +238,7 @@ export async function registerJobsRoutes(
         throw createError(503, 'CRON_UNAVAILABLE', 'Cron manager not available');
       }
 
-      const jobId = request.params.id;
+      const jobId = (request.params as { id: string }).id;
       const jobs = cronManager.list();
       const job = jobs.find((j) => j.id === jobId);
       if (!job) {
