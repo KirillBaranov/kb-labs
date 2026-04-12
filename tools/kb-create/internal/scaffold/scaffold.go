@@ -103,10 +103,10 @@ func generate(opts Options) string {
       "logger": "@kb-labs/adapters-pino"
     },
 
-    // Plugin execution mode: "in-process" (fast, shared memory) or
-    // "subprocess" (isolated, separate Node.js process per plugin).
+    // Plugin execution mode: "worker-pool" (isolated workers, stable) or
+    // "in-process" (fast, shared memory — lower isolation).
     "execution": {
-      "mode": "in-process"
+      "mode": "worker-pool"
     }
   },
 
