@@ -271,7 +271,7 @@ export async function registerLogRoutes(
       limit?: string;
       offset?: string;
     };
-  }>('/api/v1/logs', async (request, reply) => {
+  }>('/api/v1/logs', { schema: { tags: ['Logs'], summary: 'Query logs with filters' } }, async (request, reply) => {
     try {
       // Parse numeric query params (Fastify doesn't parse them automatically)
       const limit = request.query.limit ? parseInt(request.query.limit, 10) : 100;
@@ -349,6 +349,7 @@ export async function registerLogRoutes(
     Querystring: { includeRelated?: string };
   }>(
     '/api/v1/logs/:id',
+    { schema: { tags: ['Logs'], summary: 'Get log entry by ID' } },
     async (request, reply) => {
       try {
         const log = await platform.logs.getById(request.params.id);
@@ -392,6 +393,7 @@ export async function registerLogRoutes(
    */
   server.get<{ Params: { id: string } }>(
     '/api/v1/logs/:id/related',
+    { schema: { tags: ['Logs'], summary: 'Get logs related to a specific entry' } },
     async (request, reply) => {
       try {
         const log = await platform.logs.getById(request.params.id);
@@ -428,7 +430,7 @@ export async function registerLogRoutes(
    * GET /api/v1/logs/stream
    * Server-Sent Events stream for real-time logs
    */
-  server.get('/api/v1/logs/stream', async (request, reply) => {
+  server.get('/api/v1/logs/stream', { schema: { hide: true } }, async (request, reply) => {
     // Check if streaming is supported
     const caps = platform.logs.getCapabilities();
     if (!caps.hasStreaming) {
@@ -509,7 +511,7 @@ export async function registerLogRoutes(
    * GET /api/v1/logs/stats
    * Get combined log statistics from all backends
    */
-  server.get('/api/v1/logs/stats', async (request, reply) => {
+  server.get('/api/v1/logs/stats', { schema: { tags: ['Logs'], summary: 'Get log storage statistics' } }, async (request, reply) => {
     try {
       const stats = await platform.logs.getStats();
       const caps = platform.logs.getCapabilities();
@@ -572,7 +574,7 @@ export async function registerLogRoutes(
         stackTraces?: boolean;
       };
     };
-  }>('/api/v1/logs/summarize', async (request, reply) => {
+  }>('/api/v1/logs/summarize', { schema: { tags: ['Logs'], summary: 'AI-powered log summarization' } }, async (request, reply) => {
     const { timeRange, filters, groupBy, question, includeContext } = request.body;
 
     try {

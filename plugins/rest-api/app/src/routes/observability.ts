@@ -7,8 +7,6 @@ import type { FastifyInstance } from 'fastify';
 import type { RestApiConfig } from '@kb-labs/rest-api-core';
 import type { PlatformServices } from '@kb-labs/plugin-contracts';
 import { normalizeBasePath, resolvePaths } from '../utils/path-helpers';
-import { exec } from 'node:child_process';
-import { promisify } from 'node:util';
 import { hostname } from 'node:os';
 import type { HistoricalMetricsCollector } from '../services/historical-metrics';
 import type { IncidentStorage } from '../services/incident-storage';
@@ -16,12 +14,6 @@ import { IncidentAnalyzer } from '../services/incident-analyzer';
 import type { SystemMetrics } from '../services/system-metrics-collector';
 import { metricsCollector } from '../middleware/metrics.js';
 
-const execAsync = promisify(exec);
-
-// DevKit health cache key and TTL (10 minutes)
-// This prevents excessive process spawning that can overload the system
-const DEVKIT_CACHE_KEY = 'observability:devkit-health';
-const DEVKIT_CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 /**
  * Register observability routes
@@ -39,7 +31,6 @@ export async function registerObservabilityRoutes(
 ): Promise<void> {
   const basePath = normalizeBasePath(config.basePath);
   const stateBrokerPaths = resolvePaths(basePath, '/observability/state-broker');
-  const devkitPaths = resolvePaths(basePath, '/observability/devkit');
   const systemMetricsPaths = resolvePaths(basePath, '/observability/system-metrics');
   const metricsHistoryPaths = resolvePaths(basePath, '/observability/metrics/history');
   const metricsHeatmapPaths = resolvePaths(basePath, '/observability/metrics/heatmap');
@@ -54,7 +45,7 @@ export async function registerObservabilityRoutes(
   // GET /api/v1/observability/state-broker
   // Returns statistics from State Broker daemon (cache hits, namespaces, etc.)
   for (const path of stateBrokerPaths) {
-    fastify.get(path, async (_request, reply) => {
+    fastify.get(path, { schema: { tags: ['Observability'], summary: 'State Broker statistics' } }, async (_request, reply) => {
       try {
         const stateBrokerUrl = process.env.KB_STATE_DAEMON_URL || 'http://localhost:7777';
 
@@ -120,126 +111,11 @@ export async function registerObservabilityRoutes(
     });
   }
 
-  // GET /api/v1/observability/devkit
-  // Returns DevKit health check results (monorepo health score, issues, etc.)
-  // CACHED for 10 minutes via platform.cache to prevent excessive process spawning
-  for (const path of devkitPaths) {
-    fastify.get(path, async (_request, reply) => {
-      const now = Date.now();
-
-      // Try to get from platform.cache first
-      if (platform?.cache) {
-        try {
-          const cached = await platform.cache.get<{
-            data: unknown;
-            timestamp: number;
-            expiresAt: number;
-          }>(DEVKIT_CACHE_KEY);
-
-          if (cached && now < cached.expiresAt) {
-            const remainingTtl = Math.round((cached.expiresAt - now) / 1000);
-            fastify.log.debug({ remainingTtl }, 'Returning cached DevKit health from platform.cache');
-
-            return {
-              ok: true,
-              data: cached.data,
-              meta: {
-                source: 'devkit-cli',
-                repoRoot,
-                cached: true,
-                cachedAt: cached.timestamp,
-                expiresAt: cached.expiresAt,
-                ttlSeconds: remainingTtl,
-              },
-            };
-          }
-        } catch (cacheError) {
-          fastify.log.warn({ err: cacheError }, 'Failed to read from platform.cache, proceeding without cache');
-        }
-      }
-
-      try {
-        fastify.log.debug({ cwd: repoRoot }, 'Executing DevKit health check (cache miss)');
-
-        const { stdout, stderr } = await execAsync('npx kb-devkit-health --json', {
-          cwd: repoRoot,
-          timeout: 30000, // 30s timeout
-          env: {
-            ...process.env,
-            // Ensure DevKit runs in non-interactive mode
-            CI: 'true',
-          },
-        });
-
-        if (stderr) {
-          fastify.log.warn({ stderr }, 'DevKit health check produced warnings');
-        }
-
-        const health = JSON.parse(stdout);
-        const expiresAt = now + DEVKIT_CACHE_TTL_MS;
-
-        // Cache the result for 10 minutes via platform.cache
-        if (platform?.cache) {
-          try {
-            await platform.cache.set(DEVKIT_CACHE_KEY, {
-              data: health,
-              timestamp: now,
-              expiresAt,
-            }, DEVKIT_CACHE_TTL_MS);
-            fastify.log.debug({
-              healthScore: health.healthScore,
-              grade: health.grade,
-              cachedUntil: new Date(expiresAt).toISOString(),
-            }, 'DevKit health check completed and cached in platform.cache');
-          } catch (cacheError) {
-            fastify.log.warn({ err: cacheError }, 'Failed to write to platform.cache');
-          }
-        }
-
-        return {
-          ok: true,
-          data: health,
-          meta: {
-            source: 'devkit-cli',
-            repoRoot,
-            command: 'npx kb-devkit-health --json',
-            cached: false,
-            cachedAt: now,
-            expiresAt,
-            ttlSeconds: DEVKIT_CACHE_TTL_MS / 1000,
-          },
-        };
-      } catch (error) {
-        // Try to extract partial data from error's stdout
-        let partialData: unknown = null;
-        if (error && typeof error === 'object' && 'stdout' in error) {
-          try {
-            partialData = JSON.parse((error as { stdout: string }).stdout);
-          } catch {
-            partialData = null;
-          }
-        }
-
-        platform?.logger.error('Failed to execute DevKit health check', error instanceof Error ? error : new Error(String(error)));
-
-        return reply.code(500).send({
-          ok: false,
-          error: {
-            code: 'DEVKIT_ERROR',
-            message: error instanceof Error ? error.message : 'Failed to execute DevKit health check',
-            details: {
-              partialData,
-            },
-          },
-        });
-      }
-    });
-  }
 
   // GET /api/v1/observability/system-metrics
   // Returns system resource metrics (CPU, memory, uptime, load) from all REST API instances
   for (const path of systemMetricsPaths) {
-    fastify.get(path, async (_request, reply) => {
+    fastify.get(path, { schema: { tags: ['Observability'], summary: 'System resource metrics' } }, async (_request, reply) => {
       try {
         if (!platform?.cache) {
           return reply.code(503).send({
@@ -363,6 +239,8 @@ export async function registerObservabilityRoutes(
   for (const path of metricsHistoryPaths) {
     fastify.get(path, {
       schema: {
+        tags: ['Observability'],
+        summary: 'Historical time-series metrics',
         querystring: {
           type: 'object',
           properties: {
@@ -472,6 +350,8 @@ export async function registerObservabilityRoutes(
   for (const path of metricsHeatmapPaths) {
     fastify.get(path, {
       schema: {
+        tags: ['Observability'],
+        summary: 'Metrics heatmap data',
         querystring: {
           type: 'object',
           properties: {
@@ -573,6 +453,8 @@ export async function registerObservabilityRoutes(
   for (const path of incidentsListPaths) {
     fastify.get(path, {
       schema: {
+        tags: ['Observability'],
+        summary: 'List incidents',
         querystring: {
           type: 'object',
           properties: {
@@ -647,6 +529,8 @@ export async function registerObservabilityRoutes(
   for (const path of incidentsDetailPaths) {
     fastify.get(path, {
       schema: {
+        tags: ['Observability'],
+        summary: 'Get incident by ID',
         params: {
           type: 'object',
           properties: {
@@ -717,6 +601,8 @@ export async function registerObservabilityRoutes(
   for (const path of incidentsCreatePaths) {
     fastify.post(path, {
       schema: {
+        tags: ['Observability'],
+        summary: 'Create incident',
         body: {
           type: 'object',
           properties: {
@@ -782,6 +668,8 @@ export async function registerObservabilityRoutes(
   for (const path of incidentsHistoryPaths) {
     fastify.get(path, {
       schema: {
+        tags: ['Observability'],
+        summary: 'Incident history',
         querystring: {
           type: 'object',
           properties: {
@@ -846,6 +734,8 @@ export async function registerObservabilityRoutes(
   for (const path of incidentsResolvePaths) {
     fastify.post(path, {
       schema: {
+        tags: ['Observability'],
+        summary: 'Resolve an incident',
         params: {
           type: 'object',
           properties: {
@@ -913,6 +803,8 @@ export async function registerObservabilityRoutes(
   for (const path of insightsChatPaths) {
     fastify.post(path, {
       schema: {
+        tags: ['Observability'],
+        summary: 'AI-powered observability insights chat',
         body: {
           type: 'object',
           properties: {
@@ -1107,7 +999,7 @@ Be concise but thorough. Use markdown formatting.`;
   // POST /api/v1/observability/incidents/:id/analyze
   // Analyze incident using AI to identify root causes and recommendations
   for (const path of incidentsAnalyzePaths) {
-    fastify.post(path, async (request, reply) => {
+    fastify.post(path, { schema: { tags: ['Observability'], summary: 'AI analysis of an incident' } }, async (request, reply) => {
       if (!incidentStorage) {
         return reply.code(503).send({
           ok: false,
@@ -1217,7 +1109,7 @@ Be concise but thorough. Use markdown formatting.`;
   // Test endpoint: Create incident manually
   const testCreateIncidentPaths = resolvePaths(basePath, '/test/create-incident');
   for (const path of testCreateIncidentPaths) {
-    fastify.post(path, async (request, reply) => {
+    fastify.post(path, { schema: { hide: true } }, async (request, reply) => {
       if (!incidentStorage) {
         return reply.code(500).send({
           ok: false,
@@ -1274,7 +1166,7 @@ Be concise but thorough. Use markdown formatting.`;
   // Test endpoint: Trigger errors (auto-creates error_rate incident)
   const testTriggerErrorsPaths = resolvePaths(basePath, '/test/trigger-errors');
   for (const path of testTriggerErrorsPaths) {
-    fastify.get(path, async (request, reply) => {
+    fastify.get(path, { schema: { hide: true } }, async (request, reply) => {
       const { count = 10 } = request.query as any;
       const errorCount = Math.min(Math.max(1, parseInt(count, 10) || 10), 100); // 1-100 errors
 
@@ -1312,7 +1204,7 @@ Be concise but thorough. Use markdown formatting.`;
   // Test endpoint: Simulate high latency (auto-creates latency_spike incident)
   const testSimulateLatencyPaths = resolvePaths(basePath, '/test/simulate-latency');
   for (const path of testSimulateLatencyPaths) {
-    fastify.get(path, async (request, reply) => {
+    fastify.get(path, { schema: { hide: true } }, async (request, reply) => {
       const { delay = 2000 } = request.query as any;
       const delayMs = Math.min(Math.max(100, parseInt(delay, 10) || 2000), 10000); // 100ms-10s
 
@@ -1334,7 +1226,7 @@ Be concise but thorough. Use markdown formatting.`;
   // Test endpoint: Bulk error generator (guaranteed to trigger incident)
   const testBulkErrorsPaths = resolvePaths(basePath, '/test/bulk-errors');
   for (const path of testBulkErrorsPaths) {
-    fastify.post(path, async (request, reply) => {
+    fastify.post(path, { schema: { hide: true } }, async (request, reply) => {
       const { successCount = 10, errorCount = 50 } = request.body as any;
 
       fastify.log.info({ successCount, errorCount }, 'Generating bulk requests for incident testing');
