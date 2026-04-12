@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/adapters-fs",
-  "version": "2.14.0",
+  "version": "2.15.0",
   "description": "Filesystem adapter implementing IStorage interface",
   "type": "module",
   "main": "./dist/index.js",

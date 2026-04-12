@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/release-manager-cli",
-  "version": "2.14.0",
+  "version": "2.15.0",
   "description": "KB Labs Release Manager - CLI commands for release management",
   "type": "module",
   "main": "./dist/index.js",

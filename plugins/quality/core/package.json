@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/quality-core",
-  "version": "2.14.0",
+  "version": "2.15.0",
   "type": "module",
   "description": "Core business logic for KB Labs Quality plugin - monorepo analysis, dependency management, and health checks.",
   "main": "./dist/index.js",
