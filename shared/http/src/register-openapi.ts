@@ -1,10 +1,55 @@
-import { jsonSchemaTransform } from 'fastify-type-provider-zod';
+/**
+ * Registers @fastify/swagger + @fastify/swagger-ui on a Fastify instance.
+ *
+ * Routes without `tags:` are excluded from the spec (hideUntagged: true).
+ * Use this as the visibility toggle — internal/undocumented routes simply
+ * omit `tags:` and they won't appear in /docs or /openapi.json.
+ *
+ * Plain JSON Schema and Zod schemas are both supported natively by
+ * @fastify/swagger without any custom transform.
+ *
+ * @example
+ * ```ts
+ * import { registerOpenAPI } from '@kb-labs/shared-http';
+ *
+ * await registerOpenAPI(server, {
+ *   title: 'My Service',
+ *   version: '1.0.0',
+ *   servers: [{ url: 'http://localhost:3000', description: 'Local dev' }],
+ *   ui: process.env.NODE_ENV !== 'production',
+ * });
+ * ```
+ */
+
+import { zodToJsonSchema } from 'zod-to-json-schema';
 
 /** Minimal structural interface to accept any Fastify instance regardless of version. */
 interface FastifyLike {
   register(plugin: unknown, opts?: unknown): unknown;
-  get(path: string, handler: (req: unknown, reply: unknown) => unknown): void;
+  get(path: string, opts: unknown, handler: (req: unknown, reply: unknown) => unknown): void;
   swagger?(): unknown;
+}
+
+/** Returns true if the value is a Zod schema (has ._def). */
+function isZod(v: unknown): boolean {
+  return v != null && typeof v === 'object' && '_def' in (v as object);
+}
+
+/** Convert Zod schemas in a route schema object to plain JSON Schema. */
+function convertSchema(schema: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...schema };
+  for (const key of ['body', 'querystring', 'params', 'headers'] as const) {
+    if (isZod(out[key])) out[key] = zodToJsonSchema(out[key] as any);
+  }
+  if (out['response'] && typeof out['response'] === 'object') {
+    out['response'] = Object.fromEntries(
+      Object.entries(out['response'] as Record<string, unknown>).map(([code, s]) => [
+        code,
+        isZod(s) ? zodToJsonSchema(s as any) : s,
+      ]),
+    );
+  }
+  return out;
 }
 
 export interface OpenAPIOptions {
@@ -24,54 +69,12 @@ export interface OpenAPIOptions {
   ui?: boolean;
 }
 
-/**
- * Wraps jsonSchemaTransform to safely handle routes with plain JSON schemas.
- * ftzp v6 only accepts Zod schemas — plain JSON objects cause InvalidSchemaError.
- * Routes without `tags` are hidden anyway (hideUntagged), so we skip transform
- * for them to avoid the error.
- */
-function safeJsonSchemaTransform(input: { schema: Record<string, unknown>; url: string; [k: string]: unknown }) {
-  const { schema } = input;
-
-  // No schema or explicitly hidden — pass through
-  if (!schema || schema.hide) {
-    return input;
-  }
-
-  // Routes without tags will be excluded by hideUntagged.
-  // Skip Zod transform for them to avoid errors on plain JSON schemas.
-  if (!schema.tags || (Array.isArray(schema.tags) && schema.tags.length === 0)) {
-    return { schema: { ...schema, hide: true }, url: input.url };
-  }
-
-  // Tagged routes — delegate to ftzp's jsonSchemaTransform (expects Zod schemas)
-  return jsonSchemaTransform(input as unknown as Parameters<typeof jsonSchemaTransform>[0]);
-}
-
-/**
- * Registers @fastify/swagger + @fastify/swagger-ui on a Fastify instance.
- *
- * Call BEFORE registering routes, AFTER creating the Fastify instance.
- *
- * Routes without `tags:` are excluded from the spec (hideUntagged: true).
- * Use this as the visibility toggle — internal/undocumented routes simply
- * omit `tags:` and they won't appear in /docs or /openapi.json.
- *
- * @example
- * ```ts
- * import { registerOpenAPI } from '@kb-labs/shared-http';
- *
- * await registerOpenAPI(server, {
- *   title: 'My Service',
- *   version: '1.0.0',
- *   servers: [{ url: 'http://localhost:3000', description: 'Local dev' }],
- *   ui: process.env.NODE_ENV !== 'production',
- * });
- * ```
- */
 export async function registerOpenAPI(server: FastifyLike, options: OpenAPIOptions): Promise<void> {
   const swagger = await import('@fastify/swagger');
 
+  // @fastify/swagger uses fastify-plugin — decorates the root instance with swagger().
+  // transform() converts any Zod schemas to plain JSON Schema via zodToJsonSchema.
+  // Plain JSON Schema passes through unchanged. Routes can freely mix both.
   await server.register(swagger.default ?? swagger, {
     openapi: {
       info: {
@@ -81,28 +84,43 @@ export async function registerOpenAPI(server: FastifyLike, options: OpenAPIOptio
       },
       servers: options.servers ?? [],
     },
-    transform: safeJsonSchemaTransform,
     hideUntagged: true,
+    transform({ schema, url }: { schema: Record<string, unknown>; url: string }) {
+      return { schema: convertSchema(schema), url };
+    },
   });
 
   const specPath = options.specPath ?? '/openapi.json';
-
-  await server.register(async (scope: FastifyLike) => {
-    scope.get(specPath, (_req, reply) => {
-      const s = server as { swagger?: () => unknown };
-      return (reply as { send(v: unknown): unknown }).send(s.swagger?.());
-    });
-  });
+  const docsPath = options.docsPath ?? '/docs';
 
   if (options.ui !== false) {
     const swaggerUi = await import('@fastify/swagger-ui');
 
     await server.register(swaggerUi.default ?? swaggerUi, {
-      routePrefix: options.docsPath ?? '/docs',
+      routePrefix: docsPath,
       uiConfig: {
         docExpansion: 'list',
         deepLinking: true,
       },
     });
   }
+
+  // /openapi.json — canonical spec endpoint.
+  // x-openapi-spec: true header signals to response middlewares (e.g. envelope wrappers)
+  // that this is a raw spec response and must not be wrapped.
+  (server as any).get(specPath, { schema: { hide: true } }, (_req: unknown, reply: unknown) => {
+    const s = server as { swagger?: () => Record<string, unknown> | undefined };
+    const spec = s.swagger?.();
+    const r = reply as {
+      code(n: number): { send(v: unknown): unknown };
+      header(k: string, v: string): unknown;
+      send(v: unknown): unknown;
+    };
+    if (!spec) {
+      r.code(503).send({ error: 'OpenAPI spec not ready' });
+      return;
+    }
+    r.header('x-openapi-spec', '1');
+    r.send(spec);
+  });
 }

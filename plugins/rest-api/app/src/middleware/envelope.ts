@@ -51,6 +51,11 @@ export function registerEnvelopeMiddleware(
       return payload;
     }
 
+    // Skip raw OpenAPI spec — marked by x-openapi-spec header set in shared-http
+    if (reply.getHeader('x-openapi-spec')) {
+      return payload;
+    }
+
     // Wrap all non-streaming responses in envelope
     // Note: Even 4xx/5xx responses with data should be wrapped with ok: true
     // (e.g., 503 for health/ready still contains useful data)

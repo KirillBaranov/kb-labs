@@ -35,17 +35,13 @@
   "peerDependencies": {
     "@fastify/swagger": ">=9.5.1",
     "@fastify/swagger-ui": "^5.2.0",
-    "fastify": "^5.5.0",
-    "fastify-type-provider-zod": "^6.0.0"
+    "fastify": "^5.5.0"
   },
   "peerDependenciesMeta": {
     "@fastify/swagger": {
       "optional": false
     },
     "@fastify/swagger-ui": {
-      "optional": false
-    },
-    "fastify-type-provider-zod": {
       "optional": false
     }
   },
