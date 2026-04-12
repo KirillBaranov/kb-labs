@@ -41,7 +41,7 @@ export default defineCommand<unknown, SyncInput, SyncResultData>({
       }
 
       const isDev = (process.env.NODE_ENV ?? 'development') === 'development';
-      const result = await post<SyncResultData>('/sync', {
+      const result = await post<SyncResultData>('/workspace/sync', {
         include: syncConfig.include,
         exclude: syncConfig.exclude,
         autoEnable: flags['auto-enable'] !== undefined ? Boolean(flags['auto-enable']) : isDev,

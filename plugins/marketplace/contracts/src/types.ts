@@ -147,6 +147,13 @@ export interface EntityKindStrategy {
   extractProvides(packageRoot: string): Promise<EntityKind[]>;
 
   /**
+   * Resolve the canonical entity ID to use as the lock key.
+   * If provided and returns a non-null value, it overrides the package.json name.
+   * Useful when the manifest ID differs from the package name (e.g. after folder renames).
+   */
+  resolveId?(packageRoot: string): Promise<string | null>;
+
+  /**
    * Post-install hook. Called after the package is installed and written to lock.
    * Example: adapter strategy validates that required adapter dependencies are installed.
    */
