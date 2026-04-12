@@ -403,7 +403,18 @@ export class SandboxRunner implements Runner {
     input: unknown,
   ): Promise<PluginCommandResolution> {
     const pluginRef = uses.slice('plugin:'.length)
-    const [pluginId, ...handlerParts] = pluginRef.split('/')
+    const parts = pluginRef.split('/')
+
+    // Handle scoped packages: @scope/name/handler → pluginId = "@scope/name", handler = rest
+    let pluginId: string
+    let handlerParts: string[]
+    if (parts[0]?.startsWith('@') && parts.length >= 3) {
+      pluginId = `${parts[0]}/${parts[1]}`
+      handlerParts = parts.slice(2)
+    } else {
+      pluginId = parts[0] ?? ''
+      handlerParts = parts.slice(1)
+    }
 
     if (!pluginId || handlerParts.length === 0) {
       throw new Error(`Invalid plugin reference: ${uses}. Expected "plugin:id/handler"`)

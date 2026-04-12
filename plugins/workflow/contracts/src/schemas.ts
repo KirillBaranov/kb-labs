@@ -87,29 +87,44 @@ export const ApprovalReviewItemSchema = z.object({
 
 // ─── Step spec ───────────────────────────────────────────────────────────────
 
-export const StepSpecSchema = z.object({
-  name: z.string().min(1),
-  uses: z
-    .union([
-      z.literal('builtin:shell'),
-      z.literal('builtin:approval'),
-      z.literal('builtin:gate'),
-      z.string().regex(/^(plugin:|workflow:)?[a-zA-Z0-9@/_:+#.-]+$/),
-    ])
-    .optional(),
-  id: z.string().min(1).max(64).regex(/^[a-zA-Z0-9_-]+$/).optional(),
-  if: z.string().optional(),
-  with: z.record(z.string(), z.unknown()).optional(),
-  env: z.record(z.string(), z.string()).optional(),
-  secrets: z.array(z.string().min(1)).optional(),
-  timeoutMs: TimeoutSchema.optional(),
-  continueOnError: z.boolean().optional(),
-  // Presentation layer
-  summary: z.string().optional(),
-  phase: z.string().optional(),
-  progress: StepProgressSchema.optional(),
-  artifacts: z.record(z.string().min(1), StepArtifactSchema).optional(),
-})
+export const StepSpecSchema = z
+  .object({
+    name: z.string().min(1),
+    uses: z
+      .union([
+        z.literal('builtin:shell'),
+        z.literal('builtin:approval'),
+        z.literal('builtin:gate'),
+        z.string().regex(/^(plugin:|workflow:)?[a-zA-Z0-9@/_:+#.-]+$/),
+      ])
+      .optional(),
+    /** Shell command shorthand — equivalent to uses: builtin:shell with: { command: ... } */
+    run: z.string().optional(),
+    id: z.string().min(1).max(64).regex(/^[a-zA-Z0-9_-]+$/).optional(),
+    if: z.string().optional(),
+    with: z.record(z.string(), z.unknown()).optional(),
+    env: z.record(z.string(), z.string()).optional(),
+    secrets: z.array(z.string().min(1)).optional(),
+    timeoutMs: TimeoutSchema.optional(),
+    continueOnError: z.boolean().optional(),
+    // Presentation layer
+    summary: z.string().optional(),
+    phase: z.string().optional(),
+    progress: StepProgressSchema.optional(),
+    artifacts: z.record(z.string().min(1), StepArtifactSchema).optional(),
+  })
+  .transform((step) => {
+    // Normalize `run: cmd` → `uses: builtin:shell, with: { command: cmd }`
+    if (step.run && !step.uses) {
+      const { run, with: withField, ...rest } = step
+      return {
+        ...rest,
+        uses: 'builtin:shell' as const,
+        with: { ...withField, command: run },
+      }
+    }
+    return step
+  })
 
 export const JobConcurrencySchema = z.object({
   group: ConcurrencyGroupSchema,

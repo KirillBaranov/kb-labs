@@ -22,16 +22,16 @@ const GROUPS: { key: string; label: string; statuses: string[]; color: string }[
     color: 'var(--info)',
   },
   {
-    key: 'failed',
-    label: 'Failed',
-    statuses: ['failed'],
-    color: 'var(--error)',
-  },
-  {
     key: 'completed',
     label: 'Completed',
     statuses: ['success'],
     color: 'var(--success)',
+  },
+  {
+    key: 'failed',
+    label: 'Failed',
+    statuses: ['failed'],
+    color: 'var(--error)',
   },
   {
     key: 'other',
