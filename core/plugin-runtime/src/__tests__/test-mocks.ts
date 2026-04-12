@@ -80,6 +80,30 @@ export function createMockPlatform(): PlatformServices {
       getStats: vi.fn(async () => ({})),
       getCapabilities: vi.fn(() => ({ hasBuffer: false, hasPersistence: false, hasSearch: false, hasStreaming: false })),
     } as unknown as PlatformServices['logs'],
+    config: {
+      getConfig: vi.fn(async () => ({})),
+      getRawConfig: vi.fn(async () => ({})),
+    } as unknown as PlatformServices['config'],
+    invoke: {
+      call: vi.fn(async () => ({ success: true })),
+      isAvailable: vi.fn(async () => false),
+    } as unknown as PlatformServices['invoke'],
+    sqlDatabase: {
+      query: vi.fn(async () => ({ rows: [], rowCount: 0 })),
+      transaction: vi.fn(async () => ({ query: vi.fn(), commit: vi.fn(), rollback: vi.fn() })),
+      close: vi.fn(async () => {}),
+    } as unknown as PlatformServices['sqlDatabase'],
+    documentDatabase: {
+      find: vi.fn(async () => []),
+      findById: vi.fn(async () => null),
+      insertOne: vi.fn(async () => ({ id: 'mock', createdAt: 0, updatedAt: 0 })),
+      updateMany: vi.fn(async () => 0),
+      updateById: vi.fn(async () => null),
+      deleteMany: vi.fn(async () => 0),
+      deleteById: vi.fn(async () => false),
+      count: vi.fn(async () => 0),
+      close: vi.fn(async () => {}),
+    } as unknown as PlatformServices['documentDatabase'],
   };
 }
 

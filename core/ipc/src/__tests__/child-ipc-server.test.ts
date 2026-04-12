@@ -42,7 +42,7 @@ function createAdapterCall(
     requestId: `test-${Date.now()}-${Math.random()}`,
     adapter: adapter as any,
     method,
-    args,
+    args: args as any,
     context: context as any,
   };
 }
@@ -50,7 +50,7 @@ function createAdapterCall(
 function createMockPlatform(): IPlatformAdapters {
   return {
     logger: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn(), fatal: vi.fn(), trace: vi.fn(), child: vi.fn() } as any,
-    llm: { complete: vi.fn().mockResolvedValue({ content: 'hello', usage: { promptTokens: 1, completionTokens: 1 }, model: 'test' }), stream: vi.fn() },
+    llm: { complete: vi.fn().mockResolvedValue({ content: 'hello', usage: { promptTokens: 1, completionTokens: 1 }, model: 'test' }), stream: vi.fn() } as any,
     embeddings: { embed: vi.fn().mockResolvedValue([0.1, 0.2]), embedBatch: vi.fn(), dimensions: 1536, getDimensions: vi.fn() } as any,
     vectorStore: { search: vi.fn().mockResolvedValue([]), upsert: vi.fn(), delete: vi.fn(), count: vi.fn() } as any,
     cache: { get: vi.fn().mockResolvedValue('cached-value'), set: vi.fn(), delete: vi.fn(), clear: vi.fn(), zadd: vi.fn(), zrangebyscore: vi.fn(), zrem: vi.fn(), setIfNotExists: vi.fn() } as any,
@@ -123,7 +123,7 @@ describe('ChildIPCServer', () => {
 
       expect(mockPlatform.cache.get).toHaveBeenCalledWith('my-key');
 
-      const response = mockChild.send.mock.calls[0][0];
+      const response = mockChild.send.mock.calls[0]![0];
       expect(response.type).toBe('adapter:response');
       expect(response.requestId).toBe(call.requestId);
       expect(response.error).toBeUndefined();
@@ -159,7 +159,7 @@ describe('ChildIPCServer', () => {
         expect(mockChild.send).toHaveBeenCalled();
       });
 
-      const response = mockChild.send.mock.calls[0][0];
+      const response = mockChild.send.mock.calls[0]![0];
       expect(response.type).toBe('adapter:response');
       expect(response.error).toBeDefined();
     });
@@ -172,7 +172,7 @@ describe('ChildIPCServer', () => {
         expect(mockChild.send).toHaveBeenCalled();
       });
 
-      const response = mockChild.send.mock.calls[0][0];
+      const response = mockChild.send.mock.calls[0]![0];
       expect(response.error).toBeDefined();
     });
   });
@@ -241,7 +241,7 @@ describe('ChildIPCServer', () => {
       });
 
       expect(mockPlatform.llm.complete).not.toHaveBeenCalled();
-      const response = mockChild.send.mock.calls[0][0];
+      const response = mockChild.send.mock.calls[0]![0];
       expect(response.error).toBeDefined();
     });
 
