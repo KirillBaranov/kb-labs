@@ -248,6 +248,30 @@ function createMockPlatform(): PlatformServices {
       publish: asyncNoop,
       subscribe: () => () => {},
     },
+    config: {
+      getConfig: async () => ({}),
+      getRawConfig: async () => ({}),
+    },
+    invoke: {
+      call: async () => ({ success: true }),
+      isAvailable: async () => false,
+    } as PlatformServices['invoke'],
+    sqlDatabase: {
+      query: async () => ({ rows: [], rowCount: 0 }),
+      transaction: async () => ({ query: async () => ({ rows: [], rowCount: 0 }), commit: asyncNoop, rollback: asyncNoop }),
+      close: asyncNoop,
+    },
+    documentDatabase: {
+      find: async () => [],
+      findById: async () => null,
+      insertOne: async () => ({ id: 'mock', createdAt: 0, updatedAt: 0 }),
+      updateMany: async () => 0,
+      updateById: async () => null,
+      deleteMany: async () => 0,
+      deleteById: async () => false,
+      count: async () => 0,
+      close: asyncNoop,
+    } as PlatformServices['documentDatabase'],
     logs: {
       query: async () => ({ logs: [], total: 0, hasMore: false, source: 'buffer' as const }),
       getById: async () => null,

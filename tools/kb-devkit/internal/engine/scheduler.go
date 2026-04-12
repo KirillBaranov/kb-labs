@@ -260,10 +260,19 @@ func buildDAG(
 
 // buildPkgDepMap reads package.json deps for each package.
 // Returns: pkg name → list of workspace dep names.
+// Self-references (package depending on itself) are filtered out to prevent
+// cycles in the DAG — e.g. @kb-labs/devkit listing itself in devDependencies.
 func buildPkgDepMap(pkgs []workspace.Package, pkgByName map[string]workspace.Package) map[string][]string {
 	result := make(map[string][]string, len(pkgs))
 	for _, p := range pkgs {
-		result[p.Name] = readWorkspaceDeps(p.Dir, pkgByName)
+		raw := readWorkspaceDeps(p.Dir, pkgByName)
+		filtered := raw[:0]
+		for _, dep := range raw {
+			if dep != p.Name {
+				filtered = append(filtered, dep)
+			}
+		}
+		result[p.Name] = filtered
 	}
 	return result
 }
