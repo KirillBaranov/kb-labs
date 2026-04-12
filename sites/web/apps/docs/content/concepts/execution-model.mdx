@@ -1,7 +1,7 @@
 ---
 title: "Execution Model"
 description: "How plugin code actually runs — in-process, worker pool, container, or remote."
-updatedAt: "2026-04-07"
+updatedAt: "2026-04-12"
 order: 2
 ---
 
@@ -53,18 +53,20 @@ Service process (REST API)
 
 ## Worker pool
 
-The service maintains a pool of worker threads. Each worker is a pre-initialized Node isolate. When a handler is invoked, the pool picks an idle worker, sends the invocation via `postMessage`, and awaits the result.
+The service maintains a pool of forked Node.js processes. Each worker is a separate V8 process with its own heap. When a handler is invoked, the pool picks an idle worker, sends the invocation via IPC, and awaits the result.
 
 ```
 Service process (REST API)
   │
-  ├─► Worker pool (N workers)
+  ├─► Worker pool (N workers, forked processes)
   │     │
   │     ├─► Worker 1 (idle)
+  │     │     └─► ChildIPCServer ← adapter:call/response → IPCTransport
   │     ├─► Worker 2 (running plugin A)
+  │     │     └─► LLMProxy → IPCTransport → parent → real OpenAI adapter
   │     └─► Worker 3 (running plugin B)
   │
-  └─► Dispatch: send message to an idle worker
+  └─► Dispatch: send ExecuteMessage to an idle worker
 ```
 
 Configured under `platform.execution.workerPool`:
@@ -93,11 +95,22 @@ interface WorkerPoolConfig {
 
 **Cons:**
 
-- **IPC overhead.** Every call serializes input and output across the worker boundary. Large payloads become a bottleneck.
+- **IPC overhead.** Every call serializes input and output across the worker boundary. Large payloads become a bottleneck (~2-5ms per adapter call, negligible for network I/O like LLM).
 - **No OS-level sandboxing.** Workers share the process's filesystem access, network access, and env vars. Permissions are enforced by the runtime shims, not by the OS.
 - **Harder to debug.** Stack traces cross worker boundaries; symptoms from one worker can show up in others via shared resources.
 
 **When to use:** single-node production deployments with trusted plugins. This is the default mode in `auto` selection outside Kubernetes.
+
+### Platform services in workers
+
+Workers don't have direct access to platform adapters (LLM, cache, vector store, etc.) — those live in the parent process. Instead, each worker has **proxy adapters** that forward calls to the parent via IPC:
+
+1. On spawn, the parent creates a `ChildIPCServer` per worker that listens for `adapter:call` messages and dispatches to real adapters.
+2. The worker creates proxy adapters via `createProxyPlatform()` backed by `IPCTransport` (Node.js fork IPC channel).
+3. `runInProcess()` wraps handler execution in `AsyncLocalStorage` context, so `usePlatform()`, `useLLM()`, `useCache()` return the correct proxy platform.
+4. Permission enforcement: governed wrapper (child-side, fast reject) + `ChildIPCServer` permission check (parent-side, security boundary).
+
+The transport is pluggable via `PlatformTransportFactory` — see [Adapter System → Platform Transport Adapters](/concepts/adapter-system#platform-transport-adapters).
 
 ### Warmup
 
@@ -253,11 +266,13 @@ Plugin handlers **don't** see the execution mode directly. They see a standard `
 - `ctx.runtime.fs` — sandboxed filesystem access, permission-gated.
 - `ctx.runtime.fetch` — sandboxed network access, permission-gated.
 - `ctx.runtime.env` — sandboxed env var access, permission-gated.
-- `ctx.platform.*` — platform services (LLM, cache, storage, etc.), which may be RPC proxies in container mode.
+- `ctx.platform.*` — platform services (LLM, cache, storage, etc.), which may be IPC proxies in worker-pool or container mode.
+
+SDK hooks like `useLLM()`, `useCache()`, `usePlatform()` also work transparently across all modes. They use `AsyncLocalStorage` to resolve the correct platform for the current execution context — governed with the right permissions and backed by the right transport. No global singletons, no mode-specific code in plugins.
 
 The shims enforce declared permissions identically in every mode. `ctx.runtime.fs.readFile('/etc/passwd')` throws a permission error in-process and in a container — the only difference is that in a container, the `/etc/passwd` read wouldn't have been allowed by the OS either, so you get defense-in-depth.
 
-In container mode, `ctx.platform.llm.complete(...)` is an RPC call back through the gateway to the parent service, which calls the real LLM adapter and streams the response back. The plugin doesn't know.
+In worker-pool mode, `useLLM().complete(...)` is an IPC call to the parent process, which calls the real LLM adapter and returns the response. In container mode, it's an RPC call through the gateway. The plugin doesn't know.
 
 ## Picking a mode
 
@@ -312,6 +327,7 @@ kb-dev restart
 
 ## What to read next
 
+- **[Concepts → Adapter System → Platform Transport](/concepts/adapter-system#platform-transport-adapters)** — how IPC proxy adapters work across process boundaries.
 - **[Concepts → Plugin System](/concepts/plugin-system)** — the lifecycle plugins go through.
 - **[Configuration → kb.config.json → execution](/configuration/kb-config#platformexecution)** — the full execution config schema.
 - **[Gateway → Architecture → Internal dispatch](/gateway/architecture#internal-dispatch-endpoint)** — container-mode dispatch details.
