@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -111,6 +112,31 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 
 		if !jsonMode {
 			o.Section(name)
+		}
+
+		// Bundle — generate minimal Docker build context via kb-devkit.
+		if t.Bundle != "" {
+			if !jsonMode {
+				o.Info("bundling " + t.Bundle)
+			}
+			bundleArgs := []string{"bundle", t.Bundle, "--docker"}
+			devkitBin := filepath.Join(repoRoot, "tools", "kb-devkit", "kb-devkit")
+			bundleCmd := exec.CommandContext(ctx, devkitBin, bundleArgs...)
+			bundleCmd.Dir = repoRoot
+			bundleCmd.Stdout = buildOut
+			bundleCmd.Stderr = buildOut
+			if err := bundleCmd.Run(); err != nil {
+				res.OK, res.Error = false, "bundle: "+err.Error()
+				if !jsonMode {
+					o.Err("bundle failed: " + err.Error())
+				}
+				results = append(results, res)
+				allOK = false
+				continue
+			}
+			if !jsonMode {
+				o.OK("bundled " + t.Bundle)
+			}
 		}
 
 		// Build.

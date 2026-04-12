@@ -269,8 +269,9 @@ func buildPkgDepMap(pkgs []workspace.Package, pkgByName map[string]workspace.Pac
 }
 
 // readWorkspaceDeps returns workspace-internal dependency names for a package.
-// peerDependencies are included because tsup DTS compilation requires their types
-// to be built first, making them real build-time ordering constraints.
+// Reads dependencies, devDependencies, and peerDependencies — all three are
+// relevant for build-time ordering (devDeps like @kb-labs/devkit are needed
+// during the build phase inside Docker containers).
 func readWorkspaceDeps(dir string, pkgByName map[string]workspace.Package) []string {
 	data, err := os.ReadFile(dir + "/package.json")
 	if err != nil {
@@ -279,6 +280,7 @@ func readWorkspaceDeps(dir string, pkgByName map[string]workspace.Package) []str
 
 	var pkg struct {
 		Dependencies     map[string]string `json:"dependencies"`
+		DevDependencies  map[string]string `json:"devDependencies"`
 		PeerDependencies map[string]string `json:"peerDependencies"`
 	}
 	if err := json.Unmarshal(data, &pkg); err != nil {
@@ -293,6 +295,14 @@ func readWorkspaceDeps(dir string, pkgByName map[string]workspace.Package) []str
 			result = append(result, name)
 		}
 	}
+	for name := range pkg.DevDependencies {
+		if _, ok := pkgByName[name]; ok {
+			if _, dup := seen[name]; !dup {
+				seen[name] = struct{}{}
+				result = append(result, name)
+			}
+		}
+	}
 	for name := range pkg.PeerDependencies {
 		if _, ok := pkgByName[name]; ok {
 			if _, dup := seen[name]; !dup {
@@ -301,6 +311,13 @@ func readWorkspaceDeps(dir string, pkgByName map[string]workspace.Package) []str
 		}
 	}
 	return result
+}
+
+// WorkspaceDeps returns direct workspace:* dependency names for a package dir.
+// Reads dependencies + devDependencies + peerDependencies.
+// pkgByName must cover all workspace packages to correctly filter internal deps.
+func WorkspaceDeps(pkgDir string, pkgByName map[string]workspace.Package) []string {
+	return readWorkspaceDeps(pkgDir, pkgByName)
 }
 
 // ─── Layer execution ──────────────────────────────────────────────────────────
