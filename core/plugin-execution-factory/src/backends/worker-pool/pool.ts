@@ -7,8 +7,9 @@
 
 import { EventEmitter } from 'node:events';
 import type { WorkerPoolConfig } from './types.js';
+import type { PlatformServices } from '@kb-labs/plugin-contracts';
 import type { Worker } from './worker.js';
-import type { ExecutionRequest, ExecutionResult } from '../../types.js';
+import type { ExecutionRequest, ExecutionResult, PlatformTransportFactory } from '../../types.js';
 import { QueueFullError } from '../../errors.js';
 import { normalizeError } from '../../utils.js';
 
@@ -52,7 +53,9 @@ export class WorkerPool extends EventEmitter<PoolEvents> {
 
   constructor(
     workerScript: string,
-    config: Partial<WorkerPoolConfig> = {}
+    config: Partial<WorkerPoolConfig> = {},
+    platform?: PlatformServices,
+    platformTransport?: PlatformTransportFactory,
   ) {
     super();
 
@@ -89,7 +92,9 @@ export class WorkerPool extends EventEmitter<PoolEvents> {
         onWorkersRecycled: () => {
           this.statsTracker.stats.workersRecycled++;
         },
-      }
+      },
+      platform,
+      platformTransport,
     );
 
     // Initialize queue manager

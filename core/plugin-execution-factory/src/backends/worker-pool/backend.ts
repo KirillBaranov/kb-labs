@@ -16,8 +16,10 @@ import type {
   ExecutionStats,
   WorkerPoolOptions,
   HostType,
+  PlatformTransportFactory,
 } from '../../types.js';
 import type { PlatformServices, UIFacade } from '@kb-labs/plugin-contracts';
+import { IPCPlatformTransportFactory } from '../../platform-transport/ipc-factory.js';
 import { noopUI } from '@kb-labs/plugin-contracts';
 import { WorkerPool } from './pool.js';
 import type { WorkerPoolConfig } from './types.js';
@@ -33,6 +35,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 export interface WorkerPoolBackendOptions extends WorkerPoolOptions {
   /** Platform services (passed to worker processes) */
   platform: PlatformServices;
+
+  /** Platform transport factory for cross-process adapter calls. Default: IPC. */
+  platformTransport?: PlatformTransportFactory;
 
   /** UI provider */
   uiProvider?: (hostType: HostType) => UIFacade;
@@ -66,6 +71,7 @@ export class WorkerPoolBackend implements ExecutionBackend {
   private startTime = Date.now();
   private readonly config: WorkerPoolConfig;
   private readonly platform: PlatformServices;
+  private readonly platformTransport: PlatformTransportFactory;
   private readonly uiProvider: (hostType: HostType) => UIFacade;
   private readonly workerScript: string;
 
@@ -77,6 +83,7 @@ export class WorkerPoolBackend implements ExecutionBackend {
 
   constructor(options: WorkerPoolBackendOptions) {
     this.platform = options.platform;
+    this.platformTransport = options.platformTransport ?? new IPCPlatformTransportFactory();
     this.uiProvider = options.uiProvider ?? (() => noopUI);
 
     // Default worker script (to be created)
@@ -108,7 +115,7 @@ export class WorkerPoolBackend implements ExecutionBackend {
       return;
     }
 
-    this.pool = new WorkerPool(this.workerScript, this.config);
+    this.pool = new WorkerPool(this.workerScript, this.config, this.platform, this.platformTransport);
 
     // Log pool events
     this.pool.on('workerSpawned', (worker) => {

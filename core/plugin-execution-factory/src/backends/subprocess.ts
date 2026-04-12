@@ -152,20 +152,18 @@ function createDefaultIPCServerFactory(): IPCServerFactory {
     const platformContainer = ensurePlatformContainer(platform);
 
     if (process.platform === 'win32') {
-      // Windows: Use process IPC (process.send/process.on)
-      // TODO: Implement ProcessIPCServer wrapper when needed
-      // For now, fall back to Unix sockets (works on Windows via WSL/named pipes in Node.js)
-      const { UnixSocketServer } = await import('@kb-labs/core-ipc');
-      const socketPath = `/tmp/kb-subprocess-${executionId}.sock`;
+      // Cross-platform: Unix domain socket on Linux/macOS, named pipe on Windows.
+      // Node.js net API handles both transparently via createSocketPath().
+      const { UnixSocketServer, createSocketPath } = await import('@kb-labs/core-ipc');
+      const socketPath = createSocketPath(`subprocess-${executionId}`);
       const authToken = randomBytes(32).toString('hex');
       const serverConfig: UnixSocketServerConfig = { socketPath };
       (serverConfig as unknown as Record<string, unknown>).authToken = authToken;
       const server = new UnixSocketServer(platformContainer, serverConfig);
       return new UnixSocketIPCServer(server, socketPath, authToken);
     } else {
-      // Unix/Linux/macOS: Use Unix domain sockets (fastest)
-      const { UnixSocketServer } = await import('@kb-labs/core-ipc');
-      const socketPath = `/tmp/kb-subprocess-${executionId}.sock`;
+      const { UnixSocketServer, createSocketPath } = await import('@kb-labs/core-ipc');
+      const socketPath = createSocketPath(`subprocess-${executionId}`);
       const authToken = randomBytes(32).toString('hex');
       const serverConfig: UnixSocketServerConfig = { socketPath };
       (serverConfig as unknown as Record<string, unknown>).authToken = authToken;
