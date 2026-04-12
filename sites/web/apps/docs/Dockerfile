@@ -44,4 +44,4 @@ EXPOSE 3001
 ENV PORT=3001
 ENV HOSTNAME=0.0.0.0
 
-CMD ["node", "sites/web/apps/docs/server.js"]
+CMD ["node", "apps/docs/server.js"]
