@@ -21,6 +21,7 @@
 
 export { UnixSocketServer, type UnixSocketServerConfig } from './ipc/unix-socket-server';
 export { IPCServer, createIPCServer } from './ipc/ipc-server';
+export { ChildIPCServer } from './ipc/child-ipc-server';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // TRANSPORT LAYER (Child Process Side)
@@ -50,3 +51,27 @@ export { BulkTransferHelper, type BulkTransfer, type BulkTransferOptions } from 
 // ═══════════════════════════════════════════════════════════════════════════
 
 export { selectTimeout, getOperationTimeout, OPERATION_TIMEOUTS } from './transport/timeout-config';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// SOCKET PATH (Cross-platform: Unix socket on Linux/macOS, named pipe on Windows)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export { createSocketPath, DEFAULT_SOCKET_PATH } from './socket-path';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PROXY ADAPTERS (Child Process Side — proxy platform services via transport)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export {
+  RemoteAdapter,
+  CacheProxy,
+  LLMProxy,
+  EmbeddingsProxy,
+  VectorStoreProxy,
+  StorageProxy,
+  SQLDatabaseProxy,
+  DocumentDatabaseProxy,
+  ConfigProxy,
+  createProxyPlatform,
+  type CreateProxyPlatformOptions,
+} from './proxy/index';

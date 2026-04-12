@@ -14,6 +14,7 @@ import type { IStorage } from './adapters/storage.js';
 import type { ILogger } from './adapters/logger.js';
 import type { IEventBus } from './adapters/event-bus.js';
 import type { IInvoke } from './adapters/invoke.js';
+import type { ILogReader } from './adapters/log-reader.js';
 import type { ISQLDatabase, IDocumentDatabase } from './adapters/database.js';
 
 /**
@@ -59,4 +60,7 @@ export interface IPlatformAdapters {
 
   /** Document database adapter (MongoDB, etc.) */
   readonly documentDatabase: IDocumentDatabase;
+
+  /** Log reader for querying and subscribing to logs */
+  readonly logs: ILogReader;
 }

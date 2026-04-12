@@ -28,6 +28,7 @@ import type { IPlatformAdapters } from '@kb-labs/core-platform';
 import type { AdapterCall, AdapterResponse, SerializableError } from '@kb-labs/core-platform/serializable';
 import { serialize, deserialize, IPC_PROTOCOL_VERSION } from '@kb-labs/core-platform/serializable';
 import { BulkTransferHelper } from '../transport/bulk-transfer';
+import { DEFAULT_SOCKET_PATH } from '../socket-path';
 
 export interface UnixSocketServerConfig {
   /** Path to Unix socket file (default: /tmp/kb-ipc.sock) */
@@ -63,7 +64,7 @@ export class UnixSocketServer {
     private readonly platform: IPlatformAdapters,
     config: UnixSocketServerConfig = {}
   ) {
-    this.socketPath = config.socketPath ?? '/tmp/kb-ipc.sock';
+    this.socketPath = config.socketPath ?? DEFAULT_SOCKET_PATH;
     this.authToken = config.authToken;
   }
 

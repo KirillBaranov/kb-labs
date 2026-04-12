@@ -116,6 +116,9 @@ export type {
   AnalyticsAdapter,
 } from './platform.js';
 
+// Platform context (AsyncLocalStorage)
+export { platformContext } from './platform-context.js';
+
 // API
 export type {
   PluginAPI,

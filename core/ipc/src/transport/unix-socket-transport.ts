@@ -28,6 +28,7 @@ import {
   TimeoutError,
 } from './transport';
 import { selectTimeout } from './timeout-config';
+import { DEFAULT_SOCKET_PATH } from '../socket-path';
 
 /**
  * Configuration for Unix Socket transport.
@@ -84,7 +85,7 @@ export class UnixSocketTransport implements ITransport {
     this.connecting = true;
 
     return new Promise((resolve, reject) => {
-      const socketPath = this.config.socketPath ?? '/tmp/kb-ipc.sock';
+      const socketPath = this.config.socketPath ?? DEFAULT_SOCKET_PATH;
 
       this.socket = net.connect(socketPath);
 

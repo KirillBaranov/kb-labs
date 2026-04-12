@@ -172,6 +172,38 @@ export async function connectToPlatform(socketPath?: string): Promise<PlatformSe
       },
     },
 
+    // Config service via RPC
+    config: {
+      getConfig: async (productId: string, profileId?: string) => rpcClient!.call('config', 'getConfig', [productId, profileId]),
+      getRawConfig: async () => rpcClient!.call('config', 'getRawConfig', []),
+    },
+
+    // Invoke service via RPC
+    invoke: {
+      call: async (request: unknown) => rpcClient!.call('invoke', 'call', [request]),
+      isAvailable: async (pluginId: string, command?: string) => rpcClient!.call('invoke', 'isAvailable', [pluginId, command]),
+    },
+
+    // SQL database via RPC
+    sqlDatabase: {
+      query: async (sql: string, params?: unknown[]) => rpcClient!.call('database.sql', 'query', [sql, params]),
+      transaction: async () => rpcClient!.call('database.sql', 'transaction', []),
+      close: async () => rpcClient!.call('database.sql', 'close', []),
+    },
+
+    // Document database via RPC
+    documentDatabase: {
+      find: async (collection: string, filter: unknown, options?: unknown) => rpcClient!.call('database.document', 'find', [collection, filter, options]),
+      findById: async (collection: string, id: string) => rpcClient!.call('database.document', 'findById', [collection, id]),
+      insertOne: async (collection: string, doc: unknown) => rpcClient!.call('database.document', 'insertOne', [collection, doc]),
+      updateMany: async (collection: string, filter: unknown, update: unknown) => rpcClient!.call('database.document', 'updateMany', [collection, filter, update]),
+      updateById: async (collection: string, id: string, update: unknown) => rpcClient!.call('database.document', 'updateById', [collection, id, update]),
+      deleteMany: async (collection: string, filter: unknown) => rpcClient!.call('database.document', 'deleteMany', [collection, filter]),
+      deleteById: async (collection: string, id: string) => rpcClient!.call('database.document', 'deleteById', [collection, id]),
+      count: async (collection: string, filter?: unknown) => rpcClient!.call('database.document', 'count', [collection, filter]),
+      close: async () => rpcClient!.call('database.document', 'close', []),
+    },
+
     // Log reader via RPC (limited in subprocess context)
     logs: {
       query: async (filters, options?) => {

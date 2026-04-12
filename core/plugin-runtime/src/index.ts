@@ -66,6 +66,9 @@ export {
   type RunInSubprocessOptions,
 } from './sandbox/index.js';
 
+// Platform governance
+export { createGovernedPlatformServices } from './platform/governed.js';
+
 // Host Wrappers
 export {
   wrapCliResult,
