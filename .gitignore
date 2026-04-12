@@ -72,4 +72,9 @@ deploy/docker/
 # custom
 # ───────────────
 *.sqlite
+*.sqlite-wal
+*.sqlite-shm
 *.db
+.kb/analytics/
+.kb/database/
+.kb/commit/
