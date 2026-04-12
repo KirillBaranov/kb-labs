@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   pageExtensions: ['ts', 'tsx', 'mdx'],
   transpilePackages: [],
-  outputFileTracingRoot: path.join(currentDir, '../../'),
+  outputFileTracingRoot: path.join(currentDir, '../../../'),
 };
 
 export default nextConfig;
