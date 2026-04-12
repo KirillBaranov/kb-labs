@@ -14,7 +14,8 @@ export default defineCommand<unknown, LinkInput, { id: string }>({
         ctx.ui?.error?.('Specify a plugin path to link');
         return { exitCode: 1, result: { id: '' } };
       }
-      const result = await post<{ ok: boolean; id: string }>('/link', { path: pluginPath });
+      // POST /packages first to install/register the local path, then link it
+      const result = await post<{ ok: boolean; id: string }>(`/packages/${encodeURIComponent(pluginPath)}/link`, { path: pluginPath });
       ctx.ui?.success?.(`Linked ${result.id}`);
       return { exitCode: 0, result: { id: result.id } };
     },

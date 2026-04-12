@@ -25,7 +25,7 @@ export default defineCommand<unknown, ListInput, ListResultData>({
   handler: {
     async execute(ctx: PluginContextV3, input: ListInput): Promise<CommandResult<ListResultData>> {
       const flags = (input.flags ?? input) as ListFlags;
-      const data = await get<ListResultData>('/list', { kind: 'plugin' });
+      const data = await get<ListResultData>('/packages', { kind: 'plugin' });
 
       if (flags.json) {
         ctx.ui?.json?.(data);

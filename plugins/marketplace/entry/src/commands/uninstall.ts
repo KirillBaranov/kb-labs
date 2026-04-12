@@ -1,5 +1,5 @@
 import { defineCommand, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
-import { post } from '../http.js';
+import { del } from '../http.js';
 
 interface UninstallInput {
   argv?: string[];
@@ -17,7 +17,7 @@ export default defineCommand<unknown, UninstallInput, { removed: string[] }>({
         return { exitCode: 1, result: { removed: [] } };
       }
 
-      const result = await post<{ ok: boolean; removed: string[] }>('/uninstall', { packageIds: argv });
+      const result = await del<{ ok: boolean; removed: string[] }>('/packages', { packageIds: argv });
 
       ctx.ui?.success?.(`Removed: ${result.removed.join(', ')}`);
       return { exitCode: 0, result: { removed: result.removed } };

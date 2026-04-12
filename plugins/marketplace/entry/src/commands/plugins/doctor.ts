@@ -24,7 +24,7 @@ export default defineCommand<unknown, DoctorInput, DoctorResultData>({
   handler: {
     async execute(ctx: PluginContextV3, input: DoctorInput): Promise<CommandResult<DoctorResultData>> {
       const flags = (input.flags ?? input) as DoctorFlags;
-      const report = await get<DoctorResultData>('/doctor');
+      const report = await get<DoctorResultData>('/diagnostics');
 
       if (flags.json) {
         ctx.ui?.json?.(report);

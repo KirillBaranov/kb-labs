@@ -1,5 +1,5 @@
 import { defineCommand, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
-import { post } from '../../http.js';
+import { patch } from '../../http.js';
 
 interface DisableInput { argv?: string[] }
 
@@ -14,7 +14,7 @@ export default defineCommand<unknown, DisableInput, { packageId: string }>({
         ctx.ui?.error?.('Specify a plugin to disable');
         return { exitCode: 1, result: { packageId: '' } };
       }
-      await post('/disable', { packageId });
+      await patch(`/packages/${encodeURIComponent(packageId)}`, { enabled: false });
       ctx.ui?.success?.(`Disabled ${packageId}`);
       return { exitCode: 0, result: { packageId } };
     },

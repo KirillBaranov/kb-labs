@@ -1,5 +1,5 @@
 import { defineCommand, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
-import { post } from '../../http.js';
+import { del } from '../../http.js';
 
 interface UnlinkInput { argv?: string[] }
 
@@ -14,7 +14,7 @@ export default defineCommand<unknown, UnlinkInput, { packageId: string }>({
         ctx.ui?.error?.('Specify a package ID to unlink');
         return { exitCode: 1, result: { packageId: '' } };
       }
-      await post('/unlink', { packageId });
+      await del(`/packages/${encodeURIComponent(packageId)}/link`);
       ctx.ui?.success?.(`Unlinked ${packageId}`);
       return { exitCode: 0, result: { packageId } };
     },

@@ -36,7 +36,7 @@ export default defineCommand<unknown, InstallInput, InstallResultData>({
         return { exitCode: 1, result: { installed: [], warnings: [] } };
       }
 
-      const result = await post<InstallResultData>('/install', {
+      const result = await post<InstallResultData>('/packages', {
         specs: argv,
         dev: Boolean(flags.dev),
       });
