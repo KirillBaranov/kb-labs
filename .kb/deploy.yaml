@@ -31,7 +31,7 @@ targets:
   kb-labs-web:
     watch:
       - sites/web/**
-    image: kb-labs-web
+    image: kb-site-web
     dockerfile: sites/web/apps/web/Dockerfile
     context: .
     bundle: "@kb-labs/web-site"
@@ -52,7 +52,7 @@ targets:
   kb-labs-docs:
     watch:
       - sites/web/apps/docs/**
-    image: kb-labs-docs
+    image: kb-site-docs
     dockerfile: sites/web/apps/docs/Dockerfile
     context: .
     bundle: "@kb-labs/docs-site"
