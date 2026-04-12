@@ -1,7 +1,7 @@
 ---
 title: "kb-devkit"
-description: "Workspace orchestrator for large monorepos — content-addressable task caching, category-aware task variants, affected-package detection, and quality checks via devkit.yaml."
-updatedAt: "2026-04-10"
+description: "Workspace orchestrator for large monorepos — content-addressable task caching, category-aware task variants, affected-package detection, quality checks, and Docker build context pruning via devkit.yaml."
+updatedAt: "2026-04-12"
 order: 9
 ---
 
@@ -524,6 +524,91 @@ kb-devkit run build --affected
 ```
 
 The `submodules` affected strategy is used because KB Labs packages live in separate git submodules — a workspace-level `git diff` cannot see changes inside them.
+
+## bundle — Docker build context pruning
+
+`kb-devkit bundle` is equivalent to `turbo prune --scope=<pkg>` for pnpm monorepos. It resolves the full transitive `workspace:*` dependency closure for a target package and emits a minimal build context that Docker can copy instead of the full monorepo.
+
+```bash
+kb-devkit bundle @kb-labs/docs-site
+kb-devkit bundle sites/web/apps/docs        # by relative path
+kb-devkit bundle @kb-labs/docs-site --out /tmp/ctx
+kb-devkit bundle @kb-labs/docs-site --docker
+kb-devkit bundle @kb-labs/sdk --include-sources
+kb-devkit bundle @kb-labs/docs-site --json
+```
+
+**Default output** (`.kb/bundle/<pkg-slug>/`):
+
+```
+package.json               ← root
+pnpm-lock.yaml             ← root (full; pnpm ignores unused importers)
+pnpm-workspace.yaml        ← pruned: only closure packages, exact paths
+sites/web/package.json
+sites/web/apps/docs/package.json
+sites/web/packages/og/package.json
+```
+
+The pruned `pnpm-workspace.yaml` lists exact relative paths — no globs. This is what makes `pnpm install --frozen-lockfile --filter @kb-labs/docs-site...` fast inside Docker: pnpm only resolves the packages that actually exist in the context.
+
+### Closure resolution
+
+`bundle` resolves all three dependency sections from each `package.json`:
+
+| Section | Why it matters |
+|---|---|
+| `dependencies` | Runtime deps — always needed |
+| `devDependencies` | Build tools like `@kb-labs/devkit` — needed during the build phase inside Docker |
+| `peerDependencies` | Workspace peers that must be present for type resolution |
+
+Resolution is a BFS starting at the target package and expanding through all `workspace:*` entries found in `pkgByName`. External npm packages are filtered out — only workspace members are included.
+
+### `--docker` mode
+
+Splits output into two subdirectories optimized for Docker layer caching:
+
+```
+out/
+  json/    ← layer 1: dependency install
+    package.json
+    pnpm-lock.yaml
+    pnpm-workspace.yaml
+    sites/web/package.json
+    sites/web/apps/docs/package.json
+    ...
+  full/    ← layer 2: source copy + build
+    (same manifests + full source of all closure packages)
+```
+
+Dockerfile pattern:
+
+```dockerfile
+FROM node:20-alpine AS deps
+WORKDIR /app
+COPY .kb/bundle/docs-site/json/ .
+RUN corepack enable pnpm && pnpm install --frozen-lockfile --filter @kb-labs/docs-site...
+
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/sites/web/node_modules ./sites/web/node_modules
+COPY --from=deps /app/sites/web/apps/docs/node_modules ./sites/web/apps/docs/node_modules
+COPY .kb/bundle/docs-site/full/sites/web ./sites/web
+RUN corepack enable pnpm && pnpm --filter @kb-labs/docs-site run build
+```
+
+<Callout type="info">
+`pnpm-lock.yaml` is copied in full — pnpm correctly ignores importers not present in the pruned workspace. Trimming the lockfile would add significant complexity with no practical benefit.
+</Callout>
+
+### Flags
+
+| Flag | Description |
+|---|---|
+| `--out <dir>` | Output directory. Default: `.kb/bundle/<pkg-slug>` |
+| `--docker` | Split into `json/` and `full/` subdirectories |
+| `--include-sources` | Copy source files in default (non-docker) mode |
+| `--json` | JSON output: `{ ok, target, out, packages, count }` |
 
 ## What to read next
 
