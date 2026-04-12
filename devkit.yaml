@@ -18,6 +18,14 @@ workspace:
       language: typescript
       preset: spa-app
 
+    # Plugin entry packages — tsup (CLI/REST) + rspack (Studio widgets)
+    # Must come before ts-lib — plugins/*/entry would otherwise match ts-lib first
+    plugin-entry:
+      match:
+        - "plugins/*/entry"
+      language: typescript
+      preset: node-lib
+
     # Backend app entrypoints (daemons, servers)
     # Must come before ts-lib — plugins/*/*  would otherwise match first
     ts-app:
@@ -314,6 +322,20 @@ run:
 
 tasks:
   build:
+    - categories: [plugin-entry]
+      command: pnpm build
+      inputs:
+        - "src/**"
+        - "tsup.config.ts"
+        - "tsup.config.js"
+        - "tsconfig*.json"
+        - "rspack.studio.config.*"
+        - "package.json"
+      outputs:
+        - "dist/**"
+      deps:
+        - "^build"
+
     - categories: [ts-lib, ts-app]
       command: tsup
       inputs:
