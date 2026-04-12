@@ -1,5 +1,5 @@
 import { defineCommand, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
-import { post } from '../../http.js';
+import { patch } from '../../http.js';
 
 interface EnableInput { argv?: string[] }
 
@@ -14,7 +14,7 @@ export default defineCommand<unknown, EnableInput, { packageId: string }>({
         ctx.ui?.error?.('Specify a plugin to enable');
         return { exitCode: 1, result: { packageId: '' } };
       }
-      await post('/enable', { packageId });
+      await patch(`/packages/${encodeURIComponent(packageId)}`, { enabled: true });
       ctx.ui?.success?.(`Enabled ${packageId}`);
       return { exitCode: 0, result: { packageId } };
     },

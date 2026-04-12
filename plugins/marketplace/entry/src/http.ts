@@ -40,6 +40,59 @@ export async function post<T = unknown>(path: string, body: Record<string, unkno
   }
 }
 
+export async function patch<T = unknown>(path: string, body: Record<string, unknown>): Promise<T> {
+  const url = `${getBaseUrl()}${path}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Marketplace ${path} failed (${res.status}): ${text}`);
+    }
+    return await res.json() as T;
+  } catch (err) {
+    if ((err as Error).name === 'AbortError') {
+      throw new Error(`Marketplace ${path} timed out — is the marketplace service running? (kb-dev start marketplace)`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export async function del<T = unknown>(path: string, body?: Record<string, unknown>): Promise<T> {
+  const url = `${getBaseUrl()}${path}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, {
+      method: 'DELETE',
+      headers: body ? { 'Content-Type': 'application/json' } : {},
+      body: body ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Marketplace ${path} failed (${res.status}): ${text}`);
+    }
+    if (res.status === 204) { return undefined as T; }
+    return await res.json() as T;
+  } catch (err) {
+    if ((err as Error).name === 'AbortError') {
+      throw new Error(`Marketplace ${path} timed out — is the marketplace service running? (kb-dev start marketplace)`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function get<T = unknown>(path: string, params?: Record<string, string>): Promise<T> {
   const url = new URL(`${getBaseUrl()}${path}`);
   if (params) {
