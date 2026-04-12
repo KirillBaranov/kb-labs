@@ -1,0 +1,237 @@
+/* ── WorkflowRunCard ─────────────────────────────────────────── */
+
+.card {
+  width: 100%;
+  max-width: 460px;
+  background: #0d0f14;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  overflow: hidden;
+  font-family: var(--font-body, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.875rem 1.25rem;
+  background: #13161f;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  gap: 0.75rem;
+}
+
+.titleGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-width: 0;
+}
+
+.workflowName {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #e2e4ea;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.taskName {
+  font-size: 0.75rem;
+  color: #555c72;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.taskName::before {
+  content: '·';
+  margin-right: 0.5rem;
+}
+
+.statusBadge {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #4ade80;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4ade80;
+  animation: statusPulse 2s ease-in-out infinite;
+}
+
+@keyframes statusPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ── Steps ── */
+.steps {
+  padding: 0.25rem 0;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.6875rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  border-left: 2px solid transparent;
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: background 150ms ease;
+}
+
+.visible .step {
+  animation: stepEnter 350ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: var(--step-delay, 0ms);
+}
+
+@keyframes stepEnter {
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.step:last-child {
+  border-bottom: none;
+}
+
+/* Done */
+.step_done .stepIcon {
+  color: #4ade80;
+}
+
+/* Active */
+.step_active {
+  background: rgba(59, 130, 246, 0.07);
+  border-left-color: #3b7afe;
+}
+
+.step_active .stepIcon {
+  color: #3b7afe;
+}
+
+/* Queued */
+.step_queued .stepIcon,
+.step_queued .stepLabel,
+.step_queued .stepType,
+.step_queued .stepSub {
+  opacity: 0.35;
+}
+
+/* ── Step parts ── */
+.stepIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+}
+
+.activeDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: activePulse 1.4s ease-in-out infinite;
+}
+
+@keyframes activePulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.35); opacity: 0.6; }
+}
+
+.stepLabel {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #d1d5db;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.stepType {
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.15em 0.45em;
+  border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.type_shell  { background: rgba(59, 122, 254, 0.18); color: #7eb3ff; }
+.type_gate   { background: rgba(245, 158, 11, 0.18); color: #fbbf24; }
+.type_approval { background: rgba(74, 222, 128, 0.15); color: #4ade80; }
+
+.stepSub {
+  font-size: 0.75rem;
+  color: #555c72;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stepTime {
+  font-size: 0.6875rem;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: #555c72;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.stepTimePlaceholder {
+  width: 2rem;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* ── Footer ── */
+.footer {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1.25rem;
+  background: #13161f;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.footerStat {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.6875rem;
+  color: #555c72;
+}
+
+.footerDivider {
+  width: 1px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .stepSub {
+    display: none;
+  }
+
+  .taskName {
+    display: none;
+  }
+}

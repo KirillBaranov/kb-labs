@@ -1,0 +1,271 @@
+---
+title: "Publishing"
+description: "Package, publish, and distribute your plugin via npm and the KB Labs marketplace."
+updatedAt: "2026-04-07"
+order: 9
+---
+
+KB Labs doesn't run its own package registry today. Plugins are distributed as **regular npm packages** — you publish them to npm (or your private registry), and users install them into their workspace via the marketplace service. This page walks through the publishing flow: package layout, pre-publish checklist, `npm publish`, and the install story on the consumer side.
+
+## What you're publishing
+
+A plugin is one or more npm packages. The conventional layout is three packages per plugin:
+
+- `@your-scope/<name>-cli` — the CLI package with the manifest and handler files.
+- `@your-scope/<name>-core` — business logic, framework-free.
+- `@your-scope/<name>-contracts` — shared types, Zod schemas, constants.
+
+Only the `cli` package **must** be published to the marketplace, because that's the one with the manifest. The `core` and `contracts` packages are published alongside because the CLI package depends on them — they're regular npm dependencies, not plugin entries.
+
+For reference, [kb-labs-commit-plugin](plugins/kb-labs-commit-plugin/) follows this pattern exactly.
+
+## Pre-publish checklist
+
+### 1. Build output is correct
+
+Your CLI package's `package.json` must point at the built output, not the source:
+
+```json
+{
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"]
+}
+```
+
+The `files` array determines what ends up in the published tarball. Include `dist` and anything else the runtime needs (e.g. `manifest.json` if you generate one, `assets/`). Don't ship `src/`, `tests/`, or anything else the consumer doesn't need.
+
+### 2. The manifest points at `.js` files
+
+Every handler path in the manifest must target `.js`, not `.ts`:
+
+```ts
+handler: './cli/commands/run.js#default'
+```
+
+The runtime dynamically imports these paths at handler dispatch time. If they point at `.ts`, dispatch fails at runtime because Node can't load TypeScript without a transpiler.
+
+Your build is responsible for producing the `.js` files at the paths the manifest declares. A common mistake is updating the source path but forgetting to rebuild — linter rules in the plugin template catch this, but double-check before publishing.
+
+### 3. Dependencies are declared correctly
+
+```json
+{
+  "dependencies": {
+    "@your-scope/mypl-core":      "^0.1.0",
+    "@your-scope/mypl-contracts": "^0.1.0",
+    "@kb-labs/sdk":               "^1.5.0"
+  },
+  "peerDependencies": {
+    "@kb-labs/core-platform":  "^1.0.0"
+  }
+}
+```
+
+- **Plugin's own sub-packages** (`core`, `contracts`) — regular dependencies.
+- **`@kb-labs/sdk`** — regular dependency. It's small and versioned; safe to bundle.
+- **`@kb-labs/core-platform`** — peer dependency. The host runtime provides it; bundling it creates version conflicts.
+
+Do not declare `@kb-labs/plugin-contracts`, `@kb-labs/studio-hooks`, `@kb-labs/studio-ui-kit`, or any other `@kb-labs/*-internal` package as a runtime dependency. The golden rule for imports applies here too — plugins consume the SDK and nothing else.
+
+### 4. Version numbers are in sync
+
+If your plugin is split into multiple packages, their versions should move together. A mismatch (CLI v0.2.0 depending on core v0.1.0 when core's actual version is v0.2.0) doesn't technically break anything if semver ranges are loose, but it makes debugging version drift hell.
+
+The [release-manager plugin](plugins/kb-labs-release-manager/) in the reference monorepo handles this — it uses a lockstep versioning strategy that bumps every package in the plugin together. For smaller plugins, just remember to bump all three package.json files before publishing.
+
+### 5. The manifest is valid
+
+Run the validator before publishing:
+
+```bash
+pnpm kb plugin:validate --manifest ./packages/your-plugin-cli/src/manifest.ts
+```
+
+This parses the manifest, checks against `ManifestV3` schema rules (ID format, version format, handler paths present), and prints any errors. A failing validation here means the plugin won't load for the consumer either.
+
+### 6. Types generate cleanly
+
+Run `pnpm type-check` across all three sub-packages. If any of them fail, fix the errors before publishing. Consumers who import your `contracts` package will get your `.d.ts` files; if they're broken, their build breaks too.
+
+### 7. Test the published shape locally
+
+Before publishing, use `npm pack` to produce the exact tarball you'd upload to the registry, then install it into a scratch workspace:
+
+```bash
+cd packages/your-plugin-cli
+pnpm pack
+# → your-scope-your-plugin-cli-0.1.0.tgz
+
+# In a scratch directory:
+cd /tmp/test-install
+pnpm init
+pnpm add /path/to/your-scope-your-plugin-cli-0.1.0.tgz
+```
+
+Now verify:
+
+- **`package.json`** in the installed copy has the expected `main`, `types`, `exports`.
+- **`dist/`** contains the built handlers the manifest points at.
+- **`src/`** is **not** present (or whatever you expect in `files`).
+- **Importing the manifest** works: `node -e "import('@your-scope/your-plugin-cli').then(m => console.log(m.manifest))"`.
+
+This catches publish-time mistakes before they hit npm — in particular, the "I forgot to rebuild" and "the `files` array is wrong" cases.
+
+## Publishing to npm
+
+Once the checklist passes:
+
+```bash
+cd packages/your-plugin-cli
+pnpm publish --access public
+```
+
+For scoped packages (`@your-scope/*`), `--access public` is required on the first publish — npm defaults scoped packages to private, which fails for free accounts. Subsequent publishes don't need the flag but it's harmless to leave it.
+
+If you have sub-packages, publish them in dependency order: contracts first, then core, then cli. Each depends on the previous one, so the registry needs the earlier packages available before later ones can resolve.
+
+For automated publishing in CI, the same flow works:
+
+```yaml
+- run: pnpm install
+- run: pnpm build
+- run: pnpm type-check
+- run: pnpm kb plugin:validate --manifest ./packages/your-plugin-cli/src/manifest.ts
+- run: pnpm --filter your-scope-your-plugin-contracts publish --access public --no-git-checks
+- run: pnpm --filter your-scope-your-plugin-core     publish --access public --no-git-checks
+- run: pnpm --filter your-scope-your-plugin-cli      publish --access public --no-git-checks
+```
+
+The `--no-git-checks` flag skips the "commit your changes first" nag that pnpm adds; safe in CI where the working tree is clean.
+
+## Installing a published plugin
+
+From the consumer side, the marketplace service handles installation:
+
+```bash
+pnpm kb marketplace install @your-scope/your-plugin-cli
+```
+
+The marketplace:
+
+1. Resolves the package from the npm registry.
+2. Runs `pnpm add @your-scope/your-plugin-cli` under the workspace.
+3. Loads the installed package's manifest and verifies it.
+4. Writes an entry to `.kb/marketplace.lock`.
+5. Returns the resolved version and manifest.
+
+After install, the consumer runs:
+
+```bash
+pnpm kb marketplace clear-cache
+pnpm kb your-command:your-action
+```
+
+The cache clear is mandatory — the CLI caches the command registry aggressively, and without clearing, newly installed plugins don't appear until the next restart.
+
+## Installing for local dev (before publishing)
+
+You don't have to publish to test. The marketplace supports linking local paths:
+
+```bash
+pnpm kb marketplace link /path/to/your-plugin-repo/packages/your-plugin-cli
+```
+
+This writes a `source: 'local'` entry in `.kb/marketplace.lock` pointing at the absolute path. Discovery loads the manifest from that path on every startup. Integrity mismatches on local packages auto-refresh (because the content changes on every rebuild), so you can iterate without re-linking.
+
+Unlink:
+
+```bash
+pnpm kb marketplace unlink @your-scope/your-plugin-cli
+```
+
+Use linked installs during development, publish only when you're ready to ship.
+
+## Versioning and updates
+
+The marketplace respects npm semver. When you publish a new version and users run:
+
+```bash
+pnpm kb marketplace update @your-scope/your-plugin-cli
+```
+
+...the marketplace resolves the latest matching version from npm, installs it, and updates the lock file. The update command preserves `enabled` / `disabled` state but refreshes `version`, `integrity`, and the loaded manifest.
+
+For major version bumps that break the manifest schema or the handler contract, include a migration note in the plugin's README. Users on incompatible versions will see diagnostics at load time (`MANIFEST_VALIDATION_ERROR`) but no automatic rollback — they'll need to pin to the older version manually.
+
+## Versioning conventions
+
+There's no enforced convention, but following these makes life easier:
+
+- **`0.x.y`** — pre-stable. Breaking changes allowed on minor bumps.
+- **`1.x.y`** — stable. Breaking changes require major version bumps.
+- **Align sub-package versions.** All three packages in a plugin should carry the same version number. It's not strictly required by the platform, but it makes debugging version drift much easier.
+
+The KB Labs SDK itself follows this convention — check the monorepo's first-party plugins for working examples.
+
+## Signed packages (future)
+
+The marketplace data model has a `signature` field on `MarketplaceEntry` (see [core-discovery types](platform/kb-labs-core/packages/core-discovery/src/types.ts)):
+
+```ts
+interface EntitySignature {
+  algorithm: string;                   // 'ed25519', 'sha256-rsa'
+  value: string;                       // base64-encoded signature
+  signer: string;                      // 'kb-labs-platform'
+  signedAt: string;                    // ISO timestamp
+  verifiedChecks: string[];            // ['integrity', 'types', 'lint', 'tests']
+}
+```
+
+This is infrastructure for a future marketplace that verifies plugins against platform quality checks (types pass, lint passes, tests pass) and mints a signature attesting to it. The discovery layer already reads and validates signatures — but the minting infrastructure is not yet exposed, so today every plugin loads as "unsigned" (with an info-level diagnostic).
+
+For now: publish to npm, consumers install via the marketplace, everything works. The signature path is for when KB Labs runs its own verified marketplace alongside npm.
+
+## A private registry
+
+If your plugin is internal to your company, publish to your private npm registry instead of the public one:
+
+```bash
+pnpm publish --registry https://npm.internal.example.com --access restricted
+```
+
+Consumers configure the registry in their `~/.npmrc` or the workspace `.npmrc`:
+
+```
+@your-scope:registry=https://npm.internal.example.com
+//npm.internal.example.com/:_authToken=${NPM_TOKEN}
+```
+
+The marketplace service respects `.npmrc` when resolving packages — it just calls `pnpm add` under the hood, which honors whatever registry config pnpm sees.
+
+## Pruning old versions
+
+npm keeps every version you publish indefinitely. For plugin releases where you iterate rapidly, this accumulates quickly. Use `npm deprecate` to mark old versions as deprecated without deleting them:
+
+```bash
+npm deprecate @your-scope/your-plugin-cli@"<0.2.0" "Please upgrade to 0.2.0 or later"
+```
+
+Deprecated versions still resolve, but consumers see a warning when installing. This is the softest way to encourage upgrades without breaking existing installs.
+
+## Gotchas
+
+- **The manifest is the source of truth for handler paths.** If you rename a file under `cli/commands/`, the manifest needs to be updated too. The build doesn't check this.
+- **Your plugin depends on the platform's ESM module resolution.** `moduleResolution: "bundler"` or `"node16"` is required in the consumer's `tsconfig.json` for the SDK's subpath imports (`@kb-labs/sdk/studio`, `@kb-labs/sdk/studio-build`) to work.
+- **`pnpm publish` rebuilds by default.** If your build is hermetic (runs `tsup` or `tsc` from scratch), this is fine. If you rely on pre-built `dist/` from an earlier step, pass `--no-git-checks --ignore-scripts`.
+- **Don't publish with uncommitted changes.** Even in CI, pnpm's default check catches this. If you really need to, `--no-git-checks` suppresses it — but the correct fix is usually "commit your version bump first".
+- **The marketplace does not run migrations.** If your plugin's config shape changes between versions, users upgrade and then discover their config no longer parses. Ship a migration guide in your README and consider a helper command (`kb your-plugin:migrate-config`) if the drift is significant.
+
+## What to read next
+
+- [Services → Marketplace](/services/marketplace) — the service that handles installation.
+- [Concepts → Plugin System → Discovery](/concepts/plugin-system#discovery-is-marketplace-driven) — how the platform finds installed plugins.
+- [Plugins → Overview](/plugins) — package layout and file conventions.
+- [Adapters → Custom Adapter → Publishing](/adapters/custom-adapter#publishing-the-adapter) — parallel flow for adapter packages.

@@ -59,31 +59,31 @@
   "plugins": [
     {
       "id": "marketplace",
-      "pkg": "@kb-labs/marketplace-cli",
+      "pkg": "@kb-labs/marketplace-entry",
       "description": "Install, list, enable plugins",
       "default": true
     },
     {
       "id": "mind",
-      "pkg": "@kb-labs/mind-cli",
+      "pkg": "@kb-labs/mind-entry",
       "description": "AI code search (RAG)",
       "default": true
     },
     {
       "id": "agents",
-      "pkg": "@kb-labs/agent-cli",
+      "pkg": "@kb-labs/agent-entry",
       "description": "Autonomous agents",
       "default": true
     },
     {
       "id": "ai-review",
-      "pkg": "@kb-labs/review-cli",
+      "pkg": "@kb-labs/review-entry",
       "description": "AI code review",
       "default": true
     },
     {
       "id": "commit",
-      "pkg": "@kb-labs/commit-cli",
+      "pkg": "@kb-labs/commit-entry",
       "description": "AI commit generation",
       "default": true
     }

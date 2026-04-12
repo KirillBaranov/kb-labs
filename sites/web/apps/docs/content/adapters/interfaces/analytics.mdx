@@ -1,0 +1,199 @@
+---
+title: "IAnalytics"
+description: "Event tracking interface with optional query, stats, and time-series surfaces."
+updatedAt: "2026-04-07"
+order: 7
+---
+
+`IAnalytics` is the platform's event tracking interface. Every LLM call, cache hit, workflow run, and plugin invocation funnels through an analytics adapter. The core surface is tiny (`track`, `identify`, `flush`); everything else is optional and exists for dashboards and read-side queries.
+
+Source of truth: [platform/kb-labs-core/packages/core-platform/src/adapters/analytics.ts](platform/kb-labs-core/packages/core-platform/src/adapters/analytics.ts).
+
+## Interface
+
+```ts
+interface IAnalytics {
+  // Core (required)
+  track(event: string, properties?: Record<string, unknown>): Promise<void>;
+  identify(userId: string, traits?: Record<string, unknown>): Promise<void>;
+  flush(): Promise<void>;
+
+  // Optional — read side
+  getEvents?(query?: EventsQuery): Promise<EventsResponse>;
+  getStats?(): Promise<EventsStats>;
+  getDailyStats?(query?: StatsQuery): Promise<DailyStats[]>;
+
+  // Optional — monitoring
+  getBufferStatus?(): Promise<BufferStatus | null>;
+  getDlqStatus?(): Promise<DlqStatus | null>;
+
+  // Optional — source attribution (for nested plugin execution)
+  getSource?(): { product: string; version: string } | undefined;
+  setSource?(source: { product: string; version: string }): void;
+}
+```
+
+## Event schema
+
+Events written by `track()` land as `AnalyticsEvent` records matching the `kb.v1` schema:
+
+```ts
+interface AnalyticsEvent {
+  id: string;
+  schema: 'kb.v1';
+  type: string;                          // the event name
+  ts: string;                            // ISO 8601 when track() was called
+  ingestTs: string;                      // ISO 8601 when the adapter persisted it
+  source: { product: string; version: string };
+  runId: string;                         // correlates events in one execution
+  actor?: {
+    type: 'user' | 'agent' | 'ci';
+    id?: string;
+    name?: string;
+  };
+  ctx?: Record<string, string | number | boolean | null>;
+  payload?: unknown;
+  hashMeta?: { algo: 'hmac-sha256'; saltId: string };
+}
+```
+
+Adapters fill in `source`, `runId`, `actor`, and `ctx` automatically from the `AnalyticsContext` injected at construction time — callers only pass the event name and properties.
+
+## Core methods
+
+### `track(event, properties?)`
+
+Record a named event.
+
+```ts
+await analytics.track('command_executed', {
+  command: 'release:run',
+  duration_ms: 1234,
+  success: true,
+});
+```
+
+Event names are strings — any convention works, but the platform uses dotted namespaces (`llm.completion.completed`, `workflow.run.failed`, `cache.hit`) by convention.
+
+### `identify(userId, traits?)`
+
+Associate a user ID with traits for attribution. Called sparingly — usually once per session, not per event.
+
+### `flush()`
+
+Force pending events to the backend. Call before process exit in long-running scripts. Short-lived CLI processes should call this in a `finally` block to avoid losing events.
+
+## Optional read-side methods
+
+Not every adapter implements these (NoOp doesn't, file adapters do, Postgres/DuckDB do fully). Check for presence before calling.
+
+### `getEvents(query?)`
+
+Raw event query with filters:
+
+```ts
+interface EventsQuery {
+  type?: string | string[];
+  source?: string;
+  actor?: string;
+  from?: string;     // ISO 8601
+  to?: string;
+  limit?: number;
+  offset?: number;
+}
+```
+
+Returns `{ events, total, hasMore }`.
+
+### `getStats()`
+
+Aggregated counts across events: `totalEvents`, `byType`, `bySource`, `byActor`, plus a time range.
+
+### `getDailyStats(query?)`
+
+The most powerful read method. Groups events into time buckets and returns aggregated metrics with optional breakdown.
+
+```ts
+interface StatsQuery extends EventsQuery {
+  groupBy?: 'hour' | 'day' | 'week' | 'month';  // default 'day'
+  breakdownBy?: string;     // dot-path like 'payload.model'
+  metrics?: string[];        // metric field names to aggregate
+}
+
+interface DailyStats {
+  date: string;              // bucket key, format depends on groupBy
+  count: number;
+  metrics?: Record<string, number>;
+  breakdown?: string;        // present when breakdownBy is used
+}
+```
+
+Example: hourly LLM cost broken down by model:
+
+```ts
+const stats = await analytics.getDailyStats?.({
+  type: ['llm.chatWithTools.completed', 'llm.completion.completed'],
+  groupBy: 'hour',
+  breakdownBy: 'payload.model',
+  metrics: ['totalCost', 'totalTokens'],
+});
+// [
+//   { date: '2026-01-01T10', count: 12, breakdown: 'gpt-4o-mini',      metrics: { totalCost: 0.05, ... } },
+//   { date: '2026-01-01T10', count: 3,  breakdown: 'gpt-5.1-codex-max', metrics: { totalCost: 1.20, ... } },
+// ]
+```
+
+**Standard metric fields by event type:**
+
+| Event type | Metrics |
+|---|---|
+| `llm.completion.completed` | `totalTokens`, `totalCost`, `avgDurationMs` |
+| `llm.chatWithTools.completed` | same |
+| `embeddings.embed.completed` | `totalTokens`, `totalCost`, `avgDurationMs` |
+| `vectorStore.search.completed` | `totalSearches`, `avgDurationMs` |
+| `vectorStore.upsert.completed` | `totalUpserts`, `avgDurationMs` |
+| `cache.hit` / `cache.miss` | `totalHits`, `totalMisses`, `totalSets`, `hitRate` |
+| `storage.*.completed` | `totalBytesRead`, `totalBytesWritten`, `avgDurationMs` |
+
+Adapters that don't support `breakdownBy` or `groupBy` silently ignore those fields and return the data without breakdown.
+
+### `getBufferStatus()`, `getDlqStatus()`
+
+Operational telemetry for adapters with a write-ahead log or dead-letter queue. Return `null` when not applicable (HTTP-only adapters, NoOp).
+
+## Source attribution
+
+`getSource()` / `setSource()` let wrappers override the event `source` field. This is how nested plugin execution works: when `@kb-labs/ai-review` calls `@kb-labs/mind` as a subprocess, the subprocess's `setSource({ product: '@kb-labs/mind', ... })` ensures Mind's events are attributed to Mind, not to AI Review.
+
+```ts
+const originalSource = analytics.getSource?.();
+try {
+  analytics.setSource?.({ product: '@kb-labs/mind', version: '0.1.0' });
+  await analytics.track('mind.rag-index.started', { ... });
+} finally {
+  if (originalSource) analytics.setSource?.(originalSource);
+}
+```
+
+The runtime handles this automatically for the top-level case — plugin code rarely touches these methods directly.
+
+## Contract rules
+
+- **`track()` and `identify()` return `Promise<void>`.** Adapters may batch internally, but the returned promise is the ingestion confirmation.
+- **Events are append-only.** No `update` or `delete` — treat the analytics store as an event log.
+- **Optional read methods are genuinely optional.** Always check for presence: `if (analytics.getDailyStats)`.
+- **Context enrichment is automatic.** Don't pass `source`, `runId`, `actor` yourself — the adapter fills them in from `AnalyticsContext`.
+- **Errors in `track()` don't bubble.** Analytics is fire-and-forget from the caller's perspective; adapters should catch their own errors and surface them via `getDlqStatus()` if persistent.
+
+## Built-in adapters
+
+| Package | Notes |
+|---|---|
+| `@kb-labs/adapters-analytics-sqlite` | SQLite. Full read side: `getEvents`, `getStats`, `getDailyStats` with time bucketing. |
+| `@kb-labs/adapters-analytics-file` | Append-only JSONL. Full `getDailyStats` via in-memory grouping. |
+| `@kb-labs/adapters-analytics-duckdb` | DuckDB. Fastest analytics queries for large event volumes. |
+
+## What to read next
+
+- [SDK → Hooks → `useAnalytics`](/sdk/hooks#useanalytics) — plugin consumer.
+- [Concepts → Observability](/operations/observability) — how analytics fits into the wider observability story.

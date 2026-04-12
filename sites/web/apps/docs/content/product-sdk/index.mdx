@@ -1,0 +1,79 @@
+---
+title: "Platform Client"
+description: "Zero-dependency client SDK for talking to the KB Labs platform from your own products."
+updatedAt: "2026-04-07"
+---
+
+`@kb-labs/platform-client` is the client SDK for applications that **consume** the KB Labs platform — backends, scripts, cloud functions, external services — anything that wants to call into a KB Labs deployment from the outside. It's the companion to `@kb-labs/sdk` (which is for building plugins that run *inside* the platform); `platform-client` is for code that lives in your own product and talks to KB Labs over HTTP.
+
+- **Zero external dependencies.** Uses only native `fetch`. Works in Node, browsers, edge runtimes, Deno, Bun.
+- **One class, four proxies.** `KBPlatform` is the entry point; `.llm`, `.cache`, `.vectorStore`, `.telemetry` are the typed proxies.
+- **Generic escape hatch.** `platform.call(adapter, method, ...args)` lets you reach any adapter method through the same pathway, even ones the typed proxies don't cover yet.
+- **Batched telemetry built in.** Fire-and-forget events with automatic batching, flushing, and retry.
+
+All requests route through the platform Gateway via the Unified Platform API (`POST /platform/v1/{adapter}/{method}`). The gateway handles auth, tenant scoping, rate limiting, and dispatch to the real adapter.
+
+Source: [platform/kb-labs-sdk/packages/platform-client/](platform/kb-labs-sdk/packages/platform-client/).
+
+## When to use this
+
+Use `@kb-labs/platform-client` when:
+
+- **You have an application that isn't a plugin.** A web app, a mobile backend, a data pipeline, a one-off script — anything that runs outside the KB Labs workspace and wants access to LLM, cache, vector store, or analytics.
+- **You want a single typed client** for all platform services instead of building your own HTTP wrappers around each adapter.
+- **You need to emit telemetry from a consumer.** The telemetry proxy batches events and handles flush/retry automatically.
+
+Don't use this when:
+
+- **You're building a KB Labs plugin.** Use `@kb-labs/sdk` with its runtime hooks (`useLLM`, `useCache`, ...) instead. Plugins run inside the platform and have direct access to services through the sandbox.
+- **You're building a Studio page.** Studio pages use `@kb-labs/sdk/studio` for hooks and UIKit. They don't need an HTTP client because they already live inside the browser that's authenticated with the gateway.
+
+## Quick start
+
+```bash
+pnpm add @kb-labs/platform-client
+```
+
+```ts
+import { KBPlatform } from '@kb-labs/platform-client';
+
+const platform = new KBPlatform({
+  endpoint: 'http://localhost:4000',  // gateway URL
+  apiKey: 'your-bearer-token',
+});
+
+// LLM
+const result = await platform.llm.complete('Explain this code');
+console.log(result.content, result.usage);
+
+// Cache
+await platform.cache.set('key', { value: 42 }, 60_000);
+const cached = await platform.cache.get<{ value: number }>('key');
+
+// Telemetry (batched)
+platform.telemetry.event('user.signup', { plan: 'pro' });
+platform.telemetry.metric('response_time_ms', 142);
+await platform.telemetry.flush();
+
+// Generic call for any adapter
+const custom = await platform.call('customAdapter', 'myMethod', 'arg1', 'arg2');
+
+// Clean up on exit
+await platform.shutdown();
+```
+
+## Sections
+
+- **[Overview](/product-sdk/overview)** — the package surface, constructor options, the unified API shape.
+- **[Quickstart](/product-sdk/quickstart)** — a working example end-to-end.
+- **[Authentication](/product-sdk/authentication)** — API keys, gateway auth, tenant scoping.
+- **[LLM, Cache, Vector Store](/product-sdk/commands)** — the built-in typed proxies.
+- **[Workflows](/product-sdk/workflows)** — triggering workflows via `platform.call()`.
+- **[Telemetry](/product-sdk/streaming)** — event batching, flush, shutdown.
+- **[Error handling](/product-sdk/errors)** — `PlatformCallResponse`, the error shape, retry strategies.
+
+## What to read next
+
+- **[Overview](/product-sdk/overview)** — start here.
+- **[Gateway → Overview](/gateway)** — the server side this client talks to.
+- **[SDK → Overview](/sdk)** — the plugin-side SDK, for contrast.

@@ -1,0 +1,279 @@
+---
+title: "Overview"
+description: "Plugin anatomy: package layout, manifest, handlers, lifecycle."
+updatedAt: "2026-04-07"
+order: 1
+---
+
+A KB Labs plugin is a regular npm package with a manifest, one or more handler modules, and a build that emits ESM bundles. There is no special wrapper or framework — plugins are loaded by the platform, discovered through the marketplace lock file, and executed in one of two sandbox modes.
+
+This page is the shortest useful mental model. For the full manifest schema see the [Manifest Reference](/plugins/manifest-reference). For permissions specifics see [Permissions](/plugins/permissions).
+
+## Package layout
+
+By convention a plugin is a mini-monorepo with three packages:
+
+```
+kb-labs-my-plugin/
+├── packages/
+│   ├── my-plugin-cli/         # CLI commands + manifest + handlers
+│   │   └── src/
+│   │       ├── manifest.ts    # exports default ManifestV3
+│   │       ├── cli/commands/  # one file per command
+│   │       └── rest/handlers/ # one file per route
+│   ├── my-plugin-core/        # business logic (framework-free)
+│   └── my-plugin-contracts/   # shared types, Zod schemas, constants
+├── package.json
+└── tsconfig.json
+```
+
+The split isn't enforced — the runtime only cares about the manifest and the handler paths it points at. But every first-party plugin follows this layout, so copy it and save yourself the thinking. [kb-labs-commit-plugin](plugins/kb-labs-commit-plugin/) is the canonical reference.
+
+<Callout type="tip">
+Copy configs (`tsup.config.ts`, `tsconfig.json`, `package.json`) from an existing plugin — don't roll your own. The build outputs need to match what the runtime expects, and matching an existing plugin is the cheapest way to guarantee that.
+</Callout>
+
+## The manifest
+
+Every plugin exports a `ManifestV3` from its CLI package. It's a plain TypeScript object (no decorators, no class), typically authored as `src/manifest.ts` and re-exported as the package default:
+
+```ts
+// packages/my-plugin-cli/src/manifest.ts
+import { defineCommandFlags, combinePermissions, kbPlatformPreset } from '@kb-labs/sdk';
+import { greetFlags } from './cli/commands/flags';
+
+export const manifest = {
+  schema: 'kb.plugin/3',
+  id: '@kb-labs/my-plugin',
+  version: '0.1.0',
+
+  display: {
+    name: 'My Plugin',
+    description: 'Does cool things.',
+    tags: ['example'],
+  },
+
+  permissions: combinePermissions()
+    .with(kbPlatformPreset)
+    .withPlatform({ llm: true })
+    .build(),
+
+  cli: {
+    commands: [
+      {
+        id: 'my-plugin:greet',
+        group: 'my-plugin',
+        describe: 'Say hello',
+        handler: './cli/commands/greet.js#default',
+        flags: defineCommandFlags(greetFlags),
+        examples: ['kb my-plugin greet --name=Alice'],
+      },
+    ],
+  },
+};
+
+export default manifest;
+```
+
+The `handler` string format is `<path-relative-to-package-root>#<exportName>`. The path points to the **built** output (hence `.js`, not `.ts`), and `#default` means "default export of that module".
+
+## Handlers
+
+Every capability in the manifest points at a handler file. A handler's default export is the result of a `define*` helper from `@kb-labs/sdk`. For a CLI command that means `defineCommand`:
+
+```ts
+// packages/my-plugin-cli/src/cli/commands/greet.ts
+import { defineCommand, useLogger, type PluginContextV3 } from '@kb-labs/sdk';
+import type { CLIInput } from '@kb-labs/sdk';
+
+interface GreetFlags {
+  name?: string;
+}
+
+export default defineCommand<unknown, CLIInput<GreetFlags>, { message: string }>({
+  id: 'my-plugin:greet',
+  description: 'Greet a user',
+  handler: {
+    async execute(ctx, input) {
+      const logger = useLogger();
+      const name = input.flags.name ?? 'world';
+      logger.info('greet called', { name });
+
+      return {
+        exitCode: 0,
+        result: { message: `Hello, ${name}!` },
+      };
+    },
+  },
+});
+```
+
+The runtime imports this module, takes `handler = module.default ?? module`, and calls `handler.execute(context, input)`. If the result doesn't have an `execute` function, loading fails with `INVALID_HANDLER`.
+
+<Callout type="info">
+`defineCommand` wraps your handler with a host guard that throws if the command is invoked from anywhere other than `cli` or `workflow`. Routes and WebSocket channels use `defineRoute` / `defineWebSocket` instead — those helpers guard for their respective hosts.
+</Callout>
+
+### What's in `ctx`?
+
+`PluginContextV3` is what the runtime passes as the first argument. The shape matters when you're writing handlers:
+
+- `ctx.host` — `'cli' | 'rest' | 'ws' | 'workflow' | 'webhook' | 'job' | 'cron'`. The SDK's host-aware helpers check this field.
+- `ctx.pluginId`, `ctx.pluginVersion`, `ctx.handlerId`, `ctx.requestId`, `ctx.tenantId` — identity and trace metadata.
+- `ctx.cwd` / `ctx.outdir` — working and artifact directories.
+- `ctx.ui` — pretty-printer (`success`, `info`, `warn`, `error`, spinners, loaders). Use it for human output.
+- `ctx.runtime` — sandboxed `env`, `fs`, `fetch`. Use these instead of the raw Node APIs; they're what permissions actually gate.
+- `ctx.api` — higher-level platform APIs: `state`, `artifacts`, `shell`, `events`, `invoke`, `jobs`, `workflows`, `environment`, `workspace`, `snapshot`.
+- `ctx.platform` — raw platform services (logger, llm, cache, storage, analytics, vectorStore, ...). You'll rarely use these directly; the SDK hooks (`useLogger()`, `useLLM()`, ...) are the idiomatic surface.
+
+### Hooks are the idiomatic way
+
+SDK hooks (`useLogger`, `useLLM`, `useCache`, `useStorage`, `useConfig`, `useAnalytics`, `useEventBus`, ...) read from a platform singleton, so they work without threading `ctx` everywhere:
+
+```ts
+import { useLLM, useCache, useConfig } from '@kb-labs/sdk';
+
+async function execute(ctx, input) {
+  const llm = useLLM();
+  const cache = useCache();
+  const config = await useConfig<{ model: string }>();
+  // ...
+}
+```
+
+Hooks degrade gracefully — if the platform doesn't provide a service (e.g. no LLM adapter configured), the hook returns `undefined`. That means your plugin can declare `llm` as an optional dependency and still run, as long as you check the return value before using it. The one exception is `useLogger()`, which always returns a logger (the platform provides a fallback). See [SDK Hooks](/sdk/hooks) for the full list.
+
+## Discovery
+
+The platform **does not scan the filesystem** for plugins. Discovery is driven entirely by `.kb/marketplace.lock`, written by the marketplace service when you run `kb marketplace install @scope/plugin` or `kb marketplace link <path>`.
+
+The lock file ([schema `kb.marketplace/2`](platform/kb-labs-core/packages/core-discovery/src/types.ts)) records, for each installed entity:
+
+- `version` (semver)
+- `resolvedPath` — where the package lives relative to the workspace root
+- `integrity` — `sha256-...` hash of `package.json`
+- `source` — `'marketplace'` for npm-installed, `'local'` for linked dev copies
+- `signature` — optional platform-issued signature (ed25519 / sha256-rsa)
+- `primaryKind` + `provides` — entity kinds the package advertises
+- `enabled` — default `true`; set to `false` to disable without uninstalling
+
+On every CLI startup (and whenever a service boots), [`DiscoveryManager.discover()`](platform/kb-labs-core/packages/core-discovery/src/discovery-manager.ts) reads the lock, walks each entry, loads the manifest, verifies integrity, and collects a `DiscoveryResult` with the live `ManifestV3` for each plugin. Failures are collected as `DiagnosticEvent`s (with codes like `MANIFEST_NOT_FOUND`, `INTEGRITY_MISMATCH`, `PLUGIN_DISABLED`) but don't crash the platform — a broken plugin just doesn't load.
+
+<Callout type="tip">
+If your plugin built but doesn't show up in `kb --help`, clear the registry cache: `pnpm kb marketplace clear-cache`. After rebuilding any CLI plugin this is mandatory — the platform caches the resolved registry snapshot.
+</Callout>
+
+### Local development
+
+When you run `kb marketplace link <path>`, the lock entry gets `source: 'local'`. Local entries behave almost identically to marketplace ones except integrity mismatches don't block loading — the discovery manager silently rewrites the stored hash because local packages change every build. This is what lets `pnpm install` in a plugin immediately reflect in the CLI without fighting the integrity check.
+
+## Execution
+
+When a handler fires, the [sandbox runner](infra/kb-labs-plugin/packages/plugin-runtime/src/sandbox/runner.ts) picks one of two modes:
+
+### In-process (`runInProcess`)
+
+The handler module is dynamically imported into the host's own Node process. Fastest path, no IPC overhead. Suitable for trusted first-party plugins in dev, and it's what most commands run as by default.
+
+Flow:
+
+1. Build a `PluginContextV3` from the descriptor (pluginId, requestId, tenantId, ...).
+2. Override the analytics source to attribute events to this plugin (restored in `finally`).
+3. `await import(handlerPath)`.
+4. Call `handler.execute(context, input)`.
+5. Drain the cleanup stack (any `ctx.api.lifecycle.onCleanup(...)` callbacks).
+6. Return `{ ok: true, data, executionMeta }`.
+
+If `handler.execute` isn't a function, the runner throws `PluginError('INVALID_HANDLER')`.
+
+### Subprocess (`runInSubprocess`)
+
+A fork of `bootstrap.js` (from `plugin-runtime`) is started with `KB_SOCKET_PATH`, `KB_PLATFORM_SOCKET_TOKEN`, `KB_EXECUTION_ID`, and `KB_TENANT_ID` in the environment. The parent sends an `ExecuteMessage` over IPC, the child runs the handler with a platform-client proxy talking back through a Unix socket, and the result comes back as a `ResultMessage` or `ErrorMessage`.
+
+This mode is used when:
+
+- The plugin is untrusted (loaded from the marketplace, not a local dev link).
+- The handler needs hard isolation (separate process, resource quotas enforced by the OS).
+- Timeouts need to be strict (the parent can `child.kill()` on abort).
+
+Default timeout for subprocess mode is **30 seconds**. Long-running LLM commands need to bump `timeoutMs` in the manifest.
+
+### Where the choice lives
+
+The mode isn't something plugins pick — it's decided by the execution backend configured in `kb.config.json` (in-process / worker-pool / container). Plugins are written the same way for both modes; the SDK sandboxing shims (`ctx.runtime.fs`, `ctx.runtime.env`, `ctx.runtime.fetch`) enforce permissions identically in both. See [Execution Model](/concepts/execution-model) for the backend selection.
+
+## Lifecycle hooks
+
+The manifest has a `lifecycle` section with four optional entry points:
+
+```ts
+lifecycle: {
+  onLoad?: string;     // called once when the plugin is first loaded
+  onUnload?: string;   // called during shutdown
+  onEnable?: string;   // called when the plugin is enabled after being disabled
+  onDisable?: string;  // called when the plugin is disabled
+}
+```
+
+Each value is a handler path, same format as command handlers. There's also `setup`, which runs once at install time and typically gets broader permissions than runtime handlers (e.g., to create directories, seed databases). Most plugins don't need any of these — start without them and add only when you have a concrete reason.
+
+## Entity kinds
+
+A plugin can provide more than one kind of entity. The discovery layer extracts a `provides: EntityKind[]` list from your manifest based on which sections are present:
+
+| Manifest section | Entity kind |
+|---|---|
+| `cli.commands` | `cli-command` |
+| `rest.routes` | `rest-route` |
+| `ws.channels` | `ws-channel` |
+| `workflows.handlers` | `workflow` |
+| `webhooks.handlers` | `webhook` |
+| `jobs.handlers` | `job` |
+| `cron.schedules` | `cron` |
+| `studio.pages` / `menus` | `studio-widget` / `studio-menu` |
+
+A single plugin can (and often does) provide many of these at once — commit-plugin ships 6 CLI commands, 14 REST routes, and a Studio page from the same package.
+
+## Loading order, on a single page
+
+Putting all the above together — what the platform does from cold start:
+
+<Steps>
+<Step title="Read the lock file">
+`.kb/marketplace.lock` is parsed; `kb.marketplace/2` schema is validated. No lock → no plugins.
+</Step>
+<Step title="Resolve each entry">
+For every installed package: resolve `resolvedPath` against the workspace root, check the directory exists.
+</Step>
+<Step title="Verify integrity">
+SRI hash of `package.json` must match the lock. Local packages auto-refresh; marketplace packages fail loudly.
+</Step>
+<Step title="Load the manifest">
+Dynamic import of the package's manifest module. Timeout: 5 seconds by default. Validation errors are collected as diagnostics.
+</Step>
+<Step title="Check signature (optional)">
+If a platform signature is present, it's verified. Missing signatures produce an `info`-level diagnostic, not an error.
+</Step>
+<Step title="Extract entity kinds">
+Walk the manifest, build the `provides` list, check for duplicate plugin IDs.
+</Step>
+<Step title="Register with runtime">
+The manifest is cached, handlers are indexed by `(host, id)`, and the plugin becomes invocable from the CLI, REST, or workflow engine.
+</Step>
+<Step title="Execute on demand">
+When a handler is triggered, the runner creates a context, enforces permissions via runtime shims, calls `execute(ctx, input)`, and collects metadata.
+</Step>
+</Steps>
+
+## Checklist for your first plugin
+
+- [ ] Copy the structure from [kb-labs-commit-plugin](plugins/kb-labs-commit-plugin/).
+- [ ] Update `package.json` and `tsconfig.json` in all three sub-packages.
+- [ ] Write `manifest.ts` with your `id`, a minimal `cli.commands[0]`, and `permissions: combinePermissions().with(minimalPreset).build()`.
+- [ ] Implement the handler with `defineCommand({ id, handler: { async execute(ctx, input) { ... } } })`.
+- [ ] Build: `pnpm --filter your-plugin run build`.
+- [ ] Link: `kb marketplace link ./path/to/your-plugin`.
+- [ ] Clear cache: `pnpm kb marketplace clear-cache`.
+- [ ] Run: `pnpm kb your-plugin:your-command`.
+
+If step 6 or 8 fail, check [Troubleshooting](/guides/troubleshooting) — the top three entries cover 90% of first-plugin friction.

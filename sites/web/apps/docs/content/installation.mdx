@@ -1,0 +1,155 @@
+---
+title: "Installation"
+description: "Install KB Labs via kb-create, pin versions, verify checksums, and upgrade."
+updatedAt: "2026-04-07"
+order: 2
+---
+
+KB Labs is installed through `kb-create` — a Go binary that downloads the platform, runs the setup wizard, and manages your workspace. This page covers all installation paths, version pinning, and upgrading.
+
+## Prerequisites
+
+- **macOS** or **Linux** (Windows support coming)
+- **curl** (for the one-line install)
+- **Git**
+- **Node.js** 20+ and **pnpm** 9+ (installed automatically if missing, or you can pre-install)
+
+## Quick install (recommended)
+
+```bash
+curl -fsSL https://kblabs.ru/install.sh | sh
+```
+
+The script:
+1. Detects your OS and architecture
+2. Downloads the correct `kb-create` binary from GitHub releases
+3. Installs it to `~/.local/bin` (or `/usr/local/bin` if you have write access)
+4. Verifies the binary works
+
+After install, `kb-create` is available in your PATH.
+
+## Pin a specific version
+
+For reproducible CI and controlled upgrades:
+
+```bash
+curl -fsSL https://kblabs.ru/install.sh | sh -s -- --version v1.2.3
+```
+
+## Verify checksum
+
+```bash
+curl -fsSL https://github.com/KirillBaranov/kb-labs/releases/download/v1.2.3/checksums.txt \
+  | grep kb-create-linux-amd64
+```
+
+Compare the SHA256 against the downloaded binary:
+
+```bash
+sha256sum ~/.local/bin/kb-create
+```
+
+## Manual binary install
+
+For environments where `curl | sh` is restricted, download the binary directly from [GitHub releases](https://github.com/KirillBaranov/kb-labs/releases/latest):
+
+| Platform | Binary |
+|----------|--------|
+| macOS (Apple Silicon) | `kb-create-darwin-arm64` |
+| macOS (Intel) | `kb-create-darwin-amd64` |
+| Linux (x86_64) | `kb-create-linux-amd64` |
+| Linux (ARM64) | `kb-create-linux-arm64` |
+
+After downloading:
+
+```bash
+chmod +x kb-create-darwin-arm64
+mv kb-create-darwin-arm64 /usr/local/bin/kb-create
+```
+
+## Bootstrap a workspace
+
+Once `kb-create` is installed, create your first workspace:
+
+```bash
+kb-create my-project
+```
+
+The interactive wizard:
+- Picks a package manager (pnpm recommended)
+- Sets up the platform directory (`~/.kb` by default or project-local)
+- Creates `.kb/kb.config.json` with default adapter stubs
+- Runs `pnpm install`
+
+When finished, the workspace is ready:
+
+```bash
+cd my-project
+kb-create status   # shows installed components and platform path
+```
+
+## Verify the installation
+
+```bash
+kb-create status
+```
+
+Expected output:
+
+```
+KB Labs Installation
+
+  Launcher:  kb-create v1.2.3
+  Platform:  @kb-labs/cli v0.1.4
+  Node:      v22.1.0
+  pnpm:      9.4.0
+  Config:    ./my-project/.kb/kb.config.json ✓
+```
+
+If any component is missing, `kb-create status` will suggest a fix command.
+
+## Configure LLM access
+
+AI-powered features (Mind RAG, commit generation, AI review) require an LLM adapter. Edit `.kb/kb.config.json`:
+
+```json
+{
+  "adapters": {
+    "llm": {
+      "type": "openai",
+      "options": {
+        "apiKey": "${OPENAI_API_KEY}"
+      }
+    }
+  }
+}
+```
+
+Set the key in your environment:
+
+```bash
+export OPENAI_API_KEY=sk-...
+```
+
+See [Configuration → kb.config](/configuration/kb-config) for all adapter options.
+
+## Upgrading
+
+```bash
+# Upgrade kb-create to latest
+curl -fsSL https://kblabs.ru/install.sh | sh
+
+# Upgrade the platform packages inside a workspace
+cd my-project
+kb marketplace update
+```
+
+## Enterprise
+
+For private repos and self-hosted rollout automation, see [Enterprise deployment](/enterprise). The `curl | sh` flow is the recommended starting point; SSH provisioning and internal mirrors layer on top.
+
+## What's next
+
+→ [Quick Start](/quick-start) — start services and run your first command  
+→ [Configuration → kb.config](/configuration/kb-config) — full config reference  
+→ [Adapters](/adapters) — configure LLM, database, storage, and more

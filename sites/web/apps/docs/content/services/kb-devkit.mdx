@@ -1,0 +1,531 @@
+---
+title: "kb-devkit"
+description: "Workspace orchestrator for large monorepos — content-addressable task caching, category-aware task variants, affected-package detection, and quality checks via devkit.yaml."
+updatedAt: "2026-04-10"
+order: 9
+---
+
+`kb-devkit` is a standalone Go binary for workspace orchestration in large monorepos. It has two planes: a **quality plane** that checks packages against rules declared in `devkit.yaml` and reusable YAML packs, and an **execution plane** that runs arbitrary tasks (build, lint, test, deploy, or custom) with content-addressable caching and parallel scheduling.
+
+It works with any TypeScript/Node.js/Go monorepo. Inside KB Labs it drives all builds, type checks, and linting across 125+ packages in 18 submodules.
+
+## Install
+
+```bash
+curl -fsSL https://kblabs.ru/kb-devkit/install.sh | sh
+```
+
+Or download a binary directly from [GitHub Releases](https://github.com/KirillBaranov/kb-labs/releases/latest).
+
+## Quick start
+
+```bash
+# Generate a starter config
+kb-devkit init
+
+# Build all packages (cache-aware)
+kb-devkit run build
+
+# Second run — everything cached, <1s
+kb-devkit run build
+
+# Build + lint + test — only packages changed since last commit
+kb-devkit run build lint test --affected
+
+# Check all packages against devkit.yaml rules
+kb-devkit check
+
+# Workspace health overview
+kb-devkit stats
+```
+
+## Configuration
+
+`kb-devkit` reads `devkit.yaml` from the workspace root, or from the path passed via `--config`.
+
+Run `kb-devkit init` to generate a minimal starter file, then extend it with built-in, local, or package-provided packs.
+
+### Minimal config
+
+```yaml
+schemaVersion: 2
+extends: [builtin:generic]
+
+workspace:
+  discovery:
+    - "packages/**"
+  categories:
+    libs:
+      match: ["packages/**"]
+      preset: node-lib
+```
+
+### Packs and `extends`
+
+`kb-devkit` composes policy from YAML packs:
+
+```yaml
+schemaVersion: 2
+extends:
+  - builtin:generic
+  - ./devkit/packs/frontend.yaml
+  - package:@acme/devkit-pack#devkit.pack.yaml
+```
+
+Supported references:
+- `builtin:<name>` — pack embedded in the binary
+- relative or absolute file path — local YAML pack
+- `package:<pkg>#<path>` — pack loaded from `node_modules/<pkg>/<path>`
+
+Packs can contribute presets, tasks, sync targets, check configuration, and external command-based checks/fixers.
+
+### Categories
+
+Categories classify packages and drive which task variant runs for them. They are declared as an **ordered mapping** — `kb-devkit` evaluates them top-to-bottom and the **first match wins**.
+
+```yaml
+workspace:
+  packageManager: pnpm
+  maxDepth: 3
+  categories:
+    # Literal paths (no wildcards) — matched before glob patterns.
+    # Useful for non-Node packages (Go binaries, Rust crates, etc.)
+    # that don't have a package.json.
+    go-binary:
+      match:
+        - "infra/kb-labs-dev"
+        - "infra/kb-labs-devkit-bin"
+        - "installer/kb-labs-create"
+      language: go
+      preset: go-binary
+
+    # Specific glob takes priority over the broader ts-app glob below.
+    spa:
+      match:
+        - "platform/kb-labs-studio/apps/studio"
+      language: typescript
+      preset: node-app
+
+    ts-lib:
+      match:
+        - "platform/*/packages/**"
+        - "plugins/*/packages/**"
+      language: typescript
+      preset: node-lib
+
+    ts-app:
+      match:
+        - "platform/*/apps/**"   # also matches studio — but spa is declared first
+        - "plugins/*/apps/**"
+      language: typescript
+      preset: node-app
+
+    site:
+      match:
+        - "sites/*/apps/**"
+      language: typescript
+      preset: site
+```
+
+**Rules:**
+- Declaration order determines priority — put more specific entries first.
+- Literal paths and glob patterns can be mixed freely in any order within a single category's `match` list.
+- Non-Node packages (Go, etc.) don't need `package.json` — a literal path in `match` is enough for discovery.
+- Packages that don't match any category are silently ignored by all commands.
+
+### Task variants
+
+Each task can have multiple **variants** — one per package category. The scheduler picks the first variant whose `categories` list includes the package's category. Packages with no matching variant are silently skipped for that task.
+
+<Callout type="info">
+Each task has its own independent cache keyed by `(taskName, package, inputHash)`. Running `build` does not populate the `lint` cache — they track different inputs and are stored separately. The only link between tasks is `deps:` — if `lint` declares `deps: ["build"]`, build runs first (from cache if available), then lint runs fresh.
+</Callout>
+
+```yaml
+schemaVersion: 2
+workspace:
+  packageManager: pnpm
+  maxDepth: 3
+  categories:
+    # ... see above ...
+
+tasks:
+  build:
+    - categories: [ts-lib, ts-app]
+      command: tsup
+      inputs:
+        - "src/**"
+        - "tsup.config.ts"
+        - "tsconfig*.json"
+      outputs:
+        - "dist/**"
+      deps:
+        - "^build"   # run 'build' for all workspace deps first
+
+    - categories: [go-binary]
+      command: make build
+      inputs:
+        - "**/*.go"
+        - "go.mod"
+        - "go.sum"
+        - "Makefile"
+
+    - categories: [site]
+      command: pnpm build
+      inputs:
+        - "app/**"
+        - "components/**"
+        - "messages/**"
+        - "next.config.*"
+      outputs:
+        - ".next/**"
+      deps:
+        - "^build"   # wait for ts-lib deps (e.g. @kb-labs/sdk)
+
+  lint:
+    - categories: [ts-lib, ts-app]
+      command: eslint src/
+      inputs: ["src/**", "eslint.config.*"]
+
+    - categories: [site]
+      command: eslint app/ components/
+      inputs: ["app/**", "components/**", "eslint.config.*"]
+
+  type-check:
+    - categories: [ts-lib, ts-app]
+      command: tsc --noEmit
+      inputs: ["src/**", "tsconfig*.json"]
+      deps: ["^build"]
+
+    - categories: [site]
+      command: tsc --noEmit
+      inputs: ["app/**", "components/**", "tsconfig*.json"]
+      deps: ["^build"]
+
+  test:
+    - categories: [ts-lib, ts-app]
+      command: vitest run --passWithNoTests
+      inputs: ["src/**", "test/**", "vitest.config.*"]
+      outputs: ["coverage/**"]
+      deps: ["build"]
+
+  deploy:
+    command: ./scripts/deploy.sh   # no categories = applies to all packages
+    inputs: ["dist/**"]
+    cache: false                   # always runs, never restored from cache
+
+affected:
+  strategy: submodules   # git | submodules | command
+  # command: ./scripts/changed-files.sh
+
+run:
+  concurrency: 8   # max parallel (pkg × task) pairs; default: NumCPU-1
+```
+
+**Single variant shorthand** — if a task applies to all packages with no category filter, write it as a plain object (not a list):
+
+```yaml
+tasks:
+  deploy:
+    command: ./scripts/deploy.sh
+    inputs: ["dist/**"]
+    cache: false
+```
+
+### Dep syntax
+
+- `^build` — run `build` for every workspace dependency of the current package before building it (equivalent to Turborepo's `^` prefix).
+- `build` — run `build` for the same package before the current task.
+
+The full dependency graph is built across all `(package × task)` pairs. Packages within the same layer run in parallel; layers execute sequentially.
+
+### Affected strategies
+
+| Strategy | How it works |
+|---|---|
+| `git` | Single `git diff --name-only HEAD` from workspace root |
+| `submodules` | Walks `.gitmodules`, runs `git diff` inside each submodule — correct for monorepos where packages live in separate git repos |
+| `command` | Runs a custom script; reads one file path per line from stdout |
+
+After finding directly changed packages, `kb-devkit` performs a BFS through the reverse dependency graph to include all downstream dependents.
+
+## Commands
+
+### init — generate starter config
+
+```bash
+kb-devkit init           # creates a minimal starter config
+kb-devkit init --force   # overwrite existing
+```
+
+### run — task execution
+
+```bash
+kb-devkit run build
+kb-devkit run build lint
+kb-devkit run build lint test --affected
+kb-devkit run build --packages @acme/core-types,@acme/core-runtime
+kb-devkit run build --no-cache
+kb-devkit run build --live
+kb-devkit run build --json
+```
+
+**Flags:**
+
+| Flag | Description |
+|---|---|
+| `--affected` | Run only on packages changed relative to HEAD (+ their dependents) |
+| `--packages <list>` | Comma-separated package names to target |
+| `--no-cache` | Skip cache reads and writes for this run |
+| `--live` | Stream output in real time; forces `--concurrency 1` |
+| `--concurrency N` | Max parallel tasks (default: `run.concurrency` in yaml, then NumCPU-1) |
+
+**Human output:**
+
+```
+  19:04:05  [  1/42] - @acme/core-types                    [build]  cached
+  19:04:06  [  2/42] ● @acme/core-runtime                  [build]  944ms
+  19:04:07  [  3/42] ✕ @acme/workflow-cli                  [build]  FAILED
+                         src/index.ts(1,1): error TS2742: ...
+
+  3 passed  11 cached  1 failed  — 6.8s
+```
+
+**`--json` output:**
+
+```json
+{
+  "ok": true,
+  "elapsed": "6.8s",
+  "summary": { "total": 14, "passed": 3, "failed": 0, "cached": 11 },
+  "results": [
+    { "Package": "@acme/core-types", "Task": "build", "OK": true, "Cached": true,  "Elapsed": 1200000 },
+    { "Package": "@acme/core-runtime", "Task": "build", "OK": true, "Cached": false, "Elapsed": 940000000 }
+  ]
+}
+```
+
+### check — quality checks
+
+```bash
+kb-devkit check                              # all packages
+kb-devkit check --package @acme/core-types
+kb-devkit check --json
+```
+
+Validates each package against the rules declared in its matched preset: tsconfig inheritance, eslint config, required scripts, required deps, required fields, required files, and external command-based checks loaded from packs.
+
+### fix — auto-fix violations
+
+```bash
+kb-devkit fix                                # all packages
+kb-devkit fix --package @acme/core-types
+kb-devkit fix --dry-run
+kb-devkit fix --safe
+kb-devkit fix --scaffold
+kb-devkit fix --all
+```
+
+Fix modes:
+- `--safe` — deterministic in-place fixes
+- `--scaffold` — create missing deterministic files
+- `--sync` — apply issues marked as sync-managed
+- `--all` — all supported fix capabilities
+
+### generate — scaffold a new package
+
+```bash
+kb-devkit generate <template> --dest <path> --name <pkg-name>
+kb-devkit generate <template> --dest <path> --name <pkg-name> --dry-run
+kb-devkit generate   # list available templates
+```
+
+Copies a template into `--dest` with variable substitution. Templates are declared in the `scaffolding.templates` section of `devkit.yaml`.
+
+**Variables** — available in file contents and file names:
+
+| Variable | Example |
+|---|---|
+| `{{.Name}}` | `@kb-labs/my-pkg` |
+| `{{.Scope}}` | `kb-labs` |
+| `{{.ShortName}}` | `my-pkg` |
+| `{{.Version}}` | `0.1.0` |
+| `{{.Dest}}` | `plugins/my-plugin/core` |
+
+**Registering templates in `devkit.yaml`:**
+
+```yaml
+scaffolding:
+  templates:
+    node-lib:
+      source: local
+      path: templates/node-lib
+
+    adapter:
+      source: npm
+      package: "@kb-labs/template-adapter"
+
+    starter:
+      source: git
+      url: "https://github.com/org/repo"
+      ref: "main"
+```
+
+Supported sources: `local` (path relative to workspace root), `npm` (resolves from `node_modules`), `git` (shallow clone), `url` (downloads `.zip` or `.tar.gz`).
+
+### External command checks and fixers
+
+`kb-devkit` can be extended without Go plugins by declaring command-based checks in YAML packs or directly in `devkit.yaml`.
+
+```yaml
+checks:
+  packages:
+    external-readme:
+      enabled: true
+      config:
+        requiredFile: README.md
+
+custom_checks:
+  - name: external-readme
+    run: "./node_modules/@acme/devkit-pack/bin/external-readme.sh"
+    fix: "./node_modules/@acme/devkit-pack/bin/external-readme.sh"
+    on: ["check"]
+    language: typescript
+```
+
+Runtime contract:
+- command runs from workspace root
+- stdin receives JSON with `package`, `preset`, `workspaceRoot`, `check`, `phase`, `config`
+- fix commands also receive `issues` and `dryRun`
+- env includes `KB_DEVKIT_MODE`, `KB_DEVKIT_PACKAGE_*`, `KB_DEVKIT_WORKSPACE_ROOT`
+
+Expected check output:
+
+```json
+{
+  "issues": [
+    {
+      "check": "external-readme",
+      "severity": "error",
+      "message": "README missing",
+      "file": "/repo/packages/demo/README.md",
+      "fix": "create README.md",
+      "capability": "scaffoldable"
+    }
+  ]
+}
+```
+
+### stats — workspace health
+
+```bash
+kb-devkit stats
+kb-devkit stats --json
+```
+
+Prints a health score (A–F), issue counts by category, and coverage metrics for eslint config, tsconfig, README, and engines fields across all packages.
+
+### status — package table
+
+```bash
+kb-devkit status
+kb-devkit status --json
+```
+
+Lists every package with its category, preset, and last-run outcomes.
+
+### sync — sync config assets
+
+```bash
+kb-devkit sync --check     # report drift without changing anything
+kb-devkit sync --dry-run   # show what would change
+kb-devkit sync             # apply
+```
+
+### gate — pre-commit quality gate
+
+```bash
+kb-devkit gate
+```
+
+Runs `check` on staged files only. Intended for use as a pre-commit hook — exits with code 1 if any violations are found.
+
+### watch — file watcher
+
+```bash
+kb-devkit watch --json
+```
+
+Watches the workspace for file changes and streams violations to stdout as JSONL events whenever a file is saved.
+
+### doctor — environment diagnostics
+
+```bash
+kb-devkit doctor --json
+```
+
+```json
+{
+  "ok": false,
+  "checks": [
+    { "id": "config", "ok": true,  "detail": "devkit.yaml found, 5 tasks, 2 presets" },
+    { "id": "node",   "ok": true,  "detail": "v22.0.0" },
+    { "id": "pnpm",   "ok": true,  "detail": "9.15.0" },
+    { "id": "go",     "ok": false, "detail": "not found" }
+  ],
+  "hint": "Install Go >= 1.22 to build kb-devkit from source"
+}
+```
+
+## How caching works
+
+1. `kb-devkit` collects all files matching the `inputs:` glob patterns for the `(package × task)` pair and computes a SHA256 hash of their contents and paths.
+2. **Cache hit** — output files are restored from `.kb/devkit/objects/` in ~1ms and the task is marked `cached`.
+3. **Cache miss** — the task command runs, output files are stored in the object store, and a manifest is written to `.kb/devkit/tasks/<pkg>/<task>/<hash>.json`.
+
+**Each task has its own independent cache.** The cache key is `(taskName, package, inputHash)` — running `build` does not populate the `lint` cache. If you run `build` then `lint`, lint executes fresh. If you run `build` again, build is served from cache. Tasks are only linked through `deps:` — if `lint` declares `deps: ["build"]`, build runs first (from cache), then lint runs fresh.
+
+Cache layout:
+
+| Path | Purpose |
+|---|---|
+| `.kb/devkit/objects/` | Content-addressable blob store (SHA256) |
+| `.kb/devkit/tasks/<pkg>/<task>/<hash>.json` | Task manifest: inputs hash, output file list, exit code, duration |
+
+Same file content in two packages → stored once. Rename-only change → new manifest, same objects.
+
+Set `cache: false` on a task to always run it (for side-effectful tasks like `deploy`).
+
+<Callout type="info">
+The cache is local by default. Remote cache backends (S3, GCS) are on the roadmap — watch the GitHub repo for updates.
+</Callout>
+
+## Global flags
+
+| Flag | Description |
+|---|---|
+| `--json` | Structured JSON output (all commands) |
+| `--config <path>` | Explicit path to `devkit.yaml` |
+| `--depth N` | Override glob recursion depth |
+
+## KB Labs integration
+
+Inside the KB Labs workspace, `kb-devkit` is the build system for all 125+ packages across 18 submodules. The `devkit.yaml` at the workspace root defines category-aware tasks — `tsup` for ts-lib/ts-app, `make build` for Go binaries, `pnpm build` for Next.js sites.
+
+```bash
+# Build everything (incremental — only what changed)
+kb-devkit run build
+
+# Full quality gate used by CI
+kb-devkit run build lint type-check test
+
+# Affected-only run after editing a single package
+kb-devkit run build --affected
+```
+
+The `submodules` affected strategy is used because KB Labs packages live in separate git submodules — a workspace-level `git diff` cannot see changes inside them.
+
+## What to read next
+
+- [Services overview](/services) — the full KB Labs service map.
+- [Source on GitHub](https://github.com/KirillBaranov/kb-labs/tree/main/tools/kb-devkit) — Go source, issues, releases.

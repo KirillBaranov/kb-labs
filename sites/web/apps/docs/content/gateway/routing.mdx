@@ -1,0 +1,153 @@
+---
+title: "Routing"
+description: "How requests are matched to upstreams, how paths are rewritten, and how the host dispatcher works."
+updatedAt: "2026-04-07"
+order: 4
+---
+
+This page documents the request-to-upstream matching rules, the `rewritePrefix` / `excludePaths` behavior, and the separate dispatch path for host agents and container executions. Everything here comes from the real [`UpstreamConfigSchema`](infra/kb-labs-gateway/packages/gateway-contracts/src/config.ts) and the bootstrap in [`bootstrap.ts`](infra/kb-labs-gateway/apps/gateway-app/src/bootstrap.ts).
+
+## Upstream config
+
+```ts
+interface UpstreamConfig {
+  url: string;                      // full URL, e.g. 'http://localhost:5050'
+  prefix: string;                   // must start with '/'
+  rewritePrefix?: string;           // if set, replace prefix before forwarding
+  websocket?: boolean;              // default false
+  excludePaths?: string[];          // paths under this prefix NOT to proxy
+  description?: string;
+}
+```
+
+The gateway config section has a `upstreams` record where every key is an upstream ID and every value is an `UpstreamConfig`:
+
+```json
+{
+  "gateway": {
+    "upstreams": {
+      "rest":        { "url": "http://localhost:5050", "prefix": "/api/v1",             "websocket": true },
+      "workflow":    { "url": "http://localhost:7778", "prefix": "/api/exec",           "rewritePrefix": "" },
+      "marketplace": { "url": "http://localhost:5070", "prefix": "/api/v1/marketplace" }
+    }
+  }
+}
+```
+
+The upstream ID is how you refer to an upstream in logs and metrics — the routing itself only uses the `prefix` field to match requests.
+
+## Matching algorithm
+
+For every incoming request, the gateway:
+
+1. **Finds all upstreams whose `prefix` is a prefix of the request path.** Multiple can match — `/api/v1/marketplace/install` matches both `rest` (`/api/v1`) and `marketplace` (`/api/v1/marketplace`).
+2. **Picks the longest-matching prefix.** So `/api/v1/marketplace/install` goes to `marketplace`, not `rest`.
+3. **Checks `excludePaths`.** If the request path is listed in the upstream's `excludePaths`, the gateway handles it itself instead of proxying.
+4. **Applies `rewritePrefix`.** If `rewritePrefix` is set (including empty string `""`), the matched `prefix` is replaced with `rewritePrefix`. Remaining path segments and query strings pass through unchanged.
+5. **Forwards** to `<upstream.url><rewritten-path>`.
+
+If no upstream matches, the gateway returns 404.
+
+### `rewritePrefix` in practice
+
+With `prefix: "/api/exec"` and `rewritePrefix: ""`:
+
+```
+Client request:     POST /api/exec/jobs/123/cancel
+Matches:            workflow (prefix '/api/exec')
+After rewrite:      POST /jobs/123/cancel
+Forwarded to:       http://localhost:7778/jobs/123/cancel
+```
+
+With `prefix: "/api/v1"` and no `rewritePrefix`:
+
+```
+Client request:     POST /api/v1/plugins/commit/generate
+Matches:            rest (prefix '/api/v1')
+After rewrite:      (no change)
+Forwarded to:       http://localhost:5050/api/v1/plugins/commit/generate
+```
+
+`rewritePrefix: undefined` keeps the prefix as-is. `rewritePrefix: ""` strips it. `rewritePrefix: "/v2"` replaces `/api/v1` with `/v2`. There's no regex — it's a literal prefix substitution.
+
+### `excludePaths`
+
+```json
+{
+  "rest": {
+    "url": "http://localhost:5050",
+    "prefix": "/api/v1",
+    "excludePaths": ["/api/v1/auth/token", "/api/v1/auth/refresh"]
+  }
+}
+```
+
+Paths in `excludePaths` match the request prefix but aren't forwarded. The gateway handles them internally — that's how `/auth/token` stays on the gateway even though it sits under a proxied prefix.
+
+## Header forwarding
+
+The gateway forwards most request headers to upstreams, with a few exceptions:
+
+- **`Host`** — rewritten to match the upstream's host.
+- **`X-Forwarded-For`** — appended with the client IP.
+- **`X-Forwarded-Proto`** — set to the protocol of the original request.
+- **`X-Forwarded-Host`** — the original `Host` header from the client.
+- **`Authorization`** — passed through (upstream services trust that the gateway has validated it).
+- **Correlation headers** (`X-Request-ID`, `X-Trace-ID`) — preserved if present, generated if missing.
+
+Response headers from the upstream are forwarded back to the client unmodified, except for hop-by-hop headers (`Connection`, `Keep-Alive`, `Transfer-Encoding`) which are handled by the HTTP layer.
+
+## WebSocket proxying
+
+When `websocket: true` on an upstream, the gateway accepts WebSocket upgrades on paths matching that upstream's prefix and forwards them transparently. The auth middleware runs on the initial upgrade request; once the socket is upgraded, the gateway shuttles frames in both directions with no inspection.
+
+The reference config enables `websocket: true` on the `rest` upstream so that plugin-declared WebSocket channels (`manifest.ws.channels[]`) work end-to-end through the gateway.
+
+There's no automatic reconnection on the gateway side — if the upstream drops the socket, the client sees it drop too. Clients handle reconnection themselves.
+
+## Host dispatch (separate path)
+
+Everything above is standard reverse-proxy territory. The gateway also has a **second routing path** that doesn't involve HTTP forwarding at all: dispatching capability calls to connected host agents.
+
+This path is triggered by the `/internal/dispatch` endpoint and uses the `HostRegistry` instead of the `upstreams` config. The flow is covered in detail in [Architecture → Internal dispatch endpoint](/gateway/architecture#internal-dispatch-endpoint); the short version:
+
+1. Caller posts `{ namespaceId, capability, method, args }` to `/internal/dispatch` with the internal secret.
+2. Gateway looks up a connected host agent in `HostRegistry` matching the `namespaceId`.
+3. Gateway sends a capability call over the agent's WebSocket.
+4. Agent executes the call locally and sends the result back.
+5. Gateway returns the result to the original caller.
+
+There's no `upstream` config for this — the target isn't a service, it's a connected client. The dispatcher is `dispatcher.ts` in `apps/gateway-app/src/hosts/`.
+
+## LLM gateway (optional)
+
+The gateway has an optional LLM proxy layer under `apps/gateway-app/src/llm/`. When enabled, the gateway can terminate LLM API calls from untrusted clients (e.g. container-mode plugin executions) instead of letting those clients hold provider credentials directly.
+
+The upstream is `platform.llm` — whatever LLM adapter is configured in `kb.config.json`. The gateway translates incoming calls through its own auth layer so that provider credentials (`OPENAI_API_KEY`, etc.) live only on the gateway host.
+
+This is a centralized-credential pattern for multi-tenant or sandboxed deployments. It's optional — local dev and single-tenant deployments usually let clients hold credentials directly.
+
+## Rate limiting and quotas
+
+**The gateway itself doesn't rate-limit.** Rate limiting in KB Labs lives in the `ResourceBroker` layer (`core.resourceBroker` in `kb.config.json`), which wraps adapter calls. That means requests to `/api/v1/plugins/mind/search` aren't rate-limited at the gateway — they're rate-limited at the point where the REST API's plugin execution backend calls the Mind LLM through `useLLM()`.
+
+Quotas are similar — enforced at the adapter boundary, not at the HTTP boundary. Multi-tenant quotas use the tenant ID carried in the request context, which the gateway populates from the authenticated token.
+
+If you need HTTP-level rate limiting (protect against flood attacks, enforce caller QPS limits), put a reverse proxy in front of the gateway — nginx, Caddy, Cloudflare. Don't wire it into the gateway itself.
+
+## Observability
+
+Every request through the gateway generates:
+
+- **A structured log entry** with `serviceId: 'gateway'`, `layer: 'gateway'`, the matched upstream ID, the path, the status code, and duration.
+- **Prometheus metrics** scraped from `/metrics` — request counts, latency histograms, error rates per upstream.
+- **Diagnostic events** on auth failures, upstream errors, and host registry mutations.
+
+Correlation IDs flow through: if the client sends `X-Trace-ID`, the gateway uses it and passes it to upstream; otherwise it generates one and adds it to the logs. Upstream services see the same trace ID in their logs, so you can follow a single request across services by grepping for one ID.
+
+## What to read next
+
+- [Architecture](/gateway/architecture) — the host dispatcher and WebSocket internals.
+- [Authentication](/gateway/authentication) — what happens before routing.
+- [Self-Hosted Deployments](/gateway/self-hosted) — putting the gateway behind a reverse proxy for rate limiting and TLS.
+- [Configuration → kb.config.json](/configuration/kb-config) — where `gateway.upstreams` lives in the config.

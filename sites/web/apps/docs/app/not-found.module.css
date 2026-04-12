@@ -1,0 +1,55 @@
+.root {
+  min-height: calc(100vh - var(--docs-header-height));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem 1.5rem;
+  background: var(--surface);
+}
+
+.inner {
+  text-align: center;
+  max-width: 400px;
+}
+
+.code {
+  font-size: clamp(5rem, 18vw, 8rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  color: var(--line);
+  line-height: 1;
+  margin-bottom: 0.75rem;
+  font-family: var(--font-heading), sans-serif;
+}
+
+.heading {
+  font-size: clamp(1.25rem, 3vw, 1.75rem);
+  font-weight: 680;
+  letter-spacing: -0.025em;
+  margin-bottom: 0.6rem;
+  font-family: var(--font-heading), sans-serif;
+  color: var(--fg);
+}
+
+.sub {
+  font-size: 0.9375rem;
+  color: var(--fg-muted);
+  margin-bottom: 2rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  height: 38px;
+  padding: 0 1.25rem;
+  border-radius: 8px;
+  background: #111;
+  color: #fff;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: opacity 0.15s;
+}
+
+.btn:hover {
+  opacity: 0.75;
+}

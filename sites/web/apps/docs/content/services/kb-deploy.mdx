@@ -1,0 +1,265 @@
+---
+title: "kb-deploy"
+description: "Deploy Docker services to VPS over SSH — affected detection, image build and push, infrastructure management, and structured JSON output for agents."
+updatedAt: "2026-04-10"
+order: 10
+---
+
+`kb-deploy` is a standalone Go binary that builds Docker images, pushes them to a registry, and deploys over SSH using docker compose. It detects which services are affected by the latest git commit and deploys only those — skipping unchanged targets.
+
+It also manages stateful infrastructure (databases, caches, queues) as a separate concern from application deployments — infra is never touched by `kb-deploy run`.
+
+## Install
+
+```bash
+curl -fsSL https://kblabs.ru/kb-deploy/install.sh | sh
+```
+
+Or download a binary directly from [GitHub Releases](https://github.com/KirillBaranov/kb-labs/releases/latest).
+
+**Build from source:**
+
+```bash
+git clone https://github.com/KirillBaranov/kb-labs
+cd kb-labs/tools/kb-deploy && make build
+```
+
+## Quick start
+
+```bash
+# Deploy targets affected by the last commit
+kb-deploy run
+
+# Deploy all targets regardless of git changes
+kb-deploy run --all
+
+# Deploy a specific target
+kb-deploy run kb-labs-web
+
+# Bring up all infrastructure services (idempotent)
+kb-deploy infra up
+
+# Check what's running (targets + infra)
+kb-deploy status
+kb-deploy infra status
+```
+
+## Configuration
+
+`kb-deploy` discovers config by walking up from `cwd` looking for `.kb/deploy.yaml`. Pass an explicit path with `--config`.
+
+### Environment variables
+
+All string fields support `${VAR}` substitution. Variables are resolved in priority order:
+
+1. **Process environment** — shell env, CI secrets.
+2. **`.env` file** in the repo root — loaded automatically, supports multiline quoted values.
+
+Process env always wins over `.env`.
+
+### deploy.yaml reference
+
+```yaml
+registry: ghcr.io/yourname
+
+# ─── Infrastructure ──────────────────────────────────────────────────────────
+# Stateful services managed independently from application targets.
+# Never touched by kb-deploy run.
+infrastructure:
+  qdrant:
+    type: docker-image
+    image: qdrant/qdrant:latest
+    ssh:
+      host: ${SSH_HOST}
+      user: ${SSH_USER}
+      key_env: SSH_KEY       # name of the env var holding the private key PEM
+    volumes:
+      - qdrant_data:/qdrant/storage
+    ports:
+      - "6333:6333"
+    restart: unless-stopped
+    strategy: manual         # "manual" (default) | "diff"
+
+  redis:
+    type: docker-image
+    image: redis:7-alpine
+    ssh:
+      host: ${SSH_HOST}
+      user: ${SSH_USER}
+      key_env: SSH_KEY
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    strategy: manual
+
+# ─── Application targets ─────────────────────────────────────────────────────
+# Stateless services deployed by kb-deploy run.
+targets:
+  kb-labs-web:
+    watch:
+      - sites/kb-labs-web/**  # paths that trigger a deploy when changed
+    image: kb-labs-web         # image name (registry prefix added automatically)
+    dockerfile: sites/kb-labs-web/apps/web/Dockerfile
+    context: sites/kb-labs-web
+    ssh:
+      host: ${SSH_HOST}
+      user: ${SSH_USER}
+      key_env: SSH_KEY
+    remote:
+      compose_file: ~/app/docker-compose.yml
+      service: web
+```
+
+### Infrastructure strategy
+
+| Strategy | Behavior |
+|---|---|
+| `manual` (default) | Only `kb-deploy infra up/down` touches this service. `run` never does. |
+| `diff` | `infra up` is called during `run` if the image digest changed. For services you want auto-updated in CI. |
+
+### SSH key setup
+
+Store the private key PEM in an environment variable (e.g. `SSH_KEY`). For CI, add it as a secret. The `.env` file supports multiline quoted values for local development:
+
+```bash
+# .env
+SSH_HOST=1.2.3.4
+SSH_USER=deploy
+SSH_KEY="-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAA...
+-----END OPENSSH PRIVATE KEY-----"
+```
+
+<Callout type="warning">
+Never commit `.env` to git. Add it to `.gitignore`.
+</Callout>
+
+## Commands
+
+### `kb-deploy run`
+
+Build, push, and deploy affected or specified targets.
+
+```bash
+kb-deploy run                 # affected by last commit (git diff HEAD~1)
+kb-deploy run --all           # all targets
+kb-deploy run kb-labs-web     # specific target
+
+kb-deploy run --json          # machine-readable output
+```
+
+What it does for each target:
+1. `docker build` the image with the current git SHA as tag
+2. `docker push` to the registry
+3. SSH into the host, `docker pull` the new image
+4. `docker compose up -d` to restart the service
+
+### `kb-deploy infra up`
+
+Bring up infrastructure services. Idempotent — safe to run repeatedly.
+
+```bash
+kb-deploy infra up            # all infra services
+kb-deploy infra up qdrant     # specific service
+
+kb-deploy infra up --json
+```
+
+Behavior per service:
+- **Already running** — no-op
+- **Stopped** — `docker start`
+- **Absent** — `docker pull` then `docker run` with configured volumes, ports, and restart policy
+
+### `kb-deploy infra down`
+
+Stop and remove an infrastructure container.
+
+```bash
+kb-deploy infra down qdrant
+kb-deploy infra down qdrant --json
+```
+
+This runs `docker stop` + `docker rm`. Data in named volumes is preserved.
+
+### `kb-deploy infra status`
+
+Show runtime state of all infrastructure services.
+
+```bash
+kb-deploy infra status
+kb-deploy infra status --json
+```
+
+```
+● qdrant               running   qdrant/qdrant:latest
+● redis                running   redis:7-alpine
+```
+
+### `kb-deploy status`
+
+Show last deployed SHA and timestamp per application target.
+
+```bash
+kb-deploy status
+kb-deploy status --json
+```
+
+### `kb-deploy list`
+
+List configured application targets.
+
+```bash
+kb-deploy list
+kb-deploy list --json
+```
+
+## JSON contracts
+
+All commands support `--json`. Stdout contains exactly one JSON object. Exit code 0 means the command ran (not that all services are healthy). Exit 1 means a tool-level error (config not found, missing env var).
+
+```json
+// kb-deploy run --json
+{ "ok": true, "sha": "abc1234", "results": [
+  { "target": "kb-labs-web", "sha": "abc1234", "ok": true }
+]}
+
+// kb-deploy infra up --json
+{ "ok": true, "results": [
+  { "name": "qdrant", "ok": true },
+  { "name": "redis",  "ok": true }
+]}
+
+// kb-deploy infra status --json
+{ "ok": true, "services": [
+  { "name": "qdrant", "image": "qdrant/qdrant:latest", "running": true,  "state": "running" },
+  { "name": "redis",  "image": "redis:7-alpine",       "running": false, "state": "stopped" }
+]}
+
+// error
+{ "ok": false, "hint": "deploy config not found" }
+```
+
+## CI usage
+
+```yaml
+# .github/workflows/deploy.yml
+- name: Deploy affected targets
+  env:
+    SSH_HOST: ${{ secrets.SSH_HOST }}
+    SSH_USER: ${{ secrets.SSH_USER }}
+    SSH_KEY:  ${{ secrets.SSH_KEY }}
+  run: kb-deploy run --json
+```
+
+`kb-deploy run` exits 0 even when there is nothing to deploy (no affected targets). It exits 1 only when a target fails — CI will catch it.
+
+## KB Labs integration
+
+Inside KB Labs, `kb-deploy` is configured via `.kb/deploy.yaml` in the workspace root. Application targets (web, docs, API) are deployed by CI on every push to `main`. Infrastructure (Qdrant, Redis) is brought up once with `infra up` and left running — `run` never touches it.
+
+Use `kb-monitor` to observe deployed services and infrastructure from the same config file.
+
+## What to read next
+
+- [kb-monitor](/services/kb-monitor) — remote observability for deployed services.
+- [Source on GitHub](https://github.com/KirillBaranov/kb-labs/tree/main/tools/kb-deploy) — Go source, issues, releases.

@@ -1,0 +1,3282 @@
+{
+  "meta": {
+    "siteName": "KB Labs",
+    "siteDescription": "KB Labs is a plugin-first platform for engineering teams: replace fragile scripts and CI glue with observable policy-first workflows, deployable on-prem in minutes."
+  },
+  "nav": {
+    "product": "Product",
+    "solutions": "Solutions",
+    "resources": "Resources",
+    "enterprise": "Enterprise",
+    "pricing": "Pricing",
+    "marketplace": "Marketplace",
+    "install": "Install",
+    "docs": "Docs",
+    "login": "Log in",
+    "start": "Install",
+    "megamenu": {
+      "core": {
+        "label": "Core"
+      },
+      "delivery": {
+        "label": "Delivery"
+      },
+      "platformOps": {
+        "label": "Platform ops"
+      },
+      "product": {
+        "workflows": {
+          "title": "Workflows",
+          "description": "One engine for releases, reviews, QA, and agents"
+        },
+        "plugins": {
+          "title": "Plugins",
+          "description": "Everything is a plugin. Every plugin is open code"
+        },
+        "gateway": {
+          "title": "Gateway",
+          "description": "25+ contracts between your code and your infra"
+        },
+        "stateBroker": {
+          "title": "State Broker",
+          "description": "Distributed state without Redis lock-in"
+        },
+        "studio": {
+          "title": "Studio",
+          "description": "Visual UI for plugins and workflows"
+        }
+      },
+      "tools": {
+        "label": "Tools",
+        "kbDev": {
+          "title": "kb-dev",
+          "description": "Run local services with health and traces"
+        },
+        "kbDevkit": {
+          "title": "kb-devkit",
+          "description": "Monorepo quality tools and task runner"
+        },
+        "kbDeploy": {
+          "title": "kb-deploy",
+          "description": "Ship to prod before Kubernetes is worth it"
+        },
+        "kbMonitor": {
+          "title": "kb-monitor",
+          "description": "Watch deployments and services over time"
+        },
+        "marketplace": {
+          "title": "Marketplace",
+          "description": "Plugins and adapters you can drop in"
+        }
+      },
+      "solutions": {
+        "releaseAutomation": {
+          "title": "Release Automation",
+          "description": "Releases as one declarative workflow"
+        },
+        "codeQuality": {
+          "title": "Code Quality",
+          "description": "Review and QA gates on every change"
+        },
+        "codeIntelligence": {
+          "title": "Code Intelligence",
+          "description": "Semantic search across your codebase"
+        },
+        "monorepoOps": {
+          "title": "Monorepo Ops",
+          "description": "Predictable cross-repo changes and deps"
+        },
+        "observability": {
+          "title": "Observability",
+          "description": "One surface for runs, logs, and traces"
+        },
+        "platformApi": {
+          "title": "Platform API",
+          "description": "Integrate internal systems into workflows"
+        }
+      },
+      "learn": {
+        "label": "Learn",
+        "docs": {
+          "title": "Documentation",
+          "description": "Full platform reference"
+        },
+        "blog": {
+          "title": "Blog",
+          "description": "Engineering notes and deep dives"
+        },
+        "useCases": {
+          "title": "Use Cases",
+          "description": "Real-world automation scenarios"
+        },
+        "compare": {
+          "title": "Compare",
+          "description": "KB Labs vs alternatives"
+        }
+      },
+      "project": {
+        "label": "Project",
+        "roadmap": {
+          "title": "Roadmap",
+          "description": "What's next, what's in progress"
+        },
+        "changelog": {
+          "title": "Changelog",
+          "description": "What shipped this week"
+        },
+        "security": {
+          "title": "Security",
+          "description": "Permissions, audit trail, on-prem"
+        },
+        "about": {
+          "title": "About",
+          "description": "Who we are and why this exists"
+        }
+      },
+      "enterprise": {
+        "title": "For larger organizations",
+        "description": "Dedicated support, SLA, governance controls — shaped around how your team already runs."
+      }
+    },
+    "useCases": "Use Cases"
+  },
+  "footer": {
+    "tagline": "Open-source engine for the AI-era dev loop. Self-hosted, code-first, on your own machine.",
+    "legal": "All rights reserved.",
+    "sections": {
+      "start": {
+        "title": "Start",
+        "product": "Product",
+        "marketplace": "Marketplace",
+        "install": "Install",
+        "pricing": "Pricing",
+        "enterprise": "Enterprise",
+        "useCases": "Use Cases"
+      },
+      "build": {
+        "title": "Build",
+        "studio": "Studio",
+        "docs": "Documentation",
+        "changelog": "Changelog",
+        "status": "Status"
+      },
+      "resources": {
+        "title": "Resources",
+        "blog": "Blog",
+        "about": "About",
+        "contact": "Contact",
+        "changelog": "Changelog",
+        "useCases": "Use Cases"
+      },
+      "community": {
+        "title": "Community",
+        "github": "GitHub",
+        "discord": "Discord",
+        "twitter": "X / Twitter",
+        "founder": "Kirill Baranov"
+      },
+      "platform": {
+        "title": "Platform",
+        "workflows": "Workflow Engine",
+        "workflowEngine": "Workflow Engine",
+        "pluginSystem": "Plugin System",
+        "stateBroker": "State Broker",
+        "productOverview": "Product Overview",
+        "plugins": "Plugin System",
+        "studio": "Studio UI",
+        "enterprise": "Enterprise"
+      },
+      "solutions": {
+        "title": "Solutions",
+        "releaseAutomation": "Release Automation",
+        "codeIntelligence": "Code Intelligence",
+        "codeQuality": "Code Quality",
+        "monorepoOps": "Monorepo Ops",
+        "aiGateway": "Gateway",
+        "observability": "Observability",
+        "platformApi": "Platform Client"
+      },
+      "marketplace": {
+        "title": "Marketplace",
+        "browse": "Browse Plugins",
+        "official": "Official Plugins",
+        "community": "Community Plugins"
+      },
+      "developers": {
+        "title": "Developers",
+        "gettingStarted": "Getting Started",
+        "sdk": "SDK Reference",
+        "cli": "CLI Reference",
+        "restApi": "REST API",
+        "kbDev": "kb-dev"
+      },
+      "securityLegal": {
+        "title": "Security & Legal",
+        "security": "Security",
+        "privacy": "Privacy",
+        "terms": "Terms",
+        "dpa": "DPA"
+      },
+      "company": {
+        "title": "Company",
+        "about": "About",
+        "blog": "Blog",
+        "contact": "Contact",
+        "github": "GitHub"
+      },
+      "learn": {
+        "title": "Learn",
+        "blog": "Blog",
+        "changelog": "Changelog",
+        "roadmap": "Roadmap",
+        "demo": "Demo"
+      },
+      "getStarted": {
+        "title": "Get Started",
+        "install": "Install",
+        "pricing": "Pricing",
+        "enterprise": "Enterprise",
+        "demo": "Demo"
+      },
+      "secure": {
+        "title": "Secure",
+        "security": "Security",
+        "privacy": "Privacy",
+        "terms": "Terms",
+        "dpa": "DPA",
+        "cookies": "Cookies"
+      },
+      "roadmap": "Roadmap",
+      "compare": "Compare"
+    },
+    "bottomLinks": {
+      "privacy": "Privacy",
+      "terms": "Terms",
+      "dpa": "DPA",
+      "cookies": "Cookies",
+      "status": "Status"
+    }
+  },
+  "home": {
+    "meta": {
+      "title": "KB Labs — Open the closed",
+      "description": "Open-source engine for your workflows, reviews, releases, and infrastructure. Humans and agents on the same rails. Self-hosted, yours, built in the open."
+    },
+    "hero": {
+      "title": "We believe engineering should stay yours.",
+      "description": "An open-source engine for your workflows, reviews, releases, and infrastructure — where humans and agents play by the same rules. Self-hosted. Yours.",
+      "body": "",
+      "cta1": "Install",
+      "cta2": "View on GitHub"
+    },
+    "beliefs": {
+      "title": "Three things we believe. Three things we're building.",
+      "lead": "We're not fighting anything. We're building what we wish already existed.",
+      "rows": [
+        {
+          "id": "routine",
+          "belief": "Engineers shouldn't do by hand what a machine can do. Routine is a quiet tax on the craft.",
+          "answer": "Workflows.",
+          "answerLead": "One engine for releases, reviews, QA gates, and agent pipelines. The scripts you keep rewriting — expressed once, observed fully.",
+          "linkLabel": "See Workflows →",
+          "linkHref": "/product/workflows"
+        },
+        {
+          "id": "openness",
+          "belief": "Internal platforms should be open. The tools that make engineering teams strong don't need to live behind closed doors.",
+          "answer": "Open-source core and plugin system.",
+          "answerLead": "Everything is a plugin. Every plugin is code you can read, fork, and extend. No black boxes.",
+          "linkLabel": "See Plugins →",
+          "linkHref": "/product/plugins"
+        },
+        {
+          "id": "ownership",
+          "belief": "Your stack should stay yours. Switching a broker, a database, or an LLM shouldn't mean touching every service you own.",
+          "answer": "Gateway and adapters.",
+          "answerLead": "25+ contract interfaces between your code and your infrastructure. Swap what's behind the contract. The code stays still.",
+          "linkLabel": "See Gateway →",
+          "linkHref": "/solutions/gateway"
+        }
+      ]
+    },
+    "trust": {
+      "label": "We run KB Labs on KB Labs — every day, on the same engine you'll install.",
+      "items": [
+        "RELEASES ORCHESTRATED BY WORKFLOWS",
+        "AI REVIEW ON EVERY PULL REQUEST",
+        "QA REGRESSIONS CAUGHT BEFORE MERGE",
+        "CROSS-REPO AUTOMATION ACROSS THE MONOREPO"
+      ],
+      "securityMarkers": [
+        { "label": "Self-hosted", "href": "/security#self-hosted" },
+        { "label": "Permissioned", "href": "/security#permissions" },
+        { "label": "Full audit trail", "href": "/security#audit" },
+        { "label": "On-prem by default", "href": "/security#on-prem" }
+      ]
+    },
+    "sameRails": {
+      "title": "Same rails. Humans, agents, whatever comes next.",
+      "lead": "A platform is a set of rules and a runtime that enforces them. KB Labs applies the same rails to everyone who runs inside it — you, your teammates, internal plugin-agents, external agents like Claude or Codex, CI bots, future MCP connections. One permissions model, one observability surface, one extension contract.",
+      "points": [
+        {
+          "title": "One permissions model.",
+          "description": "Everyone who runs declares what they're allowed to do. The runtime enforces it the same way for everyone."
+        },
+        {
+          "title": "One observability surface.",
+          "description": "Every run is traced — who started it, what it touched, what came out. Humans and agents show up in the same log."
+        },
+        {
+          "title": "One extension contract.",
+          "description": "Humans write plugins. Agents write plugins. Anyone extends the platform through the same interfaces, with the same governance."
+        }
+      ],
+      "caption": "A person plus agents is a team. KB Labs treats them that way from day one. MCP is on the roadmap — as a protocol-level extension of the same model, not a bolt-on."
+    },
+    "startBeside": {
+      "title": "Start beside your current stack. Not instead of it.",
+      "lead": "You don't have to migrate anything. Install KB Labs next to what you already use, connect one workflow, and see how it fits. Keep everything else exactly where it is.",
+      "steps": [
+        {
+          "num": "01",
+          "title": "Install.",
+          "description": "One command, no cloud dependency, no sign-up."
+        },
+        {
+          "num": "02",
+          "title": "Connect one workflow.",
+          "description": "Point it at a repo you already own."
+        },
+        {
+          "num": "03",
+          "title": "Watch it run.",
+          "description": "Full traces, step by step, on your own machine."
+        }
+      ],
+      "note": "When a second workflow makes sense, add it. When it doesn't, don't. You decide the pace.",
+      "cta": "Read the install guide →",
+      "ctaHref": "/install"
+    },
+    "faq": {
+      "title": "Frequently asked questions",
+      "items": [
+        {
+          "q": "We already have a full stack. Do we need to migrate?",
+          "a": "No. KB Labs is designed to sit beside what you already run. Install it, connect one workflow, and keep everything else untouched. You grow the surface area when it makes sense for your team — never because the tool asked you to."
+        },
+        {
+          "q": "Is it free? Will it stay free?",
+          "a": "The OSS core is free and will stay free. It's the engine, and the engine doesn't close. A commercial support layer is on the roadmap for teams that need guarantees — SLA, dedicated support, advanced governance — but it's additive, never a gate in front of the core."
+        },
+        {
+          "q": "I work alone, or with a tiny team. Is this still for me?",
+          "a": "Especially for you. KB Labs is built on the idea that a person plus agents is a team. A plugin-agent can run your reviews. An external agent like Claude or Codex can drive your workflows through the same contracts. You stay in control of what they're allowed to do. Solo builders with agents get the most value from this from day one."
+        },
+        {
+          "q": "How does KB Labs treat humans, agents, and bots?",
+          "a": "The same way. KB Labs is a runtime with one permissions model, one observability surface, and one extension contract — applied equally to any kind of runner. A human running a workflow, an internal plugin-agent, an external agent, a CI bot — they all declare what they're allowed to do and the runtime enforces it. No one gets privileges. No one escapes the rails. MCP is on the roadmap as the next protocol-level extension of this."
+        },
+        {
+          "q": "How long does on-prem setup actually take?",
+          "a": "One command installs the launcher. A working environment with your first workflow is typically ready within an hour. No cloud dependency, no provisioning ceremony."
+        },
+        {
+          "q": "We already have CI/CD. Why not just extend that?",
+          "a": "CI/CD is great at build and deploy. KB Labs is for everything around it — commit policy, AI review gates, QA trend tracking, release coordination, agent workflows. Things that don't belong in a pipeline YAML and don't scale as config."
+        },
+        {
+          "q": "What does building a plugin look like?",
+          "a": "A plugin is a TypeScript package with a manifest. You declare capabilities, write handlers, and the runtime enforces what the plugin is allowed to do. Most teams ship a working plugin in a day."
+        },
+        {
+          "q": "How do you handle security and permissions?",
+          "a": "Every plugin — and every runner — declares what it's allowed to do. The runtime enforces those boundaries: nothing runs outside its declared capabilities. Every run is traced end-to-end. Full details on /security."
+        }
+      ]
+    },
+    "finalCta": {
+      "title": "Run it on one real workflow.",
+      "description": "Install KB Labs on your own machine, point it at one process you actually own, and see how the engine fits. No sign-up, no trial gate, no usage limits.",
+      "installBtn": "Install",
+      "contactBtn": "Talk to the team"
+    },
+    "builtInOpen": {
+      "title": "The project is early. The code is open. Come watch it get built.",
+      "lead": "We're showing our work as it happens. Nothing is hidden. Nothing is marketing-first. If you want to see how an open-source engineering platform actually gets made, everything is public.",
+      "doors": [
+        {
+          "id": "github",
+          "label": "GitHub",
+          "description": "Source, issues, pull requests, discussions.",
+          "href": "https://github.com/KirillBaranov/kb-labs",
+          "external": true
+        },
+        {
+          "id": "roadmap",
+          "label": "Roadmap",
+          "description": "What's next, what's in progress, what's done.",
+          "href": "/roadmap"
+        },
+        {
+          "id": "changelog",
+          "label": "Changelog",
+          "description": "What shipped this week.",
+          "href": "/changelog"
+        }
+      ]
+    },
+    "useCases": {
+      "title": "Sound familiar?",
+      "description": "Six scenarios where teams replaced duct-tape automation with a single controlled platform.",
+      "labels": {
+        "situation": "The situation",
+        "how": "How it works",
+        "result": "The result",
+        "owner": "Owner"
+      },
+      "cta": "See all scenarios",
+      "items": [
+        {
+          "title": "Release Orchestration",
+          "hook": "Your releases live in five Slack threads, three scripts, and a prayer.",
+          "situation": "Every release is a manual coordination exercise — CI jobs, chat messages, local scripts, people who might be on leave.",
+          "how": "tests → checks → AI review → QA gate → final approve. One declarative workflow. Plugins enforce each step.",
+          "result": "Release cycle: days → minutes. Every step traced. No one skips the gate.",
+          "owner": "Head of Engineering / Tech Lead"
+        },
+        {
+          "title": "QA Regressions and Trends",
+          "hook": "You find out about the regression after the customer does.",
+          "situation": "Quality signals are scattered — lint here, tests there, trends nowhere. Issues surface post-release when remediation costs the most.",
+          "how": "A QA plugin runs recurring checks on every change, tracks package-level trends, and surfaces degradation signals before they ship.",
+          "result": "Catch regressions at commit time, not in production. Remediation cost drops significantly.",
+          "owner": "QA Lead / Engineering Manager"
+        },
+        {
+          "title": "Commit and Change Policy",
+          "hook": "Your commit history is a graveyard of 'fix', 'wip', and 'asdf'.",
+          "situation": "Commit discipline lives in a Confluence page nobody reads. Enforcement depends on who reviews and whether they care that day.",
+          "how": "A commit plugin enforces policy at the workflow level — message format, scope, type — declared once, applied everywhere.",
+          "result": "Consistent change history across the team. Fewer manual fixups before release.",
+          "owner": "Tech Lead / Platform Team"
+        },
+        {
+          "title": "AI Review Gate",
+          "hook": "Code review is your slowest and most inconsistent step.",
+          "situation": "Review throughput is a bottleneck. Quality bar varies by reviewer, by day, by team. Some PRs get ten comments, others slip through.",
+          "how": "AI review runs as a required pipeline stage with declarative policy — not a suggestion, a gate. Configurable per repo.",
+          "result": "Faster cycle times. A consistent quality baseline that doesn't depend on who's available.",
+          "owner": "CTO / Engineering Manager"
+        },
+        {
+          "title": "Monorepo Dependency Ops",
+          "hook": "Your monorepo changes are a game of 'hope nothing breaks'.",
+          "situation": "Dependency updates, package sequencing, and governance live in ad-hoc scripts and tribal knowledge. Every big change is a gamble.",
+          "how": "Plugins handle dependency operations, build sequencing, and package governance — declaratively, with change tracking.",
+          "result": "Predictable monorepo changes. CI glue code replaced by observable, repeatable workflows.",
+          "owner": "Platform Engineer / Monorepo Owner"
+        },
+        {
+          "title": "Internal Agent Workflows",
+          "hook": "Your AI agents are ungoverned scripts running on someone's laptop.",
+          "situation": "Agent scenarios are bolted onto separate stacks with no unified policy, no audit trail, and no way to enforce security boundaries.",
+          "how": "Agents run as plugins inside the same policy-first runtime as your standard workflows — same governance, same observability.",
+          "result": "One controlled system for agent automation. No separate stack to maintain or secure.",
+          "owner": "CTO / AI Platform Team"
+        }
+      ]
+    }
+  },
+  "install": {
+    "meta": {
+      "title": "Install",
+      "description": "Install kb-create in one command and bootstrap your KB Labs workspace in minutes."
+    },
+    "hero": {
+      "eyebrow": "KB Labs Launcher",
+      "title": "Install KB Labs in one command.",
+      "description": "{code} installs the platform and prepares your first workspace without manual setup. Use quick install, or download binaries directly.",
+      "downloadBtn": "Download install.sh",
+      "releasesBtn": "Open latest release"
+    },
+    "quickInstall": {
+      "title": "Quick install",
+      "description": "Recommended path for developers and teams onboarding fast.",
+      "steps": [
+        {
+          "num": "01",
+          "title": "Install the launcher",
+          "cmd": "curl -fsSL https://kblabs.ru/install.sh | sh",
+          "note": "Downloads the correct binary and installs it to ~/.local/bin."
+        },
+        {
+          "num": "02",
+          "title": "Bootstrap your project",
+          "cmd": "kb-create my-project",
+          "note": "Runs the interactive wizard and configures platform + project directories."
+        },
+        {
+          "num": "03",
+          "title": "Verify installation",
+          "cmd": "kb-create status",
+          "note": "Shows installed components, package manager, and platform path."
+        }
+      ]
+    },
+    "pinVersion": {
+      "title": "Pin a specific version",
+      "description": "Useful for reproducible CI and controlled upgrades.",
+      "checksumTitle": "Checksum verification"
+    },
+    "enterprise": {
+      "title": "Enterprise note",
+      "description": "SSH access is best for private repos and self-hosted rollout automation. For first-time installation, keep {code} as the primary flow and layer SSH provisioning afterward.",
+      "link": "See enterprise deployment options →"
+    },
+    "binaries": {
+      "title": "Manual binary install",
+      "description": "For environments where {code} is restricted.",
+      "colPlatform": "Platform",
+      "colBinary": "Binary",
+      "colDownload": "Download",
+      "downloadBtn": "Download",
+      "platforms": [
+        {
+          "platform": "macOS (Apple Silicon)",
+          "file": "kb-create-darwin-arm64"
+        },
+        {
+          "platform": "macOS (Intel)",
+          "file": "kb-create-darwin-amd64"
+        },
+        {
+          "platform": "Linux (x86_64)",
+          "file": "kb-create-linux-amd64"
+        },
+        {
+          "platform": "Linux (ARM64)",
+          "file": "kb-create-linux-arm64"
+        }
+      ]
+    },
+    "afterInstall": {
+      "title": "After installation",
+      "steps": [
+        {
+          "title": "Start local services",
+          "cmd": "kb dev:start"
+        },
+        {
+          "title": "Read the docs",
+          "href": "https://docs.kblabs.ru/getting-started",
+          "label": "docs.kblabs.ru/getting-started"
+        },
+        {
+          "title": "Need help?",
+          "href": "/contact",
+          "label": "Contact the team"
+        }
+      ]
+    }
+  },
+  "pricing": {
+    "meta": {
+      "title": "Pricing — KB Labs",
+      "description": "It's free. The whole engine — open source, self-hosted, no paywall, no usage limits. A commercial layer is on the roadmap, in the open."
+    },
+    "hero": {
+      "title": "Open source today. Commercial layer on the roadmap.",
+      "subtitle": "The full engine is open source and self-hosted — no paywalls, no usage limits, no telemetry you didn't ask for. We're building a commercial layer for teams and larger organizations openly, on top of the same engine."
+    },
+    "tiers": {
+      "hobby": {
+        "name": "Open Source",
+        "price": "Free",
+        "note": "Self-hosted, no usage limits",
+        "cta": "Install",
+        "ctaHref": "/install",
+        "features": [
+          "One-command on-prem installation",
+          "Full plugin SDK, CLI, and runtime",
+          "Workflows, agents, observability, and audit included",
+          "Every adapter in the public catalog",
+          "No lock-in and no telemetry you didn't opt into"
+        ]
+      },
+      "pro": {
+        "name": "Team Plugins",
+        "badge": "On the roadmap",
+        "price": "Soon",
+        "note": "Optional commercial plugin packs",
+        "cta": "Join the waitlist",
+        "ctaHref": "/signup",
+        "features": [
+          "Maintained plugin packs for common workflows",
+          "Updates and support for those packs",
+          "Patterns we already run on the same engine ourselves",
+          "Built on top of the open core, never around it",
+          "Growing alongside the public catalog"
+        ]
+      },
+      "enterprise": {
+        "name": "For larger organizations",
+        "price": "On the roadmap",
+        "note": "Shaped by real adopters, not a checklist",
+        "cta": "Start a conversation",
+        "ctaHref": "/contact",
+        "features": [
+          "Stronger governance and security controls",
+          "Commercial support and SLA",
+          "Help with rollout in larger codebases",
+          "Custom contracts where they fit",
+          "Driven by what early adopters actually need"
+        ]
+      }
+    },
+    "comparison": {
+      "title": "Compare plans",
+      "yes": "✓",
+      "no": "—",
+      "categories": {
+        "platform": {
+          "label": "Platform",
+          "rows": [
+            {
+              "feature": "Deployment model",
+              "hobby": "On-prem",
+              "pro": "On-prem",
+              "enterprise": "On-prem + extensions"
+            },
+            {
+              "feature": "Plugin SDK",
+              "hobby": true,
+              "pro": true,
+              "enterprise": true
+            },
+            {
+              "feature": "KB Labs ready workflows",
+              "hobby": "Core",
+              "pro": "Advanced",
+              "enterprise": "Advanced + custom"
+            },
+            {
+              "feature": "Marketplace ecosystem",
+              "hobby": "Roadmap",
+              "pro": "Roadmap",
+              "enterprise": "Roadmap"
+            },
+            {
+              "feature": "Team-owned plugins",
+              "hobby": true,
+              "pro": true,
+              "enterprise": true
+            }
+          ]
+        },
+        "developer": {
+          "label": "Developer",
+          "rows": [
+            {
+              "feature": "CLI and SDK",
+              "hobby": true,
+              "pro": true,
+              "enterprise": true
+            },
+            {
+              "feature": "Workflow and policy config",
+              "hobby": true,
+              "pro": true,
+              "enterprise": true
+            },
+            {
+              "feature": "Run observability",
+              "hobby": true,
+              "pro": true,
+              "enterprise": true
+            },
+            {
+              "feature": "Architecture guidance",
+              "hobby": false,
+              "pro": "On request",
+              "enterprise": true
+            }
+          ]
+        },
+        "security": {
+          "label": "Security & compliance",
+          "rows": [
+            {
+              "feature": "Policy-first plugin restrictions",
+              "hobby": true,
+              "pro": true,
+              "enterprise": true
+            },
+            {
+              "feature": "Audit trails and tracing",
+              "hobby": true,
+              "pro": true,
+              "enterprise": true
+            },
+            {
+              "feature": "Enterprise security package",
+              "hobby": false,
+              "pro": false,
+              "enterprise": "Roadmap"
+            },
+            {
+              "feature": "SLA and formal commitments",
+              "hobby": false,
+              "pro": false,
+              "enterprise": "Roadmap"
+            },
+            {
+              "feature": "Custom compliance requirements",
+              "hobby": false,
+              "pro": false,
+              "enterprise": "Roadmap"
+            }
+          ]
+        },
+        "support": {
+          "label": "Support",
+          "rows": [
+            {
+              "feature": "Community support",
+              "hobby": true,
+              "pro": true,
+              "enterprise": true
+            },
+            {
+              "feature": "Support for KB Labs plugins",
+              "hobby": false,
+              "pro": true,
+              "enterprise": true
+            },
+            {
+              "feature": "Dedicated support channel",
+              "hobby": false,
+              "pro": false,
+              "enterprise": "Roadmap"
+            }
+          ]
+        }
+      }
+    },
+    "faq": {
+      "title": "Common questions",
+      "items": [
+        {
+          "q": "So the primary path today is on-prem OSS, right?",
+          "a": "Yes. As of March 5, 2026, KB Labs prioritizes early OSS on-prem adoption for engineering teams."
+        },
+        {
+          "q": "When should we expect full enterprise capabilities?",
+          "a": "Enterprise layers are planned after early-user validation, with current target window around Q3-Q4 2026 and beyond."
+        },
+        {
+          "q": "Is this a no-code business automation tool?",
+          "a": "No. KB Labs is intended for engineering teams building and operating plugin-based automation workflows."
+        },
+        {
+          "q": "How do you prove practical value today?",
+          "a": "We run KB Labs on KB Labs every day. Release automation, commit flows, QA gates, AI review, dependency management, and AI agents — all of it ships as plugins on the same engine you'll install."
+        },
+        {
+          "q": "How will ecosystem monetization work?",
+          "a": "Planned model includes subscription plugins from KB Labs and marketplace flows for community extensions with platform commission."
+        },
+        {
+          "q": "We already have heavy custom scripts. Where should we start?",
+          "a": "Start with one expensive workflow, usually release management. Migrate it first and measure cycle-time and maintenance impact."
+        }
+      ]
+    },
+    "cta": {
+      "title": "Want to validate the economics on your workflows?",
+      "description": "We can help choose your first migration candidate and estimate impact before scaling adoption.",
+      "startBtn": "Install",
+      "contactBtn": "Contact team"
+    }
+  },
+  "compare": {
+    "meta": {
+      "title": "Why KB Labs — Honest Comparison",
+      "description": "How KB Labs compares to GitHub Actions, n8n, Temporal, and AI agent frameworks. An honest answer for every alternative."
+    },
+    "eyebrow": "Alternatives",
+    "hero": {
+      "title": "How KB Labs compares.",
+      "subtitle": "We're not for everyone. Here's an honest answer for the most common alternatives — including the cases where the right answer is something else."
+    },
+    "alternatives": [
+      {
+        "id": "cicd",
+        "label": "GitHub Actions / GitLab CI",
+        "title": "CI tools run on their infrastructure. Your secrets live on their servers.",
+        "body": [
+          "GitHub Actions and GitLab CI are good at deploying code — that's what they were built for. But your workflows run on their infrastructure. Your secrets, your logs, your artifacts, your timing data — all of it passes through someone else's machines.",
+          "KB Labs runs where you decide: on your server, in your VPC, on your laptop. Nothing leaves unless you choose. For teams who care about data residency, compliance, or simply don't want a third party in the loop — that's the difference."
+        ]
+      },
+      {
+        "id": "lowcode",
+        "label": "n8n / Make / Zapier",
+        "title": "Low-code is fast to start. Also fast to become unmanageable.",
+        "body": [
+          "Logic lives in a GUI, not in your repo. There's no type safety, no code review process, no way to test before it runs in production. When something breaks, it often breaks silently.",
+          "KB Labs treats automation as code: typed plugins, version-controlled workflows, approval gates before anything runs. You can review it, test it, and reason about it — the same way you reason about the rest of your stack."
+        ]
+      },
+      {
+        "id": "workflow",
+        "label": "Temporal / Prefect / Airflow",
+        "title": "Excellent tools for distributed systems. KB Labs solves a different problem.",
+        "body": [
+          "If you're orchestrating microservices at scale, managing complex distributed state, or running data pipelines — Temporal and Prefect are serious tools built for that. Use them.",
+          "KB Labs is for development teams who want to automate their work: code reviews, releases, quality checks, AI-assisted workflows. No distributed systems expertise required, no infrastructure to operate."
+        ],
+        "note": "Different tools for different problems. We don't compete — we complement."
+      },
+      {
+        "id": "agents",
+        "label": "LangChain / custom AI agents",
+        "title": "Agents without structure are prototypes. Useful in demos, fragile in production.",
+        "body": [
+          "Most AI agent setups end up as brittle glue code — no isolation, no audit trail, no consistent way to connect your real tools. Every new capability means another custom integration.",
+          "KB Labs gives agents the same typed plugin system that human workflows use — with permissions, observability, and direct access to your codebase, docs, and internal tools. No glue code. MCP support on the roadmap."
+        ]
+      }
+    ],
+    "cta": {
+      "title": "Still have questions?",
+      "description": "Tell us about your specific setup. We'll be honest about whether KB Labs is the right fit.",
+      "startBtn": "Install",
+      "contactBtn": "Talk to us"
+    }
+  },
+  "about": {
+    "meta": {
+      "title": "About",
+      "description": "KB Labs is a small, remote-first team building open developer infrastructure for AI automation — on a principle that every dependency should be replaceable without a rewrite."
+    },
+    "hero": {
+      "title": "Open the closed",
+      "subtitle": "We're building developer infrastructure on a single principle: every dependency should be replaceable without a rewrite."
+    },
+    "founder": {
+      "label": "Founder",
+      "name": "Kirill Baranov",
+      "bio": "Built KB Labs because every layer of the stack was quietly closing. Open-source infrastructure for developers who want their stack back.",
+      "links": {
+        "site": "k-baranov.ru",
+        "github": "GitHub",
+        "twitter": "X / Twitter"
+      }
+    },
+    "manifesto": [
+      "Most platforms grow by trapping you. Better integrations, lower prices, a smoother onboarding — until the day switching costs more than staying. That's not a technical problem. It's a business model.",
+      "KB Labs is built differently. Every adapter, every runtime, every storage backend is hidden behind a typed contract. You depend on the interface, not the vendor. When a better LLM comes out, you swap a config line. When your scale demands a different database, you swap an adapter. Your workflow logic stays exactly as you wrote it.",
+      "We call this philosophy <strong>Open the closed</strong>. It means we design every system boundary so it can be opened — inspected, replaced, or extended — without fear. The concrete implementation is always a detail. The contract is what lasts.",
+      "This shapes everything: how we structure plugins, how we expose the platform to agents, how we approach multi-tenancy, how we write our own internal tooling. The test is always the same — can you replace this piece without touching the rest?"
+    ],
+    "principlesTitle": "How we build",
+    "principles": [
+      {
+        "num": "01",
+        "title": "Open the closed",
+        "body": "Every abstraction we build has a clear exit. Swap the LLM provider, the vector store, the workflow backend — without rewriting your business logic. Lock-in is a design choice, and we choose against it."
+      },
+      {
+        "num": "02",
+        "title": "Contracts over implementations",
+        "body": "The interfaces between system parts are first-class citizens. A typed contract is the only thing your code should depend on. The implementation behind it can change, scale, or be replaced at any time."
+      },
+      {
+        "num": "03",
+        "title": "Developer experience is a product",
+        "body": "A platform that requires tribal knowledge to operate has failed. Every command should be discoverable, every error should be actionable, and every abstraction should earn its place by making something genuinely simpler."
+      },
+      {
+        "num": "04",
+        "title": "Boring infrastructure, interesting products",
+        "body": "State management, rate limiting, audit logs, multi-tenancy — these are solved problems. We solve them once, well, so teams can spend their time on what makes their product unique."
+      },
+      {
+        "num": "05",
+        "title": "Small surface, deep capability",
+        "body": "A small, coherent API that composes well beats a sprawling one every time. We add features reluctantly and remove them eagerly. Complexity is a cost, not a feature."
+      },
+      {
+        "num": "06",
+        "title": "Observability by default",
+        "body": "Software you cannot inspect is software you cannot trust. Every workflow run, every plugin call, every state mutation should be traceable without attaching a debugger or adding extra tooling."
+      }
+    ],
+    "originLabel": "Origin",
+    "origin": [
+      "KB Labs started as internal tooling. We were building automation pipelines and kept running into the same wall: every new requirement meant swapping a vendor, and every swap broke something downstream.",
+      "The fix wasn't better vendors. It was <strong>better contracts</strong>. We extracted the abstraction layer, built a plugin system on top, and eventually had something worth sharing.",
+      "We're a small, <strong>remote-first team based in Russia</strong>. We move deliberately, write things down, and prefer clarity over cleverness."
+    ],
+    "cta": {
+      "title": "Build on something that stays open.",
+      "description": "Install KB Labs on your own machine, run it on one real workflow, and keep architectural freedom as you scale.",
+      "startBtn": "Install",
+      "contactBtn": "Talk to the team"
+    }
+  },
+  "contact": {
+    "meta": {
+      "title": "Contact",
+      "description": "Get in touch with the KB Labs team — for sales inquiries, technical support, partnership proposals, or press requests."
+    },
+    "hero": {
+      "title": "Get in touch",
+      "subtitle": "We're a small team — we read everything and reply fast."
+    },
+    "channelsTitle": "How can we help?",
+    "channels": [
+      {
+        "label": "Sales",
+        "description": "Discuss pricing, enterprise plans, or custom contracts.",
+        "action": "Talk to sales →",
+        "href": "mailto:sales@kblabs.ru"
+      },
+      {
+        "label": "Support",
+        "description": "Technical issues, bugs, or questions about the platform.",
+        "action": "Open a ticket →",
+        "href": "https://docs.kblabs.ru/support"
+      },
+      {
+        "label": "Partnerships",
+        "description": "Integrations, reseller programs, or joint go-to-market.",
+        "action": "Get in touch →",
+        "href": "mailto:partners@kblabs.ru"
+      },
+      {
+        "label": "Press",
+        "description": "Media inquiries, interviews, and press kit requests.",
+        "action": "Contact press →",
+        "href": "mailto:press@kblabs.ru"
+      }
+    ],
+    "communityTitle": "Community",
+    "community": [
+      {
+        "label": "GitHub",
+        "description": "File issues, browse source, contribute.",
+        "href": "https://github.com/KirillBaranov/kb-labs"
+      },
+      {
+        "label": "Discord",
+        "description": "Chat with the team and community in real time.",
+        "href": "https://discord.gg/kblabs"
+      },
+      {
+        "label": "X / Twitter",
+        "description": "Product updates and announcements.",
+        "href": "https://twitter.com/kblabs_dev"
+      }
+    ],
+    "basedIn": "Based in",
+    "location": "Remote-first team.\nBased in Russia.",
+    "generalInquiries": "General inquiries:"
+  },
+  "enterprise": {
+    "meta": {
+      "title": "For larger organizations — KB Labs",
+      "description": "What's coming for larger organizations, and how to start a conversation about fit. The OSS engine is what ships today."
+    },
+    "hero": {
+      "title": "For teams adopting KB Labs at scale.",
+      "subtitle": "The OSS engine is what ships today. We're building a commercial layer for larger organizations on top of it — stronger governance, commercial support, SLA. If your team is evaluating KB Labs for internal adoption, this is where that conversation starts."
+    },
+    "whyTitle": "What we're shaping",
+    "why": [
+      {
+        "title": "Driven by real adopters, not checklists",
+        "description": "Whatever ships in this layer will be shaped by what early users actually need in production — not by an enterprise feature checklist written in a vacuum."
+      },
+      {
+        "title": "Built on the same OSS engine",
+        "description": "Nothing in this layer breaks or hides the open core. The engine you install today is the same engine larger organizations will run, with optional commercial pieces on top."
+      },
+      {
+        "title": "Stronger governance and support",
+        "description": "Stricter policy controls, audit boundaries, commercial support, SLA — the things larger organizations actually ask for once they're past the install."
+      },
+      {
+        "title": "Honest about what's not here yet",
+        "description": "What ships today: the OSS engine. What's roadmap: the rest of this page. Nothing is sold before it ships."
+      }
+    ],
+    "featuresTitle": "Current state and plan",
+    "features": [
+      {
+        "title": "Today: OSS on-prem",
+        "description": "You can deploy in your environment now and run key workflows through plugins."
+      },
+      {
+        "title": "Today: policy-first + observability",
+        "description": "Plugin capabilities are declared up front and every run remains fully traceable."
+      },
+      {
+        "title": "Roadmap: advanced security and governance",
+        "description": "Enterprise security layers will be added based on validated user priorities."
+      },
+      {
+        "title": "Roadmap: SLA and commercial support",
+        "description": "Support channels and SLA model are planned for the post-validation phase."
+      },
+      {
+        "title": "Roadmap: ecosystem monetization",
+        "description": "Commercial plugin subscriptions and marketplace flows are part of the next stage."
+      },
+      {
+        "title": "Roadmap: enterprise rollout track",
+        "description": "Target window for broader enterprise direction is around Q3-Q4 2026 and beyond."
+      }
+    ],
+    "cta": {
+      "title": "Want to start a conversation?",
+      "description": "Tell us what your team is solving. We'll be honest about what fits today's engine and what's still on the roadmap.",
+      "salesBtn": "Talk to the team",
+      "emailBtn": "sales@kblabs.ru"
+    },
+    "meta2": {
+      "dealSize": "Current engagement type",
+      "dealSizeValue": "Early on-prem adoption",
+      "contractLength": "Enterprise horizon",
+      "contractLengthValue": "Target: Q3-Q4 2026+",
+      "onboarding": "Start with OSS",
+      "onboardingValue": "Minutes to first setup",
+      "responseTime": "Roadmap discussion",
+      "responseTimeValue": "Via direct team contact"
+    }
+  },
+  "product": {
+    "meta": {
+      "title": "Product — KB Labs",
+      "description": "An open-source engine for the AI-era dev loop. Programmable workflows for releases, reviews, and AI agents. An infrastructure layer that puts every vendor behind one contract."
+    },
+    "hero": {
+      "title": "One engine. Two pieces that ship together.",
+      "description": "KB Labs is an open-source runtime for the modern dev loop. Workflows turn releases, reviews, QA, and AI agents into code. The infrastructure layer keeps every external vendor behind a single contract. Both ship in the same install, on the same machine.",
+      "startBtn": "Install",
+      "docsBtn": "Read docs"
+    },
+    "pillars": {
+      "workflows": {
+        "anchor": "workflows",
+        "eyebrow": "Programmable dev loop",
+        "heading": "Your releases, reviews, and AI agents as code.",
+        "lead": "We replace fragile shell scripts and CI YAML with one programmable system for releases, code reviews, QA gates, commit policies, and AI agent runs. Everything lives in code you can read, diff, and PR — the way the rest of your engineering already works.",
+        "bullets": [
+          "One engine for release pipelines, review gates, QA regressions, and custom automation",
+          "AI agents as first-class steps — sandbox, audit, and observability built in",
+          "Workflows written in code, shipped as plugins, versioned in git",
+          "Designed to live alongside your existing CI, not replace it"
+        ],
+        "ctaLabel": "How workflows work →",
+        "ctaHref": "/product/workflows"
+      },
+      "gateway": {
+        "anchor": "gateway",
+        "eyebrow": "Infrastructure layer",
+        "heading": "Every external vendor behind one contract.",
+        "lead": "LLM, cache, databases, vector stores, object storage, event bus, observability — all reached through stable interfaces in the platform. Around 21 open-source adapters ship today, covering OpenAI, Postgres, SQLite, MongoDB, Redis, Qdrant, Docker and more. Swap any of them with a single config line; the code in your services stays untouched.",
+        "bullets": [
+          "Around 21 open-source adapters today across the most common categories",
+          "Need Kafka, RabbitMQ, or NATS? Write your own adapter against the same contract — it loads identically to ours",
+          "Multi-tenant routing, audit, and observability built into the layer",
+          "Zero direct vendor dependencies in the core"
+        ],
+        "ctaLabel": "See the contracts →",
+        "ctaHref": "/solutions/gateway"
+      },
+      "foundation": {
+        "label": "How they fit together",
+        "title": "One engine, one runtime, one install.",
+        "description": "Both pieces ship in the same package — same runtime, same plugin system, same on-prem deployment. The engine stays stable while the vendor layer underneath remains replaceable. That's how we make the next migration a sprint instead of a quarter."
+      }
+    },
+    "exploreTitle": "Go deeper",
+    "exploreDesc": "How specific pieces of the engine work — and what people use them for.",
+    "cta": {
+      "title": "Want to try it on your own workflow?",
+      "description": "Install KB Labs on your own machine, point it at one process you actually own, and see how the engine fits.",
+      "startBtn": "Install",
+      "contactBtn": "Talk to the team"
+    }
+  },
+  "security": {
+    "meta": {
+      "title": "Security",
+      "description": "On-prem by default, open source, consent-first data sharing, plugin sandboxing, and JWT-based Gateway authentication."
+    },
+    "hero": {
+      "title": "Your code and data stay on your machine.",
+      "subtitle": "KB Labs is on-prem first, open source end-to-end, and never sends data without your explicit consent. Verify everything yourself in the source."
+    },
+    "pillars": [
+      {
+        "title": "On-prem by default",
+        "description": "KB Labs runs entirely on your infrastructure. No cloud dependency, no data leaving your network. You control where your code, workflow state, and logs are stored."
+      },
+      {
+        "title": "Consent-first data sharing",
+        "description": "Nothing is sent externally without explicit user consent. The CLI installer asks before every network call. Demo mode offers three choices: gateway proxy, local only, or bring your own API key."
+      },
+      {
+        "title": "Open source & auditable",
+        "description": "The entire platform is open source. Every line of code is auditable. No black boxes, no hidden telemetry, no trust-us-it's-safe. Verify yourself."
+      }
+    ],
+    "practicesTitle": "What we do today",
+    "practices": [
+      {
+        "title": "Plugin sandboxing",
+        "description": "Plugins declare capabilities upfront in their manifest. The runtime enforces boundaries — a plugin cannot access resources outside its declared scope. Execution modes include in-process and subprocess isolation."
+      },
+      {
+        "title": "Gateway authentication",
+        "description": "The Gateway uses JWT-based authentication with device-scoped tokens. Credentials are generated per device, stored locally (file permissions 0600), and never shared across users."
+      },
+      {
+        "title": "No telemetry without opt-in",
+        "description": "CLI telemetry is disabled by default. When enabled, we collect only anonymous usage statistics (OS, version, install duration). No source code, file names, or credentials are ever collected."
+      },
+      {
+        "title": "Dependency management",
+        "description": "Every dependency is pinned and checked on every build across the entire monorepo: import analysis, export analysis, duplicate detection — all automated through DevKit tooling we use ourselves."
+      },
+      {
+        "title": "Config file security",
+        "description": "Platform configuration files containing credentials are written with restricted permissions (0600). API keys and secrets are never logged or included in telemetry events."
+      },
+      {
+        "title": "Demo mode transparency",
+        "description": "In demo mode, only git diffs are sent for AI review — never full source code. The Gateway is a pass-through proxy: no content is stored or logged. Only token counts are tracked for rate limiting."
+      }
+    ],
+    "complianceTitle": "Compliance roadmap",
+    "compliance": [
+      {
+        "name": "Open Source",
+        "status": "Available",
+        "description": "MIT-licensed. Full source code available on GitHub for audit and contribution."
+      },
+      {
+        "name": "DPA",
+        "status": "Available",
+        "description": "Data processing agreement available on request for organizations that require it."
+      },
+      {
+        "name": "RBAC & SSO",
+        "status": "In progress",
+        "description": "Role-based access control and SSO (SAML/OIDC) planned for Enterprise tier."
+      },
+      {
+        "name": "SOC 2 Type II",
+        "status": "In progress",
+        "description": "Planned as the platform matures. We are aligning controls and documenting processes now."
+      }
+    ],
+    "cta": {
+      "title": "Questions about security?",
+      "description": "We believe in transparency. Ask us anything — no NDA required for honest answers.",
+      "contactBtn": "Contact us",
+      "emailBtn": "security@kblabs.ru"
+    },
+    "statusReady": "Available",
+    "statusPlanned": "Planned",
+    "practicesSubtitle": "How we protect your data and infrastructure right now."
+  },
+  "signup": {
+    "meta": {
+      "title": "SaaS Waitlist",
+      "description": "Join the KB Labs SaaS waitlist and help shape the cloud product direction early."
+    },
+    "eyebrow": "SaaS waitlist",
+    "title": "Request access to future KB Labs SaaS",
+    "description": "Current focus is OSS on-prem adoption. This form collects SaaS demand and helps us prioritize roadmap decisions.",
+    "perks": [
+      {
+        "label": "Early access to SaaS waves",
+        "description": "Invitations to private cloud releases as capabilities become available."
+      },
+      {
+        "label": "Priority for integration needs",
+        "description": "Your workflow and infrastructure requirements influence what we build first."
+      },
+      {
+        "label": "Direct line to product team",
+        "description": "We can map your path: on-prem today and SaaS later if it fits."
+      }
+    ],
+    "form": {
+      "title": "Join the waitlist",
+      "description": "Enter your work email and briefly describe your use case.",
+      "note": "By joining you agree to our <privacyLink>Privacy Policy</privacyLink>.",
+      "submit": "Join waitlist",
+      "submitting": "Submitting…",
+      "success": "You are on the list. We will reach out when the next SaaS wave opens.",
+      "emailPlaceholder": "work@email.com",
+      "emailAriaLabel": "Work email",
+      "fields": {
+        "useCase": {
+          "label": "Primary use case",
+          "options": {
+            "release": "Release orchestration",
+            "qa": "QA regressions and trends",
+            "commitPolicy": "Commit and change policy",
+            "monorepo": "Monorepo dependency operations",
+            "agentWorkflows": "Internal agent workflows",
+            "other": "Other"
+          }
+        },
+        "deploymentPreference": {
+          "label": "Deployment preference",
+          "options": {
+            "onPremNow": "On-prem now",
+            "saasLater": "SaaS later",
+            "undecided": "Undecided"
+          }
+        }
+      }
+    }
+  },
+  "blog": {
+    "meta": {
+      "title": "Blog",
+      "description": "Engineering notes, platform updates, and thinking out loud from the KB Labs team."
+    },
+    "hero": {
+      "title": "Blog",
+      "subtitle": "Engineering notes, platform updates, and thinking out loud."
+    },
+    "readMore": "Read more →"
+  },
+  "changelog": {
+    "meta": {
+      "title": "Changelog",
+      "description": "New features, improvements, and fixes in KB Labs."
+    },
+    "hero": {
+      "title": "Changelog",
+      "subtitle": "New features, improvements, and fixes — updated with each release."
+    },
+    "typeNew": "New",
+    "typeImproved": "Improved",
+    "typeFixed": "Fixed",
+    "releases": [
+      {
+        "version": "v0.4.0",
+        "date": "Jan 2026",
+        "summary": "Unified dev environment manager, two-tier memory for agents, and incremental QA builds.",
+        "changes": [
+          {
+            "type": "new",
+            "text": "Dev environment manager — start, stop, and restart all services with a single command"
+          },
+          {
+            "type": "new",
+            "text": "Two-tier agent memory: working memory for the current session, persistent fact sheet across sessions"
+          },
+          {
+            "type": "new",
+            "text": "Incremental builds in QA runner — skips up-to-date packages, down from 10 min to ~15s"
+          },
+          {
+            "type": "new",
+            "text": "JSON output mode for all dev tooling, enabling AI agent integration"
+          },
+          {
+            "type": "improved",
+            "text": "QA history tracking and regression detection with trend reports"
+          },
+          {
+            "type": "improved",
+            "text": "Multi-tenancy primitives: rate limiting and quota enforcement via State Broker"
+          }
+        ]
+      },
+      {
+        "version": "v0.3.0",
+        "date": "Nov 2025",
+        "summary": "Adaptive search weights in Mind RAG and native tool calling for agents.",
+        "changes": [
+          {
+            "type": "new",
+            "text": "Adaptive search weights per query intent — lookup, concept, and architecture queries now use different BM25/vector ratios"
+          },
+          {
+            "type": "new",
+            "text": "Native tool calling for agents using OpenAI Function Calling API — no more fragile text parsing"
+          },
+          {
+            "type": "new",
+            "text": "Anti-hallucination verification layer in Mind RAG"
+          },
+          {
+            "type": "improved",
+            "text": "Agent query orchestration with automatic mode selection (instant / auto / thinking)"
+          },
+          {
+            "type": "improved",
+            "text": "Mind RAG average confidence score improved to 7.0/10 across all query types"
+          },
+          {
+            "type": "fixed",
+            "text": "Tool name sanitization for colons and hyphens in OpenAI-compatible function names"
+          }
+        ]
+      },
+      {
+        "version": "v0.2.0",
+        "date": "Oct 2025",
+        "summary": "Plugin system v3 with eliminated circular dependencies and the new DevKit suite.",
+        "changes": [
+          {
+            "type": "new",
+            "text": "Plugin execution factory — extracted from core-runtime to break circular dependency chain"
+          },
+          {
+            "type": "new",
+            "text": "DevKit suite: 18 tools for monorepo health, import analysis, build ordering, and type auditing"
+          },
+          {
+            "type": "new",
+            "text": "Baseline quality gate — enforces \"don't make it worse\" policy across build, types, lint, and tests"
+          },
+          {
+            "type": "improved",
+            "text": "Plugin runtime bootstrap uses dynamic import for lazy-loading core to prevent compile-time cycles"
+          },
+          {
+            "type": "improved",
+            "text": "TypeScript type coverage tracking with per-package metrics and impact analysis"
+          }
+        ]
+      },
+      {
+        "version": "v0.1.0",
+        "date": "Sep 2025",
+        "summary": "Initial release. Workflow engine, CLI, plugin system, and Mind RAG.",
+        "changes": [
+          {
+            "type": "new",
+            "text": "Workflow engine with YAML-defined workflows and job execution"
+          },
+          {
+            "type": "new",
+            "text": "kb-create CLI launcher for project bootstrapping"
+          },
+          {
+            "type": "new",
+            "text": "Plugin system with manifest-based discovery and execution backends"
+          },
+          {
+            "type": "new",
+            "text": "Mind RAG — semantic code search with hybrid BM25 + vector retrieval"
+          },
+          {
+            "type": "new",
+            "text": "Studio web interface for visual workflow management"
+          },
+          {
+            "type": "new",
+            "text": "State Broker for distributed state management without Redis dependency"
+          }
+        ]
+      }
+    ]
+  },
+  "marketplace": {
+    "meta": {
+      "title": "Marketplace",
+      "description": "KB Labs extension ecosystem: working plugins today and marketplace monetization on roadmap."
+    },
+    "hero": {
+      "eyebrow": "Plugin Marketplace",
+      "title": "Extension ecosystem for KB Labs",
+      "subtitle": "Now: dogfooding-proven plugins. Next: generalized packs for early users and marketplace-based distribution."
+    }
+  },
+  "legal": {
+    "privacy": {
+      "meta": {
+        "title": "Privacy Policy",
+        "description": "How KB Labs collects, uses, and protects your personal data."
+      },
+      "title": "Privacy Policy",
+      "updated": "Last updated: January 2026",
+      "intro": "KB Labs (\"we\", \"us\", \"our\") operates the KB Labs platform and website. This Privacy Policy explains what data we collect, why we collect it, and how you can control it.",
+      "sections": [
+        {
+          "title": "What we collect",
+          "items": [
+            "<strong>Account data</strong> — name, email address, and password (hashed) when you register.",
+            "<strong>Usage data</strong> — workflow runs, API calls, plugin invocations, and feature usage, aggregated and used to improve the platform.",
+            "<strong>Billing data</strong> — payment information is processed by our payment provider (Stripe) and never stored on our servers.",
+            "<strong>Log data</strong> — IP addresses, browser type, and request logs, retained for up to 30 days for security and debugging.",
+            "<strong>Cookies</strong> — session cookies required for authentication and optional analytics cookies. See our Cookie Policy."
+          ]
+        },
+        {
+          "title": "How we use your data",
+          "items": [
+            "To provide, operate, and improve the KB Labs platform",
+            "To send transactional emails (account activity, billing receipts)",
+            "To send product updates, if you have opted in",
+            "To detect, prevent, and investigate security incidents",
+            "To comply with legal obligations"
+          ],
+          "note": "We do not sell your data. We do not use your workflow content to train machine learning models."
+        },
+        {
+          "title": "Data sharing",
+          "items": [
+            "<strong>Infrastructure providers</strong> — cloud hosting and storage (under DPA)",
+            "<strong>Payment processor</strong> — Stripe (PCI DSS compliant)",
+            "<strong>Analytics</strong> — aggregated, anonymised usage data only",
+            "<strong>Legal requirements</strong> — when required by applicable law"
+          ]
+        },
+        {
+          "title": "Data retention",
+          "body": "We retain account data for the duration of your subscription plus 30 days after deletion. Workflow run logs are retained according to your plan (7 days on Hobby, 30 days on Pro, configurable on Enterprise). Anonymised usage analytics may be retained indefinitely."
+        },
+        {
+          "title": "Your rights (GDPR)",
+          "items": [
+            "Access the personal data we hold about you",
+            "Correct inaccurate data",
+            "Request deletion (\"right to be forgotten\")",
+            "Export your data in a portable format",
+            "Object to or restrict processing",
+            "Withdraw consent at any time"
+          ],
+          "note": "To exercise any of these rights, email privacy@kblabs.ru. We respond within 30 days."
+        },
+        {
+          "title": "Security",
+          "body": "We use encryption at rest (AES-256) and in transit (TLS 1.3), access controls, and regular security reviews. For details, see our Security page."
+        },
+        {
+          "title": "Changes to this policy",
+          "body": "We'll notify you by email and update the \"last updated\" date before making material changes. Continued use of the platform after changes constitutes acceptance."
+        },
+        {
+          "title": "Contact",
+          "body": "Questions? Email privacy@kblabs.ru or write to KB Labs, Remote-first, Russia."
+        }
+      ]
+    },
+    "terms": {
+      "meta": {
+        "title": "Terms of Service",
+        "description": "Terms governing your use of the KB Labs platform and services."
+      },
+      "title": "Terms of Service",
+      "updated": "Last updated: January 2026",
+      "intro": "These Terms of Service (\"Terms\") govern your use of the KB Labs platform and services. By creating an account or using the platform, you agree to these Terms.",
+      "sections": [
+        {
+          "title": "The service",
+          "body": "KB Labs provides a workflow automation platform including a CLI, SDK, Studio UI, REST API, and plugin runtime (collectively, \"the Service\"). We reserve the right to modify, suspend, or discontinue any part of the Service with reasonable notice."
+        },
+        {
+          "title": "Your account",
+          "body": "You are responsible for maintaining the confidentiality of your credentials and for all activity under your account. Notify us immediately at security@kblabs.ru if you suspect unauthorized access.",
+          "mustNot": "You must not:",
+          "items": [
+            "Share your account or API keys with third parties",
+            "Use the Service to send spam or malicious content",
+            "Attempt to reverse engineer or circumvent security controls",
+            "Use the Service in violation of applicable law",
+            "Exceed usage quotas through automated abuse"
+          ]
+        },
+        {
+          "title": "Intellectual property",
+          "items": [
+            "You retain ownership of all workflow definitions, plugins, and content you create. By using the Service, you grant KB Labs a limited license to process your content solely to provide the Service.",
+            "The KB Labs platform, brand, and documentation are our intellectual property. Open-source components are licensed under their respective licenses (see our GitHub)."
+          ]
+        },
+        {
+          "title": "Billing and payments",
+          "items": [
+            "Paid plans are billed in advance on a monthly or annual cycle. All fees are non-refundable except where required by law. If you exceed your plan's usage limits, new runs will be queued (Hobby) or you will be notified to upgrade (Pro).",
+            "We reserve the right to change pricing with 30 days' notice. Price changes apply at the start of your next billing cycle."
+          ]
+        },
+        {
+          "title": "Uptime and SLA",
+          "body": "We target 99.9% monthly uptime on all paid plans. An SLA with financial remedies is available on Enterprise plans. Current status is published at status.kblabs.ru."
+        },
+        {
+          "title": "Limitation of liability",
+          "body": "To the maximum extent permitted by law, KB Labs shall not be liable for indirect, incidental, or consequential damages arising from your use of the Service. Our total liability to you in any month shall not exceed the fees you paid in that month."
+        },
+        {
+          "title": "Termination",
+          "body": "You may terminate your account at any time from your account settings. We may terminate or suspend access for material breach of these Terms with notice where practicable. On termination, your data is deleted within 30 days."
+        },
+        {
+          "title": "Governing law",
+          "body": "These Terms are governed by applicable law. Disputes shall be resolved by binding arbitration or the courts of competent jurisdiction, at our mutual election."
+        },
+        {
+          "title": "Changes",
+          "body": "We'll notify you by email 14 days before making material changes. Continued use after that date constitutes acceptance of the revised Terms."
+        },
+        {
+          "title": "Contact",
+          "body": "Questions about these Terms? Email hello@kblabs.ru."
+        }
+      ]
+    },
+    "dpa": {
+      "meta": {
+        "title": "Data Processing Agreement",
+        "description": "KB Labs Data Processing Agreement (DPA) — how we process personal data on your behalf as a GDPR-compliant data processor."
+      },
+      "title": "Data Processing Agreement",
+      "updated": "Last updated: January 2026",
+      "intro": "This Data Processing Agreement (\"DPA\") supplements our Terms of Service and applies where KB Labs processes personal data on your behalf as a data processor under GDPR or equivalent data protection law.",
+      "sections": [
+        {
+          "title": "Definitions",
+          "items": [
+            "<strong>Controller</strong> — you, the customer, who determines the purposes and means of processing.",
+            "<strong>Processor</strong> — KB Labs, acting on your instructions to process personal data.",
+            "<strong>Sub-processor</strong> — a third party engaged by KB Labs to assist in processing.",
+            "<strong>Personal data</strong> — any information relating to an identified or identifiable natural person."
+          ]
+        },
+        {
+          "title": "Processing instructions",
+          "body": "KB Labs will process personal data only on your documented instructions, including those set out in the Terms of Service and this DPA, unless required to do so by applicable law. KB Labs will promptly inform you if any instruction infringes data protection law."
+        },
+        {
+          "title": "Confidentiality",
+          "body": "KB Labs will ensure that persons authorised to process personal data are subject to appropriate confidentiality obligations and are trained in data protection requirements."
+        },
+        {
+          "title": "Security measures",
+          "body": "KB Labs implements and maintains appropriate technical and organisational security measures, including encryption at rest (AES-256), encryption in transit (TLS 1.3), access controls, and regular security reviews. See our Security page for details."
+        },
+        {
+          "title": "Sub-processors",
+          "body": "KB Labs uses the following categories of sub-processors to deliver the Service:",
+          "items": [
+            "<strong>Cloud infrastructure</strong> — hosting, storage, and networking",
+            "<strong>Payment processing</strong> — Stripe (PCI DSS Level 1 certified)",
+            "<strong>Email delivery</strong> — transactional email service",
+            "<strong>Monitoring</strong> — error tracking and performance monitoring"
+          ],
+          "note": "We will notify you of any intended changes to sub-processors with at least 14 days' notice. A current list of sub-processors is available on request at privacy@kblabs.ru."
+        },
+        {
+          "title": "International transfers",
+          "body": "Where personal data is transferred outside the EEA or UK, KB Labs ensures appropriate safeguards are in place, such as Standard Contractual Clauses (SCCs) or adequacy decisions. Enterprise customers may request EU-only data residency."
+        },
+        {
+          "title": "Data subject rights",
+          "body": "KB Labs will assist you in responding to requests from data subjects exercising their rights under applicable data protection law (access, rectification, erasure, portability, etc.), taking into account the nature of the processing and the information available."
+        },
+        {
+          "title": "Data breach notification",
+          "body": "KB Labs will notify you without undue delay, and in any event within 72 hours, of becoming aware of a personal data breach affecting your data. Notification will include the nature of the breach, categories and approximate number of affected data subjects, and recommended mitigation steps."
+        },
+        {
+          "title": "Deletion and return",
+          "body": "On termination of the Services, KB Labs will delete all personal data within 30 days, unless applicable law requires retention. On request, we will provide a written confirmation of deletion."
+        },
+        {
+          "title": "Audit rights",
+          "body": "You may audit KB Labs' compliance with this DPA, subject to 30 days' written notice and at your expense. We will provide access to relevant documentation and, where available, share third-party audit reports (SOC 2, etc.) in lieu of an on-site audit."
+        },
+        {
+          "title": "Contact",
+          "body": "For DPA-related enquiries, email privacy@kblabs.ru. Enterprise customers can request a countersigned DPA for their records."
+        }
+      ]
+    },
+    "cookies": {
+      "meta": {
+        "title": "Cookie Policy",
+        "description": "What cookies KB Labs uses, why we use them, and how you can control them."
+      },
+      "title": "Cookie Policy",
+      "updated": "Last updated: January 2026",
+      "intro": "This Cookie Policy explains what cookies KB Labs uses, why we use them, and how you can control them.",
+      "sections": [
+        {
+          "title": "What are cookies?",
+          "body": "Cookies are small text files stored on your device by your browser when you visit a website. They help websites remember your preferences and session state between page loads."
+        },
+        {
+          "title": "What we use",
+          "body": "We use three categories of cookies:",
+          "items": [
+            "<strong>Essential</strong> — required for the platform to work. Cannot be disabled. These include session authentication and CSRF protection.",
+            "<strong>Functional</strong> — remember your preferences (theme, sidebar state). Disabling these means your preferences reset on each visit.",
+            "<strong>Analytics</strong> — aggregated, anonymised usage data to help us improve the product. No personal data is included. Can be opted out below."
+          ]
+        },
+        {
+          "title": "Cookie details",
+          "table": {
+            "name": "Name",
+            "type": "Type",
+            "duration": "Duration",
+            "purpose": "Purpose",
+            "rows": [
+              {
+                "name": "kb_session",
+                "type": "Essential",
+                "duration": "Session",
+                "purpose": "Authenticates your session after login. Required for the platform to function."
+              },
+              {
+                "name": "kb_csrf",
+                "type": "Essential",
+                "duration": "Session",
+                "purpose": "CSRF protection token. Prevents cross-site request forgery attacks."
+              },
+              {
+                "name": "kb_prefs",
+                "type": "Functional",
+                "duration": "1 year",
+                "purpose": "Stores UI preferences such as sidebar state and theme selection."
+              },
+              {
+                "name": "_analytics",
+                "type": "Analytics",
+                "duration": "90 days",
+                "purpose": "Aggregated, anonymised usage analytics. Used to understand which features are used most."
+              }
+            ]
+          }
+        },
+        {
+          "title": "Third-party cookies",
+          "body": "We do not use third-party advertising cookies or social media tracking pixels. Our analytics is self-hosted and does not share data with external analytics providers."
+        },
+        {
+          "title": "How to control cookies",
+          "body": "You can control cookies in two ways:",
+          "items": [
+            "<strong>Browser settings</strong> — all modern browsers allow you to block or delete cookies. Note that blocking essential cookies will prevent you from logging in.",
+            "<strong>Account settings</strong> — opt out of analytics cookies in your account preferences."
+          ],
+          "note": "For browser-specific instructions, refer to your browser's help documentation."
+        },
+        {
+          "title": "Changes",
+          "body": "We'll update this page if we add new cookies. Material changes will be notified via email."
+        },
+        {
+          "title": "Contact",
+          "body": "Questions? Email privacy@kblabs.ru."
+        }
+      ]
+    }
+  },
+  "notFound": {
+    "code": "404",
+    "title": "Page not found",
+    "description": "The page you're looking for doesn't exist or has been moved.",
+    "goHome": "Go home",
+    "contact": "Contact us"
+  },
+  "useCases": {
+    "meta": {
+      "title": "Use Cases",
+      "description": "Understand why KB Labs matters: practical engineering use cases for on-prem plugin-based automation."
+    },
+    "hero": {
+      "title": "Real use cases. Real workflows.",
+      "subtitle": "Concrete things teams automate with KB Labs today — not abstract promises."
+    },
+    "labels": {
+      "situation": "The situation",
+      "how": "How it works",
+      "result": "The result",
+      "owner": "Owner"
+    },
+    "items": [
+      {
+        "title": "Release Orchestration",
+        "hook": "Your releases live in five Slack threads, three scripts, and a prayer.",
+        "situation": "Every release is a manual coordination exercise — CI jobs, chat messages, local scripts, people who might be on leave.",
+        "how": "tests → checks → AI review → QA gate → final approve. One declarative workflow. Plugins enforce each step.",
+        "result": "Release cycle: days → minutes. Every step traced. No one skips the gate.",
+        "owner": "Head of Engineering / Tech Lead"
+      },
+      {
+        "title": "QA Regressions and Trends",
+        "hook": "You find out about the regression after the customer does.",
+        "situation": "Quality signals are scattered — lint here, tests there, trends nowhere. Issues surface post-release when remediation costs the most.",
+        "how": "A QA plugin runs recurring checks on every change, tracks package-level trends, and surfaces degradation signals before they ship.",
+        "result": "Catch regressions at commit time, not in production. Remediation cost drops significantly.",
+        "owner": "QA Lead / Engineering Manager"
+      },
+      {
+        "title": "Commit and Change Policy",
+        "hook": "Your commit history is a graveyard of 'fix', 'wip', and 'asdf'.",
+        "situation": "Commit discipline lives in a Confluence page nobody reads. Enforcement depends on who reviews and whether they care that day.",
+        "how": "A commit plugin enforces policy at the workflow level — message format, scope, type — declared once, applied everywhere.",
+        "result": "Consistent change history across the team. Fewer manual fixups before release.",
+        "owner": "Tech Lead / Platform Team"
+      },
+      {
+        "title": "AI Review Gate",
+        "hook": "Code review is your slowest and most inconsistent step.",
+        "situation": "Review throughput is a bottleneck. Quality bar varies by reviewer, by day, by team. Some PRs get ten comments, others slip through.",
+        "how": "AI review runs as a required pipeline stage with declarative policy — not a suggestion, a gate. Configurable per repo.",
+        "result": "Faster cycle times. A consistent quality baseline that doesn't depend on who's available.",
+        "owner": "CTO / Engineering Manager"
+      },
+      {
+        "title": "Monorepo Dependency Ops",
+        "hook": "Your monorepo changes are a game of 'hope nothing breaks'.",
+        "situation": "Dependency updates, package sequencing, and governance live in ad-hoc scripts and tribal knowledge. Every big change is a gamble.",
+        "how": "Plugins handle dependency operations, build sequencing, and package governance — declaratively, with change tracking.",
+        "result": "Predictable monorepo changes. CI glue code replaced by observable, repeatable workflows.",
+        "owner": "Platform Engineer / Monorepo Owner"
+      },
+      {
+        "title": "Internal Agent Workflows",
+        "hook": "Your AI agents are ungoverned scripts running on someone's laptop.",
+        "situation": "Agent scenarios are bolted onto separate stacks with no unified policy, no audit trail, and no way to enforce security boundaries.",
+        "how": "Agents run as plugins inside the same policy-first runtime as your standard workflows — same governance, same observability.",
+        "result": "One controlled system for agent automation. No separate stack to maintain or secure.",
+        "owner": "CTO / AI Platform Team"
+      }
+    ],
+    "cta": {
+      "title": "Have a similar workflow in your team?",
+      "description": "Share your current process and we will help pick the first workflow to migrate into KB Labs.",
+      "installBtn": "Install",
+      "contactBtn": "Discuss your use case"
+    }
+  },
+  "productWorkflows": {
+    "meta": {
+      "title": "Workflow Engine — KB Labs",
+      "description": "The programmable engine for releases, reviews, QA, and AI agents — described as code, observed by default, governed by policy."
+    },
+    "hero": {
+      "title": "The programmable engine for your dev loop.",
+      "description": "Releases, reviews, QA, commit policy, AI agent runs — all described as code, all running on one engine. Observable by default, governed by policy, versioned in git.",
+      "startBtn": "Install",
+      "contactBtn": "Talk to us"
+    },
+    "stats": [
+      {
+        "value": "25+",
+        "label": "workflow steps"
+      },
+      {
+        "value": "3",
+        "label": "execution modes"
+      },
+      {
+        "value": "<1s",
+        "label": "step dispatch"
+      },
+      {
+        "value": "100%",
+        "label": "audit coverage"
+      }
+    ],
+    "codeSection": {
+      "title": "Define workflows as code",
+      "description": "YAML-defined workflows with built-in retry, timeout, and rollback. No more shell scripts."
+    },
+    "codeBullets": [
+      {
+        "text": "Step-by-step orchestration with dependency resolution"
+      },
+      {
+        "text": "Built-in retry and timeout policies"
+      },
+      {
+        "text": "Automatic rollback on failure"
+      },
+      {
+        "text": "Human approval gates for critical steps"
+      }
+    ],
+    "benefitsTitle": "Why teams choose workflows",
+    "benefitsSubtitle": "Core advantages of the KB Labs workflow engine.",
+    "benefits": [
+      {
+        "title": "Declarative",
+        "description": "Define what, not how. YAML workflows are readable, reviewable, and version-controlled."
+      },
+      {
+        "title": "Observable",
+        "description": "Real-time execution dashboard with structured logs, timing data, and decision audit trails."
+      },
+      {
+        "title": "Composable",
+        "description": "Build complex flows from simple, reusable steps. Share patterns across teams."
+      }
+    ],
+    "howTitle": "How it works",
+    "howSubtitle": "From definition to execution in four steps.",
+    "steps": [
+      {
+        "title": "Define",
+        "description": "Write workflow as YAML with steps, dependencies, and policies."
+      },
+      {
+        "title": "Trigger",
+        "description": "Start from git events, API calls, schedules, or manual invocation."
+      },
+      {
+        "title": "Execute",
+        "description": "Engine resolves dependencies, runs steps in parallel where possible, enforces policies."
+      },
+      {
+        "title": "Observe",
+        "description": "Full execution trace with logs, timing, and audit trail for every decision."
+      }
+    ],
+    "cta": {
+      "title": "Ready to replace script chaos with workflows?",
+      "description": "Get started with KB Labs workflow engine in minutes.",
+      "startBtn": "Install",
+      "contactBtn": "Talk to us"
+    }
+  },
+  "solutionReleaseAutomation": {
+    "meta": {
+      "title": "Release Automation — KB Labs",
+      "description": "Release pipelines as code, with policy enforcement, full audit, and AI agents as first-class steps."
+    },
+    "hero": {
+      "title": "Release pipelines as code, not as YAML you don't trust.",
+      "description": "We replace brittle CI configurations with one engine that runs build, test, review, QA, and release as a single observable workflow — with policies enforced and every step audited.",
+      "startBtn": "Install",
+      "contactBtn": "Talk to us"
+    },
+    "pipelineStages": [
+      {
+        "label": "Build",
+        "status": "done"
+      },
+      {
+        "label": "Test",
+        "status": "done"
+      },
+      {
+        "label": "Review",
+        "status": "active"
+      },
+      {
+        "label": "Deploy",
+        "status": "pending"
+      }
+    ],
+    "comparisonTitle": "Before and after",
+    "comparisonSubtitle": "What changes when you move pipelines into KB Labs.",
+    "beforeLabel": "Without KB Labs",
+    "beforeTitle": "Fragile scripts, manual steps",
+    "painPoints": [
+      {
+        "text": "Scattered shell scripts across repos"
+      },
+      {
+        "text": "No visibility into pipeline state"
+      },
+      {
+        "text": "Manual release coordination"
+      },
+      {
+        "text": "Flaky tests block deployments"
+      }
+    ],
+    "afterLabel": "With KB Labs",
+    "afterTitle": "Governed, observable pipelines",
+    "benefits": [
+      {
+        "text": "One unified workflow system"
+      },
+      {
+        "text": "Real-time execution dashboard"
+      },
+      {
+        "text": "Automated release orchestration"
+      },
+      {
+        "text": "Smart test retry and regression detection"
+      }
+    ],
+    "stats": [
+      {
+        "value": "30x",
+        "label": "faster incremental builds"
+      },
+      {
+        "value": "0",
+        "label": "manual steps"
+      },
+      {
+        "value": "100%",
+        "label": "traceable releases"
+      }
+    ],
+    "featuresTitle": "Pipeline capabilities",
+    "featuresSubtitle": "Built on the KB Labs workflow engine.",
+    "features": [
+      {
+        "title": "Incremental Builds",
+        "description": "Layer-aware builds that skip unchanged packages — 30x faster than full rebuilds."
+      },
+      {
+        "title": "Quality Gates",
+        "description": "Automated test, lint, and AI review gates configurable per team."
+      },
+      {
+        "title": "Release Orchestration",
+        "description": "Semantic versioning, changelog generation, multi-package coordination."
+      },
+      {
+        "title": "Artifact Management",
+        "description": "Build artifact caching, sharing, and promotion across environments."
+      }
+    ],
+    "cta": {
+      "title": "Ready to upgrade your CI/CD?",
+      "description": "Replace fragile pipeline configs with governed, observable automation.",
+      "startBtn": "Install",
+      "contactBtn": "Talk to us"
+    }
+  },
+  "productPlugins": {
+    "meta": {
+      "title": "Plugin System — KB Labs",
+      "description": "Extend KB Labs with typed, capability-declared plugins that run in a governed runtime."
+    },
+    "hero": {
+      "title": "Extend the engine — safely.",
+      "description": "Build plugins with the TypeScript SDK. Declare capabilities up front. The runtime enforces what each plugin can and cannot do.",
+      "startBtn": "Install",
+      "docsBtn": "Read docs",
+      "contactBtn": "Talk to us"
+    },
+    "manifestCaption": "Every plugin starts with a typed manifest — capabilities, permissions, and metadata declared up front.",
+    "ecosystemTitle": "Plugin ecosystem",
+    "ecosystemTypes": [
+      {
+        "name": "Plugin",
+        "count": "11 available",
+        "description": "Extend CLI and runtime with new commands, hooks, and workflows.",
+        "color": "#6366f1"
+      },
+      {
+        "name": "Adapter",
+        "count": "17 available",
+        "description": "Connect to databases, AI providers, storage backends, and more.",
+        "color": "#0ea5e9"
+      },
+      {
+        "name": "Widget",
+        "count": "4 available",
+        "description": "Add visual components to Studio dashboards and monitoring views.",
+        "color": "#f59e0b"
+      },
+      {
+        "name": "Hook",
+        "count": "8 available",
+        "description": "React to lifecycle events — pre-commit, post-deploy, on-error.",
+        "color": "#10b981"
+      }
+    ],
+    "featureStatement": "One command to install. Zero config to run.",
+    "featureDescription": "Install any plugin from the marketplace and it works immediately. The runtime resolves dependencies, validates capabilities, and handles versioning — so you never have to.",
+    "capabilities": [
+      {
+        "num": "01",
+        "title": "Isolation",
+        "description": "Plugins run in sandboxed contexts with controlled access to platform resources and APIs."
+      },
+      {
+        "num": "02",
+        "title": "Versioning",
+        "description": "Semantic versioning with compatibility checks and automatic migration support across your stack."
+      },
+      {
+        "num": "03",
+        "title": "Discovery",
+        "description": "Automatic plugin discovery from manifests with CLI, marketplace, and workspace integration."
+      },
+      {
+        "num": "04",
+        "title": "Lifecycle",
+        "description": "Full lifecycle management — install, enable, configure, update, and remove with a single command."
+      }
+    ],
+    "cta": {
+      "title": "Build your first plugin in minutes",
+      "description": "TypeScript SDK, templates, and documentation to get you started.",
+      "startBtn": "Install",
+      "contactBtn": "Talk to us"
+    }
+  },
+  "productStateBroker": {
+    "meta": {
+      "title": "State Broker — KB Labs",
+      "description": "Distributed state management without Redis — built into the platform for workflows, plugins, and services."
+    },
+    "hero": {
+      "title": "Distributed state without the infrastructure overhead",
+      "description": "Share state across workflows, plugins, and services with zero external dependencies.",
+      "startBtn": "Install",
+      "docsBtn": "Read docs",
+      "contactBtn": "Talk to us"
+    },
+    "architectureTitle": "How it fits together",
+    "archWorkflow": "Workflow",
+    "archBroker": "State Broker",
+    "archPlugin": "Plugin",
+    "archRedis": "Redis (optional)",
+    "comparisonTitle": "Why not just use Redis directly?",
+    "comparisonHeaders": {
+      "feature": "Feature",
+      "traditional": "Traditional",
+      "stateBroker": "State Broker"
+    },
+    "comparisonRows": [
+      {
+        "feature": "External dependencies",
+        "traditional": "Redis, Memcached, etc.",
+        "stateBroker": "None required"
+      },
+      {
+        "feature": "Setup time",
+        "traditional": "Hours of configuration",
+        "stateBroker": "Zero — works out of the box"
+      },
+      {
+        "feature": "Scaling path",
+        "traditional": "Re-architect from scratch",
+        "stateBroker": "Swap backend, same API"
+      },
+      {
+        "feature": "Tenant isolation",
+        "traditional": "Build it yourself",
+        "stateBroker": "Built-in with quotas"
+      }
+    ],
+    "codeExamples": {
+      "cacheLabel": "Cache API",
+      "pubsubLabel": "Pub/Sub"
+    },
+    "scalingTitle": "Scaling path",
+    "scalingTiers": [
+      {
+        "badge": "Development",
+        "title": "In-Memory",
+        "latency": "~1ms",
+        "description": "Fast in-process cache for local development and small teams. No infrastructure required."
+      },
+      {
+        "badge": "Production",
+        "title": "Redis",
+        "latency": "~5ms",
+        "description": "Shared state across instances with persistence. Same API — swap the backend config."
+      },
+      {
+        "badge": "Enterprise",
+        "title": "Multi-Region",
+        "latency": "distributed",
+        "description": "Geo-replicated state with per-region routing. Dedicated backends per tenant."
+      }
+    ],
+    "cta": {
+      "title": "Simplify your state management",
+      "description": "No more external dependencies for shared state.",
+      "startBtn": "Install",
+      "contactBtn": "Talk to us"
+    }
+  },
+  "productStudio": {
+    "meta": {
+      "title": "Studio — KB Labs",
+      "description": "A visual UI for your plugins and workflows. Touch, inspect, and drive the platform without leaving the browser."
+    },
+    "hero": {
+      "title": "A visual surface for every plugin you install.",
+      "description": "Studio is the human-friendly UI for KB Labs. Browse your plugins, trigger workflows, inspect runs, tweak configs — without opening a terminal. It's the same engine underneath, with a surface you can show to anyone on the team."
+    },
+    "cta": {
+      "title": "Install Studio with the rest of the platform.",
+      "description": "Studio ships with the core. One install command, one launch command, and you have a working UI for your plugins.",
+      "installBtn": "Install",
+      "contactBtn": "Talk to the team"
+    }
+  },
+  "kbDeploy": {
+    "meta": {
+      "title": "kb-deploy — docker compose, but for prod",
+      "description": "docker compose on steroids for production: git-aware affected detection, multi-host SSH deploys, build → push → pull → restart in one command, stateful infra in the same file."
+    },
+    "hero": {
+      "eyebrow": "Open Source",
+      "title": "Ship to prod before Kubernetes is worth it.",
+      "description": "docker compose, but for prod — git-aware, multi-host, SSH-first. Build, push, pull, restart — in the right order, only what changed. One binary, one config, no cluster to babysit.",
+      "installCmd": "curl -fsSL https://kblabs.ru/kb-deploy/install.sh | sh",
+      "releasesBtn": "GitHub Releases",
+      "docsBtn": "Documentation"
+    },
+    "compareCompose": {
+      "title": "If you know docker compose, you already know kb-deploy.",
+      "description": "Same mental model, same YAML shape, same up/down rhythm — but extended with the things compose intentionally doesn't do.",
+      "headers": {
+        "feature": "What you need",
+        "compose": "docker compose",
+        "kbDeploy": "kb-deploy"
+      },
+      "rows": [
+        {
+          "feature": "Local development",
+          "compose": "First-class",
+          "kbDeploy": "Same YAML shape — use either"
+        },
+        {
+          "feature": "Deploy to a remote host",
+          "compose": "SSH in, pull, up -d, manually",
+          "kbDeploy": "One command, over SSH, from your laptop"
+        },
+        {
+          "feature": "Only redeploy what changed",
+          "compose": "Rebuilds everything",
+          "kbDeploy": "git diff against last deployed SHA"
+        },
+        {
+          "feature": "Multi-host deploys",
+          "compose": "One host at a time",
+          "kbDeploy": "Targets can live on different hosts in one file"
+        },
+        {
+          "feature": "Build → push → pull → restart",
+          "compose": "Three separate commands",
+          "kbDeploy": "One run command, verified at each step"
+        },
+        {
+          "feature": "Stateful infra alongside apps",
+          "compose": "Same file, manually managed",
+          "kbDeploy": "infra up / down / status, idempotent, tracked"
+        },
+        {
+          "feature": "Knows what's currently in prod",
+          "compose": "No",
+          "kbDeploy": "status shows SHA drift per target"
+        }
+      ]
+    },
+    "pain": {
+      "title": "You know this.",
+      "items": [
+        {
+          "scenario": "You have three services on one VPS. To deploy, you SSH in, git pull, rebuild an image, docker compose up -d, then watch the logs and hope the new image actually came up. Every time.",
+          "fix": "kb-deploy run. Images built, pushed, pulled, restarted — in the right order, with health verified before moving on."
+        },
+        {
+          "scenario": "You changed one service but your deploy script rebuilds all of them, so a 2-minute fix takes 15 minutes to ship. Or you rebuild nothing and bring the wrong SHA to prod.",
+          "fix": "kb-deploy diffs against git and only touches the targets that actually changed. Everything else stays put."
+        },
+        {
+          "scenario": "Half your infra — the database, the cache, the broker — lives outside your app. Nothing manages them together. You bring them up with ad-hoc compose files that nobody maintains.",
+          "fix": "kb-deploy infra up brings the stateful layer up from the same deploy.yaml. One file, idempotent, no drift."
+        }
+      ]
+    },
+    "config": {
+      "title": "One file. Apps and infra together.",
+      "description": "Put .kb/deploy.yaml in your repo. kb-deploy reads it and figures out what to build, what to push, and what to restart — over SSH, on the target host.",
+      "note": "Same file is read by kb-monitor afterwards. Deploy and observe from one source of truth.",
+      "example": "registry: ghcr.io/your-org\n\ntargets:\n  api:\n    path: apps/api\n    dockerfile: Dockerfile\n    host: prod-1\n    compose: infra/compose/api.yml\n    health: http://localhost:3000/health\n\n  web:\n    path: apps/web\n    host: prod-1\n    compose: infra/compose/web.yml\n\ninfrastructure:\n  postgres:\n    host: prod-1\n    image: postgres:16\n    volumes:\n      - /data/postgres:/var/lib/postgresql/data\n\n  redis:\n    host: prod-1\n    image: redis:7"
+    },
+    "features": {
+      "title": "How it works",
+      "description": "The things that matter once your deploys become routine.",
+      "list": [
+        {
+          "title": "Deploys only what changed",
+          "description": "Affected targets are detected via git diff against the last deployed SHA. Nothing untouched rebuilds."
+        },
+        {
+          "title": "Builds, pushes, pulls, restarts — in order",
+          "description": "Build on your machine or in CI, push to the registry, pull on the host, docker compose up. Each step is verified before the next."
+        },
+        {
+          "title": "Tracks last-deployed SHA per target",
+          "description": "Every target remembers what it's currently running. status shows you the drift between HEAD and prod for each service."
+        },
+        {
+          "title": "Manages stateful infra alongside apps",
+          "description": "Databases, caches, brokers — declared in the same deploy.yaml, brought up with infra up, idempotent, not duplicated."
+        },
+        {
+          "title": "SSH-first, no cloud account required",
+          "description": "Runs over plain SSH with docker compose on the target. Works with any VPS. No cloud vendor, no API tokens, no control plane to configure."
+        },
+        {
+          "title": "Every command is scriptable",
+          "description": "All commands support --json with structured output. Works in CI, in Makefiles, and in agent workflows. Failures carry hints."
+        }
+      ]
+    },
+    "commands": {
+      "title": "Commands",
+      "description": "All commands support --json for scripting and agent workflows.",
+      "list": [
+        {
+          "cmd": "kb-deploy run",
+          "description": "Build and deploy affected targets (git diff against last deployed SHA)."
+        },
+        {
+          "cmd": "kb-deploy run --all",
+          "description": "Force a full deploy of every target regardless of git state."
+        },
+        {
+          "cmd": "kb-deploy run kb-labs-web",
+          "description": "Deploy a specific target by name. Useful for hotfixes and targeted redeploys."
+        },
+        {
+          "cmd": "kb-deploy status",
+          "description": "Show the last deployed SHA per target and whether each is in sync with HEAD."
+        },
+        {
+          "cmd": "kb-deploy list",
+          "description": "List every target configured in .kb/deploy.yaml, with their compose files and hosts."
+        },
+        {
+          "cmd": "kb-deploy infra up",
+          "description": "Bring up stateful infra declared under infrastructure. Idempotent: running services are skipped."
+        },
+        {
+          "cmd": "kb-deploy infra status",
+          "description": "Show runtime state of every stateful service on the host."
+        },
+        {
+          "cmd": "kb-deploy infra down <name>",
+          "description": "Stop and remove a specific infra service. Volumes are preserved unless you opt in."
+        }
+      ]
+    },
+    "download": {
+      "title": "Download",
+      "description": "Pre-built binaries for macOS, Linux, and Windows. SHA-256 checksums included in every release.",
+      "colPlatform": "Platform",
+      "colBinary": "Binary",
+      "colDownload": "Download",
+      "downloadBtn": "Download",
+      "platforms": [
+        {
+          "platform": "macOS (Apple Silicon)",
+          "file": "kb-deploy-darwin-arm64"
+        },
+        {
+          "platform": "macOS (Intel)",
+          "file": "kb-deploy-darwin-amd64"
+        },
+        {
+          "platform": "Linux (x86_64)",
+          "file": "kb-deploy-linux-amd64"
+        },
+        {
+          "platform": "Linux (ARM64)",
+          "file": "kb-deploy-linux-arm64"
+        },
+        {
+          "platform": "Windows (x86_64)",
+          "file": "kb-deploy-windows-amd64.exe"
+        }
+      ]
+    },
+    "kbLabsNote": {
+      "title": "Part of KB Labs",
+      "description": "kb-deploy ships as a standalone binary and as part of the KB Labs platform. When you install KB Labs, kb-deploy is included automatically.",
+      "link": "Install KB Labs →"
+    }
+  },
+  "kbMonitor": {
+    "meta": {
+      "title": "kb-monitor — Set it once, let the agent watch",
+      "description": "Agent-native observability for services deployed via kb-deploy. Health, uptime, image SHAs, logs, exec — all with --json, so an agent can watch your services while you forget monitoring is a task."
+    },
+    "hero": {
+      "eyebrow": "Open Source",
+      "title": "Set it once. Let the agent watch.",
+      "description": "kb-monitor observes services deployed via kb-deploy. Every command has --json with a stable schema, so an agent can poll health, read logs, and react — while you stop thinking about monitoring as a task you own.",
+      "installCmd": "curl -fsSL https://kblabs.ru/kb-monitor/install.sh | sh",
+      "releasesBtn": "GitHub Releases",
+      "docsBtn": "Documentation"
+    },
+    "agentWatchdog": {
+      "title": "Monitoring as something your agent does.",
+      "description": "Every kb-monitor command outputs structured JSON with a stable, documented schema. Point an agent at it on a schedule and monitoring stops being a human task — it becomes a loop that reacts on its own.",
+      "codeCaption": "agent-watchdog.sh",
+      "codeExample": "# run every 5 minutes via cron or kb-dev schedule\nkb-monitor status --json > /tmp/state.json\n\n# the agent reads state, reasons over it, and reacts:\n#   - health failing on kb-labs-web → kb-deploy run kb-labs-web\n#   - new SHA in prod → post to #releases\n#   - container restarting → fetch logs and open an issue\n#\n# you wrote the rules once. you never open a terminal again.",
+      "note": "Same pattern works with any agent runtime — Claude, Codex, your own plugin-agent running inside KB Labs. The stable schema is the contract."
+    },
+    "pain": {
+      "title": "You know this.",
+      "items": [
+        {
+          "scenario": "Something is wrong in prod. You SSH into the host, docker ps, grep for the container, docker logs, scroll through a wall of text, forget the flag for tail, try again. Ten minutes before you've seen a single relevant line.",
+          "fix": "kb-monitor logs <target> --follow. Tailing logs from your laptop, no SSH session, no container name to remember."
+        },
+        {
+          "scenario": "A service went down at 3am. You want to know: is it alive now? When did it come back? What image SHA is it on? You run three different commands against the host to piece it together.",
+          "fix": "kb-monitor status shows every target in one table: running state, uptime, image SHA — ready to paste into an incident channel."
+        },
+        {
+          "scenario": "Your agent wrote a hotfix and deployed it. Now it needs to verify the deploy actually went through and the service is healthy. Without structured output it has to parse docker ps output.",
+          "fix": "Every command supports --json with a stable schema. Agents get a clean dataset to reason over — no screen-scraping."
+        }
+      ]
+    },
+    "config": {
+      "title": "Same file as kb-deploy.",
+      "description": "kb-monitor reads .kb/deploy.yaml — the same file your deploys come from. No second source of truth, no parallel inventory to keep in sync.",
+      "note": "Deploy and observe are paired by design. If kb-deploy knows about a target, kb-monitor knows about it too.",
+      "example": "registry: ghcr.io/your-org\n\ntargets:\n  api:\n    path: apps/api\n    host: prod-1\n    compose: infra/compose/api.yml\n    health: http://localhost:3000/health\n\n  web:\n    path: apps/web\n    host: prod-1\n    compose: infra/compose/web.yml\n\ninfrastructure:\n  postgres:\n    host: prod-1\n    image: postgres:16\n\n  redis:\n    host: prod-1\n    image: redis:7"
+    },
+    "features": {
+      "title": "How it works",
+      "description": "The things that matter once your services are running.",
+      "list": [
+        {
+          "title": "Health across every target, one command",
+          "description": "health runs HTTP or TCP probes against every target defined in deploy.yaml. Pass or fail per service, with latency."
+        },
+        {
+          "title": "Running state, uptime, and image SHA",
+          "description": "status gives you the three things you always want during an incident — current state, how long it's been that way, and exactly what's running."
+        },
+        {
+          "title": "Remote logs without SSH sessions",
+          "description": "logs streams docker logs from the host. --lines for a tail, --follow for live tail. No more SSH into a box just to tail a file."
+        },
+        {
+          "title": "Exec into a running container over SSH",
+          "description": "exec runs a command inside the running container for a target. Useful for one-off checks: df -h, ps, cat a config, run a migration."
+        },
+        {
+          "title": "Stateful infra gets the same treatment",
+          "description": "The databases, caches, and brokers declared in deploy.yaml show up in status and health alongside your app services."
+        },
+        {
+          "title": "Every command is scriptable",
+          "description": "All commands support --json with stable, documented schemas. Agents and CI pipelines get a clean data layer to work with."
+        }
+      ]
+    },
+    "commands": {
+      "title": "Commands",
+      "description": "All commands support --json for scripting and agent workflows.",
+      "list": [
+        {
+          "cmd": "kb-monitor health",
+          "description": "Run health probes against every target. Pass or fail per service, with response latency."
+        },
+        {
+          "cmd": "kb-monitor health kb-labs-web",
+          "description": "Probe a specific target. Useful for post-deploy verification in CI or agent workflows."
+        },
+        {
+          "cmd": "kb-monitor status",
+          "description": "Running state, uptime, and image SHA for every target. The three things you need during an incident."
+        },
+        {
+          "cmd": "kb-monitor status --json",
+          "description": "Structured output for agents and dashboards. Stable schema, every field documented."
+        },
+        {
+          "cmd": "kb-monitor logs kb-labs-web --lines 100",
+          "description": "Fetch the last 100 lines of logs for a target. No SSH session, no docker ps needed."
+        },
+        {
+          "cmd": "kb-monitor logs kb-labs-web --follow",
+          "description": "Stream live logs for a target from your laptop. Ctrl-C to stop, no cleanup needed."
+        },
+        {
+          "cmd": "kb-monitor exec kb-labs-web -- df -h",
+          "description": "Execute a command inside the running container. Any command after -- is passed through verbatim."
+        },
+        {
+          "cmd": "kb-monitor infra",
+          "description": "Show runtime state of every stateful service declared in deploy.yaml."
+        }
+      ]
+    },
+    "download": {
+      "title": "Download",
+      "description": "Pre-built binaries for macOS, Linux, and Windows. SHA-256 checksums included in every release.",
+      "colPlatform": "Platform",
+      "colBinary": "Binary",
+      "colDownload": "Download",
+      "downloadBtn": "Download",
+      "platforms": [
+        {
+          "platform": "macOS (Apple Silicon)",
+          "file": "kb-monitor-darwin-arm64"
+        },
+        {
+          "platform": "macOS (Intel)",
+          "file": "kb-monitor-darwin-amd64"
+        },
+        {
+          "platform": "Linux (x86_64)",
+          "file": "kb-monitor-linux-amd64"
+        },
+        {
+          "platform": "Linux (ARM64)",
+          "file": "kb-monitor-linux-arm64"
+        },
+        {
+          "platform": "Windows (x86_64)",
+          "file": "kb-monitor-windows-amd64.exe"
+        }
+      ]
+    },
+    "kbLabsNote": {
+      "title": "Part of KB Labs",
+      "description": "kb-monitor ships as a standalone binary and as part of the KB Labs platform. When you install KB Labs, kb-monitor is included automatically.",
+      "link": "Install KB Labs →"
+    }
+  },
+  "solutionCodeIntelligence": {
+    "meta": {
+      "title": "Code Intelligence — KB Labs",
+      "description": "Semantic code search built for engineers and AI agents — with confidence scores, source citations, and verification against hallucinations."
+    },
+    "hero": {
+      "title": "Search your codebase by meaning, not by string match.",
+      "description": "Mind RAG is the semantic search engine we use ourselves to navigate KB Labs. It works at the concept level, returns source citations and confidence scores, and gives AI agents a first-class tool that doesn't hallucinate.",
+      "startBtn": "Install",
+      "docsBtn": "Read docs",
+      "contactBtn": "Talk to us"
+    },
+    "searchDemo": {
+      "label": "Search your codebase",
+      "placeholder": "How does hybrid search combine results?"
+    },
+    "accuracy": {
+      "title": "Search accuracy across query complexity",
+      "easy": "EASY",
+      "medium": "MEDIUM",
+      "hard": "HARD",
+      "average": "Average: 7.0 / 10"
+    },
+    "modes": {
+      "title": "Three modes for every workflow",
+      "description": "Choose the depth of analysis that fits your task.",
+      "instant": {
+        "name": "Instant",
+        "speed": "~30s",
+        "description": "Fast lookup for specific classes, functions, or interfaces. Minimal LLM calls.",
+        "useCases": [
+          "Find a class definition",
+          "Locate a specific file",
+          "Quick reference checks",
+          "Simple lookups"
+        ]
+      },
+      "auto": {
+        "name": "Auto",
+        "speed": "~60s",
+        "badge": "Recommended",
+        "description": "Balanced mode that auto-detects query complexity and adjusts search depth.",
+        "useCases": [
+          "Understand how features work",
+          "Explore implementation details",
+          "Balanced speed and depth",
+          "Default for most queries"
+        ]
+      },
+      "thinking": {
+        "name": "Thinking",
+        "speed": "~90s",
+        "description": "Deep multi-step reasoning for complex architectural questions and cross-module analysis.",
+        "useCases": [
+          "Architectural deep-dives",
+          "Cross-module analysis",
+          "Compare implementations",
+          "End-to-end flow tracing"
+        ]
+      }
+    },
+    "codeExample": {
+      "title": "Works from your terminal"
+    },
+    "featureGrid": {
+      "items": [
+        {
+          "title": "Hybrid Search",
+          "description": "Combines vector embeddings with BM25 scoring via Reciprocal Rank Fusion for results that understand meaning, not just keywords."
+        },
+        {
+          "title": "Anti-Hallucination",
+          "description": "Built-in verification cross-checks every answer against actual source code with confidence scoring and citation tracking."
+        },
+        {
+          "title": "Agent-Ready",
+          "description": "First-class tool for AI agents with structured JSON output, confidence scores, and source file citations."
+        },
+        {
+          "title": "Incremental Indexing",
+          "description": "Configurable scopes with include/exclude patterns. Only re-indexes changed files for fast updates."
+        }
+      ]
+    },
+    "cta": {
+      "title": "Search your codebase by meaning, not by string match.",
+      "description": "Semantic code search built for engineers and AI agents — with confidence scores, source citations, and verification against hallucinations.",
+      "startBtn": "Install",
+      "contactBtn": "Talk to us"
+    }
+  },
+  "roadmap": {
+    "meta": {
+      "title": "Product Roadmap — KB Labs",
+      "description": "What we're building and when — quarterly development plan."
+    },
+    "hero": {
+      "title": "Product Roadmap",
+      "description": "What we're building, what's next, and where we're headed. Updated quarterly."
+    },
+    "legend": {
+      "shipped": "Shipped",
+      "inProgress": "In Progress",
+      "planned": "Planned",
+      "exploring": "Exploring"
+    },
+    "quarters": [
+      {
+        "id": "q2-2026",
+        "label": "Q2 2026",
+        "theme": "Stabilization & Closed Beta",
+        "status": "in-progress",
+        "items": [
+          {
+            "title": "Go Tooling Stabilization",
+            "description": "kb-devkit, kb-dev, kb-deploy, kb-monitor — stable releases with cross-platform binaries and install scripts.",
+            "status": "in-progress"
+          },
+          {
+            "title": "E2E Testing on Critical Paths",
+            "description": "End-to-end coverage for installation, service startup, and core product workflows.",
+            "status": "in-progress"
+          },
+          {
+            "title": "Demo Scenario",
+            "description": "kb-create --demo: install the platform and see the full cycle (commit plugin + gateway) working on your own codebase.",
+            "status": "in-progress"
+          },
+          {
+            "title": "Public Launch on GitHub",
+            "description": "Open-source monorepo, npm packages (core/sdk/shared under MIT), GitHub Releases with binaries.",
+            "status": "planned"
+          },
+          {
+            "title": "REST API v1",
+            "description": "OpenAPI-documented platform API with authentication and rate limiting.",
+            "status": "shipped"
+          },
+          {
+            "title": "Documentation",
+            "description": "90+ pages of docs covering architecture, SDK, guides, and operations.",
+            "status": "shipped"
+          }
+        ]
+      },
+      {
+        "id": "q3-2026",
+        "label": "Q3 2026",
+        "theme": "Plugin Ecosystem",
+        "status": "planned",
+        "items": [
+          {
+            "title": "Utility Plugin Pack",
+            "description": "A set of broadly useful plugins: notifications, scheduling, environment management, and more.",
+            "status": "planned"
+          },
+          {
+            "title": "Plugin SDK Stabilization",
+            "description": "Stable plugin API, versioned contracts, comprehensive SDK documentation and examples.",
+            "status": "planned"
+          },
+          {
+            "title": "Community Adapters",
+            "description": "Extension points are open today — anyone can write a Kafka, RabbitMQ, NATS, or any HTTP adapter.",
+            "status": "planned"
+          },
+          {
+            "title": "Studio v1.0",
+            "description": "Web UI for workflow monitoring, execution history, and plugin management.",
+            "status": "planned"
+          }
+        ]
+      },
+      {
+        "id": "q4-2026",
+        "label": "Q4 2026",
+        "theme": "Platform Contracts",
+        "status": "planned",
+        "items": [
+          {
+            "title": "Notification Contract",
+            "description": "Unified notification interface — plugins send notifications, adapters deliver them (Slack, Telegram, email, webhooks).",
+            "status": "planned"
+          },
+          {
+            "title": "RBAC — Role-Based Access Control",
+            "description": "Permission system for platform resources: who can run what, access which services, and manage which plugins.",
+            "status": "planned"
+          },
+          {
+            "title": "Mind RAG v2",
+            "description": "Multi-repo search, improved anti-hallucination, and cross-project intelligence.",
+            "status": "planned"
+          },
+          {
+            "title": "Workflow Templates",
+            "description": "Pre-built workflow templates for common automation patterns: CI, releases, code review, onboarding.",
+            "status": "planned"
+          }
+        ]
+      },
+      {
+        "id": "q1-2027",
+        "label": "Q1 2027",
+        "theme": "KB Labs Registry & Marketplace",
+        "status": "exploring",
+        "items": [
+          {
+            "title": "KB Labs Registry",
+            "description": "Own package registry for plugins and adapters — publish, version, and distribute without npm.",
+            "status": "exploring"
+          },
+          {
+            "title": "Marketplace v2",
+            "description": "Full marketplace experience: discover, install, rate, and review plugins from the registry.",
+            "status": "exploring"
+          },
+          {
+            "title": "Plugin Verification",
+            "description": "Automated security and compatibility checks for published plugins.",
+            "status": "exploring"
+          },
+          {
+            "title": "ABAC — Attribute-Based Access Control",
+            "description": "Fine-grained permissions beyond roles: conditions based on resource attributes, time, environment.",
+            "status": "exploring"
+          }
+        ]
+      },
+      {
+        "id": "q2-2027",
+        "label": "Q2 2027+",
+        "theme": "Enterprise & SaaS",
+        "status": "exploring",
+        "items": [
+          {
+            "title": "Hosted Platform",
+            "description": "Managed KB Labs — same platform, zero ops. For teams that want the product without running infrastructure.",
+            "status": "exploring"
+          },
+          {
+            "title": "Multi-Tenant Production",
+            "description": "Isolated tenants, resource quotas, and org-level administration.",
+            "status": "exploring"
+          },
+          {
+            "title": "Enterprise Integrations",
+            "description": "SSO (SAML/OIDC), audit log export, and compliance tooling — driven by customer needs.",
+            "status": "exploring"
+          },
+          {
+            "title": "Agent Marketplace",
+            "description": "Pre-built AI agents with governed execution — install, configure, and run from the marketplace.",
+            "status": "exploring"
+          }
+        ]
+      }
+    ],
+    "cta": {
+      "title": "Want to influence the roadmap?",
+      "description": "Share your use case and help us prioritize what matters to your team.",
+      "startBtn": "Install",
+      "contactBtn": "Talk to us"
+    }
+  },
+  "solutionCodeQuality": {
+    "meta": {
+      "title": "Code Quality — KB Labs",
+      "description": "Quality gates as code. AI review, baseline regression tracking, and automated QA across the monorepo — running on the same engine you install."
+    },
+    "hero": {
+      "badge": "Code Quality",
+      "title": "Quality gates that run on every change.",
+      "description": "We run baseline regression checks, AI code review, and full QA on every pull request — automatically, on the same engine that powers our own releases. Built as plugins, configurable per repo.",
+      "startBtn": "Install",
+      "contactBtn": "Talk to us"
+    },
+    "pipeline": {
+      "title": "Every change flows through the quality pipeline"
+    },
+    "metrics": {
+      "title": "From chaos to confidence",
+      "subtitle": "See the difference baseline quality gates make on a real 125-package monorepo.",
+      "beforeLabel": "Before",
+      "afterLabel": "After"
+    },
+    "toolsSection": {
+      "title": "Three layers of quality enforcement",
+      "subtitle": "Each tool catches different classes of problems. Together they form a complete safety net."
+    },
+    "tools": [
+      {
+        "title": "QA Plugin",
+        "description": "Runs build, lint, type check, and tests across all 125 packages in correct dependency order. Incremental builds skip unchanged packages.",
+        "poweredBy": "Powered by DevKit"
+      },
+      {
+        "title": "AI Code Review",
+        "description": "LLM-powered review that understands your architecture. Finds logic errors, security issues, and anti-patterns that linters miss.",
+        "poweredBy": "Powered by OpenAI"
+      },
+      {
+        "title": "Baseline System",
+        "description": "Ratcheting quality gates that never let error counts increase. Track trends over time and detect regressions before merge.",
+        "poweredBy": "Powered by History"
+      }
+    ],
+    "stats": {
+      "typeErrors": "type errors tracked",
+      "lintErrors": "lint errors baselined",
+      "regressionDetection": "regression detection"
+    },
+    "cta": {
+      "title": "Stop shipping regressions",
+      "description": "Deploy KB Labs on-prem and enforce quality gates across your entire engineering organization.",
+      "startBtn": "Install",
+      "contactBtn": "Talk to us"
+    }
+  },
+  "solutionMonorepoOps": {
+    "meta": {
+      "title": "Monorepo Operations — KB Labs",
+      "description": "Cross-repo dependency management, build order resolution, and health checks for monorepos that have outgrown ad-hoc scripts."
+    },
+    "hero": {
+      "title": "Monorepo operations that scale with the codebase.",
+      "stat": "Built for repositories that outgrew their original scripts.",
+      "description": "DevKit and DevLink handle the work that monorepos quietly accumulate: cross-repo dependencies, build order resolution, dependency health, and consistency checks. We use both ourselves to manage KB Labs.",
+      "startBtn": "Install",
+      "contactBtn": "Talk to us"
+    },
+    "scale": {
+      "caption": "Each dot represents a package. Grouped by repository. This is what KB Labs manages."
+    },
+    "showcase": {
+      "title": "18 DevKit tools for every scenario",
+      "subtitle": "From dependency analysis to automated fixes — purpose-built tools for monorepo management."
+    },
+    "toolCategories": [
+      {
+        "title": "Analysis",
+        "count": "8 tools",
+        "description": "Import/export checking, duplicate detection, structure validation, dependency graphs."
+      },
+      {
+        "title": "Automation",
+        "count": "7 tools",
+        "description": "Auto-fix dependencies, build order calculation, CI combo checks, health scoring."
+      },
+      {
+        "title": "Infrastructure",
+        "count": "3 tools",
+        "description": "Repository sync, path alias generation, external dependency management."
+      },
+      {
+        "title": "Health Check",
+        "count": "1 command",
+        "description": "Comprehensive scan: missing deps, build failures, type errors, health grade."
+      },
+      {
+        "title": "Build Order",
+        "count": "13 layers",
+        "description": "Topological sort with parallel build layers. Zero circular dependencies."
+      },
+      {
+        "title": "Types Audit",
+        "count": "91 packages",
+        "description": "TypeScript Compiler API analysis. Type coverage, impact chains, safety hotspots."
+      }
+    ],
+    "terminal": {
+      "title": "One command to check everything"
+    },
+    "devlink": {
+      "title": "Cross-repo dependencies, solved",
+      "problem": "In a multi-repo setup, packages depend on each other across repository boundaries. Keeping link: paths, workspace files, and lockfiles in sync manually is error-prone and time-consuming.",
+      "solution": "DevLink manages all cross-repo dependencies automatically. Switch between local development (symlinks) and npm versions (publishing) with a single command. Workspace files and lockfiles regenerated on the fly.",
+      "tagline": "One command fixes everything."
+    },
+    "cta": {
+      "title": "Tame your monorepo",
+      "description": "Deploy KB Labs and get 18 purpose-built tools for managing packages, dependencies, and quality at scale.",
+      "startBtn": "Install",
+      "contactBtn": "Talk to us"
+    }
+  },
+  "solutionAiGateway": {
+    "meta": {
+      "title": "Infrastructure Layer — KB Labs",
+      "description": "Every external vendor — LLM, cache, database, vector store, event bus, and more — behind one contract. Swap any of them with a config line. Your code never changes."
+    },
+    "hero": {
+      "title": "Every vendor, behind one contract.",
+      "description": "Cache, databases, vector stores, event bus, LLM and more — all reached through stable interfaces. Swap any vendor with a config line; your service code never changes.",
+      "startBtn": "Install",
+      "contactBtn": "Talk to us"
+    },
+    "valueProps": {
+      "title": "What lives behind the contract",
+      "items": [
+        {
+          "title": "Vendor abstraction across categories",
+          "description": "Cache, SQL and document databases, vector stores, object storage, event bus, LLM, embeddings, observability — every external dependency reaches the platform through one stable interface."
+        },
+        {
+          "title": "Swap any vendor with a config line",
+          "description": "When you need to move from one provider to another, you change a single entry in your config. The producer and consumer code in your services stays exactly as it was."
+        },
+        {
+          "title": "The extension point is open today",
+          "description": "Need Kafka, RabbitMQ, NATS, or anything else not in the catalog? Write your own adapter against the same contract — in your own repo, private or public — and it loads identically to ours."
+        },
+        {
+          "title": "Around 21 open adapters today",
+          "description": "OpenAI, SQLite, MongoDB, Redis, Qdrant, Pino, Docker, local filesystem, git worktrees, and more. The catalog grows openly, and so can yours."
+        },
+        {
+          "title": "Multi-tenant routing built in",
+          "description": "Per-tenant rate limits, budget enforcement, audit, and observability are part of the layer — not something every product reimplements."
+        },
+        {
+          "title": "Self-hosted, open source, no black boxes",
+          "description": "Runs on your infrastructure. No data leaves your network unless you configure it to. Every line of every adapter is auditable."
+        }
+      ]
+    },
+    "howItWorks": {
+      "title": "How it works",
+      "steps": [
+        {
+          "num": "1",
+          "title": "Your service depends on the contract",
+          "description": "Your producer and consumer code imports a typed interface from @kb-labs/core-platform. It never imports a vendor SDK directly."
+        },
+        {
+          "num": "2",
+          "title": "The runtime loads the adapter",
+          "description": "On startup, the runtime reads your config, loads the adapter package by name, and binds it to the contract. The reference adapter, a private one you wrote, or a future open one — all load identically."
+        },
+        {
+          "num": "3",
+          "title": "Swap the backend, code stays put",
+          "description": "Change one line in .kb/kb.config.json. Your service code is unchanged. The vendor underneath is replaced, the behaviour above the contract is preserved."
+        }
+      ]
+    },
+    "cta": {
+      "title": "Stop reimplementing the same vendor wiring in every product.",
+      "description": "One contract layer. Adapters you swap in config. Built on the same engine you install in one command.",
+      "startBtn": "Install",
+      "contactBtn": "Talk to us"
+    }
+  },
+  "solutionObservability": {
+    "meta": {
+      "title": "Observability — KB Labs",
+      "description": "One telemetry layer across every product on the engine. Self-hosted, plugin-extensible, no third-party SaaS in the path."
+    },
+    "hero": {
+      "title": "One telemetry layer across every product on the engine.",
+      "description": "Events, metrics, and logs from every workflow, plugin, and service flow through a single ingestion layer you control. Self-hosted by default. No third-party SaaS in the data path unless you put one there.",
+      "startBtn": "Install",
+      "contactBtn": "Talk to us"
+    },
+    "valueProps": {
+      "title": "Why centralized observability",
+      "items": [
+        {
+          "title": "Unified Ingestion",
+          "description": "One endpoint for all products. Events, metrics, logs — everything flows through the platform."
+        },
+        {
+          "title": "Automatic LLM tracking",
+          "description": "Every LLM call through the Gateway is tracked automatically: tokens, cost, latency, errors."
+        },
+        {
+          "title": "Product Telemetry SDK",
+          "description": "Lightweight client SDK (zero dependencies) for any Node.js or browser product. Batching, retry, flush on exit."
+        },
+        {
+          "title": "External Source Aggregation",
+          "description": "Pull data from cloud billing, CI/CD, external APIs via scheduled workflows. One pane of glass."
+        },
+        {
+          "title": "Pluggable Storage",
+          "description": "SQLite for dev, DuckDB for analytics, ClickHouse for scale. Switch backend in one config line."
+        },
+        {
+          "title": "Custom Dashboards via Plugins",
+          "description": "Platform provides raw data. Your teams build custom visualizations as plugins — no vendor lock-in."
+        }
+      ]
+    },
+    "audiences": {
+      "title": "Who benefits",
+      "items": [
+        {
+          "role": "CTO / VP Engineering",
+          "sees": "Total AI spend, adoption rate, provider efficiency, cost trends"
+        },
+        {
+          "role": "Engineering Manager",
+          "sees": "Workflow health, fallback rates, team-level usage, error trends"
+        },
+        {
+          "role": "Developer",
+          "sees": "Request traces, latency breakdown, budget consumption, error details"
+        }
+      ]
+    },
+    "cta": {
+      "title": "Stop flying blind across your products",
+      "description": "Centralized telemetry. Unified analytics. Your infrastructure, your data.",
+      "startBtn": "Install",
+      "contactBtn": "Talk to us"
+    }
+  },
+  "solutionPlatformApi": {
+    "meta": {
+      "title": "Platform Client — KB Labs",
+      "description": "Zero-dependency TypeScript client for your services. One import gives you cache, databases, vector stores, LLM, and analytics — all routed through the Gateway."
+    },
+    "hero": {
+      "title": "One client for your services. Zero vendor SDKs.",
+      "description": "@kb-labs/platform-client is a zero-dependency TypeScript SDK your products import once and use everywhere. Cache, databases, vector stores, LLM, analytics — all reached through a single client that routes through the Gateway.",
+      "startBtn": "Install",
+      "contactBtn": "Talk to us"
+    },
+    "configCaption": "One client. Many backends. Zero rewrites.",
+    "architecture": {
+      "title": "How it works"
+    },
+    "adapters": {
+      "title": "What the client gives you"
+    },
+    "cta": {
+      "title": "One import. Every capability. None of the vendor wiring.",
+      "description": "Install @kb-labs/platform-client in your service, point it at your Gateway, and stop reimplementing infrastructure clients in every product.",
+      "startBtn": "Install",
+      "contactBtn": "Talk to us"
+    }
+  },
+  "kbDev": {
+    "meta": {
+      "title": "kb-dev — Stop juggling terminal tabs",
+      "description": "One Go binary that starts your services in the right order, restarts them when they crash, and tells you which process is holding port 3000. Works with any project."
+    },
+    "hero": {
+      "eyebrow": "Open Source",
+      "title": "Stop juggling terminal tabs.",
+      "description": "One binary that starts your services in the right order, waits for them to actually be ready, and cleans up properly when you stop.",
+      "installCmd": "curl -fsSL https://kblabs.ru/kb-dev/install.sh | sh",
+      "releasesBtn": "GitHub Releases",
+      "docsBtn": "Documentation"
+    },
+    "pain": {
+      "title": "You know this.",
+      "items": [
+        {
+          "scenario": "Postgres in one tab, Redis in another, API in the third. You close your laptop, reopen it, and nothing works. You spend five minutes figuring out what to restart and in what order.",
+          "fix": "kb-dev start. One command. Everything comes up in the right order."
+        },
+        {
+          "scenario": "You run your service and get \"address already in use\". Something is holding port 3000. You do ps aux | grep node and squint at a list of processes hoping to guess which one it is.",
+          "fix": "kb-dev doctor tells you exactly what owns the port and gives you the command to fix it."
+        },
+        {
+          "scenario": "You run make dev, everything looks like it started, but the API crashes immediately. Postgres wasn't up yet. You re-run. Sometimes it works, sometimes it doesn't.",
+          "fix": "kb-dev waits for the health check to pass before starting anything that depends on it. No races."
+        }
+      ]
+    },
+    "config": {
+      "title": "One file, any project.",
+      "description": "Drop devservices.yaml in your project root. kb-dev finds it automatically by walking up from the current directory.",
+      "note": "KB Labs projects use .kb/devservices.yaml — same format, different location.",
+      "example": "name: my-project\n\nservices:\n  postgres:\n    type: docker\n    command: docker run --rm -p 5432:5432 postgres:16\n    health_check: http://localhost:5432\n    port: 5432\n\n  api:\n    command: pnpm dev\n    port: 3000\n    health_check: http://localhost:3000/health\n    depends_on: [postgres]\n\n  worker:\n    command: pnpm worker\n    depends_on: [postgres]"
+    },
+    "features": {
+      "title": "How it works",
+      "description": "The things that matter once the pain is familiar.",
+      "list": [
+        {
+          "title": "Knows when a service actually died",
+          "description": "Tracks the real PID because it spawned the process. No port scanning, no stale state, no guessing."
+        },
+        {
+          "title": "Doesn't call it alive until it actually responds",
+          "description": "HTTP, TCP, and command health probes with response latency. Reports alive only after the check passes."
+        },
+        {
+          "title": "Starts postgres before the thing that needs postgres",
+          "description": "Topological sort across your services. Parallel start within each layer, correct order guaranteed."
+        },
+        {
+          "title": "Brings it back without you watching the terminal",
+          "description": "Watchdog with exponential backoff. A crashed service restarts automatically, up to 5 retries."
+        },
+        {
+          "title": "Stops the whole tree, not just the parent",
+          "description": "Uses process group kill to stop the entire subtree. No orphaned child processes left behind."
+        },
+        {
+          "title": "Every command is scriptable",
+          "description": "Every command outputs structured JSON with an ok field. Failures include a hint with the exact fix. Works in CI, Makefiles, and agent workflows."
+        }
+      ]
+    },
+    "commands": {
+      "title": "Commands",
+      "description": "All commands support --json for scripting and agent workflows.",
+      "list": [
+        {
+          "cmd": "kb-dev start",
+          "description": "Start all services in dependency order. Pass a group or service name to target."
+        },
+        {
+          "cmd": "kb-dev stop",
+          "description": "Stop services. Use --cascade to also stop everything that depends on the target."
+        },
+        {
+          "cmd": "kb-dev status",
+          "description": "Status table with health latency. --json returns structured output with depsState."
+        },
+        {
+          "cmd": "kb-dev ensure api worker",
+          "description": "Idempotent desired state: alive services are skipped, dead ones are started."
+        },
+        {
+          "cmd": "kb-dev ready api --timeout 30s",
+          "description": "Block until the service is alive. Use as a gate in CI or agent workflows."
+        },
+        {
+          "cmd": "kb-dev logs api --follow",
+          "description": "Stream live logs for a service. Omit --follow for a tail of the last 50 lines."
+        },
+        {
+          "cmd": "kb-dev doctor",
+          "description": "Check the local environment: node, docker, port conflicts. Returns hints for every issue."
+        },
+        {
+          "cmd": "kb-dev watch --json",
+          "description": "Stream lifecycle events as JSONL: health, crashed, restarting, alive."
+        }
+      ]
+    },
+    "download": {
+      "title": "Download",
+      "description": "Pre-built binaries for macOS, Linux, and Windows. SHA-256 checksums included in every release.",
+      "colPlatform": "Platform",
+      "colBinary": "Binary",
+      "colDownload": "Download",
+      "downloadBtn": "Download",
+      "platforms": [
+        {
+          "platform": "macOS (Apple Silicon)",
+          "file": "kb-dev-darwin-arm64"
+        },
+        {
+          "platform": "macOS (Intel)",
+          "file": "kb-dev-darwin-amd64"
+        },
+        {
+          "platform": "Linux (x86_64)",
+          "file": "kb-dev-linux-amd64"
+        },
+        {
+          "platform": "Linux (ARM64)",
+          "file": "kb-dev-linux-arm64"
+        },
+        {
+          "platform": "Windows (x86_64)",
+          "file": "kb-dev-windows-amd64.exe"
+        }
+      ]
+    },
+    "kbLabsNote": {
+      "title": "Part of KB Labs",
+      "description": "kb-dev ships as a standalone tool and as part of the KB Labs platform. When you install KB Labs, kb-dev is included automatically.",
+      "link": "Install KB Labs →"
+    }
+  },
+  "kbDevkit": {
+    "meta": {
+      "title": "kb-devkit — Build monorepos that scale",
+      "description": "Go binary that runs build, lint, test, and deploy across hundreds of packages with content-addressable caching. Identical inputs skip execution. Works with any pnpm monorepo."
+    },
+    "hero": {
+      "eyebrow": "Open Source",
+      "title": "Build 100 packages in the time it used to take to build 10.",
+      "description": "One binary that caches task outputs by input hash, runs dependent tasks in the right order, and only reruns what actually changed.",
+      "installCmd": "curl -fsSL https://kblabs.ru/kb-devkit/install.sh | sh",
+      "releasesBtn": "GitHub Releases",
+      "docsBtn": "Documentation"
+    },
+    "pain": {
+      "title": "You know this.",
+      "items": [
+        {
+          "scenario": "You change one type in a shared package and rebuild the whole monorepo. 10 minutes later you find out the type was wrong. You do it again.",
+          "fix": "kb-devkit hashes your inputs. Change one package, only that package and its dependents rebuild."
+        },
+        {
+          "scenario": "CI takes 20 minutes on every PR. Nobody knows which packages actually changed. You end up building everything because it's safer.",
+          "fix": "kb-devkit run build --affected finds exactly what changed via git diff and BFS through the dependency graph."
+        },
+        {
+          "scenario": "You're running lint, type-check, and tests in parallel but the type-check needs the dist/ from a dep that hasn't built yet. Errors that aren't real.",
+          "fix": "deps: [\"^build\"] in devkit.yaml. Deps' build finishes before your task starts. Guaranteed."
+        }
+      ]
+    },
+    "config": {
+      "title": "One file, any monorepo.",
+      "description": "Drop devkit.yaml in your workspace root. Declare tasks once, run them everywhere. kb-devkit finds packages by glob patterns and applies the right rules.",
+      "note": "The KB Labs workspace uses kb-devkit for all 125+ packages across 18 repos.",
+      "example": "tasks:\n  build:\n    command: tsup\n    inputs:\n      - \"src/**\"\n      - \"tsconfig*.json\"\n    outputs:\n      - \"dist/**\"\n    deps:\n      - \"^build\"  # deps first\n\n  lint:\n    command: eslint src/\n    inputs: [\"src/**\"]\n\n  test:\n    command: vitest run\n    inputs: [\"src/**\", \"test/**\"]\n    deps: [\"build\"]\n\naffected:\n  strategy: submodules"
+    },
+    "features": {
+      "title": "How it works",
+      "description": "The things that matter once the pain is familiar.",
+      "list": [
+        {
+          "title": "Identical inputs, zero work",
+          "description": "SHA256 hash of all input files. Cache hit restores outputs in ~1ms. No rebuild, no rerun, no wait."
+        },
+        {
+          "title": "Runs in the right order",
+          "description": "DAG across all (package × task) pairs. Packages with no interdependencies run in parallel. deps: [\"^build\"] means what it says."
+        },
+        {
+          "title": "Knows what actually changed",
+          "description": "git diff inside each submodule, BFS through the reverse dependency graph. --affected targets only what needs to run."
+        },
+        {
+          "title": "Works with any task",
+          "description": "build, lint, test, type-check, deploy, or anything with a shell command. cache: false for side-effectful tasks."
+        },
+        {
+          "title": "Quality checks built in",
+          "description": "Validates tsconfig inheritance, eslint config, required scripts, dep consistency. kb-devkit check catches drift before CI does."
+        },
+        {
+          "title": "Every command is scriptable",
+          "description": "All commands output structured JSON with an ok field. Results include per-package stdout, stderr, exit code, and duration."
+        }
+      ]
+    },
+    "commands": {
+      "title": "Commands",
+      "description": "All commands support --json for CI and agent workflows.",
+      "list": [
+        {
+          "cmd": "kb-devkit run build",
+          "description": "Run build across all packages in dependency order. Cached results restore in ~1ms."
+        },
+        {
+          "cmd": "kb-devkit run build --affected",
+          "description": "Run only on packages changed relative to HEAD, plus all their downstream dependents."
+        },
+        {
+          "cmd": "kb-devkit run build lint test",
+          "description": "Chain multiple tasks. Each respects its own inputs, outputs, and dep ordering."
+        },
+        {
+          "cmd": "kb-devkit run build --packages @scope/pkg-a,@scope/pkg-b",
+          "description": "Target specific packages by name. Useful for focused rebuilds during development."
+        },
+        {
+          "cmd": "kb-devkit check",
+          "description": "Validate all packages against devkit.yaml rules: naming, tsconfig, eslint, deps, structure."
+        },
+        {
+          "cmd": "kb-devkit stats",
+          "description": "Workspace health score (A–F), issue counts by category, coverage metrics."
+        },
+        {
+          "cmd": "kb-devkit fix",
+          "description": "Auto-fix safe violations found by check. Use --dry-run to preview first."
+        },
+        {
+          "cmd": "kb-devkit gate",
+          "description": "Check staged files only. Exits with code 1 on violations. For pre-commit hooks."
+        }
+      ]
+    },
+    "download": {
+      "title": "Download",
+      "description": "Pre-built binaries for macOS, Linux, and Windows. SHA-256 checksums included in every release.",
+      "colPlatform": "Platform",
+      "colBinary": "Binary",
+      "colDownload": "Download",
+      "downloadBtn": "Download",
+      "platforms": [
+        {
+          "platform": "macOS (Apple Silicon)",
+          "file": "kb-devkit-darwin-arm64"
+        },
+        {
+          "platform": "macOS (Intel)",
+          "file": "kb-devkit-darwin-amd64"
+        },
+        {
+          "platform": "Linux (x86_64)",
+          "file": "kb-devkit-linux-amd64"
+        },
+        {
+          "platform": "Linux (ARM64)",
+          "file": "kb-devkit-linux-arm64"
+        },
+        {
+          "platform": "Windows (x86_64)",
+          "file": "kb-devkit-windows-amd64.exe"
+        }
+      ]
+    },
+    "kbLabsNote": {
+      "title": "Part of KB Labs",
+      "description": "kb-devkit is the build engine inside KB Labs. Every package in the platform is built, linted, and tested through it.",
+      "link": "Install KB Labs →"
+    }
+  }
+}
