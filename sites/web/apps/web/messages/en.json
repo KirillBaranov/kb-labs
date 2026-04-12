@@ -308,10 +308,22 @@
         "CROSS-REPO AUTOMATION ACROSS THE MONOREPO"
       ],
       "securityMarkers": [
-        { "label": "Self-hosted", "href": "/security#self-hosted" },
-        { "label": "Permissioned", "href": "/security#permissions" },
-        { "label": "Full audit trail", "href": "/security#audit" },
-        { "label": "On-prem by default", "href": "/security#on-prem" }
+        {
+          "label": "Self-hosted",
+          "href": "/security#self-hosted"
+        },
+        {
+          "label": "Permissioned",
+          "href": "/security#permissions"
+        },
+        {
+          "label": "Full audit trail",
+          "href": "/security#audit"
+        },
+        {
+          "label": "On-prem by default",
+          "href": "/security#on-prem"
+        }
       ]
     },
     "sameRails": {
@@ -3202,6 +3214,10 @@
         {
           "title": "Every command is scriptable",
           "description": "All commands output structured JSON with an ok field. Results include per-package stdout, stderr, exit code, and duration."
+        },
+        {
+          "title": "Docker build context pruning",
+          "description": "kb-devkit bundle resolves the full workspace:* closure and emits only the packages needed to build the target. Equivalent to turbo prune — drop in before pnpm install in your Dockerfile."
         }
       ]
     },
@@ -3240,6 +3256,10 @@
         {
           "cmd": "kb-devkit gate",
           "description": "Check staged files only. Exits with code 1 on violations. For pre-commit hooks."
+        },
+        {
+          "cmd": "kb-devkit bundle @scope/pkg --docker",
+          "description": "Prune the monorepo to a minimal Docker build context. Resolves transitive workspace:* deps, emits pruned pnpm-workspace.yaml and package.json files. --docker splits into json/ (deps layer) and full/ (build layer)."
         }
       ]
     },

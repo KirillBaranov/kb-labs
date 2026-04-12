@@ -308,10 +308,22 @@
         "АВТОМАТИЗАЦИЯ ПО ВСЕМУ МОНОРЕПО"
       ],
       "securityMarkers": [
-        { "label": "Self-hosted", "href": "/security#self-hosted" },
-        { "label": "Права по контракту", "href": "/security#permissions" },
-        { "label": "Трассировка каждого шага", "href": "/security#audit" },
-        { "label": "On-prem по умолчанию", "href": "/security#on-prem" }
+        {
+          "label": "Self-hosted",
+          "href": "/security#self-hosted"
+        },
+        {
+          "label": "Права по контракту",
+          "href": "/security#permissions"
+        },
+        {
+          "label": "Трассировка каждого шага",
+          "href": "/security#audit"
+        },
+        {
+          "label": "On-prem по умолчанию",
+          "href": "/security#on-prem"
+        }
       ]
     },
     "sameRails": {
@@ -3202,6 +3214,10 @@
         {
           "title": "Любой TypeScript/Node.js монорепо",
           "description": "Не требует специфической структуры. Внутри KB Labs управляет сборкой 125+ пакетов из 18 монорепо. Работает с pnpm, npm и yarn workspaces."
+        },
+        {
+          "title": "Docker build context pruning",
+          "description": "kb-devkit bundle резолвит полное замыкание workspace:* и оставляет только пакеты нужные для сборки цели. Аналог turbo prune — добавьте перед pnpm install в Dockerfile."
         }
       ]
     },
@@ -3240,6 +3256,10 @@
         {
           "cmd": "kb-devkit gate",
           "description": "Pre-commit gate: проверяет только staged-файлы. Завершается с кодом 1 при нарушениях."
+        },
+        {
+          "cmd": "kb-devkit bundle @scope/pkg --docker",
+          "description": "Обрезать монорепо до минимального Docker build context. Резолвит транзитивные workspace:* зависимости, создаёт урезанный pnpm-workspace.yaml. --docker делит на json/ (слой deps) и full/ (слой сборки)."
         }
       ]
     },
