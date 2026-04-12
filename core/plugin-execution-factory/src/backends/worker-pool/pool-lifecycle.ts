@@ -5,6 +5,8 @@
  */
 
 import type { WorkerPoolConfig } from './types.js';
+import type { PlatformTransportFactory } from '../../types.js';
+import type { PlatformServices } from '@kb-labs/plugin-contracts';
 import { Worker } from './worker.js';
 
 /**
@@ -14,6 +16,8 @@ export class PoolLifecycleManager {
   private workers: Map<string, Worker>;
   private config: WorkerPoolConfig;
   private workerScript: string;
+  private platform?: PlatformServices;
+  private platformTransport?: PlatformTransportFactory;
   private isShuttingDown = false;
   private healthCheckInterval: NodeJS.Timeout | null = null;
 
@@ -36,11 +40,15 @@ export class PoolLifecycleManager {
       onHealthCheckFailed: (worker: Worker) => void;
       onProcessQueue: () => void;
       onWorkersRecycled: () => void;
-    }
+    },
+    platform?: PlatformServices,
+    platformTransport?: PlatformTransportFactory,
   ) {
     this.workers = workers;
     this.config = config;
     this.workerScript = workerScript;
+    this.platform = platform;
+    this.platformTransport = platformTransport;
     this.onWorkerSpawned = callbacks.onWorkerSpawned;
     this.onWorkerExited = callbacks.onWorkerExited;
     this.onWorkerRecycled = callbacks.onWorkerRecycled;
@@ -95,6 +103,8 @@ export class PoolLifecycleManager {
   async spawnWorker(): Promise<void> {
     const worker = new Worker({
       workerScript: this.workerScript,
+      platform: this.platform,
+      platformTransport: this.platformTransport,
     });
 
     // Setup event handlers

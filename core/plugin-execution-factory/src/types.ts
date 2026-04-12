@@ -311,6 +311,15 @@ export interface BackendOptions {
   pluginInvoker?: PluginInvokerFn;
 
   /**
+   * Platform transport factory for cross-process adapter calls.
+   * Determines how plugin handlers in worker/subprocess access platform services.
+   *
+   * Default: IPC transport (ChildIPCServer via Node.js fork channel).
+   * Custom: pass your own factory for unix-socket, gateway-ws, etc.
+   */
+  platformTransport?: PlatformTransportFactory;
+
+  /**
    * Worker pool options (only for worker-pool mode).
    */
   workerPool?: WorkerPoolOptions;
@@ -364,6 +373,54 @@ export interface WarmupPolicy {
 
   /** Max handlers to warmup (safety limit, default: 20) */
   maxHandlers?: number;
+}
+
+/**
+ * Platform transport factory — creates the server-side handler for platform adapter calls.
+ *
+ * Each execution mode needs a way to forward platform adapter calls (LLM, cache, etc.)
+ * from the isolated execution environment back to the parent process.
+ *
+ * Built-in implementations:
+ * - `ipc`: Uses Node.js fork IPC channel (ChildIPCServer). Default for worker-pool.
+ * - `unix-socket`: Uses Unix domain socket (UnixSocketServer). Default for subprocess.
+ *
+ * Custom: implement this interface and pass via BackendOptions.platformTransport.
+ */
+export interface PlatformTransportFactory {
+  /**
+   * Transport type identifier.
+   * Passed to child process via KB_PLATFORM_TRANSPORT env var.
+   * Child uses this to create the matching client-side transport.
+   */
+  readonly type: string;
+
+  /**
+   * Create server-side handler for a child process.
+   * Called once per worker/subprocess spawn.
+   *
+   * @param platform - Real platform adapters to dispatch calls to
+   * @param child - Child process reference (for IPC-based transports)
+   * @returns Server with start/stop lifecycle
+   */
+  createServer(
+    platform: PlatformServices,
+    child: import('node:child_process').ChildProcess,
+  ): PlatformTransportServer;
+
+  /**
+   * Optional: extra env vars to pass to child process.
+   * E.g., unix-socket transport passes KB_PLATFORM_SOCKET_PATH.
+   */
+  getChildEnv?(): Record<string, string>;
+}
+
+/**
+ * Server-side platform transport handler.
+ */
+export interface PlatformTransportServer {
+  start(): void;
+  stop(): void;
 }
 
 /**

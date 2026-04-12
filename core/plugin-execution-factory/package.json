@@ -32,7 +32,8 @@
     "@kb-labs/core-ipc": "workspace:*",
     "@kb-labs/core-platform": "workspace:*",
     "@kb-labs/plugin-contracts": "workspace:*",
-    "@kb-labs/plugin-runtime": "workspace:*"
+    "@kb-labs/plugin-runtime": "workspace:*",
+    "@kb-labs/shared-cli-ui": "workspace:^"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",

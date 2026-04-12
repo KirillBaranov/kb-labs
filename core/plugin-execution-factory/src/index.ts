@@ -129,4 +129,9 @@ export type {
   PluginContextDescriptor,
   PermissionSpec,
   PluginInvokerFn,
+  PlatformTransportFactory,
+  PlatformTransportServer,
 } from './types.js';
+
+// Platform transport factories
+export { IPCPlatformTransportFactory } from './platform-transport/index.js';

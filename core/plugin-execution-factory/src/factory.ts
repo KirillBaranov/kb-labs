@@ -58,6 +58,7 @@ export function createExecutionBackend(options: BackendOptions): ExecutionBacken
     case 'worker-pool':
       return new WorkerPoolBackend({
         platform: options.platform,
+        platformTransport: options.platformTransport,
         uiProvider: options.uiProvider,
         min: options.workerPool?.min ?? 2,
         max: options.workerPool?.max ?? 10,
@@ -169,6 +170,7 @@ function createLocalBackend(options: BackendOptions): ExecutionBackend {
     case 'worker-pool':
       return new WorkerPoolBackend({
         platform: options.platform,
+        platformTransport: options.platformTransport,
         uiProvider: options.uiProvider,
         min: options.workerPool?.min ?? 2,
         max: options.workerPool?.max ?? 10,

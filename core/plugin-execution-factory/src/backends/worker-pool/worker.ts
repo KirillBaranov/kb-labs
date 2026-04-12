@@ -18,7 +18,8 @@ import type {
   LogWorkerMessage,
   ReadyMessage,
 } from './types.js';
-import type { ExecutionRequest, ExecutionResult } from '../../types.js';
+import type { ExecutionRequest, ExecutionResult, PlatformTransportFactory, PlatformTransportServer } from '../../types.js';
+import type { PlatformServices } from '@kb-labs/plugin-contracts';
 import { WorkerCrashedError } from '../../errors.js';
 
 /**
@@ -38,6 +39,12 @@ export interface WorkerEvents {
 export interface WorkerOptions {
   /** Worker script path */
   workerScript: string;
+
+  /** Platform transport factory for cross-process adapter calls */
+  platformTransport?: PlatformTransportFactory;
+
+  /** Platform services (needed by transport factory to create server) */
+  platform?: PlatformServices;
 
   /** Timeout for worker to become ready (ms) */
   startupTimeoutMs?: number;
@@ -65,7 +72,7 @@ export class Worker extends EventEmitter<WorkerEvents> {
   private process: ChildProcess | null = null;
   private _state: WorkerState = 'stopped';
   private _info: WorkerInfo;
-  private readonly options: Required<WorkerOptions>;
+  private readonly options: Required<Omit<WorkerOptions, 'platform' | 'platformTransport'>> & Pick<WorkerOptions, 'platform' | 'platformTransport'>;
 
   // Pending request tracking
   private pendingRequests = new Map<string, {
@@ -79,11 +86,16 @@ export class Worker extends EventEmitter<WorkerEvents> {
   private healthCheckPending = false;
   private healthCheckTimeout: ReturnType<typeof setTimeout> | null = null;
 
+  // Platform transport server (forwards adapter:call from child to real adapters)
+  private transportServer: PlatformTransportServer | null = null;
+
   constructor(options: WorkerOptions) {
     super();
     this.id = `worker_${randomBytes(4).toString('hex')}`;
     this.options = {
       workerScript: options.workerScript,
+      platform: options.platform,
+      platformTransport: options.platformTransport,
       startupTimeoutMs: options.startupTimeoutMs ?? DEFAULT_STARTUP_TIMEOUT,
       healthCheckTimeoutMs: options.healthCheckTimeoutMs ?? DEFAULT_HEALTH_CHECK_TIMEOUT,
     };
@@ -137,13 +149,21 @@ export class Worker extends EventEmitter<WorkerEvents> {
       }, this.options.startupTimeoutMs);
 
       try {
+        // Build child env with transport type hint
+        const childEnv: Record<string, string | undefined> = {
+          ...process.env,
+          KB_WORKER_ID: this.id,
+        };
+        if (this.options.platformTransport) {
+          childEnv.KB_PLATFORM_TRANSPORT = this.options.platformTransport.type;
+          const extraEnv = this.options.platformTransport.getChildEnv?.();
+          if (extraEnv) Object.assign(childEnv, extraEnv);
+        }
+
         // Fork the worker process
         this.process = fork(this.options.workerScript, [], {
           stdio: ['pipe', 'inherit', 'inherit', 'ipc'],
-          env: {
-            ...process.env,
-            KB_WORKER_ID: this.id,
-          },
+          env: childEnv,
         });
 
         this._info.pid = this.process.pid;
@@ -167,6 +187,15 @@ export class Worker extends EventEmitter<WorkerEvents> {
           this._info.lastError = error.message;
           reject(error);
         });
+
+        // Start platform transport server (forwards adapter:call from child to real adapters)
+        if (this.options.platformTransport && this.options.platform && this.process) {
+          this.transportServer = this.options.platformTransport.createServer(
+            this.options.platform,
+            this.process,
+          );
+          this.transportServer.start();
+        }
 
         // Wait for ready message
         const onReady = (msg: WorkerMessage) => {
@@ -332,6 +361,9 @@ export class Worker extends EventEmitter<WorkerEvents> {
    * Forceful termination.
    */
   kill(): void {
+    this.transportServer?.stop();
+    this.transportServer = null;
+
     if (this.process) {
       this.process.kill('SIGKILL');
       this.process = null;
@@ -398,6 +430,7 @@ export class Worker extends EventEmitter<WorkerEvents> {
         }
         break;
       }
+
 
       case 'healthOk': {
         // Handled in healthCheck()
