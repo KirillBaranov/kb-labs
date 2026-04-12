@@ -347,6 +347,16 @@ export class MarketplaceService implements MarketplaceServiceAPI {
     const provides = strategy ? await strategy.extractProvides(pkgDir) : [primaryKind];
     const integrity = await computeIntegrity(pkgDir);
 
+    // Use manifest ID as lock key if the strategy can resolve it.
+    // This keeps discovery working even when package.json name differs from manifest.id
+    // (e.g. after folder renames like cli/ → entry/).
+    const resolvedId = (strategy?.resolveId ? await strategy.resolveId(pkgDir) : null) ?? pkgName;
+
+    if (existingIds.has(resolvedId) && resolvedId !== pkgName) {
+      skipped.push({ id: resolvedId, reason: 'already in lock' });
+      return;
+    }
+
     const entry = createMarketplaceEntry({
       version: pkgVersion,
       integrity,
@@ -358,8 +368,8 @@ export class MarketplaceService implements MarketplaceServiceAPI {
 
     if (!autoEnable) { entry.enabled = false; }
 
-    lock.installed[pkgName] = entry;
-    added.push({ id: pkgName, primaryKind, version: pkgVersion });
+    lock.installed[resolvedId] = entry;
+    added.push({ id: resolvedId, primaryKind, version: pkgVersion });
   }
 
   // -------------------------------------------------------------------------

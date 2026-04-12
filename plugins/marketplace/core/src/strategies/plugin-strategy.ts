@@ -22,4 +22,10 @@ export class PluginStrategy implements EntityKindStrategy {
     if (!manifest) {return ['plugin'];}
     return extractEntityKinds(manifest);
   }
+
+  async resolveId(packageRoot: string): Promise<string | null> {
+    const diag = new DiagnosticCollector();
+    const manifest = await loadManifest(packageRoot, diag);
+    return manifest?.id ?? null;
+  }
 }
