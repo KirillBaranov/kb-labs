@@ -12,6 +12,7 @@ LDFLAGS  := -s -w \
 ## build: compile binary for current platform
 build:
 	go build -ldflags "$(LDFLAGS)" -o $(BINARY) .
+	chmod +x $(BINARY)
 
 ## test: run tests with race detector
 test:
