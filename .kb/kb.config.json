@@ -145,7 +145,7 @@
       }
     },
     "execution": {
-      "mode": "in-process"
+      "mode": "worker-pool"
     }
   },
   "profiles": [
@@ -299,7 +299,7 @@
                 },
                 {
                   "id": "dist-exports",
-                  "name": "dist/index.js — no directory imports",
+                  "name": "dist/index.js \u2014 no directory imports",
                   "command": "bash",
                   "args": [
                     "scripts/gates/check-dist-exports.sh"
@@ -343,7 +343,7 @@
                 },
                 {
                   "id": "dist-exports",
-                  "name": "dist/index.js — no directory imports",
+                  "name": "dist/index.js \u2014 no directory imports",
                   "command": "bash",
                   "args": [
                     "scripts/gates/check-dist-exports.sh"
@@ -360,7 +360,7 @@
             "groups": [
               {
                 "title": "Core & SDK",
-                "emoji": "🏗️",
+                "emoji": "\ud83c\udfd7\ufe0f",
                 "scopes": [
                   "core",
                   "sdk",
@@ -374,7 +374,7 @@
               },
               {
                 "title": "Gateway & API",
-                "emoji": "🌐",
+                "emoji": "\ud83c\udf10",
                 "scopes": [
                   "gateway",
                   "rest-api"
@@ -382,7 +382,7 @@
               },
               {
                 "title": "Adapters",
-                "emoji": "🔌",
+                "emoji": "\ud83d\udd0c",
                 "scopes": [
                   "adapters",
                   "adapters-openai",
@@ -397,7 +397,7 @@
               },
               {
                 "title": "Plugins",
-                "emoji": "🧩",
+                "emoji": "\ud83e\udde9",
                 "scopes": [
                   "workflow",
                   "marketplace",
@@ -418,7 +418,7 @@
               },
               {
                 "title": "Studio",
-                "emoji": "🎨",
+                "emoji": "\ud83c\udfa8",
                 "scopes": [
                   "studio"
                 ]
@@ -439,7 +439,7 @@
             },
             {
               "id": "dist-exports",
-              "name": "dist/index.js — no directory imports",
+              "name": "dist/index.js \u2014 no directory imports",
               "command": "bash",
               "args": [
                 "scripts/gates/check-dist-exports.sh"
@@ -619,23 +619,23 @@
         "url": "http://localhost:5050",
         "prefix": "/api/v1",
         "websocket": true,
-        "description": "REST API — main platform BFF"
+        "description": "REST API \u2014 main platform BFF"
       },
       "workflow": {
         "url": "http://localhost:7778",
         "prefix": "/api/exec",
         "rewritePrefix": "",
-        "description": "Workflow Daemon — direct access"
+        "description": "Workflow Daemon \u2014 direct access"
       },
       "marketplace": {
         "url": "http://localhost:5070",
         "prefix": "/api/v1/marketplace",
-        "description": "Marketplace Service — unified entity management"
+        "description": "Marketplace Service \u2014 unified entity management"
       },
       "widgets": {
         "url": "http://localhost:5050",
         "prefix": "/plugins",
-        "description": "Plugin widget bundles — served by REST API"
+        "description": "Plugin widget bundles \u2014 served by REST API"
       }
     },
     "staticTokens": {
