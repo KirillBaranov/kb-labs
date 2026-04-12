@@ -16,9 +16,6 @@ concurrency:
   group: ci-main-${{ github.sha }}
   cancel-in-progress: true
 
-env:
-  KB_DEVKIT_BASE_REF: HEAD~1
-
 jobs:
   # ── 1. Build Go tools (host Linux binary) ────────────────────────────────────
   # Single host build — used by every downstream job via artifact restore.
@@ -96,10 +93,7 @@ jobs:
           retention-days: 1
           compression-level: 3
 
-  # ── 3. Lint / Type-check / Test ──────────────────────────────────────────────
-  # Still --affected for checks: some packages depend on external submodule
-  # builds (agent-contracts, etc.) that aren't in this repo's build graph.
-  # The full build (step 2) already covers all TS packages without cache.
+  # ── 3. Lint / Type-check / Test — all packages ──────────────────────────────
   checks:
     name: ${{ matrix.task }}
     runs-on: ubuntu-latest
@@ -135,8 +129,8 @@ jobs:
           name: dist
       - run: tar xf dist-artifacts.tar
       - run: pnpm install --frozen-lockfile
-      - name: Run ${{ matrix.task }} on affected packages
-        run: ./tools/kb-devkit/kb-devkit run ${{ matrix.task }} --affected
+      - name: Run ${{ matrix.task }}
+        run: ./tools/kb-devkit/kb-devkit run ${{ matrix.task }}
 
   # ── 4. kb-create e2e smoke — always on main ─────────────────────────────────
   # Full network-bound integration suite (real pnpm install from npm,
