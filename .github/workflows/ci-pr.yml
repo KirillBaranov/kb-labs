@@ -1,33 +1,30 @@
-name: CI
+name: CI (PR)
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - '**/*.md'
-      - '.vscode/**'
-      - '.idea/**'
-  workflow_dispatch: {}
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-main-${{ github.sha }}
+  group: ci-pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
+# Diff base: PR base branch (e.g. origin/main...HEAD)
+env:
+  KB_DEVKIT_BASE_REF: >-
+    ${{ format('origin/{0}...HEAD', github.event.pull_request.base.ref) }}
+
 jobs:
-  # ── 1. Build Go tools (host Linux binary) ────────────────────────────────────
-  # Single host build — used by every downstream job via artifact restore.
-  # All quality checks (lint/test/e2e) are driven through kb-devkit so the
-  # same task graph and cache semantics apply everywhere.
+  # ── 1. Build Go tools ──────────────────────────────────────────────────────
   build-tools:
     name: Build Go tools
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # full history so `git diff origin/main...HEAD` works
+          fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
           go-version-file: tools/kb-devkit/go.mod
@@ -56,9 +53,9 @@ jobs:
           path: go-tools/
           retention-days: 1
 
-  # ── 2. Build all TS packages via devkit (topological order) ──────────────────
+  # ── 2. Build affected TS packages ──────────────────────────────────────────
   build:
-    name: Build TS (devkit)
+    name: Build TS (affected)
     runs-on: ubuntu-latest
     needs: build-tools
     steps:
@@ -82,8 +79,8 @@ jobs:
           cp tools-bin/kb-dev    tools/kb-dev/kb-dev
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
-      - name: Build (devkit, topological, no cache)
-        run: ./tools/kb-devkit/kb-devkit run build --no-cache
+      - name: Build (devkit, topological)
+        run: ./tools/kb-devkit/kb-devkit run build
       - name: Pack dist artifacts
         run: find . -path "*/dist" -not -path "*/node_modules/*" -type d | tar cf dist-artifacts.tar -T -
       - uses: actions/upload-artifact@v4
@@ -93,8 +90,7 @@ jobs:
           retention-days: 1
           compression-level: 3
 
-  # ── 3. Lint / Type-check / Test — all packages (main = full run) ────────────
-  # On main we run all checks without --affected to catch transitive breakage.
+  # ── 3. Lint / Type-check / Test — affected packages only ───────────────────
   checks:
     name: ${{ matrix.task }}
     runs-on: ubuntu-latest
@@ -130,13 +126,10 @@ jobs:
           name: dist
       - run: tar xf dist-artifacts.tar
       - run: pnpm install --frozen-lockfile
-      - name: Run ${{ matrix.task }} (all packages)
-        run: ./tools/kb-devkit/kb-devkit run ${{ matrix.task }}
+      - name: Run ${{ matrix.task }} on affected packages
+        run: ./tools/kb-devkit/kb-devkit run ${{ matrix.task }} --affected
 
-  # ── 4. kb-create e2e smoke — always on main ─────────────────────────────────
-  # Full network-bound integration suite (real pnpm install from npm,
-  # kb-dev download, config scaffolding). Always runs on main to catch
-  # regressions from transitive npm deps not visible in PR diffs.
+  # ── 4. kb-create e2e — only if launcher sources changed ────────────────────
   launcher-e2e:
     name: kb-create e2e
     runs-on: ubuntu-latest
@@ -163,5 +156,19 @@ jobs:
         run: |
           chmod +x tools-bin/kb-devkit
           cp tools-bin/kb-devkit tools/kb-devkit/kb-devkit
+      - name: Should run e2e?
+        id: gate
+        run: |
+          set -euo pipefail
+          changed=$(.devkit/affected.sh || true)
+          if echo "$changed" | grep -qE '^tools/kb-create/'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Run kb-create e2e via devkit
+        if: steps.gate.outputs.run == 'true'
         run: ./tools/kb-devkit/kb-devkit run e2e --packages kb-create --no-cache
+      - name: Skipped
+        if: steps.gate.outputs.run != 'true'
+        run: echo "kb-create e2e skipped (no kb-create changes in this PR)"
