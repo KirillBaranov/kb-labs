@@ -485,9 +485,15 @@ export async function createWorkflowWorker(
           await engine.markStepStarted(run.id, job.id, step.id);
 
           // Build spec with interpolated `with`
+          // Normalize `run: cmd` → `uses: builtin:shell, with: { command: cmd }`
+          let baseSpec = step.spec as Record<string, unknown>;
+          if ((baseSpec as any).run && !(baseSpec as any).uses) {
+            const { run, with: existingWith, ...rest } = baseSpec as any;
+            baseSpec = { ...rest, uses: 'builtin:shell', with: { ...existingWith, command: run } };
+          }
           const interpolatedSpec = interpolatedWith
-            ? { ...step.spec, with: interpolatedWith }
-            : step.spec;
+            ? { ...baseSpec, with: { ...(baseSpec.with as object ?? {}), ...interpolatedWith } }
+            : baseSpec;
 
           // Delegate execution to the execution plane.
           // The platform handles provisioning (workspace, environment, cleanup) transparently.
