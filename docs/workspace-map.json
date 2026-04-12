@@ -1229,9 +1229,9 @@
       "label": "Sites",
       "description": "Web properties — product site, personal site",
       "repos": {
-        "kb-labs-web": {
-          "name": "kb-labs-web",
-          "path": "sites/kb-labs-web",
+        "web": {
+          "name": "web",
+          "path": "sites/web",
           "description": "KB Labs web monorepo: corporate site, docs, and SaaS shell.",
           "version": "0.1.0",
           "packages": [
@@ -1239,21 +1239,21 @@
               "name": "@kb-labs/web-config",
               "description": "",
               "version": "0.1.0",
-              "path": "sites/kb-labs-web/packages/config",
+              "path": "sites/web/packages/config",
               "private": true
             },
             {
               "name": "@kb-labs/web-data-source",
-              "description": "Data source layer for kb-labs-web — interfaces, mocks, and HTTP stubs",
+              "description": "Data source layer for the web site — interfaces, mocks, and HTTP stubs",
               "version": "0.1.0",
-              "path": "sites/kb-labs-web/packages/web-data-source",
+              "path": "sites/web/packages/web-data-source",
               "private": true
             },
             {
               "name": "@kb-labs/web-i18n",
-              "description": "Shared i18n utilities for kb-labs-web apps (web, docs)",
+              "description": "Shared i18n utilities for web site apps (web, docs)",
               "version": "0.1.0",
-              "path": "sites/kb-labs-web/packages/i18n",
+              "path": "sites/web/packages/i18n",
               "private": true
             }
           ]

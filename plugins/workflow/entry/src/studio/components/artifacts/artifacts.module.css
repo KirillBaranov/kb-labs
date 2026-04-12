@@ -1,0 +1,108 @@
+/* ── Markdown editor ── */
+.textarea {
+  width: 100%;
+  min-height: 200px;
+  font-family: monospace;
+  font-size: 13px;
+  padding: 12px;
+  border: 1px solid var(--border-primary);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.editActions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* ── Issues ── */
+.issueList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.issueItem {
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: 6px;
+}
+
+.issueHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.issueFile {
+  font-size: 12px;
+  color: var(--text-secondary);
+  font-family: monospace;
+}
+
+.issueMessage {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.issueFix {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  font-style: italic;
+}
+
+/* ── Log ── */
+.logPre {
+  margin: 0;
+  padding: 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow: auto;
+  background: #0d1117;
+  color: #c9d1d9;
+  font-family: monospace;
+  max-height: 400px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ── Link ── */
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-primary);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--link);
+  text-decoration: none;
+  font-weight: 500;
+  transition: background 0.15s;
+}
+
+.link:hover {
+  background: var(--bg-tertiary, var(--bg-secondary));
+  border-color: var(--link);
+}
+
+.linkArrow {
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+/* ── Empty state ── */
+.empty {
+  color: var(--text-tertiary);
+  font-size: 13px;
+  padding: 12px;
+}

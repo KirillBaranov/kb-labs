@@ -30,9 +30,9 @@ infrastructure:
 targets:
   kb-labs-web:
     watch:
-      - sites/kb-labs-web/**
+      - sites/web/**
     image: kb-labs-web
-    dockerfile: sites/kb-labs-web/apps/web/Dockerfile
+    dockerfile: sites/web/apps/web/Dockerfile
     context: .
     ssh:
       host: ${SSH_HOST}
@@ -50,9 +50,9 @@ targets:
 
   kb-labs-docs:
     watch:
-      - sites/kb-labs-web/apps/docs/**
+      - sites/web/apps/docs/**
     image: kb-labs-docs
-    dockerfile: sites/kb-labs-web/apps/docs/Dockerfile
+    dockerfile: sites/web/apps/docs/Dockerfile
     context: .
     ssh:
       host: ${SSH_HOST}

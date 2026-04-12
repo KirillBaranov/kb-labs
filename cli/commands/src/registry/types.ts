@@ -19,7 +19,7 @@ export interface CommandManifest {
   loader?: () => Promise<CommandModule>;
   
   // New fields (optional for backward compatibility)
-  package?: string;          // Full package name (e.g., "@kb-labs/devlink-cli")
+  package?: string;          // Full package name (e.g., "@kb-labs/devlink-entry")
   namespace?: string;        // Explicit namespace (derived from group/id if not provided)
   engine?: {                // Engine requirements
     node?: string;          // e.g., ">=18", "^18.0.0"
