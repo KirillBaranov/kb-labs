@@ -140,7 +140,7 @@ export async function publishPackagesWithOTP(
     const batchResults = await Promise.all(batch.map(fastPublishOne));
     for (let j = 0; j < batch.length; j++) {
       const res = batchResults[j];
-      if (res === null) {
+      if (res === null || res === undefined) {
         remaining.push(batch[j]!);
       } else {
         results.push(res);

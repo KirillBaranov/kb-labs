@@ -12,7 +12,7 @@ import type { IEntityRegistry } from '@kb-labs/core-registry';
 import { logDiagnosticEvent } from '@kb-labs/core-platform';
 import type { ILogger, IAnalytics, IWorkspaceProvider } from '@kb-labs/core-platform';
 import type { IExecutionBackend } from '@kb-labs/core-contracts';
-import type { ExecutionTarget, ExpressionContext } from '@kb-labs/workflow-contracts';
+import type { ExecutionTarget, ExpressionContext, StepSpec } from '@kb-labs/workflow-contracts';
 import { createCorrelatedLogger } from '@kb-labs/shared-http';
 import {
   interpolateObject,
@@ -498,7 +498,7 @@ export async function createWorkflowWorker(
           // Delegate execution to the execution plane.
           // The platform handles provisioning (workspace, environment, cleanup) transparently.
           const result = await runner.execute({
-            spec: interpolatedSpec,
+            spec: interpolatedSpec as StepSpec,
             context: {
               runId: run.id,
               jobId: job.id,

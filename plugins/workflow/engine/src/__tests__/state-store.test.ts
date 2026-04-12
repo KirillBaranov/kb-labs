@@ -189,7 +189,7 @@ describe('StateStore', () => {
           jobName: 'setup',
           status: 'success',
           steps: [],
-        } as JobRun,
+        } as unknown as JobRun,
         {
           id: 'run-1:test',
           jobName: 'test',
@@ -198,7 +198,7 @@ describe('StateStore', () => {
           needs: ['setup'],
           pendingDependencies: ['setup'],
           steps: [],
-        } as JobRun,
+        } as unknown as JobRun,
       ],
     });
     await store.saveRun(run);
@@ -221,7 +221,7 @@ describe('StateStore', () => {
           needs: ['build', 'test'],
           pendingDependencies: ['build', 'test'],
           steps: [],
-        } as JobRun,
+        } as unknown as JobRun,
       ],
     });
     await store.saveRun(run);

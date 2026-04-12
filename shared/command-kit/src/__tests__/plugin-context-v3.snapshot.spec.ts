@@ -8,7 +8,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { defineSystemCommand } from '../define-system-command';
-import type { PluginContextV3 } from '@kb-labs/plugin-contracts';
+import type { PluginContextV3, PlatformServices } from '@kb-labs/plugin-contracts';
 
 describe('PluginContextV3 Structure Snapshot', () => {
   let mockCtx: PluginContextV3;
@@ -54,6 +54,10 @@ describe('PluginContextV3 Structure Snapshot', () => {
         analytics: {} as any,
         eventBus: {} as any,
         logs: {} as any,
+        config: {} as any,
+        invoke: {} as PlatformServices['invoke'],
+        sqlDatabase: {} as any,
+        documentDatabase: {} as PlatformServices['documentDatabase'],
       },
       runtime: {
         fs: {} as any,
