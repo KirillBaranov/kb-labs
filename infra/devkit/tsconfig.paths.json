@@ -201,10 +201,10 @@
       "@kb-labs/mind-adapters/*": [
         "../kb-labs-mind/packages/mind-adapters/src/*"
       ],
-      "@kb-labs/mind-cli": [
+      "@kb-labs/mind-entry": [
         "../kb-labs-mind/packages/mind-cli/src/index.ts"
       ],
-      "@kb-labs/mind-cli/*": [
+      "@kb-labs/mind-entry/*": [
         "../kb-labs-mind/packages/mind-cli/src/*"
       ],
       "@kb-labs/mind-core": [

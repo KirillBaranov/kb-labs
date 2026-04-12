@@ -1,0 +1,1338 @@
+{
+  "schemaVersion": "1.0",
+  "ts": "2026-04-11T19:02:05.907Z",
+  "context": {
+    "repo": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+    "cwd": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+    "branch": "unknown",
+    "dryRun": false
+  },
+  "stage": "verifying",
+  "plan": {
+    "packages": [
+      {
+        "name": "@kb-labs/adapters-analytics-duckdb",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/analytics-duckdb",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/adapters-analytics-file",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/analytics-file",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/adapters-analytics-sqlite",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/analytics-sqlite",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/adapters-environment-docker",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/environment-docker",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/adapters-eventbus-cache",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/eventbus-cache",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/adapters-fs",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/fs",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/adapters-kblabs-gateway",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/kblabs-gateway",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/adapters-log-ringbuffer",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/log-ringbuffer",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/adapters-mongodb",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/mongodb",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/adapters-log-sqlite",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/log-sqlite",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/adapters-openai",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/openai",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/adapters-pino",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/pino",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/adapters-pino-http",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/pino-http",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/adapters-qdrant",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/qdrant",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/adapters-redis",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/redis",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/adapters-snapshot-localfs",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/snapshot-localfs",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/adapters-sqlite",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/sqlite",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/adapters-transport",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/transport",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/adapters-vibeproxy",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/vibeproxy",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/adapters-workspace-agent",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/workspace-agent",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/adapters-workspace-localfs",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/workspace-localfs",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/adapters-workspace-worktree",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/workspace-worktree",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/core-bundle",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/bundle",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/core-config",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/config",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/core-contracts",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/contracts",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/core-discovery",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/discovery",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/core-ipc",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/ipc",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/llm-router",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/llm-router",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/core-platform",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/platform",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/plugin-contracts",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/plugin-contracts",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/plugin-execution-factory",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/plugin-execution-factory",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/plugin-execution",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/plugin-execution",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/plugin-runtime",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/plugin-runtime",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/core-policy",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/policy",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/core-registry",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/registry",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/core-resource-broker",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/resource-broker",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/core-runtime",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/runtime",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/core-sandbox",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/sandbox",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/core-state-broker",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/state-broker",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/core-sys",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/sys",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/telemetry-client",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/telemetry-client",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/core-tenant",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/tenant",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/core-types",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/types",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/core-workspace",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/workspace",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/cli-bin",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/cli/bin",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/cli-commands",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/cli/commands",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/cli-contracts",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/cli/contracts",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/cli-runtime",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/cli/runtime",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/devkit",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/infra/devkit",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/platform-client",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/sdk/platform-client",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/shared-command-kit",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/shared/command-kit",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/shared-http",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/shared/http",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/perm-presets",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/shared/perm-presets",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/shared-testing-e2e",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/shared/testing-e2e",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/shared-testing",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/shared/testing",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/shared-tool-kit",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/shared/tool-kit",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/shared-cli-ui",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/shared/cli-ui",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/studio-app",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/app",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/studio-devtools",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/devtools",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/studio-data-client",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/data-client",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/studio-event-bus",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/event-bus",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/studio-hooks",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/hooks",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/studio-plugin-tools",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/plugin-tools",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/studio-ui-core",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/ui-core",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/studio-federation",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/federation",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/studio-ui-kit",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/ui-kit",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/agent-cli",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/cli",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/agent-contracts",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/contracts",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/agent-core",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/core",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/agent-history",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/history",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/agent-kernel",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/kernel",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/agent-mcp",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/mcp",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/agent-runtime",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/runtime",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/agent-sdk",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/sdk",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/agent-store",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/store",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/agent-tools",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/tools",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/agent-tracing",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/tracing",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/commit-cli",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/commit/cli",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/commit-contracts",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/commit/contracts",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/commit-core",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/commit/core",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/devlink-cli",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/devlink/cli",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/devlink-contracts",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/devlink/contracts",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/devlink-core",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/devlink/core",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/gateway-app",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/gateway/app",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/gateway-auth",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/gateway/auth",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/gateway-contracts",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/gateway/contracts",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/gateway-core",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/gateway/core",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/gateway-runtime-server",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/gateway/runtime-server",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/impact-contracts",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/impact/contracts",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/impact-core",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/impact/core",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/infra-worker-contracts",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/infra-worker/plugin-template-contracts",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/infra-worker-core",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/infra-worker/plugin-template-core",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/host-agent-app",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/host-agent/app",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/host-agent-cli",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/host-agent/cli",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/host-agent-client",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/host-agent/client",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/host-agent-contracts",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/host-agent/contracts",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/host-agent-core",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/host-agent/core",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/host-agent-fs",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/host-agent/fs",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/host-agent-transport",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/host-agent/transport",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/marketplace-api",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace/api",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/marketplace-cli",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace/cli",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/marketplace-contracts",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace/contracts",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/marketplace-app",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace/daemon",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/marketplace-core",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace/core",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/marketplace-npm",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace/npm",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/policy-contracts",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/policy/contracts",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/policy-core",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/policy/core",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/qa-cli",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/qa/cli",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/qa-contracts",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/qa/contracts",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/qa-core",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/qa/core",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/mind-adapters",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/adapters",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/mind-cli",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/cli",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/mind-contracts",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/contracts",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/mind-core",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/core",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/mind-embeddings",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/embeddings",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/mind-engine",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/engine",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/mind-indexer",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/indexer",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/mind-orchestrator",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/orchestrator",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/mind-types",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/types",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/mind-vector-store",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/vector-store",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/release-manager-changelog",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-changelog",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/release-manager-checks",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-checks",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/release-manager-cli",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-cli",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/release-manager-contracts",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-contracts",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/release-manager-core",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-core",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/quality-cli",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/quality/cli",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/quality-core",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/quality/core",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/quality-contracts",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/quality/contracts",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/rest-api-app",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/rest-api/app",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/rest-api-contracts",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/rest-api/contracts",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/rest-api-core",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/rest-api/core",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/core-state-daemon",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/state/daemon",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/review-cli",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/review/cli",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/review-contracts",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/review/contracts",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/review-core",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/review/core",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/review-heuristic",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/review/heuristic",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/review-llm",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/review/llm",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/workflow-artifacts",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/workflow/artifacts",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/workflow-builtins",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/workflow/builtins",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/workflow-cli",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/workflow/cli",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/workflow-constants",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/workflow/constants",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/workflow-contracts",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/workflow/contracts",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/workflow-daemon",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/workflow/daemon",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/workflow-engine",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/workflow/engine",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      },
+      {
+        "name": "@kb-labs/workflow-runtime",
+        "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/workflow/runtime",
+        "currentVersion": "2.9.0",
+        "nextVersion": "2.10.0",
+        "bump": "minor",
+        "isPublished": false
+      }
+    ],
+    "strategy": "semver",
+    "registry": "https://registry.npmjs.org",
+    "rollbackEnabled": true
+  },
+  "result": {
+    "ok": true,
+    "published": [
+      "@kb-labs/adapters-analytics-duckdb@2.10.0",
+      "@kb-labs/adapters-analytics-file@2.10.0",
+      "@kb-labs/adapters-analytics-sqlite@2.10.0",
+      "@kb-labs/adapters-environment-docker@2.10.0",
+      "@kb-labs/adapters-eventbus-cache@2.10.0",
+      "@kb-labs/adapters-fs@2.10.0",
+      "@kb-labs/adapters-kblabs-gateway@2.10.0",
+      "@kb-labs/adapters-log-ringbuffer@2.10.0",
+      "@kb-labs/adapters-mongodb@2.10.0",
+      "@kb-labs/adapters-log-sqlite@2.10.0",
+      "@kb-labs/adapters-openai@2.10.0",
+      "@kb-labs/adapters-pino@2.10.0",
+      "@kb-labs/adapters-pino-http@2.10.0",
+      "@kb-labs/adapters-qdrant@2.10.0",
+      "@kb-labs/adapters-redis@2.10.0",
+      "@kb-labs/adapters-snapshot-localfs@2.10.0",
+      "@kb-labs/adapters-sqlite@2.10.0",
+      "@kb-labs/adapters-transport@2.10.0",
+      "@kb-labs/adapters-vibeproxy@2.10.0",
+      "@kb-labs/adapters-workspace-agent@2.10.0",
+      "@kb-labs/adapters-workspace-localfs@2.10.0",
+      "@kb-labs/adapters-workspace-worktree@2.10.0",
+      "@kb-labs/core-bundle@2.10.0",
+      "@kb-labs/core-config@2.10.0",
+      "@kb-labs/core-contracts@2.10.0",
+      "@kb-labs/core-discovery@2.10.0",
+      "@kb-labs/core-ipc@2.10.0",
+      "@kb-labs/llm-router@2.10.0",
+      "@kb-labs/core-platform@2.10.0",
+      "@kb-labs/plugin-contracts@2.10.0",
+      "@kb-labs/plugin-execution-factory@2.10.0",
+      "@kb-labs/plugin-execution@2.10.0",
+      "@kb-labs/plugin-runtime@2.10.0",
+      "@kb-labs/core-policy@2.10.0",
+      "@kb-labs/core-registry@2.10.0",
+      "@kb-labs/core-resource-broker@2.10.0",
+      "@kb-labs/core-runtime@2.10.0",
+      "@kb-labs/core-sandbox@2.10.0",
+      "@kb-labs/core-state-broker@2.10.0",
+      "@kb-labs/core-sys@2.10.0",
+      "@kb-labs/telemetry-client@2.10.0",
+      "@kb-labs/core-tenant@2.10.0",
+      "@kb-labs/core-types@2.10.0",
+      "@kb-labs/core-workspace@2.10.0",
+      "@kb-labs/cli-bin@2.10.0",
+      "@kb-labs/cli-commands@2.10.0",
+      "@kb-labs/cli-contracts@2.10.0",
+      "@kb-labs/cli-runtime@2.10.0",
+      "@kb-labs/devkit@2.10.0",
+      "@kb-labs/platform-client@2.10.0",
+      "@kb-labs/shared-command-kit@2.10.0",
+      "@kb-labs/shared-http@2.10.0",
+      "@kb-labs/perm-presets@2.10.0",
+      "@kb-labs/shared-testing-e2e@2.10.0",
+      "@kb-labs/shared-testing@2.10.0",
+      "@kb-labs/shared-tool-kit@2.10.0",
+      "@kb-labs/shared-cli-ui@2.10.0",
+      "@kb-labs/studio-app@2.10.0",
+      "@kb-labs/studio-devtools@2.10.0",
+      "@kb-labs/studio-data-client@2.10.0",
+      "@kb-labs/studio-event-bus@2.10.0",
+      "@kb-labs/studio-hooks@2.10.0",
+      "@kb-labs/studio-plugin-tools@2.10.0",
+      "@kb-labs/studio-ui-core@2.10.0",
+      "@kb-labs/studio-federation@2.10.0",
+      "@kb-labs/studio-ui-kit@2.10.0",
+      "@kb-labs/agent-cli@2.10.0",
+      "@kb-labs/agent-contracts@2.10.0",
+      "@kb-labs/agent-core@2.10.0",
+      "@kb-labs/agent-history@2.10.0",
+      "@kb-labs/agent-kernel@2.10.0",
+      "@kb-labs/agent-mcp@2.10.0",
+      "@kb-labs/agent-runtime@2.10.0",
+      "@kb-labs/agent-sdk@2.10.0",
+      "@kb-labs/agent-store@2.10.0",
+      "@kb-labs/agent-tools@2.10.0",
+      "@kb-labs/agent-tracing@2.10.0",
+      "@kb-labs/commit-cli@2.10.0",
+      "@kb-labs/commit-contracts@2.10.0",
+      "@kb-labs/commit-core@2.10.0",
+      "@kb-labs/devlink-cli@2.10.0",
+      "@kb-labs/devlink-contracts@2.10.0",
+      "@kb-labs/devlink-core@2.10.0",
+      "@kb-labs/gateway-app@2.10.0",
+      "@kb-labs/gateway-auth@2.10.0",
+      "@kb-labs/gateway-contracts@2.10.0",
+      "@kb-labs/gateway-core@2.10.0",
+      "@kb-labs/gateway-runtime-server@2.10.0",
+      "@kb-labs/impact-contracts@2.10.0",
+      "@kb-labs/impact-core@2.10.0",
+      "@kb-labs/infra-worker-contracts@2.10.0",
+      "@kb-labs/infra-worker-core@2.10.0",
+      "@kb-labs/host-agent-app@2.10.0",
+      "@kb-labs/host-agent-cli@2.10.0",
+      "@kb-labs/host-agent-client@2.10.0",
+      "@kb-labs/host-agent-contracts@2.10.0",
+      "@kb-labs/host-agent-core@2.10.0",
+      "@kb-labs/host-agent-fs@2.10.0",
+      "@kb-labs/host-agent-transport@2.10.0",
+      "@kb-labs/marketplace-api@2.10.0",
+      "@kb-labs/marketplace-cli@2.10.0",
+      "@kb-labs/marketplace-contracts@2.10.0",
+      "@kb-labs/marketplace-app@2.10.0",
+      "@kb-labs/marketplace-core@2.10.0",
+      "@kb-labs/marketplace-npm@2.10.0",
+      "@kb-labs/policy-contracts@2.10.0",
+      "@kb-labs/policy-core@2.10.0",
+      "@kb-labs/qa-cli@2.10.0",
+      "@kb-labs/qa-contracts@2.10.0",
+      "@kb-labs/qa-core@2.10.0",
+      "@kb-labs/mind-adapters@2.10.0",
+      "@kb-labs/mind-cli@2.10.0",
+      "@kb-labs/mind-contracts@2.10.0",
+      "@kb-labs/mind-core@2.10.0",
+      "@kb-labs/mind-embeddings@2.10.0",
+      "@kb-labs/mind-engine@2.10.0",
+      "@kb-labs/mind-indexer@2.10.0",
+      "@kb-labs/mind-orchestrator@2.10.0",
+      "@kb-labs/mind-types@2.10.0",
+      "@kb-labs/mind-vector-store@2.10.0",
+      "@kb-labs/release-manager-changelog@2.10.0",
+      "@kb-labs/release-manager-checks@2.10.0",
+      "@kb-labs/release-manager-cli@2.10.0",
+      "@kb-labs/release-manager-contracts@2.10.0",
+      "@kb-labs/release-manager-core@2.10.0",
+      "@kb-labs/quality-cli@2.10.0",
+      "@kb-labs/quality-core@2.10.0",
+      "@kb-labs/quality-contracts@2.10.0",
+      "@kb-labs/rest-api-app@2.10.0",
+      "@kb-labs/rest-api-contracts@2.10.0",
+      "@kb-labs/rest-api-core@2.10.0",
+      "@kb-labs/core-state-daemon@2.10.0",
+      "@kb-labs/review-cli@2.10.0",
+      "@kb-labs/review-contracts@2.10.0",
+      "@kb-labs/review-core@2.10.0",
+      "@kb-labs/review-heuristic@2.10.0",
+      "@kb-labs/review-llm@2.10.0",
+      "@kb-labs/workflow-artifacts@2.10.0",
+      "@kb-labs/workflow-builtins@2.10.0",
+      "@kb-labs/workflow-cli@2.10.0",
+      "@kb-labs/workflow-constants@2.10.0",
+      "@kb-labs/workflow-contracts@2.10.0",
+      "@kb-labs/workflow-daemon@2.10.0",
+      "@kb-labs/workflow-engine@2.10.0",
+      "@kb-labs/workflow-runtime@2.10.0"
+    ],
+    "skipped": [],
+    "changelog": "## [2.10.0] - 2026-04-11\n\n**145 packages** bumped to v2.10.0\n\n| Package | Previous | Bump |\n|---------|----------|------|\n| `@kb-labs/adapters-analytics-duckdb` | 2.9.0 | minor |\n| `@kb-labs/adapters-analytics-file` | 2.9.0 | minor |\n| `@kb-labs/adapters-analytics-sqlite` | 2.9.0 | minor |\n| `@kb-labs/adapters-environment-docker` | 2.9.0 | minor |\n| `@kb-labs/adapters-eventbus-cache` | 2.9.0 | minor |\n| `@kb-labs/adapters-fs` | 2.9.0 | minor |\n| `@kb-labs/adapters-kblabs-gateway` | 2.9.0 | minor |\n| `@kb-labs/adapters-log-ringbuffer` | 2.9.0 | minor |\n| `@kb-labs/adapters-mongodb` | 2.9.0 | minor |\n| `@kb-labs/adapters-log-sqlite` | 2.9.0 | minor |\n| `@kb-labs/adapters-openai` | 2.9.0 | minor |\n| `@kb-labs/adapters-pino` | 2.9.0 | minor |\n| `@kb-labs/adapters-pino-http` | 2.9.0 | minor |\n| `@kb-labs/adapters-qdrant` | 2.9.0 | minor |\n| `@kb-labs/adapters-redis` | 2.9.0 | minor |\n| `@kb-labs/adapters-snapshot-localfs` | 2.9.0 | minor |\n| `@kb-labs/adapters-sqlite` | 2.9.0 | minor |\n| `@kb-labs/adapters-transport` | 2.9.0 | minor |\n| `@kb-labs/adapters-vibeproxy` | 2.9.0 | minor |\n| `@kb-labs/adapters-workspace-agent` | 2.9.0 | minor |\n| `@kb-labs/adapters-workspace-localfs` | 2.9.0 | minor |\n| `@kb-labs/adapters-workspace-worktree` | 2.9.0 | minor |\n| `@kb-labs/core-bundle` | 2.9.0 | minor |\n| `@kb-labs/core-config` | 2.9.0 | minor |\n| `@kb-labs/core-contracts` | 2.9.0 | minor |\n| `@kb-labs/core-discovery` | 2.9.0 | minor |\n| `@kb-labs/core-ipc` | 2.9.0 | minor |\n| `@kb-labs/llm-router` | 2.9.0 | minor |\n| `@kb-labs/core-platform` | 2.9.0 | minor |\n| `@kb-labs/plugin-contracts` | 2.9.0 | minor |\n| `@kb-labs/plugin-execution-factory` | 2.9.0 | minor |\n| `@kb-labs/plugin-execution` | 2.9.0 | minor |\n| `@kb-labs/plugin-runtime` | 2.9.0 | minor |\n| `@kb-labs/core-policy` | 2.9.0 | minor |\n| `@kb-labs/core-registry` | 2.9.0 | minor |\n| `@kb-labs/core-resource-broker` | 2.9.0 | minor |\n| `@kb-labs/core-runtime` | 2.9.0 | minor |\n| `@kb-labs/core-sandbox` | 2.9.0 | minor |\n| `@kb-labs/core-state-broker` | 2.9.0 | minor |\n| `@kb-labs/core-sys` | 2.9.0 | minor |\n| `@kb-labs/telemetry-client` | 2.9.0 | minor |\n| `@kb-labs/core-tenant` | 2.9.0 | minor |\n| `@kb-labs/core-types` | 2.9.0 | minor |\n| `@kb-labs/core-workspace` | 2.9.0 | minor |\n| `@kb-labs/cli-bin` | 2.9.0 | minor |\n| `@kb-labs/cli-commands` | 2.9.0 | minor |\n| `@kb-labs/cli-contracts` | 2.9.0 | minor |\n| `@kb-labs/cli-runtime` | 2.9.0 | minor |\n| `@kb-labs/devkit` | 2.9.0 | minor |\n| `@kb-labs/platform-client` | 2.9.0 | minor |\n| `@kb-labs/shared-command-kit` | 2.9.0 | minor |\n| `@kb-labs/shared-http` | 2.9.0 | minor |\n| `@kb-labs/perm-presets` | 2.9.0 | minor |\n| `@kb-labs/shared-testing-e2e` | 2.9.0 | minor |\n| `@kb-labs/shared-testing` | 2.9.0 | minor |\n| `@kb-labs/shared-tool-kit` | 2.9.0 | minor |\n| `@kb-labs/shared-cli-ui` | 2.9.0 | minor |\n| `@kb-labs/studio-app` | 2.9.0 | minor |\n| `@kb-labs/studio-devtools` | 2.9.0 | minor |\n| `@kb-labs/studio-data-client` | 2.9.0 | minor |\n| `@kb-labs/studio-event-bus` | 2.9.0 | minor |\n| `@kb-labs/studio-hooks` | 2.9.0 | minor |\n| `@kb-labs/studio-plugin-tools` | 2.9.0 | minor |\n| `@kb-labs/studio-ui-core` | 2.9.0 | minor |\n| `@kb-labs/studio-federation` | 2.9.0 | minor |\n| `@kb-labs/studio-ui-kit` | 2.9.0 | minor |\n| `@kb-labs/agent-cli` | 2.9.0 | minor |\n| `@kb-labs/agent-contracts` | 2.9.0 | minor |\n| `@kb-labs/agent-core` | 2.9.0 | minor |\n| `@kb-labs/agent-history` | 2.9.0 | minor |\n| `@kb-labs/agent-kernel` | 2.9.0 | minor |\n| `@kb-labs/agent-mcp` | 2.9.0 | minor |\n| `@kb-labs/agent-runtime` | 2.9.0 | minor |\n| `@kb-labs/agent-sdk` | 2.9.0 | minor |\n| `@kb-labs/agent-store` | 2.9.0 | minor |\n| `@kb-labs/agent-tools` | 2.9.0 | minor |\n| `@kb-labs/agent-tracing` | 2.9.0 | minor |\n| `@kb-labs/commit-cli` | 2.9.0 | minor |\n| `@kb-labs/commit-contracts` | 2.9.0 | minor |\n| `@kb-labs/commit-core` | 2.9.0 | minor |\n| `@kb-labs/devlink-cli` | 2.9.0 | minor |\n| `@kb-labs/devlink-contracts` | 2.9.0 | minor |\n| `@kb-labs/devlink-core` | 2.9.0 | minor |\n| `@kb-labs/gateway-app` | 2.9.0 | minor |\n| `@kb-labs/gateway-auth` | 2.9.0 | minor |\n| `@kb-labs/gateway-contracts` | 2.9.0 | minor |\n| `@kb-labs/gateway-core` | 2.9.0 | minor |\n| `@kb-labs/gateway-runtime-server` | 2.9.0 | minor |\n| `@kb-labs/impact-contracts` | 2.9.0 | minor |\n| `@kb-labs/impact-core` | 2.9.0 | minor |\n| `@kb-labs/infra-worker-contracts` | 2.9.0 | minor |\n| `@kb-labs/infra-worker-core` | 2.9.0 | minor |\n| `@kb-labs/host-agent-app` | 2.9.0 | minor |\n| `@kb-labs/host-agent-cli` | 2.9.0 | minor |\n| `@kb-labs/host-agent-client` | 2.9.0 | minor |\n| `@kb-labs/host-agent-contracts` | 2.9.0 | minor |\n| `@kb-labs/host-agent-core` | 2.9.0 | minor |\n| `@kb-labs/host-agent-fs` | 2.9.0 | minor |\n| `@kb-labs/host-agent-transport` | 2.9.0 | minor |\n| `@kb-labs/marketplace-api` | 2.9.0 | minor |\n| `@kb-labs/marketplace-cli` | 2.9.0 | minor |\n| `@kb-labs/marketplace-contracts` | 2.9.0 | minor |\n| `@kb-labs/marketplace-app` | 2.9.0 | minor |\n| `@kb-labs/marketplace-core` | 2.9.0 | minor |\n| `@kb-labs/marketplace-npm` | 2.9.0 | minor |\n| `@kb-labs/policy-contracts` | 2.9.0 | minor |\n| `@kb-labs/policy-core` | 2.9.0 | minor |\n| `@kb-labs/qa-cli` | 2.9.0 | minor |\n| `@kb-labs/qa-contracts` | 2.9.0 | minor |\n| `@kb-labs/qa-core` | 2.9.0 | minor |\n| `@kb-labs/mind-adapters` | 2.9.0 | minor |\n| `@kb-labs/mind-cli` | 2.9.0 | minor |\n| `@kb-labs/mind-contracts` | 2.9.0 | minor |\n| `@kb-labs/mind-core` | 2.9.0 | minor |\n| `@kb-labs/mind-embeddings` | 2.9.0 | minor |\n| `@kb-labs/mind-engine` | 2.9.0 | minor |\n| `@kb-labs/mind-indexer` | 2.9.0 | minor |\n| `@kb-labs/mind-orchestrator` | 2.9.0 | minor |\n| `@kb-labs/mind-types` | 2.9.0 | minor |\n| `@kb-labs/mind-vector-store` | 2.9.0 | minor |\n| `@kb-labs/release-manager-changelog` | 2.9.0 | minor |\n| `@kb-labs/release-manager-checks` | 2.9.0 | minor |\n| `@kb-labs/release-manager-cli` | 2.9.0 | minor |\n| `@kb-labs/release-manager-contracts` | 2.9.0 | minor |\n| `@kb-labs/release-manager-core` | 2.9.0 | minor |\n| `@kb-labs/quality-cli` | 2.9.0 | minor |\n| `@kb-labs/quality-core` | 2.9.0 | minor |\n| `@kb-labs/quality-contracts` | 2.9.0 | minor |\n| `@kb-labs/rest-api-app` | 2.9.0 | minor |\n| `@kb-labs/rest-api-contracts` | 2.9.0 | minor |\n| `@kb-labs/rest-api-core` | 2.9.0 | minor |\n| `@kb-labs/core-state-daemon` | 2.9.0 | minor |\n| `@kb-labs/review-cli` | 2.9.0 | minor |\n| `@kb-labs/review-contracts` | 2.9.0 | minor |\n| `@kb-labs/review-core` | 2.9.0 | minor |\n| `@kb-labs/review-heuristic` | 2.9.0 | minor |\n| `@kb-labs/review-llm` | 2.9.0 | minor |\n| `@kb-labs/workflow-artifacts` | 2.9.0 | minor |\n| `@kb-labs/workflow-builtins` | 2.9.0 | minor |\n| `@kb-labs/workflow-cli` | 2.9.0 | minor |\n| `@kb-labs/workflow-constants` | 2.9.0 | minor |\n| `@kb-labs/workflow-contracts` | 2.9.0 | minor |\n| `@kb-labs/workflow-daemon` | 2.9.0 | minor |\n| `@kb-labs/workflow-engine` | 2.9.0 | minor |\n| `@kb-labs/workflow-runtime` | 2.9.0 | minor |\n\n*No functional changes.*",
+    "git": {
+      "committed": true,
+      "tagged": [
+        "v2.10.0"
+      ],
+      "pushed": true
+    },
+    "timingMs": 1282403
+  }
+}

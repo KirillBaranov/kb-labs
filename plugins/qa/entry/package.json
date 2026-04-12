@@ -1,0 +1,71 @@
+{
+  "name": "@kb-labs/qa-entry",
+  "version": "2.13.0",
+  "type": "module",
+  "description": "CLI commands for KB Labs QA Plugin — qa:run, qa:save, qa:history, qa:trends, qa:regressions, baseline:update, baseline:status.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./plugin-manifest": {
+      "import": "./dist/manifest.js",
+      "types": "./dist/manifest.d.ts"
+    },
+    "./dist/*": "./dist/*"
+  },
+  "kb": {
+    "manifest": "./dist/manifest.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "pretype-check": "pnpm --filter @kb-labs/qa-entry build",
+    "clean": "rimraf dist",
+    "build": "tsup --config tsup.config.ts && pnpm build:studio",
+    "build:studio": "rspack build --config rspack.studio.config.mjs",
+    "dev": "tsup --config tsup.config.ts --watch",
+    "dev:studio": "rspack build --config rspack.studio.config.mjs --watch",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint . --fix",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@kb-labs/plugin-contracts": "workspace:*",
+    "@kb-labs/qa-contracts": "workspace:*",
+    "@kb-labs/qa-core": "workspace:*",
+    "@kb-labs/sdk": "workspace:*",
+    "zod": "latest"
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@kb-labs/plugin-runtime": "workspace:*",
+    "@kb-labs/studio-plugin-tools": "workspace:*",
+    "@rspack/cli": "latest",
+    "@rspack/core": "latest",
+    "@types/node": "^24.3.3",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}

@@ -328,13 +328,13 @@ _No packages found._
 
 _Web properties — product site, personal site_
 
-### `kb-labs-web` — KB Labs web monorepo: corporate site, docs, and SaaS shell.
+### `web` — KB Labs web monorepo: corporate site, docs, and SaaS shell.
 
 | Package | Description |
 |---------|-------------|
 | `@kb-labs/web-config` | — |
-| `@kb-labs/web-data-source` | Data source layer for kb-labs-web — interfaces, mocks, and HTTP stubs |
-| `@kb-labs/web-i18n` | Shared i18n utilities for kb-labs-web apps (web, docs) |
+| `@kb-labs/web-data-source` | Data source layer for web — interfaces, mocks, and HTTP stubs |
+| `@kb-labs/web-i18n` | Shared i18n utilities for web apps (web, docs) |
 
 ### `kirill-baranov-web`
 

@@ -1,0 +1,242 @@
+
+ RUN  v3.2.4 /Users/kirillbaranov/Desktop/kb-labs/kb-labs-mind/packages/mind-cli
+      Coverage enabled with v8
+
+stdout | src/__tests__/init.spec.ts > Mind Init Command > should initialize mind workspace successfully
+✓ Mind workspace initialized: /test/project/.kb/mind
+
+stdout | src/__tests__/init.spec.ts > Mind Init Command > should handle force flag
+✓ Mind workspace initialized: /test/project/.kb/mind
+
+stdout | src/__tests__/init.spec.ts > Mind Init Command > should handle custom cwd
+✓ Mind workspace initialized: /custom/path/.kb/mind
+
+ ✓ src/__tests__/init.spec.ts > Mind Init Command > should initialize mind workspace successfully 3ms
+ ✓ src/__tests__/init.spec.ts > Mind Init Command > should handle force flag 0ms
+ ✓ src/__tests__/init.spec.ts > Mind Init Command > should handle custom cwd 0ms
+ ✓ src/__tests__/init.spec.ts > Mind Init Command > should handle JSON mode 0ms
+ ✓ src/__tests__/init.spec.ts > Mind Init Command > should handle initialization errors 0ms
+ ✓ src/__tests__/init.spec.ts > Mind Init Command > should handle JSON mode errors 0ms
+ ✓ src/__tests__/update.spec.ts > Mind Update Command > should update indexes successfully 3ms
+ ✓ src/__tests__/update.spec.ts > Mind Update Command > should handle custom flags 0ms
+ ✓ src/__tests__/update.spec.ts > Mind Update Command > should handle JSON mode 0ms
+ ✓ src/__tests__/update.spec.ts > Mind Update Command > should handle partial updates 0ms
+ ✓ src/__tests__/update.spec.ts > Mind Update Command > should handle quiet mode 0ms
+ ✓ src/__tests__/update.spec.ts > Mind Update Command > should handle update errors 0ms
+ ✓ src/__tests__/update.spec.ts > Mind Update Command > should handle JSON mode errors 0ms
+stderr | src/__tests__/feed-basic.spec.ts > Mind Feed Command - Basic Tests > should handle basic feed command
+Intent: analyze project
+Product: none
+Tokens: 100
+Mode: Update + Pack
+
+stderr | src/__tests__/feed-basic.spec.ts > Mind Feed Command - Basic Tests > should handle pack-only mode
+Intent: analyze project
+Product: none
+Tokens: 100
+Mode: Update + Pack
+
+stderr | src/__tests__/feed-basic.spec.ts > Mind Feed Command - Basic Tests > should handle JSON mode
+Intent: analyze project
+Product: none
+Tokens: 100
+Mode: Update + Pack
+
+ ✓ src/__tests__/pack-basic.spec.ts > Mind Pack Command - Basic Tests > should handle basic pack command 2ms
+ ✓ src/__tests__/pack-basic.spec.ts > Mind Pack Command - Basic Tests > should handle custom budget 1ms
+ × src/__tests__/pack-basic.spec.ts > Mind Pack Command - Basic Tests > should handle JSON mode 4ms
+   → expected "spy" to be called with arguments: [ { ok: true, …(3) } ]
+
+Number of calls: 0
+
+ × src/__tests__/pack-basic.spec.ts > Mind Pack Command - Basic Tests > should handle quiet mode 1ms
+   → expected "spy" to not be called at all, but actually been called 1 times
+
+Received: 
+
+  1st spy call:
+
+    Array [
+      "# Project Context",
+    ]
+
+
+Number of calls: 1
+
+ ✓ src/__tests__/pack-basic.spec.ts > Mind Pack Command - Basic Tests > should handle errors gracefully 0ms
+ × src/__tests__/verify-basic.spec.ts > Mind Verify Command - Basic Tests > should verify indexes successfully 7ms
+   → expected 1 to be +0 // Object.is equality
+ ✓ src/__tests__/verify-basic.spec.ts > Mind Verify Command - Basic Tests > should detect checksum mismatch 1ms
+ ✓ src/__tests__/verify-basic.spec.ts > Mind Verify Command - Basic Tests > should handle missing index files 0ms
+ × src/__tests__/verify-basic.spec.ts > Mind Verify Command - Basic Tests > should handle JSON mode 0ms
+   → expected 1 to be +0 // Object.is equality
+ × src/__tests__/verify-basic.spec.ts > Mind Verify Command - Basic Tests > should handle quiet mode 0ms
+   → expected 1 to be +0 // Object.is equality
+ ✓ src/__tests__/utils.spec.ts > CLI Utilities > colors > should apply red color 1ms
+ ✓ src/__tests__/utils.spec.ts > CLI Utilities > colors > should apply green color 0ms
+ ✓ src/__tests__/utils.spec.ts > CLI Utilities > colors > should apply yellow color 0ms
+ ✓ src/__tests__/utils.spec.ts > CLI Utilities > colors > should apply blue color 0ms
+ ✓ src/__tests__/utils.spec.ts > CLI Utilities > colors > should apply cyan color 0ms
+ ✓ src/__tests__/utils.spec.ts > CLI Utilities > colors > should apply gray color 0ms
+ ✓ src/__tests__/utils.spec.ts > CLI Utilities > colors > should apply bold formatting 0ms
+ ✓ src/__tests__/utils.spec.ts > CLI Utilities > colors > should apply dim formatting 0ms
+ ✓ src/__tests__/utils.spec.ts > CLI Utilities > safeColors > should be same as colors 0ms
+ ✓ src/__tests__/utils.spec.ts > CLI Utilities > safeSymbols > should have all required symbols 0ms
+ ✓ src/__tests__/utils.spec.ts > CLI Utilities > TimingTracker > should initialize with current time 0ms
+ ✓ src/__tests__/utils.spec.ts > CLI Utilities > TimingTracker > should track elapsed time 11ms
+ ✓ src/__tests__/utils.spec.ts > CLI Utilities > TimingTracker > should return elapsed time in milliseconds 0ms
+ ✓ src/__tests__/utils.spec.ts > CLI Utilities > formatTiming > should format milliseconds correctly 0ms
+ ✓ src/__tests__/utils.spec.ts > CLI Utilities > formatTiming > should format seconds correctly 0ms
+ ✓ src/__tests__/utils.spec.ts > CLI Utilities > box > should create a simple box 0ms
+ ✓ src/__tests__/utils.spec.ts > CLI Utilities > box > should create a box with title 0ms
+ ✓ src/__tests__/utils.spec.ts > CLI Utilities > box > should handle multi-line content 0ms
+ ✓ src/__tests__/utils.spec.ts > CLI Utilities > box > should handle minimum width 0ms
+ ✓ src/__tests__/utils.spec.ts > CLI Utilities > keyValue > should format string value 0ms
+ ✓ src/__tests__/utils.spec.ts > CLI Utilities > keyValue > should format number value 0ms
+ ✓ src/__tests__/utils.spec.ts > CLI Utilities > createSpinner > should create spinner with text 2ms
+ ✓ src/__tests__/utils.spec.ts > CLI Utilities > createSpinner > should stop spinner with final text 3ms
+ ✓ src/__tests__/utils.spec.ts > CLI Utilities > createSpinner > should stop spinner without final text 0ms
+ ✓ src/__tests__/query-basic.spec.ts > Mind Query Command - Basic Tests > should handle basic externals query 3ms
+ ✓ src/__tests__/query-basic.spec.ts > Mind Query Command - Basic Tests > should handle impact query with file parameter 0ms
+ ✓ src/__tests__/query-basic.spec.ts > Mind Query Command - Basic Tests > should handle AI mode 1ms
+ × src/__tests__/query-basic.spec.ts > Mind Query Command - Basic Tests > should handle JSON mode 5ms
+   → expected "spy" to be called at least once
+ ✓ src/__tests__/query-basic.spec.ts > Mind Query Command - Basic Tests > should handle missing required parameters 0ms
+ ✓ src/__tests__/query-basic.spec.ts > Mind Query Command - Basic Tests > should handle query execution errors 1ms
+ ✓ src/__tests__/feed-basic.spec.ts > Mind Feed Command - Basic Tests > should handle basic feed command 3ms
+ ✓ src/__tests__/feed-basic.spec.ts > Mind Feed Command - Basic Tests > should handle pack-only mode 0ms
+ × src/__tests__/feed-basic.spec.ts > Mind Feed Command - Basic Tests > should handle JSON mode 4ms
+   → expected "spy" to be called at least once
+ ✓ src/__tests__/feed-basic.spec.ts > Mind Feed Command - Basic Tests > should handle errors gracefully 2ms
+ ✓ src/__tests__/smoke.spec.ts > Mind CLI Smoke Tests > should have manifest with required commands 1ms
+ ✓ src/__tests__/smoke.spec.ts > Mind CLI Smoke Tests > should have proper command structure 1ms
+ ✓ src/__tests__/smoke.spec.ts > Mind CLI Smoke Tests > should have mind:query with required flags 0ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/__tests__/feed-basic.spec.ts > Mind Feed Command - Basic Tests > should handle JSON mode
+AssertionError: expected "spy" to be called at least once
+ ❯ src/__tests__/feed-basic.spec.ts:113:32
+    111| 
+    112|     expect(result).toBe(0);
+    113|     expect(mockPresenter.json).toHaveBeenCalled();
+       |                                ^
+    114|   });
+    115| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  src/__tests__/pack-basic.spec.ts > Mind Pack Command - Basic Tests > should handle JSON mode
+AssertionError: expected "spy" to be called with arguments: [ { ok: true, …(3) } ]
+
+Number of calls: 0
+
+ ❯ src/__tests__/pack-basic.spec.ts:92:32
+     90| 
+     91|     expect(result).toBe(0);
+     92|     expect(mockPresenter.json).toHaveBeenCalledWith({
+       |                                ^
+     93|       ok: true,
+     94|       markdown: '# Project Context',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  src/__tests__/pack-basic.spec.ts > Mind Pack Command - Basic Tests > should handle quiet mode
+AssertionError: expected "spy" to not be called at all, but actually been called 1 times
+
+Received: 
+
+  1st spy call:
+
+    Array [
+      "# Project Context",
+    ]
+
+
+Number of calls: 1
+
+ ❯ src/__tests__/pack-basic.spec.ts:114:37
+    112| 
+    113|     expect(result).toBe(0);
+    114|     expect(mockPresenter.write).not.toHaveBeenCalled();
+       |                                     ^
+    115|   });
+    116| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  src/__tests__/query-basic.spec.ts > Mind Query Command - Basic Tests > should handle JSON mode
+AssertionError: expected "spy" to be called at least once
+ ❯ src/__tests__/query-basic.spec.ts:152:32
+    150| 
+    151|     expect(result).toBe(0);
+    152|     expect(mockPresenter.json).toHaveBeenCalled();
+       |                                ^
+    153|   });
+    154| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  src/__tests__/verify-basic.spec.ts > Mind Verify Command - Basic Tests > should verify indexes successfully
+AssertionError: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ src/__tests__/verify-basic.spec.ts:77:20
+     75|     const result = await run(mockContext, [], {});
+     76| 
+     77|     expect(result).toBe(0);
+       |                    ^
+     78|     expect(mockPresenter.write).toHaveBeenCalledWith(
+     79|       expect.stringContaining('✅ Mind workspace is consistent')
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+ FAIL  src/__tests__/verify-basic.spec.ts > Mind Verify Command - Basic Tests > should handle JSON mode
+AssertionError: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ src/__tests__/verify-basic.spec.ts:165:20
+    163|     const result = await run(mockContext, [], {});
+    164| 
+    165|     expect(result).toBe(0);
+       |                    ^
+    166|     expect(mockPresenter.json).toHaveBeenCalledWith({
+    167|       ok: true,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯
+
+ FAIL  src/__tests__/verify-basic.spec.ts > Mind Verify Command - Basic Tests > should handle quiet mode
+AssertionError: expected 1 to be +0 // Object.is equality
+
+- Expected
++ Received
+
+- 0
++ 1
+
+ ❯ src/__tests__/verify-basic.spec.ts:208:20
+    206|     const result = await run(mockContext, [], { quiet: true });
+    207| 
+    208|     expect(result).toBe(0);
+       |                    ^
+    209|     // Should not call presenter.write in quiet mode
+    210|     expect(mockPresenter.write).not.toHaveBeenCalled();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯
+
+
+ Test Files  4 failed | 4 passed (8)
+      Tests  7 failed | 53 passed (60)
+   Start at  16:40:21
+   Duration  625ms (transform 333ms, setup 0ms, collect 612ms, tests 78ms, environment 1ms, prepare 684ms)
+
