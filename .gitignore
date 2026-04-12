@@ -63,6 +63,11 @@ _private/
 .kb/verdaccio/
 
 # ───────────────
+# Deploy runtime data (docker volumes, db state)
+# ───────────────
+deploy/docker/
+
+# ───────────────
 # custom
 # ───────────────
 *.sqlite
