@@ -6,6 +6,7 @@ on:
     paths:
       - 'sites/web/**'
       - '.kb/deploy.yaml'
+      - '.github/workflows/deploy-sites.yml'
   workflow_dispatch:
     inputs:
       target:
