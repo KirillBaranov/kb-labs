@@ -1,0 +1,205 @@
+---
+title: "Database"
+description: "Four database interfaces: SQL, document, key-value, and time-series."
+updatedAt: "2026-04-07"
+order: 6
+---
+
+KB Labs separates database access into four distinct interfaces rather than one giant abstraction. Each targets a specific storage paradigm and maps cleanly onto existing databases (SQLite/Postgres, MongoDB, Redis, InfluxDB/TimescaleDB). Plugins pick whichever interface matches their data model.
+
+Source of truth: [platform/kb-labs-core/packages/core-platform/src/adapters/database.ts](platform/kb-labs-core/packages/core-platform/src/adapters/database.ts).
+
+## The four interfaces
+
+```ts
+interface ISQLDatabase        { /* relational */ }
+interface IDocumentDatabase   { /* MongoDB-style */ }
+interface IKeyValueDatabase   { /* Redis-style KV, distinct from ICache */ }
+interface ITimeSeriesDatabase { /* metrics */ }
+```
+
+There's also an umbrella provider for apps that need more than one at once:
+
+```ts
+interface IDatabaseProvider {
+  getSQLDatabase(name: string):        Promise<ISQLDatabase>;
+  getDocumentDatabase(name: string):   Promise<IDocumentDatabase>;
+  getKeyValueDatabase(name: string):   Promise<IKeyValueDatabase>;
+  getTimeSeriesDatabase(name: string): Promise<ITimeSeriesDatabase>;
+  close(): Promise<void>;
+}
+```
+
+In `kb.config.json` these live under separate tokens (`db`, `documentDb`, `kvDb`, `timeseriesDb`), so you can mix backends — SQLite for relational data and MongoDB for documents, for example.
+
+## `ISQLDatabase`
+
+```ts
+interface ISQLDatabase {
+  query<T>(sql: string, params?: unknown[]): Promise<SQLQueryResult<T>>;
+  transaction(): Promise<SQLTransaction>;
+  close(): Promise<void>;
+  exec?(sql: string): Promise<void>;  // optional, for migrations
+}
+
+interface SQLTransaction {
+  query<T>(sql: string, params?: unknown[]): Promise<SQLQueryResult<T>>;
+  commit(): Promise<void>;
+  rollback(): Promise<void>;
+}
+```
+
+### Usage
+
+```ts
+const result = await db.query<{ id: number; name: string }>(
+  'SELECT id, name FROM users WHERE age > ?',
+  [18],
+);
+console.log(result.rows);
+```
+
+### Transactions
+
+```ts
+const tx = await db.transaction();
+try {
+  await tx.query('INSERT INTO users (name) VALUES (?)', ['Alice']);
+  await tx.query('INSERT INTO audit_log (action) VALUES (?)', ['user_created']);
+  await tx.commit();
+} catch (err) {
+  await tx.rollback();
+  throw err;
+}
+```
+
+### Security model
+
+Permissions declare which tables the plugin can touch via `permissions.platform.database.sql.tables`. The runtime's `SecureSQLDatabase` wrapper parses the SQL to extract table names and validates them before the adapter ever sees the query. It's validation-only — no query rewriting — so if you reference a disallowed table, the wrapper throws a permission error.
+
+### Built-ins
+
+| Package | Notes |
+|---|---|
+| `@kb-labs/adapters-sqlite` | `better-sqlite3`. File-based, embedded, supports transactions and `exec` for multi-statement migrations. |
+| `@kb-labs/adapters-postgres` | `node-postgres`. Network-based, connection pooling. |
+
+## `IDocumentDatabase`
+
+MongoDB-style document store. Every document has `id`, `createdAt`, `updatedAt` (Unix milliseconds).
+
+```ts
+interface BaseDocument {
+  id: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
+interface IDocumentDatabase {
+  find<T extends BaseDocument>(collection: string, filter: DocumentFilter<T>, options?: FindOptions): Promise<T[]>;
+  findById<T extends BaseDocument>(collection: string, id: string): Promise<T | null>;
+  insertOne<T extends BaseDocument>(collection: string, doc: Omit<T, 'id' | 'createdAt' | 'updatedAt'>): Promise<T>;
+  updateMany<T extends BaseDocument>(collection: string, filter: DocumentFilter<T>, update: DocumentUpdate<T>): Promise<number>;
+  updateById<T extends BaseDocument>(collection: string, id: string, update: DocumentUpdate<T>): Promise<T | null>;
+  deleteMany<T extends BaseDocument>(collection: string, filter: DocumentFilter<T>): Promise<number>;
+  deleteById(collection: string, id: string): Promise<boolean>;
+  count<T extends BaseDocument>(collection: string, filter: DocumentFilter<T>): Promise<number>;
+  close(): Promise<void>;
+}
+```
+
+### Filter and update operators
+
+Filters support MongoDB-style operators:
+
+```ts
+type FilterOperators<T> = {
+  $eq?: T; $ne?: T; $gt?: T; $gte?: T; $lt?: T; $lte?: T;
+  $in?: T[]; $nin?: T[]; $exists?: boolean; $regex?: string;
+};
+
+type DocumentFilter<T> = {
+  [K in keyof T]?: T[K] | FilterOperators<T[K]>;
+} & {
+  $and?: DocumentFilter<T>[];
+  $or?: DocumentFilter<T>[];
+};
+```
+
+Updates:
+
+```ts
+interface DocumentUpdate<T> {
+  $set?: Partial<T>;
+  $unset?: { [K in keyof T]?: 1 };
+  $inc?: { [K in keyof T]?: number };
+  $push?: { [K in keyof T]?: unknown };
+  $pull?: { [K in keyof T]?: unknown };
+}
+```
+
+### Built-ins
+
+| Package | Notes |
+|---|---|
+| `@kb-labs/adapters-mongodb` | MongoDB driver. Collection-level permissions via `permissions.platform.database.document.collections`. |
+
+## `IKeyValueDatabase`
+
+A database-grade KV store — **distinct from `ICache`**. The difference is durability and consistency guarantees:
+
+- `ICache` — cache semantics. Can evict at any time. TTL is advisory.
+- `IKeyValueDatabase` — durable storage. Keys persist until explicitly deleted or TTL'd.
+
+```ts
+interface IKeyValueDatabase {
+  get(key: string): Promise<string | null>;
+  set(key: string, value: string, ttlMs?: number): Promise<void>;
+  delete(key: string): Promise<boolean>;
+  exists(key: string): Promise<boolean>;
+  keys(pattern: string): Promise<string[]>;
+  close(): Promise<void>;
+}
+```
+
+Values are strings — callers serialize themselves. Permissions enforce key prefix whitelists via `permissions.platform.database.kv.prefixes`.
+
+## `ITimeSeriesDatabase`
+
+```ts
+interface TimeSeriesPoint {
+  timestamp: number;              // ms
+  value: number;
+  tags?: Record<string, string>;
+}
+
+interface ITimeSeriesDatabase {
+  write(metric: string, point: TimeSeriesPoint): Promise<void>;
+  writeBatch(metric: string, points: TimeSeriesPoint[]): Promise<void>;
+  query(metric: string, from: number, to: number, tags?: Record<string, string>): Promise<TimeSeriesPoint[]>;
+  close(): Promise<void>;
+}
+```
+
+For metrics, not for arbitrary data. Permissions filter accessible metrics via `permissions.platform.database.timeseries.metrics`.
+
+## `IDatabaseProvider` — multi-database apps
+
+When a single plugin needs several database types, it's more ergonomic to get them from a single provider:
+
+```ts
+const provider = usePlatform().database;  // if configured
+if (provider) {
+  const users = await provider.getSQLDatabase('users');
+  const logs  = await provider.getDocumentDatabase('audit');
+  const cache = await provider.getKeyValueDatabase('sessions');
+  const metrics = await provider.getTimeSeriesDatabase('telemetry');
+}
+```
+
+The `name` parameter lets the provider route to different physical databases behind the same interface — e.g. one SQLite file per tenant, one MongoDB collection per service.
+
+## What to read next
+
+- [Plugins → Permissions → `platform.database`](/plugins/permissions#platform-services) — declaring table/collection/prefix access.
+- [IStorage](/adapters/interfaces/storage) — for unstructured blobs (use storage, not a database).

@@ -12,10 +12,10 @@ func TestMatches(t *testing.T) {
 		files    []string
 		want     bool
 	}{
-		{[]string{"sites/kb-labs-web/**"}, []string{"sites/kb-labs-web/apps/web/page.tsx"}, true},
-		{[]string{"sites/kb-labs-web/**"}, []string{"plugins/agents/core/src/index.ts"}, false},
-		{[]string{"sites/kb-labs-web/apps/docs/**"}, []string{"sites/kb-labs-web/apps/web/page.tsx"}, false},
-		{[]string{"sites/kb-labs-web/apps/docs/**"}, []string{"sites/kb-labs-web/apps/docs/content/index.mdx"}, true},
+		{[]string{"sites/web/**"}, []string{"sites/web/apps/web/page.tsx"}, true},
+		{[]string{"sites/web/**"}, []string{"plugins/agents/core/src/index.ts"}, false},
+		{[]string{"sites/web/apps/docs/**"}, []string{"sites/web/apps/web/page.tsx"}, false},
+		{[]string{"sites/web/apps/docs/**"}, []string{"sites/web/apps/docs/content/index.mdx"}, true},
 		// Multiple patterns — any match wins.
 		{[]string{"a/**", "b/**"}, []string{"b/x.go"}, true},
 		// Multiple files — any match wins.

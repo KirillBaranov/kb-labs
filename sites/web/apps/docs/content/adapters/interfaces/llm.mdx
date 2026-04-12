@@ -1,0 +1,390 @@
+---
+title: "ILLM"
+description: "Language model interface: completion, streaming, tool calling, and protocol capabilities."
+updatedAt: "2026-04-07"
+order: 1
+---
+
+`ILLM` is the interface every language-model adapter implements. Plugins consume it through `useLLM()`, which returns either the raw adapter or a tier-routed binding.
+
+Source of truth: [platform/kb-labs-core/packages/core-platform/src/adapters/llm.ts](platform/kb-labs-core/packages/core-platform/src/adapters/llm.ts).
+
+## Interface
+
+```ts
+interface ILLM {
+  complete(prompt: string, options?: LLMOptions): Promise<LLMResponse>;
+  stream(prompt: string, options?: LLMOptions): AsyncIterable<string>;
+  getProtocolCapabilities?(): LLMProtocolCapabilities | Promise<LLMProtocolCapabilities>;
+  chatWithTools?(
+    messages: LLMMessage[],
+    options: LLMToolCallOptions,
+  ): Promise<LLMToolCallResponse>;
+}
+```
+
+Two methods are required (`complete`, `stream`). Two are optional (`getProtocolCapabilities`, `chatWithTools`) — adapters opt into advanced features by implementing them.
+
+## `complete(prompt, options?)`
+
+Single-shot text generation.
+
+### Options
+
+```ts
+interface LLMOptions {
+  model?: string;           // vendor-specific model identifier
+  temperature?: number;     // sampling temperature (0–2)
+  maxTokens?: number;       // max output tokens
+  stop?: string[];          // stop sequences
+  systemPrompt?: string;    // system-role instruction
+  metadata?: LLMRequestMetadata;  // set by the router, don't touch
+  execution?: LLMExecutionPolicy; // cache + stream policy
+}
+```
+
+### Response
+
+```ts
+interface LLMResponse {
+  content: string;
+  usage: {
+    promptTokens: number;
+    completionTokens: number;
+    cacheReadTokens?: number;        // provider-reported cached prompt tokens
+    cacheWriteTokens?: number;       // provider-reported cache writes
+    billablePromptTokens?: number;   // provider-reported billable total
+    providerUsage?: Record<string, unknown>;
+  };
+  model: string;
+}
+```
+
+The `usage` object is rich on purpose: cost analytics in the platform's analytics wrapper depends on it. If your provider reports cached prompt tokens separately from fresh ones (OpenAI, Anthropic), populate `cacheReadTokens` — the analytics layer will derive the correct billable cost. If the provider gives you a precomputed billable number, put it in `billablePromptTokens` and the wrapper will use that directly.
+
+## `stream(prompt, options?)`
+
+Streaming generation — yields string chunks as they arrive.
+
+```ts
+stream(prompt: string, options?: LLMOptions): AsyncIterable<string>
+```
+
+The return value is a plain `AsyncIterable<string>`, so callers iterate with `for await`:
+
+```ts
+for await (const chunk of llm.stream('Write a haiku.')) {
+  process.stdout.write(chunk);
+}
+```
+
+Adapters that don't truly stream (short-polling APIs, batched providers) can still implement `stream` by yielding a single chunk — but they **must** declare `stream.supported: false` in their protocol capabilities so the router knows.
+
+## `getProtocolCapabilities()` (optional)
+
+Lets the router negotiate cache and stream behavior with the adapter before each call.
+
+```ts
+interface LLMProtocolCapabilities {
+  cache: LLMCacheCapability;
+  stream: LLMStreamCapability;
+}
+
+interface LLMCacheCapability {
+  supported: boolean;
+  protocol?: 'auto_prefix' | 'explicit_breakpoints' | 'explicit_handle';
+  scopes?: ('prefix' | 'segments' | 'full_request')[];
+}
+
+interface LLMStreamCapability {
+  supported: boolean;
+}
+```
+
+When `getProtocolCapabilities` is omitted, callers **assume defaults**: `stream.supported = true`, `cache.supported = false`. Adapters that want to advertise prompt caching (OpenAI prompt caching, Anthropic prompt caching, etc.) should implement this and return the exact protocol they speak.
+
+### How the router uses it
+
+Before every `complete()` / `stream()` / `chatWithTools()` call, the `LazyBoundLLM` wrapper (returned by `useLLM({ tier })`) does:
+
+1. Calls `getProtocolCapabilities()`.
+2. Enforces cache policy: if the caller set `execution.cache.mode === 'require'` and the adapter doesn't support cache, throws `CACHE_NOT_SUPPORTED`.
+3. For `stream()`: if the adapter doesn't support streaming and the caller set `stream.mode !== 'require'`, silently falls back to `complete()` and yields the result as a single chunk. If `mode === 'require'`, throws `STREAM_NOT_SUPPORTED`.
+4. Writes an `LLMCacheDecisionTrace` into `options.metadata` so the analytics wrapper knows what actually happened.
+
+This means adapter authors don't have to implement fallbacks themselves — just declare what you support and the router handles degradation.
+
+## `chatWithTools(messages, options)` (optional)
+
+Native tool-calling / function-calling.
+
+### Messages
+
+```ts
+interface LLMMessage {
+  role: 'system' | 'user' | 'assistant' | 'tool';
+  content: string;
+  toolCallId?: string;        // for role='tool' — which call this result belongs to
+  toolCalls?: LLMToolCall[];  // for role='assistant' — calls the LLM requested
+  metadata?: Record<string, unknown>;
+}
+```
+
+### Options
+
+```ts
+interface LLMToolCallOptions extends LLMOptions {
+  tools: LLMTool[];
+  toolChoice?:
+    | 'auto'
+    | 'required'
+    | 'none'
+    | { type: 'function'; function: { name: string } };
+}
+
+interface LLMTool {
+  name: string;               // valid identifier
+  description: string;
+  inputSchema: Record<string, any>;  // JSON Schema for inputs
+}
+```
+
+### Response
+
+```ts
+interface LLMToolCallResponse extends LLMResponse {
+  toolCalls?: LLMToolCall[];
+  stopReason?: string;
+}
+
+interface LLMToolCall {
+  id: string;
+  name: string;
+  input: unknown;
+}
+```
+
+`stopReason` is normalized where possible:
+
+- `'end_turn'` — model finished naturally.
+- `'tool_use'` — model requested tool calls; `toolCalls` is populated.
+- `'max_tokens'` — hit token limit.
+
+Provider-specific values may also appear as-is for clients that want to branch on them.
+
+### No fallback
+
+Unlike `stream()`, there is **no automatic fallback** for tool calling. If `chatWithTools` is missing, the caller has to do text-based tool prompting themselves, or the call throws `'Current adapter does not support chatWithTools'`. The agent system in `@kb-labs/agent-core` has a fallback text-based path for adapters that don't implement native tool calling — see its source if you need to support both.
+
+## Execution policy
+
+`LLMOptions.execution` controls per-call cache and stream behavior. Plugins rarely set it directly; the SDK uses it internally to pass through tier/binding state.
+
+```ts
+interface LLMExecutionPolicy {
+  cache?: LLMCachePolicy;
+  stream?: LLMStreamPolicy;
+}
+
+interface LLMCachePolicy {
+  mode?: 'prefer' | 'require' | 'bypass';  // default 'prefer'
+  scope?: 'prefix' | 'segments' | 'full_request';
+  ttlSec?: number;                          // best-effort TTL
+  key?: string;                             // stable key hint
+}
+
+interface LLMStreamPolicy {
+  mode?: 'prefer' | 'require' | 'off';      // default 'prefer'
+  fallbackToComplete?: boolean;              // default true
+}
+```
+
+- **`cache.mode`**:
+  - `'prefer'` — use cache if available, fall back to non-cached if not.
+  - `'require'` — throw if the adapter doesn't support cache.
+  - `'bypass'` — skip cache entirely.
+- **`stream.mode`**:
+  - `'prefer'` — stream if supported, otherwise fall back to `complete()`.
+  - `'require'` — throw if the adapter doesn't support streaming.
+  - `'off'` — use `complete()` and yield a single chunk.
+
+Platform-wide defaults for execution policy can be set in `kb.config.json`:
+
+```json
+{
+  "platform": {
+    "adapterOptions": {
+      "llm": {
+        "executionDefaults": {
+          "cache":  { "mode": "prefer", "ttlSec": 3600 },
+          "stream": { "mode": "prefer" }
+        }
+      }
+    }
+  }
+}
+```
+
+## Tier-based routing
+
+Plugins don't pick models directly — they pick a **tier** (`'small' | 'medium' | 'large'`). The router reads `platform.adapterOptions.llm.tierMapping` and resolves the tier to an actual model.
+
+```ts
+interface UseLLMOptions {
+  tier?: 'small' | 'medium' | 'large';
+  capabilities?: ('reasoning' | 'coding' | 'vision' | 'fast')[];
+  execution?: LLMExecutionPolicy;
+}
+```
+
+Resolution rules (from [llm-types.ts](platform/kb-labs-core/packages/core-platform/src/adapters/llm-types.ts)):
+
+- **Escalation.** If the plugin asks for `small` but only `medium` is configured, the router silently uses `medium`.
+- **Degradation.** If the plugin asks for `large` but only `medium` is configured, the router uses `medium` and emits a warning.
+- **Capability filtering.** The router picks the highest-priority model in the requested tier that supports **all** requested capabilities.
+- **Per-model adapter override.** Each entry in `tierMapping[tier]` can specify `adapter: '@kb-labs/adapters-xxx'` — the router will use that specific adapter for that model, even if a different one is primary.
+
+See [Configuration → kb.config.json](/configuration/kb-config#platformadapteroptions) for the full `tierMapping` schema, and [LLM Tiers](/sdk/llm-tiers) for the plugin-facing view.
+
+## `ILLMRouter` (internal)
+
+When an LLM adapter is also a router (like the multi-provider setup in the reference config), it implements both `ILLM` and `ILLMRouter`:
+
+```ts
+interface ILLMRouter {
+  getConfiguredTier(): LLMTier;
+  resolve(options?: UseLLMOptions): LLMResolution;
+  resolveAdapter(options?: UseLLMOptions): Promise<LLMAdapterBinding>;
+  hasCapability(capability: LLMCapability): boolean;
+  getCapabilities(): LLMCapability[];
+}
+```
+
+`resolveAdapter` is the **immutable** resolution path — returns a fresh `LLMAdapterBinding` without mutating router state. This fixes a real race where concurrent `useLLM({ tier })` calls would clobber each other's bindings. See [`sdk/hooks` → useLLM → Immutability](/sdk/hooks#immutability) for the concrete scenario.
+
+The router also adds `tier` to the metadata of every call it proxies, so the analytics wrapper can attribute costs by tier.
+
+## Request metadata
+
+The router fills `options.metadata` with identifiers for analytics and tracing:
+
+```ts
+interface LLMRequestMetadata {
+  tier?: LLMTier;
+  provider?: string;                     // 'openai', 'anthropic', ...
+  resource?: string;                     // 'llm:openai' — for ResourceBroker rate limiting
+  cacheDecisionTrace?: LLMCacheDecisionTrace;
+}
+```
+
+Adapters should **not** overwrite `metadata` — they can read it (for logging) and pass it through to wrapped adapters, but the router owns the contents.
+
+## Cache decision trace
+
+When the router applies cache/stream policy, it writes a trace describing what it did:
+
+```ts
+interface LLMCacheDecisionTrace {
+  cacheRequestedMode: 'prefer' | 'require' | 'bypass';
+  cacheSupported: boolean;
+  cacheAppliedMode: 'prefer' | 'require' | 'bypass';
+  streamRequestedMode: 'prefer' | 'require' | 'off';
+  streamSupported: boolean;
+  streamAppliedMode: 'prefer' | 'require' | 'off';
+  streamFallback?: 'complete';
+  reason?: string;
+}
+```
+
+The analytics wrapper reads this trace to emit `llm.cache.hit` / `llm.cache.miss` / `llm.stream.fallback` events. You can inspect it yourself by logging `options.metadata?.cacheDecisionTrace` in your adapter.
+
+## Writing an `ILLM` adapter
+
+Minimum viable adapter:
+
+```ts
+import type { AdapterManifest, AdapterFactory, ILLM, LLMOptions, LLMResponse } from '@kb-labs/core-platform';
+
+export const manifest: AdapterManifest = {
+  manifestVersion: '1.0.0',
+  id: 'my-llm',
+  name: 'My LLM',
+  version: '0.1.0',
+  type: 'core',
+  implements: 'ILLM',
+  capabilities: { streaming: true },
+};
+
+interface MyLLMConfig {
+  apiKey: string;
+  model: string;
+}
+
+class MyLLMAdapter implements ILLM {
+  constructor(private config: MyLLMConfig) {}
+
+  async complete(prompt: string, options?: LLMOptions): Promise<LLMResponse> {
+    const res = await fetch('https://api.my-llm.example.com/v1/complete', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.config.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: options?.model ?? this.config.model,
+        prompt,
+        temperature: options?.temperature,
+        max_tokens: options?.maxTokens,
+      }),
+    });
+
+    const data = await res.json();
+
+    return {
+      content: data.choices[0].text,
+      usage: {
+        promptTokens: data.usage.prompt_tokens,
+        completionTokens: data.usage.completion_tokens,
+      },
+      model: data.model,
+    };
+  }
+
+  async *stream(prompt: string, options?: LLMOptions): AsyncIterable<string> {
+    // ... implementation yielding chunks
+  }
+}
+
+export const createAdapter: AdapterFactory<MyLLMConfig, {}, ILLM> = (config) => {
+  return new MyLLMAdapter(config);
+};
+```
+
+To add prompt-caching or streaming capability negotiation, also implement `getProtocolCapabilities()`. To add native function calling, implement `chatWithTools()` — translating `LLMTool[]` into your provider's function schema and normalizing the response back into `LLMToolCall[]`.
+
+## Built-in adapters implementing `ILLM`
+
+| Package | Notes |
+|---|---|
+| `@kb-labs/adapters-openai` | OpenAI Chat Completions API; supports streaming, native function calling, prompt caching for GPT-4o family. |
+| `@kb-labs/adapters-vibeproxy` | Multi-provider proxy that talks to an internal routing service. Supports routing to Claude, GPT-5, and custom models via the `adapter` override in tier mapping. |
+
+Both are under `infra/kb-labs-adapters/packages/`.
+
+## Wrapper layers
+
+The runtime wraps every `ILLM` adapter in several layers before handing it to plugins:
+
+1. **`LLMRouter`** — tier/capability resolution. Implements `ILLM` + `ILLMRouter`.
+2. **`AnalyticsLLM`** — tracks every call: prompts, tokens, cost, cache hits, duration. Reads `options.metadata.cacheDecisionTrace` to attribute events correctly.
+3. **`QueuedLLM`** — routes through `ResourceBroker` for rate limiting and retries (driven by `core.resourceBroker.llm` in config).
+4. **`LLMProxy`** — for sandboxed plugin execution modes (subprocess, container), forwards calls over IPC to the parent process.
+
+Adapter authors don't have to think about these — the runtime wires them up. But it's useful to know they exist so you understand why a "simple" adapter shows up in analytics with rich tier/cache/retry metadata.
+
+## What to read next
+
+- [LLM Tiers](/sdk/llm-tiers) — the plugin-facing tier model.
+- [Configuration → kb.config.json → `adapterOptions.llm`](/configuration/kb-config#platformadapteroptions) — full tier mapping schema.
+- [SDK → Hooks → `useLLM`](/sdk/hooks#useLLM-options) — how plugins consume `ILLM`.
+- [Writing a Custom Adapter](/adapters/custom-adapter) — end-to-end guide.

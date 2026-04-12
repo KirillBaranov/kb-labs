@@ -162,15 +162,14 @@ export async function publishPackagesProgrammatic(
     };
   }
 
-  const results: PublishResult[] = [];
-
   // Build version map from all packages in this release for link: → ^version replacement
   const versionMap = new Map(packages.map(p => [p.name, p.version]));
 
-  for (const pkg of packages) {
+  const CONCURRENCY = Number(process.env.KB_PUBLISH_CONCURRENCY ?? 8);
+
+  const publishOne = async (pkg: PackageToPublish): Promise<PublishResult> => {
     logger.info(`Publishing ${pkg.name}@${pkg.version}`, { path: pkg.path, dryRun });
 
-    // Replace link: deps with real versions before publish, restore after
     const pkgJsonPath = join(pkg.path, 'package.json');
     const originalPkgJson = readFileSync(pkgJsonPath, 'utf-8');
     let restored = false;
@@ -187,7 +186,6 @@ export async function publishPackagesProgrammatic(
           const val = depValue as string;
 
           if (val.startsWith('link:')) {
-            // Cross-repo link: → ^version from plan or linked package.json
             const planVersion = versionMap.get(depName);
             if (planVersion) {
               deps[depName] = `^${planVersion}`;
@@ -204,7 +202,6 @@ export async function publishPackagesProgrammatic(
               }
             }
           } else if (val.startsWith('workspace:') && packageManager !== 'pnpm') {
-            // workspace:* → ^version only needed for npm/yarn (pnpm publish handles this automatically)
             const planVersion = versionMap.get(depName);
             if (planVersion) {
               deps[depName] = val === 'workspace:*' ? `^${planVersion}` : val.replace('workspace:', '');
@@ -216,7 +213,6 @@ export async function publishPackagesProgrammatic(
 
       if (modified) {
         writeFileSync(pkgJsonPath, JSON.stringify(pkgJson, null, 2) + '\n');
-        logger.info(`Replaced link: deps for ${pkg.name}`);
       }
 
       await publishSinglePackage({
@@ -230,26 +226,26 @@ export async function publishPackagesProgrammatic(
         registry,
       });
 
-      results.push({ name: pkg.name, version: pkg.version, success: true });
       logger.info(`Published ${pkg.name}@${pkg.version}`);
+      return { name: pkg.name, version: pkg.version, success: true };
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : String(error);
-
       logger.error(`Failed to publish ${pkg.name}@${pkg.version}`, undefined, { error: message });
-
-      results.push({
-        name: pkg.name,
-        version: pkg.version,
-        success: false,
-        error: message,
-      });
+      return { name: pkg.name, version: pkg.version, success: false, error: message };
     } finally {
-      // Always restore original package.json
       if (!restored) {
         writeFileSync(pkgJsonPath, originalPkgJson);
         restored = true;
       }
     }
+  };
+
+  // Run publishes in parallel batches
+  const results: PublishResult[] = [];
+  for (let i = 0; i < packages.length; i += CONCURRENCY) {
+    const batch = packages.slice(i, i + CONCURRENCY);
+    const batchResults = await Promise.all(batch.map(publishOne));
+    results.push(...batchResults);
   }
 
   const published = results.filter((r) => r.success).map((r) => `${r.name}@${r.version}`);

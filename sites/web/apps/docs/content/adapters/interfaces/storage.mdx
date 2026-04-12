@@ -1,0 +1,273 @@
+---
+title: "IStorage"
+description: "Blob and file storage interface with optional streaming and metadata."
+updatedAt: "2026-04-07"
+order: 3
+---
+
+`IStorage` is the blob/file storage interface. Unlike `ICache`, it's for durable data — artifacts, reports, uploaded files, snapshots. Everything is binary (`Buffer`) at the interface level; callers handle text encoding themselves.
+
+Source of truth: [platform/kb-labs-core/packages/core-platform/src/adapters/storage.ts](platform/kb-labs-core/packages/core-platform/src/adapters/storage.ts).
+
+## Interface
+
+```ts
+interface IStorage {
+  // Core methods (required)
+  read(path: string): Promise<Buffer | null>;
+  write(path: string, data: Buffer): Promise<void>;
+  delete(path: string): Promise<void>;
+  list(prefix: string): Promise<string[]>;
+  exists(path: string): Promise<boolean>;
+
+  // Extended methods (optional)
+  readStream?(path: string): Promise<NodeJS.ReadableStream | null>;
+  writeStream?(path: string, stream: NodeJS.ReadableStream): Promise<void>;
+  copy?(sourcePath: string, destPath: string): Promise<void>;
+  move?(sourcePath: string, destPath: string): Promise<void>;
+  listWithMetadata?(prefix: string): Promise<StorageMetadata[]>;
+  stat?(path: string): Promise<StorageMetadata | null>;
+}
+```
+
+The core five are required by every adapter. The six extended methods are opt-in — when they're missing, the runtime falls back to composing the core methods, so callers can always rely on the full surface.
+
+## Core methods
+
+### `read(path)`
+
+Returns the file contents as a `Buffer`, or `null` if the file doesn't exist. Callers handle encoding explicitly:
+
+```ts
+const buf = await storage.read('releases/v1.0.0.json');
+if (buf) {
+  const data = JSON.parse(buf.toString('utf-8'));
+}
+```
+
+### `write(path, data)`
+
+Writes a buffer to the given path. Overwrites existing files. Creates parent directories as needed (this is a convention every first-party adapter follows).
+
+```ts
+const data = JSON.stringify({ version: '1.0.0' });
+await storage.write('releases/v1.0.0.json', Buffer.from(data, 'utf-8'));
+```
+
+### `delete(path)`
+
+Removes a file. Missing paths are not an error — adapters silently succeed. If you need to know whether a delete actually removed something, call `exists()` first.
+
+```ts
+await storage.delete('releases/v1.0.0.json');
+```
+
+### `list(prefix)`
+
+Returns all file paths under the given prefix. The prefix is required — there is no "list everything" form. Pass `''` (empty string) if you really want the root.
+
+```ts
+const files = await storage.list('releases/');
+// ['releases/v1.0.0.json', 'releases/v1.0.1.json', ...]
+```
+
+Adapters may return paths relative to the prefix or absolute — the contract doesn't specify, so don't write code that depends on either. Use `path.basename()` if you need just the filename.
+
+### `exists(path)`
+
+Returns `true` if the file exists, `false` otherwise.
+
+```ts
+if (!(await storage.exists('releases/v1.0.0.json'))) {
+  await storage.write('releases/v1.0.0.json', Buffer.from('{}'));
+}
+```
+
+## Extended methods
+
+These are optional for performance — when absent, the runtime composes them from the core methods.
+
+### `readStream(path)`, `writeStream(path, stream)`
+
+For large files. When absent, the runtime buffers the entire file in memory, so implementing these is worth it for anything above ~10MB.
+
+```ts
+if (storage.readStream) {
+  const stream = await storage.readStream('large-file.bin');
+  if (stream) {
+    for await (const chunk of stream) {
+      // ... process chunk
+    }
+  }
+}
+```
+
+### `copy(sourcePath, destPath)`, `move(sourcePath, destPath)`
+
+Server-side copy/move. On adapters where the backend supports it natively (S3 copy, POSIX `rename`), this is orders of magnitude faster than `read` + `write` + `delete`. The fallback uses exactly that sequence.
+
+### `listWithMetadata(prefix)`
+
+Returns an array of `StorageMetadata` instead of just paths:
+
+```ts
+interface StorageMetadata {
+  path: string;
+  size: number;
+  lastModified: string;    // ISO 8601
+  contentType?: string;    // MIME type, if the adapter knows it
+  etag?: string;           // versioning tag
+}
+```
+
+The fallback is `list()` + `stat()` per file, which is fine for small directories but horrifying for large ones. Implement this whenever you can query metadata from the backend in bulk.
+
+### `stat(path)`
+
+Returns metadata for a single file without reading its contents. Fallback is `exists()` + `read()`, which reads the whole file just to get its size — implement `stat` if your backend gives you a cheap metadata query.
+
+## Contract rules
+
+- **Everything is `Buffer`, not `string`.** Adapters must return binary. Text handling is the caller's responsibility.
+- **`read()` returns `null` on missing files.** It doesn't throw. This matches `ICache.get()` semantics.
+- **`delete()` is idempotent.** Deleting a missing file is a success, not an error.
+- **`list(prefix)` requires a prefix.** There is no "list all" form — pass `''` if you want the root.
+- **Path separators are `/`.** Even on Windows adapters. Adapters handle platform-specific conversion internally.
+- **Paths are relative to the adapter's root.** The root is configured via `adapterOptions[token].basePath` (or equivalent). Plugins never see absolute paths.
+
+## Permissions enforcement
+
+Plugins declare their storage paths via `permissions.platform.storage`:
+
+```ts
+.withPlatform({
+  storage: {
+    read:  ['releases/**'],
+    write: ['releases/**', 'artifacts/**'],
+  },
+})
+```
+
+Or the shorter form for read-write access to the same paths:
+
+```ts
+.withPlatform({ storage: ['releases/**', 'artifacts/**'] })
+```
+
+Or `true` for full access (discouraged except for trusted system plugins).
+
+The runtime enforces these globs in a wrapper layer above the adapter — adapters themselves don't know about permissions.
+
+## `useStorage()` vs `ctx.runtime.fs`
+
+These are not the same thing, and picking the wrong one is a common mistake:
+
+- **`useStorage()`** — the `IStorage` adapter. Durable, swappable backends (local FS, S3, snapshot storage). Use this for anything the plugin wants to persist beyond a single execution.
+- **`ctx.runtime.fs`** — the sandboxed filesystem access for the plugin's working directory. Backed by the real local filesystem, gated by `permissions.fs`. Use this for reading project files the plugin is analyzing or modifying.
+
+Rule of thumb: if you'd want to move the file to S3 later, use `useStorage()`. If it's "the source code the plugin is reviewing", use `ctx.runtime.fs`.
+
+## Writing an `IStorage` adapter
+
+A minimal local-filesystem adapter:
+
+```ts
+import { promises as fs } from 'node:fs';
+import * as path from 'node:path';
+import type { AdapterManifest, AdapterFactory, IStorage, StorageMetadata } from '@kb-labs/core-platform';
+
+export const manifest: AdapterManifest = {
+  manifestVersion: '1.0.0',
+  id: 'fs-storage',
+  name: 'Filesystem Storage',
+  version: '0.1.0',
+  type: 'core',
+  implements: 'IStorage',
+  capabilities: {},
+};
+
+interface FsStorageConfig {
+  basePath: string;
+}
+
+class FsStorage implements IStorage {
+  constructor(private basePath: string) {}
+
+  private resolve(p: string): string {
+    return path.resolve(this.basePath, p);
+  }
+
+  async read(p: string): Promise<Buffer | null> {
+    try {
+      return await fs.readFile(this.resolve(p));
+    } catch (err: any) {
+      if (err.code === 'ENOENT') return null;
+      throw err;
+    }
+  }
+
+  async write(p: string, data: Buffer): Promise<void> {
+    const full = this.resolve(p);
+    await fs.mkdir(path.dirname(full), { recursive: true });
+    await fs.writeFile(full, data);
+  }
+
+  async delete(p: string): Promise<void> {
+    try {
+      await fs.unlink(this.resolve(p));
+    } catch (err: any) {
+      if (err.code !== 'ENOENT') throw err;
+    }
+  }
+
+  async list(prefix: string): Promise<string[]> {
+    const dir = this.resolve(prefix);
+    try {
+      const entries = await fs.readdir(dir, { recursive: true });
+      return entries.map(e => path.posix.join(prefix, e.toString()));
+    } catch (err: any) {
+      if (err.code === 'ENOENT') return [];
+      throw err;
+    }
+  }
+
+  async exists(p: string): Promise<boolean> {
+    try {
+      await fs.access(this.resolve(p));
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async stat(p: string): Promise<StorageMetadata | null> {
+    try {
+      const st = await fs.stat(this.resolve(p));
+      return {
+        path: p,
+        size: st.size,
+        lastModified: st.mtime.toISOString(),
+      };
+    } catch {
+      return null;
+    }
+  }
+}
+
+export const createAdapter: AdapterFactory<FsStorageConfig, {}, IStorage> = (config) => {
+  return new FsStorage(config.basePath);
+};
+```
+
+## Built-in adapters implementing `IStorage`
+
+| Package | Notes |
+|---|---|
+| `@kb-labs/adapters-fs` | Local filesystem, rooted at `config.basePath`. The default for dev and single-node deployments. |
+
+Future adapters (S3, GCS, snapshot-backed) will implement the same interface.
+
+## What to read next
+
+- [SDK → Hooks → `useStorage`](/sdk/hooks#usestorage) — how plugins consume `IStorage`.
+- [Plugins → Permissions → `platform.storage`](/plugins/permissions#platform-services) — declaring storage paths.

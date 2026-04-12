@@ -1,0 +1,251 @@
+---
+title: "ICache"
+description: "Key-value caching interface with TTL, sorted sets, and atomic operations."
+updatedAt: "2026-04-07"
+order: 2
+---
+
+`ICache` is the key-value store interface used by every platform service and plugin that needs caching. It's richer than a plain KV store: the interface includes sorted-set operations and atomic locking primitives, so plugins don't need a separate backend for scheduling queues or distributed locks.
+
+Source of truth: [platform/kb-labs-core/packages/core-platform/src/adapters/cache.ts](platform/kb-labs-core/packages/core-platform/src/adapters/cache.ts).
+
+## Interface
+
+```ts
+interface ICache {
+  // Basic KV
+  get<T>(key: string): Promise<T | null>;
+  set<T>(key: string, value: T, ttl?: number): Promise<void>;
+  delete(key: string): Promise<void>;
+  clear(pattern?: string): Promise<void>;
+
+  // Sorted sets
+  zadd(key: string, score: number, member: string): Promise<void>;
+  zrangebyscore(key: string, min: number, max: number): Promise<string[]>;
+  zrem(key: string, member: string): Promise<void>;
+
+  // Atomic operations
+  setIfNotExists<T>(key: string, value: T, ttl?: number): Promise<boolean>;
+}
+```
+
+Everything is required — adapters must implement all methods. NoOp and in-memory implementations satisfy the interface trivially; real backends (Redis) map 1:1 onto their native commands.
+
+## Basic KV
+
+### `get<T>(key)`
+
+Returns the cached value or `null` when the key is missing or expired. The generic parameter is advisory — adapters deserialize to whatever was stored without runtime type checking.
+
+```ts
+const result = await cache.get<QueryResult>('query:abc');
+if (result) {
+  return result;
+}
+```
+
+### `set<T>(key, value, ttl?)`
+
+Stores a value with an optional TTL in **milliseconds**. Omit the TTL for "forever" semantics (the adapter may still evict based on memory pressure).
+
+```ts
+await cache.set('query:abc', result, 60_000); // 60 seconds
+await cache.set('config:app', value);         // no expiration
+```
+
+### `delete(key)`
+
+Removes a single key. Missing keys are not an error.
+
+```ts
+await cache.delete('query:abc');
+```
+
+### `clear(pattern?)`
+
+Removes entries matching a glob pattern (`user:*`, `session:abc:*`). Without a pattern, clears **everything** — use carefully. NoOp and in-memory adapters typically scan and delete; Redis uses `SCAN` + `UNLINK`.
+
+```ts
+await cache.clear('user:123:*');  // wipe one user's cache
+await cache.clear();              // wipe everything
+```
+
+## Sorted sets
+
+Sorted sets are how you build scheduling queues, time-ordered feeds, and sliding windows without a separate database. Members are unique strings; each has a numeric score (usually a timestamp).
+
+### `zadd(key, score, member)`
+
+Adds a member to the sorted set under `key` with the given score. If the member already exists, its score is updated.
+
+```ts
+// Enqueue a job to run in 5 seconds
+const runAt = Date.now() + 5_000;
+await cache.zadd('scheduled-jobs', runAt, 'job-123');
+```
+
+### `zrangebyscore(key, min, max)`
+
+Returns all members with scores in `[min, max]` (inclusive), in ascending score order. Used to "pop" all entries that are ready to run.
+
+```ts
+// Get jobs due now
+const due = await cache.zrangebyscore('scheduled-jobs', 0, Date.now());
+for (const jobId of due) {
+  await runJob(jobId);
+  await cache.zrem('scheduled-jobs', jobId);
+}
+```
+
+### `zrem(key, member)`
+
+Removes a member from the sorted set. Missing members are not an error.
+
+```ts
+await cache.zrem('scheduled-jobs', 'job-123');
+```
+
+## Atomic operations
+
+### `setIfNotExists<T>(key, value, ttl?)`
+
+Redis-style `SET NX`: sets the key only if it doesn't already exist. Returns `true` if the value was written, `false` if the key already existed. Used for distributed locking:
+
+```ts
+const lockKey = 'lock:release:v1.0.0';
+const lockTtl = 30_000;
+
+if (await cache.setIfNotExists(lockKey, { owner: processId }, lockTtl)) {
+  try {
+    await runRelease();
+  } finally {
+    await cache.delete(lockKey);
+  }
+} else {
+  // Another process holds the lock
+}
+```
+
+The TTL acts as an automatic release — if the lock holder crashes, the lock expires instead of leaking forever. Keep the TTL longer than your worst-case operation duration.
+
+## Contract rules
+
+- **TTLs are in milliseconds.** Every adapter normalizes to ms, even if the underlying backend uses seconds (Redis converts internally).
+- **`get()` returns `null`, not `undefined`.** This is deliberate — it matches Redis semantics and distinguishes "missing key" from "adapter not configured".
+- **Keys are opaque strings.** Adapters don't parse them, but plugins should use `:` as a separator by convention (`plugin:namespace:id`).
+- **Clear without a pattern wipes everything.** Adapters must not silently scope this to a namespace — if a caller wants scoped clearing, they pass a pattern.
+- **Sorted-set scores are plain numbers.** Adapters may encode them as doubles (Redis) or sort them as integers; either way, ordering is numeric, not lexicographic.
+
+## Permissions enforcement
+
+Plugins declare the cache namespaces they write to via `permissions.platform.cache`:
+
+```ts
+.withPlatform({ cache: ['mine:', 'queue:'] })
+```
+
+The runtime enforces these prefixes — writes to keys outside declared namespaces are refused with a permission error. Adapters themselves don't know about permissions; the enforcement happens in a wrapper layer above the adapter.
+
+## Writing an `ICache` adapter
+
+A minimal in-memory adapter:
+
+```ts
+import type { AdapterManifest, AdapterFactory, ICache } from '@kb-labs/core-platform';
+
+export const manifest: AdapterManifest = {
+  manifestVersion: '1.0.0',
+  id: 'memory-cache',
+  name: 'In-Memory Cache',
+  version: '0.1.0',
+  type: 'core',
+  implements: 'ICache',
+  capabilities: {},
+};
+
+interface Entry { value: unknown; expiresAt?: number }
+
+class MemoryCache implements ICache {
+  private kv = new Map<string, Entry>();
+  private sortedSets = new Map<string, Map<string, number>>();
+
+  async get<T>(key: string): Promise<T | null> {
+    const entry = this.kv.get(key);
+    if (!entry) return null;
+    if (entry.expiresAt && entry.expiresAt < Date.now()) {
+      this.kv.delete(key);
+      return null;
+    }
+    return entry.value as T;
+  }
+
+  async set<T>(key: string, value: T, ttl?: number): Promise<void> {
+    this.kv.set(key, {
+      value,
+      expiresAt: ttl ? Date.now() + ttl : undefined,
+    });
+  }
+
+  async delete(key: string): Promise<void> {
+    this.kv.delete(key);
+  }
+
+  async clear(pattern?: string): Promise<void> {
+    if (!pattern) {
+      this.kv.clear();
+      this.sortedSets.clear();
+      return;
+    }
+    const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
+    for (const key of this.kv.keys()) {
+      if (regex.test(key)) this.kv.delete(key);
+    }
+  }
+
+  async zadd(key: string, score: number, member: string): Promise<void> {
+    let set = this.sortedSets.get(key);
+    if (!set) {
+      set = new Map();
+      this.sortedSets.set(key, set);
+    }
+    set.set(member, score);
+  }
+
+  async zrangebyscore(key: string, min: number, max: number): Promise<string[]> {
+    const set = this.sortedSets.get(key);
+    if (!set) return [];
+    return Array.from(set.entries())
+      .filter(([, score]) => score >= min && score <= max)
+      .sort((a, b) => a[1] - b[1])
+      .map(([member]) => member);
+  }
+
+  async zrem(key: string, member: string): Promise<void> {
+    this.sortedSets.get(key)?.delete(member);
+  }
+
+  async setIfNotExists<T>(key: string, value: T, ttl?: number): Promise<boolean> {
+    const existing = await this.get(key);
+    if (existing !== null) return false;
+    await this.set(key, value, ttl);
+    return true;
+  }
+}
+
+export const createAdapter: AdapterFactory<unknown, {}, ICache> = () => new MemoryCache();
+```
+
+Real adapters should use the backend's native commands (Redis `SETNX`, `ZADD`, `ZRANGEBYSCORE`) for atomicity.
+
+## Built-in adapters implementing `ICache`
+
+| Package | Notes |
+|---|---|
+| `@kb-labs/adapters-redis` | Production Redis client. Uses `ioredis`, supports sorted sets natively, pattern-based clearing via `SCAN`. |
+
+The NoOp implementation lives in `@kb-labs/core-platform/noop` and is installed automatically when no adapter is configured.
+
+## What to read next
+
+- [SDK → Hooks → `useCache`](/sdk/hooks#usecache) — how plugins consume `ICache`.
+- [Plugins → Permissions → `platform.cache`](/plugins/permissions#platform-services) — how plugins declare cache namespaces.

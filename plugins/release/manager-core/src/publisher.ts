@@ -387,18 +387,40 @@ export async function commitAndTagRelease(options: {
   try {
     const commitMessage = createCommitMessage(plan);
 
-    // 1. Commit each package in its own git repo
+    // Group packages by their git toplevel — monorepo packages share one root,
+    // submodules have different roots. One commit/push per unique git root.
+    const pkgToRoot = new Map<string, string>();
     for (const pkg of plan.packages) {
-      const pkgGit = simpleGit(pkg.path);
+      try {
+        const root = (await simpleGit(pkg.path).revparse(['--show-toplevel'])).trim();
+        pkgToRoot.set(pkg.path, root);
+      } catch {
+        pkgToRoot.set(pkg.path, pkg.path);
+      }
+    }
 
-      // Stage package.json and CHANGELOG.md (only if it exists)
-      const filesToStage = ['package.json'];
-      const changelogPath = join(pkg.path, 'CHANGELOG.md');
-      if (existsSync(changelogPath)) {filesToStage.push('CHANGELOG.md');}
-      await pkgGit.add(filesToStage);
+    const rootToPkgs = new Map<string, typeof plan.packages>();
+    for (const pkg of plan.packages) {
+      const root = pkgToRoot.get(pkg.path)!;
+      const list = rootToPkgs.get(root) ?? [];
+      list.push(pkg);
+      rootToPkgs.set(root, list);
+    }
+
+    // 1. Commit once per git root — stage all files for packages living in that root
+    for (const [root, pkgs] of rootToPkgs) {
+      const rootGit = simpleGit(root);
+      const filesToStage: string[] = [];
+      for (const pkg of pkgs) {
+        const rel = (p: string) => p.startsWith(root + '/') ? p.slice(root.length + 1) : p;
+        filesToStage.push(rel(join(pkg.path, 'package.json')));
+        const changelogPath = join(pkg.path, 'CHANGELOG.md');
+        if (existsSync(changelogPath)) {filesToStage.push(rel(changelogPath));}
+      }
+      await rootGit.add(filesToStage);
 
       try {
-        await pkgGit.commit(commitMessage);
+        await rootGit.commit(commitMessage);
         result.committed = true;
       } catch (commitError) {
         const msg = commitError instanceof Error ? commitError.message : String(commitError);
@@ -408,37 +430,35 @@ export async function commitAndTagRelease(options: {
       }
     }
 
-    // 2. Create tags in cwd (monorepo root)
-    const git = simpleGit(cwd);
-
-    // Lockstep (all packages same version) → single repo-level tag: v{version}
-    // Independent → per-package tag: {name}@{version}
+    // 2. Create tags — lockstep = one tag per git root, independent = per-package tag
     const uniqueVersions = new Set(plan.packages.map(p => p.nextVersion));
     const isLockstep = plan.packages.length > 1 && uniqueVersions.size === 1;
 
     if (isLockstep) {
       const version = plan.packages[0]!.nextVersion;
       const tagName = `v${version}`;
-      await git.addTag(tagName);
+      for (const root of rootToPkgs.keys()) {
+        await simpleGit(root).addTag(tagName);
+      }
       result.tagged.push(tagName);
     } else {
       for (const pkg of plan.packages) {
-        const pkgGit = simpleGit(pkg.path);
+        const root = pkgToRoot.get(pkg.path)!;
         const tagName = `${pkg.name}@${pkg.nextVersion}`;
-        await pkgGit.addTag(tagName);
+        await simpleGit(root).addTag(tagName);
         result.tagged.push(tagName);
       }
     }
 
-    // 3. Push each package repo
+    // 3. Push once per git root
     const pushFlags: string[] = noVerify ? ['--no-verify'] : [];
     const pushTagsOptions = noVerify ? ['--no-verify'] : undefined;
-    for (const pkg of plan.packages) {
-      const pkgGit = simpleGit(pkg.path);
+    for (const root of rootToPkgs.keys()) {
+      const rootGit = simpleGit(root);
       if (result.committed) {
-        await pkgGit.push(pushFlags);
+        await rootGit.push(pushFlags);
       }
-      await pkgGit.pushTags(pushTagsOptions);
+      await rootGit.pushTags(pushTagsOptions);
     }
     result.pushed = true;
 

@@ -1,0 +1,222 @@
+---
+title: "Authentication"
+description: "How to obtain and rotate the bearer token passed to KBPlatform."
+updatedAt: "2026-04-07"
+order: 3
+---
+
+`@kb-labs/platform-client` authenticates with the gateway via a **bearer token** passed as the `apiKey` option. There's no separate OAuth flow, no certificate-based auth, no SDK-managed token rotation — just a plain `Authorization: Bearer <token>` header on every request. How you obtain and manage that token is up to you and your gateway configuration.
+
+This page covers the three ways tokens flow into a platform-client: static tokens (dev and service accounts), runtime-minted tokens (for user sessions), and environment propagation. See [Gateway → Authentication](/gateway/authentication) for the server-side view.
+
+## Token types
+
+Two kinds of tokens are accepted by the gateway:
+
+### Static tokens
+
+Tokens seeded into the gateway config at bootstrap via `gateway.staticTokens` in `kb.config.json`:
+
+```json
+{
+  "gateway": {
+    "staticTokens": {
+      "my-backend-token": {
+        "hostId": "my-backend",
+        "namespaceId": "default"
+      },
+      "ci-runner-token": {
+        "hostId": "ci-runner",
+        "namespaceId": "default"
+      }
+    }
+  }
+}
+```
+
+Each entry maps a **token value** to a `{ hostId, namespaceId }` pair. The gateway loads these into its cache at startup. Any request arriving with one of these token values is automatically attributed to the declared `hostId` and scoped to `namespaceId`.
+
+**Pros:**
+- Simple. No minting endpoint, no refresh logic.
+- Long-lived. Rotate them by editing the config and restarting the gateway.
+- Easy to use from scripts, CI, and background services.
+
+**Cons:**
+- **Long-lived.** A leaked static token is valid until you rotate the config and restart the gateway.
+- Stored in config. Put them in env vars or a secret manager, not in committed `kb.config.json`.
+
+Use static tokens for:
+- Service-to-service calls (your backend → KB Labs gateway).
+- CI runners.
+- Development and local testing.
+
+### Runtime-minted JWTs
+
+Short-lived JWTs issued by `POST /auth/token` on the gateway. Requires the caller to have credentials (typically a `clientId`/`clientSecret` pair registered with the gateway) to exchange for a token.
+
+**Pros:**
+- **Short-lived.** Tokens expire in minutes/hours; a leak has a bounded blast radius.
+- Can carry additional claims (tenant, permissions, session ID).
+- Refreshable via `POST /auth/refresh`.
+
+**Cons:**
+- More moving pieces. Requires a token-minting flow in your client.
+- `@kb-labs/platform-client` doesn't refresh tokens automatically — you handle the lifecycle yourself.
+
+Use runtime-minted tokens for:
+- User-facing sessions (when each user has their own identity).
+- Multi-tenant deployments where each request needs tenant-specific attribution.
+- High-security environments with short credential lifetimes.
+
+See [Gateway → Authentication](/gateway/authentication) for the full minting flow.
+
+## Passing the token
+
+```ts
+import { KBPlatform } from '@kb-labs/platform-client';
+
+const platform = new KBPlatform({
+  endpoint: 'http://gateway:4000',
+  apiKey: process.env.KB_API_KEY!,
+});
+```
+
+The client reads `apiKey` once at construction time and uses it for every subsequent request. If the token expires or rotates, you need to construct a new `KBPlatform` instance — the client doesn't support in-place token refresh today.
+
+## Reading tokens from environment
+
+The typical pattern: put the token in a secret manager, expose it as an env var, read it from `process.env`.
+
+### Development
+
+`.env`:
+
+```
+KB_GATEWAY_URL=http://localhost:4000
+KB_API_KEY=dev-studio-token
+```
+
+```ts
+const platform = new KBPlatform({
+  endpoint: process.env.KB_GATEWAY_URL!,
+  apiKey: process.env.KB_API_KEY!,
+});
+```
+
+The `dev-studio-token` is one of the staticTokens in the reference `kb.config.json`. Replace with your own for your deployment.
+
+### Production
+
+Use your platform's secret manager:
+
+- **Kubernetes**: `Secret` resource referenced via `envFrom` on the pod.
+- **Vault**: sidecar injector or init container that populates env vars.
+- **AWS Secrets Manager**: IAM role + SDK call at startup.
+- **Docker Compose**: `secrets:` block mounted as env file.
+
+The client itself doesn't care how the env var got there — it just reads from `process.env`.
+
+## Token rotation
+
+`@kb-labs/platform-client` has **no built-in rotation**. To rotate:
+
+1. Issue a new token via your secret manager or by updating `gateway.staticTokens`.
+2. Deploy the new token to your consumers.
+3. Consumers restart and pick up the new value.
+4. (For static tokens) Remove the old token from `gateway.staticTokens` and restart the gateway.
+
+For zero-downtime rotation, keep both old and new tokens valid during the overlap window, then retire the old one.
+
+If you need transparent rotation, wrap `KBPlatform` in your own class that reconstructs it on rotation signals:
+
+```ts
+class ManagedPlatform {
+  private platform: KBPlatform;
+
+  constructor(private getToken: () => Promise<string>) {
+    this.platform = this.construct('');
+    void this.refresh();
+  }
+
+  private construct(token: string): KBPlatform {
+    return new KBPlatform({
+      endpoint: process.env.KB_GATEWAY_URL!,
+      apiKey: token,
+    });
+  }
+
+  async refresh(): Promise<void> {
+    const token = await this.getToken();
+    this.platform = this.construct(token);
+  }
+
+  get llm() { return this.platform.llm; }
+  get cache() { return this.platform.cache; }
+  // ... proxy the other fields too
+}
+```
+
+This is your code, not the SDK's. The client keeps its surface minimal by deliberately not dictating a rotation policy.
+
+## Tenant scoping
+
+Every token carries an implicit tenant via the `namespaceId` claim (for static tokens) or a JWT claim (for runtime-minted tokens). The gateway uses it to populate `X-Tenant-ID` on the downstream request to the REST API or other upstream services.
+
+If you're running a multi-tenant deployment and the client needs to act on behalf of different tenants, you have two options:
+
+1. **One `KBPlatform` instance per tenant.** Construct separately with the tenant-specific token. Cleaner but uses more memory in tenant-heavy deployments.
+2. **Override the header on the server side.** Not supported by `@kb-labs/platform-client` today (the client doesn't let you pass custom headers per call). You'd need a fork or a thin wrapper that injects `X-Tenant-ID` via `fetch` overrides.
+
+For single-tenant backends talking to KB Labs, neither of these matters — one `KBPlatform` instance with a single token is the common case.
+
+## Rate limits
+
+The gateway may rate-limit requests per token, per tenant, or per IP. When rate-limited, the server returns 429 and the client throws an error with the message from `PlatformCallResponse.error`.
+
+`@kb-labs/platform-client` does not retry automatically on 429. If you need retry-with-backoff, implement it in your calling code:
+
+```ts
+async function callWithRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      if (attempt === maxAttempts - 1) throw err;
+      if (err instanceof Error && err.message.includes('429')) {
+        await new Promise((r) => setTimeout(r, 2 ** attempt * 1000));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error('unreachable');
+}
+
+const result = await callWithRetry(() => platform.llm.complete('hello'));
+```
+
+See [Error handling](/product-sdk/errors) for more patterns.
+
+## Browser environments
+
+The client works in browsers because it uses native `fetch`. But you need to be careful with token handling:
+
+- **Never ship long-lived static tokens to the browser.** Anyone who opens devtools can copy them.
+- **Use short-lived JWTs minted server-side** and passed to the browser through your own session management.
+- **Refresh tokens before they expire** — `@kb-labs/platform-client` doesn't do this automatically, so wrap it with your own refresh logic.
+- **Don't commit tokens** to source control or bundled JavaScript. They're always leaked eventually.
+
+For most web apps, the safe pattern is: your backend holds the KB Labs API token, the browser calls your backend, your backend calls KB Labs. Don't put the client in the browser unless you've thought through the token lifecycle.
+
+## Gotchas
+
+- **No auto-refresh.** If your token expires, subsequent calls throw. Reconstruct the `KBPlatform` with a fresh token.
+- **No per-request token override.** Every call uses the `apiKey` passed at construction. If you need different tokens for different calls, construct different instances.
+- **HTTP headers are fixed.** The client doesn't expose a way to add custom headers per call. If you need `X-Tenant-ID` or other headers, use the generic `call()` method and include them through a custom request wrapper (which means forking the client, since the method doesn't accept headers).
+- **Case-sensitive tokens.** Bearer tokens are compared exactly. A leading/trailing space will fail silently as 401.
+
+## What to read next
+
+- **[Gateway → Authentication](/gateway/authentication)** — full server-side auth model, token types, rotation.
+- **[Error handling](/product-sdk/errors)** — handling 401/403/429 in calling code.
+- **[Operations → Security](/operations/security)** — broader security guidance including secret management.

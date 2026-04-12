@@ -1,0 +1,363 @@
+---
+title: "kb-dev"
+description: "Local service manager — process tracking, health probes, dependency ordering, and auto-restart for any project."
+updatedAt: "2026-04-08"
+order: 8
+---
+
+`kb-dev` is a standalone Go binary that manages local development services. It replaces hand-rolled `Makefile` / `dev.sh` scripts with a single binary that tracks PIDs, runs health probes, respects dependency order, and auto-restarts crashed services.
+
+It works with any project via `devservices.yaml`. When you install KB Labs, `kb-dev` is included automatically and comes pre-configured via `.kb/devservices.yaml`.
+
+## Install
+
+```bash
+curl -fsSL https://kblabs.ru/kb-dev/install.sh | sh
+```
+
+The script detects your OS and architecture, downloads the right binary from [GitHub Releases](https://github.com/KirillBaranov/kb-labs/releases), verifies the SHA256 checksum, and installs to `~/.local/bin/kb-dev`. Supports macOS, Linux, and Windows (Git Bash / WSL).
+
+**Pin a specific version:**
+
+```bash
+curl -fsSL https://kblabs.ru/kb-dev/install.sh | sh -s -- --version v0.1.1
+```
+
+**Install to a custom path:**
+
+```bash
+curl -fsSL https://kblabs.ru/kb-dev/install.sh | sh -s -- --dest /usr/local/bin/kb-dev
+```
+
+**Windows (Git Bash or WSL):**
+
+```bash
+curl -fsSL https://kblabs.ru/kb-dev/install.sh | sh
+# installs kb-dev-windows-amd64.exe → ~/.local/bin/kb-dev.exe
+```
+
+**Build from source:**
+
+```bash
+git clone https://github.com/KirillBaranov/kb-labs
+cd kb-labs/tools/kb-dev && make build
+```
+
+## Quick start
+
+```bash
+# 1. Describe your services
+cat > devservices.yaml << 'EOF'
+name: my-project
+
+services:
+  postgres:
+    command: docker run --rm -p 5432:5432 -e POSTGRES_PASSWORD=dev postgres:16
+    type: docker
+    port: 5432
+    health_check: http://localhost:5432
+
+  api:
+    command: pnpm dev
+    port: 3000
+    health_check: http://localhost:3000/health
+    depends_on: [postgres]
+EOF
+
+# 2. Start everything (postgres boots first, api waits for it to be healthy)
+kb-dev start
+
+# 3. Check what's running
+kb-dev status
+
+# 4. Tear down
+kb-dev stop
+```
+
+## Environment variables
+
+Any string field supports `${VAR}` substitution. Variables are resolved from two sources in priority order:
+
+1. **Process environment** — `export VAR=value`, shell env, CI secrets.
+2. **`.env` file** in the project root — loaded automatically, silently skipped if missing.
+
+Process env always wins. If a referenced variable is not set in either source, startup fails immediately:
+
+```
+env expansion: service "api": environment variable "API_KEY" is not set
+```
+
+**Example:**
+
+```yaml
+# .env
+DATABASE_URL=postgres://localhost/myapp
+DB_PASSWORD=dev
+API_KEY="my secret key"
+
+# devservices.yaml
+services:
+  postgres:
+    command: docker run --rm -p 5432:5432 -e POSTGRES_PASSWORD=${DB_PASSWORD} postgres:16
+    type: docker
+    port: 5432
+
+  api:
+    command: node dist/index.js
+    port: 3000
+    env:
+      DATABASE_URL: ${DATABASE_URL}
+      API_KEY: ${API_KEY}
+      PORT: "3000"          # literal — no substitution
+```
+
+`${VAR}` works in all string fields: `command`, `stop_command`, `health_check`, `url`, `container`, `note`, and every value inside `env:`.
+
+**.env format:**
+
+```bash
+KEY=value
+QUOTED="hello world"     # quotes are stripped
+SINGLE='foo bar'         # single quotes too
+# comments and blank lines are ignored
+URL=postgres://host/db?ssl=true   # values with = work fine
+```
+
+<Callout type="info">
+Add `.env` to your `.gitignore`. Never commit real secrets — use process env or a secrets manager in production.
+</Callout>
+
+## Configuration
+
+`kb-dev` discovers config by walking up the directory tree from `cwd`. It checks these locations in priority order:
+
+| Location | Used when |
+|---|---|
+| `.kb/devservices.yaml` | KB Labs project (native) |
+| `devservices.yaml` | Any project |
+| `devservices.yml` | Any project (alternate extension) |
+
+You can also pass an explicit path:
+
+```bash
+kb-dev --config path/to/devservices.yaml start
+```
+
+### devservices.yaml reference
+
+```yaml
+name: my-project
+
+# Optional: declare groups for bulk operations.
+# If omitted, groups are inferred from service.group fields.
+groups:
+  infra:   [postgres, redis]
+  backend: [api, worker]
+
+services:
+  postgres:
+    name: PostgreSQL              # display name (defaults to key)
+    description: Primary database
+    group: infra                  # infers group membership when groups: is absent
+    type: docker                  # "node" (default) | "docker"
+    command: docker run --rm -p 5432:5432 postgres:16
+    stop_command: docker stop postgres  # optional, for docker services
+    container: postgres           # container name to track
+    health_check: http://localhost:5432
+    port: 5432
+    url: http://localhost:5432
+    depends_on: [redis]
+    optional: true                # don't fail startup if this service fails
+    note: "Needs docker login"    # shown in status output
+    env:
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: myapp
+
+# Optional: override runtime directories and timeouts
+settings:
+  logs_dir: .kb/logs/tmp          # default
+  pid_dir: .kb/tmp                # default
+  start_timeout_ms: 30000         # default
+  health_check_interval_ms: 1000  # default
+```
+
+### Service types
+
+**`node`** (default) — spawned directly by `kb-dev`. PID is tracked from the moment the process starts.
+
+```yaml
+api:
+  command: node dist/index.js
+  port: 3000
+  health_check: http://localhost:3000/health
+```
+
+**`docker`** — started via a shell command, health-checked via the configured probe.
+
+```yaml
+postgres:
+  type: docker
+  command: docker-compose up -d postgres
+  stop_command: docker-compose stop postgres
+  container: postgres
+```
+
+## Commands
+
+### Core
+
+```bash
+kb-dev start                    # start all services
+kb-dev start infra              # start a group
+kb-dev start api                # start one service (boots deps first)
+kb-dev start --force            # kill port conflicts, then start
+kb-dev start --watch            # stay alive and auto-restart on crash
+
+kb-dev stop                     # stop all
+kb-dev stop api --cascade       # stop api and everything that depends on it
+
+kb-dev restart api              # restart + cascade dependents
+
+kb-dev status                   # status table with latency
+kb-dev status --json            # machine-readable
+
+kb-dev health                   # run health probes on all services
+kb-dev logs api                 # last 50 lines
+kb-dev logs api -f              # follow (real-time tail)
+kb-dev doctor                   # environment diagnostics
+```
+
+### Status output
+
+```
+my-project
+
+  [infra]
+  ● postgres            5432    alive       http://localhost:5432  4m    3ms
+  ● redis               6379    alive                              4m    1ms
+
+  [backend]
+  ● api                 3000    alive       http://localhost:3000  3m    12ms
+  ○ worker                      dead
+
+  3 alive  1 dead  (4 total)
+```
+
+State icons: `●` alive, `◉` starting, `✕` failed, `○` dead.
+
+### Flags
+
+| Flag | Description |
+|---|---|
+| `--json` | Structured JSON output |
+| `--force` | Kill port conflicts before starting |
+| `--cascade` | Stop/restart dependent services |
+| `--no-cascade` | Skip dependent cascade |
+| `--config <path>` | Explicit config file path |
+
+## Agent protocol
+
+`kb-dev` is designed to be driven by AI agents and CI scripts. All commands support `--json`, and every response includes an `ok` field:
+
+### ensure — idempotent desired state
+
+```bash
+kb-dev ensure api worker --json
+```
+
+```json
+{
+  "ok": true,
+  "actions": [
+    { "service": "postgres", "action": "skipped", "reason": "already alive" },
+    { "service": "api",      "action": "skipped", "reason": "already alive" },
+    { "service": "worker",   "action": "started", "elapsed": "1.2s" }
+  ]
+}
+```
+
+### ready — block until alive
+
+```bash
+kb-dev ready api --timeout 60s --json
+```
+
+```json
+{ "ok": true, "actions": [{ "service": "api", "action": "ready" }] }
+```
+
+### doctor — environment diagnostics
+
+```bash
+kb-dev doctor --json
+```
+
+```json
+{
+  "ok": false,
+  "checks": [
+    { "id": "config",   "ok": true,  "detail": "4 services, 2 groups" },
+    { "id": "docker",   "ok": true,  "detail": "Docker 28.4.0" },
+    { "id": "node",     "ok": true,  "detail": "v22.0.0" },
+    { "id": "port:3000","ok": false, "detail": "occupied (PID 1234), needed by api" }
+  ],
+  "hint": "Port 3000 occupied. Fix: kb-dev stop api --force"
+}
+```
+
+Failures always include a `hint` with the exact command to fix the issue.
+
+### watch — JSONL event stream
+
+```bash
+kb-dev watch --json
+```
+
+```
+{"event":"health",     "service":"api","ok":true,"latency":"12ms","ts":"..."}
+{"event":"crashed",    "service":"api","exitCode":1,"logsTail":["Error: ..."],"ts":"..."}
+{"event":"restarting", "service":"api","attempt":1,"backoff":"1s","ts":"..."}
+{"event":"alive",      "service":"api","latency":"15ms","ts":"..."}
+```
+
+## How it works
+
+`kb-dev` uses `Setpgid` to assign every spawned process its own process group. On stop, it sends `SIGTERM` to the entire group — this catches the full process tree (child processes, spawned node workers, etc.) and avoids leaving zombie processes behind.
+
+PID files are JSON documents, not bare integers:
+
+```json
+{
+  "pid": 12345,
+  "pgid": 12345,
+  "user": "kirill",
+  "command": "node dist/index.js",
+  "startedAt": "2026-04-08T12:00:00Z"
+}
+```
+
+`flock`-based cross-process locking prevents two concurrent `kb-dev start` invocations from duplicating services.
+
+### Windows notes
+
+On Windows, `kb-dev` uses `taskkill /T /F /PID` instead of POSIX signals to terminate process trees, and `LockFileEx` instead of `flock` for cross-process locking. Resource monitoring (`cpu%`, `mem` columns in `kb-dev status`) shows `n/a` on Windows — this will be improved in a future release.
+
+The `command` field runs through `cmd.exe /C` instead of `bash -c`. Standard `&&`, `||`, and `|` operators work. If your service command uses bash-specific syntax, run it via `bash -c "..."` explicitly.
+
+## KB Labs integration
+
+When you use KB Labs, `kb-dev` manages the full platform stack — Qdrant, Redis, the State Daemon, REST API, Workflow Daemon, Marketplace, Gateway, Studio, and more. The config lives at `.kb/devservices.yaml` in the workspace root.
+
+```bash
+kb-dev start             # boots the full KB Labs stack
+kb-dev start backend     # boots only the backend group (+ infra deps)
+kb-dev start rest        # boots the REST API (+ its deps)
+```
+
+`kb-dev` is also the recommended way to start services in CI and agent workflows — `ensure` and `ready` give you idempotent, timeout-aware service management without polling loops.
+
+## What to read next
+
+- [Services overview](/services) — the full KB Labs service map.
+- [Configuration → devservices.yaml](/configuration/devservices) — complete field reference.
+- [Source on GitHub](https://github.com/KirillBaranov/kb-labs/tree/main/tools/kb-dev) — Go source, issues, releases.

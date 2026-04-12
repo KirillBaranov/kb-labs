@@ -62,7 +62,113 @@ export async function publishPackagesWithOTP(
   // Build version map from all packages in this release for link: → ^version replacement
   const versionMap = new Map(packages.map(p => [p.name, p.version]));
 
-  for (const pkg of packages) {
+  // Helper: prepare package.json (replace link:/workspace: deps), returns a restore function
+  const preparePackage = (pkg: PackageToPublish): (() => void) => {
+    const pkgJsonPath = join(pkg.path, 'package.json');
+    const originalPkgJson = readFileSync(pkgJsonPath, 'utf-8');
+    const pkgJson = JSON.parse(originalPkgJson);
+    let modified = false;
+
+    for (const section of ['dependencies', 'peerDependencies'] as const) {
+      const deps = pkgJson[section];
+      if (!deps) {continue;}
+      for (const [depName, depValue] of Object.entries(deps)) {
+        if (typeof depValue !== 'string') {continue;}
+        const val = depValue as string;
+
+        if (val.startsWith('link:')) {
+          const planVersion = versionMap.get(depName);
+          if (planVersion) {
+            deps[depName] = `^${planVersion}`;
+            modified = true;
+          } else {
+            try {
+              const linkPath = val.replace('link:', '');
+              const linkedPkg = JSON.parse(readFileSync(join(pkg.path, linkPath, 'package.json'), 'utf-8'));
+              deps[depName] = `^${linkedPkg.version}`;
+              modified = true;
+            } catch {
+              deps[depName] = '*';
+              modified = true;
+            }
+          }
+        } else if (val.startsWith('workspace:') && packageManager !== 'pnpm') {
+          const planVersion = versionMap.get(depName);
+          if (planVersion) {
+            deps[depName] = val === 'workspace:*' ? `^${planVersion}` : val.replace('workspace:', '');
+            modified = true;
+          }
+        }
+      }
+    }
+
+    if (modified) {
+      writeFileSync(pkgJsonPath, JSON.stringify(pkgJson, null, 2) + '\n');
+    }
+
+    return () => writeFileSync(pkgJsonPath, originalPkgJson);
+  };
+
+  // Fast-path: parallel optimistic publishing (works when no OTP is required — pnpm keychain/session)
+  // If any package fails with EOTP, we fall back to sequential path below for the rest.
+  const CONCURRENCY = Number(process.env.KB_PUBLISH_CONCURRENCY ?? 8);
+  const remaining: PackageToPublish[] = [];
+  let otpFailureDetected = false;
+
+  const fastPublishOne = async (pkg: PackageToPublish): Promise<PublishResult | null> => {
+    const restore = preparePackage(pkg);
+    try {
+      await publishSinglePackage({ packagePath: pkg.path, packageManager, otp, dryRun, tag, access });
+      logger?.info('Package published successfully (fast-path)', { name: pkg.name, version: pkg.version, dryRun });
+      return { name: pkg.name, version: pkg.version, success: true };
+    } catch (error: any) {
+      const msg = error.message || String(error);
+      if (msg.includes('EOTP') || msg.includes('one-time password')) {
+        otpFailureDetected = true;
+        return null; // requeue for sequential path
+      }
+      logger?.error('Package publish failed (fast-path)', { name: pkg.name, error: msg });
+      return { name: pkg.name, version: pkg.version, success: false, error: msg };
+    } finally {
+      restore();
+    }
+  };
+
+  ui.write?.(`  Publishing ${packages.length} package(s) in parallel (concurrency=${CONCURRENCY})...\n`);
+  for (let i = 0; i < packages.length; i += CONCURRENCY) {
+    const batch = packages.slice(i, i + CONCURRENCY);
+    const batchResults = await Promise.all(batch.map(fastPublishOne));
+    for (let j = 0; j < batch.length; j++) {
+      const res = batchResults[j];
+      if (res === null) {
+        remaining.push(batch[j]!);
+      } else {
+        results.push(res);
+      }
+    }
+    // If OTP needed, stop parallelizing and queue the rest for sequential path
+    if (otpFailureDetected) {
+      remaining.push(...packages.slice(i + CONCURRENCY));
+      break;
+    }
+  }
+
+  if (remaining.length === 0) {
+    const published = results.filter((r) => r.success).map((r) => `${r.name}@${r.version}`);
+    const failed = results.filter((r) => !r.success).map((r) => `${r.name}@${r.version}`);
+    const errors = results.filter((r) => !r.success && r.error).map((r) => `${r.name}: ${r.error}`);
+    return {
+      results,
+      published,
+      failed,
+      skipped: dryRun ? packages.map((p) => `${p.name}@${p.version} (dry-run)`) : [],
+      errors,
+    };
+  }
+
+  ui.write?.(`  OTP required — falling back to sequential publish for ${remaining.length} package(s)\n`);
+
+  for (const pkg of remaining) {
     logger?.info('Publishing package', { name: pkg.name, version: pkg.version });
 
     // Replace link: deps with real versions before publish, restore after

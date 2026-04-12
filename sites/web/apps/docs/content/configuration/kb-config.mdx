@@ -1,0 +1,449 @@
+---
+title: "kb.config.json"
+description: "The main KB Labs configuration file — adapters, execution, profiles, and per-product config."
+updatedAt: "2026-04-07"
+order: 1
+---
+
+`.kb/kb.config.json` is the single configuration file every KB Labs deployment needs. It lives under the project root, is read at startup, and controls everything from "which LLM do we use" to "what scopes does Mind index". This page documents the `platform` section — the canonical, type-validated part — and explains how the rest of the file is consumed.
+
+The TypeScript source of truth for the `platform` section is [platform/kb-labs-core/packages/core-runtime/src/config.ts](platform/kb-labs-core/packages/core-runtime/src/config.ts). The loader is [config-loader.ts](platform/kb-labs-core/packages/core-runtime/src/config-loader.ts).
+
+## Top-level shape
+
+```json
+{
+  "platform":    { /* typed, see below */ },
+  "profiles":    [ /* Profiles v2, per-product config */ ],
+  "gateway":     { /* read by @kb-labs/gateway */ },
+  "plugins":     { /* legacy per-plugin config, read by individual plugins */ },
+  "marketplace": { /* read by @kb-labs/marketplace */ }
+}
+```
+
+Only `platform` is defined as a strict TypeScript interface. The other top-level keys are read by specific consumers (gateway, marketplace, individual plugins via `useConfig()`) and each one owns its own schema.
+
+<Callout type="info">
+When a plugin calls `useConfig<T>()`, it doesn't see the entire file — it gets only its own slice under `profiles[profileId].products[productId]`. That's a security boundary baked into `useConfig`, not just a convention. See [SDK → Hooks](/sdk/hooks#useconfigt-productid-profileid) for the details.
+</Callout>
+
+## Two roots, two layers
+
+The loader resolves **two logical roots**:
+
+- **`platformRoot`** — where `node_modules/@kb-labs/*` lives. In dev mode (monorepo workspace) this is the workspace root. In installed mode it's the directory where KB Labs was installed.
+- **`projectRoot`** — where your project's `.kb/kb.config.json` lives. In dev mode both roots coincide.
+
+Both roots can have their own config file, and both are merged:
+
+```
+<platformRoot>/.kb/kb.config.json  ← platform defaults (optional)
+         merged with
+<projectRoot>/.kb/kb.config.json   ← project overrides (optional)
+         =
+   effective config
+```
+
+The merge is deep and `undefined`-aware (via `mergeDefined` from `@kb-labs/core-config`): project values override platform defaults, but missing project values fall through. When both roots resolve to the same directory (the normal case), the file is read once and used as the project layer only.
+
+You can override root resolution with environment variables:
+
+- `KB_PLATFORM_ROOT` — force the platform root.
+- `KB_PROJECT_ROOT` — force the project root. Legacy aliases `KB_LABS_WORKSPACE_ROOT` and `KB_LABS_REPO_ROOT` still work.
+
+The loader also loads `<projectRoot>/.env` at startup unless you explicitly disable it. See [Environment Variables](/configuration/environment-variables) for the full list.
+
+<Callout type="tip">
+The loader never throws on missing or malformed files. If the config can't be parsed, the platform falls back to NoOp adapters and keeps running. Call `inspect` endpoints or check startup logs to see which layers loaded.
+</Callout>
+
+## The `platform` section
+
+The `platform` section has four top-level groups:
+
+```ts
+interface PlatformConfig {
+  adapters?:       AdaptersConfig;       // which adapter packages to load
+  adapterOptions?: Record<string, unknown>; // per-adapter configuration
+  core?:           CoreFeaturesConfig;   // resources, jobs, workflows, broker, privacy
+  execution?:      ExecutionConfig;      // execution backend selection
+}
+```
+
+### `platform.adapters`
+
+Declares which adapter package(s) to load for each platform service. Every value can be:
+
+- A **string** — single adapter package (e.g. `"@kb-labs/adapters-openai"`).
+- A **string array** — multiple adapters; the first is primary/default, the rest are reachable via routing.
+- **`null`** — explicitly install the NoOp adapter for that service.
+- **Omitted** — service is simply not configured; the corresponding hook returns `undefined`.
+
+The canonical list of keys from [`AdaptersConfig`](platform/kb-labs-core/packages/core-runtime/src/config.ts):
+
+```json
+{
+  "platform": {
+    "adapters": {
+      "llm":         "@kb-labs/adapters-openai",
+      "embeddings":  "@kb-labs/adapters-openai/embeddings",
+      "vectorStore": "@kb-labs/adapters-qdrant",
+      "cache":       "@kb-labs/adapters-redis",
+      "storage":     "@kb-labs/adapters-fs",
+      "logger":      "@kb-labs/adapters-pino",
+      "analytics":   "@kb-labs/adapters-analytics-sqlite",
+      "eventBus":    "@kb-labs/adapters-eventbus-cache",
+      "environment": "@kb-labs/adapters-environment-docker",
+      "workspace":   "@kb-labs/adapters-workspace-worktree",
+      "snapshot":    "@kb-labs/adapters-snapshot-localfs"
+    }
+  }
+}
+```
+
+A multi-provider LLM setup looks like this:
+
+```json
+"llm": [
+  "@kb-labs/adapters-openai",
+  "@kb-labs/adapters-vibeproxy"
+]
+```
+
+The first entry is the primary; the rest are available for per-model routing via `adapterOptions.llm.tierMapping`.
+
+### `platform.adapterOptions`
+
+Per-adapter configuration — whatever the adapter's `createAdapter(config)` function accepts. The keys mirror `adapters`, so `adapterOptions.cache` is the options bag for the `cache` adapter.
+
+The LLM options slot has typed fields via `LLMAdapterOptions`:
+
+```ts
+interface LLMAdapterOptions {
+  defaultTier?: 'small' | 'medium' | 'large';  // @default 'medium'
+  tierMapping?: TierMapping;                    // tier → model routing
+  defaultModel?: string;                        // simple mode
+  capabilities?: LLMCapability[];
+  executionDefaults?: LLMExecutionPolicy;       // platform-wide cache/stream policy
+  [key: string]: unknown;                       // adapter-specific extras
+}
+
+interface TierMapping {
+  small?:  TierModelEntry[];
+  medium?: TierModelEntry[];
+  large?:  TierModelEntry[];
+}
+
+interface TierModelEntry {
+  model:        string;
+  priority:     number;               // lower = higher priority
+  capabilities?: ('coding' | 'reasoning' | 'vision' | 'fast' | ...)[];
+  adapter?:     string;               // override: use this adapter for this model
+}
+```
+
+A production-ish LLM config with tier routing:
+
+```json
+"adapterOptions": {
+  "llm": {
+    "defaultTier": "small",
+    "tierMapping": {
+      "small": [
+        {
+          "adapter": "@kb-labs/adapters-openai",
+          "model": "gpt-4o-mini",
+          "priority": 1,
+          "capabilities": ["fast"]
+        }
+      ],
+      "medium": [
+        {
+          "adapter": "@kb-labs/adapters-vibeproxy",
+          "model": "claude-sonnet-4-6",
+          "priority": 1,
+          "capabilities": ["coding", "reasoning", "vision"]
+        }
+      ],
+      "large": [
+        {
+          "adapter": "@kb-labs/adapters-vibeproxy",
+          "model": "gpt-5.1-codex-max",
+          "priority": 1,
+          "capabilities": ["reasoning", "coding"]
+        }
+      ]
+    }
+  }
+}
+```
+
+When a plugin calls `useLLM({ tier: 'small' })`, the router resolves against this mapping and picks the highest-priority entry. See [LLM Tiers](/sdk/llm-tiers) for the full selection algorithm.
+
+Other adapters use free-form options:
+
+```json
+"adapterOptions": {
+  "storage":     { "basePath": ".kb/storage" },
+  "vectorStore": { "url": "http://localhost:6333" },
+  "cache":       { "url": "redis://localhost:6379" },
+  "analytics":   { "filename": ".kb/analytics/analytics.sqlite" },
+  "logger":      {
+    "level": "info",
+    "streaming": { "enabled": true, "bufferSize": 1000, "bufferMaxAge": 3600000 }
+  },
+  "workspace": {
+    "gatewayUrl": "http://localhost:4000",
+    "namespaceId": "default",
+    "cacheDir": ".kb/runtime/workspaces"
+  }
+}
+```
+
+Each adapter documents its own option shape on its adapter page under [Adapters](/adapters).
+
+### `platform.core`
+
+Cross-cutting features that aren't bound to a single adapter.
+
+```ts
+interface CoreFeaturesConfig {
+  resources?:      { defaultQuotas?: Partial<TenantQuotas> };
+  jobs?:           { maxConcurrent?: number; pollInterval?: number };
+  workflows?:      { maxConcurrent?: number; defaultTimeout?: number };
+  resourceBroker?: ResourceBrokerConfig;
+  privacy?:        PIIRedactionConfig;  // @default { enabled: true, mode: 'reversible' }
+}
+```
+
+**`core.resources.defaultQuotas`** — fallback quotas for tenants that don't have explicit ones. See [Multi-Tenancy](/concepts/multi-tenancy).
+
+**`core.jobs`** and **`core.workflows`** — per-tenant concurrency ceilings and timeouts for the jobs engine and the workflow engine.
+
+**`core.resourceBroker`** — rate limiting and retry policy for shared resources:
+
+```ts
+interface ResourceBrokerConfig {
+  distributed?: boolean;  // @default false — in-memory vs StateBroker-backed
+  llm?: {
+    rateLimits?: RateLimitConfig | RateLimitPreset;
+    maxRetries?: number;
+    timeout?:    number;
+  };
+  embeddings?: { /* same shape */ };
+  vectorStore?: {
+    maxConcurrent?: number;
+    maxRetries?:    number;
+    timeout?:       number;
+  };
+}
+```
+
+Setting `distributed: true` switches the rate limiter from an in-memory backend to the State Broker daemon, which lets multiple processes share quotas.
+
+**`core.privacy`** — PII redaction for LLM inputs/outputs. Enabled by default in `'reversible'` mode: PII is stripped before the LLM sees the prompt and restored in the response.
+
+### `platform.execution`
+
+Controls how plugin handlers run. This is the most consequential knob for production deployments.
+
+```ts
+interface ExecutionConfig {
+  mode?: 'auto' | 'in-process' | 'worker-pool' | 'remote' | 'container';
+
+  container?: {
+    gatewayDispatchUrl:   string;
+    gatewayInternalSecret: string;
+  };
+
+  workspaceAgent?: {
+    enabled:        boolean;
+    gatewayUrl:     string;
+    internalSecret: string;
+    fallback?:      'local' | 'error';
+  };
+
+  workerPool?: {
+    min?:                    number;  // @default 2
+    max?:                    number;  // @default 10
+    maxRequestsPerWorker?:   number;  // @default 1000
+    maxUptimeMsPerWorker?:   number;  // @default 1800000 (30 min)
+    maxConcurrentPerPlugin?: number;
+    warmup?: {
+      mode?:        'none' | 'top-n' | 'marked';  // @default 'none'
+      topN?:        number;  // @default 5
+      maxHandlers?: number;  // @default 20
+    };
+  };
+
+  remote?: {
+    endpoint?: string;
+  };
+}
+```
+
+**Mode selection.**
+
+- `auto` (default) — detect from environment (`EXECUTION_MODE`, `KUBERNETES_SERVICE_HOST`).
+- `in-process` — handlers run in the host's own Node process. No isolation, fastest dev loop.
+- `worker-pool` — each handler runs in a pooled worker thread. Production default for single-node deployments.
+- `container` — handlers run inside Docker containers provisioned on demand via the Gateway. Requires `container.gatewayDispatchUrl` and `container.gatewayInternalSecret`. See [Execution Model](/concepts/execution-model).
+- `remote` — offload to a remote executor service. Phase 3, not wired up in the current codebase — the type is defined but there are no adapters.
+
+**Worker pool knobs.** `min`/`max` control the pool size, `maxRequestsPerWorker` and `maxUptimeMsPerWorker` recycle workers to bound memory leaks, and `warmup` lets you pre-initialize hot handlers to avoid cold starts on the first invocation.
+
+**Workspace-agent routing.** When `workspaceAgent.enabled`, jobs with `target.type === 'workspace-agent'` are dispatched to connected agents via the Gateway. Set `fallback: 'local'` to fall back to local execution when no agent is connected, or `'error'` to fail the request. See [Services → Host Agent](/services/host-agent).
+
+## `profiles` — Profiles v2
+
+Per-product configuration lives under `profiles[].products[productId]`. This is the "Profiles v2" structure — the current canonical way to scope plugin config.
+
+```json
+{
+  "profiles": [
+    {
+      "id": "default",
+      "label": "Default Profile",
+      "products": {
+        "mind":    { /* Mind plugin config */ },
+        "commit":  { /* Commit plugin config */ },
+        "review":  { /* AI Review config */ },
+        "qa":      { /* QA runner config */ },
+        "release": { /* Release manager config */ }
+      }
+    },
+    {
+      "id": "production",
+      "products": {
+        "mind":   { /* prod overrides */ }
+      }
+    }
+  ]
+}
+```
+
+When a plugin calls `useConfig<T>()` — or `useConfig<T>('mind', 'production')` — the runtime walks to the matching `profiles[profileId].products[productId]` slice and returns **only that slice**. The plugin never sees adapter config, gateway config, or any other product's config.
+
+### Product ID resolution
+
+By default, the product ID is auto-detected from the plugin's `manifest.configSection`. If your manifest has `configSection: 'commit'`, calling `useConfig()` inside that plugin reads from `profiles[…].products.commit`.
+
+Explicit override:
+
+```ts
+const config = await useConfig<MyConfig>('custom-product-id', 'production');
+```
+
+The profile ID defaults to `'default'` or the `KB_PROFILE` env var.
+
+### Legacy flat structure
+
+Older installs put product config directly under the top level (`kb.config.json` → `{ "mind": { ... } }`). The loader still reads it for backward compatibility — `knowledge` is the legacy alias for `mind`. New installs should use Profiles v2 exclusively.
+
+## Other top-level sections
+
+These are read by specific consumers, not by the platform loader. Each one owns its schema; the shapes shown below are illustrative examples from the reference config in this monorepo.
+
+### `gateway`
+
+Consumed by [`@kb-labs/gateway`](services/gateway.md). Declares upstream services and static auth tokens:
+
+```json
+{
+  "gateway": {
+    "port": 4000,
+    "upstreams": {
+      "rest": {
+        "url": "http://localhost:5050",
+        "prefix": "/api/v1",
+        "websocket": true,
+        "description": "REST API"
+      },
+      "workflow":    { "url": "http://localhost:7778", "prefix": "/api/exec" },
+      "marketplace": { "url": "http://localhost:5070", "prefix": "/api/v1/marketplace" }
+    },
+    "staticTokens": {
+      "dev-studio-token": { "hostId": "studio", "namespaceId": "default" }
+    }
+  }
+}
+```
+
+See [Gateway](/gateway) for the full schema.
+
+### `plugins`
+
+A free-form section for legacy per-plugin config. Some plugins still read from `plugins.<name>` directly (e.g. `plugins.commit.llm.temperature`) rather than through `profiles[].products`. New plugins should use Profiles v2.
+
+There are two semi-standard subkeys:
+
+- **`plugins.linked`** — plugin IDs linked for local development, surfaced by `kb marketplace plugins list`.
+- **`plugins.impact`** — rules for the impact-analysis plugin (`docRules` with `match` / `docs` / `action` / `command`).
+
+### `marketplace`
+
+Consumed by [`@kb-labs/marketplace`](/services/marketplace). Typically controls which local packages are synced into the marketplace index:
+
+```json
+{
+  "marketplace": {
+    "sync": {
+      "include": [
+        "plugins/*/packages/*",
+        "infra/kb-labs-adapters/packages/*"
+      ]
+    }
+  }
+}
+```
+
+## A minimal config
+
+The smallest useful `kb.config.json`:
+
+```json
+{
+  "platform": {
+    "adapters": {
+      "llm":     "@kb-labs/adapters-openai",
+      "storage": "@kb-labs/adapters-fs",
+      "logger":  "@kb-labs/adapters-pino"
+    },
+    "adapterOptions": {
+      "storage": { "basePath": ".kb/storage" }
+    },
+    "execution": {
+      "mode": "in-process"
+    }
+  }
+}
+```
+
+This gets you:
+
+- An OpenAI LLM (reads `OPENAI_API_KEY` from env via the adapter).
+- Local filesystem storage under `.kb/storage`.
+- Pino logging to stdout.
+- In-process plugin execution (fastest, no isolation).
+
+Everything else falls through to NoOp adapters — `useCache()` / `useVectorStore()` / `useEmbeddings()` / `useAnalytics()` all return `undefined` and plugins gracefully degrade.
+
+## A production config
+
+The reference config in this monorepo ([.kb/kb.config.json](.kb/kb.config.json)) is close to a realistic production setup: multi-provider LLM with tier routing, Qdrant for vectors, Redis for cache, SQLite for analytics, Docker for execution environments, a workspace-worktree adapter for isolated per-task workspaces, and a full Profiles v2 block with per-product config for every first-party plugin. Read it as the canonical example when you're about to configure your own deployment.
+
+## Gotchas
+
+- **The loader never throws.** Invalid JSON, missing files, malformed schemas — all silently degrade. Check startup logs and the `sources` field of `LoadPlatformConfigResult` if something isn't loading.
+- **`platform` is the only typed section.** Everything else (profiles, gateway, plugins, marketplace) is consumer-validated. A typo in `platform.adapters.llm` will surface as a load error; a typo in `plugins.commit.llm.temperature` will be silently ignored unless the commit plugin validates it.
+- **Dev mode reads one file.** When `platformRoot === projectRoot` the loader reads the config file once and treats it as the project layer. The platform-defaults layer is empty. This is almost always the case during monorepo development.
+- **The `platform` section is the single source of truth for adapter packages.** You can't install adapter packages elsewhere — the loader specifically reads from `platform.adapters`. Forgetting this is the #1 source of "why doesn't my adapter load" errors.
+- **`useConfig` is scoped per-product.** A plugin never sees another plugin's config, adapter options, or top-level sections. If you need to inspect the full config (for debugging), read the file directly from `ctx.runtime.fs` with appropriate permissions.
+
+## What's next
+
+- [Environment Variables](/configuration/environment-variables) — every env var the platform reads.
+- [Profiles](/configuration/profiles) — more on Profiles v2.
+- [devservices.yaml](/configuration/dev-config) — the `kb-dev` service manager config, a separate file.
+- [Adapters → Overview](/adapters) — how adapter packages plug into the `platform.adapters` slot.
+- [Execution Model](/concepts/execution-model) — more on the `platform.execution` knob.

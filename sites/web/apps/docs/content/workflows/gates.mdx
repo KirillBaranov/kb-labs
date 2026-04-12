@@ -1,0 +1,303 @@
+---
+title: "Gates & Approvals"
+description: "builtin:approval and builtin:gate — human-in-the-loop and automated routing."
+updatedAt: "2026-04-07"
+order: 7
+---
+
+Two built-in steps let workflows pause for decisions instead of running straight through: `builtin:approval` for human decisions, `builtin:gate` for automated routing based on previous step outputs. Both are defined in [platform/kb-labs-workflow/packages/workflow-builtins/src/](platform/kb-labs-workflow/packages/workflow-builtins/src/).
+
+## `builtin:approval` — human-in-the-loop
+
+An approval step transitions the step state to `'waiting_approval'` and holds there until somebody resolves it via Studio, the CLI, or the REST API. Unlike other steps, `builtin:approval` doesn't execute a handler — the worker polls for a resolution and the engine's `resolveApproval()` method unblocks it.
+
+### Input
+
+```ts
+interface ApprovalInput {
+  title: string;                      // required
+  context?: Record<string, unknown>;
+  instructions?: string;
+}
+```
+
+- **`title`** — the prompt shown to the approver. Keep it short and action-oriented.
+- **`context`** — structured data shown alongside the prompt. Use interpolation to pull in run state.
+- **`instructions`** — free-form prose explaining what the approver should check or consider.
+
+### Declaration
+
+```json
+{
+  "name": "Approve deploy",
+  "id": "approve-deploy",
+  "uses": "builtin:approval",
+  "with": {
+    "title": "Deploy v${{ trigger.payload.version }} to production?",
+    "context": {
+      "version":     "${{ trigger.payload.version }}",
+      "commit":      "${{ trigger.payload.sha }}",
+      "buildUrl":    "${{ steps.build.outputs.url }}",
+      "testResults": "${{ steps.test.outputs.summary }}"
+    },
+    "instructions": "Check the staging deploy at https://staging.example.com and the test results before approving."
+  }
+}
+```
+
+`context` values are interpolated before the step enters the waiting state — the approver sees resolved values, not expression strings.
+
+### Output
+
+When an approver resolves the step, the engine records an `ApprovalOutput`:
+
+```ts
+interface ApprovalOutput {
+  approved: boolean;
+  action: 'approve' | 'reject';
+  comment?: string;
+  [key: string]: unknown;           // additional data from the approver
+}
+```
+
+- `action` is always `'approve'` or `'reject'`. `approved` is a boolean convenience.
+- `comment` is the approver's note, if any.
+- The approver can attach arbitrary extra fields (`[key: string]: unknown`) — Studio lets them fill in a form, the REST API accepts any JSON.
+
+### Branching on the outcome
+
+Later steps can branch using the step ID:
+
+```json
+{
+  "name": "Deploy to prod",
+  "if": "${{ steps.approve-deploy.outputs.approved == 'true' }}",
+  "uses": "plugin:release:deploy",
+  "with": { "env": "production" }
+}
+```
+
+**Default behavior on rejection:** a rejected approval **fails the step**, which fails the job, which marks dependents as skipped. If you want the workflow to continue after a rejection (to notify a channel, say), set `continueOnError: true` on the approval step:
+
+```json
+{
+  "name": "Approve deploy",
+  "id": "approve",
+  "uses": "builtin:approval",
+  "with": { "title": "Deploy to production?" },
+  "continueOnError": true
+}
+```
+
+Then inspect the outcome in the next step:
+
+```json
+{
+  "name": "Notify rejection",
+  "if": "${{ steps.approve.outputs.approved == 'false' }}",
+  "uses": "plugin:notify:slack",
+  "with": { "message": "Deploy was rejected: ${{ steps.approve.outputs.comment }}" }
+}
+```
+
+### State model
+
+Approval steps cycle through:
+
+```
+queued → running → waiting_approval → success | failed | cancelled
+```
+
+`waiting_approval` is the only step state that isn't also a run state — it's specific to the approval flow. Runs that contain a waiting approval remain in `'running'` state at the run level; the hold is at the step level.
+
+### Resolving approvals
+
+Three ways to resolve an approval:
+
+- **Studio** — the Workflows view shows waiting approvals with the title, context, and instructions. Click approve or reject, add a comment, submit.
+- **CLI** — `pnpm kb workflow:approve --run-id=<id> --step-id=<id> --action=approve --comment='looks good'` (adjust flags to what your CLI build exposes).
+- **REST API** — `POST /api/exec/runs/<runId>/steps/<stepId>/approval` with `{ action, comment? }`.
+
+All three ultimately call `engine.resolveApproval()`, which transitions the step out of `'waiting_approval'` and writes the `ApprovalOutput`.
+
+### Timeouts
+
+Approval steps respect `timeoutMs`. If nobody resolves within the timeout, the step fails with a timeout error. Without an explicit timeout, approval steps wait indefinitely — be deliberate here, especially for scheduled workflows where nobody's watching.
+
+## `builtin:gate` — automated routing
+
+A gate is **not** a boolean check. It's a **decision router** that reads a value from previous step outputs and routes the pipeline based on what it finds: continue, fail, or restart from an earlier step.
+
+### Input
+
+```ts
+interface GateInput {
+  decision: string;                      // path to the decision value
+  routes: Record<string, GateRouteAction>;
+  default?: 'continue' | 'fail';
+  maxIterations?: number;                // default 3
+}
+
+type GateRouteAction =
+  | 'continue'
+  | 'fail'
+  | { restartFrom: string; context?: Record<string, unknown> };
+```
+
+- **`decision`** — a dot-path into the expression context that yields the decision value. Usually something like `steps.review.outputs.verdict`.
+- **`routes`** — a map from possible decision values (as strings) to actions.
+- **`default`** — what to do when the decision value doesn't match any route. If omitted, an unmatched decision **fails** the gate.
+- **`maxIterations`** — upper bound on how many times this gate can restart before giving up. Default is **3**. When the cap is hit, the gate fails with an iteration-exceeded error.
+
+### Three route actions
+
+#### `'continue'`
+
+```json
+{ "approved": "continue" }
+```
+
+Proceed to the next step. The most common case.
+
+#### `'fail'`
+
+```json
+{ "rejected": "fail" }
+```
+
+Fail the pipeline immediately. The step, the job, and dependents are marked failed/skipped.
+
+#### `{ restartFrom: '<step-id>', context? }`
+
+```json
+{ "needs-fix": { "restartFrom": "apply-fixes", "context": { "retry": true } } }
+```
+
+Reset the pipeline back to the step with the given ID and re-execute from there. The optional `context` is merged into `trigger.payload` for the replay, so the re-run steps can see that this is a retry (and do something different).
+
+This is the interesting one. It turns a workflow into a state machine: the gate keeps cycling until the decision value hits `'continue'` or `'fail'` — or until `maxIterations` runs out.
+
+### Full example: review → fix → gate
+
+```json
+{
+  "jobs": {
+    "review-loop": {
+      "runsOn": "sandbox",
+      "steps": [
+        {
+          "name": "Apply fixes",
+          "id": "apply-fixes",
+          "uses": "plugin:auto-fix:run",
+          "with": { "retry": "${{ trigger.payload.retry == true }}" }
+        },
+        {
+          "name": "Review changes",
+          "id": "review",
+          "uses": "plugin:ai-review:run"
+        },
+        {
+          "name": "Gate on review verdict",
+          "uses": "builtin:gate",
+          "with": {
+            "decision": "steps.review.outputs.verdict",
+            "routes": {
+              "approved":  "continue",
+              "rejected":  "fail",
+              "needs-fix": { "restartFrom": "apply-fixes", "context": { "retry": true } }
+            },
+            "default": "fail",
+            "maxIterations": 5
+          }
+        },
+        {
+          "name": "Commit and push",
+          "uses": "plugin:commit:commit"
+        }
+      ]
+    }
+  }
+}
+```
+
+How this plays out:
+
+1. `apply-fixes` runs the first time with `retry: false`.
+2. `review` evaluates the result and sets `outputs.verdict`.
+3. The gate reads `steps.review.outputs.verdict`:
+   - `"approved"` → continue to "Commit and push".
+   - `"rejected"` → fail the job.
+   - `"needs-fix"` → restart from `apply-fixes` with `trigger.payload.retry = true`. The steps between `apply-fixes` and the gate re-run.
+4. Loop until approved, rejected, or `maxIterations = 5` hits.
+
+### Output
+
+```ts
+interface GateOutput {
+  decisionValue: unknown;              // the raw value that was evaluated
+  action: 'continue' | 'fail' | 'restart';
+  restartFrom?: string;                // populated when action === 'restart'
+  iteration: number;                   // current iteration count
+}
+```
+
+### When to use a gate vs. `if`
+
+Use `if` on a step for **static filtering** — "only run this step when a condition is true, and move on".
+
+Use a gate for **dynamic routing** — "read a value, decide which branch to take, possibly loop".
+
+A gate can do things `if` can't:
+- Match multiple specific values (not just true/false).
+- Restart from a previous step (loops and retries driven by logic, not timing).
+- Combine with `maxIterations` as a hard stop.
+
+## Approval + gate combined
+
+The most powerful pattern is using an approval inside a gate-driven loop: the AI generates something, a human reviews it, and the gate decides whether to accept, retry, or abort.
+
+```json
+{
+  "steps": [
+    {
+      "name": "Generate release notes",
+      "id": "generate",
+      "uses": "plugin:release:generate-notes"
+    },
+    {
+      "name": "Human review",
+      "id": "review",
+      "uses": "builtin:approval",
+      "with": {
+        "title": "Accept the generated release notes?",
+        "context": { "notes": "${{ steps.generate.outputs.markdown }}" },
+        "instructions": "Approve to publish, reject to regenerate with feedback."
+      }
+    },
+    {
+      "name": "Route on approval",
+      "uses": "builtin:gate",
+      "with": {
+        "decision": "steps.review.outputs.action",
+        "routes": {
+          "approve": "continue",
+          "reject":  { "restartFrom": "generate", "context": { "feedback": "${{ steps.review.outputs.comment }}" } }
+        },
+        "maxIterations": 3
+      }
+    },
+    {
+      "name": "Publish",
+      "uses": "plugin:release:publish-notes"
+    }
+  ]
+}
+```
+
+The approval step has `continueOnError` implied through the gate — a reject doesn't fail the step because the gate interprets the action, it just triggers a restart. The gate enforces the bound: after 3 regenerations without approval, the whole flow fails.
+
+## What to read next
+
+- [Steps](/workflows/steps) — general step mechanics, including `id`, `if`, and `continueOnError`.
+- [Retries & Error Handling](/workflows/retry-and-errors) — when you want the engine to retry a job automatically instead of gating on a decision.
+- [Patterns](/workflows/patterns) — more end-to-end recipes using gates and approvals.

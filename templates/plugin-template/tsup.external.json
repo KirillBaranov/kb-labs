@@ -53,7 +53,7 @@
     "@kb-labs/knowledge-fs",
     "@kb-labs/mind",
     "@kb-labs/mind-adapters",
-    "@kb-labs/mind-cli",
+    "@kb-labs/mind-entry",
     "@kb-labs/mind-contracts",
     "@kb-labs/mind-core",
     "@kb-labs/mind-embeddings",

@@ -23,15 +23,15 @@ func TestPackageSpec(t *testing.T) {
 // TestComponentPackageSpec verifies that Component.PackageSpec works the same way.
 func TestComponentPackageSpec(t *testing.T) {
 	t.Run("prod (no localPath)", func(t *testing.T) {
-		c := Component{ID: "commit", Pkg: "@kb-labs/commit-cli"}
-		if got := c.PackageSpec(); got != "@kb-labs/commit-cli" {
-			t.Errorf("PackageSpec() = %q, want %q", got, "@kb-labs/commit-cli")
+		c := Component{ID: "commit", Pkg: "@kb-labs/commit-entry"}
+		if got := c.PackageSpec(); got != "@kb-labs/commit-entry" {
+			t.Errorf("PackageSpec() = %q, want %q", got, "@kb-labs/commit-entry")
 		}
 	})
 
 	t.Run("dev (localPath set)", func(t *testing.T) {
-		c := Component{ID: "commit", Pkg: "@kb-labs/commit-cli", LocalPath: "/workspace/commit-cli"}
-		want := "@kb-labs/commit-cli@file:/workspace/commit-cli"
+		c := Component{ID: "commit", Pkg: "@kb-labs/commit-entry", LocalPath: "/workspace/commit-cli"}
+		want := "@kb-labs/commit-entry@file:/workspace/commit-cli"
 		if got := c.PackageSpec(); got != want {
 			t.Errorf("PackageSpec() = %q, want %q", got, want)
 		}
@@ -86,7 +86,7 @@ func TestDevManifestRoundTrip(t *testing.T) {
 			{Name: "@kb-labs/sdk"},
 		},
 		Plugins: []Component{
-			{ID: "commit", Pkg: "@kb-labs/commit-cli", Default: true, LocalPath: "/workspace/commit-cli"},
+			{ID: "commit", Pkg: "@kb-labs/commit-entry", Default: true, LocalPath: "/workspace/commit-cli"},
 		},
 		Binaries: []Binary{
 			{ID: "kb-dev", Name: "kb-dev", LocalPath: "/workspace/kb-dev"},
@@ -100,7 +100,7 @@ func TestDevManifestRoundTrip(t *testing.T) {
 	if specs[1] != "@kb-labs/sdk" {
 		t.Errorf("core[1] spec = %q", specs[1])
 	}
-	if m.Plugins[0].PackageSpec() != "@kb-labs/commit-cli@file:/workspace/commit-cli" {
+	if m.Plugins[0].PackageSpec() != "@kb-labs/commit-entry@file:/workspace/commit-cli" {
 		t.Errorf("plugin spec = %q", m.Plugins[0].PackageSpec())
 	}
 	if m.Binaries[0].LocalPath != "/workspace/kb-dev" {
