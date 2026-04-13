@@ -10,6 +10,7 @@ RUN apk add --no-cache libc6-compat && \
 # deploy/ produced on CI by: pnpm deploy --filter @kb-labs/gateway-app --prod .kb/deploy/gateway-app
 COPY --chown=kb:nodejs .kb/deploy/gateway-app/node_modules ./node_modules
 COPY --chown=kb:nodejs .kb/deploy/gateway-app/dist ./dist
+COPY --chown=kb:nodejs .kb/deploy/gateway-app/package.json ./package.json
 
 # Bake in marketplace adapters
 RUN corepack enable pnpm && pnpm add \
