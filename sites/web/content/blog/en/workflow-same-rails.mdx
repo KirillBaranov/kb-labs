@@ -1,0 +1,100 @@
+---
+title: Building a workflow engine that treats humans and agents the same
+description: Most workflow engines bolt human steps on as a special case. We built one where approvals and agent decisions are the same type — same execution model, same state machine.
+lang: en
+slug: workflow-same-rails
+date: '2026-04-12'
+author: KB Labs
+tag: Architecture
+excerpt: "Most workflow engines bolt human steps on as a special case. We built one where approvals and agent decisions are the same type — same execution model, same state machine."
+readTime: 7 min read
+tags:
+  - architecture
+  - workflows
+  - agents
+---
+
+Most workflow engines have two execution models: one for automated steps (call an API, run a script) and one for human steps (send a notification, wait for approval). The automated path is fast and typed. The human path is a special case bolted on with webhooks and polling.
+
+KB Labs workflows don't distinguish between the two. A human approval and an agent decision are both steps — same type, same execution model, same state machine. We call this "same rails."
+
+## What a workflow looks like
+
+```yaml
+# deploy-review.yml
+name: Deploy Review
+version: 1
+on:
+  event: deploy.requested
+
+jobs:
+  review:
+    runs_on: local
+    steps:
+      - id: ai_review
+        uses: plugin:@kb-labs/review/analyze
+        with:
+          scope: changed-files
+
+      - id: approval
+        uses: builtin:approval
+        if: ${{ steps.ai_review.outputs.risk > 'medium' }}
+
+      - id: deploy
+        uses: plugin:@kb-labs/deploy/execute
+        if: ${{ steps.approval.outputs.approved }}
+        with:
+          environment: staging
+```
+
+Three steps: an AI agent analyzes changes, a human approves if risk is above medium, and deployment executes if approved. All three are `StepSpec` objects with `uses`, `with`, `if`, and `id`. The engine doesn't know which one involves a human.
+
+## How "same rails" works technically
+
+### The Runner interface
+
+Every step is executed through a single interface:
+
+```typescript
+interface Runner {
+  execute(request: StepExecutionRequest): Promise<StepExecutionResult>;
+}
+```
+
+`SandboxRunner` handles plugin handlers (in an isolated process). `LocalRunner` handles builtins (in the daemon process). Both implement `Runner`. The scheduler doesn't care which one runs a given step.
+
+### Approval as a step, not a special case
+
+The `builtin:approval` handler pauses execution by returning `status: 'waiting_approval'`. The workflow engine treats this like any other pending state — the step isn't complete, so downstream steps don't run.
+
+When a human resolves the approval (via REST API), the step completes with `ApprovalOutput` — which includes `approved: boolean`, the action taken, and an optional comment. Downstream steps reference this output with `${{ steps.approval.outputs.approved }}` — exactly the same syntax used for any other step's output.
+
+### Gates for agent-driven routing
+
+`builtin:gate` is the agent-side equivalent of approval. Instead of waiting for a human, it evaluates a decision expression and routes execution: `continue`, `fail`, or `restartFrom` (with context). Gates enable loops: an agent can retry a step with adjusted parameters until quality criteria are met.
+
+## Why this matters
+
+### Composable human-agent chains
+
+Because approvals and agent steps share the same output model, you can compose them freely:
+
+- Agent generates a release plan → human approves → agent executes
+- Human files a bug → agent triages → agent fixes → human reviews the fix
+- Agent runs QA → gate checks coverage threshold → human approves deploy
+
+No special glue code for the human-agent boundary. The `if` expression engine evaluates step outputs uniformly.
+
+### Observable by default
+
+Every step — human or agent — produces the same state transitions: pending → running → waiting/completed/failed. The workflow's state store (Redis-backed via the ICache contract) tracks all steps identically. A dashboard showing workflow progress doesn't need special rendering for human steps.
+
+### Auditable
+
+Because human decisions are step outputs (not external webhook payloads), they're part of the workflow's execution record. Who approved, when, with what comment — all queryable from the same API that shows agent outputs.
+
+## The design principle
+
+Automation isn't about removing humans from the loop. It's about making the loop the same regardless of who's in it. When humans and agents run on the same rails, the only question is *who should handle this step* — not *how do we wire this step differently because a human is handling it*.
+
+That's a workflow engine that scales with your automation maturity. Start with mostly human steps and a few automated checks. Gradually replace human steps with agent steps as trust builds. The workflows don't change shape — just the `uses` field.

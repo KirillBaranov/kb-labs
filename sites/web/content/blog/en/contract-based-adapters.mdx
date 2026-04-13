@@ -1,0 +1,83 @@
+---
+title: "Contract-based adapters: swap Kafka for NATS without touching business logic"
+description: 12 core contracts, strict layer rules, and a dependency graph that physically prevents plugins from importing adapters. How we made infrastructure genuinely swappable.
+lang: en
+slug: contract-based-adapters
+date: '2026-03-18'
+author: KB Labs
+tag: Architecture
+excerpt: "12 core contracts, strict layer rules, and a dependency graph that physically prevents plugins from importing adapters. How we made infrastructure genuinely swappable."
+readTime: 7 min read
+tags:
+  - architecture
+  - adapters
+---
+
+"We should be able to swap our message broker" is a sentence every architect has said and almost no codebase has actually achieved. The reason is always the same: the abstraction leaked. Business logic learned the shape of Kafka's consumer groups, or RabbitMQ's exchange bindings, or SQS's visibility timeout.
+
+KB Labs is built on the premise that this problem is solvable — not by being cleverer about abstractions, but by being disciplined about where the boundary sits.
+
+## The boundary: contracts and adapters
+
+Every external dependency in KB Labs is accessed through a *contract* — a TypeScript interface that describes the capability, not the implementation. An *adapter* implements exactly one contract for exactly one provider.
+
+```typescript
+// The contract (what your code sees)
+interface IEventBus {
+  publish<T>(topic: string, event: T): Promise<void>;
+  subscribe<T>(topic: string, handler: (event: T) => Promise<void>): Promise<Unsubscribe>;
+}
+
+// Adapter A: in-memory (dev/testing)
+class InMemoryEventBus implements IEventBus { ... }
+
+// Adapter B: Redis Pub/Sub (production)
+class RedisEventBus implements IEventBus { ... }
+
+// Adapter C: your own NATS/Kafka/RabbitMQ implementation
+class NatsEventBus implements IEventBus { ... }
+```
+
+## 12 contracts across the platform
+
+This isn't limited to event buses. Every system boundary has a contract:
+
+- **ILLM** — `chat()`, `stream()`, `chatWithTools()`. Providers: OpenAI, Anthropic, local models, or route through the KB Labs Gateway for centralized control
+- **ICache** — key-value with TTL, sorted sets, atomic `setIfNotExists`. In-memory for dev, Redis for production
+- **IStorage** — file-level read/write/list with optional streaming. Local FS, S3, or custom
+- **IVectorStore** — search/upsert/delete with filter support. Qdrant, Chroma, or any vector DB
+- **IEmbeddings** — text to vectors, single or batch. OpenAI, Cohere, local models
+- **ISQLDatabase** — query/transaction with parameterized SQL. SQLite ships by default
+- **ILogger** — structured logging with child loggers. Pino adapter included
+
+All 12 contracts aggregate into the `PlatformContainer`. Plugins access infrastructure through `platform.llm`, `platform.cache`, `platform.storage` — never through direct adapter imports.
+
+## The dependency rule that makes it work
+
+Contracts live in `@kb-labs/contracts` (Layer 0). Adapters live in `adapters/` (Layer 2). Plugins live in `plugins/` (Layer 3).
+
+```plaintext
+Layer 0: core/ (contracts, types, runtime)
+Layer 1: sdk/ shared/
+Layer 2: adapters/ (implement contracts)
+Layer 3: plugins/ (consume contracts)
+
+Rule: dependencies flow strictly downward.
+A plugin NEVER imports an adapter.
+An adapter NEVER imports a plugin.
+Both import contracts.
+```
+
+This rule is enforced by the workspace dependency graph. If a plugin tries to add `@kb-labs/adapter-redis` to its `dependencies`, the build breaks.
+
+## How swapping actually works
+
+The IPlatformGateway layer adds one more capability: IPC proxying. When a plugin runs in a worker process or container, its `platform.cache.get()` call doesn't hit Redis directly — it goes through a gateway RPC that includes execution context (tenant ID, trace ID, auth token). The host process resolves the adapter and executes the call.
+
+Swapping a provider means changing adapter configuration at the host level. Workers, plugins, and workflows never know it happened.
+
+## The cost and the payoff
+
+Writing adapters is work. Each one needs to map a vendor's API surface onto the contract's method signatures — sometimes with loss of vendor-specific features. We accept that trade: *the contract defines the common denominator*, and vendors compete on the merits of what the contract exposes.
+
+The payoff: any team can write their own Kafka, RabbitMQ, or NATS adapter today. The extension point is open, not roadmapped. That's not a promise — it's a `implements IEventBus` away.

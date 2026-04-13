@@ -1,0 +1,74 @@
+---
+title: Running your own release pipeline across 145 packages
+description: "Plan → snapshot → checks → build → verify → version → changelog → publish → git → report. How we built a release pipeline that catches broken exports before npm publish."
+lang: en
+slug: release-pipeline-145
+date: '2026-04-05'
+author: KB Labs
+tag: Engineering
+excerpt: "Plan → snapshot → checks → build → verify → version → changelog → publish → git → report. How we built a release pipeline that catches broken exports before npm publish."
+readTime: 7 min read
+tags:
+  - engineering
+  - release
+  - npm
+---
+
+Publishing one npm package is trivial. Publishing 145 packages that depend on each other, with correct version bumps, verified artifacts, generated changelogs, and a rollback plan — that's a pipeline.
+
+We built one inside KB Labs itself. The release plugin orchestrates the full flow: plan → snapshot → checks → build → verify → version → changelog → publish → git → report. Here's what we learned.
+
+## The pipeline stages
+
+### 1. Plan
+
+The planner scans git history since the last release tag to determine which packages changed and what bump they need. It uses scoped tags (`@kb-labs/core-types@1.2.3`) for independent versioning and `v*` tags for lockstep releases. Three strategies:
+
+- **Independent** — each package versions separately based on its own commits
+- **Lockstep** — all packages get the maximum bump (one package's breaking change bumps everything)
+- **Adaptive** — lockstep only on breaking changes, independent otherwise
+
+### 2. Snapshot
+
+Before touching any file, the pipeline saves every `package.json` version to `.kb/release/backup.json`. If anything fails downstream, `restoreSnapshot()` recovers the original state. History is preserved with timestamps in `.kb/release/history/` for audit.
+
+### 3. Checks
+
+Configurable pre-publish checks: audit, lint, type-check, test. Runs up to 8 checks in parallel. Each check can be *optional* (warning only) or *strict* (blocks publish). Failed strict checks abort the pipeline before any version bump happens.
+
+### 4. Build (the safe build)
+
+Here's a subtle problem: `tsup` with `clean: true` wipes the `dist/` directory before building. If you're running a REST API locally from that same `dist/`, the running service crashes mid-build.
+
+Fix: build into a temp directory, then atomic-rename swap. The running service never sees an incomplete `dist/`.
+
+### 5. Pack verification
+
+This is the stage that catches what CI doesn't. For each package, the verifier runs `npm pack`, extracts the tarball, and checks:
+
+- No test files leaked into the package (`.spec.`, `.test.`, `__tests__`)
+- All exports declared in `package.json` actually exist
+- No directory imports that work locally but break when installed
+- No missing dependencies
+
+This catches a class of bugs that only manifest *after* publish: the package works in the monorepo because of hoisted dependencies, but fails when installed standalone.
+
+### 6–9. Version → Changelog → Publish → Git
+
+Version bumps are written to `package.json`. Changelogs are generated per-package from git commit ranges — with templates (compact, corporate, technical) and optional LLM enhancement for human-readable summaries. Publishing uses OTP for CLI or token for CI. Git gets a commit and tags.
+
+## The adapter pattern inside the pipeline
+
+The pipeline core doesn't know about CLI prompts or REST APIs. Two key interfaces make it portable:
+
+- **PackagePublisher** — CLI version prompts for OTP; REST version uses a token. Same pipeline, different publisher.
+- **ChangelogGenerator** — with or without LLM. Same pipeline, different generator.
+
+The CLI and REST API are thin adapters over the same `runReleasePipeline(options)` core.
+
+## What we learned publishing 145 packages
+
+- Pack verification is non-negotiable. We caught 7 packages with broken exports in the first real run.
+- Snapshot rollback saved us twice when npm publish failed mid-batch due to network issues.
+- The safe build (temp dir + atomic swap) eliminated an entire class of "it worked in CI but broke locally."
+- Independent versioning is better than lockstep for a monorepo this size — lockstep creates version churn in packages that didn't change.

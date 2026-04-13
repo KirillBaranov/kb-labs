@@ -1,0 +1,94 @@
+---
+title: How we built a Go service manager (kb-dev) to replace docker-compose
+description: Our bash script left orphan processes, lied about service health, and couldn't handle concurrent starts. We replaced it with a Go binary that tracks PIDs, kills process groups, and speaks JSON.
+lang: en
+slug: kb-dev-service-manager
+date: '2026-04-02'
+author: KB Labs
+tag: Engineering
+excerpt: "Our bash script left orphan processes, lied about service health, and couldn't handle concurrent starts. We replaced it with a Go binary that tracks PIDs, kills process groups, and speaks JSON."
+readTime: 8 min read
+tags:
+  - engineering
+  - go
+  - devex
+---
+
+KB Labs has 12 services in local development: a gateway, REST API, workflow daemon, marketplace, state broker, Studio, and their dependencies. For months, we managed them with a 200-line bash script (`dev.sh`) that checked ports with `lsof`, killed processes with `pgrep -P`, and hoped for the best.
+
+It worked until it didn't. The breaking point was a Friday where `dev.sh stop` left three orphan Node processes burning 75% CPU each, and `dev.sh start` reported all services as "running" because something was listening on the expected ports — just not our services.
+
+We replaced it with kb-dev: a Go binary that manages services properly.
+
+## The problems with shell-based service management
+
+- **False liveness.** `lsof -i :5050` tells you *something* is on that port. It doesn't tell you it's your REST API. It could be a leftover process, a different project, or the previous crash's zombie.
+- **Incomplete kills.** `pgrep -P $pid` finds direct children. It misses grandchildren — Node spawning esbuild spawning a worker. The process tree survives your stop command.
+- **No health checks.** "The process is running" and "the service is healthy" are different statements. Bash can check the first; checking the second requires HTTP probes, TCP probes, or command execution.
+- **Race conditions.** Two terminals running `dev.sh start` simultaneously? Duplicate processes, port conflicts, corrupted PID files.
+- **Login shell overhead.** `bash -lc "node server.js"` adds 200–500ms per service spawn. With 12 services, that's noticeable.
+
+## How kb-dev fixes each one
+
+### PID-first tracking
+
+kb-dev starts each service with `cmd.Start()` and records the PID immediately. No port scanning. The PID file is rich JSON: process ID, process group ID, user, timestamp, full command. If the PID file says a service is running and the process doesn't exist, the service is dead — no ambiguity.
+
+### Process group kills
+
+Every service starts with `Setpgid: true`, creating a new process group. Stopping a service sends `SIGTERM` to the entire group with a single syscall: `syscall.Kill(-pgid, SIGTERM)`. Node, esbuild, workers — the entire tree dies in one call.
+
+### Health probes with latency tracking
+
+Each service declares a health check type in `devservices.yaml`:
+
+```yaml
+services:
+  rest-api:
+    command: node ./plugins/rest-api/daemon/dist/index.js
+    port: 5050
+    health_check: http://localhost:5050/health   # HTTP probe
+    depends_on: [gateway, postgres]
+
+  postgres:
+    type: docker
+    health_check: localhost:5432                  # TCP probe
+    container: postgres
+```
+
+kb-dev classifies the check from the string format: `http://` → HTTP probe, `host:port` → TCP probe, anything else → command execution. Every probe tracks latency, so `kb-dev health` shows not just alive/dead but how fast each service responds.
+
+### Auto-restart with exponential backoff
+
+A watchdog goroutine polls every 2 seconds. On crash: restart with backoff (1s → 2s → 4s → 8s → 16s → 30s, max 5 retries). If the service runs stable for 5+ minutes, the retry counter resets. The watchdog emits structured events — `crashed`, `restarting`, `alive`, `gave_up` — consumable by both humans and agents.
+
+### Cross-process locking
+
+`flock` prevents concurrent `kb-dev start` invocations from stomping each other. Simple, reliable, zero-config.
+
+## Agent-first protocol
+
+kb-dev was designed to be called by AI agents, not just humans. Every JSON response follows one schema:
+
+```json
+{
+  "ok": true,
+  "actions": [
+    { "service": "rest-api", "action": "started", "elapsed": "1.2s" }
+  ],
+  "depsState": { "gateway": "alive", "postgres": "alive" },
+  "resources": { "cpu": "12%", "memory": "145MB" },
+  "hint": "...",
+  "logsTail": ["..."]
+}
+```
+
+Three agent-specific commands: `ensure` (idempotent start — alive services are skipped), `ready` (blocks until all targets are healthy), and `watch` (JSONL event stream for real-time monitoring).
+
+## Dependency-aware startup
+
+Services declare dependencies. kb-dev topologically sorts them into layers and starts each layer in parallel using goroutines. A service won't start until all its dependencies are healthy — not just running, but passing their health probe. This eliminates the "gateway started but REST API can't connect to it yet" class of race conditions.
+
+## Why Go?
+
+Static binary, zero runtime dependencies, real concurrency via goroutines, and `syscall` for process group management. A Node-based service manager that manages Node services creates dependency loops that are annoying to debug. Go doesn't have this problem.

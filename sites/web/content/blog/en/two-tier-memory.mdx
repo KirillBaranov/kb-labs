@@ -1,0 +1,86 @@
+---
+title: "Two-tier memory for long-running agents: working memory vs persistent facts"
+description: The context window creates the illusion that memory is free. By turn 30, it's 80% noise. We built a two-tier system — sliding window for now, structured storage for forever.
+lang: en
+slug: two-tier-memory
+date: '2026-03-25'
+author: KB Labs
+tag: AI
+excerpt: "The context window creates the illusion that memory is free. By turn 30, it's 80% noise. We built a two-tier system: sliding window for now, structured storage for forever."
+readTime: 7 min read
+tags:
+  - ai
+  - agents
+---
+
+The context window is a lie — not because it doesn't exist, but because "200K tokens" creates the illusion that memory management is someone else's problem. It isn't. A long-running agent session accumulates tool outputs, intermediate results, dead-end explorations, and repetitive status checks. By turn 30, the context is 80% noise.
+
+We built a two-tier memory system for KB Labs agents that separates what matters long-term from what matters right now.
+
+## Tier 1: Working memory (the sliding window)
+
+Working memory is the last N rounds of conversation — the immediate context the agent needs to continue its current task. It's implemented as a ContextFilterMiddleware that runs before every LLM call.
+
+```typescript
+// ContextFilterMiddleware (order: 15, fail-open)
+// Hooks into beforeLLMCall via LLMCallPatch
+
+const patch = {
+  messages: [
+    ...systemMessages,                            // always kept
+    ...lastNRounds(messages, windowSize),          // sliding window
+    ...truncateToolOutputs(messages, maxOutputLen) // cap large outputs
+  ]
+};
+```
+
+The sliding window keeps recent turns; everything older is dropped. Tool outputs beyond a threshold are truncated — a 50KB file listing doesn't need to persist in context after the agent has already processed it.
+
+This is aggressive by design. Working memory serves the current task. If the agent needs something from 20 turns ago, it should be in persistent memory.
+
+## Tier 2: Persistent memory (facts that survive sessions)
+
+Persistent memory is structured data that outlives the conversation. It's stored per-session at `.kb/memory/<sessionId>/` and written via dedicated tools:
+
+- **memory_finding** — factual discoveries ("this service uses port 5050", "tests require Docker running")
+- **memory_blocker** — obstacles and their status ("blocked on missing env var API_KEY")
+- **memory_correction** — mistakes the agent made ("assumed file was YAML, it's actually TOML")
+
+There's also a shared layer at `.kb/memory/shared/memory.json` — preferences and constraints that apply across all sessions for a workspace ("always use pnpm, not npm", "TypeScript strict mode required").
+
+## Session continuity
+
+When an agent resumes a session (`--session-id=X`), it loads the last 16 turns from `turns.json` and injects them before the current task. This gives the agent conversational context — what it did before, what the user said, what decisions were made — without replaying the entire history.
+
+```typescript
+// runner.ts — session continuity
+const continuityEnabled = !!this.config.sessionId;
+
+if (continuityEnabled) {
+  const history = await loadConversationMessages(sessionPath);
+  // Last 16 turns injected before current task
+  messages = [...history.slice(-16), ...currentMessages];
+}
+```
+
+## The middleware stack
+
+Memory management is part of a five-stage middleware pipeline that processes every agent turn:
+
+1. **Observability** (order: 5) — trace spans, token counting
+2. **Budget** (order: 10) — token budget enforcement, convergence nudges
+3. **ContextFilter** (order: 15) — the sliding window + truncation
+4. **FactSheet** (order: 20) — persistent memory injection
+5. **Progress** (order: 50) — stuck detection, intervention
+
+Each middleware owns its state. The runner passes only what middleware can't compute itself — for example, `Budget` receives a `getTokensUsed` callback because only the runner knows the total.
+
+## Why not just use a longer context?
+
+Three reasons:
+
+1. **Cost.** A 200K-token context at $15/M output tokens is expensive when most of it is stale tool output.
+2. **Latency.** More input tokens = longer time-to-first-token. For interactive sessions, this matters.
+3. **Accuracy.** LLMs perform worse with irrelevant context. The "needle in a haystack" problem is real — burying a critical fact in 100K of noise reduces the chance the model uses it.
+
+Two-tier memory doesn't fight the context window — it makes the context window worth its size by filling it with signal instead of noise.

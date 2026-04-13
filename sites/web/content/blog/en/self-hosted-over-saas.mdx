@@ -1,0 +1,44 @@
+---
+title: Why we chose self-hosted over SaaS-first
+description: The default playbook is hosted service with a free tier. We went the other way — npm install, your infrastructure, your data. Here's why self-hosted first isn't a compromise.
+lang: en
+slug: self-hosted-over-saas
+date: '2026-02-10'
+author: KB Labs
+tag: Philosophy
+excerpt: "The default playbook is hosted service with a free tier. We went the other way — npm install, your infrastructure, your data. Here's why self-hosted first isn't a compromise."
+readTime: 5 min read
+tags:
+  - philosophy
+  - architecture
+---
+
+The default playbook for developer tools in 2026 is obvious: build a hosted service, gate it with a free tier, convert on usage. It's a great model — for the vendor. For the team running it, every request goes through someone else's infrastructure, someone else's compliance story, someone else's pricing page.
+
+We went the other way. KB Labs is self-hosted first — you install it with npm, it runs in your infrastructure, and the data never leaves your network.
+
+## The three reasons, in order of importance
+
+### 1. Trust is cheaper to earn when you give up control
+
+Enterprise sales cycles exist because companies need to verify that a vendor won't mishandle their data. Self-hosted removes the question entirely. There's nothing to verify — your code, your servers, your logs. The security review is "read the source."
+
+This matters especially for AI tooling. LLM calls carry proprietary context — codebases, business logic, internal documentation. Asking teams to send that through a third-party hosted service is a hard sell to any security team. Self-hosted means the LLM adapter routes to whichever provider *you* choose, through *your* gateway, logged in *your* telemetry.
+
+### 2. Operational independence
+
+When a SaaS goes down, your CI goes down. When a SaaS changes pricing, your budget changes. When a SaaS sunsets a feature, your workflow breaks. These aren't hypothetical — they're Tuesday.
+
+Self-hosted means your platform availability is your problem — which sounds worse until you realize it's also your *solution*. You can debug it, fix it, and deploy the fix without filing a support ticket.
+
+### 3. Adapters make self-hosted viable
+
+The usual objection: "self-hosted means you maintain the infrastructure." True — but KB Labs is built on contract-based adapters. The platform doesn't care whether your cache is Redis or in-memory, whether your LLM is OpenAI or a local model, whether your vector store is Qdrant or Chroma.
+
+This means a team of two can run KB Labs with in-memory adapters on a single box, and a team of two hundred can run it with Redis, Postgres, and a GPU cluster — same codebase, same config shape, different adapter lines.
+
+## What about the hosted version?
+
+We'll ship one. But it will always be "the same thing, hosted for convenience" — not "the real product with a self-hosted afterthought." The open-source core is the product. Hosting is a service on top.
+
+If the hosted version disappeared tomorrow, every user would still have a working platform. That's the test.

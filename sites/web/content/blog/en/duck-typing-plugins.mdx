@@ -1,0 +1,92 @@
+---
+title: "Duck typing for plugins: why we killed the plugin interface"
+description: No base class. No implements. No runtime registration call. If a package has a manifest with schema kb.plugin/3, it's a plugin. Here's why that works better than an interface.
+lang: en
+slug: duck-typing-plugins
+date: '2026-03-12'
+author: KB Labs
+tag: Architecture
+excerpt: "No base class. No implements. No runtime registration call. If a package has a manifest with schema: kb.plugin/3, it's a plugin. Here's why that works better than an interface."
+readTime: 6 min read
+tags:
+  - architecture
+  - plugins
+---
+
+Most plugin systems start the same way: define an `IPlugin` interface, make everyone implement it, use the type system to enforce the contract. It's clean, it's familiar, and it creates a dependency that will haunt you for years.
+
+KB Labs doesn't have a plugin interface. Instead, we use duck typing: if a package has a manifest with `schema: 'kb.plugin/3'`, it's a plugin. No base class. No `implements`. No runtime registration call.
+
+## The problem with interfaces
+
+An `IPlugin` interface couples every plugin to the core at compile time. That means:
+
+- Every plugin imports the core (or a shared package that re-exports the interface)
+- Changing the interface is a breaking change for every plugin simultaneously
+- The interface must be the union of all possible plugin capabilities — commands, routes, webhooks, cron jobs, Studio pages — which makes it either massive or useless
+- Circular dependencies become inevitable when the core needs to load plugins that depend on the core
+
+We tried this. The interface grew to 14 optional methods. Plugins implemented 2–3 of them and left the rest as no-ops. The type system was satisfied; the design was not.
+
+## What we do instead
+
+A plugin is any npm package whose manifest declares `schema: 'kb.plugin/3'`. The manifest is a plain object — not an instance of a class, not a return value from a factory function.
+
+```typescript
+// plugins/commit/entry/src/manifest.ts
+export const manifest = {
+  schema: 'kb.plugin/3',
+  id: '@kb-labs/commit',
+  version: '1.0.0',
+  display: { name: 'Commit Generator', description: '...' },
+  permissions: combinePermissions()
+    .with(gitWorkflowPreset)
+    .with(kbPlatformPreset)
+    .build(),
+  cli: {
+    commands: [
+      { name: 'commit', handler: './dist/commands/commit.js' }
+    ]
+  }
+};
+```
+
+Capabilities are declared as *sections*. A plugin with CLI commands has a `cli` section. A plugin with REST routes has a `rest` section. A plugin with workflow handlers has a `workflows` section. You only declare what you use:
+
+```typescript
+interface ManifestV3 {
+  schema: 'kb.plugin/3';
+  id: string;
+  version: string;
+  display?: DisplayMetadata;
+  permissions?: PermissionSpec;
+  cli?: { commands: CliCommandDecl[] };
+  rest?: RestConfig;
+  ws?: WebSocketConfig;
+  workflows?: { handlers: WorkflowHandlerDecl[] };
+  webhooks?: { handlers: WebhookHandlerDecl[] };
+  jobs?: JobsConfig;
+  cron?: { schedules: CronDecl[] };
+  studio?: StudioConfig;
+  lifecycle?: LifecycleHooks;
+}
+```
+
+## How discovery works without an interface
+
+The `DiscoveryManager` in `core-discovery` reads the `marketplace.lock` file — the single source of truth for installed plugins. For each entry, it resolves the manifest through three fallback paths:
+
+1. The `kb.manifest` field in `package.json`
+2. A `kb.plugin.json` file at the package root
+3. The default export of `dist/index.js`
+
+The manifest is validated with a type guard (`isManifestV3`), and capabilities are extracted by inspecting which sections are present. A plugin with `cli` and `workflows` sections gets registered as both a CLI command provider and a workflow handler provider — automatically, with no explicit registration call.
+
+## The result
+
+- **Zero coupling to core.** A plugin's only compile-time dependency is `@kb-labs/sdk` (for TypeScript types and helpers). It never imports the core runtime.
+- **Additive evolution.** Adding a new capability (say, `cron`) means adding a new optional section to ManifestV3. Existing plugins don't need to change.
+- **No registration ceremony.** Install the package, add it to the lock file, restart. The platform finds it.
+- **Testable in isolation.** A manifest is a plain object. You can unit-test a plugin without booting the platform.
+
+Duck typing isn't the right pattern for everything. But for plugin systems — where the core must be maximally stable and the extensions must be maximally free — it's the pattern that lets both sides evolve without breaking each other.

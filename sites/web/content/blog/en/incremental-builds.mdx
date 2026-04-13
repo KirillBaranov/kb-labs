@@ -1,0 +1,82 @@
+---
+title: Going from 10-minute builds to 15-second incremental rebuilds in a 125-package monorepo
+description: We built a Go binary with content-addressable caching, DAG scheduling via Kahn's algorithm, and ordered categories that handle both TypeScript and Go packages.
+lang: en
+slug: incremental-builds
+date: '2026-03-05'
+author: KB Labs
+tag: DevEx
+excerpt: "We built a Go binary with content-addressable caching, DAG scheduling via Kahn's algorithm, and ordered categories that handle both TypeScript and Go packages."
+readTime: 8 min read
+tags:
+  - devex
+  - engineering
+  - go
+---
+
+At 125 packages, a full `pnpm -r run build` takes about ten minutes. That's fine for CI. It's not fine for a developer who changed one line in a utility library and wants to see the result. We built kb-devkit — a Go binary — to fix this.
+
+## Why not Turborepo?
+
+Turborepo is good at what it does. But our monorepo has quirks that made a custom solution worth the investment:
+
+- Go binaries live alongside TypeScript packages — they don't have `package.json`, so npm-centric tools can't discover them
+- We need ordered categories (libraries before apps, Go before Node) with first-match-wins semantics
+- We wanted content-addressable caching that we fully control, not a remote cache we pay for
+- Workspace health scoring (lint coverage, missing configs) isn't a feature any existing tool provides
+
+## How kb-devkit works
+
+### Package discovery
+
+Instead of walking the entire filesystem, kb-devkit expands `pnpm-workspace.yaml` patterns level-by-level using `os.ReadDir()`. Complexity is O(dirs_per_level × depth) instead of O(total_files). A `maxDepth: 3` cap prevents runaway recursion.
+
+Each discovered package is classified into a category by matching its relative path against glob patterns. Categories are an ordered list — first match wins. This matters because `ts-app` and `ts-lib` patterns overlap, and libraries must build before apps.
+
+```yaml
+# devkit.yaml — categories (order matters)
+categories:
+  - name: ts-lib
+    match: ['core/*/packages/**', 'plugins/*/packages/**']
+  - name: ts-app
+    match: ['core/*/apps/**', 'plugins/*/apps/**']
+  - name: go-binary
+    match: ['tools/kb-dev', 'tools/kb-devkit']  # literal paths, no package.json
+```
+
+### DAG scheduling
+
+kb-devkit builds a directed acyclic graph of (package, task) pairs using Kahn's algorithm. A dependency spec like `deps: ["^build"]` means "run build for all workspace dependencies first." The scheduler executes layer-by-layer: all tasks within a layer run in parallel (up to `NumCPU - 1`), but layers are sequential to respect ordering.
+
+### Content-addressable caching
+
+This is where the 15-second number comes from. Before running a task, kb-devkit computes a SHA256 hash over all input files (sorted, with automatic exclusion of `node_modules`, `.git`, `dist`, `coverage`). If the hash matches a cached manifest, outputs are restored instantly from a content-addressable object store at `.kb/devkit/objects/`.
+
+```plaintext
+# Cache key computation (simplified)
+hash = SHA256(
+  for each file matching task.inputs:
+    relative_path + '\x00' + file_content + '\x00'
+)
+
+# Storage layout
+.kb/devkit/
+  objects/<ab>/<cdef...>            # content-addressable blobs
+  tasks/<pkg>/<task>/<hash>.json    # manifests (exit code, stdout, file refs)
+```
+
+Each task has independent cache. Running `build` doesn't populate the `lint` cache — they have different inputs and outputs. Identical output files across packages are deduplicated (stored once by content hash).
+
+## The unexpected edge cases
+
+- **Go packages without package.json.** Our workspace includes three Go binaries (kb-devkit, kb-dev, kb-create). They can't be discovered via the npm workspace protocol. Fix: literal path matching in categories, bypassing the `hasPackageJSON` check.
+
+- **Map iteration in Go is random.** Categories must be evaluated in declaration order (first match wins), but Go's `map` iteration is non-deterministic. Fix: custom `yaml.Node` `UnmarshalYAML` to preserve ordering.
+
+- **DTS ordering.** TypeScript declaration files must be emitted in dependency order — a downstream package can't type-check until its dependency's `.d.ts` files exist. This is why `pnpm -r run build` often produces type errors that disappear on a second run. The DAG scheduler solves this by construction.
+
+## Results
+
+Full cold build: ~158 packages in 26 seconds (Go binary, parallel layers, no cache). Incremental rebuild after changing one package: 2–15 seconds depending on the dependency fan-out. The 15-second worst case is a change to `core-types`, which triggers rebuilds across most of the graph.
+
+For the common case — changing a plugin's source code — it's under 3 seconds. That's the difference between "save and check" and "save, get coffee, check."
