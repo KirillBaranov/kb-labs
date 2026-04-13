@@ -29,31 +29,40 @@
       "id": "rest",
       "pkg": "@kb-labs/rest-api-app",
       "description": "REST API (port 5050)",
-      "default": true
+      "default": true,
+      "port": 5050,
+      "gatewayPrefix": "/api/v1"
     },
     {
       "id": "workflow",
       "pkg": "@kb-labs/workflow-daemon",
       "description": "Workflow engine (port 7778)",
-      "default": true
+      "default": true,
+      "port": 7778,
+      "gatewayPrefix": "/exec",
+      "plugin": "@kb-labs/workflow-entry"
     },
     {
       "id": "gateway",
       "pkg": "@kb-labs/gateway-app",
       "description": "Central router (port 4000)",
-      "default": true
+      "default": true,
+      "port": 4000
     },
     {
       "id": "marketplace",
       "pkg": "@kb-labs/marketplace-app",
       "description": "Marketplace (port 5070)",
-      "default": true
+      "default": true,
+      "port": 5070,
+      "gatewayPrefix": "/api/v1/marketplace"
     },
     {
       "id": "studio",
       "pkg": "@kb-labs/studio-app",
       "description": "Web UI (port 3000)",
-      "default": true
+      "default": true,
+      "port": 3000
     }
   ],
   "plugins": [
