@@ -17,11 +17,14 @@ WORKDIR /app
 
 COPY --from=deps /app/node_modules ./node_modules
 
-# full/ contains sources of all packages in the closure
+# full/ contains sources of all packages in the closure (prod deps only)
 COPY .kb/bundle/gateway-app/full/ .
 
+# Install @kb-labs/devkit from npm — needed for tsup build configs, not in prod closure
+RUN corepack enable pnpm && pnpm add -w @kb-labs/devkit
+
 # Build gateway-app and all its workspace deps in topological order
-RUN corepack enable pnpm && pnpm --filter @kb-labs/gateway-app... run build
+RUN pnpm --filter @kb-labs/gateway-app... run build
 
 # ── runner ───────────────────────────────────────────────────────────────────
 FROM base AS runner
