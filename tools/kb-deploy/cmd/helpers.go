@@ -38,3 +38,28 @@ func loadConfig() (*config.Config, string, error) {
 func stateFilePath(repoRoot string) string {
 	return filepath.Join(repoRoot, ".kb", "deploy", "state.json")
 }
+
+// readSSHKey resolves the private key PEM for the given SSHConfig.
+// It checks key_path_env first (path to a key file), then falls back to key_env
+// (raw PEM content). Returns an error if neither is set or the file cannot be read.
+func readSSHKey(sshCfg config.SSHConfig) (string, error) {
+	if sshCfg.KeyPathEnv != "" {
+		if p := os.Getenv(sshCfg.KeyPathEnv); p != "" {
+			data, err := os.ReadFile(p)
+			if err != nil {
+				return "", fmt.Errorf("read SSH key file $%s=%s: %w", sshCfg.KeyPathEnv, p, err)
+			}
+			return string(data), nil
+		}
+	}
+	if sshCfg.KeyEnv != "" {
+		if pem := os.Getenv(sshCfg.KeyEnv); pem != "" {
+			return pem, nil
+		}
+	}
+	hint := sshCfg.KeyPathEnv
+	if hint == "" {
+		hint = sshCfg.KeyEnv
+	}
+	return "", fmt.Errorf("SSH key not set: $%s is empty", hint)
+}

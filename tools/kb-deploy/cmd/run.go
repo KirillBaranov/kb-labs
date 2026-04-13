@@ -172,7 +172,16 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 		}
 
 		// SSH deploy.
-		keyPEM := os.Getenv(t.SSH.KeyEnv)
+		keyPEM, err := readSSHKey(t.SSH)
+		if err != nil {
+			res.OK, res.Error = false, err.Error()
+			if !jsonMode {
+				o.Err(err.Error())
+			}
+			results = append(results, res)
+			allOK = false
+			continue
+		}
 		client, err := ssh.New(t.SSH.Host, t.SSH.User, keyPEM)
 		if err != nil {
 			res.OK, res.Error = false, "ssh: "+err.Error()
@@ -256,9 +265,11 @@ func validateEnv(targets []string, all map[string]config.Target, o output, silen
 		if t.SSH.User == "" {
 			missing = append(missing, fmt.Sprintf("%s: ssh.user is empty", name))
 		}
-		if t.SSH.KeyEnv == "" {
-			missing = append(missing, fmt.Sprintf("%s: ssh.key_env is not set", name))
-		} else if os.Getenv(t.SSH.KeyEnv) == "" {
+		if t.SSH.KeyPathEnv == "" && t.SSH.KeyEnv == "" {
+			missing = append(missing, fmt.Sprintf("%s: ssh.key_path_env (or ssh.key_env) is not set", name))
+		} else if t.SSH.KeyPathEnv != "" && os.Getenv(t.SSH.KeyPathEnv) == "" {
+			missing = append(missing, fmt.Sprintf("%s: $%s is empty", name, t.SSH.KeyPathEnv))
+		} else if t.SSH.KeyPathEnv == "" && os.Getenv(t.SSH.KeyEnv) == "" {
 			missing = append(missing, fmt.Sprintf("%s: $%s is empty", name, t.SSH.KeyEnv))
 		}
 	}

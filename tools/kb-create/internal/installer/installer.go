@@ -100,6 +100,7 @@ func (ins *Installer) Install(sel *Selection, m *manifest.Manifest) (*Result, er
 
 	// Step 1: npm/pnpm packages.
 	allPkgs := m.CorePackageSpecs()
+	allPkgs = append(allPkgs, m.AdapterPackageSpecs()...)
 	allPkgs = append(allPkgs, ins.selectedPkgSpecs(m.Services, sel.Services)...)
 	allPkgs = append(allPkgs, ins.selectedPkgSpecs(m.Plugins, sel.Plugins)...)
 
@@ -562,6 +563,9 @@ func desiredSet(m *manifest.Manifest, selectedServices, selectedPlugins []string
 	s := make(map[string]bool)
 	for _, p := range m.Core {
 		s[p.Name] = true
+	}
+	for _, a := range m.Adapters {
+		s[a.Name] = true
 	}
 	for _, c := range m.Services {
 		if svcSet[c.ID] {

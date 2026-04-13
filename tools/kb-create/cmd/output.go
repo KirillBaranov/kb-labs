@@ -120,11 +120,11 @@ type nextStep struct {
 func buildNextSteps(r *installer.Result) []nextStep {
 	steps := []nextStep{
 		{"cd " + r.ProjectCWD, ""},
+		{"kb review run", "review your last diff"},
+		{"kb commit commit", "generate a commit message"},
 	}
 
-	// Only suggest "kb-dev start" when kb-dev was actually installed.
-	// r.InstalledBinaries is populated by the installer after each binary
-	// is confirmed present in the user bin dir, so this is not a guess.
+	// Suggest service startup after the user has seen the first results.
 	kbDevInstalled := false
 	for _, name := range r.InstalledBinaries {
 		if name == "kb-dev" {
@@ -133,13 +133,10 @@ func buildNextSteps(r *installer.Result) []nextStep {
 		}
 	}
 	if kbDevInstalled && r.HasServices {
-		steps = append(steps, nextStep{"kb-dev start", "start all services"})
+		steps = append(steps, nextStep{"kb-dev start", "start background services (gateway, workflow, studio)"})
 	}
 
-	steps = append(steps,
-		nextStep{"kb --help", "explore commands"},
-		nextStep{"kb-create doctor", "check environment"},
-	)
+	steps = append(steps, nextStep{"kb --help", "explore all commands"})
 	return steps
 }
 

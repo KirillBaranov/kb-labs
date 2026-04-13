@@ -23,6 +23,7 @@ import (
 	"github.com/kb-labs/create/internal/pm"
 	"github.com/kb-labs/create/internal/scaffold"
 	"github.com/kb-labs/create/internal/telemetry"
+	"github.com/kb-labs/create/internal/types"
 	"github.com/kb-labs/create/internal/wizard"
 )
 
@@ -164,9 +165,26 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		Plugins:     sel.Plugins,
 		DemoMode:    sel.DemoMode,
 	}
-	if sel.DemoMode {
-		// Try telemetry client first (may already have creds from registration).
-		// Fall back to direct gateway registration when telemetry is disabled (--yes mode).
+	// Register KB Labs Gateway credentials for LLM access (50 free requests).
+	// Only with explicit user consent — either from the wizard consent stage
+	// or a simple y/n prompt when --yes skips the wizard.
+	wantsLLM := sel.Consent == types.ConsentDemo
+	if sel.Consent == "" && !flagYes {
+		// Wizard ran but consent stage was skipped for some reason — no LLM.
+		wantsLLM = false
+	}
+	if sel.Consent == "" && flagYes {
+		// --yes mode skipped the wizard entirely — ask once.
+		fmt.Println()
+		fmt.Println("  Enable AI features? KB Labs Gateway provides 50 free LLM requests.")
+		fmt.Println("  Your code diffs may be sent to the gateway when using AI commands.")
+		fmt.Print("  Enable?  y / n  → ")
+		answer := ""
+		fmt.Scanln(&answer) // #nosec G104 -- non-fatal read
+		wantsLLM = strings.TrimSpace(strings.ToLower(answer)) == "y"
+		fmt.Println()
+	}
+	if wantsLLM {
 		creds, credErr := tc.EnsureRegistered()
 		if credErr != nil {
 			deviceID := telemetry.GenerateDeviceID()
@@ -178,7 +196,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 			)
 		}
 		if credErr != nil {
-			log.Printf("gateway registration: %v (LLM config skipped)", credErr)
+			log.Printf("gateway registration: %v (LLM credentials skipped)", credErr)
 		} else {
 			scaffoldOpts.GatewayCredentials = &scaffold.GatewayCreds{
 				ClientID:     creds.ClientID,
@@ -191,8 +209,8 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("scaffold project config: %w", err)
 	}
 
-	// Post-install: offer first AI commit if there are uncommitted changes.
-	_ = demo.RunFirstCommit(sel.ProjectCWD)
+	// Post-install: run review + offer commit on existing diff.
+	_ = demo.RunFirstDemo(sel.ProjectCWD, wantsLLM)
 
 	printNextSteps(result)
 

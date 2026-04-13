@@ -7,7 +7,7 @@ infrastructure:
     ssh:
       host: ${SSH_HOST}
       user: ${SSH_USER}
-      key_env: SSH_KEY
+      key_path_env: SSH_KEY_PATH
     volumes:
       - qdrant_data:/qdrant/storage
     ports:
@@ -21,13 +21,43 @@ infrastructure:
     ssh:
       host: ${SSH_HOST}
       user: ${SSH_USER}
-      key_env: SSH_KEY
+      key_path_env: SSH_KEY_PATH
     volumes:
       - redis_data:/data
     restart: unless-stopped
     strategy: manual
 
 targets:
+  kb-gateway:
+    watch:
+      - plugins/gateway/**
+      - adapters/openai/**
+      - adapters/redis/**
+      - adapters/sqlite/**
+      - adapters/pino/**
+      - adapters/fs/**
+      - adapters/log-sqlite/**
+      - adapters/log-ringbuffer/**
+      - adapters/eventbus-cache/**
+      - core/**
+      - shared/**
+    image: kb-gateway
+    dockerfile: plugins/gateway/app/Dockerfile
+    context: .
+    ssh:
+      host: ${SSH_HOST}
+      user: ${SSH_USER}
+      key_path_env: SSH_KEY_PATH
+    remote:
+      compose_file: ~/kb-labs/docker-compose.backend.yml
+      service: kb-gateway
+      container_name: kb-gateway
+    permissions:
+      logs: true
+      health: true
+      exec: false
+      rollback: true
+
   kb-labs-web:
     watch:
       - sites/web/**
@@ -38,7 +68,7 @@ targets:
     ssh:
       host: ${SSH_HOST}
       user: ${SSH_USER}
-      key_env: SSH_KEY
+      key_path_env: SSH_KEY_PATH
     remote:
       compose_file: ~/kb-labs/docker-compose.yml
       service: web
@@ -59,7 +89,7 @@ targets:
     ssh:
       host: ${SSH_HOST}
       user: ${SSH_USER}
-      key_env: SSH_KEY
+      key_path_env: SSH_KEY_PATH
     remote:
       compose_file: ~/kb-labs/docker-compose.yml
       service: docs

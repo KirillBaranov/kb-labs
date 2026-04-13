@@ -296,11 +296,14 @@ export default defineCommand<unknown, CLIInput<RunFlags>, AgentReviewReport>({
                 files = scopedFiles.files;
                 repoScope = reposWithChanges;
               } else {
-                // Fallback to glob
-                filePaths = await ctx.runtime.fs.glob('**/*.{ts,tsx,js,jsx}', {
-                  cwd,
-                  ignore: [...SECURITY_IGNORE_PATTERNS],
-                });
+                // Fallback to glob — run separately since glob may not support brace expansion
+                const [tsF, tsxF, jsF, jsxF] = await Promise.all([
+                  ctx.runtime.fs.glob('**/*.ts', { cwd, ignore: [...SECURITY_IGNORE_PATTERNS] }),
+                  ctx.runtime.fs.glob('**/*.tsx', { cwd, ignore: [...SECURITY_IGNORE_PATTERNS] }),
+                  ctx.runtime.fs.glob('**/*.js', { cwd, ignore: [...SECURITY_IGNORE_PATTERNS] }),
+                  ctx.runtime.fs.glob('**/*.jsx', { cwd, ignore: [...SECURITY_IGNORE_PATTERNS] }),
+                ]);
+                filePaths = [...tsF, ...tsxF, ...jsF, ...jsxF];
               }
               break;
 
@@ -319,11 +322,14 @@ export default defineCommand<unknown, CLIInput<RunFlags>, AgentReviewReport>({
                 files = scopedFiles.files;
                 repoScope = changedRepos;
               } else {
-                // Fallback to glob
-                filePaths = await ctx.runtime.fs.glob('**/*.{ts,tsx,js,jsx}', {
-                  cwd,
-                  ignore: [...SECURITY_IGNORE_PATTERNS],
-                });
+                // Fallback to glob — run separately since glob may not support brace expansion
+                const [tsC, tsxC, jsC, jsxC] = await Promise.all([
+                  ctx.runtime.fs.glob('**/*.ts', { cwd, ignore: [...SECURITY_IGNORE_PATTERNS] }),
+                  ctx.runtime.fs.glob('**/*.tsx', { cwd, ignore: [...SECURITY_IGNORE_PATTERNS] }),
+                  ctx.runtime.fs.glob('**/*.js', { cwd, ignore: [...SECURITY_IGNORE_PATTERNS] }),
+                  ctx.runtime.fs.glob('**/*.jsx', { cwd, ignore: [...SECURITY_IGNORE_PATTERNS] }),
+                ]);
+                filePaths = [...tsC, ...tsxC, ...jsC, ...jsxC];
               }
               break;
           }
