@@ -51,6 +51,7 @@ Thumbs.db
 # Private / local-only
 # ───────────────
 _private/
+.worktrees/
 
 # ───────────────
 # KB Labs runtime data
