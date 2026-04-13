@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/core-contracts",
-  "version": "2.18.0",
+  "version": "2.19.0",
   "description": "Contracts for KB Labs Core plugin.",
   "type": "module",
   "main": "./dist/index.js",

@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/infra-worker-contracts",
-  "version": "2.18.0",
+  "version": "2.19.0",
   "type": "module",
   "description": "Public contracts package for infra worker plugin invoke payloads and results.",
   "main": "./dist/index.js",
