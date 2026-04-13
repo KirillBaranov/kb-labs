@@ -7,7 +7,7 @@ import { spawn } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import * as readline from 'node:readline/promises';
-import { useLoader } from '@kb-labs/sdk';
+import { useLoader, useEnv } from '@kb-labs/sdk';
 
 export interface PackageToPublish {
   name: string;
@@ -111,7 +111,7 @@ export async function publishPackagesWithOTP(
 
   // Fast-path: parallel optimistic publishing (works when no OTP is required — pnpm keychain/session)
   // If any package fails with EOTP, we fall back to sequential path below for the rest.
-  const CONCURRENCY = Number(process.env.KB_PUBLISH_CONCURRENCY ?? 8);
+  const CONCURRENCY = Number(useEnv('KB_PUBLISH_CONCURRENCY') ?? 8);
   const remaining: PackageToPublish[] = [];
   let otpFailureDetected = false;
 

@@ -18,6 +18,7 @@ import {
   useLLM,
   useLoader,
   useConfig,
+  useEnv,
 } from '@kb-labs/sdk';
 import {
   runReleasePipeline,
@@ -153,7 +154,7 @@ export default defineCommand({
       const llm = useLLM();
       const changelog = createChangelogGenerator(config, llm ?? undefined);
 
-      const token = process.env.NPM_TOKEN ?? process.env.NODE_AUTH_TOKEN;
+      const token = useEnv('NPM_TOKEN') ?? useEnv('NODE_AUTH_TOKEN');
       const packageManager = config.workspace?.type ?? config.publish?.packageManager ?? 'pnpm';
       const publisher = {
         async publish(packages: PublishablePackage[], opts: { dryRun?: boolean; access?: string }): Promise<PublishResult> {
