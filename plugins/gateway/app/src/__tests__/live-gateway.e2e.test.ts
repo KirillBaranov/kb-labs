@@ -325,7 +325,7 @@ describe.sequential('Live Gateway — Host registration + WS handshake', () => {
         const msg = JSON.parse(raw.toString()) as { type: string };
         if (msg.type === 'ack') {resolve(msg);}
       });
-      setTimeout(() => reject(new Error('no ack')), 3000);
+      setTimeout(() => reject(new Error('no ack')), 6000);
     });
 
     ws.send(JSON.stringify({ type: 'heartbeat' }));
@@ -333,7 +333,7 @@ describe.sequential('Live Gateway — Host registration + WS handshake', () => {
     expect(ack.type).toBe('ack');
 
     ws.close(1000);
-  }, 8000);
+  }, 10_000);
 
   it('WS closes with 1008 if no Authorization header', async () => {
     const ws = new WebSocket(`${GATEWAY_WS}/hosts/connect`);

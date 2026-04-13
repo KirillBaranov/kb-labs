@@ -239,7 +239,7 @@ func writeManifests(outDir, wsRoot string, closure []workspace.Package) error {
 	return nil
 }
 
-// copyRootFiles copies root package.json and pnpm-lock.yaml.
+// copyRootFiles copies root package.json, pnpm-lock.yaml, and tsconfig files.
 func copyRootFiles(outDir, wsRoot string) error {
 	if err := copyFile(filepath.Join(outDir, "package.json"), filepath.Join(wsRoot, "package.json")); err != nil {
 		return fmt.Errorf("copy root package.json: %w", err)
@@ -249,6 +249,16 @@ func copyRootFiles(outDir, wsRoot string) error {
 	if _, err := os.Stat(lockSrc); err == nil {
 		if err := copyFile(filepath.Join(outDir, "pnpm-lock.yaml"), lockSrc); err != nil {
 			return fmt.Errorf("copy pnpm-lock.yaml: %w", err)
+		}
+	}
+
+	// Copy root tsconfig files — packages extend these via relative paths.
+	for _, name := range []string{"tsconfig.json", "tsconfig.base.json"} {
+		src := filepath.Join(wsRoot, name)
+		if _, err := os.Stat(src); err == nil {
+			if err := copyFile(filepath.Join(outDir, name), src); err != nil {
+				return fmt.Errorf("copy %s: %w", name, err)
+			}
 		}
 	}
 	return nil
