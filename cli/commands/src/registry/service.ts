@@ -164,10 +164,10 @@ class InMemoryRegistry implements CommandRegistry {
    */
   private _findSystemCollision(manifest: RegisteredCommand['manifest'], canonicalId: string): string | null {
     // Check canonical id (e.g. "workflow:health")
-    if (this.systemCommands.has(canonicalId)) return canonicalId;
+    if (this.systemCommands.has(canonicalId)) {return canonicalId;}
     // Check space variant of canonical (e.g. "workflow health")
     const space = canonicalId.replace(/:/g, ' ');
-    if (this.systemCommands.has(space)) return space;
+    if (this.systemCommands.has(space)) {return space;}
     // NOTE: bare manifest.id (e.g. "health") is NOT checked — a plugin command
     // like workflow:health should not collide with system command info:health
     // just because both have bare id "health".

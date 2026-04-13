@@ -50,7 +50,7 @@ describe('platformContext (AsyncLocalStorage)', () => {
 
     await platformContext.run(platform, async () => {
       // Simulate async work
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise<void>(resolve => { setTimeout(resolve, 10); });
       expect(platformContext.getStore()).toBe(platform);
 
       // Nested async
@@ -84,12 +84,12 @@ describe('platformContext (AsyncLocalStorage)', () => {
 
     await Promise.all([
       platformContext.run(platformA, async () => {
-        await new Promise(resolve => setTimeout(resolve, 20));
+        await new Promise<void>(resolve => { setTimeout(resolve, 20); });
         const store = platformContext.getStore();
         results.push(store === platformA ? 'A-ok' : 'A-WRONG');
       }),
       platformContext.run(platformB, async () => {
-        await new Promise(resolve => setTimeout(resolve, 10));
+        await new Promise<void>(resolve => { setTimeout(resolve, 10); });
         const store = platformContext.getStore();
         results.push(store === platformB ? 'B-ok' : 'B-WRONG');
       }),

@@ -237,13 +237,13 @@ export default defineCommand({
               checkItems.push(`${sym} ${c.id}${timing}`);
 
               if (!c.ok && c.hint !== 'optional') {
-                if (c.details?.packagePath) checkItems.push(`     package: ${c.details.packagePath}`);
-                if (c.details?.error) checkItems.push(`     reason:  ${c.details.error}`);
+                if (c.details?.packagePath) {checkItems.push(`     package: ${c.details.packagePath}`);}
+                if (c.details?.error) {checkItems.push(`     reason:  ${c.details.error}`);}
                 const output = (c.details?.stderr || c.details?.stdout || '').trim();
                 if (output) {
                   const lines = output.split('\n').slice(0, 8);
                   checkItems.push(`     output:`);
-                  for (const line of lines) checkItems.push(`       ${line}`);
+                  for (const line of lines) {checkItems.push(`       ${line}`);}
                 }
                 if (c.packages?.filter(p => !p.ok).length) {
                   const failedPkgs = c.packages.filter(p => !p.ok);

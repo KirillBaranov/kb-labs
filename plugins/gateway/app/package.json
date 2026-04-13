@@ -41,6 +41,7 @@
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
+    "@kb-labs/shared-testing-e2e": "workspace:*",
     "@types/ws": "^8.5.14",
     "eslint": "^9",
     "rimraf": "^6.0.1",
