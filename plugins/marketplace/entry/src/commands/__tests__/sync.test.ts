@@ -64,37 +64,37 @@ describe('marketplace sync — autoEnable behaviour', () => {
   it('sends autoEnable: true when NODE_ENV=development', async () => {
     process.env.NODE_ENV = 'development';
     await syncCommand.execute(makeCtx(tmpDir) as any, { flags: {} } as any);
-    expect(mockPost).toHaveBeenCalledWith('/sync', expect.objectContaining({ autoEnable: true }));
+    expect(mockPost).toHaveBeenCalledWith('/workspace/sync', expect.objectContaining({ autoEnable: true }));
   });
 
   it('sends autoEnable: true when NODE_ENV is unset (dev default)', async () => {
     delete process.env.NODE_ENV;
     await syncCommand.execute(makeCtx(tmpDir) as any, { flags: {} } as any);
-    expect(mockPost).toHaveBeenCalledWith('/sync', expect.objectContaining({ autoEnable: true }));
+    expect(mockPost).toHaveBeenCalledWith('/workspace/sync', expect.objectContaining({ autoEnable: true }));
   });
 
   it('sends autoEnable: false when NODE_ENV=production', async () => {
     process.env.NODE_ENV = 'production';
     await syncCommand.execute(makeCtx(tmpDir) as any, { flags: {} } as any);
-    expect(mockPost).toHaveBeenCalledWith('/sync', expect.objectContaining({ autoEnable: false }));
+    expect(mockPost).toHaveBeenCalledWith('/workspace/sync', expect.objectContaining({ autoEnable: false }));
   });
 
   it('explicit --auto-enable flag overrides NODE_ENV=production', async () => {
     process.env.NODE_ENV = 'production';
     await syncCommand.execute(makeCtx(tmpDir) as any, { flags: { 'auto-enable': true } } as any);
-    expect(mockPost).toHaveBeenCalledWith('/sync', expect.objectContaining({ autoEnable: true }));
+    expect(mockPost).toHaveBeenCalledWith('/workspace/sync', expect.objectContaining({ autoEnable: true }));
   });
 
   it('explicit --no-auto-enable flag overrides NODE_ENV=development', async () => {
     process.env.NODE_ENV = 'development';
     await syncCommand.execute(makeCtx(tmpDir) as any, { flags: { 'auto-enable': false } } as any);
-    expect(mockPost).toHaveBeenCalledWith('/sync', expect.objectContaining({ autoEnable: false }));
+    expect(mockPost).toHaveBeenCalledWith('/workspace/sync', expect.objectContaining({ autoEnable: false }));
   });
 
   it('passes include patterns from kb.config.json', async () => {
     process.env.NODE_ENV = 'production';
     await syncCommand.execute(makeCtx(tmpDir) as any, { flags: {} } as any);
-    expect(mockPost).toHaveBeenCalledWith('/sync', expect.objectContaining({ include: ['plugins/*'] }));
+    expect(mockPost).toHaveBeenCalledWith('/workspace/sync', expect.objectContaining({ include: ['plugins/*'] }));
   });
 
   it('returns exitCode 1 when no include patterns configured', async () => {
