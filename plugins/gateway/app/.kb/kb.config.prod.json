@@ -13,16 +13,14 @@
     "adapterOptions": {
       "llm": {
         "defaultTier": "small",
+        "baseURL": "https://kb-labs-openai-proxy.kblabs-proxy.workers.dev/v1",
         "tierMapping": {
           "small": [
             {
               "adapter": "@kb-labs/adapters-openai",
               "model": "gpt-4o-mini",
               "priority": 1,
-              "capabilities": ["fast"],
-              "adapterOptions": {
-                "baseURL": "https://kb-labs-openai-proxy.kblabs-proxy.workers.dev/v1"
-              }
+              "capabilities": ["fast"]
             }
           ]
         }
