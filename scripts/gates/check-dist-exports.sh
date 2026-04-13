@@ -17,7 +17,14 @@ if [[ ! -f "$DIST_ENTRY" ]] && [[ -f "dist/index.html" ]]; then
   exit 0
 fi
 
-# 1b. dist/index.js must exist for non-SPA packages
+# 1b. Packages whose main entry is outside dist/ (e.g. server.js, federation hosts) — skip
+MAIN_ENTRY=$(node -e "process.stdout.write(require('./package.json').main || '')" 2>/dev/null || true)
+if [[ -n "$MAIN_ENTRY" ]] && [[ ! "$MAIN_ENTRY" =~ ^\.?/?dist/ ]]; then
+  echo "OK: main entry '$MAIN_ENTRY' is outside dist/, skipping dist checks."
+  exit 0
+fi
+
+# 1c. dist/index.js must exist for non-SPA packages
 if [[ ! -f "$DIST_ENTRY" ]]; then
   echo "ERROR: $DIST_ENTRY not found — did you run 'pnpm build'?" >&2
   exit 1
