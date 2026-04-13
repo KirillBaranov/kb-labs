@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -102,6 +103,13 @@ func (ins *Installer) Install(sel *Selection, m *manifest.Manifest) (*Result, er
 	allPkgs = append(allPkgs, ins.selectedPkgSpecs(m.Services, sel.Services)...)
 	allPkgs = append(allPkgs, ins.selectedPkgSpecs(m.Plugins, sel.Plugins)...)
 
+	// Install companion plugins for selected services (e.g. workflow-daemon → workflow-entry).
+	for _, svc := range m.Services {
+		if svc.Plugin != "" && slices.Contains(sel.Services, svc.ID) {
+			allPkgs = append(allPkgs, svc.Plugin)
+		}
+	}
+
 	// Dev mode: pack local directory specs into self-contained tarballs so
 	// pnpm can resolve workspace:* and link: refs inside those packages.
 	// Only runs when --dev-manifest flag was provided (sel.DevMode == true).
@@ -155,6 +163,7 @@ func (ins *Installer) Install(sel *Selection, m *manifest.Manifest) (*Result, er
 		if err := scan.WriteConfigs(sel.PlatformDir, scanResult); err != nil {
 			ins.Log.Printf("  [WARN] write configs: %v", err)
 		}
+
 	}
 
 	// Symlink kb CLI into ~/.local/bin/ for PATH availability.
@@ -180,6 +189,22 @@ func (ins *Installer) Install(sel *Selection, m *manifest.Manifest) (*Result, er
 	}
 	if err := config.Write(sel.PlatformDir, cfg); err != nil {
 		return nil, fmt.Errorf("config: %w", err)
+	}
+
+	// Generate gateway upstreams from discovered services + manifest prefix map.
+	if scanResult != nil {
+		prefixMap := make(map[string]string)
+		for _, svc := range m.Services {
+			if svc.GatewayPrefix != "" {
+				prefixMap[svc.ID] = svc.GatewayPrefix
+			}
+		}
+		if len(prefixMap) > 0 {
+			gwCfg := scan.GenerateGatewayConfig(scanResult, prefixMap)
+			if err := scan.MergeGatewayIntoConfig(sel.PlatformDir, gwCfg); err != nil {
+				ins.Log.Printf("  [WARN] gateway config: %v", err)
+			}
+		}
 	}
 
 	// Persist "last known install" so subsequent kb-create commands

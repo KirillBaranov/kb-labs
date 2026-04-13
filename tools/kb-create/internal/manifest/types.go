@@ -16,11 +16,14 @@ func (p Package) PackageSpec() string {
 
 // Component is an optional service or plugin.
 type Component struct {
-	ID          string `json:"id"`
-	Pkg         string `json:"pkg"`
-	Description string `json:"description"`
-	Default     bool   `json:"default"`
-	LocalPath   string `json:"localPath,omitempty"` // absolute path for dev mode
+	ID            string `json:"id"`
+	Pkg           string `json:"pkg"`
+	Description   string `json:"description"`
+	Default       bool   `json:"default"`
+	LocalPath     string `json:"localPath,omitempty"`     // absolute path for dev mode
+	Port          int    `json:"port,omitempty"`           // service port (services only)
+	GatewayPrefix string `json:"gatewayPrefix,omitempty"` // gateway proxy prefix (services only)
+	Plugin        string `json:"plugin,omitempty"`         // companion CLI plugin pkg (services only)
 }
 
 // PackageSpec returns the install spec: "pkg" in prod or "pkg@file:/abs/path" in dev.
