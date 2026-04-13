@@ -1,3 +1,15 @@
+## [2.17.0] - 2026-04-13
+
+> **@kb-labs/sdk** 2.16.0 → 2.17.0 (minor: new features)
+
+### 🏗️ Core & SDK
+
+- **sdk**: Introduces the runtimeContext ALS and the useEnv() hook, allowing for more flexible and efficient environment management in applications, enhancing overall performance and user experience.
+- **devkit**: Prevents self-referencing dependencies in the dependency graph and resolves issues with mock platform adapters, leading to smoother development processes and reducing potential errors during application builds.
+
+### 🔧 Other
+
+- **general**: Resolved various lint errors, test failures, and missing configurations across 10 packages, ensuring a smoother and more reliable user experience. This cleanup helps maintain the quality of the software, reducing the risk of unexpected issues in the future.
 ## [1.6.6] - 2026-04-11
 
 > **@kb-labs/sdk** 1.6.5 → 1.6.6 (manual)
