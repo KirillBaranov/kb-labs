@@ -14,7 +14,7 @@
 import { spawn } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { useLogger } from '@kb-labs/sdk';
+import { useLogger, useEnv } from '@kb-labs/sdk';
 
 export interface PackageToPublish {
   name: string;
@@ -52,7 +52,7 @@ export interface ProgrammaticPublishResult {
  * Resolve npm auth token from options or environment
  */
 function resolveToken(token?: string): string | undefined {
-  return token ?? process.env.NPM_TOKEN ?? process.env.NODE_AUTH_TOKEN;
+  return token ?? useEnv('NPM_TOKEN') ?? useEnv('NODE_AUTH_TOKEN');
 }
 
 /**
@@ -165,7 +165,7 @@ export async function publishPackagesProgrammatic(
   // Build version map from all packages in this release for link: → ^version replacement
   const versionMap = new Map(packages.map(p => [p.name, p.version]));
 
-  const CONCURRENCY = Number(process.env.KB_PUBLISH_CONCURRENCY ?? 8);
+  const CONCURRENCY = Number(useEnv('KB_PUBLISH_CONCURRENCY') ?? 8);
 
   const publishOne = async (pkg: PackageToPublish): Promise<PublishResult> => {
     logger.info(`Publishing ${pkg.name}@${pkg.version}`, { path: pkg.path, dryRun });

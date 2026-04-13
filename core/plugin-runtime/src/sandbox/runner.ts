@@ -14,6 +14,7 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import {
   platformContext,
+  runtimeContext,
 } from '@kb-labs/plugin-contracts';
 import type {
   PluginContextDescriptor,
@@ -136,11 +137,13 @@ export async function runInProcess<T = unknown>(
       );
     }
 
-    // Execute handler within platform context (AsyncLocalStorage).
-    // This makes usePlatform()/useLLM()/etc. return the correct governed platform
-    // for this execution — works in in-process, worker-pool, and subprocess modes.
+    // Execute handler within platform + runtime contexts (AsyncLocalStorage).
+    // platformContext → usePlatform()/useLLM()/etc. return governed platform
+    // runtimeContext → useEnv()/useFS()/useFetch() return sandboxed shims
     const data = await platformContext.run(context.platform, () =>
-      handler.execute(context, input)
+      runtimeContext.run(context.runtime, () =>
+        handler.execute(context, input)
+      )
     ) as T;
 
     // Return raw result with execution metadata
