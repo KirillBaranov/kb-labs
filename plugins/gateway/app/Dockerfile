@@ -4,9 +4,9 @@ WORKDIR /app
 RUN apk add --no-cache libc6-compat
 
 # Install prod dependencies only
-# package.json copied from workspace root context
-COPY plugins/gateway/app/package.json .
-RUN corepack enable pnpm && pnpm install --prod --no-frozen-lockfile
+COPY pnpm-lock.yaml package.json pnpm-workspace.yaml ./
+COPY plugins/gateway/app/package.json plugins/gateway/app/package.json
+RUN corepack enable pnpm && pnpm install --prod --frozen-lockfile --filter @kb-labs/gateway-app
 
 # ── runner ───────────────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
