@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/agent-contracts",
-  "version": "2.17.0",
+  "version": "2.18.0",
   "type": "module",
   "description": "Type definitions and contracts for KB Labs Agents. IDs, Session, Specification, Gates, Multi-Agent types.",
   "main": "./dist/index.js",

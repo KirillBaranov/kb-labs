@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/studio-federation",
-  "version": "2.17.0",
+  "version": "2.18.0",
   "description": "Studio Module Federation host logic — page loader, container, error boundary",
   "type": "module",
   "main": "./dist/index.js",
