@@ -1,12 +1,23 @@
-name: Deploy Sites
+name: Deploy
 
 on:
   push:
     branches: [main]
     paths:
       - 'sites/web/**'
+      - 'plugins/gateway/**'
+      - 'adapters/openai/**'
+      - 'adapters/redis/**'
+      - 'adapters/sqlite/**'
+      - 'adapters/pino/**'
+      - 'adapters/fs/**'
+      - 'adapters/log-sqlite/**'
+      - 'adapters/log-ringbuffer/**'
+      - 'adapters/eventbus-cache/**'
+      - 'core/**'
+      - 'shared/**'
       - '.kb/deploy.yaml'
-      - '.github/workflows/deploy-sites.yml'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
     inputs:
       target:
@@ -19,7 +30,7 @@ permissions:
   packages: write  # required for docker push to ghcr.io
 
 concurrency:
-  group: deploy-sites
+  group: deploy
   cancel-in-progress: false
 
 jobs:
