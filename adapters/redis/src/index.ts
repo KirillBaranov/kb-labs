@@ -52,6 +52,9 @@ export class RedisCacheAdapter implements ICache {
       ...config,
       keyPrefix: this.keyPrefix,
     });
+
+    // Prevent unhandled error events from crashing the process on reconnect failures
+    this.client.on("error", () => {});
   }
 
   async get<T>(key: string): Promise<T | null> {
