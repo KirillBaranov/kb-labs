@@ -283,7 +283,17 @@ export default function WorkflowDefinitionDetail() {
         workflow={workflowDef}
         loading={runWorkflowMutation.isLoading}
         onClose={() => setRunModalOpen(false)}
-        onRun={(_workflowId, input) => runWorkflowMutation.mutate(input)}
+        onRun={(_workflowId, input) => {
+          runWorkflowMutation.mutate(input, {
+            onSuccess: (data) => {
+              setRunModalOpen(false);
+              navigate(`/p/workflows/runs/${data.runId}`);
+            },
+            onError: (err) => {
+              messageApi.error(`Failed to start workflow "${workflowId}": ${err.message}`);
+            },
+          });
+        }}
       />
     </UIPage>
   );

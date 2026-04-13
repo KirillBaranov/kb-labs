@@ -15,6 +15,7 @@ import {
   UITable,
   UITag,
   UIButton,
+  useUIMessage,
 } from '@kb-labs/sdk/studio';
 import { useData, useMutateData } from '@kb-labs/sdk/studio';
 import type { DashboardStatsResponse, WorkflowInfo } from '@kb-labs/workflow-contracts';
@@ -60,16 +61,19 @@ function formatDuration(ms?: number) {
 
 export default function WorkflowsDashboard() {
   const navigate = useNavigate();
+  const [messageApi, contextHolder] = useUIMessage();
   const [runModalOpen, setRunModalOpen] = React.useState(false);
 
   const { data: stats } = useData<DashboardStatsResponse>('/exec/api/v1/stats', { pollingMs: 3000 });
   const { data: workflowsData } = useData<{ workflows: WorkflowInfo[] }>('/exec/api/v1/workflows', { params: { limit: 100 } });
 
-  const [runTargetId, setRunTargetId] = React.useState<string>('__none__');
   const runWorkflowMutation = useMutateData<
-    Record<string, unknown>,
+    { workflowId: string; input: Record<string, unknown> },
     { runId: string; status: string }
-  >(`/exec/api/v1/workflows/${encodeURIComponent(runTargetId)}/runs`);
+  >(
+    (p) => `/exec/api/v1/workflows/${encodeURIComponent(p.workflowId)}/runs`,
+    { mapBody: (p) => p.input },
+  );
 
   const recentActivity = stats?.recentActivity || [];
 
@@ -155,6 +159,7 @@ export default function WorkflowsDashboard() {
 
   return (
     <UIPage width="full">
+      {contextHolder}
       <UIPageHeader
         title="Workflows"
         description="Monitor workflows, jobs, and scheduled tasks"
@@ -257,9 +262,15 @@ export default function WorkflowsDashboard() {
         loading={runWorkflowMutation.isLoading}
         onClose={() => setRunModalOpen(false)}
         onRun={(workflowId, input) => {
-          setRunTargetId(workflowId);
-          // useMutateData URL updates on next render — use setTimeout to let React re-render first
-          setTimeout(() => runWorkflowMutation.mutate(input), 0);
+          runWorkflowMutation.mutate({ workflowId, input }, {
+            onSuccess: (data) => {
+              setRunModalOpen(false);
+              navigate(`/p/workflows/runs/${data.runId}`);
+            },
+            onError: (err) => {
+              messageApi.error(`Failed to start workflow "${workflowId}": ${err.message}`);
+            },
+          });
         }}
       />
     </UIPage>

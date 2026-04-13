@@ -29,26 +29,13 @@ export default function WorkflowsDefinitions() {
     params: { limit: 100 },
   });
 
-  const [runTargetId, setRunTargetId] = React.useState<string>('__none__');
   const runWorkflowMutation = useMutateData<
-    Record<string, unknown>,
+    { workflowId: string; input: Record<string, unknown> },
     { runId: string; status: string }
-  >(`/exec/api/v1/workflows/${encodeURIComponent(runTargetId)}/runs`);
-
-  // Handle success navigation
-  React.useEffect(() => {
-    if (runWorkflowMutation.data?.runId) {
-      setRunModalWorkflow(null);
-      navigate(`/p/workflows/runs/${runWorkflowMutation.data.runId}`);
-    }
-  }, [runWorkflowMutation.data?.runId]);
-
-  React.useEffect(() => {
-    if (runWorkflowMutation.error) {
-      const workflowId = runTargetId;
-      messageApi.error(`Failed to start workflow "${workflowId}": ${(runWorkflowMutation.error as Error).message}`);
-    }
-  }, [runWorkflowMutation.error]);
+  >(
+    (p) => `/exec/api/v1/workflows/${encodeURIComponent(p.workflowId)}/runs`,
+    { mapBody: (p) => p.input },
+  );
 
   const columns = [
     {
@@ -205,8 +192,15 @@ export default function WorkflowsDefinitions() {
         loading={runWorkflowMutation.isLoading}
         onClose={() => setRunModalWorkflow(null)}
         onRun={(workflowId, input) => {
-          setRunTargetId(workflowId);
-          setTimeout(() => runWorkflowMutation.mutate(input), 0);
+          runWorkflowMutation.mutate({ workflowId, input }, {
+            onSuccess: (data) => {
+              setRunModalWorkflow(null);
+              navigate(`/p/workflows/runs/${data.runId}`);
+            },
+            onError: (err) => {
+              messageApi.error(`Failed to start workflow "${workflowId}": ${err.message}`);
+            },
+          });
         }}
       />
     </UIPage>

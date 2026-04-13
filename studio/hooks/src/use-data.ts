@@ -61,6 +61,12 @@ export function useData<T = unknown>(
 
 // ─── useMutateData ──────────────────────────────────────────────────
 
+export interface MutateDataOptions<TInput> {
+  method?: 'POST' | 'PUT' | 'PATCH' | 'DELETE';
+  /** Transform input before sending as request body (useful with dynamic endpoints) */
+  mapBody?: (input: TInput) => unknown;
+}
+
 export interface UseMutateDataReturn<TInput, TOutput> {
   mutate: (input: TInput, options?: MutateOptions<TOutput, Error, TInput>) => void;
   mutateAsync: (input: TInput) => Promise<TOutput>;
@@ -73,28 +79,49 @@ export interface UseMutateDataReturn<TInput, TOutput> {
 /**
  * Mutation hook for POST/PUT/PATCH/DELETE.
  *
+ * Endpoint can be a string or a function that receives the input and returns the URL.
+ * Use a function when the URL depends on runtime values (e.g. a selected entity ID).
+ *
  * @example
  * ```tsx
  * const { mutateAsync } = useMutateData<CommitInput, CommitResult>('/v1/plugins/commit/create');
  * await mutateAsync({ scope, message });
+ *
+ * // Dynamic endpoint:
+ * const { mutate } = useMutateData<RunInput, RunResult>(
+ *   (input) => `/v1/workflows/${input.workflowId}/runs`,
+ * );
  * ```
  */
 export function useMutateData<TInput = unknown, TOutput = unknown>(
-  endpoint: string,
-  method: 'POST' | 'PUT' | 'PATCH' | 'DELETE' = 'POST',
+  endpoint: string | ((input: TInput) => string),
+  methodOrOptions: 'POST' | 'PUT' | 'PATCH' | 'DELETE' | MutateDataOptions<TInput> = 'POST',
 ): UseMutateDataReturn<TInput, TOutput> {
+  const opts = typeof methodOrOptions === 'string'
+    ? { method: methodOrOptions } as MutateDataOptions<TInput>
+    : methodOrOptions;
+  const method = opts.method ?? 'POST';
+  const mapBody = opts.mapBody;
+
   const mutation = useMutation<TOutput, Error, TInput>({
     mutationFn: async (input: TInput) => {
-      const hasBody = input !== undefined && input !== null;
-      const res = await fetch(`/api${endpoint}`, {
+      const url = typeof endpoint === 'function' ? endpoint(input) : endpoint;
+      const payload = mapBody ? mapBody(input) : input;
+      const hasBody = payload !== undefined && payload !== null;
+      const res = await fetch(`/api${url}`, {
         method,
         headers: hasBody ? { 'Content-Type': 'application/json' } : {},
-        body: hasBody ? JSON.stringify(input) : undefined,
+        body: hasBody ? JSON.stringify(payload) : undefined,
       });
       if (!res.ok) {
-        throw new Error(`${method} ${endpoint} failed: ${res.status} ${res.statusText}`);
+        throw new Error(`${method} ${url} failed: ${res.status} ${res.statusText}`);
       }
-      return res.json() as Promise<TOutput>;
+      const json = await res.json() as Record<string, unknown>;
+      // Unwrap platform envelope { ok, data, meta }
+      if (json && typeof json === 'object' && 'ok' in json && 'data' in json) {
+        return json.data as TOutput;
+      }
+      return json as TOutput;
     },
   });
 
