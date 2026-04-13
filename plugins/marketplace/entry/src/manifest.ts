@@ -4,6 +4,13 @@
  * Declares commands with subgroups for nested routing.
  */
 
+import { combinePermissions, kbPlatformPreset } from '@kb-labs/sdk';
+
+const pluginPermissions = combinePermissions()
+  .with(kbPlatformPreset)
+  .withEnv(['KB_MARKETPLACE_URL', 'KB_GATEWAY_URL', 'NODE_ENV'])
+  .build();
+
 export const manifest = {
   schema: 'kb.plugin/3' as const,
   id: '@kb-labs/marketplace',
@@ -33,6 +40,7 @@ export const manifest = {
       { id: 'doctor', group: 'marketplace', subgroup: 'plugins', describe: 'Diagnose issues', handler: './commands/plugins/doctor.js#default' },
     ],
   },
+  permissions: pluginPermissions,
 };
 
 export default manifest;

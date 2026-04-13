@@ -2,15 +2,18 @@
  * HTTP client for marketplace service via Gateway.
  */
 
+import { useEnv } from '@kb-labs/sdk';
+
 const DEFAULT_GATEWAY_URL = 'http://127.0.0.1:4000';
 const MARKETPLACE_PREFIX = '/api/v1/marketplace';
 const FETCH_TIMEOUT_MS = 30_000;
 
 function getBaseUrl(): string {
-  if (process.env.KB_MARKETPLACE_URL) {
-    return `${process.env.KB_MARKETPLACE_URL}${MARKETPLACE_PREFIX}`;
+  const marketplaceUrl = useEnv('KB_MARKETPLACE_URL');
+  if (marketplaceUrl) {
+    return `${marketplaceUrl}${MARKETPLACE_PREFIX}`;
   }
-  const gateway = process.env.KB_GATEWAY_URL ?? DEFAULT_GATEWAY_URL;
+  const gateway = useEnv('KB_GATEWAY_URL') ?? DEFAULT_GATEWAY_URL;
   return `${gateway}${MARKETPLACE_PREFIX}`;
 }
 

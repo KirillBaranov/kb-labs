@@ -5,6 +5,7 @@ import {
   useLogger,
   useLLM,
   useEmbeddings,
+  useEnv,
   MemoryHistoryStore,
   MemoryFeedbackStore,
   FileHistoryStore,
@@ -1418,7 +1419,7 @@ export class MindEngine implements KnowledgeEngine {
 
     // Create storage stage with optimized batch processing
     // Check if deduplication should be skipped (via environment variable for now)
-    const skipDedup = process.env.KB_SKIP_DEDUPLICATION === 'true' || (options as any).skipDeduplication === true;
+    const skipDedup = useEnv('KB_SKIP_DEDUPLICATION') === 'true' || (options as any).skipDeduplication === true;
     const storageStage = new StorageStage(
       vectorStoreAdapter,
       chunksWithEmbeddings as any[],
