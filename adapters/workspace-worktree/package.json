@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/adapters-workspace-worktree",
-  "version": "2.15.0",
+  "version": "2.16.0",
   "description": "Git worktree adapter implementing IWorkspaceProvider for isolated execution",
   "type": "module",
   "main": "./dist/index.js",
