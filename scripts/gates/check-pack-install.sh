@@ -71,7 +71,7 @@ while IFS= read -r ENTRY; do
   # Strip leading ./
   REL="${ENTRY#./}"
   FULL="$EXTRACTED/$REL"
-  if [[ ! -f "$FULL" ]]; then
+  if [[ ! -f "$FULL" ]] && [[ ! -d "$FULL" ]]; then
     echo "ERROR: declared entry '$ENTRY' missing from packed tarball" >&2
     FAILED=1
   else
