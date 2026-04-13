@@ -47,6 +47,7 @@ export class RedisCacheAdapter implements ICache {
     this.keyPrefix = config.keyPrefix ?? "kb:";
 
     this.client = new Redis({
+      lazyConnect: true,
       host: config.host ?? "localhost",
       port: config.port ?? 6379,
       ...config,
