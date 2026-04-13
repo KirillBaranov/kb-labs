@@ -173,22 +173,39 @@ export function createWsHandler(
 
     if (!protocolVersion) {return;}
 
-    // 3. Ensure host descriptor exists (JWT-registered hosts have no registry entry yet)
+    // 3. Resolve capabilities for dispatcher routing.
+    //
+    // Priority order:
+    //   1. AuthStore clientRecord (JWT-registered via /auth/register) — authoritative
+    //   2. HostRegistry descriptor (registered via /hosts/register) — authoritative
+    //   3. Hello-message capabilities (static/dev tokens with no registry entry) — validated
     const clientRecord = await getClientByHostId(cache, hostId);
     const registryCaps = (clientRecord?.capabilities ?? [])
       .map((c) => HostCapabilitySchema.safeParse(c))
       .filter((r) => r.success)
       .map((r) => r.data);
 
-    // Security: for JWT-registered hosts use capabilities from clientRecord only.
-    // For static-token hosts (no clientRecord) accept capabilities from hello message,
-    // but validate each against HostCapabilitySchema to reject unknown values.
-    const validatedHelloCaps = clientRecord ? [] : helloCaps
-      .map((c) => HostCapabilitySchema.safeParse(c))
-      .filter((r) => r.success)
-      .map((r) => r.data);
+    let capabilities: ReturnType<typeof HostCapabilitySchema.safeParse>['data'][];
+    if (clientRecord) {
+      // JWT-registered host: use AuthStore capabilities only
+      capabilities = registryCaps;
+    } else {
+      // Check HostRegistry for machine-token-registered hosts (/hosts/register)
+      const existingDescriptor = await registry.get(hostId, namespaceId);
+      if (existingDescriptor && existingDescriptor.capabilities.length > 0) {
+        capabilities = existingDescriptor.capabilities
+          .map((c) => HostCapabilitySchema.safeParse(c))
+          .filter((r) => r.success)
+          .map((r) => r.data);
+      } else {
+        // Static/dev token with no registry entry: accept validated hello capabilities
+        capabilities = helloCaps
+          .map((c) => HostCapabilitySchema.safeParse(c))
+          .filter((r) => r.success)
+          .map((r) => r.data);
+      }
+    }
 
-    const capabilities = clientRecord ? registryCaps : validatedHelloCaps;
     await registry.ensureRegistered(hostId, namespaceId, clientRecord?.name ?? hostId, capabilities);
 
     // 4. Set online + register in dispatcher (with capabilities for routing) + send connected

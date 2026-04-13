@@ -18,6 +18,7 @@ var (
 	bundleOut            string
 	bundleDocker         bool
 	bundleIncludeSources bool
+	bundleProd           bool
 )
 
 var bundleCmd = &cobra.Command{
@@ -51,6 +52,7 @@ func init() {
 	bundleCmd.Flags().StringVar(&bundleOut, "out", "", "output directory (default: .kb/bundle/<pkg-slug>)")
 	bundleCmd.Flags().BoolVar(&bundleDocker, "docker", false, "split output into json/ and full/ for two-stage Docker builds")
 	bundleCmd.Flags().BoolVar(&bundleIncludeSources, "include-sources", false, "copy source files of all packages in the closure")
+	bundleCmd.Flags().BoolVar(&bundleProd, "prod", false, "exclude devDependencies from closure (for production Docker images)")
 	rootCmd.AddCommand(bundleCmd)
 }
 
@@ -83,7 +85,7 @@ func runBundle(cmd *cobra.Command, args []string) error {
 	}
 
 	// BFS transitive closure of workspace:* deps.
-	closure := buildClosure(target, pkgByName)
+	closure := buildClosure(target, pkgByName, bundleProd)
 
 	// Determine output directory.
 	outDir := bundleOut
@@ -174,15 +176,21 @@ func resolvePackageFrom(pkgs []workspace.Package, wsRoot, arg string) (workspace
 
 // buildClosure returns the transitive workspace dependency closure for target,
 // sorted by RelPath for deterministic output.
-func buildClosure(target workspace.Package, pkgByName map[string]workspace.Package) []workspace.Package {
+// If prod is true, devDependencies are excluded from the closure (for Docker images).
+func buildClosure(target workspace.Package, pkgByName map[string]workspace.Package, prod bool) []workspace.Package {
 	visited := map[string]workspace.Package{target.Name: target}
 	queue := []workspace.Package{target}
+
+	depsFunc := engine.WorkspaceDeps
+	if prod {
+		depsFunc = engine.WorkspaceProdDeps
+	}
 
 	for len(queue) > 0 {
 		pkg := queue[0]
 		queue = queue[1:]
 
-		for _, depName := range engine.WorkspaceDeps(pkg.Dir, pkgByName) {
+		for _, depName := range depsFunc(pkg.Dir, pkgByName) {
 			if _, seen := visited[depName]; !seen {
 				dep := pkgByName[depName]
 				visited[depName] = dep

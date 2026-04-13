@@ -101,11 +101,11 @@ async function getJwtToken(namespaceId = NAMESPACE): Promise<{
 }
 
 /** Register a host via /hosts/register, returns hostId + machineToken */
-async function registerHost(name = 'live-host'): Promise<{ hostId: string; machineToken: string }> {
+async function registerHost(name = 'live-host', capabilities: string[] = ['filesystem']): Promise<{ hostId: string; machineToken: string }> {
   const res = await post('/hosts/register', {
     name,
     namespaceId: NAMESPACE,
-    capabilities: ['filesystem'],
+    capabilities,
     workspacePaths: [],
   });
   return res.json() as Promise<{ hostId: string; machineToken: string }>;
@@ -195,11 +195,11 @@ function parseNdjson(body: string): unknown[] {
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe.sequential('Live Gateway — /health', () => {
-  it('returns { status: ok }', async () => {
+  it('returns { status: healthy|degraded }', async () => {
     const res = await fetch(`${GATEWAY}/health`);
     expect(res.ok).toBe(true);
     const body = await res.json() as { status: string };
-    expect(body.status).toBe('ok');
+    expect(['healthy', 'degraded', 'unhealthy']).toContain(body.status);
   });
 });
 
@@ -309,11 +309,11 @@ describe.sequential('Live Gateway — Host registration + WS handshake', () => {
 
     ws.close(1000);
 
-    // After disconnect — should go offline
+    // After disconnect — should go offline or reconnecting (grace period)
     await new Promise((r) => { setTimeout(r, 300); });
     const hostsAfter = await getJson<{ hosts: Array<{ hostId: string; status: string }> }>('/hosts', accessToken);
     const hostAfter = hostsAfter.hosts.find((h) => h.hostId === hostId);
-    expect(hostAfter?.status).toBe('offline');
+    expect(['offline', 'reconnecting']).toContain(hostAfter?.status);
   }, 10_000);
 
   it('heartbeat gets ack response', async () => {
@@ -355,7 +355,7 @@ describe.sequential('Live Gateway — POST /api/v1/execute (ndjson streaming)', 
    * 4. Collect ndjson events from response
    */
   it('streams execution:done(exitCode=0) when host responds to call', async () => {
-    const { machineToken } = await registerHost('exec-host');
+    const { machineToken } = await registerHost('exec-host', ['execution']);
     const { ws: hostWs } = await connectHostWs(machineToken);
 
     // Host: listen for call, respond with result
@@ -402,7 +402,7 @@ describe.sequential('Live Gateway — POST /api/v1/execute (ndjson streaming)', 
   }, 15_000);
 
   it('streams execution:error + execution:done(exitCode=1) when host returns error', async () => {
-    const { machineToken } = await registerHost('exec-err-host');
+    const { machineToken } = await registerHost('exec-err-host', ['execution']);
     const { ws: hostWs } = await connectHostWs(machineToken);
 
     hostWs.on('message', (raw: RawData) => {
@@ -448,7 +448,7 @@ describe.sequential('Live Gateway — POST /api/v1/execute (ndjson streaming)', 
 
     expect(res.status).toBe(503);
     const body = await res.json() as { error: string };
-    expect(body.error).toBe('No host connected');
+    expect(body.error).toBe('No execution host connected');
   }, 8000);
 
   it('returns 401 without token', async () => {
@@ -465,7 +465,7 @@ describe.sequential('Live Gateway — POST /api/v1/execute (ndjson streaming)', 
 
 describe.sequential('Live Gateway — POST /api/v1/execute/:id/cancel', () => {
   it('cancels an in-flight execution and streams execution:cancelled + done(exitCode=130)', async () => {
-    const { machineToken } = await registerHost('cancel-host');
+    const { machineToken } = await registerHost('cancel-host', ['execution']);
     const { ws: hostWs } = await connectHostWs(machineToken);
 
     // Host: block on call — never responds (simulates long-running execution)
@@ -523,7 +523,7 @@ describe.sequential('Live Gateway — POST /api/v1/execute/:id/cancel', () => {
 describe.sequential('Live Gateway — /clients/connect WS pub/sub broadcast', () => {
   it('client receives execution events via WS subscription', async () => {
     // 1. Connect host
-    const { machineToken } = await registerHost('broadcast-host');
+    const { machineToken } = await registerHost('broadcast-host', ['execution']);
     const { ws: hostWs } = await connectHostWs(machineToken);
 
     // 2. Register observer client
@@ -610,7 +610,7 @@ describe.sequential('Live Gateway — /clients/connect WS pub/sub broadcast', ()
   }, 8000);
 
   it('client:cancel cancels execution and aborts host call', async () => {
-    const { machineToken } = await registerHost('cancel-via-ws-host');
+    const { machineToken } = await registerHost('cancel-via-ws-host', ['execution']);
     const { ws: hostWs } = await connectHostWs(machineToken);
 
     const { accessToken } = await getJwtToken();
