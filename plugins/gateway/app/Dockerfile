@@ -1,16 +1,3 @@
-FROM node:20-alpine AS deps
-WORKDIR /app
-
-RUN apk add --no-cache libc6-compat
-
-# Install prod dependencies only
-COPY pnpm-lock.yaml ./
-COPY plugins/gateway/app/package.json ./package.json
-# Empty workspace so pnpm resolves workspace:* deps from the registry
-RUN echo "packages: []" > pnpm-workspace.yaml
-RUN corepack enable pnpm && pnpm install --prod --no-frozen-lockfile
-
-# ── runner ───────────────────────────────────────────────────────────────────
 FROM node:20-alpine AS runner
 WORKDIR /app
 
@@ -20,10 +7,9 @@ RUN apk add --no-cache libc6-compat && \
     addgroup --system --gid 1001 nodejs && \
     adduser  --system --uid 1001 kb
 
-COPY --from=deps --chown=kb:nodejs /app/node_modules ./node_modules
-
-# dist/ built on CI by kb-devkit before docker build
-COPY --chown=kb:nodejs plugins/gateway/app/dist ./dist
+# deploy/ produced on CI by: pnpm deploy --filter @kb-labs/gateway-app --prod .kb/deploy/gateway-app
+COPY --chown=kb:nodejs .kb/deploy/gateway-app/node_modules ./node_modules
+COPY --chown=kb:nodejs .kb/deploy/gateway-app/dist ./dist
 
 # Prod config: adapters + gateway upstreams
 COPY --chown=kb:nodejs plugins/gateway/app/.kb/kb.config.prod.json .kb/kb.config.json
