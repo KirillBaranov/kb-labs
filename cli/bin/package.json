@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/cli-bin",
-  "version": "2.15.0",
+  "version": "2.16.0",
   "type": "module",
   "description": "KB Labs CLI tool for project management and automation",
   "bin": {
