@@ -1,0 +1,86 @@
+---
+title: Merging 22 submodules into one monorepo — lessons from the migration
+description: "22 repos, 204 cross-repo link: dependencies, an 11-step mode-switching tool. We merged everything into one monorepo. Here's what died, what survived, and what surprised us."
+lang: en
+slug: monorepo-22-submodules
+date: '2026-04-08'
+author: KB Labs
+tag: Engineering
+excerpt: "22 repos, 204 cross-repo link: dependencies, an 11-step mode-switching tool. We merged everything into one monorepo. Here's what died, what survived, and what surprised us."
+readTime: 8 min read
+tags:
+  - engineering
+  - monorepo
+  - migration
+---
+
+For eight months, KB Labs was 22 git repositories stitched together with submodules. Each repo had its own lockfile, its own CI, its own version history. Cross-repo dependencies used `link:` paths managed by a custom tool (DevLink) that needed an 11-step pipeline to switch between development and npm modes.
+
+We merged everything into a single monorepo. Here's why, how, and what surprised us.
+
+## Why submodules seemed right (and why they weren't)
+
+The original reasoning was sound: separate repos for separate concerns. The plugin system is independent from the CLI framework, which is independent from the adapters. Clean boundaries.
+
+In practice, those boundaries created 204 cross-repo `link:` dependencies, 22 lockfiles that drifted independently, and a DevLink tool that had to:
+
+1. Discover all repos via `.gitmodules`
+2. Convert cross-repo `workspace:*` to `link:` paths
+3. Generate per-repo `pnpm-workspace.yaml` files
+4. Clean stale `node_modules` (hardcoded shim paths from old layouts)
+5. Run root install + per-repo install
+6. Validate diagnostics (broken links, stale lockfiles, cross-repo mismatches)
+
+That's infrastructure built to work around multi-repo — not to build the product. For a small team, every hour spent on DevLink was an hour not spent on features.
+
+## The decision: clean start, not history merge
+
+We considered `git filter-repo` to merge histories. The math didn't work: 22 repos × history rewriting × path remapping × conflict resolution = weeks of work for a cosmetic benefit. Git history lives in the archived repos on GitHub. The new repo starts clean.
+
+The migration was phased: create new repo → copy code → replace all `link:` with `workspace:*` → verify builds → archive old repos.
+
+## The new structure
+
+```plaintext
+kb-labs/
+├── core/          # foundation (types, runtime, config, discovery, registry)
+├── sdk/           # public API for plugin authors
+├── cli/           # CLI framework
+├── shared/        # utilities (cli-ui, http, testing, git)
+├── plugins/       # ALL optional functionality
+├── adapters/      # interface implementations (llm-openai, redis, sqlite, ...)
+├── tools/         # Go binaries (kb-devkit, kb-dev, kb-create)
+├── studio/        # Web UI
+├── sites/         # websites
+└── docs/          # ADRs, architecture decisions
+```
+
+Grouping is by architectural role, not by origin. Dependencies flow strictly downward: core → sdk → plugins; core → adapters. The "duck typing rule" governs plugins: if it uses SDK, registers commands, and has a manifest — it's a plugin. Whether it has an HTTP daemon is an implementation detail, not an architectural boundary.
+
+## What died
+
+- **DevLink** — the entire tool. No more mode switching, backup/restore, workspace.yaml sync.
+- **.gitmodules** — gone. The monorepo has no submodules.
+- **22 lockfiles** → 1. One `pnpm-lock.yaml`, one `pnpm-workspace.yaml`.
+- **All `link:` paths** → `workspace:*` everywhere. pnpm resolves locally; replaces with `^version` on publish.
+- **devkit-sync.mjs** — a script that synchronized shared configs across submodules. Unnecessary when configs live in one repo.
+
+## What surprised us
+
+### node_modules contain hardcoded paths
+
+Hoisted packages in `node_modules` sometimes contain generated shims with hardcoded absolute paths from the old flat layout. A simple `pnpm install` doesn't fix them — you need to delete `node_modules` entirely and reinstall. We hit this as silent import resolution failures that only appeared at runtime.
+
+### Services must run with `node ./path`, not `pnpm --filter`
+
+`pnpm --filter @kb-labs/rest-api start` sets `cwd` to the package directory but doesn't resolve dotenv from the repo root. Services that load config via `loadEnvFromRoot(repoRoot)` need to be started with an explicit path so the root resolution works correctly.
+
+### The build is actually faster
+
+22 repos meant 22 install steps, 22 build steps, 22 type-check steps. One repo means one install (shared `node_modules`), one topologically-ordered build (kb-devkit handles the DAG), and one type-check pass. The migration cut CI time by roughly 40%.
+
+## Was it worth it?
+
+Unambiguously yes. The migration took about a week. It eliminated an entire layer of tooling (DevLink, submodule sync, multi-lockfile management) and made every daily operation — install, build, test, publish — simpler. The monorepo has one command for each action, not 22.
+
+If you're a small team with multiple repos and you're spending more time on inter-repo plumbing than on features — merge them. The pain is front-loaded and finite. The simplification is permanent.

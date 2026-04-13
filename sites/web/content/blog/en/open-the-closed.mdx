@@ -1,0 +1,80 @@
+---
+title: "Open the closed: why vendor lock-in is a design choice, not a given"
+description: Every platform dependency is a bet. We explain why we think the only safe bet is a typed contract — and how 12 core contracts shape every architectural decision we make.
+lang: en
+slug: open-the-closed
+date: '2026-02-20'
+author: KB Labs
+tag: Philosophy
+excerpt: "Every platform dependency is a bet. We explain why we think the only safe bet is a typed contract — and how 12 core contracts shape every architectural decision we make."
+readTime: 7 min read
+tags:
+  - philosophy
+  - architecture
+---
+
+Every platform dependency is a bet. You're betting that this vendor will still be the right choice in two years — on price, on capability, on reliability. Most bets age poorly.
+
+The standard advice is "choose wisely." Pick the vendor with the best track record, the largest ecosystem, the most stable API. Solid advice. Also: not sufficient.
+
+## The real problem is coupling, not choice
+
+Lock-in doesn't happen because you picked the wrong vendor. It happens because your business logic learned the shape of that vendor's API. Your prompts know about OpenAI's message format. Your queries know about Pinecone's filter syntax. Your workflows know about Temporal's activity model.
+
+When a better option appears — and it will — switching requires rewriting the business logic that referenced those shapes. That cost is almost always higher than the cost of staying. So you stay. Not because the vendor is best; because leaving is expensive.
+
+## Contracts as the structural fix
+
+Your business logic should never reference a vendor's concrete types. It should reference a contract — an interface that describes *what you need*, not *how it's implemented*.
+
+```typescript
+// Coupled — business logic knows about OpenAI
+import OpenAI from 'openai';
+const res = await openai.chat.completions.create({
+  model: 'gpt-4o', messages, tools
+});
+
+// Decoupled — business logic knows about a contract
+import type { ILLM } from '@kb-labs/contracts';
+const res = await llm.chat({ messages, model: 'default' });
+```
+
+The adapter layer translates the contract into whatever the vendor requires. Swap the adapter, not the logic.
+
+## 12 contracts, not 2
+
+This isn't a pattern we apply to LLMs and call it a day. KB Labs defines 12 core contract interfaces across the platform surface:
+
+- **ILLM** — chat completions, streaming, tool calling. Adapters for OpenAI, Anthropic, local models
+- **ICache** — get/set/delete plus sorted sets for scheduling. In-memory or Redis
+- **IStorage** — read/write/list with optional streaming. Local filesystem or S3-compatible
+- **IVectorStore** — search/upsert/delete. Qdrant, Chroma, or any provider
+- **IEmbeddings** — embed/embedBatch with dimension tracking
+- **ISQLDatabase / IDocumentDatabase / IKeyValueDatabase** — three database contracts for three access patterns
+- **IEventBus** — publish/subscribe. In-memory, Redis Pub/Sub, or bring your own
+- **ILogger** — structured logging with child loggers. Pino adapter ships by default
+
+Every adapter implements exactly one contract. Every plugin references only contracts, never adapters. The boundary is enforced by the dependency graph: plugins depend on `@kb-labs/contracts`, never on `@kb-labs/adapter-*`.
+
+## The IPlatformAdapters aggregate
+
+All 12 contracts converge into a single `PlatformContainer` interface — the gateway through which every plugin accesses infrastructure. You configure which adapters back which contracts once, at startup. From that point forward, `platform.llm`, `platform.cache`, `platform.storage` all work — regardless of what's underneath.
+
+```yaml
+# One config, one swap
+adapters:
+  llm: '@kb-labs/adapter-openai'      # → swap to anthropic, local, etc.
+  cache: '@kb-labs/adapter-redis'      # → swap to in-memory for dev
+  storage: '@kb-labs/adapter-fs'       # → swap to S3 for prod
+  vectorStore: '@kb-labs/adapter-qdrant'
+```
+
+## The test we apply
+
+Every new abstraction goes through one question: *can a developer swap this dependency without touching their business logic?* If no, the abstraction is leaking.
+
+There's a real cost. More interfaces to maintain. More adapter code to write. Occasionally, an abstraction that doesn't fit perfectly over a vendor's quirky API surface.
+
+We think that cost compounds in your favour. The first swap is work. The second swap is routine. By the third, your team treats infrastructure as genuinely interchangeable — because it is.
+
+That's the freedom we're building towards. Not freedom from vendors — freedom to choose them on their merits, any time.
