@@ -240,6 +240,8 @@ func writeManifests(outDir, wsRoot string, closure []workspace.Package) error {
 }
 
 // copyRootFiles copies root package.json, pnpm-lock.yaml, and tsconfig files.
+// Also copies tsconfig.base.json from every top-level category directory present in outDir,
+// because packages extend these via relative paths (e.g. ../../tsconfig.base.json).
 func copyRootFiles(outDir, wsRoot string) error {
 	if err := copyFile(filepath.Join(outDir, "package.json"), filepath.Join(wsRoot, "package.json")); err != nil {
 		return fmt.Errorf("copy root package.json: %w", err)
@@ -252,16 +254,40 @@ func copyRootFiles(outDir, wsRoot string) error {
 		}
 	}
 
-	// Copy root tsconfig files — packages extend these via relative paths.
-	for _, name := range []string{"tsconfig.json", "tsconfig.base.json"} {
-		src := filepath.Join(wsRoot, name)
-		if _, err := os.Stat(src); err == nil {
-			if err := copyFile(filepath.Join(outDir, name), src); err != nil {
-				return fmt.Errorf("copy %s: %w", name, err)
+	// Copy tsconfig.base.json from workspace root and from every top-level
+	// category directory that appears in the bundle (core/, plugins/, shared/, etc.).
+	tsconfigName := "tsconfig.base.json"
+
+	// Root-level tsconfig.base.json
+	if src := filepath.Join(wsRoot, tsconfigName); fileExists(src) {
+		if err := copyFile(filepath.Join(outDir, tsconfigName), src); err != nil {
+			return fmt.Errorf("copy %s: %w", tsconfigName, err)
+		}
+	}
+
+	// Category-level tsconfig.base.json — walk top-level dirs in outDir
+	entries, err := os.ReadDir(outDir)
+	if err != nil {
+		return nil
+	}
+	for _, e := range entries {
+		if !e.IsDir() {
+			continue
+		}
+		src := filepath.Join(wsRoot, e.Name(), tsconfigName)
+		if fileExists(src) {
+			dst := filepath.Join(outDir, e.Name(), tsconfigName)
+			if err := copyFile(dst, src); err != nil {
+				return fmt.Errorf("copy %s/%s: %w", e.Name(), tsconfigName, err)
 			}
 		}
 	}
 	return nil
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
 }
 
 // copySources recursively copies source files for all closure packages.
