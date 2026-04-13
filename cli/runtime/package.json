@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/cli-runtime",
-  "version": "2.16.0",
+  "version": "2.17.0",
   "description": "CLI runtime — command execution, middleware, formatters, presenters, gateway, lifecycle",
   "type": "module",
   "main": "./dist/index.js",
