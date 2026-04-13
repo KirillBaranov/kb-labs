@@ -3,10 +3,19 @@ import path from 'node:path';
 
 import matter from 'gray-matter';
 import { compileMDX } from 'next-mdx-remote/rsc';
+import rehypePrettyCode, { type Options as PrettyCodeOptions } from 'rehype-pretty-code';
+import remarkGfm from 'remark-gfm';
 
 export type Lang = 'en' | 'ru';
 
-type Frontmatter = {
+const prettyCodeOptions: PrettyCodeOptions = {
+  theme: 'github-dark-dimmed',
+  keepBackground: true,
+  defaultLang: 'plaintext',
+  bypassInlineCode: true,
+};
+
+export type Frontmatter = {
   title: string;
   description: string;
   lang: Lang;
@@ -15,6 +24,9 @@ type Frontmatter = {
   tags?: string[];
   draft?: boolean;
   author?: string;
+  tag?: string;
+  excerpt?: string;
+  readTime?: string;
 };
 
 const contentRoot = path.resolve(process.cwd(), '../../content');
@@ -57,7 +69,13 @@ export async function getBlogPost(lang: Lang, slug: string) {
   const { content, data } = matter(raw);
   const compiled = await compileMDX<Frontmatter>({
     source: content,
-    options: { parseFrontmatter: false },
+    options: {
+      parseFrontmatter: false,
+      mdxOptions: {
+        remarkPlugins: [remarkGfm],
+        rehypePlugins: [[rehypePrettyCode, prettyCodeOptions]],
+      },
+    },
   });
 
   return {
