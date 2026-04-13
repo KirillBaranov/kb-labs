@@ -1,11 +1,10 @@
-FROM node:20-alpine AS runner
+FROM node:20-slim AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
 
-RUN apk add --no-cache libc6-compat && \
-    addgroup --system --gid 1001 nodejs && \
-    adduser  --system --uid 1001 kb
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser  --system --uid 1001 --ingroup nodejs kb
 
 # deploy/ produced on CI by: pnpm deploy --filter @kb-labs/gateway-app --prod .kb/deploy/gateway-app
 COPY --chown=kb:nodejs .kb/deploy/gateway-app/node_modules ./node_modules
