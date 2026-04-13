@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/devlink-entry",
-  "version": "2.19.0",
+  "version": "2.20.0",
   "type": "module",
   "description": "CLI commands and manifest for DevLink plugin.",
   "main": "./dist/index.js",
