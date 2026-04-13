@@ -5413,6 +5413,12 @@ importers:
       react-router-dom:
         specifier: ^7.0.2
         version: 7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      rehype-pretty-code:
+        specifier: ^0.14.3
+        version: 0.14.3(shiki@4.0.2)
+      remark-gfm:
+        specifier: ^4.0.1
+        version: 4.0.1
     devDependencies:
       '@kb-labs/web-config':
         specifier: workspace:*
