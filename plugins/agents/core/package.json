@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/agent-core",
-  "version": "2.17.0",
+  "version": "2.18.0",
   "type": "module",
   "description": "Core logic for KB Labs Agents. Session management, orchestration, quality gates, multi-agent coordination.",
   "main": "./dist/index.js",

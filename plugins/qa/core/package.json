@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/qa-core",
-  "version": "2.17.0",
+  "version": "2.18.0",
   "type": "module",
   "description": "Core business logic for KB Labs QA Plugin — runner, baseline, history, and reporting.",
   "main": "./dist/index.js",
