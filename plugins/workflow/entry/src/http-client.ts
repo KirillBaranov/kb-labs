@@ -2,6 +2,7 @@
  * HTTP client for interacting with Workflow Daemon
  */
 import type { WorkflowRunRequest } from '@kb-labs/workflow-contracts';
+import { useEnv } from '@kb-labs/sdk';
 
 const DEFAULT_DAEMON_URL = 'http://localhost:7778';
 
@@ -13,14 +14,14 @@ export interface DaemonClientOptions {
  * Get workflow daemon URL from environment or default
  */
 export function getWorkflowDaemonUrl(): string {
-  return process.env.WORKFLOW_DAEMON_URL ?? DEFAULT_DAEMON_URL;
+  return useEnv('WORKFLOW_DAEMON_URL') ?? DEFAULT_DAEMON_URL;
 }
 
 export class WorkflowDaemonClient {
   private readonly baseUrl: string;
 
   constructor(options: DaemonClientOptions = {}) {
-    this.baseUrl = options.url ?? process.env.WORKFLOW_DAEMON_URL ?? DEFAULT_DAEMON_URL;
+    this.baseUrl = options.url ?? useEnv('WORKFLOW_DAEMON_URL') ?? DEFAULT_DAEMON_URL;
   }
 
   /**

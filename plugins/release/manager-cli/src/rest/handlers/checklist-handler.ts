@@ -4,7 +4,7 @@
  * Returns status of all release steps: plan, changelog, build, preview
  */
 
-import { defineHandler, findRepoRoot, type RestInput } from '@kb-labs/sdk';
+import { defineHandler, findRepoRoot, useEnv, type RestInput } from '@kb-labs/sdk';
 import type {
   ReleaseChecklist,
   ChecklistItemStatus,
@@ -147,7 +147,7 @@ export default defineHandler({
     }
 
     // Check npm auth token
-    const hasNpmToken = !!(process.env.NPM_TOKEN ?? process.env.NODE_AUTH_TOKEN);
+    const hasNpmToken = !!(useEnv('NPM_TOKEN') ?? useEnv('NODE_AUTH_TOKEN'));
     const npmStatus: ChecklistItemStatus = hasNpmToken ? 'ready' : 'error';
     const npmMessage = hasNpmToken
       ? 'npm token configured'

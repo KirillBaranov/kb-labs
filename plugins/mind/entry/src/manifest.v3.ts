@@ -31,6 +31,8 @@ const pluginPermissions = combinePermissions()
     'QDRANT_API_KEY',
     'EMBEDDING_PROVIDER',
     'VECTOR_STORE_TYPE',
+    'KB_SKIP_DEDUPLICATION',
+    'NO_COLOR',
   ])
   .withFs({
     mode: 'readWrite',

@@ -1,4 +1,4 @@
-import { defineCommand, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
+import { defineCommand, useEnv, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import { post } from '../http.js';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
@@ -40,7 +40,7 @@ export default defineCommand<unknown, SyncInput, SyncResultData>({
         return { exitCode: 1, result: { added: [], skipped: [], total: 0 } };
       }
 
-      const isDev = (process.env.NODE_ENV ?? 'development') === 'development';
+      const isDev = (useEnv('NODE_ENV') ?? 'development') === 'development';
       const result = await post<SyncResultData>('/workspace/sync', {
         include: syncConfig.include,
         exclude: syncConfig.exclude,
