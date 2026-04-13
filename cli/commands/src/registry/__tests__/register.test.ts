@@ -163,6 +163,116 @@ describe('registerManifests', () => {
     expect(mockRegistry.registerManifest).not.toHaveBeenCalled();
   });
 
+  it('should NOT collide when same bare id is in different groups (cross-group)', async () => {
+    const { checkRequires } = await vi.importMock('../availability.js') as { checkRequires: any };
+    vi.mocked(checkRequires).mockReturnValue({ available: true });
+
+    const agentRun: CommandManifest = {
+      manifestVersion: '1.0',
+      id: 'run',
+      group: 'agent',
+      describe: 'Agent run',
+      loader: async () => ({ run: async () => 0 }),
+    };
+
+    const workflowRun: CommandManifest = {
+      manifestVersion: '1.0',
+      id: 'run',
+      group: 'workflow',
+      describe: 'Workflow run',
+      loader: async () => ({ run: async () => 0 }),
+    };
+
+    const reviewRun: CommandManifest = {
+      manifestVersion: '1.0',
+      id: 'run',
+      group: 'review',
+      describe: 'Review run',
+      loader: async () => ({ run: async () => 0 }),
+    };
+
+    const discoveryResults: DiscoveryResult[] = [
+      {
+        source: 'workspace',
+        packageName: '@kb-labs/agent-entry',
+        manifestPath: '/test/agent-manifest.js',
+        pkgRoot: '/test/agent',
+        manifests: [agentRun],
+      },
+      {
+        source: 'workspace',
+        packageName: '@kb-labs/workflow-entry',
+        manifestPath: '/test/workflow-manifest.js',
+        pkgRoot: '/test/workflow',
+        manifests: [workflowRun],
+      },
+      {
+        source: 'workspace',
+        packageName: '@kb-labs/review-entry',
+        manifestPath: '/test/review-manifest.js',
+        pkgRoot: '/test/review',
+        manifests: [reviewRun],
+      },
+    ];
+
+    const result = await registerManifests(discoveryResults, mockRegistry as any);
+
+    // All three should be registered, none skipped
+    expect(result.registered).toHaveLength(3);
+    expect(result.skipped).toHaveLength(0);
+    expect(mockRegistry.registerManifest).toHaveBeenCalledTimes(3);
+
+    // None should be shadowed
+    for (const cmd of result.registered) {
+      expect(cmd.shadowed).toBe(false);
+    }
+  });
+
+  it('should still collide when same group + same bare id (true collision)', async () => {
+    const { checkRequires } = await vi.importMock('../availability.js') as { checkRequires: any };
+    vi.mocked(checkRequires).mockReturnValue({ available: true });
+
+    const first: CommandManifest = {
+      manifestVersion: '1.0',
+      id: 'run',
+      group: 'agent',
+      describe: 'First agent run',
+      loader: async () => ({ run: async () => 0 }),
+    };
+
+    const duplicate: CommandManifest = {
+      manifestVersion: '1.0',
+      id: 'run',
+      group: 'agent',
+      describe: 'Duplicate agent run',
+      loader: async () => ({ run: async () => 0 }),
+    };
+
+    const discoveryResults: DiscoveryResult[] = [
+      {
+        source: 'workspace',
+        packageName: '@kb-labs/agent-entry',
+        manifestPath: '/test/agent-manifest.js',
+        pkgRoot: '/test/agent',
+        manifests: [first],
+      },
+      {
+        source: 'workspace',
+        packageName: '@kb-labs/agent-duplicate',
+        manifestPath: '/test/agent-dup-manifest.js',
+        pkgRoot: '/test/agent-dup',
+        manifests: [duplicate],
+      },
+    ];
+
+    const result = await registerManifests(discoveryResults, mockRegistry as any);
+
+    // One registered, one skipped (collision in same group)
+    expect(result.registered.length + result.skipped.length).toBe(2);
+    expect(result.skipped.length).toBeGreaterThan(0);
+    expect(result.skipped[0]?.reason).toMatch(/collision/i);
+  });
+
   it('should validate flag definitions', async () => {
     const { checkRequires } = await vi.importMock('../availability.js') as { checkRequires: any };
     vi.mocked(checkRequires).mockReturnValue({ available: true });

@@ -20,10 +20,10 @@ describe('Collision Detection', () => {
     (registry as any).manifests = new Map();
   });
 
-  it('should prevent plugin from overriding system command', () => {
-    // 1. Register system command first
+  it('should prevent plugin from overriding system command with same canonical ID', () => {
+    // 1. Register system command "test:test-cmd" (via group name)
     const systemCmd: Command = {
-      name: 'test-cmd',
+      name: 'test:test-cmd',
       describe: 'System command',
       category: 'system',
       aliases: [],
@@ -33,13 +33,13 @@ describe('Collision Detection', () => {
     };
     registry.register(systemCmd);
 
-    // 2. Try to register plugin with same ID
+    // 2. Try to register plugin with same canonical ID
     const pluginCmd: RegisteredCommand = {
       manifest: {
         manifestVersion: '1.0',
-        id: 'test-cmd', // Same ID as system command
+        id: 'test-cmd',
         group: 'test',
-        describe: 'Malicious plugin trying to override',
+        describe: 'Plugin trying to override',
         loader: async () => ({ run: async () => 1 }),
       },
       available: true,
@@ -59,12 +59,46 @@ describe('Collision Detection', () => {
     expect(pluginCmd.shadowed).toBe(true);
 
     // 5. Verify routing returns system command
-    const result = findCommandWithType('test-cmd');
+    const result = findCommandWithType('test:test-cmd');
     expect(result).toBeDefined();
     expect(result?.type).toBe('system');
     expect(result?.cmd).toBe(systemCmd);
 
     warnSpy.mockRestore();
+  });
+
+  it('should NOT shadow plugin when only bare id matches system command', () => {
+    // System command "test-cmd" (bare, no group)
+    const systemCmd: Command = {
+      name: 'test-cmd',
+      describe: 'System command',
+      category: 'system',
+      aliases: [],
+      async run() { return 0; },
+    };
+    registry.register(systemCmd);
+
+    // Plugin canonical ID is "test:test-cmd" — different from "test-cmd"
+    const pluginCmd: RegisteredCommand = {
+      manifest: {
+        manifestVersion: '1.0',
+        id: 'test-cmd',
+        group: 'test',
+        describe: 'Plugin in different namespace',
+        loader: async () => ({ run: async () => 1 }),
+      },
+      available: true,
+      source: 'workspace',
+      shadowed: false,
+    };
+
+    registry.registerManifest(pluginCmd);
+
+    // Plugin should NOT be shadowed — different canonical ID
+    expect(pluginCmd.shadowed).toBe(false);
+    expect(findCommandWithType('test:test-cmd')?.type).toBe('plugin');
+    // System command still works
+    expect(findCommandWithType('test-cmd')?.type).toBe('system');
   });
 
   it('should prevent plugin alias from overriding system command', () => {
@@ -243,9 +277,9 @@ describe('Collision Detection', () => {
   });
 
   it('should store shadowed plugins in manifests but not route to them', () => {
-    // Register system command
+    // Register system command with canonical ID matching plugin
     const systemCmd: Command = {
-      name: 'auth',
+      name: 'security:auth',
       describe: 'Auth command',
       category: 'system',
       aliases: [],
@@ -255,7 +289,7 @@ describe('Collision Detection', () => {
     };
     registry.register(systemCmd);
 
-    // Register plugin with collision
+    // Register plugin with same canonical ID → collision
     const pluginCmd: RegisteredCommand = {
       manifest: {
         manifestVersion: '1.0',
@@ -280,7 +314,7 @@ describe('Collision Detection', () => {
     expect(pluginCmd.shadowed).toBe(true);
 
     // Verify routing goes to system command
-    const result = findCommandWithType('auth');
+    const result = findCommandWithType('security:auth');
     expect(result?.type).toBe('system');
 
     warnSpy.mockRestore();
