@@ -169,18 +169,34 @@ describe('User-Defined Aliases', () => {
 describe('Collision: System Always Wins', () => {
   beforeEach(resetRegistry);
 
-  it('system command beats plugin with same bare id', () => {
-    const sys = makeSystemCmd('auth');
+  it('system command beats plugin when canonical ids match exactly', () => {
+    // System command registered as "security:auth"
+    const sys = makeSystemCmd('security:auth');
     registry.register(sys);
 
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    // Plugin canonical = "security:auth" — collides
     const plugin = makePlugin('auth', 'security');
     registry.registerManifest(plugin);
 
     expect(plugin.shadowed).toBe(true);
-    expect(findCommandWithType('auth')?.type).toBe('system');
-    expect(findCommandWithType('auth')?.cmd).toBe(sys);
+    expect(findCommandWithType('security:auth')?.type).toBe('system');
+    expect(findCommandWithType('security:auth')?.cmd).toBe(sys);
     warnSpy.mockRestore();
+  });
+
+  it('system bare command does NOT shadow plugin in different group', () => {
+    // System command "auth" (bare)
+    const sys = makeSystemCmd('auth');
+    registry.register(sys);
+
+    // Plugin canonical = "security:auth" — different namespace
+    const plugin = makePlugin('auth', 'security');
+    registry.registerManifest(plugin);
+
+    expect(plugin.shadowed).toBe(false);
+    expect(findCommandWithType('security:auth')?.type).toBe('plugin');
+    expect(findCommandWithType('auth')?.type).toBe('system');
   });
 
   it('system command beats plugin with same canonical id', () => {
@@ -205,8 +221,9 @@ describe('Collision: System Always Wins', () => {
     expect(result?.cmd).toHaveProperty('commands');
   });
 
-  it('logs warning when plugin collides with system command', () => {
-    const sys = makeSystemCmd('protected');
+  it('logs warning when plugin collides with system command (same canonical)', () => {
+    // System command registered as "test:protected" — matches plugin canonical
+    const sys = makeSystemCmd('test:protected');
     registry.register(sys);
 
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -355,6 +372,87 @@ describe('Colon ↔ Space Equivalence', () => {
     expect(findCommandWithType('marketplace:plugins:list')?.type).toBe('plugin');
     expect(findCommandWithType('marketplace plugins list')?.type).toBe('plugin');
     expect(findCommandWithType(['marketplace', 'plugins', 'list'])?.type).toBe('plugin');
+  });
+});
+
+// ─── Cross-Group Bare ID: No False Collisions ──────────────────────────────────
+
+describe('Cross-Group Bare ID (no false collisions)', () => {
+  beforeEach(resetRegistry);
+
+  it('different groups with same bare id do not collide', () => {
+    const agentRun = makePlugin('run', 'agent');
+    const workflowRun = makePlugin('run', 'workflow');
+    const reviewRun = makePlugin('run', 'review');
+
+    registry.registerManifest(agentRun);
+    registry.registerManifest(workflowRun);
+    registry.registerManifest(reviewRun);
+
+    // Each should be reachable via its canonical path
+    expect(findCommandWithType('agent:run')?.type).toBe('plugin');
+    expect(findCommandWithType('workflow:run')?.type).toBe('plugin');
+    expect(findCommandWithType('review:run')?.type).toBe('plugin');
+
+    // Space variants too
+    expect(findCommandWithType('agent run')?.type).toBe('plugin');
+    expect(findCommandWithType('workflow run')?.type).toBe('plugin');
+    expect(findCommandWithType(['review', 'run'])?.type).toBe('plugin');
+
+    // None should be shadowed
+    expect(agentRun.shadowed).toBe(false);
+    expect(workflowRun.shadowed).toBe(false);
+    expect(reviewRun.shadowed).toBe(false);
+  });
+
+  it('system group bare subcommand does not shadow plugin with same bare id in different group', () => {
+    // System command: info group with "health" subcommand
+    const infoGroup = makeSystemGroup('info', ['health', 'version']);
+    registry.registerGroup(infoGroup);
+
+    // Plugin: workflow:health — different group, should NOT be shadowed
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const workflowHealth = makePlugin('health', 'workflow');
+    registry.registerManifest(workflowHealth);
+
+    expect(workflowHealth.shadowed).toBe(false);
+    expect(findCommandWithType('workflow:health')?.type).toBe('plugin');
+    expect(findCommandWithType('workflow health')?.type).toBe('plugin');
+
+    // System still works via its own path
+    expect(findCommandWithType(['info', 'health'])?.type).toBe('system');
+
+    warnSpy.mockRestore();
+  });
+
+  it('system bare command "status" does not shadow plugin group:status', () => {
+    // System command registered via group (auth status)
+    const authGroup = makeSystemGroup('auth', ['login', 'status']);
+    registry.registerGroup(authGroup);
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const workflowStatus = makePlugin('status', 'workflow');
+    const devlinkStatus = makePlugin('status', 'devlink');
+    registry.registerManifest(workflowStatus);
+    registry.registerManifest(devlinkStatus);
+
+    expect(workflowStatus.shadowed).toBe(false);
+    expect(devlinkStatus.shadowed).toBe(false);
+    expect(findCommandWithType('workflow:status')?.type).toBe('plugin');
+    expect(findCommandWithType('devlink:status')?.type).toBe('plugin');
+
+    warnSpy.mockRestore();
+  });
+
+  it('multiple plugins with same bare id are all listed in manifests', () => {
+    const agentRun = makePlugin('run', 'agent');
+    const workflowRun = makePlugin('run', 'workflow');
+    registry.registerManifest(agentRun);
+    registry.registerManifest(workflowRun);
+
+    const manifests = registry.listManifests();
+    expect(manifests).toContainEqual(agentRun);
+    expect(manifests).toContainEqual(workflowRun);
   });
 });
 
