@@ -351,8 +351,9 @@ func WriteConfigs(platformDir string, r *ScanResult) error {
 
 // GatewayUpstream describes a single proxy target for the gateway.
 type GatewayUpstream struct {
-	URL    string `json:"url"`
-	Prefix string `json:"prefix"`
+	URL           string  `json:"url"`
+	Prefix        string  `json:"prefix"`
+	RewritePrefix *string `json:"rewritePrefix,omitempty"` // nil=omitted (default), ""=strip prefix
 }
 
 // GatewayConfig is the gateway section written to .kb/kb.config.json.
@@ -361,24 +362,33 @@ type GatewayConfig struct {
 	Upstreams map[string]GatewayUpstream `json:"upstreams"`
 }
 
+// ServiceGatewayInfo holds gateway proxy config for a service from the manifest.
+type ServiceGatewayInfo struct {
+	Prefix  string
+	Rewrite *string // nil = default (same as prefix), "" = strip prefix
+}
+
 // GenerateGatewayConfig builds gateway upstreams from scan results and
-// a prefix map (service ID → gateway prefix, provided by the manifest).
-// Services without a prefix (gateway itself, studio) are skipped.
-func GenerateGatewayConfig(r *ScanResult, prefixMap map[string]string) *GatewayConfig {
+// manifest gateway info. Services without a prefix (gateway, studio) are skipped.
+func GenerateGatewayConfig(r *ScanResult, infoMap map[string]ServiceGatewayInfo) *GatewayConfig {
 	cfg := &GatewayConfig{
 		Port:      4000,
 		Upstreams: make(map[string]GatewayUpstream),
 	}
 
 	for _, svc := range r.Services {
-		prefix, ok := prefixMap[svc.ID]
-		if !ok || prefix == "" {
+		info, ok := infoMap[svc.ID]
+		if !ok || info.Prefix == "" {
 			continue
 		}
-		cfg.Upstreams[svc.ID] = GatewayUpstream{
+		up := GatewayUpstream{
 			URL:    fmt.Sprintf("http://localhost:%d", svc.Runtime.Port),
-			Prefix: prefix,
+			Prefix: info.Prefix,
 		}
+		if info.Rewrite != nil {
+			up.RewritePrefix = info.Rewrite
+		}
+		cfg.Upstreams[svc.ID] = up
 	}
 
 	// Add widgets proxy to REST if rest is present

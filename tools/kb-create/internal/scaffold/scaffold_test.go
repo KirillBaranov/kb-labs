@@ -9,9 +9,10 @@ import (
 
 func TestWriteProjectConfig_FullSelection(t *testing.T) {
 	dir := t.TempDir()
+	platformDir := t.TempDir()
 
 	err := WriteProjectConfig(dir, Options{
-		PlatformDir: "/home/user/kb-platform",
+		PlatformDir: platformDir,
 		Services:    []string{"rest", "workflow"},
 		Plugins:     []string{"mind", "commit"},
 	})
@@ -28,7 +29,7 @@ func TestWriteProjectConfig_FullSelection(t *testing.T) {
 	assertContains(t, content, `"plugins"`, "plugins section")
 
 	// Platform dir injected.
-	assertContains(t, content, `/home/user/kb-platform`, "platform dir value")
+	assertContains(t, content, platformDir, "platform dir value")
 
 	// Selected services enabled, unselected disabled.
 	assertContains(t, content, `"rest": true`, "rest enabled")

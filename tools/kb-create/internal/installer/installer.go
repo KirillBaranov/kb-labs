@@ -191,16 +191,19 @@ func (ins *Installer) Install(sel *Selection, m *manifest.Manifest) (*Result, er
 		return nil, fmt.Errorf("config: %w", err)
 	}
 
-	// Generate gateway upstreams from discovered services + manifest prefix map.
+	// Generate gateway upstreams from discovered services + manifest gateway info.
 	if scanResult != nil {
-		prefixMap := make(map[string]string)
+		infoMap := make(map[string]scan.ServiceGatewayInfo)
 		for _, svc := range m.Services {
 			if svc.GatewayPrefix != "" {
-				prefixMap[svc.ID] = svc.GatewayPrefix
+				infoMap[svc.ID] = scan.ServiceGatewayInfo{
+					Prefix:  svc.GatewayPrefix,
+					Rewrite: svc.GatewayRewrite,
+				}
 			}
 		}
-		if len(prefixMap) > 0 {
-			gwCfg := scan.GenerateGatewayConfig(scanResult, prefixMap)
+		if len(infoMap) > 0 {
+			gwCfg := scan.GenerateGatewayConfig(scanResult, infoMap)
 			if err := scan.MergeGatewayIntoConfig(sel.PlatformDir, gwCfg); err != nil {
 				ins.Log.Printf("  [WARN] gateway config: %v", err)
 			}
