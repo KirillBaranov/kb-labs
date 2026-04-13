@@ -78,7 +78,11 @@ jobs:
           pnpm deploy --filter @kb-labs/gateway-app --prod .kb/deploy/gateway-app
           # Bake adapters into the deploy output
           for pkg in adapters-openai adapters-redis adapters-sqlite adapters-pino adapters-fs adapters-log-ringbuffer adapters-log-sqlite adapters-eventbus-cache; do
-            cp -r node_modules/@kb-labs/$pkg .kb/deploy/gateway-app/node_modules/@kb-labs/$pkg
+            src=$(find node_modules/.pnpm -maxdepth 3 -type d -name "$pkg" -path "*/@kb-labs/$pkg" | head -1)
+            if [ -n "$src" ]; then
+              mkdir -p .kb/deploy/gateway-app/node_modules/@kb-labs
+              cp -r "$src" .kb/deploy/gateway-app/node_modules/@kb-labs/$pkg
+            fi
           done
 
       - name: Login to GHCR
