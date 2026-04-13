@@ -1,0 +1,15 @@
+name: monorepo-health
+version: 1.0.0
+description: Check monorepo health - workspace, type-check, plugins
+on:
+  manual: true
+jobs:
+  health:
+    runsOn: local
+    steps:
+      - name: Workspace stats
+        run: kb-devkit stats
+      - name: Type-check core types
+        run: pnpm --filter @kb-labs/core-types type-check
+      - name: List installed plugins
+        run: cat .kb/marketplace.lock
