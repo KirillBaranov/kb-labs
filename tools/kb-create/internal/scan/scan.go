@@ -347,6 +347,72 @@ func WriteConfigs(platformDir string, r *ScanResult) error {
 	return nil
 }
 
+// ── Gateway config ─────────────────────────────────────────────────────────
+
+// GatewayUpstream describes a single proxy target for the gateway.
+type GatewayUpstream struct {
+	URL    string `json:"url"`
+	Prefix string `json:"prefix"`
+}
+
+// GatewayConfig is the gateway section written to .kb/kb.config.json.
+type GatewayConfig struct {
+	Port      int                        `json:"port"`
+	Upstreams map[string]GatewayUpstream `json:"upstreams"`
+}
+
+// GenerateGatewayConfig builds gateway upstreams from scan results and
+// a prefix map (service ID → gateway prefix, provided by the manifest).
+// Services without a prefix (gateway itself, studio) are skipped.
+func GenerateGatewayConfig(r *ScanResult, prefixMap map[string]string) *GatewayConfig {
+	cfg := &GatewayConfig{
+		Port:      4000,
+		Upstreams: make(map[string]GatewayUpstream),
+	}
+
+	for _, svc := range r.Services {
+		prefix, ok := prefixMap[svc.ID]
+		if !ok || prefix == "" {
+			continue
+		}
+		cfg.Upstreams[svc.ID] = GatewayUpstream{
+			URL:    fmt.Sprintf("http://localhost:%d", svc.Runtime.Port),
+			Prefix: prefix,
+		}
+	}
+
+	// Add widgets proxy to REST if rest is present
+	if rest, hasRest := cfg.Upstreams["rest"]; hasRest {
+		cfg.Upstreams["widgets"] = GatewayUpstream{
+			URL:    rest.URL,
+			Prefix: "/api/v1/widgets",
+		}
+	}
+
+	return cfg
+}
+
+// MergeGatewayIntoConfig reads the existing .kb/kb.config.json, sets the
+// "gateway" key, and writes it back. Other keys are preserved.
+func MergeGatewayIntoConfig(platformDir string, gw *GatewayConfig) error {
+	configPath := filepath.Join(platformDir, ".kb", "kb.config.json")
+
+	existing := make(map[string]any)
+	// #nosec G304 -- path is deterministic
+	data, err := os.ReadFile(configPath)
+	if err == nil {
+		_ = json.Unmarshal(data, &existing)
+	}
+
+	existing["gateway"] = gw
+
+	out, err := json.MarshalIndent(existing, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal config with gateway: %w", err)
+	}
+	return os.WriteFile(configPath, out, 0o600)
+}
+
 // ── helpers ─────────────────────────────────────────────────────────────────
 
 // computeIntegrity returns the SRI hash of package.json for a given package.
