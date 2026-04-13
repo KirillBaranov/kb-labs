@@ -119,7 +119,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			if !jsonMode {
 				o.Info("bundling " + t.Bundle)
 			}
-			bundleArgs := []string{"bundle", t.Bundle, "--docker"}
+			bundleArgs := []string{"bundle", t.Bundle, "--docker", "--prod"}
 			devkitBin := filepath.Join(repoRoot, "tools", "kb-devkit", "kb-devkit")
 			bundleCmd := exec.CommandContext(ctx, devkitBin, bundleArgs...)
 			bundleCmd.Dir = repoRoot
