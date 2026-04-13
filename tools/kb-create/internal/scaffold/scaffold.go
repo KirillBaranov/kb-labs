@@ -48,6 +48,21 @@ func WriteProjectConfig(projectDir string, opts Options) error {
 		}
 	}
 
+	// Write starter workflows when workflow service is selected.
+	// Written to both project dir (user edits here) and platform dir
+	// (daemon scans here when running from platform root).
+	if toSet(opts.Services)["workflow"] {
+		if err := writeStarterWorkflows(dir); err != nil {
+			return fmt.Errorf("scaffold starter workflows: %w", err)
+		}
+		if opts.PlatformDir != "" {
+			platformKbDir := filepath.Join(opts.PlatformDir, ".kb")
+			if err := writeStarterWorkflows(platformKbDir); err != nil {
+				return fmt.Errorf("scaffold platform workflows: %w", err)
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -186,6 +201,122 @@ func writePluginBlock(b *strings.Builder, id, comment string, enabled map[string
 	}
 	b.WriteString(inner)
 	b.WriteString("\n    },\n")
+}
+
+// writeStarterWorkflows generates example workflows that showcase the engine.
+// Written when the workflow service is selected (not just --demo).
+func writeStarterWorkflows(kbDir string) error {
+	wfDir := filepath.Join(kbDir, "workflows")
+	if err := os.MkdirAll(wfDir, 0o750); err != nil {
+		return fmt.Errorf("create workflows dir: %w", err)
+	}
+
+	workflows := map[string]string{
+		"healthcheck.yaml": `# Healthcheck — verify your project builds and passes tests.
+# Run:  kb workflow run healthcheck
+# Docs: https://kb-labs.dev/docs/workflows
+name: healthcheck
+version: 1.0.0
+description: "Build, lint, and test your project"
+on:
+  manual: true
+
+jobs:
+  check:
+    runsOn: local
+    steps:
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build
+        run: pnpm build
+      - name: Lint
+        run: pnpm lint
+        continueOnError: true
+      - name: Test
+        run: pnpm test
+`,
+		"deploy-with-approval.yaml": `# Deploy with approval gate — human sign-off before deploy.
+# Run:  kb workflow run deploy-with-approval
+# Docs: https://kb-labs.dev/docs/workflows
+name: deploy-with-approval
+version: 1.0.0
+description: "Build, test, get approval, then deploy"
+on:
+  manual: true
+
+inputs:
+  environment:
+    type: string
+    description: "Target environment"
+    default: "staging"
+
+jobs:
+  build-and-test:
+    runsOn: local
+    steps:
+      - name: Build
+        run: pnpm build
+      - name: Test
+        run: pnpm test
+
+  approve:
+    needs: [build-and-test]
+    runsOn: local
+    steps:
+      - name: Request approval
+        uses: builtin:approval
+        with:
+          message: "Deploy to ${{ inputs.environment }}? Build and tests passed."
+          approvers: ["team-lead"]
+          timeout: "1h"
+
+  deploy:
+    needs: [approve]
+    runsOn: local
+    steps:
+      - name: Deploy
+        run: echo "Deploying to ${{ inputs.environment }}..."
+        summary: "Deployed to ${{ inputs.environment }}"
+`,
+		"scheduled-report.yaml": `# Scheduled report — runs on a cron schedule.
+# This workflow runs daily and generates a project health summary.
+# Docs: https://kb-labs.dev/docs/workflows
+name: scheduled-report
+version: 1.0.0
+description: "Daily project health check (cron)"
+on:
+  schedule: "0 9 * * 1-5"
+  manual: true
+
+jobs:
+  report:
+    runsOn: local
+    steps:
+      - name: Git summary
+        id: git
+        run: |
+          echo "## Commits (last 24h)"
+          git log --oneline --since="24 hours ago" || echo "No recent commits"
+      - name: Dependency check
+        run: pnpm outdated || true
+        continueOnError: true
+      - name: Disk usage
+        run: du -sh node_modules/ dist/ 2>/dev/null || echo "N/A"
+`,
+	}
+
+	for name, content := range workflows {
+		path := filepath.Join(wfDir, name)
+		// Don't overwrite existing workflows (user may have edited them).
+		if _, err := os.Stat(path); err == nil {
+			continue
+		}
+		// #nosec G306 -- workflow config is expected to be readable in workspace.
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			return fmt.Errorf("write %s: %w", name, err)
+		}
+	}
+	return nil
 }
 
 // writeDemoWorkflow generates .kb/workflows/demo.yaml inside the project .kb dir.

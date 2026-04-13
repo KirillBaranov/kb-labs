@@ -200,7 +200,7 @@ export class WorkflowDaemonClient {
     request: WorkflowRunRequest = {}
   ): Promise<{ runId: string; status: string }> {
     const response = await fetch(
-      `${this.baseUrl}/api/v1/workflows/${encodeURIComponent(workflowId)}/run`,
+      `${this.baseUrl}/api/v1/workflows/${encodeURIComponent(workflowId)}/runs`,
       {
         method: 'POST',
         headers: {
