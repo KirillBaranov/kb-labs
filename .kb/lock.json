@@ -1,7 +1,8 @@
 {
   "$schema": "https://schemas.kb-labs.dev/lockfile.schema.json",
-  "generatedAt": "2026-04-12T19:13:00.942Z",
+  "generatedAt": "2026-04-13T13:27:10.507Z",
   "hashes": {
+    "ai-review": "a60781005f23c5d9a32a23894c2e32387d40d041f4ddbe06bb5ec58c382dfe16",
     "restApi": "ba4b4c01512909e214270a4f23ef856ea7857d763cbab32fe7381b0dc204523d"
   },
   "schemaVersion": "1.0"
