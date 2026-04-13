@@ -5,7 +5,7 @@
  * Token-first (programmatic), OTP fallback for interactive terminal.
  */
 
-import { defineCommand, type CLIInput, type PluginContextV3, useLoader, useConfig } from '@kb-labs/sdk';
+import { defineCommand, type CLIInput, type PluginContextV3, useLoader, useConfig, useEnv } from '@kb-labs/sdk';
 import { planRelease, type ReleaseConfig } from '@kb-labs/release-manager-core';
 import { findRepoRoot } from '../../shared/utils';
 import { publishPackagesProgrammatic, type ProgrammaticPublishResult } from '../../shared/publish-programmatic';
@@ -41,7 +41,7 @@ export default defineCommand({
       const { flags } = input;
       const { scope, otp: initialOtp, tag, access, json } = flags;
       const dryRun = flags['dry-run'];
-      const token = flags.token ?? process.env.NPM_TOKEN ?? process.env.NODE_AUTH_TOKEN;
+      const token = flags.token ?? useEnv('NPM_TOKEN') ?? useEnv('NODE_AUTH_TOKEN');
 
       const cwd = ctx.cwd || process.cwd();
       const repoRoot = await findRepoRoot(cwd);

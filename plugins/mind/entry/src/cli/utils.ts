@@ -1,4 +1,6 @@
 // Simple CLI utilities for mind-cli
+import { useEnv } from '@kb-labs/sdk';
+
 export const colors = {
   red: (text: string) => `[31m${text}[0m`,
   green: (text: string) => `[32m${text}[0m`,
@@ -61,7 +63,7 @@ export function keyValue(entries: Record<string, string | number>): string[];
 export function keyValue(key: string, value: string | number): string;
 export function keyValue(arg1: any, arg2?: any): string | string[] {
   const format = (key: string, value: string | number) => {
-    const label = process.env.NO_COLOR ? key : colors.cyan(key);
+    const label = useEnv('NO_COLOR') ? key : colors.cyan(key);
     return `${label}: ${value}`;
   };
 
