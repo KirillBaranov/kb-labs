@@ -23,6 +23,8 @@ COPY --from=deps /app/sites/web/packages/web-data-source/node_modules ./sites/we
 
 # full/ contains sources of all packages in the closure
 COPY .kb/bundle/web-site/full/ .
+# MDX content lives outside the app dir — copy explicitly
+COPY sites/web/content ./sites/web/content
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_TRACING_ROOT=/app
