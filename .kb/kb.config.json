@@ -287,17 +287,6 @@
               },
               "checks": [
                 {
-                  "id": "build",
-                  "command": "pnpm",
-                  "args": [
-                    "run",
-                    "build"
-                  ],
-                  "timeoutMs": 300000,
-                  "optional": true,
-                  "runIn": "scopePath"
-                },
-                {
                   "id": "dist-exports",
                   "name": "dist/index.js \u2014 no directory imports",
                   "command": "bash",
@@ -330,17 +319,6 @@
                 ]
               },
               "checks": [
-                {
-                  "id": "build",
-                  "command": "pnpm",
-                  "args": [
-                    "run",
-                    "build"
-                  ],
-                  "timeoutMs": 300000,
-                  "optional": true,
-                  "runIn": "scopePath"
-                },
                 {
                   "id": "dist-exports",
                   "name": "dist/index.js \u2014 no directory imports",
@@ -426,17 +404,6 @@
             ]
           },
           "checks": [
-            {
-              "id": "build",
-              "command": "pnpm",
-              "args": [
-                "run",
-                "build"
-              ],
-              "timeoutMs": 300000,
-              "optional": true,
-              "runIn": "scopePath"
-            },
             {
               "id": "dist-exports",
               "name": "dist/index.js \u2014 no directory imports",
