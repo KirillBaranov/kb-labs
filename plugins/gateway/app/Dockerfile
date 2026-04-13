@@ -11,6 +11,18 @@ RUN apk add --no-cache libc6-compat && \
 COPY --chown=kb:nodejs .kb/deploy/gateway-app/node_modules ./node_modules
 COPY --chown=kb:nodejs .kb/deploy/gateway-app/dist ./dist
 
+# Bake in marketplace adapters
+RUN corepack enable pnpm && pnpm add \
+    @kb-labs/adapters-openai \
+    @kb-labs/adapters-redis \
+    @kb-labs/adapters-sqlite \
+    @kb-labs/adapters-pino \
+    @kb-labs/adapters-fs \
+    @kb-labs/adapters-log-ringbuffer \
+    @kb-labs/adapters-log-sqlite \
+    @kb-labs/adapters-eventbus-cache \
+    --prod --prefer-offline
+
 # Prod config: adapters + gateway upstreams
 COPY --chown=kb:nodejs plugins/gateway/app/.kb/kb.config.prod.json .kb/kb.config.json
 
