@@ -124,7 +124,7 @@ export const manifest = {
   cli: {
     commands: [
       {
-        id: 'agent:run',
+        id: 'run',
         group: 'agent',
         describe: 'Run agent with specified mode (execute/plan/edit/debug)',
         longDescription:
@@ -152,7 +152,7 @@ export const manifest = {
       },
       // Trace debugging commands (AI-friendly)
       {
-        id: 'agent:trace:stats',
+        id: 'trace:stats',
         group: 'agent',
         describe: 'Show trace statistics with cost and performance metrics',
         longDescription:
@@ -174,7 +174,7 @@ export const manifest = {
         ],
       },
       {
-        id: 'agent:trace:filter',
+        id: 'trace:filter',
         group: 'agent',
         describe: 'Filter trace events by type for debugging',
         longDescription:
@@ -197,7 +197,7 @@ export const manifest = {
         ],
       },
       {
-        id: 'agent:trace:iteration',
+        id: 'trace:iteration',
         group: 'agent',
         describe: 'View all events for a specific iteration',
         longDescription:
@@ -220,7 +220,7 @@ export const manifest = {
         ],
       },
       {
-        id: 'agent:trace:context',
+        id: 'trace:context',
         group: 'agent',
         describe: 'View what the LLM sees at each iteration — context window, truncations, responses',
         longDescription:
@@ -244,7 +244,7 @@ export const manifest = {
         ],
       },
       {
-        id: 'agent:trace:diagnose',
+        id: 'trace:diagnose',
         group: 'agent',
         describe: 'Quick diagnostic analysis — answers "what went wrong?" in one command',
         longDescription:
@@ -267,7 +267,7 @@ export const manifest = {
         ],
       },
       {
-        id: 'agent:quality:report',
+        id: 'quality:report',
         group: 'agent',
         describe: 'Show quality control report for recent agent runs',
         longDescription:
@@ -294,7 +294,7 @@ export const manifest = {
       },
       // File change history commands
       {
-        id: 'agent:history',
+        id: 'history',
         group: 'agent',
         describe: 'Show file change history for agent sessions',
         longDescription:
@@ -319,7 +319,7 @@ export const manifest = {
         ],
       },
       {
-        id: 'agent:diff',
+        id: 'diff',
         group: 'agent',
         describe: 'Show diff for specific file change',
         longDescription:
@@ -340,7 +340,7 @@ export const manifest = {
         ],
       },
       {
-        id: 'agent:rollback',
+        id: 'rollback',
         group: 'agent',
         describe: 'Rollback file changes made by agents',
         longDescription:

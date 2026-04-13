@@ -42,7 +42,7 @@ export const manifest = {
   cli: {
     commands: [
       {
-        id: 'devlink:switch',
+        id: 'switch',
         group: 'devlink',
         describe: 'Switch all cross-repo deps between link: (local) and npm (CI/CD) mode',
         longDescription:
@@ -64,7 +64,7 @@ export const manifest = {
         permissions: pluginPermissions,
       },
       {
-        id: 'devlink:status',
+        id: 'status',
         group: 'devlink',
         describe: 'Show current state of cross-repo dependencies',
         longDescription:
@@ -85,7 +85,7 @@ export const manifest = {
         permissions: pluginPermissions,
       },
       {
-        id: 'devlink:plan',
+        id: 'plan',
         group: 'devlink',
         describe: 'Preview what would change when switching mode',
         longDescription:
@@ -106,7 +106,7 @@ export const manifest = {
         permissions: pluginPermissions,
       },
       {
-        id: 'devlink:freeze',
+        id: 'freeze',
         group: 'devlink',
         describe: 'Freeze current dependency state to lock file',
         longDescription:
@@ -126,7 +126,7 @@ export const manifest = {
         permissions: pluginPermissions,
       },
       {
-        id: 'devlink:undo',
+        id: 'undo',
         group: 'devlink',
         describe: 'Restore previous dependency state from last backup',
         longDescription:
@@ -146,7 +146,7 @@ export const manifest = {
         permissions: pluginPermissions,
       },
       {
-        id: 'devlink:backups',
+        id: 'backups',
         group: 'devlink',
         describe: 'List and restore backups',
         longDescription:

@@ -60,7 +60,7 @@ export const manifest = {
   cli: {
     commands: [
       {
-        id: 'qa:run',
+        id: 'run',
         group: 'qa',
         describe: 'Run all QA checks (build, lint, types, tests)',
         longDescription:
@@ -72,7 +72,7 @@ export const manifest = {
         permissions: pluginPermissions,
       },
       {
-        id: 'qa:save',
+        id: 'save',
         group: 'qa',
         describe: 'Run QA checks and save results to history',
         longDescription:
@@ -84,7 +84,7 @@ export const manifest = {
         permissions: pluginPermissions,
       },
       {
-        id: 'qa:history',
+        id: 'history',
         group: 'qa',
         describe: 'Show QA run history',
         longDescription: 'Displays the QA run history with pass/fail status for each check type.',
@@ -94,7 +94,7 @@ export const manifest = {
         permissions: pluginPermissions,
       },
       {
-        id: 'qa:trends',
+        id: 'trends',
         group: 'qa',
         describe: 'Show QA quality trends over time',
         longDescription:
@@ -105,7 +105,7 @@ export const manifest = {
         permissions: pluginPermissions,
       },
       {
-        id: 'qa:regressions',
+        id: 'regressions',
         group: 'qa',
         describe: 'Detect regressions since last QA save',
         longDescription:

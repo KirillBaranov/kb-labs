@@ -97,7 +97,7 @@ export const manifest = {
     commands: [
       // release:plan - Analyze changes and prepare release plan
       {
-        id: 'release:plan',
+        id: 'plan',
         group: 'release',
         describe: 'Analyze changes and prepare release plan',
         longDescription: 'Detect modified packages and compute version bumps based on changes',
@@ -126,7 +126,7 @@ export const manifest = {
 
       // release:run - Execute release process
       {
-        id: 'release:run',
+        id: 'run',
         group: 'release',
         describe: 'Execute release process (plan, check, publish)',
         longDescription: 'Run full release: plan versions, run checks, publish packages',
@@ -166,7 +166,7 @@ export const manifest = {
 
       // release:publish - Publish packages to npm
       {
-        id: 'release:publish',
+        id: 'publish',
         group: 'release',
         describe: 'Publish packages to npm registry with interactive OTP',
         longDescription: 'Smart npm publish with interactive 2FA support and better UX',
@@ -199,7 +199,7 @@ export const manifest = {
 
       // release:rollback - Rollback last release
       {
-        id: 'release:rollback',
+        id: 'rollback',
         group: 'release',
         describe: 'Rollback last release',
         longDescription: 'Restore workspace state from backup snapshot',
@@ -216,7 +216,7 @@ export const manifest = {
 
       // release:report - Show last release report
       {
-        id: 'release:report',
+        id: 'report',
         group: 'release',
         describe: 'Show last release report',
         longDescription: 'Display the most recent release execution report',
@@ -233,7 +233,7 @@ export const manifest = {
 
       // release:changelog - Generate changelog
       {
-        id: 'release:changelog',
+        id: 'changelog',
         group: 'release',
         describe: 'Generate changelog from conventional commits',
         longDescription: 'Parse git history and generate changelog with conventional commits support',
@@ -285,7 +285,7 @@ export const manifest = {
 
       // release:verify - Validate release readiness
       {
-        id: 'release:verify',
+        id: 'verify',
         group: 'release',
         describe: 'Validate release readiness',
         longDescription: 'Validate release readiness via flag gates (packages, breaking changes, commit types)',

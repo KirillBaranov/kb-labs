@@ -88,7 +88,7 @@ export const manifest = {
       // quality:stats - Monorepo statistics and health score
       // ======================================================================
       {
-        id: 'quality:stats',
+        id: 'stats',
         group: 'quality',
         describe: 'Get monorepo statistics and health score',
         longDescription:
@@ -114,7 +114,7 @@ export const manifest = {
       // quality:health - Monorepo health check
       // ======================================================================
       {
-        id: 'quality:health',
+        id: 'health',
         group: 'quality',
         describe: 'Check monorepo health score',
         longDescription:
@@ -140,7 +140,7 @@ export const manifest = {
       // quality:fix-deps - Dependency auto-fixer
       // ======================================================================
       {
-        id: 'quality:fix-deps',
+        id: 'fix-deps',
         group: 'quality',
         describe: 'Auto-fix dependency issues',
         longDescription:
@@ -166,7 +166,7 @@ export const manifest = {
       // quality:build-order - Calculate build order with topological sort
       // ======================================================================
       {
-        id: 'quality:build-order',
+        id: 'build-order',
         group: 'quality',
         describe: 'Calculate build order using topological sort',
         longDescription:
@@ -192,7 +192,7 @@ export const manifest = {
       // quality:cycles - Detect circular dependencies
       // ======================================================================
       {
-        id: 'quality:cycles',
+        id: 'cycles',
         group: 'quality',
         describe: 'Detect circular dependencies',
         longDescription:
@@ -216,7 +216,7 @@ export const manifest = {
       // quality:visualize - Visualize dependency graph
       // ======================================================================
       {
-        id: 'quality:visualize',
+        id: 'visualize',
         group: 'quality',
         describe: 'Visualize dependency graph',
         longDescription:
@@ -244,7 +244,7 @@ export const manifest = {
       // quality:check-builds - Check build status across monorepo
       // ======================================================================
       {
-        id: 'quality:check-builds',
+        id: 'check-builds',
         group: 'quality',
         describe: 'Check build status across monorepo',
         longDescription:
@@ -272,7 +272,7 @@ export const manifest = {
       // quality:check-types - TypeScript type safety analysis
       // ======================================================================
       {
-        id: 'quality:check-types',
+        id: 'check-types',
         group: 'quality',
         describe: 'Analyze TypeScript type safety across monorepo',
         longDescription:
@@ -300,7 +300,7 @@ export const manifest = {
       // quality:check-tests - Test execution and coverage tracking
       // ======================================================================
       {
-        id: 'quality:check-tests',
+        id: 'check-tests',
         group: 'quality',
         describe: 'Run tests and track coverage across monorepo',
         longDescription:
@@ -329,7 +329,7 @@ export const manifest = {
       // quality:dead-code - Dead code file detection
       // ======================================================================
       {
-        id: 'quality:dead-code',
+        id: 'dead-code',
         group: 'quality',
         describe: 'Detect dead (unreachable) source files',
         longDescription:
