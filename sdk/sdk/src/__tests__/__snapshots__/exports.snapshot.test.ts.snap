@@ -66,11 +66,15 @@ exports[`SDK Exports Snapshot > Test Context Structure > should match platform s
 [
   "analytics",
   "cache",
+  "config",
+  "documentDatabase",
   "embeddings",
   "eventBus",
+  "invoke",
   "llm",
   "logger",
   "logs",
+  "sqlDatabase",
   "storage",
   "vectorStore",
 ]

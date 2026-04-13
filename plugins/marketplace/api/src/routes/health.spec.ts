@@ -65,14 +65,14 @@ describe('marketplace observability surfaces', () => {
 
     const listResponse = await server.inject({
       method: 'GET',
-      url: '/api/v1/marketplace/list',
+      url: '/api/v1/marketplace/packages',
     });
     expect(listResponse.statusCode).toBe(200);
 
     for (let i = 0; i < 2; i += 1) {
       const doctorResponse = await server.inject({
         method: 'GET',
-        url: '/api/v1/marketplace/doctor',
+        url: '/api/v1/marketplace/diagnostics',
       });
       expect(doctorResponse.statusCode).toBe(200);
     }
@@ -80,7 +80,7 @@ describe('marketplace observability surfaces', () => {
     for (let i = 0; i < 2; i += 1) {
       const syncResponse = await server.inject({
         method: 'POST',
-        url: '/api/v1/marketplace/sync',
+        url: '/api/v1/marketplace/workspace/sync',
         payload: { include: ['plugins/*'] },
       });
       expect(syncResponse.statusCode).toBe(200);

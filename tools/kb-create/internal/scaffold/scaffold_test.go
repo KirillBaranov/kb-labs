@@ -131,7 +131,7 @@ func TestGenerate_AdapterDefaults(t *testing.T) {
 		`"embeddings": "@kb-labs/adapters-openai/embeddings"`,
 		`"storage": "@kb-labs/adapters-fs"`,
 		`"logger": "@kb-labs/adapters-pino"`,
-		`"mode": "in-process"`,
+		`"mode": "worker-pool"`,
 	}
 	for _, d := range defaults {
 		assertContains(t, content, d, "adapter default")
