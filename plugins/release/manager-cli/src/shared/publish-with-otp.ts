@@ -4,7 +4,7 @@
  */
 
 import { spawn } from 'node:child_process';
-import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import * as readline from 'node:readline/promises';
 import { useLoader } from '@kb-labs/sdk';

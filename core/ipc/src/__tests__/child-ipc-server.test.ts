@@ -190,7 +190,7 @@ describe('ChildIPCServer', () => {
       mockChild.emit('message', { type: 'healthOk', memoryUsage: {} });
 
       // None should trigger adapter dispatch
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise<void>(resolve => { setTimeout(resolve, 50); });
       expect(mockChild.send).not.toHaveBeenCalled();
     });
 
@@ -199,7 +199,7 @@ describe('ChildIPCServer', () => {
       mockChild.emit('message', 42);
       mockChild.emit('message', null);
 
-      await new Promise(resolve => setTimeout(resolve, 50));
+      await new Promise<void>(resolve => { setTimeout(resolve, 50); });
       expect(mockChild.send).not.toHaveBeenCalled();
     });
   });

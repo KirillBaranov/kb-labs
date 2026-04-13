@@ -14,7 +14,7 @@
 import type { ChildProcess } from 'node:child_process';
 import type { IPlatformAdapters } from '@kb-labs/core-platform';
 import type { AdapterCall, AdapterResponse, AdapterType } from '@kb-labs/core-platform/serializable';
-import { isAdapterCall, serialize, deserialize, IPC_PROTOCOL_VERSION } from '@kb-labs/core-platform/serializable';
+import { isAdapterCall, serialize, deserialize } from '@kb-labs/core-platform/serializable';
 
 /**
  * ChildIPCServer — parent-side adapter call handler for a single child process.
@@ -47,7 +47,7 @@ export class ChildIPCServer {
    * Start listening for adapter calls from child process.
    */
   start(): void {
-    if (this.started) return;
+    if (this.started) { return; }
 
     this.child.on('message', this.messageHandler);
     this.child.on('exit', this.exitHandler);
@@ -58,7 +58,7 @@ export class ChildIPCServer {
    * Stop listening. Removes all listeners.
    */
   stop(): void {
-    if (!this.started) return;
+    if (!this.started) {return;}
 
     this.child.off('message', this.messageHandler);
     this.child.off('exit', this.exitHandler);
@@ -70,7 +70,7 @@ export class ChildIPCServer {
    * Ignores non-adapter-call messages (WorkerMessages pass through).
    */
   private async handleMessage(msg: unknown): Promise<void> {
-    if (!isAdapterCall(msg)) return;
+    if (!isAdapterCall(msg)) {return;}
 
     // Layer 2: permission check (stateless — reads from call context)
     const permissionError = this.checkPermission(msg);
@@ -119,12 +119,12 @@ export class ChildIPCServer {
     const permissions = call.context?.permissions;
 
     // No permissions context = allow (backward compat with v1 protocol)
-    if (!permissions) return undefined;
+    if (!permissions) {return undefined;}
 
     const allowedAdapters = permissions.adapters;
 
     // No adapter restrictions = allow all
-    if (!allowedAdapters) return undefined;
+    if (!allowedAdapters) {return undefined;}
 
     // Check if adapter is in allowed list
     if (!allowedAdapters.includes(call.adapter)) {

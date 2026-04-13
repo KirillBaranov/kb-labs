@@ -157,7 +157,7 @@ export class Worker extends EventEmitter<WorkerEvents> {
         if (this.options.platformTransport) {
           childEnv.KB_PLATFORM_TRANSPORT = this.options.platformTransport.type;
           const extraEnv = this.options.platformTransport.getChildEnv?.();
-          if (extraEnv) Object.assign(childEnv, extraEnv);
+          if (extraEnv) {Object.assign(childEnv, extraEnv);}
         }
 
         // Fork the worker process

@@ -99,7 +99,7 @@ export class IPCServer {
    *
    * Validates message format, executes adapter call, and sends response.
    */
-  private async handleMessage(msg: unknown, sendHandle: unknown): Promise<void> {
+  private async handleMessage(msg: unknown, _sendHandle: unknown): Promise<void> {
     // Ignore non-adapter-call messages
     if (!isAdapterCall(msg)) {
       return;

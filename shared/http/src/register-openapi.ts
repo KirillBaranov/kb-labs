@@ -39,7 +39,7 @@ function isZod(v: unknown): boolean {
 function convertSchema(schema: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = { ...schema };
   for (const key of ['body', 'querystring', 'params', 'headers'] as const) {
-    if (isZod(out[key])) out[key] = zodToJsonSchema(out[key] as any);
+    if (isZod(out[key])) { out[key] = zodToJsonSchema(out[key] as any); }
   }
   if (out['response'] && typeof out['response'] === 'object') {
     out['response'] = Object.fromEntries(
