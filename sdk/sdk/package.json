@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/sdk",
-  "version": "1.6.6",
+  "version": "2.16.0",
   "description": "Core SDK - Helpers for command/route/action/webhook definitions and testing",
   "type": "module",
   "main": "./dist/index.js",
