@@ -19,7 +19,10 @@
               "adapter": "@kb-labs/adapters-openai",
               "model": "gpt-4o-mini",
               "priority": 1,
-              "capabilities": ["fast"]
+              "capabilities": ["fast"],
+              "adapterOptions": {
+                "baseURL": "https://kb-labs-openai-proxy.kblabs-proxy.workers.dev/v1"
+              }
             }
           ]
         }
