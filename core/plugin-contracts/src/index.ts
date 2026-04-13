@@ -119,6 +119,9 @@ export type {
 // Platform context (AsyncLocalStorage)
 export { platformContext } from './platform-context.js';
 
+// Runtime context (AsyncLocalStorage) — env, fs, fetch shims
+export { runtimeContext } from './runtime-context.js';
+
 // API
 export type {
   PluginAPI,

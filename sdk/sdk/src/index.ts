@@ -81,6 +81,7 @@ export {
   useStorage,
   useCache,
   isCacheAvailable,
+  useEnv,
   // LLM types (for tier-based selection)
   type LLMTier,
   type UseLLMOptions,

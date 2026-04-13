@@ -23,6 +23,7 @@ export {
   useStorage,
   useCache,
   isCacheAvailable,
+  useEnv,
   type LLMTier,
   type UseLLMOptions,
 } from '@kb-labs/shared-command-kit';

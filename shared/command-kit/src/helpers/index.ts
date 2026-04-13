@@ -40,3 +40,6 @@ export { useVectorStore, isVectorStoreAvailable } from './use-vector-store.js';
 export { useAnalytics, trackAnalyticsEvent } from './use-analytics.js';
 export { useStorage } from './use-storage.js';
 export { useCache, isCacheAvailable } from './use-cache.js';
+
+// Runtime shims
+export { useEnv } from './use-env.js';
