@@ -375,23 +375,26 @@ export async function registerManifests(
           log.debug(`Lifecycle hooks unavailable for ${manifest.id}: ${hookError.message}`);
         }
 
-        const existing = globalIds.get(manifest.id);
+        // Use canonical key (group:id) for collision detection so that
+        // agent:run and workflow:run are treated as distinct commands.
+        const canonicalKey = manifest.group ? `${manifest.group}:${manifest.id}` : manifest.id;
+        const existing = globalIds.get(canonicalKey);
         if (existing) {
           const collision = checkCollision(manifest, existing, result.source, namespace);
           if (collision.shouldShadow) {
             existing.shadowed = true;
-            globalIds.set(manifest.id, cmd);
+            globalIds.set(canonicalKey, cmd);
             if (logLevel === 'info' || logLevel === 'debug') {
-              log.info(`${manifest.id} from ${result.source} shadows ${existing.source} version`);
+              log.info(`${canonicalKey} from ${result.source} shadows ${existing.source} version`);
             }
           } else {
             cmd.shadowed = true;
             if (logLevel === 'info' || logLevel === 'debug') {
-              log.info(`${manifest.id} from ${result.source} shadowed by ${existing.source} version`);
+              log.info(`${canonicalKey} from ${result.source} shadowed by ${existing.source} version`);
             }
           }
         } else {
-          globalIds.set(manifest.id, cmd);
+          globalIds.set(canonicalKey, cmd);
         }
 
         const aliasesToCheck = manifest.aliases || [];
