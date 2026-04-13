@@ -1,5 +1,5 @@
 import { renderOgImage, OG_SIZE, OG_CONTENT_TYPE } from '@kb-labs/web-og';
-import { POSTS } from './page';
+import { listBlogPosts } from '@/lib/content';
 
 export const alt = 'KB Labs Blog Post';
 export const size = OG_SIZE;
@@ -11,7 +11,8 @@ export default async function OpengraphImage({
   params: Promise<{ locale: string; slug: string }>;
 }) {
   const { slug } = await params;
-  const post = POSTS[slug];
+  const posts = listBlogPosts('en');
+  const post = posts.find((p) => p.slug === slug);
 
   if (!post) {
     return renderOgImage({
@@ -21,9 +22,11 @@ export default async function OpengraphImage({
     });
   }
 
+  const { frontmatter: fm } = post;
+
   return renderOgImage({
-    title: post.title,
-    description: `${post.tag} • ${post.date} • ${post.readTime}`,
-    badge: 'Blog',
+    title: fm.title,
+    description: fm.excerpt ?? fm.description,
+    badge: fm.tag ?? 'Blog',
   });
 }

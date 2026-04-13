@@ -6,9 +6,9 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import { routing } from '@/i18n/routing';
-import s from './page.module.css';
+import { listBlogPosts, type Lang } from '@/lib/content';
 import { buildPageMetadata } from '@/lib/page-metadata';
-
+import s from './page.module.css';
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -28,48 +28,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   });
 }
 
-// Placeholder posts — replace with real CMS/MDX source later
-const POSTS = [
-  {
-    slug: 'open-the-closed',
-    date: 'Jan 2026',
-    tag: 'Philosophy',
-    title: 'Open the closed: why vendor lock-in is a design choice, not a given',
-    excerpt: 'Every platform dependency is a bet. We explain why we think the only safe bet is a typed contract — and how that shapes every architectural decision we make.',
-  },
-  {
-    slug: 'plugin-system-v3',
-    date: 'Dec 2025',
-    tag: 'Engineering',
-    title: 'How we redesigned the plugin system to eliminate circular dependencies',
-    excerpt: 'Plugin runtimes that depend on the core they extend are a reliability time bomb. Here\'s how we broke the cycle using dynamic imports and a factory pattern.',
-  },
-  {
-    slug: 'mind-rag-adaptive-weights',
-    date: 'Nov 2025',
-    tag: 'AI',
-    title: 'Adaptive search weights in Mind RAG: moving from static to intent-aware retrieval',
-    excerpt: 'BM25 + vector hybrid search works well on average. But "on average" hides a lot of variance. We added per-query adaptive weights to fix the tail cases.',
-  },
-  {
-    slug: 'two-tier-memory',
-    date: 'Nov 2025',
-    tag: 'AI',
-    title: 'Two-tier memory for long-running agents: working memory vs persistent facts',
-    excerpt: 'As agent sessions get longer, context windows fill up. We built a two-tier memory system that keeps the important stuff and lets the noise fade.',
-  },
-  {
-    slug: 'incremental-builds',
-    date: 'Oct 2025',
-    tag: 'DevEx',
-    title: 'Going from 10-minute builds to 15-second incremental rebuilds in a 125-package monorepo',
-    excerpt: 'Full rebuilds were killing developer flow. Here\'s the layer-based incremental build system we built into DevKit — and the unexpected edge cases we hit.',
-  },
-];
+function formatDate(iso?: string): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+}
 
 export default async function BlogPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
+
+  const lang = (locale === 'ru' ? 'ru' : 'en') as Lang;
+  const posts = listBlogPosts(lang).filter((p) => !p.frontmatter.draft);
 
   return (
     <>
@@ -82,15 +52,15 @@ export default async function BlogPage({ params }: Props) {
         </section>
 
         <div className={s.posts}>
-          {POSTS.map((post) => (
+          {posts.map((post) => (
             <Link key={post.slug} className={s.post} href={`/${locale}/blog/${post.slug}`}>
               <div className={s.postMeta}>
-                <span className={s.postDate}>{post.date}</span>
-                <span className={s.postTag}>{post.tag}</span>
+                <span className={s.postDate}>{formatDate(post.frontmatter.date)}</span>
+                <span className={s.postTag}>{post.frontmatter.tag}</span>
               </div>
               <div className={s.postBody}>
-                <h2 className={s.postTitle}>{post.title}</h2>
-                <p className={s.postExcerpt}>{post.excerpt}</p>
+                <h2 className={s.postTitle}>{post.frontmatter.title}</h2>
+                <p className={s.postExcerpt}>{post.frontmatter.excerpt ?? post.frontmatter.description}</p>
                 <span className={s.postReadmore}>Read more →</span>
               </div>
             </Link>

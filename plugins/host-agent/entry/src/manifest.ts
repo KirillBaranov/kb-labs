@@ -34,7 +34,7 @@ export const manifest = {
     commands: [
       // Primary commands: workspace:*
       {
-        id: 'workspace:register',
+        id: 'register',
         group: 'workspace',
         describe: 'Register this machine with a Platform Gateway.',
         longDescription:
@@ -53,7 +53,7 @@ export const manifest = {
       },
 
       {
-        id: 'workspace:status',
+        id: 'status',
         group: 'workspace',
         describe: 'Show Workspace Agent connection status.',
         longDescription:
@@ -72,7 +72,7 @@ export const manifest = {
       },
 
       {
-        id: 'workspace:list',
+        id: 'list',
         group: 'workspace',
         describe: 'List all connected Workspace Agents.',
         longDescription:
@@ -92,7 +92,7 @@ export const manifest = {
 
       // Legacy aliases: agent:* (backwards compatible)
       {
-        id: 'agent:register',
+        id: 'register',
         group: 'agent',
         describe: '[Alias for workspace:register] Register this machine with a Platform Gateway.',
 
@@ -107,7 +107,7 @@ export const manifest = {
       },
 
       {
-        id: 'agent:status',
+        id: 'status',
         group: 'agent',
         describe: '[Alias for workspace:status] Show Workspace Agent connection status.',
 

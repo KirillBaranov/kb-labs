@@ -58,7 +58,7 @@ export const manifest = {
   cli: {
     commands: [
       {
-        id: 'review:run',
+        id: 'run',
         group: 'review',
         describe: 'Run code review analysis',
         longDescription:

@@ -55,7 +55,7 @@ export const manifest = {
     commands: [
       // workflow:health - Check daemon health
       {
-        id: 'workflow:health',
+        id: 'health',
         group: 'workflow',
         describe: 'Check workflow daemon health status.',
         longDescription:
@@ -75,7 +75,7 @@ export const manifest = {
 
       // workflow:metrics - Get metrics
       {
-        id: 'workflow:metrics',
+        id: 'metrics',
         group: 'workflow',
         describe: 'Get workflow daemon metrics.',
         longDescription:
@@ -95,7 +95,7 @@ export const manifest = {
 
       // workflow:status - Get job status
       {
-        id: 'workflow:status',
+        id: 'status',
         group: 'workflow',
         describe: 'Get status of a specific workflow job.',
         longDescription:
@@ -115,7 +115,7 @@ export const manifest = {
 
       // workflow:logs - Get job logs
       {
-        id: 'workflow:logs',
+        id: 'logs',
         group: 'workflow',
         describe: 'Get logs for a specific workflow job.',
         longDescription:
@@ -136,7 +136,7 @@ export const manifest = {
 
       // workflow:list - List active executions
       {
-        id: 'workflow:list',
+        id: 'list',
         group: 'workflow',
         describe: 'List active workflow executions.',
         longDescription:
@@ -158,7 +158,7 @@ export const manifest = {
 
       // workflow:job-run - Submit raw job for execution
       {
-        id: 'workflow:job-run',
+        id: 'job-run',
         group: 'workflow',
         describe: 'Submit a raw job for execution.',
         longDescription:
@@ -180,7 +180,7 @@ export const manifest = {
 
       // workflow:run - Run workflow by workflow ID
       {
-        id: 'workflow:run',
+        id: 'run',
         group: 'workflow',
         describe: 'Run workflow by ID.',
         longDescription:

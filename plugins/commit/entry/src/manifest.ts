@@ -95,7 +95,7 @@ export const manifest = {
     commands: [
       // Main command: commit (default flow)
       {
-        id: 'commit:commit',  // ✅ With plugin prefix
+        id: 'commit',
         group: 'commit',
         describe: 'Generate and apply commits (default flow).',
         longDescription:
@@ -118,7 +118,7 @@ export const manifest = {
 
       // commit:generate - Generate commit plan
       {
-        id: 'commit:generate',
+        id: 'generate',
         group: 'commit',
         describe: 'Generate commit plan from git changes.',
         longDescription:
@@ -139,7 +139,7 @@ export const manifest = {
 
       // commit:apply - Apply commit plan
       {
-        id: 'commit:apply',
+        id: 'apply',
         group: 'commit',
         describe: 'Apply current commit plan (create local commits).',
         longDescription:
@@ -159,7 +159,7 @@ export const manifest = {
 
       // commit:push - Push commits
       {
-        id: 'commit:push',
+        id: 'push',
         group: 'commit',
         describe: 'Push commits to remote repository.',
         longDescription:
@@ -178,7 +178,7 @@ export const manifest = {
 
       // commit:open - Show current plan
       {
-        id: 'commit:open',
+        id: 'open',
         group: 'commit',
         describe: 'Show current commit plan.',
         longDescription: 'Displays the current commit plan if one exists.',
@@ -196,7 +196,7 @@ export const manifest = {
 
       // commit:reset - Clear current plan
       {
-        id: 'commit:reset',
+        id: 'reset',
         group: 'commit',
         describe: 'Clear current commit plan.',
         longDescription: 'Removes the current commit plan from storage.',
