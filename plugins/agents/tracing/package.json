@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/agent-tracing",
-  "version": "2.19.0",
+  "version": "2.20.0",
   "description": "Tracing infrastructure for KB Labs Agents — NDJSON writer, privacy redaction, trace loading and analysis",
   "files": [
     "dist"
