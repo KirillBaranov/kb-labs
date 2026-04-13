@@ -1,12 +1,14 @@
 const OPENAI_API = 'https://api.openai.com';
 
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     const url = new URL(request.url);
     const target = new URL(url.pathname + url.search, OPENAI_API);
 
     const headers = new Headers(request.headers);
     headers.set('host', 'api.openai.com');
+    // Inject API key from worker secret — client never sends it
+    headers.set('Authorization', `Bearer ${env.OPENAI_API_KEY}`);
 
     const response = await fetch(target, {
       method: request.method,
