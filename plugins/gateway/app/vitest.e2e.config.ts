@@ -8,10 +8,7 @@ export default defineConfig({
     testTimeout: 120_000,
     hookTimeout: 120_000,
     // Run e2e test files sequentially — all share a single gateway instance
-    pool: 'forks',
-    poolOptions: {
-      forks: { singleFork: true },
-    },
+    fileParallelism: false,
     sequence: {
       concurrent: false,
     },
