@@ -50,6 +50,7 @@ type Manifest struct {
 	RegistryURL string            `json:"registryUrl"`
 	Env         map[string]string `json:"env,omitempty"` // extra env vars passed to the package manager
 	Core        []Package         `json:"core"`
+	Adapters    []Package         `json:"adapters,omitempty"`
 	Services    []Component       `json:"services"`
 	Plugins     []Component       `json:"plugins"`
 	Binaries    []Binary          `json:"binaries,omitempty"`
@@ -73,9 +74,21 @@ func (m *Manifest) CorePackageSpecs() []string {
 	return specs
 }
 
-// AllPackageNames returns all package names (core + all services + all plugins).
+// AdapterPackageSpecs returns install specs for adapter packages.
+func (m *Manifest) AdapterPackageSpecs() []string {
+	specs := make([]string, len(m.Adapters))
+	for i, p := range m.Adapters {
+		specs[i] = p.PackageSpec()
+	}
+	return specs
+}
+
+// AllPackageNames returns all package names (core + adapters + all services + all plugins).
 func (m *Manifest) AllPackageNames() []string {
 	pkgs := m.CorePackageNames()
+	for _, a := range m.Adapters {
+		pkgs = append(pkgs, a.Name)
+	}
 	for _, s := range m.Services {
 		pkgs = append(pkgs, s.Pkg)
 	}

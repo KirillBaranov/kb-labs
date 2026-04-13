@@ -48,9 +48,9 @@ func (p *clientPool) get(t config.Target) (*ssh.Client, error) {
 	if c, ok := p.clients[key]; ok {
 		return c, nil
 	}
-	keyPEM := os.Getenv(t.SSH.KeyEnv)
-	if keyPEM == "" {
-		return nil, fmt.Errorf("$%s is empty — SSH key not set", t.SSH.KeyEnv)
+	keyPEM, err := readSSHKey(t.SSH)
+	if err != nil {
+		return nil, err
 	}
 	c, err := ssh.New(t.SSH.Host, t.SSH.User, keyPEM)
 	if err != nil {
@@ -74,9 +74,9 @@ func (p *clientPool) getSSH(sshCfg config.SSHConfig) (*ssh.Client, error) {
 	if c, ok := p.clients[key]; ok {
 		return c, nil
 	}
-	keyPEM := os.Getenv(sshCfg.KeyEnv)
-	if keyPEM == "" {
-		return nil, fmt.Errorf("$%s is empty — SSH key not set", sshCfg.KeyEnv)
+	keyPEM, err := readSSHKey(sshCfg)
+	if err != nil {
+		return nil, err
 	}
 	c, err := ssh.New(sshCfg.Host, sshCfg.User, keyPEM)
 	if err != nil {
@@ -86,18 +86,43 @@ func (p *clientPool) getSSH(sshCfg config.SSHConfig) (*ssh.Client, error) {
 	return c, nil
 }
 
-// connectTarget dials SSH for the given target using its key_env variable.
+// connectTarget dials SSH for the given target using its key_path_env or key_env.
 // Used by commands that work with a single target (logs, exec).
 func connectTarget(t config.Target) (*ssh.Client, error) {
-	keyPEM := os.Getenv(t.SSH.KeyEnv)
-	if keyPEM == "" {
-		return nil, fmt.Errorf("$%s is empty — SSH key not set", t.SSH.KeyEnv)
+	keyPEM, err := readSSHKey(t.SSH)
+	if err != nil {
+		return nil, err
 	}
 	client, err := ssh.New(t.SSH.Host, t.SSH.User, keyPEM)
 	if err != nil {
 		return nil, fmt.Errorf("ssh connect: %w", err)
 	}
 	return client, nil
+}
+
+// readSSHKey resolves the private key PEM for the given SSHConfig.
+// Checks key_path_env first (path to a key file), then falls back to key_env
+// (raw PEM content). Returns an error if neither is set or the file cannot be read.
+func readSSHKey(sshCfg config.SSHConfig) (string, error) {
+	if sshCfg.KeyPathEnv != "" {
+		if p := os.Getenv(sshCfg.KeyPathEnv); p != "" {
+			data, err := os.ReadFile(p)
+			if err != nil {
+				return "", fmt.Errorf("read SSH key file $%s=%s: %w", sshCfg.KeyPathEnv, p, err)
+			}
+			return string(data), nil
+		}
+	}
+	if sshCfg.KeyEnv != "" {
+		if pem := os.Getenv(sshCfg.KeyEnv); pem != "" {
+			return pem, nil
+		}
+	}
+	hint := sshCfg.KeyPathEnv
+	if hint == "" {
+		hint = sshCfg.KeyEnv
+	}
+	return "", fmt.Errorf("SSH key not set: $%s is empty", hint)
 }
 
 // sortedTargetNames returns targets sorted alphabetically, optionally filtered to one name.

@@ -38,9 +38,10 @@ type Target struct {
 
 // SSHConfig holds connection details for the remote host.
 type SSHConfig struct {
-	Host   string `yaml:"host"`
-	User   string `yaml:"user"`
-	KeyEnv string `yaml:"key_env"` // name of the env var holding the private key PEM
+	Host        string `yaml:"host"`
+	User        string `yaml:"user"`
+	KeyEnv      string `yaml:"key_env"`      // env var holding the private key PEM (legacy)
+	KeyPathEnv  string `yaml:"key_path_env"` // env var holding a path to the private key file (preferred)
 }
 
 // RemoteConfig describes the remote docker compose setup.

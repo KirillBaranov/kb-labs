@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"sort"
 
 	"github.com/kb-labs/kb-deploy/internal/config"
@@ -251,9 +250,9 @@ func (p *infraPool) get(sshCfg config.SSHConfig) (*ssh.Client, error) {
 	if c, ok := p.clients[key]; ok {
 		return c, nil
 	}
-	keyPEM := os.Getenv(sshCfg.KeyEnv)
-	if keyPEM == "" {
-		return nil, fmt.Errorf("$%s is empty — SSH key not set", sshCfg.KeyEnv)
+	keyPEM, err := readSSHKey(sshCfg)
+	if err != nil {
+		return nil, err
 	}
 	c, err := ssh.New(sshCfg.Host, sshCfg.User, keyPEM)
 	if err != nil {

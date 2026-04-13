@@ -1,0 +1,85 @@
+{
+  "schema": "kb.marketplace/2",
+  "installed": {
+    "@kb-labs/adapters-openai": {
+      "version": "0.8.0",
+      "integrity": "",
+      "resolvedPath": "./node_modules/@kb-labs/adapters-openai",
+      "installedAt": "2026-04-13T00:00:00.000Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": ["adapter"],
+      "enabled": true
+    },
+    "@kb-labs/adapters-redis": {
+      "version": "0.8.0",
+      "integrity": "",
+      "resolvedPath": "./node_modules/@kb-labs/adapters-redis",
+      "installedAt": "2026-04-13T00:00:00.000Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": ["adapter"],
+      "enabled": true
+    },
+    "@kb-labs/adapters-sqlite": {
+      "version": "0.8.0",
+      "integrity": "",
+      "resolvedPath": "./node_modules/@kb-labs/adapters-sqlite",
+      "installedAt": "2026-04-13T00:00:00.000Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": ["adapter"],
+      "enabled": true
+    },
+    "@kb-labs/adapters-pino": {
+      "version": "0.8.0",
+      "integrity": "",
+      "resolvedPath": "./node_modules/@kb-labs/adapters-pino",
+      "installedAt": "2026-04-13T00:00:00.000Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": ["adapter"],
+      "enabled": true
+    },
+    "@kb-labs/adapters-fs": {
+      "version": "0.8.0",
+      "integrity": "",
+      "resolvedPath": "./node_modules/@kb-labs/adapters-fs",
+      "installedAt": "2026-04-13T00:00:00.000Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": ["adapter"],
+      "enabled": true
+    },
+    "@kb-labs/adapters-log-ringbuffer": {
+      "version": "0.8.0",
+      "integrity": "",
+      "resolvedPath": "./node_modules/@kb-labs/adapters-log-ringbuffer",
+      "installedAt": "2026-04-13T00:00:00.000Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": ["adapter"],
+      "enabled": true
+    },
+    "@kb-labs/adapters-log-sqlite": {
+      "version": "0.8.0",
+      "integrity": "",
+      "resolvedPath": "./node_modules/@kb-labs/adapters-log-sqlite",
+      "installedAt": "2026-04-13T00:00:00.000Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": ["adapter"],
+      "enabled": true
+    },
+    "@kb-labs/adapters-eventbus-cache": {
+      "version": "0.8.0",
+      "integrity": "",
+      "resolvedPath": "./node_modules/@kb-labs/adapters-eventbus-cache",
+      "installedAt": "2026-04-13T00:00:00.000Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": ["adapter"],
+      "enabled": true
+    }
+  }
+}

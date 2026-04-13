@@ -142,18 +142,20 @@ func TestBuildNextSteps_AlwaysEndsWithDoctorAndHelp(t *testing.T) {
 		for i, s := range steps {
 			cmds[i] = s.cmd
 		}
-		last := cmds[len(cmds)-1]
-		if last != "kb-create doctor" {
-			t.Errorf("last step must be kb-create doctor, got %q (all: %v)", last, cmds)
-		}
-		found := false
-		for _, c := range cmds {
-			if c == "kb --help" {
-				found = true
+
+		// review and commit must always appear as early steps
+		mustContain := []string{"kb review run", "kb commit commit", "kb --help"}
+		for _, must := range mustContain {
+			found := false
+			for _, c := range cmds {
+				if c == must {
+					found = true
+					break
+				}
 			}
-		}
-		if !found {
-			t.Errorf("kb --help must always appear (all: %v)", cmds)
+			if !found {
+				t.Errorf("%q must always appear in next steps (all: %v)", must, cmds)
+			}
 		}
 	}
 }

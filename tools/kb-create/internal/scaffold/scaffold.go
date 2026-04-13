@@ -97,25 +97,24 @@ func generate(opts Options) string {
     // that implements it. You can swap adapters without changing app code.
     "adapters": {
 `)
-	if opts.GatewayCredentials != nil {
-		b.WriteString("      // LLM via KB Labs Gateway (auto-configured by kb-create --demo).\n")
-		b.WriteString("      // Replace with @kb-labs/adapters-openai when you have your own API key.\n")
-		b.WriteString("      \"llm\": \"@kb-labs/adapters-kblabs-gateway\",\n")
-	} else {
-		b.WriteString("      // LLM provider(s). Array = fallback chain, string = single provider.\n")
-		b.WriteString("      // Available: @kb-labs/adapters-openai, @kb-labs/adapters-kblabs-gateway\n")
-		b.WriteString("      \"llm\": \"@kb-labs/adapters-openai\",\n")
-	}
-	b.WriteString(`
-      // Embedding model for vector search (Mind RAG).
-      "embeddings": "@kb-labs/adapters-openai/embeddings",
+	b.WriteString(`      // LLM via KB Labs Gateway — 50 free requests included.
+      // Replace with @kb-labs/adapters-openai when you have your own API key.
+      "llm": "@kb-labs/adapters-kblabs-gateway",
 
       // File storage backend.
       "storage": "@kb-labs/adapters-fs",
 
       // Structured logger.
-      // Available: @kb-labs/adapters-pino, @kb-labs/adapters-console
-      "logger": "@kb-labs/adapters-pino"
+      "logger": "@kb-labs/adapters-pino",
+
+      // In-memory log ring buffer for recent log access.
+      "logRingBuffer": "@kb-labs/adapters-log-ringbuffer",
+
+      // Analytics — JSONL file, no native dependencies.
+      "analytics": "@kb-labs/adapters-analytics-file",
+
+      // In-memory event bus.
+      "eventBus": "@kb-labs/adapters-eventbus-cache"
     },
 
     // Plugin execution mode: "worker-pool" (isolated workers, stable) or
@@ -127,20 +126,28 @@ func generate(opts Options) string {
 
 `)
 
-	// ── adapterOptions (demo only) ────────────────────────────────────────
+	// ── adapterOptions ────────────────────────────────────────────────────
+	b.WriteString("  // ─── Adapter Options ────────────────────────────────────────────────────\n")
+	b.WriteString("  \"adapterOptions\": {\n")
 	if gc := opts.GatewayCredentials; gc != nil {
-		b.WriteString("  // ─── Adapter Options ────────────────────────────────────────────────────\n")
-		b.WriteString("  // Auto-configured by kb-create --demo. Credentials let the adapter refresh\n")
-		b.WriteString("  // the JWT token automatically. Replace with your own API key when ready:\n")
-		b.WriteString("  // https://kb-labs.dev/docs/llm\n")
-		b.WriteString("  \"adapterOptions\": {\n")
+		b.WriteString("    // KB Labs Gateway credentials — auto-configured. Refresh token automatically.\n")
+		b.WriteString("    // Replace kbClientId/kbClientSecret with apiKey when using your own provider.\n")
 		b.WriteString("    \"llm\": {\n")
 		fmt.Fprintf(&b, "      \"gatewayURL\": %s,\n", quote(gc.GatewayURL))
 		fmt.Fprintf(&b, "      \"kbClientId\": %s,\n", quote(gc.ClientID))
 		fmt.Fprintf(&b, "      \"kbClientSecret\": %s\n", quote(gc.ClientSecret))
-		b.WriteString("    }\n")
-		b.WriteString("  },\n\n")
+		b.WriteString("    },\n")
+	} else {
+		b.WriteString("    // LLM credentials — set your API key here or via KB_LABS_API_KEY env var.\n")
+		b.WriteString("    // Docs: https://kb-labs.dev/docs/llm\n")
+		b.WriteString("    \"llm\": {},\n")
 	}
+	b.WriteString("    \"storage\": { \"baseDir\": \".kb/storage\" },\n")
+	b.WriteString("    \"logger\": { \"level\": \"info\" },\n")
+	b.WriteString("    \"logRingBuffer\": { \"maxSize\": 100 },\n")
+	b.WriteString("    \"analytics\": { \"filename\": \".kb/analytics/events.jsonl\" },\n")
+	b.WriteString("    \"eventBus\": {}\n")
+	b.WriteString("  },\n\n")
 
 	// ── services section ──────────────────────────────────────────────────
 	b.WriteString(`  // ─── Services ─────────────────────────────────────────────────────────

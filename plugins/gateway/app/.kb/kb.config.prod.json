@@ -1,0 +1,69 @@
+{
+  "platform": {
+    "adapters": {
+      "llm": "@kb-labs/adapters-openai",
+      "logger": "@kb-labs/adapters-pino",
+      "cache": "@kb-labs/adapters-redis",
+      "db": "@kb-labs/adapters-sqlite",
+      "storage": "@kb-labs/adapters-fs",
+      "logRingBuffer": "@kb-labs/adapters-log-ringbuffer",
+      "logPersistence": "@kb-labs/adapters-log-sqlite",
+      "eventBus": "@kb-labs/adapters-eventbus-cache"
+    },
+    "adapterOptions": {
+      "llm": {
+        "defaultTier": "small",
+        "tierMapping": {
+          "small": [
+            {
+              "adapter": "@kb-labs/adapters-openai",
+              "model": "gpt-4o-mini",
+              "priority": 1,
+              "capabilities": ["fast"]
+            }
+          ]
+        }
+      },
+      "logger": {
+        "level": "info",
+        "streaming": {
+          "enabled": true,
+          "bufferSize": 1000,
+          "bufferMaxAge": 3600000
+        }
+      },
+      "cache": {
+        "url": "redis://kb-redis:6379"
+      },
+      "db": {
+        "filename": "/app/.kb/database/kb.sqlite"
+      },
+      "storage": {
+        "basePath": "/app/.kb/storage"
+      }
+    }
+  },
+  "gateway": {
+    "port": 4000,
+    "upstreams": {
+      "rest": {
+        "url": "http://kb-rest-api:5050",
+        "prefix": "/api/v1",
+        "websocket": true,
+        "description": "REST API — main platform BFF"
+      },
+      "workflow": {
+        "url": "http://kb-workflow:7778",
+        "prefix": "/api/exec",
+        "rewritePrefix": "",
+        "description": "Workflow Daemon"
+      },
+      "marketplace": {
+        "url": "http://kb-marketplace:5070",
+        "prefix": "/api/v1/marketplace",
+        "description": "Marketplace Service"
+      }
+    },
+    "staticTokens": {}
+  }
+}

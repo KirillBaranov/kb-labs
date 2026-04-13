@@ -128,10 +128,12 @@ func TestGenerate_AdapterDefaults(t *testing.T) {
 	content := generate(Options{PlatformDir: "/x"})
 
 	defaults := []string{
-		`"llm": "@kb-labs/adapters-openai"`,
-		`"embeddings": "@kb-labs/adapters-openai/embeddings"`,
+		`"llm": "@kb-labs/adapters-kblabs-gateway"`,
 		`"storage": "@kb-labs/adapters-fs"`,
 		`"logger": "@kb-labs/adapters-pino"`,
+		`"logRingBuffer": "@kb-labs/adapters-log-ringbuffer"`,
+		`"analytics": "@kb-labs/adapters-analytics-file"`,
+		`"eventBus": "@kb-labs/adapters-eventbus-cache"`,
 		`"mode": "worker-pool"`,
 	}
 	for _, d := range defaults {
