@@ -37,7 +37,15 @@
     "@kb-labs/plugin-contracts": "workspace:*",
     "@kb-labs/gateway-auth": "workspace:*",
     "@kb-labs/gateway-contracts": "workspace:*",
-    "@kb-labs/gateway-core": "workspace:*"
+    "@kb-labs/gateway-core": "workspace:*",
+    "@kb-labs/adapters-openai": "workspace:*",
+    "@kb-labs/adapters-redis": "workspace:*",
+    "@kb-labs/adapters-sqlite": "workspace:*",
+    "@kb-labs/adapters-pino": "workspace:*",
+    "@kb-labs/adapters-fs": "workspace:*",
+    "@kb-labs/adapters-log-ringbuffer": "workspace:*",
+    "@kb-labs/adapters-log-sqlite": "workspace:*",
+    "@kb-labs/adapters-eventbus-cache": "workspace:*"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
