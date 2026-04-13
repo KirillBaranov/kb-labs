@@ -44,6 +44,7 @@ targets:
     image: kb-gateway
     dockerfile: plugins/gateway/app/Dockerfile
     context: .
+    bundle: "@kb-labs/gateway-app"
     ssh:
       host: ${SSH_HOST}
       user: ${SSH_USER}
