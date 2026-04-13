@@ -29,7 +29,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2  # needed for git diff HEAD~1 affected detection
+          fetch-depth: 0  # full history for multi-commit push diff
 
       - uses: actions/setup-go@v5
         with:
@@ -57,6 +57,7 @@ jobs:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_KEY: ${{ secrets.SSH_KEY }}
+          KB_DEPLOY_BASE_REF: ${{ github.event.before }}
         run: |
           if [ -n "${{ inputs.target }}" ]; then
             ./tools/kb-deploy/kb-deploy run ${{ inputs.target }}

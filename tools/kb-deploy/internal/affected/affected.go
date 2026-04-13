@@ -3,6 +3,7 @@ package affected
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -33,9 +34,15 @@ func Detect(repoRoot string, cfg *config.Config) ([]string, error) {
 	return matched, nil
 }
 
-// changedFiles returns the list of files changed between HEAD~1 and HEAD.
+// changedFiles returns the list of files changed since a base ref.
+// Uses KB_DEPLOY_BASE_REF env var if set (e.g. the SHA before the push),
+// otherwise falls back to HEAD~1.
 func changedFiles(repoRoot string) ([]string, error) {
-	out, err := exec.Command("git", "-C", repoRoot, "diff", "--name-only", "HEAD~1").Output()
+	baseRef := os.Getenv("KB_DEPLOY_BASE_REF")
+	if baseRef == "" {
+		baseRef = "HEAD~1"
+	}
+	out, err := exec.Command("git", "-C", repoRoot, "diff", "--name-only", baseRef).Output()
 	if err != nil {
 		return nil, fmt.Errorf("git diff: %w", err)
 	}
