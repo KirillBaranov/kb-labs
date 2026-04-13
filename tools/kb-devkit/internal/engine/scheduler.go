@@ -329,6 +329,40 @@ func WorkspaceDeps(pkgDir string, pkgByName map[string]workspace.Package) []stri
 	return readWorkspaceDeps(pkgDir, pkgByName)
 }
 
+// WorkspaceProdDeps returns direct workspace:* dependency names for a package dir,
+// excluding devDependencies. Used by bundle --prod to build minimal Docker closures.
+func WorkspaceProdDeps(pkgDir string, pkgByName map[string]workspace.Package) []string {
+	data, err := os.ReadFile(pkgDir + "/package.json")
+	if err != nil {
+		return nil
+	}
+
+	var pkg struct {
+		Dependencies     map[string]string `json:"dependencies"`
+		PeerDependencies map[string]string `json:"peerDependencies"`
+	}
+	if err := json.Unmarshal(data, &pkg); err != nil {
+		return nil
+	}
+
+	seen := make(map[string]struct{})
+	var result []string
+	for name := range pkg.Dependencies {
+		if _, ok := pkgByName[name]; ok {
+			seen[name] = struct{}{}
+			result = append(result, name)
+		}
+	}
+	for name := range pkg.PeerDependencies {
+		if _, ok := pkgByName[name]; ok {
+			if _, dup := seen[name]; !dup {
+				result = append(result, name)
+			}
+		}
+	}
+	return result
+}
+
 // ─── Layer execution ──────────────────────────────────────────────────────────
 
 func runLayer(

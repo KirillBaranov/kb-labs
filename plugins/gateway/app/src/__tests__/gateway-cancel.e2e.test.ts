@@ -88,7 +88,7 @@ function parseNdjson(body: string): Array<{ type: string; [k: string]: unknown }
 
 describe('Gateway execution cancel', () => {
   it('POST /api/v1/execute/:id/cancel → execution:done(exitCode=130)', async () => {
-    const { machineToken } = await registerHost(client, { name: 'cancel-http-host', namespaceId: NAMESPACE });
+    const { machineToken } = await registerHost(client, { name: 'cancel-http-host', namespaceId: NAMESPACE, capabilities: ['execution'] });
     const hostWs = await connectHostWs(machineToken);
 
     // Host never responds → execution stays in-flight until cancelled.
