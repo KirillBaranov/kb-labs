@@ -32,6 +32,8 @@ export interface RedisCacheConfig extends RedisOptions {
   host?: string;
   /** Redis port (default: 6379) */
   port?: number;
+  /** Redis connection URL — takes precedence over host/port (e.g. 'redis://kb-redis:6379') */
+  url?: string;
   /** Key prefix for all cache keys (default: 'kb:') */
   keyPrefix?: string;
 }
@@ -44,15 +46,24 @@ export class RedisCacheAdapter implements ICache {
   private keyPrefix: string;
 
   constructor(config: RedisCacheConfig = {}) {
-    this.keyPrefix = config.keyPrefix ?? "kb:";
+    const { url, keyPrefix, ...redisOptions } = config;
+    this.keyPrefix = keyPrefix ?? "kb:";
 
-    this.client = new Redis({
-      lazyConnect: true,
-      host: config.host ?? "localhost",
-      port: config.port ?? 6379,
-      ...config,
-      keyPrefix: this.keyPrefix,
-    });
+    if (url) {
+      this.client = new Redis(url, {
+        lazyConnect: true,
+        ...redisOptions,
+        keyPrefix: this.keyPrefix,
+      });
+    } else {
+      this.client = new Redis({
+        lazyConnect: true,
+        host: redisOptions.host ?? "localhost",
+        port: redisOptions.port ?? 6379,
+        ...redisOptions,
+        keyPrefix: this.keyPrefix,
+      });
+    }
 
     // Prevent unhandled error events from crashing the process on reconnect failures
     this.client.on("error", () => {});

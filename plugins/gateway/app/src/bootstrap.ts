@@ -40,7 +40,7 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
   // 4. Create host registry with cache + store
   const registry = new HostRegistry(platform.cache, hostStore);
 
-  // 5. Restore persisted hosts into cache
+  // 5. Restore persisted hosts into cache (best-effort — cache may be unavailable on cold start)
   let restoredCount = 0;
   try {
     restoredCount = await registry.restore();
@@ -58,7 +58,7 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
         persistentStore: !!hostStore,
       },
     });
-    throw error;
+    // Non-fatal: gateway can start without restored state; hosts will re-register on reconnect
   }
   if (restoredCount > 0) {
     logger.info('Restored hosts from store', { count: restoredCount });
