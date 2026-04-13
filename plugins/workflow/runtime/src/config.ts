@@ -19,7 +19,7 @@ export const BudgetConfigSchema = z.object({
 })
 
 export const WorkflowConfigSchema = z.object({
-  workspaces: z.array(z.string()).default(['.kb/workflows/**/*.yml']),
+  workspaces: z.array(z.string()).default(['.kb/workflows/**/*.{yml,yaml}']),
   plugins: z.boolean().default(true),
   remotes: z.array(RemoteMarketplaceSourceSchema).optional(),
   maxDepth: z.number().int().positive().default(2),
