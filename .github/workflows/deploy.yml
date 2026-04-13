@@ -74,16 +74,7 @@ jobs:
         run: ./tools/kb-devkit/kb-devkit run build
 
       - name: Deploy gateway-app (pnpm deploy)
-        run: |
-          pnpm deploy --filter @kb-labs/gateway-app --prod .kb/deploy/gateway-app
-          # Bake adapters into the deploy output
-          for pkg in adapters-openai adapters-redis adapters-sqlite adapters-pino adapters-fs adapters-log-ringbuffer adapters-log-sqlite adapters-eventbus-cache; do
-            src=$(find node_modules/.pnpm -maxdepth 3 -type d -name "$pkg" -path "*/@kb-labs/$pkg" | head -1)
-            if [ -n "$src" ]; then
-              mkdir -p .kb/deploy/gateway-app/node_modules/@kb-labs
-              cp -r "$src" .kb/deploy/gateway-app/node_modules/@kb-labs/$pkg
-            fi
-          done
+        run: pnpm deploy --filter @kb-labs/gateway-app --prod .kb/deploy/gateway-app
 
       - name: Login to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
