@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/plugin-execution",
-  "version": "2.16.0",
+  "version": "2.17.0",
   "description": "Universal execution layer for KB Labs plugins",
   "type": "module",
   "exports": {

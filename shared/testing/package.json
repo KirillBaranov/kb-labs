@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/shared-testing",
-  "version": "2.16.0",
+  "version": "2.17.0",
   "type": "module",
   "description": "Test utilities for KB Labs plugin development — mock builders, platform setup, test context",
   "main": "./dist/index.js",
