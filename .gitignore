@@ -54,6 +54,11 @@ _private/
 .worktrees/
 
 # ───────────────
+# Next.js build artifacts
+# ───────────────
+.next/
+
+# ───────────────
 # KB Labs runtime data
 # ───────────────
 .kb/cache/
@@ -63,6 +68,8 @@ _private/
 .kb/devkit/
 .kb/verdaccio/
 .kb/bundle/
+.kb/release/history/
+.kb/release/backup.json
 
 # ───────────────
 # Deploy runtime data (docker volumes, db state)
