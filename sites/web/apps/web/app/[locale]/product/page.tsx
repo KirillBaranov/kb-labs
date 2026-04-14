@@ -70,18 +70,18 @@ export default async function ProductPage({ params }: Props) {
   const exploreItems = [
     {
       href: `/${locale}/product/workflows`,
-      title: t('nav.megamenu.platform.workflows.title'),
-      desc: t('nav.megamenu.platform.workflows.description'),
+      title: t('nav.megamenu.product.workflows.title'),
+      desc: t('nav.megamenu.product.workflows.description'),
     },
     {
       href: `/${locale}/product/plugins`,
-      title: t('nav.megamenu.platform.plugins.title'),
-      desc: t('nav.megamenu.platform.plugins.description'),
+      title: t('nav.megamenu.product.plugins.title'),
+      desc: t('nav.megamenu.product.plugins.description'),
     },
     {
       href: `/${locale}/product/state-broker`,
-      title: t('nav.megamenu.platform.stateBroker.title'),
-      desc: t('nav.megamenu.platform.stateBroker.description'),
+      title: t('nav.megamenu.product.stateBroker.title'),
+      desc: t('nav.megamenu.product.stateBroker.description'),
     },
     {
       href: `/${locale}/solutions/release-automation`,
