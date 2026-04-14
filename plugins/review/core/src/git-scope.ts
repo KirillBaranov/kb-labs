@@ -179,7 +179,7 @@ export async function resolveGitScope(options: GitScopeOptions): Promise<ScopedF
           const content = await readFile(absolutePath, 'utf-8');
 
           // Path relative to root cwd
-          const relativePath = isNestedRepo
+          const relativePath = isNestedRepo && repoRelative !== '.'
             ? `${repoRelative}/${filePath}`
             : filePath;
 
@@ -249,6 +249,25 @@ export async function discoverRepos(cwd: string): Promise<string[]> {
  */
 export async function getReposWithChanges(cwd: string): Promise<string[]> {
   const allRepos = await discoverRepos(cwd);
+
+  // Single-repo project: cwd itself is a git repo with no submodules.
+  // Return '.' so callers can use resolveGitScope({ repos: ['.'] }).
+  if (allRepos.length === 0 && existsSync(join(cwd, '.git'))) {
+    try {
+      const git: SimpleGit = simpleGit(cwd);
+      const status: StatusResult = await git.status();
+      const hasChanges =
+        status.staged.length > 0 ||
+        status.modified.length > 0 ||
+        status.deleted.length > 0 ||
+        status.not_added.length > 0;
+      if (hasChanges) {return ['.'];}
+    } catch {
+      // ignore
+    }
+    return [];
+  }
+
   const reposWithChanges: string[] = [];
 
   for (const repo of allRepos) {
@@ -256,7 +275,7 @@ export async function getReposWithChanges(cwd: string): Promise<string[]> {
 
     try {
       const git: SimpleGit = simpleGit(repoPath);
-       
+
       const status: StatusResult = await git.status();
 
       const hasChanges =
@@ -291,6 +310,10 @@ function shouldIgnoreFile(file: string): boolean {
     '.cache/',
     '.temp/',
     'tmp/',
+    '.kb/analytics/',
+    '.kb/cache/',
+    '.kb/storage/',
+    '.kb/database/',
     'pnpm-lock.yaml',
     'package-lock.json',
     'yarn.lock',
