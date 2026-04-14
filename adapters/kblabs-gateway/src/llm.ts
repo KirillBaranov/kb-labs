@@ -115,7 +115,7 @@ export class KBLabsGatewayLLM implements ILLM {
 
     this.client = new OpenAI({
       apiKey: initialKey,
-      baseURL: `${this.gatewayURL}/llm`,
+      baseURL: `${this.gatewayURL}/llm/v1`,
     });
   }
 
@@ -137,7 +137,7 @@ export class KBLabsGatewayLLM implements ILLM {
     );
     this.client = new OpenAI({
       apiKey: this.accessToken,
-      baseURL: `${this.gatewayURL}/llm`,
+      baseURL: `${this.gatewayURL}/llm/v1`,
     });
   }
 

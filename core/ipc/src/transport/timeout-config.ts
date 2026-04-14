@@ -81,6 +81,9 @@ export const OPERATION_TIMEOUTS: Record<string, number> = {
   // Default timeout for any embeddings operation
   'embeddings.*': 60_000,
 
+  // chatWithTools - multi-turn tool calling can be slow (33s+ per call on remote gateway)
+  'llm.chatWithTools': 300_000, // 5 minutes
+
   // Default timeout for any LLM operation
   'llm.*': 90_000,
 
