@@ -1,0 +1,47 @@
+{
+  "name": "@kb-labs/scaffold-core",
+  "version": "2.29.0",
+  "type": "module",
+  "description": "Pure engine for the KB Labs scaffolder: loader, resolver, renderer, patch merger, writer.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./dist/*": "./dist/*"
+  },
+  "files": [
+    "dist"
+  ],
+  "sideEffects": false,
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsup --config tsup.config.ts",
+    "dev": "tsup --config tsup.config.ts --watch",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint . --fix",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@kb-labs/scaffold-contracts": "workspace:*",
+    "eta": "^3.5.0",
+    "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.3.3",
+    "eslint": "^9",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  }
+}
