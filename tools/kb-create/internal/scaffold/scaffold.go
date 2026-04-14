@@ -42,6 +42,10 @@ func WriteProjectConfig(projectDir string, opts Options) error {
 		return err
 	}
 
+	if err := ensureGitignore(projectDir); err != nil {
+		return fmt.Errorf("scaffold gitignore: %w", err)
+	}
+
 	if opts.DemoMode {
 		if err := writeDemoWorkflow(dir); err != nil {
 			return fmt.Errorf("scaffold demo workflow: %w", err)
@@ -320,6 +324,30 @@ jobs:
 		}
 	}
 	return nil
+}
+
+// ensureGitignore appends KB Labs ignore rules to .gitignore if not already present.
+// Uses sentinel markers so re-runs are idempotent and existing user content is preserved.
+func ensureGitignore(projectDir string) error {
+	const (
+		marker = "# kb-labs-ignore"
+		block  = "\n# kb-labs-ignore\n.kb/analytics/\n.kb/cache/\n.kb/storage/\n# end-kb-labs-ignore\n"
+	)
+	path := filepath.Join(projectDir, ".gitignore")
+	existing, err := os.ReadFile(path)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	if strings.Contains(string(existing), marker) {
+		return nil // already present
+	}
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644) // #nosec G306
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	_, err = f.WriteString(block)
+	return err
 }
 
 // writeDemoWorkflow generates .kb/workflows/demo.yaml inside the project .kb dir.

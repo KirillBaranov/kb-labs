@@ -166,23 +166,12 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		DemoMode:    sel.DemoMode,
 	}
 	// Register KB Labs Gateway credentials for LLM access (50 free requests).
-	// Only with explicit user consent — either from the wizard consent stage
-	// or a simple y/n prompt when --yes skips the wizard.
-	wantsLLM := sel.Consent == types.ConsentDemo
+	// --yes implies consent: install silently with all defaults including LLM.
+	// Wizard flow uses the explicit consent stage answer.
+	wantsLLM := sel.Consent == types.ConsentDemo || flagYes
 	if sel.Consent == "" && !flagYes {
 		// Wizard ran but consent stage was skipped for some reason — no LLM.
 		wantsLLM = false
-	}
-	if sel.Consent == "" && flagYes {
-		// --yes mode skipped the wizard entirely — ask once.
-		fmt.Println()
-		fmt.Println("  Enable AI features? KB Labs Gateway provides 50 free LLM requests.")
-		fmt.Println("  Your code diffs may be sent to the gateway when using AI commands.")
-		fmt.Print("  Enable?  y / n  → ")
-		answer := ""
-		fmt.Scanln(&answer) // #nosec G104 -- non-fatal read
-		wantsLLM = strings.TrimSpace(strings.ToLower(answer)) == "y"
-		fmt.Println()
 	}
 	if wantsLLM {
 		creds, credErr := tc.EnsureRegistered()
