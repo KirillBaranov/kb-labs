@@ -13,3 +13,4 @@ packages:
   - sites/*/packages/*
   - templates/*
   - templates/*/packages/*
+  - .kb/plugins/*/packages/*

@@ -23,25 +23,24 @@
     "antd": "^5.27.1",
     "dayjs": "^1.11.13",
     "gray-matter": "^4.0.3",
-    "next": "^15.4.6",
+    "next": "^14.2.15",
     "next-intl": "^4.8.3",
-    "next-mdx-remote": "^5.0.0",
+    "next-mdx-remote": "^6.0.0",
     "rehype-pretty-code": "^0.14.3",
     "remark-gfm": "^4.0.1",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
     "react-router-dom": "^7.0.2"
   },
   "devDependencies": {
     "@kb-labs/web-config": "workspace:*",
     "@types/node": "^24.3.3",
-    "@types/react": "^19.0.10",
-    "@types/react-dom": "^19.0.4",
+    "@types/react": "^18.3.18",
+    "@types/react-dom": "^18.3.5",
     "eslint": "^9.12.0",
-    "eslint-config-next": "^15.4.6",
+    "eslint-config-next": "^14.2.15",
     "png-to-ico": "^3.0.1",
     "sharp": "^0.34.5",
     "typescript": "^5.6.3"
   }
 }
-

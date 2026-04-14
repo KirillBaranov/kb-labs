@@ -93,6 +93,22 @@ jobs:
           retention-days: 1
           compression-level: 3
 
+  # ── 2b. Dependency hygiene (Single Version Policy) ─────────────────────────
+  deps:
+    name: Deps (syncpack)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { run_install: false }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Check Single Version Policy (versions + format)
+        run: pnpm deps:lint
+
   # ── 3. Lint / Type-check / Test — all packages ──────────────────────────────
   checks:
     name: ${{ matrix.task }}
