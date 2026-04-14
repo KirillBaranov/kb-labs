@@ -28,6 +28,12 @@ coverage/
 coverage.out
 .vitest/
 .vscode-test/
+.test-analytics/
+
+# ───────────────
+# Tool caches
+# ───────────────
+.wrangler/
 
 # ───────────────
 # IDE & OS junk
