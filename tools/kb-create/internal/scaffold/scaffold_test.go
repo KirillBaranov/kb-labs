@@ -80,7 +80,7 @@ func TestWriteProjectConfig_CreatesNestedDir(t *testing.T) {
 		t.Fatalf("WriteProjectConfig() error = %v", err)
 	}
 
-	path := filepath.Join(dir, ".kb", "kb.config.json")
+	path := filepath.Join(dir, ".kb", "kb.config.jsonc")
 	if _, err := os.Stat(path); err != nil {
 		t.Errorf("config file not created at %s: %v", path, err)
 	}
@@ -91,7 +91,7 @@ func TestWriteProjectConfig_FilePermissions(t *testing.T) {
 
 	_ = WriteProjectConfig(dir, Options{PlatformDir: "/tmp"})
 
-	info, err := os.Stat(filepath.Join(dir, ".kb", "kb.config.json"))
+	info, err := os.Stat(filepath.Join(dir, ".kb", "kb.config.jsonc"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -133,7 +133,6 @@ func TestGenerate_AdapterDefaults(t *testing.T) {
 		`"logger": "@kb-labs/adapters-pino"`,
 		`"logRingBuffer": "@kb-labs/adapters-log-ringbuffer"`,
 		`"analytics": "@kb-labs/adapters-analytics-file"`,
-		`"eventBus": "@kb-labs/adapters-eventbus-cache"`,
 		`"mode": "worker-pool"`,
 	}
 	for _, d := range defaults {
@@ -159,7 +158,7 @@ func TestGenerate_PluginInnerConfig(t *testing.T) {
 func readConfig(t *testing.T, projectDir string) string {
 	t.Helper()
 	// #nosec G304 -- test reads a file created under its own temp project dir.
-	data, err := os.ReadFile(filepath.Join(projectDir, ".kb", "kb.config.json"))
+	data, err := os.ReadFile(filepath.Join(projectDir, ".kb", "kb.config.jsonc"))
 	if err != nil {
 		t.Fatalf("read config: %v", err)
 	}

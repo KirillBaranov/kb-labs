@@ -62,9 +62,10 @@ func TestEnsurePackageJSONCreates(t *testing.T) {
 	}
 }
 
-// TestEnsurePackageJSONIdempotent verifies that calling ensurePackageJSON twice
-// does not overwrite an existing package.json.
-func TestEnsurePackageJSONIdempotent(t *testing.T) {
+// TestEnsurePackageJSONMergesOverrides verifies that ensurePackageJSON always
+// injects pnpm.overrides into an existing package.json while preserving
+// other fields (name, version, etc.).
+func TestEnsurePackageJSONMergesOverrides(t *testing.T) {
 	dir := t.TempDir()
 	pkgPath := filepath.Join(dir, "package.json")
 
@@ -82,8 +83,22 @@ func TestEnsurePackageJSONIdempotent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(got) != custom {
-		t.Errorf("package.json overwritten: got %q, want %q", string(got), custom)
+	content := string(got)
+
+	// Original fields must be preserved.
+	if !strings.Contains(content, `"name": "custom"`) && !strings.Contains(content, `"name":"custom"`) {
+		t.Errorf("package.json lost name field: %s", content)
+	}
+	if !strings.Contains(content, `"version": "9.9.9"`) && !strings.Contains(content, `"version":"9.9.9"`) {
+		t.Errorf("package.json lost version field: %s", content)
+	}
+
+	// pnpm.overrides must be injected.
+	if !strings.Contains(content, `"overrides"`) {
+		t.Errorf("package.json missing pnpm.overrides: %s", content)
+	}
+	if !strings.Contains(content, `"@kb-labs/sdk"`) {
+		t.Errorf("package.json missing @kb-labs/sdk override: %s", content)
 	}
 }
 
