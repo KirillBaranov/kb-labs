@@ -49,7 +49,7 @@ export function HeroSection({ title, description, body, cta1, cta2, cta1Href, ct
           <Link className="btn primary" href={cta1Href}>
             {cta1}
           </Link>
-          <Link className="btn secondary" href={cta2Href}>
+          <Link className="btn secondary" href={cta2Href} target="_blank" rel="noopener noreferrer">
             {cta2}
           </Link>
         </div>
