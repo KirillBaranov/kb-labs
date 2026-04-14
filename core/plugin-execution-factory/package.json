@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/plugin-execution-factory",
-  "version": "2.27.0",
+  "version": "2.28.0",
   "description": "Execution backend factory for KB Labs plugins - extracted to break circular dependencies",
   "type": "module",
   "main": "./dist/index.js",
