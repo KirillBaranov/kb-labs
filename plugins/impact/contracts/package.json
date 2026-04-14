@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/impact-contracts",
-  "version": "2.23.0",
+  "version": "2.24.0",
   "type": "module",
   "description": "Contracts for KB Labs Impact Analysis Plugin — types, interfaces, schemas.",
   "main": "./dist/index.js",

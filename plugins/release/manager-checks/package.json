@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/release-manager-checks",
-  "version": "2.23.0",
+  "version": "2.24.0",
   "description": "KB Labs Release Manager - check adapters for audit, devlink, mind, tests, and build",
   "type": "module",
   "main": "./dist/index.js",

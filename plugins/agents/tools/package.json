@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/agent-tools",
-  "version": "2.23.0",
+  "version": "2.24.0",
   "description": "Agent management tools for planning, coordination, and execution",
   "files": [
     "dist"

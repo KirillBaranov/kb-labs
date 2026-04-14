@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/workflow-entry",
-  "version": "2.23.0",
+  "version": "2.24.0",
   "type": "module",
   "description": "CLI commands for KB Labs Workflow Daemon - interact with workflow daemon via HTTP API.",
   "main": "./dist/index.js",
