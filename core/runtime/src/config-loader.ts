@@ -51,7 +51,9 @@ import type { PlatformConfig } from './config.js'
 import { interpolateConfig } from './config-interpolation.js'
 
 const CONFIG_RELATIVE_PATHS = [
+  path.join('.kb', 'kb.config.jsonc'),
   path.join('.kb', 'kb.config.json'),
+  'kb.config.jsonc',
   'kb.config.json',
 ] as const
 
