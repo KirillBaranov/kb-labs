@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/shared-testing-e2e",
-  "version": "2.28.0",
+  "version": "2.29.0",
   "type": "module",
   "description": "E2E test harness for KB Labs platform — kb-dev controller, HTTP/WS/SSE helpers, isolated project roots",
   "main": "./dist/index.js",

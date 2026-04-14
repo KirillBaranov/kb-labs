@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/adapters-log-ringbuffer",
-  "version": "2.28.0",
+  "version": "2.29.0",
   "description": "In-memory ring buffer for real-time log streaming",
   "type": "module",
   "main": "./dist/index.js",

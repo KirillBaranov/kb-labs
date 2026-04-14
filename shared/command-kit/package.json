@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/shared-command-kit",
-  "version": "2.28.0",
+  "version": "2.29.0",
   "type": "module",
   "description": "Command Kit for KB Labs CLI - utilities and high-level API for building commands",
   "main": "./dist/index.js",

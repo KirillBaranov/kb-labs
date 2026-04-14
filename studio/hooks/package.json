@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/studio-hooks",
-  "version": "2.28.0",
+  "version": "2.29.0",
   "description": "Studio SDK hooks — useData, useMutateData, useSSE, useInfiniteData, useWebSocket, useEventBus, usePermissions, useNavigation, useNotification, useTheme",
   "type": "module",
   "main": "./dist/index.js",
