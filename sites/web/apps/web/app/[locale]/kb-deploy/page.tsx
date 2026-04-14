@@ -5,6 +5,7 @@ import { routing } from '@/i18n/routing';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import { CopyButton } from '@/components/CopyButton';
+import { PlatformCommand, PlatformBinaryTable } from '@/components/platform';
 import s from './page.module.css';
 import { buildPageMetadata } from '@/lib/page-metadata';
 
@@ -50,10 +51,7 @@ export default async function KbDeployPage({ params }: Props) {
           <h1>{t('kbDeploy.hero.title')}</h1>
           <p>{t('kbDeploy.hero.description')}</p>
           <div className={s.heroCta}>
-            <div className={s.codeWrap}>
-              <pre className={s.heroCode}><code>{t('kbDeploy.hero.installCmd')}</code></pre>
-              <CopyButton text={t('kbDeploy.hero.installCmd')} />
-            </div>
+            <PlatformCommand commands={{ unix: t('kbDeploy.hero.installCmd'), windows: 'iwr https://kblabs.ru/kb-deploy/install.ps1 | iex' }} />
             <a
               className="btn"
               href="https://docs.kblabs.ru/services/kb-deploy"
@@ -176,26 +174,14 @@ export default async function KbDeployPage({ params }: Props) {
           <div>
             <h2>{t('kbDeploy.download.title')}</h2>
             <p>{t('kbDeploy.download.description')}</p>
-            <div className={s.platformTable}>
-              <div className={s.platformHead}>
-                <span>{t('kbDeploy.download.colPlatform')}</span>
-                <span>{t('kbDeploy.download.colBinary')}</span>
-                <span>{t('kbDeploy.download.colDownload')}</span>
-              </div>
-              {PLATFORMS.map((item) => (
-                <div key={item.file} className={s.platformRow}>
-                  <span>{item.platform}</span>
-                  <code>{item.file}</code>
-                  <a
-                    href={`https://github.com/KirillBaranov/kb-labs/releases/latest/download/${item.file}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {t('kbDeploy.download.downloadBtn')}
-                  </a>
-                </div>
-              ))}
-            </div>
+            <PlatformBinaryTable
+              binaries={PLATFORMS}
+              downloadLabel={t('kbDeploy.download.downloadBtn')}
+              baseUrl="https://github.com/KirillBaranov/kb-labs/releases/latest/download"
+              colPlatform={t('kbDeploy.download.colPlatform')}
+              colBinary={t('kbDeploy.download.colBinary')}
+              colDownload={t('kbDeploy.download.colDownload')}
+            />
           </div>
           <div className={s.kbLabsNote}>
             <div className={s.noteIcon} aria-hidden="true">

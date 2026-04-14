@@ -5,6 +5,7 @@ import { routing } from '@/i18n/routing';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import { CopyButton } from '@/components/CopyButton';
+import { PlatformCommand, PlatformBinaryTable } from '@/components/platform';
 import s from './page.module.css';
 import { buildPageMetadata } from '@/lib/page-metadata';
 
@@ -35,15 +36,10 @@ function renderWithCode(text: string, codeClassName: string) {
   );
 }
 
-function renderCurlCode(text: string, codeClassName: string) {
-  const parts = text.split('{code}');
-  if (parts.length === 1) return <>{text}</>;
-  return (
-    <>
-      {parts[0]}<code className={codeClassName}>curl | sh</code>{parts[1]}
-    </>
-  );
-}
+const INSTALL_COMMANDS = {
+  unix: 'curl -fsSL https://kblabs.ru/install.sh | sh',
+  windows: 'iwr https://kblabs.ru/install.ps1 | iex',
+};
 
 export default async function InstallPage({ params }: Props) {
   const { locale } = await params;
@@ -53,6 +49,9 @@ export default async function InstallPage({ params }: Props) {
   const STEPS = t.raw('install.quickInstall.steps') as Array<{ num: string; title: string; cmd: string; note: string }>;
   const BINARIES = t.raw('install.binaries.platforms') as Array<{ platform: string; file: string }>;
   const NEXT_STEPS = t.raw('install.afterInstall.steps') as Array<{ title: string; cmd?: string; href?: string; label?: string }>;
+
+  // Step 01 is install — platform-dependent. Steps 02+ are universal.
+  const [installStep, ...restSteps] = STEPS;
 
   return (
     <>
@@ -64,9 +63,7 @@ export default async function InstallPage({ params }: Props) {
           <h1>{t('install.hero.title')}</h1>
           <p>{renderWithCode(t.raw('install.hero.description') as string, s.inlineCode)}</p>
           <div className={s.heroCta}>
-            <a className="btn primary" href="/install.sh">
-              {t('install.hero.downloadBtn')}
-            </a>
+            <PlatformCommand commands={INSTALL_COMMANDS} />
             <a className="btn secondary" href="https://github.com/KirillBaranov/kb-labs/releases/latest" target="_blank" rel="noopener noreferrer">
               {t('install.hero.releasesBtn')}
             </a>
@@ -79,7 +76,19 @@ export default async function InstallPage({ params }: Props) {
             <p>{t('install.quickInstall.description')}</p>
           </div>
           <div className={s.stepList}>
-            {STEPS.map((step) => (
+            {/* Step 01: platform-aware install command */}
+            {installStep && (
+              <div key={installStep.num} className={s.stepRow}>
+                <span className={s.stepNum}>{installStep.num}</span>
+                <div className={s.stepContent}>
+                  <h3>{installStep.title}</h3>
+                  <PlatformCommand commands={INSTALL_COMMANDS} />
+                  <p>{installStep.note}</p>
+                </div>
+              </div>
+            )}
+            {/* Steps 02+: universal */}
+            {restSteps.map((step) => (
               <div key={step.num} className={s.stepRow}>
                 <span className={s.stepNum}>{step.num}</span>
                 <div className={s.stepContent}>
@@ -101,12 +110,12 @@ export default async function InstallPage({ params }: Props) {
           <div>
             <h2>{t('install.pinVersion.title')}</h2>
             <p>{t('install.pinVersion.description')}</p>
-            <div className={s.codeWrap}>
-              <pre className={s.codeBlock}>
-                <code>{'curl -fsSL https://kblabs.ru/install.sh | sh -s -- --version v1.2.3'}</code>
-              </pre>
-              <CopyButton text="curl -fsSL https://kblabs.ru/install.sh | sh -s -- --version v1.2.3" />
-            </div>
+            <PlatformCommand
+              commands={{
+                unix: 'curl -fsSL https://kblabs.ru/install.sh | sh -s -- --version v1.2.3',
+                windows: 'iwr https://kblabs.ru/install.ps1 | iex -Version v1.2.3',
+              }}
+            />
             <h3 className={s.subhead}>{t('install.pinVersion.checksumTitle')}</h3>
             <div className={s.codeWrap}>
               <pre className={s.codeBlock}>
@@ -133,22 +142,16 @@ export default async function InstallPage({ params }: Props) {
         <section className={s.binarySection}>
           <div className={s.sectionHeader}>
             <h2>{t('install.binaries.title')}</h2>
-            <p>{renderCurlCode(t.raw('install.binaries.description') as string, s.inlineCode)}</p>
+            <p>{t('install.binaries.description').replace('{code}', 'curl | sh')}</p>
           </div>
-          <div className={s.binaryTable}>
-            <div className={s.binaryHead}>
-              <span>{t('install.binaries.colPlatform')}</span>
-              <span>{t('install.binaries.colBinary')}</span>
-              <span>{t('install.binaries.colDownload')}</span>
-            </div>
-            {BINARIES.map((item) => (
-              <div key={item.file} className={s.binaryRow}>
-                <span>{item.platform}</span>
-                <code>{item.file}</code>
-                <a href={`https://github.com/KirillBaranov/kb-labs/releases/latest/download/${item.file}`} target="_blank" rel="noopener noreferrer">{t('install.binaries.downloadBtn')}</a>
-              </div>
-            ))}
-          </div>
+          <PlatformBinaryTable
+            binaries={BINARIES}
+            downloadLabel={t('install.binaries.downloadBtn')}
+            baseUrl="https://github.com/KirillBaranov/kb-labs/releases/latest/download"
+            colPlatform={t('install.binaries.colPlatform')}
+            colBinary={t('install.binaries.colBinary')}
+            colDownload={t('install.binaries.colDownload')}
+          />
         </section>
 
         <hr className={s.divider} />
@@ -167,12 +170,7 @@ export default async function InstallPage({ params }: Props) {
                 )}
                 {step.href && (
                   step.href.startsWith('http') ? (
-                    <a
-                      className={s.link}
-                      href={step.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
+                    <a className={s.link} href={step.href} target="_blank" rel="noopener noreferrer">
                       {step.label}
                     </a>
                   ) : (
