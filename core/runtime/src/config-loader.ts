@@ -162,6 +162,10 @@ function findConfigAtRoot(root: string): string | undefined {
  * Read a KB Labs config file and extract its `platform` section. Returns
  * `{ platformSection, rawConfig }` where either field may be `undefined` if
  * the file is missing, malformed, or has no `platform` section.
+ *
+ * `adapterOptions` lives at the top level of the config file (not inside
+ * `platform`), so we merge it into the returned platformSection so that
+ * initPlatform receives credentials and adapter-specific options.
  */
 async function readConfigFile(configPath: string): Promise<{
   platformSection?: PlatformConfig
@@ -169,6 +173,7 @@ async function readConfigFile(configPath: string): Promise<{
 }> {
   const result = await readJsonWithDiagnostics<{
     platform?: PlatformConfig
+    adapterOptions?: Partial<Record<string, unknown>>
     [k: string]: unknown
   }>(configPath)
 
@@ -178,9 +183,19 @@ async function readConfigFile(configPath: string): Promise<{
 
   const data = result.data as Record<string, unknown> & {
     platform?: PlatformConfig
+    adapterOptions?: Partial<Record<string, unknown>>
   }
+
+  // Merge top-level adapterOptions into the platform section so initPlatform
+  // receives adapter credentials (e.g. llm.kbClientId) alongside adapter bindings.
+  const platformSection: PlatformConfig | undefined = data.platform
+    ? { ...data.platform, adapterOptions: data.adapterOptions ?? data.platform.adapterOptions }
+    : data.adapterOptions
+      ? { adapters: {}, adapterOptions: data.adapterOptions }
+      : undefined
+
   return {
-    platformSection: data.platform,
+    platformSection,
     rawConfig: data,
   }
 }
