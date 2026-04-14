@@ -125,6 +125,8 @@ func (p *PnpmManager) ensureNpmrc(dir string) error {
 	if registry == "" {
 		registry = "https://registry.npmjs.org/"
 	}
-	content := "registry=" + registry + "\n"
+	// shamefully-hoist ensures all transitive KB Labs packages are reachable
+	// from node_modules root, so plugins can resolve their deps at runtime.
+	content := "registry=" + registry + "\nshamefully-hoist=true\n"
 	return os.WriteFile(filepath.Join(dir, ".npmrc"), []byte(content), 0o600)
 }

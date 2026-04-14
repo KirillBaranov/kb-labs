@@ -6,12 +6,12 @@ type Package struct {
 	LocalPath string `json:"localPath,omitempty"` // absolute path for dev mode
 }
 
-// PackageSpec returns the install spec: "name" in prod or "name@file:/abs/path" in dev.
+// PackageSpec returns the install spec: "name@latest" in prod or "name@file:/abs/path" in dev.
 func (p Package) PackageSpec() string {
 	if p.LocalPath != "" {
 		return p.Name + "@file:" + p.LocalPath
 	}
-	return p.Name
+	return p.Name + "@latest"
 }
 
 // Component is an optional service or plugin.
@@ -27,12 +27,12 @@ type Component struct {
 	Plugin         string  `json:"plugin,omitempty"`         // companion CLI plugin pkg (services only)
 }
 
-// PackageSpec returns the install spec: "pkg" in prod or "pkg@file:/abs/path" in dev.
+// PackageSpec returns the install spec: "pkg@latest" in prod or "pkg@file:/abs/path" in dev.
 func (c Component) PackageSpec() string {
 	if c.LocalPath != "" {
 		return c.Pkg + "@file:" + c.LocalPath
 	}
-	return c.Pkg
+	return c.Pkg + "@latest"
 }
 
 // Binary describes a Go binary distributed via GitHub Releases.
