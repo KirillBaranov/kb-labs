@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/sdk",
-  "version": "2.18.0",
+  "version": "2.18.1",
   "description": "Core SDK - Helpers for command/route/action/webhook definitions and testing",
   "type": "module",
   "main": "./dist/index.js",
@@ -18,6 +18,10 @@
     "./manifest": {
       "types": "./dist/manifest/index.d.ts",
       "import": "./dist/manifest/index.js"
+    },
+    "./adapters": {
+      "types": "./dist/adapters/index.d.ts",
+      "import": "./dist/adapters/index.js"
     },
     "./hooks": {
       "types": "./dist/hooks/index.d.ts",
