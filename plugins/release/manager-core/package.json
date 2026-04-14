@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/release-manager-core",
-  "version": "2.33.0",
+  "version": "2.34.0",
   "description": "KB Labs Release Manager - core orchestration, planning, versioning, and publishing",
   "type": "module",
   "main": "./dist/index.js",
