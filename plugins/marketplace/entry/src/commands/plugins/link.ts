@@ -47,11 +47,11 @@ export default defineCommand<unknown, LinkInput, { id: string; scope: string }>(
       }
 
       // Resolve path against cwd so the daemon always receives an absolute
-      // location. That keeps the server side from inheriting any ambient cwd.
+      // location. Keeps the server side from inheriting any ambient cwd.
       const absPath = path.resolve(ctx.cwd, pluginPath);
 
       const result = await post<LinkResponse>(
-        `/packages/${encodeURIComponent(pluginPath)}/link`,
+        `/packages/link`,
         { path: absPath, ...scopeBody(scopeCtx) },
       );
 

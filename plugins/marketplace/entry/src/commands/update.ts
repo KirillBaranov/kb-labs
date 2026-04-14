@@ -1,5 +1,5 @@
 import { defineCommand, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
-import { get, post } from '../http.js';
+import { post } from '../http.js';
 import { resolveCliScope, scopeBody, CliScopeError } from '../scope.js';
 
 interface UpdateFlags {
@@ -44,49 +44,30 @@ export default defineCommand<unknown, UpdateInput, UpdateResultData>({
         throw err;
       }
 
-      // Both the listing and the per-package update must target the same scope.
-      const body = scopeBody(scopeCtx);
-
-      let packageIds = argv;
-      if (packageIds.length === 0) {
-        const listQuery: Record<string, string> = { scope: scopeCtx.scope };
-        if (scopeCtx.projectRoot) { listQuery.projectRoot = scopeCtx.projectRoot; }
-        const all = await get<{ entries: PackageEntry[] }>('/packages', listQuery);
-        packageIds = all.entries.map(e => e.id);
+      // Server-side update accepts a single body with the ids (or all
+      // installed when omitted). No client-side loop; the server handles
+      // per-package failures and reports them in `warnings`.
+      const body: Record<string, unknown> = { ...scopeBody(scopeCtx) };
+      if (argv.length > 0) {
+        body.packageIds = argv;
       }
+      const result = await post<UpdateResultData>('/packages/update', body);
 
-      if (packageIds.length === 0) {
-        ctx.ui?.info?.(`Nothing to update (${scopeCtx.scope})`);
-        return { exitCode: 0, result: { installed: [], warnings: [], scope: scopeCtx.scope } };
-      }
-
-      const installed: PackageEntry[] = [];
-      const warnings: string[] = [];
-
-      for (const id of packageIds) {
-        try {
-          const result = await post<PackageEntry>(`/packages/${encodeURIComponent(id)}/update`, body);
-          installed.push(result);
-        } catch (err) {
-          warnings.push(`${id}: ${(err as Error).message}`);
-        }
-      }
-
-      if (installed.length === 0) {
+      if (result.installed.length === 0) {
         ctx.ui?.info?.(`Nothing to update (${scopeCtx.scope})`);
       } else {
         ctx.ui?.success?.(`Update completed (${scopeCtx.scope})`, {
           sections: [
             {
               header: 'Updated',
-              items: installed.map(p => `${p.id}@${p.version} (${p.primaryKind})`),
+              items: result.installed.map(p => `${p.id}@${p.version} (${p.primaryKind})`),
             },
-            ...(warnings.length > 0 ? [{ header: 'Warnings', items: warnings }] : []),
+            ...(result.warnings.length > 0 ? [{ header: 'Warnings', items: result.warnings }] : []),
           ],
         });
       }
 
-      return { exitCode: 0, result: { installed, warnings, scope: scopeCtx.scope } };
+      return { exitCode: 0, result };
     },
   },
 });

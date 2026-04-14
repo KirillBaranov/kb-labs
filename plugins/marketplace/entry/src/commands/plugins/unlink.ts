@@ -1,5 +1,5 @@
 import { defineCommand, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
-import { del } from '../../http.js';
+import { post } from '../../http.js';
 import { resolveCliScope, scopeBody, CliScopeError } from '../../scope.js';
 
 interface UnlinkFlags {
@@ -35,7 +35,7 @@ export default defineCommand<unknown, UnlinkInput, { packageId: string; scope: s
         throw err;
       }
 
-      await del(`/packages/${encodeURIComponent(packageId)}/link`, scopeBody(scopeCtx));
+      await post(`/packages/unlink`, { packageId, ...scopeBody(scopeCtx) });
       ctx.ui?.success?.(`Unlinked ${packageId} (${scopeCtx.scope})`);
       return { exitCode: 0, result: { packageId, scope: scopeCtx.scope } };
     },

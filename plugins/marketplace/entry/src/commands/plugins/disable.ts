@@ -1,5 +1,5 @@
 import { defineCommand, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
-import { patch } from '../../http.js';
+import { post } from '../../http.js';
 import { resolveCliScope, scopeBody, CliScopeError } from '../../scope.js';
 
 interface DisableFlags { scope?: string }
@@ -29,8 +29,8 @@ export default defineCommand<unknown, DisableInput, { packageId: string; scope: 
         throw err;
       }
 
-      await patch(`/packages/${encodeURIComponent(packageId)}`, {
-        enabled: false,
+      await post(`/packages/disable`, {
+        packageId,
         ...scopeBody(scopeCtx),
       });
       ctx.ui?.success?.(`Disabled ${packageId} (${scopeCtx.scope})`);

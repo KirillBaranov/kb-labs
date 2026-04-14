@@ -50,7 +50,7 @@ export default defineCommand<unknown, InstallInput, InstallResultData>({
         throw err;
       }
 
-      const result = await post<InstallResultData>('/packages', {
+      const result = await post<InstallResultData>('/packages/install', {
         specs: argv,
         dev: Boolean(flags.dev),
         ...scopeBody(scopeCtx),

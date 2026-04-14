@@ -1,5 +1,5 @@
 import { defineCommand, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
-import { patch } from '../../http.js';
+import { post } from '../../http.js';
 import { resolveCliScope, scopeBody, CliScopeError } from '../../scope.js';
 
 interface EnableFlags { scope?: string }
@@ -29,8 +29,8 @@ export default defineCommand<unknown, EnableInput, { packageId: string; scope: s
         throw err;
       }
 
-      await patch(`/packages/${encodeURIComponent(packageId)}`, {
-        enabled: true,
+      await post(`/packages/enable`, {
+        packageId,
         ...scopeBody(scopeCtx),
       });
       ctx.ui?.success?.(`Enabled ${packageId} (${scopeCtx.scope})`);
