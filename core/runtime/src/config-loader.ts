@@ -48,6 +48,7 @@ import {
 import { resolveRoots, type RootsResolution } from '@kb-labs/core-workspace'
 
 import type { PlatformConfig } from './config.js'
+import { interpolateConfig } from './config-interpolation.js'
 
 const CONFIG_RELATIVE_PATHS = [
   path.join('.kb', 'kb.config.json'),
@@ -268,10 +269,16 @@ export async function loadPlatformConfig(
   // unconditionally destructure `effective.adapters` (which is the shape
   // existing code — e.g. adapter loader, service init — assumes).
   const base: PlatformConfig = { adapters: {} }
-  const effective = mergeDefined(
+  const merged = mergeDefined(
     mergeDefined(base, platformDefaults),
     projectPlatformConfig,
   ) as PlatformConfig
+
+  // Resolve ${ENV_VAR} placeholders in string values (e.g. baseURL, urls, secrets
+  // that live in env vars rather than config files). In non-strict mode so
+  // missing vars leave the placeholder intact and fail lazily at use-site rather
+  // than blocking bootstrap for unrelated adapters.
+  const effective = interpolateConfig(merged, false)
 
   return {
     platformConfig: effective,
