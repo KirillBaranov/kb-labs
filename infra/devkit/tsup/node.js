@@ -4,25 +4,30 @@ import { readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
 
 /**
- * Derive tsup entry points from package.json exports field.
- * Maps each export value like "./dist/foo.js" → "src/foo.ts" (or root "foo.ts").
- * Falls back to ['src/index.ts'] if no exports or src file not found.
+ * Derive tsup entry points from package.json.
+ * Reads two sources of published dist artifacts:
+ *   1. `exports` — public module surface ("./dist/foo.js" → "src/foo.ts")
+ *   2. `kb.manifest` — plugin/adapter manifest loaded at runtime by the
+ *      kb-labs platform; it's referenced as a dist path but not exported,
+ *      so it would otherwise be silently omitted from the build.
+ * Falls back to ['src/index.ts'] if nothing resolves.
  */
 function resolveEntryFromExports() {
   try {
     const pkgPath = join(process.cwd(), 'package.json')
     const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'))
-    const exportsMap = pkg.exports ?? {}
     const srcFiles = new Set()
 
-    for (const condition of Object.values(exportsMap)) {
-      // condition can be a string or { import, types, require, ... }
+    const distPaths = []
+    for (const condition of Object.values(pkg.exports ?? {})) {
       const importPath = typeof condition === 'string' ? condition
         : (condition.import ?? condition.default ?? null)
-      if (!importPath || typeof importPath !== 'string') continue
+      if (importPath && typeof importPath === 'string') distPaths.push(importPath)
+    }
+    if (typeof pkg.kb?.manifest === 'string') distPaths.push(pkg.kb.manifest)
 
-      // "./dist/foo.js" → "foo", then try "src/foo.ts" or "foo.ts"
-      const base = importPath.replace(/^\.\/dist\//, '').replace(/\.js$/, '')
+    for (const p of distPaths) {
+      const base = p.replace(/^\.\/dist\//, '').replace(/\.js$/, '')
       const candidates = [`src/${base}.ts`, `${base}.ts`]
       for (const c of candidates) {
         if (existsSync(join(process.cwd(), c))) { srcFiles.add(c); break }
