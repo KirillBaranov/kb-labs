@@ -77,10 +77,12 @@ export const diag = defineSystemCommand<DiagFlags, DiagResult>({
     
     // 2. Plugin discovery check — respect KB_PLATFORM_ROOT so that in
     // installed mode (platform installed separately from project) we scan
-    // the platform's node_modules, not the user's project.
+    // the platform's node_modules, not the user's project. KB_PROJECT_ROOT
+    // anchors project-scope plugin discovery under .kb/plugins/.
     try {
       const platformRoot = process.env.KB_PLATFORM_ROOT;
-      const discovered = await discoverManifests(cwd, false, { platformRoot });
+      const projectRoot = process.env.KB_PROJECT_ROOT;
+      const discovered = await discoverManifests(cwd, false, { platformRoot, projectRoot });
       const manifests = registry.listManifests();
       
       const enabled = manifests.filter(m => m.available && !m.shadowed).length;

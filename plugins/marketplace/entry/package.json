@@ -1,5 +1,7 @@
 {
   "dependencies": {
+    "@kb-labs/core-workspace": "workspace:*",
+    "@kb-labs/marketplace-contracts": "workspace:*",
     "@kb-labs/sdk": "workspace:*"
   },
   "description": "Marketplace CLI plugin — commands for managing plugins, adapters, and other marketplace entities",

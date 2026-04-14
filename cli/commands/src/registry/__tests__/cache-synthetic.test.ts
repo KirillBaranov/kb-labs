@@ -62,7 +62,7 @@ function makeDiscoveryResult(
   packageName = "@kb-labs/qa-plugin",
 ): DiscoveryResult {
   return {
-    source: "workspace",
+    scope: "platform", source: "workspace",
     packageName,
     manifestPath: "/workspace/plugins/qa-plugin/dist/manifest.js",
     pkgRoot: "/workspace/plugins/qa-plugin",

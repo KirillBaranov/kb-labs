@@ -97,11 +97,15 @@ export async function executePlugin(
     const permissions = getHandlerPermissions(pluginManifest, 'cli', commandId);
     const quotas = permissions?.quotas;
 
-    // Execute plugin
+    // Execute plugin. Pass the discovered `pkgRoot` explicitly so project-
+    // scope plugins (whose node_modules live at
+    // `<projectRoot>/.kb/plugins/<name>/node_modules/`, not under cwd) are
+    // resolved correctly by the execution backend.
     try {
       const exitCode = await executeCommandV3({
         pluginId,
         pluginVersion,
+        pluginRoot,
         handlerPath,
         argv,
         flags,

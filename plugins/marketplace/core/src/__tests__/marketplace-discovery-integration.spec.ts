@@ -66,8 +66,8 @@ describe('Marketplace → Discovery Integration', () => {
       async remove() {},
     };
 
-    const marketplace = new MarketplaceService({ root: tmpDir, source });
-    const installResult = await marketplace.install(['@kb-labs/review']);
+    const marketplace = new MarketplaceService({ platformRoot: tmpDir, source });
+    const installResult = await marketplace.install({ scope: "platform" }, ['@kb-labs/review']);
 
     expect(installResult.installed).toHaveLength(1);
     expect(installResult.installed[0]!.id).toBe('@kb-labs/review');
@@ -102,8 +102,8 @@ describe('Marketplace → Discovery Integration', () => {
       async remove() {},
     };
 
-    const marketplace = new MarketplaceService({ root: tmpDir, source });
-    await marketplace.install(['@kb-labs/temp']);
+    const marketplace = new MarketplaceService({ platformRoot: tmpDir, source });
+    await marketplace.install({ scope: "platform" }, ['@kb-labs/temp']);
 
     // Verify installed
     let dm = new DiscoveryManager({ root: tmpDir, verifyIntegrity: false });
@@ -111,7 +111,7 @@ describe('Marketplace → Discovery Integration', () => {
     expect(result.plugins).toHaveLength(1);
 
     // Uninstall
-    await marketplace.uninstall(['@kb-labs/temp']);
+    await marketplace.uninstall({ scope: "platform" }, ['@kb-labs/temp']);
 
     // Verify gone
     dm = new DiscoveryManager({ root: tmpDir, verifyIntegrity: false });
@@ -132,11 +132,11 @@ describe('Marketplace → Discovery Integration', () => {
       async remove() {},
     };
 
-    const marketplace = new MarketplaceService({ root: tmpDir, source });
-    await marketplace.install(['@kb-labs/optional']);
+    const marketplace = new MarketplaceService({ platformRoot: tmpDir, source });
+    await marketplace.install({ scope: "platform" }, ['@kb-labs/optional']);
 
     // Disable
-    await marketplace.disable('@kb-labs/optional');
+    await marketplace.disable({ scope: "platform" }, '@kb-labs/optional');
 
     // Discovery should skip
     const dm = new DiscoveryManager({ root: tmpDir, verifyIntegrity: false });
@@ -147,7 +147,7 @@ describe('Marketplace → Discovery Integration', () => {
     expect(disabled).toBeDefined();
 
     // Re-enable
-    await marketplace.enable('@kb-labs/optional');
+    await marketplace.enable({ scope: "platform" }, '@kb-labs/optional');
 
     const result2 = await dm.discover();
     expect(result2.plugins).toHaveLength(1);
@@ -162,8 +162,8 @@ describe('Marketplace → Discovery Integration', () => {
       async remove() {},
     };
 
-    const marketplace = new MarketplaceService({ root: tmpDir, source });
-    const linkResult = await marketplace.link('packages/local-dev');
+    const marketplace = new MarketplaceService({ platformRoot: tmpDir, source });
+    const linkResult = await marketplace.link({ scope: "platform" }, 'packages/local-dev');
 
     expect(linkResult.id).toBe('@kb-labs/local-dev');
     expect(linkResult.primaryKind).toBe('plugin');

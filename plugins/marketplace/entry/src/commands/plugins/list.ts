@@ -1,7 +1,11 @@
 import { defineCommand, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import { get } from '../../http.js';
+import { resolveCliQueryScope, CliScopeError } from '../../scope.js';
 
-interface ListFlags { json?: boolean }
+interface ListFlags {
+  json?: boolean;
+  scope?: string;
+}
 interface ListInput { argv?: string[]; flags?: ListFlags }
 
 interface EntryRow {
@@ -11,6 +15,7 @@ interface EntryRow {
   primaryKind: string;
   provides: string[];
   enabled: boolean;
+  scope: 'platform' | 'project';
 }
 
 interface ListResultData {
@@ -25,19 +30,37 @@ export default defineCommand<unknown, ListInput, ListResultData>({
   handler: {
     async execute(ctx: PluginContextV3, input: ListInput): Promise<CommandResult<ListResultData>> {
       const flags = (input.flags ?? input) as ListFlags;
-      const data = await get<ListResultData>('/packages', { kind: 'plugin' });
+
+      let scopeCtx;
+      try {
+        scopeCtx = await resolveCliQueryScope(ctx.cwd, flags.scope);
+      } catch (err) {
+        if (err instanceof CliScopeError) {
+          ctx.ui?.error?.(err.message);
+          return { exitCode: 1, result: { entries: [], total: 0 } };
+        }
+        throw err;
+      }
+
+      const query: Record<string, string> = { kind: 'plugin', scope: scopeCtx.scope };
+      if (scopeCtx.projectRoot) {
+        query.projectRoot = scopeCtx.projectRoot;
+      }
+      const data = await get<ListResultData>('/packages', query);
 
       if (flags.json) {
         ctx.ui?.json?.(data);
       } else {
         const enabled = data.entries.filter(e => e.enabled !== false).length;
         const disabled = data.total - enabled;
-        ctx.ui?.success?.(`${data.total} plugins (${enabled} enabled, ${disabled} disabled)`, {
+        const showScopeColumn = scopeCtx.scope === 'all';
+        ctx.ui?.success?.(`${data.total} plugins (${enabled} enabled, ${disabled} disabled) — scope=${scopeCtx.scope}`, {
           sections: [{
             header: 'Plugins',
             items: data.entries.map(e => {
               const icon = e.enabled !== false ? '✅' : '⏸';
-              return `${icon} ${e.id} ${e.version} (${e.source})`;
+              const scopeTag = showScopeColumn ? ` [${e.scope}]` : '';
+              return `${icon} ${e.id} ${e.version} (${e.source})${scopeTag}`;
             }),
           }],
         });

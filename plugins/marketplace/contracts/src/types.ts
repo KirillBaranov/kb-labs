@@ -106,6 +106,47 @@ export interface PackageSource {
 }
 
 // ---------------------------------------------------------------------------
+// Scope model — platform vs project
+// ---------------------------------------------------------------------------
+
+/**
+ * A marketplace scope. Each scope has its own independent `marketplace.lock`
+ * and manifest cache, rooted at a different directory.
+ *
+ * - `platform` — global installs shared across projects (in the platform root).
+ * - `project`  — installs local to a single project (in the project root).
+ * - `all`      — only valid as a query scope (`list`). Returns merged entries
+ *                from both scopes with `scope` field attached to each entry.
+ */
+export type MarketplaceScope = 'platform' | 'project';
+export type MarketplaceQueryScope = MarketplaceScope | 'all';
+
+/**
+ * Per-call scope binding for mutating operations (`install`, `link`,
+ * `unlink`, `enable`, `disable`, `update`, `sync`) and for read operations
+ * (`list`, `getEntry`).
+ *
+ * - `scope`       — which lock this call targets.
+ * - `projectRoot` — required for `scope: 'project'` (ignored otherwise).
+ *                   Absolute path. The service validates that this directory
+ *                   exists and contains a `.kb/kb.config.{json,jsonc}` and is
+ *                   not equal to the platform root.
+ */
+export interface ScopeContext {
+  scope: MarketplaceScope;
+  projectRoot?: string;
+}
+
+/**
+ * Read-side context. Same as `ScopeContext`, but also admits `'all'` to merge
+ * platform and project lists.
+ */
+export interface QueryScopeContext {
+  scope: MarketplaceQueryScope;
+  projectRoot?: string;
+}
+
+// ---------------------------------------------------------------------------
 // EntityKindStrategy — extensibility contract for new entity types
 // ---------------------------------------------------------------------------
 
@@ -116,11 +157,32 @@ export interface PackageSource {
 /** Marketplace entry with its package ID (key from lock record). */
 export type MarketplaceEntryWithId = MarketplaceEntry & { id: string };
 
+/**
+ * Marketplace entry annotated with the scope it came from. Returned by
+ * `list()` so callers can always tell where a package was installed, without
+ * having to probe locks themselves.
+ */
+export type ScopedMarketplaceEntry = MarketplaceEntryWithId & {
+  scope: MarketplaceScope;
+};
+
+/**
+ * Non-fatal warning surfaced by a marketplace operation.
+ * Examples: a collision between platform and project lock (platform wins),
+ * a project-scope config ignored because the field is platform-only, etc.
+ */
+export interface MarketplaceDiagnostic {
+  code: string;
+  message: string;
+  packageId?: string;
+  scope?: MarketplaceScope;
+}
+
 export interface MarketplaceServiceAPI {
   /** List installed entries, optionally filtered by kind */
-  list(filter?: { kind?: EntityKind }): Promise<MarketplaceEntryWithId[]>;
+  list(ctx: QueryScopeContext, filter?: { kind?: EntityKind }): Promise<ScopedMarketplaceEntry[]>;
   /** Get a single entry by package ID */
-  getEntry(packageId: string): Promise<MarketplaceEntry | null>;
+  getEntry(ctx: ScopeContext, packageId: string): Promise<MarketplaceEntry | null>;
 }
 
 /**
@@ -156,11 +218,15 @@ export interface EntityKindStrategy {
   /**
    * Post-install hook. Called after the package is installed and written to lock.
    * Example: adapter strategy validates that required adapter dependencies are installed.
+   *
+   * The `ctx` argument carries the scope of the triggering install/link so the
+   * strategy can query/modify the correct lock (e.g. via `service.list(ctx)`).
    */
   afterInstall?(
     packageId: string,
     packageRoot: string,
     service: MarketplaceServiceAPI,
+    ctx: ScopeContext,
   ): Promise<void>;
 
   /**
@@ -170,6 +236,7 @@ export interface EntityKindStrategy {
   beforeUninstall?(
     packageId: string,
     service: MarketplaceServiceAPI,
+    ctx: ScopeContext,
   ): Promise<void>;
 }
 
@@ -211,11 +278,24 @@ export interface InstallResultEntry {
   primaryKind: EntityKind;
   provides: EntityKind[];
   packageRoot: string;
+  /** Scope this entry was written to. */
+  scope: MarketplaceScope;
 }
 
 export interface InstallResult {
   installed: InstallResultEntry[];
   warnings: string[];
+  /**
+   * Scope the install was executed in. Echoed back so callers (API, CLI)
+   * can render scope-aware output without tracking the request side.
+   */
+  scope: MarketplaceScope;
+  /**
+   * Non-fatal diagnostics produced during the operation (e.g. collisions).
+   * Separate from `warnings` (which are free-form strings) so that downstream
+   * consumers can render them uniformly.
+   */
+  diagnostics?: MarketplaceDiagnostic[];
 }
 
 export interface SyncResult {

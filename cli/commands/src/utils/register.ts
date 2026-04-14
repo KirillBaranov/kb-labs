@@ -30,6 +30,13 @@ export interface RegisterBuiltinCommandsInput {
    * dev-mode behavior unchanged.
    */
   platformRoot?: string;
+  /**
+   * The user's project root (directory containing `.kb/kb.config.{json,jsonc}`).
+   * Discovery uses this to pick up project-scope plugins from
+   * `<projectRoot>/.kb/plugins/` and to invalidate the cache when the
+   * project's `marketplace.lock` changes. When omitted, falls back to `cwd`.
+   */
+  projectRoot?: string;
 }
 
 export async function registerBuiltinCommands(
@@ -61,6 +68,7 @@ export async function registerBuiltinCommands(
     const { discoverManifests } = await import('../registry/discover');
     const discovered = await discoverManifests(cwd, noCache, {
       platformRoot: input.platformRoot,
+      projectRoot: input.projectRoot,
     });
 
     if (discovered.length > 0) {

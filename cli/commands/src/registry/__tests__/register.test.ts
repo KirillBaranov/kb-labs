@@ -35,7 +35,8 @@ describe('registerManifests', () => {
     }];
 
     const discoveryResults: DiscoveryResult[] = [{
-      source: 'workspace',
+      scope: 'platform',
+    source: 'workspace',
       packageName: '@kb-labs/test-package',
       manifestPath: '/test/manifest.js',
       pkgRoot: '/test/package',
@@ -70,7 +71,8 @@ describe('registerManifests', () => {
     }];
 
     const discoveryResults: DiscoveryResult[] = [{
-      source: 'workspace',
+      scope: 'platform',
+    source: 'workspace',
       packageName: '@kb-labs/test-package',
       manifestPath: '/test/manifest.js',
       pkgRoot: '/test/package',
@@ -111,14 +113,16 @@ describe('registerManifests', () => {
 
     const discoveryResults: DiscoveryResult[] = [
       {
-        source: 'node_modules',
+        scope: 'platform',
+    source: 'node_modules',
         packageName: '@kb-labs/node-package',
         manifestPath: '/test/node-manifest.js',
         pkgRoot: '/test/node-package',
         manifests: [nodeModulesManifest],
       },
       {
-        source: 'workspace',
+        scope: 'platform',
+    source: 'workspace',
         packageName: '@kb-labs/workspace-package',
         manifestPath: '/test/workspace-manifest.js',
         pkgRoot: '/test/workspace-package',
@@ -148,7 +152,8 @@ describe('registerManifests', () => {
     } as any;
 
     const discoveryResults: DiscoveryResult[] = [{
-      source: 'workspace',
+      scope: 'platform',
+    source: 'workspace',
       packageName: '@kb-labs/test-package',
       manifestPath: '/test/manifest.js',
       pkgRoot: '/test/package',
@@ -193,21 +198,24 @@ describe('registerManifests', () => {
 
     const discoveryResults: DiscoveryResult[] = [
       {
-        source: 'workspace',
+        scope: 'platform',
+    source: 'workspace',
         packageName: '@kb-labs/agent-entry',
         manifestPath: '/test/agent-manifest.js',
         pkgRoot: '/test/agent',
         manifests: [agentRun],
       },
       {
-        source: 'workspace',
+        scope: 'platform',
+    source: 'workspace',
         packageName: '@kb-labs/workflow-entry',
         manifestPath: '/test/workflow-manifest.js',
         pkgRoot: '/test/workflow',
         manifests: [workflowRun],
       },
       {
-        source: 'workspace',
+        scope: 'platform',
+    source: 'workspace',
         packageName: '@kb-labs/review-entry',
         manifestPath: '/test/review-manifest.js',
         pkgRoot: '/test/review',
@@ -250,14 +258,16 @@ describe('registerManifests', () => {
 
     const discoveryResults: DiscoveryResult[] = [
       {
-        source: 'workspace',
+        scope: 'platform',
+    source: 'workspace',
         packageName: '@kb-labs/agent-entry',
         manifestPath: '/test/agent-manifest.js',
         pkgRoot: '/test/agent',
         manifests: [first],
       },
       {
-        source: 'workspace',
+        scope: 'platform',
+    source: 'workspace',
         packageName: '@kb-labs/agent-duplicate',
         manifestPath: '/test/agent-dup-manifest.js',
         pkgRoot: '/test/agent-dup',
@@ -291,7 +301,8 @@ describe('registerManifests', () => {
     };
 
     const discoveryResults: DiscoveryResult[] = [{
-      source: 'workspace',
+      scope: 'platform',
+    source: 'workspace',
       packageName: '@kb-labs/test-package',
       manifestPath: '/test/manifest.js',
       pkgRoot: '/test/package',

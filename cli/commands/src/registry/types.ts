@@ -50,6 +50,7 @@ export interface RegisteredCommand {
   unavailableReason?: string;
   hint?: string;
   source: 'workspace' | 'node_modules' | 'linked' | 'builtin';
+  scope?: 'platform' | 'project'; // Scope the manifest was discovered in (see ADR-0012)
   shadowed: boolean;         // True if overridden by higher priority
   pkgRoot?: string;          // Package root directory (for workspace/linked plugins)
   packageName?: string;       // Full package name
@@ -61,6 +62,13 @@ export interface CommandModule {
 
 export interface DiscoveryResult {
   source: 'workspace' | 'node_modules' | 'linked' | 'builtin';
+  /**
+   * Scope this result came from. Platform-wide discovery (monorepo workspace,
+   * platform node_modules) reports `platform`; discovery from
+   * `<projectRoot>/.kb/plugins/` reports `project`. On collision (same
+   * packageName in both scopes) the platform entry wins — see ADR-0012.
+   */
+  scope: 'platform' | 'project';
   packageName: string;
   manifestPath: string;      // Absolute JS path (POSIX)
   pkgRoot: string;           // Absolute package directory (POSIX)
@@ -97,6 +105,14 @@ export interface CacheFile {
   lockfileHash?: string;     // Hash of pnpm-lock.yaml
   configHash?: string;       // Hash of kb-labs.config.json
   pluginsStateHash?: string; // Hash of .kb/plugins.json
+  /** Hash of <platformRoot>/.kb/marketplace.lock. Invalidates when global plugins change. */
+  platformMarketplaceLockHash?: string;
+  /** Hash of <projectRoot>/.kb/marketplace.lock. Invalidates when project-scoped plugins change. */
+  projectMarketplaceLockHash?: string;
+  /** Absolute platform root at the time of caching — cache is invalid if it differs on next run. */
+  platformRoot?: string;
+  /** Absolute project root at the time of caching. */
+  projectRoot?: string;
   packages: Record<string, PackageCacheEntry>;  // Changed from flat structure
 }
 

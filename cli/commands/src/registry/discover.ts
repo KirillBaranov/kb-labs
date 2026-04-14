@@ -208,6 +208,26 @@ async function computePluginsStateHash(cwd: string): Promise<string> {
 }
 
 /**
+ * Compute hash of `<root>/.kb/marketplace.lock` for cache invalidation.
+ *
+ * Each scope (platform, project) has its own lock — the discovery cache
+ * tracks both, and a change in either invalidates the cache. The lock is
+ * the source of truth for installed/linked plugins, so when it changes
+ * (via `kb marketplace plugins link`, `install`, `uninstall`, or
+ * `kb scaffold plugin` auto-registering a freshly scaffolded plugin), the
+ * CLI cache must be rebuilt so new commands become visible on next invocation.
+ */
+async function computeMarketplaceLockHashAt(root: string): Promise<string> {
+  const lockPath = path.join(root, '.kb', 'marketplace.lock');
+  try {
+    const content = await fs.readFile(lockPath, 'utf8');
+    return createHash('sha256').update(content).digest('hex');
+  } catch {
+    return '';
+  }
+}
+
+/**
  * Detect whether new workspace packages with manifests appeared since cache was written.
  * If so, cached results are considered stale to ensure new commands are registered.
  */
@@ -599,18 +619,18 @@ async function discoverWorkspace(cwd: string): Promise<DiscoveryResult[]> {
   
   for (const pattern of parsed.packages) {
     const pkgPattern = path.join(pattern, PACKAGE_JSON);
-    const pkgFiles = await glob(pkgPattern, { 
-      cwd, 
+    const pkgFiles = await glob(pkgPattern, {
+      cwd,
       absolute: false,
       ignore: ['.kb/**', 'node_modules/**', '**/node_modules/**'] // Ignore .kb, node_modules
     });
-    
+
     for (const pkgFile of pkgFiles) {
       const pkgRoot = path.dirname(path.join(cwd, pkgFile));
       const pkg = await readPackageJson(path.join(cwd, pkgFile));
-      
+
       if (!pkg) {continue;}
-      
+
       // Check if package has manifest (explicit or conventional)
       const manifestInfo = await findManifestPath(pkgRoot, pkg);
       if (manifestInfo.path) {
@@ -622,64 +642,113 @@ async function discoverWorkspace(cwd: string): Promise<DiscoveryResult[]> {
       }
     }
   }
-  
-  // Second pass: load all manifests in parallel
+
+  // Second pass: load all manifests in parallel. `scope` is platform because
+  // `discoverWorkspace` scans pnpm-workspace packages (monorepo dev mode);
+  // project-local plugins live under `.kb/plugins/` and are discovered by
+  // `discoverProjectLocalPlugins` below.
+  return loadManifestsForPackages(packageInfos, 'workspace', 'platform');
+}
+
+/**
+ * Discover plugins scaffolded into `<projectRoot>/.kb/plugins/<name>/packages/*-entry/`.
+ *
+ * These are the bread-and-butter of project-scoped installs: a user runs
+ * `kb scaffold run plugin demo` inside their project, then `kb marketplace
+ * plugins link --scope project ./.kb/plugins/demo/packages/demo-entry`.
+ * Their manifests must be picked up even when the project has no
+ * `pnpm-workspace.yaml` (installed mode), so this pass is independent from
+ * `discoverWorkspace`.
+ */
+async function discoverProjectLocalPlugins(projectRoot: string): Promise<DiscoveryResult[]> {
+  const pattern = path.join('.kb', 'plugins', '*', 'packages', '*-entry', PACKAGE_JSON);
+  const files = await glob(pattern, {
+    cwd: projectRoot,
+    absolute: false,
+    ignore: ['**/node_modules/**'],
+  });
+  const packageInfos: Array<{ pkgRoot: string; pkg: any; manifestPath: string }> = [];
+  for (const pkgFile of files) {
+    const pkgRoot = path.dirname(path.join(projectRoot, pkgFile));
+    const pkg = await readPackageJson(path.join(projectRoot, pkgFile));
+    if (!pkg) { continue; }
+    const manifestInfo = await findManifestPath(pkgRoot, pkg);
+    if (manifestInfo.path) {
+      packageInfos.push({ pkgRoot, pkg, manifestPath: manifestInfo.path });
+    }
+  }
+  // Project-local plugins use the `linked` source — same as dev-linked
+  // packages in node_modules — and carry project scope.
+  return loadManifestsForPackages(packageInfos, 'linked', 'project');
+}
+
+/**
+ * Shared loader used by workspace and project-local discovery. Loads all
+ * manifests in parallel with timeout protection and surfaces synthetic
+ * "unavailable" manifests on load failure.
+ */
+async function loadManifestsForPackages(
+  packageInfos: Array<{ pkgRoot: string; pkg: any; manifestPath: string }>,
+  source: DiscoveryResult['source'],
+  scope: DiscoveryResult['scope'],
+): Promise<DiscoveryResult[]> {
   const loadPromises = packageInfos.map(async ({ pkgRoot, pkg, manifestPath }) => {
     const pkgStart = Date.now();
     try {
       const manifests = await loadManifestWithTimeout(manifestPath, pkg.name, pkgRoot);
       const pkgTime = Date.now() - pkgStart;
-      
+
       if (pkgTime > 30) {
         log('debug', `[plugins][perf] ${pkg.name} manifest parse: ${pkgTime}ms (budget: 30ms)`);
       }
-      
+
       if (manifests.length > 0) {
         validateUniqueIds(manifests, pkg.name);
         return {
           manifests,
-          source: 'workspace' as const,
+          source,
+          scope,
           packageName: pkg.name,
           manifestPath: toPosixPath(manifestPath),
           pkgRoot: toPosixPath(pkgRoot),
-        };
+        } satisfies DiscoveryResult;
       }
       return null;
     } catch (err: any) {
       const pkgTime = Date.now() - pkgStart;
       log('debug', `[plugins][perf] ${pkg.name} failed after ${pkgTime}ms`);
-      
-      // On failure, register a synthetic unavailable manifest so user sees the product with a hint
+
       log('warn', JSON.stringify({
         code: 'DISCOVERY_MANIFEST_LOAD_FAIL',
         packageName: pkg.name,
         manifestPath: toPosixPath(manifestPath),
         errorCode: err.code || 'UNKNOWN',
         errorMessage: err.message,
-        hint: err.message.includes('Cannot find package') 
+        hint: err.message.includes('Cannot find package')
           ? 'Run: kb devlink apply && pnpm -w build'
-          : 'Check manifest syntax and dependencies'
+          : 'Check manifest syntax and dependencies',
       }));
       const synthetic = createUnavailableManifest(pkg.name, err);
       return {
         manifests: [synthetic],
-        source: 'workspace' as const,
+        source,
+        scope,
         packageName: pkg.name,
         manifestPath: toPosixPath(manifestPath),
         pkgRoot: toPosixPath(pkgRoot),
-      };
+      } satisfies DiscoveryResult;
     }
   });
-  
+
   const settledResults = await Promise.allSettled(loadPromises);
   const results: DiscoveryResult[] = [];
-  
+
   for (const settled of settledResults) {
     if (settled.status === 'fulfilled' && settled.value) {
       results.push(settled.value);
     }
   }
-  
+
   return results;
 }
 
@@ -703,6 +772,9 @@ async function discoverCurrentPackage(cwd: string): Promise<DiscoveryResult | nu
         return {
           manifests,
           source: 'workspace',
+          // Current-package fallback fires in installed mode when the user's
+          // project itself exposes a manifest. That maps to the project scope.
+          scope: 'project',
           packageName: pkg.name,
           manifestPath: toPosixPath(manifestInfo.path),
           pkgRoot: toPosixPath(cwd),
@@ -835,10 +907,14 @@ async function discoverNodeModules(cwd: string): Promise<DiscoveryResult[]> {
           return {
             manifests,
             source: (isLinked ? 'linked' : 'node_modules') as 'node_modules' | 'linked',
+            // node_modules discovery runs at the platform root. In dev mode
+            // platformRoot === projectRoot so either label is correct; we use
+            // platform to reflect where the manifest physically lives.
+            scope: 'platform' as const,
             packageName: pkg.name,
             manifestPath: toPosixPath(manifestPath),
             pkgRoot: toPosixPath(pkgRoot),
-          };
+          } satisfies DiscoveryResult;
         }
         return null;
       } catch (err: any) {
@@ -856,10 +932,11 @@ async function discoverNodeModules(cwd: string): Promise<DiscoveryResult[]> {
         return {
           manifests: [synthetic],
           source: (isLinked ? 'linked' : 'node_modules') as 'node_modules' | 'linked',
+          scope: 'platform' as const,
           packageName: pkg.name,
           manifestPath: toPosixPath(manifestPath),
           pkgRoot: toPosixPath(pkgRoot),
-        };
+        } satisfies DiscoveryResult;
       }
     });
     
@@ -886,38 +963,69 @@ async function discoverNodeModules(cwd: string): Promise<DiscoveryResult[]> {
  */
 function deduplicateManifests(all: DiscoveryResult[]): DiscoveryResult[] {
   const byPackageName = new Map<string, DiscoveryResult>();
-  
-  // Priority order: workspace > linked > node_modules
+
+  // Priority order: workspace > linked > node_modules > builtin
   const priority: Record<string, number> = {
     workspace: 3,
     linked: 2,
     node_modules: 1,
     builtin: 0,
   };
-  
-  // First, deduplicate by package name (keeping only one version of each package)
+
   for (const result of all) {
     const existing = byPackageName.get(result.packageName);
     if (!existing) {
       byPackageName.set(result.packageName, result);
-    } else {
-      // Compare priority
-      const existingPriority = priority[existing.source] || 0;
-      const newPriority = priority[result.source] || 0;
-      if (newPriority > existingPriority) {
-        // Higher priority wins
-        byPackageName.set(result.packageName, result);
+      continue;
+    }
+
+    // Cross-scope collision: if the two results point to the same physical
+    // directory (dev mode, where `.kb/plugins/...` is matched by both
+    // pnpm-workspace and `discoverProjectLocalPlugins`), prefer the project
+    // entry — it carries the more precise scope annotation. If the paths
+    // differ, that's a real collision and platform always wins (ADR-0012),
+    // with a warning so the user can see it in --debug logs.
+    if (existing.scope !== result.scope) {
+      if (existing.pkgRoot === result.pkgRoot) {
+        const projectEntry = existing.scope === 'project' ? existing : result;
+        byPackageName.set(result.packageName, projectEntry);
+        continue;
       }
+      const winner = existing.scope === 'platform' ? existing : result;
+      const loser = existing.scope === 'platform' ? result : existing;
+      log('warn', JSON.stringify({
+        code: 'DISCOVERY_SCOPE_COLLISION',
+        packageName: result.packageName,
+        platformPath: winner.pkgRoot,
+        projectPath: loser.pkgRoot,
+        message: 'Package exists in both platform and project scopes — platform wins.',
+      }));
+      byPackageName.set(result.packageName, winner);
+      continue;
+    }
+
+    // Same scope: keep the higher-priority source.
+    const existingPriority = priority[existing.source] ?? 0;
+    const newPriority = priority[result.source] ?? 0;
+    if (newPriority > existingPriority) {
+      byPackageName.set(result.packageName, result);
     }
   }
-  
+
   return Array.from(byPackageName.values());
 }
 
 /**
- * Load cache file
+ * Load cache file. `roots` is matched against the cached `platformRoot` /
+ * `projectRoot` — if they drifted (e.g. the user moved the project or
+ * KB_PLATFORM_ROOT changed) the cache is considered invalid. This is
+ * cheaper than recomputing all manifests blindly and avoids serving stale
+ * results from a previous workspace layout.
  */
-async function loadCache(cwd: string): Promise<CacheFile | null> {
+async function loadCache(
+  cwd: string,
+  roots: { platformRoot: string; projectRoot: string },
+): Promise<CacheFile | null> {
   const cachePath = path.join(cwd, '.kb', 'cache', 'cli-manifests.json');
   
   try {
@@ -967,6 +1075,41 @@ async function loadCache(cwd: string): Promise<CacheFile | null> {
     if (currentPluginsStateHash && cache.pluginsStateHash && cache.pluginsStateHash !== currentPluginsStateHash) {
       log('debug', 'Cache invalidated: .kb/plugins.json changed');
       return null;
+    }
+
+    // Invalidate cache if recorded roots drifted. This covers scenarios like
+    // moving the project, renaming the platform dir, or switching scopes.
+    if (cache.platformRoot && cache.platformRoot !== roots.platformRoot) {
+      log('debug', `Cache invalidated: platformRoot changed (${cache.platformRoot} → ${roots.platformRoot})`);
+      return null;
+    }
+    if (cache.projectRoot && cache.projectRoot !== roots.projectRoot) {
+      log('debug', `Cache invalidated: projectRoot changed (${cache.projectRoot} → ${roots.projectRoot})`);
+      return null;
+    }
+
+    // Check marketplace lock hashes — source of truth for installed/linked
+    // plugins. Both scopes are tracked; a change in either invalidates.
+    const currentPlatformLockHash = await computeMarketplaceLockHashAt(roots.platformRoot);
+    if (
+      currentPlatformLockHash &&
+      cache.platformMarketplaceLockHash &&
+      cache.platformMarketplaceLockHash !== currentPlatformLockHash
+    ) {
+      log('debug', `Cache invalidated: ${roots.platformRoot}/.kb/marketplace.lock changed`);
+      return null;
+    }
+
+    if (roots.projectRoot !== roots.platformRoot) {
+      const currentProjectLockHash = await computeMarketplaceLockHashAt(roots.projectRoot);
+      if (
+        currentProjectLockHash &&
+        cache.projectMarketplaceLockHash &&
+        cache.projectMarketplaceLockHash !== currentProjectLockHash
+      ) {
+        log('debug', `Cache invalidated: ${roots.projectRoot}/.kb/marketplace.lock changed`);
+        return null;
+      }
     }
     
     const parsedCache = cache as CacheFile;
@@ -1034,9 +1177,18 @@ async function isPackageCacheStale(
 }
 
 /**
- * Save cache file with per-package structure
+ * Save cache file with per-package structure.
+ *
+ * The cache lives in the project root — that's where CLI invocations happen
+ * and where per-project invalidation hashes belong. `platformRoot` is stored
+ * alongside `projectRoot` so the next run can recompute both marketplace-lock
+ * hashes, even when the platform root is outside cwd (installed mode).
  */
-async function saveCache(cwd: string, results: DiscoveryResult[]): Promise<void> {
+async function saveCache(
+  cwd: string,
+  results: DiscoveryResult[],
+  roots: { platformRoot: string; projectRoot: string },
+): Promise<void> {
   const cachePath = path.join(cwd, '.kb', 'cache', 'cli-manifests.json');
   await fs.mkdir(path.dirname(cachePath), { recursive: true });
   
@@ -1101,17 +1253,19 @@ async function saveCache(cwd: string, results: DiscoveryResult[]): Promise<void>
   const lockfileHash = await computeLockfileHash(cwd);
   const configHash = await computeConfigHash(cwd);
   const pluginsStateHash = await computePluginsStateHash(cwd);
+  const platformMarketplaceLockHash = await computeMarketplaceLockHashAt(roots.platformRoot);
+  const projectMarketplaceLockHash = roots.projectRoot !== roots.platformRoot
+    ? await computeMarketplaceLockHashAt(roots.projectRoot)
+    : '';
 
-  if (lockfileHash) {
-    stateHasher.update(lockfileHash);
-  }
-  if (configHash) {
-    stateHasher.update(configHash);
-  }
-  if (pluginsStateHash) {
-    stateHasher.update(pluginsStateHash);
-  }
-  
+  if (lockfileHash) { stateHasher.update(lockfileHash); }
+  if (configHash) { stateHasher.update(configHash); }
+  if (pluginsStateHash) { stateHasher.update(pluginsStateHash); }
+  if (platformMarketplaceLockHash) { stateHasher.update(platformMarketplaceLockHash); }
+  if (projectMarketplaceLockHash) { stateHasher.update(projectMarketplaceLockHash); }
+  stateHasher.update(roots.platformRoot);
+  stateHasher.update(roots.projectRoot);
+
   const cache: CacheFile = {
     version: process.version,
     cliVersion: process.env.CLI_VERSION || '0.1.0',
@@ -1121,6 +1275,10 @@ async function saveCache(cwd: string, results: DiscoveryResult[]): Promise<void>
     lockfileHash: lockfileHash || undefined,
     configHash: configHash || undefined,
     pluginsStateHash: pluginsStateHash || undefined,
+    platformMarketplaceLockHash: platformMarketplaceLockHash || undefined,
+    projectMarketplaceLockHash: projectMarketplaceLockHash || undefined,
+    platformRoot: roots.platformRoot,
+    projectRoot: roots.projectRoot,
     packages,
   };
   
@@ -1149,10 +1307,13 @@ async function saveCache(cwd: string, results: DiscoveryResult[]): Promise<void>
 export async function discoverManifests(
   cwd: string,
   noCache = false,
-  options: { platformRoot?: string } = {},
+  options: { platformRoot?: string; projectRoot?: string } = {},
 ): Promise<DiscoveryResult[]> {
   const startTime = Date.now();
   const timings: Record<string, number> = {};
+  const platformRoot = options.platformRoot ?? cwd;
+  const projectRoot = options.projectRoot ?? cwd;
+  const roots = { platformRoot, projectRoot };
 
   if (noCache) {
     inProcDiscoveryCache = null;
@@ -1169,11 +1330,11 @@ export async function discoverManifests(
       return cachedResults;
     }
   }
-  
+
   // Check cache first
   if (!noCache) {
     const cacheStart = Date.now();
-    const cached = await loadCache(cwd);
+    const cached = await loadCache(cwd, roots);
     timings.cacheLoad = Date.now() - cacheStart;
     
     if (cached) {
@@ -1221,47 +1382,56 @@ export async function discoverManifests(
     }
   }
   
-  // Try workspace first
+  // Platform discovery — workspace packages (dev mode) or node_modules
+  // (installed mode). Always scanned at `platformRoot`.
   let workspace: DiscoveryResult[] = [];
   try {
     const wsStart = Date.now();
-    workspace = await discoverWorkspace(cwd);
+    workspace = await discoverWorkspace(platformRoot);
     timings.workspace = Date.now() - wsStart;
     log('info', `Discovered ${workspace.length} workspace packages with CLI manifests`);
   } catch (_err: any) {
     // No pnpm-workspace.yaml - fallback to current package + node_modules
     log('info', 'No workspace file found, checking current package');
-    
+
     const currentStart = Date.now();
     const currentPkg = await discoverCurrentPackage(cwd);
     timings.currentPackage = Date.now() - currentStart;
-    
+
     if (currentPkg) {
       workspace = [currentPkg];
       log('info', `Discovered current package with CLI manifest: ${currentPkg.packageName}`);
     }
   }
-  
-  // Discover from node_modules. In installed mode the platform lives in a
-  // different directory from the user's project, so we scan at platformRoot
-  // when it's provided. In dev mode platformRoot === cwd and the behavior is
-  // identical to the previous code path.
+
   const nmStart = Date.now();
-  const nodeModulesRoot = options.platformRoot ?? cwd;
-  const installed = await discoverNodeModules(nodeModulesRoot);
+  const installed = await discoverNodeModules(platformRoot);
   timings.nodeModules = Date.now() - nmStart;
   if (installed.length > 0) {
     log('info', `Discovered ${installed.length} installed packages with CLI manifests`);
   }
-  
-  // Deduplicate
+
+  // Project-local plugins (`.kb/plugins/<name>/packages/*-entry/`). Runs
+  // unconditionally against projectRoot so installed and dev modes behave
+  // identically. In dev mode projectRoot === platformRoot and the same
+  // files may also surface through `discoverWorkspace` (via pnpm-workspace
+  // globs); `deduplicateManifests` collapses the duplicates.
+  const plStart = Date.now();
+  const projectLocal = await discoverProjectLocalPlugins(projectRoot);
+  timings.projectLocal = Date.now() - plStart;
+  if (projectLocal.length > 0) {
+    log('info', `Discovered ${projectLocal.length} project-local plugins`);
+  }
+
+  // Deduplicate (same package from multiple sources/scopes collapses to one,
+  // platform wins on cross-scope collisions — see deduplicateManifests).
   const dedupStart = Date.now();
-  const results = deduplicateManifests([...workspace, ...installed]);
+  const results = deduplicateManifests([...workspace, ...installed, ...projectLocal]);
   timings.deduplicate = Date.now() - dedupStart;
-  
+
   // Save cache
   const saveStart = Date.now();
-  await saveCache(cwd, results);
+  await saveCache(cwd, results, roots);
   timings.cacheSave = Date.now() - saveStart;
   
   // Log detailed timings

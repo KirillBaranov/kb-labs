@@ -13,6 +13,14 @@ export type {
   PublishMetadata,
   PublishResult,
 
+  // Scope
+  MarketplaceScope,
+  MarketplaceQueryScope,
+  ScopeContext,
+  QueryScopeContext,
+  ScopedMarketplaceEntry,
+  MarketplaceDiagnostic,
+
   // EntityKindStrategy
   EntityKindStrategy,
   MarketplaceServiceAPI,

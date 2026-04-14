@@ -2,7 +2,13 @@
  * @module @kb-labs/marketplace-api/routes/packages
  * REST routes for marketplace packages (plugins, adapters, etc.)
  *
- * GET    /packages              — list installed packages
+ * Every mutating route accepts `{ scope, projectRoot? }` in its body.
+ * `GET /packages` accepts the same pair in its query. Default scope is
+ * `platform` — CLI clients always pass the explicit scope. Project scope
+ * additionally requires an absolute `projectRoot` (validated by
+ * `parseMutatingScope` / `parseQueryScope`).
+ *
+ * GET    /packages              — list installed packages (supports scope=all)
  * POST   /packages              — install package(s)
  * DELETE /packages              — uninstall package(s)
  * PATCH  /packages/:id          — update state (enabled/disabled)
@@ -14,6 +20,12 @@
 import '../types.js';
 import type { FastifyInstance } from 'fastify';
 import type { EntityKind } from '@kb-labs/core-discovery';
+import {
+  parseMutatingScope,
+  parseQueryScope,
+  queryScopeBodySchemaFragment,
+  scopeBodySchemaFragment,
+} from '../scope-parser.js';
 
 export function registerPackagesRoutes(app: FastifyInstance): void {
   // GET /packages — list installed packages
@@ -25,14 +37,17 @@ export function registerPackagesRoutes(app: FastifyInstance): void {
         type: 'object',
         properties: {
           kind: { type: 'string', description: 'Filter by entity kind (plugin, adapter, …)' },
+          ...queryScopeBodySchemaFragment,
         },
       },
     },
   }, async (request, reply) => {
-    const { kind } = request.query as { kind?: string };
+    const query = request.query as Record<string, unknown>;
+    const ctx = parseQueryScope(query);
+    const kind = typeof query.kind === 'string' ? (query.kind as EntityKind) : undefined;
     const entries = await app.observability.observeOperation(
       'marketplace.list',
-      () => app.marketplace.list(kind ? { kind: kind as EntityKind } : undefined),
+      () => app.marketplace.list(ctx, kind ? { kind } : undefined),
     );
     return reply.send({ entries, total: entries.length });
   });
@@ -48,14 +63,16 @@ export function registerPackagesRoutes(app: FastifyInstance): void {
         properties: {
           specs: { type: 'array', items: { type: 'string' }, description: 'Package specs (name, name@version, etc.)' },
           dev: { type: 'boolean', description: 'Install as dev dependency' },
+          ...scopeBodySchemaFragment,
         },
       },
     },
   }, async (request, reply) => {
-    const { specs, dev } = request.body as { specs: string[]; dev?: boolean };
+    const body = request.body as { specs: string[]; dev?: boolean } & Record<string, unknown>;
+    const ctx = parseMutatingScope(body);
     const result = await app.observability.observeOperation(
       'marketplace.install',
-      () => app.marketplace.install(specs, { dev }),
+      () => app.marketplace.install(ctx, body.specs, { dev: body.dev }),
     );
     return reply.code(201).send(result);
   });
@@ -70,14 +87,16 @@ export function registerPackagesRoutes(app: FastifyInstance): void {
         required: ['packageIds'],
         properties: {
           packageIds: { type: 'array', items: { type: 'string' } },
+          ...scopeBodySchemaFragment,
         },
       },
     },
   }, async (request, reply) => {
-    const { packageIds } = request.body as { packageIds: string[] };
+    const body = request.body as { packageIds: string[] } & Record<string, unknown>;
+    const ctx = parseMutatingScope(body);
     await app.observability.observeOperation(
       'marketplace.uninstall',
-      () => app.marketplace.uninstall(packageIds),
+      () => app.marketplace.uninstall(ctx, body.packageIds),
     );
     return reply.code(204).send();
   });
@@ -99,18 +118,20 @@ export function registerPackagesRoutes(app: FastifyInstance): void {
         required: ['enabled'],
         properties: {
           enabled: { type: 'boolean' },
+          ...scopeBodySchemaFragment,
         },
       },
     },
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
-    const { enabled } = request.body as { enabled: boolean };
-    const operation = enabled ? 'marketplace.enable' : 'marketplace.disable';
-    const method = enabled
-      ? () => app.marketplace.enable(id)
-      : () => app.marketplace.disable(id);
+    const body = request.body as { enabled: boolean } & Record<string, unknown>;
+    const ctx = parseMutatingScope(body);
+    const operation = body.enabled ? 'marketplace.enable' : 'marketplace.disable';
+    const method = body.enabled
+      ? () => app.marketplace.enable(ctx, id)
+      : () => app.marketplace.disable(ctx, id);
     await app.observability.observeOperation(operation, method);
-    return reply.send({ id, enabled });
+    return reply.send({ id, enabled: body.enabled, scope: ctx.scope });
   });
 
   // POST /packages/:id/update — update package to latest version
@@ -125,12 +146,18 @@ export function registerPackagesRoutes(app: FastifyInstance): void {
           id: { type: 'string' },
         },
       },
+      body: {
+        type: 'object',
+        properties: scopeBodySchemaFragment,
+      },
     },
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
+    const body = (request.body ?? {}) as Record<string, unknown>;
+    const ctx = parseMutatingScope(body);
     const result = await app.observability.observeOperation(
       'marketplace.update',
-      () => app.marketplace.update([id]),
+      () => app.marketplace.update(ctx, [id]),
     );
     return reply.send(result);
   });
@@ -152,14 +179,16 @@ export function registerPackagesRoutes(app: FastifyInstance): void {
         required: ['path'],
         properties: {
           path: { type: 'string', description: 'Absolute path to local package' },
+          ...scopeBodySchemaFragment,
         },
       },
     },
   }, async (request, reply) => {
-    const { path } = request.body as { path: string };
+    const body = request.body as { path: string } & Record<string, unknown>;
+    const ctx = parseMutatingScope(body);
     const result = await app.observability.observeOperation(
       'marketplace.link',
-      () => app.marketplace.link(path),
+      () => app.marketplace.link(ctx, body.path),
     );
     return reply.send(result);
   });
@@ -176,12 +205,18 @@ export function registerPackagesRoutes(app: FastifyInstance): void {
           id: { type: 'string' },
         },
       },
+      body: {
+        type: 'object',
+        properties: scopeBodySchemaFragment,
+      },
     },
   }, async (request, reply) => {
     const { id } = request.params as { id: string };
+    const body = (request.body ?? {}) as Record<string, unknown>;
+    const ctx = parseMutatingScope(body);
     await app.observability.observeOperation(
       'marketplace.unlink',
-      () => app.marketplace.unlink(id),
+      () => app.marketplace.unlink(ctx, id),
     );
     return reply.code(204).send();
   });

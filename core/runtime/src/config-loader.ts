@@ -39,16 +39,26 @@
  */
 
 import path from 'node:path'
+import os from 'node:os'
 import { existsSync, readFileSync } from 'node:fs'
 
 import {
   readJsonWithDiagnostics,
-  mergeDefined,
+  mergeWithFieldPolicy,
+  type FieldMergePolicy,
 } from '@kb-labs/core-config'
 import { resolveRoots, type RootsResolution } from '@kb-labs/core-workspace'
 
-import type { PlatformConfig } from './config.js'
+import { CONFIG_FIELD_SCOPE, type PlatformConfig } from './config.js'
 import { interpolateConfig } from './config-interpolation.js'
+
+function expandPlatformDir(raw: string, projectRoot: string): string {
+  let value = raw.trim()
+  if (value.startsWith('~')) {
+    value = path.join(os.homedir(), value.slice(1))
+  }
+  return path.resolve(projectRoot, value)
+}
 
 const CONFIG_RELATIVE_PATHS = [
   path.join('.kb', 'kb.config.jsonc'),
@@ -107,6 +117,12 @@ export interface LoadPlatformConfigResult {
     projectConfig?: string
     /** How each root was resolved. */
     roots: RootsResolution['sources']
+    /** Per-top-level-field provenance after policy merge. */
+    fields?: Record<string, 'platform' | 'project' | 'both'>
+    /** Top-level fields where the project layer was rejected as platform-only. */
+    ignoredProjectFields?: string[]
+    /** Set when project config pointed to a different platformRoot via `platform.dir`. */
+    platformDirOverride?: string
   }
 }
 
@@ -232,7 +248,7 @@ export async function loadPlatformConfig(
     loadEnvFile: shouldLoadEnv = true,
   } = options
 
-  const roots = await resolveRoots({
+  let roots = await resolveRoots({
     moduleUrl,
     startDir,
     env,
@@ -242,54 +258,78 @@ export async function loadPlatformConfig(
     loadEnvFile(roots.projectRoot)
   }
 
-  // Locate both config files. If roots coincide (dev mode), both refer to the
-  // same physical file; we read it once.
-  const platformConfigPath = findConfigAtRoot(roots.platformRoot)
+  // Read project config first so we can honor `platform.dir` before picking
+  // the platform-config file.
   const projectConfigPath = findConfigAtRoot(roots.projectRoot)
-
-  let platformDefaults: PlatformConfig | undefined
   let projectPlatformConfig: PlatformConfig | undefined
   let rawProjectConfig: Record<string, unknown> | undefined
-  let platformDefaultsSource: string | undefined
   let projectConfigSource: string | undefined
+  let projectConfigData:
+    | Awaited<ReturnType<typeof readConfigFile>>
+    | undefined
+
+  if (projectConfigPath) {
+    projectConfigData = await readConfigFile(projectConfigPath)
+    projectPlatformConfig = projectConfigData.platformSection
+    rawProjectConfig = projectConfigData.rawConfig
+    projectConfigSource = projectConfigPath
+  }
+
+  // Honor `platform.dir` from the project config, if set. This lets a project
+  // declare its own platform workspace instead of using the bootstrap-resolved
+  // one. Guard against self-reference: if the override resolves to the same
+  // path as the project root, we keep the original resolution.
+  let platformDirOverride: string | undefined
+  const declaredPlatformDir = projectPlatformConfig?.platform?.dir
+  if (declaredPlatformDir) {
+    const resolved = expandPlatformDir(declaredPlatformDir, roots.projectRoot)
+    if (path.resolve(resolved) !== path.resolve(roots.projectRoot)) {
+      platformDirOverride = resolved
+      roots = {
+        ...roots,
+        platformRoot: resolved,
+        sameLocation:
+          path.resolve(resolved) === path.resolve(roots.projectRoot),
+      }
+    }
+  }
+
+  // Locate the platform config file AFTER honoring platform.dir.
+  const platformConfigPath = findConfigAtRoot(roots.platformRoot)
+  let platformDefaults: PlatformConfig | undefined
+  let platformDefaultsSource: string | undefined
 
   const samePath =
     !!platformConfigPath &&
     !!projectConfigPath &&
     path.resolve(platformConfigPath) === path.resolve(projectConfigPath)
 
-  if (samePath && projectConfigPath) {
-    // Single file plays both roles. Read once, use it as project config only
-    // (platform defaults remain undefined — the merge is a no-op).
-    const { platformSection, rawConfig } = await readConfigFile(projectConfigPath)
-    projectPlatformConfig = platformSection
-    rawProjectConfig = rawConfig
-    projectConfigSource = projectConfigPath
-  } else {
-    if (platformConfigPath) {
-      const { platformSection } = await readConfigFile(platformConfigPath)
-      platformDefaults = platformSection
-      platformDefaultsSource = platformConfigPath
-    }
-    if (projectConfigPath) {
-      const { platformSection, rawConfig } = await readConfigFile(projectConfigPath)
-      projectPlatformConfig = platformSection
-      rawProjectConfig = rawConfig
-      projectConfigSource = projectConfigPath
-    }
+  if (samePath && projectConfigData) {
+    // Single file plays both roles (dev mode). Treat its contents as
+    // platform defaults so policy-merge doesn't strip platform-only fields
+    // like `adapters`. Project layer is left undefined — the merge is a
+    // no-op and `sources.projectConfig` is the only reported source.
+    platformDefaults = projectConfigData.platformSection
+    projectPlatformConfig = undefined
+  } else if (platformConfigPath) {
+    const { platformSection } = await readConfigFile(platformConfigPath)
+    platformDefaults = platformSection
+    platformDefaultsSource = platformConfigPath
   }
 
-  // Deep-merge layers. mergeDefined treats `undefined` as "keep base", so the
-  // order encodes precedence: project overrides platform defaults.
-  //
-  // The base is `{ adapters: {} }` rather than `{}` so that callers can
-  // unconditionally destructure `effective.adapters` (which is the shape
-  // existing code — e.g. adapter loader, service init — assumes).
-  const base: PlatformConfig = { adapters: {} }
-  const merged = mergeDefined(
-    mergeDefined(base, platformDefaults),
+  // Policy-aware merge: platform-only fields reject project overrides;
+  // mergeable fields deep-merge with project winning.
+  const mergeResult = mergeWithFieldPolicy<PlatformConfig>(
+    platformDefaults,
     projectPlatformConfig,
-  ) as PlatformConfig
+    CONFIG_FIELD_SCOPE as Partial<Record<keyof PlatformConfig, FieldMergePolicy>>,
+  )
+
+  // Ensure `adapters` is always defined so callers can destructure safely.
+  const merged: PlatformConfig = {
+    adapters: {},
+    ...mergeResult.value,
+  }
 
   // Resolve ${ENV_VAR} placeholders in string values (e.g. baseURL, urls, secrets
   // that live in env vars rather than config files). In non-strict mode so
@@ -307,6 +347,12 @@ export async function loadPlatformConfig(
       platformDefaults: platformDefaultsSource,
       projectConfig: projectConfigSource,
       roots: roots.sources,
+      fields: mergeResult.sources,
+      ignoredProjectFields:
+        mergeResult.ignoredProjectFields.length > 0
+          ? mergeResult.ignoredProjectFields
+          : undefined,
+      platformDirOverride,
     },
   }
 }
