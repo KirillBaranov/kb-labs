@@ -206,7 +206,7 @@ export class OpenAILLM implements ILLM {
     );
 
     // Convert LLMTool[] to OpenAI tools format
-    const tools: OpenAI.ChatCompletionTool[] = options.tools.map(
+    const tools: OpenAI.ChatCompletionTool[] = (options.tools ?? []).map(
       (tool: LLMTool) => ({
         type: "function" as const,
         function: {

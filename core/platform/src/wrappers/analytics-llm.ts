@@ -220,7 +220,7 @@ export class AnalyticsLLM implements ILLM {
       streamAppliedMode: metadata?.cacheDecisionTrace?.streamAppliedMode,
       streamFallback: metadata?.cacheDecisionTrace?.streamFallback,
       messageCount: messages.length,
-      toolCount: options.tools.length,
+      toolCount: options.tools?.length ?? 0,
       toolChoice: options.toolChoice,
       maxTokens: options?.maxTokens,
       temperature: options?.temperature,

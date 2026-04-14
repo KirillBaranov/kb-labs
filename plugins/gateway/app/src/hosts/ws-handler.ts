@@ -191,7 +191,23 @@ export function createWsHandler(
       capabilities = registryCaps;
     } else {
       // Check HostRegistry for machine-token-registered hosts (/hosts/register)
-      const existingDescriptor = await registry.get(hostId, namespaceId);
+      let existingDescriptor = null;
+      try {
+        existingDescriptor = await registry.get(hostId, namespaceId);
+      } catch (err) {
+        logDiagnosticEvent(logger, {
+          domain: 'service',
+          event: 'gateway.hosts.ws.handshake',
+          level: 'warn',
+          reasonCode: 'registry_lookup_failed',
+          message: 'Failed to look up host descriptor from registry, falling back to hello capabilities',
+          outcome: 'partial',
+          error: err instanceof Error ? err : new Error(String(err)),
+          serviceId: 'gateway',
+          route: '/hosts/connect',
+          evidence: { hostId, namespaceId },
+        });
+      }
       if (existingDescriptor && existingDescriptor.capabilities.length > 0) {
         capabilities = existingDescriptor.capabilities
           .map((c) => HostCapabilitySchema.safeParse(c))
