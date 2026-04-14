@@ -1,5 +1,28 @@
 {
+  "name": "@kb-labs/telemetry-client",
   "description": "Lightweight telemetry client for KB Labs platform. Zero dependencies. Use in any Node.js/browser product to send events to the platform.",
+  "version": "2.34.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "clean": "rimraf dist",
+    "dev": "echo 'todo: dev'",
+    "lint": "eslint . --ignore-pattern 'dist/**' --ignore-pattern 'coverage/**'",
+    "test": "vitest run",
+    "type-check": "tsc --noEmit"
+  },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
     "@types/node": "^24.3.3",
@@ -11,28 +34,5 @@
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
-  },
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
-  },
-  "files": [
-    "dist"
-  ],
-  "main": "./dist/index.js",
-  "name": "@kb-labs/telemetry-client",
-  "scripts": {
-    "build": "tsup",
-    "clean": "rimraf dist",
-    "dev": "echo 'todo: dev'",
-    "lint": "eslint . --ignore-pattern 'dist/**' --ignore-pattern 'coverage/**'",
-    "test": "vitest run",
-    "type-check": "tsc --noEmit"
-  },
-  "type": "module",
-  "types": "./dist/index.d.ts",
-  "version": "2.34.0"
+  }
 }

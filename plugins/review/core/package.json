@@ -4,19 +4,22 @@
   "type": "module",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint . --fix",
-    "type-check": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/review-contracts": "workspace:*",
@@ -36,8 +39,5 @@
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
-  },
-  "files": [
-    "dist"
-  ]
+  }
 }

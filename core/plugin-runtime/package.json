@@ -1,8 +1,9 @@
 {
   "name": "@kb-labs/plugin-runtime",
-  "version": "2.34.0",
   "description": "Plugin System Runtime - Context factory, sandboxed shims, and APIs",
+  "version": "2.34.0",
   "type": "module",
+  "license": "MIT",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -25,16 +26,15 @@
   "files": [
     "dist"
   ],
-  "sideEffects": false,
   "scripts": {
-    "clean": "rimraf dist",
     "build": "pnpm clean && tsup --config tsup.config.ts",
+    "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
-    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint . --fix",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
-    "lint": "eslint src --ext .ts",
-    "lint:fix": "eslint . --fix"
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/core-contracts": "workspace:*",
@@ -45,12 +45,16 @@
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
     "@types/node": "^24.3.3",
-    "eslint": "^9",
     "@vitest/ui": "^3.0.0",
+    "eslint": "^9",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
     "typescript": "^5.6.3",
     "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
   },
   "keywords": [
     "kb-labs",
@@ -58,12 +62,8 @@
     "runtime",
     "v3"
   ],
-  "license": "MIT",
-  "engines": {
-    "node": ">=20.0.0",
-    "pnpm": ">=9.0.0"
-  },
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "sideEffects": false
 }

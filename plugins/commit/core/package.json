@@ -1,30 +1,30 @@
 {
   "name": "@kb-labs/commit-core",
+  "description": "Core business logic for KB Labs Commit plugin - git analysis, plan generation, and commit application.",
   "version": "2.34.0",
   "type": "module",
-  "description": "Core business logic for KB Labs Commit plugin - git analysis, plan generation, and commit application.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./analyzer": {
-      "import": "./dist/analyzer/index.js",
-      "types": "./dist/analyzer/index.d.ts"
+      "types": "./dist/analyzer/index.d.ts",
+      "import": "./dist/analyzer/index.js"
     },
     "./generator": {
-      "import": "./dist/generator/index.js",
-      "types": "./dist/generator/index.d.ts"
+      "types": "./dist/generator/index.d.ts",
+      "import": "./dist/generator/index.js"
     },
     "./applier": {
-      "import": "./dist/applier/index.js",
-      "types": "./dist/applier/index.d.ts"
+      "types": "./dist/applier/index.d.ts",
+      "import": "./dist/applier/index.js"
     },
     "./storage": {
-      "import": "./dist/storage/index.js",
-      "types": "./dist/storage/index.d.ts"
+      "types": "./dist/storage/index.d.ts",
+      "import": "./dist/storage/index.js"
     },
     "./dist/*": "./dist/*"
   },
@@ -33,19 +33,18 @@
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
   "scripts": {
-    "pretype-check": "pnpm --filter @kb-labs/commit-core build",
-    "clean": "rimraf dist",
     "build": "tsup --config tsup.config.ts",
+    "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint . --fix",
-    "type-check": "tsc --noEmit",
+    "pretype-check": "pnpm --filter @kb-labs/commit-core build",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest",
+    "test:all": "vitest run && vitest run tests/benchmarks/commit-type-accuracy.test.ts",
     "test:benchmarks": "vitest run tests/benchmarks/commit-type-accuracy.test.ts",
-    "test:all": "vitest run && vitest run tests/benchmarks/commit-type-accuracy.test.ts"
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/commit-contracts": "workspace:*",
@@ -65,5 +64,6 @@
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
-  }
+  },
+  "sideEffects": false
 }

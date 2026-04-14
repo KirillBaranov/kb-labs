@@ -1,18 +1,18 @@
 {
   "name": "@kb-labs/quality-contracts",
+  "description": "Type-safe contracts for Quality Plugin. Types, schemas, and constants for monorepo analysis and quality checks.",
   "version": "2.34.0",
   "type": "module",
-  "description": "Type-safe contracts for Quality Plugin. Types, schemas, and constants for monorepo analysis and quality checks.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./contract": {
-      "import": "./dist/contract.js",
-      "types": "./dist/contract.d.ts"
+      "types": "./dist/contract.d.ts",
+      "import": "./dist/contract.js"
     },
     "./dist/*": "./dist/*"
   },
@@ -21,17 +21,16 @@
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
   "scripts": {
-    "pretype-check": "pnpm --filter @kb-labs/quality-contracts build",
-    "clean": "rimraf dist",
     "build": "tsup --config tsup.config.ts",
+    "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint . --fix",
-    "type-check": "tsc --noEmit",
+    "pretype-check": "pnpm --filter @kb-labs/quality-contracts build",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "zod": "^3.25.76"
@@ -48,5 +47,6 @@
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
-  }
+  },
+  "sideEffects": false
 }

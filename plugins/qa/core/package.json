@@ -1,30 +1,30 @@
 {
   "name": "@kb-labs/qa-core",
+  "description": "Core business logic for KB Labs QA Plugin — runner, baseline, history, and reporting.",
   "version": "2.34.0",
   "type": "module",
-  "description": "Core business logic for KB Labs QA Plugin — runner, baseline, history, and reporting.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./runner": {
-      "import": "./dist/runner/index.js",
-      "types": "./dist/runner/index.d.ts"
+      "types": "./dist/runner/index.d.ts",
+      "import": "./dist/runner/index.js"
     },
     "./baseline": {
-      "import": "./dist/baseline/index.js",
-      "types": "./dist/baseline/index.d.ts"
+      "types": "./dist/baseline/index.d.ts",
+      "import": "./dist/baseline/index.js"
     },
     "./history": {
-      "import": "./dist/history/index.js",
-      "types": "./dist/history/index.d.ts"
+      "types": "./dist/history/index.d.ts",
+      "import": "./dist/history/index.js"
     },
     "./report": {
-      "import": "./dist/report/index.js",
-      "types": "./dist/report/index.d.ts"
+      "types": "./dist/report/index.d.ts",
+      "import": "./dist/report/index.js"
     },
     "./dist/*": "./dist/*"
   },
@@ -33,17 +33,16 @@
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
   "scripts": {
-    "pretype-check": "pnpm --filter @kb-labs/qa-core build",
-    "clean": "rimraf dist",
     "build": "tsup --config tsup.config.ts",
+    "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint . --fix",
-    "type-check": "tsc --noEmit",
+    "pretype-check": "pnpm --filter @kb-labs/qa-core build",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/qa-contracts": "workspace:*"
@@ -60,5 +59,6 @@
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
-  }
+  },
+  "sideEffects": false
 }

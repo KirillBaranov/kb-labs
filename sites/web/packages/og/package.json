@@ -1,26 +1,26 @@
 {
   "name": "@kb-labs/web-og",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
   "description": "Shared Open Graph image renderer for kb-labs-web apps (web, docs)",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "build": "tsc --noEmit",
     "lint": "eslint ."
-  },
-  "exports": {
-    ".": "./src/index.ts"
   },
   "dependencies": {
     "@types/react": "^18.3.18",
     "next": "^14.2.15",
     "react": "^18.3.1"
   },
+  "devDependencies": {
+    "typescript": "^5.6.3"
+  },
   "peerDependencies": {
     "next": "^14.2.15",
     "react": "^18.3.1"
-  },
-  "devDependencies": {
-    "typescript": "^5.6.3"
   }
 }

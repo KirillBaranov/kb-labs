@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/core-config",
-  "version": "2.34.0",
   "description": "Core configuration system for KB Labs products, including schema validation, resolution, and merging",
+  "version": "2.34.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -17,16 +17,15 @@
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
   "scripts": {
-    "clean": "rimraf dist",
     "build": "pnpm clean && tsup --config tsup.config.ts",
+    "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
-    "type-check": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests",
     "lint": "eslint . --ignore-pattern 'dist/**'",
     "lint:fix": "eslint . --fix --ignore-pattern 'dist/**'",
-    "test:watch": "vitest"
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "ajv": "^8.17.1",
@@ -53,5 +52,6 @@
   },
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "sideEffects": false
 }

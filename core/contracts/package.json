@@ -1,8 +1,13 @@
 {
   "name": "@kb-labs/core-contracts",
-  "version": "2.34.0",
   "description": "Contracts for KB Labs Core plugin.",
+  "version": "2.34.0",
   "type": "module",
+  "author": {
+    "name": "Kirill Baranov",
+    "url": "https://github.com/kirill-baranov"
+  },
+  "license": "MIT",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -12,38 +17,20 @@
       "require": "./dist/index.js"
     }
   },
-  "typesVersions": {
-    "*": {
-      "*": [
-        "dist/index.d.ts"
-      ]
-    }
-  },
   "files": [
     "dist",
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
-  "author": {
-    "name": "Kirill Baranov",
-    "url": "https://github.com/kirill-baranov"
-  },
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/kirill-baranov/kb-labs-core.git",
-    "directory": "packages/core-contracts"
-  },
   "scripts": {
-    "clean": "rimraf dist",
     "build": "tsup",
+    "clean": "rimraf dist",
     "dev": "tsup --watch",
-    "type-check": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {},
   "devDependencies": {
@@ -61,5 +48,18 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kirill-baranov/kb-labs-core.git",
+    "directory": "packages/core-contracts"
+  },
+  "sideEffects": false,
+  "typesVersions": {
+    "*": {
+      "*": [
+        "dist/index.d.ts"
+      ]
+    }
   }
 }

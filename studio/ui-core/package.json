@@ -1,41 +1,41 @@
 {
   "name": "@kb-labs/studio-ui-core",
-  "version": "2.34.0",
   "description": "KB Labs design system foundation — design tokens, themes, CSS variables (framework-agnostic)",
+  "version": "2.34.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "clean": "rimraf dist",
     "build": "tsup",
-    "type-check": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests",
-    "lint": "eslint . --max-warnings=0",
+    "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
+    "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix",
-    "test:watch": "vitest"
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.3.3",
     "eslint": "^9",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
     "typescript": "^5.6.3",
-    "vitest": "^3.2.4",
-    "@types/node": "^24.3.3"
+    "vitest": "^3.2.4"
   },
-  "peerDependencies": {},
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
-  }
+  },
+  "peerDependencies": {}
 }

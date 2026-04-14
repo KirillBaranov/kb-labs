@@ -1,6 +1,32 @@
 {
+  "name": "@kb-labs/gateway-runtime-server",
+  "version": "2.34.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "bin": {
     "kb-runtime-server": "./dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "build:docker": "DOCKER_BUILD=1 tsup",
+    "clean": "rimraf dist",
+    "dev": "tsup --watch",
+    "docker:build": "pnpm run build:docker && docker build -t kb-runtime-server:local .",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run -c ../../vitest.config.ts",
+    "test:watch": "vitest -c ../../vitest.config.ts",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/host-agent-contracts": "workspace:*",
@@ -19,31 +45,5 @@
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
   },
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    }
-  },
-  "files": [
-    "dist"
-  ],
-  "main": "./dist/index.js",
-  "name": "@kb-labs/gateway-runtime-server",
-  "scripts": {
-    "build": "tsup",
-    "build:docker": "DOCKER_BUILD=1 tsup",
-    "clean": "rimraf dist",
-    "dev": "tsup --watch",
-    "docker:build": "pnpm run build:docker && docker build -t kb-runtime-server:local .",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "test": "vitest run -c ../../vitest.config.ts",
-    "test:watch": "vitest -c ../../vitest.config.ts",
-    "type-check": "tsc --noEmit"
-  },
-  "sideEffects": false,
-  "type": "module",
-  "types": "./dist/index.d.ts",
-  "version": "2.34.0"
+  "sideEffects": false
 }

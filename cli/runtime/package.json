@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/cli-runtime",
-  "version": "2.34.0",
   "description": "CLI runtime — command execution, middleware, formatters, presenters, gateway, lifecycle",
+  "version": "2.34.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -25,13 +25,13 @@
   ],
   "scripts": {
     "build": "tsup",
+    "clean": "rimraf dist",
     "dev": "tsup --watch",
-    "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "type-check": "tsc --noEmit",
-    "clean": "rimraf dist"
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/cli-contracts": "workspace:*",
@@ -40,8 +40,8 @@
     "@kb-labs/core-runtime": "workspace:*",
     "@kb-labs/core-sys": "workspace:*",
     "@kb-labs/plugin-contracts": "workspace:*",
-    "@kb-labs/plugin-runtime": "workspace:*",
     "@kb-labs/plugin-execution-factory": "workspace:*",
+    "@kb-labs/plugin-runtime": "workspace:*",
     "cli-table3": "^0.6.5",
     "colorette": "^2.0.20",
     "yaml": "^2.8.0"
@@ -49,10 +49,10 @@
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
     "@types/node": "^24.3.3",
+    "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
     "typescript": "^5.6.3",
-    "vitest": "^3.2.4",
-    "rimraf": "^6.0.1"
+    "vitest": "^3.2.4"
   },
   "engines": {
     "node": ">=18.18.0",

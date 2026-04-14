@@ -1,14 +1,14 @@
 {
   "name": "@kb-labs/agent-contracts",
+  "description": "Type definitions and contracts for KB Labs Agents. IDs, Session, Specification, Gates, Multi-Agent types.",
   "version": "2.34.0",
   "type": "module",
-  "description": "Type definitions and contracts for KB Labs Agents. IDs, Session, Specification, Gates, Multi-Agent types.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./dist/*": "./dist/*"
   },
@@ -17,17 +17,16 @@
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
   "scripts": {
-    "pretype-check": "pnpm --filter @kb-labs/agent-contracts build",
-    "clean": "rimraf dist",
     "build": "tsup --config tsup.config.ts",
+    "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint . --fix",
-    "type-check": "tsc --noEmit",
+    "pretype-check": "pnpm --filter @kb-labs/agent-contracts build",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "zod": "^3.25.76"
@@ -44,5 +43,6 @@
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
-  }
+  },
+  "sideEffects": false
 }

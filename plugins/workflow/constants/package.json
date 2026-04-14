@@ -1,8 +1,8 @@
 {
   "name": "@kb-labs/workflow-constants",
+  "description": "Shared constants for the KB Labs workflow engine.",
   "version": "2.34.0",
   "type": "module",
-  "description": "Shared constants for the KB Labs workflow engine.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -17,16 +17,15 @@
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
   "scripts": {
-    "clean": "rimraf dist",
     "build": "pnpm clean && tsup --config tsup.config.ts",
+    "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
-    "type-check": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests",
     "lint": "eslint . --ignore-pattern 'dist/**'",
     "lint:fix": "eslint . --fix --ignore-pattern 'dist/**'",
-    "test:watch": "vitest"
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
@@ -42,5 +41,6 @@
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
-  }
+  },
+  "sideEffects": false
 }

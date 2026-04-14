@@ -1,18 +1,18 @@
 {
   "name": "@kb-labs/adapters-analytics-sqlite",
+  "description": "SQLite analytics adapter for KB Labs platform — concurrent writes, SQL analytics, no lock issues",
   "version": "2.34.0",
   "type": "module",
-  "description": "SQLite analytics adapter for KB Labs platform — concurrent writes, SQL analytics, no lock issues",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./manifest": {
-      "import": "./dist/manifest.js",
-      "types": "./dist/manifest.d.ts"
+      "types": "./dist/manifest.d.ts",
+      "import": "./dist/manifest.js"
     }
   },
   "files": [
@@ -21,21 +21,20 @@
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
   "scripts": {
-    "clean": "rimraf dist",
     "build": "tsup --config tsup.config.ts",
+    "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
     "lint": "eslint src --ext .ts,.tsx,.js,.jsx",
     "lint:fix": "eslint . --fix",
-    "type-check": "tsc --noEmit",
+    "migrate": "node scripts/migrate-from-jsonl.mjs",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest --passWithNoTests",
-    "migrate": "node scripts/migrate-from-jsonl.mjs"
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "better-sqlite3": "^11.8.0",
-    "@kb-labs/core-platform": "workspace:*"
+    "@kb-labs/core-platform": "workspace:*",
+    "better-sqlite3": "^11.8.0"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
@@ -51,8 +50,9 @@
     "node": ">=20.0.0",
     "pnpm": ">=9.11.0"
   },
-  "packageManager": "pnpm@9.11.0",
   "kb": {
     "manifest": "./dist/manifest.js"
-  }
+  },
+  "packageManager": "pnpm@9.11.0",
+  "sideEffects": false
 }

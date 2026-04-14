@@ -1,14 +1,14 @@
 {
   "name": "@kb-labs/shared-testing-e2e",
+  "description": "E2E test harness for KB Labs platform — kb-dev controller, HTTP/WS/SSE helpers, isolated project roots",
   "version": "2.34.0",
   "type": "module",
-  "description": "E2E test harness for KB Labs platform — kb-dev controller, HTTP/WS/SSE helpers, isolated project roots",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
   },
   "files": [
@@ -17,16 +17,15 @@
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
   "scripts": {
-    "clean": "rimraf dist",
     "build": "tsup --config tsup.config.ts",
+    "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
     "test": "vitest run",
     "test:watch": "vitest",
-    "type-check": "tsc --noEmit",
-    "lint": "eslint src",
-    "lint:fix": "eslint src --fix"
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "nanoid": "^5.0.0",
@@ -48,5 +47,6 @@
   "packageManager": "pnpm@9.11.0",
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "sideEffects": false
 }

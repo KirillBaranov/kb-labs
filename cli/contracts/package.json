@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/cli-contracts",
-  "version": "2.34.0",
   "description": "Type definitions and contracts for KB Labs CLI framework (Commands, Context, Presenters, Profiles)",
+  "version": "2.34.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -32,16 +32,15 @@
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
   "scripts": {
-    "clean": "rimraf dist",
     "build": "pnpm clean && tsup --config tsup.config.ts",
+    "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
-    "type-check": "tsc --noEmit",
     "lint": "eslint . --ignore-pattern 'dist/**'",
     "lint:fix": "eslint . --fix --ignore-pattern 'dist/**'",
     "test": "vitest run --passWithNoTests -c ../../vitest.config.ts",
-    "test:watch": "vitest -c ../../vitest.config.ts"
+    "test:watch": "vitest -c ../../vitest.config.ts",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/shared-command-kit": "workspace:*"
@@ -63,5 +62,6 @@
   },
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "sideEffects": false
 }

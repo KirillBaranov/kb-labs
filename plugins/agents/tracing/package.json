@@ -1,11 +1,10 @@
 {
   "name": "@kb-labs/agent-tracing",
-  "version": "2.34.0",
   "description": "Tracing infrastructure for KB Labs Agents — NDJSON writer, privacy redaction, trace loading and analysis",
-  "files": [
-    "dist"
-  ],
+  "version": "2.34.0",
   "type": "module",
+  "author": "KB Labs",
+  "license": "MIT",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -14,39 +13,40 @@
       "import": "./dist/index.js"
     }
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
-    "dev": "tsup --watch",
     "clean": "rimraf dist",
-    "type-check": "tsc --noEmit",
+    "dev": "tsup --watch",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint . --fix",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/agent-contracts": "workspace:*",
     "@kb-labs/sdk": "workspace:*"
   },
   "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
     "@types/node": "^24.3.3",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
     "typescript": "^5.6.3",
-    "@kb-labs/devkit": "workspace:*",
     "vitest": "^3.2.4"
   },
-  "keywords": [
-    "kb-labs",
-    "agents",
-    "tracing",
-    "ndjson",
-    "observability"
-  ],
-  "author": "KB Labs",
-  "license": "MIT",
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
-  }
+  },
+  "keywords": [
+    "agents",
+    "kb-labs",
+    "ndjson",
+    "observability",
+    "tracing"
+  ]
 }

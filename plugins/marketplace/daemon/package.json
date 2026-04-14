@@ -1,4 +1,22 @@
 {
+  "name": "@kb-labs/marketplace-app",
+  "description": "KB Labs Marketplace service — Fastify entrypoint",
+  "version": "2.34.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "clean": "rimraf dist",
+    "dev": "tsx watch src/index.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "start": "node dist/index.js",
+    "test": "vitest run --passWithNoTests -c ../../vitest.config.ts",
+    "type-check": "tsc --noEmit"
+  },
   "dependencies": {
     "@kb-labs/core-platform": "workspace:*",
     "@kb-labs/core-runtime": "workspace:*",
@@ -10,7 +28,6 @@
     "@kb-labs/shared-http": "workspace:*",
     "fastify": "^5.3.3"
   },
-  "description": "KB Labs Marketplace service — Fastify entrypoint",
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
     "@types/node": "^24.3.3",
@@ -23,24 +40,7 @@
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
   },
-  "files": [
-    "dist"
-  ],
   "kb": {
     "manifest": "./dist/manifest.js"
-  },
-  "main": "./dist/index.js",
-  "name": "@kb-labs/marketplace-app",
-  "scripts": {
-    "build": "tsup",
-    "clean": "rimraf dist",
-    "dev": "tsx watch src/index.ts",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "start": "node dist/index.js",
-    "test": "vitest run --passWithNoTests -c ../../vitest.config.ts",
-    "type-check": "tsc --noEmit"
-  },
-  "type": "module",
-  "version": "2.34.0"
+  }
 }

@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/core-sandbox",
-  "version": "2.34.0",
   "description": "Universal sandbox isolation for CLI and REST API",
+  "version": "2.34.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -17,13 +17,13 @@
   ],
   "scripts": {
     "build": "tsup",
+    "clean": "rimraf dist",
     "dev": "tsup --watch",
-    "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest",
     "lint": "eslint . --ignore-pattern 'dist/**'",
     "lint:fix": "eslint . --fix --ignore-pattern 'dist/**'",
-    "type-check": "tsc --noEmit",
-    "clean": "rimraf dist"
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/core-runtime": "workspace:*",
@@ -36,10 +36,10 @@
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
     "@types/node": "^24.3.3",
+    "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
     "typescript": "^5.6.3",
-    "vitest": "^3.2.4",
-    "rimraf": "^6.0.1"
+    "vitest": "^3.2.4"
   },
   "engines": {
     "node": ">=18.18.0",

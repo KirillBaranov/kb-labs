@@ -1,29 +1,29 @@
 {
   "name": "@kb-labs/studio-data-client",
-  "version": "2.34.0",
   "description": "KB Labs Studio data client — API SDK with versioned contracts, mocks, and TanStack Query hooks",
+  "version": "2.34.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "clean": "rimraf dist && find src -name '*.js' -type f ! -path '*/node_modules/*' -delete && find src -name '*.js.map' -type f ! -path '*/node_modules/*' -delete",
     "build": "pnpm clean && tsup",
-    "type-check": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests",
-    "lint": "eslint . --max-warnings=0",
-    "prebuild": "pnpm clean",
+    "clean": "rimraf dist && find src -name '*.js' -type f ! -path '*/node_modules/*' -delete && find src -name '*.js.map' -type f ! -path '*/node_modules/*' -delete",
     "dev": "tsup --config tsup.config.ts --watch",
+    "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix",
-    "test:watch": "vitest"
+    "prebuild": "pnpm clean",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/agent-contracts": "workspace:*",
@@ -51,11 +51,11 @@
     "typescript": "^5.6.3",
     "vitest": "^3.2.4"
   },
-  "peerDependencies": {
-    "react": "^18.3.1"
-  },
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1"
   }
 }

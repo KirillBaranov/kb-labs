@@ -1,8 +1,10 @@
 {
   "name": "@kb-labs/adapters-transport",
-  "version": "2.34.0",
   "description": "Transport adapters for inter-process communication (IPC, Unix Sockets)",
+  "version": "2.34.0",
   "type": "module",
+  "author": "KB Labs",
+  "license": "MIT",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -16,37 +18,35 @@
     "build": "tsup",
     "clean": "rimraf dist",
     "dev": "tsup --watch",
-    "type-check": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint . --fix",
-    "test:watch": "vitest"
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/core-runtime": "workspace:*"
   },
   "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
     "@types/node": "^24.3.3",
     "eslint": "^9",
+    "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
     "typescript": "^5.6.3",
-    "vitest": "^3.2.4",
-    "@kb-labs/devkit": "workspace:*",
-    "rimraf": "^6.0.1"
+    "vitest": "^3.2.4"
   },
-  "keywords": [
-    "kb-labs",
-    "transport",
-    "ipc",
-    "unix-socket"
-  ],
-  "author": "KB Labs",
-  "license": "MIT",
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
   },
   "kb": {
     "manifest": "./dist/manifest.js"
-  }
+  },
+  "keywords": [
+    "ipc",
+    "kb-labs",
+    "transport",
+    "unix-socket"
+  ]
 }

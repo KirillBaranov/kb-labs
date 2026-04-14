@@ -1,24 +1,61 @@
 {
   "name": "@kb-labs/shared-cli-ui",
+  "description": "Shared CLI UI utilities for KB Labs projects - colors, formatting, progress indicators",
   "version": "2.34.0",
   "type": "module",
-  "description": "Shared CLI UI utilities for KB Labs projects - colors, formatting, progress indicators",
   "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./debug": {
-      "import": "./dist/debug.js",
-      "types": "./dist/debug.d.ts"
+      "types": "./dist/debug.d.ts",
+      "import": "./dist/debug.js"
     },
     "./table": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
   },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsup --config tsup.config.ts",
+    "clean": "rimraf dist",
+    "dev": "tsup --config tsup.config.ts --watch",
+    "lint": "eslint src --ext .ts,.tsx,.js,.jsx",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "glob": "^11.0.0"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.3.3",
+    "eslint": "^9",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.11.0",
+  "publishConfig": {
+    "access": "public"
+  },
+  "sideEffects": false,
   "typesVersions": {
     "*": {
       "*": [
@@ -31,42 +68,5 @@
         "src/debug/*"
       ]
     }
-  },
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
-  ],
-  "sideEffects": false,
-  "scripts": {
-    "clean": "rimraf dist",
-    "build": "tsup --config tsup.config.ts",
-    "dev": "tsup --config tsup.config.ts --watch",
-    "lint": "eslint src --ext .ts,.tsx,.js,.jsx",
-    "lint:fix": "eslint . --fix",
-    "type-check": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest"
-  },
-  "dependencies": {
-    "glob": "^11.0.0"
-  },
-  "devDependencies": {
-    "@kb-labs/devkit": "workspace:*",
-    "eslint": "^9",
-    "rimraf": "^6.0.1",
-    "tsup": "^8.5.0",
-    "typescript": "^5.6.3",
-    "vitest": "^3.2.4",
-    "@types/node": "^24.3.3"
-  },
-  "engines": {
-    "node": ">=20.0.0",
-    "pnpm": ">=9.0.0"
-  },
-  "packageManager": "pnpm@9.11.0",
-  "module": "./dist/index.js",
-  "publishConfig": {
-    "access": "public"
   }
 }

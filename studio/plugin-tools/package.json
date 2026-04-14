@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/studio-plugin-tools",
-  "version": "2.34.0",
   "description": "Build tooling for plugin Studio pages — Rspack config for Module Federation remotes",
+  "version": "2.34.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -14,22 +14,18 @@
   "files": [
     "dist"
   ],
-  "sideEffects": false,
   "scripts": {
-    "clean": "rimraf dist",
     "build": "tsup",
+    "clean": "rimraf dist",
     "dev": "tsup --watch",
-    "type-check": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0",
     "test": "vitest run --passWithNoTests",
-    "lint": "eslint . --max-warnings=0"
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@module-federation/enhanced": "^0.8.0",
     "css-loader": "^7.0.0",
     "style-loader": "^4.0.0"
-  },
-  "peerDependencies": {
-    "@rspack/core": ">=1.0.0"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
@@ -43,5 +39,9 @@
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
-  }
+  },
+  "peerDependencies": {
+    "@rspack/core": ">=1.0.0"
+  },
+  "sideEffects": false
 }

@@ -3,12 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 3001",
     "build": "next build",
-    "start": "next start -p 3001",
+    "dev": "next dev -p 3001",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit",
-    "test": "echo 'No tests yet'"
+    "start": "next start -p 3001",
+    "test": "echo 'No tests yet'",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/web-og": "workspace:*",

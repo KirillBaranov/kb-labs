@@ -1,50 +1,50 @@
 {
   "name": "@kb-labs/quality-core",
+  "description": "Core business logic for KB Labs Quality plugin - monorepo analysis, dependency management, and health checks.",
   "version": "2.34.0",
   "type": "module",
-  "description": "Core business logic for KB Labs Quality plugin - monorepo analysis, dependency management, and health checks.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./stats": {
-      "import": "./dist/stats/index.js",
-      "types": "./dist/stats/index.d.ts"
+      "types": "./dist/stats/index.d.ts",
+      "import": "./dist/stats/index.js"
     },
     "./health": {
-      "import": "./dist/health/index.js",
-      "types": "./dist/health/index.d.ts"
+      "types": "./dist/health/index.d.ts",
+      "import": "./dist/health/index.js"
     },
     "./dependencies": {
-      "import": "./dist/dependencies/index.js",
-      "types": "./dist/dependencies/index.d.ts"
+      "types": "./dist/dependencies/index.d.ts",
+      "import": "./dist/dependencies/index.js"
     },
     "./graph": {
-      "import": "./dist/graph/index.js",
-      "types": "./dist/graph/index.d.ts"
+      "types": "./dist/graph/index.d.ts",
+      "import": "./dist/graph/index.js"
     },
     "./stale": {
-      "import": "./dist/stale/index.js",
-      "types": "./dist/stale/index.d.ts"
+      "types": "./dist/stale/index.d.ts",
+      "import": "./dist/stale/index.js"
     },
     "./builds": {
-      "import": "./dist/builds/index.js",
-      "types": "./dist/builds/index.d.ts"
+      "types": "./dist/builds/index.d.ts",
+      "import": "./dist/builds/index.js"
     },
     "./types": {
-      "import": "./dist/types/index.js",
-      "types": "./dist/types/index.d.ts"
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/types/index.js"
     },
     "./tests": {
-      "import": "./dist/tests/index.js",
-      "types": "./dist/tests/index.d.ts"
+      "types": "./dist/tests/index.d.ts",
+      "import": "./dist/tests/index.js"
     },
     "./dead-code": {
-      "import": "./dist/dead-code/index.js",
-      "types": "./dist/dead-code/index.d.ts"
+      "types": "./dist/dead-code/index.d.ts",
+      "import": "./dist/dead-code/index.js"
     },
     "./dist/*": "./dist/*"
   },
@@ -53,17 +53,16 @@
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
   "scripts": {
-    "pretype-check": "pnpm --filter @kb-labs/quality-core build",
-    "clean": "rimraf dist",
     "build": "tsup --config tsup.config.ts",
+    "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint . --fix",
-    "type-check": "tsc --noEmit",
+    "pretype-check": "pnpm --filter @kb-labs/quality-core build",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/quality-contracts": "workspace:*",
@@ -82,5 +81,6 @@
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
-  }
+  },
+  "sideEffects": false
 }

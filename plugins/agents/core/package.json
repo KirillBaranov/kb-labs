@@ -1,14 +1,14 @@
 {
   "name": "@kb-labs/agent-core",
+  "description": "Core logic for KB Labs Agents. Session management, orchestration, quality gates, multi-agent coordination.",
   "version": "2.34.0",
   "type": "module",
-  "description": "Core logic for KB Labs Agents. Session management, orchestration, quality gates, multi-agent coordination.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./dist/*": "./dist/*"
   },
@@ -17,26 +17,25 @@
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
   "scripts": {
-    "pretype-check": "pnpm --filter @kb-labs/agent-core build",
-    "clean": "rimraf dist",
     "build": "tsup --config tsup.config.ts",
+    "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint . --fix",
-    "type-check": "tsc --noEmit",
+    "pretype-check": "pnpm --filter @kb-labs/agent-core build",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/agent-contracts": "workspace:*",
+    "@kb-labs/agent-history": "workspace:*",
     "@kb-labs/agent-kernel": "workspace:*",
     "@kb-labs/agent-runtime": "workspace:*",
     "@kb-labs/agent-sdk": "workspace:*",
     "@kb-labs/agent-store": "workspace:*",
     "@kb-labs/agent-tools": "workspace:*",
-    "@kb-labs/agent-history": "workspace:*",
     "@kb-labs/agent-tracing": "workspace:*",
     "@kb-labs/sdk": "workspace:*",
     "zod": "^3.25.76"
@@ -54,5 +53,6 @@
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
-  }
+  },
+  "sideEffects": false
 }

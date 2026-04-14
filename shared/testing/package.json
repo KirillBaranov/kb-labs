@@ -1,14 +1,14 @@
 {
   "name": "@kb-labs/shared-testing",
+  "description": "Test utilities for KB Labs plugin development — mock builders, platform setup, test context",
   "version": "2.34.0",
   "type": "module",
-  "description": "Test utilities for KB Labs plugin development — mock builders, platform setup, test context",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
   },
   "files": [
@@ -16,16 +16,15 @@
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
   "scripts": {
-    "clean": "rimraf dist",
     "build": "tsup --config tsup.config.ts",
+    "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
     "test": "vitest run",
     "test:watch": "vitest",
-    "type-check": "tsc --noEmit",
-    "lint": "eslint src",
-    "lint:fix": "eslint src --fix"
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/core-platform": "workspace:*",
@@ -47,5 +46,6 @@
   "packageManager": "pnpm@9.11.0",
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "sideEffects": false
 }

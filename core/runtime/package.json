@@ -1,8 +1,10 @@
 {
   "name": "@kb-labs/core-runtime",
-  "version": "2.34.0",
   "description": "DI Container + Core Features Implementations for KB Labs Platform",
+  "version": "2.34.0",
   "type": "module",
+  "author": "KB Labs Team",
+  "license": "MIT",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -13,14 +15,17 @@
       "require": "./dist/index.cjs"
     }
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsup",
     "clean": "rimraf dist",
-    "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest",
     "dev": "tsup --config tsup.config.ts --watch",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint . --fix",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
@@ -35,32 +40,27 @@
     "@kb-labs/plugin-execution-factory": "workspace:*",
     "zod": "^3.25.76"
   },
-  "optionalDependencies": {
-    "@kb-labs/gateway-core": "workspace:*"
-  },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
     "@types/node": "^24.3.3",
+    "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
     "typescript": "^5.6.3",
-    "vitest": "^3.2.4",
-    "rimraf": "^6.0.1"
+    "vitest": "^3.2.4"
   },
-  "files": [
-    "dist"
-  ],
-  "keywords": [
-    "kb-labs",
-    "platform",
-    "runtime",
-    "di",
-    "container"
-  ],
-  "author": "KB Labs Team",
-  "license": "MIT",
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
+  },
+  "keywords": [
+    "container",
+    "di",
+    "kb-labs",
+    "platform",
+    "runtime"
+  ],
+  "optionalDependencies": {
+    "@kb-labs/gateway-core": "workspace:*"
   },
   "publishConfig": {
     "access": "public"

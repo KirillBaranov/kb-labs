@@ -6,8 +6,8 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
   },
   "files": [
@@ -15,21 +15,21 @@
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
   "scripts": {
-    "clean": "rimraf dist",
     "build": "tsup",
+    "clean": "rimraf dist",
     "dev": "tsup --watch",
-    "type-check": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "vitest run --passWithNoTests -c ../../vitest.config.ts",
-    "test:watch": "vitest -c ../../vitest.config.ts"
+    "test:watch": "vitest -c ../../vitest.config.ts",
+    "type-check": "tsc --noEmit"
   },
   "devDependencies": {
-    "tsx": "^4.20.5",
-    "vitest": "^3.2.4",
     "@kb-labs/devkit": "workspace:*",
-    "tsup": "^8.5.0"
-  }
+    "tsup": "^8.5.0",
+    "tsx": "^4.20.5",
+    "vitest": "^3.2.4"
+  },
+  "sideEffects": false
 }

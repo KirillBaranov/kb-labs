@@ -1,14 +1,14 @@
 {
   "name": "@kb-labs/adapters-analytics-file",
+  "description": "File-based analytics adapter for KB Labs platform (writes JSONL to .kb/analytics/buffer)",
   "version": "2.34.0",
   "type": "module",
-  "description": "File-based analytics adapter for KB Labs platform (writes JSONL to .kb/analytics/buffer)",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
   },
   "files": [
@@ -16,26 +16,25 @@
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
   "scripts": {
-    "clean": "rimraf dist",
     "build": "tsup --config tsup.config.ts",
+    "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
     "lint": "eslint src --ext .ts,.tsx,.js,.jsx",
     "lint:fix": "eslint . --fix",
-    "type-check": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest --passWithNoTests"
+    "test:watch": "vitest --passWithNoTests",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/core-platform": "workspace:*",
-    "fs-extra": "^11.0.0",
-    "date-fns": "^3.6.0"
+    "date-fns": "^3.6.0",
+    "fs-extra": "^11.0.0"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
-    "@types/node": "^24.3.3",
     "@types/fs-extra": "^11.0.0",
+    "@types/node": "^24.3.3",
     "eslint": "^9",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
@@ -46,8 +45,9 @@
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
   },
-  "packageManager": "pnpm@9.11.0",
   "kb": {
     "manifest": "./dist/manifest.js"
-  }
+  },
+  "packageManager": "pnpm@9.11.0",
+  "sideEffects": false
 }

@@ -1,14 +1,19 @@
 {
   "name": "@kb-labs/release-manager-cli",
-  "version": "2.34.0",
   "description": "KB Labs Release Manager - CLI commands for release management",
+  "version": "2.34.0",
   "type": "module",
+  "author": {
+    "name": "Kirill Baranov",
+    "url": "https://github.com/kirill-baranov"
+  },
+  "license": "MIT",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
   },
   "files": [
@@ -16,28 +21,17 @@
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
-  "author": {
-    "name": "Kirill Baranov",
-    "url": "https://github.com/kirill-baranov"
-  },
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/kirill-baranov/kb-labs-release-manager.git",
-    "directory": "packages/release-cli"
-  },
   "scripts": {
-    "clean": "rimraf dist",
     "build": "tsup && pnpm build:studio",
     "build:studio": "rspack build --config rspack.studio.config.mjs",
+    "clean": "rimraf dist",
     "dev": "tsup --watch",
     "dev:studio": "rspack build --config rspack.studio.config.mjs --watch",
-    "type-check": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "vitest run --passWithNoTests -c ../../vitest.config.ts",
-    "test:watch": "vitest -c ../../vitest.config.ts"
+    "test:watch": "vitest -c ../../vitest.config.ts",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/release-manager-changelog": "workspace:*",
@@ -50,10 +44,6 @@
     "globby": "^11.0.0",
     "npm-packlist": "^10.0.3",
     "zod": "^3.25.76"
-  },
-  "peerDependencies": {
-    "react": "^18.3.1",
-    "react-router-dom": ">=6.0.0"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
@@ -71,11 +61,21 @@
     "typescript": "^5.6.3",
     "vitest": "^3.2.4"
   },
-  "kb": {
-    "manifest": "./dist/manifest.js"
-  },
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
-  }
+  },
+  "kb": {
+    "manifest": "./dist/manifest.js"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1",
+    "react-router-dom": ">=6.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kirill-baranov/kb-labs-release-manager.git",
+    "directory": "packages/release-cli"
+  },
+  "sideEffects": false
 }

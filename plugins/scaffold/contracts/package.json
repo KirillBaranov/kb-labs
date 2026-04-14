@@ -1,30 +1,29 @@
 {
   "name": "@kb-labs/scaffold-contracts",
+  "description": "Public types for the KB Labs scaffold engine (entity, block, manifest patch).",
   "version": "2.34.0",
   "type": "module",
-  "description": "Public types for the KB Labs scaffold engine (entity, block, manifest patch).",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./dist/*": "./dist/*"
   },
   "files": [
     "dist"
   ],
-  "sideEffects": false,
   "scripts": {
-    "clean": "rimraf dist",
     "build": "tsup --config tsup.config.ts",
+    "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint . --fix",
-    "type-check": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {},
   "devDependencies": {
@@ -39,5 +38,6 @@
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
-  }
+  },
+  "sideEffects": false
 }

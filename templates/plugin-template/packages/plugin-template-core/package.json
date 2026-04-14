@@ -1,23 +1,23 @@
 {
   "name": "@kb-labs/plugin-template-core",
-  "private": true,
+  "description": "Reference plugin package for KB Labs plugin template with manifest, CLI, REST, and Studio layers.",
   "version": "0.1.0",
   "type": "module",
-  "description": "Reference plugin package for KB Labs plugin template with manifest, CLI, REST, and Studio layers.",
+  "private": true,
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./plugin-manifest": {
-      "import": "./dist/manifest.v3.js",
-      "types": "./dist/manifest.v3.d.ts"
+      "types": "./dist/manifest.v3.d.ts",
+      "import": "./dist/manifest.v3.js"
     },
     "./plugin-manifest-v2": {
-      "import": "./dist/manifest.v2.js",
-      "types": "./dist/manifest.v2.d.ts"
+      "types": "./dist/manifest.v2.d.ts",
+      "import": "./dist/manifest.v2.js"
     },
     "./cli": "./dist/cli/index.js",
     "./rest": "./dist/rest/index.js",
@@ -26,30 +26,26 @@
     "./utils": "./dist/utils/index.js",
     "./lifecycle": "./dist/lifecycle/index.js",
     "./studio/widgets/hello": {
-      "import": "./dist/studio/widgets/hello-widget.js",
-      "types": "./dist/studio/widgets/hello-widget.d.ts"
+      "types": "./dist/studio/widgets/hello-widget.d.ts",
+      "import": "./dist/studio/widgets/hello-widget.js"
     },
     "./dist/*": "./dist/*"
-  },
-  "kb": {
-    "manifest": "./dist/manifest.v3.js"
   },
   "files": [
     "dist",
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
   "scripts": {
-    "pretype-check": "pnpm --filter @kb-labs/plugin-template-core build",
-    "clean": "rimraf dist",
     "build": "tsup --config tsup.config.ts",
+    "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint . --fix",
-    "type-check": "tsc --noEmit",
+    "pretype-check": "pnpm --filter @kb-labs/plugin-template-core build",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/plugin-contracts": "workspace:*",
@@ -72,5 +68,9 @@
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
-  }
+  },
+  "kb": {
+    "manifest": "./dist/manifest.v3.js"
+  },
+  "sideEffects": false
 }

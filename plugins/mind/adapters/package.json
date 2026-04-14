@@ -1,8 +1,8 @@
 {
   "name": "@kb-labs/mind-adapters",
+  "description": "Git adapters for KB Labs Mind",
   "version": "2.34.0",
   "type": "module",
-  "description": "Git adapters for KB Labs Mind",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -17,16 +17,15 @@
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
   "scripts": {
-    "clean": "rimraf dist",
     "build": "tsup --config tsup.config.ts",
+    "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
     "lint": "eslint src --ext .ts,.tsx,.js,.jsx",
     "lint:fix": "eslint . --fix",
-    "type-check": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/mind-core": "workspace:*"
@@ -43,5 +42,6 @@
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
   },
-  "packageManager": "pnpm@9.11.0"
+  "packageManager": "pnpm@9.11.0",
+  "sideEffects": false
 }
