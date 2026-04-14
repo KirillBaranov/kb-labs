@@ -568,6 +568,10 @@
         {
           "platform": "Linux (ARM64)",
           "file": "kb-create-linux-arm64"
+        },
+        {
+          "platform": "Windows (x86_64)",
+          "file": "kb-create-windows-amd64.exe"
         }
       ]
     },
