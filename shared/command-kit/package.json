@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/shared-command-kit",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "type": "module",
   "description": "Command Kit for KB Labs CLI - utilities and high-level API for building commands",
   "main": "./dist/index.js",
@@ -50,7 +50,7 @@
     "@kb-labs/plugin-contracts": "workspace:*",
     "@kb-labs/plugin-runtime": "workspace:*",
     "@kb-labs/shared-cli-ui": "workspace:*",
-    "zod": "^3.23.8",
+    "zod": "^3.25.76",
     "glob": "^11.0.0"
   },
   "devDependencies": {

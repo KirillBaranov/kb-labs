@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/impact-contracts",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "type": "module",
   "description": "Contracts for KB Labs Impact Analysis Plugin — types, interfaces, schemas.",
   "main": "./dist/index.js",
@@ -34,7 +34,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "zod": "^3.23.8"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",

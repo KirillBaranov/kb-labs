@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/devlink-contracts",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "type": "module",
   "description": "Contracts package for DevLink plugin — types, Zod schemas, flags.",
   "main": "./dist/index.js",
@@ -32,7 +32,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "zod": "^3.23.8"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",

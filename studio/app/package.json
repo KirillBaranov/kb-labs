@@ -32,7 +32,7 @@
     "react-resizable": "^3.0.5",
     "react-router-dom": "^7.1.4",
     "reactflow": "^11.11.4",
-    "zod": "^3.23.8",
+    "zod": "^3.25.76",
     "zustand": "^5.0.2"
   },
   "description": "KB Labs Studio application",
@@ -43,7 +43,7 @@
     "@rspack/core": "^1.7.0",
     "@rspack/plugin-react-refresh": "^1.6.0",
     "@types/dompurify": "^3.2.0",
-    "@types/node": "^22.10.0",
+    "@types/node": "^24.3.3",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "autoprefixer": "^10.4.21",
@@ -82,7 +82,7 @@
     "type-check": "tsc --noEmit"
   },
   "type": "module",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "publishConfig": {
     "access": "public"
   }

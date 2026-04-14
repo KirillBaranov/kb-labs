@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/studio-ui-kit",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "description": "KB Labs Studio UI Kit — React components using Ant Design and design tokens",
   "type": "module",
   "main": "./dist/index.js",
@@ -52,7 +52,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "dayjs": "^1.11.19",
     "eslint": "^9",
-    "jsdom": "^24.1.0",
+    "jsdom": "^27.0.0",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
     "tsx": "^4.21.0",

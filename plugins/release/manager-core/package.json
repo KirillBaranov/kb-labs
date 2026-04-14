@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/release-manager-core",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "description": "KB Labs Release Manager - core orchestration, planning, versioning, and publishing",
   "type": "module",
   "main": "./dist/index.js",
@@ -39,7 +39,7 @@
   },
   "dependencies": {
     "@kb-labs/sdk": "workspace:*",
-    "execa": "^8.0.0",
+    "execa": "^9.5.3",
     "globby": "^11.0.0",
     "semver": "^7.6.3",
     "simple-git": "^3.25.0"

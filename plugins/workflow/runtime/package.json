@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/workflow-runtime",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "type": "module",
   "description": "Runtime adapters and step executors for the KB Labs workflow engine.",
   "main": "./dist/index.js",
@@ -37,11 +37,11 @@
     "@kb-labs/workflow-builtins": "workspace:*",
     "@kb-labs/workflow-constants": "workspace:*",
     "@kb-labs/workflow-contracts": "workspace:*",
-    "execa": "^8.0.0",
+    "execa": "^9.5.3",
     "fast-glob": "^3.3.2",
     "pino": "^9.0.0",
     "yaml": "^2.8.0",
-    "zod": "^3.23.8"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",

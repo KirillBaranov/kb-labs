@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/mind-entry",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "type": "module",
   "description": "CLI commands for KB Labs Mind",
   "main": "./dist/index.js",
@@ -43,12 +43,12 @@
     "@kb-labs/mind-orchestrator": "workspace:*",
     "@kb-labs/mind-types": "workspace:*",
     "react": "^18.3.1",
-    "zod": "^3.23.8"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
     "@types/node": "^24.3.3",
-    "@types/react": "^18.3.8",
+    "@types/react": "^18.3.18",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
     "typescript": "^5.6.3",

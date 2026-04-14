@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/core-config",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "description": "Core configuration system for KB Labs products, including schema validation, resolution, and merging",
   "type": "module",
   "main": "./dist/index.js",
@@ -33,7 +33,7 @@
     "ajv-formats": "^3.0.1",
     "picomatch": "^4.0.2",
     "yaml": "^2.8.0",
-    "zod": "^3.23.8"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",

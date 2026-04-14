@@ -1,6 +1,6 @@
 {
   "dependencies": {
-    "zod": "^3.23.8"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
@@ -37,5 +37,5 @@
   "sideEffects": false,
   "type": "module",
   "types": "./dist/index.d.ts",
-  "version": "2.30.0"
+  "version": "2.31.0"
 }

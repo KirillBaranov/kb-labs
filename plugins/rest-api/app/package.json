@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/rest-api-app",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "description": "REST API application for KB Labs, providing HTTP endpoints for plugin functionality",
   "type": "module",
   "main": "./dist/index.js",
@@ -33,7 +33,7 @@
     "ulid": "^2.3.0",
     "ws": "^8.18.0",
     "yaml": "^2.8.0",
-    "zod": "^3.23.8",
+    "zod": "^3.25.76",
     "@kb-labs/shared-http": "workspace:*",
     "@kb-labs/core-contracts": "workspace:*",
     "@kb-labs/core-registry": "workspace:*",

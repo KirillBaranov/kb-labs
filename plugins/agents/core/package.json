@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/agent-core",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "type": "module",
   "description": "Core logic for KB Labs Agents. Session management, orchestration, quality gates, multi-agent coordination.",
   "main": "./dist/index.js",
@@ -39,7 +39,7 @@
     "@kb-labs/agent-history": "workspace:*",
     "@kb-labs/agent-tracing": "workspace:*",
     "@kb-labs/sdk": "workspace:*",
-    "zod": "^3.23.8"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
