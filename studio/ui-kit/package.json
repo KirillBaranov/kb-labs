@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/studio-ui-kit",
-  "version": "2.32.0",
+  "version": "2.33.0",
   "description": "KB Labs Studio UI Kit — React components using Ant Design and design tokens",
   "type": "module",
   "main": "./dist/index.js",
