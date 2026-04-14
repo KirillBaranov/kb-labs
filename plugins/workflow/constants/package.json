@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/workflow-constants",
-  "version": "2.23.0",
+  "version": "2.24.0",
   "type": "module",
   "description": "Shared constants for the KB Labs workflow engine.",
   "main": "./dist/index.js",

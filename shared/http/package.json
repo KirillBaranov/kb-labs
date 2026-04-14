@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/shared-http",
-  "version": "2.23.0",
+  "version": "2.24.0",
   "type": "module",
   "description": "Shared Fastify/OpenAPI utilities for KB Labs HTTP services",
   "main": "./dist/index.js",
