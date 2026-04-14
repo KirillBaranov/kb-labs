@@ -1,3 +1,15 @@
+## [2.18.2] - 2026-04-14
+
+> **@kb-labs/sdk** 2.18.1 → 2.18.2 (minor: new features)
+
+### 🏗️ Core & SDK
+
+- **sdk**: Introduces the runtimeContext ALS and useEnv() hook, enhancing the flexibility and efficiency of environment management in your applications.
+- **devkit**: Improves dependency handling by skipping self-referencing dependencies in the dependency graph, resulting in cleaner project structures and easier maintenance.
+
+### 🔧 Other
+
+- **general**: Cleans up code by resolving lint errors and test failures, ensuring a more reliable and maintainable codebase across all packages. This leads to a smoother user experience and reduces the likelihood of unexpected issues in the future.
 ## [2.18.1] - 2026-04-14
 
 > **@kb-labs/sdk** 2.18.0 → 2.18.1 (minor: new features)
