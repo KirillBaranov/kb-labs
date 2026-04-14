@@ -1,4 +1,4 @@
-// Package scaffold generates the initial .kb/kb.config.jsonc for new projects.
+// Package scaffold generates the initial .kb/kb.config.json for new projects.
 // The file uses JSONC (JSON with Comments) so users get inline documentation
 // for every section — same pattern as tsconfig.json.
 package scaffold
@@ -28,7 +28,7 @@ type Options struct {
 	GatewayCredentials *GatewayCreds // non-nil → write adapterOptions.llm (demo only)
 }
 
-// WriteProjectConfig generates .kb/kb.config.jsonc inside projectDir.
+// WriteProjectConfig generates .kb/kb.config.json inside projectDir.
 func WriteProjectConfig(projectDir string, opts Options) error {
 	dir := filepath.Join(projectDir, ".kb")
 	if err := os.MkdirAll(dir, 0o750); err != nil {
@@ -36,7 +36,7 @@ func WriteProjectConfig(projectDir string, opts Options) error {
 	}
 
 	content := generate(opts)
-	path := filepath.Join(dir, "kb.config.jsonc")
+	path := filepath.Join(dir, "kb.config.json")
 	// #nosec G306 -- project config is expected to be readable in workspace.
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		return err

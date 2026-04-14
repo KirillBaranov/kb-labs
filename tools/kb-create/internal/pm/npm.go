@@ -107,39 +107,63 @@ func (n *NpmManager) run(dir string, args []string, progress chan<- Progress) er
 }
 
 // ensurePackageJSON creates a minimal package.json if none exists.
+// kbOverrides are the pnpm overrides always written into kb-platform/package.json.
+// They pin core KB Labs packages to latest so transitive deps can't pull in old versions.
+var kbOverrides = map[string]string{
+	"@kb-labs/gateway-contracts": ">=0.1.0",
+	"@kb-labs/gateway-auth":      ">=0.1.0",
+	"@kb-labs/gateway-core":      ">=0.1.0",
+	"@kb-labs/sdk":               "latest",
+	"@kb-labs/core-runtime":      "latest",
+	"@kb-labs/core-platform":     "latest",
+}
+
 func ensurePackageJSON(dir string) error {
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return err
 	}
 	pkgPath := filepath.Join(dir, "package.json")
-	if _, err := os.Stat(pkgPath); err == nil {
-		return nil
+
+	// Read existing file or start fresh.
+	var pkg map[string]interface{}
+	if data, err := os.ReadFile(pkgPath); err == nil {
+		_ = json.Unmarshal(data, &pkg)
 	}
-	// Overrides fix semver 0.x caret ranges (^0.1.0 doesn't match 0.2.0).
-	// Remove once all packages publish with aligned deps.
-	content := `{
-  "name": "kb-platform",
-  "version": "1.0.0",
-  "private": true,
-  "pnpm": {
-    "overrides": {
-      "@kb-labs/gateway-contracts": ">=0.1.0",
-      "@kb-labs/gateway-auth": ">=0.1.0",
-      "@kb-labs/gateway-core": ">=0.1.0"
-    }
-  }
-}
-`
-	if err := os.WriteFile(pkgPath, []byte(content), 0o600); err != nil {
+	if pkg == nil {
+		pkg = map[string]interface{}{
+			"name":    "kb-platform",
+			"version": "1.0.0",
+			"private": true,
+		}
+	}
+
+	// Ensure pnpm.overrides contains all required entries.
+	pnpmBlock, _ := pkg["pnpm"].(map[string]interface{})
+	if pnpmBlock == nil {
+		pnpmBlock = map[string]interface{}{}
+	}
+	overrides, _ := pnpmBlock["overrides"].(map[string]interface{})
+	if overrides == nil {
+		overrides = map[string]interface{}{}
+	}
+	for k, v := range kbOverrides {
+		overrides[k] = v
+	}
+	pnpmBlock["overrides"] = overrides
+	pkg["pnpm"] = pnpmBlock
+
+	data, err := json.MarshalIndent(pkg, "", "  ")
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(pkgPath, append(data, '\n'), 0o600); err != nil {
 		return err
 	}
 
-	// Create a local .npmrc so pnpm/npm won't read the user-level ~/.npmrc
-	// which may contain unresolved env vars like ${NPM_TOKEN}.
+	// Write .npmrc: disable user-level config + hoist all packages so plugins
+	// can resolve their transitive deps from the platform node_modules root.
 	npmrcPath := filepath.Join(dir, ".npmrc")
-	if _, err := os.Stat(npmrcPath); err != nil {
-		npmrc := "# KB Labs platform — local npm config\nregistry=https://registry.npmjs.org/\n"
-		_ = os.WriteFile(npmrcPath, []byte(npmrc), 0o600)
-	}
+	npmrc := "# KB Labs platform — local npm config\nregistry=https://registry.npmjs.org/\nshamefully-hoist=true\n"
+	_ = os.WriteFile(npmrcPath, []byte(npmrc), 0o600)
 	return nil
 }
