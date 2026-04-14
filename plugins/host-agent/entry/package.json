@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/host-agent-entry",
-  "version": "2.31.0",
+  "version": "2.32.0",
   "type": "module",
   "description": "CLI commands for Host Agent — register and status.",
   "main": "./dist/index.js",
