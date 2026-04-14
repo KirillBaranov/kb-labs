@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/adapters-pino-http",
-  "version": "2.31.0",
+  "version": "2.32.0",
   "description": "Pino HTTP transport for streaming logs to REST API",
   "type": "module",
   "main": "./dist/index.js",
