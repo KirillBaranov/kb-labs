@@ -1,5 +1,5 @@
 import { defineCommand, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
-import { del } from '../http.js';
+import { post } from '../http.js';
 import { resolveCliScope, scopeBody, CliScopeError } from '../scope.js';
 
 interface UninstallFlags {
@@ -36,13 +36,15 @@ export default defineCommand<unknown, UninstallInput, { removed: string[]; scope
         throw err;
       }
 
-      const result = await del<{ ok: boolean; removed: string[] }>('/packages', {
+      // Server returns 204 on success; treat that as "everything you asked for
+      // was removed" so the CLI has something to render.
+      await post('/packages/uninstall', {
         packageIds: argv,
         ...scopeBody(scopeCtx),
       });
 
-      ctx.ui?.success?.(`Removed from ${scopeCtx.scope}: ${result.removed.join(', ')}`);
-      return { exitCode: 0, result: { removed: result.removed, scope: scopeCtx.scope } };
+      ctx.ui?.success?.(`Removed from ${scopeCtx.scope}: ${argv.join(', ')}`);
+      return { exitCode: 0, result: { removed: argv, scope: scopeCtx.scope } };
     },
   },
 });

@@ -1,20 +1,22 @@
 /**
  * @module @kb-labs/marketplace-api/routes/packages
- * REST routes for marketplace packages (plugins, adapters, etc.)
+ * REST routes for marketplace packages (plugins, adapters, etc.).
  *
- * Every mutating route accepts `{ scope, projectRoot? }` in its body.
- * `GET /packages` accepts the same pair in its query. Default scope is
- * `platform` — CLI clients always pass the explicit scope. Project scope
- * additionally requires an absolute `projectRoot` (validated by
- * `parseMutatingScope` / `parseQueryScope`).
+ * The URL surface is intentionally action-oriented ("POST /packages/link")
+ * rather than resource-style ("POST /packages/:id/link"). Plugin IDs carry
+ * `@` and `/` (`@kb-labs/demo-entry`), which round-trip badly through proxies
+ * and API gateways as URL-encoded path segments. Every action takes its
+ * target id from the request body instead, eliminating an entire class of
+ * routing failures.
  *
- * GET    /packages              — list installed packages (supports scope=all)
- * POST   /packages              — install package(s)
- * DELETE /packages              — uninstall package(s)
- * PATCH  /packages/:id          — update state (enabled/disabled)
- * POST   /packages/:id/update   — update to latest version
- * POST   /packages/:id/link     — link local path for development
- * DELETE /packages/:id/link     — unlink
+ * GET  /packages          — list installed packages (query: scope, projectRoot, kind)
+ * POST /packages/install  — install package(s)
+ * POST /packages/uninstall— uninstall package(s)
+ * POST /packages/link     — link a local path
+ * POST /packages/unlink   — unlink a package
+ * POST /packages/enable   — mark a package enabled
+ * POST /packages/disable  — mark a package disabled
+ * POST /packages/update   — update package(s) to latest
  */
 
 import '../types.js';
@@ -52,8 +54,8 @@ export function registerPackagesRoutes(app: FastifyInstance): void {
     return reply.send({ entries, total: entries.length });
   });
 
-  // POST /packages — install one or more packages
-  app.post('/packages', {
+  // POST /packages/install — install one or more packages
+  app.post('/packages/install', {
     schema: {
       tags: ['Marketplace'],
       summary: 'Install package(s)',
@@ -77,8 +79,8 @@ export function registerPackagesRoutes(app: FastifyInstance): void {
     return reply.code(201).send(result);
   });
 
-  // DELETE /packages — uninstall one or more packages
-  app.delete('/packages', {
+  // POST /packages/uninstall — uninstall one or more packages
+  app.post('/packages/uninstall', {
     schema: {
       tags: ['Marketplace'],
       summary: 'Uninstall package(s)',
@@ -101,79 +103,82 @@ export function registerPackagesRoutes(app: FastifyInstance): void {
     return reply.code(204).send();
   });
 
-  // PATCH /packages/:id — update package state (enable/disable)
-  app.patch('/packages/:id', {
+  // POST /packages/enable — enable a package
+  app.post('/packages/enable', {
     schema: {
       tags: ['Marketplace'],
-      summary: 'Update package state (enable or disable)',
-      params: {
-        type: 'object',
-        required: ['id'],
-        properties: {
-          id: { type: 'string' },
-        },
-      },
+      summary: 'Enable a package',
       body: {
         type: 'object',
-        required: ['enabled'],
+        required: ['packageId'],
         properties: {
-          enabled: { type: 'boolean' },
+          packageId: { type: 'string' },
           ...scopeBodySchemaFragment,
         },
       },
     },
   }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const body = request.body as { enabled: boolean } & Record<string, unknown>;
+    const body = request.body as { packageId: string } & Record<string, unknown>;
     const ctx = parseMutatingScope(body);
-    const operation = body.enabled ? 'marketplace.enable' : 'marketplace.disable';
-    const method = body.enabled
-      ? () => app.marketplace.enable(ctx, id)
-      : () => app.marketplace.disable(ctx, id);
-    await app.observability.observeOperation(operation, method);
-    return reply.send({ id, enabled: body.enabled, scope: ctx.scope });
+    await app.observability.observeOperation(
+      'marketplace.enable',
+      () => app.marketplace.enable(ctx, body.packageId),
+    );
+    return reply.send({ id: body.packageId, enabled: true, scope: ctx.scope });
   });
 
-  // POST /packages/:id/update — update package to latest version
-  app.post('/packages/:id/update', {
+  // POST /packages/disable — disable a package
+  app.post('/packages/disable', {
     schema: {
       tags: ['Marketplace'],
-      summary: 'Update package to latest version',
-      params: {
-        type: 'object',
-        required: ['id'],
-        properties: {
-          id: { type: 'string' },
-        },
-      },
+      summary: 'Disable a package',
       body: {
         type: 'object',
-        properties: scopeBodySchemaFragment,
+        required: ['packageId'],
+        properties: {
+          packageId: { type: 'string' },
+          ...scopeBodySchemaFragment,
+        },
       },
     },
   }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const body = (request.body ?? {}) as Record<string, unknown>;
+    const body = request.body as { packageId: string } & Record<string, unknown>;
+    const ctx = parseMutatingScope(body);
+    await app.observability.observeOperation(
+      'marketplace.disable',
+      () => app.marketplace.disable(ctx, body.packageId),
+    );
+    return reply.send({ id: body.packageId, enabled: false, scope: ctx.scope });
+  });
+
+  // POST /packages/update — update package(s) to latest version
+  app.post('/packages/update', {
+    schema: {
+      tags: ['Marketplace'],
+      summary: 'Update package(s) to latest version',
+      body: {
+        type: 'object',
+        properties: {
+          packageIds: { type: 'array', items: { type: 'string' }, description: 'Specific ids to update; omit for "all installed"' },
+          ...scopeBodySchemaFragment,
+        },
+      },
+    },
+  }, async (request, reply) => {
+    const body = (request.body ?? {}) as { packageIds?: string[] } & Record<string, unknown>;
     const ctx = parseMutatingScope(body);
     const result = await app.observability.observeOperation(
       'marketplace.update',
-      () => app.marketplace.update(ctx, [id]),
+      () => app.marketplace.update(ctx, body.packageIds),
     );
     return reply.send(result);
   });
 
-  // POST /packages/:id/link — link a local path for development
-  app.post('/packages/:id/link', {
+  // POST /packages/link — link a local path for development
+  app.post('/packages/link', {
     schema: {
       tags: ['Marketplace'],
       summary: 'Link a local package path for development',
-      params: {
-        type: 'object',
-        required: ['id'],
-        properties: {
-          id: { type: 'string' },
-        },
-      },
       body: {
         type: 'object',
         required: ['path'],
@@ -193,30 +198,26 @@ export function registerPackagesRoutes(app: FastifyInstance): void {
     return reply.send(result);
   });
 
-  // DELETE /packages/:id/link — unlink a local package
-  app.delete('/packages/:id/link', {
+  // POST /packages/unlink — unlink a local package
+  app.post('/packages/unlink', {
     schema: {
       tags: ['Marketplace'],
       summary: 'Unlink a local package',
-      params: {
-        type: 'object',
-        required: ['id'],
-        properties: {
-          id: { type: 'string' },
-        },
-      },
       body: {
         type: 'object',
-        properties: scopeBodySchemaFragment,
+        required: ['packageId'],
+        properties: {
+          packageId: { type: 'string' },
+          ...scopeBodySchemaFragment,
+        },
       },
     },
   }, async (request, reply) => {
-    const { id } = request.params as { id: string };
-    const body = (request.body ?? {}) as Record<string, unknown>;
+    const body = request.body as { packageId: string } & Record<string, unknown>;
     const ctx = parseMutatingScope(body);
     await app.observability.observeOperation(
       'marketplace.unlink',
-      () => app.marketplace.unlink(ctx, id),
+      () => app.marketplace.unlink(ctx, body.packageId),
     );
     return reply.code(204).send();
   });
