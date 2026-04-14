@@ -291,9 +291,21 @@ export interface CoreFeaturesConfig {
 }
 
 /**
+ * Platform-root hint. When set in a project config, `loadPlatformConfig` uses
+ * this path as `platformRoot` (expanding `~` and resolving relative paths
+ * against the project root).
+ */
+export interface PlatformDirConfig {
+  /** Absolute or `~`-relative path to the platform workspace. */
+  dir?: string;
+}
+
+/**
  * Full platform configuration.
  */
 export interface PlatformConfig {
+  /** Platform-root hint (only honored when set in project config). */
+  platform?: PlatformDirConfig;
   /** Adapter packages configuration */
   adapters?: AdaptersConfig;
   /** Optional adapter-specific configuration passed to createAdapter(config) */
@@ -303,3 +315,21 @@ export interface PlatformConfig {
   /** Execution backend configuration (NEW: unified plugin execution) */
   execution?: ExecutionConfig;
 }
+
+/**
+ * Scope policy for each top-level platform-config field. Drives the
+ * platform ← project merge performed by `loadPlatformConfig`.
+ *
+ * - `platform-only`  — project layer is ignored with a warning.
+ * - `mergeable`      — project overrides platform via deep merge.
+ * - `project-only`   — only the project layer is honored.
+ */
+export type ConfigFieldScope = 'platform-only' | 'mergeable' | 'project-only';
+
+export const CONFIG_FIELD_SCOPE: Record<keyof PlatformConfig, ConfigFieldScope> = {
+  platform: 'project-only',
+  adapters: 'platform-only',
+  adapterOptions: 'platform-only',
+  core: 'platform-only',
+  execution: 'platform-only',
+};

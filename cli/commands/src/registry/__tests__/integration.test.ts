@@ -55,6 +55,7 @@ describe("Registry Integration", () => {
 
     const discoveryResults = [
       {
+        scope: "platform" as const,
         source: "workspace" as const,
         packageName: "@kb-labs/test-package",
         manifestPath: "/virtual/manifest.mjs",
@@ -113,6 +114,7 @@ describe("Registry Integration", () => {
 
     const discoveryResults = [
       {
+        scope: "platform" as const,
         source: "workspace" as const,
         packageName: "@kb-labs/test-package",
         manifestPath: "/virtual/manifest.mjs",
@@ -168,6 +170,7 @@ describe("Registry Integration", () => {
 
     const discoveryResults = [
       {
+        scope: "platform" as const,
         source: "node_modules" as const,
         packageName: "@kb-labs/node-package",
         manifestPath: "/virtual/node-manifest.mjs",
@@ -175,6 +178,7 @@ describe("Registry Integration", () => {
         manifests: [nodeManifest],
       },
       {
+        scope: "platform" as const,
         source: "workspace" as const,
         packageName: "@kb-labs/workspace-package",
         manifestPath: "/virtual/workspace-manifest.mjs",

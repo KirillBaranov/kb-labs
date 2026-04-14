@@ -1,9 +1,11 @@
 import { defineCommand, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import { post } from '../http.js';
+import { resolveCliScope, scopeBody, CliScopeError } from '../scope.js';
 
 interface InstallFlags {
   dev?: boolean;
   json?: boolean;
+  scope?: string;
 }
 
 interface InstallInput {
@@ -20,6 +22,7 @@ interface InstalledEntry {
 interface InstallResultData {
   installed: InstalledEntry[];
   warnings: string[];
+  scope: string;
 }
 
 export default defineCommand<unknown, InstallInput, InstallResultData>({
@@ -33,18 +36,30 @@ export default defineCommand<unknown, InstallInput, InstallResultData>({
 
       if (argv.length === 0) {
         ctx.ui?.error?.('Please specify at least one package to install');
-        return { exitCode: 1, result: { installed: [], warnings: [] } };
+        return { exitCode: 1, result: { installed: [], warnings: [], scope: '' } };
+      }
+
+      let scopeCtx;
+      try {
+        scopeCtx = await resolveCliScope(ctx.cwd, flags.scope);
+      } catch (err) {
+        if (err instanceof CliScopeError) {
+          ctx.ui?.error?.(err.message);
+          return { exitCode: 1, result: { installed: [], warnings: [], scope: '' } };
+        }
+        throw err;
       }
 
       const result = await post<InstallResultData>('/packages', {
         specs: argv,
         dev: Boolean(flags.dev),
+        ...scopeBody(scopeCtx),
       });
 
       if (flags.json) {
         ctx.ui?.json?.(result);
       } else {
-        ctx.ui?.success?.('Marketplace install completed', {
+        ctx.ui?.success?.(`Marketplace install completed (${result.scope ?? scopeCtx.scope})`, {
           sections: [
             {
               header: 'Installed',

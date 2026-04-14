@@ -3,8 +3,10 @@
  * Unified marketplace service for KB Labs platform.
  */
 
-export { MarketplaceService } from './marketplace-service.js';
+export { MarketplaceService, AdapterScopeError, mergeScopedEntries } from './marketplace-service.js';
 export type { MarketplaceServiceOptions } from './marketplace-service.js';
+export { ScopeResolutionError, resolveScopeRoot, resolveQueryRoots } from './scope.js';
+export type { ServiceRoots } from './scope.js';
 
 export {
   readManifestCache,

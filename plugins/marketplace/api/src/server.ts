@@ -13,6 +13,8 @@ import {
 import type { ILogger } from '@kb-labs/core-platform';
 import { registerRoutes } from './routes/index.js';
 import type { MarketplaceService } from '@kb-labs/marketplace-core';
+import { ScopeResolutionError, AdapterScopeError } from '@kb-labs/marketplace-core';
+import { ScopeRequestError } from './scope-parser.js';
 import { randomUUID } from 'node:crypto';
 
 const DEFAULT_PORT = 5070;
@@ -65,6 +67,25 @@ export async function createServer(opts: CreateServerOptions): Promise<FastifyIn
   server.decorate('marketplace', opts.service);
   server.decorate('observability', observability);
   observability.register(server);
+
+  // Scope-related errors → 400. All three share a `code` property so clients
+  // can discriminate (SCOPE_INVALID, SCOPE_PROJECT_ROOT_REQUIRED,
+  // SCOPE_PROJECT_EQUALS_PLATFORM, MARKETPLACE_ADAPTER_PROJECT_SCOPE, ...).
+  server.setErrorHandler((err, _request, reply) => {
+    if (
+      err instanceof ScopeRequestError ||
+      err instanceof ScopeResolutionError ||
+      err instanceof AdapterScopeError
+    ) {
+      return reply.code(400).send({
+        error: err.name,
+        code: err.code,
+        message: err.message,
+      });
+    }
+    // Fallback to Fastify default behaviour.
+    throw err;
+  });
 
   server.addHook('onRequest', async (request, reply) => {
     const requestId = (request.headers['x-request-id'] as string | undefined) || randomUUID();

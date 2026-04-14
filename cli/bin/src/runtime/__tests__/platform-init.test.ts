@@ -75,10 +75,23 @@ describe('Platform Initialization (Real)', () => {
         },
       }));
 
-      const result = await initializePlatform(nestedDir);
+      // Pin KB_PLATFORM_ROOT to the same testDir so the loader treats the
+      // single config file as platform defaults (adapters is platform-only,
+      // so a project-layer override would be rejected by design — see ADR-0012).
+      const originalPlatformRoot = process.env.KB_PLATFORM_ROOT;
+      process.env.KB_PLATFORM_ROOT = testDir;
+      try {
+        const result = await initializePlatform(nestedDir);
 
-      expect(result.platformConfig).toBeDefined();
-      expect(result.platformConfig.adapters?.cache).toBe('@kb-labs/cache-redis');
+        expect(result.platformConfig).toBeDefined();
+        expect(result.platformConfig.adapters?.cache).toBe('@kb-labs/cache-redis');
+      } finally {
+        if (originalPlatformRoot === undefined) {
+          delete process.env.KB_PLATFORM_ROOT;
+        } else {
+          process.env.KB_PLATFORM_ROOT = originalPlatformRoot;
+        }
+      }
     });
   });
 

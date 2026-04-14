@@ -53,7 +53,7 @@ export interface CliRuntimeOptions {
    */
   moduleUrl?: string;
   registerBuiltinCommands?: (
-    input: { cwd: string; env: NodeJS.ProcessEnv; platformRoot?: string },
+    input: { cwd: string; env: NodeJS.ProcessEnv; platformRoot?: string; projectRoot?: string },
   ) => Promise<void> | void;
   parseArgs?: typeof parseArgs;
   findCommand?: typeof findCommand;
@@ -125,6 +125,7 @@ export async function executeCli(
     platformConfig,
     rawConfig,
     platformRoot,
+    projectRoot,
   } = await initializePlatform(cwd, options.moduleUrl);
 
   // Store platformConfig globally so CLI adapter can pass it to ExecutionContext
@@ -169,9 +170,11 @@ export async function executeCli(
   const registerCommands =
     options.registerBuiltinCommands ?? registerBuiltinCommands;
   // Pass logger to registerCommands so it can pass to discovery and registration.
-  // Pass platformRoot so that plugin discovery scans node_modules at the
-  // platform installation, not at the user's cwd (see discover.ts).
-  await registerCommands({ cwd, env, logger: cliLogger, platformRoot });
+  // Pass platformRoot/projectRoot so that plugin discovery:
+  //  - scans the platform `node_modules` regardless of invocation cwd,
+  //  - picks up project-scope plugins from `<projectRoot>/.kb/plugins/`,
+  //  - tracks BOTH marketplace locks for cache invalidation.
+  await registerCommands({ cwd, env, logger: cliLogger, platformRoot, projectRoot });
 
   const resolved = resolveCommand(cmdPath, rest, find, registryStore);
   if (resolved === null) { return 1; }

@@ -32,9 +32,11 @@ export async function bootstrap(cwd: string): Promise<void> {
   });
   log.info('Bootstrapping marketplace service', { repoRoot, port, host });
 
-  // Create marketplace service
+  // Create marketplace service. The daemon lives inside the platform root —
+  // that's always the platform scope. `projectRoot` is passed per-request by
+  // API clients (CLI, other services) so one daemon can serve many projects.
   const service = new MarketplaceService({
-    root: repoRoot,
+    platformRoot: repoRoot,
     source: new NpmPackageSource(),
   });
 

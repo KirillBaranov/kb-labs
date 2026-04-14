@@ -56,7 +56,10 @@ describe('loadPlatformConfig', () => {
     rmSync(tmpDir, { recursive: true, force: true })
   })
 
-  it('loads only project config when platform has no defaults', async () => {
+  it('rejects platform-only fields declared in project config (adapters)', async () => {
+    // `adapters` is a platform-only field (see CONFIG_FIELD_SCOPE). A project
+    // cannot override adapter selection — the merge drops the project value
+    // and records it in sources.ignoredProjectFields.
     const platformRoot = path.join(tmpDir, 'p1-platform')
     const projectRoot = path.join(tmpDir, 'p1-project')
     makePlatformDir(platformRoot) // no config
@@ -78,8 +81,8 @@ describe('loadPlatformConfig', () => {
     expect(result.platformRoot).toBe(path.resolve(platformRoot))
     expect(result.projectRoot).toBe(path.resolve(projectRoot))
     expect(result.sameLocation).toBe(false)
-    expect(result.platformConfig.adapters).toEqual({ llm: 'noop' })
-    expect(result.sources.platformDefaults).toBeUndefined()
+    expect(result.platformConfig.adapters).toEqual({})
+    expect(result.sources.ignoredProjectFields).toContain('adapters')
     expect(result.sources.projectConfig).toBe(
       path.join(projectRoot, '.kb', 'kb.config.json'),
     )
@@ -111,7 +114,10 @@ describe('loadPlatformConfig', () => {
     expect(result.sources.projectConfig).toBeUndefined()
   })
 
-  it('deep-merges project config over platform defaults', async () => {
+  it('platform-only fields are kept from platform, project attempt is ignored', async () => {
+    // `adapters` is platform-only → project cannot override. `sources.fields`
+    // reports per-field provenance and `ignoredProjectFields` flags the
+    // rejected project value.
     const platformRoot = path.join(tmpDir, 'p3-platform')
     const projectRoot = path.join(tmpDir, 'p3-project')
     makePlatformDir(platformRoot, {
@@ -125,8 +131,7 @@ describe('loadPlatformConfig', () => {
     makeProjectDir(projectRoot, {
       platform: {
         adapters: {
-          llm: 'anthropic', // override
-          // cache inherited
+          llm: 'anthropic', // attempted override — will be ignored
         },
       },
     })
@@ -141,11 +146,13 @@ describe('loadPlatformConfig', () => {
     })
 
     expect(result.platformConfig.adapters).toEqual({
-      llm: 'anthropic',
+      llm: 'openai',
       cache: 'redis',
     })
     expect(result.sources.platformDefaults).toBeDefined()
     expect(result.sources.projectConfig).toBeDefined()
+    expect(result.sources.ignoredProjectFields).toContain('adapters')
+    expect(result.sources.fields?.adapters).toBe('platform')
   })
 
   it('returns empty-adapters base when neither layer exists', async () => {

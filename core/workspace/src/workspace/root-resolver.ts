@@ -16,7 +16,11 @@ import type {
   WorkspaceRootResolution,
 } from './types'
 
-const WORKSPACE_CONFIG_RELATIVE = path.join('.kb', 'kb.config.json')
+/**
+ * Filenames probed when looking for a project config. Both variants are
+ * accepted because `loadPlatformConfig` reads either one.
+ */
+const PROJECT_CONFIG_FILENAMES = ['kb.config.jsonc', 'kb.config.json'] as const
 
 /**
  * Package markers used to recognise an installed KB Labs platform. Any one of
@@ -56,17 +60,28 @@ function resolveProjectEnvRoot(
   )
 }
 
-async function findConfigRoot(
+/**
+ * Walk up from `startDir` looking for a directory that contains
+ * `.kb/kb.config.jsonc` or `.kb/kb.config.json`. Returns the first match, or
+ * `undefined` if none is found before the filesystem root.
+ *
+ * This is the canonical "is this a project?" probe — exported so CLI
+ * commands, discovery, and scope-aware code can share the same rules the
+ * config loader uses.
+ */
+export async function findProjectConfigRoot(
   startDir: string,
-  fs: WorkspaceFs,
+  fs: WorkspaceFs = defaultFs,
 ): Promise<string | undefined> {
   let current = path.resolve(startDir)
 
   while (true) {
-    const configPath = path.join(current, WORKSPACE_CONFIG_RELATIVE)
-    // eslint-disable-next-line no-await-in-loop -- Searching for project root: must check each directory sequentially
-    if (await fs.exists(configPath)) {
-      return current
+    for (const name of PROJECT_CONFIG_FILENAMES) {
+      const configPath = path.join(current, '.kb', name)
+      // eslint-disable-next-line no-await-in-loop -- Sequential walk is intentional
+      if (await fs.exists(configPath)) {
+        return current
+      }
     }
 
     const parent = path.dirname(current)
@@ -120,7 +135,7 @@ export async function resolveProjectRoot(
     }
   }
 
-  const configRoot = await findConfigRoot(startDir, fs)
+  const configRoot = await findProjectConfigRoot(startDir, fs)
   if (configRoot) {
     return {
       rootDir: configRoot,
@@ -212,10 +227,13 @@ function isInsidePnpmStore(candidate: string): boolean {
  * Walk up from `startDir` looking for either a platform marker
  * (`node_modules/@kb-labs/*`) or a pnpm workspace marker
  * (`pnpm-workspace.yaml`). Returns the first match.
+ *
+ * Exported so CLI/diagnostics code can identify the platform root without
+ * paying for the full composite `resolvePlatformRoot` fallback chain.
  */
-async function walkUpForPlatformMarker(
+export async function findPlatformMarkerRoot(
   startDir: string,
-  fs: WorkspaceFs,
+  fs: WorkspaceFs = defaultFs,
 ): Promise<string | undefined> {
   let current = path.resolve(startDir)
 
@@ -355,7 +373,7 @@ export async function resolvePlatformRoot(
     }
   }
 
-  const fromMarker = await walkUpForPlatformMarker(startDir, fs)
+  const fromMarker = await findPlatformMarkerRoot(startDir, fs)
   if (fromMarker) {
     return {
       rootDir: fromMarker,

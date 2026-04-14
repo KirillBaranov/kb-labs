@@ -33,6 +33,20 @@ export interface ExecuteCommandV3Options {
   handlerPath: string;
 
   /**
+   * Absolute plugin root directory. When the caller already knows where
+   * the plugin lives (e.g. from a discovery result's `pkgRoot`), it should
+   * pass it here — module resolution inside the execution backend will
+   * then search the plugin's own `node_modules`, which is required for
+   * project-scope plugins whose dependencies live at
+   * `<projectRoot>/.kb/plugins/<name>/node_modules/`.
+   *
+   * If omitted, a fallback resolver walks `node_modules` starting from
+   * `cwd` (legacy behaviour — only works for plugins installed at the
+   * CLI invocation directory).
+   */
+  pluginRoot?: string;
+
+  /**
    * Command arguments
    */
   argv: string[];
@@ -183,8 +197,12 @@ export async function executeCommandV3(
   const input = { argv, flags };
 
   try {
-    // Resolve plugin root (required by ExecutionBackend)
-    const pluginRoot = resolvePluginRoot(pluginId, pluginVersion);
+    // Resolve plugin root (required by ExecutionBackend). Prefer the
+    // caller-supplied pkgRoot — the CLI discovery layer already knows
+    // exactly where the plugin lives and this is the only path that
+    // handles project-scope plugins whose deps live outside cwd.
+    const pluginRoot =
+      options.pluginRoot ?? resolvePluginRoot(pluginId, options.cwd ?? process.cwd());
 
     // Build ExecutionRequest for platform.executionBackend
     const request: ExecutionRequest = {
@@ -238,21 +256,29 @@ export async function executeCommandV3(
 }
 
 /**
- * Resolve plugin root directory from pluginId and version.
- * In CLI context, plugins are installed in workspace node_modules.
+ * Fallback resolver for plugin root when the caller didn't supply one.
+ *
+ * Strategy: ask Node's resolver to find `<pluginId>/package.json` with a
+ * search path rooted at `searchFrom`. This correctly handles hoisted
+ * node_modules in pnpm workspaces and installed mode (the CLI wrapper
+ * passes its cwd, which is the project root).
+ *
+ * This fallback is intentionally narrow — it can't find plugins whose
+ * `node_modules` live outside the search path (e.g. a project-scope
+ * plugin under `<projectRoot>/.kb/plugins/<name>/node_modules/` when the
+ * CLI is invoked from elsewhere). For those callers must pass
+ * `pluginRoot` explicitly.
  */
-function resolvePluginRoot(pluginId: string, _pluginVersion: string): string {
-  // For workspace plugins, resolve from node_modules
-  const nodeModulesPath = path.resolve(process.cwd(), "node_modules", pluginId);
-
-  // Fallback: try to resolve via require.resolve (works for both CJS and ESM)
+function resolvePluginRoot(pluginId: string, searchFrom: string): string {
+  const nodeModulesPath = path.resolve(searchFrom, "node_modules", pluginId);
   try {
     const packageJson = require.resolve(`${pluginId}/package.json`, {
-      paths: [process.cwd()],
+      paths: [searchFrom],
     });
     return path.dirname(packageJson);
   } catch {
-    // If not found, return node_modules path (let backend handle the error)
+    // Return the conventional path and let the execution backend surface
+    // a clearer error (E_HANDLER_NOT_FOUND) than a generic resolve failure.
     return nodeModulesPath;
   }
 }

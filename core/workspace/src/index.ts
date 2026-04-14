@@ -1,4 +1,6 @@
 export {
+  findPlatformMarkerRoot,
+  findProjectConfigRoot,
   resolvePlatformRoot,
   resolveProjectRoot,
   resolveRoots,

@@ -121,6 +121,89 @@ function isPlainObject(v: unknown): v is Record<string, unknown> {
     return typeof v === "object" && v !== null && Object.getPrototypeOf(v) === Object.prototype;
 }
 
+/**
+ * Policy for a single top-level field during platform ← project merge.
+ *  - `platform-only`  — ignore the project layer's value (emit warning upstream).
+ *  - `mergeable`      — deep-merge (project overrides platform).
+ *  - `project-only`   — take the project value as-is; platform layer is dropped.
+ */
+export type FieldMergePolicy = "platform-only" | "mergeable" | "project-only";
+
+export interface MergeWithFieldPolicyResult<T> {
+    /** Merged config object. */
+    value: T;
+    /** Top-level field names where the project layer was ignored because the field is `platform-only`. */
+    ignoredProjectFields: string[];
+    /** Per-field provenance: `'platform'`, `'project'`, or `'both'`. */
+    sources: Record<string, "platform" | "project" | "both">;
+}
+
+/**
+ * Merge two config layers using a per-field policy map.
+ *
+ * The `policy` map is keyed by top-level field names on the config object.
+ * Fields missing from the map default to `mergeable` — i.e. deep-merge with
+ * project overriding platform.
+ */
+export function mergeWithFieldPolicy<T extends object>(
+    platform: Partial<T> | undefined,
+    project: Partial<T> | undefined,
+    policy: Partial<Record<keyof T, FieldMergePolicy>>,
+): MergeWithFieldPolicyResult<T> {
+    const out: Record<string, unknown> = {};
+    const sources: Record<string, "platform" | "project" | "both"> = {};
+    const ignoredProjectFields: string[] = [];
+
+    const keys = new Set<string>([
+        ...Object.keys(platform ?? {}),
+        ...Object.keys(project ?? {}),
+    ]);
+
+    for (const key of keys) {
+        const platformValue = (platform as Record<string, unknown> | undefined)?.[key];
+        const projectValue = (project as Record<string, unknown> | undefined)?.[key];
+        const fieldPolicy = (policy as Record<string, FieldMergePolicy | undefined>)[key] ?? "mergeable";
+
+        const hasPlatform = platformValue !== undefined;
+        const hasProject = projectValue !== undefined;
+
+        if (fieldPolicy === "platform-only") {
+            if (hasProject) { ignoredProjectFields.push(key); }
+            if (hasPlatform) {
+                out[key] = platformValue;
+                sources[key] = "platform";
+            }
+            continue;
+        }
+
+        if (fieldPolicy === "project-only") {
+            if (hasProject) {
+                out[key] = projectValue;
+                sources[key] = "project";
+            } else if (hasPlatform) {
+                // Platform layer carries a value for a project-only field — drop it silently;
+                // it has no semantic meaning at the platform layer.
+                continue;
+            }
+            continue;
+        }
+
+        // mergeable
+        if (hasPlatform && hasProject) {
+            out[key] = mergeDefined(platformValue as never, projectValue as never);
+            sources[key] = "both";
+        } else if (hasPlatform) {
+            out[key] = platformValue;
+            sources[key] = "platform";
+        } else if (hasProject) {
+            out[key] = projectValue;
+            sources[key] = "project";
+        }
+    }
+
+    return { value: out as T, ignoredProjectFields, sources };
+}
+
 const SYSTEM_DEFAULTS = {
     profiles: { rootDir: '.kb/profiles', defaultName: 'default', strict: true }
 } as const;
