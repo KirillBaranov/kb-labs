@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/plugin-contracts",
-  "version": "2.24.0",
+  "version": "2.25.0",
   "description": "Plugin System Contracts - Pure types with 0 runtime dependencies",
   "type": "module",
   "main": "./dist/index.cjs",
