@@ -6,8 +6,8 @@ import "testing"
 func TestPackageSpec(t *testing.T) {
 	t.Run("prod (no localPath)", func(t *testing.T) {
 		p := Package{Name: "@kb-labs/cli-bin"}
-		if got := p.PackageSpec(); got != "@kb-labs/cli-bin" {
-			t.Errorf("PackageSpec() = %q, want %q", got, "@kb-labs/cli-bin")
+		if got := p.PackageSpec(); got != "@kb-labs/cli-bin@latest" {
+			t.Errorf("PackageSpec() = %q, want %q", got, "@kb-labs/cli-bin@latest")
 		}
 	})
 
@@ -24,8 +24,8 @@ func TestPackageSpec(t *testing.T) {
 func TestComponentPackageSpec(t *testing.T) {
 	t.Run("prod (no localPath)", func(t *testing.T) {
 		c := Component{ID: "commit", Pkg: "@kb-labs/commit-entry"}
-		if got := c.PackageSpec(); got != "@kb-labs/commit-entry" {
-			t.Errorf("PackageSpec() = %q, want %q", got, "@kb-labs/commit-entry")
+		if got := c.PackageSpec(); got != "@kb-labs/commit-entry@latest" {
+			t.Errorf("PackageSpec() = %q, want %q", got, "@kb-labs/commit-entry@latest")
 		}
 	})
 
@@ -50,8 +50,8 @@ func TestCorePackageSpecs(t *testing.T) {
 	if len(specs) != 2 {
 		t.Fatalf("CorePackageSpecs() len = %d, want 2", len(specs))
 	}
-	if specs[0] != "@kb-labs/cli-bin" {
-		t.Errorf("specs[0] = %q, want %q", specs[0], "@kb-labs/cli-bin")
+	if specs[0] != "@kb-labs/cli-bin@latest" {
+		t.Errorf("specs[0] = %q, want %q", specs[0], "@kb-labs/cli-bin@latest")
 	}
 	if specs[1] != "@kb-labs/sdk@file:/workspace/sdk" {
 		t.Errorf("specs[1] = %q, want %q", specs[1], "@kb-labs/sdk@file:/workspace/sdk")
@@ -97,7 +97,7 @@ func TestDevManifestRoundTrip(t *testing.T) {
 	if specs[0] != "@kb-labs/cli-bin@file:/workspace/cli-bin" {
 		t.Errorf("core[0] spec = %q", specs[0])
 	}
-	if specs[1] != "@kb-labs/sdk" {
+	if specs[1] != "@kb-labs/sdk@latest" {
 		t.Errorf("core[1] spec = %q", specs[1])
 	}
 	if m.Plugins[0].PackageSpec() != "@kb-labs/commit-entry@file:/workspace/commit-cli" {

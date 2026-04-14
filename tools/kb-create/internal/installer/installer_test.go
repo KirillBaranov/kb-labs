@@ -396,14 +396,14 @@ func TestInstallCallsCorePackages(t *testing.T) {
 		t.Fatalf("Install() error = %v", err)
 	}
 
-	// Both core packages must appear in install calls.
+	// Both core packages must appear in install calls (with @latest spec).
 	seen := make(map[string]bool)
 	for _, c := range fake.calls {
 		seen[c] = true
 	}
-	for _, core := range m.CorePackageNames() {
-		if !seen["install:"+core] {
-			t.Errorf("core package %q not installed; calls = %v", core, fake.calls)
+	for _, spec := range m.CorePackageSpecs() {
+		if !seen["install:"+spec] {
+			t.Errorf("core package %q not installed; calls = %v", spec, fake.calls)
 		}
 	}
 }
