@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/qa-entry",
-  "version": "2.20.0",
+  "version": "2.22.0",
   "type": "module",
   "description": "CLI commands for KB Labs QA Plugin — qa:run, qa:save, qa:history, qa:trends, qa:regressions, baseline:update, baseline:status.",
   "main": "./dist/index.js",
