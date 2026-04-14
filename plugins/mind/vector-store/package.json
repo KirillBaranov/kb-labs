@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/mind-vector-store",
-  "version": "2.29.0",
+  "version": "2.30.0",
   "type": "module",
   "description": "Lightweight vector storage for KB Labs Mind RAG pipeline.",
   "main": "./dist/index.js",

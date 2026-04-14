@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/scaffold-contracts",
-  "version": "2.29.0",
+  "version": "2.30.0",
   "type": "module",
   "description": "Public types for the KB Labs scaffold engine (entity, block, manifest patch).",
   "main": "./dist/index.js",
