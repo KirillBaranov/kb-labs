@@ -198,14 +198,25 @@ async function readConfigFile(configPath: string): Promise<{
   }
 
   const data = result.data as Record<string, unknown> & {
-    platform?: PlatformConfig
+    platform?: PlatformConfig | string
     adapterOptions?: Partial<Record<string, unknown>>
   }
 
+  // Normalise the shorthand form produced by `kb-create` (installed mode),
+  // where the top-level `platform` is a bare string pointing at the platform
+  // directory instead of the structured `{ dir, adapters, ... }` object used
+  // by the dev-mode monorepo. Treat the string as `{ dir: "…" }` so the
+  // loader can still honour `platform.dir` without mis-parsing the section.
+  const rawPlatform = data.platform
+  const normalizedPlatform: PlatformConfig | undefined =
+    typeof rawPlatform === 'string'
+      ? { platform: { dir: rawPlatform } }
+      : rawPlatform
+
   // Merge top-level adapterOptions into the platform section so initPlatform
   // receives adapter credentials (e.g. llm.kbClientId) alongside adapter bindings.
-  const platformSection: PlatformConfig | undefined = data.platform
-    ? { ...data.platform, adapterOptions: data.adapterOptions ?? data.platform.adapterOptions }
+  const platformSection: PlatformConfig | undefined = normalizedPlatform
+    ? { ...normalizedPlatform, adapterOptions: data.adapterOptions ?? normalizedPlatform.adapterOptions }
     : data.adapterOptions
       ? { adapters: {}, adapterOptions: data.adapterOptions }
       : undefined
