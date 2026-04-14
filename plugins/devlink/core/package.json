@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/devlink-core",
-  "version": "2.20.0",
+  "version": "2.22.0",
   "type": "module",
   "description": "Core business logic for DevLink plugin — discovery, plan, apply, state, backup.",
   "main": "./dist/index.js",
