@@ -32,6 +32,9 @@ export async function post<T = unknown>(path: string, body: Record<string, unkno
       const text = await res.text();
       throw new Error(`Marketplace ${path} failed (${res.status}): ${text}`);
     }
+    // 204 No Content (e.g. unlink, uninstall) has no body — don't call
+    // res.json() or it throws "Unexpected end of JSON input".
+    if (res.status === 204) { return undefined as T; }
     return await res.json() as T;
   } catch (err) {
     if ((err as Error).name === 'AbortError') {
