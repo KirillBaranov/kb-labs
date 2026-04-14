@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/adapters-workspace-agent",
-  "version": "2.25.0",
+  "version": "2.27.0",
   "description": "Workspace adapter that materializes workspaces from a remote Host Agent via Gateway",
   "type": "module",
   "main": "./dist/index.js",

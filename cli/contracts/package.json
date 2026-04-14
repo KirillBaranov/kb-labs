@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/cli-contracts",
-  "version": "2.25.0",
+  "version": "2.27.0",
   "description": "Type definitions and contracts for KB Labs CLI framework (Commands, Context, Presenters, Profiles)",
   "type": "module",
   "main": "./dist/index.js",

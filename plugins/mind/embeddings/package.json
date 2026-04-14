@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/mind-embeddings",
-  "version": "2.25.0",
+  "version": "2.27.0",
   "type": "module",
   "description": "Embedding provider abstractions for KB Labs Mind.",
   "main": "./dist/index.js",

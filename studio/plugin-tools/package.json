@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/studio-plugin-tools",
-  "version": "2.25.0",
+  "version": "2.27.0",
   "description": "Build tooling for plugin Studio pages — Rspack config for Module Federation remotes",
   "type": "module",
   "main": "./dist/index.js",
