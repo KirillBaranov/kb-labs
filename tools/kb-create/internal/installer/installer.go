@@ -147,6 +147,8 @@ func (ins *Installer) Install(sel *Selection, m *manifest.Manifest) (*Result, er
 	}
 
 	// Step 3: Scan installed packages for manifests → generate marketplace.lock + devservices.yaml.
+	// (Gateway upstreams are rebuilt a few steps down via refreshDerivedConfigs
+	// — kept scoped here because the Step counter is driven from the install flow.)
 	step++
 	ins.step(step, totalSteps, "Scanning manifests")
 	scanResult, scanErr := scan.Run(sel.PlatformDir)
@@ -294,7 +296,54 @@ func (ins *Installer) Update(platformDir string, current *manifest.Manifest) (*U
 		return nil, err
 	}
 
+	// Re-scan installed manifests and rebuild derived configs
+	// (marketplace.lock, devservices.yaml, gateway upstreams) so they
+	// reflect any package additions/removals from this update. Without
+	// this the gateway stays on whatever upstreams were written at install
+	// time and silently 404s after a new service package is added.
+	ins.refreshDerivedConfigs(platformDir, current)
+
 	return &UpdateResult{Diff: diff, Duration: time.Since(start)}, nil
+}
+
+// refreshDerivedConfigs re-runs the manifest scanner and rewrites the
+// derived config files (marketplace.lock, devservices.yaml, gateway
+// upstreams) from the current state of the platform's node_modules.
+//
+// Called from both Install and Update so the two paths stay in sync and
+// gateway upstreams never go stale after `kb-create update`.
+func (ins *Installer) refreshDerivedConfigs(platformDir string, m *manifest.Manifest) {
+	scanResult, scanErr := scan.Run(platformDir)
+	if scanErr != nil {
+		ins.Log.Printf("  [WARN] manifest scan failed: %v", scanErr)
+		return
+	}
+
+	ins.Log.Printf("  found %d plugins, %d adapters, %d services",
+		len(scanResult.Plugins), len(scanResult.Adapters), len(scanResult.Services))
+	for _, e := range scanResult.Errors {
+		ins.Log.Printf("  [WARN] %s: %s", e.Package, e.Error)
+	}
+	if err := scan.WriteConfigs(platformDir, scanResult); err != nil {
+		ins.Log.Printf("  [WARN] write configs: %v", err)
+	}
+
+	// Rebuild gateway upstreams from the manifest's service → prefix map.
+	infoMap := make(map[string]scan.ServiceGatewayInfo)
+	for _, svc := range m.Services {
+		if svc.GatewayPrefix != "" {
+			infoMap[svc.ID] = scan.ServiceGatewayInfo{
+				Prefix:  svc.GatewayPrefix,
+				Rewrite: svc.GatewayRewrite,
+			}
+		}
+	}
+	if len(infoMap) > 0 {
+		gwCfg := scan.GenerateGatewayConfig(scanResult, infoMap)
+		if err := scan.MergeGatewayIntoConfig(platformDir, gwCfg); err != nil {
+			ins.Log.Printf("  [WARN] gateway config: %v", err)
+		}
+	}
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
