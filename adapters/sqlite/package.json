@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/adapters-sqlite",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "description": "SQLite adapter implementing ISQLDatabase interface",
   "type": "module",
   "main": "./dist/index.js",

@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/rest-api-contracts",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "description": "Shared API contracts for KB Labs REST/CLI/Studio surfaces",
   "type": "module",
   "main": "./dist/index.js",
@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "@kb-labs/plugin-contracts": "workspace:*",
-    "zod": "^4.0.0"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",

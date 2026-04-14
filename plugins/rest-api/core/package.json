@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/rest-api-core",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "description": "Core REST API functionality for KB Labs, including request handling and routing",
   "type": "module",
   "main": "./dist/index.js",
@@ -28,7 +28,7 @@
     "test:watch": "vitest --passWithNoTests -c ../../vitest.config.ts"
   },
   "dependencies": {
-    "zod": "^3.23.8",
+    "zod": "^3.25.76",
     "@kb-labs/core-bundle": "workspace:*",
     "@kb-labs/core-config": "workspace:*",
     "@kb-labs/plugin-contracts": "workspace:*",

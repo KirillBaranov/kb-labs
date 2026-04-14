@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/plugin-execution-factory",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "description": "Execution backend factory for KB Labs plugins - extracted to break circular dependencies",
   "type": "module",
   "main": "./dist/index.js",
@@ -33,7 +33,7 @@
     "@kb-labs/core-platform": "workspace:*",
     "@kb-labs/plugin-contracts": "workspace:*",
     "@kb-labs/plugin-runtime": "workspace:*",
-    "@kb-labs/shared-cli-ui": "workspace:^"
+    "@kb-labs/shared-cli-ui": "workspace:*"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",

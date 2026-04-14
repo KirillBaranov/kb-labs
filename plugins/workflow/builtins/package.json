@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/workflow-builtins",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "description": "Built-in workflow handlers (shell, etc.)",
   "files": [
     "dist"
@@ -31,7 +31,7 @@
   },
   "dependencies": {
     "@kb-labs/plugin-contracts": "workspace:*",
-    "execa": "^8.0.0"
+    "execa": "^9.5.3"
   },
   "devDependencies": {
     "@types/node": "^24.3.3",

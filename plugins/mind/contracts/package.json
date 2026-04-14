@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/mind-contracts",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "type": "module",
   "description": "Public contracts for the KB Labs Mind plugin. Declares artifacts, commands, workflows, and API guarantees for consumers.",
   "main": "./dist/index.js",
@@ -41,7 +41,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "zod": "^3.23.8"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",

@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/policy-contracts",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "type": "module",
   "description": "Types, interfaces, and schemas for the KB Labs policy plugin.",
   "main": "./dist/index.js",
@@ -28,7 +28,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "zod": "^3.23.8"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",

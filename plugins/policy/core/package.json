@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/policy-core",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "type": "module",
   "description": "Core implementation for KB Labs policy plugin. Category resolver, policy runner, and checks.",
   "main": "./dist/index.js",
@@ -38,7 +38,7 @@
     "@kb-labs/policy-contracts": "workspace:*",
     "@kb-labs/sdk": "workspace:*",
     "semver": "^7.6.3",
-    "zod": "^3.23.8"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",

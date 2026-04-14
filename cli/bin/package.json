@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/cli-bin",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "type": "module",
   "description": "KB Labs CLI tool for project management and automation",
   "bin": {
@@ -50,7 +50,7 @@
     "glob": "^11.0.0",
     "semver": "^7.6.3",
     "yaml": "^2.8.2",
-    "zod": "^3.24.1"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "esbuild": "^0.27.0",

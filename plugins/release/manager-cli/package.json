@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/release-manager-cli",
-  "version": "2.30.0",
+  "version": "2.31.0",
   "description": "KB Labs Release Manager - CLI commands for release management",
   "type": "module",
   "main": "./dist/index.js",
@@ -49,10 +49,10 @@
     "glob": "^11.0.0",
     "globby": "^11.0.0",
     "npm-packlist": "^10.0.3",
-    "zod": "^3.23.8"
+    "zod": "^3.25.76"
   },
   "peerDependencies": {
-    "react": ">=18.0.0",
+    "react": "^18.3.1",
     "react-router-dom": ">=6.0.0"
   },
   "devDependencies": {
