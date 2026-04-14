@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/adapters-environment-docker",
-  "version": "2.29.0",
+  "version": "2.30.0",
   "description": "Docker adapter implementing IEnvironmentProvider",
   "type": "module",
   "main": "./dist/index.js",

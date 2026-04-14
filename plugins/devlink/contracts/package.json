@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/devlink-contracts",
-  "version": "2.29.0",
+  "version": "2.30.0",
   "type": "module",
   "description": "Contracts package for DevLink plugin — types, Zod schemas, flags.",
   "main": "./dist/index.js",

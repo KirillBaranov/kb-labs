@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/studio-data-client",
-  "version": "2.29.0",
+  "version": "2.30.0",
   "description": "KB Labs Studio data client — API SDK with versioned contracts, mocks, and TanStack Query hooks",
   "type": "module",
   "main": "./dist/index.js",
