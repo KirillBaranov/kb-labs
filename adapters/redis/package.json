@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/adapters-redis",
-  "version": "2.22.0",
+  "version": "2.23.0",
   "description": "Redis adapter implementing ICache interface",
   "type": "module",
   "main": "./dist/index.js",

@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/workflow-contracts",
-  "version": "2.22.0",
+  "version": "2.23.0",
   "type": "module",
   "description": "Contracts, types and schemas for the KB Labs workflow engine.",
   "main": "./dist/index.js",
