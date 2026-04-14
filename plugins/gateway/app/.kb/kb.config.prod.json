@@ -13,7 +13,7 @@
     "adapterOptions": {
       "llm": {
         "defaultTier": "small",
-        "baseURL": "https://kb-labs-openai-proxy.kblabs-proxy.workers.dev/v1",
+        "baseURL": "${OPENAI_PROXY_URL}",
         "tierMapping": {
           "small": [
             {

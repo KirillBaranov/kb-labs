@@ -9,6 +9,13 @@ export default {
     headers.set('host', 'api.openai.com');
     // Inject API key from worker secret — client never sends it
     headers.set('Authorization', `Bearer ${env.OPENAI_API_KEY}`);
+    // Strip IP-forwarding headers so OpenAI sees Cloudflare's IP, not the VPS IP
+    headers.delete('cf-connecting-ip');
+    headers.delete('x-forwarded-for');
+    headers.delete('x-real-ip');
+    headers.delete('true-client-ip');
+    headers.delete('x-forwarded-host');
+    headers.delete('x-original-forwarded-for');
 
     const response = await fetch(target, {
       method: request.method,
