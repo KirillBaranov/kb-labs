@@ -170,7 +170,7 @@ export function createGovernedPlatformServices(
     // Logger: always allowed, create child logger with plugin context
     logger: raw.logger.child({ plugin: pluginId }),
 
-    // LLM: check permission and proxy ILLM interface (complete, stream)
+    // LLM: check permission and proxy ILLM interface (complete, stream, chatWithTools)
     llm: permissions.platform?.llm
       ? {
           complete: async (prompt, options) => {
@@ -203,6 +203,13 @@ export function createGovernedPlatformServices(
 
             yield* raw.llm.stream(prompt, options);
           },
+          ...(raw.llm.chatWithTools
+            ? {
+                chatWithTools: async (messages, options) => {
+                  return raw.llm.chatWithTools!(messages, options);
+                },
+              }
+            : {}),
         }
       : (createDeniedService('llm') as any),
 

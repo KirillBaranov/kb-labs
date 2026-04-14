@@ -173,7 +173,7 @@ IMPORTANT: If a finding matches a project rule, you MUST include the exact ruleI
                 },
                 category: {
                   type: 'string',
-                  enum: validCategories.length > 0 ? validCategories : undefined,
+                  ...(validCategories.length > 0 ? { enum: validCategories } : {}),
                   description: validCategories.length > 0
                     ? `Category must be one of: ${validCategories.join(', ')}`
                     : 'Category from project rules',
