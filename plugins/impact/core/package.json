@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/impact-core",
-  "version": "2.27.0",
+  "version": "2.28.0",
   "type": "module",
   "description": "Core implementation of KB Labs Impact Analysis Plugin.",
   "main": "./dist/index.js",
