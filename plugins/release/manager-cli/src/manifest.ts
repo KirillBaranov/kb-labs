@@ -62,7 +62,7 @@ const pluginPermissions = combinePermissions()
     analytics: true,                 // Track release events
   })
   .withQuotas({
-    timeoutMs: 600000, // 10 min for complex releases
+    timeoutMs: 1800000, // 30 min for complex releases (148 packages)
     memoryMb: 2048,
     cpuMs: 300000, // 5 min CPU time
   })
