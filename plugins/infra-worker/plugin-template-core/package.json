@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/infra-worker-core",
-  "version": "2.25.0",
+  "version": "2.27.0",
   "type": "module",
   "description": "Infra worker plugin core for workspace/environment/snapshot lifecycle operations.",
   "main": "./dist/index.js",

@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/commit-contracts",
-  "version": "2.25.0",
+  "version": "2.27.0",
   "type": "module",
   "description": "Public contracts package for KB Labs Commit plugin. Provides typed guarantees about artifacts, commands, and APIs.",
   "main": "./dist/index.js",
