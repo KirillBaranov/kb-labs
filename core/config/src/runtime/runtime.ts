@@ -61,7 +61,8 @@ function stripJsonComments(src: string): string {
             out += src[i++];
         }
     }
-    return out;
+    // Remove trailing commas before } or ] (not valid JSON but allowed in JSONC).
+    return out.replace(/,(\s*[}\]])/g, '$1');
 }
 
 export async function readJsonWithDiagnostics<T = unknown>(p: string): Promise<JsonReadResult<T>> {
