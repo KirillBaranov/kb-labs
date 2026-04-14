@@ -179,6 +179,9 @@ func generate(opts Options) string {
 	writePluginBlock(&b, "commit", "AI-powered commit message generation.", plugSet, `
       // Auto-stage changed files before generating commit.
       "autoStage": false`)
+	writePluginBlock(&b, "scaffold", "Scaffold plugins and adapters.", plugSet, `
+      // Output directory for scaffolded entities.
+      "outDir": "plugins"`)
 	b.WriteString(`  }
 }
 `)

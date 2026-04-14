@@ -102,6 +102,12 @@
       "pkg": "@kb-labs/commit-entry",
       "description": "AI commit generation",
       "default": true
+    },
+    {
+      "id": "scaffold",
+      "pkg": "@kb-labs/scaffold",
+      "description": "Scaffold plugins and adapters",
+      "default": true
     }
   ],
   "binaries": [
