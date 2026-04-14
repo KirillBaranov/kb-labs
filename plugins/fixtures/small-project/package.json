@@ -1,14 +1,15 @@
 {
   "name": "sample-project",
-  "version": "1.2.0",
   "description": "Sample project fixture for testing Mind indexing functionality",
+  "version": "1.2.0",
   "type": "module",
+  "private": true,
   "main": "src/index.ts",
   "scripts": {
     "build": "tsc",
-    "test": "vitest run --passWithNoTests",
     "lint": "eslint . --ignore-pattern 'dist/**'",
-    "lint:fix": "eslint . --fix --ignore-pattern 'dist/**'"
+    "lint:fix": "eslint . --fix --ignore-pattern 'dist/**'",
+    "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
     "lodash": "^4.17.21"
@@ -16,6 +17,5 @@
   "devDependencies": {
     "typescript": "^5.0.0",
     "vitest": "^3.2.4"
-  },
-  "private": true
+  }
 }

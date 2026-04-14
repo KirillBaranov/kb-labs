@@ -1,15 +1,14 @@
 {
   "name": "@kb-labs/studio-ui-kit",
-  "version": "2.34.0",
   "description": "KB Labs Studio UI Kit — React components using Ant Design and design tokens",
+  "version": "2.34.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "style": "./dist/index.css",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./dist/index.css": "./dist/index.css"
   },
@@ -17,27 +16,19 @@
     "dist"
   ],
   "scripts": {
-    "clean": "rimraf dist",
     "build": "tsup",
-    "postbuild": "pnpm docs:generate",
-    "type-check": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests",
-    "lint": "eslint . --max-warnings=0",
+    "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
+    "docs:generate": "tsx scripts/generate-component-docs.ts",
+    "lint": "eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix",
+    "postbuild": "pnpm docs:generate",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
-    "docs:generate": "tsx scripts/generate-component-docs.ts"
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/studio-ui-core": "workspace:*"
-  },
-  "peerDependencies": {
-    "@ant-design/charts": "^2.0.0",
-    "antd": "^5.22.5",
-    "dayjs": "^1.11.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^7.0.0"
   },
   "devDependencies": {
     "@ant-design/charts": "^2.6.6",
@@ -48,11 +39,11 @@
     "@types/node": "^24.3.3",
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
-    "react-router-dom": "^7.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "dayjs": "^1.11.19",
     "eslint": "^9",
     "jsdom": "^27.0.0",
+    "react-router-dom": "^7.0.0",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
     "tsx": "^4.21.0",
@@ -62,5 +53,14 @@
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
-  }
+  },
+  "peerDependencies": {
+    "@ant-design/charts": "^2.0.0",
+    "antd": "^5.22.5",
+    "dayjs": "^1.11.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.0.0"
+  },
+  "style": "./dist/index.css"
 }

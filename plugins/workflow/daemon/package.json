@@ -1,6 +1,25 @@
 {
+  "name": "@kb-labs/workflow-daemon",
+  "description": "Workflow daemon for KB Labs - standalone service for background job execution",
+  "version": "2.34.0",
+  "type": "module",
+  "main": "./dist/index.js",
   "bin": {
     "kb-workflow": "./dist/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "clean": "rimraf dist",
+    "dev": "tsx watch src/index.ts",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "start": "node dist/index.js",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",
@@ -30,7 +49,6 @@
     "pino": "^9.0.0",
     "yaml": "^2.8.0"
   },
-  "description": "Workflow daemon for KB Labs - standalone service for background job execution",
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
     "@types/node": "^24.3.3",
@@ -45,25 +63,7 @@
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
   },
-  "files": [
-    "dist"
-  ],
   "kb": {
     "manifest": "./dist/manifest.js"
-  },
-  "main": "./dist/index.js",
-  "name": "@kb-labs/workflow-daemon",
-  "scripts": {
-    "build": "tsup",
-    "clean": "rimraf dist",
-    "dev": "tsx watch src/index.ts",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
-    "start": "node dist/index.js",
-    "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest",
-    "type-check": "tsc --noEmit"
-  },
-  "type": "module",
-  "version": "2.34.0"
+  }
 }

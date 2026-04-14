@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/studio-hooks",
-  "version": "2.34.0",
   "description": "Studio SDK hooks — useData, useMutateData, useSSE, useInfiniteData, useWebSocket, useEventBus, usePermissions, useNavigation, useNotification, useTheme",
+  "version": "2.34.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -14,26 +14,18 @@
   "files": [
     "dist"
   ],
-  "sideEffects": false,
   "scripts": {
-    "clean": "rimraf dist",
     "build": "tsup",
+    "clean": "rimraf dist",
     "dev": "tsup --watch",
-    "type-check": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint . --max-warnings=0"
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/studio-event-bus": "workspace:*",
     "@kb-labs/studio-ui-core": "workspace:*"
-  },
-  "peerDependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "react-router-dom": "^7.0.0",
-    "@tanstack/react-query": "^5.0.0",
-    "antd": "^5.21.0"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
@@ -51,5 +43,13 @@
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
-  }
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.0.0",
+    "antd": "^5.21.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.0.0"
+  },
+  "sideEffects": false
 }

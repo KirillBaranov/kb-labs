@@ -1,30 +1,30 @@
 {
   "name": "@kb-labs/shared-command-kit",
+  "description": "Command Kit for KB Labs CLI - utilities and high-level API for building commands",
   "version": "2.34.0",
   "type": "module",
-  "description": "Command Kit for KB Labs CLI - utilities and high-level API for building commands",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./flags": {
-      "import": "./dist/flags/index.js",
-      "types": "./dist/flags/index.d.ts"
+      "types": "./dist/flags/index.d.ts",
+      "import": "./dist/flags/index.js"
     },
     "./analytics": {
-      "import": "./dist/analytics/index.js",
-      "types": "./dist/analytics/index.d.ts"
+      "types": "./dist/analytics/index.d.ts",
+      "import": "./dist/analytics/index.js"
     },
     "./errors": {
-      "import": "./dist/errors/index.js",
-      "types": "./dist/errors/index.d.ts"
+      "types": "./dist/errors/index.d.ts",
+      "import": "./dist/errors/index.js"
     },
     "./helpers": {
-      "import": "./dist/helpers/index.js",
-      "types": "./dist/helpers/index.d.ts"
+      "types": "./dist/helpers/index.d.ts",
+      "import": "./dist/helpers/index.js"
     }
   },
   "files": [
@@ -32,16 +32,15 @@
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
   "scripts": {
-    "clean": "rimraf dist",
     "build": "tsup --config tsup.config.ts",
+    "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
-    "type-check": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/core-platform": "workspace:*",
@@ -50,8 +49,8 @@
     "@kb-labs/plugin-contracts": "workspace:*",
     "@kb-labs/plugin-runtime": "workspace:*",
     "@kb-labs/shared-cli-ui": "workspace:*",
-    "zod": "^3.25.76",
-    "glob": "^11.0.0"
+    "glob": "^11.0.0",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
@@ -68,5 +67,6 @@
   "packageManager": "pnpm@9.11.0",
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "sideEffects": false
 }

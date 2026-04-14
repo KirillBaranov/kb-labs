@@ -1,14 +1,14 @@
 {
   "name": "@kb-labs/rest-api-core",
-  "version": "2.34.0",
   "description": "Core REST API functionality for KB Labs, including request handling and routing",
+  "version": "2.34.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
   },
   "files": [
@@ -16,31 +16,30 @@
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
   "scripts": {
-    "clean": "rimraf dist",
     "build": "tsup",
+    "clean": "rimraf dist",
     "dev": "tsup --watch",
-    "type-check": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "test": "vitest run --passWithNoTests -c ../../vitest.config.ts",
-    "test:watch": "vitest --passWithNoTests -c ../../vitest.config.ts"
+    "test:watch": "vitest --passWithNoTests -c ../../vitest.config.ts",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "zod": "^3.25.76",
     "@kb-labs/core-bundle": "workspace:*",
     "@kb-labs/core-config": "workspace:*",
     "@kb-labs/plugin-contracts": "workspace:*",
-    "@kb-labs/rest-api-contracts": "workspace:*"
+    "@kb-labs/rest-api-contracts": "workspace:*",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
-    "vitest": "^3.2.4",
     "@kb-labs/devkit": "workspace:*",
-    "tsup": "^8.5.0",
     "@types/node": "^24.3.3",
     "rimraf": "^6.0.1",
-    "typescript": "^5.6.3"
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
   },
   "engines": {
     "node": ">=20.0.0",
@@ -48,5 +47,6 @@
   },
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "sideEffects": false
 }

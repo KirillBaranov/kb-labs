@@ -1,46 +1,42 @@
 {
   "name": "@kb-labs/adapters-redis",
-  "version": "2.34.0",
   "description": "Redis adapter implementing ICache interface",
+  "version": "2.34.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
   },
   "files": [
     "dist",
     "README.md"
   ],
-  "sideEffects": false,
   "scripts": {
-    "clean": "rimraf dist",
     "build": "tsup",
+    "clean": "rimraf dist",
     "dev": "tsup --watch",
-    "type-check": "tsc --noEmit",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint . --fix",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
-    "lint": "eslint src --ext .ts",
-    "lint:fix": "eslint . --fix"
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "ioredis": "^5.4.0"
   },
-  "peerDependencies": {
-    "@kb-labs/core-platform": "workspace:*"
-  },
   "devDependencies": {
     "@kb-labs/core-platform": "workspace:*",
+    "@kb-labs/devkit": "workspace:*",
     "@types/node": "^24.3.3",
     "eslint": "^9",
+    "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
     "typescript": "^5.6.3",
-    "vitest": "^3.2.4",
-    "@kb-labs/devkit": "workspace:*",
-    "rimraf": "^6.0.1"
+    "vitest": "^3.2.4"
   },
   "engines": {
     "node": ">=20.0.0",
@@ -48,5 +44,9 @@
   },
   "kb": {
     "manifest": "./dist/manifest.js"
-  }
+  },
+  "peerDependencies": {
+    "@kb-labs/core-platform": "workspace:*"
+  },
+  "sideEffects": false
 }

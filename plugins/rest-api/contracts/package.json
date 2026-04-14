@@ -1,14 +1,14 @@
 {
   "name": "@kb-labs/rest-api-contracts",
-  "version": "2.34.0",
   "description": "Shared API contracts for KB Labs REST/CLI/Studio surfaces",
+  "version": "2.34.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
   },
   "files": [
@@ -17,13 +17,13 @@
   ],
   "scripts": {
     "build": "tsup --config tsup.config.ts",
-    "dev": "tsup --config tsup.config.ts --watch",
     "clean": "rimraf dist",
+    "dev": "tsup --config tsup.config.ts --watch",
     "lint": "eslint src",
-    "test": "vitest run --passWithNoTests",
     "lint:fix": "eslint . --fix",
-    "type-check": "tsc --noEmit",
-    "test:watch": "vitest"
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/plugin-contracts": "workspace:*",

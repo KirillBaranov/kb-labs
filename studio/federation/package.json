@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/studio-federation",
-  "version": "2.34.0",
   "description": "Studio Module Federation host logic — page loader, container, error boundary",
+  "version": "2.34.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -14,28 +14,21 @@
   "files": [
     "dist"
   ],
-  "sideEffects": false,
   "scripts": {
-    "clean": "rimraf dist",
     "build": "tsup",
+    "clean": "rimraf dist",
     "dev": "tsup --watch",
-    "type-check": "tsc --noEmit",
+    "lint": "eslint . --max-warnings=0",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
-    "lint": "eslint . --max-warnings=0"
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/plugin-contracts": "workspace:*",
     "@kb-labs/studio-devtools": "workspace:*",
-    "@kb-labs/studio-hooks": "workspace:*",
     "@kb-labs/studio-event-bus": "workspace:*",
+    "@kb-labs/studio-hooks": "workspace:*",
     "@module-federation/runtime": "^2.3.0"
-  },
-  "peerDependencies": {
-    "@ant-design/icons": "^5.0.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "antd": "^5.21.0"
   },
   "devDependencies": {
     "@ant-design/icons": "^5.0.0",
@@ -51,5 +44,12 @@
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
-  }
+  },
+  "peerDependencies": {
+    "@ant-design/icons": "^5.0.0",
+    "antd": "^5.21.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "sideEffects": false
 }

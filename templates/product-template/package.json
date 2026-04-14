@@ -1,58 +1,23 @@
 {
+  "name": "@kb-labs/product-template",
+  "description": "KB Labs product template — zero-config starter powered by @kb-labs/devkit.",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
   "author": {
     "name": "Kirill Baranov",
     "url": "https://github.com/kirill-baranov"
   },
-  "bugs": {
-    "url": "https://github.com/kirill-baranov/kb-labs-product-template/issues"
-  },
-  "description": "KB Labs product template — zero-config starter powered by @kb-labs/devkit.",
-  "devDependencies": {
-    "@byjohann/toon": "*",
-    "@kb-labs/devkit": "workspace:*",
-    "@types/node": "^24.3.3",
-    "@typescript-eslint/eslint-plugin": "^8",
-    "@typescript-eslint/parser": "^8",
-    "@vitest/coverage-v8": "^3",
-    "@vue/eslint-config-typescript": "^14.6.0",
-    "eslint": "^9",
-    "eslint-plugin-vue": "^10.5.0",
-    "prettier": "^3",
-    "rimraf": "^6",
-    "tsup": "^8",
-    "typescript": "^5",
-    "vitest": "^3.2.4"
-  },
-  "engines": {
-    "node": "\u003e=18.18.0",
-    "pnpm": "\u003e=9.0.0"
-  },
-  "homepage": "https://github.com/kirill-baranov/kb-labs-product-template#readme",
   "license": "MIT",
-  "lint-staged": {
-    "*.{ts,tsx,js,jsx,json,md,yml,yaml}": [
-      "prettier -w"
-    ],
-    "*.{ts,tsx,js,jsx}": [
-      "eslint --fix"
-    ]
-  },
-  "name": "@kb-labs/product-template",
-  "packageManager": "pnpm@9.11.0",
-  "private": true,
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/kirill-baranov/kb-labs-product-template.git"
-  },
   "scripts": {
     "// ——— ci/qa": "────────────────────────────────────────",
     "// ——— cleanup": "────────────────────────────────────────",
     "// ——— core": "────────────────────────────────────────",
     "// ——— quality": "────────────────────────────────────────",
     "build": "pnpm -r run build",
-    "build:clean": "pnpm -r run clean \u0026\u0026 pnpm -r run build",
-    "check": "pnpm lint \u0026\u0026 pnpm type-check \u0026\u0026 pnpm test",
-    "ci": "pnpm clean \u0026\u0026 pnpm build \u0026\u0026 pnpm check",
+    "build:clean": "pnpm -r run clean && pnpm -r run build",
+    "check": "pnpm lint && pnpm type-check && pnpm test",
+    "ci": "pnpm clean && pnpm build && pnpm check",
     "clean": "pnpm -r run clean",
     "clean:all": "rimraf node_modules packages/*/node_modules apps/*/node_modules dist",
     "dev": "pnpm -r --parallel run dev",
@@ -76,8 +41,38 @@
     "test:watch": "vitest --passWithNoTests",
     "type-check": "pnpm -r run type-check"
   },
-  "type": "module",
-  "version": "0.1.0",
+  "bugs": "https://github.com/kirill-baranov/kb-labs-product-template/issues",
+  "devDependencies": {
+    "@byjohann/toon": "*",
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.3.3",
+    "@typescript-eslint/eslint-plugin": "^8",
+    "@typescript-eslint/parser": "^8",
+    "@vitest/coverage-v8": "^3",
+    "@vue/eslint-config-typescript": "^14.6.0",
+    "eslint": "^9",
+    "eslint-plugin-vue": "^10.5.0",
+    "prettier": "^3",
+    "rimraf": "^6",
+    "tsup": "^8",
+    "typescript": "^5",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=18.18.0",
+    "pnpm": ">=9.0.0"
+  },
+  "homepage": "https://github.com/kirill-baranov/kb-labs-product-template#readme",
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,json,md,yml,yaml}": [
+      "prettier -w"
+    ],
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix"
+    ]
+  },
+  "packageManager": "pnpm@9.11.0",
+  "repository": "kirill-baranov/kb-labs-product-template.git",
   "workspaces": [
     "apps/*",
     "packages/*"

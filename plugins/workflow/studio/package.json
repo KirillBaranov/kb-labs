@@ -1,4 +1,19 @@
 {
+  "name": "@kb-labs/workflow-studio",
+  "version": "1.6.0",
+  "type": "module",
+  "private": true,
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rspack build --config rspack.studio.config.mjs",
+    "clean": "rimraf dist",
+    "dev": "rspack serve --config rspack.studio.config.mjs",
+    "lint": "echo 'todo: lint'",
+    "test": "echo 'todo: test'",
+    "type-check": "tsc --noEmit"
+  },
   "dependencies": {
     "@kb-labs/sdk": "workspace:*",
     "@kb-labs/workflow-contracts": "workspace:*"
@@ -20,11 +35,6 @@
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
   },
-  "files": [
-    "dist"
-  ],
-  "name": "@kb-labs/workflow-studio",
-  "private": true,
   "peerDependencies": {
     "@ant-design/icons": "^5.4.0",
     "@tanstack/react-query": "^5.0.0",
@@ -32,15 +42,5 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.0.0"
-  },
-  "scripts": {
-    "build": "rspack build --config rspack.studio.config.mjs",
-    "clean": "rimraf dist",
-    "dev": "rspack serve --config rspack.studio.config.mjs",
-    "lint": "echo 'todo: lint'",
-    "test": "echo 'todo: test'",
-    "type-check": "tsc --noEmit"
-  },
-  "type": "module",
-  "version": "1.6.0"
+  }
 }

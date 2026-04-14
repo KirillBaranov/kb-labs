@@ -1,8 +1,8 @@
 {
   "name": "@kb-labs/web-config",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
+  "private": true,
   "scripts": {
     "build": "echo 'No build step required'"
   }

@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/plugin-execution",
-  "version": "2.34.0",
   "description": "Universal execution layer for KB Labs plugins",
+  "version": "2.34.0",
   "type": "module",
   "exports": {
     ".": {
@@ -20,14 +20,14 @@
   ],
   "scripts": {
     "build": "tsup",
-    "dev": "tsup --watch",
     "clean": "rimraf dist",
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest",
+    "dev": "tsup --watch",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint . --fix",
-    "type-check": "tsc --noEmit"
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@fastify/websocket": "^11.0.1",
@@ -36,6 +36,7 @@
     "@kb-labs/plugin-execution-factory": "workspace:*"
   },
   "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
     "@types/node": "^24.3.3",
     "@types/ws": "^8.5.13",
     "fastify": "^5.2.0",
@@ -43,8 +44,11 @@
     "tsup": "^8.5.0",
     "typescript": "^5.6.3",
     "vitest": "^3.2.4",
-    "ws": "^8.18.0",
-    "@kb-labs/devkit": "workspace:*"
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
   },
   "peerDependencies": {
     "fastify": "^5.0.0"
@@ -53,10 +57,6 @@
     "fastify": {
       "optional": true
     }
-  },
-  "engines": {
-    "node": ">=20.0.0",
-    "pnpm": ">=9.0.0"
   },
   "publishConfig": {
     "access": "public"

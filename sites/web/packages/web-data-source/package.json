@@ -1,9 +1,9 @@
 {
   "name": "@kb-labs/web-data-source",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
   "description": "Data source layer for kb-labs-web — interfaces, mocks, and HTTP stubs",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
   "exports": {
     ".": "./src/index.ts"
   },

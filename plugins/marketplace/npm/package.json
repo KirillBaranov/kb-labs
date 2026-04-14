@@ -1,23 +1,14 @@
 {
-  "dependencies": {
-    "@kb-labs/marketplace-contracts": "workspace:*",
-    "execa": "^9.5.3"
-  },
+  "name": "@kb-labs/marketplace-npm",
   "description": "npm/pnpm package source for KB Labs marketplace",
-  "devDependencies": {
-    "@kb-labs/devkit": "workspace:*",
-    "tsup": "^8.5.0",
-    "typescript": "^5",
-    "vitest": "^3.2.4"
-  },
-  "engines": {
-    "node": ">=20.0.0",
-    "pnpm": ">=9.0.0"
-  },
+  "version": "2.34.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     }
   },
   "files": [
@@ -25,8 +16,6 @@
     "README.md",
     "LICENSE"
   ],
-  "main": "./dist/index.js",
-  "name": "@kb-labs/marketplace-npm",
   "scripts": {
     "build": "tsup",
     "clean": "rimraf dist",
@@ -37,8 +26,19 @@
     "test:watch": "vitest -c ../../vitest.config.ts",
     "type-check": "tsc --noEmit"
   },
-  "sideEffects": false,
-  "type": "module",
-  "types": "./dist/index.d.ts",
-  "version": "2.34.0"
+  "dependencies": {
+    "@kb-labs/marketplace-contracts": "workspace:*",
+    "execa": "^9.5.3"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "tsup": "^8.5.0",
+    "typescript": "^5",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "sideEffects": false
 }

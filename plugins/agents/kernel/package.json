@@ -1,10 +1,34 @@
 {
+  "name": "@kb-labs/agent-kernel",
+  "description": "Kernel state and continuity model for KB Labs Agents.",
+  "version": "2.34.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./dist/*": "./dist/*"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup --config tsup.config.ts",
+    "clean": "rimraf dist",
+    "dev": "tsup --config tsup.config.ts --watch",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest run --passWithNoTests",
+    "type-check": "tsc --noEmit"
+  },
   "dependencies": {
     "@kb-labs/agent-contracts": "workspace:*",
     "@kb-labs/agent-sdk": "workspace:*",
     "@kb-labs/sdk": "workspace:*"
   },
-  "description": "Kernel state and continuity model for KB Labs Agents.",
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
     "@types/node": "^24.3.3",
@@ -18,29 +42,5 @@
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
   },
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
-    },
-    "./dist/*": "./dist/*"
-  },
-  "files": [
-    "dist",
-    "README.md"
-  ],
-  "main": "./dist/index.js",
-  "name": "@kb-labs/agent-kernel",
-  "scripts": {
-    "build": "tsup --config tsup.config.ts",
-    "clean": "rimraf dist",
-    "dev": "tsup --config tsup.config.ts --watch",
-    "lint": "eslint src --ext .ts",
-    "test": "vitest run --passWithNoTests",
-    "type-check": "tsc --noEmit"
-  },
-  "sideEffects": false,
-  "type": "module",
-  "types": "./dist/index.d.ts",
-  "version": "2.34.0"
+  "sideEffects": false
 }

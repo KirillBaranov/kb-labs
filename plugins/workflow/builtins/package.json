@@ -1,10 +1,7 @@
 {
   "name": "@kb-labs/workflow-builtins",
-  "version": "2.34.0",
   "description": "Built-in workflow handlers (shell, etc.)",
-  "files": [
-    "dist"
-  ],
+  "version": "2.34.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -19,26 +16,29 @@
     },
     "./package.json": "./package.json"
   },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "pnpm clean && tsup --config tsup.config.ts",
     "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint . --fix",
-    "type-check": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/plugin-contracts": "workspace:*",
     "execa": "^9.5.3"
   },
   "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
     "@types/node": "^24.3.3",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
     "typescript": "^5.6.3",
-    "@kb-labs/devkit": "workspace:*",
     "vitest": "^3.2.4"
   },
   "engines": {

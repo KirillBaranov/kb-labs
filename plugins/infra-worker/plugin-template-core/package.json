@@ -1,45 +1,41 @@
 {
   "name": "@kb-labs/infra-worker-core",
+  "description": "Infra worker plugin core for workspace/environment/snapshot lifecycle operations.",
   "version": "2.34.0",
   "type": "module",
-  "description": "Infra worker plugin core for workspace/environment/snapshot lifecycle operations.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./plugin-manifest": {
-      "import": "./dist/manifest.v3.js",
-      "types": "./dist/manifest.v3.d.ts"
+      "types": "./dist/manifest.v3.d.ts",
+      "import": "./dist/manifest.v3.js"
     },
     "./cli": "./dist/cli/index.js",
     "./dist/*": "./dist/*"
-  },
-  "kb": {
-    "manifest": "./dist/manifest.v3.js"
   },
   "files": [
     "dist",
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
   "scripts": {
-    "pretype-check": "pnpm --filter @kb-labs/infra-worker-core build",
-    "clean": "rimraf dist",
     "build": "tsup --config tsup.config.ts",
+    "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint . --fix",
-    "type-check": "tsc --noEmit",
+    "pretype-check": "pnpm --filter @kb-labs/infra-worker-core build",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@kb-labs/plugin-contracts": "workspace:*",
     "@kb-labs/infra-worker-contracts": "workspace:*",
+    "@kb-labs/plugin-contracts": "workspace:*",
     "@kb-labs/sdk": "workspace:*",
     "react": "^18.3.1",
     "zod": "^3.25.76"
@@ -58,5 +54,9 @@
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
-  }
+  },
+  "kb": {
+    "manifest": "./dist/manifest.v3.js"
+  },
+  "sideEffects": false
 }

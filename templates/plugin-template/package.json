@@ -1,55 +1,23 @@
 {
+  "name": "@kb-labs/plugin-template",
+  "description": "Reference plugin template for the KB Labs ecosystem with devkit-powered tooling.",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
   "author": {
     "name": "Kirill Baranov",
     "url": "https://github.com/kirill-baranov"
   },
-  "bugs": {
-    "url": "https://github.com/kirill-baranov/kb-labs-plugin-template/issues"
-  },
-  "description": "Reference plugin template for the KB Labs ecosystem with devkit-powered tooling.",
-  "devDependencies": {
-    "@kb-labs/devkit": "workspace:*",
-    "@types/node": "^24.3.3",
-    "@typescript-eslint/eslint-plugin": "^8",
-    "@typescript-eslint/parser": "^8",
-    "@vitest/coverage-v8": "^3",
-    "eslint": "^9",
-    "prettier": "^3",
-    "rimraf": "^6",
-    "tsup": "^8",
-    "typescript": "^5",
-    "vitest": "^3.2.4"
-  },
-  "engines": {
-    "node": "\u003e=18.18.0",
-    "pnpm": "\u003e=9.0.0"
-  },
-  "homepage": "https://github.com/kirill-baranov/kb-labs-plugin-template#readme",
   "license": "MIT",
-  "lint-staged": {
-    "*.{ts,tsx,js,jsx,json,md,yml,yaml}": [
-      "prettier -w"
-    ],
-    "*.{ts,tsx,js,jsx}": [
-      "eslint --fix"
-    ]
-  },
-  "name": "@kb-labs/plugin-template",
-  "packageManager": "pnpm@9.11.0",
-  "private": true,
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/kirill-baranov/kb-labs-plugin-template.git"
-  },
   "scripts": {
     "// ——— ci/qa": "────────────────────────────────────────",
     "// ——— cleanup": "────────────────────────────────────────",
     "// ——— core": "────────────────────────────────────────",
     "// ——— quality": "────────────────────────────────────────",
     "build": "pnpm -r --filter ./packages/... run build",
-    "build:clean": "pnpm -r --filter ./packages/... run clean \u0026\u0026 pnpm run build",
-    "check": "pnpm lint \u0026\u0026 pnpm type-check \u0026\u0026 pnpm test",
-    "ci": "pnpm clean \u0026\u0026 pnpm build \u0026\u0026 pnpm check",
+    "build:clean": "pnpm -r --filter ./packages/... run clean && pnpm run build",
+    "check": "pnpm lint && pnpm type-check && pnpm test",
+    "ci": "pnpm clean && pnpm build && pnpm check",
     "clean": "pnpm -r run clean",
     "clean:all": "rimraf node_modules packages/*/node_modules apps/*/node_modules dist",
     "dev": "pnpm -r --parallel --filter ./packages/... run dev",
@@ -73,8 +41,35 @@
     "test:watch": "vitest --passWithNoTests",
     "type-check": "pnpm -r run type-check"
   },
-  "type": "module",
-  "version": "0.1.0",
+  "bugs": "https://github.com/kirill-baranov/kb-labs-plugin-template/issues",
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.3.3",
+    "@typescript-eslint/eslint-plugin": "^8",
+    "@typescript-eslint/parser": "^8",
+    "@vitest/coverage-v8": "^3",
+    "eslint": "^9",
+    "prettier": "^3",
+    "rimraf": "^6",
+    "tsup": "^8",
+    "typescript": "^5",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=18.18.0",
+    "pnpm": ">=9.0.0"
+  },
+  "homepage": "https://github.com/kirill-baranov/kb-labs-plugin-template#readme",
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,json,md,yml,yaml}": [
+      "prettier -w"
+    ],
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix"
+    ]
+  },
+  "packageManager": "pnpm@9.11.0",
+  "repository": "kirill-baranov/kb-labs-plugin-template.git",
   "workspaces": [
     "apps/*",
     "packages/*"

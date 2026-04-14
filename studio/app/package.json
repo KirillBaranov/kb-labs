@@ -1,4 +1,24 @@
 {
+  "name": "@kb-labs/studio-app",
+  "description": "KB Labs Studio application",
+  "version": "2.34.0",
+  "type": "module",
+  "main": "./server.js",
+  "files": [
+    "dist",
+    "server.js"
+  ],
+  "scripts": {
+    "build": "rspack build && tsup src/manifest.ts",
+    "clean": "rimraf dist",
+    "dev": "rspack serve",
+    "lint": "eslint . --max-warnings=0",
+    "preview": "rspack serve --mode production",
+    "start": "node server.js",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest --passWithNoTests",
+    "type-check": "tsc --noEmit"
+  },
   "dependencies": {
     "@ant-design/charts": "^2.6.6",
     "@ant-design/icons": "^5.4.0",
@@ -35,7 +55,6 @@
     "zod": "^3.25.76",
     "zustand": "^5.0.2"
   },
-  "description": "KB Labs Studio application",
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
     "@module-federation/enhanced": "^0.8.0",
@@ -61,28 +80,9 @@
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
   },
-  "name": "@kb-labs/studio-app",
-  "main": "./server.js",
-  "files": [
-    "dist",
-    "server.js"
-  ],
   "kb": {
     "manifest": "./dist/manifest.js"
   },
-  "scripts": {
-    "build": "rspack build && tsup src/manifest.ts",
-    "clean": "rimraf dist",
-    "dev": "rspack serve",
-    "start": "node server.js",
-    "lint": "eslint . --max-warnings=0",
-    "preview": "rspack serve --mode production",
-    "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest --passWithNoTests",
-    "type-check": "tsc --noEmit"
-  },
-  "type": "module",
-  "version": "2.34.0",
   "publishConfig": {
     "access": "public"
   }

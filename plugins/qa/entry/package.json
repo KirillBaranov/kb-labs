@@ -1,42 +1,38 @@
 {
   "name": "@kb-labs/qa-entry",
+  "description": "CLI commands for KB Labs QA Plugin — qa:run, qa:save, qa:history, qa:trends, qa:regressions, baseline:update, baseline:status.",
   "version": "2.34.0",
   "type": "module",
-  "description": "CLI commands for KB Labs QA Plugin — qa:run, qa:save, qa:history, qa:trends, qa:regressions, baseline:update, baseline:status.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./plugin-manifest": {
-      "import": "./dist/manifest.js",
-      "types": "./dist/manifest.d.ts"
+      "types": "./dist/manifest.d.ts",
+      "import": "./dist/manifest.js"
     },
     "./dist/*": "./dist/*"
-  },
-  "kb": {
-    "manifest": "./dist/manifest.js"
   },
   "files": [
     "dist",
     "README.md",
     "LICENSE"
   ],
-  "sideEffects": false,
   "scripts": {
-    "pretype-check": "pnpm --filter @kb-labs/qa-entry build",
-    "clean": "rimraf dist",
     "build": "tsup --config tsup.config.ts && pnpm build:studio",
     "build:studio": "rspack build --config rspack.studio.config.mjs",
+    "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
     "dev:studio": "rspack build --config rspack.studio.config.mjs --watch",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint . --fix",
-    "type-check": "tsc --noEmit",
+    "pretype-check": "pnpm --filter @kb-labs/qa-entry build",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/plugin-contracts": "workspace:*",
@@ -44,9 +40,6 @@
     "@kb-labs/qa-core": "workspace:*",
     "@kb-labs/sdk": "workspace:*",
     "zod": "^3.25.76"
-  },
-  "peerDependencies": {
-    "react": "^18.3.1"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
@@ -67,5 +60,12 @@
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
-  }
+  },
+  "kb": {
+    "manifest": "./dist/manifest.js"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1"
+  },
+  "sideEffects": false
 }

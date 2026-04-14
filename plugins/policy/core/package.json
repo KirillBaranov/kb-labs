@@ -1,38 +1,34 @@
 {
   "name": "@kb-labs/policy-core",
+  "description": "Core implementation for KB Labs policy plugin. Category resolver, policy runner, and checks.",
   "version": "2.34.0",
   "type": "module",
-  "description": "Core implementation for KB Labs policy plugin. Category resolver, policy runner, and checks.",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
     },
     "./plugin-manifest": {
-      "import": "./dist/manifest.v3.js",
-      "types": "./dist/manifest.v3.d.ts"
+      "types": "./dist/manifest.v3.d.ts",
+      "import": "./dist/manifest.v3.js"
     },
     "./dist/*": "./dist/*"
-  },
-  "kb": {
-    "manifest": "./dist/manifest.v3.js"
   },
   "files": [
     "dist",
     "README.md"
   ],
-  "sideEffects": false,
   "scripts": {
-    "clean": "rimraf dist",
     "build": "tsup --config tsup.config.ts",
+    "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint . --fix",
-    "type-check": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/policy-contracts": "workspace:*",
@@ -52,5 +48,9 @@
   "engines": {
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
-  }
+  },
+  "kb": {
+    "manifest": "./dist/manifest.v3.js"
+  },
+  "sideEffects": false
 }
