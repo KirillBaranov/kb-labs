@@ -35,12 +35,42 @@ export async function findNearestConfig(opts: FindNearestConfigOpts): Promise<{ 
 }
 
 /** Read JSON with explicit diagnostics (no silent nulls). */
+/** Strip single-line (//) and multi-line (/* *\/) comments from a JSON string. */
+function stripJsonComments(src: string): string {
+    let out = '';
+    let i = 0;
+    const len = src.length;
+    while (i < len) {
+        if (src[i] === '"') {
+            // String literal — copy verbatim until closing quote.
+            out += src[i++];
+            while (i < len) {
+                if (src[i] === '\\') { out += src[i++]; out += src[i++]; continue; }
+                out += src[i];
+                if (src[i++] === '"') break;
+            }
+        } else if (src[i] === '/' && src[i + 1] === '/') {
+            // Single-line comment — skip to end of line.
+            while (i < len && src[i] !== '\n') i++;
+        } else if (src[i] === '/' && src[i + 1] === '*') {
+            // Multi-line comment — skip to *\/
+            i += 2;
+            while (i < len && !(src[i] === '*' && src[i + 1] === '/')) i++;
+            i += 2;
+        } else {
+            out += src[i++];
+        }
+    }
+    return out;
+}
+
 export async function readJsonWithDiagnostics<T = unknown>(p: string): Promise<JsonReadResult<T>> {
     const diagnostics: Diagnostic[] = [];
     try {
         const raw = await fsp.readFile(p, "utf8");
         try {
-            const data = JSON.parse(raw) as T;
+            const stripped = p.endsWith('.jsonc') ? stripJsonComments(raw) : raw;
+            const data = JSON.parse(stripped) as T;
             return { ok: true, data, diagnostics };
         } catch (e) {
             diagnostics.push({ level: "error", code: "JSON_PARSE_FAILED", message: `Failed to parse JSON: ${p}`, detail: String(e) });
