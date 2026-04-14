@@ -1,0 +1,78 @@
+{
+  "$schema": "https://unpkg.com/syncpack@13/dist/schema.json",
+  "source": [
+    "package.json",
+    "core/*/package.json",
+    "sdk/*/package.json",
+    "cli/*/package.json",
+    "shared/*/package.json",
+    "plugins/*/*/package.json",
+    "adapters/*/package.json",
+    "infra/devkit/package.json",
+    "studio/*/package.json",
+    "sites/*/package.json",
+    "sites/*/apps/*/package.json",
+    "sites/*/packages/*/package.json",
+    "templates/*/package.json",
+    "templates/*/packages/*/package.json"
+  ],
+  "dependencyTypes": [
+    "prod",
+    "dev",
+    "peer",
+    "resolutions",
+    "overrides",
+    "pnpmOverrides"
+  ],
+  "formatBugs": true,
+  "formatRepository": true,
+  "indent": "  ",
+  "sortAz": [
+    "contributors",
+    "dependencies",
+    "devDependencies",
+    "keywords",
+    "peerDependencies",
+    "scripts"
+  ],
+  "sortFirst": [
+    "name",
+    "description",
+    "version",
+    "type",
+    "private",
+    "author",
+    "license",
+    "main",
+    "module",
+    "types",
+    "exports",
+    "bin",
+    "files",
+    "scripts"
+  ],
+  "semverGroups": [
+    {
+      "label": "Local @kb-labs/* packages must always use workspace:*",
+      "dependencies": ["@kb-labs/**"],
+      "dependencyTypes": ["prod", "dev", "peer"],
+      "packages": ["**"],
+      "range": "workspace:*",
+      "isIgnored": false
+    }
+  ],
+  "versionGroups": [
+    {
+      "label": "Ignore local workspace packages (pnpm resolves workspace:*)",
+      "dependencies": ["@kb-labs/**"],
+      "packages": ["**"],
+      "isIgnored": true
+    },
+    {
+      "label": "Single Version Policy: every external dep must have exactly one version across the monorepo",
+      "dependencies": ["**"],
+      "packages": ["**"],
+      "policy": "sameRange"
+    }
+  ]
+}
