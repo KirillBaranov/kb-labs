@@ -251,7 +251,7 @@ export class SnapshotStorage {
         if (stats.isDirectory()) {
           sessions.push({
             id: sessionId,
-            createdAt: stats.birthtimeMs,
+            createdAt: stats.mtimeMs,
           });
         }
       }
