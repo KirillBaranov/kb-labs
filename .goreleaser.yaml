@@ -77,7 +77,8 @@ archives:
   - id: binaries
     formats:
       - binary
-    name_template: "{{ .Binary }}-{{ .Os }}-{{ .Arch }}{{ if eq .Os \"windows\" }}.exe{{ end }}"
+    # Goreleaser auto-appends .exe for windows — don't double it here.
+    name_template: "{{ .Binary }}-{{ .Os }}-{{ .Arch }}"
 
 checksum:
   name_template: checksums.txt
