@@ -1,13 +1,47 @@
 ---
 title: "Overview"
-description: "Interface-first adapters: how they're declared, loaded, wired, and extended."
-updatedAt: "2026-04-07"
+description: "What adapters are, why you'd swap one, and how."
+updatedAt: "2026-04-15"
 order: 1
 ---
 
-KB Labs is built interface-first. The runtime depends on a small set of TypeScript interfaces — `ILLM`, `ICache`, `IStorage`, `ILogger`, and so on — and adapters are the concrete implementations of those interfaces. Every backend the platform talks to (OpenAI, Qdrant, Redis, SQLite, Pino, Docker) is an adapter package. Swapping one for another is a one-line change in `kb.config.json`.
+## What an adapter is
 
-This page covers how adapters are declared, loaded, and wired together. The per-interface reference pages under [Adapters → Service Interfaces](/adapters/interfaces) document each interface's method surface.
+An **adapter** is a concrete implementation of a platform interface. Every backend KB Labs talks to — the LLM, cache, storage, vector store, logger, database — is an adapter package. Plugins never import adapters directly. They call `useLLM()`, `useCache()`, `useStorage()` and get whatever adapter your `kb.config.jsonc` points at.
+
+The runtime depends on the *interface* (`ILLM`, `ICache`, `IStorage`, …). The adapter provides the implementation. Swap the package, the interface stays identical, plugin code doesn't change.
+
+## Why you'd swap
+
+- **Change LLM provider.** Move from the default KB Labs Gateway to your own OpenAI key, or to a self-hosted inference server. See [Guides → LLM Setup](/guides/llm-setup).
+- **Persist logs instead of stdout.** Default `@kb-labs/adapters-pino` prints to stdout. Swap to `@kb-labs/adapters-log-sqlite` for a searchable local database of every structured log line.
+- **Use an external vector store.** Default configuration is fine for small workspaces. Swap to `@kb-labs/adapters-qdrant` when you want a persistent Qdrant deployment shared across machines.
+- **Pick your analytics sink.** `@kb-labs/adapters-analytics-file` (JSONL, zero deps) → `@kb-labs/adapters-analytics-sqlite` or `analytics-duckdb` when you want to query events with SQL.
+- **Disable a capability.** Set an adapter to `null` to explicitly bind the NoOp implementation (e.g., disable analytics in dev: `"analytics": null`).
+
+## How you swap
+
+One line per adapter in `.kb/kb.config.jsonc`:
+
+```jsonc
+{
+  "platform": {
+    "adapters": {
+      "llm": "@kb-labs/adapters-openai",         // was: "@kb-labs/adapters-kblabs-gateway"
+      "vectorStore": "@kb-labs/adapters-qdrant",
+      "analytics": "@kb-labs/adapters-analytics-sqlite"
+    },
+    "adapterOptions": {
+      "llm":         { "model": "gpt-4o-mini" },          // reads OPENAI_API_KEY from env
+      "vectorStore": { "url": "http://localhost:6333" }
+    }
+  }
+}
+```
+
+Environment variable substitution is supported — write `"apiKey": "${MY_API_KEY}"` and the loader resolves it at startup (throws if the var is missing). Then `kb-dev stop && kb-dev start` to reload. No plugin rebuild, no code change.
+
+For worked examples: [Guides → LLM Setup](/guides/llm-setup) covers the LLM-specific walkthrough; [Built-in adapters](/adapters/built-in) lists every adapter that ships with the platform; [Guides → First Adapter](/guides/first-adapter) shows how to write your own.
 
 ## The separation
 

@@ -344,6 +344,43 @@ pnpm kb mind rag-index --scope default
 
 Then re-run your query.
 
+## Install
+
+### `command not found: kb-create` (or `kb-dev`, `kb`) right after install.sh
+
+**Symptom.** `curl -fsSL https://kblabs.ru/install.sh | sh` finishes, but running `kb-create` in the same shell returns "command not found".
+
+**Cause.** The installer writes the binary to `~/.local/bin/` and appends `export PATH="$HOME/.local/bin:$PATH"` to your shell profile (`.zshrc` / `.bashrc`). Your current shell hasn't reloaded the profile yet, so the new PATH isn't active.
+
+**Fix.** Reload the profile or open a new terminal:
+
+```bash
+source ~/.zshrc   # or ~/.bashrc, whichever your shell uses
+```
+
+If the PATH line is *not* in your profile, add it manually:
+
+```bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+### `unmet peer dependency` warnings during `kb-create`
+
+**Symptom.** Bootstrap prints long blocks of `WARN ✕ unmet peer @kb-labs/core-platform@latest: found 2.36.0`.
+
+**Cause.** pnpm reporting peer dependency version differences between published semver ranges and locally resolved versions. Harmless in practice — everything installs and resolves correctly. This is cosmetic noise, not a failure.
+
+**Fix.** Ignore them. If `kb-create` prints "Installation complete" and `kb --help` works, you're fine.
+
+### `claude assets: claude assets not found in installed devkit (continuing)` at the end of install
+
+**Symptom.** The very last line after a successful `kb-create` install.
+
+**Cause.** The installer looked for optional Claude Code onboarding assets (skills, CLAUDE.md section) shipped alongside the devkit. In the current release they aren't bundled, so the step is a no-op.
+
+**Fix.** Ignore. Your install is complete.
+
 ## Miscellaneous
 
 ### "EACCES: permission denied" writing to `.kb/`
