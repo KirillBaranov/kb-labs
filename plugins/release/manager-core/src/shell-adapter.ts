@@ -22,7 +22,7 @@ export function createExecaShellAdapter(): ShellAPI {
         });
         return {
           ok: result.exitCode === 0,
-          code: result.exitCode,
+          code: result.exitCode ?? 0,
           stdout: result.stdout || '',
           stderr: result.stderr || '',
         };
