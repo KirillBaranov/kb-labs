@@ -175,15 +175,50 @@ chmod +x "$TMP_BIN"
 mkdir -p "$(dirname "$DEST")"
 mv "$TMP_BIN" "$DEST"
 
-case ":$PATH:" in
-  *":${HOME}/.local/bin:"*) ;;
-  *)
+ensure_path() {
+  # Already in current shell's PATH? Nothing to do.
+  case ":$PATH:" in
+    *":${HOME}/.local/bin:"*) return 0 ;;
+  esac
+
+  # Pick the user's shell profile. Prefer the one matching $SHELL.
+  shell_name="$(basename "${SHELL:-}")"
+  case "$shell_name" in
+    zsh)  profile="${HOME}/.zshrc" ;;
+    bash) profile="${HOME}/.bashrc" ;;
+    *)
+      # Fallback: prefer .zshrc if it exists (macOS default), else .bashrc.
+      if [ -f "${HOME}/.zshrc" ]; then profile="${HOME}/.zshrc"
+      else profile="${HOME}/.bashrc"; fi
+      ;;
+  esac
+
+  export_line='export PATH="$HOME/.local/bin:$PATH"'
+  marker='# Added by kb-create installer'
+
+  # If already recorded in the profile, just remind the user to reload.
+  if [ -f "$profile" ] && grep -Fq "$export_line" "$profile" 2>/dev/null; then
     echo ""
-    warn "Ensure this directory is in your PATH:"
-    printf "  %sexport PATH=\"\\$HOME/.local/bin:\\$PATH\"%s\n" "$C_DIM" "$C_RESET"
-    warn "Add it to your shell profile (~/.zshrc or ~/.bashrc)."
-    ;;
-esac
+    warn "~/.local/bin is in $profile but not yet loaded in this shell."
+    printf "  Run: %ssource %s%s\n" "$C_DIM" "$profile" "$C_RESET"
+    printf "  Or open a new terminal window.\n"
+    return 0
+  fi
+
+  # Append PATH export to the chosen profile.
+  {
+    echo ""
+    echo "$marker"
+    echo "$export_line"
+  } >> "$profile"
+
+  echo ""
+  ok "Added ~/.local/bin to PATH via $profile"
+  printf "  To use kb-create in this shell, run: %ssource %s%s\n" "$C_DIM" "$profile" "$C_RESET"
+  printf "  Or open a new terminal window.\n"
+}
+
+ensure_path
 
 END_TS="$(date +%s)"
 ELAPSED="$((END_TS - START_TS))"

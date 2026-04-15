@@ -78,6 +78,40 @@
   line-height: 1.65;
 }
 
+/* ── Prerequisites ───────────────────────────────────────── */
+.prerequisitesSection {
+  width: min(100% - 3rem, 1100px);
+  margin-inline: auto;
+  margin-bottom: clamp(3rem, 6vw, 4rem);
+}
+
+.prerequisitesList {
+  list-style: none;
+  margin: 0;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-subtle, transparent);
+  display: grid;
+  gap: 0.55rem;
+}
+
+.prerequisitesList li {
+  font-size: 0.95rem;
+  color: var(--fg);
+  line-height: 1.55;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.prerequisitesList li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: var(--accent, #6a8cff);
+  font-weight: 600;
+}
+
 /* ── Steps ───────────────────────────────────────────────── */
 .stepList {
   display: flex;

@@ -511,6 +511,14 @@
       "downloadBtn": "Скачать install.sh",
       "releasesBtn": "Открыть последний релиз"
     },
+    "prerequisites": {
+      "title": "Требования",
+      "items": [
+        "Node.js 20 или новее",
+        "pnpm (установка: npm install -g pnpm)",
+        "macOS или Linux (Windows поддерживается через install.ps1)"
+      ]
+    },
     "quickInstall": {
       "title": "Быстрая установка",
       "description": "Рекомендуется для разработчиков и команд, которые хотят начать быстро.",
@@ -580,7 +588,7 @@
       "steps": [
         {
           "title": "Запустить сервисы",
-          "cmd": "kb-dev start"
+          "cmd": "cd my-project && kb-dev start"
         },
         {
           "title": "Читать документацию",

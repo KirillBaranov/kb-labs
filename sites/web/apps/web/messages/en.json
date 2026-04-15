@@ -511,6 +511,14 @@
       "downloadBtn": "Download install.sh",
       "releasesBtn": "Open latest release"
     },
+    "prerequisites": {
+      "title": "Prerequisites",
+      "items": [
+        "Node.js 20 or newer",
+        "pnpm (install with: npm install -g pnpm)",
+        "macOS or Linux (Windows supported via install.ps1)"
+      ]
+    },
     "quickInstall": {
       "title": "Quick install",
       "description": "Recommended path for developers and teams onboarding fast.",
@@ -580,7 +588,7 @@
       "steps": [
         {
           "title": "Start local services",
-          "cmd": "kb-dev start"
+          "cmd": "cd my-project && kb-dev start"
         },
         {
           "title": "Read the docs",
