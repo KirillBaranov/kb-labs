@@ -227,7 +227,7 @@ export async function runInSubprocess<T = unknown>(
 
     // Fork child process
     const child: ChildProcess = fork(bootstrapPath, [], {
-      stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
+      stdio: ['inherit', 'pipe', 'pipe', 'ipc'],
       env: {
         ...process.env,
         NODE_ENV: process.env.NODE_ENV,
