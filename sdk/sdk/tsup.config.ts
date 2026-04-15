@@ -15,6 +15,7 @@ export default defineConfig({
     'testing/index': 'src/testing/index.ts',
     'studio/index': 'src/studio/index.ts',
     'studio-build/index': 'src/studio-build/index.ts',
+    'platform/index': 'src/platform/index.ts',
   },
   // Bundle shared-command-kit into SDK so its types are self-contained.
   // Consumers get CommandHandler, CLIInput etc. directly from @kb-labs/sdk
