@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { Inter, Plus_Jakarta_Sans } from 'next/font/google';
+import localFont from 'next/font/local';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
 import { CookieBanner } from '@/components/CookieBanner';
@@ -7,14 +7,20 @@ import { ScrollReveal } from '@/components/ScrollReveal';
 import { routing } from '@/i18n/routing';
 import '../globals.css';
 
-const headingFont = Plus_Jakarta_Sans({
-  subsets: ['latin', 'cyrillic-ext'],
+const headingFont = localFont({
+  src: [
+    { path: '../fonts/plus-jakarta-sans-latin.woff2', weight: '200 800', style: 'normal' },
+    { path: '../fonts/plus-jakarta-sans-cyrillic-ext.woff2', weight: '200 800', style: 'normal' },
+  ],
   variable: '--font-heading',
   display: 'swap',
 });
 
-const bodyFont = Inter({
-  subsets: ['latin', 'cyrillic'],
+const bodyFont = localFont({
+  src: [
+    { path: '../fonts/inter-latin.woff2', weight: '100 900', style: 'normal' },
+    { path: '../fonts/inter-cyrillic.woff2', weight: '100 900', style: 'normal' },
+  ],
   variable: '--font-body',
   display: 'swap',
 });
