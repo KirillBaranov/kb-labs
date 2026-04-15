@@ -84,7 +84,9 @@ checksum:
 
 release:
   draft: false
-  prerelease: auto
+  # Force non-prerelease so /releases/latest/download/... works, despite
+  # the "-binaries" suffix that goreleaser would otherwise treat as prerelease.
+  prerelease: false
   name_template: "KB Labs Binaries {{ .Tag }}"
   header: |
     KB Labs standalone binaries: kb-create, kb-dev, kb-devkit, kb-deploy, kb-monitor.

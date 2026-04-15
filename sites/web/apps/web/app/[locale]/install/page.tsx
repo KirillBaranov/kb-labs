@@ -43,10 +43,10 @@ const INSTALL_COMMANDS = {
 
 // Fallback used when the GitHub API is unreachable at build/render time.
 // Kept as the last known-good tag so copy-paste still resolves to real assets.
-const FALLBACK_TAG = 'binaries-v0.4.0';
+const FALLBACK_TAG = 'v0.4.0-binaries';
 
 /**
- * Fetches the latest `binaries-v*` release tag so the page never goes stale.
+ * Fetches the latest `v*-binaries` release tag so the page never goes stale.
  * Cached for an hour — the docs don't need second-by-second freshness.
  */
 async function getLatestBinariesTag(): Promise<string> {
@@ -56,9 +56,9 @@ async function getLatestBinariesTag(): Promise<string> {
       { next: { revalidate: 3600 }, headers: { Accept: 'application/vnd.github+json' } },
     );
     if (!res.ok) return FALLBACK_TAG;
-    const releases = (await res.json()) as Array<{ tag_name?: string; draft?: boolean; prerelease?: boolean }>;
+    const releases = (await res.json()) as Array<{ tag_name?: string; draft?: boolean }>;
     const hit = releases.find(
-      (r) => !r.draft && !r.prerelease && typeof r.tag_name === 'string' && r.tag_name.startsWith('binaries-v'),
+      (r) => !r.draft && typeof r.tag_name === 'string' && r.tag_name.endsWith('-binaries'),
     );
     return hit?.tag_name ?? FALLBACK_TAG;
   } catch {
