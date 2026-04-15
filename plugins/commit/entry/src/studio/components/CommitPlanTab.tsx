@@ -135,9 +135,11 @@ export function CommitPlanTab({ scope }: CommitPlanTabProps) {
   const handlePush = () => {
     push.mutate({ scope }, {
       onSuccess: (data: any) => {
-        refetchStatus();
+        refetchAll();
         if (data.result?.success) {
           notify.success(`Pushed ${data.result.commitsPushed} commit(s) to ${data.result.remote}/${data.result.branch}`);
+          setSelected(new Set());
+          setExpanded(new Set());
         } else {
           notify.error(data.result?.error ?? 'Push failed');
         }

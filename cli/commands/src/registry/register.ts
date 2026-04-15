@@ -252,6 +252,7 @@ export function preflightManifests(
   logger?: ILogger
 ): { valid: DiscoveryResult[]; skipped: SkippedManifest[] } {
   const log = logger ?? platform.logger;
+  const logLevel = getLogLevel();
   const valid: DiscoveryResult[] = [];
   const skipped: SkippedManifest[] = [];
 
@@ -271,6 +272,9 @@ export function preflightManifests(
           reason,
         });
         log.warn(`Preflight skipped manifest ${manifestId}: ${reason}`);
+        if (logLevel === 'debug') {
+          process.stderr.write(`[debug][preflight] skipped ${manifestId} (${result.source}): ${reason}\n`);
+        }
       }
     }
 
