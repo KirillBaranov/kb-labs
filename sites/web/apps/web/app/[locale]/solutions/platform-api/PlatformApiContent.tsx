@@ -7,18 +7,18 @@ import s from './page.module.css';
 // ── Adapter cycling data ──────────────────────────────────────────────────
 
 const ADAPTER_SETS = [
-  { llm: 'openai',      cache: 'redis',      vectorStore: 'qdrant',   analytics: 'sqlite' },
-  { llm: 'anthropic',   cache: 'memcached',  vectorStore: 'pinecone', analytics: 'duckdb' },
-  { llm: 'local-llama', cache: 'in-memory',  vectorStore: 'chromadb', analytics: 'clickhouse' },
+  { llm: 'openai',           cache: 'redis',  vectorStore: 'qdrant', analytics: 'sqlite' },
+  { llm: 'kblabs-gateway',   cache: 'redis',  vectorStore: 'qdrant', analytics: 'duckdb' },
+  { llm: 'openai',           cache: 'redis',  vectorStore: 'qdrant', analytics: 'file'   },
 ];
 
 const ADAPTERS = [
-  { num: '.01', name: 'LLM',          desc: 'Language model access with tier-based routing and automatic failover.', providers: 'OpenAI, Anthropic, Ollama, Azure OpenAI' },
-  { num: '.02', name: 'Cache',        desc: 'Key-value caching with TTL, sorted sets, and atomic operations.',       providers: 'Redis, Memcached, In-Memory' },
-  { num: '.03', name: 'Vector Store', desc: 'Semantic search over embeddings with upsert, delete, and filtering.',   providers: 'Qdrant, Pinecone, ChromaDB' },
-  { num: '.04', name: 'Analytics',    desc: 'Event tracking, time-series aggregation, and usage dashboards.',         providers: 'SQLite, DuckDB, ClickHouse' },
-  { num: '.05', name: 'Storage',      desc: 'File read/write/list with a unified interface across backends.',         providers: 'S3, Local FS, MinIO' },
-  { num: '.06', name: 'Embeddings',   desc: 'Text-to-vector conversion for search and similarity.',                  providers: 'OpenAI, Cohere, Local' },
+  { num: '.01', name: 'LLM',          desc: 'Language model access through a stable interface — swap the provider, the plugin code stays the same.',        providers: 'OpenAI, KB Labs Gateway — more via custom adapters' },
+  { num: '.02', name: 'Cache',        desc: 'Key-value caching with TTL for expensive computations (LLM results, embeddings, scraped data).',                 providers: 'Redis — more backends as demand grows' },
+  { num: '.03', name: 'Vector Store', desc: 'Semantic search over embeddings: upsert, search, delete, filter.',                                                providers: 'Qdrant — more backends as demand grows' },
+  { num: '.04', name: 'Analytics',    desc: 'Event tracking and time-series aggregation with pluggable backends.',                                             providers: 'SQLite, DuckDB, JSONL file' },
+  { num: '.05', name: 'Storage',      desc: 'File read/write/list through a single interface — same code runs against local disk or a remote backend.',        providers: 'Local filesystem — more backends as demand grows' },
+  { num: '.06', name: 'Embeddings',   desc: 'Text-to-vector conversion used by semantic search and RAG flows.',                                                providers: 'OpenAI — more via custom adapters' },
 ];
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -106,7 +106,7 @@ export function PlatformApiContent({ locale, t }: PlatformApiContentProps) {
         <div className={s.container}>
           <div className={s.codeBlock}>
             <div className={s.codeDots}><span /><span /><span /></div>
-            <pre><code><span className={s.cKw}>import</span>{' { '}<span className={s.cType}>KBPlatform</span>{' } '}<span className={s.cKw}>from</span> <span className={s.cStr}>&apos;@kb-labs/platform-client&apos;</span>{';\n\n'}<span className={s.cKw}>const</span>{' platform = '}<span className={s.cKw}>new</span> <span className={s.cType}>KBPlatform</span>{'({\n  endpoint: '}<span className={s.cStr}>&apos;http://gateway:4000&apos;</span>{',\n  apiKey: '}<span className={s.cVar}>process</span>{'.env.'}<span className={s.cVar}>KB_API_KEY</span>{',\n});\n\n'}<span className={s.cComment}>{'// LLM — provider resolved by platform config'}</span>{'\n'}<span className={s.cKw}>const</span>{' answer = '}<span className={s.cKw}>await</span>{' platform.'}<span className={s.cFn}>llm</span>{'.'}<span className={s.cFn}>complete</span>{'('}<span className={s.cStr}>&apos;Explain this code&apos;</span>{');\n\n'}<span className={s.cComment}>{'// Cache — Redis, Memcached, or in-memory, same API'}</span>{'\n'}<span className={s.cKw}>await</span>{' platform.'}<span className={s.cFn}>cache</span>{'.'}<span className={s.cFn}>set</span>{'('}<span className={s.cStr}>&apos;session:123&apos;</span>{', userData, '}<span className={s.cNum}>3600</span>{');\n\n'}<span className={s.cComment}>{'// Telemetry — batched, auto-flushed'}</span>{'\nplatform.'}<span className={s.cFn}>telemetry</span>{'.'}<span className={s.cFn}>event</span>{'('}<span className={s.cStr}>&apos;user.signup&apos;</span>{', { plan: '}<span className={s.cStr}>&apos;pro&apos;</span>{' });'}</code></pre>
+            <pre><code><span className={s.cKw}>import</span>{' { '}<span className={s.cType}>KBPlatform</span>{' } '}<span className={s.cKw}>from</span> <span className={s.cStr}>&apos;@kb-labs/sdk/platform&apos;</span>{';\n\n'}<span className={s.cKw}>const</span>{' platform = '}<span className={s.cKw}>new</span> <span className={s.cType}>KBPlatform</span>{'({\n  endpoint: '}<span className={s.cStr}>&apos;http://gateway:4000&apos;</span>{',\n  apiKey: '}<span className={s.cVar}>process</span>{'.env.'}<span className={s.cVar}>KB_API_KEY</span>{',\n});\n\n'}<span className={s.cComment}>{'// LLM — provider resolved by platform config'}</span>{'\n'}<span className={s.cKw}>const</span>{' answer = '}<span className={s.cKw}>await</span>{' platform.'}<span className={s.cFn}>llm</span>{'.'}<span className={s.cFn}>complete</span>{'('}<span className={s.cStr}>&apos;Explain this code&apos;</span>{');\n\n'}<span className={s.cComment}>{'// Cache — backend chosen by platform config, same API for you'}</span>{'\n'}<span className={s.cKw}>await</span>{' platform.'}<span className={s.cFn}>cache</span>{'.'}<span className={s.cFn}>set</span>{'('}<span className={s.cStr}>&apos;session:123&apos;</span>{', userData, '}<span className={s.cNum}>3600</span>{');\n\n'}<span className={s.cComment}>{'// Telemetry — batched, auto-flushed'}</span>{'\nplatform.'}<span className={s.cFn}>telemetry</span>{'.'}<span className={s.cFn}>event</span>{'('}<span className={s.cStr}>&apos;user.signup&apos;</span>{', { plan: '}<span className={s.cStr}>&apos;pro&apos;</span>{' });'}</code></pre>
           </div>
         </div>
       </section>

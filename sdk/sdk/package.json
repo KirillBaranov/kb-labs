@@ -48,6 +48,10 @@
     "./testing": {
       "types": "./dist/testing/index.d.ts",
       "import": "./dist/testing/index.js"
+    },
+    "./platform": {
+      "types": "./dist/platform/index.d.ts",
+      "import": "./dist/platform/index.js"
     }
   },
   "files": [
@@ -92,6 +96,7 @@
   "peerDependencies": {
     "@kb-labs/core-platform": "workspace:*",
     "@kb-labs/core-runtime": "workspace:*",
+    "@kb-labs/platform-client": "workspace:*",
     "@kb-labs/core-sys": "workspace:*",
     "@kb-labs/perm-presets": "workspace:*",
     "@kb-labs/plugin-contracts": "workspace:*",
