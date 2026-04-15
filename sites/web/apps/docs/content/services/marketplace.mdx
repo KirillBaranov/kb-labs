@@ -7,7 +7,7 @@ order: 4
 
 The marketplace service is how plugins, adapters, and other entities get installed into a KB Labs workspace. It wraps npm (today — a native registry is on the roadmap) behind a unified HTTP API and writes the resolved installations into `.kb/marketplace.lock`, which is then read by the discovery layer at CLI and service startup.
 
-It's a small Fastify service. Source: [platform/kb-labs-marketplace/apps/marketplace/](platform/kb-labs-marketplace/apps/marketplace/).
+It's a small Fastify service. Source: [plugins/marketplace/apps/marketplace/](plugins/marketplace/apps/marketplace/).
 
 ## Service manifest
 
@@ -30,7 +30,7 @@ It's a small Fastify service. Source: [platform/kb-labs-marketplace/apps/marketp
 }
 ```
 
-Source: [apps/marketplace/src/manifest.ts](platform/kb-labs-marketplace/apps/marketplace/src/manifest.ts).
+Source: [apps/marketplace/src/manifest.ts](plugins/marketplace/apps/marketplace/src/manifest.ts).
 
 ## Why a service?
 
@@ -66,7 +66,7 @@ Doing all that from inside every consumer (CLI, REST, Studio) would mean duplica
           .kb/marketplace.lock
 ```
 
-From [`bootstrap.ts`](platform/kb-labs-marketplace/apps/marketplace/src/bootstrap.ts):
+From [`bootstrap.ts`](plugins/marketplace/apps/marketplace/src/bootstrap.ts):
 
 1. Detect repo root via `findRepoRoot(cwd)`.
 2. Load env from `.env` in the repo root.
@@ -150,7 +150,7 @@ interface MarketplaceEntry {
 }
 ```
 
-The lock file is **the single source of truth** for the discovery layer. Every CLI startup and every service bootstrap reads this file via `DiscoveryManager.discover()` ([core-discovery](platform/kb-labs-core/packages/core-discovery/src/discovery-manager.ts)) and loads the manifests it points at.
+The lock file is **the single source of truth** for the discovery layer. Every CLI startup and every service bootstrap reads this file via `DiscoveryManager.discover()` ([core-discovery](core/discovery/src/discovery-manager.ts)) and loads the manifests it points at.
 
 - `source: 'marketplace'` — installed via `kb marketplace install`. Integrity mismatches are fatal.
 - `source: 'local'` — linked via `kb marketplace link`. Integrity mismatches are silently refreshed, because local packages change on every build.
@@ -188,7 +188,7 @@ kb-dev start marketplace
 Or directly:
 
 ```bash
-cd platform/kb-labs-marketplace/apps/marketplace
+cd plugins/marketplace/apps/marketplace
 node ./dist/index.js
 ```
 

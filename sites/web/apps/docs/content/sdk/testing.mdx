@@ -7,7 +7,7 @@ order: 8
 
 `@kb-labs/sdk/testing` is a separate subpath that exports a full set of test utilities: a test-context factory, per-service mock builders (LLM, cache, storage, logger, tool), and a command test runner. It's designed for writing fast, deterministic unit tests for plugin handlers without booting the full platform.
 
-Source: [`platform/kb-labs-sdk/packages/sdk/src/testing/index.ts`](platform/kb-labs-sdk/packages/sdk/src/testing/index.ts). The underlying utilities come from `@kb-labs/shared-testing` and `@kb-labs/shared-tool-kit/testing` — both re-exported through the SDK so plugin tests only ever import from `@kb-labs/sdk/testing`.
+Source: [`sdk/sdk/src/testing/index.ts`](sdk/sdk/src/testing/index.ts). The underlying utilities come from `@kb-labs/shared-testing` and `@kb-labs/shared-tool-kit/testing` — both re-exported through the SDK so plugin tests only ever import from `@kb-labs/sdk/testing`.
 
 ## The import
 

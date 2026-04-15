@@ -108,7 +108,7 @@ After=network.target kb-qdrant.service kb-redis.service
 Type=simple
 User=kb-labs
 WorkingDirectory=/opt/kb-labs
-ExecStart=/usr/bin/node ./platform/kb-labs-rest-api/apps/rest-api/dist/index.js
+ExecStart=/usr/bin/node ./plugins/rest-api/app/dist/index.js
 Environment=NODE_ENV=production
 Environment=PORT=5050
 Environment=KB_PROJECT_ROOT=/opt/kb-labs
@@ -148,10 +148,10 @@ Each platform service becomes its own deployable unit. The gateway fronts them a
 
 Every service that ships a `ServiceManifest` has a `Dockerfile` you can build from:
 
-- `platform/kb-labs-rest-api/Dockerfile`
-- `platform/kb-labs-workflow/packages/workflow-daemon/Dockerfile` (check for one)
-- `platform/kb-labs-marketplace/Dockerfile`
-- `infra/kb-labs-gateway/apps/gateway-app/Dockerfile`
+- `plugins/rest-api/Dockerfile`
+- `plugins/workflow/daemon/Dockerfile` (check for one)
+- `plugins/marketplace/Dockerfile`
+- `plugins/gateway/app/Dockerfile`
 
 For services without a pre-made Dockerfile, use a multi-stage Node image pattern:
 

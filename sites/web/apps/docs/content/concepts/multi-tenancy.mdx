@@ -49,7 +49,7 @@ Incoming REST requests carry the tenant via header:
 X-Tenant-ID: acme-corp
 ```
 
-The REST API middleware extracts the header and attaches it to the request context. See [`rest-api/src/middleware/rate-limit.ts`](platform/kb-labs-rest-api/apps/rest-api/src/middleware/rate-limit.ts):
+The REST API middleware extracts the header and attaches it to the request context. See [`rest-api/src/middleware/rate-limit.ts`](plugins/rest-api/app/src/middleware/rate-limit.ts):
 
 ```ts
 const tenantId =

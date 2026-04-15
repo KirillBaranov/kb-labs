@@ -17,7 +17,7 @@ Every REST route has:
 2. **A handler file** — exports a `defineRoute(...)` result as default.
 3. **Zod schemas** referenced by the manifest via `{ zod: '@pkg#Schema' }` notation.
 
-The canonical example is [kb-labs-commit-plugin's manifest.ts](plugins/kb-labs-commit-plugin/packages/commit-cli/src/manifest.ts) which declares 14 routes — browse that for a production-grade reference.
+The canonical example is [kb-labs-commit-plugin's manifest.ts](plugins/commit/entry/src/manifest.ts) which declares 14 routes — browse that for a production-grade reference.
 
 ## 1 — The manifest entry
 

@@ -7,7 +7,7 @@ order: 1
 
 `ILLM` is the interface every language-model adapter implements. Plugins consume it through `useLLM()`, which returns either the raw adapter or a tier-routed binding.
 
-Source of truth: [platform/kb-labs-core/packages/core-platform/src/adapters/llm.ts](platform/kb-labs-core/packages/core-platform/src/adapters/llm.ts).
+Source of truth: [core/platform/src/adapters/llm.ts](core/platform/src/adapters/llm.ts).
 
 ## Interface
 
@@ -237,7 +237,7 @@ interface UseLLMOptions {
 }
 ```
 
-Resolution rules (from [llm-types.ts](platform/kb-labs-core/packages/core-platform/src/adapters/llm-types.ts)):
+Resolution rules (from [llm-types.ts](core/platform/src/adapters/llm-types.ts)):
 
 - **Escalation.** If the plugin asks for `small` but only `medium` is configured, the router silently uses `medium`.
 - **Degradation.** If the plugin asks for `large` but only `medium` is configured, the router uses `medium` and emits a warning.
@@ -369,7 +369,7 @@ To add prompt-caching or streaming capability negotiation, also implement `getPr
 | `@kb-labs/adapters-openai` | OpenAI Chat Completions API; supports streaming, native function calling, prompt caching for GPT-4o family. |
 | `@kb-labs/adapters-vibeproxy` | Multi-provider proxy that talks to an internal routing service. Supports routing to Claude, GPT-5, and custom models via the `adapter` override in tier mapping. |
 
-Both are under `infra/kb-labs-adapters/packages/`.
+Both are under `adapters/packages/`.
 
 ## Wrapper layers
 

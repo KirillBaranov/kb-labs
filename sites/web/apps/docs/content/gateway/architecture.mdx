@@ -7,7 +7,7 @@ order: 2
 
 The gateway is a Fastify 5 application with a handful of internal components that handle routing, auth, host tracking, and WebSocket dispatch. This page documents the internal structure — the code you'd touch if you were modifying the gateway itself.
 
-Source: [infra/kb-labs-gateway/apps/gateway-app/src/](infra/kb-labs-gateway/apps/gateway-app/src/).
+Source: [plugins/gateway/app/src/](plugins/gateway/app/src/).
 
 ## Component layout
 
@@ -47,7 +47,7 @@ apps/gateway-app/src/
 
 ## Bootstrap sequence
 
-From [`bootstrap.ts`](infra/kb-labs-gateway/apps/gateway-app/src/bootstrap.ts):
+From [`bootstrap.ts`](plugins/gateway/app/src/bootstrap.ts):
 
 1. **Init platform.** `createServiceBootstrap({ appId: 'gateway', repoRoot })` loads `.env`, initializes the platform singleton (logger, cache, storage, optionally a SQL adapter).
 2. **Build a correlated logger** with `serviceId: 'gateway'` bindings.
@@ -89,7 +89,7 @@ Logging: like every other service, Fastify's own logger is disabled and all logg
 
 ## Host registry
 
-[`HostRegistry`](infra/kb-labs-gateway/apps/gateway-app/src/hosts/registry.ts) is the data structure that tracks which hosts are currently connected. Two-layer design:
+[`HostRegistry`](plugins/gateway/app/src/hosts/registry.ts) is the data structure that tracks which hosts are currently connected. Two-layer design:
 
 - **Cache layer** (`platform.cache`) — fast lookups and TTL-based expiration.
 - **Store layer** (`SqliteHostStore` or none) — durable records that survive restart.
@@ -106,7 +106,7 @@ The TTL-based approach means stale entries expire automatically even if a host d
 
 ## Host dispatcher
 
-[`dispatcher.ts`](infra/kb-labs-gateway/apps/gateway-app/src/hosts/dispatcher.ts) is what the `/internal/dispatch` endpoint calls when it needs to execute something on a host agent. Given a `namespaceId` (or a specific `hostId`), the dispatcher:
+[`dispatcher.ts`](plugins/gateway/app/src/hosts/dispatcher.ts) is what the `/internal/dispatch` endpoint calls when it needs to execute something on a host agent. Given a `namespaceId` (or a specific `hostId`), the dispatcher:
 
 1. Looks up a connected host in the registry.
 2. Sends a capability call message over the host's WebSocket.
@@ -119,14 +119,14 @@ This is the mechanism behind the workspace-agent adapter: when a workflow asks f
 
 Two distinct WebSocket surfaces:
 
-- **`/hosts/connect`** — for host agents connecting inbound. Authenticated via Bearer JWT. Managed by [`ws-handler.ts`](infra/kb-labs-gateway/apps/gateway-app/src/hosts/ws-handler.ts).
+- **`/hosts/connect`** — for host agents connecting inbound. Authenticated via Bearer JWT. Managed by [`ws-handler.ts`](plugins/gateway/app/src/hosts/ws-handler.ts).
 - **`/api/v1` WebSocket upgrades** — proxied through to the REST API upstream if `websocket: true` is set on the upstream config. The gateway acts as a transparent WebSocket proxy in this case.
 
 The host agent WS is the more interesting one — it's bidirectional, survives for the lifetime of the connection, and is the channel for dispatching capability calls back to the agent.
 
 ## Internal dispatch endpoint
 
-[`/internal/dispatch`](infra/kb-labs-gateway/apps/gateway-app/src/execute/routes.ts) is a gateway-internal endpoint used by the container execution backend. When `platform.execution.mode === 'container'`, the REST API (or workflow daemon) forwards execution requests through this endpoint to a container environment.
+[`/internal/dispatch`](plugins/gateway/app/src/execute/routes.ts) is a gateway-internal endpoint used by the container execution backend. When `platform.execution.mode === 'container'`, the REST API (or workflow daemon) forwards execution requests through this endpoint to a container environment.
 
 It's not exposed publicly — auth is via a separate shared secret (`GATEWAY_INTERNAL_SECRET`), not via the public token system. The endpoint accepts a handler reference plus inputs and returns the execution result.
 

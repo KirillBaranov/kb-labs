@@ -5,7 +5,7 @@ updatedAt: "2026-04-07"
 order: 2
 ---
 
-`.kb/devservices.yaml` is the service catalog consumed by [`kb-dev`](infra/kb-labs-dev/), the Go binary that manages local development processes. Every long-running daemon in a KB Labs deployment (REST API, workflow daemon, marketplace, gateway, state daemon, Studio, etc.) plus its infrastructure dependencies (Qdrant, Redis, Docker containers) is declared here.
+`.kb/devservices.yaml` is the service catalog consumed by [`kb-dev`](tools/kb-dev/), the Go binary that manages local development processes. Every long-running daemon in a KB Labs deployment (REST API, workflow daemon, marketplace, gateway, state daemon, Studio, etc.) plus its infrastructure dependencies (Qdrant, Redis, Docker containers) is declared here.
 
 This is **not** the platform config. `kb.config.json` tells the platform which adapters to load; `devservices.yaml` tells `kb-dev` which processes to start, how to health-check them, and what they depend on. They're separate files with separate schemas.
 
@@ -95,7 +95,7 @@ The shell command to start the service. Multi-line commands are allowed — use 
 **Node service built and ready:**
 
 ```json
-"command": "node ./platform/kb-labs-rest-api/apps/rest-api/dist/index.js"
+"command": "node ./plugins/rest-api/app/dist/index.js"
 ```
 
 The path is relative to the workspace root. `kb-dev` always runs commands with the workspace root as CWD, so you don't need to cd around.
@@ -103,7 +103,7 @@ The path is relative to the workspace root. `kb-dev` always runs commands with t
 **Dev mode via pnpm filter:**
 
 ```json
-"command": "cd platform/kb-labs-studio && pnpm --filter kb-labs-studio-app dev"
+"command": "cd studio && pnpm --filter kb-labs-studio-app dev"
 ```
 
 Use this for services you want hot-reload on. Studio is the canonical example.
@@ -220,7 +220,7 @@ A minimal entry for a typical platform service:
     "description": "Main platform REST API",
     "group": "backend",
     "type": "node",
-    "command": "node ./platform/kb-labs-rest-api/apps/rest-api/dist/index.js",
+    "command": "node ./plugins/rest-api/app/dist/index.js",
     "healthCheck": "http://localhost:5050/api/v1/health",
     "port": 5050,
     "url": "http://localhost:5050",

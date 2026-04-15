@@ -44,7 +44,7 @@ Every service uses `platform.logger` from `@kb-labs/core-platform` — a structu
 }
 ```
 
-Fields are attached by the correlated logger ([`createCorrelatedLogger`](platform/kb-labs-shared/packages/shared-http/)) — each service binds its `serviceId`, `logsSource`, and `layer` at bootstrap, so every log line from that service carries them automatically.
+Fields are attached by the correlated logger ([`createCorrelatedLogger`](shared/http/)) — each service binds its `serviceId`, `logsSource`, and `layer` at bootstrap, so every log line from that service carries them automatically.
 
 ### Shipping logs
 
@@ -71,8 +71,8 @@ Override at service startup with `KB_LOG_LEVEL=debug` or `LOG_LEVEL=debug`.
 
 Every platform service exposes Prometheus-format metrics at `/metrics`. The REST API service has two collectors running in parallel:
 
-- **Request metrics** — per-route request counts, latency histograms, error rates (from [`rest-api/src/middleware/metrics.ts`](platform/kb-labs-rest-api/apps/rest-api/src/middleware/metrics.ts)).
-- **System metrics** — CPU, memory, event loop lag, open handles, GC pauses (from [`rest-api/src/services/system-metrics-collector.ts`](platform/kb-labs-rest-api/apps/rest-api/src/services/system-metrics-collector.ts)).
+- **Request metrics** — per-route request counts, latency histograms, error rates (from [`rest-api/src/middleware/metrics.ts`](plugins/rest-api/app/src/middleware/metrics.ts)).
+- **System metrics** — CPU, memory, event loop lag, open handles, GC pauses (from [`rest-api/src/services/system-metrics-collector.ts`](plugins/rest-api/app/src/services/system-metrics-collector.ts)).
 
 ### Standard metrics
 
@@ -207,7 +207,7 @@ analytics.getDailyStats({ groupBy, breakdownBy, metrics }); // time-series
 
 See [Adapters → IAnalytics](/adapters/interfaces/analytics) for the full query API.
 
-The REST API exposes these queries at `/api/v1/analytics/*` so Studio dashboards can read them without plugin code. See [`routes/analytics.ts`](platform/kb-labs-rest-api/apps/rest-api/src/routes/analytics.ts).
+The REST API exposes these queries at `/api/v1/analytics/*` so Studio dashboards can read them without plugin code. See [`routes/analytics.ts`](plugins/rest-api/app/src/routes/analytics.ts).
 
 ### Analytics vs metrics
 

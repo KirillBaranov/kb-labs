@@ -7,7 +7,7 @@ order: 5
 
 Runtime hooks are how plugin handlers talk to platform services. They all share the same pattern: read from a global platform singleton, return the adapter if configured, return `undefined` otherwise. No context drilling, no DI, no wiring — just call the hook and check the result.
 
-Every hook in this page is exported from `@kb-labs/sdk`. The actual implementations live in [`@kb-labs/shared-command-kit`](platform/kb-labs-shared/packages/shared-command-kit/src/helpers/) and read from `platform` in `@kb-labs/core-runtime`.
+Every hook in this page is exported from `@kb-labs/sdk`. The actual implementations live in [`@kb-labs/shared-command-kit`](shared/command-kit/src/helpers/) and read from `platform` in `@kb-labs/core-runtime`.
 
 ## The pattern
 
@@ -59,7 +59,7 @@ platform.logger.info('done');
 
 ### What's on the singleton
 
-As documented in [use-platform.ts](platform/kb-labs-shared/packages/shared-command-kit/src/helpers/use-platform.ts), the platform exposes:
+As documented in [use-platform.ts](shared/command-kit/src/helpers/use-platform.ts), the platform exposes:
 
 - `platform.llm` — LLM adapter
 - `platform.embeddings` — Embeddings adapter

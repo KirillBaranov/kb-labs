@@ -7,7 +7,7 @@ order: 8
 
 `ILogger` is the interface every logging adapter implements. Unlike most platform interfaces, all methods are **synchronous** (return `void`, not `Promise<void>`) — logging is fire-and-forget, and adapters that persist logs flush asynchronously in the background.
 
-Source of truth: [platform/kb-labs-core/packages/core-platform/src/adapters/logger.ts](platform/kb-labs-core/packages/core-platform/src/adapters/logger.ts).
+Source of truth: [core/platform/src/adapters/logger.ts](core/platform/src/adapters/logger.ts).
 
 ## Interface
 

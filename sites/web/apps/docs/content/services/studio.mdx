@@ -7,7 +7,7 @@ order: 3
 
 Studio is the web-based dashboard for KB Labs. It's a React SPA built with [rspack](https://rspack.dev) and Ant Design, fronted by the platform's data client and federation layer. Studio talks to the REST API, the workflow daemon, and the marketplace service over HTTP and WebSocket; it also dynamically loads plugin-authored pages at runtime via Module Federation.
 
-Source lives in [platform/kb-labs-studio/](platform/kb-labs-studio/).
+Source lives in [studio/](studio/).
 
 ## What it does
 
@@ -19,7 +19,7 @@ Source lives in [platform/kb-labs-studio/](platform/kb-labs-studio/).
 
 ## Stack
 
-The app lives under [`apps/studio/`](platform/kb-labs-studio/apps/studio/). Core dependencies:
+The app lives under [`apps/studio/`](studio/app/). Core dependencies:
 
 - **React** + Ant Design (`antd`, `@ant-design/charts`, `@ant-design/plots`, `@ant-design/icons`) — component library and charts.
 - **rspack** — the build tool (fast Rust-based bundler, webpack-compatible).
@@ -108,7 +108,7 @@ Plugin pages get a scoped SDK via `@kb-labs/studio-plugin-tools` and `@kb-labs/s
 ### Dev mode
 
 ```bash
-cd platform/kb-labs-studio/apps/studio
+cd studio/app
 pnpm dev
 ```
 
@@ -123,7 +123,7 @@ kb-dev start studio
 ### Production build
 
 ```bash
-cd platform/kb-labs-studio/apps/studio
+cd studio/app
 pnpm build
 ```
 
