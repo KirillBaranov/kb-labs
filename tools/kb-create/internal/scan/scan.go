@@ -205,7 +205,11 @@ type devServiceYAML struct {
 // Services outside the installed set are by definition unavailable
 // in this platform, so depending on them would be a guaranteed failure
 // on `kb-dev start`.
-func GenerateDevServicesYAML(r *ScanResult) string {
+//
+// When baseDir is non-empty, resolved paths are prefixed with it so the
+// generated config can live in a project directory while referencing
+// node_modules installed under a separate platform directory.
+func GenerateDevServicesYAML(r *ScanResult, baseDir string) string {
 	// Pass 1: collect the set of service IDs that will land in the config.
 	known := make(map[string]struct{}, len(r.Services))
 	for _, s := range r.Services {
@@ -216,7 +220,11 @@ func GenerateDevServicesYAML(r *ScanResult) string {
 	entries := make([]devServiceYAML, 0, len(r.Services))
 	backendIDs := make([]string, 0, len(r.Services))
 	for _, s := range r.Services {
-		command := fmt.Sprintf("node %s/%s", s.ResolvedPath, s.Runtime.Entry)
+		resolvedPath := s.ResolvedPath
+		if baseDir != "" {
+			resolvedPath = filepath.Join(baseDir, s.ResolvedPath)
+		}
+		command := fmt.Sprintf("node %s/%s", resolvedPath, s.Runtime.Entry)
 		healthURL := ""
 		if s.Runtime.HealthCheck != "" {
 			proto := s.Runtime.Protocol
@@ -318,13 +326,16 @@ func filterKnownDeps(deps []string, known map[string]struct{}) []string {
 }
 
 // WriteConfigs writes marketplace.lock and devservices.yaml to <platformDir>/.kb/.
-func WriteConfigs(platformDir string, r *ScanResult) error {
+// When projectDir is non-empty and differs from platformDir, a second copy of
+// devservices.yaml is written to <projectDir>/.kb/ with absolute command paths
+// so that `kb-dev start` works from the project directory.
+func WriteConfigs(platformDir string, r *ScanResult, projectDir string) error {
 	kbDir := filepath.Join(platformDir, ".kb")
 	if err := os.MkdirAll(kbDir, 0o750); err != nil {
 		return err
 	}
 
-	// marketplace.lock
+	// marketplace.lock — always in platformDir (shared across projects).
 	if len(r.Plugins)+len(r.Adapters) > 0 {
 		lock := GenerateMarketplaceLock(r, platformDir)
 		data, err := json.MarshalIndent(lock, "", "  ")
@@ -336,11 +347,25 @@ func WriteConfigs(platformDir string, r *ScanResult) error {
 		}
 	}
 
-	// devservices.yaml
+	// devservices.yaml — platform copy (relative paths, for running from platform dir).
 	if len(r.Services) > 0 {
-		yaml := GenerateDevServicesYAML(r)
+		yaml := GenerateDevServicesYAML(r, "")
 		if err := os.WriteFile(filepath.Join(kbDir, "devservices.yaml"), []byte(yaml), 0o600); err != nil {
 			return fmt.Errorf("write devservices.yaml: %w", err)
+		}
+	}
+
+	// devservices.yaml — project copy (absolute paths, for running from project dir).
+	absPlatform, _ := filepath.Abs(platformDir)
+	absProject, _ := filepath.Abs(projectDir)
+	if projectDir != "" && absProject != absPlatform && len(r.Services) > 0 {
+		projKBDir := filepath.Join(projectDir, ".kb")
+		if err := os.MkdirAll(projKBDir, 0o750); err != nil {
+			return fmt.Errorf("create project .kb dir: %w", err)
+		}
+		yaml := GenerateDevServicesYAML(r, absPlatform)
+		if err := os.WriteFile(filepath.Join(projKBDir, "devservices.yaml"), []byte(yaml), 0o600); err != nil {
+			return fmt.Errorf("write project devservices.yaml: %w", err)
 		}
 	}
 

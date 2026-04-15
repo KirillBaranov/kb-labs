@@ -27,13 +27,13 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "<%= it.scope ? it.scope + '/' : '' %><%= it.name %>-core": "<%= it.mode === 'in-workspace' ? 'workspace:*' : '^0.1.0' %>",
-    "<%= it.scope ? it.scope + '/' : '' %><%= it.name %>-contracts": "<%= it.mode === 'in-workspace' ? 'workspace:*' : '^0.1.0' %>",
-    "@kb-labs/sdk": "<%= it.mode === 'in-workspace' ? 'workspace:*' : '^' + it.versions.sdk %>"<% if (it.mode === 'standalone') { %>,
-    "@kb-labs/shared-command-kit": "^<%= it.versions.commandKit %>"<% } %>
+    "<%= it.scope ? it.scope + '/' : '' %><%= it.name %>-core": "workspace:*",
+    "<%= it.scope ? it.scope + '/' : '' %><%= it.name %>-contracts": "workspace:*",
+    "@kb-labs/sdk": "^<%= it.versions.sdk %>",
+    "@kb-labs/shared-command-kit": "^<%= it.versions.commandKit %>"
   },
   "devDependencies": {
-    "@kb-labs/devkit": "<%= it.mode === 'in-workspace' ? 'workspace:*' : '^' + it.versions.devkit %>",
+    "@kb-labs/devkit": "^<%= it.versions.devkit %>",
     "@types/node": "^24.0.0",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",

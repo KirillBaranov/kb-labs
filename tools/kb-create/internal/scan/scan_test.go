@@ -238,7 +238,7 @@ func TestGenerateDevServicesYAML(t *testing.T) {
 		}},
 	}
 
-	yaml := GenerateDevServicesYAML(r)
+	yaml := GenerateDevServicesYAML(r, "")
 
 	if !strings.Contains(yaml, "api:") {
 		t.Error("YAML should contain service 'api'")
@@ -279,7 +279,7 @@ func TestGenerateDevServicesYAML_KeepsKnownDeps(t *testing.T) {
 		},
 	}
 
-	yaml := GenerateDevServicesYAML(r)
+	yaml := GenerateDevServicesYAML(r, "")
 
 	if !strings.Contains(yaml, "depends_on: [state-daemon]") {
 		t.Errorf("YAML should contain depends_on with state-daemon only, got:\n%s", yaml)
@@ -292,7 +292,7 @@ func TestGenerateDevServicesYAML_KeepsKnownDeps(t *testing.T) {
 // TestGenerateDevServicesYAML_EmptyServices verifies YAML for empty service list.
 func TestGenerateDevServicesYAML_EmptyServices(t *testing.T) {
 	r := &ScanResult{}
-	yaml := GenerateDevServicesYAML(r)
+	yaml := GenerateDevServicesYAML(r, "")
 
 	if !strings.Contains(yaml, "name: KB Labs Platform") {
 		t.Error("YAML should contain header")
@@ -363,7 +363,7 @@ func TestWriteConfigs(t *testing.T) {
 		}},
 	}
 
-	if err := WriteConfigs(dir, r); err != nil {
+	if err := WriteConfigs(dir, r, ""); err != nil {
 		t.Fatalf("WriteConfigs() error = %v", err)
 	}
 

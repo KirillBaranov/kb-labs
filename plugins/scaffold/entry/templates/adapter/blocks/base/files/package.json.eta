@@ -25,10 +25,10 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@kb-labs/sdk": "<%= it.mode === 'in-workspace' ? 'workspace:*' : '^' + it.versions.sdk %>"
+    "@kb-labs/sdk": "^<%= it.versions.sdk %>"
   },
   "devDependencies": {
-    "@kb-labs/devkit": "<%= it.mode === 'in-workspace' ? 'workspace:*' : '^' + it.versions.devkit %>",
+    "@kb-labs/devkit": "^<%= it.versions.devkit %>",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
     "typescript": "^5.6.3",
