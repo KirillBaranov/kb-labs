@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-REPO="KirillBaranov/kb-labs-create"
+REPO="KirillBaranov/kb-labs"
 BINARY="kb-create"
 DEST="${HOME}/.local/bin/${BINARY}"
 VERSION="latest"

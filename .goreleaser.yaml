@@ -1,0 +1,98 @@
+version: 2
+
+# Single goreleaser config for all KB Labs Go binaries.
+#
+# Triggered by pushing a tag like `binaries-v0.4.0`. GitHub Actions runs
+# goreleaser, which builds each tool in tools/<name>/, uploads raw
+# binaries to a GitHub Release, and writes a checksums.txt.
+#
+# Each tool is a separate Go module. `dir:` tells goreleaser where to
+# run `go build` from; `main: .` is relative to that dir.
+
+project_name: kb-labs-binaries
+
+before:
+  hooks:
+    - sh -c "cd tools/kb-create && go mod tidy"
+    - sh -c "cd tools/kb-dev && go mod tidy"
+    - sh -c "cd tools/kb-devkit && go mod tidy"
+    - sh -c "cd tools/kb-deploy && go mod tidy"
+    - sh -c "cd tools/kb-monitor && go mod tidy"
+
+builds:
+  - id: kb-create
+    dir: tools/kb-create
+    main: .
+    binary: kb-create
+    ldflags: &ldflags
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+    goos: &goos [darwin, linux, windows]
+    goarch: &goarch [amd64, arm64]
+    ignore: &ignore
+      - goos: windows
+        goarch: arm64
+
+  - id: kb-dev
+    dir: tools/kb-dev
+    main: .
+    binary: kb-dev
+    ldflags: *ldflags
+    goos: *goos
+    goarch: *goarch
+    ignore: *ignore
+
+  - id: kb-devkit
+    dir: tools/kb-devkit
+    main: .
+    binary: kb-devkit
+    ldflags: *ldflags
+    goos: *goos
+    goarch: *goarch
+    ignore: *ignore
+
+  - id: kb-deploy
+    dir: tools/kb-deploy
+    main: .
+    binary: kb-deploy
+    ldflags: *ldflags
+    goos: *goos
+    goarch: *goarch
+    ignore: *ignore
+
+  - id: kb-monitor
+    dir: tools/kb-monitor
+    main: .
+    binary: kb-monitor
+    ldflags: *ldflags
+    goos: *goos
+    goarch: *goarch
+    ignore: *ignore
+
+# Upload raw binaries (not archives). Matches what install.sh scripts expect:
+#   https://github.com/.../releases/latest/download/<binary>-<os>-<arch>
+archives:
+  - id: binaries
+    formats:
+      - binary
+    name_template: "{{ .Binary }}-{{ .Os }}-{{ .Arch }}{{ if eq .Os \"windows\" }}.exe{{ end }}"
+
+checksum:
+  name_template: checksums.txt
+
+release:
+  draft: false
+  prerelease: auto
+  name_template: "KB Labs Binaries {{ .Tag }}"
+  header: |
+    KB Labs standalone binaries: kb-create, kb-dev, kb-devkit, kb-deploy, kb-monitor.
+
+    Install via:
+    ```
+    curl -fsSL https://kblabs.ru/install.sh | sh
+    ```
+
+changelog:
+  disable: true

@@ -41,6 +41,31 @@ const INSTALL_COMMANDS = {
   windows: 'iwr https://kblabs.ru/install.ps1 | iex',
 };
 
+// Fallback used when the GitHub API is unreachable at build/render time.
+// Kept as the last known-good tag so copy-paste still resolves to real assets.
+const FALLBACK_TAG = 'binaries-v0.4.0';
+
+/**
+ * Fetches the latest `binaries-v*` release tag so the page never goes stale.
+ * Cached for an hour — the docs don't need second-by-second freshness.
+ */
+async function getLatestBinariesTag(): Promise<string> {
+  try {
+    const res = await fetch(
+      'https://api.github.com/repos/KirillBaranov/kb-labs/releases?per_page=20',
+      { next: { revalidate: 3600 }, headers: { Accept: 'application/vnd.github+json' } },
+    );
+    if (!res.ok) return FALLBACK_TAG;
+    const releases = (await res.json()) as Array<{ tag_name?: string; draft?: boolean; prerelease?: boolean }>;
+    const hit = releases.find(
+      (r) => !r.draft && !r.prerelease && typeof r.tag_name === 'string' && r.tag_name.startsWith('binaries-v'),
+    );
+    return hit?.tag_name ?? FALLBACK_TAG;
+  } catch {
+    return FALLBACK_TAG;
+  }
+}
+
 export default async function InstallPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -50,6 +75,10 @@ export default async function InstallPage({ params }: Props) {
   const BINARIES = t.raw('install.binaries.platforms') as Array<{ platform: string; file: string }>;
   const NEXT_STEPS = t.raw('install.afterInstall.steps') as Array<{ title: string; cmd?: string; href?: string; label?: string }>;
   const PREREQUISITES = t.raw('install.prerequisites.items') as string[];
+  const latestTag = await getLatestBinariesTag();
+  const pinUnix = `curl -fsSL https://kblabs.ru/install.sh | sh -s -- --version ${latestTag}`;
+  const pinWindows = `iwr https://kblabs.ru/install.ps1 -OutFile install.ps1; .\\install.ps1 -Version ${latestTag}`;
+  const checksumCmd = `curl -fsSL https://github.com/KirillBaranov/kb-labs/releases/download/${latestTag}/checksums.txt | grep kb-create-linux-amd64`;
 
   // Step 01 is install — platform-dependent. Steps 02+ are universal.
   const [installStep, ...restSteps] = STEPS;
@@ -65,7 +94,7 @@ export default async function InstallPage({ params }: Props) {
           <p>{renderWithCode(t.raw('install.hero.description') as string, s.inlineCode)}</p>
           <div className={s.heroCta}>
             <PlatformCommand commands={INSTALL_COMMANDS} />
-            <a className="btn secondary" href="https://github.com/KirillBaranov/kb-labs-create/releases/latest" target="_blank" rel="noopener noreferrer">
+            <a className="btn secondary" href="https://github.com/KirillBaranov/kb-labs/releases/latest" target="_blank" rel="noopener noreferrer">
               {t('install.hero.releasesBtn')}
             </a>
           </div>
@@ -124,16 +153,16 @@ export default async function InstallPage({ params }: Props) {
             <p>{t('install.pinVersion.description')}</p>
             <PlatformCommand
               commands={{
-                unix: 'curl -fsSL https://kblabs.ru/install.sh | sh -s -- --version v0.3.0',
-                windows: 'iwr https://kblabs.ru/install.ps1 -OutFile install.ps1; .\\install.ps1 -Version v0.3.0',
+                unix: pinUnix,
+                windows: pinWindows,
               }}
             />
             <h3 className={s.subhead}>{t('install.pinVersion.checksumTitle')}</h3>
             <div className={s.codeWrap}>
               <pre className={s.codeBlock}>
-                <code>{'curl -fsSL https://github.com/KirillBaranov/kb-labs-create/releases/download/v0.3.0/checksums.txt | grep kb-create-linux-amd64'}</code>
+                <code>{checksumCmd}</code>
               </pre>
-              <CopyButton text="curl -fsSL https://github.com/KirillBaranov/kb-labs-create/releases/download/v0.3.0/checksums.txt | grep kb-create-linux-amd64" />
+              <CopyButton text={checksumCmd} />
             </div>
           </div>
           <div className={s.enterpriseNote}>
@@ -159,7 +188,7 @@ export default async function InstallPage({ params }: Props) {
           <PlatformBinaryTable
             binaries={BINARIES}
             downloadLabel={t('install.binaries.downloadBtn')}
-            baseUrl="https://github.com/KirillBaranov/kb-labs-create/releases/latest/download"
+            baseUrl="https://github.com/KirillBaranov/kb-labs/releases/latest/download"
             colPlatform={t('install.binaries.colPlatform')}
             colBinary={t('install.binaries.colBinary')}
             colDownload={t('install.binaries.colDownload')}

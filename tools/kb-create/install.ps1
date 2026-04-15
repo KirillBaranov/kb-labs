@@ -20,7 +20,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
-$Repo   = "KirillBaranov/kb-labs-create"
+$Repo   = "KirillBaranov/kb-labs"
 $Binary = "kb-create"
 $Arch   = "amd64"   # only amd64 Windows builds are published
 $File   = "${Binary}-windows-${Arch}.exe"
