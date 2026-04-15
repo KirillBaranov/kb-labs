@@ -1,3 +1,20 @@
+## [2.20.0] - 2026-04-15
+
+> **@kb-labs/sdk** 2.19.0 → 2.20.0 (minor: new features)
+
+### 🏗️ Core & SDK
+
+- **sdk**: Introduces the platform client at @kb-labs/sdk/platform, enhancing accessibility to platform features and improving the marketing page for better user engagement.
+- **sdk**: Adds adapter types via @kb-labs/sdk/adapters, allowing for more flexible integrations and easier customization to fit user needs.
+- **sdk**: Introduces the runtimeContext ALS and useEnv() hook, providing developers with improved context management and enabling more efficient resource handling in applications.
+- **devkit**: Implements a skip for self-referencing dependencies in the dependency graph, streamlining development processes and fixing mock platform adapters for better testing reliability.
+
+### 🔧 Other
+
+- **docs**: Updated the configuration file format, ensuring better compatibility with future updates and improving documentation clarity for users.  
+- **web**: Migrated the configuration file to a new format, which enhances performance and allows for easier customization options for developers.  
+- **ci**: Aligned package management files to ensure consistent dependencies, leading to a more reliable and smoother installation process for users.  
+- **general**: Resolved various code quality issues, resulting in a more stable and reliable software experience across multiple packages.
 ## [2.19.0] - 2026-04-15
 
 > **@kb-labs/sdk** 2.18.2 → 2.19.0 (minor: new features)
