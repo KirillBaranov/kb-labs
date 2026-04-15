@@ -20,7 +20,7 @@ There are two `PermissionSpec` types in the codebase, and they describe the same
 
 ### Authoring form
 
-Defined in [platform/kb-labs-shared/packages/shared-perm-presets/src/types.ts](platform/kb-labs-shared/packages/shared-perm-presets/src/types.ts):
+Defined in [shared/packages/shared-perm-presets/src/types.ts](shared/packages/shared-perm-presets/src/types.ts):
 
 ```ts
 interface PermissionSpec {
@@ -44,7 +44,7 @@ interface PermissionSpec {
 
 ### Runtime form
 
-Defined in [infra/kb-labs-plugin/packages/plugin-contracts/src/permissions.ts](infra/kb-labs-plugin/packages/plugin-contracts/src/permissions.ts):
+Defined in [core/plugin-contracts/src/permissions.ts](core/plugin-contracts/src/permissions.ts):
 
 ```ts
 interface PermissionSpec {
@@ -106,7 +106,7 @@ interface PlatformPermissions {
 }
 ```
 
-The runtime `platform` subtree adds more fine-grained control for lifecycle APIs — see [the runtime type](infra/kb-labs-plugin/packages/plugin-contracts/src/permissions.ts) for `workflows`, `jobs`, `cron`, `environment`, `workspace`, `snapshot`, and `execution`. Each of those is either a boolean or an object with per-capability flags (e.g. `workflows: { run: true, list: true, workflowIds: ['my-wf-*'] }`).
+The runtime `platform` subtree adds more fine-grained control for lifecycle APIs — see [the runtime type](core/plugin-contracts/src/permissions.ts) for `workflows`, `jobs`, `cron`, `environment`, `workspace`, `snapshot`, and `execution`. Each of those is either a boolean or an object with per-capability flags (e.g. `workflows: { run: true, list: true, workflowIds: ['my-wf-*'] }`).
 
 ## The builder: `combinePermissions()`
 
@@ -180,7 +180,7 @@ It's equivalent to `combine().with(a).with(b).build()`.
 
 ## Bundled presets
 
-All eight presets live in [platform/kb-labs-shared/packages/shared-perm-presets/src/presets/](platform/kb-labs-shared/packages/shared-perm-presets/src/presets/). They're exported from `@kb-labs/sdk` with a `Preset` suffix.
+All eight presets live in [shared/packages/shared-perm-presets/src/presets/](shared/packages/shared-perm-presets/src/presets/). They're exported from `@kb-labs/sdk` with a `Preset` suffix.
 
 ### `minimalPreset`
 
@@ -332,7 +332,7 @@ When `mode !== 'readWrite'`, only `fs.read` is populated. Everything else (`env`
 
 ## Secure defaults
 
-Even if you set `permissions: undefined`, the runtime applies `DEFAULT_PERMISSIONS` from [plugin-contracts/src/permissions.ts](infra/kb-labs-plugin/packages/plugin-contracts/src/permissions.ts):
+Even if you set `permissions: undefined`, the runtime applies `DEFAULT_PERMISSIONS` from [plugin-contracts/src/permissions.ts](core/plugin-contracts/src/permissions.ts):
 
 ```ts
 {
@@ -360,7 +360,7 @@ The short version: a plugin without declared permissions can read files under `c
 
 The manifest has a plugin-level `permissions` field and every handler declaration (`cli.commands[]`, `rest.routes[]`, `ws.channels[]`, `workflows.handlers[]`, `webhooks.handlers[]`, `jobs.handlers[]`, `cron.schedules[]`) has its own optional `permissions` field.
 
-At runtime, `getHandlerPermissions(manifest, host, id)` ([manifest.ts](infra/kb-labs-plugin/packages/plugin-contracts/src/manifest.ts)) resolves the effective set with a **shallow merge**: handler-level fields override plugin-level fields where both are present, but nothing is deeply merged. If your handler declares a different `fs`, it replaces the plugin `fs` entirely — it does not union.
+At runtime, `getHandlerPermissions(manifest, host, id)` ([manifest.ts](core/plugin-contracts/src/manifest.ts)) resolves the effective set with a **shallow merge**: handler-level fields override plugin-level fields where both are present, but nothing is deeply merged. If your handler declares a different `fs`, it replaces the plugin `fs` entirely — it does not union.
 
 <Callout type="warning">
 Handler-level permissions are a replacement, not an addition. If you need the plugin-wide allow-lists plus a few extras for one command, rebuild the full spec for that command rather than trying to "extend" the default.
@@ -368,7 +368,7 @@ Handler-level permissions are a replacement, not an addition. If you need the pl
 
 ## Example: a realistic plugin
 
-From [plugins/kb-labs-commit-plugin/packages/commit-cli/src/manifest.ts](plugins/kb-labs-commit-plugin/packages/commit-cli/src/manifest.ts):
+From [plugins/commit/entry/src/manifest.ts](plugins/commit/entry/src/manifest.ts):
 
 ```ts
 import {

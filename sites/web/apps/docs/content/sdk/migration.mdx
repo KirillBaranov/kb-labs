@@ -1,13 +1,13 @@
 ---
 title: "Migration Guide"
 description: "Version-to-version upgrade notes for @kb-labs/sdk."
-updatedAt: "2026-04-07"
+updatedAt: "2026-04-16"
 order: 9
 ---
 
 The SDK follows semantic versioning. This page documents breaking changes between major versions and the steps needed to migrate. For non-breaking additions, check the [changelog](/reference/changelog).
 
-`@kb-labs/sdk` is at **1.5.x** today. The full 1.x line is backward-compatible — no breaking changes since 1.0.0. Migration entries below are placeholders for future major versions.
+`@kb-labs/sdk` is currently at **2.x**. Pre-2.0 plugins should migrate using the notes below. Within 2.x, releases are backward-compatible additions — `pnpm update @kb-labs/sdk` is enough.
 
 ## Golden rule for migration
 
@@ -84,16 +84,16 @@ Before 1.0, manifest handler paths sometimes pointed at source files (`.ts`). Fr
 
 **Fix:** update every `handler` path in your manifest to point at `dist/` paths or whatever your build output directory is.
 
-## From v1.x to v2.0 (future)
+## From v1.x to v2.x
 
-No 2.0 release yet. When one ships, this section will cover:
+The 2.x line ships. The full diff is in the [changelog](/reference/changelog) — the migration steps are minimal because the public surface mostly grew rather than shrank. The key things to know:
 
-- Any removed exports.
-- Renamed hooks.
-- Manifest schema bump (if `kb.plugin/3` evolves to `kb.plugin/4`).
-- Handler signature changes.
+- **Manifest schema is unchanged** — still `kb.plugin/3`.
+- **Handler shape is unchanged** — `defineCommand` / `defineRoute` / etc. work identically.
+- **New subpaths**: `@kb-labs/sdk/platform` (HTTP client over the gateway) and the previously documented `@kb-labs/sdk/studio` and `@kb-labs/sdk/studio-build` (which became required in 2.x — direct imports of `@kb-labs/studio-hooks` etc. no longer work).
+- **Peer deps moved**: a few packages that used to be transitively pulled in are now declared as peer deps. After upgrading, run `pnpm install` and resolve any "missing peer" warnings by adding them explicitly.
 
-The general principle: 2.0 won't ship until breaking changes pile up that can't be handled through the golden rule alone. We prefer additive, backward-compatible changes whenever possible.
+Most plugins upgrade with a single `pnpm update @kb-labs/sdk` and a rebuild. If `tsc` complains, the most common cause is now-strict subpath imports — switch to the SDK-level paths described under "Studio SDK subpath" below.
 
 ## Studio SDK subpath (pre-1.5)
 
@@ -140,7 +140,7 @@ The function signature is identical — only the import path changed.
 pnpm update @kb-labs/sdk
 
 # Or pin to a specific version:
-pnpm add @kb-labs/sdk@^1.5.0
+pnpm add @kb-labs/sdk@^2.20.0
 ```
 
 After upgrading:

@@ -60,10 +60,10 @@ Your build is responsible for producing the `.js` files at the paths the manifes
   "dependencies": {
     "@your-scope/mypl-core":      "^0.1.0",
     "@your-scope/mypl-contracts": "^0.1.0",
-    "@kb-labs/sdk":               "^1.5.0"
+    "@kb-labs/sdk":               "^2.20.0"
   },
   "peerDependencies": {
-    "@kb-labs/core-platform":  "^1.0.0"
+    "@kb-labs/core-platform":  "^2.36.0"
   }
 }
 ```
@@ -212,7 +212,7 @@ The KB Labs SDK itself follows this convention — check the monorepo's first-pa
 
 ## Signed packages (future)
 
-The marketplace data model has a `signature` field on `MarketplaceEntry` (see [core-discovery types](platform/kb-labs-core/packages/core-discovery/src/types.ts)):
+The marketplace data model has a `signature` field on `MarketplaceEntry` (see [core-discovery types](core/discovery/src/types.ts)):
 
 ```ts
 interface EntitySignature {

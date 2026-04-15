@@ -5,7 +5,7 @@ updatedAt: "2026-04-07"
 order: 3
 ---
 
-A workflow starts when a trigger fires. The `on` field of a `WorkflowSpec` declares which triggers a workflow responds to. At least one trigger must be set — `refine` on [`WorkflowTriggerSchema`](platform/kb-labs-workflow/packages/workflow-contracts/src/schemas.ts) enforces this.
+A workflow starts when a trigger fires. The `on` field of a `WorkflowSpec` declares which triggers a workflow responds to. At least one trigger must be set — `refine` on [`WorkflowTriggerSchema`](plugins/workflow/contracts/src/schemas.ts) enforces this.
 
 A single workflow can combine multiple triggers. A release pipeline might have `manual: true` + `webhook: { secret: '...' }` so it can be triggered both from the CLI and from an external system.
 

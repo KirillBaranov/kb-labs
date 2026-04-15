@@ -7,7 +7,7 @@ order: 2
 
 The plugin manifest is the declarative contract between a plugin and the KB Labs runtime. It describes the plugin's identity, capabilities (CLI commands, REST routes, Studio pages, workflows, webhooks, jobs, cron schedules, WebSocket channels), handler entry points, and the permissions it requests.
 
-This page is the canonical reference for schema `kb.plugin/3`. It mirrors the TypeScript types in [infra/kb-labs-plugin/packages/plugin-contracts/src/manifest.ts](infra/kb-labs-plugin/packages/plugin-contracts/src/manifest.ts) — if the code disagrees with the docs, the code wins.
+This page is the canonical reference for schema `kb.plugin/3`. It mirrors the TypeScript types in [core/plugin-contracts/src/manifest.ts](core/plugin-contracts/src/manifest.ts) — if the code disagrees with the docs, the code wins.
 
 <Callout type="info">
 Plugins typically author the manifest in TypeScript (so presets and imports work) and export it as the default export of `packages/<plugin>-cli/src/manifest.ts`. Any JSON-serializable shape is also accepted.
@@ -235,7 +235,7 @@ interface CliGroupMeta {
 
 ### Example
 
-From [plugins/kb-labs-commit-plugin/packages/commit-cli/src/manifest.ts](plugins/kb-labs-commit-plugin/packages/commit-cli/src/manifest.ts):
+From [plugins/commit/entry/src/manifest.ts](plugins/commit/entry/src/manifest.ts):
 
 ```ts
 cli: {
@@ -526,7 +526,7 @@ studio: {
 
 ## Validation
 
-The loader in [infra/kb-labs-plugin/packages/plugin-contracts/src/manifest-loader.ts](infra/kb-labs-plugin/packages/plugin-contracts/src/manifest-loader.ts) enforces:
+The loader in [core/plugin-contracts/src/manifest-loader.ts](core/plugin-contracts/src/manifest-loader.ts) enforces:
 
 - `schema` must be the literal `'kb.plugin/3'` — any other value raises
   `Invalid manifest: expected schema "kb.plugin/3", got "<value>"`.
@@ -554,7 +554,7 @@ Where `host` is one of `'cli' | 'rest' | 'ws' | 'workflow' | 'webhook'`. Permiss
 
 ## Full working example
 
-The most exercised reference manifest in the monorepo is [plugins/kb-labs-commit-plugin/packages/commit-cli/src/manifest.ts](plugins/kb-labs-commit-plugin/packages/commit-cli/src/manifest.ts). It demonstrates:
+The most exercised reference manifest in the monorepo is [plugins/commit/entry/src/manifest.ts](plugins/commit/entry/src/manifest.ts). It demonstrates:
 
 - Composable permissions via `combinePermissions()`.
 - Six CLI commands with typed flags from a shared module.

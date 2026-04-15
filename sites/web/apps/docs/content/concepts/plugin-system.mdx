@@ -73,7 +73,7 @@ This design has two consequences worth internalizing:
 - **Install is explicit.** There's no surprise code loading from random `node_modules` entries. You see every plugin you have, and you know how it got there (`marketplace` or `local`).
 - **Dev-mode and prod-mode are the same code path.** A local-linked plugin and a marketplace-installed one go through the same discovery, same manifest loading, same sandbox. The only difference is that local entries auto-refresh their integrity hash instead of failing on mismatch, because their `package.json` changes every build.
 
-See [`DiscoveryManager`](platform/kb-labs-core/packages/core-discovery/src/discovery-manager.ts) for the canonical flow.
+See [`DiscoveryManager`](core/discovery/src/discovery-manager.ts) for the canonical flow.
 
 ## Execution is pluggable
 

@@ -174,7 +174,7 @@ Hooks degrade gracefully — if the platform doesn't provide a service (e.g. no 
 
 The platform **does not scan the filesystem** for plugins. Discovery is driven entirely by `.kb/marketplace.lock`, written by the marketplace service when you run `kb marketplace install @scope/plugin` or `kb marketplace link <path>`.
 
-The lock file ([schema `kb.marketplace/2`](platform/kb-labs-core/packages/core-discovery/src/types.ts)) records, for each installed entity:
+The lock file ([schema `kb.marketplace/2`](core/discovery/src/types.ts)) records, for each installed entity:
 
 - `version` (semver)
 - `resolvedPath` — where the package lives relative to the workspace root
@@ -184,7 +184,7 @@ The lock file ([schema `kb.marketplace/2`](platform/kb-labs-core/packages/core-d
 - `primaryKind` + `provides` — entity kinds the package advertises
 - `enabled` — default `true`; set to `false` to disable without uninstalling
 
-On every CLI startup (and whenever a service boots), [`DiscoveryManager.discover()`](platform/kb-labs-core/packages/core-discovery/src/discovery-manager.ts) reads the lock, walks each entry, loads the manifest, verifies integrity, and collects a `DiscoveryResult` with the live `ManifestV3` for each plugin. Failures are collected as `DiagnosticEvent`s (with codes like `MANIFEST_NOT_FOUND`, `INTEGRITY_MISMATCH`, `PLUGIN_DISABLED`) but don't crash the platform — a broken plugin just doesn't load.
+On every CLI startup (and whenever a service boots), [`DiscoveryManager.discover()`](core/discovery/src/discovery-manager.ts) reads the lock, walks each entry, loads the manifest, verifies integrity, and collects a `DiscoveryResult` with the live `ManifestV3` for each plugin. Failures are collected as `DiagnosticEvent`s (with codes like `MANIFEST_NOT_FOUND`, `INTEGRITY_MISMATCH`, `PLUGIN_DISABLED`) but don't crash the platform — a broken plugin just doesn't load.
 
 <Callout type="tip">
 If your plugin built but doesn't show up in `kb --help`, clear the registry cache: `pnpm kb marketplace clear-cache`. After rebuilding any CLI plugin this is mandatory — the platform caches the resolved registry snapshot.
@@ -196,7 +196,7 @@ When you run `kb marketplace link <path>`, the lock entry gets `source: 'local'`
 
 ## Execution
 
-When a handler fires, the [sandbox runner](infra/kb-labs-plugin/packages/plugin-runtime/src/sandbox/runner.ts) picks one of two modes:
+When a handler fires, the [sandbox runner](core/plugin-runtime/src/sandbox/runner.ts) picks one of two modes:
 
 ### In-process (`runInProcess`)
 

@@ -7,7 +7,7 @@ order: 1
 
 The CLI is the main developer-facing entry point for KB Labs. Every plugin command, every workflow run, every marketplace operation starts here. Unlike the REST API and the workflow daemon, the CLI is not a long-running service — each invocation boots, does its work, and exits.
 
-Source lives in [platform/kb-labs-cli/](platform/kb-labs-cli/).
+Source lives in [cli/](cli/).
 
 ## Packages
 
@@ -24,7 +24,7 @@ You invoke the CLI through `pnpm kb <command>`, which `pnpm` routes to `cli-bin`
 
 ## Startup sequence
 
-From [`packages/cli-bin/src/bin.ts`](platform/kb-labs-cli/packages/cli-bin/src/bin.ts) and [`packages/cli-bin/src/runtime/bootstrap.ts`](platform/kb-labs-cli/packages/cli-bin/src/runtime/bootstrap.ts):
+From [`packages/cli-bin/src/bin.ts`](cli/bin/src/bin.ts) and [`packages/cli-bin/src/runtime/bootstrap.ts`](cli/bin/src/runtime/bootstrap.ts):
 
 1. **Pre-import env setup.** Before anything else is imported, `bin.ts` sets `KB_LOG_LEVEL=silent` by default (unless `LOG_LEVEL` or `KB_LOG_LEVEL` is already set), and checks for `--json` in `process.argv` to set `KB_OUTPUT_MODE=json`. This has to happen before module imports because lazy-initialized loggers and sinks read these env vars during construction.
 2. **Capture `BIN_MODULE_URL`.** The `import.meta.url` of `bin.ts` is captured so `resolvePlatformRoot` can walk up from the bin's physical location to find `node_modules/@kb-labs/*` reliably — independent of `process.cwd()`.
@@ -55,13 +55,13 @@ When the CLI runs a plugin command, it uses one of two execution paths:
 
 ### In-process / local execution
 
-From [`plugin-executor.ts`](platform/kb-labs-cli/packages/cli-bin/src/runtime/plugin-executor.ts). The CLI imports the handler module directly via the plugin runtime's `runInProcess` / `runInSubprocess` paths. The plugin's handler executes under the current `kb.config.json` with local platform adapters.
+From [`plugin-executor.ts`](cli/bin/src/runtime/plugin-executor.ts). The CLI imports the handler module directly via the plugin runtime's `runInProcess` / `runInSubprocess` paths. The plugin's handler executes under the current `kb.config.json` with local platform adapters.
 
 This is what happens by default in dev mode — the CLI, the plugin code, and the platform all live in the same Node process.
 
 ### Gateway execution
 
-From [`gateway-executor.ts`](platform/kb-labs-cli/packages/cli-bin/src/runtime/gateway-executor.ts). When a gateway is configured and reachable, the CLI can dispatch the command to the gateway instead of running it locally. The gateway routes to whatever execution backend is configured server-side (worker pool, container).
+From [`gateway-executor.ts`](cli/bin/src/runtime/gateway-executor.ts). When a gateway is configured and reachable, the CLI can dispatch the command to the gateway instead of running it locally. The gateway routes to whatever execution backend is configured server-side (worker pool, container).
 
 The decision happens via `tryResolveGateway`:
 
@@ -82,11 +82,11 @@ Behind the facade sits a presenter:
 
 Switching presenters doesn't require the command to know which one is active. The presenter is chosen in `bootstrap.ts` based on `KB_OUTPUT_MODE`; the command just calls the facade and the right thing happens.
 
-See [`@kb-labs/shared-cli-ui`](platform/kb-labs-shared/packages/shared-cli-ui/) for the UI primitive surface.
+See [`@kb-labs/shared-cli-ui`](shared/cli-ui/) for the UI primitive surface.
 
 ## Middleware
 
-`@kb-labs/cli-runtime` supports middleware that wraps command execution. The default set (from [`getDefaultMiddlewares()`](platform/kb-labs-cli/packages/cli-bin/src/runtime/middlewares/)):
+`@kb-labs/cli-runtime` supports middleware that wraps command execution. The default set (from [`getDefaultMiddlewares()`](cli/bin/src/runtime/middlewares/)):
 
 - **Limits** — `--limit` flag to cap tokens / requests / time.
 - **Telemetry** — records the command invocation with `track()` on the analytics adapter.

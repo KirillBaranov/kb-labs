@@ -155,7 +155,7 @@ Picks `medium`, emits a **warning** through the platform logger. Plugin still ge
 
 Plugin asks for `{ tier: 'medium', capabilities: ['vision'] }`, nothing in `medium` has `vision`. Router escalates to `large` and retries; if nothing in `large` has `vision` either, the request falls back to whichever entry has the highest priority overall, with a warning.
 
-The full resolution algorithm lives in the `ILLMRouter` implementation in `@kb-labs/core-platform` — see [`llm-types.ts`](platform/kb-labs-core/packages/core-platform/src/adapters/llm-types.ts) for the contract types.
+The full resolution algorithm lives in the `ILLMRouter` implementation in `@kb-labs/core-platform` — see [`llm-types.ts`](core/platform/src/adapters/llm-types.ts) for the contract types.
 
 ## `getLLMTier()`
 

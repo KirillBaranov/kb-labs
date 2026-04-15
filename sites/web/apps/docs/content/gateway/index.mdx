@@ -9,7 +9,7 @@ The gateway is the central front door of a KB Labs deployment. Every client — 
 
 Without it, every client would need to know the URLs of every service, handle auth against each of them separately, and deal with CORS across multiple origins. The gateway flattens all of that into a single endpoint.
 
-Source lives in [infra/kb-labs-gateway/](infra/kb-labs-gateway/).
+Source lives in [plugins/gateway/](plugins/gateway/).
 
 ## What it does
 
@@ -50,11 +50,11 @@ Source lives in [infra/kb-labs-gateway/](infra/kb-labs-gateway/).
 
 `dependsOn: ['rest', 'workflow']` tells `kb-dev` to boot the REST API and workflow daemon before the gateway starts — the gateway will happily start without them, but requests will get 502s until they're up.
 
-Source: [infra/kb-labs-gateway/apps/gateway-app/src/manifest.ts](infra/kb-labs-gateway/apps/gateway-app/src/manifest.ts).
+Source: [plugins/gateway/app/src/manifest.ts](plugins/gateway/app/src/manifest.ts).
 
 ## Configuration
 
-The gateway reads its config from the `gateway` section of `.kb/kb.config.json`. The schema is enforced by [`GatewayConfigSchema`](infra/kb-labs-gateway/packages/gateway-contracts/src/config.ts):
+The gateway reads its config from the `gateway` section of `.kb/kb.config.json`. The schema is enforced by [`GatewayConfigSchema`](core/gateway/contracts/src/config.ts):
 
 ```ts
 interface GatewayConfig {
@@ -176,7 +176,7 @@ kb-dev start gateway
 Directly:
 
 ```bash
-cd infra/kb-labs-gateway/apps/gateway-app
+cd plugins/gateway/apps/gateway-app
 node ./dist/index.js
 ```
 

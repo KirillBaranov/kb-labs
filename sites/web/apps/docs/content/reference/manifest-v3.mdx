@@ -43,13 +43,13 @@ Only `schema`, `id`, and `version` are required. Every other section is optional
 The TypeScript types live in:
 
 ```
-infra/kb-labs-plugin/packages/plugin-contracts/src/manifest.ts
+core/plugin-contracts/src/manifest.ts
 ```
 
 Validation logic lives in:
 
 ```
-infra/kb-labs-plugin/packages/plugin-contracts/src/manifest-loader.ts
+core/plugin-contracts/src/manifest-loader.ts
 ```
 
 If this page disagrees with those files, the code wins.
@@ -169,7 +169,7 @@ Every section of the manifest is documented with examples in [Plugins → Manife
 
 The most exercised real-world manifest in the monorepo is:
 ```
-plugins/kb-labs-commit-plugin/packages/commit-cli/src/manifest.ts
+plugins/commit/entry/src/manifest.ts
 ```
 
 It demonstrates permissions via `combinePermissions()`, six CLI commands with typed flags, 14 REST routes with Zod schemas, and a Studio v2 page. Copy it as a starting point.

@@ -7,7 +7,7 @@ order: 1
 
 `.kb/kb.config.json` is the single configuration file every KB Labs deployment needs. It lives under the project root, is read at startup, and controls everything from "which LLM do we use" to "what scopes does Mind index". This page documents the `platform` section — the canonical, type-validated part — and explains how the rest of the file is consumed.
 
-The TypeScript source of truth for the `platform` section is [platform/kb-labs-core/packages/core-runtime/src/config.ts](platform/kb-labs-core/packages/core-runtime/src/config.ts). The loader is [config-loader.ts](platform/kb-labs-core/packages/core-runtime/src/config-loader.ts).
+The TypeScript source of truth for the `platform` section is [core/runtime/src/config.ts](core/runtime/src/config.ts). The loader is [config-loader.ts](core/runtime/src/config-loader.ts).
 
 ## Top-level shape
 
@@ -79,7 +79,7 @@ Declares which adapter package(s) to load for each platform service. Every value
 - **`null`** — explicitly install the NoOp adapter for that service.
 - **Omitted** — service is simply not configured; the corresponding hook returns `undefined`.
 
-The canonical list of keys from [`AdaptersConfig`](platform/kb-labs-core/packages/core-runtime/src/config.ts):
+The canonical list of keys from [`AdaptersConfig`](core/runtime/src/config.ts):
 
 ```json
 {
@@ -390,7 +390,7 @@ Consumed by [`@kb-labs/marketplace`](/services/marketplace). Typically controls 
     "sync": {
       "include": [
         "plugins/*/packages/*",
-        "infra/kb-labs-adapters/packages/*"
+        "adapters/packages/*"
       ]
     }
   }

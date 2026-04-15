@@ -9,7 +9,7 @@ When a user runs `pnpm kb commit:commit`, something has to actually execute the 
 
 Plugin code doesn't know or care which one it is. The SDK sandboxes every operation through permission-gated shims, so the plugin sees the same `ctx.runtime.fs`, `ctx.runtime.fetch`, and `ctx.runtime.env` regardless of the underlying execution backend. This page covers how the four modes differ and how to pick one.
 
-Source of truth: [`ExecutionConfig` in `core-runtime/src/config.ts`](platform/kb-labs-core/packages/core-runtime/src/config.ts).
+Source of truth: [`ExecutionConfig` in `core-runtime/src/config.ts`](core/runtime/src/config.ts).
 
 ## The four modes
 

@@ -101,7 +101,7 @@ See [Workflows → Spec Reference](/workflows/spec-reference) for every field.
 ## Step 2 — Trigger the workflow
 
 ```bash
-pnpm kb workflow:run --workflow-id=hello-workflow \
+kb workflow run --workflow-id=hello-workflow \
   --inputs='{"url":"https://raw.githubusercontent.com/github/explore/main/topics/nodejs/index.md"}'
 ```
 
@@ -115,13 +115,13 @@ You'll see the run ID printed:
 
 ## Step 3 — Watch the run
 
-Option A — CLI polling:
+Option A — CLI polling per job:
 
 ```bash
-pnpm kb workflow:status --run-id=run_abc123
+kb workflow status --job-id=<job-id>
 ```
 
-Shows the current state of the run, its jobs, and its steps. Keep running it to watch state transitions.
+The CLI is job-centric: each run spawns one job per `jobs[]` entry in the spec, and `workflow status` reports a single job's state, start time, and outputs. Get the job IDs from the run output, the workflow daemon log (`kb-dev logs workflow`), or the Studio UI.
 
 Option B — Studio UI:
 
@@ -143,10 +143,10 @@ The correlation IDs (`runId`, `jobId`, `stepId`) appear in every log line, makin
 
 ## Step 4 — Inspect the result
 
-Once the run finishes (should take a few seconds):
+Once the run finishes (should take a few seconds), open the run in Studio (`/workflows/<run-id>`) to see the full structured result, or query the workflow daemon directly:
 
 ```bash
-pnpm kb workflow:get --run-id=run_abc123
+curl -s http://localhost:7778/api/v1/runs/run_abc123 | jq
 ```
 
 Output:
@@ -190,7 +190,7 @@ Output:
 Pass a URL that doesn't exist:
 
 ```bash
-pnpm kb workflow:run --workflow-id=hello-workflow \
+kb workflow run --workflow-id=hello-workflow \
   --inputs='{"url":"https://does-not-exist.example.com/missing.json"}'
 ```
 
@@ -199,7 +199,7 @@ The run will fail at the `fetch` job because `curl` returns a non-zero exit code
 Inspect the failure:
 
 ```bash
-pnpm kb workflow:get --run-id=<run-id>
+curl -s http://localhost:7778/api/v1/runs/<run-id> | jq
 ```
 
 You'll see:

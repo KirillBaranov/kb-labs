@@ -7,7 +7,7 @@ order: 7
 
 `IAnalytics` is the platform's event tracking interface. Every LLM call, cache hit, workflow run, and plugin invocation funnels through an analytics adapter. The core surface is tiny (`track`, `identify`, `flush`); everything else is optional and exists for dashboards and read-side queries.
 
-Source of truth: [platform/kb-labs-core/packages/core-platform/src/adapters/analytics.ts](platform/kb-labs-core/packages/core-platform/src/adapters/analytics.ts).
+Source of truth: [core/platform/src/adapters/analytics.ts](core/platform/src/adapters/analytics.ts).
 
 ## Interface
 

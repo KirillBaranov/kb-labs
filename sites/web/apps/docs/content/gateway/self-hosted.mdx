@@ -185,7 +185,7 @@ The gateway is mostly stateless (requests don't require server-side session stat
 
 ## Container deployment
 
-The gateway ships a `Dockerfile` under `infra/kb-labs-gateway/apps/gateway-app/`. The image bundles the built artifact and exposes port 4000. In a container orchestrator:
+The gateway ships a `Dockerfile` under `plugins/gateway/app/`. The image bundles the built artifact and exposes port 4000. In a container orchestrator:
 
 ```yaml
 services:

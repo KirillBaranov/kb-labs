@@ -9,7 +9,7 @@ A profile is a named configuration bundle that groups per-product settings toget
 
 Profiles also carry **scopes**, which let a single profile apply different settings to different parts of a codebase. This is how Mind RAG, AI Review, and QA can all have per-package configuration without duplicating the entire profile.
 
-Source of truth for the schema: [platform/kb-labs-core/packages/core-config/src/profiles/types.ts](platform/kb-labs-core/packages/core-config/src/profiles/types.ts).
+Source of truth for the schema: [core/config/src/profiles/types.ts](core/config/src/profiles/types.ts).
 
 ## Where profiles live
 
@@ -144,7 +144,7 @@ Both are arrays of glob patterns. `include` is required (min 1); `exclude` is op
 {
   "id": "packages-core",
   "label": "Core packages only",
-  "include": ["platform/kb-labs-core/**", "platform/kb-labs-shared/**"],
+  "include": ["core/**", "shared/**"],
   "exclude": ["**/node_modules/**", "**/dist/**"],
   "products": {
     "mind": { "engine": "mind-prod" }
@@ -177,7 +177,7 @@ When a scope defines `products.<productId>`, it shadows the profile-level `produ
   "scopes": [
     {
       "id": "core-packages",
-      "include": ["platform/kb-labs-core/**"],
+      "include": ["core/**"],
       "products": {
         "mind": {
           "scopes": [{ "id": "default", "defaultEngine": "mind-prod" }]
@@ -198,7 +198,7 @@ When a scope defines `products.<productId>`, it shadows the profile-level `produ
 }
 ```
 
-Files under `platform/kb-labs-core/**` get the full `mind-prod` engine; everything else falls back to the faster `mind-fast`. One profile, two behaviors.
+Files under `core/**` get the full `mind-prod` engine; everything else falls back to the faster `mind-fast`. One profile, two behaviors.
 
 ## Selecting a profile
 

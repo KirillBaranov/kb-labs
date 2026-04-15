@@ -75,7 +75,7 @@ For worked examples: [Guides → LLM Setup](/guides/llm-setup) covers the LLM-sp
 └──────────────────────────────────────────────────────────────┘
 ```
 
-The interfaces live in [`@kb-labs/core-platform`](platform/kb-labs-core/packages/core-platform/src/adapters/). The adapters live in [`infra/kb-labs-adapters/`](infra/kb-labs-adapters/). Plugin code never imports adapter packages directly — it goes through the runtime hooks, which return whatever adapter the user configured.
+The interfaces live in [`@kb-labs/core-platform`](core/platform/src/adapters/). The adapters live in [`adapters/`](adapters/). Plugin code never imports adapter packages directly — it goes through the runtime hooks, which return whatever adapter the user configured.
 
 ## Declaration: `kb.config.json`
 
@@ -140,7 +140,7 @@ The return value is the adapter instance. It must implement the interface named 
 
 ## The manifest, in detail
 
-Source of truth: [adapter-manifest.ts](platform/kb-labs-core/packages/core-platform/src/adapters/adapter-manifest.ts).
+Source of truth: [adapter-manifest.ts](core/platform/src/adapters/adapter-manifest.ts).
 
 ### Identity
 
@@ -251,7 +251,7 @@ Purely informational — used for documentation generation, IDE completion, conf
 
 ## Loading order
 
-Adapters are loaded in **dependency order** using Kahn's topological sort. The process, straight from [adapter-loader.ts](platform/kb-labs-core/packages/core-runtime/src/adapter-loader.ts):
+Adapters are loaded in **dependency order** using Kahn's topological sort. The process, straight from [adapter-loader.ts](core/runtime/src/adapter-loader.ts):
 
 1. For every entry in `platform.adapters`, dynamically import the package and pull out its `manifest` + `createAdapter`.
 2. Build a dependency graph: every `requires.adapters` entry becomes an edge from the dependency to the dependent.
@@ -287,13 +287,13 @@ The end result is a global `platform` singleton with every adapter attached at i
 
 ## NoOp adapters
 
-Every interface has a matching NoOp implementation under [`@kb-labs/core-platform/noop`](platform/kb-labs-core/packages/core-platform/src/noop/). NoOp adapters let the runtime start even when nothing is configured — operations succeed silently and data is discarded.
+Every interface has a matching NoOp implementation under [`@kb-labs/core-platform/noop`](core/platform/src/noop/). NoOp adapters let the runtime start even when nothing is configured — operations succeed silently and data is discarded.
 
 This is deliberate: it lets you develop plugins without a full infrastructure stack running.
 
 ## First-party adapter catalog
 
-The monorepo ships these adapters under [`infra/kb-labs-adapters/`](infra/kb-labs-adapters/):
+The monorepo ships these adapters under [`adapters/`](adapters/):
 
 | Token | Package | Interface |
 |---|---|---|
@@ -311,7 +311,6 @@ The monorepo ships these adapters under [`infra/kb-labs-adapters/`](infra/kb-lab
 | `analytics` | `@kb-labs/adapters-analytics-duckdb` | `IAnalytics` |
 | `eventBus` | `@kb-labs/adapters-eventbus-cache` | `IEventBus` |
 | `db` | `@kb-labs/adapters-sqlite` | `ISQLDatabase` |
-| `db` | `@kb-labs/adapters-postgres` | `ISQLDatabase` |
 | `documentDb` | `@kb-labs/adapters-mongodb` | `IDocumentDatabase` |
 | `workspace` | `@kb-labs/adapters-workspace-localfs` | `IWorkspaceProvider` |
 | `workspace` | `@kb-labs/adapters-workspace-worktree` | `IWorkspaceProvider` |
@@ -319,7 +318,7 @@ The monorepo ships these adapters under [`infra/kb-labs-adapters/`](infra/kb-lab
 | `environment` | `@kb-labs/adapters-environment-docker` | `IEnvironmentProvider` |
 | `snapshot` | `@kb-labs/adapters-snapshot-localfs` | `ISnapshotProvider` |
 
-Every adapter lives in its own package under `infra/kb-labs-adapters/packages/`. Each package has a README covering its specific config options.
+Every adapter lives in its own package under [`adapters/`](adapters/). Each package has a README covering its specific config options.
 
 ## Writing a custom adapter
 

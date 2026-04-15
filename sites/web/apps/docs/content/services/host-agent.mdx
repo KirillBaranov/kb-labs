@@ -7,7 +7,7 @@ order: 6
 
 The host agent is a daemon you run on your own machine. It connects to a remote KB Labs Gateway over an authenticated WebSocket tunnel and exposes local capabilities — filesystem reads and writes, git operations — to server-side workflows and plugins. It's the bridge between "I'm running my tools on a cloud agent somewhere" and "the code lives on my laptop".
 
-Source lives in [infra/kb-labs-host-agent/](infra/kb-labs-host-agent/). There's no `ServiceManifest` for it — the host agent is not managed by `kb-dev` because it's meant to run on end-user machines, not inside the platform's service stack.
+Source lives in [plugins/host-agent/](plugins/host-agent/). There's no `ServiceManifest` for it — the host agent is not managed by `kb-dev` because it's meant to run on end-user machines, not inside the platform's service stack.
 
 ## Why it exists
 

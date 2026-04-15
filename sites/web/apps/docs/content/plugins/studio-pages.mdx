@@ -66,7 +66,7 @@ studio?: {
 }
 ```
 
-Example from [kb-labs-commit-plugin](plugins/kb-labs-commit-plugin/packages/commit-cli/src/manifest.ts):
+Example from [kb-labs-commit-plugin](plugins/commit/entry/src/manifest.ts):
 
 ```ts
 import type { StudioConfig } from '@kb-labs/sdk/studio';
@@ -134,7 +134,7 @@ export default await createStudioRemoteConfig({
     "build:studio": "rspack build --config rspack.studio.config.mjs"
   },
   "devDependencies": {
-    "@kb-labs/sdk": "^1.5.0",
+    "@kb-labs/sdk": "^2.20.0",
     "@rspack/cli": "^1.0.0"
   }
 }
@@ -264,7 +264,7 @@ Your plugin code doesn't see any of this. You just write a component and export 
 
 ## Step 6 — What's in `@kb-labs/sdk/studio`
 
-All of this is importable from `@kb-labs/sdk/studio`. Source: [platform/kb-labs-sdk/packages/sdk/src/studio/index.ts](platform/kb-labs-sdk/packages/sdk/src/studio/index.ts).
+All of this is importable from `@kb-labs/sdk/studio`. Source: [sdk/sdk/src/studio/index.ts](sdk/sdk/src/studio/index.ts).
 
 ### Hooks
 

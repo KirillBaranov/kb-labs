@@ -184,7 +184,7 @@ When the runtime invokes a handler, it computes the **effective permissions** fo
 
 Result: a concrete `PermissionSpec` that the shim layer uses for every operation in this invocation.
 
-`getHandlerPermissions(manifest, host, handlerId)` in [plugin-contracts](infra/kb-labs-plugin/packages/plugin-contracts/src/manifest.ts) is the function that computes this — use it in tests or introspection tools if you want to see what a specific handler actually has access to.
+`getHandlerPermissions(manifest, host, handlerId)` in [plugin-contracts](core/plugin-contracts/src/manifest.ts) is the function that computes this — use it in tests or introspection tools if you want to see what a specific handler actually has access to.
 
 ## Defense in depth
 
