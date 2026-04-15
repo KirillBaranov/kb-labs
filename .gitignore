@@ -92,3 +92,6 @@ deploy/docker/
 .kb/analytics/
 .kb/database/
 .kb/commit/
+# Agent/memory session state (runtime, not source)
+.kb/agents/sessions/
+.kb/memory/sessions/
