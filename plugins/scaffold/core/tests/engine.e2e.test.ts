@@ -58,8 +58,8 @@ describe('engine e2e: plugin/base block', () => {
       expect(f.contents).not.toContain('@@scaffold:skip@@');
     }
 
-    // pnpm-workspace.yaml must be SKIPPED in in-workspace mode.
-    expect(paths).not.toContain('pnpm-workspace.yaml');
+    // pnpm-workspace.yaml is always generated (plugins are self-contained workspaces).
+    expect(paths).toContain('pnpm-workspace.yaml');
 
     const collisionsTree = formatTree(result.files);
     expect(collisionsTree).toBeTruthy();
@@ -99,8 +99,9 @@ describe('engine e2e: plugin/base block', () => {
     const entryPkg = result.files.find(
       (f) => f.path === 'packages/demo-entry/package.json',
     )!;
+    // External deps use semver, internal deps use workspace:*.
     expect(entryPkg.contents).toContain('"^2.18.0"');
-    expect(entryPkg.contents).not.toContain('workspace:*');
+    expect(entryPkg.contents).toContain('"workspace:*"');
   });
 
   it('composes blocks: base + cli + rest + contracts', async () => {

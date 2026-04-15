@@ -163,7 +163,7 @@ func (ins *Installer) Install(sel *Selection, m *manifest.Manifest) (*Result, er
 		for _, e := range scanResult.Errors {
 			ins.Log.Printf("  [WARN] %s: %s", e.Package, e.Error)
 		}
-		if err := scan.WriteConfigs(sel.PlatformDir, scanResult); err != nil {
+		if err := scan.WriteConfigs(sel.PlatformDir, scanResult, sel.ProjectCWD); err != nil {
 			ins.Log.Printf("  [WARN] write configs: %v", err)
 		}
 
@@ -324,7 +324,7 @@ func (ins *Installer) refreshDerivedConfigs(platformDir string, m *manifest.Mani
 	for _, e := range scanResult.Errors {
 		ins.Log.Printf("  [WARN] %s: %s", e.Package, e.Error)
 	}
-	if err := scan.WriteConfigs(platformDir, scanResult); err != nil {
+	if err := scan.WriteConfigs(platformDir, scanResult, ""); err != nil {
 		ins.Log.Printf("  [WARN] write configs: %v", err)
 	}
 

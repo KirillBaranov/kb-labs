@@ -1,7 +1,8 @@
-import { dirname, resolve } from 'node:path';
+import { dirname, resolve, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import {
   defineCommand,
   type PluginContextV3,
@@ -248,21 +249,67 @@ async function runDefault(
 
 type LinkOutcome = 'ok' | 'no-shell' | 'failed';
 
+/**
+ * Register a scaffolded plugin directly in marketplace.lock.
+ *
+ * Writes to the platform-level lock file so the CLI picks up the plugin
+ * without needing the marketplace service running.
+ */
 async function linkWithMarketplace(
   ctx: PluginContextV3,
   entryPkgDir: string,
 ): Promise<LinkOutcome> {
-  const shell = ctx.api?.shell;
-  if (!shell?.exec) {
-    return 'no-shell';
-  }
   try {
-    const res = await shell.exec(
-      'kb',
-      ['marketplace', 'plugins', 'link', entryPkgDir],
-      { timeout: 60_000 },
-    );
-    return res.ok ? 'ok' : 'failed';
+    // Resolve platform dir from this module's location.
+    // Scaffold lives in <platformDir>/node_modules/@kb-labs/scaffold/dist/commands/scaffold.js
+    // so we walk up to find the dir containing node_modules.
+    const selfPath = fileURLToPath(import.meta.url);
+    const nmIdx = selfPath.lastIndexOf('/node_modules/');
+    if (nmIdx < 0) return 'failed';
+    const platformDir = selfPath.slice(0, nmIdx);
+
+    const lockPath = resolve(platformDir, '.kb', 'marketplace.lock');
+
+    // Read existing lock or create empty.
+    let lock: { schema: string; installed: Record<string, unknown> };
+    try {
+      lock = JSON.parse(await readFile(lockPath, 'utf8'));
+    } catch {
+      lock = { schema: 'kb.marketplace/2', installed: {} };
+    }
+
+    // Read plugin's package.json for metadata.
+    const pkgJsonPath = resolve(entryPkgDir, 'package.json');
+    const pkgRaw = await readFile(pkgJsonPath, 'utf8');
+    const pkg = JSON.parse(pkgRaw) as { name?: string; version?: string; kb?: { manifest?: string } };
+    if (!pkg.name) return 'failed';
+
+    // Compute integrity hash.
+    const hash = createHash('sha256').update(pkgRaw).digest('base64');
+
+    // Read manifest to extract provides (best-effort).
+    const provides: string[] = ['plugin', 'cli-command'];
+
+    // Resolve relative path from platform dir.
+    const resolvedPath = relative(platformDir, resolve(entryPkgDir));
+
+    // Build the plugin ID: strip -entry suffix for cleaner names.
+    const pluginId = pkg.name.replace(/-entry$/, '');
+
+    lock.installed[pluginId] = {
+      version: pkg.version ?? '0.1.0',
+      integrity: `sha256-${hash}`,
+      resolvedPath: `./${resolvedPath}`,
+      installedAt: new Date().toISOString(),
+      source: 'local',
+      primaryKind: 'plugin',
+      provides,
+      enabled: true,
+    };
+
+    await mkdir(dirname(lockPath), { recursive: true });
+    await writeFile(lockPath, JSON.stringify(lock, null, 2));
+    return 'ok';
   } catch {
     return 'failed';
   }

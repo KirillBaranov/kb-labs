@@ -1,7 +1,7 @@
 ---
 title: "Quick Start"
 description: "Install KB Labs and run your first command in under 5 minutes."
-updatedAt: "2026-04-07"
+updatedAt: "2026-04-15"
 order: 1
 ---
 
@@ -27,7 +27,7 @@ Runs the interactive wizard: picks a package manager, configures the platform di
 
 ```bash
 cd my-project
-kb dev:start
+kb-dev start
 ```
 
 Starts the core services: REST API, Workflow Daemon, Gateway. Check that everything is alive:
@@ -42,8 +42,8 @@ kb-create status
 # See all available commands
 kb --help
 
-# Semantic code search (requires LLM adapter in config)
-kb mind rag-query --text "How does the plugin system work?" --agent
+# Generate a commit plan from staged changes (works without LLM — falls back to heuristics)
+kb commit commit --dry-run
 
 # List installed plugins
 kb marketplace plugins list
@@ -64,8 +64,8 @@ kb marketplace plugins list
 **Services won't start:**
 
 ```bash
-kb dev:doctor     # environment diagnostics
-kb dev:start --force   # kill port conflicts and retry
+kb-dev doctor          # environment diagnostics
+kb-dev start --force   # kill port conflicts and retry
 ```
 
 **"Command not found" after building a plugin:**

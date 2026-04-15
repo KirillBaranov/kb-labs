@@ -1,308 +1,234 @@
 ---
 title: "Your First Plugin"
-description: "Build and install a minimal KB Labs plugin from scratch in 15 minutes."
-updatedAt: "2026-04-07"
+description: "Scaffold, build, and run a KB Labs plugin in under 10 minutes."
+updatedAt: "2026-04-15"
 order: 1
 ---
 
-This guide walks through building a minimal plugin end-to-end: package layout, manifest, handler, build, link, run. By the end you'll have a working CLI command registered with your KB Labs workspace.
-
-If you want a shorter version focused on just the code, see [SDK → Quickstart](/sdk/quickstart). This guide is the full flow including the tooling setup.
+Create a working plugin with two CLI commands using the scaffold tool, then customize it.
 
 ## Prerequisites
 
-- A running KB Labs workspace (`pnpm kb --help` works).
+- A running KB Labs workspace (`kb --help` works).
 - Node 20+ and pnpm installed.
-- 15 minutes.
 
-## What we're building
-
-A plugin called `@example/hello-plugin` with one CLI command: `pnpm kb hello:greet`. It takes a `--name` flag and prints a greeting. If the user passes `--ai`, it uses the configured LLM to generate a more interesting greeting instead.
-
-It's intentionally tiny — big enough to cover every piece of the plugin lifecycle, small enough to fit in one guide.
-
-## Step 1 — Create the package
-
-Start from scratch in a new directory:
+## 1. Scaffold the plugin
 
 ```bash
-mkdir -p packages/hello-plugin/src/cli/commands
-cd packages/hello-plugin
-pnpm init
+kb scaffold run plugin my-plugin --yes
 ```
 
-Replace the generated `package.json` with:
+This generates a ready-to-build plugin at `.kb/plugins/my-plugin` with three packages:
 
-```json
-{
-  "name": "@example/hello-plugin",
-  "version": "0.1.0",
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
-  },
-  "files": ["dist"],
-  "scripts": {
-    "build": "tsup",
-    "dev": "tsup --watch",
-    "type-check": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@kb-labs/sdk": "^1.5.0"
-  },
-  "devDependencies": {
-    "tsup": "^8.0.0",
-    "typescript": "^5.5.0"
-  }
-}
+| Package | Purpose |
+|---------|---------|
+| `my-plugin-entry` | Manifest + CLI command handlers |
+| `my-plugin-core` | Business logic (pure functions, no platform deps) |
+| `my-plugin-contracts` | Shared types between entry and core |
+
+Two commands come out of the box: `hello` (greeting with a `--who` flag) and `ping` (health check).
+
+The scaffold also auto-registers the plugin in your project's `marketplace.lock` — no manual linking needed.
+
+Use `--dry-run` to preview the file tree without writing anything:
+
+```bash
+kb scaffold run plugin my-plugin --dry-run --yes
 ```
 
-The only runtime dependency is `@kb-labs/sdk`. Plugins import only from the SDK — never from `@kb-labs/core-platform`, `@kb-labs/plugin-contracts`, or any other internal package. That's the golden rule.
+### Options
 
-## Step 2 — TypeScript and build config
+| Flag | What it does |
+|------|-------------|
+| `--scope @acme` | Use a custom npm scope (default: `@kb-labs`) |
+| `--out ./path` | Write to a custom directory instead of `.kb/plugins/<name>` |
+| `--force` | Overwrite if the target directory already exists |
 
-`tsconfig.json`:
+## 2. Install dependencies and build
 
-```json
-{
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "strict": true,
-    "outDir": "./dist",
-    "rootDir": "./src",
-    "declaration": true,
-    "sourceMap": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true
-  },
-  "include": ["src"]
-}
+```bash
+cd .kb/plugins/my-plugin
+pnpm install
+pnpm build
 ```
 
-`tsup.config.ts`:
+You should see `dist/` folders in each sub-package. If the build fails, run `kb scaffold doctor --path .kb/plugins` to diagnose.
+
+## 3. Clear the CLI cache and run
+
+The CLI caches the plugin registry aggressively. After building a new plugin, always clear:
+
+```bash
+kb marketplace clear-cache
+```
+
+Now run your commands:
+
+```bash
+kb my-plugin hello
+# Hello, World from my-plugin!
+
+kb my-plugin hello --who=Alice
+# Hello, Alice from my-plugin!
+
+kb my-plugin hello --json
+# { "greeting": "Hello, World from my-plugin!" }
+
+kb my-plugin ping
+# pong @ 2026-04-15T12:00:00.000Z
+```
+
+Check the help:
+
+```bash
+kb my-plugin --help
+```
+
+## What got generated
+
+### Manifest (`my-plugin-entry/src/manifest.ts`)
+
+The manifest declares the plugin's identity, permissions, and CLI commands. Each command points at a handler file:
+
+```
+handler: "./commands/hello.js#default"
+```
+
+The path is relative to the entry package root, pointing at the built `.js` output (not `.ts` source). The `#default` suffix tells the runtime to use the default export.
+
+### Command handler (`my-plugin-entry/src/commands/hello.ts`)
+
+Handlers use `defineCommand` from `@kb-labs/sdk`. They receive a `PluginContextV3` (platform services) and `CLIInput<Flags>` (parsed flags):
 
 ```ts
-import { defineConfig } from 'tsup';
-
-export default defineConfig({
-  entry: {
-    index: 'src/index.ts',
-    'cli/commands/hello': 'src/cli/commands/hello.ts',
-  },
-  format: ['esm'],
-  dts: true,
-  clean: true,
-});
-```
-
-The two entries matter: `src/index.ts` builds the package root (where the manifest lives), and `src/cli/commands/hello.ts` builds the handler as a separate file so the manifest can reference it by path.
-
-## Step 3 — The handler
-
-`src/cli/commands/hello.ts`:
-
-```ts
-import { defineCommand, useLLM, useLogger, type CLIInput } from '@kb-labs/sdk';
-
-interface HelloFlags {
-  name?: string;
-  ai?: boolean;
-}
-
-interface HelloResult {
-  greeting: string;
-  source: 'deterministic' | 'llm';
-}
-
-export default defineCommand<unknown, CLIInput<HelloFlags>, HelloResult>({
-  id: 'hello:greet',
-  description: 'Say hi to someone',
+export default defineCommand({
+  id: 'my-plugin:hello',
+  description: 'Say hello from my-plugin',
   handler: {
-    async execute(ctx, input) {
-      const logger = useLogger();
-      const name = input.flags.name ?? 'world';
-
-      logger.info('hello:greet invoked', { name, ai: input.flags.ai });
-
-      if (input.flags.ai) {
-        const llm = useLLM();
-        if (llm) {
-          const response = await llm.complete(
-            `Write a one-sentence friendly greeting for ${name}.`,
-          );
-          return {
-            exitCode: 0,
-            result: { greeting: response.content.trim(), source: 'llm' },
-          };
-        }
-      }
-
-      return {
-        exitCode: 0,
-        result: { greeting: `Hello, ${name}!`, source: 'deterministic' },
-      };
+    async execute(ctx: PluginContextV3, input: CLIInput<HelloFlags>) {
+      const { greeting } = hello({ who: input.flags.who ?? 'World' });
+      ctx.ui?.info?.(greeting);
+      return { exitCode: 0, result: { greeting } };
     },
   },
 });
 ```
 
-Three things to notice:
+Notice the handler calls into `my-plugin-core` for logic, not the platform directly. This keeps business logic testable without platform mocking.
 
-- **Everything is imported from `@kb-labs/sdk`.** `defineCommand`, `useLLM`, `useLogger`, `CLIInput` — all one import.
-- **`useLLM()` may return `undefined`.** The handler degrades gracefully: no LLM means the canned greeting.
-- **Return a `CommandResult`.** `exitCode: 0` means success; `result` is the structured payload the CLI will render.
+### Core logic (`my-plugin-core/src/hello.ts`)
 
-See [SDK → Commands](/sdk/commands) for the full `defineCommand` API.
+Pure functions, zero platform imports. The generated file includes commented cookbook examples for LLM calls, caching, and structured logging via `@kb-labs/sdk`.
 
-## Step 4 — The manifest
+### Tests (`my-plugin-core/tests/hello.test.ts`)
 
-`src/manifest.ts`:
+Unit tests run with vitest, no platform setup needed:
+
+```bash
+cd packages/my-plugin-core
+pnpm test
+```
+
+## 4. Add a new command
+
+Three steps:
+
+**a)** Create `my-plugin-entry/src/commands/status.ts`:
 
 ```ts
-import {
-  defineFlags,
-  combinePermissions,
-  minimalPreset,
-} from '@kb-labs/sdk';
+import { defineCommand, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
 
-const helloFlags = defineFlags({
-  name: {
-    type: 'string',
-    description: 'Name to greet',
-  },
-  ai: {
-    type: 'boolean',
-    description: 'Use LLM to generate the greeting',
-    default: false,
+export default defineCommand({
+  id: 'my-plugin:status',
+  description: 'Show plugin status',
+  handler: {
+    async execute(ctx: PluginContextV3, input: CLIInput<{ json?: boolean }>) {
+      const payload = { version: '0.1.0', healthy: true };
+      if (input.flags.json) {
+        ctx.ui?.json?.(payload);
+      } else {
+        ctx.ui?.info?.(`my-plugin v${payload.version} — healthy`);
+      }
+      return { exitCode: 0, result: payload };
+    },
   },
 });
-
-export const manifest = {
-  schema: 'kb.plugin/3',
-  id: '@example/hello-plugin',
-  version: '0.1.0',
-  display: {
-    name: 'Hello Plugin',
-    description: 'A minimal example plugin',
-    tags: ['example', 'tutorial'],
-  },
-  permissions: combinePermissions()
-    .with(minimalPreset)
-    .withPlatform({ llm: true })
-    .build(),
-  cli: {
-    commands: [
-      {
-        id: 'hello:greet',
-        group: 'hello',
-        describe: 'Say hi to someone',
-        handler: './cli/commands/hello.js#default',
-        flags: helloFlags,
-        examples: [
-          'pnpm kb hello:greet',
-          'pnpm kb hello:greet --name=Alice',
-          'pnpm kb hello:greet --name=Alice --ai',
-        ],
-      },
-    ],
-  },
-} as const;
-
-export default manifest;
 ```
 
-- **`schema: 'kb.plugin/3'`** is mandatory — a literal string.
-- **`id`** must be in `@scope/name` format.
-- **`handler`** path is relative to the package root and points at `.js` (the built output, not the source).
-- **`permissions`** uses `combinePermissions()` with `minimalPreset` (baseline Node env) plus `.withPlatform({ llm: true })` to grant LLM access.
-
-See [Plugins → Manifest Reference](/plugins/manifest-reference) for every field.
-
-## Step 5 — The package entry
-
-`src/index.ts`:
+**b)** Add the command to `manifest.ts` in the `cli.commands[]` array:
 
 ```ts
-export { default as manifest } from './manifest.js';
+{
+  id: 'status',
+  group: 'my-plugin',
+  describe: 'Show plugin status',
+  handler: './commands/status.js#default',
+  handlerPath: './commands/status.js',
+  flags: [
+    { name: 'json', type: 'boolean', description: 'Emit JSON' },
+  ],
+  examples: ['kb my-plugin status'],
+}
 ```
 
-The package's root entry just re-exports the manifest. The handler files are loaded separately at runtime via the paths the manifest points at.
+**c)** Add the entry to `tsup.config.ts`:
 
-## Step 6 — Build
+```ts
+entry: {
+  index: 'src/index.ts',
+  'commands/hello': 'src/commands/hello.ts',
+  'commands/ping': 'src/commands/ping.ts',
+  'commands/status': 'src/commands/status.ts',  // new
+},
+```
+
+Then rebuild and clear cache:
 
 ```bash
-pnpm install
 pnpm build
+kb marketplace clear-cache
+kb my-plugin status
 ```
 
-You should see `dist/index.js`, `dist/manifest.js`, and `dist/cli/commands/hello.js`. If tsup complains about missing entries or invalid configs, check the `tsup.config.ts` entry map matches your source file paths.
+## 5. Add LLM support
 
-## Step 7 — Link the plugin
+The cookbook in `my-plugin-core/src/hello.ts` has commented examples. To enable LLM access:
 
-From your KB Labs workspace root:
+**a)** Update permissions in `manifest.ts`:
 
-```bash
-pnpm kb marketplace link /absolute/path/to/packages/hello-plugin
-pnpm kb marketplace clear-cache
+```ts
+const permissions = combinePermissions()
+  .with(kbPlatformPreset)
+  .withPlatform({ llm: true })
+  .build();
 ```
 
-The `clear-cache` step is **mandatory**. The CLI caches the plugin registry aggressively — without clearing, newly linked plugins won't appear.
+**b)** Use `useLLM` in your handler:
 
-## Step 8 — Run it
+```ts
+import { useLLM } from '@kb-labs/sdk';
 
-```bash
-pnpm kb hello:greet
-# → { greeting: 'Hello, world!', source: 'deterministic' }
-
-pnpm kb hello:greet --name=Alice
-# → { greeting: 'Hello, Alice!', source: 'deterministic' }
-
-pnpm kb hello:greet --name=Alice --ai
-# → { greeting: 'Hi Alice, hope you're having a fantastic day!', source: 'llm' }
-# (exact text depends on the configured LLM)
+const llm = await useLLM(ctx);
+const res = await llm.complete({
+  prompt: `Write a greeting for ${name}.`,
+  maxTokens: 40,
+});
 ```
 
-Check the help output:
-
-```bash
-pnpm kb hello:greet --help
-```
-
-You should see the description, flag list, and examples — all built from the manifest.
-
-## What just happened
-
-Every file in the plugin has a purpose:
-
-- **`package.json`** — declares the package and its SDK dependency.
-- **`tsconfig.json`** — TypeScript config with ESM + strict mode.
-- **`tsup.config.ts`** — build config that produces one file per handler.
-- **`src/manifest.ts`** — describes the plugin to the platform.
-- **`src/cli/commands/hello.ts`** — the handler itself.
-- **`src/index.ts`** — re-exports the manifest.
-
-The runtime loaded the manifest, saw the `hello:greet` command, resolved the handler path to `./dist/cli/commands/hello.js`, imported it, found the default export, and called `handler.execute(ctx, { flags: { name, ai } })` when you typed `pnpm kb hello:greet`. The result was rendered by the CLI's presenter layer.
+This requires an LLM adapter configured in `kb.config.json`. See [Adapters → Overview](/adapters).
 
 ## Iterating
 
-- **Made a code change?** `pnpm build` and re-run. No need to re-link — local links refresh automatically.
-- **Added a new command?** Update the manifest's `cli.commands[]` array and add a new entry to `tsup.config.ts`.
-- **Added a REST route?** Add `rest: { ... }` to the manifest and write a handler using `defineRoute` instead of `defineCommand`.
-- **Need to debug?** Set `KB_LOG_LEVEL=debug` or pass `--debug` to see the full log pipeline.
+- **Code change?** `pnpm build` and `kb marketplace clear-cache`, then re-run.
+- **Something broken?** `kb scaffold doctor --path .kb/plugins` scans for common issues.
+- **Want to unlink?** `kb marketplace plugins unlink my-plugin-entry`.
 
 ## What to read next
 
-- **[SDK → Quickstart](/sdk/quickstart)** — the same example in a shorter, reference-style format.
-- **[Plugins → Overview](/plugins)** — the full plugin lifecycle and package conventions.
-- **[Plugins → CLI Commands](/plugins/cli-commands)** — the full authoring guide for CLI commands.
-- **[Plugins → REST Routes](/plugins/rest-routes)** — add HTTP endpoints to your plugin.
-- **[Plugins → Studio Pages](/plugins/studio-pages)** — add UI pages to Studio.
-- **[Plugins → Permissions](/plugins/permissions)** — tighten permissions for production.
-- **[Plugins → Publishing](/plugins/publishing)** — publish your plugin to npm and the marketplace.
+- [Plugins → Overview](/plugins) — the full plugin lifecycle and conventions.
+- [Plugins → Manifest Reference](/plugins/manifest-reference) — every field in the schema.
+- [Plugins → CLI Commands](/plugins/cli-commands) — authoring guide for CLI commands.
+- [Plugins → REST Routes](/plugins/rest-routes) — add HTTP endpoints to your plugin.
+- [Plugins → Studio Pages](/plugins/studio-pages) — add UI pages to Studio.
+- [Plugins → Permissions](/plugins/permissions) — tighten permissions for production.
+- [Plugins → Publishing](/plugins/publishing) — publish to npm and the marketplace.
