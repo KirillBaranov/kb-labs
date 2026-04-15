@@ -1,0 +1,24 @@
+import { defineAdapterManifest } from '@kb-labs/sdk/adapters';
+
+/**
+ * AdapterManifest for <%= it.name %>.
+ *
+ * `implements` names the capability interface this adapter provides
+ * (e.g. "ILLM", "ILogger", "ICache"). The host resolves adapters by this
+ * string at bind time.
+ *
+ * Types:
+ *  - "core"      — shipped with the platform, always available
+ *  - "extension" — third-party or in-project, opt-in via config
+ *  - "proxy"     — forwards calls to a remote runtime
+ */
+export const manifest = defineAdapterManifest({
+  manifestVersion: '1.0.0',
+  id: '<%= it.name %>',
+  name: '<%= it.name %>',
+  version: '0.1.0',
+  type: 'extension',
+  implements: 'ILLM',
+});
+
+export default manifest;

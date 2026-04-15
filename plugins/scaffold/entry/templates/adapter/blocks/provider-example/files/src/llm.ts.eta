@@ -1,0 +1,46 @@
+import type {
+  ILLM,
+  LLMOptions,
+  LLMResponse,
+  IDisposable,
+} from '@kb-labs/sdk/adapters';
+
+/**
+ * Minimal ILLM implementation.
+ *
+ * Replace the `complete` body with a real API call (OpenAI, Anthropic,
+ * local llama.cpp, whatever). `dispose` is called by the host on shutdown
+ * — use it to close connection pools, flush buffers, etc.
+ *
+ * Cookbook:
+ *   - Use `useLogger(ctx)` / `useCache(ctx)` from '@kb-labs/sdk' inside
+ *     the host, not here. Adapters should stay capability-focused.
+ *   - Declare streaming / batch support via AdapterCapabilities in the
+ *     manifest so the router can pick the right adapter for a request.
+ */
+export class <%= it.name.replace(/(^|-)(\w)/g, (_, _s, c) => c.toUpperCase()) %>LLM implements ILLM, IDisposable {
+  constructor(private readonly config: { apiKey?: string } = {}) {}
+
+  async complete(options: LLMOptions): Promise<LLMResponse> {
+    // TODO: call your provider here.
+    return {
+      text: `(stub) <%= it.name %> would answer: ${options.prompt}`,
+      model: 'stub',
+      usage: { promptTokens: 0, completionTokens: 0, totalTokens: 0 },
+    };
+  }
+
+  async dispose(): Promise<void> {
+    // TODO: tear down connections / flush buffers.
+  }
+}
+
+export interface <%= it.name.replace(/(^|-)(\w)/g, (_, _s, c) => c.toUpperCase()) %>Config {
+  apiKey?: string;
+}
+
+export function createAdapter(
+  config: <%= it.name.replace(/(^|-)(\w)/g, (_, _s, c) => c.toUpperCase()) %>Config = {},
+): ILLM {
+  return new <%= it.name.replace(/(^|-)(\w)/g, (_, _s, c) => c.toUpperCase()) %>LLM(config);
+}

@@ -1,0 +1,9 @@
+rest:
+  basePath: "/<%= it.name %>"
+  routes:
+    - id: hello
+      method: GET
+      path: "/hello"
+      handler: "./rest/hello.js#default"
+      handlerPath: "./rest/hello.js"
+      describe: "Say hello over HTTP"

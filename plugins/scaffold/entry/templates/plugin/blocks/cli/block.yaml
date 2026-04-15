@@ -1,0 +1,5 @@
+id: cli
+describe: |
+  Adds a second CLI command (`ping`) as an example of how to register
+  additional commands. Requires `base`.
+requires: [base]

@@ -1,0 +1,6 @@
+id: provider-example
+describe: |
+  Adds a stub ILLM implementation showing how to wire an adapter factory
+  (createAdapter), how the manifest's `implements` string maps to the
+  interface, and how to declare capabilities. Requires `base`.
+requires: [base]

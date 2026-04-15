@@ -1,0 +1,14 @@
+cli:
+  commands:
+    - id: ping
+      group: "<%= it.name %>"
+      describe: "Health ping for <%= it.name %>"
+      handler: "./commands/ping.js#default"
+      handlerPath: "./commands/ping.js"
+      flags:
+        - name: json
+          type: boolean
+          description: "Emit JSON instead of text"
+      examples:
+        - "kb <%= it.name %> ping"
+        - "kb <%= it.name %> ping --json"

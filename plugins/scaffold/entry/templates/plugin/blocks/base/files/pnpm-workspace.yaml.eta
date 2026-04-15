@@ -1,0 +1,3 @@
+<% if (it.vars.mode === 'standalone') { %>packages:
+  - packages/*
+<% } else { %><!--@@scaffold:skip@@--><% } %>

@@ -1,0 +1,4 @@
+imports:
+  - "import { combinePermissions, kbPlatformPreset } from '@kb-labs/sdk';"
+permissions:
+  - "with(kbPlatformPreset)"

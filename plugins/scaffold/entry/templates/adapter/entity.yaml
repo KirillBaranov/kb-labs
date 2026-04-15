@@ -1,0 +1,37 @@
+id: adapter
+displayName: KB Labs Adapter
+description: |
+  A KB Labs adapter: implements a replaceable platform capability (LLM,
+  logger, cache, storage, etc). Single package, everything imported
+  through @kb-labs/sdk/adapters — never from @kb-labs/core-platform.
+
+output: adapters/<%= it.name %>
+
+variables:
+  - name: scope
+    type: string
+    describe: npm scope (e.g. @kb-labs, @acme). Leave blank for unscoped.
+    default: "@kb-labs"
+    validate: npmScope
+  - name: description
+    type: string
+    describe: Short description of the adapter
+    default: A KB Labs adapter
+  - name: license
+    type: string
+    describe: License identifier
+    default: MIT
+  - name: mode
+    type: select
+    describe: Where will this adapter live?
+    default: in-workspace
+    choices:
+      - value: in-workspace
+        label: Inside a KB Labs workspace (workspace:* deps)
+      - value: standalone
+        label: Standalone repo (semver-pinned deps)
+
+defaults:
+  blocks:
+    - base
+    - provider-example

@@ -1,0 +1,28 @@
+# <%= it.scope ? it.scope + '/' : '' %><%= it.name %>
+
+<%= it.vars.description %>
+
+## Layout
+
+```
+src/
+  index.ts      # createAdapter factory — instantiated by the host
+  manifest.ts   # AdapterManifest (id, type, what this adapter implements)
+```
+
+All imports come from `@kb-labs/sdk/adapters`. **Never** reach into
+`@kb-labs/core-platform` directly — that's internal and will break on
+core majors. If you need something not re-exported by SDK, open an issue
+on `@kb-labs/sdk` rather than working around it.
+
+## Using it
+
+Register the adapter in your project's `.kb/kb.config.jsonc` (the host
+plugin will resolve this package via npm or `workspace:*`). Then the
+runtime wires it up to whichever capability it `implements`.
+
+## Health check
+
+```bash
+pnpm kb scaffold doctor --path .
+```
