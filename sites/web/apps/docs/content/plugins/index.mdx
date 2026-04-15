@@ -1,13 +1,40 @@
 ---
 title: "Overview"
-description: "Plugin anatomy: package layout, manifest, handlers, lifecycle."
-updatedAt: "2026-04-07"
+description: "What a plugin is, why you'd write one, and how."
+updatedAt: "2026-04-15"
 order: 1
 ---
 
-A KB Labs plugin is a regular npm package with a manifest, one or more handler modules, and a build that emits ESM bundles. There is no special wrapper or framework — plugins are loaded by the platform, discovered through the marketplace lock file, and executed in one of two sandbox modes.
+## What a plugin is
 
-This page is the shortest useful mental model. For the full manifest schema see the [Manifest Reference](/plugins/manifest-reference). For permissions specifics see [Permissions](/plugins/permissions).
+A **plugin** is a regular npm package with a manifest that tells the platform what it contributes. It can add CLI commands (`defineCommand`), REST routes (`defineRoute`), webhook handlers (`defineWebhook`), workflow step handlers, Studio pages — any combination. No framework, no special wrapper. Plugins are loaded by the platform, discovered through the marketplace lock file, and executed in a sandbox with declared permissions.
+
+Every AI-ish feature you've used in KB Labs ships as a plugin: commit generation, code review, RAG search, agents, the scaffold tool. The platform itself is small; the features are plugins.
+
+## Why you'd write one
+
+- **Add your own CLI command.** A one-shot script that reads a git diff, calls the LLM, and produces a summary — exposed as `kb my-team post-release`. Runs in the same sandbox as first-party plugins, gets `useLLM()`, `useLogger()`, and the rest of the SDK hooks.
+- **Expose a REST route.** Internal tool needs an endpoint? Drop it into a plugin as a `defineRoute` handler. The gateway handles auth + CORS; you just write the business logic.
+- **Handle a webhook.** GitHub push, Slack event, external CI callback — declare the webhook endpoint in the manifest, write `defineWebhook` handler, done.
+- **Write a workflow step.** Custom deployment gates, domain-specific checks, AI-powered release notes — anything a workflow needs to call, write as a plugin handler.
+- **Ship a Studio page.** A dashboard for your team's internal data, rendered inside Studio using the platform's UI kit.
+- **Bundle a skill / agent behavior.** Teach agents to do something specific to your stack — your plugin provides the tools, agents consume them.
+
+A plugin is the unit of extension. If you'd otherwise write a shell script, a GitHub Action, a webhook server, or a one-off internal tool, a plugin is usually the cleaner shape — one package, one manifest, observable, sandboxed.
+
+## How you write one
+
+Fastest path — **[Guides → First Plugin](/guides/first-plugin)**. Scaffolds the package, builds it, links it, runs the command. 10 minutes end-to-end.
+
+```bash
+kb scaffold run plugin my-plugin --yes
+cd .kb/plugins/my-plugin
+pnpm install && pnpm build
+kb marketplace clear-cache
+kb my-plugin hello
+```
+
+The rest of this page is the mental model — what files exist, what the manifest looks like, what handlers receive. For the full schema see [Manifest Reference](/plugins/manifest-reference). For permissions specifics see [Permissions](/plugins/permissions).
 
 ## Package layout
 
