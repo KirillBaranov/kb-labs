@@ -8,6 +8,9 @@ export default mergeConfig(
     plugins: [react()],
     test: {
       setupFiles: ['./vitest-setup.ts'],
+      // React Testing Library + jsdom bootstrap can exceed the 5s vitest
+      // default on slow CI runners before the first test body executes.
+      testTimeout: 20_000,
     },
   })
 );
