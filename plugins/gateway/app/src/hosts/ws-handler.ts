@@ -12,6 +12,7 @@ import {
   AdapterNameSchema,
   HostCapabilitySchema,
   SUPPORTED_PROTOCOL_VERSIONS,
+  type HostCapability,
   type OutboundMessage,
 } from '@kb-labs/gateway-contracts';
 import { AdaptiveBuffer } from '@kb-labs/gateway-core';
@@ -180,12 +181,12 @@ export function createWsHandler(
     //   2. HostRegistry descriptor (registered via /hosts/register) — authoritative
     //   3. Hello-message capabilities (static/dev tokens with no registry entry) — validated
     const clientRecord = await getClientByHostId(cache, hostId);
-    const registryCaps = (clientRecord?.capabilities ?? [])
-      .map((c) => HostCapabilitySchema.safeParse(c))
-      .filter((r) => r.success)
-      .map((r) => r.data);
+    const registryCaps: HostCapability[] = (clientRecord?.capabilities ?? []).flatMap((c) => {
+      const r = HostCapabilitySchema.safeParse(c);
+      return r.success ? [r.data] : [];
+    });
 
-    let capabilities: ReturnType<typeof HostCapabilitySchema.safeParse>['data'][];
+    let capabilities: HostCapability[];
     if (clientRecord) {
       // JWT-registered host: use AuthStore capabilities only
       capabilities = registryCaps;
@@ -201,7 +202,7 @@ export function createWsHandler(
           level: 'warn',
           reasonCode: 'registry_lookup_failed',
           message: 'Failed to look up host descriptor from registry, falling back to hello capabilities',
-          outcome: 'partial',
+          outcome: 'failed',
           error: err instanceof Error ? err : new Error(String(err)),
           serviceId: 'gateway',
           route: '/hosts/connect',
@@ -209,16 +210,16 @@ export function createWsHandler(
         });
       }
       if (existingDescriptor && existingDescriptor.capabilities.length > 0) {
-        capabilities = existingDescriptor.capabilities
-          .map((c) => HostCapabilitySchema.safeParse(c))
-          .filter((r) => r.success)
-          .map((r) => r.data);
+        capabilities = existingDescriptor.capabilities.flatMap((c) => {
+          const r = HostCapabilitySchema.safeParse(c);
+          return r.success ? [r.data] : [];
+        });
       } else {
         // Static/dev token with no registry entry: accept validated hello capabilities
-        capabilities = helloCaps
-          .map((c) => HostCapabilitySchema.safeParse(c))
-          .filter((r) => r.success)
-          .map((r) => r.data);
+        capabilities = helloCaps.flatMap((c) => {
+          const r = HostCapabilitySchema.safeParse(c);
+          return r.success ? [r.data] : [];
+        });
       }
     }
 
