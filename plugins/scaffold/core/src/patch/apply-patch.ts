@@ -22,8 +22,8 @@ function mergeArrays(a: unknown[], b: unknown[]): unknown[] {
 
   if (allObjects) {
     const keyOf = (x: Record<string, unknown>): string | null => {
-      if (typeof x.id === 'string') return `id:${x.id}`;
-      if (typeof x.name === 'string') return `name:${x.name}`;
+      if (typeof x.id === 'string') {return `id:${x.id}`;}
+      if (typeof x.name === 'string') {return `name:${x.name}`;}
       return null;
     };
     const allKeyed =
@@ -46,7 +46,7 @@ function mergeArrays(a: unknown[], b: unknown[]): unknown[] {
   const out: unknown[] = [];
   for (const item of [...a, ...b]) {
     const key = JSON.stringify(item);
-    if (seen.has(key)) continue;
+    if (seen.has(key)) {continue;}
     seen.add(key);
     out.push(item);
   }
@@ -82,7 +82,7 @@ export async function loadPatch(
   const raw = await readFile(path, 'utf8');
   const rendered = renderString(raw, ctx);
   const parsed = parseYaml(rendered);
-  if (parsed == null) return {};
+  if (parsed == null) {return {};}
   if (!isPlainObject(parsed)) {
     throw new Error(`Patch at ${path} must be a YAML object`);
   }
@@ -96,7 +96,7 @@ export async function loadSnippets(
   const raw = await readFile(path, 'utf8');
   const rendered = renderString(raw, ctx);
   const parsed = parseYaml(rendered);
-  if (parsed == null) return {};
+  if (parsed == null) {return {};}
   if (!isPlainObject(parsed)) {
     throw new Error(`Snippets at ${path} must be a YAML object`);
   }

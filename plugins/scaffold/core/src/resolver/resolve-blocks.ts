@@ -16,7 +16,7 @@ export function resolveBlocks(
   selected: string[],
 ): ResolveResult {
   const byId = new Map<string, BlockDefinition>();
-  for (const b of all) byId.set(b.id, b);
+  for (const b of all) {byId.set(b.id, b);}
 
   const missing = selected.filter((id) => !byId.has(id));
   if (missing.length > 0) {
@@ -28,17 +28,17 @@ export function resolveBlocks(
   const queue = [...selected];
   while (queue.length > 0) {
     const id = queue.shift()!;
-    if (expanded.has(id)) continue;
+    if (expanded.has(id)) {continue;}
     expanded.add(id);
     const block = byId.get(id);
-    if (!block) continue;
+    if (!block) {continue;}
     for (const dep of block.requires ?? []) {
       if (!byId.has(dep)) {
         throw new Error(
           `Block "${id}" requires unknown block "${dep}"`,
         );
       }
-      if (!expanded.has(dep)) queue.push(dep);
+      if (!expanded.has(dep)) {queue.push(dep);}
     }
   }
 
@@ -64,14 +64,14 @@ export function resolveBlocks(
   for (const id of expanded) {
     const block = byId.get(id)!;
     for (const dep of block.requires ?? []) {
-      if (!expanded.has(dep)) continue;
+      if (!expanded.has(dep)) {continue;}
       edges.get(dep)!.add(id);
       inDegree.set(id, (inDegree.get(id) ?? 0) + 1);
     }
   }
 
   const ready: string[] = [];
-  for (const [id, deg] of inDegree) if (deg === 0) ready.push(id);
+  for (const [id, deg] of inDegree) {if (deg === 0) {ready.push(id);}}
   ready.sort();
 
   const ordered: string[] = [];

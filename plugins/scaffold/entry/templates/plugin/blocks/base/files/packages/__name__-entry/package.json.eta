@@ -27,8 +27,8 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "<%= it.scope ? it.scope + '/' : '' %><%= it.name %>-core": "workspace:*",
-    "<%= it.scope ? it.scope + '/' : '' %><%= it.name %>-contracts": "workspace:*",
+    "<%= it.scope ? it.scope + '/' : '' %><%= it.name %>-core": "<%= it.mode === 'in-workspace' ? 'workspace:*' : '^0.1.0' %>",
+    "<%= it.scope ? it.scope + '/' : '' %><%= it.name %>-contracts": "<%= it.mode === 'in-workspace' ? 'workspace:*' : '^0.1.0' %>",
     "@kb-labs/sdk": "<%= it.mode === 'in-workspace' ? 'workspace:*' : '^' + it.versions.sdk %>"<% if (it.mode === 'standalone') { %>,
     "@kb-labs/shared-command-kit": "^<%= it.versions.commandKit %>"<% } %>
   },
