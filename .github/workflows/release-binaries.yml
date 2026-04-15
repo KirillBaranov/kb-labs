@@ -3,19 +3,16 @@ name: Release Binaries
 # Builds and publishes all KB Labs Go binaries (kb-create, kb-dev, kb-devkit,
 # kb-deploy, kb-monitor) as a single GitHub Release.
 #
-# Trigger: push a tag matching `binaries-v*` (e.g. `binaries-v0.4.0`).
-# The release assets land at github.com/KirillBaranov/kb-labs/releases —
-# the same URL that every tool's install.sh downloads from.
+# Tag format: v<MAJOR>.<MINOR>.<PATCH>-binaries (e.g. v0.4.0-binaries).
+# Valid semver (prerelease suffix) — goreleaser accepts it. The release is
+# still marked as non-prerelease (see .goreleaser.yaml) so /releases/latest
+# points at it. Suffix distinguishes from npm release tags (pure vX.Y.Z).
 
 on:
   push:
     tags:
-      - 'binaries-v*'
+      - 'v*-binaries'
   workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Tag to release (must already exist)'
-        required: true
 
 permissions:
   contents: write   # create release + upload assets
