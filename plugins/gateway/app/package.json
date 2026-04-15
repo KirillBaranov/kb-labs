@@ -43,7 +43,7 @@
     "@kb-labs/gateway-core": "workspace:*",
     "@kb-labs/plugin-contracts": "workspace:*",
     "@kb-labs/shared-http": "workspace:*",
-    "fastify": "^5.2.0",
+    "fastify": "^5.8.5",
     "fastify-type-provider-zod": "^6.0.0",
     "ws": "^8.18.3"
   },
