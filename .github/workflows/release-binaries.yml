@@ -1,0 +1,44 @@
+name: Release Binaries
+
+# Builds and publishes all KB Labs Go binaries (kb-create, kb-dev, kb-devkit,
+# kb-deploy, kb-monitor) as a single GitHub Release.
+#
+# Trigger: push a tag matching `binaries-v*` (e.g. `binaries-v0.4.0`).
+# The release assets land at github.com/KirillBaranov/kb-labs/releases —
+# the same URL that every tool's install.sh downloads from.
+
+on:
+  push:
+    tags:
+      - 'binaries-v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (must already exist)'
+        required: true
+
+permissions:
+  contents: write   # create release + upload assets
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache: false
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
