@@ -71,7 +71,7 @@ export async function renderFilesDir(
     // Templates can opt out of a given file by emitting a skip marker.
     // Useful for files that should only exist in some modes (e.g.
     // pnpm-workspace.yaml only for standalone mode).
-    if (body.trim() === SKIP_MARKER) continue;
+    if (body.trim() === SKIP_MARKER) {continue;}
 
     const st = await stat(abs);
     rendered.push({

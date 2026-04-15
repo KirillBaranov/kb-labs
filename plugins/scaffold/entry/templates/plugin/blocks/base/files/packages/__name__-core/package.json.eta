@@ -20,7 +20,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "<%= it.scope ? it.scope + '/' : '' %><%= it.name %>-contracts": "workspace:*",
+    "<%= it.scope ? it.scope + '/' : '' %><%= it.name %>-contracts": "<%= it.mode === 'in-workspace' ? 'workspace:*' : '^0.1.0' %>",
     "@kb-labs/sdk": "<%= it.mode === 'in-workspace' ? 'workspace:*' : '^' + it.versions.sdk %>"
   },
   "devDependencies": {

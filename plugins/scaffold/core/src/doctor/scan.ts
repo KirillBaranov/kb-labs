@@ -30,7 +30,7 @@ async function walkSources(dir: string): Promise<string[]> {
   const out: string[] = [];
   const entries = await readdir(dir, { withFileTypes: true });
   for (const entry of entries) {
-    if (entry.name === 'node_modules' || entry.name === 'dist') continue;
+    if (entry.name === 'node_modules' || entry.name === 'dist') {continue;}
     const p = join(dir, entry.name);
     if (entry.isDirectory()) {
       out.push(...(await walkSources(p)));
@@ -94,7 +94,7 @@ export async function scanPackage(pkgDir: string): Promise<Finding[]> {
     for (const file of sources) {
       const raw = await readFile(file, 'utf8');
       for (const match of raw.matchAll(INTERNAL_IMPORT_RE)) {
-        if (match[1]) offenders.add(match[1]);
+        if (match[1]) {offenders.add(match[1]);}
       }
     }
     if (offenders.size > 0) {
@@ -144,7 +144,7 @@ async function readLock(
   workspaceRoot: string,
 ): Promise<MarketplaceLockShape | null> {
   const lockPath = join(workspaceRoot, '.kb', 'marketplace.lock');
-  if (!(await exists(lockPath))) return null;
+  if (!(await exists(lockPath))) {return null;}
   try {
     const raw = await readFile(lockPath, 'utf8');
     return JSON.parse(raw) as MarketplaceLockShape;
@@ -158,17 +158,17 @@ async function findEntryPackageDir(pkgDir: string): Promise<string | null> {
   const pkgJsonPath = join(pkgDir, 'package.json');
   if (await exists(pkgJsonPath)) {
     const pkg = (await readJson(pkgJsonPath)) as { kb?: { manifest?: string } };
-    if (pkg.kb?.manifest) return pkgDir;
+    if (pkg.kb?.manifest) {return pkgDir;}
   }
   // Otherwise look in packages/*-entry.
   const packagesDir = join(pkgDir, 'packages');
-  if (!(await exists(packagesDir))) return null;
+  if (!(await exists(packagesDir))) {return null;}
   const entries = await readdir(packagesDir, { withFileTypes: true });
   for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    if (!entry.name.endsWith('-entry')) continue;
+    if (!entry.isDirectory()) {continue;}
+    if (!entry.name.endsWith('-entry')) {continue;}
     const candidate = join(packagesDir, entry.name);
-    if (await exists(join(candidate, 'package.json'))) return candidate;
+    if (await exists(join(candidate, 'package.json'))) {return candidate;}
   }
   return null;
 }
@@ -209,7 +209,7 @@ export async function scanRoot(
     if (await exists(packagesDir)) {
       const entries = await readdir(packagesDir, { withFileTypes: true });
       for (const entry of entries) {
-        if (entry.isDirectory()) await visit(join(packagesDir, entry.name));
+        if (entry.isDirectory()) {await visit(join(packagesDir, entry.name));}
       }
     }
   }
@@ -229,7 +229,7 @@ export async function scanRoot(
 
   const entries = await readdir(root, { withFileTypes: true });
   for (const entry of entries) {
-    if (entry.isDirectory()) await visit(join(root, entry.name));
+    if (entry.isDirectory()) {await visit(join(root, entry.name));}
   }
 
   if (opts.workspaceRoot) {
@@ -257,10 +257,10 @@ async function checkLockSync(
 
   const entries = await readdir(scaffoldRoot, { withFileTypes: true });
   for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
+    if (!entry.isDirectory()) {continue;}
     const pluginDir = join(scaffoldRoot, entry.name);
     const entryPkgDir = await findEntryPackageDir(pluginDir);
-    if (!entryPkgDir) continue;
+    if (!entryPkgDir) {continue;}
 
     const pkg = (await readJson(join(entryPkgDir, 'package.json'))) as {
       name?: string;

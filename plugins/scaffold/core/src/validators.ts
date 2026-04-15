@@ -18,17 +18,17 @@ const RESERVED_NAMES = new Set([
 ]);
 
 export function validatePackageName(name: string): string | null {
-  if (!name) return 'name is required';
-  if (name.length > 214) return 'name must be <= 214 chars';
+  if (!name) {return 'name is required';}
+  if (name.length > 214) {return 'name must be <= 214 chars';}
   if (!NAME_RE.test(name)) {
     return 'name must be lowercase, start with a letter, and contain only a-z 0-9 -';
   }
-  if (RESERVED_NAMES.has(name)) return `name "${name}" is reserved`;
+  if (RESERVED_NAMES.has(name)) {return `name "${name}" is reserved`;}
   return null;
 }
 
 export function validateScope(scope: string): string | null {
-  if (!scope) return null;
+  if (!scope) {return null;}
   if (!SCOPE_RE.test(scope)) {
     return 'scope must look like "@acme" (lowercase, starts with @, a-z 0-9 -)';
   }
@@ -47,7 +47,7 @@ export function runValidator(
   kind: string,
   value: unknown,
 ): string | null {
-  if (typeof value !== 'string') return 'expected a string';
+  if (typeof value !== 'string') {return 'expected a string';}
   switch (kind) {
     case 'npmName':
       return validatePackageName(value);

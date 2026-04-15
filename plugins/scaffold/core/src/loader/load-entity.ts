@@ -100,9 +100,9 @@ export async function loadEntity(
   if (await pathExists(blocksDir)) {
     const entries = await readdir(blocksDir, { withFileTypes: true });
     for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
+      if (!entry.isDirectory()) {continue;}
       const blockDir = join(blocksDir, entry.name);
-      if (!(await pathExists(join(blockDir, 'block.yaml')))) continue;
+      if (!(await pathExists(join(blockDir, 'block.yaml')))) {continue;}
       blocks.push(await loadBlock(blockDir));
     }
   }
@@ -123,11 +123,11 @@ export async function loadEntity(
  * List entity ids available in the templates root (directories with `entity.yaml`).
  */
 export async function listEntities(templatesRoot: string): Promise<string[]> {
-  if (!(await pathExists(templatesRoot))) return [];
+  if (!(await pathExists(templatesRoot))) {return [];}
   const entries = await readdir(templatesRoot, { withFileTypes: true });
   const result: string[] = [];
   for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
+    if (!entry.isDirectory()) {continue;}
     if (await pathExists(join(templatesRoot, entry.name, 'entity.yaml'))) {
       result.push(entry.name);
     }

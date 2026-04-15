@@ -17,7 +17,7 @@ export interface TargetState {
 export async function inspectTarget(outRoot: string): Promise<TargetState> {
   try {
     const st = await stat(outRoot);
-    if (!st.isDirectory()) return { exists: true, empty: false };
+    if (!st.isDirectory()) {return { exists: true, empty: false };}
     const entries = await readdir(outRoot);
     return { exists: true, empty: entries.length === 0 };
   } catch {
