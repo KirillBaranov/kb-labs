@@ -49,6 +49,7 @@ export default async function InstallPage({ params }: Props) {
   const STEPS = t.raw('install.quickInstall.steps') as Array<{ num: string; title: string; cmd: string; note: string }>;
   const BINARIES = t.raw('install.binaries.platforms') as Array<{ platform: string; file: string }>;
   const NEXT_STEPS = t.raw('install.afterInstall.steps') as Array<{ title: string; cmd?: string; href?: string; label?: string }>;
+  const PREREQUISITES = t.raw('install.prerequisites.items') as string[];
 
   // Step 01 is install — platform-dependent. Steps 02+ are universal.
   const [installStep, ...restSteps] = STEPS;
@@ -68,6 +69,17 @@ export default async function InstallPage({ params }: Props) {
               {t('install.hero.releasesBtn')}
             </a>
           </div>
+        </section>
+
+        <section className={s.prerequisitesSection}>
+          <div className={s.sectionHeader}>
+            <h2>{t('install.prerequisites.title')}</h2>
+          </div>
+          <ul className={s.prerequisitesList}>
+            {PREREQUISITES.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
         </section>
 
         <section className={s.stepsSection}>
