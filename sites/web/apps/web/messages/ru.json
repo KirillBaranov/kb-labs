@@ -580,7 +580,7 @@
       "steps": [
         {
           "title": "Запустить сервисы",
-          "cmd": "kb dev:start"
+          "cmd": "kb-dev start"
         },
         {
           "title": "Читать документацию",

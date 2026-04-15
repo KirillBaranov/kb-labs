@@ -64,7 +64,7 @@ export default async function InstallPage({ params }: Props) {
           <p>{renderWithCode(t.raw('install.hero.description') as string, s.inlineCode)}</p>
           <div className={s.heroCta}>
             <PlatformCommand commands={INSTALL_COMMANDS} />
-            <a className="btn secondary" href="https://github.com/KirillBaranov/kb-labs/releases/latest" target="_blank" rel="noopener noreferrer">
+            <a className="btn secondary" href="https://github.com/KirillBaranov/kb-labs-create/releases/latest" target="_blank" rel="noopener noreferrer">
               {t('install.hero.releasesBtn')}
             </a>
           </div>
@@ -112,16 +112,16 @@ export default async function InstallPage({ params }: Props) {
             <p>{t('install.pinVersion.description')}</p>
             <PlatformCommand
               commands={{
-                unix: 'curl -fsSL https://kblabs.ru/install.sh | sh -s -- --version v1.2.3',
-                windows: 'iwr https://kblabs.ru/install.ps1 | iex -Version v1.2.3',
+                unix: 'curl -fsSL https://kblabs.ru/install.sh | sh -s -- --version v0.3.0',
+                windows: 'iwr https://kblabs.ru/install.ps1 -OutFile install.ps1; .\\install.ps1 -Version v0.3.0',
               }}
             />
             <h3 className={s.subhead}>{t('install.pinVersion.checksumTitle')}</h3>
             <div className={s.codeWrap}>
               <pre className={s.codeBlock}>
-                <code>{'curl -fsSL https://github.com/KirillBaranov/kb-labs/releases/download/v1.2.3/checksums.txt | grep kb-create-linux-amd64'}</code>
+                <code>{'curl -fsSL https://github.com/KirillBaranov/kb-labs-create/releases/download/v0.3.0/checksums.txt | grep kb-create-linux-amd64'}</code>
               </pre>
-              <CopyButton text="curl -fsSL https://github.com/KirillBaranov/kb-labs/releases/download/v1.2.3/checksums.txt | grep kb-create-linux-amd64" />
+              <CopyButton text="curl -fsSL https://github.com/KirillBaranov/kb-labs-create/releases/download/v0.3.0/checksums.txt | grep kb-create-linux-amd64" />
             </div>
           </div>
           <div className={s.enterpriseNote}>
@@ -147,7 +147,7 @@ export default async function InstallPage({ params }: Props) {
           <PlatformBinaryTable
             binaries={BINARIES}
             downloadLabel={t('install.binaries.downloadBtn')}
-            baseUrl="https://github.com/KirillBaranov/kb-labs/releases/latest/download"
+            baseUrl="https://github.com/KirillBaranov/kb-labs-create/releases/latest/download"
             colPlatform={t('install.binaries.colPlatform')}
             colBinary={t('install.binaries.colBinary')}
             colDownload={t('install.binaries.colDownload')}
