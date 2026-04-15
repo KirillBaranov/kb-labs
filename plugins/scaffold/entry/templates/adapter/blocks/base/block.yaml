@@ -1,0 +1,4 @@
+id: base
+describe: |
+  Required. Single-package layout with a stub implementation and working
+  AdapterManifest. All imports go through @kb-labs/sdk/adapters.

@@ -1,0 +1,34 @@
+import { defineCommand, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { hello } from '<%= it.scope ? it.scope + '/' : '' %><%= it.name %>-core';
+
+type HelloFlags = {
+  who?: string;
+  json?: boolean;
+};
+
+/**
+ * `kb <%= it.name %> hello` — prints a friendly greeting.
+ *
+ * This handler demonstrates the bare minimum: receive flags, call into
+ * `-core`, write output via `ctx.ui`. As you grow, reach for the patterns
+ * sketched inside `<%= it.name %>-core/src/hello.ts` — LLM calls, caching,
+ * structured logging — ALL through `@kb-labs/sdk`.
+ */
+export default defineCommand({
+  id: '<%= it.name %>:hello',
+  description: 'Say hello from <%= it.name %>',
+
+  handler: {
+    async execute(ctx: PluginContextV3, input: CLIInput<HelloFlags>) {
+      const { greeting } = hello({ who: input.flags.who ?? 'World' });
+
+      if (input.flags.json) {
+        ctx.ui?.json?.({ greeting });
+      } else {
+        ctx.ui?.info?.(greeting);
+      }
+
+      return { exitCode: 0, result: { greeting } };
+    },
+  },
+});
