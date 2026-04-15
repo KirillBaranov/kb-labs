@@ -113,7 +113,7 @@
   "binaries": [
     {
       "id": "kb-dev",
-      "repo": "KirillBaranov/kb-labs-dev",
+      "repo": "KirillBaranov/kb-labs",
       "name": "kb-dev",
       "description": "Service manager"
     }
