@@ -47,15 +47,15 @@ function stripJsonComments(src: string): string {
             while (i < len) {
                 if (src[i] === '\\') { out += src[i++]; out += src[i++]; continue; }
                 out += src[i];
-                if (src[i++] === '"') break;
+                if (src[i++] === '"') {break;}
             }
         } else if (src[i] === '/' && src[i + 1] === '/') {
             // Single-line comment — skip to end of line.
-            while (i < len && src[i] !== '\n') i++;
+            while (i < len && src[i] !== '\n') {i++;}
         } else if (src[i] === '/' && src[i + 1] === '*') {
             // Multi-line comment — skip to *\/
             i += 2;
-            while (i < len && !(src[i] === '*' && src[i + 1] === '/')) i++;
+            while (i < len && !(src[i] === '*' && src[i + 1] === '/')) {i++;}
             i += 2;
         } else {
             out += src[i++];

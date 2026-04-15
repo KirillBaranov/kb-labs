@@ -300,10 +300,9 @@ export class MarketplaceService implements MarketplaceServiceAPI {
     }
 
     const merged = mergeScopedEntries(perScope);
-    const filtered = filter?.kind
+    return filter?.kind
       ? merged.entries.filter(e => e.primaryKind === filter.kind)
       : merged.entries;
-    return filtered;
   }
 
   async getEntry(ctx: ScopeContext, packageId: string): Promise<MarketplaceEntry | null> {

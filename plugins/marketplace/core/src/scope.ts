@@ -12,7 +12,6 @@ import * as path from 'node:path';
 import { accessSync, constants } from 'node:fs';
 import type {
   MarketplaceScope,
-  MarketplaceQueryScope,
   ScopeContext,
   QueryScopeContext,
 } from '@kb-labs/marketplace-contracts';
