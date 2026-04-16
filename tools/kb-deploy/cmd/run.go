@@ -203,6 +203,16 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			}
 		}
 
+		// Remove the previous image for this target to avoid stale/partial
+		// layer cache that causes extraction failures on re-pull.
+		prevImage := fmt.Sprintf("%s/%s", cfg.Registry, t.Image)
+		if _, err := client.Run(fmt.Sprintf(
+			"docker images --format '{{.ID}}' %s | xargs -r docker rmi -f 2>/dev/null; docker image prune -f 2>/dev/null; true",
+			prevImage,
+		)); err != nil && !jsonMode {
+			o.Warn("image cleanup on remote failed (continuing): " + err.Error())
+		}
+
 		if !jsonMode {
 			o.Info("pulling on remote")
 		}
