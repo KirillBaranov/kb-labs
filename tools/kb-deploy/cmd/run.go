@@ -193,6 +193,16 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
+		// Login to the registry on the remote host if GHCR_TOKEN is set.
+		// Required when pulling private images from ghcr.io.
+		if token := os.Getenv("GHCR_TOKEN"); token != "" {
+			host, user := splitRegistry(cfg.Registry)
+			loginCmd := fmt.Sprintf("docker login %s -u %s --password-stdin", host, user)
+			if _, err := client.RunWithInput(loginCmd, token); err != nil && !jsonMode {
+				o.Warn("registry login on remote failed: " + err.Error())
+			}
+		}
+
 		if !jsonMode {
 			o.Info("pulling on remote")
 		}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/kb-labs/kb-deploy/internal/config"
 )
@@ -37,6 +38,16 @@ func loadConfig() (*config.Config, string, error) {
 // stateFilePath returns the absolute path to state.json given the repo root.
 func stateFilePath(repoRoot string) string {
 	return filepath.Join(repoRoot, ".kb", "deploy", "state.json")
+}
+
+// splitRegistry splits a registry string like "ghcr.io/username" into host and user.
+// Returns ("ghcr.io", "username"). If there is no slash, user is empty.
+func splitRegistry(registry string) (host, user string) {
+	parts := strings.SplitN(registry, "/", 2)
+	if len(parts) == 2 {
+		return parts[0], parts[1]
+	}
+	return parts[0], ""
 }
 
 // readSSHKey resolves the private key PEM for the given SSHConfig.
