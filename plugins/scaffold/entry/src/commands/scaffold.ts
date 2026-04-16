@@ -253,6 +253,7 @@ async function runDefault(
       {
         header: 'Next steps',
         items: [
+          `cd ${outRoot}`,
           'pnpm install',
           'pnpm -w build',
           `pnpm kb ${nameArg} hello   # try it`,
