@@ -878,72 +878,73 @@
   },
   "about": {
     "meta": {
-      "title": "About",
-      "description": "KB Labs is a small, remote-first team building open developer infrastructure for AI automation — on a principle that every dependency should be replaceable without a rewrite."
+      "title": "About — KB Labs",
+      "description": "KB Labs builds open developer infrastructure — AI orchestration, workflows, gateway — that you own, control, and can replace. No platform rent. No vendor lock."
     },
     "hero": {
       "title": "Open the closed",
-      "subtitle": "We're building developer infrastructure on a single principle: every dependency should be replaceable without a rewrite."
+      "subtitle": "Developer infrastructure that runs on your machine. Your code, your data, your rules — and every piece replaceable without a rewrite."
     },
     "founder": {
       "label": "Founder",
       "name": "Kirill Baranov",
-      "bio": "Built KB Labs because every layer of the stack was quietly closing. Open-source infrastructure for developers who want their stack back.",
+      "bio": "Built KB Labs out of frustration. Every layer of the stack was quietly locking down. I wanted infrastructure designed to be replaced — not depended on.",
       "links": {
         "site": "k-baranov.ru",
-        "github": "GitHub"
+        "github": "GitHub",
+        "twitter": "X"
       }
     },
     "manifesto": [
-      "Most platforms grow by trapping you. Better integrations, lower prices, a smoother onboarding — until the day switching costs more than staying. That's not a technical problem. It's a business model.",
-      "KB Labs is built differently. Every adapter, every runtime, every storage backend is hidden behind a typed contract. You depend on the interface, not the vendor. When a better LLM comes out, you swap a config line. When your scale demands a different database, you swap an adapter. Your workflow logic stays exactly as you wrote it.",
-      "We call this philosophy <strong>Open the closed</strong>. It means we design every system boundary so it can be opened — inspected, replaced, or extended — without fear. The concrete implementation is always a detail. The contract is what lasts.",
-      "This shapes everything: how we structure plugins, how we expose the platform to agents, how we approach multi-tenancy, how we write our own internal tooling. The test is always the same — can you replace this piece without touching the rest?"
+      "Every vendor locks you in gradually. It starts with a smooth onboarding, competitive pricing, great integrations — until the day switching costs more than staying. That's not a technical problem. It's a business model.",
+      "The second problem is less obvious. Large companies have entire engineering teams building internal developer platforms — AI orchestration, workflow engines, API gateways, observability stacks. All of that makes everything else faster. Small teams don't have that. They piece together SaaS subscriptions, each one owning another slice of the stack, each one extracting rent.",
+      "KB Labs is the answer to both. Infrastructure that runs on your own machine, designed from the ground up to be replaced. Swap the LLM provider, the vector store, the workflow backend — with a config line, not a migration project. Your business logic stays exactly as you wrote it.",
+      "We call this <strong>Open the closed</strong>. Every system boundary is designed to be opened — inspected, replaced, or extended — without fear. The concrete implementation is always a detail. The contract is what lasts."
     ],
     "principlesTitle": "How we build",
     "principles": [
       {
         "num": "01",
-        "title": "Open the closed",
-        "body": "Every abstraction we build has a clear exit. Swap the LLM provider, the vector store, the workflow backend — without rewriting your business logic. Lock-in is a design choice, and we choose against it."
+        "title": "Every abstraction has a clear exit",
+        "body": "Swap the LLM provider, the vector store, the workflow backend — without rewriting your business logic. Lock-in is a design choice. We choose against it."
       },
       {
         "num": "02",
-        "title": "Contracts over implementations",
-        "body": "The interfaces between system parts are first-class citizens. A typed contract is the only thing your code should depend on. The implementation behind it can change, scale, or be replaced at any time."
+        "title": "Your code. Your data.",
+        "body": "KB Labs runs on your infrastructure. No cloud backend owned by a vendor, no data leaving your perimeter unless you explicitly route it. On-prem and air-gapped by design."
       },
       {
         "num": "03",
-        "title": "Developer experience is a product",
-        "body": "A platform that requires tribal knowledge to operate has failed. Every command should be discoverable, every error should be actionable, and every abstraction should earn its place by making something genuinely simpler."
+        "title": "Contracts over implementations",
+        "body": "Typed interfaces are first-class citizens. Your code depends on the contract, not the vendor. The implementation behind it can change, scale, or be replaced at any time."
       },
       {
         "num": "04",
-        "title": "Boring infrastructure, interesting products",
-        "body": "State management, rate limiting, audit logs, multi-tenancy — these are solved problems. We solve them once, well, so teams can spend their time on what makes their product unique."
+        "title": "Level the playing field",
+        "body": "Enterprise-grade internal developer platforms shouldn't require an enterprise budget. Any team — one person or a hundred — should be able to run AI orchestration, workflow automation, and a proper API gateway."
       },
       {
         "num": "05",
-        "title": "Small surface, deep capability",
-        "body": "A small, coherent API that composes well beats a sprawling one every time. We add features reluctantly and remove them eagerly. Complexity is a cost, not a feature."
+        "title": "Plugins, not features",
+        "body": "Everything optional lives in a plugin. No base classes, no framework inheritance — just a typed contract and a manifest file. If you can write a module, you can write a plugin."
       },
       {
         "num": "06",
         "title": "Observability by default",
-        "body": "Software you cannot inspect is software you cannot trust. Every workflow run, every plugin call, every state mutation should be traceable without attaching a debugger or adding extra tooling."
+        "body": "Software you cannot inspect is software you cannot trust. Every workflow run, every agent call, every state mutation is traceable without attaching a debugger or adding extra tooling."
       }
     ],
     "originLabel": "Origin",
     "origin": [
-      "KB Labs started as internal tooling. We were building automation pipelines and kept running into the same wall: every new requirement meant swapping a vendor, and every swap broke something downstream.",
-      "The fix wasn't better vendors. It was <strong>better contracts</strong>. We extracted the abstraction layer, built a plugin system on top, and eventually had something worth sharing.",
-      "We're a small, <strong>remote-first team based in Russia</strong>. We move deliberately, write things down, and prefer clarity over cleverness."
+      "I built KB Labs out of frustration. Every layer of my stack was quietly locking down — auth changed pricing, the LLM gateway got acquired, the workflow tool introduced a new tier. The pattern was always the same: get you dependent, then extract rent.",
+      "I didn't want to build a replacement for each service. I wanted infrastructure <strong>designed to be replaced</strong> — where swapping a vendor is a config line, not a migration project.",
+      "The second thing I noticed: large engineering teams have internal platforms that make everything else faster. KB Labs is my attempt to make that available to everyone else — the solo developer, the small team, the company that can't afford to be locked in."
     ],
     "cta": {
       "title": "Build on something that stays open.",
-      "description": "Install KB Labs on your own machine, run it on one real workflow, and keep architectural freedom as you scale.",
+      "description": "Install KB Labs on your own machine, run it on one real workflow, and keep full architectural freedom as you grow.",
       "startBtn": "Install",
-      "contactBtn": "Talk to the team"
+      "contactBtn": "Talk to us"
     }
   },
   "contact": {
