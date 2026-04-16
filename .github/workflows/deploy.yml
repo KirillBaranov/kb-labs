@@ -16,6 +16,7 @@ on:
       - 'adapters/eventbus-cache/**'
       - 'core/**'
       - 'shared/**'
+      - 'tools/kb-deploy/**'
       - '.kb/deploy.yaml'
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
