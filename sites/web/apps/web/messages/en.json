@@ -1283,122 +1283,114 @@
     "typeFixed": "Fixed",
     "releases": [
       {
-        "version": "v0.4.0",
-        "date": "Jan 2026",
-        "summary": "Unified dev environment manager, two-tier memory for agents, and incremental QA builds.",
+        "version": "v2.39.0",
+        "date": "Apr 2026",
+        "summary": "Scaffold plugin, kb.config.jsonc, Studio workflow redesign, and Redis lazy connect.",
         "changes": [
           {
             "type": "new",
-            "text": "Dev environment manager — start, stop, and restart all services with a single command"
+            "text": "Scaffold plugin — generate new plugins from a template with a single command via kb-create"
           },
           {
             "type": "new",
-            "text": "Two-tier agent memory: working memory for the current session, persistent fact sheet across sessions"
+            "text": "kb.config.jsonc support — platform config files can now include comments"
           },
           {
             "type": "new",
-            "text": "Incremental builds in QA runner — skips up-to-date packages, down from 10 min to ~15s"
-          },
-          {
-            "type": "new",
-            "text": "JSON output mode for all dev tooling, enabling AI agent integration"
+            "text": "Studio workflow page redesign — simplified navigation and cleaner task management UI"
           },
           {
             "type": "improved",
-            "text": "QA history tracking and regression detection with trend reports"
+            "text": "Platform SDK exposes platform client, runtimeContext ALS, and useEnv() hook for plugin authors"
           },
           {
             "type": "improved",
-            "text": "Multi-tenancy primitives: rate limiting and quota enforcement via State Broker"
+            "text": "Redis adapter now connects lazily — startup no longer fails if Redis is unavailable at boot"
+          },
+          {
+            "type": "improved",
+            "text": "Install instructions updated with prerequisites and automatic PATH setup"
           }
         ]
       },
       {
-        "version": "v0.3.0",
-        "date": "Nov 2025",
-        "summary": "Adaptive search weights in Mind RAG and native tool calling for agents.",
+        "version": "v2.35.0",
+        "date": "Mar 2026",
+        "summary": "Docker-based isolated execution, execution plane encapsulation, and Gateway deployment improvements.",
         "changes": [
           {
             "type": "new",
-            "text": "Adaptive search weights per query intent — lookup, concept, and architecture queries now use different BM25/vector ratios"
+            "text": "Docker-based isolated execution — plugins can run in containers with automatic workspace provisioning"
           },
           {
             "type": "new",
-            "text": "Native tool calling for agents using OpenAI Function Calling API — no more fragile text parsing"
-          },
-          {
-            "type": "new",
-            "text": "Anti-hallucination verification layer in Mind RAG"
+            "text": "Execution plane fully encapsulated — workflow, REST API, and CLI daemons are now thin hosts"
           },
           {
             "type": "improved",
-            "text": "Agent query orchestration with automatic mode selection (instant / auto / thinking)"
+            "text": "Gateway Docker image includes adapters and uses a slimmer Node.js base for faster cold starts"
           },
           {
             "type": "improved",
-            "text": "Mind RAG average confidence score improved to 7.0/10 across all query types"
+            "text": "Marketplace routes are now action-oriented — fewer URL encoding issues in plugin navigation"
           },
           {
             "type": "fixed",
-            "text": "Tool name sanitization for colons and hyphens in OpenAI-compatible function names"
+            "text": "Gateway non-fatal restore when cache is unavailable — Redis URL option corrected"
           }
         ]
       },
       {
-        "version": "v0.2.0",
-        "date": "Oct 2025",
-        "summary": "Plugin system v3 with eliminated circular dependencies and the new DevKit suite.",
+        "version": "v2.30.0",
+        "date": "Feb 2026",
+        "summary": "Agent plan/execute mode, session memory, and context filtering middleware.",
         "changes": [
           {
             "type": "new",
-            "text": "Plugin execution factory — extracted from core-runtime to break circular dependency chain"
+            "text": "Plan/Execute agent mode — agents draft a plan, user approves, execution injects the approved plan automatically"
           },
           {
             "type": "new",
-            "text": "DevKit suite: 18 tools for monorepo health, import analysis, build ordering, and type auditing"
+            "text": "Session memory — conversation history and memory facts persist across agent sessions via turns.json"
           },
           {
             "type": "new",
-            "text": "Baseline quality gate — enforces \"don't make it worse\" policy across build, types, lint, and tests"
+            "text": "Context filter middleware — sliding window and tool output truncation for large agent contexts"
           },
           {
             "type": "improved",
-            "text": "Plugin runtime bootstrap uses dynamic import for lazy-loading core to prevent compile-time cycles"
+            "text": "BudgetMiddleware and ProgressMiddleware refactored — all internal state, no external state provider needed"
           },
           {
             "type": "improved",
-            "text": "TypeScript type coverage tracking with per-package metrics and impact analysis"
+            "text": "Agent SDK pipeline ordering stabilized: Observability → Budget → ContextFilter → FactSheet → Progress"
           }
         ]
       },
       {
-        "version": "v0.1.0",
-        "date": "Sep 2025",
-        "summary": "Initial release. Workflow engine, CLI, plugin system, and Mind RAG.",
+        "version": "v2.0.0",
+        "date": "Dec 2025",
+        "summary": "Monorepo consolidation — 22 submodules merged into one public repo. DevLink eliminated.",
         "changes": [
           {
             "type": "new",
-            "text": "Workflow engine with YAML-defined workflows and job execution"
+            "text": "Single monorepo — all platform packages, plugins, adapters, and tools live in one repository"
           },
           {
             "type": "new",
-            "text": "kb-create CLI launcher for project bootstrapping"
+            "text": "kb-create — one command to scaffold a full platform workspace with starter workflows"
           },
           {
             "type": "new",
-            "text": "Plugin system with manifest-based discovery and execution backends"
+            "text": "Plugin duck typing — any package with a kb.manifest.ts is a plugin, no base class required"
           },
           {
-            "type": "new",
-            "text": "Mind RAG — semantic code search with hybrid BM25 + vector retrieval"
+            "type": "improved",
+            "text": "Internal packages resolve via workspace:* — no DevLink, no mode switching, no symlink fragility"
           },
           {
-            "type": "new",
-            "text": "Studio web interface for visual workflow management"
-          },
-          {
-            "type": "new",
-            "text": "State Broker for distributed state management without Redis dependency"
+            "type": "improved",
+            "text": "kb-devkit Go binary handles build ordering, health checks, and monorepo-wide task running"
           }
         ]
       }
@@ -2122,16 +2114,55 @@
   "productStudio": {
     "meta": {
       "title": "Studio — KB Labs",
-      "description": "A visual UI for your plugins and workflows. Touch, inspect, and drive the platform without leaving the browser."
+      "description": "The web UI layer of KB Labs. Plugins declare their pages and navigation; Studio renders everything in one place."
     },
     "hero": {
-      "title": "A visual surface for every plugin you install.",
-      "description": "Studio is the human-friendly UI for KB Labs. Browse your plugins, trigger workflows, inspect runs, tweak configs — without opening a terminal. It's the same engine underneath, with a surface you can show to anyone on the team."
+      "eyebrow": "Studio",
+      "title": "One shell. Every plugin.",
+      "description": "Studio is the UI surface of KB Labs. Install a plugin — it appears in the sidebar. Plugins declare their own pages and nav items; Studio assembles them into a single interface without any extra wiring."
+    },
+    "how": {
+      "title": "How it works",
+      "steps": [
+        {
+          "step": "1",
+          "title": "Plugin declares its UI",
+          "description": "A plugin's manifest lists the pages it contributes and where they belong in the navigation tree. No extra setup."
+        },
+        {
+          "step": "2",
+          "title": "Studio discovers it",
+          "description": "On startup Studio reads all installed plugin manifests and builds the navigation automatically. New plugin = new entry."
+        },
+        {
+          "step": "3",
+          "title": "You open the browser",
+          "description": "Every plugin surface — dashboards, config panels, run logs — is one URL away. Same shell, always."
+        }
+      ]
+    },
+    "sdk": {
+      "title": "SDK surface for plugin authors",
+      "description": "Plugins build on a shared foundation that Studio provides.",
+      "features": [
+        {
+          "title": "UI Kit",
+          "description": "Shared components, layout primitives, and design tokens used across all native Studio pages. Plugins inherit consistent visuals for free."
+        },
+        {
+          "title": "Studio Hooks",
+          "description": "Data-fetching hooks, mutation helpers, and live-update subscriptions backed by the platform event bus."
+        },
+        {
+          "title": "Dev Panel",
+          "description": "Built-in developer debug panel — inspect events, query the State Broker, and replay past runs. Available in dev mode."
+        }
+      ]
     },
     "cta": {
-      "title": "Install Studio with the rest of the platform.",
-      "description": "Studio ships with the core. One install command, one launch command, and you have a working UI for your plugins.",
-      "installBtn": "Install",
+      "title": "Studio ships with the platform.",
+      "description": "One install command, one launch command. Studio is included — no separate setup, no extra config.",
+      "installBtn": "Install KB Labs",
       "contactBtn": "Talk to the team"
     }
   },
