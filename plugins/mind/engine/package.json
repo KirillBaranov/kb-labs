@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/mind-engine",
   "description": "Mind engine adapter for KB Labs Mind (RAG, embeddings, vector store integration).",
-  "version": "2.37.0",
+  "version": "2.38.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
