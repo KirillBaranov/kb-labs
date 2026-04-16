@@ -56,10 +56,10 @@ describe('loadPlatformConfig', () => {
     rmSync(tmpDir, { recursive: true, force: true })
   })
 
-  it('rejects platform-only fields declared in project config (adapters)', async () => {
-    // `adapters` is a platform-only field (see CONFIG_FIELD_SCOPE). A project
-    // cannot override adapter selection — the merge drops the project value
-    // and records it in sources.ignoredProjectFields.
+  it('merges project adapters when platform has none (adapters are mergeable)', async () => {
+    // `adapters` is a mergeable field (see CONFIG_FIELD_SCOPE). A project
+    // can declare adapter selection and it will be used when the platform
+    // config doesn't provide adapters of its own.
     const platformRoot = path.join(tmpDir, 'p1-platform')
     const projectRoot = path.join(tmpDir, 'p1-project')
     makePlatformDir(platformRoot) // no config
@@ -81,8 +81,7 @@ describe('loadPlatformConfig', () => {
     expect(result.platformRoot).toBe(path.resolve(platformRoot))
     expect(result.projectRoot).toBe(path.resolve(projectRoot))
     expect(result.sameLocation).toBe(false)
-    expect(result.platformConfig.adapters).toEqual({})
-    expect(result.sources.ignoredProjectFields).toContain('adapters')
+    expect(result.platformConfig.adapters).toEqual({ llm: 'noop' })
     expect(result.sources.projectConfig).toBe(
       path.join(projectRoot, '.kb', 'kb.config.json'),
     )
@@ -114,10 +113,9 @@ describe('loadPlatformConfig', () => {
     expect(result.sources.projectConfig).toBeUndefined()
   })
 
-  it('platform-only fields are kept from platform, project attempt is ignored', async () => {
-    // `adapters` is platform-only → project cannot override. `sources.fields`
-    // reports per-field provenance and `ignoredProjectFields` flags the
-    // rejected project value.
+  it('adapters deep-merge: project overrides platform per key', async () => {
+    // `adapters` is mergeable → project can override individual adapter
+    // bindings. Platform fills keys the project doesn't set.
     const platformRoot = path.join(tmpDir, 'p3-platform')
     const projectRoot = path.join(tmpDir, 'p3-project')
     makePlatformDir(platformRoot, {
@@ -131,7 +129,7 @@ describe('loadPlatformConfig', () => {
     makeProjectDir(projectRoot, {
       platform: {
         adapters: {
-          llm: 'anthropic', // attempted override — will be ignored
+          llm: 'anthropic', // project override → wins
         },
       },
     })
@@ -145,14 +143,13 @@ describe('loadPlatformConfig', () => {
       loadEnvFile: false,
     })
 
+    // Project llm wins, platform cache carries over.
     expect(result.platformConfig.adapters).toEqual({
-      llm: 'openai',
+      llm: 'anthropic',
       cache: 'redis',
     })
     expect(result.sources.platformDefaults).toBeDefined()
     expect(result.sources.projectConfig).toBeDefined()
-    expect(result.sources.ignoredProjectFields).toContain('adapters')
-    expect(result.sources.fields?.adapters).toBe('platform')
   })
 
   it('returns empty-adapters base when neither layer exists', async () => {

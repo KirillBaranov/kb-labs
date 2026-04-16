@@ -328,8 +328,8 @@ export type ConfigFieldScope = 'platform-only' | 'mergeable' | 'project-only';
 
 export const CONFIG_FIELD_SCOPE: Record<keyof PlatformConfig, ConfigFieldScope> = {
   platform: 'project-only',
-  adapters: 'platform-only',
-  adapterOptions: 'platform-only',
+  adapters: 'mergeable',
+  adapterOptions: 'mergeable',
   core: 'platform-only',
   execution: 'platform-only',
 };
