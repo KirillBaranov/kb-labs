@@ -5,7 +5,6 @@ import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { SiteHeader } from '@/components/SiteHeader';
 import { SiteFooter } from '@/components/SiteFooter';
 import { routing } from '@/i18n/routing';
-import { MarketplaceCatalog } from './MarketplaceCatalog';
 import s from './page.module.css';
 import { buildPageMetadata } from '@/lib/page-metadata';
 
@@ -43,14 +42,22 @@ export default async function MarketplacePage({ params }: Props) {
             <p className={s.subtitle}>
               Plugins, adapters, widgets, and hooks — install any extension with a single command.
             </p>
-            <p className={s.earlyTag}>
-              Currently showing official extensions. Community submissions opening soon.
-            </p>
           </div>
         </section>
 
         <section className={s.catalogSection}>
-          <MarketplaceCatalog />
+          <div className={s.emptyState}>
+            <div className={s.emptyCount}>0</div>
+            <p className={s.emptyTitle}>No extensions listed yet</p>
+            <p className={s.emptyDesc}>
+              The marketplace infrastructure is ready. Extensions will be listed here once
+              the platform goes public. Official plugins, community adapters, widgets, and hooks
+              — all installable with a single command.
+            </p>
+            <p className={s.emptyNote}>
+              Community submissions will open alongside the public launch.
+            </p>
+          </div>
         </section>
 
         <section className={s.ctaSection}>

@@ -1,0 +1,169 @@
+/* ── Hero ─────────────────────────────────────────────────────────────── */
+.hero {
+  border-bottom: 1px solid var(--line);
+  padding: clamp(3.5rem, 7vw, 6rem) clamp(1rem, 3vw, 2rem);
+}
+
+.heroInner {
+  width: min(100%, var(--container));
+  margin-inline: auto;
+  display: grid;
+  gap: 1rem;
+  max-width: 680px;
+}
+
+.eyebrow {
+  display: inline-block;
+  width: fit-content;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  border: 1px solid rgba(12, 102, 255, 0.2);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  background: rgba(12, 102, 255, 0.05);
+}
+
+.heroTitle {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-weight: 750;
+  letter-spacing: -0.04em;
+  line-height: 1.05;
+}
+
+.heroDesc {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--muted);
+  line-height: 1.7;
+  max-width: 55ch;
+}
+
+/* ── How it works ─────────────────────────────────────────────────────── */
+.howSection {
+  border-bottom: 1px solid var(--line);
+  padding: clamp(3rem, 6vw, 5rem) clamp(1rem, 3vw, 2rem);
+}
+
+.howInner {
+  width: min(100%, var(--container));
+  margin-inline: auto;
+}
+
+.sectionTitle {
+  margin: 0 0 2.5rem;
+  font-size: clamp(1.2rem, 2.5vw, 1.5rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.stepsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.stepNum {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(12, 102, 255, 0.07);
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 750;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.step h3 {
+  margin: 0;
+  font-size: 0.975rem;
+  font-weight: 670;
+  letter-spacing: -0.01em;
+}
+
+.step p {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+/* ── SDK section ──────────────────────────────────────────────────────── */
+.sdkSection {
+  border-bottom: 1px solid var(--line);
+  padding: clamp(3rem, 6vw, 5rem) clamp(1rem, 3vw, 2rem);
+}
+
+.sdkInner {
+  width: min(100%, var(--container));
+  margin-inline: auto;
+}
+
+.sdkHeader {
+  max-width: 560px;
+  margin-bottom: 2.5rem;
+}
+
+.sdkHeader h2 {
+  margin: 0 0 0.6rem;
+  font-size: clamp(1.2rem, 2.5vw, 1.5rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.sdkHeader p {
+  margin: 0;
+  font-size: 0.97rem;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.featuresGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.25rem;
+}
+
+.featureCard {
+  padding: 1.5rem;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.featureCard h3 {
+  margin: 0;
+  font-size: 0.975rem;
+  font-weight: 670;
+  letter-spacing: -0.01em;
+}
+
+.featureCard p {
+  margin: 0;
+  font-size: 0.865rem;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────── */
+@media (max-width: 860px) {
+  .stepsGrid,
+  .featuresGrid {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+  }
+}

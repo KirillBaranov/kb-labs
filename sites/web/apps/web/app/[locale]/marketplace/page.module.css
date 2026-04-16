@@ -386,6 +386,47 @@
   }
 }
 
+/* ── Empty state (no extensions yet) ─────────────────────────────── */
+.emptyState {
+  width: min(100%, 520px);
+  margin-inline: auto;
+  padding: clamp(4rem, 8vw, 7rem) 2rem;
+  text-align: center;
+  display: grid;
+  gap: 1rem;
+  justify-items: center;
+}
+
+.emptyCount {
+  font-size: clamp(3rem, 8vw, 5rem);
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  color: var(--line);
+  line-height: 1;
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.emptyDesc {
+  margin: 0;
+  font-size: 0.935rem;
+  color: var(--muted);
+  line-height: 1.7;
+  max-width: 44ch;
+}
+
+.emptyNote {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #b0b8c8;
+  line-height: 1.6;
+}
+
 /* ── Early stage tag ──────────────────────────────────────────────── */
 .earlyTag {
   display: inline-block;
