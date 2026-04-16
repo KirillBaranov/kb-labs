@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",
-    "@fastify/http-proxy": "^11.4.1",
+    "@fastify/http-proxy": "^11.4.4",
     "@fastify/swagger": ">=9.5.1",
     "@fastify/swagger-ui": "^5.2.0",
     "@fastify/websocket": "^11.0.1",
@@ -43,7 +43,7 @@
     "@kb-labs/gateway-core": "workspace:*",
     "@kb-labs/plugin-contracts": "workspace:*",
     "@kb-labs/shared-http": "workspace:*",
-    "fastify": "^5.2.0",
+    "fastify": "^5.8.5",
     "fastify-type-provider-zod": "^6.0.0",
     "ws": "^8.18.3"
   },
