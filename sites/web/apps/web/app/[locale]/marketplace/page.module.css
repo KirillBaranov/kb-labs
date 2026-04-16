@@ -385,3 +385,52 @@
     margin-left: 0;
   }
 }
+
+/* ── Early stage tag ──────────────────────────────────────────────── */
+.earlyTag {
+  display: inline-block;
+  width: fit-content;
+  font-size: 0.82rem;
+  color: var(--muted);
+  background: var(--bg-subtle, transparent);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.4rem 0.85rem;
+  margin-top: 0.25rem;
+}
+
+/* ── CTA section ──────────────────────────────────────────────── */
+.ctaSection {
+  border-top: 1px solid var(--line);
+  padding: clamp(3rem, 6vw, 5rem) clamp(1rem, 3vw, 2rem);
+}
+
+.ctaInner {
+  width: min(100%, 680px);
+  margin-inline: auto;
+  text-align: center;
+  display: grid;
+  gap: 1rem;
+}
+
+.ctaTitle {
+  font-size: clamp(1.3rem, 2.5vw, 1.65rem);
+  font-weight: 720;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+.ctaDesc {
+  font-size: 0.97rem;
+  color: var(--muted);
+  line-height: 1.65;
+  margin: 0;
+}
+
+.ctaActions {
+  display: flex;
+  gap: 0.65rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}

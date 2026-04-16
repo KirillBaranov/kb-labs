@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 
+import Link from 'next/link';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { SiteHeader } from '@/components/SiteHeader';
 import { SiteFooter } from '@/components/SiteFooter';
@@ -42,11 +43,28 @@ export default async function MarketplacePage({ params }: Props) {
             <p className={s.subtitle}>
               Plugins, adapters, widgets, and hooks — install any extension with a single command.
             </p>
+            <p className={s.earlyTag}>
+              Currently showing official extensions. Community submissions opening soon.
+            </p>
           </div>
         </section>
 
         <section className={s.catalogSection}>
           <MarketplaceCatalog />
+        </section>
+
+        <section className={s.ctaSection}>
+          <div className={s.ctaInner}>
+            <h2 className={s.ctaTitle}>Build your own plugin</h2>
+            <p className={s.ctaDesc}>
+              Scaffold a plugin in one command, wire it into the platform, and share it.
+              Everything ships as a regular npm package.
+            </p>
+            <div className={s.ctaActions}>
+              <Link className="btn primary" href={`/${locale}/install`}>Install KB Labs</Link>
+              <a className="btn secondary" href="https://docs.kblabs.ru/guides/first-plugin" target="_blank" rel="noopener noreferrer">Plugin guide</a>
+            </div>
+          </div>
         </section>
       </main>
       <SiteFooter />
