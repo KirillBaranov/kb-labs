@@ -29,10 +29,10 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@clack/prompts": "^0.11.0",
     "@kb-labs/scaffold-contracts": "workspace:*",
     "@kb-labs/scaffold-core": "workspace:*",
-    "@kb-labs/sdk": "workspace:*"
+    "@kb-labs/sdk": "workspace:*",
+    "@kb-labs/shared-cli-ui": "workspace:*"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
