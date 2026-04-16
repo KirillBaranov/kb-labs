@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/release-manager-contracts",
   "description": "Contracts for KB Labs Release Manager plugin.",
-  "version": "2.38.0",
+  "version": "2.39.0",
   "type": "module",
   "author": {
     "name": "Kirill Baranov",

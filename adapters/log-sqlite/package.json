@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/adapters-log-sqlite",
   "description": "SQLite persistence adapter for KB Labs logs",
-  "version": "2.38.0",
+  "version": "2.39.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
