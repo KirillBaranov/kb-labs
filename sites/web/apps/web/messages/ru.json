@@ -171,8 +171,6 @@
       "community": {
         "title": "Сообщество",
         "github": "GitHub",
-        "discord": "Discord",
-        "twitter": "X / Twitter",
         "founder": "Кирилл Баранов"
       },
       "platform": {
@@ -592,8 +590,8 @@
         },
         {
           "title": "Читать документацию",
-          "href": "https://docs.kblabs.ru/getting-started",
-          "label": "docs.kblabs.ru/getting-started"
+          "href": "https://docs.kblabs.ru/quick-start",
+          "label": "docs.kblabs.ru/quick-start"
         },
         {
           "title": "Нужна помощь?",
@@ -893,8 +891,7 @@
       "bio": "Построил KB Labs, потому что каждый слой стека тихо закрывался. Open-source инфраструктура для разработчиков, которые хотят вернуть себе свой стек.",
       "links": {
         "site": "k-baranov.ru",
-        "github": "GitHub",
-        "twitter": "X / Twitter"
+        "github": "GitHub"
       }
     },
     "manifesto": [
@@ -964,25 +961,25 @@
         "label": "Продажи",
         "description": "Обсудить цены, enterprise-планы или кастомные контракты.",
         "action": "Написать в продажи →",
-        "href": "mailto:sales@kblabs.ru"
+        "href": "mailto:kirillBaranovJob@yandex.ru"
       },
       {
         "label": "Поддержка",
         "description": "Технические проблемы, баги или вопросы о платформе.",
-        "action": "Открыть тикет →",
-        "href": "https://docs.kblabs.ru/support"
+        "action": "Открыть issue →",
+        "href": "https://github.com/KirillBaranov/kb-labs/issues"
       },
       {
         "label": "Партнёрства",
         "description": "Интеграции, реселлерские программы или co-marketing.",
         "action": "Написать →",
-        "href": "mailto:partners@kblabs.ru"
+        "href": "mailto:kirillBaranovJob@yandex.ru"
       },
       {
         "label": "Пресса",
         "description": "Медиазапросы, интервью и пресс-кит.",
         "action": "Написать в пресс-службу →",
-        "href": "mailto:press@kblabs.ru"
+        "href": "mailto:kirillBaranovJob@yandex.ru"
       }
     ],
     "communityTitle": "Сообщество",
@@ -991,16 +988,6 @@
         "label": "GitHub",
         "description": "Issues, исходный код, pull requests.",
         "href": "https://github.com/KirillBaranov/kb-labs"
-      },
-      {
-        "label": "Discord",
-        "description": "Чат с командой и сообществом в реальном времени.",
-        "href": "https://discord.gg/kblabs"
-      },
-      {
-        "label": "X / Twitter",
-        "description": "Обновления продукта и анонсы.",
-        "href": "https://twitter.com/kblabs_dev"
       }
     ],
     "basedIn": "Расположение",
@@ -1066,7 +1053,7 @@
       "title": "Хотите начать разговор?",
       "description": "Расскажите, что решает ваша команда. Мы честно скажем, что подходит сегодняшнему движку, а что ещё в roadmap.",
       "salesBtn": "Связаться с командой",
-      "emailBtn": "sales@kblabs.ru"
+      "emailBtn": "kirillBaranovJob@yandex.ru"
     },
     "meta2": {
       "dealSize": "Формат работы сейчас",
@@ -1211,7 +1198,7 @@
       "title": "Вопросы о безопасности?",
       "description": "Мы за прозрачность. Спрашивайте что угодно — NDA не нужен для честных ответов.",
       "contactBtn": "Написать нам",
-      "emailBtn": "security@kblabs.ru"
+      "emailBtn": "kirillBaranovJob@yandex.ru"
     },
     "statusReady": "Доступно",
     "statusPlanned": "Планируется",
@@ -1482,7 +1469,7 @@
             "Возражение против обработки или её ограничение",
             "Отзыв согласия в любое время"
           ],
-          "note": "Для реализации любого из этих прав напишите на privacy@kblabs.ru. Мы отвечаем в течение 30 дней."
+          "note": "Для реализации любого из этих прав напишите на kirillBaranovJob@yandex.ru. Мы отвечаем в течение 30 дней."
         },
         {
           "title": "Безопасность",
@@ -1494,7 +1481,7 @@
         },
         {
           "title": "Контакты",
-          "body": "Вопросы? Напишите на privacy@kblabs.ru или по адресу KB Labs, Удалённая команда, Россия."
+          "body": "Вопросы? Напишите на kirillBaranovJob@yandex.ru или по адресу KB Labs, Удалённая команда, Россия."
         }
       ]
     },
@@ -1513,7 +1500,7 @@
         },
         {
           "title": "Ваш аккаунт",
-          "body": "Вы несёте ответственность за сохранение конфиденциальности учётных данных и за всю активность в вашем аккаунте. Немедленно уведомите нас на security@kblabs.ru при подозрении на несанкционированный доступ.",
+          "body": "Вы несёте ответственность за сохранение конфиденциальности учётных данных и за всю активность в вашем аккаунте. Немедленно уведомите нас на kirillBaranovJob@yandex.ru при подозрении на несанкционированный доступ.",
           "mustNot": "Запрещается:",
           "items": [
             "Делиться аккаунтом или API-ключами с третьими лицами",
@@ -1559,7 +1546,7 @@
         },
         {
           "title": "Контакты",
-          "body": "Вопросы об этих Условиях? Напишите на hello@kblabs.ru."
+          "body": "Вопросы об этих Условиях? Напишите на kirillBaranovJob@yandex.ru."
         }
       ]
     },
@@ -1602,7 +1589,7 @@
             "<strong>Доставка email</strong> — сервис транзакционной электронной почты",
             "<strong>Мониторинг</strong> — отслеживание ошибок и мониторинг производительности"
           ],
-          "note": "Мы уведомим вас о любых предполагаемых изменениях субобработчиков не менее чем за 14 дней. Актуальный список субобработчиков доступен по запросу на privacy@kblabs.ru."
+          "note": "Мы уведомим вас о любых предполагаемых изменениях субобработчиков не менее чем за 14 дней. Актуальный список субобработчиков доступен по запросу на kirillBaranovJob@yandex.ru."
         },
         {
           "title": "Международные передачи",
@@ -1626,7 +1613,7 @@
         },
         {
           "title": "Контакты",
-          "body": "По вопросам, связанным с DPA, напишите на privacy@kblabs.ru. Клиенты Enterprise могут запросить подписанный DPA для своих записей."
+          "body": "По вопросам, связанным с DPA, напишите на kirillBaranovJob@yandex.ru. Клиенты Enterprise могут запросить подписанный DPA для своих записей."
         }
       ]
     },
@@ -1706,7 +1693,7 @@
         },
         {
           "title": "Контакты",
-          "body": "Вопросы? Напишите на privacy@kblabs.ru."
+          "body": "Вопросы? Напишите на kirillBaranovJob@yandex.ru."
         }
       ]
     }
@@ -2351,7 +2338,7 @@
       "title": "Мониторинг как то, что делает ваш агент.",
       "description": "Все команды kb-monitor отдают JSON со стабильной задокументированной схемой. Прицепите к ним агента по расписанию — и мониторинг перестаёт быть человеческой задачей. Становится петлёй, которая сама себя гоняет.",
       "codeCaption": "agent-watchdog.sh",
-      "codeExample": "# раз в пять минут, через cron или kb-dev schedule\nkb-monitor status --json > /tmp/state.json\n\n# агент читает состояние, думает, реагирует:\n#   - health упал на kb-labs-web → kb-deploy run kb-labs-web\n#   - в проде новый SHA → запостить в #releases\n#   - контейнер перезапускается → вытянуть логи и завести issue\n#\n# правила вы написали один раз. в терминал больше не заходите.",
+      "codeExample": "# раз в пять минут, через cron\nkb-monitor status --json > /tmp/state.json\n\n# агент читает состояние, думает, реагирует:\n#   - health упал на kb-labs-web → kb-deploy run kb-labs-web\n#   - в проде новый SHA → запостить в #releases\n#   - контейнер перезапускается → вытянуть логи и завести issue\n#\n# правила вы написали один раз. в терминал больше не заходите.",
       "note": "Тот же паттерн работает с любым агентом — Claude, Codex, свой plugin-агент внутри KB Labs. Контракт — это стабильная схема JSON."
     },
     "pain": {
