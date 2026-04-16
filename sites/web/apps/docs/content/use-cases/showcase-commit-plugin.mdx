@@ -7,7 +7,7 @@ order: 11
 
 **One line:** Look at `git status`, group related changes, write conventional commit messages, apply them — all from one command.
 
-**Source:** [`plugins/kb-labs-commit-plugin`](https://github.com/KirillBaranov/kb-labs-commit-plugin)
+**Source:** [`plugins/commit`](https://github.com/KirillBaranov/kb-labs/tree/main/plugins/commit)
 
 ## The problem
 
@@ -46,7 +46,7 @@ commit:commit
 
 ## KB Labs primitives used
 
-From the [manifest](https://github.com/KirillBaranov/kb-labs-commit-plugin/blob/main/packages/commit-cli/src/manifest.ts), the platform surface is small and focused:
+From the [manifest](https://github.com/KirillBaranov/kb-labs/blob/main/plugins/commit/entry/src/manifest.ts), the platform surface is small and focused:
 
 ```ts
 platform: {
@@ -73,6 +73,6 @@ The two patterns worth stealing:
 
 ## Going deeper
 
-- [Manifest source](https://github.com/KirillBaranov/kb-labs-commit-plugin/blob/main/packages/commit-cli/src/manifest.ts)
+- [Manifest source](https://github.com/KirillBaranov/kb-labs/blob/main/plugins/commit/entry/src/manifest.ts)
 - [Guide: Your First Plugin](/guides/first-plugin)
 - [SDK: Hooks reference](/sdk/hooks)

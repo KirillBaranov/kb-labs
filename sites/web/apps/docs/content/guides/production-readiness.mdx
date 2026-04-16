@@ -57,7 +57,7 @@ See [Configuration → Environment Variables](/configuration/environment-variabl
 - [ ] **Don't expose internal services.** Only the gateway is public-facing. REST API, workflow daemon, marketplace, state daemon should all be on an internal network.
 - [ ] **TLS termination.** Put Caddy, nginx, or Traefik in front of the gateway. The gateway itself doesn't do TLS.
 - [ ] **Rate limit at the reverse proxy.** For HTTP-level DDoS protection. Platform-level rate limits are per-tenant, not per-source-IP.
-- [ ] **Review every plugin's permissions.** Each `@installed/plugin-cli/manifest.ts` declares permissions — know what each plugin can do before you install it.
+- [ ] **Review every plugin's permissions.** Each `@installed/plugin-entry/manifest.ts` declares permissions — know what each plugin can do before you install it.
 - [ ] **Don't install random plugins.** Plugins from the marketplace run with whatever permissions they declare. Treat plugin installs as dependency audits.
 - [ ] **Never use `fullEnvPreset` in production.** It grants full env access. Trusted plugins only.
 - [ ] **Rotate secrets on a schedule.** JWT secret, API keys, service account credentials. Your security policy dictates the schedule; the platform supports in-place rotation via env var + restart.

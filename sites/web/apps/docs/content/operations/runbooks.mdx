@@ -90,7 +90,7 @@ For the zero-downtime version, you'd need two workflow daemons pointing at a sha
 ### Upgrade a plugin
 
 ```bash
-pnpm kb marketplace update @scope/plugin-cli
+pnpm kb marketplace update @scope/plugin-entry
 pnpm kb marketplace clear-cache
 # Restart whichever service hosts the plugin's handlers:
 kb-dev restart rest     # if the plugin has REST routes
@@ -102,7 +102,7 @@ kb-dev restart rest     # if the plugin has REST routes
 ### Install a new plugin
 
 ```bash
-pnpm kb marketplace install @scope/plugin-cli
+pnpm kb marketplace install @scope/plugin-entry
 pnpm kb marketplace clear-cache
 ```
 
@@ -115,19 +115,19 @@ kb-dev restart rest
 ### Disable a plugin without uninstalling
 
 ```bash
-pnpm kb marketplace plugins disable @scope/plugin-cli
+pnpm kb marketplace plugins disable @scope/plugin-entry
 ```
 
 Sets `enabled: false` in `.kb/marketplace.lock`. The plugin stays installed but doesn't load on the next service startup. Re-enable:
 
 ```bash
-pnpm kb marketplace plugins enable @scope/plugin-cli
+pnpm kb marketplace plugins enable @scope/plugin-entry
 ```
 
 ### Uninstall a plugin completely
 
 ```bash
-pnpm kb marketplace uninstall @scope/plugin-cli
+pnpm kb marketplace uninstall @scope/plugin-entry
 pnpm kb marketplace clear-cache
 ```
 
