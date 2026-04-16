@@ -11,7 +11,8 @@
   font-weight: 760;
   letter-spacing: -0.035em;
   line-height: 1.08;
-  margin: 0 0 0.75rem;
+  margin: 0 auto 0.75rem;
+  max-width: 720px;
 }
 
 .hero p {
