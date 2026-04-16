@@ -1,0 +1,82 @@
+---
+title: "Privacy & Telemetry"
+description: "What KB Labs collects, where it goes, and how to opt out."
+updatedAt: "2026-04-16"
+order: 99
+---
+
+KB Labs collects anonymous usage telemetry during installation and platform operation. This page documents every outbound call, the data it carries, and how to disable it.
+
+## What is collected
+
+### During installation (`kb-create`)
+
+| Event | Payload | When |
+|-------|---------|------|
+| `install_started` | *(none)* | Bootstrap begins |
+| `install_completed` | `duration_s` | Bootstrap succeeds |
+| `install_failed` | `error` (message text only, no stack trace) | Bootstrap fails |
+| `claude_installed` | `devkit` version, skill counts | Claude Code assets installed |
+
+Every event carries a **device ID** — a random UUID generated once on first install and persisted in `~/kb-platform/.kb/kb.config.json`. It is not linked to your name, email, IP, or any other identifier.
+
+### During platform operation
+
+Services (REST API, gateway, workflow daemon) emit **analytics events** if the analytics adapter is configured. The default `@kb-labs/adapters-analytics-file` writes to a local JSONL file (`.kb/analytics/events.jsonl`) and does **not** transmit anything externally.
+
+The only adapter that sends analytics to the network is `@kb-labs/adapters-kblabs-gateway` — and only when your project is configured to use the KB Labs Gateway for LLM calls. In that case, the gateway receives your LLM prompts (required to produce a response) and records request counts for quota enforcement. Prompts are not stored beyond the request lifecycle.
+
+### What is NOT collected
+
+- Source code, file contents, or git diffs (LLM prompts contain diffs only when YOU run a command that sends them, like `kb commit` or `kb review`)
+- Environment variables, secrets, API keys
+- File paths beyond the project root name
+- IP addresses (the gateway logs access for rate limiting but does not persist IPs in analytics)
+
+## Where it goes
+
+Installation telemetry is sent to `https://api.kblabs.ru/telemetry/v1/ingest` — the same KB Labs Gateway that handles LLM requests. The endpoint accepts events, counts them for product analytics, and discards payloads after aggregation.
+
+There are no third-party analytics services (no Google Analytics, no Segment, no PostHog, no Amplitude). All telemetry flows through infrastructure operated by KB Labs.
+
+## How to opt out
+
+### Disable all telemetry
+
+Set the environment variable before running any KB Labs command:
+
+```bash
+export KB_TELEMETRY_DISABLED=1
+```
+
+Add it to your shell profile (`~/.zshrc` or `~/.bashrc`) to make it permanent. When set, `kb-create` and the platform runtime skip all telemetry calls silently — no warnings, no degraded functionality.
+
+### Disable during installation only
+
+The interactive wizard asks for consent. Choose "Skip telemetry" when prompted. With `--yes` (non-interactive), telemetry defaults to **off** unless the wizard previously recorded consent.
+
+### Disable analytics at the adapter level
+
+Remove or null out the analytics adapter in `.kb/kb.config.jsonc`:
+
+```jsonc
+{
+  "platform": {
+    "adapters": {
+      "analytics": null
+    }
+  }
+}
+```
+
+This disables all analytics event collection — plugins that call `useAnalytics()` get a NoOp adapter.
+
+## Data retention
+
+- **Installation events:** aggregated within 24 hours, raw payloads discarded after 7 days.
+- **LLM prompts:** not stored beyond the request lifecycle. The gateway proxies to the upstream LLM provider and discards the request/response pair after delivery.
+- **Local analytics (JSONL file):** retained indefinitely on your machine. Delete `.kb/analytics/` at any time.
+
+## Contact
+
+Questions about privacy or data handling: [kirillBaranovJob@yandex.ru](mailto:kirillBaranovJob@yandex.ru).
