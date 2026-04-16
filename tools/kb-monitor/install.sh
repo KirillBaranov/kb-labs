@@ -38,7 +38,7 @@ Usage: install.sh [--version <tag>] [--dest <path>]
 
 Options:
   --version <tag>   Install specific release tag (example: v1.2.3)
-  --dest <path>     Install binary to a custom path (default: ~/.local/bin/kb-dev)
+  --dest <path>     Install binary to a custom path (default: ~/.local/bin/kb-monitor)
   -h, --help        Show this help
 EOF
 }
@@ -240,9 +240,8 @@ fi
 ok "Installation completed in ${ELAPSED}s"
 echo ""
 printf "%sGet started:%s\n" "$C_BOLD" "$C_RESET"
-printf "  %s# create devservices.yaml in your project, then:%s\n" "$C_DIM" "$C_RESET"
-printf "  %skb-dev start%s\n" "$C_DIM" "$C_RESET"
-printf "  %skb-dev status%s\n" "$C_DIM" "$C_RESET"
-printf "  %skb-dev doctor%s\n" "$C_DIM" "$C_RESET"
+printf "  %skb-monitor status%s            %s# view service status%s\n" "$C_DIM" "$C_RESET" "$C_DIM" "$C_RESET"
+printf "  %skb-monitor logs <target>%s     %s# stream service logs%s\n" "$C_DIM" "$C_RESET" "$C_DIM" "$C_RESET"
+printf "  %skb-monitor health%s            %s# run health checks%s\n" "$C_DIM" "$C_RESET" "$C_DIM" "$C_RESET"
 echo ""
 printf "  %sDocs: https://docs.kblabs.ru/services/kb-monitor%s\n" "$C_DIM" "$C_RESET"

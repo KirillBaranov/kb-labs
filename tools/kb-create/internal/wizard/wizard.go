@@ -347,11 +347,8 @@ func (m wizardModel) handlePresetKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		svcs, plugs := resolvePreset(preset, m.manifest)
 		m.applySelection(svcs, plugs)
 
-		if m.demoMode {
-			m.stage = stageConsent
-		} else {
-			m.stage = stageConfirm
-		}
+		m.stage = stageConsent
+		m.consentCursor = 0
 	}
 	return m, nil
 }
@@ -373,12 +370,8 @@ func (m wizardModel) handleCustomKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case " ":
 		m.toggleCursor()
 	case "enter":
-		if m.demoMode {
-			m.stage = stageConsent
-			m.consentCursor = 0
-		} else {
-			m.stage = stageConfirm
-		}
+		m.stage = stageConsent
+		m.consentCursor = 0
 	}
 	return m, nil
 }
@@ -403,7 +396,12 @@ func (m wizardModel) handleConsentKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
-	maxCursor := len(consentOptions)
+	// In non-demo mode the consent screen only has the telemetry toggle (cursor=0).
+	// In demo mode it also has the three LLM consent options (cursor 0-2) plus telemetry (cursor 3).
+	maxCursor := 0
+	if m.demoMode {
+		maxCursor = len(consentOptions)
+	}
 	switch msg.String() {
 	case "ctrl+c", "esc":
 		m.cancelled = true
@@ -421,6 +419,11 @@ func (m wizardModel) handleConsentKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.telemetryEnabled = !m.telemetryEnabled
 		}
 	case "enter":
+		if !m.demoMode {
+			// Non-demo: only the telemetry toggle is here; enter moves forward.
+			m.stage = stageConfirm
+			return m, nil
+		}
 		if m.consentCursor == maxCursor {
 			m.telemetryEnabled = !m.telemetryEnabled
 			return m, nil
@@ -537,32 +540,36 @@ func (m wizardModel) viewConsent() string {
 	var b strings.Builder
 	b.WriteString(titleStyle.Render("  KB Labs") + "  data consent\n\n")
 
-	b.WriteString("  Demo includes AI-powered code review.\n")
-	b.WriteString("  Choose how to handle LLM requests:\n\n")
+	if m.demoMode {
+		b.WriteString("  Demo includes AI-powered code review.\n")
+		b.WriteString("  Choose how to handle LLM requests:\n\n")
 
-	for i, opt := range consentOptions {
-		cursor := "  "
-		if i == m.consentCursor {
-			cursor = focusStyle.Render(" ▶")
+		for i, opt := range consentOptions {
+			cursor := "  "
+			if i == m.consentCursor {
+				cursor = focusStyle.Render(" ▶")
+			}
+			radio := "○"
+			style := normalStyle
+			if i == m.consentCursor {
+				radio = focusStyle.Render("◉")
+				style = focusStyle
+			}
+			fmt.Fprintf(&b, "%s %s  %-22s %s\n", cursor, radio, style.Render(opt.label), dimStyle.Render(opt.desc))
 		}
-		radio := "○"
-		style := normalStyle
-		if i == m.consentCursor {
-			radio = focusStyle.Render("◉")
-			style = focusStyle
+
+		if m.showAPIKeyInput {
+			b.WriteString("\n  " + sectionStyle.Render("API Key") + "\n")
+			b.WriteString("  " + m.apiKeyInput.View() + "\n")
+			b.WriteString(dimStyle.Render("  Your key goes directly to the provider.\n"))
 		}
-		fmt.Fprintf(&b, "%s %s  %-22s %s\n", cursor, radio, style.Render(opt.label), dimStyle.Render(opt.desc))
+
+		b.WriteString("\n")
 	}
 
-	if m.showAPIKeyInput {
-		b.WriteString("\n  " + sectionStyle.Render("API Key") + "\n")
-		b.WriteString("  " + m.apiKeyInput.View() + "\n")
-		b.WriteString(dimStyle.Render("  Your key goes directly to the provider.\n"))
-	}
-
-	b.WriteString("\n  " + sectionStyle.Render("Analytics") + "\n")
+	b.WriteString("  " + sectionStyle.Render("Analytics") + "\n")
 	telCursor := "  "
-	if m.consentCursor == len(consentOptions) {
+	if m.consentCursor == len(consentOptions) || !m.demoMode {
 		telCursor = focusStyle.Render(" ▶")
 	}
 	check := "○"
@@ -576,8 +583,10 @@ func (m wizardModel) viewConsent() string {
 
 	if m.showAPIKeyInput {
 		b.WriteString(helpStyle.Render("  enter confirm · esc back"))
-	} else {
+	} else if m.demoMode {
 		b.WriteString(helpStyle.Render("  ↑↓ move · space toggle analytics · enter select · esc quit"))
+	} else {
+		b.WriteString(helpStyle.Render("  space toggle · enter continue · esc quit"))
 	}
 	return b.String()
 }

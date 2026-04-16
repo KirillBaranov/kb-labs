@@ -38,7 +38,7 @@ Usage: install.sh [--version <tag>] [--dest <path>]
 
 Options:
   --version <tag>   Install specific release tag (example: v1.2.3)
-  --dest <path>     Install binary to a custom path (default: ~/.local/bin/kb-dev)
+  --dest <path>     Install binary to a custom path (default: ~/.local/bin/kb-devkit)
   -h, --help        Show this help
 EOF
 }
@@ -240,9 +240,8 @@ fi
 ok "Installation completed in ${ELAPSED}s"
 echo ""
 printf "%sGet started:%s\n" "$C_BOLD" "$C_RESET"
-printf "  %s# create devservices.yaml in your project, then:%s\n" "$C_DIM" "$C_RESET"
-printf "  %skb-dev start%s\n" "$C_DIM" "$C_RESET"
-printf "  %skb-dev status%s\n" "$C_DIM" "$C_RESET"
-printf "  %skb-dev doctor%s\n" "$C_DIM" "$C_RESET"
+printf "  %skb-devkit run build%s          %s# build all packages in order%s\n" "$C_DIM" "$C_RESET" "$C_DIM" "$C_RESET"
+printf "  %skb-devkit doctor%s             %s# check workspace health%s\n" "$C_DIM" "$C_RESET" "$C_DIM" "$C_RESET"
+printf "  %skb-devkit status%s             %s# workspace status%s\n" "$C_DIM" "$C_RESET" "$C_DIM" "$C_RESET"
 echo ""
 printf "  %sDocs: https://docs.kblabs.ru/services/kb-devkit%s\n" "$C_DIM" "$C_RESET"
