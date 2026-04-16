@@ -8,7 +8,8 @@
   font-weight: 740;
   letter-spacing: -0.03em;
   line-height: 1.1;
-  margin: 0 0 0.75rem;
+  margin: 0 auto 0.75rem;
+  max-width: 720px;
 }
 
 .hero p {
