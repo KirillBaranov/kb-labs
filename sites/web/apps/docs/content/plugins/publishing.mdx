@@ -78,7 +78,7 @@ Do not declare `@kb-labs/plugin-contracts`, `@kb-labs/studio-hooks`, `@kb-labs/s
 
 If your plugin is split into multiple packages, their versions should move together. A mismatch (CLI v0.2.0 depending on core v0.1.0 when core's actual version is v0.2.0) doesn't technically break anything if semver ranges are loose, but it makes debugging version drift hell.
 
-The [release-manager plugin](plugins/kb-labs-release-manager/) in the reference monorepo handles this — it uses a lockstep versioning strategy that bumps every package in the plugin together. For smaller plugins, just remember to bump all three package.json files before publishing.
+The [release-manager plugin](plugins/release/) in the reference monorepo handles this — it uses a lockstep versioning strategy that bumps every package in the plugin together. For smaller plugins, just remember to bump all three package.json files before publishing.
 
 ### 5. The manifest is valid
 
