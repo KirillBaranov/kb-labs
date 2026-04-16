@@ -186,11 +186,22 @@ export class KBLabsGatewayLLM implements ILLM {
       },
     }));
 
+    // Map toolChoice to OpenAI format.
+    let tool_choice: OpenAI.Chat.ChatCompletionToolChoiceOption | undefined;
+    if (options.toolChoice && options.toolChoice !== "none" && options.toolChoice !== "auto") {
+      if (typeof options.toolChoice === "object" && "function" in options.toolChoice) {
+        tool_choice = { type: "function", function: { name: (options.toolChoice as { function: { name: string } }).function.name } };
+      } else if (options.toolChoice === "required") {
+        tool_choice = "required";
+      }
+    }
+
     const response = await this.client.chat.completions.create({
       model,
       max_tokens: options?.maxTokens ?? this.defaultMaxTokens,
       messages: openaiMessages,
       tools: options.toolChoice !== "none" ? tools : undefined,
+      tool_choice,
     });
 
     const message = response.choices[0]?.message;
