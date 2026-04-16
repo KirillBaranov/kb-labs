@@ -1,0 +1,38 @@
+name: E2E Install Flow
+
+# Runs the full user journey in a clean Docker container:
+#   curl install.sh → bootstrap → verify → AI commit → scaffold → build → run
+#
+# Triggers:
+# - After every binary release (all install.sh URLs point to /latest)
+# - After every platform npm publish (kb-create pulls latest from npm)
+# - Manual dispatch for ad-hoc verification
+# - Weekly on Monday 8am UTC as a canary
+
+on:
+  workflow_run:
+    workflows: ["Release Binaries"]
+    types: [completed]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 8 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: Install flow (Docker)
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build E2E image
+        run: docker build -t kb-e2e -f e2e/install-flow/Dockerfile .
+
+      - name: Run E2E test
+        run: docker run --rm kb-e2e
