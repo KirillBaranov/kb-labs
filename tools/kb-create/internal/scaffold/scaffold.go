@@ -42,6 +42,13 @@ func WriteProjectConfig(projectDir string, opts Options) error {
 		return err
 	}
 
+	// Write gateway secrets to .env (gitignored) instead of inlining in kb.config.jsonc.
+	if gc := opts.GatewayCredentials; gc != nil {
+		if err := writeEnvFile(projectDir, gc); err != nil {
+			return fmt.Errorf("scaffold .env: %w", err)
+		}
+	}
+
 	if err := ensureGitignore(projectDir); err != nil {
 		return fmt.Errorf("scaffold gitignore: %w", err)
 	}
@@ -131,12 +138,12 @@ func generate(opts Options) string {
 	b.WriteString("  // ─── Adapter Options ────────────────────────────────────────────────────\n")
 	b.WriteString("  \"adapterOptions\": {\n")
 	if gc := opts.GatewayCredentials; gc != nil {
-		b.WriteString("    // KB Labs Gateway credentials — auto-configured. Refresh token automatically.\n")
-		b.WriteString("    // Replace kbClientId/kbClientSecret with apiKey when using your own provider.\n")
+		b.WriteString("    // KB Labs Gateway credentials — read from .env (auto-configured).\n")
+		b.WriteString("    // Replace with apiKey when switching to your own LLM provider.\n")
 		b.WriteString("    \"llm\": {\n")
 		fmt.Fprintf(&b, "      \"gatewayURL\": %s,\n", quote(gc.GatewayURL))
-		fmt.Fprintf(&b, "      \"kbClientId\": %s,\n", quote(gc.ClientID))
-		fmt.Fprintf(&b, "      \"kbClientSecret\": %s\n", quote(gc.ClientSecret))
+		b.WriteString("      \"kbClientId\": \"${KB_GATEWAY_CLIENT_ID}\",\n")
+		b.WriteString("      \"kbClientSecret\": \"${KB_GATEWAY_CLIENT_SECRET}\"\n")
 		b.WriteString("    },\n")
 	} else {
 		b.WriteString("    // LLM credentials — set your API key here or via KB_LABS_API_KEY env var.\n")
@@ -329,12 +336,32 @@ jobs:
 	return nil
 }
 
+// writeEnvFile writes gateway credentials to .env in the project root.
+// This file is gitignored by ensureGitignore, keeping secrets out of version control.
+func writeEnvFile(projectDir string, gc *GatewayCreds) error {
+	path := filepath.Join(projectDir, ".env")
+
+	// Append to existing .env if present.
+	f, err := os.OpenFile(path, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o600) // #nosec G304
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	var buf strings.Builder
+	buf.WriteString("\n# KB Labs Gateway credentials (auto-configured by kb-create)\n")
+	buf.WriteString("KB_GATEWAY_CLIENT_ID=" + gc.ClientID + "\n")
+	buf.WriteString("KB_GATEWAY_CLIENT_SECRET=" + gc.ClientSecret + "\n")
+	_, err = f.WriteString(buf.String())
+	return err
+}
+
 // ensureGitignore appends KB Labs ignore rules to .gitignore if not already present.
 // Uses sentinel markers so re-runs are idempotent and existing user content is preserved.
 func ensureGitignore(projectDir string) error {
 	const (
 		marker = "# kb-labs-ignore"
-		block  = "\n# kb-labs-ignore\n.kb/analytics/\n.kb/cache/\n.kb/storage/\n# end-kb-labs-ignore\n"
+		block  = "\n# kb-labs-ignore\n.env\n.kb/analytics/\n.kb/cache/\n.kb/storage/\n.kb/tmp/\n.kb/logs/\n# end-kb-labs-ignore\n"
 	)
 	path := filepath.Join(projectDir, ".gitignore")
 	existing, err := os.ReadFile(path)
