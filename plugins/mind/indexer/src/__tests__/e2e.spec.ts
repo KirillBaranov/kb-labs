@@ -106,7 +106,6 @@ describe('E2E Mind Indexer', () => {
   it('should handle time budget exceeded gracefully', async () => {
     const budgetDir = join(tempDir, 'budget-test');
     await fsp.mkdir(budgetDir, { recursive: true });
-    await fsp.cp(fixtureDir, budgetDir, { recursive: true });
 
     // Initialize
     await initMindStructure({
