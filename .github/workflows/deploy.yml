@@ -85,6 +85,7 @@ jobs:
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_KEY: ${{ secrets.SSH_KEY }}
           KB_DEPLOY_BASE_REF: ${{ github.event.before }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           if [ -n "${{ inputs.target }}" ]; then
             ./tools/kb-deploy/kb-deploy run ${{ inputs.target }}

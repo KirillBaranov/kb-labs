@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"net"
+	"strings"
 
 	gossh "golang.org/x/crypto/ssh"
 )
@@ -51,6 +52,26 @@ func (c *Client) Run(cmd string) (string, error) {
 	var buf bytes.Buffer
 	sess.Stdout = &buf
 	sess.Stderr = &buf
+
+	if err := sess.Run(cmd); err != nil {
+		return buf.String(), fmt.Errorf("run %q: %w", cmd, err)
+	}
+	return buf.String(), nil
+}
+
+// RunWithInput executes cmd on the remote host with the given string fed to stdin.
+// Useful for commands like `docker login --password-stdin`.
+func (c *Client) RunWithInput(cmd, input string) (string, error) {
+	sess, err := c.conn.NewSession()
+	if err != nil {
+		return "", fmt.Errorf("new session: %w", err)
+	}
+	defer sess.Close()
+
+	var buf bytes.Buffer
+	sess.Stdout = &buf
+	sess.Stderr = &buf
+	sess.Stdin = strings.NewReader(input)
 
 	if err := sess.Run(cmd); err != nil {
 		return buf.String(), fmt.Errorf("run %q: %w", cmd, err)
