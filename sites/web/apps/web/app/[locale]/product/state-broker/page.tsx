@@ -133,9 +133,9 @@ export default async function StateBrokerPage({ params }: Props) {
               <span className={s.codePanelLabel}>{t('productStateBroker.codeExamples.pubsubLabel')}</span>
             </div>
             <pre><code>{`\
-`}<span className={s.tsKeyword}>import</span>{` { `}<span className={s.tsType}>useBroker</span>{` } `}<span className={s.tsKeyword}>from</span>{` `}<span className={s.tsString}>{`'@kb-labs/sdk'`}</span>{`;
+`}<span className={s.tsKeyword}>import</span>{` { `}<span className={s.tsType}>useEventBus</span>{` } `}<span className={s.tsKeyword}>from</span>{` `}<span className={s.tsString}>{`'@kb-labs/sdk'`}</span>{`;
 
-`}<span className={s.tsKeyword}>const</span>{` broker = `}<span className={s.tsType}>useBroker</span>{`();
+`}<span className={s.tsKeyword}>const</span>{` broker = `}<span className={s.tsType}>useEventBus</span>{`();
 
 `}<span className={s.tsComment}>{'// Subscribe to changes'}</span>{`
 broker.`}<span className={s.tsProp}>subscribe</span>{`(`}<span className={s.tsString}>{`'deploy:*'`}</span>{`, (event) => {
