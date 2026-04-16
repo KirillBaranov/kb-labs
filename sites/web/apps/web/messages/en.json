@@ -171,8 +171,6 @@
       "community": {
         "title": "Community",
         "github": "GitHub",
-        "discord": "Discord",
-        "twitter": "X / Twitter",
         "founder": "Kirill Baranov"
       },
       "platform": {
@@ -592,8 +590,8 @@
         },
         {
           "title": "Read the docs",
-          "href": "https://docs.kblabs.ru/getting-started",
-          "label": "docs.kblabs.ru/getting-started"
+          "href": "https://docs.kblabs.ru/quick-start",
+          "label": "docs.kblabs.ru/quick-start"
         },
         {
           "title": "Need help?",
@@ -893,8 +891,7 @@
       "bio": "Built KB Labs because every layer of the stack was quietly closing. Open-source infrastructure for developers who want their stack back.",
       "links": {
         "site": "k-baranov.ru",
-        "github": "GitHub",
-        "twitter": "X / Twitter"
+        "github": "GitHub"
       }
     },
     "manifesto": [
@@ -964,25 +961,25 @@
         "label": "Sales",
         "description": "Discuss pricing, enterprise plans, or custom contracts.",
         "action": "Talk to sales →",
-        "href": "mailto:sales@kblabs.ru"
+        "href": "mailto:kirillBaranovJob@yandex.ru"
       },
       {
         "label": "Support",
         "description": "Technical issues, bugs, or questions about the platform.",
-        "action": "Open a ticket →",
-        "href": "https://docs.kblabs.ru/support"
+        "action": "Open an issue →",
+        "href": "https://github.com/KirillBaranov/kb-labs/issues"
       },
       {
         "label": "Partnerships",
         "description": "Integrations, reseller programs, or joint go-to-market.",
         "action": "Get in touch →",
-        "href": "mailto:partners@kblabs.ru"
+        "href": "mailto:kirillBaranovJob@yandex.ru"
       },
       {
         "label": "Press",
         "description": "Media inquiries, interviews, and press kit requests.",
         "action": "Contact press →",
-        "href": "mailto:press@kblabs.ru"
+        "href": "mailto:kirillBaranovJob@yandex.ru"
       }
     ],
     "communityTitle": "Community",
@@ -991,16 +988,6 @@
         "label": "GitHub",
         "description": "File issues, browse source, contribute.",
         "href": "https://github.com/KirillBaranov/kb-labs"
-      },
-      {
-        "label": "Discord",
-        "description": "Chat with the team and community in real time.",
-        "href": "https://discord.gg/kblabs"
-      },
-      {
-        "label": "X / Twitter",
-        "description": "Product updates and announcements.",
-        "href": "https://twitter.com/kblabs_dev"
       }
     ],
     "basedIn": "Based in",
@@ -1066,7 +1053,7 @@
       "title": "Want to start a conversation?",
       "description": "Tell us what your team is solving. We'll be honest about what fits today's engine and what's still on the roadmap.",
       "salesBtn": "Talk to the team",
-      "emailBtn": "sales@kblabs.ru"
+      "emailBtn": "kirillBaranovJob@yandex.ru"
     },
     "meta2": {
       "dealSize": "Current engagement type",
@@ -1211,7 +1198,7 @@
       "title": "Questions about security?",
       "description": "We believe in transparency. Ask us anything — no NDA required for honest answers.",
       "contactBtn": "Contact us",
-      "emailBtn": "security@kblabs.ru"
+      "emailBtn": "kirillBaranovJob@yandex.ru"
     },
     "statusReady": "Available",
     "statusPlanned": "Planned",
@@ -1482,7 +1469,7 @@
             "Object to or restrict processing",
             "Withdraw consent at any time"
           ],
-          "note": "To exercise any of these rights, email privacy@kblabs.ru. We respond within 30 days."
+          "note": "To exercise any of these rights, email kirillBaranovJob@yandex.ru. We respond within 30 days."
         },
         {
           "title": "Security",
@@ -1494,7 +1481,7 @@
         },
         {
           "title": "Contact",
-          "body": "Questions? Email privacy@kblabs.ru or write to KB Labs, Remote-first, Russia."
+          "body": "Questions? Email kirillBaranovJob@yandex.ru or write to KB Labs, Remote-first, Russia."
         }
       ]
     },
@@ -1513,7 +1500,7 @@
         },
         {
           "title": "Your account",
-          "body": "You are responsible for maintaining the confidentiality of your credentials and for all activity under your account. Notify us immediately at security@kblabs.ru if you suspect unauthorized access.",
+          "body": "You are responsible for maintaining the confidentiality of your credentials and for all activity under your account. Notify us immediately at kirillBaranovJob@yandex.ru if you suspect unauthorized access.",
           "mustNot": "You must not:",
           "items": [
             "Share your account or API keys with third parties",
@@ -1559,7 +1546,7 @@
         },
         {
           "title": "Contact",
-          "body": "Questions about these Terms? Email hello@kblabs.ru."
+          "body": "Questions about these Terms? Email kirillBaranovJob@yandex.ru."
         }
       ]
     },
@@ -1602,7 +1589,7 @@
             "<strong>Email delivery</strong> — transactional email service",
             "<strong>Monitoring</strong> — error tracking and performance monitoring"
           ],
-          "note": "We will notify you of any intended changes to sub-processors with at least 14 days' notice. A current list of sub-processors is available on request at privacy@kblabs.ru."
+          "note": "We will notify you of any intended changes to sub-processors with at least 14 days' notice. A current list of sub-processors is available on request at kirillBaranovJob@yandex.ru."
         },
         {
           "title": "International transfers",
@@ -1626,7 +1613,7 @@
         },
         {
           "title": "Contact",
-          "body": "For DPA-related enquiries, email privacy@kblabs.ru. Enterprise customers can request a countersigned DPA for their records."
+          "body": "For DPA-related enquiries, email kirillBaranovJob@yandex.ru. Enterprise customers can request a countersigned DPA for their records."
         }
       ]
     },
@@ -1706,7 +1693,7 @@
         },
         {
           "title": "Contact",
-          "body": "Questions? Email privacy@kblabs.ru."
+          "body": "Questions? Email kirillBaranovJob@yandex.ru."
         }
       ]
     }
@@ -2351,7 +2338,7 @@
       "title": "Monitoring as something your agent does.",
       "description": "Every kb-monitor command outputs structured JSON with a stable, documented schema. Point an agent at it on a schedule and monitoring stops being a human task — it becomes a loop that reacts on its own.",
       "codeCaption": "agent-watchdog.sh",
-      "codeExample": "# run every 5 minutes via cron or kb-dev schedule\nkb-monitor status --json > /tmp/state.json\n\n# the agent reads state, reasons over it, and reacts:\n#   - health failing on kb-labs-web → kb-deploy run kb-labs-web\n#   - new SHA in prod → post to #releases\n#   - container restarting → fetch logs and open an issue\n#\n# you wrote the rules once. you never open a terminal again.",
+      "codeExample": "# run every 5 minutes via cron\nkb-monitor status --json > /tmp/state.json\n\n# the agent reads state, reasons over it, and reacts:\n#   - health failing on kb-labs-web → kb-deploy run kb-labs-web\n#   - new SHA in prod → post to #releases\n#   - container restarting → fetch logs and open an issue\n#\n# you wrote the rules once. you never open a terminal again.",
       "note": "Same pattern works with any agent runtime — Claude, Codex, your own plugin-agent running inside KB Labs. The stable schema is the contract."
     },
     "pain": {

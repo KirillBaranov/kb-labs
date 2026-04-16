@@ -105,8 +105,6 @@ export function SiteFooter() {
       title: t('footer.sections.community.title'),
       links: [
         { label: t('footer.sections.community.github'), href: 'https://github.com/KirillBaranov/kb-labs', icon: 'github' },
-        { label: t('footer.sections.community.discord'), href: 'https://discord.gg/kblabs', icon: 'discord' },
-        { label: t('footer.sections.community.twitter'), href: 'https://twitter.com/kblabs_dev', icon: 'x' },
         { label: t('footer.sections.community.founder'), href: 'https://k-baranov.ru' },
       ],
     },
