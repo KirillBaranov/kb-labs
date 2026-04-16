@@ -71,15 +71,17 @@ export default async function PluginsPage({ params }: Props) {
               <span className={s.manifestFileName}>manifest.ts</span>
             </div>
             <pre><code>{`\
-`}<span className={s.tsKeyword}>import</span>{` { `}<span className={s.tsType}>definePlugin</span>{` } `}<span className={s.tsKeyword}>from</span>{` `}<span className={s.tsString}>{`'@kb-labs/sdk'`}</span>{`;
+`}<span className={s.tsKeyword}>import</span>{` { `}<span className={s.tsType}>combinePermissions</span>{`, `}<span className={s.tsType}>kbPlatformPreset</span>{` } `}<span className={s.tsKeyword}>from</span>{` `}<span className={s.tsString}>{`'@kb-labs/sdk'`}</span>{`;
 
-`}<span className={s.tsKeyword}>export default</span>{` `}<span className={s.tsType}>definePlugin</span>{`({
-  `}<span className={s.tsProp}>name</span>{`:         `}<span className={s.tsString}>{`'commit-generator'`}</span>{`,
-  `}<span className={s.tsProp}>version</span>{`:      `}<span className={s.tsString}>{`'1.2.0'`}</span>{`,
-  `}<span className={s.tsProp}>capabilities</span>{`: [`}<span className={s.tsString}>{`'llm'`}</span>{`, `}<span className={s.tsString}>{`'git:read'`}</span>{`, `}<span className={s.tsString}>{`'git:write'`}</span>{`],
-  `}<span className={s.tsProp}>commands</span>{`:     [`}<span className={s.tsString}>{`'commit'`}</span>{`, `}<span className={s.tsString}>{`'commit:dry-run'`}</span>{`],
-  `}<span className={s.tsProp}>hooks</span>{`:        { `}<span className={s.tsProp}>pre-commit</span>{`: `}<span className={s.tsString}>{`'./hooks/validate.ts'`}</span>{` },
-});`}</code></pre>
+`}<span className={s.tsKeyword}>export default</span>{` {
+  `}<span className={s.tsProp}>schema</span>{`:      `}<span className={s.tsString}>{`'kb.plugin/3'`}</span>{`,
+  `}<span className={s.tsProp}>id</span>{`:          `}<span className={s.tsString}>{`'@kb-labs/commit'`}</span>{`,
+  `}<span className={s.tsProp}>version</span>{`:     `}<span className={s.tsString}>{`'0.1.0'`}</span>{`,
+  `}<span className={s.tsProp}>permissions</span>{`: `}<span className={s.tsType}>combinePermissions</span>{`().`}<span className={s.tsProp}>with</span>{`(`}<span className={s.tsType}>kbPlatformPreset</span>{`).`}<span className={s.tsProp}>build</span>{`(),
+  `}<span className={s.tsProp}>cli</span>{`: {
+    `}<span className={s.tsProp}>commands</span>{`: [{ `}<span className={s.tsProp}>id</span>{`: `}<span className={s.tsString}>{`'commit'`}</span>{`, `}<span className={s.tsProp}>handler</span>{`: `}<span className={s.tsString}>{`'./commands/run.js#default'`}</span>{` }],
+  },
+} `}<span className={s.tsKeyword}>as const</span>{`;`}</code></pre>
           </div>
           <p className={s.manifestCaption}>{t('productPlugins.manifestCaption')}</p>
         </section>
@@ -117,13 +119,13 @@ export default async function PluginsPage({ params }: Props) {
             </div>
             <div className={s.terminalBody}>
               <pre><code>{`\
-`}<span className={s.termPrompt}>$</span>{` `}<span className={s.termCmd}>kb plugin install @kb-labs/commit-generator</span>{`
+`}<span className={s.termPrompt}>$</span>{` `}<span className={s.termCmd}>kb marketplace install @kb-labs/commit-entry</span>{`
 
-`}<span className={s.termOutput}>Resolving dependencies...</span>{`
-`}<span className={s.termOutput}>Validating capabilities: llm, git:read, git:write</span>{`
-`}<span className={s.termOutput}>Installing commit-generator@1.2.0...</span>{`
+`}<span className={s.termOutput}>Resolving @kb-labs/commit-entry@latest...</span>{`
+`}<span className={s.termOutput}>Validating manifest: kb.plugin/3</span>{`
+`}<span className={s.termOutput}>Installing 1 package via pnpm...</span>{`
 
-`}<span className={s.termSuccess}>Done.</span>{` `}<span className={s.termOutput}>2 commands registered.</span>{`
+`}<span className={s.termSuccess}>Done.</span>{` `}<span className={s.termOutput}>6 commands registered.</span>{`
 `}<span className={s.termOutput}>Run</span>{` `}<span className={s.termCmd}>kb commit --help</span>{` `}<span className={s.termOutput}>to get started.</span></code></pre>
             </div>
           </div>

@@ -1988,13 +1988,13 @@
     "ecosystemTypes": [
       {
         "name": "Plugin",
-        "count": "11 available",
+        "count": "19 available",
         "description": "Extend CLI and runtime with new commands, hooks, and workflows.",
         "color": "#6366f1"
       },
       {
         "name": "Adapter",
-        "count": "17 available",
+        "count": "21 available",
         "description": "Connect to databases, AI providers, storage backends, and more.",
         "color": "#0ea5e9"
       },
