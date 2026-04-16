@@ -21,19 +21,21 @@ import {
 import type {
   RenderContext,
 } from '@kb-labs/scaffold-contracts';
-import {
-  error,
-  info,
-  outro,
-  warn,
-} from '../ui/prompt.js';
+import { formatCommandHelp } from '@kb-labs/shared-cli-ui';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const TEMPLATES_ROOT = resolve(here, '..', '..', 'templates');
 
+const SCAFFOLD_FLAGS = [
+  { name: 'scope', description: 'npm scope, e.g. @my-org' },
+  { name: 'blocks', description: 'comma-separated block ids to include' },
+  { name: 'out', description: 'custom output directory' },
+  { name: 'force', description: 'overwrite existing output directory' },
+  { name: 'dry-run', description: 'preview files without writing' },
+];
+
 interface ScaffoldFlags {
   blocks?: string;
-  yes?: boolean;
   force?: boolean;
   'dry-run'?: boolean;
   out?: string;
@@ -56,7 +58,6 @@ async function readVersion(pkgPath: string): Promise<string> {
   }
 }
 
-// Conservative fallbacks — bumped when we cut a new scaffold release.
 const FALLBACK_VERSIONS = {
   sdk: '2.18.0',
   devkit: '2.28.0',
@@ -64,13 +65,8 @@ const FALLBACK_VERSIONS = {
 } as const;
 
 async function detectVersions(): Promise<Record<string, string>> {
-  // Use require.resolve from this module as the anchor. Works under pnpm's
-  // virtual store because createRequire follows node's resolution rules.
   const req = createRequire(import.meta.url);
-  const readPkg = async (
-    spec: string,
-    fallback: string,
-  ): Promise<string> => {
+  const readPkg = async (spec: string, fallback: string): Promise<string> => {
     try {
       const resolved = req.resolve(spec);
       const v = await readVersion(resolved);
@@ -100,38 +96,52 @@ async function runDefault(
   ctx: PluginContextV3,
   rawInput: CLIInput<ScaffoldFlags>,
 ): Promise<ScaffoldResult> {
+  const start = Date.now();
   const input = { ...rawInput.flags, argv: rawInput.argv };
 
   const { entity: entityArg, name: nameArg } = parsePositional(input.argv);
 
   const available = await listEntities(TEMPLATES_ROOT);
   if (available.length === 0) {
-    error(`No entities found in templates root: ${TEMPLATES_ROOT}`);
+    ctx.ui?.error?.('No scaffold templates found. Reinstall @kb-labs/scaffold.');
     return { exitCode: 1 };
   }
 
-  // Resolve entity.
-  const entityId = entityArg ?? available[0]!;
-  if (!available.includes(entityId)) {
-    error(`Unknown entity: ${entityId}. Available: ${available.join(', ')}`);
+  if (!entityArg) {
+    ctx.ui?.write?.(formatCommandHelp({
+      title: 'kb scaffold run',
+      description: 'Scaffold a new plugin, adapter, or other entity from a template.',
+      examples: available.map((e) => `kb scaffold run ${e} my-${e}`),
+      flags: SCAFFOLD_FLAGS,
+    }) + '\n');
+    ctx.ui?.info?.(`Available entities: ${available.join(', ')}`);
     return { exitCode: 1 };
   }
 
-  const entity = await loadEntity(TEMPLATES_ROOT, entityId);
+  if (!available.includes(entityArg)) {
+    ctx.ui?.error?.(`Unknown entity "${entityArg}". Available: ${available.join(', ')}`);
+    return { exitCode: 1 };
+  }
 
-  // Resolve name — required positional.
   if (!nameArg) {
-    error('Usage: kb scaffold run <entity> <name> [flags]');
+    ctx.ui?.write?.(formatCommandHelp({
+      title: `kb scaffold run ${entityArg} <name>`,
+      description: `Scaffold a new ${entityArg}. Provide a name to continue.`,
+      examples: [`kb scaffold run ${entityArg} my-${entityArg}`],
+      flags: SCAFFOLD_FLAGS,
+    }) + '\n');
     return { exitCode: 1 };
   }
+
   const problem = runValidator('npmName', nameArg);
   if (problem) {
-    error(`Invalid name "${nameArg}": ${problem}`);
+    ctx.ui?.error?.(`Invalid name "${nameArg}": ${problem}`);
+    ctx.ui?.info?.('Name must be lowercase, no spaces, valid npm package name.');
     return { exitCode: 1 };
   }
-  const name = nameArg;
 
-  // Collect entity-level variables — flags override, then entity defaults.
+  const entity = await loadEntity(TEMPLATES_ROOT, entityArg);
+
   const vars: Record<string, unknown> = {};
   for (const v of entity.variables) {
     if (v.name === 'scope' && input.scope !== undefined) {
@@ -143,7 +153,6 @@ async function runDefault(
     }
   }
 
-  // Select blocks — flag overrides, then entity defaults.
   let selectedBlocks: string[];
   if (input.blocks) {
     selectedBlocks = input.blocks
@@ -154,13 +163,13 @@ async function runDefault(
     selectedBlocks = entity.defaults?.blocks ?? entity.blocks.map((b) => b.id);
   }
 
-  // Collect block-specific variables — use defaults.
   try {
     resolveBlocks(entity.blocks, selectedBlocks);
   } catch (e) {
-    error((e as Error).message);
+    ctx.ui?.error?.((e as Error).message);
     return { exitCode: 1 };
   }
+
   for (const blockId of selectedBlocks) {
     const block = entity.blocks.find((b) => b.id === blockId);
     for (const v of block?.variables ?? []) {
@@ -176,7 +185,7 @@ async function runDefault(
   const versions = await detectVersions();
 
   const context: RenderContext = {
-    name,
+    name: nameArg,
     scope,
     vars,
     blocks: selectedBlocks,
@@ -194,52 +203,65 @@ async function runDefault(
   const state = await inspectTarget(outRoot);
 
   if (input['dry-run']) {
-    info(`Would write to: ${outRoot}`);
-    info('Tree:');
-    info(formatTree(result.files));
-    outro('Dry run complete.');
+    ctx.ui?.success?.('Dry run complete', {
+      title: 'scaffold run — dry run',
+      sections: [
+        { header: 'Would write to', items: [outRoot] },
+        { header: 'Files', items: formatTree(result.files).split('\n').filter(Boolean) },
+      ],
+    });
     return { exitCode: 0, result: { outRoot, files: result.files.length } };
   }
 
   if (state.exists && !state.empty) {
     if (input.force) {
-      warn(`--force: overwriting ${outRoot}`);
+      ctx.ui?.warn?.(`--force: overwriting ${outRoot}`);
     } else {
-      error(`Target "${outRoot}" is not empty. Use --force to overwrite.`);
+      ctx.ui?.error?.(`Output directory "${outRoot}" already exists and is not empty.`);
+      ctx.ui?.info?.('Use --force to overwrite.');
       return { exitCode: 1 };
     }
   }
 
   await writeFiles({ outRoot, files: result.files, force: input.force });
 
-  ctx.ui?.success?.(`Scaffolded ${entityId} "${name}"`);
-  info(`Output: ${outRoot}`);
-
-  // The package that carries `"kb": { "manifest": "..." }` is the target
-  // marketplace.link needs. For plugin entity → <outRoot>/packages/<name>-entry.
-  // For adapter entity → <outRoot> itself.
   const entryPkgDir =
-    entityId === 'plugin'
-      ? `${outRoot}/packages/${name}-entry`
+    entityArg === 'plugin'
+      ? `${outRoot}/packages/${nameArg}-entry`
       : outRoot;
 
-  const linked = await linkWithMarketplace(ctx, entryPkgDir);
-  if (linked === 'ok') {
-    info('Registered in .kb/marketplace.lock');
-  } else if (linked === 'no-shell') {
-    warn('Could not auto-register (no shell). Run manually:');
-    info(`  kb marketplace plugins link ${entryPkgDir}`);
-  } else {
-    warn('Auto-register failed — register manually:');
-    info(`  kb marketplace plugins link ${entryPkgDir}`);
-  }
+  const linked = await linkWithMarketplace(entryPkgDir);
 
-  info('Next steps:');
-  info('  pnpm install');
-  info('  pnpm -w build');
-  info(`  pnpm kb ${name} hello   # try it`);
-  info(`  pnpm kb scaffold doctor --path ${dirname(outRoot)}`);
-  outro('Done.');
+  const registrationNote =
+    linked === 'ok'
+      ? 'Registered in .kb/marketplace.lock'
+      : `Not auto-registered — run: kb marketplace plugins link ${entryPkgDir}`;
+
+  const timing = Date.now() - start;
+
+  ctx.ui?.success?.(`Scaffolded ${entityArg} "${nameArg}"`, {
+    title: 'scaffold run',
+    sections: [
+      {
+        header: 'Output',
+        items: [outRoot],
+      },
+      {
+        header: 'Marketplace',
+        items: [registrationNote],
+      },
+      {
+        header: 'Next steps',
+        items: [
+          'pnpm install',
+          'pnpm -w build',
+          `pnpm kb ${nameArg} hello   # try it`,
+          `pnpm kb scaffold doctor --path ${dirname(outRoot)}`,
+        ],
+      },
+    ],
+    timing,
+  });
 
   return {
     exitCode: 0,
@@ -251,18 +273,9 @@ type LinkOutcome = 'ok' | 'no-shell' | 'failed';
 
 /**
  * Register a scaffolded plugin directly in marketplace.lock.
- *
- * Writes to the platform-level lock file so the CLI picks up the plugin
- * without needing the marketplace service running.
  */
-async function linkWithMarketplace(
-  ctx: PluginContextV3,
-  entryPkgDir: string,
-): Promise<LinkOutcome> {
+async function linkWithMarketplace(entryPkgDir: string): Promise<LinkOutcome> {
   try {
-    // Resolve platform dir from this module's location.
-    // Scaffold lives in <platformDir>/node_modules/@kb-labs/scaffold/dist/commands/scaffold.js
-    // so we walk up to find the dir containing node_modules.
     const selfPath = fileURLToPath(import.meta.url);
     const nmIdx = selfPath.lastIndexOf('/node_modules/');
     if (nmIdx < 0) return 'failed';
@@ -270,7 +283,6 @@ async function linkWithMarketplace(
 
     const lockPath = resolve(platformDir, '.kb', 'marketplace.lock');
 
-    // Read existing lock or create empty.
     let lock: { schema: string; installed: Record<string, unknown> };
     try {
       lock = JSON.parse(await readFile(lockPath, 'utf8'));
@@ -278,22 +290,14 @@ async function linkWithMarketplace(
       lock = { schema: 'kb.marketplace/2', installed: {} };
     }
 
-    // Read plugin's package.json for metadata.
     const pkgJsonPath = resolve(entryPkgDir, 'package.json');
     const pkgRaw = await readFile(pkgJsonPath, 'utf8');
     const pkg = JSON.parse(pkgRaw) as { name?: string; version?: string; kb?: { manifest?: string } };
     if (!pkg.name) return 'failed';
 
-    // Compute integrity hash.
     const hash = createHash('sha256').update(pkgRaw).digest('base64');
-
-    // Read manifest to extract provides (best-effort).
     const provides: string[] = ['plugin', 'cli-command'];
-
-    // Resolve relative path from platform dir.
     const resolvedPath = relative(platformDir, resolve(entryPkgDir));
-
-    // Build the plugin ID: strip -entry suffix for cleaner names.
     const pluginId = pkg.name.replace(/-entry$/, '');
 
     lock.installed[pluginId] = {
