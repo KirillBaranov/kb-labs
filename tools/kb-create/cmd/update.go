@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -15,6 +16,7 @@ import (
 	"github.com/kb-labs/create/internal/logger"
 	"github.com/kb-labs/create/internal/manifest"
 	"github.com/kb-labs/create/internal/pm"
+	"github.com/kb-labs/create/internal/selfupdate"
 	"github.com/kb-labs/create/internal/userstate"
 )
 
@@ -55,6 +57,18 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 
 	out.Info("Checking for updates...")
+
+	// Self-update kb-create binary before touching platform packages.
+	if didSelfUpdate := runSelfUpdate(out); didSelfUpdate {
+		// Re-exec with the freshly downloaded binary so refreshDerivedConfigs
+		// and all subsequent logic run with the new code.
+		exe, exeErr := selfupdate.ExecutablePath()
+		if exeErr == nil {
+			_ = syscall.Exec(exe, os.Args, os.Environ())
+		}
+		// syscall.Exec only returns on failure — fall through and continue.
+	}
+
 	diff, err := ins.Diff(platformDir, m)
 	if err != nil {
 		return err
@@ -136,6 +150,34 @@ func confirm(prompt string) bool {
 	line, _ := r.ReadString('\n')
 	line = strings.TrimSpace(strings.ToLower(line))
 	return line == "" || line == "y" || line == "yes"
+}
+
+// runSelfUpdate checks GitHub for a newer *-binaries release and replaces the
+// running binary if one is found. Returns true when the binary was replaced.
+func runSelfUpdate(out output) bool {
+	const repo = "KirillBaranov/kb-labs"
+	currentVersion := rootCmd.Version
+
+	latestTag, err := selfupdate.LatestBinariesTag(repo)
+	if err != nil {
+		out.Warn(fmt.Sprintf("self-update check failed: %v (skipping)", err))
+		return false
+	}
+
+	if !selfupdate.NeedsUpdate(currentVersion, latestTag) {
+		return false
+	}
+
+	out.Info(fmt.Sprintf("New kb-create version available: %s → %s", currentVersion, latestTag))
+
+	result, err := selfupdate.Apply(repo, latestTag, currentVersion)
+	if err != nil {
+		out.Warn(fmt.Sprintf("self-update failed: %v (continuing with current version)", err))
+		return false
+	}
+
+	out.OK(fmt.Sprintf("kb-create updated to %s", result.LatestVersion))
+	return true
 }
 
 // confirmDestructive requires explicit "y" or "yes" — empty input = no.
