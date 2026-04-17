@@ -4,7 +4,7 @@ RUN npm install -g pnpm@9
 
 WORKDIR /tests
 COPY package.json ./
-RUN pnpm install
+RUN pnpm install && npx playwright install chromium
 
 COPY . .
 
