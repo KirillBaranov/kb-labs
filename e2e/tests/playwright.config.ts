@@ -18,6 +18,7 @@ export default defineConfig({
     { name: 'studio',       testMatch: 'specs/studio/**/*.spec.ts' },
     { name: 'adapters',     testMatch: 'specs/adapters/**/*.spec.ts' },
     { name: 'plugins',      testMatch: 'specs/plugins/**/*.spec.ts' },
+    { name: 'state',        testMatch: 'specs/services/state.spec.ts' },
   ],
   // Run studio realtime tests with longer timeout — WS/SSE connections need time
   use: { actionTimeout: 10_000 },

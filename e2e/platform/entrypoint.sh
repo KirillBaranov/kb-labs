@@ -20,6 +20,41 @@ mkdir -p /workspace && cd /workspace
 kb-create kb-e2e --yes
 cd kb-e2e
 
+# Scaffold test workflows used by E2E suite
+mkdir -p .kb/workflows
+
+cat > .kb/workflows/e2e-hello.yml << 'EOF'
+name: e2e-hello
+version: 1.0.0
+description: E2E smoke workflow — runs echo and exits cleanly
+on:
+  manual: true
+jobs:
+  greet:
+    runsOn: local
+    steps:
+      - name: Say hello
+        uses: builtin:shell
+        with:
+          command: echo "hello from e2e"
+EOF
+
+cat > .kb/workflows/e2e-fail.yml << 'EOF'
+name: e2e-fail
+version: 1.0.0
+description: E2E failure workflow — intentionally exits non-zero
+on:
+  manual: true
+jobs:
+  fail:
+    runsOn: local
+    steps:
+      - name: Fail intentionally
+        uses: builtin:shell
+        with:
+          command: exit 1
+EOF
+
 # ── Step 3: Start backend services ────────────────────────────────────────
 # Start infra first (state-daemon), then backend group.
 # kb-dev start accepts one service/group name — not multiple.
