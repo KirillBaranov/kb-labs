@@ -2,6 +2,7 @@
   "platform": {
     "adapters": {
       "llm": "@kb-labs/adapters-openai",
+      "embeddings": "@kb-labs/adapters-openai/embeddings",
       "logger": "@kb-labs/adapters-pino",
       "cache": "@kb-labs/adapters-redis",
       "db": "@kb-labs/adapters-sqlite",
