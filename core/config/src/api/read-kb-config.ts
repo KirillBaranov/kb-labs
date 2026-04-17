@@ -8,9 +8,11 @@ import { promises as fsp } from 'node:fs';
 import { findGitRoot, readConfigFile, type ConfigFileResult } from './read-config';
 
 const KB_CONFIG_FILENAMES = [
+  'kb.config.jsonc',
   'kb.config.json',
   'kb.config.yaml',
   'kb.config.yml',
+  '.kb/kb.config.jsonc',
   '.kb/kb.config.json',
   '.kb/kb.config.yaml',
   '.kb/kb.config.yml',

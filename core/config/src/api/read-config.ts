@@ -16,6 +16,31 @@ export interface ConfigFileResult {
   path: string;
 }
 
+function stripJsonComments(src: string): string {
+  let out = '';
+  let i = 0;
+  const len = src.length;
+  while (i < len) {
+    if (src[i] === '"') {
+      out += src[i++];
+      while (i < len) {
+        if (src[i] === '\\') { out += src[i++]; out += src[i++]; continue; }
+        out += src[i];
+        if (src[i++] === '"') { break; }
+      }
+    } else if (src[i] === '/' && src[i + 1] === '/') {
+      while (i < len && src[i] !== '\n') { i++; }
+    } else if (src[i] === '/' && src[i + 1] === '*') {
+      i += 2;
+      while (i < len && !(src[i] === '*' && src[i + 1] === '/')) { i++; }
+      i += 2;
+    } else {
+      out += src[i++];
+    }
+  }
+  return out.replace(/,(\s*[}\]])/g, '$1');
+}
+
 /**
  * Read config file with format detection and caching
  */
@@ -39,7 +64,8 @@ export async function readConfigFile(filePath: string): Promise<ConfigFileResult
       data = YAML.parse(raw);
       format = 'yaml';
     } else {
-      data = JSON.parse(raw);
+      const jsonSource = ext === '.jsonc' ? stripJsonComments(raw) : raw;
+      data = JSON.parse(jsonSource);
       format = 'json';
     }
     

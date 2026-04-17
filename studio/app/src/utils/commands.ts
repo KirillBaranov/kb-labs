@@ -3,6 +3,8 @@
  * Centralized command registry for Command Palette
  */
 
+import { studioConfig } from '@/config/studio.config';
+
 export type CommandCategory = 'recent' | 'navigation' | 'action' | 'plugin' | 'widget' | 'setting';
 
 export interface Command {
@@ -166,7 +168,8 @@ export function getCommands(config: CommandsConfig): Command[] {
       category: 'action' as const,
       path: '',
       action: () => {
-        const url = `${window.location.origin}/api/v1/registry`;
+        const apiBase = studioConfig.apiBaseUrl.replace(/\/+$/, '');
+        const url = `${apiBase}/studio/registry`;
         navigator.clipboard.writeText(url);
       },
       tags: ['copy', 'url', 'api'],

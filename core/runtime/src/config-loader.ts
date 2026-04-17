@@ -291,7 +291,13 @@ export async function loadPlatformConfig(
   // one. Guard against self-reference: if the override resolves to the same
   // path as the project root, we keep the original resolution.
   let platformDirOverride: string | undefined
-  const declaredPlatformDir = projectPlatformConfig?.platform?.dir
+  // platform.dir may be at projectPlatformConfig.platform.dir (string-shorthand case, where
+  // readConfigFile wraps it as { platform: { dir } }), OR at the top level as
+  // projectPlatformConfig.dir (structured-object case, where the whole data.platform section
+  // is spread into platformSection, leaving dir at the root).
+  const declaredPlatformDir =
+    projectPlatformConfig?.platform?.dir ??
+    (projectPlatformConfig as Record<string, unknown> | undefined)?.['dir'] as string | undefined
   if (declaredPlatformDir) {
     const resolved = expandPlatformDir(declaredPlatformDir, roots.projectRoot)
     if (path.resolve(resolved) !== path.resolve(roots.projectRoot)) {

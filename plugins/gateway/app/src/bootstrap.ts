@@ -1,5 +1,5 @@
 import { logDiagnosticEvent } from '@kb-labs/core-platform';
-import { platform, createServiceBootstrap } from '@kb-labs/core-runtime';
+import { platform, createServiceBootstrap, getPlatformRoot } from '@kb-labs/core-runtime';
 import { createCorrelatedLogger } from '@kb-labs/shared-http';
 import type { IHostStore } from '@kb-labs/gateway-contracts';
 import { SqliteHostStore } from '@kb-labs/gateway-core';
@@ -20,8 +20,9 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
   });
   logger.info('Platform initialized', { repoRoot });
 
-  // 2. Load gateway config — reads gateway.upstreams from kb.config.json
-  const config = await loadGatewayConfig(repoRoot);
+  // 2. Load gateway config — reads gateway.upstreams from kb.config.json (project),
+  // falling back to the platform installation config in installed mode.
+  const config = await loadGatewayConfig(repoRoot, getPlatformRoot());
   logger.info('Gateway config loaded', {
     port: config.port,
     upstreams: Object.keys(config.upstreams),

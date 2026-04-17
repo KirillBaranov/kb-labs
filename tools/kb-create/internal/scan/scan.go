@@ -416,11 +416,16 @@ func GenerateGatewayConfig(r *ScanResult, infoMap map[string]ServiceGatewayInfo)
 		cfg.Upstreams[svc.ID] = up
 	}
 
-	// Add widgets proxy to REST if rest is present
+	// Add widgets and plugin bundle proxies to REST if rest is present.
+	// /plugins/* serves Module Federation remote entries (remoteEntry.js + chunks).
 	if rest, hasRest := cfg.Upstreams["rest"]; hasRest {
 		cfg.Upstreams["widgets"] = GatewayUpstream{
 			URL:    rest.URL,
 			Prefix: "/api/v1/widgets",
+		}
+		cfg.Upstreams["plugins"] = GatewayUpstream{
+			URL:    rest.URL,
+			Prefix: "/plugins",
 		}
 	}
 

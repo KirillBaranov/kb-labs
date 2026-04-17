@@ -3,6 +3,34 @@ import type { StudioPluginEntryV2 } from './types.js';
 import type { ComponentType } from 'react';
 import { devToolsStore, GenericChannel } from '@kb-labs/studio-devtools';
 import type { MFEvent } from '@kb-labs/studio-devtools';
+/**
+ * Resolve a potentially path-absolute remoteEntryUrl against the API origin.
+ * Needed when the SPA is served from a different origin than the API (e.g.
+ * Studio on :3000, API gateway on :4000 / api.example.com).
+ *
+ * Reads the API origin from the runtime config injected by server.js into
+ * index.html as window.__KB_STUDIO_CONFIG__.KB_API_BASE_URL.
+ *
+ * - Absolute URLs (http/https) → returned as-is
+ * - Root-relative paths (/plugins/...) → prefixed with the API origin
+ */
+function resolveEntryUrl(url: string): string {
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  if (url.startsWith('/')) {
+    try {
+      const cfg = (window as Window & { __KB_STUDIO_CONFIG__?: Record<string, string> }).__KB_STUDIO_CONFIG__;
+      const apiBase = cfg?.KB_API_BASE_URL ?? '';
+      if (apiBase) {
+        return new URL(apiBase).origin + url;
+      }
+    } catch {
+      // fall through
+    }
+  }
+  return url;
+}
 
 /** MF events channel — registered lazily on first use */
 function getMFChannel(): ReturnType<typeof devToolsStore.getChannel<MFEvent>> {
@@ -31,7 +59,7 @@ export function initFederation(plugins: StudioPluginEntryV2[]): void {
     name: 'studioHost',
     remotes: plugins.map((plugin) => ({
       name: plugin.remoteName,
-      entry: plugin.remoteEntryUrl,
+      entry: resolveEntryUrl(plugin.remoteEntryUrl),
     })),
   });
 
@@ -52,7 +80,7 @@ export function initFederation(plugins: StudioPluginEntryV2[]): void {
 export function syncRemoteEntry(remoteName: string, currentEntryUrl: string): void {
   if (knownRemotes.get(remoteName) === currentEntryUrl) { return; }
 
-  registerRemotes([{ name: remoteName, entry: currentEntryUrl }], { force: true });
+  registerRemotes([{ name: remoteName, entry: resolveEntryUrl(currentEntryUrl) }], { force: true });
   knownRemotes.set(remoteName, currentEntryUrl);
 }
 

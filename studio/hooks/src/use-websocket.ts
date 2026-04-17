@@ -272,13 +272,24 @@ function defaultSerialize(data: unknown): string {
   return JSON.stringify(data);
 }
 
-/** Resolve relative paths to ws:// or wss:// using current origin */
+/** Resolve relative paths to ws:// or wss:// using the configured API origin */
 function resolveWsUrl(url: string): string {
   if (url.startsWith('ws://') || url.startsWith('wss://')) {
     return url;
   }
-  // Relative path → derive from window.location
-  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const path = url.startsWith('/') ? url : `/${url}`;
+  // Use configured API gateway origin when available, otherwise fall back to current origin
+  if (typeof window !== 'undefined') {
+    const cfg = (window as Window & { __KB_STUDIO_CONFIG__?: Record<string, string> }).__KB_STUDIO_CONFIG__;
+    const base = cfg?.KB_API_BASE_URL;
+    if (base) {
+      try {
+        const origin = new URL(base).origin;
+        const proto = origin.startsWith('https') ? 'wss:' : 'ws:';
+        return `${proto}//${new URL(origin).host}${path}`;
+      } catch { /* fall through */ }
+    }
+  }
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   return `${proto}//${window.location.host}${path}`;
 }
