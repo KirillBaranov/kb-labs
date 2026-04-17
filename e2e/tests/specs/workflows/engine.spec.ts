@@ -39,6 +39,6 @@ test('WF-04: jobs list is accessible', async ({ request }) => {
   expect(Array.isArray(body) || Array.isArray(body.jobs)).toBe(true)
 })
 
-test.todo('WF-05: workflow with input params → result contains expected output')
-test.todo('WF-06: workflow failure → job.status=failed with error details')
-test.todo('WF-07: cron schedule creates jobs on trigger')
+test('WF-05: workflow with input params → result contains expected output', async () => { test.skip(true, 'not yet implemented') })
+test('WF-06: workflow failure → job.status=failed with error details', async () => { test.skip(true, 'not yet implemented') })
+test('WF-07: cron schedule creates jobs on trigger', async () => { test.skip(true, 'not yet implemented') })

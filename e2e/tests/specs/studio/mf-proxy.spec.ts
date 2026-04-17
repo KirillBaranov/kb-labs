@@ -50,5 +50,5 @@ test('MF-05: unknown studio asset returns 404 not 500', async ({ request }) => {
   expect([404, 403]).toContain(res.status())
 })
 
-test.todo('MF-06: all remoteEntry URLs in manifest resolve to 200')
-test.todo('MF-07: studio app boots in browser without JS errors (Playwright page test)')
+test('MF-06: all remoteEntry URLs in manifest resolve to 200', async () => { test.skip(true, 'not yet implemented') })
+test('MF-07: studio app boots in browser without JS errors (Playwright page test)', async () => { test.skip(true, 'not yet implemented') })

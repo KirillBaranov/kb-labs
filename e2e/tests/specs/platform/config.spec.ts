@@ -20,5 +20,5 @@ test('CFG-02: platform config has adapters section (no empty config)', async ({ 
   expect('adapters' in body || 'adapterOptions' in body).toBe(true)
 })
 
-test.todo('CFG-03: LLM adapter is configured (not placeholder)')
-test.todo('CFG-04: storage adapter is configured')
+test('CFG-03: LLM adapter is configured (not placeholder)', async () => { test.skip(true, 'not yet implemented') })
+test('CFG-04: storage adapter is configured', async () => { test.skip(true, 'not yet implemented') })

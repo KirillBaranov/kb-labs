@@ -64,5 +64,5 @@ test('RT-03: gateway forwards Connection/Upgrade headers (not stripped)', async 
   expect(res.status()).not.toBe(502) // 502 = proxy didn't forward the upgrade
 })
 
-test.todo('RT-04: workflow status updates delivered over WS in real-time')
-test.todo('RT-05: SSE reconnects after gateway restart within 5s')
+test('RT-04: workflow status updates delivered over WS in real-time', async () => { test.skip(true, 'not yet implemented') })
+test('RT-05: SSE reconnects after gateway restart within 5s', async () => { test.skip(true, 'not yet implemented') })

@@ -25,6 +25,6 @@ test('GW-04: /health is public (no auth required)', async ({ request }) => {
   expect(res.status()).toBe(200)
 })
 
-test.todo('GW-05: valid token → request passes through to upstream')
-test.todo('GW-06: expired token → 401 with refresh hint')
-test.todo('GW-07: auth/register → auth/token → authenticated request succeeds')
+test('GW-05: valid token → request passes through to upstream', async () => { test.skip(true, 'not yet implemented') })
+test('GW-06: expired token → 401 with refresh hint', async () => { test.skip(true, 'not yet implemented') })
+test('GW-07: auth/register → auth/token → authenticated request succeeds', async () => { test.skip(true, 'not yet implemented') })

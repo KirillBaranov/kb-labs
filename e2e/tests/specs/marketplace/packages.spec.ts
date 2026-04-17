@@ -35,5 +35,5 @@ test('MKT-03: install and uninstall a test package', async ({ request }) => {
   expect(found).toBe(true)
 })
 
-test.todo('MKT-04: install entity from remote registry')
-test.todo('MKT-05: disable package → commands disappear from CLI')
+test('MKT-04: install entity from remote registry', async () => { test.skip(true, 'not yet implemented') })
+test('MKT-05: disable package → commands disappear from CLI', async () => { test.skip(true, 'not yet implemented') })

@@ -48,5 +48,5 @@ test('WFD-04: workflow found by name from .kb/workflows is runnable', async ({ r
   expect(run.status()).toBeOneOf([200, 201, 202])
 })
 
-test.todo('WFD-05: workflow defined in projectRoot/.kb/workflows overrides platformRoot definition')
-test.todo('WFD-06: invalid workflow YAML in .kb/workflows is reported in /ready diagnostics')
+test('WFD-05: workflow defined in projectRoot/.kb/workflows overrides platformRoot definition', async () => { test.skip(true, 'not yet implemented') })
+test('WFD-06: invalid workflow YAML in .kb/workflows is reported in /ready diagnostics', async () => { test.skip(true, 'not yet implemented') })

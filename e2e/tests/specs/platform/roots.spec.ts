@@ -37,6 +37,6 @@ test('ROOT-03: plugin registry uses projectRoot for local plugin discovery', asy
   expect(pluginList.length).toBeGreaterThan(0)
 })
 
-test.todo('ROOT-04: start with custom projectRoot env var → config reflects that root')
-test.todo('ROOT-05: workflow daemon discovers .kb/workflows from projectRoot not platformRoot')
-test.todo('ROOT-06: marketplace lock file is read from projectRoot/.kb/marketplace.lock')
+test('ROOT-04: start with custom projectRoot env var → config reflects that root', async () => { test.skip(true, 'not yet implemented') })
+test('ROOT-05: workflow daemon discovers .kb/workflows from projectRoot not platformRoot', async () => { test.skip(true, 'not yet implemented') })
+test('ROOT-06: marketplace lock file is read from projectRoot/.kb/marketplace.lock', async () => { test.skip(true, 'not yet implemented') })
