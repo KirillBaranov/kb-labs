@@ -137,6 +137,32 @@ else
   fail "plugin run" "unexpected output: $HELLO_OUT"
 fi
 
+# ── Step 10: Update platform ──────────────────────────────────────────
+echo "── Step 10: Update platform"
+cd /tmp/work/my-project
+if kb-create update --yes > /tmp/update.log 2>&1; then
+  # Verify packages were refreshed — lock file must be updated
+  if [ -f .kb/marketplace.lock ]; then
+    pass "kb-create update (lock file present)"
+  else
+    fail "kb-create update" "lock file missing after update"
+  fi
+else
+  fail "kb-create update" "command failed"
+  tail -20 /tmp/update.log
+fi
+
+# Verify core plugins still discoverable after update
+if kb --help > /tmp/help-post-update.log 2>&1; then
+  if grep -q "commit" /tmp/help-post-update.log && grep -q "scaffold" /tmp/help-post-update.log; then
+    pass "plugins intact after update"
+  else
+    fail "post-update plugins" "expected plugins missing from kb --help"
+  fi
+else
+  fail "post-update kb --help" "command failed after update"
+fi
+
 # ── Summary ───────────────────────────────────────────────────────────
 echo ""
 echo "════════════════════════════════════════"

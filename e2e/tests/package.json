@@ -1,0 +1,18 @@
+{
+  "name": "@kb-labs/e2e",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "test":            "playwright test",
+    "test:services":   "playwright test specs/services",
+    "test:plugins":    "playwright test specs/plugins",
+    "test:workflows":  "playwright test specs/workflows",
+    "test:studio":     "playwright test specs/studio",
+    "test:adapters":   "playwright test specs/adapters",
+    "report":          "playwright show-report report"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "typescript": "^5.4.0"
+  }
+}
