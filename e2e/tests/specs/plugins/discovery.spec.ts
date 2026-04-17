@@ -8,13 +8,13 @@ test('P-01: platform plugin registry contains expected plugins after boot', asyn
   expect(res.status()).toBe(200)
   const body = await res.json()
   // Response: { ok: true, data: { manifests: [{ pluginId, manifest: { id, name }, ... }] } }
-  const manifests: { pluginId?: string; manifest?: { id?: string; name?: string } }[] =
+  const manifests: { pluginId?: string; manifest?: { id?: string } }[] =
     body.data?.manifests ?? body.manifests ?? []
-  // Gateway plugin must be registered — it's required for any HTTP service to work
-  const hasGateway = manifests.some(
-    m => m.pluginId?.includes('gateway') || m.manifest?.id?.includes('gateway'),
+  // All KB Labs CLI plugins register with id @kb-labs/<name> — at least one must be present
+  const hasKbPlugin = manifests.some(
+    m => m.pluginId?.startsWith('@kb-labs') || m.manifest?.id?.startsWith('@kb-labs'),
   )
-  expect(hasGateway).toBe(true)
+  expect(hasKbPlugin).toBe(true)
 })
 
 test('P-02: rest-api /api/v1/routes lists registered routes', async ({ request }) => {

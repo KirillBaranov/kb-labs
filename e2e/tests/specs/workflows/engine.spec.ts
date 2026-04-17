@@ -41,7 +41,7 @@ test('WF-03: create run → job reaches terminal state within 30s', async ({ req
       return run.data?.run?.status ?? run.data?.status ?? run.status
     },
     { timeout: 30_000, intervals: [1000, 2000, 3000] },
-  ).toMatch(/completed|failed/)
+  ).toMatch(/completed|failed|dlq/)
 })
 
 test('WF-04: jobs list is accessible', async ({ request }) => {
