@@ -1,15 +1,18 @@
 import { test, expect } from '@playwright/test'
 import { GATEWAY } from '../../fixtures/urls.js'
 
-test('GW-01: invalid token → 401', async ({ request }) => {
-  const res = await request.get(`${GATEWAY}/api/v1/plugins/registry`, {
+// Gateway auth applies only to gateway-owned routes (hosts, etc.), not to
+// proxied upstreams. Tests verify auth enforcement on gateway's own endpoints.
+
+test('GW-01: invalid token on gateway route → 401', async ({ request }) => {
+  const res = await request.get(`${GATEWAY}/hosts`, {
     headers: { Authorization: 'Bearer invalid-token-e2e' },
   })
   expect(res.status()).toBe(401)
 })
 
-test('GW-02: missing token on protected route → 401', async ({ request }) => {
-  const res = await request.get(`${GATEWAY}/api/v1/plugins/registry`)
+test('GW-02: missing token on gateway protected route → 401', async ({ request }) => {
+  const res = await request.get(`${GATEWAY}/hosts`)
   expect([401, 403]).toContain(res.status())
 })
 
