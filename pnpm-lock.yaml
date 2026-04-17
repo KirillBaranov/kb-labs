@@ -2490,6 +2490,9 @@ importers:
       '@fastify/websocket':
         specifier: ^11.0.1
         version: 11.2.0
+      '@kb-labs/adapters-analytics-sqlite':
+        specifier: workspace:*
+        version: link:../../../adapters/analytics-sqlite
       '@kb-labs/adapters-eventbus-cache':
         specifier: workspace:*
         version: link:../../../adapters/eventbus-cache
@@ -5472,6 +5475,9 @@ importers:
       gray-matter:
         specifier: ^4.0.3
         version: 4.0.3
+      lucide-react:
+        specifier: ^0.468.0
+        version: 0.468.0(react@18.3.1)
       next:
         specifier: ^14.2.15
         version: 14.2.35(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
