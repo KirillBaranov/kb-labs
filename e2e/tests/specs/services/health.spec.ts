@@ -14,6 +14,8 @@ for (const svc of services) {
     const res = await request.get(`${svc.url}${svc.path}`)
     expect(res.status()).toBe(200)
     const body = await res.json()
-    expect(body.status).toMatch(/ok|healthy|ready/)
+    // REST API wraps in { ok, data }; others return status directly
+    const status = body.data?.status ?? body.status
+    expect(status).toMatch(/ok|healthy|ready/)
   })
 }
