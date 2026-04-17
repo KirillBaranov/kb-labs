@@ -1,0 +1,42 @@
+# KB Labs E2E — Docker Compose
+#
+# Spins up the full platform (installed from kblabs.ru) and runs Playwright
+# tests against it. No external infra needed — state-daemon is in-memory.
+#
+# Usage:
+#   docker compose -f e2e/docker-compose.yml up --build --abort-on-container-exit
+#   docker compose -f e2e/docker-compose.yml run --rm tests pnpm test:services
+
+services:
+  platform:
+    build:
+      context: ../
+      dockerfile: e2e/platform/Dockerfile
+    ports:
+      - "4000:4000"   # gateway
+      - "5050:5050"   # rest-api
+      - "5070:5070"   # marketplace
+      - "7777:7777"   # state-daemon
+      - "7778:7778"   # workflow
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:4000/health"]
+      start_period: 180s
+      interval: 5s
+      timeout: 5s
+      retries: 40
+
+  tests:
+    build:
+      context: ./tests
+    depends_on:
+      platform:
+        condition: service_healthy
+    environment:
+      GATEWAY_URL:     http://platform:4000
+      REST_URL:        http://platform:5050
+      MARKETPLACE_URL: http://platform:5070
+      WORKFLOW_URL:    http://platform:7778
+      STATE_URL:       http://platform:7777
+      CHECKLIST_OUT:   /tests/report/CHECKLIST.md
+    volumes:
+      - ./tests/report:/tests/report
