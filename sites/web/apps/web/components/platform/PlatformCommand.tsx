@@ -1,7 +1,9 @@
 'use client';
 
+import { useCallback } from 'react';
 import { usePlatform, OS } from '@/hooks/usePlatform';
 import { CopyButton } from '@/components/CopyButton';
+import { useAnalytics } from '@/hooks/useAnalytics';
 import s from './platform.module.css';
 
 export interface PlatformCommands {
@@ -29,17 +31,22 @@ const LABELS: Record<OS, string> = {
  */
 export function PlatformCommand({ commands, className }: Props) {
   const os = usePlatform();
+  const analytics = useAnalytics();
 
   const isWindows = os === 'windows';
   const cmd = isWindows && commands.windows ? commands.windows : commands.unix;
   const label = os ? LABELS[os] : 'macOS / Linux';
+
+  const handleCopy = useCallback(() => {
+    analytics.trackInstallCopy(cmd);
+  }, [analytics, cmd]);
 
   return (
     <div className={[s.wrap, className].filter(Boolean).join(' ')}>
       <span className={s.label}>{label}</span>
       <div className={s.codeWrap}>
         <pre className={s.codeBlock}><code>{cmd}</code></pre>
-        <CopyButton text={cmd} />
+        <CopyButton text={cmd} onCopy={handleCopy} />
       </div>
     </div>
   );

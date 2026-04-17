@@ -46,10 +46,10 @@ export function HeroSection({ title, description, body, cta1, cta2, cta1Href, ct
         <p className="subtitle">{description}</p>
         {body && <p className="hero-body">{body}</p>}
         <div className="cta-row">
-          <Link className="btn primary" href={cta1Href}>
+          <Link className="btn primary" href={cta1Href} data-analytics="install_cta">
             {cta1}
           </Link>
-          <Link className="btn secondary" href={cta2Href} target="_blank" rel="noopener noreferrer">
+          <Link className="btn secondary" href={cta2Href} data-analytics="docs_cta" target="_blank" rel="noopener noreferrer">
             {cta2}
           </Link>
         </div>

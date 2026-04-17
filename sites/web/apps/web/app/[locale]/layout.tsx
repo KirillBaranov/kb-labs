@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
+import { Analytics } from '@/components/Analytics';
 import { CookieBanner } from '@/components/CookieBanner';
 import { ScrollReveal } from '@/components/ScrollReveal';
 import { routing } from '@/i18n/routing';
@@ -87,6 +88,7 @@ export default async function LocaleLayout({ children, params }: Props) {
       <body className={`${headingFont.variable} ${bodyFont.variable}`}>
         <NextIntlClientProvider messages={messages}>
           {children}
+          <Analytics locale={locale} />
           <CookieBanner />
           <ScrollReveal />
         </NextIntlClientProvider>
