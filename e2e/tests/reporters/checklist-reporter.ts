@@ -22,7 +22,7 @@ export default class ChecklistReporter implements Reporter {
 
   onTestEnd(test: TestCase, result: TestResult): void {
     const specFile = path.relative(
-      path.join(import.meta.dirname, '..'),
+      path.join(__dirname, '..'),
       test.location.file,
     )
 
@@ -80,7 +80,7 @@ export default class ChecklistReporter implements Reporter {
       lines.push('')
     }
 
-    const out = process.env.CHECKLIST_OUT ?? path.join(import.meta.dirname, '../../CHECKLIST.md')
+    const out = process.env.CHECKLIST_OUT ?? path.join(__dirname, '../../CHECKLIST.md')
     fs.writeFileSync(out, lines.join('\n'))
     console.log(`\nChecklist written → ${out}`)
   }
