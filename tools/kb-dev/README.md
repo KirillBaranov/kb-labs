@@ -8,6 +8,22 @@
 
 kb-dev manages local development services with proper process tracking, health checks, dependency ordering, and auto-restart. It replaces hand-rolled `Makefile` / `dev.sh` scripts with a single Go binary that works in any project.
 
+## Why not a Makefile?
+
+A Makefile doesn't know if postgres is ready before starting your API — you either sleep 5s and hope, or write a polling loop yourself. kb-dev runs health probes (HTTP, TCP, command) and only starts dependents when the dependency is actually alive.
+
+Makefile also can't reliably kill a service tree. `lsof -i :3000 | kill` leaves child processes behind. kb-dev spawns with `Setpgid` and kills the whole process group.
+
+| Aspect | Makefile / dev.sh | kb-dev |
+|--------|-------------------|--------|
+| Process tracking | `lsof` port check | PID from `cmd.Start()` |
+| Kill mechanism | Recursive `pgrep -P` | `syscall.Kill(-pgid)` (whole tree) |
+| Health check | None | HTTP/TCP/command probes with latency |
+| Auto-restart | None | Watchdog with exponential backoff |
+| Parallel start | Serial loop | Goroutine per service, toposort layers |
+| Concurrent safety | None | `flock` cross-process lock |
+| Shell dependency | bash, jq, curl, lsof | Single Go binary |
+
 ## Features
 
 - ✅ **Process group management** — real PID tracking via `Setpgid`, no lsof guessing
@@ -418,21 +434,6 @@ make lint       # golangci-lint
 make cover      # coverage report (opens coverage.html)
 make snapshot   # cross-platform build via goreleaser
 ```
-
-## Comparison
-
-| Aspect | Makefile / dev.sh | kb-dev |
-|--------|-------------------|--------|
-| Process tracking | `lsof` port check | PID from `cmd.Start()` |
-| Kill mechanism | Recursive `pgrep -P` | `syscall.Kill(-pgid)` (whole tree) |
-| Health check | None | HTTP/TCP/command probes with latency |
-| Auto-restart | None | Watchdog with exponential backoff |
-| Parallel start | Serial loop | Goroutine per service, toposort layers |
-| Agent support | None | `ensure`, `ready`, `watch`, `depsState`, `hint` |
-| PID files | Bare number | JSON (user, timestamp, command) |
-| Concurrent safety | None | `flock` cross-process lock |
-| Resource monitoring | None | CPU% + memory per service |
-| Shell dependency | bash, jq, curl, lsof | Single Go binary |
 
 ## License
 

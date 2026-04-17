@@ -2246,8 +2246,8 @@
     "config": {
       "title": "Один файл. Приложения и инфра вместе.",
       "description": "Положите .kb/deploy.yaml в репозиторий. kb-deploy прочитает и решит что собрать, что запушить и что перезапустить — по SSH, на целевом хосте.",
-      "note": "Этот же файл потом читает kb-monitor. Деплой и наблюдение — из одного источника правды.",
-      "example": "registry: ghcr.io/your-org\n\ntargets:\n  api:\n    path: apps/api\n    dockerfile: Dockerfile\n    host: prod-1\n    compose: infra/compose/api.yml\n    health: http://localhost:3000/health\n\n  web:\n    path: apps/web\n    host: prod-1\n    compose: infra/compose/web.yml\n\ninfrastructure:\n  postgres:\n    host: prod-1\n    image: postgres:16\n    volumes:\n      - /data/postgres:/var/lib/postgresql/data\n\n  redis:\n    host: prod-1\n    image: redis:7"
+      "note": "SSH_KEY — имя env-переменной с PEM-ключом. Локально — в .env, в CI — как секрет.",
+      "example": "registry: ghcr.io/your-org\n\ntargets:\n  api:\n    watch: [apps/api/**]\n    image: my-project/api\n    ssh:\n      host: ${SSH_HOST}\n      user: ${SSH_USER}\n      key_env: SSH_KEY\n    remote:\n      compose_file: ~/app/docker-compose.yml\n      service: api\n\n  web:\n    watch: [apps/web/**]\n    image: my-project/web\n    ssh:\n      host: ${SSH_HOST}\n      user: ${SSH_USER}\n      key_env: SSH_KEY\n    remote:\n      compose_file: ~/app/docker-compose.yml\n      service: web\n\ninfrastructure:\n  postgres:\n    type: docker-image\n    image: postgres:16\n    ssh:\n      host: ${SSH_HOST}\n      user: ${SSH_USER}\n      key_env: SSH_KEY\n    volumes:\n      - postgres_data:/var/lib/postgresql/data\n    restart: unless-stopped\n\n  redis:\n    type: docker-image\n    image: redis:7-alpine\n    ssh:\n      host: ${SSH_HOST}\n      user: ${SSH_USER}\n      key_env: SSH_KEY\n    restart: unless-stopped"
     },
     "features": {
       "title": "Как это работает",
@@ -2394,7 +2394,7 @@
       "title": "Тот же файл, что у kb-deploy.",
       "description": "kb-monitor читает .kb/deploy.yaml — тот же, из которого раскатываются сервисы. Никаких вторых источников правды и параллельных инвентарей.",
       "note": "Деплой и наблюдение по дизайну идут в паре. Если kb-deploy знает про цель, kb-monitor знает про неё тоже.",
-      "example": "registry: ghcr.io/your-org\n\ntargets:\n  api:\n    path: apps/api\n    host: prod-1\n    compose: infra/compose/api.yml\n    health: http://localhost:3000/health\n\n  web:\n    path: apps/web\n    host: prod-1\n    compose: infra/compose/web.yml\n\ninfrastructure:\n  postgres:\n    host: prod-1\n    image: postgres:16\n\n  redis:\n    host: prod-1\n    image: redis:7"
+      "example": "registry: ghcr.io/your-org\n\ntargets:\n  api:\n    watch: [apps/api/**]\n    image: my-project/api\n    ssh:\n      host: ${SSH_HOST}\n      user: ${SSH_USER}\n      key_env: SSH_KEY\n    remote:\n      compose_file: ~/app/docker-compose.yml\n      service: api\n    permissions:\n      logs: true\n      health: true\n      exec: false\n\ninfrastructure:\n  postgres:\n    type: docker-image\n    image: postgres:16\n    ssh:\n      host: ${SSH_HOST}\n      user: ${SSH_USER}\n      key_env: SSH_KEY\n    restart: unless-stopped"
     },
     "features": {
       "title": "Как это работает",
@@ -3076,7 +3076,7 @@
       "title": "Один файл, любой проект.",
       "description": "Положите devservices.yaml в корень проекта. kb-dev найдёт его автоматически, поднимаясь по директориям от текущей.",
       "note": "Проекты KB Labs используют .kb/devservices.yaml — тот же формат, другое место.",
-      "example": "name: my-project\n\nservices:\n  postgres:\n    type: docker\n    command: docker run --rm -p 5432:5432 postgres:16\n    health_check: http://localhost:5432\n    port: 5432\n\n  api:\n    command: pnpm dev\n    port: 3000\n    health_check: http://localhost:3000/health\n    depends_on: [postgres]\n\n  worker:\n    command: pnpm worker\n    depends_on: [postgres]"
+      "example": "name: my-project\n\nservices:\n  postgres:\n    type: docker\n    command: docker run --rm -p 5432:5432 postgres:16\n    health_check: localhost:5432\n    port: 5432\n\n  api:\n    command: pnpm dev\n    port: 3000\n    health_check: http://localhost:3000/health\n    depends_on: [postgres]\n\n  worker:\n    command: pnpm worker\n    depends_on: [postgres]"
     },
     "features": {
       "title": "Как это работает",
@@ -3216,7 +3216,7 @@
       "title": "Один файл конфигурации.",
       "description": "Положите devkit.yaml в корень репозитория. Объявите задачи и пресеты один раз — kb-devkit найдёт все пакеты автоматически.",
       "note": "Задачи поддерживают зависимости (^build = сначала собрать все deps), content-addressable кэш и параллельное выполнение. Используйте cache: false для задач с побочными эффектами.",
-      "example": "version: 1\n\nworkspace:\n  packageManager: pnpm\n\ntasks:\n  build:\n    command: tsup\n    inputs: [\"src/**\", \"tsup.config.ts\", \"tsconfig*.json\"]\n    outputs: [\"dist/**\"]\n    deps: [\"^build\"]\n\n  lint:\n    command: eslint src/\n    inputs: [\"src/**\", \"eslint.config.*\"]\n    outputs: []\n\n  test:\n    command: vitest run --passWithNoTests\n    inputs: [\"src/**\", \"test/**\"]\n    outputs: [\"coverage/**\"]\n    deps: [\"build\"]\n\n  deploy:\n    command: ./scripts/deploy.sh\n    inputs: [\"dist/**\"]\n    cache: false\n\naffected:\n  strategy: submodules"
+      "example": "schemaVersion: 2\n\nworkspace:\n  discovery:\n    - \"packages/**\"\n  categories:\n    default:\n      match: [\"packages/**\"]\n      preset: node-lib\n\ntasks:\n  build:\n    command: tsup\n    inputs: [\"src/**\", \"tsup.config.ts\", \"tsconfig*.json\"]\n    outputs: [\"dist/**\"]\n    deps: [\"^build\"]\n\n  lint:\n    command: eslint src/\n    inputs: [\"src/**\", \"eslint.config.*\"]\n    outputs: []\n\n  test:\n    command: vitest run --passWithNoTests\n    inputs: [\"src/**\", \"test/**\"]\n    outputs: [\"coverage/**\"]\n    deps: [\"build\"]\n\n  deploy:\n    command: ./scripts/deploy.sh\n    inputs: [\"dist/**\"]\n    cache: false\n\naffected:\n  strategy: git"
     },
     "features": {
       "title": "Как это работает",
