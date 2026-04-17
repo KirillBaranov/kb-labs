@@ -1,12 +1,16 @@
 import { test, expect } from '@playwright/test'
 import { GATEWAY, REST } from '../../fixtures/urls.js'
 
-test('P-01: gateway /hosts endpoint is registered (auth required)', async ({ request }) => {
-  const res = await request.get(`${GATEWAY}/hosts`)
-  // 401 = endpoint exists and auth is enforced (correct behavior)
-  // 200 = endpoint accessible (no auth in this environment)
-  expect([200, 401]).toContain(res.status())
-  expect(res.status()).not.toBe(404) // must be a registered route
+test('P-01: platform plugin registry contains expected plugins after boot', async ({ request }) => {
+  // Tests plugin discovery via REST (no auth required).
+  // Gateway auth + /hosts list tested separately in gateway/auth.spec.ts.
+  const res = await request.get(`${REST}/api/v1/plugins`)
+  expect(res.status()).toBe(200)
+  const body = await res.json()
+  const manifests: { id?: string; name?: string }[] = body.data?.manifests ?? body.manifests ?? []
+  // Gateway plugin must be registered — it's required for any HTTP service to work
+  const hasGateway = manifests.some(m => m.id?.includes('gateway') || m.name?.includes('gateway'))
+  expect(hasGateway).toBe(true)
 })
 
 test('P-02: rest-api /api/v1/routes lists registered routes', async ({ request }) => {
