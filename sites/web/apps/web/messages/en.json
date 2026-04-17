@@ -883,12 +883,12 @@
     },
     "hero": {
       "title": "Open the closed",
-      "subtitle": "Developer infrastructure that runs on your machine. Your code, your data, your rules — and every piece replaceable without a rewrite."
+      "subtitle": "An open-source control plane for developers: workflow engine, AI gateway, plugin system. For teams that want to understand — and own — every layer of their stack."
     },
     "founder": {
       "label": "Founder",
       "name": "Kirill Baranov",
-      "bio": "Built KB Labs out of frustration. Every layer of the stack was quietly locking down. I wanted infrastructure designed to be replaced — not depended on.",
+      "bio": "Solo engineer. Building KB Labs in public since 2024. Before this, I worked in-house and watched the same pattern repeat: infrastructure grows, gets acquired, becomes a dependency. Decided to build differently.",
       "links": {
         "site": "k-baranov.ru",
         "github": "GitHub",
@@ -898,15 +898,15 @@
     "manifesto": [
       "Every vendor locks you in gradually. It starts with a smooth onboarding, competitive pricing, great integrations — until the day switching costs more than staying. That's not a technical problem. It's a business model.",
       "The second problem is less obvious. Large companies have entire engineering teams building internal developer platforms — AI orchestration, workflow engines, API gateways, observability stacks. All of that makes everything else faster. Small teams don't have that. They piece together SaaS subscriptions, each one owning another slice of the stack, each one extracting rent.",
-      "KB Labs is the answer to both. Infrastructure that runs on your own machine, designed from the ground up to be replaced. Swap the LLM provider, the vector store, the workflow backend — with a config line, not a migration project. Your business logic stays exactly as you wrote it.",
-      "We call this <strong>Open the closed</strong>. Every system boundary is designed to be opened — inspected, replaced, or extended — without fear. The concrete implementation is always a detail. The contract is what lasts."
+      "KB Labs is the answer to both. Not another SaaS layer on top of AI APIs — an infrastructure layer you install, configure, and own. One that was designed from the start to be replaced at every boundary without a migration project.",
+      "<strong>Open the closed</strong> is not a tagline. It's a design requirement: every system boundary must be open for inspection, replacement, and extension. The concrete implementation is always a detail. The typed contract is what lasts."
     ],
     "principlesTitle": "How we build",
     "principles": [
       {
         "num": "01",
-        "title": "Every abstraction has a clear exit",
-        "body": "Swap the LLM provider, the vector store, the workflow backend — without rewriting your business logic. Lock-in is a design choice. We choose against it."
+        "title": "The boundary is enforced by the build",
+        "body": "A plugin cannot import an adapter — the build fails. That's not a convention or a code review note: adding `@kb-labs/adapter-redis` to a plugin's dependencies violates the layer graph and breaks the build. The contract is the only connection point."
       },
       {
         "num": "02",
@@ -915,8 +915,8 @@
       },
       {
         "num": "03",
-        "title": "Contracts over implementations",
-        "body": "Typed interfaces are first-class citizens. Your code depends on the contract, not the vendor. The implementation behind it can change, scale, or be replaced at any time."
+        "title": "12 contracts across the platform",
+        "body": "ILLM, ICache, IStorage, IVectorStore, IEventBus, ILogger — and six more. Each describes a capability, not a provider. All 12 converge in a single PlatformContainer — the only gateway through which plugins access infrastructure."
       },
       {
         "num": "04",
@@ -936,9 +936,9 @@
     ],
     "originLabel": "Origin",
     "origin": [
-      "I built KB Labs out of frustration. Every layer of my stack was quietly locking down — auth changed pricing, the LLM gateway got acquired, the workflow tool introduced a new tier. The pattern was always the same: get you dependent, then extract rent.",
-      "I didn't want to build a replacement for each service. I wanted infrastructure <strong>designed to be replaced</strong> — where swapping a vendor is a config line, not a migration project.",
-      "The second thing I noticed: large engineering teams have internal platforms that make everything else faster. KB Labs is my attempt to make that available to everyone else — the solo developer, the small team, the company that can't afford to be locked in."
+      "KB Labs started in 2024 as a personal project: a better way to run multiple AI agents together, with shared state and controlled tool access. The first version was a monolith. The second broke on the first plugin.",
+      "The problem wasn't the code — it was the structure. A plugin system with a rigid interface creates coupling you can't escape. That led to duck typing for plugins and a layered architecture with typed contracts at every boundary.",
+      "Today KB Labs is 145+ packages in one monorepo, its own release pipeline, and Go binaries for building and managing services. Public release is scheduled for summer 2026. If you want to try it sooner — install from npm, the source is open."
     ],
     "cta": {
       "title": "Build on something that stays open.",
