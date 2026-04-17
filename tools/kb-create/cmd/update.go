@@ -17,6 +17,7 @@ import (
 	"github.com/kb-labs/create/internal/manifest"
 	"github.com/kb-labs/create/internal/pm"
 	"github.com/kb-labs/create/internal/selfupdate"
+	"github.com/kb-labs/create/internal/telemetry"
 	"github.com/kb-labs/create/internal/userstate"
 )
 
@@ -56,10 +57,20 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		Log: log,
 	}
 
+	// Init telemetry from the platform config. Non-fatal: if config is
+	// unreadable (e.g. first run before install) we get a Nop client.
+	var tc *telemetry.Client
+	if cfg, cfgErr := config.Read(platformDir); cfgErr == nil {
+		tc = initTelemetry(rootCmd.Version, &cfg.Telemetry)
+	} else {
+		tc = telemetry.Nop()
+	}
+	defer tc.Flush()
+
 	out.Info("Checking for updates...")
 
 	// Self-update kb-create binary before touching platform packages.
-	if didSelfUpdate := runSelfUpdate(out); didSelfUpdate {
+	if didSelfUpdate := runSelfUpdate(out, tc); didSelfUpdate {
 		// Re-exec with the freshly downloaded binary so refreshDerivedConfigs
 		// and all subsequent logic run with the new code.
 		exe, exeErr := selfupdate.ExecutablePath()
@@ -82,15 +93,30 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	printDiff(out, diff)
 
 	if !confirm("Apply updates? [Y/n] ") {
+		tc.Track("update_cancelled", nil)
 		out.Warn("Cancelled.")
 		return nil
 	}
 
+	tc.Track("update_started", map[string]string{
+		"packages_added":   fmt.Sprintf("%d", len(diff.Added)),
+		"packages_updated": fmt.Sprintf("%d", len(diff.Updated)),
+		"packages_removed": fmt.Sprintf("%d", len(diff.Removed)),
+	})
+	start := time.Now()
+
 	result, err := ins.Update(platformDir, m)
 	if err != nil {
+		tc.Track("update_failed", map[string]string{"error": err.Error()})
 		return fmt.Errorf("update failed: %w", err)
 	}
 
+	tc.Track("update_completed", map[string]string{
+		"duration_ms":      fmt.Sprintf("%d", time.Since(start).Milliseconds()),
+		"packages_added":   fmt.Sprintf("%d", len(diff.Added)),
+		"packages_updated": fmt.Sprintf("%d", len(diff.Updated)),
+		"packages_removed": fmt.Sprintf("%d", len(diff.Removed)),
+	})
 	out.OK(fmt.Sprintf("Update complete (%s)", result.Duration.Round(100*time.Millisecond)))
 
 	// Refresh Claude Code assets from the just-updated devkit. Non-fatal:
@@ -154,7 +180,7 @@ func confirm(prompt string) bool {
 
 // runSelfUpdate checks GitHub for a newer *-binaries release and replaces the
 // running binary if one is found. Returns true when the binary was replaced.
-func runSelfUpdate(out output) bool {
+func runSelfUpdate(out output, tc *telemetry.Client) bool {
 	const repo = "KirillBaranov/kb-labs"
 	currentVersion := rootCmd.Version
 
@@ -172,10 +198,19 @@ func runSelfUpdate(out output) bool {
 
 	result, err := selfupdate.Apply(repo, latestTag, currentVersion)
 	if err != nil {
+		tc.Track("self_update_failed", map[string]string{
+			"from_version": currentVersion,
+			"to_version":   latestTag,
+			"error":        err.Error(),
+		})
 		out.Warn(fmt.Sprintf("self-update failed: %v (continuing with current version)", err))
 		return false
 	}
 
+	tc.Track("self_update_completed", map[string]string{
+		"from_version": result.PreviousVersion,
+		"to_version":   result.LatestVersion,
+	})
 	out.OK(fmt.Sprintf("kb-create updated to %s", result.LatestVersion))
 	return true
 }
