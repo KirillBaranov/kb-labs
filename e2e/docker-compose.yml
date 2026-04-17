@@ -9,6 +9,7 @@
 
 services:
   platform:
+    image: kb-e2e-ci-platform:latest
     build:
       context: ../
       dockerfile: e2e/platform/Dockerfile
@@ -26,6 +27,7 @@ services:
       retries: 40
 
   tests:
+    image: kb-e2e-ci-tests:latest
     build:
       context: ./tests
     depends_on:
