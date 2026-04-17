@@ -15,7 +15,7 @@ COPY --chown=kb:nodejs plugins/gateway/app/.kb/kb.config.prod.json .kb/kb.config
 # Marketplace lock with node_modules-relative adapter paths
 COPY --chown=kb:nodejs plugins/gateway/app/.kb/marketplace.prod.lock .kb/marketplace.lock
 
-RUN mkdir -p .kb/database .kb/storage && chown -R kb:nodejs .kb
+RUN mkdir -p .kb/database .kb/storage .kb/analytics && chown -R kb:nodejs .kb
 
 USER kb
 
