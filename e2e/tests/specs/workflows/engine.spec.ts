@@ -31,13 +31,13 @@ test('WF-03: create run → job reaches terminal state within 30s', async ({ req
   const create = await request.post(`${WORKFLOW}/api/v1/workflows/${id}/runs`, { data: {} })
   expect([200, 201]).toContain(create.status())
   const createBody = await create.json()
-  const jobId = createBody.data?.jobId ?? createBody.data?.id ?? createBody.jobId
+  const runId = createBody.data?.runId ?? createBody.data?.id ?? createBody.runId
 
   await expect.poll(
     async () => {
-      const res = await request.get(`${WORKFLOW}/api/v1/jobs/${jobId}`)
-      const job = await res.json()
-      return job.data?.status ?? job.status
+      const res = await request.get(`${WORKFLOW}/api/v1/runs/${runId}`)
+      const run = await res.json()
+      return run.data?.status ?? run.status
     },
     { timeout: 30_000, intervals: [1000, 2000, 3000] },
   ).toMatch(/completed|failed/)
