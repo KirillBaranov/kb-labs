@@ -12,6 +12,9 @@
       "eventBus": "@kb-labs/adapters-eventbus-cache"
     },
     "adapterOptions": {
+      "embeddings": {
+        "baseURL": "${OPENAI_PROXY_URL}"
+      },
       "llm": {
         "defaultTier": "small",
         "baseURL": "${OPENAI_PROXY_URL}",
