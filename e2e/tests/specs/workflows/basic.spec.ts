@@ -1,8 +1,8 @@
 import { test, expect } from '@playwright/test'
 import { WORKFLOW } from '../../fixtures/urls.js'
 
-// Workflow job API: POST /api/v1/workflows/:id/runs, GET /api/v1/jobs/:jobId
-// Responses: { ok: true, data: { jobId, ... } }
+// Workflow runs API: POST /api/v1/workflows/:id/runs → { data: { runId, status } }
+// Run status: GET /api/v1/runs/:runId → { data: { status, ... } }
 
 async function getFirstWorkflow(request: Parameters<Parameters<typeof test>[1]>[0]['request']) {
   const res = await request.get(`${WORKFLOW}/api/v1/workflows`)
@@ -11,7 +11,7 @@ async function getFirstWorkflow(request: Parameters<Parameters<typeof test>[1]>[
   return Array.isArray(workflows) ? workflows[0] : undefined
 }
 
-test('W-01: create workflow run returns job ID', async ({ request }) => {
+test('W-01: create workflow run returns run ID', async ({ request }) => {
   const first = await getFirstWorkflow(request)
   test.skip(!first, 'No workflows discovered — check .kb/workflows directory')
 
@@ -20,26 +20,26 @@ test('W-01: create workflow run returns job ID', async ({ request }) => {
   expect([200, 201]).toContain(create.status())
 
   const body = await create.json()
-  const jobId = body.data?.jobId ?? body.data?.id ?? body.jobId ?? body.id
-  expect(jobId).toBeTruthy()
+  const runId = body.data?.runId ?? body.data?.id ?? body.runId ?? body.id
+  expect(runId).toBeTruthy()
 
-  const status = await request.get(`${WORKFLOW}/api/v1/jobs/${jobId}`)
+  const status = await request.get(`${WORKFLOW}/api/v1/runs/${runId}`)
   expect(status.status()).toBe(200)
 })
 
-test('W-02: GET /jobs/:id returns job status', async ({ request }) => {
+test('W-02: GET /runs/:id returns run status', async ({ request }) => {
   const first = await getFirstWorkflow(request)
   test.skip(!first, 'No workflows discovered — check .kb/workflows directory')
 
   const id = first!.id ?? first!.name
   const create = await request.post(`${WORKFLOW}/api/v1/workflows/${id}/runs`, { data: {} })
   const createBody = await create.json()
-  const jobId = createBody.data?.jobId ?? createBody.data?.id ?? createBody.jobId
-  test.skip(!jobId, 'Could not create workflow run')
+  const runId = createBody.data?.runId ?? createBody.data?.id ?? createBody.runId
+  test.skip(!runId, 'Could not create workflow run')
 
-  const res = await request.get(`${WORKFLOW}/api/v1/jobs/${jobId}`)
-  const job = await res.json()
-  const status = job.data?.status ?? job.status
+  const res = await request.get(`${WORKFLOW}/api/v1/runs/${runId}`)
+  const run = await res.json()
+  const status = run.data?.status ?? run.status
   expect(status).toMatch(/pending|running|queued|completed/)
 })
 
