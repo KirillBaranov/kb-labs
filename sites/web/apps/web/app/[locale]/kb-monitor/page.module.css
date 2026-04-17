@@ -39,7 +39,7 @@
   flex-wrap: wrap;
   gap: 0.65rem;
   justify-content: center;
-  align-items: center;
+  align-items: flex-end;
 }
 
 .heroCode {
