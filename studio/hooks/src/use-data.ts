@@ -108,7 +108,7 @@ export function useMutateData<TInput = unknown, TOutput = unknown>(
       const url = typeof endpoint === 'function' ? endpoint(input) : endpoint;
       const payload = mapBody ? mapBody(input) : input;
       const hasBody = payload !== undefined && payload !== null;
-      const res = await fetch(`/api${url}`, {
+      const res = await fetch(`${getApiOrigin()}/api${url}`, {
         method,
         headers: hasBody ? { 'Content-Type': 'application/json' } : {},
         body: hasBody ? JSON.stringify(payload) : undefined,
@@ -137,6 +137,21 @@ export function useMutateData<TInput = unknown, TOutput = unknown>(
 
 // ─── Helpers ────────────────────────────────────────────────────────
 
+/**
+ * Returns the API gateway origin from the runtime config injected by server.js.
+ * Falls back to '' (same-origin) when running with a dev proxy.
+ */
+function getApiOrigin(): string {
+  if (typeof window !== 'undefined') {
+    const cfg = (window as Window & { __KB_STUDIO_CONFIG__?: Record<string, string> }).__KB_STUDIO_CONFIG__;
+    const base = cfg?.KB_API_BASE_URL;
+    if (base) {
+      try { return new URL(base).origin; } catch { /* fall through */ }
+    }
+  }
+  return '';
+}
+
 function buildUrl(
   endpoint: string,
   params?: Record<string, string | number | boolean>,
@@ -153,7 +168,7 @@ function buildUrl(
 }
 
 async function fetchJson(endpoint: string): Promise<unknown> {
-  const res = await fetch(`/api${endpoint}`);
+  const res = await fetch(`${getApiOrigin()}/api${endpoint}`);
   if (!res.ok) {
     throw new Error(`GET ${endpoint} failed: ${res.status} ${res.statusText}`);
   }

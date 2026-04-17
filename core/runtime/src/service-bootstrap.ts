@@ -28,6 +28,8 @@ let _initialized = false;
 const _registeredHooks = new Set<string>();
 /** Prevents duplicate SIGTERM/SIGINT handler registration across multiple createServiceBootstrap() calls. */
 let _signalHandlersRegistered = false;
+let _platformRoot: string | undefined;
+let _projectRoot: string | undefined;
 
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
@@ -196,6 +198,9 @@ export async function createServiceBootstrap(
       (globalThis as Record<string, unknown>).__KB_RAW_CONFIG__ = rawConfig;
     }
 
+    _platformRoot = platformRoot;
+    _projectRoot = projectRoot;
+
     // Relative adapter paths (e.g. ".kb/database/kb.sqlite") must resolve
     // against the project root, not the platform installation.
     await initPlatform(platformConfig, projectRoot);
@@ -228,6 +233,24 @@ export async function createServiceBootstrap(
 }
 
 /**
+ * Returns the resolved platform root after createServiceBootstrap() has been called.
+ * In installed mode this is the platform installation directory (e.g. /Users/foo/kb-platform).
+ * In dev-monorepo mode it equals the project root.
+ * Returns undefined before bootstrap completes.
+ */
+export function getPlatformRoot(): string | undefined {
+  return _platformRoot;
+}
+
+/**
+ * Returns the resolved project root after createServiceBootstrap() has been called.
+ * Returns undefined before bootstrap completes.
+ */
+export function getProjectRoot(): string | undefined {
+  return _projectRoot;
+}
+
+/**
  * Reset bootstrap state — for use in tests only.
  * Also calls `resetPlatform()` from the loader.
  * @internal
@@ -238,6 +261,8 @@ export function resetServiceBootstrap(): void {
   // Reset signal handler flag so test suites calling resetServiceBootstrap()
   // get a clean slate and can re-register handlers in subsequent bootstrap calls.
   _signalHandlersRegistered = false;
+  _platformRoot = undefined;
+  _projectRoot = undefined;
   resetPlatform();
 }
 

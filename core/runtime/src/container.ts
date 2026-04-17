@@ -20,6 +20,7 @@ import type {
   IResourceManager,
   ILogReader,
   ILogPersistence,
+  ILogBuffer,
 } from '@kb-labs/core-platform';
 import type { IExecutionBackend } from '@kb-labs/core-contracts';
 import type { ISQLDatabase, IDocumentDatabase } from '@kb-labs/core-platform/adapters';
@@ -489,7 +490,7 @@ export class PlatformContainer {
   get logs(): ILogReader {
     if (!this._logQueryService) {
       const persistence = this.getAdapter<ILogPersistence>('logPersistence');
-      const buffer = this.logger.getLogBuffer?.();
+      const buffer = this.logger.getLogBuffer?.() ?? this.getAdapter<ILogBuffer>('logRingBuffer');
 
       this._logQueryService = new HybridLogReader(persistence, buffer);
     }

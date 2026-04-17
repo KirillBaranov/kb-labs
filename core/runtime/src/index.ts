@@ -35,7 +35,7 @@ export type {
 export { initPlatform, resetPlatform } from './loader.js';
 
 // Service bootstrap (shared initialisation utility for service processes)
-export { createServiceBootstrap, resetServiceBootstrap, loadEnvFromRoot } from './service-bootstrap.js';
+export { createServiceBootstrap, resetServiceBootstrap, loadEnvFromRoot, getPlatformRoot, getProjectRoot } from './service-bootstrap.js';
 export type { ServiceBootstrapOptions } from './service-bootstrap.js';
 
 // Platform config loader (shared by CLI bootstrap and service bootstrap).

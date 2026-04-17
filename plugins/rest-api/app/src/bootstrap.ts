@@ -7,7 +7,7 @@ import { loadRestApiConfig } from '@kb-labs/rest-api-core';
 import { createServer } from './server';
 import { findRepoRoot } from '@kb-labs/core-sys';
 import { createRegistry, type IEntityRegistry } from '@kb-labs/core-registry';
-import { platform, createServiceBootstrap, loadEnvFromRoot } from '@kb-labs/core-runtime';
+import { platform, createServiceBootstrap, loadEnvFromRoot, getPlatformRoot } from '@kb-labs/core-runtime';
 import { SystemMetricsCollector } from './services/system-metrics-collector';
 import { metricsCollector as requestMetricsCollector, restDomainOperationMetrics } from './middleware/metrics.js';
 import * as path from 'node:path';
@@ -160,9 +160,12 @@ export async function bootstrap(cwd: string = process.cwd()): Promise<void> {
     ? 10 * 60 * 1000  // 10 minutes for development
     : 60 * 60 * 1000; // 1 hour for production
 
+  // In installed mode, plugins live in the platform installation (node_modules of the
+  // platform dir) and marketplace.lock is there too. Use platform root when available.
+  const registryRoot = getPlatformRoot() ?? repoRoot;
   const registryInitStart = performance.now();
   const registry = await createRegistry({
-    root: repoRoot,
+    root: registryRoot,
     cache: {
       ttlMs: snapshotTTL,
       adapter: platform.cache,
