@@ -40,26 +40,37 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build platform image
-        uses: docker/build-push-action@v6
+      - name: Cache Docker layers (platform)
+        uses: actions/cache@v4
         with:
-          context: .
-          file: e2e/platform/Dockerfile
-          push: false
-          load: true
-          tags: kb-e2e-platform:ci
-          cache-from: type=gha,scope=e2e-platform
-          cache-to: type=gha,mode=max,scope=e2e-platform
+          path: /tmp/.buildx-cache-platform
+          key: buildx-platform-${{ hashFiles('e2e/platform/**', 'e2e/install-flow/**') }}
+          restore-keys: buildx-platform-
+
+      - name: Cache Docker layers (tests)
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache-tests
+          key: buildx-tests-${{ hashFiles('e2e/tests/package.json') }}
+          restore-keys: buildx-tests-
+
+      - name: Build platform image
+        run: |
+          docker buildx build \
+            --cache-from type=local,src=/tmp/.buildx-cache-platform \
+            --cache-to   type=local,dest=/tmp/.buildx-cache-platform,mode=max \
+            --load \
+            -t kb-e2e-ci-platform:latest \
+            -f e2e/platform/Dockerfile .
 
       - name: Build tests image
-        uses: docker/build-push-action@v6
-        with:
-          context: e2e/tests
-          push: false
-          load: true
-          tags: kb-e2e-tests:ci
-          cache-from: type=gha,scope=e2e-tests
-          cache-to: type=gha,mode=max,scope=e2e-tests
+        run: |
+          docker buildx build \
+            --cache-from type=local,src=/tmp/.buildx-cache-tests \
+            --cache-to   type=local,dest=/tmp/.buildx-cache-tests,mode=max \
+            --load \
+            -t kb-e2e-ci-tests:latest \
+            e2e/tests
 
       - name: Create report directory
         run: mkdir -p e2e/tests/report
