@@ -44,5 +44,5 @@ done
 echo "==> Platform ready (gateway up after ${ATTEMPTS}x2s)"
 kb-dev status
 
-# Keep container alive, forward service logs
-exec kb-dev logs
+# Keep container alive while tests run
+exec tail -f /dev/null
