@@ -143,7 +143,7 @@ export function useMutateData<TInput = unknown, TOutput = unknown>(
  */
 function getApiOrigin(): string {
   if (typeof window !== 'undefined') {
-    const cfg = (window as Window & { __KB_STUDIO_CONFIG__?: Record<string, string> }).__KB_STUDIO_CONFIG__;
+    const cfg = (window as Record<string, unknown>)['__KB_STUDIO_CONFIG__'] as Record<string, string> | undefined;
     const base = cfg?.KB_API_BASE_URL;
     if (base) {
       try { return new URL(base).origin; } catch { /* fall through */ }
