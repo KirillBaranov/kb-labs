@@ -9,5 +9,5 @@ test('A-01: LLM adapter registered in REST API', async ({ request }) => {
   expect(adapters.some(a => a.type?.includes('llm'))).toBe(true)
 })
 
-test.todo('A-02: storage adapter registered')
-test.todo('A-03: LLM adapter responds to a real completion request')
+test('A-02: storage adapter registered', async () => { test.skip(true, 'not yet implemented') })
+test('A-03: LLM adapter responds to a real completion request', async () => { test.skip(true, 'not yet implemented') })

@@ -30,6 +30,6 @@ test('PL-03: studio plugin registry loaded (MF pages)', async ({ request }) => {
   expect(typeof body).toBe('object')
 })
 
-test.todo('PL-04: commit plugin is registered and has expected commands')
-test.todo('PL-05: scaffold plugin is registered and has expected templates')
-test.todo('PL-06: workflow plugin is registered with daemon URL')
+test('PL-04: commit plugin is registered and has expected commands', async () => { test.skip(true, 'not yet implemented') })
+test('PL-05: scaffold plugin is registered and has expected templates', async () => { test.skip(true, 'not yet implemented') })
+test('PL-06: workflow plugin is registered with daemon URL', async () => { test.skip(true, 'not yet implemented') })

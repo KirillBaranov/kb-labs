@@ -28,5 +28,5 @@ test('R-03: state-daemon /ready — broker ready', async ({ request }) => {
   expect(body.status).toMatch(/ready|ok/)
 })
 
-test.todo('R-04: rest-api /ready — all plugin routes registered')
-test.todo('R-05: marketplace /ready — registry loaded')
+test('R-04: rest-api /ready — all plugin routes registered', async () => { test.skip(true, 'not yet implemented') })
+test('R-05: marketplace /ready — registry loaded', async () => { test.skip(true, 'not yet implemented') })

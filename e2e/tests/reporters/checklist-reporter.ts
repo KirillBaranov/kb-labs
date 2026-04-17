@@ -32,7 +32,10 @@ export default class ChecklistReporter implements Reporter {
     const title = idMatch ? test.title.slice(idMatch[0].length) : test.title
 
     let outcome: ChecklistEntry['outcome']
-    if (test.expectedStatus === 'skipped') {
+    const skipAnnotation = result.annotations?.find(a => a.type === 'skip')
+    const isPlanned = result.status === 'skipped' &&
+      (test.expectedStatus === 'skipped' || skipAnnotation?.description === 'not yet implemented')
+    if (isPlanned) {
       outcome = 'todo'
     } else if (result.status === 'skipped') {
       outcome = 'skipped'

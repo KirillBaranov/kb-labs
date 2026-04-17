@@ -13,5 +13,5 @@ test('ST-02: gateway serves MF manifest JSON', async ({ request }) => {
   expect(res.status()).toBe(200)
 })
 
-test.todo('ST-03: all MF chunks load without 404')
-test.todo('ST-04: studio app renders without JS console errors')
+test('ST-03: all MF chunks load without 404', async () => { test.skip(true, 'not yet implemented') })
+test('ST-04: studio app renders without JS console errors', async () => { test.skip(true, 'not yet implemented') })

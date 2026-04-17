@@ -17,5 +17,5 @@ test('P-03: unknown gateway route returns 404 not 500', async ({ request }) => {
   expect(res.status()).toBe(404)
 })
 
-test.todo('P-04: plugin commands appear in kb --help')
-test.todo('P-05: plugin manifest loads without errors')
+test('P-04: plugin commands appear in kb --help', async () => { test.skip(true, 'not yet implemented') })
+test('P-05: plugin manifest loads without errors', async () => { test.skip(true, 'not yet implemented') })

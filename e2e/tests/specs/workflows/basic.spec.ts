@@ -25,5 +25,5 @@ test('W-02: GET /jobs/:id returns job status', async ({ request }) => {
   expect(job.status).toMatch(/pending|running|queued|completed/)
 })
 
-test.todo('W-03: workflow reaches completed within 30s')
-test.todo('W-04: failed workflow returns failed status with error details')
+test('W-03: workflow reaches completed within 30s', async () => { test.skip(true, 'not yet implemented') })
+test('W-04: failed workflow returns failed status with error details', async () => { test.skip(true, 'not yet implemented') })
