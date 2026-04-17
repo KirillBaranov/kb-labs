@@ -2246,8 +2246,8 @@
     "config": {
       "title": "One file. Apps and infra together.",
       "description": "Put .kb/deploy.yaml in your repo. kb-deploy reads it and figures out what to build, what to push, and what to restart — over SSH, on the target host.",
-      "note": "Same file is read by kb-monitor afterwards. Deploy and observe from one source of truth.",
-      "example": "registry: ghcr.io/your-org\n\ntargets:\n  api:\n    path: apps/api\n    dockerfile: Dockerfile\n    host: prod-1\n    compose: infra/compose/api.yml\n    health: http://localhost:3000/health\n\n  web:\n    path: apps/web\n    host: prod-1\n    compose: infra/compose/web.yml\n\ninfrastructure:\n  postgres:\n    host: prod-1\n    image: postgres:16\n    volumes:\n      - /data/postgres:/var/lib/postgresql/data\n\n  redis:\n    host: prod-1\n    image: redis:7"
+      "note": "SSH_KEY is the env var holding the private key PEM. Add it to .env locally and as a CI secret in production.",
+      "example": "registry: ghcr.io/your-org\n\ntargets:\n  api:\n    watch: [apps/api/**]\n    image: my-project/api\n    ssh:\n      host: ${SSH_HOST}\n      user: ${SSH_USER}\n      key_env: SSH_KEY\n    remote:\n      compose_file: ~/app/docker-compose.yml\n      service: api\n\n  web:\n    watch: [apps/web/**]\n    image: my-project/web\n    ssh:\n      host: ${SSH_HOST}\n      user: ${SSH_USER}\n      key_env: SSH_KEY\n    remote:\n      compose_file: ~/app/docker-compose.yml\n      service: web\n\ninfrastructure:\n  postgres:\n    type: docker-image\n    image: postgres:16\n    ssh:\n      host: ${SSH_HOST}\n      user: ${SSH_USER}\n      key_env: SSH_KEY\n    volumes:\n      - postgres_data:/var/lib/postgresql/data\n    restart: unless-stopped\n\n  redis:\n    type: docker-image\n    image: redis:7-alpine\n    ssh:\n      host: ${SSH_HOST}\n      user: ${SSH_USER}\n      key_env: SSH_KEY\n    restart: unless-stopped"
     },
     "features": {
       "title": "How it works",
@@ -2394,7 +2394,7 @@
       "title": "Same file as kb-deploy.",
       "description": "kb-monitor reads .kb/deploy.yaml — the same file your deploys come from. No second source of truth, no parallel inventory to keep in sync.",
       "note": "Deploy and observe are paired by design. If kb-deploy knows about a target, kb-monitor knows about it too.",
-      "example": "registry: ghcr.io/your-org\n\ntargets:\n  api:\n    path: apps/api\n    host: prod-1\n    compose: infra/compose/api.yml\n    health: http://localhost:3000/health\n\n  web:\n    path: apps/web\n    host: prod-1\n    compose: infra/compose/web.yml\n\ninfrastructure:\n  postgres:\n    host: prod-1\n    image: postgres:16\n\n  redis:\n    host: prod-1\n    image: redis:7"
+      "example": "registry: ghcr.io/your-org\n\ntargets:\n  api:\n    watch: [apps/api/**]\n    image: my-project/api\n    ssh:\n      host: ${SSH_HOST}\n      user: ${SSH_USER}\n      key_env: SSH_KEY\n    remote:\n      compose_file: ~/app/docker-compose.yml\n      service: api\n    permissions:\n      logs: true\n      health: true\n      exec: false\n\ninfrastructure:\n  postgres:\n    type: docker-image\n    image: postgres:16\n    ssh:\n      host: ${SSH_HOST}\n      user: ${SSH_USER}\n      key_env: SSH_KEY\n    restart: unless-stopped"
     },
     "features": {
       "title": "How it works",
@@ -3076,7 +3076,7 @@
       "title": "One file, any project.",
       "description": "Drop devservices.yaml in your project root. kb-dev finds it automatically by walking up from the current directory.",
       "note": "KB Labs projects use .kb/devservices.yaml — same format, different location.",
-      "example": "name: my-project\n\nservices:\n  postgres:\n    type: docker\n    command: docker run --rm -p 5432:5432 postgres:16\n    health_check: http://localhost:5432\n    port: 5432\n\n  api:\n    command: pnpm dev\n    port: 3000\n    health_check: http://localhost:3000/health\n    depends_on: [postgres]\n\n  worker:\n    command: pnpm worker\n    depends_on: [postgres]"
+      "example": "name: my-project\n\nservices:\n  postgres:\n    type: docker\n    command: docker run --rm -p 5432:5432 postgres:16\n    health_check: localhost:5432\n    port: 5432\n\n  api:\n    command: pnpm dev\n    port: 3000\n    health_check: http://localhost:3000/health\n    depends_on: [postgres]\n\n  worker:\n    command: pnpm worker\n    depends_on: [postgres]"
     },
     "features": {
       "title": "How it works",
@@ -3216,7 +3216,7 @@
       "title": "One file, any monorepo.",
       "description": "Drop devkit.yaml in your workspace root. Declare tasks once, run them everywhere. kb-devkit finds packages by glob patterns and applies the right rules.",
       "note": "The KB Labs workspace uses kb-devkit for all 125+ packages across 18 repos.",
-      "example": "tasks:\n  build:\n    command: tsup\n    inputs:\n      - \"src/**\"\n      - \"tsconfig*.json\"\n    outputs:\n      - \"dist/**\"\n    deps:\n      - \"^build\"  # deps first\n\n  lint:\n    command: eslint src/\n    inputs: [\"src/**\"]\n\n  test:\n    command: vitest run\n    inputs: [\"src/**\", \"test/**\"]\n    deps: [\"build\"]\n\naffected:\n  strategy: submodules"
+      "example": "schemaVersion: 2\n\nworkspace:\n  discovery:\n    - \"packages/**\"\n  categories:\n    default:\n      match: [\"packages/**\"]\n      preset: node-lib\n\ntasks:\n  build:\n    command: tsup\n    inputs:\n      - \"src/**\"\n      - \"tsconfig*.json\"\n    outputs:\n      - \"dist/**\"\n    deps:\n      - \"^build\"\n\n  lint:\n    command: eslint src/\n    inputs: [\"src/**\"]\n\n  test:\n    command: vitest run\n    inputs: [\"src/**\", \"test/**\"]\n    deps: [\"build\"]\n\naffected:\n  strategy: git"
     },
     "features": {
       "title": "How it works",
