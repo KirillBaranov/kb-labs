@@ -65,7 +65,7 @@ test('WF-03: e2e-hello run reaches terminal state within 30s', async ({ request 
   await expect.poll(
     () => pollRunStatus(request, runId),
     { timeout: 30_000, intervals: [1000, 2000, 3000] },
-  ).toMatch(/completed|failed|dlq/)
+  ).toMatch(/success|completed|failed|dlq/)
 })
 
 test('WF-04: runs list is accessible and includes recent run', async ({ request }) => {
