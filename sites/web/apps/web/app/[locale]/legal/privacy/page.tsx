@@ -33,7 +33,7 @@ export default async function PrivacyPage({ params }: Props) {
     <>
       <SiteHeader />
       <main>
-        <LegalLayout title="Privacy Policy" updated="March 2026" currentHref="/legal/privacy">
+        <LegalLayout title="Privacy Policy" updated="April 2026" currentHref="/legal/privacy">
 
           <p>
             KB Labs (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;) operates the KB Labs platform and website.
@@ -59,6 +59,37 @@ export default async function PrivacyPage({ params }: Props) {
             <li>To comply with legal obligations</li>
           </ul>
           <p>We do not sell your data. We do not use your workflow content to train machine learning models.</p>
+
+          <h2>Website &amp; docs analytics</h2>
+          <p>
+            We collect anonymous usage analytics on <strong>kblabs.ru</strong> and <strong>docs.kblabs.ru</strong>
+            to understand how visitors use the site and which documentation pages are helpful.
+          </p>
+          <p><strong>What we collect:</strong></p>
+          <ul>
+            <li>Page views (URL path, referrer, UTM parameters)</li>
+            <li>Outbound link clicks (destination URL, link text)</li>
+            <li>CTA clicks (e.g. &quot;Install&quot; button)</li>
+            <li>Install command copy events</li>
+            <li>Doc page feedback (👍/👎 per page — no free-text, no identity)</li>
+            <li>Anonymous device ID (random UUID stored in <code>localStorage</code>, not linked to your identity)</li>
+          </ul>
+          <p><strong>What we do NOT collect:</strong></p>
+          <ul>
+            <li>Name, email, or any personally identifiable information</li>
+            <li>IP addresses (not stored in analytics)</li>
+            <li>Browser fingerprints</li>
+          </ul>
+          <p>
+            Analytics on <strong>kblabs.ru</strong> are <strong>opt-in</strong> — you must accept cookies via the banner before
+            any events are sent. On <strong>docs.kblabs.ru</strong> we collect only anonymous page view data and explicit
+            doc feedback (a deliberate button click) without a consent gate, as no personal data is processed.
+          </p>
+          <p>
+            All analytics flow through the KB Labs Gateway (<code>api.kblabs.ru</code>) and are stored in a
+            self-hosted JSONL file. No third-party analytics services (Google Analytics, Segment, PostHog, etc.) are used.
+            See our <Link href={`/${locale}/legal/cookies`}>Cookie Policy</Link> for localStorage details.
+          </p>
 
           <h2>CLI telemetry (kb-create)</h2>
           <p>
