@@ -6,7 +6,7 @@
 # Build:  docker build -t kb-e2e-platform -f e2e/platform/Dockerfile .
 # Run:    docker run --rm -p 4000:4000 -p 5050:5050 kb-e2e-platform
 
-FROM node:20-bullseye
+FROM node:20-bookworm
 
 RUN apt-get update -qq && \
     apt-get install -y -qq curl ca-certificates git jq && \
