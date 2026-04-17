@@ -883,12 +883,12 @@
     },
     "hero": {
       "title": "Open the closed",
-      "subtitle": "An open-source control plane for developers: workflow engine, AI gateway, plugin system. For teams that want to understand — and own — every layer of their stack."
+      "subtitle": "Workflow engine, AI gateway, plugin system — running on your machine. Swap any component with a config line."
     },
     "founder": {
       "label": "Founder",
       "name": "Kirill Baranov",
-      "bio": "Solo engineer. Building KB Labs in public since 2024. Before this, I worked in-house and watched the same pattern repeat: infrastructure grows, gets acquired, becomes a dependency. Decided to build differently.",
+      "bio": "Frontend lead who built an AI review tool overnight in response to a CTO decision — and couldn't stop. Building KB Labs in public since 2025.",
       "links": {
         "site": "k-baranov.ru",
         "github": "GitHub",
@@ -936,9 +936,9 @@
     ],
     "originLabel": "Origin",
     "origin": [
-      "KB Labs started in 2024 as a personal project: a better way to run multiple AI agents together, with shared state and controlled tool access. The first version was a monolith. The second broke on the first plugin.",
-      "The problem wasn't the code — it was the structure. A plugin system with a rigid interface creates coupling you can't escape. That led to duck typing for plugins and a layered architecture with typed contracts at every boundary.",
-      "Today KB Labs is 145+ packages in one monorepo, its own release pipeline, and Go binaries for building and managing services. Public release is scheduled for summer 2026. If you want to try it sooner — install from npm, the source is open."
+      "In 2025, the CTO at my company rolled out AI code review for the backend team. As the frontend lead, I disagreed — with both the tool and the approach. I built an MVP AI Review for frontend and backend together overnight. We discussed the architecture the next day; half my proposals made it in. I wanted more.",
+      "I published the first version on GitHub as open source. Then I wanted something bigger — not just a review tool, but real infrastructure for AI tooling. Step by step it grew: workflow engine, plugin system, AI gateway.",
+      "Today KB Labs is 145+ packages, its own release pipeline, and Go binaries for building and managing services. Public release is summer 2026. Source is open — `@kb-labs/review` is one of the first plugins."
     ],
     "cta": {
       "title": "Build on something that stays open.",
