@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useLocale } from 'next-intl';
+import { CONSENT_EVENT } from '@/lib/analytics';
 
 export function CookieBanner() {
   const [visible, setVisible] = useState(false);
@@ -16,11 +17,13 @@ export function CookieBanner() {
   function accept() {
     localStorage.setItem('cookie-consent', 'accepted');
     setVisible(false);
+    window.dispatchEvent(new CustomEvent(CONSENT_EVENT));
   }
 
   function decline() {
     localStorage.setItem('cookie-consent', 'declined');
     setVisible(false);
+    window.dispatchEvent(new CustomEvent(CONSENT_EVENT));
   }
 
   const locale = useLocale();

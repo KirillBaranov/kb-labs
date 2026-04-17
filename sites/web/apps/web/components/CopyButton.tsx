@@ -3,12 +3,13 @@
 import { useState } from 'react';
 import s from './CopyButton.module.css';
 
-export function CopyButton({ text }: { text: string }) {
+export function CopyButton({ text, onCopy }: { text: string; onCopy?: () => void }) {
   const [copied, setCopied] = useState(false);
 
   async function handleCopy() {
     await navigator.clipboard.writeText(text);
     setCopied(true);
+    onCopy?.();
     setTimeout(() => setCopied(false), 2000);
   }
 

@@ -9,7 +9,8 @@
       "storage": "@kb-labs/adapters-fs",
       "logRingBuffer": "@kb-labs/adapters-log-ringbuffer",
       "logPersistence": "@kb-labs/adapters-log-sqlite",
-      "eventBus": "@kb-labs/adapters-eventbus-cache"
+      "eventBus": "@kb-labs/adapters-eventbus-cache",
+      "analytics": "@kb-labs/adapters-analytics-sqlite"
     },
     "adapterOptions": {
       "embeddings": {
@@ -45,6 +46,9 @@
       },
       "storage": {
         "basePath": "/app/.kb/storage"
+      },
+      "analytics": {
+        "filename": "/app/.kb/database/analytics.sqlite"
       }
     }
   },

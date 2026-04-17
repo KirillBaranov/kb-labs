@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { DocsHeader } from './DocsHeader';
+import { DocsFeedback } from './DocsFeedback';
 import { DocsSidebar } from './DocsSidebar';
 import { DocsToc } from './DocsToc';
 import type { TocItem } from './DocsToc';
@@ -122,6 +123,7 @@ export function DocsLayout({ children, toc, slug, pageTitle, pageDescription, pa
               >
                 Edit this page on GitHub →
               </a>
+              <DocsFeedback />
             </footer>
           </main>
           <aside className={s.toc}>

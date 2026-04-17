@@ -1,0 +1,41 @@
+.root {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+
+.label {
+  font-size: 0.8125rem;
+  color: var(--fg-subtle);
+}
+
+.thanks {
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+}
+
+.actions {
+  display: flex;
+  gap: 0.375rem;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.8125rem;
+  color: var(--fg-muted);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.btn:hover {
+  color: var(--fg);
+  border-color: var(--fg-subtle);
+  background: var(--bg-subtle, rgba(255,255,255,0.04));
+}
