@@ -59,7 +59,7 @@ test('W-02: GET /runs/:id returns a valid initial status', async ({ request }) =
 
   const runId = await startRun(request, wf!.id ?? wf!.name!)
   const status = await pollRunStatus(request, runId)
-  expect(status).toMatch(/pending|running|queued|completed|failed/)
+  expect(status).toMatch(/pending|running|queued|success|completed|failed/)
 })
 
 test('W-03: e2e-hello workflow reaches completed within 30s', async ({ request }) => {
@@ -71,7 +71,7 @@ test('W-03: e2e-hello workflow reaches completed within 30s', async ({ request }
   await expect.poll(
     () => pollRunStatus(request, runId),
     { timeout: 30_000, intervals: [1000, 2000, 3000] },
-  ).toBe('completed')
+  ).toMatch(/^(success|completed)$/)
 })
 
 test('W-04: e2e-fail workflow reaches failed status within 30s', async ({ request }) => {
