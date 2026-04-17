@@ -16,6 +16,7 @@ import (
 	"github.com/kb-labs/create/internal/installer"
 	"github.com/kb-labs/create/internal/logger"
 	"github.com/kb-labs/create/internal/pm"
+	"github.com/kb-labs/create/internal/telemetry"
 )
 
 type doctorCheck struct {
@@ -45,12 +46,27 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 	out := newOutput()
 	platformDir, _ := resolvePlatformDir(cmd)
 
+	var tc *telemetry.Client
+	if cfg, cfgErr := config.Read(platformDir); cfgErr == nil {
+		tc = initTelemetry(rootCmd.Version, &cfg.Telemetry)
+	} else {
+		tc = telemetry.Nop()
+	}
+	defer tc.Flush()
+
 	checks := buildChecks(platformDir)
 
 	out.Section("Environment Doctor")
 	printChecks(out, checks)
 
 	failed := failedChecks(checks)
+
+	tc.Track("doctor_run", map[string]string{
+		"checks_total":  fmt.Sprintf("%d", len(checks)),
+		"checks_failed": fmt.Sprintf("%d", len(failed)),
+		"fix_mode":      fmt.Sprintf("%v", doctorFixFlag),
+	})
+
 	if len(failed) == 0 {
 		fmt.Println()
 		out.OK(fmt.Sprintf("Doctor summary: %d/%d checks passed", len(checks), len(checks)))
@@ -74,11 +90,14 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 
 	fixable := 0
 	fixed := 0
+	failedNames := make([]string, 0, len(failed))
+	fixedNames := make([]string, 0)
 	for i := range checks {
 		c := &checks[i]
 		if c.OK || c.Fix == nil {
 			if !c.OK && c.FixHint != "" {
 				out.Warn(fmt.Sprintf("  %-12s cannot auto-fix: %s", c.Name, c.FixHint))
+				failedNames = append(failedNames, c.Name)
 			}
 			continue
 		}
@@ -87,9 +106,11 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		if err := c.Fix(); err != nil {
 			fmt.Println(" ✗ failed")
 			out.Err(fmt.Sprintf("    %v", err))
+			failedNames = append(failedNames, c.Name)
 		} else {
 			fmt.Println(" ✓ fixed")
 			fixed++
+			fixedNames = append(fixedNames, c.Name)
 		}
 	}
 
@@ -101,6 +122,15 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 
 	remaining := len(failedChecks(checks))
 	total := len(checks)
+
+	tc.Track("doctor_fixed", map[string]string{
+		"fixed_count":     fmt.Sprintf("%d", fixed),
+		"fixable_count":   fmt.Sprintf("%d", fixable),
+		"still_failing":   fmt.Sprintf("%d", remaining),
+		"fixed_checks":    strings.Join(fixedNames, ","),
+		"failed_checks":   strings.Join(failedNames, ","),
+	})
+
 	fmt.Println()
 	if remaining == 0 {
 		out.OK(fmt.Sprintf("All %d checks passing — platform repaired", total))
