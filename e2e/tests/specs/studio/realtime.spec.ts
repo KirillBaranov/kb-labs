@@ -51,22 +51,14 @@ test('RT-02: SSE endpoint streams events (not buffered by proxy)', async ({ page
   expect(response!.headers()['cache-control']).toContain('no-cache')
 })
 
-test('RT-03: gateway forwards WS Upgrade header (not stripped)', async ({ request }) => {
-  // Send a real GET with Upgrade: websocket — Fastify should respond with 101 or reject with
-  // 401/426, but never 502 (proxy failed) or 404 (route not registered)
-  const res = await request.get(`${GATEWAY}/hosts/connect`, {
-    headers: {
-      Connection: 'Upgrade',
-      Upgrade: 'websocket',
-      'Sec-WebSocket-Key': 'dGhlIHNhbXBsZSBub25jZQ==',
-      'Sec-WebSocket-Version': '13',
-    },
-  })
-  // 101 = upgrade accepted, 401 = auth required, 426 = upgrade required (non-WS client)
-  // 502 = gateway couldn't proxy the upgrade at all — that's the failure mode we're guarding
-  // 404 = route not registered — also a failure (WS route should be there)
-  expect(res.status()).not.toBe(502)
-  expect(res.status()).not.toBe(404)
+test('RT-03: gateway WS route is registered (not 404)', async ({ request }) => {
+  // Plain GET (no Upgrade headers) to a WebSocket-only route in Fastify returns 426 (Upgrade Required).
+  // 401 = auth enforced before upgrade check (also means route exists).
+  // 404 would mean the WS route is not registered — that's the failure mode we're guarding.
+  // Note: sending actual WS Upgrade headers via HTTP client causes the connection to hang
+  // (Fastify holds it open for the WS handshake) — tested via browser in RT-01 instead.
+  const res = await request.get(`${GATEWAY}/hosts/connect`)
+  expect([401, 426]).toContain(res.status())
 })
 
 test('RT-04: workflow status updates delivered over WS in real-time', async () => { test.skip(true, 'not yet implemented') })

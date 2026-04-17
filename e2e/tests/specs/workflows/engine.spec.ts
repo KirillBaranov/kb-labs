@@ -37,7 +37,8 @@ test('WF-03: create run → job reaches terminal state within 30s', async ({ req
     async () => {
       const res = await request.get(`${WORKFLOW}/api/v1/runs/${runId}`)
       const run = await res.json()
-      return run.data?.status ?? run.status
+      // Response: { ok: true, data: { run: { id, status, ... } } }
+      return run.data?.run?.status ?? run.data?.status ?? run.status
     },
     { timeout: 30_000, intervals: [1000, 2000, 3000] },
   ).toMatch(/completed|failed/)

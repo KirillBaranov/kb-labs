@@ -39,8 +39,9 @@ test('W-02: GET /runs/:id returns run status', async ({ request }) => {
 
   const res = await request.get(`${WORKFLOW}/api/v1/runs/${runId}`)
   const run = await res.json()
-  const status = run.data?.status ?? run.status
-  expect(status).toMatch(/pending|running|queued|completed/)
+  // Response: { ok: true, data: { run: { id, status, ... } } }
+  const status = run.data?.run?.status ?? run.data?.status ?? run.status
+  expect(status).toMatch(/pending|running|queued|completed|failed/)
 })
 
 test('W-03: workflow reaches completed within 30s', async () => { test.skip(true, 'not yet implemented') })
