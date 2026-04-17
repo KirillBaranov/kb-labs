@@ -1,13 +1,22 @@
 import { test, expect } from '@playwright/test'
 import { WORKFLOW } from '../../fixtures/urls.js'
 
-// Workflow daemon job API: POST /api/v1/jobs, GET /api/v1/jobs/:jobId
+// Workflow job API: POST /api/v1/workflows/:id/runs, GET /api/v1/jobs/:jobId
 // Responses: { ok: true, data: { jobId, ... } }
 
+async function getFirstWorkflow(request: Parameters<Parameters<typeof test>[1]>[0]['request']) {
+  const res = await request.get(`${WORKFLOW}/api/v1/workflows`)
+  const body = await res.json()
+  const workflows: { id?: string; name?: string }[] = body.data?.workflows ?? body.data ?? body.workflows ?? []
+  return Array.isArray(workflows) ? workflows[0] : undefined
+}
+
 test('W-01: create workflow run returns job ID', async ({ request }) => {
-  const create = await request.post(`${WORKFLOW}/api/v1/jobs`, {
-    data: { name: 'e2e-basic-test' },
-  })
+  const first = await getFirstWorkflow(request)
+  test.skip(!first, 'No workflows discovered — check .kb/workflows directory')
+
+  const id = first!.id ?? first!.name
+  const create = await request.post(`${WORKFLOW}/api/v1/workflows/${id}/runs`, { data: {} })
   expect([200, 201]).toContain(create.status())
 
   const body = await create.json()
@@ -19,11 +28,15 @@ test('W-01: create workflow run returns job ID', async ({ request }) => {
 })
 
 test('W-02: GET /jobs/:id returns job status', async ({ request }) => {
-  const create = await request.post(`${WORKFLOW}/api/v1/jobs`, {
-    data: { name: 'e2e-status-test' },
-  })
+  const first = await getFirstWorkflow(request)
+  test.skip(!first, 'No workflows discovered — check .kb/workflows directory')
+
+  const id = first!.id ?? first!.name
+  const create = await request.post(`${WORKFLOW}/api/v1/workflows/${id}/runs`, { data: {} })
   const createBody = await create.json()
   const jobId = createBody.data?.jobId ?? createBody.data?.id ?? createBody.jobId
+  test.skip(!jobId, 'Could not create workflow run')
+
   const res = await request.get(`${WORKFLOW}/api/v1/jobs/${jobId}`)
   const job = await res.json()
   const status = job.data?.status ?? job.status

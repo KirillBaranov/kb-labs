@@ -21,9 +21,14 @@ test('WF-02: workflow list is accessible (catalog loaded)', async ({ request }) 
 })
 
 test('WF-03: create run → job reaches terminal state within 30s', async ({ request }) => {
-  const create = await request.post(`${WORKFLOW}/api/v1/jobs`, {
-    data: { name: 'e2e-engine-test' },
-  })
+  const listRes = await request.get(`${WORKFLOW}/api/v1/workflows`)
+  const listBody = await listRes.json()
+  const workflows: { id?: string; name?: string }[] = listBody.data?.workflows ?? listBody.data ?? listBody.workflows ?? []
+  const first = Array.isArray(workflows) ? workflows[0] : undefined
+  test.skip(!first, 'No workflows discovered — check .kb/workflows directory')
+
+  const id = first!.id ?? first!.name
+  const create = await request.post(`${WORKFLOW}/api/v1/workflows/${id}/runs`, { data: {} })
   expect([200, 201]).toContain(create.status())
   const createBody = await create.json()
   const jobId = createBody.data?.jobId ?? createBody.data?.id ?? createBody.jobId
