@@ -21,10 +21,13 @@ kb-create kb-e2e --yes
 cd kb-e2e
 
 # ── Step 3: Start backend services ────────────────────────────────────────
-# Skip: qdrant (mind/RAG only), redis (optional), studio/kb-web/kb-docs (UI)
-# state-daemon is InMemoryStateBroker — no Redis needed
+# Start infra first (state-daemon), then backend group.
+# kb-dev start accepts one service/group name — not multiple.
+# Redis is optional (in-memory fallback); qdrant skipped (mind/RAG only, not needed for e2e).
 echo "==> [3/3] Starting services..."
-kb-dev start state-daemon workflow rest marketplace gateway &
+kb-dev start state-daemon &
+sleep 3
+kb-dev start backend &
 
 echo "==> Waiting for gateway to be ready..."
 ATTEMPTS=0
