@@ -280,7 +280,7 @@ function resolveWsUrl(url: string): string {
   const path = url.startsWith('/') ? url : `/${url}`;
   // Use configured API gateway origin when available, otherwise fall back to current origin
   if (typeof window !== 'undefined') {
-    const cfg = (window as Record<string, unknown>)['__KB_STUDIO_CONFIG__'] as Record<string, string> | undefined;
+    const cfg = (window as unknown as Record<string, unknown>)['__KB_STUDIO_CONFIG__'] as Record<string, string> | undefined;
     const base = cfg?.KB_API_BASE_URL;
     if (base) {
       try {
