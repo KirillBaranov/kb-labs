@@ -28,16 +28,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   });
 }
 
-function formatDate(iso?: string): string {
+function formatDate(iso: string | undefined, locale: string): string {
   if (!iso) return '';
   const d = new Date(iso);
-  return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  return d.toLocaleDateString(locale, { month: 'short', year: 'numeric' });
 }
 
 export default async function BlogPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
 
+  const t = await getTranslations({ locale });
   const lang = (locale === 'ru' ? 'ru' : 'en') as Lang;
   const posts = listBlogPosts(lang).filter((p) => !p.frontmatter.draft);
 
@@ -47,21 +48,21 @@ export default async function BlogPage({ params }: Props) {
       <main>
 
         <section className={s.hero}>
-          <h1>Blog</h1>
-          <p>Engineering notes, platform updates, and thinking out loud.</p>
+          <h1>{t('blog.hero.title')}</h1>
+          <p>{t('blog.hero.subtitle')}</p>
         </section>
 
         <div className={s.posts}>
           {posts.map((post) => (
             <Link key={post.slug} className={s.post} href={`/${locale}/blog/${post.slug}`}>
               <div className={s.postMeta}>
-                <span className={s.postDate}>{formatDate(post.frontmatter.date)}</span>
+                <span className={s.postDate}>{formatDate(post.frontmatter.date, locale)}</span>
                 <span className={s.postTag}>{post.frontmatter.tag}</span>
               </div>
               <div className={s.postBody}>
                 <h2 className={s.postTitle}>{post.frontmatter.title}</h2>
                 <p className={s.postExcerpt}>{post.frontmatter.excerpt ?? post.frontmatter.description}</p>
-                <span className={s.postReadmore}>Read more →</span>
+                <span className={s.postReadmore}>{t('blog.readMore')}</span>
               </div>
             </Link>
           ))}
