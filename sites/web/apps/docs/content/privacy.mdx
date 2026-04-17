@@ -33,6 +33,21 @@ The only adapter that sends analytics to the network is `@kb-labs/adapters-kblab
 - File paths beyond the project root name
 - IP addresses (the gateway logs access for rate limiting but does not persist IPs in analytics)
 
+## Docs site analytics
+
+The **docs.kblabs.ru** website collects anonymous usage data to understand which pages are useful.
+
+**What is collected:**
+- Page views (URL path, referrer) — on every visit
+- Outbound link clicks (destination URL)
+- Doc page feedback — only when you explicitly click 👍 or 👎
+
+**What is NOT collected:** name, email, IP address, or any personally identifiable information.
+
+No consent banner is shown on the docs site because no personal data is processed. An anonymous device ID (random UUID) is stored in `localStorage` under `kb_docs_analytics` and is not linked to your identity.
+
+All events are sent to `api.kblabs.ru/telemetry/v1/ingest` and stored in a self-hosted JSONL file. No third-party analytics services are used.
+
 ## Where it goes
 
 Installation telemetry is sent to `https://api.kblabs.ru/telemetry/v1/ingest` — the same KB Labs Gateway that handles LLM requests. The endpoint accepts events, counts them for product analytics, and discards payloads after aggregation.

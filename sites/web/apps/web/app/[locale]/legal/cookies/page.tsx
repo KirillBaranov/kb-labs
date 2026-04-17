@@ -28,27 +28,39 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 const COOKIES = [
   {
     name: 'kb_session',
-    type: 'Essential',
+    type: 'Essential cookie',
     duration: 'Session',
     purpose: 'Authenticates your session after login. Required for the platform to function.',
   },
   {
     name: 'kb_csrf',
-    type: 'Essential',
+    type: 'Essential cookie',
     duration: 'Session',
     purpose: 'CSRF protection token. Prevents cross-site request forgery attacks.',
   },
   {
     name: 'kb_prefs',
-    type: 'Functional',
+    type: 'Functional cookie',
     duration: '1 year',
     purpose: 'Stores UI preferences such as sidebar state and theme selection.',
   },
   {
-    name: '_analytics',
-    type: 'Analytics',
-    duration: '90 days',
-    purpose: 'Aggregated, anonymised usage analytics. Used to understand which features are used most.',
+    name: 'cookie-consent',
+    type: 'Essential localStorage',
+    duration: 'Persistent',
+    purpose: 'Stores your cookie consent choice ("accepted" or "declined"). Set when you interact with the consent banner.',
+  },
+  {
+    name: 'kb_analytics',
+    type: 'Analytics localStorage',
+    duration: 'Persistent',
+    purpose: 'Anonymous device credentials (random ID, clientId, clientSecret) used to authenticate telemetry events sent to the KB Labs Gateway. Only written after you accept analytics cookies. Not linked to your identity.',
+  },
+  {
+    name: 'kb_docs_analytics',
+    type: 'Analytics localStorage',
+    duration: 'Persistent',
+    purpose: 'Same as kb_analytics but scoped to docs.kblabs.ru. Written on first visit to the docs site. Contains only an anonymous device ID.',
   },
 ];
 
@@ -60,7 +72,7 @@ export default async function CookiesPage({ params }: Props) {
     <>
       <SiteHeader />
       <main>
-        <LegalLayout title="Cookie Policy" updated="January 2026" currentHref="/legal/cookies">
+        <LegalLayout title="Cookie Policy" updated="April 2026" currentHref="/legal/cookies">
 
           <p>
             This Cookie Policy explains what cookies KB Labs uses, why we use them,
@@ -74,7 +86,7 @@ export default async function CookiesPage({ params }: Props) {
           </p>
 
           <h2>What we use</h2>
-          <p>We use three categories of cookies:</p>
+          <p>We use browser cookies and <code>localStorage</code> entries across three categories:</p>
           <ul>
             <li>
               <strong>Essential</strong> — required for the platform to work. Cannot be disabled.
@@ -85,13 +97,14 @@ export default async function CookiesPage({ params }: Props) {
               Disabling these means your preferences reset on each visit.
             </li>
             <li>
-              <strong>Analytics</strong> — aggregated, anonymised usage data to help us improve
-              the product. No personal data is included. Can be opted out below.
+              <strong>Analytics</strong> — anonymous usage data to help us improve the product.
+              No personal data is included. Requires your consent on kblabs.ru (via the cookie banner).
+              On docs.kblabs.ru only anonymous page views and explicit feedback are collected without a consent gate.
             </li>
           </ul>
 
-          <h2>Cookie details</h2>
-          <p>Specific cookies in use:</p>
+          <h2>Cookie &amp; localStorage details</h2>
+          <p>Specific entries in use:</p>
           <ul>
             {COOKIES.map((c) => (
               <li key={c.name}>
