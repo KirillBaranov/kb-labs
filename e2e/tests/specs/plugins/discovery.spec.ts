@@ -4,12 +4,16 @@ import { GATEWAY, REST } from '../../fixtures/urls.js'
 test('P-01: platform plugin registry contains expected plugins after boot', async ({ request }) => {
   // Tests plugin discovery via REST (no auth required).
   // Gateway auth + /hosts list tested separately in gateway/auth.spec.ts.
-  const res = await request.get(`${REST}/api/v1/plugins`)
+  const res = await request.get(`${REST}/api/v1/plugins/registry`)
   expect(res.status()).toBe(200)
   const body = await res.json()
-  const manifests: { id?: string; name?: string }[] = body.data?.manifests ?? body.manifests ?? []
+  // Response: { ok: true, data: { manifests: [{ pluginId, manifest: { id, name }, ... }] } }
+  const manifests: { pluginId?: string; manifest?: { id?: string; name?: string } }[] =
+    body.data?.manifests ?? body.manifests ?? []
   // Gateway plugin must be registered — it's required for any HTTP service to work
-  const hasGateway = manifests.some(m => m.id?.includes('gateway') || m.name?.includes('gateway'))
+  const hasGateway = manifests.some(
+    m => m.pluginId?.includes('gateway') || m.manifest?.id?.includes('gateway'),
+  )
   expect(hasGateway).toBe(true)
 })
 
