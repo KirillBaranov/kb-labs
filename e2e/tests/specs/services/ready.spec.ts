@@ -8,8 +8,10 @@ test('R-01: rest-api /ready — registry loaded and plugins mounted', async ({ r
   const res = await request.get(`${REST}/ready`)
   expect(res.status()).toBe(200)
   const body = await res.json()
-  expect(body.ready).toBe(true)
-  expect(body.status).toMatch(/ready|ok/)
+  // REST API wraps responses: { ok: true, data: { ready, status, ... } }
+  const data = body.data ?? body
+  expect(data.ready).toBe(true)
+  expect(data.status).toMatch(/ready|ok/)
 })
 
 test('R-02: workflow /ready — engine + catalog + scheduler ready', async ({ request }) => {

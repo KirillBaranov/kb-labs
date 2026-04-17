@@ -28,7 +28,8 @@ test('ROOT-03: plugin registry uses projectRoot for local plugin discovery', asy
   const res = await request.get(`${REST}/api/v1/plugins/registry`)
   expect(res.status()).toBe(200)
   const body = await res.json()
-  const manifests: unknown[] = body.manifests ?? []
+  // Envelope: { ok: true, data: { manifests: [...] } }
+  const manifests: unknown[] = body.data?.manifests ?? body.manifests ?? []
   // Plugins discovered from project root must be present
   expect(manifests.length).toBeGreaterThan(0)
 })

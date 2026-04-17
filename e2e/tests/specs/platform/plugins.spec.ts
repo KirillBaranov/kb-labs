@@ -9,7 +9,8 @@ test('PL-01: plugin registry is populated after startup', async ({ request }) =>
   const res = await request.get(`${REST}/api/v1/plugins/registry`)
   expect(res.status()).toBe(200)
   const body = await res.json()
-  const manifests: unknown[] = body.manifests ?? []
+  // Envelope: { ok: true, data: { manifests: [...] } }
+  const manifests: unknown[] = body.data?.manifests ?? body.manifests ?? []
   expect(manifests.length).toBeGreaterThan(0)
 })
 
@@ -17,9 +18,11 @@ test('PL-02: plugin registry health — no validation errors', async ({ request 
   const res = await request.get(`${REST}/api/v1/plugins/health`)
   expect(res.status()).toBe(200)
   const body = await res.json()
-  expect(body.healthy).toBe(true)
-  expect(body.snapshot?.partial).toBeFalsy()
-  expect(body.snapshot?.stale).toBeFalsy()
+  // Envelope: { ok: true, data: { healthy, snapshot: { partial, stale, ... } } }
+  const data = body.data ?? body
+  expect(data.healthy).toBe(true)
+  expect(data.snapshot?.partial).toBeFalsy()
+  expect(data.snapshot?.stale).toBeFalsy()
 })
 
 test('PL-03: studio plugin registry loaded (MF pages)', async ({ request }) => {

@@ -2,12 +2,14 @@ import { test, expect } from '@playwright/test'
 import { MARKETPLACE } from '../../fixtures/urls.js'
 
 // Verifies marketplace is functional after kb-create bootstrap
+// GET /packages → { entries: [...], total: N }
+// POST /packages/install → { specs: [...] } (not { packages: [...] })
 
 test('MKT-01: marketplace lists installed packages', async ({ request }) => {
   const res = await request.get(`${MARKETPLACE}/api/v1/marketplace/packages`)
   expect(res.status()).toBe(200)
   const body = await res.json()
-  const packages = Array.isArray(body) ? body : body.packages ?? []
+  const packages = body.entries ?? body.packages ?? (Array.isArray(body) ? body : [])
   // kb-create bootstraps with core packages — must not be empty
   expect(packages.length).toBeGreaterThan(0)
 })
@@ -22,15 +24,16 @@ test('MKT-02: marketplace diagnostics — lock file OK, no errors', async ({ req
 })
 
 test('MKT-03: install and uninstall a test package', async ({ request }) => {
-  // Install
+  // Install — body uses `specs` key (not `packages`)
   const install = await request.post(`${MARKETPLACE}/api/v1/marketplace/packages/install`, {
-    data: { packages: ['@kb-labs/plugin-commit'] },
+    data: { specs: ['@kb-labs/plugin-commit'] },
   })
-  expect(install.status()).toBeOneOf([200, 201, 409]) // 409 = already installed, fine
+  expect([200, 201, 409]).toContain(install.status()) // 409 = already installed, fine
 
   // Verify it's listed
   const list = await request.get(`${MARKETPLACE}/api/v1/marketplace/packages`)
-  const packages: { name?: string; id?: string }[] = await list.json()
+  const body = await list.json()
+  const packages: { name?: string; id?: string }[] = body.entries ?? body.packages ?? []
   const found = packages.some(p => p.name?.includes('commit') || p.id?.includes('commit'))
   expect(found).toBe(true)
 })
