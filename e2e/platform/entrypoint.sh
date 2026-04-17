@@ -25,6 +25,9 @@ cd kb-e2e
 # kb-dev start accepts one service/group name — not multiple.
 # Redis is optional (in-memory fallback); qdrant skipped (mind/RAG only, not needed for e2e).
 echo "==> [3/3] Starting services..."
+# state-daemon binds to KB_STATE_DAEMON_HOST — override to 0.0.0.0 so it's
+# reachable from the tests container via Docker bridge network.
+export KB_STATE_DAEMON_HOST=0.0.0.0
 kb-dev start state-daemon &
 sleep 3
 kb-dev start backend &

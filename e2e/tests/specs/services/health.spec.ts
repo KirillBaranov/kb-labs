@@ -3,7 +3,7 @@ import { GATEWAY, REST, MARKETPLACE, WORKFLOW, STATE } from '../../fixtures/urls
 
 const services = [
   { id: 'S-01', name: 'gateway',      url: GATEWAY,     path: '/health' },
-  { id: 'S-02', name: 'rest-api',     url: REST,        path: '/api/v1/health' },
+  { id: 'S-02', name: 'rest-api',     url: REST,        path: '/health' },
   { id: 'S-03', name: 'marketplace',  url: MARKETPLACE, path: '/health' },
   { id: 'S-04', name: 'workflow',     url: WORKFLOW,    path: '/health' },
   { id: 'S-05', name: 'state-daemon', url: STATE,       path: '/health' },

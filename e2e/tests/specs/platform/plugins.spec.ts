@@ -2,24 +2,24 @@ import { test, expect } from '@playwright/test'
 import { REST } from '../../fixtures/urls.js'
 
 // Verifies plugins are actually discovered and registered — not just that REST API is up
+// /api/v1/plugins/registry returns: { manifests: [...], apiBasePath, diagnostics }
+// /api/v1/plugins/health returns:  { healthy, snapshot: { partial, stale, ... }, ... }
 
 test('PL-01: plugin registry is populated after startup', async ({ request }) => {
   const res = await request.get(`${REST}/api/v1/plugins/registry`)
   expect(res.status()).toBe(200)
   const body = await res.json()
-  // Registry must have at least core plugins (commit, scaffold, workflow, marketplace)
-  const plugins: { id?: string; name?: string }[] = Array.isArray(body) ? body : body.plugins ?? []
-  expect(plugins.length).toBeGreaterThan(0)
+  const manifests: unknown[] = body.manifests ?? []
+  expect(manifests.length).toBeGreaterThan(0)
 })
 
 test('PL-02: plugin registry health — no validation errors', async ({ request }) => {
   const res = await request.get(`${REST}/api/v1/plugins/health`)
   expect(res.status()).toBe(200)
   const body = await res.json()
-  expect(body.status).toMatch(/ok|healthy/)
-  // Must not have stale/partial plugins blocking core functionality
-  expect(body.partial).toBeFalsy()
-  expect(body.stale).toBeFalsy()
+  expect(body.healthy).toBe(true)
+  expect(body.snapshot?.partial).toBeFalsy()
+  expect(body.snapshot?.stale).toBeFalsy()
 })
 
 test('PL-03: studio plugin registry loaded (MF pages)', async ({ request }) => {
