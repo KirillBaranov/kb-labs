@@ -34,7 +34,7 @@ export interface UIBoxProps {
   /** Margin left */
   ml?: UIBoxSpacingValue;
   /** HTML element to render */
-  as?: keyof JSX.IntrinsicElements;
+  as?: keyof React.JSX.IntrinsicElements;
   /** Additional CSS class */
   className?: string;
   /** Additional styles (use sparingly) */
