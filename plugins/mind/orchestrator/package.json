@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/mind-orchestrator",
   "description": "Agent-optimized RAG query orchestration for KB Labs Mind",
-  "version": "2.48.0",
+  "version": "2.49.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
