@@ -11,6 +11,19 @@ globs:
 
 CLI entry point: `pnpm kb release <command>`.
 
+## Release Order — IMPORTANT
+
+**Always release in this order: `platform` first, then `sdk`.**
+
+The SDK's `peerDependencies` use `>=2.0.0` ranges (not pinned versions), so order no longer causes
+peer mismatch. However releasing SDK after platform is still correct practice because:
+- SDK may re-export symbols from platform packages — platform must be published first
+- Downstream users install platform + SDK together; platform being newer is always safe
+
+**If you accidentally release SDK before platform:**
+- Users get peer warnings on `pnpm install` (not errors — `>=2.0.0` is lenient)
+- No functional breakage, but noisy install output
+
 ## Flows
 
 Two named release profiles, configured in `.kb/kb.config.json` under `release.flows`.
