@@ -24,7 +24,7 @@ export interface UIFlexProps {
   /** Wrap behavior */
   wrap?: 'nowrap' | 'wrap' | 'wrap-reverse';
   /** HTML element to render */
-  as?: keyof JSX.IntrinsicElements;
+  as?: keyof React.JSX.IntrinsicElements;
   /** Additional CSS class */
   className?: string;
   /** Additional styles */

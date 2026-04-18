@@ -23,7 +23,7 @@ export interface UIStackProps {
   /** Stack content */
   children: React.ReactNode;
   /** HTML element to render */
-  as?: keyof JSX.IntrinsicElements;
+  as?: keyof React.JSX.IntrinsicElements;
   /** Additional CSS class */
   className?: string;
   /** Additional styles */
