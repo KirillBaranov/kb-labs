@@ -426,18 +426,6 @@
         "cli-command"
       ],
       "enabled": true
-    },
-    "@kb-labs/test-plugin-entry": {
-      "version": "0.1.0",
-      "integrity": "sha256-ZIZs6uOapVMkDhJSBrbAIbhPjo4SbqzA2kicBRKXpbY=",
-      "resolvedPath": ".kb/plugins/test-plugin/packages/test-plugin-entry",
-      "installedAt": "2026-04-14T16:26:05.912Z",
-      "source": "local",
-      "primaryKind": "plugin",
-      "provides": [
-        "plugin"
-      ],
-      "enabled": true
     }
   }
 }
