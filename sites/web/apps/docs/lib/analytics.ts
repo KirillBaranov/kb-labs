@@ -84,7 +84,11 @@ export function getPlatform(): Promise<KBPlatform | null> {
         endpoint: GATEWAY,
         apiKey: token,
         defaultTags: { source: 'kb-docs', deviceId: creds.deviceId },
-        onError: () => {},
+        onError: (err) => {
+          if (err.message.includes('401')) {
+            _initPromise = null;
+          }
+        },
       });
     } catch {
       _initPromise = null;
