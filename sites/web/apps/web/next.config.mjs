@@ -11,11 +11,9 @@ const nextConfig = {
   output: 'standalone',
   pageExtensions: ['ts', 'tsx', 'mdx'],
   transpilePackages: ['@kb-labs/web-i18n', '@kb-labs/web-data-source'],
-  experimental: {
-    outputFileTracingRoot: process.env.NEXT_TRACING_ROOT ?? path.join(currentDir, '../../'),
-    outputFileTracingIncludes: {
-      '/': ['./middleware.ts'],
-    },
+  outputFileTracingRoot: process.env.NEXT_TRACING_ROOT ?? path.join(currentDir, '../../'),
+  outputFileTracingIncludes: {
+    '/': ['./middleware.ts'],
   },
 };
 
