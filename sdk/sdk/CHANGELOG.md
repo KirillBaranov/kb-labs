@@ -1,3 +1,23 @@
+## [2.21.1] - 2026-04-18
+
+> **@kb-labs/sdk** 2.21.0 → 2.21.1 (minor: new features)
+
+### 🏗️ Core & SDK
+
+- **cli-ui**: Improves user interface by adding word-wrap and enhanced error formatting, making it easier to read and understand messages in the sideBorderBox.
+- **sdk**: Introduces a platform client, allowing for more flexible integration with various services, alongside fixes to the marketing page for better user experience.
+- **sdk**: Adds adapter types for clearer usage, enabling developers to utilize specific functionalities more effectively and reducing potential errors in implementation.
+- **sdk**: Introduces the runtimeContext ALS and useEnv() hook, providing developers with better context management and environment handling during application runtime.
+- **sdk**: Updates dependency handling to avoid version conflicts, ensuring smoother installations and upgrades for users without locking them into specific versions.
+- **sdk**: Improves syncpack formatting for peerDependencies, enhancing the overall package management experience and ensuring better compatibility among dependencies.
+- **devkit**: Optimizes the development toolkit by skipping self-referencing dependencies in the dependency graph, which simplifies dependency management and reduces potential issues with mock platform adapters.
+
+### 🔧 Other
+
+- **docs**: Updates the configuration file format to improve compatibility and streamline documentation, ensuring you have the most accurate guidance for setup.  
+- **web**: Enhances the framework's configuration file format for better performance and future-proofing, allowing for smoother updates and improvements in your web applications.  
+- **ci**: Synchronizes the package lock file with the latest dependencies, ensuring a more reliable and consistent environment during builds, which helps prevent unexpected issues.  
+- **general**: Addresses various lint errors, test failures, and missing configurations across multiple packages, leading to a more stable and reliable experience for users as bugs are resolved and quality is improved.
 ## [2.21.0] - 2026-04-18
 
 > **@kb-labs/sdk** 2.20.1 → 2.21.0 (minor: new features)
