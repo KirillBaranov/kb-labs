@@ -57,89 +57,6 @@ importers:
         specifier: ^3.2.4
         version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
 
-  .kb/plugins/my-notifier/packages/my-notifier-contracts:
-    devDependencies:
-      '@kb-labs/devkit':
-        specifier: ^2.28.0
-        version: 2.45.0(@playwright/test@1.59.1)(@typescript-eslint/eslint-plugin@8.58.1(@typescript-eslint/parser@8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(@typescript-eslint/parser@8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.4(jiti@2.6.1))(react@19.2.5)(tsup@8.5.1(@swc/core@1.15.24(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.9)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3))(typescript-eslint@8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(typescript@5.9.3)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
-      '@types/node':
-        specifier: ^24.0.0
-        version: 24.12.2
-      rimraf:
-        specifier: ^6.0.1
-        version: 6.1.3
-      tsup:
-        specifier: ^8.5.0
-        version: 8.5.1(@swc/core@1.15.24(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.9)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
-      typescript:
-        specifier: ^5.6.3
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
-
-  .kb/plugins/my-notifier/packages/my-notifier-core:
-    dependencies:
-      '@kb-labs/my-notifier-contracts':
-        specifier: workspace:*
-        version: link:../my-notifier-contracts
-      '@kb-labs/sdk':
-        specifier: ^2.18.0
-        version: 2.20.0(cbbpx6fm7ogu2vidj7xuptt67e)
-    devDependencies:
-      '@kb-labs/devkit':
-        specifier: ^2.28.0
-        version: 2.45.0(@playwright/test@1.59.1)(@typescript-eslint/eslint-plugin@8.58.1(@typescript-eslint/parser@8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(@typescript-eslint/parser@8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.4(jiti@2.6.1))(react@19.2.5)(tsup@8.5.1(@swc/core@1.15.24(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.9)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3))(typescript-eslint@8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(typescript@5.9.3)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
-      '@types/node':
-        specifier: ^24.0.0
-        version: 24.12.2
-      rimraf:
-        specifier: ^6.0.1
-        version: 6.1.3
-      tsup:
-        specifier: ^8.5.0
-        version: 8.5.1(@swc/core@1.15.24(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.9)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
-      typescript:
-        specifier: ^5.6.3
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
-
-  .kb/plugins/my-notifier/packages/my-notifier-entry:
-    dependencies:
-      '@kb-labs/my-notifier-contracts':
-        specifier: workspace:*
-        version: link:../my-notifier-contracts
-      '@kb-labs/my-notifier-core':
-        specifier: workspace:*
-        version: link:../my-notifier-core
-      '@kb-labs/sdk':
-        specifier: ^2.18.0
-        version: 2.20.0(nncpf2eaiwh6eoer6wfi6leklq)
-      '@kb-labs/shared-command-kit':
-        specifier: ^2.30.0
-        version: 2.44.0
-    devDependencies:
-      '@kb-labs/devkit':
-        specifier: ^2.28.0
-        version: 2.45.0(@playwright/test@1.59.1)(@typescript-eslint/eslint-plugin@8.58.1(@typescript-eslint/parser@8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(@typescript-eslint/parser@8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.4(jiti@2.6.1))(react@19.2.5)(tsup@8.5.1(@swc/core@1.15.24(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.9)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3))(typescript-eslint@8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(typescript@5.9.3)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))
-      '@types/node':
-        specifier: ^24.0.0
-        version: 24.12.2
-      rimraf:
-        specifier: ^6.0.1
-        version: 6.1.3
-      tsup:
-        specifier: ^8.5.0
-        version: 8.5.1(@swc/core@1.15.24(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.9)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
-      typescript:
-        specifier: ^5.6.3
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
-
   adapters/analytics-duckdb:
     dependencies:
       '@duckdb/node-api':
@@ -5240,53 +5157,53 @@ importers:
   sdk/sdk:
     dependencies:
       '@kb-labs/core-platform':
-        specifier: workspace:*
-        version: link:../../core/platform
+        specifier: '>=2.0.0'
+        version: 2.45.0
       '@kb-labs/core-runtime':
-        specifier: workspace:*
-        version: link:../../core/runtime
+        specifier: '>=2.0.0'
+        version: 2.45.0
       '@kb-labs/core-sys':
-        specifier: workspace:*
-        version: link:../../core/sys
+        specifier: '>=2.0.0'
+        version: 2.45.0
       '@kb-labs/perm-presets':
-        specifier: workspace:*
-        version: link:../../shared/perm-presets
+        specifier: '>=2.0.0'
+        version: 2.45.0
       '@kb-labs/platform-client':
-        specifier: workspace:*
-        version: link:../platform-client
+        specifier: '>=2.0.0'
+        version: 2.45.0
       '@kb-labs/plugin-contracts':
-        specifier: workspace:*
-        version: link:../../core/plugin-contracts
+        specifier: '>=2.0.0'
+        version: 2.45.0
       '@kb-labs/shared-cli-ui':
-        specifier: workspace:*
-        version: link:../../shared/cli-ui
+        specifier: '>=2.0.0'
+        version: 2.45.0
       '@kb-labs/shared-command-kit':
-        specifier: workspace:*
-        version: link:../../shared/command-kit
+        specifier: '>=2.0.0'
+        version: 2.45.0
       '@kb-labs/shared-testing':
-        specifier: workspace:*
-        version: link:../../shared/testing
+        specifier: '>=2.0.0'
+        version: 2.45.0(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
       '@kb-labs/shared-tool-kit':
-        specifier: workspace:*
-        version: link:../../shared/tool-kit
+        specifier: '>=2.0.0'
+        version: 2.45.0
       '@kb-labs/studio-devtools':
-        specifier: workspace:*
-        version: link:../../studio/devtools
+        specifier: '>=2.0.0'
+        version: 2.45.0(react@19.2.5)
       '@kb-labs/studio-event-bus':
-        specifier: workspace:*
-        version: link:../../studio/event-bus
+        specifier: '>=2.0.0'
+        version: 2.45.0(react@19.2.5)
       '@kb-labs/studio-hooks':
-        specifier: workspace:*
-        version: link:../../studio/hooks
+        specifier: '>=2.0.0'
+        version: 2.45.0(@tanstack/react-query@5.97.0(react@19.2.5))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react-dom@19.2.5(react@19.2.5))(react-router-dom@7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
       '@kb-labs/studio-plugin-tools':
-        specifier: workspace:*
-        version: link:../../studio/plugin-tools
+        specifier: '>=2.0.0'
+        version: 2.45.0(@rspack/core@1.7.11(@swc/helpers@0.5.15))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3)(webpack@5.106.1(@swc/core@1.15.24(@swc/helpers@0.5.15)))
       '@kb-labs/studio-ui-core':
-        specifier: workspace:*
-        version: link:../../studio/ui-core
+        specifier: '>=2.0.0'
+        version: 2.45.0
       '@kb-labs/studio-ui-kit':
-        specifier: workspace:*
-        version: link:../../studio/ui-kit
+        specifier: '>=2.0.0'
+        version: 2.45.0(@ant-design/charts@2.6.7(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(dayjs@1.11.20)(react-dom@19.2.5(react@19.2.5))(react-router-dom@7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
       zod:
         specifier: ^3.25.76
         version: 3.25.76
@@ -5553,7 +5470,7 @@ importers:
     dependencies:
       '@kb-labs/sdk':
         specifier: ^2.20.0
-        version: 2.20.0(dvmqqoxnaaornj577htlbeuhea)
+        version: 2.20.0(y5wuycq23yj2ryc3wrohgcj5ya)
       '@kb-labs/web-og':
         specifier: workspace:*
         version: link:../../packages/og
@@ -5623,7 +5540,7 @@ importers:
         version: 2.6.7(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@kb-labs/sdk':
         specifier: ^2.20.0
-        version: 2.20.0(iil7lpds4p33gfo4cnpjvudvry)
+        version: 2.20.0(nucllqs7kyc4m5mhghaivci5dm)
       '@kb-labs/web-data-source':
         specifier: workspace:*
         version: link:../../packages/web-data-source
@@ -7396,121 +7313,93 @@ packages:
     peerDependencies:
       tslib: '2'
 
-  '@kb-labs/core-config@2.44.0':
-    resolution: {integrity: sha512-jvP3URQM+zE4+jVMidJ0LCDr3ByDFU82CKokwPFiONI9MLQoQp2r253RMvoD+XAjHXb7D77RVAGh79CGWWUhyw==}
-    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
-
   '@kb-labs/core-config@2.45.0':
     resolution: {integrity: sha512-+xoJq6rv+ROou25r7Lxxy0ae20T/27CfTU3ZHnbeKmGr00BzrUWowedqWIyVupqz7yuJNpRwJD5PTTNumgGu3A==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/core-contracts@2.44.0':
-    resolution: {integrity: sha512-kI5o4pMYfNVC0mhdjvTOsqAlYqA55KEN4biyz3ItzRGiHUzpcEsvvf6wDegUOfviGqkXi3llNjAgD5IZgsvFdA==}
-    engines: {node: '>=18.18.0', pnpm: '>=9.0.0'}
+  '@kb-labs/core-config@2.47.0':
+    resolution: {integrity: sha512-/kiluKZYBYeJxvpx4VeysC7L5VAmHzVpiEXpwgqOqhRvRtaf+B3jK284A6LYnc1dGXbgiViy00fCGtaBuyY9ug==}
+    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
   '@kb-labs/core-contracts@2.45.0':
     resolution: {integrity: sha512-QcmpHptPO8WRARMVJsIhr4J0WUTPBTInjYRNpXuFe8w+gMO8ZpKNYBT2w6ldpNGfEvnwggUd8AZ6eXudBqjsHQ==}
     engines: {node: '>=18.18.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/core-discovery@2.44.0':
-    resolution: {integrity: sha512-d8uvajGCSyD8yp6nOPtb9duFiXrS1Es/N4C39BcE4IGIDpOlK+OYZBwTZM8M8S4TI1BvQxB95eZsVOXVjTRTaw==}
-    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
+  '@kb-labs/core-contracts@2.47.0':
+    resolution: {integrity: sha512-5aLho3bWrfpf1TH8KT34XL4tWZseGEMubqJHhZRzRPW6PBO/3Qsx0yGW81OpoHO06eQae7gFtlOZzAxZz268Hg==}
+    engines: {node: '>=18.18.0', pnpm: '>=9.0.0'}
 
   '@kb-labs/core-discovery@2.45.0':
     resolution: {integrity: sha512-YYo0Bktp/Lk7Ta+OiZk57DQzcDcHhCsm+4GgqSbpuquX5FnJAIjkTontFEYVrS34DsLo22YjoOYDN/trVt+yJA==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/core-ipc@2.44.0':
-    resolution: {integrity: sha512-ecTFAjO+nfAeo/krY2mpvZMBm+R5oBZPBW+zALYNQDVPuwMqur4kjHGfVA0ay4cfz0TwZEDDo2MM9ewlBvn7LQ==}
-    engines: {node: '>=18.18.0', pnpm: '>=9.0.0'}
+  '@kb-labs/core-discovery@2.47.0':
+    resolution: {integrity: sha512-KM4mGQaSs7UprnUxZ/v07LQsJ5ofZ6g8IdMtYW7EmG6ChvaMLuVYWMzj/RLc2G0G5Xhc7WbW6+vgeQYjCTKF2w==}
+    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
   '@kb-labs/core-ipc@2.45.0':
     resolution: {integrity: sha512-vwAcZ+U9NXPpAa7AIEn1Z1/kYGAZY5xagbc1PAuNSfUACRMSPgiDHwITNrsNHE2ilYaat4GMvWGKQr+EAQqq+Q==}
     engines: {node: '>=18.18.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/core-platform@2.44.0':
-    resolution: {integrity: sha512-XYizZsLGH9TYremu9UR/kXXNADdWYgBfvSlz21tIJmH6YQe9DiRTYqh9VDR8lctT67VMz2IY6nUQ42qpM1PmfA==}
-    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
+  '@kb-labs/core-ipc@2.47.0':
+    resolution: {integrity: sha512-g3FmekWpf3hcrxuQHnD8dqC2hNaPj+EJYgN8Csan3Nau/nX/EWk8vu17Z5NgjGOfCy3VrNRk0elQ0CDzOZq4cg==}
+    engines: {node: '>=18.18.0', pnpm: '>=9.0.0'}
 
   '@kb-labs/core-platform@2.45.0':
     resolution: {integrity: sha512-+jMJ6jjUGhZN1ndmUREOf6OOSJ7OS0gB9qcGD9xbDrD4tkAZ/MmoS4Y3mnnp/Fv6isgn+bkYHvalOfKrl6nMkw==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/core-resource-broker@2.44.0':
-    resolution: {integrity: sha512-0bK9Ir20nNylpn1bjY3hcRxoZS+XEBt6dK1rJbBNSRFrqdoNl6PtKRgIQXrioShKeqXrh61tl2CZg+gtIxifew==}
+  '@kb-labs/core-platform@2.47.0':
+    resolution: {integrity: sha512-SQ7MebZK0hTv0dV5uQ5p6vGnpWDhNkbqvtk7IFVCjSsoR6VvcXPY6PUQAI1pJus5jf99vdRfisqTT3FeDxAc8w==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
   '@kb-labs/core-resource-broker@2.45.0':
     resolution: {integrity: sha512-WxL62e9lXolrAsMewPVLCaabOGipWk0MiWwImDxThP3I96ICmZFrKenJ7IIyQa8Ho1oCt3CyBTnAXiyy/csfFA==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/core-runtime@2.44.0':
-    resolution: {integrity: sha512-uj2Kfl2cO8OHTh6Dbj6zHcsrEwQJrxGZ8kJ7H8MPqYMaMBU19n61vvC+CxtL1ZQityYZj5zhN6iyPsHmchTqGg==}
+  '@kb-labs/core-resource-broker@2.47.0':
+    resolution: {integrity: sha512-QxSU5RV4cXjc6jfsW+4buoyU3Y2X/4W/mlK5pf+A8RWkhDVDsRE0nj5nkzNdyQtqwKJz1aAW7ljw5WNMc4+jhg==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
   '@kb-labs/core-runtime@2.45.0':
     resolution: {integrity: sha512-zyqbH1pP6XthDhpafCzUhHZ0Q5rZ+CA4zVk8cMMFT19lah+3UOatHpVk3u1Ap3i1iRGpIn8GmsaVzBuLqZ7HNQ==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/core-state-broker@2.44.0':
-    resolution: {integrity: sha512-b6LDYL2cT7kn+u2QmYhCBwDvOUpG+e9Yd60Gsid6EZM9R/Ct+K2Lr9q/XM9OTP4/9gsCzgEMMUL5wwjeTLZ8ug==}
+  '@kb-labs/core-runtime@2.47.0':
+    resolution: {integrity: sha512-4LJN3zvSlZKlOYXfAK/XKUtEf9vXaVIRDQ01eFNyNc0HlPGJ572yWEPeeBxj/tcioOQhgDCE+siuuUOnok8fog==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
   '@kb-labs/core-state-broker@2.45.0':
     resolution: {integrity: sha512-cxpKQPTZ3OAjl685Og/X7rvv6SfuSUph8qgCB7MYDyiWwuvFl4LQntO2ebyMdbdyhCJdIXsFylsrhgilN9E9MA==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/core-sys@2.44.0':
-    resolution: {integrity: sha512-Rla8NjdffB4QuldEVJtisYnrnAi7I6peC/cwOwKwHIdvJZBR8Q5M+yGj5K4BMxUcoPdCCjqa6QH3ZEycdDEU6Q==}
+  '@kb-labs/core-state-broker@2.47.0':
+    resolution: {integrity: sha512-8B54nVL2y445w0HfLKsWkrjJBaMT5BEwHm2ve0H3WcruLvliXKPoKq5gjY1HJ+33pWggZ0EaaukWXGtBmPbyOA==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
   '@kb-labs/core-sys@2.45.0':
     resolution: {integrity: sha512-bQgJT116jMOMjkm6H/m2g4Udk210H6j6H4aynAwQMzG2owYno5MyUHY9wWoNHRu+1L8mW2G/Vz7OprQlE1Nz8g==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/core-workspace@2.44.0':
-    resolution: {integrity: sha512-Zw9ac6sZfGGoFIcEEzfAbZmUDXki++k8FRQLdu8nIgaaPLQsMT2oYSanMD1axQCqnMsH7Itvy6tuGSDlu8nOQQ==}
+  '@kb-labs/core-sys@2.47.0':
+    resolution: {integrity: sha512-g0k3f3utFAalAxeGR8noKFAZrsh5LoQHATxJfQwaZ9xYkjqOZQuARKs2NsglzhtSbDffVCgXGMUcvWWvoiHb7w==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
   '@kb-labs/core-workspace@2.45.0':
     resolution: {integrity: sha512-PMBZotdARPz/igvCQWD7HmJHRzmNCQie2YkZXD824mYEvlKcQUXSgtSVsZdqWvHUj1+KJbewfgnsP9BbVFYt/g==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/devkit@2.45.0':
-    resolution: {integrity: sha512-npgQquapcGia2860QecEW+Ds7iw4lKbG5Vp63Jzu2oBX9dJAU9Y6ZyL6dcYegoXy4MbbueKtHb6Py6keMZuGZg==}
-    engines: {node: '>=20.0.0', pnpm: '>=9.11.0'}
-    hasBin: true
-    peerDependencies:
-      '@playwright/test': '*'
-      '@testing-library/react': '*'
-      '@vitejs/plugin-react': '*'
-      eslint: ^9.35.0
-      react: '*'
-      tsup: ^8.5.0
-      typescript: ^5.9.2
-      typescript-eslint: ^8.44.0
-      vitest: ^3.2.4
-    peerDependenciesMeta:
-      '@testing-library/react':
-        optional: true
-      '@vitejs/plugin-react':
-        optional: true
-      react:
-        optional: true
-
-  '@kb-labs/gateway-contracts@2.44.0':
-    resolution: {integrity: sha512-IWUiyCxx302edKk2M8FRg0ECUmO7oy/5qFvSoLMnBLLfMAAVpYK6oVe4B7uocaL0Ue3bCI/vCwqgcqDb3NhQqQ==}
+  '@kb-labs/core-workspace@2.47.0':
+    resolution: {integrity: sha512-1zk54T0TIyG173JpZ/y1hb9H8RUWo6q4vROoYgtbJVifuJFecVuS+Kd0N4wppzGSOZ5cwYU7da7zK61AWfVLlg==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
   '@kb-labs/gateway-contracts@2.45.0':
     resolution: {integrity: sha512-U3Sd8kjBc63RXQVZ9qs9uiLTSD54vc+DXdre945qV+55uPQiFQ/pcFSdvIAeGtn+s+MWKQNBUyfW+3ymX2znJQ==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/gateway-core@2.44.0':
-    resolution: {integrity: sha512-FHNhcpQ+ZWAhqWlGXkq9uU47CL3zcLrz7XtKMs5P3538iv00WKzKT469vd+1Zr2WGUm1NxoW9QReQqogTm54Mg==}
+  '@kb-labs/gateway-contracts@2.47.0':
+    resolution: {integrity: sha512-9c6xetmporqCFfSDNxbcTy4RF5c1fYUd8ItKOr7MMsYNiS8D2FuRtqzL23W0oACLtbTCVQdiXOboTjDndM5+sA==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
-    peerDependencies:
-      '@kb-labs/core-platform': 2.44.0
 
   '@kb-labs/gateway-core@2.45.0':
     resolution: {integrity: sha512-pL1vjcrK+F8M95lmTkzdu0OHGvIF2riHPWl7D/hgwbSkn/Qonr912CArOt+eeFZYKv3G0ze4Wl6OVT13hQvUjQ==}
@@ -7518,12 +7407,18 @@ packages:
     peerDependencies:
       '@kb-labs/core-platform': 2.45.0
 
-  '@kb-labs/llm-router@2.44.0':
-    resolution: {integrity: sha512-J3781EQCezqDVLWfhG1Gg3Bqb6suvkLFM53o11VNENCJV+ZMAVEgWRKp7f2PQi4sElLGaQQGTWp52Pj82VPNPA==}
+  '@kb-labs/gateway-core@2.47.0':
+    resolution: {integrity: sha512-wP2CczGWRZUzPsOIVZqO6ebGe5BOQrzrQ6z+y2sLRu9slH80K4eEbi0wrjzG1/pyVRiaG4c0B1BpChgSUGdz0w==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
+    peerDependencies:
+      '@kb-labs/core-platform': 2.47.0
 
   '@kb-labs/llm-router@2.45.0':
     resolution: {integrity: sha512-7abiqNSDNKVXTSuPRmuVoqb9q/4CYDy+Vmqiz/DhOwVHCttoKecUcs5kDOI1rPMmnC48bLC9wc3zP7MSsAf/Og==}
+    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
+
+  '@kb-labs/llm-router@2.47.0':
+    resolution: {integrity: sha512-8z3zfLQ0w2axsGk1P8VOFgI4qSVl1rxIRT/gXhZoY6GIKJXeUaGH6V75f//oSeNQPzkOOe23aL5+fImYQocHSw==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
   '@kb-labs/perm-presets@2.45.0':
@@ -7534,28 +7429,28 @@ packages:
     resolution: {integrity: sha512-KVP+EuWWeGTJt/UXRw5j71SQErcaQe5rGFOKczGHdbqlEKANaBUqbIg5IP0vbAH+iNvlOWL4GU6BkuvhcBPPhA==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/plugin-contracts@2.44.0':
-    resolution: {integrity: sha512-oAzRCBCCKT/wvCJe4mymuP47Byl6Ert8uO4SHXIZdcEDiB9pjy1wlVXNax6BrUh6tW2Lg95rIB+83sZRMRvkMw==}
-    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
-
   '@kb-labs/plugin-contracts@2.45.0':
     resolution: {integrity: sha512-RmwlbQMA7yoy1qv80CtOPFLTykg46/oYCEtblf/M7vWN8Dzc+wyPMQu2n3J3qkY357fVVJcI6HDht8DB78KZWw==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/plugin-execution-factory@2.44.0':
-    resolution: {integrity: sha512-dQFERoJIPXcu6kCstjDM2mNHj6caDqmakQc829CmuVtDcT6mrZEC+szIwdJupdqyO70oWqqzM2kadfebRHYdAQ==}
+  '@kb-labs/plugin-contracts@2.47.0':
+    resolution: {integrity: sha512-O1dRbPYdLYic+M3cF1/wczwqgO6X2nADvfT1JBtpaoc6BUX1jSRWdimhGJThNei5ABOh2P2XIWXi3CHR6pzJGg==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
   '@kb-labs/plugin-execution-factory@2.45.0':
     resolution: {integrity: sha512-N4hoRn1v5dOqTOZMObMAOeVX3NUY0r4QnRY8mF/VrHrmtd7/nLMFlg13yHhShDplAKaI2TITo879G1Mk6SB1lw==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/plugin-runtime@2.44.0':
-    resolution: {integrity: sha512-+AmoTZkDNHzxQcbSDL/HYimZkoigy20orHdB4e95m2nojhntr+xHoYn1Sp+fvXTX9gxAtsOZs7ZO9e0P4xPxVw==}
+  '@kb-labs/plugin-execution-factory@2.47.0':
+    resolution: {integrity: sha512-Nbbn0I4sKfW4kQnqILkWC3Kes1IoIt4jnf4DqIbW6LwN5XJEaNrvueRIOZQcUHJY7L9qU7ZdnLakdKDgb19b0g==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
   '@kb-labs/plugin-runtime@2.45.0':
     resolution: {integrity: sha512-JSu6TBB/8NzZ/AwnLyFQ+ROJHqTyGrDvkqncG6M6MwZTA4X02PdCz0zG4pckP00Au025MHqslKgXLQawj1CPdA==}
+    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
+
+  '@kb-labs/plugin-runtime@2.47.0':
+    resolution: {integrity: sha512-M3TbNKGNSjbYA0nXQjQ9WT9Gki2YGRYUNDIwRWEDRl0Q3EC0WF6yS06htYXtgkQjz3nNkSoa3Be6Qq7LN7IYQg==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
   '@kb-labs/sdk@2.20.0':
@@ -7579,24 +7474,28 @@ packages:
       '@kb-labs/studio-ui-core': 2.36.0
       '@kb-labs/studio-ui-kit': 2.36.0
 
-  '@kb-labs/shared-cli-ui@2.44.0':
-    resolution: {integrity: sha512-dzqaUMSJAUFqOyUoBuaS4JdWIzA3KZQHvfhjpe6Ic+S1FmLEfS8e1oRWm4zA6neA+B8iWaUM1uoHN2dJBEUf1Q==}
-    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
-
   '@kb-labs/shared-cli-ui@2.45.0':
     resolution: {integrity: sha512-ayMipt3qhrTnJhv3ZweGyYf3vSP9wMcpGyq7ecGvfwDKO4yfK9+zumBg+h+XheC+JUT+fO3DHTMRcpxOUPqtrw==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/shared-command-kit@2.44.0':
-    resolution: {integrity: sha512-i5rCYgk/Yny6k67Iq0lghxJxTlSh/3S1ilS8UW8JuO2legGFwhIUVciz9daxL4k2zDFPVSmQ8UGjDdPnqH31ag==}
+  '@kb-labs/shared-cli-ui@2.47.0':
+    resolution: {integrity: sha512-4wtvJuFKIm/61FLu3lLLFrT9PnW8GvDe1FPcTJUk5yTIfsxx8o9VpOiBH2VjHvG/ZU7kb9D0dFoKvj3zIUNJ4Q==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
   '@kb-labs/shared-command-kit@2.45.0':
     resolution: {integrity: sha512-PcPx6GOTBI2wcSfxT/noO4PyMqPofQL7KryTe7WelpNCsw9ZPvvp1kNA3tOJVW/PdruIgqVg+MVKFtUYPQlyvw==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
+  '@kb-labs/shared-command-kit@2.47.0':
+    resolution: {integrity: sha512-U68uRevDJoI3kJbkt7HPjPo6ppEfPhS0IG/WHzjBcs8U5bCk1YHGYw47H9dxlCCJ2JO20bL0CXv46kTcksYjhA==}
+    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
+
   '@kb-labs/shared-testing@2.45.0':
     resolution: {integrity: sha512-yug+17CNi0bGhkf9fDw99BHD6WqzZVTGMOP+EjszAI3AKciAJP91qaizETpJ4nTTCHgnoJLkQo8Zur9EmDp/cA==}
+    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
+
+  '@kb-labs/shared-testing@2.47.0':
+    resolution: {integrity: sha512-4bCgXkl4Ibg9xrpuVaZnSheuwJyABGZkxkkr7MTJqLUaQL/vvaNQVaS0dyD/R4hISNFfbIDuE5XFj2RGd9Ggcw==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
   '@kb-labs/shared-tool-kit@2.45.0':
@@ -7609,14 +7508,36 @@ packages:
     peerDependencies:
       react: ^19.0.0
 
+  '@kb-labs/studio-devtools@2.47.0':
+    resolution: {integrity: sha512-8uDjYYguTrjxgv03Qp20i6QJqU2UCSfCVaDRu/NPh6NgUHcPjJdScoCuwNB5H9VVA7GM0i0+Ye57upUxZPF/Yg==}
+    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
+    peerDependencies:
+      react: ^19.0.0
+
   '@kb-labs/studio-event-bus@2.45.0':
     resolution: {integrity: sha512-YfuH/lmY4yyd8CR5NmhbATCp6v+xExQE4NgnVe2F6Y/39SYsFzYZWM9wwAKwY7tc/oRykpJD608MXgL/lQ25rA==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
     peerDependencies:
       react: ^19.0.0
 
+  '@kb-labs/studio-event-bus@2.47.0':
+    resolution: {integrity: sha512-+M6ce2gBC3nEly5Du5iTCoG5wiWi99gpVmQJiOh/KIIV2vDIsipwzXRfmySK3LNpouoNT4dhLeqo9lvbqfH2EQ==}
+    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
+    peerDependencies:
+      react: ^19.0.0
+
   '@kb-labs/studio-hooks@2.45.0':
     resolution: {integrity: sha512-l6Bas2dF5VV/OBz29XMFWZNtnL3TATMzFotN+ApH61vfPtUxzCzlufngUOrx8AeaHM0WjxwGMofrnCRKjjUcPA==}
+    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
+    peerDependencies:
+      '@tanstack/react-query': ^5.0.0
+      antd: ^5.21.0
+      react: ^19.0.0
+      react-dom: ^19.0.0
+      react-router-dom: ^7.0.0
+
+  '@kb-labs/studio-hooks@2.47.0':
+    resolution: {integrity: sha512-ORy97BneHmM8r3XzIjkDq5t11Kc39IgZb7UJdSGx4hZ0K/SiY3KWYyuWXWjx+UjIRplbuMkaU0jOfPr0UglHSg==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
     peerDependencies:
       '@tanstack/react-query': ^5.0.0
@@ -7633,12 +7554,35 @@ packages:
       react: ^19.0.0
       react-dom: ^19.0.0
 
+  '@kb-labs/studio-plugin-tools@2.47.0':
+    resolution: {integrity: sha512-OouoX7UyBBirNk+7tyoqFb3RAhNdjuAScEG4YRW//aG6AM2XUqDko3U0HLPmWxeGtx7UAtRa3lOGK1O3hHATsw==}
+    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
+    peerDependencies:
+      '@rspack/core': '>=1.0.0'
+      react: ^19.0.0
+      react-dom: ^19.0.0
+
   '@kb-labs/studio-ui-core@2.45.0':
     resolution: {integrity: sha512-CbWTM0q2DVRvjvWGRGdHjAMPf4Cm73zOTnwSloAM4cx9q7eaY75glQYqkAF+v447LeyA1/vNfqjsgFoer2EMIw==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
+  '@kb-labs/studio-ui-core@2.47.0':
+    resolution: {integrity: sha512-VHxtMhsEkKKbVX5ZykiK2WzZxU77+mFSx1i32iqbYMZUodJ3v7VZJZgmft0aJ7oygNRFJWkYNkpeev801Q+QYQ==}
+    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
+
   '@kb-labs/studio-ui-kit@2.45.0':
     resolution: {integrity: sha512-tpk5Rmu88xbNF6+fhSucw09tn2lWpwp5GMVAleOgcbax7Vz51v0e9/WoRsqk8MFJvXgbeBt0b6bVbSMad8wGLw==}
+    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
+    peerDependencies:
+      '@ant-design/charts': ^2.0.0
+      antd: ^5.22.5
+      dayjs: ^1.11.0
+      react: ^19.0.0
+      react-dom: ^19.0.0
+      react-router-dom: ^7.0.0
+
+  '@kb-labs/studio-ui-kit@2.47.0':
+    resolution: {integrity: sha512-VPkX2fEr4vNRvALpudAMabFithePr8gCJ4VXU8UJzeMWGsclqEAcFpQC7k9bvF770idcIIQGVq6dqhO/KvsrLA==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
     peerDependencies:
       '@ant-design/charts': ^2.0.0
@@ -15429,14 +15373,6 @@ snapshots:
       '@jsonjoy.com/codegen': 17.67.0(tslib@2.8.1)
       tslib: 2.8.1
 
-  '@kb-labs/core-config@2.44.0':
-    dependencies:
-      ajv: 8.18.0
-      ajv-formats: 3.0.1(ajv@8.18.0)
-      picomatch: 4.0.4
-      yaml: 2.8.3
-      zod: 3.25.76
-
   '@kb-labs/core-config@2.45.0':
     dependencies:
       ajv: 8.18.0
@@ -15445,60 +15381,53 @@ snapshots:
       yaml: 2.8.3
       zod: 3.25.76
 
-  '@kb-labs/core-contracts@2.44.0': {}
+  '@kb-labs/core-config@2.47.0':
+    dependencies:
+      ajv: 8.18.0
+      ajv-formats: 3.0.1(ajv@8.18.0)
+      picomatch: 4.0.4
+      yaml: 2.8.3
+      zod: 3.25.76
 
   '@kb-labs/core-contracts@2.45.0': {}
 
-  '@kb-labs/core-discovery@2.44.0':
-    dependencies:
-      '@kb-labs/core-sys': 2.44.0
-      '@kb-labs/plugin-contracts': 2.44.0
+  '@kb-labs/core-contracts@2.47.0': {}
 
   '@kb-labs/core-discovery@2.45.0':
     dependencies:
       '@kb-labs/core-sys': 2.45.0
       '@kb-labs/plugin-contracts': 2.45.0
 
-  '@kb-labs/core-ipc@2.44.0':
+  '@kb-labs/core-discovery@2.47.0':
     dependencies:
-      '@kb-labs/core-platform': 2.44.0
+      '@kb-labs/core-sys': 2.47.0
+      '@kb-labs/plugin-contracts': 2.47.0
 
   '@kb-labs/core-ipc@2.45.0':
     dependencies:
       '@kb-labs/core-platform': 2.45.0
 
-  '@kb-labs/core-platform@2.44.0':
+  '@kb-labs/core-ipc@2.47.0':
     dependencies:
-      ulid: 2.4.0
+      '@kb-labs/core-platform': 2.47.0
 
   '@kb-labs/core-platform@2.45.0':
     dependencies:
       ulid: 2.4.0
 
-  '@kb-labs/core-resource-broker@2.44.0':
+  '@kb-labs/core-platform@2.47.0':
     dependencies:
-      '@kb-labs/core-platform': 2.44.0
-      '@kb-labs/core-state-broker': 2.44.0
+      ulid: 2.4.0
 
   '@kb-labs/core-resource-broker@2.45.0':
     dependencies:
       '@kb-labs/core-platform': 2.45.0
       '@kb-labs/core-state-broker': 2.45.0
 
-  '@kb-labs/core-runtime@2.44.0':
+  '@kb-labs/core-resource-broker@2.47.0':
     dependencies:
-      '@kb-labs/core-config': 2.44.0
-      '@kb-labs/core-contracts': 2.44.0
-      '@kb-labs/core-discovery': 2.44.0
-      '@kb-labs/core-ipc': 2.44.0
-      '@kb-labs/core-platform': 2.44.0
-      '@kb-labs/core-resource-broker': 2.44.0
-      '@kb-labs/core-workspace': 2.44.0
-      '@kb-labs/llm-router': 2.44.0
-      '@kb-labs/plugin-execution-factory': 2.44.0
-      zod: 3.25.76
-    optionalDependencies:
-      '@kb-labs/gateway-core': 2.44.0(@kb-labs/core-platform@2.44.0)
+      '@kb-labs/core-platform': 2.47.0
+      '@kb-labs/core-state-broker': 2.47.0
 
   '@kb-labs/core-runtime@2.45.0':
     dependencies:
@@ -15515,65 +15444,49 @@ snapshots:
     optionalDependencies:
       '@kb-labs/gateway-core': 2.45.0(@kb-labs/core-platform@2.45.0)
 
-  '@kb-labs/core-state-broker@2.44.0': {}
+  '@kb-labs/core-runtime@2.47.0':
+    dependencies:
+      '@kb-labs/core-config': 2.47.0
+      '@kb-labs/core-contracts': 2.47.0
+      '@kb-labs/core-discovery': 2.47.0
+      '@kb-labs/core-ipc': 2.47.0
+      '@kb-labs/core-platform': 2.47.0
+      '@kb-labs/core-resource-broker': 2.47.0
+      '@kb-labs/core-workspace': 2.47.0
+      '@kb-labs/llm-router': 2.47.0
+      '@kb-labs/plugin-execution-factory': 2.47.0
+      zod: 3.25.76
+    optionalDependencies:
+      '@kb-labs/gateway-core': 2.47.0(@kb-labs/core-platform@2.47.0)
 
   '@kb-labs/core-state-broker@2.45.0': {}
 
-  '@kb-labs/core-sys@2.44.0':
-    dependencies:
-      '@kb-labs/shared-cli-ui': 2.44.0
+  '@kb-labs/core-state-broker@2.47.0': {}
 
   '@kb-labs/core-sys@2.45.0':
     dependencies:
       '@kb-labs/shared-cli-ui': 2.45.0
 
-  '@kb-labs/core-workspace@2.44.0':
+  '@kb-labs/core-sys@2.47.0':
     dependencies:
-      '@kb-labs/core-sys': 2.44.0
+      '@kb-labs/shared-cli-ui': 2.47.0
 
   '@kb-labs/core-workspace@2.45.0':
     dependencies:
       '@kb-labs/core-sys': 2.45.0
 
-  '@kb-labs/devkit@2.45.0(@playwright/test@1.59.1)(@typescript-eslint/eslint-plugin@8.58.1(@typescript-eslint/parser@8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(@typescript-eslint/parser@8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.4(jiti@2.6.1))(react@19.2.5)(tsup@8.5.1(@swc/core@1.15.24(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.9)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3))(typescript-eslint@8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(typescript@5.9.3)(vitest@3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3))':
+  '@kb-labs/core-workspace@2.47.0':
     dependencies:
-      '@playwright/test': 1.59.1
-      eslint: 9.39.4(jiti@2.6.1)
-      eslint-import-resolver-typescript: 3.10.1(eslint-plugin-import@2.32.0)(eslint@9.39.4(jiti@2.6.1))
-      eslint-plugin-import: 2.32.0(@typescript-eslint/parser@8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint-import-resolver-typescript@3.10.1)(eslint@9.39.4(jiti@2.6.1))
-      eslint-plugin-jsx-a11y: 6.10.2(eslint@9.39.4(jiti@2.6.1))
-      eslint-plugin-react-hooks: 5.2.0(eslint@9.39.4(jiti@2.6.1))
-      eslint-plugin-unused-imports: 4.4.1(@typescript-eslint/eslint-plugin@8.58.1(@typescript-eslint/parser@8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3))(eslint@9.39.4(jiti@2.6.1))
-      glob: 11.1.0
-      tsup: 8.5.1(@swc/core@1.15.24(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.9)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
-      typescript: 5.9.3
-      typescript-eslint: 8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
-      vitest: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
-      yaml: 2.8.3
-    optionalDependencies:
-      react: 19.2.5
-    transitivePeerDependencies:
-      - '@typescript-eslint/eslint-plugin'
-      - '@typescript-eslint/parser'
-      - eslint-import-resolver-webpack
-      - eslint-plugin-import-x
-      - supports-color
-
-  '@kb-labs/gateway-contracts@2.44.0':
-    dependencies:
-      zod: 3.25.76
-    optional: true
+      '@kb-labs/core-sys': 2.47.0
 
   '@kb-labs/gateway-contracts@2.45.0':
     dependencies:
       zod: 3.25.76
     optional: true
 
-  '@kb-labs/gateway-core@2.44.0(@kb-labs/core-platform@2.44.0)':
+  '@kb-labs/gateway-contracts@2.47.0':
     dependencies:
-      '@kb-labs/core-contracts': 2.44.0
-      '@kb-labs/core-platform': 2.44.0
-      '@kb-labs/gateway-contracts': 2.44.0
+      zod: 3.25.76
     optional: true
 
   '@kb-labs/gateway-core@2.45.0(@kb-labs/core-platform@2.45.0)':
@@ -15583,34 +15496,32 @@ snapshots:
       '@kb-labs/gateway-contracts': 2.45.0
     optional: true
 
-  '@kb-labs/llm-router@2.44.0':
+  '@kb-labs/gateway-core@2.47.0(@kb-labs/core-platform@2.47.0)':
     dependencies:
-      '@kb-labs/core-platform': 2.44.0
+      '@kb-labs/core-contracts': 2.47.0
+      '@kb-labs/core-platform': 2.47.0
+      '@kb-labs/gateway-contracts': 2.47.0
+    optional: true
 
   '@kb-labs/llm-router@2.45.0':
     dependencies:
       '@kb-labs/core-platform': 2.45.0
 
+  '@kb-labs/llm-router@2.47.0':
+    dependencies:
+      '@kb-labs/core-platform': 2.47.0
+
   '@kb-labs/perm-presets@2.45.0': {}
 
   '@kb-labs/platform-client@2.45.0': {}
-
-  '@kb-labs/plugin-contracts@2.44.0':
-    dependencies:
-      '@kb-labs/core-platform': 2.44.0
 
   '@kb-labs/plugin-contracts@2.45.0':
     dependencies:
       '@kb-labs/core-platform': 2.45.0
 
-  '@kb-labs/plugin-execution-factory@2.44.0':
+  '@kb-labs/plugin-contracts@2.47.0':
     dependencies:
-      '@kb-labs/core-contracts': 2.44.0
-      '@kb-labs/core-ipc': 2.44.0
-      '@kb-labs/core-platform': 2.44.0
-      '@kb-labs/plugin-contracts': 2.44.0
-      '@kb-labs/plugin-runtime': 2.44.0
-      '@kb-labs/shared-cli-ui': 2.44.0
+      '@kb-labs/core-platform': 2.47.0
 
   '@kb-labs/plugin-execution-factory@2.45.0':
     dependencies:
@@ -15621,12 +15532,14 @@ snapshots:
       '@kb-labs/plugin-runtime': 2.45.0
       '@kb-labs/shared-cli-ui': 2.45.0
 
-  '@kb-labs/plugin-runtime@2.44.0':
+  '@kb-labs/plugin-execution-factory@2.47.0':
     dependencies:
-      '@kb-labs/core-contracts': 2.44.0
-      '@kb-labs/core-platform': 2.44.0
-      '@kb-labs/plugin-contracts': 2.44.0
-      '@kb-labs/shared-cli-ui': 2.44.0
+      '@kb-labs/core-contracts': 2.47.0
+      '@kb-labs/core-ipc': 2.47.0
+      '@kb-labs/core-platform': 2.47.0
+      '@kb-labs/plugin-contracts': 2.47.0
+      '@kb-labs/plugin-runtime': 2.47.0
+      '@kb-labs/shared-cli-ui': 2.47.0
 
   '@kb-labs/plugin-runtime@2.45.0':
     dependencies:
@@ -15635,104 +15548,60 @@ snapshots:
       '@kb-labs/plugin-contracts': 2.45.0
       '@kb-labs/shared-cli-ui': 2.45.0
 
-  '@kb-labs/sdk@2.20.0(cbbpx6fm7ogu2vidj7xuptt67e)':
+  '@kb-labs/plugin-runtime@2.47.0':
     dependencies:
-      '@kb-labs/core-platform': 2.45.0
-      '@kb-labs/core-runtime': 2.45.0
-      '@kb-labs/core-sys': 2.45.0
+      '@kb-labs/core-contracts': 2.47.0
+      '@kb-labs/core-platform': 2.47.0
+      '@kb-labs/plugin-contracts': 2.47.0
+      '@kb-labs/shared-cli-ui': 2.47.0
+
+  '@kb-labs/sdk@2.20.0(nucllqs7kyc4m5mhghaivci5dm)':
+    dependencies:
+      '@kb-labs/core-platform': 2.47.0
+      '@kb-labs/core-runtime': 2.47.0
+      '@kb-labs/core-sys': 2.47.0
       '@kb-labs/perm-presets': 2.45.0
       '@kb-labs/platform-client': 2.45.0
-      '@kb-labs/plugin-contracts': 2.45.0
-      '@kb-labs/shared-cli-ui': 2.45.0
-      '@kb-labs/shared-command-kit': 2.45.0
-      '@kb-labs/shared-testing': 2.45.0(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
+      '@kb-labs/plugin-contracts': 2.47.0
+      '@kb-labs/shared-cli-ui': 2.47.0
+      '@kb-labs/shared-command-kit': 2.47.0
+      '@kb-labs/shared-testing': 2.47.0(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
       '@kb-labs/shared-tool-kit': 2.45.0
-      '@kb-labs/studio-devtools': 2.45.0(react@19.2.5)
-      '@kb-labs/studio-event-bus': 2.45.0(react@19.2.5)
-      '@kb-labs/studio-hooks': 2.45.0(@tanstack/react-query@5.97.0(react@19.2.5))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react-dom@19.2.5(react@19.2.5))(react-router-dom@7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
-      '@kb-labs/studio-plugin-tools': 2.45.0(@rspack/core@1.7.11(@swc/helpers@0.5.15))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3)(webpack@5.106.1(@swc/core@1.15.24(@swc/helpers@0.5.15)))
-      '@kb-labs/studio-ui-core': 2.45.0
-      '@kb-labs/studio-ui-kit': 2.45.0(@ant-design/charts@2.6.7(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(dayjs@1.11.20)(react-dom@19.2.5(react@19.2.5))(react-router-dom@7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
+      '@kb-labs/studio-devtools': 2.47.0(react@19.2.5)
+      '@kb-labs/studio-event-bus': 2.47.0(react@19.2.5)
+      '@kb-labs/studio-hooks': 2.47.0(@tanstack/react-query@5.97.0(react@19.2.5))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react-dom@19.2.5(react@19.2.5))(react-router-dom@7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
+      '@kb-labs/studio-plugin-tools': 2.47.0(@rspack/core@1.7.11)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3)(webpack@5.106.1(@swc/core@1.15.24))
+      '@kb-labs/studio-ui-core': 2.47.0
+      '@kb-labs/studio-ui-kit': 2.47.0(@ant-design/charts@2.6.7(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(dayjs@1.11.20)(react-dom@19.2.5(react@19.2.5))(react-router-dom@7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
       zod: 3.25.76
 
-  '@kb-labs/sdk@2.20.0(dvmqqoxnaaornj577htlbeuhea)':
+  '@kb-labs/sdk@2.20.0(y5wuycq23yj2ryc3wrohgcj5ya)':
     dependencies:
-      '@kb-labs/core-platform': 2.45.0
-      '@kb-labs/core-runtime': 2.45.0
-      '@kb-labs/core-sys': 2.45.0
+      '@kb-labs/core-platform': 2.47.0
+      '@kb-labs/core-runtime': 2.47.0
+      '@kb-labs/core-sys': 2.47.0
       '@kb-labs/perm-presets': 2.45.0
       '@kb-labs/platform-client': 2.45.0
-      '@kb-labs/plugin-contracts': 2.45.0
-      '@kb-labs/shared-cli-ui': 2.45.0
-      '@kb-labs/shared-command-kit': 2.45.0
-      '@kb-labs/shared-testing': 2.45.0(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
+      '@kb-labs/plugin-contracts': 2.47.0
+      '@kb-labs/shared-cli-ui': 2.47.0
+      '@kb-labs/shared-command-kit': 2.47.0
+      '@kb-labs/shared-testing': 2.47.0(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
       '@kb-labs/shared-tool-kit': 2.45.0
-      '@kb-labs/studio-devtools': 2.45.0(react@19.2.5)
-      '@kb-labs/studio-event-bus': 2.45.0(react@19.2.5)
-      '@kb-labs/studio-hooks': 2.45.0(@tanstack/react-query@5.97.0(react@19.2.5))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react-dom@19.2.5(react@19.2.5))(react-router-dom@7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
-      '@kb-labs/studio-plugin-tools': 2.45.0(@rspack/core@1.7.11(@swc/helpers@0.5.15))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3)(webpack@5.106.1(@swc/core@1.15.24))
-      '@kb-labs/studio-ui-core': 2.45.0
-      '@kb-labs/studio-ui-kit': 2.45.0(@ant-design/charts@2.6.7(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(dayjs@1.11.20)(react-dom@19.2.5(react@19.2.5))(react-router-dom@7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
+      '@kb-labs/studio-devtools': 2.47.0(react@19.2.5)
+      '@kb-labs/studio-event-bus': 2.47.0(react@19.2.5)
+      '@kb-labs/studio-hooks': 2.47.0(@tanstack/react-query@5.97.0(react@19.2.5))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react-dom@19.2.5(react@19.2.5))(react-router-dom@7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
+      '@kb-labs/studio-plugin-tools': 2.47.0(@rspack/core@1.7.11(@swc/helpers@0.5.15))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3)(webpack@5.106.1(@swc/core@1.15.24))
+      '@kb-labs/studio-ui-core': 2.47.0
+      '@kb-labs/studio-ui-kit': 2.47.0(@ant-design/charts@2.6.7(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(dayjs@1.11.20)(react-dom@19.2.5(react@19.2.5))(react-router-dom@7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
       zod: 3.25.76
-
-  '@kb-labs/sdk@2.20.0(iil7lpds4p33gfo4cnpjvudvry)':
-    dependencies:
-      '@kb-labs/core-platform': 2.45.0
-      '@kb-labs/core-runtime': 2.45.0
-      '@kb-labs/core-sys': 2.45.0
-      '@kb-labs/perm-presets': 2.45.0
-      '@kb-labs/platform-client': 2.45.0
-      '@kb-labs/plugin-contracts': 2.45.0
-      '@kb-labs/shared-cli-ui': 2.45.0
-      '@kb-labs/shared-command-kit': 2.45.0
-      '@kb-labs/shared-testing': 2.45.0(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
-      '@kb-labs/shared-tool-kit': 2.45.0
-      '@kb-labs/studio-devtools': 2.45.0(react@19.2.5)
-      '@kb-labs/studio-event-bus': 2.45.0(react@19.2.5)
-      '@kb-labs/studio-hooks': 2.45.0(@tanstack/react-query@5.97.0(react@19.2.5))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react-dom@19.2.5(react@19.2.5))(react-router-dom@7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
-      '@kb-labs/studio-plugin-tools': 2.45.0(@rspack/core@1.7.11)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3)(webpack@5.106.1(@swc/core@1.15.24))
-      '@kb-labs/studio-ui-core': 2.45.0
-      '@kb-labs/studio-ui-kit': 2.45.0(@ant-design/charts@2.6.7(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(dayjs@1.11.20)(react-dom@19.2.5(react@19.2.5))(react-router-dom@7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
-      zod: 3.25.76
-
-  '@kb-labs/sdk@2.20.0(nncpf2eaiwh6eoer6wfi6leklq)':
-    dependencies:
-      '@kb-labs/core-platform': 2.44.0
-      '@kb-labs/core-runtime': 2.45.0
-      '@kb-labs/core-sys': 2.45.0
-      '@kb-labs/perm-presets': 2.45.0
-      '@kb-labs/platform-client': 2.45.0
-      '@kb-labs/plugin-contracts': 2.45.0
-      '@kb-labs/shared-cli-ui': 2.45.0
-      '@kb-labs/shared-command-kit': 2.44.0
-      '@kb-labs/shared-testing': 2.45.0(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
-      '@kb-labs/shared-tool-kit': 2.45.0
-      '@kb-labs/studio-devtools': 2.45.0(react@19.2.5)
-      '@kb-labs/studio-event-bus': 2.45.0(react@19.2.5)
-      '@kb-labs/studio-hooks': 2.45.0(@tanstack/react-query@5.97.0(react@19.2.5))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react-dom@19.2.5(react@19.2.5))(react-router-dom@7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
-      '@kb-labs/studio-plugin-tools': 2.45.0(@rspack/core@1.7.11(@swc/helpers@0.5.15))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3)(webpack@5.106.1(@swc/core@1.15.24(@swc/helpers@0.5.15)))
-      '@kb-labs/studio-ui-core': 2.45.0
-      '@kb-labs/studio-ui-kit': 2.45.0(@ant-design/charts@2.6.7(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(dayjs@1.11.20)(react-dom@19.2.5(react@19.2.5))(react-router-dom@7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
-      zod: 3.25.76
-
-  '@kb-labs/shared-cli-ui@2.44.0':
-    dependencies:
-      glob: 11.1.0
 
   '@kb-labs/shared-cli-ui@2.45.0':
     dependencies:
       glob: 11.1.0
 
-  '@kb-labs/shared-command-kit@2.44.0':
+  '@kb-labs/shared-cli-ui@2.47.0':
     dependencies:
-      '@kb-labs/core-platform': 2.44.0
-      '@kb-labs/core-resource-broker': 2.44.0
-      '@kb-labs/core-runtime': 2.44.0
-      '@kb-labs/plugin-contracts': 2.44.0
-      '@kb-labs/plugin-runtime': 2.44.0
-      '@kb-labs/shared-cli-ui': 2.44.0
       glob: 11.1.0
-      zod: 3.25.76
 
   '@kb-labs/shared-command-kit@2.45.0':
     dependencies:
@@ -15742,6 +15611,17 @@ snapshots:
       '@kb-labs/plugin-contracts': 2.45.0
       '@kb-labs/plugin-runtime': 2.45.0
       '@kb-labs/shared-cli-ui': 2.45.0
+      glob: 11.1.0
+      zod: 3.25.76
+
+  '@kb-labs/shared-command-kit@2.47.0':
+    dependencies:
+      '@kb-labs/core-platform': 2.47.0
+      '@kb-labs/core-resource-broker': 2.47.0
+      '@kb-labs/core-runtime': 2.47.0
+      '@kb-labs/plugin-contracts': 2.47.0
+      '@kb-labs/plugin-runtime': 2.47.0
+      '@kb-labs/shared-cli-ui': 2.47.0
       glob: 11.1.0
       zod: 3.25.76
 
@@ -15772,9 +15652,40 @@ snapshots:
       - tsx
       - yaml
 
+  '@kb-labs/shared-testing@2.47.0(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)':
+    dependencies:
+      '@kb-labs/core-platform': 2.47.0
+      '@kb-labs/core-runtime': 2.47.0
+      '@kb-labs/plugin-contracts': 2.47.0
+      vitest: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
+    transitivePeerDependencies:
+      - '@edge-runtime/vm'
+      - '@types/debug'
+      - '@types/node'
+      - '@vitest/browser'
+      - '@vitest/ui'
+      - happy-dom
+      - jiti
+      - jsdom
+      - less
+      - lightningcss
+      - msw
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - supports-color
+      - terser
+      - tsx
+      - yaml
+
   '@kb-labs/shared-tool-kit@2.45.0': {}
 
   '@kb-labs/studio-devtools@2.45.0(react@19.2.5)':
+    dependencies:
+      react: 19.2.5
+
+  '@kb-labs/studio-devtools@2.47.0(react@19.2.5)':
     dependencies:
       react: 19.2.5
 
@@ -15782,10 +15693,24 @@ snapshots:
     dependencies:
       react: 19.2.5
 
+  '@kb-labs/studio-event-bus@2.47.0(react@19.2.5)':
+    dependencies:
+      react: 19.2.5
+
   '@kb-labs/studio-hooks@2.45.0(@tanstack/react-query@5.97.0(react@19.2.5))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react-dom@19.2.5(react@19.2.5))(react-router-dom@7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)':
     dependencies:
       '@kb-labs/studio-event-bus': 2.45.0(react@19.2.5)
       '@kb-labs/studio-ui-core': 2.45.0
+      '@tanstack/react-query': 5.97.0(react@19.2.5)
+      antd: 5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      react: 19.2.5
+      react-dom: 19.2.5(react@19.2.5)
+      react-router-dom: 7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+
+  '@kb-labs/studio-hooks@2.47.0(@tanstack/react-query@5.97.0(react@19.2.5))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react-dom@19.2.5(react@19.2.5))(react-router-dom@7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)':
+    dependencies:
+      '@kb-labs/studio-event-bus': 2.47.0(react@19.2.5)
+      '@kb-labs/studio-ui-core': 2.47.0
       '@tanstack/react-query': 5.97.0(react@19.2.5)
       antd: 5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       react: 19.2.5
@@ -15808,9 +15733,9 @@ snapshots:
       - vue-tsc
       - webpack
 
-  '@kb-labs/studio-plugin-tools@2.45.0(@rspack/core@1.7.11(@swc/helpers@0.5.15))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3)(webpack@5.106.1(@swc/core@1.15.24))':
+  '@kb-labs/studio-plugin-tools@2.47.0(@rspack/core@1.7.11(@swc/helpers@0.5.15))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3)(webpack@5.106.1(@swc/core@1.15.24))':
     dependencies:
-      '@module-federation/enhanced': 2.3.3(@rspack/core@1.7.11)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3)(webpack@5.106.1(@swc/core@1.15.24))
+      '@module-federation/enhanced': 2.3.3(@rspack/core@1.7.11(@swc/helpers@0.5.15))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3)(webpack@5.106.1(@swc/core@1.15.24))
       '@rspack/core': 1.7.11(@swc/helpers@0.5.15)
       css-loader: 7.1.4(@rspack/core@1.7.11)(webpack@5.106.1(@swc/core@1.15.24))
       react: 19.2.5
@@ -15824,7 +15749,7 @@ snapshots:
       - vue-tsc
       - webpack
 
-  '@kb-labs/studio-plugin-tools@2.45.0(@rspack/core@1.7.11)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3)(webpack@5.106.1(@swc/core@1.15.24))':
+  '@kb-labs/studio-plugin-tools@2.47.0(@rspack/core@1.7.11)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3)(webpack@5.106.1(@swc/core@1.15.24))':
     dependencies:
       '@module-federation/enhanced': 2.3.3(@rspack/core@1.7.11)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3)(webpack@5.106.1(@swc/core@1.15.24))
       '@rspack/core': 1.7.11(@swc/helpers@0.5.15)
@@ -15842,10 +15767,22 @@ snapshots:
 
   '@kb-labs/studio-ui-core@2.45.0': {}
 
+  '@kb-labs/studio-ui-core@2.47.0': {}
+
   '@kb-labs/studio-ui-kit@2.45.0(@ant-design/charts@2.6.7(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(dayjs@1.11.20)(react-dom@19.2.5(react@19.2.5))(react-router-dom@7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)':
     dependencies:
       '@ant-design/charts': 2.6.7(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       '@kb-labs/studio-ui-core': 2.45.0
+      antd: 5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      dayjs: 1.11.20
+      react: 19.2.5
+      react-dom: 19.2.5(react@19.2.5)
+      react-router-dom: 7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+
+  '@kb-labs/studio-ui-kit@2.47.0(@ant-design/charts@2.6.7(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(dayjs@1.11.20)(react-dom@19.2.5(react@19.2.5))(react-router-dom@7.14.0(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)':
+    dependencies:
+      '@ant-design/charts': 2.6.7(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@kb-labs/studio-ui-core': 2.47.0
       antd: 5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
       dayjs: 1.11.20
       react: 19.2.5
@@ -15991,6 +15928,34 @@ snapshots:
     optionalDependencies:
       typescript: 5.9.3
       webpack: 5.106.1(@swc/core@1.15.24(@swc/helpers@0.5.15))
+    transitivePeerDependencies:
+      - '@rspack/core'
+      - bufferutil
+      - node-fetch
+      - react
+      - react-dom
+      - utf-8-validate
+
+  '@module-federation/enhanced@2.3.3(@rspack/core@1.7.11(@swc/helpers@0.5.15))(react-dom@19.2.5(react@19.2.5))(react@19.2.5)(typescript@5.9.3)(webpack@5.106.1(@swc/core@1.15.24))':
+    dependencies:
+      '@module-federation/bridge-react-webpack-plugin': 2.3.3
+      '@module-federation/cli': 2.3.3(typescript@5.9.3)
+      '@module-federation/data-prefetch': 2.3.3(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@module-federation/dts-plugin': 2.3.3(typescript@5.9.3)
+      '@module-federation/error-codes': 2.3.3
+      '@module-federation/inject-external-runtime-core-plugin': 2.3.3(@module-federation/runtime-tools@2.3.3)
+      '@module-federation/managers': 2.3.3
+      '@module-federation/manifest': 2.3.3(typescript@5.9.3)
+      '@module-federation/rspack': 2.3.3(@rspack/core@1.7.11)(typescript@5.9.3)
+      '@module-federation/runtime-tools': 2.3.3
+      '@module-federation/sdk': 2.3.3
+      '@module-federation/webpack-bundler-runtime': 2.3.3
+      schema-utils: 4.3.0
+      tapable: 2.3.0
+      upath: 2.0.1
+    optionalDependencies:
+      typescript: 5.9.3
+      webpack: 5.106.1(@swc/core@1.15.24)
     transitivePeerDependencies:
       - '@rspack/core'
       - bufferutil
