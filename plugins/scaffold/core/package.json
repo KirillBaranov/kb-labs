@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/scaffold-core",
   "description": "Pure engine for the KB Labs scaffolder: loader, resolver, renderer, patch merger, writer.",
-  "version": "2.52.0",
+  "version": "2.53.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
