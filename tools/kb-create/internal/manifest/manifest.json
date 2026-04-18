@@ -83,13 +83,13 @@
       "id": "mind",
       "pkg": "@kb-labs/mind-entry",
       "description": "AI code search (RAG)",
-      "default": true
+      "default": false
     },
     {
       "id": "agents",
       "pkg": "@kb-labs/agent-entry",
       "description": "Autonomous agents",
-      "default": true
+      "default": false
     },
     {
       "id": "ai-review",
