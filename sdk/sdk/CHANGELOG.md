@@ -1,3 +1,21 @@
+## [2.20.1] - 2026-04-18
+
+> **@kb-labs/sdk** 2.20.0 → 2.20.1 (minor: new features)
+
+### 🏗️ Core & SDK
+
+- **sdk**: Introduces a new platform client, making it easier for developers to integrate and manage platform-specific features, while also enhancing the marketing page for improved user engagement.
+- **sdk**: Provides access to adapter types, simplifying the development process by allowing developers to easily implement and customize integrations.
+- **sdk**: Adds a new runtime context and a `useEnv()` hook, enhancing flexibility and allowing developers to manage environment variables more effectively during runtime.
+- **sdk**: Updates the formatting of peer dependencies, ensuring a cleaner and more organized package structure that improves usability for developers.
+- **devkit**: Enhances dependency management by skipping self-referencing dependencies, which streamlines the development process and fixes issues with mock platform adapters for better testing.
+
+### 🔧 Other
+
+- **docs**: Updated the configuration file format to enhance compatibility with future updates, ensuring smoother documentation and onboarding for new users.
+- **web**: Transitioned the configuration file to a new format, which improves performance and simplifies the setup process for developers working on the web application.
+- **ci**: Synchronizing the package lock ensures that everyone on the team is using the same dependencies, which reduces discrepancies and errors during installations.
+- **general**: Addressing various lint errors and test failures across multiple packages enhances code quality and reliability, leading to a more stable experience for all users.
 ## [2.20.0] - 2026-04-15
 
 > **@kb-labs/sdk** 2.19.0 → 2.20.0 (minor: new features)
