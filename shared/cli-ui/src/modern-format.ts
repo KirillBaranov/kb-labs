@@ -28,9 +28,20 @@ export interface SideBorderBoxOptions {
   timing?: number;
 }
 
+export interface RichSectionItem {
+  text: string;
+  /** Render text in muted/dim color */
+  dim?: boolean;
+  /** Hard-truncate to N visible chars instead of wrapping */
+  truncate?: number;
+}
+
+/** A section item — either a plain string or a rich descriptor */
+export type SectionItem = string | RichSectionItem;
+
 export interface SectionContent {
   header?: string;
-  items: string[];
+  items: SectionItem[];
 }
 
 /**
@@ -39,6 +50,13 @@ export interface SectionContent {
 export function sideBorderBox(options: SideBorderBoxOptions): string {
   const { title, sections, footer, status, timing } = options;
   const lines: string[] = [];
+
+  const terminalWidth =
+    typeof process !== 'undefined' && process.stdout?.columns
+      ? process.stdout.columns
+      : 80;
+  // Available width for item content: terminalWidth minus "│  " prefix (3) and 1 right margin
+  const itemMaxWidth = Math.max(40, terminalWidth - 4);
 
   // Top border with title (using top-left corner)
   const titleLine = `${safeSymbols.topLeft}${safeSymbols.separator.repeat(2)} ${safeColors.primary(safeColors.bold(title))}`;
@@ -55,9 +73,24 @@ export function sideBorderBox(options: SideBorderBoxOptions): string {
       lines.push(`${safeSymbols.border} ${safeColors.bold(section.header)}`);
     }
 
-    // Section items
-    for (const item of section.items) {
-      lines.push(`${safeSymbols.border}  ${item}`);
+    // Section items — word-wrapped and multiline-safe
+    for (const rawItem of section.items) {
+      const item = typeof rawItem === 'string' ? { text: rawItem } : rawItem;
+      let displayLines: string[];
+
+      if (item.truncate !== undefined) {
+        const vis = stripAnsi(item.text);
+        const truncated =
+          vis.length > item.truncate ? vis.slice(0, item.truncate - 1) + '…' : vis;
+        displayLines = [item.dim ? safeColors.muted(truncated) : truncated];
+      } else {
+        const wrapped = wrapText(item.text, itemMaxWidth);
+        displayLines = item.dim ? wrapped.map(l => safeColors.muted(l)) : wrapped;
+      }
+
+      for (const dl of displayLines) {
+        lines.push(`${safeSymbols.border}  ${dl}`);
+      }
     }
 
     // Add spacing between sections (but not after the last one)
@@ -188,6 +221,59 @@ function getStatusColor(status: 'success' | 'error' | 'warning' | 'info'): (text
     case 'info':
       return safeColors.info;
   }
+}
+
+/**
+ * Word-wrap plain text to maxWidth visible characters.
+ * Handles existing newlines and long words (hard-truncated with ellipsis).
+ */
+function wrapText(text: string, maxWidth: number): string[] {
+  const result: string[] = [];
+  const rawLines = text.split('\n');
+  for (const rawLine of rawLines) {
+    const line = rawLine.trimEnd();
+    if (stripAnsi(line).length <= maxWidth) {
+      result.push(line);
+      continue;
+    }
+    const words = line.split(/(\s+)/);
+    let current = '';
+    for (const word of words) {
+      const test = current + word;
+      if (stripAnsi(test).length <= maxWidth) {
+        current = test;
+      } else {
+        if (current.trimEnd()) {result.push(current.trimEnd());}
+        const wordLen = stripAnsi(word).length;
+        if (wordLen > maxWidth) {
+          // Hard-truncate a single oversized word
+          result.push(stripAnsi(word).slice(0, maxWidth - 1) + '…');
+          current = '';
+        } else {
+          current = word;
+        }
+      }
+    }
+    if (current.trimEnd()) {result.push(current.trimEnd());}
+  }
+  return result.length > 0 ? result : [''];
+}
+
+/**
+ * Convert an Error or raw string into clean display lines for sideBorderBox items.
+ * Splits on newlines, removes blank lines, and caps at maxLines with a "… N more" hint.
+ *
+ * @example
+ * items: formatError(err, { maxLines: 6 })
+ */
+export function formatError(err: Error | string, opts?: { maxLines?: number }): string[] {
+  const raw = err instanceof Error ? err.message : String(err);
+  const allLines = raw.split('\n').map(l => l.trimEnd()).filter(l => l.length > 0);
+  const max = opts?.maxLines ?? 8;
+  if (allLines.length <= max) {return allLines;}
+  const shown = allLines.slice(0, max - 1);
+  shown.push(safeColors.muted(`… ${allLines.length - max + 1} more lines`));
+  return shown;
 }
 
 /**

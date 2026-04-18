@@ -1,0 +1,200 @@
+---
+title: CLI Formatting
+description: How to build clean, consistent CLI output in KB Labs plugins using ctx.ui.
+lang: en
+slug: plugins/cli-formatting
+order: 1
+---
+
+## Overview
+
+Every plugin receives `ctx.ui` — a host-agnostic output interface that works the same in CLI, REST, and workflow contexts. All output goes through it.
+
+The SDK also exports lower-level formatting utilities for advanced cases, but most plugins only need `ctx.ui`.
+
+---
+
+## Simple messages
+
+`ctx.ui.success`, `error`, `warn`, and `info` print a single formatted line. Use them for progress steps, quick confirmations, or short errors.
+
+```ts
+ctx.ui.success('Plugin linked');
+ctx.ui.error('No manifest found at ./plugin.json');
+ctx.ui.warn('Config missing — using defaults');
+ctx.ui.info('Scanning 42 files…');
+```
+
+All four accept an optional second argument for a title and sections:
+
+```ts
+ctx.ui.error('Install failed', {
+  title: 'marketplace install',
+  sections: [{ items: ['Package not found on npm registry'] }],
+});
+```
+
+---
+
+## Structured output — ctx.ui.sideBox
+
+For detailed command results — with multiple sections, key-value summary, and timing — use `ctx.ui.sideBox`.
+
+```ts
+ctx.ui.sideBox({
+  title: 'Install · @my-org/notifier',
+  status: 'success',
+  summary: {
+    Version: '1.4.2',
+    Location: 'plugins/notifier',
+  },
+  sections: [
+    {
+      header: 'Next steps',
+      items: [
+        'Run kb plugins reload to activate',
+        'Open settings to configure',
+      ],
+    },
+  ],
+  timing: 1240,
+});
+```
+
+Output:
+
+```
+┌── Install · @my-org/notifier
+│
+│ Version   1.4.2
+│ Location  plugins/notifier
+│
+│ Next steps
+│  Run kb plugins reload to activate
+│  Open settings to configure
+│
+└── ✓ Success / 1.2s
+```
+
+Items are automatically word-wrapped to terminal width — long strings never break the border.
+
+For styled items, apply colors inline:
+
+```ts
+import { safeColors } from '@kb-labs/sdk';
+
+sections: [{
+  items: [
+    `${safeColors.success('✓')} Linked successfully`,
+    safeColors.muted('No further action needed'),
+  ],
+}]
+```
+
+---
+
+## Handling errors
+
+Use `formatError` from the SDK to turn an `Error` into clean display lines. It splits on newlines, strips blanks, and caps at `maxLines` with a `… N more lines` hint.
+
+```ts
+import { formatError } from '@kb-labs/sdk';
+
+try {
+  await install(pkg);
+} catch (err) {
+  ctx.ui.sideBox({
+    title: `Install · ${pkg}`,
+    status: 'error',
+    sections: [{ items: formatError(err, { maxLines: 6 }) }],
+    timing: Date.now() - start,
+  });
+}
+```
+
+Without it, a raw pnpm error is one 400-character line that breaks the border. With `formatError`:
+
+```
+┌── Install · @my-org/notifier
+│
+│  ERR_PNPM_FETCH_404
+│  GET https://registry.npmjs.org/@my-org/notifier: Not Found - 404
+│
+└── ✗ Failed / 1.1s
+```
+
+---
+
+## Long-running operations — ctx.ui.spinner
+
+For operations that take more than a second, use a spinner so the user knows something is happening.
+
+```ts
+const spinner = ctx.ui.spinner('Installing package…');
+
+try {
+  const result = await install(pkg);
+  spinner.succeed(`Installed ${pkg}@${result.version}`);
+} catch (err) {
+  spinner.fail('Install failed');
+  ctx.ui.sideBox({
+    title: `Install · ${pkg}`,
+    status: 'error',
+    sections: [{ items: formatError(err) }],
+  });
+}
+```
+
+`spinner.succeed()` and `spinner.fail()` both stop the animation and print a final line. In non-CLI hosts (REST, workflow) the spinner is a no-op.
+
+---
+
+## Returning structured data
+
+Output and return value are separate concerns. `ctx.ui.*` is for printing to the user. To return data to the caller — another plugin via `ctx.api.invoke`, a workflow, or the REST API — use the handler's return value:
+
+```ts
+export const scanCommand = defineCommand({
+  id: 'my-plugin.scan',
+  async execute(ctx, input) {
+    const findings = await scan(input.path);
+
+    ctx.ui.sideBox({
+      title: 'Scan complete',
+      status: findings.length === 0 ? 'success' : 'warning',
+      summary: { Findings: findings.length },
+    });
+
+    return {
+      exitCode: findings.length === 0 ? 0 : 1,
+      result: { findings },
+    };
+  },
+});
+```
+
+`result` is what other plugins and workflows receive. UI output is always separate.
+
+---
+
+## Colors and symbols
+
+`safeColors` and `safeSymbols` are available from the SDK and respect `NO_COLOR`.
+
+```ts
+import { safeColors, safeSymbols } from '@kb-labs/sdk';
+
+ctx.ui.sideBox({
+  title: 'Plugin status',
+  status: 'info',
+  sections: [{
+    items: [
+      `${safeSymbols.success}  ${safeColors.success('Active')}   my-notifier`,
+      `${safeSymbols.warning}  ${safeColors.warning('Outdated')} my-logger — run kb update`,
+      safeColors.muted('No other plugins installed'),
+    ],
+  }],
+});
+```
+
+Available colors: `success` `error` `warning` `info` `primary` `accent` `muted` `bold` `dim`.

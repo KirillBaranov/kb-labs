@@ -28,7 +28,10 @@ export {
   metricsList,
   statusLine,
   formatCommandHelp,
+  formatError,
   type SideBorderBoxOptions,
   type SectionContent,
+  type SectionItem,
+  type RichSectionItem,
 } from './modern-format';
 export * from './command-result';
