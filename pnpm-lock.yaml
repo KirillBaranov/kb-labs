@@ -1277,8 +1277,8 @@ importers:
         specifier: ^8.5.13
         version: 8.18.1
       fastify:
-        specifier: ^5.2.0
-        version: 5.8.4
+        specifier: ^5.8.5
+        version: 5.8.5
       rimraf:
         specifier: ^6.0.1
         version: 6.1.3
@@ -1326,8 +1326,8 @@ importers:
         specifier: ^24.3.3
         version: 24.12.2
       fastify:
-        specifier: ^5.4.0
-        version: 5.8.4
+        specifier: ^5.8.5
+        version: 5.8.5
       rimraf:
         specifier: ^6.0.1
         version: 6.1.3
@@ -2551,11 +2551,11 @@ importers:
         specifier: workspace:*
         version: link:../../../shared/http
       fastify:
-        specifier: ^5.2.0
-        version: 5.8.4
+        specifier: ^5.8.5
+        version: 5.8.5
       fastify-type-provider-zod:
         specifier: ^6.0.0
-        version: 6.1.0(@fastify/swagger@9.7.0)(fastify@5.8.4)(openapi-types@12.1.3)(zod@4.3.6)
+        version: 6.1.0(@fastify/swagger@9.7.0)(fastify@5.8.5)(openapi-types@12.1.3)(zod@4.3.6)
       ws:
         specifier: ^8.18.3
         version: 8.20.0
@@ -3061,11 +3061,11 @@ importers:
         specifier: workspace:*
         version: link:../../../shared/http
       fastify:
-        specifier: ^5.3.3
-        version: 5.8.4
+        specifier: ^5.8.5
+        version: 5.8.5
       fastify-type-provider-zod:
         specifier: ^6.0.0
-        version: 6.1.0(@fastify/swagger@9.7.0)(fastify@5.8.4)(openapi-types@12.1.3)(zod@3.25.76)
+        version: 6.1.0(@fastify/swagger@9.7.0)(fastify@5.8.5)(openapi-types@12.1.3)(zod@3.25.76)
       zod:
         specifier: ^3.25.76
         version: 3.25.76
@@ -3169,8 +3169,8 @@ importers:
         specifier: workspace:*
         version: link:../../../shared/http
       fastify:
-        specifier: ^5.3.3
-        version: 5.8.4
+        specifier: ^5.8.5
+        version: 5.8.5
     devDependencies:
       '@kb-labs/devkit':
         specifier: workspace:*
@@ -4210,14 +4210,14 @@ importers:
         specifier: workspace:*
         version: link:../../workflow/engine
       fastify:
-        specifier: ^5.2.0
-        version: 5.8.4
+        specifier: ^5.8.5
+        version: 5.8.5
       fastify-plugin:
         specifier: ^5.0.1
         version: 5.1.0
       fastify-type-provider-zod:
         specifier: ^6.0.0
-        version: 6.1.0(@fastify/swagger@9.7.0)(fastify@5.8.4)(openapi-types@12.1.3)(zod@3.25.76)
+        version: 6.1.0(@fastify/swagger@9.7.0)(fastify@5.8.5)(openapi-types@12.1.3)(zod@3.25.76)
       pino:
         specifier: ^9.0.0
         version: 9.14.0
@@ -4606,11 +4606,11 @@ importers:
         specifier: workspace:*
         version: link:../../../shared/http
       fastify:
-        specifier: ^5.2.0
-        version: 5.8.4
+        specifier: ^5.8.5
+        version: 5.8.5
       fastify-type-provider-zod:
         specifier: ^6.0.0
-        version: 6.1.0(@fastify/swagger@9.7.0)(fastify@5.8.4)(openapi-types@12.1.3)(zod@4.3.6)
+        version: 6.1.0(@fastify/swagger@9.7.0)(fastify@5.8.5)(openapi-types@12.1.3)(zod@4.3.6)
     devDependencies:
       '@kb-labs/devkit':
         specifier: workspace:*
@@ -4829,11 +4829,11 @@ importers:
         specifier: latest
         version: 3.2.0(date-fns@3.6.0)
       fastify:
-        specifier: ^5.2.0
-        version: 5.8.4
+        specifier: ^5.8.5
+        version: 5.8.5
       fastify-type-provider-zod:
         specifier: ^6.0.0
-        version: 6.1.0(@fastify/swagger@9.7.0)(fastify@5.8.4)(openapi-types@12.1.3)(zod@4.3.6)
+        version: 6.1.0(@fastify/swagger@9.7.0)(fastify@5.8.5)(openapi-types@12.1.3)(zod@4.3.6)
       node-cron:
         specifier: ^4.2.1
         version: 4.2.1
@@ -5312,10 +5312,10 @@ importers:
         version: link:../../core/platform
       fastify:
         specifier: ^5.5.0
-        version: 5.8.4
+        version: 5.8.5
       fastify-type-provider-zod:
         specifier: ^6.1.0
-        version: 6.1.0(@fastify/swagger@9.7.0)(fastify@5.8.4)(openapi-types@12.1.3)(zod@3.25.76)
+        version: 6.1.0(@fastify/swagger@9.7.0)(fastify@5.8.5)(openapi-types@12.1.3)(zod@3.25.76)
       zod:
         specifier: ^3.25.76
         version: 3.25.76
@@ -5462,7 +5462,7 @@ importers:
     dependencies:
       '@kb-labs/sdk':
         specifier: ^2.20.0
-        version: 2.20.0(ptnmtwsw4paszw5scsx6rhq7q4)
+        version: 2.20.0(5msjnkdpfstbf6jjfmolrnlhgq)
       '@kb-labs/web-og':
         specifier: workspace:*
         version: link:../../packages/og
@@ -5479,8 +5479,8 @@ importers:
         specifier: ^0.468.0
         version: 0.468.0(react@18.3.1)
       next:
-        specifier: ^14.2.15
-        version: 14.2.35(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: ^15.5.15
+        version: 15.5.15(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       next-mdx-remote:
         specifier: ^6.0.0
         version: 6.0.0(@types/react@18.3.28)(react@18.3.1)
@@ -5532,7 +5532,7 @@ importers:
         version: 2.6.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@kb-labs/sdk':
         specifier: ^2.20.0
-        version: 2.20.0(htloxug3vbge327qx4rbhmli3y)
+        version: 2.20.0(lw5r47owpmq45jzwfz2x7qdv6i)
       '@kb-labs/web-data-source':
         specifier: workspace:*
         version: link:../../packages/web-data-source
@@ -5558,11 +5558,11 @@ importers:
         specifier: ^4.0.3
         version: 4.0.3
       next:
-        specifier: ^14.2.15
-        version: 14.2.35(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: ^15.5.15
+        version: 15.5.15(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       next-intl:
         specifier: ^4.8.3
-        version: 4.9.1(next@14.2.35(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
+        version: 4.9.1(next@15.5.15(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(typescript@5.9.3)
       next-mdx-remote:
         specifier: ^6.0.0
         version: 6.0.0(@types/react@18.3.28)(react@18.3.1)
@@ -5627,8 +5627,8 @@ importers:
         specifier: ^18.3.18
         version: 18.3.28
       next:
-        specifier: ^14.2.15
-        version: 14.2.35(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@18.3.1))(react@18.3.1)
+        specifier: ^15.5.15
+        version: 15.5.15(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@18.3.1))(react@18.3.1)
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -5715,8 +5715,8 @@ importers:
         specifier: ^1.11.19
         version: 1.11.20
       dompurify:
-        specifier: ^3.3.1
-        version: 3.3.3
+        specifier: ^3.4.0
+        version: 3.4.0
       lucide-react:
         specifier: ^0.468.0
         version: 0.468.0(react@18.3.1)
@@ -7307,78 +7307,78 @@ packages:
     peerDependencies:
       tslib: '2'
 
-  '@kb-labs/core-config@2.43.0':
-    resolution: {integrity: sha512-cPohkBmWajDwsfdQDqRf0rhKC4En+u3YiX2odPNGuMMpKVjwHkTeNuLP1P7IVobsxKLnzfCoiJfOXmKRGkIQjA==}
+  '@kb-labs/core-config@2.44.0':
+    resolution: {integrity: sha512-jvP3URQM+zE4+jVMidJ0LCDr3ByDFU82CKokwPFiONI9MLQoQp2r253RMvoD+XAjHXb7D77RVAGh79CGWWUhyw==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/core-contracts@2.43.0':
-    resolution: {integrity: sha512-SCGyWG+qdncqk8ig1cVYTsr3h6548JDcwOaIdQahbgWKtf9UjzPKLMWLdJhodI/ZMmggJk7RyvPG59emvhBMLw==}
+  '@kb-labs/core-contracts@2.44.0':
+    resolution: {integrity: sha512-kI5o4pMYfNVC0mhdjvTOsqAlYqA55KEN4biyz3ItzRGiHUzpcEsvvf6wDegUOfviGqkXi3llNjAgD5IZgsvFdA==}
     engines: {node: '>=18.18.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/core-discovery@2.43.0':
-    resolution: {integrity: sha512-b2E6xdSdduzda3hvh/lY0ypIb/hA43kOERMBaZm2WzpN6BqI6v/M8FVLW9P9SxBo7vRFePIHXpT/ZhtCXSdnmg==}
+  '@kb-labs/core-discovery@2.44.0':
+    resolution: {integrity: sha512-d8uvajGCSyD8yp6nOPtb9duFiXrS1Es/N4C39BcE4IGIDpOlK+OYZBwTZM8M8S4TI1BvQxB95eZsVOXVjTRTaw==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/core-ipc@2.43.0':
-    resolution: {integrity: sha512-wsgxf7qfS961aVWCqn8+oW5ukUkMDxZIg4pGwsBR/vF92azET33lr8M8G45ZWUCV3J+mMNQKmINjtDi+N/BSXg==}
+  '@kb-labs/core-ipc@2.44.0':
+    resolution: {integrity: sha512-ecTFAjO+nfAeo/krY2mpvZMBm+R5oBZPBW+zALYNQDVPuwMqur4kjHGfVA0ay4cfz0TwZEDDo2MM9ewlBvn7LQ==}
     engines: {node: '>=18.18.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/core-platform@2.43.0':
-    resolution: {integrity: sha512-tv++5SjkJsV2azrMHX4ZES270sK2OrRM4YNQdfBcWGmdnJSrbQp6rK8P34wrGg6pONAh/KBd3M6OokTpC70rqg==}
+  '@kb-labs/core-platform@2.44.0':
+    resolution: {integrity: sha512-XYizZsLGH9TYremu9UR/kXXNADdWYgBfvSlz21tIJmH6YQe9DiRTYqh9VDR8lctT67VMz2IY6nUQ42qpM1PmfA==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/core-resource-broker@2.43.0':
-    resolution: {integrity: sha512-HyBd3U7j72hdhKYQv6WXwEkIAn3ccgateV0zuxtZwBVdSE+RpDAeRmImgh3RDWz8UpGWNnFE16ufI9LOZzSrBg==}
+  '@kb-labs/core-resource-broker@2.44.0':
+    resolution: {integrity: sha512-0bK9Ir20nNylpn1bjY3hcRxoZS+XEBt6dK1rJbBNSRFrqdoNl6PtKRgIQXrioShKeqXrh61tl2CZg+gtIxifew==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/core-runtime@2.43.0':
-    resolution: {integrity: sha512-3zfWbM7chvUtdCyuAUYA8qMGPxH4SvEbGyRZPRfi/13D4hBdriIMEeClFJPuJ6K+aIirgIvk7wv8XT0AyyVJKw==}
+  '@kb-labs/core-runtime@2.44.0':
+    resolution: {integrity: sha512-uj2Kfl2cO8OHTh6Dbj6zHcsrEwQJrxGZ8kJ7H8MPqYMaMBU19n61vvC+CxtL1ZQityYZj5zhN6iyPsHmchTqGg==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/core-state-broker@2.43.0':
-    resolution: {integrity: sha512-NrUhe53lGh0fTOw8Vk7ezd0YxRcp6NuXMTyf9qv5ork0UqWFfFsWXQuhcRxEtf9sEk0/wesdhHDx/vCaRX3svQ==}
+  '@kb-labs/core-state-broker@2.44.0':
+    resolution: {integrity: sha512-b6LDYL2cT7kn+u2QmYhCBwDvOUpG+e9Yd60Gsid6EZM9R/Ct+K2Lr9q/XM9OTP4/9gsCzgEMMUL5wwjeTLZ8ug==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/core-sys@2.43.0':
-    resolution: {integrity: sha512-akIktfFLWL/p+GqbNaxEwsxBJDw9DuHjbnv5G+P0eCt6iJhKMDYJThW0eVp8wP4JagjRnHk0d+WHdfSQ+6ItvQ==}
+  '@kb-labs/core-sys@2.44.0':
+    resolution: {integrity: sha512-Rla8NjdffB4QuldEVJtisYnrnAi7I6peC/cwOwKwHIdvJZBR8Q5M+yGj5K4BMxUcoPdCCjqa6QH3ZEycdDEU6Q==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/core-workspace@2.43.0':
-    resolution: {integrity: sha512-Z8FAgTJ53gA7U2Sl2gc4Xft9H9bQJiikNSme+NziKgQ7vNaHD49X89B4YWV7Gad+QeheiRLyvK7BM/Mf3uXLNQ==}
+  '@kb-labs/core-workspace@2.44.0':
+    resolution: {integrity: sha512-Zw9ac6sZfGGoFIcEEzfAbZmUDXki++k8FRQLdu8nIgaaPLQsMT2oYSanMD1axQCqnMsH7Itvy6tuGSDlu8nOQQ==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/gateway-contracts@2.43.0':
-    resolution: {integrity: sha512-MuHlAku7+1DedKJ65YZ6/Vp3Z/uJgpqjI2F31JZsbV64XkrF/j4S9tzNpYBMOMBEakhG8Vh89S7AT8Je6SCMFQ==}
+  '@kb-labs/gateway-contracts@2.44.0':
+    resolution: {integrity: sha512-IWUiyCxx302edKk2M8FRg0ECUmO7oy/5qFvSoLMnBLLfMAAVpYK6oVe4B7uocaL0Ue3bCI/vCwqgcqDb3NhQqQ==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/gateway-core@2.43.0':
-    resolution: {integrity: sha512-89biwkgTXCrMzbG5lbIzaRcPkJHMHTMGHN9zupSIL4XwFGDcpkdO0uixVi1eSciV/ayuLGCtMt2W0/VRRBU/RQ==}
+  '@kb-labs/gateway-core@2.44.0':
+    resolution: {integrity: sha512-FHNhcpQ+ZWAhqWlGXkq9uU47CL3zcLrz7XtKMs5P3538iv00WKzKT469vd+1Zr2WGUm1NxoW9QReQqogTm54Mg==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
     peerDependencies:
-      '@kb-labs/core-platform': 2.43.0
+      '@kb-labs/core-platform': 2.44.0
 
-  '@kb-labs/llm-router@2.43.0':
-    resolution: {integrity: sha512-EdEx9DSd8I9+OLKnhFwnPbg8+14tBbnB+aBrnsWKr2wWk9HO2InwP9elOHNJGnTBI6chWAZrxI5B6m3/WPybog==}
+  '@kb-labs/llm-router@2.44.0':
+    resolution: {integrity: sha512-J3781EQCezqDVLWfhG1Gg3Bqb6suvkLFM53o11VNENCJV+ZMAVEgWRKp7f2PQi4sElLGaQQGTWp52Pj82VPNPA==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/perm-presets@2.43.0':
-    resolution: {integrity: sha512-ZrUEgeDsTUm0uAufqD8wqEACLR7rW4OsIUs/z898NmdUmYaNhdE9NlpLRtjGwZzH5TZB0+LHFj9N2CzhwKjRTw==}
+  '@kb-labs/perm-presets@2.44.0':
+    resolution: {integrity: sha512-JX6SQhwfRFKr8RYc13pBOIwkdsH5rdKn4B9fo/FA7jSZXPYQG82wve8svjjL0WGTjD8voycTd3ZdcTd6pHpT6Q==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/platform-client@2.43.0':
-    resolution: {integrity: sha512-xQ1PpR1q9Gu1kPgQDdR/RRam/Hrz3yo/+XzzHfFgf3Sp+CCu9bB2fcTumOfnRyWXvaOT8OK+g013H4FQn0JURQ==}
+  '@kb-labs/platform-client@2.44.0':
+    resolution: {integrity: sha512-aLgSILJCh4P6MmE88UShdmUW7oFMxzIbYUJUpgYFbmgMI8VfpEzxYEUMl5Zc1CzrlA6uF/spJ7arTuLKQw/gqw==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/plugin-contracts@2.43.0':
-    resolution: {integrity: sha512-2wEgU31kzTQu8rw3vr8ICPP1ZE0v7Wu9H2wd2ZXjLKZc07tGCPThzHu2GMtzD02z8GE+rJhPTxTwQQdAKdO8QA==}
+  '@kb-labs/plugin-contracts@2.44.0':
+    resolution: {integrity: sha512-oAzRCBCCKT/wvCJe4mymuP47Byl6Ert8uO4SHXIZdcEDiB9pjy1wlVXNax6BrUh6tW2Lg95rIB+83sZRMRvkMw==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/plugin-execution-factory@2.43.0':
-    resolution: {integrity: sha512-b10s76I5T0G4C9Py/gn+WQu/KdBPoidy/QkcBSfQJI4P345uaoIgyHv4aJzkQAvzeyTH7NFM72GgpO/PanjzkA==}
+  '@kb-labs/plugin-execution-factory@2.44.0':
+    resolution: {integrity: sha512-dQFERoJIPXcu6kCstjDM2mNHj6caDqmakQc829CmuVtDcT6mrZEC+szIwdJupdqyO70oWqqzM2kadfebRHYdAQ==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/plugin-runtime@2.43.0':
-    resolution: {integrity: sha512-M1JN9kr1k68tFd215xb5HnaFTSdhNlj6IZ7/SlvC1AKmOZ4mBrH2YSGCyRxbKGDt9jNBCiriNba6J3YvHzWWyQ==}
+  '@kb-labs/plugin-runtime@2.44.0':
+    resolution: {integrity: sha512-+AmoTZkDNHzxQcbSDL/HYimZkoigy20orHdB4e95m2nojhntr+xHoYn1Sp+fvXTX9gxAtsOZs7ZO9e0P4xPxVw==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
   '@kb-labs/sdk@2.20.0':
@@ -7402,36 +7402,36 @@ packages:
       '@kb-labs/studio-ui-core': 2.36.0
       '@kb-labs/studio-ui-kit': 2.36.0
 
-  '@kb-labs/shared-cli-ui@2.43.0':
-    resolution: {integrity: sha512-Sjqm+3ATGbUxjYNS1vXLz5mC5R3eznauzAXrbHv7WUNdJn6lO1lr2do+7d6DzSaSIWmPCbVFWlmonHkdxPJxgw==}
+  '@kb-labs/shared-cli-ui@2.44.0':
+    resolution: {integrity: sha512-dzqaUMSJAUFqOyUoBuaS4JdWIzA3KZQHvfhjpe6Ic+S1FmLEfS8e1oRWm4zA6neA+B8iWaUM1uoHN2dJBEUf1Q==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/shared-command-kit@2.43.0':
-    resolution: {integrity: sha512-7uO3Ln05x9n+iQcT6EKtaEhDHyBiOdl0HvVdstGNTlpZ+Qa+qFVlCFJuB9MbUF1DZjkMSMe+g7DkLem9AOaytg==}
+  '@kb-labs/shared-command-kit@2.44.0':
+    resolution: {integrity: sha512-i5rCYgk/Yny6k67Iq0lghxJxTlSh/3S1ilS8UW8JuO2legGFwhIUVciz9daxL4k2zDFPVSmQ8UGjDdPnqH31ag==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/shared-testing@2.43.0':
-    resolution: {integrity: sha512-oMzr8Hcg7/Jvk5xcd56oc5TwYj7pzJo4LYey2QUC/zZPQnzbdYFro0XbW4mE2cE7iGZlP40duT6KhISRK3mbBg==}
+  '@kb-labs/shared-testing@2.44.0':
+    resolution: {integrity: sha512-aZTTYgUQwXkHL1hxlrZfmVOqyq49bGNaOF2KQnt224+kSEegehZaebf/s62K3vjLYu5VQ9IUzsVxK5mdwzaFFA==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/shared-tool-kit@2.43.0':
-    resolution: {integrity: sha512-bq+6KXtL+J+E1Y09EKuctXq7hXVhHKVGo+JTj6f05UEvU/jPMvFSge7q2PBuNXR//LOtqASsJAMTNF9QGROqGw==}
+  '@kb-labs/shared-tool-kit@2.44.0':
+    resolution: {integrity: sha512-pxVe1nKMs6T0DC7jLQMC8ggLM4XG7Ri0VePKTCN5g4qD/VAlaD7sEkA0koE7KQPhb+5Rf5l2WMiJwQCgd6SdDA==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/studio-devtools@2.43.0':
-    resolution: {integrity: sha512-kjjp+i1/gbgUpo98BrFw99kcuN91+doyWyB5+rpWfHGcsYdPYpBqKk1/Ej+Gfv07XSObOuHuryqeYnyGiCaymQ==}
-    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
-    peerDependencies:
-      react: ^18.3.1
-
-  '@kb-labs/studio-event-bus@2.43.0':
-    resolution: {integrity: sha512-YoK9zKkiuUpz2KX895jsToOB+CqB3vritjDs0kRDcz7YEeeqIxFnzztUzi4deeSru9ktIlTDByZfc+KyRiZMRA==}
+  '@kb-labs/studio-devtools@2.44.0':
+    resolution: {integrity: sha512-2RQ7av1MryrZeRnRe+VSLH+v5+/yhp+Jhc9rkX/g/Mn2BHA0VnuzST9JWrX2uK/hIlqzSRdItzJWuaqqEVbL0Q==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
     peerDependencies:
       react: ^18.3.1
 
-  '@kb-labs/studio-hooks@2.43.0':
-    resolution: {integrity: sha512-1Qds+sQkH0ZFvtO97sQs3eCdrkMn0xqGgfHFI+ax0HMx0C+Cu0uY8bX9frLBgxgNF5fSQGXGKBpb+/m9IQ4iYQ==}
+  '@kb-labs/studio-event-bus@2.44.0':
+    resolution: {integrity: sha512-wOCmH697DMplhQVZ9BHh9YYgpBWX2tTLVw4Kym12oIrpYqetYGAuhoC/4q0g6bby69R24ab3Y3T5qOdbL0zPgg==}
+    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
+    peerDependencies:
+      react: ^18.3.1
+
+  '@kb-labs/studio-hooks@2.44.0':
+    resolution: {integrity: sha512-NmIMM1zKOVv/8AobptiHDgsN2wVocCwHW+ixsDL6OX8G4tYYceEGRRw9VikCpot53wQRxU8zUck9BbqRuHjgjg==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
     peerDependencies:
       '@tanstack/react-query': ^5.0.0
@@ -7440,18 +7440,18 @@ packages:
       react-dom: ^18.3.1
       react-router-dom: ^7.0.0
 
-  '@kb-labs/studio-plugin-tools@2.43.0':
-    resolution: {integrity: sha512-bcXr2Jdz7rlhrlyQCpMOWGVlY0dlIWZZZkH8c//Tga0TN6bDd+HnqLDkQjZp5iMKKrXQnqvaWRSPf5NpNmNFtA==}
+  '@kb-labs/studio-plugin-tools@2.44.0':
+    resolution: {integrity: sha512-YO+YsVlSFdvjZYyAeuo/jTTgCEX4nwHvOGECm3DiTCCbHcdFHm3Hz+ej5L9nkHuP3M8ggNIs2xViRIwSXVf+kg==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
     peerDependencies:
       '@rspack/core': '>=1.0.0'
 
-  '@kb-labs/studio-ui-core@2.43.0':
-    resolution: {integrity: sha512-Re3lfbAf+LBiLhxzynXEtuyRuisnb8uaHQ/qDvgoi/19QSoIpJLDdR1rICPfgeJjPWKpJJUadIAmd7TNWwrrmQ==}
+  '@kb-labs/studio-ui-core@2.44.0':
+    resolution: {integrity: sha512-YpyEZBtCU/tXohwmpdABxk3CwRgsI9ha5MbI/YEH7jIjg83xy8faDok+TrpI4AerLpYgokUy4/bhIi4rB4ooBQ==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
-  '@kb-labs/studio-ui-kit@2.43.0':
-    resolution: {integrity: sha512-B3qRfaX+ifJ+3vtlRR8E/p/yJc/hbCcb/TRs7rlfVTwTPfq+x2vCY/cKy6BdC0VifxNwHlsjZxpx2oZ96kTSpQ==}
+  '@kb-labs/studio-ui-kit@2.44.0':
+    resolution: {integrity: sha512-XlXWwPC4fipcCqel4Fdzoyww5ZmqyF1W/ZNnd22NsvgtXvAiW/InlN+gRyeF/kGD3OatqyylIeXb5Gq9trMUKA==}
     engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
     peerDependencies:
       '@ant-design/charts': ^2.0.0
@@ -7619,8 +7619,8 @@ packages:
       '@emnapi/core': ^1.7.1
       '@emnapi/runtime': ^1.7.1
 
-  '@next/env@14.2.35':
-    resolution: {integrity: sha512-DuhvCtj4t9Gwrx80dmz2F4t/zKQ4ktN8WrMwOuVzkJfBilwAwGr6v16M5eI8yCuZ63H9TTuEU09Iu2HqkzFPVQ==}
+  '@next/env@15.5.15':
+    resolution: {integrity: sha512-vcmyu5/MyFzN7CdqRHO3uHO44p/QPCZkuTUXroeUmhNP8bL5PHFEhik22JUazt+CDDoD6EpBYRCaS2pISL+/hg==}
 
   '@next/mdx@15.5.15':
     resolution: {integrity: sha512-4F4A89eL7ZoBjh4MEBQQzZvgKfS24hXHbqS9CsncwtLctgWYTilXlvDxTWYDokgq8jJxeJnBEooBLogZzW/vRw==}
@@ -7633,56 +7633,50 @@ packages:
       '@mdx-js/react':
         optional: true
 
-  '@next/swc-darwin-arm64@14.2.33':
-    resolution: {integrity: sha512-HqYnb6pxlsshoSTubdXKu15g3iivcbsMXg4bYpjL2iS/V6aQot+iyF4BUc2qA/J/n55YtvE4PHMKWBKGCF/+wA==}
+  '@next/swc-darwin-arm64@15.5.15':
+    resolution: {integrity: sha512-6PvFO2Tzt10GFK2Ro9tAVEtacMqRmTarYMFKAnV2vYMdwWc73xzmDQyAV7SwEdMhzmiRoo7+m88DuiXlJlGeaw==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
 
-  '@next/swc-darwin-x64@14.2.33':
-    resolution: {integrity: sha512-8HGBeAE5rX3jzKvF593XTTFg3gxeU4f+UWnswa6JPhzaR6+zblO5+fjltJWIZc4aUalqTclvN2QtTC37LxvZAA==}
+  '@next/swc-darwin-x64@15.5.15':
+    resolution: {integrity: sha512-G+YNV+z6FDZTp/+IdGyIMFqalBTaQSnvAA+X/hrt+eaTRFSznRMz9K7rTmzvM6tDmKegNtyzgufZW0HwVzEqaQ==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
 
-  '@next/swc-linux-arm64-gnu@14.2.33':
-    resolution: {integrity: sha512-JXMBka6lNNmqbkvcTtaX8Gu5by9547bukHQvPoLe9VRBx1gHwzf5tdt4AaezW85HAB3pikcvyqBToRTDA4DeLw==}
+  '@next/swc-linux-arm64-gnu@15.5.15':
+    resolution: {integrity: sha512-eVkrMcVIBqGfXB+QUC7jjZ94Z6uX/dNStbQFabewAnk13Uy18Igd1YZ/GtPRzdhtm7QwC0e6o7zOQecul4iC1w==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
 
-  '@next/swc-linux-arm64-musl@14.2.33':
-    resolution: {integrity: sha512-Bm+QulsAItD/x6Ih8wGIMfRJy4G73tu1HJsrccPW6AfqdZd0Sfm5Imhgkgq2+kly065rYMnCOxTBvmvFY1BKfg==}
+  '@next/swc-linux-arm64-musl@15.5.15':
+    resolution: {integrity: sha512-RwSHKMQ7InLy5GfkY2/n5PcFycKA08qI1VST78n09nN36nUPqCvGSMiLXlfUmzmpQpF6XeBYP2KRWHi0UW3uNg==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
 
-  '@next/swc-linux-x64-gnu@14.2.33':
-    resolution: {integrity: sha512-FnFn+ZBgsVMbGDsTqo8zsnRzydvsGV8vfiWwUo1LD8FTmPTdV+otGSWKc4LJec0oSexFnCYVO4hX8P8qQKaSlg==}
+  '@next/swc-linux-x64-gnu@15.5.15':
+    resolution: {integrity: sha512-nplqvY86LakS+eeiuWsNWvfmK8pFcOEW7ZtVRt4QH70lL+0x6LG/m1OpJ/tvrbwjmR8HH9/fH2jzW1GlL03TIg==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
 
-  '@next/swc-linux-x64-musl@14.2.33':
-    resolution: {integrity: sha512-345tsIWMzoXaQndUTDv1qypDRiebFxGYx9pYkhwY4hBRaOLt8UGfiWKr9FSSHs25dFIf8ZqIFaPdy5MljdoawA==}
+  '@next/swc-linux-x64-musl@15.5.15':
+    resolution: {integrity: sha512-eAgl9NKQ84/sww0v81DQINl/vL2IBxD7sMybd0cWRw6wqgouVI53brVRBrggqBRP/NWeIAE1dm5cbKYoiMlqDQ==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
 
-  '@next/swc-win32-arm64-msvc@14.2.33':
-    resolution: {integrity: sha512-nscpt0G6UCTkrT2ppnJnFsYbPDQwmum4GNXYTeoTIdsmMydSKFz9Iny2jpaRupTb+Wl298+Rh82WKzt9LCcqSQ==}
+  '@next/swc-win32-arm64-msvc@15.5.15':
+    resolution: {integrity: sha512-GJVZC86lzSquh0MtvZT+L7G8+jMnJcldloOjA8Kf3wXvBrvb6OGe2MzPuALxFshSm/IpwUtD2mIoof39ymf52A==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [win32]
 
-  '@next/swc-win32-ia32-msvc@14.2.33':
-    resolution: {integrity: sha512-pc9LpGNKhJ0dXQhZ5QMmYxtARwwmWLpeocFmVG5Z0DzWq5Uf0izcI8tLc+qOpqxO1PWqZ5A7J1blrUIKrIFc7Q==}
-    engines: {node: '>= 10'}
-    cpu: [ia32]
-    os: [win32]
-
-  '@next/swc-win32-x64-msvc@14.2.33':
-    resolution: {integrity: sha512-nOjfZMy8B94MdisuzZo9/57xuFVLHJaDj5e/xrduJp9CV2/HrfxTRH2fbyLe+K9QT41WBLUd4iXX3R7jBp0EUg==}
+  '@next/swc-win32-x64-msvc@15.5.15':
+    resolution: {integrity: sha512-nFucjVdwlFqxh/JG3hWSJ4p8+YJV7Ii8aPDuBQULB6DzUF4UNZETXLfEUk+oI2zEznWWULPt7MeuTE6xtK1HSA==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [win32]
@@ -8486,9 +8480,6 @@ packages:
 
   '@swc/helpers@0.5.15':
     resolution: {integrity: sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g==}
-
-  '@swc/helpers@0.5.5':
-    resolution: {integrity: sha512-KGYxvIOXcceOAbEk4bi/dVLEK9z8sZ0uBB3Il5b1rhfClSpcX0yfRO0KmTkqR2cnQDymwLB+25ZyMzICg/cm/A==}
 
   '@swc/types@0.1.26':
     resolution: {integrity: sha512-lyMwd7WGgG79RS7EERZV3T8wMdmPq3xwyg+1nmAM64kIhx5yl+juO2PYIHb7vTiPgPCj8LYjsNV2T5wiQHUEaw==}
@@ -9471,10 +9462,6 @@ packages:
     peerDependencies:
       esbuild: '>=0.18'
 
-  busboy@1.6.0:
-    resolution: {integrity: sha512-8SFQbg/0hQ9xy3UNTB0YEnsNBbWfhf7RtnzpL7TkBiTBRfrQ9Fxcnz7VJsleJpyp6rVLvXiuORqjlHi5q+PYuA==}
-    engines: {node: '>=10.16.0'}
-
   bytes@3.1.2:
     resolution: {integrity: sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg==}
     engines: {node: '>= 0.8'}
@@ -9517,6 +9504,9 @@ packages:
 
   caniuse-lite@1.0.30001787:
     resolution: {integrity: sha512-mNcrMN9KeI68u7muanUpEejSLghOKlVhRqS/Za2IeyGllJ9I9otGpR9g3nsw7n4W378TE/LyIteA0+/FOZm4Kg==}
+
+  caniuse-lite@1.0.30001788:
+    resolution: {integrity: sha512-6q8HFp+lOQtcf7wBK+uEenxymVWkGKkjFpCvw5W25cmMwEDU45p1xQFBQv8JDlMMry7eNxyBaR+qxgmTUZkIRQ==}
 
   ccount@2.0.1:
     resolution: {integrity: sha512-eyrF0jiFpY+3drT6383f1qhkbGsLSifNAjA61IUjZjmLCWjItY6LB9ft9YhoDgwfmclB2zhu51Lc7+95b8NRAg==}
@@ -10087,8 +10077,8 @@ packages:
   dom-accessibility-api@0.6.3:
     resolution: {integrity: sha512-7ZgogeTnjuHbo+ct10G9Ffp0mif17idi0IyWNVA/wcwcm7NPOD/WEHVP3n7n3MhXqxoIYm8d6MuZohYWIZ4T3w==}
 
-  dompurify@3.3.3:
-    resolution: {integrity: sha512-Oj6pzI2+RqBfFG+qOaOLbFXLQ90ARpcGG6UePL82bJLtdsa6CYJD7nmiU8MW9nQNOtCHV3lZ/Bzq1X0QYbBZCA==}
+  dompurify@3.4.0:
+    resolution: {integrity: sha512-nolgK9JcaUXMSmW+j1yaSvaEaoXYHwWyGJlkoCTghc97KgGDDSnpoU/PlEnw63Ah+TGKFOyY+X5LnxaWbCSfXg==}
 
   dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
@@ -10528,8 +10518,8 @@ packages:
       openapi-types: ^12.1.3
       zod: ^3.25.76
 
-  fastify@5.8.4:
-    resolution: {integrity: sha512-sa42J1xylbBAYUWALSBoyXKPDUvM3OoNOibIefA+Oha57FryXKKCZarA1iDntOCWp3O35voZLuDg2mdODXtPzQ==}
+  fastify@5.8.5:
+    resolution: {integrity: sha512-Yqptv59pQzPgQUSIm87hMqHJmdkb1+GPxdE6vW6FRyVE9G86mt7rOghitiU4JHRaTyDUk9pfeKmDeu70lAwM4Q==}
 
   fastq@1.20.1:
     resolution: {integrity: sha512-GGToxJ/w1x32s/D2EKND7kTil4n8OVk/9mycTc4VDza13lOvpUZTGX3mFSCtV9ksdGBVzvsyAVLM6mHFThxXxw==}
@@ -11975,13 +11965,14 @@ packages:
     peerDependencies:
       react: ^18.3.1
 
-  next@14.2.35:
-    resolution: {integrity: sha512-KhYd2Hjt/O1/1aZVX3dCwGXM1QmOV4eNM2UTacK5gipDdPN/oHHK/4oVGy7X8GMfPMsUTUEmGlsy0EY1YGAkig==}
-    engines: {node: '>=18.17.0'}
+  next@15.5.15:
+    resolution: {integrity: sha512-VSqCrJwtLVGwAVE0Sb/yikrQfkwkZW9p+lL/J4+xe+G3ZA+QnWPqgcfH1tDUEuk9y+pthzzVFp4L/U8JerMfMQ==}
+    engines: {node: ^18.18.0 || ^19.8.0 || >= 20.0.0}
     hasBin: true
     peerDependencies:
       '@opentelemetry/api': ^1.1.0
-      '@playwright/test': ^1.41.2
+      '@playwright/test': ^1.51.1
+      babel-plugin-react-compiler: '*'
       react: ^18.3.1
       react-dom: ^18.3.1
       sass: ^1.3.0
@@ -11989,6 +11980,8 @@ packages:
       '@opentelemetry/api':
         optional: true
       '@playwright/test':
+        optional: true
+      babel-plugin-react-compiler:
         optional: true
       sass:
         optional: true
@@ -13383,10 +13376,6 @@ packages:
     resolution: {integrity: sha512-KFxaM7XT+irxvdqSP1LGLgNWbYN7ay5owZ3r/8t77p+EtSUAfUgtl7be3xtqtOmGUl9K9YPO2ca8133RlTjvKw==}
     engines: {node: '>=8.0'}
 
-  streamsearch@1.1.0:
-    resolution: {integrity: sha512-Mcc5wHehp9aXz1ax6bZUyY5afg9u2rv5cqQI3mRrYkGC8rW2hM02jWuwjtL++LS5qinSyhj2QfLyNsuc+VsExg==}
-    engines: {node: '>=10.0.0'}
-
   string-convert@0.2.1:
     resolution: {integrity: sha512-u/1tdPl4yQnPBjnVrmdLo9gtuLvELKsAoRapekWggdiQNvvvum+jYF329d84NAa660KQw7pB2n36KrIKVoXa3A==}
 
@@ -13502,8 +13491,8 @@ packages:
       react-native:
         optional: true
 
-  styled-jsx@5.1.1:
-    resolution: {integrity: sha512-pW7uC1l4mBZ8ugbiZrcIsiIvVx1UmTfw7UkC3Um2tmfUq9Bhk8IiyEIPl6F8agHgjzku6j0xQEZbfA5uSgSaCw==}
+  styled-jsx@5.1.6:
+    resolution: {integrity: sha512-qSVyDTeMotdvQYoHWLNGwRFJHC+i+ZvdBRYosOFgC+Wg1vx4frN2/RG/NA7SYqqvKNLf39P2LSRA2pu6n0XYZA==}
     engines: {node: '>= 12.0.0'}
     peerDependencies:
       '@babel/core': '*'
@@ -15448,7 +15437,7 @@ snapshots:
       '@jsonjoy.com/codegen': 17.67.0(tslib@2.8.1)
       tslib: 2.8.1
 
-  '@kb-labs/core-config@2.43.0':
+  '@kb-labs/core-config@2.44.0':
     dependencies:
       ajv: 8.18.0
       ajv-formats: 3.0.1(ajv@8.18.0)
@@ -15456,151 +15445,151 @@ snapshots:
       yaml: 2.8.3
       zod: 3.25.76
 
-  '@kb-labs/core-contracts@2.43.0': {}
+  '@kb-labs/core-contracts@2.44.0': {}
 
-  '@kb-labs/core-discovery@2.43.0':
+  '@kb-labs/core-discovery@2.44.0':
     dependencies:
-      '@kb-labs/core-sys': 2.43.0
-      '@kb-labs/plugin-contracts': 2.43.0
+      '@kb-labs/core-sys': 2.44.0
+      '@kb-labs/plugin-contracts': 2.44.0
 
-  '@kb-labs/core-ipc@2.43.0':
+  '@kb-labs/core-ipc@2.44.0':
     dependencies:
-      '@kb-labs/core-platform': 2.43.0
+      '@kb-labs/core-platform': 2.44.0
 
-  '@kb-labs/core-platform@2.43.0':
+  '@kb-labs/core-platform@2.44.0':
     dependencies:
       ulid: 2.4.0
 
-  '@kb-labs/core-resource-broker@2.43.0':
+  '@kb-labs/core-resource-broker@2.44.0':
     dependencies:
-      '@kb-labs/core-platform': 2.43.0
-      '@kb-labs/core-state-broker': 2.43.0
+      '@kb-labs/core-platform': 2.44.0
+      '@kb-labs/core-state-broker': 2.44.0
 
-  '@kb-labs/core-runtime@2.43.0':
+  '@kb-labs/core-runtime@2.44.0':
     dependencies:
-      '@kb-labs/core-config': 2.43.0
-      '@kb-labs/core-contracts': 2.43.0
-      '@kb-labs/core-discovery': 2.43.0
-      '@kb-labs/core-ipc': 2.43.0
-      '@kb-labs/core-platform': 2.43.0
-      '@kb-labs/core-resource-broker': 2.43.0
-      '@kb-labs/core-workspace': 2.43.0
-      '@kb-labs/llm-router': 2.43.0
-      '@kb-labs/plugin-execution-factory': 2.43.0
+      '@kb-labs/core-config': 2.44.0
+      '@kb-labs/core-contracts': 2.44.0
+      '@kb-labs/core-discovery': 2.44.0
+      '@kb-labs/core-ipc': 2.44.0
+      '@kb-labs/core-platform': 2.44.0
+      '@kb-labs/core-resource-broker': 2.44.0
+      '@kb-labs/core-workspace': 2.44.0
+      '@kb-labs/llm-router': 2.44.0
+      '@kb-labs/plugin-execution-factory': 2.44.0
       zod: 3.25.76
     optionalDependencies:
-      '@kb-labs/gateway-core': 2.43.0(@kb-labs/core-platform@2.43.0)
+      '@kb-labs/gateway-core': 2.44.0(@kb-labs/core-platform@2.44.0)
 
-  '@kb-labs/core-state-broker@2.43.0': {}
+  '@kb-labs/core-state-broker@2.44.0': {}
 
-  '@kb-labs/core-sys@2.43.0':
+  '@kb-labs/core-sys@2.44.0':
     dependencies:
-      '@kb-labs/shared-cli-ui': 2.43.0
+      '@kb-labs/shared-cli-ui': 2.44.0
 
-  '@kb-labs/core-workspace@2.43.0':
+  '@kb-labs/core-workspace@2.44.0':
     dependencies:
-      '@kb-labs/core-sys': 2.43.0
+      '@kb-labs/core-sys': 2.44.0
 
-  '@kb-labs/gateway-contracts@2.43.0':
+  '@kb-labs/gateway-contracts@2.44.0':
     dependencies:
       zod: 3.25.76
     optional: true
 
-  '@kb-labs/gateway-core@2.43.0(@kb-labs/core-platform@2.43.0)':
+  '@kb-labs/gateway-core@2.44.0(@kb-labs/core-platform@2.44.0)':
     dependencies:
-      '@kb-labs/core-contracts': 2.43.0
-      '@kb-labs/core-platform': 2.43.0
-      '@kb-labs/gateway-contracts': 2.43.0
+      '@kb-labs/core-contracts': 2.44.0
+      '@kb-labs/core-platform': 2.44.0
+      '@kb-labs/gateway-contracts': 2.44.0
     optional: true
 
-  '@kb-labs/llm-router@2.43.0':
+  '@kb-labs/llm-router@2.44.0':
     dependencies:
-      '@kb-labs/core-platform': 2.43.0
+      '@kb-labs/core-platform': 2.44.0
 
-  '@kb-labs/perm-presets@2.43.0': {}
+  '@kb-labs/perm-presets@2.44.0': {}
 
-  '@kb-labs/platform-client@2.43.0': {}
+  '@kb-labs/platform-client@2.44.0': {}
 
-  '@kb-labs/plugin-contracts@2.43.0':
+  '@kb-labs/plugin-contracts@2.44.0':
     dependencies:
-      '@kb-labs/core-platform': 2.43.0
+      '@kb-labs/core-platform': 2.44.0
 
-  '@kb-labs/plugin-execution-factory@2.43.0':
+  '@kb-labs/plugin-execution-factory@2.44.0':
     dependencies:
-      '@kb-labs/core-contracts': 2.43.0
-      '@kb-labs/core-ipc': 2.43.0
-      '@kb-labs/core-platform': 2.43.0
-      '@kb-labs/plugin-contracts': 2.43.0
-      '@kb-labs/plugin-runtime': 2.43.0
-      '@kb-labs/shared-cli-ui': 2.43.0
+      '@kb-labs/core-contracts': 2.44.0
+      '@kb-labs/core-ipc': 2.44.0
+      '@kb-labs/core-platform': 2.44.0
+      '@kb-labs/plugin-contracts': 2.44.0
+      '@kb-labs/plugin-runtime': 2.44.0
+      '@kb-labs/shared-cli-ui': 2.44.0
 
-  '@kb-labs/plugin-runtime@2.43.0':
+  '@kb-labs/plugin-runtime@2.44.0':
     dependencies:
-      '@kb-labs/core-contracts': 2.43.0
-      '@kb-labs/core-platform': 2.43.0
-      '@kb-labs/plugin-contracts': 2.43.0
-      '@kb-labs/shared-cli-ui': 2.43.0
+      '@kb-labs/core-contracts': 2.44.0
+      '@kb-labs/core-platform': 2.44.0
+      '@kb-labs/plugin-contracts': 2.44.0
+      '@kb-labs/shared-cli-ui': 2.44.0
 
-  '@kb-labs/sdk@2.20.0(htloxug3vbge327qx4rbhmli3y)':
+  '@kb-labs/sdk@2.20.0(5msjnkdpfstbf6jjfmolrnlhgq)':
     dependencies:
-      '@kb-labs/core-platform': 2.43.0
-      '@kb-labs/core-runtime': 2.43.0
-      '@kb-labs/core-sys': 2.43.0
-      '@kb-labs/perm-presets': 2.43.0
-      '@kb-labs/platform-client': 2.43.0
-      '@kb-labs/plugin-contracts': 2.43.0
-      '@kb-labs/shared-cli-ui': 2.43.0
-      '@kb-labs/shared-command-kit': 2.43.0
-      '@kb-labs/shared-testing': 2.43.0(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
-      '@kb-labs/shared-tool-kit': 2.43.0
-      '@kb-labs/studio-devtools': 2.43.0(react@18.3.1)
-      '@kb-labs/studio-event-bus': 2.43.0(react@18.3.1)
-      '@kb-labs/studio-hooks': 2.43.0(@tanstack/react-query@5.97.0(react@18.3.1))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react-router-dom@7.14.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
-      '@kb-labs/studio-plugin-tools': 2.43.0(@rspack/core@1.7.11)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)(webpack@5.106.1(@swc/core@1.15.24))
-      '@kb-labs/studio-ui-core': 2.43.0
-      '@kb-labs/studio-ui-kit': 2.43.0(@ant-design/charts@2.6.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(dayjs@1.11.20)(react-dom@18.3.1(react@18.3.1))(react-router-dom@7.14.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+      '@kb-labs/core-platform': 2.44.0
+      '@kb-labs/core-runtime': 2.44.0
+      '@kb-labs/core-sys': 2.44.0
+      '@kb-labs/perm-presets': 2.44.0
+      '@kb-labs/platform-client': 2.44.0
+      '@kb-labs/plugin-contracts': 2.44.0
+      '@kb-labs/shared-cli-ui': 2.44.0
+      '@kb-labs/shared-command-kit': 2.44.0
+      '@kb-labs/shared-testing': 2.44.0(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
+      '@kb-labs/shared-tool-kit': 2.44.0
+      '@kb-labs/studio-devtools': 2.44.0(react@18.3.1)
+      '@kb-labs/studio-event-bus': 2.44.0(react@18.3.1)
+      '@kb-labs/studio-hooks': 2.44.0(@tanstack/react-query@5.97.0(react@18.3.1))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react-router-dom@7.14.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+      '@kb-labs/studio-plugin-tools': 2.44.0(@rspack/core@1.7.11(@swc/helpers@0.5.15))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)(webpack@5.106.1(@swc/core@1.15.24))
+      '@kb-labs/studio-ui-core': 2.44.0
+      '@kb-labs/studio-ui-kit': 2.44.0(@ant-design/charts@2.6.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(dayjs@1.11.20)(react-dom@18.3.1(react@18.3.1))(react-router-dom@7.14.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       zod: 3.25.76
 
-  '@kb-labs/sdk@2.20.0(ptnmtwsw4paszw5scsx6rhq7q4)':
+  '@kb-labs/sdk@2.20.0(lw5r47owpmq45jzwfz2x7qdv6i)':
     dependencies:
-      '@kb-labs/core-platform': 2.43.0
-      '@kb-labs/core-runtime': 2.43.0
-      '@kb-labs/core-sys': 2.43.0
-      '@kb-labs/perm-presets': 2.43.0
-      '@kb-labs/platform-client': 2.43.0
-      '@kb-labs/plugin-contracts': 2.43.0
-      '@kb-labs/shared-cli-ui': 2.43.0
-      '@kb-labs/shared-command-kit': 2.43.0
-      '@kb-labs/shared-testing': 2.43.0(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
-      '@kb-labs/shared-tool-kit': 2.43.0
-      '@kb-labs/studio-devtools': 2.43.0(react@18.3.1)
-      '@kb-labs/studio-event-bus': 2.43.0(react@18.3.1)
-      '@kb-labs/studio-hooks': 2.43.0(@tanstack/react-query@5.97.0(react@18.3.1))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react-router-dom@7.14.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
-      '@kb-labs/studio-plugin-tools': 2.43.0(@rspack/core@1.7.11(@swc/helpers@0.5.15))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)(webpack@5.106.1(@swc/core@1.15.24))
-      '@kb-labs/studio-ui-core': 2.43.0
-      '@kb-labs/studio-ui-kit': 2.43.0(@ant-design/charts@2.6.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(dayjs@1.11.20)(react-dom@18.3.1(react@18.3.1))(react-router-dom@7.14.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+      '@kb-labs/core-platform': 2.44.0
+      '@kb-labs/core-runtime': 2.44.0
+      '@kb-labs/core-sys': 2.44.0
+      '@kb-labs/perm-presets': 2.44.0
+      '@kb-labs/platform-client': 2.44.0
+      '@kb-labs/plugin-contracts': 2.44.0
+      '@kb-labs/shared-cli-ui': 2.44.0
+      '@kb-labs/shared-command-kit': 2.44.0
+      '@kb-labs/shared-testing': 2.44.0(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
+      '@kb-labs/shared-tool-kit': 2.44.0
+      '@kb-labs/studio-devtools': 2.44.0(react@18.3.1)
+      '@kb-labs/studio-event-bus': 2.44.0(react@18.3.1)
+      '@kb-labs/studio-hooks': 2.44.0(@tanstack/react-query@5.97.0(react@18.3.1))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react-router-dom@7.14.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
+      '@kb-labs/studio-plugin-tools': 2.44.0(@rspack/core@1.7.11)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)(webpack@5.106.1(@swc/core@1.15.24))
+      '@kb-labs/studio-ui-core': 2.44.0
+      '@kb-labs/studio-ui-kit': 2.44.0(@ant-design/charts@2.6.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(dayjs@1.11.20)(react-dom@18.3.1(react@18.3.1))(react-router-dom@7.14.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)
       zod: 3.25.76
 
-  '@kb-labs/shared-cli-ui@2.43.0':
+  '@kb-labs/shared-cli-ui@2.44.0':
     dependencies:
       glob: 11.1.0
 
-  '@kb-labs/shared-command-kit@2.43.0':
+  '@kb-labs/shared-command-kit@2.44.0':
     dependencies:
-      '@kb-labs/core-platform': 2.43.0
-      '@kb-labs/core-resource-broker': 2.43.0
-      '@kb-labs/core-runtime': 2.43.0
-      '@kb-labs/plugin-contracts': 2.43.0
-      '@kb-labs/plugin-runtime': 2.43.0
-      '@kb-labs/shared-cli-ui': 2.43.0
+      '@kb-labs/core-platform': 2.44.0
+      '@kb-labs/core-resource-broker': 2.44.0
+      '@kb-labs/core-runtime': 2.44.0
+      '@kb-labs/plugin-contracts': 2.44.0
+      '@kb-labs/plugin-runtime': 2.44.0
+      '@kb-labs/shared-cli-ui': 2.44.0
       glob: 11.1.0
       zod: 3.25.76
 
-  '@kb-labs/shared-testing@2.43.0(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)':
+  '@kb-labs/shared-testing@2.44.0(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)':
     dependencies:
-      '@kb-labs/core-platform': 2.43.0
-      '@kb-labs/core-runtime': 2.43.0
-      '@kb-labs/plugin-contracts': 2.43.0
+      '@kb-labs/core-platform': 2.44.0
+      '@kb-labs/core-runtime': 2.44.0
+      '@kb-labs/plugin-contracts': 2.44.0
       vitest: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4(vitest@3.2.4))(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
     transitivePeerDependencies:
       - '@edge-runtime/vm'
@@ -15623,31 +15612,31 @@ snapshots:
       - tsx
       - yaml
 
-  '@kb-labs/shared-tool-kit@2.43.0': {}
+  '@kb-labs/shared-tool-kit@2.44.0': {}
 
-  '@kb-labs/studio-devtools@2.43.0(react@18.3.1)':
+  '@kb-labs/studio-devtools@2.44.0(react@18.3.1)':
     dependencies:
       react: 18.3.1
 
-  '@kb-labs/studio-event-bus@2.43.0(react@18.3.1)':
+  '@kb-labs/studio-event-bus@2.44.0(react@18.3.1)':
     dependencies:
       react: 18.3.1
 
-  '@kb-labs/studio-hooks@2.43.0(@tanstack/react-query@5.97.0(react@18.3.1))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react-router-dom@7.14.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)':
+  '@kb-labs/studio-hooks@2.44.0(@tanstack/react-query@5.97.0(react@18.3.1))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react-dom@18.3.1(react@18.3.1))(react-router-dom@7.14.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)':
     dependencies:
-      '@kb-labs/studio-event-bus': 2.43.0(react@18.3.1)
-      '@kb-labs/studio-ui-core': 2.43.0
+      '@kb-labs/studio-event-bus': 2.44.0(react@18.3.1)
+      '@kb-labs/studio-ui-core': 2.44.0
       '@tanstack/react-query': 5.97.0(react@18.3.1)
       antd: 5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
       react-router-dom: 7.14.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
 
-  '@kb-labs/studio-plugin-tools@2.43.0(@rspack/core@1.7.11(@swc/helpers@0.5.15))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)(webpack@5.106.1(@swc/core@1.15.24))':
+  '@kb-labs/studio-plugin-tools@2.44.0(@rspack/core@1.7.11(@swc/helpers@0.5.15))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)(webpack@5.106.1(@swc/core@1.15.24))':
     dependencies:
       '@module-federation/enhanced': 0.8.12(@rspack/core@1.7.11(@swc/helpers@0.5.15))(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)(webpack@5.106.1(@swc/core@1.15.24))
       '@rspack/core': 1.7.11(@swc/helpers@0.5.15)
-      css-loader: 7.1.4(@rspack/core@1.7.11(@swc/helpers@0.5.15))(webpack@5.106.1(@swc/core@1.15.24))
+      css-loader: 7.1.4(@rspack/core@1.7.11)(webpack@5.106.1(@swc/core@1.15.24))
       style-loader: 4.0.0(webpack@5.106.1(@swc/core@1.15.24))
     transitivePeerDependencies:
       - bufferutil
@@ -15660,11 +15649,11 @@ snapshots:
       - vue-tsc
       - webpack
 
-  '@kb-labs/studio-plugin-tools@2.43.0(@rspack/core@1.7.11)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)(webpack@5.106.1(@swc/core@1.15.24))':
+  '@kb-labs/studio-plugin-tools@2.44.0(@rspack/core@1.7.11)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)(webpack@5.106.1(@swc/core@1.15.24))':
     dependencies:
       '@module-federation/enhanced': 0.8.12(@rspack/core@1.7.11)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)(typescript@5.9.3)(webpack@5.106.1(@swc/core@1.15.24))
       '@rspack/core': 1.7.11(@swc/helpers@0.5.15)
-      css-loader: 7.1.4(@rspack/core@1.7.11(@swc/helpers@0.5.15))(webpack@5.106.1(@swc/core@1.15.24))
+      css-loader: 7.1.4(@rspack/core@1.7.11)(webpack@5.106.1(@swc/core@1.15.24))
       style-loader: 4.0.0(webpack@5.106.1(@swc/core@1.15.24))
     transitivePeerDependencies:
       - bufferutil
@@ -15677,12 +15666,12 @@ snapshots:
       - vue-tsc
       - webpack
 
-  '@kb-labs/studio-ui-core@2.43.0': {}
+  '@kb-labs/studio-ui-core@2.44.0': {}
 
-  '@kb-labs/studio-ui-kit@2.43.0(@ant-design/charts@2.6.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(dayjs@1.11.20)(react-dom@18.3.1(react@18.3.1))(react-router-dom@7.14.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)':
+  '@kb-labs/studio-ui-kit@2.44.0(@ant-design/charts@2.6.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(antd@5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(dayjs@1.11.20)(react-dom@18.3.1(react@18.3.1))(react-router-dom@7.14.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)':
     dependencies:
       '@ant-design/charts': 2.6.7(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
-      '@kb-labs/studio-ui-core': 2.43.0
+      '@kb-labs/studio-ui-core': 2.44.0
       antd: 5.29.3(date-fns@3.6.0)(luxon@3.7.2)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       dayjs: 1.11.20
       react: 18.3.1
@@ -16055,7 +16044,7 @@ snapshots:
       '@tybys/wasm-util': 0.10.1
     optional: true
 
-  '@next/env@14.2.35': {}
+  '@next/env@15.5.15': {}
 
   '@next/mdx@15.5.15(@mdx-js/react@3.1.1(@types/react@18.3.28)(react@18.3.1))':
     dependencies:
@@ -16063,31 +16052,28 @@ snapshots:
     optionalDependencies:
       '@mdx-js/react': 3.1.1(@types/react@18.3.28)(react@18.3.1)
 
-  '@next/swc-darwin-arm64@14.2.33':
+  '@next/swc-darwin-arm64@15.5.15':
     optional: true
 
-  '@next/swc-darwin-x64@14.2.33':
+  '@next/swc-darwin-x64@15.5.15':
     optional: true
 
-  '@next/swc-linux-arm64-gnu@14.2.33':
+  '@next/swc-linux-arm64-gnu@15.5.15':
     optional: true
 
-  '@next/swc-linux-arm64-musl@14.2.33':
+  '@next/swc-linux-arm64-musl@15.5.15':
     optional: true
 
-  '@next/swc-linux-x64-gnu@14.2.33':
+  '@next/swc-linux-x64-gnu@15.5.15':
     optional: true
 
-  '@next/swc-linux-x64-musl@14.2.33':
+  '@next/swc-linux-x64-musl@15.5.15':
     optional: true
 
-  '@next/swc-win32-arm64-msvc@14.2.33':
+  '@next/swc-win32-arm64-msvc@15.5.15':
     optional: true
 
-  '@next/swc-win32-ia32-msvc@14.2.33':
-    optional: true
-
-  '@next/swc-win32-x64-msvc@14.2.33':
+  '@next/swc-win32-x64-msvc@15.5.15':
     optional: true
 
   '@nodelib/fs.scandir@2.1.5':
@@ -16754,12 +16740,6 @@ snapshots:
   '@swc/helpers@0.5.15':
     dependencies:
       tslib: 2.8.1
-    optional: true
-
-  '@swc/helpers@0.5.5':
-    dependencies:
-      '@swc/counter': 0.1.3
-      tslib: 2.8.1
 
   '@swc/types@0.1.26':
     dependencies:
@@ -17009,7 +16989,7 @@ snapshots:
 
   '@types/dompurify@3.2.0':
     dependencies:
-      dompurify: 3.3.3
+      dompurify: 3.4.0
 
   '@types/eslint-scope@3.7.7':
     dependencies:
@@ -17929,7 +17909,7 @@ snapshots:
   browserslist@4.28.2:
     dependencies:
       baseline-browser-mapping: 2.10.17
-      caniuse-lite: 1.0.30001787
+      caniuse-lite: 1.0.30001788
       electron-to-chromium: 1.5.334
       node-releases: 2.0.37
       update-browserslist-db: 1.2.3(browserslist@4.28.2)
@@ -17964,10 +17944,6 @@ snapshots:
     dependencies:
       esbuild: 0.27.7
       load-tsconfig: 0.2.5
-
-  busboy@1.6.0:
-    dependencies:
-      streamsearch: 1.1.0
 
   bytes@3.1.2: {}
 
@@ -18008,6 +17984,8 @@ snapshots:
   camelcase@5.3.1: {}
 
   caniuse-lite@1.0.30001787: {}
+
+  caniuse-lite@1.0.30001788: {}
 
   ccount@2.0.1: {}
 
@@ -18240,7 +18218,7 @@ snapshots:
       '@rspack/core': 1.7.11(@swc/helpers@0.5.15)
       webpack: 5.106.1(@swc/core@1.15.24(@swc/helpers@0.5.15))
 
-  css-loader@7.1.4(@rspack/core@1.7.11(@swc/helpers@0.5.15))(webpack@5.106.1(@swc/core@1.15.24)):
+  css-loader@7.1.4(@rspack/core@1.7.11)(webpack@5.106.1(@swc/core@1.15.24)):
     dependencies:
       icss-utils: 5.1.0(postcss@8.5.9)
       postcss: 8.5.9
@@ -18531,7 +18509,7 @@ snapshots:
 
   dom-accessibility-api@0.6.3: {}
 
-  dompurify@3.3.3:
+  dompurify@3.4.0:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
 
@@ -19175,23 +19153,23 @@ snapshots:
 
   fastify-plugin@5.1.0: {}
 
-  fastify-type-provider-zod@6.1.0(@fastify/swagger@9.7.0)(fastify@5.8.4)(openapi-types@12.1.3)(zod@3.25.76):
+  fastify-type-provider-zod@6.1.0(@fastify/swagger@9.7.0)(fastify@5.8.5)(openapi-types@12.1.3)(zod@3.25.76):
     dependencies:
       '@fastify/error': 4.2.0
       '@fastify/swagger': 9.7.0
-      fastify: 5.8.4
+      fastify: 5.8.5
       openapi-types: 12.1.3
       zod: 3.25.76
 
-  fastify-type-provider-zod@6.1.0(@fastify/swagger@9.7.0)(fastify@5.8.4)(openapi-types@12.1.3)(zod@4.3.6):
+  fastify-type-provider-zod@6.1.0(@fastify/swagger@9.7.0)(fastify@5.8.5)(openapi-types@12.1.3)(zod@4.3.6):
     dependencies:
       '@fastify/error': 4.2.0
       '@fastify/swagger': 9.7.0
-      fastify: 5.8.4
+      fastify: 5.8.5
       openapi-types: 12.1.3
       zod: 4.3.6
 
-  fastify@5.8.4:
+  fastify@5.8.5:
     dependencies:
       '@fastify/ajv-compiler': 4.0.5
       '@fastify/error': 4.2.0
@@ -20985,14 +20963,14 @@ snapshots:
 
   next-intl-swc-plugin-extractor@4.9.1: {}
 
-  next-intl@4.9.1(next@14.2.35(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(typescript@5.9.3):
+  next-intl@4.9.1(next@15.5.15(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(react@18.3.1)(typescript@5.9.3):
     dependencies:
       '@formatjs/intl-localematcher': 0.8.2
       '@parcel/watcher': 2.5.6
       '@swc/core': 1.15.24(@swc/helpers@0.5.15)
       icu-minify: 4.9.1
       negotiator: 1.0.0
-      next: 14.2.35(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+      next: 15.5.15(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       next-intl-swc-plugin-extractor: 4.9.1
       po-parser: 2.1.1
       react: 18.3.1
@@ -21016,56 +20994,52 @@ snapshots:
       - '@types/react'
       - supports-color
 
-  next@14.2.35(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+  next@15.5.15(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
-      '@next/env': 14.2.35
-      '@swc/helpers': 0.5.5
-      busboy: 1.6.0
-      caniuse-lite: 1.0.30001787
-      graceful-fs: 4.2.11
+      '@next/env': 15.5.15
+      '@swc/helpers': 0.5.15
+      caniuse-lite: 1.0.30001788
       postcss: 8.4.31
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
-      styled-jsx: 5.1.1(@babel/core@7.29.0)(react@18.3.1)
+      styled-jsx: 5.1.6(react@18.3.1)
     optionalDependencies:
-      '@next/swc-darwin-arm64': 14.2.33
-      '@next/swc-darwin-x64': 14.2.33
-      '@next/swc-linux-arm64-gnu': 14.2.33
-      '@next/swc-linux-arm64-musl': 14.2.33
-      '@next/swc-linux-x64-gnu': 14.2.33
-      '@next/swc-linux-x64-musl': 14.2.33
-      '@next/swc-win32-arm64-msvc': 14.2.33
-      '@next/swc-win32-ia32-msvc': 14.2.33
-      '@next/swc-win32-x64-msvc': 14.2.33
+      '@next/swc-darwin-arm64': 15.5.15
+      '@next/swc-darwin-x64': 15.5.15
+      '@next/swc-linux-arm64-gnu': 15.5.15
+      '@next/swc-linux-arm64-musl': 15.5.15
+      '@next/swc-linux-x64-gnu': 15.5.15
+      '@next/swc-linux-x64-musl': 15.5.15
+      '@next/swc-win32-arm64-msvc': 15.5.15
+      '@next/swc-win32-x64-msvc': 15.5.15
       '@opentelemetry/api': 1.9.1
       '@playwright/test': 1.59.1
+      sharp: 0.34.5
     transitivePeerDependencies:
       - '@babel/core'
       - babel-plugin-macros
 
-  next@14.2.35(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@18.3.1))(react@18.3.1):
+  next@15.5.15(@opentelemetry/api@1.9.1)(@playwright/test@1.59.1)(react-dom@19.2.5(react@18.3.1))(react@18.3.1):
     dependencies:
-      '@next/env': 14.2.35
-      '@swc/helpers': 0.5.5
-      busboy: 1.6.0
-      caniuse-lite: 1.0.30001787
-      graceful-fs: 4.2.11
+      '@next/env': 15.5.15
+      '@swc/helpers': 0.5.15
+      caniuse-lite: 1.0.30001788
       postcss: 8.4.31
       react: 18.3.1
       react-dom: 19.2.5(react@18.3.1)
-      styled-jsx: 5.1.1(@babel/core@7.29.0)(react@18.3.1)
+      styled-jsx: 5.1.6(react@18.3.1)
     optionalDependencies:
-      '@next/swc-darwin-arm64': 14.2.33
-      '@next/swc-darwin-x64': 14.2.33
-      '@next/swc-linux-arm64-gnu': 14.2.33
-      '@next/swc-linux-arm64-musl': 14.2.33
-      '@next/swc-linux-x64-gnu': 14.2.33
-      '@next/swc-linux-x64-musl': 14.2.33
-      '@next/swc-win32-arm64-msvc': 14.2.33
-      '@next/swc-win32-ia32-msvc': 14.2.33
-      '@next/swc-win32-x64-msvc': 14.2.33
+      '@next/swc-darwin-arm64': 15.5.15
+      '@next/swc-darwin-x64': 15.5.15
+      '@next/swc-linux-arm64-gnu': 15.5.15
+      '@next/swc-linux-arm64-musl': 15.5.15
+      '@next/swc-linux-x64-gnu': 15.5.15
+      '@next/swc-linux-x64-musl': 15.5.15
+      '@next/swc-win32-arm64-msvc': 15.5.15
+      '@next/swc-win32-x64-msvc': 15.5.15
       '@opentelemetry/api': 1.9.1
       '@playwright/test': 1.59.1
+      sharp: 0.34.5
     transitivePeerDependencies:
       - '@babel/core'
       - babel-plugin-macros
@@ -22844,8 +22818,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  streamsearch@1.1.0: {}
-
   string-convert@0.2.1: {}
 
   string-width@4.2.3:
@@ -22965,12 +22937,10 @@ snapshots:
     optionalDependencies:
       react-dom: 18.3.1(react@18.3.1)
 
-  styled-jsx@5.1.1(@babel/core@7.29.0)(react@18.3.1):
+  styled-jsx@5.1.6(react@18.3.1):
     dependencies:
       client-only: 0.0.1
       react: 18.3.1
-    optionalDependencies:
-      '@babel/core': 7.29.0
 
   stylis@4.3.6: {}
 
