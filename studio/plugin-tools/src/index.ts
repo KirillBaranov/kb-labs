@@ -23,8 +23,8 @@
  * Loaded once by the host — remotes reuse them via MF shared scope.
  */
 export const STUDIO_SHARED_DEPS: Record<string, { singleton: boolean; requiredVersion: string }> = {
-  react: { singleton: true, requiredVersion: '^18.3.0' },
-  'react-dom': { singleton: true, requiredVersion: '^18.3.0' },
+  react: { singleton: true, requiredVersion: '^19.0.0' },
+  'react-dom': { singleton: true, requiredVersion: '^19.0.0' },
   'react-router-dom': { singleton: true, requiredVersion: '^7.0.0' },
   antd: { singleton: true, requiredVersion: '^5.21.0' },
   '@ant-design/icons': { singleton: true, requiredVersion: '^5.4.0' },
@@ -83,16 +83,16 @@ async function validateReactVersion(resolve: (id: string) => string): Promise<vo
 
   const majorStr = reactVersion.split('.').at(0) ?? '0';
   const major = parseInt(majorStr, 10);
-  if (major >= 19) {
+  if (major >= 20) {
     throw new Error(
       `\n\n❌ Studio plugin build failed: React ${reactVersion} detected.\n\n` +
-      `Studio host runs React 18. When a plugin bundles React 19, elements use\n` +
-      `Symbol.for('react.transitional.element') which React 18 cannot reconcile,\n` +
+      `Studio host runs React 19. When a plugin bundles React 20+, elements may\n` +
+      `use a different internal symbol which React 19 cannot reconcile,\n` +
       `causing "Objects are not valid as a React child" crash at runtime.\n\n` +
-      `Fix: pin React 18 in your plugin's devDependencies:\n\n` +
+      `Fix: pin React 19 in your plugin's devDependencies:\n\n` +
       `  "devDependencies": {\n` +
-      `    "react": "^18.3.1",\n` +
-      `    "react-dom": "^18.3.1"\n` +
+      `    "react": "^19.0.0",\n` +
+      `    "react-dom": "^19.0.0"\n` +
       `  }\n\n` +
       `Then reinstall and rebuild:\n\n` +
       `  pnpm install\n` +

@@ -72,10 +72,10 @@
   "packageManager": "pnpm@9.11.0",
   "pnpm": {
     "overrides": {
-      "react": "^18.3.1",
-      "react-dom": "^18.3.1",
-      "@types/react": "^18.3.18",
-      "@types/react-dom": "^18.3.5",
+      "react": "^19.0.0",
+      "react-dom": "^19.0.0",
+      "@types/react": "^19.0.0",
+      "@types/react-dom": "^19.0.0",
       "zod": "^3.25.76",
       "@fastify/reply-from": ">=12.6.2",
       "@fastify/static": ">=9.1.1",
@@ -83,12 +83,6 @@
       "hono": ">=4.12.14",
       "koa": ">=2.16.4",
       "minimatch": ">=9.0.7"
-    },
-    "peerDependencyRules": {
-      "allowedVersions": {
-        "@testing-library/react>react": "18 || 19",
-        "@testing-library/react>react-dom": "18 || 19"
-      }
     }
   },
   "repository": "KirillBaranov/kb-labs.git"
