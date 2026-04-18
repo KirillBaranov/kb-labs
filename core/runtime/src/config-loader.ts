@@ -266,6 +266,8 @@ export async function loadPlatformConfig(
   })
 
   if (shouldLoadEnv) {
+    // Load platform root first so project vars take precedence over platform defaults.
+    if (roots.platformRoot) loadEnvFile(roots.platformRoot)
     loadEnvFile(roots.projectRoot)
   }
 

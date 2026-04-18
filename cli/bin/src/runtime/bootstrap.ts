@@ -128,6 +128,13 @@ export async function executeCli(
     projectRoot,
   } = await initializePlatform(cwd, options.moduleUrl);
 
+  // Load .env from platformRoot and projectRoot after we know their paths.
+  // This ensures API keys / tokens stored in ~/kb-platform/.env or the project
+  // root are available even when the CLI is invoked from a different directory.
+  // loadEnvFile never overrides already-set vars, so order: platform → project.
+  if (platformRoot) loadEnvFile(platformRoot);
+  if (projectRoot && projectRoot !== cwd) loadEnvFile(projectRoot);
+
   // Store platformConfig globally so CLI adapter can pass it to ExecutionContext
   (globalThis as any).__KB_PLATFORM_CONFIG__ = platformConfig;
 
