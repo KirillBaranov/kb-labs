@@ -31,6 +31,7 @@ type Selection struct {
 	ProjectCWD       string
 	Services         []string // component IDs
 	Plugins          []string // component IDs
+	Binaries         []string // binary IDs to install
 	Telemetry        config.TelemetryConfig
 	Project          *detect.ProjectProfile // detected project info (may be nil)
 	DemoMode         bool
@@ -130,13 +131,14 @@ func (ins *Installer) Install(sel *Selection, m *manifest.Manifest) (*Result, er
 		return nil, fmt.Errorf("install: %w", err)
 	}
 
-	// Step 2: Go binaries from GitHub Releases.
+	// Step 2: Go binaries from GitHub Releases — filtered by user selection.
+	selectedBins := filterBinaries(m.Binaries, sel.Binaries)
 	var installedBinaries []string
-	if len(m.Binaries) > 0 {
+	if len(selectedBins) > 0 {
 		step++
-		ins.step(step, totalSteps, fmt.Sprintf("Installing %d binaries", len(m.Binaries)))
+		ins.step(step, totalSteps, fmt.Sprintf("Installing %d binaries", len(selectedBins)))
 		var binErr error
-		installedBinaries, binErr = ins.installBinaries(sel.PlatformDir, m.Binaries)
+		installedBinaries, binErr = ins.installBinaries(sel.PlatformDir, selectedBins)
 		if binErr != nil {
 			// Non-fatal: log warning but continue. Services can be installed later.
 			ins.Log.Printf("  [WARN] binary install failed: %v", binErr)
@@ -395,6 +397,25 @@ func (ins *Installer) symlinkCLI(platformDir string) {
 // slice contains the names of binaries that were successfully installed
 // AND also made it into the user bin dir — so callers can safely use it to
 // decide which follow-up commands (e.g. "kb-dev start") to suggest.
+// filterBinaries returns only the binaries whose ID is in the selected list.
+// If selected is nil or empty, all binaries are returned (backwards compat).
+func filterBinaries(bins []manifest.Binary, selected []string) []manifest.Binary {
+	if len(selected) == 0 {
+		return bins
+	}
+	set := make(map[string]bool, len(selected))
+	for _, id := range selected {
+		set[id] = true
+	}
+	var out []manifest.Binary
+	for _, b := range bins {
+		if set[b.ID] {
+			out = append(out, b)
+		}
+	}
+	return out
+}
+
 func (ins *Installer) installBinaries(platformDir string, bins []manifest.Binary) ([]string, error) {
 	binDir := filepath.Join(platformDir, "bin")
 	installed := make([]string, 0, len(bins))

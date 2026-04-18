@@ -41,7 +41,8 @@ type Binary struct {
 	Repo        string `json:"repo,omitempty"` // GitHub "owner/repo"
 	Name        string `json:"name"`           // binary name (e.g. "kb-dev")
 	Description string `json:"description"`
-	LocalPath   string `json:"localPath,omitempty"` // absolute path to local binary for dev mode
+	Default     bool   `json:"default"`                // pre-selected in wizard
+	LocalPath   string `json:"localPath,omitempty"`    // absolute path to local binary for dev mode
 }
 
 // Manifest describes all installable parts of the KB Labs platform.
