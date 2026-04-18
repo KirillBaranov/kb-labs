@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/studio-ui-kit",
-  "description": "KB Labs Studio UI Kit — React components using Ant Design and design tokens",
+  "description": "KB Labs Studio UI Kit \u2014 React components using Ant Design and design tokens",
   "version": "2.44.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -37,8 +37,8 @@
     "@testing-library/react": "^16.1.0",
     "@testing-library/user-event": "^14.6.1",
     "@types/node": "^24.3.3",
-    "@types/react": "^18.3.18",
-    "@types/react-dom": "^18.3.5",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "dayjs": "^1.11.19",
     "eslint": "^9",
@@ -58,8 +58,8 @@
     "@ant-design/charts": "^2.0.0",
     "antd": "^5.22.5",
     "dayjs": "^1.11.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "react-router-dom": "^7.0.0"
   },
   "style": "./dist/index.css"

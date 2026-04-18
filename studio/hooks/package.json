@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/studio-hooks",
-  "description": "Studio SDK hooks — useData, useMutateData, useSSE, useInfiniteData, useWebSocket, useEventBus, usePermissions, useNavigation, useNotification, useTheme",
+  "description": "Studio SDK hooks \u2014 useData, useMutateData, useSSE, useInfiniteData, useWebSocket, useEventBus, usePermissions, useNavigation, useNotification, useTheme",
   "version": "2.44.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -31,8 +31,8 @@
     "@kb-labs/devkit": "workspace:*",
     "@tanstack/react-query": "^5.62.23",
     "@testing-library/react": "^16.1.0",
-    "@types/react": "^18.3.18",
-    "@types/react-dom": "^18.3.5",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "antd": "^5.21.0",
     "react-router-dom": "^7.1.4",
     "rimraf": "^6.0.1",
@@ -47,8 +47,8 @@
   "peerDependencies": {
     "@tanstack/react-query": "^5.0.0",
     "antd": "^5.21.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "react-router-dom": "^7.0.0"
   },
   "sideEffects": false

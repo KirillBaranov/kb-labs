@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/studio-data-client",
-  "description": "KB Labs Studio data client — API SDK with versioned contracts, mocks, and TanStack Query hooks",
+  "description": "KB Labs Studio data client \u2014 API SDK with versioned contracts, mocks, and TanStack Query hooks",
   "version": "2.44.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -43,9 +43,9 @@
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
     "@types/node": "^24.3.3",
-    "@types/react": "^18.3.18",
+    "@types/react": "^19.0.0",
     "eslint": "^9",
-    "react": "^18.3.1",
+    "react": "^19.0.0",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
     "typescript": "^5.6.3",
@@ -56,6 +56,6 @@
     "pnpm": ">=9.0.0"
   },
   "peerDependencies": {
-    "react": "^18.3.1"
+    "react": "^19.0.0"
   }
 }
