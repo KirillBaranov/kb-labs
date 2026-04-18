@@ -29,7 +29,7 @@ export default defineHandler({
 
     const validatedLimit = limit ? Math.min(Math.max(parseInt(limit, 10) || 50, 1), 1000) : 50;
     const validatedOffset = offset ? Math.max(parseInt(offset, 10) || 0, 0) : 0;
-    const validStatuses = ['queued', 'running', 'success', 'failed', 'cancelled'];
+    const validStatuses = ['queued', 'running', 'success', 'failed', 'cancelled', 'dlq', 'skipped'];
     const validatedStatus = status && validStatuses.includes(status) ? status : undefined;
 
     const params = new URLSearchParams();

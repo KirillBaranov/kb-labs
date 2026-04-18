@@ -30,7 +30,7 @@ const GROUPS: { key: string; label: string; statuses: string[]; color: string }[
   {
     key: 'failed',
     label: 'Failed',
-    statuses: ['failed'],
+    statuses: ['failed', 'dlq'],
     color: 'var(--error)',
   },
   {
