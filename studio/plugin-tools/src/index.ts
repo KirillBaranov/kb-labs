@@ -48,6 +48,12 @@ export interface KbStudioRemoteOptions {
   filename?: string;
   /** Output directory (default: 'dist/widgets') */
   outputDir?: string;
+  /**
+   * Generate TypeScript types for exposed modules (MF v2 dts feature).
+   * Studio host picks them up automatically in dev via @mf-types/.
+   * Default: true in development, false in production.
+   */
+  dts?: boolean;
 }
 
 /**
@@ -103,7 +109,9 @@ export async function createStudioRemoteConfig(options: KbStudioRemoteOptions): 
 
   await validateReactVersion(require.resolve);
 
+  const isDev = process.env.NODE_ENV !== 'production';
   const outputDir = options.outputDir ?? 'dist/widgets';
+  const enableDts = options.dts ?? isDev;
 
   return {
     entry: {},
@@ -148,6 +156,8 @@ export async function createStudioRemoteConfig(options: KbStudioRemoteOptions): 
       new ModuleFederationPlugin({
         name: options.name,
         filename: options.filename ?? 'remoteEntry.js',
+        manifest: true,
+        dts: enableDts ? { generateTypes: true } : false,
         exposes: options.exposes,
         shared: {
           ...STUDIO_SHARED_DEPS,

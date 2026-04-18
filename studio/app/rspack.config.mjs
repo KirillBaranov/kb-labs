@@ -95,6 +95,8 @@ export default defineConfig({
     }),
     new ModuleFederationPlugin({
       name: 'studioHost',
+      manifest: true,
+      dts: isDev ? { consumeTypes: true } : false,
       remotes: {},
       shared: Object.fromEntries(
         Object.entries(STUDIO_SHARED_DEPS).map(([key, val]) => [key, { ...val, eager: true }]),
