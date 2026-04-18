@@ -175,6 +175,7 @@ type wizardModel struct {
 	errMsg        string
 	services      []checkItem
 	plugins       []checkItem
+	binaries      []checkItem
 	platformInput textinput.Model
 	cwdInput      textinput.Model
 	apiKeyInput   textinput.Model
@@ -232,6 +233,10 @@ func newModel(m *manifest.Manifest, opts WizardOptions) wizardModel {
 	for i, p := range m.Plugins {
 		plugins[i] = checkItem{id: p.ID, pkg: p.Pkg, desc: p.Description, checked: p.Default}
 	}
+	binaries := make([]checkItem, len(m.Binaries))
+	for i, b := range m.Binaries {
+		binaries[i] = checkItem{id: b.ID, desc: b.Description, checked: b.Default}
+	}
 
 	return wizardModel{
 		manifest:         m,
@@ -241,6 +246,7 @@ func newModel(m *manifest.Manifest, opts WizardOptions) wizardModel {
 		apiKeyInput:      aki,
 		services:         services,
 		plugins:          plugins,
+		binaries:         binaries,
 		demoMode:         opts.DemoMode,
 		selectedPreset:   -1,
 		telemetryEnabled: true,
@@ -356,7 +362,7 @@ func (m wizardModel) handlePresetKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m wizardModel) handleCustomKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	total := len(m.services) + len(m.plugins)
+	total := len(m.services) + len(m.plugins) + len(m.binaries)
 	switch msg.String() {
 	case "ctrl+c", "esc":
 		m.cancelled = true
@@ -534,6 +540,14 @@ func (m wizardModel) viewCustom() string {
 		b.WriteString("\n")
 	}
 
+	if len(m.binaries) > 0 {
+		b.WriteString("  " + sectionStyle.Render("Tools") + "\n")
+		for i, bin := range m.binaries {
+			b.WriteString(m.renderItem(len(m.services)+len(m.plugins)+i, bin))
+		}
+		b.WriteString("\n")
+	}
+
 	b.WriteString(helpStyle.Render("  ↑↓ move · space toggle · enter next · esc quit"))
 	return b.String()
 }
@@ -670,9 +684,12 @@ func (m *wizardModel) applySelection(serviceIDs, pluginIDs []string) {
 func (m *wizardModel) toggleCursor() {
 	if m.cursor < len(m.services) {
 		m.services[m.cursor].checked = !m.services[m.cursor].checked
-	} else {
+	} else if m.cursor < len(m.services)+len(m.plugins) {
 		i := m.cursor - len(m.services)
 		m.plugins[i].checked = !m.plugins[i].checked
+	} else {
+		i := m.cursor - len(m.services) - len(m.plugins)
+		m.binaries[i].checked = !m.binaries[i].checked
 	}
 }
 
@@ -687,7 +704,7 @@ func (m wizardModel) validateDirs() error {
 }
 
 func (m wizardModel) toSelection() *installer.Selection {
-	var services, plugins []string
+	var services, plugins, binaries []string
 	for _, s := range m.services {
 		if s.checked {
 			services = append(services, s.id)
@@ -698,11 +715,17 @@ func (m wizardModel) toSelection() *installer.Selection {
 			plugins = append(plugins, p.id)
 		}
 	}
+	for _, b := range m.binaries {
+		if b.checked {
+			binaries = append(binaries, b.id)
+		}
+	}
 	sel := &installer.Selection{
 		PlatformDir:      expandHome(m.platformInput.Value()),
 		ProjectCWD:       expandHome(m.cwdInput.Value()),
 		Services:         services,
 		Plugins:          plugins,
+		Binaries:         binaries,
 		DemoMode:         m.demoMode,
 		Consent:          m.consent,
 		TelemetryEnabled: m.telemetryEnabled,
@@ -725,8 +748,8 @@ func defaultSelection(m *manifest.Manifest, opts WizardOptions) *installer.Selec
 		cwd, _ = os.Getwd()
 	}
 
-	// Recommended preset: all services + default plugins only.
-	var services, plugins []string
+	// Recommended preset: default services + default plugins + default binaries.
+	var services, plugins, binaries []string
 	for _, s := range m.Services {
 		if s.Default {
 			services = append(services, s.ID)
@@ -735,6 +758,11 @@ func defaultSelection(m *manifest.Manifest, opts WizardOptions) *installer.Selec
 	for _, p := range m.Plugins {
 		if p.Default {
 			plugins = append(plugins, p.ID)
+		}
+	}
+	for _, b := range m.Binaries {
+		if b.Default {
+			binaries = append(binaries, b.ID)
 		}
 	}
 
@@ -748,6 +776,7 @@ func defaultSelection(m *manifest.Manifest, opts WizardOptions) *installer.Selec
 		ProjectCWD:       expandHome(cwd),
 		Services:         services,
 		Plugins:          plugins,
+		Binaries:         binaries,
 		DemoMode:         opts.DemoMode,
 		Consent:          consent,
 		TelemetryEnabled: false,

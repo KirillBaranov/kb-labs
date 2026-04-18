@@ -115,7 +115,29 @@
       "id": "kb-dev",
       "repo": "KirillBaranov/kb-labs",
       "name": "kb-dev",
-      "description": "Service manager"
+      "description": "Service manager",
+      "default": true
+    },
+    {
+      "id": "kb-devkit",
+      "repo": "KirillBaranov/kb-labs",
+      "name": "kb-devkit",
+      "description": "Workspace orchestrator (build, lint, test, Docker bundle)",
+      "default": false
+    },
+    {
+      "id": "kb-deploy",
+      "repo": "KirillBaranov/kb-labs",
+      "name": "kb-deploy",
+      "description": "Deployment manager",
+      "default": false
+    },
+    {
+      "id": "kb-monitor",
+      "repo": "KirillBaranov/kb-labs",
+      "name": "kb-monitor",
+      "description": "Runtime monitor and alerting",
+      "default": false
     }
   ]
 }
