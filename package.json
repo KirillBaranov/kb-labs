@@ -76,7 +76,10 @@
       "react-dom": "^18.3.1",
       "@types/react": "^18.3.18",
       "@types/react-dom": "^18.3.5",
-      "zod": "^3.25.76"
+      "zod": "^3.25.76",
+      "@fastify/reply-from": ">=12.6.2",
+      "koa": ">=2.16.4",
+      "minimatch": ">=9.0.7"
     }
   },
   "repository": "KirillBaranov/kb-labs.git"
