@@ -255,9 +255,17 @@ export default defineCommand<unknown, CLIInput<RunFlags>, AgentReviewReport>({
 
           files = scopedFiles.files;
         } else if (flags.files) {
-          // Use explicitly provided files (with security validation)
-          const filePaths = Array.isArray(flags.files) ? flags.files : [flags.files];
-          const safeFilePaths = await filterSecurePaths(filePaths, cwd);
+          // Expand glob patterns first, then read files
+          const filePatterns = Array.isArray(flags.files) ? flags.files : [flags.files];
+          const expanded: string[] = [];
+          for (const pattern of filePatterns) {
+            const matches = await ctx.runtime.fs.glob(pattern, {
+              cwd,
+              ignore: [...SECURITY_IGNORE_PATTERNS],
+            });
+            expanded.push(...matches);
+          }
+          const safeFilePaths = await filterSecurePaths(expanded, cwd);
 
           const fileReadResults = await Promise.allSettled(
             safeFilePaths.map(async (filePath) => ({
@@ -275,19 +283,10 @@ export default defineCommand<unknown, CLIInput<RunFlags>, AgentReviewReport>({
 
           switch (scope) {
             case 'all':
-              // All TypeScript/JavaScript files
-              // Run multiple globs in parallel since ctx.runtime.fs.glob might not support brace expansion
-              const [tsFiles, tsxFiles, jsFiles, jsxFiles] = await Promise.all([
-                ctx.runtime.fs.glob('**/*.ts', { cwd, ignore: [...SECURITY_IGNORE_PATTERNS] }),
-                ctx.runtime.fs.glob('**/*.tsx', { cwd, ignore: [...SECURITY_IGNORE_PATTERNS] }),
-                ctx.runtime.fs.glob('**/*.js', { cwd, ignore: [...SECURITY_IGNORE_PATTERNS] }),
-                ctx.runtime.fs.glob('**/*.jsx', { cwd, ignore: [...SECURITY_IGNORE_PATTERNS] }),
-              ]);
-              filePaths = [...tsFiles, ...tsxFiles, ...jsFiles, ...jsxFiles];
+              filePaths = await ctx.runtime.fs.glob('**/*', { cwd, ignore: [...SECURITY_IGNORE_PATTERNS] });
               break;
 
             case 'staged':
-              // Git staged files - try to detect repos with changes
               const reposWithChanges = await getReposWithChanges(cwd);
               if (reposWithChanges.length > 0) {
                 const scopedFiles = await resolveGitScope({
@@ -299,21 +298,11 @@ export default defineCommand<unknown, CLIInput<RunFlags>, AgentReviewReport>({
                 });
                 files = scopedFiles.files;
                 repoScope = reposWithChanges;
-              } else {
-                // Fallback to glob — run separately since glob may not support brace expansion
-                const [tsF, tsxF, jsF, jsxF] = await Promise.all([
-                  ctx.runtime.fs.glob('**/*.ts', { cwd, ignore: [...SECURITY_IGNORE_PATTERNS] }),
-                  ctx.runtime.fs.glob('**/*.tsx', { cwd, ignore: [...SECURITY_IGNORE_PATTERNS] }),
-                  ctx.runtime.fs.glob('**/*.js', { cwd, ignore: [...SECURITY_IGNORE_PATTERNS] }),
-                  ctx.runtime.fs.glob('**/*.jsx', { cwd, ignore: [...SECURITY_IGNORE_PATTERNS] }),
-                ]);
-                filePaths = [...tsF, ...tsxF, ...jsF, ...jsxF];
               }
               break;
 
             case 'changed':
             default:
-              // Changed files - try to detect repos with changes
               const changedRepos = await getReposWithChanges(cwd);
               if (changedRepos.length > 0) {
                 const scopedFiles = await resolveGitScope({
@@ -321,19 +310,10 @@ export default defineCommand<unknown, CLIInput<RunFlags>, AgentReviewReport>({
                   repos: changedRepos,
                   includeStaged: true,
                   includeUnstaged: true,
-                  includeUntracked: false,
+                  includeUntracked: true,
                 });
                 files = scopedFiles.files;
                 repoScope = changedRepos;
-              } else {
-                // Fallback to glob — run separately since glob may not support brace expansion
-                const [tsC, tsxC, jsC, jsxC] = await Promise.all([
-                  ctx.runtime.fs.glob('**/*.ts', { cwd, ignore: [...SECURITY_IGNORE_PATTERNS] }),
-                  ctx.runtime.fs.glob('**/*.tsx', { cwd, ignore: [...SECURITY_IGNORE_PATTERNS] }),
-                  ctx.runtime.fs.glob('**/*.js', { cwd, ignore: [...SECURITY_IGNORE_PATTERNS] }),
-                  ctx.runtime.fs.glob('**/*.jsx', { cwd, ignore: [...SECURITY_IGNORE_PATTERNS] }),
-                ]);
-                filePaths = [...tsC, ...tsxC, ...jsC, ...jsxC];
               }
               break;
           }
@@ -356,6 +336,16 @@ export default defineCommand<unknown, CLIInput<RunFlags>, AgentReviewReport>({
               .filter((r): r is PromiseFulfilledResult<InputFile> => r.status === 'fulfilled')
               .map(r => r.value);
           }
+        }
+
+        // No files found — give a clear, actionable message instead of a cryptic engine error
+        if (files.length === 0) {
+          loader.fail('No files to review');
+          const hint = scope === 'staged'
+            ? 'No staged files found. Stage files with `git add` first, or use `--scope=changed`.'
+            : 'No changed files found. Use `--scope=all` to review all files, or `--files` to specify files explicitly.';
+          ctx.ui?.error?.(hint);
+          return { exitCode: 1, result: { passed: false, issues: [], summary: hint } };
         }
 
         // Run review
