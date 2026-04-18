@@ -230,7 +230,7 @@ async function runDefault(
       ? `${outRoot}/packages/${nameArg}-entry`
       : outRoot;
 
-  const linked = await linkWithMarketplace(entryPkgDir);
+  const linked = await linkWithMarketplace(entryPkgDir, ctx.cwd);
 
   const registrationNote =
     linked === 'ok'
@@ -273,16 +273,12 @@ async function runDefault(
 type LinkOutcome = 'ok' | 'no-shell' | 'failed';
 
 /**
- * Register a scaffolded plugin directly in marketplace.lock.
+ * Register a scaffolded plugin in the project-scope marketplace.lock.
+ * Uses projectRoot (ctx.cwd) so the lock lives alongside the project config.
  */
-async function linkWithMarketplace(entryPkgDir: string): Promise<LinkOutcome> {
+async function linkWithMarketplace(entryPkgDir: string, projectRoot: string): Promise<LinkOutcome> {
   try {
-    const selfPath = fileURLToPath(import.meta.url);
-    const nmIdx = selfPath.lastIndexOf('/node_modules/');
-    if (nmIdx < 0) return 'failed';
-    const platformDir = selfPath.slice(0, nmIdx);
-
-    const lockPath = resolve(platformDir, '.kb', 'marketplace.lock');
+    const lockPath = resolve(projectRoot, '.kb', 'marketplace.lock');
 
     let lock: { schema: string; installed: Record<string, unknown> };
     try {
@@ -298,7 +294,7 @@ async function linkWithMarketplace(entryPkgDir: string): Promise<LinkOutcome> {
 
     const hash = createHash('sha256').update(pkgRaw).digest('base64');
     const provides: string[] = ['plugin', 'cli-command'];
-    const resolvedPath = relative(platformDir, resolve(entryPkgDir));
+    const resolvedPath = relative(projectRoot, resolve(entryPkgDir));
     const pluginId = pkg.name.replace(/-entry$/, '');
 
     lock.installed[pluginId] = {
