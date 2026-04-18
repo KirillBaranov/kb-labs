@@ -16,14 +16,6 @@
     "templates/*/package.json",
     "templates/*/packages/*/package.json"
   ],
-  "dependencyTypes": [
-    "prod",
-    "dev",
-    "peer",
-    "resolutions",
-    "overrides",
-    "pnpmOverrides"
-  ],
   "formatBugs": true,
   "formatRepository": true,
   "indent": "  ",
