@@ -76,7 +76,9 @@ func resolvePreset(p Preset, m *manifest.Manifest) (services, plugins []string) 
 	}
 	if p.PluginIDs == nil {
 		for _, pl := range m.Plugins {
-			plugins = append(plugins, pl.ID)
+			if pl.Default {
+				plugins = append(plugins, pl.ID)
+			}
 		}
 	} else {
 		plugins = p.PluginIDs
@@ -221,14 +223,14 @@ func newModel(m *manifest.Manifest, opts WizardOptions) wizardModel {
 	aki.Width = 50
 	aki.EchoMode = textinput.EchoPassword
 
-	// Pre-fill services/plugins with all checked (for Custom mode).
+	// Pre-fill services/plugins using their default flag (for Custom mode initial state).
 	services := make([]checkItem, len(m.Services))
 	for i, s := range m.Services {
-		services[i] = checkItem{id: s.ID, pkg: s.Pkg, desc: s.Description, checked: true}
+		services[i] = checkItem{id: s.ID, pkg: s.Pkg, desc: s.Description, checked: s.Default}
 	}
 	plugins := make([]checkItem, len(m.Plugins))
 	for i, p := range m.Plugins {
-		plugins[i] = checkItem{id: p.ID, pkg: p.Pkg, desc: p.Description, checked: true}
+		plugins[i] = checkItem{id: p.ID, pkg: p.Pkg, desc: p.Description, checked: p.Default}
 	}
 
 	return wizardModel{
@@ -723,13 +725,17 @@ func defaultSelection(m *manifest.Manifest, opts WizardOptions) *installer.Selec
 		cwd, _ = os.Getwd()
 	}
 
-	// Recommended preset: all services + all plugins.
+	// Recommended preset: all services + default plugins only.
 	var services, plugins []string
 	for _, s := range m.Services {
-		services = append(services, s.ID)
+		if s.Default {
+			services = append(services, s.ID)
+		}
 	}
 	for _, p := range m.Plugins {
-		plugins = append(plugins, p.ID)
+		if p.Default {
+			plugins = append(plugins, p.ID)
+		}
 	}
 
 	consent := types.ConsentSkipped
