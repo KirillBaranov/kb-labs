@@ -263,13 +263,25 @@ export interface PromptOptions {
 }
 
 /**
+ * Rich section item — either a plain string or a descriptor with optional dim styling
+ */
+export interface RichOutputSectionItem {
+  text: string;
+  /** Render text in muted/dim color */
+  dim?: boolean;
+}
+
+/** A section item — either a plain string or a rich descriptor */
+export type OutputSectionItem = string | RichOutputSectionItem;
+
+/**
  * Section for structured output (sideBox)
  */
 export interface OutputSection {
   /** Section header (optional) */
   header?: string;
   /** List of items in this section */
-  items: string[];
+  items: OutputSectionItem[];
 }
 
 /**

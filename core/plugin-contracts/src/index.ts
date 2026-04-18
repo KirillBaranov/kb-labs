@@ -55,6 +55,8 @@ export type {
   PromptOptions,
   SideBoxOptions,
   OutputSection,
+  OutputSectionItem,
+  RichOutputSectionItem,
   MessageOptions,
 } from './ui.js';
 export { noopUI } from './ui.js';
