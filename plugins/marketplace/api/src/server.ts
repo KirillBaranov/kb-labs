@@ -14,6 +14,7 @@ import type { ILogger } from '@kb-labs/core-platform';
 import { registerRoutes } from './routes/index.js';
 import type { MarketplaceService } from '@kb-labs/marketplace-core';
 import { ScopeResolutionError, AdapterScopeError } from '@kb-labs/marketplace-core';
+import { PackageInstallError } from '@kb-labs/marketplace-npm';
 import { ScopeRequestError } from './scope-parser.js';
 import { randomUUID } from 'node:crypto';
 
@@ -78,6 +79,14 @@ export async function createServer(opts: CreateServerOptions): Promise<FastifyIn
       err instanceof AdapterScopeError
     ) {
       return reply.code(400).send({
+        error: err.name,
+        code: err.code,
+        message: err.message,
+      });
+    }
+    if (err instanceof PackageInstallError) {
+      const status = err.code === 'NOT_FOUND' ? 404 : 422;
+      return reply.code(status).send({
         error: err.name,
         code: err.code,
         message: err.message,

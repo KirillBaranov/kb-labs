@@ -14,6 +14,17 @@ import type {
   InstalledPackage,
 } from '@kb-labs/marketplace-contracts';
 
+export class PackageInstallError extends Error {
+  readonly code: 'NOT_FOUND' | 'INSTALL_FAILED';
+  readonly spec: string;
+  constructor(code: PackageInstallError['code'], spec: string, message: string) {
+    super(message);
+    this.name = 'PackageInstallError';
+    this.code = code;
+    this.spec = spec;
+  }
+}
+
 export class NpmPackageSource implements PackageSource {
   async resolve(spec: string): Promise<ResolvedPackage> {
     const id = extractPackageName(spec);
@@ -38,7 +49,15 @@ export class NpmPackageSource implements PackageSource {
     const args = ['add', spec];
     if (opts?.dev) {args.push('--save-dev');}
 
-    await execa('pnpm', args, { cwd: root, timeout: 5 * 60 * 1000 });
+    try {
+      await execa('pnpm', args, { cwd: root, timeout: 5 * 60 * 1000 });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const code = msg.includes('ERR_PNPM_FETCH_404') || msg.includes('Not Found - 404')
+        ? 'NOT_FOUND'
+        : 'INSTALL_FAILED';
+      throw new PackageInstallError(code, spec, `pnpm add ${spec} failed: ${msg}`);
+    }
 
     const packageRoot = path.join(root, 'node_modules', pkg.id);
 

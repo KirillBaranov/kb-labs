@@ -3,4 +3,4 @@
  * pnpm-based PackageSource for KB Labs marketplace.
  */
 
-export { NpmPackageSource } from './npm-source.js';
+export { NpmPackageSource, PackageInstallError } from './npm-source.js';
