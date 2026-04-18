@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  Your infra, extended. Not replaced.
+  Self-hosted platform for programmable dev workflows and vendor-free infrastructure.
 </p>
 
 <p align="center">
@@ -23,10 +23,6 @@
   <img src="https://img.shields.io/badge/go-%3E%3D1.22-00ADD8.svg" alt="Go >= 1.22">
   <img src="https://img.shields.io/badge/pnpm-workspace-F69220.svg" alt="pnpm workspace">
 </p>
-
----
-
-Extend your stack without rewriting it. **Plugins** add automation inside the platform. **Adapters** connect external infrastructure. You install only what you need — and migrate when you're ready.
 
 ---
 
