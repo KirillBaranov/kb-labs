@@ -78,8 +78,17 @@
       "@types/react-dom": "^18.3.5",
       "zod": "^3.25.76",
       "@fastify/reply-from": ">=12.6.2",
+      "@fastify/static": ">=9.1.1",
+      "follow-redirects": ">=1.16.0",
+      "hono": ">=4.12.14",
       "koa": ">=2.16.4",
       "minimatch": ">=9.0.7"
+    },
+    "peerDependencyRules": {
+      "allowedVersions": {
+        "@testing-library/react>react": "18 || 19",
+        "@testing-library/react>react-dom": "18 || 19"
+      }
     }
   },
   "repository": "KirillBaranov/kb-labs.git"
