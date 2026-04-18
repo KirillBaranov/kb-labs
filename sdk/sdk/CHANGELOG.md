@@ -1,3 +1,22 @@
+## [2.21.0] - 2026-04-18
+
+> **@kb-labs/sdk** 2.20.1 → 2.21.0 (minor: new features)
+
+### 🏗️ Core & SDK
+
+- **cli-ui**: Enhances the user interface by adding word-wrapping and improved error formatting, making it easier for users to read and understand messages within the side border box.
+- **sdk**: Introduces a platform client at @kb-labs/sdk/platform, providing users with more streamlined access to platform functionalities and fixing issues on the marketing page for a better user experience.
+- **sdk**: Makes adapter types accessible via @kb-labs/sdk/adapters, allowing users to integrate and utilize various components more effectively.
+- **sdk**: Adds the runtimeContext ALS and useEnv() hook, offering users more flexibility and control over environment settings in their applications.
+- **sdk**: Improves dependency management by sorting peerDependencies in syncpack formatting, which helps users maintain cleaner and more organized project dependencies.
+- **devkit**: Prevents self-referencing dependencies in the dependency graph and fixes issues with mock platform adapters, enhancing stability and reliability for developers using the toolkit.
+
+### 🔧 Other
+
+- **docs**: Updates the configuration file format to improve compatibility with modern tools, ensuring smoother documentation processes for users.
+- **web**: Switches to a more efficient configuration file format, which helps streamline the web application setup and enhances overall performance for end-users.
+- **ci**: Aligns the dependency management files to prevent version mismatches, ensuring that users have a consistent and reliable experience when installing the software.
+- **general**: Addresses various code quality issues, leading to a more stable and reliable application across multiple packages, which enhances user satisfaction and reduces potential errors.
 ## [2.20.1] - 2026-04-18
 
 > **@kb-labs/sdk** 2.20.0 → 2.20.1 (minor: new features)
