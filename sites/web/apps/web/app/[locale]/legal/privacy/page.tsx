@@ -45,8 +45,6 @@ export default async function PrivacyPage({ params }: Props) {
           <ul>
             <li><strong>Account data</strong> — name, email address, and password (hashed) when you register.</li>
             <li><strong>Usage data</strong> — workflow runs, API calls, plugin invocations, and feature usage, aggregated and used to improve the platform.</li>
-            <li><strong>Billing data</strong> — payment information is processed by our payment provider (Stripe) and never stored on our servers.</li>
-            <li><strong>Log data</strong> — IP addresses, browser type, and request logs, retained for up to 30 days for security and debugging.</li>
             <li><strong>Cookies</strong> — session cookies required for authentication and optional analytics cookies. See our <Link href={`/${locale}/legal/cookies`}>Cookie Policy</Link>.</li>
           </ul>
 
@@ -143,7 +141,6 @@ export default async function PrivacyPage({ params }: Props) {
           <p>We share data only with:</p>
           <ul>
             <li><strong>Infrastructure providers</strong> — cloud hosting and storage (under DPA)</li>
-            <li><strong>Payment processor</strong> — Stripe (PCI DSS compliant)</li>
             <li><strong>Analytics</strong> — aggregated, anonymised usage data only</li>
             <li><strong>Legal requirements</strong> — when required by applicable law</li>
           </ul>
