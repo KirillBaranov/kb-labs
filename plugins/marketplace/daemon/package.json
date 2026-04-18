@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/marketplace-app",
-  "description": "KB Labs Marketplace service — Fastify entrypoint",
+  "description": "KB Labs Marketplace service \u2014 Fastify entrypoint",
   "version": "2.44.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -26,7 +26,7 @@
     "@kb-labs/marketplace-npm": "workspace:*",
     "@kb-labs/plugin-contracts": "workspace:*",
     "@kb-labs/shared-http": "workspace:*",
-    "fastify": "^5.3.3"
+    "fastify": "^5.8.5"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
