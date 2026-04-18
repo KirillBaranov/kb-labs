@@ -22,4 +22,13 @@ export default defineConfig({
   // without needing a reference to the internal shared-command-kit package.
   noExternal: ['@kb-labs/shared-command-kit'],
   dts: { resolve: true },
+  rollupOptions: {
+    onwarn(warning, warn) {
+      // Suppress unused external import warnings that arise from bundling
+      // shared-command-kit — rollup sees re-exported symbols as unused after
+      // treeshaking but they are part of the public API surface.
+      if (warning.code === 'UNUSED_EXTERNAL_IMPORT') return;
+      warn(warning);
+    },
+  },
 });
