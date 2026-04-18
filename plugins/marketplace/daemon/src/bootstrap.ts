@@ -3,7 +3,7 @@
  * Server bootstrap: initPlatform → MarketplaceService → Fastify server.
  */
 
-import { platform, createServiceBootstrap, loadEnvFromRoot } from '@kb-labs/core-runtime';
+import { platform, createServiceBootstrap, loadEnvFromRoot, getPlatformRoot } from '@kb-labs/core-runtime';
 import { createCorrelatedLogger } from '@kb-labs/shared-http';
 import { findRepoRoot } from '@kb-labs/core-sys';
 import { createServer } from '@kb-labs/marketplace-api';
@@ -35,8 +35,11 @@ export async function bootstrap(cwd: string): Promise<void> {
   // Create marketplace service. The daemon lives inside the platform root —
   // that's always the platform scope. `projectRoot` is passed per-request by
   // API clients (CLI, other services) so one daemon can serve many projects.
+  // Use getPlatformRoot() — in installed mode this is the platform installation
+  // dir (e.g. /kb-platform), not the project CWD where the daemon was started.
+  const platformRoot = getPlatformRoot() ?? repoRoot;
   const service = new MarketplaceService({
-    platformRoot: repoRoot,
+    platformRoot,
     source: new NpmPackageSource(),
   });
 
