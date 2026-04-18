@@ -127,7 +127,12 @@ export function getPlatform(): Promise<KBPlatform | null> {
           source: 'kb-site',
           deviceId: creds.deviceId,
         },
-        onError: () => {}, // silent — analytics must never surface errors
+        onError: (err) => {
+          // Token expired (15 min TTL) — reset so next track() re-authenticates
+          if (err.message.includes('401')) {
+            _initPromise = null;
+          }
+        },
       });
     } catch {
       _initPromise = null; // allow retry on next call
