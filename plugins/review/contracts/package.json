@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/review-contracts",
   "description": "Type definitions and contracts for AI Review plugin",
-  "version": "2.47.0",
+  "version": "2.48.0",
   "type": "module",
   "exports": {
     ".": {
