@@ -77,6 +77,7 @@ export default function WorkflowsRuns() {
                 { label: 'Running', value: 'running' },
                 { label: 'Success', value: 'success' },
                 { label: 'Failed', value: 'failed' },
+                { label: 'Dead Letter', value: 'dlq' },
                 { label: 'Cancelled', value: 'cancelled' },
                 { label: 'Queued', value: 'queued' },
               ]}

@@ -13,6 +13,7 @@ const COLUMNS: { status: WorkflowRun['status'] | 'waiting_approval'; label: stri
   { status: 'waiting_approval', label: 'Waiting Approval', color: 'var(--warning)' },
   { status: 'success',          label: 'Success',          color: 'var(--success)' },
   { status: 'failed',           label: 'Failed',           color: 'var(--error)' },
+  { status: 'dlq',              label: 'Dead Letter',      color: 'var(--error)' },
   { status: 'cancelled',        label: 'Cancelled',        color: 'var(--text-tertiary)' },
 ];
 
