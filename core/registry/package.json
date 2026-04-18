@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/core-registry",
   "description": "Unified entity registry for KB Labs platform — discovery, caching, validation, diagnostics",
-  "version": "2.50.0",
+  "version": "2.51.0",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
