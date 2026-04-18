@@ -147,6 +147,39 @@ Add to `release.flows` in `.kb/kb.config.json`:
 ```
 No code changes needed — flows are config-only.
 
+## Releasing Go Binaries (kb-create, kb-dev, kb-devkit, kb-deploy, kb-monitor)
+
+Go binaries are released separately from npm packages via GitHub Actions + goreleaser.
+
+**Trigger:** push a tag `v<MAJOR>.<MINOR>.<PATCH>-binaries` (e.g. `v0.4.7-binaries`).
+The `-binaries` suffix distinguishes from npm release tags (`v2.47.0`).
+
+```bash
+# 1. Make changes to tools/kb-create/ (or any other tool)
+# 2. Build locally to verify
+cd tools/kb-create && go build -o kb-create .
+
+# 3. Commit + push code changes
+git add tools/kb-create/... && git commit -m "feat(launcher): ..." && git push origin main
+
+# 4. Tag and push — GitHub Actions runs goreleaser for all 5 binaries
+git tag v0.4.7-binaries && git push origin v0.4.7-binaries
+```
+
+GitHub Actions workflow (`.github/workflows/*.yml`):
+- Triggered by `v*-binaries` tag
+- Runs goreleaser with root `.goreleaser.yaml`
+- Builds all 5 tools: kb-create, kb-dev, kb-devkit, kb-deploy, kb-monitor
+- Platforms: darwin/linux/windows × amd64/arm64 (windows arm64 excluded)
+- Uploads raw binaries (no archives) as GitHub Release assets
+- Release marked `prerelease: false` so `/releases/latest/download/...` works
+
+**Manifest change → install.sh picks it up automatically** — the manifest is
+embedded in the binary at build time. No changes to the install script needed.
+
+**Version bump:** increment the patch (or minor/major) from the previous `-binaries` tag.
+Check the last tag: `gh release list --repo KirillBaranov/kb-labs --limit 3`
+
 ## Source Packages
 
 | Package | Role |
