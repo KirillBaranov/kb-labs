@@ -265,12 +265,15 @@ async function checkLockSync(
     const pkg = (await readJson(join(entryPkgDir, 'package.json'))) as {
       name?: string;
     };
-    const id = typeof pkg.name === 'string' ? pkg.name : entry.name;
+    const pkgName = typeof pkg.name === 'string' ? pkg.name : entry.name;
+    // Marketplace lock keys use plugin IDs (e.g. @kb-labs/my-notifier),
+    // not entry package names (e.g. @kb-labs/my-notifier-entry).
+    const id = pkgName.replace(/-entry$/, '');
 
     if (!lock || !lock.installed) {
       out.push({
         severity: 'warn',
-        package: id,
+        package: pkgName,
         message:
           'no .kb/marketplace.lock — scaffolded plugins will not be discovered until registered',
       });
@@ -282,7 +285,7 @@ async function checkLockSync(
       const hint = relative(workspaceRoot, entryPkgDir);
       out.push({
         severity: 'warn',
-        package: id,
+        package: pkgName,
         message: `not registered in marketplace.lock — run: kb marketplace plugins link ${hint}`,
       });
       continue;
@@ -291,7 +294,7 @@ async function checkLockSync(
     if (lockEntry.enabled === false) {
       out.push({
         severity: 'info',
-        package: id,
+        package: pkgName,
         message: 'registered but disabled in marketplace.lock',
       });
     }
@@ -301,7 +304,7 @@ async function checkLockSync(
       if (lockAbs !== entryPkgDir) {
         out.push({
           severity: 'warn',
-          package: id,
+          package: pkgName,
           message: `lock points at ${lockEntry.resolvedPath} but scaffolded package is at ${relative(workspaceRoot, entryPkgDir)}`,
         });
       }
