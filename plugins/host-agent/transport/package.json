@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/host-agent-transport",
-  "version": "2.48.0",
+  "version": "2.49.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
