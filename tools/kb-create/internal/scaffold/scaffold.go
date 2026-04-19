@@ -37,9 +37,13 @@ func WriteProjectConfig(projectDir string, opts Options) error {
 
 	content := generate(opts)
 	path := filepath.Join(dir, "kb.config.jsonc")
-	// #nosec G306 -- project config is expected to be readable in workspace.
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-		return err
+	// Only create if the file does not already exist — existing project configs
+	// are user-managed and must not be silently overwritten on re-install/update.
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		// #nosec G306 -- project config is expected to be readable in workspace.
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			return err
+		}
 	}
 
 	// Write gateway secrets to .env (gitignored) instead of inlining in kb.config.jsonc.
