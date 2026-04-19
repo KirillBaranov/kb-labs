@@ -92,7 +92,9 @@ async function loadSyncConfig(root: string): Promise<{ include?: string[]; exclu
     const p = path.join(root, '.kb', name);
     try {
       const raw = await fs.readFile(p, 'utf-8');
-      return JSON.parse(stripJsonc(raw))?.marketplace?.sync ?? {};
+      // .json files are strict JSON — strip only for .jsonc to avoid mangling URLs (e.g. ws://).
+      const parsed = JSON.parse(name.endsWith('.jsonc') ? stripJsonc(raw) : raw);
+      return parsed?.marketplace?.sync ?? {};
     } catch { continue; }
   }
   return {};

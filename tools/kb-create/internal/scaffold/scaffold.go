@@ -58,13 +58,17 @@ func WriteProjectConfig(projectDir string, opts Options) error {
 		return fmt.Errorf("create .kb dir: %w", err)
 	}
 
-	// Write pointer config only when the file does not already exist.
-	// Existing files are user-managed and must not be silently overwritten.
-	cfgPath := filepath.Join(dir, "kb.config.jsonc")
-	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
+	// Write pointer config only when neither kb.config.jsonc nor kb.config.json exists.
+	// If either exists the user already has a project config — never overwrite either.
+	// (kb.config.jsonc has priority in the loader; kb.config.json is the dev convention.)
+	cfgJsonc := filepath.Join(dir, "kb.config.jsonc")
+	cfgJson := filepath.Join(dir, "kb.config.json")
+	_, jsoncErr := os.Stat(cfgJsonc)
+	_, jsonErr := os.Stat(cfgJson)
+	if os.IsNotExist(jsoncErr) && os.IsNotExist(jsonErr) {
 		content := generatePointer(opts.PlatformDir)
 		// #nosec G306 -- project config is expected to be readable in workspace.
-		if err := os.WriteFile(cfgPath, []byte(content), 0o644); err != nil {
+		if err := os.WriteFile(cfgJsonc, []byte(content), 0o644); err != nil {
 			return err
 		}
 	}
