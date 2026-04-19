@@ -16,6 +16,7 @@ import (
 	"github.com/kb-labs/create/internal/logger"
 	"github.com/kb-labs/create/internal/manifest"
 	"github.com/kb-labs/create/internal/pm"
+	"github.com/kb-labs/create/internal/scaffold"
 	"github.com/kb-labs/create/internal/selfupdate"
 	"github.com/kb-labs/create/internal/telemetry"
 	"github.com/kb-labs/create/internal/userstate"
@@ -111,6 +112,13 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		tc.Track("update_failed", map[string]string{"error": err.Error()})
 		return fmt.Errorf("update failed: %w", err)
+	}
+
+	// Refresh platform config with updated defaults. Reads existing services/plugins
+	// selection so user choices are preserved; only adapter defaults change.
+	platformOpts := scaffold.ReadPlatformOptions(platformDir)
+	if cfgErr := scaffold.WritePlatformConfig(platformDir, platformOpts); cfgErr != nil {
+		log.Printf("platform config refresh: %v (continuing)", cfgErr)
 	}
 
 	tc.Track("update_completed", map[string]string{

@@ -1,4 +1,4 @@
-// Package scaffold generates KB Labs config files for new and existing projects.
+// Package scaffold generates and reads KB Labs config files for new and existing projects.
 // The file uses JSONC (JSON with Comments) so users get inline documentation
 // for every section — same pattern as tsconfig.json.
 //
@@ -8,9 +8,11 @@
 package scaffold
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
 
@@ -105,6 +107,58 @@ func WriteProjectConfig(projectDir string, opts Options) error {
 	}
 
 	return nil
+}
+
+// ReadPlatformOptions reads Services and Plugins selections from an existing
+// platformDir/.kb/kb.config.jsonc. Used by `kb-create update` to preserve the
+// user's original install choices when refreshing platform defaults.
+// Returns a minimal Options on any error so the caller can still proceed.
+func ReadPlatformOptions(platformDir string) Options {
+	opts := Options{PlatformDir: platformDir}
+
+	data, err := os.ReadFile(filepath.Join(platformDir, ".kb", "kb.config.jsonc"))
+	if err != nil {
+		return opts
+	}
+
+	// Strip JSONC comments before parsing. The generated platform config only
+	// contains // line comments (no URLs), so simple line-comment removal is safe.
+	cleaned := stripGeneratedJsonc(string(data))
+
+	var cfg struct {
+		Services map[string]bool `json:"services"`
+		Plugins  map[string]struct {
+			Enabled bool `json:"enabled"`
+		} `json:"plugins"`
+	}
+	if err := json.Unmarshal([]byte(cleaned), &cfg); err != nil {
+		return opts
+	}
+
+	for name, on := range cfg.Services {
+		if on {
+			opts.Services = append(opts.Services, name)
+		}
+	}
+	for name, plug := range cfg.Plugins {
+		if plug.Enabled {
+			opts.Plugins = append(opts.Plugins, name)
+		}
+	}
+	return opts
+}
+
+// stripGeneratedJsonc removes // line comments, /* */ block comments, and
+// trailing commas from the JSONC configs we generate. Safe only for files we
+// produce ourselves — these never contain URLs with // (e.g. https://).
+func stripGeneratedJsonc(src string) string {
+	// Block comments
+	src = regexp.MustCompile(`/\*[\s\S]*?\*/`).ReplaceAllString(src, "")
+	// Line comments (full line or end-of-line)
+	src = regexp.MustCompile(`(?m)//[^\n]*`).ReplaceAllString(src, "")
+	// Trailing commas before } or ]
+	src = regexp.MustCompile(`,(\s*[}\]])`).ReplaceAllString(src, "$1")
+	return src
 }
 
 // generateFull produces the complete platform config written to platformDir.

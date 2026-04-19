@@ -57,7 +57,15 @@ export default defineCommand<unknown, SyncInput, SyncResultData>({
       const syncConfig = await loadSyncConfig(configRoot);
 
       if (!syncConfig.include?.length) {
-        ctx.ui?.error?.(`No marketplace.sync.include in ${configRoot}/.kb/kb.config.{json,jsonc}`);
+        ctx.ui?.error?.(
+          `No marketplace.sync.include configured.\n\n` +
+          `Add to ${configRoot}/.kb/kb.config.json:\n\n` +
+          `  "marketplace": {\n` +
+          `    "sync": {\n` +
+          `      "include": ["plugins/*/entry", "plugins/*/core", "adapters/*"]\n` +
+          `    }\n` +
+          `  }`
+        );
         return { exitCode: 1, result: { added: [], skipped: [], total: 0 } };
       }
 

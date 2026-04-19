@@ -247,6 +247,47 @@ func TestSameRoot_FullConfigPreserved(t *testing.T) {
 	assertContains(t, content, `"adapters"`, "full config preserved in same-root scenario")
 }
 
+// ── ReadPlatformOptions ───────────────────────────────────────────────────────
+
+func TestReadPlatformOptions_RoundTrip(t *testing.T) {
+	platformDir := t.TempDir()
+	opts := Options{
+		PlatformDir: platformDir,
+		Services:    []string{"rest", "workflow"},
+		Plugins:     []string{"agents", "commit"},
+	}
+
+	// Write then read back.
+	if err := WritePlatformConfig(platformDir, opts); err != nil {
+		t.Fatal(err)
+	}
+	got := ReadPlatformOptions(platformDir)
+
+	assertStringSliceContains(t, got.Services, "rest", "rest service")
+	assertStringSliceContains(t, got.Services, "workflow", "workflow service")
+	assertStringSliceContains(t, got.Plugins, "agents", "agents plugin")
+	assertStringSliceContains(t, got.Plugins, "commit", "commit plugin")
+
+	// Disabled entries must not be returned.
+	for _, s := range got.Services {
+		if s == "studio" {
+			t.Error("studio was not selected but appears in ReadPlatformOptions result")
+		}
+	}
+}
+
+func TestReadPlatformOptions_MissingFile(t *testing.T) {
+	platformDir := t.TempDir()
+	// No config written — must return minimal opts without error.
+	opts := ReadPlatformOptions(platformDir)
+	if opts.PlatformDir != platformDir {
+		t.Errorf("PlatformDir = %q, want %q", opts.PlatformDir, platformDir)
+	}
+	if len(opts.Services) != 0 || len(opts.Plugins) != 0 {
+		t.Error("expected empty slices for missing config")
+	}
+}
+
 // ── generateFull ─────────────────────────────────────────────────────────────
 
 func TestGenerateFull_AdapterDefaults(t *testing.T) {
@@ -306,6 +347,16 @@ func readKbConfig(t *testing.T, root string) string {
 		t.Fatalf("read config: %v", err)
 	}
 	return string(data)
+}
+
+func assertStringSliceContains(t *testing.T, slice []string, want, label string) {
+	t.Helper()
+	for _, s := range slice {
+		if s == want {
+			return
+		}
+	}
+	t.Errorf("%s: %q not found in %v", label, want, slice)
 }
 
 func assertContains(t *testing.T, content, substr, label string) {
