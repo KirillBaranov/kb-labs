@@ -95,3 +95,14 @@ deploy/docker/
 # Agent/memory session state (runtime, not source)
 .kb/agents/sessions/
 .kb/memory/sessions/
+
+# kb-labs-ignore
+.env
+.kb/analytics/
+.kb/cache/
+.kb/storage/
+.kb/tmp/
+.kb/logs/
+# installer-managed — use .kb/devservices.dev.yaml for local dev
+.kb/devservices.yaml
+# end-kb-labs-ignore
