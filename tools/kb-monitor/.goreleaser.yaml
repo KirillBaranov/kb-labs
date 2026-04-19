@@ -10,6 +10,8 @@ builds:
   - id: kb-monitor
     main: .
     binary: kb-monitor
+    env:
+      - CGO_ENABLED=0
     ldflags:
       - -s -w
       - -X main.version={{.Version}}
