@@ -155,17 +155,11 @@ Config loader reads `~/kb-platform/.kb/kb.config.jsonc` as base (kblabs-gateway,
 | `~/kb-platform/.kb/kb.config.jsonc` | kb-create | Installed platform defaults (basic adapters) |
 | `.kb/kb.config.jsonc` | kb-create | Pointer-only (written only if no json exists). Gitignored. |
 
-<!-- BEGIN: KB Labs v1.5.0 (managed by kb-create) - DO NOT EDIT -->
-## KB Labs Platform
+## Skills
 
-This project uses the [KB Labs](https://github.com/KirillBaranov/kb-labs) platform.
-A set of Claude Code skills is installed under `.claude/skills/kb-labs-*` to help
-you work with the platform efficiently.
-
-### Skills
-
-Skills live in `.claude/skills/`. When you ask Claude to do something KB Labs-related
-(create a plugin, update the platform, troubleshoot, etc.), the matching skill is invoked automatically.
+Skills live in `.claude/skills/`. When you ask Claude to do something KB Labs-related,
+the matching skill is invoked automatically. Do not edit skills by hand — they are
+reinstalled by `kb-create update`.
 
 Available skills:
 - `.claude/skills/kb-labs-create-plugin/` — scaffold a new plugin
@@ -175,7 +169,12 @@ Available skills:
 - `.claude/skills/kb-labs-explore/` — inspect what's installed
 - `.claude/skills/kb-labs-quickstart/` — verify install, get started
 
-Skills are reinstalled by `kb-create update`. Do not edit them by hand.
+<!-- BEGIN: KB Labs v1.5.0 (managed by kb-create) - DO NOT EDIT -->
+## KB Labs Platform
+
+This project uses the [KB Labs](https://github.com/KirillBaranov/kb-labs) platform.
+A set of Claude Code skills is installed under `.claude/skills/kb-labs-*` to help
+you work with the platform efficiently.
 
 ### Common tasks (just ask)
 
@@ -196,7 +195,7 @@ Skills are reinstalled by `kb-create update`. Do not edit them by hand.
 
 ### Where things live
 
-- `.kb/kb.config.json` — your project config (safe to edit, git-tracked)
+- `.kb/kb.config.jsonc` — project configuration (safe to edit)
 - `.kb/` — platform runtime state (do not edit by hand)
 - `.claude/skills/kb-labs-*` — managed skills (reinstalled by `kb-create update`)
 
