@@ -210,9 +210,6 @@ export function createSystemCommandContext(
     requestId,
     pluginId: '@kb-labs/system',
     cwd: context.cwd || process.cwd(),
-    // Expose CLI_VERSION so system commands (version, health, diag) can read
-    // the real version injected from package.json in bin.ts.
-    cliVersion: process.env.CLI_VERSION ?? '0.0.0',
     ui,
     platform: scopedPlatformServices,
     runtime: {
@@ -221,7 +218,13 @@ export function createSystemCommandContext(
       env: (key: string) => process.env[key],
     },
     api: {} as any,
-    hostContext: { host: 'cli' as const, argv: process.argv.slice(2), flags: {} },
+    hostContext: {
+      host: 'cli' as const,
+      argv: process.argv.slice(2),
+      flags: {},
+      // CLI_VERSION is injected from package.json in bin.ts at startup.
+      cliVersion: process.env.CLI_VERSION ?? '0.0.0',
+    },
     pluginVersion: '1.0.0',
     trace: {
       ...noopTraceContext,
