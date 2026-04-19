@@ -149,13 +149,19 @@ func ReadPlatformOptions(platformDir string) Options {
 }
 
 // stripGeneratedJsonc removes // line comments, /* */ block comments, and
-// trailing commas from the JSONC configs we generate. Safe only for files we
-// produce ourselves — these never contain URLs with // (e.g. https://).
+// trailing commas from the JSONC configs we generate.
+//
+// Only lines whose first non-whitespace characters are "//" are treated as
+// comments — this preserves "http://" and "https://" inside JSON string
+// values. Block comments are still stripped globally (we never write URLs
+// inside /* */ blocks).
 func stripGeneratedJsonc(src string) string {
-	// Block comments
+	// Block comments (/* ... */) — safe to strip globally; never contain URLs.
 	src = regexp.MustCompile(`/\*[\s\S]*?\*/`).ReplaceAllString(src, "")
-	// Line comments (full line or end-of-line)
-	src = regexp.MustCompile(`(?m)//[^\n]*`).ReplaceAllString(src, "")
+	// Pure-comment lines: optional whitespace then "//" until end of line.
+	// Does NOT match "url": "http://localhost:5050" because that line starts
+	// with a quote character, not "//".
+	src = regexp.MustCompile(`(?m)^\s*//[^\n]*\n?`).ReplaceAllString(src, "")
 	// Trailing commas before } or ]
 	src = regexp.MustCompile(`,(\s*[}\]])`).ReplaceAllString(src, "$1")
 	return src
@@ -242,6 +248,25 @@ func generateFull(opts Options) string {
 	b.WriteString("    \"logRingBuffer\": { \"maxSize\": 100 },\n")
 	b.WriteString("    \"analytics\": { \"filename\": \".kb/analytics/events.jsonl\" }\n")
 	b.WriteString("  },\n\n")
+
+	// ── gateway section ───────────────────────────────────────────────────
+	b.WriteString(`  // ─── Gateway ──────────────────────────────────────────────────────────
+  // API gateway upstream routing. Gateway (:4000) proxies these services.
+  // /ready checks that the "rest" upstream is up — keep this section present.
+  "gateway": {
+    "upstreams": {
+      // REST API — main platform BFF.
+      "rest": { "url": "http://localhost:5050", "prefix": "/api/v1", "websocket": true },
+      // Workflow daemon — execution engine.
+      "workflow": { "url": "http://localhost:7778", "prefix": "/api/exec", "rewritePrefix": "" },
+      // Marketplace service — entity management.
+      "marketplace": { "url": "http://localhost:5070", "prefix": "/api/v1/marketplace" },
+      // Plugin widget bundles — static files served by REST API.
+      "widgets": { "url": "http://localhost:5050", "prefix": "/plugins" }
+    }
+  },
+
+`)
 
 	// ── services section ──────────────────────────────────────────────────
 	b.WriteString(`  // ─── Services ─────────────────────────────────────────────────────────
