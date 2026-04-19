@@ -106,6 +106,32 @@ func printSuccess(r *installer.Result) {
 	fmt.Println()
 }
 
+// printDataConsent shows a short data-use summary so the user always knows
+// what was opted in/out — even in --yes (silent) mode.
+func printDataConsent(analyticsEnabled, llmEnabled bool) {
+	kw := styleKV.Render
+	onStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("10"))  // green
+	offStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))  // dim
+
+	llmStatus := offStyle.Render("off")
+	llmHint := styleMuted.Render("(run kb-create . --llm to enable · 50 free requests)")
+	if llmEnabled {
+		llmStatus = onStyle.Render("on")
+		llmHint = styleMuted.Render("KB Labs Gateway · 50 free requests")
+	}
+
+	analyticsStatus := offStyle.Render("off")
+	analyticsHint := ""
+	if analyticsEnabled {
+		analyticsStatus = onStyle.Render("on")
+		analyticsHint = styleMuted.Render("anonymous usage stats")
+	}
+
+	fmt.Printf("  %-11s %s  %s\n", kw("LLM"), llmStatus, llmHint)
+	fmt.Printf("  %-11s %s  %s\n", kw("Analytics"), analyticsStatus, analyticsHint)
+	fmt.Println()
+}
+
 // ── next steps ────────────────────────────────────────────────────────────────
 
 // nextStep is one line in the "What's next" section.
