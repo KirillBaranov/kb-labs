@@ -6,6 +6,9 @@
       "name": "@kb-labs/cli-bin"
     },
     {
+      "name": "@kb-labs/devkit"
+    },
+    {
       "name": "@kb-labs/sdk"
     },
     {
