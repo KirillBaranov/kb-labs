@@ -7,6 +7,7 @@ import { resolveToken, extractBearerToken } from './tokens.js';
 // Routes that don't require auth (handle their own auth internally)
 const PUBLIC_ROUTES = new Set([
   '/health',
+  '/ready',
   '/hosts/register',
   // /hosts/connect and /clients/connect are handled at the HTTP upgrade level
   // by gateway-ws.ts (raw ws) — they never reach Fastify routing.
