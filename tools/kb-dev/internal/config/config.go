@@ -42,6 +42,7 @@ type Service struct {
 	Env         map[string]string `json:"env,omitempty"`
 	DependsOn   []string          `json:"dependsOn,omitempty"`
 	Optional    bool              `json:"optional,omitempty"`
+	Highlight   bool              `json:"highlight,omitempty"`
 	Note        string            `json:"note,omitempty"`
 	Target      string            `json:"target,omitempty"`
 	// API holds optional developer-facing metadata about the service's HTTP API.
