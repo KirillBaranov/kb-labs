@@ -125,6 +125,7 @@ export class QdrantVectorStore implements IVectorStore {
       url: config.url,
       apiKey: config.apiKey,
       timeout: config.timeout ?? 30000,
+      checkCompatibility: false,
     });
     this.collectionName = config.collectionName ?? "kb-vectors";
     this.dimension = config.dimension ?? 1536;
