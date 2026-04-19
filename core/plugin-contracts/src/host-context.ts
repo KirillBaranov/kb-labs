@@ -14,6 +14,8 @@ export interface CliHostContext {
   readonly argv: string[];
   /** Parsed flags */
   readonly flags: Record<string, unknown>;
+  /** CLI binary version (injected from CLI_VERSION env var at startup) */
+  readonly cliVersion?: string;
 }
 
 /**

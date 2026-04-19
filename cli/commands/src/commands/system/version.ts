@@ -30,8 +30,8 @@ export const version = defineSystemCommand<VersionFlags, VersionResult>({
     finishEvent: 'VERSION_FINISHED',
   },
   async handler(ctx, argv, flags) {
-    const v = (ctx as any)?.cliVersion ?? (ctx as any)?.env?.CLI_VERSION ?? '0.0.0';
-    const cliVersion = String(v);
+    const cliCtx = ctx.hostContext?.host === 'cli' ? ctx.hostContext : undefined;
+    const cliVersion = cliCtx?.cliVersion ?? process.env.CLI_VERSION ?? '0.0.0';
     const nodeVersion = process.version;
     const platform = `${process.platform} ${process.arch}`;
 
