@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 	"fmt"
+	"net"
 	"path/filepath"
 	"sync"
 	"time"
@@ -227,10 +228,21 @@ func (m *Manager) startOne(ctx context.Context, id string, force bool) Action {
 		return Action{Service: id, Action: "skipped", Reason: "already alive"}
 	}
 
-	// Port conflict — force kill or report.
-	if svc.Config.Port > 0 && force {
-		_ = process.KillPort(svc.Config.Port)
-		time.Sleep(300 * time.Millisecond)
+	// Port conflict handling.
+	if svc.Config.Port > 0 {
+		if force {
+			// Force mode: kill whatever is on the port and proceed.
+			_ = process.KillPort(svc.Config.Port)
+			time.Sleep(300 * time.Millisecond)
+		} else if isPortOccupied(svc.Config.Port) {
+			// Non-force mode: if the port is already taken, refuse to start.
+			// This prevents a misleading "started" when the port belongs to another process.
+			return Action{
+				Service: id,
+				Action:  "failed",
+				Error:   fmt.Sprintf("port %d is already in use — use --force to kill it first", svc.Config.Port),
+			}
+		}
 	}
 
 	// Docker services.
@@ -342,6 +354,7 @@ func (m *Manager) startNode(ctx context.Context, svc *service.Service) Action {
 			}
 		}
 		svc.LastLatency = hr.Latency
+
 	}
 
 	_ = svc.SetState(service.StateAlive, "")
@@ -418,6 +431,19 @@ func (m *Manager) stopInternal(_ context.Context, targets []string, cascade bool
 	}
 
 	return &Result{OK: true, Actions: actions}
+}
+
+// isPortOccupied returns true if a TCP listener is already bound to the given port.
+// Used as a pre-flight check before spawning a service to avoid a misleading
+// "started" result when another process is already holding the port.
+func isPortOccupied(port int) bool {
+	addr := fmt.Sprintf("localhost:%d", port)
+	conn, err := net.DialTimeout("tcp", addr, 200*time.Millisecond)
+	if err != nil {
+		return false
+	}
+	conn.Close()
+	return true
 }
 
 // Restart stops then starts services, with optional cascade.
