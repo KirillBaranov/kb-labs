@@ -194,6 +194,14 @@ func runCreate(cmd *cobra.Command, args []string) error {
 			}
 		}
 	}
+	// Write full platform config to platformDir (installer-owned, always overwritten).
+	if err := scaffold.WritePlatformConfig(sel.PlatformDir, scaffoldOpts); err != nil {
+		return fmt.Errorf("scaffold platform config: %w", err)
+	}
+
+	// Write pointer config + project artifacts to projectDir (user-owned, skip if exists).
+	// When platformDir == projectDir, WritePlatformConfig already wrote the full config
+	// there, so WriteProjectConfig's "skip if exists" guard naturally prevents overwriting.
 	if err := scaffold.WriteProjectConfig(sel.ProjectCWD, scaffoldOpts); err != nil {
 		return fmt.Errorf("scaffold project config: %w", err)
 	}
