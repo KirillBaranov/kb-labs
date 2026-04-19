@@ -1,5 +1,6 @@
 {
   "platform": {
+    "dir": "/Users/kirillbaranov/kb-platform",
     "adapters": {
       "llm": [
         "@kb-labs/adapters-openai",
