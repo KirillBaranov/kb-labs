@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@ant-design/charts": "^2.6.6",
-    "@kb-labs/sdk": "^2.20.0",
+    "@kb-labs/sdk": "workspace:*",
     "@kb-labs/web-data-source": "workspace:*",
     "@kb-labs/web-i18n": "workspace:*",
     "@kb-labs/web-og": "workspace:*",
