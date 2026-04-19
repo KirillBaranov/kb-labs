@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/adapters-snapshot-localfs",
   "description": "Local filesystem adapter implementing ISnapshotProvider",
-  "version": "2.59.0",
+  "version": "2.60.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -47,7 +47,7 @@
     "manifest": "./dist/manifest.js"
   },
   "peerDependencies": {
-    "@kb-labs/core-platform": "workspace:*"
+    "@kb-labs/core-platform": "workspace:^"
   },
   "sideEffects": false
 }
