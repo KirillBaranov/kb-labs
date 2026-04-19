@@ -5456,6 +5456,9 @@ importers:
 
   sites/web:
     devDependencies:
+      '@kb-labs/sdk':
+        specifier: workspace:*
+        version: link:../../sdk/sdk
       prettier:
         specifier: ^3.3.3
         version: 3.8.2

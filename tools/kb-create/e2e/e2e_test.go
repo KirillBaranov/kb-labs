@@ -692,3 +692,285 @@ func write(t *testing.T, path, content string) {
 		t.Fatal(err)
 	}
 }
+
+// ── --llm flag enables LLM mode ───────────────────────────────────────────────
+
+func TestLLMFlagEnablesLLM(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping network test in -short mode")
+	}
+
+	bin := binary(t)
+	platformDir := t.TempDir()
+	projectDir := t.TempDir()
+
+	mustGit(t, projectDir, "init")
+	mustGit(t, projectDir, "commit", "--allow-empty", "-m", "init")
+
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(platformDir, "node_modules")) })
+
+	out, code := run(t, bin, projectDir, "--yes", "--llm",
+		"--platform", platformDir,
+	)
+	if code != 0 {
+		t.Fatalf("install --yes --llm exited %d:\n%s", code, out)
+	}
+
+	// Output must mention LLM being on.
+	if !strings.Contains(out, "LLM") {
+		t.Errorf("install output missing 'LLM':\n%s", out)
+	}
+	if !strings.Contains(strings.ToLower(out), "on") {
+		t.Errorf("install output does not indicate LLM is 'on':\n%s", out)
+	}
+
+	// kb.config.json must contain gateway credentials written by --llm flow.
+	cfgPath := filepath.Join(platformDir, ".kb", "kb.config.json")
+	cfgData, err := os.ReadFile(cfgPath) // #nosec G304 -- path is under t.TempDir()
+	if err != nil {
+		t.Fatalf("kb.config.json not found: %v", err)
+	}
+	cfgStr := string(cfgData)
+	if !strings.Contains(cfgStr, "gatewayUrl") && !strings.Contains(cfgStr, "clientId") {
+		t.Errorf("kb.config.json missing gateway credentials (gatewayUrl or clientId) after --llm install:\n%s", cfgStr)
+	}
+}
+
+// ── --yes (no --llm) keeps LLM off ───────────────────────────────────────────
+
+func TestNoLLMByDefault(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping network test in -short mode")
+	}
+
+	bin := binary(t)
+	platformDir := t.TempDir()
+	projectDir := t.TempDir()
+
+	mustGit(t, projectDir, "init")
+	mustGit(t, projectDir, "commit", "--allow-empty", "-m", "init")
+
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(platformDir, "node_modules")) })
+
+	out, code := run(t, bin, projectDir, "--yes",
+		"--platform", platformDir,
+	)
+	if code != 0 {
+		t.Fatalf("install --yes exited %d:\n%s", code, out)
+	}
+
+	// Output must mention LLM being off (or not mention LLM at all — both are acceptable).
+	if strings.Contains(out, "LLM") {
+		if !strings.Contains(strings.ToLower(out), "off") {
+			t.Errorf("install output mentions LLM but does not say 'off':\n%s", out)
+		}
+	}
+
+	// kb.config.json must NOT contain gatewayClientId when LLM not opted in.
+	cfgPath := filepath.Join(platformDir, ".kb", "kb.config.json")
+	cfgData, err := os.ReadFile(cfgPath) // #nosec G304
+	if err != nil {
+		t.Fatalf("kb.config.json not found: %v", err)
+	}
+	if strings.Contains(string(cfgData), "gatewayClientId") {
+		t.Errorf("kb.config.json contains 'gatewayClientId' but --llm was not passed:\n%s", string(cfgData))
+	}
+}
+
+// ── no @kb-labs/* peer dep warnings in install output ────────────────────────
+
+func TestNoPeerDepWarnings(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping network test in -short mode")
+	}
+
+	bin := binary(t)
+	platformDir := t.TempDir()
+	projectDir := t.TempDir()
+
+	mustGit(t, projectDir, "init")
+	mustGit(t, projectDir, "commit", "--allow-empty", "-m", "init")
+
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(platformDir, "node_modules")) })
+
+	out, code := run(t, bin, projectDir, "--yes",
+		"--platform", platformDir,
+	)
+	if code != 0 {
+		t.Fatalf("install exited %d:\n%s", code, out)
+	}
+
+	// Scan output line by line — only flag lines that reference @kb-labs/* AND "unmet peer".
+	// Third-party warnings (zod, fastify, etc.) are acceptable.
+	for _, line := range strings.Split(out, "\n") {
+		lower := strings.ToLower(line)
+		if strings.Contains(line, "@kb-labs/") && strings.Contains(lower, "unmet peer") {
+			t.Errorf("found @kb-labs/* peer dep warning in install output:\n  %s\nfull output:\n%s", line, out)
+		}
+	}
+}
+
+// ── CommitPlatformFiles: git log has KB Labs commit ──────────────────────────
+
+func TestPlatformFilesCommitted(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping network test in -short mode")
+	}
+
+	bin := binary(t)
+	platformDir := t.TempDir()
+	projectDir := t.TempDir()
+
+	// Init git repo with an initial commit and an untracked .ts file so the
+	// installer's CommitPlatformFiles step has something to work with.
+	mustGit(t, projectDir, "init")
+	mustGit(t, projectDir, "commit", "--allow-empty", "-m", "init")
+	write(t, filepath.Join(projectDir, "main.ts"), "export const x = 1")
+	// Do NOT stage main.ts — it stays untracked so CommitPlatformFiles runs.
+
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(platformDir, "node_modules")) })
+
+	_, code := run(t, bin, projectDir, "--yes",
+		"--platform", platformDir,
+	)
+	if code != 0 {
+		t.Fatalf("install exited %d", code)
+	}
+
+	// git log --oneline in the project dir.
+	cmd := exec.CommandContext(context.Background(), "git", "log", "--oneline") // #nosec G204
+	cmd.Dir = projectDir
+	logOut, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git log failed: %v\n%s", err, logOut)
+	}
+	logStr := strings.ToLower(string(logOut))
+
+	if !strings.Contains(logStr, "kb labs") && !strings.Contains(logStr, "add kb labs platform") {
+		t.Errorf("no KB Labs platform commit found in git log:\n%s", string(logOut))
+		return
+	}
+
+	// The KB Labs commit must be authored by "KB Labs".
+	authorCmd := exec.CommandContext(context.Background(), "git", "log", `--format=%an`) // #nosec G204
+	authorCmd.Dir = projectDir
+	authorOut, err := authorCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git log --format=%%an failed: %v\n%s", err, authorOut)
+	}
+	if !strings.Contains(string(authorOut), "KB Labs") {
+		t.Errorf("KB Labs platform commit not authored by 'KB Labs':\n%s", string(authorOut))
+	}
+}
+
+// ── .gitignore contains expected KB Labs entries ──────────────────────────────
+
+func TestGitignoreEntries(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping network test in -short mode")
+	}
+
+	bin := binary(t)
+	platformDir := t.TempDir()
+	projectDir := t.TempDir()
+
+	mustGit(t, projectDir, "init")
+	mustGit(t, projectDir, "commit", "--allow-empty", "-m", "init")
+
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(platformDir, "node_modules")) })
+
+	_, code := run(t, bin, projectDir, "--yes",
+		"--platform", platformDir,
+	)
+	if code != 0 {
+		t.Fatalf("install exited %d", code)
+	}
+
+	gitignorePath := filepath.Join(projectDir, ".gitignore")
+	data, err := os.ReadFile(gitignorePath) // #nosec G304 -- path is under t.TempDir()
+	if err != nil {
+		t.Fatalf(".gitignore not found after install: %v", err)
+	}
+	content := string(data)
+
+	for _, want := range []string{
+		".kb/commit/",
+		".kb/ai-review/",
+		".kb/cache/",
+	} {
+		if !strings.Contains(content, want) {
+			t.Errorf(".gitignore missing %q:\n%s", want, content)
+		}
+	}
+}
+
+// ── demo review skips when all files are untracked ───────────────────────────
+
+func TestDemoReviewSkipsUntrackedOnly(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping network test in -short mode")
+	}
+
+	bin := binary(t)
+	platformDir := t.TempDir()
+	projectDir := t.TempDir()
+
+	mustGit(t, projectDir, "init")
+	mustGit(t, projectDir, "commit", "--allow-empty", "-m", "init")
+	// Add a file but do NOT stage or commit it — it stays untracked.
+	write(t, filepath.Join(projectDir, "untracked.ts"), "export const x = 1")
+
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(platformDir, "node_modules")) })
+
+	out, code := run(t, bin, projectDir, "--yes",
+		"--platform", platformDir,
+	)
+	if code != 0 {
+		t.Fatalf("install exited %d:\n%s", code, out)
+	}
+
+	// When only untracked files exist, the demo review must not run.
+	if strings.Contains(out, "Running") || strings.Contains(out, "Analyzing") {
+		t.Errorf("demo review ran despite only untracked files being present:\n%s", out)
+	}
+	// The installer must still suggest the user try the review command.
+	if !strings.Contains(out, "Try it now") && !strings.Contains(out, "kb review run") {
+		t.Errorf("install output missing 'Try it now' or 'kb review run' hint:\n%s", out)
+	}
+}
+
+// ── demo LLM hint shown after heuristic finds 0 issues ───────────────────────
+
+func TestDemoHintShownAfterZeroFindings(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping network test in -short mode")
+	}
+
+	bin := binary(t)
+	platformDir := t.TempDir()
+	projectDir := t.TempDir()
+
+	mustGit(t, projectDir, "init")
+	write(t, filepath.Join(projectDir, "app.ts"), "export const version = '1.0.0'")
+	mustGit(t, projectDir, "add", ".")
+	mustGit(t, projectDir, "commit", "-m", "init")
+
+	// Modify the committed file so it shows up as a staged/modified file for review.
+	write(t, filepath.Join(projectDir, "app.ts"), "export const version = '1.0.1'")
+	mustGit(t, projectDir, "add", "app.ts")
+
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(platformDir, "node_modules")) })
+
+	out, code := run(t, bin, projectDir, "--yes",
+		"--platform", platformDir,
+	)
+	if code != 0 {
+		t.Fatalf("install exited %d:\n%s", code, out)
+	}
+
+	// After a heuristic review with 0 findings, the installer must surface the
+	// LLM nudge (either the "50 free requests" or "--llm" hint).
+	if !strings.Contains(out, "50 free requests") && !strings.Contains(out, "--llm") {
+		t.Errorf("LLM nudge not shown after zero heuristic findings:\n%s", out)
+	}
+}
