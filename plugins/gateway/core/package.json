@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/gateway-core",
-  "version": "2.59.0",
+  "version": "2.60.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -40,7 +40,7 @@
     "pnpm": ">=9.0.0"
   },
   "peerDependencies": {
-    "@kb-labs/core-platform": "workspace:*"
+    "@kb-labs/core-platform": "workspace:^"
   },
   "peerDependenciesMeta": {
     "@kb-labs/core-platform": {

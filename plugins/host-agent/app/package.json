@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/host-agent-app",
-  "version": "2.59.0",
+  "version": "2.60.0",
   "type": "module",
   "main": "./dist/index.js",
   "bin": {

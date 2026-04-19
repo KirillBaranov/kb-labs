@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/adapters-environment-docker",
   "description": "Docker adapter implementing IEnvironmentProvider",
-  "version": "2.59.0",
+  "version": "2.60.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -44,8 +44,8 @@
     "manifest": "./dist/manifest.js"
   },
   "peerDependencies": {
-    "@kb-labs/core-platform": "workspace:*",
-    "@kb-labs/gateway-auth": "workspace:*"
+    "@kb-labs/core-platform": "workspace:^",
+    "@kb-labs/gateway-auth": "workspace:^"
   },
   "peerDependenciesMeta": {
     "@kb-labs/gateway-auth": {
