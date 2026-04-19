@@ -116,10 +116,9 @@ func TestWriteProjectConfig_WritesPointer(t *testing.T) {
 	}
 }
 
-func TestWriteProjectConfig_SkipsIfExists(t *testing.T) {
+func TestWriteProjectConfig_SkipsIfJsoncExists(t *testing.T) {
 	projectDir := t.TempDir()
 
-	// Pre-create the config file with custom content.
 	kbDir := filepath.Join(projectDir, ".kb")
 	if err := os.MkdirAll(kbDir, 0o750); err != nil {
 		t.Fatal(err)
@@ -130,14 +129,44 @@ func TestWriteProjectConfig_SkipsIfExists(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// WriteProjectConfig must not overwrite the existing file.
 	if err := WriteProjectConfig(projectDir, Options{PlatformDir: "/some/platform"}); err != nil {
 		t.Fatal(err)
 	}
 
 	content := readKbConfig(t, projectDir)
 	if content != customContent {
-		t.Errorf("existing config was overwritten; got %q, want %q", content, customContent)
+		t.Errorf("existing jsonc config was overwritten; got %q, want %q", content, customContent)
+	}
+}
+
+func TestWriteProjectConfig_SkipsIfJsonExists(t *testing.T) {
+	projectDir := t.TempDir()
+
+	// Pre-create kb.config.json (not jsonc) — the dev config convention.
+	kbDir := filepath.Join(projectDir, ".kb")
+	if err := os.MkdirAll(kbDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	customContent := `{"platform":{"dir":"/old/path"}}`
+	jsonPath := filepath.Join(kbDir, "kb.config.json")
+	if err := os.WriteFile(jsonPath, []byte(customContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// WriteProjectConfig must not create kb.config.jsonc when kb.config.json exists.
+	if err := WriteProjectConfig(projectDir, Options{PlatformDir: "/some/platform"}); err != nil {
+		t.Fatal(err)
+	}
+
+	// jsonc must not be created.
+	jsoncPath := filepath.Join(kbDir, "kb.config.jsonc")
+	if _, err := os.Stat(jsoncPath); !os.IsNotExist(err) {
+		t.Error("WriteProjectConfig created kb.config.jsonc even though kb.config.json already existed")
+	}
+	// json must be unchanged.
+	data, _ := os.ReadFile(jsonPath)
+	if string(data) != customContent {
+		t.Errorf("existing json config was modified; got %q", string(data))
 	}
 }
 
