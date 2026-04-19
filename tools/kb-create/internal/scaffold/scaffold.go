@@ -1,6 +1,10 @@
-// Package scaffold generates the initial .kb/kb.config.jsonc for new projects.
+// Package scaffold generates KB Labs config files for new and existing projects.
 // The file uses JSONC (JSON with Comments) so users get inline documentation
 // for every section — same pattern as tsconfig.json.
+//
+// Config placement follows ADR-0012 / ADR-0013:
+//   platformDir/.kb/kb.config.jsonc  — full defaults, installer-owned (always overwritten)
+//   projectDir/.kb/kb.config.jsonc   — platform.dir pointer, user-owned (skip if exists)
 package scaffold
 
 import (
@@ -22,31 +26,50 @@ type GatewayCreds struct {
 // Options controls which sections are included in the generated config.
 type Options struct {
 	PlatformDir        string
-	Services           []string     // selected service IDs (e.g. "rest", "workflow")
-	Plugins            []string     // selected plugin IDs  (e.g. "mind", "agents")
-	DemoMode           bool         // generate demo workflow template
+	Services           []string      // selected service IDs (e.g. "rest", "workflow")
+	Plugins            []string      // selected plugin IDs  (e.g. "mind", "agents")
+	DemoMode           bool          // generate demo workflow template
 	GatewayCredentials *GatewayCreds // non-nil → write adapterOptions.llm (demo only)
 }
 
-// WriteProjectConfig generates .kb/kb.config.jsonc inside projectDir.
+// WritePlatformConfig writes the full platform config to platformDir/.kb/kb.config.jsonc.
+// This file is installer-owned and is always overwritten on install/update so that
+// platform defaults (adapters, adapterOptions, execution) stay in sync with the manifest.
+func WritePlatformConfig(platformDir string, opts Options) error {
+	dir := filepath.Join(platformDir, ".kb")
+	if err := os.MkdirAll(dir, 0o750); err != nil {
+		return fmt.Errorf("create .kb dir: %w", err)
+	}
+	content := generateFull(opts)
+	path := filepath.Join(dir, "kb.config.jsonc")
+	// #nosec G306 -- platform config is expected to be readable in the workspace.
+	return os.WriteFile(path, []byte(content), 0o644)
+}
+
+// WriteProjectConfig writes a minimal platform.dir pointer to projectDir/.kb/kb.config.jsonc
+// (skipped if the file already exists — user-owned) and writes project-scoped artifacts:
+// .env (gateway credentials), .gitignore entries, and example workflows.
+//
+// When platformDir == projectDir (single-directory install), WritePlatformConfig has already
+// written the full config to that location, so the pointer write is naturally skipped.
 func WriteProjectConfig(projectDir string, opts Options) error {
 	dir := filepath.Join(projectDir, ".kb")
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return fmt.Errorf("create .kb dir: %w", err)
 	}
 
-	content := generate(opts)
-	path := filepath.Join(dir, "kb.config.jsonc")
-	// Only create if the file does not already exist — existing project configs
-	// are user-managed and must not be silently overwritten on re-install/update.
-	if _, err := os.Stat(path); os.IsNotExist(err) {
+	// Write pointer config only when the file does not already exist.
+	// Existing files are user-managed and must not be silently overwritten.
+	cfgPath := filepath.Join(dir, "kb.config.jsonc")
+	if _, err := os.Stat(cfgPath); os.IsNotExist(err) {
+		content := generatePointer(opts.PlatformDir)
 		// #nosec G306 -- project config is expected to be readable in workspace.
-		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		if err := os.WriteFile(cfgPath, []byte(content), 0o644); err != nil {
 			return err
 		}
 	}
 
-	// Write gateway secrets to .env (gitignored) instead of inlining in kb.config.jsonc.
+	// Gateway secrets stay in projectDir (gitignored) — never in platformDir.
 	if gc := opts.GatewayCredentials; gc != nil {
 		if err := writeEnvFile(projectDir, gc); err != nil {
 			return fmt.Errorf("scaffold .env: %w", err)
@@ -64,13 +87,12 @@ func WriteProjectConfig(projectDir string, opts Options) error {
 	}
 
 	// Write starter workflows when workflow service is selected.
-	// Written to both project dir (user edits here) and platform dir
-	// (daemon scans here when running from platform root).
+	// Written to project dir (user edits) and platform dir (daemon scans).
 	if toSet(opts.Services)["workflow"] {
 		if err := writeStarterWorkflows(dir); err != nil {
 			return fmt.Errorf("scaffold starter workflows: %w", err)
 		}
-		if opts.PlatformDir != "" {
+		if opts.PlatformDir != "" && filepath.Clean(opts.PlatformDir) != filepath.Clean(projectDir) {
 			platformKbDir := filepath.Join(opts.PlatformDir, ".kb")
 			if err := writeStarterWorkflows(platformKbDir); err != nil {
 				return fmt.Errorf("scaffold platform workflows: %w", err)
@@ -81,17 +103,20 @@ func WriteProjectConfig(projectDir string, opts Options) error {
 	return nil
 }
 
-func generate(opts Options) string {
+// generateFull produces the complete platform config written to platformDir.
+// Contains all sections: adapters, adapterOptions, execution, services, plugins.
+func generateFull(opts Options) string {
 	svcSet := toSet(opts.Services)
 	plugSet := toSet(opts.Plugins)
 
 	var b strings.Builder
 
 	b.WriteString(`{
-  // ─── KB Labs Project Configuration ────────────────────────────────────
+  // ─── KB Labs Platform Configuration ───────────────────────────────────
   //
-  // This file configures the KB Labs platform for your project.
-  // Format: JSONC (JSON with Comments) — same as tsconfig.json.
+  // This file is managed by kb-create. Do not edit by hand.
+  // To override settings for your project, add them to:
+  //   projectDir/.kb/kb.config.jsonc
   //
   // Docs:  https://kb-labs.dev/docs/configuration
   // CLI:   kb config --help
@@ -194,6 +219,44 @@ func generate(opts Options) string {
       // Output directory for scaffolded entities.
       "outDir": "plugins"`)
 	b.WriteString(`  }
+}
+`)
+
+	return b.String()
+}
+
+// generatePointer produces the minimal project-level config that points at platformDir.
+// Users add overrides here; platform-only fields (adapters, adapterOptions, execution)
+// are silently ignored by the config loader per ADR-0012 field policy.
+func generatePointer(platformDir string) string {
+	var b strings.Builder
+
+	b.WriteString(`{
+  // ─── KB Labs Project Configuration ────────────────────────────────────
+  //
+  // Platform defaults (adapters, execution, etc.) are inherited from the
+  // platform installation directory. Add project-level overrides below.
+  //
+  // Docs: https://kb-labs.dev/docs/configuration
+
+  "platform": {
+    // Set by kb-create — do not remove.
+    "dir": `)
+	b.WriteString(quote(platformDir))
+	b.WriteString(`
+  }
+
+  // ─── Overrides (uncomment to customize) ───────────────────────────────
+  // Mergeable fields: services, plugins. Deep-merged with platform defaults.
+  // Platform-only fields (adapters, adapterOptions, execution) are ignored here.
+
+  // "services": {
+  //   "studio": true
+  // },
+
+  // "plugins": {
+  //   "agents": { "enabled": true, "maxSteps": 50 }
+  // }
 }
 `)
 
@@ -365,7 +428,7 @@ func writeEnvFile(projectDir string, gc *GatewayCreds) error {
 func ensureGitignore(projectDir string) error {
 	const (
 		marker = "# kb-labs-ignore"
-		block  = "\n# kb-labs-ignore\n.env\n.kb/analytics/\n.kb/cache/\n.kb/storage/\n.kb/tmp/\n.kb/logs/\n# end-kb-labs-ignore\n"
+		block  = "\n# kb-labs-ignore\n.env\n.kb/analytics/\n.kb/cache/\n.kb/storage/\n.kb/tmp/\n.kb/logs/\n# installer-managed — use .kb/devservices.dev.yaml for local dev\n.kb/devservices.yaml\n# installer-managed — use .kb/kb.config.json for local dev\n.kb/kb.config.jsonc\n# end-kb-labs-ignore\n"
 	)
 	path := filepath.Join(projectDir, ".gitignore")
 	existing, err := os.ReadFile(path)

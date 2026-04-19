@@ -186,16 +186,13 @@ func TestInstallYes(t *testing.T) {
 		}
 	}
 
-	// .kb/kb.config.jsonc must be scaffolded in the PROJECT dir (not the platform dir).
-	// The user runs all kb commands from here, so its absence breaks everything downstream.
-	projCfg := filepath.Join(projectDir, ".kb", "kb.config.jsonc")
-	projCfgData, err := os.ReadFile(projCfg) // #nosec G304 -- path under t.TempDir()
+	// platformDir/.kb/kb.config.jsonc — full platform config (installer-owned).
+	platCfg := filepath.Join(platformDir, ".kb", "kb.config.jsonc")
+	platCfgData, err := os.ReadFile(platCfg) // #nosec G304
 	if err != nil {
-		t.Errorf("project kb.config.jsonc not scaffolded: %v", err)
+		t.Errorf("platform kb.config.jsonc not scaffolded: %v", err)
 	} else {
-		// Spot-check: the generated file references our platform dir and has the
-		// sections the installer promises. We don't parse JSONC (comments), just grep.
-		content := string(projCfgData)
+		content := string(platCfgData)
 		for _, want := range []string{
 			platformDir,
 			`"platform"`,
@@ -204,7 +201,30 @@ func TestInstallYes(t *testing.T) {
 			`"plugins"`,
 		} {
 			if !strings.Contains(content, want) {
-				t.Errorf("kb.config.jsonc missing %q:\n%s", want, content)
+				t.Errorf("platform kb.config.jsonc missing %q:\n%s", want, content)
+			}
+		}
+	}
+
+	// projectDir/.kb/kb.config.jsonc — minimal pointer config (user-owned).
+	// Contains only platform.dir; full config lives in platformDir.
+	projCfg := filepath.Join(projectDir, ".kb", "kb.config.jsonc")
+	projCfgData, err := os.ReadFile(projCfg) // #nosec G304 -- path under t.TempDir()
+	if err != nil {
+		t.Errorf("project kb.config.jsonc not scaffolded: %v", err)
+	} else {
+		content := string(projCfgData)
+		// Must contain pointer to platformDir.
+		if !strings.Contains(content, platformDir) {
+			t.Errorf("project kb.config.jsonc missing platform dir %q:\n%s", platformDir, content)
+		}
+		if !strings.Contains(content, `"platform"`) {
+			t.Errorf("project kb.config.jsonc missing platform section:\n%s", content)
+		}
+		// Must NOT contain installer-owned sections (those live in platformDir only).
+		for _, banned := range []string{`"adapters"`, `"adapterOptions"`} {
+			if strings.Contains(content, banned) {
+				t.Errorf("project kb.config.jsonc must not contain %q (platform-owned):\n%s", banned, content)
 			}
 		}
 	}

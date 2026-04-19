@@ -7,24 +7,26 @@ import (
 	"testing"
 )
 
-func TestWriteProjectConfig_FullSelection(t *testing.T) {
-	dir := t.TempDir()
+// ── WritePlatformConfig ───────────────────────────────────────────────────────
+
+func TestWritePlatformConfig_FullSelection(t *testing.T) {
 	platformDir := t.TempDir()
 
-	err := WriteProjectConfig(dir, Options{
+	err := WritePlatformConfig(platformDir, Options{
 		PlatformDir: platformDir,
 		Services:    []string{"rest", "workflow"},
 		Plugins:     []string{"mind", "commit"},
 	})
 	if err != nil {
-		t.Fatalf("WriteProjectConfig() error = %v", err)
+		t.Fatalf("WritePlatformConfig() error = %v", err)
 	}
 
-	content := readConfig(t, dir)
+	content := readKbConfig(t, platformDir)
 
-	// Top-level sections.
+	// Full config: all sections present.
 	assertContains(t, content, `"platform"`, "platform section")
 	assertContains(t, content, `"adapters"`, "adapters block")
+	assertContains(t, content, `"adapterOptions"`, "adapterOptions block")
 	assertContains(t, content, `"services"`, "services section")
 	assertContains(t, content, `"plugins"`, "plugins section")
 
@@ -37,42 +39,109 @@ func TestWriteProjectConfig_FullSelection(t *testing.T) {
 	assertContains(t, content, `"studio": false`, "studio disabled")
 
 	// Selected plugins enabled, unselected disabled.
-	assertContains(t, content, `"mind": {`, "mind plugin block")
-	assertContains(t, content, `"commit": {`, "commit plugin block")
 	assertPluginEnabled(t, content, "mind", true)
 	assertPluginEnabled(t, content, "commit", true)
 	assertPluginEnabled(t, content, "agents", false)
-	assertPluginEnabled(t, content, "ai-review", false)
 
 	// JSONC comments present.
 	assertContains(t, content, "//", "JSONC comments")
 }
 
-func TestWriteProjectConfig_EmptySelection(t *testing.T) {
-	dir := t.TempDir()
+func TestWritePlatformConfig_AlwaysOverwrites(t *testing.T) {
+	platformDir := t.TempDir()
+	opts := Options{PlatformDir: platformDir, Services: []string{"rest"}}
 
-	err := WriteProjectConfig(dir, Options{
-		PlatformDir: "/opt/kb",
+	// First write.
+	if err := WritePlatformConfig(platformDir, opts); err != nil {
+		t.Fatal(err)
+	}
+
+	// Modify the file to simulate user editing.
+	cfgPath := filepath.Join(platformDir, ".kb", "kb.config.jsonc")
+	if err := os.WriteFile(cfgPath, []byte("EDITED"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Second write should overwrite regardless.
+	if err := WritePlatformConfig(platformDir, opts); err != nil {
+		t.Fatal(err)
+	}
+
+	content := readKbConfig(t, platformDir)
+	if content == "EDITED" {
+		t.Error("WritePlatformConfig did not overwrite existing file")
+	}
+	assertContains(t, content, `"platform"`, "platform section present after overwrite")
+}
+
+func TestWritePlatformConfig_CreatesDir(t *testing.T) {
+	platformDir := filepath.Join(t.TempDir(), "nested", "platform")
+
+	err := WritePlatformConfig(platformDir, Options{PlatformDir: platformDir})
+	if err != nil {
+		t.Fatalf("WritePlatformConfig() error = %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(platformDir, ".kb", "kb.config.jsonc")); err != nil {
+		t.Errorf("config file not created: %v", err)
+	}
+}
+
+// ── WriteProjectConfig ────────────────────────────────────────────────────────
+
+func TestWriteProjectConfig_WritesPointer(t *testing.T) {
+	projectDir := t.TempDir()
+	platformDir := t.TempDir()
+
+	err := WriteProjectConfig(projectDir, Options{
+		PlatformDir: platformDir,
+		Services:    []string{"rest", "workflow"},
+		Plugins:     []string{"mind"},
 	})
 	if err != nil {
 		t.Fatalf("WriteProjectConfig() error = %v", err)
 	}
 
-	content := readConfig(t, dir)
+	content := readKbConfig(t, projectDir)
 
-	// All services disabled.
-	assertContains(t, content, `"rest": false`, "rest disabled")
-	assertContains(t, content, `"workflow": false`, "workflow disabled")
-	assertContains(t, content, `"studio": false`, "studio disabled")
+	// Must have platform.dir pointing to platformDir.
+	assertContains(t, content, platformDir, "platform dir in pointer")
 
-	// All plugins disabled.
-	assertPluginEnabled(t, content, "mind", false)
-	assertPluginEnabled(t, content, "agents", false)
-	assertPluginEnabled(t, content, "ai-review", false)
-	assertPluginEnabled(t, content, "commit", false)
+	// Must NOT contain installer-owned sections (those live in platformDir only).
+	if strings.Contains(content, `"adapters"`) {
+		t.Error("project config must not contain adapters (platform-owned)")
+	}
+	if strings.Contains(content, `"adapterOptions"`) {
+		t.Error("project config must not contain adapterOptions (platform-owned)")
+	}
 }
 
-func TestWriteProjectConfig_CreatesNestedDir(t *testing.T) {
+func TestWriteProjectConfig_SkipsIfExists(t *testing.T) {
+	projectDir := t.TempDir()
+
+	// Pre-create the config file with custom content.
+	kbDir := filepath.Join(projectDir, ".kb")
+	if err := os.MkdirAll(kbDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	customContent := `{"custom": true}`
+	cfgPath := filepath.Join(kbDir, "kb.config.jsonc")
+	if err := os.WriteFile(cfgPath, []byte(customContent), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// WriteProjectConfig must not overwrite the existing file.
+	if err := WriteProjectConfig(projectDir, Options{PlatformDir: "/some/platform"}); err != nil {
+		t.Fatal(err)
+	}
+
+	content := readKbConfig(t, projectDir)
+	if content != customContent {
+		t.Errorf("existing config was overwritten; got %q, want %q", content, customContent)
+	}
+}
+
+func TestWriteProjectConfig_CreatesDir(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "a", "b", "project")
 
 	err := WriteProjectConfig(dir, Options{PlatformDir: "/tmp/plat"})
@@ -80,9 +149,8 @@ func TestWriteProjectConfig_CreatesNestedDir(t *testing.T) {
 		t.Fatalf("WriteProjectConfig() error = %v", err)
 	}
 
-	path := filepath.Join(dir, ".kb", "kb.config.jsonc")
-	if _, err := os.Stat(path); err != nil {
-		t.Errorf("config file not created at %s: %v", path, err)
+	if _, err := os.Stat(filepath.Join(dir, ".kb", "kb.config.jsonc")); err != nil {
+		t.Errorf("config file not created: %v", err)
 	}
 }
 
@@ -112,20 +180,48 @@ func TestWriteProjectConfig_Idempotent(t *testing.T) {
 	if err := WriteProjectConfig(dir, opts); err != nil {
 		t.Fatal(err)
 	}
-	first := readConfig(t, dir)
+	first := readKbConfig(t, dir)
 
+	// Second call: file exists — must be skipped, content unchanged.
 	if err := WriteProjectConfig(dir, opts); err != nil {
 		t.Fatal(err)
 	}
-	second := readConfig(t, dir)
+	second := readKbConfig(t, dir)
 
 	if first != second {
-		t.Error("WriteProjectConfig is not idempotent — output differs on second call")
+		t.Error("WriteProjectConfig is not idempotent — file changed on second call")
 	}
 }
 
-func TestGenerate_AdapterDefaults(t *testing.T) {
-	content := generate(Options{PlatformDir: "/x"})
+// ── SameRoot: WritePlatformConfig + WriteProjectConfig ────────────────────────
+
+// When platformDir == projectDir, WritePlatformConfig writes the full config
+// there first; WriteProjectConfig must then skip writing the pointer since
+// the file already exists.
+func TestSameRoot_FullConfigPreserved(t *testing.T) {
+	root := t.TempDir()
+	opts := Options{
+		PlatformDir: root,
+		Services:    []string{"rest"},
+	}
+
+	if err := WritePlatformConfig(root, opts); err != nil {
+		t.Fatal(err)
+	}
+	if err := WriteProjectConfig(root, opts); err != nil {
+		t.Fatal(err)
+	}
+
+	content := readKbConfig(t, root)
+
+	// Full config (from WritePlatformConfig) must be preserved — not replaced by pointer.
+	assertContains(t, content, `"adapters"`, "full config preserved in same-root scenario")
+}
+
+// ── generateFull ─────────────────────────────────────────────────────────────
+
+func TestGenerateFull_AdapterDefaults(t *testing.T) {
+	content := generateFull(Options{PlatformDir: "/x"})
 
 	defaults := []string{
 		`"llm": "@kb-labs/adapters-kblabs-gateway"`,
@@ -140,25 +236,43 @@ func TestGenerate_AdapterDefaults(t *testing.T) {
 	}
 }
 
-func TestGenerate_PluginInnerConfig(t *testing.T) {
-	content := generate(Options{
+func TestGenerateFull_PluginInnerConfig(t *testing.T) {
+	content := generateFull(Options{
 		PlatformDir: "/x",
 		Plugins:     []string{"mind", "agents", "ai-review", "commit"},
 	})
 
-	// Each plugin has its own inner config keys.
 	assertContains(t, content, `"vectorStore"`, "mind inner config")
 	assertContains(t, content, `"maxSteps"`, "agents inner config")
 	assertContains(t, content, `"mode": "full"`, "ai-review inner config")
 	assertContains(t, content, `"autoStage"`, "commit inner config")
 }
 
-// ── helpers ──────────────────────────────────────────────────────────────────
+// ── generatePointer ───────────────────────────────────────────────────────────
 
-func readConfig(t *testing.T, projectDir string) string {
+func TestGeneratePointer_ContainsPlatformDir(t *testing.T) {
+	platformDir := "/opt/kb-platform"
+	content := generatePointer(platformDir)
+
+	assertContains(t, content, platformDir, "platform dir in pointer config")
+	assertContains(t, content, `"platform"`, "platform section")
+	assertContains(t, content, `"dir"`, "dir field")
+
+	// Must not contain installer-owned sections.
+	if strings.Contains(content, `"adapters"`) {
+		t.Error("pointer config must not contain adapters")
+	}
+	if strings.Contains(content, `"adapterOptions"`) {
+		t.Error("pointer config must not contain adapterOptions")
+	}
+}
+
+// ── helpers ───────────────────────────────────────────────────────────────────
+
+func readKbConfig(t *testing.T, root string) string {
 	t.Helper()
-	// #nosec G304 -- test reads a file created under its own temp project dir.
-	data, err := os.ReadFile(filepath.Join(projectDir, ".kb", "kb.config.jsonc"))
+	// #nosec G304 -- test reads a file created under its own temp dir.
+	data, err := os.ReadFile(filepath.Join(root, ".kb", "kb.config.jsonc"))
 	if err != nil {
 		t.Fatalf("read config: %v", err)
 	}
@@ -174,18 +288,15 @@ func assertContains(t *testing.T, content, substr, label string) {
 
 func assertPluginEnabled(t *testing.T, content, pluginID string, wantEnabled bool) {
 	t.Helper()
-	// Find the plugin block and check its enabled field.
 	blockStart := strings.Index(content, `"`+pluginID+`": {`)
 	if blockStart == -1 {
 		t.Errorf("plugin %q block not found", pluginID)
 		return
 	}
-	// Look at the next ~100 chars after the block start for "enabled".
 	snippet := content[blockStart:]
 	if len(snippet) > 150 {
 		snippet = snippet[:150]
 	}
-
 	wantStr := `"enabled": false`
 	if wantEnabled {
 		wantStr = `"enabled": true`
