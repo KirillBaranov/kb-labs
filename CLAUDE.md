@@ -122,3 +122,83 @@ pnpm kb marketplace install <entity>
 - **DO NOT** import Studio internals from plugin pages — only `@kb-labs/sdk` + contracts
 - **DO NOT** run services with `node ./path` — use `kb-dev start`
 - **DO NOT** modify ports in `devservices.yaml` — fix the scripts instead
+
+## Dev / Prod Config Switching
+
+Config is layered (ADR-0012, ADR-0013). Switch by toggling `platform.dir` in `.kb/kb.config.json`.
+
+### Dev mode (full adapters, local workspace packages)
+
+Remove or comment out `platform.dir`:
+
+```json
+{ "platform": { /* "dir": "/Users/kirillbaranov/kb-platform", */ "adapters": { ... } } }
+```
+
+Bootstrap finds `node_modules` in the workspace → `platformRoot == projectRoot` → single-file mode → `.kb/kb.config.json` is authoritative for everything (openai, vibeproxy, redis, mongodb, qdrant all apply).
+
+### Prod test mode (basic installed platform)
+
+Set `platform.dir`:
+
+```json
+{ "platform": { "dir": "/Users/kirillbaranov/kb-platform", ... } }
+```
+
+Config loader reads `~/kb-platform/.kb/kb.config.jsonc` as base (kblabs-gateway, fs, pino). Platform-owned fields (`adapters`, `adapterOptions`, `execution`) from that file take effect; your rich dev adapters are overridden per policy.
+
+### Config files
+
+| File | Owner | Purpose |
+|------|-------|---------|
+| `.kb/kb.config.json` | You | Dev config: rich adapters, profiles, release, marketplace, gateway |
+| `~/kb-platform/.kb/kb.config.jsonc` | kb-create | Installed platform defaults (basic adapters) |
+| `.kb/kb.config.jsonc` | kb-create | Pointer-only (written only if no json exists). Gitignored. |
+
+<!-- BEGIN: KB Labs v1.5.0 (managed by kb-create) - DO NOT EDIT -->
+## KB Labs Platform
+
+This project uses the [KB Labs](https://github.com/KirillBaranov/kb-labs) platform.
+A set of Claude Code skills is installed under `.claude/skills/kb-labs-*` to help
+you work with the platform efficiently.
+
+### Skills
+
+Skills live in `.claude/skills/`. When you ask Claude to do something KB Labs-related
+(create a plugin, update the platform, troubleshoot, etc.), the matching skill is invoked automatically.
+
+Available skills:
+- `.claude/skills/kb-labs-create-plugin/` — scaffold a new plugin
+- `.claude/skills/kb-labs-create-product/` — scaffold a new service/product
+- `.claude/skills/kb-labs-update/` — update the platform
+- `.claude/skills/kb-labs-troubleshoot/` — diagnose failures
+- `.claude/skills/kb-labs-explore/` — inspect what's installed
+- `.claude/skills/kb-labs-quickstart/` — verify install, get started
+
+Skills are reinstalled by `kb-create update`. Do not edit them by hand.
+
+### Common tasks (just ask)
+
+- **Create a plugin** — "create a kb-labs plugin called my-plugin"
+- **Create a service** — "create a kb-labs service called my-service"
+- **Troubleshoot** — "kb-labs is not starting" / "kb-dev shows failed"
+- **Explore the project** — "what kb-labs services and plugins are installed here?"
+- **Update the platform** — "update kb-labs to the latest version"
+
+### Manual reference
+
+- `pnpm kb --help` — list all platform commands
+- `pnpm kb-dev status` — service status
+- `pnpm kb-dev doctor` — environment diagnostics
+- `pnpm kb plugins list` — installed plugins
+- `kb-create update` — update the platform
+- `kb-create doctor` — verify the installation
+
+### Where things live
+
+- `.kb/kb.config.json` — your project config (safe to edit, git-tracked)
+- `.kb/` — platform runtime state (do not edit by hand)
+- `.claude/skills/kb-labs-*` — managed skills (reinstalled by `kb-create update`)
+
+For full platform documentation see https://github.com/KirillBaranov/kb-labs.
+<!-- END: KB Labs (managed) -->
