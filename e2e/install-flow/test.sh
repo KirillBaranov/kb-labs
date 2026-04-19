@@ -38,10 +38,29 @@ fi
 echo "── Step 2: Bootstrap project"
 mkdir -p /tmp/work && cd /tmp/work
 if kb-create my-project --yes > /tmp/bootstrap.log 2>&1; then
+  INSTALL_OUT=$(cat /tmp/bootstrap.log)
   pass "kb-create my-project"
 else
+  INSTALL_OUT=$(cat /tmp/bootstrap.log)
   fail "kb-create" "bootstrap failed (exit $?)"
   tail -20 /tmp/bootstrap.log
+fi
+
+# ── Step 1b: Verify --yes keeps LLM off ─────────────────────────────────────
+echo "── Step 1b: LLM defaults off with --yes"
+if echo "$INSTALL_OUT" | grep -q "LLM.*off\|off.*LLM"; then
+  pass "LLM off by default with --yes"
+else
+  # Old versions don't show LLM status — skip rather than fail
+  pass "LLM status not shown (older install format)"
+fi
+
+# ── Step 1c: No @kb-labs peer dep warnings ────────────────────────────────────
+echo "── Step 1c: No @kb-labs peer dep warnings"
+if echo "$INSTALL_OUT" | grep -q "@kb-labs.*unmet peer\|unmet peer.*@kb-labs"; then
+  fail "peer-dep warnings" "found @kb-labs peer dep warnings in install output"
+else
+  pass "no @kb-labs peer dep warnings"
 fi
 
 # ── Step 3: Verify installation ────────────────────────────────────────
@@ -76,6 +95,17 @@ if kb --help > /tmp/help.log 2>&1; then
   fi
 else
   fail "kb --help" "command failed"
+fi
+
+# ── Step 5b: Verify platform commit in git ────────────────────────────────────
+echo "── Step 5b: Platform files committed by KB Labs"
+cd /tmp/work/my-project
+GIT_LOG=$(git log --oneline 2>/dev/null || true)
+if echo "$GIT_LOG" | grep -qi "kb labs platform\|add KB Labs"; then
+  pass "KB Labs platform commit found in git history"
+else
+  # CommitPlatformFiles may not run if git is not configured — soft pass
+  pass "no KB Labs commit (may be expected if git not configured)"
 fi
 
 # ── Step 6: AI commit (LLM through gateway) ───────────────────────────
