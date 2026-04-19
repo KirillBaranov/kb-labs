@@ -12,7 +12,7 @@
  */
 
 import { spawn } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { useLogger, useEnv } from '@kb-labs/sdk';
 
@@ -100,10 +100,22 @@ function publishSinglePackage(options: {
       args.push(`--otp=${otp}`);
     }
 
-    // Pass token via env — this is the correct way for granular tokens
     const env: NodeJS.ProcessEnv = { ...process.env };
     if (token) {
       env['NODE_AUTH_TOKEN'] = token;
+    }
+
+    // Write a temporary .npmrc so npm picks up NODE_AUTH_TOKEN without
+    // requiring it to be pre-configured in the global ~/.npmrc.
+    const npmrcPath = join(packagePath, '.npmrc');
+    const npmrcExisted = existsSync(npmrcPath);
+    const npmrcBackup = npmrcExisted ? readFileSync(npmrcPath, 'utf-8') : null;
+    const authLine = '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}\n';
+    if (token) {
+      const existing = npmrcExisted ? readFileSync(npmrcPath, 'utf-8') : '';
+      if (!existing.includes('_authToken')) {
+        writeFileSync(npmrcPath, existing + authLine);
+      }
     }
 
     const child = spawn(packageManager, args, {
@@ -124,7 +136,17 @@ function publishSinglePackage(options: {
       stderr += data.toString();
     });
 
+    const cleanupNpmrc = () => {
+      if (!token) { return; }
+      if (npmrcBackup !== null) {
+        writeFileSync(npmrcPath, npmrcBackup);
+      } else if (existsSync(npmrcPath)) {
+        unlinkSync(npmrcPath);
+      }
+    };
+
     child.on('close', (code: number | null) => {
+      cleanupNpmrc();
       if (code === 0) {
         resolve();
       } else {
