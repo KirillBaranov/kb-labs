@@ -318,6 +318,30 @@ func TestGenerateFull_PluginInnerConfig(t *testing.T) {
 	assertContains(t, content, `"autoStage"`, "commit inner config")
 }
 
+func TestGenerateFull_GatewayUpstreams(t *testing.T) {
+	content := generateFull(Options{PlatformDir: "/x"})
+
+	assertContains(t, content, `"gateway"`, "gateway section")
+	assertContains(t, content, `"upstreams"`, "upstreams block")
+	assertContains(t, content, `"rest"`, "rest upstream")
+	assertContains(t, content, `http://localhost:5050`, "REST URL")
+	assertContains(t, content, `"workflow"`, "workflow upstream")
+	assertContains(t, content, `"marketplace"`, "marketplace upstream")
+	assertContains(t, content, `"widgets"`, "widgets upstream")
+
+	// stripGeneratedJsonc must not corrupt URLs (//[^\n]* must not eat into http://)
+	stripped := stripGeneratedJsonc(content)
+	if !strings.Contains(stripped, "http://localhost:5050") {
+		t.Error("stripGeneratedJsonc corrupted http://localhost:5050 URL in gateway section")
+	}
+	if !strings.Contains(stripped, "http://localhost:7778") {
+		t.Error("stripGeneratedJsonc corrupted http://localhost:7778 URL in gateway section")
+	}
+	if !strings.Contains(stripped, "http://localhost:5070") {
+		t.Error("stripGeneratedJsonc corrupted http://localhost:5070 URL in gateway section")
+	}
+}
+
 // ── generatePointer ───────────────────────────────────────────────────────────
 
 func TestGeneratePointer_ContainsPlatformDir(t *testing.T) {
