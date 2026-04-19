@@ -16,6 +16,8 @@ export const version = defineSystemCommand<VersionFlags, VersionResult>({
   description: 'Show CLI version',
   longDescription: 'Displays the current version of the KB Labs CLI',
   category: 'info',
+  // Also accessible as `kb version` (short form without group prefix)
+  aliases: ['version'],
   examples: generateExamples('version', 'kb', [
     { flags: {} },
   ]),
