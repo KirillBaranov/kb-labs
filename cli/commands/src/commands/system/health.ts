@@ -23,6 +23,8 @@ export const health = defineSystemCommand<HealthFlags, HealthResult>({
   description: 'Report overall CLI health snapshot',
   longDescription: 'Shows the kb.health/1 snapshot shared with REST and Studio.',
   category: 'info',
+  // Also accessible as `kb health` (short form without group prefix)
+  aliases: ['health'],
   examples: generateExamples('health', 'kb', [
     { flags: {} },
     { flags: { json: true } },
@@ -103,7 +105,7 @@ export const health = defineSystemCommand<HealthFlags, HealthResult>({
             items: [
               `Status: ${result.healthStatus}`,
               `KB Labs: ${snapshot.version.kbLabs}`,
-              `CLI: ${snapshot.version.cli}`,
+              `CLI: ${process.env.CLI_VERSION ?? (ctx as any)?.cliVersion ?? '0.0.0'}`,
               `REST: ${snapshot.version.rest}`,
               `Git: ${gitInfo}`,
             ],
