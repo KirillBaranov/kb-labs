@@ -67,7 +67,7 @@ kb-dev start state-daemon &
 sleep 3
 kb-dev start backend &
 
-echo "==> Waiting for gateway to be ready..."
+echo "==> Waiting for gateway process to start (/health)..."
 ATTEMPTS=0
 until curl -sf http://localhost:4000/health > /dev/null 2>&1; do
   ATTEMPTS=$((ATTEMPTS + 1))
@@ -78,8 +78,25 @@ until curl -sf http://localhost:4000/health > /dev/null 2>&1; do
   fi
   sleep 2
 done
+echo "    Gateway process up after ${ATTEMPTS}x2s"
 
-echo "==> Platform ready (gateway up after ${ATTEMPTS}x2s)"
+# Wait for all upstreams to be wired (/ready returns 200 only when REST API,
+# workflow daemon, marketplace etc. are all responding).
+# Docker Compose healthcheck also polls /ready — we must be ready before tail.
+echo "==> Waiting for all services to be ready (/ready)..."
+ATTEMPTS=0
+until curl -sf http://localhost:4000/ready > /dev/null 2>&1; do
+  ATTEMPTS=$((ATTEMPTS + 1))
+  if [ "$ATTEMPTS" -ge 60 ]; then
+    echo "ERROR: Platform /ready did not pass after 120s — upstreams still down"
+    kb-dev status || true
+    curl -s http://localhost:4000/ready || true
+    exit 1
+  fi
+  sleep 2
+done
+
+echo "==> Platform fully ready after ${ATTEMPTS}x2s"
 kb-dev status
 
 # Keep container alive while tests run
