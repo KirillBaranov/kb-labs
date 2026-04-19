@@ -2643,7 +2643,7 @@ importers:
         specifier: workspace:*
         version: link:../../../core/contracts
       '@kb-labs/core-platform':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../../core/platform
       '@kb-labs/gateway-contracts':
         specifier: workspace:*
