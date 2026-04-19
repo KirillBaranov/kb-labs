@@ -30,10 +30,12 @@ shows what changed, and applies updates after confirmation.`,
 }
 
 func init() {
+	updateCmd.Flags().BoolP("yes", "y", false, "skip confirmation prompts")
 	rootCmd.AddCommand(updateCmd)
 }
 
 func runUpdate(cmd *cobra.Command, args []string) error {
+	yes, _ := cmd.Flags().GetBool("yes")
 	out := newOutput()
 
 	platformDir, err := resolvePlatformDir(cmd)
@@ -92,7 +94,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 
 	printDiff(out, diff)
 
-	if !confirm("Apply updates? [Y/n] ") {
+	if !yes && !confirm("Apply updates? [Y/n] ") {
 		tc.Track("update_cancelled", nil)
 		out.Warn("Cancelled.")
 		return nil
@@ -131,7 +133,7 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 				ProjectDir:   cfg.CWD,
 				PlatformDir:  platformDir,
 				SkipClaudeMd: flagNoClaudeMd,
-				Yes:          false,
+				Yes:          yes,
 				Log:          log,
 				Prompter:     stdPrompter{},
 			})
