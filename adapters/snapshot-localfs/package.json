@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/adapters-snapshot-localfs",
   "description": "Local filesystem adapter implementing ISnapshotProvider",
-  "version": "2.53.0",
+  "version": "2.54.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

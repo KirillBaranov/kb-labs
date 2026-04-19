@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/shared-cli-ui",
   "description": "Shared CLI UI utilities for KB Labs projects - colors, formatting, progress indicators",
-  "version": "2.53.0",
+  "version": "2.54.0",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
