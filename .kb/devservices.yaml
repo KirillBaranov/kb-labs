@@ -130,6 +130,7 @@ services:
     health_check: http://localhost:3000/
     port: 3000
     url: http://localhost:3000
+    highlight: true
     depends_on: [rest, gateway]
 
   kb-web:

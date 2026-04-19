@@ -32,6 +32,7 @@ type yamlService struct {
 	Env         map[string]string `yaml:"env"`
 	DependsOn   []string          `yaml:"depends_on"`
 	Optional    bool              `yaml:"optional"`
+	Highlight   bool              `yaml:"highlight"`
 	Note        string            `yaml:"note"`
 	API         *yamlServiceAPI   `yaml:"api"`
 }
@@ -130,6 +131,7 @@ func mapYAML(yf *yamlFile) (*Config, error) {
 			Env:         ys.Env,
 			DependsOn:   ys.DependsOn,
 			Optional:    ys.Optional,
+			Highlight:   ys.Highlight,
 			Note:        ys.Note,
 			API:         mapYAMLServiceAPI(ys.API),
 		}

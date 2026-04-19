@@ -1,6 +1,11 @@
 package cmd
 
 import (
+	"fmt"
+	"strings"
+
+	"github.com/charmbracelet/lipgloss"
+	"github.com/kb-labs/dev/internal/config"
 	"github.com/spf13/cobra"
 )
 
@@ -65,8 +70,40 @@ func runStart(cmd *cobra.Command, args []string) error {
 		mgr.Watch(cmd.Context())
 	}
 
+	if result.OK {
+		printHighlights(mgr.Config().Services)
+	}
+
 	if !result.OK {
 		return errSilent
 	}
 	return nil
+}
+
+// printHighlights prints a prominent block for services marked highlight:true.
+func printHighlights(services map[string]config.Service) {
+	enabled := colorEnabled()
+	accent := lipgloss.NewStyle().Bold(true).Foreground(color(enabled, "12"))
+	url := lipgloss.NewStyle().Foreground(color(enabled, "14"))
+	dim := lipgloss.NewStyle().Foreground(color(enabled, "8"))
+
+	var lines []string
+	for _, svc := range services {
+		if !svc.Highlight || svc.URL == "" {
+			continue
+		}
+		lines = append(lines, fmt.Sprintf("  %s  %s  %s",
+			accent.Render("→"),
+			url.Render(svc.URL),
+			dim.Render(svc.Name),
+		))
+	}
+	if len(lines) == 0 {
+		return
+	}
+	fmt.Println()
+	for _, l := range lines {
+		fmt.Println(l)
+	}
+	fmt.Println(dim.Render("  " + strings.Repeat("─", 40)))
 }
