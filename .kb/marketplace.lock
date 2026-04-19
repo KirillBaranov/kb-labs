@@ -3,7 +3,7 @@
   "installed": {
     "@kb-labs/adapters-workspace-worktree": {
       "version": "0.8.0",
-      "integrity": "sha256-UIvMh8LUYIo7fEnMWSKO2GcAFn6mEmeiRgMud60MApo=",
+      "integrity": "sha256-atRoOSUhuO0u+ebALQ3IiLQx4sQ3/RVTnqHi40Blr/A=",
       "resolvedPath": "./adapters/workspace-worktree",
       "installedAt": "2026-04-11T10:50:13.102Z",
       "source": "local",
@@ -15,7 +15,7 @@
     },
     "@kb-labs/adapters-workspace-localfs": {
       "version": "0.8.0",
-      "integrity": "sha256-lrvzn6ZReJMnniVdmwX0n5Oa2KBuFOs748RDBbhi53k=",
+      "integrity": "sha256-wdNutxb7j+M0sJ7fyB56vyVY6r+mKT8FaEgb+rMEZW8=",
       "resolvedPath": "./adapters/workspace-localfs",
       "installedAt": "2026-04-11T10:50:13.103Z",
       "source": "local",
@@ -27,7 +27,7 @@
     },
     "@kb-labs/adapters-workspace-agent": {
       "version": "0.8.0",
-      "integrity": "sha256-TmxT9cehYqL+gWV9ldt09imGw3SUED60YoHP5Zb4lHw=",
+      "integrity": "sha256-YqC2cZG6QiAJqraGTwX9QLndicGcTBHn5TGkrns58Ko=",
       "resolvedPath": "./adapters/workspace-agent",
       "installedAt": "2026-04-11T10:50:13.103Z",
       "source": "local",
@@ -39,7 +39,7 @@
     },
     "@kb-labs/adapters-vibeproxy": {
       "version": "0.8.0",
-      "integrity": "sha256-Ed2AV5XIgsLtS69174/I2gfIpuIFXTEfKBZKFy+t0dA=",
+      "integrity": "sha256-Np+AFkYzr6NfEu44UOLGOIQA4KzAD3r1zgRBU1v11z8=",
       "resolvedPath": "./adapters/vibeproxy",
       "installedAt": "2026-04-11T10:50:13.104Z",
       "source": "local",
@@ -51,7 +51,7 @@
     },
     "@kb-labs/adapters-sqlite": {
       "version": "0.8.0",
-      "integrity": "sha256-IirD3nEU0dMtg3o4qvAQ8ng2BESmtjwzoxhlCMjYKqs=",
+      "integrity": "sha256-MwwbiVAAiLySF8z5qNV75VVEJ3rInUVtquCRh+l+G9w=",
       "resolvedPath": "./adapters/sqlite",
       "installedAt": "2026-04-11T10:50:13.105Z",
       "source": "local",
@@ -63,7 +63,7 @@
     },
     "@kb-labs/adapters-snapshot-localfs": {
       "version": "0.8.0",
-      "integrity": "sha256-DLwdithT67SPmL8ErZr3TSOiC4jSIctI5FaKdJod9SQ=",
+      "integrity": "sha256-+gu+oqMPrAuxG7jAwSmxNmy29rVjNEDa92aAKKVxuXY=",
       "resolvedPath": "./adapters/snapshot-localfs",
       "installedAt": "2026-04-11T10:50:13.105Z",
       "source": "local",
@@ -75,7 +75,7 @@
     },
     "@kb-labs/adapters-redis": {
       "version": "0.8.0",
-      "integrity": "sha256-4bcydAFZJ8PGQEyShcNo3SnKYQtpRWgLjrWMw2WJVcE=",
+      "integrity": "sha256-QHbvsQdh0zZDEB7Zs/ZaaGJQfI/DJF/npZe8h+TeSzY=",
       "resolvedPath": "./adapters/redis",
       "installedAt": "2026-04-11T10:50:13.106Z",
       "source": "local",
@@ -87,7 +87,7 @@
     },
     "@kb-labs/adapters-qdrant": {
       "version": "0.8.0",
-      "integrity": "sha256-z+0Zyq4VObzVq2OlZEs3GX6Ma/RXrXRuoECjUA3gE8g=",
+      "integrity": "sha256-vaOrT3qOoBoWsyE5sUcpnr16uy6NB8me5V54jOs2RGo=",
       "resolvedPath": "./adapters/qdrant",
       "installedAt": "2026-04-11T10:50:13.106Z",
       "source": "local",
@@ -99,7 +99,7 @@
     },
     "@kb-labs/adapters-pino": {
       "version": "0.8.0",
-      "integrity": "sha256-60MiBZ55+LJJcr/YmBgSCdFxIij5ivkffw23edCBhAo=",
+      "integrity": "sha256-oBcmYOD87LR9Y/2c336b2DNELrj/OWVnWzdYtFv+0n0=",
       "resolvedPath": "./adapters/pino",
       "installedAt": "2026-04-11T10:50:13.107Z",
       "source": "local",
@@ -111,7 +111,7 @@
     },
     "@kb-labs/adapters-openai": {
       "version": "0.8.0",
-      "integrity": "sha256-hPSFcI8TZxgufYMawybRPDnf4Knj2Gcqh2TN3dF3OBw=",
+      "integrity": "sha256-gCXjEFbZXP03OG7P5wqqZ6JpdN0eqjD5iwaRfq3rmvg=",
       "resolvedPath": "./adapters/openai",
       "installedAt": "2026-04-11T10:50:13.108Z",
       "source": "local",
@@ -123,7 +123,7 @@
     },
     "@kb-labs/adapters-mongodb": {
       "version": "0.8.0",
-      "integrity": "sha256-RJRb4oY1bCdZ3S5+rA3t9RjxCJAUAgTasD2WqtJjJUo=",
+      "integrity": "sha256-lWSaBbAHxnGmjzQs2qk4bt8efxkWh7FHYWkc4A+qrX0=",
       "resolvedPath": "./adapters/mongodb",
       "installedAt": "2026-04-11T10:50:13.109Z",
       "source": "local",
@@ -135,7 +135,7 @@
     },
     "@kb-labs/adapters-log-sqlite": {
       "version": "0.8.0",
-      "integrity": "sha256-sGm0Qrfv3T5leW76V2fEmBpY0tov4IQZMPJ46iREP/c=",
+      "integrity": "sha256-fMSL6eEqW8uDksA9El0U/1V89UtymUcvd9fNVtQ9PJ8=",
       "resolvedPath": "./adapters/log-sqlite",
       "installedAt": "2026-04-11T10:50:13.109Z",
       "source": "local",
@@ -147,7 +147,7 @@
     },
     "@kb-labs/adapters-log-ringbuffer": {
       "version": "0.8.0",
-      "integrity": "sha256-ndWy0nKDXx37it6EAvM7SeoseMWgz9IS1haBFEaUzyk=",
+      "integrity": "sha256-veP4ILh5Zp7lbQhcYE951YDGvmJbHfNiHW9rZoMHFu8=",
       "resolvedPath": "./adapters/log-ringbuffer",
       "installedAt": "2026-04-11T10:50:13.109Z",
       "source": "local",
@@ -159,7 +159,7 @@
     },
     "@kb-labs/adapters-kblabs-gateway": {
       "version": "0.1.0",
-      "integrity": "sha256-/OdH9AI/QoESOBS+DE4FU+Dc8DmNQoBBLt/u/xjog6U=",
+      "integrity": "sha256-A8cm4Wpxzn3Ygrfmb443S7J9x3FmS1lGVkY6AHOAQ2w=",
       "resolvedPath": "./adapters/kblabs-gateway",
       "installedAt": "2026-04-11T10:50:13.110Z",
       "source": "local",
@@ -171,7 +171,7 @@
     },
     "@kb-labs/adapters-fs": {
       "version": "0.8.0",
-      "integrity": "sha256-cu9NIE2n1KnXnvBhSNt8tl/96PJYm+7zl2FJ11qPOyA=",
+      "integrity": "sha256-kCwOn3e3NXA9vOPeFhjg5SXlwBk0GuC/eX5MoeFkrX8=",
       "resolvedPath": "./adapters/fs",
       "installedAt": "2026-04-11T10:50:13.110Z",
       "source": "local",
@@ -183,7 +183,7 @@
     },
     "@kb-labs/adapters-eventbus-cache": {
       "version": "0.8.0",
-      "integrity": "sha256-PVFabmhIsbHk7j30JUEcch4QjoL9T9T0PaesAu6ktqI=",
+      "integrity": "sha256-XhCeUGzSC+sT7lQDQFrd4h5ep7bXKCkt08+DKjlcjaU=",
       "resolvedPath": "./adapters/eventbus-cache",
       "installedAt": "2026-04-11T10:50:13.111Z",
       "source": "local",
@@ -195,7 +195,7 @@
     },
     "@kb-labs/adapters-environment-docker": {
       "version": "0.8.0",
-      "integrity": "sha256-PEttbdafjdUk+npGi5gUizt8QVzuNBbqGZLvBap0gtI=",
+      "integrity": "sha256-U+YdYxzeHudvo6AGEemPH+9KsiLYYU3Oi8j7/GHwqZU=",
       "resolvedPath": "./adapters/environment-docker",
       "installedAt": "2026-04-11T10:50:13.111Z",
       "source": "local",
@@ -207,7 +207,7 @@
     },
     "@kb-labs/adapters-analytics-sqlite": {
       "version": "0.8.0",
-      "integrity": "sha256-e6EGt+BaDEzB3T8sFL2bvJuBgNNXikyB/Vj3oOPUCK0=",
+      "integrity": "sha256-Vjerfzs0t2CtXuzD2SV9T27w3CSvhv0W7+F1gC1WR+c=",
       "resolvedPath": "./adapters/analytics-sqlite",
       "installedAt": "2026-04-11T10:50:13.112Z",
       "source": "local",
@@ -219,7 +219,7 @@
     },
     "@kb-labs/adapters-analytics-file": {
       "version": "0.8.0",
-      "integrity": "sha256-ljFbyzaxBm+sirhDK8lzQUfsbxMt/ECUCB5qkBLLdP8=",
+      "integrity": "sha256-T6XKgx4lHRO8f9gYwmqkzHcQ77dX9s5xvLndNwUOpBw=",
       "resolvedPath": "./adapters/analytics-file",
       "installedAt": "2026-04-11T10:50:13.112Z",
       "source": "local",
@@ -231,7 +231,7 @@
     },
     "@kb-labs/adapters-analytics-duckdb": {
       "version": "0.8.0",
-      "integrity": "sha256-xA84RogIbxFvFdOHDYgcwvUgYEmsf1k7rI8xn2cdQ9g=",
+      "integrity": "sha256-3tutPyBjQvqH/+om1f+dGylBgLqpDSOvhAXddy8WA/Q=",
       "resolvedPath": "./adapters/analytics-duckdb",
       "installedAt": "2026-04-11T10:50:13.112Z",
       "source": "local",
@@ -243,7 +243,7 @@
     },
     "@kb-labs/policy-core": {
       "version": "0.5.0",
-      "integrity": "sha256-mpAFkXIbKYe1aU1sL44c0A/7DNdaAI8kfy4ire7/Gxc=",
+      "integrity": "sha256-ZtFmYeXnppYNAPp+gnMA2K5fyF6v/e0fLBrRI6vnxG0=",
       "resolvedPath": "./plugins/policy/core",
       "installedAt": "2026-04-11T10:50:13.114Z",
       "source": "local",
@@ -256,7 +256,7 @@
     },
     "@kb-labs/impact-core": {
       "version": "0.5.0",
-      "integrity": "sha256-euqYSGroVdWvf/qZr2rfTKnG9WhH454MbhifEAHdN7U=",
+      "integrity": "sha256-PvVF9i0nV+aLkEZRgPL05/9lioeyHGZwaLywQSwfUZY=",
       "resolvedPath": "./plugins/impact/core",
       "installedAt": "2026-04-11T10:50:13.115Z",
       "source": "local",
@@ -269,7 +269,7 @@
     },
     "@kb-labs/workflow": {
       "version": "2.14.0",
-      "integrity": "sha256-4vJjOsnk/3FQBTH09G7JtYqFbq0SDlLO8prOg0YP1u8=",
+      "integrity": "sha256-61Vi1fSVpZoQ3Mvg/hQuL+xB0UsZD/tRvEb920xRVS0=",
       "resolvedPath": "./plugins/workflow/entry",
       "installedAt": "2026-04-12T15:19:02.455Z",
       "source": "local",
@@ -286,7 +286,7 @@
     },
     "@kb-labs/review": {
       "version": "2.14.0",
-      "integrity": "sha256-NS38fisBWRHIN4CHWKv68SMgwQhLdFnk7U/FfXpbzA4=",
+      "integrity": "sha256-VcxU7mHJgzWcWffMQL0gV4IO44kkgBg9lwaytP49fwM=",
       "resolvedPath": "./plugins/review/entry",
       "installedAt": "2026-04-12T15:19:02.456Z",
       "source": "local",
@@ -299,7 +299,7 @@
     },
     "@kb-labs/quality": {
       "version": "2.14.0",
-      "integrity": "sha256-9x8ZsDA0K+lgaU5HjHONhC2iGd8E7BCpAMNRmr6Kydc=",
+      "integrity": "sha256-2upXsqixtZ/t3/8Ikvsz+UCmOfEmftu4yXQtXgp2xcM=",
       "resolvedPath": "./plugins/quality/entry",
       "installedAt": "2026-04-12T15:19:02.483Z",
       "source": "local",
@@ -315,7 +315,7 @@
     },
     "@kb-labs/qa": {
       "version": "2.14.0",
-      "integrity": "sha256-KWcbnkd0NlEY3EmEWUa0mXIGy8LZ0Wcld2Aap5YwRFg=",
+      "integrity": "sha256-m4cRcJvbKj0sjCm9dbwi2DhpEdhsyWK81oa4B284DV0=",
       "resolvedPath": "./plugins/qa/entry",
       "installedAt": "2026-04-12T15:19:02.765Z",
       "source": "local",
@@ -331,7 +331,7 @@
     },
     "@kb-labs/mind": {
       "version": "2.14.0",
-      "integrity": "sha256-PNw7tmj1UC6AJhrDcmmrV5IDobNwEnWxBRQmT3Z7/tw=",
+      "integrity": "sha256-mBMCajnEKclaVD98QrvItBfgCGjCKjS76XYJ3k3XbBo=",
       "resolvedPath": "./plugins/mind/entry",
       "installedAt": "2026-04-12T15:19:02.773Z",
       "source": "local",
@@ -344,7 +344,7 @@
     },
     "@kb-labs/marketplace": {
       "version": "2.14.0",
-      "integrity": "sha256-p1V7+HyqSWYXILRh6RcKXszP4StQ/AGJcnjtLpTko+k=",
+      "integrity": "sha256-tE5842WyfXgQFwCoRVSv5vpBV2puf6CCTcOl989iUCU=",
       "resolvedPath": "./plugins/marketplace/entry",
       "installedAt": "2026-04-12T15:19:02.780Z",
       "source": "local",
@@ -357,7 +357,7 @@
     },
     "@kb-labs/host-agent": {
       "version": "2.14.0",
-      "integrity": "sha256-rdGP+pGxSzRhWpuyMZu7tAvnscbHznMbP3eS90FlYPE=",
+      "integrity": "sha256-XeBkEMdpG9DJVtXEuwi3lPcZTZILcdIXE2QNcHOfO/Q=",
       "resolvedPath": "./plugins/host-agent/entry",
       "installedAt": "2026-04-12T15:19:02.781Z",
       "source": "local",
@@ -370,7 +370,7 @@
     },
     "@kb-labs/devlink": {
       "version": "2.14.0",
-      "integrity": "sha256-Yw7ehBCa0OW+Y6KtshuG4HwfIIG0iharGyS83GNbz5o=",
+      "integrity": "sha256-XZdUCNy3cG+NigUt2qPx8Oe0cSZmKZAUVz6a6568NKg=",
       "resolvedPath": "./plugins/devlink/entry",
       "installedAt": "2026-04-12T15:19:02.796Z",
       "source": "local",
@@ -383,7 +383,7 @@
     },
     "@kb-labs/commit": {
       "version": "2.14.0",
-      "integrity": "sha256-GY28oImZsooAtbZIgINcHQ/IGRLSh9B0jfJyr3EOAe0=",
+      "integrity": "sha256-Y2ngzwz/ntrZW3xQn78tIZeu8czNEePA/qLvbesPMP4=",
       "resolvedPath": "./plugins/commit/entry",
       "installedAt": "2026-04-12T15:19:02.803Z",
       "source": "local",
@@ -399,7 +399,7 @@
     },
     "@kb-labs/agent": {
       "version": "2.14.0",
-      "integrity": "sha256-DOrt4FfqXZ87kG+HYFgFegLTPTYYI3cB4PAZ5IhQKKc=",
+      "integrity": "sha256-bfr6rRO+peODibTRW2Nyo5t5cSOAs/sS19eBNAdG+h0=",
       "resolvedPath": "./plugins/agents/entry",
       "installedAt": "2026-04-12T15:19:02.807Z",
       "source": "local",
@@ -416,7 +416,7 @@
     },
     "@kb-labs/scaffold": {
       "version": "0.1.0",
-      "integrity": "sha256-LuSB8HT0SurwqxDWoQzE5PsvahGvg5vbjGXbn5VGYSs=",
+      "integrity": "sha256-Q48Wgxktnak4wZPptc3peHJLaYqrC7/k+3BmKFEEOdw=",
       "resolvedPath": "./plugins/scaffold/entry",
       "installedAt": "2026-04-14T16:05:02.438Z",
       "source": "local",

@@ -29,6 +29,7 @@ import (
 
 var (
 	flagYes         bool
+	flagLLM         bool
 	flagDemo        bool
 	flagPlatform    string
 	flagSkipClaude  bool
@@ -38,7 +39,8 @@ var (
 )
 
 func init() {
-	rootCmd.Flags().BoolVarP(&flagYes, "yes", "y", false, "skip wizard and install with defaults")
+	rootCmd.Flags().BoolVarP(&flagYes, "yes", "y", false, "skip wizard and install with defaults (LLM and analytics off)")
+	rootCmd.Flags().BoolVar(&flagLLM, "llm", false, "enable LLM features (KB Labs Gateway, 50 free requests)")
 	rootCmd.Flags().BoolVar(&flagDemo, "demo", false, "install demo plugins and run pipeline on your code")
 	rootCmd.Flags().StringVar(&flagPlatform, "platform", "", "platform installation directory")
 	rootCmd.Flags().BoolVar(&flagSkipClaude, "skip-claude", false, "do not install Claude Code skills or CLAUDE.md")
@@ -155,6 +157,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	})
 
 	printSuccess(result)
+	printDataConsent(sel.TelemetryEnabled, flagLLM)
 
 	// Write project .kb/kb.config.jsonc — after install so we can include
 	// Gateway credentials (demo mode) obtained from the already-registered
@@ -166,11 +169,12 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		DemoMode:    sel.DemoMode,
 	}
 	// Register KB Labs Gateway credentials for LLM access (50 free requests).
-	// --yes implies consent: install silently with all defaults including LLM.
+	// LLM requires explicit user consent — --yes does NOT imply LLM opt-in.
 	// Wizard flow uses the explicit consent stage answer.
-	wantsLLM := sel.Consent == types.ConsentDemo || flagYes
-	if sel.Consent == "" && !flagYes {
-		// Wizard ran but consent stage was skipped for some reason — no LLM.
+	// Use `kb-create . --llm` for a silent install with LLM enabled.
+	wantsLLM := sel.Consent == types.ConsentDemo || flagLLM
+	if sel.Consent == "" && !flagLLM {
+		// No explicit consent (wizard skipped or --yes without --llm) — no LLM.
 		wantsLLM = false
 	}
 	if wantsLLM {
@@ -235,6 +239,11 @@ func runCreate(cmd *cobra.Command, args []string) error {
 			})
 		}
 	}
+
+	// Commit all KB Labs-owned files added during install so they don't
+	// pollute the user's next `kb commit commit` run.
+	// Non-fatal: if the repo has no git, is bare, or commit fails — skip silently.
+	_ = demo.CommitPlatformFiles(sel.ProjectCWD)
 
 	return nil
 }

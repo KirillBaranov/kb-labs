@@ -110,12 +110,12 @@ func (n *NpmManager) run(dir string, args []string, progress chan<- Progress) er
 // kbOverrides are the pnpm overrides always written into kb-platform/package.json.
 // They pin core KB Labs packages to latest so transitive deps can't pull in old versions.
 var kbOverrides = map[string]string{
-	"@kb-labs/gateway-contracts": ">=0.1.0",
-	"@kb-labs/gateway-auth":      ">=0.1.0",
-	"@kb-labs/gateway-core":      ">=0.1.0",
-	"@kb-labs/sdk":               "latest",
-	"@kb-labs/core-runtime":      "latest",
-	"@kb-labs/core-platform":     "latest",
+	"@kb-labs/gateway-contracts": ">=2.0.0",
+	"@kb-labs/gateway-auth":      ">=2.0.0",
+	"@kb-labs/gateway-core":      ">=2.0.0",
+	"@kb-labs/sdk":               ">=2.0.0",
+	"@kb-labs/core-runtime":      ">=2.0.0",
+	"@kb-labs/core-platform":     ">=2.0.0",
 }
 
 func ensurePackageJSON(dir string) error {
