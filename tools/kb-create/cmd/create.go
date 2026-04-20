@@ -211,7 +211,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	// Post-install: run review + offer commit on existing diff.
 	_ = demo.RunFirstDemo(sel.ProjectCWD, wantsLLM)
 
-	printNextSteps(result)
+	printNextSteps(result, wantsLLM)
 
 	// Install Claude Code onboarding assets (skills + managed CLAUDE.md section).
 	// All failures here are non-fatal: the platform install itself is already
