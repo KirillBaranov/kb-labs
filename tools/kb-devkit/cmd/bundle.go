@@ -112,6 +112,18 @@ func runBundle(cmd *cobra.Command, args []string) error {
 		if err := copySources(fullDir, closure); err != nil {
 			return err
 		}
+		// Copy dist/ for all dependency packages (not the target itself).
+		// The target's dist is produced by Docker build; deps are not rebuilt
+		// inside Docker so their dist must be present for imports to resolve.
+		deps := make([]workspace.Package, 0, len(closure)-1)
+		for _, p := range closure {
+			if p.Name != target.Name {
+				deps = append(deps, p)
+			}
+		}
+		if err := copyDists(fullDir, deps); err != nil {
+			return err
+		}
 	} else {
 		if err := writeManifests(outDir, wsRoot, closure); err != nil {
 			return err
@@ -333,6 +345,36 @@ func copySources(outDir string, closure []workspace.Package) error {
 		})
 		if err != nil {
 			return fmt.Errorf("copy sources for %s: %w", p.RelPath, err)
+		}
+	}
+	return nil
+}
+
+// copyDists copies the dist/ directory for each package that has one.
+// Used in --docker mode to ensure dependency build artifacts are available
+// inside the Docker builder layer (deps are not rebuilt inside Docker).
+func copyDists(outDir string, pkgs []workspace.Package) error {
+	for _, p := range pkgs {
+		distSrc := filepath.Join(p.Dir, "dist")
+		if _, err := os.Stat(distSrc); os.IsNotExist(err) {
+			continue // no dist/ — skip silently
+		}
+		distDst := filepath.Join(outDir, p.RelPath, "dist")
+		err := filepath.Walk(distSrc, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			rel, err := filepath.Rel(distSrc, path)
+			if err != nil {
+				return err
+			}
+			if info.IsDir() {
+				return nil
+			}
+			return copyFile(filepath.Join(distDst, rel), path)
+		})
+		if err != nil {
+			return fmt.Errorf("copy dist for %s: %w", p.RelPath, err)
 		}
 	}
 	return nil
