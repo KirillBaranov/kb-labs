@@ -60,7 +60,8 @@ export class UnixSocketServer {
     private readonly platform: PlatformContainer,
     config: UnixSocketServerConfig = {}
   ) {
-    this.socketPath = config.socketPath ?? '/tmp/kb-ipc.sock';
+    // Include PID in default path so concurrent services don't race over the same socket file.
+    this.socketPath = config.socketPath ?? `/tmp/kb-ipc-${process.pid}.sock`;
   }
 
   /**
@@ -90,8 +91,17 @@ export class UnixSocketServer {
       });
 
       this.server.listen(this.socketPath, () => {
-        // Set socket permissions (readable/writable by all)
-        fs.chmodSync(this.socketPath, 0o666);
+        // Set socket permissions (readable/writable by all).
+        // Wrapped in try/catch: a synchronous throw here would escape the Promise
+        // without calling reject(), leaving the caller awaiting forever.
+        try {
+          fs.chmodSync(this.socketPath, 0o666);
+        } catch (chmodErr) {
+          // Non-fatal — socket is still functional with default umask permissions.
+          this.platform.logger.debug('UnixSocketServer: chmod failed (non-fatal), using default socket permissions', {
+            error: chmodErr instanceof Error ? chmodErr.message : String(chmodErr),
+          });
+        }
         this.started = true;
         this.platform.logger.debug('UnixSocketServer started listening for adapter calls');
         resolve();
