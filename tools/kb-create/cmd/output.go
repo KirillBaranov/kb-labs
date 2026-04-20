@@ -108,13 +108,14 @@ func printSuccess(r *installer.Result) {
 
 // printDataConsent shows a short data-use summary so the user always knows
 // what was opted in/out — even in --yes (silent) mode.
+// When LLM is off, a recommendation block explains the benefit and data policy.
 func printDataConsent(analyticsEnabled, llmEnabled bool) {
 	kw := styleKV.Render
-	onStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("10"))  // green
-	offStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8"))  // dim
+	onStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("10")) // green
+	offStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8")) // dim
 
 	llmStatus := offStyle.Render("off")
-	llmHint := styleMuted.Render("(run kb-create . --llm to enable · 50 free requests)")
+	llmHint := styleMuted.Render("(run kb-create . --llm to enable)")
 	if llmEnabled {
 		llmStatus = onStyle.Render("on")
 		llmHint = styleMuted.Render("KB Labs Gateway · 50 free requests")
@@ -129,6 +130,40 @@ func printDataConsent(analyticsEnabled, llmEnabled bool) {
 
 	fmt.Printf("  %-11s %s  %s\n", kw("LLM"), llmStatus, llmHint)
 	fmt.Printf("  %-11s %s  %s\n", kw("Analytics"), analyticsStatus, analyticsHint)
+	fmt.Println()
+
+	if !llmEnabled {
+		printLLMRecommendation()
+	}
+}
+
+// printLLMRecommendation prints a one-time notice explaining what LLM adds,
+// how the data flows, and how to opt in — shown only when LLM is off.
+func printLLMRecommendation() {
+	accent := lipgloss.NewStyle().Foreground(lipgloss.Color("141")) // soft purple
+	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
+	white := lipgloss.NewStyle().Foreground(lipgloss.Color("15"))
+	cmd := lipgloss.NewStyle().Foreground(lipgloss.Color("14")).Bold(true)
+
+	border := accent.Render("│")
+	topLeft := accent.Render("╭")
+	botLeft := accent.Render("╰")
+	line := func(s string) { fmt.Printf("  %s  %s\n", border, s) }
+
+	width := 58
+	rule := accent.Render(strings.Repeat("─", width))
+
+	fmt.Printf("  %s%s\n", topLeft, rule)
+	line(white.Render("Enable LLM for a better experience"))
+	line("")
+	line("  " + dim.Render("AI commit messages") + "    " + cmd.Render("kb commit commit"))
+	line("  " + dim.Render("AI code review") + "        " + cmd.Render("kb review run"))
+	line("")
+	line(dim.Render("50 free requests via KB Labs Gateway."))
+	line(dim.Render("Your code diffs are proxied to the LLM vendor — not stored."))
+	line("")
+	line("Run:  " + cmd.Render("kb-create . --llm"))
+	fmt.Printf("  %s%s\n", botLeft, rule)
 	fmt.Println()
 }
 
