@@ -93,6 +93,8 @@ export async function writeMarketplaceLock(
 
 /**
  * Add or update an entry in the marketplace lock.
+ * Preserves the existing `enabled` flag when the entry already exists —
+ * re-installing a disabled package must not silently re-enable it.
  */
 export async function addToMarketplaceLock(
   root: string,
@@ -101,7 +103,13 @@ export async function addToMarketplaceLock(
 ): Promise<MarketplaceLock> {
   const diag = new DiagnosticCollector();
   const existing = await readMarketplaceLock(root, diag) ?? createEmptyLock();
-  existing.installed[packageId] = entry;
+  const existingEntry = existing.installed[packageId];
+  existing.installed[packageId] = {
+    ...entry,
+    // Preserve enabled state from prior install — re-install must not override
+    // a user's explicit disable (e.g. parallel test disabling then re-installing).
+    enabled: existingEntry?.enabled ?? entry.enabled,
+  };
   await writeMarketplaceLock(root, existing);
   return existing;
 }

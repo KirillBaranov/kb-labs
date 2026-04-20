@@ -135,12 +135,40 @@ jobs:
       - name: Create report directory
         run: mkdir -p e2e/tests/report
 
-      - name: Run E2E suite
+      # Publisher is a one-shot container that must exit 0 before platform starts.
+      # Running it with `docker-compose run --rm` instead of including it in the
+      # main `up` avoids --abort-on-container-exit killing the platform when the
+      # publisher exits cleanly.
+      - name: Start Verdaccio registry
+        run: docker-compose -f e2e/docker-compose.yml up -d verdaccio
+        env:
+          COMPOSE_PROJECT_NAME: kb-e2e-ci
+
+      - name: Wait for Verdaccio to be healthy
         run: |
-          docker compose -f e2e/docker-compose.yml up \
+          echo "Waiting for Verdaccio..."
+          for i in $(seq 1 30); do
+            if docker-compose -f e2e/docker-compose.yml ps verdaccio | grep -q "healthy"; then
+              echo "Verdaccio is healthy after ${i}s"
+              break
+            fi
+            sleep 2
+          done
+        env:
+          COMPOSE_PROJECT_NAME: kb-e2e-ci
+
+      - name: Publish packages to Verdaccio
+        run: docker-compose -f e2e/docker-compose.yml run --rm publisher
+        env:
+          COMPOSE_PROJECT_NAME: kb-e2e-ci
+
+      - name: Run platform and tests
+        run: |
+          docker-compose -f e2e/docker-compose.yml up \
             --abort-on-container-exit \
             --exit-code-from tests \
-            --no-build
+            --no-build \
+            verdaccio platform tests
         env:
           COMPOSE_PROJECT_NAME: kb-e2e-ci
 

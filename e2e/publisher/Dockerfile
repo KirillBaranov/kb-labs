@@ -6,7 +6,11 @@
 
 FROM node:20-alpine
 
-RUN apk add --no-cache curl python3
+# pnpm is required for publishing — it writes sha512 integrity hashes that
+# pnpm on the consuming side (platform container) can verify.
+# npm publish writes sha1, which causes ERR_PNPM_TARBALL_INTEGRITY.
+RUN apk add --no-cache curl python3 && \
+    npm install -g pnpm@9 --quiet
 
 RUN mkdir -p /packages
 

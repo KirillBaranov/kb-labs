@@ -13,7 +13,8 @@ export default defineConfig({
     { name: 'services',     testMatch: 'specs/services/**/*.spec.ts' },
     { name: 'platform',     testMatch: 'specs/platform/**/*.spec.ts' },
     { name: 'gateway',      testMatch: 'specs/gateway/**/*.spec.ts' },
-    { name: 'marketplace',  testMatch: 'specs/marketplace/**/*.spec.ts' },
+    // marketplace install triggers pnpm add which can take 60-120s on first run
+    { name: 'marketplace',  testMatch: 'specs/marketplace/**/*.spec.ts', timeout: 120_000 },
     { name: 'workflows',    testMatch: 'specs/workflows/**/*.spec.ts' },
     { name: 'studio',       testMatch: 'specs/studio/**/*.spec.ts' },
     { name: 'adapters',     testMatch: 'specs/adapters/**/*.spec.ts' },

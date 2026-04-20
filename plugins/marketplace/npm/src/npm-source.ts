@@ -48,6 +48,10 @@ export class NpmPackageSource implements PackageSource {
     const spec = pkg.version === 'latest' ? pkg.id : `${pkg.id}@${pkg.version}`;
     const args = ['add', spec];
     if (opts?.dev) {args.push('--save-dev');}
+    // Bypass the pnpm workspace-root guard: kb-create projects are flat (single-package),
+    // so adding to the project root is intentional. Without this flag pnpm throws
+    // ERR_PNPM_ADDING_TO_ROOT when a pnpm-workspace.yaml exists in the project directory.
+    args.push('--ignore-workspace-root-check');
 
     try {
       await execa('pnpm', args, { cwd: root, timeout: 5 * 60 * 1000 });

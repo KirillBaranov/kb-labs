@@ -32,8 +32,8 @@ test('PD-02: services report consistent platform version', async ({ request }) =
     const res = await request.get(ep.url)
     expect(res.status()).toBe(200)
     const body = await res.json()
-    const version: string | undefined = body.version ?? body.data?.version
-    if (version) {
+    const version: unknown = body.version ?? body.data?.version
+    if (typeof version === 'string') {
       versions.push(version)
     }
   }
