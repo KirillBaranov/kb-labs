@@ -5,8 +5,8 @@ name: E2E Platform Tests
 # marketplace, workflows, Studio MF proxy, SSE/WS).
 #
 # Triggers:
+# - Every push to main (catches regressions in any part of the platform)
 # - After every binary release (canary on real published artifacts)
-# - After e2e/ spec changes land on main
 # - Weekly Monday 9am UTC
 # - Manual dispatch
 
@@ -16,9 +16,6 @@ on:
     types: [completed]
   push:
     branches: [main]
-    paths:
-      - 'e2e/**'
-      - '.github/workflows/e2e-platform.yml'
   workflow_dispatch:
   schedule:
     - cron: '0 9 * * 1'
