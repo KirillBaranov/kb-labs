@@ -55,6 +55,15 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
 
+      # ── Compile Go tools for linux/amd64 ────────────────────────────────────
+      # The committed binaries in tools/ are macOS builds.
+      # Rebuild for the CI runner before any pnpm script that invokes them.
+
+      - name: Build Go tools for linux (kb-devkit, kb-dev)
+        run: |
+          (cd tools/kb-devkit && CGO_ENABLED=0 go build -o kb-devkit .)
+          (cd tools/kb-dev    && CGO_ENABLED=0 go build -o kb-dev .)
+
       # ── Install + build monorepo ─────────────────────────────────────────
 
       - name: Install dependencies
