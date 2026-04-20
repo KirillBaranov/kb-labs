@@ -115,9 +115,22 @@ export class DiffProvider implements IDiffProvider {
             diff = headDiff;
           }
         } catch {
-          // File might be untracked - generate "new file" diff
-          // This is a simplification - in practice we'd read the file
-          return null;
+          // ignore — file may be untracked
+        }
+      }
+
+      // Last resort: untracked file — generate a "new file" diff via --no-index
+      if (!diff) {
+        try {
+          // git diff --no-index always exits with code 1 when files differ,
+          // so simpleGit throws — we catch and use the output from the error.
+          await this.git.diff(['--no-index', '--', '/dev/null', file]);
+        } catch (noIndexErr: unknown) {
+          const output =
+            (noIndexErr as { git?: { output?: string[] } })?.git?.output?.join('') ?? '';
+          if (output && output.includes('@@')) {
+            diff = output;
+          }
         }
       }
 
