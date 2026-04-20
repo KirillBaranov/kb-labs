@@ -148,7 +148,7 @@ jobs:
       # main `up` avoids --abort-on-container-exit killing the platform when the
       # publisher exits cleanly.
       - name: Start Verdaccio registry
-        run: docker-compose -f e2e/docker-compose.yml up -d verdaccio
+        run: docker compose -f e2e/docker-compose.yml up -d verdaccio
         env:
           COMPOSE_PROJECT_NAME: kb-e2e-ci
 
@@ -156,7 +156,7 @@ jobs:
         run: |
           echo "Waiting for Verdaccio..."
           for i in $(seq 1 30); do
-            if docker-compose -f e2e/docker-compose.yml ps verdaccio | grep -q "healthy"; then
+            if docker compose -f e2e/docker-compose.yml ps verdaccio | grep -q "healthy"; then
               echo "Verdaccio is healthy after ${i}s"
               break
             fi
@@ -166,13 +166,13 @@ jobs:
           COMPOSE_PROJECT_NAME: kb-e2e-ci
 
       - name: Publish packages to Verdaccio
-        run: docker-compose -f e2e/docker-compose.yml run --rm publisher
+        run: docker compose -f e2e/docker-compose.yml run --rm publisher
         env:
           COMPOSE_PROJECT_NAME: kb-e2e-ci
 
       - name: Run platform and tests
         run: |
-          docker-compose -f e2e/docker-compose.yml up \
+          docker compose -f e2e/docker-compose.yml up \
             --abort-on-container-exit \
             --exit-code-from tests \
             --no-build \
