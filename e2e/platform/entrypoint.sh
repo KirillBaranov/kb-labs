@@ -7,8 +7,14 @@ export PATH="$HOME/.local/bin:$PATH"
 
 # ── Step 1: Install KB Labs ────────────────────────────────────────────────
 echo "==> [1/3] Installing KB Labs..."
-curl -fsSL https://kblabs.ru/install.sh | sh
-export PATH="$HOME/.local/bin:$PATH"
+# Skip remote download when binaries are already present (pre-built Docker image).
+# Falls back to kblabs.ru install for bare-metal / manual runs.
+if command -v kb-create > /dev/null 2>&1 && command -v kb-dev > /dev/null 2>&1; then
+  echo "    Binaries already installed — skipping remote download"
+else
+  curl -fsSL https://kblabs.ru/install.sh | sh
+  export PATH="$HOME/.local/bin:$PATH"
+fi
 
 if ! command -v kb-create > /dev/null 2>&1; then
   echo "ERROR: kb-create not found after install"
