@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/mind-contracts",
   "description": "Public contracts for the KB Labs Mind plugin. Declares artifacts, commands, workflows, and API guarantees for consumers.",
-  "version": "2.63.0",
+  "version": "2.64.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

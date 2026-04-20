@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/core-platform",
   "description": "Pure abstractions for KB Labs platform with minimal dependencies.",
-  "version": "2.63.0",
+  "version": "2.64.0",
   "type": "module",
   "author": "KB Labs",
   "license": "MIT",
