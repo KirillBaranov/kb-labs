@@ -179,10 +179,14 @@ type nextStep struct {
 // buildNextSteps returns the ordered list of post-install commands to show.
 // Each step is only included when its prerequisites are actually satisfied,
 // so the user never sees a command that won't work.
-func buildNextSteps(r *installer.Result) []nextStep {
+func buildNextSteps(r *installer.Result, llmEnabled bool) []nextStep {
+	reviewCmd := "kb review run"
+	if llmEnabled {
+		reviewCmd = "kb review run --mode=full"
+	}
 	steps := []nextStep{
 		{"cd " + r.ProjectCWD, ""},
-		{"kb review run", "review your last diff"},
+		{reviewCmd, "review your last diff"},
 		{"kb commit commit", "generate a commit message"},
 	}
 
@@ -202,14 +206,14 @@ func buildNextSteps(r *installer.Result) []nextStep {
 	return steps
 }
 
-func printNextSteps(r *installer.Result) {
+func printNextSteps(r *installer.Result, llmEnabled bool) {
 	fmt.Println(styleDivider)
 	fmt.Println()
 	fmt.Println("  " + styleBold.Render("What's next"))
 	fmt.Println()
 
 	arrow := styleAccent.Render("→")
-	for _, s := range buildNextSteps(r) {
+	for _, s := range buildNextSteps(r, llmEnabled) {
 		fmt.Printf("  %s  %-26s%s\n", arrow, styleWhite.Render(s.cmd), styleMuted.Render(s.desc))
 	}
 	fmt.Println()
