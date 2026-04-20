@@ -2,13 +2,20 @@
 #
 # Service startup order:
 #   1. verdaccio   — local npm registry (always up)
-#   2. publisher   — publishes all @kb-labs/*.tgz tarballs to Verdaccio, exits 0
+#   2. publisher   — run separately via `docker-compose run --rm publisher` BEFORE main up
+#                    (one-shot container: publishes @kb-labs/*.tgz to Verdaccio, exits 0)
 #   3. platform    — installs KB Labs from Verdaccio, starts all services
 #   4. tests       — Playwright API tests run against the platform
 #
-# Usage:
-#   docker compose -f e2e/docker-compose.yml up --build --abort-on-container-exit
-#   docker compose -f e2e/docker-compose.yml run --rm tests pnpm test:services
+# Usage (two-phase):
+#   # Phase 1: start registry + publish packages
+#   docker-compose -f e2e/docker-compose.yml up -d verdaccio
+#   docker-compose -f e2e/docker-compose.yml run --rm publisher
+#
+#   # Phase 2: run the full suite
+#   docker-compose -f e2e/docker-compose.yml up \
+#     --abort-on-container-exit --exit-code-from tests --no-build \
+#     verdaccio platform tests
 
 services:
 
@@ -19,11 +26,11 @@ services:
       - ./verdaccio/config.yaml:/verdaccio/conf/config.yaml:ro
       - verdaccio-storage:/verdaccio/storage
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:4873/-/ping"]
-      interval: 3s
-      timeout: 5s
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4873/-/ping"]
+      interval: 5s
+      timeout: 10s
       retries: 20
-      start_period: 10s
+      start_period: 30s
 
   # ── Publish monorepo tarballs to Verdaccio ────────────────────────────────
   publisher:
@@ -44,8 +51,8 @@ services:
       context: ../
       dockerfile: e2e/platform/Dockerfile
     depends_on:
-      publisher:
-        condition: service_completed_successfully
+      verdaccio:
+        condition: service_healthy
     ports:
       - "4000:4000"   # gateway
       - "5050:5050"   # rest-api

@@ -24,7 +24,10 @@ async function getFirstWorkflow(
   if (!res.ok()) return undefined
   const body = await res.json()
   const list: WorkflowEntry[] = body.data?.workflows ?? body.data ?? body.workflows ?? []
-  return list[0]
+  // Only use e2e-hello — the lightweight smoke workflow scaffolded by the platform
+  // entrypoint. Other catalog workflows require external deps (LLM, Docker, etc.)
+  // and go to DLQ in the minimal E2E environment, causing WR-05 to time out.
+  return list.find(w => (w.name ?? w.id) === 'e2e-hello')
 }
 
 async function startRun(
@@ -116,8 +119,9 @@ test('WR-06: POST cancel — accepted for a running or pending run', async ({ re
   const runId = await startRun(request, wf!.id ?? wf!.name!)
   test.skip(!runId, 'could not start run')
 
-  // Cancel immediately while run may still be pending/running
-  const cancel = await request.post(`${WORKFLOW}/api/v1/workflows/runs/${runId}/cancel`)
+  // Cancel immediately while run may still be pending/running.
+  // Route is POST /api/v1/runs/:runId/cancel (no /workflows prefix despite the contracts constant).
+  const cancel = await request.post(`${WORKFLOW}/api/v1/runs/${runId}/cancel`)
   // 200 = cancelled, 409 = already terminal (completed before we could cancel) — both valid
   expect([200, 409]).toContain(cancel.status())
 

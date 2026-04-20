@@ -50,8 +50,15 @@ test('MS-02: POST /workspace/sync — idempotent (second call ≤ first)', async
 
   // After the first sync the workspace is already registered — second sync
   // should find fewer (or the same number of) newly added entries.
-  const firstAdded: number = firstData.added ?? firstData.entries?.length ?? 0
-  const secondAdded: number = secondData.added ?? secondData.entries?.length ?? 0
+  // `added` in SyncResult is an array of objects, not a number.
+  const toCount = (d: { added?: unknown; total?: unknown; entries?: unknown }) =>
+    Array.isArray(d.added) ? d.added.length
+    : typeof d.added === 'number' ? d.added
+    : Array.isArray(d.entries) ? d.entries.length
+    : typeof d.total === 'number' ? d.total
+    : 0
+  const firstAdded = toCount(firstData)
+  const secondAdded = toCount(secondData)
   expect(secondAdded).toBeLessThanOrEqual(firstAdded)
 })
 

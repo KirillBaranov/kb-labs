@@ -1,10 +1,19 @@
 #!/bin/sh
-# Publish all @kb-labs/*.tgz tarballs to Verdaccio.
+# Publish all @kb-labs/*.tgz tarballs to Verdaccio using pnpm.
+# pnpm publish writes sha512 integrity hashes; npm publish writes sha1,
+# which causes ERR_PNPM_TARBALL_INTEGRITY on the consuming side.
+#
+# Idempotent: runs safely on warm Verdaccio volumes (packages already exist).
 # Runs once and exits 0 — Docker Compose waits for this to complete
 # before starting the platform container.
 set -e
 
 REGISTRY="${VERDACCIO_URL:-http://verdaccio:4873}"
+REGISTRY_HOST="${REGISTRY#http://}"
+REGISTRY_HOST="${REGISTRY_HOST#https://}"
+
+USER="e2e"
+PASS="e2e123"
 
 echo "==> Waiting for Verdaccio at $REGISTRY ..."
 ATTEMPTS=0
@@ -18,32 +27,40 @@ until curl -sf "$REGISTRY/-/ping" > /dev/null 2>&1; do
 done
 echo "    Verdaccio ready after ${ATTEMPTS}s"
 
-# Configure npm registry
-npm config set registry "$REGISTRY"
+# Get auth token — try creating user first, fall back to basic-auth login.
+get_token() {
+  # 1. Try to create user (succeeds on fresh Verdaccio)
+  CREATE_RESP=$(curl -sf -X PUT \
+    -H "Content-Type: application/json" \
+    -d "{\"_id\":\"org.couchdb.user:${USER}\",\"name\":\"${USER}\",\"password\":\"${PASS}\",\"type\":\"user\",\"roles\":[],\"date\":\"2024-01-01T00:00:00.000Z\"}" \
+    "$REGISTRY/-/user/org.couchdb.user:${USER}" 2>/dev/null || echo "{}")
+  TOKEN=$(echo "$CREATE_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('token',''))" 2>/dev/null || echo "")
+  [ -n "$TOKEN" ] && echo "$TOKEN" && return
 
-# Create a publish user (non-interactive via Verdaccio REST API).
-# Ignore failures — user may already exist on a warm Docker layer cache.
-curl -sf -X PUT \
-  -H "Content-Type: application/json" \
-  -d "{\"_id\":\"org.couchdb.user:e2e\",\"name\":\"e2e\",\"password\":\"e2e123\",\"type\":\"user\",\"roles\":[],\"date\":\"2024-01-01T00:00:00.000Z\"}" \
-  "$REGISTRY/-/user/org.couchdb.user:e2e" \
-  -o /tmp/verdaccio-auth.json 2>/dev/null || true
+  # 2. User already exists — re-login to get a token
+  LOGIN_RESP=$(curl -sf -u "${USER}:${PASS}" \
+    -X PUT \
+    -H "Content-Type: application/json" \
+    -d "{\"name\":\"${USER}\",\"password\":\"${PASS}\"}" \
+    "$REGISTRY/-/user/org.couchdb.user:${USER}" 2>/dev/null || echo "{}")
+  TOKEN=$(echo "$LOGIN_RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('token',''))" 2>/dev/null || echo "")
+  echo "$TOKEN"
+}
 
-# Extract token from Verdaccio response
-TOKEN=$(cat /tmp/verdaccio-auth.json 2>/dev/null | \
-  python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('token',''))" 2>/dev/null || echo "")
+TOKEN=$(get_token)
 
 if [ -n "$TOKEN" ]; then
-  # Set auth token for registry
-  REGISTRY_HOST="${REGISTRY#http://}"
-  REGISTRY_HOST="${REGISTRY_HOST#https://}"
-  npm config set "//${REGISTRY_HOST}/:_authToken" "$TOKEN"
+  pnpm config set "//${REGISTRY_HOST}/:_authToken" "$TOKEN" 2>/dev/null || true
   echo "    Auth token acquired"
 else
-  echo "    No token returned — attempting anonymous publish (requires publish:\$all in Verdaccio config)"
+  # Last resort: use basic-auth (base64-encoded user:pass) in pnpm config
+  B64=$(echo -n "${USER}:${PASS}" | base64)
+  pnpm config set "//${REGISTRY_HOST}/:_auth" "$B64" 2>/dev/null || true
+  pnpm config set "//${REGISTRY_HOST}/:username" "$USER" 2>/dev/null || true
+  echo "    Using basic-auth (no token available)"
 fi
 
-echo "==> Publishing packages..."
+echo "==> Publishing packages (pnpm publish for sha512 integrity)..."
 PUBLISHED=0
 FAILED=0
 
@@ -51,16 +68,18 @@ for tarball in /packages/*.tgz; do
   [ -f "$tarball" ] || continue
   pkg=$(basename "$tarball")
 
-  # Publish — ignore 409 Conflict (package already exists)
-  OUTPUT=$(npm publish "$tarball" --registry "$REGISTRY" --no-git-checks 2>&1) && {
+  # pnpm publish accepts tarball paths; --no-git-checks skips git workspace check
+  OUTPUT=$(pnpm publish "$tarball" --registry "$REGISTRY" --no-git-checks 2>&1) && {
     echo "  ✓ $pkg"
     PUBLISHED=$((PUBLISHED + 1))
   } || {
-    if echo "$OUTPUT" | grep -q "409\|already exists\|EPUBLISHCONFLICT"; then
+    # Treat "already exists" as success (idempotent publish)
+    if echo "$OUTPUT" | grep -qi "409\|E409\|already present\|already exists\|EPUBLISHCONFLICT\|is already published"; then
       echo "  ~ $pkg (already exists — skipped)"
       PUBLISHED=$((PUBLISHED + 1))
     else
-      echo "  ✗ $pkg — $OUTPUT"
+      echo "  ✗ $pkg"
+      echo "$OUTPUT" | grep -v "^npm notice" | head -3 | sed 's/^/    /'
       FAILED=$((FAILED + 1))
     fi
   }

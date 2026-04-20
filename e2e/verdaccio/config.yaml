@@ -22,13 +22,14 @@ uplinks:
     cache: true
 
 packages:
-  # Local packages served from Verdaccio, with npmjs fallback for
-  # any version that was not published yet (shouldn't happen in E2E).
+  # Local packages — served ONLY from Verdaccio, no proxy to npmjs.
+  # All @kb-labs/* are published by the publisher container before
+  # the platform installs. NO proxy so verdaccio doesn't see them
+  # as "already present" via npmjs.org uplink.
   '@kb-labs/*':
     access: $all
     publish: $all
     unpublish: $all
-    proxy: npmjs
 
   # Everything else transparently from npm
   '**':
