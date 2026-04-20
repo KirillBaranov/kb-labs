@@ -214,7 +214,8 @@ func printNextSteps(r *installer.Result, llmEnabled bool) {
 
 	arrow := styleAccent.Render("→")
 	for _, s := range buildNextSteps(r, llmEnabled) {
-		fmt.Printf("  %s  %-32s%s\n", arrow, styleWhite.Render(s.cmd), styleMuted.Render(s.desc))
+		padded := fmt.Sprintf("%-32s", s.cmd)
+		fmt.Printf("  %s  %s%s\n", arrow, styleWhite.Render(padded), styleMuted.Render(s.desc))
 	}
 	fmt.Println()
 }
