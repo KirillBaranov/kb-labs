@@ -127,7 +127,7 @@ export function getPlatform(): Promise<KBPlatform | null> {
           source: 'kb-site',
           deviceId: creds.deviceId,
         },
-        onError: (err) => {
+        onError: (err: Error) => {
           // Token expired (15 min TTL) — reset so next track() re-authenticates
           if (err.message.includes('401')) {
             _initPromise = null;
