@@ -163,6 +163,7 @@ func printLLMRecommendation() {
 	line(dim.Render("Your code diffs are proxied to the LLM vendor — not stored."))
 	line("")
 	line("Run:  " + cmd.Render("kb-create . --llm"))
+	line(dim.Render("Docs: https://docs.kblabs.ru/adapters/built-in#llm-illm"))
 	fmt.Printf("  %s%s\n", botLeft, rule)
 	fmt.Println()
 }
