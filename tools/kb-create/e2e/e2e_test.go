@@ -474,15 +474,20 @@ func TestFirstCommitPromptShown(t *testing.T) {
 	}
 
 	// Install must complete successfully.
-	if !strings.Contains(out, "installed successfully") {
+	if !strings.Contains(out, "KB Labs installed successfully") {
 		t.Errorf("install banner missing:\n%s", out)
 	}
 
-	// Post-install demo is non-fatal: it only runs when kb is already on PATH
-	// (which may not be the case in clean CI environments). Accept either the
-	// guidance text ("Try it now" / "kb review run") or bare install output.
-	hasGuidance := strings.Contains(out, "Try it now") || strings.Contains(out, "kb review run")
-	t.Logf("demo guidance shown: %v", hasGuidance)
+	// For an untracked-only repo (reviewableCount==0) the demo shows "Try it now:"
+	// with kb review / kb commit instructions.
+	// This requires kb to be on PATH — the installer writes it to ~/.local/bin
+	// which must be in the test process PATH (true on dev and GitHub Actions ubuntu).
+	if !strings.Contains(out, "Try it now") {
+		t.Errorf("expected 'Try it now' hint for untracked-only repo:\n%s", out)
+	}
+	if !strings.Contains(out, "kb review run") {
+		t.Errorf("expected 'kb review run' in demo hints:\n%s", out)
+	}
 }
 
 // ── update: fresh install → update → already up to date ──────────────────────
@@ -934,19 +939,21 @@ func TestDemoReviewSkipsUntrackedOnly(t *testing.T) {
 	}
 
 	// Install must succeed.
-	if !strings.Contains(out, "installed successfully") {
+	if !strings.Contains(out, "KB Labs installed successfully") {
 		t.Fatalf("install banner missing:\n%s", out)
 	}
 
-	// When only untracked files exist, the live review must NOT run
-	// (it would fail because there is nothing for git diff to show).
-	if strings.Contains(out, "Running") || strings.Contains(out, "Analyzing") {
-		t.Errorf("demo review ran despite only untracked files being present:\n%s", out)
+	// For an untracked-only repo (reviewableCount==0) the demo skips the live
+	// review and instead shows "Try it now:" instructions.
+	// Verify the live review did NOT run (it has nothing to diff).
+	if strings.Contains(out, "Found") && strings.Contains(out, "change") && strings.Contains(out, "review looks like") {
+		t.Errorf("live review ran despite only untracked files:\n%s", out)
 	}
 
-	// Post-install guidance ("Try it now" / "kb review run") appears only when
-	// kb is already on PATH. It is non-fatal when the demo is skipped.
-	t.Logf("guidance shown: %v", strings.Contains(out, "Try it now") || strings.Contains(out, "kb review run"))
+	// The "Try it now" instructions must appear (demo path for reviewable==0).
+	if !strings.Contains(out, "Try it now") {
+		t.Errorf("expected 'Try it now' hint for untracked-only repo:\n%s", out)
+	}
 }
 
 // ── demo LLM hint shown after heuristic finds 0 issues ───────────────────────
