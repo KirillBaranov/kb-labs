@@ -82,9 +82,6 @@ func RunFirstDemo(projectDir string, llmEnabled bool) error {
 	_ = reviewCmd.Run() // non-fatal
 
 	fmt.Println()
-	fmt.Println("  Next:")
-	fmt.Println("    kb commit commit  — generate a commit message for these changes")
-	fmt.Println()
 
 	// If heuristic review ran and found nothing, nudge towards LLM.
 	// "Engines:" being empty in the output means no linter ran.
