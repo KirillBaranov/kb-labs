@@ -11,11 +11,8 @@
 # Run:    docker run --rm -p 4000:4000 -p 5050:5050 kb-e2e-platform
 
 # ── Stage 1: compile Go binaries ──────────────────────────────────────────
-FROM golang:1.24-bookworm AS go-builder
+FROM golang:1.26-bookworm AS go-builder
 
-# Use local toolchain so go.mod "go 1.25.0" in kb-dev doesn't trigger an
-# auto-download of a newer toolchain (which is unavailable in the build env).
-ENV GOTOOLCHAIN=local
 ENV CGO_ENABLED=0
 
 WORKDIR /src
