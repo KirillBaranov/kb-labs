@@ -1,12 +1,13 @@
 name: E2E Platform Tests
 
-# Full platform scenario tests: install from kblabs.ru → start all services →
+# Full platform scenario tests: build from source → publish to Verdaccio →
+# kb-create installs (full user flow simulation) → start all services →
 # run Playwright API tests (services ready, plugins loaded, gateway auth,
 # marketplace, workflows, Studio MF proxy, SSE/WS).
 #
 # Triggers:
-# - Every push to main (catches regressions in any part of the platform)
-# - After every binary release (canary on real published artifacts)
+# - Every push to main (pre-release validation)
+# - After every binary release
 # - Weekly Monday 9am UTC
 # - Manual dispatch
 
@@ -28,11 +29,52 @@ jobs:
     name: Platform E2E (Docker Compose)
     runs-on: ubuntu-latest
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
-    timeout-minutes: 40
+    timeout-minutes: 60
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      # ── Build toolchain ──────────────────────────────────────────────────
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/kb-create/go.mod
+          cache-dependency-path: |
+            tools/kb-create/go.sum
+            tools/kb-dev/go.sum
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      # ── Install + build monorepo ─────────────────────────────────────────
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build all packages (topological order)
+        run: pnpm build
+        # kb-devkit run build — respects DTS dependency chains
+
+      # ── Pack packages for Verdaccio ──────────────────────────────────────
+
+      - name: Pack @kb-labs/* packages
+        run: bash e2e/scripts/pack-all.sh
+        # Outputs to e2e/packages/*.tgz — baked into publisher Docker image
+
+      - name: List packed packages
+        run: ls -lh e2e/packages/*.tgz | wc -l && echo "tarballs packed"
+
+      # ── Docker layer caching ─────────────────────────────────────────────
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -41,8 +83,15 @@ jobs:
         uses: actions/cache@v4
         with:
           path: /tmp/.buildx-cache-platform
-          key: buildx-platform-${{ hashFiles('e2e/platform/**', 'e2e/install-flow/**') }}
+          key: buildx-platform-${{ hashFiles('e2e/platform/**', 'tools/kb-create/**', 'tools/kb-dev/**') }}
           restore-keys: buildx-platform-
+
+      - name: Cache Docker layers (publisher)
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache-publisher
+          key: buildx-publisher-${{ hashFiles('e2e/publisher/**', 'e2e/packages/**') }}
+          restore-keys: buildx-publisher-
 
       - name: Cache Docker layers (tests)
         uses: actions/cache@v4
@@ -50,6 +99,8 @@ jobs:
           path: /tmp/.buildx-cache-tests
           key: buildx-tests-${{ hashFiles('e2e/tests/package.json') }}
           restore-keys: buildx-tests-
+
+      # ── Build Docker images ──────────────────────────────────────────────
 
       - name: Build platform image
         run: |
@@ -60,6 +111,16 @@ jobs:
             -t kb-e2e-ci-platform:latest \
             -f e2e/platform/Dockerfile .
 
+      - name: Build publisher image
+        run: |
+          docker buildx build \
+            --cache-from type=local,src=/tmp/.buildx-cache-publisher \
+            --cache-to   type=local,dest=/tmp/.buildx-cache-publisher,mode=max \
+            --load \
+            -t kb-e2e-ci-publisher:latest \
+            -f e2e/publisher/Dockerfile \
+            e2e/
+
       - name: Build tests image
         run: |
           docker buildx build \
@@ -68,6 +129,8 @@ jobs:
             --load \
             -t kb-e2e-ci-tests:latest \
             e2e/tests
+
+      # ── Run E2E suite ────────────────────────────────────────────────────
 
       - name: Create report directory
         run: mkdir -p e2e/tests/report
@@ -80,6 +143,8 @@ jobs:
             --no-build
         env:
           COMPOSE_PROJECT_NAME: kb-e2e-ci
+
+      # ── Artifacts + summary ──────────────────────────────────────────────
 
       - name: Upload Playwright report
         if: always()

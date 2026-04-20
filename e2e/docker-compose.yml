@@ -1,24 +1,61 @@
 # KB Labs E2E — Docker Compose
 #
-# Spins up the full platform (installed from kblabs.ru) and runs Playwright
-# tests against it. No external infra needed — state-daemon is in-memory.
+# Service startup order:
+#   1. verdaccio   — local npm registry (always up)
+#   2. publisher   — publishes all @kb-labs/*.tgz tarballs to Verdaccio, exits 0
+#   3. platform    — installs KB Labs from Verdaccio, starts all services
+#   4. tests       — Playwright API tests run against the platform
 #
 # Usage:
 #   docker compose -f e2e/docker-compose.yml up --build --abort-on-container-exit
 #   docker compose -f e2e/docker-compose.yml run --rm tests pnpm test:services
 
 services:
+
+  # ── Local npm registry ────────────────────────────────────────────────────
+  verdaccio:
+    image: verdaccio/verdaccio:5
+    volumes:
+      - ./verdaccio/config.yaml:/verdaccio/conf/config.yaml:ro
+      - verdaccio-storage:/verdaccio/storage
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4873/-/ping"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+
+  # ── Publish monorepo tarballs to Verdaccio ────────────────────────────────
+  publisher:
+    image: kb-e2e-ci-publisher:latest
+    build:
+      context: ./
+      dockerfile: publisher/Dockerfile
+    depends_on:
+      verdaccio:
+        condition: service_healthy
+    environment:
+      VERDACCIO_URL: http://verdaccio:4873
+
+  # ── Full KB Labs platform (installed from Verdaccio) ──────────────────────
   platform:
     image: kb-e2e-ci-platform:latest
     build:
       context: ../
       dockerfile: e2e/platform/Dockerfile
+    depends_on:
+      publisher:
+        condition: service_completed_successfully
     ports:
       - "4000:4000"   # gateway
       - "5050:5050"   # rest-api
       - "5070:5070"   # marketplace
       - "7777:7777"   # state-daemon
       - "7778:7778"   # workflow
+    environment:
+      # Point pnpm at Verdaccio so any pnpm operations during bootstrap
+      # also use the local registry (kb-create passes --registry itself).
+      NPM_CONFIG_REGISTRY: http://verdaccio:4873
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:4000/ready"]
       start_period: 180s
@@ -26,6 +63,7 @@ services:
       timeout: 5s
       retries: 40
 
+  # ── Playwright E2E test suite ─────────────────────────────────────────────
   tests:
     image: kb-e2e-ci-tests:latest
     build:
@@ -42,3 +80,6 @@ services:
       CHECKLIST_OUT:   /tests/report/CHECKLIST.md
     volumes:
       - ./tests/report:/tests/report
+
+volumes:
+  verdaccio-storage:

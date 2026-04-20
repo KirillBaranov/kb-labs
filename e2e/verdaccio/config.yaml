@@ -1,0 +1,47 @@
+# Verdaccio — local npm registry for E2E tests
+#
+# All @kb-labs/* packages are published here from the monorepo build.
+# All other packages proxy transparently to npmjs.org.
+#
+# Auth: $all includes $anonymous → no credentials needed to publish.
+# This is intentional — Verdaccio runs in an isolated Docker network.
+
+storage: /verdaccio/storage
+
+auth:
+  htpasswd:
+    file: /verdaccio/storage/htpasswd
+    max_users: 1000
+
+uplinks:
+  npmjs:
+    url: https://registry.npmjs.org
+    timeout: 60s
+    max_fails: 5
+    fail_timeout: 5m
+    cache: true
+
+packages:
+  # Local packages served from Verdaccio, with npmjs fallback for
+  # any version that was not published yet (shouldn't happen in E2E).
+  '@kb-labs/*':
+    access: $all
+    publish: $all
+    unpublish: $all
+    proxy: npmjs
+
+  # Everything else transparently from npm
+  '**':
+    access: $all
+    publish: $all
+    proxy: npmjs
+
+log:
+  type: stdout
+  format: pretty
+  level: warn
+
+server:
+  keepAliveTimeout: 60
+
+max_body_size: 200mb
