@@ -38,7 +38,6 @@ function renderWithCode(text: string, codeClassName: string) {
 
 const INSTALL_COMMANDS = {
   unix: 'curl -fsSL https://kblabs.ru/install.sh | sh',
-  windows: 'iwr https://kblabs.ru/install.ps1 | iex',
 };
 
 // Fallback used when the GitHub API is unreachable at build/render time.
@@ -77,7 +76,7 @@ export default async function InstallPage({ params }: Props) {
   const PREREQUISITES = t.raw('install.prerequisites.items') as string[];
   const latestTag = await getLatestBinariesTag();
   const pinUnix = `curl -fsSL https://kblabs.ru/install.sh | sh -s -- --version ${latestTag}`;
-  const pinWindows = `iwr https://kblabs.ru/install.ps1 -OutFile install.ps1; .\\install.ps1 -Version ${latestTag}`;
+
   const checksumCmd = `curl -fsSL https://github.com/KirillBaranov/kb-labs/releases/download/${latestTag}/checksums.txt | grep kb-create-linux-amd64`;
 
   // Step 01 is install — platform-dependent. Steps 02+ are universal.
@@ -152,10 +151,7 @@ export default async function InstallPage({ params }: Props) {
             <h2>{t('install.pinVersion.title')}</h2>
             <p>{t('install.pinVersion.description')}</p>
             <PlatformCommand
-              commands={{
-                unix: pinUnix,
-                windows: pinWindows,
-              }}
+              commands={{ unix: pinUnix }}
             />
             <h3 className={s.subhead}>{t('install.pinVersion.checksumTitle')}</h3>
             <div className={s.codeWrap}>

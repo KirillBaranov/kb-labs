@@ -514,7 +514,7 @@
       "items": [
         "Node.js 20 или новее",
         "pnpm (установка: npm install -g pnpm)",
-        "macOS или Linux (Windows поддерживается через install.ps1)"
+        "macOS или Linux"
       ]
     },
     "quickInstall": {
@@ -577,7 +577,8 @@
         },
         {
           "platform": "Windows (x86_64)",
-          "file": "kb-create-windows-amd64.exe"
+          "file": "kb-create-windows-amd64.exe",
+          "unsupported": true
         }
       ]
     },
@@ -2319,7 +2320,7 @@
     },
     "download": {
       "title": "Скачать",
-      "description": "Готовые бинарники для macOS, Linux и Windows. SHA-256 есть в каждом релизе.",
+      "description": "Готовые бинарники для macOS, Linux. SHA-256 есть в каждом релизе.",
       "colPlatform": "Платформа",
       "colBinary": "Бинарник",
       "colDownload": "Скачать",
@@ -2466,7 +2467,7 @@
     },
     "download": {
       "title": "Скачать",
-      "description": "Готовые бинарники для macOS, Linux и Windows. SHA-256 есть в каждом релизе.",
+      "description": "Готовые бинарники для macOS, Linux. SHA-256 есть в каждом релизе.",
       "colPlatform": "Платформа",
       "colBinary": "Бинарник",
       "colDownload": "Скачать",
@@ -3148,7 +3149,7 @@
     },
     "download": {
       "title": "Скачать",
-      "description": "Готовые бинарники для macOS, Linux и Windows. SHA-256 чексуммы включены в каждый релиз.",
+      "description": "Готовые бинарники для macOS, Linux. SHA-256 чексуммы включены в каждый релиз.",
       "colPlatform": "Платформа",
       "colBinary": "Бинарник",
       "colDownload": "Скачать",
@@ -3296,7 +3297,7 @@
     },
     "download": {
       "title": "Скачать",
-      "description": "Готовые бинарники для macOS, Linux и Windows. SHA-256 чексуммы включены в каждый релиз.",
+      "description": "Готовые бинарники для macOS, Linux. SHA-256 чексуммы включены в каждый релиз.",
       "colPlatform": "Платформа",
       "colBinary": "Бинарник",
       "colDownload": "Скачать",

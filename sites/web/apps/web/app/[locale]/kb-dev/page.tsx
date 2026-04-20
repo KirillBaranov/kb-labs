@@ -47,7 +47,7 @@ export default async function KbDevPage({ params }: Props) {
           <h1>{t('kbDev.hero.title')}</h1>
           <p>{t('kbDev.hero.description')}</p>
           <div className={s.heroCta}>
-            <PlatformCommand commands={{ unix: t('kbDev.hero.installCmd'), windows: 'iwr https://kblabs.ru/kb-dev/install.ps1 | iex' }} />
+            <PlatformCommand commands={{ unix: t('kbDev.hero.installCmd') }} />
             <a
               className="btn"
               href="https://docs.kblabs.ru/services/kb-dev"

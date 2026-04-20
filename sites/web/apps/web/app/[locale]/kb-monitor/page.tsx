@@ -46,7 +46,7 @@ export default async function KbMonitorPage({ params }: Props) {
           <h1>{t('kbMonitor.hero.title')}</h1>
           <p>{t('kbMonitor.hero.description')}</p>
           <div className={s.heroCta}>
-            <PlatformCommand commands={{ unix: t('kbMonitor.hero.installCmd'), windows: 'iwr https://kblabs.ru/kb-monitor/install.ps1 | iex' }} />
+            <PlatformCommand commands={{ unix: t('kbMonitor.hero.installCmd') }} />
             <a
               className="btn"
               href="https://docs.kblabs.ru/services/kb-monitor"
