@@ -157,7 +157,6 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	})
 
 	printSuccess(result)
-	printDataConsent(sel.TelemetryEnabled, flagLLM)
 
 	// Write project .kb/kb.config.jsonc — after install so we can include
 	// Gateway credentials (demo mode) obtained from the already-registered
@@ -168,15 +167,14 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		Plugins:     sel.Plugins,
 		DemoMode:    sel.DemoMode,
 	}
-	// Register KB Labs Gateway credentials for LLM access (50 free requests).
-	// LLM requires explicit user consent — --yes does NOT imply LLM opt-in.
-	// Wizard flow uses the explicit consent stage answer.
-	// Use `kb-create . --llm` for a silent install with LLM enabled.
-	wantsLLM := sel.Consent == types.ConsentDemo || flagLLM
-	if sel.Consent == "" && !flagLLM {
-		// No explicit consent (wizard skipped or --yes without --llm) — no LLM.
-		wantsLLM = false
-	}
+	// LLM requires explicit user consent. Sources (in priority order):
+	//   1. --llm flag (silent install)
+	//   2. Wizard LLM toggle (sel.LLMEnabled set by wizard)
+	//   3. Demo consent (ConsentDemo implies LLM via KB Labs Gateway)
+	// --yes without --llm → no LLM (never auto-register).
+	wantsLLM := flagLLM || sel.LLMEnabled || sel.Consent == types.ConsentDemo
+
+	printDataConsent(sel.TelemetryEnabled, wantsLLM)
 	if wantsLLM {
 		creds, credErr := tc.EnsureRegistered()
 		if credErr != nil {
