@@ -1,4 +1,6 @@
 #!/bin/sh
+# Platform entrypoint: installs KB Labs, scaffolds e2e workflows, starts services.
+# Waits for /health (gateway process) then /ready (all upstreams including REST).
 set -e
 
 export PATH="$HOME/.local/bin:$PATH"
