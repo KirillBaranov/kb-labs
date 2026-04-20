@@ -47,7 +47,7 @@ export default async function KbDevkitPage({ params }: Props) {
           <h1>{t('kbDevkit.hero.title')}</h1>
           <p>{t('kbDevkit.hero.description')}</p>
           <div className={s.heroCta}>
-            <PlatformCommand commands={{ unix: t('kbDevkit.hero.installCmd'), windows: 'iwr https://kblabs.ru/kb-devkit/install.ps1 | iex' }} />
+            <PlatformCommand commands={{ unix: t('kbDevkit.hero.installCmd') }} />
             <a
               className="btn"
               href="https://docs.kblabs.ru/services/kb-devkit"

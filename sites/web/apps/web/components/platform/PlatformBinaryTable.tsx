@@ -6,6 +6,8 @@ import s from './platform.module.css';
 export interface BinaryEntry {
   platform: string;
   file: string;
+  /** When true, download link is hidden and platform is shown as not supported */
+  unsupported?: boolean;
 }
 
 interface Props {
@@ -49,24 +51,25 @@ export function PlatformBinaryTable({
         <span>{colDownload}</span>
       </div>
       {binaries.map((item) => {
-        const highlighted = os !== null && matchesOS(item.file, os);
+        const highlighted = os !== null && !item.unsupported && matchesOS(item.file, os);
         return (
           <div
             key={item.file}
-            className={[s.tableRow, highlighted ? s.tableRowHighlighted : ''].filter(Boolean).join(' ')}
+            className={[s.tableRow, highlighted ? s.tableRowHighlighted : '', item.unsupported ? s.tableRowUnsupported : ''].filter(Boolean).join(' ')}
           >
             <span>
               {highlighted && <span className={s.platformBadge}>your platform</span>}
               {item.platform}
             </span>
             <code>{item.file}</code>
-            <a
-              href={`${baseUrl}/${item.file}`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {downloadLabel}
-            </a>
+            {item.unsupported
+              ? <span className={s.unsupportedLabel}>not supported yet</span>
+              : (
+                <a href={`${baseUrl}/${item.file}`} target="_blank" rel="noopener noreferrer">
+                  {downloadLabel}
+                </a>
+              )
+            }
           </div>
         );
       })}

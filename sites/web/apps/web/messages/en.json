@@ -514,7 +514,7 @@
       "items": [
         "Node.js 20 or newer",
         "pnpm (install with: npm install -g pnpm)",
-        "macOS or Linux (Windows supported via install.ps1)"
+        "macOS or Linux"
       ]
     },
     "quickInstall": {
@@ -577,7 +577,8 @@
         },
         {
           "platform": "Windows (x86_64)",
-          "file": "kb-create-windows-amd64.exe"
+          "file": "kb-create-windows-amd64.exe",
+          "unsupported": true
         }
       ]
     },
@@ -2319,7 +2320,7 @@
     },
     "download": {
       "title": "Download",
-      "description": "Pre-built binaries for macOS, Linux, and Windows. SHA-256 checksums included in every release.",
+      "description": "Pre-built binaries for macOS, Linux. SHA-256 checksums included in every release.",
       "colPlatform": "Platform",
       "colBinary": "Binary",
       "colDownload": "Download",
@@ -2466,7 +2467,7 @@
     },
     "download": {
       "title": "Download",
-      "description": "Pre-built binaries for macOS, Linux, and Windows. SHA-256 checksums included in every release.",
+      "description": "Pre-built binaries for macOS, Linux. SHA-256 checksums included in every release.",
       "colPlatform": "Platform",
       "colBinary": "Binary",
       "colDownload": "Download",
@@ -3148,7 +3149,7 @@
     },
     "download": {
       "title": "Download",
-      "description": "Pre-built binaries for macOS, Linux, and Windows. SHA-256 checksums included in every release.",
+      "description": "Pre-built binaries for macOS, Linux. SHA-256 checksums included in every release.",
       "colPlatform": "Platform",
       "colBinary": "Binary",
       "colDownload": "Download",
@@ -3296,7 +3297,7 @@
     },
     "download": {
       "title": "Download",
-      "description": "Pre-built binaries for macOS, Linux, and Windows. SHA-256 checksums included in every release.",
+      "description": "Pre-built binaries for macOS, Linux. SHA-256 checksums included in every release.",
       "colPlatform": "Platform",
       "colBinary": "Binary",
       "colDownload": "Download",

@@ -89,6 +89,16 @@
   background: #f0f5ff;
 }
 
+.tableRowUnsupported {
+  opacity: 0.5;
+}
+
+.unsupportedLabel {
+  font-size: 0.75rem;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 .platformBadge {
   display: inline-flex;
   font-size: 0.65rem;
