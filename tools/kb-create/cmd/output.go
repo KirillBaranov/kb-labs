@@ -187,6 +187,7 @@ func buildNextSteps(r *installer.Result, llmEnabled bool) []nextStep {
 	steps := []nextStep{
 		{"cd " + r.ProjectCWD, ""},
 		{reviewCmd, "review your last diff"},
+		{"kb commit commit", "generate a commit message"},
 	}
 
 	// Suggest service startup after the user has seen the first results.
