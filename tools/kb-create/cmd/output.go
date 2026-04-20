@@ -187,7 +187,6 @@ func buildNextSteps(r *installer.Result, llmEnabled bool) []nextStep {
 	steps := []nextStep{
 		{"cd " + r.ProjectCWD, ""},
 		{reviewCmd, "review your last diff"},
-		{"kb commit commit", "generate a commit message"},
 	}
 
 	// Suggest service startup after the user has seen the first results.
@@ -214,7 +213,7 @@ func printNextSteps(r *installer.Result, llmEnabled bool) {
 
 	arrow := styleAccent.Render("→")
 	for _, s := range buildNextSteps(r, llmEnabled) {
-		fmt.Printf("  %s  %-26s%s\n", arrow, styleWhite.Render(s.cmd), styleMuted.Render(s.desc))
+		fmt.Printf("  %s  %-32s%s\n", arrow, styleWhite.Render(s.cmd), styleMuted.Render(s.desc))
 	}
 	fmt.Println()
 }
