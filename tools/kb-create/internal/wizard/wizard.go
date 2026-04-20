@@ -195,6 +195,7 @@ type wizardModel struct {
 	consent          types.ConsentChoice
 	showAPIKeyInput  bool
 	telemetryEnabled bool
+	llmEnabled       bool
 }
 
 func newModel(m *manifest.Manifest, opts WizardOptions) wizardModel {
@@ -250,6 +251,7 @@ func newModel(m *manifest.Manifest, opts WizardOptions) wizardModel {
 		demoMode:         opts.DemoMode,
 		selectedPreset:   -1,
 		telemetryEnabled: true,
+		llmEnabled:       false,
 	}
 }
 
@@ -404,12 +406,16 @@ func (m wizardModel) handleConsentKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
-	// In non-demo mode the consent screen only has the telemetry toggle (cursor=0).
-	// In demo mode it also has the three LLM consent options (cursor 0-2) plus telemetry (cursor 3).
-	maxCursor := 0
+	// Cursor layout (non-demo):  0 = LLM toggle, 1 = analytics toggle
+	// Cursor layout (demo):      0..2 = LLM consent options, 3 = LLM toggle, 4 = analytics toggle
+	llmCursor := 0
+	telCursor := 1
 	if m.demoMode {
-		maxCursor = len(consentOptions)
+		llmCursor = len(consentOptions)
+		telCursor = len(consentOptions) + 1
 	}
+	maxCursor := telCursor
+
 	switch msg.String() {
 	case "ctrl+c", "esc":
 		m.cancelled = true
@@ -423,26 +429,40 @@ func (m wizardModel) handleConsentKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.consentCursor++
 		}
 	case " ":
-		if m.consentCursor == maxCursor {
-			m.telemetryEnabled = !m.telemetryEnabled
+		switch m.consentCursor {
+		case llmCursor:
+			if !m.demoMode {
+				m.llmEnabled = !m.llmEnabled
+			}
+		default:
+			if m.consentCursor == telCursor {
+				m.telemetryEnabled = !m.telemetryEnabled
+			}
 		}
 	case "enter":
-		if !m.demoMode {
-			// Non-demo: only the telemetry toggle is here; enter moves forward.
-			m.stage = stageConfirm
-			return m, nil
+		if m.demoMode {
+			if m.consentCursor < len(consentOptions) {
+				chosen := consentOptions[m.consentCursor]
+				if chosen.choice == types.ConsentOwnKey {
+					m.showAPIKeyInput = true
+					m.apiKeyInput.Focus()
+					return m, textinput.Blink
+				}
+				m.consent = chosen.choice
+				m.llmEnabled = true
+				m.stage = stageConfirm
+				return m, nil
+			}
+			if m.consentCursor == llmCursor {
+				m.llmEnabled = !m.llmEnabled
+				return m, nil
+			}
+			if m.consentCursor == telCursor {
+				m.telemetryEnabled = !m.telemetryEnabled
+				return m, nil
+			}
 		}
-		if m.consentCursor == maxCursor {
-			m.telemetryEnabled = !m.telemetryEnabled
-			return m, nil
-		}
-		chosen := consentOptions[m.consentCursor]
-		if chosen.choice == types.ConsentOwnKey {
-			m.showAPIKeyInput = true
-			m.apiKeyInput.Focus()
-			return m, textinput.Blink
-		}
-		m.consent = chosen.choice
+		// Non-demo: enter always moves forward.
 		m.stage = stageConfirm
 	}
 	return m, nil
@@ -554,8 +574,16 @@ func (m wizardModel) viewCustom() string {
 
 func (m wizardModel) viewConsent() string {
 	var b strings.Builder
-	b.WriteString(titleStyle.Render("  KB Labs") + "  data consent\n\n")
+	b.WriteString(titleStyle.Render("  KB Labs") + "  data & AI consent\n\n")
 
+	llmCursor := 0
+	telCursor := 1
+	if m.demoMode {
+		llmCursor = len(consentOptions)
+		telCursor = len(consentOptions) + 1
+	}
+
+	// Demo mode: LLM provider selection.
 	if m.demoMode {
 		b.WriteString("  Demo includes AI-powered code review.\n")
 		b.WriteString("  Choose how to handle LLM requests:\n\n")
@@ -583,26 +611,41 @@ func (m wizardModel) viewConsent() string {
 		b.WriteString("\n")
 	}
 
+	// LLM toggle — always shown (in demo mode after the provider choice).
+	b.WriteString("  " + sectionStyle.Render("LLM") + "\n")
+	llmCursorMark := "  "
+	if m.consentCursor == llmCursor {
+		llmCursorMark = focusStyle.Render(" ▶")
+	}
+	llmCheck := "○"
+	if m.llmEnabled || m.demoMode && m.consent == types.ConsentDemo {
+		llmCheck = selectedStyle.Render("◉")
+	}
+	fmt.Fprintf(&b, "%s %s  %s\n", llmCursorMark, llmCheck,
+		normalStyle.Render("Enable AI features (commit messages, code review)"),
+	)
+	fmt.Fprintf(&b, "      %s\n\n", dimStyle.Render("50 free requests via KB Labs Gateway · diffs proxied to LLM vendor, not stored"),
+	)
+
+	// Analytics toggle.
 	b.WriteString("  " + sectionStyle.Render("Analytics") + "\n")
-	telCursor := "  "
-	if m.consentCursor == len(consentOptions) || !m.demoMode {
-		telCursor = focusStyle.Render(" ▶")
+	telCursorMark := "  "
+	if m.consentCursor == telCursor {
+		telCursorMark = focusStyle.Render(" ▶")
 	}
-	check := "○"
+	telCheck := "○"
 	if m.telemetryEnabled {
-		check = selectedStyle.Render("◉")
+		telCheck = selectedStyle.Render("◉")
 	}
-	fmt.Fprintf(&b, "%s %s  %s  %s\n\n", telCursor, check,
+	fmt.Fprintf(&b, "%s %s  %s  %s\n\n", telCursorMark, telCheck,
 		normalStyle.Render("Send anonymous usage statistics"),
 		dimStyle.Render("(helps improve KB Labs)"),
 	)
 
 	if m.showAPIKeyInput {
 		b.WriteString(helpStyle.Render("  enter confirm · esc back"))
-	} else if m.demoMode {
-		b.WriteString(helpStyle.Render("  ↑↓ move · space toggle analytics · enter select · esc quit"))
 	} else {
-		b.WriteString(helpStyle.Render("  space toggle · enter continue · esc quit"))
+		b.WriteString(helpStyle.Render("  ↑↓ move · space toggle · enter continue · esc quit"))
 	}
 	return b.String()
 }
@@ -634,6 +677,18 @@ func (m wizardModel) viewConfirm() string {
 		fmt.Fprintf(&b, "\n  Components: %s\n", dimStyle.Render(strings.Join(selected, ", ")))
 	}
 
+	llmLabel := "off"
+	if m.llmEnabled || (m.demoMode && m.consent == types.ConsentDemo) {
+		llmLabel = "on · KB Labs Gateway (50 free requests)"
+	}
+	fmt.Fprintf(&b, "\n  LLM:        %s\n", focusStyle.Render(llmLabel))
+
+	telLabel := "off"
+	if m.telemetryEnabled {
+		telLabel = "on"
+	}
+	fmt.Fprintf(&b, "  Analytics:  %s\n", dimStyle.Render(telLabel))
+
 	if m.demoMode {
 		consentLabel := "local only"
 		for _, opt := range consentOptions {
@@ -641,12 +696,7 @@ func (m wizardModel) viewConfirm() string {
 				consentLabel = opt.label
 			}
 		}
-		fmt.Fprintf(&b, "\n  Demo:       %s\n", focusStyle.Render(consentLabel))
-		telLabel := "off"
-		if m.telemetryEnabled {
-			telLabel = "on"
-		}
-		fmt.Fprintf(&b, "  Analytics:  %s\n", dimStyle.Render(telLabel))
+		fmt.Fprintf(&b, "  Demo:       %s\n", dimStyle.Render(consentLabel))
 	}
 
 	b.WriteString("\n")
@@ -729,6 +779,7 @@ func (m wizardModel) toSelection() *installer.Selection {
 		DemoMode:         m.demoMode,
 		Consent:          m.consent,
 		TelemetryEnabled: m.telemetryEnabled,
+		LLMEnabled:       m.llmEnabled || m.consent == types.ConsentDemo,
 	}
 	if m.consent == types.ConsentOwnKey {
 		sel.APIKey = m.apiKeyInput.Value()
