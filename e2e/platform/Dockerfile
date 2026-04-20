@@ -1,17 +1,16 @@
 # KB Labs E2E — Platform container
 #
 # Stage 1 (go-builder): compiles kb-create and kb-dev from monorepo source so
-# the E2E suite never needs kblabs.ru to be reachable (CI-safe).
+# the E2E suite never needs kblabs.ru or GitHub releases to be reachable (CI-safe).
 #
 # Stage 2 (runtime): Node 20 image with the compiled binaries pre-installed.
 # entrypoint.sh detects the pre-installed binaries and skips the remote
-# install.sh download, then bootstraps the workspace and starts services.
-#
-# /e2e-packages/kb-labs-core-runtime-2.60.0.tgz — patched tarball with PID-scoped
-# IPC socket paths (fixes race condition when multiple services start concurrently).
+# install.sh download. kb-create then installs all @kb-labs/* packages from
+# the Verdaccio local registry (started by the verdaccio Compose service),
+# which is pre-populated from the monorepo build by the publisher service.
 #
 # Build:  docker build -t kb-e2e-platform -f e2e/platform/Dockerfile .
-# Run:    docker run --rm -p 4000:4000 -p 5050:5050 kb-e2e-platform
+# Run:    docker compose -f e2e/docker-compose.yml up
 
 # ── Stage 1: compile Go binaries ──────────────────────────────────────────
 FROM golang:1.26-bookworm AS go-builder
@@ -41,10 +40,8 @@ RUN git config --global user.email "e2e@kblabs.test" && \
 COPY --from=go-builder /out/kb-create /usr/local/bin/kb-create
 COPY --from=go-builder /out/kb-dev    /usr/local/bin/kb-dev
 
-# Patched @kb-labs/core-runtime tarball (PID-scoped IPC socket, safe chmodSync).
-# kb-create installs it via --dev-manifest so all services use the fixed version.
-COPY e2e/platform/packages/          /e2e-packages/
-COPY e2e/platform/dev-manifest.json  /e2e-dev-manifest.json
+# Manifest that points kb-create at the local Verdaccio registry
+COPY e2e/platform/registry-manifest.json /e2e-registry-manifest.json
 
 COPY e2e/platform/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh

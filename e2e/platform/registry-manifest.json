@@ -1,14 +1,11 @@
 {
   "version": "3.0.0",
-  "registryUrl": "https://registry.npmjs.org",
+  "registryUrl": "http://verdaccio:4873",
   "core": [
     { "name": "@kb-labs/cli-bin" },
     { "name": "@kb-labs/devkit" },
     { "name": "@kb-labs/sdk" },
-    {
-      "name": "@kb-labs/core-runtime",
-      "localPath": "/e2e-packages/kb-labs-core-runtime-2.60.0.tgz"
-    },
+    { "name": "@kb-labs/core-runtime" },
     { "name": "@kb-labs/core-contracts" },
     { "name": "@kb-labs/shared-cli-ui" },
     { "name": "@kb-labs/core-state-daemon" },

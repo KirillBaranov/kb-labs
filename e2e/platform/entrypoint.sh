@@ -1,5 +1,6 @@
 #!/bin/sh
-# Platform entrypoint: installs KB Labs, scaffolds e2e workflows, starts services.
+# Platform entrypoint: installs KB Labs from local Verdaccio registry,
+# scaffolds e2e workflows, starts services.
 # Waits for /health (gateway process) then /ready (all upstreams including REST).
 set -e
 
@@ -25,7 +26,11 @@ echo "    kb-create $(kb-create --version 2>&1 | head -1)"
 # ── Step 2: Bootstrap project ──────────────────────────────────────────────
 echo "==> [2/3] Bootstrapping project..."
 mkdir -p /workspace && cd /workspace
-kb-create kb-e2e --yes --dev-manifest /e2e-dev-manifest.json
+
+# Use registry-manifest.json to install from local Verdaccio (http://verdaccio:4873)
+# instead of npmjs.org. Verdaccio is pre-populated with monorepo build artifacts
+# by the publisher container (see docker-compose.yml).
+kb-create kb-e2e --yes --dev-manifest /e2e-registry-manifest.json
 cd kb-e2e
 
 # Scaffold test workflows used by E2E suite
