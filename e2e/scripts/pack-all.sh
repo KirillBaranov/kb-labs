@@ -15,7 +15,7 @@ OUT_DIR="${1:-$REPO_ROOT/e2e/packages}"
 
 mkdir -p "$OUT_DIR"
 # Clean previous packs so stale tarballs don't accumulate
-rm -f "$OUT_DIR"/*.tgz
+rm -f "$OUT_DIR"/*.tgz 2>/dev/null || true
 
 echo "==> Packing all @kb-labs/* packages → $OUT_DIR"
 
@@ -57,6 +57,7 @@ done < <(find "$REPO_ROOT" \
   -not -path "*/.kb/*" \
   -not -path "*/e2e/*" \
   -not -path "*/.git/*" \
+  -not -path "*/.claude/*" \
   -name "package.json" \
   | sort)
 
