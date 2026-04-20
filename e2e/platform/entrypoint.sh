@@ -25,7 +25,7 @@ echo "    kb-create $(kb-create --version 2>&1 | head -1)"
 # ── Step 2: Bootstrap project ──────────────────────────────────────────────
 echo "==> [2/3] Bootstrapping project..."
 mkdir -p /workspace && cd /workspace
-kb-create kb-e2e --yes
+kb-create kb-e2e --yes --dev-manifest /e2e-dev-manifest.json
 cd kb-e2e
 
 # Scaffold test workflows used by E2E suite

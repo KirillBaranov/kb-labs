@@ -7,6 +7,9 @@
 # entrypoint.sh detects the pre-installed binaries and skips the remote
 # install.sh download, then bootstraps the workspace and starts services.
 #
+# /e2e-packages/kb-labs-core-runtime-2.60.0.tgz — patched tarball with PID-scoped
+# IPC socket paths (fixes race condition when multiple services start concurrently).
+#
 # Build:  docker build -t kb-e2e-platform -f e2e/platform/Dockerfile .
 # Run:    docker run --rm -p 4000:4000 -p 5050:5050 kb-e2e-platform
 
@@ -37,6 +40,11 @@ RUN git config --global user.email "e2e@kblabs.test" && \
 # Pre-install binaries — entrypoint.sh skips kblabs.ru download when these exist
 COPY --from=go-builder /out/kb-create /usr/local/bin/kb-create
 COPY --from=go-builder /out/kb-dev    /usr/local/bin/kb-dev
+
+# Patched @kb-labs/core-runtime tarball (PID-scoped IPC socket, safe chmodSync).
+# kb-create installs it via --dev-manifest so all services use the fixed version.
+COPY e2e/platform/packages/          /e2e-packages/
+COPY e2e/platform/dev-manifest.json  /e2e-dev-manifest.json
 
 COPY e2e/platform/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
