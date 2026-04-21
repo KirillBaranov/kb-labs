@@ -78,10 +78,15 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		// Re-exec with the freshly downloaded binary so refreshDerivedConfigs
 		// and all subsequent logic run with the new code.
 		exe, exeErr := selfupdate.ExecutablePath()
-		if exeErr == nil {
-			_ = syscall.Exec(exe, os.Args, os.Environ())
+		if exeErr != nil {
+			return fmt.Errorf("self-update: resolve executable path: %w", exeErr)
 		}
-		// syscall.Exec only returns on failure — fall through and continue.
+		if execErr := syscall.Exec(exe, os.Args, os.Environ()); execErr != nil {
+			// syscall.Exec replaces the process on success and never returns.
+			// If it does return, the exec failed — report the error so the
+			// user knows the update succeeded but the new binary didn't start.
+			return fmt.Errorf("self-update: re-exec %s: %w", exe, execErr)
+		}
 	}
 
 	diff, err := ins.Diff(platformDir, m)
@@ -123,7 +128,13 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	if force {
 		platformOpts = scaffold.Options{PlatformDir: platformDir}
 	} else {
-		platformOpts = scaffold.ReadPlatformOptions(platformDir)
+		// Pass projectDir so ReadPlatformOptions can recover gateway credentials
+		// from projectDir/.env when the platform config has empty "llm": {}.
+		projectDir := ""
+		if cfg, cfgErr := config.Read(platformDir); cfgErr == nil {
+			projectDir = cfg.CWD
+		}
+		platformOpts = scaffold.ReadPlatformOptions(platformDir, projectDir)
 	}
 	if cfgErr := scaffold.WritePlatformConfig(platformDir, platformOpts); cfgErr != nil {
 		log.Printf("platform config refresh: %v (continuing)", cfgErr)
