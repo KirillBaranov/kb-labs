@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/host-agent-client",
-  "version": "2.78.0",
+  "version": "2.79.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
