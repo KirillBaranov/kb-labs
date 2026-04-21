@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/mind-entry",
   "description": "CLI commands for KB Labs Mind",
-  "version": "2.65.0",
+  "version": "2.66.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
