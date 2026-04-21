@@ -412,6 +412,8 @@ export default defineCommand<unknown, CLIInput<RunFlags>, AgentReviewReport>({
 
           summaryItems.push(`Engines: ${result.metadata.engines.join(', ')}`);
 
+
+
           // Show incremental stats if available (LLM modes with caching)
           const incr = result.metadata.incremental;
           if (incr) {
