@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/core-ipc",
   "description": "IPC transport layer for KB Labs platform (Unix sockets, process IPC)",
-  "version": "2.68.0",
+  "version": "2.69.0",
   "type": "module",
   "author": {
     "name": "Kirill Baranov",
