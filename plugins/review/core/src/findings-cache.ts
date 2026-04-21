@@ -93,8 +93,10 @@ export interface IncrementalResult {
   };
 }
 
-const CACHE_VERSION = 1;
+const CACHE_VERSION = 2;
 const CACHE_FILENAME = 'llm-findings-cache.json';
+const DEFAULT_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+const EMPTY_FINDINGS_MAX_AGE_MS = 60 * 60 * 1000; // 1 hour — short TTL for 0-findings to handle LLM variance
 
 /**
  * Generate content hash for a file.
@@ -190,8 +192,11 @@ export class FindingsCache {
       const hash = hashFileContent(file.content);
       const entry = this.data.entries[file.path];
 
-      if (entry && entry.contentHash === hash) {
-        // File unchanged, use cached findings
+      const maxAge = entry && entry.findings.length === 0 ? EMPTY_FINDINGS_MAX_AGE_MS : DEFAULT_MAX_AGE_MS;
+      const isExpired = entry ? (Date.now() - entry.createdAt) > maxAge : false;
+
+      if (entry && entry.contentHash === hash && !isExpired) {
+        // File unchanged and cache is fresh, use cached findings
         cached.push({
           file,
           findings: entry.findings.map(f => this.stripCacheFields(f)),

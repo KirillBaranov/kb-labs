@@ -387,13 +387,11 @@ export class LLMLiteAnalyzer {
   private buildFileSummaries(): FileSummary[] {
     return this.files.map(f => {
       const lines = f.content.split('\n');
-      // Simple heuristic: new files have all additions
-      // TODO: Get actual git stats
       return {
         path: f.path,
         additions: lines.length,
         deletions: 0,
-        isNewFile: false,
+        isNewFile: f.isNewFile ?? false,
       };
     });
   }
