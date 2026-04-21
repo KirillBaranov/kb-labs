@@ -112,6 +112,8 @@ export default defineCommand({
         allowSecrets,
         autoConfirm,
         onProgress: (message) => analyzeLoader.update({ text: message }),
+        onPauseProgress: () => analyzeLoader.stop(),
+        onResumeProgress: () => analyzeLoader.start(),
       });
 
       // Save plan
