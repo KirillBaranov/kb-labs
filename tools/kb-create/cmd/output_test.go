@@ -86,7 +86,7 @@ func TestOutputInfo_NoColorPrefix(t *testing.T) {
 
 func TestBuildNextSteps_NoBinariesNoServices(t *testing.T) {
 	r := &installer.Result{ProjectCWD: "/proj"}
-	steps := buildNextSteps(r)
+	steps := buildNextSteps(r, false)
 
 	for _, s := range steps {
 		if strings.Contains(s.cmd, "kb-dev") {
@@ -104,7 +104,7 @@ func TestBuildNextSteps_KbDevShownWhenInstalledAndServicesPresent(t *testing.T) 
 		InstalledBinaries: []string{"kb-dev"},
 		HasServices:       true,
 	}
-	steps := buildNextSteps(r)
+	steps := buildNextSteps(r, false)
 
 	found := false
 	for _, s := range steps {
@@ -123,7 +123,7 @@ func TestBuildNextSteps_KbDevHiddenWhenInstalledButNoServices(t *testing.T) {
 		InstalledBinaries: []string{"kb-dev"},
 		HasServices:       false,
 	}
-	steps := buildNextSteps(r)
+	steps := buildNextSteps(r, false)
 
 	for _, s := range steps {
 		if strings.Contains(s.cmd, "kb-dev") {
@@ -137,7 +137,7 @@ func TestBuildNextSteps_AlwaysEndsWithDoctorAndHelp(t *testing.T) {
 		{ProjectCWD: "/a"},
 		{ProjectCWD: "/b", InstalledBinaries: []string{"kb-dev"}, HasServices: true},
 	} {
-		steps := buildNextSteps(r)
+		steps := buildNextSteps(r, false)
 		cmds := make([]string, len(steps))
 		for i, s := range steps {
 			cmds[i] = s.cmd
