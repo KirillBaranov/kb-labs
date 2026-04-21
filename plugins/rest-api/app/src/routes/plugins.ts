@@ -76,6 +76,11 @@ export async function registerPluginRoutes(
     const workspaceResolution = await resolveWorkspaceRoot({
       startDir: repoRoot,
       env: {
+        // KB_PROJECT_ROOT is the canonical var injected by kb-dev into service processes.
+        // Must be included here: passing a partial env object would silently drop it, causing
+        // ctx.cwd to fall back to the platform dir (kb-platform333) instead of the user's
+        // project dir when services are started via kb-dev start.
+        KB_PROJECT_ROOT: process.env.KB_PROJECT_ROOT,
         KB_LABS_WORKSPACE_ROOT: process.env.KB_LABS_WORKSPACE_ROOT,
         KB_LABS_REPO_ROOT: process.env.KB_LABS_REPO_ROOT,
       },
