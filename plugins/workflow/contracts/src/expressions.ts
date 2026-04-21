@@ -187,6 +187,12 @@ export function resolveValue(path: string, context: ExpressionContext): unknown 
     return ''
   }
 
+  // inputs.*
+  if (cleanPath.startsWith('inputs.') && context.inputs) {
+    const key = cleanPath.slice('inputs.'.length)
+    return context.inputs[key] ?? ''
+  }
+
   // matrix.* (for future)
   if (cleanPath.startsWith('matrix.') && context.matrix) {
     const key = cleanPath.slice('matrix.'.length)

@@ -24,10 +24,11 @@ func init() {
 }
 
 func runLogs(cmd *cobra.Command, args []string) error {
-	cfgPath, err := FindConfigPath()
+	discovered, err := FindConfig()
 	if err != nil {
 		return err
 	}
+	cfgPath := discovered.ConfigPath
 	rootDir := config.RootDir(cfgPath)
 
 	// Minimal config read for logsDir.

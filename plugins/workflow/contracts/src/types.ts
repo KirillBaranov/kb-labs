@@ -77,6 +77,7 @@ export interface ExpressionContext {
   steps: Record<string, {
     outputs: Record<string, unknown>
   }>
+  inputs?: Record<string, unknown>
   matrix?: Record<string, unknown>
 }
 

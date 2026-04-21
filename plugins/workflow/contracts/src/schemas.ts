@@ -362,6 +362,7 @@ export const RunSchema = z.object({
   durationMs: z.number().int().nonnegative().optional(),
   trigger: RunTriggerSchema,
   env: z.record(z.string(), z.string()).optional(),
+  inputs: z.record(z.string(), z.unknown()).optional(),
   secrets: z.array(z.string().min(1)).optional(),
   jobs: z.array(JobRunSchema),
   artifacts: z.array(z.string()).optional(),

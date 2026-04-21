@@ -15,31 +15,49 @@ var candidates = []string{
 	"devservices.yml",
 }
 
+// DiscoverResult holds the resolved config path and the project root.
+// When devservices.yaml lives in a separate platform directory (via kb.config.jsonc
+// platform.dir), ProjectDir points to the user's project (where kb-dev was invoked)
+// rather than the platform directory — used to set KB_PROJECT_ROOT.
+type DiscoverResult struct {
+	ConfigPath string
+	ProjectDir string // original invocation dir (may differ from RootDir(ConfigPath))
+}
+
 // Discover walks upward from dir looking for a known config file.
-// It checks each directory level before moving to the parent, so
-// the closest config wins. Returns the absolute path to the first
-// match, or an error if nothing is found.
-func Discover(dir string) (string, error) {
+// Before the standard walk, it checks whether the current project has a
+// kb.config.jsonc with a platform.dir — if so, devservices.yaml is resolved
+// from the platform directory instead of the project tree.
+func Discover(dir string) (DiscoverResult, error) {
 	abs, err := filepath.Abs(dir)
 	if err != nil {
-		return "", fmt.Errorf("resolve dir: %w", err)
+		return DiscoverResult{}, fmt.Errorf("resolve dir: %w", err)
 	}
 
+	// Check for kb.config.jsonc pointing to a separate platform dir.
+	if platformDir := findPlatformDir(abs); platformDir != "" {
+		candidate := filepath.Join(platformDir, ".kb", "devservices.yaml")
+		if _, err := os.Stat(candidate); err == nil {
+			return DiscoverResult{ConfigPath: candidate, ProjectDir: abs}, nil
+		}
+	}
+
+	search := abs
 	for {
 		for _, name := range candidates {
-			candidate := filepath.Join(abs, name)
+			candidate := filepath.Join(search, name)
 			if _, err := os.Stat(candidate); err == nil {
-				return candidate, nil
+				return DiscoverResult{ConfigPath: candidate, ProjectDir: RootDir(candidate)}, nil
 			}
 		}
-		parent := filepath.Dir(abs)
-		if parent == abs {
+		parent := filepath.Dir(search)
+		if parent == search {
 			break
 		}
-		abs = parent
+		search = parent
 	}
 
-	return "", fmt.Errorf(
+	return DiscoverResult{}, fmt.Errorf(
 		"no config found (searched %s upward); "+
 			"create .kb/devservices.yaml or devservices.yaml",
 		dir,

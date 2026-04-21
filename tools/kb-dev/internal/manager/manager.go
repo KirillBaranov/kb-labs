@@ -25,11 +25,12 @@ const (
 
 // Manager orchestrates service lifecycle operations.
 type Manager struct {
-	cfg      *config.Config
-	services map[string]*service.Service
-	rootDir  string
-	envCache *environ.EnvCache
-	events   chan Event
+	cfg        *config.Config
+	services   map[string]*service.Service
+	rootDir    string
+	projectDir string
+	envCache   *environ.EnvCache
+	events     chan Event
 
 	// Per-service locks prevent concurrent start/stop of the same service.
 	// Without this, "ensure rest gateway" can try to start redis twice
@@ -38,13 +39,16 @@ type Manager struct {
 }
 
 // New creates a Manager from a parsed config.
-func New(cfg *config.Config, rootDir string) *Manager {
+// rootDir is the platform/config directory (where devservices.yaml lives).
+// projectDir is the user's project directory (injected as KB_PROJECT_ROOT).
+func New(cfg *config.Config, rootDir, projectDir string) *Manager {
 	m := &Manager{
-		cfg:      cfg,
-		services: make(map[string]*service.Service),
-		rootDir:  rootDir,
-		events:   make(chan Event, 100),
-		svcLocks: make(map[string]*sync.Mutex),
+		cfg:        cfg,
+		services:   make(map[string]*service.Service),
+		rootDir:    rootDir,
+		projectDir: projectDir,
+		events:     make(chan Event, 100),
+		svcLocks:   make(map[string]*sync.Mutex),
 	}
 
 	for id, svcCfg := range cfg.Services {
@@ -67,7 +71,7 @@ func (m *Manager) spawnEnv(svcEnv map[string]string) map[string]string {
 	// Do not overwrite if already set — the service or the launching shell
 	// may have a good reason to pin it to a different value.
 	if _, ok := merged["KB_PROJECT_ROOT"]; !ok {
-		merged["KB_PROJECT_ROOT"] = m.rootDir
+		merged["KB_PROJECT_ROOT"] = m.projectDir
 	}
 	return merged
 }

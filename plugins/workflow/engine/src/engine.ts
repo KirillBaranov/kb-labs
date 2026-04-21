@@ -356,6 +356,15 @@ export class WorkflowEngine {
       payload: { jobName: job?.jobName, durationMs: duration },
     })
 
+    // Release jobs that were blocked waiting for this job to complete.
+    if (job?.jobName) {
+      const released = await this.stateStore.releaseBlockedJobs(runId, job.jobName)
+      for (const releasedJob of released) {
+        await this.scheduler.enqueueJob(runId, releasedJob, releasedJob.priority ?? 'normal')
+        this.logger.info('Unblocked dependent job', { runId, jobId: releasedJob.id, unlockedBy: job.jobName })
+      }
+    }
+
     // Check if all jobs in run are completed - update run status
     await this.checkRunCompletion(runId)
   }
