@@ -16,6 +16,7 @@ import type { ExecutionTarget, ExpressionContext, StepSpec } from '@kb-labs/work
 import { createCorrelatedLogger } from '@kb-labs/shared-http';
 import {
   interpolateObject,
+  interpolateString,
   evaluateExpression,
   resolveValue,
 } from '@kb-labs/workflow-contracts';
@@ -172,7 +173,12 @@ export async function createWorkflowWorker(
     // If platform has a workspace provider, create an isolated workspace for this run.
     // All steps will execute in the provisioned workspace instead of the host workspace.
     const wsProvider = platform.getAdapter<IWorkspaceProvider>('workspace');
-    let runWorkspace = workspaceRoot;
+    // Without a workspace adapter, run steps in the project directory.
+    // KB_PROJECT_ROOT is injected by kb-dev; fall back to workspaceRoot (platform dir) only
+    // when running outside of kb-dev (e.g. tests or direct node invocation).
+    let runWorkspace = wsProvider
+      ? workspaceRoot
+      : (process.env['KB_PROJECT_ROOT'] ?? workspaceRoot);
     let provisionedWorkspaceId: string | undefined;
 
     if (wsProvider) {
@@ -244,6 +250,7 @@ export async function createWorkflowWorker(
           const exprCtx: ExpressionContext = {
             env: freshRun?.env ?? {},
             trigger: freshRun?.trigger ?? { type: 'manual' },
+            inputs: freshRun?.inputs ?? {},
             steps: {},
           };
 
@@ -486,10 +493,12 @@ export async function createWorkflowWorker(
 
           // Build spec with interpolated `with`
           // Normalize `run: cmd` → `uses: builtin:shell, with: { command: cmd }`
+          // Interpolate the run string so ${{ inputs.* }}, ${{ steps.* }} etc. are resolved.
           let baseSpec = step.spec as Record<string, unknown>;
           if ((baseSpec as any).run && !(baseSpec as any).uses) {
-            const { run, with: existingWith, ...rest } = baseSpec as any;
-            baseSpec = { ...rest, uses: 'builtin:shell', with: { ...existingWith, command: run } };
+            const { run: rawRun, with: existingWith, ...rest } = baseSpec as any;
+            const command = typeof rawRun === 'string' ? interpolateString(rawRun, exprCtx) : rawRun;
+            baseSpec = { ...rest, uses: 'builtin:shell', with: { ...existingWith, command } };
           }
           const interpolatedSpec = interpolatedWith
             ? { ...baseSpec, with: { ...(baseSpec.with as object ?? {}), ...interpolatedWith } }

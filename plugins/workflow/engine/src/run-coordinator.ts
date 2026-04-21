@@ -158,6 +158,7 @@ export class RunCoordinator {
       queuedAt: timestamp,
       trigger: input.trigger,
       env: input.spec.env,
+      inputs: input.inputs,
       secrets: input.spec.secrets,
       jobs,
       metadata: {

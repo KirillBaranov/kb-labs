@@ -27,7 +27,8 @@ func runDoctor(_ *cobra.Command, _ []string) error {
 	result := &manager.DoctorResult{OK: true}
 
 	// 1. Config.
-	cfgPath, err := FindConfigPath()
+	discovered, err := FindConfig()
+	cfgPath := discovered.ConfigPath
 	if err != nil {
 		result.Checks = append(result.Checks, manager.DoctorCheck{
 			ID: "config", OK: false, Detail: err.Error(),

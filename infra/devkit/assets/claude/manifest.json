@@ -42,6 +42,12 @@
       "path": "skills/kb-labs-update/SKILL.md",
       "version": "1.0.0",
       "description": "Safely update the installed KB Labs platform via kb-create update, including diff review"
+    },
+    {
+      "id": "kb-labs-release",
+      "path": "skills/kb-labs-release/SKILL.md",
+      "version": "1.0.0",
+      "description": "Release a new KB Labs platform version: npm lockstep publish (148 packages) and Go binary tags"
     }
   ]
 }

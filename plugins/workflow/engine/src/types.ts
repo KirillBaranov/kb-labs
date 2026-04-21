@@ -33,6 +33,8 @@ export interface CreateRunInput {
   concurrencyGroup?: ConcurrencyGroup
   metadata?: Record<string, unknown>
   env?: Record<string, string>
+  /** Resolved workflow input values (user-supplied merged with spec defaults). */
+  inputs?: Record<string, unknown>
 }
 
 // Legacy Deps interfaces - kept for backward compatibility

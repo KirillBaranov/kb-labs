@@ -13,18 +13,18 @@ var errSilent = errors.New("")
 
 // loadManager creates a Manager from the config with full initialization.
 func loadManager() (*manager.Manager, error) {
-	cfgPath, err := FindConfigPath()
+	result, err := FindConfig()
 	if err != nil {
 		return nil, err
 	}
 
-	cfg, err := loadConfig(cfgPath)
+	cfg, err := loadConfig(result.ConfigPath)
 	if err != nil {
 		return nil, err
 	}
 
-	rootDir := config.RootDir(cfgPath)
-	mgr := manager.New(cfg, rootDir)
+	rootDir := config.RootDir(result.ConfigPath)
+	mgr := manager.New(cfg, rootDir, result.ProjectDir)
 
 	// Resolve environment (node/pnpm paths).
 	mgr.ResolveEnv()

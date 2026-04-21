@@ -255,15 +255,23 @@ export class WorkflowHostService {
           ? 'webhook'
           : 'manual';
 
+    // Resolve inputs: merge spec defaults with user-supplied values.
+    const specInputDefs = (specInput['inputs'] ?? {}) as Record<string, { default?: unknown }>;
+    const userInputs = (request.input && typeof request.input === 'object')
+      ? (request.input as Record<string, unknown>)
+      : {};
+    const resolvedInputs: Record<string, unknown> = {};
+    for (const [key, def] of Object.entries(specInputDefs)) {
+      resolvedInputs[key] = key in userInputs ? userInputs[key] : def.default;
+    }
+
     const run = await this.options.engine.runFromSpec(spec, {
       trigger: {
         type: triggerType,
         actor: request.trigger?.user,
-        payload:
-          request.input && typeof request.input === 'object'
-            ? (request.input as Record<string, unknown>)
-            : undefined,
+        payload: userInputs,
       },
+      inputs: resolvedInputs,
     });
 
     return {

@@ -97,19 +97,21 @@ func init() {
 	rootCmd.PersistentFlags().Bool("no-cascade", false, "skip dependent cascade")
 }
 
-// FindConfigPath resolves the config file path.
+// FindConfig resolves the config file and project directory.
 // Priority: --config flag > config.Discover (walks up from cwd).
-func FindConfigPath() (string, error) {
+// When --config is given explicitly, ProjectDir == RootDir(configPath).
+func FindConfig() (config.DiscoverResult, error) {
 	if configPath != "" {
 		if _, err := os.Stat(configPath); err != nil {
-			return "", fmt.Errorf("config not found: %s", configPath)
+			return config.DiscoverResult{}, fmt.Errorf("config not found: %s", configPath)
 		}
-		return configPath, nil
+		rootDir := config.RootDir(configPath)
+		return config.DiscoverResult{ConfigPath: configPath, ProjectDir: rootDir}, nil
 	}
 
 	dir, err := os.Getwd()
 	if err != nil {
-		return "", fmt.Errorf("cannot determine working directory: %w", err)
+		return config.DiscoverResult{}, fmt.Errorf("cannot determine working directory: %w", err)
 	}
 
 	return config.Discover(dir)

@@ -30,6 +30,11 @@ export async function bootstrap(cwd: string = process.cwd()): Promise<void> {
   // Detect repo root first
   const repoRoot = await findRepoRoot(cwd);
 
+  // Project root: where the user's project lives (.kb/workflows, workflow YAMLs).
+  // KB_PROJECT_ROOT is injected by kb-dev when invoked from a project directory
+  // that points to a separate platform via kb.config.jsonc → platform.dir.
+  const projectRoot = process.env['KB_PROJECT_ROOT'] ?? repoRoot;
+
   // Initialize platform (loads .env + adapters from kb.config.json)
   await createServiceBootstrap({ appId: 'workflow-daemon', repoRoot });
 
@@ -71,7 +76,7 @@ export async function bootstrap(cwd: string = process.cwd()): Promise<void> {
     },
   });
 
-  bootstrapLogger.info('Workflow daemon starting', { repoRoot });
+  bootstrapLogger.info('Workflow daemon starting', { repoRoot, projectRoot });
 
   const createWorkflowLogger = (service: string, operation: string, bindings?: Record<string, unknown>) =>
     createCorrelatedLogger(platform.logger, {
@@ -106,7 +111,7 @@ export async function bootstrap(cwd: string = process.cwd()): Promise<void> {
     events: platform.eventBus,
     logger: createWorkflowLogger('engine', 'workflow.engine'),
     snapshotManager: (platform as any).snapshotManager,
-    workspaceRoot: repoRoot,
+    workspaceRoot: projectRoot,
   });
 
   // Mark stale running/queued runs as failed (they're orphaned from previous process)
@@ -139,7 +144,7 @@ export async function bootstrap(cwd: string = process.cwd()): Promise<void> {
     cliApi,
     scheduler: cronScheduler,
     logger: createWorkflowLogger('cron-discovery', 'workflow.cron-discovery'),
-    workspaceRoot: repoRoot,
+    workspaceRoot: projectRoot,
   });
 
   const discovered = await cronDiscovery.discoverAll();
@@ -150,7 +155,7 @@ export async function bootstrap(cwd: string = process.cwd()): Promise<void> {
   const workflowService = new WorkflowService({
     cliApi,
     platform,
-    workspaceRoot: repoRoot,
+    workspaceRoot: projectRoot,
   });
 
   // Create HTTP API server (pass cronDiscovery for refresh endpoint)
@@ -180,7 +185,7 @@ export async function bootstrap(cwd: string = process.cwd()): Promise<void> {
     logger: createWorkflowLogger('worker', 'workflow.worker'),
     analytics: platform.analytics,
     platform,
-    workspaceRoot: repoRoot,
+    workspaceRoot: projectRoot,
     concurrency: parseInt(process.env.WORKFLOW_CONCURRENCY || '5', 10),
   });
 
