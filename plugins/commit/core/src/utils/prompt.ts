@@ -23,6 +23,12 @@ export async function promptUserConfirmation(
     return true;
   }
 
+  // Ensure stdin is active — it may have been paused by a previous readline
+  // interface or by the spinner's clearInterval side effects
+  if (!process.stdin.readableEnded) {
+    process.stdin.resume();
+  }
+
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
