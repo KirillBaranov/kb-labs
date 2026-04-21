@@ -212,6 +212,9 @@ export async function executeCommandV3(
       handlerRef: handlerPath,
       input,
       timeoutMs: quotas?.timeoutMs,
+      // Pass cwd so worker-pool backend sets ctx.cwd to the invocation directory,
+      // not the platform installation directory (worker-script.ts reads workspace.cwd)
+      workspace: { cwd: _cwd },
     };
 
     // Execute via unified platform.executionBackend

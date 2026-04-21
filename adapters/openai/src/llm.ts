@@ -24,7 +24,9 @@ export interface OpenAILLMConfig {
   apiKey?: string;
   /** Base URL for API (optional, for proxies or Azure) */
   baseURL?: string;
-  /** Default model to use */
+  /** Default model to use (matches configSchema field name) */
+  model?: string;
+  /** Default model to use (legacy alias for model) */
   defaultModel?: string;
   /** Organization ID (optional) */
   organization?: string;
@@ -49,7 +51,7 @@ export class OpenAILLM implements ILLM {
       baseURL: config.baseURL,
       organization: config.organization,
     });
-    this.defaultModel = config.defaultModel ?? "gpt-4o-mini";
+    this.defaultModel = config.model ?? config.defaultModel ?? "gpt-4o-mini";
     this.defaultMaxTokens = config.defaultMaxTokens ?? DEFAULT_MAX_TOKENS;
   }
 
