@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/core-types",
   "description": "Shared TypeScript type definitions for KB Labs core packages",
-  "version": "2.79.0",
+  "version": "2.80.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
