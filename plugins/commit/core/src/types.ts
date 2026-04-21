@@ -39,6 +39,10 @@ export interface GenerateOptions {
   config?: import('@kb-labs/commit-contracts').CommitPluginConfig; // eslint-disable-line @typescript-eslint/consistent-type-imports
   /** Progress callback for UI updates (updates spinner text) */
   onProgress?: (message: string) => void;
+  /** Pause progress spinner before interactive prompts */
+  onPauseProgress?: () => void;
+  /** Resume progress spinner after interactive prompts */
+  onResumeProgress?: () => void;
   /** LLM completion function (optional - can be undefined if LLM disabled) */
   llmComplete?: LLMCompleteFunction;
   /** Allow committing files with detected secrets (requires manual confirmation) */

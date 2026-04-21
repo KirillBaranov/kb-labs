@@ -152,10 +152,13 @@ export async function generateCommitPlan(options: GenerateOptions): Promise<Comm
 
     // --allow-secrets flag is set - ask for user confirmation
     console.log('\n⚠️  WARNING: --allow-secrets flag detected\n');
+    options.onPauseProgress?.();
     const confirmed = await promptUserConfirmation(
       `⚠️  Proceed with committing ${secretFiles.length} file(s) that may contain secrets?`,
-      false // default: NO
+      false, // default: NO
+      options.autoConfirm
     );
+    options.onResumeProgress?.();
 
     if (!confirmed) {
       // User declined - ABORT
@@ -328,11 +331,13 @@ export async function generateCommitPlan(options: GenerateOptions): Promise<Comm
 
           // --allow-secrets flag is set - ask for user confirmation (or auto-confirm with --yes)
           console.log('\n⚠️  WARNING: --allow-secrets flag detected\n');
+          options.onPauseProgress?.();
           const confirmed = await promptUserConfirmation(
             `⚠️  Proceed with committing changes that contain ${secretMatches.length} potential secret(s)?`,
             false, // default: NO
             options.autoConfirm // auto-confirm if --yes flag
           );
+          options.onResumeProgress?.();
 
           if (!confirmed) {
             // User declined - ABORT
