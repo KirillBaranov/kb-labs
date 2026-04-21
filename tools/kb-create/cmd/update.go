@@ -32,6 +32,7 @@ shows what changed, and applies updates after confirmation.`,
 
 func init() {
 	updateCmd.Flags().BoolP("yes", "y", false, "skip confirmation prompts")
+	updateCmd.Flags().Bool("force", false, "reset config to defaults (discards LLM and custom adapter settings)")
 	rootCmd.AddCommand(updateCmd)
 }
 
@@ -114,9 +115,16 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("update failed: %w", err)
 	}
 
-	// Refresh platform config with updated defaults. Reads existing services/plugins
-	// selection so user choices are preserved; only adapter defaults change.
-	platformOpts := scaffold.ReadPlatformOptions(platformDir)
+	// Refresh platform config with updated defaults.
+	// By default, preserve existing services/plugins/LLM settings.
+	// --force resets everything to manifest defaults.
+	force, _ := cmd.Flags().GetBool("force")
+	var platformOpts scaffold.Options
+	if force {
+		platformOpts = scaffold.Options{PlatformDir: platformDir}
+	} else {
+		platformOpts = scaffold.ReadPlatformOptions(platformDir)
+	}
 	if cfgErr := scaffold.WritePlatformConfig(platformDir, platformOpts); cfgErr != nil {
 		log.Printf("platform config refresh: %v (continuing)", cfgErr)
 	}
