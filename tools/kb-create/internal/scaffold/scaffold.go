@@ -25,6 +25,10 @@ type GatewayCreds struct {
 	GatewayURL   string
 }
 
+// DefaultGatewayURL is the production KB Labs Gateway base URL, mirrored here
+// so scaffold does not import the gateway package (avoids circular deps).
+const DefaultGatewayURL = "https://api.kblabs.ru"
+
 // Options controls which sections are included in the generated config.
 type Options struct {
 	PlatformDir        string
@@ -114,7 +118,12 @@ func WriteProjectConfig(projectDir string, opts Options) error {
 // platformDir/.kb/kb.config.jsonc. Used by `kb-create update` to preserve the
 // user's original install choices when refreshing platform defaults.
 // Returns a minimal Options on any error so the caller can still proceed.
-func ReadPlatformOptions(platformDir string) Options {
+//
+// projectDir is optional: when provided, if the platform config has empty LLM
+// options ("llm": {}) but projectDir/.env contains KB_GATEWAY_CLIENT_ID and
+// KB_GATEWAY_CLIENT_SECRET, those credentials are recovered into GatewayCredentials
+// so the next WritePlatformConfig re-wires them correctly.
+func ReadPlatformOptions(platformDir string, projectDir ...string) Options {
 	opts := Options{PlatformDir: platformDir}
 
 	data, err := os.ReadFile(filepath.Join(platformDir, ".kb", "kb.config.jsonc"))
@@ -151,10 +160,53 @@ func ReadPlatformOptions(platformDir string) Options {
 	}
 	// Preserve existing LLM adapter options (e.g. gateway URL + credentials)
 	// so that kb-create update does not reset --llm configuration.
-	if len(cfg.AdapterOptions.LLM) > 0 && string(cfg.AdapterOptions.LLM) != "{}" && string(cfg.AdapterOptions.LLM) != "null" {
+	llmRaw := string(cfg.AdapterOptions.LLM)
+	if len(cfg.AdapterOptions.LLM) > 0 && llmRaw != "{}" && llmRaw != "null" {
 		opts.PreservedLLMOptions = cfg.AdapterOptions.LLM
+	} else if len(projectDir) > 0 && projectDir[0] != "" {
+		// Platform config has empty LLM options but the project may have gateway
+		// credentials written to .env during a previous install. Recover them so
+		// the next WritePlatformConfig re-wires the ${...} placeholders correctly
+		// instead of silently falling back to "llm": {}.
+		if gc := readEnvCredentials(projectDir[0]); gc != nil {
+			opts.GatewayCredentials = gc
+		}
 	}
 	return opts
+}
+
+// readEnvCredentials attempts to read KB_GATEWAY_CLIENT_ID and
+// KB_GATEWAY_CLIENT_SECRET from projectDir/.env. Returns nil if either is missing.
+func readEnvCredentials(projectDir string) *GatewayCreds {
+	envPath := filepath.Join(projectDir, ".env")
+	data, err := os.ReadFile(envPath) // #nosec G304 -- path derived from install config
+	if err != nil {
+		return nil
+	}
+	vals := make(map[string]string)
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		eq := strings.IndexByte(line, '=')
+		if eq < 0 {
+			continue
+		}
+		key := strings.TrimSpace(line[:eq])
+		val := strings.TrimSpace(line[eq+1:])
+		vals[key] = val
+	}
+	clientID := vals["KB_GATEWAY_CLIENT_ID"]
+	clientSecret := vals["KB_GATEWAY_CLIENT_SECRET"]
+	if clientID == "" || clientSecret == "" {
+		return nil
+	}
+	return &GatewayCreds{
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+		GatewayURL:   DefaultGatewayURL,
+	}
 }
 
 // stripGeneratedJsonc removes // line comments, /* */ block comments, and
