@@ -12,7 +12,7 @@ import type { WorkflowHostService } from '../host/workflow-host-service.js';
 import { fail, ok } from './response.js';
 
 const TERMINAL_EVENTS = ['run.finished', 'run.failed', 'run.cancelled'];
-const TERMINAL_STATUSES = ['success', 'failed', 'cancelled', 'skipped'];
+const TERMINAL_STATUSES = ['success', 'failed', 'cancelled', 'skipped', 'dlq'];
 const KEEP_ALIVE_MS = 30_000;
 const IDLE_TIMEOUT_MS = 60_000;
 
