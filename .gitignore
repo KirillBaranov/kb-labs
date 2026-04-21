@@ -124,3 +124,4 @@ e2e/tests/report/
 # Nested .kb/ runtime dirs inside packages (created during local dev)
 plugins/**/.kb/
 tools/**/.kb/
+**/.npmrc
