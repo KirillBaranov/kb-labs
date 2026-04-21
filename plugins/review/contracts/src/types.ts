@@ -219,6 +219,8 @@ export interface LLMAnalyzer {
 export interface InputFile {
   path: string;
   content: string;
+  /** Whether this is a newly created (untracked) file */
+  isNewFile?: boolean;
 }
 
 /**

@@ -145,6 +145,7 @@ export async function resolveGitScope(options: GitScopeOptions): Promise<ScopedF
 
       // Collect file paths based on options
       const filePaths: string[] = [];
+      const untrackedPaths = new Set<string>();
 
       if (includeStaged) {
         // Exclude deleted files from staged (can't read them)
@@ -164,6 +165,9 @@ export async function resolveGitScope(options: GitScopeOptions): Promise<ScopedF
       if (includeUntracked) {
         untrackedCount += status.not_added.length;
         filePaths.push(...status.not_added);
+        for (const f of status.not_added) {
+          untrackedPaths.add(f);
+        }
       }
 
       // Dedupe and filter
@@ -175,7 +179,7 @@ export async function resolveGitScope(options: GitScopeOptions): Promise<ScopedF
       for (const filePath of uniquePaths) {
         try {
           const absolutePath = join(gitCwd, filePath);
-           
+
           const content = await readFile(absolutePath, 'utf-8');
 
           // Path relative to root cwd
@@ -186,6 +190,7 @@ export async function resolveGitScope(options: GitScopeOptions): Promise<ScopedF
           allFiles.push({
             path: relativePath,
             content,
+            isNewFile: untrackedPaths.has(filePath),
           });
         } catch {
           useLogger()?.debug(`[git-scope] Could not read file: ${filePath}`);
