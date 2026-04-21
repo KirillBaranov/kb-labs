@@ -32,6 +32,7 @@ type Options struct {
 	Plugins            []string      // selected plugin IDs  (e.g. "mind", "agents")
 	DemoMode           bool          // generate demo workflow template
 	GatewayCredentials *GatewayCreds // non-nil → write adapterOptions.llm (demo only)
+	PreservedLLMOptions json.RawMessage // non-nil → write adapterOptions.llm verbatim (update preserve)
 }
 
 // WritePlatformConfig writes the full platform config to platformDir/.kb/kb.config.jsonc.
@@ -130,6 +131,9 @@ func ReadPlatformOptions(platformDir string) Options {
 		Plugins  map[string]struct {
 			Enabled bool `json:"enabled"`
 		} `json:"plugins"`
+		AdapterOptions struct {
+			LLM json.RawMessage `json:"llm"`
+		} `json:"adapterOptions"`
 	}
 	if err := json.Unmarshal([]byte(cleaned), &cfg); err != nil {
 		return opts
@@ -144,6 +148,11 @@ func ReadPlatformOptions(platformDir string) Options {
 		if plug.Enabled {
 			opts.Plugins = append(opts.Plugins, name)
 		}
+	}
+	// Preserve existing LLM adapter options (e.g. gateway URL + credentials)
+	// so that kb-create update does not reset --llm configuration.
+	if len(cfg.AdapterOptions.LLM) > 0 && string(cfg.AdapterOptions.LLM) != "{}" && string(cfg.AdapterOptions.LLM) != "null" {
+		opts.PreservedLLMOptions = cfg.AdapterOptions.LLM
 	}
 	return opts
 }
@@ -230,7 +239,10 @@ func generateFull(opts Options) string {
 	// ── adapterOptions ────────────────────────────────────────────────────
 	b.WriteString("  // ─── Adapter Options ────────────────────────────────────────────────────\n")
 	b.WriteString("  \"adapterOptions\": {\n")
-	if gc := opts.GatewayCredentials; gc != nil {
+	if opts.PreservedLLMOptions != nil {
+		b.WriteString("    // LLM adapter options — preserved from previous install.\n")
+		fmt.Fprintf(&b, "    \"llm\": %s,\n", string(opts.PreservedLLMOptions))
+	} else if gc := opts.GatewayCredentials; gc != nil {
 		b.WriteString("    // KB Labs Gateway credentials — read from .env (auto-configured).\n")
 		b.WriteString("    // Replace with apiKey when switching to your own LLM provider.\n")
 		b.WriteString("    \"llm\": {\n")
