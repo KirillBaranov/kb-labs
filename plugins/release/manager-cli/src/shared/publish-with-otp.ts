@@ -115,20 +115,34 @@ export async function publishPackagesWithOTP(
   const remaining: PackageToPublish[] = [];
   let otpFailureDetected = false;
 
+  const MAX_429_RETRIES = 3;
+  const RETRY_429_DELAYS = [15_000, 30_000, 60_000] as const;
+
   const fastPublishOne = async (pkg: PackageToPublish): Promise<PublishResult | null> => {
     const restore = preparePackage(pkg);
     try {
-      await publishSinglePackage({ packagePath: pkg.path, packageManager, otp, dryRun, tag, access });
-      logger?.info('Package published successfully (fast-path)', { name: pkg.name, version: pkg.version, dryRun });
-      return { name: pkg.name, version: pkg.version, success: true };
-    } catch (error: any) {
-      const msg = error.message || String(error);
-      if (msg.includes('EOTP') || msg.includes('one-time password')) {
-        otpFailureDetected = true;
-        return null; // requeue for sequential path
+      for (let attempt = 0; attempt <= MAX_429_RETRIES; attempt++) {
+        try {
+          await publishSinglePackage({ packagePath: pkg.path, packageManager, otp, dryRun, tag, access });
+          logger?.info('Package published successfully (fast-path)', { name: pkg.name, version: pkg.version, dryRun });
+          return { name: pkg.name, version: pkg.version, success: true };
+        } catch (error: any) {
+          const msg: string = error.message || String(error);
+          if (msg.includes('EOTP') || msg.includes('one-time password')) {
+            otpFailureDetected = true;
+            return null; // requeue for sequential path
+          }
+          if ((msg.includes('E429') || msg.includes('429 Too Many Requests')) && attempt < MAX_429_RETRIES) {
+            const delay = RETRY_429_DELAYS[attempt]!;
+            logger?.warn(`429 rate limit for ${pkg.name}, retrying in ${delay / 1000}s`, { attempt: attempt + 1 });
+            await new Promise(r => setTimeout(r, delay));
+            continue;
+          }
+          logger?.error('Package publish failed (fast-path)', { name: pkg.name, error: msg });
+          return { name: pkg.name, version: pkg.version, success: false, error: msg };
+        }
       }
-      logger?.error('Package publish failed (fast-path)', { name: pkg.name, error: msg });
-      return { name: pkg.name, version: pkg.version, success: false, error: msg };
+      return { name: pkg.name, version: pkg.version, success: false, error: '429 rate limit: max retries exceeded' };
     } finally {
       restore();
     }
@@ -298,6 +312,23 @@ export async function publishPackagesWithOTP(
                 version: pkg.version,
                 success: false,
                 error: 'Max OTP attempts reached',
+              });
+              break;
+            }
+          } else if (errorMessage.includes('E429') || errorMessage.includes('429 Too Many Requests')) {
+            if (attempts < maxAttempts) {
+              const delay = RETRY_429_DELAYS[Math.min(attempts - 1, RETRY_429_DELAYS.length - 1)]!;
+              loader.update({ text: `429 rate limit — waiting ${delay / 1000}s before retry...` });
+              loader.start();
+              logger?.warn(`429 rate limit for ${pkg.name}, retrying in ${delay / 1000}s`, { attempt: attempts });
+              await new Promise(r => setTimeout(r, delay));
+            } else {
+              loader.fail('Max retries exceeded (429 rate limit)');
+              results.push({
+                name: pkg.name,
+                version: pkg.version,
+                success: false,
+                error: '429 rate limit: max retries exceeded',
               });
               break;
             }

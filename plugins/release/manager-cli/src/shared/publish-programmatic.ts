@@ -188,6 +188,8 @@ export async function publishPackagesProgrammatic(
   const versionMap = new Map(packages.map(p => [p.name, p.version]));
 
   const CONCURRENCY = Number(useEnv('KB_PUBLISH_CONCURRENCY') ?? 8);
+  const MAX_429_RETRIES = 3;
+  const RETRY_429_DELAYS = [15_000, 30_000, 60_000] as const;
 
   const publishOne = async (pkg: PackageToPublish): Promise<PublishResult> => {
     logger.info(`Publishing ${pkg.name}@${pkg.version}`, { path: pkg.path, dryRun });
@@ -237,23 +239,33 @@ export async function publishPackagesProgrammatic(
         writeFileSync(pkgJsonPath, JSON.stringify(pkgJson, null, 2) + '\n');
       }
 
-      await publishSinglePackage({
-        packagePath: pkg.path,
-        packageManager,
-        token,
-        otp,
-        dryRun,
-        tag,
-        access: access ?? 'public',
-        registry,
-      });
-
-      logger.info(`Published ${pkg.name}@${pkg.version}`);
-      return { name: pkg.name, version: pkg.version, success: true };
-    } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : String(error);
-      logger.error(`Failed to publish ${pkg.name}@${pkg.version}`, undefined, { error: message });
-      return { name: pkg.name, version: pkg.version, success: false, error: message };
+      for (let attempt = 0; attempt <= MAX_429_RETRIES; attempt++) {
+        try {
+          await publishSinglePackage({
+            packagePath: pkg.path,
+            packageManager,
+            token,
+            otp,
+            dryRun,
+            tag,
+            access: access ?? 'public',
+            registry,
+          });
+          logger.info(`Published ${pkg.name}@${pkg.version}`);
+          return { name: pkg.name, version: pkg.version, success: true };
+        } catch (error: unknown) {
+          const message = error instanceof Error ? error.message : String(error);
+          if ((message.includes('E429') || message.includes('429 Too Many Requests')) && attempt < MAX_429_RETRIES) {
+            const delay = RETRY_429_DELAYS[attempt]!;
+            logger.warn(`429 rate limit for ${pkg.name}, retrying in ${delay / 1000}s`, { attempt: attempt + 1 });
+            await new Promise(r => setTimeout(r, delay));
+            continue;
+          }
+          logger.error(`Failed to publish ${pkg.name}@${pkg.version}`, undefined, { error: message });
+          return { name: pkg.name, version: pkg.version, success: false, error: message };
+        }
+      }
+      return { name: pkg.name, version: pkg.version, success: false, error: '429 rate limit: max retries exceeded' };
     } finally {
       if (!restored) {
         writeFileSync(pkgJsonPath, originalPkgJson);
