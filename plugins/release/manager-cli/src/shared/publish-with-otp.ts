@@ -1,13 +1,22 @@
 /**
- * Shared publishing logic with interactive OTP support
- * Used by both `release:run` and `release publish` commands
+ * Shared publishing logic with interactive OTP support.
+ * Used by both `release:run` and `release publish` commands.
+ *
+ * Flow:
+ *  1. Optimistic parallel publish (fast-path, works when OTP is not required).
+ *  2. On EOTP: fall back to sequential publish with interactive OTP prompt.
+ *
+ * Reliability:
+ *  - Already-published versions are treated as success (idempotent re-runs).
+ *  - Transient errors (429, ECONNRESET, etc.) are retried with exponential back-off + jitter.
+ *  - dep rewriting (workspace:/link: → ^version) is handled by shared dep-rewrite utility.
  */
 
 import { spawn } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import * as readline from 'node:readline/promises';
 import { useLoader, useEnv } from '@kb-labs/sdk';
+import { rewriteWorkspaceDeps } from './dep-rewrite';
 
 export interface PackageToPublish {
   name: string;
@@ -26,10 +35,10 @@ export interface PublishWithOTPOptions {
     write?: (text: string) => void;
   };
   logger?: {
-    info: (msg: string, meta?: any) => void;
-    warn: (msg: string, meta?: any) => void;
-    error: (msg: string, meta?: any) => void;
-    debug: (msg: string, meta?: any) => void;
+    info: (msg: string, meta?: Record<string, unknown>) => void;
+    warn: (msg: string, meta?: Record<string, unknown>) => void;
+    error: (msg: string, error?: Error, meta?: Record<string, unknown>) => void;
+    debug: (msg: string, meta?: Record<string, unknown>) => void;
   };
 }
 
@@ -37,112 +46,165 @@ export interface PublishResult {
   name: string;
   version: string;
   success: boolean;
+  alreadyPublished?: boolean;
   error?: string;
 }
 
 export interface PublishWithOTPResult {
   results: PublishResult[];
   published: string[];
+  alreadyPublished: string[];
   failed: string[];
   skipped: string[];
   errors: string[];
 }
 
+// ---------------------------------------------------------------------------
+// Retry helpers (shared with publish-programmatic)
+// ---------------------------------------------------------------------------
+
+const MAX_RETRIES = 5;
+const RETRY_BASE_DELAYS_MS = [10_000, 20_000, 40_000, 80_000, 160_000] as const;
+
+const RETRYABLE_PATTERNS = [
+  'E429', '429 Too Many Requests',
+  'ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'ENOTFOUND', 'EAI_AGAIN',
+  'socket hang up', 'network timeout', 'read ECONNRESET',
+];
+
+const ALREADY_PUBLISHED_PATTERNS = [
+  'You cannot publish over the previously published versions',
+  'cannot publish over the previously published version',
+  'EPUBLISHCONFLICT',
+];
+
+function isRetryable(msg: string): boolean {
+  return RETRYABLE_PATTERNS.some(p => msg.includes(p));
+}
+
+function isAlreadyPublished(msg: string): boolean {
+  return ALREADY_PUBLISHED_PATTERNS.some(p => msg.includes(p));
+}
+
+function retryDelay(attempt: number): number {
+  const base = RETRY_BASE_DELAYS_MS[Math.min(attempt, RETRY_BASE_DELAYS_MS.length - 1)]!;
+  const jitter = 0.8 + Math.random() * 0.4;
+  return Math.round(base * jitter);
+}
+
+// ---------------------------------------------------------------------------
+// Low-level spawn
+// ---------------------------------------------------------------------------
+
+interface PublishSingleOptions {
+  packagePath: string;
+  packageManager?: 'pnpm' | 'npm' | 'yarn';
+  otp?: string;
+  dryRun?: boolean;
+  tag?: string;
+  access?: string;
+}
+
+function publishSinglePackage(options: PublishSingleOptions): Promise<void> {
+  const { packagePath, packageManager = 'pnpm', otp, dryRun, tag, access } = options;
+
+  return new Promise((resolve, reject) => {
+    const args = ['publish'];
+
+    if (packageManager === 'pnpm') { args.push('--no-git-checks'); }
+    if (dryRun)  { args.push('--dry-run'); }
+    if (otp)     { args.push(`--otp=${otp}`); }
+    if (tag)     { args.push(`--tag=${tag}`); }
+    if (access)  { args.push(`--access=${access}`); }
+
+    const child = spawn(packageManager, args, {
+      cwd: packagePath,
+      stdio: ['inherit', 'pipe', 'pipe'],
+      shell: true,
+    });
+
+    let stdout = '';
+    let stderr = '';
+    child.stdout?.on('data', (d: Buffer) => { stdout += d.toString(); });
+    child.stderr?.on('data', (d: Buffer) => { stderr += d.toString(); });
+
+    child.on('close', (code: number | null) => {
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(stderr || stdout || `${packageManager} publish exited with code ${code}`));
+      }
+    });
+
+    child.on('error', (err: Error) => reject(err));
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Main export
+// ---------------------------------------------------------------------------
+
 /**
- * Publish packages with interactive OTP support
+ * Publish packages with interactive OTP support.
+ *
+ * Tries parallel optimistic publish first. On EOTP, falls back to sequential
+ * publish with interactive OTP prompt.
  */
 export async function publishPackagesWithOTP(
-  options: PublishWithOTPOptions
+  options: PublishWithOTPOptions,
 ): Promise<PublishWithOTPResult> {
   const { packages, packageManager = 'pnpm', dryRun, tag, access, ui, logger } = options;
   let otp = options.otp;
 
   const results: PublishResult[] = [];
-
-  // Build version map from all packages in this release for link: → ^version replacement
   const versionMap = new Map(packages.map(p => [p.name, p.version]));
 
-  // Helper: prepare package.json (replace link:/workspace: deps), returns a restore function
-  const preparePackage = (pkg: PackageToPublish): (() => void) => {
-    const pkgJsonPath = join(pkg.path, 'package.json');
-    const originalPkgJson = readFileSync(pkgJsonPath, 'utf-8');
-    const pkgJson = JSON.parse(originalPkgJson);
-    let modified = false;
-
-    for (const section of ['dependencies', 'peerDependencies'] as const) {
-      const deps = pkgJson[section];
-      if (!deps) {continue;}
-      for (const [depName, depValue] of Object.entries(deps)) {
-        if (typeof depValue !== 'string') {continue;}
-        const val = depValue as string;
-
-        if (val.startsWith('link:')) {
-          const planVersion = versionMap.get(depName);
-          if (planVersion) {
-            deps[depName] = `^${planVersion}`;
-            modified = true;
-          } else {
-            try {
-              const linkPath = val.replace('link:', '');
-              const linkedPkg = JSON.parse(readFileSync(join(pkg.path, linkPath, 'package.json'), 'utf-8'));
-              deps[depName] = `^${linkedPkg.version}`;
-              modified = true;
-            } catch {
-              deps[depName] = '*';
-              modified = true;
-            }
-          }
-        } else if (val.startsWith('workspace:') && packageManager !== 'pnpm') {
-          const planVersion = versionMap.get(depName);
-          if (planVersion) {
-            deps[depName] = val === 'workspace:*' ? `^${planVersion}` : val.replace('workspace:', '');
-            modified = true;
-          }
-        }
-      }
-    }
-
-    if (modified) {
-      writeFileSync(pkgJsonPath, JSON.stringify(pkgJson, null, 2) + '\n');
-    }
-
-    return () => writeFileSync(pkgJsonPath, originalPkgJson);
-  };
-
-  // Fast-path: parallel optimistic publishing (works when no OTP is required — pnpm keychain/session)
-  // If any package fails with EOTP, we fall back to sequential path below for the rest.
-  const CONCURRENCY = Number(useEnv('KB_PUBLISH_CONCURRENCY') ?? 8);
+  const CONCURRENCY = Number(useEnv('KB_PUBLISH_CONCURRENCY') ?? 4);
   const remaining: PackageToPublish[] = [];
   let otpFailureDetected = false;
 
-  const MAX_429_RETRIES = 3;
-  const RETRY_429_DELAYS = [15_000, 30_000, 60_000] as const;
+  // -------------------------------------------------------------------------
+  // Fast-path: parallel optimistic publish (no OTP required)
+  // -------------------------------------------------------------------------
 
   const fastPublishOne = async (pkg: PackageToPublish): Promise<PublishResult | null> => {
-    const restore = preparePackage(pkg);
+    const restore = rewriteWorkspaceDeps(pkg.path, versionMap, packageManager);
     try {
-      for (let attempt = 0; attempt <= MAX_429_RETRIES; attempt++) {
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
         try {
           await publishSinglePackage({ packagePath: pkg.path, packageManager, otp, dryRun, tag, access });
-          logger?.info('Package published successfully (fast-path)', { name: pkg.name, version: pkg.version, dryRun });
+          logger?.info('Published (fast-path)', { name: pkg.name, version: pkg.version });
           return { name: pkg.name, version: pkg.version, success: true };
-        } catch (error: any) {
-          const msg: string = error.message || String(error);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+
+          if (isAlreadyPublished(msg)) {
+            logger?.info(`${pkg.name}@${pkg.version} already published — skipping`);
+            return { name: pkg.name, version: pkg.version, success: true, alreadyPublished: true };
+          }
           if (msg.includes('EOTP') || msg.includes('one-time password')) {
             otpFailureDetected = true;
-            return null; // requeue for sequential path
+            return null; // requeue for sequential OTP path
           }
-          if ((msg.includes('E429') || msg.includes('429 Too Many Requests')) && attempt < MAX_429_RETRIES) {
-            const delay = RETRY_429_DELAYS[attempt]!;
-            logger?.warn(`429 rate limit for ${pkg.name}, retrying in ${delay / 1000}s`, { attempt: attempt + 1 });
+          if (isRetryable(msg) && attempt < MAX_RETRIES) {
+            const delay = retryDelay(attempt);
+            logger?.warn(
+              `Transient error for ${pkg.name} (attempt ${attempt + 1}/${MAX_RETRIES}), ` +
+              `retrying in ${(delay / 1000).toFixed(1)}s`,
+            );
             await new Promise(r => setTimeout(r, delay));
             continue;
           }
-          logger?.error('Package publish failed (fast-path)', { name: pkg.name, error: msg });
+          logger?.error('Publish failed (fast-path)', { name: pkg.name, error: msg });
           return { name: pkg.name, version: pkg.version, success: false, error: msg };
         }
       }
-      return { name: pkg.name, version: pkg.version, success: false, error: '429 rate limit: max retries exceeded' };
+      return {
+        name: pkg.name,
+        version: pkg.version,
+        success: false,
+        error: `Publish failed after ${MAX_RETRIES} retries (transient errors)`,
+      };
     } finally {
       restore();
     }
@@ -160,7 +222,6 @@ export async function publishPackagesWithOTP(
         results.push(res);
       }
     }
-    // If OTP needed, stop parallelizing and queue the rest for sequential path
     if (otpFailureDetected) {
       remaining.push(...packages.slice(i + CONCURRENCY));
       break;
@@ -168,282 +229,100 @@ export async function publishPackagesWithOTP(
   }
 
   if (remaining.length === 0) {
-    const published = results.filter((r) => r.success).map((r) => `${r.name}@${r.version}`);
-    const failed = results.filter((r) => !r.success).map((r) => `${r.name}@${r.version}`);
-    const errors = results.filter((r) => !r.success && r.error).map((r) => `${r.name}: ${r.error}`);
-    return {
-      results,
-      published,
-      failed,
-      skipped: dryRun ? packages.map((p) => `${p.name}@${p.version} (dry-run)`) : [],
-      errors,
-    };
+    return buildResult(results, packages, dryRun);
   }
+
+  // -------------------------------------------------------------------------
+  // Sequential OTP path
+  // -------------------------------------------------------------------------
 
   ui.write?.(`  OTP required — falling back to sequential publish for ${remaining.length} package(s)\n`);
 
   for (const pkg of remaining) {
-    logger?.info('Publishing package', { name: pkg.name, version: pkg.version });
+    logger?.info('Publishing package (sequential)', { name: pkg.name, version: pkg.version });
+    const loader = useLoader(`Publishing ${pkg.name}@${pkg.version}...`);
+    loader.start();
 
-    // Replace link: deps with real versions before publish, restore after
-    const pkgJsonPath = join(pkg.path, 'package.json');
-    const originalPkgJson = readFileSync(pkgJsonPath, 'utf-8');
-    let restored = false;
-
+    const restore = rewriteWorkspaceDeps(pkg.path, versionMap, packageManager);
     try {
-      const pkgJson = JSON.parse(originalPkgJson);
-      let modified = false;
-
-      for (const section of ['dependencies', 'peerDependencies'] as const) {
-        const deps = pkgJson[section];
-        if (!deps) {continue;}
-        for (const [depName, depValue] of Object.entries(deps)) {
-          if (typeof depValue !== 'string') {continue;}
-          const val = depValue as string;
-
-          if (val.startsWith('link:')) {
-            const planVersion = versionMap.get(depName);
-            if (planVersion) {
-              deps[depName] = `^${planVersion}`;
-              modified = true;
-            } else {
-              try {
-                const linkPath = val.replace('link:', '');
-                const linkedPkg = JSON.parse(readFileSync(join(pkg.path, linkPath, 'package.json'), 'utf-8'));
-                deps[depName] = `^${linkedPkg.version}`;
-                modified = true;
-              } catch {
-                deps[depName] = '*';
-                modified = true;
-              }
-            }
-          } else if (val.startsWith('workspace:') && packageManager !== 'pnpm') {
-            // workspace:* → ^version only needed for npm/yarn (pnpm publish handles this automatically)
-            const planVersion = versionMap.get(depName);
-            if (planVersion) {
-              deps[depName] = val === 'workspace:*' ? `^${planVersion}` : val.replace('workspace:', '');
-              modified = true;
-            }
-          }
-        }
-      }
-
-      if (modified) {
-        writeFileSync(pkgJsonPath, JSON.stringify(pkgJson, null, 2) + '\n');
-        logger?.info(`Replaced link: deps for ${pkg.name}`);
-      }
-
-      const loader = useLoader(`Publishing ${pkg.name}@${pkg.version}...`);
-      loader.start();
-
-      let attempts = 0;
-      const maxAttempts = 3;
       let published = false;
+      let otpAttempts = 0;
+      const MAX_OTP_ATTEMPTS = 3;
 
-      while (!published && attempts < maxAttempts) {
-        attempts++;
-
+      while (!published && otpAttempts < MAX_OTP_ATTEMPTS) {
+        otpAttempts++;
         try {
-          await publishSinglePackage({
-            packagePath: pkg.path,
-            packageManager,
-            otp,
-            dryRun,
-            tag,
-            access,
-          });
-
+          await publishSinglePackage({ packagePath: pkg.path, packageManager, otp, dryRun, tag, access });
           published = true;
           results.push({ name: pkg.name, version: pkg.version, success: true });
+          loader.succeed(dryRun ? `Dry-run: ${pkg.name}@${pkg.version}` : `Published ${pkg.name}@${pkg.version}`);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
 
-          const successMsg = dryRun
-            ? `Dry-run succeeded for ${pkg.name}@${pkg.version}`
-            : `Published ${pkg.name}@${pkg.version}`;
+          if (isAlreadyPublished(msg)) {
+            published = true;
+            results.push({ name: pkg.name, version: pkg.version, success: true, alreadyPublished: true });
+            loader.succeed(`${pkg.name}@${pkg.version} already published`);
+            break;
+          }
 
-          loader.succeed(successMsg);
-          logger?.info('Package published successfully', {
-            name: pkg.name,
-            version: pkg.version,
-            dryRun,
-          });
-        } catch (error: any) {
-          const errorMessage = error.message || String(error);
-
-          // Check if OTP is required
-          if (errorMessage.includes('EOTP') || errorMessage.includes('one-time password')) {
-            if (attempts < maxAttempts) {
+          if (msg.includes('EOTP') || msg.includes('one-time password')) {
+            if (otpAttempts < MAX_OTP_ATTEMPTS) {
               loader.succeed(`🔐 2FA required for ${pkg.name}`);
-              logger?.info('OTP required for publishing', {
-                name: pkg.name,
-                attempt: attempts,
-              });
-
-              const rl = readline.createInterface({
-                input: process.stdin,
-                output: process.stdout,
-              });
-
+              const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
               try {
-                otp = await rl.question('   Enter OTP code: ');
+                const entered = await rl.question('   Enter OTP code: ');
                 rl.close();
-
-                if (!otp || otp.trim().length !== 6) {
-                  ui.write?.('   ⚠️  Invalid OTP code (must be 6 digits)\n');
-                  logger?.warn('Invalid OTP code provided', { length: otp?.trim().length });
+                if (!entered || entered.trim().length !== 6) {
+                  ui.write?.('   ⚠️  Invalid OTP (must be 6 digits)\n');
                   otp = undefined;
-                  continue;
+                } else {
+                  otp = entered.trim();
                 }
-
-                loader.update({ text: `Publishing ${pkg.name}@${pkg.version} with OTP...` });
-                loader.start();
-                logger?.debug('Retrying with OTP');
               } catch (e) {
                 rl.close();
                 throw e;
               }
+              loader.update({ text: `Publishing ${pkg.name}@${pkg.version} with OTP...` });
+              loader.start();
             } else {
               loader.fail('Max OTP attempts reached');
-              logger?.error('Max OTP attempts reached', {
-                name: pkg.name,
-                attempts: maxAttempts,
-              });
-              results.push({
-                name: pkg.name,
-                version: pkg.version,
-                success: false,
-                error: 'Max OTP attempts reached',
-              });
+              results.push({ name: pkg.name, version: pkg.version, success: false, error: 'Max OTP attempts reached' });
               break;
             }
-          } else if (errorMessage.includes('E429') || errorMessage.includes('429 Too Many Requests')) {
-            if (attempts < maxAttempts) {
-              const delay = RETRY_429_DELAYS[Math.min(attempts - 1, RETRY_429_DELAYS.length - 1)]!;
-              loader.update({ text: `429 rate limit — waiting ${delay / 1000}s before retry...` });
-              loader.start();
-              logger?.warn(`429 rate limit for ${pkg.name}, retrying in ${delay / 1000}s`, { attempt: attempts });
-              await new Promise(r => setTimeout(r, delay));
-            } else {
-              loader.fail('Max retries exceeded (429 rate limit)');
-              results.push({
-                name: pkg.name,
-                version: pkg.version,
-                success: false,
-                error: '429 rate limit: max retries exceeded',
-              });
-              break;
-            }
+          } else if (isRetryable(msg)) {
+            // Single retry with longest back-off for sequential path (blocking spinner context)
+            const delay = retryDelay(MAX_RETRIES - 1); // use the longest delay
+            loader.update({ text: `Rate limited — waiting ${(delay / 1000).toFixed(0)}s…` });
+            loader.start();
+            await new Promise(r => setTimeout(r, delay));
+            otpAttempts--; // don't count transient error as an OTP attempt
           } else {
-            loader.fail(`Failed: ${errorMessage}`);
-            logger?.error('Package publish failed', {
-              name: pkg.name,
-              version: pkg.version,
-              error: errorMessage,
-            });
-            results.push({
-              name: pkg.name,
-              version: pkg.version,
-              success: false,
-              error: errorMessage,
-            });
+            loader.fail(`Failed: ${msg.split('\n')[0]}`);
+            results.push({ name: pkg.name, version: pkg.version, success: false, error: msg });
             break;
           }
         }
       }
     } finally {
-      // Always restore original package.json
-      if (!restored) {
-        writeFileSync(pkgJsonPath, originalPkgJson);
-        restored = true;
-      }
+      restore();
     }
   }
 
-  // Build result summary
-  const published = results
-    .filter((r) => r.success)
-    .map((r) => `${r.name}@${r.version}`);
-  const failed = results
-    .filter((r) => !r.success)
-    .map((r) => `${r.name}@${r.version}`);
-  const errors = results
-    .filter((r) => !r.success && r.error)
-    .map((r) => `${r.name}: ${r.error}`);
+  return buildResult(results, packages, dryRun);
+}
 
+function buildResult(
+  results: PublishResult[],
+  packages: PackageToPublish[],
+  dryRun?: boolean,
+): PublishWithOTPResult {
   return {
     results,
-    published,
-    failed,
-    skipped: dryRun ? packages.map((p) => `${p.name}@${p.version} (dry-run)`) : [],
-    errors,
+    published:        results.filter(r => r.success && !r.alreadyPublished).map(r => `${r.name}@${r.version}`),
+    alreadyPublished: results.filter(r => r.alreadyPublished).map(r => `${r.name}@${r.version}`),
+    failed:           results.filter(r => !r.success).map(r => `${r.name}@${r.version}`),
+    skipped:          dryRun ? packages.map(p => `${p.name}@${p.version} (dry-run)`) : [],
+    errors:           results.filter(r => !r.success && r.error).map(r => `${r.name}: ${r.error}`),
   };
-}
-
-interface PublishSingleOptions {
-  packagePath: string;
-  packageManager?: 'pnpm' | 'npm' | 'yarn';
-  otp?: string;
-  dryRun?: boolean;
-  tag?: string;
-  access?: string;
-}
-
-/**
- * Publish a single package using npm CLI
- */
-function publishSinglePackage(options: PublishSingleOptions): Promise<void> {
-  const { packagePath, packageManager = 'pnpm', otp, dryRun, tag, access } = options;
-
-  return new Promise((resolve, reject) => {
-    const args = ['publish'];
-
-    if (packageManager === 'pnpm') {
-      args.push('--no-git-checks');
-    }
-
-    if (dryRun) {
-      args.push('--dry-run');
-    }
-
-    if (otp) {
-      args.push(`--otp=${otp}`);
-    }
-
-    if (tag) {
-      args.push(`--tag=${tag}`);
-    }
-
-    if (access) {
-      args.push(`--access=${access}`);
-    }
-
-    const child = spawn(packageManager, args, {
-      cwd: packagePath,
-      stdio: ['inherit', 'pipe', 'pipe'],
-      shell: true,
-    });
-
-    let stdout = '';
-    let stderr = '';
-
-    child.stdout?.on('data', (data) => {
-      stdout += data.toString();
-    });
-
-    child.stderr?.on('data', (data) => {
-      stderr += data.toString();
-    });
-
-    child.on('close', (code) => {
-      if (code === 0) {
-        resolve();
-      } else {
-        const errorOutput = stderr || stdout;
-        reject(new Error(errorOutput));
-      }
-    });
-
-    child.on('error', (err) => {
-      reject(err);
-    });
-  });
 }

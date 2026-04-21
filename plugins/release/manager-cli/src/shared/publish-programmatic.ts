@@ -1,5 +1,5 @@
 /**
- * Programmatic npm publishing for REST handlers (non-interactive context)
+ * Programmatic npm publishing for REST handlers (non-interactive context).
  *
  * Uses `npm publish` CLI via spawn with NODE_AUTH_TOKEN env variable.
  * This is the correct approach for granular access tokens (classic tokens
@@ -9,12 +9,20 @@
  * 1. options.token (explicit override)
  * 2. NPM_TOKEN env variable
  * 3. NODE_AUTH_TOKEN env variable
+ *
+ * Reliability guarantees:
+ * - Already-published versions are treated as success (idempotent re-runs).
+ * - 429 rate-limit: exponential back-off with jitter, up to MAX_RETRIES attempts.
+ * - Transient network errors (ECONNRESET, ETIMEDOUT, etc.) are also retried.
+ * - Packages are published in topological order (deps before dependants).
+ * - Default concurrency is 4 — enough throughput, low enough to avoid rate limits.
  */
 
 import { spawn } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'node:fs';
 import { join } from 'node:path';
 import { useLogger, useEnv } from '@kb-labs/sdk';
+import { rewriteWorkspaceDeps, topoSort } from './dep-rewrite';
 
 export interface PackageToPublish {
   name: string;
@@ -37,29 +45,84 @@ export interface PublishResult {
   name: string;
   version: string;
   success: boolean;
+  /** Package was already published at this version — counted as success. */
+  alreadyPublished?: boolean;
   error?: string;
 }
 
 export interface ProgrammaticPublishResult {
   results: PublishResult[];
   published: string[];
+  /** Versions that were already on npm (counted as success). */
+  alreadyPublished: string[];
   failed: string[];
   skipped: string[];
   errors: string[];
 }
 
-/**
- * Resolve npm auth token from options or environment
- */
+// ---------------------------------------------------------------------------
+// Retry configuration
+// ---------------------------------------------------------------------------
+
+const MAX_RETRIES = 5;
+
+// Exponential base delays (ms). Actual delay = base * jitter(0.8–1.2).
+const RETRY_BASE_DELAYS_MS = [10_000, 20_000, 40_000, 80_000, 160_000] as const;
+
+/** Retryable error patterns — all transient, not indicative of a bad package. */
+const RETRYABLE_PATTERNS = [
+  'E429',
+  '429 Too Many Requests',
+  'ECONNRESET',
+  'ETIMEDOUT',
+  'ECONNREFUSED',
+  'ENOTFOUND',
+  'EAI_AGAIN',
+  'socket hang up',
+  'network timeout',
+  'read ECONNRESET',
+];
+
+/** "Already published" — treat as success so re-runs are idempotent. */
+const ALREADY_PUBLISHED_PATTERNS = [
+  'You cannot publish over the previously published versions',
+  'cannot publish over the previously published version',
+  'EPUBLISHCONFLICT',
+  // Some registries return 403 for conflicts
+];
+
+function isRetryable(message: string): boolean {
+  return RETRYABLE_PATTERNS.some(p => message.includes(p));
+}
+
+function isAlreadyPublished(message: string): boolean {
+  return ALREADY_PUBLISHED_PATTERNS.some(p => message.includes(p));
+}
+
+/** Exponential back-off with ±20% jitter. */
+function retryDelay(attempt: number): number {
+  const base = RETRY_BASE_DELAYS_MS[Math.min(attempt, RETRY_BASE_DELAYS_MS.length - 1)]!;
+  const jitter = 0.8 + Math.random() * 0.4; // 0.8 – 1.2
+  return Math.round(base * jitter);
+}
+
+// ---------------------------------------------------------------------------
+// Token resolution
+// ---------------------------------------------------------------------------
+
 function resolveToken(token?: string): string | undefined {
   return token ?? useEnv('NPM_TOKEN') ?? useEnv('NODE_AUTH_TOKEN');
 }
 
+// ---------------------------------------------------------------------------
+// Low-level spawn
+// ---------------------------------------------------------------------------
+
 /**
- * Publish a single package using npm CLI
- * Passes auth token via NODE_AUTH_TOKEN env (recommended for granular tokens)
+ * Spawn `packageManager publish` for a single package.
+ * Writes a temporary .npmrc for NODE_AUTH_TOKEN auth, cleans it up on exit.
  */
-function publishSinglePackage(options: {
+function spawnPublish(options: {
   packagePath: string;
   packageManager: string;
   token: string | undefined;
@@ -74,49 +137,43 @@ function publishSinglePackage(options: {
   return new Promise((resolve, reject) => {
     const args = ['publish'];
 
-    // pnpm checks git cleanliness before publish, but our pipeline already bumps versions
-    // (making the tree dirty) before calling publish — disable this check.
     if (packageManager === 'pnpm') {
+      // pnpm checks git cleanliness; we version-bump before publish which makes
+      // the tree dirty — bypass that check.
       args.push('--no-git-checks');
     }
-
-    if (dryRun) {
-      args.push('--dry-run');
-    }
-
-    if (tag) {
-      args.push(`--tag=${tag}`);
-    }
-
-    if (access) {
-      args.push(`--access=${access}`);
-    }
-
-    if (registry) {
-      args.push(`--registry=${registry}`);
-    }
-
-    if (otp) {
-      args.push(`--otp=${otp}`);
-    }
+    if (dryRun)   { args.push('--dry-run'); }
+    if (tag)      { args.push(`--tag=${tag}`); }
+    if (access)   { args.push(`--access=${access}`); }
+    if (registry) { args.push(`--registry=${registry}`); }
+    if (otp)      { args.push(`--otp=${otp}`); }
 
     const env: NodeJS.ProcessEnv = { ...process.env };
-    if (token) {
-      env['NODE_AUTH_TOKEN'] = token;
-    }
+    if (token) { env['NODE_AUTH_TOKEN'] = token; }
 
-    // Write a temporary .npmrc so npm picks up NODE_AUTH_TOKEN without
-    // requiring it to be pre-configured in the global ~/.npmrc.
+    // Write a per-package .npmrc so npm picks up NODE_AUTH_TOKEN.
     const npmrcPath = join(packagePath, '.npmrc');
     const npmrcExisted = existsSync(npmrcPath);
     const npmrcBackup = npmrcExisted ? readFileSync(npmrcPath, 'utf-8') : null;
     const authLine = '//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}\n';
+
     if (token) {
       const existing = npmrcExisted ? readFileSync(npmrcPath, 'utf-8') : '';
       if (!existing.includes('_authToken')) {
         writeFileSync(npmrcPath, existing + authLine);
       }
     }
+
+    const restoreNpmrc = () => {
+      if (!token) { return; }
+      try {
+        if (npmrcBackup !== null) {
+          writeFileSync(npmrcPath, npmrcBackup);
+        } else if (existsSync(npmrcPath)) {
+          unlinkSync(npmrcPath);
+        }
+      } catch { /* best-effort */ }
+    };
 
     const child = spawn(packageManager, args, {
       cwd: packagePath,
@@ -128,25 +185,11 @@ function publishSinglePackage(options: {
     let stdout = '';
     let stderr = '';
 
-    child.stdout?.on('data', (data: Buffer) => {
-      stdout += data.toString();
-    });
-
-    child.stderr?.on('data', (data: Buffer) => {
-      stderr += data.toString();
-    });
-
-    const cleanupNpmrc = () => {
-      if (!token) { return; }
-      if (npmrcBackup !== null) {
-        writeFileSync(npmrcPath, npmrcBackup);
-      } else if (existsSync(npmrcPath)) {
-        unlinkSync(npmrcPath);
-      }
-    };
+    child.stdout?.on('data', (d: Buffer) => { stdout += d.toString(); });
+    child.stderr?.on('data', (d: Buffer) => { stderr += d.toString(); });
 
     child.on('close', (code: number | null) => {
-      cleanupNpmrc();
+      restoreNpmrc();
       if (code === 0) {
         resolve();
       } else {
@@ -155,21 +198,113 @@ function publishSinglePackage(options: {
     });
 
     child.on('error', (err: Error) => {
+      restoreNpmrc();
       reject(err);
     });
   });
 }
 
+// ---------------------------------------------------------------------------
+// Per-package publish with retry
+// ---------------------------------------------------------------------------
+
+async function publishOne(
+  pkg: PackageToPublish,
+  opts: {
+    packageManager: string;
+    token: string | undefined;
+    versionMap: Map<string, string>;
+    dryRun?: boolean;
+    otp?: string;
+    tag?: string;
+    access?: string;
+    registry?: string;
+  },
+  logger: ReturnType<typeof useLogger>,
+): Promise<PublishResult> {
+  const restore = rewriteWorkspaceDeps(pkg.path, opts.versionMap, opts.packageManager);
+
+  try {
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        await spawnPublish({
+          packagePath: pkg.path,
+          packageManager: opts.packageManager,
+          token: opts.token,
+          otp: opts.otp,
+          dryRun: opts.dryRun,
+          tag: opts.tag,
+          access: opts.access,
+          registry: opts.registry,
+        });
+
+        logger.info(`Published ${pkg.name}@${pkg.version}`);
+        return { name: pkg.name, version: pkg.version, success: true };
+
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+
+        // Idempotency: already published at this version → success.
+        if (isAlreadyPublished(message)) {
+          logger.info(`${pkg.name}@${pkg.version} already published — skipping`);
+          return { name: pkg.name, version: pkg.version, success: true, alreadyPublished: true };
+        }
+
+        // Retryable transient error (rate-limit, network blip).
+        if (isRetryable(message) && attempt < MAX_RETRIES) {
+          const delay = retryDelay(attempt);
+          logger.warn(
+            `Transient error for ${pkg.name}@${pkg.version} (attempt ${attempt + 1}/${MAX_RETRIES}), ` +
+            `retrying in ${(delay / 1000).toFixed(1)}s: ${message.split('\n')[0]}`,
+          );
+          await new Promise(r => setTimeout(r, delay));
+          continue;
+        }
+
+        // Permanent failure.
+        logger.error(`Failed to publish ${pkg.name}@${pkg.version}`, undefined, { error: message });
+        return { name: pkg.name, version: pkg.version, success: false, error: message };
+      }
+    }
+
+    // Exhausted retries.
+    return {
+      name: pkg.name,
+      version: pkg.version,
+      success: false,
+      error: `Publish failed after ${MAX_RETRIES} retries (transient errors)`,
+    };
+  } finally {
+    restore();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Main export
+// ---------------------------------------------------------------------------
+
 /**
- * Publish packages programmatically (non-interactive, for REST handlers)
- * Uses npm CLI with NODE_AUTH_TOKEN — works with granular access tokens.
+ * Publish packages programmatically (non-interactive, for REST handlers / CI).
+ *
+ * Packages are published in topological order (deps before dependants) to
+ * avoid "package not found" errors when a dependent is installed right after
+ * release. Within each topological wave, publishes run in parallel up to
+ * CONCURRENCY.
  */
 export async function publishPackagesProgrammatic(
-  options: ProgrammaticPublishOptions
+  options: ProgrammaticPublishOptions,
 ): Promise<ProgrammaticPublishResult> {
-  const { packages, packageManager = 'pnpm', dryRun, otp, tag, access, registry } = options;
-  const logger = useLogger();
+  const {
+    packages,
+    packageManager = 'pnpm',
+    dryRun,
+    otp,
+    tag,
+    access,
+    registry,
+  } = options;
 
+  const logger = useLogger();
   const token = resolveToken(options.token);
 
   if (!token && !dryRun) {
@@ -178,119 +313,85 @@ export async function publishPackagesProgrammatic(
     return {
       results: [],
       published: [],
-      failed: packages.map((p) => `${p.name}@${p.version}`),
+      alreadyPublished: [],
+      failed: packages.map(p => `${p.name}@${p.version}`),
       skipped: [],
       errors: [error],
     };
   }
 
-  // Build version map from all packages in this release for link: → ^version replacement
+  // Version map for dep rewriting (workspace:/link: → ^version).
   const versionMap = new Map(packages.map(p => [p.name, p.version]));
 
-  const CONCURRENCY = Number(useEnv('KB_PUBLISH_CONCURRENCY') ?? 8);
-  const MAX_429_RETRIES = 3;
-  const RETRY_429_DELAYS = [15_000, 30_000, 60_000] as const;
+  // Concurrency: default 4 — enough throughput, below npm's sustained rate limit.
+  const CONCURRENCY = Number(useEnv('KB_PUBLISH_CONCURRENCY') ?? 4);
 
-  const publishOne = async (pkg: PackageToPublish): Promise<PublishResult> => {
-    logger.info(`Publishing ${pkg.name}@${pkg.version}`, { path: pkg.path, dryRun });
+  // Sort packages into topological waves so deps are always published first.
+  const waves = topoSort(packages, packageManager);
 
-    const pkgJsonPath = join(pkg.path, 'package.json');
-    const originalPkgJson = readFileSync(pkgJsonPath, 'utf-8');
-    let restored = false;
+  logger.info(
+    `Publishing ${packages.length} package(s) in ${waves.length} topological wave(s) ` +
+    `(concurrency=${CONCURRENCY}, dryRun=${dryRun ?? false})`,
+  );
 
-    try {
-      const pkgJson = JSON.parse(originalPkgJson);
-      let modified = false;
+  const allResults: PublishResult[] = [];
 
-      for (const section of ['dependencies', 'peerDependencies'] as const) {
-        const deps = pkgJson[section];
-        if (!deps) {continue;}
-        for (const [depName, depValue] of Object.entries(deps)) {
-          if (typeof depValue !== 'string') {continue;}
-          const val = depValue as string;
+  for (let waveIdx = 0; waveIdx < waves.length; waveIdx++) {
+    const wave = waves[waveIdx]!;
+    logger.info(`Wave ${waveIdx + 1}/${waves.length}: publishing ${wave.length} package(s)`);
 
-          if (val.startsWith('link:')) {
-            const planVersion = versionMap.get(depName);
-            if (planVersion) {
-              deps[depName] = `^${planVersion}`;
-              modified = true;
-            } else {
-              try {
-                const linkPath = val.replace('link:', '');
-                const linkedPkg = JSON.parse(readFileSync(join(pkg.path, linkPath, 'package.json'), 'utf-8'));
-                deps[depName] = `^${linkedPkg.version}`;
-                modified = true;
-              } catch {
-                deps[depName] = '*';
-                modified = true;
-              }
-            }
-          } else if (val.startsWith('workspace:') && packageManager !== 'pnpm') {
-            const planVersion = versionMap.get(depName);
-            if (planVersion) {
-              deps[depName] = val === 'workspace:*' ? `^${planVersion}` : val.replace('workspace:', '');
-              modified = true;
-            }
-          }
-        }
-      }
-
-      if (modified) {
-        writeFileSync(pkgJsonPath, JSON.stringify(pkgJson, null, 2) + '\n');
-      }
-
-      for (let attempt = 0; attempt <= MAX_429_RETRIES; attempt++) {
-        try {
-          await publishSinglePackage({
-            packagePath: pkg.path,
-            packageManager,
-            token,
-            otp,
-            dryRun,
-            tag,
-            access: access ?? 'public',
-            registry,
-          });
-          logger.info(`Published ${pkg.name}@${pkg.version}`);
-          return { name: pkg.name, version: pkg.version, success: true };
-        } catch (error: unknown) {
-          const message = error instanceof Error ? error.message : String(error);
-          if ((message.includes('E429') || message.includes('429 Too Many Requests')) && attempt < MAX_429_RETRIES) {
-            const delay = RETRY_429_DELAYS[attempt]!;
-            logger.warn(`429 rate limit for ${pkg.name}, retrying in ${delay / 1000}s`, { attempt: attempt + 1 });
-            await new Promise(r => setTimeout(r, delay));
-            continue;
-          }
-          logger.error(`Failed to publish ${pkg.name}@${pkg.version}`, undefined, { error: message });
-          return { name: pkg.name, version: pkg.version, success: false, error: message };
-        }
-      }
-      return { name: pkg.name, version: pkg.version, success: false, error: '429 rate limit: max retries exceeded' };
-    } finally {
-      if (!restored) {
-        writeFileSync(pkgJsonPath, originalPkgJson);
-        restored = true;
-      }
+    // Publish wave in parallel batches.
+    for (let i = 0; i < wave.length; i += CONCURRENCY) {
+      const batch = wave.slice(i, i + CONCURRENCY);
+      const batchResults = await Promise.all(
+        batch.map(pkg =>
+          publishOne(pkg, { packageManager, token, versionMap, dryRun, otp, tag, access, registry }, logger),
+        ),
+      );
+      allResults.push(...batchResults);
     }
-  };
 
-  // Run publishes in parallel batches
-  const results: PublishResult[] = [];
-  for (let i = 0; i < packages.length; i += CONCURRENCY) {
-    const batch = packages.slice(i, i + CONCURRENCY);
-    const batchResults = await Promise.all(batch.map(publishOne));
-    results.push(...batchResults);
+    // If any package in this wave genuinely failed (not alreadyPublished), stop
+    // publishing the next wave — it may depend on the failed packages.
+    const waveFailed = allResults.slice(-wave.length).filter(r => !r.success);
+    if (waveFailed.length > 0) {
+      const remaining = waves.slice(waveIdx + 1).reduce((acc, w) => acc + w.length, 0);
+      if (remaining > 0) {
+        logger.warn(
+          `Wave ${waveIdx + 1} had ${waveFailed.length} failure(s) — ` +
+          `skipping ${remaining} package(s) in later waves to avoid broken dependency chain`,
+        );
+        // Mark remaining packages as skipped-due-to-dependency-failure.
+        for (const laterWave of waves.slice(waveIdx + 1)) {
+          for (const pkg of laterWave) {
+            allResults.push({
+              name: pkg.name,
+              version: pkg.version,
+              success: false,
+              error: 'Skipped: dependency wave failed',
+            });
+          }
+        }
+      }
+      break;
+    }
   }
 
-  const published = results.filter((r) => r.success).map((r) => `${r.name}@${r.version}`);
-  const failed = results.filter((r) => !r.success).map((r) => `${r.name}@${r.version}`);
-  const errors = results.filter((r) => !r.success && r.error).map((r) => `${r.name}: ${r.error}`);
+  const published         = allResults.filter(r => r.success && !r.alreadyPublished).map(r => `${r.name}@${r.version}`);
+  const alreadyPublished  = allResults.filter(r => r.alreadyPublished).map(r => `${r.name}@${r.version}`);
+  const failed            = allResults.filter(r => !r.success).map(r => `${r.name}@${r.version}`);
+  const errors            = allResults.filter(r => !r.success && r.error).map(r => `${r.name}: ${r.error}`);
+
+  if (alreadyPublished.length > 0) {
+    logger.info(`${alreadyPublished.length} package(s) already published — counted as success`);
+  }
 
   return {
-    results,
+    results: allResults,
     published,
+    alreadyPublished,
     failed,
-    skipped: dryRun ? packages.map((p) => `${p.name}@${p.version} (dry-run)`) : [],
+    skipped: dryRun ? packages.map(p => `${p.name}@${p.version} (dry-run)`) : [],
     errors,
   };
 }

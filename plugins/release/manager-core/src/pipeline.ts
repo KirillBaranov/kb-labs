@@ -2,6 +2,11 @@
  * Unified release pipeline — single orchestrator for CLI and REST.
  *
  * Flow: plan → snapshot → checks → build → verify → version bump → changelog → publish → git → report
+ *
+ * IMPORTANT — publish BEFORE git:
+ *   We commit and tag AFTER a successful publish, not before.
+ *   This prevents the "git tag exists but npm is empty" state that breaks installs.
+ *   If publish fails (even partially), no git commit or tag is created.
  */
 
 import { join } from 'node:path';
@@ -197,14 +202,7 @@ export async function runReleasePipeline(options: PipelineOptions): Promise<Pipe
     await writeFile(changelogPath, changelogMd, 'utf-8');
   }
 
-  // 8. Git commit + tag (before publish so tree is clean for pnpm publish git-checks)
-  let gitResult: { committed: boolean; tagged: string[]; pushed: boolean } | undefined;
-  if (!dryRun) {
-    progress('verifying', 'Committing and tagging release...');
-    gitResult = await commitAndTagRelease({ cwd: scopeCwd, plan, dryRun, noVerify });
-  }
-
-  // 9. Publish
+  // 8. Publish (before git — see module comment)
   progress('publishing', dryRun ? 'Simulating publish (dry-run)...' : 'Publishing packages...');
   const packagesToPublish = plan.packages.map(pkg => ({
     name: pkg.name,
@@ -217,14 +215,42 @@ export async function runReleasePipeline(options: PipelineOptions): Promise<Pipe
     access: 'public',
   });
 
+  // If any package genuinely failed to publish, abort before touching git.
+  // "alreadyPublished" entries are fine — they are counted as success.
+  const publishFailed = publishResult.failed.length > 0;
+
+  if (publishFailed) {
+    return {
+      success: false,
+      plan,
+      report: buildReport('publishing', plan, repoRoot, dryRun, startTime, {
+        ok: false,
+        published: publishResult.published,
+        skipped: publishResult.skipped,
+        errors: [
+          `${publishResult.failed.length} package(s) failed to publish — git commit/tag skipped to prevent desync.`,
+          ...(publishResult.errors ?? []),
+        ],
+        timingMs: Date.now() - startTime,
+      }),
+    };
+  }
+
+  // 9. Git commit + tag — only after all packages are on npm
+  let gitResult: { committed: boolean; tagged: string[]; pushed: boolean } | undefined;
+  if (!dryRun) {
+    progress('verifying', 'Committing and tagging release...');
+    gitResult = await commitAndTagRelease({ cwd: scopeCwd, plan, dryRun, noVerify });
+  }
+
   // 10. Report
   const report = buildReport('verifying', plan, repoRoot, dryRun, startTime, {
-    ok: publishResult.errors.length === 0 && (!gitResult || gitResult.committed),
+    ok: (!gitResult || gitResult.committed),
     published: publishResult.published,
+    alreadyPublished: publishResult.alreadyPublished,
     skipped: publishResult.skipped,
     changelog: changelogMd || undefined,
     git: gitResult,
-    errors: publishResult.errors.length > 0 ? publishResult.errors : undefined,
     timingMs: Date.now() - startTime,
   });
 

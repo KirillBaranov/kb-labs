@@ -88,6 +88,9 @@ export interface ReleaseResult {
   ok: boolean;
   version?: string;
   published?: string[];
+  /** Versions already present on npm — treated as success, not re-published. */
+  alreadyPublished?: string[];
+  failed?: string[];
   skipped?: string[];
   changelog?: string;
   checks?: Partial<Record<CheckId, CheckResult>>;
@@ -248,6 +251,9 @@ export interface PublishablePackage {
 
 export interface PublishResult {
   published: string[];
+  /** Versions that were already on npm — treated as success, no re-publish attempted. */
+  alreadyPublished?: string[];
+  failed: string[];
   skipped: string[];
   errors: string[];
 }
