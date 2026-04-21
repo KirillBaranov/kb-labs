@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/release-manager-cli",
   "description": "KB Labs Release Manager - CLI commands for release management",
-  "version": "2.74.0",
+  "version": "2.75.0",
   "type": "module",
   "author": {
     "name": "Kirill Baranov",
