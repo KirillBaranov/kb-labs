@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/adapters-transport",
   "description": "Transport adapters for inter-process communication (IPC, Unix Sockets)",
-  "version": "2.66.0",
+  "version": "2.67.0",
   "type": "module",
   "author": "KB Labs",
   "license": "MIT",
