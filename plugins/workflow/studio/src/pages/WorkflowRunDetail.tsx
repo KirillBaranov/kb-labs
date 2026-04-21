@@ -478,7 +478,7 @@ export default function WorkflowRunDetail() {
     { runId: string; jobId: string; stepId: string; action: string; comment?: string },
     unknown
   >('/v1/approval/resolve')
-  const isRunActive = run != null && !['success', 'failed', 'cancelled', 'skipped'].includes(run.status)
+  const isRunActive = run != null && !['success', 'failed', 'cancelled', 'skipped', 'dlq'].includes(run.status)
 
   const { events, error: logError, isConnected } = useSSE<WorkflowLogEvent>(
     isRunActive && runId ? `/v1/workflows/runs/${runId}/events` : null,

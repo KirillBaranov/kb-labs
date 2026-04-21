@@ -491,7 +491,7 @@ export async function createWorkflowWorker(
           // Mark step as started (sets startedAt timestamp)
           await engine.markStepStarted(run.id, job.id, step.id);
 
-          // Build spec with interpolated `with`
+          // Build spec with interpolated `with`, `run`, and `summary`.
           // Normalize `run: cmd` → `uses: builtin:shell, with: { command: cmd }`
           // Interpolate the run string so ${{ inputs.* }}, ${{ steps.* }} etc. are resolved.
           let baseSpec = step.spec as Record<string, unknown>;
@@ -499,6 +499,10 @@ export async function createWorkflowWorker(
             const { run: rawRun, with: existingWith, ...rest } = baseSpec as any;
             const command = typeof rawRun === 'string' ? interpolateString(rawRun, exprCtx) : rawRun;
             baseSpec = { ...rest, uses: 'builtin:shell', with: { ...existingWith, command } };
+          }
+          // Interpolate the summary field so ${{ inputs.* }} resolves in step descriptions shown in Studio.
+          if (typeof (baseSpec as any).summary === 'string') {
+            (baseSpec as any).summary = interpolateString((baseSpec as any).summary, exprCtx);
           }
           const interpolatedSpec = interpolatedWith
             ? { ...baseSpec, with: { ...(baseSpec.with as object ?? {}), ...interpolatedWith } }
