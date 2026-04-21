@@ -216,6 +216,13 @@ export default defineCommand({
           });
         }
 
+        if (!dryRun && (report.result as any).alreadyPublished?.length) {
+          sections.push({
+            header: 'Already published (skipped)',
+            items: ((report.result as any).alreadyPublished as string[]).map(p => `${ctx.ui.symbols.info} ${p}`),
+          });
+        }
+
         if (dryRun && report.result.skipped?.length) {
           sections.push({
             header: 'Would publish (dry-run)',
