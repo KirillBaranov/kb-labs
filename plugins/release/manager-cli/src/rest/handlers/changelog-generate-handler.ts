@@ -19,6 +19,90 @@ import { ANALYTICS_EVENTS, ANALYTICS_ACTOR } from '../../infra/analytics/events'
 import { RELEASE_CACHE_PREFIX } from '@kb-labs/release-manager-contracts';
 import { scopeToDir } from '../../shared/utils';
 
+// ── helpers ────────────────────────────────────────────────────────────────
+
+interface GenerateResult {
+  markdown: string;
+  commitsCount: number;
+  usedLLM: boolean;
+}
+
+async function generateWithLLM(
+  ctx: Parameters<typeof defineHandler>[0] extends { execute(ctx: infer C, ...args: any[]): any } ? C : any,
+  packages: ChangelogPackageInfo[],
+  repoRoot: string,
+  gitCwd: string,
+  locale: string,
+  scope: string,
+): Promise<GenerateResult> {
+  try {
+    ctx.platform?.logger?.info?.('Starting LLM changelog generation', {
+      scope,
+      packagesCount: packages.length,
+      template: 'corporate-ai',
+    });
+    const result = await generateChangelog({
+      repoRoot,
+      gitCwd,
+      packages,
+      range: { from: undefined, to: 'HEAD' },
+      changelog: { template: 'corporate-ai', locale },
+      platform: {
+        llm: ctx.platform.llm,
+        logger: ctx.platform.logger,
+        analytics: ctx.platform.analytics,
+      },
+    });
+    ctx.platform?.logger?.info?.('LLM changelog generated', {
+      scope,
+      markdownLength: result.markdown.length,
+      linesCount: result.markdown.split('\n').length,
+      commitsCount: result.changes.length,
+    });
+    return { markdown: result.markdown, commitsCount: result.changes.length, usedLLM: true };
+  } catch (err) {
+    ctx.platform?.logger?.error?.(
+      'Changelog generation failed, using simple fallback',
+      err instanceof Error ? err : undefined,
+      { scope, packagesCount: packages.length },
+    );
+    return { markdown: generateSimpleChangelog(packages, 'en'), commitsCount: 0, usedLLM: false };
+  }
+}
+
+async function resolveMarkdown(
+  ctx: any,
+  packages: ChangelogPackageInfo[],
+  repoRoot: string,
+  gitCwd: string,
+  locale: string,
+  useLLMFlag: boolean,
+  scope: string,
+): Promise<GenerateResult> {
+  if (!useLLMFlag) {
+    ctx.platform?.logger?.info?.('Using simple changelog (LLM disabled by user)', { scope });
+    return { markdown: generateSimpleChangelog(packages, 'en'), commitsCount: 0, usedLLM: false };
+  }
+  const hasLLM = !!ctx.platform?.llm;
+  ctx.platform?.logger?.info?.('Changelog generation mode', { scope, useLLM: useLLMFlag, hasLLMPlatform: hasLLM });
+  if (!hasLLM) {
+    ctx.platform?.logger?.warn?.('LLM service not available, falling back to simple changelog', { scope });
+    return { markdown: generateSimpleChangelog(packages, 'en'), commitsCount: 0, usedLLM: false };
+  }
+  return generateWithLLM(ctx, packages, repoRoot, gitCwd, locale, scope);
+}
+
+async function resolveGitCwd(packages: ChangelogPackageInfo[], repoRoot: string): Promise<string> {
+  if (!packages.length || !packages[0]) { return repoRoot; }
+  try {
+    return await findRepoRoot(packages[0].path);
+  } catch {
+    return packages[0].path;
+  }
+}
+
+// ── handler ────────────────────────────────────────────────────────────────
+
 export default defineHandler({
   async execute(ctx, input: RestInput<unknown, GenerateChangelogRequest>): Promise<GenerateChangelogResponse> {
     const scope = input.body?.scope || 'root';
@@ -26,29 +110,23 @@ export default defineHandler({
     const repoRoot = await findRepoRoot(cwd);
     const startTime = Date.now();
 
-    // Track start
-    ctx.platform?.analytics?.track?.(ANALYTICS_EVENTS.CHANGELOG_STARTED, {
-      scope,
-      actor: ANALYTICS_ACTOR,
-    });
+    ctx.platform?.analytics?.track?.(ANALYTICS_EVENTS.CHANGELOG_STARTED, { scope, actor: ANALYTICS_ACTOR });
 
-    // 1. Read release plan to get package info
     const scopeDirName = scopeToDir(scope);
     const planPath = `${repoRoot}/.kb/release/plans/${scopeDirName}/current/plan.json`;
     let plan: ReleasePlan;
     try {
       const planContent = await ctx.runtime.fs.readFile(planPath, 'utf-8');
       plan = JSON.parse(planContent);
-    } catch (error) {
+    } catch (err) {
       ctx.platform?.logger?.error?.(
         'Failed to read release plan',
-        error instanceof Error ? error : undefined,
-        { scope, planPath }
+        err instanceof Error ? err : undefined,
+        { scope, planPath },
       );
       throw new Error(`Release plan not found for scope "${scope}". Generate plan first.`);
     }
 
-    // 2. Convert plan packages to changelog format
     const packages: ChangelogPackageInfo[] = plan.packages.map(pkg => ({
       name: pkg.name,
       path: pkg.path,
@@ -57,128 +135,40 @@ export default defineHandler({
       bump: pkg.bump === 'auto' ? 'patch' : pkg.bump,
     }));
 
-    // 3. Determine git working directory (for submodule support)
-    let gitCwd = repoRoot;
-    if (packages.length > 0 && packages[0]) {
-      try {
-        gitCwd = await findRepoRoot(packages[0].path);
-      } catch {
-        gitCwd = packages[0].path;
-      }
-    }
+    const gitCwd = await resolveGitCwd(packages, repoRoot);
 
-    // 4. Generate changelog using real implementation
-    let markdown: string;
-    const tokensUsed = 0;
-    let usedLLM = false;
-    let commitsCount = 0;
-    const useLLM = input.body?.useLLM ?? true;
+    const { markdown, commitsCount, usedLLM } = await resolveMarkdown(
+      ctx,
+      packages,
+      repoRoot,
+      gitCwd,
+      input.body?.locale || 'en',
+      input.body?.useLLM ?? true,
+      scope,
+    );
 
-    // Skip LLM if disabled - use simple changelog
-    if (!useLLM) {
-      ctx.platform?.logger?.info?.('Using simple changelog (LLM disabled by user)', { scope });
-      markdown = generateSimpleChangelog(packages, 'en');
-    } else {
-      const hasLLM = !!ctx.platform?.llm;
-      ctx.platform?.logger?.info?.('Changelog generation mode', {
-        scope,
-        useLLM,
-        hasLLMPlatform: hasLLM,
-      });
-
-      if (!hasLLM) {
-        ctx.platform?.logger?.warn?.('LLM service not available, falling back to simple changelog', { scope });
-        markdown = generateSimpleChangelog(packages, 'en');
-      } else {
-        try {
-          ctx.platform?.logger?.info?.('Starting LLM changelog generation', {
-            scope,
-            packagesCount: packages.length,
-            template: 'corporate-ai',
-          });
-
-          const result = await generateChangelog({
-            repoRoot,
-            gitCwd,
-            packages,
-            range: {
-              from: undefined, // Auto-detect from tags
-              to: 'HEAD',
-            },
-            changelog: {
-              template: 'corporate-ai',
-              locale: input.body?.locale || 'en',
-            },
-            platform: {
-              llm: ctx.platform.llm,
-              logger: ctx.platform.logger,
-              analytics: ctx.platform.analytics,
-            },
-          });
-
-          markdown = result.markdown;
-          commitsCount = result.changes.length;
-          usedLLM = true;
-
-          ctx.platform?.logger?.info?.('LLM changelog generated', {
-            scope,
-            markdownLength: markdown.length,
-            linesCount: markdown.split('\n').length,
-            commitsCount,
-          });
-        } catch (error) {
-          // Fallback to simple changelog if generation fails
-          ctx.platform?.logger?.error?.(
-            'Changelog generation failed, using simple fallback',
-            error instanceof Error ? error : undefined,
-            { scope, packagesCount: packages.length }
-          );
-          markdown = generateSimpleChangelog(packages, 'en');
-        }
-      }
-    }
-
-    // 5. Ensure directory exists
     const scopeDir = `${repoRoot}/.kb/release/plans/${scopeDirName}/current`;
     await ctx.runtime.fs.mkdir(scopeDir, { recursive: true });
 
-    // 6. Write changelog
     const changelogPath = `${scopeDir}/changelog.md`;
     await ctx.runtime.fs.writeFile(changelogPath, markdown, { encoding: 'utf-8' });
 
-    // 7. Invalidate cache so next GET request fetches fresh data
     const cacheKey = `${RELEASE_CACHE_PREFIX}changelog:${scope}`;
     await ctx.platform?.cache?.delete(cacheKey);
 
     const duration = Date.now() - startTime;
+    const tokensUsed = 0;
 
     ctx.platform?.logger?.info?.('Changelog generated', {
-      scope,
-      path: changelogPath,
-      packagesCount: packages.length,
-      commitsCount,
-      usedLLM,
-      durationMs: duration,
+      scope, path: changelogPath, packagesCount: packages.length,
+      commitsCount, usedLLM, durationMs: duration,
     });
 
-    // Track completion
     ctx.platform?.analytics?.track?.(ANALYTICS_EVENTS.CHANGELOG_FINISHED, {
-      scope,
-      packagesCount: packages.length,
-      commitsCount,
-      durationMs: duration,
-      tokensUsed,
-      usedLLM,
-      actor: ANALYTICS_ACTOR,
+      scope, packagesCount: packages.length, commitsCount,
+      durationMs: duration, tokensUsed, usedLLM, actor: ANALYTICS_ACTOR,
     });
 
-    return {
-      scope,
-      markdown,
-      changelogPath,
-      tokensUsed,
-      usedLLM,
-      commitsCount,
-    };
+    return { scope, markdown, changelogPath, tokensUsed, usedLLM, commitsCount };
   }
 });
