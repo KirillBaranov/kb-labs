@@ -63,10 +63,7 @@ function buildPublishSections(
   return sections;
 }
 
-function toPublishResult(
-  results: PublishResultItem[],
-  dryRun: boolean | undefined,
-): PublishResult {
+function toPublishResult(results: PublishResultItem[]): PublishResult {
   const successful = results.filter(r => r.success).length;
   const failed = results.filter(r => !r.success).length;
   return {
@@ -143,7 +140,7 @@ export default defineCommand({
         });
       }
 
-      const publishResult = toPublishResult(rawResult.results, dryRun);
+      const publishResult = toPublishResult(rawResult.results);
 
       if (json) {
         ctx.ui?.json?.(publishResult);
