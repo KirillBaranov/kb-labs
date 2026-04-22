@@ -32,7 +32,7 @@ async function generateWithLLM(
   packages: ChangelogPackageInfo[],
   repoRoot: string,
   gitCwd: string,
-  locale: string,
+  locale: 'en' | 'ru',
   scope: string,
 ): Promise<GenerateResult> {
   try {
@@ -75,7 +75,7 @@ async function resolveMarkdown(
   packages: ChangelogPackageInfo[],
   repoRoot: string,
   gitCwd: string,
-  locale: string,
+  locale: 'en' | 'ru',
   useLLMFlag: boolean,
   scope: string,
 ): Promise<GenerateResult> {
@@ -137,12 +137,15 @@ export default defineHandler({
 
     const gitCwd = await resolveGitCwd(packages, repoRoot);
 
+    const localeRaw = input.body?.locale;
+    const locale: 'en' | 'ru' = localeRaw === 'ru' ? 'ru' : 'en';
+
     const { markdown, commitsCount, usedLLM } = await resolveMarkdown(
       ctx,
       packages,
       repoRoot,
       gitCwd,
-      input.body?.locale || 'en',
+      locale,
       input.body?.useLLM ?? true,
       scope,
     );
