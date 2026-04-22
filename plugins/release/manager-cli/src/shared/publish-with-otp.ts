@@ -13,7 +13,6 @@
  */
 
 import { spawn } from 'node:child_process';
-import { join } from 'node:path';
 import * as readline from 'node:readline/promises';
 import { useLoader, useEnv } from '@kb-labs/sdk';
 import { rewriteWorkspaceDeps } from './dep-rewrite';
@@ -141,6 +140,146 @@ function publishSinglePackage(options: PublishSingleOptions): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Fast-path helpers
+// ---------------------------------------------------------------------------
+
+interface FastPublishContext {
+  packageManager: 'pnpm' | 'npm' | 'yarn';
+  versionMap: Map<string, string>;
+  otp?: string;
+  dryRun?: boolean;
+  tag?: string;
+  access?: string;
+}
+
+interface FastPublishOutcome {
+  result: PublishResult | null; // null = needs OTP sequential path
+  otpFailed: boolean;
+}
+
+async function fastPublishPkg(
+  pkg: PackageToPublish,
+  ctx: FastPublishContext,
+  logger: PublishWithOTPOptions['logger'],
+): Promise<FastPublishOutcome> {
+  const restore = rewriteWorkspaceDeps(pkg.path, ctx.versionMap, ctx.packageManager);
+  try {
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        await publishSinglePackage({ packagePath: pkg.path, packageManager: ctx.packageManager, otp: ctx.otp, dryRun: ctx.dryRun, tag: ctx.tag, access: ctx.access });
+        logger?.info('Published (fast-path)', { name: pkg.name, version: pkg.version });
+        return { result: { name: pkg.name, version: pkg.version, success: true }, otpFailed: false };
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (isAlreadyPublished(msg)) {
+          logger?.info(`${pkg.name}@${pkg.version} already published — skipping`);
+          return { result: { name: pkg.name, version: pkg.version, success: true, alreadyPublished: true }, otpFailed: false };
+        }
+        if (msg.includes('EOTP') || msg.includes('one-time password')) {
+          return { result: null, otpFailed: true };
+        }
+        if (isRetryable(msg) && attempt < MAX_RETRIES) {
+          const delay = retryDelay(attempt);
+          logger?.warn(`Transient error for ${pkg.name} (attempt ${attempt + 1}/${MAX_RETRIES}), retrying in ${(delay / 1000).toFixed(1)}s`);
+          await new Promise<void>(r => { setTimeout(r, delay); });
+          continue;
+        }
+        logger?.error('Publish failed (fast-path)', undefined, { name: pkg.name, error: msg });
+        return { result: { name: pkg.name, version: pkg.version, success: false, error: msg }, otpFailed: false };
+      }
+    }
+    return { result: { name: pkg.name, version: pkg.version, success: false, error: `Publish failed after ${MAX_RETRIES} retries (transient errors)` }, otpFailed: false };
+  } finally {
+    restore();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Sequential OTP path helpers
+// ---------------------------------------------------------------------------
+
+interface OtpState { otp?: string; }
+
+async function promptForOtp(
+  ui: PublishWithOTPOptions['ui'],
+  loader: ReturnType<typeof useLoader>,
+  pkgName: string,
+): Promise<string | undefined> {
+  loader.succeed(`🔐 2FA required for ${pkgName}`);
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  try {
+    const entered = await rl.question('   Enter OTP code: ');
+    rl.close();
+    if (!entered || entered.trim().length !== 6) {
+      ui.write?.('   ⚠️  Invalid OTP (must be 6 digits)\n');
+      return undefined;
+    }
+    return entered.trim();
+  } catch (e) {
+    rl.close();
+    throw e;
+  }
+}
+
+interface SequentialContext {
+  packageManager: 'pnpm' | 'npm' | 'yarn';
+  versionMap: Map<string, string>;
+  dryRun?: boolean;
+  tag?: string;
+  access?: string;
+}
+
+async function sequentialPublishPkg(
+  pkg: PackageToPublish,
+  ctx: SequentialContext,
+  otpState: OtpState,
+  ui: PublishWithOTPOptions['ui'],
+  logger: PublishWithOTPOptions['logger'],
+): Promise<PublishResult> {
+  const loader = useLoader(`Publishing ${pkg.name}@${pkg.version}...`);
+  loader.start();
+  const restore = rewriteWorkspaceDeps(pkg.path, ctx.versionMap, ctx.packageManager);
+  try {
+    const MAX_OTP_ATTEMPTS = 3;
+    for (let otpAttempts = 0; otpAttempts < MAX_OTP_ATTEMPTS; otpAttempts++) {
+      try {
+        await publishSinglePackage({ packagePath: pkg.path, packageManager: ctx.packageManager, otp: otpState.otp, dryRun: ctx.dryRun, tag: ctx.tag, access: ctx.access });
+        loader.succeed(ctx.dryRun ? `Dry-run: ${pkg.name}@${pkg.version}` : `Published ${pkg.name}@${pkg.version}`);
+        return { name: pkg.name, version: pkg.version, success: true };
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        if (isAlreadyPublished(msg)) {
+          loader.succeed(`${pkg.name}@${pkg.version} already published`);
+          return { name: pkg.name, version: pkg.version, success: true, alreadyPublished: true };
+        }
+        if (msg.includes('EOTP') || msg.includes('one-time password')) {
+          if (otpAttempts + 1 < MAX_OTP_ATTEMPTS) {
+            otpState.otp = await promptForOtp(ui, loader, pkg.name);
+            loader.update({ text: `Publishing ${pkg.name}@${pkg.version} with OTP...` });
+            loader.start();
+          } else {
+            loader.fail('Max OTP attempts reached');
+            return { name: pkg.name, version: pkg.version, success: false, error: 'Max OTP attempts reached' };
+          }
+        } else if (isRetryable(msg)) {
+          const delay = retryDelay(MAX_RETRIES - 1);
+          loader.update({ text: `Rate limited — waiting ${(delay / 1000).toFixed(0)}s…` });
+          loader.start();
+          await new Promise<void>(r => { setTimeout(r, delay); });
+          otpAttempts--; // don't count transient error as an OTP attempt
+        } else {
+          loader.fail(`Failed: ${msg.split('\n')[0]}`);
+          return { name: pkg.name, version: pkg.version, success: false, error: msg };
+        }
+      }
+    }
+    return { name: pkg.name, version: pkg.version, success: false, error: 'Publish failed after max OTP attempts' };
+  } finally {
+    restore();
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Main export
 // ---------------------------------------------------------------------------
 
@@ -154,73 +293,24 @@ export async function publishPackagesWithOTP(
   options: PublishWithOTPOptions,
 ): Promise<PublishWithOTPResult> {
   const { packages, packageManager = 'pnpm', dryRun, tag, access, ui, logger } = options;
-  let otp = options.otp;
+  const otpState: OtpState = { otp: options.otp };
+  const versionMap = new Map(packages.map(p => [p.name, p.version]));
+  const fastCtx: FastPublishContext = { packageManager, versionMap, otp: otpState.otp, dryRun, tag, access };
+  const seqCtx: SequentialContext = { packageManager, versionMap, dryRun, tag, access };
 
   const results: PublishResult[] = [];
-  const versionMap = new Map(packages.map(p => [p.name, p.version]));
-
-  const CONCURRENCY = Number(useEnv('KB_PUBLISH_CONCURRENCY') ?? 4);
   const remaining: PackageToPublish[] = [];
+  const CONCURRENCY = Number(useEnv('KB_PUBLISH_CONCURRENCY') ?? 4);
   let otpFailureDetected = false;
-
-  // -------------------------------------------------------------------------
-  // Fast-path: parallel optimistic publish (no OTP required)
-  // -------------------------------------------------------------------------
-
-  const fastPublishOne = async (pkg: PackageToPublish): Promise<PublishResult | null> => {
-    const restore = rewriteWorkspaceDeps(pkg.path, versionMap, packageManager);
-    try {
-      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-        try {
-          await publishSinglePackage({ packagePath: pkg.path, packageManager, otp, dryRun, tag, access });
-          logger?.info('Published (fast-path)', { name: pkg.name, version: pkg.version });
-          return { name: pkg.name, version: pkg.version, success: true };
-        } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : String(err);
-
-          if (isAlreadyPublished(msg)) {
-            logger?.info(`${pkg.name}@${pkg.version} already published — skipping`);
-            return { name: pkg.name, version: pkg.version, success: true, alreadyPublished: true };
-          }
-          if (msg.includes('EOTP') || msg.includes('one-time password')) {
-            otpFailureDetected = true;
-            return null; // requeue for sequential OTP path
-          }
-          if (isRetryable(msg) && attempt < MAX_RETRIES) {
-            const delay = retryDelay(attempt);
-            logger?.warn(
-              `Transient error for ${pkg.name} (attempt ${attempt + 1}/${MAX_RETRIES}), ` +
-              `retrying in ${(delay / 1000).toFixed(1)}s`,
-            );
-            await new Promise(r => setTimeout(r, delay));
-            continue;
-          }
-          logger?.error('Publish failed (fast-path)', undefined, { name: pkg.name, error: msg });
-          return { name: pkg.name, version: pkg.version, success: false, error: msg };
-        }
-      }
-      return {
-        name: pkg.name,
-        version: pkg.version,
-        success: false,
-        error: `Publish failed after ${MAX_RETRIES} retries (transient errors)`,
-      };
-    } finally {
-      restore();
-    }
-  };
 
   ui.write?.(`  Publishing ${packages.length} package(s) in parallel (concurrency=${CONCURRENCY})...\n`);
   for (let i = 0; i < packages.length; i += CONCURRENCY) {
     const batch = packages.slice(i, i + CONCURRENCY);
-    const batchResults = await Promise.all(batch.map(fastPublishOne));
+    const outcomes = await Promise.all(batch.map(pkg => fastPublishPkg(pkg, fastCtx, logger)));
     for (let j = 0; j < batch.length; j++) {
-      const res = batchResults[j];
-      if (res === null || res === undefined) {
-        remaining.push(batch[j]!);
-      } else {
-        results.push(res);
-      }
+      const outcome = outcomes[j]!;
+      if (outcome.result === null) { remaining.push(batch[j]!); } else { results.push(outcome.result); }
+      if (outcome.otpFailed) { otpFailureDetected = true; }
     }
     if (otpFailureDetected) {
       remaining.push(...packages.slice(i + CONCURRENCY));
@@ -228,85 +318,12 @@ export async function publishPackagesWithOTP(
     }
   }
 
-  if (remaining.length === 0) {
-    return buildResult(results, packages, dryRun);
-  }
-
-  // -------------------------------------------------------------------------
-  // Sequential OTP path
-  // -------------------------------------------------------------------------
+  if (remaining.length === 0) { return buildResult(results, packages, dryRun); }
 
   ui.write?.(`  OTP required — falling back to sequential publish for ${remaining.length} package(s)\n`);
-
   for (const pkg of remaining) {
     logger?.info('Publishing package (sequential)', { name: pkg.name, version: pkg.version });
-    const loader = useLoader(`Publishing ${pkg.name}@${pkg.version}...`);
-    loader.start();
-
-    const restore = rewriteWorkspaceDeps(pkg.path, versionMap, packageManager);
-    try {
-      let published = false;
-      let otpAttempts = 0;
-      const MAX_OTP_ATTEMPTS = 3;
-
-      while (!published && otpAttempts < MAX_OTP_ATTEMPTS) {
-        otpAttempts++;
-        try {
-          await publishSinglePackage({ packagePath: pkg.path, packageManager, otp, dryRun, tag, access });
-          published = true;
-          results.push({ name: pkg.name, version: pkg.version, success: true });
-          loader.succeed(dryRun ? `Dry-run: ${pkg.name}@${pkg.version}` : `Published ${pkg.name}@${pkg.version}`);
-        } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : String(err);
-
-          if (isAlreadyPublished(msg)) {
-            published = true;
-            results.push({ name: pkg.name, version: pkg.version, success: true, alreadyPublished: true });
-            loader.succeed(`${pkg.name}@${pkg.version} already published`);
-            break;
-          }
-
-          if (msg.includes('EOTP') || msg.includes('one-time password')) {
-            if (otpAttempts < MAX_OTP_ATTEMPTS) {
-              loader.succeed(`🔐 2FA required for ${pkg.name}`);
-              const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-              try {
-                const entered = await rl.question('   Enter OTP code: ');
-                rl.close();
-                if (!entered || entered.trim().length !== 6) {
-                  ui.write?.('   ⚠️  Invalid OTP (must be 6 digits)\n');
-                  otp = undefined;
-                } else {
-                  otp = entered.trim();
-                }
-              } catch (e) {
-                rl.close();
-                throw e;
-              }
-              loader.update({ text: `Publishing ${pkg.name}@${pkg.version} with OTP...` });
-              loader.start();
-            } else {
-              loader.fail('Max OTP attempts reached');
-              results.push({ name: pkg.name, version: pkg.version, success: false, error: 'Max OTP attempts reached' });
-              break;
-            }
-          } else if (isRetryable(msg)) {
-            // Single retry with longest back-off for sequential path (blocking spinner context)
-            const delay = retryDelay(MAX_RETRIES - 1); // use the longest delay
-            loader.update({ text: `Rate limited — waiting ${(delay / 1000).toFixed(0)}s…` });
-            loader.start();
-            await new Promise(r => setTimeout(r, delay));
-            otpAttempts--; // don't count transient error as an OTP attempt
-          } else {
-            loader.fail(`Failed: ${msg.split('\n')[0]}`);
-            results.push({ name: pkg.name, version: pkg.version, success: false, error: msg });
-            break;
-          }
-        }
-      }
-    } finally {
-      restore();
-    }
+    results.push(await sequentialPublishPkg(pkg, seqCtx, otpState, ui, logger));
   }
 
   return buildResult(results, packages, dryRun);

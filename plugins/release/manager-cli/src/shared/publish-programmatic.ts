@@ -257,7 +257,7 @@ async function publishOne(
             `Transient error for ${pkg.name}@${pkg.version} (attempt ${attempt + 1}/${MAX_RETRIES}), ` +
             `retrying in ${(delay / 1000).toFixed(1)}s: ${message.split('\n')[0]}`,
           );
-          await new Promise(r => setTimeout(r, delay));
+          await new Promise<void>(r => { setTimeout(r, delay); });
           continue;
         }
 
@@ -282,6 +282,26 @@ async function publishOne(
 // ---------------------------------------------------------------------------
 // Main export
 // ---------------------------------------------------------------------------
+
+function skipRemainingWaves(
+  waves: ReturnType<typeof topoSort>,
+  waveIdx: number,
+  waveFailed: PublishResult[],
+  logger: ReturnType<typeof useLogger>,
+  allResults: PublishResult[],
+): void {
+  const remaining = waves.slice(waveIdx + 1).reduce((acc, w) => acc + w.length, 0);
+  if (remaining === 0) { return; }
+  logger.warn(
+    `Wave ${waveIdx + 1} had ${waveFailed.length} failure(s) — ` +
+    `skipping ${remaining} package(s) in later waves to avoid broken dependency chain`,
+  );
+  for (const laterWave of waves.slice(waveIdx + 1)) {
+    for (const pkg of laterWave) {
+      allResults.push({ name: pkg.name, version: pkg.version, success: false, error: 'Skipped: dependency wave failed' });
+    }
+  }
+}
 
 /**
  * Publish packages programmatically (non-interactive, for REST handlers / CI).
@@ -355,24 +375,7 @@ export async function publishPackagesProgrammatic(
     // publishing the next wave — it may depend on the failed packages.
     const waveFailed = allResults.slice(-wave.length).filter(r => !r.success);
     if (waveFailed.length > 0) {
-      const remaining = waves.slice(waveIdx + 1).reduce((acc, w) => acc + w.length, 0);
-      if (remaining > 0) {
-        logger.warn(
-          `Wave ${waveIdx + 1} had ${waveFailed.length} failure(s) — ` +
-          `skipping ${remaining} package(s) in later waves to avoid broken dependency chain`,
-        );
-        // Mark remaining packages as skipped-due-to-dependency-failure.
-        for (const laterWave of waves.slice(waveIdx + 1)) {
-          for (const pkg of laterWave) {
-            allResults.push({
-              name: pkg.name,
-              version: pkg.version,
-              success: false,
-              error: 'Skipped: dependency wave failed',
-            });
-          }
-        }
-      }
+      skipRemainingWaves(waves, waveIdx, waveFailed, logger, allResults);
       break;
     }
   }
