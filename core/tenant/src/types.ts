@@ -22,6 +22,8 @@ export interface TenantQuotas {
   maxStorageMB: number;
   /** Plugin executions per day (-1 = unlimited) */
   pluginExecutionsPerDay: number;
+  /** LLM tokens per day across all requests (-1 = unlimited) */
+  tokensPerDay: number;
 }
 
 /**
@@ -50,6 +52,7 @@ export const DEFAULT_QUOTAS: Record<TenantTier, TenantQuotas> = {
     maxConcurrentWorkflows: 1,
     maxStorageMB: 10,
     pluginExecutionsPerDay: 100,
+    tokensPerDay: 100_000,
   },
   pro: {
     requestsPerMinute: 100,
@@ -57,13 +60,15 @@ export const DEFAULT_QUOTAS: Record<TenantTier, TenantQuotas> = {
     maxConcurrentWorkflows: 10,
     maxStorageMB: 1000,
     pluginExecutionsPerDay: 10_000,
+    tokensPerDay: 10_000_000,
   },
   enterprise: {
     requestsPerMinute: 1000,
-    requestsPerDay: -1, // unlimited
+    requestsPerDay: -1,
     maxConcurrentWorkflows: 100,
     maxStorageMB: 10_000,
-    pluginExecutionsPerDay: -1, // unlimited
+    pluginExecutionsPerDay: -1,
+    tokensPerDay: -1,
   },
 };
 
