@@ -38,7 +38,7 @@ type ReleasePlanResult = CommandResult & {
 // ── helpers ────────────────────────────────────────────────────────────────
 
 function formatVersionInfo(pkg: { currentVersion?: string; nextVersion?: string }): string {
-  if (pkg.currentVersion && pkg.nextVersion) return `${pkg.currentVersion} → ${pkg.nextVersion}`;
+  if (pkg.currentVersion && pkg.nextVersion) { return `${pkg.currentVersion} → ${pkg.nextVersion}`; }
   return pkg.nextVersion || 'new';
 }
 

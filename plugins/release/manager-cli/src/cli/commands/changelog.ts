@@ -34,7 +34,7 @@ async function resolveGitCwd(
   packages: Array<{ path: string }>,
   repoRoot: string,
 ): Promise<string> {
-  if (!scope || !packages[0]) return repoRoot;
+  if (!scope || !packages[0]) { return repoRoot; }
   try {
     return await findRepoRoot(packages[0].path);
   } catch {
@@ -45,11 +45,11 @@ async function resolveGitCwd(
 /** Remove a version block from existing changelog content, if present. */
 function removeExistingVersionBlock(existing: string, newMarkdown: string): string {
   const newVersionMatch = newMarkdown.match(/^## \[([^\]]+)\]/m);
-  if (!newVersionMatch) return existing;
+  if (!newVersionMatch) { return existing; }
 
   const versionHeader = `## [${newVersionMatch[1]}]`;
   const blockStart = existing.indexOf(versionHeader);
-  if (blockStart === -1) return existing;
+  if (blockStart === -1) { return existing; }
 
   const nextBlockStart = existing.indexOf('\n## [', blockStart + 1);
   const blockEnd = nextBlockStart !== -1 ? nextBlockStart : existing.length;
@@ -64,7 +64,7 @@ async function mergeChangelogContent(changelogPath: string, newMarkdown: string)
   try {
     existing = await readFile(changelogPath, 'utf-8');
     const footerStart = existing.indexOf('\n---\n\n*Generated automatically');
-    if (footerStart !== -1) existing = existing.substring(0, footerStart);
+    if (footerStart !== -1) { existing = existing.substring(0, footerStart); }
     existing = removeExistingVersionBlock(existing, newMarkdown);
   } catch { /* file doesn't exist yet */ }
   return existing ? `${newMarkdown}\n\n${existing}` : newMarkdown;
