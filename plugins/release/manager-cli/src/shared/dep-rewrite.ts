@@ -12,6 +12,61 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
+// ── rewriteWorkspaceDeps helpers ──────────────────────────────────────────
+
+function rewriteLinkDep(
+  deps: Record<string, string>,
+  depName: string,
+  val: string,
+  pkgPath: string,
+  versionMap: Map<string, string>,
+): void {
+  const pinned = versionMap.get(depName);
+  if (pinned) {
+    deps[depName] = `^${pinned}`;
+    return;
+  }
+  try {
+    const linkPath = val.slice('link:'.length);
+    const linked = JSON.parse(readFileSync(join(pkgPath, linkPath, 'package.json'), 'utf-8')) as { version?: string };
+    deps[depName] = `^${linked.version ?? '*'}`;
+  } catch {
+    deps[depName] = '*';
+  }
+}
+
+function rewriteWorkspaceDep(
+  deps: Record<string, string>,
+  depName: string,
+  val: string,
+  versionMap: Map<string, string>,
+): boolean {
+  const pinned = versionMap.get(depName);
+  if (!pinned) { return false; }
+  deps[depName] = val === 'workspace:*' ? `^${pinned}` : val.replace('workspace:', '');
+  return true;
+}
+
+function rewriteDepsSection(
+  deps: Record<string, string>,
+  pkgPath: string,
+  versionMap: Map<string, string>,
+  packageManager: string,
+): boolean {
+  let modified = false;
+  for (const depName of Object.keys(deps)) {
+    const val = deps[depName];
+    if (typeof val !== 'string') { continue; }
+    if (val.startsWith('link:')) {
+      rewriteLinkDep(deps, depName, val, pkgPath, versionMap);
+      modified = true;
+    } else if (val.startsWith('workspace:') && packageManager !== 'pnpm') {
+      if (rewriteWorkspaceDep(deps, depName, val, versionMap)) { modified = true; }
+    }
+  }
+  return modified;
+}
+
 export function rewriteWorkspaceDeps(
   pkgPath: string,
   versionMap: Map<string, string>,
@@ -25,35 +80,7 @@ export function rewriteWorkspaceDeps(
   for (const section of ['dependencies', 'peerDependencies'] as const) {
     const deps = pkgJson[section] as Record<string, string> | undefined;
     if (!deps) { continue; }
-
-    for (const depName of Object.keys(deps)) {
-      const val = deps[depName];
-      if (typeof val !== 'string') { continue; }
-
-      if (val.startsWith('link:')) {
-        // link: is always invalid on npm registry — replace with semver range
-        const pinned = versionMap.get(depName);
-        if (pinned) {
-          deps[depName] = `^${pinned}`;
-        } else {
-          try {
-            const linkPath = val.slice('link:'.length);
-            const linked = JSON.parse(readFileSync(join(pkgPath, linkPath, 'package.json'), 'utf-8')) as { version?: string };
-            deps[depName] = `^${linked.version ?? '*'}`;
-          } catch {
-            deps[depName] = '*';
-          }
-        }
-        modified = true;
-      } else if (val.startsWith('workspace:') && packageManager !== 'pnpm') {
-        // pnpm publish rewrites workspace: natively; npm/yarn need manual replacement
-        const pinned = versionMap.get(depName);
-        if (pinned) {
-          deps[depName] = val === 'workspace:*' ? `^${pinned}` : val.replace('workspace:', '');
-          modified = true;
-        }
-      }
-    }
+    if (rewriteDepsSection(deps, pkgPath, versionMap, packageManager)) { modified = true; }
   }
 
   if (modified) {
@@ -62,6 +89,8 @@ export function rewriteWorkspaceDeps(
 
   return () => writeFileSync(pkgJsonPath, original);
 }
+
+// ── topoSort helpers ──────────────────────────────────────────────────────
 
 /**
  * Build a simple topological sort of packages for publish order.
@@ -79,10 +108,7 @@ export interface TopoPackage {
   version: string;
 }
 
-export function topoSort(packages: TopoPackage[], packageManager: string): TopoPackage[][] {
-  const nameSet = new Set(packages.map(p => p.name));
-
-  // Build adjacency: pkg → set of deps that are also being released
+function buildIntraDeps(packages: TopoPackage[], nameSet: Set<string>): Map<string, Set<string>> {
   const deps = new Map<string, Set<string>>();
   for (const pkg of packages) {
     const intra = new Set<string>();
@@ -101,31 +127,29 @@ export function topoSort(packages: TopoPackage[], packageManager: string): TopoP
     }
     deps.set(pkg.name, intra);
   }
+  return deps;
+}
 
-  // Kahn's algorithm
-  const inDegree = new Map<string, number>(packages.map(p => [p.name, 0]));
-  for (const [, d] of deps) {
-    for (const dep of d) {
-      inDegree.set(dep, (inDegree.get(dep) ?? 0) + 1);
-    }
-  }
-
-  // Actually we want packages whose deps are resolved first.
-  // Recompute: inDegree[pkg] = number of its dependencies (incoming edges from deps).
-  // A package is "ready" when all its dependencies have been placed in earlier waves.
-  const dependants = new Map<string, Set<string>>(); // dep → packages that depend on it
+function buildDependantsMap(packages: TopoPackage[], deps: Map<string, Set<string>>): Map<string, Set<string>> {
+  const dependants = new Map<string, Set<string>>();
   for (const pkg of packages) {
     for (const dep of deps.get(pkg.name) ?? []) {
       if (!dependants.has(dep)) { dependants.set(dep, new Set()); }
       dependants.get(dep)!.add(pkg.name);
     }
   }
+  return dependants;
+}
 
+function computeWaves(
+  packages: TopoPackage[],
+  deps: Map<string, Set<string>>,
+  dependants: Map<string, Set<string>>,
+): TopoPackage[][] {
+  const byName = new Map(packages.map(p => [p.name, p]));
   const remaining = new Map<string, number>(
     packages.map(p => [p.name, (deps.get(p.name) ?? new Set()).size])
   );
-
-  const byName = new Map(packages.map(p => [p.name, p]));
   const waves: TopoPackage[][] = [];
 
   while (remaining.size > 0) {
@@ -134,7 +158,6 @@ export function topoSort(packages: TopoPackage[], packageManager: string): TopoP
       .map(([name]) => byName.get(name)!);
 
     if (wave.length === 0) {
-      // Cycle detected — dump remainder as a final wave
       waves.push([...remaining.keys()].map(n => byName.get(n)!));
       break;
     }
@@ -151,4 +174,11 @@ export function topoSort(packages: TopoPackage[], packageManager: string): TopoP
   }
 
   return waves.filter(w => w.length > 0);
+}
+
+export function topoSort(packages: TopoPackage[], _packageManager: string): TopoPackage[][] {
+  const nameSet = new Set(packages.map(p => p.name));
+  const deps = buildIntraDeps(packages, nameSet);
+  const dependants = buildDependantsMap(packages, deps);
+  return computeWaves(packages, deps, dependants);
 }

@@ -18,7 +18,7 @@ export default defineHandler({
     let raw: string;
     try {
       raw = await ctx.runtime.fs.readFile(indexPath, 'utf-8');
-    } catch (error) {
+    } catch {
       // No history yet
       return {
         hasReport: false,
