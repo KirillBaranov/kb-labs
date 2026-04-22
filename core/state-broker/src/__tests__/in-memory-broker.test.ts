@@ -257,8 +257,10 @@ describe('InMemoryStateBroker', () => {
     it('should track uptime', async () => {
       const stats1 = await broker.getStats();
 
+      // Sleep 150ms so the uptime check has headroom even on a slow CI runner.
+      // setTimeout(100) can fire 1-2ms early, so 100ms threshold was flaky.
       await new Promise((resolve) => {
-        setTimeout(resolve, 100);
+        setTimeout(resolve, 150);
       });
 
       const stats2 = await broker.getStats();

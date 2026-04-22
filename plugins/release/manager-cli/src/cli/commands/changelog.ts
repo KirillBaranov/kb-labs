@@ -27,6 +27,73 @@ interface ReleaseChangelogResult {
   artifacts?: Array<{ name: string; path: string; size: number }>;
 }
 
+// ── helpers ────────────────────────────────────────────────────────────────
+
+async function resolveGitCwd(
+  scope: string | undefined,
+  packages: Array<{ path: string }>,
+  repoRoot: string,
+): Promise<string> {
+  if (!scope || !packages[0]) return repoRoot;
+  try {
+    return await findRepoRoot(packages[0].path);
+  } catch {
+    return packages[0].path;
+  }
+}
+
+/** Remove a version block from existing changelog content, if present. */
+function removeExistingVersionBlock(existing: string, newMarkdown: string): string {
+  const newVersionMatch = newMarkdown.match(/^## \[([^\]]+)\]/m);
+  if (!newVersionMatch) return existing;
+
+  const versionHeader = `## [${newVersionMatch[1]}]`;
+  const blockStart = existing.indexOf(versionHeader);
+  if (blockStart === -1) return existing;
+
+  const nextBlockStart = existing.indexOf('\n## [', blockStart + 1);
+  const blockEnd = nextBlockStart !== -1 ? nextBlockStart : existing.length;
+  const before = existing.substring(0, blockStart).trimEnd();
+  const after = existing.substring(blockEnd).trimStart();
+  return before && after ? `${before}\n\n${after}` : before || after;
+}
+
+/** Read existing changelog, strip footer + duplicate version, then prepend new content. */
+async function mergeChangelogContent(changelogPath: string, newMarkdown: string): Promise<string> {
+  let existing = '';
+  try {
+    existing = await readFile(changelogPath, 'utf-8');
+    const footerStart = existing.indexOf('\n---\n\n*Generated automatically');
+    if (footerStart !== -1) existing = existing.substring(0, footerStart);
+    existing = removeExistingVersionBlock(existing, newMarkdown);
+  } catch { /* file doesn't exist yet */ }
+  return existing ? `${newMarkdown}\n\n${existing}` : newMarkdown;
+}
+
+function buildChangelogSections(
+  plan: { packages: Array<{ name: string }> },
+  format: string,
+  artifacts: ArtifactInfo[],
+): Array<{ header?: string; items: string[] }> {
+  const sections: Array<{ header?: string; items: string[] }> = [];
+  sections.push({
+    header: 'Summary',
+    items: [
+      `Packages: ${plan.packages.map(p => p.name).join(', ')}`,
+      `Format: ${format === 'both' ? 'Markdown + JSON' : format}`,
+    ],
+  });
+  if (artifacts.length > 0) {
+    sections.push({
+      header: 'Artifacts',
+      items: displayArtifacts(artifacts, { showSize: true, showTime: true, showDescription: true, maxItems: 10, title: '' }),
+    });
+  }
+  return sections;
+}
+
+// ── command ────────────────────────────────────────────────────────────────
+
 export default defineCommand({
   id: 'release:changelog',
   description: 'Generate changelog from conventional commits',
@@ -37,7 +104,6 @@ export default defineCommand({
       const cwd = ctx.cwd || process.cwd();
       const repoRoot = await findRepoRoot(cwd);
 
-      // 1. Load config + discover packages
       const loader = useLoader('Loading configuration...');
       loader.start();
 
@@ -45,7 +111,6 @@ export default defineCommand({
       const config: ReleaseConfig = fileConfig ?? {};
 
       loader.update({ text: 'Discovering packages...' });
-
       const plan = await planRelease({ cwd: repoRoot, config, scope: flags.scope, flow: flags.flow });
 
       if (plan.packages.length === 0) {
@@ -53,66 +118,25 @@ export default defineCommand({
         return { exitCode: 1 };
       }
 
-      // 2. Determine git working directory (for submodule support)
-      let gitCwd = repoRoot;
-      if (flags.scope && plan.packages[0]) {
-        try {
-          gitCwd = await findRepoRoot(plan.packages[0].path);
-        } catch {
-          gitCwd = plan.packages[0].path;
-        }
-      }
+      const gitCwd = await resolveGitCwd(flags.scope, plan.packages, repoRoot);
 
-      // 3. Generate changelog via shared factory
       loader.update({ text: 'Generating changelog...' });
-
       const llm = useLLM();
       const generator = createChangelogGenerator(config, llm ?? undefined);
       const markdown = await generator.generate(plan, { repoRoot, gitCwd, config });
 
       const format = flags.format || config.changelog?.format || 'both';
-
-      // 4. Save artifacts
-      loader.update({ text: 'Saving artifacts...' });
-
       const outputDir = join(repoRoot, '.kb', 'release');
       const artifacts: ArtifactInfo[] = [];
 
       if (!flags.json) {
+        loader.update({ text: 'Saving artifacts...' });
         await mkdir(outputDir, { recursive: true });
 
         if (markdown && (format === 'md' || format === 'both')) {
           const changelogPath = join(outputDir, 'CHANGELOG.md');
-
-          // Read existing, strip same-version block if present, then prepend new content
-          let existing = '';
-          try {
-            existing = await readFile(changelogPath, 'utf-8');
-            const footerStart = existing.indexOf('\n---\n\n*Generated automatically');
-            if (footerStart !== -1) {
-              existing = existing.substring(0, footerStart);
-            }
-            // Extract version from new markdown (first ## [x.y.z] line)
-            const newVersionMatch = markdown.match(/^## \[([^\]]+)\]/m);
-            if (newVersionMatch) {
-              const version = newVersionMatch[1];
-              // Find and remove the existing block for this version
-              // A block starts with ## [version] and ends before the next ## [ or EOF
-              const versionHeader = `## [${version}]`;
-              const blockStart = existing.indexOf(versionHeader);
-              if (blockStart !== -1) {
-                const nextBlockStart = existing.indexOf('\n## [', blockStart + 1);
-                const blockEnd = nextBlockStart !== -1 ? nextBlockStart : existing.length;
-                const before = existing.substring(0, blockStart).trimEnd();
-                const after = existing.substring(blockEnd).trimStart();
-                existing = before && after ? `${before}\n\n${after}` : before || after;
-              }
-            }
-          } catch { /* file doesn't exist yet */ }
-
-          const combined = existing ? `${markdown}\n\n${existing}` : markdown;
+          const combined = await mergeChangelogContent(changelogPath, markdown);
           await writeFile(changelogPath, combined, 'utf-8');
-
           const stats = await stat(changelogPath);
           artifacts.push({
             name: 'Changelog',
@@ -126,7 +150,6 @@ export default defineCommand({
 
       loader.succeed('Changelog generated successfully');
 
-      // 5. Output
       if (flags.json) {
         ctx.ui?.json?.({
           packagesCount: plan.packages.length,
@@ -134,30 +157,9 @@ export default defineCommand({
           artifacts: artifacts.map(a => ({ name: a.name, path: a.path, size: a.size ?? 0 })),
         });
       } else {
-        const sections: Array<{ header?: string; items: string[] }> = [];
-
-        sections.push({
-          header: 'Summary',
-          items: [
-            `Packages: ${plan.packages.map(p => p.name).join(', ')}`,
-            `Format: ${format === 'both' ? 'Markdown + JSON' : format}`,
-          ],
-        });
-
-        if (artifacts.length > 0) {
-          const artifactsLines = displayArtifacts(artifacts, {
-            showSize: true,
-            showTime: true,
-            showDescription: true,
-            maxItems: 10,
-            title: '',
-          });
-          sections.push({ header: 'Artifacts', items: artifactsLines });
-        }
-
         ctx.ui.sideBox({
           title: 'Changelog Generated',
-          sections,
+          sections: buildChangelogSections(plan, format, artifacts),
           status: 'success',
         });
       }
