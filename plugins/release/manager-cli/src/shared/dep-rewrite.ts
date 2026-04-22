@@ -60,8 +60,8 @@ function rewriteDepsSection(
     if (val.startsWith('link:')) {
       rewriteLinkDep(deps, depName, val, pkgPath, versionMap);
       modified = true;
-    } else if (val.startsWith('workspace:') && packageManager !== 'pnpm') {
-      if (rewriteWorkspaceDep(deps, depName, val, versionMap)) { modified = true; }
+    } else if (val.startsWith('workspace:') && packageManager !== 'pnpm' && rewriteWorkspaceDep(deps, depName, val, versionMap)) {
+      modified = true;
     }
   }
   return modified;
