@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import type { StateBroker } from '@kb-labs/core-state-broker';
+import type { ICache } from '@kb-labs/core-platform';
 import { TenantRateLimiter } from '../rate-limiter.js';
 import { DEFAULT_QUOTAS, getDefaultTenantId, getDefaultTenantTier, getQuotasForTier } from '../types.js';
 
-function createMockBroker(): StateBroker {
+function createMockCache(): ICache {
   const store = new Map<string, { value: unknown; expires?: number }>();
 
   return {
@@ -25,19 +25,29 @@ function createMockBroker(): StateBroker {
     async delete(key: string): Promise<void> {
       store.delete(key);
     },
-    async clear(): Promise<void> {
-      store.clear();
+    async clear(pattern?: string): Promise<void> {
+      if (!pattern) { store.clear(); return; }
+      const re = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
+      for (const k of store.keys()) { if (re.test(k)) { store.delete(k); } }
     },
-  } as StateBroker;
+    async zadd(_key: string, _score: number, _member: string): Promise<void> {},
+    async zrangebyscore(_key: string, _min: number, _max: number): Promise<string[]> { return []; },
+    async zrem(_key: string, _member: string): Promise<void> {},
+    async setIfNotExists<T>(key: string, value: T, ttl?: number): Promise<boolean> {
+      if (store.has(key)) { return false; }
+      store.set(key, { value, expires: ttl ? Date.now() + ttl : undefined });
+      return true;
+    },
+  };
 }
 
 describe('TenantRateLimiter', () => {
-  let broker: StateBroker;
+  let cache: ICache;
   let limiter: TenantRateLimiter;
 
   beforeEach(() => {
-    broker = createMockBroker();
-    limiter = new TenantRateLimiter(broker);
+    cache = createMockCache();
+    limiter = new TenantRateLimiter(cache);
   });
 
   // ── checkLimit ───────────────────────────────────────────────────────
@@ -111,6 +121,7 @@ describe('TenantRateLimiter', () => {
       maxConcurrentWorkflows: 1,
       maxStorageMB: 10,
       pluginExecutionsPerDay: 50,
+      tokensPerDay: 50_000,
     });
 
     const result = await limiter.checkLimit('custom-tenant', 'requests');
@@ -165,6 +176,56 @@ describe('TenantRateLimiter', () => {
     const now = Date.now();
     expect(result.resetAt).toBeGreaterThan(now);
     expect(result.resetAt).toBeLessThanOrEqual(now + 60_000);
+  });
+
+  // ── trackTokens ─────────────────────────────────────────────────────
+
+  it('trackTokens accumulates consumption across calls', async () => {
+    limiter.setTier('acme', 'free'); // 100_000 tokens/day
+
+    const r1 = await limiter.trackTokens('acme', 1_000);
+    expect(r1.allowed).toBe(true);
+    expect(r1.consumed).toBe(1_000);
+
+    const r2 = await limiter.trackTokens('acme', 2_000);
+    expect(r2.allowed).toBe(true);
+    expect(r2.consumed).toBe(3_000);
+  });
+
+  it('trackTokens blocks when daily budget is exhausted', async () => {
+    limiter.setQuotas('acme', {
+      requestsPerMinute: 10,
+      requestsPerDay: 1000,
+      maxConcurrentWorkflows: 1,
+      maxStorageMB: 10,
+      pluginExecutionsPerDay: 100,
+      tokensPerDay: 500,
+    });
+
+    await limiter.trackTokens('acme', 500); // exactly at limit
+    const r = await limiter.trackTokens('acme', 1);
+    expect(r.allowed).toBe(false);
+    expect(r.consumed).toBe(501);
+  });
+
+  it('trackTokens is unlimited for enterprise', async () => {
+    limiter.setTier('acme', 'enterprise');
+
+    const r = await limiter.trackTokens('acme', 999_999_999);
+    expect(r.allowed).toBe(true);
+    expect(r.limit).toBe(-1);
+  });
+
+  it('getTokenUsage returns current consumption without incrementing', async () => {
+    limiter.setTier('acme', 'free');
+    await limiter.trackTokens('acme', 5_000);
+
+    const usage = await limiter.getTokenUsage('acme');
+    expect(usage.consumed).toBe(5_000);
+
+    // calling again should not change the value
+    const usage2 = await limiter.getTokenUsage('acme');
+    expect(usage2.consumed).toBe(5_000);
   });
 });
 

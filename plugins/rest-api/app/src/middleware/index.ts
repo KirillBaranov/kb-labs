@@ -5,6 +5,7 @@
 
 import type { FastifyInstance } from 'fastify';
 import type { RestApiConfig } from '@kb-labs/rest-api-core';
+import { platform } from '@kb-labs/core-runtime';
 import { registerEnvelopeMiddleware } from './envelope';
 import { registerRequestIdMiddleware } from './request-id';
 import { registerMockModeMiddleware } from './mock-mode';
@@ -14,6 +15,7 @@ import { registerMetricsMiddleware } from './metrics';
 import { registerErrorGuard } from './error-guard';
 import { registerStartupGuard } from './startup-guard';
 import { registerRequestTimeoutGuard } from './request-timeout';
+import { registerTenantRateLimitMiddleware } from './tenant-rate-limit';
 
 /**
  * Register all middleware
@@ -25,6 +27,8 @@ export function registerMiddleware(
   registerStartupGuard(server, config);
   registerSecurityHeadersMiddleware(server);
   registerRequestIdMiddleware(server);
+  // Tenant-aware rate limiting — runs before route handlers
+  registerTenantRateLimitMiddleware(server, platform.cache);
   registerMockModeMiddleware(server, config);
   registerCacheMiddleware(server);
   registerRequestTimeoutGuard(server, config);
