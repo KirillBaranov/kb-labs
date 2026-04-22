@@ -42,7 +42,7 @@ export default defineHandler({
       if (markdown !== undefined) {
         await ctx.platform?.cache?.set(cacheKey, markdown, CACHE_TTL_MS);
       }
-    } catch (error) {
+    } catch {
       // No changelog found - markdown will be undefined
     }
 

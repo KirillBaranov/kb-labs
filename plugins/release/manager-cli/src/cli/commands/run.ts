@@ -93,43 +93,31 @@ function createPublisher(
   };
 }
 
-function buildCheckItems(checkEntries: CheckResult[], symbols: { success: string; warning: string; error: string }): string[] {
-  const checkItems: string[] = [];
-
-  for (const c of checkEntries) {
-    const sym = c.ok
-      ? symbols.success
-      : c.hint === 'optional'
-        ? symbols.warning
-        : symbols.error;
-    const timing = c.timingMs ? ` (${(c.timingMs / 1000).toFixed(1)}s)` : '';
-    checkItems.push(`${sym} ${c.id}${timing}`);
-
-    if (!c.ok && c.hint !== 'optional') {
-      if (c.details?.packagePath) {
-        checkItems.push(`     package: ${c.details.packagePath}`);
-      }
-      if (c.details?.error) {
-        checkItems.push(`     reason:  ${c.details.error}`);
-      }
-      const output = (c.details?.stderr || c.details?.stdout || '').trim();
-      if (output) {
-        const lines = output.split('\n').slice(0, 8);
-        checkItems.push(`     output:`);
-        for (const line of lines) {
-          checkItems.push(`       ${line}`);
-        }
-      }
-      if (c.packages?.filter(p => !p.ok).length) {
-        const failedPkgs = c.packages.filter(p => !p.ok);
-        checkItems.push(`     failed in ${failedPkgs.length}/${c.packages.length} package(s):`);
-        for (const pkg of failedPkgs.slice(0, 10)) {
-          checkItems.push(`       - ${pkg.path}${pkg.details?.error ? `: ${pkg.details.error}` : ''}`);
-        }
-      }
+function appendCheckDetails(c: CheckResult, checkItems: string[]): void {
+  if (c.details?.packagePath) { checkItems.push(`     package: ${c.details.packagePath}`); }
+  if (c.details?.error) { checkItems.push(`     reason:  ${c.details.error}`); }
+  const output = (c.details?.stderr || c.details?.stdout || '').trim();
+  if (output) {
+    checkItems.push(`     output:`);
+    for (const line of output.split('\n').slice(0, 8)) { checkItems.push(`       ${line}`); }
+  }
+  const failedPkgs = (c.packages ?? []).filter(p => !p.ok);
+  if (failedPkgs.length) {
+    checkItems.push(`     failed in ${failedPkgs.length}/${c.packages!.length} package(s):`);
+    for (const pkg of failedPkgs.slice(0, 10)) {
+      checkItems.push(`       - ${pkg.path}${pkg.details?.error ? `: ${pkg.details.error}` : ''}`);
     }
   }
+}
 
+function buildCheckItems(checkEntries: CheckResult[], symbols: { success: string; warning: string; error: string }): string[] {
+  const checkItems: string[] = [];
+  for (const c of checkEntries) {
+    const sym = c.ok ? symbols.success : (c.hint === 'optional' ? symbols.warning : symbols.error);
+    const timing = c.timingMs ? ` (${(c.timingMs / 1000).toFixed(1)}s)` : '';
+    checkItems.push(`${sym} ${c.id}${timing}`);
+    if (!c.ok && c.hint !== 'optional') { appendCheckDetails(c, checkItems); }
+  }
   return checkItems;
 }
 
@@ -195,6 +183,23 @@ function buildReleaseSections(
   }
 
   return sections;
+}
+
+function resolveChecks(flags: RunFlags, config: ReleaseConfig): any[] {
+  if (flags.flow) { return config.flows?.[flags.flow]?.checks ?? config.checks ?? []; }
+  if (flags.scope) { return config.scopes?.[flags.scope]?.checks ?? config.checks ?? []; }
+  return config.checks ?? [];
+}
+
+async function confirmRelease(ctx: PluginContextV3): Promise<boolean> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+  let answer: string;
+  try {
+    answer = await rl.question('\nProceed with release? [y/N] ');
+  } finally {
+    rl.close();
+  }
+  return answer.trim().toLowerCase() === 'y';
 }
 
 export default defineCommand({
@@ -263,15 +268,8 @@ export default defineCommand({
 
       // 4. Confirm (skip with --yes or --dry-run)
       if (!skipYes) {
-        const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-        let answer: string;
-        try {
-          answer = await rl.question('\nProceed with release? [y/N] ');
-        } finally {
-          rl.close();
-        }
-
-        if (answer.trim().toLowerCase() !== 'y') {
+        const confirmed = await confirmRelease(ctx);
+        if (!confirmed) {
           ctx.ui.sideBox({
             title: 'Release',
             sections: [{ items: [`${ctx.ui.symbols.info} Cancelled`] }],
@@ -305,9 +303,7 @@ export default defineCommand({
         skipBuild: flags['skip-build'],
         skipVerify: flags['skip-verify'],
         noVerify: flags['no-verify'],
-        checks: (flags.flow ? config.flows?.[flags.flow]?.checks : undefined)
-             ?? (flags.scope ? config.scopes?.[flags.scope]?.checks : undefined)
-             ?? config.checks ?? [],
+        checks: resolveChecks(flags, config),
         publisher,
         changelog,
         logger: ctx.platform?.logger,
