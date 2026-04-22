@@ -191,7 +191,7 @@ function resolveChecks(flags: RunFlags, config: ReleaseConfig): any[] {
   return config.checks ?? [];
 }
 
-async function confirmRelease(ctx: PluginContextV3): Promise<boolean> {
+async function confirmRelease(): Promise<boolean> {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   let answer: string;
   try {
@@ -200,6 +200,47 @@ async function confirmRelease(ctx: PluginContextV3): Promise<boolean> {
     rl.close();
   }
   return answer.trim().toLowerCase() === 'y';
+}
+
+function showPlanBox(
+  ctx: PluginContextV3,
+  flags: RunFlags,
+  plan: { packages: Array<{ bump?: string; name: string; currentVersion: string; nextVersion: string }> },
+  config: ReleaseConfig,
+  dryRun: boolean,
+): void {
+  if (flags.json) { return; }
+  ctx.ui.sideBox({
+    title: dryRun ? 'Release Plan (dry-run)' : 'Release Plan',
+    sections: [
+      {
+        header: `${plan.packages.length} package(s) · strategy: ${config.versioningStrategy ?? 'independent'}${flags.flow ? ` · flow: ${flags.flow}` : ''}`,
+        items: buildPlanRows(plan.packages),
+      },
+    ],
+    status: 'info',
+  });
+  if (flags['no-verify']) {
+    ctx.ui.write?.(`  ⚠️  --no-verify: git pre-push hooks will be skipped\n`);
+  }
+}
+
+function reportPipelineResult(
+  ctx: PluginContextV3,
+  flags: RunFlags,
+  result: { success: boolean; report: ReleaseReport },
+  dryRun: boolean,
+): void {
+  if (flags.json) {
+    ctx.ui?.json?.(result.report);
+    return;
+  }
+  ctx.ui.sideBox({
+    title: 'Release',
+    sections: buildReleaseSections(result.report, dryRun, ctx),
+    status: result.success ? 'success' : 'error',
+    timing: result.report.result.timingMs,
+  });
 }
 
 export default defineCommand({
@@ -249,26 +290,11 @@ export default defineCommand({
       }
 
       // 3. Show plan table
-      if (!flags.json) {
-        ctx.ui.sideBox({
-          title: dryRun ? 'Release Plan (dry-run)' : 'Release Plan',
-          sections: [
-            {
-              header: `${plan.packages.length} package(s) · strategy: ${config.versioningStrategy ?? 'independent'}${flags.flow ? ` · flow: ${flags.flow}` : ''}`,
-              items: buildPlanRows(plan.packages),
-            },
-          ],
-          status: 'info',
-        });
-
-        if (flags['no-verify']) {
-          ctx.ui.write?.(`  ⚠️  --no-verify: git pre-push hooks will be skipped\n`);
-        }
-      }
+      showPlanBox(ctx, flags, plan, config, dryRun);
 
       // 4. Confirm (skip with --yes or --dry-run)
       if (!skipYes) {
-        const confirmed = await confirmRelease(ctx);
+        const confirmed = await confirmRelease();
         if (!confirmed) {
           ctx.ui.sideBox({
             title: 'Release',
@@ -315,16 +341,7 @@ export default defineCommand({
 
       pipelineLoader.succeed(result.success ? 'Release completed' : 'Release failed');
 
-      if (flags.json) {
-        ctx.ui?.json?.(result.report);
-      } else {
-        ctx.ui.sideBox({
-          title: 'Release',
-          sections: buildReleaseSections(result.report, dryRun, ctx),
-          status: result.success ? 'success' : 'error',
-          timing: result.report.result.timingMs,
-        });
-      }
+      reportPipelineResult(ctx, flags, result, dryRun);
 
       return { exitCode: result.success ? 0 : 1, report: result.report };
     },
