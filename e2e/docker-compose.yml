@@ -63,6 +63,9 @@ services:
       # Point pnpm at Verdaccio so any pnpm operations during bootstrap
       # also use the local registry (kb-create passes --registry itself).
       NPM_CONFIG_REGISTRY: http://verdaccio:4873
+      # Use enterprise tier so E2E tests are not throttled by the default
+      # free-tier rate limit (10 req/min → 429 under load).
+      KB_TENANT_DEFAULT_TIER: enterprise
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:4000/ready"]
       start_period: 180s
