@@ -60,6 +60,143 @@ const BUMP_SYMBOL: Record<string, string> = {
   auto: '?',
 };
 
+// ── helpers ────────────────────────────────────────────────────────────────
+
+function buildPlanRows(packages: Array<{ bump?: string; name: string; currentVersion: string; nextVersion: string }>): string[] {
+  return packages.map(pkg => {
+    const bump = pkg.bump ?? 'auto';
+    const sym = BUMP_SYMBOL[bump] ?? '?';
+    return `  ${sym}  ${pkg.name.padEnd(40)} ${pkg.currentVersion.padStart(8)}  →  ${pkg.nextVersion}`;
+  });
+}
+
+function createPublisher(
+  config: ReleaseConfig,
+  token: string | undefined,
+  ctx: PluginContextV3,
+): { publish(packages: PublishablePackage[], opts: { dryRun?: boolean; access?: string }): Promise<PublishResult> } {
+  const packageManager = config.workspace?.type ?? config.publish?.packageManager ?? 'pnpm';
+  return {
+    async publish(packages: PublishablePackage[], opts: { dryRun?: boolean; access?: string }): Promise<PublishResult> {
+      if (token) {
+        return publishPackagesProgrammatic({ packages, packageManager, dryRun: opts.dryRun }) as any;
+      }
+      return publishPackagesWithOTP({
+        packages,
+        packageManager,
+        dryRun: opts.dryRun,
+        access: opts.access ?? 'public',
+        ui: ctx.ui,
+        logger: ctx.platform?.logger,
+      }) as any;
+    },
+  };
+}
+
+function buildCheckItems(checkEntries: CheckResult[], symbols: { success: string; warning: string; error: string }): string[] {
+  const checkItems: string[] = [];
+
+  for (const c of checkEntries) {
+    const sym = c.ok
+      ? symbols.success
+      : c.hint === 'optional'
+        ? symbols.warning
+        : symbols.error;
+    const timing = c.timingMs ? ` (${(c.timingMs / 1000).toFixed(1)}s)` : '';
+    checkItems.push(`${sym} ${c.id}${timing}`);
+
+    if (!c.ok && c.hint !== 'optional') {
+      if (c.details?.packagePath) {
+        checkItems.push(`     package: ${c.details.packagePath}`);
+      }
+      if (c.details?.error) {
+        checkItems.push(`     reason:  ${c.details.error}`);
+      }
+      const output = (c.details?.stderr || c.details?.stdout || '').trim();
+      if (output) {
+        const lines = output.split('\n').slice(0, 8);
+        checkItems.push(`     output:`);
+        for (const line of lines) {
+          checkItems.push(`       ${line}`);
+        }
+      }
+      if (c.packages?.filter(p => !p.ok).length) {
+        const failedPkgs = c.packages.filter(p => !p.ok);
+        checkItems.push(`     failed in ${failedPkgs.length}/${c.packages.length} package(s):`);
+        for (const pkg of failedPkgs.slice(0, 10)) {
+          checkItems.push(`       - ${pkg.path}${pkg.details?.error ? `: ${pkg.details.error}` : ''}`);
+        }
+      }
+    }
+  }
+
+  return checkItems;
+}
+
+function buildReleaseSections(
+  report: ReleaseReport,
+  dryRun: boolean,
+  ctx: PluginContextV3,
+): Array<{ header?: string; items: string[] }> {
+  const sections: Array<{ header?: string; items: string[] }> = [];
+
+  if (!dryRun && report.result.published?.length) {
+    sections.push({
+      header: 'Published',
+      items: report.result.published.map(p => `${ctx.ui.symbols.success} ${p}`),
+    });
+  }
+
+  if (!dryRun && (report.result as any).alreadyPublished?.length) {
+    sections.push({
+      header: 'Already published (skipped)',
+      items: ((report.result as any).alreadyPublished as string[]).map(p => `${ctx.ui.symbols.info} ${p}`),
+    });
+  }
+
+  if (dryRun && report.result.skipped?.length) {
+    sections.push({
+      header: 'Would publish (dry-run)',
+      items: report.result.skipped.map(p => `${ctx.ui.symbols.info} ${p.replace(' (dry-run)', '')}`),
+    });
+  }
+
+  if (report.result.checks) {
+    const checkEntries = (Object.values(report.result.checks) as CheckResult[]).filter(Boolean);
+    const passed = checkEntries.filter(c => c.ok);
+    const failed = checkEntries.filter(c => !c.ok && c.hint !== 'optional');
+    const skipped = checkEntries.filter(c => !c.ok && c.hint === 'optional');
+
+    if (checkEntries.length > 0) {
+      sections.push({
+        header: `Checks — ${passed.length} passed, ${failed.length} failed${skipped.length ? `, ${skipped.length} skipped` : ''}`,
+        items: buildCheckItems(checkEntries, ctx.ui.symbols),
+      });
+    }
+  }
+
+  if (report.result.errors?.length && !report.result.checks) {
+    sections.push({
+      header: 'Errors',
+      items: report.result.errors.map(e => `${ctx.ui.symbols.error} ${e}`),
+    });
+  }
+
+  if (report.result.git) {
+    const g = report.result.git;
+    sections.push({
+      header: 'Git',
+      items: [
+        `Committed: ${g.committed}`,
+        `Tags: ${g.tagged?.join(', ') || 'none'}`,
+        `Pushed: ${g.pushed}`,
+      ],
+    });
+  }
+
+  return sections;
+}
+
 export default defineCommand({
   id: 'release:run',
   description: 'Execute release process (plan, check, publish)',
@@ -108,18 +245,12 @@ export default defineCommand({
 
       // 3. Show plan table
       if (!flags.json) {
-        const rows = plan.packages.map(pkg => {
-          const bump = pkg.bump ?? 'auto';
-          const sym = BUMP_SYMBOL[bump] ?? '?';
-          return `  ${sym}  ${pkg.name.padEnd(40)} ${pkg.currentVersion.padStart(8)}  →  ${pkg.nextVersion}`;
-        });
-
         ctx.ui.sideBox({
           title: dryRun ? 'Release Plan (dry-run)' : 'Release Plan',
           sections: [
             {
               header: `${plan.packages.length} package(s) · strategy: ${config.versioningStrategy ?? 'independent'}${flags.flow ? ` · flow: ${flags.flow}` : ''}`,
-              items: rows,
+              items: buildPlanRows(plan.packages),
             },
           ],
           status: 'info',
@@ -155,22 +286,7 @@ export default defineCommand({
       const changelog = createChangelogGenerator(config, llm ?? undefined);
 
       const token = useEnv('NPM_TOKEN') ?? useEnv('NODE_AUTH_TOKEN');
-      const packageManager = config.workspace?.type ?? config.publish?.packageManager ?? 'pnpm';
-      const publisher = {
-        async publish(packages: PublishablePackage[], opts: { dryRun?: boolean; access?: string }): Promise<PublishResult> {
-          if (token) {
-            return publishPackagesProgrammatic({ packages, packageManager, dryRun: opts.dryRun }) as any;
-          }
-          return publishPackagesWithOTP({
-            packages,
-            packageManager,
-            dryRun: opts.dryRun,
-            access: opts.access ?? 'public',
-            ui: ctx.ui,
-            logger: ctx.platform?.logger,
-          }) as any;
-        },
-      };
+      const publisher = createPublisher(config, token, ctx);
 
       const pipelineLoader = useLoader('Running release pipeline...');
       pipelineLoader.start();
@@ -206,94 +322,11 @@ export default defineCommand({
       if (flags.json) {
         ctx.ui?.json?.(result.report);
       } else {
-        const report = result.report;
-        const sections: Array<{ header?: string; items: string[] }> = [];
-
-        if (!dryRun && report.result.published?.length) {
-          sections.push({
-            header: 'Published',
-            items: report.result.published.map(p => `${ctx.ui.symbols.success} ${p}`),
-          });
-        }
-
-        if (!dryRun && (report.result as any).alreadyPublished?.length) {
-          sections.push({
-            header: 'Already published (skipped)',
-            items: ((report.result as any).alreadyPublished as string[]).map(p => `${ctx.ui.symbols.info} ${p}`),
-          });
-        }
-
-        if (dryRun && report.result.skipped?.length) {
-          sections.push({
-            header: 'Would publish (dry-run)',
-            items: report.result.skipped.map(p => `${ctx.ui.symbols.info} ${p.replace(' (dry-run)', '')}`),
-          });
-        }
-
-        if (report.result.checks) {
-          const checkEntries = (Object.values(report.result.checks) as CheckResult[]).filter(Boolean);
-          const passed = checkEntries.filter(c => c.ok);
-          const failed = checkEntries.filter(c => !c.ok && c.hint !== 'optional');
-          const skipped = checkEntries.filter(c => !c.ok && c.hint === 'optional');
-
-          if (checkEntries.length > 0) {
-            const checkItems: string[] = [];
-
-            for (const c of checkEntries) {
-              const sym = c.ok ? ctx.ui.symbols.success : (c.hint === 'optional' ? ctx.ui.symbols.warning : ctx.ui.symbols.error);
-              const timing = c.timingMs ? ` (${(c.timingMs / 1000).toFixed(1)}s)` : '';
-              checkItems.push(`${sym} ${c.id}${timing}`);
-
-              if (!c.ok && c.hint !== 'optional') {
-                if (c.details?.packagePath) {checkItems.push(`     package: ${c.details.packagePath}`);}
-                if (c.details?.error) {checkItems.push(`     reason:  ${c.details.error}`);}
-                const output = (c.details?.stderr || c.details?.stdout || '').trim();
-                if (output) {
-                  const lines = output.split('\n').slice(0, 8);
-                  checkItems.push(`     output:`);
-                  for (const line of lines) {checkItems.push(`       ${line}`);}
-                }
-                if (c.packages?.filter(p => !p.ok).length) {
-                  const failedPkgs = c.packages.filter(p => !p.ok);
-                  checkItems.push(`     failed in ${failedPkgs.length}/${c.packages.length} package(s):`);
-                  for (const pkg of failedPkgs.slice(0, 10)) {
-                    checkItems.push(`       - ${pkg.path}${pkg.details?.error ? `: ${pkg.details.error}` : ''}`);
-                  }
-                }
-              }
-            }
-
-            sections.push({
-              header: `Checks — ${passed.length} passed, ${failed.length} failed${skipped.length ? `, ${skipped.length} skipped` : ''}`,
-              items: checkItems,
-            });
-          }
-        }
-
-        if (report.result.errors?.length && !report.result.checks) {
-          sections.push({
-            header: 'Errors',
-            items: report.result.errors.map(e => `${ctx.ui.symbols.error} ${e}`),
-          });
-        }
-
-        if (report.result.git) {
-          const g = report.result.git;
-          sections.push({
-            header: 'Git',
-            items: [
-              `Committed: ${g.committed}`,
-              `Tags: ${g.tagged?.join(', ') || 'none'}`,
-              `Pushed: ${g.pushed}`,
-            ],
-          });
-        }
-
         ctx.ui.sideBox({
           title: 'Release',
-          sections,
+          sections: buildReleaseSections(result.report, dryRun, ctx),
           status: result.success ? 'success' : 'error',
-          timing: report.result.timingMs,
+          timing: result.report.result.timingMs,
         });
       }
 

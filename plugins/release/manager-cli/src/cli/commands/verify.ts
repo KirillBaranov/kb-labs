@@ -26,6 +26,45 @@ type ReleaseVerifyResult = CommandResult & {
   issues?: string[];
 };
 
+// ── helpers ────────────────────────────────────────────────────────────────
+
+function isBreakingChange(pkg: { currentVersion?: string; nextVersion?: string }): boolean {
+  if (!pkg.currentVersion || !pkg.nextVersion) {
+    return false;
+  }
+  const currentMajor = parseInt(pkg.currentVersion.split('.')[0] || '0');
+  const nextMajor = parseInt(pkg.nextVersion.split('.')[0] || '0');
+  return nextMajor > currentMajor;
+}
+
+function buildVerifySections(
+  isValid: boolean,
+  hasPackages: boolean,
+  hasBreaking: boolean,
+  issues: string[],
+  symbols: { error: string },
+): Array<{ header?: string; items: string[] }> {
+  const sections: Array<{ header?: string; items: string[] }> = [
+    {
+      header: 'Status',
+      items: [
+        `Has Packages: ${hasPackages ? 'Yes' : 'No'}`,
+        `Has Breaking Changes: ${hasBreaking ? 'Yes' : 'No'}`,
+        `Result: ${isValid ? 'Valid for release' : 'Blocked'}`,
+      ],
+    },
+  ];
+
+  if (issues.length > 0) {
+    sections.push({
+      header: 'Issues',
+      items: issues.map(issue => `${symbols.error} ${issue}`),
+    });
+  }
+
+  return sections;
+}
+
 export default defineCommand({
   id: 'release:verify',
   description: 'Validate release readiness',
@@ -50,12 +89,7 @@ export default defineCommand({
       });
 
       const hasPackages = plan.packages.length > 0;
-      const hasBreaking = plan.packages.some(pkg => {
-        if (!pkg.currentVersion || !pkg.nextVersion) {return false;}
-        const currentMajor = parseInt(pkg.currentVersion.split('.')[0] || '0');
-        const nextMajor = parseInt(pkg.nextVersion.split('.')[0] || '0');
-        return nextMajor > currentMajor;
-      });
+      const hasBreaking = plan.packages.some(isBreakingChange);
 
       let isValid = true;
       const issues: string[] = [];
@@ -93,27 +127,9 @@ export default defineCommand({
       if (flags.json) {
         ctx.ui?.json?.({ valid: isValid, hasPackages, hasBreaking, issues, plan });
       } else {
-        const sections: Array<{ header?: string; items: string[] }> = [
-          {
-            header: 'Status',
-            items: [
-              `Has Packages: ${hasPackages ? 'Yes' : 'No'}`,
-              `Has Breaking Changes: ${hasBreaking ? 'Yes' : 'No'}`,
-              `Result: ${isValid ? 'Valid for release' : 'Blocked'}`,
-            ],
-          },
-        ];
-
-        if (issues.length > 0) {
-          sections.push({
-            header: 'Issues',
-            items: issues.map(issue => `${ctx.ui.symbols.error} ${issue}`),
-          });
-        }
-
         ctx.ui.sideBox({
           title: 'Release Verification',
-          sections,
+          sections: buildVerifySections(isValid, hasPackages, hasBreaking, issues, ctx.ui.symbols),
           status: isValid ? 'success' : 'error',
         });
       }
