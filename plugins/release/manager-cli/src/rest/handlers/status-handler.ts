@@ -28,7 +28,6 @@ export default defineHandler({
       const scopeDirName = scopeToDir(scope);
       const scopeDir = join(repoRoot, '.kb/release/plans', scopeDirName, 'current');
       const planPath = join(scopeDir, 'plan.json');
-      const statusPath = join(scopeDir, 'status.json');
       const changelogPath = join(scopeDir, 'changelog.md');
 
       // Check if plan exists
