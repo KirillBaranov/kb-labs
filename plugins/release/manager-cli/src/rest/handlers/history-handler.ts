@@ -64,7 +64,7 @@ export default defineHandler({
               stage: report.stage,
               error: report.result?.errors?.[0],
             });
-          } catch (error) {
+          } catch {
             // Skip invalid/incomplete releases
             continue;
           }
@@ -75,7 +75,7 @@ export default defineHandler({
       releases.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
       return { releases };
-    } catch (error) {
+    } catch {
       // No history directory yet
       return { releases: [] };
     }

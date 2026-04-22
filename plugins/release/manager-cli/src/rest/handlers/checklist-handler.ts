@@ -18,6 +18,158 @@ interface ChecklistInput {
   scope?: string;
 }
 
+// ── helpers ────────────────────────────────────────────────────────────────
+
+async function countFiles(dir: string): Promise<{ count: number; size: number }> {
+  let count = 0;
+  let size = 0;
+  const entries = await readdir(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const fullPath = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      const sub = await countFiles(fullPath);
+      count += sub.count;
+      size += sub.size;
+    } else {
+      count++;
+      const fileStat = await stat(fullPath);
+      size += fileStat.size;
+    }
+  }
+  return { count, size };
+}
+
+interface PlanCheckResult {
+  planStatus: ChecklistItemStatus;
+  planMessage: string;
+  packagesCount: number;
+  bump: string | undefined;
+  plan: ReleasePlan | undefined;
+}
+
+async function checkPlanStatus(basePath: string): Promise<PlanCheckResult> {
+  try {
+    const planRaw = await readFile(join(basePath, 'plan.json'), 'utf-8');
+    const parsedPlan: ReleasePlan = JSON.parse(planRaw);
+    const packagesCount = parsedPlan.packages.length;
+    const bump = parsedPlan.packages[0]?.bump;
+    return {
+      planStatus: 'ready',
+      planMessage: `${packagesCount} package${packagesCount !== 1 ? 's' : ''}, ${bump} bump`,
+      packagesCount,
+      bump,
+      plan: parsedPlan,
+    };
+  } catch {
+    return { planStatus: 'pending', planMessage: 'No release plan found', packagesCount: 0, bump: undefined, plan: undefined };
+  }
+}
+
+interface ChangelogCheckResult {
+  changelogStatus: ChecklistItemStatus;
+  changelogMessage: string;
+  commitsCount: number | undefined;
+}
+
+async function checkChangelogStatus(basePath: string, planStatus: ChecklistItemStatus): Promise<ChangelogCheckResult> {
+  try {
+    const changelogPath = join(basePath, 'CHANGELOG.md');
+    await access(changelogPath);
+    const changelog = await readFile(changelogPath, 'utf-8');
+    const commitMatches = changelog.match(/^- /gm);
+    const commitsCount = commitMatches?.length || 0;
+    return {
+      changelogStatus: 'ready',
+      changelogMessage: `${commitsCount} change${commitsCount !== 1 ? 's' : ''} documented`,
+      commitsCount,
+    };
+  } catch {
+    const changelogMessage = planStatus === 'ready' ? 'Generate changelog to continue' : 'Changelog not generated';
+    return { changelogStatus: 'pending', changelogMessage, commitsCount: undefined };
+  }
+}
+
+interface BuildCheckResult {
+  buildStatus: ChecklistItemStatus;
+  buildMessage: string;
+  builtCount: number;
+  totalCount: number;
+}
+
+async function checkBuildStatus(plan: ReleasePlan | undefined, repoRoot: string): Promise<BuildCheckResult> {
+  if (!plan) {
+    return { buildStatus: 'pending', buildMessage: 'Build required', builtCount: 0, totalCount: 0 };
+  }
+  const totalCount = plan.packages.length;
+  let builtCount = 0;
+  for (const pkg of plan.packages) {
+    const packagePath = pkg.path.startsWith('/') ? pkg.path : join(repoRoot, pkg.path);
+    try {
+      await access(join(packagePath, 'dist'));
+      builtCount++;
+    } catch {
+      // Not built
+    }
+  }
+  if (builtCount === totalCount) {
+    return {
+      buildStatus: 'ready',
+      buildMessage: `All ${totalCount} package${totalCount !== 1 ? 's' : ''} built`,
+      builtCount,
+      totalCount,
+    };
+  }
+  if (builtCount > 0) {
+    return { buildStatus: 'warning', buildMessage: `${builtCount}/${totalCount} packages built`, builtCount, totalCount };
+  }
+  return {
+    buildStatus: 'pending',
+    buildMessage: `${totalCount} package${totalCount !== 1 ? 's' : ''} need build`,
+    builtCount,
+    totalCount,
+  };
+}
+
+interface PreviewCheckResult {
+  previewStatus: ChecklistItemStatus;
+  previewMessage: string;
+  filesCount: number | undefined;
+  totalSize: number | undefined;
+}
+
+async function checkPreviewStatus(
+  plan: ReleasePlan | undefined,
+  repoRoot: string,
+  buildStatus: ChecklistItemStatus,
+): Promise<PreviewCheckResult> {
+  if (buildStatus !== 'ready' || !plan) {
+    return { previewStatus: 'pending', previewMessage: 'Waiting for build', filesCount: undefined, totalSize: undefined };
+  }
+  let filesCount = 0;
+  let totalSize = 0;
+  for (const pkg of plan.packages) {
+    const packagePath = pkg.path.startsWith('/') ? pkg.path : join(repoRoot, pkg.path);
+    try {
+      const result = await countFiles(join(packagePath, 'dist'));
+      filesCount += result.count;
+      totalSize += result.size;
+    } catch {
+      // Skip - dist doesn't exist or error reading
+    }
+  }
+  if (filesCount > 0) {
+    return {
+      previewStatus: 'ready',
+      previewMessage: `${filesCount} file${filesCount !== 1 ? 's' : ''} ready to publish`,
+      filesCount,
+      totalSize,
+    };
+  }
+  return { previewStatus: 'warning', previewMessage: 'No files found to publish', filesCount, totalSize };
+}
+
+// ── handler ────────────────────────────────────────────────────────────────
+
 export default defineHandler({
   async execute(ctx, input: RestInput<ChecklistInput>): Promise<ReleaseChecklist> {
     const scope = input.query?.scope || 'root';
@@ -27,133 +179,17 @@ export default defineHandler({
     const scopeDir = scopeToDir(scope);
     const basePath = join(repoRoot, '.kb/release/plans', scopeDir, 'current');
 
-    // Check plan status
-    let planStatus: ChecklistItemStatus = 'pending';
-    let planMessage = 'No release plan found';
-    let packagesCount = 0;
-    let bump: string | undefined;
-    let plan: ReleasePlan | undefined;
+    const { planStatus, planMessage, packagesCount, bump, plan } = await checkPlanStatus(basePath);
+    const { changelogStatus, changelogMessage, commitsCount } = await checkChangelogStatus(basePath, planStatus);
+    const { buildStatus, buildMessage, builtCount, totalCount } = await checkBuildStatus(plan, repoRoot);
+    const { previewStatus, previewMessage, filesCount, totalSize } = await checkPreviewStatus(plan, repoRoot, buildStatus);
 
-    try {
-      const planRaw = await readFile(join(basePath, 'plan.json'), 'utf-8');
-      const parsedPlan: ReleasePlan = JSON.parse(planRaw);
-      plan = parsedPlan;
-      packagesCount = parsedPlan.packages.length;
-      // Get bump type from first package (simplified)
-      bump = parsedPlan.packages[0]?.bump;
-      planStatus = 'ready';
-      planMessage = `${packagesCount} package${packagesCount !== 1 ? 's' : ''}, ${bump} bump`;
-    } catch {
-      // No plan
-    }
-
-    // Check changelog status
-    let changelogStatus: ChecklistItemStatus = 'pending';
-    let changelogMessage = 'Changelog not generated';
-    let commitsCount: number | undefined;
-
-    try {
-      const changelogPath = join(basePath, 'CHANGELOG.md');
-      await access(changelogPath);
-      const changelog = await readFile(changelogPath, 'utf-8');
-      // Count commits by looking for commit-like patterns
-      const commitMatches = changelog.match(/^- /gm);
-      commitsCount = commitMatches?.length || 0;
-      changelogStatus = 'ready';
-      changelogMessage = `${commitsCount} change${commitsCount !== 1 ? 's' : ''} documented`;
-    } catch {
-      if (planStatus === 'ready') {
-        changelogMessage = 'Generate changelog to continue';
-      }
-    }
-
-    // Check build status
-    let buildStatus: ChecklistItemStatus = 'pending';
-    let buildMessage = 'Build required';
-    let builtCount = 0;
-    let totalCount = 0;
-
-    if (plan) {
-      totalCount = plan.packages.length;
-      for (const pkg of plan.packages) {
-        const packagePath = pkg.path.startsWith('/') ? pkg.path : join(repoRoot, pkg.path);
-        try {
-          await access(join(packagePath, 'dist'));
-          builtCount++;
-        } catch {
-          // Not built
-        }
-      }
-
-      if (builtCount === totalCount) {
-        buildStatus = 'ready';
-        buildMessage = `All ${totalCount} package${totalCount !== 1 ? 's' : ''} built`;
-      } else if (builtCount > 0) {
-        buildStatus = 'warning';
-        buildMessage = `${builtCount}/${totalCount} packages built`;
-      } else {
-        buildMessage = `${totalCount} package${totalCount !== 1 ? 's' : ''} need build`;
-      }
-    }
-
-    // Check preview status
-    let previewStatus: ChecklistItemStatus = 'pending';
-    let previewMessage = 'Waiting for build';
-    let filesCount: number | undefined;
-    let totalSize: number | undefined;
-
-    if (buildStatus === 'ready' && plan) {
-      filesCount = 0;
-      totalSize = 0;
-
-      for (const pkg of plan.packages) {
-        const packagePath = pkg.path.startsWith('/') ? pkg.path : join(repoRoot, pkg.path);
-        try {
-          // Count files in dist folder recursively
-          const distPath = join(packagePath, 'dist');
-          const countFiles = async (dir: string): Promise<{ count: number; size: number }> => {
-            let count = 0;
-            let size = 0;
-            const entries = await readdir(dir, { withFileTypes: true });
-            for (const entry of entries) {
-              const fullPath = join(dir, entry.name);
-              if (entry.isDirectory()) {
-                const sub = await countFiles(fullPath);
-                count += sub.count;
-                size += sub.size;
-              } else {
-                count++;
-                const fileStat = await stat(fullPath);
-                size += fileStat.size;
-              }
-            }
-            return { count, size };
-          };
-          const result = await countFiles(distPath);
-          filesCount += result.count;
-          totalSize += result.size;
-        } catch {
-          // Skip - dist doesn't exist or error reading
-        }
-      }
-
-      if (filesCount > 0) {
-        previewStatus = 'ready';
-        previewMessage = `${filesCount} file${filesCount !== 1 ? 's' : ''} ready to publish`;
-      } else {
-        previewStatus = 'warning';
-        previewMessage = 'No files found to publish';
-      }
-    }
-
-    // Check npm auth token
     const hasNpmToken = !!(useEnv('NPM_TOKEN') ?? useEnv('NODE_AUTH_TOKEN'));
     const npmStatus: ChecklistItemStatus = hasNpmToken ? 'ready' : 'error';
     const npmMessage = hasNpmToken
       ? 'npm token configured'
       : 'Set NPM_TOKEN (granular access token) in environment';
 
-    // Determine if can publish
     const canPublish =
       planStatus === 'ready' &&
       changelogStatus === 'ready' &&
