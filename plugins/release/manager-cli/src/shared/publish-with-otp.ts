@@ -195,7 +195,7 @@ export async function publishPackagesWithOTP(
             await new Promise(r => setTimeout(r, delay));
             continue;
           }
-          logger?.error('Publish failed (fast-path)', { name: pkg.name, error: msg });
+          logger?.error('Publish failed (fast-path)', undefined, { name: pkg.name, error: msg });
           return { name: pkg.name, version: pkg.version, success: false, error: msg };
         }
       }

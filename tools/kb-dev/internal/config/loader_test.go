@@ -43,8 +43,8 @@ func TestDiscoverFindsKBLabsYAML(t *testing.T) {
 		t.Fatalf("Discover() error: %v", err)
 	}
 	want := filepath.Join(root, ".kb", "devservices.yaml")
-	if got != want {
-		t.Errorf("Discover() = %q, want %q", got, want)
+	if got.ConfigPath != want {
+		t.Errorf("Discover().ConfigPath = %q, want %q", got.ConfigPath, want)
 	}
 }
 
@@ -57,8 +57,8 @@ func TestDiscoverFindsRootYAML(t *testing.T) {
 		t.Fatalf("Discover() error: %v", err)
 	}
 	want := filepath.Join(root, "devservices.yaml")
-	if got != want {
-		t.Errorf("Discover() = %q, want %q", got, want)
+	if got.ConfigPath != want {
+		t.Errorf("Discover().ConfigPath = %q, want %q", got.ConfigPath, want)
 	}
 }
 
@@ -71,8 +71,8 @@ func TestDiscoverFindsYML(t *testing.T) {
 		t.Fatalf("Discover() error: %v", err)
 	}
 	want := filepath.Join(root, "devservices.yml")
-	if got != want {
-		t.Errorf("Discover() = %q, want %q", got, want)
+	if got.ConfigPath != want {
+		t.Errorf("Discover().ConfigPath = %q, want %q", got.ConfigPath, want)
 	}
 }
 
@@ -89,8 +89,8 @@ func TestDiscoverKBLabsWinsOverRoot(t *testing.T) {
 		t.Fatalf("Discover() error: %v", err)
 	}
 	want := filepath.Join(root, ".kb", "devservices.yaml")
-	if got != want {
-		t.Errorf("Discover() = %q, want %q (.kb/ should win)", got, want)
+	if got.ConfigPath != want {
+		t.Errorf("Discover().ConfigPath = %q, want %q (.kb/ should win)", got.ConfigPath, want)
 	}
 }
 
@@ -107,8 +107,8 @@ func TestDiscoverWalksUp(t *testing.T) {
 		t.Fatalf("Discover() error: %v", err)
 	}
 	want := filepath.Join(root, ".kb", "devservices.yaml")
-	if got != want {
-		t.Errorf("Discover() = %q, want %q", got, want)
+	if got.ConfigPath != want {
+		t.Errorf("Discover().ConfigPath = %q, want %q", got.ConfigPath, want)
 	}
 }
 
@@ -126,8 +126,8 @@ func TestDiscoverClosestWins(t *testing.T) {
 		t.Fatalf("Discover() error: %v", err)
 	}
 	want := filepath.Join(subRoot, "devservices.yaml")
-	if got != want {
-		t.Errorf("Discover() = %q, want %q (closer config should win)", got, want)
+	if got.ConfigPath != want {
+		t.Errorf("Discover().ConfigPath = %q, want %q (closer config should win)", got.ConfigPath, want)
 	}
 }
 
