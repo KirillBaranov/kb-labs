@@ -35,6 +35,50 @@ type ReleasePlanResult = CommandResult & {
   };
 };
 
+// ── helpers ────────────────────────────────────────────────────────────────
+
+function formatVersionInfo(pkg: { currentVersion?: string; nextVersion?: string }): string {
+  if (pkg.currentVersion && pkg.nextVersion) return `${pkg.currentVersion} → ${pkg.nextVersion}`;
+  return pkg.nextVersion || 'new';
+}
+
+function buildPlanSections(
+  plan: { strategy: string; registry: string; packages: Array<{ name: string; currentVersion?: string; nextVersion?: string }> },
+  artifacts: ArtifactInfo[],
+  symbols: { success: string },
+): Array<{ header?: string; items: string[] }> {
+  const sections: Array<{ header?: string; items: string[] }> = [];
+
+  sections.push({
+    header: 'Summary',
+    items: [
+      `Strategy: ${plan.strategy}`,
+      `Registry: ${plan.registry}`,
+      `Packages: ${plan.packages.length}`,
+    ],
+  });
+
+  if (plan.packages.length > 0) {
+    sections.push({
+      header: 'Packages to release',
+      items: plan.packages.map(pkg => `${symbols.success} ${pkg.name}: ${formatVersionInfo(pkg)}`),
+    });
+  } else {
+    sections.push({ items: ['No packages to release'] });
+  }
+
+  if (artifacts.length > 0) {
+    sections.push({
+      header: 'Artifacts',
+      items: displayArtifacts(artifacts, { showSize: true, showTime: true, showDescription: true, maxItems: 10, title: '' }),
+    });
+  }
+
+  return sections;
+}
+
+// ── command ────────────────────────────────────────────────────────────────
+
 export default defineCommand({
   id: 'release:plan',
   description: 'Analyze changes and prepare release plan',
@@ -45,22 +89,17 @@ export default defineCommand({
       const cwd = ctx.cwd || process.cwd();
       const repoRoot = await findRepoRoot(cwd);
 
-      // Load configuration
       const configLoader = useLoader('Loading release configuration...');
       configLoader.start();
 
       const fileConfig = await useConfig<ReleaseConfig>();
-
-      // Merge CLI overrides
       const config: ReleaseConfig = {
         ...fileConfig,
         ...(flags.bump && { bump: flags.bump }),
         ...(flags.strict !== undefined && { strict: flags.strict }),
       };
-
       configLoader.succeed('Configuration loaded');
 
-      // Create release plan
       const planLoader = useLoader('Discovering packages and planning release...');
       planLoader.start();
 
@@ -78,7 +117,6 @@ export default defineCommand({
         planLoader.succeed(`Found ${plan.packages.length} package(s) to release`);
       }
 
-      // Save plan to .kb/release/plans/{scope}/current/plan.json
       const scopeDir = scopeToDir(flags.scope ?? 'root');
       const planDir = ctx.runtime.fs.join(repoRoot, '.kb', 'release', 'plans', scopeDir, 'current');
       const planPath = ctx.runtime.fs.join(planDir, 'plan.json');
@@ -87,7 +125,6 @@ export default defineCommand({
       if (!flags.json) {
         await ctx.runtime.fs.mkdir(planDir, { recursive: true });
         await ctx.runtime.fs.writeFile(planPath, JSON.stringify(plan, null, 2), { encoding: 'utf-8' });
-
         const stats = await ctx.runtime.fs.stat(planPath);
         artifacts.push({
           name: 'Release Plan',
@@ -107,56 +144,9 @@ export default defineCommand({
       if (flags.json) {
         ctx.ui?.json?.(plan);
       } else {
-        const sections: Array<{ header?: string; items: string[] }> = [];
-
-        // Summary
-        sections.push({
-          header: 'Summary',
-          items: [
-            `Strategy: ${plan.strategy}`,
-            `Registry: ${plan.registry}`,
-            `Packages: ${plan.packages.length}`,
-          ],
-        });
-
-        // Packages section
-        if (plan.packages.length > 0) {
-          const packageItems: string[] = [];
-          for (const pkg of plan.packages) {
-            const versionInfo =
-              pkg.currentVersion && pkg.nextVersion
-                ? `${pkg.currentVersion} → ${pkg.nextVersion}`
-                : pkg.nextVersion || 'new';
-            packageItems.push(`${ctx.ui.symbols.success} ${pkg.name}: ${versionInfo}`);
-          }
-          sections.push({
-            header: 'Packages to release',
-            items: packageItems,
-          });
-        } else {
-          sections.push({
-            items: ['No packages to release'],
-          });
-        }
-
-        // Artifacts section
-        if (artifacts.length > 0) {
-          const artifactsLines = displayArtifacts(artifacts, {
-            showSize: true,
-            showTime: true,
-            showDescription: true,
-            maxItems: 10,
-            title: '',
-          });
-          sections.push({
-            header: 'Artifacts',
-            items: artifactsLines,
-          });
-        }
-
         ctx.ui.sideBox({
           title: 'Release Plan',
-          sections,
+          sections: buildPlanSections(plan, artifacts, ctx.ui.symbols),
           status: 'success',
         });
       }

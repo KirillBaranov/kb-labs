@@ -121,7 +121,7 @@ func TestNew_CreatesServicesFromConfig(t *testing.T) {
 		Services: testServices(),
 		Settings: config.Settings{StartTimeout: 5000},
 	}
-	m := New(cfg, "/workspace")
+	m := New(cfg, "/workspace", "/workspace")
 
 	if len(m.services) != len(cfg.Services) {
 		t.Errorf("services = %d, want %d", len(m.services), len(cfg.Services))
@@ -140,7 +140,7 @@ func TestNew_EmptyConfig(t *testing.T) {
 		Services: map[string]config.Service{},
 		Settings: config.Settings{},
 	}
-	m := New(cfg, "/tmp")
+	m := New(cfg, "/tmp", "/tmp")
 
 	if len(m.services) != 0 {
 		t.Errorf("services = %d, want 0", len(m.services))
@@ -154,7 +154,7 @@ func TestSpawnEnv_MergesServiceEnv(t *testing.T) {
 		Services: map[string]config.Service{},
 		Settings: config.Settings{},
 	}
-	m := New(cfg, "/workspace")
+	m := New(cfg, "/workspace", "/workspace")
 
 	svcEnv := map[string]string{
 		"NODE_ENV": "production",
@@ -178,7 +178,7 @@ func TestSpawnEnv_DoesNotOverrideExistingKBProjectRoot(t *testing.T) {
 		Services: map[string]config.Service{},
 		Settings: config.Settings{},
 	}
-	m := New(cfg, "/workspace")
+	m := New(cfg, "/workspace", "/workspace")
 
 	svcEnv := map[string]string{
 		"KB_PROJECT_ROOT": "/custom/root",
@@ -195,7 +195,7 @@ func TestSpawnEnv_EmptyServiceEnv(t *testing.T) {
 		Services: map[string]config.Service{},
 		Settings: config.Settings{},
 	}
-	m := New(cfg, "/workspace")
+	m := New(cfg, "/workspace", "/workspace")
 
 	result := m.spawnEnv(map[string]string{})
 
@@ -214,7 +214,7 @@ func TestStartTimeout_DefaultFromConfig(t *testing.T) {
 		Services: map[string]config.Service{},
 		Settings: config.Settings{StartTimeout: 30000},
 	}
-	m := New(cfg, "/workspace")
+	m := New(cfg, "/workspace", "/workspace")
 
 	got := m.startTimeout()
 	want := 30 * time.Second
@@ -228,7 +228,7 @@ func TestStartTimeout_ZeroConfig(t *testing.T) {
 		Services: map[string]config.Service{},
 		Settings: config.Settings{StartTimeout: 0},
 	}
-	m := New(cfg, "/workspace")
+	m := New(cfg, "/workspace", "/workspace")
 
 	got := m.startTimeout()
 	if got != 0 {
@@ -243,7 +243,7 @@ func TestAccessors(t *testing.T) {
 		Services: testServices(),
 		Settings: config.Settings{StartTimeout: 5000},
 	}
-	m := New(cfg, "/workspace")
+	m := New(cfg, "/workspace", "/workspace")
 
 	if m.Config() != cfg {
 		t.Error("Config() should return the original config")
@@ -258,7 +258,7 @@ func TestGetService_Found(t *testing.T) {
 		Services: testServices(),
 		Settings: config.Settings{},
 	}
-	m := New(cfg, "/workspace")
+	m := New(cfg, "/workspace", "/workspace")
 
 	svc := m.GetService("redis")
 	if svc == nil {
@@ -271,7 +271,7 @@ func TestGetService_NotFound(t *testing.T) {
 		Services: testServices(),
 		Settings: config.Settings{},
 	}
-	m := New(cfg, "/workspace")
+	m := New(cfg, "/workspace", "/workspace")
 
 	svc := m.GetService("nonexistent")
 	if svc != nil {
