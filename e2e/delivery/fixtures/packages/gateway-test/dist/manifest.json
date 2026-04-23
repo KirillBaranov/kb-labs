@@ -1,0 +1,11 @@
+{
+  "schema": "kb.service/1",
+  "id": "gateway-test",
+  "name": "Gateway (e2e stub)",
+  "version": "1.0.0",
+  "runtime": {
+    "entry": "dist/index.js",
+    "port": 4000,
+    "healthCheck": "/health"
+  }
+}

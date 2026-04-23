@@ -1,0 +1,44 @@
+# Cross-module e2e stack for kb-deploy (ADR-0014).
+#
+# Three services:
+#   verdaccio  — local npm registry, holds @kb-labs/* fixture packages
+#   target-1   — "customer VPS" #1 with SSH + Node + kb-create/kb-dev
+#   target-2   — "customer VPS" #2, same image
+#
+# Go test runs on the host, dials each target via 127.0.0.1:<exposed_port>,
+# uses Verdaccio at http://localhost:4873 for `kb-deploy apply`.
+
+services:
+  verdaccio:
+    image: verdaccio/verdaccio:5
+    ports:
+      - "127.0.0.1:4873:4873"
+    volumes:
+      - ./fixtures/verdaccio/config.yaml:/verdaccio/conf/config.yaml:ro
+    # Readiness is verified from the Go test via TCP + HTTP probe; no
+    # in-container healthcheck needed (and Verdaccio's image lacks curl/wget).
+    networks:
+      kb-net:
+        aliases: [verdaccio]
+
+  target-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.target
+    ports:
+      - "127.0.0.1:2201:22"
+    depends_on: [verdaccio]
+    networks: [kb-net]
+
+  target-2:
+    build:
+      context: .
+      dockerfile: Dockerfile.target
+    ports:
+      - "127.0.0.1:2202:22"
+    depends_on: [verdaccio]
+    networks: [kb-net]
+
+networks:
+  kb-net:
+    driver: bridge

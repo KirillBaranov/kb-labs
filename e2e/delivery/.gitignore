@@ -1,0 +1,7 @@
+# Built binaries (produced by scripts/build-binaries.sh).
+bin/
+
+# Override the repo-wide `dist/` rule — fixture packages are committed
+# with prebuilt dist/ files so the e2e is hermetic and fast.
+!fixtures/**/dist/
+!fixtures/**/dist/**
