@@ -140,7 +140,7 @@ Or install individual Go tools standalone — no Node.js required:
 |------|-------------|
 | [kb-devkit](tools/kb-devkit) | Monorepo builds — topological order, content-addressable cache |
 | [kb-dev](tools/kb-dev) | Local service manager — start, stop, health probes |
-| [kb-deploy](tools/kb-deploy) | Deploy to any VPS — Docker + registry, affected detection |
+| [kb-deploy](tools/kb-deploy) | Deploy to any VPS — Docker + registry, plus **declarative `apply`** for fleet rollouts ([guide](docs/guides/delivery.md)) |
 | [kb-monitor](tools/kb-monitor) | Remote observability — health, logs, exec over SSH |
 
 ---

@@ -1,0 +1,70 @@
+# KB Labs — declarative deploy manifest (ADR-0014)
+#
+# Save as .kb/deploy/deploy.yaml in your product repo, or in a standalone
+# deploy repo. One PR to this file = one rollout.
+#
+# Full reference: docs/guides/delivery.md
+
+schema: kb.deploy/1
+
+# ── Platform ──────────────────────────────────────────────────────────────────
+# Pins the platform version installed on every target.
+platform:
+  version: "1.5.0"
+  # registry: https://npm.internal   # optional private/proxy registry
+
+# ── Bootstrap (first-time host setup) ─────────────────────────────────────────
+# Controls delivery of the kb-create binary to hosts (see D14). Remove for
+# airgap deployments and preload /usr/local/bin/kb-create manually.
+bootstrap:
+  kbCreateVersion: "1.2.0"
+  source: github              # or "local" for airgap
+  installPath: /usr/local/bin
+
+# ── Secret resolution ─────────────────────────────────────────────────────────
+# Where ${secrets.X} references are pulled from. "env" reads the control
+# machine's process env (populated by CI secrets or local .env).
+secretBackend:
+  type: env
+
+# ── Services to deploy ────────────────────────────────────────────────────────
+# Each entry pins a service npm package + version and the concrete adapter
+# implementations it uses. The service manifest only declares roles; choosing
+# implementations is an admin decision made here.
+services:
+  gateway:
+    service: "@kb-labs/gateway"
+    version: "1.0.0"
+    adapters:
+      llm:      "@kb-labs/adapters-openai@0.4.1"
+      cache:    "@kb-labs/adapters-redis@0.2.0"
+      logger:   "@kb-labs/adapters-pino@0.3.0"
+    # Config file relative to this deploy.yaml. Rendered on target inside
+    # releases/<id>/config/ (see ADR-0014 §Rendered configs).
+    config: ./configs/gateway.jsonc
+    env:
+      OPENAI_KEY: ${secrets.OPENAI_KEY}
+    targets:
+      hosts: [prod-1]
+      strategy: all           # "canary" splits by percentage
+      # waves: [50, 100]      # use with strategy: canary
+      healthGate: 30s
+
+# ── Hosts ─────────────────────────────────────────────────────────────────────
+hosts:
+  prod-1:
+    ssh:
+      host: 0.0.0.0
+      user: kb                # dedicated non-root platform user (see D16)
+      key_path_env: DEPLOY_SSH_KEY    # path to private key file
+      # key_env: DEPLOY_KEY_PEM       # alternative: raw PEM in env var
+    platformPath: /opt/kb-platform   # default: ~/kb-platform
+    # supervisor: systemd            # generate /etc/systemd/system/kb-dev.service
+
+# ── Rollout policy ────────────────────────────────────────────────────────────
+rollout:
+  autoRollback: true
+  parallel: 1                 # hosts per wave, in parallel
+  lockMode: artifact          # default. "autoCommit" pushes deploy.lock.json
+                              # directly; requires branch protection on the
+                              # deploy repo (see D22).

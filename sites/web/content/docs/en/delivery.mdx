@@ -1,0 +1,195 @@
+---
+title: Declarative Delivery
+description: Roll KB Labs out to a fleet of hosts with deploy.yaml + deploy.lock.json — plan, apply, rollback.
+lang: en
+slug: delivery
+---
+
+## Declarative delivery
+
+KB Labs ships a GitOps-style delivery plane built on top of `kb-create`
+(one-host lifecycle) and `kb-deploy` (multi-host orchestration). One manifest
+in git describes your fleet. One command plans the diff. One more applies it
+with health gates and auto-rollback.
+
+Design reference: [ADR-0014](https://github.com/KirillBaranov/kb-labs/blob/main/docs/adr/0014-declarative-delivery-and-fleet-distribution.md).
+
+### When to use it
+
+- You run one or more KB Labs services (gateway, rest-api, workflow, marketplace)
+  on one or more hosts.
+- You want a **versioned, reviewable, reversible** record of what runs where.
+- You want health-gated rollouts with automatic wave rollback.
+
+### Tool responsibilities
+
+| Tool | Scope | Role |
+|------|-------|------|
+| `kb-create` | one host | Install / swap / rollback of a single service |
+| `kb-dev` | one host | Service lifecycle (start / restart / health) |
+| `kb-deploy` | many hosts | Plan + apply the fleet manifest via SSH |
+| `kb-devkit` | build-time | Platform-internal build (not used on target) |
+
+### Repo layout
+
+Put deploy artifacts next to the code they deploy:
+
+```
+<workspace>/
+├── src/
+├── .kb/
+│   ├── kb.config.jsonc
+│   └── deploy/
+│       ├── deploy.yaml             # fleet manifest
+│       ├── deploy.lock.json        # resolved state, committed to git
+│       └── configs/
+│           └── gateway.jsonc
+└── .env                            # secrets for local dev (gitignored)
+```
+
+A dedicated deploy repo is an optional escape hatch for teams that need to
+separate product and delivery cadence.
+
+### deploy.yaml at a glance
+
+```yaml
+schema: kb.deploy/1
+
+platform:
+  version: "1.5.0"
+
+services:
+  gateway:
+    service: "@kb-labs/gateway"
+    version: "1.2.3"
+    adapters:
+      llm:    "@kb-labs/adapters-openai@0.4.1"
+      cache:  "@kb-labs/adapters-redis@0.2.0"
+      logger: "@kb-labs/adapters-pino@0.3.0"
+    config: ./configs/gateway.jsonc
+    env:
+      OPENAI_KEY: ${secrets.OPENAI_KEY}
+    targets:
+      hosts: [prod-1, prod-2, prod-3]
+      strategy: canary
+      waves: [50, 100]
+      healthGate: 30s
+
+hosts:
+  prod-1:
+    ssh: { host: 1.2.3.4, user: kb, key_path_env: DEPLOY_SSH_KEY }
+    platformPath: /opt/kb-platform
+
+rollout:
+  autoRollback: true
+  parallel: 1
+  lockMode: artifact
+```
+
+Key points:
+- `adapters` is **admin choice** — the service package declares only *roles*
+  (llm, cache, logger), never a specific implementation.
+- `strategy: canary` + `waves: [50, 100]` rolls out in two waves with a
+  health gate between them.
+- `${secrets.X}` references are resolved on the control machine from env / CI
+  secrets. Values never enter git or the lock file.
+
+### Workflow
+
+```bash
+# Write the manifest once.
+cp templates/deploy/deploy.yaml .kb/deploy/deploy.yaml
+
+# Plan — read-only; never touches target state.
+kb-deploy plan --config .kb/deploy/deploy.yaml
+
+# Apply — runs the plan with health gates.
+kb-deploy apply --config .kb/deploy/deploy.yaml --yes
+```
+
+Exit codes are stable and CI-friendly:
+
+| Command | 0 | 1 | 2 | 3 | 4 |
+|---------|---|---|---|---|---|
+| `plan`  | no changes | error | changes present | — | drift |
+| `apply` | no changes | applied | error | rollback fired | — |
+
+### Rollback
+
+Fast recovery on one host:
+
+```bash
+kb-create rollback @kb-labs/gateway
+```
+
+This atomically swaps `services/gateway/current` back to `previous`. No
+downtime window, no manual cleanup.
+
+Deeper rollback is a git operation: check out an older `deploy.lock.json`
+and re-run `kb-deploy apply` — the fleet reconciles to that state.
+
+### Safety guards
+
+Built-in, non-optional:
+
+- **Schema versioning.** `schema: kb.deploy/1` is required; major mismatch
+  fails fast.
+- **Lock is authoritative.** `apply` reads versions only from
+  `deploy.lock.json`. Semver ranges resolve only via explicit
+  `kb-deploy upgrade`. Prevents "a minor bump broke prod overnight".
+- **Config drift detection.** `plan` surfaces hosts whose state diverges
+  from the lock.
+- **GC protects rollback.** `kb-create` always keeps current + previous
+  plus the last N releases (default 3).
+- **Cross-filesystem guard.** `kb-create install-service` refuses to install
+  when `releases/` and `services/` live on different filesystems — the
+  atomic rename used by swap would otherwise fail with EXDEV.
+- **Deterministic release IDs.** `gateway-1.2.3-<sha8>` derived from
+  pinned inputs — repeated invocations are idempotent no-ops.
+
+### Secrets
+
+Three layers (see [ADR-0014 §D15](https://github.com/KirillBaranov/kb-labs/blob/main/docs/adr/0014-declarative-delivery-and-fleet-distribution.md#target-runtime-contract)):
+
+1. `deploy.yaml` stores only references: `${secrets.OPENAI_KEY}`.
+2. Resolution happens on the control machine (env, `.env`, Vault, AWS SM).
+3. Values stream over SSH to the target; never written to git or disk on
+   control.
+
+Follow-up work delivers per-release tmpfs secrets
+(`/dev/shm/kb-platform/secrets/<service>.env`) for stronger at-rest
+protection on target.
+
+### CI — GitHub Actions
+
+A reusable workflow ships with the platform:
+
+```yaml
+# .github/workflows/deploy.yml in your product/deploy repo
+name: Deploy to staging
+on:
+  push:
+    branches: [main]
+    paths: ['.kb/deploy/**']
+
+jobs:
+  call:
+    uses: KirillBaranov/kb-labs/.github/workflows/kb-deploy-apply.yml@main
+    with:
+      manifest: .kb/deploy/deploy.yaml
+      environment: staging
+    secrets:
+      DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+      OPENAI_KEY: ${{ secrets.OPENAI_KEY }}
+```
+
+`plan` runs on every push, artefact-uploads the plan, and gates `apply`
+behind a GitHub Environment approval. Lock file commits back via a standard
+git step (artifact mode).
+
+### Reference
+
+- Full getting-started guide: [docs/guides/delivery.md](https://github.com/KirillBaranov/kb-labs/blob/main/docs/guides/delivery.md)
+- ADR: [docs/adr/0014](https://github.com/KirillBaranov/kb-labs/blob/main/docs/adr/0014-declarative-delivery-and-fleet-distribution.md)
+- Implementation plan: [docs/plans/0014](https://github.com/KirillBaranov/kb-labs/blob/main/docs/plans/0014-declarative-delivery-and-fleet-distribution.md)
+- Starter template: [templates/deploy/deploy.yaml](https://github.com/KirillBaranov/kb-labs/blob/main/templates/deploy/deploy.yaml)
