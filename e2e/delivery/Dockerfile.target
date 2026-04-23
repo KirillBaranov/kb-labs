@@ -1,0 +1,51 @@
+# Target host image for the kb-deploy cross-module e2e.
+#
+# Emulates a customer VPS: non-root "kb" user, openssh, Node 20, pnpm, and
+# pre-installed kb-create + kb-dev binaries under /usr/local/bin. The test
+# drives this container over SSH exactly like a real host.
+FROM ubuntu:22.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      openssh-server \
+      ca-certificates \
+      curl \
+      sudo \
+ && rm -rf /var/lib/apt/lists/*
+
+# Node 20 via NodeSource for pnpm compatibility.
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+ && apt-get install -y --no-install-recommends nodejs \
+ && rm -rf /var/lib/apt/lists/* \
+ && corepack enable \
+ && corepack prepare pnpm@9.0.0 --activate
+
+# Non-root platform user (ADR-0014 §D16).
+RUN useradd -m -s /bin/bash kb \
+ && mkdir -p /home/kb/.ssh /opt/kb-platform \
+ && chown -R kb:kb /home/kb /opt/kb-platform \
+ && chmod 700 /home/kb/.ssh
+
+# Test public key — matches ./keys/id_rsa{,.pub} committed under the e2e fixture.
+COPY keys/id_rsa.pub /home/kb/.ssh/authorized_keys
+RUN chown kb:kb /home/kb/.ssh/authorized_keys && chmod 600 /home/kb/.ssh/authorized_keys
+
+# Pre-built kb-create binary (see scripts/build-binaries.sh) and a stubbed
+# kb-dev (see fixtures/kb-dev-stub.sh) — the first delivery e2e focuses on
+# install/swap/SSH/pnpm. Real kb-dev integration arrives with a follow-up
+# scenario that also provisions devservices.yaml on target.
+COPY bin/kb-create /usr/local/bin/kb-create
+COPY fixtures/kb-dev-stub.sh /usr/local/bin/kb-dev
+RUN chmod 755 /usr/local/bin/kb-create /usr/local/bin/kb-dev
+
+# sshd needs its runtime directory.
+RUN mkdir -p /var/run/sshd
+
+# Disable password auth — key-only.
+RUN sed -i 's/#PasswordAuthentication yes/PasswordAuthentication no/' /etc/ssh/sshd_config \
+ && sed -i 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/' /etc/ssh/sshd_config
+
+EXPOSE 22
+CMD ["/usr/sbin/sshd", "-D", "-e"]

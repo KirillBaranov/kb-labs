@@ -1,0 +1,32 @@
+# Isolated Verdaccio for delivery e2e.
+#
+# All @kb-labs/* packages are published from the test harness; everything else
+# proxies to npmjs for pnpm metadata needs (though the fixtures are
+# dependency-free so this should rarely fire).
+
+storage: /verdaccio/storage
+auth:
+  htpasswd:
+    file: /verdaccio/storage/htpasswd
+    max_users: 1000
+
+uplinks:
+  npmjs:
+    url: https://registry.npmjs.org/
+    timeout: 60s
+    cache: true
+
+packages:
+  '@kb-labs/*':
+    access: $all
+    publish: $all
+    unpublish: $all
+  '**':
+    access: $all
+    publish: $all
+    proxy: npmjs
+
+log:
+  type: stdout
+  format: pretty
+  level: warn
