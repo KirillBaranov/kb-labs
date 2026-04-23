@@ -1,9 +1,13 @@
 package releases
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"gopkg.in/yaml.v3"
 )
 
 // setupPlatform creates a temp platform dir with releases/<id> directories
@@ -168,6 +172,85 @@ func TestIDFromSymlinkTarget(t *testing.T) {
 		if got != c.want {
 			t.Errorf("idFromSymlinkTarget(%q) = %q, want %q", c.in, got, c.want)
 		}
+	}
+}
+
+// TestSwap_WritesDevservicesEntry ensures swap picks up the service's
+// manifest.json from the release's node_modules and upserts a matching
+// devservices.yaml entry so kb-dev can find the service after a fresh swap.
+func TestSwap_WritesDevservicesEntry(t *testing.T) {
+	dir := t.TempDir()
+	releaseID := "gateway-1.0.0-aaa"
+
+	// Fabricate a release directory with a manifest.json the real install flow
+	// would have produced. The symlink target form is "../../releases/<id>",
+	// and swap reads absolute paths via <platformDir>/releases/<id>.
+	pkgDir := filepath.Join(dir, "releases", releaseID,
+		"node_modules", "@kb-labs", "gateway-test", "dist")
+	if err := os.MkdirAll(pkgDir, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	manifest := map[string]interface{}{
+		"schema":  "kb.service/1",
+		"id":      "gateway-test",
+		"name":    "Gateway Test",
+		"version": "1.0.0",
+		"runtime": map[string]interface{}{
+			"entry":       "dist/index.js",
+			"port":        4000,
+			"healthCheck": "/health",
+		},
+	}
+	data, _ := json.Marshal(manifest)
+	if err := os.WriteFile(filepath.Join(pkgDir, "manifest.json"), data, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := Swap(dir, "@kb-labs/gateway-test", releaseID); err != nil {
+		t.Fatalf("Swap: %v", err)
+	}
+
+	// devservices.yaml must now contain a gateway-test entry.
+	dsData, err := os.ReadFile(filepath.Join(dir, ".kb", "devservices.yaml"))
+	if err != nil {
+		t.Fatalf("devservices.yaml not written: %v", err)
+	}
+	var parsed struct {
+		Services map[string]struct {
+			Command     string `yaml:"command"`
+			HealthCheck string `yaml:"health_check"`
+			Port        int    `yaml:"port"`
+		} `yaml:"services"`
+	}
+	if err := yaml.Unmarshal(dsData, &parsed); err != nil {
+		t.Fatalf("parse devservices.yaml: %v", err)
+	}
+	svc, ok := parsed.Services["gateway-test"]
+	if !ok {
+		t.Fatalf("gateway-test entry missing: %s", dsData)
+	}
+	if svc.Port != 4000 || svc.HealthCheck != "http://localhost:4000/health" {
+		t.Errorf("bad entry: %+v", svc)
+	}
+	// Command must point through the services/<short>/current symlink, not the
+	// release directory directly — otherwise next swap won't take effect without
+	// re-editing devservices.yaml.
+	wantSubstr := "services/gateway-test/current/node_modules/@kb-labs/gateway-test/dist/index.js"
+	if !strings.Contains(svc.Command, wantSubstr) {
+		t.Errorf("command does not go through current symlink: %q", svc.Command)
+	}
+}
+
+// TestSwap_NoManifestIsNotFatal verifies that services without manifest.json
+// (proxies, minimal stubs) still swap cleanly — devservices.yaml is simply
+// not updated.
+func TestSwap_NoManifestIsNotFatal(t *testing.T) {
+	dir := setupPlatform(t, "svc-1.0-aaa")
+	if err := Swap(dir, "@scope/svc", "svc-1.0-aaa"); err != nil {
+		t.Fatalf("Swap: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, ".kb", "devservices.yaml")); err == nil {
+		t.Error("devservices.yaml should not be created when manifest.json is absent")
 	}
 }
 
