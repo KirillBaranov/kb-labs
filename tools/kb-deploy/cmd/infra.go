@@ -254,7 +254,7 @@ func (p *infraPool) get(sshCfg config.SSHConfig) (*ssh.Client, error) {
 	if err != nil {
 		return nil, err
 	}
-	c, err := ssh.New(sshCfg.Host, sshCfg.User, keyPEM)
+	c, err := ssh.New(sshCfg.Host, sshCfg.User, keyPEM, sshCfg.Port)
 	if err != nil {
 		return nil, fmt.Errorf("ssh connect %s: %w", key, err)
 	}

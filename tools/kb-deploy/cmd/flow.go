@@ -188,7 +188,7 @@ func dialHosts(cfg *config.Config) (map[string]*remote.Host, func(), error) {
 			closeAll()
 			return nil, nil, fmt.Errorf("host %s: %w", name, err)
 		}
-		client, err := ssh.New(hc.SSH.Host, hc.SSH.User, keyPEM)
+		client, err := ssh.New(hc.SSH.Host, hc.SSH.User, keyPEM, hc.SSH.Port)
 		if err != nil {
 			closeAll()
 			return nil, nil, fmt.Errorf("ssh %s@%s: %w", hc.SSH.User, hc.SSH.Host, err)
