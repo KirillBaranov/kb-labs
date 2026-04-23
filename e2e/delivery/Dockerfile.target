@@ -32,13 +32,17 @@ RUN useradd -m -s /bin/bash kb \
 COPY keys/id_rsa.pub /home/kb/.ssh/authorized_keys
 RUN chown kb:kb /home/kb/.ssh/authorized_keys && chmod 600 /home/kb/.ssh/authorized_keys
 
-# Pre-built kb-create binary (see scripts/build-binaries.sh) and a stubbed
-# kb-dev (see fixtures/kb-dev-stub.sh) — the first delivery e2e focuses on
-# install/swap/SSH/pnpm. Real kb-dev integration arrives with a follow-up
-# scenario that also provisions devservices.yaml on target.
+# Pre-built Go binaries (see scripts/build-binaries.sh). Real kb-dev now —
+# kb-create writes <platformPath>/.kb/devservices.yaml on swap and kb-deploy
+# invokes kb-dev with --config pointing at that file.
 COPY bin/kb-create /usr/local/bin/kb-create
-COPY fixtures/kb-dev-stub.sh /usr/local/bin/kb-dev
+COPY bin/kb-dev    /usr/local/bin/kb-dev
 RUN chmod 755 /usr/local/bin/kb-create /usr/local/bin/kb-dev
+
+# Pre-create the directories kb-dev writes to (PIDs, logs) with the correct
+# ownership so the non-root kb user doesn't have to create them at runtime.
+RUN mkdir -p /opt/kb-platform/.kb/logs /opt/kb-platform/.kb/pids \
+ && chown -R kb:kb /opt/kb-platform
 
 # sshd needs its runtime directory.
 RUN mkdir -p /var/run/sshd

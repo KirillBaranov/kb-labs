@@ -111,6 +111,19 @@ func TestDelivery_EndToEnd(t *testing.T) {
 		if strings.TrimSpace(entry) != "ok" {
 			t.Errorf("target :%d dist/index.js missing after install", port)
 		}
+
+		// devservices.yaml must have been written by kb-create on swap.
+		dsPath := "/opt/kb-platform/.kb/devservices.yaml"
+		ds := sshRun(t, client, "cat "+dsPath)
+		if !strings.Contains(ds, "gateway-test") || !strings.Contains(ds, "health_check:") {
+			t.Errorf("target :%d devservices.yaml missing gateway-test entry or health_check:\n%s", port, ds)
+		}
+
+		// Real kb-dev must have brought the service up — health probe returns "ok".
+		health := sshRun(t, client, "curl -fsS --max-time 5 http://localhost:4000/health")
+		if strings.TrimSpace(health) != "ok" {
+			t.Errorf("target :%d health probe body = %q, want \"ok\"", port, health)
+		}
 	}
 
 	// 7. Verify lock was written and names both hosts.
