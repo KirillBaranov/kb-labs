@@ -84,8 +84,8 @@ func (r *scriptedRunner) Run(cmd string) (string, error) {
 		data, _ := json.Marshal(payload)
 		return string(data), nil
 
-	case strings.Contains(cmd, "kb-dev restart"),
-		strings.Contains(cmd, "kb-dev ready"):
+	case strings.Contains(cmd, "restart '"),
+		strings.Contains(cmd, "ready '"):
 		return "", nil
 	}
 	return "", nil
@@ -163,7 +163,7 @@ func TestE2E_CanaryRolloutSuccess(t *testing.T) {
 	// Every runner must have executed install → swap → restart → ready.
 	for name, r := range runners {
 		got := strings.Join(r.log, "\n")
-		for _, want := range []string{"install-service", "swap", "kb-dev restart", "kb-dev ready"} {
+		for _, want := range []string{"install-service", "kb-create swap", "restart '", "ready '"} {
 			if !strings.Contains(got, want) {
 				t.Errorf("host %s: missing %q in command log", name, want)
 			}
@@ -214,7 +214,7 @@ func TestE2E_CanaryRolloutRollbackOnWaveFailure(t *testing.T) {
 		"h4": newRunner("h4"),
 	}
 	// h4 fails the health gate in wave 2.
-	runners["h4"].fail["kb-dev ready"] = true
+	runners["h4"].fail["ready '"] = true
 
 	_, res := runApply(t, cfg, runners, nil)
 
