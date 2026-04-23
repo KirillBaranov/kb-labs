@@ -14,8 +14,11 @@ export GOOS=linux
 export GOARCH=amd64
 export CGO_ENABLED=0
 
-echo "building kb-create → $OUT/kb-create"
+echo "building kb-create (linux/amd64) → $OUT/kb-create"
 ( cd "$REPO/tools/kb-create" && go build -trimpath -ldflags "-s -w" -o "$OUT/kb-create" . )
+
+echo "building kb-dev (linux/amd64) → $OUT/kb-dev"
+( cd "$REPO/tools/kb-dev" && go build -trimpath -ldflags "-s -w" -o "$OUT/kb-dev" . )
 
 echo "building kb-deploy (host-side, native) → $OUT/kb-deploy-host"
 (
