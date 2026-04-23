@@ -143,18 +143,36 @@ type ReleaseListItem struct {
 // RestartAndWaitHealthy asks kb-dev to restart the service and waits until
 // its health probe succeeds. Returns the error from kb-dev ready if the
 // service does not become healthy within timeout.
+//
+// kb-dev is invoked with --config <platformPath>/.kb/devservices.yaml so it
+// reads the file kb-create maintains during swap (ADR-0014 §Target runtime
+// contract). This decouples kb-dev from cwd on the target.
 func (h *Host) RestartAndWaitHealthy(serviceShort string, timeout time.Duration) error {
-	restart := fmt.Sprintf("kb-dev restart %s", shellQuote(serviceShort))
+	cfgFlag := h.devservicesFlag()
+	restart := fmt.Sprintf("kb-dev %srestart %s", cfgFlag, shellQuote(serviceShort))
 	if out, err := h.Runner.Run(restart); err != nil {
 		return fmt.Errorf("restart %s on %s: %w (output: %s)", serviceShort, h.Name, err, out)
 	}
-	ready := fmt.Sprintf("kb-dev ready %s --timeout %s --output json",
-		shellQuote(serviceShort), timeout.String())
+	// kb-dev exposes --json as a global flag and uses exit status to signal
+	// readiness; callers only need the boolean outcome, so --json is not set.
+	ready := fmt.Sprintf("kb-dev %sready %s --timeout %s",
+		cfgFlag, shellQuote(serviceShort), timeout.String())
 	out, err := h.Runner.Run(ready)
 	if err != nil {
 		return fmt.Errorf("health gate %s on %s: %w (output: %s)", serviceShort, h.Name, err, out)
 	}
 	return nil
+}
+
+// devservicesFlag returns "--config <path> " (trailing space) when the host
+// has a platformPath configured, or an empty string to fall back to kb-dev's
+// default discovery. Prepending it into the command string keeps quoting
+// uniform with the other helpers here.
+func (h *Host) devservicesFlag() string {
+	if h.PlatformPath == "" {
+		return ""
+	}
+	return "--config " + shellQuote(h.PlatformPath+"/.kb/devservices.yaml") + " "
 }
 
 // --- helpers ----------------------------------------------------------------
