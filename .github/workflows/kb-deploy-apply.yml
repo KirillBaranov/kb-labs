@@ -1,0 +1,155 @@
+# KB Labs — Declarative Delivery (ADR-0014)
+#
+# Reusable workflow for `kb-deploy plan` + `kb-deploy apply`. Call from a
+# consumer workflow in a deploy repo (or under .kb/deploy/ in a product repo).
+#
+# Typical consumer:
+#
+#   name: Deploy to staging
+#   on:
+#     push:
+#       branches: [main]
+#       paths: ['.kb/deploy/**']
+#   jobs:
+#     call:
+#       uses: KirillBaranov/kb-labs/.github/workflows/kb-deploy-apply.yml@main
+#       with:
+#         manifest: .kb/deploy/deploy.yaml
+#         environment: staging
+#       secrets:
+#         DEPLOY_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+#         # Add any ${secrets.X} referenced in deploy.yaml below:
+#         # OPENAI_KEY: ${{ secrets.OPENAI_KEY }}
+
+name: KB Deploy — Apply
+on:
+  workflow_call:
+    inputs:
+      manifest:
+        description: Path to deploy.yaml (relative to repo root).
+        default: .kb/deploy/deploy.yaml
+        type: string
+      environment:
+        description: GitHub environment name (for approval gates).
+        required: true
+        type: string
+      kb-deploy-version:
+        description: kb-deploy release to install; default = latest.
+        default: latest
+        type: string
+    secrets:
+      DEPLOY_KEY:
+        description: Private SSH key (PEM). Exposed to apply via DEPLOY_SSH_KEY env.
+        required: true
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      has-changes: ${{ steps.plan.outputs.has-changes }}
+      has-drift:   ${{ steps.plan.outputs.has-drift }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install kb-deploy
+        run: |
+          VERSION="${{ inputs.kb-deploy-version }}"
+          if [ "$VERSION" = "latest" ]; then
+            VERSION=$(curl -fsSL https://api.github.com/repos/KirillBaranov/kb-labs/releases/latest | jq -r .tag_name)
+          fi
+          OS=linux ARCH=amd64
+          URL="https://github.com/KirillBaranov/kb-labs/releases/download/${VERSION}/kb-deploy-${OS}-${ARCH}"
+          curl -fsSL "$URL" -o /usr/local/bin/kb-deploy
+          chmod +x /usr/local/bin/kb-deploy
+          kb-deploy --version
+
+      - name: Write SSH key
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_KEY" > ~/.ssh/kb-deploy.key
+          chmod 0600 ~/.ssh/kb-deploy.key
+
+      - name: Plan
+        id: plan
+        env:
+          # Surface the key path via env var name that deploy.yaml references
+          # through key_path_env. Keep this name in sync with your manifest.
+          DEPLOY_SSH_KEY: ${{ github.workspace }}/.ssh-kb-deploy.key
+        run: |
+          cp ~/.ssh/kb-deploy.key "$DEPLOY_SSH_KEY"
+          set +e
+          kb-deploy plan --config "${{ inputs.manifest }}" --json > plan.json
+          EXIT=$?
+          set -e
+          cat plan.json
+          case "$EXIT" in
+            0) echo "has-changes=false" >> "$GITHUB_OUTPUT";
+               echo "has-drift=false"   >> "$GITHUB_OUTPUT" ;;
+            2) echo "has-changes=true"  >> "$GITHUB_OUTPUT";
+               echo "has-drift=false"   >> "$GITHUB_OUTPUT" ;;
+            4) echo "has-changes=false" >> "$GITHUB_OUTPUT";
+               echo "has-drift=true"    >> "$GITHUB_OUTPUT";
+               echo "::error::Drift detected. Resolve with kb-deploy apply (reconcile) or kb-deploy adopt (accept reality)." ;;
+            *) echo "::error::kb-deploy plan exited $EXIT"; exit "$EXIT" ;;
+          esac
+
+      - name: Upload plan artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: kb-deploy-plan
+          path: plan.json
+
+  apply:
+    needs: plan
+    # Require an explicit push (not PR) and actual changes.
+    if: needs.plan.outputs.has-changes == 'true' && needs.plan.outputs.has-drift != 'true' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}   # GitHub environment gate (review/approval)
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install kb-deploy
+        run: |
+          VERSION="${{ inputs.kb-deploy-version }}"
+          if [ "$VERSION" = "latest" ]; then
+            VERSION=$(curl -fsSL https://api.github.com/repos/KirillBaranov/kb-labs/releases/latest | jq -r .tag_name)
+          fi
+          OS=linux ARCH=amd64
+          URL="https://github.com/KirillBaranov/kb-labs/releases/download/${VERSION}/kb-deploy-${OS}-${ARCH}"
+          curl -fsSL "$URL" -o /usr/local/bin/kb-deploy
+          chmod +x /usr/local/bin/kb-deploy
+
+      - name: Write SSH key
+        env:
+          DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_KEY" > ~/.ssh/kb-deploy.key
+          chmod 0600 ~/.ssh/kb-deploy.key
+
+      - name: Apply
+        env:
+          DEPLOY_SSH_KEY: ${{ github.workspace }}/.ssh-kb-deploy.key
+        run: |
+          cp ~/.ssh/kb-deploy.key "$DEPLOY_SSH_KEY"
+          kb-deploy apply --config "${{ inputs.manifest }}" --yes
+
+      - name: Commit lock file (artifact mode)
+        run: |
+          LOCK=$(dirname "${{ inputs.manifest }}")/deploy.lock.json
+          if [ ! -f "$LOCK" ]; then
+            echo "No lock file generated, skipping commit."
+            exit 0
+          fi
+          git config user.name  "kb-deploy[bot]"
+          git config user.email "kb-deploy[bot]@users.noreply.github.com"
+          git add "$LOCK"
+          if git diff --cached --quiet; then
+            echo "Lock unchanged; nothing to commit."
+            exit 0
+          fi
+          git commit -m "chore(deploy): update lock after apply to ${{ inputs.environment }}"
+          git push
