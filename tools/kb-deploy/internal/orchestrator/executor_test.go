@@ -88,7 +88,9 @@ func TestExecute_SuccessfulInstall(t *testing.T) {
 	}
 	// Commands expected: install-service, swap, restart, ready.
 	commands := strings.Join(h1.log, "\n")
-	for _, want := range []string{"install-service", "swap", "kb-dev restart", "kb-dev ready"} {
+	// kb-dev invocations may prepend a --config flag; match the subcommand
+	// token explicitly so future flag additions do not break the assertion.
+	for _, want := range []string{"install-service", "kb-create swap", "kb-dev", "restart 'gateway'", "ready 'gateway'"} {
 		if !strings.Contains(commands, want) {
 			t.Errorf("missing command %q in: %s", want, commands)
 		}
@@ -96,7 +98,7 @@ func TestExecute_SuccessfulInstall(t *testing.T) {
 }
 
 func TestExecute_HealthGateFailureTriggersAutoRollback(t *testing.T) {
-	h1 := &fakeRunner{failOn: "kb-dev ready"}
+	h1 := &fakeRunner{failOn: "ready '"}
 	cfg := singleServiceCfg()
 	plan := &Plan{Waves: [][]Action{
 		{{
@@ -135,7 +137,7 @@ func TestExecute_MultiHostRollbackOnOneFailure(t *testing.T) {
 	// h1 completes fully → gets rolled back on wave failure.
 
 	h1 := &fakeRunner{}
-	h2 := &fakeRunner{failOn: "kb-dev ready"}
+	h2 := &fakeRunner{failOn: "ready '"}
 
 	cfg := singleServiceCfg()
 	svc := cfg.Services["gateway"]
