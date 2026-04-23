@@ -182,7 +182,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			allOK = false
 			continue
 		}
-		client, err := ssh.New(t.SSH.Host, t.SSH.User, keyPEM)
+		client, err := ssh.New(t.SSH.Host, t.SSH.User, keyPEM, t.SSH.Port)
 		if err != nil {
 			res.OK, res.Error = false, "ssh: "+err.Error()
 			if !jsonMode {

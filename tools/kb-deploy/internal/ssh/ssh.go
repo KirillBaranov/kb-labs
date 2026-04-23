@@ -15,9 +15,10 @@ type Client struct {
 	conn *gossh.Client
 }
 
-// New dials host:22 using the given private key PEM and returns a connected Client.
+// New dials host:port using the given private key PEM and returns a connected
+// Client. If port is zero the standard SSH port (22) is used.
 // keyPEM is the raw PEM content of the private key (e.g. contents of ~/.ssh/id_rsa).
-func New(host, user, keyPEM string) (*Client, error) {
+func New(host, user, keyPEM string, port int) (*Client, error) {
 	signer, err := gossh.ParsePrivateKey([]byte(keyPEM))
 	if err != nil {
 		return nil, fmt.Errorf("parse private key: %w", err)
@@ -31,7 +32,10 @@ func New(host, user, keyPEM string) (*Client, error) {
 		HostKeyCallback: gossh.InsecureIgnoreHostKey(), //nolint:gosec // VPS deploy tool, not a security-critical context
 	}
 
-	addr := net.JoinHostPort(host, "22")
+	if port == 0 {
+		port = 22
+	}
+	addr := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 	conn, err := gossh.Dial("tcp", addr, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("dial %s: %w", addr, err)
