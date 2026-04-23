@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/kb-labs/create/internal/devservices"
 )
 
 // ServiceShort returns the service directory name (part after @scope/).
@@ -84,7 +86,52 @@ func Swap(platformDir, servicePkg, releaseID string) error {
 		store.Previous[servicePkg] = oldID
 	}
 	store.Current[servicePkg] = releaseID
-	return store.Save()
+	if err := store.Save(); err != nil {
+		return err
+	}
+
+	// Update devservices.yaml so `kb-dev` (on the same host or a restart
+	// supervisor) can start, restart and health-check this service via the
+	// stable `current` symlink. Missing or malformed service manifest is
+	// non-fatal here — the release itself is already swapped and the user
+	// can fix devservices.yaml manually. Warnings go to stderr via the
+	// caller when they choose to surface swap() errors.
+	if err := updateDevservices(platformDir, servicePkg, releaseID); err != nil {
+		return fmt.Errorf("update devservices.yaml: %w", err)
+	}
+	return nil
+}
+
+// updateDevservices reads the service manifest from the swapped release and
+// upserts the matching entry in <platformDir>/.kb/devservices.yaml.
+func updateDevservices(platformDir, servicePkg, releaseID string) error {
+	manifestPath := filepath.Join(platformDir, "releases", releaseID,
+		"node_modules", servicePkg, "dist", "manifest.json")
+	if _, err := os.Stat(manifestPath); errors.Is(err, os.ErrNotExist) {
+		// Services without a shipped manifest.json cannot auto-register.
+		// This is not an error — some services (proxies, stubs) may legitimately
+		// omit the file. Skip silently.
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("stat manifest: %w", err)
+	}
+
+	manifest, err := devservices.LoadManifest(manifestPath)
+	if err != nil {
+		return err
+	}
+	serviceShort := ServiceShort(servicePkg)
+	id, entry := devservices.EntryForSwap(platformDir, servicePkg, serviceShort, manifest)
+
+	file, err := devservices.Load(platformDir)
+	if err != nil {
+		return err
+	}
+	if file.Name == "" {
+		file.Name = "KB Labs Platform"
+	}
+	file.Upsert(id, entry)
+	return file.Save(platformDir)
 }
 
 // Rollback swaps current back to previous. Returns an actionable error if
