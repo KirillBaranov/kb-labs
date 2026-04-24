@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/release-manager-cli",
   "description": "KB Labs Release Manager - CLI commands for release management",
-  "version": "2.82.0",
+  "version": "2.87.0",
   "type": "module",
   "author": {
     "name": "Kirill Baranov",
@@ -22,7 +22,8 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup && pnpm build:studio",
+    "build": "tsup && pnpm build:templates && pnpm build:studio",
+    "build:templates": "cp -r src/workflows dist/",
     "build:studio": "rspack build --config rspack.studio.config.mjs",
     "clean": "rimraf dist",
     "dev": "tsup --watch",

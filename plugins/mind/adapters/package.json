@@ -1,7 +1,7 @@
 {
   "name": "@kb-labs/mind-adapters",
   "description": "Git adapters for KB Labs Mind",
-  "version": "2.82.0",
+  "version": "2.87.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
