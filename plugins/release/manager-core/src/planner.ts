@@ -108,6 +108,21 @@ export function mergeConfigWithFlow(config: ReleaseConfig, flowName: string): Re
 }
 
 /**
+ * Check whether a specific package version is already published on the npm registry.
+ * Fail-open: returns false on any network/registry error.
+ */
+async function isVersionPublished(name: string, version: string, registry: string): Promise<boolean> {
+  try {
+    const encoded = name.startsWith('@') ? `@${encodeURIComponent(name.slice(1))}` : name;
+    const url = `${registry.replace(/\/$/, '')}/${encoded}/${version}`;
+    const res = await fetch(url, { method: 'HEAD', signal: AbortSignal.timeout(5000) });
+    return res.status === 200;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Plan release by detecting changes and computing version bumps
  */
 export async function planRelease(options: PlannerOptions): Promise<ReleasePlan> {
@@ -167,6 +182,7 @@ export async function planRelease(options: PlannerOptions): Promise<ReleasePlan>
   }
 
   // Compute version bumps
+  const registry = config.registry ?? 'https://registry.npmjs.org';
   let planPackages: PackageVersion[] = [];
   for (const pkg of modifiedPackages) {
     const bump = bumpOverride || config.bump || 'auto';
@@ -174,6 +190,32 @@ export async function planRelease(options: PlannerOptions): Promise<ReleasePlan>
     // For workspace root, use per-sub-repo git instance
     const gitCwd = isWorkspaceRoot ? pkg.path : cwd;
     const git = simpleGit(gitCwd, { timeout: { block: 60000 } });
+
+    let gitRoot = pkg.gitRoot;
+    if (!gitRoot) {
+      gitRoot = await git.revparse(['--show-toplevel']).catch(() => pkg.path);
+    }
+
+    // Idempotent check: if package.json was bumped in a previous run but git wasn't committed,
+    // currentVersion > HEAD version. If that version is already on npm, reuse it (don't double-bump).
+    const pkgRelPath = relative(gitRoot, join(pkg.path, 'package.json'));
+    const headPkgRaw = await git.raw(['show', `HEAD:${pkgRelPath}`]).catch(() => null);
+    const headVersion: string | null = headPkgRaw ? (() => { try { return (JSON.parse(headPkgRaw) as { version?: string }).version ?? null; } catch { return null; } })() : null;
+
+    if (headVersion && headVersion !== pkg.currentVersion) {
+      // package.json was bumped beyond HEAD — check if that version is already on npm
+      const alreadyPublished = await isVersionPublished(pkg.name, pkg.currentVersion, registry);
+      if (alreadyPublished) {
+        planPackages.push({
+          ...pkg,
+          gitRoot,
+          nextVersion: pkg.currentVersion,
+          bump: detectBumpType(headVersion, pkg.currentVersion),
+          isPublished: true,
+        });
+        continue;
+      }
+    }
 
     const nextVersion = await computeNextVersion(
       pkg.path,
@@ -186,6 +228,7 @@ export async function planRelease(options: PlannerOptions): Promise<ReleasePlan>
 
     planPackages.push({
       ...pkg,
+      gitRoot,
       nextVersion,
       bump: bump === 'auto' ? detectBumpType(pkg.currentVersion, nextVersion) : bump,
     });
@@ -278,6 +321,7 @@ async function discoverPackages(cwd: string, config?: ReleaseConfig): Promise<Pa
     packages.push({
       name: packageJson.name,
       path: packagePath,
+      gitRoot: '',
       currentVersion: packageJson.version,
       nextVersion: packageJson.version,
       bump: 'auto',
@@ -389,6 +433,7 @@ async function discoverSubRepoPackages(workspaceRoot: string, config?: ReleaseCo
       packages.push({
         name: pkgJson.name,
         path: subRepoPath,
+        gitRoot: subRepoPath,
         currentVersion: pkgJson.version || '0.0.0',
         nextVersion: pkgJson.version || '0.0.0',
         bump: 'auto',

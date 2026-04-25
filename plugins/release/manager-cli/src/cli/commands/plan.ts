@@ -141,6 +141,14 @@ export default defineCommand({
         registry: plan.registry,
       });
 
+      const firstPkg = plan.packages[0];
+      console.log('::kb-output::' + JSON.stringify({
+        version: firstPkg?.nextVersion ?? '',
+        packages: plan.packages.length,
+        bump: firstPkg?.bump ?? 'auto',
+        planPath,
+      }));
+
       if (flags.json) {
         ctx.ui?.json?.(plan);
       } else {

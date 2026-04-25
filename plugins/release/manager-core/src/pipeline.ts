@@ -11,6 +11,7 @@
 
 import { join } from 'node:path';
 import { writeFile, mkdir } from 'node:fs/promises';
+import { useEnv } from '@kb-labs/sdk';
 import { planRelease } from './planner';
 import { saveSnapshot, restoreSnapshot } from './rollback';
 import { updatePackageVersions } from './publisher';
@@ -18,6 +19,13 @@ import { copyChangelogToPackages, commitAndTagRelease } from './publisher';
 import { buildPackages } from './build';
 import { runReleaseChecks } from './checks';
 import { verifyPackages } from './verifier';
+import { acquireLock } from './lock';
+import {
+  loadCheckpoint,
+  writeCheckpoint,
+  deleteCheckpoint,
+  isCheckpointResumable,
+} from './checkpoint';
 import type {
   PipelineOptions,
   PipelineResult,
@@ -47,6 +55,62 @@ export async function runReleasePipeline(options: PipelineOptions): Promise<Pipe
     onProgress?.(stage, msg);
   };
 
+  // 0a. Acquire exclusive lock — prevents concurrent release runs.
+  const releaseLock = acquireLock(repoRoot, flow);
+
+  try {
+  return await _runPipeline({
+    repoRoot, scopeCwd, scope, flow, config, dryRun, skipChecks, skipBuild, skipVerify,
+    noVerify, checkConfigs, publisher, changelogGen, logger, startTime, progress,
+    options,
+  });
+  } finally {
+    releaseLock();
+  }
+}
+
+async function _runPipeline(ctx: {
+  repoRoot: string;
+  scopeCwd: string;
+  scope: string | undefined;
+  flow: string | undefined;
+  config: PipelineOptions['config'];
+  dryRun: boolean;
+  skipChecks: boolean;
+  skipBuild: boolean;
+  skipVerify: boolean;
+  noVerify: boolean;
+  checkConfigs: PipelineOptions['checks'];
+  publisher: PipelineOptions['publisher'];
+  changelogGen: PipelineOptions['changelog'];
+  logger: PipelineOptions['logger'];
+  startTime: number;
+  progress: (stage: ReleaseStage, msg: string) => void;
+  options: PipelineOptions;
+}): Promise<PipelineResult> {
+  const {
+    repoRoot, scopeCwd, scope, flow, config, dryRun,
+    skipChecks, skipBuild, skipVerify, noVerify,
+    checkConfigs, publisher, changelogGen, logger, startTime, progress,
+  } = ctx;
+
+  // 0b. Pre-flight: verify npm credentials before doing any real work.
+  if (!dryRun) {
+    const registry = config.registry ?? 'https://registry.npmjs.org';
+    const authError = await verifyNpmAuth(registry);
+    if (authError) {
+      return {
+        success: false,
+        plan: { packages: [], strategy: 'semver', registry, rollbackEnabled: false },
+        report: buildReport('planning', { packages: [], strategy: 'semver', registry, rollbackEnabled: false }, repoRoot, dryRun, startTime, {
+          ok: false,
+          errors: [`npm auth check failed: ${authError}`],
+          timingMs: Date.now() - startTime,
+        }),
+      };
+    }
+  }
+
   // 1. Plan — always discover from repoRoot with scope as a filter.
   // scopeCwd is used only for checks/git/changelog (physical path ops), not for discovery.
   progress('planning', 'Discovering packages and planning release...');
@@ -69,6 +133,38 @@ export async function runReleasePipeline(options: PipelineOptions): Promise<Pipe
   }
 
   progress('planning', `Found ${plan.packages.length} package(s) to release`);
+
+  // 1b. Check for resumable checkpoint — publish already done, only git remains.
+  if (!dryRun) {
+    const existingCheckpoint = loadCheckpoint(repoRoot);
+    if (existingCheckpoint) {
+      const uniqueVersions = new Set(plan.packages.map(p => p.nextVersion));
+      const planVersion = uniqueVersions.size === 1 ? plan.packages[0]!.nextVersion : 'independent';
+      if (isCheckpointResumable(existingCheckpoint, flow ?? 'default', planVersion)) {
+        progress('publishing', 'Resuming from checkpoint — publish already done, running git step...');
+        const resumeGit = await commitAndTagRelease({
+          cwd: scopeCwd,
+          plan,
+          dryRun: false,
+          noVerify,
+          repoRoot,
+          checkpointGitRoots: existingCheckpoint.gitRoots,
+        });
+        deleteCheckpoint(repoRoot);
+        const resumeReport = buildReport('verifying', plan, repoRoot, dryRun, startTime, {
+          ok: resumeGit.committed,
+          published: existingCheckpoint.publishedPackages.map(p => `${p.name}@${p.version}`),
+          git: resumeGit,
+          timingMs: Date.now() - startTime,
+        });
+        const scopeDir = scope ? scope.replace(/[@/]/g, '-').replace(/^-/, '') : 'root';
+        const historyDir = join(repoRoot, '.kb', 'release', 'history', scopeDir, new Date().toISOString().replace(/[:.]/g, '-'));
+        await mkdir(historyDir, { recursive: true });
+        await writeFile(join(historyDir, 'report.json'), JSON.stringify(resumeReport, null, 2), 'utf-8');
+        return { success: resumeReport.result.ok, plan, report: resumeReport };
+      }
+    }
+  }
 
   // 2. Snapshot (for rollback)
   await saveSnapshot({ cwd: repoRoot, plan });
@@ -236,11 +332,29 @@ export async function runReleasePipeline(options: PipelineOptions): Promise<Pipe
     };
   }
 
+  // 8b. Write checkpoint after successful publish — enables git-only retry on failure.
+  if (!dryRun) {
+    const uniqueVersions = new Set(plan.packages.map(p => p.nextVersion));
+    const cpVersion = uniqueVersions.size === 1 ? plan.packages[0]!.nextVersion : 'independent';
+    writeCheckpoint(repoRoot, {
+      flow: flow ?? 'default',
+      version: cpVersion,
+      publishedPackages: plan.packages.map(p => ({
+        name: p.name,
+        version: p.nextVersion,
+        path: p.path,
+        gitRoot: p.gitRoot,
+      })),
+      gitRoots: {},
+    });
+  }
+
   // 9. Git commit + tag — only after all packages are on npm
   let gitResult: { committed: boolean; tagged: string[]; pushed: boolean } | undefined;
   if (!dryRun) {
     progress('verifying', 'Committing and tagging release...');
-    gitResult = await commitAndTagRelease({ cwd: scopeCwd, plan, dryRun, noVerify });
+    gitResult = await commitAndTagRelease({ cwd: scopeCwd, plan, dryRun, noVerify, repoRoot });
+    deleteCheckpoint(repoRoot);
   }
 
   // 10. Report
@@ -261,6 +375,30 @@ export async function runReleasePipeline(options: PipelineOptions): Promise<Pipe
   await writeFile(join(historyDir, 'report.json'), JSON.stringify(report, null, 2), 'utf-8');
 
   return { success: report.result.ok, plan, report };
+}
+
+/**
+ * Quick pre-flight check: verify npm credentials are valid.
+ * Uses the registry HTTP API directly — works regardless of .npmrc config.
+ * Returns an error string on failure, null on success.
+ */
+async function verifyNpmAuth(registry: string): Promise<string | null> {
+  const token = useEnv('NPM_TOKEN') ?? useEnv('NODE_AUTH_TOKEN');
+  if (!token) {
+    return 'NPM_TOKEN or NODE_AUTH_TOKEN environment variable is not set';
+  }
+  try {
+    const res = await fetch(`${registry}/-/whoami`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) {
+      return `npm token invalid or expired (HTTP ${res.status} from ${registry})`;
+    }
+    return null;
+  } catch (e) {
+    return `npm registry unreachable: ${e instanceof Error ? e.message : String(e)}`;
+  }
 }
 
 function buildReport(

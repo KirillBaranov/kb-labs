@@ -79,7 +79,15 @@ function createPublisher(
   return {
     async publish(packages: PublishablePackage[], opts: { dryRun?: boolean; access?: string }): Promise<PublishResult> {
       if (token) {
-        return publishPackagesProgrammatic({ packages, packageManager, dryRun: opts.dryRun }) as any;
+        const r = await publishPackagesProgrammatic({
+          packages,
+          packageManager,
+          dryRun: opts.dryRun,
+          access: (opts.access as 'public' | 'restricted') ?? 'public',
+          registry: config.registry,
+          token,
+        });
+        return { published: r.published, alreadyPublished: r.alreadyPublished, failed: r.failed, skipped: r.skipped, errors: r.errors };
       }
       return publishPackagesWithOTP({
         packages,
@@ -266,6 +274,42 @@ export default defineCommand({
       };
       configLoader.succeed('Configuration loaded');
 
+      const token = useEnv('NPM_TOKEN') ?? useEnv('NODE_AUTH_TOKEN');
+
+      // 1b. Pre-flight — fail fast before planning (which is slow)
+      if (!dryRun) {
+        const preErrors: string[] = [];
+        const registry = config.registry ?? 'https://registry.npmjs.org';
+        if (!token) {
+          preErrors.push('NPM_TOKEN or NODE_AUTH_TOKEN is not set');
+        } else {
+          try {
+            const res = await fetch(`${registry}/-/whoami`, {
+              headers: { Authorization: `Bearer ${token}` },
+              signal: AbortSignal.timeout(8000),
+            });
+            if (!res.ok) {
+              preErrors.push(`npm token invalid or expired (HTTP ${res.status} from ${registry})`);
+            }
+          } catch (e) {
+            preErrors.push(`npm registry unreachable: ${e instanceof Error ? e.message : String(e)}`);
+          }
+        }
+
+        if (flags.flow && config.flows && !(flags.flow in config.flows)) {
+          preErrors.push(`Flow "${flags.flow}" is not defined in release.flows config`);
+        }
+
+        if (preErrors.length > 0) {
+          ctx.ui.sideBox({
+            title: 'Release — pre-flight failed',
+            sections: [{ items: preErrors.map(e => `${ctx.ui.symbols.error} ${e}`) }],
+            status: 'error',
+          });
+          return { exitCode: 1 };
+        }
+      }
+
       const scopeCwd = await resolveScopePath(repoRoot, flags.scope || 'root');
 
       // 2. Plan — run separately so we can show it before asking for confirm
@@ -308,8 +352,6 @@ export default defineCommand({
       // 5. Execute pipeline
       const llm = useLLM();
       const changelog = createChangelogGenerator(config, llm ?? undefined);
-
-      const token = useEnv('NPM_TOKEN') ?? useEnv('NODE_AUTH_TOKEN');
       const publisher = createPublisher(config, token, ctx);
 
       const pipelineLoader = useLoader('Running release pipeline...');

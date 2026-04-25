@@ -314,6 +314,21 @@ export interface WorkflowHandlerDecl {
 }
 
 /**
+ * Workflow template declaration — static YAML workflow bundled with plugin.
+ * Registered in the workflow engine registry and runnable via `kb workflow run`.
+ */
+export interface WorkflowTemplateDecl {
+  /** Unique template ID within the plugin (e.g. 'full-release') */
+  id: string;
+  /** Human-readable description */
+  describe?: string;
+  /** Path to YAML workflow file relative to plugin root (e.g. './workflows/templates/full-release.yaml') */
+  path: string;
+  /** Optional tags for filtering */
+  tags?: string[];
+}
+
+/**
  * Webhook handler declaration
  */
 export interface WebhookHandlerDecl {
@@ -560,6 +575,8 @@ export interface ManifestV3 {
   /** Workflow handlers (multi-step orchestration) */
   workflows?: {
     handlers: WorkflowHandlerDecl[];
+    /** Static YAML workflow templates bundled with the plugin */
+    templates?: WorkflowTemplateDecl[];
   };
 
   /** Webhook handlers */

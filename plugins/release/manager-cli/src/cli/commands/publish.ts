@@ -142,6 +142,11 @@ export default defineCommand({
 
       const publishResult = toPublishResult(rawResult.results);
 
+      console.log('::kb-output::' + JSON.stringify({
+        published: publishResult.published?.map(p => `${p.name}@${p.version}`) ?? [],
+        failed: publishResult.failed?.map(p => p.name) ?? [],
+      }));
+
       if (json) {
         ctx.ui?.json?.(publishResult);
         return publishResult;
