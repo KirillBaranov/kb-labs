@@ -220,6 +220,32 @@ func printNextSteps(r *installer.Result, llmEnabled bool) {
 	fmt.Println()
 }
 
+// printSupportHint shows a compact support block with GitHub Issues and
+// Telegram contact — called whenever an install or doctor run fails.
+func printSupportHint() {
+	accent := lipgloss.NewStyle().Foreground(lipgloss.Color("141"))
+	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("244"))
+	white := lipgloss.NewStyle().Foreground(lipgloss.Color("15"))
+	url := lipgloss.NewStyle().Foreground(lipgloss.Color("14"))
+
+	border := accent.Render("│")
+	topLeft := accent.Render("╭")
+	botLeft := accent.Render("╰")
+	line := func(s string) { fmt.Printf("  %s  %s\n", border, s) }
+
+	width := 58
+	rule := accent.Render(strings.Repeat("─", width))
+
+	fmt.Println()
+	fmt.Printf("  %s%s\n", topLeft, rule)
+	line(white.Render("Need help?"))
+	line("")
+	line("  " + dim.Render("Open an issue   ") + url.Render("github.com/KirillBaranov/kb-labs-create/issues"))
+	line("  " + dim.Render("Telegram        ") + url.Render("@kirill_baranov"))
+	fmt.Printf("  %s%s\n", botLeft, rule)
+	fmt.Println()
+}
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 func color(enabled bool, ansi string) lipgloss.TerminalColor {

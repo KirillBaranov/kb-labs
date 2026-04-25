@@ -81,6 +81,7 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 				out.Info(fmt.Sprintf("  manual fix for %-12s %s", c.Name+":", c.FixHint))
 			}
 		}
+		printSupportHint()
 		return fmt.Errorf("some checks failed")
 	}
 
@@ -137,6 +138,7 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	out.Warn(fmt.Sprintf("%d/%d checks passing (%d fixed, %d still failing)", total-remaining, total, fixed, remaining))
+	printSupportHint()
 	return fmt.Errorf("some checks could not be repaired automatically")
 }
 
