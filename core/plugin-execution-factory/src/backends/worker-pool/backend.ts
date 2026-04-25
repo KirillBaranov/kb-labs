@@ -19,7 +19,7 @@ import type {
   PlatformTransportFactory,
 } from '../../types.js';
 import type { PlatformServices, UIFacade } from '@kb-labs/plugin-contracts';
-import { IPCPlatformTransportFactory } from '../../platform-transport/ipc-factory.js';
+import { UnixSocketPlatformTransportFactory } from '../../platform-transport/unix-socket-factory.js';
 import { noopUI } from '@kb-labs/plugin-contracts';
 import { WorkerPool } from './pool.js';
 import type { WorkerPoolConfig } from './types.js';
@@ -83,7 +83,7 @@ export class WorkerPoolBackend implements ExecutionBackend {
 
   constructor(options: WorkerPoolBackendOptions) {
     this.platform = options.platform;
-    this.platformTransport = options.platformTransport ?? new IPCPlatformTransportFactory();
+    this.platformTransport = options.platformTransport ?? new UnixSocketPlatformTransportFactory();
     this.uiProvider = options.uiProvider ?? (() => noopUI);
 
     // Default worker script (to be created)
@@ -113,6 +113,13 @@ export class WorkerPoolBackend implements ExecutionBackend {
   async start(): Promise<void> {
     if (this.pool) {
       return;
+    }
+
+    // If the transport supports async initialization (e.g. UnixSocketPlatformTransportFactory
+    // starts its shared socket server here, before the first worker is spawned).
+    if ('init' in this.platformTransport && typeof (this.platformTransport as any).init === 'function') {
+      await (this.platformTransport as any).init(this.platform);
+      this.platform.logger.debug('Platform transport initialized', { type: this.platformTransport.type });
     }
 
     this.pool = new WorkerPool(this.workerScript, this.config, this.platform, this.platformTransport);
@@ -284,6 +291,11 @@ export class WorkerPoolBackend implements ExecutionBackend {
       this.platform.logger.info('Shutting down worker pool');
       await this.pool.shutdown();
       this.pool = null;
+    }
+    // Tear down the shared transport server (e.g. close Unix socket).
+    if ('dispose' in this.platformTransport && typeof (this.platformTransport as any).dispose === 'function') {
+      await (this.platformTransport as any).dispose();
+      this.platform.logger.debug('Platform transport disposed', { type: this.platformTransport.type });
     }
   }
 
