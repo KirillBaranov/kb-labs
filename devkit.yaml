@@ -507,17 +507,6 @@ tasks:
   #   kb-devkit run e2e
   # Affected only:
   #   kb-devkit run e2e --affected
-  e2e:
-    - categories: [e2e-suite]
-      command: playwright test
-      inputs:
-        - "specs/**"
-        - "playwright.config.ts"
-        - "tsconfig.json"
-      outputs: []
-      deps:
-        - "^build"
-
   test:
     - categories: [ts-lib, ts-app]
       command: vitest run --passWithNoTests
@@ -562,11 +551,22 @@ tasks:
       outputs:
         - "coverage.out"
 
-  # e2e runs network-bound integration tests (real pnpm installs, downloads,
-  # service boot). Only kb-create actually has an e2e suite today; other Go
-  # tools implement `make e2e` as a no-op so the task is uniform across
-  # go-binary packages and affected-build machinery keeps working.
+  # e2e: Playwright domain suites + Go binary integration tests.
+  # Playwright: kb-devkit run e2e --packages @kb-labs/e2e-workflows (one domain)
+  #             kb-devkit run e2e --affected                         (changed only)
+  #             kb-devkit run e2e                                    (all)
+  # Go:         only kb-create has a real suite; others are no-ops for uniformity.
   e2e:
+    - categories: [e2e-suite]
+      command: playwright test
+      inputs:
+        - "specs/**"
+        - "playwright.config.ts"
+        - "tsconfig.json"
+      outputs: []
+      deps:
+        - "^build"
+
     - categories: [go-binary]
       command: make e2e
       inputs:
