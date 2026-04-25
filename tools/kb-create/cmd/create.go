@@ -149,6 +149,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 
 	if err != nil {
 		tc.Track("install_failed", map[string]string{"error": err.Error()})
+		printSupportHint()
 		return fmt.Errorf("installation failed: %w", err)
 	}
 
