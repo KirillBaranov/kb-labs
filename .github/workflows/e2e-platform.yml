@@ -82,7 +82,7 @@ jobs:
       # ── Install Playwright browsers ──────────────────────────────────────
 
       - name: Install Playwright browsers
-        run: npx playwright install chromium --with-deps
+        run: cd e2e/plugins && pnpm exec playwright install chromium --with-deps
 
       # ── Pack packages for Verdaccio ──────────────────────────────────────
 
