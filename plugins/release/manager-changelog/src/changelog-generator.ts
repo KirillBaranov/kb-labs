@@ -14,12 +14,12 @@ import { loadTemplate, packageToTemplateData } from './templates';
 const CHANGELOG_LLM_TIMEOUT_MS = 45_000;
 
 async function renderWithTimeout(result: string | Promise<string>): Promise<string> {
-  if (typeof result === 'string') return result;
+  if (typeof result === 'string') {return result;}
   return Promise.race([
     result,
-    new Promise<never>((_, reject) =>
+    new Promise<never>((_, reject) => {
       setTimeout(() => reject(new Error('Changelog LLM render timeout after 45s')), CHANGELOG_LLM_TIMEOUT_MS)
-    ),
+    }),
   ]);
 }
 

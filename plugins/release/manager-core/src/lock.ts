@@ -47,7 +47,7 @@ export function acquireLock(repoRoot: string, flow?: string): () => void {
     }
     // Stale lock from a dead process — overwrite it
   } catch (err) {
-    if (err instanceof Error && err.message.includes('Another release')) throw err;
+    if (err instanceof Error && err.message.includes('Another release')) {throw err;}
     // File doesn't exist or is unreadable — proceed
   }
 
