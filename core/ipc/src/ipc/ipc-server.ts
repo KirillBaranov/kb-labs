@@ -75,7 +75,7 @@ export class IPCServer {
     process.on('message', this.messageHandler);
     this.started = true;
 
-    console.error('[IPCServer] Started listening for adapter calls');
+    this.platform.logger.debug('IPCServer started listening for adapter calls');
   }
 
   /**
@@ -91,7 +91,7 @@ export class IPCServer {
     process.off('message', this.messageHandler);
     this.started = false;
 
-    console.error('[IPCServer] Stopped listening for adapter calls');
+    this.platform.logger.debug('IPCServer stopped listening for adapter calls');
   }
 
   /**
@@ -107,7 +107,7 @@ export class IPCServer {
 
     // Check protocol version compatibility
     if (msg.version !== IPC_PROTOCOL_VERSION) {
-      console.error('[IPCServer] Protocol version mismatch:', {
+      this.platform.logger.warn('IPCServer: protocol version mismatch', {
         received: msg.version,
         expected: IPC_PROTOCOL_VERSION,
         adapter: msg.adapter,
@@ -118,7 +118,7 @@ export class IPCServer {
 
     // Log context for debugging/tracing (if provided)
     if (msg.context) {
-      console.error('[IPCServer] Adapter call context:', {
+      this.platform.logger.debug('IPCServer: adapter call', {
         version: msg.version,
         traceId: msg.context.traceId,
         pluginId: msg.context.pluginId,
@@ -172,9 +172,10 @@ export class IPCServer {
       }
 
       // Log error for debugging
-      console.error(
-        `[IPCServer] Error handling adapter call: ${msg.adapter}.${msg.method}`,
-        error
+      this.platform.logger.error(
+        'IPCServer: error handling adapter call',
+        error instanceof Error ? error : new Error(String(error)),
+        { adapter: msg.adapter, method: msg.method },
       );
     }
   }

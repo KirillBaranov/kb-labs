@@ -129,7 +129,7 @@ export class UnixSocketServer {
           const call = JSON.parse(line) as AdapterCall;
           this.handleCall(socket, call);
         } catch (error) {
-          console.error('[UnixSocketServer] Failed to parse message:', error);
+          this.platform.logger.warn('UnixSocketServer: failed to parse message', { error });
         }
       }
     });
@@ -139,7 +139,7 @@ export class UnixSocketServer {
     });
 
     socket.on('error', (error) => {
-      console.error('[UnixSocketServer] Client socket error:', error);
+      this.platform.logger.warn('UnixSocketServer: client socket error', { error });
       this.clients.delete(socket);
     });
   }
@@ -161,7 +161,7 @@ export class UnixSocketServer {
 
     // Check protocol version compatibility
     if (call.version !== IPC_PROTOCOL_VERSION) {
-      console.error('[UnixSocketServer] Protocol version mismatch:', {
+      this.platform.logger.warn('UnixSocketServer: protocol version mismatch', {
         received: call.version,
         expected: IPC_PROTOCOL_VERSION,
         adapter: call.adapter,
@@ -172,7 +172,7 @@ export class UnixSocketServer {
 
     // Log context for debugging/tracing (if provided)
     if (call.context) {
-      console.error('[UnixSocketServer] Adapter call context:', {
+      this.platform.logger.debug('UnixSocketServer: adapter call', {
         version: call.version,
         traceId: call.context.traceId,
         pluginId: call.context.pluginId,
@@ -254,9 +254,10 @@ export class UnixSocketServer {
       socket.write(message, 'utf8');
 
       // Log error for debugging
-      console.error(
-        `[UnixSocketServer] Error handling adapter call: ${call.adapter}.${call.method}`,
-        error
+      this.platform.logger.error(
+        'UnixSocketServer: error handling adapter call',
+        error instanceof Error ? error : new Error(String(error)),
+        { adapter: call.adapter, method: call.method },
       );
     }
   }
@@ -327,7 +328,7 @@ export class UnixSocketServer {
     }
 
     this.started = false;
-    console.error('[UnixSocketServer] Stopped listening for adapter calls');
+    this.platform.logger.debug('UnixSocketServer stopped listening for adapter calls');
   }
 
   /**
