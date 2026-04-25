@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"syscall"
 )
 
 // EnsureSameFilesystem verifies that releases/ and services/ share a filesystem
@@ -42,20 +41,10 @@ func EnsureSameFilesystem(releasesDir, servicesDir string) error {
 	return nil
 }
 
-// deviceOf returns the filesystem device id of the given path.
-func deviceOf(path string) (uint64, error) {
-	abs, err := filepath.Abs(path)
-	if err != nil {
-		return 0, err
-	}
-	info, err := os.Stat(abs)
-	if err != nil {
-		return 0, fmt.Errorf("stat %s: %w", abs, err)
-	}
-	stat, ok := info.Sys().(*syscall.Stat_t)
-	if !ok {
-		// Non-Unix filesystems (e.g. tests on Windows) — skip the guard.
-		return 0, nil
-	}
-	return uint64(stat.Dev), nil //nolint:unconvert // Dev is int32 on darwin, uint64 on linux
+// deviceOf is implemented in guard_unix.go (Unix) and guard_windows.go (Windows)
+// via build tags.
+
+// absPath returns the absolute path of p, used by platform-specific deviceOf impls.
+func absPath(p string) (string, error) {
+	return filepath.Abs(p)
 }
