@@ -203,7 +203,14 @@ export async function createServiceBootstrap(
 
     // Relative adapter paths (e.g. ".kb/database/kb.sqlite") must resolve
     // against the project root, not the platform installation.
-    await initPlatform(platformConfig, projectRoot);
+    // Pass platformRoot so adapter discovery reads marketplace.lock from
+    // the right location when platform is installed separately.
+    await initPlatform(
+      platformConfig,
+      projectRoot,
+      undefined,
+      platformRoot !== projectRoot ? platformRoot : undefined,
+    );
     _initialized = true;
 
     const hasConfig =
