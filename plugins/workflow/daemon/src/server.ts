@@ -197,7 +197,9 @@ export async function createServer(options: CreateServerOptions) {
 
   server.get('/ready', async () => {
     const metrics = await hostService.getMetrics();
-    const checks = buildWorkflowChecks({ workflowService, cronScheduler, metrics });
+    // Readiness checks: only component availability, not historical failure counts.
+    // Failed runs are operational history, not a readiness concern.
+    const checks = buildWorkflowReadinessChecks({ workflowService, cronScheduler, metrics });
     const hasErrors = checks.some((entry) => entry.status === 'error');
     const hasWarnings = checks.some((entry) => entry.status === 'warn');
     return createServiceReadyResponse({
@@ -263,6 +265,24 @@ function buildWorkflowChecks(input: {
   metrics: WorkflowMetrics;
 }): ObservabilityCheck[] {
   return [
+    ...buildWorkflowReadinessChecks(input),
+    {
+      id: 'workflow-failures',
+      status: input.metrics.runs.failed > 0 || input.metrics.jobs.failed > 0 ? 'warn' : 'ok',
+      message:
+        input.metrics.runs.failed > 0 || input.metrics.jobs.failed > 0
+          ? `${input.metrics.runs.failed} failed runs, ${input.metrics.jobs.failed} failed jobs retained in history`
+          : 'No failed workflow runs or jobs in retained history',
+    },
+  ];
+}
+
+function buildWorkflowReadinessChecks(input: {
+  workflowService?: WorkflowService;
+  cronScheduler?: CronScheduler;
+  metrics: WorkflowMetrics;
+}): ObservabilityCheck[] {
+  return [
     {
       id: 'workflow-engine',
       status: 'ok',
@@ -277,14 +297,6 @@ function buildWorkflowChecks(input: {
       id: 'cron-scheduler',
       status: input.cronScheduler ? 'ok' : 'warn',
       message: input.cronScheduler ? 'Cron scheduler available' : 'Cron scheduler not configured',
-    },
-    {
-      id: 'workflow-failures',
-      status: input.metrics.runs.failed > 0 || input.metrics.jobs.failed > 0 ? 'warn' : 'ok',
-      message:
-        input.metrics.runs.failed > 0 || input.metrics.jobs.failed > 0
-          ? `${input.metrics.runs.failed} failed runs, ${input.metrics.jobs.failed} failed jobs retained in history`
-          : 'No failed workflow runs or jobs in retained history',
     },
   ];
 }
