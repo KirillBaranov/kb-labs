@@ -1,21 +1,26 @@
 # KB Labs E2E — Docker Compose
 #
-# Service startup order:
-#   1. verdaccio   — local npm registry (always up)
-#   2. publisher   — run separately via `docker-compose run --rm publisher` BEFORE main up
-#                    (one-shot container: publishes @kb-labs/*.tgz to Verdaccio, exits 0)
-#   3. platform    — installs KB Labs from Verdaccio, starts all services
-#   4. tests       — Playwright API tests run against the platform
+# Provides infrastructure for e2e tests: local npm registry + KB Labs platform.
+# Tests are run on the CI runner directly via `kb-devkit run e2e` (not in Docker),
+# connecting to platform services through exposed host ports.
 #
-# Usage (two-phase):
+# Service startup order:
+#   1. verdaccio  — local npm registry (always up)
+#   2. publisher  — one-shot: publishes @kb-labs/*.tgz to Verdaccio, exits 0
+#   3. platform   — installs KB Labs from Verdaccio, starts all services
+#
+# Usage:
 #   # Phase 1: start registry + publish packages
 #   docker-compose -f e2e/docker-compose.yml up -d verdaccio
 #   docker-compose -f e2e/docker-compose.yml run --rm publisher
 #
-#   # Phase 2: run the full suite
-#   docker-compose -f e2e/docker-compose.yml up \
-#     --abort-on-container-exit --exit-code-from tests --no-build \
-#     verdaccio platform tests
+#   # Phase 2: start platform (tests run on host via kb-devkit)
+#   docker-compose -f e2e/docker-compose.yml up -d --no-build platform
+#
+#   # Phase 3: run tests on host
+#   kb-devkit run e2e                            # all domains
+#   kb-devkit run e2e --packages @kb-labs/e2e-workflows   # one domain
+#   kb-devkit run e2e --affected                 # only changed
 
 services:
 
@@ -60,11 +65,7 @@ services:
       - "7777:7777"   # state-daemon
       - "7778:7778"   # workflow
     environment:
-      # Point pnpm at Verdaccio so any pnpm operations during bootstrap
-      # also use the local registry (kb-create passes --registry itself).
       NPM_CONFIG_REGISTRY: http://verdaccio:4873
-      # Use enterprise tier so E2E tests are not throttled by the default
-      # free-tier rate limit (10 req/min → 429 under load).
       KB_TENANT_DEFAULT_TIER: enterprise
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:4000/ready"]
@@ -72,24 +73,6 @@ services:
       interval: 5s
       timeout: 5s
       retries: 40
-
-  # ── Playwright E2E test suite ─────────────────────────────────────────────
-  tests:
-    image: kb-e2e-ci-tests:latest
-    build:
-      context: ./tests
-    depends_on:
-      platform:
-        condition: service_healthy
-    environment:
-      GATEWAY_URL:     http://platform:4000
-      REST_URL:        http://platform:5050
-      MARKETPLACE_URL: http://platform:5070
-      WORKFLOW_URL:    http://platform:7778
-      STATE_URL:       http://platform:7777
-      CHECKLIST_OUT:   /tests/report/CHECKLIST.md
-    volumes:
-      - ./tests/report:/tests/report
 
 volumes:
   verdaccio-storage:

@@ -1,0 +1,15 @@
+{
+  "name": "@kb-labs/e2e-shared",
+  "version": "1.0.0",
+  "private": true,
+  "exports": {
+    ".": "./src/index.ts",
+    "./urls.js": "./src/urls.ts",
+    "./auth.js": "./src/auth.ts",
+    "./reporter.js": "./src/reporter.ts"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.52.0",
+    "typescript": "^5.4.0"
+  }
+}
