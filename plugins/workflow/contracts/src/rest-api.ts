@@ -157,7 +157,7 @@ export interface WorkflowInfo {
   /** Description */
   description?: string;
   /** Source type */
-  source: 'manifest' | 'standalone';
+  source: 'manifest' | 'standalone' | 'plugin';
   /** Plugin ID (for manifest workflows) */
   pluginId?: string;
   /** Status */
@@ -270,7 +270,7 @@ export const WorkflowInfoSchema = z.object({
   id: z.string(),
   name: z.string(),
   description: z.string().optional(),
-  source: z.enum(['manifest', 'standalone']),
+  source: z.enum(['manifest', 'standalone', 'plugin']),
   pluginId: z.string().optional(),
   status: z.enum(['active', 'inactive']).optional(),
   tags: z.array(z.string()).optional(),

@@ -37,9 +37,10 @@ export async function extractWorkflows(snapshot: RegistrySnapshot): Promise<Reso
   for (const entry of manifests) {
     const { manifest, pluginRoot } = entry
 
-    // Skip plugins without workflow handlers
+    // Skip plugins without any workflow contributions (handlers or templates)
     const workflowHandlers = manifest.workflows?.handlers ?? []
-    if (workflowHandlers.length === 0) {
+    const workflowTemplates = manifest.workflows?.templates ?? []
+    if (workflowHandlers.length === 0 && workflowTemplates.length === 0) {
       continue
     }
 
@@ -76,6 +77,24 @@ export async function extractWorkflows(snapshot: RegistrySnapshot): Promise<Reso
         filePath,
         description: wfHandler.describe,
         tags: undefined, // V3 doesn't have tags on workflow handlers
+        metadata: {
+          pluginId: entry.pluginId,
+          pluginVersion: manifest.version,
+        },
+      })
+    }
+
+    // Extract workflow templates (static YAML files bundled with plugin)
+    for (const templateDecl of workflowTemplates) {
+      const id = `plugin:${entry.pluginId}/${templateDecl.id}`
+      const filePath = resolve(packageRoot, templateDecl.path)
+
+      workflows.push({
+        id,
+        source: 'plugin',
+        filePath,
+        description: templateDecl.describe,
+        tags: templateDecl.tags,
         metadata: {
           pluginId: entry.pluginId,
           pluginVersion: manifest.version,

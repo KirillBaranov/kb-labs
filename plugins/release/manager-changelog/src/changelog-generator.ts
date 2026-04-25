@@ -11,6 +11,18 @@ import { detectProvider, enhanceChangeWithLinks } from './providers';
 import { createReleaseManifest, formatAsJson } from './formatters/json';
 import { loadTemplate, packageToTemplateData } from './templates';
 
+const CHANGELOG_LLM_TIMEOUT_MS = 45_000;
+
+async function renderWithTimeout(result: string | Promise<string>): Promise<string> {
+  if (typeof result === 'string') return result;
+  return Promise.race([
+    result,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Changelog LLM render timeout after 45s')), CHANGELOG_LLM_TIMEOUT_MS)
+    ),
+  ]);
+}
+
 /**
  * Package info for changelog generation
  */
@@ -267,8 +279,7 @@ export async function generateChangelog(
 
     onProgress?.('Enhancing lockstep changelog with template...');
     const templateData = packageToTemplateData(mergedRelease, locale, changelogConfig?.metadata, changelogConfig?.groups);
-    const result = template.render(templateData, platform);
-    const rendered = typeof result === 'string' ? result : await result;
+    const rendered = await renderWithTimeout(template.render(templateData, platform));
 
     // Strip the template's own header (## [version] - date + blockquote) — we use lockstep header instead
     const renderedLines = rendered.split('\n');
@@ -295,8 +306,7 @@ export async function generateChangelog(
       onProgress?.(`Formatting changelog for ${pkg.name} (${i + 1}/${packageReleases.length})...`);
 
       const templateData = packageToTemplateData(pkg, locale, changelogConfig?.metadata, changelogConfig?.groups);
-      const result = template.render(templateData, platform);
-      const formatted = typeof result === 'string' ? result : await result;
+      const formatted = await renderWithTimeout(template.render(templateData, platform));
 
       formattedPackages.push(formatted);
     }

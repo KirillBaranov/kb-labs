@@ -1,3 +1,5 @@
+import { readdir, copyFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import type { PluginContextV3 } from '@kb-labs/sdk';
 
 const RELEASE_DIRS = ['plans', 'reports', 'backups'];

@@ -71,7 +71,7 @@ export interface WorkflowStats {
 export interface WorkflowRuntime {
   // Identification
   id: string;
-  source: 'manifest' | 'standalone';
+  source: 'manifest' | 'standalone' | 'plugin';
 
   // Manifest-based fields
   pluginId?: string;
@@ -201,11 +201,33 @@ export class ManifestScanner {
       }
     }
 
+    // Scan workflow templates (static YAML files declared in manifest.workflows.templates)
+    const snapshot = this.cliApi.snapshot();
+    let templatesCount = 0;
+    for (const entry of snapshot.manifests ?? []) {
+      const templates = (entry.manifest as any).workflows?.templates ?? [];
+      for (const templateDecl of templates) {
+        const id = `plugin:${entry.pluginId}/${templateDecl.id}`;
+        workflows.push({
+          id,
+          source: 'plugin',
+          pluginId: entry.pluginId,
+          name: templateDecl.describe ?? templateDecl.id,
+          description: templateDecl.describe,
+          tags: templateDecl.tags,
+          triggers: [{ type: 'manual' }],
+          status: 'active',
+        });
+        templatesCount++;
+      }
+    }
+
     this.platform.logger?.info('ManifestScanner: Discovered workflows via registry', {
       count: workflows.length,
       workflows: workflowEntities.length,
       jobs: jobEntities.length,
       crons: cronEntities.length,
+      templates: templatesCount,
     });
 
     // Cache results (via platform cache)

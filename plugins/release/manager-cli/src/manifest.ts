@@ -309,6 +309,132 @@ export const manifest = {
           'kb release verify --allow-types feat,fix',
         ],
       },
+
+      // release:checks - Run pre-release checks
+      {
+        id: 'checks',
+        group: 'release',
+        describe: 'Run pre-release checks from release config',
+        longDescription: 'Execute custom checks defined in release config (lint, test, audit, etc.)',
+
+        handler: './cli/commands/checks.js#default',
+        handlerPath: './cli/commands/checks.js',
+
+        flags: defineCommandFlags({
+          scope: { type: 'string', description: 'Package scope (glob pattern)' },
+          json: { type: 'boolean', description: 'Output in JSON format' },
+        }),
+
+        examples: [
+          'kb release checks',
+          'kb release checks --scope @my-org/core',
+          'kb release checks --json',
+        ],
+      },
+
+      // release:build - Build packages
+      {
+        id: 'build',
+        group: 'release',
+        describe: 'Build packages from release plan using safe build strategy',
+        longDescription: 'Build all packages in plan into temp dir then atomically swap dist/',
+
+        handler: './cli/commands/build.js#default',
+        handlerPath: './cli/commands/build.js',
+
+        flags: defineCommandFlags({
+          scope: { type: 'string', description: 'Package scope (glob pattern)' },
+          json: { type: 'boolean', description: 'Output in JSON format' },
+        }),
+
+        examples: [
+          'kb release build',
+          'kb release build --scope platform',
+          'kb release build --json',
+        ],
+      },
+
+      // release:pack - Verify npm artifacts
+      {
+        id: 'pack',
+        group: 'release',
+        describe: 'Verify built package artifacts via npm pack',
+        longDescription: 'Run npm pack checks: directory imports, test file leaks, missing exports, syntax errors',
+
+        handler: './cli/commands/pack.js#default',
+        handlerPath: './cli/commands/pack.js',
+
+        flags: defineCommandFlags({
+          scope: { type: 'string', description: 'Package scope (glob pattern)' },
+          json: { type: 'boolean', description: 'Output in JSON format' },
+        }),
+
+        examples: [
+          'kb release pack',
+          'kb release pack --scope @my-org/core',
+          'kb release pack --json',
+        ],
+      },
+
+      // release:version - Bump package.json versions
+      {
+        id: 'version',
+        group: 'release',
+        describe: 'Bump package.json versions according to release plan',
+        longDescription: 'Update version fields in package.json files based on computed plan',
+
+        handler: './cli/commands/version.js#default',
+        handlerPath: './cli/commands/version.js',
+
+        flags: defineCommandFlags({
+          scope: { type: 'string', description: 'Package scope (glob pattern)' },
+          bump: {
+            type: 'string',
+            choices: ['patch', 'minor', 'major', 'auto'] as const,
+            default: 'auto',
+            description: 'Version bump override',
+          },
+          'dry-run': { type: 'boolean', description: 'Show what would be bumped without writing' },
+          json: { type: 'boolean', description: 'Output in JSON format' },
+        }),
+
+        examples: [
+          'kb release version',
+          'kb release version --bump minor',
+          'kb release version --dry-run',
+          'kb release version --scope platform --json',
+        ],
+      },
+
+      // release:git - Commit, tag, push
+      {
+        id: 'git',
+        group: 'release',
+        describe: 'Commit, tag, and push release changes',
+        longDescription: 'Create release commit, create version tags, and push to remote',
+
+        handler: './cli/commands/git.js#default',
+        handlerPath: './cli/commands/git.js',
+
+        flags: defineCommandFlags({
+          scope: { type: 'string', description: 'Package scope (glob pattern)' },
+          bump: {
+            type: 'string',
+            choices: ['patch', 'minor', 'major', 'auto'] as const,
+            description: 'Version bump override (used to reload plan)',
+          },
+          'dry-run': { type: 'boolean', description: 'Skip git operations' },
+          'no-verify': { type: 'boolean', description: 'Pass --no-verify to git push' },
+          json: { type: 'boolean', description: 'Output in JSON format' },
+        }),
+
+        examples: [
+          'kb release git',
+          'kb release git --scope platform',
+          'kb release git --dry-run',
+          'kb release git --no-verify --json',
+        ],
+      },
     ],
   },
 
@@ -660,6 +786,32 @@ export const manifest = {
 
   // V3: Manifest-first permissions using composable presets
   permissions: pluginPermissions,
+
+  // Workflow templates — composed from atomic release CLI commands
+  // Registered in workflow engine and runnable via `kb workflow run plugin:@kb-labs/release/<id>`
+  workflows: {
+    handlers: [],
+    templates: [
+      {
+        id: 'full-release',
+        path: './workflows/templates/full-release.yaml',
+        describe: 'Full release cycle: plan → checks → build → pack → approve → publish → git',
+        tags: ['release', 'full'],
+      },
+      {
+        id: 'hotfix',
+        path: './workflows/templates/hotfix.yaml',
+        describe: 'Quick hotfix: plan → approve → publish → git (patch bump, no checks)',
+        tags: ['release', 'hotfix'],
+      },
+      {
+        id: 'dry-run',
+        path: './workflows/templates/dry-run.yaml',
+        describe: 'Preview release: plan, checks, pack, changelog — no publish or git ops',
+        tags: ['release', 'dry-run'],
+      },
+    ],
+  },
 
   // Artifacts
   artifacts: [

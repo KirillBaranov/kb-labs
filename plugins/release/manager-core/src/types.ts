@@ -17,6 +17,8 @@ export interface ReleaseContext {
 export interface PackageVersion {
   name: string;
   path: string;
+  /** Absolute path to the git repository root for this package. Populated during planning. */
+  gitRoot: string;
   currentVersion: string;
   nextVersion: string;
   bump: VersionBump;

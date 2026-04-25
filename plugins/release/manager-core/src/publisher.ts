@@ -8,6 +8,8 @@ import { join } from 'node:path';
 import type { PackageVersion, ReleasePlan } from './types';
 import type { ShellAPI } from '@kb-labs/sdk';
 import { createExecaShellAdapter } from './shell-adapter';
+import { rewriteWorkspaceDeps } from './dep-rewrite';
+import { updateCheckpointGitRoot, markCheckpointComplete } from './checkpoint';
 
 export interface PublisherOptions {
   cwd: string;
@@ -57,6 +59,9 @@ export async function publishPackages(options: PublisherOptions): Promise<Publis
     return result;
   }
 
+  const pm = options.config?.publish?.packageManager ?? 'pnpm';
+  const versionMap = new Map(plan.packages.map(p => [p.name, p.nextVersion]));
+
   // Publish each package
   for (const pkg of plan.packages) {
     try {
@@ -83,17 +88,22 @@ export async function publishPackages(options: PublisherOptions): Promise<Publis
         continue; // Skip publish if version update failed
       }
 
-      // 2. Publish to npm
-      const pm = options.config?.publish?.packageManager ?? 'pnpm';
+      // 2. Rewrite workspace:/link: deps for non-pnpm package managers
+      // pnpm handles workspace:* natively; npm/yarn require explicit rewrite.
+      const restoreDeps = rewriteWorkspaceDeps(pkg.path, versionMap, pm);
+
+      // 3. Publish to npm
       const access = options.config?.publish?.access ?? 'public';
-      const publishResult = await shellApi.exec(
-        pm,
-        ['publish', '--access', access, '--registry', registry],
-        {
-          cwd: pkg.path,
-          timeout: 60000,
-        }
-      );
+      let publishResult;
+      try {
+        publishResult = await shellApi.exec(
+          pm,
+          ['publish', '--access', access, '--registry', registry],
+          { cwd: pkg.path, timeout: 60000 }
+        );
+      } finally {
+        restoreDeps();
+      }
 
       if (publishResult.ok) {
         result.published.push(`${pkg.name}@${pkg.nextVersion}`);
@@ -370,8 +380,12 @@ export async function commitAndTagRelease(options: {
   dryRun?: boolean;
   /** Pass --no-verify to git push and pushTags. Default: false — hooks run normally. */
   noVerify?: boolean;
+  /** repoRoot for checkpoint updates. If omitted, checkpoint updates are skipped. */
+  repoRoot?: string;
+  /** Per-root state from checkpoint — skip roots already fully pushed. */
+  checkpointGitRoots?: Record<string, { committed: boolean; tagged: string[]; pushed: boolean }>;
 }): Promise<{ committed: boolean; tagged: string[]; pushed: boolean }> {
-  const { cwd, plan, dryRun, noVerify = false } = options;
+  const { cwd, plan, dryRun, noVerify = false, repoRoot, checkpointGitRoots } = options;
   const simpleGit = (await import('simple-git')).default;
 
   const result = {
@@ -387,16 +401,11 @@ export async function commitAndTagRelease(options: {
   try {
     const commitMessage = createCommitMessage(plan);
 
-    // Group packages by their git toplevel — monorepo packages share one root,
-    // submodules have different roots. One commit/push per unique git root.
+    // Group packages by their git root — populated by planner via revparse.
+    // Fallback to pkg.path for safety (e.g. packages planned outside normal flow).
     const pkgToRoot = new Map<string, string>();
     for (const pkg of plan.packages) {
-      try {
-        const root = (await simpleGit(pkg.path).revparse(['--show-toplevel'])).trim();
-        pkgToRoot.set(pkg.path, root);
-      } catch {
-        pkgToRoot.set(pkg.path, pkg.path);
-      }
+      pkgToRoot.set(pkg.path, pkg.gitRoot || pkg.path);
     }
 
     const rootToPkgs = new Map<string, typeof plan.packages>();
@@ -407,60 +416,85 @@ export async function commitAndTagRelease(options: {
       rootToPkgs.set(root, list);
     }
 
-    // 1. Commit once per git root — stage all files for packages living in that root
-    for (const [root, pkgs] of rootToPkgs) {
-      const rootGit = simpleGit(root);
-      const filesToStage: string[] = [];
-      for (const pkg of pkgs) {
-        const rel = (p: string) => p.startsWith(root + '/') ? p.slice(root.length + 1) : p;
-        filesToStage.push(rel(join(pkg.path, 'package.json')));
-        const changelogPath = join(pkg.path, 'CHANGELOG.md');
-        if (existsSync(changelogPath)) {filesToStage.push(rel(changelogPath));}
-      }
-      await rootGit.add(filesToStage);
-
-      try {
-        await rootGit.commit(commitMessage);
-        result.committed = true;
-      } catch (commitError) {
-        const msg = commitError instanceof Error ? commitError.message : String(commitError);
-        if (!msg.includes('nothing to commit') && !msg.includes('nothing added to commit')) {
-          throw commitError;
-        }
-      }
-    }
-
-    // 2. Create tags — lockstep = one tag per git root, independent = per-package tag
     const uniqueVersions = new Set(plan.packages.map(p => p.nextVersion));
     const isLockstep = plan.packages.length > 1 && uniqueVersions.size === 1;
-
-    if (isLockstep) {
-      const version = plan.packages[0]!.nextVersion;
-      const tagName = `v${version}`;
-      for (const root of rootToPkgs.keys()) {
-        await simpleGit(root).addTag(tagName);
-      }
-      result.tagged.push(tagName);
-    } else {
-      for (const pkg of plan.packages) {
-        const root = pkgToRoot.get(pkg.path)!;
-        const tagName = `${pkg.name}@${pkg.nextVersion}`;
-        await simpleGit(root).addTag(tagName);
-        result.tagged.push(tagName);
-      }
-    }
-
-    // 3. Push once per git root
     const pushFlags: string[] = noVerify ? ['--no-verify'] : [];
     const pushTagsOptions = noVerify ? ['--no-verify'] : undefined;
-    for (const root of rootToPkgs.keys()) {
-      const rootGit = simpleGit(root);
-      if (result.committed) {
-        await rootGit.push(pushFlags);
+
+    // Process each git root: commit → tag → push.
+    // Skip roots already fully pushed (from checkpoint on retry).
+    for (const [root, pkgs] of rootToPkgs) {
+      const prior = checkpointGitRoots?.[root];
+      if (prior?.pushed) {
+        // Already completed in a previous run — collect results and continue.
+        result.committed = result.committed || prior.committed;
+        result.tagged.push(...prior.tagged.filter(t => !result.tagged.includes(t)));
+        result.pushed = true;
+        continue;
       }
+
+      const rootGit = simpleGit(root);
+      let rootCommitted = prior?.committed ?? false;
+      let rootTagged = prior?.tagged ?? [];
+
+      // 1. Commit (skip if already done)
+      if (!rootCommitted) {
+        const filesToStage: string[] = [];
+        for (const pkg of pkgs) {
+          const rel = (p: string) => p.startsWith(root + '/') ? p.slice(root.length + 1) : p;
+          filesToStage.push(rel(join(pkg.path, 'package.json')));
+          const changelogPath = join(pkg.path, 'CHANGELOG.md');
+          if (existsSync(changelogPath)) { filesToStage.push(rel(changelogPath)); }
+        }
+        await rootGit.add(filesToStage);
+        try {
+          await rootGit.commit(commitMessage);
+          rootCommitted = true;
+          result.committed = true;
+        } catch (commitError) {
+          const msg = commitError instanceof Error ? commitError.message : String(commitError);
+          if (!msg.includes('nothing to commit') && !msg.includes('nothing added to commit')) {
+            throw commitError;
+          }
+        }
+      } else {
+        result.committed = true;
+      }
+
+      // 2. Tag (skip if already done)
+      if (rootTagged.length === 0) {
+        if (isLockstep) {
+          const tagName = `v${plan.packages[0]!.nextVersion}`;
+          await rootGit.addTag(tagName);
+          rootTagged = [tagName];
+        } else {
+          for (const pkg of pkgs) {
+            const tagName = `${pkg.name}@${pkg.nextVersion}`;
+            await rootGit.addTag(tagName);
+            rootTagged.push(tagName);
+          }
+        }
+        result.tagged.push(...rootTagged);
+      } else {
+        result.tagged.push(...rootTagged.filter(t => !result.tagged.includes(t)));
+      }
+
+      // 3. Push
+      if (rootCommitted) { await rootGit.push(pushFlags); }
       await rootGit.pushTags(pushTagsOptions);
+
+      // Persist checkpoint after each successful root
+      if (repoRoot) {
+        updateCheckpointGitRoot(repoRoot, root, {
+          committed: rootCommitted,
+          tagged: rootTagged,
+          pushed: true,
+        });
+      }
     }
     result.pushed = true;
+
+    if (repoRoot) { markCheckpointComplete(repoRoot); }
 
   } catch (error) {
     console.error(`Git operations failed: ${error instanceof Error ? error.message : String(error)}`);
