@@ -115,7 +115,7 @@
         }
       ],
       "createdAt": 1777106100612,
-      "lastAccessedAt": 1777106100612
+      "lastAccessedAt": 1777109956395
     },
     "core/plugin-execution-factory/src/backends/worker-pool/backend.ts": {
       "path": "core/plugin-execution-factory/src/backends/worker-pool/backend.ts",
@@ -135,8 +135,8 @@
       "path": "plugins/commit/core/src/applier/apply.ts",
       "contentHash": "29df8f36c409f00b",
       "findings": [],
-      "createdAt": 1777106100612,
-      "lastAccessedAt": 1777106100612
+      "createdAt": 1777109997691,
+      "lastAccessedAt": 1777109997691
     },
     "plugins/release/manager-changelog/src/changelog-generator.ts": {
       "path": "plugins/release/manager-changelog/src/changelog-generator.ts",
@@ -161,7 +161,7 @@
         }
       ],
       "createdAt": 1777106100612,
-      "lastAccessedAt": 1777106100612
+      "lastAccessedAt": 1777109956395
     },
     "plugins/release/manager-cli/src/cli/commands/plan.ts": {
       "path": "plugins/release/manager-cli/src/cli/commands/plan.ts",
@@ -186,14 +186,14 @@
         }
       ],
       "createdAt": 1777106100612,
-      "lastAccessedAt": 1777106100612
+      "lastAccessedAt": 1777109956395
     },
     "plugins/release/manager-cli/src/cli/commands/publish.ts": {
       "path": "plugins/release/manager-cli/src/cli/commands/publish.ts",
       "contentHash": "af5f63e1047fb1ac",
       "findings": [],
-      "createdAt": 1777106100612,
-      "lastAccessedAt": 1777106100612
+      "createdAt": 1777109997691,
+      "lastAccessedAt": 1777109997691
     },
     "plugins/release/manager-cli/src/cli/commands/run.ts": {
       "path": "plugins/release/manager-cli/src/cli/commands/run.ts",
@@ -218,21 +218,21 @@
         }
       ],
       "createdAt": 1777106100612,
-      "lastAccessedAt": 1777106100612
+      "lastAccessedAt": 1777109956395
     },
     "plugins/release/manager-cli/src/manifest.ts": {
       "path": "plugins/release/manager-cli/src/manifest.ts",
       "contentHash": "5108c71deb335416",
       "findings": [],
-      "createdAt": 1777106100613,
-      "lastAccessedAt": 1777106100613
+      "createdAt": 1777109997692,
+      "lastAccessedAt": 1777109997692
     },
     "plugins/release/manager-cli/src/setup/handler.ts": {
       "path": "plugins/release/manager-cli/src/setup/handler.ts",
       "contentHash": "d18e14cd032619ba",
       "findings": [],
-      "createdAt": 1777106100613,
-      "lastAccessedAt": 1777106100613
+      "createdAt": 1777109997692,
+      "lastAccessedAt": 1777109997692
     },
     "plugins/release/manager-core/src/pipeline.ts": {
       "path": "plugins/release/manager-core/src/pipeline.ts",
@@ -257,14 +257,14 @@
         }
       ],
       "createdAt": 1777106100613,
-      "lastAccessedAt": 1777106100613
+      "lastAccessedAt": 1777109956395
     },
     "plugins/release/manager-core/src/planner.ts": {
       "path": "plugins/release/manager-core/src/planner.ts",
       "contentHash": "353ae5ed4335774d",
       "findings": [],
-      "createdAt": 1777106100613,
-      "lastAccessedAt": 1777106100613
+      "createdAt": 1777109997692,
+      "lastAccessedAt": 1777109997692
     },
     "plugins/release/manager-core/src/publisher.ts": {
       "path": "plugins/release/manager-core/src/publisher.ts",
@@ -323,35 +323,35 @@
         }
       ],
       "createdAt": 1777106100613,
-      "lastAccessedAt": 1777106100613
+      "lastAccessedAt": 1777109956395
     },
     "plugins/release/manager-core/src/types.ts": {
       "path": "plugins/release/manager-core/src/types.ts",
       "contentHash": "3ee13989848bd02e",
       "findings": [],
-      "createdAt": 1777106100613,
-      "lastAccessedAt": 1777106100613
+      "createdAt": 1777109997692,
+      "lastAccessedAt": 1777109997692
     },
     "plugins/workflow/contracts/src/rest-api.ts": {
       "path": "plugins/workflow/contracts/src/rest-api.ts",
       "contentHash": "364f028fa7e5b636",
       "findings": [],
-      "createdAt": 1777106100613,
-      "lastAccessedAt": 1777106100613
+      "createdAt": 1777109997692,
+      "lastAccessedAt": 1777109997692
     },
     "plugins/workflow/engine/src/manifest-scanner.ts": {
       "path": "plugins/workflow/engine/src/manifest-scanner.ts",
       "contentHash": "91ef5eb9104b66e6",
       "findings": [],
-      "createdAt": 1777106100613,
-      "lastAccessedAt": 1777106100613
+      "createdAt": 1777109997692,
+      "lastAccessedAt": 1777109997692
     },
     "plugins/workflow/runtime/src/registry/plugin-workflows.ts": {
       "path": "plugins/workflow/runtime/src/registry/plugin-workflows.ts",
       "contentHash": "916461d2652bc1f6",
       "findings": [],
-      "createdAt": 1777106100613,
-      "lastAccessedAt": 1777106100613
+      "createdAt": 1777109997692,
+      "lastAccessedAt": 1777109997692
     },
     "core/plugin-execution-factory/src/platform-transport/unix-socket-factory.ts": {
       "path": "core/plugin-execution-factory/src/platform-transport/unix-socket-factory.ts",
@@ -364,97 +364,97 @@
       "path": "e2e/tests/specs/workflows/plugin-templates.spec.ts",
       "contentHash": "b6f932a373933e65",
       "findings": [],
-      "createdAt": 1777106100613,
-      "lastAccessedAt": 1777106100613
+      "createdAt": 1777109997692,
+      "lastAccessedAt": 1777109997692
     },
     "plugins/release/manager-cli/src/cli/commands/build.ts": {
       "path": "plugins/release/manager-cli/src/cli/commands/build.ts",
       "contentHash": "c6d2e354b165648b",
       "findings": [],
-      "createdAt": 1777106100613,
-      "lastAccessedAt": 1777106100613
+      "createdAt": 1777109997692,
+      "lastAccessedAt": 1777109997692
     },
     "plugins/release/manager-cli/src/cli/commands/checks.ts": {
       "path": "plugins/release/manager-cli/src/cli/commands/checks.ts",
       "contentHash": "119bca0e4173fc6d",
       "findings": [],
-      "createdAt": 1777106100613,
-      "lastAccessedAt": 1777106100613
+      "createdAt": 1777109997692,
+      "lastAccessedAt": 1777109997692
     },
     "plugins/release/manager-cli/src/cli/commands/git.ts": {
       "path": "plugins/release/manager-cli/src/cli/commands/git.ts",
       "contentHash": "0b3c379f7969f27c",
       "findings": [],
-      "createdAt": 1777106100613,
-      "lastAccessedAt": 1777106100613
+      "createdAt": 1777109997692,
+      "lastAccessedAt": 1777109997692
     },
     "plugins/release/manager-cli/src/cli/commands/pack.ts": {
       "path": "plugins/release/manager-cli/src/cli/commands/pack.ts",
       "contentHash": "a98afafd9b70e9e0",
       "findings": [],
-      "createdAt": 1777106100613,
-      "lastAccessedAt": 1777106100613
+      "createdAt": 1777109997692,
+      "lastAccessedAt": 1777109997692
     },
     "plugins/release/manager-cli/src/cli/commands/version.ts": {
       "path": "plugins/release/manager-cli/src/cli/commands/version.ts",
       "contentHash": "b58740e7ccfa2794",
       "findings": [],
-      "createdAt": 1777106100613,
-      "lastAccessedAt": 1777106100613
+      "createdAt": 1777109997692,
+      "lastAccessedAt": 1777109997692
     },
     "plugins/release/manager-core/src/__tests__/checkpoint.test.ts": {
       "path": "plugins/release/manager-core/src/__tests__/checkpoint.test.ts",
       "contentHash": "f0b4416e5703e443",
       "findings": [],
-      "createdAt": 1777106100613,
-      "lastAccessedAt": 1777106100613
+      "createdAt": 1777109997692,
+      "lastAccessedAt": 1777109997692
     },
     "plugins/release/manager-core/src/__tests__/dep-rewrite.test.ts": {
       "path": "plugins/release/manager-core/src/__tests__/dep-rewrite.test.ts",
       "contentHash": "45c5d2815fc629a8",
       "findings": [],
-      "createdAt": 1777106100613,
-      "lastAccessedAt": 1777106100613
+      "createdAt": 1777109997692,
+      "lastAccessedAt": 1777109997692
     },
     "plugins/release/manager-core/src/__tests__/lock.test.ts": {
       "path": "plugins/release/manager-core/src/__tests__/lock.test.ts",
       "contentHash": "6747895642ad4e8c",
       "findings": [],
-      "createdAt": 1777106100613,
-      "lastAccessedAt": 1777106100613
+      "createdAt": 1777109997692,
+      "lastAccessedAt": 1777109997692
     },
     "plugins/release/manager-core/src/checkpoint.ts": {
       "path": "plugins/release/manager-core/src/checkpoint.ts",
       "contentHash": "cdccb62474c86645",
       "findings": [],
-      "createdAt": 1777106100613,
-      "lastAccessedAt": 1777106100613
+      "createdAt": 1777109997692,
+      "lastAccessedAt": 1777109997692
     },
     "plugins/release/manager-core/src/dep-rewrite.ts": {
       "path": "plugins/release/manager-core/src/dep-rewrite.ts",
       "contentHash": "8f16981e47d9f357",
       "findings": [],
-      "createdAt": 1777106100613,
-      "lastAccessedAt": 1777106100613
+      "createdAt": 1777109997692,
+      "lastAccessedAt": 1777109997692
     },
     "plugins/release/manager-core/src/lock.ts": {
       "path": "plugins/release/manager-core/src/lock.ts",
       "contentHash": "6cfa04d5443b57a6",
       "findings": [],
-      "createdAt": 1777106100613,
-      "lastAccessedAt": 1777106100613
+      "createdAt": 1777109997692,
+      "lastAccessedAt": 1777109997692
     },
     "plugins/workflow/runtime/src/registry/__tests__/plugin-workflows.test.ts": {
       "path": "plugins/workflow/runtime/src/registry/__tests__/plugin-workflows.test.ts",
       "contentHash": "c0fbafe9856730a2",
       "findings": [],
-      "createdAt": 1777106100613,
-      "lastAccessedAt": 1777106100613
+      "createdAt": 1777109997692,
+      "lastAccessedAt": 1777109997692
     }
   },
   "metadata": {
     "createdAt": 1776759051250,
-    "lastUpdatedAt": 1777106100613,
+    "lastUpdatedAt": 1777109997692,
     "totalFindings": 11,
     "totalFiles": 37
   }
