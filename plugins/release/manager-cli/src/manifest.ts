@@ -677,30 +677,7 @@ export const manifest = {
     ],
   },
 
-  // Studio V2 — Module Federation pages
-  studio: {
-    version: 2 as const,
-    remoteName: 'releasePlugin',
-    pages: [
-      {
-        id: 'release.overview',
-        title: 'Release',
-        icon: 'RocketOutlined',
-        route: '/p/release',
-        entry: './ReleasePage',
-        order: 1,
-      },
-    ],
-    menus: [
-      {
-        id: 'release',
-        label: 'Release',
-        icon: 'RocketOutlined',
-        target: 'release.overview',
-        order: 60,
-      },
-    ],
-  },
+  // Studio UI not yet implemented — remoteEntry.js not built
 
   // Studio widgets (legacy - commented out, using new UI integration)
   // studio_legacy: {
