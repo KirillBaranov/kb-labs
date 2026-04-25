@@ -76,11 +76,11 @@ fi
 
 # ── Step 1d: .env is gitignored ───────────────────────────────────────────────
 echo "── Step 1d: .env is gitignored"
-cd /tmp/work/my-project
-if git check-ignore -q .env 2>/dev/null; then
+GITIGNORE_FILE="/tmp/work/my-project/.gitignore"
+if [ -f "$GITIGNORE_FILE" ] && grep -qE "^\.env$|^\.env[[:space:]]" "$GITIGNORE_FILE"; then
   pass ".env is gitignored"
 else
-  fail ".gitignore" ".env is not gitignored — credentials would be committed"
+  fail ".gitignore" ".env is not in .gitignore — credentials would be committed"
 fi
 
 # ── Step 1e: No @kb-labs peer dep warnings ────────────────────────────────────
@@ -172,8 +172,22 @@ if [ -f .env ]; then
       -H "Content-Type: application/json" \
       -d "{\"clientId\":\"$GW_CLIENT_ID\",\"clientSecret\":\"$GW_CLIENT_SECRET\"}" 2>/dev/null || echo "0")
     if [ "$TOKEN_HTTP" = "200" ]; then
-      GW_REACHABLE=1
+      GW_TOKEN=$(python3 -c "import json,sys; print(json.load(open('/tmp/token.json')).get('accessToken',''))" 2>/dev/null || true)
       pass "gateway token endpoint reachable (200)"
+
+      # Also test the actual LLM completion endpoint
+      LLM_HTTP=$(curl -s -o /tmp/llm-test.json -w "%{http_code}" \
+        -X POST https://api.kblabs.ru/llm/v1/chat/completions \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $GW_TOKEN" \
+        -d '{"model":"small","messages":[{"role":"user","content":"hi"}],"max_tokens":5}' 2>/dev/null || echo "0")
+      if [ "$LLM_HTTP" = "200" ]; then
+        GW_REACHABLE=1
+        pass "gateway LLM endpoint reachable (200)"
+      else
+        LLM_ERR=$(cat /tmp/llm-test.json 2>/dev/null || echo "no response")
+        fail "gateway LLM" "token ok but LLM endpoint returned $LLM_HTTP: $LLM_ERR"
+      fi
     else
       fail "gateway token" "expected 200, got $TOKEN_HTTP — LLM tests will be skipped"
     fi
