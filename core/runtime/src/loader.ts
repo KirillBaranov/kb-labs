@@ -323,7 +323,8 @@ function initializeResourceBroker(
 export async function initPlatform(
   config: PlatformConfig = {},
   cwd: string = process.cwd(),
-  uiProvider?: (hostType: string) => any
+  uiProvider?: (hostType: string) => any,
+  platformRoot?: string,
 ): Promise<PlatformContainer> {
 
   // ✅ Idempotent: If already initialized, return existing singleton
@@ -458,7 +459,9 @@ export async function initPlatform(
     const loadModule = async (modulePath: string): Promise<LoadedAdapterModule> => {
       try {
         const { discoverAdapters } = await import('./discover-adapters.js');
-        const discovered = await discoverAdapters(cwd);
+        // Use platformRoot for adapter discovery when provided (installed mode):
+        // marketplace.lock lives in platformRoot/.kb/, not projectRoot/.kb/.
+        const discovered = await discoverAdapters(platformRoot ?? cwd);
 
         // Parse module path into base package and subpath (same logic as resolveAdapter)
         const basePkgName = modulePath.split('/').slice(0, 2).join('/'); // "@kb-labs/adapters-openai"

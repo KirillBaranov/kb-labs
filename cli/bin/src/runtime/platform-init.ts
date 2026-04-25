@@ -130,10 +130,13 @@ export async function initializePlatform(
     try {
       // Relative adapter paths (e.g. ".kb/database/kb.sqlite") must resolve
       // against the project root — this is where the user's .kb/ lives.
+      // Pass platformRoot so initPlatform finds marketplace.lock in the
+      // right place when platform is installed separately from the project.
       const platformInstance = await initPlatform(
         platformConfig,
         projectRoot,
         uiProvider,
+        platformRoot !== projectRoot ? platformRoot : undefined,
       );
 
       platformInstance.logger.info('Platform adapters initialized', {
