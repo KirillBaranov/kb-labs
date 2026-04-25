@@ -1,0 +1,16 @@
+{
+  "name": "@kb-labs/e2e-studio",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@kb-labs/e2e-shared": "workspace:*",
+    "@kb-labs/gateway-app": "workspace:*",
+    "@kb-labs/rest-api-app": "workspace:*",
+    "@kb-labs/workflow-studio": "workspace:*",
+    "@playwright/test": "^1.52.0",
+    "typescript": "^5.4.0"
+  }
+}

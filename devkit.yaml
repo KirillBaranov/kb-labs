@@ -8,7 +8,24 @@ workspace:
   exclude:
     - plugins/fixtures/*   # test fixtures — not real packages, no build/lint/test tasks
     - templates/*          # scaffold templates — not compiled, only copied to new projects
+    - e2e/shared           # shared fixtures package — no runnable tasks, just TS sources
+    - e2e/tests            # legacy monolithic e2e bundle — superseded by per-domain packages
   categories:
+    # E2E test suites — one package per domain, each runs `playwright test`
+    # Depends on workspace:* packages for --affected tracking:
+    #   change workflow-engine → e2e-workflows is affected → only its tests run
+    e2e-suite:
+      match:
+        - "e2e/services"
+        - "e2e/platform"
+        - "e2e/gateway"
+        - "e2e/marketplace"
+        - "e2e/workflows"
+        - "e2e/studio"
+        - "e2e/plugins"
+      language: typescript
+      preset: e2e-suite
+
     # SPA apps (Rspack / Vite) — pnpm build, not tsup
     # Must come before ts-lib since categories use first-match semantics
     spa:
@@ -74,6 +91,19 @@ workspace:
 # ──────────────────────────────────────────────────────────────────────────────
 
 presets:
+  # Playwright e2e suite — minimal preset, only requires `e2e` script
+  e2e-suite:
+    language: typescript
+    package_json:
+      required_scripts:
+        - e2e
+      required_fields:
+        - name
+        - version
+    dependencies:
+      check_links: false
+      check_circular: false
+
   node-lib:
     language: typescript
     package_json:
@@ -461,6 +491,29 @@ tasks:
       inputs:
         - "src/**"
         - "tsconfig*.json"
+      outputs: []
+      deps:
+        - "^build"
+
+  # Playwright e2e suites.
+  # Each domain package declares devDependencies on the services it tests.
+  # This means `kb-devkit run e2e --affected` only runs suites whose
+  # upstream packages changed — e.g. changing workflow-engine triggers
+  # only @kb-labs/e2e-workflows, not gateway or marketplace.
+  #
+  # Local run (services already up via kb-dev start):
+  #   kb-devkit run e2e --packages @kb-labs/e2e-workflows
+  # Full run:
+  #   kb-devkit run e2e
+  # Affected only:
+  #   kb-devkit run e2e --affected
+  e2e:
+    - categories: [e2e-suite]
+      command: playwright test
+      inputs:
+        - "specs/**"
+        - "playwright.config.ts"
+        - "tsconfig.json"
       outputs: []
       deps:
         - "^build"
