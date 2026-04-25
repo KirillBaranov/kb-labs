@@ -40,6 +40,7 @@ workspace:
     plugin-entry:
       match:
         - "plugins/*/entry"
+        - "plugins/release/manager-cli"  # non-standard name, but has rspack studio build
       language: typescript
       preset: node-lib
 
