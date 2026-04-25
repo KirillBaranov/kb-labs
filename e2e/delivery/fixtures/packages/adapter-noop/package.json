@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/adapter-noop",
-  "version": "2.88.0",
+  "version": "2.89.0",
   "description": "No-op adapter stub used by delivery e2e",
   "main": "dist/index.js",
   "type": "commonjs",
