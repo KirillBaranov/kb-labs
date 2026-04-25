@@ -41,7 +41,7 @@ function checkpointPath(repoRoot: string): string {
 
 export function loadCheckpoint(repoRoot: string): ReleaseCheckpoint | null {
   const path = checkpointPath(repoRoot);
-  if (!existsSync(path)) return null;
+  if (!existsSync(path)) {return null;}
   try {
     return JSON.parse(readFileSync(path, 'utf-8')) as ReleaseCheckpoint;
   } catch {
@@ -57,14 +57,14 @@ export function writeCheckpoint(repoRoot: string, checkpoint: Omit<ReleaseCheckp
 
 export function updateCheckpointGitRoot(repoRoot: string, gitRoot: string, state: GitRootState): void {
   const checkpoint = loadCheckpoint(repoRoot);
-  if (!checkpoint) return;
+  if (!checkpoint) {return;}
   checkpoint.gitRoots[gitRoot] = state;
   writeFileSync(checkpointPath(repoRoot), JSON.stringify(checkpoint, null, 2));
 }
 
 export function markCheckpointComplete(repoRoot: string): void {
   const checkpoint = loadCheckpoint(repoRoot);
-  if (!checkpoint) return;
+  if (!checkpoint) {return;}
   checkpoint.completedAt = new Date().toISOString();
   writeFileSync(checkpointPath(repoRoot), JSON.stringify(checkpoint, null, 2));
 }
@@ -82,9 +82,9 @@ export function isCheckpointResumable(
   flow: string,
   version: string,
 ): boolean {
-  if (checkpoint.completedAt) return false;
-  if (checkpoint.flow !== flow) return false;
-  if (checkpoint.version !== version && version !== 'independent') return false;
+  if (checkpoint.completedAt) {return false;}
+  if (checkpoint.flow !== flow) {return false;}
+  if (checkpoint.version !== version && version !== 'independent') {return false;}
   // Usable if publish happened but at least one git root is not fully pushed
   return checkpoint.publishedPackages.length > 0 &&
     Object.values(checkpoint.gitRoots).some(s => !s.pushed);
