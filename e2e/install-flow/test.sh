@@ -196,6 +196,16 @@ if [ -f .env ]; then
   fi
 fi
 
+# Pre-check: verify adapter import works and marketplace.lock has it
+PLATFORM_DIR="/tmp/work/my-project"
+GW_IN_LOCK=$(python3 -c "import json; d=json.load(open('$PLATFORM_DIR/.kb/marketplace.lock')); print('found' if any('kblabs-gateway' in k for k in d.get('installed',{}).keys()) else 'missing')" 2>/dev/null || echo "no-lock")
+GW_IMPORT=$(node --input-type=module --eval "
+import { createAdapter } from '@kb-labs/adapters-kblabs-gateway';
+console.log('ok');
+" 2>&1 || echo "FAIL")
+echo "  [diag] kblabs-gateway in marketplace.lock: $GW_IN_LOCK"
+echo "  [diag] kblabs-gateway import: $GW_IMPORT"
+
 COMMIT_OUT=$(KB_LOG_LEVEL=debug kb commit commit --dry-run 2>&1 || true)
 # Capture platform init diagnostics (adapter loading errors show up in debug)
 ADAPTER_ERR=$(echo "$COMMIT_OUT" | grep -i "failed to load adapter\|Platform adapters failed\|adapter role.*declared.*not loaded\|NoOp\|fallback" | head -3 || true)
