@@ -990,6 +990,11 @@
         "label": "GitHub",
         "description": "File issues, browse source, contribute.",
         "href": "https://github.com/KirillBaranov/kb-labs"
+      },
+      {
+        "label": "Telegram",
+        "description": "DM the founder directly — fastest way to get a response.",
+        "href": "https://t.me/kirill_baranov"
       }
     ],
     "basedIn": "Based in",

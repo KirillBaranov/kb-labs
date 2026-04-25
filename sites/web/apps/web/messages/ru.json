@@ -990,6 +990,11 @@
         "label": "GitHub",
         "description": "Issues, исходный код, pull requests.",
         "href": "https://github.com/KirillBaranov/kb-labs"
+      },
+      {
+        "label": "Telegram",
+        "description": "Написать основателю напрямую — самый быстрый способ.",
+        "href": "https://t.me/kirill_baranov"
       }
     ],
     "basedIn": "Расположение",
