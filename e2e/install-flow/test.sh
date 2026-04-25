@@ -196,12 +196,19 @@ if [ -f .env ]; then
   fi
 fi
 
-COMMIT_OUT=$(kb commit commit --dry-run 2>&1 || true)
+COMMIT_OUT=$(KB_LOG_LEVEL=debug kb commit commit --dry-run 2>&1 || true)
+# Capture platform init diagnostics (adapter loading errors show up in debug)
+ADAPTER_ERR=$(echo "$COMMIT_OUT" | grep -i "failed to load adapter\|Platform adapters failed\|adapter role.*declared.*not loaded\|NoOp\|fallback" | head -3 || true)
+if [ -n "$ADAPTER_ERR" ]; then
+  fail "LLM adapter init" "adapter load error: $ADAPTER_ERR"
+fi
 if echo "$COMMIT_OUT" | grep -q "LLM: Phase"; then
   LLM_LINE=$(echo "$COMMIT_OUT" | grep "LLM:" | head -1)
   PLAN_LINE=$(echo "$COMMIT_OUT" | grep "Planned Commits" -A1 | tail -1 | sed 's/^[│ ]*//')
   pass "AI commit dry-run: $LLM_LINE → $PLAN_LINE"
 elif [ "$GW_REACHABLE" = "1" ]; then
+  # Print debug info to help diagnose
+  echo "=== COMMIT DEBUG (last 20 lines) ===" && echo "$COMMIT_OUT" | tail -20
   fail "AI commit" "gateway reachable but fell back to heuristics (adapter or config broken)"
 else
   pass "AI commit dry-run: skipped (gateway unreachable from CI)"
@@ -316,10 +323,11 @@ cat >> app.ts << 'TSEOF'
 export function whisper(name: string) { return `psst, ${name}...`; }
 TSEOF
 git add .
-POST_UPDATE_OUT=$(kb commit commit --dry-run 2>&1 || true)
+POST_UPDATE_OUT=$(KB_LOG_LEVEL=debug kb commit commit --dry-run 2>&1 || true)
 if echo "$POST_UPDATE_OUT" | grep -q "LLM: Phase"; then
   pass "AI commit dry-run works after update"
 elif [ "$GW_REACHABLE" = "1" ]; then
+  echo "=== POST-UPDATE DEBUG (last 20 lines) ===" && echo "$POST_UPDATE_OUT" | tail -20
   fail "LLM after update" "gateway reachable but fell back to heuristics after update"
 else
   pass "LLM after update: skipped (gateway unreachable from CI)"
