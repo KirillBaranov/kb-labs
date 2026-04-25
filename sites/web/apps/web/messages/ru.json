@@ -1,7 +1,7 @@
 {
   "meta": {
     "siteName": "KB Labs",
-    "siteDescription": "KB Labs — plugin-first платформа для инженерных команд: заменяйте хрупкие скрипты и CI glue на наблюдаемые policy-first workflow с on-prem разворачиванием за минуты."
+    "siteDescription": "KB Labs: self-hosted open-source платформа для инженеров — workflow-движок, AI-инфраструктура, система плагинов и инструменты разработки."
   },
   "nav": {
     "product": "Продукт",
@@ -257,8 +257,8 @@
   },
   "home": {
     "meta": {
-      "title": "KB Labs — Open the closed",
-      "description": "Open-source движок для релизов, ревью, workflow и инфраструктуры. Люди и агенты — на одних рельсах. Self-hosted, ваш, строим на виду."
+      "title": "KB Labs — Self-Hosted Open-Source Workflow Engine",
+      "description": "Open-source движок для релизов, ревью и AI-агентов. Self-hosted, plugin-first, ваш навсегда. Замените CI-скрипты на наблюдаемый code-first workflow."
     },
     "hero": {
       "title": "Ваши инструменты должны оставаться вашими.",

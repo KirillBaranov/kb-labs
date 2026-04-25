@@ -76,6 +76,7 @@ export function buildPageMetadata(options: PageMetadataOptions): Metadata {
       languages: {
         ru: `${SITE_URL}/ru${path}`,
         en: `${SITE_URL}/en${path}`,
+        'x-default': `${SITE_URL}/en${path}`,
       },
     },
   };

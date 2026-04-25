@@ -1,7 +1,7 @@
 {
   "meta": {
     "siteName": "KB Labs",
-    "siteDescription": "KB Labs is a plugin-first platform for engineering teams: replace fragile scripts and CI glue with observable policy-first workflows, deployable on-prem in minutes."
+    "siteDescription": "KB Labs: self-hosted open-source platform for engineering teams — workflow engine, AI infrastructure, plugin system, and developer tooling."
   },
   "nav": {
     "product": "Product",
@@ -257,8 +257,8 @@
   },
   "home": {
     "meta": {
-      "title": "KB Labs — Open the closed",
-      "description": "Open-source engine for your workflows, reviews, releases, and infrastructure. Humans and agents on the same rails. Self-hosted, yours, built in the open."
+      "title": "KB Labs — Self-Hosted Open-Source Workflow Engine",
+      "description": "Open-source workflow engine for releases, reviews, and AI agents. Self-hosted, plugin-first, yours to own. Replace CI glue with observable policy-first code."
     },
     "hero": {
       "title": "We believe engineering should stay yours.",

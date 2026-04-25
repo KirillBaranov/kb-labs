@@ -72,10 +72,31 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       languages: {
         ru: `${SITE_URL}/ru`,
         en: `${SITE_URL}/en`,
+        'x-default': `${SITE_URL}/en`,
       },
     },
   };
 }
+
+const organizationSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'Organization',
+  name: 'KB Labs',
+  url: 'https://kblabs.ru',
+  logo: 'https://kblabs.ru/og-image.png',
+  foundingDate: '2024',
+  founder: {
+    '@type': 'Person',
+    name: 'Kirill Baranov',
+    url: 'https://k-baranov.ru',
+  },
+  sameAs: [
+    'https://github.com/KirillBaranov/kb-labs',
+    'https://www.npmjs.com/org/kb-labs',
+  ],
+  description:
+    'Open-source self-hosted platform for engineering teams: workflow engine, AI infrastructure, plugin system, and developer tooling.',
+};
 
 export default async function LocaleLayout({ children, params }: Props) {
   const { locale } = await params;
@@ -86,6 +107,10 @@ export default async function LocaleLayout({ children, params }: Props) {
   return (
     <html lang={locale}>
       <body className={`${headingFont.variable} ${bodyFont.variable}`}>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+        />
         <NextIntlClientProvider messages={messages}>
           {children}
           <Analytics locale={locale} />
