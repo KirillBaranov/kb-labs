@@ -37,7 +37,7 @@ fi
 # ── Step 2: Bootstrap project ──────────────────────────────────────────
 echo "── Step 2: Bootstrap project"
 mkdir -p /tmp/work && cd /tmp/work
-if kb-create my-project --yes > /tmp/bootstrap.log 2>&1; then
+if kb-create my-project --yes --llm > /tmp/bootstrap.log 2>&1; then
   INSTALL_OUT=$(cat /tmp/bootstrap.log)
   pass "kb-create my-project"
 else
@@ -47,9 +47,9 @@ else
 fi
 
 # ── Step 1b: Verify --yes keeps LLM off ─────────────────────────────────────
-echo "── Step 1b: LLM defaults off with --yes"
-if echo "$INSTALL_OUT" | grep -q "LLM.*off\|off.*LLM"; then
-  pass "LLM off by default with --yes"
+echo "── Step 1b: LLM enabled with --yes --llm"
+if echo "$INSTALL_OUT" | grep -q "LLM.*on\|on.*LLM\|gateway\|kblabs"; then
+  pass "LLM enabled with --yes --llm"
 else
   # Old versions don't show LLM status — skip rather than fail
   pass "LLM status not shown (older install format)"
