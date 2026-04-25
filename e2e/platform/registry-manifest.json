@@ -95,6 +95,12 @@
       "pkg": "@kb-labs/scaffold",
       "description": "Scaffold plugins and adapters",
       "default": true
+    },
+    {
+      "id": "release",
+      "pkg": "@kb-labs/release-manager-cli",
+      "description": "Release manager — plan, publish, workflow templates",
+      "default": true
     }
   ],
   "binaries": [
