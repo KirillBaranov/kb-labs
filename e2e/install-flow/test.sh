@@ -46,17 +46,45 @@ else
   tail -20 /tmp/bootstrap.log
 fi
 
-# ── Step 1b: Verify --yes keeps LLM off ─────────────────────────────────────
-echo "── Step 1b: LLM enabled with --yes --llm"
-if echo "$INSTALL_OUT" | grep -q "LLM.*on\|on.*LLM\|gateway\|kblabs"; then
-  pass "LLM enabled with --yes --llm"
+# ── Step 1b: --yes without --llm keeps LLM off ──────────────────────────────
+echo "── Step 1b: --yes without --llm = LLM off"
+mkdir -p /tmp/work-nollm && cd /tmp/work-nollm
+kb-create nollm-project --yes > /tmp/bootstrap-nollm.log 2>&1 || true
+NOLLM_ENV=""
+if [ -f /tmp/work-nollm/nollm-project/.env ]; then
+  NOLLM_ENV=$(cat /tmp/work-nollm/nollm-project/.env)
+fi
+if echo "$NOLLM_ENV" | grep -q "KB_GATEWAY_CLIENT_ID"; then
+  fail "--yes without --llm" "gateway credentials written to .env — LLM should be off"
 else
-  # Old versions don't show LLM status — skip rather than fail
-  pass "LLM status not shown (older install format)"
+  pass "--yes without --llm: no gateway credentials in .env"
+fi
+cd /tmp/work
+
+# ── Step 1c: --llm writes gateway credentials to .env ────────────────────────
+echo "── Step 1c: --llm writes credentials to .env"
+ENV_FILE="/tmp/work/my-project/.env"
+if [ -f "$ENV_FILE" ]; then
+  if grep -q "KB_GATEWAY_CLIENT_ID" "$ENV_FILE" && grep -q "KB_GATEWAY_CLIENT_SECRET" "$ENV_FILE"; then
+    pass ".env has KB_GATEWAY_CLIENT_ID + KB_GATEWAY_CLIENT_SECRET"
+  else
+    fail ".env credentials" "KB_GATEWAY_CLIENT_ID or KB_GATEWAY_CLIENT_SECRET missing from .env"
+  fi
+else
+  fail ".env credentials" ".env file not created after --llm bootstrap"
 fi
 
-# ── Step 1c: No @kb-labs peer dep warnings ────────────────────────────────────
-echo "── Step 1c: No @kb-labs peer dep warnings"
+# ── Step 1d: .env is gitignored ───────────────────────────────────────────────
+echo "── Step 1d: .env is gitignored"
+cd /tmp/work/my-project
+if git check-ignore -q .env 2>/dev/null; then
+  pass ".env is gitignored"
+else
+  fail ".gitignore" ".env is not gitignored — credentials would be committed"
+fi
+
+# ── Step 1e: No @kb-labs peer dep warnings ────────────────────────────────────
+echo "── Step 1e: No @kb-labs peer dep warnings"
 if echo "$INSTALL_OUT" | grep -q "@kb-labs.*unmet peer\|unmet peer.*@kb-labs"; then
   fail "peer-dep warnings" "found @kb-labs peer dep warnings in install output"
 else
@@ -82,6 +110,15 @@ if command -v kb-dev > /dev/null 2>&1; then
   pass "kb-dev installed ($(kb-dev --version 2>&1 | head -1))"
 else
   fail "kb-dev" "binary not found after bootstrap"
+fi
+
+# ── Step 4b: kb-create doctor ──────────────────────────────────────────
+echo "── Step 4b: kb-create doctor"
+cd /tmp/work/my-project
+if kb-create doctor > /tmp/doctor.log 2>&1; then
+  pass "kb-create doctor exit 0"
+else
+  fail "kb-create doctor" "command failed: $(tail -3 /tmp/doctor.log)"
 fi
 
 # ── Step 5: Check CLI shows plugins ────────────────────────────────────
@@ -126,11 +163,30 @@ COMMIT_OUT=$(kb commit commit --dry-run 2>&1 || true)
 if echo "$COMMIT_OUT" | grep -q "LLM: Phase"; then
   LLM_LINE=$(echo "$COMMIT_OUT" | grep "LLM:" | head -1)
   PLAN_LINE=$(echo "$COMMIT_OUT" | grep "Planned Commits" -A1 | tail -1 | sed 's/^[│ ]*//')
-  pass "AI commit: $LLM_LINE → $PLAN_LINE"
+  pass "AI commit dry-run: $LLM_LINE → $PLAN_LINE"
 elif echo "$COMMIT_OUT" | grep -q "Heuristics"; then
   fail "AI commit" "fell back to heuristics (LLM not reached)"
 else
   fail "AI commit" "unexpected output"
+fi
+
+# ── Step 6b: AI commit actually commits ────────────────────────────────
+echo "── Step 6b: AI commit (real)"
+COMMIT_BEFORE=$(git rev-parse HEAD 2>/dev/null || echo "none")
+cat >> app.ts << 'TSEOF'
+export function shout(name: string) { return `HEY, ${name}!`; }
+TSEOF
+git add .
+if kb commit commit --yes > /tmp/commit-real.log 2>&1; then
+  COMMIT_AFTER=$(git rev-parse HEAD 2>/dev/null || echo "none")
+  if [ "$COMMIT_AFTER" != "$COMMIT_BEFORE" ]; then
+    MSG=$(git log --format="%s" -1)
+    pass "AI commit created: $MSG"
+  else
+    fail "AI commit real" "command succeeded but HEAD did not change"
+  fi
+else
+  fail "AI commit real" "command failed: $(tail -3 /tmp/commit-real.log)"
 fi
 
 # ── Step 7: Scaffold plugin ───────────────────────────────────────────
@@ -146,7 +202,8 @@ fi
 echo "── Step 8: Build plugin"
 cd .kb/plugins/demo
 if pnpm install > /tmp/plugin-install.log 2>&1 && pnpm build > /tmp/plugin-build.log 2>&1; then
-  if [ -f packages/demo-entry/dist/manifest.js ]; then
+  MANIFEST="packages/demo-entry/dist/manifest.js"
+  if [ -f "$MANIFEST" ]; then
     pass "plugin build (dist/manifest.js exists)"
   else
     fail "plugin build" "dist/manifest.js missing"
@@ -154,6 +211,22 @@ if pnpm install > /tmp/plugin-install.log 2>&1 && pnpm build > /tmp/plugin-build
 else
   fail "plugin build" "install or build failed"
   tail -10 /tmp/plugin-build.log
+fi
+
+# ── Step 8b: Plugin manifest is valid ─────────────────────────────────
+echo "── Step 8b: Plugin manifest valid"
+MANIFEST_FILE=".kb/plugins/demo/packages/demo-entry/dist/manifest.js"
+cd /tmp/work/my-project
+if [ -f "$MANIFEST_FILE" ]; then
+  # manifest.js exports an object — node -e can require it
+  MANIFEST_CHECK=$(node -e "const m = require('./$MANIFEST_FILE'); if (!m.name || !m.version) throw new Error('missing name/version'); console.log('ok: ' + m.name + '@' + m.version);" 2>&1 || true)
+  if echo "$MANIFEST_CHECK" | grep -q "^ok:"; then
+    pass "plugin manifest valid ($(echo "$MANIFEST_CHECK" | head -1))"
+  else
+    fail "plugin manifest" "invalid or missing name/version: $MANIFEST_CHECK"
+  fi
+else
+  fail "plugin manifest" "manifest.js not found — build may have failed"
 fi
 
 # ── Step 9: Run plugin command ────────────────────────────────────────
@@ -191,6 +264,29 @@ if kb --help > /tmp/help-post-update.log 2>&1; then
   fi
 else
   fail "post-update kb --help" "command failed after update"
+fi
+
+# ── Step 10b: Credentials survive update ──────────────────────────────
+echo "── Step 10b: Credentials survive update"
+if [ -f .env ] && grep -q "KB_GATEWAY_CLIENT_ID" .env && grep -q "KB_GATEWAY_CLIENT_SECRET" .env; then
+  pass ".env credentials intact after update"
+else
+  fail "credentials after update" ".env missing or credentials wiped by update"
+fi
+
+# ── Step 10c: LLM still works after update ────────────────────────────
+echo "── Step 10c: LLM still works after update"
+cat >> app.ts << 'TSEOF'
+export function whisper(name: string) { return `psst, ${name}...`; }
+TSEOF
+git add .
+POST_UPDATE_OUT=$(kb commit commit --dry-run 2>&1 || true)
+if echo "$POST_UPDATE_OUT" | grep -q "LLM: Phase"; then
+  pass "AI commit dry-run works after update"
+elif echo "$POST_UPDATE_OUT" | grep -q "Heuristics"; then
+  fail "LLM after update" "fell back to heuristics — credentials or adapter broken after update"
+else
+  fail "LLM after update" "unexpected output: $(echo "$POST_UPDATE_OUT" | tail -3)"
 fi
 
 # ── Summary ───────────────────────────────────────────────────────────
