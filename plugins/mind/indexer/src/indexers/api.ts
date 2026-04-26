@@ -123,13 +123,13 @@ export async function indexApiFiles(
       }
       ctx.apiIndex.files[filePath] = apiFile;
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Fail-open: log warning but continue
-      ctx.log({ 
-        level: 'warn', 
-        code: 'MIND_PARSE_ERROR', 
-        msg: `Failed to parse ${filePath}`, 
-        error: error.message 
+      ctx.log({
+        level: 'warn',
+        code: 'MIND_PARSE_ERROR',
+        msg: `Failed to parse ${filePath}`,
+        error: error instanceof Error ? error.message : String(error)
       });
     }
   }

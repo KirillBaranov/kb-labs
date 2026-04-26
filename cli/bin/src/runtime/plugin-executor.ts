@@ -6,7 +6,7 @@
 
 import type { SystemContext } from '@kb-labs/cli-runtime';
 import { executeCommandV3 } from '@kb-labs/cli-runtime/v3';
-import type { UIFacade, PlatformServices } from '@kb-labs/plugin-contracts';
+import type { UIFacade, PlatformServices, FSShim, PluginAPI } from '@kb-labs/plugin-contracts';
 import { getHandlerPermissions, noopTraceContext, noopUI } from '@kb-labs/plugin-contracts';
 import type { PlatformContainer } from '@kb-labs/core-runtime';
 import { setJsonMode } from '@kb-labs/shared-cli-ui';
@@ -42,14 +42,14 @@ export async function executePlugin(
   }
 
   // Get plugin manifest (with fallback to legacy manifestV2 field)
-  const pluginManifest = manifestCmd.v3Manifest ?? (manifestCmd.manifest as any).manifestV2;
+  const pluginManifest = manifestCmd.v3Manifest ?? manifestCmd.manifest.manifestV2;
   if (!pluginManifest) {
     return undefined;
   }
 
   // Find CLI command definition
   // commandId may be full path like "marketplace:plugins:list" — match by id, or by group:subgroup:id
-  const cliCommand = pluginManifest.cli?.commands?.find((c: any) => {
+  const cliCommand = pluginManifest.cli?.commands?.find((c) => {
     if (c.id === commandId) {return true;}
     // Match group:id or group:subgroup:id
     const parts = commandId.split(':');
@@ -86,7 +86,11 @@ export async function executePlugin(
 
     // When --json is active, suppress all UI output except json() to keep stdout clean.
     const jsonMode = Boolean(flags.json);
-    let ui = createCLIUIFacade((context as any).presenter);
+    // context.presenter (PresenterV1) is a broader runtime object that is
+    // structurally compatible with PresenterDelegate at runtime even though
+    // the static types differ (PresenterV1 exposes write/info/warn/error/json,
+    // PresenterDelegate exposes debug/spinner/table — the runtime impl has all).
+    let ui = createCLIUIFacade(context.presenter as unknown as Parameters<typeof createCLIUIFacade>[0]);
     if (jsonMode) {
       setJsonMode(true);
       ui = createJsonModeUI(ui);
@@ -183,7 +187,7 @@ export function createSystemCommandContext(
   context: SystemContext,
   platform: PlatformContainer
 ): PluginContextV3 {
-  const ui = createCLIUIFacade((context as any).presenter);
+  const ui = createCLIUIFacade(context.presenter as unknown as Parameters<typeof createCLIUIFacade>[0]);
   const requestId = `cli-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
   const traceId = `trace-${randomUUID()}`;
   const spanId = `span-${randomUUID()}`;
@@ -213,11 +217,13 @@ export function createSystemCommandContext(
     ui,
     platform: scopedPlatformServices,
     runtime: {
-      fs: {} as any,
-      fetch: fetch as any,
+      // Stub: system commands do not use sandboxed runtime. Real runtime is
+      // only wired for plugin handlers executed via executeCommandV3.
+      fs: {} as unknown as FSShim,
+      fetch: fetch,
       env: (key: string) => process.env[key],
     },
-    api: {} as any,
+    api: {} as unknown as PluginAPI,
     hostContext: {
       host: 'cli' as const,
       argv: process.argv.slice(2),

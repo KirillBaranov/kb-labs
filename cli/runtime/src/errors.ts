@@ -109,14 +109,14 @@ export function serializeCliError(
       name: "CliError",
       message: err.message,
       code: err.code,
-      details: (err as any).details,
+      details: err.details,
       ...(includeStack && err.stack ? { stack: err.stack } : {}),
-    } as any;
+    };
   }
   const e = err as Error | undefined;
   return {
     name: e?.name || "Error",
     message: e?.message || String(err),
     ...(includeStack && e?.stack ? { stack: e.stack } : {}),
-  } as any;
+  };
 }

@@ -7,7 +7,7 @@
 import type { FlagDefinition } from './types';
 
 export interface CommandRun {
-  (ctx: any, argv: string[], flags: Record<string, any>): Promise<number | void>;
+  (ctx: unknown, argv: string[], flags: Record<string, unknown>): Promise<number | void>;
 }
 
 export interface Command {
@@ -31,10 +31,10 @@ export interface CommandGroup {
 export interface CommandRegistry {
   register(cmd: Command): void;
   registerGroup(group: CommandGroup): void;
-  registerManifest(cmd: any): void;
+  registerManifest(cmd: Record<string, unknown>): void;
   list(): Command[];
   listGroups(): CommandGroup[];
-  listManifests(): any[];
+  listManifests(): Record<string, unknown>[];
   markPartial(isPartial: boolean): void;
   isPartial(): boolean;
 }

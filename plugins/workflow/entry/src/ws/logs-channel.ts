@@ -7,6 +7,7 @@
  */
 
 import { defineWebSocket, defineMessage, MessageRouter } from '@kb-labs/sdk';
+import type { WSMessage } from '@kb-labs/sdk';
 import type { LogRecord, LogQuery } from '@kb-labs/core-platform';
 
 // Define typed messages
@@ -175,7 +176,7 @@ export default defineWebSocket<unknown, Incoming, Outgoing>({
           );
         });
 
-      await router.handle(ctx, message as any, sender.raw);
+      await router.handle(ctx, message as WSMessage, sender.raw);
     },
 
     async onDisconnect(ctx, code, reason) {

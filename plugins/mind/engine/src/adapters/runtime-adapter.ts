@@ -78,7 +78,7 @@ export interface RuntimeAdapter {
 export function createRuntimeAdapter(
   runtime?: {
     fetch?: (input: FetchInput, init?: FetchInit) => Promise<FetchResponse>;
-    fs?: any;
+    fs?: Record<string, unknown>;
     env?: (key: string) => string | undefined;
     log?: (
       level: 'debug' | 'info' | 'warn' | 'error',
@@ -99,7 +99,7 @@ export function createRuntimeAdapter(
     // Wrap global fetch to match our type signature
     fetchFn = async (input: FetchInput, init?: FetchInit): Promise<FetchResponse> => {
       const url = typeof input === 'string' ? input : 'url' in input ? input.url : input.href;
-      const response = await fetch(url, init as any);
+      const response = await fetch(url, init as RequestInit);
       return response as unknown as FetchResponse;
     };
   } else {

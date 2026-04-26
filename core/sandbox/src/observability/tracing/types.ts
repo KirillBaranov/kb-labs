@@ -19,7 +19,8 @@ export type TraceEventPhase =
   | 'n'  // Async instant
   | 's'  // Flow start
   | 't'  // Flow step
-  | 'f'; // Flow end
+  | 'f'  // Flow end
+  | 'M'; // Metadata
 
 /**
  * Chrome Tracing event
@@ -80,6 +81,6 @@ export interface ChromeTraceFormat {
     'power-profile'?: string;
     'product'?: string;
     'user-agent'?: string;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }

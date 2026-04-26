@@ -49,8 +49,8 @@ export async function indexMeta(ctx: IndexerContext): Promise<void> {
     await fsp.writeFile(metaPath, JSON.stringify(meta, null, 2));
     
     ctx.log({ level: 'info', msg: `Indexed ${products.length} products` });
-  } catch (error: any) {
-    ctx.log({ level: 'warn', msg: 'Failed to index meta', error: error.message });
+  } catch (error: unknown) {
+    ctx.log({ level: 'warn', msg: 'Failed to index meta', error: error instanceof Error ? error.message : String(error) });
   }
 }
 

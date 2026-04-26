@@ -9,8 +9,10 @@ import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod
 import type { RestApiConfig } from '@kb-labs/rest-api-core';
 import type { ICronManager } from '@kb-labs/core-platform';
 import { z } from 'zod';
+import type { z as ZodType } from 'zod';
 import {
   ListJobsQuerySchema,
+  JobSchema,
   JobsListResponseSchema,
   JobResponseSchema,
   JobStatsResponseSchema,
@@ -23,10 +25,15 @@ import { normalizeBasePath } from '../utils/path-helpers';
 // Helper Functions
 // ============================================================================
 
-function createError(statusCode: number, code: string, message: string) {
-  const error = new Error(message);
-  (error as any).statusCode = statusCode;
-  (error as any).code = code;
+interface HttpError extends Error {
+  statusCode: number;
+  code: string;
+}
+
+function createError(statusCode: number, code: string, message: string): HttpError {
+  const error = new Error(message) as HttpError;
+  error.statusCode = statusCode;
+  error.code = code;
   return error;
 }
 
@@ -83,7 +90,7 @@ export async function registerJobsRoutes(
         jobs = jobs.filter((job) => job.status === query.status);
       }
 
-      return reply.send({ jobs: jobs as any });
+      return reply.send({ jobs: jobs as unknown as ZodType.infer<typeof JobSchema>[] });
     },
   });
 
@@ -108,7 +115,7 @@ export async function registerJobsRoutes(
       }
 
       const jobs = cronManager.list();
-      return reply.send({ stats: { total: jobs.length, jobs: jobs as any } });
+      return reply.send({ stats: { total: jobs.length, jobs: jobs as unknown as ZodType.infer<typeof JobSchema>[] } });
     },
   });
 
@@ -142,7 +149,7 @@ export async function registerJobsRoutes(
         throw createError(404, 'JOB_NOT_FOUND', `Job ${jobId} not found`);
       }
 
-      return reply.send({ job: job as any });
+      return reply.send({ job: job as unknown as ZodType.infer<typeof JobSchema> });
     },
   });
 

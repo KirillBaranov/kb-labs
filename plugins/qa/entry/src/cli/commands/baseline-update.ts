@@ -2,7 +2,7 @@ import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
 import { captureBaseline, buildBaselineReport } from '@kb-labs/qa-core';
 import type { BaselineUpdateFlags } from './flags.js';
 
-type BaselineUpdateInput = BaselineUpdateFlags & { argv?: string[]; flags?: any };
+type BaselineUpdateInput = BaselineUpdateFlags & { argv?: string[] };
 
 export default defineCommand({
   id: 'baseline:update',
@@ -11,7 +11,9 @@ export default defineCommand({
   handler: {
     async execute(ctx: PluginContextV3, input: BaselineUpdateInput) {
       const { ui } = ctx;
-      const flags = (input as any).flags ?? input;
+      const flags = ('flags' in input && typeof (input as { flags?: unknown }).flags === 'object' && (input as { flags?: unknown }).flags !== null)
+        ? (input as { flags: BaselineUpdateInput }).flags
+        : input;
       const rootDir = ctx.cwd;
 
       const snapshot = await captureBaseline(rootDir);

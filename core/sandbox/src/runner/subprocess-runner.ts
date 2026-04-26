@@ -6,7 +6,7 @@
 import { fork, type ChildProcess } from 'node:child_process';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createServer } from 'node:net';
+import { createServer, type AddressInfo } from 'node:net';
 import { existsSync, appendFileSync } from 'node:fs';
 import type { SandboxRunner } from './sandbox-runner';
 import type {
@@ -175,9 +175,11 @@ function setupLogPipes(
 
   // Handle IPC LOG messages (this handler is set up early, before other message handlers)
   // Note: Other message handlers (OK, ERR, READY) are set up in the run() method
-  child.on('message', (msg: any) => {
-    if (msg?.type === 'LOG' && msg.payload) {
-      const { level, message, meta } = msg.payload;
+  child.on('message', (msg: unknown) => {
+    const msgObj = msg && typeof msg === 'object' ? msg as Record<string, unknown> : null;
+    if (msgObj?.['type'] === 'LOG' && msgObj['payload']) {
+      const payload = msgObj['payload'] as { level?: string; message?: string; meta?: unknown };
+      const { level, message, meta } = payload;
       // Optimize: Only stringify meta if it's small to prevent memory issues
       let metaStr = '';
       if (meta) {
@@ -354,12 +356,12 @@ async function findAvailablePort(startPort: number = 9229): Promise<number> {
   return new Promise((resolve, reject) => {
     const server = createServer();
     server.listen(startPort, () => {
-      const port = (server.address() as any)?.port;
+      const port = (server.address() as AddressInfo | null)?.port;
       server.close(() => {
         resolve(port || startPort);
       });
     });
-    server.on('error', (err: any) => {
+    server.on('error', (err: NodeJS.ErrnoException) => {
       if (err.code === 'EADDRINUSE') {
         // Try next port
         findAvailablePort(startPort + 1).then(resolve).catch(reject);
@@ -504,7 +506,7 @@ export function createSubprocessRunner(config: SandboxConfig): SandboxRunner {
       }
 
       // Extract quiet flag from context (if available)
-      const quiet = !!(ctx.adapterContext as any)?.flags?.quiet;
+      const quiet = !!(ctx.adapterContext as { flags?: { quiet?: boolean } } | undefined)?.flags?.quiet;
 
       // Debug logging removed to prevent memory issues
       // Setup log collection (BEFORE waiting for READY, so we can capture early logs)

@@ -718,7 +718,7 @@ export function parseResponse(
   const cleaned = cleanJsonResponse(response);
 
   // Step 2: Try to parse JSON
-  let parsed: any;
+  let parsed: unknown;
   try {
     parsed = JSON.parse(cleaned);
   } catch (error) {

@@ -7,6 +7,18 @@
 
 import type { LLMMessage, LLMTool } from '@kb-labs/sdk';
 
+/**
+ * Extended message fields added at runtime by the agent (not part of the base LLMMessage type).
+ * `iteration` — which agent iteration produced this message.
+ * `tool_call_id` — OpenAI-style tool call id (snake_case variant of toolCallId).
+ * `name` — tool name on tool-role messages.
+ */
+interface ExtendedLLMMessage extends LLMMessage {
+  iteration?: number;
+  tool_call_id?: string;
+  name?: string;
+}
+
 export interface ContextRetrieveInput {
   /** Specific iteration number to retrieve (e.g., 5) */
   iteration?: number;
@@ -92,7 +104,7 @@ export async function executeContextRetrieve(
   // Filter by iteration
   if (input.iteration !== undefined) {
     filtered = filtered.filter((msg) => {
-      const iter = (msg as any).iteration;
+      const iter = (msg as ExtendedLLMMessage).iteration;
       return iter === input.iteration;
     });
   }
@@ -100,7 +112,7 @@ export async function executeContextRetrieve(
   // Filter by tool_call_id
   if (input.tool_call_id) {
     filtered = filtered.filter((msg) => {
-      const toolCallId = (msg as any).tool_call_id;
+      const toolCallId = (msg as ExtendedLLMMessage).tool_call_id;
       return toolCallId === input.tool_call_id;
     });
   }
@@ -109,7 +121,7 @@ export async function executeContextRetrieve(
   if (input.tool_name) {
     filtered = filtered.filter((msg) => {
       if (msg.role !== 'tool') {return false;}
-      const name = (msg as any).name;
+      const name = (msg as ExtendedLLMMessage).name;
       return name === input.tool_name;
     });
   }
@@ -126,8 +138,9 @@ export async function executeContextRetrieve(
   const fullMessages = filtered.map((msg) => {
     const copy = { ...msg };
     if (copy.metadata) {
-      delete (copy.metadata as any).truncated;
-      delete (copy.metadata as any).originalLength;
+      const meta = copy.metadata as { truncated?: unknown; originalLength?: unknown };
+      delete meta.truncated;
+      delete meta.originalLength;
     }
     return copy;
   });
@@ -158,13 +171,13 @@ export function formatContextRetrieveResult(result: ContextRetrieveResult): stri
 
   for (let i = 0; i < result.messages.length; i++) {
     const msg = result.messages[i]!; // Array access is safe within length bounds
-    const iter = (msg as any).iteration || '?';
+    const iter = (msg as ExtendedLLMMessage).iteration || '?';
     const role = msg.role;
 
     lines.push(`[${i + 1}] Iteration ${iter} - ${role}`);
 
     if (msg.role === 'tool') {
-      const toolName = (msg as any).name || 'unknown';
+      const toolName = (msg as ExtendedLLMMessage).name || 'unknown';
       lines.push(`  Tool: ${toolName}`);
     }
 

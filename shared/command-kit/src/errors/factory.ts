@@ -27,6 +27,7 @@ export interface ErrorDefinition {
   /** HTTP status code (400, 404, 500, etc.) */
   code: number;
   /** Error message - can be string or function for parameterized messages */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   message: string | ((...args: any[]) => string);
   /** Optional additional details */
   details?: Record<string, unknown>;
@@ -88,7 +89,7 @@ export class PluginError extends Error {
 /**
  * Type for error constructor created by defineError
  */
-type ErrorConstructor<TArgs extends any[] = any[]> = {
+type ErrorConstructor<TArgs extends unknown[] = unknown[]> = {
   new (details?: Record<string, unknown>): PluginError;
   new (...args: TArgs): PluginError;
 };
@@ -139,7 +140,7 @@ export function defineError<TDefs extends ErrorDefinitions>(
   prefix: string,
   definitions: TDefs
 ): ErrorNamespace<TDefs> {
-  const errorNamespace: any = {};
+  const errorNamespace: Record<string, unknown> = {};
 
   // Create error constructor for each definition
   for (const [key, def] of Object.entries(definitions)) {
@@ -147,7 +148,7 @@ export function defineError<TDefs extends ErrorDefinitions>(
 
     // Create error class
     class DefinedError extends PluginError {
-      constructor(...args: any[]) {
+      constructor(...args: unknown[]) {
         const { message, details } = buildMessageAndDetails(def, args);
         super(errorCode, message, def.code, details);
         this.name = `${prefix}Error`;
@@ -175,7 +176,7 @@ export function defineError<TDefs extends ErrorDefinitions>(
  */
 function buildMessageAndDetails(
   def: ErrorDefinition,
-  args: any[]
+  args: unknown[]
 ): { message: string; details?: Record<string, unknown> } {
   let message: string;
   let details: Record<string, unknown> | undefined;
@@ -191,7 +192,7 @@ function buildMessageAndDetails(
       // Last arg is details, rest are template params
       const templateArgs = args.slice(0, -1);
       message = def.message(...templateArgs);
-      details = { ...def.details, ...lastArg.details };
+      details = { ...def.details, ...(lastArg as { details?: Record<string, unknown> }).details };
     } else {
       // All args are template params
       message = def.message(...args);
@@ -203,7 +204,7 @@ function buildMessageAndDetails(
 
     // First arg can be details object
     if (args.length > 0 && typeof args[0] === 'object' && args[0] !== null) {
-      details = { ...def.details, ...args[0].details };
+      details = { ...def.details, ...(args[0] as { details?: Record<string, unknown> }).details };
     } else {
       details = def.details;
     }

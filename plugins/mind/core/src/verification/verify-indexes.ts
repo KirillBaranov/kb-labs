@@ -128,11 +128,11 @@ export async function verifyIndexes(cwd: string): Promise<VerifyResult> {
       : 'Run "kb mind rag-index" to rebuild indexes';
 
     return { ok, code, inconsistencies, hint };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       ok: false,
       code: 'MIND_VERIFY_ERROR',
-      inconsistencies: [`Verification failed: ${error.message}`],
+      inconsistencies: [`Verification failed: ${error instanceof Error ? error.message : String(error)}`],
       hint: 'Check file permissions and workspace structure',
     };
   }

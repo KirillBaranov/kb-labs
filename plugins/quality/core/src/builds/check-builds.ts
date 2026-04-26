@@ -144,11 +144,12 @@ async function tryBuildPackage(
     });
 
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const spawnErr = err as { stderr?: string; message?: string; code?: number };
     return {
       success: false,
-      error: err.stderr?.trim() || err.message,
-      exitCode: err.code || 1,
+      error: spawnErr.stderr?.trim() || spawnErr.message || String(err),
+      exitCode: spawnErr.code || 1,
     };
   }
 }

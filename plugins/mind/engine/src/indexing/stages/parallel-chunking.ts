@@ -16,10 +16,12 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
-import type { PipelineStage, PipelineContext, StageResult } from '../pipeline-types';
+import type { PipelineStage, PipelineContext, StageResult, CheckpointData } from '../pipeline-types';
 import type { AdaptiveChunkerFactory } from '../../chunking/adaptive-factory';
 import type { FileMetadata } from './discovery';
 import type { MindChunk } from './types';
+import type { KnowledgeSource } from '../../types/engine-contracts';
+import type { RuntimeAdapter } from '../../adapters/runtime-adapter';
 import { createMemoryAwareQueue } from '../memory-aware-queue';
 
 export interface ParallelChunkingOptions {
@@ -41,7 +43,7 @@ export interface ParallelChunkingOptions {
 }
 
 interface ChunkFileTask {
-  source: any;
+  source: KnowledgeSource;
   relativePath: string;
   fullPath: string;
   size: number;
@@ -61,7 +63,7 @@ export class ParallelChunkingStage implements PipelineStage {
 
   constructor(
     private chunkerFactory: AdaptiveChunkerFactory,
-    private runtime: any, // RuntimeAdapter
+    private runtime: RuntimeAdapter,
     private fileMetadata?: Map<string, FileMetadata>,
     private options: ParallelChunkingOptions = {}
   ) {}
@@ -234,8 +236,7 @@ export class ParallelChunkingStage implements PipelineStage {
       await fileStream.close();
 
       // Check if chunker supports streaming
-      const chunkerWithStream = chunker as any;
-      if (!chunkerWithStream.chunkStream) {
+      if (!chunker.chunkStream) {
         throw new Error(
           `Chunker ${chunker.id} does not support streaming. ` +
           `All chunkers must implement chunkStream() for memory safety.`
@@ -245,7 +246,7 @@ export class ParallelChunkingStage implements PipelineStage {
       // Stream chunks from file
       const fileChunks: MindChunk[] = [];
 
-      for await (const sourceChunk of chunkerWithStream.chunkStream(fullPath, {})) {
+      for await (const sourceChunk of chunker.chunkStream(fullPath, {})) {
         const metadata = buildChunkMetadata({
           source,
           sourceChunkMetadata: sourceChunk.metadata ?? {},
@@ -307,7 +308,7 @@ export class ParallelChunkingStage implements PipelineStage {
   /**
    * Optional: Checkpoint
    */
-  async checkpoint(context: PipelineContext): Promise<any> {
+  async checkpoint(context: PipelineContext): Promise<CheckpointData> {
     return {
       stage: this.name,
       processedFiles: [],
@@ -319,7 +320,7 @@ export class ParallelChunkingStage implements PipelineStage {
 }
 
 function buildChunkMetadata(input: {
-  source: any;
+  source: KnowledgeSource;
   sourceChunkMetadata: Record<string, unknown>;
   normalizedPath: string;
   hash: string;

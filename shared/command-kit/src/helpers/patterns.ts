@@ -69,11 +69,11 @@ export async function withSpinner<T>(
  * ]);
  * ```
  */
-export async function withSteps<T extends any[]>(
+export async function withSteps<T extends unknown[]>(
   ctx: PluginContext,
-  steps: Array<{ message: string; fn: () => Promise<any> }>
+  steps: Array<{ message: string; fn: () => Promise<unknown> }>
 ): Promise<T> {
-  const results: any[] = [];
+  const results: unknown[] = [];
 
   for (const step of steps) {
     const result = await withSpinner(ctx, step.message, step.fn);
@@ -399,25 +399,20 @@ export async function withTimeout<T>(fn: () => Promise<T>, timeoutMs: number): P
  * debouncedSave(data3); // Only this one executes
  * ```
  */
-export function debounce<T extends (...args: any[]) => Promise<any>>(
-  fn: T,
+export function debounce<TArgs extends unknown[], TReturn>(
+  fn: (...args: TArgs) => Promise<TReturn>,
   delayMs: number
-): (...args: Parameters<T>) => Promise<ReturnType<T>> {
+): (...args: TArgs) => Promise<TReturn> {
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
-  return (...args: Parameters<T>): Promise<ReturnType<T>> => {
+  return (...args: TArgs): Promise<TReturn> => {
     return new Promise((resolve, reject) => {
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
 
-      timeoutId = setTimeout(async () => {
-        try {
-          const result = await fn(...args);
-          resolve(result);
-        } catch (error) {
-          reject(error);
-        }
+      timeoutId = setTimeout(() => {
+        fn(...args).then(resolve, reject);
       }, delayMs);
     });
   };
@@ -445,13 +440,13 @@ export function debounce<T extends (...args: any[]) => Promise<any>>(
  * throttledLog('msg3'); // Executes
  * ```
  */
-export function throttle<T extends (...args: any[]) => Promise<any>>(
-  fn: T,
+export function throttle<TArgs extends unknown[], TReturn>(
+  fn: (...args: TArgs) => Promise<TReturn>,
   intervalMs: number
-): (...args: Parameters<T>) => Promise<ReturnType<T> | undefined> {
+): (...args: TArgs) => Promise<TReturn | undefined> {
   let lastCall = 0;
 
-  return async (...args: Parameters<T>): Promise<ReturnType<T> | undefined> => {
+  return async (...args: TArgs): Promise<TReturn | undefined> => {
     const now = Date.now();
 
     if (now - lastCall >= intervalMs) {

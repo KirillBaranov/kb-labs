@@ -160,13 +160,13 @@ export class ArchitectureAnalyzer extends BaseLLMAnalyzer {
    * Process LLM tool calls into ReviewFindings
    */
    
-  private processToolCalls(toolCalls: any[], file: ParsedFile): ReviewFinding[] {
+  private processToolCalls(toolCalls: Record<string, unknown>[], file: ParsedFile): ReviewFinding[] {
     const findings: ReviewFinding[] = [];
 
     for (const call of toolCalls) {
       if (call.name === 'report_architecture_finding') {
          
-        const args = call.input as any;
+        const args = call.input as Record<string, unknown>;
 
         // Validate line number
         const lineCount = file.content.split('\n').length;

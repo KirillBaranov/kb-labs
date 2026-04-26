@@ -244,7 +244,7 @@ export async function testCommand<TResult = unknown, TConfig = unknown>(
 
   let raw: unknown;
   try {
-    raw = await handler.execute(ctx as PluginContextV3<TConfig>, input as any);
+    raw = await handler.execute(ctx as PluginContextV3<TConfig>, input);
   } finally {
     // Call cleanup if handler has one
     await handler.cleanup?.();

@@ -33,8 +33,10 @@ export default defineCommand({
     async execute(ctx: PluginContextV3, input: StatsInput): Promise<StatsCommandResult> {
       const { ui, platform } = ctx;
 
-      // V3: Flags come in input.flags object (not auto-merged)
-      const flags = (input as any).flags ?? input;
+      // V3: Flags may come wrapped in input.flags or passed directly
+      const flags = ('flags' in input && typeof (input as { flags?: unknown }).flags === 'object' && (input as { flags?: unknown }).flags !== null)
+        ? (input as { flags: StatsInput }).flags
+        : input;
 
       // Check cache unless refresh requested
       if (!flags.refresh) {
@@ -293,7 +295,7 @@ function calculateHealthScore(stats: StatsResult) {
 /**
  * Output statistics in requested format
  */
-function outputStats(stats: StatsResult, flags: any, ui: any) {
+function outputStats(stats: StatsResult, flags: Record<string, unknown>, ui: Record<string, unknown>) {
   if (flags.json) {
     ui?.json?.(stats);
     return;

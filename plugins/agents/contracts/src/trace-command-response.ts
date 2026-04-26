@@ -5,6 +5,8 @@
  * with this format for agent-to-agent debugging.
  */
 
+import type { DetailedTraceEntry } from './detailed-trace-types.js';
+
 // ═══════════════════════════════════════════════════════════════════════
 // Base Response Interface
 // ═══════════════════════════════════════════════════════════════════════
@@ -12,7 +14,7 @@
 /**
  * Base response for all trace commands (AI-friendly)
  */
-export interface TraceCommandResponse<T = any> {
+export interface TraceCommandResponse<T = unknown> {
   /** Whether command succeeded */
   success: boolean;
 
@@ -29,7 +31,7 @@ export interface TraceCommandResponse<T = any> {
   error?: {
     code: string;
     message: string;
-    details?: any;
+    details?: unknown;
   };
 
   /** Summary for quick reading */
@@ -94,7 +96,7 @@ export interface StatsResponse {
 export interface FilterResponse {
   taskId: string;
   eventType: string;
-  events: any[]; // DetailedTraceEntry[]
+  events: DetailedTraceEntry[];
   count: number;
 }
 
@@ -104,7 +106,7 @@ export interface FilterResponse {
 export interface TailResponse {
   taskId: string;
   lines: number;
-  events: any[]; // DetailedTraceEntry[]
+  events: DetailedTraceEntry[];
 }
 
 /**
@@ -113,7 +115,7 @@ export interface TailResponse {
 export interface IterationResponse {
   taskId: string;
   iteration: number;
-  events: any[]; // DetailedTraceEntry[]
+  events: DetailedTraceEntry[];
   summary: {
     eventCount: number;
     llmCalls: number;
@@ -137,7 +139,7 @@ export interface AnalyzeResponse {
     pattern: string;
     cause: string;
     fix: string;
-    examples: any[];
+    examples: unknown[];
   }>;
 
   recommendations: Array<{
@@ -198,8 +200,8 @@ export interface CompareResponse {
   divergencePoints: Array<{
     iteration: number;
     reason: string;
-    task1Event: any;
-    task2Event: any;
+    task1Event: unknown;
+    task2Event: unknown;
   }>;
 
   summary: {
@@ -263,7 +265,7 @@ export interface ReplayResponse {
   iterations: Array<{
     iteration: number;
     timestamp: string;
-    events: any[];
+    events: DetailedTraceEntry[];
     summary: string;
   }>;
   totalDurationMs: number;

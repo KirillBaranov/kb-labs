@@ -62,8 +62,9 @@ export class ConfigProxy extends RemoteAdapter<IConfig> implements IConfig {
    * }
    * ```
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async getConfig(productId: string, profileId?: string): Promise<any> {
-    return (await this.callRemote('getConfig', [productId, profileId])) as any;
+    return this.callRemote('getConfig', [productId, profileId]);
   }
 
   /**
@@ -79,7 +80,8 @@ export class ConfigProxy extends RemoteAdapter<IConfig> implements IConfig {
    * }
    * ```
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async getRawConfig(): Promise<any> {
-    return (await this.callRemote('getRawConfig', [])) as any;
+    return this.callRemote('getRawConfig', []);
   }
 }

@@ -35,7 +35,7 @@ export default defineHandler({
 
       if (cached !== null && cached !== undefined) {
         // Use cached value
-        const cachedData = cached as { count: number; status: any };
+        const cachedData = cached as { count: number; status: unknown };
         filesChanged = cachedData.count;
         gitStatus = cachedData.status;
       } else {

@@ -77,7 +77,7 @@ const validate = ajv.compile(policySchema);
 /**
  * Validate policy against schema
  */
-export function validatePolicySchema(policy: any): {
+export function validatePolicySchema(policy: unknown): {
   valid: boolean;
   errors?: string[];
 } {
@@ -99,7 +99,7 @@ export function validatePolicySchema(policy: any): {
  * Create a policy validator function
  */
 export function createPolicyValidator() {
-  return (policy: any): policy is Policy => {
+  return (policy: unknown): policy is Policy => {
     const result = validatePolicySchema(policy);
     return result.valid;
   };

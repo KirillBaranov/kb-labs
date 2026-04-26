@@ -222,7 +222,7 @@ export class PlanExecutor {
   /**
    * Record trace entry
    */
-  private recordTrace(entry: any): void {
+  private recordTrace(entry: Record<string, unknown>): void {
     if (this.tracer) {
       this.tracer.trace(entry);
     }

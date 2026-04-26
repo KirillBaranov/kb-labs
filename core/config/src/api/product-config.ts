@@ -17,9 +17,9 @@ import { updateLockfile } from '../lockfile/lockfile';
 /**
  * Get product configuration with layered merge and trace
  */
-export async function getProductConfig<T = Record<string, any>>(
+export async function getProductConfig<T = Record<string, unknown>>(
   opts: ResolveOptions,
-  schema: any
+  schema: unknown
 ): Promise<ProductConfigResult<T>> {
   const { cwd, product, cli = {}, writeFinal = false, profileLayer } = opts;
   const fsProduct = toFsProduct(product);
@@ -68,20 +68,20 @@ export async function getProductConfig<T = Record<string, any>>(
   // 3. Preset defaults (resolve org preset if configured)
   let presetConfig = {};
   if (workspaceConfig?.data) {
-    const workspaceData = workspaceConfig.data as any;
-    if (workspaceData.$extends) {
+    const workspaceData = workspaceConfig.data as Record<string, unknown>;
+    if (workspaceData['$extends']) {
       try {
-        const preset = await resolvePreset(workspaceData.$extends, cwd);
+        const preset = await resolvePreset(workspaceData['$extends'] as string, cwd);
         presetConfig = getPresetConfigForProduct(preset, product);
         
         layers.push({
           label: 'preset',
           value: presetConfig,
-          source: `preset:${workspaceData.$extends}`,
+          source: `preset:${workspaceData['$extends']}`,
         });
       } catch (error) {
         // Preset resolution failed, continue without preset
-        console.warn(`Warning: Could not resolve preset ${workspaceData.$extends}:`, error);
+        console.warn(`Warning: Could not resolve preset ${workspaceData['$extends']}:`, error);
       }
     }
   }
@@ -96,7 +96,7 @@ export async function getProductConfig<T = Record<string, any>>(
   
   // 4. Workspace config
   if (workspaceConfig?.data) {
-    const workspaceData = (workspaceConfig.data as any)?.products?.[fsProduct] || {};
+    const workspaceData = (workspaceConfig.data as { products?: Record<string, unknown> })?.products?.[fsProduct] ?? {};
     layers.push({
       label: 'workspace',
       value: workspaceData,
@@ -145,7 +145,7 @@ export async function getProductConfig<T = Record<string, any>>(
   try {
     const configHash = computeConfigHash(merged);
      
-    const configHashes: Record<string, any> = {};
+    const configHashes: Record<string, unknown> = {};
     configHashes[product] = configHash;
     await updateLockfile(cwd, {
       configHashes
@@ -166,8 +166,8 @@ export async function getProductConfig<T = Record<string, any>>(
  */
 export async function explainProductConfig(
   opts: Omit<ResolveOptions, 'writeFinal'>,
-  schema: any
-): Promise<{ trace: any[] }> {
+  schema: unknown
+): Promise<{ trace: import('../types').MergeTrace[] }> {
   const result = await getProductConfig(opts, schema);
   return { trace: result.trace };
 }
@@ -175,8 +175,8 @@ export async function explainProductConfig(
 /**
  * Get runtime defaults for a product
  */
-function getRuntimeDefaults(product: string): any {
-  const defaults: Record<string, any> = {
+function getRuntimeDefaults(product: string): Record<string, unknown> {
+  const defaults: Record<string, Record<string, unknown>> = {
     devlink: {
       watch: true,
       build: true,
@@ -241,7 +241,7 @@ function getRuntimeDefaults(product: string): any {
 /**
  * Write final configuration to .kb/<product>/<product>.config.json
  */
-async function writeFinalConfig(cwd: string, fsProduct: string, config: any): Promise<void> {
+async function writeFinalConfig(cwd: string, fsProduct: string, config: Record<string, unknown>): Promise<void> {
   const configDir = path.join(cwd, '.kb', fsProduct);
   const configPath = path.join(configDir, `${fsProduct}.config.json`);
   
@@ -261,6 +261,6 @@ async function writeFinalConfig(cwd: string, fsProduct: string, config: any): Pr
 /**
  * Get configuration hash for lockfile
  */
-export function getConfigHash(config: any): string {
+export function getConfigHash(config: unknown): string {
   return computeConfigHash(config);
 }

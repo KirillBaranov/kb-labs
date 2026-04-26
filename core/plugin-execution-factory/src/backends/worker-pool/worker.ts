@@ -415,7 +415,7 @@ export class Worker extends EventEmitter<WorkerEvents> {
         const pending = this.pendingRequests.get(msg.requestId);
         if (pending) {
           const error = new Error(msg.error.message);
-          (error as any).code = msg.error.code;
+          Object.assign(error, { code: msg.error.code });
           error.stack = msg.error.stack;
           pending.reject(error);
         }

@@ -16,7 +16,7 @@ import type { ILogger } from "@kb-labs/core-platform";
 import { platform } from "@kb-labs/core-runtime";
 
 let _registered = false;
-const registeredCommands: any[] = [];
+const registeredCommands: unknown[] = [];
 
 export interface RegisterBuiltinCommandsInput {
   cwd?: string;
@@ -111,8 +111,8 @@ export async function registerBuiltinCommands(
       registry.markPartial(false);
     }
 
-  } catch (err: any) {
-    log.warn(`Discovery failed: ${err.message}`);
+  } catch (err: unknown) {
+    log.warn(`Discovery failed: ${err instanceof Error ? err.message : String(err)}`);
     registry.markPartial(true);
     _registered = false;
     return;

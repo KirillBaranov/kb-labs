@@ -12,12 +12,27 @@ import type {
 } from './language-parser';
 
 /**
+ * Minimal structural interface for a tree-sitter AST node.
+ * Avoids dependency on `@types/tree-sitter` which may not be installed.
+ */
+interface TreeSitterNode {
+  type: string;
+  childCount: number;
+  startPosition: { row: number; column: number };
+  endPosition: { row: number; column: number };
+  startIndex: number;
+  endIndex: number;
+  child(index: number): TreeSitterNode;
+  childForFieldName(field: string): TreeSitterNode | null;
+}
+
+/**
  * Tree-sitter parser with lazy loading
  * Falls back gracefully if tree-sitter is not installed
  */
 export class TreeSitterParser implements LanguageParser {
   readonly language: string;
-  private parser: any = null;
+  private parser: { parse(code: string): { rootNode: TreeSitterNode }; setLanguage(grammar: unknown): void } | null = null;
   private isLoaded = false;
   private loadError: Error | null = null;
 
@@ -34,8 +49,9 @@ export class TreeSitterParser implements LanguageParser {
     }
 
     try {
-      // Try to dynamically import tree-sitter
-      const Parser = await import('tree-sitter').then(m => m.default || m);
+      // Try to dynamically import tree-sitter (no bundled types — cast to structural interface)
+      type ParserCtor = new () => { parse(code: string): { rootNode: TreeSitterNode }; setLanguage(grammar: unknown): void };
+      const Parser = await import('tree-sitter').then(m => m.default || m) as ParserCtor;
       this.parser = new Parser();
 
       // Load language grammar
@@ -59,7 +75,7 @@ export class TreeSitterParser implements LanguageParser {
   /**
    * Load language grammar
    */
-  private async loadGrammar(lang: string): Promise<any> {
+  private async loadGrammar(lang: string): Promise<unknown> {
     try {
       switch (lang) {
         case 'typescript':
@@ -123,7 +139,7 @@ export class TreeSitterParser implements LanguageParser {
       const tree = this.parser.parse(code);
       const boundaries: StatementBoundary[] = [];
 
-      this.traverseAST(tree.rootNode, (node: any) => {
+      this.traverseAST(tree.rootNode, (node: TreeSitterNode) => {
         const type = this.mapNodeType(node.type);
         if (type) {
           boundaries.push({
@@ -160,7 +176,7 @@ export class TreeSitterParser implements LanguageParser {
         exports: [],
       };
 
-      this.traverseAST(tree.rootNode, (node: any) => {
+      this.traverseAST(tree.rootNode, (node: TreeSitterNode) => {
         // Extract functions
         if (this.isFunctionNode(node.type)) {
           const name = this.extractNodeName(node, code);
@@ -238,7 +254,7 @@ export class TreeSitterParser implements LanguageParser {
   /**
    * Traverse AST tree
    */
-  private traverseAST(node: any, callback: (node: any) => void): void {
+  private traverseAST(node: TreeSitterNode, callback: (node: TreeSitterNode) => void): void {
     callback(node);
     for (let i = 0; i < node.childCount; i++) {
       this.traverseAST(node.child(i), callback);
@@ -303,7 +319,7 @@ export class TreeSitterParser implements LanguageParser {
   /**
    * Extract name from node
    */
-  private extractNodeName(node: any, code: string): string | undefined {
+  private extractNodeName(node: TreeSitterNode, code: string): string | undefined {
     const nameNode = node.childForFieldName('name');
     if (nameNode) {
       return code.substring(nameNode.startIndex, nameNode.endIndex);
@@ -314,7 +330,7 @@ export class TreeSitterParser implements LanguageParser {
   /**
    * Extract import source
    */
-  private extractImportSource(node: any, code: string): string | undefined {
+  private extractImportSource(node: TreeSitterNode, code: string): string | undefined {
     const sourceNode = node.childForFieldName('source');
     if (sourceNode) {
       const source = code.substring(sourceNode.startIndex, sourceNode.endIndex);

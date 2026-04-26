@@ -74,7 +74,7 @@ export class CrashReporter {
         message: error.message,
         stack: error.stack,
         name: error.name,
-        code: (error as any).code,
+        code: (error as { code?: string }).code,
         origin,
       },
 

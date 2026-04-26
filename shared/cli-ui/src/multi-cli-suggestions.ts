@@ -17,7 +17,8 @@ import {
 
 export interface MultiCLIContext {
   warningCodes: Set<string>;
-  [key: string]: any;
+  undo?: { available: boolean };
+  [key: string]: unknown;
 }
 
 export interface CLIPackage {

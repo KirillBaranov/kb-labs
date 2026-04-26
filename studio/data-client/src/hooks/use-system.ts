@@ -29,13 +29,11 @@ export function useHealthStatus(source: SystemDataSource) {
 }
 
 export function useReadyStatus(source: SystemDataSource) {
-  const httpSource = source as any;
-  
   return useQuery({
     queryKey: qk.system.health.ready(),
     queryFn: async () => {
-      if (httpSource.getReady) {
-        return httpSource.getReady();
+      if (source.getReady) {
+        return source.getReady();
       }
       // Fallback for mock sources
       return {
@@ -50,13 +48,11 @@ export function useReadyStatus(source: SystemDataSource) {
 }
 
 export function useSystemInfo(source: SystemDataSource) {
-  const httpSource = source as any;
-  
   return useQuery({
     queryKey: qk.system.info(),
     queryFn: async () => {
-      if (httpSource.getInfo) {
-        return httpSource.getInfo();
+      if (source.getInfo) {
+        return source.getInfo();
       }
       // Fallback for mock sources
       return {
@@ -72,13 +68,11 @@ export function useSystemInfo(source: SystemDataSource) {
 }
 
 export function useCapabilities(source: SystemDataSource) {
-  const httpSource = source as any;
-  
   return useQuery({
     queryKey: qk.system.capabilities(),
     queryFn: async () => {
-      if (httpSource.getCapabilities) {
-        return httpSource.getCapabilities();
+      if (source.getCapabilities) {
+        return source.getCapabilities();
       }
       // Fallback for mock sources
       return {

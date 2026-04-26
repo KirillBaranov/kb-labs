@@ -19,6 +19,7 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/mattn/go-isatty"
 
 	"github.com/kb-labs/create/internal/installer"
 	"github.com/kb-labs/create/internal/manifest"
@@ -100,6 +101,9 @@ type WizardOptions struct {
 func Run(m *manifest.Manifest, opts WizardOptions) (*installer.Selection, error) {
 	if opts.Yes {
 		return defaultSelection(m, opts), nil
+	}
+	if !isatty.IsTerminal(os.Stdin.Fd()) && !isatty.IsCygwinTerminal(os.Stdin.Fd()) {
+		return nil, fmt.Errorf("no TTY detected — run with --yes to skip the wizard")
 	}
 	model := newModel(m, opts)
 	p := tea.NewProgram(model, tea.WithAltScreen())

@@ -245,6 +245,7 @@ export function UIStatisticsChart({
         {renderLegend()}
 
 
+        {/* @ts-expect-error @ant-design/charts LineConfig overloads produce a 44-variant union incompatible with JSX strict checking */}
         <UILineChart
           data={chartData}
           xField={xField}

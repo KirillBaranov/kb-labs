@@ -6,7 +6,7 @@
 import { promises as fsp } from 'node:fs';
 
 interface CacheEntry {
-  data: any;
+  data: unknown;
   mtime: number;
   size: number;
   timestamp: number;
@@ -94,7 +94,7 @@ class FSCache {
   /**
    * Get cached file data if available and not stale
    */
-  async get(absPath: string): Promise<any | null> {
+  async get(absPath: string): Promise<unknown> {
     const key = await this.getCacheKey(absPath);
     const cacheKey = `${key.absPath}|${key.mtime}|${key.size}`;
     
@@ -130,7 +130,7 @@ class FSCache {
   /**
    * Cache file data
    */
-  async set(absPath: string, data: any): Promise<void> {
+  async set(absPath: string, data: unknown): Promise<void> {
     const key = await this.getCacheKey(absPath);
     const cacheKey = `${key.absPath}|${key.mtime}|${key.size}`;
     

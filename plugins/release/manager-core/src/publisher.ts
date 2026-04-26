@@ -226,8 +226,8 @@ export async function generateEnhancedChangelog(options: {
   plan: ReleasePlan;
   from?: string;
   to?: string;
-  config?: any;
-}): Promise<{ changelog: string; manifest: any }> {
+  config?: import('./types').ReleaseConfig;
+}): Promise<{ changelog: string; manifest: unknown }> {
   // Full changelog generation is available via @kb-labs/release-manager-changelog
   // For now, fallback to simple changelog
   const simpleChangelog = await generateChangelog({

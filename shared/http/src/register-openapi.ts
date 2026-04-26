@@ -22,6 +22,7 @@
  */
 
 import { zodToJsonSchema } from 'zod-to-json-schema';
+import type { ZodSchema } from 'zod';
 
 /** Minimal structural interface to accept any Fastify instance regardless of version. */
 interface FastifyLike {
@@ -39,13 +40,13 @@ function isZod(v: unknown): boolean {
 function convertSchema(schema: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = { ...schema };
   for (const key of ['body', 'querystring', 'params', 'headers'] as const) {
-    if (isZod(out[key])) { out[key] = zodToJsonSchema(out[key] as any); }
+    if (isZod(out[key])) { out[key] = zodToJsonSchema(out[key] as ZodSchema); }
   }
   if (out['response'] && typeof out['response'] === 'object') {
     out['response'] = Object.fromEntries(
       Object.entries(out['response'] as Record<string, unknown>).map(([code, s]) => [
         code,
-        isZod(s) ? zodToJsonSchema(s as any) : s,
+        isZod(s) ? zodToJsonSchema(s as ZodSchema) : s,
       ]),
     );
   }
@@ -108,7 +109,7 @@ export async function registerOpenAPI(server: FastifyLike, options: OpenAPIOptio
   // /openapi.json — canonical spec endpoint.
   // x-openapi-spec: true header signals to response middlewares (e.g. envelope wrappers)
   // that this is a raw spec response and must not be wrapped.
-  (server as any).get(specPath, { schema: { hide: true } }, (_req: unknown, reply: unknown) => {
+  server.get(specPath, { schema: { hide: true } }, (_req: unknown, reply: unknown) => {
     const s = server as { swagger?: () => Record<string, unknown> | undefined };
     const spec = s.swagger?.();
     const r = reply as {

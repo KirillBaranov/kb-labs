@@ -161,7 +161,7 @@ function LayoutContent() {
     <NavigationItemsProvider items={availableNavItems}>
       <KBPageLayout
         headerProps={{
-          LinkComponent: Link as any,
+          LinkComponent: Link as React.ComponentType<{ to: string; children: React.ReactNode; className?: string }>,
           onLogout: handleLogout,
           userName: auth.role,
           // Notifications

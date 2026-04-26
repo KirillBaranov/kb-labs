@@ -103,10 +103,11 @@ import { AdaptiveChunkerFactory } from './chunking/adaptive-factory';
 import { MemoryMonitor } from './indexing/memory-monitor';
 import { IndexingPipeline } from './indexing/pipeline';
 import { FileDiscoveryStage } from './indexing/stages/discovery';
-import { FileFilteringStage } from './indexing/stages/filtering';
+import { FileFilteringStage, type VectorStoreMetadata } from './indexing/stages/filtering';
 import { ParallelChunkingStage } from './indexing/stages/parallel-chunking';
-import { EmbeddingStage } from './indexing/stages/embedding';
+import { EmbeddingStage, type ChunkWithEmbedding } from './indexing/stages/embedding';
 import { StorageStage } from './indexing/stages/storage';
+import type { PipelineContext } from './indexing/pipeline-types';
 
 const DEFAULT_INDEX_DIR = '.kb/mind/rag';
 const DEFAULT_CODE_CHUNK_LINES = 120;
@@ -696,7 +697,7 @@ export interface MindEngineOptions {
       json(): Promise<unknown>;
       [key: string]: unknown;
     }>;
-    fs?: any;
+    fs?: RuntimeAdapter['fs'];
     env?: (key: string) => string | undefined;
     log?: (
       level: 'debug' | 'info' | 'warn' | 'error',
@@ -924,7 +925,7 @@ export class MindEngine implements KnowledgeEngine {
     const runtimeInput = rawOptions._runtime;
     this.runtime = runtimeInput && 'fetch' in runtimeInput && typeof runtimeInput.fetch === 'function'
       ? runtimeInput as RuntimeAdapter
-      : createRuntimeAdapter(runtimeInput as any);
+      : createRuntimeAdapter(runtimeInput as Parameters<typeof createRuntimeAdapter>[0]);
 
     // DEBUG: Check platform.vectorStore
     platform?.logger?.debug('MindEngine: platform source', { source: rawOptions.platform ? 'rawOptions.platform' : 'usePlatform()' });
@@ -1195,7 +1196,7 @@ export class MindEngine implements KnowledgeEngine {
     const effectiveWorkspaceRoot = options.workspaceRoot ?? this.workspaceRoot;
     const indexRevision = randomUUID();
     const indexedAt = Date.now();
-    const context: any = {
+    const context: PipelineContext = {
       sources,
       scopeId: options.scope.id,
       workspaceRoot: effectiveWorkspaceRoot, // CRITICAL: Pass workspaceRoot for file discovery
@@ -1308,7 +1309,7 @@ export class MindEngine implements KnowledgeEngine {
     const vectorStoreWithMetadata = this.vectorStore.getFilesMetadata ? this.vectorStore : null;
     const filteringStage = new FileFilteringStage(
       discoveredFiles,
-      vectorStoreWithMetadata as any,
+      vectorStoreWithMetadata as (VectorStore & VectorStoreMetadata) | null,
       options.scope.id,
       {
         quickFilter: true,  // Enable mtime+size quick check
@@ -1404,7 +1405,7 @@ export class MindEngine implements KnowledgeEngine {
     // Most accounts start at Tier 1 - can be upgraded via kb.config.json
     const embeddingStage = new EmbeddingStage(
       embeddingProvider,
-      chunks as any[],
+      chunks as MindChunk[],
       {
         maxRetries: 3,
         maxConcurrency: 3, // Limited concurrency, rate limiter ensures we stay within TPM limits
@@ -1419,10 +1420,10 @@ export class MindEngine implements KnowledgeEngine {
 
     // Create storage stage with optimized batch processing
     // Check if deduplication should be skipped (via environment variable for now)
-    const skipDedup = useEnv('KB_SKIP_DEDUPLICATION') === 'true' || (options as any).skipDeduplication === true;
+    const skipDedup = useEnv('KB_SKIP_DEDUPLICATION') === 'true' || (options as KnowledgeIndexOptions & { skipDeduplication?: boolean }).skipDeduplication === true;
     const storageStage = new StorageStage(
       vectorStoreAdapter,
-      chunksWithEmbeddings as any[],
+      chunksWithEmbeddings as ChunkWithEmbedding[],
       { batchSize: 100, deduplication: !skipDedup, updateExisting: true } // Optimized batch size (was 50)
     );
     pipeline.addStage(storageStage);
@@ -1751,7 +1752,7 @@ export class MindEngine implements KnowledgeEngine {
         diversityThreshold: this.options.search.optimization.diversityThreshold,
         maxChunksPerFile: this.options.search.optimization.maxChunksPerFile,
         adaptiveSelection: this.options.search.optimization.adaptiveSelection,
-        tokenBudget: (context as any).tokenBudget,
+        tokenBudget: (context as KnowledgeExecutionContext & { tokenBudget?: number }).tokenBudget,
         avgTokensPerChunk: this.options.search.optimization.avgTokensPerChunk,
       });
     }
@@ -2396,7 +2397,7 @@ function normalizeOptions(raw: MindEngineOptions): NormalizedOptions {
   const rerankingType = raw.search?.reranking?.type ?? 'none';
   const rerankingEnabled = rerankingType !== 'none';
   const optimizationEnabled = raw.search?.optimization !== undefined;
-  const learningStorageOptions = (raw.learning as any)?.storageOptions;
+  const learningStorageOptions = (raw.learning as Record<string, unknown>)?.storageOptions;
 
   return {
     indexDir: raw.indexDir ?? DEFAULT_INDEX_DIR,
@@ -2700,7 +2701,7 @@ export function createMindEngineFactory(): KnowledgeEngineFactory {
 export interface RegisterMindEngineOptions {
   runtime?: RuntimeAdapter | {
     fetch?: typeof fetch;
-    fs?: any;
+    fs?: RuntimeAdapter['fs'];
     env?: (key: string) => string | undefined;
     log?: (
       level: 'debug' | 'info' | 'warn' | 'error',

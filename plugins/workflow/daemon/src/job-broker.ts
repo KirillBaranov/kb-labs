@@ -160,7 +160,7 @@ export class JobBroker {
       {
         from: startTime,
         to: endTime,
-        level: options?.level && options.level !== 'all' ? options.level as any : undefined,
+        level: options?.level && options.level !== 'all' ? options.level : undefined,
       },
       {
         limit: 1000, // Query more logs, then filter in-memory
@@ -168,23 +168,30 @@ export class JobBroker {
       }
     );
 
+    type LogEntry = {
+      timestamp: number;
+      level: string;
+      message: string;
+      fields: Record<string, unknown>;
+    };
+
     // Filter logs by runId in metadata
-    const filteredLogs = queryResult.logs.filter((log: any) => {
+    const filteredLogs = (queryResult.logs as LogEntry[]).filter((log) => {
       // Check if log has runId in fields metadata
-      return log.fields.runId === runId ||
-             log.fields.executionId === runId ||
+      return log.fields['runId'] === runId ||
+             log.fields['executionId'] === runId ||
              // Also check jobId and stepId for drill-down capability
-             log.fields.jobId?.toString().startsWith(runId);
+             String(log.fields['jobId'] ?? '').startsWith(runId);
     });
 
     // Sort by timestamp (newest first)
-    const sortedLogs = filteredLogs.sort((a: any, b: any) => b.timestamp - a.timestamp);
+    const sortedLogs = filteredLogs.sort((a, b) => b.timestamp - a.timestamp);
 
     // Apply pagination
     const paginatedLogs = sortedLogs.slice(offset, offset + limit);
 
     // Convert to expected format
-    return paginatedLogs.map((log: any) => ({
+    return paginatedLogs.map((log) => ({
       timestamp: new Date(log.timestamp).toISOString(),
       level: log.level,
       message: log.message,

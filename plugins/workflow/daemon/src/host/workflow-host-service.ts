@@ -1,5 +1,5 @@
 import type { ILogger } from '@kb-labs/core-platform';
-import type { WorkflowEngine, WorkflowService } from '@kb-labs/workflow-engine';
+import type { WorkflowEngine, WorkflowService, WorkflowRuntime } from '@kb-labs/workflow-engine';
 import type {
   CronInfo,
   CronListResponse,
@@ -218,7 +218,7 @@ export class WorkflowHostService {
     });
 
     const response: WorkflowListResponse = {
-      workflows: workflows.map((w: any) => this.mapWorkflowInfo(w)),
+      workflows: workflows.map((w: WorkflowRuntime) => this.mapWorkflowInfo(w)),
     };
     return response;
   }
@@ -247,7 +247,7 @@ export class WorkflowHostService {
       ...specInput,
       ...(request.target ? { target: request.target } : {}),
       ...(request.isolation ? { isolation: request.isolation } : {}),
-    } as any;
+    } as unknown as import('@kb-labs/workflow-contracts').WorkflowSpec;
     const triggerType =
       request.trigger?.type === 'cron'
         ? 'schedule'
@@ -436,7 +436,7 @@ export class WorkflowHostService {
     };
   }
 
-  private mapWorkflowInfo(workflow: any): WorkflowInfo {
+  private mapWorkflowInfo(workflow: WorkflowRuntime): WorkflowInfo {
     return {
       id: workflow.id,
       name: workflow.name,

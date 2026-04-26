@@ -33,8 +33,10 @@ export default defineCommand({
     ): Promise<CheckBuildsCommandResult> {
       const { ui, platform } = ctx;
 
-      // V3: Flags come in input.flags object (not auto-merged)
-      const flags = (input as any).flags ?? input;
+      // V3: Flags may come wrapped in input.flags or passed directly
+      const flags = ('flags' in input && typeof (input as { flags?: unknown }).flags === 'object' && (input as { flags?: unknown }).flags !== null)
+        ? (input as { flags: CheckBuildsInput }).flags
+        : input;
 
       // Check cache unless refresh requested
       const cacheKey = `${CACHE_KEYS.BUILDS}:${flags.package || 'all'}`;
@@ -82,8 +84,8 @@ export default defineCommand({
  */
 function outputBuildCheck(
   result: BuildCheckResult & { cached?: boolean },
-  flags: any,
-  ui: any
+  flags: Record<string, unknown>,
+  ui: Record<string, unknown>
 ) {
   if (flags.json) {
     ui?.json?.(result);

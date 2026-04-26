@@ -521,12 +521,12 @@ export class WorkflowEngine {
     stepId: string,
   ): Promise<void> {
     await this.stateStore.updateStep(runId, jobId, stepId, (draft) => {
-      draft.status = 'waiting_approval' as any
+      draft.status = 'waiting_approval'
       draft.startedAt = draft.startedAt ?? new Date().toISOString()
     })
 
     await this.events.publish({
-      type: EVENT_NAMES.step.waitingApproval as any,
+      type: EVENT_NAMES.step.waitingApproval,
       runId,
       payload: { jobId, stepId },
     })

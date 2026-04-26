@@ -92,8 +92,8 @@ export interface VectorStore {
    * This method returns an adapter object with scopeId pre-bound.
    */
   createScopedAdapter?(scopeId: string): {
-    insertBatch(chunks: any[]): Promise<number>;
-    updateBatch(chunks: any[]): Promise<number>;
+    insertBatch(chunks: StoredMindChunk[]): Promise<number>;
+    updateBatch(chunks: StoredMindChunk[]): Promise<number>;
     checkExistence(chunkIds: string[]): Promise<Set<string>>;
     getChunksByHash(hashes: string[]): Promise<Map<string, string[]>>;
     getChunkIdsByPaths(paths: string[]): Promise<Map<string, string[]>>;

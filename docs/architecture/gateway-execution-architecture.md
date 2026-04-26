@@ -1,7 +1,7 @@
 # Gateway & Execution Architecture
 
 > **Status:** Experiment — Phase 1 complete, Phase 2 not started
-> **Last Updated:** 2026-03-15
+> **Last Updated:** 2026-04-26
 > **Context:** First cloud migration experiment. Goal: run plugins/agents remotely, CLI stays local.
 
 ---
@@ -53,32 +53,90 @@ CLI (локально) → Gateway → Host Agent (где угодно) → вы
                                            │ call('execution', ...)
                                            ▼
                                    Host Agent (WS client)
-                                   handler('execution') ← НЕ РЕАЛИЗОВАН ❌
+                                   handler('execution') → ExecutionHandler ✅
 ```
 
-### Что реализовано
+### Реализованные компоненты
 
 | Компонент | Статус | Пакет |
 |-----------|--------|-------|
-| Gateway сервер (Fastify) | ✅ | `kb-labs-gateway/apps/gateway-app` |
-| JWT аутентификация | ✅ | `kb-labs-gateway/packages/gateway-auth` |
+| Gateway сервер (Fastify) | ✅ | `plugins/gateway/app` |
+| JWT аутентификация | ✅ | `plugins/gateway/auth` |
 | WebSocket хендшейк (hosts/clients) | ✅ | `gateway-ws.ts` |
 | Dispatcher (маршрутизация по namespaceId) | ✅ | `hosts/dispatcher.ts` |
 | POST /api/v1/execute (ndjson streaming) | ✅ | `execute/routes.ts` |
 | Execution registry + cancellation | ✅ | `execute/execution-registry.ts` |
-| Host Agent daemon | ✅ | `kb-labs-host-agent/apps/host-agent-app` |
+| Host Agent daemon | ✅ | `plugins/host-agent/app` |
 | Host Agent IPC сервер | ✅ | `host-agent-core/src/ipc` |
 | Host Agent → Gateway tunnel | ✅ | `gateway-client.ts` → `executeTunnel()` |
-| FilesystemHandler | ✅ | `kb-labs-host-agent/packages/host-agent-fs` |
-| CLI transport resolver | ✅ | `cli-core/src/gateway/transport-resolver.ts` |
+| FilesystemHandler | ✅ | `plugins/host-agent/fs` |
+| ExecutionHandler в Host Agent | ✅ | `host-agent-app/src/handlers/execution-handler.ts` |
+| CLI transport resolver | ✅ | `cli/runtime/src/gateway/transport-resolver.ts` |
+| Hosts registry фильтрация по namespaceId | ✅ | `HostRegistry.list(namespaceId)` |
+| Token refresh в CLI | ✅ | `credentials.ts` + 401 auto-retry в `http-sse-transport.ts` |
+| Transport resolver уважает `execution.mode` | ✅ | `bootstrap.ts` `dispatchPlugin` |
 
-### Что не реализовано
+---
 
-| Компонент | Почему нужен |
-|-----------|--------------|
-| `execution` handler в host-agent | Gateway вызывает его через WS — без него `UNKNOWN_ADAPTER` |
-| Transport resolver учитывает `execution.mode` | Сейчас всегда идёт через IPC если сокет жив, ломая `in-process` режим |
-| Персистентный hosts registry | Сейчас in-memory — перезапуск Gateway = потеря хостов |
+## Auth Model
+
+### Endpoints
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/auth/register` | POST | None | Register new client → `{ clientId, clientSecret, hostId, namespaceId }` |
+| `/auth/token` | POST | None | Exchange credentials → JWT pair (access 15m + refresh 30d) |
+| `/auth/refresh` | POST | None | Rotate token pair (single-use refresh token rotation) |
+| `/hosts/connect` | WS | Bearer | Host Agent WebSocket tunnel |
+| `/clients/connect` | WS | Bearer | Studio live-update WebSocket |
+| `/internal/*` | POST | `x-internal-secret` | Gateway-to-service dispatch, not publicly accessible |
+
+### namespaceId Isolation
+
+`namespaceId` is the **tenant isolation key**. It is server-assigned at registration via `randomBytes(16).toString('hex')` — never accepted from client input.
+
+Every authenticated request carries `namespaceId` in the JWT payload. The gateway injects it into `AuthContext` and all data-scoped operations (host dispatch, plugin calls) filter by it:
+
+```
+Client registers → namespaceId assigned server-side
+     ↓
+JWT payload: { sub: hostId, namespaceId, tier, type }
+     ↓
+AuthContext on every request: { userId, namespaceId, tier, permissions }
+     ↓
+Dispatcher: globalDispatcher.firstHost(auth.namespaceId)
+     → only hosts registered in the same namespace are visible
+```
+
+This prevents cross-tenant host access even if a client guesses another tenant's `hostId`.
+
+### AuthContext Injection
+
+The auth middleware runs on every non-whitelisted route. On success it writes `AuthContext` to `request.authContext`:
+
+```typescript
+interface AuthContext {
+  type: 'machine' | 'user';
+  userId: string;       // hostId (JWT sub)
+  namespaceId: string;
+  tier: 'free' | 'pro' | 'enterprise';
+  permissions: string[];
+}
+```
+
+Routes that need auth call `request.authContext` directly — no additional middleware required.
+
+### Refresh Token Rotation
+
+Refresh tokens are single-use. On each `/auth/refresh` call:
+
+1. JWT signature verified (`verifyRefreshToken`)
+2. Token consumed from store by `jti` — **deleted atomically** (`consumeRefreshToken`)
+3. If step 2 returns `null` (token already used or expired) → 401
+4. New access + refresh token pair issued
+5. New refresh token saved to store with TTL (30 days)
+
+A replayed refresh token is rejected at step 2. This limits the damage window if a refresh token is stolen — the legitimate client's next refresh will also fail, making the theft detectable.
 
 ---
 
@@ -112,7 +170,7 @@ globalDispatcher.firstHost(namespaceId)
     │ WebSocket message: { type: 'call', adapter: 'execution', ... }
     ▼
 Host Agent GatewayClient.onMessage()
-    → handlers.get('execution') → undefined → UNKNOWN_ADAPTER ❌
+    → handlers.get('execution') → ExecutionHandler.handle(call) ✅
 ```
 
 ### HTTP путь (host-agent не запущен)
@@ -135,111 +193,25 @@ globalDispatcher.firstHost(namespaceId)
 
 ---
 
-## Известные баги
+## Известные ограничения
 
-### 1. Transport resolver игнорирует `execution.mode`
-
-**Файл:** `kb-labs-cli/packages/cli-core/src/gateway/transport-resolver.ts:30`
-
-```typescript
-// Сейчас: всегда IPC если сокет жив
-if (await isSocketAlive(HOST_AGENT_SOCKET)) {
-  return new HostAgentTransport(HOST_AGENT_SOCKET);
-}
-```
-
-При `execution.mode = "in-process"` в `kb.config.json` CLI должен выполнять плагины локально, не через gateway. Сейчас — если host-agent запущен, всегда идёт через IPC → gateway → `UNKNOWN_ADAPTER`.
-
-### 2. Auth middleware и PROXY_PREFIXES (исправлено 2026-03-15)
-
-Оригинальный middleware содержал `PROXY_PREFIXES = ['/api/']` skip — gateway-owned route `/api/v1/execute` пропадал без authContext → 401.
-
-Исправление: удалён PROXY_PREFIXES skip. Proxy (`@fastify/http-proxy`) регистрируется до `gatewayRoutes` scope и перехватывает upstream-запросы раньше — skip был избыточен.
-
-### 3. Hosts registry in-memory
-
-**Файл:** `kb-labs-gateway/apps/gateway-app/src/hosts/registry.ts`
-
-Registry хранится в ICache (InMemoryCache). Перезапуск Gateway = все хосты отключены, нужно переподключение. Видно в `/hosts` — десятки `degraded` runtime-* хостов от старых экспериментов, которые уже не существуют.
-
-### 4. clientSecret в открытом виде
+### clientSecret в открытом виде (dev only)
 
 **Файл:** `~/.kb/agent.json`
 
-`clientSecret` хранится plaintext. Для dev — приемлемо, для prod — нет.
+`clientSecret` хранится plaintext. Для dev — приемлемо, для prod — нет. Полное решение: зашифрованное хранилище (Keychain / Secret Service) при установке prod host-agent.
 
 ---
 
-## Plan доработки
+## Закрытые задачи (история)
 
-### Phase 2: Замкнуть execution loop (приоритет: высокий)
-
-**Цель:** `pnpm kb agent:run` работает через gateway с host-agent.
-
-**Задачи:**
-
-**2.1** Реализовать `execution` handler в host-agent
-
-```typescript
-// daemon.ts — добавить после filesystem handler
-import { PluginExecutionHandler } from '@kb-labs/host-agent-execution';
-
-const executionHandler = new PluginExecutionHandler({
-  workspacePaths: config.workspacePaths,
-  pluginRegistry: ..., // загрузить плагины из манифестов
-});
-gatewayClient.registerHandler('execution', (call) => executionHandler.handle(call));
-```
-
-Нужен новый пакет `@kb-labs/host-agent-execution` (по аналогии с `host-agent-fs`).
-
-Handler должен:
-- Принять `{ pluginId, handlerRef, exportName, input, executionId }`
-- Загрузить плагин из локального реестра
-- Выполнить handler
-- Стримить события обратно через WS (`execution:start`, `execution:event`, `execution:done`)
-
-**2.2** Починить transport resolver
-
-```typescript
-// transport-resolver.ts
-export async function resolveTransport(config: ExecutionConfig): Promise<IGatewayClient> {
-  // in-process mode — не идём через gateway
-  if (config.mode === 'in-process') {
-    return new InProcessTransport();
-  }
-
-  // remote mode — IPC или HTTP
-  if (await isSocketAlive(HOST_AGENT_SOCKET)) {
-    return new HostAgentTransport(HOST_AGENT_SOCKET);
-  }
-  ...
-}
-```
-
-**2.3** Добавить `InProcessTransport`
-
-Для `mode: in-process` — выполняет плагин прямо в процессе CLI, не ходя на gateway. Это текущий де-факто режим, нужно сделать его явным.
-
----
-
-### Phase 3: Стабилизация Gateway (приоритет: средний)
-
-**3.1** Персистентный hosts registry
-
-Хранить регистрацию хостов в SQLite (уже есть в gateway-app). При переподключении хоста — восстанавливать запись. Убрать stale записи через TTL.
-
-**3.2** Фильтрация `/hosts` по namespaceId
-
-```typescript
-// routes.ts — сейчас возвращает всех
-const hosts = await registry.list(auth.namespaceId); // уже есть!
-// но registry.list() не фильтрует — починить в registry.ts
-```
-
-**3.3** Token refresh в CLI
-
-Сейчас `credentials.json` хранит access token (15 мин). При долгой сессии — протухает. Нужен auto-refresh через `refreshToken`.
+| Задача | Статус | Когда |
+|--------|--------|-------|
+| `execution` handler в host-agent | ✅ реализован | — |
+| Auth middleware PROXY_PREFIXES skip | ✅ удалён | 2026-03-15 |
+| Hosts registry фильтрация по namespaceId | ✅ `HostRegistry.list(ns)` фильтрует | — |
+| Token refresh в CLI | ✅ авто-рефреш + retry на 401 | — |
+| Transport resolver уважает `execution.mode` | ✅ `dispatchPlugin` проверяет mode перед gateway | 2026-04-26 |
 
 ---
 
@@ -271,10 +243,4 @@ CMD ["node", /app/dist/index.js]
 
 ## Быстрые победы (можно сделать сейчас)
 
-| Задача | Сложность | Эффект |
-|--------|-----------|--------|
-| Починить transport resolver (2.2) | Малая | `in-process` перестаёт ломаться при запущенном host-agent |
-| Добавить InProcessTransport (2.3) | Малая | Явный in-process режим |
-| Фильтрация `/hosts` по namespace (3.2) | Малая | Чистый список хостов |
-| Реализовать execution handler (2.1) | Средняя | Полный IPC путь работает |
-| Token refresh в CLI (3.3) | Средняя | Долгие сессии не ломаются |
+Все быстрые победы реализованы. Смотри раздел «Закрытые задачи» выше.

@@ -93,7 +93,7 @@ export async function syncBatch(
                 documentId: `${op.source}:${op.id}`,
                 scopeId: op.scopeId,
                 chunksAdded: 0,
-                error: `Unknown operation: ${(op as any).operation}`,
+                error: `Unknown operation: ${(op as { operation: string }).operation}`,
               };
           }
         } catch (error) {

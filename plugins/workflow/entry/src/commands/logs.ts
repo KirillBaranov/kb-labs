@@ -6,7 +6,7 @@ import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
 import { type LogsFlags } from '@kb-labs/workflow-contracts';
 import { WorkflowDaemonClient } from '../http-client.js';
 
-type LogsInput = LogsFlags & { argv?: string[] };
+type LogsInput = LogsFlags & { argv?: string[]; flags?: LogsFlags };
 
 export default defineCommand<unknown, LogsInput, { exitCode: number }>({
   id: 'workflow:logs',
@@ -14,7 +14,7 @@ export default defineCommand<unknown, LogsInput, { exitCode: number }>({
 
   handler: {
     async execute(ctx: PluginContextV3, input: LogsInput): Promise<{ exitCode: number }> {
-      const flags = (input as any).flags ?? input;
+      const flags = input.flags ?? input;
       const outputJson = flags.json ?? false;
       const jobId = flags['job-id'];
 

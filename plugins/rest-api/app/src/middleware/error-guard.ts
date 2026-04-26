@@ -14,7 +14,7 @@ import { platform } from '@kb-labs/core-runtime';
  */
 export function registerErrorGuard(server: FastifyInstance): void {
   // Global error handler
-  server.setErrorHandler((error: any, request, reply) => {
+  server.setErrorHandler((error: unknown, request, reply) => {
     // Handle plugin errors (already ErrorEnvelope)
     if (
       error &&

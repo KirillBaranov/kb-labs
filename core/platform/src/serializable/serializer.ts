@@ -115,7 +115,7 @@ function serializeValue(value: unknown, seen: WeakSet<object>): SerializableValu
       name: value.name,
       message: value.message,
       stack: value.stack,
-      code: (value as any).code,
+      code: (value as { code?: string }).code,
     } as SerializableError;
   }
 
@@ -183,7 +183,8 @@ export function deserialize(value: SerializableValue): unknown {
   }
 
   // Check for special types
-  const obj = value as any;
+  type SpecialObject = { __type?: string; data?: unknown; iso?: unknown; message?: unknown; name?: unknown; stack?: unknown; code?: unknown };
+  const obj = value as SpecialObject;
 
   // Buffer
   if (obj.__type === 'Buffer') {
@@ -222,7 +223,7 @@ export function deserialize(value: SerializableValue): unknown {
       error.stack = obj.stack;
     }
     if (obj.code !== undefined) {
-      (error as any).code = obj.code;
+      Object.assign(error, { code: obj.code });
     }
     return error;
   }
@@ -233,7 +234,7 @@ export function deserialize(value: SerializableValue): unknown {
   }
 
   // Plain object
-  const result: any = {};
+  const result: Record<string, unknown> = {};
   for (const [key, val] of Object.entries(value)) {
     result[key] = deserialize(val);
   }

@@ -11,15 +11,15 @@ const VALID_MODES = ['instant', 'auto', 'thinking'] as const;
 const VALID_FORMATS = ['text', 'json', 'json-pretty'] as const;
 
 function isValidIntent(intent: string): intent is (typeof VALID_INTENTS)[number] {
-  return VALID_INTENTS.includes(intent as any);
+  return (VALID_INTENTS as readonly string[]).includes(intent);
 }
 
 function isValidMode(mode: string): mode is (typeof VALID_MODES)[number] {
-  return VALID_MODES.includes(mode as any);
+  return (VALID_MODES as readonly string[]).includes(mode);
 }
 
 function isValidFormat(format: string): format is (typeof VALID_FORMATS)[number] {
-  return VALID_FORMATS.includes(format as any);
+  return (VALID_FORMATS as readonly string[]).includes(format);
 }
 
 function truncateText(text: string, limit: number): string {
@@ -50,7 +50,7 @@ interface RagQueryInput {
 interface RagQueryResult {
   exitCode: number;
   ok: boolean;
-  result?: any;
+  result?: unknown;
 }
 
 export default defineCommand({

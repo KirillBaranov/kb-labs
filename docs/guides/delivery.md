@@ -132,6 +132,17 @@ git history of the lock; the older release will be reinstalled from registry.
 - On target, MVP uses kb-dev's existing `.env` wiring; full tmpfs delivery
   (per-release `/dev/shm/kb-platform/secrets/<service>.env`) is follow-up.
 
+### Required secrets for production
+
+| Secret | Service | Required in prod | How to generate |
+|--------|---------|-----------------|-----------------|
+| `GATEWAY_JWT_SECRET` | gateway | **Yes — gateway refuses to start without it** | `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"` |
+| `GATEWAY_INTERNAL_SECRET` | gateway + internal callers | Yes | same as above |
+| `OPENAI_API_KEY` | llm-openai adapter | Only if using OpenAI | From platform.openai.com |
+
+> **`GATEWAY_JWT_SECRET`**: gateway bootstrap throws a fatal error if this is not set when `NODE_ENV=production`.
+> In dev mode it falls back to an insecure default — never deploy that configuration to any shared environment.
+
 ## 8. CI — GitHub Actions
 
 The reusable workflow

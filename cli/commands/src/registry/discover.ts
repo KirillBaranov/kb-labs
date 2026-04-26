@@ -76,7 +76,7 @@ const _SETUP_COMMAND_FLAGS = [
  * Create loader stub for ManifestV3 commands.
  * Loader should never be executed directly – CLI adapters must handle execution.
  */
-function createManifestV3Loader(commandId: string): () => Promise<{ run: any }> {
+function createManifestV3Loader(commandId: string): () => Promise<{ run: unknown }> {
   return async () => {
     throw new Error(
       `Loader should not be called for ManifestV3 command ${commandId}. Use plugin-adapter-cli executeCommand instead.`
@@ -104,8 +104,8 @@ export const __test = {
 };
 
 /** Create a synthetic manifest marking package as unavailable with actionable hint */
-function createUnavailableManifest(pkgName: string, error: any): CommandManifest {
-  const rawMsg = (error?.message || String(error) || '').toString();
+function createUnavailableManifest(pkgName: string, error: unknown): CommandManifest {
+  const rawMsg = (error instanceof Error ? error.message : String(error) || '').toString();
   // Try to extract missing module name from error
   let missing: string | null = null;
   const m1 = rawMsg.match(/Cannot find (?:module|package) '([^']+)'/);
@@ -129,13 +129,13 @@ function createUnavailableManifest(pkgName: string, error: any): CommandManifest
     loader: async () => {
       // Throw a descriptive error if someone tries to run it
       throw new Error(`Cannot load ${pkgName} CLI manifest. ${rawMsg}`);
-    }
-  } as any;
-  // Mark as synthetic so saveCache can skip it — synthetic manifests must never
-  // be persisted to disk because they represent transient load failures.
-  // Caching them would make the error "stick" until the TTL expires even after
-  // the underlying problem (missing build artifact, broken dep) is resolved.
-  (manifest as any)._synthetic = true;
+    },
+    // Mark as synthetic so saveCache can skip it — synthetic manifests must never
+    // be persisted to disk because they represent transient load failures.
+    // Caching them would make the error "stick" until the TTL expires even after
+    // the underlying problem (missing build artifact, broken dep) is resolved.
+    _synthetic: true,
+  };
   return manifest;
 }
 
@@ -264,19 +264,19 @@ async function detectNewWorkspacePackages(
           continue;
         }
 
-        if (knownPackages.has(pkg.name)) {
+        if (knownPackages.has(pkg.name as string)) {
           continue;
         }
 
         const manifestInfo = await findManifestPath(pkgRoot, pkg);
         if (manifestInfo.path) {
-          log('debug', `[plugins][cache] New workspace package detected: ${pkg.name}`);
+          log('debug', `[plugins][cache] New workspace package detected: ${pkg.name as string}`);
           return true;
         }
       }
     }
-  } catch (error: any) {
-    log('debug', `[plugins][cache] Workspace scan skipped: ${error?.message || 'unknown error'}`);
+  } catch (error: unknown) {
+    log('debug', `[plugins][cache] Workspace scan skipped: ${error instanceof Error ? error.message : 'unknown error'}`);
   }
 
   return false;
@@ -292,8 +292,8 @@ async function loadManifestWithTimeout(manifestPath: string, pkgName: string, pk
   
   try {
     return await Promise.race([loadManifest(manifestPath, pkgName, pkgRoot), timeout]);
-  } catch (err: any) {
-    if (err.message === 'Timeout') {
+  } catch (err: unknown) {
+    if (err instanceof Error && err.message === 'Timeout') {
       log('warn', `Timeout loading manifest from ${pkgName}`);
       return [];
     }
@@ -361,9 +361,6 @@ function deriveNamespace(packageName: string): string {
 //     namespace,
 //   };
 
-//   (setupManifest as any).manifestV2 = manifestV2;
-//   (setupManifest as any).pkgRoot = pkgRoot;
-//   (setupManifest as any).isSetup = true;
 //   return setupManifest;
 // }
 
@@ -414,9 +411,6 @@ function deriveNamespace(packageName: string): string {
 //     namespace,
 //   };
 
-//   (rollbackManifest as any).manifestV2 = manifestV2;
-//   (rollbackManifest as any).pkgRoot = pkgRoot;
-//   (rollbackManifest as any).isSetupRollback = true;
 //   return rollbackManifest;
 // }
 
@@ -428,10 +422,12 @@ async function loadManifest(manifestPath: string, pkgName: string, pkgRoot?: str
   const fileUrl = pathToFileURL(manifestPath).href;
   const mod = await import(fileUrl);
 
-  const manifest = (mod as any).manifest || (mod as any).default;
-  if (!manifest || typeof manifest !== 'object' || manifest.schema !== 'kb.plugin/3') {
+  const modTyped = mod as { manifest?: unknown; default?: unknown };
+  const rawManifest = modTyped.manifest || modTyped.default;
+  if (!rawManifest || typeof rawManifest !== 'object' || (rawManifest as Record<string, unknown>).schema !== 'kb.plugin/3') {
     throw new Error(`Unsupported manifest format in ${pkgName}. Only kb.plugin/3 schema is supported.`);
   }
+  const manifest = rawManifest as ManifestV3;
 
   const namespace = getNamespaceFromManifest(manifest, pkgName);
   const manifestDir = path.dirname(manifestPath);
@@ -443,7 +439,7 @@ async function loadManifest(manifestPath: string, pkgName: string, pkgRoot?: str
     log('warn', `ManifestV3 ${manifest.id || pkgName} has no CLI commands or setup entry`);
   }
 
-  const commandManifests: CommandManifest[] = cliCommands.map((cmd: any) => {
+  const commandManifests: CommandManifest[] = cliCommands.map((cmd) => {
     const commandId = cmd.id;
     const commandManifest: CommandManifest = {
       manifestVersion: '1.0' as const,
@@ -452,15 +448,15 @@ async function loadManifest(manifestPath: string, pkgName: string, pkgRoot?: str
       subgroup: cmd.subgroup,
       describe: cmd.describe || '',
       longDescription: cmd.longDescription,
-      aliases: cmd.aliases,
+      aliases: (cmd as unknown as Record<string, unknown>).aliases as string[] | undefined,
       flags: cmd.flags,
       examples: cmd.examples,
       loader: createManifestV3Loader(commandId),
       package: pkgName,
       namespace: cmd.group || namespace,
     };
-    (commandManifest as any).manifestV2 = manifest; // Keep for backward compat with service.ts
-    (commandManifest as any).pkgRoot = baseRoot;
+    commandManifest.manifestV2 = manifest; // Keep for backward compat with service.ts
+    commandManifest.pkgRoot = baseRoot;
     return commandManifest;
   });
 
@@ -501,7 +497,7 @@ async function loadManifest(manifestPath: string, pkgName: string, pkgRoot?: str
 /**
  * Read and parse package.json
  */
-async function readPackageJson(pkgPath: string): Promise<any> {
+async function readPackageJson(pkgPath: string): Promise<Record<string, unknown> | null> {
   try {
     const content = await fs.readFile(pkgPath, 'utf8');
     return JSON.parse(content);
@@ -532,9 +528,10 @@ async function loadConfig(cwd: string): Promise<{ allow?: string[]; block?: stri
  * Find manifest path using conventional locations
  * Returns path and whether it's deprecated
  */
-async function findManifestPath(pkgRoot: string, pkg: any): Promise<{ path: string | null; deprecated: boolean }> {
-  if (pkg.kb?.manifest) {
-    const manifestPath = path.join(pkgRoot, pkg.kb.manifest);
+async function findManifestPath(pkgRoot: string, pkg: Record<string, unknown>): Promise<{ path: string | null; deprecated: boolean }> {
+  const kb = pkg.kb as Record<string, unknown> | undefined;
+  if (kb?.manifest) {
+    const manifestPath = path.join(pkgRoot, kb.manifest as string);
     try {
       await fs.access(manifestPath);
       return { path: manifestPath, deprecated: false };
@@ -543,9 +540,10 @@ async function findManifestPath(pkgRoot: string, pkg: any): Promise<{ path: stri
     }
   }
 
-  if (pkg.exports?.['./kb/commands']) {
-    const exportPath = pkg.exports['./kb/commands'];
-    const manifestPath = typeof exportPath === 'string' ? exportPath : exportPath.default || exportPath.import;
+  const exports = pkg.exports as Record<string, unknown> | undefined;
+  if (exports?.['./kb/commands']) {
+    const exportPath = exports['./kb/commands'] as string | Record<string, string>;
+    const manifestPath = typeof exportPath === 'string' ? exportPath : (exportPath as Record<string, string>).default || (exportPath as Record<string, string>).import;
     if (manifestPath) {
       const resolved = path.resolve(pkgRoot, manifestPath);
       try {
@@ -567,11 +565,11 @@ async function findManifestPath(pkgRoot: string, pkg: any): Promise<{ path: stri
 /**
  * Check if package is a plugin by keywords or kb.plugin flag
  */
-function isPluginPackage(pkg: any): boolean {
+function isPluginPackage(pkg: Record<string, unknown>): boolean {
   if (!pkg) {return false;}
   
   // Explicit flag
-  if (pkg.kb?.plugin === true) {return true;}
+  if ((pkg.kb as Record<string, unknown>)?.plugin === true) {return true;}
   
   // Keyword check
   const keywords = Array.isArray(pkg.keywords) ? pkg.keywords : [];
@@ -615,7 +613,7 @@ async function discoverWorkspace(cwd: string): Promise<DiscoveryResult[]> {
   }
   
   // First pass: collect all package info
-  const packageInfos: Array<{pkgRoot: string, pkg: any, manifestPath: string}> = [];
+  const packageInfos: Array<{pkgRoot: string, pkg: Record<string, unknown>, manifestPath: string}> = [];
   
   for (const pattern of parsed.packages) {
     const pkgPattern = path.join(pattern, PACKAGE_JSON);
@@ -667,7 +665,7 @@ async function discoverProjectLocalPlugins(projectRoot: string): Promise<Discove
     absolute: false,
     ignore: ['**/node_modules/**'],
   });
-  const packageInfos: Array<{ pkgRoot: string; pkg: any; manifestPath: string }> = [];
+  const packageInfos: Array<{ pkgRoot: string; pkg: Record<string, unknown>; manifestPath: string }> = [];
   for (const pkgFile of files) {
     const pkgRoot = path.dirname(path.join(projectRoot, pkgFile));
     const pkg = await readPackageJson(path.join(projectRoot, pkgFile));
@@ -688,52 +686,55 @@ async function discoverProjectLocalPlugins(projectRoot: string): Promise<Discove
  * "unavailable" manifests on load failure.
  */
 async function loadManifestsForPackages(
-  packageInfos: Array<{ pkgRoot: string; pkg: any; manifestPath: string }>,
+  packageInfos: Array<{ pkgRoot: string; pkg: Record<string, unknown>; manifestPath: string }>,
   source: DiscoveryResult['source'],
   scope: DiscoveryResult['scope'],
 ): Promise<DiscoveryResult[]> {
   const loadPromises = packageInfos.map(async ({ pkgRoot, pkg, manifestPath }) => {
+    const pkgName = pkg.name as string;
     const pkgStart = Date.now();
     try {
-      const manifests = await loadManifestWithTimeout(manifestPath, pkg.name, pkgRoot);
+      const manifests = await loadManifestWithTimeout(manifestPath, pkgName, pkgRoot);
       const pkgTime = Date.now() - pkgStart;
 
       if (pkgTime > 30) {
-        log('debug', `[plugins][perf] ${pkg.name} manifest parse: ${pkgTime}ms (budget: 30ms)`);
+        log('debug', `[plugins][perf] ${pkgName} manifest parse: ${pkgTime}ms (budget: 30ms)`);
       }
 
       if (manifests.length > 0) {
-        validateUniqueIds(manifests, pkg.name);
+        validateUniqueIds(manifests, pkgName);
         return {
           manifests,
           source,
           scope,
-          packageName: pkg.name,
+          packageName: pkgName,
           manifestPath: toPosixPath(manifestPath),
           pkgRoot: toPosixPath(pkgRoot),
         } satisfies DiscoveryResult;
       }
       return null;
-    } catch (err: any) {
+    } catch (err: unknown) {
       const pkgTime = Date.now() - pkgStart;
-      log('debug', `[plugins][perf] ${pkg.name} failed after ${pkgTime}ms`);
+      log('debug', `[plugins][perf] ${pkgName} failed after ${pkgTime}ms`);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      const errCode = (err as { code?: string }).code ?? 'UNKNOWN';
 
       log('warn', JSON.stringify({
         code: 'DISCOVERY_MANIFEST_LOAD_FAIL',
-        packageName: pkg.name,
+        packageName: pkgName,
         manifestPath: toPosixPath(manifestPath),
-        errorCode: err.code || 'UNKNOWN',
-        errorMessage: err.message,
-        hint: err.message.includes('Cannot find package')
+        errorCode: errCode,
+        errorMessage: errMsg,
+        hint: errMsg.includes('Cannot find package')
           ? 'Run: kb devlink apply && pnpm -w build'
           : 'Check manifest syntax and dependencies',
       }));
-      const synthetic = createUnavailableManifest(pkg.name, err);
+      const synthetic = createUnavailableManifest(pkgName, err);
       return {
         manifests: [synthetic],
         source,
         scope,
-        packageName: pkg.name,
+        packageName: pkgName,
         manifestPath: toPosixPath(manifestPath),
         pkgRoot: toPosixPath(pkgRoot),
       } satisfies DiscoveryResult;
@@ -759,30 +760,31 @@ async function discoverCurrentPackage(cwd: string): Promise<DiscoveryResult | nu
   try {
     const pkg = await readPackageJson(path.join(cwd, PACKAGE_JSON));
     if (!pkg) {return null;}
-    
+    const pkgName = pkg.name as string;
+
     const manifestInfo = await findManifestPath(cwd, pkg);
     if (manifestInfo.path) {
       if (manifestInfo.deprecated) {
-        log('warn', `[DEPRECATED] ${pkg.name} uses legacy manifest path: ${manifestInfo.path}`);
+        log('warn', `[DEPRECATED] ${pkgName} uses legacy manifest path: ${manifestInfo.path}`);
         log('warn', `  → Migrate to exports["./kb/commands"] or set kb.commandsManifest in package.json`);
       }
-      const manifests = await loadManifestWithTimeout(manifestInfo.path, pkg.name, cwd);
+      const manifests = await loadManifestWithTimeout(manifestInfo.path, pkgName, cwd);
       if (manifests.length > 0) {
-        validateUniqueIds(manifests, pkg.name);
+        validateUniqueIds(manifests, pkgName);
         return {
           manifests,
           source: 'workspace',
           // Current-package fallback fires in installed mode when the user's
           // project itself exposes a manifest. That maps to the project scope.
           scope: 'project',
-          packageName: pkg.name,
+          packageName: pkgName,
           manifestPath: toPosixPath(manifestInfo.path),
           pkgRoot: toPosixPath(cwd),
         };
       }
     }
-  } catch (err: any) {
-    log('debug', `No CLI manifest in current package: ${err.message}`);
+  } catch (err: unknown) {
+    log('debug', `No CLI manifest in current package: ${err instanceof Error ? err.message : String(err)}`);
   }
   return null;
 }
@@ -797,7 +799,7 @@ async function discoverNodeModules(cwd: string): Promise<DiscoveryResult[]> {
   
   try {
     const entries = await fs.readdir(nmDir, { withFileTypes: true });
-    const packageInfos: Array<{pkgRoot: string, pkg: any, manifestPath: string, isLinked?: boolean}> = [];
+    const packageInfos: Array<{pkgRoot: string, pkg: Record<string, unknown>, manifestPath: string, isLinked?: boolean}> = [];
     
     // First pass: collect all plugin packages
     const scanPromises: Promise<void>[] = [];
@@ -807,7 +809,7 @@ async function discoverNodeModules(cwd: string): Promise<DiscoveryResult[]> {
 
       const scanEntry = async () => {
         let pkgRoot: string;
-        let pkg: any;
+        let pkg: Record<string, unknown> | null = null;
 
         if (entry.name.startsWith('@')) {
           // Scoped package: @scope/name
@@ -819,38 +821,39 @@ async function discoverNodeModules(cwd: string): Promise<DiscoveryResult[]> {
               pkg = await readPackageJson(path.join(pkgRoot, PACKAGE_JSON));
               
               if (!pkg) {continue;}
-              
+
+              const scopedPkgName = pkg.name as string | undefined;
               // Check if it's a plugin
               const isPlugin = isPluginPackage(pkg);
-              
+
               // For @kb-labs/*, always include if has manifest
               // For others, require keyword/flag AND allowlist (unless explicitly blocked)
-              if (pkg.name?.startsWith('@kb-labs/')) {
+              if (scopedPkgName?.startsWith('@kb-labs/')) {
                 const manifestInfo = await findManifestPath(pkgRoot, pkg);
                 if (manifestInfo.path) {
                   packageInfos.push({ pkgRoot, pkg, manifestPath: manifestInfo.path });
                 }
               } else if (isPlugin) {
                 // 3rd-party plugin: check allowlist/blocklist
-                if (config.block?.includes(pkg.name)) {
-                  log('debug', `Plugin ${pkg.name} blocked by config`);
+                if (config.block?.includes(scopedPkgName ?? '')) {
+                  log('debug', `Plugin ${scopedPkgName} blocked by config`);
                   return;
                 }
-                
+
                 // Must be allowlisted OR in linked list
-                const isAllowlisted = config.allow?.includes(pkg.name) || config.linked?.includes(pkg.name);
+                const isAllowlisted = config.allow?.includes(scopedPkgName ?? '') || config.linked?.includes(scopedPkgName ?? '');
                 if (!isAllowlisted) {
-                  log('debug', `Plugin ${pkg.name} skipped (not allowlisted). Add to kb-labs.config.json plugins.allow or enable via 'kb marketplace enable'`);
+                  log('debug', `Plugin ${scopedPkgName} skipped (not allowlisted). Add to kb-labs.config.json plugins.allow or enable via 'kb marketplace enable'`);
                   return;
                 }
-                
+
                 const manifestInfo = await findManifestPath(pkgRoot, pkg);
                 if (manifestInfo.path) {
                   if (manifestInfo.deprecated) {
-                    log('warn', `[DEPRECATED] ${pkg.name} uses legacy manifest path: ${manifestInfo.path}`);
+                    log('warn', `[DEPRECATED] ${scopedPkgName} uses legacy manifest path: ${manifestInfo.path}`);
                     log('warn', `  → Migrate to exports["./kb/commands"] or set kb.commandsManifest in package.json`);
                   }
-                  const isLinked = config.linked?.includes(pkg.name);
+                  const isLinked = config.linked?.includes(scopedPkgName ?? '');
                   packageInfos.push({ pkgRoot, pkg, manifestPath: manifestInfo.path, isLinked });
                 }
               }
@@ -864,29 +867,30 @@ async function discoverNodeModules(cwd: string): Promise<DiscoveryResult[]> {
           pkg = await readPackageJson(path.join(pkgRoot, PACKAGE_JSON));
           
           if (!pkg) {return;}
-          
+
+          const unscopedPkgName = pkg.name as string | undefined;
           const isPlugin = isPluginPackage(pkg);
-          
+
           if (isPlugin) {
             // 3rd-party: check allowlist/blocklist
-            if (config.block?.includes(pkg.name)) {
-              log('debug', `Plugin ${pkg.name} blocked by config`);
+            if (config.block?.includes(unscopedPkgName ?? '')) {
+              log('debug', `Plugin ${unscopedPkgName} blocked by config`);
               return;
             }
-            
-            const isAllowlisted = config.allow?.includes(pkg.name) || config.linked?.includes(pkg.name);
+
+            const isAllowlisted = config.allow?.includes(unscopedPkgName ?? '') || config.linked?.includes(unscopedPkgName ?? '');
             if (!isAllowlisted) {
-              log('debug', `Plugin ${pkg.name} skipped (not allowlisted). Add to kb-labs.config.json plugins.allow or enable via 'kb marketplace enable'`);
+              log('debug', `Plugin ${unscopedPkgName} skipped (not allowlisted). Add to kb-labs.config.json plugins.allow or enable via 'kb marketplace enable'`);
               return;
             }
-            
+
             const manifestInfo = await findManifestPath(pkgRoot, pkg);
             if (manifestInfo.path) {
               if (manifestInfo.deprecated) {
-                log('warn', `[DEPRECATED] ${pkg.name} uses legacy manifest path: ${manifestInfo.path}`);
+                log('warn', `[DEPRECATED] ${unscopedPkgName} uses legacy manifest path: ${manifestInfo.path}`);
                 log('warn', `  → Migrate to exports["./kb/commands"] or set kb.commandsManifest in package.json`);
               }
-              const isLinked = config.linked?.includes(pkg.name);
+              const isLinked = config.linked?.includes(unscopedPkgName ?? '');
               packageInfos.push({ pkgRoot, pkg, manifestPath: manifestInfo.path, isLinked });
             }
           }
@@ -900,10 +904,11 @@ async function discoverNodeModules(cwd: string): Promise<DiscoveryResult[]> {
     
     // Second pass: load all manifests in parallel
     const loadPromises = packageInfos.map(async ({ pkgRoot, pkg, manifestPath, isLinked }) => {
+      const pkgName = pkg.name as string;
       try {
-        const manifests = await loadManifestWithTimeout(manifestPath, pkg.name, pkgRoot);
+        const manifests = await loadManifestWithTimeout(manifestPath, pkgName, pkgRoot);
         if (manifests.length > 0) {
-          validateUniqueIds(manifests, pkg.name);
+          validateUniqueIds(manifests, pkgName);
           return {
             manifests,
             source: (isLinked ? 'linked' : 'node_modules') as 'node_modules' | 'linked',
@@ -911,29 +916,31 @@ async function discoverNodeModules(cwd: string): Promise<DiscoveryResult[]> {
             // platformRoot === projectRoot so either label is correct; we use
             // platform to reflect where the manifest physically lives.
             scope: 'platform' as const,
-            packageName: pkg.name,
+            packageName: pkgName,
             manifestPath: toPosixPath(manifestPath),
             pkgRoot: toPosixPath(pkgRoot),
           } satisfies DiscoveryResult;
         }
         return null;
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const errMsg = err instanceof Error ? err.message : String(err);
+        const errCode = (err as { code?: string }).code ?? 'UNKNOWN';
         log('warn', JSON.stringify({
           code: 'DISCOVERY_MANIFEST_LOAD_FAIL',
-          packageName: pkg.name,
+          packageName: pkgName,
           manifestPath: toPosixPath(manifestPath),
-          errorCode: err.code || 'UNKNOWN',
-          errorMessage: err.message,
-          hint: err.message.includes('Cannot find package') 
+          errorCode: errCode,
+          errorMessage: errMsg,
+          hint: errMsg.includes('Cannot find package')
             ? 'Run: kb devlink apply && pnpm -w build'
             : 'Check manifest syntax and dependencies'
         }));
-        const synthetic = createUnavailableManifest(pkg.name, err);
+        const synthetic = createUnavailableManifest(pkgName, err);
         return {
           manifests: [synthetic],
           source: (isLinked ? 'linked' : 'node_modules') as 'node_modules' | 'linked',
           scope: 'platform' as const,
-          packageName: pkg.name,
+          packageName: pkgName,
           manifestPath: toPosixPath(manifestPath),
           pkgRoot: toPosixPath(pkgRoot),
         } satisfies DiscoveryResult;
@@ -950,9 +957,9 @@ async function discoverNodeModules(cwd: string): Promise<DiscoveryResult[]> {
     }
     
     return results;
-  } catch (err: any) {
+  } catch (err: unknown) {
     // node_modules doesn't exist or can't read
-    log('debug', `Could not scan node_modules: ${err.message}`);
+    log('debug', `Could not scan node_modules: ${err instanceof Error ? err.message : String(err)}`);
     return [];
   }
 }
@@ -1030,7 +1037,7 @@ async function loadCache(
   
   try {
     const content = await fs.readFile(cachePath, 'utf8');
-    const cache = JSON.parse(content) as any;
+    const cache = JSON.parse(content) as Partial<CacheFile> & { mtimes?: unknown; results?: unknown };
     
     // Handle old cache format (with mtimes and results)
     if (cache.mtimes && cache.results) {
@@ -1143,8 +1150,8 @@ async function isPackageCacheStale(
       log('debug', `Package cache invalidated: package.json changed for ${entry.result.packageName}`);
       return true;
     }
-  } catch (error: any) {
-    log('debug', `Package cache invalidated: missing package.json for ${entry.result.packageName} (${error?.message || 'unknown'})`);
+  } catch (error: unknown) {
+    log('debug', `Package cache invalidated: missing package.json for ${entry.result.packageName} (${error instanceof Error ? error.message : 'unknown'})`);
     return true;
   }
 
@@ -1155,8 +1162,8 @@ async function isPackageCacheStale(
       log('debug', `Package cache invalidated: manifest mtime changed for ${entry.result.packageName}`);
       return true;
     }
-  } catch (error: any) {
-    log('debug', `Package cache invalidated: manifest deleted for ${entry.result.packageName} (${error?.message || 'unknown'})`);
+  } catch (error: unknown) {
+    log('debug', `Package cache invalidated: manifest deleted for ${entry.result.packageName} (${error instanceof Error ? error.message : 'unknown'})`);
     return true;
   }
 
@@ -1167,8 +1174,8 @@ async function isPackageCacheStale(
         log('debug', `Package cache invalidated: manifest hash changed for ${entry.result.packageName}`);
         return true;
       }
-    } catch (error: any) {
-      log('debug', `Package cache hash validation failed for ${entry.result.packageName}: ${error?.message || 'unknown'}`);
+    } catch (error: unknown) {
+      log('debug', `Package cache hash validation failed for ${entry.result.packageName}: ${error instanceof Error ? error.message : 'unknown'}`);
       return true;
     }
   }
@@ -1204,7 +1211,7 @@ async function saveCache(
     // lock the error state until the TTL expires even after the root cause is
     // fixed.
     const allSynthetic = result.manifests.length > 0 &&
-      result.manifests.every((m) => (m as any)._synthetic === true);
+      result.manifests.every((m) => m._synthetic === true);
     if (allSynthetic) {
       log('debug', `[plugins][cache] Skipping synthetic unavailable manifest for ${result.packageName}`);
       continue;
@@ -1217,7 +1224,7 @@ async function saveCache(
       const pkgJsonPath = path.join(result.pkgRoot.split('/').join(path.sep), PACKAGE_JSON);
       const pkgStat = await fs.stat(pkgJsonPath);
       const pkg = await readPackageJson(pkgJsonPath);
-      const version = pkg?.version || '0.1.0';
+      const version = (pkg?.version as string | undefined) || '0.1.0';
       
       // Get manifest mtime
       const manifestStat = await fs.stat(result.manifestPath.split('/').join(path.sep));
@@ -1244,8 +1251,8 @@ async function saveCache(
       };
       stateHasher.update(result.packageName);
       stateHasher.update(manifestHash);
-    } catch (err: any) {
-      log('debug', `Failed to cache package ${result.packageName}: ${err.message}`);
+    } catch (err: unknown) {
+      log('debug', `Failed to cache package ${result.packageName}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
   
@@ -1285,8 +1292,8 @@ async function saveCache(
   try {
     // CRITICAL OOM FIX: Use compact JSON to avoid split('\n') memory issues on large manifests (1.6MB+)
     await fs.writeFile(cachePath, JSON.stringify(cache), 'utf8');
-  } catch (err: any) {
-    log('debug', `Failed to save cache: ${err.message}`);
+  } catch (err: unknown) {
+    log('debug', `Failed to save cache: ${err instanceof Error ? err.message : String(err)}`);
   }
 }
 
@@ -1390,7 +1397,7 @@ export async function discoverManifests(
     workspace = await discoverWorkspace(platformRoot);
     timings.workspace = Date.now() - wsStart;
     log('info', `Discovered ${workspace.length} workspace packages with CLI manifests`);
-  } catch (_err: any) {
+  } catch (_err: unknown) {
     // No pnpm-workspace.yaml - fallback to current package + node_modules
     log('info', 'No workspace file found, checking current package');
 

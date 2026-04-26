@@ -52,8 +52,8 @@ export async function gitDiffSince(cwd: string, since: string): Promise<RecentDi
       since,
       files
     };
-  } catch (error: any) {
-    throw new MindError('MIND_GIT_ERROR', `Git diff failed: ${error.message}`);
+  } catch (error: unknown) {
+    throw new MindError('MIND_GIT_ERROR', `Git diff failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 

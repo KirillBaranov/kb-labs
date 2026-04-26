@@ -10,7 +10,7 @@ import {
 } from '@kb-labs/release-manager-changelog';
 import type { ReleaseConfig, ChangelogGenerator } from '@kb-labs/release-manager-core';
 
-export function createChangelogGenerator(config: ReleaseConfig, llm?: any): ChangelogGenerator {
+export function createChangelogGenerator(config: ReleaseConfig, llm?: unknown): ChangelogGenerator {
   return {
     async generate(plan, opts) {
       const locale = (config.changelog?.locale as 'en' | 'ru') || 'en';

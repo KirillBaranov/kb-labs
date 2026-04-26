@@ -30,8 +30,10 @@ export default defineCommand({
     ): Promise<CheckTypesCommandResult> {
       const { ui, platform } = ctx;
 
-      // V3: Flags come in input.flags object (not auto-merged)
-      const flags = (input as any).flags ?? input;
+      // V3: Flags may come wrapped in input.flags or passed directly
+      const flags = ('flags' in input && typeof (input as { flags?: unknown }).flags === 'object' && (input as { flags?: unknown }).flags !== null)
+        ? (input as { flags: CheckTypesInput }).flags
+        : input;
 
       const cacheKey = `${CACHE_KEYS.TYPE_ANALYSIS}:${flags.package || 'all'}`;
 
@@ -80,7 +82,7 @@ export default defineCommand({
 function outputTypeAnalysis(
   result: TypeAnalysisResult & { cached: boolean },
   flags: CheckTypesInput,
-  ui: any
+  ui: Record<string, unknown>
 ): void {
   if (flags.json) {
     ui?.json?.(result);

@@ -302,7 +302,7 @@ export interface PipelineOptions {
   /** Pass --no-verify to git push and pushTags. Default: false (hooks run normally). */
   noVerify?: boolean;
 
-  logger?: { info?: (...args: any[]) => void; warn?: (...args: any[]) => void; error?: (...args: any[]) => void };
+  logger?: { info?: (...args: unknown[]) => void; warn?: (...args: unknown[]) => void; error?: (...args: unknown[]) => void };
   onProgress?: (stage: ReleaseStage, message: string) => void;
 }
 

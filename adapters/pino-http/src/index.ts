@@ -76,7 +76,7 @@ export default async function (opts: HTTPTransportOptions) {
     debug: opts.debug || false,
   };
 
-  const batch: any[] = [];
+  const batch: Record<string, unknown>[] = [];
   let flushTimer: NodeJS.Timeout | null = null;
   let isShuttingDown = false;
 

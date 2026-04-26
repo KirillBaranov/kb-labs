@@ -79,10 +79,10 @@ export interface ExecutionContext {
    * This will be removed in a future version. Migrate to runtime API for better type safety and consistency.
    */
   extensions?: {
-    artifacts?: any;
-    invoke?: any;
-    shell?: any;
-    events?: any;
+    artifacts?: unknown;
+    invoke?: unknown;
+    shell?: unknown;
+    events?: unknown;
   };
   
   /** Lifecycle hooks (optional, for observability) */
@@ -92,13 +92,13 @@ export interface ExecutionContext {
   dryRun?: boolean;
   
   /** Analytics emitter (only in inprocess mode) */
-  analytics?: (event: Partial<any>) => Promise<any>;
+  analytics?: (event: Record<string, unknown>) => Promise<void>;
   
   /** Remaining timeout in milliseconds (only in inprocess mode) */
   remainingMs?: () => number;
 
   /** Platform configuration for worker initialization (NEW) */
-  platformConfig?: any; // PlatformConfig from @kb-labs/core-runtime (avoiding type import to prevent circular dep)
+  platformConfig?: Record<string, unknown>; // PlatformConfig from @kb-labs/core-runtime (avoiding type import to prevent circular dep)
 }
 
 /**

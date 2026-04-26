@@ -89,8 +89,10 @@ export default defineCommand({
 
   handler: {
     async execute(ctx: PluginContextV3, input: RunInput): Promise<RunResult> {
-      // V3: Flags come in input.flags object (not auto-merged)
-      const flags = (input as any).flags ?? input;
+      // V3: Flags may come wrapped in input.flags or passed directly
+      const flags = ('flags' in input && typeof (input as { flags?: unknown }).flags === 'object' && (input as { flags?: unknown }).flags !== null)
+        ? (input as { flags: RunInput }).flags
+        : input;
 
       const {
         task,

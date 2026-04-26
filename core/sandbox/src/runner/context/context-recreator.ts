@@ -71,7 +71,7 @@ export async function recreateContext(options: ContextRecreatorOptions): Promise
 
   // Set __KB_CONFIG_SECTION__ for useConfig() auto-detection
   if (serializedCtx.configSection) {
-    (globalThis as any).__KB_CONFIG_SECTION__ = serializedCtx.configSection;
+    (globalThis as typeof globalThis & { __KB_CONFIG_SECTION__?: unknown }).__KB_CONFIG_SECTION__ = serializedCtx.configSection;
   }
 
   // Defensive: ensure serializedCtx has all required fields

@@ -29,11 +29,11 @@ function isErrorEnvelopeResponse(obj: unknown): obj is ErrorEnvelopeResponse {
     typeof obj === 'object' &&
     obj !== null &&
     'ok' in obj &&
-    (obj as any).ok === false &&
+    (obj as { ok: unknown }).ok === false &&
     'error' in obj &&
-    typeof (obj as any).error === 'object' &&
-    (obj as any).error !== null &&
-    'message' in (obj as any).error
+    typeof (obj as { error: unknown }).error === 'object' &&
+    (obj as { error: unknown }).error !== null &&
+    'message' in (obj as { error: object }).error
   );
 }
 

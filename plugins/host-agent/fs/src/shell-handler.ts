@@ -110,11 +110,12 @@ export class ShellHandler {
       });
 
       return { stdout: stdout ?? '', stderr: '', exitCode: 0 };
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const e = err as { stdout?: string; stderr?: string; message?: string; status?: number };
       return {
-        stdout: err.stdout ?? '',
-        stderr: err.stderr ?? err.message ?? '',
-        exitCode: err.status ?? 1,
+        stdout: e.stdout ?? '',
+        stderr: e.stderr ?? e.message ?? '',
+        exitCode: e.status ?? 1,
       };
     }
   }

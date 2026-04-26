@@ -112,9 +112,9 @@ describe('discoverAdapters (lock-based)', () => {
     expect(typeof adapter.createAdapter).toBe('function');
     expect(adapter.packageName).toBe('@test/my-adapter');
 
-    const instance = adapter.createAdapter({ key: 'value' });
-    expect(instance.type).toBe('test');
-    expect(instance.config.key).toBe('value');
+    const instance = adapter.createAdapter({ key: 'value' }) as Record<string, unknown>;
+    expect((instance as Record<string, unknown>).type).toBe('test');
+    expect((instance.config as Record<string, unknown>).key).toBe('value');
   });
 });
 

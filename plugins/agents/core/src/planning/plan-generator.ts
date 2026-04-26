@@ -206,11 +206,11 @@ export class PlanGenerator {
     });
 
     // Extract plan from tool call
-    let planData: any;
+    let planData: GeneratedPlanData | undefined;
     if (response.toolCalls && response.toolCalls.length > 0) {
       const planCall = response.toolCalls.find((tc: { name: string; input: unknown }) => tc.name === planToolName);
       if (planCall) {
-        planData = planCall.input;
+        planData = planCall.input as GeneratedPlanData;
       }
     }
 
@@ -228,12 +228,12 @@ export class PlanGenerator {
       throw new Error('LLM did not generate a plan using the tool');
     }
 
-    const markdownFirst = typeof (planData as GeneratedPlanData).markdown === 'string'
-      && (planData as GeneratedPlanData).markdown!.trim().length > 0;
+    const markdownFirst = typeof planData.markdown === 'string'
+      && planData.markdown.trim().length > 0;
     let qualitySummary: { score: number; issues: string[]; severeIssues: string[] } | null = null;
     let regenerated = false;
     if (markdownFirst) {
-      const initialAssessment = this.assessFreeformMarkdown((planData as GeneratedPlanData).markdown || '');
+      const initialAssessment = this.assessFreeformMarkdown(planData.markdown || '');
       qualitySummary = initialAssessment;
       if (initialAssessment.severeIssues.length > 0) {
         const originalPlanData = planData as GeneratedPlanData;
@@ -1320,7 +1320,7 @@ You MUST fix these issues and return a concrete implementation/refactoring plan.
     const isRefactor = this.isRefactorTask(task);
     const markdown = typeof planData.markdown === 'string' ? planData.markdown.trim() : '';
     const phases = Array.isArray(planData.phases) ? planData.phases : [];
-    const steps = phases.flatMap((phase: any) => Array.isArray(phase?.steps) ? phase.steps : []);
+    const steps = phases.flatMap((phase: unknown) => Array.isArray((phase as Record<string, unknown>)?.steps) ? (phase as Record<string, unknown>).steps as unknown[] : []);
     const refactorDecisions = Array.isArray(planData.refactorDecisions) ? planData.refactorDecisions : [];
     const changeSets = Array.isArray(planData.changeSets) ? planData.changeSets : [];
     const verification = Array.isArray(planData.verification) ? planData.verification : [];
@@ -1400,7 +1400,10 @@ You MUST fix these issues and return a concrete implementation/refactoring plan.
       issues.push('Plan tool output is missing markdown draft.');
     }
 
-    const textFields = steps.map((step: any) => `${step?.action || ''} ${step?.expectedOutcome || ''} ${JSON.stringify(step?.args || {})}`);
+    const textFields = steps.map((step: unknown) => {
+      const s = step as Record<string, unknown>;
+      return `${s?.action || ''} ${s?.expectedOutcome || ''} ${JSON.stringify(s?.args || {})}`;
+    });
     const hasPlaceholders = textFields.some((text) => /<[^>]+>|\bTBD\b|\bTODO\b/.test(text));
     if (hasPlaceholders) {
       const reason = 'Plan contains placeholders instead of concrete file/module references.';
@@ -1420,27 +1423,29 @@ You MUST fix these issues and return a concrete implementation/refactoring plan.
       'browser_click', 'browser_type', 'browser_fill', 'browser_submit',
       'mcp_invoke', 'plugin_invoke',
     ]);
-    const readOnlyCount = steps.filter((step: any) => readOnlyTools.has(String(step?.tool || ''))).length;
-    const changeCount = steps.filter((step: any) => changeTools.has(String(step?.tool || ''))).length;
+    const readOnlyCount = steps.filter((step: unknown) => readOnlyTools.has(String((step as Record<string, unknown>)?.tool || ''))).length;
+    const changeCount = steps.filter((step: unknown) => changeTools.has(String((step as Record<string, unknown>)?.tool || ''))).length;
     const changeRatio = steps.length > 0 ? changeCount / steps.length : 0;
-    const analysisPhases = phases.filter((phase: any) => /(discovery|inventory|audit|analysis|research)/i.test(String(phase?.name || ''))).length;
-    const solutionStepCount = steps.filter((step: any) =>
-      /(extract|split|rename|decouple|inject|interface|abstraction|remove|replace|refactor|test|coverage|consolidate|modular)/i
-        .test(`${step?.action || ''} ${step?.expectedOutcome || ''}`)
-    ).length;
+    const analysisPhases = phases.filter((phase: unknown) => /(discovery|inventory|audit|analysis|research)/i.test(String((phase as Record<string, unknown>)?.name || ''))).length;
+    const solutionStepCount = steps.filter((step: unknown) => {
+      const s = step as Record<string, unknown>;
+      return /(extract|split|rename|decouple|inject|interface|abstraction|remove|replace|refactor|test|coverage|consolidate|modular)/i
+        .test(`${s?.action || ''} ${s?.expectedOutcome || ''}`);
+    }).length;
     const solutionStepRatio = steps.length > 0 ? solutionStepCount / steps.length : 0;
 
-    const missingToolCount = steps.filter((step: any) => typeof step?.tool !== 'string' || String(step.tool).trim().length === 0).length;
+    const missingToolCount = steps.filter((step: unknown) => { const s = step as Record<string, unknown>; return typeof s?.tool !== 'string' || String(s.tool).trim().length === 0; }).length;
     if (missingToolCount > 0) {
       issues.push('Some plan steps are missing explicit tools.');
     }
 
-    const missingActionOrOutcomeCount = steps.filter((step: any) =>
-      typeof step?.action !== 'string'
-      || step.action.trim().length === 0
-      || typeof step?.expectedOutcome !== 'string'
-      || step.expectedOutcome.trim().length === 0
-    ).length;
+    const missingActionOrOutcomeCount = steps.filter((step: unknown) => {
+      const s = step as Record<string, unknown>;
+      return typeof s?.action !== 'string'
+        || (s.action as string).trim().length === 0
+        || typeof s?.expectedOutcome !== 'string'
+        || (s.expectedOutcome as string).trim().length === 0;
+    }).length;
     if (missingActionOrOutcomeCount > 0) {
       const reason = 'Some plan steps are missing action/expectedOutcome.';
       issues.push(reason);
@@ -2024,22 +2029,28 @@ You MUST fix these issues and return a concrete implementation/refactoring plan.
   /**
    * Normalize phases from tool call
    */
-  private normalizePhasesFromTool(phases: any[]): Phase[] {
-    return phases.map((p, idx) => ({
-      id: p.id || `phase-${idx + 1}`,
-      name: this.normalizePhaseName(p.name, p.description, p.steps, idx + 1),
-      description: this.normalizePhaseDescription(p.description, p.steps),
-      dependencies: Array.isArray(p.dependencies) ? p.dependencies : [],
-      status: 'pending' as const,
-      steps: (p.steps || []).map((s: any, stepIdx: number) => ({
-        id: s.id || `step-${idx + 1}-${stepIdx + 1}`,
-        action: this.normalizeStepAction(s.action),
-        tool: s.tool,
-        args: s.args || {},
-        expectedOutcome: this.normalizeExpectedOutcome(s.expectedOutcome, s.action),
+  private normalizePhasesFromTool(phases: unknown[]): Phase[] {
+    return phases.map((phase, idx) => {
+      const p = phase as Record<string, unknown>;
+      return {
+        id: typeof p.id === 'string' ? p.id : `phase-${idx + 1}`,
+        name: this.normalizePhaseName(p.name, p.description, p.steps, idx + 1),
+        description: this.normalizePhaseDescription(p.description, p.steps),
+        dependencies: Array.isArray(p.dependencies) ? p.dependencies as string[] : [],
         status: 'pending' as const,
-      })),
-    }));
+        steps: (Array.isArray(p.steps) ? p.steps : []).map((step: unknown, stepIdx: number) => {
+          const s = step as Record<string, unknown>;
+          return {
+            id: typeof s.id === 'string' ? s.id : `step-${idx + 1}-${stepIdx + 1}`,
+            action: this.normalizeStepAction(s.action),
+            tool: typeof s.tool === 'string' ? s.tool : undefined,
+            args: (s.args && typeof s.args === 'object' ? s.args : {}) as Record<string, unknown>,
+            expectedOutcome: this.normalizeExpectedOutcome(s.expectedOutcome, s.action),
+            status: 'pending' as const,
+          };
+        }),
+      };
+    });
   }
 
   private parsePhasesFromMarkdown(markdown: string): Phase[] {

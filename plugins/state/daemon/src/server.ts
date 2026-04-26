@@ -116,7 +116,7 @@ export class StateDaemonServer {
       reply.header('X-Request-Id', requestId);
       reply.header('X-Trace-Id', traceId);
 
-      (request as any).kbLogger = createCorrelatedLogger(this.logger, {
+      request.kbLogger = createCorrelatedLogger(this.logger, {
         serviceId: 'state-daemon',
         logsSource: 'state-daemon',
         layer: 'state-daemon',
@@ -127,14 +127,14 @@ export class StateDaemonServer {
         url: request.url,
         operation: 'http.request',
       });
-      (request as any).kbLogger.info(`→ ${request.method.toUpperCase()} ${request.url}`);
+      request.kbLogger.info(`→ ${request.method.toUpperCase()} ${request.url}`);
 
       if (request.method === 'OPTIONS') {
         reply.code(204).send();
       }
     });
     server.addHook('onResponse', async (request, reply) => {
-      const logger = (request as any).kbLogger as { info: (message: string, meta?: Record<string, unknown>) => void } | undefined;
+      const logger = request.kbLogger;
       if (!logger) {
         return;
       }

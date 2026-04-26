@@ -74,7 +74,7 @@ async function loadPlatformConfig(repoRoot: string): Promise<{
       };
     }
 
-    const config = configResult.data as any;
+    const config = configResult.data as Record<string, unknown>;
 
     return {
       adapters: config.platform?.adapters ?? {},

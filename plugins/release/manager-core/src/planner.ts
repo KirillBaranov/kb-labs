@@ -53,7 +53,7 @@ async function getCommitsSinceTag(
     // git log [<tag>..HEAD] [--] <path>
     // Without a tag (initial release): git log -- <path>
     const args = ['log', '--format=%s', ...(lastTag ? [`${lastTag}..HEAD`] : []), '--', relPath];
-    const raw = await (git as any).raw(args) as string;
+    const raw = await git.raw(args);
     return raw.split('\n').map((s: string) => s.trim()).filter(Boolean);
   } catch {
     return [];

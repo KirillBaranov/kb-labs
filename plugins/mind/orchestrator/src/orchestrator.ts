@@ -42,7 +42,7 @@ function generateRequestId(): string {
 export interface AgentQueryOrchestratorOptions {
   config?: Partial<OrchestratorConfig>;
   llm?: ILLM;
-  broker?: any; // StateBroker-like interface (duck typing)
+  broker?: { get(key: string): Promise<unknown>; set(key: string, value: unknown, ttl?: number): Promise<void>; delete?(key: string): Promise<void> }; // StateBroker-like interface (duck typing)
   analytics?: {
     enabled?: boolean;
     detailed?: boolean;

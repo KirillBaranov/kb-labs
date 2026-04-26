@@ -8,9 +8,9 @@ import type { RegisteredCommand } from './types';
  */
 export async function runCommand(
   cmd: RegisteredCommand,
-  ctx: any,
+  ctx: Record<string, unknown>,
   argv: string[],
-  flags: Record<string, any>,
+  flags: Record<string, unknown>,
 ): Promise<number> {
   if (!cmd.available) {
     if (ctx.presenter?.json) {

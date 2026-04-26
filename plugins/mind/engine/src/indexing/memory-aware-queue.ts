@@ -91,7 +91,7 @@ export interface MemoryAwareQueueStats {
 interface QueuedTask<T> {
   task: T;
   estimatedMemory: number;
-  resolve: (result: any) => void;
+  resolve: (result: unknown) => void;
   reject: (error: Error) => void;
 }
 

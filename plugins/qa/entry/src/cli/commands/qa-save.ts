@@ -2,7 +2,7 @@ import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
 import { runQA, createHistoryEntry, appendEntry } from '@kb-labs/qa-core';
 import type { QASaveFlags } from './flags.js';
 
-type QASaveInput = QASaveFlags & { argv?: string[]; flags?: any };
+type QASaveInput = QASaveFlags & { argv?: string[]; flags?: QASaveFlags };
 
 export default defineCommand({
   id: 'qa:save',
@@ -11,7 +11,7 @@ export default defineCommand({
   handler: {
     async execute(ctx: PluginContextV3, input: QASaveInput) {
       const { ui } = ctx;
-      const flags = (input as any).flags ?? input;
+      const flags = input.flags ?? input;
       const rootDir = ctx.cwd;
 
       const startTime = Date.now();

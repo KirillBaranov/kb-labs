@@ -62,8 +62,8 @@ export class ConfigProxy extends RemoteAdapter<IConfig> implements IConfig {
    * }
    * ```
    */
-  async getConfig(productId: string, profileId?: string): Promise<any> {
-    return (await this.callRemote('getConfig', [productId, profileId])) as any;
+  async getConfig(productId: string, profileId?: string): Promise<unknown> {
+    return this.callRemote('getConfig', [productId, profileId]);
   }
 
   /**
@@ -79,7 +79,7 @@ export class ConfigProxy extends RemoteAdapter<IConfig> implements IConfig {
    * }
    * ```
    */
-  async getRawConfig(): Promise<any> {
-    return (await this.callRemote('getRawConfig', [])) as any;
+  async getRawConfig(): Promise<unknown> {
+    return this.callRemote('getRawConfig', []);
   }
 }

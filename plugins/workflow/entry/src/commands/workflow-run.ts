@@ -42,7 +42,7 @@ export default defineCommand<unknown, WorkflowRunInput, { exitCode: number }>({
 
   handler: {
     async execute(ctx: PluginContextV3, input: WorkflowRunInput): Promise<{ exitCode: number }> {
-      const flags = (input as any).flags ?? input;
+      const flags = (input as { flags?: WorkflowRunInput } & WorkflowRunInput).flags ?? input;
       const outputJson = flags.json ?? false;
       const workflowId = flags['workflow-id'];
 

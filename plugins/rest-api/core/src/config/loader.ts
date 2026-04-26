@@ -3,7 +3,7 @@
  * Configuration loader using loadBundle from @kb-labs/core-bundle
  */
 
-import { loadBundle } from '@kb-labs/core-bundle';
+import { loadBundle, type ProductId } from '@kb-labs/core-bundle';
 import { resolveConfig, findNearestConfig, readJsonWithDiagnostics } from '@kb-labs/core-config';
 import { restApiConfigSchema, type RestApiConfig } from './schema';
 
@@ -16,12 +16,12 @@ export async function loadRestApiConfig(
 ): Promise<{ config: RestApiConfig; diagnostics: Array<{ level: string; code: string; message: string }> }> {
   // Try to load bundle with 'restApi' product
   // Note: if 'restApi' is not registered as ProductId, we'll fall back to direct config loading
-  let bundleConfig: any = {};
+  let bundleConfig: Record<string, unknown> = {};
   
   try {
     const bundle = await loadBundle({
       cwd,
-      product: 'restApi' as any, // TODO: Add 'restApi' to ProductId type
+      product: 'restApi' as unknown as ProductId,
       profileId: 'default',
     });
     bundleConfig = bundle.config;

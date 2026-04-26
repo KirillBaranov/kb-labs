@@ -14,12 +14,17 @@ import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
 import type { TraceCommandResponse, TraceErrorCode } from '@kb-labs/agent-contracts';
 import { loadTrace, formatTraceLoadError } from '@kb-labs/agent-tracing';
 
-type TraceContextInput = {
+type TraceContextFlags = {
   taskId?: string;
   'task-id'?: string;
-  iteration?: number;
+  iteration?: number | string;
   json?: boolean;
 };
+
+type TraceContextInput = TraceContextFlags & {
+  flags?: TraceContextFlags;
+};
+
 
 type ContextMessage = {
   index: number;
@@ -67,7 +72,7 @@ export default defineCommand({
 
   handler: {
     async execute(ctx: PluginContextV3, input: TraceContextInput): Promise<{ exitCode: number }> {
-      const flags = (input as any).flags ?? input;
+      const flags: TraceContextFlags = input.flags ?? input;
       const taskId = (flags['task-id'] ?? flags.taskId) as string | undefined;
       const filterIteration = typeof flags.iteration === 'string'
         ? parseInt(flags.iteration, 10)
@@ -85,28 +90,28 @@ export default defineCommand({
         const iterations: IterationContext[] = [];
         let currentSnapshot: ContextSnapshot | null = null;
 
-        for (const e of events) {
-          const eAny = e as any;
+        type AnyEvent = { type: string; timestamp: string; data?: unknown };
+        for (const e of events as unknown as AnyEvent[]) {
           if (e.type === 'context:snapshot') {
             // Fields are at top level (IncrementalTraceWriter format)
-            currentSnapshot = (eAny.data || e) as ContextSnapshot;
+            currentSnapshot = (e.data ?? e) as unknown as ContextSnapshot;
           }
 
-          if (eAny.type === 'llm_response' && currentSnapshot) {
-            const llmEnd = events.find((ev: any) =>
+          if (e.type === 'llm_response' && currentSnapshot) {
+            const llmEnd = (events as unknown as AnyEvent[]).find((ev) =>
               ev.type === 'llm:end' &&
-              Math.abs(new Date(ev.timestamp).getTime() - new Date(eAny.timestamp).getTime()) < 5000
+              Math.abs(new Date(ev.timestamp).getTime() - new Date(e.timestamp).getTime()) < 5000
             );
 
-            const responseData = (eAny.data || e) as LLMResponseInfo;
-            const endData = (llmEnd as any)?.data || llmEnd || {};
+            const responseData = (e.data ?? e) as unknown as LLMResponseInfo;
+            const endData = (llmEnd?.data ?? llmEnd ?? {}) as Record<string, unknown>;
 
             iterations.push({
               iteration: currentSnapshot.iteration,
               context: currentSnapshot,
               response: responseData,
-              tokensUsed: endData.tokensUsed || 0,
-              durationMs: endData.durationMs || 0,
+              tokensUsed: (endData.tokensUsed as number | undefined) ?? 0,
+              durationMs: (endData.durationMs as number | undefined) ?? 0,
             });
             currentSnapshot = null;
           }
