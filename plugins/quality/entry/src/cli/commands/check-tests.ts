@@ -84,7 +84,7 @@ export default defineCommand({
 function outputTestResults(
   result: TestRunResult & { cached: boolean },
   flags: CheckTestsInput,
-  ui: Record<string, unknown>
+  ui: PluginContextV3['ui']
 ): void {
   if (flags.json) {
     ui?.json?.(result);

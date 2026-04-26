@@ -718,9 +718,9 @@ export function parseResponse(
   const cleaned = cleanJsonResponse(response);
 
   // Step 2: Try to parse JSON
-  let parsed: unknown;
+  let parsed: Record<string, unknown>;
   try {
-    parsed = JSON.parse(cleaned);
+    parsed = JSON.parse(cleaned) as Record<string, unknown>;
   } catch (error) {
     // Enhanced error message with cleaned response preview
     const preview = cleaned.substring(0, 300).replace(/\n/g, ' ');

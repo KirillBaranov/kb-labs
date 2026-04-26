@@ -85,7 +85,7 @@ export default defineCommand({
 function outputBuildCheck(
   result: BuildCheckResult & { cached?: boolean },
   flags: Record<string, unknown>,
-  ui: Record<string, unknown>
+  ui: PluginContextV3['ui']
 ) {
   if (flags.json) {
     ui?.json?.(result);

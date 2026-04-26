@@ -295,7 +295,7 @@ function calculateHealthScore(stats: StatsResult) {
 /**
  * Output statistics in requested format
  */
-function outputStats(stats: StatsResult, flags: Record<string, unknown>, ui: Record<string, unknown>) {
+function outputStats(stats: StatsResult, flags: Record<string, unknown>, ui: PluginContextV3['ui']) {
   if (flags.json) {
     ui?.json?.(stats);
     return;

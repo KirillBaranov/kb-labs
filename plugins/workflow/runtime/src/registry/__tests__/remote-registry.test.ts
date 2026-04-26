@@ -56,7 +56,7 @@ describe('RemoteWorkflowRegistry — shell injection safety (H8)', () => {
       expect.arrayContaining(['clone', '--depth', '1', '--branch', 'main']),
     );
 
-    const [cmd, args, opts] = mockExeca.mock.calls[0]!;
+    const [cmd, args, opts] = mockExeca.mock.calls[0] as unknown as [string, string[], Record<string, unknown>?];
     expect(typeof cmd).toBe('string');
     expect(Array.isArray(args)).toBe(true);
     expect((opts as Record<string, unknown> | undefined)?.shell).toBeFalsy();
