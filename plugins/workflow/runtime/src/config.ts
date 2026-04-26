@@ -87,7 +87,7 @@ export async function saveWorkflowConfig(
   }
 
   // Merge workflow section
-  const currentWorkflow = existingConfig.workflow ?? {}
+  const currentWorkflow = (existingConfig.workflow ?? {}) as Record<string, unknown>
   const updatedWorkflow = {
     ...currentWorkflow,
     ...updates,

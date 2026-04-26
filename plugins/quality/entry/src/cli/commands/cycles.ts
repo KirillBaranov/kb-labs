@@ -55,7 +55,7 @@ export default defineCommand({
 /**
  * Output circular dependencies
  */
-function outputCycles(cycles: string[][], flags: Record<string, unknown>, ui: Record<string, unknown>) {
+function outputCycles(cycles: string[][], flags: Record<string, unknown>, ui: PluginContextV3['ui']) {
   if (flags.json) {
     ui?.json?.({ cycles, count: cycles.length });
     return;

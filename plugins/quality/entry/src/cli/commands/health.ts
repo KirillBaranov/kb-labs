@@ -225,7 +225,7 @@ async function calculateHealth(rootDir: string, specificPackage?: string): Promi
 /**
  * Output health check results
  */
-function outputHealth(health: HealthScore, flags: Record<string, unknown>, ui: Record<string, unknown>) {
+function outputHealth(health: HealthScore, flags: Record<string, unknown>, ui: PluginContextV3['ui']) {
   if (flags.json) {
     ui?.json?.(health);
     return;

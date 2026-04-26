@@ -79,7 +79,7 @@ function outputTree(graph: DependencyGraph, packageName: string, flags: Visualiz
   const node = nodes.get(packageName);
 
   if (!node) {
-    ui?.fatal?.(`Package not found: ${packageName}`);
+    ui?.error?.(`Package not found: ${packageName}`);
     return;
   }
 

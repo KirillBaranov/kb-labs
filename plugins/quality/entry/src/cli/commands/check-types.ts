@@ -82,7 +82,7 @@ export default defineCommand({
 function outputTypeAnalysis(
   result: TypeAnalysisResult & { cached: boolean },
   flags: CheckTypesInput,
-  ui: Record<string, unknown>
+  ui: PluginContextV3['ui']
 ): void {
   if (flags.json) {
     ui?.json?.(result);

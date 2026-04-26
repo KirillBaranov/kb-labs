@@ -17,9 +17,9 @@ export default defineCommand<unknown, RunInput, { exitCode: number }>({
     async execute(ctx: PluginContextV3, input: RunInput): Promise<{ exitCode: number }> {
       const flags = (input as { flags?: RunInput } & RunInput).flags ?? input;
       const outputJson = flags.json ?? false;
-      const handler = flags.handler;
-      const inputStr = flags.input;
-      const priority = flags.priority ?? 5;
+      const handler = flags.handler as unknown as string | undefined;
+      const inputStr = flags.input as unknown as string | undefined;
+      const priority = (flags.priority as unknown as number | undefined) ?? 5;
       const wait = flags.wait ?? false;
 
       if (!handler) {
