@@ -90,7 +90,7 @@ export function createLLMCallEvent(params: {
       toolCalls: params.response.toolCalls?.map((tc: LLMToolCall) => ({
         id: tc.id,
         name: tc.name,
-        input: tc.input,
+        input: tc.input as Record<string, unknown>,
       })),
       stopReason: params.response.toolCalls && params.response.toolCalls.length > 0 ? 'tool_use' : 'end_turn',
       usage: {
@@ -150,7 +150,7 @@ export function createToolExecutionEvent(params: {
       name: params.toolName,
       callId: params.callId,
     },
-    input: params.input,
+    input: params.input as Record<string, unknown>,
     output: {
       success: params.output.success,
       result: truncated ? resultStr.substring(0, TRACE_OUTPUT_LIMIT) + `\n... (truncated from ${resultStr.length} chars)` : params.output.result,
@@ -291,8 +291,8 @@ export function createErrorCapturedEvent(params: {
       name: params.error.name,
     },
     context: {
-      lastLLMCall: params.lastLLMCall,
-      lastToolCall: params.lastToolCall,
+      lastLLMCall: params.lastLLMCall as { request: Record<string, unknown>; response: Record<string, unknown>; durationMs: number } | undefined,
+      lastToolCall: params.lastToolCall as { name: string; input: Record<string, unknown>; output?: unknown; error?: string } | undefined,
       currentMessages: params.currentMessages.slice(-5).map((m) => ({
         role: (m.role === 'tool' ? 'assistant' : m.role) as 'system' | 'user' | 'assistant',
         contentPreview: m.content?.substring(0, 100) || '',

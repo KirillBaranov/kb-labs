@@ -19,10 +19,11 @@ function sortKeysRecursively(obj: unknown): unknown {
   }
 
   const sorted: Record<string, unknown> = {};
-  const keys = Object.keys(obj).sort();
+  const record = obj as Record<string, unknown>;
+  const keys = Object.keys(record).sort();
 
   for (const key of keys) {
-    sorted[key] = sortKeysRecursively(obj[key]);
+    sorted[key] = sortKeysRecursively(record[key]);
   }
 
   return sorted;

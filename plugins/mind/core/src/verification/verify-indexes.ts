@@ -42,7 +42,7 @@ export async function verifyIndexes(cwd: string): Promise<VerifyResult> {
 
   try {
     // Load main index
-    const index = await readJson(`${cwd}/.kb/mind/index.json`);
+    const index = await readJson<Record<string, unknown>>(`${cwd}/.kb/mind/index.json`);
     if (!index) {
       return {
         ok: false,

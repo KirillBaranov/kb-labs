@@ -213,17 +213,17 @@ export class SecurityAnalyzer extends BaseLLMAnalyzer {
    * Process LLM tool calls into ReviewFindings
    */
   // eslint-disable-next-line sonarjs/cognitive-complexity -- Complex validation and mapping of LLM tool call results to structured findings
-  private processToolCalls(toolCalls: Record<string, unknown>[], file: ParsedFile): ReviewFinding[] {
+  private processToolCalls(toolCalls: { name: string; input: unknown }[], file: ParsedFile): ReviewFinding[] {
     const findings: ReviewFinding[] = [];
 
     for (const call of toolCalls) {
       if (call.name === 'report_security_finding') {
-         
+
         const args = call.input as Record<string, unknown>;
 
         // Validate line number
         const lineCount = file.content.split('\n').length;
-        const line = typeof args.line === 'number' ? args.line : parseInt(args.line, 10);
+        const line = typeof args.line === 'number' ? args.line : parseInt(String(args.line), 10);
         if (isNaN(line) || line < 1 || line > lineCount) {
           useLogger()?.debug(`[SecurityAnalyzer] Invalid line number ${args.line} for ${file.path}`);
           continue;

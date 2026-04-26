@@ -15,7 +15,7 @@
 
 import { promises as fs, mkdirSync, statSync, readFileSync, appendFileSync } from 'fs';
 import path from 'path';
-import type { Tracer } from '@kb-labs/agent-contracts';
+import type { Tracer, TraceEntry } from '@kb-labs/agent-contracts';
 import type { DetailedTraceEntry } from '@kb-labs/agent-contracts';
 import { redactTraceEvent } from './privacy-redactor.js';
 
@@ -223,11 +223,11 @@ export class IncrementalTraceWriter implements Tracer {
    * Get all trace entries (reads from NDJSON file to avoid memory leak)
    * Returns TraceEntry[] for backward compatibility, but actual format is DetailedTraceEntry[]
    */
-  getEntries(): Record<string, unknown>[] {
+  getEntries(): TraceEntry[] {
     try {
       const content = readFileSync(this.filepath, 'utf-8');
       const lines = content.split('\n').filter(Boolean);
-      return lines.map((line: string) => JSON.parse(line) as Record<string, unknown>);
+      return lines.map((line: string) => JSON.parse(line) as TraceEntry);
     } catch {
       // File doesn't exist yet or is empty
       return [];
@@ -278,7 +278,7 @@ export class IncrementalTraceWriter implements Tracer {
       }
 
       // Calculate summary statistics
-      const stats = this.calculateIndexStatistics(entries);
+      const stats = this.calculateIndexStatistics(entries as unknown as Record<string, unknown>[]);
 
       // Build index
       const index: TraceIndex = {
