@@ -18,7 +18,6 @@ export type AuthContext = z.infer<typeof AuthContextSchema>;
 export const RegisterRequestSchema = z.object({
   /** Human-readable name for this agent (e.g. "MacBook Pro") */
   name: z.string().min(1).max(64),
-  namespaceId: z.string().min(1).max(64),
   capabilities: z.array(z.string()).default([]),
   /**
    * X25519 public key for E2E encryption, base64url encoded.
@@ -31,6 +30,8 @@ export const RegisterResponseSchema = z.object({
   clientId: z.string(),
   clientSecret: z.string(),
   hostId: z.string(),
+  /** Server-assigned namespace — use this in subsequent API calls. */
+  namespaceId: z.string(),
 });
 
 export const TokenRequestSchema = z.object({

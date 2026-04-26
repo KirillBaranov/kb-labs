@@ -7,7 +7,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Tool, ToolContext } from '../../types.js';
 import { toolError } from '../shared/tool-error.js';
-import { SEARCH_CONFIG, ALL_SOURCE_EXTENSIONS, toRgIncludes, toFindNames } from '../../config.js';
+import { SEARCH_CONFIG, ALL_SOURCE_EXTENSIONS, toRgIncludes, toFindNames, shellSingleQuote } from '../../config.js';
 import { normalizeOffsetLimit as _normalizeOffsetLimit, suggestDirectory } from '../../utils.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -28,18 +28,14 @@ const MAX_OUTPUT_CHARS = SEARCH_CONFIG.maxOutputChars;
  * Build find exclude flags from exclude list
  */
 function buildFindExcludes(excludes: readonly string[]): string {
-  return excludes.map(d => `! -path "*/${d}/*"`).join(' ');
+  return excludes.map(d => `! -path ${shellSingleQuote(`*/${d}/*`)}`).join(' ');
 }
 
 /**
  * Build grep exclude-dir flags from exclude list
  */
 function buildGrepExcludes(excludes: readonly string[]): string {
-  return excludes.map(d => `--exclude-dir=${d}`).join(' ');
-}
-
-function toSingleQuoted(value: string): string {
-  return `'${value.replace(/'/g, `'\"'\"'`)}'`;
+  return excludes.map(d => `--exclude-dir=${shellSingleQuote(d)}`).join(' ');
 }
 
 const SEARCH_TIMEOUT_MS = SEARCH_CONFIG.timeoutMs;
@@ -144,7 +140,7 @@ export function createGlobSearchTool(context: ToolContext): Tool {
         }
 
         const windowSize = Math.min(2000, Math.max(500, offset + limit));
-        const cmd = `find "${fullPath}" -type f -iname "${pattern}" ${buildFindExcludes(excludes)} | head -${windowSize}`;
+        const cmd = `find ${shellSingleQuote(fullPath)} -type f -iname ${shellSingleQuote(pattern)} ${buildFindExcludes(excludes)} | head -${windowSize}`;
 
         const output = execSync(cmd, {
           cwd: context.workingDir,
@@ -288,8 +284,9 @@ export function createGrepSearchTool(context: ToolContext): Tool {
         }
 
         const windowSize = Math.min(2000, Math.max(500, offset + limit));
-        const regexCmd = `grep -rIn ${toSingleQuoted(pattern)} "${fullPath}" ${buildGrepExcludes(excludes)}${filePattern ? ` --include="${filePattern}"` : ''}`;
-        const literalCmd = `grep -rIFn ${toSingleQuoted(pattern)} "${fullPath}" ${buildGrepExcludes(excludes)}${filePattern ? ` --include="${filePattern}"` : ''}`;
+        const includeFlag = filePattern ? ` --include=${shellSingleQuote(filePattern)}` : '';
+        const regexCmd = `grep -rIn ${shellSingleQuote(pattern)} ${shellSingleQuote(fullPath)} ${buildGrepExcludes(excludes)}${includeFlag}`;
+        const literalCmd = `grep -rIFn ${shellSingleQuote(pattern)} ${shellSingleQuote(fullPath)} ${buildGrepExcludes(excludes)}${includeFlag}`;
         let cmd = mode === 'literal' ? literalCmd : regexCmd;
         cmd += ` | head -${windowSize}`;
 
@@ -375,14 +372,17 @@ export function createGrepSearchTool(context: ToolContext): Tool {
         };
       } catch (error) {
         // grep returns exit code 1 when no matches found
-        if (error instanceof Error && 'status' in error && (error as any).status === 1) {
-          return {
-            success: true,
-            output: `No matches found for "${pattern}" in ${directory === '.' ? 'project root' : directory}.${filePattern ? '' : ' Try adding filePattern (e.g. "*.ts") to narrow the search.'}`,
-          };
+        if (error instanceof Error && 'status' in error) {
+          const err = error as Error & { status?: number; killed?: boolean };
+          if (err.status === 1) {
+            return {
+              success: true,
+              output: `No matches found for "${pattern}" in ${directory === '.' ? 'project root' : directory}.${filePattern ? '' : ' Try adding filePattern (e.g. "*.ts") to narrow the search.'}`,
+            };
+          }
         }
 
-        if (error instanceof Error && 'killed' in error && (error as any).killed) {
+        if (error instanceof Error && 'killed' in error && (error as Error & { killed?: boolean }).killed) {
           return toolError({
             code: 'SEARCH_TIMEOUT',
             message: `Grep search timed out after ${SEARCH_TIMEOUT_MS / 1000}s.`,
@@ -457,14 +457,14 @@ export function createListFilesTool(context: ToolContext): Tool {
         // Build ls/find command
         let cmd: string;
         if (recursive) {
-          cmd = `find "${fullPath}" -type f \
-            ! -path "*/node_modules/*" \
-            ! -path "*/.git/*" \
-            ! -path "*/dist/*" \
-            ! -path "*/.kb/*" \
+          cmd = `find ${shellSingleQuote(fullPath)} -type f \
+            ! -path '*/node_modules/*' \
+            ! -path '*/.git/*' \
+            ! -path '*/dist/*' \
+            ! -path '*/.kb/*' \
             | head -100`;
         } else {
-          cmd = `ls -la "${fullPath}" 2>/dev/null || echo "Directory not found"`;
+          cmd = `ls -la ${shellSingleQuote(fullPath)} 2>/dev/null || echo "Directory not found"`;
         }
 
         const output = execSync(cmd, {
@@ -588,13 +588,13 @@ export function createFindDefinitionTool(context: ToolContext): Tool {
         // Build include flags for grep
         let includeFlags = '';
         if (filePattern) {
-          includeFlags = `--include="${filePattern}"`;
+          includeFlags = `--include=${shellSingleQuote(filePattern)}`;
         } else {
           // Default: search common source file extensions
           includeFlags = toRgIncludes(ALL_SOURCE_EXTENSIONS);
         }
 
-        const cmd = `grep -rn -E "(${patterns.join('|')})" "${fullPath}" \
+        const cmd = `grep -rn -E ${shellSingleQuote(`(${patterns.join('|')})`)} ${shellSingleQuote(fullPath)} \
           ${includeFlags} \
           ${buildGrepExcludes(DEFAULT_EXCLUDES)} \
           --exclude-dir=bin \
@@ -633,13 +633,16 @@ export function createFindDefinitionTool(context: ToolContext): Tool {
           output: `Found definition(s) for "${name}":\n\n${result.join('\n\n')}`,
         };
       } catch (error) {
-        if (error instanceof Error && 'status' in error && (error as any).status === 1) {
-          return {
-            success: true,
-            output: `No definition found for "${name}" in ${directory === '.' ? 'project root' : directory}. Try: grep_search for text matching, or glob_search with "*${name.toLowerCase()}*" for filename matching.`,
-          };
+        if (error instanceof Error && 'status' in error) {
+          const err = error as Error & { status?: number; killed?: boolean };
+          if (err.status === 1) {
+            return {
+              success: true,
+              output: `No definition found for "${name}" in ${directory === '.' ? 'project root' : directory}. Try: grep_search for text matching, or glob_search with "*${name.toLowerCase()}*" for filename matching.`,
+            };
+          }
         }
-        if (error instanceof Error && 'killed' in error && (error as any).killed) {
+        if (error instanceof Error && 'killed' in error && (error as Error & { killed?: boolean }).killed) {
           return {
             success: false,
             error: `Find definition timed out after ${SEARCH_TIMEOUT_MS / 1000}s. Try specifying a narrower directory.`,
@@ -819,9 +822,9 @@ export function createCodeStatsTool(context: ToolContext): Tool {
         }
 
         // Count lines total
-        const totalCmd = `find "${fullPath}" -type f \\( ${extFilter} \\) \
-          ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/.git/*" \
-          ! -path "*/bin/*" ! -path "*/obj/*" ! -path "*/target/*" ! -path "*/__pycache__/*" \
+        const totalCmd = `find ${shellSingleQuote(fullPath)} -type f \\( ${extFilter} \\) \
+          ! -path '*/node_modules/*' ! -path '*/dist/*' ! -path '*/.git/*' \
+          ! -path '*/bin/*' ! -path '*/obj/*' ! -path '*/target/*' ! -path '*/__pycache__/*' \
           -exec wc -l {} + 2>/dev/null | tail -1 || echo "0 total"`;
 
         const totalOutput = execSync(totalCmd, {
@@ -830,9 +833,9 @@ export function createCodeStatsTool(context: ToolContext): Tool {
         }).trim();
 
         // Count files by extension
-        const countByExtCmd = `find "${fullPath}" -type f \\( ${extFilter} \\) \
-          ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/.git/*" \
-          ! -path "*/bin/*" ! -path "*/obj/*" ! -path "*/target/*" ! -path "*/__pycache__/*" \
+        const countByExtCmd = `find ${shellSingleQuote(fullPath)} -type f \\( ${extFilter} \\) \
+          ! -path '*/node_modules/*' ! -path '*/dist/*' ! -path '*/.git/*' \
+          ! -path '*/bin/*' ! -path '*/obj/*' ! -path '*/target/*' ! -path '*/__pycache__/*' \
           | sed 's/.*\\.//' | sort | uniq -c | sort -rn | head -200`;
 
         const countByExt = execSync(countByExtCmd, {
@@ -841,9 +844,9 @@ export function createCodeStatsTool(context: ToolContext): Tool {
         }).trim().split('\n').filter(Boolean);
 
         // Total file count
-        const fileCountCmd = `find "${fullPath}" -type f \\( ${extFilter} \\) \
-          ! -path "*/node_modules/*" ! -path "*/dist/*" ! -path "*/.git/*" \
-          ! -path "*/bin/*" ! -path "*/obj/*" ! -path "*/target/*" ! -path "*/__pycache__/*" | wc -l`;
+        const fileCountCmd = `find ${shellSingleQuote(fullPath)} -type f \\( ${extFilter} \\) \
+          ! -path '*/node_modules/*' ! -path '*/dist/*' ! -path '*/.git/*' \
+          ! -path '*/bin/*' ! -path '*/obj/*' ! -path '*/target/*' ! -path '*/__pycache__/*' | wc -l`;
 
         const fileCount = execSync(fileCountCmd, {
           cwd: context.workingDir,

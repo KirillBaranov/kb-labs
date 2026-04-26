@@ -110,7 +110,7 @@ export async function bootstrap(cwd: string = process.cwd()): Promise<void> {
     cache: platform.cache,
     events: platform.eventBus,
     logger: createWorkflowLogger('engine', 'workflow.engine'),
-    snapshotManager: (platform as any).snapshotManager,
+    snapshotManager: (platform as Record<string, unknown>).snapshotManager as never,
     workspaceRoot: projectRoot,
   });
 
@@ -171,7 +171,8 @@ export async function bootstrap(cwd: string = process.cwd()): Promise<void> {
 
   // Start HTTP server
   const port = parseInt(process.env.WORKFLOW_PORT || '7778', 10);
-  await server.listen({ port, host: '0.0.0.0' });
+  // Internal service — bind to loopback only. All public traffic goes through the gateway.
+  await server.listen({ port, host: process.env.WORKFLOW_HOST ?? '127.0.0.1' });
   bootstrapLogger.info('HTTP API listening', { port });
 
   // Store server instance for cleanup

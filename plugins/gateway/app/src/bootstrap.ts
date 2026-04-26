@@ -2,6 +2,7 @@ import { logDiagnosticEvent } from '@kb-labs/core-platform';
 import { platform, createServiceBootstrap, getPlatformRoot } from '@kb-labs/core-runtime';
 import { createCorrelatedLogger } from '@kb-labs/shared-http';
 import type { IHostStore } from '@kb-labs/gateway-contracts';
+import type { ISQLDatabase } from '@kb-labs/core-platform';
 import { SqliteHostStore } from '@kb-labs/gateway-core';
 import { loadGatewayConfig } from './config.js';
 import { createServer } from './server.js';
@@ -30,7 +31,7 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
 
   // 3. Create persistent host store (SQLite if available, otherwise cache-only)
   let hostStore: IHostStore | undefined;
-  const db = platform.getAdapter<import('@kb-labs/core-platform').ISQLDatabase>('sqlDatabase');
+  const db = platform.getAdapter<ISQLDatabase>('sqlDatabase');
   if (db) {
     hostStore = new SqliteHostStore(db);
     logger.info('Host store: SQLite (persistent)');
@@ -71,12 +72,20 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
     logger.info('Static token seeded', { hostId: entry.hostId, namespaceId: entry.namespaceId });
   }
 
-  // 7. Build JWT config — secret from env, required in production
+  // 7. Build JWT config — secret required; no fallback in production.
+  const DEV_JWT_SECRET = 'dev-insecure-secret-change-me';
   const jwtSecret = process.env.GATEWAY_JWT_SECRET;
-  if (!jwtSecret) {
-    logger.warn('GATEWAY_JWT_SECRET not set — using insecure default (dev only!)');
+  const isProduction = process.env.NODE_ENV === 'production';
+  if (!jwtSecret && isProduction) {
+    throw new Error(
+      'GATEWAY_JWT_SECRET must be set in production. ' +
+      'Generate one with: node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"',
+    );
   }
-  const jwtConfig = { secret: jwtSecret ?? 'dev-insecure-secret-change-me' };
+  if (!jwtSecret) {
+    logger.warn('GATEWAY_JWT_SECRET not set — using insecure default (dev only, never use in production!)');
+  }
+  const jwtConfig = { secret: jwtSecret ?? DEV_JWT_SECRET };
 
   // 8. Create server with injected registry
   const server = await createServer(config, platform.cache, platform.logger, jwtConfig, registry);

@@ -295,7 +295,7 @@ describe('grep_search', () => {
     await tool.executor({ pattern: 'foo', filePattern: '*.ts' });
 
     const cmd = mockExecSync.mock.calls[0]![0] as string;
-    expect(cmd).toContain('--include="*.ts"');
+    expect(cmd).toContain("--include='*.ts'");
   });
 
   it('should support pagination via offset/limit', async () => {
@@ -337,8 +337,8 @@ describe('grep_search', () => {
     await tool.executor({ pattern: 'foo' });
 
     const cmd = mockExecSync.mock.calls[0]![0] as string;
-    expect(cmd).toContain('--exclude-dir=node_modules');
-    expect(cmd).toContain('--exclude-dir=dist');
+    expect(cmd).toContain("--exclude-dir='node_modules'");
+    expect(cmd).toContain("--exclude-dir='dist'");
   });
 
   it('should use custom excludes', async () => {
@@ -349,8 +349,8 @@ describe('grep_search', () => {
 
     const cmd = mockExecSync.mock.calls[0]![0] as string;
     // custom excludes are merged with defaults
-    expect(cmd).toContain('--exclude-dir=vendor');
-    expect(cmd).toContain('--exclude-dir=node_modules');
+    expect(cmd).toContain("--exclude-dir='vendor'");
+    expect(cmd).toContain("--exclude-dir='node_modules'");
   });
 
   it('should return "No matches" with hint on empty output', async () => {
@@ -415,9 +415,9 @@ describe('find_definition', () => {
     await tool.executor({ name: 'Foo', filePattern: '*.py' });
 
     const cmd = mockExecSync.mock.calls[0]![0] as string;
-    expect(cmd).toContain('--include="*.py"');
+    expect(cmd).toContain("--include='*.py'");
     // Should NOT have default includes when custom is specified
-    expect(cmd).not.toContain('--include="*.ts"');
+    expect(cmd).not.toContain("--include='*.ts'");
   });
 
   it('should search with language-agnostic patterns', async () => {
@@ -442,8 +442,8 @@ describe('find_definition', () => {
     await tool.executor({ name: 'Foo' });
 
     const cmd = mockExecSync.mock.calls[0]![0] as string;
-    expect(cmd).toContain('--exclude-dir=node_modules');
-    expect(cmd).toContain('--exclude-dir=dist');
+    expect(cmd).toContain("--exclude-dir='node_modules'");
+    expect(cmd).toContain("--exclude-dir='dist'");
   });
 
   it('should show directory name in "no definition" message', async () => {
@@ -497,10 +497,10 @@ describe('code_stats', () => {
     await tool.executor({ extensions: 'py,rs' });
 
     const cmd = mockExecSync.mock.calls[0]![0] as string;
-    expect(cmd).toContain('"*.py"');
-    expect(cmd).toContain('"*.rs"');
+    expect(cmd).toContain("'*.py'");
+    expect(cmd).toContain("'*.rs'");
     // Should not have default extensions
-    expect(cmd).not.toContain('"*.ts"');
+    expect(cmd).not.toContain("'*.ts'");
   });
 
   it('should handle errors', async () => {
@@ -511,5 +511,120 @@ describe('code_stats', () => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('disk error');
+  });
+});
+
+// ─── Shell injection safety (H7) ───────────────────────────
+// All user-supplied values must be single-quoted in shell commands,
+// neutralising $(), backtick, and other metacharacters.
+
+describe('shell injection safety', () => {
+  const INJECTION = '$(id)';
+  const BACKTICK_INJECTION = '`id`';
+
+  describe('glob_search — pattern injection', () => {
+    it('single-quotes the pattern so $() is not executed', async () => {
+      mockExecSync.mockReturnValue('');
+      const tool = createGlobSearchTool(ctx());
+
+      await tool.executor({ pattern: INJECTION });
+
+      const cmd = mockExecSync.mock.calls[0]![0] as string;
+      // The raw $() must appear inside single-quotes, never bare
+      expect(cmd).toContain(`'${INJECTION}'`);
+      expect(cmd).not.toMatch(/[^']\$\(id\)/); // no unquoted $()
+    });
+
+    it('single-quotes the pattern so backticks are not executed', async () => {
+      mockExecSync.mockReturnValue('');
+      const tool = createGlobSearchTool(ctx());
+
+      await tool.executor({ pattern: BACKTICK_INJECTION });
+
+      const cmd = mockExecSync.mock.calls[0]![0] as string;
+      expect(cmd).toContain(`'${BACKTICK_INJECTION}'`);
+    });
+
+    it('single-quotes the directory / fullPath', async () => {
+      mockExecSync.mockReturnValue('');
+      const tool = createGlobSearchTool(ctx('/proj/$(id)'));
+
+      await tool.executor({ pattern: '*.ts' });
+
+      const cmd = mockExecSync.mock.calls[0]![0] as string;
+      expect(cmd).toContain("'/proj/$(id)'");
+    });
+
+    it('single-quotes user-supplied excludes', async () => {
+      mockExecSync.mockReturnValue('');
+      const tool = createGlobSearchTool(ctx());
+
+      await tool.executor({ pattern: '*.ts', exclude: ['$(evil)'] });
+
+      const cmd = mockExecSync.mock.calls[0]![0] as string;
+      expect(cmd).toContain("'*/$(evil)/*'");
+    });
+  });
+
+  describe('grep_search — filePattern injection', () => {
+    it('single-quotes filePattern so $() is not executed', async () => {
+      mockExecSync.mockReturnValue('');
+      const tool = createGrepSearchTool(ctx());
+
+      await tool.executor({ pattern: 'foo', filePattern: `*.ts $(id)` });
+
+      const cmd = mockExecSync.mock.calls[0]![0] as string;
+      expect(cmd).toContain(`--include='*.ts $(id)'`);
+    });
+
+    it('single-quotes user-supplied excludes', async () => {
+      mockExecSync.mockReturnValue('');
+      const tool = createGrepSearchTool(ctx());
+
+      await tool.executor({ pattern: 'foo', exclude: ['$(evil)'] });
+
+      const cmd = mockExecSync.mock.calls[0]![0] as string;
+      expect(cmd).toContain("--exclude-dir='$(evil)'");
+    });
+  });
+
+  describe('find_definition — name and filePattern injection', () => {
+    it('single-quotes the entire grep -E pattern (neutralises name injection)', async () => {
+      mockExecSync.mockReturnValue('');
+      const tool = createFindDefinitionTool(ctx());
+
+      await tool.executor({ name: `Foo" $(id)` });
+
+      const cmd = mockExecSync.mock.calls[0]![0] as string;
+      // The whole pattern is inside single-quotes — " and $() can't escape
+      // Single-quote wraps the full expression starting with (
+      expect(cmd).toMatch(/grep -rn -E '\(.*Foo"/);
+    });
+
+    it('single-quotes filePattern so $() is not executed', async () => {
+      mockExecSync.mockReturnValue('');
+      const tool = createFindDefinitionTool(ctx());
+
+      await tool.executor({ name: 'Foo', filePattern: `*.py $(id)` });
+
+      const cmd = mockExecSync.mock.calls[0]![0] as string;
+      expect(cmd).toContain(`--include='*.py $(id)'`);
+    });
+  });
+
+  describe('code_stats — extensions injection', () => {
+    it('single-quotes extension wildcards so $() is not executed', async () => {
+      mockExecSync
+        .mockReturnValueOnce('0 total')
+        .mockReturnValueOnce('')
+        .mockReturnValueOnce('0');
+      const tool = createCodeStatsTool(ctx());
+
+      await tool.executor({ extensions: `ts,$(id)` });
+
+      const cmd = mockExecSync.mock.calls[0]![0] as string;
+      // The extension wildcard is single-quoted
+      expect(cmd).toContain(`'*.$(id)'`);
+    });
   });
 });

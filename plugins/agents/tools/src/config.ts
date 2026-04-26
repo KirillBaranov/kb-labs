@@ -219,20 +219,24 @@ export const SOURCE_FILE_EXTENSIONS = {
 /** Flat list of all source file extensions */
 export const ALL_SOURCE_EXTENSIONS: readonly string[] = Object.values(SOURCE_FILE_EXTENSIONS).flat();
 
-/**
- * Build `--include="*.ext"` flags for ripgrep / grep.
- * @example toRgIncludes(ALL_SOURCE_EXTENSIONS)
- * // → '--include="*.ts" --include="*.tsx" ...'
- */
-export function toRgIncludes(exts: readonly string[]): string {
-  return exts.map(e => `--include="*.${e}"`).join(' ');
+export function shellSingleQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\"'\"'`)}'`;
 }
 
 /**
- * Build `-name "*.ext"` flags for `find` (joined with ` -o `).
+ * Build `--include='*.ext'` flags for ripgrep / grep.
+ * @example toRgIncludes(ALL_SOURCE_EXTENSIONS)
+ * // → "--include='*.ts' --include='*.tsx' ..."
+ */
+export function toRgIncludes(exts: readonly string[]): string {
+  return exts.map(e => `--include=${shellSingleQuote(`*.${e}`)}`).join(' ');
+}
+
+/**
+ * Build `-name '*.ext'` flags for `find` (joined with ` -o `).
  * @example toFindNames(ALL_SOURCE_EXTENSIONS)
- * // → '-name "*.ts" -o -name "*.tsx" ...'
+ * // → "-name '*.ts' -o -name '*.tsx' ..."
  */
 export function toFindNames(exts: readonly string[]): string {
-  return exts.map(e => `-name "*.${e}"`).join(' -o ');
+  return exts.map(e => `-name ${shellSingleQuote(`*.${e}`)}`).join(' -o ');
 }

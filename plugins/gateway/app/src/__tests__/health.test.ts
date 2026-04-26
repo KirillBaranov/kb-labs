@@ -20,14 +20,9 @@ import type { GatewayConfig } from '@kb-labs/gateway-contracts';
 let mockAdapters: Record<string, unknown> = {};
 
 vi.mock('@kb-labs/core-runtime', () => ({
-  platform: new Proxy(
-    {},
-    {
-      get(_target, prop) {
-        return mockAdapters[prop as string];
-      },
-    },
-  ),
+  platform: {
+    getAdapter: (name: string) => mockAdapters[name],
+  },
 }));
 
 // Mock fetch for upstream probing
