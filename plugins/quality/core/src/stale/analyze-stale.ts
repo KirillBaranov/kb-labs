@@ -74,7 +74,7 @@ async function analyzePackage(
   packageJson: Record<string, unknown>,
   graph: ReturnType<typeof buildDependencyGraph>
 ): Promise<StalePackage | null> {
-  const name = packageJson.name;
+  const name = packageJson.name as string;
 
   // Check if dist exists
   const hasDistCheck = await distExists(packagePath);
