@@ -20,33 +20,35 @@ function mergePlatformPermissions(
   if (!base) {return next;}
   if (!next) {return base;}
 
-  const result: PermissionSpec['platform'] = {};
+  type PlatformSpec = NonNullable<PermissionSpec['platform']>;
+  type PlatformValue = PlatformSpec[keyof PlatformSpec];
+  const result: Record<string, PlatformValue> = {};
 
   // Merge each platform service (second value wins for booleans, arrays are merged)
-  const keys = new Set([...Object.keys(base), ...Object.keys(next)]) as Set<keyof typeof base>;
+  const keys = new Set([...Object.keys(base), ...Object.keys(next)]) as Set<keyof PlatformSpec>;
 
   for (const key of keys) {
     const baseVal = base[key];
     const nextVal = next[key];
 
     if (nextVal === undefined) {
-      result[key] = baseVal as any;
+      result[key as string] = baseVal;
     } else if (Array.isArray(nextVal)) {
       // Merge arrays (for cache namespaces, storage paths)
-      result[key] = mergeArrays(
+      result[key as string] = mergeArrays(
         Array.isArray(baseVal) ? baseVal : undefined,
         nextVal
-      ) as any;
+      ) as PlatformValue;
     } else if (typeof nextVal === 'object' && nextVal !== null) {
       // Merge objects (for llm.models, vectorStore.collections, etc.)
-      result[key] = { ...(typeof baseVal === 'object' ? baseVal : {}), ...nextVal } as any;
+      result[key as string] = { ...(typeof baseVal === 'object' ? baseVal : {}), ...nextVal } as PlatformValue;
     } else {
       // Boolean or primitive - second value wins
-      result[key] = nextVal as any;
+      result[key as string] = nextVal;
     }
   }
 
-  return Object.keys(result).length > 0 ? result : undefined;
+  return Object.keys(result).length > 0 ? (result as PlatformSpec) : undefined;
 }
 
 /**

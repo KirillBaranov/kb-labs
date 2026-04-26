@@ -34,7 +34,19 @@ import {
   AnalyticsCache,
   AnalyticsStorage,
 } from '@kb-labs/core-platform';
-import type { IEnvironmentProvider, IWorkspaceProvider } from '@kb-labs/core-platform';
+import type {
+  IEnvironmentProvider,
+  IWorkspaceProvider,
+  ILLM,
+  IEmbeddings,
+  IVectorStore,
+  ICache,
+  IStorage,
+  IAnalytics,
+  LLMOptions,
+  VectorFilter,
+  VectorRecord,
+} from '@kb-labs/core-platform';
 import type { ExecutionRequest } from '@kb-labs/core-contracts';
 
 import {
@@ -96,7 +108,7 @@ async function loadAdapter<T>(adapterPath: string, cwd: string, options?: unknow
     const factory = await resolveAdapter(adapterPath, cwd);
 
     if (factory) {
-      return await factory(options);
+      return (await factory(options)) as T;
     }
 
     platform.logger.warn('Adapter has no createAdapter or default export', { adapterPath });
@@ -130,18 +142,20 @@ function wrapWithAnalytics<K extends keyof AdapterTypes>(
     return instance;
   }
 
-  // Wrap each adapter type with its corresponding analytics wrapper
+  // Wrap each adapter type with its corresponding analytics wrapper.
+  // TypeScript cannot narrow a generic K in a switch, so we cast to the specific
+  // interface required by each wrapper's constructor, then back to AdapterTypes[K].
   switch (key) {
     case 'llm':
-      return new AnalyticsLLM(instance as any, analytics) as unknown as AdapterTypes[K];
+      return new AnalyticsLLM(instance as unknown as ILLM, analytics) as unknown as AdapterTypes[K];
     case 'embeddings':
-      return new AnalyticsEmbeddings(instance as any, analytics) as unknown as AdapterTypes[K];
+      return new AnalyticsEmbeddings(instance as unknown as IEmbeddings, analytics) as unknown as AdapterTypes[K];
     case 'vectorStore':
-      return new AnalyticsVectorStore(instance as any, analytics) as unknown as AdapterTypes[K];
+      return new AnalyticsVectorStore(instance as unknown as IVectorStore, analytics) as unknown as AdapterTypes[K];
     case 'cache':
-      return new AnalyticsCache(instance as any, analytics) as unknown as AdapterTypes[K];
+      return new AnalyticsCache(instance as unknown as ICache, analytics) as unknown as AdapterTypes[K];
     case 'storage':
-      return new AnalyticsStorage(instance as any, analytics) as unknown as AdapterTypes[K];
+      return new AnalyticsStorage(instance as unknown as IStorage, analytics) as unknown as AdapterTypes[K];
     default:
       // For adapters without analytics wrappers (config, etc.), return original
       return instance;
@@ -155,7 +169,7 @@ function initializeCoreFeatures(
   container: PlatformContainer,
   config: CoreFeaturesConfig = {}
 ): {
-  workflows: any; // TODO: Re-enable when workflow-engine is ported to V3
+  workflows: WorkflowEngine;
   jobs: JobScheduler;
   cron: CronManager;
   resources: ResourceManager;
@@ -221,7 +235,7 @@ function initializeResourceBroker(
       timeout: llmConfig.timeout ?? 60000,
       executor: async (operation: string, args: unknown[]) => {
         if (operation === 'complete') {
-          return realLLM.complete(args[0] as string, args[1] as any);
+          return realLLM.complete(args[0] as string, args[1] as LLMOptions | undefined);
         }
         throw new Error(`Unknown LLM operation: ${operation}`);
       },
@@ -271,9 +285,9 @@ function initializeResourceBroker(
       executor: async (operation: string, args: unknown[]) => {
         switch (operation) {
           case 'search':
-            return realVectorStore.search(args[0] as number[], args[1] as number, args[2] as any);
+            return realVectorStore.search(args[0] as number[], args[1] as number, args[2] as VectorFilter | undefined);
           case 'upsert':
-            return realVectorStore.upsert(args[0] as any[]);
+            return realVectorStore.upsert(args[0] as VectorRecord[]);
           case 'delete':
             return realVectorStore.delete(args[0] as string[]);
           case 'count':
@@ -281,7 +295,7 @@ function initializeResourceBroker(
           case 'get':
             return realVectorStore.get?.(args[0] as string[]);
           case 'query':
-            return realVectorStore.query?.(args[0] as any);
+            return realVectorStore.query?.(args[0] as VectorFilter);
           default:
             throw new Error(`Unknown VectorStore operation: ${operation}`);
         }
@@ -665,7 +679,7 @@ export async function initPlatform(
 
     // CRITICAL: Set analytics adapter FIRST (without wrapping) so wrapWithAnalytics() can use it
     if (loadedAdapters.has('analytics')) {
-      platform.setAdapter('analytics', loadedAdapters.get('analytics') as any);
+      platform.setAdapter('analytics', loadedAdapters.get('analytics') as IAnalytics);
       platform.logger.debug('initPlatform loaded adapter: analytics → FileAnalytics (set early for wrapping)');
     }
 
@@ -679,13 +693,13 @@ export async function initPlatform(
       }
 
       // For LLM: only wrap with Analytics here, Router wrapping happens after ResourceBroker
-      const wrappedInstance = wrapWithAnalytics(name as keyof AdapterTypes, instance as any);
+      const wrappedInstance = wrapWithAnalytics(name as keyof AdapterTypes, instance as AdapterTypes[keyof AdapterTypes]);
       platform.setAdapter(name, wrappedInstance);
 
-      const wrapperName = (wrappedInstance as any).constructor?.name ?? 'Unknown';
+      const wrapperName = (wrappedInstance as object).constructor?.name ?? 'Unknown';
       const isWrapped = wrapperName.startsWith('Analytics');
       platform.logger.debug(
-        `initPlatform loaded adapter: ${name} → ${(instance as any).constructor.name}${isWrapped ? ` (wrapped with ${wrapperName})` : ''}`
+        `initPlatform loaded adapter: ${name} → ${Object.getPrototypeOf(instance as object)?.constructor?.name ?? 'Unknown'}${isWrapped ? ` (wrapped with ${wrapperName})` : ''}`
       );
     }
 
@@ -1034,18 +1048,20 @@ export async function initPlatform(
 
         // Create adapter loader function for multi-adapter support
         // CRITICAL: Wrap loaded adapters with AnalyticsLLM for tracking
-        const adapterLoader = async (adapterPackage: string): Promise<any> => {
+        const adapterLoader = async (adapterPackage: string): Promise<ILLM> => {
           try {
             const module = await loadModule(adapterPackage);
-            const loadedAdapter = await module.createAdapter(llmOptions, {});
+            // createAdapter returns unknown — this is an LLM adapter loader context,
+            // so we assert to ILLM (the factory must produce a valid ILLM or it will fail at runtime).
+            const loadedAdapter = await module.createAdapter(llmOptions, {}) as unknown as ILLM;
 
             // Wrap with AnalyticsLLM if analytics is available
             const analytics = platform.analytics;
             const analyticsWrapped = analytics && analytics.constructor.name !== 'NoOpAnalytics'
-              ? new AnalyticsLLM(loadedAdapter as any, analytics)
+              ? new AnalyticsLLM(loadedAdapter, analytics)
               : loadedAdapter;
             const wrappedAdapter = createDefaultExecutionPolicyLLM(
-              analyticsWrapped as any,
+              analyticsWrapped,
               executionDefaults
             );
 

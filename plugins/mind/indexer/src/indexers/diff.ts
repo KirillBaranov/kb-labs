@@ -19,13 +19,13 @@ export async function indexGitDiff(
   try {
     const diff = await gitDiffSince(ctx.cwd, since);
     return { files: diff.files.length };
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Fail-open: continue with empty diff
-    ctx.log({ 
-      level: 'warn', 
-      code: 'MIND_NO_GIT', 
-      msg: 'Git diff failed, continuing with empty diff', 
-      error: error.message 
+    ctx.log({
+      level: 'warn',
+      code: 'MIND_NO_GIT',
+      msg: 'Git diff failed, continuing with empty diff',
+      error: error instanceof Error ? error.message : String(error)
     });
     return { files: 0 };
   }

@@ -75,7 +75,7 @@ export function registerEnvelopeMiddleware(
       ok: true as const,
       data: dataToWrap,
       meta: {
-        requestId: (request as any).id || '',
+        requestId: request.id || '',
         durationMs: reply.elapsedTime || 0,
         apiVersion: config.apiVersion,
       },
@@ -97,22 +97,22 @@ export function registerEnvelopeMiddleware(
   });
 
   // Error handler
-  server.setErrorHandler(async (error: any, request, reply) => {
+  server.setErrorHandler(async (error: Error & { statusCode?: number; code?: string; details?: unknown; cause?: unknown; traceId?: string }, request, reply) => {
     const statusCode = error.statusCode || 500;
 
     // Extract error details
-    const errorCode = (error as any).code || 'E_INTERNAL';
+    const errorCode = error.code || 'E_INTERNAL';
     const message = error.message || 'Internal server error';
-    const details = (error as any).details || {};
-    const cause = (error as any).cause;
-    const traceId = (error as any).traceId;
+    const details = error.details || {};
+    const cause = error.cause;
+    const traceId = error.traceId;
 
     // Store error code for metrics
-    (reply as any).errorCode = errorCode;
+    reply.errorCode = errorCode;
 
     // Log error with correlation ID
-    if ((request as any).kbLogger) {
-      (request as any).kbLogger.error('Request error', error, {
+    if (request.kbLogger) {
+      request.kbLogger.error('Request error', error, {
         errorCode,
         statusCode,
       });

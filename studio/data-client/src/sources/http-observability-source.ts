@@ -223,9 +223,9 @@ export class HttpObservabilitySource implements ObservabilityDataSource {
     }
   }
 
-  async getRelatedLogs(id: string): Promise<{ total: number; logs: LogRecord[]; correlationKeys: any }> {
+  async getRelatedLogs(id: string): Promise<{ total: number; logs: LogRecord[]; correlationKeys: Record<string, unknown> }> {
     try {
-      return await this.client.fetch<{ total: number; logs: LogRecord[]; correlationKeys: any }>(
+      return await this.client.fetch<{ total: number; logs: LogRecord[]; correlationKeys: Record<string, unknown> }>(
         `/logs/${id}/related`
       );
     } catch (error) {
@@ -356,11 +356,11 @@ export class HttpObservabilitySource implements ObservabilityDataSource {
     try {
       const params = buildIncidentQueryParams(query);
       const url = `/observability/incidents${params ? `?${params}` : ''}`;
-      const response = await this.client.fetch<{ incidents: Incident[]; summary: any }>(url);
+      const response = await this.client.fetch<IncidentsListResponse['data']>(url);
 
       return {
         ok: true,
-        data: response as any, // HttpClient auto-unwraps envelope
+        data: response,
       };
     } catch (error) {
       throw new KBError(
@@ -392,7 +392,7 @@ export class HttpObservabilitySource implements ObservabilityDataSource {
 
   async analyzeIncident(id: string): Promise<IncidentAnalysisResponse> {
     try {
-      const data = await this.client.fetch<any>(
+      const data = await this.client.fetch<IncidentAnalysisResponse['data']>(
         `/observability/incidents/${id}/analyze`,
         { method: 'POST' }
       );

@@ -579,7 +579,7 @@ class MetricsCollector {
     return this.pluginsMetrics;
   }
 
-  completePluginMount(logger: { info: (...args: any[]) => void; warn: (...args: any[]) => void }): PluginsMetricsSnapshot | null {
+  completePluginMount(logger: { info: (...args: unknown[]) => void; warn: (...args: unknown[]) => void }): PluginsMetricsSnapshot | null {
     const snapshot = this.pluginsMetrics.getSnapshot();
     this.lastPluginSnapshot = snapshot;
     if (snapshot.total === 0) {
@@ -680,10 +680,10 @@ export function registerMetricsMiddleware(server: FastifyInstance): void {
     const tenantId = (request.headers['x-tenant-id'] as string | undefined) ?? process.env.KB_TENANT_ID ?? 'default';
 
     // Log request completion with method + full URL + status code + duration
-    if ((request as any).kbLogger) {
+    if (request.kbLogger) {
       const fullUrl = request.url;
       const durationMs = Math.round(duration);
-      (request as any).kbLogger.info(`✓ ${method} ${fullUrl} ${reply.statusCode} ${durationMs}ms`, {
+      request.kbLogger.info(`✓ ${method} ${fullUrl} ${reply.statusCode} ${durationMs}ms`, {
         statusCode: reply.statusCode,
         durationMs,
       });
@@ -725,7 +725,7 @@ export function registerMetricsMiddleware(server: FastifyInstance): void {
     if (reply.statusCode >= 400) {
       httpErrorsTotal.inc({
         status_code: statusCode,
-        error_code: String((reply as any).errorCode ?? reply.statusCode),
+        error_code: String(reply.errorCode ?? reply.statusCode),
         tenant: tenantId,
       });
       tenantErrorsTotal.inc({ tenant: tenantId });
@@ -764,7 +764,7 @@ export function registerMetricsMiddleware(server: FastifyInstance): void {
             statusCode: reply.statusCode,
             durationMs: Math.round(duration),
             tenantId,
-            pluginId: (request as any).kbPluginId ?? undefined,
+            pluginId: request.kbPluginId ?? undefined,
             clientVersion: request.headers['x-client-version'] as string | undefined,
             userAgent: request.headers['user-agent'] as string | undefined,
             requestId: request.id as string | undefined,

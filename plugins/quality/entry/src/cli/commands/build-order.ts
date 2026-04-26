@@ -5,7 +5,7 @@
  * Shows build layers where each layer can build in parallel.
  */
 
-import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, type PluginContextV3, type UIFacade } from '@kb-labs/sdk';
 import {
   buildDependencyGraph,
   topologicalSort,
@@ -36,8 +36,10 @@ export default defineCommand({
     async execute(ctx: PluginContextV3, input: BuildOrderInput): Promise<BuildOrderCommandResult> {
       const { ui } = ctx;
 
-      // V3: Flags come in input.flags object (not auto-merged)
-      const flags = (input as any).flags ?? input;
+      // V3: Flags may come wrapped in input.flags or passed directly
+      const flags = ('flags' in input && typeof (input as { flags?: unknown }).flags === 'object' && (input as { flags?: unknown }).flags !== null)
+        ? (input as { flags: BuildOrderInput }).flags
+        : input;
 
       // Build dependency graph
       const graph = buildDependencyGraph(ctx.cwd);
@@ -70,7 +72,7 @@ export default defineCommand({
 /**
  * Output build order results
  */
-function outputBuildOrder(result: TopologicalSortResult, flags: any, ui: any) {
+function outputBuildOrder(result: TopologicalSortResult, flags: BuildOrderFlags, ui: UIFacade | undefined) {
   if (flags.json) {
     ui?.json?.(result);
     return;
@@ -140,7 +142,7 @@ function outputBuildOrder(result: TopologicalSortResult, flags: any, ui: any) {
 /**
  * Output circular dependencies
  */
-function outputCircularDependencies(cycles: string[][], ui: any) {
+function outputCircularDependencies(cycles: string[][], ui: UIFacade | undefined) {
   const sections: Array<{ header: string; items: string[] }> = [];
 
   for (let i = 0; i < cycles.length; i++) {

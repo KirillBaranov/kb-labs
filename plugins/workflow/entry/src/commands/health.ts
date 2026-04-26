@@ -6,7 +6,7 @@ import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
 import { type HealthFlags } from '@kb-labs/workflow-contracts';
 import { WorkflowDaemonClient } from '../http-client.js';
 
-type HealthInput = HealthFlags & { argv?: string[] };
+type HealthInput = HealthFlags & { argv?: string[]; flags?: HealthFlags };
 
 export default defineCommand<unknown, HealthInput, { exitCode: number }>({
   id: 'workflow:health',
@@ -14,7 +14,7 @@ export default defineCommand<unknown, HealthInput, { exitCode: number }>({
 
   handler: {
     async execute(ctx: PluginContextV3, input: HealthInput): Promise<{ exitCode: number }> {
-      const flags = (input as any).flags ?? input;
+      const flags = input.flags ?? input;
       const outputJson = flags.json ?? false;
 
       try {

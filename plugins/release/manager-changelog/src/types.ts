@@ -95,7 +95,7 @@ export interface ChangelogOptions {
   cwd: string;
   from: string;
   to?: string;
-  plan?: any;  // ReleasePlan from @kb-labs/release-manager-core
+  plan?: unknown;  // ReleasePlan from @kb-labs/release-manager-core
   format?: 'json' | 'md' | 'both';
   level?: 'compact' | 'standard' | 'detailed';
   breakingOnly?: boolean;

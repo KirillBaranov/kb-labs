@@ -15,7 +15,7 @@ type DiagDetails = {
   category: string;
   status: 'ok' | 'warning' | 'error';
   message: string;
-  details?: any;
+  details?: Record<string, unknown>;
 };
 
 type DiagSummary = {
@@ -58,7 +58,7 @@ export const diag = defineSystemCommand<DiagFlags, DiagResult>({
       category: string;
       status: 'ok' | 'warning' | 'error';
       message: string;
-      details?: any;
+      details?: Record<string, unknown>;
     }> = [];
 
     // 1. Environment check
@@ -101,12 +101,13 @@ export const diag = defineSystemCommand<DiagFlags, DiagResult>({
           totalCommands: manifests.length,
         },
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
       diagnostics.push({
         category: 'marketplace',
         status: 'error',
-        message: `Discovery failed: ${err.message}`,
-        details: { error: err.message },
+        message: `Discovery failed: ${errMsg}`,
+        details: { error: errMsg },
       });
     }
 
@@ -138,12 +139,13 @@ export const diag = defineSystemCommand<DiagFlags, DiagResult>({
           details: { exists: false },
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
       diagnostics.push({
         category: 'cache',
         status: 'warning',
-        message: `Cache check failed: ${err.message}`,
-        details: { error: err.message },
+        message: `Cache check failed: ${errMsg}`,
+        details: { error: errMsg },
       });
     }
 
@@ -167,12 +169,13 @@ export const diag = defineSystemCommand<DiagFlags, DiagResult>({
           message: 'No marketplace.lock found — no plugins installed via marketplace',
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
       diagnostics.push({
         category: 'marketplace-lock',
         status: 'error',
-        message: `Marketplace lock check failed: ${err.message}`,
-        details: { error: err.message },
+        message: `Marketplace lock check failed: ${errMsg}`,
+        details: { error: errMsg },
       });
     }
 
@@ -216,12 +219,13 @@ export const diag = defineSystemCommand<DiagFlags, DiagResult>({
           details: { issues: [] },
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
       diagnostics.push({
         category: 'versions',
         status: 'error',
-        message: `Version check failed: ${err.message}`,
-        details: { error: err.message },
+        message: `Version check failed: ${errMsg}`,
+        details: { error: errMsg },
       });
     }
 

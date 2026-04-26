@@ -7,6 +7,7 @@
  */
 
 import type { IVectorStore, IStorage } from '@kb-labs/sdk';
+import type { SpanRange } from '../types/engine-contracts';
 import type {
   VectorStore,
   StoredMindChunk,
@@ -16,6 +17,22 @@ import type {
 import type { EmbeddingVector } from './vector-store';
 import { withRetry } from './retry';
 import type { RetryOptions } from './retry';
+
+/**
+ * Raw chunk shape produced by StorageStage before conversion to StoredMindChunk.
+ * Embedding may be a flat array or a structured object.
+ */
+interface RawChunkInput {
+  chunkId: string;
+  sourceId: string;
+  path: string;
+  span: SpanRange;
+  text: string;
+  hash?: string;
+  mtime?: number;
+  metadata?: Record<string, unknown>;
+  embedding: number[] | { values: number[] };
+}
 
 interface PlatformAdapterOptions {
   vectorStore: IVectorStore;
@@ -215,8 +232,8 @@ export class PlatformVectorStoreAdapter implements VectorStore {
    */
   createScopedAdapter(scopeId: string) {
     return {
-      insertBatch: async (chunks: any[]) => this.insertBatch(scopeId, chunks),
-      updateBatch: async (chunks: any[]) => this.updateBatch(scopeId, chunks),
+      insertBatch: async (chunks: RawChunkInput[]) => this.insertBatch(scopeId, chunks),
+      updateBatch: async (chunks: RawChunkInput[]) => this.updateBatch(scopeId, chunks),
       checkExistence: async (chunkIds: string[]) => this.checkExistence(scopeId, chunkIds),
       getChunksByHash: async (hashes: string[]) => this.getChunksByHash(scopeId, hashes),
       getChunkIdsByPaths: async (paths: string[]) => this.getChunkIdsByPaths(scopeId, paths),
@@ -228,7 +245,7 @@ export class PlatformVectorStoreAdapter implements VectorStore {
    * Insert multiple chunks in one batch operation.
    * Used by StorageStage for efficient bulk indexing.
    */
-  private async insertBatch(scopeId: string, chunks: any[]): Promise<number> {
+  private async insertBatch(scopeId: string, chunks: RawChunkInput[]): Promise<number> {
     if (chunks.length === 0) {return 0;}
 
     const records = chunks.map(chunk => ({
@@ -255,7 +272,7 @@ export class PlatformVectorStoreAdapter implements VectorStore {
    * Update existing chunks in batch.
    * Currently delegates to insertBatch (upsert handles both insert and update).
    */
-  private async updateBatch(scopeId: string, chunks: any[]): Promise<number> {
+  private async updateBatch(scopeId: string, chunks: RawChunkInput[]): Promise<number> {
     return this.insertBatch(scopeId, chunks);
   }
 
@@ -454,7 +471,7 @@ export class PlatformVectorStoreAdapter implements VectorStore {
       scopeId: (metadata.scopeId as string) ?? scopeId,
       sourceId: (metadata.sourceId as string) ?? '',
       path: (metadata.path as string) ?? '',
-      span: (metadata.span as any) ?? { startLine: 0, endLine: 0 },
+      span: (metadata.span as SpanRange | undefined) ?? { startLine: 0, endLine: 0 },
       text: (metadata.text as string) ?? '', // Text now stored in metadata
       metadata: metadata.metadata as Record<string, unknown> | undefined,
       embedding: { values: vector, dim: vector.length },

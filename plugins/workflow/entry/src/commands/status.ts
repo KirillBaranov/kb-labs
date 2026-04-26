@@ -15,7 +15,7 @@ export default defineCommand<unknown, StatusInput, { exitCode: number }>({
   handler: {
     // eslint-disable-next-line sonarjs/cognitive-complexity -- Job status display with deep run/job/step traversal, multiple output formats (JSON/human), timing calculations, status color coding, and error aggregation
     async execute(ctx: PluginContextV3, input: StatusInput): Promise<{ exitCode: number }> {
-      const flags = (input as any).flags ?? input;
+      const flags = (input as { flags?: StatusFlags }).flags ?? input;
       const outputJson = flags.json ?? false;
       const jobId = flags['job-id'];
 
@@ -90,7 +90,7 @@ export default defineCommand<unknown, StatusInput, { exitCode: number }>({
 
                   // Show error if present
                   if (step.error) {
-                    const errorMsg = typeof step.error === 'object' ? (step.error as any).message : step.error;
+                    const errorMsg = typeof step.error === 'string' ? step.error : step.error?.message ?? String(step.error);
                     stepItems.push(`  └─ Error: ${errorMsg}`);
                   }
                 }

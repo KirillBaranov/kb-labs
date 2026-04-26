@@ -30,7 +30,13 @@ export const statsFlags = {
   },
 } as const;
 
-export type StatsFlags = typeof statsFlags;
+/** Parsed value type for StatsFlags */
+export type StatsFlags = {
+  json?: boolean;
+  md?: boolean;
+  health?: boolean;
+  refresh?: boolean;
+};
 
 /**
  * Flags for quality:health command
@@ -54,7 +60,12 @@ export const healthFlags = {
   },
 } as const;
 
-export type HealthFlags = typeof healthFlags;
+/** Parsed value type for HealthFlags */
+export type HealthFlags = {
+  json?: boolean;
+  package?: string;
+  detailed?: boolean;
+};
 
 /**
  * Flags for quality:fix-deps command
@@ -97,7 +108,16 @@ export const fixDepsFlags = {
   },
 } as const;
 
-export type FixDepsFlags = typeof fixDepsFlags;
+/** Parsed value type for FixDepsFlags */
+export type FixDepsFlags = {
+  'dry-run'?: boolean;
+  'remove-unused'?: boolean;
+  'add-missing'?: boolean;
+  'align-versions'?: boolean;
+  all?: boolean;
+  stats?: boolean;
+  json?: boolean;
+};
 
 /**
  * Flags for quality:run command
@@ -135,7 +155,15 @@ export const runFlags = {
   },
 } as const;
 
-export type RunFlags = typeof runFlags;
+/** Parsed value type for RunFlags */
+export type RunFlags = {
+  script?: string;
+  'continue-on-error'?: boolean;
+  parallel?: boolean;
+  filter?: string;
+  json?: boolean;
+  verbose?: boolean;
+};
 
 /**
  * Flags for quality:build-order command
@@ -163,7 +191,13 @@ export const buildOrderFlags = {
   },
 } as const;
 
-export type BuildOrderFlags = typeof buildOrderFlags;
+/** Parsed value type for BuildOrderFlags */
+export type BuildOrderFlags = {
+  package?: string;
+  layers?: boolean;
+  script?: boolean;
+  json?: boolean;
+};
 
 /**
  * Flags for quality:cycles command
@@ -176,7 +210,10 @@ export const cyclesFlags = {
   },
 } as const;
 
-export type CyclesFlags = typeof cyclesFlags;
+/** Parsed value type for CyclesFlags */
+export type CyclesFlags = {
+  json?: boolean;
+};
 
 /**
  * Flags for quality:visualize command
@@ -219,7 +256,16 @@ export const visualizeFlags = {
   },
 } as const;
 
-export type VisualizeFlags = typeof visualizeFlags;
+/** Parsed value type for VisualizeFlags */
+export type VisualizeFlags = {
+  package?: string;
+  tree?: boolean;
+  dot?: boolean;
+  stats?: boolean;
+  reverse?: boolean;
+  impact?: boolean;
+  json?: boolean;
+};
 
 /**
  * Flags for quality:check-builds command
@@ -247,7 +293,13 @@ export const checkBuildsFlags = {
   },
 } as const;
 
-export type CheckBuildsFlags = typeof checkBuildsFlags;
+/** Parsed value type for CheckBuildsFlags */
+export type CheckBuildsFlags = {
+  package?: string;
+  timeout?: number;
+  json?: boolean;
+  refresh?: boolean;
+};
 
 /**
  * Flags for quality:check-types command
@@ -275,7 +327,13 @@ export const checkTypesFlags = {
   },
 } as const;
 
-export type CheckTypesFlags = typeof checkTypesFlags;
+/** Parsed value type for CheckTypesFlags */
+export type CheckTypesFlags = {
+  package?: string;
+  'errors-only'?: boolean;
+  json?: boolean;
+  refresh?: boolean;
+};
 
 /**
  * Flags for quality:check-tests command
@@ -313,7 +371,15 @@ export const checkTestsFlags = {
   },
 } as const;
 
-export type CheckTestsFlags = typeof checkTestsFlags;
+/** Parsed value type for CheckTestsFlags */
+export type CheckTestsFlags = {
+  package?: string;
+  timeout?: number;
+  'with-coverage'?: boolean;
+  'coverage-only'?: boolean;
+  json?: boolean;
+  refresh?: boolean;
+};
 
 /**
  * Flags for quality:dead-code command
@@ -361,4 +427,14 @@ export const deadCodeFlags = {
   },
 } as const;
 
-export type DeadCodeFlags = typeof deadCodeFlags;
+/** Parsed value type for DeadCodeFlags */
+export type DeadCodeFlags = {
+  package?: string;
+  json?: boolean;
+  verbose?: boolean;
+  'auto-remove'?: boolean;
+  'dry-run'?: boolean;
+  restore?: string;
+  'list-backups'?: boolean;
+  refresh?: boolean;
+};

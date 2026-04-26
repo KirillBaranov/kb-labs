@@ -179,11 +179,12 @@ export class LogSQLitePersistence implements ILogPersistence {
     // SQLiteAdapter should have exec() method for schema migrations
     // Check if exec() is available (utility method in SQLiteAdapter)
     const hasExec = "exec" in this.db;
-    const isFunction = typeof (this.db as any).exec === "function";
+    const dbWithExec = this.db as typeof this.db & { exec?: (sql: string) => Promise<void> };
+    const isFunction = typeof dbWithExec.exec === "function";
 
     if (hasExec && isFunction) {
       try {
-        await (this.db as any).exec(cleanSQL);
+        await dbWithExec.exec!(cleanSQL);
       } catch (error) {
         console.error("[LogSQLitePersistence] Schema execution failed:", error);
         throw error;

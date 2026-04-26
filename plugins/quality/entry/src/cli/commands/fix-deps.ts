@@ -10,12 +10,27 @@
  */
 
 import { defineCommand, type PluginContextV3, useLoader } from '@kb-labs/sdk';
+import type { UIFacade } from '@kb-labs/sdk';
 import type { FixDepsFlags } from './flags.js';
 import fs from 'node:fs';
 import path from 'node:path';
 
 // Input type with backward compatibility
 type FixDepsInput = FixDepsFlags & { argv?: string[] };
+
+/** Minimal package.json structure used by fix-deps */
+interface PackageJson {
+  name?: string;
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+}
+
+/** Parsed package entry */
+interface PackageEntry {
+  name: string;
+  path: string;
+  json: PackageJson;
+}
 
 interface FixResult {
   packagesScanned: number;
@@ -39,8 +54,10 @@ export default defineCommand({
     async execute(ctx: PluginContextV3, input: FixDepsInput): Promise<FixDepsCommandResult> {
       const { ui, platform } = ctx;
 
-      // V3: Flags come in input.flags object (not auto-merged)
-      const flags = (input as any).flags ?? input;
+      // V3: Flags may come wrapped in input.flags or passed directly
+      const flags = ('flags' in input && typeof (input as { flags?: unknown }).flags === 'object' && (input as { flags?: unknown }).flags !== null)
+        ? (input as { flags: FixDepsInput }).flags
+        : input;
 
       const dryRun = flags['dry-run'] ?? false;
       const removeUnused = flags['remove-unused'] || flags.all;
@@ -123,8 +140,8 @@ export default defineCommand({
 /**
  * Find all packages in the monorepo
  */
-function findPackages(rootDir: string): Array<{ name: string; path: string; json: any }> {
-  const packages: Array<{ name: string; path: string; json: any }> = [];
+function findPackages(rootDir: string): PackageEntry[] {
+  const packages: PackageEntry[] = [];
 
   if (!fs.existsSync(rootDir)) {
     return packages;
@@ -164,7 +181,14 @@ function findPackages(rootDir: string): Array<{ name: string; path: string; json
 /**
  * Get dependency statistics
  */
-async function getDependencyStats(rootDir: string): Promise<any> {
+interface DependencyStats {
+  totalPackages: number;
+  totalDeps: number;
+  duplicates: number;
+  topUsed: Array<{ name: string; count: number }>;
+}
+
+async function getDependencyStats(rootDir: string): Promise<DependencyStats> {
   const packages = findPackages(rootDir);
   const allDeps = new Map<string, Set<string>>();
 
@@ -203,7 +227,7 @@ async function getDependencyStats(rootDir: string): Promise<any> {
  * Align duplicate dependency versions to most common version
  */
 async function alignDuplicateVersions(
-  packages: Array<{ name: string; path: string; json: any }>,
+  packages: PackageEntry[],
   dryRun: boolean
 ): Promise<Array<{ dep: string; from: string; to: string; packages: string[] }>> {
   const aligned: Array<{ dep: string; from: string; to: string; packages: string[] }> = [];
@@ -282,7 +306,7 @@ async function alignDuplicateVersions(
  * Add missing workspace dependencies
  */
 async function addMissingWorkspaceDeps(
-  packages: Array<{ name: string; path: string; json: any }>,
+  packages: PackageEntry[],
   dryRun: boolean
 ): Promise<Array<{ package: string; dep: string; version: string }>> {
   const added: Array<{ package: string; dep: string; version: string }> = [];
@@ -335,7 +359,7 @@ async function addMissingWorkspaceDeps(
  * Remove unused dependencies
  */
 async function removeUnusedDeps(
-  packages: Array<{ name: string; path: string; json: any }>,
+  packages: PackageEntry[],
   dryRun: boolean
 ): Promise<Array<{ package: string; dep: string }>> {
   const removed: Array<{ package: string; dep: string }> = [];
@@ -438,7 +462,7 @@ function isProtectedDep(dep: string): boolean {
 /**
  * Output dependency statistics
  */
-function outputStats(stats: any, flags: any, ui: any) {
+function outputStats(stats: DependencyStats, flags: FixDepsFlags, ui: UIFacade | undefined) {
   if (flags.json) {
     ui?.json?.(stats);
     return;
@@ -458,7 +482,7 @@ function outputStats(stats: any, flags: any, ui: any) {
   if (stats.topUsed.length > 0) {
     sections.push({
       header: 'Top 10 Most Used',
-      items: stats.topUsed.map((d: any) => `${d.name} (${d.count} packages)`),
+      items: stats.topUsed.map((d) => `${d.name} (${d.count} packages)`),
     });
   }
 
@@ -471,7 +495,7 @@ function outputStats(stats: any, flags: any, ui: any) {
 /**
  * Output fix results
  */
-function outputResults(result: FixResult, flags: any, ui: any) {
+function outputResults(result: FixResult, flags: FixDepsFlags, ui: UIFacade | undefined) {
   if (flags.json) {
     ui?.json?.(result);
     return;

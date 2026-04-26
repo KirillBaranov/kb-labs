@@ -243,7 +243,7 @@ func generateFull(opts Options) string {
   // To override settings for your project, add them to:
   //   projectDir/.kb/kb.config.jsonc
   //
-  // Docs:  https://kb-labs.dev/docs/configuration
+  // Docs:  https://docs.kblabs.ru/configuration
   // CLI:   kb config --help
 
 `)
@@ -304,7 +304,7 @@ func generateFull(opts Options) string {
 		b.WriteString("    },\n")
 	} else {
 		b.WriteString("    // LLM credentials — set your API key here or via KB_LABS_API_KEY env var.\n")
-		b.WriteString("    // Docs: https://kb-labs.dev/docs/llm\n")
+		b.WriteString("    // Docs: https://docs.kblabs.ru/adapters/built-in\n")
 		b.WriteString("    \"llm\": {},\n")
 	}
 	b.WriteString("    \"storage\": { \"baseDir\": \".kb/storage\" },\n")
@@ -384,7 +384,7 @@ func generatePointer(platformDir string) string {
   // Platform defaults (adapters, execution, etc.) are inherited from the
   // platform installation directory. Add project-level overrides below.
   //
-  // Docs: https://kb-labs.dev/docs/configuration
+  // Docs: https://docs.kblabs.ru/configuration
 
   "platform": {
     // Set by kb-create — do not remove.
@@ -445,7 +445,7 @@ func writeStarterWorkflows(kbDir string) error {
 	workflows := map[string]string{
 		"healthcheck.yaml": `# Healthcheck — verify your project builds and passes tests.
 # Run:  kb workflow run healthcheck
-# Docs: https://kb-labs.dev/docs/workflows
+# Docs: https://docs.kblabs.ru/workflows
 name: healthcheck
 version: 1.0.0
 description: "Build, lint, and test your project"
@@ -468,7 +468,7 @@ jobs:
 `,
 		"deploy-with-approval.yaml": `# Deploy with approval gate — human sign-off before deploy.
 # Run:  kb workflow run deploy-with-approval
-# Docs: https://kb-labs.dev/docs/workflows
+# Docs: https://docs.kblabs.ru/workflows
 name: deploy-with-approval
 version: 1.0.0
 description: "Build, test, get approval, then deploy"
@@ -511,7 +511,7 @@ jobs:
 `,
 		"scheduled-report.yaml": `# Scheduled report — runs on a cron schedule.
 # This workflow runs daily and generates a project health summary.
-# Docs: https://kb-labs.dev/docs/workflows
+# Docs: https://docs.kblabs.ru/workflows
 name: scheduled-report
 version: 1.0.0
 description: "Daily project health check (cron)"

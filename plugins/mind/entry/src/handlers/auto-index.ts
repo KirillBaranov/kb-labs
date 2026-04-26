@@ -23,7 +23,7 @@ interface AutoIndexOutput {
 interface AutoIndexContext {
   requestId: string;
   cwd: string;
-  logger?: { info(...a: any[]): void; error(...a: any[]): void };
+  logger?: { info(...a: unknown[]): void; error(...a: unknown[]): void };
   platform?: PlatformServices;
 }
 

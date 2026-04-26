@@ -64,7 +64,7 @@ export default defineCommand({
       const mindDir = await initMindStructure({
         cwd,
         force: flags.force,
-        log: (entry: any) => {
+        log: (entry: { msg?: string } | string) => {
           if (!flags.quiet && !flags.json) {
             // V3 API: ctx.ui (not ctx.output.ui)
             ctx.ui.info(`Init: ${entry.msg || entry}`);

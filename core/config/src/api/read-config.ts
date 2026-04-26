@@ -49,8 +49,8 @@ export async function readConfigFile(filePath: string): Promise<ConfigFileResult
   
   // Check cache first
   const cached = await fsCache.get(absPath);
-  if (cached !== null) {
-    return cached;
+  if (cached !== null && cached !== undefined) {
+    return cached as ConfigFileResult;
   }
 
   try {

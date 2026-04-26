@@ -871,11 +871,11 @@ declare global {
 
 // Helper to access the singleton via Symbol.for()
 function getPlatformFromProcess(): PlatformContainer | undefined {
-  return (process as any)[PLATFORM_SINGLETON_KEY];
+  return (process as NodeJS.Process & Record<symbol, unknown>)[PLATFORM_SINGLETON_KEY] as PlatformContainer | undefined;
 }
 
 function setPlatformInProcess(platform: PlatformContainer): void {
-  (process as any)[PLATFORM_SINGLETON_KEY] = platform;
+  (process as NodeJS.Process & Record<symbol, unknown>)[PLATFORM_SINGLETON_KEY] = platform;
 }
 
 /**

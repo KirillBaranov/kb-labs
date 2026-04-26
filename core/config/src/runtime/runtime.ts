@@ -84,13 +84,13 @@ export async function readJsonWithDiagnostics<T = unknown>(p: string): Promise<J
 }
 
 /** Shallow pick of defined fields only. */
-export function pickDefined<T extends Record<string, any>>(obj: T | undefined): Partial<T> {
+export function pickDefined<T extends Record<string, unknown>>(obj: T | undefined): Partial<T> {
     if (!obj) { return {}; }
-    const out: Partial<T> = {};
+    const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(obj)) {
-        if (v !== undefined) { (out as any)[k] = v; }
+        if (v !== undefined) { out[k] = v; }
     }
-    return out;
+    return out as Partial<T>;
 }
 
 /** Deep merge (objects/arrays), ignoring `undefined` on the overlay. */
@@ -100,18 +100,19 @@ export function mergeDefined<T>(base: T, over?: Partial<T>): T {
         return [...base, ...over.filter(v => v !== undefined)] as unknown as T;
     }
     if (isPlainObject(base) && isPlainObject(over)) {
-        const out: any = { ...base };
+        const baseObj: Record<string, unknown> = base;
+        const out: Record<string, unknown> = { ...baseObj };
         for (const [k, v] of Object.entries(over)) {
             if (v === undefined) { continue; }
-            if (isPlainObject((base as any)[k]) && isPlainObject(v)) {
-                out[k] = mergeDefined((base as any)[k], v as any);
-            } else if (Array.isArray((base as any)[k]) && Array.isArray(v)) {
-                out[k] = mergeDefined((base as any)[k], v as any);
+            if (isPlainObject(baseObj[k]) && isPlainObject(v)) {
+                out[k] = mergeDefined(baseObj[k], v);
+            } else if (Array.isArray(baseObj[k]) && Array.isArray(v)) {
+                out[k] = mergeDefined(baseObj[k], v);
             } else {
                 out[k] = v;
             }
         }
-        return out;
+        return out as T;
     }
     // Different types → overlay wins if defined
     return (over as T) ?? base;

@@ -34,6 +34,7 @@
 import { randomBytes } from 'node:crypto';
 import type { ChildProcess } from 'node:child_process';
 import type { PlatformServices } from '@kb-labs/plugin-contracts';
+import type { IPlatformAdapters } from '@kb-labs/core-platform';
 import { UnixSocketServer, createSocketPath } from '@kb-labs/core-ipc';
 import type { PlatformTransportFactory, PlatformTransportServer } from '../types.js';
 
@@ -64,7 +65,7 @@ export class UnixSocketPlatformTransportFactory implements PlatformTransportFact
     if (this.server) {
       return; // Already started
     }
-    this.server = new UnixSocketServer(platform as any, { socketPath: this.socketPath });
+    this.server = new UnixSocketServer(platform as unknown as IPlatformAdapters, { socketPath: this.socketPath });
     await this.server.start();
   }
 

@@ -34,7 +34,8 @@ type RouteStats = {
 };
 
 type HookableFastifyServer = {
-  addHook: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  addHook: (event: string, handler: (...args: any[]) => void) => void;
 };
 
 export interface HttpObservabilityCollectorOptions {

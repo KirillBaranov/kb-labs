@@ -20,7 +20,7 @@ export const ADAPTER_TYPES = {
  * Check if adapter type is known
  */
 export function isKnownAdapterType(type: string): boolean {
-  return Object.values(ADAPTER_TYPES).includes(type as any);
+  return (Object.values(ADAPTER_TYPES) as string[]).includes(type);
 }
 
 /**

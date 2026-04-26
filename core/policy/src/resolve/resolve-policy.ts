@@ -151,20 +151,22 @@ function mergePolicies(preset: Policy, workspace: Policy): Policy {
 /**
  * Validate policy schema
  */
-export function validatePolicy(policy: any): policy is Policy {
+export function validatePolicy(policy: unknown): policy is Policy {
   if (!policy || typeof policy !== "object") {
     return false;
   }
 
-  if (policy.schemaVersion !== "1.0") {
+  const p = policy as Record<string, unknown>;
+
+  if (p.schemaVersion !== "1.0") {
     return false;
   }
 
-  if (!Array.isArray(policy.rules)) {
+  if (!Array.isArray(p.rules)) {
     return false;
   }
 
-  for (const rule of policy.rules) {
+  for (const rule of p.rules) {
     if (!rule.action || typeof rule.action !== "string") {
       return false;
     }

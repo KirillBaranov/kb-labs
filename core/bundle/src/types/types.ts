@@ -34,7 +34,7 @@ export interface Bundle<T = any> {
   profile: BundleProfile | null;
   policy: {
     bundle?: string;
-    permits: (action: string, resource?: any) => boolean;
+    permits: (action: string, resource?: string) => boolean;
   };
   trace: MergeTrace[];
   artifacts?: {

@@ -10,9 +10,55 @@
  */
 
 import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
-import type { TraceCommandResponse, TraceErrorCode } from '@kb-labs/agent-contracts';
+import type { TraceCommandResponse, TraceErrorCode, DetailedTraceEntry } from '@kb-labs/agent-contracts';
 import { loadTrace, formatTraceLoadError } from '@kb-labs/agent-tracing';
 import { normalizeTraceEvents } from './trace-event-normalizer.js';
+
+/** Shape of raw data in llm:end / llm:call events (legacy + new formats) */
+interface LLMRawEvent {
+  response?: { usage?: { inputTokens?: number; outputTokens?: number } };
+  cost?: { totalCost?: number };
+  content?: string;
+  hasToolCalls?: boolean;
+  tokensUsed?: number;
+  durationMs?: number;
+  iteration?: number;
+}
+
+/** Shape of raw data in tool:end / tool:execution events */
+interface ToolRawEvent {
+  tool?: { name?: string };
+  output?: { success?: boolean; error?: { message?: string } };
+  toolName?: string;
+  durationMs?: number;
+  timing?: { durationMs?: number };
+  success?: boolean;
+  input?: unknown;
+  error?: string | { message?: string; stack?: string };
+  iteration?: number;
+}
+
+/** Shape of raw data in error:captured / agent:error events */
+interface ErrorRawEvent {
+  error?: string | { message?: string; stack?: string };
+  agentStack?: unknown;
+  iteration?: number;
+}
+
+/** Raw data accessed on arbitrary events via data or raw fallback */
+interface GenericRawData {
+  toolName?: string;
+  tool?: { name?: string };
+  durationMs?: number;
+  timing?: { durationMs?: number };
+  success?: boolean;
+  output?: { success?: boolean; error?: { message?: string } };
+  input?: unknown;
+  error?: string | { message?: string; stack?: string };
+  iteration?: number;
+  content?: string;
+  hasToolCalls?: boolean;
+}
 
 type TraceDiagnoseInput = {
   taskId?: string;
@@ -86,7 +132,10 @@ export default defineCommand({
 
   handler: {
     async execute(ctx: PluginContextV3, input: TraceDiagnoseInput): Promise<{ exitCode: number }> {
-      const flags = (input as any).flags ?? input;
+      const flags: TraceDiagnoseInput =
+        (typeof input === 'object' && input !== null && 'flags' in input)
+          ? (input as { flags: TraceDiagnoseInput }).flags
+          : input;
       const taskId = (flags['task-id'] ?? flags.taskId) as string | undefined;
 
       try {
@@ -114,22 +163,25 @@ export default defineCommand({
   },
 });
 
-function analyzeDiagnostics(taskId: string, events: any[]): DiagnosticReport {
-  const normalized = normalizeTraceEvents(events as any[]);
+function analyzeDiagnostics(taskId: string, events: DetailedTraceEntry[]): DiagnosticReport {
+  const normalized = normalizeTraceEvents(events);
   const issues: DiagnosticIssue[] = [];
 
   // === Summary ===
-  const taskStart = events[0];
-  const agentEnd = [...events].reverse().find(e => e.type === 'agent:end');
+  // Use normalized events (type: string, data: Record<string,unknown>) to avoid
+  // union type narrowing on the raw DetailedTraceEntry discriminated union.
+  const taskStart = normalized[0];
+  const agentEnd = [...normalized].reverse().find(e => e.type === 'agent:end');
   const iterationStarts = normalized.filter(e => e.type === 'iteration:start');
   const iterations = iterationStarts.length || Math.max(0, ...normalized.map(e => e.iteration));
   const llmEndTokens = normalized
     .filter(e => e.type === 'llm:end')
     .reduce((sum, e) => sum + (Number(e.data.tokensUsed) || 0), 0);
   const totalTokens = Number(agentEnd?.data?.tokensUsed) || llmEndTokens;
+  const lastNormalized = normalized[normalized.length - 1];
   const durationMs = Number(agentEnd?.data?.durationMs)
-    || (taskStart && events[events.length - 1]
-      ? new Date(events[events.length - 1].timestamp).getTime() - new Date(taskStart.timestamp).getTime()
+    || (taskStart && lastNormalized
+      ? new Date(lastNormalized.raw.timestamp).getTime() - new Date(taskStart.raw.timestamp).getTime()
       : 0);
   const success = Boolean(agentEnd?.data?.success ?? true);
 
@@ -139,8 +191,11 @@ function analyzeDiagnostics(taskId: string, events: any[]): DiagnosticReport {
     e.type === 'tool:end' || e.type === 'tool_result' || e.type === 'tool:execution'
   );
   for (const tr of toolResults) {
-    const data = tr.data || (tr.raw as any).output || tr.raw;
-    const output = typeof data?.output === 'string' ? data.output : JSON.stringify(data?.result || '');
+    const rawTool = tr.raw as ToolRawEvent;
+    const data = tr.data || rawTool.output || tr.raw;
+    const output = typeof (data as GenericRawData)?.output === 'string'
+      ? (data as GenericRawData).output as string
+      : JSON.stringify((data as GenericRawData)?.output || '');
     if (output.includes('"confidence"')) {
       try {
         const match = output.match(/"confidence"\s*:\s*([\d.]+)/);
@@ -150,9 +205,11 @@ function analyzeDiagnostics(taskId: string, events: any[]): DiagnosticReport {
   }
 
   // === Context Health ===
-  const contextSnapshots = events.filter(e => e.type === 'context:snapshot');
-  const contextDiffs = events.filter(e => e.type === 'context:diff');
-  const contextTrims = events.filter(e => e.type === 'context:trim');
+  // Access all events through normalized (type: string, data: Record<string,unknown>)
+  // to avoid TypeScript narrowing on the DetailedTraceEntry discriminated union.
+  const contextSnapshots = normalized.filter(e => e.type === 'context:snapshot');
+  const contextDiffs = normalized.filter(e => e.type === 'context:diff');
+  const contextTrims = normalized.filter(e => e.type === 'context:trim');
   let maxContextChars = 0;
   let totalDroppedMessages = 0;
   let truncatedToolOutputs = 0;
@@ -160,14 +217,14 @@ function analyzeDiagnostics(taskId: string, events: any[]): DiagnosticReport {
   const contextGrowthHistory: DiagnosticReport['contextHealth']['contextGrowthHistory'] = [];
 
   for (const snap of contextSnapshots) {
-    const data = snap.data || snap;
-    const chars = data.totalChars || 0;
-    const dropped = data.slidingWindow?.droppedMessages || 0;
+    const chars = Number(snap.data.totalChars) || 0;
+    const slidingWindow = snap.data.slidingWindow as { droppedMessages?: number } | undefined;
+    const dropped = slidingWindow?.droppedMessages || 0;
     if (chars > maxContextChars) {maxContextChars = chars;}
     totalDroppedMessages += dropped;
     contextGrowthHistory.push({
-      iteration: data.iteration || 0,
-      messageCount: data.messageCount || 0,
+      iteration: snap.iteration,
+      messageCount: Number(snap.data.messageCount) || 0,
       totalChars: chars,
       droppedMessages: dropped,
     });
@@ -186,16 +243,17 @@ function analyzeDiagnostics(taskId: string, events: any[]): DiagnosticReport {
   // System prompt changes (from context:diff)
   const systemPromptChanges: Array<{ iteration: number; charsDelta: number }> = [];
   for (const cd of contextDiffs) {
-    const diff = (cd.data || cd).diff;
+    const diff = cd.data.diff as { systemPromptChanged?: boolean; systemPromptCharsDelta?: number; droppedMessages?: number } | undefined;
     if (diff?.systemPromptChanged) {
+      const delta = diff.systemPromptCharsDelta || 0;
       systemPromptChanges.push({
-        iteration: (cd.data || cd).iteration || 0,
-        charsDelta: diff.systemPromptCharsDelta || 0,
+        iteration: cd.iteration,
+        charsDelta: delta,
       });
       issues.push({
         severity: 'warning',
         category: 'context',
-        message: `System prompt changed at iteration ${(cd.data || cd).iteration} (${diff.systemPromptCharsDelta > 0 ? '+' : ''}${diff.systemPromptCharsDelta} chars)`,
+        message: `System prompt changed at iteration ${cd.iteration} (${delta > 0 ? '+' : ''}${delta} chars)`,
       });
     }
   }
@@ -207,8 +265,14 @@ function analyzeDiagnostics(taskId: string, events: any[]): DiagnosticReport {
       category: 'context',
       message: `${totalDroppedMessages} messages dropped by sliding window — agent lost earlier context`,
       details: contextDiffs
-        .filter(d => (d.data || d).diff?.droppedMessages > 0)
-        .map(d => `Iteration ${(d.data || d).iteration}: ${(d.data || d).diff?.droppedMessages} dropped`)
+        .filter(d => {
+          const df = d.data.diff as { droppedMessages?: number } | undefined;
+          return (df?.droppedMessages ?? 0) > 0;
+        })
+        .map(d => {
+          const df = d.data.diff as { droppedMessages?: number } | undefined;
+          return `Iteration ${d.iteration}: ${df?.droppedMessages ?? 0} dropped`;
+        })
         .join(', '),
     });
   }
@@ -227,7 +291,7 @@ function analyzeDiagnostics(taskId: string, events: any[]): DiagnosticReport {
   const toolErrors = normalized.filter(e =>
     e.type === 'tool:error'
       || (e.type === 'tool:end' && e.data?.success === false)
-      || (e.type === 'tool:execution' && (e.raw as any).output?.success === false)
+      || (e.type === 'tool:execution' && (e.raw as ToolRawEvent).output?.success === false)
       || (e.type === 'tool_result' && e.data?.success === false)
   );
 
@@ -236,10 +300,10 @@ function analyzeDiagnostics(taskId: string, events: any[]): DiagnosticReport {
   const SLOW_THRESHOLD_MS = 5000; // 5s threshold for "slow" calls
 
   for (const te of toolEnds) {
-    const data = (te.data || (te.raw as any)) as any;
-    const name = (data.toolName as string | undefined) || (data.tool?.name as string | undefined) || 'unknown';
+    const data = (te.data || te.raw) as GenericRawData;
+    const name = data.toolName || data.tool?.name || 'unknown';
     const dur = Number(data.durationMs) || Number(data.timing?.durationMs) || 0;
-    const success = (data.success as boolean | undefined) ?? (data.output?.success as boolean | undefined) ?? true;
+    const success = data.success ?? data.output?.success ?? true;
 
     if (!toolBreakdown[name]) {
       toolBreakdown[name] = { calls: 0, failures: 0, totalDurationMs: 0 };
@@ -271,9 +335,10 @@ function analyzeDiagnostics(taskId: string, events: any[]): DiagnosticReport {
 
   // Tool failure issues
   for (const err of toolErrors) {
-    const data = (err.data || (err.raw as any)) as any;
+    const data = (err.data || err.raw) as GenericRawData;
     const name = data.toolName || data.tool?.name || 'unknown';
-    const errMsg = data.error || data.output?.error?.message || '';
+    const rawErr = data.error;
+    const errMsg = typeof rawErr === 'string' ? rawErr : rawErr?.message || data.output?.error?.message || '';
     issues.push({
       severity: 'warning',
       category: 'tool',
@@ -289,7 +354,7 @@ function analyzeDiagnostics(taskId: string, events: any[]): DiagnosticReport {
   const reasoningTexts: DiagnosticReport['llmBehavior']['reasoningTexts'] = [];
 
   for (const lr of llmResponses) {
-    const data = (lr.data || (lr.raw as any)) as any;
+    const data = (lr.data || lr.raw) as LLMRawEvent;
     const content = data.content || '';
     const hasToolCalls = data.hasToolCalls || false;
 
@@ -313,22 +378,24 @@ function analyzeDiagnostics(taskId: string, events: any[]): DiagnosticReport {
   }
 
   // Stopping analysis
-  const stoppingAnalyses = events.filter(e => e.type === 'stopping:analysis');
+  const stoppingAnalyses = normalized.filter(e => e.type === 'stopping:analysis');
   const stoppingReasons = stoppingAnalyses
-    .map(e => (e.data || e).reasoning || '')
+    .map(e => String(e.data.reasoning ?? ''))
     .filter(Boolean);
 
   // === Error Detection ===
   const errors = normalized.filter(e => e.type === 'error:captured' || e.type === 'agent:error');
   for (const err of errors) {
-    const data = (err.data || (err.raw as any)) as any;
-    const msg = data.error?.message || data.error || '';
+    const data = (err.data || err.raw) as ErrorRawEvent;
+    const rawErr = data.error;
+    const msg = typeof rawErr === 'string' ? rawErr : rawErr?.message || '';
+    const errStack = typeof rawErr === 'object' && rawErr !== null ? rawErr.stack : undefined;
     issues.push({
       severity: 'critical',
       category: 'error',
-      message: typeof msg === 'string' ? msg.slice(0, 300) : JSON.stringify(msg).slice(0, 300),
+      message: msg.slice(0, 300),
       iteration: Number(data.iteration) || err.iteration,
-      details: data.error?.stack || data.agentStack ? JSON.stringify(data.agentStack || {}).slice(0, 200) : undefined,
+      details: errStack || data.agentStack ? JSON.stringify(data.agentStack ?? {}).slice(0, 200) : undefined,
     });
   }
 
@@ -339,7 +406,7 @@ function analyzeDiagnostics(taskId: string, events: any[]): DiagnosticReport {
   // Check for repeated tool call patterns
   const toolCallSequence = toolStarts
     .map(e => {
-      const data = (e.data || (e.raw as any)) as any;
+      const data = (e.data || e.raw) as GenericRawData;
       return data.toolName || data.tool?.name || 'unknown';
     });
 

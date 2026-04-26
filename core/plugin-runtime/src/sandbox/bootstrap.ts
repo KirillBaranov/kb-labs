@@ -151,7 +151,7 @@ process.on('message', async (msg: ParentMessage) => {
   const platform = await connectToPlatform(socketPath);
 
   // Detect --json mode from flags (V3: always { flags, argv })
-  const inputFlags = (input as any)?.flags ?? {};
+  const inputFlags = 'flags' in (input as object) ? (input as { flags: Record<string, unknown> }).flags : {};
   const jsonMode = Boolean(inputFlags.json);
   if (jsonMode) {setJsonMode(true);}
 
@@ -201,7 +201,8 @@ process.on('message', async (msg: ParentMessage) => {
 
   // Set __KB_CONFIG_SECTION__ for useConfig() auto-detection (subprocess mode)
   if (descriptor.configSection) {
-    (globalThis as any).__KB_CONFIG_SECTION__ = descriptor.configSection;
+    const globalWithConfig = globalThis as typeof globalThis & { __KB_CONFIG_SECTION__?: string };
+    globalWithConfig.__KB_CONFIG_SECTION__ = descriptor.configSection;
   }
 
   // Analytics scope injection for plugin execution

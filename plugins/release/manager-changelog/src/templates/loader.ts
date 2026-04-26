@@ -96,7 +96,7 @@ async function loadCustomTemplate(templatePath: string, cwd: string): Promise<Ch
 /**
  * Validate template module
  */
-function validateTemplate(module: any, templateName: string): ChangelogTemplate {
+function validateTemplate(module: unknown, templateName: string): ChangelogTemplate {
   // Check version field
   if (!module.version || module.version !== '1.0') {
     throw new Error(

@@ -17,7 +17,12 @@ type DiffInput = {
   json?: boolean;
 };
 
-type DiffResult = { exitCode: number; response?: any };
+type DiffResult = { exitCode: number; response?: unknown };
+
+type DiffChange =
+  | { type: 'add'; line: number; content: string }
+  | { type: 'delete'; line: number; content: string }
+  | { type: 'change'; line: number; before: string; after: string };
 
 export default defineCommand({
   id: 'diff',
@@ -26,7 +31,7 @@ export default defineCommand({
   handler: {
     async execute(ctx: PluginContextV3, input: DiffInput): Promise<DiffResult> {
       const logger = useLogger();
-      const flags = (input as any).flags ?? input;
+      const flags = (input as { flags?: DiffInput }).flags ?? input;
 
       const changeId = flags['change-id'] ?? flags.changeId;
       if (!changeId) {
@@ -96,20 +101,38 @@ export default defineCommand({
   },
 });
 
+type DiffSummary = { additions: number; deletions: number; changes: DiffChange[] };
+type Snapshot = {
+  id: string;
+  filePath: string;
+  operation: string;
+  agentId: string;
+  timestamp: number;
+  before?: { content: string };
+  after?: { content: string };
+  metadata?: {
+    startLine?: number;
+    endLine?: number;
+    linesAdded?: number;
+    linesRemoved?: number;
+    isOverwrite?: boolean;
+  };
+};
+
 /**
  * Calculate line-by-line diff
  */
-function calculateDiff(snapshot: any): any {
+function calculateDiff(snapshot: Snapshot): DiffSummary {
   const beforeContent = snapshot.before?.content || '';
   const afterContent = snapshot.after?.content || '';
 
   const beforeLines = beforeContent.split('\n');
   const afterLines = afterContent.split('\n');
 
-  const diff = {
+  const diff: DiffSummary = {
     additions: 0,
     deletions: 0,
-    changes: [] as any[],
+    changes: [],
   };
 
   // Simple line-by-line comparison
@@ -135,7 +158,7 @@ function calculateDiff(snapshot: any): any {
         line: i + 1,
         content: before,
       });
-    } else if (before !== after) {
+    } else if (before !== after && before !== undefined && after !== undefined) {
       // Line changed
       diff.deletions++;
       diff.additions++;
@@ -154,7 +177,7 @@ function calculateDiff(snapshot: any): any {
 /**
  * Print diff in human-readable format
  */
-function printDiff(ctx: PluginContextV3, snapshot: any, diff: any): void {
+function printDiff(ctx: PluginContextV3, snapshot: Snapshot, diff: DiffSummary): void {
   ctx.ui.write('\n');
   ctx.ui.write('📝 File Change Diff\n');
   ctx.ui.write('\n');
@@ -196,7 +219,7 @@ function printDiff(ctx: PluginContextV3, snapshot: any, diff: any): void {
     // New file - show full content
     ctx.ui.write('New file created:\n');
     ctx.ui.write('\n');
-    const lines = snapshot.after.content.split('\n');
+    const lines = (snapshot.after?.content ?? '').split('\n');
     for (let i = 0; i < Math.min(lines.length, 50); i++) {
       ctx.ui.write(`+ ${(i + 1).toString().padStart(4)} | ${lines[i]}\n`);
     }

@@ -31,23 +31,24 @@ export interface HandlerError {
  */
 export function normalizeError(error: unknown): HandlerError {
   if (error instanceof Error) {
+    const typedError = error as { code?: string; details?: Record<string, unknown> };
     return {
-      code: (error as any).code || HandlerErrorCode.HANDLER_CRASHED,
+      code: typedError.code || HandlerErrorCode.HANDLER_CRASHED,
       message: error.message,
       stack: error.stack,
-      details: (error as any).details,
+      details: typedError.details,
     };
   }
-  
+
   if (typeof error === 'string') {
     return {
       code: HandlerErrorCode.HANDLER_CRASHED,
       message: error,
     };
   }
-  
+
   if (typeof error === 'object' && error !== null) {
-    const obj = error as any;
+    const obj = error as { code?: string; details?: Record<string, unknown>; message?: string; stack?: string };
     return {
       code: obj.code || HandlerErrorCode.HANDLER_CRASHED,
       message: obj.message || String(error),

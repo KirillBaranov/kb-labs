@@ -42,7 +42,7 @@ export interface SerializableContext {
   extensionsData?: Record<string, unknown>;
 
   // Platform configuration for worker initialization
-  platformConfig?: any; // PlatformConfig from @kb-labs/core-runtime
+  platformConfig?: Record<string, unknown>; // PlatformConfig from @kb-labs/core-runtime
 }
 
 /**
@@ -70,7 +70,7 @@ export function serializeContext(ctx: ExecutionContext): SerializableContext {
     debugLevel: ctx.debugLevel, // Can be undefined, which is fine
     dryRun: ctx.dryRun,
     user: ctx.user,
-    version: (ctx as any).version,
+    version: ctx.version,
   };
   
   // Serialize adapter metadata
@@ -80,7 +80,7 @@ export function serializeContext(ctx: ExecutionContext): SerializableContext {
   
   // Extract serializable data from adapter context
   if (ctx.adapterContext) {
-    const adapterCtx = ctx.adapterContext as any;
+    const adapterCtx = ctx.adapterContext as unknown as Record<string, unknown>;
     serializable.adapterContextData = {
       type: adapterCtx.type,
       // CLI-specific fields
@@ -88,12 +88,15 @@ export function serializeContext(ctx: ExecutionContext): SerializableContext {
       flags: adapterCtx.flags || {}, // Ensure flags is always an object
       argv: adapterCtx.argv || [], // Ensure argv is always an array
       // REST-specific fields
-      request: adapterCtx.request ? {
-        // Only serialize request metadata, not full request object
-        method: adapterCtx.request.method,
-        url: adapterCtx.request.url,
-        headers: adapterCtx.request.headers,
-      } : undefined,
+      request: adapterCtx.request ? (() => {
+        const req = adapterCtx.request as Record<string, unknown>;
+        return {
+          // Only serialize request metadata, not full request object
+          method: req.method,
+          url: req.url,
+          headers: req.headers,
+        };
+      })() : undefined,
     };
   }
   
@@ -126,10 +129,11 @@ export function serializeContext(ctx: ExecutionContext): SerializableContext {
       }
     }
     if (ctx.extensions.events) {
+      const events = ctx.extensions.events as Record<string, unknown>;
       extensionsData.events = {
-        hasLocal: Boolean((ctx.extensions.events as any).local),
-        hasPlugin: Boolean((ctx.extensions.events as any).plugin),
-        config: (ctx.extensions.events as any).config,
+        hasLocal: Boolean(events.local),
+        hasPlugin: Boolean(events.plugin),
+        config: events.config,
       };
     }
     if (Object.keys(extensionsData).length > 0) {

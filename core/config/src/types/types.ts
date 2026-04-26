@@ -58,7 +58,7 @@ export interface ResolveOptions {
 
 export interface ConfigLayer {
   label: string;
-  value: any;
+  value: unknown;
   source: string;
 }
 

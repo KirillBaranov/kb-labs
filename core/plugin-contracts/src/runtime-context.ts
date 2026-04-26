@@ -29,12 +29,13 @@ import type { RuntimeAPI } from './runtime.js';
 const RUNTIME_CONTEXT_KEY = Symbol.for('kb.runtimeContext');
 
 function getOrCreateRuntimeContext(): AsyncLocalStorage<RuntimeAPI> {
-  const existing = (process as any)[RUNTIME_CONTEXT_KEY];
+  const proc = process as NodeJS.Process & Record<symbol, unknown>;
+  const existing = proc[RUNTIME_CONTEXT_KEY];
   if (existing instanceof AsyncLocalStorage) {
     return existing;
   }
   const ctx = new AsyncLocalStorage<RuntimeAPI>();
-  (process as any)[RUNTIME_CONTEXT_KEY] = ctx;
+  proc[RUNTIME_CONTEXT_KEY] = ctx;
   return ctx;
 }
 

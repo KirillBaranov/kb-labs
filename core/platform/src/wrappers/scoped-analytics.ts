@@ -43,7 +43,7 @@ import type {
 export class ScopedAnalytics implements IAnalytics {
   constructor(
     private readonly realAnalytics: IAnalytics,
-    private readonly scopedSource: { product: string; version: string }
+    private scopedSource: { product: string; version: string }
   ) {
     // Try to override source in underlying adapter
     if (realAnalytics.setSource) {
@@ -113,7 +113,7 @@ export class ScopedAnalytics implements IAnalytics {
       this.realAnalytics.setSource(source);
     }
     // Update our scoped source as well (for getScopedSource())
-    (this as any).scopedSource = source;
+    this.scopedSource = source;
   }
 
   /**

@@ -17,6 +17,18 @@ import type {
 import { loadTrace, formatTraceLoadError } from '@kb-labs/agent-tracing';
 import { normalizeTraceEvents } from './trace-event-normalizer.js';
 
+/** Raw shape of llm:call / llm:end events */
+interface LLMCallRaw {
+  response?: { usage?: { inputTokens?: number; outputTokens?: number } };
+  cost?: { totalCost?: number };
+}
+
+/** Raw shape of tool:end / tool:execution events */
+interface ToolEndRaw {
+  tool?: { name?: string };
+  output?: { success?: boolean };
+}
+
 type TraceStatsInput = {
   taskId?: string;
   'task-id'?: string;
@@ -32,7 +44,10 @@ export default defineCommand({
   handler: {
     async execute(ctx: PluginContextV3, input: TraceStatsInput): Promise<TraceStatsResult> {
       const logger = useLogger();
-      const flags = (input as any).flags ?? input;
+      const flags: TraceStatsInput =
+        (typeof input === 'object' && input !== null && 'flags' in input)
+          ? (input as { flags: TraceStatsInput }).flags
+          : input;
       const taskId = (flags['task-id'] ?? flags.taskId) as string | undefined;
 
     try {
@@ -103,12 +118,12 @@ function calculateStats(events: DetailedTraceEntry[], taskId?: string): StatsRes
 
   // Calculate LLM stats (handle both new and legacy data structures)
   const inputTokens = llmEndEvents.reduce((sum, e) => {
-    const tokens = (e.raw as any).response?.usage?.inputTokens || 0;
+    const tokens = (e.raw as LLMCallRaw).response?.usage?.inputTokens || 0;
     return sum + tokens;
   }, 0);
 
   const outputTokens = llmEndEvents.reduce((sum, e) => {
-    const tokens = (e.raw as any).response?.usage?.outputTokens || 0;
+    const tokens = (e.raw as LLMCallRaw).response?.usage?.outputTokens || 0;
     return sum + tokens;
   }, 0);
 
@@ -118,7 +133,7 @@ function calculateStats(events: DetailedTraceEntry[], taskId?: string): StatsRes
   }, 0);
 
   const totalCost = llmEndEvents.reduce((sum, e) => {
-    const cost = (e.raw as any).cost?.totalCost || 0;
+    const cost = (e.raw as LLMCallRaw).cost?.totalCost || 0;
     return sum + cost;
   }, 0);
 
@@ -128,10 +143,10 @@ function calculateStats(events: DetailedTraceEntry[], taskId?: string): StatsRes
   let failedTools = 0;
 
   for (const tool of toolEndEvents) {
-    const toolName = (tool.raw as any).tool?.name || (tool.data.toolName as string | undefined) || 'unknown';
+    const toolName = (tool.raw as ToolEndRaw).tool?.name || (tool.data.toolName as string | undefined) || 'unknown';
     toolCounts[toolName] = (toolCounts[toolName] || 0) + 1;
 
-    const success = (tool.raw as any).output?.success ?? tool.data.success ?? true;
+    const success = (tool.raw as ToolEndRaw).output?.success ?? (tool.data.success as boolean | undefined) ?? true;
     if (success) {
       successfulTools++;
     } else {

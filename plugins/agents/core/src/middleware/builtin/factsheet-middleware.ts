@@ -458,7 +458,7 @@ function compressMessages(messages: LLMMessage[]): string | null {
           parts.push(`Agent: ${msg.content.slice(0, 600)}${(msg.content.length > 600) ? '...' : ''}`);
         }
         if (msg.toolCalls?.length) {
-          parts.push(`Calls: ${msg.toolCalls.map(tc => tc.name ?? (tc as any).function?.name).join(', ')}`);
+          parts.push(`Calls: ${msg.toolCalls.map(tc => tc.name ?? (tc as { function?: { name?: string } }).function?.name).join(', ')}`);
         }
         return parts.length > 0 ? parts.join('\n') : null;
       }

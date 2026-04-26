@@ -251,32 +251,42 @@ export interface AdapterResponse {
 export type IPCMessage = AdapterCall | AdapterResponse;
 
 /**
+ * Narrows `unknown` to a plain object with string-keyed unknown values.
+ * Used to avoid `as any` casts when inspecting arbitrary incoming messages.
+ */
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === 'object' && v !== null;
+}
+
+/**
  * Type guard to check if message is an AdapterCall.
  *
  * Supports both v1 (no version field) and v2+ (with version field)
  * for backward compatibility.
  */
 export function isAdapterCall(msg: unknown): msg is AdapterCall {
+  if (!isRecord(msg)) {
+    return false;
+  }
+
   if (
-    typeof msg !== 'object' ||
-    msg === null ||
-    (msg as any).type !== 'adapter:call' ||
-    typeof (msg as any).requestId !== 'string' ||
-    typeof (msg as any).adapter !== 'string' ||
-    typeof (msg as any).method !== 'string' ||
-    !Array.isArray((msg as any).args)
+    msg['type'] !== 'adapter:call' ||
+    typeof msg['requestId'] !== 'string' ||
+    typeof msg['adapter'] !== 'string' ||
+    typeof msg['method'] !== 'string' ||
+    !Array.isArray(msg['args'])
   ) {
     return false;
   }
 
   // If version field is present, it must be a number
-  if ('version' in (msg as any) && typeof (msg as any).version !== 'number') {
+  if ('version' in msg && typeof msg['version'] !== 'number') {
     return false;
   }
 
   // v1 messages (no version field) are auto-upgraded to v2 by adding version: 1
-  if (!('version' in (msg as any))) {
-    (msg as any).version = 1; // Auto-upgrade legacy messages
+  if (!('version' in msg)) {
+    msg['version'] = 1; // Auto-upgrade legacy messages
   }
 
   return true;
@@ -287,10 +297,9 @@ export function isAdapterCall(msg: unknown): msg is AdapterCall {
  */
 export function isAdapterResponse(msg: unknown): msg is AdapterResponse {
   return (
-    typeof msg === 'object' &&
-    msg !== null &&
-    (msg as any).type === 'adapter:response' &&
-    typeof (msg as any).requestId === 'string'
+    isRecord(msg) &&
+    msg['type'] === 'adapter:response' &&
+    typeof msg['requestId'] === 'string'
   );
 }
 

@@ -11,8 +11,8 @@ import path from "node:path";
 export async function ensureDir(dirPath: string): Promise<void> {
   try {
     await fsp.mkdir(dirPath, { recursive: true });
-  } catch (error: any) {
-    if (error.code !== 'EEXIST') {
+  } catch (error: unknown) {
+    if ((error as { code?: string }).code !== 'EEXIST') {
       throw error;
     }
   }

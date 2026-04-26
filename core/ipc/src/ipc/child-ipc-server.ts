@@ -13,8 +13,17 @@
 
 import type { ChildProcess } from 'node:child_process';
 import type { IPlatformAdapters } from '@kb-labs/core-platform';
-import type { AdapterCall, AdapterResponse, AdapterType } from '@kb-labs/core-platform/serializable';
+import type { AdapterCall, AdapterResponse, AdapterType, SerializableError } from '@kb-labs/core-platform/serializable';
 import { isAdapterCall, serialize, deserialize } from '@kb-labs/core-platform/serializable';
+
+/**
+ * Serialize an Error (or any value) to SerializableError for IPC response.
+ * `serialize` always returns `SerializableError` when given an `Error` instance.
+ * This helper makes the narrowing explicit without `as any`.
+ */
+function serializeError(error: unknown): SerializableError {
+  return serialize(error) as SerializableError;
+}
 
 /**
  * ChildIPCServer — parent-side adapter call handler for a single child process.
@@ -78,14 +87,14 @@ export class ChildIPCServer {
       this.sendResponse({
         type: 'adapter:response',
         requestId: msg.requestId,
-        error: serialize(permissionError) as any,
+        error: serializeError(permissionError),
       });
       return;
     }
 
     try {
       const adapter = this.getAdapter(msg.adapter);
-      const method = (adapter as any)[msg.method];
+      const method = (adapter as Record<string, unknown>)[msg.method];
 
       if (typeof method !== 'function') {
         throw new Error(
@@ -105,7 +114,7 @@ export class ChildIPCServer {
       this.sendResponse({
         type: 'adapter:response',
         requestId: msg.requestId,
-        error: serialize(error) as any,
+        error: serializeError(error),
       });
     }
   }
@@ -162,7 +171,7 @@ export class ChildIPCServer {
       case 'eventBus': return this.platform.eventBus;
       case 'invoke': return this.platform.invoke;
       case 'config': return this.platform.config;
-      case 'artifacts': return (this.platform as any).artifacts;
+      case 'artifacts': return this.platform.artifacts;
       case 'database.sql': return this.platform.sqlDatabase;
       case 'database.document': return this.platform.documentDatabase;
       default: {

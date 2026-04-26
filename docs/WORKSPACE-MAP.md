@@ -57,9 +57,10 @@ _Core platform — runtime, CLI, APIs, SDK_
 | Package | Description |
 |---------|-------------|
 | `@kb-labs/marketplace-api` | Fastify routes for KB Labs marketplace service |
-| `@kb-labs/marketplace-cli` | Marketplace CLI plugin — commands for managing plugins, adapters, and other marketplace entities |
+| `@kb-labs/marketplace-app` | KB Labs Marketplace service — Fastify entrypoint |
 | `@kb-labs/marketplace-contracts` | Shared types and interfaces for KB Labs marketplace |
 | `@kb-labs/marketplace-core` | Marketplace service — unified install/uninstall/enable/disable for all entity types |
+| `@kb-labs/marketplace-entry` | Marketplace CLI plugin — commands for managing plugins, adapters, and other marketplace entities |
 | `@kb-labs/marketplace-npm` | npm/pnpm package source for KB Labs marketplace |
 
 ### `kb-labs-rest-api` — REST API service for KB Labs ecosystem
@@ -122,12 +123,15 @@ _First-party plugins built on top of SDK_
 
 | Package | Description |
 |---------|-------------|
-| `@kb-labs/agent-cli` | CLI commands for KB Labs Agents V2. Provides agent:run-v2 command. |
 | `@kb-labs/agent-contracts` | Type definitions and contracts for KB Labs Agents. IDs, Session, Specification, Gates, Multi-Agent types. |
 | `@kb-labs/agent-core` | Core logic for KB Labs Agents. Session management, orchestration, quality gates, multi-agent coordination. |
+| `@kb-labs/agent-entry` | CLI commands for KB Labs Agents V2. Provides agent:run-v2 command. |
 | `@kb-labs/agent-history` | File change history, snapshots and conflict resolution for KB Labs Agents |
+| `@kb-labs/agent-kernel` | Kernel state and continuity model for KB Labs Agents. |
 | `@kb-labs/agent-mcp` | MCP (Model Context Protocol) integration for KB Labs Agents. Client → MCPToolPack + Server → agent as MCP endpoint. |
+| `@kb-labs/agent-runtime` | Shared runtime engine and mode routing for KB Labs Agents. |
 | `@kb-labs/agent-sdk` | Agent SDK — contracts and interfaces for composing agents. No logic, only types. |
+| `@kb-labs/agent-store` | Canonical session artifact storage for KB Labs Agents. |
 | `@kb-labs/agent-tools` | Agent management tools for planning, coordination, and execution |
 | `@kb-labs/agent-tracing` | Tracing infrastructure for KB Labs Agents — NDJSON writer, privacy redaction, trace loading and analysis |
 

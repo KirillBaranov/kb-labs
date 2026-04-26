@@ -12,8 +12,11 @@ import type {
   TraceCommandResponse,
   FilterResponse,
   TraceErrorCode,
+  DetailedTraceEntry,
+  LLMCallEvent,
+  ToolExecutionEvent,
+  ErrorCapturedEvent,
 } from '@kb-labs/agent-contracts';
-import type { DetailedTraceEntry } from '@kb-labs/agent-contracts';
 import { loadTrace, formatTraceLoadError } from '@kb-labs/agent-tracing';
 
 // Valid event types (includes both new colon-separated and legacy snake_case formats)
@@ -57,7 +60,10 @@ export default defineCommand({
   handler: {
     async execute(ctx: PluginContextV3, input: TraceFilterInput): Promise<TraceFilterResult> {
       const logger = useLogger();
-      const flags = (input as any).flags ?? input;
+      const flags: TraceFilterInput =
+        (typeof input === 'object' && input !== null && 'flags' in input)
+          ? (input as { flags: TraceFilterInput }).flags
+          : input;
       const taskId = (flags['task-id'] ?? flags.taskId) as string | undefined;
       const eventType = flags.type as string | undefined;
 
@@ -153,17 +159,17 @@ function printHumanReadable(ctx: PluginContextV3, eventType: string, events: Det
     const event = events[i];
     if (!event) {continue;}
 
-    ctx.ui.write(`[${event.seq}] ${event.timestamp} (iteration ${(event as any).iteration || 'N/A'})\n`);
+    ctx.ui.write(`[${event.seq}] ${event.timestamp} (iteration ${'iteration' in event ? event.iteration : 'N/A'})\n`);
 
     // Show event-specific summary
     if (event.type === 'llm:call') {
-      const e = event as any;
+      const e = event as LLMCallEvent;
       ctx.ui.write(`  Model: ${e.request.model}, Tokens: ${e.response.usage.totalTokens}, Cost: $${e.cost.totalCost.toFixed(6)}\n`);
     } else if (event.type === 'tool:execution') {
-      const e = event as any;
+      const e = event as ToolExecutionEvent;
       ctx.ui.write(`  Tool: ${e.tool.name}, Success: ${e.output.success}, Duration: ${e.timing.durationMs}ms\n`);
     } else if (event.type === 'error:captured') {
-      const e = event as any;
+      const e = event as ErrorCapturedEvent;
       ctx.ui.write(`  Error: ${e.error.message.substring(0, 100)}\n`);
     }
 

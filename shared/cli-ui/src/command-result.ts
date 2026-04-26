@@ -118,7 +118,7 @@ export function formatCommandResult(params: CommandResultParams): CommandOutput 
   });
 
   // Generate JSON output
-  const json: any = {
+  const json: Record<string, unknown> = {
     ok: status === 'success',
     status,
     ...(summary && { summary }),

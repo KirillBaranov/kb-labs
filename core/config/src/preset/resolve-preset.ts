@@ -12,7 +12,7 @@ export interface PresetInfo {
   name: string;
   version: string;
   path: string;
-  config: any;
+  config: Record<string, unknown>;
 }
 
 /**
@@ -132,9 +132,13 @@ function versionMatches(actualVersion: string, requiredVersion: string): boolean
 export function getPresetConfigForProduct(
   preset: PresetInfo,
   product: string
-): any {
+): Record<string, unknown> {
   const fsProduct = toFsProduct(product);
-  return preset.config.products?.[fsProduct] || {};
+  const products = preset.config['products'];
+  if (products && typeof products === 'object' && !Array.isArray(products)) {
+    return (products as Record<string, Record<string, unknown>>)[fsProduct] ?? {};
+  }
+  return {};
 }
 
 /**

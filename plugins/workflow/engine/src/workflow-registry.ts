@@ -135,7 +135,7 @@ export class WorkflowRegistry {
   /**
    * Parse workflow file (YAML format with additional fields)
    */
-  private parseWorkflowFile(raw: string): any {
+  private parseWorkflowFile(raw: string): Record<string, unknown> {
     const trimmed = raw.trim()
     if (!trimmed) {
       throw new Error('Workflow file is empty')

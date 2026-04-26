@@ -29,8 +29,8 @@ function runCommand(
     const stderr = result.stderr ?? '';
     const exitCode = result.status ?? 1;
     return { ok: exitCode === 0, stdout, stderr, exitCode };
-  } catch (e: any) {
-    return { ok: false, stdout: '', stderr: e.message ?? String(e), exitCode: 1 };
+  } catch (e: unknown) {
+    return { ok: false, stdout: '', stderr: e instanceof Error ? e.message : String(e), exitCode: 1 };
   }
 }
 

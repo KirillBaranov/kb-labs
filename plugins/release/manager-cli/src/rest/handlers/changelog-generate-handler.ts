@@ -4,7 +4,7 @@
  * Writes: .kb/release/plans/{scope}/current/changelog.md
  */
 
-import { defineHandler, findRepoRoot, type RestInput } from '@kb-labs/sdk';
+import { defineHandler, findRepoRoot, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
 import type {
   GenerateChangelogRequest,
   GenerateChangelogResponse,
@@ -28,7 +28,7 @@ interface GenerateResult {
 }
 
 async function generateWithLLM(
-  ctx: Parameters<typeof defineHandler>[0] extends { execute(ctx: infer C, ...args: any[]): any } ? C : any,
+  ctx: PluginContextV3,
   packages: ChangelogPackageInfo[],
   repoRoot: string,
   gitCwd: string,
@@ -71,7 +71,7 @@ async function generateWithLLM(
 }
 
 async function resolveMarkdown(
-  ctx: any,
+  ctx: PluginContextV3,
   packages: ChangelogPackageInfo[],
   repoRoot: string,
   gitCwd: string,

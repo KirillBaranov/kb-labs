@@ -5,8 +5,17 @@
 
 import type { IncidentStorage, IncidentCreatePayload, IncidentSeverity, IncidentType, RelatedData } from './incident-storage';
 import { metricsCollector } from '../middleware/metrics.js';
+import type { MetricsSnapshot } from '../middleware/metrics.js';
 import { platform } from '@kb-labs/core-runtime';
 import type { LogLevel } from '@kb-labs/core-platform';
+
+interface LogEntryFields {
+  err?: { message?: string; stack?: string };
+  plugin?: string;
+  command?: string;
+  endpoint?: string;
+  url?: string;
+}
 
 /**
  * Detection thresholds configuration
@@ -80,7 +89,7 @@ interface RecentIncident {
 export class IncidentDetector {
   private incidentStorage: IncidentStorage;
   private config: IncidentDetectorConfig;
-  private logger: Console | any;
+  private logger: Console;
   private intervalHandle: NodeJS.Timeout | null = null;
   private recentIncidents: RecentIncident[] = [];
   private isRunning = false;
@@ -96,7 +105,7 @@ export class IncidentDetector {
   constructor(
     incidentStorage: IncidentStorage,
     config: Partial<IncidentDetectorConfig> = {},
-    logger: Console | any = console
+    logger: Console = console
   ) {
     this.incidentStorage = incidentStorage;
     this.config = {
@@ -203,7 +212,7 @@ export class IncidentDetector {
   /**
    * Detect high error rate
    */
-  private async detectErrorRate(metrics: any, now: number): Promise<void> {
+  private async detectErrorRate(metrics: MetricsSnapshot, now: number): Promise<void> {
     const totalErrors = (metrics.requests.clientErrors ?? 0) + (metrics.requests.serverErrors ?? 0);
     const errorRate = metrics.requests.total > 0
       ? (totalErrors / metrics.requests.total) * 100
@@ -254,7 +263,7 @@ export class IncidentDetector {
   /**
    * Detect latency spikes
    */
-  private async detectLatencyIssues(metrics: any, now: number): Promise<void> {
+  private async detectLatencyIssues(metrics: MetricsSnapshot, now: number): Promise<void> {
     // We need to fetch p99 from histogram data
     // For now, use average as approximation if p99 not available
     const avgLatency = metrics.latency.average ?? 0;
@@ -265,7 +274,7 @@ export class IncidentDetector {
 
     if (metrics.latency.histogram && metrics.latency.histogram.length > 0) {
       // Sort by max latency and take top percentiles
-      const sorted = [...metrics.latency.histogram].sort((a: any, b: any) => b.max - a.max);
+      const sorted = [...metrics.latency.histogram].sort((a, b) => b.max - a.max);
       if (sorted.length > 0) {
         p99 = sorted[0]?.max ?? p99;
         p95 = sorted[Math.floor(sorted.length * 0.05)]?.max ?? p95;
@@ -332,12 +341,19 @@ export class IncidentDetector {
   /**
    * Detect plugin failures
    */
-  private async detectPluginFailures(metrics: any, now: number): Promise<void> {
+  private async detectPluginFailures(metrics: MetricsSnapshot, now: number): Promise<void> {
     if (!metrics.perPlugin || !Array.isArray(metrics.perPlugin)) {
       return;
     }
 
-    for (const plugin of metrics.perPlugin) {
+    type PluginMetricsEntry = {
+      pluginId?: string;
+      requests?: number;
+      errors?: number;
+      latency?: { average?: number };
+    };
+
+    for (const plugin of metrics.perPlugin as PluginMetricsEntry[]) {
       if (!plugin.pluginId || plugin.requests < 5) {
         continue; // Skip plugins with too few requests
       }
@@ -432,17 +448,18 @@ export class IncidentDetector {
           let errorMsg = typeof log.message === 'string' ? log.message : JSON.stringify(log.message);
 
           // Add structured error info if available
-          if ((log as any).err) {
-            const err = (log as any).err;
+          const fields = log.fields as LogEntryFields;
+          if (fields.err) {
+            const err = fields.err;
             const stack = err.stack ? `\n${err.stack.split('\n').slice(0, 3).join('\n')}` : '';
             errorMsg = `${err.message || errorMsg}${stack}`;
 
             // Add plugin/command context if available
-            if ((log as any).plugin) {
-              errorMsg = `[${(log as any).plugin}] ${errorMsg}`;
+            if (fields.plugin) {
+              errorMsg = `[${fields.plugin}] ${errorMsg}`;
             }
-            if ((log as any).command) {
-              errorMsg += `\nCommand: ${(log as any).command}`;
+            if (fields.command) {
+              errorMsg += `\nCommand: ${fields.command}`;
             }
           }
 
@@ -451,7 +468,8 @@ export class IncidentDetector {
           }
 
           // Group errors by endpoint (if available in log metadata)
-          const endpoint = (log as any).endpoint || (log as any).url || 'unknown';
+          const logFields = log.fields as LogEntryFields;
+          const endpoint = logFields.endpoint ?? logFields.url ?? 'unknown';
           const existing = endpointErrorCount.get(endpoint);
           if (existing) {
             existing.count++;
@@ -484,7 +502,8 @@ export class IncidentDetector {
         // Add error logs to timeline (top 10 most recent)
         for (const log of allErrorLogs.slice(0, 10)) {
           const msg = typeof log.message === 'string' ? log.message : 'Error occurred';
-          const plugin = (log as any).plugin ? `[${(log as any).plugin}] ` : '';
+          const timelineFields = log.fields as LogEntryFields;
+          const plugin = timelineFields.plugin ? `[${timelineFields.plugin}] ` : '';
           relatedData.timeline!.push({
             timestamp: log.timestamp,
             event: `${plugin}${msg.substring(0, 100)}`,
@@ -674,7 +693,7 @@ export class IncidentDetector {
     this.log('info', 'Thresholds updated', { thresholds: this.config.thresholds });
   }
 
-  private log(level: 'info' | 'warn' | 'error' | 'debug', message: string, meta?: any): void {
+  private log(level: 'info' | 'warn' | 'error' | 'debug', message: string, meta?: Record<string, unknown>): void {
     if (level === 'debug' && !this.config.debug) {return;}
 
     const prefix = '[IncidentDetector]';

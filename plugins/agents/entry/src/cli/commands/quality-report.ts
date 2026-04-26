@@ -116,7 +116,9 @@ export default defineCommand({
 
   handler: {
     async execute(ctx: PluginContextV3, input: QualityReportInput): Promise<{ exitCode: number; response?: unknown }> {
-      const flags = (input as any).flags ?? input;
+      const flags = ('flags' in input && typeof (input as { flags?: unknown }).flags === 'object' && (input as { flags?: unknown }).flags !== null)
+        ? (input as { flags: QualityReportInput }).flags
+        : input;
       const days = Number(flags.days ?? 1);
       const limit = Number(flags.limit ?? 200);
       const rawSessionId = flags['session-id'] ?? flags.sessionId;
@@ -186,20 +188,24 @@ async function readEvents(
     const lines = content.split('\n').filter(Boolean);
 
     for (const line of lines) {
-      let raw: any;
+      let rawParsed: unknown;
       try {
-        raw = JSON.parse(line);
+        rawParsed = JSON.parse(line);
       } catch {
         continue;
       }
+      if (!rawParsed || typeof rawParsed !== 'object') {
+        continue;
+      }
+      const raw = rawParsed as Record<string, unknown>;
 
-      const ts = typeof raw.ts === 'string' ? Date.parse(raw.ts) : NaN;
+      const ts = typeof raw['ts'] === 'string' ? Date.parse(raw['ts']) : NaN;
       if (!Number.isFinite(ts) || ts < sinceMs) {
         continue;
       }
 
-      if (raw.type === 'agent.kpi.run_completed') {
-        const event = raw as KpiRunEvent;
+      if (raw['type'] === 'agent.kpi.run_completed') {
+        const event = raw as unknown as KpiRunEvent;
         const p = event.payload || {};
         const sessionId = p.sessionId || 'unknown';
         if (sessionIdFilter && sessionId !== sessionIdFilter) {
@@ -236,8 +242,8 @@ async function readEvents(
             ? p.escalationPath.filter((v): v is string => typeof v === 'string')
             : [],
         });
-      } else if (raw.type === 'agent.kpi.quality_regression') {
-        const event = raw as RegressionEvent;
+      } else if (raw['type'] === 'agent.kpi.quality_regression') {
+        const event = raw as unknown as RegressionEvent;
         const sessionId = event.payload?.sessionId;
         if (sessionIdFilter && sessionId !== sessionIdFilter) {
           continue;
@@ -515,7 +521,7 @@ function scorecardOf(runs: RunSnapshot[]) {
   };
 }
 
-function printReport(ctx: PluginContextV3, report: any): void {
+function printReport(ctx: PluginContextV3, report: ReturnType<typeof buildReport>): void {
   if (report.runs === 0) {
     ctx.ui.write(`No KPI runs for selected period (${report.periodDays}d)\n`);
     return;

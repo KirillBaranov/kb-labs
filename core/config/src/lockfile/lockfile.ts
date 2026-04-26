@@ -43,13 +43,13 @@ export async function readLockfile(cwd: string): Promise<LockfileData | null> {
 /**
  * Stable JSON serialization with sorted keys for predictable diffs
  */
-function stableStringify(obj: any, space = 2): string {
-  return JSON.stringify(obj, (key, value) => {
+function stableStringify(obj: unknown, space = 2): string {
+  return JSON.stringify(obj, (key, value: unknown) => {
     if (value && typeof value === 'object' && !Array.isArray(value)) {
-      return Object.keys(value)
+      return Object.keys(value as Record<string, unknown>)
         .sort()
-        .reduce((sorted: any, key) => {
-          sorted[key] = value[key];
+        .reduce((sorted: Record<string, unknown>, k) => {
+          sorted[k] = (value as Record<string, unknown>)[k];
           return sorted;
         }, {});
     }
@@ -89,7 +89,7 @@ export async function updateLockfile(
     orgPreset?: string;
     profile?: string;
     policyBundle?: string;
-    configHashes?: Record<string, any>;
+    configHashes?: Record<string, unknown>;
   }
 ): Promise<LockfileData> {
   const existing = await readLockfile(cwd);
@@ -120,7 +120,7 @@ export async function updateLockfile(
 /**
  * Get config hash for a product
  */
-export function getLockfileConfigHash(product: string, config: any): string {
+export function getLockfileConfigHash(product: string, config: unknown): string {
   return computeConfigHash(config);
 }
 
@@ -129,7 +129,7 @@ export function getLockfileConfigHash(product: string, config: any): string {
  */
 export async function isLockfileUpToDate(
   cwd: string,
-  configs: Record<string, any>
+  configs: Record<string, unknown>
 ): Promise<boolean> {
   const lockfile = await readLockfile(cwd);
   if (!lockfile) {
@@ -152,23 +152,25 @@ export async function isLockfileUpToDate(
 /**
  * Validate lockfile schema
  */
-export function validateLockfile(lockfileData: any): lockfileData is LockfileData {
+export function validateLockfile(lockfileData: unknown): lockfileData is LockfileData {
   if (!lockfileData || typeof lockfileData !== 'object') {
     return false;
   }
-  
-  if (lockfileData.schemaVersion !== '1.0') {
+
+  const data = lockfileData as Record<string, unknown>;
+
+  if (data['schemaVersion'] !== '1.0') {
     return false;
   }
-  
-  if (!lockfileData.hashes || typeof lockfileData.hashes !== 'object') {
+
+  if (!data['hashes'] || typeof data['hashes'] !== 'object') {
     return false;
   }
-  
-  if (!lockfileData.generatedAt || typeof lockfileData.generatedAt !== 'string') {
+
+  if (!data['generatedAt'] || typeof data['generatedAt'] !== 'string') {
     return false;
   }
-  
+
   return true;
 }
 

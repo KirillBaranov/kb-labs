@@ -283,23 +283,29 @@ export function mockLLM(): MockLLM {
     return built;
   }
 
-  const proxy = new Proxy(builder, {
-    get(target, prop, _receiver) {
+  // Use Record<string, unknown> index signatures so we can introspect builder / instance
+  // properties without falling back to `any`. The Proxy target is the builder.
+  type BuilderRecord = MockLLMBuilder & Record<string, unknown>;
+  type InstanceRecord = MockLLMInstance & Record<string, unknown>;
+
+  const proxy = new Proxy(builder as BuilderRecord, {
+    get(target: BuilderRecord, prop: string | symbol, _receiver: unknown): unknown {
       // Builder methods — return from builder
-      if (prop in target && typeof (target as any)[prop] === 'function') {
-        const method = (target as any)[prop].bind(target);
+      if (prop in target && typeof target[prop as string] === 'function') {
+        const method = (target[prop as string] as (...args: unknown[]) => unknown).bind(target);
         // After calling a builder method, invalidate the built instance
-        return (...args: unknown[]) => {
+        return (...args: unknown[]): unknown => {
           built = null;
           const result = method(...args);
           // If the result is the builder itself (chaining), return the proxy
-          if (result === target || (result && typeof result === 'object' && 'respondWith' in result)) {
+          if (result === target || (result !== null && typeof result === 'object' && 'respondWith' in result)) {
             if (result === target) {return proxy;}
             // Wrap respondWith to return proxy
+            const resultWithRespond = result as { respondWith: (...rArgs: unknown[]) => unknown };
             return {
-              respondWith: (...rArgs: unknown[]) => {
+              respondWith: (...rArgs: unknown[]): unknown => {
                 built = null;
-                (result as any).respondWith(...rArgs);
+                resultWithRespond.respondWith(...rArgs);
                 return proxy;
               },
             };
@@ -309,9 +315,9 @@ export function mockLLM(): MockLLM {
       }
 
       // ILLM instance properties — auto-build
-      const instance = ensureBuilt();
+      const instance = ensureBuilt() as InstanceRecord;
       // Return functions directly (not bound) to preserve vi.fn() spy identity
-      return (instance as any)[prop];
+      return instance[prop as string];
     },
   });
 

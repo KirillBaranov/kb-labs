@@ -77,7 +77,7 @@ export async function saveWorkflowConfig(
   const configPath = join(workspaceRoot, 'kb.config.json')
 
   // Load existing config
-  let existingConfig: any = {}
+  let existingConfig: Record<string, unknown> = {}
   try {
     const raw = await readFile(configPath, 'utf-8')
     existingConfig = JSON.parse(raw)

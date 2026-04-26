@@ -14,6 +14,7 @@ type RegisterInput = {
   workspace?: string[];
   namespace?: string;
   json?: boolean;
+  flags?: RegisterInput;
 };
 
 type RegisterResult = {
@@ -27,7 +28,7 @@ export default defineCommand({
 
   handler: {
     async execute(ctx: PluginContextV3, rawInput: RegisterInput): Promise<RegisterResult> {
-      const input: RegisterInput = (rawInput as any).flags ?? rawInput;
+      const input: RegisterInput = rawInput.flags ?? rawInput;
       const gatewayUrl = (input.gateway ?? '').replace(/\/$/, '');
       const name = input.name ?? hostname();
       const namespaceId = input.namespace ?? 'default';

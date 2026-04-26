@@ -28,7 +28,7 @@ export const tableFormatter: OutputFormatter = {
       const keys = Object.keys(firstItem);
       const table = new Table({ head: keys });
       data.forEach(item => {
-        table.push(keys.map(k => (item as any)[k]));
+        table.push(keys.map(k => (item as Record<string, unknown>)[k]));
       });
       return table.toString();
     }

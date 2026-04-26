@@ -48,7 +48,7 @@ function resolveFromCwd(spec: string, cwd: string): string {
   for (const searchPath of pathsToTry) {
     try {
       return req.resolve(spec, { paths: [searchPath] });
-    } catch (_e: any) {
+    } catch (_e: unknown) {
       // Try next path
     }
   }
@@ -96,7 +96,7 @@ export function checkRequires(
       if (!resolved.includes('node_modules')) {
         continue;
       }
-    } catch (err: any) {
+    } catch (_err: unknown) {
       // In a monorepo, if we can't resolve but the package exists in workspace, consider it available
       if (isInMonorepo) {
         // Check if package exists in workspace (workspace:* dependencies work in monorepo)

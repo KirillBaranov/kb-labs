@@ -47,7 +47,7 @@ async function resolveWithExtensions(basePath: string): Promise<string | null> {
 /**
  * Compute edge priority for AI token economy
  */
-function computeEdgePriority(edge: { from: string; to: string; type: string; imports?: string[] }): string {
+function computeEdgePriority(edge: { from: string; to: string; type: string; imports?: string[] }): 'noise' | 'important' | 'critical' | 'normal' {
   if (edge.type === 'type' && (!edge.imports || edge.imports.length === 0)) {return 'noise';}
   if (edge.imports && edge.imports.length >= 5) {return 'important';}
   if (edge.from.includes('/src/index.') || edge.from.includes('/bin.')) {return 'critical';}
@@ -63,7 +63,9 @@ interface ResolvedModuleInfo {
 /**
  * Compute graph summary for AI insights
  */
-function computeGraphSummary(edges: any[], packages: Record<string, any>, externalImports: Set<string>): any {
+interface PackageEntry { deps?: string[]; [key: string]: unknown }
+interface GraphSummary { totalEdges: number; internalEdges: number; externalDeps: string[]; hotspots: Array<{ file: string; inbound: number; outbound: number }>; maxDepth: number; packageGraph: Record<string, string[]> }
+function computeGraphSummary(edges: Array<{ from: string; to: string; type: string; imports?: string[] }>, packages: Record<string, PackageEntry>, externalImports: Set<string>): GraphSummary {
   const fileConnections = new Map<string, { in: number; out: number }>();
   const externalDepsSet = new Set<string>();
   
@@ -313,7 +315,7 @@ export async function indexDependencies(
     edgesRemoved = prevKeySet.size - intersection;
 
     // Update the context's deps graph
-    ctx.depsGraph.edges = normalizedEdges as any;
+    ctx.depsGraph.edges = normalizedEdges;
 
     // Compute graph summary
     const summary = computeGraphSummary(normalizedEdges, ctx.depsGraph.packages, externalImports);
@@ -322,12 +324,12 @@ export async function indexDependencies(
     // Save deps graph to disk
     await writeJson(`${ctx.cwd}/.kb/mind/deps.json`, ctx.depsGraph);
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     ctx.log({
       level: 'error',
       code: 'MIND_PARSE_ERROR',
       msg: 'Failed to index dependencies',
-      error: error.message
+      error: error instanceof Error ? error.message : String(error)
     });
   }
 
@@ -397,21 +399,21 @@ async function processBatch(
     for (const sourceFile of sourceFiles) {
       try {
         await processSourceFile(sourceFile, ctx, compilerOptions, baseUrl, paths, edges, externalImports);
-      } catch (error: any) {
+      } catch (error: unknown) {
         ctx.log({
           level: 'warn',
           code: 'MIND_PARSE_ERROR',
           msg: `Failed to process file: ${sourceFile.fileName}`,
-          error: error.message
+          error: error instanceof Error ? error.message : String(error)
         });
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     ctx.log({
       level: 'warn',
       code: 'MIND_PARSE_ERROR',
       msg: 'Failed to create TypeScript program for batch',
-      error: error.message
+      error: error instanceof Error ? error.message : String(error)
     });
   }
 }
@@ -657,7 +659,7 @@ async function resolveModule(
       paths: Object.keys(_paths || {}).length > 0 ? { ..._compilerOptions.paths, ..._paths } : _compilerOptions.paths
     };
 
-    const normalizedModuleResolution = normalizeModuleResolutionKind(options.moduleResolution as any);
+    const normalizedModuleResolution = normalizeModuleResolutionKind(options.moduleResolution);
     if (normalizedModuleResolution !== undefined) {
       options.moduleResolution = normalizedModuleResolution;
     }

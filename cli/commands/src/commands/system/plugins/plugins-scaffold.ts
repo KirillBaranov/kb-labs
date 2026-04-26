@@ -65,8 +65,8 @@ export const pluginsScaffold = defineSystemCommand<PluginsScaffoldFlags, Plugins
       await fs.access(dir);
       ctx.platform?.logger?.warn('Directory already exists', { dir });
       throw new Error(`Directory ${pluginName} already exists`);
-    } catch (err: any) {
-      if (err.code !== 'ENOENT') {
+    } catch (err: unknown) {
+      if ((err as { code?: string }).code !== 'ENOENT') {
         throw err;
       }
       // Good, doesn't exist
@@ -295,8 +295,7 @@ dist
     };
   },
   formatter(result, ctx, _flags) {
-    const resultData = result as any;
-    const { pluginName, dir } = resultData;
+    const { pluginName, dir } = result;
 
     const sections = [
       {

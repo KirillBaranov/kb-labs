@@ -8,7 +8,7 @@ export class KbError extends Error {
     public code: string,
     message: string,
     public hint?: string,
-    public meta?: any
+    public meta?: unknown
   ) {
     super(message);
     this.name = 'KbError';

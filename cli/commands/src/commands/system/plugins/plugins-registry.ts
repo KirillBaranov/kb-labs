@@ -43,7 +43,7 @@ type PluginsRegistryResult = CommandResult & {
 /**
  * Find REST API manifest path in a package
  */
-async function findRestApiManifestPath(pkgRoot: string, pkg: any): Promise<string | null> {
+async function findRestApiManifestPath(pkgRoot: string, pkg: Record<string, unknown>): Promise<string | null> {
   // Check package.json.kbLabs.manifest
   if (pkg.kbLabs?.manifest) {
     const manifestPath = path.isAbsolute(pkg.kbLabs.manifest)

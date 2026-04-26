@@ -67,6 +67,6 @@ export function createRateLimitMiddleware(rateLimiter: TenantRateLimiter) {
     }
 
     // Store tenantId in request context for downstream use
-    (request as any).tenantId = tenantId;
+    request.tenantId = tenantId;
   };
 }

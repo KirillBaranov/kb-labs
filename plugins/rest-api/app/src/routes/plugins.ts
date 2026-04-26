@@ -516,7 +516,7 @@ export async function registerPluginRoutes(
         error: `rest_discovery_failed ${shortErrorMessage(error)}`,
       });
     }
-    metricsCollector.completePluginMount(platform.logger as any);
+    metricsCollector.completePluginMount(platform.logger as unknown as { info: (...args: unknown[]) => void; warn: (...args: unknown[]) => void });
     return;
   }
 
@@ -531,7 +531,7 @@ export async function registerPluginRoutes(
     );
   }
 
-  metricsCollector.completePluginMount(platform.logger as any);
+  metricsCollector.completePluginMount(platform.logger as unknown as { info: (...args: unknown[]) => void; warn: (...args: unknown[]) => void });
 }
 
 /**
@@ -757,7 +757,7 @@ export async function registerPluginSnapshotRoutes(
       }
 
       // Registry resolution errors (plugins that failed to load)
-      const registryErrors = (snapshot as any).errors ?? [];
+      const registryErrors = (snapshot as { errors?: unknown[] }).errors ?? [];
       const discoveryDiagnostics = snapshot.diagnostics ?? [];
       const discoveryErrorCount = discoveryDiagnostics.filter((diagnostic) => diagnostic.severity === 'error').length;
 
@@ -791,12 +791,15 @@ export async function registerPluginSnapshotRoutes(
         },
         registryErrors: {
           total: registryErrors.length,
-          items: registryErrors.map((err: any) => ({
-            pluginPath: err.pluginPath,
-            pluginId: err.pluginId,
-            error: err.error,
-            code: err.code,
-          })),
+          items: registryErrors.map((err) => {
+            const e = err as { pluginPath?: string; pluginId?: string; error?: string; code?: string };
+            return {
+              pluginPath: e.pluginPath,
+              pluginId: e.pluginId,
+              error: e.error,
+              code: e.code,
+            };
+          }),
         },
         diagnostics: {
           total: discoveryDiagnostics.length,

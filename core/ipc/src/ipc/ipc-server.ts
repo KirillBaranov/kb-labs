@@ -25,7 +25,7 @@
  */
 
 import type { IPlatformAdapters } from '@kb-labs/core-platform';
-import type { AdapterResponse } from '@kb-labs/core-platform/serializable';
+import type { AdapterResponse, SerializableError } from '@kb-labs/core-platform/serializable';
 import { isAdapterCall, serialize, deserialize, IPC_PROTOCOL_VERSION } from '@kb-labs/core-platform/serializable';
 
 /**
@@ -134,7 +134,7 @@ export class IPCServer {
       const adapter = this.getAdapter(msg.adapter);
 
       // Get the method on the adapter
-      const method = (adapter as any)[msg.method];
+      const method = (adapter as Record<string, unknown>)[msg.method];
 
       if (typeof method !== 'function') {
         throw new Error(
@@ -164,7 +164,7 @@ export class IPCServer {
       const response: AdapterResponse = {
         type: 'adapter:response',
         requestId: msg.requestId,
-        error: serialize(error) as any,
+        error: serialize(error) as SerializableError,
       };
 
       if (process.send) {

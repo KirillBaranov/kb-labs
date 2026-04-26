@@ -51,7 +51,7 @@ export default defineHandler({
       id: r.id,
       name: checks.find(c => c.id === r.id)?.name ?? r.id,
       success: r.ok,
-      error: r.details && typeof r.details === 'object' && 'error' in r.details ? String((r.details as any).error) : undefined,
+      error: r.details && typeof r.details === 'object' && 'error' in r.details ? String((r.details as Record<string, unknown>).error) : undefined,
       durationMs: r.timingMs ?? 0,
       optional: checks.find(c => c.id === r.id)?.optional,
     }));

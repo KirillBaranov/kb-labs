@@ -6,7 +6,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { RestApiConfig } from '@kb-labs/rest-api-core';
 import type { IEntityRegistry } from '@kb-labs/core-registry';
-import { mergeOpenAPISpecs } from '@kb-labs/core-registry';
+import { mergeOpenAPISpecs, type OpenAPISpec } from '@kb-labs/core-registry';
 import { restDomainOperationMetrics } from '../middleware/metrics.js';
 
 /**
@@ -36,7 +36,7 @@ export async function registerOpenAPIRoutes(
       const plugins = await restDomainOperationMetrics.observeOperation('plugin.registry.list', async () =>
         registry.listPlugins(),
       );
-      const specs: unknown[] = [];
+      const specs: OpenAPISpec[] = [];
       
       for (const plugin of plugins) {
         const spec = await restDomainOperationMetrics.observeOperation('openapi.plugin.get', async () =>
@@ -48,7 +48,7 @@ export async function registerOpenAPIRoutes(
       }
       
       const merged = await restDomainOperationMetrics.observeOperation('openapi.plugins.aggregate', async () =>
-        mergeOpenAPISpecs(specs as any),
+        mergeOpenAPISpecs(specs),
       );
       
       // Add caching headers (1 hour)

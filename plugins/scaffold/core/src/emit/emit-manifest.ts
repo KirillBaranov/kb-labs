@@ -47,8 +47,7 @@ const permissions = ${permExpr};
 
 const manifest = ${body} as const;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const withPermissions: typeof manifest & { permissions: any } = { ...manifest, permissions };
+const withPermissions: typeof manifest & { permissions: unknown } = { ...manifest, permissions };
 
 export default withPermissions;
 `;

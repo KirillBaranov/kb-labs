@@ -1,17 +1,17 @@
 import Ajv from 'ajv';
 import addFormats from 'ajv-formats';
 
-export type ValidationResult = { ok: boolean; errors: any[] | null };
+export type ValidationResult = { ok: boolean; errors: import('ajv').ErrorObject[] | null };
 
 const ajv = new Ajv({ allErrors: true, strict: false });
 addFormats(ajv);
 
-const schemaMap: Record<string, any> = {};
+const schemaMap: Record<string, Record<string, unknown>> = {};
 
 /**
  * Temporary schema registry hook – upcoming implementation will register schemas here.
  */
-export function registerProductSchema(product: string, schema: any): void {
+export function registerProductSchema(product: string, schema: Record<string, unknown>): void {
   schemaMap[product] = schema;
 }
 

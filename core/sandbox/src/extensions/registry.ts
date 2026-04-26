@@ -23,8 +23,8 @@ export function createExtensionRegistry(): ExtensionRegistry {
     register(name, extension) {
       extensions.set(name, extension);
     },
-    get(name) {
-      return extensions.get(name) as any;
+    get<T>(name: string): T | undefined {
+      return extensions.get(name) as T | undefined;
     },
     has(name) {
       return extensions.has(name);

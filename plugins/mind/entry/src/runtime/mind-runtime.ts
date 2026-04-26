@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { usePlatform, type PlatformServices } from '@kb-labs/sdk';
 import { MindEngine } from '@kb-labs/mind-engine';
+import type { KnowledgeEngine } from '@kb-labs/mind-engine';
 import type {
   MindConfigInput,
   MindEngineConfig,
@@ -67,7 +68,7 @@ export async function createMindRuntime(options: MindRuntimeOptions): Promise<Mi
       const stats = await engine.index(resolveSources(config, scope), {
         scope,
         workspaceRoot: options.cwd,
-      } as any);
+      });
       return stats as unknown as MindIndexStats;
     },
     query: async (queryOptions) => {
@@ -86,14 +87,14 @@ export async function createMindRuntime(options: MindRuntimeOptions): Promise<Mi
           limit: queryOptions.limit,
           profileId: queryOptions.profileId,
           metadata: queryOptions.metadata,
-        } as any,
+        },
         {
           scope,
           sources,
           workspaceRoot: options.cwd,
           limit: queryOptions.limit,
           profile: queryOptions.profileId ? { id: queryOptions.profileId } : undefined,
-        } as any,
+        },
       );
 
       return result as unknown as MindQueryResult;
@@ -113,7 +114,7 @@ function createEngine(
   runtime: MindRuntimeOptions['runtime'],
   platform: PlatformServices | null | undefined,
   onProgress: MindRuntimeOptions['onProgress'],
-): any {
+): KnowledgeEngine {
   const engineConfig = resolveEngineConfig(config, scope);
   return new MindEngine(
     {
@@ -125,10 +126,10 @@ function createEngine(
         platform: platform ?? undefined,
         onProgress,
       },
-    } as any,
+    },
     {
       workspaceRoot: cwd,
-    } as any,
+    },
   );
 }
 

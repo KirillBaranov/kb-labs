@@ -438,7 +438,7 @@ export class QdrantVectorStore implements IVectorStore {
   /**
    * Convert platform VectorFilter to Qdrant filter format.
    */
-  private convertFilter(filter: VectorFilter): any {
+  private convertFilter(filter: VectorFilter): Record<string, unknown> {
     const fieldParts = filter.field.split(".");
     const fieldName = fieldParts[fieldParts.length - 1]; // Get last part after dots
 
@@ -451,11 +451,11 @@ export class QdrantVectorStore implements IVectorStore {
         };
       case "in":
         return {
-          must: [{ key: fieldName, match: { any: filter.value as any[] } }],
+          must: [{ key: fieldName, match: { any: filter.value as unknown[] } }],
         };
       case "nin":
         return {
-          must_not: [{ key: fieldName, match: { any: filter.value as any[] } }],
+          must_not: [{ key: fieldName, match: { any: filter.value as unknown[] } }],
         };
       default:
         // For gt/gte/lt/lte - use range filter

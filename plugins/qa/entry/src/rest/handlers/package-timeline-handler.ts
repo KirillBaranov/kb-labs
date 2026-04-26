@@ -14,7 +14,7 @@ export default defineHandler({
     ctx: PluginContextV3,
     input: RestInput<QAPackageTimelineRequest, unknown>,
   ): Promise<QAPackageTimelineResponse> {
-    const packageName = (input as any).params?.name as string | undefined;
+    const packageName = (input as RestInput<QAPackageTimelineRequest, unknown, { name?: string }>).params?.name;
 
     if (!packageName) {
       throw new Error('Package name is required (path param :name)');

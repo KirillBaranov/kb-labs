@@ -80,8 +80,8 @@ export async function initMindStructure(opts: InitOptions): Promise<string> {
 
     log?.({ level: 'info', msg: 'Initialized Mind structure with empty artifacts' });
     return mindDir;
-  } catch (error: any) {
-    log?.({ level: 'error', msg: 'Failed to initialize Mind structure', error: error.message });
+  } catch (error: unknown) {
+    log?.({ level: 'error', msg: 'Failed to initialize Mind structure', error: error instanceof Error ? error.message : String(error) });
     throw error;
   }
 }

@@ -37,6 +37,7 @@ export interface UILineChartProps extends Omit<LineConfig, 'theme'> {
    * Set to true if you want to handle colors manually via style.fill
    */
   disableAutoColors?: boolean;
+  seriesField?: string;
 }
 
 /**
@@ -86,12 +87,12 @@ export function UILineChart({ colors, disableAutoColors, ...props }: UILineChart
   // Auto-map colors if colorField or seriesField is provided and auto-colors are not disabled
   const enhancedProps = React.useMemo(() => {
     // For Line charts, colors are mapped via either colorField or seriesField
-    const hasColorField = props.colorField || (props as any).seriesField;
+    const hasColorField = props.colorField || props.seriesField;
 
     console.log('[UILineChart] Debug info:', {
       hasColorField,
       colorField: props.colorField,
-      seriesField: (props as any).seriesField,
+      seriesField: props.seriesField,
       disableAutoColors,
       hasData: !!props.data,
       dataLength: props.data?.length,

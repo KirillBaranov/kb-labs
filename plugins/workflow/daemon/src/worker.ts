@@ -13,6 +13,7 @@ import { logDiagnosticEvent } from '@kb-labs/core-platform';
 import type { ILogger, IAnalytics, IWorkspaceProvider } from '@kb-labs/core-platform';
 import type { IExecutionBackend } from '@kb-labs/core-contracts';
 import type { ExecutionTarget, ExpressionContext, StepSpec } from '@kb-labs/workflow-contracts';
+import type { ExecutionBackend } from '@kb-labs/plugin-execution';
 import { createCorrelatedLogger } from '@kb-labs/shared-http';
 import {
   interpolateObject,
@@ -89,7 +90,9 @@ export async function createWorkflowWorker(
 
   // Create SandboxRunner with ExecutionBackend
   const runner = new SandboxRunner({
-    backend: executionBackend as any, // ExecutionBackend type from plugin-execution
+    // IExecutionBackend<unknown> (core-contracts) is structurally compatible with
+    // ExecutionBackend (plugin-execution) — both expose the same execute/health/stats/shutdown API.
+    backend: executionBackend as unknown as ExecutionBackend,
     cliApi,
     workspaceRoot,
     defaultTimeout,
@@ -438,7 +441,7 @@ export async function createWorkflowWorker(
             await engine.updateRun(run.id, (draft) => {
               const md = (draft.metadata ?? {}) as Record<string, unknown>;
               md[iterationKey] = nextIteration;
-              (draft as any).metadata = md;
+              draft.metadata = md;
 
               // Merge rework context into trigger.payload
               if (restartAction.context) {
@@ -494,18 +497,29 @@ export async function createWorkflowWorker(
           // Build spec with interpolated `with`, `run`, and `summary`.
           // Normalize `run: cmd` → `uses: builtin:shell, with: { command: cmd }`
           // Interpolate the run string so ${{ inputs.* }}, ${{ steps.* }} etc. are resolved.
-          let baseSpec = step.spec as Record<string, unknown>;
-          if ((baseSpec as any).run && !(baseSpec as any).uses) {
-            const { run: rawRun, with: existingWith, ...rest } = baseSpec as any;
+          //
+          // StepSpecRaw mirrors the pre-transform StepSpec fields we access dynamically.
+          // StepSpec (post-zod-transform) may omit `run` after normalization, so we work
+          // with the raw record shape here before re-casting to StepSpec for execution.
+          interface StepSpecRaw {
+            run?: string;
+            uses?: string;
+            summary?: string;
+            with?: Record<string, unknown>;
+            [key: string]: unknown;
+          }
+          let baseSpec: StepSpecRaw = step.spec as StepSpecRaw;
+          if (baseSpec.run && !baseSpec.uses) {
+            const { run: rawRun, with: existingWith, ...rest } = baseSpec;
             const command = typeof rawRun === 'string' ? interpolateString(rawRun, exprCtx) : rawRun;
             baseSpec = { ...rest, uses: 'builtin:shell', with: { ...existingWith, command } };
           }
           // Interpolate the summary field so ${{ inputs.* }} resolves in step descriptions shown in Studio.
-          if (typeof (baseSpec as any).summary === 'string') {
-            (baseSpec as any).summary = interpolateString((baseSpec as any).summary, exprCtx);
+          if (typeof baseSpec.summary === 'string') {
+            baseSpec.summary = interpolateString(baseSpec.summary, exprCtx);
           }
           const interpolatedSpec = interpolatedWith
-            ? { ...baseSpec, with: { ...(baseSpec.with as object ?? {}), ...interpolatedWith } }
+            ? { ...baseSpec, with: { ...(baseSpec.with ?? {}), ...interpolatedWith } }
             : baseSpec;
 
           // Delegate execution to the execution plane.

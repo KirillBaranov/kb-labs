@@ -318,7 +318,7 @@ export class WorkflowRepository {
       }
 
       const content = await readFile(path, 'utf-8');
-      const parsed = parseYaml(content) as any;
+      const parsed = parseYaml(content) as Record<string, unknown>;
 
       // Check if it's already in StoredWorkflow format
       if (parsed.id && parsed.spec && parsed.createdAt) {

@@ -28,7 +28,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import type { CapabilityCall } from '@kb-labs/host-agent-contracts';
 import type { GatewayTransport } from '@kb-labs/host-agent-core';
-import { createProxyPlatform, UnixSocketServer } from '@kb-labs/core-runtime';
+import { createProxyPlatform, UnixSocketServer, type ITransport, type PlatformContainer } from '@kb-labs/core-runtime';
 import { runInProcess, runInSubprocess } from '@kb-labs/plugin-runtime';
 import { noopUI } from '@kb-labs/plugin-contracts';
 import type { PluginContextDescriptor } from '@kb-labs/plugin-contracts';
@@ -141,7 +141,7 @@ export class ExecutionHandler {
 
     // 5. Create proxy platform (LLM/Cache/etc → GatewayTransport → Platform)
     const proxyPlatform = await createProxyPlatform({
-      transport: this.opts.gatewayTransport as any,
+      transport: this.opts.gatewayTransport as unknown as ITransport,
     });
 
 
@@ -188,7 +188,7 @@ export class ExecutionHandler {
     resolved: { pluginRoot: string; handlerPath: string },
     descriptor: PluginContextDescriptor,
     input: unknown,
-    proxyPlatform: any,
+    proxyPlatform: PlatformContainer,
     signal: AbortSignal,
   ): Promise<unknown> {
     const result = await runInProcess({
@@ -219,7 +219,7 @@ export class ExecutionHandler {
     resolved: { pluginRoot: string; handlerPath: string },
     descriptor: PluginContextDescriptor,
     input: unknown,
-    proxyPlatform: any,
+    proxyPlatform: PlatformContainer,
     timeoutMs: number,
     signal: AbortSignal,
   ): Promise<unknown> {
