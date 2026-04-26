@@ -79,14 +79,15 @@ export function createShellExecTool(context: ToolContext): Tool {
             trimmed: (output?.length ?? 0) > MAX_OUTPUT_CHARS,
           },
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         // execSync throws when command exits with non-zero code
-        const stderr = error.stderr?.toString() || '';
-        const stdout = error.stdout?.toString() || '';
-        const exitCode = error.status ?? -1;
+        const e = error as { stderr?: Buffer | string; stdout?: Buffer | string; status?: number; code?: string; signal?: string };
+        const stderr = e.stderr?.toString() || '';
+        const stdout = e.stdout?.toString() || '';
+        const exitCode = e.status ?? -1;
         const commandText = typeof command === 'string' ? command.trim() : '';
 
-        if (error.code === 'ETIMEDOUT' || error.signal === 'SIGTERM') {
+        if (e.code === 'ETIMEDOUT' || e.signal === 'SIGTERM') {
           return toolError({
             code: 'SHELL_TIMEOUT',
             message: `Command timed out in ${resolvedCwd}`,

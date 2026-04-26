@@ -18,6 +18,7 @@ import type { ICache, ILogger } from '@kb-labs/core-platform';
 import type { JwtConfig } from '@kb-labs/gateway-auth';
 import { createWsHandler } from '../hosts/ws-handler.js';
 import { createClientWsHandler } from '../clients/ws-handler.js';
+import type { HostRegistry } from '../hosts/registry.js';
 
 const GATEWAY_WS_PATHS = new Set(['/hosts/connect', '/clients/connect']);
 
@@ -37,7 +38,7 @@ export function attachGatewayWs(
   cache: ICache,
   jwtConfig: JwtConfig,
   logger: ILogger,
-  hostRegistry?: import('../hosts/registry.js').HostRegistry,
+  hostRegistry?: HostRegistry,
 ): void {
   const wss = new WebSocketServer({ noServer: true });
   const hostsHandler = createWsHandler(cache, jwtConfig, logger, hostRegistry);

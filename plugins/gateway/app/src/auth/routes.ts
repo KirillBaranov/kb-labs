@@ -21,7 +21,9 @@ export function registerAuthRoutes(app: FastifyInstance, authService: AuthServic
       return reply.code(400).send({ error: 'Bad Request', issues: parsed.error.issues });
     }
 
-    const result = await authService.register(parsed.data);
+    // Never forward unknown client-supplied fields (e.g. namespaceId).
+    const { name, capabilities, publicKey } = parsed.data;
+    const result = await authService.register({ name, capabilities, publicKey });
     return reply.code(201).send(result);
   });
 

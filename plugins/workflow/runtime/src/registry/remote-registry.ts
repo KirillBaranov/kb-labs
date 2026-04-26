@@ -1,6 +1,6 @@
 import { mkdir, readFile, rm, access } from 'node:fs/promises'
 import { join, extname, relative } from 'node:path'
-import { execaCommand } from 'execa'
+import { execa } from 'execa'
 import fg from 'fast-glob'
 import { parse as parseYaml } from 'yaml'
 import { WorkflowSpecSchema, type WorkflowSpec } from '@kb-labs/workflow-contracts'
@@ -159,9 +159,7 @@ export class RemoteWorkflowRegistry implements WorkflowRegistry {
     const ref = remote.ref ?? 'main'
 
     try {
-      await execaCommand(`git clone --depth 1 --branch ${ref} ${remote.url} ${repoPath}`, {
-        shell: true,
-      })
+      await execa('git', ['clone', '--depth', '1', '--branch', ref, remote.url, repoPath])
     } catch (error) {
       // Clean up on failure
       await rm(repoPath, { recursive: true, force: true }).catch(() => {})
@@ -188,14 +186,8 @@ export class RemoteWorkflowRegistry implements WorkflowRegistry {
 
     try {
       // Fetch and checkout the specified ref
-      await execaCommand(`git fetch origin ${ref}`, {
-        cwd: repoPath,
-        shell: true,
-      })
-      await execaCommand(`git checkout ${ref}`, {
-        cwd: repoPath,
-        shell: true,
-      })
+      await execa('git', ['fetch', 'origin', ref], { cwd: repoPath })
+      await execa('git', ['checkout', ref], { cwd: repoPath })
     } catch (error) {
       if (this.logger?.warn) {
         this.logger.warn('Failed to update remote', {

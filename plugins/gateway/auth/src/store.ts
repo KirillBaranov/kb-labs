@@ -45,6 +45,10 @@ export function generateHostId(): string {
   return `host_${randomBytes(12).toString('hex')}`;
 }
 
+export function generateNamespaceId(): string {
+  return `ns_${randomBytes(16).toString('hex')}`;
+}
+
 // ── Client CRUD ───────────────────────────────────────────────────────────────
 
 export async function saveClient(cache: ICache, record: ClientRecord): Promise<void> {
@@ -76,16 +80,16 @@ export async function verifyClientSecret(
 
 export function buildClientRecord(opts: {
   name: string;
-  namespaceId: string;
   capabilities: string[];
   publicKey?: string;
   secret: string;
+  namespaceId?: string;
 }): ClientRecord {
   return {
     clientId: generateClientId(),
     secretHash: hashSecret(opts.secret),
     hostId: generateHostId(),
-    namespaceId: opts.namespaceId,
+    namespaceId: opts.namespaceId ?? generateNamespaceId(),
     tier: 'free',
     name: opts.name,
     capabilities: opts.capabilities,

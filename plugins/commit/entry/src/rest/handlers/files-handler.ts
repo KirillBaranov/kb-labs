@@ -2,10 +2,10 @@ import { defineHandler, useConfig, type RestInput, type PluginContextV3, type Ta
 import { getGitStatus } from '@kb-labs/commit-core/analyzer';
 import { COMMIT_CACHE_PREFIX, type CommitPluginConfig, resolveCommitConfig } from '@kb-labs/commit-contracts';
 import { resolveScopePath } from './scope-resolver';
-import { exec } from 'node:child_process';
+import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 const FILES_CACHE_TTL = 5000; // 5 seconds (same as status-handler)
 
@@ -149,12 +149,9 @@ async function getDiffStats(
     for (let i = 0; i < files.length; i += batchSize) {
       const batch = files.slice(i, i + batchSize);
 
-      // Escape file paths for shell
-      const escapedFiles = batch.map(f => `"${f.replace(/"/g, '\\"')}"`).join(' ');
-
       // Run git diff --numstat only for these specific files
       try {
-        const { stdout } = await execAsync(`git diff --numstat HEAD -- ${escapedFiles}`, { cwd });
+        const { stdout } = await execFileAsync('git', ['diff', '--numstat', 'HEAD', '--', ...batch], { cwd });
 
         const lines = stdout.trim().split('\n');
         for (const line of lines) {
@@ -183,8 +180,7 @@ async function getDiffStats(
     for (const file of files) {
       if (!stats.has(file)) {
         try {
-          const safeFile = file.replace(/"/g, '\\"');
-          const { stdout: content } = await execAsync(`wc -l "${safeFile}"`, { cwd });
+          const { stdout: content } = await execFileAsync('wc', ['-l', file], { cwd });
           const match = content.trim().match(/^\s*(\d+)/);
           const lines = match && match[1] ? parseInt(match[1], 10) : 0;
           stats.set(file, { additions: lines, deletions: 0 });

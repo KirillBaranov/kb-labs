@@ -5,7 +5,7 @@
 
 import { existsSync, readFileSync, readdirSync, statSync, mkdirSync } from 'node:fs';
 import { join, dirname, resolve } from 'node:path';
-import { execSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { rmSync, writeFileSync } from 'node:fs';
@@ -17,7 +17,7 @@ import type { VerifyResult, PackageVersion } from './types';
 export async function verifyPackages(
   packages: PackageVersion[],
   options?: {
-    logger?: { info?: (...args: any[]) => void };
+    logger?: { info?: (...args: unknown[]) => void };
     onProgress?: (pkg: string, result: VerifyResult) => void;
   },
 ): Promise<VerifyResult[]> {
@@ -76,7 +76,7 @@ export function verifyPackage(packagePath: string, packageName?: string): Verify
 
     let tgzFile: string | undefined;
     try {
-      execSync(`npm pack --pack-destination ${tmpDir}`, { cwd: packagePath, stdio: 'pipe', timeout: 30_000 });
+      spawnSync('npm', ['pack', '--pack-destination', tmpDir], { cwd: packagePath, stdio: 'pipe', timeout: 30_000 });
       const files = readdirSync(tmpDir).filter(f => f.endsWith('.tgz'));
       tgzFile = files[0] ? join(tmpDir, files[0]) : undefined;
     } finally {
@@ -90,7 +90,7 @@ export function verifyPackage(packagePath: string, packageName?: string): Verify
     }
 
     // 2. Extract
-    execSync(`tar xzf ${tgzFile}`, { cwd: tmpDir, stdio: 'pipe' });
+    spawnSync('tar', ['xzf', tgzFile], { cwd: tmpDir, stdio: 'pipe' });
     const extractedDir = join(tmpDir, 'package');
 
     // 3. Test file leaks
@@ -102,7 +102,7 @@ export function verifyPackage(packagePath: string, packageName?: string): Verify
     }
 
     // 4. Exports exist
-    const extractedPkg = JSON.parse(readFileSync(join(extractedDir, 'package.json'), 'utf-8'));
+    const extractedPkg = JSON.parse(readFileSync(join(extractedDir, 'package.json'), 'utf-8')) as PkgJson;
     for (const field of ['main', 'module', 'types'] as const) {
       const val = extractedPkg[field];
       if (val && !existsSync(join(extractedDir, val))) {
@@ -122,9 +122,8 @@ export function verifyPackage(packagePath: string, packageName?: string): Verify
         checkDirectoryImports(esmPath, join(extractedDir, 'dist'), issues);
 
         // Syntax check
-        try {
-          execSync(`node --check ${esmPath}`, { stdio: 'pipe', timeout: 10_000 });
-        } catch {
+        const esmCheck = spawnSync('node', ['--check', esmPath], { stdio: 'pipe', timeout: 10_000 });
+        if (esmCheck.status !== 0) {
           issues.push(`ESM syntax error in ${esmEntry}`);
         }
       }
@@ -135,9 +134,8 @@ export function verifyPackage(packagePath: string, packageName?: string): Verify
     if (cjsEntry) {
       const cjsPath = join(extractedDir, cjsEntry);
       if (existsSync(cjsPath)) {
-        try {
-          execSync(`node --check ${cjsPath}`, { stdio: 'pipe', timeout: 10_000 });
-        } catch {
+        const cjsCheck = spawnSync('node', ['--check', cjsPath], { stdio: 'pipe', timeout: 10_000 });
+        if (cjsCheck.status !== 0) {
           issues.push(`CJS syntax error in ${cjsEntry}`);
         }
       }
@@ -151,18 +149,28 @@ export function verifyPackage(packagePath: string, packageName?: string): Verify
   return { name, success: issues.length === 0, issues };
 }
 
-function resolveEsmEntry(pkg: any): string | undefined {
-  return pkg.exports?.['.']?.import ?? pkg.module ?? pkg.main;
+type PkgJson = Record<string, unknown> & {
+  exports?: Record<string, Record<string, string> | string>;
+  module?: string;
+  main?: string;
+  types?: string;
+};
+
+function resolveEsmEntry(pkg: PkgJson): string | undefined {
+  const dotExport = pkg.exports?.['.'];
+  const importEntry = dotExport && typeof dotExport === 'object' ? (dotExport as Record<string, string>)['import'] : undefined;
+  return importEntry ?? pkg.module ?? pkg.main;
 }
 
-function resolveCjsEntry(pkg: any): string | undefined {
-  const req = pkg.exports?.['.']?.require;
+function resolveCjsEntry(pkg: PkgJson): string | undefined {
+  const dotExport = pkg.exports?.['.'];
+  const req = dotExport && typeof dotExport === 'object' ? (dotExport as Record<string, string>)['require'] : undefined;
   if (req) {return req;}
   if (pkg.main?.endsWith('.cjs')) {return pkg.main;}
   return undefined;
 }
 
-function checkExportsExist(exports: any, baseDir: string, prefix: string, issues: string[]): void {
+function checkExportsExist(exports: unknown, baseDir: string, prefix: string, issues: string[]): void {
   if (typeof exports === 'string') {
     // Skip wildcard patterns like "./dist/*" — can't verify statically
     if (exports.includes('*')) { return; }
