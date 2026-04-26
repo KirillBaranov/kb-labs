@@ -97,19 +97,20 @@ async function loadCustomTemplate(templatePath: string, cwd: string): Promise<Ch
  * Validate template module
  */
 function validateTemplate(module: unknown, templateName: string): ChangelogTemplate {
+  const m = module as Record<string, unknown>;
   // Check version field
-  if (!module.version || module.version !== '1.0') {
+  if (!m.version || m.version !== '1.0') {
     throw new Error(
-      `Template "${templateName}" has invalid version (expected "1.0", got "${module.version || 'undefined'}")`
+      `Template "${templateName}" has invalid version (expected "1.0", got "${m.version ?? 'undefined'}")`
     );
   }
 
   // Check render function
-  if (typeof module.render !== 'function') {
+  if (typeof m.render !== 'function') {
     throw new Error(`Template "${templateName}" must export a render() function`);
   }
 
-  return module as ChangelogTemplate;
+  return m as unknown as ChangelogTemplate;
 }
 
 /**
