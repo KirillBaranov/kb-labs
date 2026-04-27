@@ -18,7 +18,7 @@ import type { BuildResult, PackageVersion } from './types';
 export async function buildPackages(
   packages: PackageVersion[],
   options?: {
-    logger?: { info?: (...args: unknown[]) => void; warn?: (...args: unknown[]) => void; error?: (...args: unknown[]) => void };
+    logger?: { info?(message: string, meta?: Record<string, unknown>): void; warn?(message: string, meta?: Record<string, unknown>): void; error?(message: string, meta?: Record<string, unknown>): void };
     onProgress?: (pkg: string, result: BuildResult) => void;
   },
 ): Promise<BuildResult[]> {
