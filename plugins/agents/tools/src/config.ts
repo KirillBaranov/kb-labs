@@ -233,10 +233,36 @@ export function toRgIncludes(exts: readonly string[]): string {
 }
 
 /**
+ * Build `--include=*.ext` args for grep when using execa array mode (no shell).
+ * @example toRgIncludesArgs(['ts', 'tsx'])
+ * // → ['--include=*.ts', '--include=*.tsx']
+ */
+export function toRgIncludesArgs(exts: readonly string[]): string[] {
+  return exts.map(e => `--include=*.${e}`);
+}
+
+/**
  * Build `-name '*.ext'` flags for `find` (joined with ` -o `).
  * @example toFindNames(ALL_SOURCE_EXTENSIONS)
  * // → "-name '*.ts' -o -name '*.tsx' ..."
  */
 export function toFindNames(exts: readonly string[]): string {
   return exts.map(e => `-name ${shellSingleQuote(`*.${e}`)}`).join(' -o ');
+}
+
+/**
+ * Build `-name *.ext` args for `find` when using execa array mode (no shell).
+ * Returns a flat list of alternating pairs: ['-name', '*.ts', '-o', '-name', '*.tsx', ...]
+ * with no leading/trailing `-o`.
+ * @example toFindNamesArgs(['ts', 'tsx'])
+ * // → ['-name', '*.ts', '-o', '-name', '*.tsx']
+ */
+export function toFindNamesArgs(exts: readonly string[]): string[] {
+  if (exts.length === 0) {return [];}
+  const result: string[] = [];
+  for (let i = 0; i < exts.length; i++) {
+    if (i > 0) {result.push('-o');}
+    result.push('-name', `*.${exts[i]}`);
+  }
+  return result;
 }
