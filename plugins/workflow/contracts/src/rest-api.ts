@@ -180,7 +180,12 @@ export interface WorkflowListResponse {
  * Workflow run request (POST /api/v1/workflows/:id/run)
  */
 export interface WorkflowRunRequest {
-  /** Workflow input payload */
+  /**
+   * Workflow input values (preferred field name — matches YAML `inputs:` block).
+   * `input` (singular) is accepted as a legacy alias.
+   */
+  inputs?: Record<string, unknown>;
+  /** @deprecated Use `inputs` instead. Kept for backward compatibility. */
   input?: unknown;
   /** Execution target override for this run */
   target?: ExecutionTarget;
@@ -287,6 +292,7 @@ export const WorkflowListResponseSchema = z.object({
  * Workflow run request schema (POST /api/v1/workflows/:id/run)
  */
 export const WorkflowRunRequestSchema = z.object({
+  inputs: z.record(z.unknown()).optional(),
   input: z.unknown().optional(),
   target: z.object({
     environmentId: z.string().min(1).optional(),

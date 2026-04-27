@@ -267,6 +267,12 @@ export const StepRunSchema = z.object({
   outputs: z.record(z.string(), z.unknown()).optional(),
   skipReason: z.string().optional(),
   spec: StepSpecSchema,
+  /**
+   * Resolved (interpolated) inputs for this execution.
+   * Stored separately from spec.with so original ${{ }} templates are preserved
+   * and future re-executions (gate restartFrom) can re-interpolate correctly.
+   */
+  resolvedInputs: z.record(z.string(), z.unknown()).optional(),
 })
 
 export const JobRunSchema = z.object({
