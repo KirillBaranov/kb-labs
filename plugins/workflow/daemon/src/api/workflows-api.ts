@@ -193,6 +193,38 @@ export function registerWorkflowsAPI(options: RegisterWorkflowsAPIOptions): void
     }
   });
 
+  // GET /api/v1/runs/:runId/logs — Execution logs for a run, optionally filtered by step
+  server.get<{
+    Params: { runId: string };
+    Querystring: { stepId?: string; level?: string; limit?: string; offset?: string };
+  }>(
+    '/api/v1/runs/:runId/logs',
+    { schema: { tags: ['Runs'], summary: 'Get execution logs for a run' } },
+    async (request, reply) => {
+      const { runId } = request.params;
+      const { stepId, level, limit, offset } = request.query;
+
+      try {
+        const logs = await observability.observeOperation('workflow.run.logs', () =>
+          hostService.getRunLogs(runId, {
+            stepId,
+            level,
+            limit: limit ? parseInt(limit, 10) : undefined,
+            offset: offset ? parseInt(offset, 10) : undefined,
+          }),
+        );
+        return ok({ logs, runId, stepId });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Failed to get run logs';
+        if (message === 'Run not found') {
+          return fail(reply, 404, message);
+        }
+        logger.error('[workflows-api] Error getting run logs', error instanceof Error ? error : undefined);
+        return fail(reply, 500, message);
+      }
+    },
+  );
+
   // GET /api/v1/runs/:runId/events — SSE stream of run events
   // hide: true — SSE uses raw socket hijack, incompatible with OpenAPI response schema
   server.get<{

@@ -26,6 +26,9 @@ function createHostServiceMock() {
     getRun: vi.fn(async () => ({ id: 'r1', status: 'running', jobs: [] })),
     cancelRun: vi.fn(async () => {}),
     listWorkflowRuns: vi.fn(async () => ({ runs: [], total: 0 })),
+    getRunLogs: vi.fn(async () => [
+      { timestamp: '2026-01-01T00:00:00.000Z', level: 'info', message: 'Executing step', context: { runId: 'r1' } },
+    ]),
   };
 }
 
@@ -278,6 +281,45 @@ describe('Workflow API Contract Integration', () => {
     it('old /workflows/runs/:runId/cancel path returns 404', async () => {
       const res = await app.inject({ method: 'POST', url: '/api/v1/workflows/runs/r1/cancel' });
       expect(res.statusCode).toBe(404);
+    });
+
+    it('GET /api/v1/runs/:runId/logs — returns run logs with envelope', async () => {
+      const res = await app.inject({ method: 'GET', url: '/api/v1/runs/r1/logs' });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.ok).toBe(true);
+      expect(body.data.runId).toBe('r1');
+      expect(body.data.logs).toHaveLength(1);
+      expect(body.data.logs[0]).toMatchObject({ level: 'info', message: 'Executing step' });
+      expect(hostService.getRunLogs).toHaveBeenCalledWith('r1', {
+        stepId: undefined,
+        level: undefined,
+        limit: undefined,
+        offset: undefined,
+      });
+    });
+
+    it('GET /api/v1/runs/:runId/logs?stepId= — passes stepId to service', async () => {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/v1/runs/r1/logs?stepId=r1%3Ajob%3A0&level=info&limit=20&offset=0',
+      });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.data.stepId).toBe('r1:job:0');
+      expect(hostService.getRunLogs).toHaveBeenCalledWith('r1', {
+        stepId: 'r1:job:0',
+        level: 'info',
+        limit: 20,
+        offset: 0,
+      });
+    });
+
+    it('GET /api/v1/runs/:runId/logs — 500 on service error', async () => {
+      hostService.getRunLogs.mockRejectedValueOnce(new Error('storage unavailable'));
+      const res = await app.inject({ method: 'GET', url: '/api/v1/runs/r1/logs' });
+      expect(res.statusCode).toBe(500);
+      expect(res.json()).toEqual({ ok: false, error: 'storage unavailable' });
     });
   });
 

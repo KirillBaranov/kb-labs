@@ -40,6 +40,11 @@ export interface CreateWorkflowWorkerOptions {
   defaultTimeout?: number;
   /** Platform analytics adapter (OPTIONAL) */
   analytics?: IAnalytics;
+  /**
+   * Enable verbose debug logging (inputs, expr context, interpolation details).
+   * Defaults to WORKFLOW_DEBUG env var. Pass true to force-enable.
+   */
+  debugMode?: boolean;
 }
 
 export interface WorkflowWorker {
@@ -71,6 +76,7 @@ export async function createWorkflowWorker(
     concurrency = 5,
     defaultTimeout = 120000,
     analytics,
+    debugMode = process.env['WORKFLOW_DEBUG'] === 'true',
   } = options;
 
   let isRunning = false;
@@ -254,13 +260,25 @@ export async function createWorkflowWorker(
             steps: {},
           };
 
-          // Collect outputs from all completed steps (across all jobs)
+          // Collect outputs from all completed steps (across all jobs).
+          // Failed approval steps also expose their outputs so the following gate
+          // can read `outputs.action === 'reject'` and route correctly.
           if (freshRun) {
             for (const j of freshRun.jobs) {
               for (const s of j.steps) {
                 if (s.status === 'success' && s.spec.id) {
                   exprCtx.steps[s.spec.id] = {
                     outputs: (s.outputs ?? {}) as Record<string, unknown>,
+                  };
+                } else if (
+                  s.status === 'failed' &&
+                  s.spec.uses === 'builtin:approval' &&
+                  s.spec.id &&
+                  s.outputs
+                ) {
+                  // Rejected approval — gate needs to see action/comment to route
+                  exprCtx.steps[s.spec.id] = {
+                    outputs: s.outputs as Record<string, unknown>,
                   };
                 }
               }
@@ -285,10 +303,36 @@ export async function createWorkflowWorker(
             }
           }
 
+          // Debug: dump expression context (available to all ${{ }} expressions in this step)
+          if (debugMode) {
+            jobLogger.info('[debug] Expression context for step', {
+              runId: run.id,
+              jobId: job.id,
+              stepId: step.id,
+              stepUses: step.spec.uses,
+              exprCtx: {
+                inputs: exprCtx.inputs,
+                steps: exprCtx.steps,
+                env: exprCtx.env,
+              },
+            });
+          }
+
           // --- Interpolate spec.with (data flow between steps) ---
           const interpolatedWith = step.spec.with
             ? interpolateObject(step.spec.with as Record<string, unknown>, exprCtx)
             : undefined;
+
+          // Debug: show raw spec.with vs resolved interpolatedWith
+          if (debugMode && step.spec.with) {
+            jobLogger.info('[debug] Step input interpolation', {
+              runId: run.id,
+              jobId: job.id,
+              stepId: step.id,
+              rawWith: step.spec.with,
+              resolvedWith: interpolatedWith,
+            });
+          }
 
           const stepExecutionId = `wf-${run.id}-${job.id}-${step.id}-${Date.now()}`;
           const stepLogger = jobLogger.child({
@@ -300,24 +344,41 @@ export async function createWorkflowWorker(
             invocationId: stepExecutionId,
           });
 
+          // Persist resolved inputs into step.resolvedInputs — a separate field that
+          // does NOT mutate spec.with. This preserves the original ${{ }} templates so
+          // gate restartFrom cycles can re-interpolate the step correctly on each pass.
+          if (interpolatedWith) {
+            const stateStore = engine.getStateStore();
+            await stateStore.updateStep(run.id, job.id, step.id, (draft) => {
+              (draft as any).resolvedInputs = interpolatedWith;
+            });
+          }
+
           stepLogger.info('Executing step', {
             runId: run.id,
             jobId: job.id,
             stepId: step.id,
             uses: step.spec.uses,
+            // Log resolved inputs so failures are debuggable without a debug flag.
+            // Sensitive values (tokens, secrets) will appear here — acceptable for
+            // server-side structured logs; do not surface in public UI.
+            inputs: interpolatedWith,
           });
 
           // --- Handle builtin:approval ---
           if (step.spec.uses === 'builtin:approval') {
+            // If the step was already rejected (daemon restarted after resolution),
+            // skip re-marking as waiting — let the gate handle routing on the next step.
+            if (step.status === 'failed') {
+              stepLogger.info('Approval already rejected — skipping to gate', {
+                runId: run.id,
+                stepId: step.id,
+              });
+              continue;
+            }
+
             // If step is already waiting (e.g. daemon restarted), skip to polling
             if (step.status !== 'waiting_approval') {
-              // Persist interpolated spec.with so REST API shows resolved values
-              if (interpolatedWith) {
-                const stateStore = engine.getStateStore();
-                await stateStore.updateStep(run.id, job.id, step.id, (draft) => {
-                  draft.spec = { ...draft.spec, with: interpolatedWith };
-                });
-              }
               await engine.markStepWaitingApproval(run.id, job.id, step.id);
             }
 
@@ -341,9 +402,10 @@ export async function createWorkflowWorker(
               }
 
               if (currentStep.status === 'failed') {
-                const rejectMsg = currentStep.error?.message ?? 'Approval rejected';
+                // Approval was rejected — break out of the polling loop and let
+                // the following builtin:gate step read outputs.action to route.
                 stepLogger.info('Approval rejected', { runId: run.id, stepId: step.id });
-                throw new Error(rejectMsg);
+                break;
               }
             }
 
@@ -552,14 +614,26 @@ export async function createWorkflowWorker(
             throw error;
           }
 
+          const stepOutputs = result.status === 'success' ? result.outputs : undefined;
+
           // Mark step as completed (sets finishedAt timestamp + outputs)
-          await engine.markStepCompleted(run.id, job.id, step.id, result.status === 'success' ? result.outputs : undefined);
+          await engine.markStepCompleted(run.id, job.id, step.id, stepOutputs);
 
           stepLogger.info('Step completed', {
             runId: run.id,
             jobId: job.id,
             stepId: step.id,
           });
+
+          // Debug: show what outputs are now available to downstream steps
+          if (debugMode && stepOutputs) {
+            stepLogger.info('[debug] Step outputs', {
+              runId: run.id,
+              jobId: job.id,
+              stepId: step.id,
+              outputs: stepOutputs,
+            });
+          }
         }
          
 

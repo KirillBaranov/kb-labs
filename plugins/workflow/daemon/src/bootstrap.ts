@@ -76,7 +76,15 @@ export async function bootstrap(cwd: string = process.cwd()): Promise<void> {
     },
   });
 
-  bootstrapLogger.info('Workflow daemon starting', { repoRoot, projectRoot });
+  const debugMode = process.env['WORKFLOW_DEBUG'] === 'true';
+  bootstrapLogger.info('Workflow daemon starting', { repoRoot, projectRoot, debugMode });
+
+  if (debugMode) {
+    bootstrapLogger.warn(
+      '[WORKFLOW_DEBUG=true] Verbose debug logging is ON — step inputs, outputs, and expr contexts will be logged. ' +
+      'Disable in production (unset WORKFLOW_DEBUG or set to false).',
+    );
+  }
 
   const createWorkflowLogger = (service: string, operation: string, bindings?: Record<string, unknown>) =>
     createCorrelatedLogger(platform.logger, {
@@ -187,6 +195,7 @@ export async function bootstrap(cwd: string = process.cwd()): Promise<void> {
     platform,
     workspaceRoot: projectRoot,
     concurrency: parseInt(process.env.WORKFLOW_CONCURRENCY || '5', 10),
+    debugMode,
   });
 
   // Store worker instance for cleanup
