@@ -5,8 +5,16 @@
 import { defineSystemCommand, type CommandResult } from '@kb-labs/shared-command-kit';
 import { generateExamples } from '../../../utils/generate-examples';
 import { platform } from '@kb-labs/core-runtime';
-import type { LogQuery, LogRecord } from '@kb-labs/core-platform';
+import type { LogQuery, LogRecord, LogLevel } from '@kb-labs/core-platform';
 import { parseRelativeTime, formatLogLine, formatLogJson } from './logs-utils';
+
+interface LogQueryResult extends CommandResult {
+  logs?: ReturnType<typeof formatLogJson>[];
+  total?: number;
+  hasMore?: boolean;
+  source?: string;
+  _raw?: LogRecord[];
+}
 
 type Flags = {
   level: { type: 'string'; description?: string };
@@ -18,7 +26,7 @@ type Flags = {
   json: { type: 'boolean'; description?: string };
 };
 
-export const logsQuery = defineSystemCommand<Flags, CommandResult>({
+export const logsQuery = defineSystemCommand<Flags, LogQueryResult>({
   name: 'query',
   description: 'Query logs with filters (level, source, time range)',
   category: 'logs',
@@ -43,7 +51,7 @@ export const logsQuery = defineSystemCommand<Flags, CommandResult>({
     }
 
     const query: LogQuery = {};
-    if (flags.level) {query.level = flags.level as any;}
+    if (flags.level) {query.level = flags.level as LogLevel;}
     if (flags.source) {query.source = flags.source;}
     if (flags.from) {query.from = parseRelativeTime(flags.from);}
     if (flags.to) {query.to = parseRelativeTime(flags.to);}
@@ -65,7 +73,7 @@ export const logsQuery = defineSystemCommand<Flags, CommandResult>({
   },
   formatter(result, ctx, flags) {
     if (flags.json) {
-      const { _raw, ...jsonResult } = result as any;
+      const { _raw, ...jsonResult } = result;
       ctx.ui.json(jsonResult);
       return;
     }
@@ -75,7 +83,7 @@ export const logsQuery = defineSystemCommand<Flags, CommandResult>({
       return;
     }
 
-    const raw = (result as any)._raw as LogRecord[];
+    const raw = result._raw;
     if (!raw || raw.length === 0) {
       ctx.ui.write('No logs found matching criteria.\n');
       return;
@@ -85,6 +93,6 @@ export const logsQuery = defineSystemCommand<Flags, CommandResult>({
       ctx.ui.write(formatLogLine(record) + '\n');
     }
 
-    ctx.ui.write(`\n--- ${raw.length} of ${(result as any).total} logs (source: ${(result as any).source}) ---\n`);
+    ctx.ui.write(`\n--- ${raw.length} of ${result.total} logs (source: ${result.source}) ---\n`);
   },
 });

@@ -342,7 +342,7 @@ async function loadPackageProfile(
     }
 
     const config = await readConfigFile(fullPath);
-    const profiles = (config.data as any)?.profiles;
+    const profiles = (config.data as { profiles?: unknown })?.profiles;
     const parsed = ProfilesV2Schema.safeParse(profiles);
     if (!parsed.success) {
       continue;

@@ -15,6 +15,22 @@ import {
 import { withRetry } from './retry';
 import type { RetryOptions } from './retry';
 
+/**
+ * Raw chunk shape produced by StorageStage before conversion to StoredMindChunk.
+ * Embedding may be a flat array or a structured object.
+ */
+interface RawChunkInput {
+  chunkId: string;
+  sourceId: string;
+  path: string;
+  span: { startLine: number; endLine: number };
+  text: string;
+  hash?: string;
+  mtime?: number;
+  metadata?: Record<string, unknown>;
+  embedding: number[] | { values: number[]; dim: number };
+}
+
 export interface LocalVectorStoreOptions {
   indexDir: string;
   /** Retry configuration for transient search failures. Defaults to 4 attempts, 100 ms base delay. */
@@ -36,7 +52,7 @@ export class LocalVectorStore implements VectorStore {
   }
 
   async replaceScope(scopeId: string, chunks: StoredMindChunk[]): Promise<void> {
-    await this.store.replaceScope(scopeId, chunks as any[]);
+    await this.store.replaceScope(scopeId, chunks as unknown as Parameters<typeof this.store.replaceScope>[1]);
   }
 
   async search(
@@ -46,9 +62,14 @@ export class LocalVectorStore implements VectorStore {
     filters?: VectorSearchFilters,
   ): Promise<VectorSearchMatch[]> {
     return withRetry(
-      () => this.store.search(scopeId, vector as any, limit, filters as any),
+      () => this.store.search(
+        scopeId,
+        vector as unknown as Parameters<typeof this.store.search>[1],
+        limit,
+        filters as unknown as Parameters<typeof this.store.search>[3],
+      ),
       this.retryOptions,
-    ) as Promise<VectorSearchMatch[]>;
+    ) as unknown as Promise<VectorSearchMatch[]>;
   }
 
   async getAllChunks(scopeId: string, filters?: VectorSearchFilters): Promise<StoredMindChunk[]> {
@@ -113,8 +134,8 @@ export class LocalVectorStore implements VectorStore {
 
   createScopedAdapter(scopeId: string) {
     return {
-      insertBatch: async (chunks: any[]) => this.insertBatch(scopeId, chunks),
-      updateBatch: async (chunks: any[]) => this.updateBatch(scopeId, chunks),
+      insertBatch: async (chunks: RawChunkInput[]) => this.insertBatch(scopeId, chunks),
+      updateBatch: async (chunks: RawChunkInput[]) => this.updateBatch(scopeId, chunks),
       checkExistence: async (chunkIds: string[]) => this.checkExistence(scopeId, chunkIds),
       getChunksByHash: async (hashes: string[]) => this.getChunksByHash(scopeId, hashes),
       getChunkIdsByPaths: async (paths: string[]) => this.getChunkIdsByPaths(scopeId, paths),
@@ -122,7 +143,7 @@ export class LocalVectorStore implements VectorStore {
     };
   }
 
-  private async insertBatch(scopeId: string, chunks: any[]): Promise<number> {
+  private async insertBatch(scopeId: string, chunks: RawChunkInput[]): Promise<number> {
     if (chunks.length === 0) {
       return 0;
     }
@@ -144,7 +165,7 @@ export class LocalVectorStore implements VectorStore {
     return storedChunks.length;
   }
 
-  private async updateBatch(scopeId: string, chunks: any[]): Promise<number> {
+  private async updateBatch(scopeId: string, chunks: RawChunkInput[]): Promise<number> {
     return this.insertBatch(scopeId, chunks);
   }
 

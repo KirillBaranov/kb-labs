@@ -57,15 +57,18 @@
 
 | Service | Port | What it does | When you need it |
 |---------|------|-------------|-----------------|
-| **Gateway** | 4000 | Single entry point. Proxies REST/Workflow. Manages Host Agent connections. Auth. | Always (if using Studio or Host Agents) |
-| **REST API** | 5050 | Platform API — plugin execution, QA, review, analytics, adapter calls | Always (core of the platform) |
-| **Workflow** | 7778 | Job execution engine — DAG runner, sandboxed steps, background jobs | Workflows, `pnpm kb workflow:run`, background jobs |
-| **State Daemon** | 7777 | Distributed state — workflow state, locks, counters | Always (dependency of Workflow + Gateway) |
+| **Gateway** | 4000 | Single public entry point. JWT auth, host agent WS, proxies to internal services. **Binds to 0.0.0.0.** | Always (if using Studio or Host Agents) |
+| **REST API** | 5050 | Platform API — plugin execution, QA, review, analytics, adapter calls. **Binds to 127.0.0.1.** | Always (core of the platform) |
+| **Workflow** | 7778 | Job execution engine — DAG runner, sandboxed steps, background jobs. **Binds to 127.0.0.1.** | Workflows, `pnpm kb workflow:run`, background jobs |
+| **Marketplace** | 5070 | Unified entity marketplace — install, manage, discover plugins, adapters, workflows. **Binds to 127.0.0.1.** | `pnpm kb marketplace install`, plugin management |
+| **State Daemon** | 7777 | Distributed state — workflow state, locks, counters. **Binds to 127.0.0.1.** | Always (dependency of Workflow + Gateway) |
 | **Redis** | 6379 | Cache backend. Survives process restarts (unlike InMemory) | Optional. Useful when Gateway restarts shouldn't lose host registry |
 | **Qdrant** | 6333 | Vector database for Mind RAG semantic search | `pnpm kb mind rag-query`, `pnpm kb mind rag-index` |
 | **Studio** | 3000 | Web UI — dashboards, QA, workflow monitoring, host management | When you want the browser UI |
 | **Host Agent** | — | Daemon connecting this machine to Gateway via WebSocket | Remote execution, multi-machine setups |
 | **Runtime Server** | — | Plugin execution host with `execution` capability | Server-side plugin execution |
+
+> **Network isolation:** only Gateway binds to `0.0.0.0` (public). All internal services (REST API, Workflow, Marketplace, State) bind to `127.0.0.1` — they are only reachable via Gateway or localhost. Never expose internal service ports directly in firewall rules.
 
 ---
 

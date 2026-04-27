@@ -14,6 +14,11 @@ import { WORKFLOW_REDIS_CHANNEL } from '@kb-labs/workflow-constants'
 import { platform } from '@kb-labs/core-runtime'
 import { normalizeBasePath } from '../utils/path-helpers'
 
+interface HttpError extends Error {
+  statusCode: number;
+  code: string;
+}
+
 const TERMINAL_EVENT_TYPES = ['run.finished', 'run.failed', 'run.cancelled']
 const KEEP_ALIVE_MS = 30_000
 const IDLE_TIMEOUT_MS = 60_000
@@ -247,9 +252,9 @@ export async function registerWorkflowRoutes(
 function getRunId(params: unknown): string {
   const runId = (params as { runId?: unknown } | undefined)?.runId
   if (!runId || typeof runId !== 'string') {
-    const error = new Error('runId must be provided')
-    ;(error as any).statusCode = 400
-    ;(error as any).code = 'WF_RUN_ID_REQUIRED'
+    const error = new Error('runId must be provided') as HttpError
+    error.statusCode = 400
+    error.code = 'WF_RUN_ID_REQUIRED'
     throw error
   }
   return runId

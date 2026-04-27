@@ -67,7 +67,9 @@ export async function registerEventRoutes(
           const ready = isReady(readiness);
           const reason = resolveReadinessReason(readiness);
           const pluginSnapshot = metricsCollector.getLastPluginMountSnapshot();
-          const redisStatus = (registry as any).getRedisStatus?.();
+          const redisStatus = ('getRedisStatus' in registry && typeof (registry as { getRedisStatus?: () => { enabled: boolean; healthy: boolean; roles: { publisher?: string | null; subscriber?: string | null; cache?: string | null } } }).getRedisStatus === 'function')
+            ? (registry as { getRedisStatus: () => { enabled: boolean; healthy: boolean; roles: { publisher?: string | null; subscriber?: string | null; cache?: string | null } } }).getRedisStatus()
+            : undefined;
           send({
             type: 'health',
             status: health.status,
@@ -85,12 +87,16 @@ export async function registerEventRoutes(
             pluginRoutesLastDurationMs: readiness.pluginRoutesLastDurationMs ?? null,
             redisEnabled: redisStatus?.enabled ?? false,
             redisHealthy: redisStatus?.healthy ?? true,
-            redisStates: redisStatus?.roles,
+            redisStates: redisStatus ? {
+              publisher: redisStatus.roles.publisher ?? null,
+              subscriber: redisStatus.roles.subscriber ?? null,
+              cache: redisStatus.roles.cache ?? null,
+            } : undefined,
           });
         })
         .catch((error: unknown) => {
-          if ((request as any).kbLogger) {
-            (request as any).kbLogger.warn('Failed to fetch system health for SSE client', { err: error });
+          if (request.kbLogger) {
+            request.kbLogger.warn('Failed to fetch system health for SSE client', { err: error });
           }
         });
 
@@ -102,7 +108,7 @@ export async function registerEventRoutes(
         });
         // In inject/test mode, the socket is not a real TCP socket and 'close' may not fire.
         // Wait for health fetch to complete before resolving so health event is included in response.
-        if (request.raw.socket && !(request.raw.socket as any).writable) {
+        if (request.raw.socket && !(request.raw.socket as { writable?: boolean }).writable) {
           void healthPromise.then(() => {
             unsubscribe();
             reply.raw.end();

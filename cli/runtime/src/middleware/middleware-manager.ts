@@ -6,7 +6,7 @@
 import type { ExecutionLimits } from "../lifecycle/lifecycle-manager.js";
 
 export type CommandMiddleware<T = unknown> = (
-  ctx: any,
+  ctx: unknown,
   next: () => Promise<T>,
 ) => Promise<T>;
 
@@ -33,7 +33,7 @@ export class MiddlewareManager {
     );
   }
 
-  async execute<T>(ctx: any, handler: () => Promise<T>): Promise<T> {
+  async execute<T>(ctx: unknown, handler: () => Promise<T>): Promise<T> {
     const chain = this.buildChain<T>();
 
     const dispatch = async (index: number): Promise<T> => {

@@ -29,13 +29,16 @@ export interface CommandManifest {
   permissions?: string[];   // e.g., ["fs.read", "git.read", "net.fetch"]
   telemetry?: 'opt-in' | 'off'; // Telemetry preference
   manifestV2?: ManifestV3;  // Full ManifestV3 for sandbox execution
+  pkgRoot?: string;          // Package root directory (set at load time, not persisted to cache)
+  /** Internal flag: true for synthetic "unavailable" manifests that must not be cached. */
+  _synthetic?: boolean;
 }
 
 export interface FlagDefinition {
   name: string;              // "profile"
   type: "string" | "boolean" | "number" | "array";
   alias?: string;            // "p" - single letter
-  default?: any;
+  default?: unknown;
   description?: string;
   describe?: string;
   choices?: string[];        // ["dev", "prod"] - only for string type
@@ -54,10 +57,12 @@ export interface RegisteredCommand {
   shadowed: boolean;         // True if overridden by higher priority
   pkgRoot?: string;          // Package root directory (for workspace/linked plugins)
   packageName?: string;       // Full package name
+  /** Lifecycle dispose hook, set by manifest module if it exports `dispose`. */
+  _disposeHook?: () => Promise<void>;
 }
 
 export interface CommandModule {
-  run: (ctx: any, argv: string[], flags: Record<string, any>) => Promise<number | void>;
+  run: (ctx: unknown, argv: string[], flags: Record<string, unknown>) => Promise<number | void>;
 }
 
 export interface DiscoveryResult {

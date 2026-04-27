@@ -9,6 +9,7 @@ import { createTransport } from '@kb-labs/host-agent-transport';
 
 type StatusInput = {
   json?: boolean;
+  flags?: StatusInput;
 };
 
 type StatusResult = {
@@ -25,7 +26,7 @@ export default defineCommand({
 
   handler: {
     async execute(ctx: PluginContextV3, rawInput: StatusInput): Promise<StatusResult> {
-      const input: StatusInput = (rawInput as any).flags ?? rawInput;
+      const input: StatusInput = rawInput.flags ?? rawInput;
 
       let ipcStatus: { connected: boolean; hostId?: string; gatewayUrl?: string; reconnecting?: boolean } | null = null;
 

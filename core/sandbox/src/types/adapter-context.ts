@@ -22,32 +22,32 @@ export interface Logger {
  */
 export type RuntimeAPI = {
   fetch: (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
-  fs: any; // FSLike from plugin-runtime
+  fs: Record<string, unknown>; // FSLike from plugin-runtime
   env: (key: string) => string | undefined;
   log: (
     level: 'debug' | 'info' | 'warn' | 'error',
     msg: string,
     meta?: Record<string, unknown>
   ) => void;
-  invoke: <T = unknown>(request: any) => Promise<any>;
+  invoke: <T = unknown>(request: Record<string, unknown>) => Promise<T>;
   artifacts: {
-    read: (request: any) => Promise<Buffer | object>;
-    write: (request: any) => Promise<{ path: string; meta: any }>;
+    read: (request: Record<string, unknown>) => Promise<Buffer | object>;
+    write: (request: Record<string, unknown>) => Promise<{ path: string; meta: Record<string, unknown> }>;
   };
   shell: {
-    exec: (command: string, args: string[], options?: any) => Promise<any>;
-    spawn: (command: string, args: string[], options?: any) => Promise<any>;
+    exec: (command: string, args: string[], options?: Record<string, unknown>) => Promise<{ code: number; stdout: string; stderr: string; ok: boolean }>;
+    spawn: (command: string, args: string[], options?: Record<string, unknown>) => Promise<{ code: number; stdout: string; stderr: string; ok: boolean }>;
   };
-  analytics?: (event: any) => Promise<any>;
+  analytics?: (event: Record<string, unknown>) => Promise<void>;
   events?: {
-    emit<T = unknown>(topic: string, payload: T, options?: any): Promise<any>;
-    on<T = unknown>(topic: string, handler: (event: any) => void | Promise<void>, options?: any): () => void;
-    once<T = unknown>(topic: string, handler: (event: any) => void | Promise<void>, options?: any): () => void;
-    off(topic: string, handler?: (event: any) => void | Promise<void>, options?: any): void;
-    waitFor<T = unknown>(topic: string, predicate?: (event: any) => boolean, options?: any): Promise<any>;
+    emit<T = unknown>(topic: string, payload: T, options?: Record<string, unknown>): Promise<void>;
+    on<T = unknown>(topic: string, handler: (event: T) => void | Promise<void>, options?: Record<string, unknown>): () => void;
+    once<T = unknown>(topic: string, handler: (event: T) => void | Promise<void>, options?: Record<string, unknown>): () => void;
+    off(topic: string, handler?: (event: unknown) => void | Promise<void>, options?: Record<string, unknown>): void;
+    waitFor<T = unknown>(topic: string, predicate?: (event: T) => boolean, options?: Record<string, unknown>): Promise<T>;
   };
   config: {
-    ensureSection: (section: string) => any;
+    ensureSection: (section: string) => Record<string, unknown>;
   };
 };
 
@@ -69,7 +69,7 @@ export interface BaseHandlerContext {
 /**
  * CLI-specific handler context
  */
-export interface CliHandlerContext<TConfig = any> extends BaseHandlerContext {
+export interface CliHandlerContext<TConfig = Record<string, unknown>> extends BaseHandlerContext {
   type: 'cli';
   output: Output; // ✅ Unified Output interface (for user-facing messages)
   logger?: Logger; // ✅ Unified Logger interface (for structured logging)
@@ -77,10 +77,10 @@ export interface CliHandlerContext<TConfig = any> extends BaseHandlerContext {
     write: (text: string) => void;
     error: (text: string) => void;
     info: (text: string) => void;
-    json: (data: any) => void;
+    json: (data: unknown) => void;
   };
   cwd: string;
-  flags: Record<string, any>;
+  flags: Record<string, unknown>;
   argv: string[];
   /**
    * Product configuration (auto-loaded from kb.config.json)
@@ -101,7 +101,7 @@ export interface CliHandlerContext<TConfig = any> extends BaseHandlerContext {
  */
 export interface RestHandlerContext extends BaseHandlerContext {
   type: 'rest';
-  request?: any; // Fastify request or similar
+  request?: Record<string, unknown>; // Fastify request or similar
 }
 
 /**
@@ -114,7 +114,7 @@ export interface JobHandlerContext extends BaseHandlerContext {
   /** Output interface for logging */
   output?: Output;
   /** API groups from buildRuntime */
-  api?: any;
+  api?: Record<string, unknown>;
 }
 
 /**

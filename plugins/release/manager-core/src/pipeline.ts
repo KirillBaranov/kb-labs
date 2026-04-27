@@ -30,6 +30,8 @@ import type {
   PipelineOptions,
   PipelineResult,
   ReleaseReport,
+  ReleaseResult,
+  ReleasePlan,
   ReleaseStage,
   VersionBump,
 } from './types';
@@ -403,11 +405,11 @@ async function verifyNpmAuth(registry: string): Promise<string | null> {
 
 function buildReport(
   stage: ReleaseStage,
-  plan: any,
+  plan: ReleasePlan,
   repoRoot: string,
   dryRun: boolean,
   startTime: number,
-  result: any,
+  result: Partial<ReleaseResult> & { ok: boolean; timingMs: number },
 ): ReleaseReport {
   return {
     schemaVersion: '1.0',

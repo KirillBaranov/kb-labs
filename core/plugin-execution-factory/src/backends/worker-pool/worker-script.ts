@@ -155,8 +155,13 @@ async function handleExecute(message: ExecuteMessage): Promise<void> {
     const cwd = request.workspace?.cwd ?? process.cwd();
 
     // Detect --json mode
-    const inputFlags = (request.input as any)?.flags ?? {};
-    const jsonMode = Boolean(inputFlags.json);
+    const rawInput = request.input;
+    const inputAsObj = (typeof rawInput === 'object' && rawInput !== null) ? rawInput as Record<string, unknown> : {};
+    const inputFlagsRaw = inputAsObj['flags'];
+    const inputFlags: Record<string, unknown> = (typeof inputFlagsRaw === 'object' && inputFlagsRaw !== null)
+      ? inputFlagsRaw as Record<string, unknown>
+      : {};
+    const jsonMode = Boolean(inputFlags['json']);
     if (jsonMode) { setJsonMode(true); }
 
     // UI: stdout is inherited, so console.log goes directly to terminal

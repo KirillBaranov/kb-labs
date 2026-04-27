@@ -6,6 +6,8 @@
 import type { ReviewFinding, ParsedFile, ReviewContext } from '@kb-labs/review-contracts';
 import { BaseLLMAnalyzer } from '@kb-labs/review-contracts';
 import { useLLM, useCache, useAnalytics, useLogger } from '@kb-labs/sdk';
+
+type ToolCall = { name: string; input: unknown };
 import * as architecturePrompts from '../prompts/architecture.prompts.js';
 
 /**
@@ -160,17 +162,17 @@ export class ArchitectureAnalyzer extends BaseLLMAnalyzer {
    * Process LLM tool calls into ReviewFindings
    */
    
-  private processToolCalls(toolCalls: any[], file: ParsedFile): ReviewFinding[] {
+  private processToolCalls(toolCalls: ToolCall[], file: ParsedFile): ReviewFinding[] {
     const findings: ReviewFinding[] = [];
 
     for (const call of toolCalls) {
       if (call.name === 'report_architecture_finding') {
          
-        const args = call.input as any;
+        const args = call.input as Record<string, unknown>;
 
         // Validate line number
         const lineCount = file.content.split('\n').length;
-        const line = typeof args.line === 'number' ? args.line : parseInt(args.line, 10);
+        const line = typeof args.line === 'number' ? args.line : parseInt(String(args.line), 10);
         if (isNaN(line) || line < 1 || line > lineCount) {
           useLogger()?.debug(`[ArchitectureAnalyzer] Invalid line number ${args.line} for ${file.path}`);
           continue;

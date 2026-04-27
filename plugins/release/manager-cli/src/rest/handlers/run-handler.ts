@@ -74,7 +74,7 @@ export default defineHandler({
 
     return {
       scope,
-      report: result.report as any,
+      report: result.report as unknown as RunReleaseResponse['report'],
       success: result.success,
       errors: result.report.result.errors,
     };

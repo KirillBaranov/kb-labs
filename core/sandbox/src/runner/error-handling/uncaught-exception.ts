@@ -65,7 +65,7 @@ export function setupUncaughtExceptionHandler(options: UncaughtExceptionHandlerO
       {
         name: error.name,
         message: error.message,
-        code: (error as any).code,
+        code: (error as { code?: string }).code,
         stack: error.stack?.split('\n') || [],
         severity: 10, // Critical
       },

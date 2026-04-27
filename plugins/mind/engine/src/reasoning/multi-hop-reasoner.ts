@@ -251,7 +251,11 @@ If confidence >= 0.9, return empty missingContext array.
     hops: ReasoningHop[],
     finalContext: MindCandidate[],
   ): Promise<{
-    context: any;
+    context: {
+      summary: string;
+      keyFindings: string[];
+      codeSnippets: Array<{ code: string; file: string; explanation: string }>;
+    };
     answer: string;
     confidence: number;
   }> {

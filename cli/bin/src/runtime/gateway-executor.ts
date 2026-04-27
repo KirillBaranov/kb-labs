@@ -50,9 +50,9 @@ export async function executeViaGateway(
   }
 
   // Build Gateway execute request from manifest command
-  const v3Manifest = manifestCmd.v3Manifest ?? (manifestCmd.manifest as any).manifestV2;
+  const v3Manifest = manifestCmd.v3Manifest ?? manifestCmd.manifest.manifestV2;
   const pluginId = v3Manifest?.id || manifestCmd.manifest.id;
-  const cliCommand = v3Manifest?.cli?.commands?.find((c: any) => c.id === commandId);
+  const cliCommand = v3Manifest?.cli?.commands?.find((c) => c.id === commandId);
   const handlerRef = cliCommand?.handlerPath ?? '';
 
   const request: GatewayExecuteRequest = {

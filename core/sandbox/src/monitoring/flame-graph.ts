@@ -159,7 +159,7 @@ export function exportFlameGraphHTML(
 /**
  * Convert flame graph to d3-flamegraph format
  */
-function flameGraphToD3Format(node: FlameGraphNode): any {
+function flameGraphToD3Format(node: FlameGraphNode): Record<string, unknown> {
   return {
     name: node.name,
     value: node.value,

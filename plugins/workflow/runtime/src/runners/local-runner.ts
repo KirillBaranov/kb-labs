@@ -100,8 +100,8 @@ export class LocalRunner implements Runner {
       const message =
         error instanceof Error ? error.message : 'Shell step failed'
       const exitCode =
-        typeof (error as any)?.exitCode === 'number'
-          ? (error as any).exitCode
+        typeof (error as { exitCode?: number })?.exitCode === 'number'
+          ? (error as { exitCode?: number }).exitCode
           : undefined
 
       context.logger.error('Shell step failed', {

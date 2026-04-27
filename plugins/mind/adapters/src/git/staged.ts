@@ -43,7 +43,7 @@ export async function listStagedFiles(cwd: string): Promise<string[]> {
     });
 
     return output.trim().split('\n').filter(Boolean);
-  } catch (error: any) {
-    throw new MindError('MIND_GIT_ERROR', `Git staged files failed: ${error.message}`);
+  } catch (error: unknown) {
+    throw new MindError('MIND_GIT_ERROR', `Git staged files failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }

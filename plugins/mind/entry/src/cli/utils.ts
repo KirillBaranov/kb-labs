@@ -61,7 +61,7 @@ export function box(textOrTitle: string, maybeLines: string[] | string = []): st
 
 export function keyValue(entries: Record<string, string | number>): string[];
 export function keyValue(key: string, value: string | number): string;
-export function keyValue(arg1: any, arg2?: any): string | string[] {
+export function keyValue(arg1: Record<string, string | number> | string, arg2?: string | number): string | string[] {
   const format = (key: string, value: string | number) => {
     const label = useEnv('NO_COLOR') ? key : colors.cyan(key);
     return `${label}: ${value}`;

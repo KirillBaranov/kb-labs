@@ -8,6 +8,7 @@
  */
 
 import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
+import type { UIFacade } from '@kb-labs/sdk';
 import {
   buildDependencyGraph,
   getReverseDependencies,
@@ -30,7 +31,7 @@ type VisualizeInput = VisualizeFlags & { argv?: string[] };
 
 type VisualizeCommandResult = {
   exitCode: number;
-  graph?: any;
+  graph?: DependencyGraph;
 };
 
 export default defineCommand({
@@ -41,8 +42,10 @@ export default defineCommand({
     async execute(ctx: PluginContextV3, input: VisualizeInput): Promise<VisualizeCommandResult> {
       const { ui } = ctx;
 
-      // V3: Flags come in input.flags object (not auto-merged)
-      const flags = (input as any).flags ?? input;
+      // V3: Flags may come wrapped in input.flags or passed directly
+      const flags = ('flags' in input && typeof (input as { flags?: unknown }).flags === 'object' && (input as { flags?: unknown }).flags !== null)
+        ? (input as { flags: VisualizeInput }).flags
+        : input;
 
       // Build dependency graph
       const graph = buildDependencyGraph(ctx.cwd);
@@ -71,12 +74,12 @@ export default defineCommand({
 /**
  * Output dependency tree for a package
  */
-function outputTree(graph: DependencyGraph, packageName: string, flags: any, ui: any) {
+function outputTree(graph: DependencyGraph, packageName: string, flags: VisualizeFlags, ui: UIFacade | undefined) {
   const { nodes } = graph;
   const node = nodes.get(packageName);
 
   if (!node) {
-    ui?.fatal?.(`Package not found: ${packageName}`);
+    ui?.error?.(`Package not found: ${packageName}`);
     return;
   }
 
@@ -124,7 +127,7 @@ function outputTree(graph: DependencyGraph, packageName: string, flags: any, ui:
 /**
  * Output reverse dependencies (who depends on this package)
  */
-function outputReverse(graph: DependencyGraph, packageName: string, flags: any, ui: any) {
+function outputReverse(graph: DependencyGraph, packageName: string, flags: VisualizeFlags, ui: UIFacade | undefined) {
   const reverseDeps = getReverseDependencies(graph, packageName);
 
   if (flags.json) {
@@ -155,7 +158,7 @@ function outputReverse(graph: DependencyGraph, packageName: string, flags: any, 
 /**
  * Output impact analysis (all packages affected by changes)
  */
-function outputImpact(graph: DependencyGraph, packageName: string, flags: any, ui: any) {
+function outputImpact(graph: DependencyGraph, packageName: string, flags: VisualizeFlags, ui: UIFacade | undefined) {
   const affected = getImpactAnalysis(graph, packageName);
 
   if (flags.json) {
@@ -199,7 +202,7 @@ function outputImpact(graph: DependencyGraph, packageName: string, flags: any, u
 /**
  * Output dependency graph statistics
  */
-function outputStats(graph: DependencyGraph, flags: any, ui: any) {
+function outputStats(graph: DependencyGraph, flags: VisualizeFlags, ui: UIFacade | undefined) {
   const { nodes } = graph;
 
   // Calculate statistics
@@ -267,7 +270,7 @@ function outputStats(graph: DependencyGraph, flags: any, ui: any) {
 /**
  * Output DOT format for graphviz
  */
-function outputDot(graph: DependencyGraph, flags: any, ui: any) {
+function outputDot(graph: DependencyGraph, flags: VisualizeFlags, ui: UIFacade | undefined) {
   const { nodes } = graph;
 
   const lines: string[] = [];

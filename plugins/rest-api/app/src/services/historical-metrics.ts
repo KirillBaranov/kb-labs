@@ -450,7 +450,12 @@ export class HistoricalMetricsCollector {
     timeSeries: Record<string, { points: number; oldestTimestamp: number | null; newestTimestamp: number | null }>;
     heatmap: { cells: number; metrics: string[] };
   }> {
-    const stats: any = {
+    const stats: {
+      running: boolean;
+      uptimeSeconds: number;
+      timeSeries: Record<string, { points: number; oldestTimestamp: number | null; newestTimestamp: number | null }>;
+      heatmap: { cells: number; metrics: string[] };
+    } = {
       running: this.intervalHandle !== null,
       uptimeSeconds: (Date.now() - this.startTimeMs) / 1000,
       timeSeries: {},
@@ -484,7 +489,7 @@ export class HistoricalMetricsCollector {
     return stats;
   }
 
-  private log(level: 'info' | 'warn' | 'error' | 'debug', message: string, meta?: any): void {
+  private log(level: 'info' | 'warn' | 'error' | 'debug', message: string, meta?: Record<string, unknown>): void {
     if (level === 'debug' && !this.config.debug) {return;}
 
     if (this.logger[level]) {

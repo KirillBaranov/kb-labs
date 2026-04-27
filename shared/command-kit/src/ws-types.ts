@@ -74,10 +74,8 @@ export function defineMessage<TPayload = unknown>(type: string) {
  * ```
  */
 export class MessageRouter<TConfig = unknown> {
-  private handlers = new Map<
-    string,
-    (ctx: PluginContextV3<TConfig>, payload: any, sender: WSSender) => Promise<void> | void
-  >();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private handlers = new Map<string, (ctx: PluginContextV3<TConfig>, payload: any, sender: WSSender) => Promise<void> | void>();
 
   /**
    * Register message handler

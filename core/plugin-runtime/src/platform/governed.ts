@@ -10,6 +10,11 @@ import type {
   PermissionSpec,
   VectorRecord,
   VectorFilter,
+  LLMAdapter,
+  EmbeddingsAdapter,
+  VectorStoreAdapter,
+  CacheAdapter,
+  StorageAdapter,
 } from '@kb-labs/plugin-contracts';
 import { PermissionError } from '@kb-labs/plugin-contracts';
 
@@ -145,12 +150,12 @@ function isVectorIdAllowed(id: string, permission: string[] | boolean | undefine
 /**
  * Create denied service stub that throws on ANY property access
  */
-function createDeniedService(serviceName: string): any {
+function createDeniedService<T>(serviceName: string): T {
   return new Proxy({}, {
     get() {
       throw new PermissionError(`Platform service '${serviceName}' access denied`);
     },
-  });
+  }) as unknown as T;
 }
 
 /**
@@ -211,7 +216,7 @@ export function createGovernedPlatformServices(
               }
             : {}),
         }
-      : (createDeniedService('llm') as any),
+      : createDeniedService<LLMAdapter>('llm'),
 
     // Embeddings: binary permission with proper interface
     embeddings: permissions.platform?.embeddings
@@ -223,7 +228,7 @@ export function createGovernedPlatformServices(
           },
           getDimensions: () => raw.embeddings.getDimensions(),
         }
-      : (createDeniedService('embeddings') as any),
+      : createDeniedService<EmbeddingsAdapter>('embeddings'),
 
     // VectorStore: namespace-based permission (prefix isolation)
     vectorStore: permissions.platform?.vectorStore
@@ -293,7 +298,7 @@ export function createGovernedPlatformServices(
             return raw.vectorStore.count();
           },
         }
-      : (createDeniedService('vectorStore') as any),
+      : createDeniedService<VectorStoreAdapter>('vectorStore'),
 
     // Cache: namespace-based permission
     cache: permissions.platform?.cache
@@ -335,7 +340,7 @@ export function createGovernedPlatformServices(
             return raw.cache.setIfNotExists(key, value, ttl);
           },
         }
-      : (createDeniedService('cache') as any),
+      : createDeniedService<CacheAdapter>('cache'),
 
     // Storage: path-based permission
     storage: permissions.platform?.storage
@@ -361,7 +366,7 @@ export function createGovernedPlatformServices(
             return raw.storage.list(prefix);
           },
         }
-      : (createDeniedService('storage') as any),
+      : createDeniedService<StorageAdapter>('storage'),
 
     // Analytics: always allowed (like logger)
     analytics: raw.analytics,

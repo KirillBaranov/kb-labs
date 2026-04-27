@@ -4,6 +4,7 @@
  */
 
 import { defineWebSocket, defineMessage, MessageRouter } from '@kb-labs/sdk';
+import type { WSMessage } from '@kb-labs/sdk';
 
 // Define typed messages
 const SubscribeMsg = defineMessage<{ jobId: string }>('subscribe');
@@ -68,7 +69,7 @@ export default defineWebSocket<unknown, Incoming, Outgoing>({
           // TODO: Stop streaming
         });
 
-      await router.handle(ctx, message as any, sender.raw);
+      await router.handle(ctx, message as WSMessage, sender.raw);
     },
 
     async onDisconnect(ctx, code, reason) {

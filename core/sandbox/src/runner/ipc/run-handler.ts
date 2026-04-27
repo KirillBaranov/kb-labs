@@ -50,7 +50,11 @@ export async function handleRunMessage(options: RunHandlerOptions): Promise<void
 
   // Inject manifest and perms into ctx.extensions for buildRuntime() in context-recreator
   if (manifest || perms) {
-    const ctxWithExtensions = rawCtx as any;
+    interface ExecutionContextWithExtensions {
+      extensionsData?: Record<string, unknown>;
+      [key: string]: unknown;
+    }
+    const ctxWithExtensions = rawCtx as unknown as ExecutionContextWithExtensions;
     ctxWithExtensions.extensionsData = {
       ...(ctxWithExtensions.extensionsData || {}),
       manifest,
@@ -197,7 +201,7 @@ export async function handleRunMessage(options: RunHandlerOptions): Promise<void
         process.send({
           type: 'ERR',
           payload: {
-            code: (errorObj as any).code || SANDBOX_ERROR_CODES.UNHANDLED_EXCEPTION,
+            code: (errorObj as { code?: string }).code || SANDBOX_ERROR_CODES.UNHANDLED_EXCEPTION,
             message: errorObj.message,
             stack: errorObj.stack,
           },

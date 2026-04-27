@@ -8,6 +8,7 @@ import type {
   Phase,
   SessionProgress,
   Tracer,
+  DetailedTraceEntry,
 } from '@kb-labs/agent-contracts';
 
 /**
@@ -222,9 +223,12 @@ export class PlanExecutor {
   /**
    * Record trace entry
    */
-  private recordTrace(entry: any): void {
+  private recordTrace(entry: Record<string, unknown>): void {
     if (this.tracer) {
-      this.tracer.trace(entry);
+      // plan-executor uses custom plan-phase event types (phase_start, step_start, etc.)
+      // that predate the typed DetailedTraceEntry union. Cast through unknown to acknowledge
+      // the intentional structural mismatch without using as any.
+      this.tracer.trace(entry as unknown as Omit<DetailedTraceEntry, 'seq' | 'timestamp'>);
     }
   }
 }

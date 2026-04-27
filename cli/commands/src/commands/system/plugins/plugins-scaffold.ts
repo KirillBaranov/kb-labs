@@ -65,8 +65,8 @@ export const pluginsScaffold = defineSystemCommand<PluginsScaffoldFlags, Plugins
       await fs.access(dir);
       ctx.platform?.logger?.warn('Directory already exists', { dir });
       throw new Error(`Directory ${pluginName} already exists`);
-    } catch (err: any) {
-      if (err.code !== 'ENOENT') {
+    } catch (err: unknown) {
+      if ((err as { code?: string }).code !== 'ENOENT') {
         throw err;
       }
       // Good, doesn't exist
@@ -295,21 +295,22 @@ dist
     };
   },
   formatter(result, ctx, _flags) {
-    const resultData = result as any;
-    const { pluginName, dir } = resultData;
+    const { pluginName, dir } = result;
+    const dirDisplay = dir ?? '';
+    const nameDisplay = pluginName ?? '';
 
     const sections = [
       {
         items: [
           ctx.ui.colors.bold('Plugin Template Created:'),
-          `${ctx.ui.symbols.success} ${ctx.ui.colors.info(dir)}`,
+          `${ctx.ui.symbols.success} ${ctx.ui.colors.info(dirDisplay)}`,
           '',
           ctx.ui.colors.bold('Next Steps:'),
-          `  ${ctx.ui.colors.info(`cd ${pluginName}`)}`,
+          `  ${ctx.ui.colors.info(`cd ${nameDisplay}`)}`,
           `  ${ctx.ui.colors.info('pnpm install')}`,
           `  ${ctx.ui.colors.info('pnpm build')}`,
-          `  ${ctx.ui.colors.info(`kb marketplace link ./${pluginName}`)}`,
-          `  ${ctx.ui.colors.info(`kb ${pluginName} hello`)}`,
+          `  ${ctx.ui.colors.info(`kb marketplace link ./${nameDisplay}`)}`,
+          `  ${ctx.ui.colors.info(`kb ${nameDisplay} hello`)}`,
           '',
           ctx.ui.colors.muted('See docs/plugin-development.md for more details'),
         ],

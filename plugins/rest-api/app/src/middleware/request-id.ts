@@ -21,7 +21,7 @@ export function registerRequestIdMiddleware(server: FastifyInstance): void {
     reply.header('X-Trace-Id', traceId);
 
     // Store logger metadata on request for metrics middleware to use
-    (request as any).kbLogger = createCorrelatedLogger(platform.logger, {
+    request.kbLogger = createCorrelatedLogger(platform.logger, {
       serviceId: 'rest',
       logsSource: 'rest',
       layer: 'rest',
@@ -36,6 +36,6 @@ export function registerRequestIdMiddleware(server: FastifyInstance): void {
     // Log request received
     const method = request.method.toUpperCase();
     const fullUrl = request.url;
-    (request as any).kbLogger.info(`→ ${method} ${fullUrl}`);
+    request.kbLogger.info(`→ ${method} ${fullUrl}`);
   });
 }

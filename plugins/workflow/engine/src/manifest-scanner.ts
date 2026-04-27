@@ -21,7 +21,8 @@ import type {
   WorkflowHandlerDecl,
   JobHandlerDecl,
   CronDecl,
-  PlatformServices
+  PlatformServices,
+  ManifestV3,
 } from '@kb-labs/plugin-contracts';
 
 /**
@@ -185,11 +186,12 @@ export class ManifestScanner {
 
       try {
         if (converter === 'workflow') {
-          workflows.push(this.convertWorkflowHandler(entity.ref.pluginId, entity.declaration as any, root));
+          // EntityEntry.declaration is typed as unknown — narrow to the concrete decl type
+          workflows.push(this.convertWorkflowHandler(entity.ref.pluginId, entity.declaration as unknown as WorkflowHandlerDecl, root));
         } else if (converter === 'job') {
-          workflows.push(this.convertJobHandler(entity.ref.pluginId, entity.declaration as any, root));
+          workflows.push(this.convertJobHandler(entity.ref.pluginId, entity.declaration as unknown as JobHandlerDecl, root));
         } else {
-          workflows.push(this.convertCronSchedule(entity.ref.pluginId, entity.declaration as any, root));
+          workflows.push(this.convertCronSchedule(entity.ref.pluginId, entity.declaration as unknown as CronDecl, root));
         }
       } catch (err) {
         this.platform.logger?.warn('ManifestScanner: Failed to convert entity', {
@@ -205,7 +207,9 @@ export class ManifestScanner {
     const snapshot = this.cliApi.snapshot();
     let templatesCount = 0;
     for (const entry of snapshot.manifests ?? []) {
-      const templates = (entry.manifest as any).workflows?.templates ?? [];
+      // ManifestV3 has workflows?: { templates?: WorkflowTemplateDecl[] } — no cast needed
+      const manifest = entry.manifest as ManifestV3;
+      const templates = manifest.workflows?.templates ?? [];
       for (const templateDecl of templates) {
         const id = `plugin:${entry.pluginId}/${templateDecl.id}`;
         workflows.push({

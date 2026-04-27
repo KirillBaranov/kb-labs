@@ -11,7 +11,8 @@
 import fg from 'fast-glob';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
-import type { PipelineStage, PipelineContext, StageResult } from '../pipeline-types';
+import type { PipelineStage, PipelineContext, StageResult, CheckpointData } from '../pipeline-types';
+import type { KnowledgeSource } from '../../types/engine-contracts';
 
 export interface FileMetadata {
   relativePath: string;
@@ -69,7 +70,7 @@ export class FileDiscoveryStage implements PipelineStage {
    * Discover files for a single source
    */
   private async discoverSourceFiles(
-    source: any,
+    source: KnowledgeSource,
     context: PipelineContext
   ): Promise<FileMetadata[]> {
     const files: FileMetadata[] = [];
@@ -144,7 +145,7 @@ export class FileDiscoveryStage implements PipelineStage {
   /**
    * Optional: Checkpoint
    */
-  async checkpoint(context: PipelineContext): Promise<any> {
+  async checkpoint(context: PipelineContext): Promise<CheckpointData> {
     return {
       stage: this.name,
       processedFiles: [], // Discovery doesn't process, just discovers
@@ -157,7 +158,7 @@ export class FileDiscoveryStage implements PipelineStage {
   /**
    * Optional: Restore from checkpoint
    */
-  async restore(data: any, context: PipelineContext): Promise<void> {
+  async restore(data: CheckpointData, context: PipelineContext): Promise<void> {
     if (data.discoveredFiles) {
       context.filePaths = data.discoveredFiles;
       context.stats.filesDiscovered = data.discoveredFiles.length;

@@ -8,6 +8,7 @@ import type {
   MindQueryResult,
   MindIndexStats,
 } from '@kb-labs/mind-types';
+import type { MindConfigInput } from '@kb-labs/mind-contracts';
 import { createHash } from 'node:crypto';
 import * as path from 'node:path';
 import {
@@ -44,7 +45,7 @@ export interface RagIndexOptions {
    * Mind configuration (from ctx.config)
    * If provided, will be used instead of reading from file
    */
-  config?: any;
+  config?: Record<string, unknown>;
 }
 
 /**
@@ -77,10 +78,11 @@ export interface RagIndexOptionsWithRuntime extends RagIndexOptions {
 /**
  * Get adapter name from platform service or fallback
  */
-function getAdapterName(service: any, fallback: string): string {
-  if (!service) {return fallback;}
+function getAdapterName(service: unknown, fallback: string): string {
+  if (!service || typeof service !== 'object') {return fallback;}
   // Try to get constructor name or class name
-  const name = service.constructor?.name || service.name || service.id;
+  const s = service as { constructor?: { name?: string }; name?: string; id?: string };
+  const name = s.constructor?.name || s.name || s.id;
   if (name && name !== 'Object' && name !== 'Function') {
     return name;
   }
@@ -112,7 +114,7 @@ export async function runRagIndex(
     // Override paths/exclude in ALL sources (ESLint-style override)
     if (mindConfig?.sources && Array.isArray(mindConfig.sources)) {
       mindConfig = { ...mindConfig };
-      mindConfig.sources = mindConfig.sources.map((source: any) => {
+      mindConfig.sources = (mindConfig.sources as Record<string, unknown>[]).map((source) => {
         const overriddenSource = { ...source };
 
         // --include overrides paths
@@ -137,7 +139,7 @@ export async function runRagIndex(
     runtime: 'runtime' in options ? options.runtime : undefined,
     platform: options.platform,
   });
-  const allScopeIds = runtime.config.scopes?.map((scope: any) => scope.id) ?? [];
+  const allScopeIds = runtime.config.scopes?.map((scope: { id: string }) => scope.id) ?? [];
   if (!allScopeIds.length) {
     throw new Error('No mind scopes found. Update kb.config.json first.');
   }
@@ -222,7 +224,7 @@ export interface RagQueryOptions {
    * Mind configuration (from ctx.config)
    * If provided, will be used instead of reading from file
    */
-  config?: any;
+  config?: Record<string, unknown>;
 }
 
 export interface RagQueryResult {
@@ -297,7 +299,7 @@ export async function runRagQuery(
   
   const wrappedRuntime = originalRuntime ? {
     ...originalRuntime,
-    log: (level: 'debug' | 'info' | 'warn' | 'error', message: string, meta?: any) => {
+    log: (level: 'debug' | 'info' | 'warn' | 'error', message: string, meta?: Record<string, unknown>) => {
       // Suppress INFO and DEBUG logs - progress comes from explicit API now
       if (level === 'info' || level === 'debug') {
         return; // Don't output INFO/DEBUG logs
@@ -361,13 +363,13 @@ export interface AgentRagQueryOptions {
   sourcesDigest?: string;
   debug?: boolean;
   runtime?: Parameters<typeof createMindRuntime>[0]['runtime'];
-  broker?: any; // StateBroker-like interface (duck typing to avoid circular deps)
+  broker?: { get: <T>(key: string) => Promise<T | null>; set: <T>(key: string, value: T, ttl?: number) => Promise<void>; delete: (key: string) => Promise<void> }; // StateBroker-like interface (duck typing to avoid circular deps)
   platform?: PlatformServices;
   /**
    * Mind configuration (from ctx.config)
    * If provided, will be used instead of reading from file
    */
-  config?: any;
+  config?: Record<string, unknown>;
 }
 
 export type AgentRagQueryResult = AgentResponse | AgentErrorResponse;
@@ -527,7 +529,7 @@ export async function runAgentRagQuery(
 async function resolveCacheContext(options: {
   cwd: string;
   scopeId: string;
-  config: any;
+  config: MindConfigInput;
   providedIndexRevision?: string;
   providedEngineConfigHash?: string;
   providedSourcesDigest?: string;
@@ -549,16 +551,12 @@ async function resolveCacheContext(options: {
   };
 }
 
-function computeEngineConfigHash(config: any, scopeId: string): string | undefined {
-  const scope = Array.isArray(config?.scopes)
-    ? config.scopes.find((item: any) => item?.id === scopeId)
-    : undefined;
+function computeEngineConfigHash(config: MindConfigInput, scopeId: string): string | undefined {
+  const scope = config.scopes?.find((item) => item?.id === scopeId);
   const engineId = scope?.defaultEngine
-    ?? config?.defaults?.fallbackEngineId
-    ?? config?.engines?.[0]?.id;
-  const engine = Array.isArray(config?.engines)
-    ? config.engines.find((item: any) => item?.id === engineId)
-    : undefined;
+    ?? config.defaults?.fallbackEngineId
+    ?? config.engines?.[0]?.id;
+  const engine = config.engines?.find((item) => item?.id === engineId);
 
   if (!engine) {
     return undefined;
@@ -575,18 +573,14 @@ function computeEngineConfigHash(config: any, scopeId: string): string | undefin
 
 async function readCacheContextFromManifest(
   cwd: string,
-  config: any,
+  config: MindConfigInput,
   scopeId: string,
 ): Promise<ManifestCacheContext> {
-  const scope = Array.isArray(config?.scopes)
-    ? config.scopes.find((item: any) => item?.id === scopeId)
-    : undefined;
+  const scope = config.scopes?.find((item) => item?.id === scopeId);
   const engineId = scope?.defaultEngine
-    ?? config?.defaults?.fallbackEngineId
-    ?? config?.engines?.[0]?.id;
-  const engine = Array.isArray(config?.engines)
-    ? config.engines.find((item: any) => item?.id === engineId)
-    : undefined;
+    ?? config.defaults?.fallbackEngineId
+    ?? config.engines?.[0]?.id;
+  const engine = config.engines?.find((item) => item?.id === engineId);
   const configuredIndexDir = typeof engine?.options?.indexDir === 'string'
     ? engine.options.indexDir
     : '.kb/mind/rag';

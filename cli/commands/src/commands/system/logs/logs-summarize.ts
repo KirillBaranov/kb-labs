@@ -7,7 +7,20 @@ import { defineSystemCommand, type CommandResult } from '@kb-labs/shared-command
 import { generateExamples } from '../../../utils/generate-examples';
 import { platform } from '@kb-labs/core-runtime';
 import { parseRelativeTime, computeLogStats } from './logs-utils';
-import type { LogQuery, LogRecord } from '@kb-labs/core-platform';
+import type { LogQuery, LogRecord, LogLevel } from '@kb-labs/core-platform';
+
+interface LogSummarizeResult extends CommandResult {
+  question?: string;
+  summary?: string | null;
+  llmUsed?: boolean;
+  stats?: {
+    total: number;
+    errors: number;
+    warnings: number;
+    sources: string[];
+    topErrors: { message: string; count: number; source: string }[];
+  };
+}
 
 type Flags = {
   from: { type: 'string'; description?: string };
@@ -44,8 +57,8 @@ function buildPrompt(question: string, logs: LogRecord[], stats: ReturnType<type
     const msg = typeof log.message === 'string' ? log.message : JSON.stringify(log.message);
     prompt += `[${time}] ${log.level.toUpperCase()} [${log.source}]: ${msg}\n`;
 
-    if (log.fields.err && (log.fields.err as any).stack) {
-      const stack = String((log.fields.err as any).stack).split('\n').slice(0, 3).join('\n  ');
+    if (log.fields.err && (log.fields.err as { stack?: string }).stack) {
+      const stack = String((log.fields.err as { stack?: string }).stack).split('\n').slice(0, 3).join('\n  ');
       prompt += `  stack: ${stack}\n`;
     }
   }
@@ -85,7 +98,7 @@ function fallbackSummary(stats: ReturnType<typeof computeLogStats>): string {
   return summary;
 }
 
-export const logsSummarize = defineSystemCommand<Flags, CommandResult>({
+export const logsSummarize = defineSystemCommand<Flags, LogSummarizeResult>({
   name: 'summarize',
   description: 'AI-powered log analysis — ask a question about your logs',
   category: 'logs',
@@ -111,7 +124,7 @@ export const logsSummarize = defineSystemCommand<Flags, CommandResult>({
     const fromTs = flags.from ? parseRelativeTime(flags.from) : Date.now() - 3_600_000;
     const query: LogQuery = { from: fromTs };
     if (flags.to) {query.to = parseRelativeTime(flags.to);}
-    if (flags.level) {query.level = flags.level as any;}
+    if (flags.level) {query.level = flags.level as LogLevel;}
     if (flags.source) {query.source = flags.source;}
 
     const result = await reader.query(query, { limit: 1000, sortOrder: 'desc' });
@@ -164,9 +177,8 @@ export const logsSummarize = defineSystemCommand<Flags, CommandResult>({
       return;
     }
 
-    const data = result as any;
-    ctx.ui.write(`Question: ${data.question}\n`);
-    ctx.ui.write(`${data.llmUsed ? '(AI-powered)' : '(Statistical fallback)'}\n\n`);
-    ctx.ui.write(data.summary + '\n');
+    ctx.ui.write(`Question: ${result.question}\n`);
+    ctx.ui.write(`${result.llmUsed ? '(AI-powered)' : '(Statistical fallback)'}\n\n`);
+    ctx.ui.write((result.summary ?? '') + '\n');
   },
 });

@@ -6,6 +6,7 @@
  */
 
 import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
+import type { UIFacade } from '@kb-labs/sdk';
 import type { DeadCodeResult, DeadCodeRemovalResult, DeadCodeBackupManifest } from '@kb-labs/quality-contracts';
 import { CACHE_KEYS } from '@kb-labs/quality-contracts';
 import {
@@ -34,7 +35,10 @@ export default defineCommand({
       input: DeadCodeInput,
     ): Promise<DeadCodeCommandResult> {
       const { ui, platform } = ctx;
-      const flags = (input as any).flags ?? input;
+      // V3: Flags may come wrapped in input.flags or passed directly
+      const flags = ('flags' in input && typeof (input as { flags?: unknown }).flags === 'object' && (input as { flags?: unknown }).flags !== null)
+        ? (input as { flags: DeadCodeInput }).flags
+        : input;
 
       // --- Sub-operations ---
 
@@ -62,11 +66,11 @@ export default defineCommand({
             }
           }
           return { exitCode: 0 };
-        } catch (err: any) {
+        } catch (err: unknown) {
           if (flags.json) {
-            ui?.json?.({ error: err.message });
+            ui?.json?.({ error: err instanceof Error ? err.message : String(err) });
           } else {
-            ui?.error?.(err.message);
+            ui?.error?.(err instanceof Error ? err.message : String(err));
           }
           return { exitCode: 1 };
         }
@@ -143,8 +147,8 @@ export default defineCommand({
 
 function outputDeadCodeReport(
   result: DeadCodeResult & { cached?: boolean },
-  flags: any,
-  ui: any,
+  flags: DeadCodeFlags,
+  ui: UIFacade | undefined,
 ): void {
   if (flags.json) {
     ui?.json?.(result);
@@ -231,8 +235,8 @@ function outputDeadCodeReport(
 
 function outputRemovalReport(
   result: DeadCodeRemovalResult,
-  flags: any,
-  ui: any,
+  flags: DeadCodeFlags,
+  ui: UIFacade | undefined,
 ): void {
   const isDryRun = flags['dry-run'];
   const prefix = isDryRun ? '[DRY RUN] Would' : 'Successfully';
@@ -283,7 +287,7 @@ function outputRemovalReport(
 
 function outputBackupList(
   backups: DeadCodeBackupManifest[],
-  ui: any,
+  ui: UIFacade | undefined,
 ): void {
   if (backups.length === 0) {
     ui?.info?.('No backups found.');

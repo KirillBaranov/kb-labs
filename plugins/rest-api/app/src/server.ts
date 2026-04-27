@@ -5,6 +5,7 @@
 
 import Fastify from 'fastify';
 import type { FastifyInstance } from 'fastify';
+import type { FastifyBaseLogger } from 'fastify';
 import type { RestApiConfig } from '@kb-labs/rest-api-core';
 import type { IEntityRegistry } from '@kb-labs/core-registry';
 import { registerRoutes } from './routes/index';
@@ -25,7 +26,7 @@ const kDisableRequestLogging = Symbol.for('fastify.disableRequestLogging');
  * Create a Pino-compatible wrapper for ILogger
  * Fastify 5 expects a Pino instance, but we want vendor independence
  */
-function createPinoCompatibleLogger(logger: ILogger): any {
+function createPinoCompatibleLogger(logger: ILogger): FastifyBaseLogger {
   const levels = {
     trace: 10,
     debug: 20,
@@ -37,42 +38,46 @@ function createPinoCompatibleLogger(logger: ILogger): any {
 
   return {
     // Pino log levels
-    trace: (msg: string | object, ...args: any[]) => {
+    trace: (msg: string | object, ...args: unknown[]) => {
       if (typeof msg === 'object') {
         logger.debug(JSON.stringify(msg), msg as Record<string, unknown>);
       } else {
-        logger.debug(msg, ...args);
+        const meta = (typeof args[0] === 'object' && args[0] !== null) ? args[0] as Record<string, unknown> : undefined;
+        logger.debug(msg, meta);
       }
     },
-    debug: (msg: string | object, ...args: any[]) => {
+    debug: (msg: string | object, ...args: unknown[]) => {
       if (typeof msg === 'object') {
         logger.debug(JSON.stringify(msg), msg as Record<string, unknown>);
       } else {
-        logger.debug(msg, ...args);
+        const meta = (typeof args[0] === 'object' && args[0] !== null) ? args[0] as Record<string, unknown> : undefined;
+        logger.debug(msg, meta);
       }
     },
-    info: (msg: string | object, ...args: any[]) => {
+    info: (msg: string | object, ...args: unknown[]) => {
       if (typeof msg === 'object') {
         logger.info(JSON.stringify(msg), msg as Record<string, unknown>);
       } else {
-        logger.info(msg, ...args);
+        const meta = (typeof args[0] === 'object' && args[0] !== null) ? args[0] as Record<string, unknown> : undefined;
+        logger.info(msg, meta);
       }
     },
-    warn: (msg: string | object, ...args: any[]) => {
+    warn: (msg: string | object, ...args: unknown[]) => {
       if (typeof msg === 'object') {
         logger.warn(JSON.stringify(msg), msg as Record<string, unknown>);
       } else {
-        logger.warn(msg, ...args);
+        const meta = (typeof args[0] === 'object' && args[0] !== null) ? args[0] as Record<string, unknown> : undefined;
+        logger.warn(msg, meta);
       }
     },
-    error: (msg: string | object, ...args: any[]) => {
+    error: (msg: string | object, ...args: unknown[]) => {
       if (typeof msg === 'object') {
         logger.error(JSON.stringify(msg), msg instanceof Error ? msg : undefined);
       } else {
         logger.error(msg, args[0] instanceof Error ? args[0] : undefined);
       }
     },
-    fatal: (msg: string | object, ...args: any[]) => {
+    fatal: (msg: string | object, ...args: unknown[]) => {
       if (typeof msg === 'object') {
         logger.error(`[FATAL] ${JSON.stringify(msg)}`, msg instanceof Error ? msg : undefined);
       } else {
@@ -90,10 +95,10 @@ function createPinoCompatibleLogger(logger: ILogger): any {
       values: levels,
       labels: { 10: 'trace', 20: 'debug', 30: 'info', 40: 'warn', 50: 'error', 60: 'fatal' },
     },
-    silent: false,
+    silent: () => {},
     // Pino version symbol (required by Fastify 5 validation)
     [Symbol.for('pino.version')]: '8.0.0',
-  };
+  } as unknown as FastifyBaseLogger;
 }
 
 /**
@@ -157,22 +162,23 @@ export async function createServer(
       });
 
   // Add our own logger to server instance
-  (server as any).log = restLogger;
+  (server as { log: ILogger }).log = restLogger;
 
   // Override child logger factory to return our custom logger with disable flag
   server.setChildLoggerFactory((logger, bindings, opts, rawReq) => {
     const customLogger = {
       [kDisableRequestLogging]: true, // Disable Fastify's built-in request logging
-      debug: (obj: any, msg?: string) => {},
-      info: (obj: any, msg?: string) => {},
-      warn: (obj: any, msg?: string) => {},
-      error: (obj: any, msg?: string) => {},
-      fatal: (obj: any, msg?: string) => {},
-      trace: (obj: any, msg?: string) => {},
+      debug: (_obj: unknown, _msg?: string) => {},
+      info: (_obj: unknown, _msg?: string) => {},
+      warn: (_obj: unknown, _msg?: string) => {},
+      error: (_obj: unknown, _msg?: string) => {},
+      fatal: (_obj: unknown, _msg?: string) => {},
+      trace: (_obj: unknown, _msg?: string) => {},
+      silent: (_obj: unknown, _msg?: string) => {},
       child: () => customLogger,
       level: 'silent',
     };
-    return customLogger as any;
+    return customLogger as unknown as FastifyBaseLogger;
   });
 
   // Log protocol being used

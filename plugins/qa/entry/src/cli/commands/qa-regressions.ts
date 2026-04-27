@@ -2,7 +2,7 @@ import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
 import { loadHistory, detectRegressions, buildRegressionsReport } from '@kb-labs/qa-core';
 import type { QARegressionsFlags } from './flags.js';
 
-type QARegressionsInput = QARegressionsFlags & { argv?: string[]; flags?: any };
+type QARegressionsInput = QARegressionsFlags & { argv?: string[] };
 
 export default defineCommand({
   id: 'qa:regressions',
@@ -11,7 +11,9 @@ export default defineCommand({
   handler: {
     async execute(ctx: PluginContextV3, input: QARegressionsInput) {
       const { ui } = ctx;
-      const flags = (input as any).flags ?? input;
+      const flags = ('flags' in input && typeof (input as { flags?: unknown }).flags === 'object' && (input as { flags?: unknown }).flags !== null)
+        ? (input as { flags: QARegressionsInput }).flags
+        : input;
       const rootDir = ctx.cwd;
 
       const history = loadHistory(rootDir);

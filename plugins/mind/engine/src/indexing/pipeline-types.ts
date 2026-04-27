@@ -81,6 +81,10 @@ export interface CheckpointData {
   processedFiles: string[];
   stats: PipelineContext['stats'];
   timestamp: number;
+  /** Optional stage-specific data */
+  discoveredFiles?: string[];
+  chunksGenerated?: number;
+  [key: string]: unknown;
 }
 
 /**

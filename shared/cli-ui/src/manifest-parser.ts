@@ -12,14 +12,14 @@ export interface CommandManifest {
   requires?: string[];
   flags?: FlagDefinition[];
   examples?: string[];
-  loader: () => Promise<{ run: any }>;
+  loader: () => Promise<{ run: unknown }>;
 }
 
 export interface FlagDefinition {
   name: string;
   type: 'string' | 'boolean' | 'number' | 'array';
   alias?: string;
-  default?: any;
+  default?: string | boolean | number | string[];
   description?: string;
   choices?: string[];
   required?: boolean;
@@ -87,7 +87,7 @@ export function generateGroupSuggestions(
   manifest: CommandManifest[],
   group: string,
   _warningCodes: Set<string>,
-  _context: any
+  _context: unknown
 ): Array<{
   id: string;
   command: string;

@@ -88,11 +88,11 @@ describe('ALL_SOURCE_EXTENSIONS', () => {
 describe('toRgIncludes', () => {
   it('builds --include flags for ripgrep', () => {
     const result = toRgIncludes(['ts', 'tsx']);
-    expect(result).toBe('--include="*.ts" --include="*.tsx"');
+    expect(result).toBe("--include='*.ts' --include='*.tsx'");
   });
 
   it('handles single extension', () => {
-    expect(toRgIncludes(['py'])).toBe('--include="*.py"');
+    expect(toRgIncludes(['py'])).toBe("--include='*.py'");
   });
 
   it('handles empty array', () => {
@@ -103,11 +103,11 @@ describe('toRgIncludes', () => {
 describe('toFindNames', () => {
   it('builds -name flags joined with -o for find', () => {
     const result = toFindNames(['ts', 'tsx']);
-    expect(result).toBe('-name "*.ts" -o -name "*.tsx"');
+    expect(result).toBe("-name '*.ts' -o -name '*.tsx'");
   });
 
   it('handles single extension', () => {
-    expect(toFindNames(['py'])).toBe('-name "*.py"');
+    expect(toFindNames(['py'])).toBe("-name '*.py'");
   });
 
   it('handles empty array', () => {

@@ -107,7 +107,7 @@ export class InProcessBackend implements ExecutionBackend {
     let lease: WorkspaceLease | undefined;
     let resolvedTarget = request.target;
     let workspaceDescriptor: WorkspaceDescriptor | undefined;
-    const workspaceProvider = (this.platform as any).getAdapter?.('workspace') as IWorkspaceProvider | undefined;
+    const workspaceProvider = (this.platform as { getAdapter?: (name: string) => unknown }).getAdapter?.('workspace') as IWorkspaceProvider | undefined;
 
     try {
       // 1. Check abort before starting

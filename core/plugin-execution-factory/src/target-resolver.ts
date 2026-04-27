@@ -14,12 +14,17 @@ interface WorkspaceManagerLike {
   getWorkspaceStatus(workspaceId: string): Promise<{ status: WorkspaceStatus }>;
 }
 
+type PlatformWithManagers = PlatformServices & {
+  environmentManager?: EnvironmentManagerLike;
+  workspaceManager?: WorkspaceManagerLike;
+};
+
 function getEnvironmentManager(platform: PlatformServices): EnvironmentManagerLike | undefined {
-  return (platform as any).environmentManager as EnvironmentManagerLike | undefined;
+  return (platform as PlatformWithManagers).environmentManager;
 }
 
 function getWorkspaceManager(platform: PlatformServices): WorkspaceManagerLike | undefined {
-  return (platform as any).workspaceManager as WorkspaceManagerLike | undefined;
+  return (platform as PlatformWithManagers).workspaceManager;
 }
 
 async function tryResolveWorkspaceRootPath(workspaceId: string): Promise<string | undefined> {

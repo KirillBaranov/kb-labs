@@ -272,7 +272,7 @@ Guidelines:
     };
   }
 
-  private log(level: 'info' | 'warn' | 'error' | 'debug', message: string, meta?: any): void {
+  private log(level: 'info' | 'warn' | 'error' | 'debug', message: string, meta?: Record<string, unknown>): void {
     if (level === 'debug' && !this.config.debug) {return;}
 
     const prefix = '[IncidentAnalyzer]';

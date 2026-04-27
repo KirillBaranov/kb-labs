@@ -9,7 +9,7 @@ import type { Output } from '@kb-labs/core-sys/output';
 import { SANDBOX_ERROR_CODES } from '../../errors/error-codes';
 
 export interface HandlerExecutorOptions {
-  handlerFn: (...args: any[]) => Promise<unknown>;
+  handlerFn: (...args: unknown[]) => Promise<unknown>;
   input: unknown;
   ctx: ExecutionContext;
   output: Output;
@@ -99,6 +99,8 @@ export async function executeHandlerFn(options: HandlerExecutorOptions): Promise
       };
 
       // Build job context with runtime from adapterContext (set by context-recreator)
+      // context-recreator sets adapterContext to a JobHandlerContext when signature === 'job'
+      const jobAdapterCtx = ctx.adapterContext as JobHandlerContext | undefined;
       const jobCtx: JobHandlerContext = {
         type: 'job',
         requestId: ctx.requestId,
@@ -111,9 +113,9 @@ export async function executeHandlerFn(options: HandlerExecutorOptions): Promise
         parentSpanId: ctx.parentSpanId,
         debug: ctx.debug,
         // Runtime APIs from buildRuntime() (set in context-recreator)
-        runtime: (ctx.adapterContext as any)?.runtime,
-        output: (ctx.adapterContext as any)?.output,
-        api: (ctx.adapterContext as any)?.api,
+        runtime: jobAdapterCtx?.runtime,
+        output: jobAdapterCtx?.output,
+        api: jobAdapterCtx?.api,
       };
 
       output.debug('Executing job handler', {
@@ -177,7 +179,7 @@ export async function executeHandlerFn(options: HandlerExecutorOptions): Promise
     return {
       ok: false,
       error: {
-        code: (errorObj as any).code || SANDBOX_ERROR_CODES.HANDLER_EXECUTION_FAILED,
+        code: (errorObj as { code?: string }).code || SANDBOX_ERROR_CODES.HANDLER_EXECUTION_FAILED,
         message: errorObj.message,
         stack: errorObj.stack,
       },

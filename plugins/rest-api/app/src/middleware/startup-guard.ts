@@ -81,8 +81,8 @@ export function registerStartupGuard(
     request.kbStartupGuardTimer = timer;
 
     if (counters.inFlight > maxConcurrent) {
-      if ((request as any).kbLogger) {
-        (request as any).kbLogger.warn('Startup guard concurrency threshold exceeded', {
+      if (request.kbLogger) {
+        request.kbLogger.warn('Startup guard concurrency threshold exceeded', {
           inFlight: counters.inFlight,
           maxConcurrent,
         });

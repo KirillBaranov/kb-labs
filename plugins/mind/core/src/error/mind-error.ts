@@ -8,7 +8,7 @@ export class MindError extends Error {
     public code: string,
     message: string,
     public hint?: string,
-    public meta?: any
+    public meta?: unknown
   ) {
     super(message);
     this.name = 'MindError';
@@ -60,7 +60,7 @@ export type ErrorCode = keyof typeof ERROR_HINTS;
 export function createMindError(
   code: ErrorCode,
   message: string,
-  meta?: any
+  meta?: unknown
 ): MindError {
   return new MindError(code, message, ERROR_HINTS[code], meta);
 }

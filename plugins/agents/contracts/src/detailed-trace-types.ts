@@ -134,7 +134,7 @@ export interface LLMCallEvent extends BaseTraceEntry {
     toolCalls?: Array<{
       id: string;
       name: string;
-      input: any;
+      input: Record<string, unknown>;
     }>;
     stopReason: 'tool_use' | 'end_turn' | 'max_tokens' | 'stop_sequence';
     usage: {
@@ -170,11 +170,11 @@ export interface ToolExecutionEvent extends BaseTraceEntry {
     callId: string; // From LLM tool call
   };
 
-  input: any; // Tool input params
+  input: Record<string, unknown>; // Tool input params
 
   output: {
     success: boolean;
-    result?: any; // Tool output if success
+    result?: unknown; // Tool output if success
     error?: {
       message: string;
       code?: string;
@@ -193,7 +193,7 @@ export interface ToolExecutionEvent extends BaseTraceEntry {
   metadata?: {
     filesRead?: string[];
     searchesPerformed?: number;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -206,7 +206,7 @@ export interface MemorySnapshotEvent extends BaseTraceEntry {
 
   sessionMemory: {
     conversationHistory: number; // Count of messages
-    userPreferences: Record<string, any>;
+    userPreferences: Record<string, unknown>;
   };
 
   sharedMemory: {
@@ -418,15 +418,15 @@ export interface ErrorCapturedEvent extends BaseTraceEntry {
 
   context: {
     lastLLMCall?: {
-      request: any;
-      response: any;
+      request: Record<string, unknown>;
+      response: Record<string, unknown>;
       durationMs: number;
     };
 
     lastToolCall?: {
       name: string;
-      input: any;
-      output?: any;
+      input: Record<string, unknown>;
+      output?: unknown;
       error?: string;
     };
 

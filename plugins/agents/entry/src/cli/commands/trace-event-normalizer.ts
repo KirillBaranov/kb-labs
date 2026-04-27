@@ -12,10 +12,10 @@ export function normalizeTraceEvents(events: DetailedTraceEntry[]): NormalizedTr
   let currentIteration = 0;
 
   for (const raw of events) {
-    const type = String((raw as any).type ?? '');
+    const type = String(raw.type ?? '');
     const data = getEventData(raw);
 
-    const explicitIteration = asNumber((raw as any).iteration) ?? asNumber(data.iteration);
+    const explicitIteration = asNumber(raw.iteration) ?? asNumber(data.iteration);
     if (type === 'iteration:start') {
       currentIteration = explicitIteration ?? Math.max(1, currentIteration + 1);
     }
@@ -28,7 +28,7 @@ export function normalizeTraceEvents(events: DetailedTraceEntry[]): NormalizedTr
 }
 
 export function getEventData(event: DetailedTraceEntry): Record<string, unknown> {
-  const data = (event as any).data;
+  const data = (event as unknown as Record<string, unknown>).data;
   if (data && typeof data === 'object') {
     return data as Record<string, unknown>;
   }

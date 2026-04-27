@@ -46,12 +46,13 @@ const PLATFORM_CONTEXT_KEY = Symbol.for('kb.platformContext');
  * Stored on process global to survive bundler duplication.
  */
 function getOrCreatePlatformContext(): AsyncLocalStorage<PlatformServices> {
-  const existing = (process as any)[PLATFORM_CONTEXT_KEY];
+  const proc = process as NodeJS.Process & Record<symbol, unknown>;
+  const existing = proc[PLATFORM_CONTEXT_KEY];
   if (existing instanceof AsyncLocalStorage) {
     return existing;
   }
   const ctx = new AsyncLocalStorage<PlatformServices>();
-  (process as any)[PLATFORM_CONTEXT_KEY] = ctx;
+  proc[PLATFORM_CONTEXT_KEY] = ctx;
   return ctx;
 }
 

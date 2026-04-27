@@ -179,7 +179,7 @@ export class FileLogger implements EventSink {
       this.buffer = [];
 
       // Synchronous write
-      fs.writeSync((this.writeStream as any).fd, data);
+      fs.writeSync((this.writeStream as fs.WriteStream & { fd: number }).fd, data);
       this.currentFileSize += Buffer.byteLength(data, 'utf8');
 
     } catch (err) {

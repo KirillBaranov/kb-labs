@@ -3,7 +3,7 @@
  * Format Mind query results as structured JSON for external integrations
  */
 
-import type { KnowledgeResult } from '../types/engine-contracts';
+import type { KnowledgeResult, KnowledgeChunk } from '../types/engine-contracts';
 import type {
   MindQueryResponse,
   MindCandidate,
@@ -12,6 +12,44 @@ import type {
 } from '@kb-labs/mind-types';
 import type { ReasoningResult } from '../reasoning/types';
 import { SnippetExtractor } from '../snippets/snippet-extractor';
+
+/**
+ * Extended chunk type with optional scoring/metadata fields added by pipeline stages.
+ * These fields are not in the base KnowledgeChunk contract but are commonly present.
+ */
+interface RichChunk extends KnowledgeChunk {
+  content?: string;
+  filePath?: string;
+  startLine?: number;
+  endLine?: number;
+  relevance?: number;
+  functionName?: string;
+  className?: string;
+  interfaceName?: string;
+  typeName?: string;
+  symbolName?: string;
+  language?: string;
+  lastModified?: number;
+  isStaged?: boolean;
+  vectorScore?: number;
+  semanticScore?: number;
+  keywordScore?: number;
+  bm25Score?: number;
+  matchedTerms?: string[];
+  isExactMatch?: boolean;
+  isConceptualMatch?: boolean;
+  highlights?: Array<{ text?: string; term?: string }>;
+  imports?: string[];
+  exports?: string[];
+  related?: {
+    dependencies?: string[];
+    dependents?: string[];
+    similarCount?: number;
+  };
+  type?: MindCandidate['context']['type'];
+  /** Alias for path used by some pipeline stages */
+  file?: string;
+}
 
 export interface QueryMetrics {
   totalMs: number;
@@ -42,7 +80,7 @@ export function formatAsJSON(
   options: JsonOutputOptions = {},
   queryText?: string
 ): MindQueryResponse {
-  const candidates = result.chunks.map((chunk, index) =>
+  const candidates = (result.chunks as RichChunk[]).map((chunk, index) =>
     formatCandidate(chunk, index, queryText, options)
   );
 
@@ -91,7 +129,7 @@ export function formatAsJSON(
  * Format a single chunk as a candidate
  */
 function formatCandidate(
-  chunk: any,
+  chunk: RichChunk,
   index: number,
   queryText: string | undefined,
   options: JsonOutputOptions
@@ -167,7 +205,7 @@ function formatCandidate(
 /**
  * Infer code entity type from chunk metadata
  */
-function inferCodeType(chunk: any): MindCandidate['context']['type'] {
+function inferCodeType(chunk: RichChunk): MindCandidate['context']['type'] {
   if (chunk.type) {return chunk.type;}
   if (chunk.functionName) {return 'function';}
   if (chunk.className) {return 'class';}
@@ -181,7 +219,7 @@ function inferCodeType(chunk: any): MindCandidate['context']['type'] {
 /**
  * Build full symbol path
  */
-function buildSymbolPath(chunk: any): string | undefined {
+function buildSymbolPath(chunk: RichChunk): string | undefined {
   const parts: string[] = [];
 
   if (chunk.className) {parts.push(chunk.className);}
@@ -196,7 +234,7 @@ function buildSymbolPath(chunk: any): string | undefined {
 /**
  * Infer match type from scores
  */
-function inferMatchType(chunk: any): 'semantic' | 'keyword' | 'hybrid' {
+function inferMatchType(chunk: RichChunk): 'semantic' | 'keyword' | 'hybrid' {
   const hasVector = chunk.vectorScore !== undefined || chunk.semanticScore !== undefined;
   const hasKeyword = chunk.keywordScore !== undefined || chunk.bm25Score !== undefined;
 
@@ -208,9 +246,9 @@ function inferMatchType(chunk: any): 'semantic' | 'keyword' | 'hybrid' {
 /**
  * Extract matched terms from chunk content
  */
-function extractMatchedTerms(chunk: any): string[] | undefined {
+function extractMatchedTerms(chunk: RichChunk): string[] | undefined {
   if (chunk.highlights) {
-    return chunk.highlights.map((h: any) => h.text || h.term).filter(Boolean);
+    return chunk.highlights.map((h) => h.text || h.term).filter(Boolean) as string[];
   }
   return undefined;
 }

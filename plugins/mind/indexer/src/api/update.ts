@@ -37,9 +37,9 @@ export async function updateIndexes(opts: UpdateOptions): Promise<DeltaReport> {
       readJson<ApiIndex>(`${cwd}/.kb/mind/api-index.json`),
       readJson<DepsGraph>(`${cwd}/.kb/mind/deps.json`),
       readJson<RecentDiff>(`${cwd}/.kb/mind/recent-diff.json`),
-      readJson<any>(`${cwd}/.kb/mind/meta.json`),
-      readJson<any>(`${cwd}/.kb/mind/docs.json`),
-      readJson<any>(`${cwd}/.kb/mind/docs-index.json`)
+      readJson<Record<string, unknown>>(`${cwd}/.kb/mind/meta.json`),
+      readJson<Record<string, unknown>>(`${cwd}/.kb/mind/docs.json`),
+      readJson<Record<string, unknown>>(`${cwd}/.kb/mind/docs-index.json`)
     ]);
     const docsData = docsPrimary ?? docsLegacy ?? null;
 
@@ -137,9 +137,9 @@ export async function updateIndexes(opts: UpdateOptions): Promise<DeltaReport> {
       readJson<ApiIndex>(`${cwd}/.kb/mind/api-index.json`).then(res => res ?? ctx.apiIndex),
       readJson<DepsGraph>(`${cwd}/.kb/mind/deps.json`).then(res => res ?? ctx.depsGraph),
       readJson<RecentDiff>(`${cwd}/.kb/mind/recent-diff.json`).then(res => res ?? ctx.recentDiff),
-      readJson<any>(`${cwd}/.kb/mind/meta.json`).then(res => res ?? metaIndex),
-      readJson<any>(`${cwd}/.kb/mind/docs.json`),
-      readJson<any>(`${cwd}/.kb/mind/docs-index.json`)
+      readJson<Record<string, unknown>>(`${cwd}/.kb/mind/meta.json`).then(res => res ?? metaIndex),
+      readJson<Record<string, unknown>>(`${cwd}/.kb/mind/docs.json`),
+      readJson<Record<string, unknown>>(`${cwd}/.kb/mind/docs-index.json`)
     ]);
     const freshDocs = freshDocsPrimary ?? freshDocsLegacy ?? docsIndex;
 
@@ -147,8 +147,8 @@ export async function updateIndexes(opts: UpdateOptions): Promise<DeltaReport> {
     interface ChecksumInput {
       apiIndex: ApiIndex;
       deps: DepsGraph;
-      meta: any;
-      docs: any;
+      meta: Record<string, unknown>;
+      docs: Record<string, unknown>;
       recentDiff?: RecentDiff;
     }
 
@@ -180,8 +180,8 @@ export async function updateIndexes(opts: UpdateOptions): Promise<DeltaReport> {
     await writeJson(`${cwd}/.kb/mind/index.json`, updatedIndex);
 
     return result;
-  } catch (error: any) {
-    logger({ level: 'error', msg: 'Failed to update indexes', error: error.message });
+  } catch (error: unknown) {
+    logger({ level: 'error', msg: 'Failed to update indexes', error: error instanceof Error ? error.message : String(error) });
     throw error;
   }
 }

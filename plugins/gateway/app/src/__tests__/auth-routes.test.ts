@@ -62,26 +62,45 @@ afterAll(async () => {
 // ── POST /auth/register ───────────────────────────────────────────────────────
 
 describe('POST /auth/register', () => {
-  it('returns 201 with clientId, clientSecret, hostId on success', async () => {
+  it('returns 201 with clientId, clientSecret, hostId, namespaceId on success', async () => {
     authService.register.mockResolvedValue({
       clientId: 'client-abc',
       clientSecret: 'secret-xyz',
       hostId: 'host-001',
+      namespaceId: 'ns_server_generated',
     });
 
     const res = await app.inject({
       method: 'POST',
       url: '/auth/register',
-      payload: { name: 'My Agent', namespaceId: 'ns-test' },
+      payload: { name: 'My Agent' },
     });
 
     expect(res.statusCode).toBe(201);
-    const body = res.json() as { clientId: string; clientSecret: string; hostId: string };
+    const body = res.json() as { clientId: string; clientSecret: string; hostId: string; namespaceId: string };
     expect(body.clientId).toBe('client-abc');
     expect(body.clientSecret).toBe('secret-xyz');
     expect(body.hostId).toBe('host-001');
+    expect(body.namespaceId).toBe('ns_server_generated');
     expect(authService.register).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'My Agent', namespaceId: 'ns-test' }),
+      expect.objectContaining({ name: 'My Agent' }),
+    );
+  });
+
+  it('rejects client-supplied namespaceId (must not be passed to authService)', async () => {
+    authService.register.mockResolvedValue({
+      clientId: 'c', clientSecret: 's', hostId: 'h', namespaceId: 'ns_generated',
+    });
+
+    await app.inject({
+      method: 'POST',
+      url: '/auth/register',
+      payload: { name: 'Agent', namespaceId: 'victim-tenant' },
+    });
+
+    // namespaceId supplied by client must NOT reach the service
+    expect(authService.register).toHaveBeenCalledWith(
+      expect.not.objectContaining({ namespaceId: 'victim-tenant' }),
     );
   });
 
@@ -89,20 +108,11 @@ describe('POST /auth/register', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/auth/register',
-      payload: { namespaceId: 'ns-test' },
+      payload: {},
     });
     expect(res.statusCode).toBe(400);
     const body = res.json() as { error: string };
     expect(body.error).toBe('Bad Request');
-  });
-
-  it('returns 400 when namespaceId is missing', async () => {
-    const res = await app.inject({
-      method: 'POST',
-      url: '/auth/register',
-      payload: { name: 'agent' },
-    });
-    expect(res.statusCode).toBe(400);
   });
 
   it('returns 400 when body is empty', async () => {
@@ -119,12 +129,13 @@ describe('POST /auth/register', () => {
       clientId: 'c-2',
       clientSecret: 's-2',
       hostId: 'h-2',
+      namespaceId: 'ns_generated',
     });
 
     await app.inject({
       method: 'POST',
       url: '/auth/register',
-      payload: { name: 'Cap Agent', namespaceId: 'ns', capabilities: ['read', 'write'] },
+      payload: { name: 'Cap Agent', capabilities: ['read', 'write'] },
     });
 
     expect(authService.register).toHaveBeenCalledWith(
@@ -263,13 +274,13 @@ describe('POST /auth/refresh', () => {
 describe('Auth middleware — public routes', () => {
   it('/auth/register is accessible without Authorization header', async () => {
     authService.register.mockResolvedValue({
-      clientId: 'c', clientSecret: 's', hostId: 'h',
+      clientId: 'c', clientSecret: 's', hostId: 'h', namespaceId: 'ns_gen',
     });
 
     const res = await app.inject({
       method: 'POST',
       url: '/auth/register',
-      payload: { name: 'x', namespaceId: 'y' },
+      payload: { name: 'x' },
       // No Authorization header
     });
 

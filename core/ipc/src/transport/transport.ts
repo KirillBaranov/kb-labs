@@ -189,7 +189,7 @@ export function isRetryableError(error: Error): boolean {
   }
 
   // Check error code for network errors
-  const code = (error as any).code;
+  const code = (error as { code?: string }).code;
   if (code) {
     const retryableCodes = [
       'ECONNRESET',   // Connection reset
@@ -202,7 +202,8 @@ export function isRetryableError(error: Error): boolean {
   }
 
   // Check HTTP status for server errors
-  const status = (error as any).status || (error as any).statusCode;
+  const e = error as { status?: number; statusCode?: number };
+  const status = e.status ?? e.statusCode;
   if (status) {
     // 503 Service Unavailable is retryable
     // 429 Too Many Requests is retryable

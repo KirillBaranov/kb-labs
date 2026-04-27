@@ -22,7 +22,7 @@ export async function readProfilesSection(cwd: string): Promise<ProfilesSectionR
     return { profiles: [] };
   }
 
-  const rawProfiles = (kbConfig.data as any)?.profiles;
+  const rawProfiles = (kbConfig.data as { profiles?: unknown })?.profiles;
 
   if (rawProfiles === undefined) {
     return {

@@ -4,14 +4,14 @@
  */
 
 import { join } from 'node:path';
-import type { CustomCheckConfig, CheckResult, CheckResultDetails } from './types';
+import type { CustomCheckConfig, CheckResult, CheckResultDetails, PluginLogger } from './types';
 import { spawnCommand } from './build';
 
 export interface CheckRunnerOptions {
   repoRoot: string;
   packagePaths: string[];
   scopePath?: string;
-  logger?: { info?: (...args: any[]) => void; warn?: (...args: any[]) => void };
+  logger?: Pick<PluginLogger, 'info' | 'warn'>;
 }
 
 /**

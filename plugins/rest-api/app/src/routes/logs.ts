@@ -6,13 +6,38 @@
 import type { FastifyInstance } from 'fastify';
 import type { RestApiConfig } from '@kb-labs/rest-api-core';
 import { platform } from '@kb-labs/core-runtime';
-import type { LogQuery, LogRecord } from '@kb-labs/core-platform';
+import type { LogQuery, LogRecord, LogLevel } from '@kb-labs/core-platform';
 import type { EventHub } from '../events/hub';
+
+/** Frontend-shaped log record returned by toFrontendLogRecord */
+interface FrontendLogRecord {
+  id: string;
+  time: string;
+  level: string;
+  msg: string;
+  plugin: string | undefined;
+  [key: string]: unknown;
+}
+
+/** Statistics shape used in summarization */
+interface LogStats {
+  total: number;
+  byLevel: Record<string, number>;
+  byPlugin: Record<string, number>;
+  topErrors: Array<{ message: string; count: number }>;
+  timeRange: { from: string | null; to: string | null };
+}
+
+/** Error entry shape used in topErrors iteration */
+interface TopError {
+  message: string;
+  count: number;
+}
 
 /**
  * Map Pino numeric level to string level
  */
-function mapPinoLevelToString(level: any): string {
+function mapPinoLevelToString(level: number | string): string {
   if (typeof level === 'string') {return level;}
 
   // Pino levels: 10=trace, 20=debug, 30=info, 40=warn, 50=error, 60=fatal
@@ -27,7 +52,7 @@ function mapPinoLevelToString(level: any): string {
 /**
  * Convert internal LogRecord to frontend LogRecord format
  */
-function toFrontendLogRecord(record: LogRecord): any {
+function toFrontendLogRecord(record: LogRecord): FrontendLogRecord {
   // Extract level from fields if it's a Pino log (numeric level)
   const pinoLevel = record.fields.level;
   const levelStr = typeof pinoLevel === 'number'
@@ -57,8 +82,8 @@ function toFrontendLogRecord(record: LogRecord): any {
  */
 function buildLogSummaryPrompt(
   question: string,
-  logs: any[],
-  stats: any,
+  logs: FrontendLogRecord[],
+  stats: LogStats,
   includeContext: { errors?: boolean; warnings?: boolean; info?: boolean; metadata?: boolean; stackTraces?: boolean }
 ): string {
   let prompt = `You are analyzing application logs. User question: "${question}"\n\n`;
@@ -76,7 +101,7 @@ function buildLogSummaryPrompt(
 
   if (stats.topErrors.length > 0) {
     prompt += `\nTop Errors:\n`;
-    stats.topErrors.slice(0, 5).forEach((err: any, idx: number) => {
+    stats.topErrors.slice(0, 5).forEach((err: TopError, idx: number) => {
       prompt += `${idx + 1}. "${err.message}" (${err.count} occurrences)\n`;
     });
   }
@@ -105,8 +130,9 @@ function buildLogSummaryPrompt(
       if (log.executionId) {prompt += `  executionId: ${log.executionId}\n`;}
     }
 
-    if (includeContext.stackTraces && log.err?.stack) {
-      prompt += `  stack: ${log.err.stack.split('\n').slice(0, 5).join('\n  ')}\n`;
+    const logErr = log.err as { stack?: string } | undefined;
+    if (includeContext.stackTraces && logErr?.stack) {
+      prompt += `  stack: ${logErr.stack.split('\n').slice(0, 5).join('\n  ')}\n`;
     }
   });
 
@@ -146,7 +172,7 @@ function extractCorrelationKeys(log: LogRecord): {
  * 1. Try requestId/traceId/executionId (most specific)
  * 2. Fallback to time window + same source
  */
-async function findRelatedLogs(targetLog: LogRecord): Promise<any[]> {
+async function findRelatedLogs(targetLog: LogRecord): Promise<FrontendLogRecord[]> {
   const correlationKeys = extractCorrelationKeys(targetLog);
   const timeWindow = 60000; // 1 minute before/after
 
@@ -204,7 +230,7 @@ async function findRelatedLogs(targetLog: LogRecord): Promise<any[]> {
 /**
  * Generate fallback summary when LLM is unavailable
  */
-function generateFallbackSummary(stats: any, logs: any[]): string {
+function generateFallbackSummary(stats: LogStats, logs: FrontendLogRecord[]): string {
   let summary = `Log Summary\n\n`;
 
   summary += `Total Logs: ${stats.total}\n\n`;
@@ -220,7 +246,7 @@ function generateFallbackSummary(stats: any, logs: any[]): string {
   if (Object.keys(stats.byPlugin).length > 0) {
     summary += `By Plugin:\n`;
     Object.entries(stats.byPlugin)
-      .sort((a: any, b: any) => b[1] - a[1])
+      .sort((a: [string, unknown], b: [string, unknown]) => (b[1] as number) - (a[1] as number))
       .slice(0, 5)
       .forEach(([plugin, count]) => {
         summary += `${plugin}: ${count}\n`;
@@ -231,7 +257,7 @@ function generateFallbackSummary(stats: any, logs: any[]): string {
   // Top errors
   if (stats.topErrors.length > 0) {
     summary += `Top Errors:\n`;
-    stats.topErrors.slice(0, 5).forEach((err: any, idx: number) => {
+    stats.topErrors.slice(0, 5).forEach((err: TopError, idx: number) => {
       summary += `${idx + 1}. "${err.message}" (${err.count} times)\n`;
     });
     summary += `\n`;
@@ -279,7 +305,7 @@ export async function registerLogRoutes(
 
       // Build query from request params
       const query: LogQuery = {
-        level: request.query.level as any,
+        level: request.query.level as LogLevel,
         source: request.query.plugin,
         from: request.query.from ? new Date(request.query.from).getTime() : undefined,
         to: request.query.to ? new Date(request.query.to).getTime() : undefined,
@@ -331,11 +357,11 @@ export async function registerLogRoutes(
           },
         },
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return reply.code(503).send({
         ok: false,
         error: 'Log query failed',
-        message: error?.message ?? 'Unknown error',
+        message: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   });
@@ -365,7 +391,7 @@ export async function registerLogRoutes(
         const frontendLog = toFrontendLogRecord(log);
 
         // Optionally include related logs
-        let relatedLogs: any[] = [];
+        let relatedLogs: FrontendLogRecord[] = [];
         if (request.query.includeRelated === 'true') {
           relatedLogs = await findRelatedLogs(log);
         }
@@ -377,11 +403,11 @@ export async function registerLogRoutes(
             related: relatedLogs.length > 0 ? relatedLogs : undefined,
           },
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return reply.code(500).send({
           ok: false,
           error: 'Failed to fetch log',
-          message: error?.message ?? 'Unknown error',
+          message: error instanceof Error ? error.message : 'Unknown error',
         });
       }
     }
@@ -416,11 +442,11 @@ export async function registerLogRoutes(
             correlationKeys: extractCorrelationKeys(log),
           },
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
         return reply.code(500).send({
           ok: false,
           error: 'Failed to fetch related logs',
-          message: error?.message ?? 'Unknown error',
+          message: error instanceof Error ? error.message : 'Unknown error',
         });
       }
     }
@@ -534,11 +560,11 @@ export async function registerLogRoutes(
           } : undefined,
         },
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return reply.code(500).send({
         ok: false,
         error: 'Failed to fetch stats',
-        message: error?.message ?? 'Unknown error',
+        message: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   });
@@ -580,7 +606,7 @@ export async function registerLogRoutes(
     try {
       // Build query from request
       const query: LogQuery = {
-        level: filters?.level as any,
+        level: filters?.level as LogLevel,
         source: filters?.plugin,
         from: timeRange?.from ? new Date(timeRange.from).getTime() : undefined,
         to: timeRange?.to ? new Date(timeRange.to).getTime() : undefined,
@@ -635,7 +661,7 @@ export async function registerLogRoutes(
       .slice(0, 10);
 
     // Group logs if requested
-    let groups: Record<string, any[]> | null = null;
+    let groups: Record<string, FrontendLogRecord[]> | null = null;
     if (groupBy) {
       // Map frontend groupBy values to actual log field names
       const fieldMap: Record<string, string> = {
@@ -644,7 +670,7 @@ export async function registerLogRoutes(
         plugin: 'plugin',
       };
 
-      const groupMap = new Map<string, any[]>();
+      const groupMap = new Map<string, FrontendLogRecord[]>();
       for (const log of filteredLogs) {
         const fieldName = fieldMap[groupBy] || groupBy;
         const key = String(log[fieldName] || 'unknown');
@@ -709,11 +735,11 @@ export async function registerLogRoutes(
           message,
         },
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return reply.code(500).send({
         ok: false,
         error: 'Log summarization failed',
-        message: error?.message ?? 'Unknown error',
+        message: error instanceof Error ? error.message : 'Unknown error',
       });
     }
   });

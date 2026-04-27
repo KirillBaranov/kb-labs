@@ -74,8 +74,8 @@ export default defineCommand({
         services.push({ service: name, required, available, configured, message });
       };
 
-      const has = (key: keyof typeof platform) => Boolean((platform as any)[key]);
-      const isConfigured = (svc: string) => platform.isConfigured?.(svc) ?? has(svc as any);
+      const has = (key: string) => Boolean((platform as unknown as Record<string, unknown>)[key]);
+      const isConfigured = (svc: string) => platform.isConfigured?.(svc) ?? has(svc);
 
       // Check required services
       check('vectorStore', true, has('vectorStore'), isConfigured('vectorStore'));

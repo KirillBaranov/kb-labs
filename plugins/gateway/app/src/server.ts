@@ -24,6 +24,11 @@ import { attachGatewayWs } from './ws/gateway-ws.js';
 import { GatewayObservabilityCollector } from './observability/collector.js';
 import { randomUUID } from 'node:crypto';
 
+/** Strip bearer tokens from query params before logging (prevents JWT leakage in access logs). */
+function redactQueryToken(url: string): string {
+  return url.replace(/([?&]access_token=)[^&]*/gi, '$1[REDACTED]');
+}
+
 export async function createServer(
   config: GatewayConfig,
   cache: ICache,
@@ -53,7 +58,7 @@ export async function createServer(
     ui: !isProduction,
   });
 
-  await app.register(fastifyCors, { origin: true });
+  await app.register(fastifyCors, { origin: false });
   const observability = new GatewayObservabilityCollector(config);
   observability.register(app);
   app.addHook('onRequest', async (request, reply) => {
@@ -64,7 +69,8 @@ export async function createServer(
     reply.header('X-Request-Id', requestId);
     reply.header('X-Trace-Id', traceId);
 
-    (request as any).kbLogger = createCorrelatedLogger(logger, {
+    const safeUrl = redactQueryToken(request.url);
+    request.kbLogger = createCorrelatedLogger(logger, {
       serviceId: 'gateway',
       logsSource: 'gateway',
       layer: 'gateway',
@@ -72,19 +78,20 @@ export async function createServer(
       requestId,
       traceId,
       method: request.method,
-      url: request.url,
+      url: safeUrl,
       operation: 'http.request',
     });
-    (request as any).kbLogger.info(`→ ${request.method.toUpperCase()} ${request.url}`);
+    request.kbLogger.info(`→ ${request.method.toUpperCase()} ${safeUrl}`);
   });
 
   app.addHook('onResponse', async (request, reply) => {
-    const requestLogger = (request as any).kbLogger as { info: (message: string, meta?: Record<string, unknown>) => void } | undefined;
+    const requestLogger = request.kbLogger;
     if (!requestLogger) {
       return;
     }
 
-    requestLogger.info(`✓ ${request.method.toUpperCase()} ${request.url} ${reply.statusCode}`, {
+    const safeUrl = redactQueryToken(request.url);
+    requestLogger.info(`✓ ${request.method.toUpperCase()} ${safeUrl} ${reply.statusCode}`, {
       statusCode: reply.statusCode,
     });
   });
@@ -141,7 +148,7 @@ export async function createServer(
         await observability.observeOperation(`gateway.adapter.${name}`, async () => {
           const probeStart = Date.now();
           try {
-            const adapter = (platform as any)[name];
+            const adapter = platform.getAdapter(name);
             adapters[name] = { available: !!adapter, latencyMs: Date.now() - probeStart };
           } catch {
             adapters[name] = { available: false, latencyMs: Date.now() - probeStart };

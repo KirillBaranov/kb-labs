@@ -23,15 +23,15 @@ export interface DiscoveredAdapter {
   /** Absolute path to package root */
   pkgRoot: string;
   /** Adapter factory function */
-  createAdapter: (config?: any) => any;
+  createAdapter: (config?: unknown) => unknown;
   /** Adapter module (full exports) */
-  module: any;
+  module: Record<string, unknown>;
 }
 
 /**
  * Load adapter module by file path (ESM import)
  */
-async function loadAdapterModule(distPath: string): Promise<any> {
+async function loadAdapterModule(distPath: string): Promise<Record<string, unknown>> {
   const fileUrl = pathToFileURL(distPath).href;
   return import(fileUrl);
 }
@@ -79,7 +79,7 @@ export async function discoverAdapters(cwd: string): Promise<Map<string, Discove
       discovered.set(pkgId, {
         packageName: pkgId,
         pkgRoot,
-        createAdapter: module.createAdapter,
+        createAdapter: module.createAdapter as (config?: unknown) => unknown,
         module,
       });
     } catch {
@@ -100,7 +100,7 @@ export async function discoverAdapters(cwd: string): Promise<Map<string, Discove
 export async function resolveAdapter(
   adapterPath: string,
   cwd: string,
-): Promise<((config?: any) => any) | null> {
+): Promise<((config?: unknown) => unknown) | null> {
   const discovered = await discoverAdapters(cwd);
 
   // Check for subpath exports (e.g., "@kb-labs/adapters-openai/embeddings")
@@ -116,8 +116,8 @@ export async function resolveAdapter(
     try {
       await fs.access(subpathFile);
       const module = await loadAdapterModule(subpathFile);
-      if (typeof module.createAdapter === 'function') {return module.createAdapter;}
-      if (typeof module.default === 'function') {return module.default;}
+      if (typeof module.createAdapter === 'function') {return module.createAdapter as (config?: unknown) => unknown;}
+      if (typeof module.default === 'function') {return module.default as (config?: unknown) => unknown;}
     } catch { /* subpath not found */ }
   } else if (adapter) {
     return adapter.createAdapter;

@@ -8,6 +8,7 @@
 
 import type { ChildProcess } from 'node:child_process';
 import type { PlatformServices } from '@kb-labs/plugin-contracts';
+import type { IPlatformAdapters } from '@kb-labs/core-platform';
 import { ChildIPCServer } from '@kb-labs/core-ipc';
 import type { PlatformTransportFactory, PlatformTransportServer } from '../types.js';
 
@@ -25,7 +26,7 @@ export class IPCPlatformTransportFactory implements PlatformTransportFactory {
     platform: PlatformServices,
     child: ChildProcess,
   ): PlatformTransportServer {
-    const server = new ChildIPCServer(platform as any, child);
+    const server = new ChildIPCServer(platform as unknown as IPlatformAdapters, child);
     return {
       start: () => server.start(),
       stop: () => server.stop(),

@@ -51,8 +51,8 @@ export async function indexDocs(ctx: IndexerContext): Promise<void> {
     }
     
     ctx.log({ level: 'info', msg: `Indexed ${docs.length} documentation files` });
-  } catch (error: any) {
-    ctx.log({ level: 'warn', msg: 'Failed to index docs', error: error.message });
+  } catch (error: unknown) {
+    ctx.log({ level: 'warn', msg: 'Failed to index docs', error: error instanceof Error ? error.message : String(error) });
   }
 }
 

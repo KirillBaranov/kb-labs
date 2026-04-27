@@ -206,7 +206,7 @@ export class ResponseSynthesizer {
         confidence: adjustedConfidence,
         complete: response.complete ?? adjustedConfidence > 0.7,
         suggestions: response.suggestions?.map(s => ({
-          type: s.type as any,
+          type: s.type as 'adr' | 'repo' | 'doc' | 'file' | 'next-question',
           label: s.label,
           ref: s.ref,
         })),

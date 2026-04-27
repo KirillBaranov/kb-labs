@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { execSync } from 'node:child_process';
 import * as fs from 'node:fs';
+import { execa } from 'execa';
 import {
   createGlobSearchTool,
   createGrepSearchTool,
@@ -9,8 +9,9 @@ import {
 } from '../search/search.js';
 import type { ToolContext } from '../../types.js';
 
-vi.mock('node:child_process', () => ({
-  execSync: vi.fn(),
+// execa is used instead of execSync — all calls are array-based (no shell)
+vi.mock('execa', () => ({
+  execa: vi.fn(),
 }));
 
 vi.mock('node:fs', async () => {
@@ -23,7 +24,7 @@ vi.mock('node:fs', async () => {
   };
 });
 
-const mockExecSync = vi.mocked(execSync);
+const mockExeca = vi.mocked(execa);
 const mockExistsSync = vi.mocked(fs.existsSync);
 const mockStatSync = vi.mocked(fs.statSync);
 const mockReaddirSync = vi.mocked(fs.readdirSync);
@@ -32,12 +33,16 @@ function ctx(workingDir = '/test/project'): ToolContext {
   return { workingDir };
 }
 
+/** Default success result for execa (no output). */
+const emptyResult = { stdout: '', exitCode: 0, stderr: '' } as ReturnType<typeof execa> extends Promise<infer R> ? R : never;
+
 beforeEach(() => {
   vi.clearAllMocks();
-  // Default: directory exists
+  // Directory exists by default
   mockExistsSync.mockReturnValue(true);
-  mockStatSync.mockReturnValue({ isDirectory: () => true } as any);
+  mockStatSync.mockReturnValue({ isDirectory: () => true } as unknown as ReturnType<typeof fs.statSync>);
   mockReaddirSync.mockReturnValue([]);
+  mockExeca.mockResolvedValue(emptyResult);
 });
 
 // ─── validateDirectory (shared across tools) ─────────────────
@@ -48,7 +53,7 @@ describe('directory validation', () => {
     mockReaddirSync.mockReturnValue([
       { name: 'src', isDirectory: () => true, isFile: () => false },
       { name: 'packages', isDirectory: () => true, isFile: () => false },
-    ] as any);
+    ] as unknown as ReturnType<typeof fs.readdirSync>);
     const tool = createGlobSearchTool(ctx());
 
     const result = await tool.executor({ pattern: '*.ts', directory: 'agent-tools' });
@@ -106,7 +111,7 @@ describe('directory validation', () => {
       { name: 'node_modules', isDirectory: () => true, isFile: () => false },
       { name: 'src', isDirectory: () => true, isFile: () => false },
       { name: 'README.md', isDirectory: () => false, isFile: () => true },
-    ] as any);
+    ] as unknown as ReturnType<typeof fs.readdirSync>);
     const tool = createGlobSearchTool(ctx());
 
     const result = await tool.executor({ pattern: '*.ts', directory: 'bad' });
@@ -118,13 +123,12 @@ describe('directory validation', () => {
   });
 
   it('should not validate when directory is "."', async () => {
-    mockExecSync.mockReturnValue('');
     const tool = createGlobSearchTool(ctx());
 
     await tool.executor({ pattern: '*.ts' });
 
-    // Should have called execSync (directory validation passed)
-    expect(mockExecSync).toHaveBeenCalled();
+    // Validation passed — execa (find) was invoked
+    expect(mockExeca).toHaveBeenCalled();
   });
 });
 
@@ -132,7 +136,10 @@ describe('directory validation', () => {
 
 describe('glob_search', () => {
   it('should return found files', async () => {
-    mockExecSync.mockReturnValue('/test/project/src/foo.ts\n/test/project/src/bar.ts\n');
+    mockExeca.mockResolvedValue({
+      ...emptyResult,
+      stdout: '/test/project/src/foo.ts\n/test/project/src/bar.ts\n',
+    });
     const tool = createGlobSearchTool(ctx());
 
     const result = await tool.executor({ pattern: '*.ts' });
@@ -144,7 +151,7 @@ describe('glob_search', () => {
   });
 
   it('should return "No files found" with hint on empty output', async () => {
-    mockExecSync.mockReturnValue('\n');
+    mockExeca.mockResolvedValue({ ...emptyResult, stdout: '\n' });
     const tool = createGlobSearchTool(ctx());
 
     const result = await tool.executor({ pattern: '*.xyz' });
@@ -157,9 +164,8 @@ describe('glob_search', () => {
   });
 
   it('should handle timeout', async () => {
-    const err = new Error('timed out');
-    (err as any).killed = true;
-    mockExecSync.mockImplementation(() => { throw err; });
+    const err = Object.assign(new Error('timed out'), { killed: true });
+    mockExeca.mockRejectedValue(err);
     const tool = createGlobSearchTool(ctx());
 
     const result = await tool.executor({ pattern: '*.ts' });
@@ -169,7 +175,7 @@ describe('glob_search', () => {
   });
 
   it('should handle general errors', async () => {
-    mockExecSync.mockImplementation(() => { throw new Error('permission denied'); });
+    mockExeca.mockRejectedValue(new Error('permission denied'));
     const tool = createGlobSearchTool(ctx());
 
     const result = await tool.executor({ pattern: '*.ts' });
@@ -178,49 +184,48 @@ describe('glob_search', () => {
     expect(result.error).toContain('permission denied');
   });
 
-  it('should include default excludes in command', async () => {
-    mockExecSync.mockReturnValue('');
+  it('should include default excludes in args', async () => {
     const tool = createGlobSearchTool(ctx());
 
     await tool.executor({ pattern: '*.ts' });
 
-    const cmd = mockExecSync.mock.calls[0]![0] as string;
-    expect(cmd).toContain('node_modules');
-    expect(cmd).toContain('dist');
-    expect(cmd).toContain('.git');
+    const [, args] = mockExeca.mock.calls[0]!;
+    const argsStr = (args as string[]).join(' ');
+    expect(argsStr).toContain('node_modules');
+    expect(argsStr).toContain('dist');
+    expect(argsStr).toContain('.git');
   });
 
   it('should use custom excludes when provided', async () => {
-    mockExecSync.mockReturnValue('');
     const tool = createGlobSearchTool(ctx());
 
     await tool.executor({ pattern: '*.ts', exclude: ['custom_dir'] });
 
-    const cmd = mockExecSync.mock.calls[0]![0] as string;
-    // custom excludes are merged with defaults
-    expect(cmd).toContain('custom_dir');
-    expect(cmd).toContain('node_modules');
+    const [, args] = mockExeca.mock.calls[0]!;
+    const argsStr = (args as string[]).join(' ');
+    expect(argsStr).toContain('custom_dir');
+    expect(argsStr).toContain('node_modules');
   });
 
   it('should search everywhere with empty exclude', async () => {
-    mockExecSync.mockReturnValue('');
     const tool = createGlobSearchTool(ctx());
 
     await tool.executor({ pattern: '*.ts', exclude: [] });
 
-    const cmd = mockExecSync.mock.calls[0]![0] as string;
+    const [, args] = mockExeca.mock.calls[0]!;
     // empty excludes array falls back to defaults
-    expect(cmd).toContain('node_modules');
+    const argsStr = (args as string[]).join(' ');
+    expect(argsStr).toContain('node_modules');
   });
 
   it('should resolve directory relative to workingDir', async () => {
-    mockExecSync.mockReturnValue('');
     const tool = createGlobSearchTool(ctx('/root'));
 
     await tool.executor({ pattern: '*.ts', directory: 'sub/dir' });
 
-    const cmd = mockExecSync.mock.calls[0]![0] as string;
-    expect(cmd).toContain('/root/sub/dir');
+    const [, args] = mockExeca.mock.calls[0]!;
+    // First positional arg to find is the path
+    expect((args as string[])[0]).toContain('/root/sub/dir');
   });
 });
 
@@ -228,10 +233,12 @@ describe('glob_search', () => {
 
 describe('grep_search', () => {
   it('should return matches with file paths and lines', async () => {
-    mockExecSync.mockReturnValue(
-      '/test/project/src/app.ts:10:import { Foo } from "./foo";\n' +
-      '/test/project/src/bar.ts:5:const x = Foo;\n',
-    );
+    mockExeca.mockResolvedValue({
+      ...emptyResult,
+      stdout:
+        '/test/project/src/app.ts:10:import { Foo } from "./foo";\n' +
+        '/test/project/src/bar.ts:5:const x = Foo;\n',
+    });
     const tool = createGrepSearchTool(ctx());
 
     const result = await tool.executor({ pattern: 'Foo' });
@@ -243,9 +250,8 @@ describe('grep_search', () => {
   });
 
   it('should treat exit code 1 as no matches (not error)', async () => {
-    const err = new Error('');
-    (err as any).status = 1;
-    mockExecSync.mockImplementation(() => { throw err; });
+    // grep exits 1 when nothing matched — with reject:false this resolves normally
+    mockExeca.mockResolvedValue({ ...emptyResult, stdout: '', exitCode: 1 });
     const tool = createGrepSearchTool(ctx());
 
     const result = await tool.executor({ pattern: 'nonexistent' });
@@ -255,9 +261,7 @@ describe('grep_search', () => {
   });
 
   it('should suggest filePattern when no matches and no filePattern', async () => {
-    const err = new Error('');
-    (err as any).status = 1;
-    mockExecSync.mockImplementation(() => { throw err; });
+    mockExeca.mockResolvedValue({ ...emptyResult, stdout: '', exitCode: 1 });
     const tool = createGrepSearchTool(ctx());
 
     const result = await tool.executor({ pattern: 'nonexistent' });
@@ -266,9 +270,7 @@ describe('grep_search', () => {
   });
 
   it('should not suggest filePattern when filePattern already provided', async () => {
-    const err = new Error('');
-    (err as any).status = 1;
-    mockExecSync.mockImplementation(() => { throw err; });
+    mockExeca.mockResolvedValue({ ...emptyResult, stdout: '', exitCode: 1 });
     const tool = createGrepSearchTool(ctx());
 
     const result = await tool.executor({ pattern: 'nonexistent', filePattern: '*.ts' });
@@ -277,9 +279,8 @@ describe('grep_search', () => {
   });
 
   it('should handle timeout', async () => {
-    const err = new Error('timed out');
-    (err as any).killed = true;
-    mockExecSync.mockImplementation(() => { throw err; });
+    const err = Object.assign(new Error('timed out'), { killed: true });
+    mockExeca.mockRejectedValue(err);
     const tool = createGrepSearchTool(ctx());
 
     const result = await tool.executor({ pattern: 'foo' });
@@ -289,21 +290,22 @@ describe('grep_search', () => {
   });
 
   it('should add --include when filePattern provided', async () => {
-    mockExecSync.mockReturnValue('');
     const tool = createGrepSearchTool(ctx());
 
     await tool.executor({ pattern: 'foo', filePattern: '*.ts' });
 
-    const cmd = mockExecSync.mock.calls[0]![0] as string;
-    expect(cmd).toContain('--include="*.ts"');
+    const [, args] = mockExeca.mock.calls[0]!;
+    expect(args as string[]).toContain('--include=*.ts');
   });
 
   it('should support pagination via offset/limit', async () => {
-    mockExecSync.mockReturnValue(
-      '/test/project/src/a.ts:1:Foo\n' +
-      '/test/project/src/b.ts:2:Foo\n' +
-      '/test/project/src/c.ts:3:Foo\n',
-    );
+    mockExeca.mockResolvedValue({
+      ...emptyResult,
+      stdout:
+        '/test/project/src/a.ts:1:Foo\n' +
+        '/test/project/src/b.ts:2:Foo\n' +
+        '/test/project/src/c.ts:3:Foo\n',
+    });
     const tool = createGrepSearchTool(ctx());
 
     const result = await tool.executor({ pattern: 'Foo', offset: 1, limit: 1 });
@@ -311,50 +313,44 @@ describe('grep_search', () => {
     expect(result.success).toBe(true);
     expect(result.output).toContain('showing 1, offset=1, limit=1');
     expect(result.output).toContain('src/b.ts:2');
-    expect((result.metadata as any)?.nextOffset).toBe(2);
+    expect((result.metadata as Record<string, unknown>)?.nextOffset).toBe(2);
   });
 
   it('should fallback to literal mode for invalid regex in auto mode', async () => {
-    const regexError = new Error('grep failed');
-    (regexError as any).status = 2;
-    (regexError as any).stderr = 'grep: parentheses not balanced';
-    mockExecSync
-      .mockImplementationOnce(() => { throw regexError; })
-      .mockImplementationOnce(() => '/test/project/src/a.ts:1:useLLM(\n');
+    mockExeca
+      .mockResolvedValueOnce({ ...emptyResult, stdout: '', exitCode: 2, stderr: 'grep: parentheses not balanced' })
+      .mockResolvedValueOnce({ ...emptyResult, stdout: '/test/project/src/a.ts:1:useLLM(\n', exitCode: 0 });
 
     const tool = createGrepSearchTool(ctx());
     const result = await tool.executor({ pattern: 'useLLM\\(' });
 
     expect(result.success).toBe(true);
     expect(result.output).toContain('literal fallback');
-    expect((result.metadata as any)?.modeUsed).toBe('literal');
+    expect((result.metadata as Record<string, unknown>)?.modeUsed).toBe('literal');
   });
 
   it('should include default excludes', async () => {
-    mockExecSync.mockReturnValue('');
     const tool = createGrepSearchTool(ctx());
 
     await tool.executor({ pattern: 'foo' });
 
-    const cmd = mockExecSync.mock.calls[0]![0] as string;
-    expect(cmd).toContain('--exclude-dir=node_modules');
-    expect(cmd).toContain('--exclude-dir=dist');
+    const [, args] = mockExeca.mock.calls[0]!;
+    expect(args as string[]).toContain('--exclude-dir=node_modules');
+    expect(args as string[]).toContain('--exclude-dir=dist');
   });
 
   it('should use custom excludes', async () => {
-    mockExecSync.mockReturnValue('');
     const tool = createGrepSearchTool(ctx());
 
     await tool.executor({ pattern: 'foo', exclude: ['vendor'] });
 
-    const cmd = mockExecSync.mock.calls[0]![0] as string;
-    // custom excludes are merged with defaults
-    expect(cmd).toContain('--exclude-dir=vendor');
-    expect(cmd).toContain('--exclude-dir=node_modules');
+    const [, args] = mockExeca.mock.calls[0]!;
+    expect(args as string[]).toContain('--exclude-dir=vendor');
+    expect(args as string[]).toContain('--exclude-dir=node_modules');
   });
 
   it('should return "No matches" with hint on empty output', async () => {
-    mockExecSync.mockReturnValue('\n');
+    mockExeca.mockResolvedValue({ ...emptyResult, stdout: '\n' });
     const tool = createGrepSearchTool(ctx());
 
     const result = await tool.executor({ pattern: 'foo' });
@@ -369,9 +365,10 @@ describe('grep_search', () => {
 
 describe('find_definition', () => {
   it('should find class definition', async () => {
-    mockExecSync.mockReturnValue(
-      '/test/project/src/registry.ts:7:export class ToolRegistry {\n',
-    );
+    mockExeca.mockResolvedValue({
+      ...emptyResult,
+      stdout: '/test/project/src/registry.ts:7:export class ToolRegistry {\n',
+    });
     const tool = createFindDefinitionTool(ctx());
 
     const result = await tool.executor({ name: 'ToolRegistry' });
@@ -382,9 +379,7 @@ describe('find_definition', () => {
   });
 
   it('should return "No definition found" with hints on exit code 1', async () => {
-    const err = new Error('');
-    (err as any).status = 1;
-    mockExecSync.mockImplementation(() => { throw err; });
+    mockExeca.mockResolvedValue({ ...emptyResult, stdout: '', exitCode: 1 });
     const tool = createFindDefinitionTool(ctx());
 
     const result = await tool.executor({ name: 'NonExistent' });
@@ -397,9 +392,8 @@ describe('find_definition', () => {
   });
 
   it('should handle timeout', async () => {
-    const err = new Error('timed out');
-    (err as any).killed = true;
-    mockExecSync.mockImplementation(() => { throw err; });
+    const err = Object.assign(new Error('timed out'), { killed: true });
+    mockExeca.mockRejectedValue(err);
     const tool = createFindDefinitionTool(ctx());
 
     const result = await tool.executor({ name: 'Foo' });
@@ -409,47 +403,44 @@ describe('find_definition', () => {
   });
 
   it('should use custom filePattern', async () => {
-    mockExecSync.mockReturnValue('');
     const tool = createFindDefinitionTool(ctx());
 
     await tool.executor({ name: 'Foo', filePattern: '*.py' });
 
-    const cmd = mockExecSync.mock.calls[0]![0] as string;
-    expect(cmd).toContain('--include="*.py"');
-    // Should NOT have default includes when custom is specified
-    expect(cmd).not.toContain('--include="*.ts"');
+    const [, args] = mockExeca.mock.calls[0]!;
+    expect(args as string[]).toContain('--include=*.py');
+    // Should NOT have default .ts includes when custom is specified
+    expect((args as string[]).some(a => a.startsWith('--include=') && a.includes('.ts'))).toBe(false);
   });
 
   it('should search with language-agnostic patterns', async () => {
-    mockExecSync.mockReturnValue('');
     const tool = createFindDefinitionTool(ctx());
 
     await tool.executor({ name: 'MyClass' });
 
-    const cmd = mockExecSync.mock.calls[0]![0] as string;
-    // Should include patterns for multiple languages
-    expect(cmd).toContain('class MyClass');
-    expect(cmd).toContain('interface MyClass');
-    expect(cmd).toContain('function MyClass');
-    expect(cmd).toContain('def MyClass');
-    expect(cmd).toContain('fn MyClass');
+    const [, args] = mockExeca.mock.calls[0]!;
+    // The pattern is the argument after -E
+    const eIdx = (args as string[]).indexOf('-E');
+    const patternArg = eIdx >= 0 ? (args as string[])[eIdx + 1] : (args as string[]).find(a => a.includes('MyClass')) ?? '';
+    expect(patternArg).toContain('class MyClass');
+    expect(patternArg).toContain('interface MyClass');
+    expect(patternArg).toContain('function MyClass');
+    expect(patternArg).toContain('def MyClass');
+    expect(patternArg).toContain('fn MyClass');
   });
 
   it('should include default excludes', async () => {
-    mockExecSync.mockReturnValue('');
     const tool = createFindDefinitionTool(ctx());
 
     await tool.executor({ name: 'Foo' });
 
-    const cmd = mockExecSync.mock.calls[0]![0] as string;
-    expect(cmd).toContain('--exclude-dir=node_modules');
-    expect(cmd).toContain('--exclude-dir=dist');
+    const [, args] = mockExeca.mock.calls[0]!;
+    expect(args as string[]).toContain('--exclude-dir=node_modules');
+    expect(args as string[]).toContain('--exclude-dir=dist');
   });
 
   it('should show directory name in "no definition" message', async () => {
-    const err = new Error('');
-    (err as any).status = 1;
-    mockExecSync.mockImplementation(() => { throw err; });
+    mockExeca.mockResolvedValue({ ...emptyResult, stdout: '', exitCode: 1 });
     const tool = createFindDefinitionTool(ctx());
 
     const result = await tool.executor({ name: 'Foo', directory: 'src' });
@@ -458,9 +449,7 @@ describe('find_definition', () => {
   });
 
   it('should show "project root" when directory is default', async () => {
-    const err = new Error('');
-    (err as any).status = 1;
-    mockExecSync.mockImplementation(() => { throw err; });
+    mockExeca.mockResolvedValue({ ...emptyResult, stdout: '', exitCode: 1 });
     const tool = createFindDefinitionTool(ctx());
 
     const result = await tool.executor({ name: 'Foo' });
@@ -472,44 +461,181 @@ describe('find_definition', () => {
 // ─── code_stats ────────────────────────────────────────────
 
 describe('code_stats', () => {
-  it('should return stats from three execSync calls', async () => {
-    mockExecSync
-      .mockReturnValueOnce('  15432 total')       // total lines
-      .mockReturnValueOnce('  80 ts\n  20 tsx\n')  // by extension
-      .mockReturnValueOnce('100');                  // file count
+  it('should return aggregate stats', async () => {
+    // First call: find returns file paths
+    mockExeca
+      .mockResolvedValueOnce({
+        ...emptyResult,
+        stdout: '/test/project/src/app.ts\n/test/project/src/bar.tsx\n',
+      })
+      // Second call: wc -l on found files
+      .mockResolvedValueOnce({
+        ...emptyResult,
+        stdout: '  100 /test/project/src/app.ts\n   50 /test/project/src/bar.tsx\n  150 total',
+      });
 
     const tool = createCodeStatsTool(ctx());
     const result = await tool.executor({});
 
     expect(result.success).toBe(true);
-    expect(result.output).toContain('15432 total');
-    expect(result.output).toContain('100');
-    expect(result.output).toContain('80 ts');
+    expect(result.output).toContain('150 total');
+    // 2 files found by find
+    expect(result.output).toContain('2');
   });
 
-  it('should pass custom extensions to command', async () => {
-    mockExecSync
-      .mockReturnValueOnce('0 total')
-      .mockReturnValueOnce('')
-      .mockReturnValueOnce('0');
+  it('should count extensions from found files', async () => {
+    mockExeca
+      .mockResolvedValueOnce({
+        ...emptyResult,
+        stdout: '/test/project/src/app.ts\n/test/project/src/bar.tsx\n/test/project/src/util.ts\n',
+      })
+      .mockResolvedValueOnce({
+        ...emptyResult,
+        stdout: '300 total',
+      });
+
+    const tool = createCodeStatsTool(ctx());
+    const result = await tool.executor({});
+
+    expect(result.success).toBe(true);
+    expect(result.output).toContain('ts');
+    expect(result.output).toContain('tsx');
+  });
+
+  it('should pass custom extensions to find args', async () => {
+    mockExeca
+      .mockResolvedValueOnce({ ...emptyResult, stdout: '' })
+      .mockResolvedValueOnce({ ...emptyResult, stdout: '0 total' });
 
     const tool = createCodeStatsTool(ctx());
     await tool.executor({ extensions: 'py,rs' });
 
-    const cmd = mockExecSync.mock.calls[0]![0] as string;
-    expect(cmd).toContain('"*.py"');
-    expect(cmd).toContain('"*.rs"');
+    const [, args] = mockExeca.mock.calls[0]!;
+    const argsStr = (args as string[]).join(' ');
+    expect(argsStr).toContain('*.py');
+    expect(argsStr).toContain('*.rs');
     // Should not have default extensions
-    expect(cmd).not.toContain('"*.ts"');
+    expect(argsStr).not.toContain('*.ts');
   });
 
   it('should handle errors', async () => {
-    mockExecSync.mockImplementation(() => { throw new Error('disk error'); });
+    mockExeca.mockRejectedValue(new Error('disk error'));
     const tool = createCodeStatsTool(ctx());
 
     const result = await tool.executor({});
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('disk error');
+  });
+});
+
+// ─── Shell injection safety (H7) ───────────────────────────
+// With execa, args are passed as an array — no shell interpretation.
+// User-supplied values appear as-is in array elements (safe by design).
+
+describe('shell injection safety (array args — no shell)', () => {
+  const INJECTION = '$(id)';
+  const BACKTICK = '`id`';
+
+  describe('glob_search — pattern injection', () => {
+    it('passes pattern as raw array arg (shell metacharacters not interpreted)', async () => {
+      const tool = createGlobSearchTool(ctx());
+
+      await tool.executor({ pattern: INJECTION });
+
+      const [cmd, args] = mockExeca.mock.calls[0]!;
+      expect(cmd).toBe('find');
+      // Pattern is passed to -iname as an array element — never shell-interpreted
+      const iIdx = (args as string[]).indexOf('-iname');
+      expect(iIdx).toBeGreaterThan(-1);
+      expect((args as string[])[iIdx + 1]).toBe(INJECTION);
+    });
+
+    it('passes backtick pattern as raw array arg', async () => {
+      const tool = createGlobSearchTool(ctx());
+
+      await tool.executor({ pattern: BACKTICK });
+
+      const [, args] = mockExeca.mock.calls[0]!;
+      const iIdx = (args as string[]).indexOf('-iname');
+      expect((args as string[])[iIdx + 1]).toBe(BACKTICK);
+    });
+
+    it('passes workingDir path as raw array arg', async () => {
+      const tool = createGlobSearchTool(ctx('/proj/$(id)'));
+
+      await tool.executor({ pattern: '*.ts' });
+
+      const [, args] = mockExeca.mock.calls[0]!;
+      // First positional arg to find is the search path
+      expect((args as string[])[0]).toContain('/proj/$(id)');
+    });
+
+    it('passes user-supplied excludes as raw array args', async () => {
+      const tool = createGlobSearchTool(ctx());
+
+      await tool.executor({ pattern: '*.ts', exclude: ['$(evil)'] });
+
+      const [, args] = mockExeca.mock.calls[0]!;
+      expect((args as string[]).some(a => a.includes('$(evil)'))).toBe(true);
+    });
+  });
+
+  describe('grep_search — filePattern injection', () => {
+    it('passes filePattern as raw array arg', async () => {
+      const tool = createGrepSearchTool(ctx());
+
+      await tool.executor({ pattern: 'foo', filePattern: `*.ts ${INJECTION}` });
+
+      const [, args] = mockExeca.mock.calls[0]!;
+      expect(args as string[]).toContain(`--include=*.ts ${INJECTION}`);
+    });
+
+    it('passes user-supplied excludes as raw array args', async () => {
+      const tool = createGrepSearchTool(ctx());
+
+      await tool.executor({ pattern: 'foo', exclude: [INJECTION] });
+
+      const [, args] = mockExeca.mock.calls[0]!;
+      expect(args as string[]).toContain(`--exclude-dir=${INJECTION}`);
+    });
+  });
+
+  describe('find_definition — name and filePattern injection', () => {
+    it('passes name inside pattern array arg (not shell-interpreted)', async () => {
+      const tool = createFindDefinitionTool(ctx());
+
+      await tool.executor({ name: `Foo" ${INJECTION}` });
+
+      const [, args] = mockExeca.mock.calls[0]!;
+      // The whole pattern is one array element — shell can't break out of it
+      const patternArg = (args as string[]).find(a => a.includes('Foo"'));
+      expect(patternArg).toBeDefined();
+      expect(patternArg).toContain(`Foo" ${INJECTION}`);
+    });
+
+    it('passes filePattern as raw array arg', async () => {
+      const tool = createFindDefinitionTool(ctx());
+
+      await tool.executor({ name: 'Foo', filePattern: `*.py ${INJECTION}` });
+
+      const [, args] = mockExeca.mock.calls[0]!;
+      expect(args as string[]).toContain(`--include=*.py ${INJECTION}`);
+    });
+  });
+
+  describe('code_stats — extensions injection', () => {
+    it('passes extension wildcards as raw array args', async () => {
+      mockExeca
+        .mockResolvedValueOnce({ ...emptyResult, stdout: '' })
+        .mockResolvedValueOnce({ ...emptyResult, stdout: '0 total' });
+      const tool = createCodeStatsTool(ctx());
+
+      await tool.executor({ extensions: `ts,${INJECTION}` });
+
+      const [, args] = mockExeca.mock.calls[0]!;
+      // Extension wildcard appears as raw array element — no shell quoting needed
+      expect((args as string[]).some(a => a.includes(`*.${INJECTION}`))).toBe(true);
+    });
   });
 });

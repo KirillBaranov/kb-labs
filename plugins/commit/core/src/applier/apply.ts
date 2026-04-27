@@ -227,11 +227,7 @@ async function checkStaleness(
   plan: CommitPlan,
   _scope?: string,
 ): Promise<{ isStale: boolean; reason: string }> {
-  const planFiles = new Set([
-    ...plan.gitStatus.staged,
-    ...plan.gitStatus.unstaged,
-    ...plan.gitStatus.untracked,
-  ]);
+  const planFiles = new Set(plan.commits.flatMap((c) => c.files));
 
   // If no files in plan, nothing to check
   if (planFiles.size === 0) {

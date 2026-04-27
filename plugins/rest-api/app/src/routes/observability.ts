@@ -3,7 +3,7 @@
  * Observability endpoints for monitoring system internals
  */
 
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyReply } from 'fastify';
 import type { RestApiConfig } from '@kb-labs/rest-api-core';
 import type { PlatformServices } from '@kb-labs/plugin-contracts';
 import { normalizeBasePath, resolvePaths } from '../utils/path-helpers';
@@ -65,7 +65,7 @@ export async function registerObservabilityRoutes(
           });
         }
 
-        const stats = await response.json() as any;
+        const stats = await response.json() as Record<string, unknown>;
 
         fastify.log.debug({
           totalEntries: stats.totalEntries,
@@ -127,8 +127,9 @@ export async function registerObservabilityRoutes(
         // Note: platform.cache may not have scan(), so we'll handle both cases
         try {
           // Try to use scan if available (Redis adapter)
-          if ('scan' in platform.cache && typeof (platform.cache as any).scan === 'function') {
-            const keys = await (platform.cache as any).scan('system-metrics:*');
+          const cacheWithScan = platform.cache as { scan?: (pattern: string) => Promise<string[]> };
+          if ('scan' in platform.cache && typeof cacheWithScan.scan === 'function') {
+            const keys = await cacheWithScan.scan('system-metrics:*');
 
             for (const key of keys) {
               const metrics = await platform.cache.get<SystemMetrics>(key);
@@ -279,7 +280,7 @@ export async function registerObservabilityRoutes(
           },
         },
       },
-    }, async (request, reply: any) => {
+    }, async (request, reply: FastifyReply) => {
       if (!historicalMetrics) {
         return reply.code(503).send({
           ok: false,
@@ -386,7 +387,7 @@ export async function registerObservabilityRoutes(
           },
         },
       },
-    }, async (request, reply: any) => {
+    }, async (request, reply: FastifyReply) => {
       if (!historicalMetrics) {
         return reply.code(503).send({
           ok: false,
@@ -565,7 +566,7 @@ Be concise but thorough. Use markdown formatting.`;
         if (platform.analytics) {
           platform.analytics.track('ai_insights.chat', {
             questionLength: body.question.length,
-            contextIncluded: Object.keys(contextConfig).filter(k => (contextConfig as any)[k]),
+            contextIncluded: Object.keys(contextConfig).filter(k => (contextConfig as Record<string, unknown>)[k]),
             timeRange: contextConfig.timeRange,
             pluginsFiltered: contextConfig.plugins.length,
             promptTokens: result.usage.promptTokens,
@@ -581,7 +582,7 @@ Be concise but thorough. Use markdown formatting.`;
           ok: true,
           data: {
             answer: result.content.trim(),
-            context: Object.keys(contextConfig).filter(k => (contextConfig as any)[k]),
+            context: Object.keys(contextConfig).filter(k => (contextConfig as Record<string, unknown>)[k]),
             usage: {
               promptTokens: result.usage.promptTokens,
               completionTokens: result.usage.completionTokens,
@@ -600,7 +601,7 @@ Be concise but thorough. Use markdown formatting.`;
         if (platform?.analytics) {
           platform.analytics.track('ai_insights.error', {
             error: error instanceof Error ? error.message : 'Unknown error',
-            questionLength: (request.body as any)?.question?.length ?? 0,
+            questionLength: (request.body as { question?: string })?.question?.length ?? 0,
           }).catch(() => {
             // Silently ignore analytics errors
           });

@@ -63,7 +63,7 @@ export function isPlatformConfigured(adapterName: keyof typeof globalPlatform): 
 
   // For adapters with hasAdapter method (like platform itself)
   if ('hasAdapter' in platform && typeof platform.hasAdapter === 'function') {
-    return platform.hasAdapter(adapterName as any);
+    return platform.hasAdapter(adapterName as string);
   }
 
   // Fallback: check if adapter is not noop

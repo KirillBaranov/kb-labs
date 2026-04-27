@@ -135,7 +135,7 @@ export interface Incident {
   /** NEW: Related data (logs, metrics, timeline) */
   relatedData?: RelatedData;
   /** NEW: AI analysis results (set after analysis) */
-  aiAnalysis?: any; // Will be typed in analyzer module
+  aiAnalysis?: Record<string, unknown>; // Will be typed more precisely in analyzer module
   /** NEW: When AI analysis was performed */
   aiAnalyzedAt?: number;
 }
@@ -215,9 +215,9 @@ interface IncidentRow {
 export class IncidentStorage {
   private db: ISQLDatabase;
   private config: Required<IncidentStorageConfig>;
-  private logger: Console | any;
+  private logger: Console;
 
-  constructor(db: ISQLDatabase, config: IncidentStorageConfig = {}, logger: Console | any = console) {
+  constructor(db: ISQLDatabase, config: IncidentStorageConfig = {}, logger: Console = console) {
     this.db = db;
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.logger = logger;
@@ -527,7 +527,7 @@ export class IncidentStorage {
   /**
    * Update AI analysis for an incident
    */
-  async updateAIAnalysis(id: string, analysis: any): Promise<void> {
+  async updateAIAnalysis(id: string, analysis: Record<string, unknown>): Promise<void> {
     await this.db.query(
       `UPDATE incidents
        SET ai_analysis = ?, ai_analyzed_at = ?
@@ -581,7 +581,7 @@ export class IncidentStorage {
     };
   }
 
-  private log(level: 'info' | 'warn' | 'error' | 'debug', message: string, meta?: any): void {
+  private log(level: 'info' | 'warn' | 'error' | 'debug', message: string, meta?: Record<string, unknown>): void {
     if (level === 'debug' && !this.config.debug) {return;}
 
     if (this.logger[level]) {

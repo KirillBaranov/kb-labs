@@ -14,7 +14,7 @@ export interface LifecycleHooks {
   onProgress?: (progress: number, message?: string) => void | Promise<void>;
   
   /** Called when execution completes successfully */
-  onComplete?: (result: any) => void | Promise<void>;
+  onComplete?: (result: unknown) => void | Promise<void>;
   
   /** Called when execution fails */
   onError?: (error: Error) => void | Promise<void>;

@@ -18,7 +18,7 @@ import { VectorStoreProxy } from './vector-store-proxy.js';
 import { StorageProxy } from './storage-proxy.js';
 import { SQLDatabaseProxy } from './sql-database-proxy.js';
 import { DocumentDatabaseProxy } from './document-database-proxy.js';
-import type { ILogger } from '@kb-labs/core-platform';
+import type { ILogger, IEventBus, IAnalytics } from '@kb-labs/core-platform';
 
 export interface CreateProxyPlatformOptions {
   /**
@@ -140,8 +140,8 @@ export async function createProxyPlatform(
   platform.setAdapter('storage', storage);
   platform.setAdapter('sqlDatabase', sqlDatabase);
   platform.setAdapter('documentDatabase', documentDatabase);
-  platform.setAdapter('eventBus', eventBus as any);
-  platform.setAdapter('analytics', analytics as any);
+  platform.setAdapter('eventBus', eventBus as unknown as IEventBus);
+  platform.setAdapter('analytics', analytics as unknown as IAnalytics);
 
   return platform;
 }

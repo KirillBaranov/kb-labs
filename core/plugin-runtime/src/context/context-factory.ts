@@ -17,7 +17,7 @@ import { createPrefixedLogger } from '@kb-labs/core-platform';
 import { createId } from '../utils/index.js';
 import { createTraceContext } from './trace.js';
 import { createRuntimeAPI } from '../runtime/index.js';
-import { createPluginAPI, type EventEmitterFn, type PluginInvokerFn } from '../api/index.js';
+import { createPluginAPI, type EventEmitterFn, type PluginInvokerFn, type CreatePluginAPIOptions } from '../api/index.js';
 import { createGovernedPlatformServices } from '../platform/governed.js';
 import { createStreamingLogger } from './streaming-logger.js';
 
@@ -175,6 +175,17 @@ export function createPluginContextV3<TConfig = unknown>(
   // 6. Create plugin API
   // Use governed cache so permissions are enforced for api.state
   const finalOutdir = outdir ?? `${cwd}/.kb/output`;
+
+  // These optional services exist on PlatformContainer but are not declared on
+  // PlatformServices (IPlatformAdapters), which only covers core adapter fields.
+  // We narrow via a local intersection using the exact types expected by CreatePluginAPIOptions.
+  const extendedPlatform = platform as PlatformServices & {
+    workflows?: CreatePluginAPIOptions['workflowEngine'];
+    environmentManager?: CreatePluginAPIOptions['environmentManager'];
+    workspaceManager?: CreatePluginAPIOptions['workspaceManager'];
+    snapshotManager?: CreatePluginAPIOptions['snapshotManager'];
+  };
+
   const api = createPluginAPI({
     pluginId: descriptor.pluginId,
     handlerId: descriptor.handlerId,
@@ -186,15 +197,14 @@ export function createPluginContextV3<TConfig = unknown>(
     eventEmitter,
     pluginInvoker,
     // Access workflows from platform container (if available)
-    // Cast to any to access workflows (exists on PlatformContainer but not in PlatformServices interface)
-    workflowEngine: (platform as any).workflows,
+    workflowEngine: extendedPlatform.workflows,
     // Jobs/Cron use HTTP client to Workflow Service (microservices architecture)
     workflowServiceUrl: process.env.KB_WORKFLOW_SERVICE_URL,
     // Environment lifecycle goes through runtime EnvironmentManager when available.
     // Returns undefined on proxy/minimal platforms where these services are absent.
-    environmentManager: (platform as any).environmentManager,
-    workspaceManager: (platform as any).workspaceManager,
-    snapshotManager: (platform as any).snapshotManager,
+    environmentManager: extendedPlatform.environmentManager,
+    workspaceManager: extendedPlatform.workspaceManager,
+    snapshotManager: extendedPlatform.snapshotManager,
     analytics: enrichedPlatform.analytics,
     eventBus: enrichedPlatform.eventBus,
     logger: enrichedPlatform.logger,

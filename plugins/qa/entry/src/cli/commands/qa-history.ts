@@ -2,7 +2,7 @@ import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
 import { loadHistory, buildHistoryTable } from '@kb-labs/qa-core';
 import type { QAHistoryFlags } from './flags.js';
 
-type QAHistoryInput = QAHistoryFlags & { argv?: string[]; flags?: any };
+type QAHistoryInput = QAHistoryFlags & { argv?: string[] };
 
 export default defineCommand({
   id: 'qa:history',
@@ -11,7 +11,9 @@ export default defineCommand({
   handler: {
     async execute(ctx: PluginContextV3, input: QAHistoryInput) {
       const { ui } = ctx;
-      const flags = (input as any).flags ?? input;
+      const flags = ('flags' in input && typeof (input as { flags?: unknown }).flags === 'object' && (input as { flags?: unknown }).flags !== null)
+        ? (input as { flags: QAHistoryInput }).flags
+        : input;
       const rootDir = ctx.cwd;
 
       const history = loadHistory(rootDir);

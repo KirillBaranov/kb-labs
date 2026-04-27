@@ -25,7 +25,7 @@ import * as net from 'net';
 import * as fs from 'fs';
 import * as os from 'os';
 import type { PlatformContainer } from '../container.js';
-import type { AdapterCall, AdapterResponse } from '@kb-labs/core-platform/serializable';
+import type { AdapterCall, AdapterResponse, SerializableError } from '@kb-labs/core-platform/serializable';
 import { serialize, deserialize, IPC_PROTOCOL_VERSION } from '@kb-labs/core-platform/serializable';
 import { BulkTransferHelper } from '../transport/bulk-transfer.js';
 
@@ -182,7 +182,7 @@ export class UnixSocketServer {
       const adapter = this.getAdapter(call.adapter);
 
       // Get the method on the adapter
-      const method = (adapter as any)[call.method];
+      const method = (adapter as Record<string, unknown>)[call.method];
 
       if (typeof method !== 'function') {
         throw new Error(
@@ -237,7 +237,7 @@ export class UnixSocketServer {
       const response: AdapterResponse = {
         type: 'adapter:response',
         requestId: call.requestId,
-        error: serialize(error) as any,
+        error: serialize(error) as SerializableError,
       };
 
       const message = JSON.stringify(response) + '\n';

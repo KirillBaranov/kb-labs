@@ -305,7 +305,7 @@ export class SandboxRunner implements Runner {
   ): StepExecutionResult {
     if (result.ok) {
       // Include stdout/stderr in completion log if present
-      const data = result.data as any;
+      const data = result.data as Record<string, unknown> | null | undefined;
 
       // DEBUG: Log what we received
       context.logger.debug('mapExecutionResult received data', {

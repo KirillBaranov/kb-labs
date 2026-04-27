@@ -52,7 +52,7 @@ export function registerWorkflowsAPI(options: RegisterWorkflowsAPIOptions): void
 
       return ok({
         workflowsLoaded: workflows.length,
-        workflowIds: workflows.map((w: any) => w.id),
+        workflowIds: workflows.map((w) => w.id),
       });
     } catch (error) {
       logger.error('[workflows-api] Failed to refresh workflows', error instanceof Error ? error : undefined);

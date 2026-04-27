@@ -9,7 +9,7 @@ import { sha256 } from "./hash";
 /**
  * Recursively sort object keys for deterministic output
  */
-function sortKeysRecursively(obj: any): any {
+function sortKeysRecursively(obj: unknown): unknown {
   if (obj === null || typeof obj !== 'object') {
     return obj;
   }
@@ -18,11 +18,12 @@ function sortKeysRecursively(obj: any): any {
     return obj.map(sortKeysRecursively);
   }
 
-  const sorted: any = {};
-  const keys = Object.keys(obj).sort();
+  const sorted: Record<string, unknown> = {};
+  const record = obj as Record<string, unknown>;
+  const keys = Object.keys(record).sort();
 
   for (const key of keys) {
-    sorted[key] = sortKeysRecursively(obj[key]);
+    sorted[key] = sortKeysRecursively(record[key]);
   }
 
   return sorted;
@@ -31,12 +32,12 @@ function sortKeysRecursively(obj: any): any {
 /**
  * Read JSON file with error handling
  */
-export async function readJson<T = any>(filePath: string): Promise<T | null> {
+export async function readJson<T = unknown>(filePath: string): Promise<T | null> {
   try {
     const content = await fsp.readFile(filePath, 'utf8');
     return JSON.parse(content) as T;
-  } catch (error: any) {
-    if (error.code === 'ENOENT') {
+  } catch (error: unknown) {
+    if ((error as { code?: string }).code === 'ENOENT') {
       return null;
     }
     throw error;
@@ -61,8 +62,8 @@ export async function writeJson<T>(filePath: string, data: T): Promise<void> {
   if (process.platform === "win32") {
     try {
       await fsp.unlink(filePath);
-    } catch (err: any) {
-      if (err.code !== "ENOENT") {throw err;}
+    } catch (err: unknown) {
+      if ((err as { code?: string }).code !== "ENOENT") {throw err;}
     }
   }
 
@@ -73,7 +74,7 @@ export async function writeJson<T>(filePath: string, data: T): Promise<void> {
 /**
  * Compute hash of JSON content
  */
-export function computeJsonHash(data: any): string {
+export function computeJsonHash(data: unknown): string {
   const content = JSON.stringify(sortKeysRecursively(data));
   return sha256(content);
 }

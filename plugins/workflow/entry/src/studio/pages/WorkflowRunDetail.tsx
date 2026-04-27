@@ -156,7 +156,7 @@ function buildLogGroups(events: WorkflowLogEvent[], run: WorkflowRun): JobLogGro
       stepId: s.id,
       stepName: s.name,
       status: s.status,
-      command: (s as any).command,
+      command: (s as StepRun & { command?: string }).command,
       events: [],
       outputs: s.outputs ?? undefined,
       error: s.error,

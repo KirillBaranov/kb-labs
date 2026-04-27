@@ -53,8 +53,9 @@ export class Profiler {
 
   constructor(ctx: ExecutionContext, pluginId?: string, command?: string) {
     this.ctx = ctx;
-    this.pluginId = pluginId || (ctx as any).pluginId;
-    this.command = command || (ctx as any).routeOrCommand;
+    const ctxExtended = ctx as ExecutionContext & { routeOrCommand?: string };
+    this.pluginId = pluginId || ctx.pluginId;
+    this.command = command || ctxExtended.routeOrCommand;
     this.startTime = Date.now();
     this.phases = new Map();
     this.currentPhase = null;
@@ -150,8 +151,8 @@ export class Profiler {
 
     return {
       id: this.ctx.requestId || `profile-${Date.now()}`,
-      pluginId: this.pluginId || (this.ctx as any).pluginId || 'unknown',
-      command: this.command || (this.ctx as any).routeOrCommand || 'unknown',
+      pluginId: this.pluginId || this.ctx.pluginId || 'unknown',
+      command: this.command || (this.ctx as ExecutionContext & { routeOrCommand?: string }).routeOrCommand || 'unknown',
       startTime: this.startTime,
       endTime,
       totalDuration: endTime - this.startTime,

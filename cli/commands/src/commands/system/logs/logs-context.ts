@@ -92,8 +92,19 @@ export const logsContext = defineSystemCommand<Flags, CommandResult>({
     };
   },
   formatter(result, ctx, flags) {
+    type LogContextResult = CommandResult & {
+      correlationKey?: Record<string, unknown>;
+      timeline?: { total: number; from: string | null; to: string | null; durationMs: number };
+      byLevel?: Record<string, number>;
+      bySource?: Record<string, number>;
+      logs?: unknown[];
+      _raw?: LogRecord[];
+    };
+
+    const data = result as LogContextResult;
+
     if (flags.json) {
-      const { _raw, ...jsonResult } = result as any;
+      const { _raw: _ignored, ...jsonResult } = data;
       ctx.ui.json(jsonResult);
       return;
     }
@@ -103,22 +114,21 @@ export const logsContext = defineSystemCommand<Flags, CommandResult>({
       return;
     }
 
-    const data = result as any;
     const { timeline, correlationKey, byLevel } = data;
-    const raw = data._raw as LogRecord[];
+    const raw = data._raw ?? [];
 
     // Header
-    const keyStr = Object.entries(correlationKey).map(([k, v]) => `${k}=${v}`).join(', ');
-    const durationStr = timeline.durationMs > 0 ? `${timeline.durationMs}ms` : 'instant';
+    const keyStr = correlationKey ? Object.entries(correlationKey).map(([k, v]) => `${k}=${v}`).join(', ') : '';
+    const durationStr = timeline && timeline.durationMs > 0 ? `${timeline.durationMs}ms` : 'instant';
 
     ctx.ui.success('Execution Context', {
       sections: [{
         header: `${keyStr}`,
         items: [
-          `Total events: ${timeline.total}`,
+          `Total events: ${timeline?.total ?? 0}`,
           `Duration: ${durationStr}`,
-          `Time: ${timeline.from ?? 'N/A'} → ${timeline.to ?? 'N/A'}`,
-          `Levels: ${Object.entries(byLevel).map(([k, v]) => `${k}=${v}`).join(', ')}`,
+          `Time: ${timeline?.from ?? 'N/A'} → ${timeline?.to ?? 'N/A'}`,
+          `Levels: ${byLevel ? Object.entries(byLevel).map(([k, v]) => `${k}=${v}`).join(', ') : ''}`,
         ],
       }],
     });
