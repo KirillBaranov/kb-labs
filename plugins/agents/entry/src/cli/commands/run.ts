@@ -17,7 +17,7 @@ import { AgentSDK } from '@kb-labs/agent-sdk';
 import { createDefaultResponseRequirementsSelector } from '@kb-labs/agent-runtime';
 import { IncrementalTraceWriter } from '@kb-labs/agent-tracing';
 import { createToolRegistry } from '@kb-labs/agent-tools';
-import type { AgentConfig, ModeConfig, AgentMode, AgentEvent, AgentsPluginConfig, KernelState } from '@kb-labs/agent-contracts';
+import type { AgentConfig, ModeConfig, AgentMode, AgentEvent, AgentsPluginConfig, KernelState, DetailedTraceEntry } from '@kb-labs/agent-contracts';
 import type { TaskPlan } from '@kb-labs/agent-contracts';
 import { promises as fs } from 'node:fs';
 import { createEventRenderer, createMinimalRenderer, createDetailedRenderer, createDebugRenderer } from '../ui/index.js';
@@ -295,7 +295,7 @@ export default defineCommand({
               ctx.ui?.info?.(`Found approved plan: ${planData.id} (${planData.phases.length} phases). Generating spec directly...`);
               let pendingSessionWrite: Promise<void> = Promise.resolve();
               const specEventCallback = (event: AgentEvent) => {
-                tracer.trace(event);
+                tracer.trace(event as unknown as Omit<DetailedTraceEntry, 'seq' | 'timestamp'>);
                 eventRenderer(event);
                 pendingSessionWrite = pendingSessionWrite
                   .then(async () => {
@@ -331,7 +331,7 @@ export default defineCommand({
               const specResult = await specHandler.execute(planData, specConfig, toolRegistry);
               await pendingSessionWrite;
               await tracer.finalize();
-              const detailedTrace = tracer.getEntries() as Array<Record<string, unknown>>;
+              const detailedTrace = tracer.getEntries() as unknown as Array<Record<string, unknown>>;
               if (detailedTrace.length > 0) {
                 await sessionManager.storeTraceArtifacts(effectiveSessionId, runId, detailedTrace);
               }
@@ -368,7 +368,7 @@ export default defineCommand({
         // Create composite event callback that writes to tracer, renders UI, AND persists to session
         const compositeEventCallback = (event: AgentEvent) => {
           // Write to tracer
-          tracer.trace(event);
+          tracer.trace(event as unknown as Omit<DetailedTraceEntry, 'seq' | 'timestamp'>);
           // Render UI
           eventRenderer(event);
           // Persist to session for conversation history
@@ -469,7 +469,7 @@ export default defineCommand({
           } as AgentEvent);
         }
 
-        const detailedTrace = tracer.getEntries() as Array<Record<string, unknown>>;
+        const detailedTrace = tracer.getEntries() as unknown as Array<Record<string, unknown>>;
         if (detailedTrace.length > 0) {
           await sessionManager.storeTraceArtifacts(effectiveSessionId, runId, detailedTrace);
         }
