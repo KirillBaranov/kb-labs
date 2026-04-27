@@ -12,6 +12,13 @@
 
 import type { PipelineStage, PipelineContext, StageResult } from '../pipeline-types';
 import type { ChunkWithEmbedding } from './embedding';
+import type { StoredMindChunk } from '../../vector-store/vector-store';
+
+/** Minimal chunk shape accepted by VectorStore batch operations — excludes scopeId (pre-bound in scoped adapter).
+ * Embedding may be a flat number array (from EmbeddingStage) or a structured EmbeddingVector object. */
+type BatchChunk = Omit<StoredMindChunk, 'scopeId' | 'embedding'> & {
+  embedding: number[] | StoredMindChunk['embedding'];
+};
 
 export interface VectorStore {
   /**
@@ -19,14 +26,14 @@ export interface VectorStore {
    * @param chunks Chunks with embeddings to insert
    * @returns Number of chunks successfully inserted
    */
-  insertBatch(chunks: ChunkWithEmbedding[]): Promise<number>;
+  insertBatch(chunks: BatchChunk[]): Promise<number>;
 
   /**
    * Update existing chunks (by chunkId)
    * @param chunks Chunks to update
    * @returns Number of chunks successfully updated
    */
-  updateBatch(chunks: ChunkWithEmbedding[]): Promise<number>;
+  updateBatch(chunks: BatchChunk[]): Promise<number>;
 
   /**
    * Check which chunks already exist (by chunkId)

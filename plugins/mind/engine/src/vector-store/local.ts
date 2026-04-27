@@ -52,7 +52,7 @@ export class LocalVectorStore implements VectorStore {
   }
 
   async replaceScope(scopeId: string, chunks: StoredMindChunk[]): Promise<void> {
-    await this.store.replaceScope(scopeId, chunks as unknown as StoredMindChunk[]);
+    await this.store.replaceScope(scopeId, chunks as unknown as Parameters<typeof this.store.replaceScope>[1]);
   }
 
   async search(
@@ -62,9 +62,14 @@ export class LocalVectorStore implements VectorStore {
     filters?: VectorSearchFilters,
   ): Promise<VectorSearchMatch[]> {
     return withRetry(
-      () => this.store.search(scopeId, vector as unknown, limit, filters as unknown),
+      () => this.store.search(
+        scopeId,
+        vector as unknown as Parameters<typeof this.store.search>[1],
+        limit,
+        filters as unknown as Parameters<typeof this.store.search>[3],
+      ),
       this.retryOptions,
-    ) as Promise<VectorSearchMatch[]>;
+    ) as unknown as Promise<VectorSearchMatch[]>;
   }
 
   async getAllChunks(scopeId: string, filters?: VectorSearchFilters): Promise<StoredMindChunk[]> {
