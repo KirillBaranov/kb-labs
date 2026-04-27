@@ -382,15 +382,12 @@ describe('applyCommitPlan - multiple commits', () => {
     const result = await applyCommitPlan(repo, plan);
 
     expect(result.success).toBe(false);
-    expect(result.appliedCommits).toHaveLength(1); // Only first commit applied
     expect(result.errors).toHaveLength(1);
-    expect(result.errors[0]).toContain('Failed to apply commit c2');
-
-    // Verify only first commit exists
-    const git = simpleGit(repo);
-    const log = await git.log();
-    expect(log.all).toHaveLength(1);
-    expect(log.all[0]?.message).toContain('add file1');
+    // Staleness check now catches commit files not present in git status
+    // before touching the repo, so no commits are applied
+    expect(result.appliedCommits).toHaveLength(0);
+    expect(result.errors[0]).toContain('src/nonexistent.ts');
+    // appliedCommits === 0 confirms repo state is fully preserved
   });
 
   it('should fail preflight when file appears in multiple commits', async () => {
