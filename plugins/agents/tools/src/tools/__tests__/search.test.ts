@@ -40,7 +40,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   // Directory exists by default
   mockExistsSync.mockReturnValue(true);
-  mockStatSync.mockReturnValue({ isDirectory: () => true } as ReturnType<typeof fs.statSync>);
+  mockStatSync.mockReturnValue({ isDirectory: () => true } as unknown as ReturnType<typeof fs.statSync>);
   mockReaddirSync.mockReturnValue([]);
   mockExeca.mockResolvedValue(emptyResult);
 });
@@ -53,7 +53,7 @@ describe('directory validation', () => {
     mockReaddirSync.mockReturnValue([
       { name: 'src', isDirectory: () => true, isFile: () => false },
       { name: 'packages', isDirectory: () => true, isFile: () => false },
-    ] as ReturnType<typeof fs.readdirSync>);
+    ] as unknown as ReturnType<typeof fs.readdirSync>);
     const tool = createGlobSearchTool(ctx());
 
     const result = await tool.executor({ pattern: '*.ts', directory: 'agent-tools' });
@@ -111,7 +111,7 @@ describe('directory validation', () => {
       { name: 'node_modules', isDirectory: () => true, isFile: () => false },
       { name: 'src', isDirectory: () => true, isFile: () => false },
       { name: 'README.md', isDirectory: () => false, isFile: () => true },
-    ] as ReturnType<typeof fs.readdirSync>);
+    ] as unknown as ReturnType<typeof fs.readdirSync>);
     const tool = createGlobSearchTool(ctx());
 
     const result = await tool.executor({ pattern: '*.ts', directory: 'bad' });
