@@ -196,7 +196,7 @@ function buildReleaseSections(
   return sections;
 }
 
-function resolveChecks(flags: RunFlags, config: ReleaseConfig): unknown[] {
+function resolveChecks(flags: RunFlags, config: ReleaseConfig): NonNullable<ReleaseConfig['checks']> {
   if (flags.flow) { return config.flows?.[flags.flow]?.checks ?? config.checks ?? []; }
   if (flags.scope) { return config.scopes?.[flags.scope]?.checks ?? config.checks ?? []; }
   return config.checks ?? [];

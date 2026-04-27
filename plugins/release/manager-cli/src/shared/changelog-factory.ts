@@ -9,8 +9,9 @@ import {
   type ChangelogPackageInfo,
 } from '@kb-labs/release-manager-changelog';
 import type { ReleaseConfig, ChangelogGenerator } from '@kb-labs/release-manager-core';
+import type { ILLM } from '@kb-labs/sdk';
 
-export function createChangelogGenerator(config: ReleaseConfig, llm?: unknown): ChangelogGenerator {
+export function createChangelogGenerator(config: ReleaseConfig, llm?: ILLM): ChangelogGenerator {
   return {
     async generate(plan, opts) {
       const locale = (config.changelog?.locale as 'en' | 'ru') || 'en';

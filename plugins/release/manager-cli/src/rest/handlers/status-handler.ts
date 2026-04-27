@@ -68,7 +68,7 @@ export default defineHandler({
         const scopeReleases = (index.releases as Array<{ scope: string; timestamp: string }>).filter((r) => r.scope === scope);
         if (scopeReleases.length > 0) {
           hasReport = true;
-          lastReleaseAt = scopeReleases[0].timestamp;
+          lastReleaseAt = scopeReleases[0]!.timestamp;
         }
       } catch {
         // No history index yet
