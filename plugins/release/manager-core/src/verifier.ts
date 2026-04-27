@@ -9,7 +9,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { rmSync, writeFileSync } from 'node:fs';
-import type { VerifyResult, PackageVersion } from './types';
+import type { VerifyResult, PackageVersion, PluginLogger } from './types';
 
 /**
  * Verify all packages in a plan are publishable.
@@ -17,7 +17,7 @@ import type { VerifyResult, PackageVersion } from './types';
 export async function verifyPackages(
   packages: PackageVersion[],
   options?: {
-    logger?: { info?(message: string, meta?: Record<string, unknown>): void };
+    logger?: Pick<PluginLogger, 'info'>;
     onProgress?: (pkg: string, result: VerifyResult) => void;
   },
 ): Promise<VerifyResult[]> {
