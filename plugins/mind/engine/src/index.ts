@@ -845,7 +845,9 @@ interface MindChunk {
   path: string;
   span: SpanRange;
   text: string;
-  metadata?: Record<string, unknown>;
+  metadata: Record<string, unknown>;
+  hash?: string;
+  mtime?: number;
 }
 
 export class MindEngine implements KnowledgeEngine {
@@ -2397,7 +2399,10 @@ function normalizeOptions(raw: MindEngineOptions): NormalizedOptions {
   const rerankingType = raw.search?.reranking?.type ?? 'none';
   const rerankingEnabled = rerankingType !== 'none';
   const optimizationEnabled = raw.search?.optimization !== undefined;
-  const learningStorageOptions = (raw.learning as Record<string, unknown>)?.storageOptions;
+  const learningStorageOptions = (raw.learning as Record<string, unknown>)?.storageOptions as {
+    history?: { basePath?: string; maxRecordsPerFile?: number; maxFiles?: number };
+    feedback?: { basePath?: string; maxRecordsPerFile?: number; maxFiles?: number };
+  } | undefined;
 
   return {
     indexDir: raw.indexDir ?? DEFAULT_INDEX_DIR,

@@ -25,7 +25,7 @@ export default defineHandler({
 
       // Get git status (with platform cache)
       let filesChanged = 0;
-      let gitStatus = null;
+      let gitStatus: { staged: string[]; unstaged: string[]; untracked: string[] } | null = null;
       const cacheKey = `${COMMIT_CACHE_PREFIX}git-status:${scope}`;
       ctx.platform.logger.info(`[status-handler] Cache key: ${cacheKey}`);
 
@@ -35,7 +35,7 @@ export default defineHandler({
 
       if (cached !== null && cached !== undefined) {
         // Use cached value
-        const cachedData = cached as { count: number; status: unknown };
+        const cachedData = cached as { count: number; status: { staged: string[]; unstaged: string[]; untracked: string[] } | null };
         filesChanged = cachedData.count;
         gitStatus = cachedData.status;
       } else {

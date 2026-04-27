@@ -94,27 +94,27 @@ export class WorkflowRegistry {
       const parsed = this.parseWorkflowFile(raw)
 
       // Extract ID from parsed file or use filename as fallback
-      const id = parsed.id || basename(filePath, '.yml').replace('.yaml', '')
+      const id = (parsed.id as string | undefined) || basename(filePath, '.yml').replace('.yaml', '')
 
       // Convert to WorkflowSpec format
       const spec: WorkflowSpec = {
-        name: parsed.name,
+        name: parsed.name as string,
         version: '1.0.0',
-        description: parsed.description,
-        on: parsed.on || { manual: true }, // Default to manual trigger if not specified
-        isolation: parsed.isolation,
-        jobs: parsed.jobs,
-        env: parsed.env,
-        secrets: parsed.secrets,
+        description: parsed.description as string | undefined,
+        on: (parsed.on as WorkflowSpec['on']) || { manual: true },
+        isolation: parsed.isolation as WorkflowSpec['isolation'],
+        jobs: parsed.jobs as WorkflowSpec['jobs'],
+        env: parsed.env as Record<string, string> | undefined,
+        secrets: parsed.secrets as string[] | undefined,
       }
 
       const entry: WorkflowRegistryEntry = {
-        id,
-        name: parsed.name,
-        description: parsed.description,
+        id: id as string,
+        name: parsed.name as string,
+        description: parsed.description as string | undefined,
         filePath,
         spec,
-        metadata: parsed.metadata,
+        metadata: parsed.metadata as Record<string, unknown> | undefined,
       }
 
       this.entries.set(id, entry)
