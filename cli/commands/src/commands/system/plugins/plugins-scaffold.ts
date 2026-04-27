@@ -296,19 +296,21 @@ dist
   },
   formatter(result, ctx, _flags) {
     const { pluginName, dir } = result;
+    const dirDisplay = dir ?? '';
+    const nameDisplay = pluginName ?? '';
 
     const sections = [
       {
         items: [
           ctx.ui.colors.bold('Plugin Template Created:'),
-          `${ctx.ui.symbols.success} ${ctx.ui.colors.info(dir)}`,
+          `${ctx.ui.symbols.success} ${ctx.ui.colors.info(dirDisplay)}`,
           '',
           ctx.ui.colors.bold('Next Steps:'),
-          `  ${ctx.ui.colors.info(`cd ${pluginName}`)}`,
+          `  ${ctx.ui.colors.info(`cd ${nameDisplay}`)}`,
           `  ${ctx.ui.colors.info('pnpm install')}`,
           `  ${ctx.ui.colors.info('pnpm build')}`,
-          `  ${ctx.ui.colors.info(`kb marketplace link ./${pluginName}`)}`,
-          `  ${ctx.ui.colors.info(`kb ${pluginName} hello`)}`,
+          `  ${ctx.ui.colors.info(`kb marketplace link ./${nameDisplay}`)}`,
+          `  ${ctx.ui.colors.info(`kb ${nameDisplay} hello`)}`,
           '',
           ctx.ui.colors.muted('See docs/plugin-development.md for more details'),
         ],

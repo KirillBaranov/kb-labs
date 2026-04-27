@@ -281,8 +281,8 @@ export const diag = defineSystemCommand<DiagFlags, DiagResult>({
 
         diagItems.push(`${icon} ${colorize(safeColors.bold(diag.category))}: ${diag.message}`);
 
-        if (diag.status === 'warning' && diag.details?.issues) {
-          for (const issue of diag.details.issues) {
+        if (diag.status === 'warning' && Array.isArray(diag.details?.issues)) {
+          for (const issue of diag.details.issues as Array<{ plugin: string; required: string; current: string }>) {
             diagItems.push(
               `   ${safeColors.warning(`→ ${issue.plugin}: requires ${issue.required}, found ${issue.current}`)}`,
             );
