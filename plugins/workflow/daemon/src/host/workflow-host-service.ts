@@ -152,6 +152,14 @@ export class WorkflowHostService {
     return logs as Array<Record<string, unknown>>;
   }
 
+  async getRunLogs(
+    runId: string,
+    options?: { stepId?: string; limit?: number; offset?: number; level?: string },
+  ): Promise<Array<Record<string, unknown>>> {
+    const logs = await this.options.jobBroker.getRunLogs(runId, options);
+    return logs as Array<Record<string, unknown>>;
+  }
+
   async cancelJob(tenantId: string, jobId: string): Promise<JobCancelResponse> {
     await this.options.engine.cancelRun(jobId);
     this.options.logger.info('Job cancelled', { jobId, tenantId });
@@ -256,10 +264,13 @@ export class WorkflowHostService {
           : 'manual';
 
     // Resolve inputs: merge spec defaults with user-supplied values.
+    // Accept `inputs` (plural, preferred) or legacy `input` (singular).
     const specInputDefs = (specInput['inputs'] ?? {}) as Record<string, { default?: unknown }>;
-    const userInputs = (request.input && typeof request.input === 'object')
-      ? (request.input as Record<string, unknown>)
-      : {};
+    const userInputs: Record<string, unknown> =
+      request.inputs ??
+      (request.input && typeof request.input === 'object'
+        ? (request.input as Record<string, unknown>)
+        : {});
     const resolvedInputs: Record<string, unknown> = {};
     for (const [key, def] of Object.entries(specInputDefs)) {
       resolvedInputs[key] = key in userInputs ? userInputs[key] : def.default;
