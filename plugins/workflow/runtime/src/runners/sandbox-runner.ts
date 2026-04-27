@@ -172,7 +172,7 @@ export class SandboxRunner implements Runner {
         durationMs: duration,
       }).catch(() => {})
     } else {
-      context.logger.error('Plugin handler failed', undefined, {
+      context.logger.error('Plugin handler failed', {
         stepId: context.stepId,
         pluginId: resolution.value.pluginId,
         handler: resolution.value.handler,
