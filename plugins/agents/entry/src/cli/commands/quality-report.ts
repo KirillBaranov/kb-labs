@@ -527,7 +527,9 @@ function printReport(ctx: PluginContextV3, report: ReturnType<typeof buildReport
     return;
   }
 
+  if (!('scorecard' in report)) { return; }
   const s = report.scorecard;
+  if (s === undefined) { return; }
   ctx.ui.write('┌── Agent Quality Control Report\n');
   ctx.ui.write(`│  Period: ${report.periodDays}d\n`);
   if (report.sessionId) {
