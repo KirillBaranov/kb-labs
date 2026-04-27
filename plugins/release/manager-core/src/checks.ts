@@ -11,7 +11,7 @@ export interface CheckRunnerOptions {
   repoRoot: string;
   packagePaths: string[];
   scopePath?: string;
-  logger?: { info?: (...args: unknown[]) => void; warn?: (...args: unknown[]) => void };
+  logger?: { info?(message: string, meta?: Record<string, unknown>): void; warn?(message: string, meta?: Record<string, unknown>): void };
 }
 
 /**

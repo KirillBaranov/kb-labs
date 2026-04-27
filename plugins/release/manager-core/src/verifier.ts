@@ -17,7 +17,7 @@ import type { VerifyResult, PackageVersion } from './types';
 export async function verifyPackages(
   packages: PackageVersion[],
   options?: {
-    logger?: { info?: (...args: unknown[]) => void };
+    logger?: { info?(message: string, meta?: Record<string, unknown>): void };
     onProgress?: (pkg: string, result: VerifyResult) => void;
   },
 ): Promise<VerifyResult[]> {
