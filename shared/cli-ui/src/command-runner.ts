@@ -60,8 +60,6 @@ export function createCommandRunner(options: CommandRunnerOptions) {
     const tracker = new TimingTracker();
     const jsonMode = flags.json === true;
     const quietMode = flags.quiet === true;
-    const start = Date.now();
-
     let runScope: AnalyticsRunScope | null = null;
     if (options.analytics !== undefined) {
       try {
