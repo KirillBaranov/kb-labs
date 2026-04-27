@@ -5,6 +5,16 @@ export interface RetryOptions {
   onRetry?: (error: unknown, attempt: number) => void;
 }
 
+async function sleepForRetry(
+  attempt: number,
+  delay: number,
+  backoff: 'fixed' | 'exponential',
+): Promise<void> {
+  if (delay <= 0) { return; }
+  const wait = backoff === 'exponential' ? delay * 2 ** (attempt - 1) : delay;
+  await new Promise<void>((resolve) => { setTimeout(resolve, wait); });
+}
+
 export async function withRetry<T>(
   fn: () => Promise<T>,
   options: RetryOptions = {},
@@ -29,14 +39,9 @@ export async function withRetry<T>(
       return await fn();
     } catch (err) {
       lastError = err;
-
       if (attempt < attempts) {
         onRetry?.(err, attempt);
-
-        if (delay > 0) {
-          const wait = backoff === 'exponential' ? delay * 2 ** (attempt - 1) : delay;
-          await new Promise<void>((resolve) => setTimeout(resolve, wait));
-        }
+        await sleepForRetry(attempt, delay, backoff);
       }
     }
   }
