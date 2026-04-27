@@ -354,12 +354,13 @@ export class IncidentDetector {
     };
 
     for (const plugin of metrics.perPlugin as PluginMetricsEntry[]) {
-      if (!plugin.pluginId || plugin.requests < 5) {
+      if (!plugin.pluginId || (plugin.requests ?? 0) < 5) {
         continue; // Skip plugins with too few requests
       }
 
-      const errorRate = plugin.requests > 0
-        ? ((plugin.errors ?? 0) / plugin.requests) * 100
+      const requests = plugin.requests ?? 0;
+      const errorRate = requests > 0
+        ? ((plugin.errors ?? 0) / requests) * 100
         : 0;
 
       const key = `plugin:${plugin.pluginId}`;
@@ -376,13 +377,13 @@ export class IncidentDetector {
         severity = 'critical';
         title = `Plugin Failure: ${plugin.pluginId}`;
         details = `Plugin ${plugin.pluginId} has critical error rate of ${errorRate.toFixed(1)}% ` +
-          `(${plugin.errors ?? 0}/${plugin.requests} requests). ` +
+          `(${plugin.errors ?? 0}/${requests} requests). ` +
           `This exceeds the critical threshold of ${this.config.thresholds.pluginErrorRateCritical}%.`;
       } else if (errorRate >= this.config.thresholds.pluginErrorRateWarning) {
         severity = 'warning';
         title = `Plugin Issues: ${plugin.pluginId}`;
         details = `Plugin ${plugin.pluginId} has elevated error rate of ${errorRate.toFixed(1)}% ` +
-          `(${plugin.errors ?? 0}/${plugin.requests} requests).`;
+          `(${plugin.errors ?? 0}/${requests} requests).`;
       }
 
       if (severity) {
@@ -395,7 +396,7 @@ export class IncidentDetector {
           metadata: {
             pluginId: plugin.pluginId,
             errorRate,
-            requests: plugin.requests,
+            requests,
             errors: plugin.errors,
             avgLatency: plugin.latency?.average,
           },

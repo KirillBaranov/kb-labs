@@ -63,9 +63,8 @@ interface ResolvedModuleInfo {
 /**
  * Compute graph summary for AI insights
  */
-interface PackageEntry { deps?: string[]; [key: string]: unknown }
 interface GraphSummary { totalEdges: number; internalEdges: number; externalDeps: string[]; hotspots: Array<{ file: string; inbound: number; outbound: number }>; maxDepth: number; packageGraph: Record<string, string[]> }
-function computeGraphSummary(edges: Array<{ from: string; to: string; type: string; imports?: string[] }>, packages: Record<string, PackageEntry>, externalImports: Set<string>): GraphSummary {
+function computeGraphSummary(edges: Array<{ from: string; to: string; type: string; imports?: string[] }>, packages: Record<string, PackageNode>, externalImports: Set<string>): GraphSummary {
   const fileConnections = new Map<string, { in: number; out: number }>();
   const externalDepsSet = new Set<string>();
   
