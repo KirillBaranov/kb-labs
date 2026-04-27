@@ -295,7 +295,7 @@ export default defineCommand({
               ctx.ui?.info?.(`Found approved plan: ${planData.id} (${planData.phases.length} phases). Generating spec directly...`);
               let pendingSessionWrite: Promise<void> = Promise.resolve();
               const specEventCallback = (event: AgentEvent) => {
-                tracer.trace(event as unknown as Omit<DetailedTraceEntry, 'seq' | 'timestamp'>);
+                tracer.trace(event as unknown as DetailedTraceEntry);
                 eventRenderer(event);
                 pendingSessionWrite = pendingSessionWrite
                   .then(async () => {
@@ -368,7 +368,7 @@ export default defineCommand({
         // Create composite event callback that writes to tracer, renders UI, AND persists to session
         const compositeEventCallback = (event: AgentEvent) => {
           // Write to tracer
-          tracer.trace(event as unknown as Omit<DetailedTraceEntry, 'seq' | 'timestamp'>);
+          tracer.trace(event as unknown as DetailedTraceEntry);
           // Render UI
           eventRenderer(event);
           // Persist to session for conversation history
