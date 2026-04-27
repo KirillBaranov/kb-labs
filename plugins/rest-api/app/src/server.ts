@@ -42,28 +42,32 @@ function createPinoCompatibleLogger(logger: ILogger): FastifyBaseLogger {
       if (typeof msg === 'object') {
         logger.debug(JSON.stringify(msg), msg as Record<string, unknown>);
       } else {
-        logger.debug(msg, ...args);
+        const meta = (typeof args[0] === 'object' && args[0] !== null) ? args[0] as Record<string, unknown> : undefined;
+        logger.debug(msg, meta);
       }
     },
     debug: (msg: string | object, ...args: unknown[]) => {
       if (typeof msg === 'object') {
         logger.debug(JSON.stringify(msg), msg as Record<string, unknown>);
       } else {
-        logger.debug(msg, ...args);
+        const meta = (typeof args[0] === 'object' && args[0] !== null) ? args[0] as Record<string, unknown> : undefined;
+        logger.debug(msg, meta);
       }
     },
     info: (msg: string | object, ...args: unknown[]) => {
       if (typeof msg === 'object') {
         logger.info(JSON.stringify(msg), msg as Record<string, unknown>);
       } else {
-        logger.info(msg, ...args);
+        const meta = (typeof args[0] === 'object' && args[0] !== null) ? args[0] as Record<string, unknown> : undefined;
+        logger.info(msg, meta);
       }
     },
     warn: (msg: string | object, ...args: unknown[]) => {
       if (typeof msg === 'object') {
         logger.warn(JSON.stringify(msg), msg as Record<string, unknown>);
       } else {
-        logger.warn(msg, ...args);
+        const meta = (typeof args[0] === 'object' && args[0] !== null) ? args[0] as Record<string, unknown> : undefined;
+        logger.warn(msg, meta);
       }
     },
     error: (msg: string | object, ...args: unknown[]) => {

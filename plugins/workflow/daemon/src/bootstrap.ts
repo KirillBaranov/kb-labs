@@ -118,7 +118,7 @@ export async function bootstrap(cwd: string = process.cwd()): Promise<void> {
     cache: platform.cache,
     events: platform.eventBus,
     logger: createWorkflowLogger('engine', 'workflow.engine'),
-    snapshotManager: (platform as Record<string, unknown>).snapshotManager as never,
+    snapshotManager: (platform as unknown as Record<string, unknown>).snapshotManager as never,
     workspaceRoot: projectRoot,
   });
 

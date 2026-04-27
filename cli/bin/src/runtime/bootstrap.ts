@@ -566,7 +566,7 @@ function handleEarlyExits(p: EarlyExitParams): number | null {
             },
           });
         } else {
-          p.presenter.write(renderGroupHelp(decision.group));
+          p.presenter.write(renderGroupHelp(decision.group as unknown as Parameters<typeof renderGroupHelp>[0]));
         }
         return 0;
       }

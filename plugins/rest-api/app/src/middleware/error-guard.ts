@@ -33,15 +33,17 @@ export function registerErrorGuard(server: FastifyInstance): void {
 
     // Generic error - convert to PluginErrorEnvelope
     const requestId = (request.id as string) || 'unknown';
+    const err = error instanceof Error ? error : new Error(String(error));
+    const errWithStatus = error as { statusCode?: number };
     const envelope: PluginErrorEnvelope = {
       status: 'error',
-      http: error.statusCode || 500,
+      http: errWithStatus.statusCode || 500,
       code: ErrorCode.INTERNAL,
-      message: error.message || 'Internal server error',
+      message: err.message || 'Internal server error',
       details: {
-        error: error.message || String(error),
+        error: err.message || String(error),
       },
-      trace: error.stack,
+      trace: err.stack,
       meta: {
         requestId,
         pluginId: 'system',

@@ -7,7 +7,8 @@ import type { FastifyInstance } from 'fastify';
 import type { RestApiConfig } from '@kb-labs/rest-api-core';
 import { normalizeBasePath, resolvePaths } from '../utils/path-helpers';
 import { platform } from '@kb-labs/core-runtime';
-import type { IAnalytics, AnalyticsEvent } from '@kb-labs/core-platform';
+import type { IAnalytics } from '@kb-labs/core-platform';
+import type { AnalyticsEvent } from '@kb-labs/core-platform/adapters';
 
 /**
  * LLM usage statistics response
@@ -172,7 +173,7 @@ function extractStatsOptions(query: unknown): {
  * @returns All events (up to MAX_EVENTS)
  */
 async function fetchAllEventsBatched(
-  analytics: Required<Pick<IAnalytics, 'getEvents'>>,
+  analytics: IAnalytics,
   query: { type: string | string[]; from?: string; to?: string },
   fastify: FastifyInstance
 ): Promise<AnyAnalyticsEvent[]> {
@@ -184,7 +185,7 @@ async function fetchAllEventsBatched(
   let hasMore = true;
 
   while (hasMore && allEvents.length < MAX_EVENTS) {
-    const response = await analytics.getEvents({
+    const response = await analytics.getEvents!({
       ...query,
       limit: PAGE_SIZE,
       offset,

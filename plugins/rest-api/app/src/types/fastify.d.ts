@@ -74,4 +74,7 @@ declare module 'fastify' {
   interface FastifyReply {
     errorCode?: string;
   }
+  interface FastifyRequest {
+    tenantId?: string;
+  }
 }

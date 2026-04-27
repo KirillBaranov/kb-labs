@@ -1,11 +1,17 @@
 import { formatTiming, TimingTracker } from "@kb-labs/shared-cli-ui";
 import type { MiddlewareConfig } from "@kb-labs/cli-runtime";
 
+interface TimingCtx {
+  diagnostics?: unknown[];
+  logger?: { debug?: (msg: string) => void };
+}
+
 export function createTimingMiddleware(): MiddlewareConfig {
   return {
     name: "timing",
     priority: 100,
-    middleware: async (ctx, next) => {
+    middleware: async (rawCtx, next) => {
+      const ctx = rawCtx as TimingCtx;
       const tracker = new TimingTracker();
       const result = await next();
       const total = tracker.total();

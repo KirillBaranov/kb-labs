@@ -75,11 +75,14 @@ async function loadPlatformConfig(repoRoot: string): Promise<{
     }
 
     const config = configResult.data as Record<string, unknown>;
+    const configPlatform = (typeof config.platform === 'object' && config.platform !== null)
+      ? config.platform as Record<string, unknown>
+      : {} as Record<string, unknown>;
 
     return {
-      adapters: config.platform?.adapters ?? {},
-      adapterOptions: config.platform?.adapterOptions ?? {},
-      execution: config.platform?.execution ?? { mode: 'in-process' },
+      adapters: (configPlatform.adapters ?? {}) as Record<string, string | null>,
+      adapterOptions: (configPlatform.adapterOptions ?? {}) as Record<string, unknown>,
+      execution: (configPlatform.execution ?? { mode: 'in-process' }) as { mode: string },
     };
   } catch (error) {
     // Return empty/default values on error
