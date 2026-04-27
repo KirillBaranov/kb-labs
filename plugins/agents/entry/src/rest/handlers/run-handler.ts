@@ -255,7 +255,7 @@ export default defineHandler({
       try {
         const result = await agent.execute(body.task);
         const durationMs = Date.now() - startTime;
-        const detailedTrace = traceWriter.getEntries() as Array<Record<string, unknown>>;
+        const detailedTrace = traceWriter.getEntries() as unknown as Array<Record<string, unknown>>;
         await traceWriter.finalize?.();
 
         if (detailedTrace.length > 0) {
@@ -290,7 +290,7 @@ export default defineHandler({
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         const durationMs = Date.now() - startTime;
-        const detailedTrace = traceWriter.getEntries() as Array<Record<string, unknown>>;
+        const detailedTrace = traceWriter.getEntries() as unknown as Array<Record<string, unknown>>;
         await traceWriter.finalize?.();
         if (detailedTrace.length > 0) {
           await sessionManager.storeTraceArtifacts(finalSessionId, runId, detailedTrace);
