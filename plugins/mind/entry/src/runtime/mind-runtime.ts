@@ -2,7 +2,6 @@ import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { usePlatform, type PlatformServices } from '@kb-labs/sdk';
 import { MindEngine } from '@kb-labs/mind-engine';
-import type { KnowledgeEngine } from '@kb-labs/mind-engine';
 import type {
   MindConfigInput,
   MindEngineConfig,
@@ -114,7 +113,7 @@ function createEngine(
   runtime: MindRuntimeOptions['runtime'],
   platform: PlatformServices | null | undefined,
   onProgress: MindRuntimeOptions['onProgress'],
-): KnowledgeEngine {
+) {
   const engineConfig = resolveEngineConfig(config, scope);
   return new MindEngine(
     {

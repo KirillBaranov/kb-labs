@@ -65,11 +65,12 @@ export default defineCommand({
         cwd,
         force: flags.force,
         log: (entry: { msg?: string } | string) => {
+          const msg = typeof entry === 'string' ? entry : (entry.msg ?? '');
           if (!flags.quiet && !flags.json) {
             // V3 API: ctx.ui (not ctx.output.ui)
-            ctx.ui.info(`Init: ${entry.msg || entry}`);
+            ctx.ui.info(`Init: ${msg}`);
           }
-          ctx.trace?.addEvent?.('mind.init.step', { msg: entry.msg || entry });
+          ctx.trace?.addEvent?.('mind.init.step', { msg });
         },
       });
 
