@@ -83,7 +83,7 @@ export default defineCommand({
       buildLoader.start();
 
       const results = await buildPackages(plan.packages, {
-        logger: ctx.platform?.logger,
+        logger: ctx.platform?.logger as NonNullable<Parameters<typeof buildPackages>[1]>['logger'],
         onProgress: (name, result) => {
           ctx.platform?.logger?.info?.(`Built ${name}`, { ok: result.success, ms: result.durationMs });
         },
