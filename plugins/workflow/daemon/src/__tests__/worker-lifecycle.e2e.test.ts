@@ -75,6 +75,9 @@ describe('workflow worker lifecycle', () => {
       async markStepCompleted() {},
       async markStepFailed() {},
       async markJobInterrupted() {},
+      getStateStore: vi.fn(() => ({
+        updateStep: vi.fn(async () => {}),
+      })),
     };
 
     const logger = {
@@ -346,5 +349,90 @@ describe('workflow worker lifecycle', () => {
         serviceId: 'workflow',
       }),
     );
+  });
+
+  it('debugMode emits verbose [debug] logs for expr context and interpolation', async () => {
+    const runId = `run-debug-${Date.now().toString(36)}`;
+    const jobId = `${runId}:job`;
+    const run: any = {
+      id: runId,
+      tenantId: 'default',
+      env: { MY_VAR: 'hello' },
+      inputs: { issueNumber: '42' },
+      metadata: {},
+      trigger: { type: 'manual' },
+      jobs: [{
+        id: jobId,
+        jobName: 'debug-job',
+        status: 'queued',
+        attempt: 0,
+        steps: [{
+          id: 'step-1',
+          status: 'pending',
+          spec: { uses: 'plugin:test/handler', with: { number: '${{ inputs.issueNumber }}' } },
+        }],
+      }],
+    };
+
+    const completion = createDeferred<void>();
+    let queueDrained = false;
+    const engine: any = {
+      async nextJob() {
+        if (queueDrained) { return null; }
+        queueDrained = true;
+        return { runId, jobId };
+      },
+      async getRun(id: string) { return id === runId ? run : null; },
+      async markJobStarted() { run.jobs[0].status = 'running'; },
+      async markJobCompleted() { run.jobs[0].status = 'success'; completion.resolve(); },
+      async markJobFailed(_r: string, _j: string, error: Error) { completion.reject(error); },
+      async markStepStarted() {},
+      async markStepCompleted() {},
+      async markStepFailed() {},
+      async markJobInterrupted() {},
+      getStateStore: vi.fn(() => ({ updateStep: vi.fn(async () => {}) })),
+    };
+
+    const logger = {
+      info: vi.fn(),
+      debug: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      child: vi.fn(() => logger),
+    };
+
+    const worker = await createWorkflowWorker({
+      engine,
+      cliApi: {} as any,
+      logger: logger as any,
+      workspaceRoot: '/tmp/test-workspace',
+      platform: {
+        executionBackend: { execute: vi.fn() } as any,
+        hasExecutionBackend: true,
+        getAdapter: vi.fn().mockReturnValue(undefined),
+      },
+      concurrency: 1,
+      debugMode: true,
+    });
+
+    const startPromise = worker.start();
+    await Promise.race([
+      completion.promise,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 10_000)),
+    ]);
+    await worker.stop();
+    await startPromise;
+
+    // debugMode must emit expression context log
+    const infoCalls: string[] = (logger.info as ReturnType<typeof vi.fn>).mock.calls.map(
+      (c: unknown[]) => c[0] as string,
+    );
+    expect(infoCalls.some(m => m === '[debug] Expression context for step')).toBe(true);
+
+    // debugMode must emit raw-vs-resolved interpolation log
+    expect(infoCalls.some(m => m === '[debug] Step input interpolation')).toBe(true);
+
+    // debugMode must emit outputs log
+    expect(infoCalls.some(m => m === '[debug] Step outputs')).toBe(true);
   });
 });

@@ -16,6 +16,7 @@ function createService(overrides: Partial<Record<string, any>> = {}) {
   const jobBroker = {
     submit: vi.fn(async () => ({ id: 'job-1' })),
     getJobLogs: vi.fn(async () => []),
+    getRunLogs: vi.fn(async () => []),
     ...overrides.jobBroker,
   };
 
@@ -89,6 +90,101 @@ describe('WorkflowHostService', () => {
     expect(result.id).toBe('run-1');
     expect(result.status).toBe('completed');
     expect(result.type).toBe('job-mind:rag-query');
+  });
+
+  it('getRunLogs delegates to jobBroker.getRunLogs with stepId filter', async () => {
+    const mockLog = { timestamp: '2026-01-01T00:00:00.000Z', level: 'info', message: 'Executing step', context: { runId: 'r1', stepId: 's1' } };
+    const getRunLogs = vi.fn(async () => [mockLog]);
+    const service = createService({ jobBroker: { getRunLogs } });
+
+    const result = await service.getRunLogs('run-1', { stepId: 'step-1', level: 'info', limit: 50 });
+
+    expect(getRunLogs).toHaveBeenCalledWith('run-1', { stepId: 'step-1', level: 'info', limit: 50 });
+    expect(result).toEqual([mockLog]);
+  });
+
+  it('getRunLogs works without options (returns all logs for run)', async () => {
+    const getRunLogs = vi.fn(async () => []);
+    const service = createService({ jobBroker: { getRunLogs } });
+
+    await service.getRunLogs('run-42');
+
+    expect(getRunLogs).toHaveBeenCalledWith('run-42', undefined);
+  });
+
+  it('runWorkflow resolves inputs from `inputs` field (plural)', async () => {
+    const runFromSpec = vi.fn(async () => ({ id: 'run-1', status: 'queued' }));
+    const get = vi.fn(async () => ({
+      id: 'wf-1',
+      input: {
+        name: 'Test Workflow',
+        version: '1.0.0',
+        on: { manual: true },
+        inputs: {
+          owner: { type: 'string' },
+          repo: { type: 'string' },
+          issueNumber: { type: 'number' },
+          baseBranch: { type: 'string', default: 'main' },
+        },
+        jobs: { main: { runsOn: 'local', steps: [] } },
+      },
+    }));
+    const service = createService({ engine: { runFromSpec }, workflowService: { get } });
+
+    await service.runWorkflow('wf-1', {
+      inputs: { owner: 'KirillBaranov', repo: 'kb-labs', issueNumber: 29 },
+    });
+
+    expect(runFromSpec).toHaveBeenCalledOnce();
+    const callArg = (runFromSpec as any).mock.calls[0]?.[1];
+    expect(callArg.inputs).toEqual({
+      owner: 'KirillBaranov',
+      repo: 'kb-labs',
+      issueNumber: 29,
+      baseBranch: 'main', // default from spec
+    });
+  });
+
+  it('runWorkflow falls back to legacy `input` field (singular)', async () => {
+    const runFromSpec = vi.fn(async () => ({ id: 'run-1', status: 'queued' }));
+    const get = vi.fn(async () => ({
+      id: 'wf-1',
+      input: {
+        name: 'Test Workflow',
+        version: '1.0.0',
+        on: { manual: true },
+        inputs: { flag: { type: 'string', default: 'off' } },
+        jobs: { main: { runsOn: 'local', steps: [] } },
+      },
+    }));
+    const service = createService({ engine: { runFromSpec }, workflowService: { get } });
+
+    await service.runWorkflow('wf-1', {
+      input: { flag: 'on' },
+    });
+
+    const callArg = (runFromSpec as any).mock.calls[0]?.[1];
+    expect(callArg.inputs).toEqual({ flag: 'on' });
+  });
+
+  it('runWorkflow uses spec defaults when no user inputs supplied', async () => {
+    const runFromSpec = vi.fn(async () => ({ id: 'run-1', status: 'queued' }));
+    const get = vi.fn(async () => ({
+      id: 'wf-1',
+      input: {
+        name: 'Test Workflow',
+        version: '1.0.0',
+        on: { manual: true },
+        inputs: { baseBranch: { type: 'string', default: 'main' } },
+        jobs: { main: { runsOn: 'local', steps: [] } },
+      },
+    }));
+    const service = createService({ engine: { runFromSpec }, workflowService: { get } });
+
+    await service.runWorkflow('wf-1', {});
+
+    const callArg = (runFromSpec as any).mock.calls[0]?.[1];
+    expect(callArg.inputs).toEqual({ baseBranch: 'main' });
   });
 
   it('passes run target/isolation overrides to engine', async () => {

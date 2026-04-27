@@ -139,6 +139,9 @@ export class SandboxRunner implements Runner {
       pluginId: resolution.value.pluginId,
       handler: resolution.value.handler,
       executionId: executionRequest.executionId,
+      // Log handler input for debuggability — shows exactly what the plugin receives.
+      // Tokens/secrets will appear here in server logs; same policy as worker.ts inputs log.
+      handlerInput: resolution.value.input,
     })
 
     // Track plugin execution started
@@ -152,8 +155,16 @@ export class SandboxRunner implements Runner {
     const result = await this.backend.execute(executionRequest, { signal, onLog: context.onLog })
     const duration = Date.now() - startTime
 
-    // Track plugin execution result
+    // Log result and track analytics
     if (result.ok) {
+      context.logger.info('Plugin handler succeeded', {
+        stepId: context.stepId,
+        pluginId: resolution.value.pluginId,
+        handler: resolution.value.handler,
+        executionId: executionRequest.executionId,
+        durationMs: duration,
+        outputKeys: result.data && typeof result.data === 'object' ? Object.keys(result.data as object) : [],
+      })
       this.analytics?.track('workflow.sandbox.execution.completed', {
         stepId: context.stepId,
         pluginId: resolution.value.pluginId,
@@ -161,6 +172,17 @@ export class SandboxRunner implements Runner {
         durationMs: duration,
       }).catch(() => {})
     } else {
+      context.logger.error('Plugin handler failed', {
+        stepId: context.stepId,
+        pluginId: resolution.value.pluginId,
+        handler: resolution.value.handler,
+        executionId: executionRequest.executionId,
+        durationMs: duration,
+        errorCode: result.error?.code,
+        errorMessage: result.error?.message,
+        // Include the handler input again at error time — critical for debugging
+        handlerInput: resolution.value.input,
+      })
       this.analytics?.track('workflow.sandbox.execution.failed', {
         stepId: context.stepId,
         pluginId: resolution.value.pluginId,

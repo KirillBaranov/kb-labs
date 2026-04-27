@@ -130,13 +130,34 @@ export class JobBroker {
   }
 
   /**
+   * Query logs for a specific run, with optional step-level filtering.
+   * Used by GET /api/v1/runs/:runId/logs?stepId=...
+   */
+  async getRunLogs(
+    runId: string,
+    options?: { stepId?: string; limit?: number; offset?: number; level?: string },
+  ): Promise<Array<{ timestamp: string; level: string; message: string; context?: Record<string, unknown> }>> {
+    return this._queryLogs(runId, options);
+  }
+
+  /**
    * Get job logs by run ID.
    * Returns execution logs with optional filtering by level and pagination.
    * Uses platform.logs service to query logs by runId metadata.
    */
   async getJobLogs(
     runId: string,
-    options?: { limit?: number; offset?: number; level?: string }
+    options?: { limit?: number; offset?: number; level?: string },
+  ): Promise<Array<{ timestamp: string; level: string; message: string; context?: Record<string, unknown> }>> {
+    return this._queryLogs(runId, options);
+  }
+
+  /**
+   * Internal: query + filter logs for a given run (optionally narrow to one step).
+   */
+  private async _queryLogs(
+    runId: string,
+    options?: { stepId?: string; limit?: number; offset?: number; level?: string },
   ): Promise<Array<{ timestamp: string; level: string; message: string; context?: Record<string, unknown> }>> {
     const run = await this.engine.getRun(runId);
 
@@ -144,51 +165,50 @@ export class JobBroker {
       return [];
     }
 
-    // Query logs using platform.logs service
-    // Since LogQuery doesn't support metadata filtering, we need to:
-    // 1. Query all logs in the time window of the job execution
-    // 2. Filter in-memory by runId in fields
     const limit = options?.limit ?? 100;
     const offset = options?.offset ?? 0;
 
-    // Calculate time window for query
-    const startTime = run.startedAt ? new Date(run.startedAt).getTime() : Date.now() - 3600000; // 1 hour ago fallback
+    // Calculate time window of the run
+    const startTime = run.startedAt
+      ? new Date(run.startedAt).getTime()
+      : Date.now() - 3_600_000; // 1-hour fallback
     const endTime = run.finishedAt ? new Date(run.finishedAt).getTime() : Date.now();
 
-    // Query logs with wider limit to ensure we get all logs after filtering
+    // Query a wide batch from the log store (in-memory adapter keeps everything)
     const queryResult = await this.platform.logs.query(
       {
         from: startTime,
         to: endTime,
-        level: options?.level && options.level !== 'all' ? options.level as any : undefined,
+        level: options?.level && options.level !== 'all' ? (options.level as any) : undefined,
       },
       {
-        limit: 1000, // Query more logs, then filter in-memory
+        limit: 2000,
         offset: 0,
-      }
+      },
     );
 
-    // Filter logs by runId in metadata
-    const filteredLogs = queryResult.logs.filter((log: any) => {
-      // Check if log has runId in fields metadata
-      return log.fields.runId === runId ||
-             log.fields.executionId === runId ||
-             // Also check jobId and stepId for drill-down capability
-             log.fields.jobId?.toString().startsWith(runId);
+    // Filter by runId, then optionally by stepId
+    const filtered = (queryResult.logs as any[]).filter((log) => {
+      if (log.fields?.runId !== runId) {
+        return false;
+      }
+      if (options?.stepId && log.fields?.stepId !== options.stepId) {
+        return false;
+      }
+      return true;
     });
 
-    // Sort by timestamp (newest first)
-    const sortedLogs = filteredLogs.sort((a: any, b: any) => b.timestamp - a.timestamp);
+    // Sort chronologically (oldest first — natural reading order)
+    filtered.sort((a, b) => (a.timestamp as number) - (b.timestamp as number));
 
-    // Apply pagination
-    const paginatedLogs = sortedLogs.slice(offset, offset + limit);
+    // Paginate
+    const page = filtered.slice(offset, offset + limit);
 
-    // Convert to expected format
-    return paginatedLogs.map((log: any) => ({
-      timestamp: new Date(log.timestamp).toISOString(),
-      level: log.level,
-      message: log.message,
-      context: log.fields,
+    return page.map((log) => ({
+      timestamp: new Date(log.timestamp as number).toISOString(),
+      level: log.level as string,
+      message: log.message as string,
+      context: log.fields as Record<string, unknown>,
     }));
   }
 }
