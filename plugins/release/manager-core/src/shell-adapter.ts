@@ -26,12 +26,13 @@ export function createExecaShellAdapter(): ShellAPI {
           stdout: result.stdout || '',
           stderr: result.stderr || '',
         };
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const e = error as { exitCode?: number; stdout?: string; stderr?: string; message?: string };
         return {
           ok: false,
-          code: error.exitCode || 1,
-          stdout: error.stdout || '',
-          stderr: error.stderr || error.message || '',
+          code: e.exitCode || 1,
+          stdout: e.stdout || '',
+          stderr: e.stderr || e.message || '',
         };
       }
     },

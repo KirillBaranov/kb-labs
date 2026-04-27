@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import type React from 'react';
 import { UIText, UICard, UIAreaChart, useChartColors } from '@kb-labs/studio-ui-kit';
 import type { DailyStats } from '@kb-labs/studio-data-client';
 import dayjs from 'dayjs';
@@ -157,7 +158,7 @@ export function AnalyticsDailyStatsChart({
   });
 
    
-  const cardStyle = { marginTop: 16, ...style } as any;
+  const cardStyle: React.CSSProperties = { marginTop: 16, ...style };
   return (
     <UICard title={title} style={cardStyle}>
       {loading && (

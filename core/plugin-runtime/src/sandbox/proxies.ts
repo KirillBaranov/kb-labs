@@ -505,7 +505,7 @@ export function createHttpProxy(fetchShim: FetchShim, protocol: 'http' | 'https'
       // Override end() to trigger the actual fetch
       const originalEnd = req.end.bind(req);
       req.end = function (callback?: any): any {
-        fetchShim(urlStr, { method, headers, body: (req as any)._body || undefined })
+        fetchShim(urlStr, { method, headers, body: (req as unknown as { _body?: string })._body || undefined })
           .then(async (response) => {
             const body = await response.text();
             const fakeResponse = new FakeIncomingMessage(response, body);
@@ -526,7 +526,7 @@ export function createHttpProxy(fetchShim: FetchShim, protocol: 'http' | 'https'
 
       if (callback) {
         // Set callback for response
-        (req as any)._callback = callback;
+        (req as unknown as { _callback?: unknown })._callback = callback;
       }
 
       return req;

@@ -104,7 +104,7 @@ export async function createServer(opts: CreateServerOptions): Promise<FastifyIn
     reply.header('X-Request-Id', requestId);
     reply.header('X-Trace-Id', traceId);
 
-    (request as any).kbLogger = createCorrelatedLogger(logger, {
+    request.kbLogger = createCorrelatedLogger(logger, {
       serviceId: 'marketplace',
       logsSource: 'marketplace',
       layer: 'marketplace',
@@ -115,11 +115,11 @@ export async function createServer(opts: CreateServerOptions): Promise<FastifyIn
       url: request.url,
       operation: 'http.request',
     });
-    (request as any).kbLogger.info(`→ ${request.method.toUpperCase()} ${request.url}`);
+    request.kbLogger.info(`→ ${request.method.toUpperCase()} ${request.url}`);
   });
 
   server.addHook('onResponse', async (request, reply) => {
-    const logger = (request as any).kbLogger as { info: (message: string, meta?: Record<string, unknown>) => void } | undefined;
+    const logger = request.kbLogger;
     if (!logger) {
       return;
     }

@@ -30,6 +30,7 @@
     "@kb-labs/agent-contracts": "workspace:*",
     "@kb-labs/core-platform": "workspace:*",
     "@kb-labs/sdk": "workspace:*",
+    "execa": "^9.5.3",
     "glob": "^11.0.2"
   },
   "devDependencies": {

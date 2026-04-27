@@ -10,7 +10,7 @@ import { createHash } from 'node:crypto';
  * @param obj Configuration object to hash
  * @returns SHA256 hash as hex string
  */
-export function computeConfigHash(obj: any): string {
+export function computeConfigHash(obj: unknown): string {
   // Normalize object for consistent hashing
   const normalized = normalizeForHash(obj);
   const json = JSON.stringify(normalized, null, 0);
@@ -23,30 +23,31 @@ export function computeConfigHash(obj: any): string {
  * - Remove undefined values
  * - Convert to stable representation
  */
-function normalizeForHash(obj: any): any {
+function normalizeForHash(obj: unknown): unknown {
   if (obj === null || obj === undefined) {
     return null;
   }
-  
+
   if (typeof obj !== 'object') {
     return obj;
   }
-  
+
   if (Array.isArray(obj)) {
     return obj.map(normalizeForHash);
   }
-  
+
   // Sort object keys for consistent ordering
-  const sortedKeys = Object.keys(obj).sort();
-  const normalized: any = {};
-  
+  const record = obj as Record<string, unknown>;
+  const sortedKeys = Object.keys(record).sort();
+  const normalized: Record<string, unknown> = {};
+
   for (const key of sortedKeys) {
-    const value = obj[key];
+    const value = record[key];
     if (value !== undefined) {
       normalized[key] = normalizeForHash(value);
     }
   }
-  
+
   return normalized;
 }
 
@@ -55,8 +56,8 @@ function normalizeForHash(obj: any): any {
  * @param configs Array of config objects
  * @returns Combined SHA256 hash
  */
-export function computeConfigsHash(configs: any[]): string {
-  const combined = configs.reduce((acc, config) => {
+export function computeConfigsHash(configs: Record<string, unknown>[]): string {
+  const combined = configs.reduce<Record<string, unknown>>((acc, config) => {
     return { ...acc, ...config };
   }, {});
   return computeConfigHash(combined);

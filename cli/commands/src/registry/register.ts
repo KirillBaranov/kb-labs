@@ -4,7 +4,8 @@
  */
 
 import Ajv from 'ajv';
-import type { CommandManifest, DiscoveryResult, RegisteredCommand } from './types';
+import type { CommandManifest, DiscoveryResult, FlagDefinition, RegisteredCommand } from './types';
+import type { CommandRegistry } from './legacy-types';
 import { checkRequires } from './availability';
 import type { ILogger } from '@kb-labs/core-platform';
 import { platform } from '@kb-labs/core-runtime';
@@ -59,7 +60,7 @@ const validateFlag = ajv.compile(flagSchema);
 /**
  * Validate flag definition
  */
-function validateFlagDef(flag: any, manifestId: string): void {
+function validateFlagDef(flag: FlagDefinition, manifestId: string): void {
   if (!validateFlag(flag)) {
     throw new Error(
       `Invalid flag "${flag.name}" in ${manifestId}: ${ajv.errorsText(validateFlag.errors)}`
@@ -90,7 +91,7 @@ function validateFlagDef(flag: any, manifestId: string): void {
 /**
  * Validate single manifest
  */
-function validateManifestStructure(manifest: any): void {
+function validateManifestStructure(manifest: CommandManifest): void {
   if (!validateManifest(manifest)) {
     throw new Error(`Invalid manifest ${manifest.id}: ${ajv.errorsText(validateManifest.errors)}`);
   }
@@ -263,8 +264,8 @@ export function preflightManifests(
       try {
         validateManifestStructure(manifest);
         allowed.push(manifest);
-      } catch (error: any) {
-        const reason = error?.message ? String(error.message) : 'Validation failed';
+      } catch (error: unknown) {
+        const reason = error instanceof Error ? error.message : 'Validation failed';
         const manifestId = manifest?.id || manifest?.group || result.packageName || 'unknown';
         skipped.push({
           id: manifestId,
@@ -294,7 +295,7 @@ export function preflightManifests(
  */
 export async function registerManifests(
   discoveryResults: DiscoveryResult[],
-  registry: any, // CommandRegistry interface
+  registry: CommandRegistry,
   options: RegisterManifestsOptions & { logger?: ILogger } = {}
 ): Promise<ManifestRegistrationResult> {
   const log = options.logger ?? platform.logger;
@@ -321,8 +322,8 @@ export async function registerManifests(
       try {
         try {
           validateManifestStructure(manifest);
-        } catch (err: any) {
-          throw new Error(`Validation failed: ${err.message}`);
+        } catch (err: unknown) {
+          throw new Error(`Validation failed: ${err instanceof Error ? err.message : String(err)}`);
         }
 
         const normalizedId = normalizeCommandId(manifest.id, namespace);
@@ -342,7 +343,7 @@ export async function registerManifests(
 
         const cmd: RegisteredCommand = {
           manifest,
-          v3Manifest: (manifest as any).manifestV2, // Extract V3 manifest from legacy field
+          v3Manifest: manifest.manifestV2, // Extract V3 manifest from legacy field
           available: availability.available,
           unavailableReason: availability.available ? undefined : availability.reason,
           hint: availability.available ? undefined : availability.hint,
@@ -373,10 +374,11 @@ export async function registerManifests(
           }
 
           if (manifestModule.dispose && typeof manifestModule.dispose === 'function') {
-            (cmd as any)._disposeHook = manifestModule.dispose;
+            cmd._disposeHook = manifestModule.dispose as () => Promise<void>;
           }
-        } catch (hookError: any) {
-          log.debug(`Lifecycle hooks unavailable for ${manifest.id}: ${hookError.message}`);
+        } catch (hookError: unknown) {
+          const hookMsg = hookError instanceof Error ? hookError.message : String(hookError);
+          log.debug(`Lifecycle hooks unavailable for ${manifest.id}: ${hookMsg}`);
         }
 
         // Use canonical key (group:id) for collision detection so that
@@ -456,9 +458,9 @@ export async function registerManifests(
         }
 
         registered.push(cmd);
-      } catch (error: any) {
+      } catch (error: unknown) {
         errors++;
-        const reason = error?.message ? String(error.message) : String(error);
+        const reason = error instanceof Error ? error.message : String(error);
         skipped.push({
           id: manifestId,
           source: result.source,
@@ -488,20 +490,18 @@ export async function registerManifests(
 /**
  * Dispose all plugins by calling their dispose hooks
  */
-export async function disposeAllPlugins(registry: any, logger?: ILogger): Promise<void> {
+export async function disposeAllPlugins(registry: CommandRegistry, logger?: ILogger): Promise<void> {
   const log = logger ?? platform.logger;
   const manifests = registry.listManifests();
   const disposePromises: Promise<void>[] = [];
 
   for (const cmd of manifests) {
-    const disposeHook = (cmd as any)._disposeHook;
+    const disposeHook = cmd._disposeHook;
     if (disposeHook && typeof disposeHook === 'function') {
       disposePromises.push(
-        Promise.resolve(disposeHook({
-          registry,
-          command: cmd,
-        })).catch((err: any) => {
-          log.warn(`Dispose hook failed for ${cmd.manifest.id}: ${err.message}`);
+        Promise.resolve(disposeHook()).catch((err: unknown) => {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          log.warn(`Dispose hook failed for ${cmd.manifest.id}: ${errMsg}`);
         })
       );
     }

@@ -89,6 +89,9 @@ function createPublisher(
         });
         return { published: r.published, alreadyPublished: r.alreadyPublished, failed: r.failed, skipped: r.skipped, errors: r.errors };
       }
+      // PublishWithOTPResult is structurally compatible with core PublishResult
+      // (both have published/alreadyPublished/failed/skipped). Double-cast to satisfy
+      // the return type without widening to any.
       return publishPackagesWithOTP({
         packages,
         packageManager,
@@ -96,7 +99,7 @@ function createPublisher(
         access: opts.access ?? 'public',
         ui: ctx.ui,
         logger: ctx.platform?.logger,
-      }) as any;
+      }) as unknown as Promise<PublishResult>;
     },
   };
 }
@@ -143,10 +146,10 @@ function buildReleaseSections(
     });
   }
 
-  if (!dryRun && (report.result as any).alreadyPublished?.length) {
+  if (!dryRun && report.result.alreadyPublished?.length) {
     sections.push({
       header: 'Already published (skipped)',
-      items: ((report.result as any).alreadyPublished as string[]).map(p => `${ctx.ui.symbols.info} ${p}`),
+      items: report.result.alreadyPublished.map(p => `${ctx.ui.symbols.info} ${p}`),
     });
   }
 
@@ -193,7 +196,7 @@ function buildReleaseSections(
   return sections;
 }
 
-function resolveChecks(flags: RunFlags, config: ReleaseConfig): any[] {
+function resolveChecks(flags: RunFlags, config: ReleaseConfig): NonNullable<ReleaseConfig['checks']> {
   if (flags.flow) { return config.flows?.[flags.flow]?.checks ?? config.checks ?? []; }
   if (flags.scope) { return config.scopes?.[flags.scope]?.checks ?? config.checks ?? []; }
   return config.checks ?? [];
@@ -320,7 +323,8 @@ export default defineCommand({
         config,
         scope: flags.scope,
         flow: flags.flow,
-        bumpOverride: config.bump as any,
+        // config.bump is already VersionBump | undefined — same type as bumpOverride
+        bumpOverride: config.bump,
       });
       planLoader.succeed(`Found ${plan.packages.length} package(s)`);
 

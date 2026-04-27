@@ -122,12 +122,13 @@ async function runPackageTests(
       exitCode: 0,
       output: (stdout || '') + (stderr || ''),
     };
-  } catch (err: any) {
+  } catch (err: unknown) {
+    const spawnErr = err as { code?: number; message?: string; stdout?: string; stderr?: string };
     return {
       success: false,
-      exitCode: err.code || 1,
-      error: err.message || 'Test execution failed',
-      output: (err.stdout || '') + (err.stderr || ''),
+      exitCode: spawnErr.code || 1,
+      error: spawnErr.message || 'Test execution failed',
+      output: (spawnErr.stdout || '') + (spawnErr.stderr || ''),
     };
   }
 }

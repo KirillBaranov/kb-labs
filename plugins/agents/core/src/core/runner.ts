@@ -46,7 +46,7 @@ import {
   type LLMTool,
 } from '@kb-labs/sdk';
 import { AGENT_ANALYTICS_EVENTS } from '@kb-labs/agent-contracts';
-import type { AgentConfig, LLMTier, TaskResult, SpawnAgentRequest, SpawnAgentResult, SubAgentPreset } from '@kb-labs/agent-contracts';
+import type { AgentConfig, AgentEvent, LLMTier, TaskResult, SpawnAgentRequest, SpawnAgentResult, SubAgentPreset } from '@kb-labs/agent-contracts';
 import type { Turn } from '@kb-labs/agent-contracts';
 import type { AgentSDK, IAgentRunner } from '@kb-labs/agent-sdk';
 import { RuntimeEngine } from '@kb-labs/agent-runtime';
@@ -218,7 +218,7 @@ export class SDKAgentRunner implements IAgentRunner {
             timestamp: new Date().toISOString(),
             agentId: this.agentId,
             data: { status: 'escalating', message: `Tier escalation: ${currentTier} → ${next}` },
-          } as any);
+          } as unknown as AgentEvent);
           currentTier = next;
           continue;
         }

@@ -136,9 +136,9 @@ export class SearchHandler {
         truncated: matches.length >= maxResults,
         totalMatches: matches.length,
       };
-    } catch (err: any) {
+    } catch (err: unknown) {
       // grep returns exit code 1 when no matches found
-      if (err.status === 1) {
+      if ((err as { status?: number }).status === 1) {
         return { matches: [], truncated: false, totalMatches: 0 };
       }
       throw err;

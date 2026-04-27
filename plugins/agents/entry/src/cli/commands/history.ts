@@ -30,7 +30,9 @@ export default defineCommand({
 
   handler: {
     async execute(ctx: PluginContextV3, input: HistoryInput): Promise<HistoryResult> {
-      const flags = (input as any).flags ?? input;
+      const flags = ('flags' in input && typeof (input as { flags?: unknown }).flags === 'object' && (input as { flags?: unknown }).flags !== null)
+        ? (input as { flags: HistoryInput }).flags
+        : input;
       const manager = new SessionManager(process.cwd());
 
       try {

@@ -109,16 +109,17 @@ export async function initWorkspaceConfig(
   ensureWithinWorkspace(configPath, cwd);
   
   // Build new config structure
-  const newConfig: any = {
+  const newConfigProducts: Record<string, unknown> = {};
+  const newConfig: Record<string, unknown> = {
     schemaVersion: '1.0',
-    products: {},
+    products: newConfigProducts,
   };
-  
+
   // Add product sections
   if (opts.products && opts.products.length > 0) {
     for (const product of opts.products) {
       const fsProduct = toFsProduct(product);
-      newConfig.products[product] = {};
+      newConfigProducts[product] = {};
     }
   }
   

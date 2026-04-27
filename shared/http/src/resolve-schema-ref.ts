@@ -64,7 +64,7 @@ export async function resolveSchemaRef(ref: SchemaRef): Promise<Record<string, u
       // $refStrategy: 'none' inlines all nested schemas — avoids $ref chains
       // that Fastify v4's JSON Schema validator may not resolve correctly.
        
-      return zodToJsonSchema(schema as any, { $refStrategy: 'none' }) as Record<string, unknown>;
+      return zodToJsonSchema(schema, { $refStrategy: 'none' }) as Record<string, unknown>;
     } catch (err) {
       console.warn(`[shared-http] resolveSchemaRef: failed to import "${modulePath}": ${(err as Error).message}`);
       return null;

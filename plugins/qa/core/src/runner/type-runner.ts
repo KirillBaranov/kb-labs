@@ -34,10 +34,11 @@ export function runTypeCheck(options: TypeRunnerOptions): CheckResult {
       });
       result.passed.push(pkg.name);
       onProgress?.(pkg.name, 'pass', Date.now() - startMs);
-    } catch (err: any) {
+    } catch (err: unknown) {
       result.failed.push(pkg.name);
-      const rawErr = (err.stdout || err.stderr || err.message || '').trim();
-      result.errors[pkg.name] = rawErr.slice(0, 2000) || `Type check failed (exit code ${err.status ?? 1})`;
+      const spawnErr = err as { stdout?: string; stderr?: string; message?: string; status?: number };
+      const rawErr = (spawnErr.stdout || spawnErr.stderr || spawnErr.message || '').trim();
+      result.errors[pkg.name] = rawErr.slice(0, 2000) || `Type check failed (exit code ${spawnErr.status ?? 1})`;
       onProgress?.(pkg.name, 'fail', Date.now() - startMs);
     }
   }

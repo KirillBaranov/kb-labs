@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { spawn } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { randomBytes } from 'node:crypto';
-import type { BuildResult, PackageVersion } from './types';
+import type { BuildResult, PackageVersion, PluginLogger } from './types';
 
 /**
  * Build all packages in a plan using safe build strategy.
@@ -18,7 +18,7 @@ import type { BuildResult, PackageVersion } from './types';
 export async function buildPackages(
   packages: PackageVersion[],
   options?: {
-    logger?: { info?: (...args: any[]) => void; warn?: (...args: any[]) => void; error?: (...args: any[]) => void };
+    logger?: PluginLogger;
     onProgress?: (pkg: string, result: BuildResult) => void;
   },
 ): Promise<BuildResult[]> {

@@ -4,7 +4,7 @@
 
 import { defineHandler, findRepoRoot, type RestInput } from '@kb-labs/sdk';
 import type { BuildRequest, BuildResponse } from '@kb-labs/release-manager-contracts';
-import { buildPackages } from '@kb-labs/release-manager-core';
+import { buildPackages, type PackageVersion } from '@kb-labs/release-manager-core';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { scopeToDir } from '../../shared/utils';
@@ -49,7 +49,7 @@ export default defineHandler({
     const scopeDir = scopeToDir(scope);
     const planPath = join(repoRoot, '.kb/release/plans', scopeDir, 'current', 'plan.json');
 
-    let plan: { packages: Array<{ name: string; path: string; currentVersion: string; nextVersion: string; bump: any }> };
+    let plan: { packages: Array<{ name: string; path: string; currentVersion: string; nextVersion: string; bump: unknown }> };
     try {
       plan = JSON.parse(await readFile(planPath, 'utf-8'));
     } catch {
@@ -57,7 +57,7 @@ export default defineHandler({
     }
 
     // Build via core
-    const results = await buildPackages(plan.packages as any, { logger: ctx.platform?.logger });
+    const results = await buildPackages(plan.packages as unknown as PackageVersion[], { logger: ctx.platform?.logger });
 
     // Copy changelog if exists
     const changelogPath = join(repoRoot, '.kb/release/plans', scopeDir, 'current', 'changelog.md');

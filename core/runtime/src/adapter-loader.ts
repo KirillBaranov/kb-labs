@@ -353,8 +353,10 @@ export class AdapterLoader {
     instance: unknown
   ): string | null {
     if (!target) { return `target adapter "${targetName}" not found`; }
-    if (typeof (target as any)[hook] !== 'function') { return `target "${targetName}" has no method "${hook}"`; }
-    if (typeof (instance as any)[method] !== 'function') { return `extension has no method "${method}"`; }
+    const targetObj = target as Record<string, unknown>;
+    const instanceObj = instance as Record<string, unknown>;
+    if (typeof targetObj[hook] !== 'function') { return `target "${targetName}" has no method "${hook}"`; }
+    if (typeof instanceObj[method] !== 'function') { return `extension has no method "${method}"`; }
     return null;
   }
 
@@ -413,8 +415,10 @@ export class AdapterLoader {
       }
 
       try {
-        const extensionMethod = (ext.instance as any)[method].bind(ext.instance);
-        (target as any)[hook](extensionMethod);
+        const instanceObj = ext.instance as Record<string, unknown>;
+        const targetObj = target as Record<string, unknown>;
+        const extensionMethod = (instanceObj[method] as (...args: unknown[]) => unknown).bind(ext.instance);
+        (targetObj[hook] as (fn: (...args: unknown[]) => unknown) => void)(extensionMethod);
 
         if (process.env.DEBUG || process.env.KB_LOG_LEVEL === 'debug') {
           process.stderr.write(

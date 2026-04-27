@@ -171,7 +171,7 @@ export function createMockUI(): UIFacade {
         });
       }
       if (options.sections) {
-        options.sections.forEach((section: any) => {
+        options.sections.forEach((section: { header?: string; items: string[] }) => {
           if (section.header) {messages.push(`  ${section.header}:`);}
           section.items.forEach((item: string) => messages.push(`    ${item}`));
         });

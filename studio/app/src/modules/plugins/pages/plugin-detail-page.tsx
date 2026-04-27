@@ -13,6 +13,7 @@ import {
   UIButton,
   UIAlert,
   UITabs,
+  type UITabItem,
   UIEmptyState,
   UIIcon,
 } from '@kb-labs/studio-ui-kit';
@@ -393,7 +394,7 @@ export function PluginDetailPage() {
         </UIButton>
       </UISpace>
 
-      <UITabs items={tabItems as any} />
+      <UITabs items={tabItems.filter((t): t is UITabItem => !!t)} />
 
       <PluginAIAssistantModal
         open={aiModalOpen}

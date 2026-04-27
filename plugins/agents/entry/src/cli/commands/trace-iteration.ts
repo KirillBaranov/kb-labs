@@ -32,7 +32,7 @@ export default defineCommand({
   handler: {
     async execute(ctx: PluginContextV3, input: TraceIterationInput): Promise<TraceIterationResult> {
       const logger = useLogger();
-      const flags = (input as any).flags ?? input;
+      const flags = ('flags' in input ? (input as { flags: TraceIterationInput }).flags : input) as TraceIterationInput;
       const taskId = (flags['task-id'] ?? flags.taskId) as string | undefined;
       const iteration = typeof flags.iteration === 'string' ? parseInt(flags.iteration, 10) : (flags.iteration as number | undefined);
 
@@ -133,6 +133,20 @@ function calculateIterationSummary(events: DetailedTraceEntry[]): IterationRespo
   };
 }
 
+interface LLMIterationEvent {
+  data?: { tokensUsed?: number };
+  response?: { usage?: { totalTokens?: number } };
+}
+
+interface ToolIterationEvent {
+  data?: { toolName?: string };
+  tool?: { name?: string };
+}
+
+interface ErrorIterationEvent {
+  error?: { message?: string };
+}
+
 /**
  * Print human-readable output
  */
@@ -171,15 +185,15 @@ function printHumanReadable(
 
     // Show details for important events
     if ((type === 'llm:end' || type === 'llm:call') && typeEvents.length > 0) {
-      const llmEvent = typeEvents[0] as any;
+      const llmEvent = typeEvents[0] as unknown as LLMIterationEvent;
       const tokens = llmEvent?.data?.tokensUsed ?? llmEvent?.response?.usage?.totalTokens ?? 0;
       ctx.ui.write(`    Tokens: ${tokens}\n`);
     } else if (type === 'tool:end' || type === 'tool:start' || type === 'tool:execution') {
-      const toolNames = (typeEvents as any[]).map((e) => e?.data?.toolName || e?.tool?.name || 'unknown');
+      const toolNames = (typeEvents as unknown as ToolIterationEvent[]).map((e) => e?.data?.toolName || e?.tool?.name || 'unknown');
       ctx.ui.write(`    Tools: ${[...new Set(toolNames)].join(', ')}\n`);
     } else if (type === 'error:captured' && typeEvents.length > 0) {
-      const errorEvent = typeEvents[0] as any;
-      ctx.ui.write(`    ⚠️  ${errorEvent.error.message.substring(0, 100)}\n`);
+      const errorEvent = typeEvents[0] as unknown as ErrorIterationEvent;
+      ctx.ui.write(`    ⚠️  ${errorEvent.error?.message?.substring(0, 100) ?? ''}\n`);
     }
   }
 

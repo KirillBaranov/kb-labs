@@ -29,10 +29,12 @@ Expected: `status: "healthy"`, all adapters `available: true`. Upstreams (rest, 
 ```bash
 curl -s -X POST $BASE/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"name":"test","email":"test@example.com","password":"testpass123","namespaceId":"ns-test"}' | jq .
+  -d '{"name":"test","capabilities":[]}' | jq .
 ```
 
-Expected: `{ clientId, clientSecret, hostId }`.
+Expected: `{ clientId, clientSecret, hostId, namespaceId }`.
+
+> `namespaceId` is server-assigned — do not supply it in the request. `clientSecret` is returned once and never stored server-side; save it immediately.
 
 ### Get token
 

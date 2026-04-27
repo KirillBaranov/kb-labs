@@ -117,8 +117,9 @@ export class WorkerPoolBackend implements ExecutionBackend {
 
     // If the transport supports async initialization (e.g. UnixSocketPlatformTransportFactory
     // starts its shared socket server here, before the first worker is spawned).
-    if ('init' in this.platformTransport && typeof (this.platformTransport as any).init === 'function') {
-      await (this.platformTransport as any).init(this.platform);
+    if ('init' in this.platformTransport) {
+      const transport = this.platformTransport as { init: (platform: PlatformServices) => Promise<void> };
+      await transport.init(this.platform);
       this.platform.logger.debug('Platform transport initialized', { type: this.platformTransport.type });
     }
 
@@ -293,8 +294,9 @@ export class WorkerPoolBackend implements ExecutionBackend {
       this.pool = null;
     }
     // Tear down the shared transport server (e.g. close Unix socket).
-    if ('dispose' in this.platformTransport && typeof (this.platformTransport as any).dispose === 'function') {
-      await (this.platformTransport as any).dispose();
+    if ('dispose' in this.platformTransport) {
+      const transport = this.platformTransport as { dispose: () => Promise<void> };
+      await transport.dispose();
       this.platform.logger.debug('Platform transport disposed', { type: this.platformTransport.type });
     }
   }

@@ -10,10 +10,32 @@ type Flags = {
   json: { type: 'boolean'; description?: string };
 };
 
+interface LogCapabilities {
+  hasBuffer: boolean;
+  hasPersistence: boolean;
+  hasSearch: boolean;
+  hasStreaming: boolean;
+}
+
+interface LogBufferStats {
+  size: number;
+  maxSize: number;
+  oldest: string | null;
+  newest: string | null;
+}
+
+interface LogPersistenceStats {
+  totalLogs: number;
+  oldest: string | null;
+  newest: string | null;
+  sizeBytes: number;
+  sizeMB: number;
+}
+
 type Result = CommandResult & {
-  capabilities?: object;
-  buffer?: object;
-  persistence?: object;
+  capabilities?: LogCapabilities;
+  buffer?: LogBufferStats;
+  persistence?: LogPersistenceStats;
 };
 
 export const logsStats = defineSystemCommand<Flags, Result>({
@@ -67,7 +89,7 @@ export const logsStats = defineSystemCommand<Flags, Result>({
 
     const sections: Array<{ header: string; items: string[] }> = [];
 
-    const caps = result.capabilities as any;
+    const caps = result.capabilities;
     if (caps) {
       sections.push({
         header: 'Capabilities',
@@ -80,7 +102,7 @@ export const logsStats = defineSystemCommand<Flags, Result>({
       });
     }
 
-    const buf = result.buffer as any;
+    const buf = result.buffer;
     if (buf) {
       sections.push({
         header: 'Ring Buffer',
@@ -92,7 +114,7 @@ export const logsStats = defineSystemCommand<Flags, Result>({
       });
     }
 
-    const pers = result.persistence as any;
+    const pers = result.persistence;
     if (pers) {
       sections.push({
         header: 'Persistent Storage',

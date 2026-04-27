@@ -7,6 +7,8 @@ import type { FastifyInstance } from 'fastify';
 import type { RestApiConfig } from '@kb-labs/rest-api-core';
 import { normalizeBasePath, resolvePaths } from '../utils/path-helpers';
 import { platform } from '@kb-labs/core-runtime';
+import type { IAnalytics } from '@kb-labs/core-platform';
+import type { AnalyticsEvent } from '@kb-labs/core-platform/adapters';
 
 /**
  * LLM usage statistics response
@@ -57,29 +59,33 @@ interface LLMUsageStats {
   };
 }
 
+/** Analytics event extended with legacy `properties` field */
+type AnyAnalyticsEvent = AnalyticsEvent & { properties?: Record<string, unknown> };
+
 /**
  * Helper to get event data, supporting both kb.v1 (payload) and legacy (properties) formats
  */
-function getEventData(event: any): Record<string, unknown> {
+function getEventData(event: AnyAnalyticsEvent): Record<string, unknown> {
   // kb.v1 format uses 'payload'
   if (event.schema === 'kb.v1' && event.payload) {
     return event.payload as Record<string, unknown>;
   }
   // Legacy format uses 'properties'
-  return (event.properties as Record<string, unknown>) || {};
+  return event.properties ?? {};
 }
 
 /**
  * Extract date range from query parameters
  */
-function extractDateRange(query: any): { from?: string; to?: string } {
+function extractDateRange(query: unknown): { from?: string; to?: string } {
   // Handle null/undefined query
-  if (!query) {
+  if (!query || typeof query !== 'object') {
     return { from: undefined, to: undefined };
   }
+  const q = query as Record<string, unknown>;
 
-  const from = query.from as string | undefined;
-  const to = query.to as string | undefined;
+  const from = q.from as string | undefined;
+  const to = q.to as string | undefined;
 
   // Validate ISO 8601 format
   if (from && !isValidISODate(from)) {
@@ -96,12 +102,16 @@ function extractDateRange(query: any): { from?: string; to?: string } {
  * Extract model filter from query parameters
  * Supports both single model (?models=gpt-4) and multiple (?models=gpt-4,claude-sonnet)
  */
-function extractModelFilter(query: any): string[] | undefined {
-  if (!query || !query.models) {
+function extractModelFilter(query: unknown): string[] | undefined {
+  if (!query || typeof query !== 'object') {
+    return undefined;
+  }
+  const q = query as Record<string, unknown>;
+  if (!q.models) {
     return undefined;
   }
 
-  const modelsParam = query.models as string;
+  const modelsParam = q.models as string;
 
   // Split by comma and trim whitespace
   const models = modelsParam
@@ -116,23 +126,24 @@ function extractModelFilter(query: any): string[] | undefined {
  * Extract StatsQuery fields (groupBy, breakdownBy, metrics) from query parameters.
  * These are optional — adapters silently ignore fields they don't support.
  */
-function extractStatsOptions(query: any): {
+function extractStatsOptions(query: unknown): {
   groupBy?: 'hour' | 'day' | 'week' | 'month';
   breakdownBy?: string;
   metrics?: string[];
 } {
-  if (!query) {return {};}
+  if (!query || typeof query !== 'object') {return {};}
+  const q = query as Record<string, unknown>;
 
-  const groupBy = query.groupBy as string | undefined;
+  const groupBy = q.groupBy as string | undefined;
   const validGroupBy = ['hour', 'day', 'week', 'month'];
   const resolvedGroupBy =
     groupBy && validGroupBy.includes(groupBy)
       ? (groupBy as 'hour' | 'day' | 'week' | 'month')
       : undefined;
 
-  const breakdownBy = query.breakdownBy as string | undefined;
+  const breakdownBy = q.breakdownBy as string | undefined;
 
-  const metricsParam = query.metrics as string | undefined;
+  const metricsParam = q.metrics as string | undefined;
   const metrics = metricsParam
     ? metricsParam
         .split(',')
@@ -162,19 +173,19 @@ function extractStatsOptions(query: any): {
  * @returns All events (up to MAX_EVENTS)
  */
 async function fetchAllEventsBatched(
-  analytics: any,
+  analytics: IAnalytics,
   query: { type: string | string[]; from?: string; to?: string },
   fastify: FastifyInstance
-): Promise<any[]> {
+): Promise<AnyAnalyticsEvent[]> {
   const PAGE_SIZE = 10000;
   const MAX_EVENTS = 100000;
 
-  const allEvents: any[] = [];
+  const allEvents: AnyAnalyticsEvent[] = [];
   let offset = 0;
   let hasMore = true;
 
   while (hasMore && allEvents.length < MAX_EVENTS) {
-    const response = await analytics.getEvents({
+    const response = await analytics.getEvents!({
       ...query,
       limit: PAGE_SIZE,
       offset,

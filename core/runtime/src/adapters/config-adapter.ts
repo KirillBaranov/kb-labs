@@ -43,9 +43,9 @@ export class ConfigAdapter implements IConfig {
    * const workflowConfig = await config.getConfig('workflow', 'production');
    * ```
    */
-  async getConfig(productId: string, profileId?: string): Promise<any> {
+  async getConfig(productId: string, profileId?: string): Promise<unknown> {
     // Access rawConfig from globalThis (set by bootstrap.ts)
-    const rawConfig = (globalThis as any).__KB_RAW_CONFIG__;
+    const rawConfig = globalThis.__KB_RAW_CONFIG__;
 
     if (!rawConfig) {
       return undefined;
@@ -55,7 +55,9 @@ export class ConfigAdapter implements IConfig {
 
     // Try profiles v2 structure first
     if (rawConfig.profiles && Array.isArray(rawConfig.profiles)) {
-      const profile = rawConfig.profiles.find((p: any) => p.id === effectiveProfileId) ?? rawConfig.profiles[0];
+      type RawProfile = { id?: string; products?: Record<string, unknown> };
+      const profiles = rawConfig.profiles as RawProfile[];
+      const profile = profiles.find((p) => p.id === effectiveProfileId) ?? profiles[0];
       if (profile?.products?.[productId]) {
         return profile.products[productId];
       }
@@ -91,7 +93,7 @@ export class ConfigAdapter implements IConfig {
    * }
    * ```
    */
-  async getRawConfig(): Promise<any> {
-    return (globalThis as any).__KB_RAW_CONFIG__;
+  async getRawConfig(): Promise<Record<string, unknown> | undefined> {
+    return globalThis.__KB_RAW_CONFIG__;
   }
 }

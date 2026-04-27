@@ -5,7 +5,7 @@ import { defaultMindSyncConfig } from '@kb-labs/mind-contracts';
  * Extract Mind configuration from context
  * Provides type-safe access to mind config with validation
  */
-export function useConfig(ctx: { config?: any }): MindConfig {
+export function useConfig(ctx: { config?: unknown }): MindConfig {
   if (!ctx.config) {
     throw new Error('Mind configuration not found in context. Ensure ctx.config is loaded.');
   }
@@ -32,7 +32,7 @@ export function useConfig(ctx: { config?: any }): MindConfig {
  * Try to extract Mind configuration from context
  * Returns null if config is not available or invalid
  */
-export function tryUseConfig(ctx: { config?: any }): MindConfig | null {
+export function tryUseConfig(ctx: { config?: unknown }): MindConfig | null {
   try {
     return useConfig(ctx);
   } catch {
@@ -44,7 +44,7 @@ export function tryUseConfig(ctx: { config?: any }): MindConfig | null {
  * Get sync configuration from mind config
  * Returns defaults if sync config is not provided
  */
-export function useSyncConfig(ctx: { config?: any }): MindSyncConfig {
+export function useSyncConfig(ctx: { config?: unknown }): MindSyncConfig {
   const config = useConfig(ctx);
 
   if (!config.sync) {

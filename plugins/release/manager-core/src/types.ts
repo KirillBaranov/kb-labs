@@ -2,6 +2,13 @@
  * Core types for @kb-labs/release-manager-core
  */
 
+/** Minimal logger interface — structurally compatible with ILogger from @kb-labs/core-platform. */
+export interface PluginLogger {
+  info?(message: string, meta?: Record<string, unknown>): void;
+  warn?(message: string, meta?: Record<string, unknown>): void;
+  error?(message: string, error?: Error, meta?: Record<string, unknown>): void;
+}
+
 export type ReleaseStage = 'planning' | 'checking' | 'versioning' | 'publishing' | 'verifying' | 'rollback';
 
 export type VersionBump = 'patch' | 'minor' | 'major' | 'auto';
@@ -302,7 +309,7 @@ export interface PipelineOptions {
   /** Pass --no-verify to git push and pushTags. Default: false (hooks run normally). */
   noVerify?: boolean;
 
-  logger?: { info?: (...args: any[]) => void; warn?: (...args: any[]) => void; error?: (...args: any[]) => void };
+  logger?: PluginLogger;
   onProgress?: (stage: ReleaseStage, message: string) => void;
 }
 

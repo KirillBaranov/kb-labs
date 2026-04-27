@@ -17,7 +17,7 @@ export interface MockPackResult {
   tokensEstimate: number;
 }
 
-export async function mockUpdateIndexes(options: any): Promise<MockUpdateResult> {
+export async function mockUpdateIndexes(options: { timeBudgetMs?: number; [key: string]: unknown }): Promise<MockUpdateResult> {
   // Simulate some processing time
   await new Promise<void>(resolve => { setTimeout(resolve, 100); });
   
@@ -33,7 +33,7 @@ export async function mockUpdateIndexes(options: any): Promise<MockUpdateResult>
   };
 }
 
-export async function mockBuildPack(options: any): Promise<MockPackResult> {
+export async function mockBuildPack(options: { intent?: string; product?: string; seed?: string; [key: string]: unknown }): Promise<MockPackResult> {
   // Simulate some processing time
   await new Promise<void>(resolve => { setTimeout(resolve, 150); });
   
@@ -55,7 +55,7 @@ export async function mockBuildPack(options: any): Promise<MockPackResult> {
   };
 }
 
-export async function mockInitMindStructure(_options: any): Promise<string> {
+export async function mockInitMindStructure(_options: Record<string, unknown>): Promise<string> {
   // Simulate some processing time
   await new Promise<void>(resolve => { setTimeout(resolve, 50); });
   

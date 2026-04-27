@@ -72,22 +72,24 @@ export class TraceRecorder {
     this.events.push({
       name: 'process_name',
       ph: 'M',
+      ts: 0,
       pid: this.pid,
       tid: 0,
       args: {
         name: `kb-subprocess-${this.pid}`,
       },
-    } as any);
+    });
 
     this.events.push({
       name: 'thread_name',
       ph: 'M',
+      ts: 0,
       pid: this.pid,
       tid: 0,
       args: {
         name: 'Main',
       },
-    } as any);
+    });
   }
 
   /**

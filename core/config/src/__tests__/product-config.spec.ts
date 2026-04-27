@@ -197,7 +197,7 @@ describe("Product Configuration", () => {
       );
 
       expect(result.trace.length).toBeGreaterThan(0);
-      expect(result.trace[0].layer).toBe("runtime");
+      expect(result.trace[0]?.layer).toBe("runtime");
     });
   });
 

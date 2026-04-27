@@ -31,21 +31,26 @@ describe('AuthService', () => {
   });
 
   describe('register', () => {
-    it('returns clientId, clientSecret, hostId', async () => {
+    it('returns clientId, clientSecret, hostId, and server-generated namespaceId', async () => {
       const result = await service.register({
         name: 'MacBook',
-        namespaceId: 'ns1',
         capabilities: ['filesystem'],
       });
       expect(result.clientId).toMatch(/^clt_/);
       expect(result.clientSecret).toMatch(/^cs_/);
       expect(result.hostId).toMatch(/^host_/);
+      expect(result.namespaceId).toMatch(/^ns_/);
+    });
+
+    it('generates a unique namespaceId per registration (no impersonation)', async () => {
+      const a = await service.register({ name: 'A', capabilities: [] });
+      const b = await service.register({ name: 'B', capabilities: [] });
+      expect(a.namespaceId).not.toBe(b.namespaceId);
     });
 
     it('saves public key when provided', async () => {
       const result = await service.register({
         name: 'laptop',
-        namespaceId: 'ns1',
         capabilities: [],
         publicKey: 'my-pub-key',
       });
@@ -58,7 +63,6 @@ describe('AuthService', () => {
     it('returns token pair on valid credentials', async () => {
       const { clientId, clientSecret } = await service.register({
         name: 'laptop',
-        namespaceId: 'ns1',
         capabilities: [],
       });
 
@@ -73,7 +77,6 @@ describe('AuthService', () => {
     it('returns null on wrong secret', async () => {
       const { clientId } = await service.register({
         name: 'laptop',
-        namespaceId: 'ns1',
         capabilities: [],
       });
 
@@ -91,7 +94,6 @@ describe('AuthService', () => {
     it('returns AuthContext for valid access token', async () => {
       const { clientId, clientSecret } = await service.register({
         name: 'laptop',
-        namespaceId: 'ns1',
         capabilities: [],
       });
       const tokens = await service.issueTokens(clientId, clientSecret);
@@ -99,7 +101,7 @@ describe('AuthService', () => {
       const ctx = await service.verify(tokens!.accessToken);
       expect(ctx).not.toBeNull();
       expect(ctx!.type).toBe('machine');
-      expect(ctx!.namespaceId).toBe('ns1');
+      expect(ctx!.namespaceId).toMatch(/^ns_/);
     });
 
     it('returns null for garbage token', async () => {
@@ -112,7 +114,6 @@ describe('AuthService', () => {
     it('issues new token pair on valid refresh token', async () => {
       const { clientId, clientSecret } = await service.register({
         name: 'laptop',
-        namespaceId: 'ns1',
         capabilities: [],
       });
       const first = await service.issueTokens(clientId, clientSecret);
@@ -126,7 +127,6 @@ describe('AuthService', () => {
     it('rejects the same refresh token twice (rotation)', async () => {
       const { clientId, clientSecret } = await service.register({
         name: 'laptop',
-        namespaceId: 'ns1',
         capabilities: [],
       });
       const first = await service.issueTokens(clientId, clientSecret);

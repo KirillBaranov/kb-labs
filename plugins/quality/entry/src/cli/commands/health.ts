@@ -32,8 +32,10 @@ export default defineCommand({
     async execute(ctx: PluginContextV3, input: HealthInput): Promise<HealthCommandResult> {
       const { ui, platform } = ctx;
 
-      // V3: Flags come in input.flags object (not auto-merged)
-      const flags = (input as any).flags ?? input;
+      // V3: Flags may come wrapped in input.flags or passed directly
+      const flags = ('flags' in input && typeof (input as { flags?: unknown }).flags === 'object' && (input as { flags?: unknown }).flags !== null)
+        ? (input as { flags: HealthInput }).flags
+        : input;
 
       // Calculate health score
       const health = await calculateHealth(ctx.cwd, flags.package);
@@ -223,7 +225,7 @@ async function calculateHealth(rootDir: string, specificPackage?: string): Promi
 /**
  * Output health check results
  */
-function outputHealth(health: HealthScore, flags: any, ui: any) {
+function outputHealth(health: HealthScore, flags: Record<string, unknown>, ui: PluginContextV3['ui']) {
   if (flags.json) {
     ui?.json?.(health);
     return;

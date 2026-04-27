@@ -10,6 +10,7 @@ import { IncrementalTraceWriter } from '@kb-labs/agent-tracing';
 import { createToolRegistry } from '@kb-labs/agent-tools';
 import type {
   AgentEvent,
+  DetailedTraceEntry,
   GenerateSpecRequest,
   GenerateSpecResponse,
   KernelState,
@@ -99,7 +100,7 @@ export default defineHandler({
 
     const specPromise = (async () => {
       const configOnEvent = (event: AgentEvent) => {
-        traceWriter.trace(event);
+        traceWriter.trace(event as unknown as DetailedTraceEntry);
         const seqEvent = RunManager.broadcast(runId, event);
         void sessionManager.addEvent(sessionId, {
           ...seqEvent,
@@ -133,7 +134,7 @@ export default defineHandler({
         });
         throw error;
       } finally {
-        const detailedTrace = traceWriter.getEntries() as Array<Record<string, unknown>>;
+        const detailedTrace = traceWriter.getEntries() as unknown as Array<Record<string, unknown>>;
         await traceWriter.finalize?.();
         if (detailedTrace.length > 0) {
           await sessionManager.storeTraceArtifacts(sessionId, runId, detailedTrace);

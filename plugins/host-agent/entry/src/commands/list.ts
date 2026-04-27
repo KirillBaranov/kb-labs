@@ -11,6 +11,7 @@ import { homedir } from 'node:os';
 type ListInput = {
   json?: boolean;
   gateway?: string;
+  flags?: ListInput;
 };
 
 interface HostEntry {
@@ -34,7 +35,7 @@ export default defineCommand({
 
   handler: {
     async execute(ctx: PluginContextV3, rawInput: ListInput): Promise<ListResult> {
-      const input: ListInput = (rawInput as any).flags ?? rawInput;
+      const input: ListInput = rawInput.flags ?? rawInput;
 
       // Resolve Gateway URL: flag > agent config > env > default
       let gatewayUrl = input.gateway;

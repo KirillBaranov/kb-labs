@@ -5,8 +5,8 @@
  * Follows the same pattern as route-mounter but for WebSocket channels.
  */
 
-import type { FastifyInstance } from 'fastify';
-import fastifyWebsocket, { type WebsocketHandler } from '@fastify/websocket';
+import type { FastifyInstance, FastifyPluginCallback, RouteShorthandOptions } from 'fastify';
+import fastifyWebsocket, { type WebsocketHandler, type WebsocketPluginOptions } from '@fastify/websocket';
 import type {
   ManifestV3,
   PluginContextDescriptor,
@@ -84,10 +84,7 @@ export async function mountWebSocketChannels(
   // Register WebSocket plugin if not already registered
   if (!server.hasPlugin('@fastify/websocket')) {
     try {
-      // TODO: Remove 'as any' when tsup properly supports @fastify/websocket module augmentation
-      // Issue: tsup's DTS generation doesn't see Fastify module augmentation from @fastify/websocket
-      // even with types: ["@fastify/websocket"] in tsconfig. This is a known limitation.
-      await server.register(fastifyWebsocket as any);
+      await server.register(fastifyWebsocket as FastifyPluginCallback<WebsocketPluginOptions>);
     } catch (error) {
       errors.push(`Failed to register WebSocket plugin: ${error instanceof Error ? error.message : String(error)}`);
       return { mounted, errors };
@@ -261,9 +258,14 @@ export async function mountWebSocketChannels(
         });
       };
 
-      // TODO: Remove 'as any' when tsup properly supports @fastify/websocket module augmentation
-      // Same issue as register() above - tsup DTS generation doesn't see extended types
-      server.get(fullPath, { websocket: true } as any, handler as any);
+      // @fastify/websocket extends RouteShorthandOptions with { websocket?: boolean } via module
+      // augmentation. tsup DTS generation does not see that augmentation, so we cast to the
+      // concrete options type here instead of relying on the merged declaration.
+      server.get(
+        fullPath,
+        { websocket: true } as RouteShorthandOptions & { websocket: true },
+        handler as WebsocketHandler,
+      );
 
       mounted++;
       server.log.info({ plugin: manifest.id, channel: channel.path, fullPath }, `[ws] Mounted WebSocket channel: ${fullPath}`);

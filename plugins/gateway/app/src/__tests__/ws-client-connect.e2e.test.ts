@@ -85,8 +85,8 @@ beforeEach(() => {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 /** Get a valid access token via AuthService.register + issueTokens */
-async function getAccessToken(namespaceId = 'ns-client-e2e'): Promise<string> {
-  const reg = await authService.register({ name: 'test-client', namespaceId, capabilities: [] });
+async function getAccessToken(): Promise<string> {
+  const reg = await authService.register({ name: 'test-client', capabilities: [] });
   const tokens = await authService.issueTokens(reg.clientId, reg.clientSecret);
   return tokens!.accessToken;
 }

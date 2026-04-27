@@ -165,13 +165,14 @@ export function defineSetupHandler(
 
       log('info', 'Setup completed', { handler: definition.name });
       return { ok: true, message: `${definition.name} setup completed` };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : String(error);
       log('error', 'Setup failed', {
         handler: definition.name,
-        error: error.message,
-        stack: error.stack,
+        error: errMsg,
+        stack: error instanceof Error ? error.stack : undefined,
       });
-      return { ok: false, message: `Setup failed: ${error.message}` };
+      return { ok: false, message: `Setup failed: ${errMsg}` };
     }
   };
 }
@@ -223,13 +224,14 @@ export function defineDestroyHandler(
 
       log('info', 'Destroy completed', { handler: definition.name });
       return { ok: true, message: `${definition.name} destroy completed` };
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errMsg = error instanceof Error ? error.message : String(error);
       log('error', 'Destroy failed', {
         handler: definition.name,
-        error: error.message,
-        stack: error.stack,
+        error: errMsg,
+        stack: error instanceof Error ? error.stack : undefined,
       });
-      return { ok: false, message: `Destroy failed: ${error.message}` };
+      return { ok: false, message: `Destroy failed: ${errMsg}` };
     }
   };
 }

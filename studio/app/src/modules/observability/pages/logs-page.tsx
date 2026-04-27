@@ -292,7 +292,7 @@ export function LogsPage() {
           const haystack = [
             String(log.msg ?? ''),
             String(log.plugin ?? ''),
-            String(log.trace ?? (log as any).traceId ?? ''),
+            String(log.trace ?? log['traceId'] ?? ''),
             String(log.executionId ?? ''),
             JSON.stringify(log.meta ?? {}),
           ].join(' ').toLowerCase();

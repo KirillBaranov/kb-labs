@@ -69,7 +69,7 @@ export interface ObservabilityDataSource {
   /**
    * Get logs related to a specific log (same trace/execution/request)
    */
-  getRelatedLogs(id: string): Promise<{ total: number; logs: LogRecord[]; correlationKeys: any }>;
+  getRelatedLogs(id: string): Promise<{ total: number; logs: LogRecord[]; correlationKeys: Record<string, unknown> }>;
 
   /**
    * Get historical metrics time-series data

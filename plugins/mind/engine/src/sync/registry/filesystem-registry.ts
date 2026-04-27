@@ -49,8 +49,8 @@ export class FileSystemRegistry implements DocumentRegistry {
       this.cache = new Map(Object.entries(data));
       this.cacheDirty = false;
       return this.cache;
-    } catch (error: any) {
-      if (error.code === 'ENOENT') {
+    } catch (error: unknown) {
+      if ((error as { code?: string }).code === 'ENOENT') {
         // File doesn't exist, return empty map
         this.cache = new Map();
         return this.cache;

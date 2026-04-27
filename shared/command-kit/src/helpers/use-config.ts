@@ -80,7 +80,7 @@ export async function useConfig<T = any>(productId?: string, profileId?: string)
   // Auto-detect productId from manifest.configSection if not provided
   let effectiveProductId = productId;
   if (!effectiveProductId) {
-    effectiveProductId = (globalThis as any).__KB_CONFIG_SECTION__;
+    effectiveProductId = (globalThis as typeof globalThis & { __KB_CONFIG_SECTION__?: string }).__KB_CONFIG_SECTION__;
   }
 
   if (!effectiveProductId) {

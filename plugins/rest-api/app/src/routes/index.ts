@@ -6,6 +6,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { RestApiConfig } from '@kb-labs/rest-api-core';
 import type { IEntityRegistry } from '@kb-labs/core-registry';
+import type { ICronManager } from '@kb-labs/core-platform';
 
 type RedisStatus = {
   enabled: boolean;
@@ -55,11 +56,13 @@ export async function registerRoutes(
   registerRouteCollector(server);
 
   const initialSnapshot = registry.snapshot();
-  const initialRedisStatus = (registry as any).getRedisStatus?.();
-  const initialRedisStates = initialRedisStatus?.roles ?? {
-    publisher: null,
-    subscriber: null,
-    cache: null,
+  const initialRedisStatus = ('getRedisStatus' in registry && typeof (registry as { getRedisStatus?: () => RedisStatus }).getRedisStatus === 'function')
+    ? (registry as { getRedisStatus: () => RedisStatus }).getRedisStatus()
+    : undefined;
+  const initialRedisStates = {
+    publisher: initialRedisStatus?.roles.publisher ?? null,
+    subscriber: initialRedisStatus?.roles.subscriber ?? null,
+    cache: initialRedisStatus?.roles.cache ?? null,
   };
 
   const registryLoaded =
@@ -115,7 +118,9 @@ export async function registerRoutes(
 
   const broadcastState = async (): Promise<void> => {
     const pluginsSnapshot = metricsCollector.getLastPluginMountSnapshot();
-    const redisStatus = (registry as any).getRedisStatus?.();
+    const redisStatus = ('getRedisStatus' in registry && typeof (registry as { getRedisStatus?: () => RedisStatus }).getRedisStatus === 'function')
+      ? (registry as { getRedisStatus: () => RedisStatus }).getRedisStatus()
+      : undefined;
     if (redisStatus) {
       handleRedisUpdate(redisStatus);
       readiness.redisEnabled = redisStatus.enabled;
@@ -204,8 +209,8 @@ export async function registerRoutes(
   const scheduleRemount = (): void => {
     // Check if server is already listening - Fastify doesn't allow adding routes after listen()
     // Check both Fastify's listening property and underlying Node.js server
-    const isListening = (server as any).listening || 
-                       (server.server && (server.server as any).listening);
+    const isListening = server.listening ||
+                       (server.server && (server.server as { listening?: boolean }).listening);
     
     if (isListening) {
       platform.logger.warn(
@@ -219,8 +224,8 @@ export async function registerRoutes(
       .catch(() => void 0)
       .then(async () => {
         // Double-check server is not listening before remount
-        const stillListening = (server as any).listening || 
-                               (server.server && (server.server as any).listening);
+        const stillListening = server.listening ||
+                               (server.server && (server.server as { listening?: boolean }).listening);
         
         if (stillListening) {
           platform.logger.warn(
@@ -241,7 +246,7 @@ export async function registerRoutes(
         );
       });
 
-    (server as any).kbPluginMountPromise = mountPromise;
+    server.kbPluginMountPromise = mountPromise;
   };
 
   registry.onChange(() => {
@@ -263,7 +268,7 @@ export async function registerRoutes(
   await registerWorkflowRoutes(server, config);
 
   // Register jobs management endpoints (scheduled jobs)
-  const cronManager = (platform as any).cron ?? null;
+  const cronManager = (platform as { cron?: ICronManager }).cron ?? null;
   await registerJobsRoutes(server, config, cronManager);
 
   const platformServices = platform;
@@ -277,7 +282,7 @@ export async function registerRoutes(
       intervalMs: 5000, // Collect every 5 seconds
       debug: process.env.NODE_ENV !== 'production',
     },
-    platformServices.logger as any
+    platformServices.logger
   );
 
   // Start background collection

@@ -105,7 +105,7 @@ export async function createAutoDiscoveredCLISuggestions(
  */
 export async function getWorkspaceCommandRegistry(
   rootDir: string = process.cwd()
-): Promise<{ registry: any; packages: CLIPackage[] }> {
+): Promise<{ registry: unknown; packages: CLIPackage[] }> {
   const packages = await discoverCLIPackages({ rootDir });
   const allCommands: string[] = [];
   

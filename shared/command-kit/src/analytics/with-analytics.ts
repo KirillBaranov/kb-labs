@@ -108,11 +108,11 @@ export async function withAnalytics<TResult>(
     }
 
     return result;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Track failed event
     if (analytics && events.failed) {
       const failedProps = typeof events.failed === 'function'
-        ? events.failed(error)
+        ? events.failed(error as Error)
         : events.failed;
 
       await analytics.track(`${eventName}.failed`, {

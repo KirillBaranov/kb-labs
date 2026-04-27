@@ -124,7 +124,7 @@ export function parseFlagsFromInput<T extends FlagsSchema>(
   input: unknown,
   schema: T
 ): InferFlagsType<T> {
-  const result: any = {};
+  const result: Record<string, string | boolean | number | undefined> = {};
   const rawInput = input as Record<string, unknown>;
 
   for (const [key, spec] of Object.entries(schema)) {
@@ -160,7 +160,7 @@ export function parseFlagsFromInput<T extends FlagsSchema>(
     }
   }
 
-  return result;
+  return result as unknown as InferFlagsType<T>;
 }
 
 // ============================================================================

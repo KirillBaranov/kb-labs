@@ -33,7 +33,16 @@
  */
 
 import { randomUUID } from "node:crypto";
-import { MongoClient, type Db, type Collection } from "mongodb";
+import {
+  MongoClient,
+  type Db,
+  type Collection,
+  type Document,
+  type Filter,
+  type Sort,
+  type UpdateFilter,
+  type OptionalUnlessRequiredId,
+} from "mongodb";
 import type {
   IDocumentDatabase,
   BaseDocument,
@@ -134,7 +143,7 @@ export class MongoDBAdapter implements IDocumentDatabase {
     await this.ensureConnected();
 
     const col = this.getCollection<T>(collection);
-    let cursor = col.find(filter as any);
+    let cursor = col.find(filter as Filter<T>);
 
     // Apply options
     if (options?.limit) {
@@ -144,7 +153,7 @@ export class MongoDBAdapter implements IDocumentDatabase {
       cursor = cursor.skip(options.skip);
     }
     if (options?.sort) {
-      cursor = cursor.sort(options.sort as any);
+      cursor = cursor.sort(options.sort as Sort);
     }
 
     return cursor.toArray() as Promise<T[]>;
@@ -164,7 +173,7 @@ export class MongoDBAdapter implements IDocumentDatabase {
     await this.ensureConnected();
 
     const col = this.getCollection<T>(collection);
-    const doc = await col.findOne({ _id: id } as any);
+    const doc = await col.findOne({ _id: id } as Filter<T>);
 
     return doc as T | null;
   }
@@ -193,7 +202,7 @@ export class MongoDBAdapter implements IDocumentDatabase {
       updatedAt: now,
     };
 
-    await col.insertOne(docWithMeta as any);
+    await col.insertOne(docWithMeta as OptionalUnlessRequiredId<T>);
 
     return docWithMeta as T;
   }
@@ -216,7 +225,9 @@ export class MongoDBAdapter implements IDocumentDatabase {
     }
 
     const col = this.getCollection<T>(collection);
-    const result = await col.insertMany(documents as any);
+    const result = await col.insertMany(
+      documents as OptionalUnlessRequiredId<T>[],
+    );
 
     return Object.values(result.insertedIds).map(String);
   }
@@ -237,7 +248,10 @@ export class MongoDBAdapter implements IDocumentDatabase {
     await this.ensureConnected();
 
     const col = this.getCollection<T>(collection);
-    const result = await col.updateOne(filter as any, update as any);
+    const result = await col.updateOne(
+      filter as Filter<T>,
+      update as UpdateFilter<T>,
+    );
 
     return result.modifiedCount;
   }
@@ -258,7 +272,10 @@ export class MongoDBAdapter implements IDocumentDatabase {
     await this.ensureConnected();
 
     const col = this.getCollection<T>(collection);
-    const result = await col.updateMany(filter as any, update as any);
+    const result = await col.updateMany(
+      filter as Filter<T>,
+      update as UpdateFilter<T>,
+    );
 
     return result.modifiedCount;
   }
@@ -282,11 +299,11 @@ export class MongoDBAdapter implements IDocumentDatabase {
 
     // findOneAndUpdate returns the updated document
     const result = await col.findOneAndUpdate(
-      { id } as any,
+      { id } as Filter<T>,
       {
         ...update,
-        $set: { ...((update as any).$set || {}), updatedAt: Date.now() },
-      } as any,
+        $set: { ...(update.$set ?? {}), updatedAt: Date.now() },
+      } as UpdateFilter<T>,
       { returnDocument: "after" },
     );
 
@@ -307,7 +324,7 @@ export class MongoDBAdapter implements IDocumentDatabase {
     await this.ensureConnected();
 
     const col = this.getCollection<T>(collection);
-    const result = await col.deleteOne(filter as any);
+    const result = await col.deleteOne(filter as Filter<T>);
 
     return result.deletedCount ?? 0;
   }
@@ -326,7 +343,7 @@ export class MongoDBAdapter implements IDocumentDatabase {
     await this.ensureConnected();
 
     const col = this.getCollection<T>(collection);
-    const result = await col.deleteMany(filter as any);
+    const result = await col.deleteMany(filter as Filter<T>);
 
     return result.deletedCount ?? 0;
   }
@@ -342,7 +359,7 @@ export class MongoDBAdapter implements IDocumentDatabase {
     await this.ensureConnected();
 
     const col = this.getCollection(collection);
-    const result = await col.deleteOne({ id } as any);
+    const result = await col.deleteOne({ id } as Filter<Document>);
 
     return (result.deletedCount ?? 0) > 0;
   }
@@ -361,7 +378,7 @@ export class MongoDBAdapter implements IDocumentDatabase {
     await this.ensureConnected();
 
     const col = this.getCollection<T>(collection);
-    return col.countDocuments(filter as any);
+    return col.countDocuments(filter as Filter<T>);
   }
 
   /**

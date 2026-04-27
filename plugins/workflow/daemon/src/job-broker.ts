@@ -6,7 +6,7 @@
 
 import type { WorkflowEngine } from '@kb-labs/workflow-engine';
 import type { WorkflowRun, WorkflowSpec } from '@kb-labs/workflow-contracts';
-import type { ILogger } from '@kb-labs/core-platform';
+import type { ILogger, LogLevel } from '@kb-labs/core-platform';
 import type { PlatformContainer } from '@kb-labs/core-runtime';
 
 export interface SubmitJobRequest {
@@ -179,7 +179,7 @@ export class JobBroker {
       {
         from: startTime,
         to: endTime,
-        level: options?.level && options.level !== 'all' ? (options.level as any) : undefined,
+        level: options?.level && options.level !== 'all' ? options.level as LogLevel : undefined,
       },
       {
         limit: 2000,
@@ -187,28 +187,35 @@ export class JobBroker {
       },
     );
 
+    type LogEntry = {
+      timestamp: number;
+      level: string;
+      message: string;
+      fields: Record<string, unknown>;
+    };
+
     // Filter by runId, then optionally by stepId
-    const filtered = (queryResult.logs as any[]).filter((log) => {
-      if (log.fields?.runId !== runId) {
+    const filtered = (queryResult.logs as LogEntry[]).filter((log) => {
+      if (log.fields['runId'] !== runId) {
         return false;
       }
-      if (options?.stepId && log.fields?.stepId !== options.stepId) {
+      if (options?.stepId && log.fields['stepId'] !== options.stepId) {
         return false;
       }
       return true;
     });
 
     // Sort chronologically (oldest first — natural reading order)
-    filtered.sort((a, b) => (a.timestamp as number) - (b.timestamp as number));
+    filtered.sort((a, b) => a.timestamp - b.timestamp);
 
     // Paginate
     const page = filtered.slice(offset, offset + limit);
 
     return page.map((log) => ({
-      timestamp: new Date(log.timestamp as number).toISOString(),
-      level: log.level as string,
-      message: log.message as string,
-      context: log.fields as Record<string, unknown>,
+      timestamp: new Date(log.timestamp).toISOString(),
+      level: log.level,
+      message: log.message,
+      context: log.fields,
     }));
   }
 }

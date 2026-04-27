@@ -78,7 +78,12 @@ export interface RuntimeAdapter {
 export function createRuntimeAdapter(
   runtime?: {
     fetch?: (input: FetchInput, init?: FetchInit) => Promise<FetchResponse>;
-    fs?: any;
+    fs?: {
+      readFile?: (path: string, encoding: string) => Promise<string>;
+      writeFile?: (path: string, data: string, encoding: string) => Promise<void>;
+      mkdir?: (path: string, options?: { recursive?: boolean }) => Promise<void>;
+      exists?: (path: string) => Promise<boolean>;
+    };
     env?: (key: string) => string | undefined;
     log?: (
       level: 'debug' | 'info' | 'warn' | 'error',
@@ -99,7 +104,7 @@ export function createRuntimeAdapter(
     // Wrap global fetch to match our type signature
     fetchFn = async (input: FetchInput, init?: FetchInit): Promise<FetchResponse> => {
       const url = typeof input === 'string' ? input : 'url' in input ? input.url : input.href;
-      const response = await fetch(url, init as any);
+      const response = await fetch(url, init as RequestInit);
       return response as unknown as FetchResponse;
     };
   } else {
@@ -136,13 +141,13 @@ export function createRuntimeAdapter(
         const { writeFile } = await import('fs/promises');
         return writeFile(path, data, encoding as BufferEncoding);
       },
-      mkdir: async (path: string, options?: { recursive?: boolean }) => {
+      mkdir: async (path: string, options?: { recursive?: boolean }): Promise<void> => {
         if (runtime?.fs?.mkdir) {
           return runtime.fs.mkdir(path, options);
         }
         // Fallback for CLI mode
         const { mkdir } = await import('fs/promises');
-        return mkdir(path, { recursive: options?.recursive ?? true });
+        await mkdir(path, { recursive: options?.recursive ?? true });
       },
       exists: async (path: string) => {
         if (runtime?.fs?.exists) {

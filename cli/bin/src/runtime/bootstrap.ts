@@ -17,7 +17,9 @@ import {
   renderManifestCommandHelp,
   renderProductHelp,
   registry,
+  type RegisteredCommand,
 } from "@kb-labs/cli-commands";
+import type { Presenter } from "@kb-labs/cli-runtime";
 import { createOutput } from "@kb-labs/core-sys/output";
 import {
   createCliRuntime,
@@ -34,7 +36,14 @@ import { initializePlatform } from "./platform-init";
 import { resolveVersion } from "./helpers/version";
 import { normalizeCmdPath } from "./helpers/cmd-path";
 import { shouldShowLimits } from "./helpers/flags";
-import type { PlatformContainer } from "@kb-labs/core-runtime";
+import type { PlatformContainer, PlatformConfig } from "@kb-labs/core-runtime";
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __KB_PLATFORM_CONFIG__: PlatformConfig | undefined;
+  // eslint-disable-next-line no-var
+  var __KB_RAW_CONFIG__: Record<string, unknown> | undefined;
+}
 
 type ILogger = PlatformContainer["logger"];
 
@@ -136,10 +145,10 @@ export async function executeCli(
   if (projectRoot && projectRoot !== cwd) { loadEnvFile(projectRoot); }
 
   // Store platformConfig globally so CLI adapter can pass it to ExecutionContext
-  (globalThis as any).__KB_PLATFORM_CONFIG__ = platformConfig;
+  globalThis.__KB_PLATFORM_CONFIG__ = platformConfig;
 
   // Store rawConfig globally so useConfig() can access it (parent process)
-  (globalThis as any).__KB_RAW_CONFIG__ = rawConfig;
+  globalThis.__KB_RAW_CONFIG__ = rawConfig;
 
   // Also store in env var so child processes can access it
   if (rawConfig) {
@@ -213,7 +222,7 @@ export async function executeCli(
     logger.debug('[bootstrap] rawConfig keys', { keys: Object.keys(rawConfig) });
   }
   logger.debug('[bootstrap] Stored in globalThis.__KB_RAW_CONFIG__', {
-    state: (globalThis as any).__KB_RAW_CONFIG__ ? 'EXISTS' : 'UNDEFINED',
+    state: globalThis.__KB_RAW_CONFIG__ ? 'EXISTS' : 'UNDEFINED',
   });
 
   const runtimeMiddlewares =
@@ -277,7 +286,7 @@ interface RunCommandParams {
   cmdPath: string[];
   normalizedCmdPath: string[];
   actualRest: string[];
-  presenter: any;
+  presenter: Presenter;
   registryStore: typeof registry;
   platform: PlatformContainer;
 }
@@ -287,8 +296,8 @@ async function runCommand(p: RunCommandParams): Promise<number> {
     const runtime = await p.runtimeFactory(p.runtimeInitOptions);
     const context = p.cliContext;
 
-    if (p.global.json && typeof (p.presenter as any).setContext === 'function') {
-      (p.presenter as any).setContext(context);
+    if (p.global.json && 'setContext' in p.presenter && typeof (p.presenter as { setContext?: unknown }).setContext === 'function') {
+      (p.presenter as { setContext: (ctx: unknown) => void }).setContext(context);
     }
 
     if (p.global.help && p.cmdPath.length > 0) {
@@ -307,7 +316,7 @@ async function runCommand(p: RunCommandParams): Promise<number> {
   }
 }
 
-function renderManifestHelp(manifestCmd: any, presenter: any, json: boolean | undefined): void {
+function renderManifestHelp(manifestCmd: RegisteredCommand, presenter: Presenter, json: boolean | undefined): void {
   if (json) {
     presenter.json({
       ok: true,
@@ -351,14 +360,22 @@ async function dispatchPlugin(p: RunCommandParams, context: CliExecutionContext)
   const commandId = p.normalizedCmdPath.join(":");
   const manifestCmd = p.registryStore.getManifestCommand(commandId);
 
-  const gatewayClient = await tryResolveGateway();
-  if (gatewayClient) {
-    return executeViaGateway(gatewayClient, {
-      commandId,
-      argv: p.actualRest,
-      flags: { ...p.global, ...p.flagsObj },
-      manifestCmd,
-    });
+  // When execution.mode is 'in-process', skip gateway entirely and run locally.
+  // Any other mode (worker-pool, auto, container) may still route through gateway
+  // if a Host Agent socket or credentials are available.
+  const rawConfig = globalThis.__KB_RAW_CONFIG__;
+  const executionMode = (rawConfig?.execution as Record<string, unknown> | undefined)?.mode;
+
+  if (executionMode !== 'in-process') {
+    const gatewayClient = await tryResolveGateway();
+    if (gatewayClient) {
+      return executeViaGateway(gatewayClient, {
+        commandId,
+        argv: p.actualRest,
+        flags: { ...p.global, ...p.flagsObj },
+        manifestCmd,
+      });
+    }
   }
 
   const pluginExitCode = await executePlugin({
@@ -375,8 +392,17 @@ async function dispatchPlugin(p: RunCommandParams, context: CliExecutionContext)
   throw new Error(`Plugin command ${commandId} is not available for execution. Ensure the command has a handlerPath in its manifest.`);
 }
 
+/** Minimal shape of a command group as returned by the registry's `get()`. */
+interface CommandGroupLike {
+  name: string;
+  describe?: string;
+  commands: Array<{ name: string; describe?: string; aliases?: string[] }>;
+}
+
+type AnyCommand = ReturnType<typeof findCommand> | RegisteredCommand;
+
 interface ResolvedCommand {
-  cmd: any;
+  cmd: AnyCommand | undefined;
   normalizedCmdPath: string[];
   actualRest: string[];
 }
@@ -389,16 +415,16 @@ function resolveCommand(
 ): ResolvedCommand | null {
   let normalizedCmdPath = normalizeCmdPath(cmdPath);
   let actualRest = rest;
-  let cmd = find(normalizedCmdPath);
+  let cmd: AnyCommand | undefined = find(normalizedCmdPath);
 
   if (!cmd && cmdPath.length === 2) {
     const [groupName, commandName] = cmdPath;
     if (!groupName) { return null; }
     const maybeGroup = find([groupName]);
-    if (maybeGroup && typeof maybeGroup === 'object' && 'commands' in maybeGroup && Array.isArray((maybeGroup as any).commands)) {
-      for (const groupCmd of maybeGroup.commands) {
+    if (maybeGroup && typeof maybeGroup === 'object' && 'commands' in maybeGroup && Array.isArray((maybeGroup as CommandGroupLike).commands)) {
+      for (const groupCmd of (maybeGroup as CommandGroupLike).commands) {
         if (groupCmd.name === commandName || (commandName && groupCmd.aliases?.includes(commandName))) {
-          cmd = groupCmd;
+          cmd = groupCmd as AnyCommand;
           normalizedCmdPath = [groupCmd.name];
           break;
         }
@@ -410,7 +436,7 @@ function resolveCommand(
     const maybeManifestId = cmdPath.join(":");
     const manifestCmd = registryStore.getManifestCommand(maybeManifestId);
     if (manifestCmd && manifestCmd.available && !manifestCmd.shadowed) {
-      cmd = manifestCmd as any;
+      cmd = manifestCmd as AnyCommand;
       normalizedCmdPath = cmdPath;
     } else {
       for (let i = cmdPath.length - 1; i >= 1; i--) {
@@ -435,7 +461,7 @@ interface EarlyExitParams {
   cmdPath: string[];
   normalizedCmdPath: string[];
   flagsObj: ReturnType<typeof parseArgs>['flagsObj'];
-  presenter: any;
+  presenter: Presenter;
   registryStore: typeof registry;
   find: typeof findCommand;
 }
@@ -536,11 +562,11 @@ function handleEarlyExits(p: EarlyExitParams): number | null {
             group: {
               name: decision.group.name,
               describe: decision.group.describe,
-              commands: decision.group.commands.map((c: any) => ({ name: c.name, describe: c.describe })),
+              commands: decision.group.commands.map((c) => ({ name: c.name, describe: c.describe })),
             },
           });
         } else {
-          p.presenter.write(renderGroupHelp(decision.group));
+          p.presenter.write(renderGroupHelp(decision.group as unknown as Parameters<typeof renderGroupHelp>[0]));
         }
         return 0;
       }
@@ -575,10 +601,10 @@ function handleEarlyExits(p: EarlyExitParams): number | null {
  * as a one-item "info groups: info" list.
  */
 export type GroupDisplayDecision =
-  | { kind: 'exact'; group: any }
-  | { kind: 'list'; groups: any[] };
+  | { kind: 'exact'; group: CommandGroupLike }
+  | { kind: 'list'; groups: CommandGroupLike[] };
 
-export function resolveGroupDisplay(groupPrefix: string, matchingGroups: any[]): GroupDisplayDecision {
+export function resolveGroupDisplay(groupPrefix: string, matchingGroups: CommandGroupLike[]): GroupDisplayDecision {
   const exact = matchingGroups.find((g) => g?.name === groupPrefix);
   if (exact) {
     return { kind: 'exact', group: exact };
@@ -586,14 +612,14 @@ export function resolveGroupDisplay(groupPrefix: string, matchingGroups: any[]):
   return { kind: 'list', groups: matchingGroups };
 }
 
-function renderGroupsHelp(groupPrefix: string, matchingGroups: any[], presenter: any, json: boolean | undefined): void {
+function renderGroupsHelp(groupPrefix: string, matchingGroups: CommandGroupLike[], presenter: Presenter, json: boolean | undefined): void {
   if (json) {
     presenter.json({
       ok: true,
-      groups: matchingGroups.map((g: any) => ({
+      groups: matchingGroups.map((g) => ({
         name: g.name,
         describe: g.describe,
-        commands: g.commands.map((c: any) => ({ name: c.name, describe: c.describe }))
+        commands: g.commands.map((c) => ({ name: c.name, describe: c.describe }))
       }))
     });
   } else {
@@ -608,9 +634,9 @@ function renderGroupsHelp(groupPrefix: string, matchingGroups: any[], presenter:
 }
 
 function handleCommandNotFound(
-  cmd: any,
+  cmd: AnyCommand | undefined,
   normalizedCmdPath: string[],
-  presenter: any,
+  presenter: Presenter,
   global: ReturnType<typeof parseArgs>['global'],
 ): number | null {
   if (!cmd) {
@@ -623,11 +649,12 @@ function handleCommandNotFound(
     return 1;
   }
 
-  if (typeof cmd === 'object' && cmd !== null && 'commands' in cmd && Array.isArray((cmd as any).commands)) {
+  if (typeof cmd === 'object' && cmd !== null && 'commands' in cmd && Array.isArray((cmd as CommandGroupLike).commands)) {
+    const group = cmd as CommandGroupLike;
     if (global.json) {
-      presenter.json({ ok: false, error: { code: "CMD_NOT_FOUND", message: `Group '${(cmd as any).name}' requires a subcommand` } });
+      presenter.json({ ok: false, error: { code: "CMD_NOT_FOUND", message: `Group '${group.name}' requires a subcommand` } });
     } else {
-      presenter.write(renderGroupHelp(cmd as any));
+      presenter.write(renderGroupHelp(group as Parameters<typeof renderGroupHelp>[0]));
     }
     return 0;
   }
@@ -637,7 +664,7 @@ function handleCommandNotFound(
 
 function handleExecutionError(
   error: unknown,
-  presenter: any,
+  presenter: Presenter,
 ): number {
   if (error instanceof CliError) {
     const exitCode = mapCliErrorToExitCode(error.code);
@@ -662,7 +689,7 @@ function handleExecutionError(
     return exitCode;
   }
 
-  const message = String((error as any)?.message ?? error);
+  const message = error instanceof Error ? error.message : String(error);
   const diagnostics: unknown[] = [];
 
   // Check if presenter is in JSON mode before calling json()

@@ -7,6 +7,7 @@ import { defineSystemCommand, type CommandResult } from '@kb-labs/shared-command
 import { generateExamples } from '../../../utils/generate-examples';
 import { platform } from '@kb-labs/core-runtime';
 import { parseRelativeTime, computeLogStats, formatLogLine } from './logs-utils';
+import type { TopError, SourceBreakdown } from './logs-utils';
 import type { LogQuery, LogRecord } from '@kb-labs/core-platform';
 
 type Flags = {
@@ -15,7 +16,16 @@ type Flags = {
   json: { type: 'boolean'; description?: string };
 };
 
-export const logsDiagnose = defineSystemCommand<Flags, CommandResult>({
+interface DiagnoseResult extends CommandResult {
+  period?: { from: string; to: string };
+  summary?: { total: number; errors: number; warnings: number; sources: string[] };
+  topErrors?: TopError[];
+  bySource?: Record<string, SourceBreakdown>;
+  recentErrors?: object[];
+  _raw?: LogRecord[];
+}
+
+export const logsDiagnose = defineSystemCommand<Flags, DiagnoseResult>({
   name: 'diagnose',
   description: 'Analyze recent errors and warnings (agent-friendly diagnostic report)',
   category: 'logs',
@@ -68,7 +78,7 @@ export const logsDiagnose = defineSystemCommand<Flags, CommandResult>({
    
   formatter(result, ctx, flags) {
     if (flags.json) {
-      const { _raw, ...jsonResult } = result as any;
+      const { _raw, ...jsonResult } = result;
       ctx.ui.json(jsonResult);
       return;
     }
@@ -78,16 +88,15 @@ export const logsDiagnose = defineSystemCommand<Flags, CommandResult>({
       return;
     }
 
-    const data = result as any;
-    const { summary, topErrors, bySource, period } = data;
+    const { summary, topErrors, bySource, period } = result;
 
     // Summary
     const summaryItems = [
-      `Period: ${period.from} to ${period.to}`,
-      `Total logs: ${summary.total}`,
-      `Errors: ${summary.errors}`,
-      `Warnings: ${summary.warnings}`,
-      `Sources: ${summary.sources.join(', ') || 'none'}`,
+      `Period: ${period?.from ?? '?'} to ${period?.to ?? '?'}`,
+      `Total logs: ${summary?.total ?? 0}`,
+      `Errors: ${summary?.errors ?? 0}`,
+      `Warnings: ${summary?.warnings ?? 0}`,
+      `Sources: ${summary?.sources.join(', ') || 'none'}`,
     ];
 
     const sections: Array<{ header: string; items: string[] }> = [
@@ -95,37 +104,36 @@ export const logsDiagnose = defineSystemCommand<Flags, CommandResult>({
     ];
 
     // Top errors
-    if (topErrors.length > 0) {
+    if ((topErrors?.length ?? 0) > 0) {
       sections.push({
         header: 'Top Errors',
-        items: topErrors.slice(0, 5).map(
-          (e: any, i: number) => `${i + 1}. "${e.message}" (${e.count}x) [${e.source}]`,
+        items: (topErrors ?? []).slice(0, 5).map(
+          (e, i) => `${i + 1}. "${e.message}" (${e.count}x) [${e.source}]`,
         ),
       });
     }
 
     // By source
     const sourceItems: string[] = [];
-    for (const [src, breakdown] of Object.entries(bySource)) {
-      const b = breakdown as any;
-      if (b.errors > 0 || b.warnings > 0) {
-        sourceItems.push(`${src}: ${b.errors} errors, ${b.warnings} warnings`);
+    for (const [src, breakdown] of Object.entries(bySource ?? {})) {
+      if (breakdown.errors > 0 || breakdown.warnings > 0) {
+        sourceItems.push(`${src}: ${breakdown.errors} errors, ${breakdown.warnings} warnings`);
       }
     }
     if (sourceItems.length > 0) {
       sections.push({ header: 'By Source', items: sourceItems });
     }
 
-    if (summary.errors === 0 && summary.warnings === 0) {
+    if ((summary?.errors ?? 0) === 0 && (summary?.warnings ?? 0) === 0) {
       ctx.ui.success('Log Diagnosis', { sections });
-    } else if (summary.errors > 0) {
+    } else if ((summary?.errors ?? 0) > 0) {
       ctx.ui.error('Log Diagnosis', { sections });
     } else {
       ctx.ui.warn('Log Diagnosis', { sections });
     }
 
     // Recent errors
-    const raw = data._raw as LogRecord[];
+    const raw = result._raw ?? [];
     const errorLogs = raw
       .filter((l) => l.level === 'error' || l.level === 'fatal')
       .slice(0, 5);

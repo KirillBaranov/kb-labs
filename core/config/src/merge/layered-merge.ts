@@ -6,7 +6,7 @@
 import type { ConfigLayer, MergeTrace } from '../types';
 
 export interface LayeredMergeResult {
-  merged: any;
+  merged: Record<string, unknown>;
   trace: MergeTrace[];
 }
 
@@ -18,10 +18,10 @@ export interface LayeredMergeResult {
 export function layeredMergeWithTrace(layers: ConfigLayer[]): LayeredMergeResult {
   const trace: MergeTrace[] = [];
   
-  const isPlainObject = (v: any): v is Record<string, any> => 
-    v && typeof v === 'object' && !Array.isArray(v) && Object.getPrototypeOf(v) === Object.prototype;
-  
-  const merge = (base: any, overlay: any, layer: ConfigLayer, path: string[] = []): any => {
+  const isPlainObject = (v: unknown): v is Record<string, unknown> =>
+    v !== null && typeof v === 'object' && !Array.isArray(v) && Object.getPrototypeOf(v) === Object.prototype;
+
+  const merge = (base: unknown, overlay: unknown, layer: ConfigLayer, path: string[] = []): unknown => {
     // Handle array overwrite
     if (Array.isArray(base) && Array.isArray(overlay)) {
       trace.push({
@@ -38,7 +38,7 @@ export function layeredMergeWithTrace(layers: ConfigLayer[]): LayeredMergeResult
     
     // Handle object merge
     if (isPlainObject(base) && isPlainObject(overlay)) {
-      const result: any = { ...base };
+      const result: Record<string, unknown> = { ...base };
       
       for (const [key, value] of Object.entries(overlay)) {
         if (key in base) {
@@ -74,10 +74,10 @@ export function layeredMergeWithTrace(layers: ConfigLayer[]): LayeredMergeResult
     return overlay ?? base;
   };
   
-  const merged = layers.reduce((acc, layer) => {
-    return merge(acc, layer.value, layer);
+  const merged = layers.reduce<Record<string, unknown>>((acc, layer) => {
+    return merge(acc, layer.value, layer) as Record<string, unknown>;
   }, {});
-  
+
   return { merged, trace };
 }
 

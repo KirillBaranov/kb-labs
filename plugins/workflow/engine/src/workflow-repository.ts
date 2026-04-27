@@ -318,28 +318,28 @@ export class WorkflowRepository {
       }
 
       const content = await readFile(path, 'utf-8');
-      const parsed = parseYaml(content) as any;
+      const parsed = parseYaml(content) as Record<string, unknown>;
 
       // Check if it's already in StoredWorkflow format
       if (parsed.id && parsed.spec && parsed.createdAt) {
-        return parsed as StoredWorkflow;
+        return parsed as unknown as StoredWorkflow;
       }
 
       // Otherwise, it's a simple workflow YAML - convert to StoredWorkflow
       const spec: WorkflowSpec = {
-        name: parsed.name,
-        version: parsed.version || '1.0.0',
-        description: parsed.description,
-        on: parsed.on || { manual: true },
-        isolation: parsed.isolation,
-        inputs: parsed.inputs,
-        jobs: parsed.jobs,
-        env: parsed.env,
-        secrets: parsed.secrets,
+        name: parsed.name as string,
+        version: (parsed.version as string) || '1.0.0',
+        description: parsed.description as string | undefined,
+        on: (parsed.on as WorkflowSpec['on']) || { manual: true },
+        isolation: parsed.isolation as WorkflowSpec['isolation'],
+        inputs: parsed.inputs as WorkflowSpec['inputs'],
+        jobs: parsed.jobs as WorkflowSpec['jobs'],
+        env: parsed.env as Record<string, string> | undefined,
+        secrets: parsed.secrets as string[] | undefined,
       };
 
       const stored: StoredWorkflow = {
-        id: parsed.id || id,
+        id: (parsed.id as string) || id,
         spec,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

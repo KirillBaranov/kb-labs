@@ -25,7 +25,7 @@ export interface CacheEntry {
 export interface StateBrokerLike {
   get<T>(key: string): Promise<T | null>;
   set<T>(key: string, value: T, ttl?: number): Promise<void>;
-  delete(key: string): Promise<void>;
+  delete?(key: string): Promise<void>;
 }
 
 export interface QueryCacheOptions {
@@ -402,10 +402,10 @@ export class QueryCache {
     const keys = (await this.broker.get<string[]>(scopeKey)) ?? [];
     let invalidated = 0;
     for (const key of keys) {
-      await this.broker.delete(this.brokerEntryKey(key));
+      await this.broker.delete?.(this.brokerEntryKey(key));
       invalidated++;
     }
-    await this.broker.delete(scopeKey);
+    await this.broker.delete?.(scopeKey);
 
     const scopes = (await this.broker.get<string[]>(BROKER_SCOPES_KEY)) ?? [];
     const nextScopes = scopes.filter((value) => value !== scopeId);
@@ -421,7 +421,7 @@ export class QueryCache {
     for (const scopeId of scopes) {
       await this.invalidateBrokerScope(scopeId);
     }
-    await this.broker.delete(BROKER_SCOPES_KEY);
+    await this.broker.delete?.(BROKER_SCOPES_KEY);
   }
 }
 

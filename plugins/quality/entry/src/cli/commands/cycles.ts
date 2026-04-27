@@ -30,8 +30,10 @@ export default defineCommand({
     async execute(ctx: PluginContextV3, input: CyclesInput): Promise<CyclesCommandResult> {
       const { ui } = ctx;
 
-      // V3: Flags come in input.flags object (not auto-merged)
-      const flags = (input as any).flags ?? input;
+      // V3: Flags may come wrapped in input.flags or passed directly
+      const flags = ('flags' in input && typeof (input as { flags?: unknown }).flags === 'object' && (input as { flags?: unknown }).flags !== null)
+        ? (input as { flags: CyclesInput }).flags
+        : input;
 
       // Build dependency graph
       const graph = buildDependencyGraph(ctx.cwd);
@@ -53,7 +55,7 @@ export default defineCommand({
 /**
  * Output circular dependencies
  */
-function outputCycles(cycles: string[][], flags: any, ui: any) {
+function outputCycles(cycles: string[][], flags: Record<string, unknown>, ui: PluginContextV3['ui']) {
   if (flags.json) {
     ui?.json?.({ cycles, count: cycles.length });
     return;

@@ -16,6 +16,7 @@ import type { IEventBus } from './adapters/event-bus.js';
 import type { IInvoke } from './adapters/invoke.js';
 import type { ILogReader } from './adapters/log-reader.js';
 import type { ISQLDatabase, IDocumentDatabase } from './adapters/database.js';
+import type { IArtifacts } from './adapters/artifacts.js';
 
 /**
  * Platform adapters container interface.
@@ -63,4 +64,7 @@ export interface IPlatformAdapters {
 
   /** Log reader for querying and subscribing to logs */
   readonly logs: ILogReader;
+
+  /** Artifacts adapter (optional — not all platforms provide it) */
+  readonly artifacts?: IArtifacts;
 }

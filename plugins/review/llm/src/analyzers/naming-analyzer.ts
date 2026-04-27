@@ -128,17 +128,17 @@ export class NamingAnalyzer extends BaseLLMAnalyzer {
    * Process LLM tool calls into ReviewFindings
    */
    
-  private processToolCalls(toolCalls: any[], file: ParsedFile): ReviewFinding[] {
+  private processToolCalls(toolCalls: { name: string; input: unknown }[], file: ParsedFile): ReviewFinding[] {
     const findings: ReviewFinding[] = [];
 
     for (const call of toolCalls) {
       if (call.name === 'report_naming_finding') {
-         
-        const args = call.input as any;
+
+        const args = call.input as Record<string, unknown>;
 
         // Validate line number
         const lineCount = file.content.split('\n').length;
-        const line = typeof args.line === 'number' ? args.line : parseInt(args.line, 10);
+        const line = typeof args.line === 'number' ? args.line : parseInt(String(args.line), 10);
         if (isNaN(line) || line < 1 || line > lineCount) {
           useLogger()?.debug(`[NamingAnalyzer] Invalid line number ${args.line} for ${file.path}`);
           continue;

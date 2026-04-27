@@ -6,7 +6,7 @@ import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
 import { type MetricsFlags } from '@kb-labs/workflow-contracts';
 import { WorkflowDaemonClient } from '../http-client.js';
 
-type MetricsInput = MetricsFlags & { argv?: string[] };
+type MetricsInput = MetricsFlags & { argv?: string[]; flags?: MetricsFlags };
 
 export default defineCommand<unknown, MetricsInput, { exitCode: number }>({
   id: 'workflow:metrics',
@@ -14,7 +14,7 @@ export default defineCommand<unknown, MetricsInput, { exitCode: number }>({
 
   handler: {
     async execute(ctx: PluginContextV3, input: MetricsInput): Promise<{ exitCode: number }> {
-      const flags = (input as any).flags ?? input;
+      const flags = input.flags ?? input;
       const outputJson = flags.json ?? false;
 
       try {

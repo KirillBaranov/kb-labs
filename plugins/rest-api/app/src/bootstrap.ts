@@ -198,9 +198,10 @@ export async function bootstrap(cwd: string = process.cwd()): Promise<void> {
   await metricsCollector.start(10000, 60000); // Collect every 10s, TTL 60s
 
   // Start server
+  // Internal service — bind to loopback only. All public traffic goes through the gateway.
   const address = await server.listen({
     port: config.port,
-    host: '0.0.0.0',
+    host: process.env.REST_API_HOST ?? '127.0.0.1',
   });
 
   bootstrapLogger.info('REST API server listening', { address });

@@ -15,7 +15,7 @@
 
 import { promises as fs, mkdirSync, statSync, readFileSync, appendFileSync } from 'fs';
 import path from 'path';
-import type { Tracer } from '@kb-labs/agent-contracts';
+import type { Tracer, TraceEntry } from '@kb-labs/agent-contracts';
 import type { DetailedTraceEntry } from '@kb-labs/agent-contracts';
 import { redactTraceEvent } from './privacy-redactor.js';
 
@@ -198,7 +198,7 @@ export class IncrementalTraceWriter implements Tracer {
    * Every call = one appendFileSync. No buffering, no async, no lost events.
    * If the agent crashes on iteration 5, you have all events from iterations 1-5.
    */
-  trace(entry: any): void {
+  trace(entry: DetailedTraceEntry): void {
     try {
       const seq = ++this.seq;
       const timestamp = entry.timestamp || new Date().toISOString();
@@ -223,11 +223,11 @@ export class IncrementalTraceWriter implements Tracer {
    * Get all trace entries (reads from NDJSON file to avoid memory leak)
    * Returns TraceEntry[] for backward compatibility, but actual format is DetailedTraceEntry[]
    */
-  getEntries(): any[] {
+  getEntries(): TraceEntry[] {
     try {
       const content = readFileSync(this.filepath, 'utf-8');
       const lines = content.split('\n').filter(Boolean);
-      return lines.map((line: string) => JSON.parse(line));
+      return lines.map((line: string) => JSON.parse(line) as TraceEntry);
     } catch {
       // File doesn't exist yet or is empty
       return [];
@@ -278,7 +278,7 @@ export class IncrementalTraceWriter implements Tracer {
       }
 
       // Calculate summary statistics
-      const stats = this.calculateIndexStatistics(entries);
+      const stats = this.calculateIndexStatistics(entries as unknown as Record<string, unknown>[]);
 
       // Build index
       const index: TraceIndex = {
@@ -413,7 +413,7 @@ export class IncrementalTraceWriter implements Tracer {
   /**
    * Calculate index statistics from trace entries
    */
-  private calculateIndexStatistics(entries: any[]): {
+  private calculateIndexStatistics(entries: Record<string, unknown>[]): {
     eventCounts: Record<string, number>;
     iterations: Map<number, { eventCount: number; llmCalls: number; toolCalls: number }>;
     totalCost: number;
@@ -448,55 +448,66 @@ export class IncrementalTraceWriter implements Tracer {
 
     for (const entry of entries) {
       // Count by type
-      eventCounts[entry.type] = (eventCounts[entry.type] || 0) + 1;
+      const entryType = typeof entry['type'] === 'string' ? entry['type'] : undefined;
+      if (entryType !== undefined) {
+        eventCounts[entryType] = (eventCounts[entryType] || 0) + 1;
+      }
 
       // Count by iteration
-      if (entry.iteration !== undefined) {
-        if (!iterations.has(entry.iteration)) {
-          iterations.set(entry.iteration, { eventCount: 0, llmCalls: 0, toolCalls: 0 });
+      const entryIteration = typeof entry['iteration'] === 'number' ? entry['iteration'] : undefined;
+      if (entryIteration !== undefined) {
+        if (!iterations.has(entryIteration)) {
+          iterations.set(entryIteration, { eventCount: 0, llmCalls: 0, toolCalls: 0 });
         }
-        const iter = iterations.get(entry.iteration)!;
+        const iter = iterations.get(entryIteration)!;
         iter.eventCount++;
 
-        if (entry.type === 'llm:end') {
+        if (entryType === 'llm:end') {
           iter.llmCalls++;
-          if ('cost' in entry && entry.cost) {
-            totalCost += entry.cost.totalCost || 0;
+          const cost = entry['cost'];
+          if (cost !== null && typeof cost === 'object') {
+            totalCost += Number((cost as Record<string, unknown>)['totalCost']) || 0;
           }
         }
 
-        if (entry.type === 'tool:end') {
+        if (entryType === 'tool:end') {
           iter.toolCalls++;
         }
       }
 
       // Count errors
-      if (entry.type === 'error:captured') {
+      if (entryType === 'error:captured') {
         errors++;
       }
 
       // Aggregate memory events
-      if (entry.type === 'memory:fact_added') {
+      if (entryType === 'memory:fact_added') {
         totalFactsAdded++;
-        if (entry.factSheetStats) {
-          lastFactSheetSize = entry.factSheetStats.totalFacts || 0;
-          lastFactSheetTokens = entry.factSheetStats.estimatedTokens || 0;
+        const factSheetStats = entry['factSheetStats'];
+        if (factSheetStats !== null && typeof factSheetStats === 'object') {
+          const stats = factSheetStats as Record<string, unknown>;
+          lastFactSheetSize = Number(stats['totalFacts']) || 0;
+          lastFactSheetTokens = Number(stats['estimatedTokens']) || 0;
         }
       }
 
-      if (entry.type === 'memory:archive_store') {
+      if (entryType === 'memory:archive_store') {
         totalArchiveStores++;
-        if (entry.archiveStats) {
-          lastArchiveEntries = entry.archiveStats.totalEntries || 0;
-          lastArchiveUniqueFiles = entry.archiveStats.uniqueFiles || 0;
+        const archiveStats = entry['archiveStats'];
+        if (archiveStats !== null && typeof archiveStats === 'object') {
+          const stats = archiveStats as Record<string, unknown>;
+          lastArchiveEntries = Number(stats['totalEntries']) || 0;
+          lastArchiveUniqueFiles = Number(stats['uniqueFiles']) || 0;
         }
       }
 
-      if (entry.type === 'memory:summarization_result') {
+      if (entryType === 'memory:summarization_result') {
         summarizationRuns++;
-        if (entry.efficiency) {
-          compressionRatioSum += entry.efficiency.compressionRatio || 0;
-          newFactRateSum += entry.efficiency.newFactRate || 0;
+        const efficiency = entry['efficiency'];
+        if (efficiency !== null && typeof efficiency === 'object') {
+          const eff = efficiency as Record<string, unknown>;
+          compressionRatioSum += Number(eff['compressionRatio']) || 0;
+          newFactRateSum += Number(eff['newFactRate']) || 0;
         }
       }
     }

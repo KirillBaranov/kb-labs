@@ -75,11 +75,12 @@ export function runBuildCheck(options: BuildRunnerOptions): CheckResult {
       const durationMs = Date.now() - startMs;
       result.passed.push(pkg.name);
       onProgress?.(pkg.name, 'pass', durationMs);
-    } catch (err: any) {
+    } catch (err: unknown) {
       const durationMs = Date.now() - startMs;
       result.failed.push(pkg.name);
-      const rawErr = (err.stderr || err.stdout || err.message || '').trim();
-      result.errors[pkg.name] = rawErr.slice(0, 2000) || `Build failed (exit code ${err.status ?? 1})`;
+      const spawnErr = err as { stderr?: string; stdout?: string; message?: string; status?: number };
+      const rawErr = (spawnErr.stderr || spawnErr.stdout || spawnErr.message || '').trim();
+      result.errors[pkg.name] = rawErr.slice(0, 2000) || `Build failed (exit code ${spawnErr.status ?? 1})`;
       onProgress?.(pkg.name, 'fail', durationMs);
     }
   }

@@ -80,13 +80,16 @@ export interface AdapterResponse {
   error?: SerializableError;
 }
 
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null;
+}
+
 export function isAdapterResponse(msg: unknown): msg is AdapterResponse {
   return (
-    typeof msg === "object" &&
-    msg !== null &&
+    isRecord(msg) &&
     "type" in msg &&
-    (msg as any).type === "adapter:response" &&
+    msg["type"] === "adapter:response" &&
     "requestId" in msg &&
-    typeof (msg as any).requestId === "string"
+    typeof msg["requestId"] === "string"
   );
 }

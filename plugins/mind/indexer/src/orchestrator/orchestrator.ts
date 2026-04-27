@@ -81,11 +81,11 @@ export async function orchestrateIndexing(
     try {
       await indexMeta(ctx);
       await indexDocs(ctx);
-    } catch (error: any) {
-      ctx.log({ 
-        level: 'warn', 
-        msg: 'Meta/docs indexing failed', 
-        error: error.message 
+    } catch (error: unknown) {
+      ctx.log({
+        level: 'warn',
+        msg: 'Meta/docs indexing failed',
+        error: error instanceof Error ? error.message : String(error)
       });
     }
 
@@ -112,11 +112,11 @@ export async function orchestrateIndexing(
       durationMs: Date.now() - startTime
     };
 
-  } catch (error: any) {
-    ctx.log({ 
-      level: 'error', 
-      msg: 'Orchestration failed', 
-      error: error.message 
+  } catch (error: unknown) {
+    ctx.log({
+      level: 'error',
+      msg: 'Orchestration failed',
+      error: error instanceof Error ? error.message : String(error)
     });
     throw error;
   }

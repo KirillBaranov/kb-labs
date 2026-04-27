@@ -110,7 +110,7 @@ export function parseEnvFromRuntime<T extends EnvSchema>(
   runtime: RuntimeLike,
   schema: T
 ): InferFlagsType<T> {
-  const result: any = {};
+  const result: Record<string, unknown> = {};
 
   for (const [key, spec] of Object.entries(schema)) {
     const rawValue = runtime.env(key);
@@ -127,13 +127,13 @@ export function parseEnvFromRuntime<T extends EnvSchema>(
     result[key] = parseEnvValue(rawValue, key, spec);
   }
 
-  return result;
+  return result as unknown as InferFlagsType<T>;
 }
 
 /**
  * Parse single env value with type validation
  */
-function parseEnvValue(value: string | undefined, key: string, spec: FlagSpec): any {
+function parseEnvValue(value: string | undefined, key: string, spec: FlagSpec): string | boolean | number | undefined {
   if (value === undefined) {
     return undefined;
   }

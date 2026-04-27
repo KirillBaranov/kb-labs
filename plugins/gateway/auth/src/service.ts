@@ -39,7 +39,6 @@ export class AuthService {
     const secret = generateClientSecret();
     const record = buildClientRecord({
       name: req.name,
-      namespaceId: req.namespaceId,
       capabilities: req.capabilities ?? [],
       publicKey: req.publicKey,
       secret,
@@ -55,6 +54,7 @@ export class AuthService {
       clientId: record.clientId,
       clientSecret: secret,   // returned ONCE, never stored in plaintext
       hostId: record.hostId,
+      namespaceId: record.namespaceId,
     };
   }
 

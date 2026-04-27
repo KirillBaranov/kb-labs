@@ -29,12 +29,12 @@ export class ModuleTracker {
    * Start tracking module loads by proxying Module._load
    */
   start(): void {
-    const originalLoad = (Module as any)._load as (request: string, parent: any, isMain: boolean) => any;
+    const originalLoad = (Module as typeof Module & { _load?: (request: string, parent: NodeModule | null, isMain: boolean) => unknown })._load as (request: string, parent: NodeModule | null, isMain: boolean) => unknown;
     // eslint-disable-next-line @typescript-eslint/no-this-alias
     const self = this;
 
     // @ts-expect-error - Monkey-patch Module._load for tracking
-    Module._load = function (request: string, parent: any, isMain: boolean) {
+    Module._load = function (request: string, parent: NodeModule | null, isMain: boolean) {
       const start = performance.now();
       const parentName = parent?.filename || parent?.id || '<anonymous>';
 

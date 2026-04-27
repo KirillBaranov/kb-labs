@@ -77,7 +77,7 @@ export async function saveWorkflowConfig(
   const configPath = join(workspaceRoot, 'kb.config.json')
 
   // Load existing config
-  let existingConfig: any = {}
+  let existingConfig: Record<string, unknown> = {}
   try {
     const raw = await readFile(configPath, 'utf-8')
     existingConfig = JSON.parse(raw)
@@ -87,7 +87,7 @@ export async function saveWorkflowConfig(
   }
 
   // Merge workflow section
-  const currentWorkflow = existingConfig.workflow ?? {}
+  const currentWorkflow = (existingConfig.workflow ?? {}) as Record<string, unknown>
   const updatedWorkflow = {
     ...currentWorkflow,
     ...updates,

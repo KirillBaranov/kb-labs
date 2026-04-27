@@ -21,7 +21,7 @@ import { ChunkGatherer, type QueryFn } from './gatherer/chunk-gatherer';
 import { CompletenessChecker } from './checker/completeness-checker';
 import { ResponseSynthesizer } from './synthesizer/response-synthesizer';
 import { ResponseCompressor } from './compressor/response-compressor';
-import { QueryCache } from './cache/query-cache';
+import { QueryCache, type StateBrokerLike } from './cache/query-cache';
 import { createMindAnalytics, type MindAnalytics, type MindAnalyticsContext } from './analytics/index';
 import {
   type OrchestratorConfig,
@@ -42,7 +42,7 @@ function generateRequestId(): string {
 export interface AgentQueryOrchestratorOptions {
   config?: Partial<OrchestratorConfig>;
   llm?: ILLM;
-  broker?: any; // StateBroker-like interface (duck typing)
+  broker?: StateBrokerLike; // StateBroker-like interface (duck typing)
   analytics?: {
     enabled?: boolean;
     detailed?: boolean;

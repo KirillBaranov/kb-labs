@@ -14,7 +14,15 @@ type Flags = {
   json: { type: 'boolean'; description?: string };
 };
 
-export const logsSearch = defineSystemCommand<Flags, CommandResult>({
+interface LogSearchResult extends CommandResult {
+  _raw?: LogRecord[];
+  query?: string;
+  logs?: object[];
+  total?: number;
+  hasMore?: boolean;
+}
+
+export const logsSearch = defineSystemCommand<Flags, LogSearchResult>({
   name: 'search',
   description: 'Full-text search across logs',
   category: 'logs',
@@ -59,7 +67,7 @@ export const logsSearch = defineSystemCommand<Flags, CommandResult>({
   },
   formatter(result, ctx, flags) {
     if (flags.json) {
-      const { _raw, ...jsonResult } = result as any;
+      const { _raw, ...jsonResult } = result;
       ctx.ui.json(jsonResult);
       return;
     }
@@ -69,17 +77,17 @@ export const logsSearch = defineSystemCommand<Flags, CommandResult>({
       return;
     }
 
-    const raw = (result as any)._raw as LogRecord[];
+    const raw = result._raw;
     if (!raw || raw.length === 0) {
-      ctx.ui.write(`No logs found matching "${(result as any).query}".\n`);
+      ctx.ui.write(`No logs found matching "${result.query}".\n`);
       return;
     }
 
-    ctx.ui.write(`Search results for "${(result as any).query}":\n\n`);
+    ctx.ui.write(`Search results for "${result.query}":\n\n`);
     for (const record of raw) {
       ctx.ui.write(formatLogLine(record) + '\n');
     }
 
-    ctx.ui.write(`\n--- ${raw.length} of ${(result as any).total} matches ---\n`);
+    ctx.ui.write(`\n--- ${raw.length} of ${result.total} matches ---\n`);
   },
 });

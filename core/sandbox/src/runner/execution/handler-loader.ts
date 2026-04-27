@@ -16,7 +16,7 @@ export interface HandlerLoaderOptions {
 
 export interface LoadedHandler {
   /** The handler function to execute */
-  handlerFn: (...args: any[]) => Promise<unknown>;
+  handlerFn: (...args: unknown[]) => Promise<unknown>;
   /** The loaded module (for debugging) */
   module: Record<string, unknown>;
 }
@@ -60,7 +60,7 @@ export async function loadHandler(options: HandlerLoaderOptions): Promise<Loaded
   }
 
   return {
-    handlerFn: handlerFn as (...args: any[]) => Promise<unknown>,
+    handlerFn: handlerFn as (...args: unknown[]) => Promise<unknown>,
     module: handlerModule,
   };
 }

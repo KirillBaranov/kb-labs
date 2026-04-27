@@ -6,7 +6,7 @@ import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
 import { type ListFlags } from '@kb-labs/workflow-contracts';
 import { WorkflowDaemonClient } from '../http-client.js';
 
-type ListInput = ListFlags & { argv?: string[] };
+type ListInput = ListFlags & { argv?: string[]; flags?: ListFlags };
 
 export default defineCommand<unknown, ListInput, { exitCode: number }>({
   id: 'workflow:list',
@@ -15,7 +15,7 @@ export default defineCommand<unknown, ListInput, { exitCode: number }>({
   handler: {
     // eslint-disable-next-line sonarjs/cognitive-complexity -- Workflow listing with filtering (status/type), JSON/human output formats, run state formatting, and error handling
     async execute(ctx: PluginContextV3, input: ListInput): Promise<{ exitCode: number }> {
-      const flags = (input as any).flags ?? input;
+      const flags = input.flags ?? input;
       const outputJson = flags.json ?? false;
       const statusFilter = flags.status;
       const typeFilter = flags.type;
@@ -71,7 +71,7 @@ export default defineCommand<unknown, ListInput, { exitCode: number }>({
 
         // Filter by status if provided
         if (statusFilter) {
-          executions = executions.filter((exec: any) => exec.status === statusFilter);
+          executions = executions.filter((exec) => exec.status === statusFilter);
         }
 
         if (outputJson) {
