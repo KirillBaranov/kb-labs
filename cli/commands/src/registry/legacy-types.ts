@@ -4,10 +4,11 @@
  * for the adapter layer in service.ts
  */
 
-import type { FlagDefinition } from './types';
+import type { PluginContextV3 } from '@kb-labs/plugin-contracts';
+import type { FlagDefinition, RegisteredCommand } from './types';
 
 export interface CommandRun {
-  (ctx: unknown, argv: string[], flags: Record<string, unknown>): Promise<number | void>;
+  (ctx: PluginContextV3, argv: string[], flags: Record<string, unknown>): Promise<number | void>;
 }
 
 export interface Command {
@@ -31,10 +32,10 @@ export interface CommandGroup {
 export interface CommandRegistry {
   register(cmd: Command): void;
   registerGroup(group: CommandGroup): void;
-  registerManifest(cmd: Record<string, unknown>): void;
+  registerManifest(cmd: RegisteredCommand): void;
   list(): Command[];
   listGroups(): CommandGroup[];
-  listManifests(): Record<string, unknown>[];
+  listManifests(): RegisteredCommand[];
   markPartial(isPartial: boolean): void;
   isPartial(): boolean;
 }

@@ -38,7 +38,7 @@ export interface FlagDefinition {
   name: string;              // "profile"
   type: "string" | "boolean" | "number" | "array";
   alias?: string;            // "p" - single letter
-  default?: string | boolean | number | string[];
+  default?: unknown;
   description?: string;
   describe?: string;
   choices?: string[];        // ["dev", "prod"] - only for string type

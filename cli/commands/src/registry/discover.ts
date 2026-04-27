@@ -25,7 +25,7 @@ function _detectRepoRoot(start = process.cwd()): string {
 }
 import { parse as parseYaml } from 'yaml';
 import { glob } from 'glob';
-import type { CommandManifest, DiscoveryResult, CacheFile, PackageCacheEntry } from './types';
+import type { CommandManifest, CommandModule, DiscoveryResult, CacheFile, PackageCacheEntry } from './types';
 import type { ManifestV3 } from '@kb-labs/plugin-contracts';
 import { toPosixPath } from '../utils/path';
 import { validateManifests, normalizeManifest } from './schema';
@@ -76,8 +76,8 @@ const _SETUP_COMMAND_FLAGS = [
  * Create loader stub for ManifestV3 commands.
  * Loader should never be executed directly – CLI adapters must handle execution.
  */
-function createManifestV3Loader(commandId: string): () => Promise<{ run: unknown }> {
-  return async () => {
+function createManifestV3Loader(commandId: string): () => Promise<CommandModule> {
+  return async (): Promise<CommandModule> => {
     throw new Error(
       `Loader should not be called for ManifestV3 command ${commandId}. Use plugin-adapter-cli executeCommand instead.`
     );

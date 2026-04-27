@@ -13,8 +13,9 @@ export async function runCommand(
   flags: Record<string, unknown>,
 ): Promise<number> {
   if (!cmd.available) {
-    if (ctx.presenter?.json) {
-      ctx.presenter.json({
+    const presenter = ctx.presenter as { json?: (data: unknown) => void } | undefined;
+    if (presenter?.json) {
+      presenter.json({
         ok: false,
         available: false,
         command: cmd.manifest.id,

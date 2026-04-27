@@ -44,11 +44,14 @@ type PluginsRegistryResult = CommandResult & {
  * Find REST API manifest path in a package
  */
 async function findRestApiManifestPath(pkgRoot: string, pkg: Record<string, unknown>): Promise<string | null> {
+  const kbLabs = pkg.kbLabs as Record<string, unknown> | undefined;
+  const kb = pkg.kb as Record<string, unknown> | undefined;
+
   // Check package.json.kbLabs.manifest
-  if (pkg.kbLabs?.manifest) {
-    const manifestPath = path.isAbsolute(pkg.kbLabs.manifest)
-      ? pkg.kbLabs.manifest
-      : path.join(pkgRoot, pkg.kbLabs.manifest);
+  if (typeof kbLabs?.manifest === 'string') {
+    const manifestPath = path.isAbsolute(kbLabs.manifest)
+      ? kbLabs.manifest
+      : path.join(pkgRoot, kbLabs.manifest);
     try {
       await fs.access(manifestPath);
       return manifestPath;
@@ -58,10 +61,10 @@ async function findRestApiManifestPath(pkgRoot: string, pkg: Record<string, unkn
   }
 
   // Check package.json.kb.manifest (alternative format)
-  if (pkg.kb?.manifest) {
-    const manifestPath = path.isAbsolute(pkg.kb.manifest)
-      ? pkg.kb.manifest
-      : path.join(pkgRoot, pkg.kb.manifest);
+  if (typeof kb?.manifest === 'string') {
+    const manifestPath = path.isAbsolute(kb.manifest)
+      ? kb.manifest
+      : path.join(pkgRoot, kb.manifest);
     try {
       await fs.access(manifestPath);
       return manifestPath;
@@ -71,8 +74,8 @@ async function findRestApiManifestPath(pkgRoot: string, pkg: Record<string, unkn
   }
 
   // Check package.json.kbLabs.plugins array
-  if (Array.isArray(pkg.kbLabs?.plugins)) {
-    for (const pluginPath of pkg.kbLabs.plugins) {
+  if (Array.isArray(kbLabs?.plugins)) {
+    for (const pluginPath of kbLabs.plugins as string[]) {
       const manifestPath = path.isAbsolute(pluginPath)
         ? pluginPath
         : path.join(pkgRoot, pluginPath);
@@ -86,8 +89,8 @@ async function findRestApiManifestPath(pkgRoot: string, pkg: Record<string, unkn
   }
 
   // Check package.json.kb.plugins array (alternative format)
-  if (Array.isArray(pkg.kb?.plugins)) {
-    for (const pluginPath of pkg.kb.plugins) {
+  if (Array.isArray(kb?.plugins)) {
+    for (const pluginPath of kb.plugins as string[]) {
       const manifestPath = path.isAbsolute(pluginPath)
         ? pluginPath
         : path.join(pkgRoot, pluginPath);

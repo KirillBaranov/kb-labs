@@ -263,7 +263,7 @@ class InMemoryRegistry implements CommandRegistry {
         });
         this.byName.set(subgroupKey, this.groups.get(subgroupKey)!);
       }
-      this.groups.get(subgroupKey)!.commands.push(commandAdapter);
+      (this.groups.get(subgroupKey)! as any).commands.push(commandAdapter);
 
       // Also register 2-part in byName for display
       const twoPartSpace = `${group} ${id}`;

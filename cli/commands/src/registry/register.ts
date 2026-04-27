@@ -499,10 +499,7 @@ export async function disposeAllPlugins(registry: CommandRegistry, logger?: ILog
     const disposeHook = cmd._disposeHook;
     if (disposeHook && typeof disposeHook === 'function') {
       disposePromises.push(
-        Promise.resolve(disposeHook({
-          registry,
-          command: cmd,
-        })).catch((err: unknown) => {
+        Promise.resolve(disposeHook()).catch((err: unknown) => {
           const errMsg = err instanceof Error ? err.message : String(err);
           log.warn(`Dispose hook failed for ${cmd.manifest.id}: ${errMsg}`);
         })
