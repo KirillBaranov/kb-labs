@@ -2,12 +2,12 @@
  * Search tools for finding files and content
  */
 
-import { execSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { execa } from 'execa';
 import type { Tool, ToolContext } from '../../types.js';
 import { toolError } from '../shared/tool-error.js';
-import { SEARCH_CONFIG, ALL_SOURCE_EXTENSIONS, toRgIncludes, toFindNames, shellSingleQuote } from '../../config.js';
+import { SEARCH_CONFIG, ALL_SOURCE_EXTENSIONS, toRgIncludesArgs, toFindNamesArgs } from '../../config.js';
 import { normalizeOffsetLimit as _normalizeOffsetLimit, suggestDirectory } from '../../utils.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -25,21 +25,26 @@ const DEFAULT_EXCLUDES = SEARCH_CONFIG.defaultExcludes;
 const MAX_OUTPUT_CHARS = SEARCH_CONFIG.maxOutputChars;
 
 /**
- * Build find exclude flags from exclude list
+ * Build find exclude args from exclude list.
+ * Returns flat triplets: ['!', '-path', '*\/node_modules\/*', '!', '-path', ...]
  */
-function buildFindExcludes(excludes: readonly string[]): string {
-  return excludes.map(d => `! -path ${shellSingleQuote(`*/${d}/*`)}`).join(' ');
+function buildFindExcludes(excludes: readonly string[]): string[] {
+  const args: string[] = [];
+  for (const d of excludes) {
+    args.push('!', '-path', `*/${d}/*`);
+  }
+  return args;
 }
 
 /**
- * Build grep exclude-dir flags from exclude list
+ * Build grep exclude-dir args from exclude list.
+ * Returns: ['--exclude-dir=node_modules', '--exclude-dir=dist', ...]
  */
-function buildGrepExcludes(excludes: readonly string[]): string {
-  return excludes.map(d => `--exclude-dir=${shellSingleQuote(d)}`).join(' ');
+function buildGrepExcludes(excludes: readonly string[]): string[] {
+  return excludes.map(d => `--exclude-dir=${d}`);
 }
 
 const SEARCH_TIMEOUT_MS = SEARCH_CONFIG.timeoutMs;
-const SEARCH_MAX_BUFFER = SEARCH_CONFIG.maxBuffer;
 const DEFAULT_RESULT_LIMIT = SEARCH_CONFIG.defaultResultLimit;
 const MAX_RESULT_LIMIT = SEARCH_CONFIG.maxResultLimit;
 
@@ -140,19 +145,24 @@ export function createGlobSearchTool(context: ToolContext): Tool {
         }
 
         const windowSize = Math.min(2000, Math.max(500, offset + limit));
-        const cmd = `find ${shellSingleQuote(fullPath)} -type f -iname ${shellSingleQuote(pattern)} ${buildFindExcludes(excludes)} | head -${windowSize}`;
 
-        const output = execSync(cmd, {
+        const args = [
+          fullPath,
+          '-type', 'f',
+          '-iname', pattern,
+          ...buildFindExcludes(excludes),
+        ];
+
+        const result = await execa('find', args, {
           cwd: context.workingDir,
-          encoding: 'utf-8',
-          maxBuffer: SEARCH_MAX_BUFFER,
+          reject: false,
           timeout: SEARCH_TIMEOUT_MS,
         });
 
-        const files = output
-          .trim()
+        const files = result.stdout
           .split('\n')
           .filter(Boolean)
+          .slice(0, windowSize)
           .map(f => path.relative(context.workingDir, f));
 
         if (files.length === 0) {
@@ -164,7 +174,7 @@ export function createGlobSearchTool(context: ToolContext): Tool {
 
         const page = paginate(files, offset, limit);
         const excludeNote = `[Excluded: ${DEFAULT_EXCLUDES.join(', ')}${extra && extra.length > 0 ? ` + ${extra.join(', ')}` : ''}]`;
-        const result = [
+        const resultText = [
           `Found ${files.length} file(s) matching "${pattern}" in "${directory}" (showing ${page.page.length}, offset=${offset}, limit=${limit})`,
           excludeNote,
           '',
@@ -178,7 +188,7 @@ export function createGlobSearchTool(context: ToolContext): Tool {
 
         return {
           success: true,
-          output: trimOutput(result, MAX_OUTPUT_CHARS, continuationHint),
+          output: trimOutput(resultText, MAX_OUTPUT_CHARS, continuationHint),
           metadata: {
             totalMatches: files.length,
             offset,
@@ -284,50 +294,64 @@ export function createGrepSearchTool(context: ToolContext): Tool {
         }
 
         const windowSize = Math.min(2000, Math.max(500, offset + limit));
-        const includeFlag = filePattern ? ` --include=${shellSingleQuote(filePattern)}` : '';
-        const regexCmd = `grep -rIn ${shellSingleQuote(pattern)} ${shellSingleQuote(fullPath)} ${buildGrepExcludes(excludes)}${includeFlag}`;
-        const literalCmd = `grep -rIFn ${shellSingleQuote(pattern)} ${shellSingleQuote(fullPath)} ${buildGrepExcludes(excludes)}${includeFlag}`;
-        let cmd = mode === 'literal' ? literalCmd : regexCmd;
-        cmd += ` | head -${windowSize}`;
+
+        const buildArgs = (literal: boolean): string[] => {
+          const args: string[] = ['-rIn'];
+          if (literal) {args.push('-F');}
+          args.push(pattern, fullPath);
+          args.push(...buildGrepExcludes(excludes));
+          if (filePattern) {
+            args.push(`--include=${filePattern}`);
+          }
+          return args;
+        };
 
         let output = '';
         let usedLiteralFallback = false;
 
-        try {
-          output = execSync(cmd, {
+        const runGrep = async (literal: boolean): Promise<{ stdout: string; exitCode: number; stderr: string }> => {
+          const res = await execa('grep', buildArgs(literal), {
             cwd: context.workingDir,
-            encoding: 'utf-8',
-            maxBuffer: SEARCH_MAX_BUFFER,
+            reject: false,
             timeout: SEARCH_TIMEOUT_MS,
           });
-        } catch (error) {
-          const status = (error as { status?: number }).status;
-          const stderrRaw = (error as { stderr?: string | Buffer }).stderr;
-          const stderr = typeof stderrRaw === 'string'
-            ? stderrRaw
-            : stderrRaw instanceof Buffer
-              ? stderrRaw.toString('utf-8')
-              : '';
-          const looksLikeInvalidRegex = status === 2
-            && /(unbalanced|parentheses|invalid regular expression|regular expression)/i.test(stderr);
+          return { stdout: res.stdout, exitCode: res.exitCode ?? 0, stderr: res.stderr };
+        };
 
-          if (!looksLikeInvalidRegex) {
-            throw error;
-          }
+        const initial = await runGrep(mode === 'literal');
 
-          usedLiteralFallback = true;
-          if (mode === 'regex') {
-            throw error;
+        if (initial.exitCode === 2) {
+          // exit code 2 = grep error (e.g. invalid regex)
+          const looksLikeInvalidRegex = /(unbalanced|parentheses|invalid regular expression|regular expression)/i.test(initial.stderr);
+          if (looksLikeInvalidRegex && mode !== 'regex') {
+            // auto mode: fall back to literal
+            usedLiteralFallback = true;
+            const fallback = await runGrep(true);
+            output = fallback.stdout;
+            if (fallback.exitCode === 2) {
+              return toolError({
+                code: 'SEARCH_FAILED',
+                message: `Grep search failed: ${fallback.stderr}`,
+                retryable: true,
+                hint: 'Try mode="literal" for special characters, or narrow directory.',
+                details: { directory, pattern, filePattern, mode },
+              });
+            }
+          } else {
+            return toolError({
+              code: 'SEARCH_FAILED',
+              message: `Grep search failed: ${initial.stderr}`,
+              retryable: true,
+              hint: 'Try mode="literal" for special characters, or narrow directory.',
+              details: { directory, pattern, filePattern, mode },
+            });
           }
-          output = execSync(`${literalCmd} | head -${windowSize}`, {
-            cwd: context.workingDir,
-            encoding: 'utf-8',
-            maxBuffer: SEARCH_MAX_BUFFER,
-            timeout: SEARCH_TIMEOUT_MS,
-          });
+        } else {
+          // exitCode 0 = matches found, exitCode 1 = no matches (grep convention)
+          output = initial.stdout;
         }
 
-        const lines = output.trim().split('\n').filter(Boolean);
+        const lines = output.split('\n').filter(Boolean).slice(0, windowSize);
 
         if (lines.length === 0) {
           return {
@@ -338,7 +362,7 @@ export function createGrepSearchTool(context: ToolContext): Tool {
 
         const page = paginate(lines, offset, limit);
         const excludeNote = `[Excluded: ${DEFAULT_EXCLUDES.join(', ')}${extra && extra.length > 0 ? ` + ${extra.join(', ')}` : ''}]`;
-        const result = [
+        const resultText = [
           `Found ${lines.length} match(es) for "${pattern}" in "${directory}"${filePattern ? ` (${filePattern})` : ''}${usedLiteralFallback ? ' (literal fallback)' : ''} (showing ${page.page.length}, offset=${offset}, limit=${limit})`,
           excludeNote,
           '',
@@ -360,7 +384,7 @@ export function createGrepSearchTool(context: ToolContext): Tool {
 
         return {
           success: true,
-          output: trimOutput(result, MAX_OUTPUT_CHARS, continuationHint),
+          output: trimOutput(resultText, MAX_OUTPUT_CHARS, continuationHint),
           metadata: {
             totalMatches: lines.length,
             offset,
@@ -371,17 +395,6 @@ export function createGrepSearchTool(context: ToolContext): Tool {
           },
         };
       } catch (error) {
-        // grep returns exit code 1 when no matches found
-        if (error instanceof Error && 'status' in error) {
-          const err = error as Error & { status?: number; killed?: boolean };
-          if (err.status === 1) {
-            return {
-              success: true,
-              output: `No matches found for "${pattern}" in ${directory === '.' ? 'project root' : directory}.${filePattern ? '' : ' Try adding filePattern (e.g. "*.ts") to narrow the search.'}`,
-            };
-          }
-        }
-
         if (error instanceof Error && 'killed' in error && (error as Error & { killed?: boolean }).killed) {
           return toolError({
             code: 'SEARCH_TIMEOUT',
@@ -454,30 +467,26 @@ export function createListFilesTool(context: ToolContext): Tool {
       try {
         const fullPath = path.resolve(context.workingDir, directory);
 
-        // Build ls/find command
-        let cmd: string;
         if (recursive) {
-          cmd = `find ${shellSingleQuote(fullPath)} -type f \
-            ! -path '*/node_modules/*' \
-            ! -path '*/.git/*' \
-            ! -path '*/dist/*' \
-            ! -path '*/.kb/*' \
-            | head -100`;
-        } else {
-          cmd = `ls -la ${shellSingleQuote(fullPath)} 2>/dev/null || echo "Directory not found"`;
-        }
+          const args = [
+            fullPath,
+            '-type', 'f',
+            '!', '-path', '*/node_modules/*',
+            '!', '-path', '*/.git/*',
+            '!', '-path', '*/dist/*',
+            '!', '-path', '*/.kb/*',
+          ];
 
-        const output = execSync(cmd, {
-          cwd: context.workingDir,
-          encoding: 'utf-8',
-          maxBuffer: 1024 * 1024,
-        });
+          const result = await execa('find', args, {
+            cwd: context.workingDir,
+            reject: false,
+            timeout: SEARCH_TIMEOUT_MS,
+          });
 
-        if (recursive) {
-          const files = output
-            .trim()
+          const files = result.stdout
             .split('\n')
             .filter(Boolean)
+            .slice(0, 100)
             .map(f => path.relative(context.workingDir, f));
 
           const page = paginate(files, offset, limit);
@@ -496,9 +505,27 @@ export function createListFilesTool(context: ToolContext): Tool {
           };
         }
 
+        // Non-recursive: use fs.readdirSync to avoid shell entirely
+        let entries: fs.Dirent[];
+        try {
+          entries = fs.readdirSync(fullPath, { withFileTypes: true });
+        } catch {
+          return {
+            success: true,
+            output: 'Directory not found',
+          };
+        }
+
+        const lines = entries
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map(e => {
+            const indicator = e.isDirectory() ? '/' : e.isSymbolicLink() ? '@' : '';
+            return `${e.name}${indicator}`;
+          });
+
         return {
           success: true,
-          output: `Contents of ${directory}:\n\n${output}`,
+          output: `Contents of ${directory}:\n\n${lines.join('\n')}`,
         };
       } catch (error) {
         return {
@@ -586,30 +613,32 @@ export function createFindDefinitionTool(context: ToolContext): Tool {
         ];
 
         // Build include flags for grep
-        let includeFlags = '';
+        let includeArgs: string[];
         if (filePattern) {
-          includeFlags = `--include=${shellSingleQuote(filePattern)}`;
+          includeArgs = [`--include=${filePattern}`];
         } else {
           // Default: search common source file extensions
-          includeFlags = toRgIncludes(ALL_SOURCE_EXTENSIONS);
+          includeArgs = toRgIncludesArgs(ALL_SOURCE_EXTENSIONS);
         }
 
-        const cmd = `grep -rn -E ${shellSingleQuote(`(${patterns.join('|')})`)} ${shellSingleQuote(fullPath)} \
-          ${includeFlags} \
-          ${buildGrepExcludes(DEFAULT_EXCLUDES)} \
-          --exclude-dir=bin \
-          --exclude-dir=obj \
-          --exclude-dir=target \
-          | head -30`;
+        const args = [
+          '-rn', '-E',
+          `(${patterns.join('|')})`,
+          fullPath,
+          ...includeArgs,
+          ...buildGrepExcludes(DEFAULT_EXCLUDES),
+          '--exclude-dir=bin',
+          '--exclude-dir=obj',
+          '--exclude-dir=target',
+        ];
 
-        const output = execSync(cmd, {
+        const result = await execa('grep', args, {
           cwd: context.workingDir,
-          encoding: 'utf-8',
-          maxBuffer: 1024 * 1024,
+          reject: false,
           timeout: SEARCH_TIMEOUT_MS,
         });
 
-        const lines = output.trim().split('\n').filter(Boolean);
+        const lines = result.stdout.split('\n').filter(Boolean).slice(0, 30);
 
         if (lines.length === 0) {
           return {
@@ -618,7 +647,7 @@ export function createFindDefinitionTool(context: ToolContext): Tool {
           };
         }
 
-        const result = lines.map(line => {
+        const resultLines = lines.map(line => {
           const match = line.match(/^(.+?):(\d+):(.+)$/);
           if (match) {
             const [, filePath, lineNum, content] = match;
@@ -630,18 +659,9 @@ export function createFindDefinitionTool(context: ToolContext): Tool {
 
         return {
           success: true,
-          output: `Found definition(s) for "${name}":\n\n${result.join('\n\n')}`,
+          output: `Found definition(s) for "${name}":\n\n${resultLines.join('\n\n')}`,
         };
       } catch (error) {
-        if (error instanceof Error && 'status' in error) {
-          const err = error as Error & { status?: number; killed?: boolean };
-          if (err.status === 1) {
-            return {
-              success: true,
-              output: `No definition found for "${name}" in ${directory === '.' ? 'project root' : directory}. Try: grep_search for text matching, or glob_search with "*${name.toLowerCase()}*" for filename matching.`,
-            };
-          }
-        }
         if (error instanceof Error && 'killed' in error && (error as Error & { killed?: boolean }).killed) {
           return {
             success: false,
@@ -811,47 +831,69 @@ export function createCodeStatsTool(context: ToolContext): Tool {
           return { success: true, output: dirError };
         }
 
-        // Build extension filter
-        let extFilter: string;
+        // Build extension filter args
+        let extFilterArgs: string[];
         if (extensionsInput) {
           const exts = extensionsInput.split(',').map(e => e.trim());
-          extFilter = toFindNames(exts);
+          extFilterArgs = toFindNamesArgs(exts);
         } else {
-          // Default: common source file extensions
-          extFilter = toFindNames(ALL_SOURCE_EXTENSIONS);
+          extFilterArgs = toFindNamesArgs(ALL_SOURCE_EXTENSIONS);
         }
 
-        // Count lines total
-        const totalCmd = `find ${shellSingleQuote(fullPath)} -type f \\( ${extFilter} \\) \
-          ! -path '*/node_modules/*' ! -path '*/dist/*' ! -path '*/.git/*' \
-          ! -path '*/bin/*' ! -path '*/obj/*' ! -path '*/target/*' ! -path '*/__pycache__/*' \
-          -exec wc -l {} + 2>/dev/null | tail -1 || echo "0 total"`;
+        const commonExcludes = [
+          '!', '-path', '*/node_modules/*',
+          '!', '-path', '*/dist/*',
+          '!', '-path', '*/.git/*',
+          '!', '-path', '*/bin/*',
+          '!', '-path', '*/obj/*',
+          '!', '-path', '*/target/*',
+          '!', '-path', '*/__pycache__/*',
+        ];
 
-        const totalOutput = execSync(totalCmd, {
+        // Find matching files (used as base for all three queries)
+        const findArgs = [
+          fullPath,
+          '-type', 'f',
+          '(',
+          ...extFilterArgs,
+          ')',
+          ...commonExcludes,
+        ];
+
+        const findResult = await execa('find', findArgs, {
           cwd: context.workingDir,
-          encoding: 'utf-8',
-        }).trim();
+          reject: false,
+          timeout: SEARCH_TIMEOUT_MS,
+        });
 
-        // Count files by extension
-        const countByExtCmd = `find ${shellSingleQuote(fullPath)} -type f \\( ${extFilter} \\) \
-          ! -path '*/node_modules/*' ! -path '*/dist/*' ! -path '*/.git/*' \
-          ! -path '*/bin/*' ! -path '*/obj/*' ! -path '*/target/*' ! -path '*/__pycache__/*' \
-          | sed 's/.*\\.//' | sort | uniq -c | sort -rn | head -200`;
+        const filePaths = findResult.stdout.split('\n').filter(Boolean);
 
-        const countByExt = execSync(countByExtCmd, {
-          cwd: context.workingDir,
-          encoding: 'utf-8',
-        }).trim().split('\n').filter(Boolean);
+        // Count total files
+        const fileCount = filePaths.length;
 
-        // Total file count
-        const fileCountCmd = `find ${shellSingleQuote(fullPath)} -type f \\( ${extFilter} \\) \
-          ! -path '*/node_modules/*' ! -path '*/dist/*' ! -path '*/.git/*' \
-          ! -path '*/bin/*' ! -path '*/obj/*' ! -path '*/target/*' ! -path '*/__pycache__/*' | wc -l`;
+        // Count by extension using JS
+        const extCounts = new Map<string, number>();
+        for (const fp of filePaths) {
+          const ext = fp.includes('.') ? fp.split('.').pop()! : '(no ext)';
+          extCounts.set(ext, (extCounts.get(ext) ?? 0) + 1);
+        }
+        const countByExt = [...extCounts.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 200)
+          .map(([ext, count]) => `  ${count} ${ext}`);
 
-        const fileCount = execSync(fileCountCmd, {
-          cwd: context.workingDir,
-          encoding: 'utf-8',
-        }).trim();
+        // Count total lines using wc -l on found files (batch call)
+        let totalOutput = '0 total';
+        if (filePaths.length > 0) {
+          const wcResult = await execa('wc', ['-l', ...filePaths], {
+            cwd: context.workingDir,
+            reject: false,
+          });
+          // wc -l outputs a total line at the end when given multiple files
+          const wcLines = wcResult.stdout.trim().split('\n').filter(Boolean);
+          const lastLine = wcLines[wcLines.length - 1] ?? '';
+          totalOutput = lastLine.trim();
+        }
 
         const page = paginate(countByExt, offset, limit);
         return {
