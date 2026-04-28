@@ -240,6 +240,51 @@ echo "  [diag] kblabs-gateway import from platform dir: $GW_IMPORT"
 LOCK_KEYS=$(python3 -c "import json; d=json.load(open('$PLATFORM_DIR/.kb/marketplace.lock')); print(', '.join(list(d.get('installed',{}).keys())[:10]))" 2>/dev/null || echo "no-lock")
 echo "  [diag] marketplace.lock keys (first 10): $LOCK_KEYS"
 
+# Diagnostic: simulate config-loader (loadEnvFile + interpolateConfig) to check kbClientId.
+# Uses python3 to avoid shell escaping issues with ${...} patterns.
+python3 << 'PYEOF'
+import re, sys, os
+
+# Step 1: load project .env (mirrors config-loader loadEnvFile)
+env_extra = {}
+env_path = '/tmp/work/my-project/.env'
+try:
+    for line in open(env_path).read().splitlines():
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        eq = line.find('=')
+        if eq < 0:
+            continue
+        k = line[:eq].strip()
+        v = line[eq+1:].strip().strip('"\'')
+        if k:
+            env_extra[k] = v
+except Exception as e:
+    print(f'  [diag] .env read error: {e}')
+
+kid_env = env_extra.get('KB_GATEWAY_CLIENT_ID', os.environ.get('KB_GATEWAY_CLIENT_ID', ''))
+print(f'  [diag] KB_GATEWAY_CLIENT_ID from .env: {kid_env[:8]}{"..." if kid_env else "(EMPTY)"}')
+
+# Step 2: read platform config adapterOptions.llm.kbClientId
+try:
+    txt = open('/root/kb-platform/.kb/kb.config.jsonc').read()
+    txt = re.sub(r'//[^\n]*', '', txt)
+    txt = re.sub(r',(\s*[}\]])', r'\1', txt)
+    cfg = __import__('json').loads(txt)
+    llm = cfg.get('adapterOptions', {}).get('llm', {})
+    raw_id = llm.get('kbClientId', 'MISSING')
+    print(f'  [diag] kbClientId raw in config: {raw_id[:40]}')
+    # Step 3: interpolate (mirrors interpolateConfig)
+    merged_env = {**os.environ, **env_extra}
+    def interpolate(s):
+        return re.sub(r'\$\{([^}]+)\}', lambda m: merged_env.get(m.group(1), f'UNRESOLVED:{m.group(1)}'), s)
+    resolved = interpolate(raw_id)
+    print(f'  [diag] kbClientId after interpolation: {resolved[:8]}{"..." if resolved and not resolved.startswith("UNRESOLVED") else "(UNRESOLVED or EMPTY)"}')
+except Exception as e:
+    print(f'  [diag] platform config parse error: {e}')
+PYEOF
+
 COMMIT_OUT=$(KB_LOG_LEVEL=debug kb commit commit --dry-run 2>&1 || true)
 if echo "$COMMIT_OUT" | grep -q "LLM: Phase"; then
   LLM_LINE=$(echo "$COMMIT_OUT" | grep "LLM:" | head -1)
