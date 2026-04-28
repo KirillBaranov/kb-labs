@@ -14,14 +14,15 @@ import (
 
 // fakePM is a no-op package manager for use in tests.
 type fakePM struct {
-	failErr error
-	name    string
-	failOn  string
-	calls   []string
+	failErr  error
+	name     string
+	registry string
+	failOn   string
+	calls    []string
 }
 
 func (f *fakePM) Name() string        { return f.name }
-func (f *fakePM) RegistryURL() string { return "" }
+func (f *fakePM) RegistryURL() string { return f.registry }
 
 func (f *fakePM) Install(dir string, pkgs []string, ch chan<- pm.Progress) error {
 	for _, p := range pkgs {
@@ -457,6 +458,117 @@ func TestInstallInvokesOnStep(t *testing.T) {
 	// 3 steps: packages + scan + config (no binaries in sampleManifest)
 	if len(steps) != 3 {
 		t.Errorf("OnStep called %d times, want 3; steps = %v", len(steps), steps)
+	}
+}
+
+// ── provenance ────────────────────────────────────────────────────────────────
+
+// TestInstallWritesSourceProvenance verifies that Install persists the registry
+// URL and installer version into PlatformConfig.Source.
+func TestInstallWritesSourceProvenance(t *testing.T) {
+	platformDir := t.TempDir()
+	projectDir := t.TempDir()
+
+	fake := &fakePM{name: "npm", registry: "http://localhost:4873"}
+	ins := &Installer{PM: fake, Log: discardLogger(), Version: "1.5.0"}
+	m := sampleManifest()
+	sel := &Selection{PlatformDir: platformDir, ProjectCWD: projectDir}
+
+	if _, err := ins.Install(sel, &m); err != nil {
+		t.Fatalf("Install() error = %v", err)
+	}
+
+	cfg, err := config.Read(platformDir)
+	if err != nil {
+		t.Fatalf("config.Read() error = %v", err)
+	}
+
+	if cfg.Source.Registry != "http://localhost:4873" {
+		t.Errorf("Source.Registry = %q, want %q", cfg.Source.Registry, "http://localhost:4873")
+	}
+	if cfg.Source.InstalledBy != "kb-create@1.5.0" {
+		t.Errorf("Source.InstalledBy = %q, want %q", cfg.Source.InstalledBy, "kb-create@1.5.0")
+	}
+	if cfg.Source.InstalledAt.IsZero() {
+		t.Error("Source.InstalledAt is zero")
+	}
+}
+
+// TestUpdateWritesProvenance verifies that Update fills UpdatedAt, UpdatedBy,
+// and updates Source.Registry when the pm has a custom registry set.
+func TestUpdateWritesProvenance(t *testing.T) {
+	dir := t.TempDir()
+
+	installed := manifest.Manifest{
+		Version: "1.0.0",
+		Core:    []manifest.Package{{Name: "@kb-labs/cli-bin"}},
+	}
+	cfg := config.NewConfig(dir, dir, "npm", "", "", &installed, config.TelemetryConfig{})
+	if err := config.Write(dir, cfg); err != nil {
+		t.Fatalf("config.Write() error = %v", err)
+	}
+
+	current := manifest.Manifest{
+		Version: "1.1.0",
+		Core:    []manifest.Package{{Name: "@kb-labs/cli-bin"}},
+	}
+
+	fake := &fakePM{name: "npm", registry: "http://localhost:4873"}
+	ins := &Installer{PM: fake, Log: discardLogger(), Version: "1.6.0"}
+
+	if _, err := ins.Update(dir, &current); err != nil {
+		t.Fatalf("Update() error = %v", err)
+	}
+
+	got, err := config.Read(dir)
+	if err != nil {
+		t.Fatalf("config.Read() after Update error = %v", err)
+	}
+
+	if got.UpdatedAt.IsZero() {
+		t.Error("UpdatedAt is zero after Update()")
+	}
+	if got.UpdatedBy != "kb-create@1.6.0" {
+		t.Errorf("UpdatedBy = %q, want %q", got.UpdatedBy, "kb-create@1.6.0")
+	}
+	if got.Source.Registry != "http://localhost:4873" {
+		t.Errorf("Source.Registry = %q, want %q", got.Source.Registry, "http://localhost:4873")
+	}
+}
+
+// TestUpdatePreservesSourceRegistryWhenNoRegistry verifies that Update does
+// not overwrite Source.Registry when the pm has no custom registry set
+// (the original install registry must be preserved).
+func TestUpdatePreservesSourceRegistryWhenNoRegistry(t *testing.T) {
+	dir := t.TempDir()
+
+	installed := manifest.Manifest{
+		Version: "1.0.0",
+		Core:    []manifest.Package{{Name: "@kb-labs/cli-bin"}},
+	}
+	cfg := config.NewConfig(dir, dir, "npm", "http://localhost:4873", "kb-create@1.0.0", &installed, config.TelemetryConfig{})
+	if err := config.Write(dir, cfg); err != nil {
+		t.Fatalf("config.Write() error = %v", err)
+	}
+
+	current := manifest.Manifest{
+		Version: "1.1.0",
+		Core:    []manifest.Package{{Name: "@kb-labs/cli-bin"}},
+	}
+
+	// Update without a custom registry — original Source.Registry must survive.
+	ins := &Installer{PM: &fakePM{name: "npm"}, Log: discardLogger()}
+	if _, err := ins.Update(dir, &current); err != nil {
+		t.Fatalf("Update() error = %v", err)
+	}
+
+	got, err := config.Read(dir)
+	if err != nil {
+		t.Fatalf("config.Read() after Update error = %v", err)
+	}
+
+	if got.Source.Registry != "http://localhost:4873" {
+		t.Errorf("Source.Registry changed unexpectedly: got %q, want %q", got.Source.Registry, "http://localhost:4873")
 	}
 }
 

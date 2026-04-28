@@ -142,6 +142,34 @@ func TestEnsureNpmrcWritesDefaultWhenNoRegistry(t *testing.T) {
 	}
 }
 
+// TestNpmRegistryURL verifies NpmManager.RegistryURL reflects the configured value.
+func TestNpmRegistryURL(t *testing.T) {
+	if got := (&NpmManager{}).RegistryURL(); got != "" {
+		t.Errorf("NpmManager{}.RegistryURL() = %q, want empty", got)
+	}
+	if got := (&NpmManager{Registry: "http://localhost:4873"}).RegistryURL(); got != "http://localhost:4873" {
+		t.Errorf("NpmManager.RegistryURL() = %q, want %q", got, "http://localhost:4873")
+	}
+}
+
+// TestPnpmRegistryURL verifies PnpmManager.RegistryURL reflects the configured value.
+func TestPnpmRegistryURL(t *testing.T) {
+	if got := (&PnpmManager{}).RegistryURL(); got != "" {
+		t.Errorf("PnpmManager{}.RegistryURL() = %q, want empty", got)
+	}
+	if got := (&PnpmManager{Registry: "http://localhost:4873"}).RegistryURL(); got != "http://localhost:4873" {
+		t.Errorf("PnpmManager.RegistryURL() = %q, want %q", got, "http://localhost:4873")
+	}
+}
+
+// TestDetectWithRegistryOption verifies that Detect passes the registry to the manager.
+func TestDetectWithRegistryOption(t *testing.T) {
+	mgr := Detect(DetectOptions{Registry: "http://localhost:4873"})
+	if got := mgr.RegistryURL(); got != "http://localhost:4873" {
+		t.Errorf("Detect(registry).RegistryURL() = %q, want %q", got, "http://localhost:4873")
+	}
+}
+
 // TestEnsureNpmrcHonorsCustomRegistry verifies that a custom registry from
 // the manager config is written verbatim into the local .npmrc.
 func TestEnsureNpmrcHonorsCustomRegistry(t *testing.T) {
