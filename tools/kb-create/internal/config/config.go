@@ -36,6 +36,23 @@ type TelemetryConfig struct {
 // produces the struct; config merely persists it.
 type ProjectProfile = map[string]any
 
+// InstallSource records where and how the platform was installed or last updated.
+type InstallSource struct {
+	// Registry is the npm registry URL used during install/update.
+	// Empty means the default (https://registry.npmjs.org/).
+	Registry    string    `json:"registry,omitempty"`
+	InstalledBy string    `json:"installedBy,omitempty"` // "kb-create@1.4.2"
+	InstalledAt time.Time `json:"installedAt"`
+}
+
+// EffectiveRegistry returns the registry URL, falling back to the public npm default.
+func (s InstallSource) EffectiveRegistry() string {
+	if s.Registry != "" {
+		return s.Registry
+	}
+	return "https://registry.npmjs.org/"
+}
+
 // PlatformConfig is the persistent state written to <platform>/.kb/kb.config.json.
 // Version field enables future migrations.
 type PlatformConfig struct {
@@ -50,6 +67,11 @@ type PlatformConfig struct {
 	Project          ProjectProfile    `json:"project,omitempty"`
 	Demo             types.DemoConfig  `json:"demo,omitempty"`
 	Version          int               `json:"version"`
+
+	// Source records install/update provenance (registry URL, kb-create version, timestamp).
+	Source    InstallSource `json:"source,omitempty"`
+	UpdatedAt time.Time     `json:"updatedAt,omitempty"`
+	UpdatedBy string        `json:"updatedBy,omitempty"` // "kb-create@1.4.3"
 }
 
 // IsServiceSelected returns true if the service was chosen during install.
@@ -136,16 +158,24 @@ func Read(platformDir string) (*PlatformConfig, error) {
 }
 
 // NewConfig creates a fresh PlatformConfig ready to be written.
-func NewConfig(platformDir, cwd, pmName string, m *manifest.Manifest, t TelemetryConfig) *PlatformConfig {
+// registry is the custom npm registry URL used during install (empty = default).
+// installedBy is the kb-create version string, e.g. "kb-create@1.4.2".
+func NewConfig(platformDir, cwd, pmName, registry, installedBy string, m *manifest.Manifest, t TelemetryConfig) *PlatformConfig {
 	abs, _ := filepath.Abs(platformDir)
 	absCWD, _ := filepath.Abs(cwd)
+	now := time.Now().UTC()
 	return &PlatformConfig{
 		Version:     configVersion,
 		Platform:    abs,
 		CWD:         absCWD,
 		PM:          pmName,
-		InstalledAt: time.Now().UTC(),
+		InstalledAt: now,
 		Manifest:    *m,
 		Telemetry:   t,
+		Source: InstallSource{
+			Registry:    registry,
+			InstalledBy: installedBy,
+			InstalledAt: now,
+		},
 	}
 }

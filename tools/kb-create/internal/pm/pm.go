@@ -26,6 +26,8 @@ type InstalledPackage struct {
 type PackageManager interface {
 	// Name returns "npm" or "pnpm".
 	Name() string
+	// RegistryURL returns the custom registry URL, or empty string for the default.
+	RegistryURL() string
 	// Install installs the given packages into dir/node_modules.
 	Install(dir string, pkgs []string, progress chan<- Progress) error
 	// Update updates already-installed packages to their latest versions.

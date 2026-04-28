@@ -121,7 +121,7 @@ func TestResolvePlatformDir_CwdConfigBeatsUserState(t *testing.T) {
 	// Stage a real .kb/kb.config.json in the cwd pointing at dirA.
 	cwd, _ := os.Getwd()
 	dirA := t.TempDir()
-	cfg := config.NewConfig(dirA, cwd, "pnpm", &manifest.Manifest{}, config.TelemetryConfig{})
+	cfg := config.NewConfig(dirA, cwd, "pnpm", "", "", &manifest.Manifest{}, config.TelemetryConfig{})
 	if err := config.Write(cwd, cfg); err != nil {
 		t.Fatalf("config.Write: %v", err)
 	}

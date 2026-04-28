@@ -16,7 +16,8 @@ type NpmManager struct {
 	Registry string // optional: custom registry URL (e.g. http://localhost:4873)
 }
 
-func (n *NpmManager) Name() string { return "npm" }
+func (n *NpmManager) Name() string        { return "npm" }
+func (n *NpmManager) RegistryURL() string { return n.Registry }
 
 func (n *NpmManager) Install(dir string, pkgs []string, progress chan<- Progress) error {
 	args := append([]string{"install", "--prefix", dir}, pkgs...)

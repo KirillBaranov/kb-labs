@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -92,9 +93,19 @@ func runUninstall(cmd *cobra.Command, args []string) error {
 		out.Warn(fmt.Sprintf("Could not remove %s: %v", projectKB, err))
 	}
 
-	// Remove platform directory.
-	if err := os.RemoveAll(platformDir); err != nil {
-		return fmt.Errorf("remove platform dir: %w", err)
+	// Remove platform directory. On macOS, deeply nested pnpm symlinks can
+	// trigger a spurious ENOTEMPTY from the kernel even though RemoveAll is
+	// walking the tree correctly. Retry a few times before giving up.
+	var removeErr error
+	for attempt := range 3 {
+		removeErr = os.RemoveAll(platformDir)
+		if removeErr == nil {
+			break
+		}
+		time.Sleep(time.Duration(attempt+1) * 200 * time.Millisecond)
+	}
+	if removeErr != nil {
+		return fmt.Errorf("remove platform dir: %w", removeErr)
 	}
 	out.OK(fmt.Sprintf("Removed %s", platformDir))
 
