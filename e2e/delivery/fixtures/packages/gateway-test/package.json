@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/gateway-test",
-  "version": "2.89.0",
+  "version": "2.92.0",
   "description": "Minimal stub gateway for delivery e2e — not the real gateway",
   "main": "dist/index.js",
   "type": "commonjs",
