@@ -58,13 +58,17 @@ export async function discoverAdapters(cwd: string): Promise<Map<string, Discove
 
     const pkgRoot = path.resolve(cwd, entry.resolvedPath);
 
-    // Read main export path from package.json
+    // Read main export path and npm package name from package.json.
+    // The npm package name may differ from pkgId (manifest ID) — e.g. lock key
+    // is "kblabs-gateway-llm" but npm package is "@kb-labs/adapters-kblabs-gateway".
     let mainPath = 'dist/index.js';
+    let npmPkgName: string | undefined;
     try {
       const pkgContent = await fs.readFile(path.join(pkgRoot, 'package.json'), 'utf-8');
-      const pkg = JSON.parse(pkgContent);
+      const pkg = JSON.parse(pkgContent) as { main?: string; name?: string };
       mainPath = pkg.main || mainPath;
-    } catch { /* use default */ }
+      npmPkgName = pkg.name;
+    } catch { /* use defaults */ }
 
     const distPath = path.join(pkgRoot, mainPath);
 
@@ -76,12 +80,20 @@ export async function discoverAdapters(cwd: string): Promise<Map<string, Discove
         continue;
       }
 
-      discovered.set(pkgId, {
-        packageName: pkgId,
+      const adapterEntry: DiscoveredAdapter = {
+        packageName: npmPkgName ?? pkgId,
         pkgRoot,
         createAdapter: module.createAdapter as (config?: unknown) => unknown,
         module,
-      });
+      };
+
+      // Index by manifest ID (primary key in marketplace.lock)
+      discovered.set(pkgId, adapterEntry);
+      // Also index by npm package name so config values like "@kb-labs/adapters-kblabs-gateway"
+      // resolve correctly even when the lock key is a manifest ID like "kblabs-gateway-llm".
+      if (npmPkgName && npmPkgName !== pkgId) {
+        discovered.set(npmPkgName, adapterEntry);
+      }
     } catch {
       // Skip adapters that fail to load (not built yet)
     }
