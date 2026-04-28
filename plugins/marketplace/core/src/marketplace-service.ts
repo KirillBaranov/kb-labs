@@ -286,7 +286,7 @@ export class MarketplaceService implements MarketplaceServiceAPI {
   ): Promise<ScopedMarketplaceEntry[]> {
     const targets = resolveQueryRoots(this.roots, ctx);
 
-    // Collect per-scope entries. For 'all' we later apply platform-wins.
+    // Collect per-scope entries. For 'all' we later apply project-wins.
     const perScope: Array<{ scope: MarketplaceScope; entries: MarketplaceEntryWithId[] }> = [];
     for (const { scope, root } of targets) {
       const diag = new DiagnosticCollector();
@@ -591,11 +591,11 @@ async function computeIntegrity(packageRoot: string): Promise<string> {
 }
 
 /**
- * Merge per-scope entries with platform-wins precedence.
+ * Merge per-scope entries with project-wins precedence.
  *
- * For a given package id present in both platform and project, the platform
+ * For a given package id present in both platform and project, the project
  * entry is kept and a diagnostic is emitted so the caller can surface the
- * conflict.
+ * override.
  */
 export function mergeScopedEntries(
   perScope: Array<{ scope: MarketplaceScope; entries: MarketplaceEntryWithId[] }>,
@@ -603,21 +603,21 @@ export function mergeScopedEntries(
   const out = new Map<string, ScopedMarketplaceEntry>();
   const diagnostics: MarketplaceDiagnostic[] = [];
 
-  // Process platform first so platform entries land first and project
-  // duplicates are rejected with a diagnostic.
+  // Process project first so project entries land first and platform
+  // duplicates are skipped with a diagnostic.
   const ordered = [...perScope].sort((a, b) => {
     if (a.scope === b.scope) { return 0; }
-    return a.scope === 'platform' ? -1 : 1;
+    return a.scope === 'project' ? -1 : 1;
   });
 
   for (const { scope, entries } of ordered) {
     for (const e of entries) {
       const existing = out.get(e.id);
       if (existing) {
-        // platform-wins: ignore subsequent duplicates, emit a diagnostic.
+        // project-wins: ignore subsequent duplicates, emit a diagnostic.
         diagnostics.push({
           code: 'MARKETPLACE_SCOPE_COLLISION',
-          message: `Package "${e.id}" exists in both platform and ${scope} scopes — platform wins.`,
+          message: `Package "${e.id}" exists in both platform and project scopes — project wins.`,
           packageId: e.id,
           scope,
         });
