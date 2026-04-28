@@ -58,9 +58,10 @@ export async function createServer(
     ui: !isProduction,
   });
 
-  // origin: true reflects the request Origin — required for browser clients (Studio, E2E).
-  // Restricting to an explicit allowlist is a future hardening step once origins are stable.
-  await app.register(fastifyCors, { origin: true });
+  // CORS disabled at gateway level — browser clients (Studio) connect via same-origin or
+  // have CORS handled at the reverse-proxy / CDN layer. Reflecting arbitrary origins
+  // (origin: true) would allow any attacker site to make credentialed cross-origin requests.
+  await app.register(fastifyCors, { origin: false });
   const observability = new GatewayObservabilityCollector(config);
   observability.register(app);
   app.addHook('onRequest', async (request, reply) => {
