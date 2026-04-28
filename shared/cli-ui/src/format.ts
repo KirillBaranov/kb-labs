@@ -396,9 +396,9 @@ export function truncate(text: string, maxLength: number): string {
  */
 export function pad(text: string, width: number, align: 'left' | 'right' | 'center' = 'left'): string {
   if (text.length >= width) {return text;}
-  
+
   const padding = width - text.length;
-  
+
   switch (align) {
     case 'right':
       return ' '.repeat(padding) + text;
@@ -409,4 +409,18 @@ export function pad(text: string, width: number, align: 'left' | 'right' | 'cent
     default:
       return text + ' '.repeat(padding);
   }
+}
+
+/**
+ * Format a duration in milliseconds to a human-readable string.
+ * Negative values are treated as 0.
+ */
+export function formatDuration(ms: number): string {
+  if (ms < 0) ms = 0;
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  const seconds = ms / 1000;
+  if (seconds < 60) return `${seconds.toFixed(1)}s`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = Math.round(seconds % 60);
+  return remainingSeconds > 0 ? `${minutes}m ${remainingSeconds}s` : `${minutes}m`;
 }
