@@ -58,7 +58,9 @@ export async function createServer(
     ui: !isProduction,
   });
 
-  await app.register(fastifyCors, { origin: false });
+  // origin: true reflects the request Origin — required for browser clients (Studio, E2E).
+  // Restricting to an explicit allowlist is a future hardening step once origins are stable.
+  await app.register(fastifyCors, { origin: true });
   const observability = new GatewayObservabilityCollector(config);
   observability.register(app);
   app.addHook('onRequest', async (request, reply) => {
