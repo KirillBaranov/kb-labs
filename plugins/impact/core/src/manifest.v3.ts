@@ -35,7 +35,7 @@ export const manifest = {
   cli: {
     commands: [
       {
-        id: 'impact:check',
+        id: 'check',
         group: 'impact',
         describe: 'Full impact analysis (packages + docs)',
         longDescription:
@@ -54,7 +54,7 @@ export const manifest = {
         permissions: pluginPermissions,
       },
       {
-        id: 'impact:packages',
+        id: 'packages',
         group: 'impact',
         describe: 'Package dependency impact analysis',
         longDescription:
@@ -73,7 +73,7 @@ export const manifest = {
         permissions: pluginPermissions,
       },
       {
-        id: 'impact:docs',
+        id: 'docs',
         group: 'impact',
         describe: 'Documentation impact analysis',
         longDescription:
