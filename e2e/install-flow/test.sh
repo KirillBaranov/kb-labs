@@ -46,15 +46,12 @@ else
   tail -20 /tmp/bootstrap.log
 fi
 
-# Diagnostic: show what scaffold wrote immediately after install
-echo "  [diag:post-install] platform config adapterOptions.llm:"
-grep -A5 '"adapterOptions"' "$HOME/kb-platform/.kb/kb.config.jsonc" 2>/dev/null | head -12 || echo "  (config not found)"
-echo "  [diag:post-install] project .env exists: $(ls /tmp/work/my-project/.env 2>/dev/null && echo yes || echo no)"
-
 # ── Step 1b: --yes without --llm keeps LLM off ──────────────────────────────
 echo "── Step 1b: --yes without --llm = LLM off"
 mkdir -p /tmp/work-nollm && cd /tmp/work-nollm
-kb-create nollm-project --yes > /tmp/bootstrap-nollm.log 2>&1 || true
+# Use isolated platform dir so this install does NOT overwrite ~/kb-platform
+# (which was just configured with LLM credentials in step 2).
+kb-create nollm-project --yes --platform /tmp/work-nollm/kb-platform > /tmp/bootstrap-nollm.log 2>&1 || true
 NOLLM_ENV=""
 if [ -f /tmp/work-nollm/nollm-project/.env ]; then
   NOLLM_ENV=$(cat /tmp/work-nollm/nollm-project/.env)
