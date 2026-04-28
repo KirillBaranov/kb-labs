@@ -150,7 +150,11 @@ export async function createServer(
         await observability.observeOperation(`gateway.adapter.${name}`, async () => {
           const probeStart = Date.now();
           try {
-            const adapter = (platform as unknown as Record<string, unknown>)[name];
+            // Try direct property first (production runtime stores adapters as platform.llm etc.),
+            // then fall back to getAdapter() for environments where only that API is available.
+            type FlexPlatform = Record<string, unknown> & { getAdapter?: (n: string) => unknown };
+            const pf = platform as unknown as FlexPlatform;
+            const adapter = pf[name] ?? pf.getAdapter?.(name);
             adapters[name] = { available: !!adapter, latencyMs: Date.now() - probeStart };
           } catch {
             adapters[name] = { available: false, latencyMs: Date.now() - probeStart };
