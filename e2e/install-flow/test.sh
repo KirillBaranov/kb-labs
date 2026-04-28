@@ -13,6 +13,10 @@
 
 set -eu
 
+# Isolated platform directories per test category — prevent scenarios from clobbering each other.
+export LLM_PLATFORM_DIR=/tmp/kb-e2e-llm/kb-platform
+export NOLLM_PLATFORM_DIR=/tmp/kb-e2e-nollm/kb-platform
+
 PASS=0
 FAIL=0
 STEPS=""
@@ -37,7 +41,7 @@ fi
 # ── Step 2: Bootstrap project ──────────────────────────────────────────
 echo "── Step 2: Bootstrap project"
 mkdir -p /tmp/work && cd /tmp/work
-if kb-create my-project --yes --llm > /tmp/bootstrap.log 2>&1; then
+if kb-create my-project --yes --llm --platform "$LLM_PLATFORM_DIR" > /tmp/bootstrap.log 2>&1; then
   INSTALL_OUT=$(cat /tmp/bootstrap.log)
   pass "kb-create my-project"
 else
@@ -49,9 +53,8 @@ fi
 # ── Step 1b: --yes without --llm keeps LLM off ──────────────────────────────
 echo "── Step 1b: --yes without --llm = LLM off"
 mkdir -p /tmp/work-nollm && cd /tmp/work-nollm
-# Use isolated platform dir so this install does NOT overwrite ~/kb-platform
-# (which was just configured with LLM credentials in step 2).
-kb-create nollm-project --yes --platform /tmp/work-nollm/kb-platform > /tmp/bootstrap-nollm.log 2>&1 || true
+# Each scenario uses its own isolated platform dir — prevents test categories from clobbering each other.
+kb-create nollm-project --yes --platform "$NOLLM_PLATFORM_DIR" > /tmp/bootstrap-nollm.log 2>&1 || true
 NOLLM_ENV=""
 if [ -f /tmp/work-nollm/nollm-project/.env ]; then
   NOLLM_ENV=$(cat /tmp/work-nollm/nollm-project/.env)
@@ -229,7 +232,7 @@ except Exception as e:
 fi
 
 # Pre-check: verify adapter is in marketplace.lock and importable from platform dir
-PLATFORM_DIR="$HOME/kb-platform"
+PLATFORM_DIR="$LLM_PLATFORM_DIR"
 GW_IN_LOCK=$(python3 -c "import json; d=json.load(open('$PLATFORM_DIR/.kb/marketplace.lock')); print('found' if any('kblabs-gateway' in k for k in d.get('installed',{}).keys()) else 'missing')" 2>/dev/null || echo "no-lock")
 # Import test runs from platform dir — that's where the adapter is actually installed.
 GW_IMPORT=$(cd "$PLATFORM_DIR" && node --input-type=module --eval "
@@ -277,7 +280,7 @@ print(f'  [diag] KB_GATEWAY_CLIENT_ID from .env: {kid_env[:8]}{"..." if kid_env 
 # Step 2: read platform config adapterOptions.llm.kbClientId
 # Try regex-based extraction to avoid JSONC parse errors entirely
 try:
-    txt = open('/root/kb-platform/.kb/kb.config.jsonc').read()
+    txt = open(os.environ.get('LLM_PLATFORM_DIR', '/root/kb-platform') + '/.kb/kb.config.jsonc').read()
     # Regex search for kbClientId value (avoids full JSONC parse)
     m = re.search(r'"kbClientId"\s*:\s*"([^"]*)"', txt)
     raw_id = m.group(1) if m else 'MISSING'
