@@ -414,8 +414,12 @@ export async function generateCommitPlan(options: GenerateOptions): Promise<Comm
       }
 
       // Fallback to heuristics ONLY for LLM errors (parse, timeout, etc.)
+      // stderr is inherited in worker-pool mode — this surfaces the error in CI logs even when logger is NOOP
+      const errMsg = error instanceof Error ? error.message : String(error);
+      const errStack = error instanceof Error && error.stack ? error.stack : '';
+      process.stderr.write(`[commit] LLM failed, falling back to heuristics: ${errMsg}\n${errStack}\n`);
       await logger.warn('LLM generation failed after retries, falling back to heuristics', {
-        error: error instanceof Error ? error.message : String(error),
+        error: errMsg,
       });
       onProgress?.('LLM failed, using heuristics...');
       commits = generateHeuristicPlan(summaries);
