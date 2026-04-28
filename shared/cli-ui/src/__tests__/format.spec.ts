@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { formatTimestamp, formatRelativeTime } from '../format';
+import { formatTimestamp, formatRelativeTime, formatDuration } from '../format';
 
 describe('format helpers', () => {
   const baseDate = new Date('2025-01-01T00:05:30Z');
@@ -39,6 +39,28 @@ describe('format helpers', () => {
     vi.setSystemTime(now);
 
     expect(formatRelativeTime(baseDate)).toBe('1 minute ago');
+  });
+});
+
+describe('formatDuration', () => {
+  it('returns 0ms for zero', () => expect(formatDuration(0)).toBe('0ms'));
+  it('clamps negative to 0ms', () => expect(formatDuration(-500)).toBe('0ms'));
+  it('formats milliseconds range', () => {
+    expect(formatDuration(1)).toBe('1ms');
+    expect(formatDuration(999)).toBe('999ms');
+  });
+  it('formats seconds range', () => {
+    expect(formatDuration(1000)).toBe('1.0s');
+    expect(formatDuration(1500)).toBe('1.5s');
+    expect(formatDuration(59999)).toBe('60.0s');
+  });
+  it('formats minutes range without remainder', () => {
+    expect(formatDuration(60000)).toBe('1m');
+    expect(formatDuration(120000)).toBe('2m');
+  });
+  it('formats minutes range with seconds', () => {
+    expect(formatDuration(90000)).toBe('1m 30s');
+    expect(formatDuration(3661000)).toBe('61m 1s');
   });
 });
 
