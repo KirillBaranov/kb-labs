@@ -184,6 +184,20 @@ if [ -f .env ]; then
       if [ "$LLM_HTTP" = "200" ]; then
         GW_REACHABLE=1
         pass "gateway LLM endpoint reachable (200)"
+
+        # Verify tool calling works — commit plugin uses chatWithTools (function calling).
+        # If this fails it explains why commit falls back to heuristics.
+        TOOLS_HTTP=$(curl -s -o /tmp/tools-test.json -w "%{http_code}" \
+          -X POST https://api.kblabs.ru/llm/v1/chat/completions \
+          -H "Content-Type: application/json" \
+          -H "Authorization: Bearer $GW_TOKEN" \
+          -d '{"model":"small","messages":[{"role":"user","content":"x"}],"tools":[{"type":"function","function":{"name":"t","description":"d","parameters":{"type":"object","properties":{}}}}],"tool_choice":{"type":"function","function":{"name":"t"}},"max_tokens":50}' 2>/dev/null || echo "0")
+        if [ "$TOOLS_HTTP" = "200" ]; then
+          pass "gateway tool calling reachable (200)"
+        else
+          TOOLS_ERR=$(cat /tmp/tools-test.json 2>/dev/null || echo "no response")
+          fail "gateway tool calling" "tools request returned $TOOLS_HTTP: $TOOLS_ERR"
+        fi
       else
         LLM_ERR=$(cat /tmp/llm-test.json 2>/dev/null || echo "no response")
         fail "gateway LLM" "token ok but LLM endpoint returned $LLM_HTTP: $LLM_ERR"
@@ -219,6 +233,11 @@ if echo "$COMMIT_OUT" | grep -q "LLM: Phase"; then
 elif [ "$GW_REACHABLE" = "1" ]; then
   # Print debug info to help diagnose
   echo "=== COMMIT DEBUG (last 20 lines) ===" && echo "$COMMIT_OUT" | tail -20
+  # Show the exact error that caused the LLM fallback (pino JSON has "error" field)
+  LLM_FALLBACK=$(echo "$COMMIT_OUT" | grep -i "falling back to heuristics" | head -1 || true)
+  if [ -n "$LLM_FALLBACK" ]; then
+    echo "  [diag] LLM fallback line: $LLM_FALLBACK"
+  fi
   fail "AI commit" "gateway reachable but fell back to heuristics (adapter or config broken)"
 else
   pass "AI commit dry-run: skipped (gateway unreachable from CI)"
@@ -338,6 +357,10 @@ if echo "$POST_UPDATE_OUT" | grep -q "LLM: Phase"; then
   pass "AI commit dry-run works after update"
 elif [ "$GW_REACHABLE" = "1" ]; then
   echo "=== POST-UPDATE DEBUG (last 20 lines) ===" && echo "$POST_UPDATE_OUT" | tail -20
+  POST_FALLBACK=$(echo "$POST_UPDATE_OUT" | grep -i "falling back to heuristics" | head -1 || true)
+  if [ -n "$POST_FALLBACK" ]; then
+    echo "  [diag] LLM fallback line: $POST_FALLBACK"
+  fi
   fail "LLM after update" "gateway reachable but fell back to heuristics after update"
 else
   pass "LLM after update: skipped (gateway unreachable from CI)"
