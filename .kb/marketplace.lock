@@ -135,7 +135,7 @@
     },
     "@kb-labs/adapters-log-sqlite": {
       "version": "0.8.0",
-      "integrity": "sha256-hUdq9kKMYkL99PGAx95Bf3yBiyOIq1NtBTX9QIzx+bA=",
+      "integrity": "sha256-hLybLQvm3hRBGm+t4ne4CEmQ95O6hPKzc2XURJRhkN4=",
       "resolvedPath": "./adapters/log-sqlite",
       "installedAt": "2026-04-11T10:50:13.109Z",
       "source": "local",
@@ -438,6 +438,19 @@
         "plugin",
         "cli-command",
         "workflow-template"
+      ],
+      "enabled": true
+    },
+    "@kb-labs/github-entry": {
+      "version": "0.1.0",
+      "integrity": "sha256-dcgYrQwbP5lvno2+tYWE7UqMT450bznV1voZPFXWt8Q=",
+      "resolvedPath": "./plugins/github/entry",
+      "installedAt": "2026-04-27T12:42:20.736Z",
+      "source": "local",
+      "primaryKind": "plugin",
+      "provides": [
+        "plugin",
+        "workflow"
       ],
       "enabled": true
     }
