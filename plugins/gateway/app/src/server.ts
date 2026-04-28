@@ -150,7 +150,7 @@ export async function createServer(
         await observability.observeOperation(`gateway.adapter.${name}`, async () => {
           const probeStart = Date.now();
           try {
-            const adapter = platform.getAdapter(name);
+            const adapter = (platform as unknown as Record<string, unknown>)[name];
             adapters[name] = { available: !!adapter, latencyMs: Date.now() - probeStart };
           } catch {
             adapters[name] = { available: false, latencyMs: Date.now() - probeStart };
