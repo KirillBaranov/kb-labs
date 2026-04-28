@@ -209,3 +209,79 @@ func TestWriteCreatesDirectory(t *testing.T) {
 		t.Errorf("config file not created: %v", err)
 	}
 }
+
+// ── InstallSource ─────────────────────────────────────────────────────────────
+
+// TestNewConfigPopulatesSource verifies that NewConfig fills Source with the
+// registry URL, installedBy string, and a non-zero InstalledAt timestamp.
+func TestNewConfigPopulatesSource(t *testing.T) {
+	m := sampleManifest()
+	cfg := NewConfig("/tmp/p", "/tmp/c", "pnpm", "http://localhost:4873", "kb-create@1.5.0", &m, TelemetryConfig{})
+
+	if cfg.Source.Registry != "http://localhost:4873" {
+		t.Errorf("Source.Registry = %q, want %q", cfg.Source.Registry, "http://localhost:4873")
+	}
+	if cfg.Source.InstalledBy != "kb-create@1.5.0" {
+		t.Errorf("Source.InstalledBy = %q, want %q", cfg.Source.InstalledBy, "kb-create@1.5.0")
+	}
+	if cfg.Source.InstalledAt.IsZero() {
+		t.Error("Source.InstalledAt is zero")
+	}
+	// InstalledAt on Source should match the top-level InstalledAt.
+	if !cfg.Source.InstalledAt.Equal(cfg.InstalledAt) {
+		t.Errorf("Source.InstalledAt %v != InstalledAt %v", cfg.Source.InstalledAt, cfg.InstalledAt)
+	}
+}
+
+// TestNewConfigEmptyProvenanceFields verifies that empty registry/installedBy
+// are stored as-is (no default injection at this layer).
+func TestNewConfigEmptyProvenanceFields(t *testing.T) {
+	m := sampleManifest()
+	cfg := NewConfig("/tmp/p", "/tmp/c", "npm", "", "", &m, TelemetryConfig{})
+
+	if cfg.Source.Registry != "" {
+		t.Errorf("Source.Registry = %q, want empty", cfg.Source.Registry)
+	}
+	if cfg.Source.InstalledBy != "" {
+		t.Errorf("Source.InstalledBy = %q, want empty", cfg.Source.InstalledBy)
+	}
+}
+
+// TestEffectiveRegistryFallback verifies that EffectiveRegistry returns the
+// npm default when Registry is empty.
+func TestEffectiveRegistryFallback(t *testing.T) {
+	s := InstallSource{}
+	if got := s.EffectiveRegistry(); got != "https://registry.npmjs.org/" {
+		t.Errorf("EffectiveRegistry() = %q, want default npm registry", got)
+	}
+}
+
+// TestEffectiveRegistryCustom verifies that a set Registry is returned as-is.
+func TestEffectiveRegistryCustom(t *testing.T) {
+	s := InstallSource{Registry: "http://localhost:4873"}
+	if got := s.EffectiveRegistry(); got != "http://localhost:4873" {
+		t.Errorf("EffectiveRegistry() = %q, want %q", got, "http://localhost:4873")
+	}
+}
+
+// TestSourceRoundTrip verifies that Source fields survive Write → Read.
+func TestSourceRoundTrip(t *testing.T) {
+	dir := t.TempDir()
+	m := sampleManifest()
+	cfg := NewConfig(dir, dir, "pnpm", "http://localhost:4873", "kb-create@2.0.0", &m, TelemetryConfig{})
+
+	if err := Write(dir, cfg); err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+	got, err := Read(dir)
+	if err != nil {
+		t.Fatalf("Read() error = %v", err)
+	}
+
+	if got.Source.Registry != "http://localhost:4873" {
+		t.Errorf("Source.Registry after round-trip = %q, want %q", got.Source.Registry, "http://localhost:4873")
+	}
+	if got.Source.InstalledBy != "kb-create@2.0.0" {
+		t.Errorf("Source.InstalledBy after round-trip = %q, want %q", got.Source.InstalledBy, "kb-create@2.0.0")
+	}
+}
