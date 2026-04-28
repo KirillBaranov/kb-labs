@@ -103,6 +103,20 @@ export const __test = {
   // resetInProcCache is exported directly (not via __test) since it's part of the public API
 };
 
+/**
+ * Thrown by loadManifest when a file is a valid manifest of a non-plugin
+ * schema (e.g. kb.service/1). Discovery should skip these silently — they
+ * are not errors, just a different manifest type.
+ */
+class NonPluginManifestError extends Error {
+  readonly schema: string;
+  constructor(pkgName: string, schema: string) {
+    super(`${pkgName} uses manifest schema "${schema}", not kb.plugin/3 — skipping`);
+    this.name = 'NonPluginManifestError';
+    this.schema = schema;
+  }
+}
+
 /** Create a synthetic manifest marking package as unavailable with actionable hint */
 function createUnavailableManifest(pkgName: string, error: unknown): CommandManifest {
   const rawMsg = (error instanceof Error ? error.message : String(error) || '').toString();
@@ -424,8 +438,12 @@ async function loadManifest(manifestPath: string, pkgName: string, pkgRoot?: str
 
   const modTyped = mod as { manifest?: unknown; default?: unknown };
   const rawManifest = modTyped.manifest || modTyped.default;
-  if (!rawManifest || typeof rawManifest !== 'object' || (rawManifest as Record<string, unknown>).schema !== 'kb.plugin/3') {
-    throw new Error(`Unsupported manifest format in ${pkgName}. Only kb.plugin/3 schema is supported.`);
+  if (!rawManifest || typeof rawManifest !== 'object') {
+    throw new Error(`No manifest export found in ${pkgName}`);
+  }
+  const schema = (rawManifest as Record<string, unknown>).schema;
+  if (schema !== 'kb.plugin/3') {
+    throw new NonPluginManifestError(pkgName, typeof schema === 'string' ? schema : String(schema ?? 'unknown'));
   }
   const manifest = rawManifest as ManifestV3;
 
@@ -719,9 +737,9 @@ async function loadManifestsForPackages(
       const errMsg = err instanceof Error ? err.message : String(err);
       const errCode = (err as { code?: string }).code ?? 'UNKNOWN';
 
-      // Service manifests (kb.service/1) are not plugins — skip silently.
-      if (errMsg.includes('Unsupported manifest format')) {
-        log('debug', `[plugins] ${pkgName} is a service manifest (kb.service/1), skipping`);
+      // Non-plugin manifest (e.g. kb.service/1) — not an error, just skip.
+      if (err instanceof NonPluginManifestError) {
+        log('debug', `[plugins] ${pkgName} skipped: ${err.message}`);
         return null;
       }
 
@@ -932,9 +950,9 @@ async function discoverNodeModules(cwd: string): Promise<DiscoveryResult[]> {
         const errMsg = err instanceof Error ? err.message : String(err);
         const errCode = (err as { code?: string }).code ?? 'UNKNOWN';
 
-        // Service manifests (kb.service/1) are not plugins — skip silently.
-        if (errMsg.includes('Unsupported manifest format')) {
-          log('debug', `[plugins] ${pkgName} is a service manifest (kb.service/1), skipping`);
+        // Non-plugin manifest (e.g. kb.service/1) — not an error, just skip.
+        if (err instanceof NonPluginManifestError) {
+          log('debug', `[plugins] ${pkgName} skipped: ${err.message}`);
           return null;
         }
 
