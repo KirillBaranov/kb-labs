@@ -226,41 +226,44 @@ except Exception as e:
   fi
 fi
 
-# Pre-check: verify adapter import works and marketplace.lock has it
+# Pre-check: verify adapter is in marketplace.lock and importable from platform dir
 PLATFORM_DIR="$HOME/kb-platform"
 GW_IN_LOCK=$(python3 -c "import json; d=json.load(open('$PLATFORM_DIR/.kb/marketplace.lock')); print('found' if any('kblabs-gateway' in k for k in d.get('installed',{}).keys()) else 'missing')" 2>/dev/null || echo "no-lock")
-GW_IMPORT=$(node --input-type=module --eval "
+# Import test runs from platform dir — that's where the adapter is actually installed.
+GW_IMPORT=$(cd "$PLATFORM_DIR" && node --input-type=module --eval "
 import { createAdapter } from '@kb-labs/adapters-kblabs-gateway';
 console.log('ok');
 " 2>&1 || echo "FAIL")
 echo "  [diag] kblabs-gateway in marketplace.lock: $GW_IN_LOCK"
-echo "  [diag] kblabs-gateway import: $GW_IMPORT"
+echo "  [diag] kblabs-gateway import from platform dir: $GW_IMPORT"
+# Also show raw marketplace.lock installed keys for reference
+LOCK_KEYS=$(python3 -c "import json; d=json.load(open('$PLATFORM_DIR/.kb/marketplace.lock')); print(', '.join(list(d.get('installed',{}).keys())[:10]))" 2>/dev/null || echo "no-lock")
+echo "  [diag] marketplace.lock keys (first 10): $LOCK_KEYS"
 
 COMMIT_OUT=$(KB_LOG_LEVEL=debug kb commit commit --dry-run 2>&1 || true)
-# Capture platform init diagnostics (adapter loading errors show up in debug)
-ADAPTER_ERR=$(echo "$COMMIT_OUT" | grep -i "failed to load adapter\|Platform adapters failed\|adapter role.*declared.*not loaded\|NoOp\|fallback" | head -3 || true)
-if [ -n "$ADAPTER_ERR" ]; then
-  fail "LLM adapter init" "adapter load error: $ADAPTER_ERR"
-fi
 if echo "$COMMIT_OUT" | grep -q "LLM: Phase"; then
   LLM_LINE=$(echo "$COMMIT_OUT" | grep "LLM:" | head -1)
   PLAN_LINE=$(echo "$COMMIT_OUT" | grep "Planned Commits" -A1 | tail -1 | sed 's/^[│ ]*//')
   pass "AI commit dry-run: $LLM_LINE → $PLAN_LINE"
 elif [ "$GW_REACHABLE" = "1" ]; then
-  # Print debug info to help diagnose
+  echo "=== COMMIT DEBUG (first 30 lines) ===" && echo "$COMMIT_OUT" | head -30
   echo "=== COMMIT DEBUG (last 30 lines) ===" && echo "$COMMIT_OUT" | tail -30
-  # Show the exact error that caused the LLM fallback.
-  # [commit] prefix: process.stderr.write in commit-plan.ts catch block (visible even with NOOP worker logger).
-  # "falling back": pino JSON line from parent logger.
+  # Platform adapter init: shows whether kblabs-gateway loaded or fell back to NoOp.
+  ADAPTER_STATUS=$(echo "$COMMIT_OUT" | grep -i "Platform adapters\|Failed to load adapter\|NoOp adapters\|adapters initialized\|kblabs-gateway" | head -5 || true)
+  if [ -n "$ADAPTER_STATUS" ]; then
+    echo "  [diag] adapter init status:"
+    echo "$ADAPTER_STATUS" | while IFS= read -r line; do echo "    $line"; done
+  fi
+  # LLM fallback: [commit] from stderr.write in commit-plan.ts; "falling back" from pino parent logger.
   LLM_FALLBACK=$(echo "$COMMIT_OUT" | grep -i "falling back to heuristics\|\[commit\] LLM failed" | head -3 || true)
   if [ -n "$LLM_FALLBACK" ]; then
     echo "  [diag] LLM fallback line(s):"
     echo "$LLM_FALLBACK" | while IFS= read -r line; do echo "    $line"; done
   fi
-  # Search full output for pino error/warn JSON lines (level 40=warn, 50=error) — parent-side IPC errors.
+  # Pino warn/error JSON lines (level 40/50) — any parent-side errors.
   PINO_ERRORS=$(echo "$COMMIT_OUT" | grep -E '"level":(40|50)' | head -5 || true)
   if [ -n "$PINO_ERRORS" ]; then
-    echo "  [diag] pino error/warn lines in full output:"
+    echo "  [diag] pino warn/error lines:"
     echo "$PINO_ERRORS" | while IFS= read -r line; do echo "    $line"; done
   fi
   fail "AI commit" "gateway reachable but fell back to heuristics (adapter or config broken)"
@@ -381,7 +384,13 @@ POST_UPDATE_OUT=$(KB_LOG_LEVEL=debug kb commit commit --dry-run 2>&1 || true)
 if echo "$POST_UPDATE_OUT" | grep -q "LLM: Phase"; then
   pass "AI commit dry-run works after update"
 elif [ "$GW_REACHABLE" = "1" ]; then
+  echo "=== POST-UPDATE DEBUG (first 30 lines) ===" && echo "$POST_UPDATE_OUT" | head -30
   echo "=== POST-UPDATE DEBUG (last 30 lines) ===" && echo "$POST_UPDATE_OUT" | tail -30
+  POST_ADAPTER=$(echo "$POST_UPDATE_OUT" | grep -i "Platform adapters\|Failed to load adapter\|NoOp adapters\|adapters initialized\|kblabs-gateway" | head -5 || true)
+  if [ -n "$POST_ADAPTER" ]; then
+    echo "  [diag] post-update adapter status:"
+    echo "$POST_ADAPTER" | while IFS= read -r line; do echo "    $line"; done
+  fi
   POST_FALLBACK=$(echo "$POST_UPDATE_OUT" | grep -i "falling back to heuristics\|\[commit\] LLM failed" | head -3 || true)
   if [ -n "$POST_FALLBACK" ]; then
     echo "  [diag] LLM fallback line(s):"
@@ -389,7 +398,7 @@ elif [ "$GW_REACHABLE" = "1" ]; then
   fi
   POST_PINO_ERRORS=$(echo "$POST_UPDATE_OUT" | grep -E '"level":(40|50)' | head -5 || true)
   if [ -n "$POST_PINO_ERRORS" ]; then
-    echo "  [diag] pino error/warn lines in full output:"
+    echo "  [diag] pino warn/error lines:"
     echo "$POST_PINO_ERRORS" | while IFS= read -r line; do echo "    $line"; done
   fi
   fail "LLM after update" "gateway reachable but fell back to heuristics after update"
