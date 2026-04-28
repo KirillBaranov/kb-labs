@@ -1,7 +1,7 @@
 # ADR-0012: Platform / Project Scope for Config, Marketplace, and Discovery
 
 **Date:** 2026-04-14
-**Status:** Accepted
+**Status:** Accepted (updated 2026-04-28 — collision policy reversed to project wins)
 **Deciders:** KB Labs Team
 **Tags:** [architecture, marketplace, discovery]
 
@@ -65,10 +65,10 @@ declares `CONFIG_FIELD_SCOPE`:
 
 ```
 platform         → project-only   (project declares the platform dir)
-adapters         → platform-only  (project cannot override)
-adapterOptions   → platform-only
-core             → platform-only
-execution        → platform-only
+adapters         → mergeable      (deep-merge, project wins)
+adapterOptions   → mergeable      (deep-merge, project wins)
+core             → platform-only  (project cannot override)
+execution        → platform-only  (project cannot override)
 ```
 
 Unlisted fields default to `mergeable` (deep-merge, project overrides).
@@ -108,9 +108,10 @@ scope root — locks stay portable.
 - **Queries accept `QueryScopeContext`** (`scope: 'platform' | 'project' | 'all'`).
   `list` always returns `ScopedMarketplaceEntry[]` — every entry carries
   the scope it came from.
-- **Collision policy (cross-scope):** **platform wins + diagnostic.** The
-  global UX must survive any project-local breakage. Diagnostics surface
-  back to CLI/API so users see the conflict.
+- **Collision policy (cross-scope):** **project wins + diagnostic.**
+  The project is the user's override layer — workspace packages and
+  project-local plugins take precedence over the installed platform.
+  Diagnostics surface back to CLI/API so the override is observable.
 - **Adapters are platform-only.** `link`/`install` in project scope with
   `primaryKind === 'adapter'` throws `AdapterScopeError`. Enforced once,
   centrally, in `MarketplaceService.assertScopeAllowsKind` — not duplicated
@@ -163,8 +164,12 @@ carries where it physically came from:
 **Dedup policy** in `deduplicateManifests`:
 - Same `pkgRoot` from both sources (dev mode) → prefer `project`-scoped
   entry (more precise annotation).
-- Different `pkgRoot` cross-scope collision → **platform wins** + warning
-  `DISCOVERY_SCOPE_COLLISION`.
+- Different `pkgRoot` cross-scope collision → **project wins** + debug log
+  `DISCOVERY_SCOPE_OVERRIDE`. Workspace packages override the installed
+  platform's packages.
+- When `platform.dir != projectRoot` (prod mode), `discoverWorkspace` is
+  also run against `projectRoot` (tagged `scope: 'project'`), so all
+  workspace packages participate in deduplication with project-wins semantics.
 
 **Cache invalidation** tracks both locks:
 ```ts
@@ -221,12 +226,10 @@ Split only when concurrent writers in both scopes are a real concern.
 
 ### Negative (accepted)
 
-- **Breaking config behavior:** projects that used to override `adapters`
-  now get `ignoredProjectFields: ['adapters']` + an empty value on the
-  platform layer. Mitigation: the loader surfaces this in `sources.*` so
-  UIs can warn. The workspace lockfile and configs will be regenerated
-  cleanly ("with delete locks and start from scratch" — per user
-  instruction).
+- **Breaking config behavior (original):** projects that used to override
+  `adapters` got `ignoredProjectFields: ['adapters']`. Resolved in
+  2026-04-28 update: `adapters` and `adapterOptions` changed to
+  `mergeable`, so project adapters config now deep-merges and wins.
 - **Breaking API surface:** `MarketplaceService.*` signatures changed
   (explicit `ctx`). All in-tree callers updated. External callers must
   migrate — this is on purpose (see "no silent default" above).

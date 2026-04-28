@@ -11,7 +11,7 @@ import * as os from 'node:os';
 import * as crypto from 'node:crypto';
 import type { PackageSource, InstalledPackage, ResolvedPackage } from '@kb-labs/marketplace-contracts';
 import { readMarketplaceLock, DiagnosticCollector } from '@kb-labs/core-discovery';
-import { MarketplaceService } from '../marketplace-service.js';
+import { MarketplaceService, mergeScopedEntries } from '../marketplace-service.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -477,5 +477,87 @@ describe('MarketplaceService', () => {
       const lock = await readMarketplaceLock(tmpDir, new DiagnosticCollector());
       expect(lock!.installed['@kb-labs/auto-enabled']!.enabled).toBe(true);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// mergeScopedEntries — project wins over platform
+// ---------------------------------------------------------------------------
+
+function makeEntry(id: string, version: string): { id: string; version: string; resolvedPath: string; installedAt: string; source: 'npm'; primaryKind: 'plugin'; provides: string[]; integrity: string } {
+  return {
+    id,
+    version,
+    resolvedPath: `./node_modules/${id}`,
+    installedAt: new Date().toISOString(),
+    source: 'npm',
+    primaryKind: 'plugin',
+    provides: ['plugin'],
+    integrity: 'sha256-test',
+  };
+}
+
+describe('mergeScopedEntries — project wins', () => {
+  it('returns platform-only entries unchanged', () => {
+    const { entries, diagnostics } = mergeScopedEntries([
+      { scope: 'platform', entries: [makeEntry('@kb/a', '1.0.0')] },
+    ]);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]!.id).toBe('@kb/a');
+    expect(entries[0]!.scope).toBe('platform');
+    expect(diagnostics).toHaveLength(0);
+  });
+
+  it('returns project-only entries unchanged', () => {
+    const { entries, diagnostics } = mergeScopedEntries([
+      { scope: 'project', entries: [makeEntry('@kb/b', '2.0.0')] },
+    ]);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]!.scope).toBe('project');
+    expect(diagnostics).toHaveLength(0);
+  });
+
+  it('merges non-overlapping entries from both scopes', () => {
+    const { entries, diagnostics } = mergeScopedEntries([
+      { scope: 'platform', entries: [makeEntry('@kb/platform-only', '1.0.0')] },
+      { scope: 'project',  entries: [makeEntry('@kb/project-only',  '2.0.0')] },
+    ]);
+    expect(entries).toHaveLength(2);
+    expect(diagnostics).toHaveLength(0);
+  });
+
+  it('project entry wins on collision and emits diagnostic', () => {
+    const { entries, diagnostics } = mergeScopedEntries([
+      { scope: 'platform', entries: [makeEntry('@kb/shared', '1.0.0')] },
+      { scope: 'project',  entries: [makeEntry('@kb/shared', '2.0.0')] },
+    ]);
+
+    expect(entries).toHaveLength(1);
+    const winner = entries[0]!;
+    expect(winner.id).toBe('@kb/shared');
+    expect(winner.version).toBe('2.0.0');    // project version
+    expect(winner.scope).toBe('project');
+
+    expect(diagnostics).toHaveLength(1);
+    expect(diagnostics[0]!.code).toBe('MARKETPLACE_SCOPE_COLLISION');
+    expect(diagnostics[0]!.message).toContain('project wins');
+  });
+
+  it('project wins regardless of input order', () => {
+    // Project entries listed before platform
+    const { entries: r1 } = mergeScopedEntries([
+      { scope: 'project',  entries: [makeEntry('@kb/shared', '2.0.0')] },
+      { scope: 'platform', entries: [makeEntry('@kb/shared', '1.0.0')] },
+    ]);
+    expect(r1[0]!.version).toBe('2.0.0');
+    expect(r1[0]!.scope).toBe('project');
+
+    // Platform entries listed before project
+    const { entries: r2 } = mergeScopedEntries([
+      { scope: 'platform', entries: [makeEntry('@kb/shared', '1.0.0')] },
+      { scope: 'project',  entries: [makeEntry('@kb/shared', '2.0.0')] },
+    ]);
+    expect(r2[0]!.version).toBe('2.0.0');
+    expect(r2[0]!.scope).toBe('project');
   });
 });
