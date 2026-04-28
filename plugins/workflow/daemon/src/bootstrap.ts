@@ -179,8 +179,8 @@ export async function bootstrap(cwd: string = process.cwd()): Promise<void> {
 
   // Start HTTP server
   const port = parseInt(process.env.WORKFLOW_PORT || '7778', 10);
-  // Internal service — bind to loopback only. All public traffic goes through the gateway.
-  await server.listen({ port, host: process.env.WORKFLOW_HOST ?? '127.0.0.1' });
+  // Defaults to 0.0.0.0 for Docker/dev compat. Set WORKFLOW_HOST=127.0.0.1 to restrict to loopback.
+  await server.listen({ port, host: process.env.WORKFLOW_HOST ?? '0.0.0.0' });
   bootstrapLogger.info('HTTP API listening', { port });
 
   // Store server instance for cleanup

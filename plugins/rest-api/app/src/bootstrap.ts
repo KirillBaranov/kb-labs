@@ -197,11 +197,13 @@ export async function bootstrap(cwd: string = process.cwd()): Promise<void> {
   metricsCollector = new SystemMetricsCollector('rest', () => requestMetricsCollector.getActiveRequests());
   await metricsCollector.start(10000, 60000); // Collect every 10s, TTL 60s
 
-  // Start server
-  // Internal service — bind to loopback only. All public traffic goes through the gateway.
+  // Start server.
+  // Defaults to 0.0.0.0 for compatibility with Docker port-forwarding and dev setups.
+  // Set REST_API_HOST=127.0.0.1 to restrict to loopback in environments where
+  // all public traffic is routed through the gateway.
   const address = await server.listen({
     port: config.port,
-    host: process.env.REST_API_HOST ?? '127.0.0.1',
+    host: process.env.REST_API_HOST ?? '0.0.0.0',
   });
 
   bootstrapLogger.info('REST API server listening', { address });

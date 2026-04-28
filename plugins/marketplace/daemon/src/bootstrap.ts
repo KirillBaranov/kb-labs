@@ -11,8 +11,8 @@ import { MarketplaceService } from '@kb-labs/marketplace-core';
 import { NpmPackageSource } from '@kb-labs/marketplace-npm';
 
 const DEFAULT_PORT = 5070;
-// Internal service — bind to loopback only. All public traffic goes through the gateway.
-const DEFAULT_HOST = '127.0.0.1';
+// Defaults to 0.0.0.0 for Docker/dev compat. Set KB_MARKETPLACE_HOST=127.0.0.1 to restrict to loopback.
+const DEFAULT_HOST = process.env.KB_MARKETPLACE_HOST ?? '0.0.0.0';
 
 export async function bootstrap(cwd: string): Promise<void> {
   const repoRoot = await findRepoRoot(cwd);
