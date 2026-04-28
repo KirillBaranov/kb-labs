@@ -484,13 +484,13 @@ describe('MarketplaceService', () => {
 // mergeScopedEntries — project wins over platform
 // ---------------------------------------------------------------------------
 
-function makeEntry(id: string, version: string): { id: string; version: string; resolvedPath: string; installedAt: string; source: 'npm'; primaryKind: 'plugin'; provides: string[]; integrity: string } {
+function makeEntry(id: string, version: string): { id: string; version: string; resolvedPath: string; installedAt: string; source: 'marketplace'; primaryKind: 'plugin'; provides: string[]; integrity: string } {
   return {
     id,
     version,
     resolvedPath: `./node_modules/${id}`,
     installedAt: new Date().toISOString(),
-    source: 'npm',
+    source: 'marketplace',
     primaryKind: 'plugin',
     provides: ['plugin'],
     integrity: 'sha256-test',
