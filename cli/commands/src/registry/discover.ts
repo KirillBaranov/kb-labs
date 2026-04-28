@@ -719,6 +719,12 @@ async function loadManifestsForPackages(
       const errMsg = err instanceof Error ? err.message : String(err);
       const errCode = (err as { code?: string }).code ?? 'UNKNOWN';
 
+      // Service manifests (kb.service/1) are not plugins — skip silently.
+      if (errMsg.includes('Unsupported manifest format')) {
+        log('debug', `[plugins] ${pkgName} is a service manifest (kb.service/1), skipping`);
+        return null;
+      }
+
       log('warn', JSON.stringify({
         code: 'DISCOVERY_MANIFEST_LOAD_FAIL',
         packageName: pkgName,
@@ -925,6 +931,13 @@ async function discoverNodeModules(cwd: string): Promise<DiscoveryResult[]> {
       } catch (err: unknown) {
         const errMsg = err instanceof Error ? err.message : String(err);
         const errCode = (err as { code?: string }).code ?? 'UNKNOWN';
+
+        // Service manifests (kb.service/1) are not plugins — skip silently.
+        if (errMsg.includes('Unsupported manifest format')) {
+          log('debug', `[plugins] ${pkgName} is a service manifest (kb.service/1), skipping`);
+          return null;
+        }
+
         log('warn', JSON.stringify({
           code: 'DISCOVERY_MANIFEST_LOAD_FAIL',
           packageName: pkgName,
