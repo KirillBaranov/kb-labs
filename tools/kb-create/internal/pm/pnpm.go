@@ -16,7 +16,8 @@ type PnpmManager struct {
 	Registry string // optional: custom registry URL (e.g. http://localhost:4873)
 }
 
-func (p *PnpmManager) Name() string { return "pnpm" }
+func (p *PnpmManager) Name() string        { return "pnpm" }
+func (p *PnpmManager) RegistryURL() string { return p.Registry }
 
 func (p *PnpmManager) Install(dir string, pkgs []string, progress chan<- Progress) error {
 	args := append([]string{"add", "--dir", dir}, pkgs...)

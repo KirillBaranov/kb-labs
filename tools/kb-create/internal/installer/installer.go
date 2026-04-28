@@ -82,10 +82,11 @@ type UpdateResult struct {
 
 // Installer orchestrates platform installation and updates.
 type Installer struct {
-	PM     pm.PackageManager
-	Log    *logger.Logger
-	OnStep func(step, total int, label string) // called at each named stage
-	OnLine func(line string)                   // called for each raw output line from pm
+	PM      pm.PackageManager
+	Log     *logger.Logger
+	Version string                            // kb-create version, e.g. "1.4.2" (used for provenance)
+	OnStep  func(step, total int, label string) // called at each named stage
+	OnLine  func(line string)                   // called for each raw output line from pm
 }
 
 // Install installs the platform according to sel.
@@ -187,7 +188,11 @@ func (ins *Installer) Install(sel *Selection, m *manifest.Manifest) (*Result, er
 
 	step++
 	ins.step(step, totalSteps, "Writing config")
-	cfg := config.NewConfig(sel.PlatformDir, sel.ProjectCWD, ins.PM.Name(), m, sel.Telemetry)
+	installedBy := ""
+	if ins.Version != "" {
+		installedBy = "kb-create@" + ins.Version
+	}
+	cfg := config.NewConfig(sel.PlatformDir, sel.ProjectCWD, ins.PM.Name(), ins.PM.RegistryURL(), installedBy, m, sel.Telemetry)
 	cfg.SelectedServices = sel.Services
 	cfg.SelectedPlugins = sel.Plugins
 	if sel.Project != nil {
@@ -295,6 +300,13 @@ func (ins *Installer) Update(platformDir string, current *manifest.Manifest) (*U
 
 	// Refresh config snapshot.
 	cfg.Manifest = *current
+	cfg.UpdatedAt = time.Now().UTC()
+	if ins.Version != "" {
+		cfg.UpdatedBy = "kb-create@" + ins.Version
+	}
+	if r := ins.PM.RegistryURL(); r != "" {
+		cfg.Source.Registry = r
+	}
 	if err := config.Write(platformDir, cfg); err != nil {
 		return nil, err
 	}

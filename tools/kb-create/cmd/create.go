@@ -133,8 +133,9 @@ func runCreate(cmd *cobra.Command, args []string) error {
 	sp := newSpinner()
 
 	ins := &installer.Installer{
-		PM:  packageManager,
-		Log: log,
+		PM:      packageManager,
+		Log:     log,
+		Version: cmd.Root().Version,
 		OnStep: func(step, total int, label string) {
 			sp.setLabel(fmt.Sprintf("[%d/%d] %s", step, total, label))
 		},

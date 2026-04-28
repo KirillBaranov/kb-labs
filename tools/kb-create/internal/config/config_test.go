@@ -25,7 +25,7 @@ func sampleManifest() manifest.Manifest {
 // TestNewConfig verifies that NewConfig populates all required fields.
 func TestNewConfig(t *testing.T) {
 	m := sampleManifest()
-	cfg := NewConfig("/tmp/platform", "/tmp/project", "pnpm", &m, TelemetryConfig{Enabled: true, DeviceID: "test-id"})
+	cfg := NewConfig("/tmp/platform", "/tmp/project", "pnpm", "", "", &m, TelemetryConfig{Enabled: true, DeviceID: "test-id"})
 
 	if cfg.Version != configVersion {
 		t.Errorf("Version = %d, want %d", cfg.Version, configVersion)
@@ -45,7 +45,7 @@ func TestNewConfig(t *testing.T) {
 func TestWriteThenRead(t *testing.T) {
 	dir := t.TempDir()
 	m := sampleManifest()
-	want := NewConfig(dir, "/some/project", "npm", &m, TelemetryConfig{Enabled: true, DeviceID: "abc123"})
+	want := NewConfig(dir, "/some/project", "npm", "", "", &m, TelemetryConfig{Enabled: true, DeviceID: "abc123"})
 	// Fix timestamp for deterministic comparison.
 	want.InstalledAt = time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 
@@ -97,7 +97,7 @@ func TestConfigPath(t *testing.T) {
 // TestIsServiceSelected verifies selection lookup.
 func TestIsServiceSelected(t *testing.T) {
 	m := sampleManifest()
-	cfg := NewConfig("/tmp/p", "/tmp/c", "pnpm", &m, TelemetryConfig{})
+	cfg := NewConfig("/tmp/p", "/tmp/c", "pnpm", "", "", &m, TelemetryConfig{})
 	cfg.SelectedServices = []string{"rest"}
 
 	if !cfg.IsServiceSelected("rest") {
@@ -111,7 +111,7 @@ func TestIsServiceSelected(t *testing.T) {
 // TestIsPluginSelected verifies selection lookup.
 func TestIsPluginSelected(t *testing.T) {
 	m := sampleManifest()
-	cfg := NewConfig("/tmp/p", "/tmp/c", "pnpm", &m, TelemetryConfig{})
+	cfg := NewConfig("/tmp/p", "/tmp/c", "pnpm", "", "", &m, TelemetryConfig{})
 	cfg.SelectedPlugins = []string{"mind"}
 
 	if !cfg.IsPluginSelected("mind") {
@@ -136,7 +136,7 @@ func TestInstalledPackageNames(t *testing.T) {
 			{ID: "agents", Pkg: "@kb-labs/agents", Default: false},
 		},
 	}
-	cfg := NewConfig("/tmp/p", "/tmp/c", "pnpm", &m, TelemetryConfig{})
+	cfg := NewConfig("/tmp/p", "/tmp/c", "pnpm", "", "", &m, TelemetryConfig{})
 	cfg.SelectedServices = []string{"rest"}
 	cfg.SelectedPlugins = []string{"mind"}
 
@@ -159,7 +159,7 @@ func TestInstalledPackageNames(t *testing.T) {
 // TestInstalledPackageNamesEmpty returns only core when nothing selected.
 func TestInstalledPackageNamesEmpty(t *testing.T) {
 	m := sampleManifest()
-	cfg := NewConfig("/tmp/p", "/tmp/c", "pnpm", &m, TelemetryConfig{})
+	cfg := NewConfig("/tmp/p", "/tmp/c", "pnpm", "", "", &m, TelemetryConfig{})
 	// no SelectedServices or SelectedPlugins
 
 	got := cfg.InstalledPackageNames()
@@ -172,7 +172,7 @@ func TestInstalledPackageNamesEmpty(t *testing.T) {
 func TestSelectionRoundTrip(t *testing.T) {
 	dir := t.TempDir()
 	m := sampleManifest()
-	cfg := NewConfig(dir, dir, "pnpm", &m, TelemetryConfig{})
+	cfg := NewConfig(dir, dir, "pnpm", "", "", &m, TelemetryConfig{})
 	cfg.SelectedServices = []string{"rest"}
 	cfg.SelectedPlugins = []string{"mind"}
 
@@ -200,7 +200,7 @@ func TestWriteCreatesDirectory(t *testing.T) {
 	_ = os.RemoveAll(filepath.Join(dir, ".kb"))
 
 	m := sampleManifest()
-	cfg := NewConfig(dir, dir, "npm", &m, TelemetryConfig{})
+	cfg := NewConfig(dir, dir, "npm", "", "", &m, TelemetryConfig{})
 	if err := Write(dir, cfg); err != nil {
 		t.Fatalf("Write() error = %v", err)
 	}

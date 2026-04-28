@@ -20,7 +20,8 @@ type fakePM struct {
 	calls   []string
 }
 
-func (f *fakePM) Name() string { return f.name }
+func (f *fakePM) Name() string        { return f.name }
+func (f *fakePM) RegistryURL() string { return "" }
 
 func (f *fakePM) Install(dir string, pkgs []string, ch chan<- pm.Progress) error {
 	for _, p := range pkgs {
@@ -157,7 +158,7 @@ func TestDiffDetectsAddedCorePackage(t *testing.T) {
 		Version: "1.0.0",
 		Core:    []manifest.Package{{Name: "@kb-labs/cli-bin"}},
 	}
-	cfg := config.NewConfig(dir, dir, "npm", &installed, config.TelemetryConfig{})
+	cfg := config.NewConfig(dir, dir, "npm", "", "", &installed, config.TelemetryConfig{})
 	if err := config.Write(dir, cfg); err != nil {
 		t.Fatalf("config.Write() error = %v", err)
 	}
@@ -190,7 +191,7 @@ func TestDiffDetectsRemovedCorePackage(t *testing.T) {
 			{Name: "@kb-labs/old-pkg"},
 		},
 	}
-	cfg := config.NewConfig(dir, dir, "npm", &installed, config.TelemetryConfig{})
+	cfg := config.NewConfig(dir, dir, "npm", "", "", &installed, config.TelemetryConfig{})
 	if err := config.Write(dir, cfg); err != nil {
 		t.Fatalf("config.Write() error = %v", err)
 	}
@@ -224,7 +225,7 @@ func TestDiffIgnoresUnselectedServices(t *testing.T) {
 			{ID: "studio", Pkg: "@kb-labs/studio"},
 		},
 	}
-	cfg := config.NewConfig(dir, dir, "npm", &m, config.TelemetryConfig{})
+	cfg := config.NewConfig(dir, dir, "npm", "", "", &m, config.TelemetryConfig{})
 	cfg.SelectedServices = []string{"rest"} // studio NOT selected
 	if err := config.Write(dir, cfg); err != nil {
 		t.Fatalf("config.Write() error = %v", err)
@@ -273,7 +274,7 @@ func TestDiffIgnoresUnselectedPlugins(t *testing.T) {
 			{ID: "agents", Pkg: "@kb-labs/agents"},
 		},
 	}
-	cfg := config.NewConfig(dir, dir, "npm", &m, config.TelemetryConfig{})
+	cfg := config.NewConfig(dir, dir, "npm", "", "", &m, config.TelemetryConfig{})
 	cfg.SelectedPlugins = []string{"mind"} // agents NOT selected
 	if err := config.Write(dir, cfg); err != nil {
 		t.Fatalf("config.Write() error = %v", err)

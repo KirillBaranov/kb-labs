@@ -22,6 +22,7 @@ import (
 type doctorCheck struct {
 	Name    string
 	OK      bool
+	Soft    bool   // if true, failure is advisory (WARN, doesn't affect exit code)
 	Details string
 	Fix     func() error // nil = not auto-fixable
 	FixHint string       // shown when Fix is nil but there's a manual action
@@ -67,15 +68,20 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		"fix_mode":      fmt.Sprintf("%v", doctorFixFlag),
 	})
 
+	softFailed := softFailedChecks(checks)
 	if len(failed) == 0 {
 		fmt.Println()
-		out.OK(fmt.Sprintf("Doctor summary: %d/%d checks passed", len(checks), len(checks)))
+		if len(softFailed) > 0 {
+			out.OK(fmt.Sprintf("Doctor summary: %d/%d checks passed (%d advisory warning(s))", len(checks)-len(softFailed), len(checks), len(softFailed)))
+		} else {
+			out.OK(fmt.Sprintf("Doctor summary: %d/%d checks passed", len(checks), len(checks)))
+		}
 		return nil
 	}
 
 	if !doctorFixFlag {
 		fmt.Println()
-		out.Warn(fmt.Sprintf("Doctor summary: %d/%d checks passed — run with --fix to repair", len(checks)-len(failed), len(checks)))
+		out.Warn(fmt.Sprintf("Doctor summary: %d/%d checks passed — run with --fix to repair", len(checks)-len(failed)-len(softFailed), len(checks)))
 		for _, c := range failed {
 			if c.FixHint != "" {
 				out.Info(fmt.Sprintf("  manual fix for %-12s %s", c.Name+":", c.FixHint))
@@ -167,16 +173,31 @@ func printChecks(out output, checks []doctorCheck) {
 	for _, c := range checks {
 		if c.OK {
 			out.OK(fmt.Sprintf("%-12s %s", c.Name, c.Details))
+		} else if c.Soft {
+			out.Warn(fmt.Sprintf("%-12s %s", c.Name, c.Details))
 		} else {
 			out.Err(fmt.Sprintf("%-12s %s", c.Name, c.Details))
 		}
 	}
 }
 
+// failedChecks returns checks that are both failed and non-soft.
+// Soft failures are advisory and do not affect the exit code.
 func failedChecks(checks []doctorCheck) []doctorCheck {
 	var out []doctorCheck
 	for _, c := range checks {
-		if !c.OK {
+		if !c.OK && !c.Soft {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+// softFailedChecks returns advisory checks that failed (Soft=true, OK=false).
+func softFailedChecks(checks []doctorCheck) []doctorCheck {
+	var out []doctorCheck
+	for _, c := range checks {
+		if !c.OK && c.Soft {
 			out = append(out, c)
 		}
 	}
@@ -240,18 +261,18 @@ func checkNetwork() doctorCheck {
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodHead, "https://github.com", http.NoBody)
 	if err != nil {
-		return doctorCheck{Name: "network", OK: false, Details: err.Error()}
+		return doctorCheck{Name: "network", OK: false, Soft: true, Details: err.Error()}
 	}
 
 	// #nosec G704 -- request target is a fixed trusted endpoint (github.com).
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return doctorCheck{Name: "network", OK: false, Details: "cannot reach github.com"}
+		return doctorCheck{Name: "network", OK: false, Soft: true, Details: "cannot reach github.com"}
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode >= http.StatusInternalServerError {
-		return doctorCheck{Name: "network", OK: false, Details: fmt.Sprintf("github.com returned %d", resp.StatusCode)}
+		return doctorCheck{Name: "network", OK: false, Soft: true, Details: fmt.Sprintf("github.com returned %d", resp.StatusCode)}
 	}
 	return doctorCheck{Name: "network", OK: true, Details: fmt.Sprintf("github.com reachable (%d)", resp.StatusCode)}
 }

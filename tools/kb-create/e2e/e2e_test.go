@@ -1,7 +1,8 @@
 // Package e2e runs end-to-end tests against the kb-create binary.
 //
 // Tests are skipped with -short to allow fast CI runs without network access.
-// Full e2e (network required) runs with: go test ./e2e/ -v -timeout 10m
+// Full e2e (network required) runs with: go test ./e2e/ -v -timeout 20m
+// (each full install takes 3-5 minutes; use at least 20m when running multiple tests)
 package e2e
 
 import (
@@ -12,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -32,15 +34,25 @@ func binary(t *testing.T) string {
 	return bin
 }
 
+// runTimeout is the per-invocation deadline for kb-create subprocesses.
+// Full installs (pnpm download + package resolution) can take several minutes.
+// The limit is set below the default `go test -timeout 10m` so a single slow
+// invocation fails cleanly instead of killing the whole test suite.
+const runTimeout = 7 * time.Minute
+
 // run executes kb-create with the given args and returns stdout+stderr combined.
 func run(t *testing.T, bin string, args ...string) (string, int) {
 	t.Helper()
-	cmd := exec.CommandContext(context.Background(), bin, args...) // #nosec G204
+	ctx, cancel := context.WithTimeout(context.Background(), runTimeout)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, bin, args...) // #nosec G204
 	out, err := cmd.CombinedOutput()
 	code := 0
 	if err != nil {
 		if exit, ok := err.(*exec.ExitError); ok {
 			code = exit.ExitCode()
+		} else if ctx.Err() != nil {
+			t.Fatalf("kb-create timed out after %s\nargs: %v\noutput:\n%s", runTimeout, args, out)
 		}
 	}
 	return string(out), code

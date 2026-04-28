@@ -33,11 +33,13 @@ shows what changed, and applies updates after confirmation.`,
 func init() {
 	updateCmd.Flags().BoolP("yes", "y", false, "skip confirmation prompts")
 	updateCmd.Flags().Bool("force", false, "reset config to defaults (discards LLM and custom adapter settings)")
+	updateCmd.Flags().String("registry", "", "npm registry URL (e.g. http://localhost:4873 for local verdaccio)")
 	rootCmd.AddCommand(updateCmd)
 }
 
 func runUpdate(cmd *cobra.Command, args []string) error {
 	yes, _ := cmd.Flags().GetBool("yes")
+	registry, _ := cmd.Flags().GetString("registry")
 	out := newOutput()
 
 	platformDir, err := resolvePlatformDir(cmd)
@@ -56,9 +58,12 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 	defer func() { _ = log.Close() }()
 
+	packageManager := pm.Detect(pm.DetectOptions{Registry: registry})
+
 	ins := &installer.Installer{
-		PM:  pm.Detect(),
-		Log: log,
+		PM:      packageManager,
+		Log:     log,
+		Version: rootCmd.Version,
 	}
 
 	// Init telemetry from the platform config. Non-fatal: if config is
@@ -97,6 +102,24 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	if !diff.HasChanges() {
 		out.OK("Already up to date")
 		return nil
+	}
+
+	// Warn when the user is switching registries mid-update.
+	if cfg, cfgErr := config.Read(platformDir); cfgErr == nil {
+		prevRegistry := cfg.Source.EffectiveRegistry()
+		newRegistry := packageManager.RegistryURL()
+		if newRegistry == "" {
+			newRegistry = "https://registry.npmjs.org/"
+		}
+		if prevRegistry != newRegistry {
+			out.Warn(fmt.Sprintf("Registry changed: %s → %s", prevRegistry, newRegistry))
+			out.Warn("Some packages may resolve to different versions.")
+			if !yes && !confirmDestructive("Continue with new registry? [y/N] ") {
+				tc.Track("update_cancelled", nil)
+				out.Warn("Cancelled.")
+				return nil
+			}
+		}
 	}
 
 	printDiff(out, diff)
