@@ -11,6 +11,20 @@ globs:
 
 CLI entry point: `pnpm kb release <command>`.
 
+---
+
+> ## ⛔ КРИТИЧЕСКИЕ ПРАВИЛА — НАРУШЕНИЕ ЛОМАЕТ РЕЛИЗ
+>
+> **1. ТОЛЬКО через скрипты `pnpm release:*` — никаких других способов.**
+> Запрещено: `pnpm publish`, `npm publish`, `pnpm kb release run` напрямую, `pnpm -r publish`.
+> Только: `pnpm release:platform`, `pnpm release:sdk`, `pnpm release:platform:dry`, `pnpm release:sdk:dry`.
+>
+> **2. ВСЕГДА указывать `--flow`. Без флоу — НЕЛЬЗЯ.**
+> `pnpm kb release run` без `--flow` захватит все 149 пакетов разом и сломает независимые циклы релиза platform и sdk.
+> Каждый вызов должен иметь либо `--flow platform` либо `--flow sdk` — без исключений.
+
+---
+
 ## Release Order — IMPORTANT
 
 **Always release in this order: `platform` first, then `sdk`.**
@@ -55,6 +69,82 @@ pnpm kb release run --flow platform --skip-build
 pnpm kb release run --flow sdk --skip-build
 ```
 
+## Verdaccio Pre-publish Workflow
+
+Before publishing to npm, always verify packages on a local Verdaccio registry.
+Only if Verdaccio validation passes — publish to npm.
+
+**Important constraint:** `registry` is config-only — there is no `--registry` CLI flag.
+Set it in `.kb/kb.config.json` under the `release` key.
+
+### Verdaccio setup (one-time)
+
+```bash
+# 1. Start Verdaccio
+npx verdaccio -l 4873
+
+# 2. Allow anonymous publish — edit ~/.config/verdaccio/config.yaml:
+#    packages:
+#      '@*/*':
+#        access: $all
+#        publish: $all       ← change from $authenticated
+#      '**':
+#        access: $all
+#        publish: $all       ← change from $authenticated
+#
+#    max_body_size: 200mb    ← required for studio-app (~50MB tarball)
+#
+# 3. Add npmrc auth token so npm client doesn't block scoped packages:
+#    echo '//localhost:4873/:_authToken=verdaccio-local' >> ~/.npmrc
+#
+# 4. Restart Verdaccio after config changes.
+```
+
+### Phase 1 — Canary to Verdaccio
+
+```bash
+# 1. Ensure Verdaccio is running on :4873 (see setup above)
+
+# 2. Set registry in .kb/kb.config.json
+#    "release": { "registry": "http://localhost:4873", ... }
+
+# 3. Run full pipeline — build + bump + git commit/tag + publish to Verdaccio
+NPM_REGISTRY=http://localhost:4873 NPM_TOKEN=verdaccio-local pnpm release:platform
+# or:
+NPM_REGISTRY=http://localhost:4873 NPM_TOKEN=verdaccio-local pnpm release:sdk
+```
+
+After this step: `package.json` versions are bumped, git commit + tag are created,
+packages are published to `http://localhost:4873`.
+
+> **Version drift warning:** if publish fails before the git commit/tag step, `package.json`
+> files are already bumped but no tag exists. Each retry bumps again. To reset:
+> `git diff --name-only | grep "package.json" | xargs git checkout --`
+
+### Validate from Verdaccio
+
+```bash
+# Check a package in the registry
+curl http://localhost:4873/@kb-labs/core-platform
+
+# Install from Verdaccio in a separate test project
+npm install @kb-labs/core-platform --registry http://localhost:4873
+```
+
+### Phase 2 — Publish to npm (after validation passes)
+
+```bash
+# 1. Remove "registry" field from .kb/kb.config.json
+
+# 2. Run the same release script — pipeline detects existing tag, skips bump,
+#    publishes current versions to npm
+pnpm release:platform
+# or:
+pnpm release:sdk
+```
+
+---
+
 ## Recommended Release Scripts (root package.json)
 
 Always use these instead of calling `pnpm kb release run` directly.
@@ -65,15 +155,19 @@ They run a full build + plugin cache clear BEFORE the release pipeline.
 pnpm release:platform:dry
 pnpm release:sdk:dry
 
-# Real release
+# Release (Verdaccio or npm — determined by "registry" in kb.config.json)
 pnpm release:platform
 pnpm release:sdk
 ```
 
 Each script does:
-1. `kb-devkit run build` — full topological build of the entire monorepo
-2. `pnpm kb marketplace:clear-cache` — invalidate CLI plugin cache after rebuild
-3. `pnpm kb release run --flow <flow> --skip-build` — pipeline with `--skip-build` (already built)
+1. `node scripts/release-preflight.mjs` — token + registry reachability check
+2. `kb-devkit run build` — full topological build of the entire monorepo
+3. `pnpm kb marketplace:clear-cache` — invalidate CLI plugin cache after rebuild
+4. `pnpm kb release run --flow <flow> --skip-build --yes` — pipeline with `--skip-build` (already built)
+
+The preflight reads `NPM_REGISTRY` env var to check the right registry.
+For Verdaccio: `NPM_REGISTRY=http://localhost:4873 NPM_TOKEN=verdaccio-local pnpm release:platform`
 
 **Why not build inside the pipeline**: the release CLI is itself a plugin. If `kb-devkit build --affected`
 runs inside the pipeline, it may rebuild CLI packages and invalidate the plugin cache mid-run, crashing

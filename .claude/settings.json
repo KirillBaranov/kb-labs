@@ -35,7 +35,23 @@
     "deny": [
       "Bash(rm -rf /)*",
       "Bash(git push --force*)",
-      "Bash(git reset --hard*)"
+      "Bash(git reset --hard*)",
+      "Bash(pnpm publish*)",
+      "Bash(npm publish*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cmd=$(jq -r '.tool_input.command // \"\"'); if echo \"$cmd\" | grep -qE '^\\s*pnpm\\s+(-r\\s+|--recursive\\s+|(-\\w+\\s+)*--filter\\s+\\S+\\s+).*\\bpublish\\b'; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Прямая публикация через pnpm заблокирована. Используй только pnpm release:platform или pnpm release:sdk\"}}'; exit 0; fi; if echo \"$cmd\" | grep -qE '\\bpnpm\\s+kb\\s+release\\s+(run|publish)\\b'; then case \"$cmd\" in *--flow*) : ;; *) echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"pnpm kb release run/publish без --flow заблокирован. Используй pnpm release:platform или pnpm release:sdk\"}}'; exit 0 ;; esac; fi",
+            "statusMessage": "Проверка release-правил..."
+          }
+        ]
+      }
     ]
   }
 }
