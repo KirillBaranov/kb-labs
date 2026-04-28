@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/github-entry",
-  "version": "2.92.0",
+  "version": "2.93.0",
   "type": "module",
   "description": "Manifest and workflow handlers for the GitHub plugin",
   "main": "./dist/index.js",
