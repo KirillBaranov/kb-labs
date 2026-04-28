@@ -144,7 +144,7 @@ export function exportToJSON(entries: DebugEntry[], options: DebugExportOptions 
   const filtered = options.filter ? filterDebugEntries(entries, options.filter) : entries;
   if (options.includeMeta === false) {
     return JSON.stringify(
-      filtered.map(({ meta, ...rest }) => rest),
+      filtered.map(({ meta: _meta, ...rest }) => rest),
       null,
       2,
     );
