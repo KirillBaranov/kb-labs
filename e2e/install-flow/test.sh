@@ -240,6 +240,12 @@ echo "  [diag] kblabs-gateway import from platform dir: $GW_IMPORT"
 LOCK_KEYS=$(python3 -c "import json; d=json.load(open('$PLATFORM_DIR/.kb/marketplace.lock')); print(', '.join(list(d.get('installed',{}).keys())[:10]))" 2>/dev/null || echo "no-lock")
 echo "  [diag] marketplace.lock keys (first 10): $LOCK_KEYS"
 
+# Diagnostic: CWD and .env location check
+echo "  [diag] CWD=$(pwd)"
+echo "  [diag] .env in CWD=$(ls .env 2>/dev/null && echo yes || echo no)"
+echo "  [diag] .env at /tmp/work/my-project=$(ls /tmp/work/my-project/.env 2>/dev/null && echo yes || echo no)"
+find /tmp/work/my-project -name ".env" -maxdepth 2 2>/dev/null | while read f; do echo "  [diag] found .env at: $f"; done
+
 # Diagnostic: simulate config-loader (loadEnvFile + interpolateConfig) to check kbClientId.
 # Uses python3 to avoid shell escaping issues with ${...} patterns.
 python3 << 'PYEOF'
@@ -247,7 +253,7 @@ import re, sys, os
 
 # Step 1: load project .env (mirrors config-loader loadEnvFile)
 env_extra = {}
-env_path = '/tmp/work/my-project/.env'
+env_path = os.path.join(os.getcwd(), '.env')
 try:
     for line in open(env_path).read().splitlines():
         line = line.strip()
@@ -267,22 +273,22 @@ kid_env = env_extra.get('KB_GATEWAY_CLIENT_ID', os.environ.get('KB_GATEWAY_CLIEN
 print(f'  [diag] KB_GATEWAY_CLIENT_ID from .env: {kid_env[:8]}{"..." if kid_env else "(EMPTY)"}')
 
 # Step 2: read platform config adapterOptions.llm.kbClientId
+# Try regex-based extraction to avoid JSONC parse errors entirely
 try:
     txt = open('/root/kb-platform/.kb/kb.config.jsonc').read()
-    txt = re.sub(r'//[^\n]*', '', txt)
-    txt = re.sub(r',(\s*[}\]])', r'\1', txt)
-    cfg = __import__('json').loads(txt)
-    llm = cfg.get('adapterOptions', {}).get('llm', {})
-    raw_id = llm.get('kbClientId', 'MISSING')
+    # Regex search for kbClientId value (avoids full JSONC parse)
+    m = re.search(r'"kbClientId"\s*:\s*"([^"]*)"', txt)
+    raw_id = m.group(1) if m else 'MISSING'
     print(f'  [diag] kbClientId raw in config: {raw_id[:40]}')
     # Step 3: interpolate (mirrors interpolateConfig)
     merged_env = {**os.environ, **env_extra}
     def interpolate(s):
-        return re.sub(r'\$\{([^}]+)\}', lambda m: merged_env.get(m.group(1), f'UNRESOLVED:{m.group(1)}'), s)
+        return re.sub(r'\$\{([^}]+)\}', lambda m2: merged_env.get(m2.group(1), f'UNRESOLVED:{m2.group(1)}'), s)
     resolved = interpolate(raw_id)
-    print(f'  [diag] kbClientId after interpolation: {resolved[:8]}{"..." if resolved and not resolved.startswith("UNRESOLVED") else "(UNRESOLVED or EMPTY)"}')
+    ok = resolved and not resolved.startswith('UNRESOLVED') and not resolved.startswith('${')
+    print(f'  [diag] kbClientId after interpolation: {resolved[:8]}{"..." if ok else " (UNRESOLVED or TEMPLATE)"}')
 except Exception as e:
-    print(f'  [diag] platform config parse error: {e}')
+    print(f'  [diag] platform config read error: {e}')
 PYEOF
 
 COMMIT_OUT=$(KB_LOG_LEVEL=debug kb commit commit --dry-run 2>&1 || true)
