@@ -105,28 +105,28 @@ export const manifest = {
   cli: {
     commands: [
       {
-        id: 'mind:init',
+        id: 'init',
         group: 'mind',
         describe: 'Initialize mind workspace',
         handler: './cli/commands/init.js#default',
         handlerPath: './cli/commands/init.js',
       },
       {
-        id: 'mind:verify',
+        id: 'verify',
         group: 'mind',
         describe: 'Verify workspace consistency',
         handler: './cli/commands/verify.js#default',
         handlerPath: './cli/commands/verify.js',
       },
       {
-        id: 'mind:rag-index',
+        id: 'rag-index',
         group: 'mind',
         describe: 'Build Mind indexes',
         handler: './cli/commands/rag-index.js#default',
         handlerPath: './cli/commands/rag-index.js',
       },
       {
-        id: 'mind:rag-query',
+        id: 'rag-query',
         group: 'mind',
         describe: 'Run semantic RAG query',
         handler: './cli/commands/rag-query.js#default',
@@ -134,35 +134,35 @@ export const manifest = {
       },
       // Sync commands (5 separate commands instead of subcommands)
       {
-        id: 'mind:sync-add',
+        id: 'sync-add',
         group: 'mind',
         describe: 'Add document to sync',
         handler: './cli/commands/sync-add.js#default',
         handlerPath: './cli/commands/sync-add.js',
       },
       {
-        id: 'mind:sync-update',
+        id: 'sync-update',
         group: 'mind',
         describe: 'Update synced document',
         handler: './cli/commands/sync-update.js#default',
         handlerPath: './cli/commands/sync-update.js',
       },
       {
-        id: 'mind:sync-delete',
+        id: 'sync-delete',
         group: 'mind',
         describe: 'Delete synced document',
         handler: './cli/commands/sync-delete.js#default',
         handlerPath: './cli/commands/sync-delete.js',
       },
       {
-        id: 'mind:sync-list',
+        id: 'sync-list',
         group: 'mind',
         describe: 'List synced documents',
         handler: './cli/commands/sync-list.js#default',
         handlerPath: './cli/commands/sync-list.js',
       },
       {
-        id: 'mind:sync-status',
+        id: 'sync-status',
         group: 'mind',
         describe: 'Show sync status',
         handler: './cli/commands/sync-status.js#default',
