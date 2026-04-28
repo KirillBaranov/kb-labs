@@ -193,7 +193,23 @@ if [ -f .env ]; then
           -H "Authorization: Bearer $GW_TOKEN" \
           -d '{"model":"small","messages":[{"role":"user","content":"x"}],"tools":[{"type":"function","function":{"name":"t","description":"d","parameters":{"type":"object","properties":{}}}}],"tool_choice":{"type":"function","function":{"name":"t"}},"max_tokens":50}' 2>/dev/null || echo "0")
         if [ "$TOOLS_HTTP" = "200" ]; then
-          pass "gateway tool calling reachable (200)"
+          # Verify the response actually contains tool_calls — not just a plain completion.
+          # If model ignores tool_choice, chatWithTools returns empty toolCalls → commit falls back to heuristics silently.
+          TOOLS_HAS_CALLS=$(python3 -c "
+import json, sys
+try:
+    d = json.load(open('/tmp/tools-test.json'))
+    tc = d.get('choices', [{}])[0].get('message', {}).get('tool_calls')
+    print('yes' if tc else 'no')
+except Exception as e:
+    print('parse-error: ' + str(e))
+" 2>/dev/null || echo "parse-error")
+          if [ "$TOOLS_HAS_CALLS" = "yes" ]; then
+            pass "gateway tool calling reachable + tool_calls returned"
+          else
+            TOOLS_BODY=$(cat /tmp/tools-test.json 2>/dev/null || echo "no response")
+            fail "gateway tool calling" "HTTP 200 but no tool_calls in response (has_calls=$TOOLS_HAS_CALLS). Body: $TOOLS_BODY"
+          fi
         else
           TOOLS_ERR=$(cat /tmp/tools-test.json 2>/dev/null || echo "no response")
           fail "gateway tool calling" "tools request returned $TOOLS_HTTP: $TOOLS_ERR"
@@ -211,7 +227,7 @@ if [ -f .env ]; then
 fi
 
 # Pre-check: verify adapter import works and marketplace.lock has it
-PLATFORM_DIR="/tmp/work/my-project"
+PLATFORM_DIR="$HOME/kb-platform"
 GW_IN_LOCK=$(python3 -c "import json; d=json.load(open('$PLATFORM_DIR/.kb/marketplace.lock')); print('found' if any('kblabs-gateway' in k for k in d.get('installed',{}).keys()) else 'missing')" 2>/dev/null || echo "no-lock")
 GW_IMPORT=$(node --input-type=module --eval "
 import { createAdapter } from '@kb-labs/adapters-kblabs-gateway';
@@ -232,11 +248,20 @@ if echo "$COMMIT_OUT" | grep -q "LLM: Phase"; then
   pass "AI commit dry-run: $LLM_LINE → $PLAN_LINE"
 elif [ "$GW_REACHABLE" = "1" ]; then
   # Print debug info to help diagnose
-  echo "=== COMMIT DEBUG (last 20 lines) ===" && echo "$COMMIT_OUT" | tail -20
-  # Show the exact error that caused the LLM fallback (pino JSON has "error" field)
-  LLM_FALLBACK=$(echo "$COMMIT_OUT" | grep -i "falling back to heuristics" | head -1 || true)
+  echo "=== COMMIT DEBUG (last 30 lines) ===" && echo "$COMMIT_OUT" | tail -30
+  # Show the exact error that caused the LLM fallback.
+  # [commit] prefix: process.stderr.write in commit-plan.ts catch block (visible even with NOOP worker logger).
+  # "falling back": pino JSON line from parent logger.
+  LLM_FALLBACK=$(echo "$COMMIT_OUT" | grep -i "falling back to heuristics\|\[commit\] LLM failed" | head -3 || true)
   if [ -n "$LLM_FALLBACK" ]; then
-    echo "  [diag] LLM fallback line: $LLM_FALLBACK"
+    echo "  [diag] LLM fallback line(s):"
+    echo "$LLM_FALLBACK" | while IFS= read -r line; do echo "    $line"; done
+  fi
+  # Search full output for pino error/warn JSON lines (level 40=warn, 50=error) — parent-side IPC errors.
+  PINO_ERRORS=$(echo "$COMMIT_OUT" | grep -E '"level":(40|50)' | head -5 || true)
+  if [ -n "$PINO_ERRORS" ]; then
+    echo "  [diag] pino error/warn lines in full output:"
+    echo "$PINO_ERRORS" | while IFS= read -r line; do echo "    $line"; done
   fi
   fail "AI commit" "gateway reachable but fell back to heuristics (adapter or config broken)"
 else
@@ -356,10 +381,16 @@ POST_UPDATE_OUT=$(KB_LOG_LEVEL=debug kb commit commit --dry-run 2>&1 || true)
 if echo "$POST_UPDATE_OUT" | grep -q "LLM: Phase"; then
   pass "AI commit dry-run works after update"
 elif [ "$GW_REACHABLE" = "1" ]; then
-  echo "=== POST-UPDATE DEBUG (last 20 lines) ===" && echo "$POST_UPDATE_OUT" | tail -20
-  POST_FALLBACK=$(echo "$POST_UPDATE_OUT" | grep -i "falling back to heuristics" | head -1 || true)
+  echo "=== POST-UPDATE DEBUG (last 30 lines) ===" && echo "$POST_UPDATE_OUT" | tail -30
+  POST_FALLBACK=$(echo "$POST_UPDATE_OUT" | grep -i "falling back to heuristics\|\[commit\] LLM failed" | head -3 || true)
   if [ -n "$POST_FALLBACK" ]; then
-    echo "  [diag] LLM fallback line: $POST_FALLBACK"
+    echo "  [diag] LLM fallback line(s):"
+    echo "$POST_FALLBACK" | while IFS= read -r line; do echo "    $line"; done
+  fi
+  POST_PINO_ERRORS=$(echo "$POST_UPDATE_OUT" | grep -E '"level":(40|50)' | head -5 || true)
+  if [ -n "$POST_PINO_ERRORS" ]; then
+    echo "  [diag] pino error/warn lines in full output:"
+    echo "$POST_PINO_ERRORS" | while IFS= read -r line; do echo "    $line"; done
   fi
   fail "LLM after update" "gateway reachable but fell back to heuristics after update"
 else
