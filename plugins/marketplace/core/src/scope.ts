@@ -96,7 +96,7 @@ export function resolveScopeRoot(roots: ServiceRoots, ctx: ScopeContext): string
 /**
  * Resolve the set of roots to read from for a query context (`list`,
  * `getEntry`). `'all'` returns both; the caller is responsible for merging
- * with a platform-wins precedence.
+ * with a project-wins precedence.
  */
 export function resolveQueryRoots(
   roots: ServiceRoots,

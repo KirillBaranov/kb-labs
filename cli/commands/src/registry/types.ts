@@ -70,8 +70,9 @@ export interface DiscoveryResult {
   /**
    * Scope this result came from. Platform-wide discovery (monorepo workspace,
    * platform node_modules) reports `platform`; discovery from
-   * `<projectRoot>/.kb/plugins/` reports `project`. On collision (same
-   * packageName in both scopes) the platform entry wins — see ADR-0012.
+   * `<projectRoot>/.kb/plugins/` or `<projectRoot>` workspace reports `project`.
+   * On collision (same packageName in both scopes) the project entry wins —
+   * project overrides platform defaults.
    */
   scope: 'platform' | 'project';
   packageName: string;

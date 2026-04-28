@@ -990,22 +990,21 @@ function deduplicateManifests(all: DiscoveryResult[]): DiscoveryResult[] {
     // directory (dev mode, where `.kb/plugins/...` is matched by both
     // pnpm-workspace and `discoverProjectLocalPlugins`), prefer the project
     // entry — it carries the more precise scope annotation. If the paths
-    // differ, that's a real collision and platform always wins (ADR-0012),
-    // with a warning so the user can see it in --debug logs.
+    // differ, project wins — workspace packages override the installed platform.
     if (existing.scope !== result.scope) {
       if (existing.pkgRoot === result.pkgRoot) {
         const projectEntry = existing.scope === 'project' ? existing : result;
         byPackageName.set(result.packageName, projectEntry);
         continue;
       }
-      const winner = existing.scope === 'platform' ? existing : result;
-      const loser = existing.scope === 'platform' ? result : existing;
-      log('warn', JSON.stringify({
-        code: 'DISCOVERY_SCOPE_COLLISION',
+      const winner = existing.scope === 'project' ? existing : result;
+      const loser = existing.scope === 'project' ? result : existing;
+      log('debug', JSON.stringify({
+        code: 'DISCOVERY_SCOPE_OVERRIDE',
         packageName: result.packageName,
-        platformPath: winner.pkgRoot,
-        projectPath: loser.pkgRoot,
-        message: 'Package exists in both platform and project scopes — platform wins.',
+        projectPath: winner.pkgRoot,
+        platformPath: loser.pkgRoot,
+        message: 'Package exists in both platform and project scopes — project wins.',
       }));
       byPackageName.set(result.packageName, winner);
       continue;
@@ -1430,10 +1429,28 @@ export async function discoverManifests(
     log('info', `Discovered ${projectLocal.length} project-local plugins`);
   }
 
+  // Project workspace — scan pnpm-workspace.yaml at projectRoot when it differs
+  // from platformRoot (prod mode). Results are tagged as scope='project' so
+  // deduplicateManifests applies project-wins precedence over platform packages.
+  let projectWorkspace: DiscoveryResult[] = [];
+  if (roots.projectRoot !== roots.platformRoot) {
+    try {
+      const pwStart = Date.now();
+      const raw = await discoverWorkspace(roots.projectRoot);
+      projectWorkspace = raw.map(r => ({ ...r, scope: 'project' as const }));
+      timings.projectWorkspace = Date.now() - pwStart;
+      if (projectWorkspace.length > 0) {
+        log('info', `Discovered ${projectWorkspace.length} project workspace packages with CLI manifests`);
+      }
+    } catch {
+      // No pnpm-workspace.yaml in projectRoot — skip silently
+    }
+  }
+
   // Deduplicate (same package from multiple sources/scopes collapses to one,
-  // platform wins on cross-scope collisions — see deduplicateManifests).
+  // project wins on cross-scope collisions — see deduplicateManifests).
   const dedupStart = Date.now();
-  const results = deduplicateManifests([...workspace, ...installed, ...projectLocal]);
+  const results = deduplicateManifests([...workspace, ...installed, ...projectLocal, ...projectWorkspace]);
   timings.deduplicate = Date.now() - dedupStart;
 
   // Save cache

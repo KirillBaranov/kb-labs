@@ -473,9 +473,12 @@ export async function initPlatform(
     const loadModule = async (modulePath: string): Promise<LoadedAdapterModule> => {
       try {
         const { discoverAdapters } = await import('./discover-adapters.js');
-        // Use platformRoot for adapter discovery when provided (installed mode):
-        // marketplace.lock lives in platformRoot/.kb/, not projectRoot/.kb/.
-        const discovered = await discoverAdapters(platformRoot ?? cwd);
+        // Project wins: pass both roots so workspace adapters override platform's.
+        // projectRoot is only distinct from platformRoot in installed (prod) mode.
+        const discovered = await discoverAdapters(
+          platformRoot ?? cwd,
+          platformRoot && platformRoot !== cwd ? cwd : undefined,
+        );
 
         // Parse module path into base package and subpath (same logic as resolveAdapter)
         const basePkgName = modulePath.split('/').slice(0, 2).join('/'); // "@kb-labs/adapters-openai"

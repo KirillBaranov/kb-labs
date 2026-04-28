@@ -4,6 +4,10 @@
  *
  * All adapters must be registered via `kb marketplace link` or `kb marketplace install`.
  * No filesystem scanning.
+ *
+ * Priority: projectRoot lock is loaded first (project wins). platformRoot lock
+ * fills in any gaps. This ensures that when platform.dir is set, workspace
+ * adapters override the installed platform's adapters.
  */
 
 import { promises as fs } from 'node:fs';
@@ -37,26 +41,26 @@ async function loadAdapterModule(distPath: string): Promise<Record<string, unkno
 }
 
 /**
- * Discover adapters from marketplace.lock.
- * Reads entries with `primaryKind === 'adapter'` and loads their modules.
+ * Load adapters from a single marketplace.lock file into the discovered map.
  *
- * @param cwd - Workspace root directory
- * @returns Map of package names to adapter info
+ * @param root - Directory containing .kb/marketplace.lock
+ * @param discovered - Map to populate
+ * @param overwrite - If false, skip entries already present in the map (used for platform fallback)
  */
-export async function discoverAdapters(cwd: string): Promise<Map<string, DiscoveredAdapter>> {
-  const discovered = new Map<string, DiscoveredAdapter>();
+async function loadAdaptersFromLock(
+  root: string,
+  discovered: Map<string, DiscoveredAdapter>,
+  overwrite: boolean,
+): Promise<void> {
   const diag = new DiagnosticCollector();
-  const lock = await readMarketplaceLock(cwd, diag);
-
-  if (!lock) {
-    return discovered;
-  }
+  const lock = await readMarketplaceLock(root, diag);
+  if (!lock) { return; }
 
   for (const [pkgId, entry] of Object.entries(lock.installed)) {
-    if (entry.primaryKind !== 'adapter') {continue;}
-    if (entry.enabled === false) {continue;}
+    if (entry.primaryKind !== 'adapter') { continue; }
+    if (entry.enabled === false) { continue; }
 
-    const pkgRoot = path.resolve(cwd, entry.resolvedPath);
+    const pkgRoot = path.resolve(root, entry.resolvedPath);
 
     // Read main export path and npm package name from package.json.
     // The npm package name may differ from pkgId (manifest ID) — e.g. lock key
@@ -87,17 +91,46 @@ export async function discoverAdapters(cwd: string): Promise<Map<string, Discove
         module,
       };
 
-      // Index by manifest ID (primary key in marketplace.lock)
-      discovered.set(pkgId, adapterEntry);
-      // Also index by npm package name so config values like "@kb-labs/adapters-kblabs-gateway"
-      // resolve correctly even when the lock key is a manifest ID like "kblabs-gateway-llm".
+      // Index by manifest ID and npm package name.
+      // When overwrite=false (platform fallback), skip entries already set by project.
+      if (overwrite || !discovered.has(pkgId)) {
+        discovered.set(pkgId, adapterEntry);
+      }
       if (npmPkgName && npmPkgName !== pkgId) {
-        discovered.set(npmPkgName, adapterEntry);
+        if (overwrite || !discovered.has(npmPkgName)) {
+          discovered.set(npmPkgName, adapterEntry);
+        }
       }
     } catch {
       // Skip adapters that fail to load (not built yet)
     }
   }
+}
+
+/**
+ * Discover adapters from marketplace.lock(s).
+ * Reads entries with `primaryKind === 'adapter'` and loads their modules.
+ *
+ * When projectRoot is provided and differs from platformRoot, the project lock
+ * is read first (project wins). The platform lock fills any remaining gaps.
+ *
+ * @param platformRoot - Platform installation / workspace root directory
+ * @param projectRoot  - Project root (overrides platformRoot entries when different)
+ * @returns Map of package names to adapter info
+ */
+export async function discoverAdapters(
+  platformRoot: string,
+  projectRoot?: string,
+): Promise<Map<string, DiscoveredAdapter>> {
+  const discovered = new Map<string, DiscoveredAdapter>();
+
+  // Project lock first — project wins
+  if (projectRoot && projectRoot !== platformRoot) {
+    await loadAdaptersFromLock(projectRoot, discovered, /* overwrite= */ true);
+  }
+
+  // Platform lock second — fills gaps only
+  await loadAdaptersFromLock(platformRoot, discovered, /* overwrite= */ false);
 
   return discovered;
 }

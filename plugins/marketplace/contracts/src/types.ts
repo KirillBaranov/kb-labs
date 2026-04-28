@@ -168,7 +168,7 @@ export type ScopedMarketplaceEntry = MarketplaceEntryWithId & {
 
 /**
  * Non-fatal warning surfaced by a marketplace operation.
- * Examples: a collision between platform and project lock (platform wins),
+ * Examples: a collision between platform and project lock (project wins),
  * a project-scope config ignored because the field is platform-only, etc.
  */
 export interface MarketplaceDiagnostic {
