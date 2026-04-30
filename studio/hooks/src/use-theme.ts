@@ -120,7 +120,7 @@ const DARK_SEMANTIC: SemanticTokens = {
  * ```
  */
 function getResolvedTheme(): 'light' | 'dark' {
-  if (typeof document === 'undefined') return 'light';
+  if (typeof document === 'undefined') { return 'light'; }
   return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
 }
 
