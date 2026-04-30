@@ -24,7 +24,7 @@
 
 .resultItem.selected {
   background-color: var(--bg-tertiary);
-  border-left-color: var(--primary-color, #1890ff);
+  border-left-color: var(--link);
 }
 
 .categoryIcon {

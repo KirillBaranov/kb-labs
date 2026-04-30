@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { theme } from 'antd';
 import {
   colors,
@@ -118,11 +119,26 @@ const DARK_SEMANTIC: SemanticTokens = {
  * <div style={{ color: tokens.colors.primary[600] }}>
  * ```
  */
+function getResolvedTheme(): 'light' | 'dark' {
+  if (typeof document === 'undefined') return 'light';
+  return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+}
+
 export function useTheme(): UseThemeReturn {
   const { token: antdToken } = theme.useToken();
 
-  // TODO: wire into Studio's theme mode zustand store
-  const mode = 'light' as 'light' | 'dark';
+  const [mode, setMode] = React.useState<'light' | 'dark'>(getResolvedTheme);
+
+  React.useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setMode(getResolvedTheme());
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+    return () => observer.disconnect();
+  }, []);
 
   return {
     mode,
