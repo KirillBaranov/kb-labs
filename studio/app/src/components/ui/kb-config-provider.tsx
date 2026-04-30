@@ -14,9 +14,11 @@ export interface KBConfigProviderProps extends Omit<ConfigProviderProps, 'theme'
 
 const KBConfigProviderContext = React.createContext<{
   theme: ThemeMode;
+  resolvedTheme: 'light' | 'dark';
   setTheme: (theme: ThemeMode) => void;
 }>({
   theme: 'light',
+  resolvedTheme: 'light',
   setTheme: () => {},
 });
 
@@ -99,7 +101,7 @@ export function KBConfigProvider({
   // CSS variables already handle theme switching via .light/.dark classes
   // const algorithm = React.useMemo(() => getThemeAlgorithm(theme), [theme]);
 
-  const value = React.useMemo(() => ({ theme, setTheme }), [theme, setTheme]);
+  const value = React.useMemo(() => ({ theme, resolvedTheme: actualTheme, setTheme }), [theme, actualTheme, setTheme]);
 
   const themeConfig: ThemeConfig = React.useMemo(
     () => ({
