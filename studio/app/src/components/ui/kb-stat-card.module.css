@@ -16,6 +16,6 @@
   color: var(--text-primary);
 }
 
-.value.positive { color: #52c41a; }
-.value.negative { color: #ff4d4f; }
-.value.warning  { color: #faad14; }
+.value.positive { color: var(--success); }
+.value.negative { color: var(--error); }
+.value.warning  { color: var(--warning); }
