@@ -232,72 +232,69 @@ export function createGovernedPlatformServices(
 
     // VectorStore: namespace-based permission (prefix isolation)
     vectorStore: permissions.platform?.vectorStore
-      ? {
-          search: async (query: number[], limit: number, filter?: VectorFilter) => {
-            // Search in raw store
-            const results = await raw.vectorStore.search(query, limit, filter);
+      ? (() => {
+          const rawPermission = permissions.platform?.vectorStore;
+          const permission =
+            rawPermission === true
+              ? true
+              : typeof rawPermission === 'object'
+                ? (rawPermission as { collections?: string[] }).collections
+                : undefined;
 
-            // Extract collections array from permission
-            const rawPermission = permissions.platform?.vectorStore;
-            const permission =
-              rawPermission === true
-                ? true
-                : typeof rawPermission === 'object'
-                  ? (rawPermission as { collections?: string[] }).collections
-                  : undefined;
+          // Namespace for this plugin (e.g. 'mind:'), undefined when permission === true
+          const namespace: string | undefined =
+            permission === true || !permission || permission.length === 0
+              ? undefined
+              : permission[0];
 
-            // Filter results to only include allowed namespaces and remove prefix
-            return results
-              .filter((result) => isVectorIdAllowed(result.id, permission))
-              .map((result) => ({
-                ...result,
-                id: unprefixVectorId(result.id, permission),
+          // Filter results by _kbNamespace metadata field (set on upsert).
+          // Falls back to allowing results that have no _kbNamespace (backward compat).
+          const filterByNamespace = <T extends { metadata?: Record<string, unknown> }>(
+            results: T[],
+          ): T[] => {
+            if (!namespace) return results;
+            return results.filter(
+              (r) => !r.metadata?.['_kbNamespace'] || r.metadata['_kbNamespace'] === namespace,
+            );
+          };
+
+          return {
+            search: async (query: number[], limit: number, filter?: VectorFilter) => {
+              const results = await raw.vectorStore.search(query, limit, filter);
+              return filterByNamespace(results);
+            },
+
+            upsert: async (vectors: VectorRecord[]) => {
+              const prefixedVectors = vectors.map((vec) => ({
+                ...vec,
+                id: prefixVectorId(vec.id, permission),
+                // Tag with namespace so search/query can filter correctly.
+                // Underlying adapters (e.g. Qdrant) convert IDs to UUIDs, so
+                // string-prefix checks on IDs are unreliable after the round-trip.
+                metadata: namespace
+                  ? { ...vec.metadata, _kbNamespace: namespace }
+                  : vec.metadata,
               }));
-          },
+              return raw.vectorStore.upsert(prefixedVectors);
+            },
 
-          upsert: async (vectors: VectorRecord[]) => {
-            // Extract collections array from permission
-            const rawPermission = permissions.platform?.vectorStore;
-            const permission =
-              rawPermission === true
-                ? true
-                : typeof rawPermission === 'object'
-                  ? (rawPermission as { collections?: string[] }).collections
-                  : undefined;
+            delete: async (ids: string[]) => {
+              const prefixedIds = ids.map((id) => prefixVectorId(id, permission));
+              return raw.vectorStore.delete(prefixedIds);
+            },
 
-            // Add namespace prefix to all IDs
-            const prefixedVectors = vectors.map((vec) => ({
-              ...vec,
-              id: prefixVectorId(vec.id, permission),
-            }));
+            count: async () => raw.vectorStore.count(),
 
-            return raw.vectorStore.upsert(prefixedVectors);
-          },
-
-          delete: async (ids: string[]) => {
-            // Extract collections array from permission
-            const rawPermission = permissions.platform?.vectorStore;
-            const permission =
-              rawPermission === true
-                ? true
-                : typeof rawPermission === 'object'
-                  ? (rawPermission as { collections?: string[] }).collections
-                  : undefined;
-
-            // Add namespace prefix to all IDs
-            const prefixedIds = ids.map((id) => prefixVectorId(id, permission));
-
-            return raw.vectorStore.delete(prefixedIds);
-          },
-
-          count: async () => {
-            // Count all vectors and filter by namespace
-            // Note: This is not perfect - it counts all vectors in the store
-            // A better implementation would filter by prefix at DB level
-            // For now, this is a limitation of the simple wrapper approach
-            return raw.vectorStore.count();
-          },
-        }
+            ...(raw.vectorStore.query
+              ? {
+                  query: async (filter: VectorFilter) => {
+                    const results = await raw.vectorStore.query!(filter);
+                    return filterByNamespace(results);
+                  },
+                }
+              : {}),
+          } as VectorStoreAdapter;
+        })()
       : createDeniedService<VectorStoreAdapter>('vectorStore'),
 
     // Cache: namespace-based permission
