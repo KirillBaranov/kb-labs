@@ -26,6 +26,7 @@ import { randomUUID } from 'crypto';
 import type { ITransport } from '../transport/transport';
 import type { AdapterCall, AdapterType, AdapterCallContext } from '@kb-labs/core-platform/serializable';
 import { serialize, deserialize, IPC_PROTOCOL_VERSION } from '@kb-labs/core-platform/serializable';
+import { BulkTransferHelper } from '../transport/bulk-transfer';
 
 /**
  * Generic base class for remote adapter proxies.
@@ -134,7 +135,16 @@ export abstract class RemoteAdapter<T> {
     }
 
     // Deserialize and return result (or undefined for void methods)
-    return response.result !== undefined ? deserialize(response.result) : undefined;
+    if (response.result === undefined) {
+      return undefined;
+    }
+    const result = deserialize(response.result);
+    // Server sends large results via BulkTransfer (temp file) to avoid IPC size limits.
+    // Transparently read the file and return the actual data.
+    if (BulkTransferHelper.isBulkTransfer(result)) {
+      return BulkTransferHelper.deserialize(result);
+    }
+    return result;
   }
 
   /**
