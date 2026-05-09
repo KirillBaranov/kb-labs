@@ -141,6 +141,13 @@ async function handleExecute(message: ExecuteMessage): Promise<void> {
       return;
     }
 
+    // Pre-initialize EmbeddingsProxy dimensions via IPC (cached after first call).
+    // Required before any handler accesses platform.embeddings.dimensions synchronously.
+    const embProxy = rawProxyPlatform.embeddings as unknown as { getDimensions?: () => Promise<number> };
+    if (typeof embProxy.getDimensions === 'function') {
+      await embProxy.getDimensions().catch(() => {});
+    }
+
     // Platform proxy: rawProxyPlatform forwards adapter calls to parent via IPC.
     // Governed wrapper adds per-plugin permission enforcement (Layer 1).
     // runInProcess() will set this as AsyncLocalStorage context so usePlatform()/useLLM()
