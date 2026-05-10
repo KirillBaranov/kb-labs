@@ -46,7 +46,7 @@ function getCurrentStepInfo(run: WorkflowRun): { name: string; summary?: string;
 }
 
 function getTaskDescription(run: WorkflowRun): string {
-  const payload = run.trigger.payload;
+  const payload = run.trigger?.payload;
   if (payload?.task && typeof payload.task === 'string') { return payload.task; }
   return '';
 }

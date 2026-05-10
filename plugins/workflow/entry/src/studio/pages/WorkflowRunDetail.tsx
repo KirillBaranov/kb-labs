@@ -8,7 +8,7 @@ import { useMemo, useState, useEffect, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   UIButton, UITypographyText,
-  UITitle, UIAlert, UIList, UIListItem, UIAccordion, UITabs, UIJsonViewer,
+  UITitle, UIAlert, UIList, UIListItem, UIAccordion, UITabs, UIJsonViewer, UISkeleton,
 } from '@kb-labs/sdk/studio'
 import type { UIAccordionItem, UITabItem } from '@kb-labs/sdk/studio'
 import { useData, useMutateData, useSSE } from '@kb-labs/sdk/studio'
@@ -564,7 +564,12 @@ export default function WorkflowRunDetail() {
         />
       )}
 
-      {isLoading && <UIPageSection><Text>Loading workflow run...</Text></UIPageSection>}
+      {isLoading && (
+        <UIPageSection>
+          <UISkeleton active lines={2} style={{ marginBottom: 16 }} />
+          <UISkeleton active lines={4} />
+        </UIPageSection>
+      )}
       {!isLoading && !run && !error && <UIPageSection><Text>Workflow run not found.</Text></UIPageSection>}
       {run && (
         <UIPageSection>
@@ -589,7 +594,7 @@ export default function WorkflowRunDetail() {
               v{run.version}
             </span>
             <span style={{ color: 'var(--text-tertiary)', fontSize: 13 }}>
-              by {run.trigger.actor ?? 'unknown'}
+              by {run.trigger?.actor ?? 'unknown'}
             </span>
             {run.startedAt && (
               <span style={{ color: 'var(--text-tertiary)', fontSize: 13, marginLeft: 'auto' }}>

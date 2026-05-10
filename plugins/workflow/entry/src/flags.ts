@@ -170,3 +170,86 @@ export const workflowRunFlags = {
 } as const;
 
 export type WorkflowRunFlags = typeof workflowRunFlags;
+
+/**
+ * Flags for workflow:runs-list command
+ */
+export const runsListFlags = {
+  json: {
+    type: 'boolean',
+    description: OUTPUT_JSON_DESCRIPTION,
+    default: false,
+  },
+  status: {
+    type: 'string',
+    description: 'Filter by status: failed, running, success, queued, cancelled',
+  },
+  limit: {
+    type: 'number',
+    description: 'Maximum number of runs to show (default: 20)',
+    default: 20,
+  },
+  workflow: {
+    type: 'string',
+    description: 'Filter by workflow ID or name',
+  },
+} as const;
+
+export type RunsListFlags = typeof runsListFlags;
+
+/**
+ * Flags for workflow:runs-view command
+ */
+export const runsViewFlags = {
+  json: {
+    type: 'string',
+    description: 'Output specific fields as JSON (comma-separated, e.g. "status,jobs"). Use "all" for full output.',
+  },
+  log: {
+    type: 'boolean',
+    description: 'Show full run logs',
+    default: false,
+  },
+  'log-failed': {
+    type: 'boolean',
+    description: 'Show logs only from failed steps (most useful for investigation)',
+    default: false,
+  },
+  step: {
+    type: 'string',
+    description: 'Filter logs to a specific step name',
+  },
+} as const;
+
+export type RunsViewFlags = typeof runsViewFlags;
+
+/**
+ * Flags for workflow:runs-watch command
+ */
+export const runsWatchFlags = {
+  json: {
+    type: 'boolean',
+    description: 'Output events as JSON',
+    default: false,
+  },
+} as const;
+
+export type RunsWatchFlags = typeof runsWatchFlags;
+
+/**
+ * Flags for workflow:runs-rerun command
+ */
+export const runsRerunFlags = {
+  json: {
+    type: 'boolean',
+    description: OUTPUT_JSON_DESCRIPTION,
+    default: false,
+  },
+  'failed-only': {
+    type: 'boolean',
+    description: 'Rerun only failed jobs (not yet supported by daemon)',
+    default: false,
+  },
+} as const;
+
+export type RunsRerunFlags = typeof runsRerunFlags;
