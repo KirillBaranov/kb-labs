@@ -5,7 +5,7 @@
         "@kb-labs/adapters-openai",
         "@kb-labs/adapters-vibeproxy"
       ],
-      "embeddings": "@kb-labs/adapters-openai/embeddings",
+      "embeddings": "@kb-labs/adapters-voyage-ai/embeddings",
       "storage": "@kb-labs/adapters-fs",
       "db": "@kb-labs/adapters-sqlite",
       "documentDb": "@kb-labs/adapters-mongodb",
@@ -20,6 +20,10 @@
       "environment": "@kb-labs/adapters-environment-docker"
     },
     "adapterOptions": {
+      "voyage-ai-embeddings": {
+        "model": "voyage-code-3",
+        "apiKey": "${VOYAGE_API_KEY}"
+      },
       "llm": {
         "defaultTier": "small",
         "baseURL": "${OPENAI_PROXY_URL}",
@@ -88,7 +92,8 @@
         "database": "kb-labs"
       },
       "vectorStore": {
-        "url": "http://localhost:6333"
+        "url": "http://localhost:6333",
+        "dimension": 1024
       },
       "cache": {
         "url": "redis://localhost:6379"
@@ -207,11 +212,11 @@
               "type": "mind",
               "options": {
                 "embedding": {
-                  "type": "openai",
+                  "type": "voyage",
                   "provider": {
-                    "openai": {
-                      "model": "text-embedding-3-small",
-                      "dimension": 1536,
+                    "voyage": {
+                      "model": "voyage-code-3",
+                      "dimension": 1024,
                       "batchSize": 100
                     }
                   }
@@ -289,7 +294,7 @@
               "checks": [
                 {
                   "id": "dist-exports",
-                  "name": "dist/index.js \u2014 no directory imports",
+                  "name": "dist/index.js — no directory imports",
                   "command": "bash",
                   "args": [
                     "scripts/gates/check-dist-exports.sh"
@@ -322,7 +327,7 @@
               "checks": [
                 {
                   "id": "dist-exports",
-                  "name": "dist/index.js \u2014 no directory imports",
+                  "name": "dist/index.js — no directory imports",
                   "command": "bash",
                   "args": [
                     "scripts/gates/check-dist-exports.sh"
@@ -339,7 +344,7 @@
             "groups": [
               {
                 "title": "Core & SDK",
-                "emoji": "\ud83c\udfd7\ufe0f",
+                "emoji": "🏗️",
                 "scopes": [
                   "core",
                   "sdk",
@@ -353,7 +358,7 @@
               },
               {
                 "title": "Gateway & API",
-                "emoji": "\ud83c\udf10",
+                "emoji": "🌐",
                 "scopes": [
                   "gateway",
                   "rest-api"
@@ -361,7 +366,7 @@
               },
               {
                 "title": "Adapters",
-                "emoji": "\ud83d\udd0c",
+                "emoji": "🔌",
                 "scopes": [
                   "adapters",
                   "adapters-openai",
@@ -376,7 +381,7 @@
               },
               {
                 "title": "Plugins",
-                "emoji": "\ud83e\udde9",
+                "emoji": "🧩",
                 "scopes": [
                   "workflow",
                   "marketplace",
@@ -397,7 +402,7 @@
               },
               {
                 "title": "Studio",
-                "emoji": "\ud83c\udfa8",
+                "emoji": "🎨",
                 "scopes": [
                   "studio"
                 ]
@@ -407,7 +412,7 @@
           "checks": [
             {
               "id": "dist-exports",
-              "name": "dist/index.js \u2014 no directory imports",
+              "name": "dist/index.js — no directory imports",
               "command": "bash",
               "args": [
                 "scripts/gates/check-dist-exports.sh"
@@ -587,23 +592,23 @@
         "url": "http://localhost:5050",
         "prefix": "/api/v1",
         "websocket": true,
-        "description": "REST API \u2014 main platform BFF"
+        "description": "REST API — main platform BFF"
       },
       "workflow": {
         "url": "http://localhost:7778",
         "prefix": "/api/exec",
         "rewritePrefix": "",
-        "description": "Workflow Daemon \u2014 direct access"
+        "description": "Workflow Daemon — direct access"
       },
       "marketplace": {
         "url": "http://localhost:5070",
         "prefix": "/api/v1/marketplace",
-        "description": "Marketplace Service \u2014 unified entity management"
+        "description": "Marketplace Service — unified entity management"
       },
       "widgets": {
         "url": "http://localhost:5050",
         "prefix": "/plugins",
-        "description": "Plugin widget bundles \u2014 served by REST API"
+        "description": "Plugin widget bundles — served by REST API"
       }
     },
     "staticTokens": {
@@ -674,5 +679,21 @@
         "adapters/*"
       ]
     }
+  },
+  "qa": {
+    "checks": [
+      {
+        "id": "new-tests",
+        "command": "node",
+        "args": [
+          "scripts/checks/new-tests.mjs"
+        ],
+        "runIn": "newFiles",
+        "parser": "json",
+        "severity": "warning",
+        "trending": true,
+        "description": "New source files must have a corresponding test file"
+      }
+    ]
   }
 }

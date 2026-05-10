@@ -7,6 +7,7 @@ groups:
   ui-web:    [kb-web, kb-docs]
   local:     [host-agent]
   execution: [runtime-server]
+  ai:        [omniroute]
 
 services:
   qdrant:
@@ -176,6 +177,21 @@ services:
       GATEWAY_WS_URL: ws://localhost:4000
       RUNTIME_HOST_ID: runtime-server-local
       GATEWAY_TOKEN: dev-runtime-server-token
+
+  omniroute:
+    name: OmniRoute
+    description: Local AI router for Claude Code and other OpenAI-compatible clients
+    group: ai
+    type: node
+    command: npx -y node@22 ${HOME}/.npm-global/lib/node_modules/omniroute/app/server.js
+    health_check: http://localhost:20128/
+    port: 20128
+    url: http://localhost:20128
+    start_timeout_ms: 120000
+    optional: true
+    env:
+      PORT: "20128"
+      HOSTNAME: 0.0.0.0
 
 settings:
   logs_dir: .kb/logs/tmp
