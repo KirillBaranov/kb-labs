@@ -160,6 +160,16 @@ export class QueryDecomposer {
     const technicalLookupLike = /\b(interface|method|methods|function|class|field|config|policy|option|parameter|stage)\b/i.test(query);
     const debugLookupLike = /\b(error|exception|invalid|failed|failure|null|undefined)\b/i.test(query);
 
+    // "How does/do X work" — conceptual queries always need decomposition to find
+    // both the implementation and its callers. Never classify as instant.
+    if (/\bhow\s+(does|do|is|are|can)\b/i.test(query)) {
+      return {
+        level: 'medium',
+        reason: 'Conceptual how-does query needs decomposition',
+        suggestedMode: 'auto',
+      };
+    }
+
     // Deterministic fast path for short technical/debug lookups:
     // skip decomposition to preserve exact lexical evidence.
     if (wordCount <= 12 && (hasIdentifier || technicalLookupLike || debugLookupLike)) {

@@ -146,6 +146,10 @@ export interface OrchestratorConfig {
   synthesis: OrchestratorSynthesisConfig;
   compression: OrchestratorCompressionConfig;
   cache: OrchestratorCacheConfig;
+  hyde?: {
+    /** Enable HyDE: generate hypothetical code snippets to bridge NL↔code vocabulary gap */
+    enabled: boolean;
+  };
 }
 
 // === QUERY OPTIONS ===

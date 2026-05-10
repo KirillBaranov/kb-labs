@@ -6,6 +6,7 @@
  */
 
 import { useLogger } from '@kb-labs/sdk';
+import type { ILLM } from '@kb-labs/sdk';
 import type { MindChunk, MindIntent } from '@kb-labs/mind-types';
 import type { AgentQueryMode } from '../types';
 import type {
@@ -14,11 +15,13 @@ import type {
   OrchestratorConfig,
   RetrievalTelemetry,
 } from '../types';
+import { generateHypotheticalSnippet } from './hyde';
 
 const getLogger = () => useLogger().child({ category: 'mind:orchestrator:gatherer' });
 
 export interface ChunkGathererOptions {
   config: OrchestratorConfig;
+  llm?: ILLM;
 }
 
 /**
@@ -46,9 +49,11 @@ export interface QueryFn {
  */
 export class ChunkGatherer {
   private readonly config: OrchestratorConfig;
+  private readonly llm: ILLM | undefined;
 
   constructor(options: ChunkGathererOptions) {
     this.config = options.config;
+    this.llm = options.llm;
   }
 
   /**
@@ -65,12 +70,24 @@ export class ChunkGatherer {
     const rawRetrievalSignals: RetrievalTelemetry[] = [];
     let totalMatches = 0;
 
-    // Execute sub-queries in parallel
-    const subqueryPromises = decomposed.subqueries.map(async (subquery) => {
+    // Execute sub-queries in parallel (dedup similar subqueries first)
+    const uniqueSubqueries = deduplicateSubqueries(decomposed.subqueries);
+    const subqueryPromises = uniqueSubqueries.map(async (subquery) => {
       try {
         const weights = classifySubqueryWeights(subquery);
+        // HyDE: for technical lookup queries, embed a hypothetical code snippet
+        // rather than the NL query to bridge the vocabulary gap
+        const hydeEnabled = this.config.hyde?.enabled && !!this.llm;
+        const isTechnicalLookup = weights.keyword > 0.5;
+        let queryText = subquery;
+        if (hydeEnabled && isTechnicalLookup) {
+          const hypothetical = await generateHypotheticalSnippet(this.llm!, subquery);
+          if (hypothetical) {
+            queryText = hypothetical;
+          }
+        }
         const result = await queryFn({
-          text: subquery,
+          text: queryText,
           intent: 'search',
           limit: modeConfig.chunksPerQuery,
           vectorWeight: weights.vector,
@@ -96,11 +113,12 @@ export class ChunkGatherer {
     // Wait for all sub-queries to complete
     const results = await Promise.all(subqueryPromises);
 
-    // Aggregate results
+    // Aggregate results (normalize per-subquery scores before merging)
     for (const { subquery, chunks, retrieval } of results) {
-      subqueryResults.set(subquery, chunks);
-      allChunks.push(...chunks);
-      totalMatches += chunks.length;
+      const normalized = normalizeSubqueryScores(chunks);
+      subqueryResults.set(subquery, normalized);
+      allChunks.push(...normalized);
+      totalMatches += normalized.length;
       if (retrieval) {
         rawRetrievalSignals.push(retrieval);
       }
@@ -108,8 +126,19 @@ export class ChunkGatherer {
 
     // Deduplicate chunks
     const deduplicatedChunks = this.deduplicateChunks(allChunks);
+
+    // Boost chunks found by multiple subqueries (cross-subquery signal)
+    // Re-sort after boost so elevated chunks rank correctly
+    const boostedUnsorted = applyMultiSubqueryBoost(deduplicatedChunks, subqueryResults);
+    const boostedChunks = boostedUnsorted.slice().sort((a, b) => b.score - a.score);
+
+    // Drop chunks below relevance floor — removes noise that pulls down synthesizer confidence
+    const MIN_SCORE = 0.25;
+    const filteredChunks = boostedChunks.filter(c => c.score >= MIN_SCORE);
+    const safeChunks = filteredChunks.length > 0 ? filteredChunks : boostedChunks.slice(0, 5);
+
     const rerankedChunks = rerankGatheredChunks(
-      deduplicatedChunks,
+      safeChunks,
       decomposed.original,
       mode,
     );
@@ -275,9 +304,9 @@ export function rerankGatheredChunks(
   const designIntentQuery = !isSpecificFileQuery &&
     /\b(why|design\s+decision|architectural\s+decision|tradeoff)\b/i.test(query);
 
-  // Pass-through for non-technical queries, but always rerank design-intent queries
+  // Pass-through for non-technical, non-design queries — but always ensure code evidence
   if (!technicalQuery && !designIntentQuery) {
-    return chunks;
+    return ensureCodeEvidenceInTopWindow(chunks, mode);
   }
 
   const reranked = chunks
@@ -449,7 +478,7 @@ function extractTechnicalIdentifiers(query: string): string[] {
 }
 
 function isTechnicalQuery(query: string): boolean {
-  return /\b(interface|method|function|class|field|parameter|config|policy|implementation|algorithm|architecture|design|flow|cli|command|subcommand|flag|option)\b/i.test(query);
+  return /\b(interface|method|function|class|field|parameter|config|policy|implementation|algorithm|architecture|design|flow|cli|command|subcommand|flag|option|workflow|state|transition|handler|middleware|adapter|engine|runner|daemon|service|plugin|registry|manifest|discovery|bootstrap|scheduler|queue|worker|pool|execution)\b/i.test(query);
 }
 
 function inferChunkKind(filePath: string): 'code' | 'doc' | 'config' | 'other' {
@@ -468,4 +497,66 @@ function inferChunkKind(filePath: string): 'code' | 'doc' | 'config' | 'other' {
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Normalize scores within a single subquery result to [0, 1].
+ * Converts absolute similarity scores to relative rankings so that
+ * MIN_SCORE filtering works correctly regardless of the embedding model's
+ * absolute magnitude (voyage-code-3 typically returns 0.15–0.35, not 0.5–0.9).
+ */
+function normalizeSubqueryScores(chunks: MindChunk[]): MindChunk[] {
+  if (chunks.length === 0) return chunks;
+  const maxScore = Math.max(...chunks.map(c => c.score));
+  if (maxScore <= 0) return chunks;
+  return chunks.map(c => ({ ...c, score: c.score / maxScore }));
+}
+
+/**
+ * Boost score of chunks whose file path appears in multiple subquery result sets.
+ * A file found by 2+ subqueries is a strong relevance signal.
+ */
+function applyMultiSubqueryBoost(
+  chunks: MindChunk[],
+  subqueryResults: Map<string, MindChunk[]>,
+): MindChunk[] {
+  const pathOccurrences = new Map<string, number>();
+  for (const subChunks of subqueryResults.values()) {
+    const seenPaths = new Set<string>();
+    for (const chunk of subChunks) {
+      if (!seenPaths.has(chunk.path)) {
+        pathOccurrences.set(chunk.path, (pathOccurrences.get(chunk.path) ?? 0) + 1);
+        seenPaths.add(chunk.path);
+      }
+    }
+  }
+
+  const BOOST: Record<number, number> = { 2: 1.10, 3: 1.20 };
+  return chunks.map(chunk => {
+    const count = pathOccurrences.get(chunk.path) ?? 1;
+    const boost = BOOST[Math.min(count, 3)] ?? 1;
+    return boost > 1 ? { ...chunk, score: chunk.score * boost } : chunk;
+  });
+}
+
+/**
+ * Remove near-duplicate subqueries before retrieval using Jaccard token overlap.
+ * Threshold 0.7 — queries sharing >70% of meaningful tokens are duplicates.
+ */
+function deduplicateSubqueries(subqueries: string[]): string[] {
+  const tokenize = (s: string): Set<string> =>
+    new Set(s.toLowerCase().split(/\W+/).filter(t => t.length > 2));
+
+  const unique: string[] = [];
+  for (const sq of subqueries) {
+    const sqTokens = tokenize(sq);
+    const isDuplicate = unique.some(existing => {
+      const exTokens = tokenize(existing);
+      const intersection = [...sqTokens].filter(t => exTokens.has(t)).length;
+      const union = new Set([...sqTokens, ...exTokens]).size;
+      return union > 0 && intersection / union > 0.7;
+    });
+    if (!isDuplicate) unique.push(sq);
+  }
+  return unique;
 }
