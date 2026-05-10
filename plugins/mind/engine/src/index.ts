@@ -858,6 +858,7 @@ export class MindEngine implements KnowledgeEngine {
   private readonly options: NormalizedOptions;
   private readonly vectorStore: VectorStore;
   private embeddingProvider: EmbeddingProvider;
+  private readonly embeddingDimension: number;
   private readonly llm: ILLM | null;
   private readonly runtime: RuntimeAdapter;
   private readonly reranker: Reranker | null;
@@ -969,6 +970,7 @@ export class MindEngine implements KnowledgeEngine {
       throw new Error('Embeddings adapter not available. Ensure platform is initialized with embeddings adapter.');
     }
     this.embeddingProvider = new PlatformEmbeddingProvider(embeddings);
+    this.embeddingDimension = embeddingDimension;
     
     // Use LLM from SDK hook with cache/stream policy for mind RAG internals
     this.llm = useLLM({
@@ -1399,7 +1401,7 @@ export class MindEngine implements KnowledgeEngine {
         return embeddingVectors.map((v: { values: number[] }) => v.values);
       },
       maxBatchSize: 100,
-      dimension: 1536, // OpenAI default
+      dimension: this.embeddingDimension,
     };
 
     // Create embedding stage with rate limiting

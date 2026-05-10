@@ -17,7 +17,7 @@ import type { MindChunk } from '@kb-labs/mind-types';
 import { AGENT_RESPONSE_SCHEMA_VERSION } from './types';
 
 import { QueryDecomposer } from './decomposer/query-decomposer';
-import { ChunkGatherer, type QueryFn } from './gatherer/chunk-gatherer';
+import { ChunkGatherer, type QueryFn, rerankGatheredChunks } from './gatherer/chunk-gatherer';
 import { CompletenessChecker } from './checker/completeness-checker';
 import { ResponseSynthesizer } from './synthesizer/response-synthesizer';
 import { ResponseCompressor } from './compressor/response-compressor';
@@ -105,7 +105,7 @@ export class AgentQueryOrchestrator {
       ? new QueryDecomposer({ llm: this.llm, config: this.config })
       : null;
 
-    this.gatherer = new ChunkGatherer({ config: this.config });
+    this.gatherer = new ChunkGatherer({ config: this.config, llm: this.llm ?? undefined });
 
     this.checker = this.llm
       ? new CompletenessChecker({ llm: this.llm, config: this.config })
@@ -466,10 +466,13 @@ export class AgentQueryOrchestrator {
     const retrieval = extractRetrievalTelemetry(result.metadata);
     await this.enforceRetrievalContextConsistency(options, retrieval);
 
+    // Apply reranking to promote code chunks before synthesis
+    const rerankedChunks = rerankGatheredChunks(result.chunks, options.text, 'instant');
+
     // Build response
     return this.buildResponse(
       options.text,
-      result.chunks,
+      rerankedChunks,
       'instant',
       requestId,
       options.debug,

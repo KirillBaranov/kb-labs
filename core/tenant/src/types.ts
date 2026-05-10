@@ -47,7 +47,7 @@ export interface TenantConfig {
  */
 export const DEFAULT_QUOTAS: Record<TenantTier, TenantQuotas> = {
   free: {
-    requestsPerMinute: 10,
+    requestsPerMinute: 100,
     requestsPerDay: 1000,
     maxConcurrentWorkflows: 1,
     maxStorageMB: 10,
@@ -55,7 +55,7 @@ export const DEFAULT_QUOTAS: Record<TenantTier, TenantQuotas> = {
     tokensPerDay: 100_000,
   },
   pro: {
-    requestsPerMinute: 100,
+    requestsPerMinute: 500,
     requestsPerDay: 100_000,
     maxConcurrentWorkflows: 10,
     maxStorageMB: 1000,

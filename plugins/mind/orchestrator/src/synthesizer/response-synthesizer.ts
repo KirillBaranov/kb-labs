@@ -255,11 +255,12 @@ export class ResponseSynthesizer {
       otherSources ? `\nOther relevant locations:\n${otherSources}` : '',
     ].filter(Boolean).join('\n');
 
+    const directConfidence = Math.min(1, topChunk.score);
     return {
       answer,
       sources: this.chunksToSources(chunks.slice(0, 5)),
-      confidence: topChunk.score,
-      complete: topChunk.score > 0.8,
+      confidence: directConfidence,
+      complete: directConfidence > 0.8,
     };
   }
 
@@ -289,10 +290,27 @@ export class ResponseSynthesizer {
       path: chunk.path,
       lines: `${chunk.span.startLine}-${chunk.span.endLine}`,
       score: chunk.score.toFixed(2),
-      text: this.truncateSnippet(chunk.text, 50), // Keep original 50 lines for quality
+      text: this.annotateChunkText(chunk),
     }));
 
     return arrayToToon(chunkData, ['id', 'path', 'lines', 'score', 'text']);
+  }
+
+  /**
+   * Annotate doc/ADR chunk text with freshness label for LLM awareness.
+   * Code chunks are returned as-is.
+   */
+  private annotateChunkText(chunk: MindChunk): string {
+    const text = this.truncateSnippet(chunk.text, 50);
+    const lowerPath = chunk.path.toLowerCase();
+    const isDoc = lowerPath.includes('/docs/') || lowerPath.endsWith('.md') || lowerPath.includes('/adr/');
+    if (!isDoc) return text;
+
+    const meta = chunk.metadata as Record<string, unknown> | undefined;
+    const mtime = meta?.fileMtime as number | undefined;
+    const dateStr = mtime ? new Date(mtime).toISOString().slice(0, 10) : undefined;
+    const label = dateStr ? `[⚠ Documentation · last updated: ${dateStr}]` : '[⚠ Documentation]';
+    return `${label}\n${text}`;
   }
 
   /**

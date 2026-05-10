@@ -188,7 +188,7 @@ export class EmbeddingStage implements PipelineStage {
           results[currentIndex] = [];
           continue;
         }
-        const texts = validEntries.map(entry => entry.text);
+        const texts = validEntries.map(entry => enrichForEmbedding(entry.chunk, entry.text));
 
         // Estimate tokens for this batch
         const estimatedTokens = estimateBatchTokens(texts);
@@ -549,4 +549,17 @@ export class EmbeddingStage implements PipelineStage {
       embeddingsGenerated: this.chunksWithEmbeddings.length,
     };
   }
+}
+
+/**
+ * Enrich chunk text for embedding with AST-derived symbol name.
+ * Bridges vocabulary gap between NL queries and code identifiers.
+ * Does NOT modify the stored chunk.text — only the text sent to the embedding model.
+ */
+function enrichForEmbedding(chunk: MindChunk, sanitizedText: string): string {
+  const meta = chunk.metadata as Record<string, unknown> | undefined;
+  if (!meta) return sanitizedText;
+  const name = (meta.functionName ?? meta.className ?? meta.typeName ?? meta.symbolName) as string | undefined;
+  if (!name) return sanitizedText;
+  return `${sanitizedText}\n[Symbol: ${name}]`;
 }

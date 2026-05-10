@@ -102,10 +102,10 @@ function getPrimaryAdapter(value: AdapterValue | undefined): string | undefined 
  * @param cwd - Workspace root directory
  * @returns Adapter instance or undefined if loading fails
  */
-async function loadAdapter<T>(adapterPath: string, cwd: string, options?: unknown): Promise<T | undefined> {
+async function loadAdapter<T>(adapterPath: string, cwd: string, options?: unknown, platformRoot?: string): Promise<T | undefined> {
   try {
     // Use resolveAdapter to try workspace discovery first, then npm
-    const factory = await resolveAdapter(adapterPath, cwd);
+    const factory = await resolveAdapter(adapterPath, cwd, platformRoot);
 
     if (factory) {
       return (await factory(options)) as T;

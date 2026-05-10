@@ -140,6 +140,16 @@ export async function createWorkflowWorker(
       return true; // Another loop already claimed this job
     }
     claimedJobs.add(jobKey);
+
+    const waitMs = job.queuedAt ? Date.now() - new Date(job.queuedAt).getTime() : undefined;
+    logger.info('Job picked from queue', {
+      runId: run.id,
+      jobId: job.id,
+      jobName: job.jobName,
+      queuedAt: job.queuedAt,
+      waitMs,
+    });
+
     const jobStartTime = Date.now();
     const jobLogger = createCorrelatedLogger(logger, {
       serviceId: 'workflow',
@@ -153,6 +163,7 @@ export async function createWorkflowWorker(
         workflowId: run.id,
         runId: run.id,
         jobId: job.id,
+        jobName: job.jobName,
       },
     });
 
@@ -295,11 +306,18 @@ export async function createWorkflowWorker(
             const rawExpr = condition.trim().replace(/^\$\{\{\s*/, '').replace(/\s*\}\}$/, '');
             const shouldRun = evaluateExpression(rawExpr, exprCtx);
             if (!shouldRun) {
-              jobLogger.info('Step skipped (condition false)', {
+              jobLogger.info('[step] Skipped: condition evaluated to false', {
                 runId: run.id,
                 jobId: job.id,
                 stepId: step.id,
-                condition,
+                stepName: step.name,
+                stepIndex: step.index,
+                condition: rawExpr,
+                evaluatedContext: {
+                  inputs: exprCtx.inputs,
+                  steps: exprCtx.steps,
+                  env: exprCtx.env,
+                },
               });
               await engine.markStepCompleted(run.id, job.id, step.id, { skipped: true });
               continue;
@@ -326,6 +344,13 @@ export async function createWorkflowWorker(
             ? interpolateObject(step.spec.with as Record<string, unknown>, exprCtx)
             : undefined;
 
+          // --- Interpolate spec.env and forward to shell handler ---
+          // step.spec.env values may contain ${{ }} expressions. Interpolate them
+          // and pass as with.env so builtin:shell merges them into process.env.
+          const interpolatedEnv = step.spec.env
+            ? (interpolateObject(step.spec.env as Record<string, unknown>, exprCtx) as Record<string, string>)
+            : undefined;
+
           // Debug: show raw spec.with vs resolved interpolatedWith
           if (debugMode && step.spec.with) {
             jobLogger.info('[debug] Step input interpolation', {
@@ -341,7 +366,9 @@ export async function createWorkflowWorker(
           const stepLogger = jobLogger.child({
             operation: 'workflow.step',
             stepId: step.id,
-            attempt: 1,
+            stepName: step.name,
+            stepIndex: step.index,
+            attempt: job.attempt ?? 1,
             executionId: stepExecutionId,
             spanId: stepExecutionId,
             invocationId: stepExecutionId,
@@ -385,30 +412,66 @@ export async function createWorkflowWorker(
               await engine.markStepWaitingApproval(run.id, job.id, step.id);
             }
 
-            stepLogger.info('Waiting for approval', {
+            const approvalTimeoutMs = (interpolatedWith as Record<string, unknown> | undefined)?.['timeoutMs'];
+            if (!approvalTimeoutMs) {
+              stepLogger.warn('[approval] No timeout configured — approval may wait indefinitely', {
+                runId: run.id,
+                jobId: job.id,
+                stepId: step.id,
+                stepName: step.name,
+              });
+            }
+
+            stepLogger.info('[approval] Waiting for approval', {
               runId: run.id,
               jobId: job.id,
               stepId: step.id,
+              stepName: step.name,
               context: interpolatedWith,
             });
+
+            const approvalStartMs = Date.now();
+            let pollCount = 0;
 
             // Poll until approval is resolved or stop is requested
             while (!stopRequested) {
               await sleep(2000);
+              pollCount++;
               const currentRun = await engine.getRun(run.id);
               const currentJob = currentRun?.jobs.find(j => j.id === job.id);
               const currentStep = currentJob?.steps.find(s => s.id === step.id);
 
               if (!currentStep || currentStep.status === 'success') {
-                stepLogger.info('Approval granted', { runId: run.id, stepId: step.id });
+                stepLogger.info('[approval] Approval granted', {
+                  runId: run.id,
+                  stepId: step.id,
+                  stepName: step.name,
+                  waitedMs: Date.now() - approvalStartMs,
+                });
                 break;
               }
 
               if (currentStep.status === 'failed') {
                 // Approval was rejected — break out of the polling loop and let
                 // the following builtin:gate step read outputs.action to route.
-                stepLogger.info('Approval rejected', { runId: run.id, stepId: step.id });
+                stepLogger.info('[approval] Approval rejected', {
+                  runId: run.id,
+                  stepId: step.id,
+                  stepName: step.name,
+                  waitedMs: Date.now() - approvalStartMs,
+                });
                 break;
+              }
+
+              // Heartbeat every 10 polls (~20 seconds)
+              if (pollCount % 10 === 0) {
+                stepLogger.info('[approval] Still waiting for approval', {
+                  runId: run.id,
+                  stepId: step.id,
+                  stepName: step.name,
+                  waitedMs: Date.now() - approvalStartMs,
+                  pollCount,
+                });
               }
             }
 
@@ -435,12 +498,18 @@ export async function createWorkflowWorker(
               gateInput.routes[decisionKey] ?? gateInput.routes[decisionValue as string];
             const action = route ?? gateInput.default ?? 'fail';
 
-            stepLogger.info('Gate evaluation', {
+            const availableRoutes = Object.keys(gateInput.routes ?? {});
+            const resolvedAction = typeof action === 'string' ? action : 'restart';
+
+            stepLogger.info('[gate] Evaluating gate decision', {
               runId: run.id,
               stepId: step.id,
-              decision: decisionPath,
-              decisionValue,
-              action: typeof action === 'string' ? action : 'restart',
+              stepName: step.name,
+              expression: decisionPath,
+              resolvedDecision: decisionValue,
+              availableRoutes,
+              selectedRoute: decisionKey,
+              action: resolvedAction,
             });
 
             // Track gate iterations in run metadata
@@ -448,7 +517,25 @@ export async function createWorkflowWorker(
             const metadata = (freshRun?.metadata ?? {}) as Record<string, unknown>;
             const currentIteration = (metadata[iterationKey] as number) ?? 0;
 
+            if (!route && !gateInput.default) {
+              stepLogger.warn('[gate] No matching route found, no default set — failing', {
+                runId: run.id,
+                stepId: step.id,
+                stepName: step.name,
+                resolvedDecision: decisionValue,
+                availableRoutes,
+              });
+            }
+
             if (action === 'continue') {
+              stepLogger.info('[gate] Gate passed, continuing', {
+                runId: run.id,
+                stepId: step.id,
+                stepName: step.name,
+                resolvedDecision: decisionValue,
+                selectedRoute: decisionKey,
+                iteration: currentIteration,
+              });
               await engine.markStepCompleted(run.id, job.id, step.id, {
                 decisionValue,
                 action: 'continue',
@@ -458,7 +545,18 @@ export async function createWorkflowWorker(
             }
 
             if (action === 'fail') {
-              const error = new Error(`Gate failed: decision=${decisionKey}`);
+              const failReason = (route as { message?: string } | undefined)?.message ?? `No matching route for value "${decisionKey}"`;
+              stepLogger.error('[gate] Gate condition failed, aborting job', undefined, {
+                runId: run.id,
+                stepId: step.id,
+                stepName: step.name,
+                resolvedDecision: decisionValue,
+                availableRoutes,
+                selectedRoute: route ? decisionKey : '(none)',
+                failReason,
+                iteration: currentIteration,
+              });
+              const error = new Error(`Gate failed: ${failReason}`);
               await engine.markStepFailed(run.id, job.id, step.id, error, {
                 decisionValue,
                 action: 'fail',
@@ -472,6 +570,14 @@ export async function createWorkflowWorker(
             const nextIteration = currentIteration + 1;
 
             if (nextIteration >= maxIterations) {
+              stepLogger.error('[gate] Max iterations reached', undefined, {
+                runId: run.id,
+                stepId: step.id,
+                stepName: step.name,
+                resolvedDecision: decisionValue,
+                iteration: currentIteration,
+                maxIterations,
+              });
               const error = new Error(
                 `Gate max iterations reached (${maxIterations}) for step ${step.spec.id ?? step.id}`
               );
@@ -485,10 +591,25 @@ export async function createWorkflowWorker(
               throw error;
             }
 
-            stepLogger.info('Gate triggering restart', {
+            // Collect steps that will be reset for logging
+            const stepsToReset: string[] = [];
+            for (const s of job.steps) {
+              if (s.spec.id === restartAction.restartFrom || s.id === restartAction.restartFrom) {
+                stepsToReset.push(s.name ?? s.id);
+              } else if (stepsToReset.length > 0) {
+                stepsToReset.push(s.name ?? s.id);
+              }
+            }
+
+            stepLogger.warn('[gate] Gate triggered restart', {
+              runId: run.id,
+              stepId: step.id,
+              stepName: step.name,
+              resolvedDecision: decisionValue,
               restartFrom: restartAction.restartFrom,
               iteration: nextIteration,
               maxIterations,
+              stepsToReset,
             });
 
             // Mark gate step as completed (with restart info)
@@ -525,6 +646,11 @@ export async function createWorkflowWorker(
                 foundTarget = true;
               }
               if (foundTarget) {
+                stepLogger.debug('[gate] Reset step to queued', {
+                  stepId: s.id,
+                  stepName: s.name,
+                  stepIndex: s.index,
+                });
                 await stateStore.updateStep(run.id, job.id, s.id, (draft) => {
                   draft.status = 'queued';
                   draft.startedAt = undefined;
@@ -546,6 +672,13 @@ export async function createWorkflowWorker(
             const updatedJob = updatedRun?.jobs.find(j => j.id === job.id);
             if (updatedJob) {
               await scheduler.enqueueJob(run.id, updatedJob, updatedJob.priority ?? 'normal');
+              stepLogger.info('[gate] Job re-enqueued for restart', {
+                runId: run.id,
+                jobId: job.id,
+                jobName: job.jobName,
+                iteration: nextIteration,
+                restartFrom: restartAction.restartFrom,
+              });
             }
 
             // Exit processJob — worker will pick up the re-queued job
@@ -554,6 +687,7 @@ export async function createWorkflowWorker(
 
           // --- Regular step execution ---
           // Mark step as started (sets startedAt timestamp)
+          const stepStartTime = Date.now();
           await engine.markStepStarted(run.id, job.id, step.id);
 
           // Build spec with interpolated `with`, `run`, and `summary`.
@@ -580,9 +714,13 @@ export async function createWorkflowWorker(
           if (typeof baseSpec.summary === 'string') {
             baseSpec.summary = interpolateString(baseSpec.summary, exprCtx);
           }
-          const interpolatedSpec = interpolatedWith
-            ? { ...baseSpec, with: { ...(baseSpec.with ?? {}), ...interpolatedWith } }
+          // Merge interpolated env into with.env for builtin:shell (ShellInput.env).
+          const specWithEnv = interpolatedEnv
+            ? { ...baseSpec, with: { ...(baseSpec.with ?? {}), env: { ...(baseSpec.with?.['env'] as Record<string, string> | undefined ?? {}), ...interpolatedEnv } } }
             : baseSpec;
+          const interpolatedSpec = interpolatedWith
+            ? { ...specWithEnv, with: { ...(specWithEnv.with ?? {}), ...interpolatedWith } }
+            : specWithEnv;
 
           // Delegate execution to the execution plane.
           // The platform handles provisioning (workspace, environment, cleanup) transparently.
@@ -615,6 +753,7 @@ export async function createWorkflowWorker(
           });
 
           if (result.status === 'failed') {
+            const stepDurationMs = Date.now() - stepStartTime;
             const error = new Error(result.error?.message ?? 'Step execution failed');
 
             // Mark step as failed (sets finishedAt timestamp + error)
@@ -624,6 +763,11 @@ export async function createWorkflowWorker(
               runId: run.id,
               jobId: job.id,
               stepId: step.id,
+              stepName: step.name,
+              uses: step.spec.uses,
+              durationMs: stepDurationMs,
+              resolvedInputs: interpolatedWith,
+              errorCode: result.error?.code,
             });
             throw error;
           }

@@ -26,6 +26,10 @@ function _detectRepoRoot(start = process.cwd()): string {
 import { parse as parseYaml } from 'yaml';
 import { glob } from 'glob';
 import type { CommandManifest, CommandModule, DiscoveryResult, CacheFile, PackageCacheEntry } from './types';
+
+// Bump this when discovery logic changes to force cache invalidation across all users.
+// Last bump: added discoverWorkspace(projectRoot) for prod-mode two-root discovery.
+const DISCOVERY_VERSION = 2;
 import type { ManifestV3 } from '@kb-labs/plugin-contracts';
 import { toPosixPath } from '../utils/path';
 import { validateManifests, normalizeManifest } from './schema';
@@ -1086,7 +1090,12 @@ async function loadCache(
       log('debug', 'Cache invalidated: Node version changed');
       return null;
     }
-    
+
+    if ((cache.discoveryVersion ?? 0) !== DISCOVERY_VERSION) {
+      log('debug', `Cache invalidated: discovery logic changed (${cache.discoveryVersion ?? 0} → ${DISCOVERY_VERSION})`);
+      return null;
+    }
+
     const currentCliVersion = process.env.CLI_VERSION || '0.1.0';
     if (cache.cliVersion !== currentCliVersion) {
       log('debug', 'Cache invalidated: CLI version changed');
@@ -1306,6 +1315,7 @@ async function saveCache(
   const cache: CacheFile = {
     version: process.version,
     cliVersion: process.env.CLI_VERSION || '0.1.0',
+    discoveryVersion: DISCOVERY_VERSION,
     timestamp: now,
     ttlMs: DISK_CACHE_TTL_MS,
     stateHash: stateHasher.digest('hex'),
@@ -1473,8 +1483,19 @@ export async function discoverManifests(
       if (projectWorkspace.length > 0) {
         log('info', `Discovered ${projectWorkspace.length} project workspace packages with CLI manifests`);
       }
-    } catch {
-      // No pnpm-workspace.yaml in projectRoot — skip silently
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const isMissingYaml = msg.includes('ENOENT') || msg.includes('no such file');
+      if (isMissingYaml) {
+        log('debug', `[plugins][discover] no pnpm-workspace.yaml at projectRoot=${roots.projectRoot} — skipping project workspace scan`);
+      } else {
+        log('warn', JSON.stringify({
+          code: 'PROJECT_WORKSPACE_DISCOVERY_FAILED',
+          projectRoot: roots.projectRoot,
+          error: msg,
+          hint: 'Project workspace plugins may be missing from CLI discovery',
+        }));
+      }
     }
   }
 
