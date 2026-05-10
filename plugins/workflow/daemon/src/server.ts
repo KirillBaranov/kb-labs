@@ -62,7 +62,9 @@ export async function createServer(options: CreateServerOptions) {
     servers: [{ url: 'http://localhost:7778', description: 'Local dev' }],
     ui: !isProduction,
   });
-  const requireAuth = process.env.KB_DAEMON_REQUIRE_AUTH === 'true' || isProduction;
+  const requireAuth = process.env.KB_DAEMON_REQUIRE_AUTH === 'false'
+    ? false
+    : (process.env.KB_DAEMON_REQUIRE_AUTH === 'true' || isProduction);
   const daemonApiKey = process.env.KB_DAEMON_API_KEY;
   const observability = new HttpObservabilityCollector({
     serviceId: 'workflow',
@@ -121,8 +123,9 @@ export async function createServer(options: CreateServerOptions) {
 
       // Allow requests with no origin ONLY in development
       if (!origin) {
-        // Check NODE_ENV to determine environment
-        const isDevelopment = process.env.NODE_ENV !== 'production';
+        // KB_DAEMON_REQUIRE_AUTH=false explicitly opts out of production restrictions
+        const explicitlyDev = process.env.KB_DAEMON_REQUIRE_AUTH === 'false';
+        const isDevelopment = explicitlyDev || process.env.NODE_ENV !== 'production';
         if (isDevelopment) {
           // Development: allow no-origin (curl, Postman, server-to-server)
           callback(null, true);

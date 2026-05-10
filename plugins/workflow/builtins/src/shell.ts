@@ -180,10 +180,15 @@ async function shellHandler(
       reject: false, // We handle exit codes ourselves
     });
 
-    // Stream stdout/stderr line-by-line in real-time
+    // Stream stdout/stderr line-by-line in real-time.
+    // We consume the streams ourselves via 'data' events for live log streaming.
+    // Because attaching a 'data' listener drains the stream, execa's result.stdout
+    // will be empty — we must reconstruct the full output from collected chunks.
     let lineNo = 0;
     let stdoutBuf = '';
     let stderrBuf = '';
+    let stdoutFull = '';
+    let stderrFull = '';
 
     const emitLine = (stream: 'stdout' | 'stderr', line: string) => {
       lineNo++;
@@ -191,14 +196,18 @@ async function shellHandler(
     };
 
     proc.stdout?.on('data', (chunk: Buffer) => {
-      stdoutBuf += chunk.toString();
+      const text = chunk.toString();
+      stdoutFull += text;
+      stdoutBuf += text;
       const lines = stdoutBuf.split('\n');
       stdoutBuf = lines.pop() ?? '';
       for (const line of lines) {emitLine('stdout', line);}
     });
 
     proc.stderr?.on('data', (chunk: Buffer) => {
-      stderrBuf += chunk.toString();
+      const text = chunk.toString();
+      stderrFull += text;
+      stderrBuf += text;
       const lines = stderrBuf.split('\n');
       stderrBuf = lines.pop() ?? '';
       for (const line of lines) {emitLine('stderr', line);}
@@ -211,8 +220,10 @@ async function shellHandler(
     if (stderrBuf) {emitLine('stderr', stderrBuf);}
 
     const output: ShellOutput = {
-      stdout: result.stdout,
-      stderr: result.stderr,
+      // Use our accumulated buffers — result.stdout/stderr are empty because
+      // we consumed the streams via 'data' listeners above.
+      stdout: stdoutFull || result.stdout,
+      stderr: stderrFull || result.stderr,
       exitCode: result.exitCode ?? 0,
       ok: (result.exitCode ?? 0) === 0,
     };

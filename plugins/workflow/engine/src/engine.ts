@@ -304,7 +304,17 @@ export class WorkflowEngine {
       draft.startedAt = new Date().toISOString()
     })
 
-    this.logger.debug('Job started', { runId, jobId })
+    // Promote run status to 'running' when first job starts
+    await this.stateStore.updateRun(runId, (draft) => {
+      if (draft.status === 'queued') {
+        draft.status = 'running'
+        if (!draft.startedAt) {
+          draft.startedAt = new Date().toISOString()
+        }
+      }
+    })
+
+    this.logger.info('Job started', { runId, jobId })
 
     // Track job start
     const run = await this.getRun(runId)

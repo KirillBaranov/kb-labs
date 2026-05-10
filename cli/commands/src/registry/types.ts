@@ -105,6 +105,7 @@ export interface PackageCacheEntry {
 export interface CacheFile {
   version: string;           // Node version
   cliVersion: string;        // CLI version
+  discoveryVersion?: number; // Bump when discovery logic changes to force cache invalidation
   timestamp: number;
   ttlMs?: number;
   stateHash?: string;

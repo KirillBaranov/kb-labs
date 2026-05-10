@@ -131,6 +131,16 @@ export class SandboxRunner implements Runner {
       return resolution.error
     }
 
+    // Log which resolver was used — useful for debugging "why did this run as CLI adapter?"
+    const resolverType = spec.uses!.startsWith('plugin:') ? 'plugin' : spec.uses!.startsWith('command:') ? 'command' : 'builtin'
+    context.logger.debug('[runner] Resolved handler', {
+      stepId: context.stepId,
+      resolverType,
+      uses: spec.uses,
+      pluginId: resolution.value.pluginId,
+      handler: resolution.value.handler,
+    })
+
     // Execute plugin via backend
     const executionRequest = this.buildExecutionRequest(resolution.value, request, context)
 
@@ -288,7 +298,7 @@ export class SandboxRunner implements Runner {
             cwd: request.workspace,
           }
         : undefined,
-      timeoutMs: resolution.permissions.quotas?.timeoutMs ?? this.defaultTimeout,
+      timeoutMs: request.spec.timeoutMs ?? resolution.permissions.quotas?.timeoutMs ?? this.defaultTimeout,
       target: request.target,
     }
   }
@@ -361,6 +371,29 @@ export class SandboxRunner implements Runner {
     // Check if cancelled
     if (signal?.aborted || result.error?.code === 'ABORTED') {
       return buildCancelledResult(signal, result.error)
+    }
+
+    // Detect timeout as explicit failure reason
+    const isTimeout = result.error?.code === 'TIMEOUT' ||
+      (result.error?.message ?? '').toLowerCase().includes('timed out') ||
+      (result.error?.message ?? '').toLowerCase().includes('timeout')
+
+    if (isTimeout) {
+      context.logger.error('Step timed out', {
+        stepId: context.stepId,
+        executionId,
+        timeoutMs: (signal as AbortSignal & { timeoutMs?: number } | undefined)?.timeoutMs,
+        durationMs: result.executionTimeMs,
+        errorCode: result.error?.code,
+      })
+      return {
+        status: 'failed',
+        error: {
+          message: result.error?.message ?? 'Step execution timed out',
+          code: 'STEP_TIMEOUT',
+          details: result.error?.details,
+        },
+      }
     }
 
     // Handle failure

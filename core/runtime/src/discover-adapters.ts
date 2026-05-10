@@ -139,14 +139,19 @@ export async function discoverAdapters(
  * Resolve adapter path — reads from marketplace.lock, supports subpath exports.
  *
  * @param adapterPath - Package name or subpath (e.g., "@kb-labs/adapters-openai/embeddings")
- * @param cwd - Workspace root directory
+ * @param cwd - Project root directory
+ * @param platformRoot - Platform installation root (fills gaps when different from cwd)
  * @returns Adapter factory function
  */
 export async function resolveAdapter(
   adapterPath: string,
   cwd: string,
+  platformRoot?: string,
 ): Promise<((config?: unknown) => unknown) | null> {
-  const discovered = await discoverAdapters(cwd);
+  const discovered = await discoverAdapters(
+    platformRoot ?? cwd,
+    platformRoot && platformRoot !== cwd ? cwd : undefined,
+  );
 
   // Check for subpath exports (e.g., "@kb-labs/adapters-openai/embeddings")
   const basePkgName = adapterPath.split('/').slice(0, 2).join('/');
