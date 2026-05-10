@@ -1,5 +1,6 @@
 import type { SubmoduleInfo } from './submodule.js';
 import type { PackagesConfig, QACheckConfig } from './config.js';
+import type { CheckItem } from './check-output.js';
 
 /**
  * Types of checks the QA plugin can run.
@@ -18,6 +19,8 @@ export interface CheckResult {
   skipped: string[];
   /** Error messages keyed by package name */
   errors: Record<string, string>;
+  /** Structured findings keyed by target (file/package). Populated when check uses parser:"json" and returns CheckItem[]. */
+  details?: Record<string, CheckItem[]>;
 }
 
 /**

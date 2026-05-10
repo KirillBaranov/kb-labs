@@ -2,7 +2,8 @@ import { execSync } from 'node:child_process';
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { PATHS, HISTORY_MAX_ENTRIES } from '@kb-labs/qa-contracts';
-import type { HistoryEntry, QAResults, SubmoduleInfo, WorkspacePackage } from '@kb-labs/qa-contracts';
+import type { HistoryEntry, QAResults, SubmoduleInfo, WorkspacePackage, QACheckConfig } from '@kb-labs/qa-contracts';
+import { appendTrendEntry } from './trend-store.js';
 
 /**
  * Load history entries from disk.
@@ -36,6 +37,7 @@ export function createHistoryEntry(
   results: QAResults,
   rootDir: string,
   packages?: WorkspacePackage[],
+  runContext?: HistoryEntry['runContext'],
 ): HistoryEntry {
   let commit = 'unknown';
   let branch = 'unknown';
@@ -85,13 +87,15 @@ export function createHistoryEntry(
     status: hasFailures ? 'failed' : 'passed',
     summary,
     failedPackages,
+    ...(runContext ? { runContext } : {}),
   };
 }
 
 /**
  * Append a history entry, keeping max HISTORY_MAX_ENTRIES.
+ * If checks config is provided, also writes to per-check trend store for checks with trending:true.
  */
-export function appendEntry(rootDir: string, entry: HistoryEntry): void {
+export function appendEntry(rootDir: string, entry: HistoryEntry, checks?: QACheckConfig[]): void {
   const history = loadHistory(rootDir);
   history.push(entry);
 
@@ -101,4 +105,13 @@ export function appendEntry(rootDir: string, entry: HistoryEntry): void {
   }
 
   saveHistory(rootDir, history);
+
+  // Write to per-check trend store for trending checks
+  if (checks) {
+    for (const check of checks) {
+      if (check.trending && entry.summary[check.id] !== undefined) {
+        appendTrendEntry(rootDir, check.id, entry);
+      }
+    }
+  }
 }

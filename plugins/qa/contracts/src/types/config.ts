@@ -36,10 +36,24 @@ export interface QACheckConfig {
    * - "perPackage" (default): run in each discovered package directory
    * - "scopePath": run once in the sub-repo root (e.g. platform/kb-labs-cli/)
    * - "repoRoot": run once in the workspace root
+   * - "diffOnly": run per-package, but only for packages containing files changed in the current branch (git diff base..HEAD)
+   * - "newFiles": run per-package, but only for packages containing files added in the current branch (git diff --diff-filter=A)
    */
-  runIn?: 'perPackage' | 'scopePath' | 'repoRoot';
+  runIn?: 'perPackage' | 'scopePath' | 'repoRoot' | 'diffOnly' | 'newFiles';
   /** Display icon (emoji, e.g. "🔒"). Used in CLI output and REST API. */
   icon?: string;
+  /**
+   * How a failure affects the overall QA run.
+   * - "blocker" (default): failure sets status to "failed" and appears in blockers[]
+   * - "warning": failure does not change status, appears in warnings[]
+   * - "info": recorded but does not appear in blockers[] or warnings[]
+   */
+  severity?: 'blocker' | 'warning' | 'info';
+  /**
+   * If true, write per-check trend history to .kb/qa/trends/<id>.json in addition to the global history.
+   * Useful for tracking long-term quality trends for specific checks without polluting global history.
+   */
+  trending?: boolean;
 }
 
 /**
