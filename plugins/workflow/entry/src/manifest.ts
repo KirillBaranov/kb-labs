@@ -13,6 +13,10 @@ import {
   listFlags,
   runFlags,
   workflowRunFlags,
+  runsListFlags,
+  runsViewFlags,
+  runsWatchFlags,
+  runsRerunFlags,
 } from './flags';
 import {
   WORKFLOW_BASE_PATH,
@@ -175,6 +179,93 @@ export const manifest = {
           'kb workflow job-run --handler=mind:rag-query --input=\'{"text":"test"}\' --wait',
           'kb workflow job-run --handler=mind:rag-query --input=\'{"text":"test"}\' --priority=8',
           'kb workflow job-run --handler=mind:rag-query --input=\'{"text":"test"}\' --json',
+        ],
+      },
+
+      // workflow:runs-list - List workflow runs (like gh run list)
+      {
+        id: 'runs-list',
+        group: 'workflow',
+        describe: 'List workflow runs.',
+        longDescription:
+          'Lists workflow runs with status, trigger, and duration. Filter by status (failed, running, success) ' +
+          'or workflow ID. Use --json for machine-readable output.',
+
+        handler: './commands/runs-list.js#default',
+        handlerPath: './commands/runs-list.js',
+
+        flags: defineCommandFlags(runsListFlags),
+
+        examples: [
+          'kb workflow runs-list',
+          'kb workflow runs-list --status=failed',
+          'kb workflow runs-list --status=failed --limit=5',
+          'kb workflow runs-list --workflow=my-workflow --json',
+        ],
+      },
+
+      // workflow:runs-view - View run details for investigation (like gh run view)
+      {
+        id: 'runs-view',
+        group: 'workflow',
+        describe: 'View workflow run details for incident investigation.',
+        longDescription:
+          'Shows full run details: jobs, steps, resolvedInputs, gate decisions, errors. ' +
+          'Use --log-failed to see only the logs from failed steps (fastest path to root cause). ' +
+          'Use --json=status,jobs for selective JSON output.',
+
+        handler: './commands/runs-view.js#default',
+        handlerPath: './commands/runs-view.js',
+
+        flags: defineCommandFlags(runsViewFlags),
+
+        examples: [
+          'kb workflow runs-view <runId>',
+          'kb workflow runs-view <runId> --log-failed',
+          'kb workflow runs-view <runId> --log',
+          'kb workflow runs-view <runId> --json=status,jobs',
+          'kb workflow runs-view <runId> --json=all',
+        ],
+      },
+
+      // workflow:runs-watch - Stream run events (like gh run watch)
+      {
+        id: 'runs-watch',
+        group: 'workflow',
+        describe: 'Stream workflow run events in real-time.',
+        longDescription:
+          'Connects to the run event stream via SSE and prints events as they happen. ' +
+          'Automatically exits when the run finishes.',
+
+        handler: './commands/runs-watch.js#default',
+        handlerPath: './commands/runs-watch.js',
+
+        flags: defineCommandFlags(runsWatchFlags),
+
+        examples: [
+          'kb workflow runs-watch <runId>',
+          'kb workflow runs-watch <runId> --json',
+        ],
+      },
+
+      // workflow:runs-rerun - Rerun a workflow (like gh run rerun)
+      {
+        id: 'runs-rerun',
+        group: 'workflow',
+        describe: 'Rerun a workflow run.',
+        longDescription:
+          'Reruns a workflow by re-submitting it with the same inputs. ' +
+          'Use --failed-only to skip jobs that already succeeded (not yet supported by daemon).',
+
+        handler: './commands/runs-rerun.js#default',
+        handlerPath: './commands/runs-rerun.js',
+
+        flags: defineCommandFlags(runsRerunFlags),
+
+        examples: [
+          'kb workflow runs-rerun <runId>',
+          'kb workflow runs-rerun <runId> --failed-only',
+          'kb workflow runs-rerun <runId> --json',
         ],
       },
 

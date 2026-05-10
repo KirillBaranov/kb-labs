@@ -34,7 +34,7 @@ export default function WorkflowsDefinitions() {
     { runId: string; status: string }
   >(
     (p) => `/exec/api/v1/workflows/${encodeURIComponent(p.workflowId)}/runs`,
-    { mapBody: (p) => p.input },
+    { mapBody: (p) => ({ inputs: p.input }) },
   );
 
   const columns = [
@@ -92,10 +92,27 @@ export default function WorkflowsDefinitions() {
       ),
     },
     {
+      title: 'Version',
+      dataIndex: 'version',
+      key: 'version',
+      width: 100,
+      render: (version?: string, record?: WorkflowInfo) => {
+        if (!version) {return <UITypographyText className="typo-caption text-tertiary">-</UITypographyText>;}
+        const tooltip = record?.updatedAt
+          ? `Updated ${new Date(record.updatedAt).toLocaleString()}`
+          : undefined;
+        return (
+          <UITypographyText className="typo-caption" code title={tooltip}>
+            v{version}
+          </UITypographyText>
+        );
+      },
+    },
+    {
       title: 'Status',
       dataIndex: 'status',
       key: 'status',
-      width: 110,
+      width: 100,
       render: (status?: 'active' | 'inactive') => {
         if (!status) {return <UITypographyText className="typo-caption text-tertiary">-</UITypographyText>;}
         return (
@@ -104,25 +121,6 @@ export default function WorkflowsDefinitions() {
           </UITag>
         );
       },
-    },
-    {
-      title: 'Tags',
-      dataIndex: 'tags',
-      key: 'tags',
-      width: 180,
-      render: (tags?: string[]) => (
-        <UISpace className="gap-tight">
-          {tags && tags.length > 0 ? (
-            tags.map((tag) => (
-              <UITag key={tag} style={{ borderColor: 'var(--border-primary)' }}>
-                {tag}
-              </UITag>
-            ))
-          ) : (
-            <UITypographyText className="typo-caption text-tertiary">-</UITypographyText>
-          )}
-        </UISpace>
-      ),
     },
     {
       title: 'Actions',
@@ -177,7 +175,7 @@ export default function WorkflowsDefinitions() {
           columns={columns}
           loading={isLoading}
           rowKey="id"
-          scroll={{ x: 1270 }}
+          scroll={{ x: 1210 }}
           pagination={{ pageSize: 20 }}
           onRow={(record: WorkflowInfo) => ({
             style: { cursor: 'pointer' },

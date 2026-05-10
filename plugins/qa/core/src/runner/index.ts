@@ -1,4 +1,5 @@
 export { runQA } from './qa-orchestrator.js';
+export { runCustomChecks } from './custom-check-runner.js';
 export { getWorkspacePackages } from './workspace.js';
 export { loadCache, saveCache, hasPackageChanged, computePackageHash, updateCacheEntry } from './cache.js';
 export { runBuildCheck } from './build-runner.js';
