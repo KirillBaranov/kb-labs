@@ -159,13 +159,22 @@ export class ResponseSynthesizer {
       });
 
       // Convert response sources to AgentSource format
-      const sources: AgentSource[] = (response.sources ?? []).map(s => ({
+      const rawSources: AgentSource[] = (response.sources ?? []).map(s => ({
         file: s.file,
         lines: s.lines,
         snippet: s.snippet,
         relevance: s.relevance,
         kind: this.parseSourceKind(s.kind, s.file),
       }));
+
+      // Deduplicate by file path — LLM often cites the same file for different line ranges;
+      // keep first occurrence (LLM orders by relevance)
+      const seenFiles = new Set<string>();
+      const sources: AgentSource[] = rawSources.filter(s => {
+        if (seenFiles.has(s.file)) return false;
+        seenFiles.add(s.file);
+        return true;
+      });
 
       // If LLM didn't return sources, use chunks
       if (sources.length === 0) {
