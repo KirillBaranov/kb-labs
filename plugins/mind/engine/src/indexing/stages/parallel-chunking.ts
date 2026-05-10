@@ -250,6 +250,8 @@ export class ParallelChunkingStage implements PipelineStage {
         const metadata = buildChunkMetadata({
           source,
           sourceChunkMetadata: sourceChunk.metadata ?? {},
+          symbolName: sourceChunk.name,
+          symbolType: sourceChunk.type,
           normalizedPath,
           hash,
           mtime,
@@ -322,6 +324,8 @@ export class ParallelChunkingStage implements PipelineStage {
 function buildChunkMetadata(input: {
   source: KnowledgeSource;
   sourceChunkMetadata: Record<string, unknown>;
+  symbolName?: string;
+  symbolType?: string;
   normalizedPath: string;
   hash: string;
   mtime: number;
@@ -365,6 +369,26 @@ function buildChunkMetadata(input: {
     metadata.docSectionPath = docSectionPath;
     metadata.topicKey = topicKey;
     metadata.freshnessScore = freshnessScore;
+  }
+
+  // Map AST-derived symbol info to well-known metadata keys (used by embedding enrichment and search)
+  if (input.symbolName && input.symbolType) {
+    switch (input.symbolType) {
+      case 'function':
+      case 'arrow':
+      case 'method':
+        metadata.functionName = input.symbolName;
+        break;
+      case 'class':
+        metadata.className = input.symbolName;
+        break;
+      case 'interface':
+      case 'type':
+        metadata.typeName = input.symbolName;
+        break;
+      default:
+        metadata.symbolName = input.symbolName;
+    }
   }
 
   return metadata;
