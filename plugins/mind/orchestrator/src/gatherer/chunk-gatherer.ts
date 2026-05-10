@@ -267,7 +267,16 @@ export function rerankGatheredChunks(
   const technicalQuery = isTechnicalQuery(query) || identifiers.length > 0;
   const architectureQuery = /\b(architecture|design|algorithm|flow|how\s+does|how\s+do|works?)\b/i.test(query);
   const commandQuery = /\b(cli|command|subcommand|flag|option)\b/i.test(query) || /\b[a-z0-9]+(?:-[a-z0-9]+)+\b/.test(query);
-  if (!technicalQuery) {
+
+  // Specific file mentioned (governed.ts, worker.ts) → implementation query; ADR is not the answer
+  const filenamesInQuery = identifiers.filter(id => /\.\w{2,4}$/.test(id));
+  const isSpecificFileQuery = filenamesInQuery.length > 0;
+  // "why" / "decision" queries → ADR is primary source (only when no specific file)
+  const designIntentQuery = !isSpecificFileQuery &&
+    /\b(why|design\s+decision|architectural\s+decision|tradeoff)\b/i.test(query);
+
+  // Pass-through for non-technical queries, but always rerank design-intent queries
+  if (!technicalQuery && !designIntentQuery) {
     return chunks;
   }
 
@@ -291,11 +300,24 @@ export function rerankGatheredChunks(
       const lowerPath = chunk.path.toLowerCase();
       if (architectureQuery) {
         if (lowerPath.includes('/docs/adr/')) {
-          score *= 1.14;
+          if (isSpecificFileQuery) {
+            // Query asks about a specific file → ADR describes intent, not current implementation
+            score *= 0.6;
+          } else {
+            // General conceptual query → ADR is an appropriate source
+            score *= 1.14;
+          }
         }
-        if ((lowerPath.includes('/docs/') || lowerPath.endsWith('.md')) && /(plan|improvement|todo|task)/i.test(lowerPath)) {
-          score *= 0.8;
-        }
+      }
+      if (designIntentQuery && lowerPath.includes('/docs/adr/')) {
+        // "why" / "decision" query → ADR is primary source
+        score *= 1.14;
+      }
+      // Demote plan/improvement/todo docs for any design/conceptual query
+      if ((architectureQuery || designIntentQuery) &&
+          (lowerPath.includes('/docs/') || lowerPath.endsWith('.md')) &&
+          /(plan|improvement|todo|task)/i.test(lowerPath)) {
+        score *= 0.8;
       }
       if (commandQuery) {
         if (lowerPath.includes('/cli/') || lowerPath.includes('/commands/') || /\bpackage\.json$/.test(lowerPath)) {
@@ -415,6 +437,11 @@ function extractTechnicalIdentifiers(query: string): string[] {
   for (const match of query.matchAll(/--[a-z0-9-]+/g)) {
     if (match[0]) {
       identifiers.add(match[0]);
+    }
+  }
+  for (const match of query.matchAll(/\b(\w[\w-]*\.(?:ts|tsx|js|jsx|go|py|rs|java|json|yaml|yml))\b/g)) {
+    if (match[1]) {
+      identifiers.add(match[1].toLowerCase());
     }
   }
 

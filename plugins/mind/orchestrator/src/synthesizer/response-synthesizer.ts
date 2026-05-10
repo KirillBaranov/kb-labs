@@ -233,10 +233,18 @@ export class ResponseSynthesizer {
       };
     }
 
-    // Build simple answer from top chunks
-    const answer = chunks.length === 1
-      ? `Found in ${topChunk.path} (lines ${topChunk.span.startLine}-${topChunk.span.endLine})`
-      : `Found ${chunks.length} relevant matches. Top result: ${topChunk.path} (lines ${topChunk.span.startLine}-${topChunk.span.endLine})`;
+    // Build answer with content preview — useful for Claude Code as context
+    const snippet = topChunk.text.split('\n').slice(0, 15).join('\n');
+    const otherSources = chunks.slice(1, 4)
+      .map(c => `- ${c.path}:${c.span.startLine}-${c.span.endLine}`)
+      .join('\n');
+    const answer = [
+      `Implementation found in \`${topChunk.path}\` (lines ${topChunk.span.startLine}–${topChunk.span.endLine}):`,
+      '```',
+      snippet,
+      '```',
+      otherSources ? `\nOther relevant locations:\n${otherSources}` : '',
+    ].filter(Boolean).join('\n');
 
     return {
       answer,
