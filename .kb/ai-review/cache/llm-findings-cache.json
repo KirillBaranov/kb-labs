@@ -334,17 +334,17 @@
     },
     "plugins/workflow/contracts/src/rest-api.ts": {
       "path": "plugins/workflow/contracts/src/rest-api.ts",
-      "contentHash": "364f028fa7e5b636",
+      "contentHash": "381e56abd1f108f1",
       "findings": [],
-      "createdAt": 1777109997692,
-      "lastAccessedAt": 1777109997692
+      "createdAt": 1777538512739,
+      "lastAccessedAt": 1777538512739
     },
     "plugins/workflow/engine/src/manifest-scanner.ts": {
       "path": "plugins/workflow/engine/src/manifest-scanner.ts",
-      "contentHash": "91ef5eb9104b66e6",
+      "contentHash": "a94ef79b2a8dacb8",
       "findings": [],
-      "createdAt": 1777109997692,
-      "lastAccessedAt": 1777109997692
+      "createdAt": 1777538512739,
+      "lastAccessedAt": 1777538512739
     },
     "plugins/workflow/runtime/src/registry/plugin-workflows.ts": {
       "path": "plugins/workflow/runtime/src/registry/plugin-workflows.ts",
@@ -450,12 +450,378 @@
       "findings": [],
       "createdAt": 1777109997692,
       "lastAccessedAt": 1777109997692
+    },
+    "core/discovery/src/discovery-manager.ts": {
+      "path": "core/discovery/src/discovery-manager.ts",
+      "contentHash": "f02cda10fa6dc632",
+      "findings": [
+        {
+          "id": "llm-lite-core/discovery/src/discovery-manager.ts-64",
+          "ruleId": "llm-lite:security/input-sanitization",
+          "file": "core/discovery/src/discovery-manager.ts",
+          "line": 64,
+          "column": 1,
+          "message": "Unvalidated input is processed from merged lock files, which may allow for file system traversal attacks if not properly sanitized.",
+          "severity": "high",
+          "confidence": "certain",
+          "type": "security/input-sanitization",
+          "engine": "llm-lite",
+          "source": "llm",
+          "snippet": "const mergedEntries = await this.readMergedLock(diag);",
+          "contentHash": "f02cda10fa6dc632",
+          "cachedAt": 1777538512738
+        }
+      ],
+      "createdAt": 1777538512738,
+      "lastAccessedAt": 1777538512738
+    },
+    "core/registry/src/registry.ts": {
+      "path": "core/registry/src/registry.ts",
+      "contentHash": "d9d5c4bd31cc04f6",
+      "findings": [],
+      "createdAt": 1777538512738,
+      "lastAccessedAt": 1777538512738
+    },
+    "core/registry/src/types.ts": {
+      "path": "core/registry/src/types.ts",
+      "contentHash": "83b745f8186eb1f3",
+      "findings": [],
+      "createdAt": 1777538512738,
+      "lastAccessedAt": 1777538512738
+    },
+    "core/runtime/src/discover-adapters.ts": {
+      "path": "core/runtime/src/discover-adapters.ts",
+      "contentHash": "f2f9a30ecb03c624",
+      "findings": [
+        {
+          "id": "llm-lite-core/runtime/src/discover-adapters.ts-143",
+          "ruleId": "llm-lite:security/input-sanitization",
+          "file": "core/runtime/src/discover-adapters.ts",
+          "line": 143,
+          "column": 1,
+          "message": "The `adapterPath` parameter in `resolveAdapter` is used without input validation, creating a potential vulnerability for path traversal issues if manipulated by an attacker.",
+          "severity": "medium",
+          "confidence": "certain",
+          "type": "security/input-sanitization",
+          "engine": "llm-lite",
+          "source": "llm",
+          "snippet": "export async function resolveAdapter(adapterPath: string, cwd: string,",
+          "contentHash": "f2f9a30ecb03c624",
+          "cachedAt": 1777538512738
+        }
+      ],
+      "createdAt": 1777538512738,
+      "lastAccessedAt": 1777538512738
+    },
+    "core/runtime/src/loader.ts": {
+      "path": "core/runtime/src/loader.ts",
+      "contentHash": "97dcb937745c17e9",
+      "findings": [],
+      "createdAt": 1777538512738,
+      "lastAccessedAt": 1777538512738
+    },
+    "core/tenant/src/types.ts": {
+      "path": "core/tenant/src/types.ts",
+      "contentHash": "2fb2786ebbfbbe93",
+      "findings": [],
+      "createdAt": 1777538512738,
+      "lastAccessedAt": 1777538512738
+    },
+    "plugins/qa/contracts/src/types/check-result.ts": {
+      "path": "plugins/qa/contracts/src/types/check-result.ts",
+      "contentHash": "9701835e47920f18",
+      "findings": [],
+      "createdAt": 1777538512738,
+      "lastAccessedAt": 1777538512738
+    },
+    "plugins/qa/contracts/src/types/config.ts": {
+      "path": "plugins/qa/contracts/src/types/config.ts",
+      "contentHash": "b0116d134caa9202",
+      "findings": [],
+      "createdAt": 1777538512738,
+      "lastAccessedAt": 1777538512738
+    },
+    "plugins/qa/contracts/src/types/history.ts": {
+      "path": "plugins/qa/contracts/src/types/history.ts",
+      "contentHash": "9d7a99e4aeb2245d",
+      "findings": [],
+      "createdAt": 1777538512738,
+      "lastAccessedAt": 1777538512738
+    },
+    "plugins/qa/contracts/src/types/index.ts": {
+      "path": "plugins/qa/contracts/src/types/index.ts",
+      "contentHash": "f0275a32dfc9058f",
+      "findings": [],
+      "createdAt": 1777538512738,
+      "lastAccessedAt": 1777538512738
+    },
+    "plugins/qa/contracts/src/types/qa-report.ts": {
+      "path": "plugins/qa/contracts/src/types/qa-report.ts",
+      "contentHash": "021e7358f7cc13b1",
+      "findings": [],
+      "createdAt": 1777538512738,
+      "lastAccessedAt": 1777538512738
+    },
+    "plugins/qa/core/src/history/history-store.ts": {
+      "path": "plugins/qa/core/src/history/history-store.ts",
+      "contentHash": "2e3505fa2bf7e5c0",
+      "findings": [],
+      "createdAt": 1777538512738,
+      "lastAccessedAt": 1777538512738
+    },
+    "plugins/qa/core/src/history/index.ts": {
+      "path": "plugins/qa/core/src/history/index.ts",
+      "contentHash": "dca350e2024a3eb4",
+      "findings": [],
+      "createdAt": 1777538512738,
+      "lastAccessedAt": 1777538512738
+    },
+    "plugins/qa/core/src/index.ts": {
+      "path": "plugins/qa/core/src/index.ts",
+      "contentHash": "9c36fd502deffff0",
+      "findings": [],
+      "createdAt": 1777538512738,
+      "lastAccessedAt": 1777538512738
+    },
+    "plugins/qa/core/src/report/json-reporter.ts": {
+      "path": "plugins/qa/core/src/report/json-reporter.ts",
+      "contentHash": "2c983b9a575a1eb9",
+      "findings": [
+        {
+          "id": "llm-lite-plugins/qa/core/src/report/json-reporter.ts-38",
+          "ruleId": "llm-lite:security/data-leakage",
+          "file": "plugins/qa/core/src/report/json-reporter.ts",
+          "line": 38,
+          "column": 1,
+          "message": "The `errors` object may leak sensitive information depending on the data returned in QA results. If errors contain sensitive data, it could be exposed in the report.",
+          "severity": "high",
+          "confidence": "certain",
+          "type": "security/data-leakage",
+          "engine": "llm-lite",
+          "source": "llm",
+          "snippet": "const errors = {} as QAReport['errors'];",
+          "contentHash": "2c983b9a575a1eb9",
+          "cachedAt": 1777538512738
+        }
+      ],
+      "createdAt": 1777538512738,
+      "lastAccessedAt": 1777538512738
+    },
+    "plugins/qa/core/src/runner/custom-check-runner.ts": {
+      "path": "plugins/qa/core/src/runner/custom-check-runner.ts",
+      "contentHash": "89306624a9b91042",
+      "findings": [],
+      "createdAt": 1777538512738,
+      "lastAccessedAt": 1777538512738
+    },
+    "plugins/qa/core/src/runner/index.ts": {
+      "path": "plugins/qa/core/src/runner/index.ts",
+      "contentHash": "09f6f2dbab93ae76",
+      "findings": [],
+      "createdAt": 1777538512738,
+      "lastAccessedAt": 1777538512738
+    },
+    "plugins/qa/entry/src/cli/commands/flags.ts": {
+      "path": "plugins/qa/entry/src/cli/commands/flags.ts",
+      "contentHash": "b8b3e70ca8c7d469",
+      "findings": [],
+      "createdAt": 1777538512738,
+      "lastAccessedAt": 1777538512738
+    },
+    "plugins/qa/entry/src/manifest.ts": {
+      "path": "plugins/qa/entry/src/manifest.ts",
+      "contentHash": "e651bc158b6caf3c",
+      "findings": [],
+      "createdAt": 1777538512739,
+      "lastAccessedAt": 1777538512739
+    },
+    "plugins/rest-api/app/src/bootstrap.ts": {
+      "path": "plugins/rest-api/app/src/bootstrap.ts",
+      "contentHash": "8ff9e9ec75fca475",
+      "findings": [],
+      "createdAt": 1777538512739,
+      "lastAccessedAt": 1777538512739
+    },
+    "plugins/rest-api/app/src/plugins/index.ts": {
+      "path": "plugins/rest-api/app/src/plugins/index.ts",
+      "contentHash": "c5db6ae7f3329f79",
+      "findings": [],
+      "createdAt": 1777538512739,
+      "lastAccessedAt": 1777538512739
+    },
+    "plugins/workflow/builtins/src/shell.ts": {
+      "path": "plugins/workflow/builtins/src/shell.ts",
+      "contentHash": "73803f6b0836d5f5",
+      "findings": [],
+      "createdAt": 1777538512739,
+      "lastAccessedAt": 1777538512739
+    },
+    "plugins/workflow/daemon/src/host/workflow-host-service.ts": {
+      "path": "plugins/workflow/daemon/src/host/workflow-host-service.ts",
+      "contentHash": "eeeef4a1d44a97fb",
+      "findings": [],
+      "createdAt": 1777538512739,
+      "lastAccessedAt": 1777538512739
+    },
+    "plugins/workflow/daemon/src/server.ts": {
+      "path": "plugins/workflow/daemon/src/server.ts",
+      "contentHash": "c849765aa3db5563",
+      "findings": [],
+      "createdAt": 1777538512739,
+      "lastAccessedAt": 1777538512739
+    },
+    "plugins/workflow/daemon/src/worker.ts": {
+      "path": "plugins/workflow/daemon/src/worker.ts",
+      "contentHash": "f6a6b012a2044609",
+      "findings": [],
+      "createdAt": 1777538512739,
+      "lastAccessedAt": 1777538512739
+    },
+    "plugins/workflow/engine/src/engine.ts": {
+      "path": "plugins/workflow/engine/src/engine.ts",
+      "contentHash": "93462faa1f924ada",
+      "findings": [],
+      "createdAt": 1777538512739,
+      "lastAccessedAt": 1777538512739
+    },
+    "plugins/workflow/engine/src/workflow-repository.ts": {
+      "path": "plugins/workflow/engine/src/workflow-repository.ts",
+      "contentHash": "564a8991a53bdfae",
+      "findings": [],
+      "createdAt": 1777538512739,
+      "lastAccessedAt": 1777538512739
+    },
+    "plugins/workflow/entry/src/flags.ts": {
+      "path": "plugins/workflow/entry/src/flags.ts",
+      "contentHash": "477ff2685bef7178",
+      "findings": [],
+      "createdAt": 1777538512739,
+      "lastAccessedAt": 1777538512739
+    },
+    "plugins/workflow/entry/src/http-client.ts": {
+      "path": "plugins/workflow/entry/src/http-client.ts",
+      "contentHash": "8ee54b2778eceba9",
+      "findings": [],
+      "createdAt": 1777538512739,
+      "lastAccessedAt": 1777538512739
+    },
+    "plugins/workflow/entry/src/manifest.ts": {
+      "path": "plugins/workflow/entry/src/manifest.ts",
+      "contentHash": "42b632b07f4b8f0e",
+      "findings": [],
+      "createdAt": 1777538512739,
+      "lastAccessedAt": 1777538512739
+    },
+    "plugins/workflow/entry/src/studio/components/triage/RunCard.tsx": {
+      "path": "plugins/workflow/entry/src/studio/components/triage/RunCard.tsx",
+      "contentHash": "8c53640baed34501",
+      "findings": [],
+      "createdAt": 1777538512739,
+      "lastAccessedAt": 1777538512739
+    },
+    "plugins/workflow/entry/src/studio/pages/WorkflowRunDetail.tsx": {
+      "path": "plugins/workflow/entry/src/studio/pages/WorkflowRunDetail.tsx",
+      "contentHash": "76dd4706f11fb2b9",
+      "findings": [],
+      "createdAt": 1777538512739,
+      "lastAccessedAt": 1777538512739
+    },
+    "plugins/workflow/entry/src/studio/pages/WorkflowsDefinitions.tsx": {
+      "path": "plugins/workflow/entry/src/studio/pages/WorkflowsDefinitions.tsx",
+      "contentHash": "99308fe6bc1fce3e",
+      "findings": [],
+      "createdAt": 1777538512739,
+      "lastAccessedAt": 1777538512739
+    },
+    "plugins/workflow/runtime/src/runners/sandbox-runner.ts": {
+      "path": "plugins/workflow/runtime/src/runners/sandbox-runner.ts",
+      "contentHash": "93365ab7ab9b7eea",
+      "findings": [],
+      "createdAt": 1777538512739,
+      "lastAccessedAt": 1777538512739
+    },
+    "plugins/qa/contracts/src/types/check-output.ts": {
+      "path": "plugins/qa/contracts/src/types/check-output.ts",
+      "contentHash": "0d6c497d79194a83",
+      "findings": [],
+      "createdAt": 1777538512739,
+      "lastAccessedAt": 1777538512739
+    },
+    "plugins/qa/core/src/history/trend-store.ts": {
+      "path": "plugins/qa/core/src/history/trend-store.ts",
+      "contentHash": "8b668362688491a9",
+      "findings": [],
+      "createdAt": 1777538512739,
+      "lastAccessedAt": 1777538512739
+    },
+    "plugins/qa/core/tests/custom-check-runner.spec.ts": {
+      "path": "plugins/qa/core/tests/custom-check-runner.spec.ts",
+      "contentHash": "18ef38a8a8c6f648",
+      "findings": [],
+      "createdAt": 1777538512739,
+      "lastAccessedAt": 1777538512739
+    },
+    "plugins/qa/core/tests/history-store.spec.ts": {
+      "path": "plugins/qa/core/tests/history-store.spec.ts",
+      "contentHash": "f416408cc20ac5be",
+      "findings": [],
+      "createdAt": 1777538512739,
+      "lastAccessedAt": 1777538512739
+    },
+    "plugins/qa/core/tests/json-reporter.spec.ts": {
+      "path": "plugins/qa/core/tests/json-reporter.spec.ts",
+      "contentHash": "dfe4a6c800ae3973",
+      "findings": [],
+      "createdAt": 1777538512740,
+      "lastAccessedAt": 1777538512740
+    },
+    "plugins/qa/core/tests/trend-store.spec.ts": {
+      "path": "plugins/qa/core/tests/trend-store.spec.ts",
+      "contentHash": "f1784550e41914da",
+      "findings": [],
+      "createdAt": 1777538512740,
+      "lastAccessedAt": 1777538512740
+    },
+    "plugins/qa/entry/src/cli/commands/qa-check.ts": {
+      "path": "plugins/qa/entry/src/cli/commands/qa-check.ts",
+      "contentHash": "d823cc39a8397a71",
+      "findings": [],
+      "createdAt": 1777538512740,
+      "lastAccessedAt": 1777538512740
+    },
+    "plugins/workflow/entry/src/commands/runs-list.ts": {
+      "path": "plugins/workflow/entry/src/commands/runs-list.ts",
+      "contentHash": "b4dd6f2077cb8b79",
+      "findings": [],
+      "createdAt": 1777538512740,
+      "lastAccessedAt": 1777538512740
+    },
+    "plugins/workflow/entry/src/commands/runs-rerun.ts": {
+      "path": "plugins/workflow/entry/src/commands/runs-rerun.ts",
+      "contentHash": "a97164ce49d01df7",
+      "findings": [],
+      "createdAt": 1777538512740,
+      "lastAccessedAt": 1777538512740
+    },
+    "plugins/workflow/entry/src/commands/runs-view.ts": {
+      "path": "plugins/workflow/entry/src/commands/runs-view.ts",
+      "contentHash": "0de08b75ed8d333e",
+      "findings": [],
+      "createdAt": 1777538512740,
+      "lastAccessedAt": 1777538512740
+    },
+    "plugins/workflow/entry/src/commands/runs-watch.ts": {
+      "path": "plugins/workflow/entry/src/commands/runs-watch.ts",
+      "contentHash": "603ab3dde9505a92",
+      "findings": [],
+      "createdAt": 1777538512740,
+      "lastAccessedAt": 1777538512740
     }
   },
   "metadata": {
     "createdAt": 1776759051250,
-    "lastUpdatedAt": 1777109997692,
-    "totalFindings": 11,
-    "totalFiles": 37
+    "lastUpdatedAt": 1777538512740,
+    "totalFindings": 14,
+    "totalFiles": 82
   }
 }
