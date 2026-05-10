@@ -10,6 +10,60 @@ import type {
 } from '@kb-labs/workflow-contracts';
 import { useEnv } from '@kb-labs/sdk';
 
+/** Workflow run summary returned by GET /api/v1/runs */
+export interface WorkflowRunSummary {
+  id: string;
+  name: string;
+  version?: string;
+  status: 'queued' | 'running' | 'success' | 'failed' | 'cancelled';
+  trigger?: {
+    type: string;
+    actor?: string;
+    payload?: unknown;
+  };
+  createdAt?: string;
+  startedAt?: string;
+  finishedAt?: string;
+  durationMs?: number;
+  inputs?: Record<string, unknown>;
+}
+
+/** Full workflow run detail returned by GET /api/v1/runs/:runId */
+export interface WorkflowRunDetail extends WorkflowRunSummary {
+  env?: Record<string, string>;
+  metadata?: Record<string, unknown>;
+  result?: {
+    status: string;
+    summary?: string;
+    error?: { message: string; code?: string };
+    outputs?: Record<string, unknown>;
+  };
+  jobs?: Array<{
+    id: string;
+    jobName?: string;
+    status: string;
+    startedAt?: string;
+    finishedAt?: string;
+    durationMs?: number;
+    attempt?: number;
+    error?: { message: string; code?: string; stack?: string } | string;
+    steps?: Array<{
+      id: string;
+      name?: string;
+      index?: number;
+      status: string;
+      startedAt?: string;
+      finishedAt?: string;
+      durationMs?: number;
+      attempt?: number;
+      outputs?: Record<string, unknown>;
+      resolvedInputs?: Record<string, unknown>;
+      error?: { message: string; code?: string; details?: Record<string, unknown> } | string;
+      spec?: Record<string, unknown>;
+    }>;
+  }>;
+}
+
 /** Metrics data returned by GET /metrics */
 export interface WorkflowMetricsData {
   runs: {
@@ -243,6 +297,97 @@ export class WorkflowDaemonClient {
     const payload = await this.parseJsonResponse<unknown>(response);
     const data = this.unwrapData<{ jobId: string }>(payload);
     return { id: data.jobId, status: 'pending' };
+  }
+
+  /**
+   * List workflow runs with optional status filter
+   */
+  async listRuns(params: {
+    status?: string;
+    limit?: number;
+    workflowId?: string;
+  } = {}): Promise<WorkflowRunSummary[]> {
+    const query = new URLSearchParams();
+    if (params.status) { query.set('status', params.status); }
+    if (params.limit) { query.set('limit', String(params.limit)); }
+    if (params.workflowId) { query.set('workflowId', params.workflowId); }
+
+    const qs = query.toString();
+    const response = await fetch(`${this.baseUrl}/api/v1/runs${qs ? `?${qs}` : ''}`);
+    if (!response.ok) {
+      throw new Error(`Failed to list runs: ${response.statusText}`);
+    }
+    const data = await this.parseJsonResponse<unknown>(response);
+    const unwrapped = this.unwrapData<{ runs?: WorkflowRunSummary[] }>(data);
+    return unwrapped.runs ?? (Array.isArray(data) ? data as WorkflowRunSummary[] : []);
+  }
+
+  /**
+   * Get a specific workflow run with full detail
+   */
+  async getRun(runId: string): Promise<WorkflowRunDetail> {
+    const encodedId = encodeURIComponent(runId);
+    const response = await fetch(`${this.baseUrl}/api/v1/runs/${encodedId}`);
+    if (response.status === 404) {
+      throw new Error(`Run ${runId} not found`);
+    }
+    if (!response.ok) {
+      throw new Error(`Failed to get run: ${response.statusText}`);
+    }
+    const data = await this.parseJsonResponse<unknown>(response);
+    // Response shape: { ok: true, data: { run: {...} } }
+    const unwrapped = this.unwrapData<{ run?: WorkflowRunDetail } | WorkflowRunDetail>(data);
+    return ('run' in (unwrapped as object) ? (unwrapped as { run: WorkflowRunDetail }).run : unwrapped) as WorkflowRunDetail;
+  }
+
+  /**
+   * Get run logs, optionally filtered to failed steps only
+   */
+  async getRunLogs(runId: string, params: {
+    stepId?: string;
+    level?: string;
+    limit?: number;
+    failedOnly?: boolean;
+  } = {}): Promise<Array<{ level: string; message: string; timestamp: string; stepId?: string; stepName?: string; [key: string]: unknown }>> {
+    const query = new URLSearchParams();
+    if (params.stepId) { query.set('stepId', params.stepId); }
+    if (params.level) { query.set('level', params.level); }
+    if (params.limit) { query.set('limit', String(params.limit)); }
+
+    const encodedId = encodeURIComponent(runId);
+    const qs = query.toString();
+    const response = await fetch(`${this.baseUrl}/api/v1/runs/${encodedId}/logs${qs ? `?${qs}` : ''}`);
+    if (response.status === 404) {
+      throw new Error(`Run ${runId} not found`);
+    }
+    if (!response.ok) {
+      throw new Error(`Failed to get run logs: ${response.statusText}`);
+    }
+    const data = await this.parseJsonResponse<unknown>(response);
+    const unwrapped = this.unwrapData<{ logs?: unknown[] }>(data);
+    return (unwrapped.logs ?? []) as Array<{ level: string; message: string; timestamp: string; [key: string]: unknown }>;
+  }
+
+  /**
+   * Stream run events via SSE (returns a ReadableStream or EventSource-compatible URL)
+   */
+  getRunEventsUrl(runId: string): string {
+    return `${this.baseUrl}/api/v1/runs/${encodeURIComponent(runId)}/events`;
+  }
+
+  /**
+   * Cancel a workflow run
+   */
+  async cancelRun(runId: string): Promise<void> {
+    const encodedId = encodeURIComponent(runId);
+    const response = await fetch(`${this.baseUrl}/api/v1/runs/${encodedId}/cancel`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to cancel run: ${response.statusText}`);
+    }
   }
 
   /**
