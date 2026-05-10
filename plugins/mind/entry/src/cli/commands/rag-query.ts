@@ -226,13 +226,13 @@ export default defineCommand({
           if (result.result.metadata?.jsonResponse) {
             const jsonResponse = result.result.metadata.jsonResponse;
             if (format === 'json-pretty') {
-              ctx.ui.info(JSON.stringify(jsonResponse, null, 2));
+              console.log(JSON.stringify(jsonResponse, null, 2));
             } else {
-              ctx.ui.info(JSON.stringify(jsonResponse));
+              console.log(JSON.stringify(jsonResponse));
             }
           } else {
             // Fallback to old format for backward compatibility
-            ctx.ui.info(JSON.stringify({
+            console.log(JSON.stringify({
               ok: true,
               scopeId: result.scopeId,
               intent: result.result.query.intent,
@@ -302,7 +302,7 @@ export default defineCommand({
         ctx.trace?.addEvent?.('mind.rag-query.error', { error: message, timingMs: timing });
 
         if (format === 'json' || format === 'json-pretty') {
-          ctx.ui.info(JSON.stringify({
+          console.log(JSON.stringify({
             ok: false,
             error: message,
             timingMs: timing,
