@@ -200,6 +200,12 @@ export interface DiagnosticReport {
 export interface RegistryOptions {
   /** Workspace root directory (default: process.cwd()) */
   root?: string;
+  /**
+   * Platform installation root (e.g. ~/kb-platform).
+   * When set and different from root, plugins are merged from both lock files:
+   * project lock wins, platform lock fills gaps.
+   */
+  platformRoot?: string;
   /** Cache configuration */
   cache?: {
     ttlMs?: number;

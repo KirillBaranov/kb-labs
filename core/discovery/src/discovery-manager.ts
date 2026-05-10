@@ -24,6 +24,12 @@ import { computePackageIntegrity } from './integrity.js';
 export interface DiscoveryOptions {
   /** Workspace root directory (default: process.cwd()) */
   root?: string;
+  /**
+   * Platform installation root (e.g. ~/kb-platform).
+   * When set and different from root, both lock files are read:
+   * project lock wins, platform lock fills gaps.
+   */
+  platformRoot?: string;
   /** Timeout for each manifest import in milliseconds (default: 5000) */
   importTimeoutMs?: number;
   /** Whether to verify integrity hashes (default: true) */
@@ -43,18 +49,25 @@ export interface DiscoveryOptions {
  */
 export class DiscoveryManager {
   private readonly root: string;
+  private readonly platformRoot: string | undefined;
   private readonly importTimeoutMs: number;
   private readonly verifyIntegrity: boolean;
 
   constructor(opts: DiscoveryOptions = {}) {
     this.root = opts.root ?? process.cwd();
+    this.platformRoot = opts.platformRoot !== this.root ? opts.platformRoot : undefined;
     this.importTimeoutMs = opts.importTimeoutMs ?? 5_000;
     this.verifyIntegrity = opts.verifyIntegrity ?? true;
   }
 
   /**
-   * Run full discovery pipeline:
-   *   1. Read .kb/marketplace.lock
+   * Run full discovery pipeline.
+   *
+   * When platformRoot is set, both lock files are merged:
+   * project lock (this.root) is read first and wins on conflicts.
+   * Platform lock fills in any entries not present in the project.
+   *
+   *   1. Read .kb/marketplace.lock (project first, then platform)
    *   2. For each entry → resolve path → load manifest → validate → verify integrity
    *   3. Return aggregated result with diagnostics
    */
@@ -63,19 +76,53 @@ export class DiscoveryManager {
     const plugins: DiscoveredPlugin[] = [];
     const manifests = new Map<string, ManifestV3>();
 
-    // 1. Read lock file
-    const lock = await readMarketplaceLock(this.root, diag);
-    if (!lock) {
+    // 1. Build merged entry map: project wins, platform fills gaps
+    const mergedEntries = await this.readMergedLock(diag);
+    if (!mergedEntries) {
       return { plugins, manifests, diagnostics: diag.getEvents() };
     }
 
     // 2. Process each entry
-    const entries = Object.entries(lock.installed);
-    for (const [packageId, entry] of entries) {
-      await this.processEntry(packageId, entry, plugins, manifests, diag);
+    for (const [packageId, { entry, root }] of mergedEntries) {
+      await this.processEntry(packageId, entry, root, plugins, manifests, diag);
     }
 
     return { plugins, manifests, diagnostics: diag.getEvents() };
+  }
+
+  /**
+   * Read and merge marketplace.lock from project root and (optionally) platform root.
+   * Returns a map of packageId → { entry, root } where root is the directory
+   * the entry's resolvedPath should be resolved against.
+   * Project entries win over platform entries on conflict.
+   */
+  private async readMergedLock(
+    diag: DiagnosticCollector,
+  ): Promise<Map<string, { entry: MarketplaceEntry; root: string }> | null> {
+    const merged = new Map<string, { entry: MarketplaceEntry; root: string }>();
+
+    // Platform lock first (lower priority — fills gaps)
+    if (this.platformRoot) {
+      const platformLock = await readMarketplaceLock(this.platformRoot, diag);
+      if (platformLock) {
+        for (const [packageId, entry] of Object.entries(platformLock.installed)) {
+          merged.set(packageId, { entry, root: this.platformRoot });
+        }
+      }
+    }
+
+    // Project lock second (higher priority — overwrites platform entries)
+    const projectLock = await readMarketplaceLock(this.root, diag);
+    if (projectLock) {
+      for (const [packageId, entry] of Object.entries(projectLock.installed)) {
+        merged.set(packageId, { entry, root: this.root });
+      }
+    } else if (!this.platformRoot) {
+      // No project lock and no platform lock — nothing to discover
+      return null;
+    }
+
+    return merged.size > 0 ? merged : null;
   }
 
   // -------------------------------------------------------------------------
@@ -85,6 +132,7 @@ export class DiscoveryManager {
   private async processEntry(
     packageId: string,
     entry: MarketplaceEntry,
+    root: string,
     plugins: DiscoveredPlugin[],
     manifests: Map<string, ManifestV3>,
     diag: DiagnosticCollector,
@@ -97,8 +145,8 @@ export class DiscoveryManager {
       return;
     }
 
-    // Resolve the package root (relative to workspace root)
-    const packageRoot = path.resolve(this.root, entry.resolvedPath);
+    // Resolve the package root relative to the lock file's root directory
+    const packageRoot = path.resolve(root, entry.resolvedPath);
 
     // Check the package directory exists
     try {
@@ -117,7 +165,7 @@ export class DiscoveryManager {
     // (devlink switches, version bumps) — auto-refresh the lock instead of blocking.
     if (this.verifyIntegrity && entry.integrity) {
       if (entry.source === 'local') {
-        await this.refreshLocalIntegrity(packageRoot, packageId, entry, diag);
+        await this.refreshLocalIntegrity(packageRoot, packageId, entry, root, diag);
       } else {
         const ok = await this.checkIntegrity(packageRoot, entry.integrity, packageId, diag);
         if (!ok) {return;}
@@ -184,17 +232,18 @@ export class DiscoveryManager {
     packageRoot: string,
     packageId: string,
     entry: MarketplaceEntry,
+    root: string,
     diag: DiagnosticCollector,
   ): Promise<void> {
     try {
       const computed = await computePackageIntegrity(packageRoot);
 
       if (computed !== entry.integrity) {
-        // Update the lock in place
-        const lock = await readMarketplaceLock(this.root, diag);
+        // Update the lock in place (only write to the root this entry came from)
+        const lock = await readMarketplaceLock(root, diag);
         if (lock?.installed[packageId]) {
           lock.installed[packageId].integrity = computed;
-          await writeMarketplaceLock(this.root, lock);
+          await writeMarketplaceLock(root, lock);
           diag.info('INTEGRITY_REFRESHED',
             `Local package "${packageId}" integrity refreshed in lock`, {
             pluginId: packageId,

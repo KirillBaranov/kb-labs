@@ -56,6 +56,7 @@ export class EntityRegistry implements IEntityRegistry {
 
     this.discovery = new DiscoveryManager({
       root: this.root,
+      platformRoot: opts.platformRoot,
       importTimeoutMs: opts.importTimeoutMs,
       verifyIntegrity: opts.verifyIntegrity,
     });
