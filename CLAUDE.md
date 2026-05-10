@@ -93,6 +93,17 @@ Some have daemons (HTTP ports) — that's an implementation detail, not an archi
 - Module-specific ADRs: `<module>/docs/adr/`
 - ADR template: `docs/templates/adr-template.md`
 
+## Task Research (RAG)
+
+**Before starting any non-trivial task**, use RAG to find relevant files. Do not guess file locations or read speculatively.
+
+```bash
+# Run 1-3 targeted queries covering what exists, where it's called, and what types are involved
+pnpm kb mind rag-query --text "how does X work" --agent 2>/dev/null | grep "^{"
+```
+
+Parse the JSON: read files from `sources`, trust code over `kind: "adr"`. If `confidence < 0.4`, run a follow-up with exact identifiers (`ClassName`, `functionName`, `file.ts`). See `.claude/skills/task-rag.md` for the full workflow.
+
 ## Common Tasks
 
 ```bash
@@ -157,17 +168,41 @@ Config loader reads `~/kb-platform/.kb/kb.config.jsonc` as base (kblabs-gateway,
 
 ## Skills
 
-Skills live in `.claude/skills/`. When you ask Claude to do something KB Labs-related,
-the matching skill is invoked automatically. Do not edit skills by hand — they are
-reinstalled by `kb-create update`.
+Skills live in `.claude/skills/`. Folder-based skills (`SKILL.md`) are user-invocable; flat `.md` files are context skills that load automatically by glob pattern.
 
-Available skills:
-- `.claude/skills/kb-labs-create-plugin/` — scaffold a new plugin
-- `.claude/skills/kb-labs-create-product/` — scaffold a new service/product
-- `.claude/skills/kb-labs-update/` — update the platform
-- `.claude/skills/kb-labs-troubleshoot/` — diagnose failures
-- `.claude/skills/kb-labs-explore/` — inspect what's installed
-- `.claude/skills/kb-labs-quickstart/` — verify install, get started
+### User-invocable (folder-based)
+
+| Skill | Path | Trigger |
+|---|---|---|
+| Create plugin | `.claude/skills/kb-labs-create-plugin/` | "create a kb-labs plugin called X" |
+| Create product | `.claude/skills/kb-labs-create-product/` | "create a kb-labs service called X" |
+| Update platform | `.claude/skills/kb-labs-update/` | "update kb-labs to latest" |
+| Troubleshoot | `.claude/skills/kb-labs-troubleshoot/` | "kb-labs is not starting" / "kb-dev failed" |
+| Explore | `.claude/skills/kb-labs-explore/` | "what plugins are installed?" |
+| Quickstart | `.claude/skills/kb-labs-quickstart/` | "is kb-labs working?" |
+
+> Managed by `kb-create update` — do not edit by hand.
+
+### Context skills (flat `.md`, auto-loaded by glob)
+
+| Skill | Path | Activates when |
+|---|---|---|
+| **Task research (RAG)** | `.claude/skills/task-rag.md` | any implementation task |
+| Plugin development | `.claude/skills/dev-plugin.md` | editing `plugins/**` |
+| Core development | `.claude/skills/dev-core.md` | editing `core/**`, `sdk/**` |
+| Monorepo patterns | `.claude/skills/dev-monorepo.md` | cross-package work |
+| **Workflow investigation** | `.claude/skills/workflow.md` | editing `plugins/workflow/**` |
+| Release pipeline | `.claude/skills/tool-release.md` | release / changelog tasks |
+| kb-devkit usage | `.claude/skills/tool-kb-devkit.md` | build / task runner questions |
+| kb-dev usage | `.claude/skills/tool-kb-dev.md` | service management |
+| kb-deploy usage | `.claude/skills/tool-kb-deploy.md` | deploy tasks |
+| kb-monitor usage | `.claude/skills/tool-kb-monitor.md` | monitoring tasks |
+| Code generation | `.claude/skills/tool-generate.md` | generate / scaffold tasks |
+| Add new route | `.claude/skills/new-route.md` | adding HTTP routes |
+| Dependency hygiene | `.claude/skills/deps-hygiene.md` | dependency / lockfile tasks |
+| Commit style | `.claude/skills/commit.md` | git commit messages |
+| Site voice | `.claude/skills/kb-labs-site-voice.md` | editing `sites/**` |
+| Aeza proxy | `.claude/skills/aeza-proxy.md` | proxy / VPS tasks |
 
 <!-- BEGIN: KB Labs v1.5.0 (managed by kb-create) - DO NOT EDIT -->
 ## KB Labs Platform

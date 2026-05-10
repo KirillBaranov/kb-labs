@@ -29,6 +29,63 @@ kb-dev watch                 # JSONL streaming events
 kb-dev doctor                # environment diagnostics
 ```
 
+## Dev Config (`devservices.dev.yaml`)
+
+Проект имеет **два конфига**:
+- `.kb/devservices.yaml` — продакшн/базовые сервисы (используется по умолчанию)
+- `.kb/devservices.dev.yaml` — dev-расширение: добавляет studio, qdrant, redis, kb-web, kb-docs, host-agent, runtime-server
+
+Переключиться через `--config`:
+
+```bash
+kb-dev start --config .kb/devservices.dev.yaml          # запустить всё из dev конфига
+kb-dev start studio --config .kb/devservices.dev.yaml   # только студия
+kb-dev start --group backend --config .kb/devservices.dev.yaml  # только backend группа
+kb-dev status --config .kb/devservices.dev.yaml
+kb-dev stop --config .kb/devservices.dev.yaml
+```
+
+### npm scripts (удобные алиасы)
+
+```bash
+pnpm dev:start              # все сервисы (базовый devservices.yaml)
+pnpm dev:start:dev          # все сервисы через devservices.dev.yaml
+pnpm dev:start:studio       # только студия через devservices.dev.yaml
+pnpm dev:start:backend      # только backend группа через devservices.dev.yaml
+pnpm dev:status             # статус (базовый)
+pnpm dev:status:dev         # статус через devservices.dev.yaml
+pnpm dev:stop               # остановить (базовый)
+pnpm dev:stop:dev           # остановить через devservices.dev.yaml
+pnpm dev:logs               # логи
+pnpm dev:restart            # рестарт
+```
+
+### Группы в devservices.dev.yaml
+
+| Группа | Сервисы |
+|--------|---------|
+| `infra` | qdrant, redis, state-daemon |
+| `backend` | workflow, rest, marketplace, gateway |
+| `ui` | studio |
+| `ui-web` | kb-web, kb-docs |
+| `local` | host-agent |
+| `execution` | runtime-server |
+
+### Порты (dev)
+
+| Сервис | Порт |
+|--------|------|
+| gateway | 4000 |
+| rest | 5050 |
+| marketplace | 5070 |
+| state-daemon | 7777 |
+| workflow | 7778 |
+| studio | 3000 |
+| kb-web | 3010 |
+| kb-docs | 3001 |
+| qdrant | 6333 |
+| redis | 6379 |
+
 ## Configuration
 
 Config is auto-discovered:
