@@ -26,6 +26,11 @@ NOTE: Sources are in TOON format:
 - Rows: comma-separated values for each source
 - Fields: id, path, lines, score, text (code snippet)
 
+SOURCE TYPE RULES:
+- Paths containing /docs/adr/ are Architecture Decision Records (ADRs). They describe intended design, not necessarily current implementation. Mark claims from ADR sources explicitly: "(architectural intent — verify against code)"
+- .ts/.tsx/.js/.go source files show the ACTUAL current implementation. For "how does X work/enforce" questions, these are authoritative.
+- If answering an implementation question ("how does X work") primarily from ADR sources with no code evidence, set confidence ≤ 0.45 and note: "Based on architectural intent (ADR). Code implementation may differ."
+
 STRICT REQUIREMENTS:
 1. Only reference files, functions, parameters that appear EXACTLY in sources above
 2. Include [source:N] reference for every claim (N = id from TOON table)
@@ -57,9 +62,9 @@ Return JSON:
 }
 
 CONFIDENCE GUIDE:
-- 1.0: Answer fully supported by sources with exact quotes
-- 0.7-0.9: Answer supported but some inference needed
-- 0.4-0.6: Partial answer, missing some information
+- 1.0: Exact implementation found — function/field quoted directly from .ts/.go source files
+- 0.7-0.9: Code found, limited inference needed
+- 0.4-0.6: Partial answer, or primary sources are docs/ADR without direct code evidence
 - 0.0-0.3: Sources don't adequately answer the question`;
 
 export const INSTANT_SYNTHESIS_TEMPLATE = `Question: "{query}"

@@ -64,6 +64,54 @@ describe('rerankGatheredChunks', () => {
     expect(output[1]?.id).toBe('b');
   });
 
+  it('demotes ADR when query mentions specific filename', () => {
+    const input: MindChunk[] = [
+      chunk({
+        id: 'adr',
+        path: 'core/plugin-runtime/docs/adr/0037-state-broker.md',
+        text: 'namespace isolation design for vector stores',
+        score: 0.85,
+      }),
+      chunk({
+        id: 'code',
+        path: 'core/plugin-runtime/src/platform/governed.ts',
+        text: '_kbNamespace enforcement in search and query methods',
+        score: 0.60,
+      }),
+    ];
+    const output = rerankGatheredChunks(
+      input,
+      'how does governed.ts enforce vector store namespace isolation',
+      'auto',
+    );
+    expect(output[0]?.id).toBe('code');
+  });
+
+  it('boosts ADR for design-intent why-queries without specific file', () => {
+    // For "why was X designed this way" queries, ADR naturally has higher semantic score
+    // and should beat a generic plan/improvement doc
+    const input: MindChunk[] = [
+      chunk({
+        id: 'plan',
+        path: 'core/plugin-runtime/docs/improvement-plan.md',
+        text: 'improvement ideas for namespace isolation',
+        score: 0.75,
+      }),
+      chunk({
+        id: 'adr',
+        path: 'core/plugin-runtime/docs/adr/0037-state-broker.md',
+        text: 'why namespace isolation was chosen as the vector store isolation mechanism',
+        score: 0.85,
+      }),
+    ];
+    const output = rerankGatheredChunks(
+      input,
+      'why was namespace isolation chosen as the vector store isolation mechanism',
+      'auto',
+    );
+    expect(output[0]?.id).toBe('adr');
+  });
+
   it('demotes plan docs vs ADR for architecture queries', () => {
     const input: MindChunk[] = [
       chunk({
