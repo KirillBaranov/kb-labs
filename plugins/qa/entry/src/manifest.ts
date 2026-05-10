@@ -17,6 +17,7 @@ import {
   qaRegressionsFlags,
   baselineUpdateFlags,
   baselineStatusFlags,
+  qaCheckFlags,
 } from './cli/commands/flags.js';
 import {
   QA_BASE_PATH,
@@ -69,6 +70,19 @@ export const manifest = {
         handler: './cli/commands/qa-run.js#default',
         handlerPath: './cli/commands/qa-run.js',
         flags: defineCommandFlags(qaRunFlags),
+        permissions: pluginPermissions,
+      },
+      {
+        id: 'check',
+        group: 'qa',
+        describe: 'Run a single QA check atomically',
+        longDescription:
+          'Runs one check by ID, optionally saves to history with caller context. ' +
+          'Designed for workflow steps: exit 0 = pass, exit 1 = blocker failed. ' +
+          'Supports diffOnly/newFiles strategies and structured JSON output for agents.',
+        handler: './cli/commands/qa-check.js#default',
+        handlerPath: './cli/commands/qa-check.js',
+        flags: defineCommandFlags(qaCheckFlags),
         permissions: pluginPermissions,
       },
       {

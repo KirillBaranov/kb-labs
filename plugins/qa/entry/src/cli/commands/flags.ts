@@ -118,3 +118,32 @@ export const baselineStatusFlags = {
 } as const;
 
 export type BaselineStatusFlags = typeof baselineStatusFlags;
+
+export const qaCheckFlags = {
+  id: {
+    type: 'string',
+    description: 'Check ID to run (must match a check in qa.checks config)',
+    demandOption: true,
+  },
+  base: {
+    type: 'string',
+    description: 'Base branch/commit for diff strategies (diffOnly, newFiles). Default: main',
+    default: 'main',
+  },
+  context: {
+    type: 'string',
+    description: 'JSON context to attach to history entry (e.g. {"taskId":"123"})',
+  },
+  json: {
+    type: 'boolean',
+    description: JSON_FLAG_DESCRIPTION,
+    default: false,
+  },
+  save: {
+    type: 'boolean',
+    description: 'Save result to history after running (default: true)',
+    default: true,
+  },
+} as const;
+
+export type QACheckFlags = typeof qaCheckFlags;

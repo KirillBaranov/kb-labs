@@ -27,6 +27,7 @@ export type {
 
 export type {
   ReportSummary,
+  ReportCheckFindings,
   QAReport,
 } from './qa-report.js';
 
@@ -59,3 +60,8 @@ export type {
 export type {
   ErrorGroup,
 } from './error-groups.js';
+
+export type {
+  CheckItem,
+  TypedCheckOutput,
+} from './check-output.js';

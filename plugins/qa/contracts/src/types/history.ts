@@ -15,6 +15,17 @@ export interface HistoryEntry {
   status: 'passed' | 'failed';
   summary: Record<string, { passed: number; failed: number; skipped: number }>;
   failedPackages: Record<string, string[]>;
+  /**
+   * Arbitrary context from the caller (e.g. workflow step, agent, task).
+   * Passed via --context flag as JSON. QA stores it as-is without interpretation.
+   */
+  runContext?: {
+    taskId?: string;
+    sessionId?: string;
+    agentId?: string;
+    workflowRunId?: string;
+    [key: string]: unknown;
+  };
 }
 
 /**
