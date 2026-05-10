@@ -904,7 +904,7 @@ export class LogSQLitePersistence implements ILogPersistence {
       }
 
       if (totalDeleted > 0) {
-        console.log(
+        console.error(
           `[LogSQLitePersistence] Retention cleanup: deleted ${totalDeleted} logs`,
         );
       }
