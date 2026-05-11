@@ -138,6 +138,10 @@ export function createMockUI(): UIFacade {
       bottomRight: '+',
       leftT: '+',
       rightT: '+',
+      step: 'o',
+      stepDone: '*',
+      arrow: '>',
+      diamond: '<>',
     },
     write: vi.fn((text) => messages.push(`WRITE: ${text}`)),
     info: vi.fn((msg) => messages.push(`INFO: ${msg}`)),
@@ -181,8 +185,15 @@ export function createMockUI(): UIFacade {
       }
       messages.push('+' + '-'.repeat(options.title.length + 4) + '+');
     }),
+    chain: vi.fn((items) => {
+      items.forEach((item: { title: string }) => messages.push(`CHAIN: ${item.title}`));
+    }),
     confirm: vi.fn(async () => true),
     prompt: vi.fn(async () => ''),
+    select: vi.fn(async (_msg: string, choices: Array<{ value: unknown }>) => choices[0]?.value),
+    multiSelect: vi.fn(async (_msg: string, choices: Array<{ checked?: boolean; value: unknown }>) =>
+      choices.filter((c) => c.checked).map((c) => c.value),
+    ),
   };
 }
 
