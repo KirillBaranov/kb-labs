@@ -27,6 +27,7 @@ describe('Context Structure (Runtime Verification)', () => {
     divider: vi.fn(),
     box: vi.fn(),
     sideBox: vi.fn(),
+    chain: vi.fn(),
     confirm: vi.fn(async () => true),
     prompt: vi.fn(async () => 'test'),
     select: vi.fn(async () => undefined) as UIFacade['select'],
