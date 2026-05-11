@@ -7,7 +7,7 @@ export const manifest: ManifestV3 = {
   version: '0.1.0',
   display: {
     name: 'Infra Worker',
-    description: 'Provision infra capabilities and return stable IDs for orchestrators.',
+    description: 'Provision infra capabilities for orchestrators',
     tags: ['infra', 'workspace', 'environment', 'snapshot'],
   },
   permissions: {

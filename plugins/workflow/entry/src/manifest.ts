@@ -45,7 +45,7 @@ export const manifest = {
 
   display: {
     name: 'Workflow CLI',
-    description: 'CLI commands for interacting with KB Labs Workflow Daemon.',
+    description: 'CLI commands for interacting with KB Labs Workflow Daemon',
     tags: ['workflow', 'daemon', 'jobs', 'orchestration'],
   },
 
@@ -61,6 +61,7 @@ export const manifest = {
       {
         id: 'health',
         group: 'workflow',
+        category: 'Daemon',
         describe: 'Check workflow daemon health status.',
         longDescription:
           'Performs a health check on the workflow daemon by making an HTTP request to /health endpoint. ' +
@@ -81,6 +82,7 @@ export const manifest = {
       {
         id: 'metrics',
         group: 'workflow',
+        category: 'Daemon',
         describe: 'Get workflow daemon metrics.',
         longDescription:
           'Fetches comprehensive metrics from the workflow daemon including total runs, queued jobs, ' +
@@ -101,6 +103,7 @@ export const manifest = {
       {
         id: 'status',
         group: 'workflow',
+        category: 'Jobs',
         describe: 'Get status of a specific workflow job.',
         longDescription:
           'Retrieves detailed status information for a specific job by ID, including current state, ' +
@@ -121,6 +124,7 @@ export const manifest = {
       {
         id: 'logs',
         group: 'workflow',
+        category: 'Jobs',
         describe: 'Get logs for a specific workflow job.',
         longDescription:
           'Fetches execution logs for a specific job by ID. Note: Log integration with platform.logger ' +
@@ -142,6 +146,7 @@ export const manifest = {
       {
         id: 'list',
         group: 'workflow',
+        category: 'Jobs',
         describe: 'List active workflow executions.',
         longDescription:
           'Lists all currently active workflow executions or cron jobs. Can be filtered by status (running, queued, ' +
@@ -164,6 +169,7 @@ export const manifest = {
       {
         id: 'job-run',
         group: 'workflow',
+        category: 'Jobs',
         describe: 'Submit a raw job for execution.',
         longDescription:
           'Submits a job to the workflow daemon for execution. Requires a handler (plugin command) and ' +
@@ -186,6 +192,7 @@ export const manifest = {
       {
         id: 'runs-list',
         group: 'workflow',
+        category: 'Runs',
         describe: 'List workflow runs.',
         longDescription:
           'Lists workflow runs with status, trigger, and duration. Filter by status (failed, running, success) ' +
@@ -208,7 +215,8 @@ export const manifest = {
       {
         id: 'runs-view',
         group: 'workflow',
-        describe: 'View workflow run details for incident investigation.',
+        category: 'Runs',
+        describe: 'View run details for incident investigation.',
         longDescription:
           'Shows full run details: jobs, steps, resolvedInputs, gate decisions, errors. ' +
           'Use --log-failed to see only the logs from failed steps (fastest path to root cause). ' +
@@ -232,6 +240,7 @@ export const manifest = {
       {
         id: 'runs-watch',
         group: 'workflow',
+        category: 'Runs',
         describe: 'Stream workflow run events in real-time.',
         longDescription:
           'Connects to the run event stream via SSE and prints events as they happen. ' +
@@ -252,6 +261,7 @@ export const manifest = {
       {
         id: 'runs-rerun',
         group: 'workflow',
+        category: 'Runs',
         describe: 'Rerun a workflow run.',
         longDescription:
           'Reruns a workflow by re-submitting it with the same inputs. ' +
@@ -273,6 +283,7 @@ export const manifest = {
       {
         id: 'run',
         group: 'workflow',
+        category: 'Runs',
         describe: 'Run workflow by ID.',
         longDescription:
           'Runs a workflow definition by workflow ID via /api/v1/workflows/:id/run endpoint. ' +

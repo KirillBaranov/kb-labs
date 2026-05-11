@@ -8,7 +8,7 @@
 import type { ParentMessage, ChildMessage, ExecuteMessage, LogMessage } from './ipc-protocol.js';
 import type { UIFacade, MessageOptions } from '@kb-labs/plugin-contracts';
 import { PluginError, wrapError, noopUI } from '@kb-labs/plugin-contracts';
-import { sideBorderBox, safeColors, safeSymbols, setJsonMode } from '@kb-labs/shared-cli-ui';
+import { sideBorderBox, safeColors, safeSymbols, formatTable, setJsonMode } from '@kb-labs/shared-cli-ui';
 import { createPluginContextV3 } from '../context/index.js';
 import { executeCleanup, type EventEmitterFn } from '../api/index.js';
 import { applySandboxPatches, type SandboxMode } from './harden.js';
@@ -87,38 +87,49 @@ function createStdoutUI(): UIFacade {
       if (process.env.DEBUG) {console.debug(msg);}
     },
     spinner: (msg) => {
-      console.log(`⟳ ${msg}`);
+      console.log(`${safeColors.primary('◆')} ${msg}`);
       return {
-        update: (m) => console.log(`⟳ ${m}`),
-        succeed: (m) => console.log(`✓ ${m ?? msg}`),
-        fail: (m) => console.log(`✗ ${m ?? msg}`),
+        update: (m) => console.log(`${safeColors.primary('◆')} ${m}`),
+        succeed: (m) => console.log(`${safeColors.success('✓')} ${m ?? msg}`),
+        fail: (m) => console.log(`${safeColors.error('✗')} ${m ?? msg}`),
         stop: () => {},
       };
     },
-    table: (data) => console.table(data),
+    table: (data, columns) => {
+      if (data.length === 0) return;
+      const cols = columns ?? Object.keys(data[0]!).map(k => ({ header: k, key: k }));
+      const rows = data.map(row => cols.map(col => String(row[col.key] ?? '')));
+      const lines = formatTable(
+        cols.map(c => ({ header: c.header, align: (c as { align?: 'left' | 'center' | 'right' }).align })),
+        rows,
+        { separator: '' },
+      );
+      for (const line of lines) { console.log(`  ${line}`); }
+    },
     json: (data) => console.log(JSON.stringify(data, null, 2)),
     newline: () => console.log(),
-    divider: () => console.log('─'.repeat(40)),
+    divider: () => console.log(safeColors.muted('─'.repeat(process.stdout.columns || 80))),
     box: (content, title) => {
-      if (title) {console.log(`┌─ ${title} ─┐`);}
-      console.log(content);
-      if (title) {console.log(`└${'─'.repeat(title.length + 4)}┘`);}
+      const boxOutput = sideBorderBox({
+        title: title || '',
+        sections: [{ items: content.split('\n') }],
+        status: 'info',
+      });
+      console.log(boxOutput);
     },
     sideBox: (options) => {
-      // Simple implementation for sandbox
-      if (options.title) {console.log(`┌─ ${options.title} ─┐`);}
-      if (options.sections) {
-        for (const section of options.sections) {
-          if (section.header) {console.log(`\n${section.header}`);}
-          for (const item of section.items) {
-            console.log(`  ${item}`);
-          }
-        }
-      }
-      if (options.title) {console.log(`└${'─'.repeat(options.title.length + 4)}┘`);}
+      const boxOutput = sideBorderBox({
+        title: options.title,
+        sections: (options.sections ?? []).map(s => ({ header: s.header, items: s.items })),
+        status: options.status,
+        timing: options.timing,
+      });
+      console.log(boxOutput);
     },
-    confirm: async () => true,
-    prompt: async () => '',
+    confirm: async (_msg, opts) => opts?.defaultValue ?? false,
+    prompt: async (_msg, opts) => opts?.default ?? '',
+    select: async (_msg, choices) => choices[0]?.value as never,
+    multiSelect: async (_msg, choices) => choices.filter((c) => c.checked).map((c) => c.value) as never,
   };
 }
 

@@ -18,15 +18,51 @@ import type {
   HealthOkMessage,
   ReadyMessage,
   ShutdownMessage,
+  UIPromptMessage,
+  UIPromptResultMessage,
 } from './types.js';
 import type { PlatformServices, UIFacade, MessageOptions } from '@kb-labs/plugin-contracts';
 import { IPCTransport, UnixSocketTransport, createProxyPlatform } from '@kb-labs/core-ipc';
 import type { ITransport } from '@kb-labs/core-ipc';
 import { createGovernedPlatformServices } from '@kb-labs/plugin-runtime';
-import { sideBorderBox, safeColors, safeSymbols, setJsonMode } from '@kb-labs/shared-cli-ui';
+import { sideBorderBox, safeColors, safeSymbols, formatTable, setJsonMode } from '@kb-labs/shared-cli-ui';
 
 // Worker state
 const workerId = process.env.KB_WORKER_ID ?? 'unknown';
+
+// Pending IPC prompt resolvers keyed by promptId
+const pendingPrompts = new Map<string, (value: unknown) => void>();
+let promptCounter = 0;
+
+/**
+ * Send a UI prompt request to the host via IPC and await the result.
+ * Falls back to defaultValue if IPC is unavailable or times out.
+ */
+async function ipcPrompt(
+  requestId: string,
+  prompt: Omit<UIPromptMessage, 'type' | 'promptId' | 'requestId'>,
+  defaultValue: unknown,
+  timeoutMs = 60_000,
+): Promise<unknown> {
+  if (!process.send) {return defaultValue;}
+
+  const promptId = `prompt-${workerId}-${++promptCounter}`;
+  const msg: UIPromptMessage = { type: 'uiPrompt', promptId, requestId, ...prompt };
+
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      pendingPrompts.delete(promptId);
+      resolve(defaultValue);
+    }, timeoutMs);
+
+    pendingPrompts.set(promptId, (value) => {
+      clearTimeout(timer);
+      resolve(value);
+    });
+
+    process.send!(msg);
+  });
+}
 let isShuttingDown = false;
 
 /**
@@ -65,10 +101,12 @@ const rawProxyPlatform = createProxyPlatform({ transport });
 
 
 /**
- * Create a stdout UI — same as bootstrap.ts.
- * stdout is inherited from parent so output goes directly to terminal.
+ * Create a stdout UI with IPC proxy for interactive prompts.
+ * stdout is inherited from parent so display output goes directly to terminal.
+ * Interactive methods (select/multiSelect/confirm/prompt) are forwarded to the
+ * host process via IPC and the result is awaited.
  */
-function createStdoutUI(): UIFacade {
+function createStdoutUI(currentRequestId?: string): UIFacade {
   return {
     colors: safeColors,
     symbols: safeSymbols,
@@ -88,30 +126,66 @@ function createStdoutUI(): UIFacade {
     },
     debug: (msg: string) => { if (process.env.DEBUG) { console.debug(msg); } },
     spinner: (msg) => {
-      console.log(`⟳ ${msg}`);
-      return { update: (m) => console.log(`⟳ ${m}`), succeed: (m) => console.log(`✓ ${m ?? msg}`), fail: (m) => console.log(`✗ ${m ?? msg}`), stop: () => {} };
+      console.log(`${safeColors.primary('◆')} ${msg}`);
+      return {
+        update: (m) => console.log(`${safeColors.primary('◆')} ${m}`),
+        succeed: (m) => console.log(`${safeColors.success('✓')} ${m ?? msg}`),
+        fail: (m) => console.log(`${safeColors.error('✗')} ${m ?? msg}`),
+        stop: () => {},
+      };
     },
-    table: (data) => console.table(data),
+    table: (data, columns) => {
+      if (data.length === 0) return;
+      const cols = columns ?? Object.keys(data[0]!).map(k => ({ header: k, key: k }));
+      const rows = data.map(row => cols.map(col => String(row[col.key] ?? '')));
+      const lines = formatTable(
+        cols.map(c => ({ header: c.header, align: (c as { align?: 'left' | 'center' | 'right' }).align })),
+        rows,
+        { separator: '' },
+      );
+      for (const line of lines) { console.log(`  ${line}`); }
+    },
     json: (data) => console.log(JSON.stringify(data, null, 2)),
     newline: () => console.log(),
-    divider: () => console.log('─'.repeat(40)),
+    divider: () => console.log(safeColors.muted('─'.repeat(process.stdout.columns || 80))),
     box: (content, title) => {
-      if (title) { console.log(`┌─ ${title} ─┐`); }
-      console.log(content);
-      if (title) { console.log(`└${'─'.repeat(title.length + 4)}┘`); }
+      console.log(sideBorderBox({
+        title: title || '',
+        sections: [{ items: content.split('\n') }],
+        status: 'info',
+      }));
     },
     sideBox: (options) => {
-      if (options.title) { console.log(`┌─ ${options.title} ─┐`); }
-      if (options.sections) {
-        for (const section of options.sections) {
-          if (section.header) { console.log(`\n${section.header}`); }
-          for (const item of section.items) { console.log(`  ${item}`); }
-        }
-      }
-      if (options.title) { console.log(`└${'─'.repeat(options.title.length + 4)}┘`); }
+      console.log(sideBorderBox({
+        title: options.title,
+        sections: (options.sections ?? []).map(s => ({ header: s.header, items: s.items })),
+        status: options.status,
+        timing: options.timing,
+      }));
     },
-    confirm: async () => true,
-    prompt: async () => '',
+    confirm: async (msg, opts) => {
+      const defaultValue = opts?.defaultValue ?? false;
+      if (!currentRequestId) {return defaultValue;}
+      return ipcPrompt(currentRequestId, { kind: 'confirm', message: msg, defaultValue }, defaultValue) as Promise<boolean>;
+    },
+
+    prompt: async (msg, opts) => {
+      const defaultValue = opts?.default ?? '';
+      if (!currentRequestId) {return defaultValue;}
+      return ipcPrompt(currentRequestId, { kind: 'text', message: msg, defaultValue }, defaultValue) as Promise<string>;
+    },
+
+    select: async (msg, choices) => {
+      const defaultValue = choices[0]?.value;
+      if (!currentRequestId) {return defaultValue as never;}
+      return ipcPrompt(currentRequestId, { kind: 'select', message: msg, choices, defaultValue }, defaultValue) as Promise<never>;
+    },
+
+    multiSelect: async (msg, choices) => {
+      const defaultValue = choices.filter((c) => c.checked).map((c) => c.value);
+      if (!currentRequestId) {return defaultValue as never;}
+      return ipcPrompt(currentRequestId, { kind: 'multiSelect', message: msg, choices, defaultValue }, defaultValue) as Promise<never>;
+    },
   };
 }
 
@@ -124,7 +198,7 @@ async function handleExecute(message: ExecuteMessage): Promise<void> {
 
   try {
     // Dynamic import to avoid loading at startup
-    const { runInProcess } = await import('@kb-labs/plugin-runtime');
+    const { runInProcess, createStreamingUI } = await import('@kb-labs/plugin-runtime');
     const { noopUI } = await import('@kb-labs/plugin-contracts');
     const path = await import('node:path');
     const fs = await import('node:fs');
@@ -171,12 +245,6 @@ async function handleExecute(message: ExecuteMessage): Promise<void> {
     const jsonMode = Boolean(inputFlags['json']);
     if (jsonMode) { setJsonMode(true); }
 
-    // UI: stdout is inherited, so console.log goes directly to terminal
-    let ui: UIFacade = createStdoutUI();
-    if (jsonMode) {
-      ui = { ...noopUI, colors: ui.colors, symbols: ui.symbols, json: ui.json };
-    }
-
     // eventEmitter sends log lines to parent pool via IPC
     const eventEmitter = async (name: string, payload?: unknown) => {
       if ((name === 'log.line' || name.endsWith(':log.line')) && payload && typeof payload === 'object') {
@@ -197,16 +265,55 @@ async function handleExecute(message: ExecuteMessage): Promise<void> {
       }
     };
 
-    // Execute handler
-    const result = await runInProcess({
-      descriptor: request.descriptor,
-      platform,
-      ui,
-      eventEmitter,
-      handlerPath,
-      cwd,
-      input: request.input,
-    });
+    // UI: wrap with StreamingUI so ui.info/warn/error/write also reach the log stream.
+    // In json mode keep a minimal UI but still stream through eventEmitter.
+    const baseUI: UIFacade = jsonMode
+      ? { ...noopUI, colors: createStdoutUI(requestId).colors, symbols: createStdoutUI(requestId).symbols, json: createStdoutUI(requestId).json }
+      : createStdoutUI(requestId);
+    const ui: UIFacade = createStreamingUI(baseUI, eventEmitter);
+
+    // Intercept raw stdout/stderr to capture console.log() and third-party output.
+    // Safe here: this is an isolated child process handling exactly one request at a time.
+    const ANSI_RE = /\x1b\[[0-9;]*m/g;
+    let rawLineNo = 0;
+    const sendRawLine = (text: string, stream: 'stdout' | 'stderr') => {
+      const clean = text.replace(ANSI_RE, '');
+      for (const line of clean.split('\n')) {
+        if (!line.trim()) { continue; }
+        rawLineNo++;
+        process.send!({
+          type: 'log', requestId,
+          entry: { level: stream === 'stderr' ? 'error' : 'info', message: line, stream, lineNo: rawLineNo, timestamp: new Date().toISOString() },
+        } satisfies LogWorkerMessage);
+      }
+    };
+
+    type WriteFn = (chunk: string | Uint8Array, encoding?: BufferEncoding | ((err?: Error | null) => void), cb?: (err?: Error | null) => void) => boolean;
+    const origStdoutWrite = process.stdout.write.bind(process.stdout) as WriteFn;
+    const origStderrWrite = process.stderr.write.bind(process.stderr) as WriteFn;
+    const makeCapture = (orig: WriteFn, stream: 'stdout' | 'stderr'): WriteFn =>
+      (chunk, encoding?, cb?) => {
+        sendRawLine(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8'), stream);
+        return orig(chunk, encoding as BufferEncoding, cb);
+      };
+    process.stdout.write = makeCapture(origStdoutWrite, 'stdout') as typeof process.stdout.write;
+    process.stderr.write = makeCapture(origStderrWrite, 'stderr') as typeof process.stderr.write;
+
+    let result!: Awaited<ReturnType<typeof runInProcess>>;
+    try {
+      result = await runInProcess({
+        descriptor: request.descriptor,
+        platform,
+        ui,
+        eventEmitter,
+        handlerPath,
+        cwd,
+        input: request.input,
+      });
+    } finally {
+      process.stdout.write = origStdoutWrite;
+      process.stderr.write = origStderrWrite;
+    }
 
     const elapsedMs = Date.now() - startMs;
 
@@ -270,6 +377,15 @@ function onMessage(message: WorkerMessage): void {
     case 'execute': handleExecute(message as ExecuteMessage); break;
     case 'health': handleHealth(); break;
     case 'shutdown': handleShutdown(message as ShutdownMessage); break;
+    case 'uiPromptResult': {
+      const result = message as UIPromptResultMessage;
+      const resolve = pendingPrompts.get(result.promptId);
+      if (resolve) {
+        pendingPrompts.delete(result.promptId);
+        resolve(result.value);
+      }
+      break;
+    }
   }
 }
 

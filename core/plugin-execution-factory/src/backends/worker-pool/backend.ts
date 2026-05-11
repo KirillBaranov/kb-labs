@@ -18,6 +18,7 @@ import type {
   HostType,
   PlatformTransportFactory,
 } from '../../types.js';
+import type { UIPromptMessage } from './types.js';
 import type { PlatformServices, UIFacade } from '@kb-labs/plugin-contracts';
 import { UnixSocketPlatformTransportFactory } from '../../platform-transport/unix-socket-factory.js';
 import { noopUI } from '@kb-labs/plugin-contracts';
@@ -175,10 +176,32 @@ export class WorkerPoolBackend implements ExecutionBackend {
     const requestToExecute = await resolveExecutionTarget(request, this.platform);
     this.totalExecutions++;
 
+    const hostType: HostType = request.descriptor.hostContext.host;
+    const ui = this.uiProvider(hostType);
+    const onUIPrompt = async (prompt: UIPromptMessage): Promise<unknown> => {
+      try {
+        switch (prompt.kind) {
+          case 'select':
+            return await ui.select(prompt.message, prompt.choices ?? []);
+          case 'multiSelect':
+            return await ui.multiSelect(prompt.message, prompt.choices ?? []);
+          case 'confirm':
+            return await ui.confirm(prompt.message, { defaultValue: (prompt.defaultValue as boolean) ?? false });
+          case 'text':
+            return await ui.prompt(prompt.message, { default: prompt.defaultValue as string });
+          default:
+            return prompt.defaultValue ?? false;
+        }
+      } catch {
+        return prompt.defaultValue ?? false;
+      }
+    };
+
     try {
       const result = await this.pool!.execute(requestToExecute, {
         signal: options?.signal,
         onLog: options?.onLog,
+        onUIPrompt,
       });
 
       const executionTimeMs = performance.now() - start;

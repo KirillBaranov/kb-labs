@@ -1,25 +1,29 @@
 import {
   colors,
-  collectManifestVersions,
-  TimingTracker,
   type RegisteredCommand,
 } from "./shared";
 import { sideBorderBox, type SectionContent } from "@kb-labs/shared-cli-ui";
+
+// │  <prefix><paddedId>  <description>
+// ^^^                                  = 3 chars (border + space)
+//    ^^^^^^^^                          = prefix (2 chars)
+//            ^^^^^^^^^^^^              = maxLength + 2-char gap
+const BOX_OVERHEAD = 3;
+const PREFIX_LEN = 2;
+const GAP_LEN = 2;
+
+function truncateDesc(desc: string, maxLength: number): string {
+  const cols = (typeof process !== 'undefined' && process.stdout?.columns) || 80;
+  const avail = cols - BOX_OVERHEAD - PREFIX_LEN - maxLength - GAP_LEN;
+  if (avail < 10 || desc.length <= avail) return desc;
+  return desc.slice(0, avail - 1) + '…';
+}
 
 export function renderProductHelp(
   groupName: string,
   commands: RegisteredCommand[],
 ): string {
-  const tracker = new TimingTracker();
   const sections: SectionContent[] = [];
-
-  const manifestVersions = collectManifestVersions(commands);
-  if (manifestVersions.length > 0) {
-    sections.push({
-      header: "Manifest",
-      items: [colors.cyan(manifestVersions.join(" + "))],
-    });
-  }
 
   const availableMap = new Map<string, RegisteredCommand>();
   const unavailableMap = new Map<string, RegisteredCommand>();
@@ -34,62 +38,63 @@ export function renderProductHelp(
     }
   }
 
-  const available = Array.from(availableMap.values()).sort((a, b) =>
-    a.manifest.id.localeCompare(b.manifest.id),
-  );
+  // Keep manifest order so category sections appear in the order author defined them
+  const available = Array.from(availableMap.values());
   const unavailable = Array.from(unavailableMap.values()).sort((a, b) =>
     a.manifest.id.localeCompare(b.manifest.id),
   );
 
-  // Calculate max length based on display format (with spaces instead of colons)
+  const hasUnavailable = unavailable.length > 0;
+
   const maxLength = Math.max(
     ...[...available, ...unavailable].map((c) => c.manifest.id.replace(/:/g, ' ').length),
     20,
   );
 
-  // Available commands section
-  const availableItems: string[] = [];
-  for (const cmd of available) {
-    const status = colors.green("✓");
-    // Convert command ID to user-friendly format (replace : with space for display)
-    const displayId = cmd.manifest.id.replace(/:/g, ' ');
-    const paddedId = displayId.padEnd(maxLength);
-    availableItems.push(
-      `${status} ${colors.cyan(paddedId)}  ${colors.dim(
-        cmd.manifest.describe,
-      )}`,
-    );
+  // Available commands — group by category if present, plain list otherwise
+  const hasCategories = available.some((c) => c.manifest.category);
+  const prefix = hasUnavailable ? `${colors.green("✓")} ` : "  ";
 
-    if (cmd.manifest.examples && cmd.manifest.examples.length > 0) {
-      for (const example of cmd.manifest.examples.slice(0, 2) as string[]) {
-        availableItems.push(`   ${colors.dim(example)}`);
+  if (hasCategories) {
+    // Preserve manifest order within each category, collect categories in first-seen order
+    const categoryOrder: string[] = [];
+    const categoryMap = new Map<string, RegisteredCommand[]>();
+    for (const cmd of available) {
+      const cat = cmd.manifest.category ?? "";
+      if (!categoryMap.has(cat)) {
+        categoryOrder.push(cat);
+        categoryMap.set(cat, []);
       }
+      categoryMap.get(cat)!.push(cmd);
     }
-  }
 
-  sections.push({
-    header: "Available Commands",
-    items: availableItems,
-  });
-
-  // Unavailable commands section (if any)
-  if (unavailable.length > 0) {
-    const unavailableItems: string[] = [];
-    for (const cmd of unavailable) {
-      const status = colors.red("✗");
-      // Convert command ID to user-friendly format (replace : with space for display)
+    for (const cat of categoryOrder) {
+      const cmds = categoryMap.get(cat)!.sort((a, b) => a.manifest.id.localeCompare(b.manifest.id));
+      const items: string[] = cmds.map((cmd) => {
+        const displayId = cmd.manifest.id.replace(/:/g, ' ');
+        const paddedId = displayId.padEnd(maxLength);
+        return `${prefix}${colors.cyan(paddedId)}  ${colors.dim(truncateDesc(cmd.manifest.describe, maxLength))}`;
+      });
+      sections.push({ header: cat || "Commands", items });
+    }
+  } else {
+    const availableItems: string[] = [...available].sort((a, b) => a.manifest.id.localeCompare(b.manifest.id)).map((cmd) => {
       const displayId = cmd.manifest.id.replace(/:/g, ' ');
       const paddedId = displayId.padEnd(maxLength);
-      unavailableItems.push(
-        `${status} ${colors.dim(paddedId)}  ${colors.dim(
-          cmd.manifest.describe,
-        )}`,
-      );
+      return `${prefix}${colors.cyan(paddedId)}  ${colors.dim(cmd.manifest.describe)}`;
+    });
+    sections.push({ header: "Commands", items: availableItems });
+  }
 
+  // Unavailable commands section (if any)
+  if (hasUnavailable) {
+    const unavailableItems: string[] = [];
+    for (const cmd of unavailable) {
+      const displayId = cmd.manifest.id.replace(/:/g, ' ');
+      const paddedId = displayId.padEnd(maxLength);
+      unavailableItems.push(`${colors.red("✗")} ${colors.dim(paddedId)}  ${colors.dim(cmd.manifest.describe)}`);
       if (cmd.unavailableReason) {
-        unavailableItems.push(
-          `   ${colors.red(`Reason: ${cmd.unavailableReason}`)}`,
-        );
+        unavailableItems.push(`   ${colors.red(`Reason: ${cmd.unavailableReason}`)}`);
       }
       if (cmd.hint) {
         unavailableItems.push(`   ${colors.yellow(`Hint: ${cmd.hint}`)}`);
@@ -102,50 +107,15 @@ export function renderProductHelp(
     });
   }
 
-  // Next Steps section
-  const uniqueCommands = new Map<string, RegisteredCommand>();
-  for (const cmd of available) {
-    if (!uniqueCommands.has(cmd.manifest.id)) {
-      uniqueCommands.set(cmd.manifest.id, cmd);
-    }
-  }
-
-  const nextStepsItems = Array.from(uniqueCommands.values())
-    .slice(0, 3)
-    .map((cmd) => {
-      // Convert command ID to user-friendly format (replace : with space for display)
-      const displayId = cmd.manifest.id.replace(/:/g, ' ');
-      return `${colors.cyan(`kb ${displayId}`)}  ${colors.dim(
-        cmd.manifest.describe,
-      )}`;
-    });
-
-  if (nextStepsItems.length === 0) {
-    nextStepsItems.push(colors.dim("No available commands in this product"));
-  } else {
-    nextStepsItems.push("");
-    nextStepsItems.push(
-      colors.dim(
-        `Use 'kb ${groupName} <command> --help' for detailed help`,
-      ),
-    );
-  }
-
-  nextStepsItems.push("");
-  nextStepsItems.push(
-    colors.dim("Use 'kb --help' to see all products and system commands."),
-  );
-
+  // Hint
   sections.push({
-    header: "Next Steps",
-    items: nextStepsItems,
+    items: [colors.dim(`kb ${groupName} <command> --help`)],
   });
 
   return sideBorderBox({
     title: groupName,
     sections,
     status: "info",
-    timing: tracker.total(),
   });
 }
 

@@ -148,6 +148,10 @@ export function createMockUI(): UIFacade {
       bottomRight: '┘',
       leftT: '├',
       rightT: '┤',
+      step: '○',
+      stepDone: '●',
+      arrow: '→',
+      diamond: '◆',
     },
     write: vi.fn(),
     info: vi.fn(),
@@ -164,5 +168,7 @@ export function createMockUI(): UIFacade {
     sideBox: vi.fn(),
     confirm: vi.fn(async () => true),
     prompt: vi.fn(async () => 'test'),
+    select: vi.fn(async (_msg: unknown, choices: Array<{ value: unknown }>) => choices[0]?.value) as UIFacade['select'],
+    multiSelect: vi.fn(async () => []) as UIFacade['multiSelect'],
   };
 }

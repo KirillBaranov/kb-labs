@@ -122,14 +122,16 @@ export interface WorkerInfo {
  * Message types for IPC between pool and workers.
  */
 export type WorkerMessageType =
-  | 'execute'     // Pool -> Worker: execute request
-  | 'result'      // Worker -> Pool: execution result
-  | 'error'       // Worker -> Pool: execution error
-  | 'log'         // Worker -> Pool: log entry (real-time streaming)
-  | 'health'      // Pool -> Worker: health check request
-  | 'healthOk'    // Worker -> Pool: health check response
-  | 'shutdown'    // Pool -> Worker: graceful shutdown
-  | 'ready';      // Worker -> Pool: worker is ready
+  | 'execute'        // Pool -> Worker: execute request
+  | 'result'         // Worker -> Pool: execution result
+  | 'error'          // Worker -> Pool: execution error
+  | 'log'            // Worker -> Pool: log entry (real-time streaming)
+  | 'health'         // Pool -> Worker: health check request
+  | 'healthOk'       // Worker -> Pool: health check response
+  | 'shutdown'       // Pool -> Worker: graceful shutdown
+  | 'ready'          // Worker -> Pool: worker is ready
+  | 'uiPrompt'       // Worker -> Pool: request interactive prompt from host TTY
+  | 'uiPromptResult'; // Pool -> Worker: result of interactive prompt
 
 /**
  * Base IPC message.
@@ -224,6 +226,29 @@ export interface LogWorkerMessage extends BaseWorkerMessage {
 }
 
 /**
+ * Interactive UI prompt request (Worker -> Pool).
+ * Worker asks the host to render a prompt in the TTY and return the result.
+ */
+export interface UIPromptMessage extends BaseWorkerMessage {
+  type: 'uiPrompt';
+  promptId: string;
+  requestId: string;
+  kind: 'select' | 'multiSelect' | 'text' | 'confirm';
+  message: string;
+  choices?: Array<{ label: string; value: unknown; hint?: string; checked?: boolean }>;
+  defaultValue?: unknown;
+}
+
+/**
+ * Interactive UI prompt result (Pool -> Worker).
+ */
+export interface UIPromptResultMessage extends BaseWorkerMessage {
+  type: 'uiPromptResult';
+  promptId: string;
+  value: unknown;
+}
+
+/**
  * All message types union.
  */
 export type WorkerMessage =
@@ -234,7 +259,9 @@ export type WorkerMessage =
   | HealthMessage
   | HealthOkMessage
   | ShutdownMessage
-  | ReadyMessage;
+  | ReadyMessage
+  | UIPromptMessage
+  | UIPromptResultMessage;
 
 // ============================================================================
 // Queue Types

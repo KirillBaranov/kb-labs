@@ -41,7 +41,7 @@ export const manifest = {
 
   display: {
     name: 'AI Review',
-    description: 'AI-powered code review with heuristic engines (ESLint, Ruff, etc.) and LLM analyzers.',
+    description: 'AI code review with heuristic engines and LLM',
     tags: ['code-review', 'linting', 'ai', 'quality'],
   },
 

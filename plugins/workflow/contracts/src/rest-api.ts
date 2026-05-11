@@ -166,6 +166,10 @@ export interface WorkflowInfo {
   tags?: string[];
   /** Declared input parameters schema */
   inputs?: Record<string, { type: 'string' | 'number' | 'boolean'; description?: string; required?: boolean; default?: unknown }>;
+  /** Semantic version from workflow spec */
+  version?: string;
+  /** ISO timestamp of last modification */
+  updatedAt?: string;
 }
 
 /**
@@ -279,6 +283,8 @@ export const WorkflowInfoSchema = z.object({
   pluginId: z.string().optional(),
   status: z.enum(['active', 'inactive']).optional(),
   tags: z.array(z.string()).optional(),
+  version: z.string().optional(),
+  updatedAt: z.string().optional(),
 })
 
 /**

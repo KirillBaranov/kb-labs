@@ -13,7 +13,7 @@ import type { PluginContextDescriptor, UIFacade, PlatformServices } from '@kb-la
 describe('Context Structure (Runtime Verification)', () => {
   const mockUI: UIFacade = {
     colors: { success: (t: string) => t, error: (t: string) => t, warning: (t: string) => t, info: (t: string) => t, primary: (t: string) => t, accent: (t: string) => t, highlight: (t: string) => t, secondary: (t: string) => t, emphasis: (t: string) => t, muted: (t: string) => t, foreground: (t: string) => t, dim: (t: string) => t, bold: (t: string) => t, underline: (t: string) => t, inverse: (t: string) => t },
-    symbols: { success: '✓', error: '✗', warning: '⚠', info: 'ℹ', bullet: '•', clock: '◷', folder: '📁', package: '📦', pointer: '›', section: '§', separator: '─', border: '│', topLeft: '┌', topRight: '┐', bottomLeft: '└', bottomRight: '┘', leftT: '├', rightT: '┤' },
+    symbols: { success: '✓', error: '✗', warning: '⚠', info: 'ℹ', bullet: '•', clock: '◷', folder: '📁', package: '📦', pointer: '›', section: '§', separator: '─', border: '│', topLeft: '┌', topRight: '┐', bottomLeft: '└', bottomRight: '┘', leftT: '├', rightT: '┤', step: '○', stepDone: '●', arrow: '→', diamond: '◆' },
     write: vi.fn(),
     info: vi.fn(),
     success: vi.fn(),
@@ -29,6 +29,8 @@ describe('Context Structure (Runtime Verification)', () => {
     sideBox: vi.fn(),
     confirm: vi.fn(async () => true),
     prompt: vi.fn(async () => 'test'),
+    select: vi.fn(async () => undefined) as UIFacade['select'],
+    multiSelect: vi.fn(async () => []) as UIFacade['multiSelect'],
   };
 
   const mockLogger = {

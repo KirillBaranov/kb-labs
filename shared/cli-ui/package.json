@@ -18,6 +18,10 @@
     "./table": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./interactive": {
+      "types": "./dist/interactive/index.d.ts",
+      "import": "./dist/interactive/index.js"
     }
   },
   "files": [
@@ -66,6 +70,9 @@
       ],
       "debug/*": [
         "src/debug/*"
+      ],
+      "interactive": [
+        "src/interactive"
       ]
     }
   }

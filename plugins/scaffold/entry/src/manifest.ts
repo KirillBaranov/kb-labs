@@ -25,8 +25,7 @@ const manifest = {
   version: '0.1.0',
   display: {
     name: 'Scaffold',
-    description:
-      'Generic entity scaffolder for KB Labs plugins, adapters, and friends.',
+    description: 'Entity scaffolder for plugins and adapters',
     tags: ['scaffold', 'generator', 'dx'],
   },
   cli: {

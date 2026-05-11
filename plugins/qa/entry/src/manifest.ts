@@ -49,7 +49,7 @@ export const manifest = {
 
   display: {
     name: 'QA Plugin',
-    description: 'Automated quality checks, baseline tracking, and regression detection',
+    description: 'Automated quality checks and regression tracking',
     tags: ['qa', 'quality', 'baseline', 'regression', 'testing'],
   },
 
@@ -63,6 +63,7 @@ export const manifest = {
       {
         id: 'run',
         group: 'qa',
+        category: 'Run',
         describe: 'Run all QA checks (build, lint, types, tests)',
         longDescription:
           'Runs comprehensive QA checks across the monorepo: build, lint, type check, and tests. ' +
@@ -75,6 +76,7 @@ export const manifest = {
       {
         id: 'check',
         group: 'qa',
+        category: 'Run',
         describe: 'Run a single QA check atomically',
         longDescription:
           'Runs one check by ID, optionally saves to history with caller context. ' +
@@ -88,6 +90,7 @@ export const manifest = {
       {
         id: 'save',
         group: 'qa',
+        category: 'Run',
         describe: 'Run QA checks and save results to history',
         longDescription:
           'Runs all QA checks and saves the results as a history entry. ' +
@@ -100,6 +103,7 @@ export const manifest = {
       {
         id: 'history',
         group: 'qa',
+        category: 'History',
         describe: 'Show QA run history',
         longDescription: 'Displays the QA run history with pass/fail status for each check type.',
         handler: './cli/commands/qa-history.js#default',
@@ -110,6 +114,7 @@ export const manifest = {
       {
         id: 'trends',
         group: 'qa',
+        category: 'History',
         describe: 'Show QA quality trends over time',
         longDescription:
           'Analyzes quality trends by comparing failure counts over a sliding window of history entries.',
@@ -121,6 +126,7 @@ export const manifest = {
       {
         id: 'regressions',
         group: 'qa',
+        category: 'History',
         describe: 'Detect regressions since last QA save',
         longDescription:
           'Compares the last two history entries to detect new failures. ' +
@@ -133,6 +139,7 @@ export const manifest = {
       {
         id: 'baseline:update',
         group: 'qa',
+        category: 'Baseline',
         describe: 'Run full QA and save as new baseline',
         longDescription:
           'Runs all QA checks and saves the results as the current baseline. ' +
@@ -145,6 +152,7 @@ export const manifest = {
       {
         id: 'baseline:status',
         group: 'qa',
+        category: 'Baseline',
         describe: 'Show current baseline status',
         longDescription: 'Displays the current baseline snapshot with pass/fail counts per check type.',
         handler: './cli/commands/baseline-status.js#default',

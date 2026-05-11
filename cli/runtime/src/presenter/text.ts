@@ -1,4 +1,5 @@
 import type { Presenter } from "./types";
+import { sideBorderBox, safeColors, safeSymbols } from "@kb-labs/shared-cli-ui";
 
 export function createTextPresenter(isQuiet: boolean = false): Presenter {
   const isTTY = process.stdout.isTTY === true;
@@ -21,7 +22,14 @@ export function createTextPresenter(isQuiet: boolean = false): Presenter {
         console.warn(line);
       }
     },
-    error: (line) => console.error(line),
+    error: (line) => {
+      const box = sideBorderBox({
+        title: 'Error',
+        sections: [{ items: [String(line)] }],
+        status: 'error',
+      });
+      console.error(box);
+    },
     json: (_payload) => {
       throw new Error("json() called in text mode");
     },

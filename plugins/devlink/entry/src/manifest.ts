@@ -30,7 +30,7 @@ export const manifest = {
 
   display: {
     name: 'DevLink',
-    description: 'Manage cross-repo link: ↔ npm dependencies for KB Labs monorepos.',
+    description: 'Cross-repo link: dependency management',
     tags: ['monorepo', 'devlink', 'dependencies', 'publish', 'local-dev'],
   },
 
@@ -44,7 +44,8 @@ export const manifest = {
       {
         id: 'switch',
         group: 'devlink',
-        describe: 'Switch all cross-repo deps between link: (local) and npm (CI/CD) mode',
+        category: 'Mode',
+        describe: 'Switch deps between local link: and npm (CI/CD) mode',
         longDescription:
           'Replaces all cross-repo @kb-labs/* dependencies across monorepos. ' +
           'Creates a backup before applying. Run pnpm install after switching.',
@@ -66,6 +67,7 @@ export const manifest = {
       {
         id: 'status',
         group: 'devlink',
+        category: 'Mode',
         describe: 'Show current state of cross-repo dependencies',
         longDescription:
           'Displays the current linking mode, counts of link: vs npm dependencies, ' +
@@ -87,6 +89,7 @@ export const manifest = {
       {
         id: 'plan',
         group: 'devlink',
+        category: 'Mode',
         describe: 'Preview what would change when switching mode',
         longDescription:
           'Shows all dependency changes that would be made without applying them. ' +
@@ -108,6 +111,7 @@ export const manifest = {
       {
         id: 'freeze',
         group: 'devlink',
+        category: 'State',
         describe: 'Freeze current dependency state to lock file',
         longDescription:
           'Saves a snapshot of current dependency mode to .kb/devlink/lock.json. ' +
@@ -128,6 +132,7 @@ export const manifest = {
       {
         id: 'undo',
         group: 'devlink',
+        category: 'State',
         describe: 'Restore previous dependency state from last backup',
         longDescription:
           'Restores package.json files from the most recent backup created by switch. ' +
@@ -148,6 +153,7 @@ export const manifest = {
       {
         id: 'backups',
         group: 'devlink',
+        category: 'State',
         describe: 'List and restore backups',
         longDescription:
           'Lists all available backups. Use --restore <id> to restore a specific backup.',

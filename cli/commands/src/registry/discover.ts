@@ -468,6 +468,7 @@ async function loadManifest(manifestPath: string, pkgName: string, pkgRoot?: str
       id: commandId,
       group: cmd.group || namespace,
       subgroup: cmd.subgroup,
+      category: (cmd as unknown as Record<string, unknown>).category as string | undefined,
       describe: cmd.describe || '',
       longDescription: cmd.longDescription,
       aliases: (cmd as unknown as Record<string, unknown>).aliases as string[] | undefined,

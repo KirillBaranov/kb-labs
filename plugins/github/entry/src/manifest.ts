@@ -18,7 +18,7 @@ const manifest = {
   version: '0.1.0',
   display: {
     name: 'GitHub',
-    description: 'GitHub integration — fetch issues, post comments, create branches and PRs',
+    description: 'GitHub integration for issues, PRs, and branches',
     tags: ['github', 'integration', 'workflow'],
   },
   platform: { requires: [], optional: [] },

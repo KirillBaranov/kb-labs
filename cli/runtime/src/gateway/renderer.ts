@@ -6,6 +6,7 @@
  */
 
 import type { ExecutionEvent } from '@kb-labs/core-contracts';
+import { sideBorderBox } from '@kb-labs/shared-cli-ui';
 
 /**
  * Renderer interface for execution events.
@@ -47,19 +48,34 @@ export class TerminalEventRenderer implements IEventRenderer {
         process.stderr.write(`Created: ${event.name}${size}\n`);
         break;
 
-      case 'execution:error':
+      case 'execution:error': {
         this.clearProgress();
-        process.stderr.write(`\nError [${event.code}]: ${event.message}\n`);
+        const errSections: Array<{ header?: string; items: string[] }> = [
+          { items: [event.message] },
+        ];
+        if (event.code) {
+          errSections.push({ header: 'Code', items: [event.code] });
+        }
+        process.stderr.write('\n' + sideBorderBox({ title: 'Error', sections: errSections, status: 'error' }) + '\n');
         break;
+      }
 
       case 'execution:retry':
         this.clearProgress();
-        process.stderr.write(`\nRetrying (${event.attempt}/${event.maxAttempts}) in ${event.delayMs}ms: ${event.error}\n`);
+        process.stderr.write('\n' + sideBorderBox({
+          title: 'Retrying',
+          sections: [{ items: [`Attempt ${event.attempt}/${event.maxAttempts}  —  retry in ${event.delayMs}ms`, event.error] }],
+          status: 'warning',
+        }) + '\n');
         break;
 
       case 'execution:cancelled':
         this.clearProgress();
-        process.stderr.write(`\nCancelled: ${event.reason}\n`);
+        process.stderr.write('\n' + sideBorderBox({
+          title: 'Cancelled',
+          sections: [{ items: [event.reason ?? 'No reason given'] }],
+          status: 'warning',
+        }) + '\n');
         break;
 
       case 'execution:done':

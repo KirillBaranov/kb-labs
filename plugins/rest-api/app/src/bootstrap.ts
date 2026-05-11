@@ -160,12 +160,14 @@ export async function bootstrap(cwd: string = process.cwd()): Promise<void> {
     ? 10 * 60 * 1000  // 10 minutes for development
     : 60 * 60 * 1000; // 1 hour for production
 
-  // In installed mode, plugins live in the platform installation (node_modules of the
-  // platform dir) and marketplace.lock is there too. Use platform root when available.
-  const registryRoot = getPlatformRoot() ?? repoRoot;
+  // Project root is always the primary source for plugin discovery.
+  // In installed mode (platform.dir set), the platform lock fills gaps —
+  // but project marketplace.lock wins on conflict (project overrides platform).
+  const platformRoot = getPlatformRoot();
   const registryInitStart = performance.now();
   const registry = await createRegistry({
-    root: registryRoot,
+    root: repoRoot,
+    platformRoot: platformRoot !== repoRoot ? platformRoot : undefined,
     cache: {
       ttlMs: snapshotTTL,
       adapter: platform.cache,

@@ -43,8 +43,7 @@ export const manifest = {
 
   display: {
     name: 'Policy Enforcer',
-    description:
-      'Enforces workspace-level development policies per category. Detects repo categories, resolves applicable rules, and validates compliance.',
+    description: 'Enforce workspace development policies',
     tags: ['policy', 'governance', 'boundaries', 'sdk-only', 'api-compat'],
   },
 

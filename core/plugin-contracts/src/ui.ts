@@ -95,6 +95,10 @@ export interface Symbols {
   package: string;
   pointer: string;
   section: string;
+  step: string;
+  stepDone: string;
+  arrow: string;
+  diamond: string;
 
   // Box-drawing characters
   separator: string;
@@ -240,14 +244,46 @@ export interface UIFacade {
   sideBox(options: SideBoxOptions): void;
 
   /**
-   * Prompt for confirmation (CLI only, others return true)
+   * Print multiple side boxes as a continuous visual chain.
+   *
+   * Each item renders `◆  Title` as a block opener on a shared rail.
+   * Only the last item gets `└  status  timing`.
+   *
+   * Example:
+   * ```
+   * ctx.ui.chain([
+   *   { title: 'Metrics', sections: [{ items: ['cpu: 80%'] }] },
+   *   { title: 'Warning', sections: [{ items: ['High load detected'] }], status: 'warning', timing: 12 },
+   * ]);
+   * ```
    */
-  confirm(message: string): Promise<boolean>;
+  chain(items: ChainItem[]): void;
 
   /**
-   * Prompt for text input (CLI only, others throw)
+   * Prompt for confirmation.
+   * In non-interactive contexts (worker, in-process, CI) returns defaultValue.
+   */
+  confirm(message: string, options?: { defaultValue?: boolean }): Promise<boolean>;
+
+  /**
+   * Prompt for text input.
+   * In non-interactive contexts returns options.default or ''.
    */
   prompt(message: string, options?: PromptOptions): Promise<string>;
+
+  /**
+   * Prompt to select a single value from a list.
+   * In non-interactive contexts returns the first choice value.
+   * In worker pool, relayed via IPC to the host process.
+   */
+  select<T = string>(message: string, choices: SelectChoice<T>[]): Promise<T>;
+
+  /**
+   * Prompt to select multiple values from a list.
+   * In non-interactive contexts returns pre-checked values.
+   * In worker pool, relayed via IPC to the host process.
+   */
+  multiSelect<T = string>(message: string, choices: MultiSelectChoice<T>[]): Promise<T[]>;
 }
 
 /**
@@ -260,6 +296,22 @@ export interface PromptOptions {
   mask?: boolean;
   /** Validation function */
   validate?: (value: string) => boolean | string;
+}
+
+/**
+ * A choice for select/multiSelect prompts
+ */
+export interface SelectChoice<T = string> {
+  label: string;
+  value: T;
+  hint?: string;
+}
+
+/**
+ * A choice for multiSelect prompts (with optional pre-check)
+ */
+export interface MultiSelectChoice<T = string> extends SelectChoice<T> {
+  checked?: boolean;
 }
 
 /**
@@ -285,7 +337,7 @@ export interface OutputSection {
 }
 
 /**
- * Options for formatted output messages (info, success, warn)
+ * Options for formatted output messages (info, success, warn, error)
  */
 export interface MessageOptions {
   /** Optional title for the box (defaults to message type) */
@@ -293,6 +345,22 @@ export interface MessageOptions {
   /** Content sections to display in box */
   sections?: OutputSection[];
   /** Timing in milliseconds to display in footer */
+  timing?: number;
+  /** Root cause — shown below the message in muted text */
+  cause?: string;
+  /** Human-readable hint — what to do next */
+  hint?: string;
+  /** Suggested command to run — shown as `$ <command>` */
+  command?: string;
+}
+
+/**
+ * A single block in a chained output (used with UIFacade.chain)
+ */
+export interface ChainItem {
+  title: string;
+  sections?: OutputSection[];
+  status?: 'success' | 'error' | 'info' | 'warning';
   timing?: number;
 }
 
@@ -345,13 +413,17 @@ const noopSymbols: Symbols = {
   success: '✓',
   error: '✗',
   warning: '⚠',
-  info: '→',
+  info: '◆',
   bullet: '•',
-  clock: 'time',
-  folder: 'dir',
-  package: '›',
-  pointer: '>',
-  section: '|',
+  clock: '◷',
+  folder: '▸',
+  package: '◆',
+  pointer: '❯',
+  section: '│',
+  step: '○',
+  stepDone: '●',
+  arrow: '→',
+  diamond: '◆',
   separator: '─',
   border: '│',
   topLeft: '┌',
@@ -386,6 +458,9 @@ export const noopUI: UIFacade = {
   divider: () => {},
   box: () => {},
   sideBox: () => {},
+  chain: () => {},
   confirm: async () => true,
   prompt: async () => '',
+  select: async (_, choices) => choices[0]?.value as never,
+  multiSelect: async (_, choices) => choices.filter((c) => c.checked).map((c) => c.value) as never,
 };

@@ -20,6 +20,7 @@ import { createRuntimeAPI } from '../runtime/index.js';
 import { createPluginAPI, type EventEmitterFn, type PluginInvokerFn, type CreatePluginAPIOptions } from '../api/index.js';
 import { createGovernedPlatformServices } from '../platform/governed.js';
 import { createStreamingLogger } from './streaming-logger.js';
+import { createStreamingUI } from './streaming-ui.js';
 
 export interface CreateContextOptions {
   /**
@@ -167,6 +168,9 @@ export function createPluginContextV3<TConfig = unknown>(
     ? createStreamingLogger(protectedLogger, eventEmitter)
     : protectedLogger;
 
+  // 5.4. If eventEmitter provided, also wrap UI to stream ui.info/warn/error/write calls
+  const finalUI = eventEmitter ? createStreamingUI(ui, eventEmitter) : ui;
+
   const enrichedPlatform: PlatformServices = {
     ...governedPlatform,
     logger: finalLogger,
@@ -234,7 +238,7 @@ export function createPluginContextV3<TConfig = unknown>(
     hostContext: descriptor.hostContext,
 
     // Services
-    ui,
+    ui: finalUI,
     platform: enrichedPlatform, // ← Platform with enriched logger
     runtime,
     api,

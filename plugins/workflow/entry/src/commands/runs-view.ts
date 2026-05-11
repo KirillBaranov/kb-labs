@@ -1,0 +1,253 @@
+/**
+ * workflow:runs-view <runId> command — like `gh run view`
+ *
+ * Designed for incident investigation: shows the full run tree with step
+ * details, resolvedInputs, gate decisions, and error context.
+ * Use --log-failed to see only the logs from failed steps.
+ */
+
+import { defineCommand, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import type { WorkflowRunDetail } from '../http-client.js';
+import { WorkflowDaemonClient } from '../http-client.js';
+
+interface RunsViewFlags {
+  json?: string;
+  log?: boolean;
+  'log-failed'?: boolean;
+  step?: string;
+}
+
+const STEP_ICON: Record<string, string> = {
+  success: '✓',
+  failed: '✗',
+  running: '◆',
+  queued: '○',
+  cancelled: '⊘',
+  waiting_approval: '…',
+  skipped: '⊙',
+};
+
+function formatDuration(ms?: number): string {
+  if (!ms) { return ''; }
+  if (ms < 1000) { return `${ms}ms`; }
+  if (ms < 60000) { return `${(ms / 1000).toFixed(1)}s`; }
+  return `${Math.floor(ms / 60000)}m${Math.floor((ms % 60000) / 1000)}s`;
+}
+
+interface RunSection {
+  header: string;
+  items: string[];
+}
+
+function renderRun(run: WorkflowRunDetail): RunSection[] {
+  const sections: RunSection[] = [];
+
+  // Summary
+  const dur = formatDuration(run.durationMs);
+  const trigger = run.trigger
+    ? `${run.trigger.type} by ${run.trigger.actor ?? 'unknown'}`
+    : 'manual';
+  const summary: string[] = [
+    `Status:   ${run.status.toUpperCase()}`,
+    `Trigger:  ${trigger}`,
+  ];
+  if (dur) summary.push(`Duration: ${dur}`);
+  if (run.inputs && Object.keys(run.inputs).length > 0) {
+    summary.push(`Inputs:   ${JSON.stringify(run.inputs)}`);
+  }
+  sections.push({ header: run.name, items: summary });
+
+  // Jobs
+  for (const job of run.jobs ?? []) {
+    const jIcon = STEP_ICON[job.status] ?? '?';
+    const jDur = formatDuration(job.durationMs);
+    const jAttempt = (job.attempt ?? 1) > 1 ? `  attempt ${job.attempt}` : '';
+    const jobItems: string[] = [];
+
+    if (job.error) {
+      const errMsg = typeof job.error === 'string' ? job.error : job.error.message;
+      jobItems.push(`Error: ${errMsg}`);
+    }
+
+    for (const step of job.steps ?? []) {
+      const sIcon = STEP_ICON[step.status] ?? '?';
+      const sDur = formatDuration(step.durationMs);
+      const stepName = step.name ?? step.id;
+      jobItems.push(`${sIcon}  ${stepName}  —  ${step.status}${sDur ? `  ${sDur}` : ''}`);
+
+      const uses = (step.spec as Record<string, unknown> | undefined)?.['uses'] as string | undefined;
+      if (uses?.startsWith('builtin:gate') && step.outputs) {
+        const out = step.outputs as Record<string, unknown>;
+        if (out['decision'] !== undefined || out['decisionValue'] !== undefined) {
+          const expr = (step.resolvedInputs as Record<string, unknown> | undefined)?.['decision'];
+          jobItems.push(`   Decision: ${expr ?? '?'} → ${out['decisionValue'] ?? out['decision']}`);
+          if (out['action']) { jobItems.push(`   Action: ${out['action']}`); }
+          if (out['restartFrom']) { jobItems.push(`   Restart from: ${out['restartFrom']}`); }
+          if (out['iteration'] !== undefined) { jobItems.push(`   Iteration: ${out['iteration']}`); }
+        }
+      }
+
+      if (step.error) {
+        const errMsg = typeof step.error === 'string' ? step.error : step.error.message;
+        const errCode = typeof step.error !== 'string' ? step.error.code : undefined;
+        jobItems.push(`   Error: ${errMsg}${errCode ? ` [${errCode}]` : ''}`);
+        if (step.resolvedInputs && Object.keys(step.resolvedInputs).length > 0) {
+          jobItems.push(`   Inputs: ${JSON.stringify(step.resolvedInputs)}`);
+        }
+        if (typeof step.error !== 'string' && step.error.details) {
+          jobItems.push(`   Details: ${JSON.stringify(step.error.details)}`);
+        }
+      }
+
+      if (step.status === 'success' && step.outputs && Object.keys(step.outputs).length > 0) {
+        jobItems.push(`   Outputs: ${Object.keys(step.outputs).join(', ')}`);
+      }
+    }
+
+    sections.push({
+      header: `${jIcon}  ${job.jobName ?? job.id}${jDur ? `  ${jDur}` : ''}${jAttempt}`,
+      items: jobItems,
+    });
+  }
+
+  return sections;
+}
+
+function pickFields(run: WorkflowRunDetail, fields: string[]): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+  for (const field of fields) {
+    result[field] = (run as unknown as Record<string, unknown>)[field];
+  }
+  return result;
+}
+
+export default defineCommand<unknown, CLIInput<RunsViewFlags>, { exitCode: number }>({
+  id: 'workflow:runs-view',
+  description: 'View workflow run details for investigation',
+
+  handler: {
+    async execute(ctx: PluginContextV3, input: CLIInput<RunsViewFlags>): Promise<{ exitCode: number }> {
+      const { flags, argv = [] } = input;
+      const runId = argv[0];
+
+      if (!runId) {
+        ctx.ui?.error?.('Usage: kb workflow runs-view <runId> [--log-failed] [--log] [--json=fields]');
+        return { exitCode: 1 };
+      }
+
+      const showLogFailed = flags?.['log-failed'] ?? false;
+      const showLog = flags?.log ?? false;
+      const jsonFields = flags?.json;
+      const stepFilter = flags?.step;
+
+      try {
+        const client = new WorkflowDaemonClient();
+        const run = await client.getRun(runId);
+
+        // --json=fields output (--json=all for full, --json=status,jobs for selective)
+        if (jsonFields) {
+          if (jsonFields === 'all') {
+            ctx.ui?.json?.({ ok: true, data: run });
+          } else {
+            const fields = jsonFields.split(',').map(f => f.trim());
+            ctx.ui?.json?.({ ok: true, data: pickFields(run, fields) });
+          }
+          return { exitCode: 0 };
+        }
+
+        // --log or --log-failed: show run logs
+        if (showLog || showLogFailed) {
+          const failedStepId = showLogFailed
+            ? run.jobs?.flatMap(j => j.steps ?? []).find(s => s.status === 'failed')?.id
+            : undefined;
+          const effectiveStepId = stepFilter ?? failedStepId;
+
+          const TERMINAL = new Set(['success', 'failed', 'cancelled']);
+          const isRunning = !TERMINAL.has(run.status ?? '');
+
+          if (isRunning) {
+            // Run still in progress — stream live via SSE
+            ctx.ui?.info?.(`Streaming logs for run ${runId} (Ctrl+C to stop)...`);
+            const eventsUrl = client.getRunEventsUrl(runId);
+            const response = await fetch(eventsUrl, { headers: { Accept: 'text/event-stream' } });
+            if (!response.ok || !response.body) {
+              throw new Error(`Failed to connect to events stream: ${response.statusText}`);
+            }
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let buf = '';
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) { break; }
+              buf += decoder.decode(value, { stream: true });
+              const lines = buf.split('\n');
+              buf = lines.pop() ?? '';
+              for (const line of lines) {
+                if (!line.startsWith('data:')) { continue; }
+                const raw = line.slice(5).trim();
+                if (!raw || raw === '[DONE]') { continue; }
+                try {
+                  const event = JSON.parse(raw) as { type: string; stepId?: string; payload?: Record<string, unknown> };
+                  if (event.type === 'log.appended') {
+                    if (effectiveStepId && event.stepId !== effectiveStepId) { continue; }
+                    const p = event.payload ?? {};
+                    const isErr = p['level'] === 'error' || p['stream'] === 'stderr';
+                    if (showLogFailed && !isErr) { continue; }
+                    const lvl = isErr ? 'ERR' : 'LOG';
+                    const stepCtx = event.stepId ? ` [${event.stepId}]` : '';
+                    ctx.ui?.info?.(`  ${lvl}${stepCtx} ${p['message'] ?? ''}`);
+                  } else if (TERMINAL.has(event.type?.split('.')[1] ?? '')) {
+                    break;
+                  }
+                } catch { /* skip malformed */ }
+              }
+            }
+            return { exitCode: 0 };
+          }
+
+          // Run already completed — fetch historical logs
+          const logs = await client.getRunLogs(runId, { stepId: effectiveStepId });
+
+          const filteredLogs = showLogFailed
+            ? logs.filter(l => l['level'] === 'error' || l['level'] === 'warn' || String(l['message']).includes('failed') || String(l['message']).includes('[gate]') || String(l['message']).includes('[approval]'))
+            : logs;
+
+          if (filteredLogs.length === 0) {
+            ctx.ui?.info?.('No logs found');
+            return { exitCode: 0 };
+          }
+
+          const logLines = filteredLogs.map(l => {
+            const ts = l['timestamp'] ? String(l['timestamp']).slice(11, 23) : '';
+            const level = String(l['level'] ?? 'info').toUpperCase().slice(0, 4);
+            const step = l['stepName'] ?? l['stepId'] ? `[${l['stepName'] ?? l['stepId']}] ` : '';
+            return `${ts} ${level} ${step}${l['message']}`;
+          });
+
+          const sections: Array<{ header: string; items: string[] }> = [
+            { header: showLogFailed ? 'Failed step logs' : 'Run logs', items: logLines },
+          ];
+          ctx.ui?.success?.(`Run ${runId}`, { title: run.name, sections });
+          return { exitCode: 0 };
+        }
+
+        // Default: show run tree
+        const sections = renderRun(run);
+        const exitCode = run.status === 'failed' ? 1 : 0;
+        const status = exitCode === 1 ? 'error' : 'success';
+
+        ctx.ui?.sideBox?.({
+          title: runId,
+          status,
+          sections,
+        });
+
+        return { exitCode };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        ctx.ui?.error?.(`Failed to get run: ${message}`);
+        return { exitCode: 1 };
+      }
+    },
+  },
+});
