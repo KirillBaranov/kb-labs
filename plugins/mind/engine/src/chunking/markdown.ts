@@ -31,7 +31,7 @@ export class MarkdownChunker implements Chunker {
 
   // eslint-disable-next-line sonarjs/cognitive-complexity
   chunk(sourceCode: string, filePath: string, options: ChunkingOptions = {}): Chunk[] {
-    const _opts: Required<MarkdownChunkingOptions> = {
+    const opts: Required<MarkdownChunkingOptions> = {
       ...DEFAULT_OPTIONS,
       ...options,
     };
