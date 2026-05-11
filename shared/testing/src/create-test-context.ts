@@ -190,10 +190,8 @@ export function createMockUI(): UIFacade {
     }),
     confirm: vi.fn(async () => true),
     prompt: vi.fn(async () => ''),
-    select: vi.fn(async (_msg: string, choices: Array<{ value: unknown }>) => choices[0]?.value),
-    multiSelect: vi.fn(async (_msg: string, choices: Array<{ checked?: boolean; value: unknown }>) =>
-      choices.filter((c) => c.checked).map((c) => c.value),
-    ),
+    select: async (_msg, choices) => choices[0]?.value as never,
+    multiSelect: async (_msg, choices) => choices.filter((c) => c.checked).map((c) => c.value) as never,
   };
 }
 
