@@ -26,7 +26,7 @@
     "@kb-labs/review-heuristic": "workspace:*",
     "@kb-labs/review-llm": "workspace:*",
     "@kb-labs/sdk": "workspace:*",
-    "simple-git": "^3.25.0"
+    "simple-git": "^3.36.0"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
