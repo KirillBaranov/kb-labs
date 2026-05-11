@@ -25,14 +25,20 @@ export * from './utils/retry';
 // Modern UI Kit (new) - selective exports to avoid conflicts
 export {
   sideBorderBox,
+  sideBorderChain,
   sectionHeader,
   metricsList,
   statusLine,
   formatCommandHelp,
   formatError,
   type SideBorderBoxOptions,
+  type SideBorderChainItem,
   type SectionContent,
   type SectionItem,
   type RichSectionItem,
 } from './modern-format';
 export * from './command-result';
+export * from './log-display';
+export * from './badge';
+export * from './tasks';
+export * from './interactive/index';

@@ -86,6 +86,19 @@ export async function registerPlugins(
     const rateLimitOpts: RateLimitPluginOptions = {
       max: config.rateLimit.max,
       timeWindow: config.rateLimit.timeWindow,
+      allowList: (req) => {
+        // Health/ready/studio-registry must never be rate-limited — kb-dev uses them for health checks
+        const url = (req.url ?? '').split('?')[0];
+        return (
+          url === '/health' ||
+          url === '/api/v1/health' ||
+          url === '/api/v1/ready' ||
+          url === '/api/v1/observability/health' ||
+          url === '/api/v1/studio/registry' ||
+          url === '/api/v1/logs/stream' ||
+          url.startsWith('/plugins/')
+        );
+      },
       addHeaders: {
         'x-ratelimit-limit': true,
         'x-ratelimit-remaining': true,

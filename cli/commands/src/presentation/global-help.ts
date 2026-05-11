@@ -5,7 +5,7 @@ import {
   type CommandGroup,
   type ProductGroup,
 } from "./shared";
-import { sideBorderBox, type SectionContent } from "@kb-labs/shared-cli-ui";
+import { sideBorderBox, type SectionContent, type RichSectionItem } from "@kb-labs/shared-cli-ui";
 
 export function renderGlobalHelp(
   groups: ProductGroup[],
@@ -77,161 +77,39 @@ export function renderGlobalHelpNew(registry: {
   listGroups?(): CommandGroup[];
 }): string {
   const products = registry.listProductGroups();
-  const systemGroups = registry.listGroups?.() || [];
+  // Filter out sub-groups (names with spaces, e.g. "marketplace plugins")
+  const systemGroups = (registry.listGroups?.() ?? []).filter(g => !g.name.includes(' '));
 
-  // Get all command names and aliases from groups to exclude them from standalone
-  const commandsInGroups = new Set<string>();
-  for (const group of systemGroups) {
-    for (const cmd of group.commands) {
-      commandsInGroups.add(cmd.name);
-      // Also add all aliases
-      for (const alias of cmd.aliases || []) {
-        commandsInGroups.add(alias);
-      }
-    }
-  }
-
-  // Filter standalone commands - exclude commands that are already in groups
-  const standalone = registry
-    .list()
-    .filter((cmd: Command) => {
-      // Exclude commands that are in groups
-      if (commandsInGroups.has(cmd.name)) {
-        return false;
-      }
-      // Keep only system commands without category or with category === "system"
-      return (!cmd.category || cmd.category === "system");
-    });
-
+  const cols = (typeof process !== 'undefined' && process.stdout?.columns) || 80;
+  // sideBorderBox wraps/truncates at this width (same formula used internally)
+  const itemMaxWidth = Math.max(40, cols - 4);
   const sections: SectionContent[] = [];
 
-  // Products section - simplified format: name (count)
+  // Plugins section — name + description, truncated to fit terminal width
   if (products.length > 0) {
-    const maxProductNameLength = Math.max(
-      ...products.map((p) => p.name.length),
-      12,
-    );
+    const sorted = [...products].sort((a, b) => a.name.localeCompare(b.name));
+    const maxLen = Math.max(...sorted.map(p => p.name.length), 8);
 
-    const productItems = products
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .map((product) => {
-        const availableCount = product.commands.filter(
-          (c) => c.available && !c.shadowed,
-        ).length;
-        const badge = colors.green(`(${availableCount})`);
-
-        return `${colors.cyan(
-          product.name.padEnd(maxProductNameLength),
-        )}  ${badge}`;
-      });
-
-    sections.push({
-      header: "Products",
-      items: productItems,
+    const items: Array<string | RichSectionItem> = sorted.map(product => {
+      const paddedName = colors.cyan(product.name.padEnd(maxLen));
+      if (!product.describe) return paddedName;
+      return { text: `${paddedName}  ${colors.dim(product.describe)}`, truncate: itemMaxWidth };
     });
+
+    sections.push({ header: 'Plugins', items });
   }
 
-  // System Commands section - compact format: group name (count)
+  // System section — compact single row of names
   if (systemGroups.length > 0) {
-    const maxGroupNameLength = Math.max(
-      ...systemGroups.map((g) => g.name.length),
-      20,
-    );
-
-    const groupItems = systemGroups
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .map((group) => {
-        const commandCount = group.commands.length;
-        const badge = colors.green(`(${commandCount})`);
-
-        return `${colors.cyan(group.name.padEnd(maxGroupNameLength))}  ${badge}`;
-      });
-
-    sections.push({
-      header: "System Commands",
-      items: groupItems,
-    });
+    const sorted = [...systemGroups].sort((a, b) => a.name.localeCompare(b.name));
+    const line = sorted.map(g => colors.cyan(g.name)).join('   ');
+    sections.push({ header: 'System', items: [line] });
   }
 
-  // Other Commands section - only show if there are standalone commands
-  if (standalone.length > 0) {
-    const maxCommandNameLength = Math.max(
-      ...standalone.map((c) => c.name.length),
-      12,
-    );
+  // Single hint line
+  sections.push({ items: [colors.dim('kb <plugin> --help')] });
 
-    const standaloneItems = standalone
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .map((cmd) =>
-        `${colors.cyan(cmd.name.padEnd(maxCommandNameLength))}  ${colors.dim(
-          cmd.describe,
-        )}`
-      );
-
-    sections.push({
-      header: "Other Commands",
-      items: standaloneItems,
-    });
-  }
-
-  // Global Options section
-  const globalOptions = [
-    { name: "--help", desc: "Show help information" },
-    { name: "--version", desc: "Show CLI version" },
-    { name: "--json", desc: "Output in JSON format" },
-    { name: "--quiet", desc: "Suppress detailed output" },
-  ];
-
-  const maxOptionNameLength = Math.max(
-    ...globalOptions.map((o) => o.name.length),
-    12,
-  );
-
-  const optionItems = globalOptions.map((option) =>
-    `${colors.cyan(option.name.padEnd(maxOptionNameLength))}  ${colors.dim(
-      option.desc,
-    )}`
-  );
-
-  sections.push({
-    header: "Global Options",
-    items: optionItems,
-  });
-
-  // Next Steps section
-  const nextStepsItems: string[] = [];
-
-  const firstProduct = products[0];
-  if (firstProduct) {
-    nextStepsItems.push(
-      `${colors.cyan(
-        `kb ${firstProduct.name} --help`,
-      )}  ${colors.dim("Explore product commands")}`,
-    );
-  }
-
-  const marketplaceGroup = systemGroups.find((g: CommandGroup) => g.name === "marketplace");
-  if (marketplaceGroup) {
-    nextStepsItems.push(
-      `${colors.cyan("kb marketplace")}  ${colors.dim("Open marketplace commands")}`,
-    );
-  }
-
-  nextStepsItems.push("");
-  nextStepsItems.push(
-    colors.dim("Use 'kb <product> --help' or 'kb <group> --help' to see commands for a specific product or group."),
-  );
-
-  sections.push({
-    header: "Next Steps",
-    items: nextStepsItems,
-  });
-
-  return sideBorderBox({
-    title: "KB Labs CLI",
-    sections,
-    status: "info",
-  });
+  return sideBorderBox({ title: 'KB Labs CLI', sections, status: 'info' });
 }
 
 export function renderPluginsHelp(registry: {

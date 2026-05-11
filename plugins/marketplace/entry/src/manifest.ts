@@ -17,7 +17,7 @@ export const manifest = {
   version: '0.1.0',
   display: {
     name: 'Marketplace',
-    description: 'Unified marketplace for plugins, adapters, workflows, and more',
+    description: 'Unified marketplace for plugins and adapters',
     tags: ['marketplace', 'plugins', 'adapters'],
   },
   cli: {

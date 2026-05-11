@@ -17,6 +17,8 @@ import type {
   ErrorMessage,
   LogWorkerMessage,
   ReadyMessage,
+  UIPromptMessage,
+  UIPromptResultMessage,
 } from './types.js';
 import type { ExecutionRequest, ExecutionResult, PlatformTransportFactory, PlatformTransportServer } from '../../types.js';
 import type { PlatformServices } from '@kb-labs/plugin-contracts';
@@ -80,6 +82,7 @@ export class Worker extends EventEmitter<WorkerEvents> {
     reject: (error: Error) => void;
     timeoutId: ReturnType<typeof setTimeout>;
     onLog?: (entry: { level: string; message: string; stream: 'stdout' | 'stderr'; lineNo: number; timestamp: string; meta?: Record<string, unknown> }) => void;
+    onUIPrompt?: (prompt: UIPromptMessage) => Promise<unknown>;
   }>();
 
   // Health check tracking
@@ -221,7 +224,12 @@ export class Worker extends EventEmitter<WorkerEvents> {
   /**
    * Execute a request on this worker.
    */
-  async execute(request: ExecutionRequest, timeoutMs: number, onLog?: (entry: { level: string; message: string; stream: 'stdout' | 'stderr'; lineNo: number; timestamp: string; meta?: Record<string, unknown> }) => void): Promise<ExecutionResult> {
+  async execute(
+    request: ExecutionRequest,
+    timeoutMs: number,
+    onLog?: (entry: { level: string; message: string; stream: 'stdout' | 'stderr'; lineNo: number; timestamp: string; meta?: Record<string, unknown> }) => void,
+    onUIPrompt?: (prompt: UIPromptMessage) => Promise<unknown>,
+  ): Promise<ExecutionResult> {
     if (this._state !== 'idle') {
       throw new Error(`Worker ${this.id} is not available (state: ${this._state})`);
     }
@@ -263,6 +271,7 @@ export class Worker extends EventEmitter<WorkerEvents> {
         },
         timeoutId,
         onLog,
+        onUIPrompt,
       });
 
       // Send execute message
@@ -431,6 +440,28 @@ export class Worker extends EventEmitter<WorkerEvents> {
         break;
       }
 
+
+      case 'uiPrompt': {
+        const msg = message as UIPromptMessage;
+        const pending = this.pendingRequests.get(msg.requestId);
+        if (pending?.onUIPrompt && this.process) {
+          const proc = this.process;
+          pending.onUIPrompt(msg).then((value) => {
+            const result: UIPromptResultMessage = { type: 'uiPromptResult', promptId: msg.promptId, value };
+            proc.send(result);
+          }).catch(() => {
+            // On error, send default value (first choice or false)
+            const defaultVal = msg.defaultValue ?? false;
+            const result: UIPromptResultMessage = { type: 'uiPromptResult', promptId: msg.promptId, value: defaultVal };
+            proc.send(result);
+          });
+        } else if (this.process) {
+          // No handler — return default immediately
+          const result: UIPromptResultMessage = { type: 'uiPromptResult', promptId: msg.promptId, value: msg.defaultValue ?? false };
+          this.process.send(result);
+        }
+        break;
+      }
 
       case 'healthOk': {
         // Handled in healthCheck()

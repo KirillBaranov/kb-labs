@@ -101,17 +101,6 @@ export default defineCommand({
         return { exitCode: 0, hosts: [] };
       }
 
-      // Format table
-      const statusIcon = (s: string) => {
-        switch (s) {
-          case 'online': return '\u001b[32m●\u001b[0m';
-          case 'reconnecting': return '\u001b[33m◐\u001b[0m';
-          case 'degraded': return '\u001b[33m◐\u001b[0m';
-          case 'offline': return '\u001b[31m○\u001b[0m';
-          default: return '?';
-        }
-      };
-
       const ago = (ts: number) => {
         const sec = Math.floor((Date.now() - ts) / 1000);
         if (sec < 60) {return `${sec}s ago`;}
@@ -120,21 +109,25 @@ export default defineCommand({
         return `${Math.floor(sec / 86400)}d ago`;
       };
 
-      const lines = hosts.map(h =>
-        `  ${statusIcon(h.status)} ${h.name.padEnd(28)} ${h.status.padEnd(14)} ${(h.capabilities || []).join(', ').padEnd(30)} ${ago(h.lastSeen)}`
+      const onlineCount = hosts.filter(h => h.status === 'online').length;
+      const offlineCount = hosts.filter(h => h.status === 'offline').length;
+
+      ctx.ui?.table?.(
+        hosts.map(h => ({
+          name: h.name,
+          status: h.status,
+          capabilities: (h.capabilities || []).join(', ') || '—',
+          lastSeen: ago(h.lastSeen),
+        })),
+        [
+          { header: 'Name', key: 'name' },
+          { header: 'Status', key: 'status' },
+          { header: 'Capabilities', key: 'capabilities' },
+          { header: 'Last Seen', key: 'lastSeen' },
+        ],
       );
 
-      ctx.ui?.success?.('Workspace Agents', {
-        sections: [{
-          items: [
-            `  ${'Name'.padEnd(30)} ${'Status'.padEnd(14)} ${'Capabilities'.padEnd(30)} Last Seen`,
-            `  ${'─'.repeat(30)} ${'─'.repeat(14)} ${'─'.repeat(30)} ─────────`,
-            ...lines,
-            '',
-            `  ${hosts.filter(h => h.status === 'online').length} online, ${hosts.filter(h => h.status === 'offline').length} offline (${hosts.length} total)`,
-          ],
-        }],
-      });
+      ctx.ui?.success?.(`${onlineCount} online, ${offlineCount} offline (${hosts.length} total)`);
 
       return { exitCode: 0, hosts };
     },

@@ -21,7 +21,7 @@ export const manifest = {
 
   display: {
     name: 'Workspace Agent',
-    description: 'Connect this machine to KB Labs Platform for remote plugin execution.',
+    description: 'Connect machine to platform for remote execution',
     tags: ['workspace-agent', 'gateway', 'cloud', 'execution'],
   },
 

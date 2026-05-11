@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/cli-runtime",
-  "description": "CLI runtime — command execution, middleware, formatters, presenters, gateway, lifecycle",
+  "description": "CLI runtime \u2014 command execution, middleware, formatters, presenters, gateway, lifecycle",
   "version": "2.94.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -44,7 +44,8 @@
     "@kb-labs/plugin-runtime": "workspace:*",
     "cli-table3": "^0.6.5",
     "colorette": "^2.0.20",
-    "yaml": "^2.8.0"
+    "yaml": "^2.8.0",
+    "@kb-labs/shared-cli-ui": "workspace:*"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",

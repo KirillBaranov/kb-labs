@@ -273,8 +273,6 @@ export function SettingsPage() {
               <ApiRoutesViewer />
             </UICard>
           </UIPageSection>
-
-          {/* DevToolsPanel is now a global floating panel rendered in App.tsx */}
         </>
       ),
     },

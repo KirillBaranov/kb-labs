@@ -166,6 +166,11 @@ export async function bootstrap(cwd: string = process.cwd()): Promise<void> {
     workspaceRoot: projectRoot,
   });
 
+  // Warm manifest scanner cache before accepting requests
+  workflowService.listAll().catch((err: unknown) =>
+    bootstrapLogger.warn('Manifest scanner warmup failed', { err })
+  );
+
   // Create HTTP API server (pass cronDiscovery for refresh endpoint)
   bootstrapLogger.info('Creating HTTP server');
   const server = await createServer({

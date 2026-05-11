@@ -41,18 +41,22 @@ export const colors = {
   inverse: createColor(7),
 };
 
-// Base symbols without emojis
+// Unicode symbols — KB Labs visual identity
 const symbolCharacters = {
-  success: 'OK',
-  error: 'ERR',
-  warning: 'WARN',
-  info: 'ℹ',
+  success: '✓',
+  error: '✗',
+  warning: '⚠',
+  info: '◆',
   bullet: '•',
-  clock: 'TIME',
-  folder: 'DIR',
-  package: '›',
-  pointer: '›',
+  clock: '◷',
+  folder: '▸',
+  package: '◆',
+  pointer: '❯',
   section: '│',
+  step: '○',
+  stepDone: '●',
+  arrow: '→',
+  diamond: '◆',
 };
 
 export const symbols = {
@@ -61,11 +65,15 @@ export const symbols = {
   warning: colors.warning(symbolCharacters.warning),
   info: colors.info(symbolCharacters.info),
   bullet: colors.muted(symbolCharacters.bullet),
-  clock: colors.info(symbolCharacters.clock),
+  clock: colors.muted(symbolCharacters.clock),
   folder: colors.primary(symbolCharacters.folder),
   package: colors.accent(symbolCharacters.package),
   pointer: colors.primary(symbolCharacters.pointer),
-  section: colors.primary(symbolCharacters.section),
+  section: colors.muted(symbolCharacters.section),
+  step: colors.muted(symbolCharacters.step),
+  stepDone: colors.success(symbolCharacters.stepDone),
+  arrow: colors.primary(symbolCharacters.arrow),
+  diamond: colors.primary(symbolCharacters.diamond),
 };
 
 // Check if colors are supported
@@ -123,20 +131,24 @@ export const safeSymbols = {
   success: supportsColor ? symbols.success : '✓',
   error: supportsColor ? symbols.error : '✗',
   warning: supportsColor ? symbols.warning : '⚠',
-  info: supportsColor ? symbols.info : '→',
+  info: supportsColor ? symbols.info : '◆',
   bullet: supportsColor ? symbols.bullet : '•',
-  clock: supportsColor ? symbols.clock : 'time',
-  folder: supportsColor ? symbols.folder : 'dir',
-  package: supportsColor ? symbols.package : '›',
-  pointer: supportsColor ? symbols.pointer : '>',
-  section: supportsColor ? symbols.section : '|',
-  // Box-drawing characters for modern side border
-  separator: '─',      // Horizontal line
-  border: '│',         // Vertical line
-  topLeft: '┌',        // Top-left corner
-  topRight: '┐',       // Top-right corner
-  bottomLeft: '└',     // Bottom-left corner
-  bottomRight: '┘',    // Bottom-right corner
-  leftT: '├',          // Left T-junction
-  rightT: '┤',         // Right T-junction
+  clock: supportsColor ? symbols.clock : '◷',
+  folder: supportsColor ? symbols.folder : '▸',
+  package: supportsColor ? symbols.package : '◆',
+  pointer: supportsColor ? symbols.pointer : '❯',
+  section: supportsColor ? symbols.section : '│',
+  step: supportsColor ? symbols.step : '○',
+  stepDone: supportsColor ? symbols.stepDone : '●',
+  arrow: supportsColor ? symbols.arrow : '→',
+  diamond: supportsColor ? symbols.diamond : '◆',
+  // Box-drawing characters
+  separator: '─',
+  border: '│',
+  topLeft: '┌',
+  topRight: '┐',
+  bottomLeft: '└',
+  bottomRight: '┘',
+  leftT: '├',
+  rightT: '┤',
 };

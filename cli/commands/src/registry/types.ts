@@ -11,6 +11,13 @@ export interface CommandManifest {
   aliases?: string[];        // ["mind-pack", "m:pack"]
   group: string;             // "mind" (namespace)
   subgroup?: string;         // "plugins" (nested group within parent)
+  category?: string;         // display-only grouping label, e.g. "Daemon", "Jobs", "Runs"
+  /**
+   * One-line description shown in group help.
+   * Keep under 50 chars: verb + object, no trailing period.
+   * Example: "Fetch job logs" not "Get logs for a specific workflow job."
+   * Group help truncates at terminal width as a safety net, but short is better.
+   */
   describe: string;
   longDescription?: string;
   requires?: string[];       // ["@kb-labs/mind-pack@^1.0.0"] (semver ranges)

@@ -8,6 +8,7 @@
 export {
   createPluginContextV3,
   createTraceContext,
+  createStreamingUI,
   type CreateContextOptions,
   type CreateContextResult,
   type CreateTraceContextOptions,

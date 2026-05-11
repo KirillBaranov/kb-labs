@@ -7,7 +7,7 @@
  * the logger should be wrapped with streaming proxy.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createPluginContextV3 } from '../context/index.js';
 import type { PluginContextDescriptor, UIFacade, PlatformServices } from '@kb-labs/plugin-contracts';
 import type { EventEmitterFn } from '../api/index.js';
@@ -15,7 +15,7 @@ import type { EventEmitterFn } from '../api/index.js';
 describe('createPluginContextV3 — streaming logger', () => {
   const mockUI: UIFacade = {
     colors: { success: (t: string) => t, error: (t: string) => t, warning: (t: string) => t, info: (t: string) => t, primary: (t: string) => t, accent: (t: string) => t, highlight: (t: string) => t, secondary: (t: string) => t, emphasis: (t: string) => t, muted: (t: string) => t, foreground: (t: string) => t, dim: (t: string) => t, bold: (t: string) => t, underline: (t: string) => t, inverse: (t: string) => t },
-    symbols: { success: '✓', error: '✗', warning: '⚠', info: 'ℹ', bullet: '•', clock: '◷', folder: '📁', package: '📦', pointer: '›', section: '§', separator: '─', border: '│', topLeft: '┌', topRight: '┐', bottomLeft: '└', bottomRight: '┘', leftT: '├', rightT: '┤' },
+    symbols: { success: '✓', error: '✗', warning: '⚠', info: 'ℹ', bullet: '•', clock: '◷', folder: '📁', package: '📦', pointer: '›', section: '§', separator: '─', border: '│', topLeft: '┌', topRight: '┐', bottomLeft: '└', bottomRight: '┘', leftT: '├', rightT: '┤', step: '○', stepDone: '●', arrow: '→', diamond: '◆' },
     write: vi.fn(),
     info: vi.fn(),
     success: vi.fn(),
@@ -31,6 +31,8 @@ describe('createPluginContextV3 — streaming logger', () => {
     sideBox: vi.fn(),
     confirm: vi.fn(async () => true),
     prompt: vi.fn(async () => 'test'),
+    select: vi.fn(async () => undefined) as UIFacade['select'],
+    multiSelect: vi.fn(async () => []) as UIFacade['multiSelect'],
   };
 
   const mockLogger = {
@@ -180,5 +182,122 @@ describe('createPluginContextV3 — streaming logger', () => {
         stream: 'stdout',
       }),
     );
+  });
+});
+
+describe('createPluginContextV3 — streaming UI', () => {
+  beforeEach(() => { vi.clearAllMocks(); });
+
+  const mockUI: UIFacade = {
+    colors: { success: (t: string) => t, error: (t: string) => t, warning: (t: string) => t, info: (t: string) => t, primary: (t: string) => t, accent: (t: string) => t, highlight: (t: string) => t, secondary: (t: string) => t, emphasis: (t: string) => t, muted: (t: string) => t, foreground: (t: string) => t, dim: (t: string) => t, bold: (t: string) => t, underline: (t: string) => t, inverse: (t: string) => t },
+    symbols: { success: '✓', error: '✗', warning: '⚠', info: 'ℹ', bullet: '•', clock: '◷', folder: '📁', package: '📦', pointer: '›', section: '§', separator: '─', border: '│', topLeft: '┌', topRight: '┐', bottomLeft: '└', bottomRight: '┘', leftT: '├', rightT: '┤', step: '○', stepDone: '●', arrow: '→', diamond: '◆' },
+    write: vi.fn(),
+    info: vi.fn(),
+    success: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    spinner: vi.fn(() => ({ update: vi.fn(), succeed: vi.fn(), fail: vi.fn(), stop: vi.fn() })),
+    table: vi.fn(),
+    json: vi.fn(),
+    newline: vi.fn(),
+    divider: vi.fn(),
+    box: vi.fn(),
+    sideBox: vi.fn(),
+    confirm: vi.fn(async () => true),
+    prompt: vi.fn(async () => 'test'),
+    select: vi.fn(async () => undefined) as UIFacade['select'],
+    multiSelect: vi.fn(async () => []) as UIFacade['multiSelect'],
+  };
+
+  const mockLogger = {
+    trace: vi.fn(), debug: vi.fn(), info: vi.fn(), warn: vi.fn(),
+    error: vi.fn(), fatal: vi.fn(), getLogBuffer: vi.fn(() => []),
+    child: vi.fn(function (this: any) { return this; }),
+  };
+
+  const mockPlatform: PlatformServices = {
+    logger: mockLogger as any,
+    llm: {} as any,
+    embeddings: {} as any,
+    vectorStore: {} as any,
+    cache: {} as any,
+    storage: {} as any,
+    analytics: {} as any,
+    eventBus: {} as any,
+    config: { getConfig: vi.fn(async () => ({})), getRawConfig: vi.fn(async () => ({})) },
+    invoke: { call: vi.fn(async () => ({ success: true })), isAvailable: vi.fn(async () => false) } as PlatformServices['invoke'],
+    sqlDatabase: { query: vi.fn(async () => ({ rows: [], rowCount: 0 })), transaction: vi.fn(async () => ({ query: vi.fn(), commit: vi.fn(), rollback: vi.fn() })), close: vi.fn(async () => {}) },
+    documentDatabase: { find: vi.fn(async () => []), findById: vi.fn(async () => null), insertOne: vi.fn(async () => ({ id: 'mock', createdAt: 0, updatedAt: 0 })), updateMany: vi.fn(async () => 0), updateById: vi.fn(async () => null), deleteMany: vi.fn(async () => 0), deleteById: vi.fn(async () => false), count: vi.fn(async () => 0), close: vi.fn(async () => {}) } as PlatformServices['documentDatabase'],
+    logs: {} as any,
+  };
+
+  const descriptor: PluginContextDescriptor = {
+    requestId: 'test-streaming-ui',
+    hostType: 'cli',
+    pluginId: '@kb-labs/test-streaming-ui',
+    pluginVersion: '1.0.0',
+    permissions: {},
+    hostContext: { host: 'cli', argv: [], flags: {} },
+  };
+
+  it('wraps UI with StreamingUI when eventEmitter is provided', () => {
+    const emitter: EventEmitterFn = vi.fn(async () => {});
+
+    const { context } = createPluginContextV3({
+      descriptor,
+      platform: mockPlatform,
+      ui: mockUI,
+      cwd: '/test',
+      eventEmitter: emitter,
+    });
+
+    context.ui.info('streamed from ui');
+
+    expect(emitter).toHaveBeenCalledWith('log.line', expect.objectContaining({
+      line: 'streamed from ui',
+      level: 'info',
+      stream: 'stdout',
+    }));
+    expect(mockUI.info).toHaveBeenCalledWith('streamed from ui', undefined);
+  });
+
+  it('does NOT wrap UI when eventEmitter is absent', () => {
+    const emitter: EventEmitterFn = vi.fn(async () => {});
+
+    const { context } = createPluginContextV3({
+      descriptor,
+      platform: mockPlatform,
+      ui: mockUI,
+      cwd: '/test',
+      // no eventEmitter
+    });
+
+    context.ui.info('no streaming');
+
+    expect(emitter).not.toHaveBeenCalled();
+    expect(mockUI.info).toHaveBeenCalledWith('no streaming');
+  });
+
+  it('emits warn and error on stderr', () => {
+    const emitter: EventEmitterFn = vi.fn(async () => {});
+
+    const { context } = createPluginContextV3({
+      descriptor,
+      platform: mockPlatform,
+      ui: mockUI,
+      cwd: '/test',
+      eventEmitter: emitter,
+    });
+
+    context.ui.warn('watch out');
+    context.ui.error('bad');
+
+    const calls = (emitter as ReturnType<typeof vi.fn>).mock.calls;
+    const warnLine = calls.find((c: unknown[]) => (c[1] as Record<string, unknown>)?.['line'] === 'watch out');
+    const errorLine = calls.find((c: unknown[]) => (c[1] as Record<string, unknown>)?.['line'] === 'bad');
+
+    expect(warnLine?.[1]).toHaveProperty('stream', 'stderr');
+    expect(errorLine?.[1]).toHaveProperty('stream', 'stderr');
   });
 });

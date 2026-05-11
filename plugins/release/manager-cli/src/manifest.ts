@@ -75,7 +75,7 @@ export const manifest = {
 
   display: {
     name: 'Release Manager',
-    description: 'Plan, execute, and audit releases across your workspace.',
+    description: 'Plan, execute, and audit releases across your workspace',
     tags: ['release', 'publish', 'versioning'],
   },
 
@@ -99,6 +99,7 @@ export const manifest = {
       {
         id: 'plan',
         group: 'release',
+        category: 'Pipeline',
         describe: 'Analyze changes and prepare release plan',
         longDescription: 'Detect modified packages and compute version bumps based on changes',
 
@@ -128,6 +129,7 @@ export const manifest = {
       {
         id: 'run',
         group: 'release',
+        category: 'Pipeline',
         describe: 'Execute release process (plan, check, publish)',
         longDescription: 'Run full release: plan versions, run checks, publish packages',
 
@@ -168,7 +170,8 @@ export const manifest = {
       {
         id: 'publish',
         group: 'release',
-        describe: 'Publish packages to npm registry with interactive OTP',
+        category: 'Publish',
+        describe: 'Publish packages to npm registry',
         longDescription: 'Smart npm publish with interactive 2FA support and better UX',
 
         handler: './cli/commands/publish.js#default',
@@ -201,6 +204,7 @@ export const manifest = {
       {
         id: 'rollback',
         group: 'release',
+        category: 'Utilities',
         describe: 'Rollback last release',
         longDescription: 'Restore workspace state from backup snapshot',
 
@@ -218,6 +222,7 @@ export const manifest = {
       {
         id: 'report',
         group: 'release',
+        category: 'Utilities',
         describe: 'Show last release report',
         longDescription: 'Display the most recent release execution report',
 
@@ -235,6 +240,7 @@ export const manifest = {
       {
         id: 'changelog',
         group: 'release',
+        category: 'Utilities',
         describe: 'Generate changelog from conventional commits',
         longDescription: 'Parse git history and generate changelog with conventional commits support',
 
@@ -287,6 +293,7 @@ export const manifest = {
       {
         id: 'verify',
         group: 'release',
+        category: 'Validation',
         describe: 'Validate release readiness',
         longDescription: 'Validate release readiness via flag gates (packages, breaking changes, commit types)',
 
@@ -314,6 +321,7 @@ export const manifest = {
       {
         id: 'checks',
         group: 'release',
+        category: 'Validation',
         describe: 'Run pre-release checks from release config',
         longDescription: 'Execute custom checks defined in release config (lint, test, audit, etc.)',
 
@@ -336,7 +344,8 @@ export const manifest = {
       {
         id: 'build',
         group: 'release',
-        describe: 'Build packages from release plan using safe build strategy',
+        category: 'Publish',
+        describe: 'Build packages from release plan',
         longDescription: 'Build all packages in plan into temp dir then atomically swap dist/',
 
         handler: './cli/commands/build.js#default',
@@ -358,6 +367,7 @@ export const manifest = {
       {
         id: 'pack',
         group: 'release',
+        category: 'Publish',
         describe: 'Verify built package artifacts via npm pack',
         longDescription: 'Run npm pack checks: directory imports, test file leaks, missing exports, syntax errors',
 
@@ -380,7 +390,8 @@ export const manifest = {
       {
         id: 'version',
         group: 'release',
-        describe: 'Bump package.json versions according to release plan',
+        category: 'Publish',
+        describe: 'Bump package.json versions per release plan',
         longDescription: 'Update version fields in package.json files based on computed plan',
 
         handler: './cli/commands/version.js#default',
@@ -410,6 +421,7 @@ export const manifest = {
       {
         id: 'git',
         group: 'release',
+        category: 'Publish',
         describe: 'Commit, tag, and push release changes',
         longDescription: 'Create release commit, create version tags, and push to remote',
 

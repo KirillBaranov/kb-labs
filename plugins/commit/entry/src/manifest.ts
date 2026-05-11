@@ -66,7 +66,7 @@ export const manifest = {
 
   display: {
     name: 'Commit Generator',
-    description: 'AI-powered commit generation with conventional commit support.',
+    description: 'AI-powered conventional commit generation',
     tags: ['commit', 'git', 'ai', 'conventional-commits'],
   },
 
@@ -97,6 +97,7 @@ export const manifest = {
       {
         id: 'commit',
         group: 'commit',
+        category: 'Pipeline',
         describe: 'Generate and apply commits (default flow).',
         longDescription:
           'Analyzes changes, generates commit plan with LLM, applies commits locally. ' +
@@ -120,6 +121,7 @@ export const manifest = {
       {
         id: 'generate',
         group: 'commit',
+        category: 'Pipeline',
         describe: 'Generate commit plan from git changes.',
         longDescription:
           'Analyzes staged and unstaged changes using git diff, then uses LLM to group ' +
@@ -141,6 +143,7 @@ export const manifest = {
       {
         id: 'apply',
         group: 'commit',
+        category: 'Pipeline',
         describe: 'Apply current commit plan (create local commits).',
         longDescription:
           'Creates git commits according to the current plan. Checks for staleness ' +
@@ -161,6 +164,7 @@ export const manifest = {
       {
         id: 'push',
         group: 'commit',
+        category: 'Pipeline',
         describe: 'Push commits to remote repository.',
         longDescription:
           'Pushes local commits to the remote. Refuses force push to protected branches ' +
@@ -180,6 +184,7 @@ export const manifest = {
       {
         id: 'open',
         group: 'commit',
+        category: 'Plan',
         describe: 'Show current commit plan.',
         longDescription: 'Displays the current commit plan if one exists.',
 
@@ -198,6 +203,7 @@ export const manifest = {
       {
         id: 'reset',
         group: 'commit',
+        category: 'Plan',
         describe: 'Clear current commit plan.',
         longDescription: 'Removes the current commit plan from storage.',
 

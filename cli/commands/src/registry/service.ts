@@ -489,11 +489,8 @@ class InMemoryRegistry implements CommandRegistry {
     for (const cmd of this.listManifests()) {
       const groupName = cmd.manifest.group;
       if (!groups.has(groupName)) {
-        groups.set(groupName, {
-          name: groupName,
-          describe: cmd.manifest.group,
-          commands: [],
-        });
+        const describe = cmd.manifest.manifestV2?.display?.description ?? undefined;
+        groups.set(groupName, { name: groupName, describe, commands: [] });
       }
       groups.get(groupName)!.commands.push(cmd);
     }
@@ -502,8 +499,7 @@ class InMemoryRegistry implements CommandRegistry {
 
   getCommandsByGroup(group: string): RegisteredCommand[] {
     return this.listManifests()
-      .filter((cmd) => cmd.manifest.group === group)
-      .sort((a, b) => a.manifest.id.localeCompare(b.manifest.id));
+      .filter((cmd) => cmd.manifest.group === group);
   }
 
   getManifestCommand(idOrAlias: string): RegisteredCommand | undefined {

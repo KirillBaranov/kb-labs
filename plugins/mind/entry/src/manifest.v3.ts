@@ -84,7 +84,7 @@ export const manifest = {
 
   display: {
     name: 'Mind',
-    description: 'AI-powered code search and RAG system for semantic codebase understanding.',
+    description: 'AI code search and RAG for codebase understanding',
     tags: ['search', 'rag', 'ai', 'semantic', 'mind-index'],
   },
 

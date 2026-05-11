@@ -8,16 +8,16 @@ import { stripAnsi, bulletList as baseBulletList } from './format';
 import { formatTiming as baseFormatTiming } from './command-output';
 
 /**
- * Side border box - modern minimalist design
+ * Side border box - Clack-style design
  *
  * @example
  * ```
- * ┌── Command Name
+ * ◆  Command Name
  * │
- * │ Section Header
+ * │  Section Header
  * │  Key: value
  * │
- * └── ✓ Success / 12ms
+ * └  ✓ Success  84ms
  * ```
  */
 export interface SideBorderBoxOptions {
@@ -58,10 +58,10 @@ export function sideBorderBox(options: SideBorderBoxOptions): string {
   // Available width for item content: terminalWidth minus "│  " prefix (3) and 1 right margin
   const itemMaxWidth = Math.max(40, terminalWidth - 4);
 
-  // Top border with title (using top-left corner)
-  const titleLine = `${safeSymbols.topLeft}${safeSymbols.separator.repeat(2)} ${safeColors.primary(safeColors.bold(title))}`;
+  // Title line: ◆  Title
+  const titleLine = `${safeColors.primary('◆')}  ${safeColors.bold(title)}`;
   lines.push(titleLine);
-  lines.push(safeSymbols.border);
+  lines.push(safeColors.muted('│'));
 
   // Sections
   for (let i = 0; i < sections.length; i++) {
@@ -70,7 +70,7 @@ export function sideBorderBox(options: SideBorderBoxOptions): string {
 
     // Section header (optional)
     if (section.header) {
-      lines.push(`${safeSymbols.border} ${safeColors.bold(section.header)}`);
+      lines.push(`${safeColors.muted('│')}  ${safeColors.bold(section.header)}`);
     }
 
     // Section items — word-wrapped and multiline-safe
@@ -80,44 +80,44 @@ export function sideBorderBox(options: SideBorderBoxOptions): string {
 
       if (item.truncate !== undefined) {
         const vis = stripAnsi(item.text);
-        const truncated =
-          vis.length > item.truncate ? vis.slice(0, item.truncate - 1) + '…' : vis;
-        displayLines = [item.dim ? safeColors.muted(truncated) : truncated];
+        const truncated = vis.length > item.truncate
+          ? ansiSlice(item.text, item.truncate - 1) + '…'
+          : item.text;
+        displayLines = [item.dim ? safeColors.muted(stripAnsi(truncated)) : truncated];
       } else {
         const wrapped = wrapText(item.text, itemMaxWidth);
         displayLines = item.dim ? wrapped.map(l => safeColors.muted(l)) : wrapped;
       }
 
       for (const dl of displayLines) {
-        lines.push(`${safeSymbols.border}  ${dl}`);
+        lines.push(`${safeColors.muted('│')}  ${dl}`);
       }
     }
 
     // Add spacing between sections (but not after the last one)
     if (i < sections.length - 1) {
-      lines.push(safeSymbols.border);
+      lines.push(safeColors.muted('│'));
     }
   }
 
-  // Bottom border with status/timing
+  // Bottom line: └  ✓ Success  84ms
   if (footer || status || timing !== undefined) {
-    lines.push(safeSymbols.border);
+    lines.push(safeColors.muted('│'));
     const footerParts: string[] = [];
 
     if (footer) {
       footerParts.push(footer);
     } else if (status) {
       const statusSymbol = getStatusSymbol(status);
-      const statusText = getStatusText(status);
       const statusColor = getStatusColor(status);
-      footerParts.push(statusColor(`${statusSymbol} ${statusText}`));
+      footerParts.push(statusColor(`${statusSymbol}`));
     }
 
     if (timing !== undefined) {
-      footerParts.push(formatTiming(timing));
+      footerParts.push(safeColors.muted(formatTiming(timing)));
     }
 
-    const footerLine = `${safeSymbols.bottomLeft}${safeSymbols.separator.repeat(2)} ${footerParts.join(' / ')}`;
+    const footerLine = `${safeColors.muted('└')}  ${footerParts.join('  ')}`;
     lines.push(footerLine);
   }
 
@@ -170,19 +170,41 @@ export function statusLine(
   timing?: number
 ): string {
   const symbol = getStatusSymbol(status);
-  const text = getStatusText(status);
   const color = getStatusColor(status);
 
-  const parts = [color(`${symbol} ${text}`)];
+  const parts = [color(symbol)];
 
   if (timing !== undefined) {
-    parts.push(formatTiming(timing));
+    parts.push(safeColors.muted(formatTiming(timing)));
   }
 
-  return parts.join(' / ');
+  return parts.join('  ');
 }
 
 // Helper functions
+
+/**
+ * Slice a string to maxVisible visible characters, preserving ANSI escape codes.
+ */
+function ansiSlice(str: string, maxVisible: number): string {
+  let visible = 0;
+  let i = 0;
+  let result = '';
+  while (i < str.length) {
+    if (str[i] === '\x1b' && str[i + 1] === '[') {
+      let j = i + 2;
+      while (j < str.length && !/[A-Za-z]/.test(str[j]!)) j++;
+      result += str.slice(i, j + 1);
+      i = j + 1;
+    } else {
+      if (visible >= maxVisible) break;
+      result += str[i];
+      visible++;
+      i++;
+    }
+  }
+  return result;
+}
 
 function getStatusSymbol(status: 'success' | 'error' | 'warning' | 'info'): string {
   switch (status) {
@@ -194,19 +216,6 @@ function getStatusSymbol(status: 'success' | 'error' | 'warning' | 'info'): stri
       return safeSymbols.warning;
     case 'info':
       return safeSymbols.info;
-  }
-}
-
-function getStatusText(status: 'success' | 'error' | 'warning' | 'info'): string {
-  switch (status) {
-    case 'success':
-      return 'Success';
-    case 'error':
-      return 'Failed';
-    case 'warning':
-      return 'Warning';
-    case 'info':
-      return 'Info';
   }
 }
 
@@ -257,6 +266,112 @@ function wrapText(text: string, maxWidth: number): string[] {
     if (current.trimEnd()) {result.push(current.trimEnd());}
   }
   return result.length > 0 ? result : [''];
+}
+
+/**
+ * A single block in a chained output — a title + sections with optional footer on the last block.
+ */
+export interface SideBorderChainItem {
+  title: string;
+  sections: SectionContent[];
+  status?: 'success' | 'error' | 'warning' | 'info';
+  timing?: number;
+}
+
+/**
+ * Render multiple side-border blocks as a continuous visual chain.
+ *
+ * Every block opens with `◆  Title` on the shared rail.
+ * Only the last block gets `└  status  timing`.
+ *
+ * @example
+ * ```
+ * ◆  workflow metrics
+ * │
+ * │  Failed to fetch metrics
+ * │
+ * ◆  Warning
+ * │
+ * │  Make sure daemon is running
+ * │
+ * └  ✗  12ms
+ * ```
+ */
+export function sideBorderChain(items: SideBorderChainItem[]): string {
+  if (items.length === 0) return '';
+  if (items.length === 1) {
+    const item = items[0]!;
+    return sideBorderBox({ title: item.title, sections: item.sections, status: item.status, timing: item.timing });
+  }
+
+  const lines: string[] = [];
+  const terminalWidth =
+    typeof process !== 'undefined' && process.stdout?.columns
+      ? process.stdout.columns
+      : 80;
+  const itemMaxWidth = Math.max(40, terminalWidth - 4);
+
+  for (let blockIdx = 0; blockIdx < items.length; blockIdx++) {
+    const block = items[blockIdx]!;
+    const isLast = blockIdx === items.length - 1;
+
+    // Block header: ◆  Title
+    lines.push(`${safeColors.primary('◆')}  ${safeColors.bold(block.title)}`);
+    lines.push(safeColors.muted('│'));
+
+    // Sections
+    for (let i = 0; i < block.sections.length; i++) {
+      const section = block.sections[i];
+      if (!section) { continue; }
+
+      if (section.header) {
+        lines.push(`${safeColors.muted('│')}  ${safeColors.bold(section.header)}`);
+      }
+
+      for (const rawItem of section.items) {
+        const item = typeof rawItem === 'string' ? { text: rawItem } : rawItem;
+        let displayLines: string[];
+
+        if (item.truncate !== undefined) {
+          const vis = stripAnsi(item.text);
+          const truncated = vis.length > item.truncate
+            ? ansiSlice(item.text, item.truncate - 1) + '…'
+            : item.text;
+          displayLines = [item.dim ? safeColors.muted(stripAnsi(truncated)) : truncated];
+        } else {
+          const wrapped = wrapText(item.text, itemMaxWidth);
+          displayLines = item.dim ? wrapped.map(l => safeColors.muted(l)) : wrapped;
+        }
+
+        for (const dl of displayLines) {
+          lines.push(`${safeColors.muted('│')}  ${dl}`);
+        }
+      }
+
+      if (i < block.sections.length - 1) {
+        lines.push(safeColors.muted('│'));
+      }
+    }
+
+    if (isLast) {
+      if (block.status || block.timing !== undefined) {
+        lines.push(safeColors.muted('│'));
+        const footerParts: string[] = [];
+        if (block.status) {
+          footerParts.push(getStatusColor(block.status)(getStatusSymbol(block.status)));
+        }
+        if (block.timing !== undefined) {
+          footerParts.push(safeColors.muted(formatTiming(block.timing)));
+        }
+        lines.push(`${safeColors.muted('└')}  ${footerParts.join('  ')}`);
+      }
+    } else {
+      // Blank rail line before next ◆
+      lines.push(safeColors.muted('│'));
+    }
+  }
+
+  return lines.join('\n');
 }
 
 /**

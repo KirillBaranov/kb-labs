@@ -457,6 +457,8 @@ export class WorkflowHostService {
       status: workflow.status === 'active' ? 'active' : 'inactive',
       tags: workflow.tags,
       inputs: workflow.inputSchema,
+      version: workflow.version,
+      updatedAt: workflow.updatedAt,
     };
   }
 

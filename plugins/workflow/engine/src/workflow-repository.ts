@@ -17,9 +17,8 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import { readFile, writeFile, readdir, mkdir } from 'node:fs/promises';
+import { readFile, writeFile, readdir, mkdir, access } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { existsSync } from 'node:fs';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import { WorkflowSpecSchema } from '@kb-labs/workflow-contracts';
 import type { WorkflowSpec } from '@kb-labs/workflow-contracts';
@@ -190,7 +189,7 @@ export class WorkflowRepository {
    * Delete workflow.
    */
   async delete(id: string): Promise<void> {
-    const path = this.getWorkflowPath(id);
+    const path = await this.getWorkflowPath(id);
 
     try {
       await this.platform.storage.delete(path);
@@ -277,27 +276,18 @@ export class WorkflowRepository {
     });
   }
 
-  private getWorkflowPath(id: string): string {
-    // Try .yml first, then .yaml
+  private async getWorkflowPath(id: string): Promise<string> {
     const ymlPath = join(this.absoluteStorageDir, `${id}.yml`);
     const yamlPath = join(this.absoluteStorageDir, `${id}.yaml`);
-
-    if (existsSync(ymlPath)) {
-      return ymlPath;
-    }
-    return yamlPath; // Default to .yaml for new files
+    return access(ymlPath).then(() => ymlPath).catch(() => yamlPath);
   }
 
   private async saveWorkflow(id: string, workflow: StoredWorkflow): Promise<void> {
-    const path = this.getWorkflowPath(id);
+    const path = await this.getWorkflowPath(id);
     const yaml = stringifyYaml(workflow, { indent: 2 });
 
     try {
-      // Ensure directory exists
-      if (!existsSync(this.absoluteStorageDir)) {
-        await mkdir(this.absoluteStorageDir, { recursive: true });
-      }
-
+      await mkdir(this.absoluteStorageDir, { recursive: true });
       await writeFile(path, yaml, 'utf-8');
     } catch (error) {
       this.platform.logger?.error(
@@ -310,13 +300,9 @@ export class WorkflowRepository {
   }
 
   private async loadWorkflow(id: string): Promise<StoredWorkflow | null> {
-    const path = this.getWorkflowPath(id);
+    const path = await this.getWorkflowPath(id);
 
     try {
-      if (!existsSync(path)) {
-        return null;
-      }
-
       const content = await readFile(path, 'utf-8');
       const parsed = parseYaml(content) as Record<string, unknown>;
 
@@ -364,16 +350,9 @@ export class WorkflowRepository {
 
   private async listWorkflowFiles(): Promise<string[]> {
     try {
-      // Check if directory exists
-      if (!existsSync(this.absoluteStorageDir)) {
-        return [];
-      }
-
-      // List all .yaml and .yml files in storage directory
       const files = await readdir(this.absoluteStorageDir);
       return files.filter((f) => f.endsWith('.yaml') || f.endsWith('.yml'));
     } catch (error) {
-      // Directory doesn't exist yet - return empty array
       if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
         return [];
       }
@@ -445,6 +424,8 @@ export class WorkflowRepository {
       input: spec,
       // Expose declared input schema for REST API / Studio UI
       inputSchema: spec.inputs,
+      version: spec.version,
+      updatedAt: stored.updatedAt,
     };
   }
 }

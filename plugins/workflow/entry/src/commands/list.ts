@@ -38,28 +38,21 @@ export default defineCommand<unknown, ListInput, { exitCode: number }>({
               ctx.ui?.info?.('  1. Plugin manifests: Add "cron" section to manifest.ts');
               ctx.ui?.info?.('  2. User YAML: Create .kb/jobs/*.yml files');
             } else {
-              // Build job details
-              const jobItems = cronJobs.map(job => {
-                const parts = [
-                  `ID: ${job.id}`,
-                  `Schedule: ${job.schedule} (${job.timezone || 'UTC'})`,
-                  `Enabled: ${job.enabled ? 'Yes' : 'No'}`,
-                  `Type: ${job.jobType || 'unknown'}`,
-                ];
-                return parts.join(' | ');
-              });
-
-              const summaryItems = [
-                `Total Jobs: ${cronJobs.length}`,
-              ];
-
-              ctx.ui?.success?.('Cron Jobs', {
-                title: 'Workflow Scheduler',
-                sections: [
-                  { header: 'Summary', items: summaryItems },
-                  { header: 'Registered Jobs', items: jobItems },
+                ctx.ui?.table?.(
+                cronJobs.map(job => ({
+                  id: job.id,
+                  schedule: `${job.schedule} (${job.timezone || 'UTC'})`,
+                  enabled: job.enabled ? 'yes' : 'no',
+                  type: job.jobType || 'unknown',
+                })),
+                [
+                  { header: 'ID', key: 'id' },
+                  { header: 'Schedule', key: 'schedule' },
+                  { header: 'Enabled', key: 'enabled' },
+                  { header: 'Type', key: 'type' },
                 ],
-              });
+              );
+              ctx.ui?.success?.(`${cronJobs.length} cron job${cronJobs.length === 1 ? '' : 's'}`);
             }
           }
 
@@ -80,27 +73,20 @@ export default defineCommand<unknown, ListInput, { exitCode: number }>({
           if (executions.length === 0) {
             ctx.ui?.warn?.('No active executions found');
           } else {
-            const executionItems = executions.map(exec => {
-              const parts = [
-                `ID: ${exec.id}`,
-                `Status: ${exec.status}`,
-                `Started: ${exec.startedAt || 'N/A'}`,
-              ];
-              return parts.join(' | ');
-            });
-
-            const summaryItems = [
-              `Total Executions: ${executions.length}`,
-              statusFilter ? `Filter: ${statusFilter}` : undefined,
-            ].filter(Boolean) as string[];
-
-            ctx.ui?.success?.('Active Workflow Executions', {
-              title: 'Workflow Engine',
-              sections: [
-                { header: 'Summary', items: summaryItems },
-                { header: 'Executions', items: executionItems },
+            ctx.ui?.table?.(
+              executions.map(exec => ({
+                id: exec.id,
+                status: exec.status,
+                started: exec.startedAt || 'N/A',
+              })),
+              [
+                { header: 'ID', key: 'id' },
+                { header: 'Status', key: 'status' },
+                { header: 'Started', key: 'started' },
               ],
-            });
+            );
+            const filterNote = statusFilter ? ` (filter: ${statusFilter})` : '';
+            ctx.ui?.success?.(`${executions.length} execution${executions.length === 1 ? '' : 's'}${filterNote}`);
           }
         }
 

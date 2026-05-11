@@ -1,0 +1,278 @@
+/**
+ * @module @kb-labs/plugin-runtime/__tests__/streaming-ui
+ *
+ * Tests for StreamingUI — wraps UIFacade to emit log.line events via eventEmitter.
+ */
+
+import { describe, it, expect, vi } from 'vitest';
+import { createStreamingUI } from '../context/streaming-ui.js';
+import type { UIFacade, Spinner } from '@kb-labs/plugin-contracts';
+import type { EventEmitterFn } from '../api/index.js';
+
+function createMockSpinner(msg: string): Spinner {
+  return {
+    update: vi.fn(),
+    succeed: vi.fn(),
+    fail: vi.fn(),
+    stop: vi.fn(),
+  };
+}
+
+function createMockUI(): UIFacade {
+  const spinnerMsg = { current: '' };
+  return {
+    colors: { success: (s: string) => s, error: (s: string) => s, warning: (s: string) => s, accent: (s: string) => s, muted: (s: string) => s, highlight: (s: string) => s, primary: (s: string) => s },
+    symbols: { success: '✓', error: '✗', warning: '⚠', info: 'ℹ', pointer: '›', bullet: '•', ellipsis: '…', line: '─', arrowRight: '→', arrowLeft: '←', arrowUp: '↑', arrowDown: '↓' },
+    write: vi.fn(),
+    info: vi.fn(),
+    success: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+    spinner: vi.fn((msg: string) => { spinnerMsg.current = msg; return createMockSpinner(msg); }),
+    table: vi.fn(),
+    json: vi.fn(),
+    newline: vi.fn(),
+    divider: vi.fn(),
+    box: vi.fn(),
+    sideBox: vi.fn(),
+    confirm: vi.fn(async () => true),
+    prompt: vi.fn(async () => ''),
+  } as unknown as UIFacade;
+}
+
+describe('createStreamingUI', () => {
+  it('delegates all calls to the base UI', () => {
+    const base = createMockUI();
+    const emitter: EventEmitterFn = vi.fn(async () => {});
+    const ui = createStreamingUI(base, emitter);
+
+    ui.info('hello');
+    ui.success('done');
+    ui.warn('careful');
+    ui.error('oops');
+    ui.write('raw\n');
+
+    expect(base.info).toHaveBeenCalledWith('hello', undefined);
+    expect(base.success).toHaveBeenCalledWith('done', undefined);
+    expect(base.warn).toHaveBeenCalledWith('careful', undefined);
+    expect(base.error).toHaveBeenCalledWith('oops', undefined);
+    expect(base.write).toHaveBeenCalledWith('raw\n');
+  });
+
+  it('emits log.line for info → stdout', () => {
+    const base = createMockUI();
+    const emitter: EventEmitterFn = vi.fn(async () => {});
+    const ui = createStreamingUI(base, emitter);
+
+    ui.info('hello world');
+
+    expect(emitter).toHaveBeenCalledWith('log.line', expect.objectContaining({
+      line: 'hello world',
+      level: 'info',
+      stream: 'stdout',
+      lineNo: 1,
+    }));
+  });
+
+  it('emits log.line for success → stdout', () => {
+    const base = createMockUI();
+    const emitter: EventEmitterFn = vi.fn(async () => {});
+    const ui = createStreamingUI(base, emitter);
+
+    ui.success('all good');
+
+    expect(emitter).toHaveBeenCalledWith('log.line', expect.objectContaining({
+      line: 'all good',
+      level: 'info',
+      stream: 'stdout',
+    }));
+  });
+
+  it('emits log.line for warn → stderr', () => {
+    const base = createMockUI();
+    const emitter: EventEmitterFn = vi.fn(async () => {});
+    const ui = createStreamingUI(base, emitter);
+
+    ui.warn('be careful');
+
+    expect(emitter).toHaveBeenCalledWith('log.line', expect.objectContaining({
+      line: 'be careful',
+      level: 'warn',
+      stream: 'stderr',
+    }));
+  });
+
+  it('emits log.line for error (string) → stderr', () => {
+    const base = createMockUI();
+    const emitter: EventEmitterFn = vi.fn(async () => {});
+    const ui = createStreamingUI(base, emitter);
+
+    ui.error('bad thing');
+
+    expect(emitter).toHaveBeenCalledWith('log.line', expect.objectContaining({
+      line: 'bad thing',
+      level: 'error',
+      stream: 'stderr',
+    }));
+  });
+
+  it('emits log.line for error (Error object) using .message', () => {
+    const base = createMockUI();
+    const emitter: EventEmitterFn = vi.fn(async () => {});
+    const ui = createStreamingUI(base, emitter);
+
+    ui.error(new Error('something failed'));
+
+    expect(emitter).toHaveBeenCalledWith('log.line', expect.objectContaining({
+      line: 'something failed',
+      level: 'error',
+    }));
+  });
+
+  it('strips ANSI escape codes from emitted lines', () => {
+    const base = createMockUI();
+    const emitter: EventEmitterFn = vi.fn(async () => {});
+    const ui = createStreamingUI(base, emitter);
+
+    ui.info('\x1b[32mGreen text\x1b[0m');
+
+    expect(emitter).toHaveBeenCalledWith('log.line', expect.objectContaining({
+      line: 'Green text',
+    }));
+  });
+
+  it('buffers write() and emits complete lines by newline', () => {
+    const base = createMockUI();
+    const emitter: EventEmitterFn = vi.fn(async () => {});
+    const ui = createStreamingUI(base, emitter);
+
+    ui.write('first line\nsecond line\n');
+
+    const calls = (emitter as ReturnType<typeof vi.fn>).mock.calls;
+    expect(calls).toHaveLength(2);
+    expect(calls[0]![1]).toMatchObject({ line: 'first line' });
+    expect(calls[1]![1]).toMatchObject({ line: 'second line' });
+  });
+
+  it('holds incomplete write() lines until newline arrives', () => {
+    const base = createMockUI();
+    const emitter: EventEmitterFn = vi.fn(async () => {});
+    const ui = createStreamingUI(base, emitter);
+
+    ui.write('partial');
+    expect(emitter).not.toHaveBeenCalled();
+
+    ui.write(' complete\n');
+    expect(emitter).toHaveBeenCalledTimes(1);
+    expect(emitter).toHaveBeenCalledWith('log.line', expect.objectContaining({
+      line: 'partial complete',
+    }));
+  });
+
+  it('skips empty/whitespace-only lines', () => {
+    const base = createMockUI();
+    const emitter: EventEmitterFn = vi.fn(async () => {});
+    const ui = createStreamingUI(base, emitter);
+
+    ui.write('  \n\n  \n');
+
+    expect(emitter).not.toHaveBeenCalled();
+  });
+
+  it('skips ANSI-only lines (e.g. spinner animation frames)', () => {
+    const base = createMockUI();
+    const emitter: EventEmitterFn = vi.fn(async () => {});
+    const ui = createStreamingUI(base, emitter);
+
+    // Typical spinner clear: cursor up + erase line (no visible text after stripping)
+    ui.write('\x1b[2K\x1b[1A\n');
+
+    expect(emitter).not.toHaveBeenCalled();
+  });
+
+  it('emits spinner start/succeed/fail/update events', () => {
+    const base = createMockUI();
+    const emitter: EventEmitterFn = vi.fn(async () => {});
+    const ui = createStreamingUI(base, emitter);
+
+    const s = ui.spinner('loading...');
+    expect(emitter).toHaveBeenCalledWith('log.line', expect.objectContaining({ line: '◆ loading...' }));
+
+    s.update('still loading');
+    expect(emitter).toHaveBeenCalledWith('log.line', expect.objectContaining({ line: '◆ still loading' }));
+
+    s.succeed('done!');
+    expect(emitter).toHaveBeenCalledWith('log.line', expect.objectContaining({ line: '✓ done!', level: 'info' }));
+  });
+
+  it('emits spinner fail with error stream', () => {
+    const base = createMockUI();
+    const emitter: EventEmitterFn = vi.fn(async () => {});
+    const ui = createStreamingUI(base, emitter);
+
+    const s = ui.spinner('working');
+    s.fail('went wrong');
+
+    expect(emitter).toHaveBeenCalledWith('log.line', expect.objectContaining({
+      line: '✗ went wrong',
+      level: 'error',
+      stream: 'stderr',
+    }));
+  });
+
+  it('delegates spinner stop to base without emitting', () => {
+    const base = createMockUI();
+    const emitter: EventEmitterFn = vi.fn(async () => {});
+    const ui = createStreamingUI(base, emitter);
+
+    const s = ui.spinner('working');
+    (emitter as ReturnType<typeof vi.fn>).mockClear();
+    s.stop();
+
+    expect(emitter).not.toHaveBeenCalled();
+    const baseSpinner = (base.spinner as ReturnType<typeof vi.fn>).mock.results[0]?.value as Spinner;
+    expect(baseSpinner.stop).toHaveBeenCalled();
+  });
+
+  it('increments lineNo monotonically across calls', () => {
+    const base = createMockUI();
+    const emitter: EventEmitterFn = vi.fn(async () => {});
+    const ui = createStreamingUI(base, emitter);
+
+    ui.info('one');
+    ui.warn('two');
+    ui.error('three');
+
+    const calls = (emitter as ReturnType<typeof vi.fn>).mock.calls;
+    expect(calls[0]![1]).toHaveProperty('lineNo', 1);
+    expect(calls[1]![1]).toHaveProperty('lineNo', 2);
+    expect(calls[2]![1]).toHaveProperty('lineNo', 3);
+  });
+
+  it('does not throw if emitter rejects (fire-and-forget)', () => {
+    const base = createMockUI();
+    const emitter: EventEmitterFn = vi.fn(async () => { throw new Error('emitter error'); });
+    const ui = createStreamingUI(base, emitter);
+
+    expect(() => ui.info('hello')).not.toThrow();
+    expect(base.info).toHaveBeenCalledWith('hello', undefined);
+  });
+
+  it('passes through non-overridden methods unchanged', () => {
+    const base = createMockUI();
+    const emitter: EventEmitterFn = vi.fn(async () => {});
+    const ui = createStreamingUI(base, emitter);
+
+    ui.table([{ a: 1 }]);
+    ui.json({ x: 1 });
+    ui.newline();
+    ui.divider();
+
+    expect(base.table).toHaveBeenCalledWith([{ a: 1 }]);
+    expect(base.json).toHaveBeenCalledWith({ x: 1 });
+    expect(base.newline).toHaveBeenCalled();
+    expect(base.divider).toHaveBeenCalled();
+    expect(emitter).not.toHaveBeenCalled();
+  });
+});

@@ -104,6 +104,11 @@ export interface WorkflowRuntime {
   output?: unknown;
   // Declared input parameter schema exposed via REST API
   inputSchema?: Record<string, { type: 'string' | 'number' | 'boolean'; description?: string; required?: boolean; default?: unknown }>;
+
+  /** Semantic version from workflow spec (e.g. "6.6.0") */
+  version?: string;
+  /** ISO timestamp of last modification */
+  updatedAt?: string;
 }
 
 /**

@@ -90,6 +90,7 @@ export const manifest = {
       {
         id: 'stats',
         group: 'quality',
+        category: 'Overview',
         describe: 'Get monorepo statistics and health score',
         longDescription:
           'Analyzes monorepo structure, collects package statistics, dependency info, and calculates health score. ' +
@@ -116,6 +117,7 @@ export const manifest = {
       {
         id: 'health',
         group: 'quality',
+        category: 'Overview',
         describe: 'Check monorepo health score',
         longDescription:
           'Analyzes monorepo health including dependency issues, structure problems, and build health. ' +
@@ -142,6 +144,7 @@ export const manifest = {
       {
         id: 'fix-deps',
         group: 'quality',
+        category: 'Dependencies',
         describe: 'Auto-fix dependency issues',
         longDescription:
           'Automatically fixes dependency issues including removing unused deps, adding missing workspace deps, ' +
@@ -168,6 +171,7 @@ export const manifest = {
       {
         id: 'build-order',
         group: 'quality',
+        category: 'Dependencies',
         describe: 'Calculate build order using topological sort',
         longDescription:
           'Analyzes package dependencies and calculates correct build order using topological sort. ' +
@@ -194,6 +198,7 @@ export const manifest = {
       {
         id: 'cycles',
         group: 'quality',
+        category: 'Dependencies',
         describe: 'Detect circular dependencies',
         longDescription:
           'Uses DFS to find all circular dependency chains in the monorepo. ' +
@@ -218,6 +223,7 @@ export const manifest = {
       {
         id: 'visualize',
         group: 'quality',
+        category: 'Dependencies',
         describe: 'Visualize dependency graph',
         longDescription:
           'Visualize monorepo dependency graph in various formats: tree view, DOT format for graphviz, ' +
@@ -246,6 +252,7 @@ export const manifest = {
       {
         id: 'check-builds',
         group: 'quality',
+        category: 'Checks',
         describe: 'Check build status across monorepo',
         longDescription:
           'Analyzes build status across all packages with build scripts. ' +
@@ -274,6 +281,7 @@ export const manifest = {
       {
         id: 'check-types',
         group: 'quality',
+        category: 'Checks',
         describe: 'Analyze TypeScript type safety across monorepo',
         longDescription:
           'Analyzes TypeScript type errors, warnings, and type coverage using TypeScript Compiler API. ' +
@@ -302,6 +310,7 @@ export const manifest = {
       {
         id: 'check-tests',
         group: 'quality',
+        category: 'Checks',
         describe: 'Run tests and track coverage across monorepo',
         longDescription:
           'Runs tests across all packages with test scripts and collects coverage statistics. ' +
@@ -331,6 +340,7 @@ export const manifest = {
       {
         id: 'dead-code',
         group: 'quality',
+        category: 'Checks',
         describe: 'Detect dead (unreachable) source files',
         longDescription:
           'Analyzes import graph to find source files not reachable from any entry point ' +

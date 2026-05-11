@@ -28,7 +28,7 @@ export const manifest = {
 
   display: {
     name: 'Impact Analysis',
-    description: 'Analyze workspace changes: affected packages, stale docs, reindex needs.',
+    description: 'Analyze affected packages, stale docs, reindex',
     tags: ['impact', 'analysis', 'dependencies', 'docs'],
   },
 

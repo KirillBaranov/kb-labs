@@ -37,6 +37,20 @@ if (process.argv.includes('--json')) {
 import { run } from "./index";
 import { platform } from "@kb-labs/core-runtime";
 import { createRequire } from "module";
+import { createCLIUIFacade } from "./runtime/ui-facade";
+
+// Global handler — any uncaught exception renders as a formatted error box
+// instead of a raw Node.js stack dump
+process.on('uncaughtException', (err) => {
+  createCLIUIFacade().error(err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  const err = reason instanceof Error ? reason : new Error(String(reason));
+  createCLIUIFacade().error(err);
+  process.exit(1);
+});
 
 // Captured at module load so that `resolvePlatformRoot` can walk up from the
 // physical location of this bin.js file — the most reliable way to locate

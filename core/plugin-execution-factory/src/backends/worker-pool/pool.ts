@@ -6,7 +6,7 @@
  */
 
 import { EventEmitter } from 'node:events';
-import type { WorkerPoolConfig } from './types.js';
+import type { WorkerPoolConfig, UIPromptMessage } from './types.js';
 import type { PlatformServices } from '@kb-labs/plugin-contracts';
 import type { Worker } from './worker.js';
 import type { ExecutionRequest, ExecutionResult, PlatformTransportFactory } from '../../types.js';
@@ -149,7 +149,11 @@ export class WorkerPool extends EventEmitter<PoolEvents> {
    */
   async execute(
     request: ExecutionRequest,
-    options?: { signal?: AbortSignal; onLog?: (entry: { level: string; message: string; stream: 'stdout' | 'stderr'; lineNo: number; timestamp: string; meta?: Record<string, unknown> }) => void }
+    options?: {
+      signal?: AbortSignal;
+      onLog?: (entry: { level: string; message: string; stream: 'stdout' | 'stderr'; lineNo: number; timestamp: string; meta?: Record<string, unknown> }) => void;
+      onUIPrompt?: (prompt: UIPromptMessage) => Promise<unknown>;
+    }
   ): Promise<ExecutionResult> {
     if (this.lifecycleManager.isShuttingDownState()) {
       return {
@@ -201,6 +205,7 @@ export class WorkerPool extends EventEmitter<PoolEvents> {
           timeoutMs,
           startTime,
           options?.onLog,
+          options?.onUIPrompt,
         );
       }
 

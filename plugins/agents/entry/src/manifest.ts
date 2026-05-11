@@ -109,7 +109,7 @@ export const manifest = {
 
   display: {
     name: 'Agent System',
-    description: 'Autonomous agent system with LLM tool calling, task orchestration, and tier escalation.',
+    description: 'Autonomous agents, tool calling, and task orchestration',
     tags: ['agent', 'autonomous', 'llm', 'orchestration'],
   },
 
@@ -126,7 +126,8 @@ export const manifest = {
       {
         id: 'run',
         group: 'agent',
-        describe: 'Run agent with specified mode (execute/plan/edit/debug)',
+        category: 'Run',
+        describe: 'Run agent task (execute, plan, edit, or debug)',
         longDescription:
           'Unified agent command with multiple modes: ' +
           'execute (default) - run task immediately, ' +
@@ -154,7 +155,8 @@ export const manifest = {
       {
         id: 'trace:stats',
         group: 'agent',
-        describe: 'Show trace statistics with cost and performance metrics',
+        category: 'Trace',
+        describe: 'Show trace statistics: tokens, cost, timing',
         longDescription:
           'Analyze trace file to show comprehensive statistics: ' +
           'iterations, LLM calls, token usage, tool usage, timing, and cost. ' +
@@ -176,6 +178,7 @@ export const manifest = {
       {
         id: 'trace:filter',
         group: 'agent',
+        category: 'Trace',
         describe: 'Filter trace events by type for debugging',
         longDescription:
           'Filter trace events by type (llm:call, tool:execution, error:captured, etc.). ' +
@@ -199,6 +202,7 @@ export const manifest = {
       {
         id: 'trace:iteration',
         group: 'agent',
+        category: 'Trace',
         describe: 'View all events for a specific iteration',
         longDescription:
           'Show all trace events for a specific iteration number. ' +
@@ -222,7 +226,8 @@ export const manifest = {
       {
         id: 'trace:context',
         group: 'agent',
-        describe: 'View what the LLM sees at each iteration — context window, truncations, responses',
+        category: 'Trace',
+        describe: 'Inspect context window and truncations per iteration',
         longDescription:
           'Shows the full context timeline for debugging agent behavior. ' +
           'For each LLM call: what messages are in the sliding window, ' +
@@ -246,7 +251,8 @@ export const manifest = {
       {
         id: 'trace:diagnose',
         group: 'agent',
-        describe: 'Quick diagnostic analysis — answers "what went wrong?" in one command',
+        category: 'Trace',
+        describe: 'Diagnose what went wrong in an agent run',
         longDescription:
           'Comprehensive diagnostic report for agent execution. ' +
           'Analyzes errors, context window health (drops, truncations), ' +
@@ -269,6 +275,7 @@ export const manifest = {
       {
         id: 'quality:report',
         group: 'agent',
+        category: 'Quality',
         describe: 'Show quality control report for recent agent runs',
         longDescription:
           'Aggregates agent KPI telemetry from analytics buffer and shows ' +
@@ -296,6 +303,7 @@ export const manifest = {
       {
         id: 'history',
         group: 'agent',
+        category: 'History',
         describe: 'Show file change history for agent sessions',
         longDescription:
           'View file changes made by agents during execution. ' +
@@ -321,6 +329,7 @@ export const manifest = {
       {
         id: 'diff',
         group: 'agent',
+        category: 'History',
         describe: 'Show diff for specific file change',
         longDescription:
           'Display line-by-line diff for a specific file change. ' +
@@ -342,6 +351,7 @@ export const manifest = {
       {
         id: 'rollback',
         group: 'agent',
+        category: 'History',
         describe: 'Rollback file changes made by agents',
         longDescription:
           'Rollback file changes made by agents. ' +

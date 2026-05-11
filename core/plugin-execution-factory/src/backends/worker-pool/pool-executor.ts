@@ -4,7 +4,7 @@
  * Execution logic for worker pool.
  */
 
-import type { WorkerPoolConfig } from './types.js';
+import type { WorkerPoolConfig, UIPromptMessage } from './types.js';
 import type { Worker } from './worker.js';
 import type { ExecutionRequest, ExecutionResult } from '../../types.js';
 import { WorkerCrashedError } from '../../errors.js';
@@ -80,11 +80,12 @@ export class PoolExecutor {
     timeoutMs: number,
     startTime: number,
     onLog?: (entry: { level: string; message: string; stream: 'stdout' | 'stderr'; lineNo: number; timestamp: string; meta?: Record<string, unknown> }) => void,
+    onUIPrompt?: (prompt: UIPromptMessage) => Promise<unknown>,
   ): Promise<ExecutionResult> {
     this.onTotalRequests();
 
     try {
-      const result = await worker.execute(request, timeoutMs, onLog);
+      const result = await worker.execute(request, timeoutMs, onLog, onUIPrompt);
 
       if (result.ok) {
         this.onSuccessCount();
