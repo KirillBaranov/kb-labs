@@ -53,21 +53,21 @@ describe('TenantRateLimiter', () => {
   // ── checkLimit ───────────────────────────────────────────────────────
 
   it('allows requests under the limit', async () => {
-    limiter.setTier('acme', 'free'); // 10 req/min
+    limiter.setTier('acme', 'free'); // 100 req/min
 
     const result = await limiter.checkLimit('acme', 'requests');
 
     expect(result.allowed).toBe(true);
-    expect(result.remaining).toBe(9); // 10 - 0 - 1
-    expect(result.limit).toBe(10);
+    expect(result.remaining).toBe(99); // 100 - 0 - 1
+    expect(result.limit).toBe(100);
     expect(result.resetAt).toBeGreaterThan(Date.now());
   });
 
   it('blocks requests when limit is reached', async () => {
-    limiter.setTier('acme', 'free'); // 10 req/min
+    limiter.setTier('acme', 'free'); // 100 req/min
 
     // Exhaust the limit
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 100; i++) {
       await limiter.checkLimit('acme', 'requests');
     }
 
@@ -75,19 +75,19 @@ describe('TenantRateLimiter', () => {
 
     expect(result.allowed).toBe(false);
     expect(result.remaining).toBe(0);
-    expect(result.limit).toBe(10);
+    expect(result.limit).toBe(100);
   });
 
   it('decrements remaining count with each request', async () => {
-    limiter.setTier('acme', 'pro'); // 100 req/min
+    limiter.setTier('acme', 'pro'); // 500 req/min
 
     const r1 = await limiter.checkLimit('acme', 'requests');
     const r2 = await limiter.checkLimit('acme', 'requests');
     const r3 = await limiter.checkLimit('acme', 'requests');
 
-    expect(r1.remaining).toBe(99);
-    expect(r2.remaining).toBe(98);
-    expect(r3.remaining).toBe(97);
+    expect(r1.remaining).toBe(499);
+    expect(r2.remaining).toBe(498);
+    expect(r3.remaining).toBe(497);
   });
 
   // ── tier-based quotas ────────────────────────────────────────────────
@@ -150,11 +150,11 @@ describe('TenantRateLimiter', () => {
   // ── tenant isolation ────────────────────────────────────────────────
 
   it('isolates rate limits between tenants', async () => {
-    limiter.setTier('a', 'free'); // 10 req/min
+    limiter.setTier('a', 'free'); // 100 req/min
     limiter.setTier('b', 'free');
 
     // Exhaust tenant A
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 100; i++) {
       await limiter.checkLimit('a', 'requests');
     }
 
