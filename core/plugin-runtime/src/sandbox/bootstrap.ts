@@ -126,6 +126,17 @@ function createStdoutUI(): UIFacade {
       });
       console.log(boxOutput);
     },
+    chain: (items) => {
+      for (const item of items) {
+        const boxOutput = sideBorderBox({
+          title: item.title,
+          sections: (item.sections ?? []).map(s => ({ header: s.header, items: s.items })),
+          status: item.status,
+          timing: item.timing,
+        });
+        console.log(boxOutput);
+      }
+    },
     confirm: async (_msg, opts) => opts?.defaultValue ?? false,
     prompt: async (_msg, opts) => opts?.default ?? '',
     select: async (_msg, choices) => choices[0]?.value as never,
