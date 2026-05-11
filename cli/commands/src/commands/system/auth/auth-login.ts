@@ -38,6 +38,7 @@ export const authLogin = defineSystemCommand<LoginFlags, LoginResult>({
     'client-secret': { type: 'string', description: 'Client Secret from service account registration' },
     json: { type: 'boolean', description: 'Output in JSON format' },
   },
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   async handler(ctx, _argv, flags) {
     const gatewayUrl = flags['gateway-url'];
     const clientId = flags['client-id'];

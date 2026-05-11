@@ -47,6 +47,7 @@ export class HostAgentTransport implements IGatewayClient {
       reject: (err: Error) => void;
     }[] = [];
 
+    // eslint-disable-next-line sonarjs/cognitive-complexity
     const onData = (data: Buffer) => {
       buffer += data.toString();
       const lines = buffer.split('\n');

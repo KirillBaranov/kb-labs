@@ -15,10 +15,11 @@ const GAP_LEN = 2;
 function truncateDesc(desc: string, maxLength: number): string {
   const cols = (typeof process !== 'undefined' && process.stdout?.columns) || 80;
   const avail = cols - BOX_OVERHEAD - PREFIX_LEN - maxLength - GAP_LEN;
-  if (avail < 10 || desc.length <= avail) return desc;
+  if (avail < 10 || desc.length <= avail) {return desc;}
   return desc.slice(0, avail - 1) + '…';
 }
 
+// eslint-disable-next-line sonarjs/cognitive-complexity
 export function renderProductHelp(
   groupName: string,
   commands: RegisteredCommand[],

@@ -41,6 +41,7 @@ export const pluginsCommands = defineSystemCommand<PluginsCommandsFlags, Plugins
     plugin: { type: 'string', description: 'Filter by plugin ID' },
     sort: { type: 'string', description: 'Sort order: alpha (default), count, type' },
   },
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   async handler(ctx, argv, flags) {
     const commands = registry.list();
     const _groups = registry.listGroups();

@@ -154,7 +154,6 @@ export class QueryDecomposer {
    * Heuristic-based complexity detection
    */
   private heuristicComplexity(query: string): QueryComplexity | null {
-    const lowerQuery = query.toLowerCase();
     const wordCount = query.split(/\s+/).length;
     const hasIdentifier = /`[^`]+`/.test(query) || /\b[A-Z][a-zA-Z0-9]*[A-Z][a-zA-Z0-9]*\b/.test(query);
     const technicalLookupLike = /\b(interface|method|methods|function|class|field|config|policy|option|parameter|stage)\b/i.test(query);

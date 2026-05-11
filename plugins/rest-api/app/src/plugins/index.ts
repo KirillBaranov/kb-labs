@@ -88,7 +88,7 @@ export async function registerPlugins(
       timeWindow: config.rateLimit.timeWindow,
       allowList: (req) => {
         // Health/ready/studio-registry must never be rate-limited — kb-dev uses them for health checks
-        const url = (req.url ?? '').split('?')[0];
+        const url = (req.url ?? '').split('?')[0] ?? '';
         return (
           url === '/health' ||
           url === '/api/v1/health' ||

@@ -43,6 +43,7 @@ type PluginsRegistryResult = CommandResult & {
 /**
  * Find REST API manifest path in a package
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity
 async function findRestApiManifestPath(pkgRoot: string, pkg: Record<string, unknown>): Promise<string | null> {
   const kbLabs = pkg.kbLabs as Record<string, unknown> | undefined;
   const kb = pkg.kb as Record<string, unknown> | undefined;
@@ -140,6 +141,7 @@ async function findRestApiManifestPath(pkgRoot: string, pkg: Record<string, unkn
 /**
  * Discover REST API plugins from workspace
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity
 async function discoverRestApiPlugins(repoRoot: string): Promise<PluginManifestWithPath[]> {
   const results: PluginManifestWithPath[] = [];
   

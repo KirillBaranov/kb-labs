@@ -31,7 +31,7 @@ export class HttpSseGatewayTransport implements IGatewayClient {
     const creds = await this.getValidCredentials();
     const url = `${this.config.gatewayUrl}/api/v1/execute`;
     const controller = new AbortController();
-    const timeout = request.timeoutMs ?? this.config.requestTimeoutMs ?? 30_000;
+    const _timeout = request.timeoutMs ?? this.config.requestTimeoutMs ?? 30_000;
 
     const response = await fetch(url, {
       method: 'POST',

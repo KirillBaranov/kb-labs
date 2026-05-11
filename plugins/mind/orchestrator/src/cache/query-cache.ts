@@ -134,7 +134,7 @@ export class QueryCache {
             };
           }
         }
-      } catch (error) {
+      } catch (_error) {
         // Fallback to in-memory if broker fails
       }
     }
@@ -218,7 +218,7 @@ export class QueryCache {
         const brokerKey = this.brokerEntryKey(key);
         await this.broker.set(brokerKey, entry, ttl);
         await this.addBrokerScopeKey(scopeId, key);
-      } catch (error) {
+      } catch (_error) {
         // Fallback to in-memory if broker fails
       }
     }

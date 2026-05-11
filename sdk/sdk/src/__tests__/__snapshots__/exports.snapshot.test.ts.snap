@@ -23,6 +23,7 @@ exports[`SDK Exports Snapshot > Test Context Structure > should create context w
 exports[`SDK Exports Snapshot > Test Context Structure > should match UI methods snapshot 1`] = `
 [
   "box",
+  "chain",
   "colors",
   "confirm",
   "debug",
@@ -30,8 +31,10 @@ exports[`SDK Exports Snapshot > Test Context Structure > should match UI methods
   "error",
   "info",
   "json",
+  "multiSelect",
   "newline",
   "prompt",
+  "select",
   "sideBox",
   "spinner",
   "success",

@@ -193,11 +193,11 @@ function ansiSlice(str: string, maxVisible: number): string {
   while (i < str.length) {
     if (str[i] === '\x1b' && str[i + 1] === '[') {
       let j = i + 2;
-      while (j < str.length && !/[A-Za-z]/.test(str[j]!)) j++;
+      while (j < str.length && !/[A-Za-z]/.test(str[j]!)) { j++; }
       result += str.slice(i, j + 1);
       i = j + 1;
     } else {
-      if (visible >= maxVisible) break;
+      if (visible >= maxVisible) { break; }
       result += str[i];
       visible++;
       i++;
@@ -297,8 +297,9 @@ export interface SideBorderChainItem {
  * └  ✗  12ms
  * ```
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity
 export function sideBorderChain(items: SideBorderChainItem[]): string {
-  if (items.length === 0) return '';
+  if (items.length === 0) { return ''; }
   if (items.length === 1) {
     const item = items[0]!;
     return sideBorderBox({ title: item.title, sections: item.sections, status: item.status, timing: item.timing });

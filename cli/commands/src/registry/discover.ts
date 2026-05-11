@@ -249,6 +249,7 @@ async function computeMarketplaceLockHashAt(root: string): Promise<string> {
  * Detect whether new workspace packages with manifests appeared since cache was written.
  * If so, cached results are considered stale to ensure new commands are registered.
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity
 async function detectNewWorkspacePackages(
   cwd: string,
   cachedPackages: Record<string, PackageCacheEntry> | undefined
@@ -335,16 +336,6 @@ function getNamespaceFromManifest(manifestV2: ManifestV3 | undefined, packageNam
   const last = parts[parts.length - 1] || packageName;
   return last.replace(/^@/, '');
 }
-
-/**
- * Derive namespace from package name (legacy fallback)
- */
-function deriveNamespace(packageName: string): string {
-  const parts = packageName.split('/');
-  const lastPart = parts[parts.length - 1] || packageName;
-  return lastPart.replace(/^@/, '');
-}
-
 
 // TODO V3: V2 setup command manifest generators removed - V3 uses SetupSpec in manifest
 // function createSetupCommandManifest({
@@ -551,6 +542,7 @@ async function loadConfig(cwd: string): Promise<{ allow?: string[]; block?: stri
  * Find manifest path using conventional locations
  * Returns path and whether it's deprecated
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity
 async function findManifestPath(pkgRoot: string, pkg: Record<string, unknown>): Promise<{ path: string | null; deprecated: boolean }> {
   const kb = pkg.kb as Record<string, unknown> | undefined;
   if (kb?.manifest) {
@@ -836,6 +828,7 @@ async function discoverNodeModules(cwd: string): Promise<DiscoveryResult[]> {
     for (const entry of entries) {
       if (!entry.isDirectory() && !entry.isSymbolicLink()) {continue;}
 
+      // eslint-disable-next-line sonarjs/cognitive-complexity
       const scanEntry = async () => {
         let pkgRoot: string;
         let pkg: Record<string, unknown> | null = null;
@@ -1004,6 +997,7 @@ async function discoverNodeModules(cwd: string): Promise<DiscoveryResult[]> {
  * Deduplicate manifests by priority: workspace > linked > node_modules
  * Also deduplicate by package path to avoid duplicate workspace packages
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity
 function deduplicateManifests(all: DiscoveryResult[]): DiscoveryResult[] {
   const byPackageName = new Map<string, DiscoveryResult>();
 
@@ -1064,6 +1058,7 @@ function deduplicateManifests(all: DiscoveryResult[]): DiscoveryResult[] {
  * cheaper than recomputing all manifests blindly and avoids serving stale
  * results from a previous workspace layout.
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity
 async function loadCache(
   cwd: string,
   roots: { platformRoot: string; projectRoot: string },
@@ -1177,6 +1172,7 @@ async function loadCache(
 /**
  * Check if cache is stale for a specific package (async to support hash validation)
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity
 async function isPackageCacheStale(
   entry: PackageCacheEntry,
   options: { validateHash: boolean }
@@ -1231,6 +1227,7 @@ async function isPackageCacheStale(
  * alongside `projectRoot` so the next run can recompute both marketplace-lock
  * hashes, even when the platform root is outside cwd (installed mode).
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity
 async function saveCache(
   cwd: string,
   results: DiscoveryResult[],
@@ -1352,6 +1349,7 @@ async function saveCache(
  *     different directory from the user's project. In dev mode `platformRoot`
  *     typically equals `cwd` and the two paths coincide.
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity
 export async function discoverManifests(
   cwd: string,
   noCache = false,

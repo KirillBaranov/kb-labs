@@ -106,46 +106,6 @@ function prefixVectorId(id: string, permission: string[] | boolean | undefined):
   return `${namespace}${id}`;
 }
 
-/**
- * Remove namespace prefix from vector ID
- * Returns the unprefixed ID for plugin consumption
- */
-function unprefixVectorId(id: string, permission: string[] | boolean | undefined): string {
-  if (permission === true) {
-    return id; // No prefix to remove
-  }
-
-  const allowed = permission as string[];
-  if (allowed.length === 0) {
-    return id;
-  }
-
-  const namespace = allowed[0]!;
-
-  // Remove prefix if present
-  if (id.startsWith(namespace)) {
-    return id.slice(namespace.length);
-  }
-
-  return id;
-}
-
-/**
- * Check if vector ID belongs to allowed namespace (for search results)
- */
-function isVectorIdAllowed(id: string, permission: string[] | boolean | undefined): boolean {
-  if (permission === true) {
-    return true; // All IDs allowed
-  }
-
-  const allowed = permission as string[];
-  if (allowed.length === 0) {
-    return false;
-  }
-
-  // Check if ID starts with any allowed namespace
-  return allowed.some((ns) => id.startsWith(ns));
-}
 
 /**
  * Create denied service stub that throws on ANY property access
@@ -252,7 +212,7 @@ export function createGovernedPlatformServices(
           const filterByNamespace = <T extends { metadata?: Record<string, unknown> }>(
             results: T[],
           ): T[] => {
-            if (!namespace) return results;
+            if (!namespace) { return results; }
             return results.filter(
               (r) => !r.metadata?.['_kbNamespace'] || r.metadata['_kbNamespace'] === namespace,
             );

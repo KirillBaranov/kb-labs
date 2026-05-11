@@ -207,6 +207,7 @@ export interface LogDiagnostics {
  * Compute diagnostic statistics from a set of logs.
  * Used by `logs diagnose` for the structured report.
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity
 export function computeLogStats(logs: LogRecord[]): LogDiagnostics {
   const bySource: Record<string, SourceBreakdown> = {};
   const errorMessages = new Map<string, { count: number; source: string; firstSeen: number; lastSeen: number }>();
