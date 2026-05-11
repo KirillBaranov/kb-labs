@@ -1,11 +1,16 @@
 {
   "name": "@kb-labs/review-entry",
   "version": "2.94.0",
+  "description": "CLI commands and manifest for the AI code review plugin",
   "type": "module",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./plugin-manifest": {
+      "types": "./dist/manifest.d.ts",
+      "import": "./dist/manifest.js"
     }
   },
   "files": [
@@ -42,5 +47,8 @@
   },
   "kb": {
     "manifest": "./dist/manifest.js"
-  }
+  },
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts"
 }

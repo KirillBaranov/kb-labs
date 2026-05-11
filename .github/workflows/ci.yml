@@ -109,6 +109,19 @@ jobs:
       - name: Check Single Version Policy (versions + format)
         run: pnpm deps:lint
 
+  # ── 2c. Plugin entry structure ─────────────────────────────────────────────
+  plugin-structure:
+    name: Plugin structure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { run_install: false }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: node infra/devkit/bin/devkit-check-plugins.mjs --ci
+
   # ── 3. Lint / Type-check / Test — all packages ──────────────────────────────
   checks:
     name: ${{ matrix.task }}

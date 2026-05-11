@@ -11,7 +11,11 @@
       "import": "./dist/index.js",
       "require": "./dist/index.js"
     },
-    "./dist/*": "./dist/*"
+    "./dist/*": "./dist/*",
+    "./plugin-manifest": {
+      "types": "./dist/manifest.d.ts",
+      "import": "./dist/manifest.js"
+    }
   },
   "files": [
     "dist",
