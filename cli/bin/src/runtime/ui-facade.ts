@@ -18,7 +18,7 @@ const WORKSPACE_ROOT = process.cwd();
  * - Each frame on its own line for clarity
  */
 function formatErrorStack(err: Error): Array<string | { text: string; dim: boolean }> {
-  if (!err.stack) return [];
+  if (!err.stack) {return [];}
 
   const lines = err.stack.split('\n');
   // Skip first line — it's the error message, already shown above
@@ -154,7 +154,7 @@ export function createCLIUIFacade(presenter?: PresenterDelegate): UIFacade {
         presenter.table(data);
         return;
       }
-      if (data.length === 0) return;
+      if (data.length === 0) {return;}
       const cols: TableColumn[] = columns ?? Object.keys(data[0]!).map(k => ({ header: k, key: k }));
       const rows = data.map(row => cols.map(col => String(row[col.key] ?? '')));
       const lines = formatTable(

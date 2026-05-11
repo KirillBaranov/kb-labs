@@ -256,7 +256,7 @@ Focus on brevity and relevance. Remove redundant code. Keep only what's needed f
           candidatesKept: parsed.keySnippets?.length || 0,
         },
       };
-    } catch (error) {
+    } catch (_error) {
       // Fallback: return top 3 candidates as-is
       return this.fallbackCompression(candidates);
     }

@@ -99,6 +99,7 @@ export class InProcessBackend implements ExecutionBackend {
     this.pluginInvoker = options.pluginInvoker;
   }
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   async execute(
     request: ExecutionRequest,
     options?: ExecuteOptions

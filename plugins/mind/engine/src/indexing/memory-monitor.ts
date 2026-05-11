@@ -130,7 +130,7 @@ export class MemoryMonitor {
 
     // Log cleanup results
     const freed = beforeStats.heapUsed - afterStats.heapUsed;
-    const freedMB = (freed / 1024 / 1024).toFixed(2);
+    const _freedMB = (freed / 1024 / 1024).toFixed(2);
 
     return;
   }

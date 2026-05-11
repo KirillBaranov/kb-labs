@@ -52,7 +52,7 @@ export class ChunkSummarizer {
       });
 
       return result.content.trim();
-    } catch (error) {
+    } catch (_error) {
       // Fallback: extract first meaningful line or comment
       return this.extractFallbackSummary(chunk);
     }

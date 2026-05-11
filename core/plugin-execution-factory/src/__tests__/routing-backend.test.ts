@@ -50,6 +50,7 @@ describe('createExecutionBackend with mode: remote (RoutingBackend)', () => {
       runInProcess: vi.fn().mockResolvedValue({ data: 'local-result', executionMeta: {} }),
     }));
     vi.mock('node:fs', async (importOriginal) => {
+      // eslint-disable-next-line @typescript-eslint/consistent-type-imports
       const actual = await importOriginal<typeof import('node:fs')>();
       return { ...actual, existsSync: vi.fn().mockReturnValue(true) };
     });
@@ -68,6 +69,7 @@ describe('createExecutionBackend with mode: remote (RoutingBackend)', () => {
       runInProcess: vi.fn().mockResolvedValue({ data: null, executionMeta: {} }),
     }));
     vi.mock('node:fs', async (importOriginal) => {
+      // eslint-disable-next-line @typescript-eslint/consistent-type-imports
       const actual = await importOriginal<typeof import('node:fs')>();
       return { ...actual, existsSync: vi.fn().mockReturnValue(true) };
     });

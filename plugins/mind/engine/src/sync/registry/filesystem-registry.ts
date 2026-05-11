@@ -113,7 +113,7 @@ export class FileSystemRegistry implements DocumentRegistry {
           // Ignore errors when deleting old backups
         });
       }
-    } catch (error) {
+    } catch (_error) {
       // Ignore cleanup errors
     }
   }

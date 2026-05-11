@@ -88,6 +88,7 @@ export class StorageStage implements PipelineStage {
     } = {}
   ) {}
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   async execute(context: PipelineContext): Promise<StageResult> {
     if (this.chunks.length === 0) {
       context.logger.warn('No chunks to store');

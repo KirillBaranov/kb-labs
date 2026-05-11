@@ -203,6 +203,7 @@ export abstract class TreeSitterChunker implements Chunker {
    * Extract lines from source code without split() - memory efficient
    * Finds line by counting newlines character-by-character
    */
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   protected extractLines(sourceCode: string, startLine: number, endLine: number): string {
     let currentLine = 1;
     let startIdx = 0;

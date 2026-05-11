@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ExecutionRequest } from '../types.js';
 
 vi.mock('node:fs', async (importOriginal) => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
   const actual = await importOriginal<typeof import('node:fs')>();
   return {
     ...actual,

@@ -222,6 +222,7 @@ export class RateLimiter {
    */
   private checkLimits(estimatedTokens: number): boolean {
     // Check TPM
+    // eslint-disable-next-line sonarjs/no-collapsible-if
     if (this.effectiveTPM) {
       if (this.tokensThisMinute + estimatedTokens > this.effectiveTPM) {
         return false;
@@ -229,6 +230,7 @@ export class RateLimiter {
     }
 
     // Check RPM
+    // eslint-disable-next-line sonarjs/no-collapsible-if
     if (this.effectiveRPM) {
       if (this.requestsThisMinute >= this.effectiveRPM) {
         return false;
@@ -236,6 +238,7 @@ export class RateLimiter {
     }
 
     // Check RPS
+    // eslint-disable-next-line sonarjs/no-collapsible-if
     if (this.effectiveRPS) {
       if (this.requestsThisSecond >= this.effectiveRPS) {
         return false;
@@ -243,6 +246,7 @@ export class RateLimiter {
     }
 
     // Check concurrent requests
+    // eslint-disable-next-line sonarjs/no-collapsible-if
     if (this.maxConcurrent) {
       if (this.activeRequests >= this.maxConcurrent) {
         return false;

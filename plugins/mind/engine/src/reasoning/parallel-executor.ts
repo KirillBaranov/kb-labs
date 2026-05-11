@@ -76,6 +76,7 @@ export class ParallelExecutor {
    * Execute sub-queries from the plan
    * Returns array of KnowledgeResult, one per sub-query
    */
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   async execute(
     plan: QueryPlan,
     context: KnowledgeExecutionContext,
@@ -163,7 +164,7 @@ export class ParallelExecutor {
     subquery: { text: string },
     context: KnowledgeExecutionContext,
     executor: QueryExecutor,
-    reasoningContext: ReasoningContext,
+    _reasoningContext: ReasoningContext,
   ): Promise<KnowledgeResult> {
     const query: KnowledgeQuery = {
       productId: context.scope.id, // Use scope ID as product ID for sub-queries

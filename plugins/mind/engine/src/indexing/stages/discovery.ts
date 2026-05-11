@@ -136,7 +136,7 @@ export class FileDiscoveryStage implements PipelineStage {
   /**
    * Optional: Cleanup
    */
-  async cleanup(context: PipelineContext): Promise<void> {
+  async cleanup(_context: PipelineContext): Promise<void> {
     // Clear file list to free memory
     // Note: filePaths in context are just strings, not full metadata
     this.discoveredFiles = [];

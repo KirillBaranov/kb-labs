@@ -62,6 +62,7 @@ describe('ParallelExecutor', () => {
     const executor = new ParallelExecutor({ parallel: true, maxConcurrency: 3 });
     const executionOrder: number[] = [];
 
+    // eslint-disable-next-line sonarjs/no-identical-functions
     const mockExecutor = async (query: KnowledgeQuery): Promise<KnowledgeResult> => {
       const index = parseInt(query.text.split(' ')[1]!);
       executionOrder.push(index);

@@ -212,6 +212,7 @@ export class RegexTypeScriptChunker implements Chunker {
   }
 
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   private findDeclarationEnd(sourceCode: string, startIndex: number, type: string): number {
     // For types and consts, find the semicolon or end of line
     if (type === 'type' || type === 'const') {

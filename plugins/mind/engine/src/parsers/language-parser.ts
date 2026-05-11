@@ -117,6 +117,7 @@ export class ParserFactory {
 export class GenericParser implements LanguageParser {
   readonly language = 'generic';
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   findStatementBoundaries(code: string): StatementBoundary[] {
     const lines = code.split('\n');
     const boundaries: StatementBoundary[] = [];

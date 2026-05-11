@@ -35,7 +35,7 @@ export async function generateHypotheticalSnippet(
 
     const code = result.content.trim();
     // Sanity check: must contain at least one identifier-like token
-    if (code.length < 20 || !/\w{3,}/.test(code)) return null;
+    if (code.length < 20 || !/\w{3,}/.test(code)) {return null;}
     return code;
   } catch {
     return null;

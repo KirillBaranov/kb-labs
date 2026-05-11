@@ -55,6 +55,7 @@ export function createExecutionBackend(options: BackendOptions): ExecutionBacken
         uiProvider: options.uiProvider,
       });
 
+    // eslint-disable-next-line sonarjs/no-duplicate-string
     case 'worker-pool':
       return new WorkerPoolBackend({
         platform: options.platform,

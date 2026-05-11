@@ -102,6 +102,7 @@ export class ReasoningEngine {
   /**
    * Execute reasoning chain for a query
    */
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   async execute(
     query: KnowledgeQuery,
     context: KnowledgeExecutionContext,
