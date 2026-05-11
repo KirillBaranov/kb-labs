@@ -163,6 +163,16 @@ function createStdoutUI(currentRequestId?: string): UIFacade {
         timing: options.timing,
       }));
     },
+    chain: (items) => {
+      for (const item of items) {
+        console.log(sideBorderBox({
+          title: item.title,
+          sections: (item.sections ?? []).map(s => ({ header: s.header, items: s.items })),
+          status: item.status,
+          timing: item.timing,
+        }));
+      }
+    },
     confirm: async (msg, opts) => {
       const defaultValue = opts?.defaultValue ?? false;
       if (!currentRequestId) {return defaultValue;}
