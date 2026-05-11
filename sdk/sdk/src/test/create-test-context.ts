@@ -150,6 +150,10 @@ function createMockUI(): UIFacade {
       bottomRight: '┘',
       leftT: '├',
       rightT: '┤',
+      step: '○',
+      stepDone: '●',
+      arrow: '→',
+      diamond: '◆',
     },
     write: (text) => messages.push(`WRITE: ${text}`),
     info: (msg) => messages.push(`INFO: ${msg}`),
@@ -193,8 +197,13 @@ function createMockUI(): UIFacade {
       }
       messages.push('└' + '─'.repeat(options.title.length + 4) + '┘');
     },
+    chain: (items) => {
+      items.forEach((item: { title: string }) => messages.push(`CHAIN: ${item.title}`));
+    },
     confirm: async () => true,
     prompt: async () => '',
+    select: async (_msg, choices) => choices[0]?.value as never,
+    multiSelect: async (_msg, choices) => choices.filter((c) => c.checked).map((c) => c.value) as never,
   };
 }
 
