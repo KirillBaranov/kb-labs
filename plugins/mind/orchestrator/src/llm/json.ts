@@ -1,6 +1,6 @@
 import type { ILLM } from '@kb-labs/sdk';
 
-export interface LLMJSONOptions<T> {
+export interface LLMJSONOptions {
   prompt: string;
   systemPrompt?: string;
   maxTokens?: number;
@@ -12,7 +12,7 @@ export interface LLMJSONOptions<T> {
   };
 }
 
-export async function completeJSON<T>(llm: ILLM, options: LLMJSONOptions<T>): Promise<T> {
+export async function completeJSON<T>(llm: ILLM, options: LLMJSONOptions): Promise<T> {
   const jsonInstructions = `
 IMPORTANT: Respond with valid JSON only. No markdown, no code blocks, just raw JSON.
 Do not include any text before or after the JSON object.

@@ -80,6 +80,7 @@ export const CommandManifestSchema = z.object({
   },
   { message: 'namespace must match group' }
 ).refine(
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   (data) => {
     // Validate requires entries are semver-compatible if they include version
     if (data.requires) {

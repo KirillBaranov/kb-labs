@@ -39,9 +39,7 @@ import { shouldShowLimits } from "./helpers/flags";
 import type { PlatformContainer, PlatformConfig } from "@kb-labs/core-runtime";
 
 declare global {
-  // eslint-disable-next-line no-var
   var __KB_PLATFORM_CONFIG__: PlatformConfig | undefined;
-  // eslint-disable-next-line no-var
   var __KB_RAW_CONFIG__: Record<string, unknown> | undefined;
 }
 
@@ -80,39 +78,8 @@ export interface CliRuntimeOptions {
   runtimeFormatters?: OutputFormatter[];
 }
 
-type LegacyLikeLogger = {
-  debug(msg: string, meta?: Record<string, unknown>): void;
-  info(msg: string, meta?: Record<string, unknown>): void;
-  warn(msg: string, meta?: Record<string, unknown>): void;
-  error(msg: string, meta?: Record<string, unknown> | Error): void;
-  child(bindings: { category?: string; meta?: Record<string, unknown> }): LegacyLikeLogger;
-};
 
-function adaptPlatformLogger(logger: ILogger): LegacyLikeLogger {
-  return {
-    debug: (msg, meta) => logger.debug(msg, meta),
-    info: (msg, meta) => logger.info(msg, meta),
-    warn: (msg, meta) => logger.warn(msg, meta),
-    error: (msg, metaOrError) => {
-      if (metaOrError instanceof Error) {
-        logger.error(msg, metaOrError);
-        return;
-      }
-      logger.error(msg, undefined, metaOrError);
-    },
-    child: (bindings) => {
-      const childBindings: Record<string, unknown> = {};
-      if (bindings.category) {
-        childBindings.category = bindings.category;
-      }
-      if (bindings.meta && typeof bindings.meta === "object") {
-        Object.assign(childBindings, bindings.meta);
-      }
-      return adaptPlatformLogger(logger.child(childBindings));
-    },
-  };
-}
-
+// eslint-disable-next-line sonarjs/cognitive-complexity
 export async function executeCli(
   argv: string[],
   options: CliRuntimeOptions = {},
@@ -407,6 +374,7 @@ interface ResolvedCommand {
   actualRest: string[];
 }
 
+// eslint-disable-next-line sonarjs/cognitive-complexity
 function resolveCommand(
   cmdPath: string[],
   rest: string[],
@@ -513,6 +481,7 @@ function createCliLogger(
   return logger;
 }
 
+// eslint-disable-next-line sonarjs/cognitive-complexity
 function handleEarlyExits(p: EarlyExitParams): number | null {
   if (p.global.help && p.cmdPath.length === 0) {
     if (p.global.json) {

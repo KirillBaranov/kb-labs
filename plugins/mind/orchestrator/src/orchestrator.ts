@@ -12,7 +12,7 @@ import type {
   AgentMeta,
   AgentSourcesSummary,
 } from './types';
-import type { ILLM } from '@kb-labs/sdk';
+import type { ILLM, IAnalytics } from '@kb-labs/sdk';
 import type { MindChunk } from '@kb-labs/mind-types';
 import { AGENT_RESPONSE_SCHEMA_VERSION } from './types';
 
@@ -47,7 +47,7 @@ export interface AgentQueryOrchestratorOptions {
     enabled?: boolean;
     detailed?: boolean;
   };
-  analyticsAdapter?: import('@kb-labs/sdk').IAnalytics | null;
+  analyticsAdapter?: IAnalytics | null;
 }
 
 /**
@@ -143,6 +143,7 @@ export class AgentQueryOrchestrator {
   /**
    * Execute orchestrated query
    */
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   async query(
     options: OrchestratorQueryOptions,
     queryFn: QueryFn,

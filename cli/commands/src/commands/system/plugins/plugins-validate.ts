@@ -23,6 +23,7 @@ type PluginValidateResult = CommandResult & {
 /**
  * Validate manifest against contracts
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity
 async function validateManifestAgainstContracts(
   manifest: unknown,
   contractsPath: string
@@ -91,6 +92,7 @@ export const pluginValidate = defineSystemCommand<PluginValidateFlags, PluginVal
       description: 'Automatically fix common issues',
     },
   },
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   async handler(ctx, argv, flags) {
     const cwd = getContextCwd(ctx);
     const manifestPath = path.resolve(cwd, flags.manifest || 'manifest.v2.ts');

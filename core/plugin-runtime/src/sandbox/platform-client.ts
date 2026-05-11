@@ -192,17 +192,20 @@ export async function connectToPlatform(socketPath?: string): Promise<PlatformSe
     },
 
     // Document database via RPC
-    documentDatabase: {
-      find: async (collection: string, filter: unknown, options?: unknown) => rpcClient!.call('database.document', 'find', [collection, filter, options]),
-      findById: async (collection: string, id: string) => rpcClient!.call('database.document', 'findById', [collection, id]),
-      insertOne: async (collection: string, doc: unknown) => rpcClient!.call('database.document', 'insertOne', [collection, doc]),
-      updateMany: async (collection: string, filter: unknown, update: unknown) => rpcClient!.call('database.document', 'updateMany', [collection, filter, update]),
-      updateById: async (collection: string, id: string, update: unknown) => rpcClient!.call('database.document', 'updateById', [collection, id, update]),
-      deleteMany: async (collection: string, filter: unknown) => rpcClient!.call('database.document', 'deleteMany', [collection, filter]),
-      deleteById: async (collection: string, id: string) => rpcClient!.call('database.document', 'deleteById', [collection, id]),
-      count: async (collection: string, filter?: unknown) => rpcClient!.call('database.document', 'count', [collection, filter]),
-      close: async () => rpcClient!.call('database.document', 'close', []),
-    },
+    documentDatabase: (() => {
+      const svc = 'database.document';
+      return {
+        find: async (collection: string, filter: unknown, options?: unknown) => rpcClient!.call(svc, 'find', [collection, filter, options]),
+        findById: async (collection: string, id: string) => rpcClient!.call(svc, 'findById', [collection, id]),
+        insertOne: async (collection: string, doc: unknown) => rpcClient!.call(svc, 'insertOne', [collection, doc]),
+        updateMany: async (collection: string, filter: unknown, update: unknown) => rpcClient!.call(svc, 'updateMany', [collection, filter, update]),
+        updateById: async (collection: string, id: string, update: unknown) => rpcClient!.call(svc, 'updateById', [collection, id, update]),
+        deleteMany: async (collection: string, filter: unknown) => rpcClient!.call(svc, 'deleteMany', [collection, filter]),
+        deleteById: async (collection: string, id: string) => rpcClient!.call(svc, 'deleteById', [collection, id]),
+        count: async (collection: string, filter?: unknown) => rpcClient!.call(svc, 'count', [collection, filter]),
+        close: async () => rpcClient!.call(svc, 'close', []),
+      };
+    })(),
 
     // Log reader via RPC (limited in subprocess context)
     logs: {

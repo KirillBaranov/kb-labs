@@ -83,7 +83,7 @@ describe('CLI Runtime Pipeline Integration', () => {
           name: 'timing',
           priority: 20,
           middleware: async (_ctx, next) => {
-            const start = Date.now();
+            const _start = Date.now();
             log.push('timing:start');
             const result = await next();
             log.push(`timing:done`);

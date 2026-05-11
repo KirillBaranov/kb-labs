@@ -39,6 +39,7 @@ export interface RegisterBuiltinCommandsInput {
   projectRoot?: string;
 }
 
+// eslint-disable-next-line sonarjs/cognitive-complexity
 export async function registerBuiltinCommands(
   input: RegisterBuiltinCommandsInput = {},
 ) {

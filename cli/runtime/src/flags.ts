@@ -67,6 +67,7 @@ export function validateCommandFlags(
   }
 }
 
+// eslint-disable-next-line sonarjs/cognitive-complexity
 export function parseArgs(argv: string[]): {
   cmdPath: string[];
   rest: string[];

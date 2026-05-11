@@ -200,6 +200,7 @@ export async function computePackageIntegrity(pkgRoot: string): Promise<string> 
 /**
  * Clear plugin cache
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity
 export async function clearCache(cwd: string, options?: { deep?: boolean }): Promise<{ files: string[]; modules?: string[] }> {
   const cleared: string[] = [];
 

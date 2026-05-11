@@ -194,6 +194,7 @@ class InMemoryRegistry implements CommandRegistry {
     const { id, group, subgroup } = cmd.manifest;
 
     const register = (key: string) => {
+      // eslint-disable-next-line sonarjs/no-collapsible-if
       if (!this.systemCommands.has(key) && !this.systemCommands.has(key.replace(/:/g, ' '))) {
         // Don't overwrite a more-specific canonical alias with a shorter one
         if (!this.pluginAliases.has(key)) {
@@ -339,6 +340,7 @@ class InMemoryRegistry implements CommandRegistry {
    * Returns type='system' for system commands (in-process execution).
    * Returns type='plugin' for plugin commands (subprocess execution).
    */
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   getWithType(nameOrPath: string | string[]): CommandLookupResult | undefined {
     const normalized = typeof nameOrPath === 'string' ? nameOrPath : nameOrPath.join(' ');
 
@@ -390,6 +392,7 @@ class InMemoryRegistry implements CommandRegistry {
     return { cmd, type: 'system' };
   }
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   get(nameOrPath: string | string[]): Command | CommandGroup | undefined {
     if (typeof nameOrPath === 'string') {
       if (this.byName.has(nameOrPath)) {

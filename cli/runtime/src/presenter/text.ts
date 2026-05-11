@@ -1,5 +1,5 @@
 import type { Presenter } from "./types";
-import { sideBorderBox, safeColors, safeSymbols } from "@kb-labs/shared-cli-ui";
+import { sideBorderBox } from "@kb-labs/shared-cli-ui";
 
 export function createTextPresenter(isQuiet: boolean = false): Presenter {
   const isTTY = process.stdout.isTTY === true;

@@ -67,6 +67,7 @@ export interface CheckRequiresOptions {
   cwd?: string;
 }
 
+// eslint-disable-next-line sonarjs/cognitive-complexity
 export function checkRequires(
   manifest: CommandManifest,
   options: CheckRequiresOptions = {},

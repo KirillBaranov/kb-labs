@@ -33,7 +33,6 @@ export function renderGroupHelp(group: CommandGroup): string {
   });
 
   // Help section
-  const firstCmd = sortedCommands[0]?.name.split(':').pop() ?? 'help';
   sections.push({
     header: 'Next Steps',
     items: [

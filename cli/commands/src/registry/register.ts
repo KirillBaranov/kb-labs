@@ -248,6 +248,7 @@ export interface ManifestRegistrationResult {
   errors: number;
 }
 
+// eslint-disable-next-line sonarjs/cognitive-complexity
 export function preflightManifests(
   discoveryResults: DiscoveryResult[],
   logger?: ILogger
@@ -293,6 +294,7 @@ export function preflightManifests(
 /**
  * Register manifests with shadowing and collision detection
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity
 export async function registerManifests(
   discoveryResults: DiscoveryResult[],
   registry: CommandRegistry,

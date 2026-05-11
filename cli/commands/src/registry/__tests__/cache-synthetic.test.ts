@@ -200,7 +200,7 @@ describe("saveCache — skips synthetic manifests", () => {
       kb: { commandsManifest: "./dist/manifest.js" },
     });
 
-    let callCount = 0;
+    let _callCount = 0;
     vi.mocked(readFile).mockImplementation(async (p: any) => {
       const ps = String(p);
       if (ps.endsWith("pnpm-workspace.yaml")) {return "packages:\n  - 'packages/*'";}
@@ -210,7 +210,7 @@ describe("saveCache — skips synthetic manifests", () => {
       if (ps.includes("cli-manifests.json")) {throw Object.assign(new Error("ENOENT"), { code: "ENOENT" });}
       if (ps.includes("qa-plugin") && ps.endsWith("package.json")) {return realPkg;}
       if (ps.includes("broken-plugin") && ps.endsWith("package.json")) {return brokenPkg;}
-      callCount++;
+      _callCount++;
       return "{}";
     });
 

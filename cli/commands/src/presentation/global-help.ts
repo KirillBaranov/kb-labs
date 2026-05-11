@@ -92,7 +92,7 @@ export function renderGlobalHelpNew(registry: {
 
     const items: Array<string | RichSectionItem> = sorted.map(product => {
       const paddedName = colors.cyan(product.name.padEnd(maxLen));
-      if (!product.describe) return paddedName;
+      if (!product.describe) {return paddedName;}
       return { text: `${paddedName}  ${colors.dim(product.describe)}`, truncate: itemMaxWidth };
     });
 

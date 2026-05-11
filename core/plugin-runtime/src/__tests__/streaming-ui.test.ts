@@ -9,7 +9,7 @@ import { createStreamingUI } from '../context/streaming-ui.js';
 import type { UIFacade, Spinner } from '@kb-labs/plugin-contracts';
 import type { EventEmitterFn } from '../api/index.js';
 
-function createMockSpinner(msg: string): Spinner {
+function createMockSpinner(_msg: string): Spinner {
   return {
     update: vi.fn(),
     succeed: vi.fn(),

@@ -83,7 +83,7 @@ export async function checkIndexFreshness(
         ? `Index may be outdated (${changedFiles} files changed since indexing)`
         : 'Index may be outdated (unable to determine changes)',
     };
-  } catch (error) {
+  } catch (_error) {
     // Git not available or not a repo
     return {
       fresh: true,

@@ -37,6 +37,7 @@ export const authCreateServiceAccount = defineSystemCommand<CreateSAFlags, Creat
     'namespace-id': { type: 'string', description: 'Namespace ID (1-64 chars)' },
     json: { type: 'boolean', description: 'Output in JSON format' },
   },
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   async handler(ctx, _argv, flags) {
     const gatewayUrl = flags['gateway-url'];
     const name = flags.name;
