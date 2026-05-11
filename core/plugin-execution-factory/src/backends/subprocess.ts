@@ -249,6 +249,7 @@ export class SubprocessBackend implements ExecutionBackend {
     this.ipcServerFactory = options.ipcServerFactory ?? createDefaultIPCServerFactory();
   }
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   async execute(
     request: ExecutionRequest,
     options?: ExecuteOptions

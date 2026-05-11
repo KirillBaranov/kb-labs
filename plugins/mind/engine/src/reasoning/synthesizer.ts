@@ -243,7 +243,7 @@ Respond with ONLY the synthesized context, no explanations or meta-commentary.`;
       });
 
       return result.content.trim();
-    } catch (error) {
+    } catch (_error) {
       // Fallback to simple concatenation if LLM fails
       return chunks
         .map(chunk => this.formatChunk(chunk))

@@ -89,6 +89,7 @@ export class WorkerPoolBackend implements ExecutionBackend {
 
     // Default worker script (to be created)
     this.workerScript = options.workerScript ??
+      // eslint-disable-next-line sonarjs/no-duplicate-string
       path.join(__dirname, 'backends', 'worker-pool', 'worker-script.js');
 
     this.config = {

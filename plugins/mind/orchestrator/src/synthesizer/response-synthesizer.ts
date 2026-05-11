@@ -171,7 +171,7 @@ export class ResponseSynthesizer {
       // keep first occurrence (LLM orders by relevance)
       const seenFiles = new Set<string>();
       const sources: AgentSource[] = rawSources.filter(s => {
-        if (seenFiles.has(s.file)) return false;
+        if (seenFiles.has(s.file)) {return false;}
         seenFiles.add(s.file);
         return true;
       });
@@ -304,7 +304,7 @@ export class ResponseSynthesizer {
     const text = this.truncateSnippet(chunk.text, 50);
     const lowerPath = chunk.path.toLowerCase();
     const isDoc = lowerPath.includes('/docs/') || lowerPath.endsWith('.md') || lowerPath.includes('/adr/');
-    if (!isDoc) return text;
+    if (!isDoc) {return text;}
 
     const meta = chunk.metadata as Record<string, unknown> | undefined;
     const mtime = meta?.fileMtime as number | undefined;

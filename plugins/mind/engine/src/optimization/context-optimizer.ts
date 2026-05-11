@@ -197,6 +197,7 @@ export class ContextOptimizer {
   /**
    * Diversify results to ensure variety across files and topics
    */
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   private diversify(
     chunks: KnowledgeChunk[],
     threshold: number,
@@ -243,6 +244,7 @@ export class ContextOptimizer {
       let isDiverse = true;
       for (const existing of diversified) {
         const similarity = calculateTextSimilarity(chunk.text, existing.text);
+        // eslint-disable-next-line sonarjs/no-collapsible-if
         if (similarity > threshold) {
           // Too similar, skip unless this one has much higher score
           if (chunk.score <= existing.score * 1.2) {

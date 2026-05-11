@@ -212,6 +212,7 @@ export class SnippetExtractor {
    * Expand to statement start (find opening brace/keyword)
    * Uses AST-based boundaries when available, falls back to regex
    */
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   private expandToStatementStart(chunkText: string, lines: string[], start: number): number {
     // Try to get AST-based boundaries
     const boundaries = this.parser.findStatementBoundaries(chunkText);
@@ -256,6 +257,7 @@ export class SnippetExtractor {
    * Expand to statement end (find closing brace)
    * Uses AST-based boundaries when available, falls back to regex
    */
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   private expandToStatementEnd(chunkText: string, lines: string[], end: number): number {
     // Try to get AST-based boundaries
     const boundaries = this.parser.findStatementBoundaries(chunkText);

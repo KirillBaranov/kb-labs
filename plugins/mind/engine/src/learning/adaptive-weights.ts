@@ -173,12 +173,12 @@ export class AdaptiveWeightCalculator implements AdaptiveWeights {
   }
 
   async learn(
-    queryText: string,
-    queryVector: number[],
-    scopeId: string,
-    vectorResults: Array<{ chunkId: string; score: number }>,
-    keywordResults: Array<{ chunkId: string; score: number }>,
-    feedback?: Array<{ chunkId: string; score: number }>,
+    _queryText: string,
+    _queryVector: number[],
+    _scopeId: string,
+    _vectorResults: Array<{ chunkId: string; score: number }>,
+    _keywordResults: Array<{ chunkId: string; score: number }>,
+    _feedback?: Array<{ chunkId: string; score: number }>,
   ): Promise<void> {
     // Store query history (this will be used for future weight calculations)
     // The actual learning happens in getWeights() when analyzing similar queries

@@ -8,9 +8,9 @@ import type { MindChunk } from '@kb-labs/mind-types';
 // to wire up a full ChunkGatherer with queryFn.
 
 function normalizeSubqueryScores(chunks: MindChunk[]): MindChunk[] {
-  if (chunks.length === 0) return chunks;
+  if (chunks.length === 0) {return chunks;}
   const maxScore = Math.max(...chunks.map(c => c.score));
-  if (maxScore < 0.5) return chunks;
+  if (maxScore < 0.5) {return chunks;}
   return chunks.map(c => ({ ...c, score: c.score / maxScore }));
 }
 
@@ -48,7 +48,7 @@ function deduplicateSubqueries(subqueries: string[]): string[] {
       const union = new Set([...sqTokens, ...exTokens]).size;
       return union > 0 && intersection / union > 0.7;
     });
-    if (!isDuplicate) unique.push(sq);
+    if (!isDuplicate) {unique.push(sq);}
   }
   return unique;
 }

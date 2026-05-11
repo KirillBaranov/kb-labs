@@ -247,6 +247,7 @@ function applyFeatureScoring(
   const architectureQuery = /\b(architecture|algorithm|flow|design|how\s+does|how\s+do|works?)\b/i.test(queryText);
   const lowerQuery = queryText.toLowerCase();
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   const rescored = matches.map((match) => {
     const chunk = match.chunk;
     const category = categorizeFile(chunk.path);

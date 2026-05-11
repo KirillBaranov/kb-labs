@@ -188,6 +188,7 @@ class LocalIndexStorageImpl implements RemoteIndexStorage {
 
     // Write manifest
     await fs.writeFile(
+      // eslint-disable-next-line sonarjs/no-duplicate-string
       path.join(targetDir, 'manifest.json'),
       JSON.stringify(manifest, null, 2),
     );

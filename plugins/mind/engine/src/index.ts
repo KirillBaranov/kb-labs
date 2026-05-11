@@ -901,6 +901,7 @@ export class MindEngine implements KnowledgeEngine {
     }
   }
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   constructor(
     config: KnowledgeEngineConfig,
     context: KnowledgeEngineFactoryContext,
@@ -1163,7 +1164,7 @@ export class MindEngine implements KnowledgeEngine {
     }
   }
 
-  async init(options?: MindEngineOptions): Promise<void> {
+  async init(_options?: MindEngineOptions): Promise<void> {
     // REMOVED: Fallback embedding provider creation
     // Mind MUST use only platform.embeddings (PlatformEmbeddingProvider)
     // No alternatives allowed - ensures analytics tracking works
@@ -1173,6 +1174,7 @@ export class MindEngine implements KnowledgeEngine {
     // No-op for now. Placeholder for future resource cleanup.
   }
 
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   async index(
     sources: KnowledgeSource[],
     options: KnowledgeIndexOptions,
@@ -1529,6 +1531,7 @@ export class MindEngine implements KnowledgeEngine {
   /**
    * Internal query execution method (without reasoning)
    */
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   private async executeQuery(
     query: KnowledgeQuery,
     context: KnowledgeExecutionContext,
@@ -2040,6 +2043,7 @@ export class MindEngine implements KnowledgeEngine {
   /**
    * Format chunk for context with compression support
    */
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   private async formatChunkForContext(
     chunk: KnowledgeChunk,
     query: string,
@@ -2138,8 +2142,10 @@ export class MindEngine implements KnowledgeEngine {
 
   private async collectChunks(
     sources: KnowledgeSource[],
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
   ): Promise<{ chunks: MindChunk[]; fileMetadata: Map<string, import('./vector-store/vector-store').FileMetadata> }> {
     const chunkList: MindChunk[] = [];
+    // eslint-disable-next-line @typescript-eslint/consistent-type-imports
     const fileMetadata = new Map<string, import('./vector-store/vector-store').FileMetadata>();
     
     for (const source of sources) {
@@ -2559,6 +2565,7 @@ function extractImportantParts(text: string, maxLength: number): string[] {
   for (const line of lines) {
     const trimmed = line.trim();
     // Check if line contains important keywords
+    // eslint-disable-next-line sonarjs/no-collapsible-if
     if (importantKeywords.some(keyword => trimmed.startsWith(keyword) || trimmed.includes(` ${keyword} `))) {
       // Include the line if it's not too long
       if (trimmed.length <= maxLength * 0.3) {

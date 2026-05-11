@@ -292,6 +292,7 @@ export class OverlayManager {
   /**
    * Get overlay status
    */
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   async getStatus(scopeId: string): Promise<OverlayStatus> {
     const status: OverlayStatus = {
       enabled: this.config.enabled,
@@ -403,7 +404,7 @@ export class OverlayManager {
   /**
    * Rebuild merged store from base + overlay
    */
-  private async rebuildMergedStore(scopeId: string): Promise<void> {
+  private async rebuildMergedStore(_scopeId: string): Promise<void> {
     if (!this.baseStore || !this.overlayStore) {
       this.mergedStore = null;
       return;

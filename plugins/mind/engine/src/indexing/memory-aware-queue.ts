@@ -199,7 +199,7 @@ export class MemoryAwareQueue<T> {
     const safeLimit = heapLimit * this.safeThreshold;
 
     // Calculate estimated memory for active tasks
-    const activeMemory = Array.from(this.activeTasks.values()).reduce((sum, mem) => sum + mem, 0);
+    const _activeMemory = Array.from(this.activeTasks.values()).reduce((sum, mem) => sum + mem, 0);
 
     // Get next task
     const nextTask = this.queue[0];

@@ -169,7 +169,7 @@ export class PlatformVectorStoreAdapter implements VectorStore {
           if (filters.pathMatcher && !filters.pathMatcher(chunk.path)) {return false;}
           return true;
         });
-      } catch (error) {
+      } catch (_error) {
         // Silently fall back to storage on query failure
       }
     }
@@ -303,7 +303,7 @@ export class PlatformVectorStoreAdapter implements VectorStore {
       }
 
       return existingSet;
-    } catch (error) {
+    } catch (_error) {
       // Return empty set on failure
       return new Set();
     }
@@ -338,7 +338,7 @@ export class PlatformVectorStoreAdapter implements VectorStore {
       }
 
       return map;
-    } catch (error) {
+    } catch (_error) {
       return new Map();
     }
   }
@@ -372,7 +372,7 @@ export class PlatformVectorStoreAdapter implements VectorStore {
       }
 
       return map;
-    } catch (error) {
+    } catch (_error) {
       return new Map();
     }
   }
@@ -387,7 +387,7 @@ export class PlatformVectorStoreAdapter implements VectorStore {
       const recordIds = chunkIds.map(id => this.makeRecordId(scopeId, id));
       await this.vectorStore.delete(recordIds);
       return chunkIds.length;
-    } catch (error) {
+    } catch (_error) {
       // Return 0 on failure
       return 0;
     }
@@ -422,6 +422,7 @@ export class PlatformVectorStoreAdapter implements VectorStore {
         const fileHash = result.metadata?.fileHash as string;
         const fileMtime = result.metadata?.fileMtime as number;
 
+        // eslint-disable-next-line sonarjs/no-collapsible-if
         if (path && fileHash !== undefined && fileMtime !== undefined) {
           // Only store if not already stored (first chunk wins)
           if (!fileMetadata.has(path)) {
@@ -435,7 +436,7 @@ export class PlatformVectorStoreAdapter implements VectorStore {
       }
 
       return fileMetadata;
-    } catch (error) {
+    } catch (_error) {
       // Return empty map on failure
       return new Map();
     }

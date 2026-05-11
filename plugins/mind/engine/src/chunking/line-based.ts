@@ -10,6 +10,7 @@ import type { SpanRange } from '../types/engine-contracts';
  * Line-based chunker (fallback for unsupported file types)
  */
 export class LineBasedChunker implements Chunker {
+  // eslint-disable-next-line sonarjs/no-duplicate-string
   readonly id = 'line-based';
   readonly extensions: string[] = []; // Matches all if no other chunker found
   readonly languages?: string[] = undefined; // Matches all if no other chunker found
@@ -64,6 +65,7 @@ export class LineBasedChunker implements Chunker {
    * Stream-based chunking for line-based files
    * Processes files line-by-line without split()
    */
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   async *chunkStream(filePath: string, options: ChunkingOptions = {}): AsyncGenerator<Chunk> {
     const maxLines = options.maxLines ?? 120;
     const minLines = options.minLines ?? 40;

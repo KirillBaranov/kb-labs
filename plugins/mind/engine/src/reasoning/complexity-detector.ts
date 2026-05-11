@@ -209,6 +209,7 @@ export class ComplexityDetector {
    * 
    * Returns structured result with score and reasoning.
    */
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   private async llmComplexity(queryText: string): Promise<{ score: number; reasons: string[] }> {
     if (!this.llmEngine) {
       return { score: 0, reasons: [] };

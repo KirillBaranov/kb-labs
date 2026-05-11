@@ -170,7 +170,7 @@ export class IncrementalIndexBuilder {
         }
 
         filesProcessed++;
-      } catch (error) {
+      } catch (_error) {
         // File might not exist (deleted but not committed)
         filesSkipped++;
       }

@@ -194,6 +194,7 @@ export class QdrantFeedbackStore implements FeedbackStore {
     }));
   }
 
+  // eslint-disable-next-line sonarjs/no-identical-functions
   async getAverageScore(chunkId: string, scopeId: string): Promise<number> {
     const feedbacks = await this.getChunkFeedback(chunkId, scopeId);
     if (feedbacks.length === 0) {return 0.5;}
@@ -357,7 +358,7 @@ export class SelfFeedbackGenerator {
         reasoning: parsed.reasoning ?? '',
         confidence: Math.max(0, Math.min(1, parsed.confidence ?? 0.7)),
       };
-    } catch (error) {
+    } catch (_error) {
       // Fallback to heuristic
       return this.heuristicScore(query, chunkText, chunkPath);
     }

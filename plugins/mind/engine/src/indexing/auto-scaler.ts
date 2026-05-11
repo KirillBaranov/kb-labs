@@ -144,7 +144,7 @@ export class AutoScaler {
   /**
    * Scale up (increase concurrency)
    */
-  private scaleUp(memoryRatio: number): void {
+  private scaleUp(_memoryRatio: number): void {
     // Scale up gradually when memory is low
     const factor = this.options.aggressive ? 1.5 : 1.25;
     this.targetWorkers = Math.min(

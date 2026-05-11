@@ -48,6 +48,7 @@ function mergeWorkspace(base: WorkspaceConfig | undefined, updates: Partial<Work
   };
 }
 
+// eslint-disable-next-line sonarjs/cognitive-complexity
 export async function resolveExecutionTarget(
   request: ExecutionRequest,
   platform: PlatformServices

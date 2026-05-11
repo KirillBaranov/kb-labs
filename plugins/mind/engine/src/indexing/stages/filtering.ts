@@ -134,6 +134,7 @@ export class FileFilteringStage implements PipelineStage {
   /**
    * Process a batch of files
    */
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   private async processBatch(
     batch: FileMetadata[],
     context: PipelineContext
@@ -228,7 +229,7 @@ export class FileFilteringStage implements PipelineStage {
   /**
    * Optional: Cleanup
    */
-  async cleanup(context: PipelineContext): Promise<void> {
+  async cleanup(_context: PipelineContext): Promise<void> {
     // Clear file list to free memory
     this.filteredFiles = [];
   }

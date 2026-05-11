@@ -89,7 +89,7 @@ export class VoyageAIEmbeddings implements IEmbeddings {
   }
 
   async embedBatch(texts: string[]): Promise<number[][]> {
-    if (texts.length === 0) return [];
+    if (texts.length === 0) {return [];}
     return this.request(texts);
   }
 

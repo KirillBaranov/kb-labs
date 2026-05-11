@@ -405,6 +405,7 @@ export interface PlatformTransportFactory {
    */
   createServer(
     platform: PlatformServices,
+    // eslint-disable-next-line @typescript-eslint/consistent-type-imports
     child: import('node:child_process').ChildProcess,
   ): PlatformTransportServer;
 
@@ -432,6 +433,7 @@ export interface RemoteOptions {
    * Injected externally — backend does not know what's behind it.
    * Example: GatewayDispatchTransport from @kb-labs/gateway-core.
    */
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
   transport: import('@kb-labs/core-contracts').IExecutionTransport;
 
   /**

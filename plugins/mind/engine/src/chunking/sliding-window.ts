@@ -53,6 +53,7 @@ const DEFAULT_OPTIONS: Required<SlidingWindowOptions> = {
  * }
  * ```
  */
+// eslint-disable-next-line sonarjs/cognitive-complexity
 export async function* slidingWindowStream(
   filePath: string,
   processor: (window: string, offsetLines: number) => Chunk[],

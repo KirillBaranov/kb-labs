@@ -134,7 +134,7 @@ Example format: ["sub-query 1", "sub-query 2", "sub-query 3"]`;
         complexityScore,
         subqueries,
       };
-    } catch (error) {
+    } catch (_error) {
       // Fallback: single query plan
       return {
         originalQuery,

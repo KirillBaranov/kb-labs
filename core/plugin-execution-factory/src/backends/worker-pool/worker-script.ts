@@ -135,7 +135,7 @@ function createStdoutUI(currentRequestId?: string): UIFacade {
       };
     },
     table: (data, columns) => {
-      if (data.length === 0) return;
+      if (data.length === 0) {return;}
       const cols = columns ?? Object.keys(data[0]!).map(k => ({ header: k, key: k }));
       const rows = data.map(row => cols.map(col => String(row[col.key] ?? '')));
       const lines = formatTable(

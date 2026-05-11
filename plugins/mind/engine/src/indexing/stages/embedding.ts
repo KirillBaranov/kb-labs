@@ -146,6 +146,7 @@ export class EmbeddingStage implements PipelineStage {
     const mutex = { locked: false };
 
     // Worker function - processes batches until none left
+    // eslint-disable-next-line sonarjs/cognitive-complexity
     const processBatches = async (): Promise<void> => {
       while (true) {
         // Atomically get next batch index
@@ -365,6 +366,7 @@ export class EmbeddingStage implements PipelineStage {
   /**
    * Embed batch with retry logic
    */
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   private async embedBatchWithRetry(
     texts: string[],
     context: PipelineContext
@@ -558,8 +560,8 @@ export class EmbeddingStage implements PipelineStage {
  */
 function enrichForEmbedding(chunk: MindChunk, sanitizedText: string): string {
   const meta = chunk.metadata as Record<string, unknown> | undefined;
-  if (!meta) return sanitizedText;
+  if (!meta) {return sanitizedText;}
   const name = (meta.functionName ?? meta.className ?? meta.typeName ?? meta.symbolName) as string | undefined;
-  if (!name) return sanitizedText;
+  if (!name) {return sanitizedText;}
   return `${sanitizedText}\n[Symbol: ${name}]`;
 }
