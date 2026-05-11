@@ -81,6 +81,7 @@ function createTestUI(): UIFacade {
     divider: vi.fn(),
     box: vi.fn(),
     sideBox: vi.fn(),
+    chain: vi.fn(),
 
     // Prompts
     confirm: vi.fn(async () => true),
