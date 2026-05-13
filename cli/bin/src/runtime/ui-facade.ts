@@ -5,8 +5,8 @@
  * Accepts an optional presenter to delegate spinner, debug, and table output.
  */
 
-import { sideBorderBox, sideBorderChain, safeColors, safeSymbols, formatTable, confirm as promptConfirm, text as promptText, select as promptSelect, multiSelect as promptMultiSelect } from '@kb-labs/shared-cli-ui';
-import type { UIFacade, MessageOptions, Spinner, SelectChoice, MultiSelectChoice, TableColumn, ChainItem } from '@kb-labs/plugin-contracts';
+import { sideBorderBox, sideBorderChain, safeColors, safeSymbols, formatTable, logLine, confirm as promptConfirm, text as promptText, select as promptSelect, multiSelect as promptMultiSelect } from '@kb-labs/shared-cli-ui';
+import type { UIFacade, UILogEntry, MessageOptions, Spinner, SelectChoice, MultiSelectChoice, TableColumn, ChainItem } from '@kb-labs/plugin-contracts';
 
 // Workspace root — used to shorten absolute paths in stack traces
 const WORKSPACE_ROOT = process.cwd();
@@ -224,6 +224,10 @@ export function createCLIUIFacade(presenter?: PresenterDelegate): UIFacade {
 
     multiSelect: async <T>(message: string, choices: MultiSelectChoice<T>[]) => {
       return promptMultiSelect({ message, choices });
+    },
+
+    log: (entry: UILogEntry) => {
+      process.stdout.write(logLine(entry.level as 'info' | 'warn' | 'error' | 'debug', entry.message) + '\n');
     },
   };
 }
