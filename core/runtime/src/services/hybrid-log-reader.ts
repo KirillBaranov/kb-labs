@@ -51,15 +51,24 @@ export class HybridLogReader implements ILogReader {
    * Query logs with filters and pagination.
    *
    * Strategy:
-   * 1. Prefer persistence (complete data)
-   * 2. Fallback to buffer (limited data)
-   * 3. Error if neither available
+   * 1. Persistence + buffer merged (both available) — handles flush-interval gap
+   * 2. Persistence only (no buffer)
+   * 3. Buffer only (no persistence)
+   * 4. Error if neither available
+   *
+   * Merging persistence + buffer is critical when logPersistence batches writes
+   * (e.g. flushInterval: 5000ms). Records written during that window are in the
+   * buffer but not yet in SQLite, so querying only persistence would miss them.
    */
   async query(
     filters: LogQuery,
     options: LogQueryOptions = {}
   ): Promise<LogQueryResult> {
-    // Strategy 1: Use persistence if available (preferred)
+    if (this.persistence && this.buffer) {
+      return this.queryMerged(filters, options);
+    }
+
+    // Persistence only (no buffer)
     if (this.persistence) {
       const result = await this.persistence.query(filters, {
         limit: options.limit,
@@ -76,15 +85,63 @@ export class HybridLogReader implements ILogReader {
       };
     }
 
-    // Strategy 2: Fallback to buffer (limited data)
+    // Buffer only
     if (this.buffer) {
       return this.queryFromBuffer(filters, options);
     }
 
-    // Strategy 3: No storage available
+    // No storage available
     throw new Error(
       'No log storage backend available. Configure logPersistence or logRingBuffer in kb.config.json'
     );
+  }
+
+  /**
+   * Query both persistence and buffer, merge results by ID (dedup).
+   * Buffer records not yet flushed to persistence fill the recency gap.
+   * @private
+   */
+  private async queryMerged(
+    filters: LogQuery,
+    options: LogQueryOptions
+  ): Promise<LogQueryResult> {
+    // Query persistence with a wide limit to get historical records
+    const persistenceResult = await this.persistence!.query(filters, {
+      limit: 2000,
+      offset: 0,
+      sortBy: options.sortBy,
+      sortOrder: options.sortOrder,
+    });
+
+    // Query buffer for recent records (no pagination — merge first, paginate after)
+    const bufferLogs = this.buffer!.query(filters);
+
+    // Build ID set from persistence for dedup
+    const persistenceIds = new Set(persistenceResult.logs.map((r) => r.id));
+
+    // Add buffer records not yet in persistence
+    const merged: LogRecord[] = [
+      ...persistenceResult.logs,
+      ...bufferLogs.filter((r) => !persistenceIds.has(r.id)),
+    ];
+
+    // Sort chronologically (oldest first by default; honour sortOrder if provided)
+    const sortOrder = options.sortOrder ?? 'asc';
+    merged.sort((a, b) =>
+      sortOrder === 'asc' ? a.timestamp - b.timestamp : b.timestamp - a.timestamp
+    );
+
+    // Paginate merged result
+    const limit = options.limit ?? 100;
+    const offset = options.offset ?? 0;
+    const page = merged.slice(offset, offset + limit);
+
+    return {
+      logs: page,
+      total: merged.length,
+      hasMore: offset + page.length < merged.length,
+      source: 'persistence',
+    };
   }
 
   /**
