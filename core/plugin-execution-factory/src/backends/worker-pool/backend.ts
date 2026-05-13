@@ -202,6 +202,7 @@ export class WorkerPoolBackend implements ExecutionBackend {
       const result = await this.pool!.execute(requestToExecute, {
         signal: options?.signal,
         onLog: options?.onLog,
+        onLoggerLog: options?.onLoggerLog,
         onUIPrompt,
       });
 

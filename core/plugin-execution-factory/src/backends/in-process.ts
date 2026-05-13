@@ -48,7 +48,7 @@ import type {
   PluginInvokerFn,
 } from '../types.js';
 import type { PlatformServices, UIFacade } from '@kb-labs/plugin-contracts';
-import type { IWorkspaceProvider, WorkspaceDescriptor } from '@kb-labs/core-platform';
+import type { ILogger, IWorkspaceProvider, WorkspaceDescriptor } from '@kb-labs/core-platform';
 import { noopUI } from '@kb-labs/plugin-contracts';
 import { runInProcess } from '@kb-labs/plugin-runtime';
 import { localWorkspaceManager } from '../workspace/local.js';
@@ -167,20 +167,27 @@ export class InProcessBackend implements ExecutionBackend {
       const ui = this.uiProvider(request.descriptor.hostType);
       const pluginInvoker = options?.pluginInvoker ?? this.pluginInvoker;
 
-      // 5. Create eventEmitter from onLog callback (if provided)
+      // 5. Create eventEmitter from onLog/onLoggerLog callbacks (if provided).
+      // Routes by event name — no payload inspection.
+      // See: plugins/workflow/docs/adr/0019-log-stream-separation.md
       const onLog = options?.onLog;
-      const eventEmitter = onLog
+      const onLoggerLog = options?.onLoggerLog;
+      const eventEmitter = (onLog || onLoggerLog)
         ? async (name: string, payload?: unknown) => {
-            if ((name === 'log.line' || name.endsWith(':log.line')) && payload && typeof payload === 'object') {
+            const isLogLine = name === 'log.line' || name.endsWith(':log.line');
+            const isLoggerLine = name === 'logger.line' || name.endsWith(':logger.line');
+            if ((isLogLine || isLoggerLine) && payload && typeof payload === 'object') {
               const p = payload as Record<string, unknown>;
-              onLog({
+              const entry = {
                 level: (p.level as string) ?? 'info',
                 message: (p.line as string) ?? '',
                 stream: (p.stream as 'stdout' | 'stderr') ?? 'stdout',
                 lineNo: (p.lineNo as number) ?? 0,
                 timestamp: new Date().toISOString(),
                 meta: p.meta as Record<string, unknown>,
-              });
+              };
+              if (isLogLine) onLog?.(entry);
+              else onLoggerLog?.(entry);
             }
           }
         : undefined;
@@ -189,9 +196,19 @@ export class InProcessBackend implements ExecutionBackend {
       // NOTE: request.descriptor is PluginContextDescriptor - passed AS-IS!
       // No conversion needed (v3 unified types).
       // v5: runInProcess returns RunResult<T> with raw data
+      //
+      // Optional loggerOverride in request.context allows hosts (e.g. workflow daemon)
+      // to replace platform.logger with a context-aware logger (e.g. stepLogger with runId/jobId/stepId).
+      // This makes ctx.logger.* write to SQLite with workflow context instead of generic platform context.
+      // See: plugins/workflow/docs/adr/0019-log-stream-separation.md
+      const loggerOverride = requestToExecute.context?.loggerOverride as ILogger | undefined;
+      const effectivePlatform = loggerOverride
+        ? { ...this.platform, logger: loggerOverride }
+        : this.platform;
+
       const runResult = await runInProcess({
         descriptor: requestToExecute.descriptor,  // Direct pass-through!
-        platform: this.platform,
+        platform: effectivePlatform,
         ui,
         pluginInvoker,
         eventEmitter,

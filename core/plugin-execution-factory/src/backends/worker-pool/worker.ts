@@ -82,6 +82,7 @@ export class Worker extends EventEmitter<WorkerEvents> {
     reject: (error: Error) => void;
     timeoutId: ReturnType<typeof setTimeout>;
     onLog?: (entry: { level: string; message: string; stream: 'stdout' | 'stderr'; lineNo: number; timestamp: string; meta?: Record<string, unknown> }) => void;
+    onLoggerLog?: (entry: { level: string; message: string; stream: 'stdout' | 'stderr'; lineNo: number; timestamp: string; meta?: Record<string, unknown> }) => void;
     onUIPrompt?: (prompt: UIPromptMessage) => Promise<unknown>;
   }>();
 
@@ -229,6 +230,7 @@ export class Worker extends EventEmitter<WorkerEvents> {
     timeoutMs: number,
     onLog?: (entry: { level: string; message: string; stream: 'stdout' | 'stderr'; lineNo: number; timestamp: string; meta?: Record<string, unknown> }) => void,
     onUIPrompt?: (prompt: UIPromptMessage) => Promise<unknown>,
+    onLoggerLog?: (entry: { level: string; message: string; stream: 'stdout' | 'stderr'; lineNo: number; timestamp: string; meta?: Record<string, unknown> }) => void,
   ): Promise<ExecutionResult> {
     if (this._state !== 'idle') {
       throw new Error(`Worker ${this.id} is not available (state: ${this._state})`);
@@ -271,6 +273,7 @@ export class Worker extends EventEmitter<WorkerEvents> {
         },
         timeoutId,
         onLog,
+        onLoggerLog,
         onUIPrompt,
       });
 
@@ -436,6 +439,16 @@ export class Worker extends EventEmitter<WorkerEvents> {
         const pending = this.pendingRequests.get(msg.requestId);
         if (pending?.onLog) {
           pending.onLog(msg.entry);
+        }
+        break;
+      }
+
+      case 'loggerLog': {
+        // ctx.logger.* entries — base logger already wrote to SQLite. See ADR-0019.
+        const msg = message as { type: 'loggerLog'; requestId: string; entry: LogWorkerMessage['entry'] };
+        const pending = this.pendingRequests.get(msg.requestId);
+        if (pending?.onLoggerLog) {
+          pending.onLoggerLog(msg.entry);
         }
         break;
       }

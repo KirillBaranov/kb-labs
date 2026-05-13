@@ -4,7 +4,7 @@
  * Request queue management for worker pool.
  */
 
-import type { QueuedRequest, WorkerPoolConfig } from './types.js';
+import type { QueuedRequest, UIPromptMessage, WorkerPoolConfig } from './types.js';
 import type { ExecutionRequest, ExecutionResult } from '../../types.js';
 import type { Worker } from './worker.js';
 import { AcquireTimeoutError } from '../../errors.js';
@@ -24,7 +24,10 @@ export class PoolQueueManager {
     worker: Worker,
     request: ExecutionRequest,
     timeoutMs: number,
-    startTime: number
+    startTime: number,
+    onLog?: (entry: { level: string; message: string; stream: 'stdout' | 'stderr'; lineNo: number; timestamp: string; meta?: Record<string, unknown> }) => void,
+    onUIPrompt?: (prompt: UIPromptMessage) => Promise<unknown>,
+    onLoggerLog?: (entry: { level: string; message: string; stream: 'stdout' | 'stderr'; lineNo: number; timestamp: string; meta?: Record<string, unknown> }) => void,
   ) => Promise<ExecutionResult>;
   private onAcquireTimeout: () => void;
 
@@ -37,7 +40,10 @@ export class PoolQueueManager {
         worker: Worker,
         request: ExecutionRequest,
         timeoutMs: number,
-        startTime: number
+        startTime: number,
+        onLog?: (entry: { level: string; message: string; stream: 'stdout' | 'stderr'; lineNo: number; timestamp: string; meta?: Record<string, unknown> }) => void,
+        onUIPrompt?: (prompt: UIPromptMessage) => Promise<unknown>,
+        onLoggerLog?: (entry: { level: string; message: string; stream: 'stdout' | 'stderr'; lineNo: number; timestamp: string; meta?: Record<string, unknown> }) => void,
       ) => Promise<ExecutionResult>;
       onAcquireTimeout: () => void;
     }
@@ -73,7 +79,10 @@ export class PoolQueueManager {
     request: ExecutionRequest,
     signal: AbortSignal | undefined,
     timeoutMs: number,
-    startTime: number
+    startTime: number,
+    onLog?: (entry: { level: string; message: string; stream: 'stdout' | 'stderr'; lineNo: number; timestamp: string; meta?: Record<string, unknown> }) => void,
+    onLoggerLog?: (entry: { level: string; message: string; stream: 'stdout' | 'stderr'; lineNo: number; timestamp: string; meta?: Record<string, unknown> }) => void,
+    onUIPrompt?: (prompt: UIPromptMessage) => Promise<unknown>,
   ): Promise<ExecutionResult> {
     return new Promise<ExecutionResult>((resolve, reject) => {
       const queuedAt = Date.now();
@@ -129,6 +138,9 @@ export class PoolQueueManager {
         request,
         signal,
         queuedAt,
+        onLog,
+        onLoggerLog,
+        onUIPrompt,
         resolve: (result) => {
           clearTimeout(acquireTimeout);
           if (signal) {
@@ -179,7 +191,7 @@ export class PoolQueueManager {
       const timeoutMs = queued.request.timeoutMs ?? 30_000;
       const startTime = queued.queuedAt;
 
-      this.onExecuteOnWorker(worker, queued.request, timeoutMs, startTime)
+      this.onExecuteOnWorker(worker, queued.request, timeoutMs, startTime, queued.onLog, queued.onUIPrompt, queued.onLoggerLog)
         .then((result) => {
           queued.resolve(result);
           // Process more from queue

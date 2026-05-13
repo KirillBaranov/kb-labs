@@ -242,18 +242,28 @@ export type OnLogCallback = (entry: LogEntry) => void;
 
 /**
  * Execute options.
+ *
+ * Two log callbacks are provided to implement stream separation.
+ * See: plugins/workflow/docs/adr/0019-log-stream-separation.md
  */
 export interface ExecuteOptions {
   signal?: AbortSignal;
   pluginInvoker?: PluginInvokerFn;
   /**
-   * Callback for receiving real-time log entries during execution.
+   * Callback for ui/shell log entries ('log.line' events from StreamingUI + shell capture).
+   * Host is responsible for SQLite persistence (e.g. stepLogger.info()).
    * Each backend implements this differently:
    * - InProcess: eventEmitter → onLog directly
-   * - Subprocess/WorkerPool: IPC LogMessage → parent → onLog
-   * - Remote: streaming transport → onLog
+   * - WorkerPool: IPC type:'log' → parent → onLog
    */
   onLog?: OnLogCallback;
+  /**
+   * Callback for ctx.logger.* entries ('logger.line' events from StreamingLogger).
+   * Base logger has already persisted to SQLite. Host typically only calls publishLog() for SSE.
+   * - InProcess: eventEmitter → onLoggerLog directly
+   * - WorkerPool: IPC type:'loggerLog' → parent → onLoggerLog
+   */
+  onLoggerLog?: OnLogCallback;
   [key: string]: unknown;
 }
 

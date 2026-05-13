@@ -102,8 +102,8 @@ export class WorkerPool extends EventEmitter<PoolEvents> {
       onTrackQueueWaitTime: (waitTimeMs) =>
         this.statsTracker.trackQueueWaitTime(waitTimeMs),
       onGetAvailableWorker: () => this.executor.getAvailableWorker(),
-      onExecuteOnWorker: (worker, request, timeoutMs, startTime) =>
-        this.executor.executeOnWorker(worker, request, timeoutMs, startTime),
+      onExecuteOnWorker: (worker, request, timeoutMs, startTime, onLog, onUIPrompt, onLoggerLog) =>
+        this.executor.executeOnWorker(worker, request, timeoutMs, startTime, onLog, onUIPrompt, onLoggerLog),
       onAcquireTimeout: () => {
         this.statsTracker.stats.acquireTimeouts++;
       },
@@ -152,6 +152,7 @@ export class WorkerPool extends EventEmitter<PoolEvents> {
     options?: {
       signal?: AbortSignal;
       onLog?: (entry: { level: string; message: string; stream: 'stdout' | 'stderr'; lineNo: number; timestamp: string; meta?: Record<string, unknown> }) => void;
+      onLoggerLog?: (entry: { level: string; message: string; stream: 'stdout' | 'stderr'; lineNo: number; timestamp: string; meta?: Record<string, unknown> }) => void;
       onUIPrompt?: (prompt: UIPromptMessage) => Promise<unknown>;
     }
   ): Promise<ExecutionResult> {
@@ -206,6 +207,7 @@ export class WorkerPool extends EventEmitter<PoolEvents> {
           startTime,
           options?.onLog,
           options?.onUIPrompt,
+          options?.onLoggerLog,
         );
       }
 
@@ -237,7 +239,10 @@ export class WorkerPool extends EventEmitter<PoolEvents> {
         request,
         options?.signal,
         timeoutMs,
-        startTime
+        startTime,
+        options?.onLog,
+        options?.onLoggerLog,
+        options?.onUIPrompt,
       );
     } finally {
       this.statsTracker.decrementPluginConcurrency(pluginId);
