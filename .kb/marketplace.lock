@@ -279,7 +279,7 @@
       "enabled": true
     },
     "@kb-labs/workflow": {
-      "version": "2.14.0",
+      "version": "2.94.0",
       "integrity": "sha256-2XSsOAlQLzlBZlXaBnr3UavrGTu6zrsJxy28ys0aTKk=",
       "resolvedPath": "./plugins/workflow/entry",
       "installedAt": "2026-04-12T15:19:02.455Z",
@@ -297,7 +297,7 @@
     },
     "@kb-labs/review": {
       "version": "2.14.0",
-      "integrity": "sha256-DTglPanDmqckdRd7wXemOm2WiYUvYyr99D6YEq2B1BI=",
+      "integrity": "sha256-YsTtRx7BW+oK9dScgWQ+3J64NTTujlNOHQVunJT2t6c=",
       "resolvedPath": "./plugins/review/entry",
       "installedAt": "2026-04-12T15:19:02.456Z",
       "source": "local",
@@ -342,7 +342,7 @@
     },
     "@kb-labs/mind": {
       "version": "2.14.0",
-      "integrity": "sha256-QXkPyFELnl42Y7PtHlnOaljuvx+O1eQ2xpffTK7WLNI=",
+      "integrity": "sha256-T+5P+wbYwbMwXplvjIrnVNLIAQa3PMjY39sQ6Hedy10=",
       "resolvedPath": "./plugins/mind/entry",
       "installedAt": "2026-04-12T15:19:02.773Z",
       "source": "local",
