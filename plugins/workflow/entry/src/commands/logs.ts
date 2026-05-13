@@ -1,5 +1,5 @@
 /**
- * workflow:logs command - Get job logs
+ * workflow:logs command - Get job or run logs
  */
 
 import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
@@ -8,49 +8,56 @@ import { WorkflowDaemonClient } from '../http-client.js';
 
 type LogsInput = LogsFlags & { argv?: string[]; flags?: LogsFlags };
 
+type LogEntry = { level: string; message: string; timestamp: string; stepId?: string; [key: string]: unknown };
+
+function renderLogs(ctx: PluginContextV3, logs: LogEntry[], outputJson: boolean): void {
+  if (outputJson) {
+    ctx.ui?.json?.({ ok: true, data: { logs } });
+    return;
+  }
+
+  if (logs.length === 0) {
+    ctx.ui?.warn?.('No logs found');
+    return;
+  }
+
+  for (const log of logs) {
+    const level = (log.level ?? 'info') as 'info' | 'warn' | 'error' | 'debug';
+    const prefix = log.stepId ? `[${log.stepId}] ` : '';
+    ctx.ui?.log?.({ level, message: `${prefix}${log.message}` });
+  }
+}
+
 export default defineCommand<unknown, LogsInput, { exitCode: number }>({
   id: 'workflow:logs',
-  description: 'Get logs for a workflow job',
+  description: 'Get logs for a workflow job or run',
 
   handler: {
     async execute(ctx: PluginContextV3, input: LogsInput): Promise<{ exitCode: number }> {
       const flags = input.flags ?? input;
       const outputJson = flags.json ?? false;
       const jobId = flags['job-id'];
+      const runId = flags['run-id'];
 
-      if (!jobId) {
+      if (!jobId && !runId) {
         if (outputJson) {
-          ctx.ui?.json?.({ ok: false, error: 'Missing required flag: --job-id' });
+          ctx.ui?.json?.({ ok: false, error: 'Missing required flag: --job-id or --run-id' });
         } else {
-          ctx.ui?.error?.('Missing required flag: --job-id');
-          ctx.ui?.info?.('Usage: kb workflow logs --job-id=<job-id>');
+          ctx.ui?.error?.('Missing required flag: --job-id or --run-id');
+          ctx.ui?.info?.('Usage: kb workflow logs --run-id=<run-id>');
         }
         return { exitCode: 1 };
       }
 
       try {
         const client = new WorkflowDaemonClient();
-        const logs = await client.getJobLogs(jobId);
 
-        if (outputJson) {
-          ctx.ui?.json?.({ ok: true, data: { logs } });
+        if (runId) {
+          const logs = await client.getRunLogs(runId);
+          renderLogs(ctx, logs, outputJson);
         } else {
-          if (logs.length === 0) {
-            ctx.ui?.warn?.('No logs available (platform.logger integration pending)');
-          } else {
-            const logItems = logs.map(log => {
-              const level = log.level?.toUpperCase() || 'INFO';
-              return `[${level}] ${log.message}`;
-            });
-
-            ctx.ui?.success?.('Job Logs Retrieved', {
-              title: 'Workflow Job',
-              sections: [
-                { header: 'Job ID', items: [jobId] },
-                { header: 'Logs', items: logItems },
-              ],
-            });
-          }
+          const logs = await client.getJobLogs(jobId!);
+          renderLogs(ctx, logs as LogEntry[], outputJson);
         }
 
         return { exitCode: 0 };
@@ -60,7 +67,7 @@ export default defineCommand<unknown, LogsInput, { exitCode: number }>({
         if (outputJson) {
           ctx.ui?.json?.({ ok: false, error: message });
         } else {
-          ctx.ui?.error?.(`Failed to get job logs: ${message}`);
+          ctx.ui?.error?.(`Failed to get logs: ${message}`);
         }
 
         return { exitCode: 1 };
@@ -68,4 +75,3 @@ export default defineCommand<unknown, LogsInput, { exitCode: number }>({
     },
   },
 });
-
