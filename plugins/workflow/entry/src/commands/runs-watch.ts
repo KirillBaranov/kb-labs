@@ -77,11 +77,15 @@ export default defineCommand<unknown, CLIInput<RunsWatchFlags>, { exitCode: numb
               }
 
               // Stream log lines from handler (ctx.logger.* / ctx.ui.* / console.log)
+              // Rendered as compact single lines, not boxes.
+              // See: plugins/workflow/docs/adr/0019-log-stream-separation.md
               if (event.type === 'log.appended') {
-                const p = event.payload as { level?: string; message?: string; stream?: string } | undefined;
-                const lvl = p?.level === 'error' || p?.stream === 'stderr' ? 'ERR' : 'LOG';
-                const step = event.stepId ? ` [${event.stepId}]` : '';
-                ctx.ui?.info?.(`  ${lvl}${step} ${p?.message ?? ''}`);
+                const p = event.payload as { level?: string; message?: string } | undefined;
+                const prefix = event.stepId ? `[${event.stepId}] ` : '';
+                ctx.ui?.log?.({
+                  level: (p?.level ?? 'info') as 'info' | 'warn' | 'error' | 'debug',
+                  message: `${prefix}${p?.message ?? ''}`,
+                });
                 continue;
               }
 
@@ -90,12 +94,12 @@ export default defineCommand<unknown, CLIInput<RunsWatchFlags>, { exitCode: numb
               const job = event.jobId ? ` job:${event.jobId}` : '';
               const summary = event.payload?.['summary'] ?? event.payload?.['error'] ?? '';
 
-              ctx.ui?.info?.(`${icon} ${event.type}${job}${step}${summary ? `  —  ${summary}` : ''}`);
+              ctx.ui?.write?.(`${icon} ${event.type}${job}${step}${summary ? `  —  ${summary}` : ''}`);
 
               // Terminal events
               if (event.type === 'run.finished' || event.type === 'run.failed' || event.type === 'run.cancelled') {
                 const finalStatus = event.payload?.['status'] as string ?? event.type.split('.')[1];
-                ctx.ui?.info?.(`Run ${finalStatus.toUpperCase()}. Use 'kb workflow runs-view ${runId}' for details.`);
+                ctx.ui?.write?.(`Run ${finalStatus.toUpperCase()}. Use 'kb workflow runs-view ${runId}' for details.`);
                 return { exitCode: finalStatus === 'failed' ? 1 : 0 };
               }
             } catch {

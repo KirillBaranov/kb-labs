@@ -9,7 +9,7 @@
  * Symmetric to StreamingLogger but for UI output.
  */
 
-import type { UIFacade, MessageOptions, Spinner } from '@kb-labs/plugin-contracts';
+import type { UIFacade, UILogEntry, MessageOptions, Spinner } from '@kb-labs/plugin-contracts';
 import type { EventEmitterFn } from '../api/index.js';
 
 const ANSI_RE = /\x1b\[[0-9;]*[A-Za-z]/g;
@@ -82,6 +82,14 @@ export function createStreamingUI(base: UIFacade, emitter: EventEmitterFn): UIFa
           s.stop();
         },
       };
+    },
+
+    log(entry: UILogEntry) {
+      base.log(entry);
+      const line = entry.fields
+        ? `${entry.message} ${JSON.stringify(entry.fields)}`
+        : entry.message;
+      emit(line, entry.level, entry.level === 'error' ? 'stderr' : 'stdout');
     },
 
     // Non-interactive context — return safe defaults silently

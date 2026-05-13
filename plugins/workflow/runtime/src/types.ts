@@ -1,6 +1,7 @@
 import type { StepSpec } from '@kb-labs/workflow-contracts'
 import type { ArtifactClient } from '@kb-labs/workflow-artifacts'
 import type { StepState } from '@kb-labs/workflow-constants'
+import type { ILogger } from '@kb-labs/core-platform'
 import type {
   PluginContextV3 as PluginContext,
   ExecutionTarget,
@@ -38,6 +39,14 @@ export interface StepContext {
   trace?: RuntimeTrace
   pluginContext?: PluginContext
   onLog?: (entry: { level: string; message: string; stream: 'stdout' | 'stderr'; lineNo: number; timestamp: string; meta?: Record<string, unknown> }) => void
+  onLoggerLog?: (entry: { level: string; message: string; stream: 'stdout' | 'stderr'; lineNo: number; timestamp: string; meta?: Record<string, unknown> }) => void
+  /**
+   * Optional logger override for ctx.logger.* base.
+   * When set, InProcessBackend uses this instead of platform.logger as StreamingLogger base.
+   * Use stepLogger (with runId/jobId/stepId) here to persist ctx.logger.* with workflow context.
+   * See: plugins/workflow/docs/adr/0019-log-stream-separation.md
+   */
+  loggerOverride?: ILogger
 }
 
 export interface StepExecutionRequest {
