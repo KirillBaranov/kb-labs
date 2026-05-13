@@ -31,6 +31,7 @@ exports[`SDK Exports Snapshot > Test Context Structure > should match UI methods
   "error",
   "info",
   "json",
+  "log",
   "multiSelect",
   "newline",
   "prompt",

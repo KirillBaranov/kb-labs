@@ -186,8 +186,8 @@ export class InProcessBackend implements ExecutionBackend {
                 timestamp: new Date().toISOString(),
                 meta: p.meta as Record<string, unknown>,
               };
-              if (isLogLine) onLog?.(entry);
-              else onLoggerLog?.(entry);
+              if (isLogLine) { onLog?.(entry); }
+              else { onLoggerLog?.(entry); }
             }
           }
         : undefined;
