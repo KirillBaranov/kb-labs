@@ -141,6 +141,7 @@ function createStdoutUI(): UIFacade {
     prompt: async (_msg, opts) => opts?.default ?? '',
     select: async (_msg, choices) => choices[0]?.value as never,
     multiSelect: async (_msg, choices) => choices.filter((c) => c.checked).map((c) => c.value) as never,
+    log: () => {},
   };
 }
 

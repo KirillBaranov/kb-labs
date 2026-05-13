@@ -31,7 +31,11 @@ export const logsFlags = defineFlags({
   },
   'job-id': {
     type: 'string',
-    description: 'Job ID to get logs for (required)',
+    description: 'Job ID to get logs for',
+  },
+  'run-id': {
+    type: 'string',
+    description: 'Run ID to get logs for (all steps)',
   },
   follow: {
     type: 'boolean',

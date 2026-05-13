@@ -162,7 +162,7 @@ export class SandboxRunner implements Runner {
       uses: spec.uses,
     }).catch(() => {})
 
-    const result = await this.backend.execute(executionRequest, { signal, onLog: context.onLog })
+    const result = await this.backend.execute(executionRequest, { signal, onLog: context.onLog, onLoggerLog: context.onLoggerLog })
     const duration = Date.now() - startTime
 
     // Log result and track analytics
@@ -300,6 +300,12 @@ export class SandboxRunner implements Runner {
         : undefined,
       timeoutMs: request.spec.timeoutMs ?? resolution.permissions.quotas?.timeoutMs ?? this.defaultTimeout,
       target: request.target,
+      // Pass loggerOverride so InProcessBackend can use it as ctx.logger base.
+      // Allows hosts (e.g. workflow daemon stepLogger) to write to SQLite with workflow context.
+      // See: plugins/workflow/docs/adr/0019-log-stream-separation.md
+      context: context.loggerOverride
+        ? { loggerOverride: context.loggerOverride }
+        : undefined,
     }
   }
 

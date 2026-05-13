@@ -744,7 +744,23 @@ export async function createWorkflowWorker(
                 spanId: stepExecutionId,
                 parentSpanId: job.id,
               },
+              // stepLogger as loggerOverride: ctx.logger.* in the plugin will use stepLogger
+              // as its base, writing to SQLite with runId/jobId/stepId context.
+              // See: plugins/workflow/docs/adr/0019-log-stream-separation.md
+              loggerOverride: stepLogger,
+              // ui/shell log entries: persist to SQLite with workflow context + publish for SSE.
+              // See: plugins/workflow/docs/adr/0019-log-stream-separation.md
               onLog: (entry) => {
+                stepLogger.info(entry.message, {
+                  stream: entry.stream,
+                  lineNo: entry.lineNo,
+                  logSource: entry.stream === 'stderr' ? 'stderr' : 'stdout',
+                });
+                void engine.publishLog(run.id, job.id, step.id, entry);
+              },
+              // ctx.logger.* entries: stepLogger base already wrote to SQLite. Only publish for SSE.
+              // See: plugins/workflow/docs/adr/0019-log-stream-separation.md
+              onLoggerLog: (entry) => {
                 void engine.publishLog(run.id, job.id, step.id, entry);
               },
             },
