@@ -3,8 +3,9 @@
  *
  * Tests for streaming logger proxy.
  *
- * The streaming logger wraps ILogger to also emit log.line events
- * through an eventEmitter, enabling real-time log streaming to Studio UI.
+ * The streaming logger wraps ILogger to also emit 'logger.line' events
+ * (NOT 'log.line') through an eventEmitter, enabling routing in execution hosts.
+ * See: plugins/workflow/docs/adr/0019-log-stream-separation.md
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -44,7 +45,7 @@ describe('createStreamingLogger', () => {
     expect(base.fatal).toHaveBeenCalledWith('fatal');
   });
 
-  it('should emit log.line events for info/warn/error/fatal', () => {
+  it('should emit logger.line events (NOT log.line) for info/warn/error/fatal', () => {
     const base = createMockLogger();
     const emitter: EventEmitterFn = vi.fn(async () => {});
     const logger = createStreamingLogger(base, emitter);
@@ -56,37 +57,49 @@ describe('createStreamingLogger', () => {
 
     expect(emitter).toHaveBeenCalledTimes(4);
 
-    // info → stdout
-    expect(emitter).toHaveBeenNthCalledWith(1, 'log.line', {
+    // Must be 'logger.line', never 'log.line' — ADR-0019
+    expect(emitter).toHaveBeenNthCalledWith(1, 'logger.line', {
       stream: 'stdout',
       line: 'hello',
       lineNo: 1,
       level: 'info',
     });
 
-    // warn → stderr
-    expect(emitter).toHaveBeenNthCalledWith(2, 'log.line', {
+    expect(emitter).toHaveBeenNthCalledWith(2, 'logger.line', {
       stream: 'stderr',
       line: 'warning',
       lineNo: 2,
       level: 'warn',
     });
 
-    // error → stderr
-    expect(emitter).toHaveBeenNthCalledWith(3, 'log.line', {
+    expect(emitter).toHaveBeenNthCalledWith(3, 'logger.line', {
       stream: 'stderr',
       line: 'error msg',
       lineNo: 3,
       level: 'error',
     });
 
-    // fatal → stderr
-    expect(emitter).toHaveBeenNthCalledWith(4, 'log.line', {
+    expect(emitter).toHaveBeenNthCalledWith(4, 'logger.line', {
       stream: 'stderr',
       line: 'fatal msg',
       lineNo: 4,
       level: 'fatal',
     });
+  });
+
+  it('should never emit log.line (ui/shell namespace)', () => {
+    const base = createMockLogger();
+    const emitter: EventEmitterFn = vi.fn(async () => {});
+    const logger = createStreamingLogger(base, emitter);
+
+    logger.info('x');
+    logger.warn('y');
+    logger.error('z');
+
+    const calls = (emitter as ReturnType<typeof vi.fn>).mock.calls;
+    for (const [eventName] of calls) {
+      expect(eventName).not.toBe('log.line');
+    }
   });
 
   it('should NOT emit events for trace and debug', () => {
@@ -144,8 +157,8 @@ describe('createStreamingLogger', () => {
     // Child logger should also stream
     child.info('child msg');
 
-    // Emitter should be called (once from child.info)
-    expect(emitter).toHaveBeenCalledWith('log.line', expect.objectContaining({
+    // Emitter should be called with 'logger.line' (once from child.info)
+    expect(emitter).toHaveBeenCalledWith('logger.line', expect.objectContaining({
       line: 'child msg',
       stream: 'stdout',
       level: 'info',

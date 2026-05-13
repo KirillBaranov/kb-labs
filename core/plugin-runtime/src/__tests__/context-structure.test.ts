@@ -32,6 +32,7 @@ describe('Context Structure (Runtime Verification)', () => {
     prompt: vi.fn(async () => 'test'),
     select: vi.fn(async () => undefined) as UIFacade['select'],
     multiSelect: vi.fn(async () => []) as UIFacade['multiSelect'],
+    log: vi.fn(),
   };
 
   const mockLogger = {

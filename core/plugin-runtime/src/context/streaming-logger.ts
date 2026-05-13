@@ -3,8 +3,14 @@
  *
  * Used in workflow context to stream plugin logs to Studio UI in real-time.
  * When eventEmitter is provided (workflow host), every info/warn/error call
- * also fires a 'log.line' event that flows through:
- *   eventEmitter → onLog callback → EventBus → SSE → Studio
+ * also fires a 'logger.line' event (NOT 'log.line') that flows through:
+ *   eventEmitter → onLoggerLog callback → publishLog() → EventBus → SSE
+ *
+ * WHY 'logger.line' and not 'log.line':
+ *   The base logger already persists entries to SQLite. Using a distinct event
+ *   name lets the execution host route these entries to onLoggerLog (SSE only)
+ *   vs onLog (ui/shell entries that need both SQLite + SSE).
+ *   See: plugins/workflow/docs/adr/0019-log-stream-separation.md
  *
  * trace and debug levels are NOT streamed — too noisy for UI.
  */
@@ -19,7 +25,7 @@ export function createStreamingLogger(base: ILogger, emitter: EventEmitterFn): I
     (message: string, ...args: unknown[]) => {
       (original as (msg: string, ...a: unknown[]) => void).call(base, message, ...args);
       lineNo++;
-      void emitter('log.line', {
+      void emitter('logger.line', {
         stream: level === 'error' || level === 'warn' || level === 'fatal' ? 'stderr' : 'stdout',
         line: message,
         lineNo,

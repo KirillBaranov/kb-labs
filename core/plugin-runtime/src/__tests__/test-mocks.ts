@@ -171,5 +171,6 @@ export function createMockUI(): UIFacade {
     prompt: vi.fn(async () => 'test'),
     select: vi.fn(async (_msg: unknown, choices: Array<{ value: unknown }>) => choices[0]?.value) as UIFacade['select'],
     multiSelect: vi.fn(async () => []) as UIFacade['multiSelect'],
+    log: vi.fn(),
   };
 }
