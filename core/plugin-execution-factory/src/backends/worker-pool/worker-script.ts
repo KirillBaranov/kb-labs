@@ -21,7 +21,7 @@ import type {
   UIPromptMessage,
   UIPromptResultMessage,
 } from './types.js';
-import type { PlatformServices, UIFacade, MessageOptions } from '@kb-labs/plugin-contracts';
+import type { PlatformServices, UIFacade, UILogEntry, MessageOptions } from '@kb-labs/plugin-contracts';
 import { IPCTransport, UnixSocketTransport, createProxyPlatform } from '@kb-labs/core-ipc';
 import type { ITransport } from '@kb-labs/core-ipc';
 import { createGovernedPlatformServices } from '@kb-labs/plugin-runtime';
@@ -196,6 +196,11 @@ function createStdoutUI(currentRequestId?: string): UIFacade {
       if (!currentRequestId) {return defaultValue as never;}
       return ipcPrompt(currentRequestId, { kind: 'multiSelect', message: msg, choices, defaultValue }, defaultValue) as Promise<never>;
     },
+
+    log: (entry: UILogEntry) => {
+      const msg = entry.fields ? `${entry.message} ${JSON.stringify(entry.fields)}` : entry.message;
+      console.log(`[${entry.level.toUpperCase()}] ${msg}`);
+    },
   };
 }
 
@@ -205,7 +210,6 @@ function createStdoutUI(currentRequestId?: string): UIFacade {
 async function handleExecute(message: ExecuteMessage): Promise<void> {
   const { requestId, request, timeoutMs: _timeoutMs } = message;
   const startMs = Date.now();
-
   try {
     // Dynamic import to avoid loading at startup
     const { runInProcess, createStreamingUI } = await import('@kb-labs/plugin-runtime');
@@ -255,23 +259,28 @@ async function handleExecute(message: ExecuteMessage): Promise<void> {
     const jsonMode = Boolean(inputFlags['json']);
     if (jsonMode) { setJsonMode(true); }
 
-    // eventEmitter sends log lines to parent pool via IPC
+    // Capture original write before any interception (used by debug + makeCapture).
+    type WriteFn = (chunk: string | Uint8Array, encoding?: BufferEncoding | ((err?: Error | null) => void), cb?: (err?: Error | null) => void) => boolean;
+    const origStdoutWrite = process.stdout.write.bind(process.stdout) as WriteFn;
+    const origStderrWrite = process.stderr.write.bind(process.stderr) as WriteFn;
+
+    // eventEmitter sends log lines to parent pool via IPC.
+    // Routes by event name — 'log.line' (ui/shell) vs 'logger.line' (ctx.logger.*).
+    // See: plugins/workflow/docs/adr/0019-log-stream-separation.md
     const eventEmitter = async (name: string, payload?: unknown) => {
-      if ((name === 'log.line' || name.endsWith(':log.line')) && payload && typeof payload === 'object') {
+      const isLogLine = name === 'log.line' || name.endsWith(':log.line');
+      const isLoggerLine = name === 'logger.line' || name.endsWith(':logger.line');
+      if ((isLogLine || isLoggerLine) && payload && typeof payload === 'object') {
         const p = payload as Record<string, unknown>;
-        const logMsg: LogWorkerMessage = {
-          type: 'log',
-          requestId,
-          entry: {
-            level: (p.level as string) ?? 'info',
-            message: (p.line as string) ?? '',
-            stream: (p.stream as 'stdout' | 'stderr') ?? 'stdout',
-            lineNo: (p.lineNo as number) ?? 0,
-            timestamp: new Date().toISOString(),
-            meta: p.meta as Record<string, unknown> | undefined,
-          },
+        const entry = {
+          level: (p.level as string) ?? 'info',
+          message: (p.line as string) ?? '',
+          stream: (p.stream as 'stdout' | 'stderr') ?? 'stdout',
+          lineNo: (p.lineNo as number) ?? 0,
+          timestamp: new Date().toISOString(),
+          meta: p.meta as Record<string, unknown> | undefined,
         };
-        process.send!(logMsg);
+        process.send!({ type: isLoggerLine ? 'loggerLog' : 'log', requestId, entry });
       }
     };
 
@@ -298,9 +307,6 @@ async function handleExecute(message: ExecuteMessage): Promise<void> {
       }
     };
 
-    type WriteFn = (chunk: string | Uint8Array, encoding?: BufferEncoding | ((err?: Error | null) => void), cb?: (err?: Error | null) => void) => boolean;
-    const origStdoutWrite = process.stdout.write.bind(process.stdout) as WriteFn;
-    const origStderrWrite = process.stderr.write.bind(process.stderr) as WriteFn;
     const makeCapture = (orig: WriteFn, stream: 'stdout' | 'stderr'): WriteFn =>
       (chunk, encoding?, cb?) => {
         sendRawLine(typeof chunk === 'string' ? chunk : Buffer.from(chunk).toString('utf8'), stream);

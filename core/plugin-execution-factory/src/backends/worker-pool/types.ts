@@ -125,7 +125,8 @@ export type WorkerMessageType =
   | 'execute'        // Pool -> Worker: execute request
   | 'result'         // Worker -> Pool: execution result
   | 'error'          // Worker -> Pool: execution error
-  | 'log'            // Worker -> Pool: log entry (real-time streaming)
+  | 'log'            // Worker -> Pool: ui/shell log entry (log.line events)
+  | 'loggerLog'      // Worker -> Pool: ctx.logger.* log entry (logger.line events). See ADR-0019.
   | 'health'         // Pool -> Worker: health check request
   | 'healthOk'       // Worker -> Pool: health check response
   | 'shutdown'       // Pool -> Worker: graceful shutdown
@@ -210,10 +211,28 @@ export interface ReadyMessage extends BaseWorkerMessage {
 }
 
 /**
- * Log entry message (Worker -> Pool) for real-time log streaming.
+ * Log entry message (Worker -> Pool) for ui/shell log streaming ('log.line' events).
+ * Host is responsible for SQLite persistence. See ADR-0019.
  */
 export interface LogWorkerMessage extends BaseWorkerMessage {
   type: 'log';
+  requestId: string;
+  entry: {
+    level: string;
+    message: string;
+    stream: 'stdout' | 'stderr';
+    lineNo: number;
+    timestamp: string;
+    meta?: Record<string, unknown>;
+  };
+}
+
+/**
+ * Logger log entry message (Worker -> Pool) for ctx.logger.* streaming ('logger.line' events).
+ * Base logger has already persisted to SQLite. Host typically only calls publishLog(). See ADR-0019.
+ */
+export interface LoggerLogWorkerMessage extends BaseWorkerMessage {
+  type: 'loggerLog';
   requestId: string;
   entry: {
     level: string;
@@ -256,6 +275,7 @@ export type WorkerMessage =
   | ResultMessage
   | ErrorMessage
   | LogWorkerMessage
+  | LoggerLogWorkerMessage
   | HealthMessage
   | HealthOkMessage
   | ShutdownMessage
@@ -288,6 +308,15 @@ export interface QueuedRequest {
 
   /** Reject callback for promise (for timeout/abort) */
   reject: (error: Error) => void;
+
+  /** ui/shell log callback — passed through to worker.execute() */
+  onLog?: (entry: { level: string; message: string; stream: 'stdout' | 'stderr'; lineNo: number; timestamp: string; meta?: Record<string, unknown> }) => void;
+
+  /** ctx.logger.* log callback — passed through to worker.execute() */
+  onLoggerLog?: (entry: { level: string; message: string; stream: 'stdout' | 'stderr'; lineNo: number; timestamp: string; meta?: Record<string, unknown> }) => void;
+
+  /** UI prompt callback — passed through to worker.execute() */
+  onUIPrompt?: (prompt: UIPromptMessage) => Promise<unknown>;
 }
 
 // ============================================================================
