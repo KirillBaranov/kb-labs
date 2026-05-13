@@ -112,6 +112,17 @@ export interface Symbols {
 }
 
 /**
+ * Structured log entry for ctx.ui.log().
+ * Stateless, fire-and-forget, no boxing.
+ * See UIFacade.log() for full semantics.
+ */
+export interface UILogEntry {
+  level: 'info' | 'warn' | 'error' | 'debug';
+  message: string;
+  fields?: Record<string, unknown>;
+}
+
+/**
  * UI Facade interface
  *
  * All output goes through this interface so plugins don't need to know
@@ -284,6 +295,20 @@ export interface UIFacade {
    * In worker pool, relayed via IPC to the host process.
    */
   multiSelect<T = string>(message: string, choices: MultiSelectChoice<T>[]): Promise<T[]>;
+
+  /**
+   * Emit a structured log entry — stateless, fire-and-forget, no boxing.
+   *
+   * Unlike info/warn/error (which render rich sideBorderBox UI), this is a
+   * compact single-line log primitive intended for high-frequency output.
+   *
+   * In workflow context: flows through StreamingUI → log.line → onLog → SQLite + SSE.
+   * In CLI context: renders as a compact line via logLine() from shared-cli-ui.
+   * In JSON mode: emitted as NDJSON to stdout.
+   *
+   * See: plugins/workflow/docs/adr/0019-log-stream-separation.md
+   */
+  log(entry: UILogEntry): void;
 }
 
 /**
@@ -463,4 +488,5 @@ export const noopUI: UIFacade = {
   prompt: async () => '',
   select: async (_, choices) => choices[0]?.value as never,
   multiSelect: async (_, choices) => choices.filter((c) => c.checked).map((c) => c.value) as never,
+  log: () => {},
 };

@@ -47,6 +47,7 @@ export type { PluginContextDescriptor } from './descriptor.js';
 // UI
 export type {
   UIFacade,
+  UILogEntry,
   Colors,
   Symbols,
   ColorFunction,
