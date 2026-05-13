@@ -38,6 +38,7 @@ function createMockUI(): UIFacade {
     sideBox: vi.fn(),
     confirm: vi.fn(async () => true),
     prompt: vi.fn(async () => ''),
+    log: vi.fn(),
   } as unknown as UIFacade;
 }
 
@@ -257,6 +258,46 @@ describe('createStreamingUI', () => {
 
     expect(() => ui.info('hello')).not.toThrow();
     expect(base.info).toHaveBeenCalledWith('hello', undefined);
+  });
+
+  it('log() delegates to base and emits log.line', () => {
+    const base = createMockUI();
+    const emitter: EventEmitterFn = vi.fn(async () => {});
+    const ui = createStreamingUI(base, emitter);
+
+    ui.log({ level: 'info', message: 'hello from log' });
+
+    expect(emitter).toHaveBeenCalledWith('log.line', expect.objectContaining({
+      line: 'hello from log',
+      level: 'info',
+      stream: 'stdout',
+    }));
+  });
+
+  it('log() with fields appends JSON-encoded fields to the emitted line', () => {
+    const base = createMockUI();
+    const emitter: EventEmitterFn = vi.fn(async () => {});
+    const ui = createStreamingUI(base, emitter);
+
+    ui.log({ level: 'debug', message: 'my event', fields: { count: 3 } });
+
+    expect(emitter).toHaveBeenCalledWith('log.line', expect.objectContaining({
+      line: 'my event {"count":3}',
+      level: 'debug',
+    }));
+  });
+
+  it('log() error level → stderr stream', () => {
+    const base = createMockUI();
+    const emitter: EventEmitterFn = vi.fn(async () => {});
+    const ui = createStreamingUI(base, emitter);
+
+    ui.log({ level: 'error', message: 'boom' });
+
+    expect(emitter).toHaveBeenCalledWith('log.line', expect.objectContaining({
+      stream: 'stderr',
+      level: 'error',
+    }));
   });
 
   it('passes through non-overridden methods unchanged', () => {

@@ -34,6 +34,7 @@ describe('createPluginContextV3 — streaming logger', () => {
     prompt: vi.fn(async () => 'test'),
     select: vi.fn(async () => undefined) as UIFacade['select'],
     multiSelect: vi.fn(async () => []) as UIFacade['multiSelect'],
+    log: vi.fn(),
   };
 
   const mockLogger = {
@@ -102,9 +103,9 @@ describe('createPluginContextV3 — streaming logger', () => {
 
     context.platform.logger.info('streamed message');
 
-    // eventEmitter should have been called with log.line
+    // StreamingLogger emits 'logger.line' (not 'log.line') — ADR-0019
     expect(emitter).toHaveBeenCalledWith(
-      'log.line',
+      'logger.line',
       expect.objectContaining({
         line: 'streamed message',
         stream: 'stdout',
@@ -149,9 +150,9 @@ describe('createPluginContextV3 — streaming logger', () => {
     context.platform.logger.trace('trace');
     context.platform.logger.debug('debug');
 
-    // Only log.line calls should be from info/warn/error, not trace/debug
+    // StreamingLogger emits 'logger.line'; trace/debug should produce nothing
     const logCalls = (emitter as ReturnType<typeof vi.fn>).mock.calls.filter(
-      (c: any) => c[0] === 'log.line',
+      (c: any) => c[0] === 'logger.line' || c[0] === 'log.line',
     );
     expect(logCalls).toHaveLength(0);
   });
@@ -210,6 +211,7 @@ describe('createPluginContextV3 — streaming UI', () => {
     prompt: vi.fn(async () => 'test'),
     select: vi.fn(async () => undefined) as UIFacade['select'],
     multiSelect: vi.fn(async () => []) as UIFacade['multiSelect'],
+    log: vi.fn(),
   };
 
   const mockLogger = {
