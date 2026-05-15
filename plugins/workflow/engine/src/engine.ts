@@ -8,7 +8,7 @@ import {
   WORKFLOW_REDIS_CHANNEL,
   type WorkflowEventName,
 } from '@kb-labs/workflow-constants'
-import type { ICache, IEventBus, ILogger, IAnalytics, Unsubscribe } from '@kb-labs/core-platform'
+import type { ICache, IEventBus, ILogger, IAnalytics, ISnapshotManager, Unsubscribe } from '@kb-labs/core-platform'
 import { StateStore } from './state-store'
 import { ConcurrencyManager, type AcquireOptions } from './concurrency-manager'
 import {
@@ -25,17 +25,6 @@ import { WorkflowLoader } from './workflow-loader'
 import type { CreateRunInput, EngineLogger, RunContext } from './types'
 import { RunSnapshotStorage, type RunSnapshot } from './run-snapshot'
 
-interface SnapshotManagerClient {
-  restoreSnapshot(request: {
-    snapshotId: string
-    workspaceId?: string
-    environmentId?: string
-    targetPath?: string
-    overwrite?: boolean
-    metadata?: Record<string, unknown>
-  }): Promise<unknown>
-}
-
 export interface WorkflowEngineOptions {
   scheduler?: SchedulerOptions
   concurrency?: AcquireOptions
@@ -50,7 +39,7 @@ export interface WorkflowEngineOptions {
   /** Platform analytics adapter (OPTIONAL) */
   analytics?: IAnalytics
   /** Platform snapshot manager (OPTIONAL - for infra snapshot restore in replay) */
-  snapshotManager?: SnapshotManagerClient
+  snapshotManager?: ISnapshotManager
   /** Workspace root (monorepo root) - used for plugin execution context */
   workspaceRoot?: string
 }

@@ -13,7 +13,7 @@ export interface JobSubmissionRequest {
   /** Job type (pluginId:jobId format) */
   type: string;
   /** Job payload (passed to handler) */
-  payload?: unknown;
+  payload?: Record<string, unknown>;
   /** Priority (1-10, default 5) */
   priority?: number;
   /** Max retry attempts (default 3) */
