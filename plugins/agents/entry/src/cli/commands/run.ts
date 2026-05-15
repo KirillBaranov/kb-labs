@@ -179,10 +179,14 @@ export default defineCommand({
             clearTimeout_();
             return { exitCode: 0, sessionId: sessionId as string };
           } catch {
-            ctx.ui?.error?.('No plan found for this session', {
-              hint: `Run: kb agent run --session-id=${sessionId} --task "your task"`,
-              cause: `Session ${sessionId} has no approved plan`,
-            });
+            if (jsonOutput) {
+              ctx.ui?.json?.({ ok: false, error: { code: 'NO_PLAN', message: `No approved plan for session ${sessionId}` } });
+            } else {
+              ctx.ui?.error?.('No plan found for this session', {
+                hint: `Run: kb agent run --session-id=${sessionId} --task "your task"`,
+                cause: `Session ${sessionId} has no approved plan`,
+              });
+            }
             clearTimeout_();
             return { exitCode: 1 };
           }
@@ -576,16 +580,25 @@ export default defineCommand({
           const reason = abortController.signal.reason instanceof Error
             ? abortController.signal.reason.message
             : `Agent execution timed out after ${timeoutSecs}s`;
-          ctx.ui?.error?.('Agent execution timed out', {
-            hint: 'Check agent logs with: kb agent logs --session-id <id>',
-            cause: reason,
-          });
+          if (jsonOutput) {
+            ctx.ui?.json?.({ ok: false, error: { code: 'TIMEOUT', message: reason } });
+          } else {
+            ctx.ui?.error?.('Agent execution timed out', {
+              hint: 'Check agent logs with: kb agent logs --session-id <id>',
+              cause: reason,
+            });
+          }
           return { exitCode: 124 }; // 124 mirrors the POSIX timeout(1) exit code
         }
-        ctx.ui?.error?.('Agent execution failed', {
-          hint: 'Check agent logs with: kb agent logs --session-id <id>',
-          cause: error instanceof Error ? error.message : String(error),
-        });
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (jsonOutput) {
+          ctx.ui?.json?.({ ok: false, error: { code: 'EXECUTION_FAILED', message: errorMessage } });
+        } else {
+          ctx.ui?.error?.('Agent execution failed', {
+            hint: 'Check agent logs with: kb agent logs --session-id <id>',
+            cause: errorMessage,
+          });
+        }
         return { exitCode: 1 };
       }
     },
