@@ -28,6 +28,8 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@kb-labs/plugin-contracts": "workspace:*",
+    "@kb-labs/shared-command-kit": "workspace:*",
     "nanoid": "^5.0.0",
     "ws": "^8.18.0"
   },

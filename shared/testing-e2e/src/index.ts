@@ -3,6 +3,24 @@
  *
  * E2E test harness for the KB Labs platform.
  *
+ * CLI handler testing (no daemon required):
+ *   - `mockCLIInput` — builds typed CLIInput<F> for handler tests
+ *   - `mockObject` — partial override factory for any interface
+ *   - `createCapturedUI` — UIFacade that records all calls for assertion
+ *   - `createMockContext` — minimal PluginContextV3 mock for handler tests
+ *
+ * SSE helpers:
+ *   - `collectSseEvents` — drain SSE stream into array
+ *   - `waitForSseEvent` — wait for specific event type
+ *   - `expectSseTerminates` — assert stream closes on its own
+ *   - `assertSseOrder` / `assertNoSseDuplicates` — assertion helpers
+ *
+ * WebSocket helpers:
+ *   - `withWs` — auto-close wrapper
+ *   - `expectWsMessage` — wait for message matching predicate
+ *   - `expectWsClose` — assert clean close
+ *
+ * Infrastructure:
  *   - `KbDevController` — boots/queries/stops real services via `kb-dev --json`.
  *   - `HttpClient` / `connectWs` / `readSse` — tiny HTTP/WS/SSE helpers for assertions.
  *   - `registerAgent` / `registerHost` — gateway auth helpers.
@@ -46,3 +64,25 @@ export type { IsolatedProjectRoot, IsolatedProjectRootOptions } from './isolated
 export { makeTestNamespace } from './namespace.js';
 
 export { findWorkspaceRoot, resolveWorkspaceRoot } from './workspace-root.js';
+
+// --- CLI handler testing helpers ---
+export { mockCLIInput } from './cli/mock-cli-input.js';
+export type { MockCLIInputOptions } from './cli/mock-cli-input.js';
+
+export { mockObject } from './cli/mock-object.js';
+
+export { createCapturedUI } from './cli/captured-ui.js';
+export type { UICapture, CapturedUI } from './cli/captured-ui.js';
+
+export { createMockContext } from './cli/mock-context.js';
+export type { MockContextOptions } from './cli/mock-context.js';
+
+// --- SSE helpers ---
+export { collectSseEvents, waitForSseEvent, expectSseTerminates } from './sse/collect.js';
+export type { CollectSseOptions } from './sse/collect.js';
+
+export { assertSseOrder, assertNoSseDuplicates } from './sse/assert.js';
+
+// --- WebSocket helpers ---
+export { withWs } from './ws/lifecycle.js';
+export { expectWsMessage, expectWsClose } from './ws/assert.js';
