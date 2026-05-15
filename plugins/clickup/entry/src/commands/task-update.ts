@@ -38,7 +38,7 @@ export default defineCommand({
 
       const body: Record<string, unknown> = {};
       if (name !== undefined) body.name = name;
-      if (desc !== undefined) body.description = desc;
+      if (desc !== undefined) body.markdown_content = desc.replace(/\\n/g, '\n');
       if (status !== undefined) body.status = status;
       if (priority !== undefined) body.priority = priority;
       if (due !== undefined) body.due_date = parseDue(due);

@@ -48,9 +48,12 @@ export const manifest = {
   },
 
   cli: {
+    groupMeta: [
+      { path: 'policy', describe: 'Policy enforcement commands' },
+    ],
     commands: [
       {
-        path: 'policy policy detect',
+        path: 'policy detect',
         describe: 'Detect policy category for changed or specified repos',
         longDescription:
           'Determines the category for repos based on git changes or a specified path, then resolves applicable policy rules.',
@@ -72,7 +75,7 @@ export const manifest = {
         permissions: detectPermissions,
       },
       {
-        path: 'policy policy check',
+        path: 'policy check',
         describe: 'Run policy checks for changed repos or a specific path',
         longDescription:
           'Runs all applicable policy rules for detected repos. Exits with code 1 on violations. Use in CI or pnpm done pipeline.',
@@ -94,7 +97,7 @@ export const manifest = {
         permissions: checkPermissions,
       },
       {
-        path: 'policy policy rules',
+        path: 'policy rules',
         describe: 'Show all configured policy rules and their categories',
 
         handler: './cli/commands/rules.js#default',
@@ -110,7 +113,7 @@ export const manifest = {
         permissions: detectPermissions,
       },
       {
-        path: 'policy policy snapshot',
+        path: 'policy snapshot',
         describe: 'Create or update API snapshot for a repo (run after npm publish)',
         longDescription:
           'Extracts exported symbols from dist/*.d.ts files and saves them to .kb/api-snapshots/. Used by api-compat-check to detect breaking changes.',

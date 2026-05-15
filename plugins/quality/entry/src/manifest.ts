@@ -83,6 +83,12 @@ export const manifest = {
   },
 
   cli: {
+    groupMeta: [
+      {
+        path: 'quality',
+        describe: 'Monorepo quality analysis and automated fixes.',
+      },
+    ],
     commands: [
       // ======================================================================
       // quality:stats - Monorepo statistics and health score
