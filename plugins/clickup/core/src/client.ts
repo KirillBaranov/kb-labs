@@ -31,8 +31,8 @@ export async function clickupFetch<T>(
     let message = `ClickUp API error ${res.status}`;
     try {
       const body = await res.json() as { err?: string; ECODE?: string };
-      if (body.err) message = body.err;
-      if (body.ECODE) code = body.ECODE;
+      if (body.err) { message = body.err; }
+      if (body.ECODE) { code = body.ECODE; }
     } catch {
       // ignore parse error
     }
