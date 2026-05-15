@@ -19,7 +19,6 @@ import { registerTelemetryRoutes } from './telemetry/routes.js';
 import { registerPlatformRoutes } from './platform/routes.js';
 import { registerAggregatedDocsRoutes } from './docs/routes.js';
 import { HostRegistry } from './hosts/registry.js';
-import { globalDispatcher } from './hosts/dispatcher.js';
 import { attachGatewayWs } from './ws/gateway-ws.js';
 import { GatewayObservabilityCollector } from './observability/collector.js';
 import { randomUUID } from 'node:crypto';
