@@ -273,6 +273,11 @@ export const StepRunSchema = z.object({
    * and future re-executions (gate restartFrom) can re-interpolate correctly.
    */
   resolvedInputs: z.record(z.string(), z.unknown()).optional(),
+  /**
+   * Step-level execution metadata (e.g. gate iteration counter).
+   * Cleared on step reset except metadata.iterations which persists across restarts.
+   */
+  metadata: z.record(z.string(), z.unknown()).optional(),
 })
 
 export const JobRunSchema = z.object({

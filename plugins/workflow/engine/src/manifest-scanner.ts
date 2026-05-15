@@ -24,6 +24,10 @@ import type {
   PlatformServices,
   ManifestV3,
 } from '@kb-labs/plugin-contracts';
+import { ManifestConverter } from './manifest-converter.js';
+
+// 'v1' guard: increment when WorkflowRuntime format changes to prevent stale cache reads
+const CACHE_KEY_WORKFLOWS = 'manifest-scanner:v1:workflows' as const;
 
 /**
  * Workflow trigger type
@@ -72,6 +76,8 @@ export interface WorkflowStats {
 export interface WorkflowRuntime {
   // Identification
   id: string;
+  /** Discriminator for workflow kind. Enables type-safe routing in consumers. */
+  kind?: 'workflow' | 'job' | 'cron';
   source: 'manifest' | 'standalone' | 'plugin';
 
   // Manifest-based fields
@@ -134,6 +140,7 @@ export class ManifestScanner {
   private readonly cliApi: IEntityRegistry;
   private readonly platform: PlatformServices;
   private readonly cacheTtlMs: number;
+  private readonly converter = new ManifestConverter();
 
   constructor(options: ManifestScannerOptions) {
     this.cliApi = options.cliApi;
@@ -143,15 +150,15 @@ export class ManifestScanner {
 
   /**
    * Scan all installed plugins for workflows and jobs.
+   * Purpose: listing — populates the REST API GET /api/v1/workflows catalog.
+   * (CronDiscovery in daemon handles scheduling — different output, different consumer.)
    *
    * Returns unified WorkflowRuntime representations.
    */
   async scanPlugins(): Promise<WorkflowRuntime[]> {
-    const cacheKey = 'manifest-scanner:workflows';
-
     // Check cache first (via platform cache)
     if (this.platform.cache) {
-      const cached = await this.platform.cache.get<WorkflowRuntime[]>(cacheKey);
+      const cached = await this.platform.cache.get<WorkflowRuntime[]>(CACHE_KEY_WORKFLOWS);
       if (cached) {
         this.platform.logger?.debug('ManifestScanner: Using cached workflows', { count: cached.length });
         return cached;
@@ -190,13 +197,13 @@ export class ManifestScanner {
       }
 
       try {
+        // entity.declaration is typed as unknown in the registry — cast to concrete decl type
         if (converter === 'workflow') {
-          // EntityEntry.declaration is typed as unknown — narrow to the concrete decl type
-          workflows.push(this.convertWorkflowHandler(entity.ref.pluginId, entity.declaration as unknown as WorkflowHandlerDecl, root));
+          workflows.push(this.converter.convertWorkflowHandler(entity.ref.pluginId, entity.declaration as unknown as WorkflowHandlerDecl, root));
         } else if (converter === 'job') {
-          workflows.push(this.convertJobHandler(entity.ref.pluginId, entity.declaration as unknown as JobHandlerDecl, root));
+          workflows.push(this.converter.convertJobHandler(entity.ref.pluginId, entity.declaration as unknown as JobHandlerDecl, root));
         } else {
-          workflows.push(this.convertCronSchedule(entity.ref.pluginId, entity.declaration as unknown as CronDecl, root));
+          workflows.push(this.converter.convertCronSchedule(entity.ref.pluginId, entity.declaration as unknown as CronDecl, root));
         }
       } catch (err) {
         this.platform.logger?.warn('ManifestScanner: Failed to convert entity', {
@@ -241,109 +248,11 @@ export class ManifestScanner {
 
     // Cache results (via platform cache)
     if (this.platform.cache) {
-      await this.platform.cache.set(cacheKey, workflows, this.cacheTtlMs);
+      await this.platform.cache.set(CACHE_KEY_WORKFLOWS, workflows, this.cacheTtlMs);
     }
 
     return workflows;
   }
-
-  /**
-   * Convert workflow handler declaration to WorkflowRuntime.
-   */
-  private convertWorkflowHandler(
-    pluginId: string,
-    handler: WorkflowHandlerDecl,
-    pluginRoot: string
-  ): WorkflowRuntime {
-    const id = `${pluginId}/${handler.id}`;
-
-    return {
-      id,
-      source: 'manifest',
-      pluginId,
-      manifestPath: pluginRoot,
-      name: handler.describe ?? handler.id,
-      description: handler.describe,
-      tags: ['plugin', pluginId],
-      triggers: [
-        { type: 'manual' }, // Workflow handlers can always be triggered manually
-      ],
-      handler: handler.handler,
-      status: 'active',
-      permissions: handler.permissions,
-      input: handler.input,
-      output: handler.output,
-    };
-  }
-
-  /**
-   * Convert job handler declaration to WorkflowRuntime.
-   */
-  private convertJobHandler(
-    pluginId: string,
-    handler: JobHandlerDecl,
-    pluginRoot: string
-  ): WorkflowRuntime {
-    const id = `${pluginId}:job:${handler.id}`;
-
-    return {
-      id,
-      source: 'manifest',
-      pluginId,
-      manifestPath: pluginRoot,
-      name: handler.describe ?? handler.id,
-      description: handler.describe,
-      tags: ['plugin', 'job', pluginId],
-      triggers: [
-        { type: 'manual' }, // Job handlers are invoked on-demand via ctx.api.jobs.submit()
-      ],
-      handler: handler.handler,
-      status: 'active',
-      permissions: handler.permissions,
-      input: handler.input,
-      output: handler.output,
-    };
-  }
-
-  /**
-   * Convert cron schedule declaration to WorkflowRuntime.
-   */
-  private convertCronSchedule(
-    pluginId: string,
-    cronDecl: CronDecl,
-    pluginRoot: string
-  ): WorkflowRuntime {
-    const id = `${pluginId}:cron:${cronDecl.id}`;
-
-    const schedule: WorkflowSchedule = {
-      cron: cronDecl.schedule,
-      enabled: cronDecl.enabled ?? true,
-    };
-
-    return {
-      id,
-      source: 'manifest',
-      pluginId,
-      manifestPath: pluginRoot,
-      name: cronDecl.describe ?? cronDecl.id,
-      description: cronDecl.describe,
-      tags: ['plugin', 'cron', pluginId],
-      triggers: [
-        {
-          type: 'schedule',
-          config: { cron: cronDecl.schedule, timezone: cronDecl.timezone },
-        },
-      ],
-      // Note: Cron schedules reference a job type to execute
-      // The actual handler path comes from the job declaration
-      handler: undefined, // Will be resolved at execution time via job type
-      schedule,
-      status: (cronDecl.enabled ?? true) ? 'active' : 'disabled',
-      permissions: cronDecl.permissions,
-    };
-  }
-
-  // Legacy convertLegacyJob method removed - use cron schedules instead
 
   /**
    * Scan all installed plugins for job handlers only.
@@ -388,7 +297,7 @@ export class ManifestScanner {
    */
   async clearCache(): Promise<void> {
     if (this.platform.cache) {
-      await this.platform.cache.delete('manifest-scanner:workflows');
+      await this.platform.cache.delete(CACHE_KEY_WORKFLOWS);
       this.platform.logger?.debug('ManifestScanner: Cache cleared');
     }
   }
