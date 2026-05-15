@@ -3,7 +3,7 @@
  * REST handler for job logs (proxy to daemon)
  */
 
-import { defineHandler, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineHandler, rethrowForRest, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
 import type { JobLogsResponse } from '@kb-labs/workflow-contracts';
 import { getWorkflowDaemonUrl } from '../http-client.js';
 
@@ -53,7 +53,7 @@ export default defineHandler({
         '[job-logs-handler] Error fetching job logs',
         error instanceof Error ? error : undefined
       );
-      throw error;
+      rethrowForRest(error);
     }
   },
 });

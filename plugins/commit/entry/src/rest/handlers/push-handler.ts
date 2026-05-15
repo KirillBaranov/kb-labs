@@ -1,4 +1,4 @@
-import { defineHandler, useConfig, type PluginContextV3, type RestInput } from '@kb-labs/sdk';
+import { defineHandler, useConfig, type PluginContextV3, type RestInput, rethrowForRest } from '@kb-labs/sdk';
 import {
   COMMIT_CACHE_PREFIX,
   type PushRequest,
@@ -87,7 +87,7 @@ export default defineHandler({
         });
       }
 
-      throw new Error(`Failed to push commits: ${error}`);
+      rethrowForRest(error);
     }
   },
 });

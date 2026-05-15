@@ -1,4 +1,4 @@
-import { defineHandler, useConfig, type PluginContextV3, type RestInput, useLogger } from '@kb-labs/sdk';
+import { defineHandler, useConfig, type PluginContextV3, type RestInput, useLogger, rethrowForRest } from '@kb-labs/sdk';
 import { type FileDiffResponse, type CommitPluginConfig, resolveCommitConfig } from '@kb-labs/commit-contracts';
 import { getFileDiff } from '@kb-labs/commit-core/analyzer';
 import { resolveScopePath } from './scope-resolver';
@@ -63,7 +63,7 @@ export default defineHandler({
         deletions: result.deletions,
       };
     } catch (error) {
-      throw new Error(`Failed to get diff for file: ${error}`);
+      rethrowForRest(error);
     }
   },
 });

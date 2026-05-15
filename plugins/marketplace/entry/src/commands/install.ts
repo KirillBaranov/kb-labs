@@ -1,4 +1,4 @@
-import { defineCommand, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
+import { defineCommand, validationError, handleError, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import { post } from '../http.js';
 import { resolveCliScope, scopeBody, CliScopeError } from '../scope.js';
 
@@ -35,7 +35,7 @@ export default defineCommand<unknown, InstallInput, InstallResultData>({
       const flags = (input.flags ?? input) as InstallFlags;
 
       if (argv.length === 0) {
-        ctx.ui?.error?.('Please specify at least one package to install');
+        validationError(ctx, 'Please specify at least one package to install', 'Usage: kb marketplace install <package>', flags.json);
         return { exitCode: 1, result: { installed: [], warnings: [], scope: '' } };
       }
 
@@ -44,35 +44,41 @@ export default defineCommand<unknown, InstallInput, InstallResultData>({
         scopeCtx = await resolveCliScope(ctx.cwd, flags.scope);
       } catch (err) {
         if (err instanceof CliScopeError) {
-          ctx.ui?.error?.(err.message);
-          return { exitCode: 1, result: { installed: [], warnings: [], scope: '' } };
+          validationError(ctx, err.message, undefined, flags.json);
+        } else {
+          handleError(ctx, err, flags.json);
         }
-        throw err;
+        return { exitCode: 1, result: { installed: [], warnings: [], scope: '' } };
       }
 
-      const result = await post<InstallResultData>('/packages/install', {
-        specs: argv,
-        dev: Boolean(flags.dev),
-        ...scopeBody(scopeCtx),
-      });
-
-      if (flags.json) {
-        ctx.ui?.json?.(result);
-      } else {
-        ctx.ui?.success?.(`Marketplace install completed (${result.scope ?? scopeCtx.scope})`, {
-          sections: [
-            {
-              header: 'Installed',
-              items: result.installed.map(p => `${p.id}@${p.version} (${p.primaryKind})`),
-            },
-            ...(result.warnings.length > 0
-              ? [{ header: 'Warnings', items: result.warnings }]
-              : []),
-          ],
+      try {
+        const result = await post<InstallResultData>('/packages/install', {
+          specs: argv,
+          dev: Boolean(flags.dev),
+          ...scopeBody(scopeCtx),
         });
-      }
 
-      return { exitCode: 0, result };
+        if (flags.json) {
+          ctx.ui?.json?.(result);
+        } else {
+          ctx.ui?.success?.(`Marketplace install completed (${result.scope ?? scopeCtx.scope})`, {
+            sections: [
+              {
+                header: 'Installed',
+                items: result.installed.map(p => `${p.id}@${p.version} (${p.primaryKind})`),
+              },
+              ...(result.warnings.length > 0
+                ? [{ header: 'Warnings', items: result.warnings }]
+                : []),
+            ],
+          });
+        }
+
+        return { exitCode: 0, result };
+      } catch (err) {
+        handleError(ctx, err, flags.json);
+        return { exitCode: 1, result: { installed: [], warnings: [], scope: '' } };
+      }
     },
   },
 });

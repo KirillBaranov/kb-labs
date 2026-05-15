@@ -1,4 +1,4 @@
-import { defineCommand, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
+import { defineCommand, handleError, validationError, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import { post } from '../http.js';
 import { resolveCliScope, scopeBody, CliScopeError } from '../scope.js';
 
@@ -38,36 +38,44 @@ export default defineCommand<unknown, UpdateInput, UpdateResultData>({
         scopeCtx = await resolveCliScope(ctx.cwd, flags.scope);
       } catch (err) {
         if (err instanceof CliScopeError) {
-          ctx.ui?.error?.(err.message);
-          return { exitCode: 1, result: { installed: [], warnings: [], scope: '' } };
+          validationError(ctx, err.message, undefined, flags.json);
+        } else {
+          handleError(ctx, err, flags.json);
         }
-        throw err;
+        return { exitCode: 1, result: { installed: [], warnings: [], scope: '' } };
       }
 
-      // Server-side update accepts a single body with the ids (or all
-      // installed when omitted). No client-side loop; the server handles
-      // per-package failures and reports them in `warnings`.
-      const body: Record<string, unknown> = { ...scopeBody(scopeCtx) };
-      if (argv.length > 0) {
-        body.packageIds = argv;
-      }
-      const result = await post<UpdateResultData>('/packages/update', body);
+      try {
+        // Server-side update accepts a single body with the ids (or all
+        // installed when omitted). No client-side loop; the server handles
+        // per-package failures and reports them in `warnings`.
+        const body: Record<string, unknown> = { ...scopeBody(scopeCtx) };
+        if (argv.length > 0) {
+          body.packageIds = argv;
+        }
+        const result = await post<UpdateResultData>('/packages/update', body);
 
-      if (result.installed.length === 0) {
-        ctx.ui?.info?.(`Nothing to update (${scopeCtx.scope})`);
-      } else {
-        ctx.ui?.success?.(`Update completed (${scopeCtx.scope})`, {
-          sections: [
-            {
-              header: 'Updated',
-              items: result.installed.map(p => `${p.id}@${p.version} (${p.primaryKind})`),
-            },
-            ...(result.warnings.length > 0 ? [{ header: 'Warnings', items: result.warnings }] : []),
-          ],
-        });
-      }
+        if (flags.json) {
+          ctx.ui?.json?.(result);
+        } else if (result.installed.length === 0) {
+          ctx.ui?.info?.(`Nothing to update (${scopeCtx.scope})`);
+        } else {
+          ctx.ui?.success?.(`Update completed (${scopeCtx.scope})`, {
+            sections: [
+              {
+                header: 'Updated',
+                items: result.installed.map(p => `${p.id}@${p.version} (${p.primaryKind})`),
+              },
+              ...(result.warnings.length > 0 ? [{ header: 'Warnings', items: result.warnings }] : []),
+            ],
+          });
+        }
 
-      return { exitCode: 0, result };
+        return { exitCode: 0, result };
+      } catch (err) {
+        handleError(ctx, err, flags.json);
+        return { exitCode: 1, result: { installed: [], warnings: [], scope: '' } };
+      }
     },
   },
 });

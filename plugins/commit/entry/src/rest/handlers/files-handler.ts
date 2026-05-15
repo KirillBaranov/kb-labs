@@ -1,4 +1,4 @@
-import { defineHandler, useConfig, type RestInput, type PluginContextV3, type TableData, type TableRow } from '@kb-labs/sdk';
+import { defineHandler, useConfig, type RestInput, type PluginContextV3, type TableData, type TableRow, rethrowForRest } from '@kb-labs/sdk';
 import { getGitStatus } from '@kb-labs/commit-core/analyzer';
 import { COMMIT_CACHE_PREFIX, type CommitPluginConfig, resolveCommitConfig } from '@kb-labs/commit-contracts';
 import { resolveScopePath } from './scope-resolver';
@@ -123,8 +123,7 @@ export default defineHandler({
 
       return result;
     } catch (error) {
-      // Return empty table on error
-      return { rows: [], total: 0 };
+      rethrowForRest(error);
     }
   },
 });

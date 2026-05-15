@@ -3,7 +3,7 @@
  * Push commits to remote
  */
 
-import { defineCommand, useLoader, findRepoRoot, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, useLoader, findRepoRoot, handleError, type PluginContextV3 } from '@kb-labs/sdk';
 import { pushCommits } from '@kb-labs/commit-core';
 import type { PushOutput } from '@kb-labs/commit-contracts';
 
@@ -30,9 +30,14 @@ export default defineCommand({
       // Push
       const pushLoader = useLoader('Pushing commits...');
       pushLoader.start();
-      const result = await pushCommits(cwd, {
-        force: input.force,
-      });
+      let result;
+      try {
+        result = await pushCommits(cwd, { force: input.force });
+      } catch (err) {
+        pushLoader.fail('Push failed');
+        handleError(ctx, err, input.json);
+        return { exitCode: 1 };
+      }
 
       // Output
       const output: PushOutput = {

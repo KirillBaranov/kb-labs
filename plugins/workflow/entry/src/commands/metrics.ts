@@ -2,7 +2,7 @@
  * workflow:metrics command - Get workflow metrics
  */
 
-import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, handleError, type PluginContextV3 } from '@kb-labs/sdk';
 import { type MetricsFlags } from '@kb-labs/workflow-contracts';
 import { WorkflowDaemonClient } from '../http-client.js';
 
@@ -52,15 +52,8 @@ export default defineCommand<unknown, MetricsInput, { exitCode: number }>({
 
         return { exitCode: 0 };
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-
-        if (outputJson) {
-          ctx.ui?.json?.({ ok: false, error: message });
-        } else {
-          ctx.ui?.error?.(`Failed to get metrics: ${message}`);
-          ctx.ui?.warn?.(`Make sure workflow daemon is running: kb-workflow`);
-        }
-
+        handleError(ctx, error, outputJson);
+        if (!outputJson) ctx.ui?.warn?.('Make sure workflow daemon is running: kb-workflow');
         return { exitCode: 1 };
       }
     },

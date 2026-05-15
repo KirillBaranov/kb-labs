@@ -22,22 +22,23 @@ export const manifest = {
   },
   cli: {
     groupMeta: [
-      { name: 'marketplace', describe: 'Marketplace management commands' },
-      { name: 'marketplace/plugins', describe: 'Plugin management' },
+      { path: 'marketplace', describe: 'Marketplace management commands' },
+      { path: 'marketplace plugins', describe: 'Plugin management' },
     ],
     commands: [
-      // Top-level: kb marketplace install
-      { id: 'install', group: 'marketplace', describe: 'Install package(s)', handler: './commands/install.js#default' },
-      { id: 'uninstall', group: 'marketplace', describe: 'Uninstall package(s)', handler: './commands/uninstall.js#default' },
-      { id: 'update', group: 'marketplace', describe: 'Update package(s)', handler: './commands/update.js#default' },
-      { id: 'sync', group: 'marketplace', describe: 'Sync workspace to lock', handler: './commands/sync.js#default' },
-      // Subgroup: kb marketplace plugins list
-      { id: 'list', group: 'marketplace', subgroup: 'plugins', describe: 'List installed plugins', handler: './commands/plugins/list.js#default' },
-      { id: 'enable', group: 'marketplace', subgroup: 'plugins', describe: 'Enable a plugin', handler: './commands/plugins/enable.js#default' },
-      { id: 'disable', group: 'marketplace', subgroup: 'plugins', describe: 'Disable a plugin', handler: './commands/plugins/disable.js#default' },
-      { id: 'link', group: 'marketplace', subgroup: 'plugins', describe: 'Link a local plugin', handler: './commands/plugins/link.js#default' },
-      { id: 'unlink', group: 'marketplace', subgroup: 'plugins', describe: 'Unlink a plugin', handler: './commands/plugins/unlink.js#default' },
-      { id: 'doctor', group: 'marketplace', subgroup: 'plugins', describe: 'Diagnose issues', handler: './commands/plugins/doctor.js#default' },
+      // Top-level: kb marketplace <cmd>
+      { path: 'marketplace install',   describe: 'Install package(s)',           handler: './commands/install.js#default' },
+      { path: 'marketplace uninstall', describe: 'Uninstall package(s)',         handler: './commands/uninstall.js#default' },
+      { path: 'marketplace update',    describe: 'Update package(s)',            handler: './commands/update.js#default' },
+      { path: 'marketplace sync',      describe: 'Sync workspace to lock',       handler: './commands/sync.js#default' },
+      // Subgroup: kb marketplace plugins <cmd>
+      { path: 'marketplace plugins list',    describe: 'List installed plugins',    handler: './commands/plugins/list.js#default' },
+      { path: 'marketplace plugins enable',  describe: 'Enable a plugin',          handler: './commands/plugins/enable.js#default' },
+      { path: 'marketplace plugins disable', describe: 'Disable a plugin',         handler: './commands/plugins/disable.js#default' },
+      { path: 'marketplace plugins link',    describe: 'Link a local plugin',      handler: './commands/plugins/link.js#default' },
+      { path: 'marketplace plugins unlink',  describe: 'Unlink a plugin',          handler: './commands/plugins/unlink.js#default' },
+      { path: 'marketplace plugins doctor',  describe: 'Diagnose issues',          handler: './commands/plugins/doctor.js#default' },
+      { path: 'marketplace plugins refresh', describe: 'Clear CLI discovery cache', handler: './commands/plugins/refresh.js#default' },
     ],
   },
   permissions: pluginPermissions,

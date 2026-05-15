@@ -2,7 +2,7 @@
  * workflow:runs-list command — like `gh run list`
  */
 
-import { defineCommand, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
 import { WorkflowDaemonClient } from '../http-client.js';
 
 interface RunsListFlags {
@@ -91,12 +91,7 @@ export default defineCommand<unknown, CLIInput<RunsListFlags>, { exitCode: numbe
 
         return { exitCode: 0 };
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        if (outputJson) {
-          ctx.ui?.json?.({ ok: false, error: message });
-        } else {
-          ctx.ui?.error?.(`Failed to list runs: ${message}`);
-        }
+        handleError(ctx, error, outputJson);
         return { exitCode: 1 };
       }
     },

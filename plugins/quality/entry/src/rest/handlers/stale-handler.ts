@@ -5,7 +5,7 @@
  * Shows packages where source is newer than dist, or dependencies were rebuilt.
  */
 
-import { defineHandler, type PluginContextV3, type RestInput } from '@kb-labs/sdk';
+import { defineHandler, rethrowForRest, type PluginContextV3, type RestInput } from '@kb-labs/sdk';
 import {
   analyzeStalePackages,
 } from '@kb-labs/quality-core/stale';
@@ -43,15 +43,19 @@ export default defineHandler({
     ctx: PluginContextV3,
     input: RestInput<StaleRequest, unknown>
   ): Promise<StaleResponse> {
-    const { detailed } = input.query ?? {};
+    try {
+      const { detailed } = input.query ?? {};
 
-    const analysis = await analyzeStalePackages(ctx.cwd, detailed);
+      const analysis = await analyzeStalePackages(ctx.cwd, detailed);
 
-    return {
-      stalePackages: analysis.stalePackages,
-      totalStale: analysis.totalStale,
-      totalAffected: analysis.totalAffected,
-      criticalChains: detailed ? analysis.criticalChains : undefined,
-    };
+      return {
+        stalePackages: analysis.stalePackages,
+        totalStale: analysis.totalStale,
+        totalAffected: analysis.totalAffected,
+        criticalChains: detailed ? analysis.criticalChains : undefined,
+      };
+    } catch (err) {
+      rethrowForRest(err);
+    }
   },
 });

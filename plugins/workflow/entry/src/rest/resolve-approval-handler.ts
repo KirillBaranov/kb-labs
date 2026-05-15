@@ -3,7 +3,7 @@
  * Proxies to workflow daemon POST /api/v1/runs/:runId/approve
  */
 
-import { defineHandler, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineHandler, rethrowForRest, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
 import { getWorkflowDaemonUrl } from '../http-client.js';
 
 interface ResolveApprovalParams {
@@ -75,7 +75,7 @@ export default defineHandler({
         '[resolve-approval-handler] Error resolving approval',
         error instanceof Error ? error : undefined
       );
-      throw error;
+      rethrowForRest(error);
     }
   },
 });

@@ -3,7 +3,7 @@
  * REST handler for job steps and progress (proxy to daemon)
  */
 
-import { defineHandler, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineHandler, rethrowForRest, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
 import type { JobStepsResponse } from '@kb-labs/workflow-contracts';
 import { getWorkflowDaemonUrl } from '../http-client.js';
 
@@ -41,7 +41,7 @@ export default defineHandler({
         '[job-steps-handler] Error fetching job steps',
         error instanceof Error ? error : undefined
       );
-      throw error;
+      rethrowForRest(error);
     }
   },
 });

@@ -9,6 +9,7 @@ import {
   useLoader,
   useConfig,
   findRepoRoot,
+  handleError,
   type PluginContextV3,
 } from '@kb-labs/sdk';
 import {
@@ -74,7 +75,14 @@ export default defineCommand({
       // 1. Check for changes
       const statusLoader = useLoader('Checking git status...');
       statusLoader.start();
-      const status = await getGitStatus(scopeCwd);
+      let status;
+      try {
+        status = await getGitStatus(scopeCwd);
+      } catch (err) {
+        statusLoader.fail('Failed to check git status');
+        handleError(ctx, err, outputJson);
+        return { exitCode: 1 };
+      }
 
       if (!hasChanges(status)) {
         statusLoader.stop();
@@ -180,12 +188,14 @@ export default defineCommand({
 
       if (!applyResult.success) {
         applyLoader.fail('Failed to apply commits');
-        for (const error of applyResult.errors) {
-          ctx.ui?.error?.(`  ${error}`);
+        if (outputJson) {
+          ctx.ui?.json?.({ ok: false, error: { code: 'APPLY_FAILED', message: applyResult.errors.join('; ') } });
+        } else {
+          for (const error of applyResult.errors) {
+            ctx.ui?.error?.(`  ${error}`);
+          }
         }
-        return {
-          exitCode: 1,
-        };
+        return { exitCode: 1 };
       }
 
       // Save to history and clear

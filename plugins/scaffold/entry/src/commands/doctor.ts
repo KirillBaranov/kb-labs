@@ -1,5 +1,5 @@
 import { resolve } from 'node:path';
-import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, handleError, type PluginContextV3 } from '@kb-labs/sdk';
 import { scanRoot, type Finding } from '@kb-labs/scaffold-core';
 
 interface DoctorFlags {
@@ -26,7 +26,13 @@ export default defineCommand({
     ): Promise<DoctorResult> {
       const root = resolve(input.path ?? '.kb/plugins');
       const workspaceRoot = ctx.cwd ?? process.cwd();
-      const scan = await scanRoot(root, { workspaceRoot });
+      let scan: Awaited<ReturnType<typeof scanRoot>>;
+      try {
+        scan = await scanRoot(root, { workspaceRoot });
+      } catch (err) {
+        handleError(ctx, err, input.json);
+        return { exitCode: 1 };
+      }
 
       const { errorCount, warnCount } = scan.findings.reduce(
         (acc, f) => {

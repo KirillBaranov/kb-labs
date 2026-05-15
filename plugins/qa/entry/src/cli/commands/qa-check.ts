@@ -1,4 +1,4 @@
-import { defineCommand, type CLIInput, useConfig, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, validationError, type CLIInput, useConfig, type PluginContextV3 } from '@kb-labs/sdk';
 import type { QAPluginConfig, QACheckConfig } from '@kb-labs/qa-contracts';
 import {
   getWorkspacePackages,
@@ -74,12 +74,7 @@ export default defineCommand({
       const checkConfig = allChecks.find(c => c.id === checkId);
 
       if (!checkConfig) {
-        const msg = `Check "${checkId}" not found in qa.checks config`;
-        if (isJson) {
-          ui?.json?.({ status: 'error', message: msg });
-        } else {
-          ui?.error?.(msg, { title: 'QA Check Error' });
-        }
+        validationError(ctx, `Check "${checkId}" not found in qa.checks config`, undefined, isJson);
         return { exitCode: 1 };
       }
 
@@ -89,12 +84,7 @@ export default defineCommand({
         try {
           runContext = JSON.parse(flags.context as string);
         } catch {
-          const msg = `Invalid JSON in --context: ${flags.context}`;
-          if (isJson) {
-            ui?.json?.({ status: 'error', message: msg });
-          } else {
-            ui?.error?.(msg, { title: 'QA Check Error' });
-          }
+          validationError(ctx, `Invalid JSON in --context: ${flags.context}`, undefined, isJson);
           return { exitCode: 1 };
         }
       }

@@ -1,4 +1,4 @@
-import { defineCommand, useLoader, TimingTracker, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
+import { defineCommand, useLoader, TimingTracker, handleError, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import { listBackups, restoreBackup } from '@kb-labs/devlink-core';
 import type { DevlinkBackup } from '@kb-labs/devlink-contracts';
 
@@ -37,7 +37,15 @@ export default defineCommand<unknown, BackupsInput, BackupsResult>({
         const loader = useLoader(`Restoring backup ${restoreId}...`);
         loader.start();
 
-        const { restored, errors } = restoreBackup(rootDir, restoreId);
+        let restored: number;
+        let errors: string[];
+        try {
+          ({ restored, errors } = restoreBackup(rootDir, restoreId));
+        } catch (err) {
+          loader.fail('Restore failed');
+          handleError(ctx, err, outputJson);
+          return { exitCode: 1 };
+        }
         loader.succeed(`Restored ${restored} file(s)`);
         tracker.checkpoint('restore');
 

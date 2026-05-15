@@ -3,7 +3,7 @@
  * Proxies to workflow daemon POST /api/v1/jobs/:jobId/cancel
  */
 
-import { defineHandler, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineHandler, rethrowForRest, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
 import { getWorkflowDaemonUrl } from '../http-client';
 
 interface JobCancelParams {
@@ -61,7 +61,7 @@ export default defineHandler({
         '[job-cancel-handler] Error cancelling job',
         error instanceof Error ? error : undefined
       );
-      throw error;
+      rethrowForRest(error);
     }
   },
 });

@@ -2,7 +2,7 @@
  * Run pre-release checks handler — thin adapter over core runReleaseChecks().
  */
 
-import { defineHandler, findRepoRoot, type RestInput, useConfig } from '@kb-labs/sdk';
+import { defineHandler, findRepoRoot, type RestInput, useConfig, rethrowForRest } from '@kb-labs/sdk';
 import type { RunChecksRequest, RunChecksResponse, CheckResultItem } from '@kb-labs/release-manager-contracts';
 import { runReleaseChecks, type ReleaseConfig, type CustomCheckConfig } from '@kb-labs/release-manager-core';
 import { readFile } from 'node:fs/promises';
@@ -12,6 +12,7 @@ import { resolveScopePath } from '@kb-labs/release-manager-core';
 
 export default defineHandler({
   async execute(ctx, input: RestInput<unknown, RunChecksRequest>): Promise<RunChecksResponse> {
+    try {
     const scope = input.body?.scope ?? 'root';
     const cwd = ctx.cwd ?? process.cwd();
     const repoRoot = await findRepoRoot(cwd);
@@ -62,5 +63,8 @@ export default defineHandler({
       checks: checkItems,
       totalDurationMs: Date.now() - startTime,
     };
+    } catch (err) {
+      rethrowForRest(err);
+    }
   },
 });

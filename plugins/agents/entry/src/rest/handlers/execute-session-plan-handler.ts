@@ -3,7 +3,7 @@
  * Execute approved session plan via standard run-handler pipeline.
  */
 
-import { defineHandler, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineHandler, rethrowForRest, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
 import { PlanDocumentService, SessionManager } from '@kb-labs/agent-core';
 import type {
   ExecuteSessionPlanRequest,
@@ -80,85 +80,89 @@ export default defineHandler({
     ctx: PluginContextV3,
     input: RestInput<ExecuteSessionPlanRequest, unknown, ExecutePlanRouteParams>
   ): Promise<ExecuteSessionPlanResponse> {
-    const params = input.params as Record<string, string> | undefined;
-    const sessionId = params?.sessionId;
-    const body = (input.body ?? {}) as ExecuteSessionPlanRequest;
-
-    if (!sessionId) {
-      throw new Error('Session ID is required');
-    }
-
-    const baseManager = new SessionManager(ctx.cwd);
-    const session = await baseManager.loadSession(sessionId);
-    if (!session) {
-      throw new Error(`Session not found: ${sessionId}`);
-    }
-
-    const workingDir = session.workingDir || ctx.cwd;
-    const sessionManager = new SessionManager(workingDir);
-    const planPath = sessionManager.getSessionPlanPath(sessionId);
-
-    let plan: TaskPlan;
     try {
-      plan = await loadPlan(planPath);
-    } catch {
-      throw new Error(`Plan not found for session ${sessionId}`);
-    }
+      const params = input.params as Record<string, string> | undefined;
+      const sessionId = params?.sessionId;
+      const body = (input.body ?? {}) as ExecuteSessionPlanRequest;
 
-    if (plan.status !== 'approved' && plan.status !== 'spec_ready') {
-      throw new Error(`Plan must be approved before execution (current status: ${plan.status})`);
-    }
+      if (!sessionId) {
+        throw new Error('Session ID is required');
+      }
 
-    // Load spec if available — provides exact diffs for the execution agent
-    let spec: TaskSpec | null = null;
-    try {
-      const specPath = sessionManager.getSessionSpecPath(sessionId);
-      const specContent = await fs.readFile(specPath, 'utf-8');
-      spec = JSON.parse(specContent) as TaskSpec;
-    } catch {
-      // No spec — execute from plan only
-    }
+      const baseManager = new SessionManager(ctx.cwd);
+      const session = await baseManager.loadSession(sessionId);
+      if (!session) {
+        throw new Error(`Session not found: ${sessionId}`);
+      }
 
-    const executionTask = spec?.markdown
-      ? buildExecutionTaskWithSpec(plan, spec)
-      : buildExecutionTask(plan);
-    const runInput: RestInput<unknown, RunRequest> = {
-      body: {
-        task: executionTask,
+      const workingDir = session.workingDir || ctx.cwd;
+      const sessionManager = new SessionManager(workingDir);
+      const planPath = sessionManager.getSessionPlanPath(sessionId);
+
+      let plan: TaskPlan;
+      try {
+        plan = await loadPlan(planPath);
+      } catch {
+        throw new Error(`Plan not found for session ${sessionId}`);
+      }
+
+      if (plan.status !== 'approved' && plan.status !== 'spec_ready') {
+        throw new Error(`Plan must be approved before execution (current status: ${plan.status})`);
+      }
+
+      // Load spec if available — provides exact diffs for the execution agent
+      let spec: TaskSpec | null = null;
+      try {
+        const specPath = sessionManager.getSessionSpecPath(sessionId);
+        const specContent = await fs.readFile(specPath, 'utf-8');
+        spec = JSON.parse(specContent) as TaskSpec;
+      } catch {
+        // No spec — execute from plan only
+      }
+
+      const executionTask = spec?.markdown
+        ? buildExecutionTaskWithSpec(plan, spec)
+        : buildExecutionTask(plan);
+      const runInput: RestInput<unknown, RunRequest> = {
+        body: {
+          task: executionTask,
+          sessionId,
+          workingDir,
+          tier: body.tier,
+          responseMode: body.responseMode,
+          verbose: body.verbose,
+          enableEscalation: body.enableEscalation,
+        },
+      };
+
+      const runResponse = await (runHandler as unknown as {
+        execute: (ctx: PluginContextV3, input: RestInput<unknown, RunRequest>) => Promise<RunResponse>;
+      }).execute(ctx, runInput);
+
+      const inProgressPlan: TaskPlan = {
+        ...plan,
+        status: 'in_progress',
+        updatedAt: new Date().toISOString(),
+      };
+      await fs.writeFile(planPath, JSON.stringify(inProgressPlan, null, 2), 'utf-8');
+
+      const documentService = new PlanDocumentService(workingDir);
+      const markdownPath = documentService.getPlanPath(plan);
+      await documentService.appendExecutionLog(
+        markdownPath,
+        `- ${new Date().toISOString()}: Execution started (runId: ${runResponse.runId}).`
+      );
+
+      return {
         sessionId,
-        workingDir,
-        tier: body.tier,
-        responseMode: body.responseMode,
-        verbose: body.verbose,
-        enableEscalation: body.enableEscalation,
-      },
-    };
-
-    const runResponse = await (runHandler as unknown as {
-      execute: (ctx: PluginContextV3, input: RestInput<unknown, RunRequest>) => Promise<RunResponse>;
-    }).execute(ctx, runInput);
-
-    const inProgressPlan: TaskPlan = {
-      ...plan,
-      status: 'in_progress',
-      updatedAt: new Date().toISOString(),
-    };
-    await fs.writeFile(planPath, JSON.stringify(inProgressPlan, null, 2), 'utf-8');
-
-    const documentService = new PlanDocumentService(workingDir);
-    const markdownPath = documentService.getPlanPath(plan);
-    await documentService.appendExecutionLog(
-      markdownPath,
-      `- ${new Date().toISOString()}: Execution started (runId: ${runResponse.runId}).`
-    );
-
-    return {
-      sessionId,
-      planId: plan.id,
-      runId: runResponse.runId,
-      eventsPath: runResponse.eventsPath,
-      status: runResponse.status,
-      startedAt: runResponse.startedAt,
-    };
+        planId: plan.id,
+        runId: runResponse.runId,
+        eventsPath: runResponse.eventsPath,
+        status: runResponse.status,
+        startedAt: runResponse.startedAt,
+      };
+    } catch (err) {
+      rethrowForRest(err);
+    }
   },
 });

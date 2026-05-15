@@ -263,6 +263,9 @@ export type {
   StudioMenuEntry,
 } from '@kb-labs/plugin-contracts';
 
+// CLI error helpers — structured output for both JSON and human modes
+export { validationError, handleError, rethrowForRest } from '@kb-labs/shared-cli-ui';
+
 // UIKit data contracts (REST response shapes)
 export type {
   TableData,

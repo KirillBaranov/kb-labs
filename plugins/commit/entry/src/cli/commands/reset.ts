@@ -3,7 +3,7 @@
  * Clear current commit plan
  */
 
-import { defineCommand, findRepoRoot, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, findRepoRoot, handleError, type PluginContextV3 } from '@kb-labs/sdk';
 import { clearPlan, hasPlan } from '@kb-labs/commit-core';
 import type { ResetOutput } from '@kb-labs/commit-contracts';
 
@@ -46,7 +46,12 @@ export default defineCommand({
       }
 
       // Clear plan
-      await clearPlan(cwd, scope);
+      try {
+        await clearPlan(cwd, scope);
+      } catch (err) {
+        handleError(ctx, err);
+        return { exitCode: 1 };
+      }
 
       ctx.ui?.success?.('Plan Cleared', {
         sections: [{

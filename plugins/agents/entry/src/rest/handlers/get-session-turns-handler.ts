@@ -3,7 +3,7 @@
  * NEW (Phase 2): Returns ready-made Turn snapshots instead of raw events
  */
 
-import { defineHandler, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineHandler, rethrowForRest, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
 import { SessionManager } from '@kb-labs/agent-core';
 import type { Turn } from '@kb-labs/agent-contracts';
 
@@ -23,39 +23,43 @@ export default defineHandler({
     ctx: PluginContextV3,
     input: RestInput<GetSessionTurnsRequest>
   ): Promise<GetSessionTurnsResponse> {
-    const params = input.params as Record<string, string> | undefined;
-    const sessionId = params?.sessionId;
-    const query = input.query as Partial<GetSessionTurnsRequest> | undefined;
+    try {
+      const params = input.params as Record<string, string> | undefined;
+      const sessionId = params?.sessionId;
+      const query = input.query as Partial<GetSessionTurnsRequest> | undefined;
 
-    if (!sessionId) {
-      throw new Error('Session ID is required');
+      if (!sessionId) {
+        throw new Error('Session ID is required');
+      }
+
+      const sessionManager = new SessionManager(ctx.cwd);
+
+      ctx.platform.logger.info(`[get-session-turns] cwd: ${ctx.cwd}, sessionId: ${sessionId}`);
+      ctx.platform.logger.info(`[get-session-turns] turnsPath: ${sessionManager.getTurnsPath(sessionId)}`);
+
+      // Verify session exists
+      const session = await sessionManager.loadSession(sessionId);
+      if (!session) {
+        throw new Error(`Session not found: ${sessionId}`);
+      }
+
+      // Get turns (with lazy migration from events if needed)
+      let turns = await sessionManager.getTurns(sessionId);
+
+      ctx.platform.logger.info(`[get-session-turns] Found ${turns.length} turns`);
+
+      // Apply pagination
+      const total = turns.length;
+      if (query?.offset) {
+        turns = turns.slice(query.offset);
+      }
+      if (query?.limit) {
+        turns = turns.slice(0, query.limit);
+      }
+
+      return { turns, total };
+    } catch (err) {
+      rethrowForRest(err);
     }
-
-    const sessionManager = new SessionManager(ctx.cwd);
-
-    ctx.platform.logger.info(`[get-session-turns] cwd: ${ctx.cwd}, sessionId: ${sessionId}`);
-    ctx.platform.logger.info(`[get-session-turns] turnsPath: ${sessionManager.getTurnsPath(sessionId)}`);
-
-    // Verify session exists
-    const session = await sessionManager.loadSession(sessionId);
-    if (!session) {
-      throw new Error(`Session not found: ${sessionId}`);
-    }
-
-    // Get turns (with lazy migration from events if needed)
-    let turns = await sessionManager.getTurns(sessionId);
-
-    ctx.platform.logger.info(`[get-session-turns] Found ${turns.length} turns`);
-
-    // Apply pagination
-    const total = turns.length;
-    if (query?.offset) {
-      turns = turns.slice(query.offset);
-    }
-    if (query?.limit) {
-      turns = turns.slice(0, query.limit);
-    }
-
-    return { turns, total };
   },
 });

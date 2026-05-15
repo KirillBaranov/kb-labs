@@ -8,7 +8,7 @@
  * - .kb/release/history/ for last release
  */
 
-import { defineHandler, findRepoRoot, type RestInput } from '@kb-labs/sdk';
+import { defineHandler, findRepoRoot, type RestInput, rethrowForRest } from '@kb-labs/sdk';
 import type { StatusResponse, ReleasePlan, ReleaseScopeInfo, StatusInput } from '@kb-labs/release-manager-contracts';
 import { readFile, access } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -17,6 +17,7 @@ import { scopeToDir } from '../../shared/utils';
 
 export default defineHandler({
   async execute(ctx, input: RestInput<StatusInput>): Promise<StatusResponse> {
+    try {
       const scope = input.query?.scope || 'root';
       const cwd = ctx.cwd || process.cwd();
       const repoRoot = await findRepoRoot(cwd);
@@ -84,6 +85,9 @@ export default defineHandler({
         packagesInPlan,
         lastReleaseAt,
       };
+    } catch (err) {
+      rethrowForRest(err);
+    }
   },
 });
 

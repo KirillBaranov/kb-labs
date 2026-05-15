@@ -4,7 +4,7 @@
  * Analyze dependencies: find duplicates, unused, missing.
  */
 
-import { defineHandler, type PluginContextV3, type RestInput } from '@kb-labs/sdk';
+import { defineHandler, rethrowForRest, type PluginContextV3, type RestInput } from '@kb-labs/sdk';
 import {
   analyzeDependencies,
   type DuplicateDependency,
@@ -26,16 +26,20 @@ export default defineHandler({
     ctx: PluginContextV3,
     input: RestInput<unknown, DependenciesRequest>
   ): Promise<DependenciesResponse> {
-    const analysis = await analyzeDependencies(ctx.cwd);
+    try {
+      const analysis = await analyzeDependencies(ctx.cwd);
 
-    return {
-      duplicates: analysis.duplicates,
-      unused: analysis.unused,
-      missing: analysis.missing,
-      totalIssues:
-        analysis.duplicates.length +
-        analysis.unused.length +
-        analysis.missing.length,
-    };
+      return {
+        duplicates: analysis.duplicates,
+        unused: analysis.unused,
+        missing: analysis.missing,
+        totalIssues:
+          analysis.duplicates.length +
+          analysis.unused.length +
+          analysis.missing.length,
+      };
+    } catch (err) {
+      rethrowForRest(err);
+    }
   },
 });

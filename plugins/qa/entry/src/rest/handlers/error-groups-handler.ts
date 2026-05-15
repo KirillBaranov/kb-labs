@@ -5,7 +5,7 @@
  * Helps identify the most impactful errors to fix first.
  */
 
-import { defineHandler, type PluginContextV3, type RestInput } from '@kb-labs/sdk';
+import { defineHandler, rethrowForRest, type PluginContextV3, type RestInput } from '@kb-labs/sdk';
 import { loadLastRun, groupErrors } from '@kb-labs/qa-core';
 import type { QAErrorGroupsRequest, QAErrorGroupsResponse } from '@kb-labs/qa-contracts';
 
@@ -14,12 +14,16 @@ export default defineHandler({
     ctx: PluginContextV3,
     _input: RestInput<QAErrorGroupsRequest, unknown>,
   ): Promise<QAErrorGroupsResponse> {
-    const lastRun = loadLastRun(ctx.cwd);
+    try {
+      const lastRun = loadLastRun(ctx.cwd);
 
-    if (!lastRun) {
-      return { groups: [], ungrouped: 0 };
+      if (!lastRun) {
+        return { groups: [], ungrouped: 0 };
+      }
+
+      return groupErrors(lastRun.results);
+    } catch (err) {
+      rethrowForRest(err);
     }
-
-    return groupErrors(lastRun.results);
   },
 });

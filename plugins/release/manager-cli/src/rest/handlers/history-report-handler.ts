@@ -4,7 +4,7 @@
  * Reads: .kb/release/history/{scope}/{id}/report.json
  */
 
-import { defineHandler, findRepoRoot, type RestInput } from '@kb-labs/sdk';
+import { defineHandler, findRepoRoot, type RestInput, rethrowForRest } from '@kb-labs/sdk';
 import type { HistoryReportResponse, ReleaseReport } from '@kb-labs/release-manager-contracts';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -33,7 +33,7 @@ export default defineHandler({
         report,
       };
     } catch (error) {
-      throw new Error(`Failed to read release report for ${scope}/${id}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      rethrowForRest(error);
     }
   }
 });

@@ -4,7 +4,7 @@
  * Analyzes conventional commits since last tag and suggests next version
  */
 
-import { defineHandler, findRepoRoot, type RestInput } from '@kb-labs/sdk';
+import { defineHandler, findRepoRoot, type RestInput, rethrowForRest } from '@kb-labs/sdk';
 import type {
   GitTimelineResponse,
   GitCommit,
@@ -16,6 +16,7 @@ import { resolveScopePath } from '../../shared/utils';
 
 export default defineHandler({
   async execute(ctx, input: RestInput<GitTimelineInput>): Promise<GitTimelineResponse> {
+    try {
     const scope = input.query?.scope || 'root';
     const cwd = ctx.cwd || process.cwd();
     const repoRoot = await findRepoRoot(cwd);
@@ -99,6 +100,9 @@ export default defineHandler({
       lastTag,
       hasUnreleasedChanges: commits.length > 0,
     };
+    } catch (err) {
+      rethrowForRest(err);
+    }
   },
 });
 

@@ -9,7 +9,7 @@
  * Supports --dry-run for previewing changes without applying
  */
 
-import { defineCommand, type PluginContextV3, useLoader } from '@kb-labs/sdk';
+import { defineCommand, validationError, type PluginContextV3, useLoader } from '@kb-labs/sdk';
 import type { UIFacade } from '@kb-labs/sdk';
 import type { FixDepsFlags } from './flags.js';
 import fs from 'node:fs';
@@ -74,7 +74,7 @@ export default defineCommand({
 
       // If no fix flags specified, show error
       if (!removeUnused && !addMissing && !alignVersions) {
-        ui?.error?.('No fix options specified. Use --remove-unused, --add-missing, --align-versions, or --all');
+        validationError(ctx, 'No fix options specified', 'Use --remove-unused, --add-missing, --align-versions, or --all', flags.json);
         return { exitCode: 1 };
       }
 

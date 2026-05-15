@@ -6,7 +6,7 @@
  * Use --log-failed to see only the logs from failed steps.
  */
 
-import { defineCommand, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, validationError, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
 import type { WorkflowRunDetail } from '../http-client.js';
 import { WorkflowDaemonClient } from '../http-client.js';
 
@@ -128,16 +128,16 @@ export default defineCommand<unknown, CLIInput<RunsViewFlags>, { exitCode: numbe
   handler: {
     async execute(ctx: PluginContextV3, input: CLIInput<RunsViewFlags>): Promise<{ exitCode: number }> {
       const { flags, argv = [] } = input;
+      const jsonFields = flags?.json;
       const runId = argv[0];
 
       if (!runId) {
-        ctx.ui?.error?.('Usage: kb workflow runs-view <runId> [--log-failed] [--log] [--json=fields]');
+        validationError(ctx, 'Missing run ID', 'Usage: kb workflow runs-view <runId> [--log-failed] [--log] [--json=fields]', !!jsonFields);
         return { exitCode: 1 };
       }
 
       const showLogFailed = flags?.['log-failed'] ?? false;
       const showLog = flags?.log ?? false;
-      const jsonFields = flags?.json;
       const stepFilter = flags?.step;
 
       try {
@@ -244,8 +244,7 @@ export default defineCommand<unknown, CLIInput<RunsViewFlags>, { exitCode: numbe
 
         return { exitCode };
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        ctx.ui?.error?.(`Failed to get run: ${message}`);
+        handleError(ctx, error, !!jsonFields);
         return { exitCode: 1 };
       }
     },

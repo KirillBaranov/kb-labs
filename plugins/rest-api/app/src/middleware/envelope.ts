@@ -1,11 +1,23 @@
 /**
  * @module @kb-labs/rest-api-app/middleware/envelope
- * Response envelope wrapper middleware
+ * Response envelope wrapper middleware — single source of truth for error formatting.
  */
 
 import type { FastifyInstance } from 'fastify';
 import type { RestApiConfig } from '@kb-labs/rest-api-core';
-import { errorEnvelopeSchema } from '@kb-labs/rest-api-contracts';
+import { errorEnvelopeSchema, type PluginErrorEnvelope } from '@kb-labs/rest-api-contracts';
+
+function isPluginErrorEnvelope(err: unknown): err is PluginErrorEnvelope {
+  return (
+    err !== null &&
+    typeof err === 'object' &&
+    'status' in err &&
+    (err as PluginErrorEnvelope).status === 'error' &&
+    'meta' in err &&
+    typeof (err as PluginErrorEnvelope).meta === 'object' &&
+    'pluginId' in (err as PluginErrorEnvelope).meta
+  );
+}
 
 /**
  * Register envelope middleware
@@ -32,9 +44,25 @@ export function registerEnvelopeMiddleware(
       return payload;
     }
 
-    // Skip if payload is not a string (Buffer or Stream)
+    // Serialize plain objects that reached onSend without going through
+    // Fastify's serializer (happens with non-JSON content-type or in error
+    // handler fallback chains). Buffer/stream/null pass through unchanged.
     if (typeof payload !== 'string') {
-      return payload;
+      if (
+        payload === null ||
+        payload === undefined ||
+        Buffer.isBuffer(payload) ||
+        typeof (payload as { pipe?: unknown }).pipe === 'function' ||
+        typeof (payload as { getReader?: unknown }).getReader === 'function'
+      ) {
+        return payload;
+      }
+      // Plain object — serialize so onSendEnd receives a string
+      try {
+        return JSON.stringify(payload);
+      } catch {
+        return payload;
+      }
     }
 
     // Parse the serialized JSON payload
@@ -96,23 +124,43 @@ export function registerEnvelopeMiddleware(
     return JSON.stringify(envelope);
   });
 
-  // Error handler
-  server.setErrorHandler(async (error: Error & { statusCode?: number; code?: string; details?: unknown; cause?: unknown; traceId?: string }, request, reply) => {
-    const statusCode = error.statusCode || 500;
+  // Single error handler: normalises both PluginErrorEnvelope (from plugin runtime)
+  // and plain Errors into the canonical ErrorEnvelope { ok: false, error, meta }.
+  server.setErrorHandler(async (error: unknown, request, reply) => {
+    let statusCode: number;
+    let errorCode: string;
+    let message: string;
+    let details: Record<string, unknown>;
+    let cause: unknown;
+    let traceId: string | undefined;
 
-    // Extract error details
-    const errorCode = error.code || 'E_INTERNAL';
-    const message = error.message || 'Internal server error';
-    const details = error.details || {};
-    const cause = error.cause;
-    const traceId = error.traceId;
+    if (isPluginErrorEnvelope(error)) {
+      statusCode = error.http || 500;
+      errorCode = error.code || 'E_PLUGIN';
+      message = error.message || 'Plugin error';
+      details = {
+        ...(error.details ?? {}),
+        pluginId: error.meta.pluginId,
+        pluginVersion: error.meta.pluginVersion,
+        routeOrCommand: error.meta.routeOrCommand,
+        ...(error.trace ? { trace: error.trace } : {}),
+      };
+      cause = undefined;
+      traceId = undefined;
+    } else {
+      const err = error as Error & { statusCode?: number; code?: string; details?: unknown; cause?: unknown; traceId?: string };
+      statusCode = err.statusCode || 500;
+      errorCode = err.code || 'E_INTERNAL';
+      message = err.message || 'Internal server error';
+      details = (err.details as Record<string, unknown>) || {};
+      cause = err.cause;
+      traceId = err.traceId;
+    }
 
-    // Store error code for metrics
     reply.errorCode = errorCode;
 
-    // Log error with correlation ID
     if (request.kbLogger) {
-      request.kbLogger.error('Request error', error, {
+      request.kbLogger.error('Request error', error instanceof Error ? error : new Error(String(error)), {
         errorCode,
         statusCode,
       });
@@ -120,13 +168,7 @@ export function registerEnvelopeMiddleware(
 
     const errorEnvelope = errorEnvelopeSchema.parse({
       ok: false,
-      error: {
-        code: errorCode,
-        message,
-        details,
-        cause,
-        traceId,
-      },
+      error: { code: errorCode, message, details, cause, traceId },
       meta: {
         requestId: request.id,
         durationMs: reply.elapsedTime || 0,
@@ -134,8 +176,7 @@ export function registerEnvelopeMiddleware(
       },
     });
 
-    reply.status(statusCode);
-    return errorEnvelope;
+    reply.status(statusCode).send(errorEnvelope);
   });
 }
 

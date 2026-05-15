@@ -4,7 +4,7 @@
  * Writes to: .kb/release/plans/{scope}/current/changelog.md
  */
 
-import { defineHandler, findRepoRoot, type RestInput } from '@kb-labs/sdk';
+import { defineHandler, findRepoRoot, type RestInput, rethrowForRest } from '@kb-labs/sdk';
 import type {
   SaveChangelogRequest,
   SaveChangelogResponse,
@@ -43,7 +43,7 @@ export default defineHandler({
         { scope }
       );
 
-      throw new Error(`Failed to save changelog: ${error instanceof Error ? error.message : String(error)}`);
+      rethrowForRest(error);
     }
   },
 });

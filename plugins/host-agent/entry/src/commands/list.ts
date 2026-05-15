@@ -3,7 +3,7 @@
  * List all connected Workspace Agents via Gateway REST API.
  */
 
-import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, handleError, type PluginContextV3 } from '@kb-labs/sdk';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { homedir } from 'node:os';
@@ -83,11 +83,11 @@ export default defineCommand({
           const body = await res.json() as { hosts: HostEntry[] };
           hosts = body.hosts;
         } else {
-          ctx.ui?.error?.(`Failed to list hosts: HTTP ${res.status}`);
+          handleError(ctx, new Error(`Failed to list hosts: HTTP ${res.status}`), input.json);
           return { exitCode: 1, hosts: [] };
         }
       } catch (err) {
-        ctx.ui?.error?.(`Cannot reach Gateway at ${gatewayUrl}: ${err instanceof Error ? err.message : String(err)}`);
+        handleError(ctx, new Error(`Cannot reach Gateway at ${gatewayUrl}: ${err instanceof Error ? err.message : String(err)}`), input.json);
         return { exitCode: 1, hosts: [] };
       }
 

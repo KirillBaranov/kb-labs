@@ -4,7 +4,7 @@
  * Get build status across monorepo packages.
  */
 
-import { defineHandler, type PluginContextV3, type RestInput } from '@kb-labs/sdk';
+import { defineHandler, rethrowForRest, type PluginContextV3, type RestInput } from '@kb-labs/sdk';
 import { checkBuilds } from '@kb-labs/quality-core/builds';
 import type { BuildCheckResult } from '@kb-labs/quality-contracts';
 
@@ -20,11 +20,15 @@ export default defineHandler({
     ctx: PluginContextV3,
     input: RestInput<BuildsRequest, unknown>
   ): Promise<BuildsResponse> {
-    const { package: packageFilter, timeout } = input.query ?? {};
+    try {
+      const { package: packageFilter, timeout } = input.query ?? {};
 
-    return checkBuilds(ctx.cwd, {
-      packageFilter,
-      timeout: timeout || 30000,
-    });
+      return checkBuilds(ctx.cwd, {
+        packageFilter,
+        timeout: timeout || 30000,
+      });
+    } catch (err) {
+      rethrowForRest(err);
+    }
   },
 });

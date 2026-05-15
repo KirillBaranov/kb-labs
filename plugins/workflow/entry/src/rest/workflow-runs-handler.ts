@@ -3,7 +3,7 @@
  * REST handler for workflow run history (proxy to daemon)
  */
 
-import { defineHandler, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineHandler, rethrowForRest, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
 import type { WorkflowRunHistoryResponse } from '@kb-labs/workflow-contracts';
 import { getWorkflowDaemonUrl } from '../http-client.js';
 
@@ -55,7 +55,7 @@ export default defineHandler({
         '[workflow-runs-handler] Error fetching workflow run history',
         error instanceof Error ? error : undefined
       );
-      throw error;
+      rethrowForRest(error);
     }
   },
 });

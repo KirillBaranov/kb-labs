@@ -4,7 +4,7 @@
  * TypeScript type safety analysis across monorepo
  */
 
-import { defineHandler, type PluginContextV3, type RestInput } from '@kb-labs/sdk';
+import { defineHandler, rethrowForRest, type PluginContextV3, type RestInput } from '@kb-labs/sdk';
 import { analyzeTypes } from '@kb-labs/quality-core/types';
 import type { TypeAnalysisResult } from '@kb-labs/quality-contracts';
 
@@ -20,11 +20,15 @@ export default defineHandler({
     ctx: PluginContextV3,
     input: RestInput<TypesRequest, unknown>
   ): Promise<TypesResponse> {
-    const { package: packageFilter, errorsOnly } = input.query ?? {};
+    try {
+      const { package: packageFilter, errorsOnly } = input.query ?? {};
 
-    return analyzeTypes(ctx.cwd, {
-      packageFilter,
-      errorsOnly: errorsOnly ?? false,
-    });
+      return analyzeTypes(ctx.cwd, {
+        packageFilter,
+        errorsOnly: errorsOnly ?? false,
+      });
+    } catch (err) {
+      rethrowForRest(err);
+    }
   },
 });

@@ -4,7 +4,7 @@
  * Writes: .kb/release/plans/{scope}/current/plan.json
  */
 
-import { defineHandler, findRepoRoot, type RestInput, type PluginContextV3, useConfig } from '@kb-labs/sdk';
+import { defineHandler, findRepoRoot, type RestInput, type PluginContextV3, useConfig, rethrowForRest } from '@kb-labs/sdk';
 import type {
   GeneratePlanRequest,
   GeneratePlanResponse,
@@ -17,6 +17,7 @@ import { scopeToDir } from '../../shared/utils';
 
 export default defineHandler({
   async execute(ctx, input: RestInput<unknown, GeneratePlanRequest>): Promise<GeneratePlanResponse> {
+    try {
     const scope = input.body?.scope || 'root';
     const bump = input.body?.bump || 'auto';
     const useLLM = input.body?.useLLM ?? true;
@@ -146,6 +147,9 @@ export default defineHandler({
       tokensUsed,
       confidence,
     };
+    } catch (err) {
+      rethrowForRest(err);
+    }
   }
 });
 

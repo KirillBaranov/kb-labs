@@ -5,7 +5,7 @@
  * Data comes from last-run.json (saved by qa-orchestrator after each run).
  */
 
-import { defineHandler, type PluginContextV3, type RestInput } from '@kb-labs/sdk';
+import { defineHandler, rethrowForRest, type PluginContextV3, type RestInput } from '@kb-labs/sdk';
 import { loadLastRun } from '@kb-labs/qa-core';
 import type { QADetailsRequest, QADetailsResponse } from '@kb-labs/qa-contracts';
 
@@ -14,6 +14,7 @@ export default defineHandler({
     ctx: PluginContextV3,
     _input: RestInput<QADetailsRequest, unknown>,
   ): Promise<QADetailsResponse> {
+    try {
     const lastRun = loadLastRun(ctx.cwd);
 
     if (!lastRun) {
@@ -85,5 +86,8 @@ export default defineHandler({
       submodules,
       checks,
     };
+    } catch (err) {
+      rethrowForRest(err);
+    }
   },
 });

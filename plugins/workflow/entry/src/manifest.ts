@@ -23,6 +23,7 @@ import {
   WORKFLOW_ROUTES,
 } from '@kb-labs/workflow-contracts';
 
+
 /**
  * Minimal permissions - workflow-cli only makes HTTP requests
  * No file system or git access needed
@@ -56,107 +57,66 @@ export const manifest = {
   },
 
   cli: {
+    groupMeta: [
+      { path: 'workflow', describe: 'Workflow daemon commands' },
+    ],
     commands: [
-      // workflow:health - Check daemon health
       {
-        id: 'health',
-        group: 'workflow',
+        path: 'workflow health',
         category: 'Daemon',
         describe: 'Check workflow daemon health status.',
         longDescription:
           'Performs a health check on the workflow daemon by making an HTTP request to /health endpoint. ' +
           'Use this to verify the daemon is running and responding.',
-
         handler: './commands/health.js#default',
-        handlerPath: './commands/health.js',
-
         flags: defineCommandFlags(healthFlags),
-
-        examples: [
-          'kb workflow health',
-          'kb workflow health --json',
-        ],
+        examples: ['kb workflow health', 'kb workflow health --json'],
       },
-
-      // workflow:metrics - Get metrics
       {
-        id: 'metrics',
-        group: 'workflow',
+        path: 'workflow metrics',
         category: 'Daemon',
         describe: 'Get workflow daemon metrics.',
         longDescription:
           'Fetches comprehensive metrics from the workflow daemon including total runs, queued jobs, ' +
           'running jobs, completed jobs, and failure counts.',
-
         handler: './commands/metrics.js#default',
-        handlerPath: './commands/metrics.js',
-
         flags: defineCommandFlags(metricsFlags),
-
-        examples: [
-          'kb workflow metrics',
-          'kb workflow metrics --json',
-        ],
+        examples: ['kb workflow metrics', 'kb workflow metrics --json'],
       },
-
-      // workflow:status - Get job status
       {
-        id: 'status',
-        group: 'workflow',
+        path: 'workflow status',
         category: 'Jobs',
         describe: 'Get status of a specific workflow job.',
         longDescription:
           'Retrieves detailed status information for a specific job by ID, including current state, ' +
           'start time, and completion time if finished.',
-
         handler: './commands/status.js#default',
-        handlerPath: './commands/status.js',
-
         flags: defineCommandFlags(statusFlags),
-
-        examples: [
-          'kb workflow status --job-id=abc123',
-          'kb workflow status --job-id=abc123 --json',
-        ],
+        examples: ['kb workflow status --job-id=abc123', 'kb workflow status --job-id=abc123 --json'],
       },
-
-      // workflow:logs - Get job logs
       {
-        id: 'logs',
-        group: 'workflow',
+        path: 'workflow logs',
         category: 'Jobs',
         describe: 'Get logs for a specific workflow job.',
         longDescription:
-          'Fetches execution logs for a specific job by ID. Note: Log integration with platform.logger ' +
-          'is pending, currently returns placeholder data.',
-
+          'Fetches execution logs for a specific job by ID.',
         handler: './commands/logs.js#default',
-        handlerPath: './commands/logs.js',
-
         flags: defineCommandFlags(logsFlags),
-
         examples: [
           'kb workflow logs --job-id=abc123',
           'kb workflow logs --job-id=abc123 --json',
           'kb workflow logs --job-id=abc123 --follow',
         ],
       },
-
-      // workflow:list - List active executions
       {
-        id: 'list',
-        group: 'workflow',
+        path: 'workflow list',
         category: 'Jobs',
         describe: 'List active workflow executions.',
         longDescription:
           'Lists all currently active workflow executions or cron jobs. Can be filtered by status (running, queued, ' +
           'completed, failed, cancelled) or type (runs, cron).',
-
         handler: './commands/list.js#default',
-        handlerPath: './commands/list.js',
-
         flags: defineCommandFlags(listFlags),
-
         examples: [
           'kb workflow list',
           'kb workflow list --status=running',
@@ -164,22 +124,15 @@ export const manifest = {
           'kb workflow list --json',
         ],
       },
-
-      // workflow:job-run - Submit raw job for execution
       {
-        id: 'job-run',
-        group: 'workflow',
+        path: 'workflow job-run',
         category: 'Jobs',
         describe: 'Submit a raw job for execution.',
         longDescription:
           'Submits a job to the workflow daemon for execution. Requires a handler (plugin command) and ' +
           'optionally accepts input parameters as JSON. Can wait for job completion with --wait flag.',
-
         handler: './commands/run.js#default',
-        handlerPath: './commands/run.js',
-
         flags: defineCommandFlags(runFlags),
-
         examples: [
           'kb workflow job-run --handler=mind:rag-query --input=\'{"text":"test"}\'',
           'kb workflow job-run --handler=mind:rag-query --input=\'{"text":"test"}\' --wait',
@@ -187,22 +140,15 @@ export const manifest = {
           'kb workflow job-run --handler=mind:rag-query --input=\'{"text":"test"}\' --json',
         ],
       },
-
-      // workflow:runs-list - List workflow runs (like gh run list)
       {
-        id: 'runs-list',
-        group: 'workflow',
+        path: 'workflow runs-list',
         category: 'Runs',
         describe: 'List workflow runs.',
         longDescription:
           'Lists workflow runs with status, trigger, and duration. Filter by status (failed, running, success) ' +
           'or workflow ID. Use --json for machine-readable output.',
-
         handler: './commands/runs-list.js#default',
-        handlerPath: './commands/runs-list.js',
-
         flags: defineCommandFlags(runsListFlags),
-
         examples: [
           'kb workflow runs-list',
           'kb workflow runs-list --status=failed',
@@ -210,23 +156,16 @@ export const manifest = {
           'kb workflow runs-list --workflow=my-workflow --json',
         ],
       },
-
-      // workflow:runs-view - View run details for investigation (like gh run view)
       {
-        id: 'runs-view',
-        group: 'workflow',
+        path: 'workflow runs-view',
         category: 'Runs',
         describe: 'View run details for incident investigation.',
         longDescription:
           'Shows full run details: jobs, steps, resolvedInputs, gate decisions, errors. ' +
           'Use --log-failed to see only the logs from failed steps (fastest path to root cause). ' +
           'Use --json=status,jobs for selective JSON output.',
-
         handler: './commands/runs-view.js#default',
-        handlerPath: './commands/runs-view.js',
-
         flags: defineCommandFlags(runsViewFlags),
-
         examples: [
           'kb workflow runs-view <runId>',
           'kb workflow runs-view <runId> --log-failed',
@@ -235,65 +174,41 @@ export const manifest = {
           'kb workflow runs-view <runId> --json=all',
         ],
       },
-
-      // workflow:runs-watch - Stream run events (like gh run watch)
       {
-        id: 'runs-watch',
-        group: 'workflow',
+        path: 'workflow runs-watch',
         category: 'Runs',
         describe: 'Stream workflow run events in real-time.',
         longDescription:
           'Connects to the run event stream via SSE and prints events as they happen. ' +
           'Automatically exits when the run finishes.',
-
         handler: './commands/runs-watch.js#default',
-        handlerPath: './commands/runs-watch.js',
-
         flags: defineCommandFlags(runsWatchFlags),
-
-        examples: [
-          'kb workflow runs-watch <runId>',
-          'kb workflow runs-watch <runId> --json',
-        ],
+        examples: ['kb workflow runs-watch <runId>', 'kb workflow runs-watch <runId> --json'],
       },
-
-      // workflow:runs-rerun - Rerun a workflow (like gh run rerun)
       {
-        id: 'runs-rerun',
-        group: 'workflow',
+        path: 'workflow runs-rerun',
         category: 'Runs',
         describe: 'Rerun a workflow run.',
         longDescription:
           'Reruns a workflow by re-submitting it with the same inputs. ' +
           'Use --failed-only to skip jobs that already succeeded (not yet supported by daemon).',
-
         handler: './commands/runs-rerun.js#default',
-        handlerPath: './commands/runs-rerun.js',
-
         flags: defineCommandFlags(runsRerunFlags),
-
         examples: [
           'kb workflow runs-rerun <runId>',
           'kb workflow runs-rerun <runId> --failed-only',
           'kb workflow runs-rerun <runId> --json',
         ],
       },
-
-      // workflow:run - Run workflow by workflow ID
       {
-        id: 'run',
-        group: 'workflow',
+        path: 'workflow run',
         category: 'Runs',
         describe: 'Run workflow by ID.',
         longDescription:
           'Runs a workflow definition by workflow ID via /api/v1/workflows/:id/run endpoint. ' +
           'Supports request-level target and isolation overrides.',
-
         handler: './commands/workflow-run.js#default',
-        handlerPath: './commands/workflow-run.js',
-
         flags: defineCommandFlags(workflowRunFlags),
-
         examples: [
           'kb workflow run --workflow-id=release-manager/create-release',
           'kb workflow run --workflow-id=release-manager/create-release --isolation=strict --target-namespace=team-a/prod',

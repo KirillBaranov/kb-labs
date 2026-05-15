@@ -1,4 +1,4 @@
-import { defineHandler, useConfig, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineHandler, useConfig, type RestInput, type PluginContextV3, rethrowForRest } from '@kb-labs/sdk';
 import { loadPlan } from '@kb-labs/commit-core/storage';
 import { getGitStatus } from '@kb-labs/commit-core/analyzer';
 import { COMMIT_CACHE_PREFIX, type StatusResponse, type PlanStatus, type CommitPluginConfig, resolveCommitConfig } from '@kb-labs/commit-contracts';
@@ -99,14 +99,7 @@ export default defineHandler({
         gitStatus: gitStatus || undefined,
       };
     } catch (error) {
-      return {
-        scope,
-        hasPlan: false,
-        planStatus: 'idle',
-        filesChanged: 0,
-        commitsInPlan: 0,
-        commitsApplied: 0,
-      };
+      rethrowForRest(error);
     }
   },
 });

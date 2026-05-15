@@ -7,6 +7,8 @@ import {
   defineCommand,
   useLoader,
   useConfig,
+  validationError,
+  handleError,
   type PluginContextV3,
   type CLIInput,
   type CommandResult,
@@ -344,7 +346,7 @@ export default defineCommand<unknown, CLIInput<RunFlags>, AgentReviewReport>({
           const hint = scope === 'staged'
             ? 'No staged files found. Stage files with `git add` first, or use `--scope=changed`.'
             : 'No changed files found. Use `--scope=all` to review all files, or `--files` to specify files explicitly.';
-          ctx.ui?.error?.(hint);
+          validationError(ctx, hint, undefined, flags.json);
           return { exitCode: 1, result: { passed: false, issues: [], summary: hint } };
         }
 
@@ -501,14 +503,9 @@ export default defineCommand<unknown, CLIInput<RunFlags>, AgentReviewReport>({
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         loader.fail(`Review failed: ${message}`);
-        ctx.ui?.error?.(message);
+        handleError(ctx, error, flags.json);
         ctx.platform.logger?.error?.('review:run failed', error instanceof Error ? error : new Error(message));
-        const errorReport: AgentReviewReport = {
-          passed: false,
-          issues: [],
-          summary: `Review error: ${message}`,
-        };
-        return { exitCode: 1, result: errorReport };
+        return { exitCode: 1, result: { passed: false, issues: [], summary: `Review error: ${message}` } };
       }
     },
   },

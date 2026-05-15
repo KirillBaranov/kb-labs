@@ -3,7 +3,7 @@
  * REST handler for running a workflow
  */
 
-import { defineHandler, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineHandler, rethrowForRest, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
 import type { WorkflowRunRequest } from '@kb-labs/workflow-contracts';
 import { getWorkflowDaemonUrl } from '../http-client';
 
@@ -61,7 +61,7 @@ export default defineHandler({
         '[workflow-run-handler] Error running workflow',
         error instanceof Error ? error : undefined
       );
-      throw error;
+      rethrowForRest(error);
     }
   },
 });

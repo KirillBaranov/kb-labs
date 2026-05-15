@@ -1,4 +1,4 @@
-import { defineHandler, useEnv } from '@kb-labs/sdk'
+import { defineHandler, rethrowForRest, useEnv } from '@kb-labs/sdk'
 import type { PostCommentInput, PostCommentOutput } from '@kb-labs/github-contracts'
 
 function headers(token?: string): Record<string, string> {
@@ -14,18 +14,22 @@ function headers(token?: string): Record<string, string> {
 
 export default defineHandler<unknown, PostCommentInput, PostCommentOutput>({
   async execute(ctx, input) {
-    const { owner, repo, issueNumber, body, token } = input
+    try {
+      const { owner, repo, issueNumber, body, token } = input
 
-    const res = await ctx.runtime.fetch(
-      `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`,
-      { method: 'POST', headers: headers(token), body: JSON.stringify({ body }) },
-    )
-    if (!res.ok) throw new Error(`GitHub ${res.status}: ${await res.text()}`)
+      const res = await ctx.runtime.fetch(
+        `https://api.github.com/repos/${owner}/${repo}/issues/${issueNumber}/comments`,
+        { method: 'POST', headers: headers(token), body: JSON.stringify({ body }) },
+      )
+      if (!res.ok) throw new Error(`GitHub ${res.status}: ${await res.text()}`)
 
-    const comment = await res.json() as Record<string, unknown>
-    return {
-      commentId: comment.id as number,
-      url: comment.html_url as string,
+      const comment = await res.json() as Record<string, unknown>
+      return {
+        commentId: comment.id as number,
+        url: comment.html_url as string,
+      }
+    } catch (err) {
+      rethrowForRest(err)
     }
   },
 })

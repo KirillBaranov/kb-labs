@@ -1,4 +1,4 @@
-import { defineHandler, useConfig, type PluginContextV3, type RestInput, useLogger, useLLM } from '@kb-labs/sdk';
+import { defineHandler, useConfig, type PluginContextV3, type RestInput, useLogger, useLLM, rethrowForRest } from '@kb-labs/sdk';
 import { type SummarizeRequest, type SummarizeResponse, type CommitPluginConfig, resolveCommitConfig } from '@kb-labs/commit-contracts';
 import { getFileDiff, getAllChangedFiles, getGitStatus } from '@kb-labs/commit-core/analyzer';
 import { resolveScopePath } from './scope-resolver';
@@ -117,7 +117,7 @@ Keep it concise and at a high level.`;
       };
     } catch (error) {
       logger.error('[summarize-handler] Error', error as Error);
-      throw new Error(`Failed to summarize changes: ${error}`);
+      rethrowForRest(error);
     }
   },
 });

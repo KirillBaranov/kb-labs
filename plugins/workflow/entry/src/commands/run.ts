@@ -2,7 +2,7 @@
  * workflow:job-run command - Submit a raw job for execution
  */
 
-import { defineCommand, type PluginContextV3, useLoader } from '@kb-labs/sdk';
+import { defineCommand, validationError, handleError, type PluginContextV3, useLoader } from '@kb-labs/sdk';
 import { WorkflowDaemonClient } from '../http-client.js';
 import { type RunFlags } from '../flags.js';
 
@@ -16,20 +16,14 @@ export default defineCommand<unknown, RunInput, { exitCode: number }>({
     // eslint-disable-next-line sonarjs/cognitive-complexity -- Workflow execution with input parsing, validation, wait mode (polling + websocket logs), JSON/human output, and error handling
     async execute(ctx: PluginContextV3, input: RunInput): Promise<{ exitCode: number }> {
       const flags = (input as { flags?: RunInput } & RunInput).flags ?? input;
-      const outputJson = flags.json ?? false;
+      const outputJson = !!(flags.json as unknown as boolean | undefined);
       const handler = flags.handler as unknown as string | undefined;
       const inputStr = flags.input as unknown as string | undefined;
       const priority = (flags.priority as unknown as number | undefined) ?? 5;
       const wait = flags.wait ?? false;
 
       if (!handler) {
-        if (outputJson) {
-          ctx.ui?.json?.({ ok: false, error: 'Missing required flag: --handler' });
-        } else {
-          ctx.ui?.error?.('Missing required flag: --handler');
-          ctx.ui?.info?.('Usage: kb workflow job-run --handler=<handler> [--input=<json>]');
-          ctx.ui?.info?.('Example: kb workflow job-run --handler=mind:rag-query --input=\'{"text":"test"}\'');
-        }
+        validationError(ctx, 'Missing required flag: --handler', 'Usage: kb workflow job-run --handler=<handler> [--input=<json>]', outputJson);
         return { exitCode: 1 };
       }
 
@@ -38,13 +32,8 @@ export default defineCommand<unknown, RunInput, { exitCode: number }>({
       if (inputStr) {
         try {
           parsedInput = JSON.parse(inputStr);
-        } catch (error) {
-          if (outputJson) {
-            ctx.ui?.json?.({ ok: false, error: 'Invalid JSON in --input flag' });
-          } else {
-            ctx.ui?.error?.('Invalid JSON in --input flag');
-            ctx.ui?.info?.(`Error: ${error instanceof Error ? error.message : String(error)}`);
-          }
+        } catch {
+          validationError(ctx, 'Invalid JSON in --input flag', undefined, outputJson);
           return { exitCode: 1 };
         }
       }
@@ -119,15 +108,8 @@ export default defineCommand<unknown, RunInput, { exitCode: number }>({
 
         return { exitCode: 0 };
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-
-        if (outputJson) {
-          ctx.ui?.json?.({ ok: false, error: message });
-        } else {
-          ctx.ui?.error?.(`Failed to submit job: ${message}`);
-          ctx.ui?.warn?.(`Make sure workflow daemon is running: kb-workflow`);
-        }
-
+        handleError(ctx, error, outputJson);
+        if (!outputJson) ctx.ui?.warn?.('Make sure workflow daemon is running: kb-workflow');
         return { exitCode: 1 };
       }
     },

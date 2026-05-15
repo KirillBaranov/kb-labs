@@ -8,7 +8,7 @@
  * - stats: graph statistics
  */
 
-import { defineHandler, type PluginContextV3, type RestInput } from '@kb-labs/sdk';
+import { defineHandler, rethrowForRest, type PluginContextV3, type RestInput } from '@kb-labs/sdk';
 import {
   buildDependencyGraph,
   getReverseDependencies,
@@ -46,107 +46,111 @@ export default defineHandler({
     ctx: PluginContextV3,
     input: RestInput<GraphRequest, unknown>
   ): Promise<GraphResponse> {
-    const { packageName, mode } = input.query ?? { mode: 'stats' };
+    try {
+      const { packageName, mode } = input.query ?? { mode: 'stats' };
 
-    // Build dependency graph (cached with Map serialization)
-    const cacheKey = `quality:graph:${ctx.cwd}`;
-    const cached = await ctx.platform.cache.get<any>(cacheKey);
+      // Build dependency graph (cached with Map serialization)
+      const cacheKey = `quality:graph:${ctx.cwd}`;
+      const cached = await ctx.platform.cache.get<any>(cacheKey);
 
-    let graph: DependencyGraph;
+      let graph: DependencyGraph;
 
-    if (cached) {
-      // Deserialize: convert plain object back to Map
-      graph = {
-        nodes: new Map(Object.entries(cached.nodes).map(([key, value]: [string, any]) => [
-          key,
-          {
-            ...value,
-            deps: new Set(value.deps),
-            devDeps: value.devDeps ? new Set(value.devDeps) : undefined,
-            dependents: new Set(value.dependents),
-          },
-        ])),
-        workspacePackages: new Set(cached.workspacePackages),
-      };
-    } else {
-      graph = buildDependencyGraph(ctx.cwd);
-
-      // Serialize: convert Map to plain object for Redis
-      const serialized = {
-        nodes: Object.fromEntries(
-          Array.from(graph.nodes.entries()).map(([key, value]) => [
+      if (cached) {
+        // Deserialize: convert plain object back to Map
+        graph = {
+          nodes: new Map(Object.entries(cached.nodes).map(([key, value]: [string, any]) => [
             key,
             {
               ...value,
-              deps: Array.from(value.deps),
-              devDeps: value.devDeps ? Array.from(value.devDeps) : undefined,
-              dependents: Array.from(value.dependents),
+              deps: new Set(value.deps),
+              devDeps: value.devDeps ? new Set(value.devDeps) : undefined,
+              dependents: new Set(value.dependents),
             },
-          ])
-        ),
-        workspacePackages: Array.from(graph.workspacePackages),
-      };
+          ])),
+          workspacePackages: new Set(cached.workspacePackages),
+        };
+      } else {
+        graph = buildDependencyGraph(ctx.cwd);
 
-      // Cache for 2 minutes
-      await ctx.platform.cache.set(cacheKey, serialized, 120000);
-    }
+        // Serialize: convert Map to plain object for Redis
+        const serialized = {
+          nodes: Object.fromEntries(
+            Array.from(graph.nodes.entries()).map(([key, value]) => [
+              key,
+              {
+                ...value,
+                deps: Array.from(value.deps),
+                devDeps: value.devDeps ? Array.from(value.devDeps) : undefined,
+                dependents: Array.from(value.dependents),
+              },
+            ])
+          ),
+          workspacePackages: Array.from(graph.workspacePackages),
+        };
 
-    // Handle different modes
-    if (mode === 'stats') {
-      return {
-        mode,
-        stats: calculateGraphStats(graph),
-      };
-    }
+        // Cache for 2 minutes
+        await ctx.platform.cache.set(cacheKey, serialized, 120000);
+      }
 
-    if (mode === 'tree') {
-      if (!packageName) {
-        // Find root packages (packages that have no dependents - nothing depends on them)
-        const rootPackages: string[] = [];
-        for (const [name, node] of graph.nodes) {
-          if (node.dependents.size === 0) {
-            rootPackages.push(name);
-          }
-        }
-
+      // Handle different modes
+      if (mode === 'stats') {
         return {
           mode,
-          tree: {
-            name: 'Root Packages',
-            children: rootPackages.map(pkg => buildDependencyTree(graph, pkg)),
-          },
+          stats: calculateGraphStats(graph),
         };
       }
-      return {
-        mode,
-        packageName,
-        tree: buildDependencyTree(graph, packageName),
-      };
-    }
 
-    if (!packageName) {
-      throw new Error('packageName is required for reverse and impact modes');
-    }
+      if (mode === 'tree') {
+        if (!packageName) {
+          // Find root packages (packages that have no dependents - nothing depends on them)
+          const rootPackages: string[] = [];
+          for (const [name, node] of graph.nodes) {
+            if (node.dependents.size === 0) {
+              rootPackages.push(name);
+            }
+          }
 
-    if (mode === 'reverse') {
-      const reverseDeps = getReverseDependencies(graph, packageName);
-      return {
-        mode,
-        packageName,
-        packages: Array.from(reverseDeps),
-      };
-    }
+          return {
+            mode,
+            tree: {
+              name: 'Root Packages',
+              children: rootPackages.map(pkg => buildDependencyTree(graph, pkg)),
+            },
+          };
+        }
+        return {
+          mode,
+          packageName,
+          tree: buildDependencyTree(graph, packageName),
+        };
+      }
 
-    if (mode === 'impact') {
-      const affected = getImpactAnalysis(graph, packageName);
-      return {
-        mode,
-        packageName,
-        packages: Array.from(affected),
-      };
-    }
+      if (!packageName) {
+        throw new Error('packageName is required for reverse and impact modes');
+      }
 
-    throw new Error(`Unknown mode: ${mode}`);
+      if (mode === 'reverse') {
+        const reverseDeps = getReverseDependencies(graph, packageName);
+        return {
+          mode,
+          packageName,
+          packages: Array.from(reverseDeps),
+        };
+      }
+
+      if (mode === 'impact') {
+        const affected = getImpactAnalysis(graph, packageName);
+        return {
+          mode,
+          packageName,
+          packages: Array.from(affected),
+        };
+      }
+
+      throw new Error(`Unknown mode: ${mode}`);
+    } catch (err) {
+      rethrowForRest(err);
+    }
   },
 });
 

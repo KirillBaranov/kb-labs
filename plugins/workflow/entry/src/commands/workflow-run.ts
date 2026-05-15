@@ -2,7 +2,7 @@
  * workflow:run command - Run workflow by workflow ID
  */
 
-import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, validationError, handleError, type PluginContextV3 } from '@kb-labs/sdk';
 import type { WorkflowRunRequest } from '@kb-labs/workflow-contracts';
 import { WorkflowDaemonClient } from '../http-client.js';
 import { type WorkflowRunFlags } from '../flags.js';
@@ -52,12 +52,7 @@ export default defineCommand<unknown, WorkflowRunInput, { exitCode: number }>({
       const workflowId = flags['workflow-id'];
 
       if (!workflowId) {
-        const message = 'Missing required flag: --workflow-id';
-        if (outputJson) {
-          ctx.ui?.json?.({ ok: false, error: message });
-        } else {
-          ctx.ui?.error?.(message);
-        }
+        validationError(ctx, 'Missing required flag: --workflow-id', 'Usage: kb workflow:run --workflow-id <id>', outputJson);
         return { exitCode: 1 };
       }
 
@@ -122,12 +117,7 @@ export default defineCommand<unknown, WorkflowRunInput, { exitCode: number }>({
 
         return { exitCode: 0 };
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        if (outputJson) {
-          ctx.ui?.json?.({ ok: false, error: message });
-        } else {
-          ctx.ui?.error?.(`Failed to run workflow: ${message}`);
-        }
+        handleError(ctx, error, outputJson);
         return { exitCode: 1 };
       }
     },

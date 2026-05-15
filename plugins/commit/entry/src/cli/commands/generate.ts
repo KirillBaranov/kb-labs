@@ -10,6 +10,7 @@ import {
   useConfig,
   findRepoRoot,
   displayArtifacts,
+  handleError,
   type PluginContextV3,
   type ArtifactInfo,
 } from '@kb-labs/sdk';
@@ -102,19 +103,32 @@ export default defineCommand({
             }
           : undefined;
 
-      const plan = await generateCommitPlan({
-        cwd: scopeCwd,
-        llmComplete,
-        config,
-        allowSecrets,
-        autoConfirm,
-        onProgress: (message) => analyzeLoader.update({ text: message }),
-      });
+      let plan;
+      try {
+        plan = await generateCommitPlan({
+          cwd: scopeCwd,
+          llmComplete,
+          config,
+          allowSecrets,
+          autoConfirm,
+          onProgress: (message) => analyzeLoader.update({ text: message }),
+        });
+      } catch (err) {
+        analyzeLoader.fail('Failed to generate commit plan');
+        handleError(ctx, err, input.json);
+        return { exitCode: 1 };
+      }
 
       // Save plan
       const saveLoader = useLoader('Saving plan...');
       saveLoader.start();
-      await savePlan(cwd, plan, effectiveScope);
+      try {
+        await savePlan(cwd, plan, effectiveScope);
+      } catch (err) {
+        saveLoader.fail('Failed to save plan');
+        handleError(ctx, err, input.json);
+        return { exitCode: 1 };
+      }
       const planPath = getCurrentPlanPath(cwd, effectiveScope);
       saveLoader.succeed('Plan saved');
 
