@@ -5775,9 +5775,6 @@ importers:
       '@kb-labs/shared-command-kit':
         specifier: workspace:*
         version: link:../command-kit
-      '@kb-labs/shared-testing':
-        specifier: workspace:*
-        version: link:../testing
       nanoid:
         specifier: ^5.0.0
         version: 5.1.7
