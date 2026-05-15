@@ -80,7 +80,6 @@ export type {
   NotifierAdapterOptions,
   NotifierChannelConfig,
   NotifierRoutingRule,
-  TelegramChannelConfig,
 } from './config.js';
 
 // Analytics context

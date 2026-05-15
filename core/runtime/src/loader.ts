@@ -1141,10 +1141,45 @@ export async function initPlatform(
 
     // ══════════════════════════════════════════════════════════════════════
     // Notifier adapter — dynamic import to avoid circular dep (adapters/* → core)
+    // Channels are resolved here (composition root) so the router stays
+    // decoupled from specific channel implementations.
     // ══════════════════════════════════════════════════════════════════════
     if (typeof adapters.notifier === 'string') {
       const notifierOptions = (adapterOptions.notifier ?? {}) as NotifierAdapterOptions;
       try {
+        // Built-in type → package map. Extend here as new channel types are added.
+        const channelTypePackages: Record<string, string> = {
+          telegram: '@kb-labs/adapters-telegram',
+        };
+
+        // Resolve and instantiate each channel by type.
+        const channels: Record<string, import('@kb-labs/core-platform').INotifierChannel> = {};
+        for (const [id, channelCfg] of Object.entries(notifierOptions.channels ?? {})) {
+          const pkg = channelTypePackages[channelCfg.type];
+          if (!pkg) {
+            platform.logger.warn('initPlatform: unknown notifier channel type, skipping', {
+              channelId: id,
+              type: channelCfg.type,
+            });
+            continue;
+          }
+          try {
+            const channelModule = await import(pkg);
+            const channelFactory = channelModule.createChannel ?? channelModule.default;
+            if (typeof channelFactory === 'function') {
+              channels[id] = channelFactory(channelCfg, id);
+            } else {
+              platform.logger.warn('initPlatform: channel package has no createChannel export', { pkg, channelId: id });
+            }
+          } catch (channelErr) {
+            platform.logger.warn('initPlatform: failed to load notifier channel', {
+              pkg,
+              channelId: id,
+              error: channelErr instanceof Error ? channelErr.message : String(channelErr),
+            });
+          }
+        }
+
         const notifierPkg = adapters.notifier;
         const notifierModule = await import(notifierPkg);
         const notifierFactory = notifierModule.createAdapter ?? notifierModule.default;
@@ -1153,11 +1188,12 @@ export async function initPlatform(
             eventBus: platform.eventBus,
             broker: platform.resourceBroker,
             logger: platform.logger,
+            channels,
           });
           platform.setAdapter('notifier', notifier);
           platform.logger.info('initPlatform initialized notifier adapter', {
             pkg: notifierPkg,
-            channels: Object.keys(notifierOptions.channels ?? {}),
+            channels: Object.keys(channels),
           });
         } else {
           platform.logger.warn('Notifier adapter has no createAdapter export', { pkg: adapters.notifier });
