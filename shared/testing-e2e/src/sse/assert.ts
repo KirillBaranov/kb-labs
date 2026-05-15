@@ -7,7 +7,7 @@ import type { SseEvent } from '../sse-reader.js';
 export function assertSseOrder(events: SseEvent[], expectedTypes: string[]): void {
   let cursor = 0;
   for (const event of events) {
-    if (cursor >= expectedTypes.length) break;
+    if (cursor >= expectedTypes.length) { break; }
     if (event.event === expectedTypes[cursor]) {
       cursor++;
     }
