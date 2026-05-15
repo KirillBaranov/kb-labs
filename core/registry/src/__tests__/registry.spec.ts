@@ -21,7 +21,7 @@ async function createPluginDir(tmpDir: string, id: string, opts?: {
   if (opts?.commands) {
     manifest.cli = {
       commands: Array.from({ length: opts.commands }, (_, i) => ({
-        id: `cmd-${i}`, describe: `Command ${i}`, handler: `./dist/cmd-${i}.js`,
+        path: `cmd-${i}`, describe: `Command ${i}`, handler: `./dist/cmd-${i}.js`,
       })),
     };
   }
