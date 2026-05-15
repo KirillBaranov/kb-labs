@@ -94,6 +94,10 @@ export class TrieBackedRegistry {
 
   // ─── Query ──────────────────────────────────────────────────────────────────
 
+  listSystemTopLevel(): Array<{ name: string; describe: string; isGroup: boolean }> {
+    return this.systemRouter.listSystemTopLevel();
+  }
+
   listCommands(): RegisteredCommand[] {
     return this.pluginRouter.listAll();
   }
