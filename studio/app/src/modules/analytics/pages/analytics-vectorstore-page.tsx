@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UIRow, UICol, UIStatistic, UIAlert, UIProgress } from '@kb-labs/studio-ui-kit';
+import { UIRow, UICol, UIStatistic, UIAlert, UIProgress, UIMetricCard } from '@kb-labs/studio-ui-kit';
 import {
   SearchOutlined,
   PlusCircleOutlined,
@@ -91,11 +91,6 @@ export function AnalyticsVectorStorePage() {
     );
   }
 
-  // Format helpers
-  const _formatNumber = (num: number) => num.toLocaleString();
-  const _formatDuration = (ms: number) => (ms < 1000 ? `${ms.toFixed(1)}ms` : `${(ms / 1000).toFixed(2)}s`);
-  const _formatScore = (score: number) => (score * 100).toFixed(1) + '%';
-
   const totalOperations = stats
     ? stats.searchQueries + stats.upsertOperations + stats.deleteOperations
     : 0;
@@ -126,56 +121,22 @@ export function AnalyticsVectorStorePage() {
       <div style={{ marginTop: 24 }}>
         {/* Overview Stats */}
         <UIRow gutter={[16, 16]}>
-          <UICol xs={24} sm={12} lg={6}>
-            <UICard>
-              <UIStatistic
-                title="Search Queries"
-                value={stats?.searchQueries ?? 0}
-                prefix={<SearchOutlined />}
-                loading={isLoading}
-                valueStyle={{ color: 'var(--info)' }}
-              />
-            </UICard>
-          </UICol>
-          <UICol xs={24} sm={12} lg={6}>
-            <UICard>
-              <UIStatistic
-                title="Upsert Operations"
-                value={stats?.upsertOperations ?? 0}
-                prefix={<PlusCircleOutlined />}
-                loading={isLoading}
-                valueStyle={{ color: 'var(--success)' }}
-              />
-            </UICard>
-          </UICol>
-          <UICol xs={24} sm={12} lg={6}>
-            <UICard>
-              <UIStatistic
-                title="Delete Operations"
-                value={stats?.deleteOperations ?? 0}
-                prefix={<DeleteOutlined />}
-                loading={isLoading}
-                valueStyle={{ color: 'var(--warning)' }}
-              />
-            </UICard>
-          </UICol>
-          <UICol xs={24} sm={12} lg={6}>
-            <UICard>
-              <UIStatistic
-                title="Total Operations"
-                value={totalOperations}
-                prefix={<DatabaseOutlined />}
-                loading={isLoading}
-                valueStyle={{ color: 'var(--link)' }}
-              />
-            </UICard>
-          </UICol>
+          {[
+            { label: 'Search Queries', value: stats?.searchQueries ?? 0, icon: <SearchOutlined />, status: 'info' as const },
+            { label: 'Upsert Operations', value: stats?.upsertOperations ?? 0, icon: <PlusCircleOutlined />, status: 'success' as const },
+            { label: 'Delete Operations', value: stats?.deleteOperations ?? 0, icon: <DeleteOutlined />, status: 'warning' as const },
+            { label: 'Total Operations', value: totalOperations, icon: <DatabaseOutlined />, status: 'default' as const },
+          ].map((metric) => (
+            <UICol key={metric.label} xs={24} sm={12} lg={6}>
+              <UIMetricCard {...metric} loading={isLoading} />
+            </UICol>
+          ))}
         </UIRow>
 
         {/* Search Quality */}
         <UIRow gutter={[16, 16]} style={{ marginTop: 16 }}>
           <UICol xs={24} lg={12}>
-            <UICard title="Search Quality">
+            <UICard title="Search Quality" style={{ height: '100%' }}>
               <UIStatistic
                 title="Average Search Score"
                 value={stats?.avgSearchScore ?? 0}
@@ -206,7 +167,7 @@ export function AnalyticsVectorStorePage() {
             </UICard>
           </UICol>
           <UICol xs={24} lg={12}>
-            <UICard title="Performance Metrics">
+            <UICard title="Performance Metrics" style={{ height: '100%' }}>
               <UIStatistic
                 title="Avg Search Duration"
                 value={stats?.avgSearchDuration ?? 0}

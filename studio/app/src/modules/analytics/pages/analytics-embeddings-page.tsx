@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UIRow, UICol, UIStatistic, UIAlert, UIProgress } from '@kb-labs/studio-ui-kit';
+import { UIRow, UICol, UIStatistic, UIAlert, UIProgress, UIMetricCard } from '@kb-labs/studio-ui-kit';
 import {
   ApiOutlined,
   DollarOutlined,
@@ -110,58 +110,22 @@ export function AnalyticsEmbeddingsPage() {
       <div style={{ marginTop: 24 }}>
         {/* Overview Stats */}
         <UIRow gutter={[16, 16]}>
-          <UICol xs={24} sm={12} lg={6}>
-            <UICard>
-              <UIStatistic
-                title="Total Requests"
-                value={stats?.totalRequests ?? 0}
-                prefix={<ApiOutlined />}
-                loading={isLoading}
-                valueStyle={{ color: 'var(--info)' }}
-              />
-            </UICard>
-          </UICol>
-          <UICol xs={24} sm={12} lg={6}>
-            <UICard>
-              <UIStatistic
-                title="Text Processed"
-                value={stats?.totalTextLength ?? 0}
-                prefix={<FileTextOutlined />}
-                suffix="chars"
-                loading={isLoading}
-                valueStyle={{ color: 'var(--success)' }}
-              />
-            </UICard>
-          </UICol>
-          <UICol xs={24} sm={12} lg={6}>
-            <UICard>
-              <UIStatistic
-                title="Total Cost"
-                value={stats?.totalCost ?? 0}
-                prefix={<DollarOutlined />}
-                precision={4}
-                loading={isLoading}
-                valueStyle={{ color: 'var(--error)' }}
-              />
-            </UICard>
-          </UICol>
-          <UICol xs={24} sm={12} lg={6}>
-            <UICard>
-              <UIStatistic
-                title="Errors"
-                value={stats?.errors ?? 0}
-                prefix={<WarningOutlined />}
-                loading={isLoading}
-                valueStyle={{ color: stats && stats.errors > 0 ? 'var(--warning)' : 'var(--success)' }}
-              />
-            </UICard>
-          </UICol>
+          {[
+            { label: 'Total Requests', value: stats?.totalRequests ?? 0, icon: <ApiOutlined />, status: 'info' as const },
+            { label: 'Text Processed', value: stats?.totalTextLength ?? 0, icon: <FileTextOutlined />, status: 'success' as const, unit: 'chars' },
+            { label: 'Total Cost', value: stats ? formatCost(stats.totalCost) : '0', icon: <DollarOutlined />, status: 'error' as const },
+            { label: 'Errors', value: stats?.errors ?? 0, icon: <WarningOutlined />, status: (stats && stats.errors > 0 ? 'warning' : 'success') as 'warning' | 'success' },
+          ].map((metric) => (
+            <UICol key={metric.label} xs={24} sm={12} lg={6}>
+              <UIMetricCard {...metric} loading={isLoading} />
+            </UICol>
+          ))}
         </UIRow>
 
         {/* Batch Efficiency */}
         <UIRow gutter={[16, 16]} style={{ marginTop: 16 }}>
           <UICol xs={24} lg={12}>
-            <UICard title="Batch Processing">
+            <UICard title="Batch Processing" style={{ height: '100%' }}>
               <UIRow gutter={[16, 16]}>
                 <UICol span={12}>
                   <UIStatistic
@@ -191,7 +155,7 @@ export function AnalyticsEmbeddingsPage() {
             </UICard>
           </UICol>
           <UICol xs={24} lg={12}>
-            <UICard title="Performance Metrics">
+            <UICard title="Performance Metrics" style={{ height: '100%' }}>
               <UIRow gutter={[16, 16]}>
                 <UICol span={12}>
                   <UIStatistic

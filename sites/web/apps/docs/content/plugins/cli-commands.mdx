@@ -415,7 +415,7 @@ The CLI commands don't get picked up until the plugin's manifest is loaded. Afte
 
 1. Building the plugin (`pnpm --filter your-plugin build`),
 2. Linking it to the workspace (`pnpm kb marketplace link ./path/to/your-plugin`),
-3. Clearing the registry cache (`pnpm kb marketplace clear-cache`),
+3. Clearing the registry cache (`pnpm kb marketplace plugins refresh`),
 
 ...the command is available at `pnpm kb <your-command-id>`. Skipping step 3 is the most common reason new commands don't show up — the CLI caches the registry aggressively.
 

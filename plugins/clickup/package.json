@@ -1,0 +1,14 @@
+{
+  "name": "@kb-labs/clickup",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A KB Labs plugin",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r build",
+    "clean": "pnpm -r clean",
+    "type-check": "pnpm -r type-check",
+    "test": "pnpm -r test"
+  }
+}

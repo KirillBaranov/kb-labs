@@ -87,6 +87,17 @@ const KNOWN_METRICS: Record<string, string> = {
   textLength: `SUM(CAST(json_extract(payload, '$.textLength') AS REAL)) as textLength`,
   vectorCount: `SUM(CAST(json_extract(payload, '$.vectorCount') AS REAL)) as vectorCount`,
   resultsCount: `AVG(CAST(json_extract(payload, '$.resultsCount') AS REAL)) as resultsCount`,
+  // VectorStore — event counts by type
+  totalSearches: `SUM(CASE WHEN type = 'vectorstore.search.completed' THEN 1 ELSE 0 END) as totalSearches`,
+  totalUpserts: `SUM(CASE WHEN type = 'vectorstore.upsert.completed' THEN 1 ELSE 0 END) as totalUpserts`,
+  totalDeletes: `SUM(CASE WHEN type = 'vectorstore.delete.completed' THEN 1 ELSE 0 END) as totalDeletes`,
+  // Cache — event counts by type + hit rate
+  totalHits: `SUM(CASE WHEN type = 'cache.get.hit' THEN 1 ELSE 0 END) as totalHits`,
+  totalMisses: `SUM(CASE WHEN type = 'cache.get.miss' THEN 1 ELSE 0 END) as totalMisses`,
+  hitRate: `CAST(SUM(CASE WHEN type = 'cache.get.hit' THEN 1 ELSE 0 END) AS REAL) / NULLIF(SUM(CASE WHEN type IN ('cache.get.hit', 'cache.get.miss') THEN 1 ELSE 0 END), 0) * 100 as hitRate`,
+  // Storage — sum payload byte fields
+  totalBytesRead: `SUM(CAST(json_extract(payload, '$.bytesRead') AS REAL)) as totalBytesRead`,
+  totalBytesWritten: `SUM(CAST(json_extract(payload, '$.bytesWritten') AS REAL)) as totalBytesWritten`,
 };
 
 function buildMetricsSelect(metrics: string[]): string[] {
@@ -102,7 +113,13 @@ function getDefaultMetrics(typeFilter?: string | string[]): string[] {
     return ['textLength', 'estimatedCost', 'durationMs'];
   }
   if (types.some((t) => t.startsWith('vectorstore.'))) {
-    return ['resultsCount', 'durationMs', 'vectorCount'];
+    return ['totalSearches', 'totalUpserts', 'totalDeletes', 'resultsCount', 'durationMs', 'vectorCount'];
+  }
+  if (types.some((t) => t.startsWith('cache.'))) {
+    return ['totalHits', 'totalMisses', 'hitRate', 'durationMs'];
+  }
+  if (types.some((t) => t.startsWith('storage.'))) {
+    return ['totalBytesRead', 'totalBytesWritten', 'durationMs'];
   }
   return ['durationMs'];
 }

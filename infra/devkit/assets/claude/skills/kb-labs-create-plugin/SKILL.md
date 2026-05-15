@@ -111,14 +111,14 @@ The CLI caches plugin manifests. After building a new plugin, always clear the
 cache — otherwise the new commands will not be discovered.
 
 ```bash
-pnpm kb marketplace clear-cache
+pnpm kb marketplace plugins refresh
 pnpm kb <name>:hello --help
 ```
 
 If the command is not found, clear the cache deeply and retry:
 
 ```bash
-pnpm kb marketplace clear-cache --deep
+pnpm kb marketplace plugins refresh
 ```
 
 ## Step 8: Register in the workspace (only if needed)

@@ -69,7 +69,19 @@
 }
 
 /*
- * Primary button — subtle lift effect
+ * All buttons — base transition and press feedback
+ */
+.uiButton {
+  transition: transform 100ms ease, box-shadow 150ms ease, opacity 100ms ease;
+}
+
+.uiButton:active:not(:disabled):not(.ant-btn-disabled) {
+  transform: scale(0.96);
+  transition: transform 60ms ease;
+}
+
+/*
+ * Primary button — subtle lift on hover, snap back on press
  */
 .uiButton.ant-btn-primary {
   transition: transform 150ms ease, box-shadow 150ms ease;
@@ -81,7 +93,26 @@
 }
 
 .uiButton.ant-btn-primary:active:not(:disabled):not(.ant-btn-disabled) {
-  transform: translateY(0);
+  transform: scale(0.97);
+  box-shadow: none;
+  transition: transform 60ms ease;
+}
+
+/*
+ * Default / dashed — dim on press
+ */
+.uiButton.ant-btn-default:active:not(:disabled):not(.ant-btn-disabled),
+.uiButton.ant-btn-dashed:active:not(:disabled):not(.ant-btn-disabled) {
+  opacity: 0.75;
+}
+
+/*
+ * Text / link — background flash on press for clear tactile signal
+ */
+.uiButton.ant-btn-text:active:not(:disabled):not(.ant-btn-disabled),
+.uiButton.ant-btn-link:active:not(:disabled):not(.ant-btn-disabled) {
+  background: rgba(0, 0, 0, 0.06) !important;
+  transform: scale(0.95);
 }
 
 /*

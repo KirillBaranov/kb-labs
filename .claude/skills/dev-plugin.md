@@ -124,10 +124,75 @@ Never: core → entry, core → daemon, contracts → anything internal
 ## After Building
 
 ```bash
-pnpm kb plugins clear-cache
+pnpm kb marketplace plugins refresh
 ```
 
 Always run this after building — CLI caches plugin discovery.
+
+## Error Handling
+
+Every entry package gets `src/utils/error.ts` with two helpers.
+
+### `handleError(ctx, err, isJson?)` — API / internal errors
+
+Wrap every API call in `try/catch` and call this in the catch block.
+
+```ts
+try {
+  const result = await someApiCall();
+  // ...
+} catch (err) {
+  handleError(ctx, err, input.flags.json);
+  return { exitCode: 1, result: null };
+}
+```
+
+In JSON mode outputs `{ ok: false, error: { code, message, hint?, status? } }`.
+In CLI mode calls `ctx.ui?.error?.(message, { hint, cause })` — a rich formatted box.
+
+Extend it for your plugin's API error class:
+
+```ts
+import { YourApiError } from '@kb-labs/your-plugin-core';
+
+if (err instanceof YourApiError) {
+  const hint = err.status === 401 ? 'Check API key' : err.status === 404 ? 'Resource not found' : 'API error';
+  if (isJson) {
+    ctx.ui?.json?.({ ok: false, error: { code: err.code, message: err.message, status: err.status, hint } });
+  } else {
+    ctx.ui?.error?.(err.message, { hint, cause: `API ${err.status} (${err.code})` });
+  }
+  return;
+}
+```
+
+Env var errors are auto-detected by matching `YOUR_ENV_VAR` in the message.
+
+### `validationError(ctx, message, hint?, isJson?)` — missing args/flags
+
+Call **before** the try/catch, for synchronous validation.
+
+```ts
+if (!id) {
+  validationError(ctx, 'id is required', 'Usage: kb plugin cmd <id>', input.flags.json);
+  return { exitCode: 1, result: null };
+}
+```
+
+Always add a `hint` — usage string or "Use `kb plugin X` to find IDs".
+
+### JSON error shape
+
+All errors in `--json` mode follow this shape so agents can check `ok` first:
+
+```json
+{ "ok": false, "error": { "code": "INVALID_ARGS",    "message": "...", "hint": "..." } }
+{ "ok": false, "error": { "code": "ENV_MISSING",     "message": "...", "hint": "..." } }
+{ "ok": false, "error": { "code": "API_CODE",        "message": "...", "status": 401, "hint": "..." } }
+{ "ok": false, "error": { "code": "INTERNAL_ERROR",  "message": "..." } }
+```
+
+Delete operations also wrap success: `{ "ok": true, "deleted": true, "entityId": "..." }`.
 
 ## Migration Note
 

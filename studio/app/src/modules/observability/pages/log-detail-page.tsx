@@ -4,75 +4,51 @@ import {
   UIBadge,
   UITag,
   UITypographyText,
-  UITypographyParagraph,
+  UITitle,
   UISpace,
   UIButton,
-  UIDescriptions,
-  UIDescriptionsItem,
-  UITooltip,
-  UIMessage,
+  UICopyButton,
   UISpin,
-  UITimeline,
-  UIEmptyState,
   UIIcon,
+  UIInput,
+  UIList,
+  UIListItem,
+  UITypographyParagraph,
+  UIPage,
+  UIPageHeader,
 } from '@kb-labs/studio-ui-kit';
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useDataSources } from '../../../providers/data-sources-provider';
 import type { LogRecord } from '@kb-labs/studio-data-client';
-import { UIPage, UIPageHeader } from '@kb-labs/studio-ui-kit';
 
-/**
- * Format timestamp to full datetime with milliseconds
- */
 function formatDateTime(timestamp: string | number): string {
   const date = new Date(typeof timestamp === 'number' ? timestamp : timestamp);
-  return date.toLocaleString('en-US', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-  }) + '.' + date.getMilliseconds().toString().padStart(3, '0');
+  return (
+    date.toLocaleString('en-US', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }) +
+    '.' +
+    date.getMilliseconds().toString().padStart(3, '0')
+  );
 }
 
-/**
- * Format relative time (e.g., "2 minutes ago")
- */
 function formatRelativeTime(timestamp: string | number): string {
   const ms = typeof timestamp === 'number' ? timestamp : new Date(timestamp).getTime();
   const seconds = Math.floor((Date.now() - ms) / 1000);
 
-  if (seconds < 60) {return `${seconds}s ago`;}
-  if (seconds < 3600) {return `${Math.floor(seconds / 60)}m ago`;}
-  if (seconds < 86400) {return `${Math.floor(seconds / 3600)}h ago`;}
+  if (seconds < 60) return `${seconds}s ago`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
   return `${Math.floor(seconds / 86400)}d ago`;
 }
 
-/**
- * Get log level icon
- */
-function getLevelIcon(level: LogRecord['level'] | string) {
-  switch (level) {
-    case 'trace':
-    case 'debug':
-      return <UIIcon name="BugOutlined" style={{ fontSize: 20, color: '#8c8c8c' }} />;
-    case 'info':
-      return <UIIcon name="InfoCircleOutlined" style={{ fontSize: 20, color: '#1890ff' }} />;
-    case 'warn':
-      return <UIIcon name="WarningOutlined" style={{ fontSize: 20, color: '#faad14' }} />;
-    case 'error':
-    case 'fatal':
-    default:
-      return <UIIcon name="CloseCircleOutlined" style={{ fontSize: 20, color: '#ff4d4f' }} />;
-  }
-}
-
-/**
- * Get log level tag color
- */
 function getLevelColor(level: LogRecord['level'] | string): string {
   switch (level) {
     case 'trace':
@@ -89,23 +65,133 @@ function getLevelColor(level: LogRecord['level'] | string): string {
   }
 }
 
-/**
- * Copy text to clipboard
- */
-function copyToClipboard(text: string, label: string) {
-  navigator.clipboard.writeText(text);
-  UIMessage.success(`${label} copied to clipboard`);
+function getLevelBorderColor(level: LogRecord['level'] | string): string {
+  switch (level) {
+    case 'trace':
+    case 'debug':
+      return '#8c8c8c';
+    case 'info':
+      return '#1890ff';
+    case 'warn':
+      return '#faad14';
+    case 'error':
+    case 'fatal':
+    default:
+      return '#ff4d4f';
+  }
 }
 
-/**
- * Log Detail Page
- *
- * Shows detailed view of a single log with:
- * - Full log context (message, level, source, timestamp)
- * - Error details (stack trace if available)
- * - Related logs timeline (based on correlation IDs)
- * - All log metadata fields
- */
+function StackTrace({ stack }: { stack: string }) {
+  const [expanded, setExpanded] = useState(true);
+
+  return (
+    <div>
+      <div style={{ marginBottom: 8 }}>
+        <UIButton
+          variant="text"
+          size="small"
+          onClick={() => setExpanded((e) => !e)}
+          icon={<UIIcon name={expanded ? 'DownOutlined' : 'RightOutlined'} />}
+          style={{ padding: 0, color: '#8c8c8c', fontSize: 12 }}
+        >
+          Stack Trace
+        </UIButton>
+      </div>
+      {expanded && (
+        <UITypographyParagraph
+          copyable
+          code
+          style={{ maxHeight: 320, overflow: 'auto', fontSize: 12, marginBottom: 0 }}
+        >
+          {stack}
+        </UITypographyParagraph>
+      )}
+    </div>
+  );
+}
+
+function AllFields({ log }: { log: LogRecord }) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const entries = Object.entries(log).filter(
+    ([k, v]) => !search || k.includes(search) || String(v).includes(search),
+  );
+
+  return (
+    <UICard
+      title={
+        <span onClick={() => setOpen((o) => !o)} style={{ cursor: 'pointer', userSelect: 'none' }}>
+          <UIIcon
+            name={open ? 'DownOutlined' : 'RightOutlined'}
+            style={{ fontSize: 10, marginRight: 6, color: '#8c8c8c' }}
+          />
+          All Fields ({Object.keys(log).length})
+        </span>
+      }
+    >
+      {open && (
+        <>
+          <UIInput
+            placeholder="Search fields..."
+            value={search}
+            onChange={(value) => setSearch(value)}
+            allowClear
+            prefix={<UIIcon name="SearchOutlined" style={{ color: '#bfbfbf' }} />}
+            style={{ marginBottom: 12 }}
+          />
+          <div>
+            {entries.map(([k, v]) => {
+              const strVal = typeof v === 'object' ? JSON.stringify(v) : String(v);
+              return (
+                <div
+                  key={k}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '4px 0',
+                    borderBottom: '1px solid #f5f5f5',
+                  }}
+                >
+                  <span
+                    style={{
+                      color: '#8c8c8c',
+                      fontSize: 12,
+                      minWidth: 140,
+                      flexShrink: 0,
+                      fontFamily: 'monospace',
+                    }}
+                  >
+                    {k}
+                  </span>
+                  <span
+                    style={{
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                      wordBreak: 'break-all',
+                      flex: 1,
+                      color: '#262626',
+                    }}
+                  >
+                    {strVal}
+                  </span>
+                  <UICopyButton value={strVal} size="small" style={{ flexShrink: 0 }} />
+                </div>
+              );
+            })}
+            {entries.length === 0 && (
+              <UITypographyText type="secondary" style={{ fontSize: 12 }}>
+                No fields match "{search}"
+              </UITypographyText>
+            )}
+          </div>
+        </>
+      )}
+    </UICard>
+  );
+}
+
 export function LogDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -115,19 +201,15 @@ export function LogDetailPage() {
   const [error, setError] = useState<Error | null>(null);
   const [log, setLog] = useState<LogRecord | null>(null);
   const [relatedLogs, setRelatedLogs] = useState<LogRecord[]>([]);
-  const [correlationKeys, setCorrelationKeys] = useState<any>(null);
 
   useEffect(() => {
-    if (!id) {return;}
+    if (!id) return;
 
     const loadLog = async () => {
       setLoading(true);
       setError(null);
-
       try {
-        // Fetch log with related logs
         const response = await sources.observability.getLog(id, true);
-
         setLog(response.log);
         setRelatedLogs(response.related || []);
       } catch (err: any) {
@@ -139,23 +221,6 @@ export function LogDetailPage() {
 
     loadLog();
   }, [id, sources.observability]);
-
-  // Load correlation keys separately if we have the log
-  useEffect(() => {
-    if (!id || !log) {return;}
-
-    const loadRelated = async () => {
-      try {
-        const response = await sources.observability.getRelatedLogs(id);
-        setCorrelationKeys(response.correlationKeys);
-      } catch (err) {
-        // Silent fail - correlation keys are nice-to-have
-        console.error('Failed to load correlation keys:', err);
-      }
-    };
-
-    loadRelated();
-  }, [id, log, sources.observability]);
 
   if (loading) {
     return (
@@ -185,27 +250,21 @@ export function LogDetailPage() {
     );
   }
 
-  // Extract correlation ID fields (not part of LogRecord type, accessed via index signature)
   const logTraceId = log.traceId as string | undefined;
   const logRequestId = log.requestId as string | undefined;
   const logSessionId = log.sessionId as string | undefined;
-
-  // Extract error details if present
-  const errorDetails = (log.err || log.error) as { name?: string; message?: string; stack?: string } | undefined;
+  const errorDetails = (log.err || log.error) as
+    | { name?: string; message?: string; stack?: string }
+    | undefined;
   const hasError = !!errorDetails;
+  const borderColor = getLevelBorderColor(log.level);
 
-  // Build metadata fields (exclude standard fields and error)
-  const metadataFields: Record<string, unknown> = { ...log };
-  delete metadataFields['time'];
-  delete metadataFields['level'];
-  delete metadataFields['msg'];
-  delete metadataFields['plugin'];
-  delete metadataFields['err'];
-  delete metadataFields['error'];
-  delete metadataFields['traceId'];
-  delete metadataFields['executionId'];
-  delete metadataFields['requestId'];
-  delete metadataFields['sessionId'];
+  const correlationIds: Array<[string, string]> = [
+    ['Trace', logTraceId],
+    ['Execution', log.executionId as string | undefined],
+    ['Request', logRequestId],
+    ['Session', logSessionId],
+  ].filter((entry): entry is [string, string] => !!entry[1]);
 
   return (
     <UIPage>
@@ -214,295 +273,161 @@ export function LogDetailPage() {
         description={`Viewing log from ${formatRelativeTime(log.time)}`}
         onBack={() => navigate('/observability/logs')}
         actions={[
-          <UIButton
+          <UICopyButton
             key="copy-link"
-            icon={<UIIcon name="LinkOutlined" />}
-            onClick={() => copyToClipboard(window.location.href, 'Link')}
-          >
-            Copy Link
-          </UIButton>,
-          <UIButton
+            value={window.location.href}
+            size="middle"
+            label="Copy Link"
+          />,
+          <UICopyButton
             key="copy-json"
-            icon={<UIIcon name="CopyOutlined" />}
-            onClick={() => copyToClipboard(JSON.stringify(log, null, 2), 'JSON')}
-          >
-            Export JSON
-          </UIButton>,
+            value={JSON.stringify(log, null, 2)}
+            size="middle"
+            label="Export JSON"
+          />,
         ]}
       />
 
-      {/* Log Overview Card */}
+      {/* Hero card */}
       <UICard
-        style={{ marginBottom: 16 }}
-        title={
-          <UISpace>
-            {getLevelIcon(log.level)}
-            <span>Log Overview</span>
-            <UITag color={getLevelColor(log.level)}>{log.level.toUpperCase()}</UITag>
-          </UISpace>
-        }
+        style={{
+          marginBottom: 16,
+          borderLeft: `4px solid ${borderColor}`,
+          borderRadius: 8,
+        }}
       >
-        <UIDescriptions column={2} bordered>
-          <UIDescriptionsItem label="Timestamp">
-            <UISpace>
-              <UIIcon name="ClockCircleOutlined" />
-              <UITypographyText code>{formatDateTime(log.time)}</UITypographyText>
-              <UITypographyText type="secondary">({formatRelativeTime(log.time)})</UITypographyText>
-            </UISpace>
-          </UIDescriptionsItem>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+          <UITag color={getLevelColor(log.level)} style={{ margin: 0 }}>
+            {log.level.toUpperCase()}
+          </UITag>
+          <UITypographyText type="secondary" style={{ fontSize: 13 }}>
+            {String(log.plugin || log.source || 'unknown')}
+          </UITypographyText>
+          <UITypographyText type="secondary">·</UITypographyText>
+          <UITypographyText type="secondary" style={{ fontSize: 13, fontFamily: 'monospace' }}>
+            {formatDateTime(log.time)}
+          </UITypographyText>
+          <UITypographyText type="secondary" style={{ fontSize: 13 }}>
+            ({formatRelativeTime(log.time)})
+          </UITypographyText>
+        </div>
 
-          <UIDescriptionsItem label="Source">
-            <UITag color="purple">{String(log.plugin || log.source || 'unknown')}</UITag>
-          </UIDescriptionsItem>
+        <UITitle level={4} style={{ margin: '8px 0 14px' }}>
+          {String(log.msg || '(no message)')}
+        </UITitle>
 
-          <UIDescriptionsItem label="Message" span={2}>
-            <UITypographyText strong style={{ fontSize: 14 }}>
-              {String(log.msg || '(no message)')}
-            </UITypographyText>
-          </UIDescriptionsItem>
-
-          {/* Correlation IDs */}
-          {logTraceId && (
-            <UIDescriptionsItem label="Trace ID">
-              <UISpace>
-                <UITypographyText code>{logTraceId}</UITypographyText>
-                <UITooltip title="Copy trace ID">
-                  <UIButton
-                    size="small"
-                    icon={<UIIcon name="CopyOutlined" />}
-                    onClick={() => copyToClipboard(logTraceId, 'Trace ID')}
-                  />
-                </UITooltip>
+        {correlationIds.length > 0 && (
+          <UISpace wrap size={4}>
+            {correlationIds.map(([label, value]) => (
+              <UISpace key={label} size={2} style={{ fontFamily: 'monospace', fontSize: 11 }}>
+                <UITypographyText type="secondary" style={{ fontSize: 11 }}>{label}:</UITypographyText>
+                <UITypographyText code style={{ fontSize: 11 }}>
+                  {value.length > 16 ? `${value.slice(0, 16)}…` : value}
+                </UITypographyText>
+                <UICopyButton value={value} size="small" />
               </UISpace>
-            </UIDescriptionsItem>
-          )}
-
-          {Boolean(log.executionId) && (
-            <UIDescriptionsItem label="Execution ID">
-              <UISpace>
-                <UITypographyText code>{String(log.executionId)}</UITypographyText>
-                <UITooltip title="Copy execution ID">
-                  <UIButton
-                    size="small"
-                    icon={<UIIcon name="CopyOutlined" />}
-                    onClick={() => copyToClipboard(String(log.executionId), 'Execution ID')}
-                  />
-                </UITooltip>
-              </UISpace>
-            </UIDescriptionsItem>
-          )}
-
-          {logRequestId && (
-            <UIDescriptionsItem label="Request ID">
-              <UISpace>
-                <UITypographyText code>{logRequestId}</UITypographyText>
-                <UITooltip title="Copy request ID">
-                  <UIButton
-                    size="small"
-                    icon={<UIIcon name="CopyOutlined" />}
-                    onClick={() => copyToClipboard(logRequestId, 'Request ID')}
-                  />
-                </UITooltip>
-              </UISpace>
-            </UIDescriptionsItem>
-          )}
-
-          {logSessionId && (
-            <UIDescriptionsItem label="Session ID">
-              <UISpace>
-                <UITypographyText code>{logSessionId}</UITypographyText>
-                <UITooltip title="Copy session ID">
-                  <UIButton
-                    size="small"
-                    icon={<UIIcon name="CopyOutlined" />}
-                    onClick={() => copyToClipboard(logSessionId, 'Session ID')}
-                  />
-                </UITooltip>
-              </UISpace>
-            </UIDescriptionsItem>
-          )}
-        </UIDescriptions>
+            ))}
+          </UISpace>
+        )}
       </UICard>
 
-      {/* Error Details Card (if error exists) */}
+      {/* Error Details */}
       {hasError && (
         <UICard
           style={{ marginBottom: 16 }}
           title={
             <UISpace>
               <UIIcon name="CloseCircleOutlined" style={{ color: '#ff4d4f' }} />
-              <span>Error Details</span>
+              <span>{errorDetails.name || 'Error'}</span>
             </UISpace>
           }
-          type="inner"
         >
-          <UISpace direction="vertical" style={{ width: '100%' }} size="middle">
-            {errorDetails.name && (
-              <div>
-                <UITypographyText type="secondary">Error Type:</UITypographyText>
-                <br />
-                <UITag color="red">{errorDetails.name}</UITag>
-              </div>
-            )}
-
-            {errorDetails.message && (
-              <div>
-                <UITypographyText type="secondary">Error Message:</UITypographyText>
-                <br />
-                <UITypographyText strong>{errorDetails.message}</UITypographyText>
-              </div>
-            )}
-
-            {errorDetails.stack && (
-              <div>
-                <UITypographyText type="secondary">Stack Trace:</UITypographyText>
-                <UITypographyParagraph
-                  copyable
-                  code
-                  style={{
-                    marginTop: 8,
-                    backgroundColor: '#fafafa',
-                    padding: 12,
-                    borderRadius: 4,
-                    fontSize: 12,
-                    fontFamily: 'monospace',
-                    whiteSpace: 'pre-wrap',
-                    maxHeight: 300,
-                    overflow: 'auto',
-                  }}
-                >
-                  {errorDetails.stack}
-                </UITypographyParagraph>
-              </div>
-            )}
-          </UISpace>
+          {errorDetails.message && (
+            <UITypographyText strong style={{ fontSize: 15, display: 'block', marginBottom: 16 }}>
+              {errorDetails.message}
+            </UITypographyText>
+          )}
+          {errorDetails.stack && <StackTrace stack={errorDetails.stack} />}
         </UICard>
       )}
 
-      {/* Related Logs Timeline */}
-      <UICard
-        style={{ marginBottom: 16 }}
-        title={
-          <UISpace>
-            <UIIcon name="ClockCircleOutlined" />
-            <span>Related Logs Timeline</span>
-            {relatedLogs.length > 0 && (
+      {/* Context / Related Logs */}
+      {relatedLogs.length > 0 && (
+        <UICard
+          style={{ marginBottom: 16 }}
+          title={
+            <UISpace>
+              <UIIcon name="ClockCircleOutlined" />
+              <span>Context</span>
               <UIBadge count={relatedLogs.length} style={{ backgroundColor: '#52c41a' }} />
-            )}
-          </UISpace>
-        }
-      >
-        {relatedLogs.length === 0 ? (
-          <UIEmptyState
-            description="No related logs found"
-            image={UIEmptyState.PRESENTED_IMAGE_SIMPLE}
-          />
-        ) : (
-          <>
-            {correlationKeys && (
-              <UIAlert
-                message="Correlation Keys"
-                description={
-                  <UISpace wrap>
-                    {correlationKeys.requestId && (
-                      <UITag>Request: {correlationKeys.requestId}</UITag>
-                    )}
-                    {correlationKeys.traceId && (
-                      <UITag>Trace: {correlationKeys.traceId}</UITag>
-                    )}
-                    {correlationKeys.executionId && (
-                      <UITag>Execution: {correlationKeys.executionId}</UITag>
-                    )}
-                    {correlationKeys.sessionId && (
-                      <UITag>Session: {correlationKeys.sessionId}</UITag>
-                    )}
-                  </UISpace>
-                }
-                variant="info"
-                style={{ marginBottom: 16 }}
-                closable
-              />
-            )}
-
-            <UITimeline
-              mode="left"
-              items={relatedLogs.map((relatedLog) => {
-                const isCurrentLog = relatedLog.id === id;
-
-                return {
-                  color: isCurrentLog ? 'red' : getLevelColor(relatedLog.level),
-                  dot: isCurrentLog ? (
-                    <UIBadge variant="info" />
-                  ) : (
-                    getLevelIcon(relatedLog.level)
-                  ),
-                  label: (
-                    <UITypographyText type="secondary" style={{ fontSize: 12 }}>
-                      {formatDateTime(relatedLog.time)}
-                    </UITypographyText>
-                  ),
-                  children: (
-                    <UICard
-                      size="small"
-                      style={{
-                        backgroundColor: isCurrentLog ? '#fff7e6' : undefined,
-                        borderColor: isCurrentLog ? '#ffa940' : undefined,
-                      }}
-                    >
-                      <UISpace direction="vertical" style={{ width: '100%' }} size="small">
-                        <UISpace>
-                          <UITag color={getLevelColor(relatedLog.level)}>
-                            {relatedLog.level.toUpperCase()}
-                          </UITag>
-                          {relatedLog.plugin && (
-                            <UITag color="purple">{String(relatedLog.plugin)}</UITag>
-                          )}
-                          {isCurrentLog && (
-                            <UITag color="orange">YOU ARE HERE</UITag>
-                          )}
-                        </UISpace>
-                        <UITypographyText>{String(relatedLog.msg || '(no message)')}</UITypographyText>
-                        {relatedLog.err && (
-                          <UITag color="red" icon={<UIIcon name="CloseCircleOutlined" />}>
-                            {String(relatedLog.err.name || 'Error')}
-                          </UITag>
-                        )}
-                      </UISpace>
-                    </UICard>
-                  ),
-                };
-              })}
-            />
-          </>
-        )}
-      </UICard>
-
-      {/* All Log Fields */}
-      <UICard
-        title={
-          <UISpace>
-            <UIIcon name="FileTextOutlined" />
-            <span>All Log Fields</span>
-          </UISpace>
-        }
-      >
-        <UITypographyParagraph
-          copyable
-          code
-          style={{
-            backgroundColor: '#fafafa',
-            padding: 16,
-            borderRadius: 4,
-            fontSize: 12,
-            fontFamily: 'monospace',
-            whiteSpace: 'pre-wrap',
-            maxHeight: 500,
-            overflow: 'auto',
-          }}
+            </UISpace>
+          }
         >
-          {JSON.stringify(log, null, 2)}
-        </UITypographyParagraph>
-      </UICard>
+          <UIList
+            size="small"
+            dataSource={relatedLogs}
+            rowKey={(rl) => rl.id ?? rl.time}
+            renderItem={(rl) => {
+              const isCurrent = rl.id === id;
+              const timeStr = formatDateTime(rl.time);
+              const timePart = timeStr.includes(', ') ? timeStr.split(', ')[1] : timeStr;
+
+              const rowContent = (
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '150px 65px 110px 1fr',
+                    alignItems: 'center',
+                    gap: 8,
+                    padding: '4px 0',
+                  }}
+                >
+                  <UITypographyText type="secondary" style={{ fontSize: 11, fontFamily: 'monospace' }}>
+                    {timePart}
+                  </UITypographyText>
+                  <UITag color={getLevelColor(rl.level)} style={{ margin: 0 }}>
+                    {rl.level.toUpperCase()}
+                  </UITag>
+                  <UITypographyText type="secondary" style={{ fontSize: 12 }}>
+                    {String(rl.plugin || '—')}
+                  </UITypographyText>
+                  <UITypographyText
+                    style={{ fontSize: 12, fontWeight: isCurrent ? 600 : 400 }}
+                    ellipsis={{ tooltip: String(rl.msg || '(no message)') }}
+                  >
+                    {String(rl.msg || '(no message)')}
+                  </UITypographyText>
+                </div>
+              );
+
+              return (
+                <UIListItem
+                  style={{
+                    padding: '4px 8px',
+                    borderLeft: isCurrent ? '3px solid #fa8c16' : '3px solid transparent',
+                    background: isCurrent ? '#fffbe6' : undefined,
+                    borderRadius: 4,
+                  }}
+                >
+                  {rl.id && !isCurrent ? (
+                    <Link
+                      to={`/observability/logs/${rl.id}`}
+                      style={{ display: 'block', width: '100%', color: 'inherit', textDecoration: 'none' }}
+                    >
+                      {rowContent}
+                    </Link>
+                  ) : (
+                    rowContent
+                  )}
+                </UIListItem>
+              );
+            }}
+          />
+        </UICard>
+      )}
+
+      {/* All Fields */}
+      <AllFields log={log} />
     </UIPage>
   );
 }

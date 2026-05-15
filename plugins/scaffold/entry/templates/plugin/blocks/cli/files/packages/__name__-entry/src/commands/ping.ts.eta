@@ -1,4 +1,5 @@
 import { defineCommand, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { handleError } from '../utils/error.js';
 
 type PingFlags = { json?: boolean };
 
@@ -13,13 +14,20 @@ export default defineCommand({
 
   handler: {
     async execute(ctx: PluginContextV3, input: CLIInput<PingFlags>) {
-      const payload = { ok: true, at: new Date().toISOString() };
-      if (input.flags.json) {
-        ctx.ui?.json?.(payload);
-      } else {
-        ctx.ui?.info?.(`pong @ ${payload.at}`);
+      try {
+        const payload = { ok: true, at: new Date().toISOString() };
+
+        if (input.flags.json) {
+          ctx.ui?.json?.(payload);
+        } else {
+          ctx.ui?.info?.(`pong @ ${payload.at}`);
+        }
+
+        return { exitCode: 0, result: payload };
+      } catch (err) {
+        handleError(ctx, err, input.flags.json);
+        return { exitCode: 1, result: null };
       }
-      return { exitCode: 0, result: payload };
     },
   },
 });

@@ -88,46 +88,60 @@ export const analyticsNavigation: NavigationItem = {
   icon: renderIcon('BarChartOutlined'),
   children: [
     {
-      key: KEYS.OVERVIEW,
-      label: 'Overview',
-      path: PATHS.OVERVIEW,
-      icon: renderIcon('DashboardOutlined'),
+      key: 'analytics-group-general',
+      label: 'General',
+      type: 'group',
+      children: [
+        {
+          key: KEYS.OVERVIEW,
+          label: 'Overview',
+          path: PATHS.OVERVIEW,
+          icon: renderIcon('DashboardOutlined'),
+        },
+        {
+          key: KEYS.EVENTS,
+          label: 'Events',
+          path: PATHS.EVENTS,
+          icon: renderIcon('ThunderboltOutlined'),
+        },
+      ],
     },
     {
-      key: KEYS.EVENTS,
-      label: 'Events',
-      path: PATHS.EVENTS,
-      icon: renderIcon('ThunderboltOutlined'),
-    },
-    {
-      key: KEYS.LLM,
-      label: 'LLM Usage',
-      path: PATHS.LLM,
-      icon: renderIcon('RobotOutlined'),
-    },
-    {
-      key: KEYS.EMBEDDINGS,
-      label: 'Embeddings',
-      path: PATHS.EMBEDDINGS,
-      icon: renderIcon('NodeIndexOutlined'),
-    },
-    {
-      key: KEYS.VECTORSTORE,
-      label: 'Vector Store',
-      path: PATHS.VECTORSTORE,
-      icon: renderIcon('DatabaseOutlined'),
-    },
-    {
-      key: KEYS.CACHE,
-      label: 'Cache',
-      path: PATHS.CACHE,
-      icon: renderIcon('ThunderboltOutlined'),
-    },
-    {
-      key: KEYS.STORAGE,
-      label: 'Storage',
-      path: PATHS.STORAGE,
-      icon: renderIcon('SaveOutlined'),
+      key: 'analytics-group-adapters',
+      label: 'Adapters',
+      type: 'group',
+      children: [
+        {
+          key: KEYS.LLM,
+          label: 'LLM Usage',
+          path: PATHS.LLM,
+          icon: renderIcon('RobotOutlined'),
+        },
+        {
+          key: KEYS.EMBEDDINGS,
+          label: 'Embeddings',
+          path: PATHS.EMBEDDINGS,
+          icon: renderIcon('NodeIndexOutlined'),
+        },
+        {
+          key: KEYS.VECTORSTORE,
+          label: 'Vector Store',
+          path: PATHS.VECTORSTORE,
+          icon: renderIcon('DatabaseOutlined'),
+        },
+        {
+          key: KEYS.CACHE,
+          label: 'Cache',
+          path: PATHS.CACHE,
+          icon: renderIcon('ThunderboltOutlined'),
+        },
+        {
+          key: KEYS.STORAGE,
+          label: 'Storage',
+          path: PATHS.STORAGE,
+          icon: renderIcon('SaveOutlined'),
+        },
+      ],
     },
   ],
 };

@@ -25,7 +25,13 @@ export function interpolateString(value: string, required = true): string {
           `Found in config value: "${value}"`,
         );
       }
-      return match; // leave unresolved in non-required mode
+      // console.warn intentional: this runs during bootstrap before the platform logger exists.
+      // ILogger is initialised after loadPlatformConfig returns, so it cannot be injected here.
+      console.warn(
+        `[kb-labs] Config warning: unresolved placeholder \${${varName}} — ` +
+        `set the environment variable or remove the placeholder from config.`,
+      );
+      return match;
     }
     return resolved;
   });

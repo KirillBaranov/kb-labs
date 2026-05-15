@@ -166,7 +166,7 @@ Core defines interfaces. Adapters implement them. Plugins use them. Core never k
 
 | Symptom | Fix |
 |---------|-----|
-| Command not found after building a plugin | `pnpm kb marketplace clear-cache` |
+| Command not found after building a plugin | `pnpm kb marketplace plugins refresh` |
 | Service not starting — port already in use | `lsof -i :<port>` → `kill -9 <PID>` |
 | 401 on every request | Check `gateway.staticTokens` in `kb.config.json`, or verify `GATEWAY_JWT_SECRET` didn't rotate |
 | `useLLM()` returns undefined | Add `llm` adapter to `platform.adapters` in `kb.config.json` |

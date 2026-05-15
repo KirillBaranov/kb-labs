@@ -236,7 +236,7 @@ pnpm build
 
 # Link into your KB Labs workspace:
 pnpm kb marketplace link /absolute/path/to/packages/hello-plugin
-pnpm kb marketplace clear-cache
+pnpm kb marketplace plugins refresh
 ```
 
 The `clear-cache` step is mandatory — without it, the CLI uses a cached registry and won't see your new plugin.

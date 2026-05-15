@@ -1,4 +1,4 @@
-import { UIRow, UICol, UIStatistic, UIAlert, UISpace, useUITheme } from '@kb-labs/studio-ui-kit';
+import { UIRow, UICol, UIStatistic, UIAlert, UISpace, UIMetricCard, useUITheme } from '@kb-labs/studio-ui-kit';
 import {
   ThunderboltOutlined,
   DatabaseOutlined,
@@ -99,50 +99,16 @@ export function AnalyticsOverviewPage() {
       <div style={{ marginTop: 24 }}>
         {/* Overview Stats */}
         <UIRow gutter={[16, 16]}>
-          <UICol xs={24} sm={12} lg={6}>
-            <UICard>
-              <UIStatistic
-                title="Total Events"
-                value={statsData?.totalEvents ?? 0}
-                loading={statsLoading}
-                prefix={<ThunderboltOutlined />}
-                valueStyle={{ color: 'var(--info)' }}
-              />
-            </UICard>
-          </UICol>
-          <UICol xs={24} sm={12} lg={6}>
-            <UICard>
-              <UIStatistic
-                title="Event Types"
-                value={statsData ? Object.keys(statsData.byType).length : 0}
-                loading={statsLoading}
-                prefix={<DatabaseOutlined />}
-                valueStyle={{ color: 'var(--success)' }}
-              />
-            </UICard>
-          </UICol>
-          <UICol xs={24} sm={12} lg={6}>
-            <UICard>
-              <UIStatistic
-                title="Sources"
-                value={statsData ? Object.keys(statsData.bySource).length : 0}
-                loading={statsLoading}
-                prefix={<CloudOutlined />}
-                valueStyle={{ color: 'var(--link)' }}
-              />
-            </UICard>
-          </UICol>
-          <UICol xs={24} sm={12} lg={6}>
-            <UICard>
-              <UIStatistic
-                title="Actors"
-                value={statsData ? Object.keys(statsData.byActor).length : 0}
-                loading={statsLoading}
-                prefix={<RocketOutlined />}
-                valueStyle={{ color: 'var(--warning)' }}
-              />
-            </UICard>
-          </UICol>
+          {[
+            { label: 'Total Events', value: statsData?.totalEvents ?? 0, icon: <ThunderboltOutlined />, status: 'info' as const },
+            { label: 'Event Types', value: statsData ? Object.keys(statsData.byType).length : 0, icon: <DatabaseOutlined />, status: 'success' as const },
+            { label: 'Sources', value: statsData ? Object.keys(statsData.bySource).length : 0, icon: <CloudOutlined />, status: 'default' as const },
+            { label: 'Actors', value: statsData ? Object.keys(statsData.byActor).length : 0, icon: <RocketOutlined />, status: 'warning' as const },
+          ].map((metric) => (
+            <UICol key={metric.label} xs={24} sm={12} lg={6}>
+              <UIMetricCard {...metric} loading={statsLoading} />
+            </UICol>
+          ))}
         </UIRow>
 
         {/* Platform Adapters */}
