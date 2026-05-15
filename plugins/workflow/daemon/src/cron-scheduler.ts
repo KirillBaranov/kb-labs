@@ -254,8 +254,6 @@ export class CronScheduler {
           env: job.workflowSpec.env,
         };
 
-        // Debug: log the spec being passed
-        console.log('🔍 CRON SPEC:', JSON.stringify(spec, null, 2));
         this.logger.debug('Running workflow from cron', {
           cronJobId,
           spec: JSON.stringify(spec, null, 2),

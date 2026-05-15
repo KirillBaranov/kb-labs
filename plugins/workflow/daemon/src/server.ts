@@ -118,9 +118,6 @@ export async function createServer(options: CreateServerOptions) {
 
   await server.register(cors, {
     origin: (origin, callback) => {
-      // TODO: Security - For production, implement proper authentication (API keys, mTLS)
-      // instead of allowing no-origin requests. Currently allows for development convenience.
-
       // Allow requests with no origin ONLY in development
       if (!origin) {
         // KB_DAEMON_REQUIRE_AUTH=false explicitly opts out of production restrictions

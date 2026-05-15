@@ -118,7 +118,7 @@ export async function bootstrap(cwd: string = process.cwd()): Promise<void> {
     cache: platform.cache,
     events: platform.eventBus,
     logger: createWorkflowLogger('engine', 'workflow.engine'),
-    snapshotManager: (platform as unknown as Record<string, unknown>).snapshotManager as never,
+    snapshotManager: platform.snapshotManager,
     workspaceRoot: projectRoot,
   });
 
@@ -216,13 +216,9 @@ export async function bootstrap(cwd: string = process.cwd()): Promise<void> {
     process.kill(process.pid, 'SIGTERM');
   });
 
-  // Start cron scheduler
-  if (discovered.plugins + discovered.users > 0) {
-    bootstrapLogger.info('Starting CronScheduler');
-    await cronScheduler.start();
-  } else {
-    bootstrapLogger.info('No cron jobs found, skipping CronScheduler start');
-  }
+  // Start cron scheduler (always — so dynamically registered crons via API work too)
+  bootstrapLogger.info('Starting CronScheduler');
+  await cronScheduler.start();
 
   bootstrapLogger.info('Workflow daemon started successfully', { port });
 

@@ -12,17 +12,25 @@ import type { IEntityRegistry } from '@kb-labs/core-registry';
 import { logDiagnosticEvent } from '@kb-labs/core-platform';
 import type { ILogger, IAnalytics, IWorkspaceProvider } from '@kb-labs/core-platform';
 import type { IExecutionBackend } from '@kb-labs/core-contracts';
-import type { ExecutionTarget, ExpressionContext, StepSpec } from '@kb-labs/workflow-contracts';
+import type { ExecutionTarget, ExpressionContext, StepSpec, WorkflowRun, JobRun, StepRun } from '@kb-labs/workflow-contracts';
 import type { ExecutionBackend } from '@kb-labs/plugin-execution';
 import { createCorrelatedLogger } from '@kb-labs/shared-http';
 import {
   interpolateObject,
   interpolateString,
   evaluateExpression,
-  resolveValue,
 } from '@kb-labs/workflow-contracts';
-import type { GateInput, GateRouteAction } from '@kb-labs/workflow-builtins';
+import type { GateInput } from '@kb-labs/workflow-steps';
+import { GateHandler, type GateDecision } from '@kb-labs/workflow-steps';
 import { SandboxRunner } from '@kb-labs/workflow-runtime';
+
+interface StepSpecRaw {
+  run?: string;
+  uses?: string;
+  summary?: string;
+  with?: Record<string, unknown>;
+  [key: string]: unknown;
+}
 
 interface Platform {
   readonly executionBackend: IExecutionBackend;
@@ -227,7 +235,7 @@ export async function createWorkflowWorker(
         }
       } catch (wsError) {
         const msg = wsError instanceof Error ? wsError.message : String(wsError);
-        logDiagnosticEvent(jobLogger as unknown as ILogger, {
+        logDiagnosticEvent(jobLogger, {
           domain: 'workflow',
           event: 'workflow.workspace.provision',
           level: 'error',
@@ -380,7 +388,7 @@ export async function createWorkflowWorker(
           if (interpolatedWith) {
             const stateStore = engine.getStateStore();
             await stateStore.updateStep(run.id, job.id, step.id, (draft) => {
-              (draft as any).resolvedInputs = interpolatedWith;
+              draft.resolvedInputs = interpolatedWith;
             });
           }
 
@@ -397,291 +405,55 @@ export async function createWorkflowWorker(
 
           // --- Handle builtin:approval ---
           if (step.spec.uses === 'builtin:approval') {
-            // If the step was already rejected (daemon restarted after resolution),
-            // skip re-marking as waiting — let the gate handle routing on the next step.
             if (step.status === 'failed') {
-              stepLogger.info('Approval already rejected — skipping to gate', {
-                runId: run.id,
-                stepId: step.id,
-              });
+              // Already rejected (daemon restarted after resolution) — let gate route.
+              stepLogger.info('Approval already rejected — skipping to gate', { runId: run.id, stepId: step.id });
               continue;
             }
-
-            // If step is already waiting (e.g. daemon restarted), skip to polling
             if (step.status !== 'waiting_approval') {
               await engine.markStepWaitingApproval(run.id, job.id, step.id);
             }
-
-            const approvalTimeoutMs = (interpolatedWith as Record<string, unknown> | undefined)?.['timeoutMs'];
-            if (!approvalTimeoutMs) {
-              stepLogger.warn('[approval] No timeout configured — approval may wait indefinitely', {
-                runId: run.id,
-                jobId: job.id,
-                stepId: step.id,
-                stepName: step.name,
-              });
-            }
-
-            stepLogger.info('[approval] Waiting for approval', {
-              runId: run.id,
-              jobId: job.id,
-              stepId: step.id,
-              stepName: step.name,
-              context: interpolatedWith,
-            });
-
-            const approvalStartMs = Date.now();
-            let pollCount = 0;
-
-            // Poll until approval is resolved or stop is requested
-            while (!stopRequested) {
-              await sleep(2000);
-              pollCount++;
-              const currentRun = await engine.getRun(run.id);
-              const currentJob = currentRun?.jobs.find(j => j.id === job.id);
-              const currentStep = currentJob?.steps.find(s => s.id === step.id);
-
-              if (!currentStep || currentStep.status === 'success') {
-                stepLogger.info('[approval] Approval granted', {
-                  runId: run.id,
-                  stepId: step.id,
-                  stepName: step.name,
-                  waitedMs: Date.now() - approvalStartMs,
-                });
-                break;
-              }
-
-              if (currentStep.status === 'failed') {
-                // Approval was rejected — break out of the polling loop and let
-                // the following builtin:gate step read outputs.action to route.
-                stepLogger.info('[approval] Approval rejected', {
-                  runId: run.id,
-                  stepId: step.id,
-                  stepName: step.name,
-                  waitedMs: Date.now() - approvalStartMs,
-                });
-                break;
-              }
-
-              // Heartbeat every 10 polls (~20 seconds)
-              if (pollCount % 10 === 0) {
-                stepLogger.info('[approval] Still waiting for approval', {
-                  runId: run.id,
-                  stepId: step.id,
-                  stepName: step.name,
-                  waitedMs: Date.now() - approvalStartMs,
-                  pollCount,
-                });
-              }
-            }
-
-            if (stopRequested) {
-              stepLogger.info('Approval wait interrupted by shutdown', { stepId: step.id });
-              return;
-            }
-
+            const approvalResult = await waitForApproval(
+              engine, run.id, job.id, step, interpolatedWith as Record<string, unknown> | undefined,
+              () => stopRequested, stepLogger,
+            );
+            if (approvalResult === 'interrupted') { return; }
             continue; // Outputs already set by resolveApproval
           }
 
           // --- Handle builtin:gate ---
           if (step.spec.uses === 'builtin:gate') {
             const gateInput = (interpolatedWith ?? {}) as unknown as GateInput;
-            const decisionPath = gateInput.decision;
-            const maxIterations = gateInput.maxIterations ?? 3;
+            // Iteration counter lives in step.metadata so it survives restarts without
+            // polluting run.metadata. Runs started before this change lose their counter
+            // (reset to 0) — extra iterations are safer than silent skips.
+            const currentIteration = (step.metadata?.['iterations'] as number) ?? 0;
 
-            // Resolve decision value from expression context
-            const decisionValue = resolveValue(decisionPath, exprCtx);
-            const decisionKey = String(decisionValue);
-
-            // Find matching route
-            const route: GateRouteAction | undefined =
-              gateInput.routes[decisionKey] ?? gateInput.routes[decisionValue as string];
-            const action = route ?? gateInput.default ?? 'fail';
-
-            const availableRoutes = Object.keys(gateInput.routes ?? {});
-            const resolvedAction = typeof action === 'string' ? action : 'restart';
-
+            const decision = new GateHandler().handle(gateInput, exprCtx, currentIteration);
             stepLogger.info('[gate] Evaluating gate decision', {
               runId: run.id,
               stepId: step.id,
               stepName: step.name,
-              expression: decisionPath,
-              resolvedDecision: decisionValue,
-              availableRoutes,
-              selectedRoute: decisionKey,
-              action: resolvedAction,
+              expression: gateInput.decision,
+              action: decision.action,
+              iteration: currentIteration,
             });
 
-            // Track gate iterations in run metadata
-            const iterationKey = `gate:${step.spec.id ?? step.id}:iterations`;
-            const metadata = (freshRun?.metadata ?? {}) as Record<string, unknown>;
-            const currentIteration = (metadata[iterationKey] as number) ?? 0;
-
-            if (!route && !gateInput.default) {
-              stepLogger.warn('[gate] No matching route found, no default set — failing', {
-                runId: run.id,
-                stepId: step.id,
-                stepName: step.name,
-                resolvedDecision: decisionValue,
-                availableRoutes,
-              });
-            }
-
-            if (action === 'continue') {
-              stepLogger.info('[gate] Gate passed, continuing', {
-                runId: run.id,
-                stepId: step.id,
-                stepName: step.name,
-                resolvedDecision: decisionValue,
-                selectedRoute: decisionKey,
-                iteration: currentIteration,
-              });
-              await engine.markStepCompleted(run.id, job.id, step.id, {
-                decisionValue,
-                action: 'continue',
-                iteration: currentIteration,
-              });
+            if (decision.action === 'continue') {
+              await engine.markStepCompleted(run.id, job.id, step.id, decision.outputs);
               continue;
             }
-
-            if (action === 'fail') {
-              const failReason = (route as { message?: string } | undefined)?.message ?? `No matching route for value "${decisionKey}"`;
-              stepLogger.error('[gate] Gate condition failed, aborting job', undefined, {
+            if (decision.action === 'fail') {
+              stepLogger.error('[gate] Gate condition failed, aborting job', decision.error, {
                 runId: run.id,
                 stepId: step.id,
                 stepName: step.name,
-                resolvedDecision: decisionValue,
-                availableRoutes,
-                selectedRoute: route ? decisionKey : '(none)',
-                failReason,
-                iteration: currentIteration,
               });
-              const error = new Error(`Gate failed: ${failReason}`);
-              await engine.markStepFailed(run.id, job.id, step.id, error, {
-                decisionValue,
-                action: 'fail',
-                iteration: currentIteration,
-              });
-              throw error;
+              await engine.markStepFailed(run.id, job.id, step.id, decision.error, decision.outputs);
+              throw decision.error;
             }
-
-            // restartFrom action
-            const restartAction = action as { restartFrom: string; context?: Record<string, unknown> };
-            const nextIteration = currentIteration + 1;
-
-            if (nextIteration >= maxIterations) {
-              stepLogger.error('[gate] Max iterations reached', undefined, {
-                runId: run.id,
-                stepId: step.id,
-                stepName: step.name,
-                resolvedDecision: decisionValue,
-                iteration: currentIteration,
-                maxIterations,
-              });
-              const error = new Error(
-                `Gate max iterations reached (${maxIterations}) for step ${step.spec.id ?? step.id}`
-              );
-              await engine.markStepFailed(run.id, job.id, step.id, error, {
-                decisionValue,
-                action: 'fail',
-                maxIterationsReached: true,
-                iteration: currentIteration,
-                maxIterations,
-              });
-              throw error;
-            }
-
-            // Collect steps that will be reset for logging
-            const stepsToReset: string[] = [];
-            for (const s of job.steps) {
-              if (s.spec.id === restartAction.restartFrom || s.id === restartAction.restartFrom) {
-                stepsToReset.push(s.name ?? s.id);
-              } else if (stepsToReset.length > 0) {
-                stepsToReset.push(s.name ?? s.id);
-              }
-            }
-
-            stepLogger.warn('[gate] Gate triggered restart', {
-              runId: run.id,
-              stepId: step.id,
-              stepName: step.name,
-              resolvedDecision: decisionValue,
-              restartFrom: restartAction.restartFrom,
-              iteration: nextIteration,
-              maxIterations,
-              stepsToReset,
-            });
-
-            // Mark gate step as completed (with restart info)
-            await engine.markStepCompleted(run.id, job.id, step.id, {
-              decisionValue,
-              action: 'restart',
-              restartFrom: restartAction.restartFrom,
-              iteration: nextIteration,
-            });
-
-            // Update iteration counter in run metadata
-            await engine.updateRun(run.id, (draft) => {
-              const md = (draft.metadata ?? {}) as Record<string, unknown>;
-              md[iterationKey] = nextIteration;
-              draft.metadata = md;
-
-              // Merge rework context into trigger.payload
-              if (restartAction.context) {
-                const payload = (draft.trigger.payload ?? {}) as Record<string, unknown>;
-                Object.assign(payload, restartAction.context);
-                draft.trigger.payload = payload;
-              }
-
-              return draft;
-            });
-
-            // Reset steps from target to end of job (set to queued)
-            const stateStore = engine.getStateStore();
-            const scheduler = engine.getScheduler();
-            let foundTarget = false;
-
-            for (const s of job.steps) {
-              if (s.spec.id === restartAction.restartFrom || s.id === restartAction.restartFrom) {
-                foundTarget = true;
-              }
-              if (foundTarget) {
-                stepLogger.debug('[gate] Reset step to queued', {
-                  stepId: s.id,
-                  stepName: s.name,
-                  stepIndex: s.index,
-                });
-                await stateStore.updateStep(run.id, job.id, s.id, (draft) => {
-                  draft.status = 'queued';
-                  draft.startedAt = undefined;
-                  draft.finishedAt = undefined;
-                  draft.error = undefined;
-                  draft.outputs = undefined;
-                });
-              }
-            }
-
-            // Reset job status and re-enqueue
-            await stateStore.updateJob(run.id, job.id, (draft) => {
-              draft.status = 'queued';
-              draft.startedAt = undefined;
-              draft.finishedAt = undefined;
-            });
-
-            const updatedRun = await engine.getRun(run.id);
-            const updatedJob = updatedRun?.jobs.find(j => j.id === job.id);
-            if (updatedJob) {
-              await scheduler.enqueueJob(run.id, updatedJob, updatedJob.priority ?? 'normal');
-              stepLogger.info('[gate] Job re-enqueued for restart', {
-                runId: run.id,
-                jobId: job.id,
-                jobName: job.jobName,
-                iteration: nextIteration,
-                restartFrom: restartAction.restartFrom,
-              });
-            }
-
-            // Exit processJob — worker will pick up the re-queued job
+            // restart
+            await applyGateRestart(engine, run, job, step, decision, stepLogger);
             return;
           }
 
@@ -693,17 +465,8 @@ export async function createWorkflowWorker(
           // Build spec with interpolated `with`, `run`, and `summary`.
           // Normalize `run: cmd` → `uses: builtin:shell, with: { command: cmd }`
           // Interpolate the run string so ${{ inputs.* }}, ${{ steps.* }} etc. are resolved.
-          //
-          // StepSpecRaw mirrors the pre-transform StepSpec fields we access dynamically.
-          // StepSpec (post-zod-transform) may omit `run` after normalization, so we work
-          // with the raw record shape here before re-casting to StepSpec for execution.
-          interface StepSpecRaw {
-            run?: string;
-            uses?: string;
-            summary?: string;
-            with?: Record<string, unknown>;
-            [key: string]: unknown;
-          }
+          // StepSpec (post-zod-transform) may omit `run` after normalization, so work
+          // with the StepSpecRaw shape here before re-casting to StepSpec for execution.
           let baseSpec: StepSpecRaw = step.spec as StepSpecRaw;
           if (baseSpec.run && !baseSpec.uses) {
             const { run: rawRun, with: existingWith, ...rest } = baseSpec;
@@ -732,7 +495,15 @@ export async function createWorkflowWorker(
               stepId: step.id,
               attempt: 1,
               env: freshRun?.env || ({} as Record<string, string>),
-              secrets: {} as Record<string, string>, // TODO: map run.secrets array to Record
+              // Secrets resolution not yet implemented: run.secrets contains names only.
+              // When a platform secrets store is available, resolve names → values here.
+              secrets: ((): Record<string, string> => {
+                const names = freshRun?.secrets ?? []
+                if (names.length > 0) {
+                  stepLogger.warn('Step declares secrets but secret resolution is not implemented', { secrets: names })
+                }
+                return {}
+              })(),
               logger: {
                 debug: (message: string, meta?: Record<string, unknown>) => stepLogger.debug(message, meta),
                 info: (message: string, meta?: Record<string, unknown>) => stepLogger.info(message, meta),
@@ -1011,6 +782,178 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => {
     setTimeout(resolve, ms);
   });
+}
+
+/**
+ * Poll until an approval step is resolved or a stop signal is received.
+ * Returns 'done' when the approval is granted or rejected, 'interrupted' on shutdown.
+ */
+async function waitForApproval(
+  engine: WorkflowEngine,
+  runId: string,
+  jobId: string,
+  step: Pick<StepRun, 'id' | 'name'>,
+  interpolatedWith: Record<string, unknown> | undefined,
+  isStopRequested: () => boolean,
+  stepLogger: ILogger,
+): Promise<'done' | 'interrupted'> {
+  const approvalTimeoutMs = interpolatedWith?.['timeoutMs'];
+  if (!approvalTimeoutMs) {
+    stepLogger.warn('[approval] No timeout configured — approval may wait indefinitely', {
+      runId,
+      jobId,
+      stepId: step.id,
+      stepName: step.name,
+    });
+  }
+
+  stepLogger.info('[approval] Waiting for approval', {
+    runId,
+    jobId,
+    stepId: step.id,
+    stepName: step.name,
+    context: interpolatedWith,
+  });
+
+  const approvalStartMs = Date.now();
+  let pollCount = 0;
+
+  while (!isStopRequested()) {
+    await sleep(2000);
+    pollCount++;
+    const currentRun = await engine.getRun(runId);
+    const currentJob = currentRun?.jobs.find(j => j.id === jobId);
+    const currentStep = currentJob?.steps.find(s => s.id === step.id);
+
+    if (!currentStep || currentStep.status === 'success') {
+      stepLogger.info('[approval] Approval granted', {
+        runId,
+        stepId: step.id,
+        stepName: step.name,
+        waitedMs: Date.now() - approvalStartMs,
+      });
+      break;
+    }
+
+    if (currentStep.status === 'failed') {
+      // Approval was rejected — break so the following builtin:gate step can route.
+      stepLogger.info('[approval] Approval rejected', {
+        runId,
+        stepId: step.id,
+        stepName: step.name,
+        waitedMs: Date.now() - approvalStartMs,
+      });
+      break;
+    }
+
+    if (pollCount % 10 === 0) {
+      stepLogger.info('[approval] Still waiting for approval', {
+        runId,
+        stepId: step.id,
+        stepName: step.name,
+        waitedMs: Date.now() - approvalStartMs,
+        pollCount,
+      });
+    }
+  }
+
+  if (isStopRequested()) {
+    stepLogger.info('Approval wait interrupted by shutdown', { stepId: step.id });
+    return 'interrupted';
+  }
+  return 'done';
+}
+
+type GateRestartDecision = Extract<GateDecision, { action: 'restart' }>;
+
+/**
+ * Apply gate restart: persist iteration counter to step.metadata, reset steps to queued, re-enqueue job.
+ * Called when GateHandler returns action='restart'.
+ */
+async function applyGateRestart(
+  engine: WorkflowEngine,
+  run: WorkflowRun,
+  job: JobRun,
+  step: Pick<StepRun, 'id' | 'name'>,
+  decision: GateRestartDecision,
+  stepLogger: ILogger,
+): Promise<void> {
+  const { restartFrom, context, outputs, nextIteration } = decision;
+
+  // Collect steps that will be reset for logging
+  const stepsToReset: string[] = [];
+  for (const s of job.steps) {
+    if (s.spec.id === restartFrom || s.id === restartFrom) {
+      stepsToReset.push(s.name ?? s.id);
+    } else if (stepsToReset.length > 0) {
+      stepsToReset.push(s.name ?? s.id);
+    }
+  }
+
+  stepLogger.warn('[gate] Gate triggered restart', {
+    runId: run.id,
+    stepId: step.id,
+    stepName: step.name,
+    restartFrom,
+    iteration: nextIteration,
+    stepsToReset,
+  });
+
+  await engine.markStepCompleted(run.id, job.id, step.id, outputs);
+
+  // Persist iteration counter in step.metadata (survives step reset, avoids polluting run.metadata).
+  const stateStore = engine.getStateStore();
+  await stateStore.updateStep(run.id, job.id, step.id, (draft) => {
+    draft.metadata = { ...(draft.metadata ?? {}), iterations: nextIteration };
+  });
+
+  // Merge rework context into run trigger.payload (if provided)
+  if (context) {
+    await engine.updateRun(run.id, (draft) => {
+      const payload = (draft.trigger.payload ?? {}) as Record<string, unknown>;
+      Object.assign(payload, context);
+      draft.trigger.payload = payload;
+      return draft;
+    });
+  }
+
+  const scheduler = engine.getScheduler();
+  let foundTarget = false;
+
+  for (const s of job.steps) {
+    if (s.spec.id === restartFrom || s.id === restartFrom) {
+      foundTarget = true;
+    }
+    if (foundTarget) {
+      stepLogger.debug('[gate] Reset step to queued', { stepId: s.id, stepName: s.name });
+      await stateStore.updateStep(run.id, job.id, s.id, (draft) => {
+        draft.status = 'queued';
+        draft.startedAt = undefined;
+        draft.finishedAt = undefined;
+        draft.error = undefined;
+        draft.outputs = undefined;
+      });
+    }
+  }
+
+  await stateStore.updateJob(run.id, job.id, (draft) => {
+    draft.status = 'queued';
+    draft.startedAt = undefined;
+    draft.finishedAt = undefined;
+  });
+
+  const updatedRun = await engine.getRun(run.id);
+  const updatedJob = updatedRun?.jobs.find(j => j.id === job.id);
+  if (updatedJob) {
+    await scheduler.enqueueJob(run.id, updatedJob, updatedJob.priority ?? 'normal');
+    stepLogger.info('[gate] Job re-enqueued for restart', {
+      runId: run.id,
+      jobId: job.id,
+      jobName: job.jobName,
+      iteration: nextIteration,
+      restartFrom,
+    });
+  }
 }
 
 function inferWorkspaceProvisionReasonCode(message: string) {
