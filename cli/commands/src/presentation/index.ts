@@ -1,7 +1,7 @@
 export { renderGroupHelp } from "./group-help";
+export type { GroupHelpOptions } from "./group-help";
 export {
   renderGlobalHelp,
-  renderGlobalHelpNew,
   renderPluginsHelp,
 } from "./global-help";
 export { renderProductHelp } from "./product-help";

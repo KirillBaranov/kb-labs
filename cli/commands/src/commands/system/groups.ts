@@ -11,7 +11,6 @@ import { version } from './version';
 import { health } from './health';
 import { diag } from './diag';
 import { registryDiagnostics } from './registry-diagnostics';
-import { pluginsCacheClear } from '../../builtins/plugins-cache-clear';
 import { docsGenerateCliReference } from './docs-generate-cli-reference';
 import { logsDiagnose, logsContext, logsSummarize, logsQuery, logsSearch, logsGet, logsStats } from './logs';
 import { authLogin, authLogout, authStatus, authCreateServiceAccount } from './auth';
@@ -25,13 +24,6 @@ export const infoGroup = defineSystemCommandGroup('info', 'System information co
   version,
   health,
   diag,
-]);
-
-/**
- * Marketplace Commands Group
- */
-export const marketplaceGroup = defineSystemCommandGroup('marketplace', 'Marketplace management commands', [
-  pluginsCacheClear,
 ]);
 
 /**

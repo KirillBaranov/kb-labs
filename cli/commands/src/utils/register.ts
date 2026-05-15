@@ -2,13 +2,13 @@ import { registry } from "../registry/service";
 import type { RegisteredCommand } from "../registry/types";
 import {
   infoGroup,
-  marketplaceGroup,
   registryGroup,
   docsGroup,
   logsGroup,
   authGroup,
   platformGroup,
 } from "../commands/system/groups";
+import { createCompletionCommand, autoUpdateCompletion } from "../commands/system/completion";
 import { registerManifests, disposeAllPlugins, preflightManifests } from "../registry/register";
 import { registerShutdownHook } from "./shutdown";
 import { getContextCwd } from "@kb-labs/shared-cli-ui";
@@ -54,12 +54,14 @@ export async function registerBuiltinCommands(
 
   // Register system command groups (migrated commands)
   registry.registerGroup(infoGroup);
-  registry.registerGroup(marketplaceGroup);
   registry.registerGroup(registryGroup);
   registry.registerGroup(docsGroup);
   registry.registerGroup(logsGroup);
   registry.registerGroup(authGroup);
   registry.registerGroup(platformGroup);
+
+  // Standalone system commands
+  registry.register(createCompletionCommand(registry));
 
   try {
     const cwd = getContextCwd({ cwd: input.cwd });
@@ -118,6 +120,9 @@ export async function registerBuiltinCommands(
     _registered = false;
     return;
   }
+
+  // Auto-regenerate static shell completion if command set changed (fire-and-forget)
+  autoUpdateCompletion(registry).catch(() => { /* best-effort, never fail startup */ });
 
   registerShutdownHook(async () => {
     await disposeAllPlugins(registry, log);

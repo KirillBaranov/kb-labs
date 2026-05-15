@@ -1,10 +1,4 @@
 /**
- * @deprecated Prefer importing from `@kb-labs/cli-commands/registry/service`.
- * This file re-exports the registry service to maintain backward compatibility.
+ * @deprecated Import directly from `@kb-labs/cli-commands/registry/service`.
  */
-export {
-  registry,
-  findCommand,
-  type ProductGroup,
-} from "../registry/service";
-
+export { registry } from "../registry/service";

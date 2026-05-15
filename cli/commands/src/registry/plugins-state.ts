@@ -5,8 +5,6 @@
 
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
-import { createHash } from 'node:crypto';
-import { resetInProcCache } from './discover';
 
 export interface PluginState {
   enabled: string[];         // Package names that are explicitly enabled
@@ -183,85 +181,4 @@ export async function recordCrash(cwd: string, packageName: string): Promise<voi
   await savePluginsState(cwd, state);
 }
 
-/**
- * Compute SRI hash for a package
- */
-export async function computePackageIntegrity(pkgRoot: string): Promise<string> {
-  try {
-    const pkgJsonPath = path.join(pkgRoot, 'package.json');
-    const content = await fs.readFile(pkgJsonPath, 'utf8');
-    const hash = createHash('sha256').update(content).digest('base64');
-    return `sha256-${hash}`;
-  } catch {
-    return '';
-  }
-}
-
-/**
- * Clear plugin cache
- */
-// eslint-disable-next-line sonarjs/cognitive-complexity
-export async function clearCache(cwd: string, options?: { deep?: boolean }): Promise<{ files: string[]; modules?: string[] }> {
-  const cleared: string[] = [];
-
-  // 1. Clear .kb/cache/ manifest/plugin files
-  const cacheDir = path.join(cwd, '.kb', 'cache');
-  try {
-    const entries = await fs.readdir(cacheDir);
-    for (const entry of entries) {
-      if (entry.includes('manifest') || entry.includes('plugin')) {
-        const entryPath = path.join(cacheDir, entry);
-        await fs.unlink(entryPath);
-        cleared.push(entry);
-      }
-    }
-  } catch {
-    // Cache dir doesn't exist
-  }
-
-  // 2. Clear .kb/marketplace.manifests.json (marketplace manifest cache)
-  const manifestsCachePath = path.join(cwd, '.kb', 'marketplace.manifests.json');
-  try {
-    await fs.unlink(manifestsCachePath);
-    cleared.push('marketplace.manifests.json');
-  } catch {
-    // File doesn't exist
-  }
-
-  // 3. Clear .kb/cache/cli-manifests.json (CLI discovery cache)
-  const cliManifestsPath = path.join(cwd, '.kb', 'cache', 'cli-manifests.json');
-  try {
-    await fs.unlink(cliManifestsPath);
-    if (!cleared.includes('cli-manifests.json')) {
-      cleared.push('cli-manifests.json');
-    }
-  } catch {
-    // File doesn't exist
-  }
-
-  // 4. Reset in-process discovery cache so the next discoverManifests() call in
-  //    the same process performs a fresh scan instead of serving stale results.
-  resetInProcCache();
-
-  // 5. Deep clearing: clear Node.js module cache for dynamic imports
-  const modulesCleared: string[] = [];
-  if (options?.deep) {
-    try {
-      const cache = require.cache;
-      for (const key in cache) {
-        if (key.includes('plugin') || key.includes('manifest') || key.includes('@kb-labs')) {
-          delete cache[key];
-          modulesCleared.push(key);
-        }
-      }
-    } catch {
-      // Module cache clearing failed (ESM context)
-    }
-  }
-
-  return {
-    files: cleared,
-    ...(options?.deep ? { modules: modulesCleared } : {}),
-  };
-}
 

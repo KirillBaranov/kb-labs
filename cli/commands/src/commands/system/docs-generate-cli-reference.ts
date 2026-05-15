@@ -45,24 +45,24 @@ export const docsGenerateCliReference = defineSystemCommand<GenerateCliReference
 
 
     // Get all commands from registry
-    const commands = registry.list();
-    const productGroups = registry.listProductGroups();
+    const registeredCommands = registry.listCommands();
 
     ctx.platform?.logger?.info('Generating CLI reference', {
-      commands: commands.length,
-      products: productGroups.length,
+      commands: registeredCommands.length,
       output: outputPath,
     });
 
-    // Group commands by category/group
-    const groups = new Map<string, typeof commands>();
-    for (const cmd of commands) {
-      const group = cmd.category || 'other';
+    // Group commands by top-level group
+    const groups = new Map<string, typeof registeredCommands>();
+    for (const cmd of registeredCommands) {
+      const group = cmd.manifest.group || 'other';
       if (!groups.has(group)) {
         groups.set(group, []);
       }
       groups.get(group)!.push(cmd);
     }
+
+    const commands = registeredCommands;
 
 
     // Generate markdown
@@ -83,21 +83,24 @@ export const docsGenerateCliReference = defineSystemCommand<GenerateCliReference
 
     // Generate sections for each group
     for (const groupName of sortedGroups) {
-      const cmds = groups.get(groupName)!.sort((a, b) => a.name.localeCompare(b.name));
+      const cmds = groups.get(groupName)!.sort((a, b) =>
+        a.manifest.segments.join(' ').localeCompare(b.manifest.segments.join(' '))
+      );
 
       lines.push(`## ${groupName}\n`);
 
       for (const cmd of cmds) {
-        lines.push(`### \`kb ${cmd.name}\`\n`);
-        lines.push(`${cmd.describe || 'No description'}\n`);
+        const displayPath = cmd.manifest.segments.join(' ');
+        lines.push(`### \`kb ${displayPath}\`\n`);
+        lines.push(`${cmd.manifest.describe || 'No description'}\n`);
 
-        if (cmd.longDescription) {
-          lines.push(`${cmd.longDescription}\n`);
+        if (cmd.manifest.longDescription) {
+          lines.push(`${cmd.manifest.longDescription}\n`);
         }
 
-        if (cmd.flags && cmd.flags.length > 0) {
+        if (cmd.manifest.flags && cmd.manifest.flags.length > 0) {
           lines.push('**Flags:**\n');
-          for (const flag of cmd.flags) {
+          for (const flag of cmd.manifest.flags) {
             const alias = flag.alias ? ` (-${flag.alias})` : '';
             const required = flag.required ? ' **(required)**' : '';
             const defaultVal = flag.default !== undefined ? ` (default: \`${flag.default}\`)` : '';
@@ -107,17 +110,17 @@ export const docsGenerateCliReference = defineSystemCommand<GenerateCliReference
           lines.push('');
         }
 
-        if (cmd.examples && cmd.examples.length > 0) {
+        if (cmd.manifest.examples && cmd.manifest.examples.length > 0) {
           lines.push('**Examples:**\n');
           lines.push('```bash');
-          for (const example of cmd.examples) {
+          for (const example of cmd.manifest.examples) {
             lines.push(example);
           }
           lines.push('```\n');
         }
 
-        if (cmd.aliases && cmd.aliases.length > 0) {
-          lines.push(`**Aliases:** ${cmd.aliases.map(a => `\`${a}\``).join(', ')}\n`);
+        if (cmd.manifest.aliases && cmd.manifest.aliases.length > 0) {
+          lines.push(`**Aliases:** ${cmd.manifest.aliases.map(a => `\`${a}\``).join(', ')}\n`);
         }
 
         lines.push('---\n');

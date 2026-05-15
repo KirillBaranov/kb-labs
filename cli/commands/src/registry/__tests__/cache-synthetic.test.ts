@@ -49,6 +49,7 @@ vi.mock("../utils/path.js", () => ({
 function makeRealManifest(overrides: Partial<CommandManifest> = {}): CommandManifest {
   return {
     manifestVersion: "1.0",
+    segments: ['qa', 'regressions'],
     id: "qa:regressions",
     group: "qa",
     describe: "Run regression checks",
@@ -240,50 +241,6 @@ describe("saveCache — skips synthetic manifests", () => {
     }
     // Whether or not writeFile was called, _synthetic manifests are not cached.
     // The absence of _synthetic in any persisted manifest is the invariant.
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Integration: clearCache resets in-proc discovery cache (plugins-state)
-// ---------------------------------------------------------------------------
-
-describe("clearCache (plugins-state) — resets in-proc cache", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-    fsPromisesMock.readFile.mockResolvedValue("{}");
-    fsPromisesMock.readdir.mockResolvedValue([]);
-    fsPromisesMock.stat.mockResolvedValue({ mtimeMs: 1000, isDirectory: () => true, isFile: () => true } as any);
-    fsPromisesMock.mkdir.mockResolvedValue(undefined);
-    fsPromisesMock.writeFile.mockResolvedValue(undefined);
-    fsPromisesMock.unlink.mockResolvedValue(undefined);
-  });
-
-  it("does not throw and completes without error", async () => {
-    const { clearCache } = await import("../plugins-state");
-    await expect(clearCache("/fake/cwd")).resolves.toBeDefined();
-  });
-
-  it("calls resetInProcCache so in-proc cache is invalidated", async () => {
-    // Spy on resetInProcCache to verify it's called from clearCache
-    const discoverMod = await import("../discover");
-    const resetSpy = vi.spyOn(discoverMod, "resetInProcCache");
-
-    const { clearCache } = await import("../plugins-state");
-    await clearCache("/fake/cwd");
-
-    expect(resetSpy).toHaveBeenCalledOnce();
-    resetSpy.mockRestore();
-  });
-
-  it("returns list of cleared files", async () => {
-    // Simulate cli-manifests.json existing in the cache dir
-    fsPromisesMock.readdir.mockResolvedValueOnce(["cli-manifests.json"] as any);
-    fsPromisesMock.unlink.mockResolvedValue(undefined);
-
-    const { clearCache } = await import("../plugins-state");
-    const result = await clearCache("/fake/cwd");
-
-    expect(result.files).toContain("cli-manifests.json");
   });
 });
 

@@ -8,6 +8,7 @@ import { promises as fs } from 'node:fs';
 import { existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
+import { computeManifestIntegrity } from '@kb-labs/core-discovery';
 
 /** Very small repo root detector: looks for .git upwards. */
 function _detectRepoRoot(start = process.cwd()): string {
@@ -138,11 +139,13 @@ function createUnavailableManifest(pkgName: string, error: unknown): CommandMani
 
   const requires = missing ? [missing] : [];
 
+  const unavailableId = `manifest:${short}`;
   const manifest: CommandManifest = {
     manifestVersion: '1.0',
-    id: `${group}:manifest:${short}`,
+    segments: [group, unavailableId],
+    id: unavailableId,
     group,
-    describe: `Commands from ${pkgName} are unavailable` ,
+    describe: `Commands from ${pkgName} are unavailable`,
     requires,
     loader: async () => {
       // Throw a descriptive error if someone tries to run it
@@ -174,17 +177,6 @@ export function resetInProcCache(): void {
   inProcDiscoveryCache = null;
 }
 
-/**
- * Compute SHA256 hash of manifest file content
- */
-async function computeManifestHash(manifestPath: string): Promise<string> {
-  try {
-    const content = await fs.readFile(manifestPath, 'utf8');
-    return createHash('sha256').update(content).digest('hex');
-  } catch {
-    return 'unknown';
-  }
-}
 
 /**
  * Compute hash of lockfile (pnpm-lock.yaml) for cache invalidation
@@ -453,23 +445,24 @@ async function loadManifest(manifestPath: string, pkgName: string, pkgRoot?: str
   }
 
   const commandManifests: CommandManifest[] = cliCommands.map((cmd) => {
-    const commandId = cmd.id;
+    const segments = cmd.path.trim().split(/\s+/).filter(Boolean);
+    const commandId = segments[segments.length - 1] ?? namespace;
     const commandManifest: CommandManifest = {
       manifestVersion: '1.0' as const,
+      segments: segments as readonly string[],
       id: commandId,
-      group: cmd.group || namespace,
-      subgroup: cmd.subgroup,
-      category: (cmd as unknown as Record<string, unknown>).category as string | undefined,
+      group: segments[0] ?? namespace,
+      subgroup: segments.length >= 3 ? segments[1] : undefined,
+      category: cmd.category,
       describe: cmd.describe || '',
       longDescription: cmd.longDescription,
-      aliases: (cmd as unknown as Record<string, unknown>).aliases as string[] | undefined,
+      aliases: cmd.aliases,
       flags: cmd.flags,
       examples: cmd.examples,
-      loader: createManifestV3Loader(commandId),
+      loader: createManifestV3Loader(cmd.path),
       package: pkgName,
-      namespace: cmd.group || namespace,
     };
-    commandManifest.manifestV2 = manifest; // Keep for backward compat with service.ts
+    commandManifest.manifestV2 = manifest;
     commandManifest.pkgRoot = baseRoot;
     return commandManifest;
   });
@@ -503,8 +496,8 @@ async function loadManifest(manifestPath: string, pkgName: string, pkgRoot?: str
     log('warn', `ManifestV3 validation warnings for ${pkgName}: ${errorMessages}`);
   }
   
-  return (validation.success ? validation.data : commandManifests).map(m => 
-    normalizeManifest(m, pkgName, namespace)
+  return (validation.success ? validation.data : commandManifests).map(m =>
+    normalizeManifest(m, pkgName)
   );
 }
 
@@ -597,12 +590,13 @@ function isPluginPackage(pkg: Record<string, unknown>): boolean {
 function validateUniqueIds(manifests: CommandManifest[], pkgName: string): void {
   const ids = new Set<string>();
   const aliases = new Set<string>();
-  
+
   for (const m of manifests) {
-    if (ids.has(m.id)) {
+    const key = m.segments.join('/');
+    if (ids.has(key)) {
       throw new Error(`Duplicate command ID "${m.id}" in package ${pkgName}`);
     }
-    ids.add(m.id);
+    ids.add(key);
     
     if (m.aliases) {
       for (const alias of m.aliases) {
@@ -1170,13 +1164,18 @@ async function loadCache(
 }
 
 /**
- * Check if cache is stale for a specific package (async to support hash validation)
+ * Check if the cache entry for a package is stale.
+ *
+ * Strategy: mtime as fast path, content hash as confirmation.
+ *   - mtime unchanged → not stale (1 stat call, typical case)
+ *   - mtime changed   → verify hash (1 readFile + sha256, only on actual changes)
+ *   - hash changed    → stale (plugin was rebuilt)
+ *   - hash unchanged  → not stale (mtime changed but content identical, e.g. touch)
+ *
+ * This correctly handles content-addressed build tools that may not update mtime,
+ * as well as the common case where mtime and content change together on rebuild.
  */
-// eslint-disable-next-line sonarjs/cognitive-complexity
-async function isPackageCacheStale(
-  entry: PackageCacheEntry,
-  options: { validateHash: boolean }
-): Promise<boolean> {
+async function isPackageCacheStale(entry: PackageCacheEntry): Promise<boolean> {
   const manifestFsPath = entry.manifestPath.split('/').join(path.sep);
   const pkgJsonPath = path.join(entry.result.pkgRoot.split('/').join(path.sep), PACKAGE_JSON);
 
@@ -1191,27 +1190,24 @@ async function isPackageCacheStale(
     return true;
   }
 
-  let manifestStat;
+  let manifestMtimeChanged = false;
   try {
-    manifestStat = await fs.stat(manifestFsPath);
-    if (manifestStat.mtimeMs !== entry.manifestMtime) {
-      log('debug', `Package cache invalidated: manifest mtime changed for ${entry.result.packageName}`);
-      return true;
-    }
+    const manifestStat = await fs.stat(manifestFsPath);
+    manifestMtimeChanged = manifestStat.mtimeMs !== entry.manifestMtime;
   } catch (error: unknown) {
     log('debug', `Package cache invalidated: manifest deleted for ${entry.result.packageName} (${error instanceof Error ? error.message : 'unknown'})`);
     return true;
   }
 
-  if (options.validateHash) {
+  if (manifestMtimeChanged) {
     try {
-      const currentHash = await computeManifestHash(manifestFsPath);
+      const currentHash = await computeManifestIntegrity(manifestFsPath);
       if (currentHash !== entry.manifestHash) {
-        log('debug', `Package cache invalidated: manifest hash changed for ${entry.result.packageName}`);
+        log('debug', `Package cache invalidated: manifest content changed for ${entry.result.packageName}`);
         return true;
       }
     } catch (error: unknown) {
-      log('debug', `Package cache hash validation failed for ${entry.result.packageName}: ${error instanceof Error ? error.message : 'unknown'}`);
+      log('debug', `Package cache hash check failed for ${entry.result.packageName}: ${error instanceof Error ? error.message : 'unknown'}`);
       return true;
     }
   }
@@ -1255,7 +1251,7 @@ async function saveCache(
     }
 
     try {
-      const manifestHash = await computeManifestHash(result.manifestPath);
+      const manifestHash = await computeManifestIntegrity(result.manifestPath);
       
       // Get package.json mtime and version
       const pkgJsonPath = path.join(result.pkgRoot.split('/').join(path.sep), PACKAGE_JSON);
@@ -1389,13 +1385,12 @@ export async function discoverManifests(
       const freshResults: DiscoveryResult[] = [];
       const cacheAge = Date.now() - cached.timestamp;
       const ttlMs = cached.ttlMs ?? DISK_CACHE_TTL_MS;
-      const enforceHashValidation = cacheAge >= ttlMs;
 
-      log('debug', `[plugins][cache] hit age=${cacheAge}ms ttl=${ttlMs}ms validateHash=${enforceHashValidation}`);
+      log('debug', `[plugins][cache] hit age=${cacheAge}ms ttl=${ttlMs}ms`);
 
       let staleCount = 0;
       for (const entry of Object.values(cached.packages) as PackageCacheEntry[]) {
-        const stale = await isPackageCacheStale(entry, { validateHash: enforceHashValidation });
+        const stale = await isPackageCacheStale(entry);
         if (!stale) {
           freshResults.push(entry.result);
         } else {
@@ -1547,8 +1542,7 @@ export async function discoverManifestsByNamespace(
   return allResults.filter(result => {
     // Check if any manifest in this result matches the namespace
     return result.manifests.some(m => {
-      const manifestNamespace = m.namespace || m.group;
-      return manifestNamespace === namespace;
+      return m.group === namespace;
     });
   });
 }

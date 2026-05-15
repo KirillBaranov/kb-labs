@@ -164,6 +164,6 @@ All manifests are validated with Zod schema:
 
 - **Plugin not discovered**: Check keywords or add to `kb-labs.config.json` `plugins.allow`
 - **Manifest errors**: Run `kb plugins doctor` for diagnostics
-- **Cache issues**: Run `kb plugins clear-cache`
+- **Cache issues**: Cache auto-invalidates on rebuild. Force-reset: `kb marketplace plugins refresh`
 - **Debug**: Use `--verbose` flag for detailed logs
 

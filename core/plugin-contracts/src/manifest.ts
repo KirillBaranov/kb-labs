@@ -146,15 +146,16 @@ export interface CliFlagDecl {
 }
 
 /**
- * CLI command declaration
+ * CLI command declaration.
+ *
+ * `path` is the full command path as space-separated tokens, e.g.:
+ *   'hello'                → kb hello
+ *   'marketplace install'  → kb marketplace install
+ *   'clickup task search'  → kb clickup task search
  */
 export interface CliCommandDecl {
-  /** Unique command identifier (e.g., 'hello', 'ai-review:review') */
-  id: string;
-  /** Command group (e.g., 'marketplace') */
-  group?: string;
-  /** Subgroup within the group (e.g., 'plugins' → `kb marketplace plugins <id>`) */
-  subgroup?: string;
+  /** Full command path (space-separated tokens, from root). */
+  path: string;
   /** Short description */
   describe: string;
   /** Long description (for --help) */
@@ -165,20 +166,30 @@ export interface CliCommandDecl {
   examples?: string[];
   /** Handler file path relative to plugin root (e.g., './dist/commands/hello.js') */
   handler: string;
-  /** Handler path (legacy/optional, used by V3 adapter for resolving handler location) */
-  handlerPath?: string;
   /** Command-specific permissions (overrides plugin defaults) */
   permissions?: PermissionSpec;
+  /** Display-only category label (does not affect routing) */
+  category?: string;
+  /** Alternative full paths for this command (e.g., ['cu task search']) */
+  aliases?: string[];
 }
 
 /**
  * Metadata for CLI groups/subgroups — used for help display.
  */
 export interface CliGroupMeta {
-  /** Group path (e.g., "marketplace" or "marketplace/plugins") */
-  name: string;
+  /** Full group path as space-separated tokens (e.g., 'marketplace' or 'marketplace plugins') */
+  path: string;
   /** Human-readable description */
   describe: string;
+}
+
+/**
+ * Split a CliCommandDecl path into routing segments.
+ * Example: 'clickup task search' → ['clickup', 'task', 'search']
+ */
+export function getCommandSegments(decl: CliCommandDecl): string[] {
+  return decl.path.trim().split(/\s+/);
 }
 
 /**
@@ -515,7 +526,7 @@ export interface SetupSpec {
  *   },
  *   "cli": {
  *     "commands": [{
- *       "id": "hello",
+ *       "path": "hello",
  *       "describe": "Say hello",
  *       "handler": "./dist/commands/hello.js",
  *       "flags": []
@@ -619,7 +630,7 @@ export function getHandlerPath(
 ): string | undefined {
   switch (host) {
     case 'cli':
-      return manifest.cli?.commands.find((cmd) => cmd.id === id)?.handler;
+      return manifest.cli?.commands.find((cmd) => cmd.path === id)?.handler;
     case 'rest':
       return manifest.rest?.routes.find(
         (route) => `${route.method} ${route.path}` === id
@@ -648,7 +659,7 @@ export function getHandlerPermissions(
 
   switch (host) {
     case 'cli':
-      handlerPerms = manifest.cli?.commands.find((cmd) => cmd.id === id)
+      handlerPerms = manifest.cli?.commands.find((cmd) => cmd.path === id)
         ?.permissions;
       break;
     case 'rest':

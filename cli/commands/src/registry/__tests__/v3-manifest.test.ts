@@ -18,7 +18,7 @@ describe('V3 Manifest Field', () => {
       cli: {
         commands: [
           {
-            id: 'test:command',
+            path: 'test command',
             describe: 'Test command',
             handler: 'dist/commands/test.js',
           },
@@ -33,6 +33,7 @@ describe('V3 Manifest Field', () => {
 
     const mockManifest: CommandManifest = {
       manifestVersion: '1.0',
+      segments: ['test', 'command'],
       id: 'test:command',
       group: 'test',
       describe: 'Test command',
@@ -59,6 +60,7 @@ describe('V3 Manifest Field', () => {
   it('should allow v3Manifest to be undefined for system commands', () => {
     const mockManifest: CommandManifest = {
       manifestVersion: '1.0',
+      segments: ['system', 'hello'],
       id: 'system:hello',
       group: 'system',
       describe: 'Hello command',
@@ -86,6 +88,7 @@ describe('V3 Manifest Field', () => {
 
     const mockManifest: CommandManifest = {
       manifestVersion: '1.0',
+      segments: ['test', 'command'],
       id: 'test:command',
       group: 'test',
       describe: 'Test command',
@@ -146,12 +149,13 @@ describe('V3 Manifest Field', () => {
       id: '@kb-labs/test',
       version: '1.0.0',
       cli: {
-        commands: [{ id: 'test', describe: 'Test', handler: 'dist/test.js' }],
+        commands: [{ path: 'test', describe: 'Test', handler: 'dist/test.js' }],
       },
     };
 
     const mockManifest: CommandManifest = {
       manifestVersion: '1.0',
+      segments: ['test'],
       id: 'test',
       group: 'test',
       describe: 'Test',

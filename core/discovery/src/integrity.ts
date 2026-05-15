@@ -11,16 +11,31 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
 /**
- * Compute the SRI integrity string for a package by hashing its package.json.
+ * Compute the SRI integrity string for an arbitrary file.
  *
  * Format: `sha256-<base64>` (SubResource Integrity convention).
- * Throws if the package.json cannot be read.
+ * Throws if the file cannot be read.
  */
-export async function computePackageIntegrity(pkgRoot: string): Promise<string> {
-  const pkgJsonPath = path.join(pkgRoot, 'package.json');
-  const content = await fs.readFile(pkgJsonPath);
+export async function computeFileIntegrity(filePath: string): Promise<string> {
+  const content = await fs.readFile(filePath);
   const hash = crypto.createHash('sha256').update(content).digest('base64');
   return `sha256-${hash}`;
+}
+
+/**
+ * Compute the SRI integrity string for a package by hashing its package.json.
+ * Kept for backwards compatibility — delegates to computeFileIntegrity.
+ */
+export async function computePackageIntegrity(pkgRoot: string): Promise<string> {
+  return computeFileIntegrity(path.join(pkgRoot, 'package.json'));
+}
+
+/**
+ * Compute the SRI integrity string for a manifest file (e.g. dist/index.js).
+ * Used by CLI discovery to detect when a plugin was rebuilt.
+ */
+export async function computeManifestIntegrity(manifestPath: string): Promise<string> {
+  return computeFileIntegrity(manifestPath);
 }
 
 /**

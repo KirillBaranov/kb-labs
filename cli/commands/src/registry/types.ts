@@ -6,37 +6,34 @@
 import type { ManifestV3 } from '@kb-labs/plugin-contracts';
 
 export interface CommandManifest {
-  manifestVersion: '1.0';    // Required for validation
-  id: string;                // "mind:pack" (must be namespace:command)
-  aliases?: string[];        // ["mind-pack", "m:pack"]
-  group: string;             // "mind" (namespace)
-  subgroup?: string;         // "plugins" (nested group within parent)
-  category?: string;         // display-only grouping label, e.g. "Daemon", "Jobs", "Runs"
-  /**
-   * One-line description shown in group help.
-   * Keep under 50 chars: verb + object, no trailing period.
-   * Example: "Fetch job logs" not "Get logs for a specific workflow job."
-   * Group help truncates at terminal width as a safety net, but short is better.
-   */
+  manifestVersion: '1.0';
+  /** Canonical routing key — full path segments, e.g. ['clickup', 'task', 'search'] */
+  segments: readonly string[];
+  /** Last segment — e.g. 'search' */
+  id: string;
+  /** First segment — e.g. 'clickup' */
+  group: string;
+  /** Second segment when depth >= 3 — e.g. 'task' */
+  subgroup?: string;
+  aliases?: string[];
+  category?: string;
+  /** One-line description shown in group help (under 50 chars, no trailing period). */
   describe: string;
   longDescription?: string;
-  requires?: string[];       // ["@kb-labs/mind-pack@^1.0.0"] (semver ranges)
+  requires?: string[];
   flags?: FlagDefinition[];
   examples?: string[];
   loader?: () => Promise<CommandModule>;
-  
-  // New fields (optional for backward compatibility)
-  package?: string;          // Full package name (e.g., "@kb-labs/devlink-entry")
-  namespace?: string;        // Explicit namespace (derived from group/id if not provided)
-  engine?: {                // Engine requirements
-    node?: string;          // e.g., ">=18", "^18.0.0"
-    kbCli?: string;         // e.g., "^1.5.0"
-    module?: 'esm' | 'cjs'; // Module type
+  package?: string;
+  engine?: {
+    node?: string;
+    kbCli?: string;
+    module?: 'esm' | 'cjs';
   };
-  permissions?: string[];   // e.g., ["fs.read", "git.read", "net.fetch"]
-  telemetry?: 'opt-in' | 'off'; // Telemetry preference
-  manifestV2?: ManifestV3;  // Full ManifestV3 for sandbox execution
-  pkgRoot?: string;          // Package root directory (set at load time, not persisted to cache)
+  permissions?: string[];
+  telemetry?: 'opt-in' | 'off';
+  manifestV2?: ManifestV3;
+  pkgRoot?: string;
   /** Internal flag: true for synthetic "unavailable" manifests that must not be cached. */
   _synthetic?: boolean;
 }

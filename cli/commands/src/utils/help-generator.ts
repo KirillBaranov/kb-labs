@@ -6,7 +6,6 @@ export {
   renderHelp,
   renderGroupHelp,
   renderGlobalHelp,
-  renderGlobalHelpNew,
   renderProductHelp,
   renderPluginsHelp,
   renderManifestCommandHelp,
