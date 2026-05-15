@@ -51,7 +51,7 @@ export class TrieBackedRegistry {
     // Register aliases as additional trie entries pointing to the same command
     for (const alias of cmd.manifest.aliases ?? []) {
       const aliasSegs = alias.trim().split(/\s+/).filter(Boolean);
-      if (aliasSegs.length === 0) continue;
+      if (aliasSegs.length === 0) { continue; }
       const aliasSysResult = this.systemRouter.resolve([...aliasSegs]);
       if (aliasSysResult.type === 'system-cmd' || aliasSysResult.type === 'system-group') {
         console.warn(`[registry] Plugin alias "${alias}" collides with system command and will be skipped.`);
