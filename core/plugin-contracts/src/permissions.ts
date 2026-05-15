@@ -54,6 +54,39 @@ export interface PermissionSpec {
     embeddings?: boolean;
     /** Event bus access */
     events?: boolean | { publish?: string[]; subscribe?: string[] };
+    /**
+     * Notifier access — emit and/or subscribe to the notification stream.
+     *
+     * There is no "full access" shorthand. All permissions must be declared explicitly.
+     * The runtime overwrites `source` with the pluginId on every emit — plugins cannot fake origin.
+     * Subscribe constraints are enforced as a hard ceiling at the governed layer:
+     * the plugin sees only what it declared, regardless of the filter it passes at runtime.
+     *
+     * @example
+     * // emit only
+     * notifier: { emit: true }
+     *
+     * // subscribe to specific plugin + severity
+     * notifier: { subscribe: { sources: ['workflow-engine'], severity: ['critical'] } }
+     *
+     * // explicit wildcard (maximum privilege — visible in manifest review)
+     * notifier: { emit: true, subscribe: { sources: ['*'], severity: ['info', 'warn', 'critical'] } }
+     */
+    notifier?: {
+      /** Can emit notifications. */
+      emit?: boolean;
+      /**
+       * Subscribe scope. Absent = cannot subscribe.
+       * sources: ['*'] = all sources (explicit wildcard, requires justification in manifest).
+       * severity absent = all severities allowed within declared sources.
+       */
+      subscribe?: {
+        /** Plugin IDs allowed to receive notifications from. Use ['*'] for all sources. */
+        sources: string[];
+        /** Severity levels to receive. Absent = all severities. */
+        severity?: Array<'info' | 'warn' | 'critical'>;
+      };
+    };
     /** Workflow engine access */
     workflows?: boolean | {
       /** Can start workflows */

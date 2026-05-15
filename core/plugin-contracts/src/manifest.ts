@@ -120,6 +120,7 @@ export interface PlatformRequirements {
     | 'storage'
     | 'logger'
     | 'analytics'
+    | 'notifier'
   >;
   /** Optional services (features degraded if missing) */
   optional?: Array<string>;
