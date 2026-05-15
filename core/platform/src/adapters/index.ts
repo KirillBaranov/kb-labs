@@ -195,3 +195,15 @@ export type {
 // isDisposable: runtime type guard — plain export (not export type) so it survives to JS.
 export type { IDisposable } from "./disposable.js";
 export { isDisposable } from "./disposable.js";
+
+// Notifier
+export type {
+  NotificationSeverity,
+  NotificationAudience,
+  NotificationCapability,
+  NotificationEvent,
+  NotificationFilter,
+  INotifierChannel,
+  INotifier,
+  NotifierDeliveryEvent,
+} from "./notifier.js";

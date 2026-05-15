@@ -109,6 +109,8 @@ export interface AdaptersConfig {
   workspace?: AdapterValue;
   /** Snapshot provider adapter package(s) (e.g., "@kb-labs/adapters-snapshot-localfs") */
   snapshot?: AdapterValue;
+  /** Notifier router adapter (e.g., "@kb-labs/notifier-router"). Config goes in adapterOptions.notifier. */
+  notifier?: AdapterValue;
 }
 
 /**
@@ -303,6 +305,46 @@ export interface PlatformDirConfig {
 /**
  * Full platform configuration.
  */
+/** Configuration for a single Telegram notification channel. */
+export interface TelegramChannelConfig {
+  type: 'telegram';
+  botToken: string;
+  /** Chat/group/channel ID. Group IDs are negative strings, e.g. "-1001234567890". */
+  chatId: string;
+}
+
+/** Union of all supported notifier channel configs (extend as channels are added). */
+export type NotifierChannelConfig = TelegramChannelConfig;
+
+/** A single routing rule: match criteria → target channel IDs. Rules evaluated top-down (first match wins). */
+export interface NotifierRoutingRule {
+  match: {
+    severity?: Array<'info' | 'warn' | 'critical'>;
+    /** Match by source plugin ID. */
+    source?: string;
+    /** Match by notification code (e.g. 'workflow.failed'). */
+    code?: string;
+  };
+  channels: string[];
+}
+
+/**
+ * Notifier adapter options — passed via adapterOptions.notifier in kb.config.json.
+ * Analogous to LLMAdapterOptions for adapterOptions.llm.
+ */
+export interface NotifierAdapterOptions {
+  /**
+   * Named channel instances. Key = channel ID referenced in routing rules.
+   * @example { "telegram-ops": { type: "telegram", botToken: "...", chatId: "..." } }
+   */
+  channels: Record<string, NotifierChannelConfig>;
+  /**
+   * Routing rules (top-down, first match wins).
+   * @example [{ match: { severity: ["critical"] }, channels: ["telegram-ops"] }]
+   */
+  routing: NotifierRoutingRule[];
+}
+
 export interface PlatformConfig {
   /** Platform-root hint (only honored when set in project config). */
   platform?: PlatformDirConfig;

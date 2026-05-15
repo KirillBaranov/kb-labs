@@ -18,6 +18,7 @@ import type { ILogReader } from './adapters/log-reader.js';
 import type { ISQLDatabase, IDocumentDatabase } from './adapters/database.js';
 import type { IArtifacts } from './adapters/artifacts.js';
 import type { ISnapshotManager } from './snapshot/snapshot-provider.js';
+import type { INotifier } from './adapters/notifier.js';
 
 /**
  * Platform adapters container interface.
@@ -71,4 +72,7 @@ export interface IPlatformAdapters {
 
   /** Snapshot manager (optional — only available when a snapshot provider is configured) */
   readonly snapshotManager?: ISnapshotManager;
+
+  /** Notifier adapter (optional — only when adapters.notifier is configured). */
+  readonly notifier?: INotifier;
 }
