@@ -1,0 +1,54 @@
+{
+  "name": "@kb-labs/notifier-router",
+  "description": "Notification router — subscribes to EventBus and dispatches to INotifierChannel implementations",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "clean": "rimraf dist",
+    "dev": "tsup --watch",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@kb-labs/adapters-telegram": "workspace:*",
+    "ulid": "^2.3.0"
+  },
+  "devDependencies": {
+    "@kb-labs/core-platform": "workspace:*",
+    "@kb-labs/core-resource-broker": "workspace:*",
+    "@kb-labs/core-runtime": "workspace:*",
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.3.3",
+    "eslint": "^9",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
+  },
+  "peerDependencies": {
+    "@kb-labs/core-platform": "workspace:^",
+    "@kb-labs/core-resource-broker": "workspace:^",
+    "@kb-labs/core-runtime": "workspace:^"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "sideEffects": false
+}

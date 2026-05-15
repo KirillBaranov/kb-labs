@@ -305,16 +305,16 @@ export interface PlatformDirConfig {
 /**
  * Full platform configuration.
  */
-/** Configuration for a single Telegram notification channel. */
-export interface TelegramChannelConfig {
-  type: 'telegram';
-  botToken: string;
-  /** Chat/group/channel ID. Group IDs are negative strings, e.g. "-1001234567890". */
-  chatId: string;
-}
 
-/** Union of all supported notifier channel configs (extend as channels are added). */
-export type NotifierChannelConfig = TelegramChannelConfig;
+/**
+ * Generic channel config shape. Specific fields (botToken, chatId, etc.) are
+ * validated by the channel adapter package — core-runtime stays unaware of them.
+ */
+export interface NotifierChannelConfig {
+  /** Channel type identifier — matched to a channel adapter package by the loader. */
+  type: string;
+  [key: string]: unknown;
+}
 
 /** A single routing rule: match criteria → target channel IDs. Rules evaluated top-down (first match wins). */
 export interface NotifierRoutingRule {
