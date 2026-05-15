@@ -308,6 +308,21 @@ export class TrieRouter {
   }
 
   /**
+   * List top-level system groups and standalone system commands (depth=1 nodes).
+   */
+  listSystemTopLevel(): Array<{ name: string; describe: string; isGroup: boolean }> {
+    const results: Array<{ name: string; describe: string; isGroup: boolean }> = [];
+    for (const [name, node] of this.root.children) {
+      if (node.systemGroup) {
+        results.push({ name, describe: node.systemGroup.describe, isGroup: true });
+      } else if (node.systemCommand) {
+        results.push({ name, describe: node.systemCommand.describe, isGroup: false });
+      }
+    }
+    return results;
+  }
+
+  /**
    * Collect all plugin commands reachable from node.
    */
   listAll(): RegisteredCommand[] {

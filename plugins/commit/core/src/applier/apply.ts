@@ -163,11 +163,19 @@ async function applyCommit(cwd: string, commit: CommitGroup): Promise<string> {
   const [repoPath, fileInfos] = Array.from(filesByRepo.entries())[0]!;
   const git: SimpleGit = simpleGit(repoPath);
 
-  // Unstage only the files for this commit — preserves any staged files outside the plan
-  for (const { relativePath } of fileInfos) {
-    await git
-      .raw(["restore", "--staged", "--", relativePath])
-      .catch(() => {/* file not staged — ok */});
+  // Unstage all currently staged files so only plan files end up in the commit.
+  // restore --staged requires HEAD; fall back to rm --cached for fresh repos.
+  const statusBefore = await git.status();
+  if (statusBefore.staged.length > 0) {
+    const restored = await git
+      .raw(["restore", "--staged", "--", ...statusBefore.staged])
+      .then(() => true)
+      .catch(() => false);
+    if (!restored) {
+      for (const f of statusBefore.staged) {
+        await git.raw(["rm", "--cached", "--", f]).catch(() => {});
+      }
+    }
   }
 
   // Stage the files for this commit, handling gitignored-but-tracked files
@@ -207,7 +215,7 @@ async function applyCommit(cwd: string, commit: CommitGroup): Promise<string> {
     );
   }
 
-  // Create commit with only the staged files
+  // Commit only the plan files (staging area contains exclusively those at this point)
   const message = formatCommitMessage(commit);
   const result = await git.commit(message);
 
