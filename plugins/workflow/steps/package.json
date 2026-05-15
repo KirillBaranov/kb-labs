@@ -1,6 +1,6 @@
 {
-  "name": "@kb-labs/workflow-builtins",
-  "description": "Built-in workflow handlers (shell, etc.)",
+  "name": "@kb-labs/workflow-steps",
+  "description": "Built-in workflow step handlers (shell, approval, gate)",
   "version": "2.94.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -13,6 +13,14 @@
     "./shell": {
       "types": "./dist/shell.d.ts",
       "import": "./dist/shell.js"
+    },
+    "./approval": {
+      "types": "./dist/approval.d.ts",
+      "import": "./dist/approval.js"
+    },
+    "./gate": {
+      "types": "./dist/gate.d.ts",
+      "import": "./dist/gate.js"
     },
     "./package.json": "./package.json"
   },
@@ -31,6 +39,7 @@
   },
   "dependencies": {
     "@kb-labs/plugin-contracts": "workspace:*",
+    "@kb-labs/workflow-contracts": "workspace:*",
     "execa": "^9.5.3"
   },
   "devDependencies": {

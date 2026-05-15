@@ -1,6 +1,6 @@
 /**
- * @module @kb-labs/workflow-builtins/approval
- * Types for builtin:approval step
+ * @module @kb-labs/workflow-steps/approval
+ * Types and handler for builtin:approval step
  *
  * Approval steps pause the pipeline and wait for human decision.
  * The worker handles polling; resolveApproval() on the engine resumes execution.
@@ -35,4 +35,16 @@ export interface ApprovalOutput {
 
   /** Additional data provided by the approver */
   [key: string]: unknown;
+}
+
+/**
+ * ApprovalHandler — signals the worker to pause and wait for human approval.
+ * The worker owns the polling loop; this handler only marks the intent.
+ */
+export class ApprovalHandler {
+  static readonly uses = 'builtin:approval';
+
+  handle(_input: ApprovalInput): { status: 'waiting'; reason: 'approval' } {
+    return { status: 'waiting', reason: 'approval' };
+  }
 }

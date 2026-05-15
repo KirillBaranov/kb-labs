@@ -36,7 +36,6 @@
     "@kb-labs/workflow-artifacts": "workspace:*",
     "@kb-labs/workflow-constants": "workspace:*",
     "@kb-labs/workflow-contracts": "workspace:*",
-    "@kb-labs/workflow-runtime": "workspace:*",
     "nanoid": "^5.1.6",
     "yaml": "^2.8.0",
     "zod": "^3.25.76"

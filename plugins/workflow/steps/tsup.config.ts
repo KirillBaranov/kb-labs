@@ -8,5 +8,7 @@ export default defineConfig({
   entry: {
     index: 'src/index.ts',
     shell: 'src/shell.ts',
+    approval: 'src/approval.ts',
+    gate: 'src/gate.ts',
   },
 })
