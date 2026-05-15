@@ -464,6 +464,19 @@
         "workflow"
       ],
       "enabled": true
+    },
+    "@kb-labs/clickup": {
+      "version": "0.1.0",
+      "integrity": "sha256-DvvjTW+rvDaT/FuGL1J2z8dbKqhAJxH0v9c5o6Aj9CI=",
+      "resolvedPath": "./plugins/clickup/entry",
+      "installedAt": "2026-05-14T21:11:02.022Z",
+      "source": "local",
+      "primaryKind": "plugin",
+      "provides": [
+        "plugin",
+        "cli-command"
+      ],
+      "enabled": true
     }
   }
 }

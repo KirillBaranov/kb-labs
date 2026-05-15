@@ -1,4 +1,6 @@
 {
+  "schemaVersion": "1.0",
+  "scope": "root",
   "packages": [
     {
       "name": "@kb-labs/adapters-analytics-duckdb",
@@ -7,7 +9,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/adapters-analytics-file",
@@ -16,7 +19,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/adapters-analytics-sqlite",
@@ -25,7 +29,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/adapters-environment-docker",
@@ -34,7 +39,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/adapters-eventbus-cache",
@@ -43,16 +49,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/adapters-fs",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/fs",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/adapters-kblabs-gateway",
@@ -61,25 +59,18 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
-      "name": "@kb-labs/adapters-log-ringbuffer",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/log-ringbuffer",
+      "name": "@kb-labs/adapters-fs",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/fs",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/adapters-mongodb",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/mongodb",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/adapters-log-sqlite",
@@ -88,7 +79,18 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/adapters-mongodb",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/mongodb",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/adapters-openai",
@@ -97,7 +99,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/adapters-pino",
@@ -106,7 +109,18 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/adapters-log-ringbuffer",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/log-ringbuffer",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/adapters-pino-http",
@@ -115,7 +129,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/adapters-qdrant",
@@ -124,106 +139,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/adapters-snapshot-localfs",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/snapshot-localfs",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/adapters-sqlite",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/sqlite",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/adapters-transport",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/transport",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/adapters-vibeproxy",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/vibeproxy",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/adapters-workspace-agent",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/workspace-agent",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/adapters-workspace-localfs",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/workspace-localfs",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/adapters-workspace-worktree",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/workspace-worktree",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/cli-bin",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/cli/bin",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/cli-commands",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/cli/commands",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/cli-contracts",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/cli/contracts",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/cli-runtime",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/cli/runtime",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/adapters-redis",
@@ -232,16 +149,118 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
-      "name": "@kb-labs/core-config",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/config",
+      "name": "@kb-labs/adapters-snapshot-localfs",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/snapshot-localfs",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/adapters-transport",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/transport",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/adapters-sqlite",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/sqlite",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/adapters-voyage-ai",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/voyage-ai",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "0.1.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/adapters-vibeproxy",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/vibeproxy",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/adapters-workspace-localfs",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/workspace-localfs",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/adapters-workspace-worktree",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/workspace-worktree",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/adapters-workspace-agent",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/workspace-agent",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/cli-bin",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/cli/bin",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/cli-contracts",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/cli/contracts",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/cli-runtime",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/cli/runtime",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/core-bundle",
@@ -250,7 +269,28 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/core-config",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/config",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/cli-commands",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/cli/commands",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/core-contracts",
@@ -259,7 +299,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/core-discovery",
@@ -268,7 +309,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/core-ipc",
@@ -277,16 +319,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/llm-router",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/llm-router",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/core-platform",
@@ -295,7 +329,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/plugin-contracts",
@@ -304,7 +339,18 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/llm-router",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/core/llm-router",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/plugin-execution",
@@ -313,7 +359,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/plugin-execution-factory",
@@ -322,7 +369,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/plugin-runtime",
@@ -331,7 +379,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/core-policy",
@@ -340,7 +389,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/core-registry",
@@ -349,7 +399,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/core-resource-broker",
@@ -358,7 +409,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/core-runtime",
@@ -367,7 +419,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/core-sandbox",
@@ -376,7 +429,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/core-state-broker",
@@ -385,7 +439,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/core-sys",
@@ -394,7 +449,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/telemetry-client",
@@ -403,7 +459,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/core-tenant",
@@ -412,7 +469,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/core-types",
@@ -421,7 +479,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/core-workspace",
@@ -430,7 +489,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/devkit",
@@ -439,7 +499,18 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/sdk",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/sdk/sdk",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.21.2",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/platform-client",
@@ -448,16 +519,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/shared-cli-ui",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/shared/cli-ui",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/shared-command-kit",
@@ -466,7 +529,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/shared-http",
@@ -475,7 +539,18 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/shared-cli-ui",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/shared/cli-ui",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/perm-presets",
@@ -484,7 +559,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/shared-testing",
@@ -493,79 +569,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/shared-tool-kit",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/shared/tool-kit",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/studio-app",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/app",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/studio-data-client",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/data-client",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/studio-devtools",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/devtools",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/studio-federation",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/federation",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/studio-hooks",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/hooks",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/studio-plugin-tools",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/plugin-tools",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/studio-ui-core",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/ui-core",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/shared-testing-e2e",
@@ -574,16 +579,48 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
-      "name": "@kb-labs/studio-ui-kit",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/ui-kit",
+      "name": "@kb-labs/shared-tool-kit",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/shared/tool-kit",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/studio-app",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/app",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/studio-devtools",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/devtools",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/studio-data-client",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/data-client",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/studio-event-bus",
@@ -592,115 +629,58 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
-      "name": "@kb-labs/agent-contracts",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/contracts",
+      "name": "@kb-labs/studio-hooks",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/hooks",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
-      "name": "@kb-labs/agent-core",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/core",
+      "name": "@kb-labs/studio-federation",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/federation",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
-      "name": "@kb-labs/agent-entry",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/entry",
+      "name": "@kb-labs/studio-plugin-tools",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/plugin-tools",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
-      "name": "@kb-labs/agent-history",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/history",
+      "name": "@kb-labs/studio-ui-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/ui-core",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
-      "name": "@kb-labs/agent-kernel",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/kernel",
+      "name": "@kb-labs/studio-ui-kit",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/ui-kit",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/agent-mcp",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/mcp",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/agent-runtime",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/runtime",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/agent-sdk",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/sdk",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/agent-store",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/store",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/agent-tools",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/tools",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/agent-tracing",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/tracing",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/commit-contracts",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/commit/contracts",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/commit-core",
@@ -709,7 +689,18 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/commit-contracts",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/commit/contracts",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/commit-entry",
@@ -718,7 +709,118 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/agent-contracts",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/contracts",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/agent-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/core",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/agent-history",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/history",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/agent-entry",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/entry",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/agent-kernel",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/kernel",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/agent-runtime",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/runtime",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/agent-mcp",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/mcp",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/agent-store",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/store",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/agent-sdk",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/sdk",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/agent-tracing",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/tracing",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/agent-tools",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/tools",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/devlink-contracts",
@@ -727,7 +829,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/devlink-core",
@@ -736,7 +839,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/devlink-entry",
@@ -745,61 +849,38 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
-      "name": "@kb-labs/gateway-app",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/gateway/app",
+      "name": "@kb-labs/clickup-contracts",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/contracts",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
+      "currentVersion": "0.1.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
-      "name": "@kb-labs/gateway-auth",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/gateway/auth",
+      "name": "@kb-labs/clickup-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/core",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
+      "currentVersion": "0.1.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
-      "name": "@kb-labs/gateway-contracts",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/gateway/contracts",
+      "name": "@kb-labs/clickup-entry",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/entry",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
+      "currentVersion": "0.1.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/gateway-core",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/gateway/core",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/gateway-runtime-server",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/gateway/runtime-server",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/github-entry",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/entry",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/github-contracts",
@@ -808,79 +889,18 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
-      "name": "@kb-labs/host-agent-app",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/host-agent/app",
+      "name": "@kb-labs/github-entry",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/entry",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/host-agent-client",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/host-agent/client",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/host-agent-core",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/host-agent/core",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/host-agent-contracts",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/host-agent/contracts",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/host-agent-fs",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/host-agent/fs",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/host-agent-entry",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/host-agent/entry",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/host-agent-transport",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/host-agent/transport",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/impact-core",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/impact/core",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/impact-contracts",
@@ -889,43 +909,138 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
-      "name": "@kb-labs/infra-worker-contracts",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/infra-worker/plugin-template-contracts",
+      "name": "@kb-labs/impact-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/impact/core",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
-      "name": "@kb-labs/infra-worker-core",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/infra-worker/plugin-template-core",
+      "name": "@kb-labs/gateway-app",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/gateway/app",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
-      "name": "@kb-labs/marketplace-api",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace/api",
+      "name": "@kb-labs/gateway-auth",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/gateway/auth",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
-      "name": "@kb-labs/marketplace-core",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace/core",
+      "name": "@kb-labs/gateway-contracts",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/gateway/contracts",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/gateway-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/gateway/core",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/gateway-runtime-server",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/gateway/runtime-server",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/host-agent-app",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/host-agent/app",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/host-agent-client",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/host-agent/client",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/host-agent-contracts",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/host-agent/contracts",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/host-agent-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/host-agent/core",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/host-agent-fs",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/host-agent/fs",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/host-agent-transport",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/host-agent/transport",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/host-agent-entry",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/host-agent/entry",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/marketplace-contracts",
@@ -934,7 +1049,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/marketplace-app",
@@ -943,16 +1059,18 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
-      "name": "@kb-labs/marketplace-npm",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace/npm",
+      "name": "@kb-labs/marketplace-api",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace/api",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/marketplace-entry",
@@ -961,16 +1079,38 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
-      "name": "@kb-labs/policy-contracts",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/policy/contracts",
+      "name": "@kb-labs/marketplace-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace/core",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/infra-worker-contracts",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/infra-worker/plugin-template-contracts",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/marketplace-npm",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace/npm",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/qa-contracts",
@@ -979,7 +1119,18 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/infra-worker-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/infra-worker/plugin-template-core",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/qa-core",
@@ -988,7 +1139,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/qa-entry",
@@ -997,16 +1149,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/mind-adapters",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/adapters",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/policy-core",
@@ -1015,115 +1159,18 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
-      "name": "@kb-labs/mind-contracts",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/contracts",
+      "name": "@kb-labs/policy-contracts",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/policy/contracts",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/mind-embeddings",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/embeddings",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/mind-core",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/core",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/mind-engine",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/engine",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/mind-entry",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/entry",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/mind-indexer",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/indexer",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/mind-vector-store",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/vector-store",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/quality-core",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/quality/core",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/quality-contracts",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/quality/contracts",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/quality-entry",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/quality/entry",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/release-manager-changelog",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-changelog",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/mind-types",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/types",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/release-manager-checks",
@@ -1132,7 +1179,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/release-manager-contracts",
@@ -1141,25 +1189,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/mind-orchestrator",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/orchestrator",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/release-manager-core",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-core",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/release-manager-cli",
@@ -1168,16 +1199,158 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
-      "name": "@kb-labs/rest-api-core",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/rest-api/core",
+      "name": "@kb-labs/release-manager-changelog",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-changelog",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/release-manager-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-core",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/mind-adapters",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/adapters",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/mind-contracts",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/contracts",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/mind-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/core",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/mind-embeddings",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/embeddings",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/mind-engine",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/engine",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/mind-entry",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/entry",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/mind-indexer",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/indexer",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/mind-orchestrator",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/orchestrator",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/mind-types",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/types",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/mind-vector-store",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/vector-store",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/quality-contracts",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/quality/contracts",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/quality-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/quality/core",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/quality-entry",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/quality/entry",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/review-contracts",
@@ -1186,16 +1359,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/rest-api-contracts",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/rest-api/contracts",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/review-core",
@@ -1204,16 +1369,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/rest-api-app",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/rest-api/app",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/review-entry",
@@ -1222,7 +1379,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/review-heuristic",
@@ -1231,7 +1389,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/review-llm",
@@ -1240,43 +1399,38 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
-      "name": "@kb-labs/scaffold-core",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/scaffold/core",
+      "name": "@kb-labs/rest-api-contracts",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/rest-api/contracts",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
-      "name": "@kb-labs/scaffold-contracts",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/scaffold/contracts",
+      "name": "@kb-labs/rest-api-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/rest-api/core",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
-      "name": "@kb-labs/scaffold",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/scaffold/entry",
+      "name": "@kb-labs/rest-api-app",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/rest-api/app",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/workflow-builtins",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/workflow/builtins",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/workflow-constants",
@@ -1285,7 +1439,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/workflow-artifacts",
@@ -1294,52 +1449,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/workflow-daemon",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/workflow/daemon",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/workflow-engine",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/workflow/engine",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/workflow-entry",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/workflow/entry",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/core-state-daemon",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/state/daemon",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/workflow-runtime",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/workflow/runtime",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/workflow-contracts",
@@ -1348,7 +1459,98 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/workflow-daemon",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/workflow/daemon",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/workflow-builtins",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/workflow/builtins",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/workflow-engine",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/workflow/engine",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/workflow-entry",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/workflow/entry",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/workflow-runtime",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/workflow/runtime",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/scaffold-contracts",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/scaffold/contracts",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/scaffold-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/scaffold/core",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/scaffold",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/scaffold/entry",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
+    },
+    {
+      "name": "@kb-labs/core-state-daemon",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/state/daemon",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/adapter-noop",
@@ -1357,7 +1559,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     },
     {
       "name": "@kb-labs/gateway-test",
@@ -1366,10 +1569,12 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 5 fix, 9 chore, 5 refactor, 1 feat"
     }
   ],
   "strategy": "semver",
   "registry": "https://registry.npmjs.org",
-  "rollbackEnabled": true
+  "rollbackEnabled": true,
+  "createdAt": "2026-05-14T23:32:01.396Z"
 }
