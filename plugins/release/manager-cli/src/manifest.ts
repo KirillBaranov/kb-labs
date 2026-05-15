@@ -93,6 +93,9 @@ export const manifest = {
 
   // CLI commands - V3 format
   cli: {
+    groupMeta: [
+      { path: 'release', describe: 'Release management commands' },
+    ],
     commands: [
       // release:plan - Analyze changes and prepare release plan
       {

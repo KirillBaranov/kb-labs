@@ -92,6 +92,12 @@ export const manifest = {
 
   // V3: cli wrapper with commands array
   cli: {
+    groupMeta: [
+      {
+        path: 'commit',
+        describe: 'AI-powered conventional commit generation.',
+      },
+    ],
     commands: [
       // Main command: commit (default flow)
       {

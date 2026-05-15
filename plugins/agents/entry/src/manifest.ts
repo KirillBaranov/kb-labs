@@ -122,6 +122,11 @@ export const manifest = {
   },
 
   cli: {
+    groupMeta: [
+      { path: 'agent', describe: 'Autonomous agent commands' },
+      { path: 'agent trace', describe: 'Agent trace debugging commands' },
+      { path: 'agent quality', describe: 'Agent quality control commands' },
+    ],
     commands: [
       {
         path: 'agent run',

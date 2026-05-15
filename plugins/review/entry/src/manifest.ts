@@ -56,6 +56,9 @@ export const manifest = {
 
   // CLI commands
   cli: {
+    groupMeta: [
+      { path: 'review', describe: 'AI code review' },
+    ],
     commands: [
       {
         path: 'review run',

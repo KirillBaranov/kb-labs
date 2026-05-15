@@ -133,10 +133,8 @@ export class WorkerPoolBackend implements ExecutionBackend {
     });
 
     this.pool.on('workerExited', (worker, code) => {
-      this.platform.logger.warn('Worker exited', {
-        workerId: worker.id,
-        exitCode: code,
-      });
+      const log = code === 0 ? this.platform.logger.debug.bind(this.platform.logger) : this.platform.logger.warn.bind(this.platform.logger);
+      log('Worker exited', { workerId: worker.id, exitCode: code });
     });
 
     this.pool.on('workerRecycled', (worker) => {

@@ -40,6 +40,9 @@ export const manifest = {
   },
 
   cli: {
+    groupMeta: [
+      { path: 'devlink', describe: 'Cross-repo link: dependency management' },
+    ],
     commands: [
       {
         path: 'devlink switch',

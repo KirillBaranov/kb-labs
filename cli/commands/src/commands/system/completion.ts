@@ -126,7 +126,6 @@ async function collectTree(registry: TrieBackedRegistry): Promise<Map<string, Ma
     const subMap = new Map<string, string[]>();
     const l2 = registry.complete([cmd, '']);
     for (const full2 of l2) {
-      // full2 = "cmd sub" — extract sub segment
       const sub = full2.split(' ').pop() ?? full2;
       const l3 = registry.complete([cmd, sub, '']);
       subMap.set(sub, l3);

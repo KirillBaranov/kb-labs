@@ -59,6 +59,10 @@ export const manifest = {
   },
 
   cli: {
+    groupMeta: [
+      { path: 'qa', describe: 'Automated quality checks and regression tracking' },
+      { path: 'qa baseline', describe: 'Baseline management' },
+    ],
     commands: [
       {
         path: 'qa run',

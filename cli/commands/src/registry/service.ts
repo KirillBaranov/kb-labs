@@ -36,6 +36,8 @@ export class TrieBackedRegistry {
   }
 
   registerManifest(cmd: RegisteredCommand): void {
+    if (cmd.manifest._synthetic) return;
+
     const segs = cmd.manifest.segments;
 
     // Check system collision — system always wins

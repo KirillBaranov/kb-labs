@@ -2,12 +2,22 @@
  * workflow:run command - Run workflow by workflow ID
  */
 
-import { defineCommand, validationError, handleError, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, validationError, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
 import type { WorkflowRunRequest } from '@kb-labs/workflow-contracts';
 import { WorkflowDaemonClient } from '../http-client.js';
-import { type WorkflowRunFlags } from '../flags.js';
 
-type WorkflowRunInput = WorkflowRunFlags & { argv?: string[] };
+interface WorkflowRunFlagsInput {
+  json?: boolean;
+  'workflow-id'?: string;
+  input?: string;
+  isolation?: string;
+  'trigger-type'?: string;
+  'trigger-user'?: string;
+  'target-environment-id'?: string;
+  'target-workspace-id'?: string;
+  'target-namespace'?: string;
+  'target-workdir'?: string;
+}
 
 function parseJsonInput(value: string | undefined): unknown {
   if (!value) {
@@ -36,20 +46,14 @@ function parseTriggerType(value: string | undefined): WorkflowRunRequest['trigge
   throw new Error(`Invalid trigger type: ${value}. Expected manual|api|cron`);
 }
 
-export default defineCommand<unknown, WorkflowRunInput, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<WorkflowRunFlagsInput>, { exitCode: number }>({
   id: 'workflow:run',
   description: 'Run workflow by ID with optional target/isolation overrides',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: WorkflowRunInput): Promise<{ exitCode: number }> {
-      const flags = ((input as { flags?: WorkflowRunInput } & WorkflowRunInput).flags ?? input) as unknown as {
-        json?: boolean; 'workflow-id'?: string; input?: string; isolation?: string;
-        'trigger-type'?: string; 'trigger-user'?: string;
-        'target-environment-id'?: string; 'target-workspace-id'?: string;
-        'target-namespace'?: string; 'target-workdir'?: string;
-      };
-      const outputJson = flags.json ?? false;
-      const workflowId = flags['workflow-id'];
+    async execute(ctx: PluginContextV3, input: CLIInput<WorkflowRunFlagsInput>): Promise<{ exitCode: number }> {
+      const outputJson = input.flags.json ?? false;
+      const workflowId = input.flags['workflow-id'];
 
       if (!workflowId) {
         validationError(ctx, 'Missing required flag: --workflow-id', 'Usage: kb workflow:run --workflow-id <id>', outputJson);
@@ -59,34 +63,34 @@ export default defineCommand<unknown, WorkflowRunInput, { exitCode: number }>({
       try {
         const request: WorkflowRunRequest = {};
 
-        const inputPayload = parseJsonInput(flags.input);
+        const inputPayload = parseJsonInput(input.flags.input);
         if (inputPayload !== undefined) {
           request.input = inputPayload;
         }
 
-        const isolation = parseIsolation(flags.isolation);
+        const isolation = parseIsolation(input.flags.isolation);
         if (isolation) {
           request.isolation = isolation;
         }
 
-        const trigger = parseTriggerType(flags['trigger-type']);
+        const trigger = parseTriggerType(input.flags['trigger-type']);
         if (trigger) {
           request.trigger = {
             ...trigger,
-            user: flags['trigger-user'],
+            user: input.flags['trigger-user'],
           };
-        } else if (flags['trigger-user']) {
+        } else if (input.flags['trigger-user']) {
           request.trigger = {
             type: 'manual',
-            user: flags['trigger-user'],
+            user: input.flags['trigger-user'],
           };
         }
 
         const target = {
-          environmentId: flags['target-environment-id'],
-          workspaceId: flags['target-workspace-id'],
-          namespace: flags['target-namespace'],
-          workdir: flags['target-workdir'],
+          environmentId: input.flags['target-environment-id'],
+          workspaceId: input.flags['target-workspace-id'],
+          namespace: input.flags['target-namespace'],
+          workdir: input.flags['target-workdir'],
         };
         if (target.environmentId || target.workspaceId || target.namespace || target.workdir) {
           request.target = target;

@@ -38,6 +38,9 @@ export const manifest: ManifestV3 = {
     },
   },
   cli: {
+    groupMeta: [
+      { path: 'infra-worker', describe: 'Infra worker provisioning commands' },
+    ],
     commands: [
       {
         path: 'infra-worker prepare',

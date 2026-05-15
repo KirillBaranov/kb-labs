@@ -31,6 +31,16 @@ export const manifest = {
   },
 
   cli: {
+    groupMeta: [
+      {
+        path: 'workspace',
+        describe: 'Workspace management',
+      },
+      {
+        path: 'agent',
+        describe: 'Agent management',
+      },
+    ],
     commands: [
       // Primary commands: workspace:*
       {

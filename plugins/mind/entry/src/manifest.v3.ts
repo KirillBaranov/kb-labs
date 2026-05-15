@@ -103,6 +103,9 @@ export const manifest = {
 
   // CLI commands (V3 structure with cli wrapper)
   cli: {
+    groupMeta: [
+      { path: 'mind', describe: 'AI code search and RAG commands' },
+    ],
     commands: [
       {
         path: 'mind init',

@@ -41,7 +41,7 @@ export default defineCommand({
       try {
         const task = await createTask(requireApiKey(), list, {
           name,
-          description: desc,
+          markdown_content: desc?.replace(/\\n/g, '\n'),
           status,
           priority,
           assignees: assignee ? assignee.split(',').map(Number) : undefined,

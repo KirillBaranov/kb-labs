@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 export const CreateTaskSchema = z.object({
   name: z.string().min(1),
-  description: z.string().optional(),
+  markdown_content: z.string().optional(),
   status: z.string().optional(),
   priority: z.number().int().min(1).max(4).optional(),  // 1=urgent 2=high 3=normal 4=low
   assignees: z.array(z.number()).optional(),
@@ -13,7 +13,7 @@ export const CreateTaskSchema = z.object({
 
 export const UpdateTaskSchema = z.object({
   name: z.string().min(1).optional(),
-  description: z.string().optional(),
+  markdown_content: z.string().optional(),
   status: z.string().optional(),
   priority: z.number().int().min(1).max(4).nullable().optional(),
   assignees: z.object({

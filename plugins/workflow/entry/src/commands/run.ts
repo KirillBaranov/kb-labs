@@ -2,25 +2,29 @@
  * workflow:job-run command - Submit a raw job for execution
  */
 
-import { defineCommand, validationError, handleError, type PluginContextV3, useLoader } from '@kb-labs/sdk';
+import { defineCommand, validationError, handleError, type CLIInput, type PluginContextV3, useLoader } from '@kb-labs/sdk';
 import { WorkflowDaemonClient } from '../http-client.js';
-import { type RunFlags } from '../flags.js';
 
-type RunInput = RunFlags & { argv?: string[] };
+interface RunFlagsInput {
+  json?: boolean;
+  handler?: string;
+  input?: string;
+  priority?: number;
+  wait?: boolean;
+}
 
-export default defineCommand<unknown, RunInput, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<RunFlagsInput>, { exitCode: number }>({
   id: 'workflow:job-run',
   description: 'Submit a raw job for execution',
 
   handler: {
     // eslint-disable-next-line sonarjs/cognitive-complexity -- Workflow execution with input parsing, validation, wait mode (polling + websocket logs), JSON/human output, and error handling
-    async execute(ctx: PluginContextV3, input: RunInput): Promise<{ exitCode: number }> {
-      const flags = (input as { flags?: RunInput } & RunInput).flags ?? input;
-      const outputJson = !!(flags.json as unknown as boolean | undefined);
-      const handler = flags.handler as unknown as string | undefined;
-      const inputStr = flags.input as unknown as string | undefined;
-      const priority = (flags.priority as unknown as number | undefined) ?? 5;
-      const wait = flags.wait ?? false;
+    async execute(ctx: PluginContextV3, input: CLIInput<RunFlagsInput>): Promise<{ exitCode: number }> {
+      const outputJson = input.flags.json ?? false;
+      const handler = input.flags.handler;
+      const inputStr = input.flags.input;
+      const priority = input.flags.priority ?? 5;
+      const wait = input.flags.wait ?? false;
 
       if (!handler) {
         validationError(ctx, 'Missing required flag: --handler', 'Usage: kb workflow job-run --handler=<handler> [--input=<json>]', outputJson);

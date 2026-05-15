@@ -1,19 +1,8 @@
 import { hostname } from 'node:os';
 import type { ServiceLogCorrelationContext } from '@kb-labs/core-contracts';
-import type { ILogBuffer, LogRecord } from '@kb-labs/core-platform';
+import type { ILogger, ILogBuffer, LogRecord } from '@kb-labs/core-platform';
 import { normalizeObservabilityRoute } from './http-observability-collector.js';
 
-type CorrelationLogger = {
-  trace(message: string, meta?: Record<string, unknown>): void;
-  debug(message: string, meta?: Record<string, unknown>): void;
-  info(message: string, meta?: Record<string, unknown>): void;
-  warn(message: string, meta?: Record<string, unknown>): void;
-  error(message: string, error?: Error, meta?: Record<string, unknown>): void;
-  fatal(message: string, error?: Error, meta?: Record<string, unknown>): void;
-  child(bindings: Record<string, unknown>): CorrelationLogger;
-  getLogBuffer?: () => ILogBuffer | undefined;
-  onLog?: (callback: (record: LogRecord) => void) => () => void;
-};
 
 export interface ServiceLogBindingInput extends Omit<ServiceLogCorrelationContext, 'instanceId' | 'logsSource'> {
   instanceId?: string;
@@ -51,9 +40,9 @@ export function createServiceLogBindings(input: ServiceLogBindingInput): Record<
 }
 
 export function createCorrelatedLogger(
-  baseLogger: CorrelationLogger,
+  baseLogger: ILogger,
   input: ServiceLogBindingInput
-): CorrelationLogger {
+): ILogger {
   const baseMeta = createServiceLogBindings(input);
 
   return {

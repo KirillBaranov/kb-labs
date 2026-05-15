@@ -33,6 +33,9 @@ export const manifest = {
   },
 
   cli: {
+    groupMeta: [
+      { path: 'impact', describe: 'Impact analysis commands' },
+    ],
     commands: [
       {
         path: 'impact check',
