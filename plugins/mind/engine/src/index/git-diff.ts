@@ -3,10 +3,10 @@
  * Git-based diff detection for incremental indexing
  */
 
-import { exec as execCallback } from 'node:child_process';
+import { execFile as execFileCallback } from 'node:child_process';
 import { promisify } from 'node:util';
 
-const exec = promisify(execCallback);
+const execFile = promisify(execFileCallback);
 
 /**
  * Changed file information from git diff
@@ -47,7 +47,7 @@ export class GitDiffDetector {
    * Get current HEAD revision
    */
   async getCurrentRevision(): Promise<string> {
-    const { stdout } = await exec('git rev-parse HEAD', { cwd: this.cwd });
+    const { stdout } = await execFile('git', ['rev-parse', 'HEAD'], { cwd: this.cwd });
     return stdout.trim();
   }
 
@@ -55,7 +55,7 @@ export class GitDiffDetector {
    * Get short revision hash
    */
   async getShortRevision(): Promise<string> {
-    const { stdout } = await exec('git rev-parse --short HEAD', { cwd: this.cwd });
+    const { stdout } = await execFile('git', ['rev-parse', '--short', 'HEAD'], { cwd: this.cwd });
     return stdout.trim();
   }
 
@@ -63,7 +63,7 @@ export class GitDiffDetector {
    * Get current branch name
    */
   async getCurrentBranch(): Promise<string> {
-    const { stdout } = await exec('git rev-parse --abbrev-ref HEAD', { cwd: this.cwd });
+    const { stdout } = await execFile('git', ['rev-parse', '--abbrev-ref', 'HEAD'], { cwd: this.cwd });
     return stdout.trim();
   }
 
@@ -72,7 +72,7 @@ export class GitDiffDetector {
    */
   async getMergeBase(rev1: string, rev2: string): Promise<string> {
     try {
-      const { stdout } = await exec(`git merge-base ${rev1} ${rev2}`, { cwd: this.cwd });
+      const { stdout } = await execFile('git', ['merge-base', rev1, rev2], { cwd: this.cwd });
       return stdout.trim();
     } catch {
       // If merge-base fails (no common ancestor), return rev1
@@ -85,7 +85,7 @@ export class GitDiffDetector {
    */
   async isAncestor(rev1: string, rev2: string): Promise<boolean> {
     try {
-      await exec(`git merge-base --is-ancestor ${rev1} ${rev2}`, { cwd: this.cwd });
+      await execFile('git', ['merge-base', '--is-ancestor', rev1, rev2], { cwd: this.cwd });
       return true;
     } catch {
       return false;
@@ -98,8 +98,8 @@ export class GitDiffDetector {
   async getChangedFiles(since: string): Promise<ChangedFile[]> {
     try {
       // Use three-dot notation to get changes from merge-base
-      const { stdout } = await exec(
-        `git diff --name-status ${since}...HEAD`,
+      const { stdout } = await execFile(
+        'git', ['diff', '--name-status', `${since}...HEAD`],
         { cwd: this.cwd }
       );
 
@@ -107,8 +107,8 @@ export class GitDiffDetector {
     } catch {
       // If three-dot fails, try two-dot
       try {
-        const { stdout } = await exec(
-          `git diff --name-status ${since}..HEAD`,
+        const { stdout } = await execFile(
+          'git', ['diff', '--name-status', `${since}..HEAD`],
           { cwd: this.cwd }
         );
         return this.parseNameStatus(stdout);
@@ -122,8 +122,8 @@ export class GitDiffDetector {
    * Get files changed between two revisions (inclusive)
    */
   async getChangedFilesBetween(from: string, to: string): Promise<ChangedFile[]> {
-    const { stdout } = await exec(
-      `git diff --name-status ${from}..${to}`,
+    const { stdout } = await execFile(
+      'git', ['diff', '--name-status', `${from}..${to}`],
       { cwd: this.cwd }
     );
 
@@ -135,10 +135,10 @@ export class GitDiffDetector {
    */
   async getUncommittedChanges(): Promise<ChangedFile[]> {
     // Staged changes
-    const { stdout: staged } = await exec('git diff --name-status --cached', { cwd: this.cwd });
+    const { stdout: staged } = await execFile('git', ['diff', '--name-status', '--cached'], { cwd: this.cwd });
 
     // Unstaged changes
-    const { stdout: unstaged } = await exec('git diff --name-status', { cwd: this.cwd });
+    const { stdout: unstaged } = await execFile('git', ['diff', '--name-status'], { cwd: this.cwd });
 
     const stagedFiles = this.parseNameStatus(staged);
     const unstagedFiles = this.parseNameStatus(unstaged);
@@ -158,8 +158,8 @@ export class GitDiffDetector {
    * Get untracked files
    */
   async getUntrackedFiles(): Promise<string[]> {
-    const { stdout } = await exec(
-      'git ls-files --others --exclude-standard',
+    const { stdout } = await execFile(
+      'git', ['ls-files', '--others', '--exclude-standard'],
       { cwd: this.cwd }
     );
 
@@ -171,7 +171,7 @@ export class GitDiffDetector {
    */
   async isTracked(path: string): Promise<boolean> {
     try {
-      await exec(`git ls-files --error-unmatch ${path}`, { cwd: this.cwd });
+      await execFile('git', ['ls-files', '--error-unmatch', path], { cwd: this.cwd });
       return true;
     } catch {
       return false;
@@ -182,7 +182,7 @@ export class GitDiffDetector {
    * Check if working directory is clean
    */
   async isClean(): Promise<boolean> {
-    const { stdout } = await exec('git status --porcelain', { cwd: this.cwd });
+    const { stdout } = await execFile('git', ['status', '--porcelain'], { cwd: this.cwd });
     return stdout.trim() === '';
   }
 
@@ -190,8 +190,8 @@ export class GitDiffDetector {
    * Get all files at a specific revision
    */
   async getFilesAtRevision(revision: string): Promise<string[]> {
-    const { stdout } = await exec(
-      `git ls-tree -r --name-only ${revision}`,
+    const { stdout } = await execFile(
+      'git', ['ls-tree', '-r', '--name-only', revision],
       { cwd: this.cwd }
     );
 
@@ -202,8 +202,8 @@ export class GitDiffDetector {
    * Get file content at a specific revision
    */
   async getFileContentAtRevision(path: string, revision: string): Promise<string> {
-    const { stdout } = await exec(
-      `git show ${revision}:${path}`,
+    const { stdout } = await execFile(
+      'git', ['show', `${revision}:${path}`],
       { cwd: this.cwd }
     );
 

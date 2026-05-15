@@ -1,4 +1,4 @@
-import { spawnSync, execSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { join, resolve } from 'node:path';
 import { existsSync, readFileSync } from 'node:fs';
 import type { QACheckConfig, QAResults, WorkspacePackage, CheckItem } from '@kb-labs/qa-contracts';
@@ -95,9 +95,10 @@ function recordResult(
  */
 function getDiffPackageDirs(rootDir: string, base: string, diffFilter: string): Set<string> {
   try {
-    const filter = diffFilter ? `--diff-filter=${diffFilter}` : '';
-    const args = ['diff', filter, `${base}...HEAD`, '--name-only'].filter(Boolean);
-    const output = execSync(`git ${args.join(' ')}`, { cwd: rootDir, encoding: 'utf-8' }).trim();
+    const args = ['diff', `${base}...HEAD`, '--name-only'];
+    if (diffFilter) args.push(`--diff-filter=${diffFilter}`);
+    const result = spawnSync('git', args, { cwd: rootDir, encoding: 'utf-8' });
+    const output = (result.stdout ?? '').trim();
     if (!output) { return new Set(); }
     return new Set(output.split('\n').map(f => f.split('/')[0]).filter((s): s is string => Boolean(s)));
   } catch {

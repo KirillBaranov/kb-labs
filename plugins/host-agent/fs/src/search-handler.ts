@@ -10,7 +10,7 @@
  * @see ADR-0017: Workspace Agent Architecture (Phase 3)
  */
 
-import { execSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import { resolve, normalize, sep } from 'node:path';
 import type { CapabilityCall } from '@kb-labs/host-agent-contracts';
 
@@ -98,51 +98,59 @@ export class SearchHandler {
     const maxResults = options.maxResults ?? DEFAULT_MAX_RESULTS;
     const excludes = options.excludes ?? DEFAULT_EXCLUDES;
 
-    const excludeFlags = excludes.map(d => `--exclude-dir=${d}`).join(' ');
-    const includeFlags = options.includes
-      ? options.includes.map(ext => `--include='${ext}'`).join(' ')
-      : '';
-    const contextFlag = options.contextLines ? `-C ${options.contextLines}` : '';
+    let cmd: string;
+    let args: string[];
 
-    // Try rg first, fallback to grep
-    const cmd = this.hasRipgrep()
-      ? `rg --no-heading --line-number --max-count=${maxResults} ${excludes.map(d => `--glob='!${d}'`).join(' ')} ${options.includes ? options.includes.map(ext => `--glob='${ext}'`).join(' ') : ''} ${contextFlag ? `-C ${options.contextLines}` : ''} -- ${this.shellEscape(pattern)} ${this.shellEscape(dir)}`
-      : `grep -rn ${excludeFlags} ${includeFlags} ${contextFlag} -m ${maxResults} -- ${this.shellEscape(pattern)} ${this.shellEscape(dir)}`;
-
-    try {
-      const stdout = execSync(cmd, {
-        timeout: SEARCH_TIMEOUT_MS,
-        maxBuffer: SEARCH_MAX_BUFFER,
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe'],
-      });
-
-      const lines = stdout.trim().split('\n').filter(Boolean);
-      const matches: GrepMatch[] = [];
-
-      for (const line of lines) {
-        const match = line.match(/^(.+?):(\d+):(.*)$/);
-        if (match) {
-          matches.push({
-            file: match[1]!,
-            line: parseInt(match[2]!, 10),
-            content: match[3]!,
-          });
-        }
+    if (this.hasRipgrep()) {
+      cmd = 'rg';
+      args = ['--no-heading', '--line-number', `--max-count=${maxResults}`];
+      for (const d of excludes) args.push(`--glob=!${d}`);
+      if (options.includes) {
+        for (const ext of options.includes) args.push(`--glob=${ext}`);
       }
-
-      return {
-        matches: matches.slice(0, maxResults),
-        truncated: matches.length >= maxResults,
-        totalMatches: matches.length,
-      };
-    } catch (err: unknown) {
-      // grep returns exit code 1 when no matches found
-      if ((err as { status?: number }).status === 1) {
-        return { matches: [], truncated: false, totalMatches: 0 };
+      if (options.contextLines) args.push('-C', String(options.contextLines));
+      args.push('--', pattern, dir);
+    } else {
+      cmd = 'grep';
+      args = ['-rn'];
+      for (const d of excludes) args.push(`--exclude-dir=${d}`);
+      if (options.includes) {
+        for (const ext of options.includes) args.push(`--include=${ext}`);
       }
-      throw err;
+      if (options.contextLines) args.push(`-C${options.contextLines}`);
+      args.push('-m', String(maxResults), '--', pattern, dir);
     }
+
+    const result = spawnSync(cmd, args, {
+      timeout: SEARCH_TIMEOUT_MS,
+      maxBuffer: SEARCH_MAX_BUFFER,
+      encoding: 'utf-8',
+    });
+
+    // exit 1 = no matches (grep/rg convention)
+    if (result.status !== 0 && result.status !== 1) {
+      return { matches: [], truncated: false, totalMatches: 0 };
+    }
+
+    const lines = (result.stdout ?? '').trim().split('\n').filter(Boolean);
+    const matches: GrepMatch[] = [];
+
+    for (const line of lines) {
+      const match = line.match(/^(.+?):(\d+):(.*)$/);
+      if (match) {
+        matches.push({
+          file: match[1]!,
+          line: parseInt(match[2]!, 10),
+          content: match[3]!,
+        });
+      }
+    }
+
+    return {
+      matches: matches.slice(0, maxResults),
+      truncated: matches.length >= maxResults,
+      totalMatches: matches.length,
+    };
   }
 
   private glob(pattern: string, directory: string, options: GlobOptions): GlobResult {
@@ -150,41 +158,27 @@ export class SearchHandler {
     const maxResults = options.maxResults ?? DEFAULT_MAX_RESULTS;
     const excludes = options.excludes ?? DEFAULT_EXCLUDES;
 
-    const excludeFlags = excludes.map(d => `! -path "*/${d}/*"`).join(' ');
-    const cmd = `find ${this.shellEscape(dir)} -type f -name ${this.shellEscape(pattern)} ${excludeFlags} | head -n ${maxResults + 1}`;
+    const args = [dir, '-type', 'f', '-name', pattern];
+    for (const d of excludes) args.push('!', '-path', `*/${d}/*`);
 
-    try {
-      const stdout = execSync(cmd, {
-        timeout: SEARCH_TIMEOUT_MS,
-        maxBuffer: SEARCH_MAX_BUFFER,
-        encoding: 'utf-8',
-        stdio: ['pipe', 'pipe', 'pipe'],
-      });
+    const result = spawnSync('find', args, {
+      timeout: SEARCH_TIMEOUT_MS,
+      maxBuffer: SEARCH_MAX_BUFFER,
+      encoding: 'utf-8',
+    });
 
-      const files = stdout.trim().split('\n').filter(Boolean);
-      const truncated = files.length > maxResults;
-      const result = truncated ? files.slice(0, maxResults) : files;
+    const files = (result.stdout ?? '').trim().split('\n').filter(Boolean);
+    const truncated = files.length > maxResults;
 
-      return {
-        files: result,
-        truncated,
-        totalFiles: files.length,
-      };
-    } catch {
-      return { files: [], truncated: false, totalFiles: 0 };
-    }
+    return {
+      files: files.slice(0, maxResults),
+      truncated,
+      totalFiles: files.length,
+    };
   }
 
   private hasRipgrep(): boolean {
-    try {
-      execSync('rg --version', { stdio: 'pipe', timeout: 2000 });
-      return true;
-    } catch {
-      return false;
-    }
-  }
-
-  private shellEscape(s: string): string {
-    return `'${s.replace(/'/g, `'\\''`)}'`;
+    const result = spawnSync('rg', ['--version'], { stdio: 'pipe', timeout: 2000 });
+    return result.status === 0;
   }
 }

@@ -187,8 +187,8 @@ export class WorkflowHostService {
     }));
 
     if (type) {
-      const pattern = type.replace(/\*/g, '.*');
-      const regex = new RegExp(`^${pattern}$`);
+      const escaped = type.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+      const regex = new RegExp(`^${escaped}$`);
       jobs = jobs.filter((job) => regex.test(job.type));
     }
 
