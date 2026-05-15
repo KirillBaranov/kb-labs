@@ -4,8 +4,8 @@
  */
 
 import type { IncidentStorage, IncidentCreatePayload, IncidentSeverity, IncidentType, RelatedData } from './incident-storage';
-import { metricsCollector } from '../middleware/metrics.js';
-import type { MetricsSnapshot } from '../middleware/metrics.js';
+import { metricsCollector } from '../../middleware/metrics.js';
+import type { MetricsSnapshot } from '../../middleware/metrics.js';
 import { platform } from '@kb-labs/core-runtime';
 import type { LogLevel } from '@kb-labs/core-platform';
 
@@ -698,14 +698,10 @@ export class IncidentDetector {
     if (level === 'debug' && !this.config.debug) {return;}
 
     const prefix = '[IncidentDetector]';
-    if (this.logger[level]) {
-      if (meta) {
-        this.logger[level]({ ...meta }, `${prefix} ${message}`);
-      } else {
-        this.logger[level](`${prefix} ${message}`);
-      }
+    if (meta) {
+      this.logger[level]({ ...meta }, `${prefix} ${message}`);
     } else {
-      console.log(`${prefix} [${level}] ${message}`, meta ?? '');
+      this.logger[level](`${prefix} ${message}`);
     }
   }
 }

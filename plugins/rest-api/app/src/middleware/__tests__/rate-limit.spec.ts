@@ -8,7 +8,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import Fastify from 'fastify';
 import type { FastifyRequest } from 'fastify';
 
-import { extractTenantId, createRateLimitMiddleware } from '../rate-limit';
+import { extractTenantId, createRateLimitMiddleware } from '../tenant-rate-limit';
 
 interface TenantRateLimiter {
   checkLimit(tenantId: string, resource: string): Promise<RateLimitResult>;

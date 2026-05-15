@@ -5,7 +5,7 @@ import type { ReadinessState } from './readiness';
 import { isReady, resolveReadinessReason } from './readiness';
 import type { EventHub, BroadcastEvent } from '../events/hub';
 import { metricsCollector } from '../middleware/metrics.js';
-import { buildRegistrySseAuthHook } from '../utils/sse-auth';
+import { buildRegistrySseAuthHook } from './sse-auth';
 
 export async function registerEventRoutes(
   server: FastifyInstance,

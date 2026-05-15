@@ -7,7 +7,7 @@ import type { FastifyInstance } from 'fastify';
 import type { RestApiConfig } from '@kb-labs/rest-api-core';
 import { metricsCollector, restDomainOperationMetrics } from '../middleware/metrics.js';
 import { getHeaderDebugEntries } from '../diagnostics/header-debug';
-import { getPrometheusMetrics, updateProcessUptime } from '../middleware/prom-metrics';
+import { getPrometheusMetrics, updateProcessUptime } from '../observability/prometheus-registry';
 
 function formatNumber(value: number, fractionDigits = 2): string {
   return Number.isFinite(value) ? value.toFixed(fractionDigits) : '0';

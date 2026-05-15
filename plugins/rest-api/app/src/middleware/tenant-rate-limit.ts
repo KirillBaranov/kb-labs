@@ -3,10 +3,54 @@
  * Wires TenantRateLimiter (backed by platform.cache) into Fastify.
  */
 
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import type { ICache } from '@kb-labs/core-platform';
 import { TenantRateLimiter, getDefaultTenantTier } from '@kb-labs/core-tenant';
-import { createRateLimitMiddleware, extractTenantId } from './rate-limit';
+
+interface TenantRateLimiterLike {
+  checkLimit(tenantId: string, resource: string): Promise<{
+    allowed: boolean;
+    limit: number;
+    remaining: number;
+    resetAt: number;
+  }>;
+}
+
+export function extractTenantId(request: FastifyRequest): string {
+  return (
+    (request.headers['x-tenant-id'] as string) ||
+    process.env.KB_TENANT_ID ||
+    'default'
+  );
+}
+
+export function createRateLimitMiddleware(rateLimiter: TenantRateLimiterLike) {
+  return async function rateLimitMiddleware(
+    request: FastifyRequest,
+    reply: FastifyReply,
+  ) {
+    const tenantId = extractTenantId(request);
+    const result = await rateLimiter.checkLimit(tenantId, 'requests');
+
+    reply.header('X-RateLimit-Limit', result.limit);
+    reply.header('X-RateLimit-Remaining', result.remaining);
+    reply.header('X-RateLimit-Reset', result.resetAt);
+
+    if (!result.allowed) {
+      const retryAfter = Math.ceil((result.resetAt - Date.now()) / 1000);
+      reply.header('Retry-After', retryAfter);
+      return reply.code(429).send({
+        error: 'RATE_LIMIT_EXCEEDED',
+        message: 'Too many requests. Please try again later.',
+        retryAfter,
+        limit: result.limit,
+        resetAt: new Date(result.resetAt).toISOString(),
+      });
+    }
+
+    request.tenantId = tenantId;
+  };
+}
 
 /**
  * Register tenant-aware rate limiting as a global preHandler hook.
@@ -31,4 +75,4 @@ export function registerTenantRateLimitMiddleware(
   server.addHook('preHandler', handler);
 }
 
-export { TenantRateLimiter, extractTenantId };
+export { TenantRateLimiter };

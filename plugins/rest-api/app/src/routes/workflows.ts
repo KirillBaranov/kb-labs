@@ -12,7 +12,7 @@ import type { FastifyInstance } from 'fastify'
 import type { RestApiConfig } from '@kb-labs/rest-api-core'
 import { WORKFLOW_REDIS_CHANNEL } from '@kb-labs/workflow-constants'
 import { platform } from '@kb-labs/core-runtime'
-import { normalizeBasePath } from '../utils/path-helpers'
+import { normalizeBasePath } from './path-helpers'
 
 interface HttpError extends Error {
   statusCode: number;

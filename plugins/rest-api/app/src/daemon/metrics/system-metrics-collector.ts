@@ -10,7 +10,7 @@ import { platform } from '@kb-labs/core-runtime';
 import * as os from 'node:os';
 import * as process from 'node:process';
 import { monitorEventLoopDelay } from 'node:perf_hooks';
-import { updateRuntimeObservabilityMetrics } from '../middleware/prom-metrics.js';
+import { updateRuntimeObservabilityMetrics } from '../../observability/prometheus-registry.js';
 
 let latestSystemMetricsSnapshot: SystemMetrics | null = null;
 

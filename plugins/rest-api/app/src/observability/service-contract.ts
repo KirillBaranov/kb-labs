@@ -17,7 +17,7 @@ import {
 import type { SystemHealthSnapshot } from '@kb-labs/core-registry';
 import type { ReadinessState } from '../routes/readiness.js';
 import { restDomainOperationMetrics, type MetricsSnapshot } from '../middleware/metrics.js';
-import { getLatestSystemMetrics } from '../services/system-metrics-collector.js';
+import { getLatestSystemMetrics } from '../daemon/metrics/index.js';
 
 declare const __REST_API_VERSION__: string;
 const REST_VERSION = typeof __REST_API_VERSION__ !== 'undefined' ? __REST_API_VERSION__ : '0.0.0';

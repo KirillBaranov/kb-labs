@@ -276,14 +276,10 @@ Guidelines:
     if (level === 'debug' && !this.config.debug) {return;}
 
     const prefix = '[IncidentAnalyzer]';
-    if (this.logger[level]) {
-      if (meta) {
-        this.logger[level]({ ...meta }, `${prefix} ${message}`);
-      } else {
-        this.logger[level](`${prefix} ${message}`);
-      }
+    if (meta) {
+      this.logger[level]({ ...meta }, `${prefix} ${message}`);
     } else {
-      console.log(`${prefix} [${level}] ${message}`, meta ?? '');
+      this.logger[level](`${prefix} ${message}`);
     }
   }
 }

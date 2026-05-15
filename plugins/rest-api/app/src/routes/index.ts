@@ -29,11 +29,11 @@ import { registerAdaptersRoutes } from './adapters';
 import { registerLogRoutes } from './logs';
 import { registerPlatformRoutes } from './platform';
 import { registerAdapterCallRoutes } from './adapter-call';
-import { registerDebugRoutes, registerRouteCollector } from './debug-routes';
+import { registerDebugRoutes, registerRouteCollector } from './debug';
 import type { ReadinessState } from './readiness';
 import { isReady, resolveReadinessReason } from './readiness';
 import { metricsCollector } from '../middleware/metrics.js';
-import { HistoricalMetricsCollector } from '../services/historical-metrics';
+import { HistoricalMetricsCollector } from '../daemon/metrics';
 
 function normalizeBasePath(basePath?: string): string {
   if (!basePath || basePath === '/') {

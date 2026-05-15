@@ -16,7 +16,7 @@ import {
   tenantRequestsTotal,
   tenantErrorsTotal,
   tenantRequestDuration,
-} from './prom-metrics';
+} from '../observability/prometheus-registry';
 import { platform } from '@kb-labs/core-runtime';
 
 /**
@@ -663,6 +663,7 @@ function shouldSampleRequest(route: string): boolean {
   return true;
 }
 
+// ADDS: request.kbMetricsStart | READS: kbLogger, kbPluginId, tenantId (onResponse)
 export function registerMetricsMiddleware(server: FastifyInstance): void {
   server.addHook('onRequest', (request, _reply, done) => {
     request.kbMetricsStart = performance.now();

@@ -19,7 +19,7 @@ import {
   JobActionResponseSchema,
   ErrorResponseSchema,
 } from '@kb-labs/rest-api-contracts';
-import { normalizeBasePath } from '../utils/path-helpers';
+import { normalizeBasePath } from './path-helpers';
 
 // ============================================================================
 // Helper Functions

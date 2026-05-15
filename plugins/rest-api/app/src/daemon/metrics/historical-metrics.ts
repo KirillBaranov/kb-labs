@@ -4,7 +4,7 @@
  */
 
 import type { CacheAdapter } from '@kb-labs/plugin-contracts';
-import { metricsCollector } from '../middleware/metrics.js';
+import { metricsCollector } from '../../middleware/metrics.js';
 
 /**
  * Historical data point
@@ -492,10 +492,6 @@ export class HistoricalMetricsCollector {
   private log(level: 'info' | 'warn' | 'error' | 'debug', message: string, meta?: Record<string, unknown>): void {
     if (level === 'debug' && !this.config.debug) {return;}
 
-    if (this.logger[level]) {
-      this.logger[level](`[HistoricalMetrics] ${message}`, meta);
-    } else {
-      console.log(`[HistoricalMetrics] [${level}] ${message}`, meta);
-    }
+    this.logger[level](`[HistoricalMetrics] ${message}`, meta);
   }
 }
