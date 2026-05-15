@@ -190,6 +190,7 @@ export class WorkflowRepository {
    */
   async delete(id: string): Promise<void> {
     const path = await this.getWorkflowPath(id);
+    if (!path) { throw new Error(`Invalid workflow ID for deletion: ${id}`); }
 
     try {
       await this.platform.storage.delete(path);
@@ -276,9 +277,10 @@ export class WorkflowRepository {
     });
   }
 
-  private async getWorkflowPath(id: string): Promise<string> {
-    if (!/^[a-zA-Z0-9_-]{1,128}$/.test(id)) {
-      throw new Error(`Invalid workflow ID: ${id}`);
+  private async getWorkflowPath(id: string): Promise<string | null> {
+    // Block path traversal: IDs with directory separators or dot-sequences can't be file-based
+    if (id.includes('/') || id.includes('\\') || id.includes('..') || id.startsWith('.')) {
+      return null;
     }
     const ymlPath = join(this.absoluteStorageDir, `${id}.yml`);
     const yamlPath = join(this.absoluteStorageDir, `${id}.yaml`);
@@ -287,6 +289,7 @@ export class WorkflowRepository {
 
   private async saveWorkflow(id: string, workflow: StoredWorkflow): Promise<void> {
     const path = await this.getWorkflowPath(id);
+    if (!path) { throw new Error(`Invalid workflow ID for storage: ${id}`); }
     const yaml = stringifyYaml(workflow, { indent: 2 });
 
     try {
@@ -304,6 +307,7 @@ export class WorkflowRepository {
 
   private async loadWorkflow(id: string): Promise<StoredWorkflow | null> {
     const path = await this.getWorkflowPath(id);
+    if (!path) { return null; }
 
     try {
       const content = await readFile(path, 'utf-8');
