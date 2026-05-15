@@ -277,6 +277,9 @@ export class WorkflowRepository {
   }
 
   private async getWorkflowPath(id: string): Promise<string> {
+    if (!/^[a-zA-Z0-9_-]{1,128}$/.test(id)) {
+      throw new Error(`Invalid workflow ID: ${id}`);
+    }
     const ymlPath = join(this.absoluteStorageDir, `${id}.yml`);
     const yamlPath = join(this.absoluteStorageDir, `${id}.yaml`);
     return access(ymlPath).then(() => ymlPath).catch(() => yamlPath);

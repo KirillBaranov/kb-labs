@@ -254,8 +254,9 @@ export class UnixSocketServer {
       socket.write(message, 'utf8');
 
       // Log error for debugging
+      const cause = error instanceof Error ? error.message : String(error);
       this.platform.logger.error(
-        'UnixSocketServer: error handling adapter call',
+        `UnixSocketServer: ${call.adapter}.${call.method} failed — ${cause}`,
         error instanceof Error ? error : new Error(String(error)),
         { adapter: call.adapter, method: call.method },
       );

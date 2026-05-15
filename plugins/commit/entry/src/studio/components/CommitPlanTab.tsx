@@ -9,6 +9,7 @@ import {
   UICard, UIButton, UIEmptyState, UISpin, UIAlert, UIBadge, UITag,
   UITooltip, UIIcon, UISpace, UICheckbox, UIInput, UIDropdown,
   UIPopconfirm, UITypographyText, UIModalConfirm, UIModalError, UIFlex,
+  UISkeletonText, UIShimmerText,
 } from '@kb-labs/sdk/studio';
 
 const { useToken } = theme;
@@ -236,10 +237,18 @@ export function CommitPlanTab({ scope }: CommitPlanTabProps) {
 
       {/* Generating */}
       {generate.isLoading && (
-        <UICard style={{ textAlign: 'center', padding: '48px 0' }}>
-          <UISpin size="large" />
-          <div style={{ marginTop: 16 }}>
-            <Text type="secondary">Analyzing {filesChanged} files...</Text>
+        <UICard style={{ padding: '12px 0 8px' }}>
+          {[70, 85, 55].map((w, i) => (
+            <UIFlex key={i} align="center" gap={8} style={{ padding: '10px 24px' }}>
+              <UISkeletonText width={36} height="20px" />
+              <UISkeletonText width={`${w}%`} height="14px" />
+              <UISkeletonText width={32} height="12px" style={{ marginLeft: 'auto' }} />
+            </UIFlex>
+          ))}
+          <div style={{ textAlign: 'center', paddingTop: 16 }}>
+            <UIShimmerText duration="1.8s">
+              Analyzing {filesChanged} files...
+            </UIShimmerText>
           </div>
         </UICard>
       )}
