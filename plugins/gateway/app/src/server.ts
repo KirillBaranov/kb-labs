@@ -23,6 +23,7 @@ import { globalDispatcher } from './hosts/dispatcher.js';
 import { attachGatewayWs } from './ws/gateway-ws.js';
 import { GatewayObservabilityCollector } from './observability/collector.js';
 import { randomUUID } from 'node:crypto';
+import { registerInternalRoutes } from './internal/routes.js';
 
 /** Strip bearer tokens from query params before logging (prevents JWT leakage in access logs). */
 function redactQueryToken(url: string): string {
@@ -357,96 +358,10 @@ export async function createServer(
     registerPlatformRoutes(scope as unknown as Parameters<typeof registerPlatformRoutes>[0], logger);
 
     // Aggregated docs — /openapi-merged.json + /docs-all
-    registerAggregatedDocsRoutes(scope as unknown as Parameters<typeof registerAggregatedDocsRoutes>[0], cache);
+    registerAggregatedDocsRoutes(scope as unknown as Parameters<typeof registerAggregatedDocsRoutes>[0], config, cache);
 
 
-    // Internal dispatch endpoint
-    const internalSecret = process.env.GATEWAY_INTERNAL_SECRET;
-    scope.post('/internal/dispatch', async (request, reply) => {
-      const provided = request.headers['x-internal-secret'];
-      if (!internalSecret || provided !== internalSecret) {
-        return reply.code(403).send({ error: 'Forbidden' });
-      }
-
-      const body = request.body as {
-        namespaceId?: string;
-        hostId?: string;
-        adapter?: string;
-        method?: string;
-        args?: unknown[];
-      };
-
-      if (!body.namespaceId || !body.adapter || !body.method) {
-        return reply.code(400).send({ error: 'Missing required fields: namespaceId, adapter, method' });
-      }
-
-      const hostId = body.hostId
-        ?? globalDispatcher.firstHostWithCapability(body.namespaceId, body.adapter)
-        ?? globalDispatcher.firstHost(body.namespaceId);
-      if (!hostId) {
-        return reply.code(503).send({
-          error: 'No host connected',
-          namespaceId: body.namespaceId,
-        });
-      }
-
-      try {
-        const result = await globalDispatcher.call(
-          body.namespaceId,
-          hostId,
-          body.adapter,
-          body.method,
-          body.args ?? [],
-        );
-        return { result };
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        if (message.includes('Host not connected')) {
-          return reply.code(503).send({ error: message });
-        }
-        return reply.code(502).send({ error: message });
-      }
-    });
-
-    // Internal host resolution endpoint
-    scope.post('/internal/resolve-host', async (request, reply) => {
-      const provided = request.headers['x-internal-secret'];
-      if (!internalSecret || provided !== internalSecret) {
-        return reply.code(403).send({ error: 'Forbidden' });
-      }
-
-      const body = request.body as {
-        namespaceId?: string;
-        target?: {
-          hostId?: string;
-          hostSelection?: string;
-          repoFingerprint?: string;
-        };
-      };
-
-      const namespaceId = body.namespaceId ?? 'default';
-      const target = body.target ?? {};
-      const strategy = (target.hostSelection ?? 'any-matching') as string;
-
-      let hostId: string | undefined;
-
-      if (strategy === 'pinned' && target.hostId) {
-        // Verify host exists and is reachable (online or reconnecting)
-        const host = await hostRegistry.get(target.hostId, namespaceId);
-        if (host?.status === 'online' || host?.status === 'reconnecting') {
-          hostId = target.hostId;
-        }
-      } else {
-        // any-matching / prefer-local / prefer-cloud: find first with execution capability
-        hostId = globalDispatcher.firstHostWithCapability(namespaceId, 'execution');
-      }
-
-      if (!hostId) {
-        return reply.code(404).send({ error: 'No matching host found' });
-      }
-
-      return { hostId, strategy, namespaceId };
-    });
+    registerInternalRoutes(scope as unknown as Parameters<typeof registerInternalRoutes>[0], process.env.GATEWAY_INTERNAL_SECRET, hostRegistry);
   });
 
   // ── Gateway WebSocket endpoints ────────────────────────────────────
