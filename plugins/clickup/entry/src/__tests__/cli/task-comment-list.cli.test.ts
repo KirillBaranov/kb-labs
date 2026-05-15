@@ -1,0 +1,97 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { mockCLIInput, createCapturedUI, createMockContext } from '@kb-labs/shared-testing-e2e';
+
+// Mock clickup-core before importing the command
+vi.mock('@kb-labs/clickup-core', () => ({
+  requireApiKey: vi.fn().mockReturnValue('test-api-key'),
+  getTaskComments: vi.fn(),
+  ClickUpApiError: class ClickUpApiError extends Error {
+    constructor(public message: string, public status: number, public code: string) {
+      super(message);
+    }
+  },
+}));
+
+import { requireApiKey, getTaskComments } from '@kb-labs/clickup-core';
+import taskCommentListCommand from '../../commands/task-comment-list.js';
+import { mockComment } from '../helpers/fixtures.js';
+
+const mockComments = [
+  { ...mockComment, id: 'comment-1', comment_text: 'First comment' },
+  { ...mockComment, id: 'comment-2', comment_text: 'Second comment', date: '1700001000000' },
+];
+
+beforeEach(() => {
+  vi.resetAllMocks();
+  vi.mocked(requireApiKey).mockReturnValue('test-api-key');
+});
+
+describe('clickup:task.comment.list', () => {
+  it('TCL-01: lists comments and renders chain', async () => {
+    vi.mocked(getTaskComments).mockResolvedValue(mockComments);
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await taskCommentListCommand.execute(
+      ctx,
+      mockCLIInput({ argv: ['task-001'] }),
+    );
+
+    expect(result.exitCode).toBe(0);
+  });
+
+  it('TCL-02: --json outputs comments array', async () => {
+    vi.mocked(getTaskComments).mockResolvedValue(mockComments);
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await taskCommentListCommand.execute(
+      ctx,
+      mockCLIInput({ argv: ['task-001'], flags: { json: true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(Array.isArray(captured.json[0])).toBe(true);
+    expect((captured.json[0] as typeof mockComments)[0]).toMatchObject({ id: 'comment-1' });
+  });
+
+  it('TCL-03: empty comments prints info message', async () => {
+    vi.mocked(getTaskComments).mockResolvedValue([]);
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await taskCommentListCommand.execute(
+      ctx,
+      mockCLIInput({ argv: ['task-001'] }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(captured.infos.length).toBeGreaterThan(0);
+  });
+
+  it('TCL-04: missing taskId returns exitCode 1', async () => {
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await taskCommentListCommand.execute(
+      ctx,
+      mockCLIInput({ argv: [] }),
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(captured.errors.length).toBeGreaterThan(0);
+  });
+
+  it('TCL-05: core error returns exitCode 1', async () => {
+    vi.mocked(getTaskComments).mockRejectedValue(new Error('Unauthorized'));
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await taskCommentListCommand.execute(
+      ctx,
+      mockCLIInput({ argv: ['task-001'] }),
+    );
+
+    expect(result.exitCode).toBe(1);
+    expect(captured.errors.length).toBeGreaterThan(0);
+  });
+});
