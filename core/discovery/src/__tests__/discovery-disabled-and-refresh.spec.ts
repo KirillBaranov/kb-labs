@@ -98,24 +98,23 @@ describe('DiscoveryManager — local integrity refresh', () => {
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
 
-  it('auto-refreshes integrity for local packages when hash changes', async () => {
+  it('discovers local packages even when integrity hash is stale — no lock update during discovery', async () => {
     const pluginDir = path.join(tmpDir, 'plugins', 'local-pkg');
     await fs.mkdir(pluginDir, { recursive: true });
     await fs.writeFile(
       path.join(pluginDir, 'kb.plugin.json'),
       JSON.stringify({ schema: 'kb.plugin/3', id: '@kb-labs/local-pkg', version: '1.0.0' }),
     );
-    // Original package.json
     await fs.writeFile(path.join(pluginDir, 'package.json'), JSON.stringify({
       name: '@kb-labs/local-pkg', version: '1.0.0',
     }));
 
-    const oldIntegrity = 'sha256-OLD_STALE_HASH';
+    const staleIntegrity = 'sha256-OLD_STALE_HASH';
 
     const lock = createEmptyLock();
     lock.installed['@kb-labs/local-pkg'] = createMarketplaceEntry({
       version: '1.0.0',
-      integrity: oldIntegrity,
+      integrity: staleIntegrity,
       resolvedPath: './plugins/local-pkg',
       source: 'local',
       primaryKind: 'plugin',
@@ -126,22 +125,15 @@ describe('DiscoveryManager — local integrity refresh', () => {
     const dm = new DiscoveryManager({ root: tmpDir, verifyIntegrity: true });
     const result = await dm.discover();
 
-    // Plugin should still be discovered (local = non-blocking refresh)
+    // Plugin still discovered — local packages bypass integrity check
     expect(result.plugins).toHaveLength(1);
 
-    // Lock should be updated with new integrity
-    const updatedLock = await readMarketplaceLock(tmpDir, new DiagnosticCollector());
-    expect(updatedLock).not.toBeNull();
-    const entry = updatedLock!.installed['@kb-labs/local-pkg']!;
-    expect(entry.integrity).not.toBe(oldIntegrity);
-    expect(entry.integrity).toMatch(/^sha256-/);
-
-    // Should have INTEGRITY_REFRESHED diagnostic
-    const refreshed = result.diagnostics.find(d => d.code === 'INTEGRITY_REFRESHED');
-    expect(refreshed).toBeDefined();
+    // Lock NOT updated during discovery — integrity updates happen at install/sync time
+    const lockAfter = await readMarketplaceLock(tmpDir, new DiagnosticCollector());
+    expect(lockAfter!.installed['@kb-labs/local-pkg']!.integrity).toBe(staleIntegrity);
   });
 
-  it('does not update lock when local package integrity matches', async () => {
+  it('discovers local packages with matching integrity without touching lock', async () => {
     const pluginDir = path.join(tmpDir, 'plugins', 'matching');
     await fs.mkdir(pluginDir, { recursive: true });
     const pkgJson = JSON.stringify({ name: '@kb-labs/matching', version: '1.0.0' });
@@ -168,9 +160,8 @@ describe('DiscoveryManager — local integrity refresh', () => {
     const result = await dm.discover();
 
     expect(result.plugins).toHaveLength(1);
-    // No refresh diagnostic since integrity already matches
-    const refreshed = result.diagnostics.find(d => d.code === 'INTEGRITY_REFRESHED');
-    expect(refreshed).toBeUndefined();
+    const lockAfter = await readMarketplaceLock(tmpDir, new DiagnosticCollector());
+    expect(lockAfter!.installed['@kb-labs/matching']!.integrity).toBe(correctIntegrity);
   });
 
   it('blocks marketplace packages with wrong integrity (not local)', async () => {

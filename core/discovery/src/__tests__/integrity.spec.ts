@@ -3,7 +3,7 @@ import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import * as os from 'node:os';
 import * as crypto from 'node:crypto';
-import { computePackageIntegrity, parseIntegrity } from '../integrity.js';
+import { computePackageIntegrity, computeFileIntegrity, computeManifestIntegrity, parseIntegrity } from '../integrity.js';
 
 describe('computePackageIntegrity', () => {
   let tmpDir: string;
@@ -54,6 +54,93 @@ describe('computePackageIntegrity', () => {
     const result = await computePackageIntegrity(tmpDir);
 
     expect(result).toMatch(/^sha256-/);
+  });
+});
+
+describe('computeFileIntegrity', () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'kb-file-integrity-test-'));
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it('hashes arbitrary file content', async () => {
+    const filePath = path.join(tmpDir, 'manifest.js');
+    const content = 'export const manifest = { id: "test" };';
+    await fs.writeFile(filePath, content);
+
+    const result = await computeFileIntegrity(filePath);
+
+    const expected = `sha256-${crypto.createHash('sha256').update(Buffer.from(content)).digest('base64')}`;
+    expect(result).toBe(expected);
+  });
+
+  it('returns different hash when file content changes', async () => {
+    const filePath = path.join(tmpDir, 'index.js');
+    await fs.writeFile(filePath, 'version 1');
+    const h1 = await computeFileIntegrity(filePath);
+
+    await fs.writeFile(filePath, 'version 2');
+    const h2 = await computeFileIntegrity(filePath);
+
+    expect(h1).not.toBe(h2);
+  });
+
+  it('returns same hash when content is identical even if mtime differs', async () => {
+    const content = 'same content';
+    const filePath = path.join(tmpDir, 'stable.js');
+    await fs.writeFile(filePath, content);
+    const h1 = await computeFileIntegrity(filePath);
+
+    // Overwrite with identical content (simulates content-addressed build tool)
+    await fs.writeFile(filePath, content);
+    const h2 = await computeFileIntegrity(filePath);
+
+    expect(h1).toBe(h2);
+  });
+
+  it('throws when file does not exist', async () => {
+    await expect(computeFileIntegrity(path.join(tmpDir, 'missing.js'))).rejects.toThrow();
+  });
+});
+
+describe('computeManifestIntegrity', () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'kb-manifest-integrity-test-'));
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it('produces same result as computeFileIntegrity for the same path', async () => {
+    const filePath = path.join(tmpDir, 'dist', 'index.js');
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, 'export const manifest = {};');
+
+    const fromFile = await computeFileIntegrity(filePath);
+    const fromManifest = await computeManifestIntegrity(filePath);
+
+    expect(fromManifest).toBe(fromFile);
+  });
+
+  it('detects rebuild — hash changes when manifest content changes', async () => {
+    const filePath = path.join(tmpDir, 'dist', 'index.js');
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+
+    await fs.writeFile(filePath, 'export const manifest = { version: "1.0.0" };');
+    const before = await computeManifestIntegrity(filePath);
+
+    await fs.writeFile(filePath, 'export const manifest = { version: "1.0.1" };');
+    const after = await computeManifestIntegrity(filePath);
+
+    expect(before).not.toBe(after);
   });
 });
 

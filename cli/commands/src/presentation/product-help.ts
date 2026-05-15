@@ -4,10 +4,6 @@ import {
 } from "./shared";
 import { sideBorderBox, type SectionContent } from "@kb-labs/shared-cli-ui";
 
-// │  <prefix><paddedId>  <description>
-// ^^^                                  = 3 chars (border + space)
-//    ^^^^^^^^                          = prefix (2 chars)
-//            ^^^^^^^^^^^^              = maxLength + 2-char gap
 const BOX_OVERHEAD = 3;
 const PREFIX_LEN = 2;
 const GAP_LEN = 2;
@@ -30,34 +26,35 @@ export function renderProductHelp(
   const unavailableMap = new Map<string, RegisteredCommand>();
 
   for (const cmd of commands) {
+    const key = cmd.manifest.segments.join(' ');
     if (cmd.available && !cmd.shadowed) {
-      if (!availableMap.has(cmd.manifest.id)) {
-        availableMap.set(cmd.manifest.id, cmd);
+      if (!availableMap.has(key)) {
+        availableMap.set(key, cmd);
       }
-    } else if (!unavailableMap.has(cmd.manifest.id)) {
-      unavailableMap.set(cmd.manifest.id, cmd);
+    } else if (!unavailableMap.has(key)) {
+      unavailableMap.set(key, cmd);
     }
   }
 
-  // Keep manifest order so category sections appear in the order author defined them
   const available = Array.from(availableMap.values());
   const unavailable = Array.from(unavailableMap.values()).sort((a, b) =>
-    a.manifest.id.localeCompare(b.manifest.id),
+    a.manifest.segments.join(' ').localeCompare(b.manifest.segments.join(' '))
   );
 
   const hasUnavailable = unavailable.length > 0;
 
+  const displayPath = (cmd: RegisteredCommand): string =>
+    cmd.manifest.segments.join(' ');
+
   const maxLength = Math.max(
-    ...[...available, ...unavailable].map((c) => c.manifest.id.replace(/:/g, ' ').length),
+    ...[...available, ...unavailable].map((c) => displayPath(c).length),
     20,
   );
 
-  // Available commands — group by category if present, plain list otherwise
   const hasCategories = available.some((c) => c.manifest.category);
   const prefix = hasUnavailable ? `${colors.green("✓")} ` : "  ";
 
   if (hasCategories) {
-    // Preserve manifest order within each category, collect categories in first-seen order
     const categoryOrder: string[] = [];
     const categoryMap = new Map<string, RegisteredCommand[]>();
     for (const cmd of available) {
@@ -70,30 +67,30 @@ export function renderProductHelp(
     }
 
     for (const cat of categoryOrder) {
-      const cmds = categoryMap.get(cat)!.sort((a, b) => a.manifest.id.localeCompare(b.manifest.id));
+      const cmds = categoryMap
+        .get(cat)!
+        .sort((a, b) => displayPath(a).localeCompare(displayPath(b)));
       const items: string[] = cmds.map((cmd) => {
-        const displayId = cmd.manifest.id.replace(/:/g, ' ');
-        const paddedId = displayId.padEnd(maxLength);
-        return `${prefix}${colors.cyan(paddedId)}  ${colors.dim(truncateDesc(cmd.manifest.describe, maxLength))}`;
+        const paddedPath = displayPath(cmd).padEnd(maxLength);
+        return `${prefix}${colors.cyan(paddedPath)}  ${colors.dim(truncateDesc(cmd.manifest.describe, maxLength))}`;
       });
       sections.push({ header: cat || "Commands", items });
     }
   } else {
-    const availableItems: string[] = [...available].sort((a, b) => a.manifest.id.localeCompare(b.manifest.id)).map((cmd) => {
-      const displayId = cmd.manifest.id.replace(/:/g, ' ');
-      const paddedId = displayId.padEnd(maxLength);
-      return `${prefix}${colors.cyan(paddedId)}  ${colors.dim(cmd.manifest.describe)}`;
-    });
+    const availableItems: string[] = [...available]
+      .sort((a, b) => displayPath(a).localeCompare(displayPath(b)))
+      .map((cmd) => {
+        const paddedPath = displayPath(cmd).padEnd(maxLength);
+        return `${prefix}${colors.cyan(paddedPath)}  ${colors.dim(cmd.manifest.describe)}`;
+      });
     sections.push({ header: "Commands", items: availableItems });
   }
 
-  // Unavailable commands section (if any)
   if (hasUnavailable) {
     const unavailableItems: string[] = [];
     for (const cmd of unavailable) {
-      const displayId = cmd.manifest.id.replace(/:/g, ' ');
-      const paddedId = displayId.padEnd(maxLength);
-      unavailableItems.push(`${colors.red("✗")} ${colors.dim(paddedId)}  ${colors.dim(cmd.manifest.describe)}`);
+      const paddedPath = displayPath(cmd).padEnd(maxLength);
+      unavailableItems.push(`${colors.red("✗")} ${colors.dim(paddedPath)}  ${colors.dim(cmd.manifest.describe)}`);
       if (cmd.unavailableReason) {
         unavailableItems.push(`   ${colors.red(`Reason: ${cmd.unavailableReason}`)}`);
       }
@@ -101,14 +98,9 @@ export function renderProductHelp(
         unavailableItems.push(`   ${colors.yellow(`Hint: ${cmd.hint}`)}`);
       }
     }
-
-    sections.push({
-      header: "Unavailable",
-      items: unavailableItems,
-    });
+    sections.push({ header: "Unavailable", items: unavailableItems });
   }
 
-  // Hint
   sections.push({
     items: [colors.dim(`kb ${groupName} <command> --help`)],
   });
@@ -119,4 +111,3 @@ export function renderProductHelp(
     status: "info",
   });
 }
-

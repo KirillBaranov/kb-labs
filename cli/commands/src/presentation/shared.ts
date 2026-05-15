@@ -1,9 +1,8 @@
 import { colors } from "@kb-labs/cli-runtime";
 import { box, formatTiming, TimingTracker } from "@kb-labs/shared-cli-ui";
 
-import type { Command, CommandGroup } from "../registry/legacy-types";
 import type { RegisteredCommand } from "../registry/types";
-import type { ProductGroup } from "../registry/service";
+import type { SystemCommand, SystemGroup } from "../registry/trie-router";
 
 export {
   colors,
@@ -12,7 +11,7 @@ export {
   TimingTracker,
 };
 
-export type { Command, CommandGroup, RegisteredCommand, ProductGroup };
+export type { RegisteredCommand, SystemCommand, SystemGroup };
 
 export function collectManifestVersions(
   commands: RegisteredCommand[],
@@ -32,4 +31,3 @@ export function collectManifestVersions(
 
   return Array.from(versions).sort();
 }
-

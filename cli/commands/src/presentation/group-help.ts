@@ -1,50 +1,69 @@
-import { type CommandGroup } from "./shared";
 import { sideBorderBox, type SectionContent, safeColors, TimingTracker } from "@kb-labs/shared-cli-ui";
+import type { RegisteredCommand } from "./shared";
 
-export function renderGroupHelp(group: CommandGroup): string {
+export interface GroupHelpOptions {
+  /** Full path of the group (e.g. ['marketplace', 'plugins']) */
+  segments: string[];
+  describe?: string;
+  /** Direct child key names shown in group listing */
+  childKeys: string[];
+  /** Full plugin commands available under this path (for detailed listing) */
+  commands?: RegisteredCommand[];
+}
+
+export function renderGroupHelp(opts: GroupHelpOptions): string {
   const tracker = new TimingTracker();
-
-  const sortedCommands = [...group.commands].sort((a, b) =>
-    a.name.localeCompare(b.name),
-  );
-
+  const groupName = opts.segments.join(' ');
   const sections: SectionContent[] = [];
 
-  // Commands section
-  const commandDisplayNames = sortedCommands.map((cmd) =>
-    cmd.name.replace(/:/g, ' '),
-  );
-  const maxNameLength = Math.max(...commandDisplayNames.map((name) => name.length));
-  const commandItems: string[] = [];
+  if (opts.commands && opts.commands.length > 0) {
+    // Detailed listing with descriptions
+    const available = opts.commands.filter((c) => c.available && !c.shadowed);
+    const unavailable = opts.commands.filter((c) => !c.available || c.shadowed);
 
-  for (let i = 0; i < sortedCommands.length; i++) {
-    const cmd = sortedCommands[i];
-    const displayName = commandDisplayNames[i];
-    if (!cmd || !displayName) {continue;}
+    const maxLength = Math.max(
+      ...opts.commands.map((c) => c.manifest.segments.join(' ').length),
+      20,
+    );
 
-    const paddedName = displayName.padEnd(maxNameLength);
-    const description = cmd.describe || "No description";
-    commandItems.push(`${safeColors.primary(paddedName)}  ${safeColors.muted(description)}`);
+    if (available.length > 0) {
+      const items = available
+        .sort((a, b) => a.manifest.segments.join(' ').localeCompare(b.manifest.segments.join(' ')))
+        .map((cmd) => {
+          const displayPath = cmd.manifest.segments.join(' ');
+          return `${safeColors.primary(displayPath.padEnd(maxLength))}  ${safeColors.muted(cmd.manifest.describe)}`;
+        });
+      sections.push({ header: 'Commands', items });
+    }
+
+    if (unavailable.length > 0) {
+      const items = unavailable.map((cmd) => {
+        const displayPath = cmd.manifest.segments.join(' ');
+        let line = `${safeColors.muted(displayPath.padEnd(maxLength))}  ${safeColors.muted(cmd.manifest.describe)}`;
+        if (cmd.unavailableReason) {
+          line += `\n   ${safeColors.muted(`Reason: ${cmd.unavailableReason}`)}`;
+        }
+        return line;
+      });
+      sections.push({ header: 'Unavailable', items });
+    }
+  } else {
+    // Compact listing — just child keys
+    const sorted = [...opts.childKeys].sort();
+    sections.push({
+      header: 'Available',
+      items: sorted.map((k) => safeColors.primary(`  ${k}`)),
+    });
   }
 
   sections.push({
-    header: 'Available commands',
-    items: commandItems,
-  });
-
-  // Help section
-  sections.push({
-    header: 'Next Steps',
-    items: [
-      safeColors.muted(`kb ${group.name} <command> --help`),
-    ],
+    items: [safeColors.muted(`kb ${groupName} <command> --help`)],
   });
 
   return sideBorderBox({
-    title: `📦 ${group.name}`,
+    title: groupName,
     sections,
     status: 'success',
     timing: tracker.total(),
   });
 }
-

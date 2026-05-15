@@ -83,7 +83,7 @@ export const diag = defineSystemCommand<DiagFlags, DiagResult>({
       const platformRoot = process.env.KB_PLATFORM_ROOT;
       const projectRoot = process.env.KB_PROJECT_ROOT;
       const discovered = await discoverManifests(cwd, false, { platformRoot, projectRoot });
-      const manifests = registry.listManifests();
+      const manifests = registry.listCommands();
       
       const enabled = manifests.filter(m => m.available && !m.shadowed).length;
       const disabled = manifests.filter(m => !m.available).length;
@@ -183,7 +183,7 @@ export const diag = defineSystemCommand<DiagFlags, DiagResult>({
     const versionIssues: Array<{ plugin: string; required: string; current: string }> = [];
     
     try {
-      const manifests = registry.listManifests();
+      const manifests = registry.listCommands();
       for (const cmd of manifests) {
         const required = cmd.manifest.engine?.kbCli;
         if (required) {

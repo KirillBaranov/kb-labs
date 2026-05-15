@@ -6,13 +6,17 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { registry, findCommandWithType } from '../service';
-import type { Command, CommandGroup } from '../legacy-types';
+import { TrieBackedRegistry } from '../service';
 import type { RegisteredCommand } from '../types';
+import type { Command as SystemCommand, CommandGroup as SystemGroup } from '@kb-labs/shared-command-kit';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function makeSystemCmd(name: string, aliases: string[] = []): Command {
+function makeRegistry() {
+  return new TrieBackedRegistry();
+}
+
+function makeSystemCmd(name: string, aliases: string[] = []): SystemCommand {
   return {
     name,
     describe: `System command: ${name}`,
@@ -22,7 +26,7 @@ function makeSystemCmd(name: string, aliases: string[] = []): Command {
   };
 }
 
-function makeSystemGroup(name: string, commands: string[]): CommandGroup {
+function makeSystemGroup(name: string, commands: string[]): SystemGroup {
   return {
     name,
     describe: `Group: ${name}`,
@@ -36,9 +40,13 @@ function makePlugin(
   subgroup?: string,
   aliases?: string[],
 ): RegisteredCommand {
+  const segments: string[] = group
+    ? (subgroup ? [group, subgroup, id] : [group, id])
+    : [id];
   return {
     manifest: {
       manifestVersion: '1.0',
+      segments,
       id,
       group,
       subgroup,
@@ -52,92 +60,67 @@ function makePlugin(
   };
 }
 
-function resetRegistry() {
-  (registry as any).systemCommands = new Map();
-  (registry as any).pluginByCanonical = new Map();
-  (registry as any).pluginAliases = new Map();
-  (registry as any).byName = new Map();
-  (registry as any).groups = new Map();
-  (registry as any).manifests = new Map();
-  (registry as any).partial = false;
-}
-
 // ─── Canonical ID Strategy ────────────────────────────────────────────────────
 
 describe('Canonical ID Strategy', () => {
-  beforeEach(resetRegistry);
+  let reg: TrieBackedRegistry;
+  beforeEach(() => { reg = makeRegistry(); });
 
   it('bare plugin (no group): canonical = id', () => {
     const plugin = makePlugin('my-tool', '');
-    registry.registerManifest(plugin);
+    reg.registerManifest(plugin);
 
-    const result = findCommandWithType('my-tool');
-    expect(result?.type).toBe('plugin');
+    const result = reg.resolve(['my-tool']);
+    expect(result.type).toBe('command');
   });
 
-  it('2-part plugin (group:id): canonical = group:id', () => {
+  it('2-part plugin (group:id): canonical = group id', () => {
     const plugin = makePlugin('list', 'marketplace');
-    registry.registerManifest(plugin);
+    reg.registerManifest(plugin);
 
-    // Must be reachable via canonical
-    expect(findCommandWithType('marketplace:list')?.type).toBe('plugin');
-    // Also via space form
-    expect(findCommandWithType('marketplace list')?.type).toBe('plugin');
+    // Must be reachable via canonical tokens
+    expect(reg.resolve(['marketplace', 'list']).type).toBe('command');
   });
 
-  it('3-part plugin (group:subgroup:id): canonical = group:subgroup:id', () => {
+  it('3-part plugin (group:subgroup:id): canonical = group subgroup id', () => {
     const plugin = makePlugin('list', 'marketplace', 'plugins');
-    registry.registerManifest(plugin);
+    reg.registerManifest(plugin);
 
     // Full canonical
-    expect(findCommandWithType('marketplace:plugins:list')?.type).toBe('plugin');
-    // Space form
-    expect(findCommandWithType('marketplace plugins list')?.type).toBe('plugin');
+    expect(reg.resolve(['marketplace', 'plugins', 'list']).type).toBe('command');
   });
 });
 
 // ─── 2-Part Shorthand for 3-Part Commands ────────────────────────────────────
 
 describe('2-Part Shorthand for 3-Part Commands', () => {
-  beforeEach(resetRegistry);
+  let reg: TrieBackedRegistry;
+  beforeEach(() => { reg = makeRegistry(); });
 
-  it('resolves "group:id" when command is group:subgroup:id (unambiguous)', () => {
+  it('suggests ["marketplace", "list"] as "did you mean" for 3-part command (unambiguous)', () => {
     const plugin = makePlugin('list', 'marketplace', 'plugins');
-    registry.registerManifest(plugin);
+    reg.registerManifest(plugin);
 
-    const result = findCommandWithType('marketplace:list');
-    expect(result?.type).toBe('plugin');
+    const result = reg.resolve(['marketplace', 'list']);
+    // Shorthand is not auto-routed — returns not-found with suggestion
+    expect(result.type).toBe('not-found');
+    if (result.type === 'not-found') {
+      expect(result.suggestions).toContain('marketplace plugins list');
+    }
   });
 
-  it('resolves "group id" space form as shorthand', () => {
+  it('getCommandAt does NOT resolve 2-part shorthand (exact lookup only)', () => {
     const plugin = makePlugin('list', 'marketplace', 'plugins');
-    registry.registerManifest(plugin);
+    reg.registerManifest(plugin);
 
-    const result = findCommandWithType('marketplace list');
-    expect(result?.type).toBe('plugin');
+    expect(reg.getCommandAt(['marketplace', 'list'])).toBeNull();
   });
 
-  it('array path ["marketplace", "list"] resolves via shorthand', () => {
+  it('getCommandAt resolves via full canonical segments', () => {
     const plugin = makePlugin('list', 'marketplace', 'plugins');
-    registry.registerManifest(plugin);
+    reg.registerManifest(plugin);
 
-    const result = findCommandWithType(['marketplace', 'list']);
-    expect(result?.type).toBe('plugin');
-  });
-
-  it('getManifestCommand resolves via 2-part shorthand', () => {
-    const plugin = makePlugin('list', 'marketplace', 'plugins');
-    registry.registerManifest(plugin);
-
-    const cmd = registry.getManifestCommand('marketplace:list');
-    expect(cmd).toBe(plugin);
-  });
-
-  it('getManifestCommand resolves via full canonical', () => {
-    const plugin = makePlugin('list', 'marketplace', 'plugins');
-    registry.registerManifest(plugin);
-
-    const cmd = registry.getManifestCommand('marketplace:plugins:list');
+    const cmd = reg.getCommandAt(['marketplace', 'plugins', 'list']);
     expect(cmd).toBe(plugin);
   });
 });
@@ -145,21 +128,22 @@ describe('2-Part Shorthand for 3-Part Commands', () => {
 // ─── User-Defined Aliases ─────────────────────────────────────────────────────
 
 describe('User-Defined Aliases', () => {
-  beforeEach(resetRegistry);
+  let reg: TrieBackedRegistry;
+  beforeEach(() => { reg = makeRegistry(); });
 
   it('resolves manifest aliases to the correct plugin', () => {
-    const plugin = makePlugin('list', 'marketplace', 'plugins', ['mp:list', 'mpl']);
-    registry.registerManifest(plugin);
+    const plugin = makePlugin('list', 'marketplace', 'plugins', ['mp list', 'mpl']);
+    reg.registerManifest(plugin);
 
-    expect(findCommandWithType('mp:list')?.type).toBe('plugin');
-    expect(findCommandWithType('mpl')?.type).toBe('plugin');
+    // Bare alias
+    expect(reg.resolve(['mpl']).type).toBe('command');
   });
 
-  it('getManifestCommand resolves by alias', () => {
+  it('getCommandAt retrieves by canonical segments', () => {
     const plugin = makePlugin('list', 'marketplace', 'plugins', ['mpl']);
-    registry.registerManifest(plugin);
+    reg.registerManifest(plugin);
 
-    const cmd = registry.getManifestCommand('mpl');
+    const cmd = reg.getCommandAt(['marketplace', 'plugins', 'list']);
     expect(cmd).toBe(plugin);
   });
 });
@@ -167,115 +151,109 @@ describe('User-Defined Aliases', () => {
 // ─── Collision: System Always Wins ───────────────────────────────────────────
 
 describe('Collision: System Always Wins', () => {
-  beforeEach(resetRegistry);
+  let reg: TrieBackedRegistry;
+  beforeEach(() => { reg = makeRegistry(); });
 
-  it('system command beats plugin when canonical ids match exactly', () => {
-    // System command registered as "security:auth"
-    const sys = makeSystemCmd('security:auth');
-    registry.register(sys);
+  it('system command beats plugin when canonical paths match exactly', () => {
+    const group = makeSystemGroup('security', ['auth']);
+    reg.registerGroup(group);
 
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    // Plugin canonical = "security:auth" — collides
     const plugin = makePlugin('auth', 'security');
-    registry.registerManifest(plugin);
+    reg.registerManifest(plugin);
 
     expect(plugin.shadowed).toBe(true);
-    expect(findCommandWithType('security:auth')?.type).toBe('system');
-    expect(findCommandWithType('security:auth')?.cmd).toBe(sys);
+    const result = reg.resolve(['security', 'auth']);
+    expect(result.type).toBe('system-cmd');
     warnSpy.mockRestore();
   });
 
   it('system bare command does NOT shadow plugin in different group', () => {
-    // System command "auth" (bare)
     const sys = makeSystemCmd('auth');
-    registry.register(sys);
+    reg.register(sys);
 
-    // Plugin canonical = "security:auth" — different namespace
     const plugin = makePlugin('auth', 'security');
-    registry.registerManifest(plugin);
+    reg.registerManifest(plugin);
 
     expect(plugin.shadowed).toBe(false);
-    expect(findCommandWithType('security:auth')?.type).toBe('plugin');
-    expect(findCommandWithType('auth')?.type).toBe('system');
+
+    const pluginResult = reg.resolve(['security', 'auth']);
+    expect(pluginResult.type).toBe('command');
+
+    const sysResult = reg.resolve(['auth']);
+    expect(sysResult.type).toBe('system-cmd');
   });
 
-  it('system command beats plugin with same canonical id', () => {
-    const sys = makeSystemCmd('marketplace:list');
-    registry.register(sys);
+  it('system command beats plugin with same path', () => {
+    const group = makeSystemGroup('marketplace', ['list']);
+    reg.registerGroup(group);
 
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const plugin = makePlugin('list', 'marketplace');
-    registry.registerManifest(plugin);
+    reg.registerManifest(plugin);
 
     expect(plugin.shadowed).toBe(true);
-    expect(findCommandWithType('marketplace:list')?.type).toBe('system');
+    const result = reg.resolve(['marketplace', 'list']);
+    expect(result.type).toBe('system-cmd');
     warnSpy.mockRestore();
   });
 
   it('system group beats plugin with same name', () => {
     const group = makeSystemGroup('marketplace', ['list', 'install']);
-    registry.registerGroup(group);
+    reg.registerGroup(group);
 
-    const result = findCommandWithType('marketplace');
-    expect(result?.type).toBe('system');
-    expect(result?.cmd).toHaveProperty('commands');
+    const result = reg.resolve(['marketplace']);
+    expect(result.type).toBe('system-group');
+    if (result.type === 'system-group') {
+      expect(result.group).toHaveProperty('commands');
+    }
   });
 
   it('logs warning when plugin collides with system command (same canonical)', () => {
-    // System command registered as "test:protected" — matches plugin canonical
-    const sys = makeSystemCmd('test:protected');
-    registry.register(sys);
+    const group = makeSystemGroup('test', ['protected']);
+    reg.registerGroup(group);
 
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const plugin = makePlugin('protected', 'test');
-    registry.registerManifest(plugin);
+    reg.registerManifest(plugin);
 
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('collides with system command'));
     warnSpy.mockRestore();
   });
 
-  it('shadowed plugin is stored in manifests for listing but not routed', () => {
+  it('shadowed plugin is stored in listCommands but not routed', () => {
     const sys = makeSystemCmd('deploy');
-    registry.register(sys);
+    reg.register(sys);
 
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const plugin = makePlugin('deploy', 'infra');
-    registry.registerManifest(plugin);
+    reg.registerManifest(plugin);
 
-    // Listed in manifests
-    const manifests = registry.listManifests();
-    expect(manifests).toContainEqual(plugin);
+    // Listed in commands
+    const cmds = reg.listCommands();
+    expect(cmds).toContainEqual(plugin);
 
     // But not routed
-    expect(findCommandWithType('deploy')?.type).toBe('system');
+    const result = reg.resolve(['deploy']);
+    expect(result.type).toBe('system-cmd');
     warnSpy.mockRestore();
   });
 
   it('plugin alias that collides with system command is blocked', () => {
     const sys = makeSystemCmd('sys-cmd', ['sc']);
-    registry.register(sys);
+    reg.register(sys);
 
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const plugin = makePlugin('plugin-cmd', 'test', undefined, ['sc']);
-    registry.registerManifest(plugin);
+    reg.registerManifest(plugin);
 
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('"sc" collides with system command'));
     // alias 'sc' still routes to system
-    expect(findCommandWithType('sc')?.type).toBe('system');
-    expect(findCommandWithType('sc')?.cmd).toBe(sys);
-    warnSpy.mockRestore();
-  });
-
-  it('shadowed plugin does NOT appear in byName map under its id', () => {
-    const sys = makeSystemCmd('version');
-    registry.register(sys);
-
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const plugin = makePlugin('version', 'core');
-    registry.registerManifest(plugin);
-
-    const byNameValue = (registry as any).byName.get('version');
-    expect(byNameValue).toBe(sys);
+    const result = reg.resolve(['sc']);
+    expect(result.type).toBe('system-cmd');
+    if (result.type === 'system-cmd') {
+      expect(result.cmd).toBe(sys);
+    }
     warnSpy.mockRestore();
   });
 });
@@ -283,121 +261,94 @@ describe('Collision: System Always Wins', () => {
 // ─── Group Routing ────────────────────────────────────────────────────────────
 
 describe('Group Routing', () => {
-  beforeEach(resetRegistry);
+  let reg: TrieBackedRegistry;
+  beforeEach(() => { reg = makeRegistry(); });
 
-  it('registered group returns type=system', () => {
+  it('registered group returns type=system-group', () => {
     const group = makeSystemGroup('plugins', ['list', 'install']);
-    registry.registerGroup(group);
+    reg.registerGroup(group);
 
-    const result = findCommandWithType('plugins');
-    expect(result?.type).toBe('system');
-    expect(result?.cmd).toHaveProperty('commands');
+    const result = reg.resolve(['plugins']);
+    expect(result.type).toBe('system-group');
+    if (result.type === 'system-group') {
+      expect(result.group).toHaveProperty('commands');
+    }
   });
 
-  it('subcommand within group resolves to system', () => {
+  it('subcommand within group resolves to system-cmd', () => {
     const group = makeSystemGroup('info', ['hello', 'version']);
-    registry.registerGroup(group);
+    reg.registerGroup(group);
 
-    expect(findCommandWithType(['info', 'hello'])?.type).toBe('system');
-    expect(findCommandWithType('info hello')?.type).toBe('system');
+    expect(reg.resolve(['info', 'hello']).type).toBe('system-cmd');
   });
 
-  it('synthetic plugin subgroup is created for help display', () => {
+  it('listCommandsUnder returns plugin commands under a group', () => {
     const plugin = makePlugin('list', 'marketplace', 'plugins');
-    registry.registerManifest(plugin);
+    reg.registerManifest(plugin);
 
-    const groups = registry.listGroups();
-    const subgroup = groups.find(g => g.name === 'marketplace plugins');
-    expect(subgroup).toBeDefined();
-    expect(subgroup?.commands.length).toBeGreaterThan(0);
+    const cmds = reg.listCommandsUnder(['marketplace']);
+    expect(cmds.length).toBeGreaterThan(0);
+    expect(cmds).toContainEqual(plugin);
   });
 });
 
 // ─── Multi-Plugin Registration ────────────────────────────────────────────────
 
 describe('Multiple Plugins in Same Group', () => {
-  beforeEach(resetRegistry);
+  let reg: TrieBackedRegistry;
+  beforeEach(() => { reg = makeRegistry(); });
 
   it('registers multiple commands under same group:subgroup', () => {
     const list = makePlugin('list', 'marketplace', 'plugins');
     const install = makePlugin('install', 'marketplace', 'plugins');
-    registry.registerManifest(list);
-    registry.registerManifest(install);
+    reg.registerManifest(list);
+    reg.registerManifest(install);
 
-    expect(findCommandWithType('marketplace:plugins:list')?.type).toBe('plugin');
-    expect(findCommandWithType('marketplace:plugins:install')?.type).toBe('plugin');
+    expect(reg.resolve(['marketplace', 'plugins', 'list']).type).toBe('command');
+    expect(reg.resolve(['marketplace', 'plugins', 'install']).type).toBe('command');
   });
 
-  it('listManifests returns all unique plugins', () => {
+  it('listCommands returns all unique plugins', () => {
     const list = makePlugin('list', 'marketplace', 'plugins');
     const install = makePlugin('install', 'marketplace', 'plugins');
-    registry.registerManifest(list);
-    registry.registerManifest(install);
+    reg.registerManifest(list);
+    reg.registerManifest(install);
 
-    const manifests = registry.listManifests();
-    expect(manifests).toHaveLength(2);
-    expect(manifests).toContainEqual(list);
-    expect(manifests).toContainEqual(install);
-  });
-
-  it('getCommandsByGroup returns commands in that group', () => {
-    const list = makePlugin('list', 'marketplace', 'plugins');
-    const install = makePlugin('install', 'marketplace', 'plugins');
-    registry.registerManifest(list);
-    registry.registerManifest(install);
-
-    const cmds = registry.getCommandsByGroup('marketplace');
+    const cmds = reg.listCommands();
     expect(cmds).toHaveLength(2);
-  });
-});
-
-// ─── Colon ↔ Space Equivalence ───────────────────────────────────────────────
-
-describe('Colon ↔ Space Equivalence', () => {
-  beforeEach(resetRegistry);
-
-  it('colon and space are equivalent for 2-part plugin', () => {
-    const plugin = makePlugin('list', 'marketplace');
-    registry.registerManifest(plugin);
-
-    expect(findCommandWithType('marketplace:list')?.type).toBe('plugin');
-    expect(findCommandWithType('marketplace list')?.type).toBe('plugin');
-    expect(findCommandWithType(['marketplace', 'list'])?.type).toBe('plugin');
+    expect(cmds).toContainEqual(list);
+    expect(cmds).toContainEqual(install);
   });
 
-  it('colon and space are equivalent for 3-part plugin', () => {
-    const plugin = makePlugin('list', 'marketplace', 'plugins');
-    registry.registerManifest(plugin);
+  it('listCommandsUnder returns commands in that group', () => {
+    const list = makePlugin('list', 'marketplace', 'plugins');
+    const install = makePlugin('install', 'marketplace', 'plugins');
+    reg.registerManifest(list);
+    reg.registerManifest(install);
 
-    expect(findCommandWithType('marketplace:plugins:list')?.type).toBe('plugin');
-    expect(findCommandWithType('marketplace plugins list')?.type).toBe('plugin');
-    expect(findCommandWithType(['marketplace', 'plugins', 'list'])?.type).toBe('plugin');
+    const cmds = reg.listCommandsUnder(['marketplace']);
+    expect(cmds).toHaveLength(2);
   });
 });
 
 // ─── Cross-Group Bare ID: No False Collisions ──────────────────────────────────
 
 describe('Cross-Group Bare ID (no false collisions)', () => {
-  beforeEach(resetRegistry);
+  let reg: TrieBackedRegistry;
+  beforeEach(() => { reg = makeRegistry(); });
 
   it('different groups with same bare id do not collide', () => {
     const agentRun = makePlugin('run', 'agent');
     const workflowRun = makePlugin('run', 'workflow');
     const reviewRun = makePlugin('run', 'review');
 
-    registry.registerManifest(agentRun);
-    registry.registerManifest(workflowRun);
-    registry.registerManifest(reviewRun);
+    reg.registerManifest(agentRun);
+    reg.registerManifest(workflowRun);
+    reg.registerManifest(reviewRun);
 
-    // Each should be reachable via its canonical path
-    expect(findCommandWithType('agent:run')?.type).toBe('plugin');
-    expect(findCommandWithType('workflow:run')?.type).toBe('plugin');
-    expect(findCommandWithType('review:run')?.type).toBe('plugin');
-
-    // Space variants too
-    expect(findCommandWithType('agent run')?.type).toBe('plugin');
-    expect(findCommandWithType('workflow run')?.type).toBe('plugin');
-    expect(findCommandWithType(['review', 'run'])?.type).toBe('plugin');
+    expect(reg.resolve(['agent', 'run']).type).toBe('command');
+    expect(reg.resolve(['workflow', 'run']).type).toBe('command');
+    expect(reg.resolve(['review', 'run']).type).toBe('command');
 
     // None should be shadowed
     expect(agentRun.shadowed).toBe(false);
@@ -406,98 +357,94 @@ describe('Cross-Group Bare ID (no false collisions)', () => {
   });
 
   it('system group bare subcommand does not shadow plugin with same bare id in different group', () => {
-    // System command: info group with "health" subcommand
     const infoGroup = makeSystemGroup('info', ['health', 'version']);
-    registry.registerGroup(infoGroup);
+    reg.registerGroup(infoGroup);
 
-    // Plugin: workflow:health — different group, should NOT be shadowed
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const workflowHealth = makePlugin('health', 'workflow');
-    registry.registerManifest(workflowHealth);
+    reg.registerManifest(workflowHealth);
 
     expect(workflowHealth.shadowed).toBe(false);
-    expect(findCommandWithType('workflow:health')?.type).toBe('plugin');
-    expect(findCommandWithType('workflow health')?.type).toBe('plugin');
+    expect(reg.resolve(['workflow', 'health']).type).toBe('command');
 
     // System still works via its own path
-    expect(findCommandWithType(['info', 'health'])?.type).toBe('system');
+    expect(reg.resolve(['info', 'health']).type).toBe('system-cmd');
 
     warnSpy.mockRestore();
   });
 
   it('system bare command "status" does not shadow plugin group:status', () => {
-    // System command registered via group (auth status)
     const authGroup = makeSystemGroup('auth', ['login', 'status']);
-    registry.registerGroup(authGroup);
+    reg.registerGroup(authGroup);
 
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const workflowStatus = makePlugin('status', 'workflow');
     const devlinkStatus = makePlugin('status', 'devlink');
-    registry.registerManifest(workflowStatus);
-    registry.registerManifest(devlinkStatus);
+    reg.registerManifest(workflowStatus);
+    reg.registerManifest(devlinkStatus);
 
     expect(workflowStatus.shadowed).toBe(false);
     expect(devlinkStatus.shadowed).toBe(false);
-    expect(findCommandWithType('workflow:status')?.type).toBe('plugin');
-    expect(findCommandWithType('devlink:status')?.type).toBe('plugin');
+    expect(reg.resolve(['workflow', 'status']).type).toBe('command');
+    expect(reg.resolve(['devlink', 'status']).type).toBe('command');
 
     warnSpy.mockRestore();
   });
 
-  it('multiple plugins with same bare id are all listed in manifests', () => {
+  it('multiple plugins with same bare id are all listed in listCommands', () => {
     const agentRun = makePlugin('run', 'agent');
     const workflowRun = makePlugin('run', 'workflow');
-    registry.registerManifest(agentRun);
-    registry.registerManifest(workflowRun);
+    reg.registerManifest(agentRun);
+    reg.registerManifest(workflowRun);
 
-    const manifests = registry.listManifests();
-    expect(manifests).toContainEqual(agentRun);
-    expect(manifests).toContainEqual(workflowRun);
+    const cmds = reg.listCommands();
+    expect(cmds).toContainEqual(agentRun);
+    expect(cmds).toContainEqual(workflowRun);
   });
 });
 
 // ─── Edge Cases ───────────────────────────────────────────────────────────────
 
 describe('Edge Cases', () => {
-  beforeEach(resetRegistry);
+  let reg: TrieBackedRegistry;
+  beforeEach(() => { reg = makeRegistry(); });
 
-  it('returns undefined for unknown command', () => {
-    const result = findCommandWithType('non-existent-command');
-    expect(result).toBeUndefined();
+  it('returns not-found for unknown command', () => {
+    const result = reg.resolve(['non-existent-command']);
+    expect(result.type).toBe('not-found');
   });
 
-  it('has() returns true for registered plugin', () => {
+  it('getCommandAt returns non-null for registered plugin (full path)', () => {
     const plugin = makePlugin('list', 'marketplace', 'plugins');
-    registry.registerManifest(plugin);
+    reg.registerManifest(plugin);
 
-    expect(registry.has('marketplace:plugins:list')).toBe(true);
-    expect(registry.has('marketplace:list')).toBe(true);
+    expect(reg.getCommandAt(['marketplace', 'plugins', 'list'])).not.toBeNull();
   });
 
-  it('has() returns false for unknown command', () => {
-    expect(registry.has('totally-unknown')).toBe(false);
-  });
-
-  it('listManifests returns no duplicates for multiply-keyed commands', () => {
+  it('getCommandAt returns null for 2-part shorthand (exact lookup only)', () => {
     const plugin = makePlugin('list', 'marketplace', 'plugins');
-    registry.registerManifest(plugin);
+    reg.registerManifest(plugin);
 
-    const manifests = registry.listManifests();
-    const seen = new Set(manifests);
-    expect(seen.size).toBe(manifests.length);
+    expect(reg.getCommandAt(['marketplace', 'list'])).toBeNull();
   });
 
-  it('getManifest retrieves by bare id', () => {
-    const plugin = makePlugin('list', 'marketplace', 'plugins');
-    registry.registerManifest(plugin);
-
-    expect(registry.getManifest('list')).toBe(plugin);
+  it('getCommandAt returns null for unknown command', () => {
+    expect(reg.getCommandAt(['totally-unknown'])).toBeNull();
   });
 
-  it('getManifest retrieves by canonical id', () => {
+  it('listCommands returns no duplicates for multiply-keyed commands', () => {
     const plugin = makePlugin('list', 'marketplace', 'plugins');
-    registry.registerManifest(plugin);
+    reg.registerManifest(plugin);
 
-    expect(registry.getManifest('marketplace:plugins:list')).toBe(plugin);
+    const cmds = reg.listCommands();
+    const seen = new Set(cmds);
+    expect(seen.size).toBe(cmds.length);
+  });
+
+  it('getCommandAt retrieves by canonical segments', () => {
+    const plugin = makePlugin('list', 'marketplace', 'plugins');
+    reg.registerManifest(plugin);
+
+    expect(reg.getCommandAt(['marketplace', 'plugins', 'list'])).toBe(plugin);
   });
 });

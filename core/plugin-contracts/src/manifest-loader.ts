@@ -55,7 +55,7 @@ export function validateManifest(manifest: ManifestV3): { valid: boolean; errors
   if (manifest.cli?.commands) {
     for (const cmd of manifest.cli.commands) {
       if (!cmd.handler) {
-        errors.push(`CLI command "${cmd.id}" missing handler path`);
+        errors.push(`CLI command "${cmd.path}" missing handler path`);
       }
     }
   }

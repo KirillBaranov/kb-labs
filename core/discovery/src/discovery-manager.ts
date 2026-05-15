@@ -13,7 +13,7 @@ import type {
   EntityKind,
 } from './types.js';
 import { DiagnosticCollector } from './diagnostics.js';
-import { readMarketplaceLock, writeMarketplaceLock } from './marketplace-lock.js';
+import { readMarketplaceLock } from './marketplace-lock.js';
 import { loadManifest } from './manifest-loader.js';
 import { computePackageIntegrity } from './integrity.js';
 
@@ -160,16 +160,11 @@ export class DiscoveryManager {
       return;
     }
 
-    // Verify integrity if enabled.
-    // For local-linked packages (source: 'local'), package.json changes frequently
-    // (devlink switches, version bumps) — auto-refresh the lock instead of blocking.
-    if (this.verifyIntegrity && entry.integrity) {
-      if (entry.source === 'local') {
-        await this.refreshLocalIntegrity(packageRoot, packageId, entry, root, diag);
-      } else {
-        const ok = await this.checkIntegrity(packageRoot, entry.integrity, packageId, diag);
-        if (!ok) {return;}
-      }
+    // Verify integrity for non-local packages. Local packages change frequently
+    // (rebuilds, version bumps) — integrity is updated at install/sync time, not here.
+    if (this.verifyIntegrity && entry.integrity && entry.source !== 'local') {
+      const ok = await this.checkIntegrity(packageRoot, entry.integrity, packageId, diag);
+      if (!ok) {return;}
     }
 
     // Load manifest
@@ -221,38 +216,6 @@ export class DiscoveryManager {
       signature: entry.signature,
       provides,
     });
-  }
-
-  /**
-   * For local-linked packages, silently refresh the integrity hash in the lock
-   * if it has changed. Local packages change frequently (devlink, version bumps)
-   * so blocking on mismatch would be a constant friction with no security benefit.
-   */
-  private async refreshLocalIntegrity(
-    packageRoot: string,
-    packageId: string,
-    entry: MarketplaceEntry,
-    root: string,
-    diag: DiagnosticCollector,
-  ): Promise<void> {
-    try {
-      const computed = await computePackageIntegrity(packageRoot);
-
-      if (computed !== entry.integrity) {
-        // Update the lock in place (only write to the root this entry came from)
-        const lock = await readMarketplaceLock(root, diag);
-        if (lock?.installed[packageId]) {
-          lock.installed[packageId].integrity = computed;
-          await writeMarketplaceLock(root, lock);
-          diag.info('INTEGRITY_REFRESHED',
-            `Local package "${packageId}" integrity refreshed in lock`, {
-            pluginId: packageId,
-          });
-        }
-      }
-    } catch {
-      // Non-blocking — if we can't refresh, proceed anyway
-    }
   }
 
   /**

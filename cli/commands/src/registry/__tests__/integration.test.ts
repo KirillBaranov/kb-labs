@@ -14,7 +14,7 @@ const baseManifestV3: ManifestV3 = {
   cli: {
     commands: [
       {
-        id: "test:command",
+        path: "test command",
         describe: "Test command",
         handler: "./cli/command.js",
         flags: [],
@@ -40,6 +40,7 @@ describe("Registry Integration", () => {
   it("registers a workspace manifest and executes successfully", async () => {
     const manifest: CommandManifest = {
       manifestVersion: "1.0",
+      segments: ['test', 'command'],
       id: "test:command",
       group: "test",
       describe: "Test command",
@@ -104,6 +105,7 @@ describe("Registry Integration", () => {
   it("propagates unavailable command metadata", async () => {
     const manifest: CommandManifest = {
       manifestVersion: "1.0",
+      segments: ['test', 'command'],
       id: "test:command",
       group: "test",
       describe: "Test command",
@@ -152,6 +154,7 @@ describe("Registry Integration", () => {
   it("prefers workspace manifests over node_modules", async () => {
     const nodeManifest: CommandManifest = {
       manifestVersion: "1.0",
+      segments: ['test', 'command'],
       id: "test:command",
       group: "test",
       describe: "Node command",
@@ -161,6 +164,7 @@ describe("Registry Integration", () => {
 
     const workspaceManifest: CommandManifest = {
       manifestVersion: "1.0",
+      segments: ['test', 'command'],
       id: "test:command",
       group: "test",
       describe: "Workspace command",

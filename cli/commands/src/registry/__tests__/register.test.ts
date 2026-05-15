@@ -28,6 +28,7 @@ describe('registerManifests', () => {
 
     const manifests: CommandManifest[] = [{
       manifestVersion: '1.0',
+      segments: ['test', 'command'],
       id: 'test:command',
       group: 'test',
       describe: 'Test command',
@@ -63,6 +64,7 @@ describe('registerManifests', () => {
 
     const manifests: CommandManifest[] = [{
       manifestVersion: '1.0',
+      segments: ['test', 'command'],
       id: 'test:command',
       group: 'test',
       describe: 'Test command',
@@ -97,6 +99,7 @@ describe('registerManifests', () => {
 
     const workspaceManifest: CommandManifest = {
       manifestVersion: '1.0',
+      segments: ['test', 'command'],
       id: 'test:command',
       group: 'test',
       describe: 'Workspace command',
@@ -105,6 +108,7 @@ describe('registerManifests', () => {
 
     const nodeModulesManifest: CommandManifest = {
       manifestVersion: '1.0',
+      segments: ['test', 'command'],
       id: 'test:command',
       group: 'test',
       describe: 'Node modules command',
@@ -145,6 +149,7 @@ describe('registerManifests', () => {
 
     const invalidManifest: CommandManifest = {
       manifestVersion: '1.0',
+      segments: ['test', 'command'],
       id: 'test:command',
       group: 'test',
       describe: 'Test command',
@@ -164,7 +169,7 @@ describe('registerManifests', () => {
 
     expect(result.registered).toHaveLength(0);
     expect(result.skipped).toHaveLength(1);
-    expect(result.skipped[0]?.id).toBe('test:command');
+    expect(result.skipped[0]?.id).toBe('test command');
     expect(mockRegistry.registerManifest).not.toHaveBeenCalled();
   });
 
@@ -174,6 +179,7 @@ describe('registerManifests', () => {
 
     const agentRun: CommandManifest = {
       manifestVersion: '1.0',
+      segments: ['agent', 'run'],
       id: 'run',
       group: 'agent',
       describe: 'Agent run',
@@ -182,6 +188,7 @@ describe('registerManifests', () => {
 
     const workflowRun: CommandManifest = {
       manifestVersion: '1.0',
+      segments: ['workflow', 'run'],
       id: 'run',
       group: 'workflow',
       describe: 'Workflow run',
@@ -190,6 +197,7 @@ describe('registerManifests', () => {
 
     const reviewRun: CommandManifest = {
       manifestVersion: '1.0',
+      segments: ['review', 'run'],
       id: 'run',
       group: 'review',
       describe: 'Review run',
@@ -242,6 +250,7 @@ describe('registerManifests', () => {
 
     const first: CommandManifest = {
       manifestVersion: '1.0',
+      segments: ['agent', 'run'],
       id: 'run',
       group: 'agent',
       describe: 'First agent run',
@@ -250,6 +259,7 @@ describe('registerManifests', () => {
 
     const duplicate: CommandManifest = {
       manifestVersion: '1.0',
+      segments: ['agent', 'run'],
       id: 'run',
       group: 'agent',
       describe: 'Duplicate agent run',
@@ -289,6 +299,7 @@ describe('registerManifests', () => {
 
     const manifestWithInvalidFlag: CommandManifest = {
       manifestVersion: '1.0',
+      segments: ['test', 'command'],
       id: 'test:command',
       group: 'test',
       describe: 'Test command',
@@ -313,7 +324,7 @@ describe('registerManifests', () => {
 
     expect(result.registered).toHaveLength(0);
     expect(result.skipped).toHaveLength(1);
-    expect(result.skipped[0]?.id).toBe('test:command');
+    expect(result.skipped[0]?.id).toBe('test command');
     expect(mockRegistry.registerManifest).not.toHaveBeenCalled();
   });
 });
