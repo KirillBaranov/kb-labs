@@ -102,13 +102,23 @@ export async function loadPlan(cwd: string, scope: string = 'root'): Promise<Com
     // Validate with schema
     const result = CommitPlanSchema.safeParse(data);
     if (!result.success) {
-      console.error(`[loadPlan] Zod validation failed for ${planPath}:`, JSON.stringify(result.error.issues));
-      return null;
+      throw new Error(
+        `Commit plan is corrupted and cannot be loaded. Run 'kb commit:generate' to create a new plan.\n` +
+        result.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`).join('\n'),
+      );
     }
 
     return result.data;
   } catch (err) {
-    console.error(`[loadPlan] Failed to read ${planPath}:`, err instanceof Error ? err.message : err);
+    if (err instanceof SyntaxError) {
+      throw new Error(
+        `Commit plan file is not valid JSON. Run 'kb commit:generate' to create a new plan.`,
+      );
+    }
+    // Re-throw corruption errors (thrown above) and file-not-found returns null
+    if (err instanceof Error && err.message.startsWith('Commit plan is corrupted')) {
+      throw err;
+    }
     return null;
   }
 }
@@ -136,6 +146,7 @@ export async function loadStatus(cwd: string, scope: string = 'root'): Promise<G
 
 /**
  * Check if a plan exists
+ * Returns false for missing plans; throws for corrupted plans so the caller can surface the error.
  */
 export async function hasPlan(cwd: string, scope: string = 'root'): Promise<boolean> {
   const plan = await loadPlan(cwd, scope);

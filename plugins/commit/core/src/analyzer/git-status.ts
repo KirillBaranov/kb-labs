@@ -23,24 +23,22 @@ export async function getGitStatus(cwd: string): Promise<GitStatus> {
   };
 }
 
+const IGNORED_SEGMENTS = new Set([
+  "node_modules",
+  ".git",
+  "dist",
+  "build",
+  ".next",
+  ".turbo",
+  "coverage",
+]);
+
 /**
  * Check if file should be ignored (node_modules, dist, etc.)
+ * Uses exact path segment matching to avoid false positives like "my-dist/file.ts".
  */
 function shouldIgnoreFile(file: string): boolean {
-  const ignoredPaths = [
-    "node_modules/",
-    ".git/",
-    "dist/",
-    "build/",
-    ".next/",
-    ".turbo/",
-    "coverage/",
-    ".cache/",
-    ".temp/",
-    "tmp/",
-  ];
-
-  return ignoredPaths.some((path) => file.includes(path));
+  return file.split("/").some((segment) => IGNORED_SEGMENTS.has(segment));
 }
 
 /**
