@@ -54,6 +54,8 @@
     "release:sdk": "node scripts/release-preflight.mjs && ./tools/kb-devkit/kb-devkit run build && node ./cli/bin/dist/bin.js marketplace:clear-cache && node ./cli/bin/dist/bin.js release run --flow sdk --skip-build --yes",
     "release:sdk:dry": "./tools/kb-devkit/kb-devkit run build && node ./cli/bin/dist/bin.js marketplace:clear-cache && node ./cli/bin/dist/bin.js release run --flow sdk --skip-build --dry-run",
     "test": "./tools/kb-devkit/kb-devkit run test",
+    "test:catalog": "node scripts/test-catalog.mjs",
+    "test:catalog:check": "node scripts/test-catalog.mjs --check",
     "type-check": "./tools/kb-devkit/kb-devkit run type-check",
     "version": "changeset version",
     "ws:check": "./tools/kb-devkit/kb-devkit check",

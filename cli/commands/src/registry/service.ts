@@ -98,6 +98,10 @@ export class TrieBackedRegistry {
     return this.systemRouter.listSystemTopLevel();
   }
 
+  getPluginGroupDescribe(segments: string[]): string | undefined {
+    return this.pluginRouter.getGroupDescribe(segments);
+  }
+
   listCommands(): RegisteredCommand[] {
     return this.pluginRouter.listAll();
   }

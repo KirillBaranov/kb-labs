@@ -191,9 +191,10 @@ export default defineCommand({
         if (outputJson) {
           ctx.ui?.json?.({ ok: false, error: { code: 'APPLY_FAILED', message: applyResult.errors.join('; ') } });
         } else {
-          for (const error of applyResult.errors) {
-            ctx.ui?.error?.(`  ${error}`);
-          }
+          ctx.ui?.error?.('Failed to apply commits', {
+            hint: 'Check git status and resolve conflicts manually',
+            cause: applyResult.errors.join('; '),
+          });
         }
         return { exitCode: 1 };
       }

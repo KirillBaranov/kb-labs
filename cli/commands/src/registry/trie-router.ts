@@ -183,6 +183,16 @@ export class TrieRouter {
     }
   }
 
+  getGroupDescribe(segments: string[]): string | undefined {
+    let node = this.root;
+    for (const seg of segments) {
+      const child = node.children.get(seg);
+      if (!child) { return undefined; }
+      node = child;
+    }
+    return node.groupDescribe;
+  }
+
   setGroupDescribe(segments: string[], describe: string): void {
     let node = this.root;
     for (const seg of segments) {
