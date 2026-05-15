@@ -52,7 +52,7 @@ const extractPlugin: EntityExtractor = (plugin, manifest) => [{
 
 const extractCliCommands: EntityExtractor = (plugin, manifest) =>
   (manifest.cli?.commands ?? []).map(cmd => ({
-    ref: { pluginId: plugin.id, kind: 'cli-command' as const, entityId: cmd.id },
+    ref: { pluginId: plugin.id, kind: 'cli-command' as const, entityId: cmd.path },
     declaration: cmd,
     ...base(plugin),
   }));
