@@ -37,8 +37,7 @@ const mockManifests: PluginsRegistryResponse = {
         cli: {
           commands: [
             {
-              id: 'rag-query',
-              group: 'mind',
+              path: 'mind rag-query',
               describe: 'Query the RAG index',
               handler: './dist/commands/rag-query.js',
               flags: [
@@ -47,8 +46,7 @@ const mockManifests: PluginsRegistryResponse = {
               ],
             },
             {
-              id: 'rag-index',
-              group: 'mind',
+              path: 'mind rag-index',
               describe: 'Build RAG index',
               handler: './dist/commands/rag-index.js',
               flags: [
@@ -102,8 +100,7 @@ const mockManifests: PluginsRegistryResponse = {
         cli: {
           commands: [
             {
-              id: 'run',
-              group: 'workflow',
+              path: 'workflow run',
               describe: 'Run a workflow',
               handler: './dist/commands/run.js',
               flags: [
