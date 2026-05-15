@@ -262,7 +262,7 @@ export class TrieRouter {
     // Walk through all tokens except the last (which may be partial)
     for (let i = 0; i < tokens.length - 1; i++) {
       const child = node.children.get(tokens[i]!);
-      if (!child) return [];
+      if (!child) { return []; }
       node = child;
     }
 
@@ -286,7 +286,7 @@ export class TrieRouter {
     let node = this.root;
     for (const seg of segments) {
       const child = node.children.get(seg);
-      if (!child) return [];
+      if (!child) { return []; }
       node = child;
     }
     const results: RegisteredCommand[] = [];
@@ -301,7 +301,7 @@ export class TrieRouter {
     let node = this.root;
     for (const seg of segments) {
       const child = node.children.get(seg);
-      if (!child) return null;
+      if (!child) { return null; }
       node = child;
     }
     return node.command ?? null;
@@ -317,7 +317,7 @@ export class TrieRouter {
   }
 
   private _collectCommands(node: TrieNode, out: RegisteredCommand[]): void {
-    if (node.command) out.push(node.command);
+    if (node.command) { out.push(node.command); }
     for (const child of node.children.values()) {
       this._collectCommands(child, out);
     }
