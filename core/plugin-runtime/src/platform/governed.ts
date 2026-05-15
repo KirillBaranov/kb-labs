@@ -334,8 +334,9 @@ export function createGovernedPlatformServices(
 
     // Notifier: requires explicit permission declaration.
     // emit: source is always overwritten with pluginId — plugin cannot fake its origin.
-    // subscribe: declared sources/severities are enforced as a hard ceiling on top of
-    //   whatever filter the plugin passes at runtime.
+    // subscribe: declared sources/severities are a hard ceiling enforced here,
+    //   regardless of whatever filter the plugin passes at runtime.
+    //   sources: ['*'] = explicit wildcard (all sources).
     notifier: (() => {
       const perm = permissions.platform?.notifier;
       if (!perm || !raw.notifier) {
@@ -344,25 +345,22 @@ export function createGovernedPlatformServices(
           : undefined;
       }
 
-      const canEmit = perm === true || (typeof perm === 'object' && perm.emit !== false);
-
-      const subPerm = perm === true ? true : (typeof perm === 'object' ? perm.subscribe : false);
-      const canSubscribe = Boolean(subPerm);
-      const allowedSources: string[] | undefined =
-        subPerm !== true && typeof subPerm === 'object' ? subPerm.sources : undefined;
-      const allowedSeverity: Array<'info' | 'warn' | 'critical'> | undefined =
-        subPerm !== true && typeof subPerm === 'object' ? subPerm.severity : undefined;
+      const canEmit = perm.emit === true;
+      const subPerm = perm.subscribe;
+      const wildcardSources = subPerm?.sources.includes('*') ?? false;
+      const allowedSources: string[] | undefined = wildcardSources ? undefined : subPerm?.sources;
+      const allowedSeverity = subPerm?.severity;
 
       return {
         notify: canEmit
           ? (event: Parameters<INotifier['notify']>[0]) =>
               raw.notifier!.notify({ ...event, source: pluginId })
-          : () => { throw new PermissionError('Notifier emit access denied'); },
+          : () => Promise.reject(new PermissionError('Notifier emit access denied')),
 
-        subscribe: canSubscribe
+        subscribe: subPerm
           ? (filter, handler) => {
-              // Enforce declared permission scope as hard ceiling.
               return raw.notifier!.subscribe(filter, async (event) => {
+                // Enforce declared scope as hard ceiling.
                 if (allowedSources && !allowedSources.includes(event.source ?? '')) return;
                 if (allowedSeverity && !allowedSeverity.includes(event.severity ?? 'info')) return;
                 await handler(event);
