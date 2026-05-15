@@ -88,3 +88,12 @@ export interface ISnapshotProvider {
   garbageCollect?(request: SnapshotGarbageCollectRequest): Promise<SnapshotGarbageCollectResult>;
   getCapabilities?(): SnapshotProviderCapabilities;
 }
+
+/**
+ * High-level snapshot manager interface exposed on PlatformServices.
+ * Implemented by SnapshotManager in core-runtime.
+ */
+export interface ISnapshotManager {
+  restoreSnapshot(request: RestoreSnapshotRequest): Promise<RestoreSnapshotResult>;
+  hasProvider(): boolean;
+}

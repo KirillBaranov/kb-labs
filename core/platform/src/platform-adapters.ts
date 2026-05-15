@@ -17,6 +17,7 @@ import type { IInvoke } from './adapters/invoke.js';
 import type { ILogReader } from './adapters/log-reader.js';
 import type { ISQLDatabase, IDocumentDatabase } from './adapters/database.js';
 import type { IArtifacts } from './adapters/artifacts.js';
+import type { ISnapshotManager } from './snapshot/snapshot-provider.js';
 
 /**
  * Platform adapters container interface.
@@ -67,4 +68,7 @@ export interface IPlatformAdapters {
 
   /** Artifacts adapter (optional — not all platforms provide it) */
   readonly artifacts?: IArtifacts;
+
+  /** Snapshot manager (optional — only available when a snapshot provider is configured) */
+  readonly snapshotManager?: ISnapshotManager;
 }
