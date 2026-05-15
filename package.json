@@ -47,6 +47,7 @@
     "monitor": "./tools/kb-monitor/kb-monitor status",
     "monitor:health": "./tools/kb-monitor/kb-monitor health",
     "monitor:logs": "./tools/kb-monitor/kb-monitor logs",
+    "postinstall": "bash scripts/fix-perms.sh",
     "release": "changeset publish",
     "release:platform": "node scripts/release-preflight.mjs && chmod +x ./tools/kb-devkit/kb-devkit && ./tools/kb-devkit/kb-devkit run build && node ./cli/bin/dist/bin.js marketplace:clear-cache && node ./cli/bin/dist/bin.js release run --flow platform --skip-build --yes",
     "release:platform:dry": "chmod +x ./tools/kb-devkit/kb-devkit && ./tools/kb-devkit/kb-devkit run build && node ./cli/bin/dist/bin.js marketplace:clear-cache && node ./cli/bin/dist/bin.js release run --flow platform --skip-build --dry-run",
