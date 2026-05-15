@@ -41,7 +41,7 @@ import type { CacheFile, PackageCacheEntry, DiscoveryResult, CommandManifest } f
 
 const PKG_ROOT = '/workspace/plugins/test';
 const MANIFEST_PATH = '/workspace/plugins/test/dist/index.js';
-const PKG_JSON_PATH = '/workspace/plugins/test/package.json';
+const _PKG_JSON_PATH = '/workspace/plugins/test/package.json';
 
 const HASH_V1 = `sha256-${crypto.createHash('sha256').update('version 1').digest('base64')}`;
 const HASH_V2 = `sha256-${crypto.createHash('sha256').update('version 2').digest('base64')}`;

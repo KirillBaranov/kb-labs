@@ -19,7 +19,7 @@ function makeManifest(id: string, routes?: number): ManifestV3 {
       })),
     } : undefined,
     cli: {
-      commands: [{ id: 'test', describe: 'Test cmd', handler: './dist/test.js' }],
+      commands: [{ path: 'test', describe: 'Test cmd', handler: './dist/test.js' }],
     },
   };
 }

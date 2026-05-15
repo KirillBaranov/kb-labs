@@ -23,7 +23,7 @@ export class WorkspaceWorkflowRegistry implements WorkflowRegistry {
   async list(): Promise<ResolvedWorkflow[]> {
     if (this.cache) {
       const stale = await this.isStale()
-      if (!stale) return this.cache
+      if (!stale) { return this.cache }
       this.cache = null
       this.mtimeSnapshot.clear()
     }
@@ -101,14 +101,14 @@ export class WorkspaceWorkflowRegistry implements WorkflowRegistry {
       ignore: ['node_modules/**', 'dist/**', '.git/**'],
     })
 
-    if (currentFiles.length !== this.mtimeSnapshot.size) return true
+    if (currentFiles.length !== this.mtimeSnapshot.size) { return true }
 
     const stats = await Promise.all(
       currentFiles.map(f => stat(f).then(s => ({ f, mtime: s.mtimeMs })).catch(() => null))
     )
     for (const entry of stats) {
-      if (!entry) return true
-      if (this.mtimeSnapshot.get(entry.f) !== entry.mtime) return true
+      if (!entry) { return true }
+      if (this.mtimeSnapshot.get(entry.f) !== entry.mtime) { return true }
     }
     return false
   }
@@ -118,7 +118,7 @@ export class WorkspaceWorkflowRegistry implements WorkflowRegistry {
       files.map(f => stat(f).then(s => ({ f, mtime: s.mtimeMs })).catch(() => null))
     )
     for (const entry of stats) {
-      if (entry) this.mtimeSnapshot.set(entry.f, entry.mtime)
+      if (entry) { this.mtimeSnapshot.set(entry.f, entry.mtime) }
     }
   }
 

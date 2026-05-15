@@ -26,7 +26,7 @@ function makeManifest(id: string, opts?: {
     version: '1.0.0',
     cli: opts?.commands ? {
       commands: Array.from({ length: opts.commands }, (_, i) => ({
-        id: `cmd-${i}`, describe: `Command ${i}`, handler: `./dist/cmd-${i}.js`,
+        path: `cmd-${i}`, describe: `Command ${i}`, handler: `./dist/cmd-${i}.js`,
       })),
     } : undefined,
     rest: opts?.routes ? {

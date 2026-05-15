@@ -95,6 +95,27 @@ function buildStaticZsh(tree: Map<string, Map<string, string[]>>): string {
   lines.push(`  fi`);
 
   lines.push(`}`, `compdef _kb kb`);
+
+  // Hook into pnpm completion for 'pnpm kb ...' without breaking regular pnpm tab
+  lines.push(``, `# pnpm kb — same completions, shifted by 1 position`);
+  lines.push(`_kb_pnpm_wrap() {`);
+  lines.push(`  if [[ \${words[2]-} == kb ]]; then`);
+  lines.push(`    local CURRENT=$((CURRENT - 1))`);
+  lines.push(`    local -a words=("kb" "\${words[3,-1]}")`);
+  lines.push(`    [[ $CURRENT -lt 1 ]] && CURRENT=1`);
+  lines.push(`    _kb`);
+  lines.push(`    return 0`);
+  lines.push(`  fi`);
+  lines.push(`  (( $+functions[_pnpm_orig] )) && { _pnpm_orig; return; }`);
+  lines.push(`  return 1`);
+  lines.push(`}`);
+  lines.push(`if (( $+functions[_pnpm] )) && ! (( $+functions[_pnpm_orig] )); then`);
+  lines.push(`  functions[_pnpm_orig]=$functions[_pnpm]`);
+  lines.push(`  _pnpm() { _kb_pnpm_wrap; }`);
+  lines.push(`else`);
+  lines.push(`  compdef _kb_pnpm_wrap pnpm`);
+  lines.push(`fi`);
+
   return lines.join('\n');
 }
 
@@ -124,14 +145,14 @@ function detectShell(): string {
 
 function profilePath(shell: string): string {
   const home = os.homedir();
-  if (shell === 'bash') return path.join(home, '.bashrc');
-  if (shell === 'fish') return path.join(home, '.config', 'fish', 'config.fish');
+  if (shell === 'bash') { return path.join(home, '.bashrc'); }
+  if (shell === 'fish') { return path.join(home, '.config', 'fish', 'config.fish'); }
   return path.join(home, '.zshrc');
 }
 
 function profileLine(shell: string): string {
-  if (shell === 'zsh') return `${MARKER}\n[ -f "${STATIC_FILE}" ] && source "${STATIC_FILE}"`;
-  if (shell === 'fish') return `${MARKER}\ntest -f "${STATIC_FILE}" && source "${STATIC_FILE}"`;
+  if (shell === 'zsh') { return `${MARKER}\n[ -f "${STATIC_FILE}" ] && source "${STATIC_FILE}"`; }
+  if (shell === 'fish') { return `${MARKER}\ntest -f "${STATIC_FILE}" && source "${STATIC_FILE}"`; }
   // bash: fall back to dynamic since static file is zsh-specific
   return `${MARKER}\ncommand -v kb &>/dev/null && eval "$(kb completion bash 2>/dev/null)" || true`;
 }
@@ -156,7 +177,7 @@ export async function autoUpdateCompletion(registry: TrieBackedRegistry): Promis
   let existing = '';
   try { existing = await fs.readFile(STATIC_FILE, 'utf8'); } catch { return; }
 
-  if (hashFromFile(existing) === current) return; // nothing changed
+  if (hashFromFile(existing) === current) { return; } // nothing changed
 
   const tree   = await collectTree(registry);
   const script = `# hash: ${current}\n` + buildStaticZsh(tree);
