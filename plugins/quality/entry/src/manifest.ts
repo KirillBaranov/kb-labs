@@ -88,8 +88,7 @@ export const manifest = {
       // quality:stats - Monorepo statistics and health score
       // ======================================================================
       {
-        id: 'stats',
-        group: 'quality',
+        path: 'quality stats',
         category: 'Overview',
         describe: 'Get monorepo statistics and health score',
         longDescription:
@@ -97,7 +96,6 @@ export const manifest = {
           'Results are cached for 5 minutes.',
 
         handler: './cli/commands/stats.js#default',
-        handlerPath: './cli/commands/stats.js',
 
         flags: defineCommandFlags(statsFlags),
 
@@ -115,8 +113,7 @@ export const manifest = {
       // quality:health - Monorepo health check
       // ======================================================================
       {
-        id: 'health',
-        group: 'quality',
+        path: 'quality health',
         category: 'Overview',
         describe: 'Check monorepo health score',
         longDescription:
@@ -124,7 +121,6 @@ export const manifest = {
           'Returns health score (0-100) with grade (A-F) and actionable recommendations.',
 
         handler: './cli/commands/health.js#default',
-        handlerPath: './cli/commands/health.js',
 
         flags: defineCommandFlags(healthFlags),
 
@@ -142,8 +138,7 @@ export const manifest = {
       // quality:fix-deps - Dependency auto-fixer
       // ======================================================================
       {
-        id: 'fix-deps',
-        group: 'quality',
+        path: 'quality fix-deps',
         category: 'Dependencies',
         describe: 'Auto-fix dependency issues',
         longDescription:
@@ -151,7 +146,6 @@ export const manifest = {
           'and aligning duplicate versions. Supports --dry-run for previewing changes.',
 
         handler: './cli/commands/fix-deps.js#default',
-        handlerPath: './cli/commands/fix-deps.js',
 
         flags: defineCommandFlags(fixDepsFlags),
 
@@ -169,8 +163,7 @@ export const manifest = {
       // quality:build-order - Calculate build order with topological sort
       // ======================================================================
       {
-        id: 'build-order',
-        group: 'quality',
+        path: 'quality build-order',
         category: 'Dependencies',
         describe: 'Calculate build order using topological sort',
         longDescription:
@@ -178,7 +171,6 @@ export const manifest = {
           'Shows build layers where each layer can be built in parallel. Detects circular dependencies.',
 
         handler: './cli/commands/build-order.js#default',
-        handlerPath: './cli/commands/build-order.js',
 
         flags: defineCommandFlags(buildOrderFlags),
 
@@ -196,8 +188,7 @@ export const manifest = {
       // quality:cycles - Detect circular dependencies
       // ======================================================================
       {
-        id: 'cycles',
-        group: 'quality',
+        path: 'quality cycles',
         category: 'Dependencies',
         describe: 'Detect circular dependencies',
         longDescription:
@@ -205,7 +196,6 @@ export const manifest = {
           'Shows complete dependency cycles with recommendations for breaking them.',
 
         handler: './cli/commands/cycles.js#default',
-        handlerPath: './cli/commands/cycles.js',
 
         flags: defineCommandFlags(cyclesFlags),
 
@@ -221,8 +211,7 @@ export const manifest = {
       // quality:visualize - Visualize dependency graph
       // ======================================================================
       {
-        id: 'visualize',
-        group: 'quality',
+        path: 'quality visualize',
         category: 'Dependencies',
         describe: 'Visualize dependency graph',
         longDescription:
@@ -231,7 +220,6 @@ export const manifest = {
           'and comprehensive graph statistics.',
 
         handler: './cli/commands/visualize.js#default',
-        handlerPath: './cli/commands/visualize.js',
 
         flags: defineCommandFlags(visualizeFlags),
 
@@ -250,8 +238,7 @@ export const manifest = {
       // quality:check-builds - Check build status across monorepo
       // ======================================================================
       {
-        id: 'check-builds',
-        group: 'quality',
+        path: 'quality check-builds',
         category: 'Checks',
         describe: 'Check build status across monorepo',
         longDescription:
@@ -260,7 +247,6 @@ export const manifest = {
           'Results are cached for 10 minutes.',
 
         handler: './cli/commands/check-builds.js#default',
-        handlerPath: './cli/commands/check-builds.js',
 
         flags: defineCommandFlags(checkBuildsFlags),
 
@@ -279,8 +265,7 @@ export const manifest = {
       // quality:check-types - TypeScript type safety analysis
       // ======================================================================
       {
-        id: 'check-types',
-        group: 'quality',
+        path: 'quality check-types',
         category: 'Checks',
         describe: 'Analyze TypeScript type safety across monorepo',
         longDescription:
@@ -289,7 +274,6 @@ export const manifest = {
           'Results are cached for 10 minutes.',
 
         handler: './cli/commands/check-types.js#default',
-        handlerPath: './cli/commands/check-types.js',
 
         flags: defineCommandFlags(checkTypesFlags),
 
@@ -308,8 +292,7 @@ export const manifest = {
       // quality:check-tests - Test execution and coverage tracking
       // ======================================================================
       {
-        id: 'check-tests',
-        group: 'quality',
+        path: 'quality check-tests',
         category: 'Checks',
         describe: 'Run tests and track coverage across monorepo',
         longDescription:
@@ -318,7 +301,6 @@ export const manifest = {
           'Results are cached for 5 minutes.',
 
         handler: './cli/commands/check-tests.js#default',
-        handlerPath: './cli/commands/check-tests.js',
 
         flags: defineCommandFlags(checkTestsFlags),
 
@@ -338,8 +320,7 @@ export const manifest = {
       // quality:dead-code - Dead code file detection
       // ======================================================================
       {
-        id: 'dead-code',
-        group: 'quality',
+        path: 'quality dead-code',
         category: 'Checks',
         describe: 'Detect dead (unreachable) source files',
         longDescription:
@@ -348,7 +329,6 @@ export const manifest = {
           'backup and restore capabilities. Zero false positives by design.',
 
         handler: './cli/commands/dead-code.js#default',
-        handlerPath: './cli/commands/dead-code.js',
 
         flags: defineCommandFlags(deadCodeFlags),
 

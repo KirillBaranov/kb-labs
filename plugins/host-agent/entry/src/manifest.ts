@@ -34,15 +34,13 @@ export const manifest = {
     commands: [
       // Primary commands: workspace:*
       {
-        id: 'register',
-        group: 'workspace',
+        path: 'workspace register',
         describe: 'Register this machine with a Platform Gateway.',
         longDescription:
           'Calls POST /auth/register on the given Gateway URL, receives credentials, ' +
           'and writes ~/.kb/agent.json. Must be run once before starting the Workspace Agent daemon.',
 
         handler: './commands/register.js#default',
-        handlerPath: './commands/register.js',
 
         flags: defineCommandFlags(registerFlags),
 
@@ -53,15 +51,13 @@ export const manifest = {
       },
 
       {
-        id: 'status',
-        group: 'workspace',
+        path: 'workspace status',
         describe: 'Show Workspace Agent connection status.',
         longDescription:
           'Connects to the daemon via IPC socket and queries its status (connected, hostId, gatewayUrl, capabilities). ' +
           'Start the daemon with `kb workspace:start` or `pnpm dev:start:host-agent`.',
 
         handler: './commands/status.js#default',
-        handlerPath: './commands/status.js',
 
         flags: defineCommandFlags(statusFlags),
 
@@ -72,14 +68,12 @@ export const manifest = {
       },
 
       {
-        id: 'list',
-        group: 'workspace',
+        path: 'workspace list',
         describe: 'List all connected Workspace Agents.',
         longDescription:
           'Queries the Gateway REST API for all registered hosts and shows their status, capabilities, and last seen time.',
 
         handler: './commands/list.js#default',
-        handlerPath: './commands/list.js',
 
         flags: defineCommandFlags(listFlags),
 
@@ -92,12 +86,10 @@ export const manifest = {
 
       // Legacy aliases: agent:* (backwards compatible)
       {
-        id: 'register',
-        group: 'agent',
+        path: 'agent register',
         describe: '[Alias for workspace:register] Register this machine with a Platform Gateway.',
 
         handler: './commands/register.js#default',
-        handlerPath: './commands/register.js',
 
         flags: defineCommandFlags(registerFlags),
 
@@ -107,12 +99,10 @@ export const manifest = {
       },
 
       {
-        id: 'status',
-        group: 'agent',
+        path: 'agent status',
         describe: '[Alias for workspace:status] Show Workspace Agent connection status.',
 
         handler: './commands/status.js#default',
-        handlerPath: './commands/status.js',
 
         flags: defineCommandFlags(statusFlags),
 

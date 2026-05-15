@@ -50,14 +50,12 @@ export const manifest = {
   cli: {
     commands: [
       {
-        id: 'policy:detect',
-        group: 'policy',
+        path: 'policy policy detect',
         describe: 'Detect policy category for changed or specified repos',
         longDescription:
           'Determines the category for repos based on git changes or a specified path, then resolves applicable policy rules.',
 
         handler: './cli/commands/detect.js#default',
-        handlerPath: './cli/commands/detect.js',
 
         flags: defineCommandFlags({
           path: {
@@ -74,14 +72,12 @@ export const manifest = {
         permissions: detectPermissions,
       },
       {
-        id: 'policy:check',
-        group: 'policy',
+        path: 'policy policy check',
         describe: 'Run policy checks for changed repos or a specific path',
         longDescription:
           'Runs all applicable policy rules for detected repos. Exits with code 1 on violations. Use in CI or pnpm done pipeline.',
 
         handler: './cli/commands/check.js#default',
-        handlerPath: './cli/commands/check.js',
 
         flags: defineCommandFlags({
           path: {
@@ -98,12 +94,10 @@ export const manifest = {
         permissions: checkPermissions,
       },
       {
-        id: 'policy:rules',
-        group: 'policy',
+        path: 'policy policy rules',
         describe: 'Show all configured policy rules and their categories',
 
         handler: './cli/commands/rules.js#default',
-        handlerPath: './cli/commands/rules.js',
 
         flags: defineCommandFlags({
           json: {
@@ -116,14 +110,12 @@ export const manifest = {
         permissions: detectPermissions,
       },
       {
-        id: 'policy:snapshot',
-        group: 'policy',
+        path: 'policy policy snapshot',
         describe: 'Create or update API snapshot for a repo (run after npm publish)',
         longDescription:
           'Extracts exported symbols from dist/*.d.ts files and saves them to .kb/api-snapshots/. Used by api-compat-check to detect breaking changes.',
 
         handler: './cli/commands/snapshot.js#default',
-        handlerPath: './cli/commands/snapshot.js',
 
         flags: defineCommandFlags({
           path: {

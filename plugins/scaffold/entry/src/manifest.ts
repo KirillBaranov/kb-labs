@@ -34,11 +34,9 @@ const manifest = {
     ],
     commands: [
       {
-        id: 'run',
-        group: 'scaffold',
+        path: 'scaffold run',
         describe: 'Scaffold <entity> <name> from blocks',
         handler: './commands/scaffold.js#default',
-        handlerPath: './commands/scaffold.js',
         flags: [
           {
             name: 'blocks',
@@ -86,11 +84,9 @@ const manifest = {
         ],
       },
       {
-        id: 'doctor',
-        group: 'scaffold',
+        path: 'scaffold doctor',
         describe: 'Scan user plugins for common issues',
         handler: './commands/doctor.js#default',
-        handlerPath: './commands/doctor.js',
         flags: [
           {
             name: 'path',

@@ -40,11 +40,9 @@ export const manifest: ManifestV3 = {
   cli: {
     commands: [
       {
-        id: 'infra-worker:prepare',
-        group: 'infra-worker',
+        path: 'infra-worker prepare',
         describe: 'Materialize workspace, optional environment, and optional snapshot.',
         handler: './cli/commands/prepare-infra.js#default',
-        handlerPath: './cli/commands/prepare-infra.js',
         flags: defineCommandFlags({
           sourceRef: { type: 'string', description: 'Workspace source reference (repo/branch/etc)' },
           basePath: { type: 'string', description: 'Workspace base path' },
@@ -56,11 +54,9 @@ export const manifest: ManifestV3 = {
         }),
       },
       {
-        id: 'infra-worker:capture-snapshot',
-        group: 'infra-worker',
+        path: 'infra-worker capture-snapshot',
         describe: 'Capture snapshot for workspace/environment.',
         handler: './cli/commands/capture-snapshot.js#default',
-        handlerPath: './cli/commands/capture-snapshot.js',
         flags: defineCommandFlags({
           workspaceId: { type: 'string', description: 'Workspace ID' },
           environmentId: { type: 'string', description: 'Environment ID' },
@@ -69,11 +65,9 @@ export const manifest: ManifestV3 = {
         }),
       },
       {
-        id: 'infra-worker:restore-snapshot',
-        group: 'infra-worker',
+        path: 'infra-worker restore-snapshot',
         describe: 'Restore snapshot to workspace/environment target.',
         handler: './cli/commands/restore-snapshot.js#default',
-        handlerPath: './cli/commands/restore-snapshot.js',
         flags: defineCommandFlags({
           snapshotId: { type: 'string', required: true, description: 'Snapshot ID to restore' },
           workspaceId: { type: 'string', description: 'Workspace ID target' },
