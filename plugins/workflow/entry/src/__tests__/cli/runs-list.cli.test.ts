@@ -1,0 +1,122 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { mockCLIInput, createCapturedUI, createMockContext } from '@kb-labs/shared-testing-e2e';
+import { makeClient } from '../helpers/defaults.js';
+
+vi.mock('../../http-client.js', () => ({
+  WorkflowDaemonClient: vi.fn(),
+}));
+
+import { WorkflowDaemonClient } from '../../http-client.js';
+import runsListCommand from '../../commands/runs-list.js';
+
+const MockedClient = vi.mocked(WorkflowDaemonClient);
+
+const sampleRuns = [
+  { id: 'r-001', name: 'e2e-hello', status: 'success' as const, createdAt: new Date().toISOString(), durationMs: 1200 },
+  { id: 'r-002', name: 'e2e-world', status: 'running' as const, createdAt: new Date().toISOString() },
+];
+
+beforeEach(() => {
+  MockedClient.mockReset();
+});
+
+describe('workflow:runs-list', () => {
+  it('CL-01: renders table when runs exist', async () => {
+    MockedClient.mockImplementation(() => makeClient({
+      listRuns: async () => sampleRuns,
+    }));
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await runsListCommand.execute(ctx, mockCLIInput({ flags: {} }));
+
+    expect(result.exitCode).toBe(0);
+    expect(captured.table.length).toBeGreaterThan(0);
+    expect(captured.table[0].rows.length).toBe(2);
+  });
+
+  it('CL-02: --json returns array of WorkflowRunSummary', async () => {
+    MockedClient.mockImplementation(() => makeClient({
+      listRuns: async () => sampleRuns,
+    }));
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await runsListCommand.execute(ctx, mockCLIInput({ flags: { json: true } }));
+
+    expect(result.exitCode).toBe(0);
+    const payload = captured.json[0] as { ok: boolean; data: typeof sampleRuns };
+    expect(payload.ok).toBe(true);
+    expect(Array.isArray(payload.data)).toBe(true);
+    expect(payload.data.length).toBe(2);
+  });
+
+  it('CL-03: --status running filters by status', async () => {
+    MockedClient.mockImplementation(() => makeClient({
+      listRuns: async (params: { status?: string }) => {
+        expect(params.status).toBe('running');
+        return [sampleRuns[1]];
+      },
+    }));
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    await runsListCommand.execute(ctx, mockCLIInput({ flags: { status: 'running' } }));
+
+    expect(captured.table[0]?.rows.length).toBe(1);
+  });
+
+  it('CL-04: --limit 5 passes limit to client', async () => {
+    MockedClient.mockImplementation(() => makeClient({
+      listRuns: async (params: { limit?: number }) => {
+        expect(params.limit).toBe(5);
+        return sampleRuns.slice(0, 1);
+      },
+    }));
+
+    const { ui } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await runsListCommand.execute(ctx, mockCLIInput({ flags: { limit: 5 } }));
+
+    expect(result.exitCode).toBe(0);
+  });
+
+  it('CL-05: --workflow filters by workflowId', async () => {
+    MockedClient.mockImplementation(() => makeClient({
+      listRuns: async (params: { workflowId?: string }) => {
+        expect(params.workflowId).toBe('e2e-hello');
+        return [sampleRuns[0]];
+      },
+    }));
+
+    const { ui } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    await runsListCommand.execute(ctx, mockCLIInput({ flags: { workflow: 'e2e-hello' } }));
+  });
+
+  it('CL-06: empty list renders empty state, does not throw', async () => {
+    MockedClient.mockImplementation(() => makeClient({
+      listRuns: async () => [],
+    }));
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await runsListCommand.execute(ctx, mockCLIInput({ flags: {} }));
+
+    expect(result.exitCode).toBe(0);
+    expect(captured.errors.length).toBe(0);
+  });
+
+  it('CL-07: daemon unavailable — error message, exitCode 1', async () => {
+    MockedClient.mockImplementation(() => makeClient({
+      listRuns: async () => { throw new Error('ECONNREFUSED'); },
+    }));
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await runsListCommand.execute(ctx, mockCLIInput({ flags: {} }));
+
+    expect(result.exitCode).toBe(1);
+    expect(captured.errors.length).toBeGreaterThan(0);
+  });
+});
