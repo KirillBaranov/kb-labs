@@ -8,7 +8,7 @@
 import type { ParentMessage, ChildMessage, ExecuteMessage, LogMessage } from './ipc-protocol.js';
 import type { UIFacade, MessageOptions } from '@kb-labs/plugin-contracts';
 import { PluginError, wrapError, noopUI } from '@kb-labs/plugin-contracts';
-import { sideBorderBox, safeColors, safeSymbols, formatTable, setJsonMode } from '@kb-labs/shared-cli-ui';
+import { sideBorderBox, safeColors, safeSymbols, formatTable, setJsonMode, metricsList } from '@kb-labs/shared-cli-ui';
 import { createPluginContextV3 } from '../context/index.js';
 import { executeCleanup, type EventEmitterFn } from '../api/index.js';
 import { applySandboxPatches, type SandboxMode } from './harden.js';
@@ -118,9 +118,14 @@ function createStdoutUI(): UIFacade {
       console.log(boxOutput);
     },
     sideBox: (options) => {
+      const allSections = [];
+      if (options.summary && Object.keys(options.summary).length > 0) {
+        allSections.push({ items: metricsList(options.summary as Record<string, string | number>) });
+      }
+      allSections.push(...(options.sections ?? []).map(s => ({ header: s.header, items: s.items })));
       const boxOutput = sideBorderBox({
         title: options.title,
-        sections: (options.sections ?? []).map(s => ({ header: s.header, items: s.items })),
+        sections: allSections,
         status: options.status,
         timing: options.timing,
       });

@@ -16,7 +16,7 @@ function createManifest(): ManifestV3 {
     cli: {
       commands: [
         {
-          id: "test:run",
+          path: "test run",
           describe: "Run test command",
           flags: [],
           handler: "./cli/commands/run.js#run",
@@ -37,7 +37,8 @@ function createRegisteredCommand(manifest: ManifestV3): RegisteredCommand {
   return {
     manifest: {
       manifestVersion: "1.0",
-      id: "test:run",
+      segments: ["test", "run"],
+      id: "run",
       group: "test",
       describe: "Test command",
       loader: async () => ({ run: vi.fn() }),
@@ -56,8 +57,8 @@ describe("handleLimitFlag", () => {
     const registered = createRegisteredCommand(manifest);
 
     const registryStub = {
-      getCommandsByGroup: vi.fn().mockReturnValue([registered]),
-      getManifestCommand: vi.fn(),
+      listCommandsUnder: vi.fn().mockReturnValue([registered]),
+      getCommandAt: vi.fn(),
     };
 
     const write = vi.fn();
@@ -81,8 +82,8 @@ describe("handleLimitFlag", () => {
     const registered = createRegisteredCommand(manifest);
 
     const registryStub = {
-      getCommandsByGroup: vi.fn(),
-      getManifestCommand: vi.fn().mockReturnValue(registered),
+      listCommandsUnder: vi.fn(),
+      getCommandAt: vi.fn().mockReturnValue(registered),
     };
 
     const json = vi.fn();
@@ -99,15 +100,14 @@ describe("handleLimitFlag", () => {
     expect(json).toHaveBeenCalledTimes(1);
     const payload = json.mock.calls[0]![0] as any;
     expect(payload.scope).toBe("command");
-    expect(payload.command).toBe("test:run");
     expect(payload.product).toBe("test");
     expect(payload.limits.permissions?.fs?.read).toContain(".kb/test/**");
   });
 
   it("renders error when product is unknown", () => {
     const registryStub = {
-      getCommandsByGroup: vi.fn().mockReturnValue([]),
-      getManifestCommand: vi.fn(),
+      listCommandsUnder: vi.fn().mockReturnValue([]),
+      getCommandAt: vi.fn(),
     };
     const error = vi.fn();
     const presenter = { error };
