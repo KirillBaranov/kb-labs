@@ -2,6 +2,7 @@ import { readFile, stat } from 'node:fs/promises'
 import { relative } from 'node:path'
 import fg from 'fast-glob'
 import { parse as parseYaml } from 'yaml'
+import type { ILogger } from '@kb-labs/core-platform'
 import type { WorkflowSpec } from '@kb-labs/workflow-contracts'
 import { WorkflowSpecSchema } from '@kb-labs/workflow-contracts'
 import type { ResolvedWorkflow, WorkflowRegistry } from './types'
@@ -9,6 +10,7 @@ import type { ResolvedWorkflow, WorkflowRegistry } from './types'
 export interface WorkspaceWorkflowRegistryConfig {
   workspaceRoot: string
   patterns: string[]
+  logger?: ILogger
 }
 
 /**
@@ -63,11 +65,9 @@ export class WorkspaceWorkflowRegistry implements WorkflowRegistry {
       if (result.status === 'fulfilled' && result.value !== null) {
         workflows.push(result.value)
       } else if (result.status === 'rejected') {
-        // Log warning but continue
-        console.warn(
-          '[WorkspaceWorkflowRegistry] Failed to load workflow:',
-          result.reason instanceof Error ? result.reason.message : String(result.reason),
-        )
+        this.config.logger?.warn('Failed to load workflow', {
+          error: result.reason instanceof Error ? result.reason.message : String(result.reason),
+        })
       }
     }
 

@@ -11,15 +11,8 @@ import type { PlatformContainer } from '@kb-labs/core-runtime';
 
 export interface SubmitJobRequest {
   handler: string;
-  input?: unknown;
+  input?: Record<string, unknown>;
   priority?: 'low' | 'normal' | 'high';
-  metadata?: Record<string, unknown>;
-}
-
-export interface ScheduleJobRequest {
-  handler: string;
-  cron: string;
-  input?: unknown;
   metadata?: Record<string, unknown>;
 }
 
@@ -66,18 +59,16 @@ export class JobBroker {
               id: 'execute',
               name: 'Execute handler',
               uses,
-              // @ts-expect-error - WorkflowSpec step.with type mismatch
-              with: request.input ?? ({} as Record<string, unknown>),
+              with: request.input ?? {},
             },
           ],
         },
       },
     };
 
-    // Submit to engine
-    // @ts-expect-error - CreateRunInput type mismatch with inline options
     const run = await this.engine.runFromInline(spec, {
-      env: {} as Record<string, string>,
+      trigger: { type: 'manual' as const },
+      env: {},
       metadata: request.metadata,
     });
 
@@ -88,30 +79,6 @@ export class JobBroker {
     });
 
     return run;
-  }
-
-  /**
-   * Schedule a recurring job with cron expression.
-   * Registers job with CronScheduler (if available).
-   *
-   * NOTE: CronScheduler integration not yet implemented.
-   * This is a placeholder for future implementation.
-   */
-  async schedule(request: ScheduleJobRequest): Promise<{ id: string; cron: string }> {
-    this.logger.warn('CronScheduler not yet implemented', {
-      handler: request.handler,
-      cron: request.cron,
-    });
-
-    // TODO: Integrate with CronScheduler
-    // const scheduleId = await this.cronScheduler.register({
-    //   id: `schedule-${Date.now()}`,
-    //   cron: request.cron,
-    //   handler: request.handler,
-    //   input: request.input,
-    // });
-
-    throw new Error('CronScheduler not yet implemented');
   }
 
   /**

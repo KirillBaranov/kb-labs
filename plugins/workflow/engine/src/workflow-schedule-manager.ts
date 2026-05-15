@@ -1,25 +1,8 @@
 /**
  * @module @kb-labs/workflow-engine/workflow-schedule-manager
  *
- * Manages scheduled workflow execution via CronManager.
- *
- * ## Features
- * - Registers scheduled workflows with CronManager
- * - Executes workflows on cron triggers
- * - Tracks next/last run times
- * - Supports both manifest-based jobs and standalone workflows
- *
- * ## Usage
- * ```typescript
- * const scheduleManager = new WorkflowScheduleManager({
- *   cronManager,
- *   workflowService,
- *   executor,
- *   platform,
- * });
- *
- * await scheduleManager.registerAll();
- * ```
+ * @deprecated CronScheduler in workflow-daemon handles scheduling directly.
+ * WorkflowScheduleManager is unused and will be removed in a future major version.
  */
 
 import type { ICronManager, CronExpression } from '@kb-labs/core-platform';
@@ -64,6 +47,7 @@ export interface WorkflowScheduleManagerOptions {
  *
  * Integrates workflows with CronManager for scheduled execution.
  */
+/** @deprecated Use CronScheduler in workflow-daemon instead. */
 export class WorkflowScheduleManager {
   private readonly cronManager: ICronManager;
   private readonly workflowService: WorkflowService;

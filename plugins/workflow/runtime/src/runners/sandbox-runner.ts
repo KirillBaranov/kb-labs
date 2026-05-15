@@ -584,9 +584,9 @@ export class SandboxRunner implements Runner {
   private async resolveBuiltinShell(
     spec: StepSpec,
   ): Promise<PluginCommandResolution> {
-    // Use import.meta.resolve to find @kb-labs/workflow-builtins package
+    // Use import.meta.resolve to find @kb-labs/workflow-steps package
     // This supports ES module exports properly
-    const builtinsUrl = await import.meta.resolve('@kb-labs/workflow-builtins')
+    const builtinsUrl = await import.meta.resolve('@kb-labs/workflow-steps')
     // Convert file:// URL to path and remove /dist/index.js to get package root
     const builtinsPath = builtinsUrl.replace('file://', '').replace('/dist/index.js', '')
 
@@ -609,7 +609,7 @@ export class SandboxRunner implements Runner {
     }
 
     return {
-      pluginId: '@kb-labs/workflow-builtins',
+      pluginId: '@kb-labs/workflow-steps',
       pluginVersion: '0.1.0',
       pluginRoot: builtinsPath,
       handler: 'dist/shell.js', // Relative path from pluginRoot

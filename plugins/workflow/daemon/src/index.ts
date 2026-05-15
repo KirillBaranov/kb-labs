@@ -11,7 +11,7 @@ import { bootstrap } from './bootstrap.js';
   try {
     await bootstrap(process.cwd());
   } catch (error) {
-    console.error('Failed to start workflow daemon:', error);
+    process.stderr.write(`[workflow-daemon] FATAL: ${error instanceof Error ? error.message : String(error)}\n`);
     process.exit(1);
   }
 })();

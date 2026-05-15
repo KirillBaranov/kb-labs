@@ -1,6 +1,9 @@
 /**
  * @module @kb-labs/workflow-daemon/cron-discovery
  * CronDiscovery - discovers cron jobs from plugin manifests and user YAML files
+ *
+ * Purpose: scheduling — registers discovered crons into CronScheduler for execution.
+ * (ManifestScanner in engine handles listing — populates the REST API catalog; different output, different consumer.)
  */
 
 import { readdir, readFile, stat } from 'node:fs/promises';
