@@ -1,0 +1,67 @@
+import { WorkflowDaemonClient } from '../../http-client.js';
+import type { WorkflowRunSummary } from '../../http-client.js';
+
+type WorkflowClientInstance = InstanceType<typeof WorkflowDaemonClient>;
+
+/**
+ * Returns a partial client stub cast to the full WorkflowDaemonClient type.
+ * Use this in tests instead of `({...}) as never` to avoid unsafe casts.
+ */
+export function makeClient(overrides: Partial<WorkflowClientInstance>): WorkflowClientInstance {
+  return overrides as unknown as WorkflowClientInstance;
+}
+
+/**
+ * Default stub for WorkflowDaemonClient.
+ * Every method returns a minimal valid response so tests only override what they care about.
+ * Use: const client = mockObject(defaultWorkflowClient, { runWorkflow: async () => ... })
+ */
+export const defaultWorkflowClient: WorkflowDaemonClient = {
+  health: async () => ({ ok: true, service: 'workflow' }),
+
+  getMetrics: async () => ({
+    runs: { total: 0, queued: 0, running: 0, completed: 0, failed: 0, cancelled: 0 },
+    jobs: { total: 0, queued: 0, running: 0, completed: 0, failed: 0 },
+  }),
+
+  runWorkflow: async (_id, _req) => ({ runId: 'run-test-123', status: 'queued' }),
+
+  listRuns: async () => [],
+
+  getRun: async (runId) => ({
+    id: runId,
+    name: 'test-workflow',
+    status: 'running',
+    createdAt: new Date().toISOString(),
+  }),
+
+  getRunLogs: async () => [],
+
+  getRunEventsUrl: (runId) => `http://localhost:7778/api/v1/runs/${runId}/events`,
+
+  cancelRun: async () => {},
+
+  getJobStatus: async (jobId) => ({
+    id: jobId,
+    type: 'test',
+    status: 'running',
+    createdAt: new Date().toISOString(),
+  }),
+
+  getJobSteps: async () => ({ steps: [] }),
+
+  getJobLogs: async () => [],
+
+  getExecutions: async () => [],
+
+  getCronJobs: async () => ({ crons: [] }),
+
+  submitJob: async () => ({ id: 'job-test-123', status: 'pending' }),
+} as unknown as WorkflowDaemonClient;
+
+export const sampleRunSummary: WorkflowRunSummary = {
+  id: 'run-test-123',
+  name: 'test-workflow',
+  status: 'running',
+  createdAt: new Date().toISOString(),
+};
