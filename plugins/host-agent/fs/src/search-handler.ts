@@ -104,20 +104,20 @@ export class SearchHandler {
     if (this.hasRipgrep()) {
       cmd = 'rg';
       args = ['--no-heading', '--line-number', `--max-count=${maxResults}`];
-      for (const d of excludes) args.push(`--glob=!${d}`);
+      for (const d of excludes) { args.push(`--glob=!${d}`); }
       if (options.includes) {
-        for (const ext of options.includes) args.push(`--glob=${ext}`);
+        for (const ext of options.includes) { args.push(`--glob=${ext}`); }
       }
-      if (options.contextLines) args.push('-C', String(options.contextLines));
+      if (options.contextLines) { args.push('-C', String(options.contextLines)); }
       args.push('--', pattern, dir);
     } else {
       cmd = 'grep';
       args = ['-rn'];
-      for (const d of excludes) args.push(`--exclude-dir=${d}`);
+      for (const d of excludes) { args.push(`--exclude-dir=${d}`); }
       if (options.includes) {
-        for (const ext of options.includes) args.push(`--include=${ext}`);
+        for (const ext of options.includes) { args.push(`--include=${ext}`); }
       }
-      if (options.contextLines) args.push(`-C${options.contextLines}`);
+      if (options.contextLines) { args.push(`-C${options.contextLines}`); }
       args.push('-m', String(maxResults), '--', pattern, dir);
     }
 
@@ -159,7 +159,7 @@ export class SearchHandler {
     const excludes = options.excludes ?? DEFAULT_EXCLUDES;
 
     const args = [dir, '-type', 'f', '-name', pattern];
-    for (const d of excludes) args.push('!', '-path', `*/${d}/*`);
+    for (const d of excludes) { args.push('!', '-path', `*/${d}/*`); }
 
     const result = spawnSync('find', args, {
       timeout: SEARCH_TIMEOUT_MS,

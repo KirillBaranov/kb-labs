@@ -44,7 +44,7 @@ const MANIFEST_PATH = '/workspace/plugins/test/dist/index.js';
 const _PKG_JSON_PATH = '/workspace/plugins/test/package.json';
 
 const HASH_V1 = `sha256-${crypto.createHash('sha256').update('version 1').digest('base64')}`;
-const HASH_V2 = `sha256-${crypto.createHash('sha256').update('version 2').digest('base64')}`;
+const _HASH_V2 = `sha256-${crypto.createHash('sha256').update('version 2').digest('base64')}`;
 
 function makeEntry(overrides: Partial<PackageCacheEntry> = {}): PackageCacheEntry {
   const manifest: CommandManifest = {
@@ -96,7 +96,7 @@ function statMock(routes: Record<string, { mtimeMs: number } | 'throw'>) {
     const ps = String(p);
     for (const [key, val] of Object.entries(routes)) {
       if (ps.includes(key)) {
-        if (val === 'throw') throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+        if (val === 'throw') { throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' }); }
         return val;
       }
     }
@@ -108,7 +108,7 @@ function statMock(routes: Record<string, { mtimeMs: number } | 'throw'>) {
 function readFileMock(cacheJson: string) {
   return vi.fn().mockImplementation(async (p: unknown) => {
     const ps = String(p);
-    if (ps.endsWith('cli-manifests.json')) return cacheJson;
+    if (ps.endsWith('cli-manifests.json')) { return cacheJson; }
     throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
   });
 }
@@ -152,8 +152,8 @@ describe('cache staleness — hybrid mtime + hash strategy', () => {
     const entry = makeEntry({ pkgJsonMtime: 1000, manifestMtime: 2000, manifestHash: HASH_V1 });
     fsMock.readFile = vi.fn().mockImplementation(async (p: unknown) => {
       const ps = String(p);
-      if (ps.endsWith('cli-manifests.json')) return makeCacheJson(entry);
-      if (ps.includes('dist/index.js')) return 'version 1'; // same content → same hash
+      if (ps.endsWith('cli-manifests.json')) { return makeCacheJson(entry); }
+      if (ps.includes('dist/index.js')) { return 'version 1'; } // same content → same hash
       throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     });
     fsMock.stat = statMock({
@@ -180,9 +180,9 @@ describe('cache staleness — hybrid mtime + hash strategy', () => {
     const entry = makeEntry({ pkgJsonMtime: 1000, manifestMtime: 2000, manifestHash: HASH_V1 });
     fsMock.readFile = vi.fn().mockImplementation(async (p: unknown) => {
       const ps = String(p);
-      if (ps.endsWith('cli-manifests.json')) return makeCacheJson(entry);
-      if (ps.includes('dist/index.js')) return 'version 2'; // different content → HASH_V2
-      if (ps.includes('pnpm-workspace.yaml')) return 'packages: []';
+      if (ps.endsWith('cli-manifests.json')) { return makeCacheJson(entry); }
+      if (ps.includes('dist/index.js')) { return 'version 2'; } // different content → HASH_V2
+      if (ps.includes('pnpm-workspace.yaml')) { return 'packages: []'; }
       throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     });
     fsMock.stat = statMock({
@@ -205,8 +205,8 @@ describe('cache staleness — hybrid mtime + hash strategy', () => {
     const entry = makeEntry({ pkgJsonMtime: 1000, manifestMtime: 2000 });
     fsMock.readFile = vi.fn().mockImplementation(async (p: unknown) => {
       const ps = String(p);
-      if (ps.endsWith('cli-manifests.json')) return makeCacheJson(entry);
-      if (ps.includes('pnpm-workspace.yaml')) return 'packages: []';
+      if (ps.endsWith('cli-manifests.json')) { return makeCacheJson(entry); }
+      if (ps.includes('pnpm-workspace.yaml')) { return 'packages: []'; }
       throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     });
     fsMock.stat = statMock({
@@ -228,8 +228,8 @@ describe('cache staleness — hybrid mtime + hash strategy', () => {
     const entry = makeEntry({ pkgJsonMtime: 1000 });
     fsMock.readFile = vi.fn().mockImplementation(async (p: unknown) => {
       const ps = String(p);
-      if (ps.endsWith('cli-manifests.json')) return makeCacheJson(entry);
-      if (ps.includes('pnpm-workspace.yaml')) return 'packages: []';
+      if (ps.endsWith('cli-manifests.json')) { return makeCacheJson(entry); }
+      if (ps.includes('pnpm-workspace.yaml')) { return 'packages: []'; }
       throw Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
     });
     fsMock.stat = statMock({

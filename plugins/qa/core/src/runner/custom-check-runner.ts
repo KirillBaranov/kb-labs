@@ -96,7 +96,7 @@ function recordResult(
 function getDiffPackageDirs(rootDir: string, base: string, diffFilter: string): Set<string> {
   try {
     const args = ['diff', `${base}...HEAD`, '--name-only'];
-    if (diffFilter) args.push(`--diff-filter=${diffFilter}`);
+    if (diffFilter) { args.push(`--diff-filter=${diffFilter}`); }
     const result = spawnSync('git', args, { cwd: rootDir, encoding: 'utf-8' });
     const output = (result.stdout ?? '').trim();
     if (!output) { return new Set(); }
