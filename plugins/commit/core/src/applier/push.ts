@@ -56,7 +56,8 @@ export async function pushCommits(cwd: string, options?: PushOptions): Promise<P
       commitsPushed: commitsToPush,
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
+    const raw = error instanceof Error ? error.message : String(error);
+    const message = cleanGitError(raw);
     const branch = await getCurrentBranch(cwd).catch(() => 'unknown');
 
     return {
@@ -67,6 +68,14 @@ export async function pushCommits(cwd: string, options?: PushOptions): Promise<P
       error: message,
     };
   }
+}
+
+function cleanGitError(message: string): string {
+  return message
+    .split('\n')
+    .filter((line) => !line.trimStart().startsWith('hint:'))
+    .join('\n')
+    .trim();
 }
 
 /**
