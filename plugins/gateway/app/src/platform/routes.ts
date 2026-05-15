@@ -20,6 +20,8 @@ import {
 // ── Method allowlist ──────────────────────────────────────────────────────
 // Only methods listed here are callable via the Platform API.
 // Internal/lifecycle methods (setSource, shutdown, etc.) are NOT exposed.
+// Intentionally static — new methods must be added here explicitly;
+// dynamic derivation from the adapter list would bypass security review.
 
 const ALLOWED_METHODS: Record<string, Set<string>> = {
   llm: new Set(['complete', 'stream', 'chatWithTools']),
