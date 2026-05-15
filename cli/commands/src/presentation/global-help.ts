@@ -1,44 +1,70 @@
 import { colors } from "./shared";
-import { sideBorderBox, type SectionContent, type RichSectionItem } from "@kb-labs/shared-cli-ui";
+import { sideBorderBox, type SectionContent } from "@kb-labs/shared-cli-ui";
 import type { TrieBackedRegistry } from "../registry/service";
+
+function truncate(s: string, max: number): string {
+  if (s.length <= max) { return s; }
+  return s.slice(0, max - 1) + '…';
+}
 
 export function renderGlobalHelp(registry: TrieBackedRegistry): string {
   const cols = (typeof process !== 'undefined' && process.stdout?.columns) || 80;
-  const itemMaxWidth = Math.max(40, cols - 4);
   const sections: SectionContent[] = [];
 
-  // System commands/groups (info, auth, docs, logs, ...)
+  // Usage
+  sections.push({
+    header: 'Usage',
+    items: [`kb ${colors.dim('<command> [subcommand] [flags]')}`],
+  });
+
+  // System commands (auth, completion, docs, info, logs, platform, registry)
   const systemEntries = registry.listSystemTopLevel().sort((a, b) => a.name.localeCompare(b.name));
   if (systemEntries.length > 0) {
-    const maxLen = Math.max(...systemEntries.map((e) => e.name.length), 8);
-    const items: Array<string | RichSectionItem> = systemEntries.map(({ name, describe }) => ({
-      text: `${colors.cyan(name.padEnd(maxLen))}  ${colors.dim(describe)}`,
-      truncate: itemMaxWidth,
-    }));
+    const nameLen = Math.max(...systemEntries.map((e) => e.name.length), 8);
+    const items = systemEntries.map(({ name, describe }) =>
+      `${colors.cyan(name.padEnd(nameLen))}  ${colors.dim(describe)}`
+    );
     sections.push({ header: 'Commands', items });
   }
 
-  // Plugin groups (first segment, unique)
+  // Plugin groups — unique first segments with describe from groupMeta
   const allCommands = registry.listCommands();
-  const topGroups = new Map<string, string | undefined>();
-  for (const cmd of allCommands) {
-    const group = cmd.manifest.group;
-    if (!topGroups.has(group)) { topGroups.set(group, undefined); }
-  }
+  const groupNames = [...new Set(allCommands.map((c) => c.manifest.group))].sort();
 
-  if (topGroups.size > 0) {
-    const sorted = [...topGroups.keys()].sort();
-    const maxLen = Math.max(...sorted.map((g) => g.length), 8);
-    const items: Array<string | RichSectionItem> = sorted.map((name) => {
-      const paddedName = colors.cyan(name.padEnd(maxLen));
-      const desc = topGroups.get(name);
-      if (!desc) { return paddedName; }
-      return { text: `${paddedName}  ${colors.dim(desc)}`, truncate: itemMaxWidth };
+  if (groupNames.length > 0) {
+    const nameLen = Math.max(...groupNames.map((g) => g.length), 8);
+
+    const entries = groupNames.map((name) => {
+      const result = registry.resolve([name]);
+      const describe = result.type === 'group' ? (result.describe ?? '') : '';
+      return { name, describe };
     });
+
+    // 2-column layout
+    const GAP = 4;
+    const descMaxTotal = cols - 4 - (nameLen + 2) * 2 - GAP;
+    const descMax = Math.max(12, Math.floor(descMaxTotal / 2));
+
+    const half = Math.ceil(entries.length / 2);
+    const left  = entries.slice(0, half);
+    const right = entries.slice(half);
+
+    const items: string[] = left.map((l, i) => {
+      const r = right[i];
+      const lName = colors.cyan(l.name.padEnd(nameLen));
+      const lDesc = l.describe
+        ? colors.dim(truncate(l.describe, descMax).padEnd(descMax))
+        : ' '.repeat(descMax);
+      if (!r) { return `${lName}  ${lDesc.trimEnd()}`; }
+      const rName = colors.cyan(r.name.padEnd(nameLen));
+      const rDesc = r.describe ? colors.dim(truncate(r.describe, descMax)) : '';
+      return `${lName}  ${lDesc}  ${' '.repeat(GAP - 2)}${rName}  ${rDesc}`;
+    });
+
     sections.push({ header: 'Plugins', items });
   }
 
-  sections.push({ items: [colors.dim('kb <command> --help')] });
+  sections.push({ items: [colors.dim('Run  kb <command> --help  for detailed usage')] });
 
   return sideBorderBox({ title: 'KB Labs CLI', sections, status: 'info' });
 }
