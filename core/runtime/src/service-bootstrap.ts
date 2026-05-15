@@ -30,9 +30,6 @@ const _registeredHooks = new Set<string>();
 let _signalHandlersRegistered = false;
 let _platformRoot: string | undefined;
 let _projectRoot: string | undefined;
-/** Notifier router stop handle — populated when config.notifier is present. */
-let _stopNotifierRouter: (() => void) | undefined;
-
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
@@ -110,9 +107,6 @@ function _ensureHooksRegistered(appId: string): void {
     },
     onBeforeShutdown: () => {
       // This hook fires BEFORE adapters are disposed (container.ts line 767).
-      // Stop notifier router first (while eventBus is still alive).
-      _stopNotifierRouter?.();
-
       // Identify which adapters implement IDisposable so we can log them now,
       // while they are still alive. The actual disposal happens in container.shutdown()
       // between lines 816–843 — after all onBeforeShutdown hooks complete.
@@ -233,29 +227,6 @@ export async function createServiceBootstrap(
       projectRoot,
       sources,
     });
-
-    // Start notifier router if configured. Dynamic import avoids circular dep:
-    // core-runtime cannot statically depend on adapters/notifier-router.
-    if (platformConfig.notifier && platform.hasResourceBroker) {
-      try {
-        const { createNotifierRouter } = await import('@kb-labs/notifier-router');
-        const router = createNotifierRouter(platformConfig.notifier, {
-          eventBus: platform.eventBus,
-          broker: platform.resourceBroker,
-          logger: platform.logger,
-        });
-        router.start();
-        _stopNotifierRouter = () => router.stop();
-        platform.logger.info('NotifierRouter started', {
-          channels: Object.keys(platformConfig.notifier.channels),
-          rules: platformConfig.notifier.routing.length,
-        });
-      } catch (err) {
-        platform.logger.warn('NotifierRouter unavailable — install @kb-labs/notifier-router to enable', {
-          error: err instanceof Error ? err.message : String(err),
-        });
-      }
-    }
   } catch (error) {
     process.stderr.write(
       `[${appId}:platform] Initialization failed, using NoOp adapters: ${error instanceof Error ? error.message : String(error)}\n`,

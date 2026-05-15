@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url';
 import { promises as fs } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import type { AdapterTypes, PlatformContainer } from './container.js';
-import type { PlatformConfig, CoreFeaturesConfig, ResourceBrokerConfig, LLMAdapterOptions, AdapterValue } from './config.js';
+import type { PlatformConfig, CoreFeaturesConfig, ResourceBrokerConfig, LLMAdapterOptions, AdapterValue, NotifierAdapterOptions } from './config.js';
 import { platform } from './container.js';
 import { resolveAdapter } from './discover-adapters.js';
 import { createAnalyticsContext } from './analytics-context.js';
@@ -1136,6 +1136,37 @@ export async function initPlatform(
             mode: privacyConfig?.mode ?? 'reversible',
           });
         }
+      }
+    }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // Notifier adapter — dynamic import to avoid circular dep (adapters/* → core)
+    // ══════════════════════════════════════════════════════════════════════
+    if (typeof adapters.notifier === 'string') {
+      const notifierOptions = (adapterOptions.notifier ?? {}) as NotifierAdapterOptions;
+      try {
+        const notifierPkg = adapters.notifier;
+        const notifierModule = await import(notifierPkg);
+        const notifierFactory = notifierModule.createAdapter ?? notifierModule.default;
+        if (typeof notifierFactory === 'function') {
+          const notifier = notifierFactory(notifierOptions, {
+            eventBus: platform.eventBus,
+            broker: platform.resourceBroker,
+            logger: platform.logger,
+          });
+          platform.setAdapter('notifier', notifier);
+          platform.logger.info('initPlatform initialized notifier adapter', {
+            pkg: notifierPkg,
+            channels: Object.keys(notifierOptions.channels ?? {}),
+          });
+        } else {
+          platform.logger.warn('Notifier adapter has no createAdapter export', { pkg: adapters.notifier });
+        }
+      } catch (err) {
+        platform.logger.warn('Failed to load notifier adapter', {
+          pkg: adapters.notifier,
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
     }
 
