@@ -1,0 +1,140 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { mockCLIInput, createCapturedUI, createMockContext } from '@kb-labs/shared-testing-e2e';
+
+// Mock HTTP client before importing the command
+vi.mock('../../http.js', () => ({
+  post: vi.fn(),
+}));
+
+// Mock scope resolution to avoid filesystem walks
+vi.mock('../../scope.js', () => ({
+  resolveCliScope: vi.fn(),
+  scopeBody: vi.fn(),
+  CliScopeError: class CliScopeError extends Error {
+    readonly code: string;
+    constructor(code: string, message: string) {
+      super(message);
+      this.code = code;
+      this.name = 'CliScopeError';
+    }
+  },
+}));
+
+import { post } from '../../http.js';
+import { resolveCliScope, scopeBody } from '../../scope.js';
+import installCommand from '../../commands/install.js';
+
+const mockedPost = vi.mocked(post);
+const mockedResolveCliScope = vi.mocked(resolveCliScope);
+const mockedScopeBody = vi.mocked(scopeBody);
+
+const DEFAULT_SCOPE_CTX = { scope: 'project' as const, projectRoot: '/workspace', reason: 'auto-detect' as const };
+const DEFAULT_SCOPE_BODY = { scope: 'project' as const, projectRoot: '/workspace' };
+
+beforeEach(() => {
+  vi.resetAllMocks();
+  mockedResolveCliScope.mockResolvedValue(DEFAULT_SCOPE_CTX);
+  mockedScopeBody.mockReturnValue(DEFAULT_SCOPE_BODY);
+});
+
+describe('marketplace:install', () => {
+  it('CI-01: installs package successfully, prints success message', async () => {
+    mockedPost.mockResolvedValue({
+      installed: [{ id: 'my-plugin', version: '1.0.0', primaryKind: 'plugin' }],
+      warnings: [],
+      scope: 'project',
+    });
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await installCommand.execute(ctx, mockCLIInput({ argv: ['my-plugin'], flags: {} }));
+
+    expect(result.exitCode).toBe(0);
+    expect(captured.success.length).toBeGreaterThan(0);
+    expect(captured.success[0]?.message).toContain('install');
+  });
+
+  it('CI-02: --json flag outputs JSON result', async () => {
+    const installResult = {
+      installed: [{ id: 'my-plugin', version: '1.0.0', primaryKind: 'plugin' }],
+      warnings: [],
+      scope: 'project',
+    };
+    mockedPost.mockResolvedValue(installResult);
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await installCommand.execute(ctx, mockCLIInput({ argv: ['my-plugin'], flags: { json: true } }));
+
+    expect(result.exitCode).toBe(0);
+    expect(captured.json.length).toBeGreaterThan(0);
+    expect(captured.json[0]).toMatchObject({ installed: expect.any(Array) });
+  });
+
+  it('CI-03: HTTP error — returns exitCode 1 with error captured', async () => {
+    mockedPost.mockRejectedValue(new Error('Marketplace /packages/install failed (500): Internal error'));
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await installCommand.execute(ctx, mockCLIInput({ argv: ['bad-pkg'], flags: {} }));
+
+    expect(result.exitCode).toBe(1);
+    expect(captured.errors.length).toBeGreaterThan(0);
+  });
+
+  it('CI-04: missing argv — returns exitCode 1, validation error shown', async () => {
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await installCommand.execute(ctx, mockCLIInput({ argv: [], flags: {} }));
+
+    expect(result.exitCode).toBe(1);
+    expect(mockedPost).not.toHaveBeenCalled();
+  });
+
+  it('CI-05: scope resolution failure — returns exitCode 1', async () => {
+    const { CliScopeError } = await import('../../scope.js');
+    mockedResolveCliScope.mockRejectedValue(
+      new CliScopeError('SCOPE_PROJECT_ROOT_NOT_FOUND', 'No .kb/kb.config.json found'),
+    );
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await installCommand.execute(ctx, mockCLIInput({ argv: ['pkg'], flags: {} }));
+
+    expect(result.exitCode).toBe(1);
+    expect(mockedPost).not.toHaveBeenCalled();
+  });
+
+  it('CI-06: installs with --dev flag — passes dev:true to HTTP', async () => {
+    mockedPost.mockResolvedValue({
+      installed: [{ id: 'dev-plugin', version: '0.1.0', primaryKind: 'plugin' }],
+      warnings: [],
+      scope: 'project',
+    });
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await installCommand.execute(ctx, mockCLIInput({ argv: ['dev-plugin'], flags: { dev: true } }));
+
+    expect(result.exitCode).toBe(0);
+    expect(mockedPost).toHaveBeenCalledWith(
+      '/packages/install',
+      expect.objectContaining({ dev: true, specs: ['dev-plugin'] }),
+    );
+  });
+
+  it('CI-07: warnings present — success still returned, result includes warnings', async () => {
+    mockedPost.mockResolvedValue({
+      installed: [{ id: 'pkg', version: '1.0.0', primaryKind: 'plugin' }],
+      warnings: ['Peer dependency mismatch'],
+      scope: 'project',
+    });
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await installCommand.execute(ctx, mockCLIInput({ argv: ['pkg'], flags: {} }));
+
+    expect(result.exitCode).toBe(0);
+    expect(result.result?.warnings).toContain('Peer dependency mismatch');
+  });
+});
