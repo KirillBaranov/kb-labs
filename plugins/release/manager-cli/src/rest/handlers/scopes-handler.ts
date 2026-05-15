@@ -5,13 +5,14 @@
  * Analogous to commit-plugin scopes
  */
 
-import { defineHandler, findRepoRoot, discoverSubRepoPaths } from '@kb-labs/sdk';
+import { defineHandler, findRepoRoot, discoverSubRepoPaths, rethrowForRest } from '@kb-labs/sdk';
 import type { ScopesResponse, ReleaseScopeInfo } from '@kb-labs/release-manager-contracts';
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 export default defineHandler({
   async execute(ctx): Promise<ScopesResponse> {
+    try {
     const cwd = ctx.cwd || process.cwd();
     const repoRoot = await findRepoRoot(cwd);
 
@@ -73,6 +74,9 @@ export default defineHandler({
     uniqueScopes.sort((a, b) => a.name.localeCompare(b.name));
 
     return { scopes: uniqueScopes };
+    } catch (err) {
+      rethrowForRest(err);
+    }
   },
 });
 

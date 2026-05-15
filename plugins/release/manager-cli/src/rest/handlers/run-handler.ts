@@ -2,7 +2,7 @@
  * Run release handler — thin adapter over core runReleasePipeline().
  */
 
-import { defineHandler, findRepoRoot, type RestInput, useConfig, useLLM } from '@kb-labs/sdk';
+import { defineHandler, findRepoRoot, type RestInput, useConfig, useLLM, rethrowForRest } from '@kb-labs/sdk';
 import type {
   RunReleaseRequest,
   RunReleaseResponse,
@@ -19,6 +19,7 @@ import { createChangelogGenerator } from '../../shared/changelog-factory';
 
 export default defineHandler({
   async execute(ctx, input: RestInput<unknown, RunReleaseRequest>): Promise<RunReleaseResponse> {
+    try {
     const scope = input.body?.scope || 'root';
     const flow = input.body?.flow;
     const dryRun = input.body?.dryRun ?? false;
@@ -78,5 +79,8 @@ export default defineHandler({
       success: result.success,
       errors: result.report.result.errors,
     };
+    } catch (err) {
+      rethrowForRest(err);
+    }
   },
 });

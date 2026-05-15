@@ -4,7 +4,7 @@
  * Returns full workflow run data including jobs and steps.
  */
 
-import { defineHandler, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineHandler, rethrowForRest, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
 import { getWorkflowDaemonUrl } from '../http-client.js';
 
 interface RunDetailParams {
@@ -55,7 +55,7 @@ export default defineHandler({
         '[run-detail-handler] Error fetching run',
         error instanceof Error ? error : undefined
       );
-      throw error;
+      rethrowForRest(error);
     }
   },
 });

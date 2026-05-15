@@ -1,4 +1,4 @@
-import { defineHandler, useConfig, type PluginContextV3, type SelectData } from '@kb-labs/sdk';
+import { defineHandler, useConfig, type PluginContextV3, type SelectData, rethrowForRest } from '@kb-labs/sdk';
 import { type CommitPluginConfig, resolveCommitConfig } from '@kb-labs/commit-contracts';
 
 /**
@@ -9,19 +9,23 @@ import { type CommitPluginConfig, resolveCommitConfig } from '@kb-labs/commit-co
  */
 export default defineHandler({
   async execute(_ctx: PluginContextV3, _input: unknown): Promise<SelectData> {
-    const fileConfig = await useConfig<Partial<CommitPluginConfig>>();
-    const config = resolveCommitConfig(fileConfig ?? {});
+    try {
+      const fileConfig = await useConfig<Partial<CommitPluginConfig>>();
+      const config = resolveCommitConfig(fileConfig ?? {});
 
-    const scopes = config.scope?.scopes ?? [{ id: 'root', label: 'root', path: '.' }];
-    const defaultId = config.scope?.default ?? scopes[0]?.id ?? 'root';
+      const scopes = config.scope?.scopes ?? [{ id: 'root', label: 'root', path: '.' }];
+      const defaultId = config.scope?.default ?? scopes[0]?.id ?? 'root';
 
-    return {
-      value: defaultId,
-      options: scopes.map((s) => ({
-        value: s.id,
-        label: s.label,
-        description: s.description,
-      })),
-    };
+      return {
+        value: defaultId,
+        options: scopes.map((s) => ({
+          value: s.id,
+          label: s.label,
+          description: s.description,
+        })),
+      };
+    } catch (err) {
+      rethrowForRest(err);
+    }
   },
 });

@@ -1,4 +1,4 @@
-import { defineHandler, type PluginContextV3, type RestInput } from '@kb-labs/sdk';
+import { defineHandler, type PluginContextV3, type RestInput, rethrowForRest } from '@kb-labs/sdk';
 import {
   COMMIT_CACHE_PREFIX,
   type ResetResponse,
@@ -25,11 +25,7 @@ export default defineHandler({
         scope,
       };
     } catch (error) {
-      return {
-        success: false,
-        message: `Failed to delete plan: ${error}`,
-        scope,
-      };
+      rethrowForRest(error);
     }
   },
 });

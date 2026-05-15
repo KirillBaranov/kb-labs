@@ -5,7 +5,7 @@
  * files not reachable are dead. Zero false positives by design.
  */
 
-import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, handleError, type PluginContextV3 } from '@kb-labs/sdk';
 import type { UIFacade } from '@kb-labs/sdk';
 import type { DeadCodeResult, DeadCodeRemovalResult, DeadCodeBackupManifest } from '@kb-labs/quality-contracts';
 import { CACHE_KEYS } from '@kb-labs/quality-contracts';
@@ -67,11 +67,7 @@ export default defineCommand({
           }
           return { exitCode: 0 };
         } catch (err: unknown) {
-          if (flags.json) {
-            ui?.json?.({ error: err instanceof Error ? err.message : String(err) });
-          } else {
-            ui?.error?.(err instanceof Error ? err.message : String(err));
-          }
+          handleError(ctx, err, flags.json);
           return { exitCode: 1 };
         }
       }

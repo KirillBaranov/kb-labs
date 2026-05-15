@@ -1,4 +1,4 @@
-import { defineHandler, useConfig, type PluginContextV3, type RestInput, useLLM, useLogger } from '@kb-labs/sdk';
+import { defineHandler, useConfig, type PluginContextV3, type RestInput, useLLM, useLogger, rethrowForRest } from '@kb-labs/sdk';
 import type { LLMMessage } from '@kb-labs/sdk';
 import {
   COMMIT_CACHE_PREFIX,
@@ -149,7 +149,7 @@ ${fileContext}`;
         });
       }
 
-      throw new Error(`Failed to regenerate commit: ${error}`);
+      rethrowForRest(error);
     }
   },
 });

@@ -2,7 +2,7 @@
  * workflow:logs command - Get job or run logs
  */
 
-import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, validationError, handleError, type PluginContextV3 } from '@kb-labs/sdk';
 import { type LogsFlags } from '@kb-labs/workflow-contracts';
 import { WorkflowDaemonClient } from '../http-client.js';
 
@@ -40,12 +40,7 @@ export default defineCommand<unknown, LogsInput, { exitCode: number }>({
       const runId = flags['run-id'];
 
       if (!jobId && !runId) {
-        if (outputJson) {
-          ctx.ui?.json?.({ ok: false, error: 'Missing required flag: --job-id or --run-id' });
-        } else {
-          ctx.ui?.error?.('Missing required flag: --job-id or --run-id');
-          ctx.ui?.info?.('Usage: kb workflow logs --run-id=<run-id>');
-        }
+        validationError(ctx, 'Missing required flag: --job-id or --run-id', 'Usage: kb workflow logs --run-id=<run-id>', outputJson);
         return { exitCode: 1 };
       }
 
@@ -62,14 +57,7 @@ export default defineCommand<unknown, LogsInput, { exitCode: number }>({
 
         return { exitCode: 0 };
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-
-        if (outputJson) {
-          ctx.ui?.json?.({ ok: false, error: message });
-        } else {
-          ctx.ui?.error?.(`Failed to get logs: ${message}`);
-        }
-
+        handleError(ctx, error, outputJson);
         return { exitCode: 1 };
       }
     },

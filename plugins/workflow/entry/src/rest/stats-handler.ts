@@ -3,7 +3,7 @@
  * REST handler for dashboard statistics (proxy to daemon)
  */
 
-import { defineHandler, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineHandler, rethrowForRest, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
 import type { DashboardStatsResponse } from '@kb-labs/workflow-contracts';
 import { getWorkflowDaemonUrl } from '../http-client';
 
@@ -33,7 +33,7 @@ export default defineHandler({
         '[stats-handler] Error fetching stats',
         error instanceof Error ? error : undefined
       );
-      throw error;
+      rethrowForRest(error);
     }
   },
 });

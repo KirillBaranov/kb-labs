@@ -4,7 +4,7 @@
  * Reruns a workflow by re-submitting it with the same inputs and trigger.
  */
 
-import { defineCommand, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, validationError, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
 import { WorkflowDaemonClient } from '../http-client.js';
 
 interface RunsRerunFlags {
@@ -19,14 +19,13 @@ export default defineCommand<unknown, CLIInput<RunsRerunFlags>, { exitCode: numb
   handler: {
     async execute(ctx: PluginContextV3, input: CLIInput<RunsRerunFlags>): Promise<{ exitCode: number }> {
       const { flags, argv = [] } = input;
+      const outputJson = flags?.json ?? false;
       const runId = argv[0];
 
       if (!runId) {
-        ctx.ui?.error?.('Usage: kb workflow runs-rerun <runId> [--failed-only]');
+        validationError(ctx, 'Missing run ID', 'Usage: kb workflow runs-rerun <runId> [--failed-only]', outputJson);
         return { exitCode: 1 };
       }
-
-      const outputJson = flags?.json ?? false;
       const failedOnly = flags?.['failed-only'] ?? false;
 
       try {
@@ -77,12 +76,7 @@ export default defineCommand<unknown, CLIInput<RunsRerunFlags>, { exitCode: numb
 
         return { exitCode: 0 };
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        if (outputJson) {
-          ctx.ui?.json?.({ ok: false, error: message });
-        } else {
-          ctx.ui?.error?.(`Failed to rerun: ${message}`);
-        }
+        handleError(ctx, error, outputJson);
         return { exitCode: 1 };
       }
     },

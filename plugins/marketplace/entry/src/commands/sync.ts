@@ -1,4 +1,4 @@
-import { defineCommand, useEnv, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
+import { defineCommand, useEnv, validationError, handleError, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import { post } from '../http.js';
 import { resolveCliScope, scopeBody, CliScopeError } from '../scope.js';
 import * as fs from 'node:fs/promises';
@@ -41,10 +41,11 @@ export default defineCommand<unknown, SyncInput, SyncResultData>({
         scopeCtx = await resolveCliScope(cwd, flags.scope);
       } catch (err) {
         if (err instanceof CliScopeError) {
-          ctx.ui?.error?.(err.message);
-          return { exitCode: 1, result: { added: [], skipped: [], total: 0 } };
+          validationError(ctx, err.message, undefined, flags.json);
+        } else {
+          handleError(ctx, err, flags.json);
         }
-        throw err;
+        return { exitCode: 1, result: { added: [], skipped: [], total: 0 } };
       }
 
       // Sync reads include/exclude patterns from the config file located at
@@ -57,40 +58,42 @@ export default defineCommand<unknown, SyncInput, SyncResultData>({
       const syncConfig = await loadSyncConfig(configRoot);
 
       if (!syncConfig.include?.length) {
-        ctx.ui?.error?.(
-          `No marketplace.sync.include configured.\n\n` +
-          `Add to ${configRoot}/.kb/kb.config.json:\n\n` +
-          `  "marketplace": {\n` +
-          `    "sync": {\n` +
-          `      "include": ["plugins/*/entry", "plugins/*/core", "adapters/*"]\n` +
-          `    }\n` +
-          `  }`
+        validationError(
+          ctx,
+          `No marketplace.sync.include configured.\n\nAdd to ${configRoot}/.kb/kb.config.json:\n\n  "marketplace": {\n    "sync": {\n      "include": ["plugins/*/entry", "plugins/*/core", "adapters/*"]\n    }\n  }`,
+          undefined,
+          flags.json,
         );
         return { exitCode: 1, result: { added: [], skipped: [], total: 0 } };
       }
 
-      const isDev = (useEnv('NODE_ENV') ?? 'development') === 'development';
-      const result = await post<SyncResultData>('/workspace/sync', {
-        include: syncConfig.include,
-        exclude: syncConfig.exclude,
-        autoEnable: flags['auto-enable'] !== undefined ? Boolean(flags['auto-enable']) : isDev,
-        ...scopeBody(scopeCtx),
-      });
-
-      if (flags.json) {
-        ctx.ui?.json?.(result);
-      } else if (result.added.length === 0) {
-        ctx.ui?.info?.(`Lock is up to date — ${scopeCtx.scope} (${result.total} entries)`);
-      } else {
-        ctx.ui?.success?.(`Synced ${result.added.length} new entries to ${scopeCtx.scope} (${result.total} total)`, {
-          sections: [{
-            header: 'Added',
-            items: result.added.map(e => `+ ${e.id} (${e.primaryKind}) v${e.version}`),
-          }],
+      try {
+        const isDev = (useEnv('NODE_ENV') ?? 'development') === 'development';
+        const result = await post<SyncResultData>('/workspace/sync', {
+          include: syncConfig.include,
+          exclude: syncConfig.exclude,
+          autoEnable: flags['auto-enable'] !== undefined ? Boolean(flags['auto-enable']) : isDev,
+          ...scopeBody(scopeCtx),
         });
-      }
 
-      return { exitCode: 0, result };
+        if (flags.json) {
+          ctx.ui?.json?.(result);
+        } else if (result.added.length === 0) {
+          ctx.ui?.info?.(`Lock is up to date — ${scopeCtx.scope} (${result.total} entries)`);
+        } else {
+          ctx.ui?.success?.(`Synced ${result.added.length} new entries to ${scopeCtx.scope} (${result.total} total)`, {
+            sections: [{
+              header: 'Added',
+              items: result.added.map(e => `+ ${e.id} (${e.primaryKind}) v${e.version}`),
+            }],
+          });
+        }
+
+        return { exitCode: 0, result };
+      } catch (err) {
+        handleError(ctx, err, flags.json);
+        return { exitCode: 1, result: { added: [], skipped: [], total: 0 } };
+      }
     },
   },
 });
@@ -108,7 +111,7 @@ async function loadSyncConfig(root: string): Promise<{ include?: string[]; exclu
   return {};
 }
 
-/** Minimal JSONC stripper — removes // line and /* *\/ block comments plus trailing commas. */
+/** Minimal JSONC stripper — removes // line and /* block comments plus trailing commas. */
 function stripJsonc(src: string): string {
   return src
     .replace(/\/\*[\s\S]*?\*\//g, '')

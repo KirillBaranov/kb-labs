@@ -4,7 +4,7 @@
  * Lists all workflow runs across all workflows.
  */
 
-import { defineHandler, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineHandler, rethrowForRest, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
 import { getWorkflowDaemonUrl } from '../http-client.js';
 
 interface RunsListQuery {
@@ -62,7 +62,7 @@ export default defineHandler({
         '[runs-list-handler] Error fetching runs',
         error instanceof Error ? error : undefined
       );
-      throw error;
+      rethrowForRest(error);
     }
   },
 });

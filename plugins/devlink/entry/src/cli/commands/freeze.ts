@@ -1,4 +1,4 @@
-import { defineCommand, useLoader, TimingTracker, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
+import { defineCommand, useLoader, TimingTracker, handleError, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import { discoverMonorepos, buildPackageMapFiltered, buildPlan, freeze, loadState } from '@kb-labs/devlink-core';
 import type { LockFile } from '@kb-labs/devlink-core';
 
@@ -27,15 +27,19 @@ export default defineCommand<unknown, FreezeInput, LockFile>({
       const loader = useLoader('Freezing current state...');
       loader.start();
 
-      const state = loadState(rootDir);
-      const monorepos = discoverMonorepos(rootDir);
-
-      // Build a plan that reflects current state (no-op plan for the current mode)
-      const currentMode = state.currentMode ?? 'npm';
-      const packageMap = await buildPackageMapFiltered(monorepos, rootDir, undefined, currentMode);
-      const plan = buildPlan(currentMode, packageMap, monorepos, rootDir);
-
-      const lock = freeze(rootDir, plan);
+      let lock;
+      try {
+        const state = loadState(rootDir);
+        const monorepos = discoverMonorepos(rootDir);
+        const currentMode = state.currentMode ?? 'npm';
+        const packageMap = await buildPackageMapFiltered(monorepos, rootDir, undefined, currentMode);
+        const plan = buildPlan(currentMode, packageMap, monorepos, rootDir);
+        lock = freeze(rootDir, plan);
+      } catch (err) {
+        loader.fail('Failed to freeze state');
+        handleError(ctx, err, outputJson);
+        return { exitCode: 1 };
+      }
       loader.succeed('State frozen');
       tracker.checkpoint('freeze');
 

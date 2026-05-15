@@ -54,10 +54,12 @@ export default defineCommand({
 
       // Check for circular dependencies
       if (result.circular.length > 0) {
-        ui?.error?.(
-          `Found ${result.circular.length} circular dependencies. Build order cannot be determined.`
-        );
-        outputCircularDependencies(result.circular, ui);
+        if (flags.json) {
+          ui?.json?.({ ok: false, error: { code: 'CIRCULAR_DEPS', message: `Found ${result.circular.length} circular dependencies`, circular: result.circular } });
+        } else {
+          ui?.error?.(`Found ${result.circular.length} circular dependencies. Build order cannot be determined.`);
+          outputCircularDependencies(result.circular, ui);
+        }
         return { exitCode: 1, result };
       }
 

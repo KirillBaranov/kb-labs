@@ -3,7 +3,7 @@
  * REST handler for listing workflow definitions
  */
 
-import { defineHandler, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineHandler, rethrowForRest, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
 import type { WorkflowListResponse } from '@kb-labs/workflow-contracts';
 import { getWorkflowDaemonUrl } from '../http-client';
 
@@ -50,7 +50,7 @@ export default defineHandler({
         '[workflows-list-handler] Error fetching workflows',
         error instanceof Error ? error : undefined
       );
-      throw error;
+      rethrowForRest(error);
     }
   },
 });

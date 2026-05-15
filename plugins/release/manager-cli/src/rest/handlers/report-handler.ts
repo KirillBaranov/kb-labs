@@ -4,11 +4,12 @@
  * Reads from .kb/release/history/index.json and returns most recent report
  */
 
-import { defineHandler, findRepoRoot } from '@kb-labs/sdk';
+import { defineHandler, findRepoRoot, rethrowForRest } from '@kb-labs/sdk';
 import type { ReportResponse, ReleaseReport } from '@kb-labs/release-manager-contracts';
 
 export default defineHandler({
   async execute(ctx, _input: unknown): Promise<ReportResponse> {
+    try {
     const cwd = ctx.cwd ?? process.cwd();
     const repoRoot = await findRepoRoot(cwd);
 
@@ -57,6 +58,9 @@ export default defineHandler({
       return {
         hasReport: false,
       };
+    }
+    } catch (err) {
+      rethrowForRest(err);
     }
   }
 });

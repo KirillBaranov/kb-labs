@@ -4,7 +4,7 @@
  * Starts a new agent run via Orchestrator
  */
 
-import { defineHandler, useAnalytics, useCache, useConfig, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineHandler, rethrowForRest, useAnalytics, useCache, useConfig, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
 import { SessionManager, createCoreToolPack, bootstrapAgentSDK, createSessionMemoryBridge } from '@kb-labs/agent-core';
 import { createDefaultResponseRequirementsSelector } from '@kb-labs/agent-runtime';
 import { IncrementalTraceWriter } from '@kb-labs/agent-tracing';
@@ -115,6 +115,7 @@ export default defineHandler({
     ctx: PluginContextV3,
     input: RestInput<RunRequest>
   ): Promise<RunResponse> {
+    try {
     const body = input.body as RunRequest | undefined;
 
     if (!body?.task) {
@@ -324,5 +325,8 @@ export default defineHandler({
       status: 'started',
       startedAt: run.startedAt,
     };
+    } catch (err) {
+      rethrowForRest(err);
+    }
   },
 });

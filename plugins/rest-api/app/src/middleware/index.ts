@@ -27,15 +27,14 @@ export function registerMiddleware(
   registerStartupGuard(server, config);
   registerSecurityHeadersMiddleware(server);
   registerRequestIdMiddleware(server);
-  // Tenant-aware rate limiting — runs before route handlers
   registerTenantRateLimitMiddleware(server, platform.cache);
   registerMockModeMiddleware(server, config);
-  registerCacheMiddleware(server);
   registerRequestTimeoutGuard(server, config);
   registerMetricsMiddleware(server);
+  // Envelope runs before cache: ETag is computed on the final wrapped payload
   registerEnvelopeMiddleware(server, config);
-
-  // Global error guard for plugin routes (must be last)
+  registerCacheMiddleware(server);
+  // Process-level guard (uncaughtException / unhandledRejection) — no setErrorHandler
   registerErrorGuard(server);
 }
 

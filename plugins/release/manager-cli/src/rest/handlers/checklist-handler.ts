@@ -4,7 +4,7 @@
  * Returns status of all release steps: plan, changelog, build, preview
  */
 
-import { defineHandler, findRepoRoot, useEnv, type RestInput } from '@kb-labs/sdk';
+import { defineHandler, findRepoRoot, useEnv, type RestInput, rethrowForRest } from '@kb-labs/sdk';
 import type {
   ReleaseChecklist,
   ChecklistItemStatus,
@@ -172,61 +172,65 @@ async function checkPreviewStatus(
 
 export default defineHandler({
   async execute(ctx, input: RestInput<ChecklistInput>): Promise<ReleaseChecklist> {
-    const scope = input.query?.scope || 'root';
-    const cwd = ctx.cwd ?? process.cwd();
-    const repoRoot = await findRepoRoot(cwd);
+    try {
+      const scope = input.query?.scope || 'root';
+      const cwd = ctx.cwd ?? process.cwd();
+      const repoRoot = await findRepoRoot(cwd);
 
-    const scopeDir = scopeToDir(scope);
-    const basePath = join(repoRoot, '.kb/release/plans', scopeDir, 'current');
+      const scopeDir = scopeToDir(scope);
+      const basePath = join(repoRoot, '.kb/release/plans', scopeDir, 'current');
 
-    const { planStatus, planMessage, packagesCount, bump, plan } = await checkPlanStatus(basePath);
-    const { changelogStatus, changelogMessage, commitsCount } = await checkChangelogStatus(basePath, planStatus);
-    const { buildStatus, buildMessage, builtCount, totalCount } = await checkBuildStatus(plan, repoRoot);
-    const { previewStatus, previewMessage, filesCount, totalSize } = await checkPreviewStatus(plan, repoRoot, buildStatus);
+      const { planStatus, planMessage, packagesCount, bump, plan } = await checkPlanStatus(basePath);
+      const { changelogStatus, changelogMessage, commitsCount } = await checkChangelogStatus(basePath, planStatus);
+      const { buildStatus, buildMessage, builtCount, totalCount } = await checkBuildStatus(plan, repoRoot);
+      const { previewStatus, previewMessage, filesCount, totalSize } = await checkPreviewStatus(plan, repoRoot, buildStatus);
 
-    const hasNpmToken = !!(useEnv('NPM_TOKEN') ?? useEnv('NODE_AUTH_TOKEN'));
-    const npmStatus: ChecklistItemStatus = hasNpmToken ? 'ready' : 'error';
-    const npmMessage = hasNpmToken
-      ? 'npm token configured'
-      : 'Set NPM_TOKEN (granular access token) in environment';
+      const hasNpmToken = !!(useEnv('NPM_TOKEN') ?? useEnv('NODE_AUTH_TOKEN'));
+      const npmStatus: ChecklistItemStatus = hasNpmToken ? 'ready' : 'error';
+      const npmMessage = hasNpmToken
+        ? 'npm token configured'
+        : 'Set NPM_TOKEN (granular access token) in environment';
 
-    const canPublish =
-      planStatus === 'ready' &&
-      changelogStatus === 'ready' &&
-      buildStatus === 'ready' &&
-      previewStatus === 'ready' &&
-      npmStatus === 'ready';
+      const canPublish =
+        planStatus === 'ready' &&
+        changelogStatus === 'ready' &&
+        buildStatus === 'ready' &&
+        previewStatus === 'ready' &&
+        npmStatus === 'ready';
 
-    return {
-      scope,
-      plan: {
-        status: planStatus,
-        message: planMessage,
-        packagesCount: packagesCount > 0 ? packagesCount : undefined,
-        bump,
-      },
-      changelog: {
-        status: changelogStatus,
-        message: changelogMessage,
-        commitsCount,
-      },
-      build: {
-        status: buildStatus,
-        message: buildMessage,
-        builtCount: builtCount > 0 ? builtCount : undefined,
-        totalCount: totalCount > 0 ? totalCount : undefined,
-      },
-      preview: {
-        status: previewStatus,
-        message: previewMessage,
-        filesCount,
-        totalSize,
-      },
-      npm: {
-        status: npmStatus,
-        message: npmMessage,
-      },
-      canPublish,
-    };
+      return {
+        scope,
+        plan: {
+          status: planStatus,
+          message: planMessage,
+          packagesCount: packagesCount > 0 ? packagesCount : undefined,
+          bump,
+        },
+        changelog: {
+          status: changelogStatus,
+          message: changelogMessage,
+          commitsCount,
+        },
+        build: {
+          status: buildStatus,
+          message: buildMessage,
+          builtCount: builtCount > 0 ? builtCount : undefined,
+          totalCount: totalCount > 0 ? totalCount : undefined,
+        },
+        preview: {
+          status: previewStatus,
+          message: previewMessage,
+          filesCount,
+          totalSize,
+        },
+        npm: {
+          status: npmStatus,
+          message: npmMessage,
+        },
+        canPublish,
+      };
+    } catch (err) {
+      rethrowForRest(err);
+    }
   },
 });

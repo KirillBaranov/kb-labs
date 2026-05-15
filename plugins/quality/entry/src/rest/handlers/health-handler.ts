@@ -4,7 +4,7 @@
  * Get monorepo health score and grade (A-F).
  */
 
-import { defineHandler, type PluginContextV3, type RestInput } from '@kb-labs/sdk';
+import { defineHandler, rethrowForRest, type PluginContextV3, type RestInput } from '@kb-labs/sdk';
 import { calculateHealth, type HealthIssue } from '@kb-labs/quality-core/health';
 
 export type HealthRequest = {
@@ -22,14 +22,18 @@ export default defineHandler({
     ctx: PluginContextV3,
     input: RestInput<HealthRequest, unknown>
   ): Promise<HealthResponse> {
-    const { detailed } = input.query ?? {};
+    try {
+      const { detailed } = input.query ?? {};
 
-    const healthResult = await calculateHealth(ctx.cwd);
+      const healthResult = await calculateHealth(ctx.cwd);
 
-    return {
-      score: healthResult.score,
-      grade: healthResult.grade,
-      issues: detailed ? healthResult.issues : undefined,
-    };
+      return {
+        score: healthResult.score,
+        grade: healthResult.grade,
+        issues: detailed ? healthResult.issues : undefined,
+      };
+    } catch (err) {
+      rethrowForRest(err);
+    }
   },
 });

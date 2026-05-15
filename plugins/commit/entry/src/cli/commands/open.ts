@@ -3,7 +3,7 @@
  * Show current commit plan
  */
 
-import { defineCommand, findRepoRoot, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, findRepoRoot, handleError, type PluginContextV3 } from '@kb-labs/sdk';
 import { loadPlan, getCurrentPlanPath, formatCommitMessage } from '@kb-labs/commit-core';
 import type { OpenOutput } from '@kb-labs/commit-contracts';
 
@@ -30,7 +30,13 @@ export default defineCommand({
       const scope = input.scope ?? 'root';
 
       // Load current plan
-      const plan = await loadPlan(cwd, scope);
+      let plan;
+      try {
+        plan = await loadPlan(cwd, scope);
+      } catch (err) {
+        handleError(ctx, err, input.json);
+        return { exitCode: 1 };
+      }
       const planPath = getCurrentPlanPath(cwd, scope);
 
       // Output

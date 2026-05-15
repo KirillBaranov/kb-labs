@@ -1,4 +1,4 @@
-import { defineHandler, useConfig, type PluginContextV3, type RestInput, type TableData, type TableRow } from '@kb-labs/sdk';
+import { defineHandler, useConfig, type PluginContextV3, type RestInput, type TableData, type TableRow, rethrowForRest } from '@kb-labs/sdk';
 import { getGitStatus } from '@kb-labs/commit-core/analyzer';
 import { type CommitPluginConfig, resolveCommitConfig } from '@kb-labs/commit-contracts';
 import { resolveScopePath } from './scope-resolver';
@@ -59,7 +59,7 @@ export default defineHandler({
         total: rows.length,
       };
     } catch (error) {
-      throw new Error(`Failed to get git status: ${error}`);
+      rethrowForRest(error);
     }
   },
 });

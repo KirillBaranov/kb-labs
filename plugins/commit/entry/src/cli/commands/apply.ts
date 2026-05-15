@@ -3,7 +3,7 @@
  * Apply current commit plan
  */
 
-import { defineCommand, useLoader, useConfig, findRepoRoot, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, useLoader, useConfig, findRepoRoot, validationError, type PluginContextV3 } from '@kb-labs/sdk';
 import {
   applyCommitPlan,
   loadPlan,
@@ -47,10 +47,8 @@ export default defineCommand({
 
       if (!plan) {
         loadLoader.fail('No commit plan found');
-        ctx.ui?.error?.('Run `kb commit:generate` first.');
-        return {
-          exitCode: 1,
-        };
+        validationError(ctx, 'No commit plan found', 'Run `kb commit:generate` first', input.json);
+        return { exitCode: 1 };
       }
 
       if (plan.commits.length === 0) {

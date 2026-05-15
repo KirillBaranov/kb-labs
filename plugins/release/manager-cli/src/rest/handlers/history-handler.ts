@@ -4,7 +4,7 @@
  * Reads: .kb/release/history/{scope}/{releaseId}/report.json
  */
 
-import { defineHandler, findRepoRoot, type RestInput } from '@kb-labs/sdk';
+import { defineHandler, findRepoRoot, type RestInput, rethrowForRest } from '@kb-labs/sdk';
 import type { HistoryResponse, ReleaseHistoryItem } from '@kb-labs/release-manager-contracts';
 import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -16,6 +16,7 @@ export interface HistoryInput {
 
 export default defineHandler({
   async execute(ctx, input: RestInput<HistoryInput>): Promise<HistoryResponse> {
+    try {
     const filterScope = input.query?.scope; // Optional scope filter
     const cwd = ctx.cwd ?? process.cwd();
     const repoRoot = await findRepoRoot(cwd);
@@ -78,6 +79,9 @@ export default defineHandler({
     } catch {
       // No history directory yet
       return { releases: [] };
+    }
+    } catch (err) {
+      rethrowForRest(err);
     }
   }
 });

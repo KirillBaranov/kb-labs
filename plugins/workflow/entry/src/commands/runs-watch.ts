@@ -4,7 +4,7 @@
  * Streams run events in real-time via SSE endpoint.
  */
 
-import { defineCommand, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, validationError, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
 import { WorkflowDaemonClient } from '../http-client.js';
 
 interface RunsWatchFlags {
@@ -27,14 +27,13 @@ export default defineCommand<unknown, CLIInput<RunsWatchFlags>, { exitCode: numb
   handler: {
     async execute(ctx: PluginContextV3, input: CLIInput<RunsWatchFlags>): Promise<{ exitCode: number }> {
       const { flags, argv = [] } = input;
+      const outputJson = flags?.json ?? false;
       const runId = argv[0];
 
       if (!runId) {
-        ctx.ui?.error?.('Usage: kb workflow runs-watch <runId>');
+        validationError(ctx, 'Missing run ID', 'Usage: kb workflow runs-watch <runId>', outputJson);
         return { exitCode: 1 };
       }
-
-      const outputJson = flags?.json ?? false;
 
       try {
         const client = new WorkflowDaemonClient();
@@ -110,8 +109,7 @@ export default defineCommand<unknown, CLIInput<RunsWatchFlags>, { exitCode: numb
 
         return { exitCode: 0 };
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        ctx.ui?.error?.(`Failed to watch run: ${message}`);
+        handleError(ctx, error, outputJson);
         return { exitCode: 1 };
       }
     },

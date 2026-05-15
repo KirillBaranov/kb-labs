@@ -4,7 +4,7 @@
  * Writes: .kb/release/plans/{scope}/current/changelog.md
  */
 
-import { defineHandler, findRepoRoot, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineHandler, findRepoRoot, type RestInput, type PluginContextV3, rethrowForRest } from '@kb-labs/sdk';
 import type {
   GenerateChangelogRequest,
   GenerateChangelogResponse,
@@ -105,6 +105,7 @@ async function resolveGitCwd(packages: ChangelogPackageInfo[], repoRoot: string)
 
 export default defineHandler({
   async execute(ctx, input: RestInput<unknown, GenerateChangelogRequest>): Promise<GenerateChangelogResponse> {
+    try {
     const scope = input.body?.scope || 'root';
     const cwd = ctx.cwd ?? process.cwd();
     const repoRoot = await findRepoRoot(cwd);
@@ -173,5 +174,8 @@ export default defineHandler({
     });
 
     return { scope, markdown, changelogPath, tokensUsed, usedLLM, commitsCount };
+    } catch (err) {
+      rethrowForRest(err);
+    }
   }
 });

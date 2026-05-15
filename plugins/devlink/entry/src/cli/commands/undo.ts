@@ -1,4 +1,4 @@
-import { defineCommand, useLoader, TimingTracker, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
+import { defineCommand, useLoader, TimingTracker, validationError, handleError, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import { getLastBackup, restoreBackup, saveState, loadState } from '@kb-labs/devlink-core';
 
 interface UndoFlags {
@@ -31,14 +31,22 @@ export default defineCommand<unknown, UndoInput, UndoResult>({
 
       const backup = getLastBackup(rootDir);
       if (!backup) {
-        ctx.ui?.error?.('No backups found. Run switch first to create a backup.');
+        validationError(ctx, 'No backups found. Run switch first to create a backup.', undefined, outputJson);
         return { exitCode: 1 };
       }
 
       const loader = useLoader(`Restoring from backup ${backup.id}...`);
       loader.start();
 
-      const { restored, errors } = restoreBackup(rootDir, backup.id);
+      let restored: number;
+      let errors: string[];
+      try {
+        ({ restored, errors } = restoreBackup(rootDir, backup.id));
+      } catch (err) {
+        loader.fail('Restore failed');
+        handleError(ctx, err, outputJson);
+        return { exitCode: 1 };
+      }
       loader.succeed(`Restored ${restored} file(s)`);
       tracker.checkpoint('restore');
 

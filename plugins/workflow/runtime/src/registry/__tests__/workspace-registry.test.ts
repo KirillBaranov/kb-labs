@@ -133,6 +133,86 @@ jobs: {}
     expect(first.length).toBeGreaterThanOrEqual(0)
   })
 
+  it('mtime staleness: fast path serves cache when files unchanged', async () => {
+    const workflowContent = `name: stable
+version: 1.0.0
+on:
+  manual: true
+jobs: {}
+`
+    await writeFile(join(tempDir, 'stable.yml'), workflowContent)
+    await new Promise((resolve) => { setTimeout(resolve, 50) })
+
+    const first = await registry.list()
+    const second = await registry.list()
+
+    // No file changes → same array reference (cache served, no rescan)
+    expect(second).toBe(first)
+  })
+
+  it('mtime staleness: auto-detects new file without manual refresh', async () => {
+    const makeWorkflow = (name: string) => `name: ${name}
+version: 1.0.0
+on:
+  manual: true
+jobs:
+  main:
+    runsOn: local
+    steps:
+      - name: Step
+        uses: builtin:shell
+        with:
+          command: echo "${name}"
+`
+    await writeFile(join(tempDir, 'first.yml'), makeWorkflow('first'))
+    await new Promise((resolve) => { setTimeout(resolve, 50) })
+
+    const first = await registry.list()
+    expect(first.some(w => w.id.includes('first'))).toBe(true)
+
+    // Add a second file — mtime snapshot size changes → stale
+    await writeFile(join(tempDir, 'second.yml'), makeWorkflow('second'))
+    await new Promise((resolve) => { setTimeout(resolve, 50) })
+
+    const second = await registry.list()
+    expect(second.some(w => w.id.includes('second'))).toBe(true)
+    expect(second.length).toBeGreaterThan(first.length)
+  })
+
+  it('mtime staleness: auto-detects file modification', async () => {
+    const makeWorkflow = (desc: string) => `name: mutable
+version: 1.0.0
+description: ${desc}
+on:
+  manual: true
+jobs:
+  main:
+    runsOn: local
+    steps:
+      - name: Step
+        uses: builtin:shell
+        with:
+          command: echo "test"
+`
+    const filePath = join(tempDir, 'mutable.yml')
+    await writeFile(filePath, makeWorkflow('original'))
+    await new Promise((resolve) => { setTimeout(resolve, 50) })
+
+    const first = await registry.list()
+    const originalDesc = first.find(w => w.id.includes('mutable'))?.description
+    expect(originalDesc).toBe('original')
+
+    // Overwrite with new description — mtime changes → stale
+    await new Promise((resolve) => { setTimeout(resolve, 10) })
+    await writeFile(filePath, makeWorkflow('updated'))
+    await new Promise((resolve) => { setTimeout(resolve, 50) })
+
+    const second = await registry.list()
+    const updatedDesc = second.find(w => w.id.includes('mutable'))?.description
+
+    expect(updatedDesc).toBe('updated')
+  })
+
   it('should refresh cache', async () => {
     const workflowContent = `name: test
 version: 1.0.0

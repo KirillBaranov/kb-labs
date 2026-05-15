@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises'
+import { readFile, stat } from 'node:fs/promises'
 import { relative } from 'node:path'
 import fg from 'fast-glob'
 import { parse as parseYaml } from 'yaml'
@@ -16,12 +16,16 @@ export interface WorkspaceWorkflowRegistryConfig {
  */
 export class WorkspaceWorkflowRegistry implements WorkflowRegistry {
   private cache: ResolvedWorkflow[] | null = null
+  private mtimeSnapshot: Map<string, number> = new Map()
 
   constructor(private readonly config: WorkspaceWorkflowRegistryConfig) {}
 
   async list(): Promise<ResolvedWorkflow[]> {
     if (this.cache) {
-      return this.cache
+      const stale = await this.isStale()
+      if (!stale) return this.cache
+      this.cache = null
+      this.mtimeSnapshot.clear()
     }
 
     const workflows: ResolvedWorkflow[] = []
@@ -67,6 +71,7 @@ export class WorkspaceWorkflowRegistry implements WorkflowRegistry {
       }
     }
 
+    await this.recordMtimes(files)
     this.cache = workflows
     return workflows
   }
@@ -81,10 +86,40 @@ export class WorkspaceWorkflowRegistry implements WorkflowRegistry {
 
   async refresh(): Promise<void> {
     this.cache = null
+    this.mtimeSnapshot.clear()
   }
 
   async dispose(): Promise<void> {
     // No cleanup needed for workspace registry
+  }
+
+  private async isStale(): Promise<boolean> {
+    const currentFiles = await fg(this.config.patterns, {
+      cwd: this.config.workspaceRoot,
+      absolute: true,
+      onlyFiles: true,
+      ignore: ['node_modules/**', 'dist/**', '.git/**'],
+    })
+
+    if (currentFiles.length !== this.mtimeSnapshot.size) return true
+
+    const stats = await Promise.all(
+      currentFiles.map(f => stat(f).then(s => ({ f, mtime: s.mtimeMs })).catch(() => null))
+    )
+    for (const entry of stats) {
+      if (!entry) return true
+      if (this.mtimeSnapshot.get(entry.f) !== entry.mtime) return true
+    }
+    return false
+  }
+
+  private async recordMtimes(files: string[]): Promise<void> {
+    const stats = await Promise.all(
+      files.map(f => stat(f).then(s => ({ f, mtime: s.mtimeMs })).catch(() => null))
+    )
+    for (const entry of stats) {
+      if (entry) this.mtimeSnapshot.set(entry.f, entry.mtime)
+    }
   }
 
   private async loadWorkflowSpec(

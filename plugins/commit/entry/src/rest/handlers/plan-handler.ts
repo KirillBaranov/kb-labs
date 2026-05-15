@@ -1,4 +1,4 @@
-import { defineHandler, type PluginContextV3, type RestInput } from '@kb-labs/sdk';
+import { defineHandler, type PluginContextV3, type RestInput, rethrowForRest } from '@kb-labs/sdk';
 import { loadPlan } from '@kb-labs/commit-core/storage';
 import type { PlanResponse } from '@kb-labs/commit-contracts';
 
@@ -27,10 +27,7 @@ export default defineHandler({
         scope,
       };
     } catch (error) {
-      return {
-        hasPlan: false,
-        scope,
-      };
+      rethrowForRest(error);
     }
   },
 });

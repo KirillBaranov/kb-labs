@@ -1,4 +1,4 @@
-import { defineCommand, useLoader, TimingTracker, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
+import { defineCommand, useLoader, TimingTracker, handleError, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import { discoverMonorepos, buildPackageMapFiltered, buildPlan, applyPlan, createBackup, loadState, saveState, checkGitDirty, updateWorkspaceYamls } from '@kb-labs/devlink-core';
 import type { DevlinkMode } from '@kb-labs/devlink-contracts';
 import { existsSync, unlinkSync, rmSync } from 'node:fs';
@@ -53,8 +53,16 @@ export default defineCommand<unknown, SwitchInput, SwitchResult>({
       const discoverLoader = useLoader('Discovering monorepos...');
       discoverLoader.start();
 
-      const monorepos = discoverMonorepos(rootDir);
-      const packageMap = await buildPackageMapFiltered(monorepos, rootDir, ttlMs, mode);
+      let monorepos;
+      let packageMap;
+      try {
+        monorepos = discoverMonorepos(rootDir);
+        packageMap = await buildPackageMapFiltered(monorepos, rootDir, ttlMs, mode);
+      } catch (err) {
+        discoverLoader.fail('Discovery failed');
+        handleError(ctx, err, outputJson);
+        return { exitCode: 1 };
+      }
       discoverLoader.succeed(`Found ${monorepos.length} monorepos, ${Object.keys(packageMap).length} packages`);
       tracker.checkpoint('discovery');
 

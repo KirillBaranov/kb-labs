@@ -1,4 +1,4 @@
-import { defineCommand, useLoader, TimingTracker, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
+import { defineCommand, useLoader, TimingTracker, handleError, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import { discoverMonorepos, buildPackageMapFiltered, buildPlan, groupByMonorepo, loadState } from '@kb-labs/devlink-core';
 import type { DevlinkMode, DevlinkPlan } from '@kb-labs/devlink-contracts';
 
@@ -34,14 +34,21 @@ export default defineCommand<unknown, PlanInput, DevlinkPlan>({
       const loader = useLoader('Building plan...');
       loader.start();
 
-      const state = loadState(rootDir);
-      const monorepos = discoverMonorepos(rootDir);
-
-      // Determine target mode before building package map — local mode skips npm check
-      const targetMode: DevlinkMode = flags.mode ?? (state.currentMode === 'npm' ? 'local' : 'npm');
-      const packageMap = await buildPackageMapFiltered(monorepos, rootDir, ttlMs, targetMode);
-
-      const plan = buildPlan(targetMode, packageMap, monorepos, rootDir, { scopedRepos });
+      let plan;
+      let targetMode: DevlinkMode;
+      let currentModeBefore: DevlinkMode | undefined;
+      try {
+        const state = loadState(rootDir);
+        currentModeBefore = state.currentMode ?? undefined;
+        const monorepos = discoverMonorepos(rootDir);
+        targetMode = flags.mode ?? (state.currentMode === 'npm' ? 'local' : 'npm');
+        const packageMap = await buildPackageMapFiltered(monorepos, rootDir, ttlMs, targetMode);
+        plan = buildPlan(targetMode, packageMap, monorepos, rootDir, { scopedRepos });
+      } catch (err) {
+        loader.fail('Failed to build plan');
+        handleError(ctx, err, outputJson);
+        return { exitCode: 1 };
+      }
       loader.succeed(`Plan ready: ${plan.items.length} change(s)`);
       tracker.checkpoint('plan');
 
@@ -81,7 +88,7 @@ export default defineCommand<unknown, PlanInput, DevlinkPlan>({
             title: 'DevLink — Plan',
             status: 'info',
             summary: {
-              'Mode': `${state.currentMode ?? '?'} → ${targetMode}`,
+              'Mode': `${currentModeBefore ?? '?'} → ${targetMode}`,
               'Packages': uniquePkgs,
               'Files affected': uniqueFiles,
               'Total changes': plan.items.length,

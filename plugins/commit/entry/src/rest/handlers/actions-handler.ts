@@ -1,4 +1,4 @@
-import { defineHandler, type PluginContextV3, type RestInput } from '@kb-labs/sdk';
+import { defineHandler, type PluginContextV3, type RestInput, rethrowForRest } from '@kb-labs/sdk';
 import type { ActionsResponse } from '@kb-labs/commit-contracts';
 
 /**
@@ -9,10 +9,14 @@ import type { ActionsResponse } from '@kb-labs/commit-contracts';
  */
 export default defineHandler({
   async execute(_ctx: PluginContextV3, input: RestInput<{ scope?: string }>): Promise<ActionsResponse> {
-    const scope = input.query?.scope;
+    try {
+      const scope = input.query?.scope;
 
-    return {
-      scope,
-    };
+      return {
+        scope,
+      };
+    } catch (err) {
+      rethrowForRest(err);
+    }
   },
 });

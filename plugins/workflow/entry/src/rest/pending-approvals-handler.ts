@@ -3,7 +3,7 @@
  * Proxies to workflow daemon GET /api/v1/runs/:runId/pending-approvals
  */
 
-import { defineHandler, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineHandler, rethrowForRest, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
 import { getWorkflowDaemonUrl } from '../http-client.js';
 
 interface PendingApprovalsParams {
@@ -54,7 +54,7 @@ export default defineHandler({
         '[pending-approvals-handler] Error fetching pending approvals',
         error instanceof Error ? error : undefined
       );
-      throw error;
+      rethrowForRest(error);
     }
   },
 });

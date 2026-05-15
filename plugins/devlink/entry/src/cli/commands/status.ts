@@ -1,4 +1,4 @@
-import { defineCommand, useLoader, TimingTracker, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
+import { defineCommand, useLoader, TimingTracker, handleError, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import { discoverMonorepos, buildPackageMapFiltered, analyzePackageDeps, loadState, diagnose } from '@kb-labs/devlink-core';
 import type { DevlinkStatus, DiagnosticIssue } from '@kb-labs/devlink-contracts';
 
@@ -31,25 +31,31 @@ export default defineCommand<unknown, StatusInput, StatusResult>({
       const loader = useLoader('Analyzing dependencies...');
       loader.start();
 
-      const state = loadState(rootDir);
-      const monorepos = discoverMonorepos(rootDir);
-      const packageMap = await buildPackageMapFiltered(monorepos, rootDir);
-
+      let state: ReturnType<typeof loadState>;
       let totalLink = 0;
       let totalNpm = 0;
       let totalWorkspace = 0;
+      let diagnostics: ReturnType<typeof diagnose>;
+      try {
+        state = loadState(rootDir);
+        const monorepos = discoverMonorepos(rootDir);
+        const packageMap = await buildPackageMapFiltered(monorepos, rootDir);
 
-      for (const monorepo of monorepos) {
-        for (const pkgPath of monorepo.packagePaths) {
-          const counts = analyzePackageDeps(pkgPath, packageMap);
-          totalLink += counts.linkCount;
-          totalNpm += counts.npmCount;
-          totalWorkspace += counts.workspaceCount;
+        for (const monorepo of monorepos) {
+          for (const pkgPath of monorepo.packagePaths) {
+            const counts = analyzePackageDeps(pkgPath, packageMap);
+            totalLink += counts.linkCount;
+            totalNpm += counts.npmCount;
+            totalWorkspace += counts.workspaceCount;
+          }
         }
-      }
 
-      // Run diagnostics
-      const diagnostics = diagnose(monorepos, packageMap, rootDir);
+        diagnostics = diagnose(monorepos, packageMap, rootDir);
+      } catch (err) {
+        loader.fail('Analysis failed');
+        handleError(ctx, err, outputJson);
+        return { exitCode: 1 };
+      }
 
       loader.succeed('Analysis complete');
       tracker.checkpoint('analysis');

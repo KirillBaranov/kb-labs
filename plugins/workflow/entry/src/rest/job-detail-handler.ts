@@ -3,7 +3,7 @@
  * Proxies to workflow daemon GET /api/v1/jobs/:jobId
  */
 
-import { defineHandler, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineHandler, rethrowForRest, type RestInput, type PluginContextV3 } from '@kb-labs/sdk';
 import { getWorkflowDaemonUrl } from '../http-client';
 
 interface JobDetailParams {
@@ -71,7 +71,7 @@ export default defineHandler({
         '[job-detail-handler] Error fetching job detail',
         error instanceof Error ? error : undefined
       );
-      throw error;
+      rethrowForRest(error);
     }
   },
 });

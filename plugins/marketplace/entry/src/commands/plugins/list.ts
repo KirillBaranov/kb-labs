@@ -1,4 +1,4 @@
-import { defineCommand, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
+import { defineCommand, handleError, validationError, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
 import { get } from '../../http.js';
 import { resolveCliQueryScope, CliScopeError } from '../../scope.js';
 
@@ -36,37 +36,43 @@ export default defineCommand<unknown, ListInput, ListResultData>({
         scopeCtx = await resolveCliQueryScope(ctx.cwd, flags.scope);
       } catch (err) {
         if (err instanceof CliScopeError) {
-          ctx.ui?.error?.(err.message);
-          return { exitCode: 1, result: { entries: [], total: 0 } };
+          validationError(ctx, err.message, undefined, flags.json);
+        } else {
+          handleError(ctx, err, flags.json);
         }
-        throw err;
+        return { exitCode: 1, result: { entries: [], total: 0 } };
       }
 
-      const query: Record<string, string> = { kind: 'plugin', scope: scopeCtx.scope };
-      if (scopeCtx.projectRoot) {
-        query.projectRoot = scopeCtx.projectRoot;
-      }
-      const data = await get<ListResultData>('/packages', query);
+      try {
+        const query: Record<string, string> = { kind: 'plugin', scope: scopeCtx.scope };
+        if (scopeCtx.projectRoot) {
+          query.projectRoot = scopeCtx.projectRoot;
+        }
+        const data = await get<ListResultData>('/packages', query);
 
-      if (flags.json) {
-        ctx.ui?.json?.(data);
-      } else {
-        const enabled = data.entries.filter(e => e.enabled !== false).length;
-        const disabled = data.total - enabled;
-        const showScopeColumn = scopeCtx.scope === 'all';
-        ctx.ui?.success?.(`${data.total} plugins (${enabled} enabled, ${disabled} disabled) — scope=${scopeCtx.scope}`, {
-          sections: [{
-            header: 'Plugins',
-            items: data.entries.map(e => {
-              const icon = e.enabled !== false ? '✅' : '⏸';
-              const scopeTag = showScopeColumn ? ` [${e.scope}]` : '';
-              return `${icon} ${e.id} ${e.version} (${e.source})${scopeTag}`;
-            }),
-          }],
-        });
-      }
+        if (flags.json) {
+          ctx.ui?.json?.(data);
+        } else {
+          const enabled = data.entries.filter(e => e.enabled !== false).length;
+          const disabled = data.total - enabled;
+          const showScopeColumn = scopeCtx.scope === 'all';
+          ctx.ui?.success?.(`${data.total} plugins (${enabled} enabled, ${disabled} disabled) — scope=${scopeCtx.scope}`, {
+            sections: [{
+              header: 'Plugins',
+              items: data.entries.map(e => {
+                const icon = e.enabled !== false ? '✅' : '⏸';
+                const scopeTag = showScopeColumn ? ` [${e.scope}]` : '';
+                return `${icon} ${e.id} ${e.version} (${e.source})${scopeTag}`;
+              }),
+            }],
+          });
+        }
 
-      return { exitCode: 0, result: data };
+        return { exitCode: 0, result: data };
+      } catch (err) {
+        handleError(ctx, err, flags.json);
+        return { exitCode: 1, result: { entries: [], total: 0 } };
+      }
     },
   },
 });

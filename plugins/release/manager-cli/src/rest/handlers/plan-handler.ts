@@ -5,7 +5,7 @@
  * Cache: 15s TTL to avoid repeated file reads
  */
 
-import { defineHandler, findRepoRoot, type RestInput } from '@kb-labs/sdk';
+import { defineHandler, findRepoRoot, type RestInput, rethrowForRest } from '@kb-labs/sdk';
 import type { PlanResponse, ReleasePlan, PlanInput } from '@kb-labs/release-manager-contracts';
 import { RELEASE_CACHE_PREFIX } from '@kb-labs/release-manager-contracts';
 import { scopeToDir } from '../../shared/utils';
@@ -14,6 +14,7 @@ const CACHE_TTL_MS = 15000; // 15 seconds
 
 export default defineHandler({
   async execute(ctx, input: RestInput<PlanInput>): Promise<PlanResponse> {
+    try {
     const scope = input.query?.scope || 'root';
     const cwd = ctx.cwd ?? process.cwd();
     const repoRoot = await findRepoRoot(cwd);
@@ -81,6 +82,9 @@ export default defineHandler({
         scope,
       };
       return response;
+    }
+    } catch (err) {
+      rethrowForRest(err);
     }
   }
 });

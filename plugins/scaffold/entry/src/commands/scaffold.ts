@@ -5,6 +5,8 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import {
   defineCommand,
+  validationError,
+  handleError,
   type PluginContextV3,
   type CLIInput,
 } from '@kb-labs/sdk';
@@ -103,7 +105,7 @@ async function runDefault(
 
   const available = await listEntities(TEMPLATES_ROOT);
   if (available.length === 0) {
-    ctx.ui?.error?.('No scaffold templates found. Reinstall @kb-labs/scaffold.');
+    validationError(ctx, 'No scaffold templates found. Reinstall @kb-labs/scaffold.');
     return { exitCode: 1 };
   }
 
@@ -119,7 +121,7 @@ async function runDefault(
   }
 
   if (!available.includes(entityArg)) {
-    ctx.ui?.error?.(`Unknown entity "${entityArg}". Available: ${available.join(', ')}`);
+    validationError(ctx, `Unknown entity "${entityArg}". Available: ${available.join(', ')}`);
     return { exitCode: 1 };
   }
 
@@ -135,8 +137,7 @@ async function runDefault(
 
   const problem = runValidator('npmName', nameArg);
   if (problem) {
-    ctx.ui?.error?.(`Invalid name "${nameArg}": ${problem}`);
-    ctx.ui?.info?.('Name must be lowercase, no spaces, valid npm package name.');
+    validationError(ctx, `Invalid name "${nameArg}": ${problem}`, 'Name must be lowercase, no spaces, valid npm package name.');
     return { exitCode: 1 };
   }
 
@@ -166,7 +167,7 @@ async function runDefault(
   try {
     resolveBlocks(entity.blocks, selectedBlocks);
   } catch (e) {
-    ctx.ui?.error?.((e as Error).message);
+    handleError(ctx, e);
     return { exitCode: 1 };
   }
 
@@ -217,8 +218,7 @@ async function runDefault(
     if (input.force) {
       ctx.ui?.warn?.(`--force: overwriting ${outRoot}`);
     } else {
-      ctx.ui?.error?.(`Output directory "${outRoot}" already exists and is not empty.`);
-      ctx.ui?.info?.('Use --force to overwrite.');
+      validationError(ctx, `Output directory "${outRoot}" already exists and is not empty.`, 'Use --force to overwrite.');
       return { exitCode: 1 };
     }
   }

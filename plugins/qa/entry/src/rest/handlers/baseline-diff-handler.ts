@@ -5,7 +5,7 @@
  * Shows new failures, fixed packages, and still-failing.
  */
 
-import { defineHandler, type PluginContextV3, type RestInput } from '@kb-labs/sdk';
+import { defineHandler, rethrowForRest, type PluginContextV3, type RestInput } from '@kb-labs/sdk';
 import { loadBaseline, loadLastRun, compareWithBaseline } from '@kb-labs/qa-core';
 import type { QABaselineDiffRequest, QABaselineDiffResponse } from '@kb-labs/qa-contracts';
 
@@ -14,41 +14,45 @@ export default defineHandler({
     ctx: PluginContextV3,
     _input: RestInput<QABaselineDiffRequest, unknown>,
   ): Promise<QABaselineDiffResponse> {
-    const rootDir = ctx.cwd;
+    try {
+      const rootDir = ctx.cwd;
 
-    const baseline = loadBaseline(rootDir);
-    const lastRun = loadLastRun(rootDir);
+      const baseline = loadBaseline(rootDir);
+      const lastRun = loadLastRun(rootDir);
 
-    // No baseline or no last run — return empty diff
-    if (!baseline || !lastRun) {
+      // No baseline or no last run — return empty diff
+      if (!baseline || !lastRun) {
+        return {
+          hasDiff: false,
+          diff: {} as QABaselineDiffResponse['diff'],
+          baseline: baseline ?? null,
+          current: lastRun ? {
+            timestamp: lastRun.timestamp,
+            summary: buildSummaryFromResults(lastRun.results),
+          } : null,
+        };
+      }
+
+      const diff = compareWithBaseline(lastRun.results, baseline);
+
+      // Check if there's any actual diff
+      const hasDiff = Object.keys(diff).some((ct) => {
+        const d = diff[ct]!;
+        return d.newFailures.length > 0 || d.fixed.length > 0;
+      });
+
       return {
-        hasDiff: false,
-        diff: {} as QABaselineDiffResponse['diff'],
-        baseline: baseline ?? null,
-        current: lastRun ? {
+        hasDiff,
+        diff,
+        baseline,
+        current: {
           timestamp: lastRun.timestamp,
           summary: buildSummaryFromResults(lastRun.results),
-        } : null,
+        },
       };
+    } catch (err) {
+      rethrowForRest(err);
     }
-
-    const diff = compareWithBaseline(lastRun.results, baseline);
-
-    // Check if there's any actual diff
-    const hasDiff = Object.keys(diff).some((ct) => {
-      const d = diff[ct]!;
-      return d.newFailures.length > 0 || d.fixed.length > 0;
-    });
-
-    return {
-      hasDiff,
-      diff,
-      baseline,
-      current: {
-        timestamp: lastRun.timestamp,
-        summary: buildSummaryFromResults(lastRun.results),
-      },
-    };
   },
 });
 

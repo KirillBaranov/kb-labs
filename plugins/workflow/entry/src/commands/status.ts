@@ -2,7 +2,7 @@
  * workflow:status command - Get job status
  */
 
-import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, validationError, handleError, type PluginContextV3 } from '@kb-labs/sdk';
 import { type StatusFlags } from '@kb-labs/workflow-contracts';
 import { WorkflowDaemonClient } from '../http-client.js';
 
@@ -20,12 +20,7 @@ export default defineCommand<unknown, StatusInput, { exitCode: number }>({
       const jobId = flags['job-id'];
 
       if (!jobId) {
-        if (outputJson) {
-          ctx.ui?.json?.({ ok: false, error: 'Missing required flag: --job-id' });
-        } else {
-          ctx.ui?.error?.('Missing required flag: --job-id');
-          ctx.ui?.info?.('Usage: kb workflow status --job-id=<job-id>');
-        }
+        validationError(ctx, 'Missing required flag: --job-id', 'Usage: kb workflow status --job-id=<job-id>', outputJson);
         return { exitCode: 1 };
       }
 
@@ -107,14 +102,7 @@ export default defineCommand<unknown, StatusInput, { exitCode: number }>({
 
         return { exitCode: 0 };
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-
-        if (outputJson) {
-          ctx.ui?.json?.({ ok: false, error: message });
-        } else {
-          ctx.ui?.error?.(`Failed to get job status: ${message}`);
-        }
-
+        handleError(ctx, error, outputJson);
         return { exitCode: 1 };
       }
     },
