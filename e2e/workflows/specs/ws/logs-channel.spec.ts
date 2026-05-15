@@ -1,0 +1,109 @@
+import { test, expect } from '@playwright/test';
+import { withWs, expectWsMessage, expectWsClose } from '@kb-labs/shared-testing-e2e';
+import { GATEWAY, WORKFLOW } from '@kb-labs/e2e-shared/urls.js';
+
+const GATEWAY_WS = GATEWAY.replace(/^http/, 'ws');
+
+async function startRun(request: Parameters<Parameters<typeof test>[1]>[0]['request']): Promise<string> {
+  const catalogRes = await request.get(`${WORKFLOW}/api/v1/workflows`);
+  const catalog = await catalogRes.json();
+  const workflows: Array<{ id?: string; name?: string }> =
+    catalog.data?.workflows ?? catalog.data ?? catalog.workflows ?? [];
+  const wf = workflows.find((w) => (w.name ?? w.id) === 'e2e-hello') ?? workflows[0];
+  const id = wf?.id ?? wf?.name;
+  if (!id) throw new Error('No workflow found in catalog');
+
+  const runRes = await request.post(`${WORKFLOW}/api/v1/workflows/${id}/runs`, { data: {} });
+  const body = await runRes.json();
+  const runId: string = body.data?.runId ?? body.data?.id ?? body.runId;
+  if (!runId) throw new Error(`Failed to start run: ${JSON.stringify(body)}`);
+  return runId;
+}
+
+function logsWsUrl(jobId: string): string {
+  return `${GATEWAY_WS}/v1/ws/plugins/workflow/logs/${jobId}`;
+}
+
+test('WS-L01: subscribe → receive log stream', async ({ request }) => {
+  const runId = await startRun(request);
+
+  await withWs(logsWsUrl(runId), async (ws) => {
+    ws.send({ type: 'subscribe', jobId: runId, level: 'info' });
+
+    // Should receive at least one log message
+    const msg = await expectWsMessage<{ type: string; level?: string; message?: string }>(
+      ws,
+      (m) => m.type === 'log',
+      { timeoutMs: 15_000, label: 'first log message' },
+    );
+
+    expect(msg.type).toBe('log');
+    expect(msg.level).toBeTruthy();
+  });
+});
+
+test('WS-L02: level filter — warn level excludes debug/info messages', async ({ request }) => {
+  const runId = await startRun(request);
+
+  await withWs(logsWsUrl(runId), async (ws) => {
+    ws.send({ type: 'subscribe', jobId: runId, level: 'warn' });
+
+    // Collect a few messages with short timeout (may receive none if no warn/error logs)
+    const messages = await ws.collect<{ type: string; level?: string }>(3, 5_000).catch(() => []);
+
+    // All received log messages must be warn or error level
+    const logMessages = messages.filter((m) => m.type === 'log');
+    for (const msg of logMessages) {
+      expect(['warn', 'error']).toContain(msg.level);
+    }
+  });
+});
+
+test('WS-L03: unknown jobId — server sends error message, does not hang', async () => {
+  await withWs(logsWsUrl('nonexistent-job-xyz'), async (ws) => {
+    ws.send({ type: 'subscribe', jobId: 'nonexistent-job-xyz' });
+
+    const msg = await expectWsMessage<{ type: string; error?: string }>(
+      ws,
+      (m) => m.type === 'error',
+      { timeoutMs: 5_000, label: 'error message for unknown job' },
+    );
+
+    expect(msg.type).toBe('error');
+    expect(msg.error).toBeTruthy();
+  });
+});
+
+test('WS-L04: unsubscribe stops the log stream', async ({ request }) => {
+  const runId = await startRun(request);
+
+  await withWs(logsWsUrl(runId), async (ws) => {
+    ws.send({ type: 'subscribe', jobId: runId });
+
+    // Wait for at least one log
+    await ws.waitForMessage<{ type: string }>({ timeoutMs: 10_000, predicate: (m) => m.type === 'log' }).catch(() => null);
+
+    ws.send({ type: 'unsubscribe' });
+
+    // After unsubscribe, no new messages should arrive (short window check)
+    const after = await ws.collect<{ type: string }>(1, 1_000).catch(() => []);
+    const logs = after.filter((m) => m.type === 'log');
+    expect(logs.length).toBe(0);
+  });
+});
+
+test('WS-L05: client disconnect does not leak — server handles cleanup', async ({ request }) => {
+  const runId = await startRun(request);
+
+  // Connect, subscribe, then immediately close
+  await withWs(logsWsUrl(runId), async (ws) => {
+    ws.send({ type: 'subscribe', jobId: runId });
+    // Close before receiving any messages — server must not crash
+    ws.close(1000);
+    await expectWsClose(ws, 1000, { timeoutMs: 3_000 });
+  });
+
+  // Verify daemon is still healthy after forced disconnect
+  const health = await fetch(`${WORKFLOW}/health`);
+  expect(health.ok).toBe(true);
+});
