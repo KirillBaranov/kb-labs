@@ -8,7 +8,7 @@ import { createServer } from './server';
 import { findRepoRoot } from '@kb-labs/core-sys';
 import { createRegistry, type IEntityRegistry } from '@kb-labs/core-registry';
 import { platform, createServiceBootstrap, loadEnvFromRoot, getPlatformRoot } from '@kb-labs/core-runtime';
-import { SystemMetricsCollector } from './services/system-metrics-collector';
+import { SystemMetricsCollector } from './daemon/metrics';
 import { metricsCollector as requestMetricsCollector, restDomainOperationMetrics } from './middleware/metrics.js';
 import * as path from 'node:path';
 import { promises as fs } from 'node:fs';

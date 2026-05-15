@@ -6,10 +6,10 @@
 import type { FastifyInstance, FastifyReply } from 'fastify';
 import type { RestApiConfig } from '@kb-labs/rest-api-core';
 import type { PlatformServices } from '@kb-labs/plugin-contracts';
-import { normalizeBasePath, resolvePaths } from '../utils/path-helpers';
+import { normalizeBasePath, resolvePaths } from './path-helpers';
 import { hostname } from 'node:os';
-import type { HistoricalMetricsCollector } from '../services/historical-metrics';
-import type { SystemMetrics } from '../services/system-metrics-collector';
+import type { HistoricalMetricsCollector } from '../daemon/metrics';
+import type { SystemMetrics } from '../daemon/metrics';
 import { metricsCollector } from '../middleware/metrics.js';
 
 

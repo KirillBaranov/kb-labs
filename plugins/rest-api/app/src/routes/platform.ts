@@ -6,7 +6,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { RestApiConfig } from '@kb-labs/rest-api-core';
 import type { PlatformConfigResponse, PlatformConfigPayload } from '@kb-labs/rest-api-contracts';
-import { normalizeBasePath, resolvePaths } from '../utils/path-helpers';
+import { normalizeBasePath, resolvePaths } from './path-helpers';
 import { readKbConfig } from '@kb-labs/core-config';
 import { platform } from '@kb-labs/core-runtime';
 import { restDomainOperationMetrics } from '../middleware/metrics.js';

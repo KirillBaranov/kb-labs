@@ -15,7 +15,7 @@ interface FrontendLogRecord {
   time: string;
   level: string;
   msg: string;
-  plugin: string | undefined;
+  plugin?: string;
   [key: string]: unknown;
 }
 
@@ -72,7 +72,6 @@ function toFrontendLogRecord(record: LogRecord): FrontendLogRecord {
     time: new Date(record.timestamp).toISOString(),
     level: levelStr,
     msg: messageStr,
-    plugin: record.source,
     ...restFields,
   };
 }

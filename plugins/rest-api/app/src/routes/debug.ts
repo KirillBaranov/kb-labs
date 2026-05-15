@@ -7,7 +7,7 @@
 
 import type { FastifyInstance, RouteOptions } from 'fastify';
 import type { RestApiConfig } from '@kb-labs/rest-api-core';
-import { normalizeBasePath, resolvePaths } from '../utils/path-helpers';
+import { normalizeBasePath, resolvePaths } from './path-helpers';
 
 interface RouteInfo {
   method: string;

@@ -1,6 +1,7 @@
 /**
- * @module @kb-labs/rest-api-app/middleware/prom-metrics
- * Prometheus metrics using prom-client
+ * @module @kb-labs/rest-api-app/observability/prometheus-registry
+ * Prometheus metric definitions for the REST API service.
+ * These are definitions only — not a Fastify hook.
  */
 
 import { Registry, Histogram, Counter, Gauge } from 'prom-client';

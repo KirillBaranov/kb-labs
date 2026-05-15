@@ -1,6 +1,6 @@
 /**
- * @module @kb-labs/rest-api-app/middleware/startup-guard
- * Guard to prevent request storms during startup
+ * @module @kb-labs/rest-api-app/middleware/startup-throttle
+ * Throttles concurrent requests during service startup to prevent request storms.
  */
 
 import type { FastifyInstance } from 'fastify';
@@ -18,7 +18,8 @@ type StartupConfig = {
   retryAfterSeconds?: number;
 };
 
-export function registerStartupGuard(
+// ADDS: request.kbStartupGuardActive, request.kbStartupGuardTimer
+export function registerStartupThrottle(
   server: FastifyInstance,
   config: RestApiConfig
 ): void {

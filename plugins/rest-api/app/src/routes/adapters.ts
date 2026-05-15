@@ -5,7 +5,7 @@
 
 import type { FastifyInstance } from 'fastify';
 import type { RestApiConfig } from '@kb-labs/rest-api-core';
-import { normalizeBasePath, resolvePaths } from '../utils/path-helpers';
+import { normalizeBasePath, resolvePaths } from './path-helpers';
 import { platform } from '@kb-labs/core-runtime';
 import type { IAnalytics } from '@kb-labs/core-platform';
 import type { AnalyticsEvent } from '@kb-labs/core-platform/adapters';

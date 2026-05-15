@@ -6,12 +6,12 @@
 import type { FastifyInstance } from 'fastify';
 import type { RestApiConfig } from '@kb-labs/rest-api-core';
 import type { IEntityRegistry, SystemHealthSnapshot } from '@kb-labs/core-registry';
-import { normalizeBasePath, resolvePaths } from '../utils/path-helpers';
+import { normalizeBasePath, resolvePaths } from './path-helpers';
 import type { ReadinessState } from './readiness';
 import { isReady, resolveReadinessReason } from './readiness';
 import type { PluginsMetricsSnapshot } from '../middleware/metrics.js';
 import { metricsCollector } from '../middleware/metrics.js';
-import { updateServiceHealthStatus } from '../middleware/prom-metrics.js';
+import { updateServiceHealthStatus } from '../observability/prometheus-registry.js';
 import {
   buildRestObservabilityDescribe,
   buildRestObservabilityHealth,

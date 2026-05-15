@@ -8,9 +8,7 @@ import { ulid } from 'ulid';
 import { platform } from '@kb-labs/core-runtime';
 import { createCorrelatedLogger } from '@kb-labs/shared-http';
 
-/**
- * Register request ID middleware
- */
+// ADDS: request.id, request.kbLogger | SETS REPLY: X-Request-Id, X-Trace-Id
 export function registerRequestIdMiddleware(server: FastifyInstance): void {
   server.addHook('onRequest', async (request, reply) => {
     const requestId = (request.headers['x-request-id'] as string | undefined) || ulid();
