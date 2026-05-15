@@ -533,7 +533,7 @@ export class SandboxRunner implements Runner {
     // Find CLI command in manifests
     for (const entry of snapshot.manifests ?? []) {
       const commands = entry.manifest.cli?.commands ?? []
-      const command = commands.find((c: { id: string }) => c.id === commandName)
+      const command = commands.find((c) => c.path === commandName)
 
       if (command) {
         return {
