@@ -1,6 +1,6 @@
 import { hostname } from 'node:os';
 import type { ServiceLogCorrelationContext } from '@kb-labs/core-contracts';
-import type { ILogger, ILogBuffer, LogRecord } from '@kb-labs/core-platform';
+import type { ILogger } from '@kb-labs/core-platform';
 import { normalizeObservabilityRoute } from './http-observability-collector.js';
 
 
