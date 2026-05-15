@@ -179,7 +179,10 @@ export default defineCommand({
             clearTimeout_();
             return { exitCode: 0, sessionId: sessionId as string };
           } catch {
-            ctx.ui?.error?.(`No plan found for session: ${sessionId}`);
+            ctx.ui?.error?.('No plan found for this session', {
+              hint: `Run: kb agent run --session-id=${sessionId} --task "your task"`,
+              cause: `Session ${sessionId} has no approved plan`,
+            });
             clearTimeout_();
             return { exitCode: 1 };
           }
@@ -573,11 +576,16 @@ export default defineCommand({
           const reason = abortController.signal.reason instanceof Error
             ? abortController.signal.reason.message
             : `Agent execution timed out after ${timeoutSecs}s`;
-          console.error(`\n⏱  ${reason}\n`);
+          ctx.ui?.error?.('Agent execution timed out', {
+            hint: 'Check agent logs with: kb agent logs --session-id <id>',
+            cause: reason,
+          });
           return { exitCode: 124 }; // 124 mirrors the POSIX timeout(1) exit code
         }
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.error(`\n❌ Agent execution failed: ${errorMessage}\n`);
+        ctx.ui?.error?.('Agent execution failed', {
+          hint: 'Check agent logs with: kb agent logs --session-id <id>',
+          cause: error instanceof Error ? error.message : String(error),
+        });
         return { exitCode: 1 };
       }
     },

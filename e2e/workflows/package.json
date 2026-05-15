@@ -7,6 +7,7 @@
   },
   "devDependencies": {
     "@kb-labs/e2e-shared": "workspace:*",
+    "@kb-labs/shared-testing-e2e": "workspace:*",
     "@kb-labs/workflow-daemon": "workspace:*",
     "@kb-labs/workflow-engine": "workspace:*",
     "@kb-labs/workflow-runtime": "workspace:*",

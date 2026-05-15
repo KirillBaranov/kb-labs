@@ -42,7 +42,7 @@ workspace:
         - "plugins/*/entry"
         - "plugins/release/manager-cli"  # non-standard name, but has rspack studio build
       language: typescript
-      preset: node-lib
+      preset: plugin-entry
 
     # Backend app entrypoints (daemons, servers)
     # Must come before ts-lib — plugins/*/*  would otherwise match first
@@ -104,6 +104,51 @@ presets:
     dependencies:
       check_links: false
       check_circular: false
+
+  # Plugin entry packages — node-lib + required test:cli script
+  plugin-entry:
+    language: typescript
+    package_json:
+      required_scripts:
+        - build
+        - dev
+        - test
+        - test:cli
+        - lint
+        - type-check
+        - clean
+      required_dev_deps:
+        typescript: "^5"
+        tsup: "^8"
+        vitest: "^3"
+        "@kb-labs/devkit": "*"
+      required_fields:
+        - name
+        - version
+        - type
+        - engines
+        - exports
+      type: module
+      engines:
+        node: ">=20.0.0"
+        pnpm: ">=9.0.0"
+    tsconfig:
+      must_extend_pattern: "@kb-labs/devkit/tsconfig/"
+      forbid_paths: true
+    tsup:
+      must_use_preset: true
+      dts_required: true
+      tsconfig_must_be_build: false
+    eslint:
+      must_use_preset: true
+    structure:
+      required_files:
+        - src/index.ts
+        - README.md
+    dependencies:
+      check_links: true
+      check_circular: true
+      check_version_consistency: true
 
   node-lib:
     language: typescript
@@ -557,6 +602,21 @@ tasks:
   #             kb-devkit run e2e --affected                         (changed only)
   #             kb-devkit run e2e                                    (all)
   # Go:         only kb-create has a real suite; others are no-ops for uniformity.
+  # CLI handler tests — fast, no daemon required.
+  # Run: kb-devkit run test:cli
+  # Run affected only: kb-devkit run test:cli --affected
+  test:cli:
+    - categories: [plugin-entry]
+      command: pnpm run test:cli
+      inputs:
+        - "src/__tests__/cli/**"
+        - "src/commands/**"
+        - "vitest.cli.config.*"
+      outputs: []
+      deps:
+        - "build"
+      cache: false
+
   e2e:
     - categories: [e2e-suite]
       command: pnpm run e2e
@@ -577,3 +637,17 @@ tasks:
         - "Makefile"
         - "internal/manifest/manifest.json"
       outputs: []
+
+# ──────────────────────────────────────────────────────────────────────────────
+# CUSTOM CHECKS
+# ──────────────────────────────────────────────────────────────────────────────
+# Each entry runs for all packages that match its `categories` filter (or all
+# packages if omitted). The script runs with cwd = package directory and
+# receives the package JSON on stdin. It must exit 0 and print JSON:
+#   { ok: boolean, items: [{ target, message, fix? }] }
+
+custom_checks:
+  - name: test-pyramid
+    run: node scripts/checks/check-test-pyramid.mjs
+    on: [check]
+    categories: [plugin-entry]

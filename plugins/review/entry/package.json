@@ -23,6 +23,7 @@
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint . --fix",
     "test": "vitest run --passWithNoTests",
+    "test:cli": "vitest run --config vitest.cli.config.ts --passWithNoTests",
     "test:watch": "vitest",
     "type-check": "tsc --noEmit"
   },
@@ -35,6 +36,7 @@
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
+    "@kb-labs/shared-testing-e2e": "workspace:*",
     "@types/node": "^24.3.3",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",

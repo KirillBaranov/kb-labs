@@ -72,9 +72,10 @@ Some have daemons (HTTP ports) — that's an implementation detail, not an archi
 - Services with HTTP require `gateway` plugin (auth, routing)
 - Ports: gateway :4000, rest-api :5050, workflow :7778, marketplace :5070, state :7777
 
-### Config Files — DO NOT MODIFY
+### Config Files — DO NOT MODIFY (without explicit reason)
 - `devservices.yaml` — port assignments (change scripts, not ports)
-- `devkit.yaml` — task runner config (categories, presets)
+- `devkit.yaml` — `categories` and `presets` sections are load-bearing; change carefully.
+  `tasks` and `custom_checks` sections are safe to extend (adding new entries does not break existing behaviour).
 - `pnpm-workspace.yaml` — workspace package globs
 
 ### Code Style
@@ -104,6 +105,32 @@ pnpm kb mind rag-query --text "how does X work" --agent 2>/dev/null | grep "^{"
 ```
 
 Parse the JSON: read files from `sources`, trust code over `kind: "adr"`. If `confidence < 0.4`, run a follow-up with exact identifiers (`ClassName`, `functionName`, `file.ts`). See `.claude/skills/task-rag.md` for the full workflow.
+
+## Testing
+
+Three-level pyramid (see `.claude/skills/testing.md` for decision tree and templates):
+
+| Level | What | Where | Run |
+|---|---|---|---|
+| Handler | CLI command logic, mock HTTP client | `plugins/*/entry/src/__tests__/cli/` | `pnpm --filter <pkg> run test:cli` |
+| SSE/WS | Streaming behaviour, real daemon | `e2e/<domain>/specs/sse/`, `.../ws/` | `cd e2e/<domain> && pnpm e2e` |
+| Journey | Multi-step user scenarios | `e2e/<domain>/specs/cli/` | `kb-devkit run e2e` |
+
+```bash
+# Handler tests — fast, no daemon needed
+pnpm --filter @kb-labs/workflow-entry run test:cli
+
+# All plugin handler tests at once
+kb-devkit run test:cli
+
+# SSE/WS integration tests (need kb-dev start first)
+kb-dev start && cd e2e/workflows && pnpm e2e
+```
+
+Key helpers in `@kb-labs/shared-testing-e2e`:
+- `mockCLIInput<F>()`, `createCapturedUI()`, `createMockContext()` — handler tests
+- `collectSseEvents()`, `expectSseTerminates()`, `assertSseOrder()` — SSE tests
+- `withWs()`, `expectWsMessage()`, `expectWsClose()` — WS tests
 
 ## Common Tasks
 
@@ -189,6 +216,7 @@ Skills live in `.claude/skills/`. Folder-based skills (`SKILL.md`) are user-invo
 | Skill | Path | Activates when |
 |---|---|---|
 | **Task research (RAG)** | `.claude/skills/task-rag.md` | any implementation task |
+| **Testing strategy** | `.claude/skills/testing.md` | editing `**/*.test.ts`, `**/*.spec.ts`, `**/e2e/**`, `**/__tests__/**`, `**/commands/**` |
 | Plugin development | `.claude/skills/dev-plugin.md` | editing `plugins/**` |
 | Core development | `.claude/skills/dev-core.md` | editing `core/**`, `sdk/**` |
 | Monorepo patterns | `.claude/skills/dev-monorepo.md` | cross-package work |
@@ -203,6 +231,7 @@ Skills live in `.claude/skills/`. Folder-based skills (`SKILL.md`) are user-invo
 | Add new route | `.claude/skills/new-route.md` | adding HTTP routes |
 | Dependency hygiene | `.claude/skills/deps-hygiene.md` | dependency / lockfile tasks |
 | Commit style | `.claude/skills/commit.md` | git commit messages |
+| Config mode switching | `.claude/skills/config-mode.md` | switching dev/prod config, `.kb/kb.config.json` |
 | Site voice | `.claude/skills/kb-labs-site-voice.md` | editing `sites/**` |
 | Aeza proxy | `.claude/skills/aeza-proxy.md` | proxy / VPS tasks |
 

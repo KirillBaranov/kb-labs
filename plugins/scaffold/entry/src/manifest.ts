@@ -30,7 +30,7 @@ const manifest = {
   },
   cli: {
     groupMeta: [
-      { name: 'scaffold', describe: 'Scaffold KB Labs entities' },
+      { path: 'scaffold', describe: 'Scaffold KB Labs entities' },
     ],
     commands: [
       {

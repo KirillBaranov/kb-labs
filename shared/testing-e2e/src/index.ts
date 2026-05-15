@@ -77,6 +77,25 @@ export type { UICapture, CapturedUI } from './cli/captured-ui.js';
 export { createMockContext } from './cli/mock-context.js';
 export type { MockContextOptions } from './cli/mock-context.js';
 
+// Re-exported from @kb-labs/shared-testing for one-import convenience
+export {
+  createTestContext,
+  testCommand,
+  createMockUI,
+  createMockRuntime,
+  createMockPluginAPI,
+  createMockTrace,
+  mockLLM,
+  mockCache,
+  mockLogger,
+} from '@kb-labs/shared-testing';
+export type {
+  CreateTestContextOptions,
+  TestContextResult,
+  TestCommandOptions,
+  TestCommandResult,
+} from '@kb-labs/shared-testing';
+
 // --- SSE helpers ---
 export { collectSseEvents, waitForSseEvent, expectSseTerminates } from './sse/collect.js';
 export type { CollectSseOptions } from './sse/collect.js';

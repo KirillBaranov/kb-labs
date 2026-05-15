@@ -76,8 +76,10 @@ export default defineCommand<unknown, CLIInput<RunFlagsInput>, { exitCode: numbe
               if (outputJson) {
                 ctx.ui?.json?.({ ok: false, error: 'Job execution failed', jobId: result.id });
               } else {
-                ctx.ui?.error?.('Job execution failed');
-                ctx.ui?.info?.(`Job ID: ${result.id}`);
+                ctx.ui?.error?.('Job execution failed', {
+                  hint: 'Start workflow daemon with: kb-dev start workflow',
+                  cause: `Job ID: ${result.id}`,
+                });
               }
               return { exitCode: 1 };
             }

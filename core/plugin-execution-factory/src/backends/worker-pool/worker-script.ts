@@ -122,7 +122,21 @@ function createStdoutUI(currentRequestId?: string): UIFacade {
     },
     error: (err: Error | string, options?: MessageOptions) => {
       const message = err instanceof Error ? err.message : err;
-      console.error(sideBorderBox({ title: options?.title || 'Error', sections: options?.sections || [{ items: [message] }], status: 'error', timing: options?.timing }));
+      const sections: Array<{ header?: string; items: Array<string | { text: string; dim?: boolean }> }> = [];
+      if (options?.sections && options.sections.length > 0) {
+        sections.push(...options.sections.map(s => ({ header: s.header, items: s.items })));
+      } else {
+        sections.push({ items: [message] });
+      }
+      if (options?.cause) { sections.push({ header: 'Cause', items: [{ text: options.cause, dim: true }] }); }
+      if (options?.hint) {
+        const hintItems: Array<string | { text: string; dim: boolean }> = [options.hint];
+        if (options.command) { hintItems.push({ text: `$ ${options.command}`, dim: true }); }
+        sections.push({ header: 'Hint', items: hintItems });
+      } else if (options?.command) {
+        sections.push({ header: 'Hint', items: [{ text: `$ ${options.command}`, dim: true }] });
+      }
+      console.error(sideBorderBox({ title: options?.title || 'Error', sections, status: 'error', timing: options?.timing }));
     },
     debug: (msg: string) => { if (process.env.DEBUG) { console.debug(msg); } },
     spinner: (msg) => {
