@@ -41,5 +41,8 @@ export { useAnalytics, trackAnalyticsEvent } from './use-analytics.js';
 export { useStorage } from './use-storage.js';
 export { useCache, isCacheAvailable } from './use-cache.js';
 
+// Notifications
+export { useNotifications } from './use-notifications.js';
+
 // Runtime shims
 export { useEnv } from './use-env.js';

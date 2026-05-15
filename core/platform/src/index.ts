@@ -271,3 +271,15 @@ export type { IPlatformAdapters } from './platform-adapters.js';
 // following the same pattern as TIER_ORDER and TERMINAL_RUN_STATUSES above.
 export type { IDisposable } from './adapters/disposable.js';
 export { isDisposable } from './adapters/disposable.js';
+
+// Notifier
+export type {
+  NotificationSeverity,
+  NotificationAudience,
+  NotificationCapability,
+  NotificationEvent,
+  NotificationFilter,
+  INotifierChannel,
+  INotifier,
+  NotifierDeliveryEvent,
+} from './adapters/notifier.js';
