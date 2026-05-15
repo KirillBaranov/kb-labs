@@ -5,7 +5,7 @@
  * and that malicious plugins cannot escape the sandbox.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { TrieBackedRegistry } from '../service';
 import type { RegisteredCommand } from '../types';
 import type { Command as SystemCommand, CommandGroup as SystemGroup } from '@kb-labs/shared-command-kit';

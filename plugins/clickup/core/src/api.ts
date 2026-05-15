@@ -26,7 +26,7 @@ async function resolveTeam(
 ): Promise<{ id: string; name: string }> {
   const res = await clickupFetch<{ teams: Array<{ id: string; name: string }> }>('/team', apiKey);
   const team = res.teams.find(t => t.id === teamIdHint) ?? res.teams[0];
-  if (!team) throw new Error(`No ClickUp team found for CLICKUP_TEAM_ID=${teamIdHint}`);
+  if (!team) { throw new Error(`No ClickUp team found for CLICKUP_TEAM_ID=${teamIdHint}`); }
   return team;
 }
 
@@ -83,13 +83,13 @@ export async function searchTasks(
   params: SearchTasksParams = {},
 ): Promise<ClickUpTask[]> {
   const qs = new URLSearchParams();
-  if (params.query) qs.set('query', params.query);
-  if (params.list_ids?.length) params.list_ids.forEach(id => qs.append('list_ids[]', id));
-  if (params.statuses?.length) params.statuses.forEach(s => qs.append('statuses[]', s));
-  if (params.assignees?.length) params.assignees.forEach(a => qs.append('assignees[]', a));
+  if (params.query) { qs.set('query', params.query); }
+  if (params.list_ids?.length) { params.list_ids.forEach(id => qs.append('list_ids[]', id)); }
+  if (params.statuses?.length) { params.statuses.forEach(s => qs.append('statuses[]', s)); }
+  if (params.assignees?.length) { params.assignees.forEach(a => qs.append('assignees[]', a)); }
   qs.set('page', String(params.page ?? 0));
   qs.set('limit', String(Math.min(params.limit ?? 20, 100)));
-  if (params.include_closed) qs.set('include_closed', 'true');
+  if (params.include_closed) { qs.set('include_closed', 'true'); }
   qs.set('subtasks', 'true');
 
   const team = await resolveTeam(apiKey, teamId);
@@ -149,10 +149,10 @@ export async function getListTasks(
   params: ListTasksParams = {},
 ): Promise<ClickUpTask[]> {
   const qs = new URLSearchParams();
-  if (params.statuses?.length) params.statuses.forEach(s => qs.append('statuses[]', s));
-  if (params.assignees?.length) params.assignees.forEach(a => qs.append('assignees[]', a));
+  if (params.statuses?.length) { params.statuses.forEach(s => qs.append('statuses[]', s)); }
+  if (params.assignees?.length) { params.assignees.forEach(a => qs.append('assignees[]', a)); }
   qs.set('page', String(params.page ?? 0));
-  if (params.include_closed) qs.set('include_closed', 'true');
+  if (params.include_closed) { qs.set('include_closed', 'true'); }
   qs.set('subtasks', 'true');
 
   const res = await clickupFetch<{ tasks: ClickUpTask[] }>(
