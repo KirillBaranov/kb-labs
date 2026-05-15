@@ -17,6 +17,7 @@ import type {
   StorageAdapter,
 } from '@kb-labs/plugin-contracts';
 import { PermissionError } from '@kb-labs/plugin-contracts';
+import type { INotifier } from '@kb-labs/core-platform';
 
 /**
  * Check if cache key matches allowed namespaces
@@ -330,6 +331,46 @@ export function createGovernedPlatformServices(
 
     // EventBus: always allowed (no permission check currently)
     eventBus: raw.eventBus,
+
+    // Notifier: requires explicit permission declaration.
+    // emit: source is always overwritten with pluginId — plugin cannot fake its origin.
+    // subscribe: declared sources/severities are enforced as a hard ceiling on top of
+    //   whatever filter the plugin passes at runtime.
+    notifier: (() => {
+      const perm = permissions.platform?.notifier;
+      if (!perm || !raw.notifier) {
+        return raw.notifier
+          ? createDeniedService<INotifier>('notifier')
+          : undefined;
+      }
+
+      const canEmit = perm === true || (typeof perm === 'object' && perm.emit !== false);
+
+      const subPerm = perm === true ? true : (typeof perm === 'object' ? perm.subscribe : false);
+      const canSubscribe = Boolean(subPerm);
+      const allowedSources: string[] | undefined =
+        subPerm !== true && typeof subPerm === 'object' ? subPerm.sources : undefined;
+      const allowedSeverity: Array<'info' | 'warn' | 'critical'> | undefined =
+        subPerm !== true && typeof subPerm === 'object' ? subPerm.severity : undefined;
+
+      return {
+        notify: canEmit
+          ? (event: Parameters<INotifier['notify']>[0]) =>
+              raw.notifier!.notify({ ...event, source: pluginId })
+          : () => { throw new PermissionError('Notifier emit access denied'); },
+
+        subscribe: canSubscribe
+          ? (filter, handler) => {
+              // Enforce declared permission scope as hard ceiling.
+              return raw.notifier!.subscribe(filter, async (event) => {
+                if (allowedSources && !allowedSources.includes(event.source ?? '')) return;
+                if (allowedSeverity && !allowedSeverity.includes(event.severity ?? 'info')) return;
+                await handler(event);
+              });
+            }
+          : () => { throw new PermissionError('Notifier subscribe access denied'); },
+      } satisfies INotifier;
+    })(),
 
     // Logs: pass through (system-level, restricted by runtime context)
     logs: raw.logs,
