@@ -196,6 +196,7 @@ export type {
 // Snapshot lifecycle abstraction
 export type {
   ISnapshotProvider,
+  ISnapshotManager,
   SnapshotStatus,
   CaptureSnapshotRequest,
   SnapshotDescriptor,
