@@ -10,8 +10,8 @@ export interface LimitPresenter {
 }
 
 export type LimitRegistry = {
-  getCommandsByGroup(group: string): RegisteredCommand[];
-  getManifestCommand(idOrAlias: string): RegisteredCommand | undefined;
+  listCommandsUnder(segments: string[]): RegisteredCommand[];
+  getCommandAt(segments: string[]): RegisteredCommand | null;
 };
 
 export interface LimitHandleOptions {
@@ -72,7 +72,7 @@ function renderProductLimits(
   registry: LimitRegistry,
   asJson: boolean,
 ): number {
-  const commands = registry.getCommandsByGroup(group);
+  const commands = registry.listCommandsUnder([group]);
   if (commands.length === 0) {
     renderError(
       `Unknown product '${group}'. Use 'kb marketplace' to list available namespaces.`,
@@ -138,16 +138,15 @@ function renderCommandLimits(
   registry: LimitRegistry,
   asJson: boolean,
 ): number {
-  const commandId = toCommandId(cmdPath);
-  if (!commandId) {
+  if (cmdPath.length === 0) {
     renderError("Unable to resolve command for --limit flag.", presenter, asJson);
     return 1;
   }
 
-  const registered = registry.getManifestCommand(commandId);
+  const registered = registry.getCommandAt(cmdPath);
   if (!registered) {
     renderError(
-      `Unknown command '${commandId}'. Use 'kb ${cmdPath[0]} --help' to list commands.`,
+      `Unknown command '${cmdPath.join(' ')}'. Use 'kb ${cmdPath[0]} --help' to list commands.`,
       presenter,
       asJson,
     );
@@ -157,14 +156,14 @@ function renderCommandLimits(
   const manifest = registered.manifest.manifestV2;
   if (!manifest) {
     renderError(
-      `Command '${registered.manifest.id}' is missing manifest metadata.`,
+      `Command '${registered.manifest.segments.join(' ')}' is missing manifest metadata.`,
       presenter,
       asJson,
     );
     return 1;
   }
 
-  const cliCommand = findCliCommandDecl(manifest, registered.manifest.id);
+  const cliCommand = findCliCommandDecl(manifest, [...registered.manifest.segments]);
   const product = registered.manifest.group;
 
   const payload: LimitJsonPayload = {
@@ -181,7 +180,7 @@ function renderCommandLimits(
       setupPermissions: manifest.setup?.permissions,
       command: cliCommand
         ? {
-            id: cliCommand.id,
+            id: cliCommand.path,
             describe: cliCommand.describe,
             handler: cliCommand.handler,
             flags: cliCommand.flags,
@@ -230,29 +229,10 @@ function findManifest(commands: RegisteredCommand[]): ManifestV3 | undefined {
 
 function findCliCommandDecl(
   manifest: ManifestV3,
-  fullId: string,
+  segments: string[],
 ): CliCommandDecl | undefined {
-  const cliCommands = manifest.cli?.commands ?? [];
-  const normalizedId = fullId.includes(":")
-    ? fullId
-    : `${manifest.id.replace(/^@kb-labs\//, "")}:${fullId}`;
-
-  return cliCommands.find((cmd) => {
-    if (!cmd.id) {
-      return false;
-    }
-    if (cmd.id === fullId) {
-      return true;
-    }
-    if (cmd.id === normalizedId) {
-      return true;
-    }
-    if (!cmd.id.includes(":")) {
-      const withNamespace = `${manifest.display?.name ?? manifest.id}:${cmd.id}`;
-      return withNamespace === fullId;
-    }
-    return false;
-  });
+  const commandPath = segments.join(' ');
+  return (manifest.cli?.commands ?? []).find((cmd) => cmd.path === commandPath);
 }
 
 function formatFlag(flag: NonNullable<CliCommandDecl["flags"]>[number]): string {
@@ -387,22 +367,5 @@ function renderError(
 }
 
 function isCommandPath(cmdPath: string[]): boolean {
-  if (cmdPath.length === 0) {
-    return false;
-  }
-  if (cmdPath.length === 1) {
-    return cmdPath[0]!.includes(":");
-  }
-  return true;
-}
-
-function toCommandId(cmdPath: string[]): string | undefined {
-  if (cmdPath.length === 0) {
-    return undefined;
-  }
-  if (cmdPath.length === 1) {
-    return cmdPath[0];
-  }
-  const [group, ...rest] = cmdPath;
-  return `${group}:${rest.join(":")}`;
+  return cmdPath.length > 1;
 }

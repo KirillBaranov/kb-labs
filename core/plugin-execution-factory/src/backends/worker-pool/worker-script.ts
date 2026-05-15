@@ -25,7 +25,7 @@ import type { PlatformServices, UIFacade, UILogEntry, MessageOptions } from '@kb
 import { IPCTransport, UnixSocketTransport, createProxyPlatform } from '@kb-labs/core-ipc';
 import type { ITransport } from '@kb-labs/core-ipc';
 import { createGovernedPlatformServices } from '@kb-labs/plugin-runtime';
-import { sideBorderBox, safeColors, safeSymbols, formatTable, setJsonMode } from '@kb-labs/shared-cli-ui';
+import { sideBorderBox, safeColors, safeSymbols, formatTable, setJsonMode, metricsList } from '@kb-labs/shared-cli-ui';
 
 // Worker state
 const workerId = process.env.KB_WORKER_ID ?? 'unknown';
@@ -156,9 +156,14 @@ function createStdoutUI(currentRequestId?: string): UIFacade {
       }));
     },
     sideBox: (options) => {
+      const allSections = [];
+      if (options.summary && Object.keys(options.summary).length > 0) {
+        allSections.push({ items: metricsList(options.summary as Record<string, string | number>) });
+      }
+      allSections.push(...(options.sections ?? []).map(s => ({ header: s.header, items: s.items })));
       console.log(sideBorderBox({
         title: options.title,
-        sections: (options.sections ?? []).map(s => ({ header: s.header, items: s.items })),
+        sections: allSections,
         status: options.status,
         timing: options.timing,
       }));

@@ -47,25 +47,12 @@ export async function executePlugin(
     return undefined;
   }
 
-  // Find CLI command definition
-  // commandId may be full path like "marketplace:plugins:list" — match by id, or by group:subgroup:id
-  const cliCommand = pluginManifest.cli?.commands?.find((c) => {
-    if (c.id === commandId) {return true;}
-    // Match group:id or group:subgroup:id
-    const parts = commandId.split(':');
-    const bareId = parts[parts.length - 1];
-    if (c.subgroup && parts.length === 3) {
-      return c.group === parts[0] && c.subgroup === parts[1] && c.id === parts[2];
-    }
-    if (c.group && parts.length === 2) {
-      // Match group:id — works with or without subgroup (2-part alias for subgroup commands)
-      return c.group === parts[0] && c.id === parts[1];
-    }
-    return c.id === bareId;
-  });
+  // Find CLI command definition by full path (e.g. 'clickup task search')
+  const commandPath = manifestCmd.manifest.segments.join(' ');
+  const cliCommand = pluginManifest.cli?.commands?.find((c) => c.path === commandPath);
 
-  // Resolve handler path (try handler first, fallback to handlerPath)
-  const handlerRelativePath = cliCommand?.handlerPath ?? cliCommand?.handler?.split('#')[0];
+  // Resolve handler path from handler field
+  const handlerRelativePath = cliCommand?.handler?.split('#')[0];
   if (!handlerRelativePath) {
     return undefined;
   }
@@ -98,7 +85,7 @@ export async function executePlugin(
 
     const platformServices = createPlatformServices(platform);
     const socketPath = platform.getSocketPath();
-    const permissions = getHandlerPermissions(pluginManifest, 'cli', commandId);
+    const permissions = getHandlerPermissions(pluginManifest, 'cli', commandPath);
     const quotas = permissions?.quotas;
 
     // Execute plugin. Pass the discovered `pkgRoot` explicitly so project-
