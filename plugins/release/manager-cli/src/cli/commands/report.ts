@@ -42,7 +42,10 @@ function handleReportNotFound(flags: ReportFlags, ctx: PluginContextV3): Release
   if (flags.json) {
     ctx.ui?.json?.({ exitCode: 3, meta: { error: 'No release report found' } });
   } else {
-    ctx.ui?.error?.(new Error('No release report found. Run "kb release run" first.'));
+    ctx.ui?.error?.('No release report found', {
+      hint: 'Run: kb release run',
+      cause: 'No report has been generated for the current release',
+    });
   }
   return { exitCode: 3, meta: { error: 'No release report found' } };
 }
