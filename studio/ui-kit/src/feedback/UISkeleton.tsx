@@ -7,6 +7,7 @@
 
 import * as React from 'react';
 import { Skeleton as AntSkeleton, theme } from 'antd';
+import styles from './UISkeleton.module.css';
 
 export interface UISkeletonProps {
   /** Show loading state */
@@ -154,12 +155,6 @@ export function UISkeletonText({
   const { token } = theme.useToken();
   const widths = Array.isArray(width) ? width : [width];
 
-  const shimmerStyle: React.CSSProperties = {
-    background: `linear-gradient(90deg, ${token.colorFillTertiary} 25%, ${token.colorFillSecondary} 37%, ${token.colorFillTertiary} 63%)`,
-    backgroundSize: '400% 100%',
-    animation: 'ant-skeleton-loading 1.4s ease infinite',
-  };
-
   return (
     <span
       className={className}
@@ -168,13 +163,15 @@ export function UISkeletonText({
       {widths.map((w, i) => (
         <span
           key={i}
+          className={styles.skeletonText}
           style={{
             display: 'block',
             width: typeof w === 'number' ? `${w}px` : w,
             height: typeof height === 'number' ? `${height}px` : height,
             borderRadius: token.borderRadiusSM,
             flexShrink: 0,
-            ...shimmerStyle,
+            background: `linear-gradient(90deg, ${token.colorFillTertiary} 25%, ${token.colorFillSecondary} 37%, ${token.colorFillTertiary} 63%)`,
+            backgroundSize: '400% 100%',
           }}
         />
       ))}

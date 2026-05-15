@@ -1,0 +1,8 @@
+@keyframes skeletonLoading {
+  0%   { background-position: 100% 50%; }
+  100% { background-position: 0%   50%; }
+}
+
+.skeletonText {
+  animation: skeletonLoading 1.4s ease infinite;
+}
