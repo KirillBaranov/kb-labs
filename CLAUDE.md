@@ -60,7 +60,8 @@ Dependencies flow **strictly downward**. Never import from a higher layer.
 ### Building
 - Use `kb-devkit run build` (or `pnpm build`) — respects topological order
 - Use `kb-devkit run build --affected` for incremental builds
-- After building CLI plugins: `pnpm kb plugins clear-cache`
+- CLI discovery cache auto-invalidates on rebuild (content hash check)
+- Force-reset if needed: `pnpm kb marketplace plugins refresh`
 
 ### Plugin = Duck Typing
 Everything in `plugins/` is a plugin. If it uses SDK, registers commands, has a manifest — it's a plugin.
@@ -192,6 +193,7 @@ Skills live in `.claude/skills/`. Folder-based skills (`SKILL.md`) are user-invo
 | Core development | `.claude/skills/dev-core.md` | editing `core/**`, `sdk/**` |
 | Monorepo patterns | `.claude/skills/dev-monorepo.md` | cross-package work |
 | **Workflow investigation** | `.claude/skills/workflow.md` | editing `plugins/workflow/**` |
+| **ClickUp plugin** | `.claude/skills/clickup.md` | editing `plugins/clickup/**` or any clickup task |
 | Release pipeline | `.claude/skills/tool-release.md` | release / changelog tasks |
 | kb-devkit usage | `.claude/skills/tool-kb-devkit.md` | build / task runner questions |
 | kb-dev usage | `.claude/skills/tool-kb-dev.md` | service management |

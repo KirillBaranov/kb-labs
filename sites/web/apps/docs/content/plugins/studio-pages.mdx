@@ -414,7 +414,7 @@ Then link the plugin into your workspace:
 
 ```bash
 pnpm kb marketplace link ./path/to/your-plugin
-pnpm kb marketplace clear-cache
+pnpm kb marketplace plugins refresh
 ```
 
 Restart Studio (or hard-reload the browser — Module Federation remotes are cached aggressively) and your pages should appear in the sidebar.
@@ -425,7 +425,7 @@ Restart Studio (or hard-reload the browser — Module Federation remotes are cac
 
 1. Make sure `dist/widgets/remoteEntry.js` exists.
 2. Verify the plugin is in `.kb/marketplace.lock` (check with `pnpm kb marketplace list`).
-3. Clear the registry cache: `pnpm kb marketplace clear-cache`.
+3. Clear the registry cache: `pnpm kb marketplace plugins refresh`.
 4. Hard-reload Studio in the browser.
 
 **"Objects are not valid as a React child" at page mount.**

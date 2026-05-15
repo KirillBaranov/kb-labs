@@ -8,6 +8,7 @@
 import * as React from 'react';
 import { Tag as AntTag, theme } from 'antd';
 import type { TagProps as AntTagProps } from 'antd';
+import './UITag.module.css';
 
 const { useToken } = theme;
 
@@ -46,6 +47,8 @@ export function UITag({
   closable,
   onClose,
   icon,
+  className,
+  onClick,
   ...rest
 }: UITagProps) {
   const { token } = useToken();
@@ -59,12 +62,17 @@ export function UITag({
     neutral: token.colorTextSecondary,
   };
 
+  const combinedClassName = ['kb-ui-tag', className].filter(Boolean).join(' ');
+
   return (
     <AntTag
       color={color ?? colorMap[variant]}
       closable={closable}
       onClose={onClose}
       icon={icon}
+      className={combinedClassName}
+      onClick={onClick}
+      style={onClick ? { cursor: 'pointer' } : undefined}
       {...rest}
     >
       {children}

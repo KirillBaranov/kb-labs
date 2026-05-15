@@ -137,7 +137,7 @@ pnpm --filter @kb-labs/cli-bin run build
 
 ```bash
 # Clear cache
-pnpm kb plugins clear-cache
+pnpm kb marketplace plugins refresh
 
 # Test V3 command from root
 KB_PLUGIN_VERSION=3 pnpm kb plugin-template:hello-v3 --name="V3Test"

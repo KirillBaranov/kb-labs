@@ -61,10 +61,11 @@ pnpm kb-dev status
 
 ## Step 5: Clear stale caches
 
-After an update, plugin manifests may have changed:
+After an update, plugin manifests may have changed. The cache auto-invalidates,
+but you can force-reset if needed:
 
 ```bash
-pnpm kb marketplace clear-cache
+pnpm kb marketplace plugins refresh
 ```
 
 ## If the update fails partway

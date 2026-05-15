@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UIRow, UICol, UIStatistic, UIAlert } from '@kb-labs/studio-ui-kit';
+import { UIRow, UICol, UIStatistic, UIAlert, UIMetricCard } from '@kb-labs/studio-ui-kit';
 import {
   FileOutlined,
   UploadOutlined,
@@ -89,15 +89,12 @@ export function AnalyticsStoragePage() {
     );
   }
 
-  // Format helpers
-  const _formatNumber = (num: number) => num.toLocaleString();
   const formatSize = (bytes: number) => {
     if (bytes < 1024) {return `${bytes} B`;}
     if (bytes < 1024 * 1024) {return `${(bytes / 1024).toFixed(2)} KB`;}
     if (bytes < 1024 * 1024 * 1024) {return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;}
     return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
   };
-  const _formatDuration = (ms: number) => (ms < 1000 ? `${ms.toFixed(1)}ms` : `${(ms / 1000).toFixed(2)}s`);
 
   const totalOperations = stats
     ? stats.readOperations + stats.writeOperations + stats.deleteOperations
@@ -127,56 +124,22 @@ export function AnalyticsStoragePage() {
       <div style={{ marginTop: 24 }}>
         {/* Operations Overview */}
         <UIRow gutter={[16, 16]}>
-          <UICol xs={24} sm={12} lg={6}>
-            <UICard>
-              <UIStatistic
-                title="Read Operations"
-                value={stats?.readOperations ?? 0}
-                prefix={<DownloadOutlined />}
-                loading={isLoading}
-                valueStyle={{ color: 'var(--info)' }}
-              />
-            </UICard>
-          </UICol>
-          <UICol xs={24} sm={12} lg={6}>
-            <UICard>
-              <UIStatistic
-                title="Write Operations"
-                value={stats?.writeOperations ?? 0}
-                prefix={<UploadOutlined />}
-                loading={isLoading}
-                valueStyle={{ color: 'var(--success)' }}
-              />
-            </UICard>
-          </UICol>
-          <UICol xs={24} sm={12} lg={6}>
-            <UICard>
-              <UIStatistic
-                title="Delete Operations"
-                value={stats?.deleteOperations ?? 0}
-                prefix={<DeleteOutlined />}
-                loading={isLoading}
-                valueStyle={{ color: 'var(--error)' }}
-              />
-            </UICard>
-          </UICol>
-          <UICol xs={24} sm={12} lg={6}>
-            <UICard>
-              <UIStatistic
-                title="Total Operations"
-                value={totalOperations}
-                prefix={<FileOutlined />}
-                loading={isLoading}
-                valueStyle={{ color: 'var(--link)' }}
-              />
-            </UICard>
-          </UICol>
+          {[
+            { label: 'Read Operations', value: stats?.readOperations ?? 0, icon: <DownloadOutlined />, status: 'info' as const },
+            { label: 'Write Operations', value: stats?.writeOperations ?? 0, icon: <UploadOutlined />, status: 'success' as const },
+            { label: 'Delete Operations', value: stats?.deleteOperations ?? 0, icon: <DeleteOutlined />, status: 'error' as const },
+            { label: 'Total Operations', value: totalOperations, icon: <FileOutlined />, status: 'default' as const },
+          ].map((metric) => (
+            <UICol key={metric.label} xs={24} sm={12} lg={6}>
+              <UIMetricCard {...metric} loading={isLoading} />
+            </UICol>
+          ))}
         </UIRow>
 
         {/* Bandwidth Usage */}
         <UIRow gutter={[16, 16]} style={{ marginTop: 16 }}>
           <UICol xs={24} lg={12}>
-            <UICard title="Bandwidth Usage">
+            <UICard title="Bandwidth Usage" style={{ height: '100%' }}>
               <UIRow gutter={[16, 16]}>
                 <UICol span={12}>
                   <UIStatistic
@@ -209,7 +172,7 @@ export function AnalyticsStoragePage() {
             </UICard>
           </UICol>
           <UICol xs={24} lg={12}>
-            <UICard title="Performance Metrics">
+            <UICard title="Performance Metrics" style={{ height: '100%' }}>
               <UIRow gutter={[16, 16]}>
                 <UICol span={12}>
                   <UIStatistic

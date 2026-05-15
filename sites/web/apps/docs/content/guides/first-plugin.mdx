@@ -56,10 +56,11 @@ You should see `dist/` folders in each sub-package. If the build fails, run `kb 
 
 ## 3. Clear the CLI cache and run
 
-The CLI caches the plugin registry aggressively. After building a new plugin, always clear:
+The CLI discovery cache auto-invalidates when you rebuild a plugin. If commands
+are still missing after a build, force-reset:
 
 ```bash
-kb marketplace clear-cache
+kb marketplace plugins refresh
 ```
 
 Now run your commands:
@@ -182,11 +183,10 @@ entry: {
 },
 ```
 
-Then rebuild and clear cache:
+Then rebuild:
 
 ```bash
 pnpm build
-kb marketplace clear-cache
 kb my-plugin status
 ```
 
@@ -219,7 +219,7 @@ This requires an LLM adapter configured in `kb.config.json`. See [Adapters → O
 
 ## Iterating
 
-- **Code change?** `pnpm build` and `kb marketplace clear-cache`, then re-run.
+- **Code change?** `pnpm build` — cache updates automatically, then re-run.
 - **Something broken?** `kb scaffold doctor --path .kb/plugins` scans for common issues.
 - **Want to unlink?** `kb marketplace plugins unlink my-plugin-entry`.
 

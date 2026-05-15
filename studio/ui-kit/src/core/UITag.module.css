@@ -1,0 +1,16 @@
+/*
+ * UITag styles — interactive feedback for clickable tags
+ *
+ * Class name is hardcoded ('kb-ui-tag') because tsup doesn't map
+ * CSS module class names in the dist bundle — styles.className is always {}.
+ */
+
+.kb-ui-tag {
+  transition: opacity 100ms ease, transform 100ms ease;
+}
+
+.kb-ui-tag:not([disabled]):active {
+  opacity: 0.7;
+  transform: scale(0.94);
+  transition: opacity 50ms ease, transform 50ms ease;
+}

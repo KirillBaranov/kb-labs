@@ -1,12 +1,5 @@
-/**
- * MetricCard component - Display metric with trend
- *
- * Professional UI component using design tokens.
- * NO inline styles, NO hardcoded colors.
- */
-
 import * as React from 'react';
-import { Card, theme } from 'antd';
+import { Card, theme, Tooltip } from 'antd';
 import { UIText } from '../primitives/UIText';
 import { UIFlex } from '../primitives/UIFlex';
 import { UIBox } from '../primitives/UIBox';
@@ -18,9 +11,13 @@ export interface UIMetricCardProps {
   label: string;
   /** Metric value */
   value: string | number;
+  /** Icon shown in colored badge */
+  icon?: React.ReactNode;
+  /** Color theme for the icon badge */
+  status?: 'default' | 'info' | 'success' | 'warning' | 'error';
   /** Trend direction */
   trend?: 'up' | 'down' | 'neutral';
-  /** Change delta (percentage or absolute) */
+  /** Change delta (percentage) */
   delta?: number;
   /** Value unit (e.g., '%', 'ms', '$') */
   unit?: string;
@@ -32,25 +29,11 @@ export interface UIMetricCardProps {
   loading?: boolean;
 }
 
-/**
- * MetricCard - Display single metric with optional trend indicator
- *
- * Uses Ant Design tokens for all colors.
- *
- * @example
- * ```tsx
- * <MetricCard
- *   label="Active Users"
- *   value={1234}
- *   trend="up"
- *   delta={15.3}
- *   unit="users"
- * />
- * ```
- */
 export function UIMetricCard({
   label,
   value,
+  icon,
+  status = 'default',
   trend = 'neutral',
   delta,
   unit,
@@ -60,54 +43,74 @@ export function UIMetricCard({
 }: UIMetricCardProps) {
   const { token } = useToken();
 
-  // Determine trend color using Ant Design tokens
+  const iconBgMap: Record<string, string> = {
+    default: token.colorFillSecondary,
+    info: token.colorInfoBg,
+    success: token.colorSuccessBg,
+    warning: token.colorWarningBg,
+    error: token.colorErrorBg,
+  };
+
+  const iconColorMap: Record<string, string> = {
+    default: token.colorTextSecondary,
+    info: token.colorInfo,
+    success: token.colorSuccess,
+    warning: token.colorWarning,
+    error: token.colorError,
+  };
+
   const trendColor =
     trend === 'up' ? token.colorSuccess :
     trend === 'down' ? token.colorError :
-    token.colorText;
+    token.colorTextSecondary;
 
   const trendIcon = trend === 'up' ? '↑' : trend === 'down' ? '↓' : '';
 
   return (
-    <Card
-      size={size}
-      loading={loading}
-      style={{ height: '100%' }}
-    >
+    <Card size={size} loading={loading} style={{ height: '100%' }}>
       <UIBox>
-        {/* Label */}
+        {icon && (
+          <div style={{
+            width: 36,
+            height: 36,
+            borderRadius: token.borderRadiusSM,
+            backgroundColor: iconBgMap[status],
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: iconColorMap[status],
+            fontSize: 16,
+            marginBottom: token.marginSM,
+          }}>
+            {icon}
+          </div>
+        )}
+
         <UIText size="sm" color="secondary" as="div">
           {label}
         </UIText>
 
-        {/* Value with unit */}
-        <UIFlex align="baseline" gap={2} style={{ marginTop: token.marginXS }}>
-          <UIText
-            size="2xl"
-            weight="bold"
-            as="div"
-            style={{ color: trendColor }}
-          >
-            {value}
-          </UIText>
-          {unit && (
-            <UIText size="base" color="secondary">
-              {unit}
-            </UIText>
-          )}
-        </UIFlex>
-
-        {/* Delta indicator */}
-        {showDelta && delta !== undefined && (
-          <UIFlex
-            align="center"
-            gap={1}
-            style={{ marginTop: token.marginXS }}
-          >
+        <Tooltip title={String(value)} mouseEnterDelay={0.6}>
+          <UIFlex align="baseline" gap={2} style={{ marginTop: 4, overflow: 'hidden' }}>
             <UIText
-              size="sm"
-              style={{ color: delta >= 0 ? token.colorSuccess : token.colorError }}
+              size="2xl"
+              weight="bold"
+              as="div"
+              style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }}
             >
+              {value}
+            </UIText>
+            {unit && (
+              <UIText size="base" color="secondary" style={{ flexShrink: 0 }}>
+                {unit}
+              </UIText>
+            )}
+          </UIFlex>
+        </Tooltip>
+
+        {showDelta && delta !== undefined && (
+          <UIFlex align="center" gap={1} style={{ marginTop: token.marginXS }}>
+            <UIText size="sm" style={{ color: delta >= 0 ? token.colorSuccess : token.colorError }}>
               {trendIcon} {Math.abs(delta)}%
             </UIText>
           </UIFlex>

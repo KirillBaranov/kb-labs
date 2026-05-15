@@ -60,7 +60,7 @@ Dependencies flow **strictly downward**. Never import from a higher layer.
 ### Building
 - Use `kb-devkit run build` (or `pnpm build`) — respects topological order
 - Use `kb-devkit run build --affected` for incremental builds
-- After building CLI plugins: `pnpm kb plugins clear-cache`
+- After building CLI plugins: `pnpm kb marketplace plugins refresh`
 
 ### Plugin = Duck Typing
 Everything in `plugins/` is a plugin. If it uses SDK, registers commands, has a manifest — it's a plugin.

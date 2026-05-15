@@ -11,7 +11,7 @@
 cd /Users/kirillbaranov/Desktop/kb-labs
 
 # Очистить кеш (опционально)
-pnpm kb plugins clear-cache
+pnpm kb marketplace plugins refresh
 
 # Актуализировать индекс
 pnpm kb mind rag-index

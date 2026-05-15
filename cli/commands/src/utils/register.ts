@@ -121,8 +121,8 @@ export async function registerBuiltinCommands(
     return;
   }
 
-  // Auto-regenerate static shell completion if command set changed (fire-and-forget)
-  autoUpdateCompletion(registry).catch(() => { /* best-effort, never fail startup */ });
+  // Regenerate static shell completions if command set changed — cheap check (<1ms typical)
+  await autoUpdateCompletion(registry).catch(() => { /* best-effort, never fail startup */ });
 
   registerShutdownHook(async () => {
     await disposeAllPlugins(registry, log);

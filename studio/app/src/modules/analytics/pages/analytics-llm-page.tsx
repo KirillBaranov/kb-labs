@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { UIRow, UICol, UIStatistic, UIAlert, UITable, UISpace, UISelect, useUITheme } from '@kb-labs/studio-ui-kit';
+import { UIRow, UICol, UIAlert, UITable, UISpace, UISelect, UIMetricCard, useUITheme } from '@kb-labs/studio-ui-kit';
 import {
   RobotOutlined,
   DollarOutlined,
@@ -295,89 +295,29 @@ export function AnalyticsLLMPage() {
       <div style={{ marginTop: 24 }}>
         {/* Overview Stats */}
         <UIRow gutter={[16, 16]}>
-          <UICol xs={24} sm={12} lg={6}>
-            <UICard>
-              <UIStatistic
-                title="Total Requests"
-                value={stats?.totalRequests ?? 0}
-                prefix={<ThunderboltOutlined />}
-                loading={isLoading}
-                valueStyle={{ color: 'var(--info)' }}
-              />
-            </UICard>
-          </UICol>
-          <UICol xs={24} sm={12} lg={6}>
-            <UICard>
-              <UIStatistic
-                title="Total Tokens"
-                value={stats?.totalTokens ?? 0}
-                prefix={<RobotOutlined />}
-                loading={isLoading}
-                valueStyle={{ color: 'var(--success)' }}
-              />
-            </UICard>
-          </UICol>
-          <UICol xs={24} sm={12} lg={6}>
-            <UICard>
-              <UIStatistic
-                title="Total Cost"
-                value={stats?.totalCost ?? 0}
-                prefix={<DollarOutlined />}
-                precision={4}
-                loading={isLoading}
-                valueStyle={{ color: 'var(--error)' }}
-              />
-            </UICard>
-          </UICol>
-          <UICol xs={24} sm={12} lg={6}>
-            <UICard>
-              <UIStatistic
-                title="Errors"
-                value={stats?.errors ?? 0}
-                prefix={<WarningOutlined />}
-                loading={isLoading}
-                valueStyle={{ color: stats && stats.errors > 0 ? 'var(--warning)' : 'var(--success)' }}
-              />
-            </UICard>
-          </UICol>
+          {[
+            { label: 'Total Requests', value: stats?.totalRequests ?? 0, icon: <ThunderboltOutlined />, status: 'info' as const },
+            { label: 'Total Tokens', value: stats?.totalTokens ?? 0, icon: <RobotOutlined />, status: 'success' as const },
+            { label: 'Total Cost', value: stats ? formatCost(stats.totalCost) : '0', icon: <DollarOutlined />, status: 'error' as const },
+            { label: 'Errors', value: stats?.errors ?? 0, icon: <WarningOutlined />, status: (stats && stats.errors > 0 ? 'warning' : 'success') as 'warning' | 'success' },
+          ].map((metric) => (
+            <UICol key={metric.label} xs={24} sm={12} lg={6}>
+              <UIMetricCard {...metric} loading={isLoading} />
+            </UICol>
+          ))}
         </UIRow>
 
         {/* Cache Savings Row */}
         <UIRow gutter={[16, 16]} style={{ marginTop: 16 }}>
-          <UICol xs={24} sm={12} lg={8}>
-            <UICard>
-              <UIStatistic
-                title="Cache Read Tokens"
-                value={stats?.totalCacheReadTokens ?? 0}
-                prefix={<SaveOutlined />}
-                loading={isLoading}
-                valueStyle={{ color: 'var(--info)' }}
-              />
-            </UICard>
-          </UICol>
-          <UICol xs={24} sm={12} lg={8}>
-            <UICard>
-              <UIStatistic
-                title="Billable Tokens"
-                value={stats?.totalBillableTokens ?? 0}
-                prefix={<RobotOutlined />}
-                loading={isLoading}
-                valueStyle={{ color: 'var(--warning)' }}
-              />
-            </UICard>
-          </UICol>
-          <UICol xs={24} sm={12} lg={8}>
-            <UICard>
-              <UIStatistic
-                title="Cache Savings"
-                value={stats?.totalCacheSavingsUsd ?? 0}
-                prefix={<DollarOutlined />}
-                precision={4}
-                loading={isLoading}
-                valueStyle={{ color: 'var(--success)' }}
-              />
-            </UICard>
-          </UICol>
+          {[
+            { label: 'Cache Read Tokens', value: stats?.totalCacheReadTokens ?? 0, icon: <SaveOutlined />, status: 'info' as const },
+            { label: 'Billable Tokens', value: stats?.totalBillableTokens ?? 0, icon: <RobotOutlined />, status: 'warning' as const },
+            { label: 'Cache Savings', value: stats ? formatCost(stats.totalCacheSavingsUsd) : '0', icon: <DollarOutlined />, status: 'success' as const },
+          ].map((metric) => (
+            <UICol key={metric.label} xs={24} sm={12} lg={8}>
+              <UIMetricCard {...metric} loading={isLoading} />
+            </UICol>
+          ))}
         </UIRow>
 
         {/* Model Breakdown Table */}

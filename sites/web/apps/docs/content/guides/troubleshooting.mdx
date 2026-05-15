@@ -20,7 +20,7 @@ For operational incidents (service outages, data loss, security leaks), see [Ope
 **Fix.**
 
 ```bash
-pnpm kb marketplace clear-cache
+pnpm kb marketplace plugins refresh
 ```
 
 Then re-run your command. This is the single most common issue — if a command should work and doesn't, clear the cache first.
@@ -37,7 +37,7 @@ Then re-run your command. This is the single most common issue — if a command 
 2. Confirm the file exports a default with an `execute` method: `node -e "import('./dist/cli/commands/hello.js').then(m => console.log(typeof m.default.execute))"`.
 3. If you renamed a file in `src/`, update the manifest to match.
 4. Rebuild: `pnpm build`.
-5. Clear cache: `pnpm kb marketplace clear-cache`.
+5. Rebuild: `pnpm build` — cache auto-invalidates. If still missing: `pnpm kb marketplace plugins refresh`.
 
 ### Plugin handler throws "command can only run in CLI or workflow host"
 
@@ -165,7 +165,7 @@ Or fix the ownership directly: `sudo chown -R $USER dist`.
 
 1. Verify `dist/widgets/remoteEntry.js` exists.
 2. Verify the plugin is in `.kb/marketplace.lock`: `pnpm kb marketplace list`.
-3. Clear the cache: `pnpm kb marketplace clear-cache`.
+3. Clear the cache: `pnpm kb marketplace plugins refresh`.
 4. Restart the REST API: `kb-dev restart rest`.
 5. **Hard-reload Studio** in your browser (Cmd+Shift+R / Ctrl+Shift+R). Module Federation remotes are cached aggressively.
 
@@ -419,7 +419,7 @@ Force-kill as a last resort. Investigate why the service didn't respond to SIGTE
 Generic case for most "it's not working" issues:
 
 1. **Did you rebuild?** `pnpm build` in the package you changed.
-2. **Did you clear the cache?** `pnpm kb marketplace clear-cache`.
+2. **Did you rebuild?** Cache auto-invalidates after `pnpm build`. Force-reset: `pnpm kb marketplace plugins refresh`.
 3. **Did you restart the service?** `kb-dev restart <service>`.
 4. **Did you hard-reload the browser?** (For Studio.)
 

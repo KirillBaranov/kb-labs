@@ -13,3 +13,4 @@ export * from './UIIcon';
 export * from './UIAvatar';
 export * from './useUiTheme';
 export * from './UIShimmerText';
+export * from './UICopyButton';

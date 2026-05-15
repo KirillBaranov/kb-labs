@@ -46,13 +46,13 @@ function MyComponent() {
 
 ## 📊 Component Stats
 
-- **Total Components:** 51
-- **With Tests:** 4/51 (8%)
+- **Total Components:** 52
+- **With Tests:** 4/52 (8%)
 
 **By Category:**
 
 - Primitives: 4
-- Core: 8
+- Core: 9
 - Layout: 4
 - Form: 10
 - Navigation: 7
@@ -84,6 +84,7 @@ Essential UI components
 | **UIBadge** | Badge component - Status indicator with semantic colors | ❌ |
 | **UIButton** | UIButton component - Action button with semantic variants | ✅ |
 | **UICard** | UICard component - Card container with header/footer | ❌ |
+| **UICopyButton** | UICopyButton — one-click copy with built-in visual feedback. | ❌ |
 | **UIIcon** | UIIcon component - Icon wrapper with proper theming | ❌ |
 | **UIShimmerText** | UIShimmerText - Animated gradient shimmer on text | ❌ |
 | **UITag** | UITag component - Label/category tag with semantic colors | ❌ |

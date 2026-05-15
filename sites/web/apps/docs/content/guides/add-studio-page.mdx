@@ -223,7 +223,7 @@ If the plugin isn't already linked:
 
 ```bash
 pnpm kb marketplace link /path/to/plugins/hello-plugin
-pnpm kb marketplace clear-cache
+pnpm kb marketplace plugins refresh
 ```
 
 Restart the REST API (so the new `studio` block in the manifest is picked up) and hard-reload Studio in your browser:
@@ -246,7 +246,7 @@ Click "Say Hi" and the page calls your plugin's REST endpoint. The response show
 
 1. Check `dist/widgets/remoteEntry.js` exists.
 2. Verify the plugin is in `.kb/marketplace.lock` (`pnpm kb marketplace list`).
-3. Clear the registry cache: `pnpm kb marketplace clear-cache`.
+3. Clear the registry cache: `pnpm kb marketplace plugins refresh`.
 4. Hard-reload Studio in the browser.
 5. Check Studio's browser console for Module Federation loading errors.
 

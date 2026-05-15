@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UIRow, UICol, UIStatistic, UIAlert, UIProgress, useUITheme } from '@kb-labs/studio-ui-kit';
+import { UIRow, UICol, UIStatistic, UIAlert, UIProgress, UIMetricCard, useUITheme } from '@kb-labs/studio-ui-kit';
 import {
   ClockCircleOutlined,
   CheckCircleOutlined,
@@ -113,75 +113,44 @@ export function AnalyticsCachePage() {
       <div style={{ marginTop: 24 }}>
         {/* Hit Rate Overview */}
         <UIRow gutter={[16, 16]}>
-          <UICol xs={24}>
-            <UICard>
-              <UIRow gutter={[16, 16]} align="middle">
-                <UICol xs={24} lg={8}>
-                  <div style={{ textAlign: 'center' }}>
-                    <UIProgress
-                      type="circle"
-                      percent={Number((stats?.hitRate ?? 0).toFixed(1))}
-                      status={hitRateStatus}
-                      size={180}
-                      format={(percent) => (
-                        <div>
-                          <div style={{ fontSize: '32px', fontWeight: 'bold' }}>{percent}%</div>
-                          <div style={{ fontSize: '14px', color: token.colorTextTertiary }}>Hit Rate</div>
-                        </div>
-                      )}
-                    />
-                  </div>
-                </UICol>
-                <UICol xs={24} lg={16}>
-                  <UIRow gutter={[16, 16]}>
-                    <UICol xs={12}>
-                      <UIStatistic
-                        title="Total Gets"
-                        value={stats?.totalGets ?? 0}
-                        prefix={<EyeOutlined />}
-                        loading={isLoading}
-                        valueStyle={{ color: 'var(--info)' }}
-                      />
-                    </UICol>
-                    <UICol xs={12}>
-                      <UIStatistic
-                        title="Cache Hits"
-                        value={stats?.hits ?? 0}
-                        prefix={<CheckCircleOutlined />}
-                        loading={isLoading}
-                        valueStyle={{ color: 'var(--success)' }}
-                      />
-                    </UICol>
-                    <UICol xs={12}>
-                      <UIStatistic
-                        title="Cache Misses"
-                        value={stats?.misses ?? 0}
-                        prefix={<CloseCircleOutlined />}
-                        loading={isLoading}
-                        valueStyle={{ color: 'var(--error)' }}
-                      />
-                    </UICol>
-                    <UICol xs={12}>
-                      <UIStatistic
-                        title="Miss Rate"
-                        value={Number(missRate)}
-                        suffix="%"
-                        precision={1}
-                        loading={isLoading}
-                        valueStyle={{ color: 'var(--warning)' }}
-                      />
-                    </UICol>
-                  </UIRow>
-                </UICol>
-              </UIRow>
+          <UICol xs={24} lg={8}>
+            <UICard style={{ height: '100%' }}>
+              <div style={{ textAlign: 'center', padding: '8px 0' }}>
+                <UIProgress
+                  type="circle"
+                  percent={Number((stats?.hitRate ?? 0).toFixed(1))}
+                  status={hitRateStatus}
+                  size={180}
+                  format={(percent) => (
+                    <div>
+                      <div style={{ fontSize: '32px', fontWeight: 'bold' }}>{percent}%</div>
+                      <div style={{ fontSize: '14px', color: token.colorTextTertiary }}>Hit Rate</div>
+                    </div>
+                  )}
+                />
+              </div>
             </UICard>
+          </UICol>
+          <UICol xs={24} lg={16}>
+            <UIRow gutter={[16, 16]}>
+              {[
+                { label: 'Total Gets', value: stats?.totalGets ?? 0, icon: <EyeOutlined />, status: 'info' as const },
+                { label: 'Cache Hits', value: stats?.hits ?? 0, icon: <CheckCircleOutlined />, status: 'success' as const },
+                { label: 'Cache Misses', value: stats?.misses ?? 0, icon: <CloseCircleOutlined />, status: 'error' as const },
+                { label: 'Miss Rate', value: `${missRate}%`, icon: <CloseCircleOutlined />, status: 'warning' as const },
+              ].map((metric) => (
+                <UICol key={metric.label} xs={12}>
+                  <UIMetricCard {...metric} loading={isLoading} />
+                </UICol>
+              ))}
+            </UIRow>
           </UICol>
         </UIRow>
 
         {/* Performance Metrics */}
         <UIRow gutter={[16, 16]} style={{ marginTop: 16 }}>
           <UICol xs={24} lg={12}>
-            <UICard title="Read Performance">
+            <UICard title="Read Performance" style={{ height: '100%' }}>
               <UIStatistic
                 title="Avg Get Duration"
                 value={stats?.avgGetDuration ?? 0}
@@ -201,7 +170,7 @@ export function AnalyticsCachePage() {
             </UICard>
           </UICol>
           <UICol xs={24} lg={12}>
-            <UICard title="Write Performance">
+            <UICard title="Write Performance" style={{ height: '100%' }}>
               <UIStatistic
                 title="Cache Sets"
                 value={stats?.sets ?? 0}

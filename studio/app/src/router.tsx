@@ -2,7 +2,7 @@ import * as React from 'react';
 import { createBrowserRouter, Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './providers/auth-provider';
 import { useRegistryV2 } from './providers/registry-v2-provider';
-import { CommandPaletteProvider, useCommandPalette } from './providers/command-palette-provider';
+import { CommandPaletteProvider } from './providers/command-palette-provider';
 import { useNotifications } from '@kb-labs/studio-data-client';
 import { useDataSources } from './providers/data-sources-provider';
 import { HealthBanner } from './components/health-banner';
@@ -71,7 +71,6 @@ function LayoutContent() {
   const location = useLocation();
   const navigate = useNavigate();
   const { registry, error } = useRegistryV2();
-  const commandPalette = useCommandPalette();
   const sources = useDataSources();
   const { settings } = useSettings();
 

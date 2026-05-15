@@ -69,8 +69,7 @@ pnpm kb marketplace plugins link <path> # Link local plugin for development
 pnpm kb marketplace plugins unlink <id>
 pnpm kb marketplace plugins doctor      # Diagnose plugin issues
 
-pnpm kb marketplace clear-cache         # Clear plugin registry snapshot
-pnpm kb marketplace clear-cache --deep  # Also clear Node.js module cache
+pnpm kb marketplace plugins refresh     # Force-reset CLI discovery cache
 ```
 
 ### `workflow`
@@ -195,5 +194,5 @@ Commands are declared in the `cli.commands[]` array of a plugin manifest. See [P
 After adding commands:
 
 1. Build the plugin: `pnpm --filter your-plugin build`
-2. Clear the registry cache: `pnpm kb marketplace clear-cache`
+2. Cache auto-invalidates on rebuild. If commands are missing: `pnpm kb marketplace plugins refresh`
 3. Verify: `pnpm kb your-group --help`

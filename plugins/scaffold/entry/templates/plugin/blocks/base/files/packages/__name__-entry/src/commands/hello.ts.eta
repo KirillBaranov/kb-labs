@@ -1,5 +1,6 @@
 import { defineCommand, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
 import { hello } from '<%= it.scope ? it.scope + '/' : '' %><%= it.name %>-core';
+import { handleError, validationError } from '../utils/error.js';
 
 type HelloFlags = {
   who?: string;
@@ -9,10 +10,12 @@ type HelloFlags = {
 /**
  * `kb <%= it.name %> hello` — prints a friendly greeting.
  *
- * This handler demonstrates the bare minimum: receive flags, call into
- * `-core`, write output via `ctx.ui`. As you grow, reach for the patterns
- * sketched inside `<%= it.name %>-core/src/hello.ts` — LLM calls, caching,
- * structured logging — ALL through `@kb-labs/sdk`.
+ * This handler demonstrates the standard error-handling pattern:
+ *   1. Validate args/flags with validationError() — before the try/catch
+ *   2. Wrap the core call in try/catch, forward errors via handleError()
+ *   3. In JSON mode: success = raw data, errors = { ok: false, error: { ... } }
+ *
+ * See src/utils/error.ts to extend handleError() for your API error class.
  */
 export default defineCommand({
   id: '<%= it.name %>:hello',
@@ -20,15 +23,27 @@ export default defineCommand({
 
   handler: {
     async execute(ctx: PluginContextV3, input: CLIInput<HelloFlags>) {
-      const { greeting } = hello({ who: input.flags.who ?? 'World' });
-
-      if (input.flags.json) {
-        ctx.ui?.json?.({ greeting });
-      } else {
-        ctx.ui?.info?.(greeting);
+      // 1. Validate — synchronous, before try/catch
+      if (input.flags.who !== undefined && input.flags.who.trim() === '') {
+        validationError(ctx, '--who cannot be empty', undefined, input.flags.json);
+        return { exitCode: 1, result: null };
       }
 
-      return { exitCode: 0, result: { greeting } };
+      // 2. Call core, wrap in try/catch
+      try {
+        const { greeting } = hello({ who: input.flags.who ?? 'World' });
+
+        if (input.flags.json) {
+          ctx.ui?.json?.({ greeting });
+        } else {
+          ctx.ui?.info?.(greeting);
+        }
+
+        return { exitCode: 0, result: { greeting } };
+      } catch (err) {
+        handleError(ctx, err, input.flags.json);
+        return { exitCode: 1, result: null };
+      }
     },
   },
 });

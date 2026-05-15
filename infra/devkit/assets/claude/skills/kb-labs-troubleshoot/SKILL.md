@@ -22,14 +22,10 @@ git status of key files. Most problems surface here.
 
 Most common cause: **stale plugin registry cache after building a plugin**.
 
-```bash
-pnpm kb marketplace clear-cache
-```
-
-If that does not help, deep clear:
+The cache auto-invalidates on rebuild. If commands are still missing, force-reset:
 
 ```bash
-pnpm kb marketplace clear-cache --deep
+pnpm kb marketplace plugins refresh
 ```
 
 Then retry the command. If it is still missing:
@@ -53,7 +49,7 @@ Fix:
 ```bash
 pkill -9 -f "host-agent-app/dist/index.js"
 ps aux | grep host-agent | grep -v grep   # must be empty
-pnpm kb marketplace clear-cache --deep
+pnpm kb marketplace plugins refresh
 ```
 
 Then retry the command.
