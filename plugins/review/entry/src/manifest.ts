@@ -58,15 +58,13 @@ export const manifest = {
   cli: {
     commands: [
       {
-        id: 'run',
-        group: 'review',
+        path: 'review run',
         describe: 'Run code review analysis',
         longDescription:
           'Analyzes code using heuristic engines (ESLint, Ruff, etc.) and optionally LLM analyzers. ' +
           'Supports three modes: heuristic (CI, fast), full (local, comprehensive), llm (deep analysis).',
 
         handler: './commands/run.js#default',
-        handlerPath: './commands/run.js',
 
         flags: defineCommandFlags(runFlags.schema),
 

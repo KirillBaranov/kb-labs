@@ -88,7 +88,6 @@ export const manifest = {
   // Setup handler - V3 pattern
   setup: {
     handler: './setup/handler.js#default',
-    handlerPath: './setup/handler.js',
     describe: 'Prepare the .kb/release workspace (plans, reports, backups).',
   },
 
@@ -97,14 +96,12 @@ export const manifest = {
     commands: [
       // release:plan - Analyze changes and prepare release plan
       {
-        id: 'plan',
-        group: 'release',
+        path: 'release plan',
         category: 'Pipeline',
         describe: 'Analyze changes and prepare release plan',
         longDescription: 'Detect modified packages and compute version bumps based on changes',
 
         handler: './cli/commands/plan.js#default',
-        handlerPath: './cli/commands/plan.js',
 
         flags: defineCommandFlags({
           scope: { type: 'string', description: 'Package scope (glob pattern)' },
@@ -127,14 +124,12 @@ export const manifest = {
 
       // release:run - Execute release process
       {
-        id: 'run',
-        group: 'release',
+        path: 'release run',
         category: 'Pipeline',
         describe: 'Execute release process (plan, check, publish)',
         longDescription: 'Run full release: plan versions, run checks, publish packages',
 
         handler: './cli/commands/run.js#default',
-        handlerPath: './cli/commands/run.js',
 
         flags: defineCommandFlags({
           scope: { type: 'string', description: 'Package scope or glob pattern (e.g. @my-org/core, packages/*)' },
@@ -168,14 +163,12 @@ export const manifest = {
 
       // release:publish - Publish packages to npm
       {
-        id: 'publish',
-        group: 'release',
+        path: 'release publish',
         category: 'Publish',
         describe: 'Publish packages to npm registry',
         longDescription: 'Smart npm publish with interactive 2FA support and better UX',
 
         handler: './cli/commands/publish.js#default',
-        handlerPath: './cli/commands/publish.js',
 
         flags: defineCommandFlags({
           scope: { type: 'string', description: 'Package scope (glob pattern)' },
@@ -202,14 +195,12 @@ export const manifest = {
 
       // release:rollback - Rollback last release
       {
-        id: 'rollback',
-        group: 'release',
+        path: 'release rollback',
         category: 'Utilities',
         describe: 'Rollback last release',
         longDescription: 'Restore workspace state from backup snapshot',
 
         handler: './cli/commands/rollback.js#default',
-        handlerPath: './cli/commands/rollback.js',
 
         flags: defineCommandFlags({
           json: { type: 'boolean', description: 'Output in JSON format' },
@@ -220,14 +211,12 @@ export const manifest = {
 
       // release:report - Show last release report
       {
-        id: 'report',
-        group: 'release',
+        path: 'release report',
         category: 'Utilities',
         describe: 'Show last release report',
         longDescription: 'Display the most recent release execution report',
 
         handler: './cli/commands/report.js#default',
-        handlerPath: './cli/commands/report.js',
 
         flags: defineCommandFlags({
           json: { type: 'boolean', description: 'Output in JSON format' },
@@ -238,14 +227,12 @@ export const manifest = {
 
       // release:changelog - Generate changelog
       {
-        id: 'changelog',
-        group: 'release',
+        path: 'release changelog',
         category: 'Utilities',
         describe: 'Generate changelog from conventional commits',
         longDescription: 'Parse git history and generate changelog with conventional commits support',
 
         handler: './cli/commands/changelog.js#default',
-        handlerPath: './cli/commands/changelog.js',
 
         flags: defineCommandFlags({
           scope: { type: 'string', description: 'Filter to specific package' },
@@ -291,14 +278,12 @@ export const manifest = {
 
       // release:verify - Validate release readiness
       {
-        id: 'verify',
-        group: 'release',
+        path: 'release verify',
         category: 'Validation',
         describe: 'Validate release readiness',
         longDescription: 'Validate release readiness via flag gates (packages, breaking changes, commit types)',
 
         handler: './cli/commands/verify.js#default',
-        handlerPath: './cli/commands/verify.js',
 
         flags: defineCommandFlags({
           'fail-if-empty': { type: 'boolean', description: 'Fail if no version bumps needed' },
@@ -319,14 +304,12 @@ export const manifest = {
 
       // release:checks - Run pre-release checks
       {
-        id: 'checks',
-        group: 'release',
+        path: 'release checks',
         category: 'Validation',
         describe: 'Run pre-release checks from release config',
         longDescription: 'Execute custom checks defined in release config (lint, test, audit, etc.)',
 
         handler: './cli/commands/checks.js#default',
-        handlerPath: './cli/commands/checks.js',
 
         flags: defineCommandFlags({
           scope: { type: 'string', description: 'Package scope (glob pattern)' },
@@ -342,14 +325,12 @@ export const manifest = {
 
       // release:build - Build packages
       {
-        id: 'build',
-        group: 'release',
+        path: 'release build',
         category: 'Publish',
         describe: 'Build packages from release plan',
         longDescription: 'Build all packages in plan into temp dir then atomically swap dist/',
 
         handler: './cli/commands/build.js#default',
-        handlerPath: './cli/commands/build.js',
 
         flags: defineCommandFlags({
           scope: { type: 'string', description: 'Package scope (glob pattern)' },
@@ -365,14 +346,12 @@ export const manifest = {
 
       // release:pack - Verify npm artifacts
       {
-        id: 'pack',
-        group: 'release',
+        path: 'release pack',
         category: 'Publish',
         describe: 'Verify built package artifacts via npm pack',
         longDescription: 'Run npm pack checks: directory imports, test file leaks, missing exports, syntax errors',
 
         handler: './cli/commands/pack.js#default',
-        handlerPath: './cli/commands/pack.js',
 
         flags: defineCommandFlags({
           scope: { type: 'string', description: 'Package scope (glob pattern)' },
@@ -388,14 +367,12 @@ export const manifest = {
 
       // release:version - Bump package.json versions
       {
-        id: 'version',
-        group: 'release',
+        path: 'release version',
         category: 'Publish',
         describe: 'Bump package.json versions per release plan',
         longDescription: 'Update version fields in package.json files based on computed plan',
 
         handler: './cli/commands/version.js#default',
-        handlerPath: './cli/commands/version.js',
 
         flags: defineCommandFlags({
           scope: { type: 'string', description: 'Package scope (glob pattern)' },
@@ -419,14 +396,12 @@ export const manifest = {
 
       // release:git - Commit, tag, push
       {
-        id: 'git',
-        group: 'release',
+        path: 'release git',
         category: 'Publish',
         describe: 'Commit, tag, and push release changes',
         longDescription: 'Create release commit, create version tags, and push to remote',
 
         handler: './cli/commands/git.js#default',
-        handlerPath: './cli/commands/git.js',
 
         flags: defineCommandFlags({
           scope: { type: 'string', description: 'Package scope (glob pattern)' },
@@ -459,7 +434,6 @@ export const manifest = {
         method: 'GET',
         path: RELEASE_ROUTES.SCOPES,
         handler: './rest/handlers/scopes-handler.js#default',
-        handlerPath: './rest/handlers/scopes-handler.js',
         output: {
           zod: '@kb-labs/release-manager-contracts#ScopesResponseSchema',
         },
@@ -469,7 +443,6 @@ export const manifest = {
         method: 'GET',
         path: RELEASE_ROUTES.STATUS,
         handler: './rest/handlers/status-handler.js#default',
-        handlerPath: './rest/handlers/status-handler.js',
         output: {
           zod: '@kb-labs/release-manager-contracts#StatusResponseSchema',
         },
@@ -479,7 +452,6 @@ export const manifest = {
         method: 'GET',
         path: RELEASE_ROUTES.PLAN,
         handler: './rest/handlers/plan-handler.js#default',
-        handlerPath: './rest/handlers/plan-handler.js',
         input: {
           zod: '@kb-labs/release-manager-contracts#PlanInputSchema',
         },
@@ -492,7 +464,6 @@ export const manifest = {
         method: 'POST',
         path: RELEASE_ROUTES.GENERATE,
         handler: './rest/handlers/generate-handler.js#default',
-        handlerPath: './rest/handlers/generate-handler.js',
         input: {
           zod: '@kb-labs/release-manager-contracts#GeneratePlanRequestSchema',
         },
@@ -506,7 +477,6 @@ export const manifest = {
         method: 'DELETE',
         path: RELEASE_ROUTES.RESET,
         handler: './rest/handlers/reset-handler.js#default',
-        handlerPath: './rest/handlers/reset-handler.js',
         input: {
           zod: '@kb-labs/release-manager-contracts#ResetPlanRequestSchema',
         },
@@ -519,7 +489,6 @@ export const manifest = {
         method: 'GET',
         path: RELEASE_ROUTES.CHANGELOG,
         handler: './rest/handlers/changelog-handler.js#default',
-        handlerPath: './rest/handlers/changelog-handler.js',
         input: {
           zod: '@kb-labs/release-manager-contracts#ChangelogInputSchema',
         },
@@ -532,7 +501,6 @@ export const manifest = {
         method: 'POST',
         path: RELEASE_ROUTES.CHANGELOG_GENERATE,
         handler: './rest/handlers/changelog-generate-handler.js#default',
-        handlerPath: './rest/handlers/changelog-generate-handler.js',
         input: {
           zod: '@kb-labs/release-manager-contracts#GenerateChangelogRequestSchema',
         },
@@ -546,7 +514,6 @@ export const manifest = {
         method: 'POST',
         path: RELEASE_ROUTES.CHANGELOG_SAVE,
         handler: './rest/handlers/changelog-save-handler.js#default',
-        handlerPath: './rest/handlers/changelog-save-handler.js',
         input: {
           zod: '@kb-labs/release-manager-contracts#SaveChangelogRequestSchema',
         },
@@ -559,7 +526,6 @@ export const manifest = {
         method: 'POST',
         path: RELEASE_ROUTES.RUN,
         handler: './rest/handlers/run-handler.js#default',
-        handlerPath: './rest/handlers/run-handler.js',
         input: {
           zod: '@kb-labs/release-manager-contracts#RunReleaseRequestSchema',
         },
@@ -573,7 +539,6 @@ export const manifest = {
         method: 'GET',
         path: RELEASE_ROUTES.REPORT,
         handler: './rest/handlers/report-handler.js#default',
-        handlerPath: './rest/handlers/report-handler.js',
         output: {
           zod: '@kb-labs/release-manager-contracts#ReportResponseSchema',
         },
@@ -583,7 +548,6 @@ export const manifest = {
         method: 'GET',
         path: RELEASE_ROUTES.HISTORY,
         handler: './rest/handlers/history-handler.js#default',
-        handlerPath: './rest/handlers/history-handler.js',
         output: {
           zod: '@kb-labs/release-manager-contracts#HistoryResponseSchema',
         },
@@ -593,7 +557,6 @@ export const manifest = {
         method: 'GET',
         path: RELEASE_ROUTES.HISTORY_REPORT,
         handler: './rest/handlers/history-report-handler.js#default',
-        handlerPath: './rest/handlers/history-report-handler.js',
         output: {
           zod: '@kb-labs/release-manager-contracts#HistoryReportResponseSchema',
         },
@@ -603,7 +566,6 @@ export const manifest = {
         method: 'GET',
         path: RELEASE_ROUTES.HISTORY_PLAN,
         handler: './rest/handlers/history-plan-handler.js#default',
-        handlerPath: './rest/handlers/history-plan-handler.js',
         output: {
           zod: '@kb-labs/release-manager-contracts#HistoryPlanResponseSchema',
         },
@@ -613,7 +575,6 @@ export const manifest = {
         method: 'GET',
         path: RELEASE_ROUTES.HISTORY_CHANGELOG,
         handler: './rest/handlers/history-changelog-handler.js#default',
-        handlerPath: './rest/handlers/history-changelog-handler.js',
         output: {
           zod: '@kb-labs/release-manager-contracts#HistoryChangelogResponseSchema',
         },
@@ -623,7 +584,6 @@ export const manifest = {
         method: 'GET',
         path: RELEASE_ROUTES.GIT_TIMELINE,
         handler: './rest/handlers/git-timeline-handler.js#default',
-        handlerPath: './rest/handlers/git-timeline-handler.js',
         output: {
           zod: '@kb-labs/release-manager-contracts#GitTimelineResponseSchema',
         },
@@ -633,7 +593,6 @@ export const manifest = {
         method: 'GET',
         path: RELEASE_ROUTES.PREVIEW,
         handler: './rest/handlers/preview-handler.js#default',
-        handlerPath: './rest/handlers/preview-handler.js',
         output: {
           zod: '@kb-labs/release-manager-contracts#PreviewResponseSchema',
         },
@@ -643,7 +602,6 @@ export const manifest = {
         method: 'POST',
         path: RELEASE_ROUTES.BUILD,
         handler: './rest/handlers/build-handler.js#default',
-        handlerPath: './rest/handlers/build-handler.js',
         input: {
           zod: '@kb-labs/release-manager-contracts#BuildRequestSchema',
         },
@@ -657,7 +615,6 @@ export const manifest = {
         method: 'GET',
         path: RELEASE_ROUTES.CHECKLIST,
         handler: './rest/handlers/checklist-handler.js#default',
-        handlerPath: './rest/handlers/checklist-handler.js',
         output: {
           zod: '@kb-labs/release-manager-contracts#ReleaseChecklistSchema',
         },
@@ -667,7 +624,6 @@ export const manifest = {
         method: 'GET',
         path: RELEASE_ROUTES.CHECKS,
         handler: './rest/handlers/get-checks-handler.js#default',
-        handlerPath: './rest/handlers/get-checks-handler.js',
         output: {
           zod: '@kb-labs/release-manager-contracts#GetChecksResponseSchema',
         },
@@ -677,7 +633,6 @@ export const manifest = {
         method: 'POST',
         path: RELEASE_ROUTES.CHECKS_RUN,
         handler: './rest/handlers/run-checks-handler.js#default',
-        handlerPath: './rest/handlers/run-checks-handler.js',
         input: {
           zod: '@kb-labs/release-manager-contracts#RunChecksRequestSchema',
         },

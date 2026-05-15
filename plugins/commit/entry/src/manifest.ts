@@ -95,8 +95,7 @@ export const manifest = {
     commands: [
       // Main command: commit (default flow)
       {
-        id: 'commit',
-        group: 'commit',
+        path: 'commit',
         category: 'Pipeline',
         describe: 'Generate and apply commits (default flow).',
         longDescription:
@@ -105,7 +104,6 @@ export const manifest = {
 
         // ✅ V3: handler with #default suffix
         handler: './cli/commands/run.js#default',
-        handlerPath: './cli/commands/run.js',
 
         flags: defineCommandFlags(runFlags),
 
@@ -119,8 +117,7 @@ export const manifest = {
 
       // commit:generate - Generate commit plan
       {
-        id: 'generate',
-        group: 'commit',
+        path: 'commit generate',
         category: 'Pipeline',
         describe: 'Generate commit plan from git changes.',
         longDescription:
@@ -128,7 +125,6 @@ export const manifest = {
           'related changes and generate conventional commit messages.',
 
         handler: './cli/commands/generate.js#default',
-        handlerPath: './cli/commands/generate.js',
 
         flags: defineCommandFlags(generateFlags),
 
@@ -141,8 +137,7 @@ export const manifest = {
 
       // commit:apply - Apply commit plan
       {
-        id: 'apply',
-        group: 'commit',
+        path: 'commit apply',
         category: 'Pipeline',
         describe: 'Apply current commit plan (create local commits).',
         longDescription:
@@ -150,7 +145,6 @@ export const manifest = {
           '(working tree changes since plan generation) unless --force is used.',
 
         handler: './cli/commands/apply.js#default',
-        handlerPath: './cli/commands/apply.js',
 
         flags: defineCommandFlags(applyFlags),
 
@@ -162,8 +156,7 @@ export const manifest = {
 
       // commit:push - Push commits
       {
-        id: 'push',
-        group: 'commit',
+        path: 'commit push',
         category: 'Pipeline',
         describe: 'Push commits to remote repository.',
         longDescription:
@@ -171,7 +164,6 @@ export const manifest = {
           '(main, master) by default.',
 
         handler: './cli/commands/push.js#default',
-        handlerPath: './cli/commands/push.js',
 
         flags: defineCommandFlags(pushFlags),
 
@@ -182,14 +174,12 @@ export const manifest = {
 
       // commit:open - Show current plan
       {
-        id: 'open',
-        group: 'commit',
+        path: 'commit open',
         category: 'Plan',
         describe: 'Show current commit plan.',
         longDescription: 'Displays the current commit plan if one exists.',
 
         handler: './cli/commands/open.js#default',
-        handlerPath: './cli/commands/open.js',
 
         flags: defineCommandFlags(jsonOnlyFlags),
 
@@ -201,14 +191,12 @@ export const manifest = {
 
       // commit:reset - Clear current plan
       {
-        id: 'reset',
-        group: 'commit',
+        path: 'commit reset',
         category: 'Plan',
         describe: 'Clear current commit plan.',
         longDescription: 'Removes the current commit plan from storage.',
 
         handler: './cli/commands/reset.js#default',
-        handlerPath: './cli/commands/reset.js',
 
         flags: defineCommandFlags(emptyFlags),
 

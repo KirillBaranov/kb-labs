@@ -124,8 +124,7 @@ export const manifest = {
   cli: {
     commands: [
       {
-        id: 'run',
-        group: 'agent',
+        path: 'agent run',
         category: 'Run',
         describe: 'Run agent task (execute, plan, edit, or debug)',
         longDescription:
@@ -137,7 +136,6 @@ export const manifest = {
           'Supports filesystem, search, shell, memory, and user interaction tools.',
 
         handler: './cli/commands/run.js#default',
-        handlerPath: './cli/commands/run.js',
 
         flags: defineCommandFlags(runFlags),
 
@@ -153,8 +151,7 @@ export const manifest = {
       },
       // Trace debugging commands (AI-friendly)
       {
-        id: 'trace:stats',
-        group: 'agent',
+        path: 'agent trace stats',
         category: 'Trace',
         describe: 'Show trace statistics: tokens, cost, timing',
         longDescription:
@@ -163,7 +160,6 @@ export const manifest = {
           'Supports --json flag for AI agent consumption.',
 
         handler: './cli/commands/trace-stats.js#default',
-        handlerPath: './cli/commands/trace-stats.js',
 
         flags: defineCommandFlags({
           'task-id': { type: 'string', description: 'Task ID or trace filename' },
@@ -176,8 +172,7 @@ export const manifest = {
         ],
       },
       {
-        id: 'trace:filter',
-        group: 'agent',
+        path: 'agent trace filter',
         category: 'Trace',
         describe: 'Filter trace events by type for debugging',
         longDescription:
@@ -186,7 +181,6 @@ export const manifest = {
           'Supports --json flag for programmatic access.',
 
         handler: './cli/commands/trace-filter.js#default',
-        handlerPath: './cli/commands/trace-filter.js',
 
         flags: defineCommandFlags({
           'task-id': { type: 'string', description: 'Task ID or trace filename' },
@@ -200,8 +194,7 @@ export const manifest = {
         ],
       },
       {
-        id: 'trace:iteration',
-        group: 'agent',
+        path: 'agent trace iteration',
         category: 'Trace',
         describe: 'View all events for a specific iteration',
         longDescription:
@@ -210,7 +203,6 @@ export const manifest = {
           'Includes summary statistics and event timeline.',
 
         handler: './cli/commands/trace-iteration.js#default',
-        handlerPath: './cli/commands/trace-iteration.js',
 
         flags: defineCommandFlags({
           'task-id': { type: 'string', description: 'Task ID or trace filename' },
@@ -224,8 +216,7 @@ export const manifest = {
         ],
       },
       {
-        id: 'trace:context',
-        group: 'agent',
+        path: 'agent trace context',
         category: 'Trace',
         describe: 'Inspect context window and truncations per iteration',
         longDescription:
@@ -234,7 +225,6 @@ export const manifest = {
           'what was truncated/dropped, and what the LLM responded with.',
 
         handler: './cli/commands/trace-context.js#default',
-        handlerPath: './cli/commands/trace-context.js',
 
         flags: defineCommandFlags({
           'task-id': { type: 'string', description: 'Task ID or trace filename' },
@@ -249,8 +239,7 @@ export const manifest = {
         ],
       },
       {
-        id: 'trace:diagnose',
-        group: 'agent',
+        path: 'agent trace diagnose',
         category: 'Trace',
         describe: 'Diagnose what went wrong in an agent run',
         longDescription:
@@ -260,7 +249,6 @@ export const manifest = {
           'One command to understand any agent issue.',
 
         handler: './cli/commands/trace-diagnose.js#default',
-        handlerPath: './cli/commands/trace-diagnose.js',
 
         flags: defineCommandFlags({
           'task-id': { type: 'string', description: 'Task ID or trace filename' },
@@ -273,8 +261,7 @@ export const manifest = {
         ],
       },
       {
-        id: 'quality:report',
-        group: 'agent',
+        path: 'agent quality report',
         category: 'Quality',
         describe: 'Show quality control report for recent agent runs',
         longDescription:
@@ -283,7 +270,6 @@ export const manifest = {
           'Useful for continuous quality control and cost/performance monitoring.',
 
         handler: './cli/commands/quality-report.js#default',
-        handlerPath: './cli/commands/quality-report.js',
 
         flags: defineCommandFlags({
           days: { type: 'number', description: 'Lookback period in days', default: 1 },
@@ -301,8 +287,7 @@ export const manifest = {
       },
       // File change history commands
       {
-        id: 'history',
-        group: 'agent',
+        path: 'agent history',
         category: 'History',
         describe: 'Show file change history for agent sessions',
         longDescription:
@@ -310,7 +295,6 @@ export const manifest = {
           'Filter by session, file, or agent. Shows timestamps, operations, and change metadata.',
 
         handler: './cli/commands/history.js#default',
-        handlerPath: './cli/commands/history.js',
 
         flags: defineCommandFlags({
           'session-id': { type: 'string', description: 'Session ID to filter by' },
@@ -327,8 +311,7 @@ export const manifest = {
         ],
       },
       {
-        id: 'diff',
-        group: 'agent',
+        path: 'agent diff',
         category: 'History',
         describe: 'Show diff for specific file change',
         longDescription:
@@ -336,7 +319,6 @@ export const manifest = {
           'Shows additions, deletions, and modifications with context.',
 
         handler: './cli/commands/diff.js#default',
-        handlerPath: './cli/commands/diff.js',
 
         flags: defineCommandFlags({
           'change-id': { type: 'string', description: 'Change ID to show diff for' },
@@ -349,8 +331,7 @@ export const manifest = {
         ],
       },
       {
-        id: 'rollback',
-        group: 'agent',
+        path: 'agent rollback',
         category: 'History',
         describe: 'Rollback file changes made by agents',
         longDescription:
@@ -359,7 +340,6 @@ export const manifest = {
           'Use --dry-run to preview changes before applying.',
 
         handler: './cli/commands/rollback.js#default',
-        handlerPath: './cli/commands/rollback.js',
 
         flags: defineCommandFlags({
           'change-id': { type: 'string', description: 'Change ID to rollback' },

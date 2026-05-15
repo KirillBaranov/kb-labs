@@ -35,14 +35,12 @@ export const manifest = {
   cli: {
     commands: [
       {
-        id: 'check',
-        group: 'impact',
+        path: 'impact check',
         describe: 'Full impact analysis (packages + docs)',
         longDescription:
           'Analyzes workspace changes to determine affected packages (direct, dependent, transitive) and stale documentation.',
 
         handler: './cli/commands/check.js#default',
-        handlerPath: './cli/commands/check.js',
 
         flags: defineCommandFlags(jsonFlag),
 
@@ -54,14 +52,12 @@ export const manifest = {
         permissions: pluginPermissions,
       },
       {
-        id: 'packages',
-        group: 'impact',
+        path: 'impact packages',
         describe: 'Package dependency impact analysis',
         longDescription:
           'Shows which packages are directly changed, which depend on them, and which are transitively affected.',
 
         handler: './cli/commands/packages.js#default',
-        handlerPath: './cli/commands/packages.js',
 
         flags: defineCommandFlags(jsonFlag),
 
@@ -73,14 +69,12 @@ export const manifest = {
         permissions: pluginPermissions,
       },
       {
-        id: 'docs',
-        group: 'impact',
+        path: 'impact docs',
         describe: 'Documentation impact analysis',
         longDescription:
           'Checks which documentation files are stale, need review, or require reindexing based on package changes.',
 
         handler: './cli/commands/docs.js#default',
-        handlerPath: './cli/commands/docs.js',
 
         flags: defineCommandFlags(jsonFlag),
 

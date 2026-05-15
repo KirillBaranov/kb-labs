@@ -42,8 +42,7 @@ export const manifest = {
   cli: {
     commands: [
       {
-        id: 'switch',
-        group: 'devlink',
+        path: 'devlink switch',
         category: 'Mode',
         describe: 'Switch deps between local link: and npm (CI/CD) mode',
         longDescription:
@@ -51,7 +50,6 @@ export const manifest = {
           'Creates a backup before applying. Run pnpm install after switching.',
 
         handler: './cli/commands/switch.js#default',
-        handlerPath: './cli/commands/switch.js',
 
         flags: defineCommandFlags(switchFlags),
 
@@ -65,8 +63,7 @@ export const manifest = {
         permissions: pluginPermissions,
       },
       {
-        id: 'status',
-        group: 'devlink',
+        path: 'devlink status',
         category: 'Mode',
         describe: 'Show current state of cross-repo dependencies',
         longDescription:
@@ -74,7 +71,6 @@ export const manifest = {
           'and any discrepancies across all monorepos.',
 
         handler: './cli/commands/status.js#default',
-        handlerPath: './cli/commands/status.js',
 
         flags: defineCommandFlags(statusFlags),
 
@@ -87,8 +83,7 @@ export const manifest = {
         permissions: pluginPermissions,
       },
       {
-        id: 'plan',
-        group: 'devlink',
+        path: 'devlink plan',
         category: 'Mode',
         describe: 'Preview what would change when switching mode',
         longDescription:
@@ -96,7 +91,6 @@ export const manifest = {
           'Useful for reviewing before running switch.',
 
         handler: './cli/commands/plan.js#default',
-        handlerPath: './cli/commands/plan.js',
 
         flags: defineCommandFlags(planFlags),
 
@@ -109,8 +103,7 @@ export const manifest = {
         permissions: pluginPermissions,
       },
       {
-        id: 'freeze',
-        group: 'devlink',
+        path: 'devlink freeze',
         category: 'State',
         describe: 'Freeze current dependency state to lock file',
         longDescription:
@@ -118,7 +111,6 @@ export const manifest = {
           'Use to record a stable known-good state.',
 
         handler: './cli/commands/freeze.js#default',
-        handlerPath: './cli/commands/freeze.js',
 
         flags: defineCommandFlags(freezeFlags),
 
@@ -130,8 +122,7 @@ export const manifest = {
         permissions: pluginPermissions,
       },
       {
-        id: 'undo',
-        group: 'devlink',
+        path: 'devlink undo',
         category: 'State',
         describe: 'Restore previous dependency state from last backup',
         longDescription:
@@ -139,7 +130,6 @@ export const manifest = {
           'Run pnpm install after undoing.',
 
         handler: './cli/commands/undo.js#default',
-        handlerPath: './cli/commands/undo.js',
 
         flags: defineCommandFlags(undoFlags),
 
@@ -151,15 +141,13 @@ export const manifest = {
         permissions: pluginPermissions,
       },
       {
-        id: 'backups',
-        group: 'devlink',
+        path: 'devlink backups',
         category: 'State',
         describe: 'List and restore backups',
         longDescription:
           'Lists all available backups. Use --restore <id> to restore a specific backup.',
 
         handler: './cli/commands/backups.js#default',
-        handlerPath: './cli/commands/backups.js',
 
         flags: defineCommandFlags(backupsFlags),
 

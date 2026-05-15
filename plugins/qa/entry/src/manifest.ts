@@ -61,21 +61,18 @@ export const manifest = {
   cli: {
     commands: [
       {
-        id: 'run',
-        group: 'qa',
+        path: 'qa run',
         category: 'Run',
         describe: 'Run all QA checks (build, lint, types, tests)',
         longDescription:
           'Runs comprehensive QA checks across the monorepo: build, lint, type check, and tests. ' +
           'Compares with baseline if available. Supports incremental builds and package filtering.',
         handler: './cli/commands/qa-run.js#default',
-        handlerPath: './cli/commands/qa-run.js',
         flags: defineCommandFlags(qaRunFlags),
         permissions: pluginPermissions,
       },
       {
-        id: 'check',
-        group: 'qa',
+        path: 'qa check',
         category: 'Run',
         describe: 'Run a single QA check atomically',
         longDescription:
@@ -83,80 +80,67 @@ export const manifest = {
           'Designed for workflow steps: exit 0 = pass, exit 1 = blocker failed. ' +
           'Supports diffOnly/newFiles strategies and structured JSON output for agents.',
         handler: './cli/commands/qa-check.js#default',
-        handlerPath: './cli/commands/qa-check.js',
         flags: defineCommandFlags(qaCheckFlags),
         permissions: pluginPermissions,
       },
       {
-        id: 'save',
-        group: 'qa',
+        path: 'qa save',
         category: 'Run',
         describe: 'Run QA checks and save results to history',
         longDescription:
           'Runs all QA checks and saves the results as a history entry. ' +
           'History is stored in .kb/qa/history.json (max 50 entries).',
         handler: './cli/commands/qa-save.js#default',
-        handlerPath: './cli/commands/qa-save.js',
         flags: defineCommandFlags(qaSaveFlags),
         permissions: pluginPermissions,
       },
       {
-        id: 'history',
-        group: 'qa',
+        path: 'qa history',
         category: 'History',
         describe: 'Show QA run history',
         longDescription: 'Displays the QA run history with pass/fail status for each check type.',
         handler: './cli/commands/qa-history.js#default',
-        handlerPath: './cli/commands/qa-history.js',
         flags: defineCommandFlags(qaHistoryFlags),
         permissions: pluginPermissions,
       },
       {
-        id: 'trends',
-        group: 'qa',
+        path: 'qa trends',
         category: 'History',
         describe: 'Show QA quality trends over time',
         longDescription:
           'Analyzes quality trends by comparing failure counts over a sliding window of history entries.',
         handler: './cli/commands/qa-trends.js#default',
-        handlerPath: './cli/commands/qa-trends.js',
         flags: defineCommandFlags(qaTrendsFlags),
         permissions: pluginPermissions,
       },
       {
-        id: 'regressions',
-        group: 'qa',
+        path: 'qa regressions',
         category: 'History',
         describe: 'Detect regressions since last QA save',
         longDescription:
           'Compares the last two history entries to detect new failures. ' +
           'Exits with code 1 if regressions are found. Use before merging.',
         handler: './cli/commands/qa-regressions.js#default',
-        handlerPath: './cli/commands/qa-regressions.js',
         flags: defineCommandFlags(qaRegressionsFlags),
         permissions: pluginPermissions,
       },
       {
-        id: 'baseline:update',
-        group: 'qa',
+        path: 'qa baseline update',
         category: 'Baseline',
         describe: 'Run full QA and save as new baseline',
         longDescription:
           'Runs all QA checks and saves the results as the current baseline. ' +
           'Future qa:run calls will compare against this baseline.',
         handler: './cli/commands/baseline-update.js#default',
-        handlerPath: './cli/commands/baseline-update.js',
         flags: defineCommandFlags(baselineUpdateFlags),
         permissions: pluginPermissions,
       },
       {
-        id: 'baseline:status',
-        group: 'qa',
+        path: 'qa baseline status',
         category: 'Baseline',
         describe: 'Show current baseline status',
         longDescription: 'Displays the current baseline snapshot with pass/fail counts per check type.',
         handler: './cli/commands/baseline-status.js#default',
-        handlerPath: './cli/commands/baseline-status.js',
         flags: defineCommandFlags(baselineStatusFlags),
         permissions: pluginPermissions,
       },
