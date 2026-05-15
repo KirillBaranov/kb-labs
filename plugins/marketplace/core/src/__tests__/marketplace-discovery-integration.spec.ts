@@ -45,7 +45,7 @@ describe('Marketplace → Discovery Integration', () => {
         id,
         version,
         display: { name, description: `${name} plugin` },
-        cli: { commands: [{ id: `${name}:run`, describe: `Run ${name}`, handler: './dist/h.js' }] },
+        cli: { commands: [{ path: `${name} run`, describe: `Run ${name}`, handler: './dist/h.js' }] },
       }),
     );
 
@@ -86,7 +86,7 @@ describe('Marketplace → Discovery Integration', () => {
     const manifest = discoverResult.manifests.get('@kb-labs/review');
     expect(manifest).toBeDefined();
     expect(manifest!.cli?.commands).toHaveLength(1);
-    expect(manifest!.cli?.commands?.[0]?.id).toBe('review:run');
+    expect(manifest!.cli?.commands?.[0]?.path).toBe('review run');
   });
 
   it('install → uninstall → discover: plugin is gone after uninstall', async () => {

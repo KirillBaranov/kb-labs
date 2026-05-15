@@ -26,7 +26,7 @@ import {
 // ---------------------------------------------------------------------------
 
 async function createFakePlugin(root: string, id: string, opts?: {
-  commands?: Array<{ id: string; describe: string }>;
+  commands?: Array<{ path: string; describe: string }>;
   routes?: Array<{ method: string; path: string }>;
   workflows?: Array<{ id: string }>;
   crons?: Array<{ id: string; schedule: string }>;
@@ -45,7 +45,7 @@ async function createFakePlugin(root: string, id: string, opts?: {
 
   if (opts?.commands?.length) {
     manifest.cli = {
-      commands: opts.commands.map(c => ({ ...c, handler: `./dist/${c.id}.js` })),
+      commands: opts.commands.map(c => ({ ...c, handler: `./dist/${c.path.replace(/ /g, '-')}.js` })),
     };
   }
   if (opts?.routes?.length) {
@@ -119,7 +119,7 @@ describe('Registry Integration', () => {
   it('full lifecycle: install → discover → query → uninstall → refresh', async () => {
     // 1. Install: create plugin + write to marketplace.lock
     const { dir, integrity } = await createFakePlugin(root, '@kb-labs/greeter', {
-      commands: [{ id: 'greet', describe: 'Say hello' }],
+      commands: [{ path: 'greet', describe: 'Say hello' }],
       routes: [{ method: 'GET', path: '/api/greet' }],
     });
     await registerPlugin(root, '@kb-labs/greeter', dir, integrity, ['plugin', 'cli-command', 'rest-route']);
@@ -156,8 +156,8 @@ describe('Registry Integration', () => {
     // Plugin A: CLI commands + workflows
     const a = await createFakePlugin(root, '@kb-labs/plugin-a', {
       commands: [
-        { id: 'a:init', describe: 'Initialize A' },
-        { id: 'a:run', describe: 'Run A' },
+        { path: 'a init', describe: 'Initialize A' },
+        { path: 'a run', describe: 'Run A' },
       ],
       workflows: [{ id: 'a-workflow' }],
     });
@@ -214,7 +214,7 @@ describe('Registry Integration', () => {
 
   it('snapshot persistence and reload', async () => {
     const { dir, integrity } = await createFakePlugin(root, '@kb-labs/persistent', {
-      commands: [{ id: 'persist-cmd', describe: 'Test persistence' }],
+      commands: [{ path: 'persist-cmd', describe: 'Test persistence' }],
     });
     await registerPlugin(root, '@kb-labs/persistent', dir, integrity, ['plugin', 'cli-command']);
 
@@ -299,7 +299,7 @@ describe('Registry Integration', () => {
 
   it('generators: OpenAPI and Studio registry', async () => {
     const { dir, integrity } = await createFakePlugin(root, '@kb-labs/api-plugin', {
-      commands: [{ id: 'api-cmd', describe: 'API command' }],
+      commands: [{ path: 'api-cmd', describe: 'API command' }],
       routes: [
         { method: 'GET', path: '/api/items' },
         { method: 'POST', path: '/api/items' },

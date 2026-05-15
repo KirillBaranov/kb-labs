@@ -232,7 +232,7 @@ export function createCompletionCommand(registry: TrieBackedRegistry) {
 
       // ── print dynamic script ───────────────────────────────────────────────
       const script = dynamicScript(arg);
-      if (!script) throw new Error(`Unsupported shell: ${arg}. Supported: bash, zsh, fish`);
+      if (!script) { throw new Error(`Unsupported shell: ${arg}. Supported: bash, zsh, fish`); }
       return { ok: true, status: 'success', script, shell: arg } as CompletionResult;
     },
 
