@@ -150,6 +150,14 @@ export type {
   IEmbeddings,
   ILogger,
   IVectorStore,
+  // Notifier
+  NotificationSeverity,
+  NotificationAudience,
+  NotificationCapability,
+  NotificationEvent,
+  NotificationFilter,
+  INotifierChannel,
+  NotifierDeliveryEvent,
 } from '@kb-labs/core-platform';
 
 // Re-export sys utilities

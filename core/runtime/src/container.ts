@@ -21,6 +21,7 @@ import type {
   ILogReader,
   ILogPersistence,
   ILogBuffer,
+  INotifier,
 } from '@kb-labs/core-platform';
 import type { IExecutionBackend } from '@kb-labs/core-contracts';
 import type { ISQLDatabase, IDocumentDatabase } from '@kb-labs/core-platform/adapters';
@@ -70,6 +71,7 @@ export interface CoreAdapterTypes {
   invoke: IInvoke;
   sqlDatabase: ISQLDatabase;
   documentDatabase: IDocumentDatabase;
+  notifier: INotifier;
 }
 
 /**
@@ -460,6 +462,11 @@ export class PlatformContainer {
   /** Document database adapter (fallback: NoOpDocumentDatabase — throws on use) */
   get documentDatabase(): IDocumentDatabase {
     return (this.adapters.get('documentDatabase') as IDocumentDatabase) ?? new NoOpDocumentDatabase();
+  }
+
+  /** Notifier adapter (optional — undefined when adapters.notifier is not configured). */
+  get notifier(): INotifier | undefined {
+    return this.adapters.get('notifier') as INotifier | undefined;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

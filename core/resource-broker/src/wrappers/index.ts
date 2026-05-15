@@ -20,3 +20,8 @@ export {
   createQueuedVectorStore,
   type QueuedVectorStoreOptions,
 } from './queued-vector-store.js';
+
+export {
+  QueuedNotifierChannel,
+  createQueuedNotifierChannel,
+} from './queued-notifier-channel.js';

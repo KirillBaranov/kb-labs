@@ -77,6 +77,10 @@ export type {
   JobsConfig,
   WorkflowsConfig,
   ExecutionConfig,
+  NotifierAdapterOptions,
+  NotifierChannelConfig,
+  NotifierRoutingRule,
+  TelegramChannelConfig,
 } from './config.js';
 
 // Analytics context

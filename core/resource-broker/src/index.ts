@@ -107,6 +107,8 @@ export {
   createQueuedEmbeddings,
   QueuedVectorStore,
   createQueuedVectorStore,
+  QueuedNotifierChannel,
+  createQueuedNotifierChannel,
   type QueuedLLMOptions,
   type QueuedEmbeddingsOptions,
   type QueuedVectorStoreOptions,
