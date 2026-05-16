@@ -60,7 +60,7 @@ export function attachGatewayWs(
           ? hostsHandler(ws, req)
           : clientsHandler(ws, req);
         handlerPromise.catch((err) => {
-          logger.error('Unhandled WS handler error', { pathname, error: String(err) });
+          logger.error('Unhandled WS handler error', err instanceof Error ? err : new Error(String(err)), { pathname });
           try { ws.close(1011, 'Internal error'); } catch { /* already closed */ }
         });
       });
