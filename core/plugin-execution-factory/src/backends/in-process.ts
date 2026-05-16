@@ -52,7 +52,9 @@ import type { ILogger, IWorkspaceProvider, WorkspaceDescriptor } from '@kb-labs/
 import { noopUI } from '@kb-labs/plugin-contracts';
 import { runInProcess, resolveAdapterMiddlewares } from '@kb-labs/plugin-runtime';
 import type { LoadedMiddleware, RawMiddlewareDecl } from '@kb-labs/plugin-runtime';
-import type { PlatformContainer } from '@kb-labs/core-runtime';
+interface WithMiddlewareDecls {
+  getAdapter(key: '_middlewareDecls'): RawMiddlewareDecl[] | undefined;
+}
 import { localWorkspaceManager } from '../workspace/local.js';
 import type { WorkspaceLease } from '../workspace/types.js';
 import { normalizeError } from '../utils.js';
@@ -104,7 +106,7 @@ export class InProcessBackend implements ExecutionBackend {
 
   private async getMiddlewares(): Promise<LoadedMiddleware[]> {
     if (this._middlewaresCache !== null) return this._middlewaresCache;
-    const rawDecls = (this.platform as unknown as PlatformContainer)
+    const rawDecls = (this.platform as unknown as WithMiddlewareDecls)
       .getAdapter('_middlewareDecls') ?? [];
     const logger = this.platform.logger;
     const resolved = await resolveAdapterMiddlewares(rawDecls, {
