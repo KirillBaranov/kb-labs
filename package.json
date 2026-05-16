@@ -94,18 +94,4 @@
       "koa": ">=2.16.4"
     }
   },
-  "repository": "KirillBaranov/kb-labs.git",
-  "dependencies": {
-    "@kb-labs/adapters-openai": "^2.94.0",
-    "@kb-labs/adapters-pino": "^2.94.0",
-    "@kb-labs/adapters-qdrant": "^2.94.0",
-    "@kb-labs/adapters-redis": "^2.94.0",
-    "@kb-labs/adapters-snapshot-localfs": "^2.94.0",
-    "@kb-labs/adapters-sqlite": "^2.94.0",
-    "@kb-labs/adapters-vibeproxy": "^2.94.0",
-    "@kb-labs/adapters-workspace-agent": "^2.94.0",
-    "@kb-labs/adapters-workspace-localfs": "^2.94.0",
-    "@kb-labs/adapters-workspace-worktree": "^2.94.0",
-    "commit-entry": "link:kb:kirill/@kb-labs/commit-entry"
-  }
-}
+  "repository": "KirillBaranov/kb-labs.git"}

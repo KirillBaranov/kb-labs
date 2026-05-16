@@ -22,7 +22,9 @@ import type {
   UIPromptResultMessage,
 } from './types.js';
 import type { RawMiddlewareDecl } from '@kb-labs/plugin-runtime';
-import type { PlatformContainer } from '@kb-labs/core-runtime';
+interface WithMiddlewareDecls {
+  getAdapter(key: '_middlewareDecls'): RawMiddlewareDecl[] | undefined;
+}
 import type { ExecutionRequest, ExecutionResult, PlatformTransportFactory, PlatformTransportServer } from '../../types.js';
 import type { PlatformServices } from '@kb-labs/plugin-contracts';
 import { WorkerCrashedError } from '../../errors.js';
@@ -215,7 +217,7 @@ export class Worker extends EventEmitter<WorkerEvents> {
             // Send adapter middleware declarations once after ready.
             // Worker resolves them asynchronously and caches before first execute.
             const rawDecls = this.options.platform
-              ? (this.options.platform as unknown as PlatformContainer).getAdapter('_middlewareDecls') ?? []
+              ? (this.options.platform as unknown as WithMiddlewareDecls).getAdapter('_middlewareDecls') ?? []
               : [];
             if (rawDecls.length > 0 && this.process) {
               const middlewaresMsg: MiddlewaresInitMessage = { type: 'middlewares', decls: rawDecls };
