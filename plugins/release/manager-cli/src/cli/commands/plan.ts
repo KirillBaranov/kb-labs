@@ -152,7 +152,7 @@ export default defineCommand({
       if (flags.json) {
         ctx.ui?.json?.(plan);
       } else {
-        ctx.ui.sideBox({
+        ctx.ui?.sideBox?.({
           title: 'Release Plan',
           sections: buildPlanSections(plan, artifacts, ctx.ui.symbols),
           status: 'success',

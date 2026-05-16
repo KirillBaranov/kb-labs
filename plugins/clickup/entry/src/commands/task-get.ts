@@ -1,8 +1,9 @@
 import { defineCommand, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
 import { requireApiKey, getTask, getTaskComments } from '@kb-labs/clickup-core';
 import { handleError, validationError } from '../utils/error.js';
+import { slimTaskWithDesc } from '../utils/slim.js';
 
-type TaskGetFlags = { json?: boolean };
+type TaskGetFlags = { json?: boolean; full?: boolean };
 
 export default defineCommand({
   id: 'clickup:task.get',
@@ -24,7 +25,7 @@ export default defineCommand({
         ]);
 
         if (input.flags.json) {
-          ctx.ui?.json?.({ task, comments });
+          ctx.ui?.json?.(input.flags.full ? { task, comments } : slimTaskWithDesc(task));
           return { exitCode: 0, result: { task, comments } };
         }
 

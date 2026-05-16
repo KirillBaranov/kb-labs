@@ -53,47 +53,49 @@ export function createCLIUIFacade(presenter?: PresenterDelegate): UIFacade {
     },
 
     info: (msg: string, options?: MessageOptions) => {
-      const sections = options?.sections?.map(s => ({ header: s.header, items: s.items })) || [{ items: [msg] }];
+      const sections = options?.sections?.map(s => ({ header: s.header, items: s.items })) ?? [];
       const boxOutput = sideBorderBox({
-        title: options?.title || 'Info',
-        sections,
+        title: options?.title ?? 'Info',
+        sections: [{ items: [msg] }, ...sections],
         status: 'info',
         timing: options?.timing,
+        summary: options?.summary,
       });
       console.log(boxOutput);
     },
 
     success: (msg: string, options?: MessageOptions) => {
-      const sections = options?.sections?.map(s => ({ header: s.header, items: s.items })) || [{ items: [msg] }];
+      const sections = options?.sections?.map(s => ({ header: s.header, items: s.items })) ?? [];
       const boxOutput = sideBorderBox({
-        title: options?.title || 'Success',
-        sections,
+        title: options?.title ?? 'Success',
+        sections: [{ items: [msg] }, ...sections],
         status: 'success',
         timing: options?.timing,
+        summary: options?.summary,
       });
       console.log(boxOutput);
     },
 
     warn: (msg: string, options?: MessageOptions) => {
-      const sections = options?.sections?.map(s => ({ header: s.header, items: s.items })) || [{ items: [msg] }];
+      const sections = options?.sections?.map(s => ({ header: s.header, items: s.items })) ?? [];
       const boxOutput = sideBorderBox({
-        title: options?.title || 'Warning',
-        sections,
+        title: options?.title ?? 'Warning',
+        sections: [{ items: [msg] }, ...sections],
         status: 'warning',
         timing: options?.timing,
+        summary: options?.summary,
       });
       console.log(boxOutput);
     },
 
     error: (err: Error | string, options?: MessageOptions) => {
       const message = err instanceof Error ? err.message : err;
-      const sections: Array<{ header?: string; items: Array<string | { text: string; dim?: boolean }> }> = [];
+      const sections: Array<{ header?: string; items: Array<string | { text: string; dim?: boolean }> }> = [
+        { items: [message] },
+      ];
 
-      // Main message — or custom sections if provided
       if (options?.sections && options.sections.length > 0) {
         sections.push(...options.sections.map(s => ({ header: s.header, items: s.items })));
-      } else {
-        sections.push({ items: [message] });
       }
 
       // Cause — shown muted below the message
@@ -124,10 +126,11 @@ export function createCLIUIFacade(presenter?: PresenterDelegate): UIFacade {
       }
 
       const boxOutput = sideBorderBox({
-        title: options?.title || 'Error',
+        title: options?.title ?? 'Error',
         sections,
         status: 'error',
         timing: options?.timing,
+        summary: options?.summary,
       });
       console.error(boxOutput);
     },
@@ -191,9 +194,10 @@ export function createCLIUIFacade(presenter?: PresenterDelegate): UIFacade {
     sideBox: (options) => {
       const boxOutput = sideBorderBox({
         title: options.title,
-        sections: options.sections ?? [],
+        sections: options.sections?.map(s => ({ header: s.header, items: s.items })) ?? [],
         status: options.status,
         timing: options.timing,
+        summary: options.summary,
       });
       console.log(boxOutput);
     },
@@ -203,6 +207,7 @@ export function createCLIUIFacade(presenter?: PresenterDelegate): UIFacade {
         items.map(item => ({
           title: item.title,
           sections: (item.sections ?? []).map(s => ({ header: s.header, items: s.items })),
+          summary: item.summary,
           status: item.status,
           timing: item.timing,
         })),

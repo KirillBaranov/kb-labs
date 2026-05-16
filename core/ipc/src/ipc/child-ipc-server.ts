@@ -13,8 +13,14 @@
 
 import type { ChildProcess } from 'node:child_process';
 import type { IPlatformAdapters } from '@kb-labs/core-platform';
-import type { AdapterCall, AdapterResponse, AdapterType, SerializableError } from '@kb-labs/core-platform/serializable';
-import { isAdapterCall, serialize, deserialize } from '@kb-labs/core-platform/serializable';
+import type { AdapterCall, AdapterResponse, SerializableError } from '@kb-labs/core-platform/serializable';
+import {
+  isAdapterCall,
+  isEventBusSubscribe,
+  isEventBusUnsubscribe,
+  serialize,
+  deserialize,
+} from '@kb-labs/core-platform/serializable';
 
 /**
  * Serialize an Error (or any value) to SerializableError for IPC response.
@@ -43,6 +49,8 @@ export class ChildIPCServer {
   private messageHandler: (msg: unknown) => void;
   private exitHandler: () => void;
   private started = false;
+  /** Active EventBus subscriptions: subscriptionId → unsubscribe fn */
+  private eventBusSubs = new Map<string, () => void>();
 
   constructor(
     private readonly platform: IPlatformAdapters,
@@ -64,7 +72,7 @@ export class ChildIPCServer {
   }
 
   /**
-   * Stop listening. Removes all listeners.
+   * Stop listening. Removes all listeners and cancels all EventBus subscriptions.
    */
   stop(): void {
     if (!this.started) {return;}
@@ -72,13 +80,38 @@ export class ChildIPCServer {
     this.child.off('message', this.messageHandler);
     this.child.off('exit', this.exitHandler);
     this.started = false;
+
+    for (const unsub of this.eventBusSubs.values()) { unsub(); }
+    this.eventBusSubs.clear();
   }
 
   /**
    * Handle incoming message from child.
-   * Ignores non-adapter-call messages (WorkerMessages pass through).
+   * Routes adapter:call, eventbus:subscribe, eventbus:unsubscribe.
+   * WorkerMessages (execute, result, etc.) pass through untouched.
    */
   private async handleMessage(msg: unknown): Promise<void> {
+    if (isEventBusSubscribe(msg)) {
+      if (!this.platform.eventBus) return;
+      const { subscriptionId, topic } = msg;
+      const unsub = this.platform.eventBus.subscribe(topic, async (payload) => {
+        if (this.child.connected) {
+          this.child.send({ type: 'eventbus:push', subscriptionId, topic, payload: serialize(payload) });
+        }
+      });
+      this.eventBusSubs.set(subscriptionId, unsub);
+      return;
+    }
+
+    if (isEventBusUnsubscribe(msg)) {
+      const unsub = this.eventBusSubs.get(msg.subscriptionId);
+      if (unsub) {
+        unsub();
+        this.eventBusSubs.delete(msg.subscriptionId);
+      }
+      return;
+    }
+
     if (!isAdapterCall(msg)) {return;}
 
     // Layer 2: permission check (stateless — reads from call context)
@@ -157,28 +190,20 @@ export class ChildIPCServer {
 
   /**
    * Get adapter from platform by name.
-   * Exhaustive check on AdapterType — build breaks if new adapter is added without handling.
+   * Dynamic dispatch — no hardcoded switch; new adapters in IPlatformAdapters
+   * are automatically available without touching this file.
+   * The dotted names ('database.sql', 'database.document') are mapped explicitly.
    */
-  private getAdapter(name: AdapterType): unknown {
-    switch (name) {
-      case 'vectorStore': return this.platform.vectorStore;
-      case 'cache': return this.platform.cache;
-      case 'llm': return this.platform.llm;
-      case 'embeddings': return this.platform.embeddings;
-      case 'storage': return this.platform.storage;
-      case 'logger': return this.platform.logger;
-      case 'analytics': return this.platform.analytics;
-      case 'eventBus': return this.platform.eventBus;
-      case 'invoke': return this.platform.invoke;
-      case 'config': return this.platform.config;
-      case 'artifacts': return this.platform.artifacts;
-      case 'database.sql': return this.platform.sqlDatabase;
-      case 'database.document': return this.platform.documentDatabase;
-      default: {
-        const _exhaustive: never = name;
-        throw new Error(`Unknown adapter: '${name}'`);
-      }
+  private getAdapter(name: string): unknown {
+    // Handle dotted names that don't match property names directly
+    if (name === 'database.sql') return this.platform.sqlDatabase;
+    if (name === 'database.document') return this.platform.documentDatabase;
+
+    const adapter = (this.platform as unknown as Record<string, unknown>)[name];
+    if (adapter === undefined) {
+      throw new Error(`Unknown adapter: '${name}'`);
     }
+    return adapter;
   }
 
   isStarted(): boolean {

@@ -27,6 +27,7 @@ import { PluginError, TimeoutError, AbortError, createExecutionMeta } from '@kb-
 import type { ParentMessage, ChildMessage, ResultMessage, ErrorMessage } from './ipc-protocol.js';
 import { createPluginContextV3 } from '../context/index.js';
 import { executeCleanup, type PluginInvokerFn, type EventEmitterFn } from '../api/index.js';
+import type { LoadedMiddleware } from '../platform/pipeline.js';
 
 /**
  * Create execution metadata from descriptor and timing
@@ -56,6 +57,8 @@ export interface RunInProcessOptions {
   signal?: AbortSignal;
   cwd: string;
   outdir?: string;
+  /** Resolved adapter middlewares to apply before governance. */
+  adapterMiddlewares?: LoadedMiddleware[];
 }
 
 export interface RunInSubprocessOptions {
@@ -82,7 +85,7 @@ export interface RunInSubprocessOptions {
 export async function runInProcess<T = unknown>(
   options: RunInProcessOptions
 ): Promise<RunResult<T>> {
-  const { descriptor, platform, ui, pluginInvoker, eventEmitter, handlerPath, input, signal, cwd, outdir } = options;
+  const { descriptor, platform, ui, pluginInvoker, eventEmitter, handlerPath, input, signal, cwd, outdir, adapterMiddlewares } = options;
   const startTime = Date.now();
 
   // Create context
@@ -95,6 +98,7 @@ export async function runInProcess<T = unknown>(
     eventEmitter,
     cwd,
     outdir,
+    adapterMiddlewares,
   });
 
   // Set __KB_CONFIG_SECTION__ for useConfig() auto-detection (in-process mode)

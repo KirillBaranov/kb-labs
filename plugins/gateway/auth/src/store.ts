@@ -5,6 +5,7 @@
  *   auth:client:{clientId}          → ClientRecord  (permanent)
  *   auth:refresh:{tokenHash}        → { hostId }     (TTL 30d)
  *   auth:publickey:{hostId}         → string (base64url X25519 public key)
+ *   auth:handle:{handle}            → clientId       (permanent, handle index)
  */
 
 import { createHash, randomBytes } from 'node:crypto';
@@ -23,6 +24,9 @@ export interface ClientRecord {
   capabilities: string[];
   publicKey?: string;
   createdAt: number;
+  /** Unique human-readable handle for the marketplace (e.g. "kirill"). Immutable once set. */
+  handle?: string;
+  email?: string;
 }
 
 function hashSecret(secret: string): string {
@@ -53,8 +57,20 @@ export function generateNamespaceId(): string {
 
 export async function saveClient(cache: ICache, record: ClientRecord): Promise<void> {
   await cache.set(`auth:client:${record.clientId}`, record);
-  // Reverse index: hostId → clientId for WS handler lookups
   await cache.set(`auth:hostindex:${record.hostId}`, record.clientId);
+  if (record.handle) {
+    await cache.set(`auth:handle:${record.handle}`, record.clientId);
+  }
+}
+
+export async function isHandleTaken(cache: ICache, handle: string): Promise<boolean> {
+  return (await cache.get(`auth:handle:${handle}`)) !== null;
+}
+
+export async function getClientByHandle(cache: ICache, handle: string): Promise<ClientRecord | null> {
+  const clientId = await cache.get<string>(`auth:handle:${handle}`);
+  if (!clientId) { return null; }
+  return getClient(cache, clientId);
 }
 
 export async function getClientByHostId(cache: ICache, hostId: string): Promise<ClientRecord | null> {
@@ -84,6 +100,8 @@ export function buildClientRecord(opts: {
   publicKey?: string;
   secret: string;
   namespaceId?: string;
+  handle?: string;
+  email?: string;
 }): ClientRecord {
   return {
     clientId: generateClientId(),
@@ -95,6 +113,8 @@ export function buildClientRecord(opts: {
     capabilities: opts.capabilities,
     publicKey: opts.publicKey,
     createdAt: Date.now(),
+    handle: opts.handle,
+    email: opts.email,
   };
 }
 

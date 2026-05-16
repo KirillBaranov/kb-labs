@@ -82,7 +82,7 @@ export const health = defineSystemCommand<HealthFlags, HealthResult>({
         status: result.healthStatus,
         error: result.error,
       };
-      console.log(JSON.stringify(jsonOutput, null, 2));
+      ctx.ui?.json?.(jsonOutput);
     } else {
       if (result.error) {
         ctx.ui.error('System Health', {

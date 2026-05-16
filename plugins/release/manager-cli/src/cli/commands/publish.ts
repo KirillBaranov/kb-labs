@@ -152,7 +152,7 @@ export default defineCommand({
         return publishResult;
       }
 
-      ctx.ui.sideBox({
+      ctx.ui?.sideBox?.({
         title: dryRun ? 'Publish Dry-Run' : 'Publish Summary',
         sections: buildPublishSections(rawResult.results, ctx.ui.symbols),
         status: publishResult.exitCode === 0 ? 'success' : 'error',

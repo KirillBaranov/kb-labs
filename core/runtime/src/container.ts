@@ -22,6 +22,7 @@ import type {
   ILogPersistence,
   ILogBuffer,
   INotifier,
+  RawMiddlewareDecl,
 } from '@kb-labs/core-platform';
 import type { IExecutionBackend } from '@kb-labs/core-contracts';
 import type { ISQLDatabase, IDocumentDatabase } from '@kb-labs/core-platform/adapters';
@@ -91,10 +92,18 @@ export interface CoreAdapterTypes {
 export type CoreAdapterName = keyof CoreAdapterTypes;
 
 /**
- * All adapter types (core + extensions).
+ * Non-adapter metadata stored alongside adapters in the container.
+ * Separate from CoreAdapterTypes to keep adapter and metadata concerns apart.
+ */
+export interface ContainerMetadataTypes {
+  _middlewareDecls: RawMiddlewareDecl[];
+}
+
+/**
+ * All adapter types (core + extensions + metadata).
  * Extensions can be any type, not known at compile time.
  */
-export type AdapterTypes = CoreAdapterTypes & {
+export type AdapterTypes = CoreAdapterTypes & ContainerMetadataTypes & {
   [key: string]: unknown;
 };
 
@@ -164,6 +173,7 @@ export class PlatformContainer {
    * @param key - Adapter key
    * @param instance - Adapter instance
    */
+  setAdapter(key: '_middlewareDecls', instance: RawMiddlewareDecl[]): void;
   setAdapter<K extends keyof CoreAdapterTypes>(key: K, instance: CoreAdapterTypes[K]): void;
   setAdapter<T = unknown>(key: string, instance: T): void;
   setAdapter(key: string, instance: unknown): void {
@@ -188,6 +198,7 @@ export class PlatformContainer {
    *
    * @param key - Adapter key
    */
+  getAdapter(key: '_middlewareDecls'): RawMiddlewareDecl[] | undefined;
   getAdapter<K extends keyof CoreAdapterTypes>(key: K): CoreAdapterTypes[K] | undefined;
   getAdapter<T = unknown>(key: string): T | undefined;
   getAdapter(key: string): unknown | undefined {

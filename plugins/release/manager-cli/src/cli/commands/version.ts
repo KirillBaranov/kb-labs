@@ -107,7 +107,7 @@ export default defineCommand({
           ctx.ui?.json?.({ ok: true, updated: 0, updates: dryUpdates, dryRun: true });
           return { exitCode: 0, ok: true, updated: 0, updates: dryUpdates };
         }
-        ctx.ui.sideBox({
+        ctx.ui?.sideBox?.({
           title: 'Version Bump (dry-run)',
           sections: buildVersionSections(dryUpdates, true, ctx.ui.symbols),
           status: 'success',
@@ -135,7 +135,7 @@ export default defineCommand({
         return { exitCode: ok ? 0 : 1, ok, updated, updates };
       }
 
-      ctx.ui.sideBox({
+      ctx.ui?.sideBox?.({
         title: 'Version Bump',
         sections: buildVersionSections(updates, false, ctx.ui.symbols),
         status: ok ? 'success' : 'error',

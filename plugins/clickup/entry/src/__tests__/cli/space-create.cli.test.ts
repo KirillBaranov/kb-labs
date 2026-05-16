@@ -52,7 +52,7 @@ describe('clickup:space.create', () => {
     );
   });
 
-  it('SC-02: --json outputs space object', async () => {
+  it('SC-02: --json outputs slim space object', async () => {
     vi.mocked(createSpace).mockResolvedValue(mockSpaceDetail);
 
     const { ui, captured } = createCapturedUI();
@@ -64,6 +64,23 @@ describe('clickup:space.create', () => {
 
     expect(result.exitCode).toBe(0);
     expect(captured.json[0]).toMatchObject({ id: 'space-1', name: 'My Space' });
+    expect(Object.keys(captured.json[0] as object)).toEqual(['id', 'name']);
+  });
+
+  it('SC-02b: --json --full outputs raw space object', async () => {
+    vi.mocked(createSpace).mockResolvedValue(mockSpaceDetail);
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await spaceCreateCommand.execute(
+      ctx,
+      mockCLIInput({ flags: { name: 'My Space', json: true, full: true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    const raw = captured.json[0] as typeof mockSpaceDetail;
+    expect(raw.folders).toBeDefined();
+    expect(raw.statuses).toBeDefined();
   });
 
   it('SC-03: missing --name — exitCode 1, error shown', async () => {

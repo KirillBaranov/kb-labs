@@ -26,6 +26,7 @@ export interface SideBorderBoxOptions {
   footer?: string;
   status?: 'success' | 'error' | 'warning' | 'info';
   timing?: number;
+  summary?: Record<string, string | number | boolean>;
 }
 
 export interface RichSectionItem {
@@ -48,7 +49,7 @@ export interface SectionContent {
  * Create a side-bordered box with modern design
  */
 export function sideBorderBox(options: SideBorderBoxOptions): string {
-  const { title, sections, footer, status, timing } = options;
+  const { title, sections, footer, status, timing, summary } = options;
   const lines: string[] = [];
 
   const terminalWidth =
@@ -62,6 +63,19 @@ export function sideBorderBox(options: SideBorderBoxOptions): string {
   const titleLine = `${safeColors.primary('◆')}  ${safeColors.bold(title)}`;
   lines.push(titleLine);
   lines.push(safeColors.muted('│'));
+
+  // Summary key-value pairs rendered before sections
+  if (summary && Object.keys(summary).length > 0) {
+    const entries = Object.entries(summary).map(([k, v]) => [k, String(v)] as [string, string]);
+    const metricsRecord: Record<string, string> = Object.fromEntries(entries);
+    const metricsLines = metricsList(metricsRecord);
+    for (const line of metricsLines) {
+      lines.push(`${safeColors.muted('│')}  ${line}`);
+    }
+    if (sections.length > 0) {
+      lines.push(safeColors.muted('│'));
+    }
+  }
 
   // Sections
   for (let i = 0; i < sections.length; i++) {
@@ -102,7 +116,9 @@ export function sideBorderBox(options: SideBorderBoxOptions): string {
 
   // Bottom line: └  ✓ Success  84ms
   if (footer || status || timing !== undefined) {
-    lines.push(safeColors.muted('│'));
+    if (lines[lines.length - 1] !== safeColors.muted('│')) {
+      lines.push(safeColors.muted('│'));
+    }
     const footerParts: string[] = [];
 
     if (footer) {
@@ -274,6 +290,7 @@ function wrapText(text: string, maxWidth: number): string[] {
 export interface SideBorderChainItem {
   title: string;
   sections: SectionContent[];
+  summary?: Record<string, string | number | boolean>;
   status?: 'success' | 'error' | 'warning' | 'info';
   timing?: number;
 }
@@ -319,6 +336,19 @@ export function sideBorderChain(items: SideBorderChainItem[]): string {
     // Block header: ◆  Title
     lines.push(`${safeColors.primary('◆')}  ${safeColors.bold(block.title)}`);
     lines.push(safeColors.muted('│'));
+
+    // Summary key-value pairs
+    if (block.summary && Object.keys(block.summary).length > 0) {
+      const entries = Object.entries(block.summary).map(([k, v]) => [k, String(v)] as [string, string]);
+      const metricsRecord: Record<string, string> = Object.fromEntries(entries);
+      const metricsLines = metricsList(metricsRecord);
+      for (const line of metricsLines) {
+        lines.push(`${safeColors.muted('│')}  ${line}`);
+      }
+      if (block.sections.length > 0) {
+        lines.push(safeColors.muted('│'));
+      }
+    }
 
     // Sections
     for (let i = 0; i < block.sections.length; i++) {
@@ -367,8 +397,10 @@ export function sideBorderChain(items: SideBorderChainItem[]): string {
         lines.push(`${safeColors.muted('└')}  ${footerParts.join('  ')}`);
       }
     } else {
-      // Blank rail line before next ◆
-      lines.push(safeColors.muted('│'));
+      // Blank rail line before next ◆ — only if not already there
+      if (lines[lines.length - 1] !== safeColors.muted('│')) {
+        lines.push(safeColors.muted('│'));
+      }
     }
   }
 

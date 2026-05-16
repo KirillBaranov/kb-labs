@@ -334,6 +334,27 @@ export interface AdapterManifest {
    */
   capabilities?: AdapterCapabilities;
 
+  /**
+   * Middleware declarations for the platform adapter pipeline.
+   *
+   * Each entry inserts a wrap function into a named slot in the pipeline.
+   * The runtime loads, validates, and applies these in slot order + local priority.
+   *
+   * @example
+   * ```typescript
+   * middlewares: [
+   *   {
+   *     id: 'cost-tracker',
+   *     handler: './middlewares/cost-tracker.js',
+   *     slot: 'post-resource-broker',
+   *     target: 'llm',
+   *     priority: 10,
+   *   }
+   * ]
+   * ```
+   */
+  middlewares?: AdapterMiddlewareDecl[];
+
   // ═══════════════════════════════════════════════════════════════════════════
   // Configuration Schema (Optional)
   // ═══════════════════════════════════════════════════════════════════════════
@@ -383,6 +404,61 @@ export interface AdapterManifest {
       properties?: Record<string, unknown>;
     }
   >;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Middleware declarations (pipeline extension points)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Declares a single adapter-provided middleware to be inserted into the platform pipeline.
+ *
+ * Middlewares are loaded at plugin boot time and applied in slot order, then local priority.
+ * System slots ('router', 'resource-broker', 'governance') are reserved and cannot be targeted.
+ */
+export interface AdapterMiddlewareDecl {
+  /** Unique identifier within this adapter (used in logs/errors). */
+  id: string;
+
+  /** Path to the handler file relative to the adapter package root. */
+  handler: string;
+
+  /**
+   * Named pipeline slot (recommended).
+   * Must not be a reserved slot. Defaults to 'post-resource-broker'.
+   * Valid values: 'raw' | 'post-router' | 'post-resource-broker'
+   */
+  slot?: string;
+
+  /** Insert after this named stage (fine-grained alternative to slot). */
+  after?: string;
+
+  /** Insert before this named stage (fine-grained alternative to slot). */
+  before?: string;
+
+  /**
+   * Local priority within the chosen slot. Higher = runs later. Default: 0.
+   * Not a global ordering number — stays meaningful even when system stages change.
+   */
+  priority?: number;
+
+  /**
+   * Platform adapter interface this middleware wraps.
+   * Examples: 'llm', 'cache', 'vectorStore', 'embeddings'
+   * Must match a key in PlatformServices.
+   */
+  target: string;
+}
+
+/**
+ * Resolved middleware declaration as stored on the platform container.
+ * Collected in loader.ts during adapter loading; resolved in execution backends.
+ */
+export interface RawMiddlewareDecl {
+  /** Absolute path to the adapter package root. */
+  pkgRoot: string;
+  /** Declaration from AdapterManifest.middlewares[]. */
+  decl: AdapterMiddlewareDecl;
 }
 
 /**

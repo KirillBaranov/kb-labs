@@ -138,8 +138,8 @@ export default defineCommand({
               `Config:     ${configPath}`,
             ],
           }],
+          hint: 'Next: start the daemon with `pnpm dev:start:host-agent` or `kb workspace:start`.',
         });
-        ctx.ui?.info?.('Next: start the daemon with `pnpm dev:start:host-agent` or `kb workspace:start`.');
       }
 
       return { exitCode: 0, configPath };

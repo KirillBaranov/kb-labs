@@ -65,16 +65,17 @@ export function registerPackagesRoutes(app: FastifyInstance): void {
         properties: {
           specs: { type: 'array', items: { type: 'string' }, description: 'Package specs (name, name@version, etc.)' },
           dev: { type: 'boolean', description: 'Install as dev dependency' },
+          token: { type: 'string', description: 'Share token for private kb: packages (kbrt_...)' },
           ...scopeBodySchemaFragment,
         },
       },
     },
   }, async (request, reply) => {
-    const body = request.body as { specs: string[]; dev?: boolean } & Record<string, unknown>;
+    const body = request.body as { specs: string[]; dev?: boolean; token?: string } & Record<string, unknown>;
     const ctx = parseMutatingScope(body);
     const result = await app.observability.observeOperation(
       'marketplace.install',
-      () => app.marketplace.install(ctx, body.specs, { dev: body.dev }),
+      () => app.marketplace.install(ctx, body.specs, { dev: body.dev, shareToken: body.token }),
     );
     return reply.code(201).send(result);
   });

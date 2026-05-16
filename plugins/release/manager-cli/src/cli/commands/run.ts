@@ -221,7 +221,7 @@ function showPlanBox(
   dryRun: boolean,
 ): void {
   if (flags.json) { return; }
-  ctx.ui.sideBox({
+  ctx.ui?.sideBox?.({
     title: dryRun ? 'Release Plan (dry-run)' : 'Release Plan',
     sections: [
       {
@@ -246,7 +246,7 @@ function reportPipelineResult(
     ctx.ui?.json?.(result.report);
     return;
   }
-  ctx.ui.sideBox({
+  ctx.ui?.sideBox?.({
     title: 'Release',
     sections: buildReleaseSections(result.report, dryRun, ctx),
     status: result.success ? 'success' : 'error',
@@ -304,7 +304,7 @@ export default defineCommand({
         }
 
         if (preErrors.length > 0) {
-          ctx.ui.sideBox({
+          ctx.ui?.sideBox?.({
             title: 'Release — pre-flight failed',
             sections: [{ items: preErrors.map(e => `${ctx.ui.symbols.error} ${e}`) }],
             status: 'error',
@@ -329,7 +329,7 @@ export default defineCommand({
       planLoader.succeed(`Found ${plan.packages.length} package(s)`);
 
       if (plan.packages.length === 0) {
-        ctx.ui.sideBox({
+        ctx.ui?.sideBox?.({
           title: 'Release',
           sections: [{ items: [`${ctx.ui.symbols.warning} No packages to release`] }],
           status: 'info',
@@ -344,7 +344,7 @@ export default defineCommand({
       if (!skipYes) {
         const confirmed = await confirmRelease();
         if (!confirmed) {
-          ctx.ui.sideBox({
+          ctx.ui?.sideBox?.({
             title: 'Release',
             sections: [{ items: [`${ctx.ui.symbols.info} Cancelled`] }],
             status: 'info',

@@ -39,5 +39,7 @@ export async function clickupFetch<T>(
     throw new ClickUpApiError(res.status, code, message);
   }
 
-  return res.json() as Promise<T>;
+  const text = await res.text();
+  if (!text) return {} as T;
+  return JSON.parse(text) as T;
 }

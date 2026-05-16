@@ -2,7 +2,7 @@ import { defineCommand, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk
 import { requireApiKey, getTaskComments } from '@kb-labs/clickup-core';
 import { handleError, validationError } from '../utils/error.js';
 
-type TaskCommentListFlags = { json?: boolean };
+type TaskCommentListFlags = { json?: boolean; full?: boolean };
 
 export default defineCommand({
   id: 'clickup:task.comment.list',
@@ -20,7 +20,7 @@ export default defineCommand({
         const comments = await getTaskComments(requireApiKey(), taskId);
 
         if (input.flags.json) {
-          ctx.ui?.json?.(comments);
+          ctx.ui?.json?.(input.flags.full ? comments : comments.map(c => ({ id: c.id, user: c.user.username, comment_text: c.comment_text, date: c.date })));
           return { exitCode: 0, result: comments };
         }
 

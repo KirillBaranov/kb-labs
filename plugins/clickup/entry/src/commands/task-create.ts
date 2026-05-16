@@ -10,7 +10,9 @@ type TaskCreateFlags = {
   priority?: number;
   assignee?: string;
   due?: string;
+  parent?: string;
   json?: boolean;
+  full?: boolean;
 };
 
 function parseDue(due: string): number | undefined {
@@ -27,7 +29,7 @@ export default defineCommand({
 
   handler: {
     async execute(ctx: PluginContextV3, input: CLIInput<TaskCreateFlags>) {
-      const { list, name, desc, status, priority, assignee, due, json } = input.flags;
+      const { list, name, desc, status, priority, assignee, due, parent, json, full } = input.flags;
 
       if (!list) {
         validationError(ctx, '--list is required', 'Use `kb clickup list tasks <listId>` to find the list ID', json);
@@ -46,10 +48,11 @@ export default defineCommand({
           priority,
           assignees: assignee ? assignee.split(',').map(Number) : undefined,
           due_date: due ? parseDue(due) : undefined,
+          parent,
         });
 
         if (json) {
-          ctx.ui?.json?.(task);
+          ctx.ui?.json?.(full ? task : { id: task.id, name: task.name, status: task.status.status, url: task.url });
         } else {
           ctx.ui?.success?.('Task created', {
             sections: [{

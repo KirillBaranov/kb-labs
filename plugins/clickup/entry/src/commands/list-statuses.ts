@@ -2,7 +2,7 @@ import { defineCommand, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk
 import { requireApiKey, getListStatuses } from '@kb-labs/clickup-core';
 import { handleError, validationError } from '../utils/error.js';
 
-type ListStatusesFlags = { json?: boolean };
+type ListStatusesFlags = { json?: boolean; full?: boolean };
 
 export default defineCommand({
   id: 'clickup:list.statuses',
@@ -20,7 +20,7 @@ export default defineCommand({
         const statuses = await getListStatuses(requireApiKey(), listId);
 
         if (input.flags.json) {
-          ctx.ui?.json?.(statuses);
+          ctx.ui?.json?.(input.flags.full ? statuses : statuses.map(s => ({ status: s.status, type: s.type, color: s.color })));
           return { exitCode: 0, result: statuses };
         }
 

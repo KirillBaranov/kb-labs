@@ -2,7 +2,7 @@ name: KB Labs Development Environment
 
 groups:
   infra:     [qdrant, redis, state-daemon]
-  backend:   [workflow, rest, marketplace, gateway]
+  backend:   [workflow, rest, marketplace, marketplace-registry, gateway]
   ui:        [studio]
   ui-web:    [kb-web, kb-docs]
   local:     [host-agent]
@@ -104,6 +104,22 @@ services:
         - POST /api/v1/marketplace/install
         - POST /api/v1/marketplace/uninstall
         - GET /api/v1/marketplace/list
+
+  marketplace-registry:
+    name: Marketplace Registry
+    description: Registry for kb:handle/name packages — publish, install, share
+    group: backend
+    type: node
+    command: node ./plugins/marketplace-registry/app/dist/bootstrap.js
+    health_check: http://localhost:5071/health
+    port: 5071
+    url: http://localhost:5071
+    depends_on: [state-daemon]
+    api:
+      endpoints:
+        - GET /health
+        - POST /api/v1/packages/publish
+        - GET /api/v1/packages
 
   gateway:
     name: Gateway

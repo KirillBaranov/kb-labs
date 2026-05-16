@@ -1,0 +1,170 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { mockCLIInput, createCapturedUI, createMockContext } from '@kb-labs/shared-testing-e2e';
+
+// Mock packer — avoids execa + node:fs built-ins
+vi.mock('../../pack-plugin.js', () => ({
+  packPlugin: vi.fn(),
+}));
+
+// Mock registry HTTP client
+vi.mock('../../registry-http.js', () => ({
+  registryPostMultipart: vi.fn(),
+  registryPatch: vi.fn(),
+}));
+
+// Mock fs only for package.json reads
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const original = await importOriginal<typeof import('node:fs/promises')>();
+  return { ...original, readFile: vi.fn() };
+});
+
+import * as fsPromises from 'node:fs/promises';
+import * as packModule from '../../pack-plugin.js';
+import { registryPostMultipart, registryPatch } from '../../registry-http.js';
+import publishCommand from '../../commands/publish.js';
+
+const mockedReadFile = vi.mocked(fsPromises.readFile);
+const mockedPackPlugin = vi.mocked(packModule.packPlugin);
+const mockedPostMultipart = vi.mocked(registryPostMultipart);
+const mockedPatch = vi.mocked(registryPatch);
+
+const VALID_PKG = JSON.stringify({
+  name: 'my-plugin',
+  version: '1.0.0',
+  description: 'Test plugin',
+  kb: { manifest: true },
+});
+
+const PUBLISH_RESULT = {
+  handle: 'kirill',
+  name: 'my-plugin',
+  version: '1.0.0',
+  visibility: 'public',
+  trust: 'trusted',
+  installCommand: 'kb marketplace install kb:kirill/my-plugin',
+  pageUrl: 'https://kblabs.ru/ru/marketplace/kirill/my-plugin',
+};
+
+const FAKE_TARBALL = Buffer.from('fake-tarball-bytes');
+
+function createCtxWithHandle(ui?: ReturnType<typeof createCapturedUI>['ui']) {
+  const base = createMockContext({ ui });
+  return Object.assign(base, { handle: 'kirill' });
+}
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  process.env.KB_REGISTRY_AUTHOR_HANDLE = 'kirill';
+  mockedReadFile.mockResolvedValue(VALID_PKG as any);
+  mockedPackPlugin.mockResolvedValue(FAKE_TARBALL);
+  mockedPostMultipart.mockResolvedValue(PUBLISH_RESULT);
+});
+
+afterEach(() => {
+  delete process.env.KB_REGISTRY_AUTHOR_HANDLE;
+});
+
+describe('marketplace:publish', () => {
+  it('PB-01: publishes successfully — shows name@version and install command', async () => {
+    const { ui, captured } = createCapturedUI();
+    const ctx = createCtxWithHandle(ui);
+    const result = await publishCommand.execute(ctx, mockCLIInput({ flags: {} }));
+
+    expect(result.exitCode).toBe(0);
+    expect(captured.success[0]?.message).toContain('my-plugin@1.0.0');
+    expect(captured.success[0]?.message).toContain('published');
+    expect(captured.success[0]?.opts?.summary).toMatchObject({ Visibility: 'public' });
+  });
+
+  it('PB-02: --json outputs structured result', async () => {
+    const { ui, captured } = createCapturedUI();
+    const ctx = createCtxWithHandle(ui);
+    const result = await publishCommand.execute(ctx, mockCLIInput({ flags: { json: true } }));
+
+    expect(result.exitCode).toBe(0);
+    expect(captured.json[0]).toMatchObject({ name: 'my-plugin', version: '1.0.0' });
+  });
+
+  it('PB-03: --private passes visibility=private to registry', async () => {
+    const { ui } = createCapturedUI();
+    const ctx = createCtxWithHandle(ui);
+    await publishCommand.execute(ctx, mockCLIInput({ flags: { private: true } }));
+
+    const [, , fields] = mockedPostMultipart.mock.calls[0]!;
+    const meta = JSON.parse((fields as Record<string, string>).meta);
+    expect(meta.visibility).toBe('private');
+  });
+
+  it('PB-04: cannot read package.json — exitCode 1, error shown', async () => {
+    mockedReadFile.mockRejectedValue(new Error('ENOENT'));
+    const { ui, captured } = createCapturedUI();
+    const ctx = createCtxWithHandle(ui);
+    const result = await publishCommand.execute(ctx, mockCLIInput({ flags: {} }));
+
+    expect(result.exitCode).toBe(1);
+    expect(mockedPackPlugin).not.toHaveBeenCalled();
+    expect(captured.errors.length).toBeGreaterThan(0);
+  });
+
+  it('PB-05: package.json missing name/version — exitCode 1', async () => {
+    mockedReadFile.mockResolvedValue(JSON.stringify({ kb: { manifest: true } }) as any);
+    const { ui } = createCapturedUI();
+    const ctx = createCtxWithHandle(ui);
+    const result = await publishCommand.execute(ctx, mockCLIInput({ flags: {} }));
+
+    expect(result.exitCode).toBe(1);
+    expect(mockedPackPlugin).not.toHaveBeenCalled();
+  });
+
+  it('PB-06: no kb.manifest or kb.adapter — exitCode 1', async () => {
+    mockedReadFile.mockResolvedValue(JSON.stringify({ name: 'x', version: '1.0.0' }) as any);
+    const { ui } = createCapturedUI();
+    const ctx = createCtxWithHandle(ui);
+    const result = await publishCommand.execute(ctx, mockCLIInput({ flags: {} }));
+
+    expect(result.exitCode).toBe(1);
+    expect(mockedPackPlugin).not.toHaveBeenCalled();
+  });
+
+  it('PB-07: --meta-only patches metadata, no tarball upload', async () => {
+    mockedPatch.mockResolvedValue(undefined);
+    const { ui, captured } = createCapturedUI();
+    const ctx = createCtxWithHandle(ui);
+    const result = await publishCommand.execute(ctx, mockCLIInput({ flags: { metaOnly: true } }));
+
+    expect(result.exitCode).toBe(0);
+    expect(mockedPackPlugin).not.toHaveBeenCalled();
+    expect(mockedPostMultipart).not.toHaveBeenCalled();
+    expect(mockedPatch).toHaveBeenCalled();
+    expect(captured.success.length).toBeGreaterThan(0);
+  });
+
+  it('PB-08: packPlugin failure — exitCode 1, error shown', async () => {
+    mockedPackPlugin.mockRejectedValue(new Error('pnpm pack failed'));
+    const { ui, captured } = createCapturedUI();
+    const ctx = createCtxWithHandle(ui);
+    const result = await publishCommand.execute(ctx, mockCLIInput({ flags: {} }));
+
+    expect(result.exitCode).toBe(1);
+    expect(captured.errors.length).toBeGreaterThan(0);
+  });
+
+  it('PB-09: registry HTTP error — exitCode 1, error shown', async () => {
+    mockedPostMultipart.mockRejectedValue(new Error('Registry publish failed (422): version exists'));
+    const { ui, captured } = createCapturedUI();
+    const ctx = createCtxWithHandle(ui);
+    const result = await publishCommand.execute(ctx, mockCLIInput({ flags: {} }));
+
+    expect(result.exitCode).toBe(1);
+    expect(captured.errors.length).toBeGreaterThan(0);
+  });
+
+  it('PB-10: packPlugin called with resolved plugin dir', async () => {
+    const { ui } = createCapturedUI();
+    const ctx = createCtxWithHandle(ui);
+    ctx.cwd = '/workspace';
+    await publishCommand.execute(ctx, mockCLIInput({ flags: { path: 'my-plugin' } }));
+
+    expect(mockedPackPlugin).toHaveBeenCalledWith('/workspace/my-plugin');
+  });
+});

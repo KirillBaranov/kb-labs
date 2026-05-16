@@ -1,0 +1,449 @@
+{
+  "schema": "kb.marketplace.manifests/1",
+  "entries": {
+    "@kb-labs/adapters-workspace-worktree": {
+      "manifestType": "adapter",
+      "manifest": {
+        "manifestVersion": "1.0.0",
+        "id": "worktree-workspace-provider",
+        "name": "Git Worktree Workspace Provider",
+        "version": "0.1.0",
+        "description": "Creates isolated git worktrees for pipeline execution",
+        "author": "KB Labs Team",
+        "license": "KBPL-1.1",
+        "type": "core",
+        "implements": "IWorkspaceProvider",
+        "contexts": [
+          "workspace"
+        ],
+        "capabilities": {
+          "custom": {
+            "provider": "worktree",
+            "isolation": true,
+            "gitSubmodules": true
+          }
+        },
+        "configSchema": {
+          "worktreeDir": {
+            "type": "string",
+            "default": ".worktrees",
+            "description": "Directory where worktrees are created (relative to repo root)"
+          },
+          "branch": {
+            "type": "string",
+            "default": "main",
+            "description": "Default branch to create worktrees from"
+          },
+          "initSubmodules": {
+            "type": "boolean",
+            "default": true,
+            "description": "Initialize git submodules in worktree"
+          }
+        }
+      },
+      "cachedAt": "2026-05-16T11:51:11.152Z",
+      "integrity": "sha256-pcHGiP1OoCS/eKxLonBUz0+CluyGS5PRXnTTohEVgi4="
+    },
+    "@kb-labs/adapters-workspace-localfs": {
+      "manifestType": "adapter",
+      "manifest": {
+        "manifestVersion": "1.0.0",
+        "id": "localfs-workspace-provider",
+        "name": "LocalFS Workspace Provider",
+        "version": "0.1.0",
+        "description": "Workspace provider on local filesystem",
+        "author": "KB Labs Team",
+        "license": "KBPL-1.1",
+        "type": "core",
+        "implements": "IWorkspaceProvider",
+        "contexts": [
+          "workspace"
+        ],
+        "capabilities": {
+          "custom": {
+            "provider": "localfs",
+            "workspaceRegistry": true
+          }
+        },
+        "configSchema": {
+          "rootDir": {
+            "type": "string",
+            "default": ".kb/runtime/workspaces",
+            "description": "Root directory where managed workspaces are created"
+          },
+          "registryDir": {
+            "type": "string",
+            "default": ".kb/runtime/workspace-registry",
+            "description": "Directory with workspace metadata for cross-adapter lookup"
+          }
+        }
+      },
+      "cachedAt": "2026-05-16T11:51:30.857Z",
+      "integrity": "sha256-OPWNTwFiaFKjESon/N+rJErSLXeb+8wGOcZFxs3AZNw="
+    },
+    "@kb-labs/adapters-workspace-agent": {
+      "manifestType": "adapter",
+      "manifest": {
+        "manifestVersion": "1.0.0",
+        "id": "agent-workspace-provider",
+        "name": "Agent Workspace Provider",
+        "version": "0.1.0",
+        "description": "Workspace provider that fetches files from a local machine via Host Agent connected to the Gateway",
+        "author": "KB Labs Team",
+        "license": "KBPL-1.1",
+        "type": "core",
+        "implements": "IWorkspaceProvider",
+        "contexts": [
+          "workspace"
+        ],
+        "capabilities": {
+          "custom": {
+            "provider": "agent",
+            "remote": true
+          }
+        },
+        "configSchema": {
+          "namespaceId": {
+            "type": "string",
+            "default": "default",
+            "description": "Gateway namespace to find the connected Host Agent"
+          },
+          "cacheDir": {
+            "type": "string",
+            "default": ".kb/runtime/workspaces",
+            "description": "Local directory where fetched workspace files are cached"
+          },
+          "hostId": {
+            "type": "string",
+            "description": "Specific Host Agent ID to use (optional — defaults to first connected host)"
+          }
+        }
+      },
+      "cachedAt": "2026-05-16T11:51:50.310Z",
+      "integrity": "sha256-F8PJCu/x+3gAVzyT6IawA48VyKVd4txWA+3MYv5yb1U="
+    },
+    "@kb-labs/adapters-vibeproxy": {
+      "manifestType": "adapter",
+      "manifest": {
+        "manifestVersion": "1.0.0",
+        "id": "vibeproxy-llm",
+        "name": "VibeProxy LLM",
+        "version": "0.1.0",
+        "description": "VibeProxy local adapter supporting multiple LLM providers (Claude, GPT, etc.)",
+        "author": "KB Labs Team",
+        "license": "KBPL-1.1",
+        "type": "core",
+        "implements": "ILLM",
+        "capabilities": {
+          "streaming": false,
+          "custom": {
+            "functionCalling": true,
+            "multiProvider": true
+          }
+        },
+        "configSchema": {
+          "baseURL": {
+            "type": "string",
+            "default": "http://localhost:8317",
+            "description": "VibeProxy server URL"
+          },
+          "apiKey": {
+            "type": "string",
+            "default": "any-string",
+            "description": "API key (any string works for local VibeProxy)"
+          },
+          "model": {
+            "type": "string",
+            "default": "claude-sonnet-4-20250514",
+            "description": "Model to use (claude-*, gpt-*, etc.)"
+          },
+          "timeout": {
+            "type": "number",
+            "default": 120000,
+            "description": "Request timeout in milliseconds"
+          }
+        }
+      },
+      "cachedAt": "2026-05-16T11:52:11.335Z",
+      "integrity": "sha256-sYL7dp1oUcCLIJKUzMaRyE9dseGGLXz/EgKLHGHCbOk="
+    },
+    "@kb-labs/adapters-sqlite": {
+      "manifestType": "adapter",
+      "manifest": {
+        "manifestVersion": "1.0.0",
+        "id": "sqlite-database",
+        "name": "SQLite Database",
+        "version": "1.0.0",
+        "description": "Lightweight embedded SQL database using better-sqlite3",
+        "author": "KB Labs Team",
+        "license": "KBPL-1.1",
+        "type": "core",
+        "implements": "ISQLDatabase",
+        "contexts": [
+          "workspace"
+        ],
+        "capabilities": {
+          "transactions": true,
+          "search": true,
+          "custom": {
+            "prepared": true,
+            "fts": true,
+            "json": true
+          }
+        },
+        "configSchema": {
+          "filename": {
+            "type": "string",
+            "description": "Database file path (use :memory: for in-memory database)"
+          },
+          "readonly": {
+            "type": "boolean",
+            "default": false,
+            "description": "Open database in readonly mode"
+          },
+          "timeout": {
+            "type": "number",
+            "default": 5000,
+            "description": "Busy timeout in milliseconds"
+          }
+        }
+      },
+      "cachedAt": "2026-05-16T11:52:32.754Z",
+      "integrity": "sha256-Yu9DCPOJg6fv4Yk2PqYDbARUF2tRh59x25ovbKWwrtI="
+    },
+    "@kb-labs/adapters-snapshot-localfs": {
+      "manifestType": "adapter",
+      "manifest": {
+        "manifestVersion": "1.0.0",
+        "id": "localfs-snapshot-provider",
+        "name": "LocalFS Snapshot Provider",
+        "version": "0.1.0",
+        "description": "Snapshot provider on local filesystem",
+        "author": "KB Labs Team",
+        "license": "KBPL-1.1",
+        "type": "core",
+        "implements": "ISnapshotProvider",
+        "contexts": [
+          "workspace"
+        ],
+        "capabilities": {
+          "custom": {
+            "provider": "localfs",
+            "workspaceRegistry": true
+          }
+        },
+        "configSchema": {
+          "storageDir": {
+            "type": "string",
+            "default": ".kb/runtime/snapshots",
+            "description": "Root directory where snapshots are stored"
+          },
+          "workspaceRegistryDir": {
+            "type": "string",
+            "default": ".kb/runtime/workspace-registry",
+            "description": "Directory with workspace metadata for source path resolution"
+          }
+        }
+      },
+      "cachedAt": "2026-05-16T11:52:51.359Z",
+      "integrity": "sha256-dnIQd3ZtAp+mI+uYsFNhecJn/q23i1/LrFkKrZF4oys="
+    },
+    "@kb-labs/adapters-redis": {
+      "manifestType": "adapter",
+      "manifest": {
+        "manifestVersion": "1.0.0",
+        "id": "redis-cache",
+        "name": "Redis Cache",
+        "version": "1.0.0",
+        "description": "High-performance distributed cache using Redis",
+        "author": "KB Labs Team",
+        "license": "KBPL-1.1",
+        "type": "core",
+        "implements": "ICache",
+        "capabilities": {
+          "custom": {
+            "ttl": true,
+            "patterns": true,
+            "atomic": true
+          }
+        },
+        "configSchema": {
+          "host": {
+            "type": "string",
+            "default": "localhost",
+            "description": "Redis server host"
+          },
+          "port": {
+            "type": "number",
+            "default": 6379,
+            "description": "Redis server port"
+          },
+          "keyPrefix": {
+            "type": "string",
+            "default": "kb:",
+            "description": "Prefix for all cache keys"
+          },
+          "password": {
+            "type": "string",
+            "description": "Redis password (optional)"
+          }
+        }
+      },
+      "cachedAt": "2026-05-16T11:53:09.509Z",
+      "integrity": "sha256-aztLu/YHVZnIPCfPrlRj3qfLbcvZsd3kKLMxWq+veZk="
+    },
+    "@kb-labs/adapters-qdrant": {
+      "manifestType": "adapter",
+      "manifest": {
+        "manifestVersion": "1.0.0",
+        "id": "qdrant-vectorstore",
+        "name": "Qdrant Vector Store",
+        "version": "1.0.0",
+        "description": "High-performance vector database for semantic search and RAG",
+        "author": "KB Labs Team",
+        "license": "KBPL-1.1",
+        "type": "core",
+        "implements": "IVectorStore",
+        "capabilities": {
+          "search": true,
+          "batch": true,
+          "custom": {
+            "hybridSearch": true,
+            "filtering": true
+          }
+        },
+        "configSchema": {
+          "url": {
+            "type": "string",
+            "description": "Qdrant server URL (e.g., http://localhost:6333)"
+          },
+          "apiKey": {
+            "type": "string",
+            "description": "API key for authentication (optional)"
+          },
+          "collectionName": {
+            "type": "string",
+            "default": "kb-vectors",
+            "description": "Collection name"
+          },
+          "dimension": {
+            "type": "number",
+            "default": 1536,
+            "description": "Vector dimension (default: 1536 for OpenAI embeddings)"
+          },
+          "timeout": {
+            "type": "number",
+            "default": 30000,
+            "description": "Request timeout in milliseconds"
+          }
+        }
+      },
+      "cachedAt": "2026-05-16T11:53:28.720Z",
+      "integrity": "sha256-bfkItaSeoUOV6yWv9bDG0M+NgPSJKWzaW/0sNc9aDsA="
+    },
+    "@kb-labs/adapters-pino": {
+      "manifestType": "adapter",
+      "manifest": {
+        "manifestVersion": "1.0.0",
+        "id": "pino-logger",
+        "name": "Pino Logger",
+        "version": "1.0.0",
+        "description": "Production-ready structured logger based on Pino",
+        "author": "KB Labs Team",
+        "license": "KBPL-1.1",
+        "type": "core",
+        "implements": "ILogger",
+        "optional": {
+          "adapters": [
+            "analytics"
+          ]
+        },
+        "capabilities": {
+          "streaming": true
+        },
+        "configSchema": {
+          "level": {
+            "type": "string",
+            "enum": [
+              "trace",
+              "debug",
+              "info",
+              "warn",
+              "error",
+              "fatal"
+            ],
+            "default": "info",
+            "description": "Minimum log level"
+          },
+          "pretty": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable pretty printing for development"
+          },
+          "streaming": {
+            "type": "object",
+            "description": "Log streaming/buffering configuration",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "default": false
+              },
+              "bufferSize": {
+                "type": "number",
+                "default": 1000
+              },
+              "bufferMaxAge": {
+                "type": "number",
+                "default": 3600000
+              }
+            }
+          }
+        }
+      },
+      "cachedAt": "2026-05-16T11:53:50.799Z",
+      "integrity": "sha256-mAvY2CJ5qHI2KgXfulSTRLXlfg19OHj7xaJFAsWPTns="
+    },
+    "@kb-labs/adapters-openai": {
+      "manifestType": "adapter",
+      "manifest": {
+        "manifestVersion": "1.0.0",
+        "id": "openai-llm",
+        "name": "OpenAI LLM",
+        "version": "1.0.0",
+        "description": "OpenAI language model adapter (GPT-4, GPT-3.5, etc.)",
+        "author": "KB Labs Team",
+        "license": "KBPL-1.1",
+        "type": "core",
+        "implements": "ILLM",
+        "capabilities": {
+          "streaming": true,
+          "custom": {
+            "functionCalling": true
+          }
+        },
+        "configSchema": {
+          "apiKey": {
+            "type": "string",
+            "description": "OpenAI API key (defaults to OPENAI_API_KEY env var)"
+          },
+          "model": {
+            "type": "string",
+            "default": "gpt-4o",
+            "description": "Model to use (gpt-4o, gpt-4-turbo, gpt-3.5-turbo, etc.)"
+          },
+          "temperature": {
+            "type": "number",
+            "default": 0.7,
+            "description": "Sampling temperature (0.0 to 2.0)"
+          },
+          "maxTokens": {
+            "type": "number",
+            "description": "Maximum tokens to generate"
+          }
+        }
+      },
+      "cachedAt": "2026-05-16T11:54:11.953Z",
+      "integrity": "sha256-7eHE5Xe4/t/tXqI81FTraH6944z+LrJ5RT6bqCDQSQg="
+    }
+  }
+}

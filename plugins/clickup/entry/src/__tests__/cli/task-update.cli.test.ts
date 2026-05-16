@@ -40,7 +40,7 @@ describe('clickup:task.update', () => {
     expect(captured.success[0]?.message).toContain('Task updated');
   });
 
-  it('TU-02: --json outputs updated task', async () => {
+  it('TU-02: --json outputs slim updated task', async () => {
     vi.mocked(updateTask).mockResolvedValue(mockUpdatedTask);
 
     const { ui, captured } = createCapturedUI();
@@ -51,7 +51,27 @@ describe('clickup:task.update', () => {
     );
 
     expect(result.exitCode).toBe(0);
-    expect(captured.json[0]).toMatchObject({ id: 'task-001' });
+    const slim = captured.json[0] as Record<string, unknown>;
+    expect(slim.id).toBe('task-001');
+    expect(typeof slim.status).toBe('string');
+    expect(slim).not.toHaveProperty('date_created');
+    expect(slim).not.toHaveProperty('assignees');
+  });
+
+  it('TU-02b: --json --full outputs raw updated task', async () => {
+    vi.mocked(updateTask).mockResolvedValue(mockUpdatedTask);
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await taskUpdateCommand.execute(
+      ctx,
+      mockCLIInput({ argv: ['task-001'], flags: { name: 'Updated Task', json: true, full: true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    const raw = captured.json[0] as typeof mockUpdatedTask;
+    expect(typeof raw.status).toBe('object');
+    expect(raw.date_created).toBeDefined();
   });
 
   it('TU-03: missing taskId returns exitCode 1', async () => {

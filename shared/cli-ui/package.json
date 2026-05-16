@@ -40,7 +40,8 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "glob": "^11.0.0"
+    "glob": "^11.0.0",
+    "@kb-labs/plugin-contracts": "workspace:*"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",

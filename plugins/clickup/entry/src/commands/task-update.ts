@@ -11,6 +11,7 @@ type TaskUpdateFlags = {
   assignee_rem?: string;
   due?: string;
   json?: boolean;
+  full?: boolean;
 };
 
 function parseDue(due: string): number | null {
@@ -34,7 +35,7 @@ export default defineCommand({
         return { exitCode: 1, result: null };
       }
 
-      const { name, desc, status, priority, assignee_add, assignee_rem, due, json } = input.flags;
+      const { name, desc, status, priority, assignee_add, assignee_rem, due, json, full } = input.flags;
 
       const body: Record<string, unknown> = {};
       if (name !== undefined) body.name = name;
@@ -53,7 +54,7 @@ export default defineCommand({
         const task = await updateTask(requireApiKey(), taskId, body);
 
         if (json) {
-          ctx.ui?.json?.(task);
+          ctx.ui?.json?.(full ? task : { id: task.id, name: task.name, status: task.status.status, url: task.url });
         } else {
           ctx.ui?.success?.('Task updated', {
             sections: [{

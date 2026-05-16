@@ -141,7 +141,7 @@ export default defineCommand({
       try {
         const loaded = await loadTrace(taskId);
         if (!loaded.ok) {
-          ctx.ui.write(JSON.stringify(mkError('INVALID_TASK_ID', formatTraceLoadError(loaded.error)), null, 2) + '\n');
+          ctx.ui?.json?.(mkError('INVALID_TASK_ID', formatTraceLoadError(loaded.error)));
           return { exitCode: 1 };
         }
         const events = loaded.events;
@@ -149,14 +149,14 @@ export default defineCommand({
         const report = analyzeDiagnostics(taskId ?? '', events);
 
         if (flags.json) {
-          ctx.ui.write(JSON.stringify({ success: true, report }, null, 2) + '\n');
+          ctx.ui?.json?.({ success: true, report });
         } else {
           printReport(ctx, report);
         }
 
         return { exitCode: report.issues.some(i => i.severity === 'critical') ? 1 : 0 };
       } catch {
-        ctx.ui.write(JSON.stringify(mkError('TRACE_NOT_FOUND', `Trace not found: ${taskId}`), null, 2) + '\n');
+        ctx.ui?.json?.(mkError('TRACE_NOT_FOUND', `Trace not found: ${taskId}`));
         return { exitCode: 1 };
       }
     },

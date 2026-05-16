@@ -19,6 +19,7 @@ import { StorageProxy } from './storage-proxy.js';
 import { SQLDatabaseProxy } from './sql-database-proxy.js';
 import { DocumentDatabaseProxy } from './document-database-proxy.js';
 import { ConfigProxy } from './config-proxy.js';
+import { EventBusProxy } from './event-bus-proxy.js';
 
 export interface CreateProxyPlatformOptions {
   /**
@@ -75,11 +76,8 @@ export function createProxyPlatform(
   const documentDatabase = new DocumentDatabaseProxy(transport);
   const config = new ConfigProxy(transport);
 
-  // EventBus: noop (subscribe across processes not supported yet)
-  const eventBus = {
-    publish: async () => {},
-    subscribe: () => () => {},
-  };
+  // EventBus: bidirectional proxy — subscribe/publish across process boundary
+  const eventBus = new EventBusProxy(transport);
 
   // Analytics: noop (low priority for proxying)
   const analytics = {

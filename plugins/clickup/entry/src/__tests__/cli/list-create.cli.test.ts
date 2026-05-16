@@ -61,7 +61,7 @@ describe('clickup:list.create', () => {
     expect(vi.mocked(createListInSpace)).toHaveBeenCalledWith('test-api-key', 'space-1', { name: 'My List' });
   });
 
-  it('LC-03: --json outputs list object', async () => {
+  it('LC-03: --json outputs slim list object', async () => {
     vi.mocked(createListInFolder).mockResolvedValue(mockList);
 
     const { ui, captured } = createCapturedUI();
@@ -73,6 +73,23 @@ describe('clickup:list.create', () => {
 
     expect(result.exitCode).toBe(0);
     expect(captured.json[0]).toMatchObject({ id: 'list-1', name: 'My List' });
+    expect(Object.keys(captured.json[0] as object)).toEqual(['id', 'name']);
+  });
+
+  it('LC-03b: --json --full outputs raw list object', async () => {
+    vi.mocked(createListInFolder).mockResolvedValue(mockList);
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await listCreateCommand.execute(
+      ctx,
+      mockCLIInput({ flags: { folder: 'folder-1', name: 'My List', json: true, full: true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    const raw = captured.json[0] as typeof mockList;
+    expect(raw.orderindex).toBeDefined();
+    expect(raw.taskCount).toBeDefined();
   });
 
   it('LC-04: missing --name — exitCode 1, error shown', async () => {

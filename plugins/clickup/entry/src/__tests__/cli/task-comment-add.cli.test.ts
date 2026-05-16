@@ -37,7 +37,7 @@ describe('clickup:task.comment.add', () => {
     expect(captured.success[0]?.message).toContain('Comment added');
   });
 
-  it('TCA-02: --json outputs comment object', async () => {
+  it('TCA-02: --json outputs slim comment object', async () => {
     vi.mocked(addTaskComment).mockResolvedValue(mockComment);
 
     const { ui, captured } = createCapturedUI();
@@ -48,7 +48,27 @@ describe('clickup:task.comment.add', () => {
     );
 
     expect(result.exitCode).toBe(0);
-    expect(captured.json[0]).toMatchObject({ id: 'comment-1' });
+    const slim = captured.json[0] as Record<string, unknown>;
+    expect(slim.id).toBe('comment-1');
+    expect(typeof slim.user).toBe('string');
+    expect(slim).not.toHaveProperty('resolved');
+    expect(slim).not.toHaveProperty('comment');
+  });
+
+  it('TCA-02b: --json --full outputs raw comment object', async () => {
+    vi.mocked(addTaskComment).mockResolvedValue(mockComment);
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await taskCommentAddCommand.execute(
+      ctx,
+      mockCLIInput({ argv: ['task-001'], flags: { text: 'Hello world', json: true, full: true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    const raw = captured.json[0] as typeof mockComment;
+    expect(typeof raw.user).toBe('object');
+    expect(raw.resolved).toBeDefined();
   });
 
   it('TCA-03: missing taskId returns exitCode 1', async () => {

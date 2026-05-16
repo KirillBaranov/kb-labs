@@ -55,7 +55,7 @@ export default defineCommand({
         };
 
         if (flags.json) {
-          ctx.ui.info(JSON.stringify(result));
+          ctx.ui?.json?.(result);
         } else {
           ctx.ui.error('Platform services are not available in this context');
         }
@@ -103,7 +103,7 @@ export default defineCommand({
       };
 
       if (flags.json) {
-        ctx.ui.info(JSON.stringify(result));
+        ctx.ui?.json?.(result);
       } else if (!flags.quiet) {
         const sections = [
           {

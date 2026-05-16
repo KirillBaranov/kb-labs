@@ -105,7 +105,7 @@ export default defineCommand({
         return { exitCode: ok ? 0 : 1, ok, failed, results };
       }
 
-      ctx.ui.sideBox({
+      ctx.ui?.sideBox?.({
         title: 'Build Results',
         sections: buildSections(results, ctx.ui.symbols),
         status: ok ? 'success' : 'error',

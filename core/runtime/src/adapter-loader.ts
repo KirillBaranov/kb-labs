@@ -25,6 +25,8 @@ export interface LoadedAdapterModule {
   manifest: AdapterManifest;
   /** Factory function to create adapter instance */
   createAdapter: (config: unknown, deps: Record<string, unknown>) => unknown | Promise<unknown>;
+  /** Absolute path to the adapter package root (for resolving manifest.middlewares[].handler) */
+  pkgRoot?: string;
 }
 
 /**

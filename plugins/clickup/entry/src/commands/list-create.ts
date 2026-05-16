@@ -7,6 +7,7 @@ type ListCreateFlags = {
   space?: string;
   name: string;
   json?: boolean;
+  full?: boolean;
 };
 
 export default defineCommand({
@@ -15,7 +16,7 @@ export default defineCommand({
 
   handler: {
     async execute(ctx: PluginContextV3, input: CLIInput<ListCreateFlags>) {
-      const { folder, space, name, json } = input.flags;
+      const { folder, space, name, json, full } = input.flags;
       if (!name) {
         validationError(ctx, '--name is required', undefined, json);
         return { exitCode: 1, result: null };
@@ -32,7 +33,7 @@ export default defineCommand({
           : await createListInSpace(apiKey, space!, { name });
 
         if (json) {
-          ctx.ui?.json?.(list);
+          ctx.ui?.json?.(full ? list : { id: list.id, name: list.name });
         } else {
           ctx.ui?.success?.('List created', {
             sections: [{ items: [`id: ${list.id}`, `name: ${list.name}`] }],

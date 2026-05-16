@@ -27,8 +27,10 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@kb-labs/core-discovery": "workspace:*",
     "@kb-labs/marketplace-contracts": "workspace:*",
-    "execa": "^9.5.3"
+    "execa": "^9.5.3",
+    "tar": "^7.4.3"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",

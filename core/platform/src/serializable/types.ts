@@ -242,13 +242,75 @@ export interface AdapterResponse {
   error?: SerializableError;
 }
 
+// ─── EventBus bidirectional messages ─────────────────────────────────────────
+
+/**
+ * Child → Parent: subscribe to an event bus topic.
+ * Parent subscribes to platform.eventBus and forwards events back as EventBusPush.
+ */
+export interface EventBusSubscribe {
+  type: 'eventbus:subscribe';
+  /** Opaque ID used to match with future unsubscribe. */
+  subscriptionId: string;
+  topic: string;
+}
+
+/**
+ * Child → Parent: cancel a previous subscription.
+ */
+export interface EventBusUnsubscribe {
+  type: 'eventbus:unsubscribe';
+  subscriptionId: string;
+}
+
+/**
+ * Parent → Child: push an event to subscribed handlers.
+ */
+export interface EventBusPush {
+  type: 'eventbus:push';
+  subscriptionId: string;
+  topic: string;
+  payload: SerializableValue;
+}
+
+export function isEventBusSubscribe(msg: unknown): msg is EventBusSubscribe {
+  return (
+    isRecord(msg) &&
+    msg['type'] === 'eventbus:subscribe' &&
+    typeof msg['subscriptionId'] === 'string' &&
+    typeof msg['topic'] === 'string'
+  );
+}
+
+export function isEventBusUnsubscribe(msg: unknown): msg is EventBusUnsubscribe {
+  return (
+    isRecord(msg) &&
+    msg['type'] === 'eventbus:unsubscribe' &&
+    typeof msg['subscriptionId'] === 'string'
+  );
+}
+
+export function isEventBusPush(msg: unknown): msg is EventBusPush {
+  return (
+    isRecord(msg) &&
+    msg['type'] === 'eventbus:push' &&
+    typeof msg['subscriptionId'] === 'string' &&
+    typeof msg['topic'] === 'string'
+  );
+}
+
 /**
  * All possible IPC messages.
  *
- * Child → Parent: AdapterCall
- * Parent → Child: AdapterResponse
+ * Child → Parent: AdapterCall | EventBusSubscribe | EventBusUnsubscribe
+ * Parent → Child: AdapterResponse | EventBusPush
  */
-export type IPCMessage = AdapterCall | AdapterResponse;
+export type IPCMessage =
+  | AdapterCall
+  | AdapterResponse
+  | EventBusSubscribe
+  | EventBusUnsubscribe
+  | EventBusPush;
 
 /**
  * Narrows `unknown` to a plain object with string-keyed unknown values.

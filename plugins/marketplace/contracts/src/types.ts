@@ -103,6 +103,9 @@ export interface PackageSource {
 
   /** Publish a package (optional — only registry source supports it) */
   publish?(tarball: Buffer, metadata: PublishMetadata): Promise<PublishResult>;
+
+  /** Return a copy of this source with a per-request share token injected (optional) */
+  withShareToken?(token: string): PackageSource;
 }
 
 // ---------------------------------------------------------------------------

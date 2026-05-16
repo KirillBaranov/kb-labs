@@ -49,7 +49,7 @@ describe('clickup:list.tasks', () => {
     expect(vi.mocked(getListTasks)).toHaveBeenCalledWith('test-api-key', 'list-1', expect.any(Object));
   });
 
-  it('LT-02: --json outputs tasks array', async () => {
+  it('LT-02: --json outputs slim tasks array', async () => {
     vi.mocked(getListTasks).mockResolvedValue(mockTasks);
 
     const { ui, captured } = createCapturedUI();
@@ -61,7 +61,29 @@ describe('clickup:list.tasks', () => {
 
     expect(result.exitCode).toBe(0);
     expect(Array.isArray(captured.json[0])).toBe(true);
-    expect((captured.json[0] as typeof mockTasks)[0]).toMatchObject({ id: 'task-1' });
+    const slim = (captured.json[0] as Array<Record<string, unknown>>)[0];
+    expect(slim.id).toBe('task-1');
+    expect(typeof slim.status).toBe('string');
+    expect(slim).toHaveProperty('due_date');
+    expect(slim).toHaveProperty('url');
+    expect(slim).not.toHaveProperty('assignees');
+    expect(slim).not.toHaveProperty('date_created');
+  });
+
+  it('LT-02b: --json --full outputs raw tasks array', async () => {
+    vi.mocked(getListTasks).mockResolvedValue(mockTasks);
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await listTasksCommand.execute(
+      ctx,
+      mockCLIInput({ argv: ['list-1'], flags: { json: true, full: true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    const raw = (captured.json[0] as typeof mockTasks)[0];
+    expect(typeof raw.status).toBe('object');
+    expect(raw.date_created).toBeDefined();
   });
 
   it('LT-03: empty task list — exitCode 0, info message shown', async () => {

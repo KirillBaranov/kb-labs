@@ -5,6 +5,8 @@ export {
   saveClient,
   getClient,
   getClientByHostId,
+  getClientByHandle,
+  isHandleTaken,
   verifyClientSecret,
   buildClientRecord,
   saveRefreshToken,

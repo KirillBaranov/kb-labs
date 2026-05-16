@@ -1,7 +1,7 @@
 ---
 title: "IEventBus"
 description: "Publish/subscribe messaging with topic-based routing."
-updatedAt: "2026-04-07"
+updatedAt: "2026-05-16"
 order: 9
 ---
 
@@ -70,6 +70,20 @@ eventBus.subscribe('workflow.*.failed', handler); // only failures
 - **Topics are strings.** No schema, no hierarchical enforcement — the `.` convention is just a convention.
 - **Delivery guarantees depend on the adapter.** In-memory is at-most-once-per-subscriber-at-publish-time; cache-backed is best-effort; Redis/Kafka can provide at-least-once.
 - **Event payloads are opaque.** The bus doesn't serialize or validate — plugins agree on schemas out-of-band.
+
+## Worker process delivery
+
+Plugins running in worker subprocesses (worker-pool and subprocess execution modes) receive a full `EventBusProxy` implementation, not a noop. The proxy uses a bidirectional IPC protocol to bridge between the worker and the parent process that holds the real adapter:
+
+| Message | Direction | What it does |
+|---------|-----------|-------------|
+| `eventbus:subscribe` | worker → parent | Registers a topic subscription in the parent |
+| `eventbus:unsubscribe` | worker → parent | Cancels the subscription |
+| `eventbus:push` | parent → worker | Delivers a matching event to the subscriber |
+
+When a plugin calls `platform.eventBus.subscribe('workflow.completed', handler)` inside a worker, the proxy sends `eventbus:subscribe` to the parent. The parent's `ChildIPCServer` subscribes to the real `IEventBus` and, when a matching event arrives, sends it back via `eventbus:push`. Calling the returned `Unsubscribe` function sends `eventbus:unsubscribe` and cleans up on both sides.
+
+`publish()` continues to use the standard `adapter:call` RPC path — no change there.
 
 ## Writing an `IEventBus` adapter
 

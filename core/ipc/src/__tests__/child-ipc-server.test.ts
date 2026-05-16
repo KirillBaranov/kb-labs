@@ -273,4 +273,104 @@ describe('ChildIPCServer', () => {
       expect(mockChild.send).not.toHaveBeenCalled();
     });
   });
+
+  describe('EventBus IPC', () => {
+    beforeEach(() => {
+      // subscribe must return a function so stop() can call it
+      (mockPlatform.eventBus.subscribe as ReturnType<typeof vi.fn>).mockReturnValue(() => {});
+      server.start();
+    });
+
+    it('eventbus:subscribe — subscribes to platform.eventBus with given topic', async () => {
+      mockChild.emit('message', { type: 'eventbus:subscribe', subscriptionId: 'sub-1', topic: 'workflow.done' });
+      await vi.waitFor(() => {
+        expect(mockPlatform.eventBus.subscribe).toHaveBeenCalledWith('workflow.done', expect.any(Function));
+      });
+    });
+
+    it('eventbus:subscribe — sends eventbus:push to child when event fires', async () => {
+      let capturedHandler: ((payload: unknown) => Promise<void>) | null = null;
+      (mockPlatform.eventBus.subscribe as ReturnType<typeof vi.fn>).mockImplementation(
+        (_topic: string, handler: (payload: unknown) => Promise<void>) => {
+          capturedHandler = handler;
+          return () => {};
+        }
+      );
+
+      mockChild.emit('message', { type: 'eventbus:subscribe', subscriptionId: 'sub-2', topic: 'events.x' });
+      await vi.waitFor(() => capturedHandler !== null);
+
+      await capturedHandler!({ value: 42 });
+
+      expect(mockChild.send).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'eventbus:push',
+        subscriptionId: 'sub-2',
+        topic: 'events.x',
+      }));
+    });
+
+    it('eventbus:subscribe — does not push when child disconnected', async () => {
+      let capturedHandler: ((payload: unknown) => Promise<void>) | null = null;
+      (mockPlatform.eventBus.subscribe as ReturnType<typeof vi.fn>).mockImplementation(
+        (_topic: string, handler: (payload: unknown) => Promise<void>) => {
+          capturedHandler = handler;
+          return () => {};
+        }
+      );
+
+      mockChild.emit('message', { type: 'eventbus:subscribe', subscriptionId: 'sub-3', topic: 'events.y' });
+      await vi.waitFor(() => capturedHandler !== null);
+
+      mockChild.connected = false;
+      await capturedHandler!({ value: 1 });
+      expect(mockChild.send).not.toHaveBeenCalled();
+    });
+
+    it('eventbus:unsubscribe — calls stored unsubscribe function', async () => {
+      const unsub = vi.fn();
+      (mockPlatform.eventBus.subscribe as ReturnType<typeof vi.fn>).mockReturnValue(unsub);
+
+      mockChild.emit('message', { type: 'eventbus:subscribe', subscriptionId: 'sub-4', topic: 'events.z' });
+      await vi.waitFor(() => {
+        expect(mockPlatform.eventBus.subscribe).toHaveBeenCalled();
+      });
+
+      mockChild.emit('message', { type: 'eventbus:unsubscribe', subscriptionId: 'sub-4' });
+      await vi.waitFor(() => expect(unsub).toHaveBeenCalled());
+    });
+
+    it('eventbus:unsubscribe — ignores unknown subscriptionId gracefully', () => {
+      expect(() => {
+        mockChild.emit('message', { type: 'eventbus:unsubscribe', subscriptionId: 'nonexistent' });
+      }).not.toThrow();
+    });
+
+    it('stop() — cancels all active EventBus subscriptions', async () => {
+      const unsub1 = vi.fn();
+      const unsub2 = vi.fn();
+      (mockPlatform.eventBus.subscribe as ReturnType<typeof vi.fn>)
+        .mockReturnValueOnce(unsub1)
+        .mockReturnValueOnce(unsub2);
+
+      mockChild.emit('message', { type: 'eventbus:subscribe', subscriptionId: 'sub-5', topic: 'a' });
+      mockChild.emit('message', { type: 'eventbus:subscribe', subscriptionId: 'sub-6', topic: 'b' });
+      await vi.waitFor(() => {
+        expect(mockPlatform.eventBus.subscribe).toHaveBeenCalledTimes(2);
+      });
+
+      server.stop();
+      expect(unsub1).toHaveBeenCalled();
+      expect(unsub2).toHaveBeenCalled();
+    });
+
+    it('ignores eventbus:subscribe when platform.eventBus is absent', () => {
+      const platformWithoutBus = { ...mockPlatform, eventBus: undefined as never };
+      const srv = new ChildIPCServer(platformWithoutBus, mockChild as never);
+      srv.start();
+      expect(() => {
+        mockChild.emit('message', { type: 'eventbus:subscribe', subscriptionId: 's', topic: 't' });
+      }).not.toThrow();
+      srv.stop();
+    });
+  });
 });

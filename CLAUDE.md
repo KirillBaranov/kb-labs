@@ -84,6 +84,19 @@ Some have daemons (HTTP ports) — that's an implementation detail, not an archi
 - Never use `as any`, `@ts-ignore`, or duplicate types — fix root causes
 - Never create stub/mock files as workarounds
 
+### Platform Adapter Pipeline (`core/plugin-runtime`)
+
+Platform adapters go through a named slot pipeline: `raw → router → post-router → resource-broker → post-resource-broker → governance`.
+
+- **Single source of truth**: `ADAPTER_REGISTRY` in `core/plugin-runtime/src/platform/adapter-registry.ts` — adding a field to `PlatformServices` without a registry entry causes a compile error.
+- **Phase 1** — `assemblePlatform(raw, config, broker)` — applies router + resource-broker factories once at startup.
+- **Phase 2** — `applyPluginGovernance(platform, permissions, pluginId, middlewares)` — applies adapter middlewares sorted by slot/priority, then system governance last.
+- **Adding an adapter**: one entry in `ADAPTER_REGISTRY`, governance wrap function, IPC strategy.
+- **Adding a system stage**: one entry in `PIPELINE_SLOTS` + position in `SLOT_ORDER` — existing middleware priorities are unaffected.
+- **EventBus IPC**: bidirectional — `EventBusProxy` in worker processes forwards subscribe/unsubscribe to parent via `sendMessage`, parent delivers events via `eventbus:push`.
+
+See [ADR-0001](core/plugin-runtime/docs/adr/ADR-0001-adapter-pipeline.md) and [plugin-runtime README](core/plugin-runtime/README.md#platform-adapter-pipeline).
+
 ### Git
 - Never `git push` without explicit permission
 - Never amend commits — create new ones

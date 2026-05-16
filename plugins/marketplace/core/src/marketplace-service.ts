@@ -61,8 +61,10 @@ export interface MarketplaceServiceOptions {
    * provided, per-call `ctx.projectRoot` wins.
    */
   projectRoot?: string;
-  /** Package source (npm, registry, etc.) */
+  /** Default package source (npm/pnpm) */
   source: PackageSource;
+  /** KB Registry package source — used for specs starting with 'kb:' */
+  registrySource?: PackageSource;
   /** Additional strategies beyond built-in plugin/adapter */
   strategies?: EntityKindStrategy[];
 }
@@ -74,11 +76,13 @@ export interface MarketplaceServiceOptions {
 export class MarketplaceService implements MarketplaceServiceAPI {
   private readonly roots: ServiceRoots;
   private readonly source: PackageSource;
+  private readonly registrySource?: PackageSource;
   private readonly strategies = new Map<EntityKind, EntityKindStrategy>();
 
   constructor(opts: MarketplaceServiceOptions) {
     this.roots = { platformRoot: opts.platformRoot, projectRoot: opts.projectRoot };
     this.source = opts.source;
+    this.registrySource = opts.registrySource;
 
     // Built-in strategies
     this.registerStrategy(new PluginStrategy());
@@ -103,7 +107,7 @@ export class MarketplaceService implements MarketplaceServiceAPI {
   async install(
     ctx: ScopeContext,
     specs: string[],
-    opts?: { dev?: boolean },
+    opts?: { dev?: boolean; shareToken?: string },
   ): Promise<InstallResult> {
     const scopeRoot = resolveScopeRoot(this.roots, ctx);
     const installed: InstallResultEntry[] = [];
@@ -111,8 +115,19 @@ export class MarketplaceService implements MarketplaceServiceAPI {
     const diagnostics: MarketplaceDiagnostic[] = [];
 
     for (const spec of specs) {
-      const resolved = await this.source.resolve(spec);
-      const result = await this.source.install(resolved, scopeRoot, opts);
+      // Route kb: specs to registry source; fall back to npm source
+      const isKbSpec = spec.startsWith('kb:');
+      if (isKbSpec && !this.registrySource) {
+        warnings.push(`Registry source not configured — cannot install '${spec}'. Set marketplace.registry.url in kb.config.json.`);
+        continue;
+      }
+      let source = isKbSpec ? this.registrySource! : this.source;
+      if (isKbSpec && opts?.shareToken && source.withShareToken) {
+        source = source.withShareToken(opts.shareToken);
+      }
+
+      const resolved = await source.resolve(spec);
+      const result = await source.install(resolved, scopeRoot, opts);
 
       // Detect primary kind via strategies
       const primaryKind = await this.detectKind(result.packageRoot);
@@ -123,6 +138,9 @@ export class MarketplaceService implements MarketplaceServiceAPI {
         ? await strategy.extractProvides(result.packageRoot)
         : [primaryKind];
 
+      // Packages from registry with a platform signature are trusted and sealed
+      const trust: 'trusted' | 'untrusted' = resolved.signature ? 'trusted' : 'untrusted';
+
       // Write to marketplace.lock
       const entry = createMarketplaceEntry({
         version: result.version,
@@ -131,6 +149,8 @@ export class MarketplaceService implements MarketplaceServiceAPI {
         source: resolved.source,
         primaryKind,
         provides,
+        trust,
+        signature: resolved.signature,
       });
 
       await addToMarketplaceLock(scopeRoot, result.id, entry);

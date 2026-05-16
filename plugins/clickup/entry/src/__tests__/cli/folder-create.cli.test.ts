@@ -47,7 +47,7 @@ describe('clickup:folder.create', () => {
     expect(vi.mocked(createFolder)).toHaveBeenCalledWith('test-api-key', 'space-1', { name: 'My Folder' });
   });
 
-  it('FC-02: --json outputs folder object', async () => {
+  it('FC-02: --json outputs slim folder object', async () => {
     vi.mocked(createFolder).mockResolvedValue(mockFolder);
 
     const { ui, captured } = createCapturedUI();
@@ -59,6 +59,23 @@ describe('clickup:folder.create', () => {
 
     expect(result.exitCode).toBe(0);
     expect(captured.json[0]).toMatchObject({ id: 'folder-1', name: 'My Folder' });
+    expect(Object.keys(captured.json[0] as object)).toEqual(['id', 'name']);
+  });
+
+  it('FC-02b: --json --full outputs raw folder object', async () => {
+    vi.mocked(createFolder).mockResolvedValue(mockFolder);
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await folderCreateCommand.execute(
+      ctx,
+      mockCLIInput({ flags: { space: 'space-1', name: 'My Folder', json: true, full: true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    const raw = captured.json[0] as typeof mockFolder;
+    expect(raw.lists).toBeDefined();
+    expect(raw.orderindex).toBeDefined();
   });
 
   it('FC-03: missing --space — exitCode 1, error shown', async () => {

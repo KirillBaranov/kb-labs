@@ -112,22 +112,14 @@ export default defineCommand({
       const onlineCount = hosts.filter(h => h.status === 'online').length;
       const offlineCount = hosts.filter(h => h.status === 'offline').length;
 
-      ctx.ui?.table?.(
-        hosts.map(h => ({
-          name: h.name,
-          status: h.status,
-          capabilities: (h.capabilities || []).join(', ') || '—',
-          lastSeen: ago(h.lastSeen),
-        })),
-        [
-          { header: 'Name', key: 'name' },
-          { header: 'Status', key: 'status' },
-          { header: 'Capabilities', key: 'capabilities' },
-          { header: 'Last Seen', key: 'lastSeen' },
-        ],
-      );
-
-      ctx.ui?.success?.(`${onlineCount} online, ${offlineCount} offline (${hosts.length} total)`);
+      ctx.ui?.success?.(`${onlineCount} online, ${offlineCount} offline (${hosts.length} total)`, {
+        sections: [{
+          header: 'Agents',
+          items: hosts.map(h =>
+            `${h.name}  ${h.status}  ${(h.capabilities || []).join(', ') || '—'}  ${ago(h.lastSeen)}`
+          ),
+        }],
+      });
 
       return { exitCode: 0, hosts };
     },

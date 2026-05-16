@@ -226,6 +226,113 @@ import { runInProcess, runInSubprocess } from '@kb-labs/plugin-runtime-v3/sandbo
 import '@kb-labs/plugin-runtime-v3/sandbox/bootstrap';
 ```
 
+## Platform Adapter Pipeline
+
+Every platform adapter passes through a named slot pipeline before reaching a plugin. The pipeline has two phases.
+
+### Pipeline stages
+
+```
+raw → router → post-router → resource-broker → post-resource-broker → governance
+```
+
+| Slot | Reserved | Purpose |
+|------|----------|---------|
+| `raw` | no | Hook before any system processing |
+| `router` | yes | System: LLMRouter, NotifierRouter |
+| `post-router` | no | After routing, before rate limiting |
+| `resource-broker` | yes | System: QueuedLLM, rate limiting |
+| `post-resource-broker` | no | Circuit breaker, cost tracking |
+| `governance` | yes | System: permission enforcement — always last |
+
+Reserved slots are system-only. Adapter middlewares declared in `AdapterManifest.middlewares` land in open slots.
+
+### Phase 1 — `assemblePlatform()` (once at startup)
+
+Applies system-level transforms: router factories (e.g. `LLMRouter`) and resource broker wrappers (e.g. `QueuedLLM`).
+
+```typescript
+import { assemblePlatform } from '@kb-labs/plugin-runtime/platform';
+
+const platform = assemblePlatform(rawPlatform, routerConfig, resourceBroker);
+```
+
+### Phase 2 — `applyPluginGovernance()` (per plugin)
+
+Applies adapter-declared middlewares in slot order, then system governance (permission enforcement).
+
+```typescript
+import { applyPluginGovernance } from '@kb-labs/plugin-runtime/platform';
+
+const governed = applyPluginGovernance(platform, permissions, pluginId, adapterMiddlewares);
+```
+
+### ADAPTER_REGISTRY — single source of truth
+
+Every adapter has exactly one entry. TypeScript enforces exhaustiveness at compile time:
+
+```typescript
+// Adding a field to PlatformServices without a registry entry → compile error
+export const ADAPTER_REGISTRY = {
+  llm: {
+    routerFactory: (raw, config) => new LLMRouter(raw, config),
+    resourceBrokerFactory: (raw, broker) => createQueuedLLM(broker, raw),
+    governance: { strategy: 'wrap', fn: wrapLlm },
+    ipc: { strategy: 'proxy', create: (t) => new LLMProxy(t) },
+  },
+  // ... 15 more entries
+} satisfies { [K in keyof Required<PlatformServices>]: AdapterDescriptor<any> };
+```
+
+### Writing adapter middleware
+
+```typescript
+// In your adapter package: ./middlewares/cost-tracker.ts
+import type { AdapterMiddlewareFn } from '@kb-labs/plugin-runtime/platform';
+
+export const middleware: AdapterMiddlewareFn<ILLM> = (adapter, ctx) => ({
+  ...adapter,
+  complete: async (prompt, options) => {
+    const start = Date.now();
+    const result = await adapter.complete(prompt, options);
+    trackCost(Date.now() - start, ctx.pluginId);
+    return result;
+  },
+});
+```
+
+Declare it in your `AdapterManifest`:
+
+```typescript
+middlewares: [
+  {
+    id: 'cost-tracker',
+    handler: './middlewares/cost-tracker.js',
+    slot: 'post-resource-broker',
+    target: 'llm',
+    priority: 10,
+  }
+]
+```
+
+### Adding a new adapter
+
+1. Add the field to `PlatformServices` in `@kb-labs/plugin-contracts` → compile error fires
+2. Add one entry to `ADAPTER_REGISTRY` with `governance` + `ipc` strategies
+3. Add a governance wrap function (or use `pass-through`)
+
+### Adding a new system pipeline stage
+
+1. Add an entry to `PIPELINE_SLOTS` in [`pipeline-slots.ts`](src/platform/pipeline-slots.ts) with `reserved: true`
+2. Insert the name at the right position in `SLOT_ORDER`
+3. Add the corresponding factory field to `AdapterDescriptor` if needed
+
+Existing adapter middleware priorities are not affected — they are local to their slot.
+
+See [ADR-0001](docs/adr/ADR-0001-adapter-pipeline.md) for the full design rationale.
+
+---
+
 ## Architecture
 
 ```

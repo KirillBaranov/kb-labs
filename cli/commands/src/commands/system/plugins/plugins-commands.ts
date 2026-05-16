@@ -160,7 +160,7 @@ export const pluginsCommands = defineSystemCommand<PluginsCommandsFlags, Plugins
   },
   formatter(result, ctx, flags) {
     if (flags.json) {
-      console.log(JSON.stringify(result.json, null, 2));
+      ctx.ui?.json?.(result.json);
     } else {
       ctx.ui.success('Plugin Commands Registry', { sections: result.sections ?? [] });
     }

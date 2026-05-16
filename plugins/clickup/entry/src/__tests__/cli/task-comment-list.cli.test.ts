@@ -40,7 +40,7 @@ describe('clickup:task.comment.list', () => {
     expect(result.exitCode).toBe(0);
   });
 
-  it('TCL-02: --json outputs comments array', async () => {
+  it('TCL-02: --json outputs slim comments array', async () => {
     vi.mocked(getTaskComments).mockResolvedValue(mockComments);
 
     const { ui, captured } = createCapturedUI();
@@ -52,7 +52,27 @@ describe('clickup:task.comment.list', () => {
 
     expect(result.exitCode).toBe(0);
     expect(Array.isArray(captured.json[0])).toBe(true);
-    expect((captured.json[0] as typeof mockComments)[0]).toMatchObject({ id: 'comment-1' });
+    const slim = (captured.json[0] as Array<Record<string, unknown>>)[0];
+    expect(slim.id).toBe('comment-1');
+    expect(typeof slim.user).toBe('string');
+    expect(slim).not.toHaveProperty('resolved');
+    expect(slim).not.toHaveProperty('comment');
+  });
+
+  it('TCL-02b: --json --full outputs raw comments array', async () => {
+    vi.mocked(getTaskComments).mockResolvedValue(mockComments);
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await taskCommentListCommand.execute(
+      ctx,
+      mockCLIInput({ argv: ['task-001'], flags: { json: true, full: true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    const raw = (captured.json[0] as typeof mockComments)[0];
+    expect(typeof raw.user).toBe('object');
+    expect(raw.resolved).toBeDefined();
   });
 
   it('TCL-03: empty comments prints info message', async () => {

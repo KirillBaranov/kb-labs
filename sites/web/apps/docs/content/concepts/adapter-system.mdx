@@ -1,7 +1,7 @@
 ---
 title: "Adapter System"
 description: "What adapters are and why the platform uses them."
-updatedAt: "2026-04-12"
+updatedAt: "2026-05-16"
 order: 4
 ---
 
@@ -86,6 +86,67 @@ This distinction trips people up at first:
 | **Sandbox** | No — adapters run with host-level access | Yes — always runs in the plugin sandbox |
 
 If you want to change *what LLM provider* the platform uses, that's an adapter. If you want to add a new AI-powered command, that's a plugin. A plugin calls `useLLM()` and is blissfully unaware of whether it ends up talking to OpenAI or Anthropic.
+
+## Middleware pipeline
+
+Before a plugin ever calls `useLLM()` or `useCache()`, every adapter passes through a named slot pipeline. The pipeline adds routing, rate limiting, and permission enforcement in a fixed, auditable order.
+
+```
+raw → router → post-router → resource-broker → post-resource-broker → governance
+```
+
+| Slot | Plugins can use | What runs here |
+|------|----------------|---------------|
+| `raw` | yes | Before any system processing |
+| `router` | no | LLMRouter (backend selection), NotifierRouter |
+| `post-router` | yes | After routing, before rate limiting |
+| `resource-broker` | no | QueuedLLM, concurrency limits |
+| `post-resource-broker` | yes | Cost tracking, circuit breaker, custom instrumentation |
+| `governance` | no | Permission enforcement — always the last stage |
+
+The pipeline runs in two phases:
+
+- **Phase 1 — `assemblePlatform()`** — once at startup. Applies router factories (LLMRouter wraps the raw LLM client for backend selection) and resource broker factories (QueuedLLM wraps for rate limiting).
+- **Phase 2 — `applyPluginGovernance()`** — once per plugin. Applies any adapter-declared middlewares in slot order, then runs system governance last to enforce the plugin's `platform.*` permissions.
+
+### Adapter middleware
+
+Adapter packages can declare middleware in their `AdapterManifest`. A middleware receives the current adapter and returns a new one — the classic wrap pattern:
+
+```ts
+// adapters/my-llm/middlewares/cost-tracker.ts
+import type { AdapterMiddlewareFn } from '@kb-labs/plugin-runtime/platform';
+
+export const middleware: AdapterMiddlewareFn<ILLM> = (adapter, ctx) => ({
+  ...adapter,
+  complete: async (prompt, options) => {
+    const start = Date.now();
+    const result = await adapter.complete(prompt, options);
+    recordCost(Date.now() - start, ctx.pluginId);
+    return result;
+  },
+});
+```
+
+Declare it in the manifest, targeting an open slot:
+
+```ts
+middlewares: [
+  {
+    id: 'cost-tracker',
+    handler: './middlewares/cost-tracker.js',
+    slot: 'post-resource-broker',
+    target: 'llm',
+    priority: 10,  // local within the slot, not global
+  }
+]
+```
+
+`priority` is local to the slot. Adding a new system stage never shifts existing priority numbers.
+
+### Single source of truth
+
+Every adapter has exactly one entry in `ADAPTER_REGISTRY` (in `core/plugin-runtime`). TypeScript enforces exhaustiveness: adding a field to `PlatformServices` without a registry entry is a compile error. Each entry declares a `governance` strategy (`'wrap'` with a function, or `'pass-through'`) and an `ipc` strategy (`'proxy'`, `'noop'`, `'local'`, or `'absent'`). There is no separate list to keep in sync.
 
 ## Platform transport adapters
 

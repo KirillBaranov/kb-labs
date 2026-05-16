@@ -1,7 +1,7 @@
 ---
 title: "Writing Your First Adapter"
 description: "Build a custom ICache adapter, register it, and use it from a plugin."
-updatedAt: "2026-04-07"
+updatedAt: "2026-05-16"
 order: 3
 ---
 
@@ -330,6 +330,145 @@ The same flow works for every adapter interface:
 6. **Register in `kb.config.json`** under `platform.adapters[<token>]`.
 7. **Pass options** via `platform.adapterOptions[<token>]`.
 8. **Restart services** to load the new adapter.
+
+## Declaring adapter middleware (optional)
+
+Sometimes you don't need to replace an adapter — you just want to intercept calls to an existing one. For example: track LLM costs on top of whatever provider is configured, or add a circuit breaker to storage calls.
+
+Adapters can declare **middleware** in `AdapterManifest.middlewares`. Each middleware is a function that receives the current adapter and a context object, and returns a new adapter — the classic wrap pattern:
+
+```ts
+// src/middlewares/cost-tracker.ts
+import type { AdapterMiddlewareFn } from '@kb-labs/plugin-runtime/platform';
+import type { ILLM } from '@kb-labs/core-platform';
+
+export const middleware: AdapterMiddlewareFn<ILLM> = (adapter, ctx) => ({
+  ...adapter,
+  complete: async (prompt, options) => {
+    const start = Date.now();
+    const result = await adapter.complete(prompt, options);
+    recordCost(Date.now() - start, ctx.pluginId);
+    return result;
+  },
+});
+```
+
+`ctx` carries three things:
+
+| Field | Type | What it gives you |
+|-------|------|-------------------|
+| `ctx.pluginId` | `string` | Which plugin is making the call |
+| `ctx.permissions` | `PermissionSpec` | Resolved permissions for this plugin |
+| `ctx.lifecycle` | `AdapterLifecycle` | Hooks to run code on ready/dispose/events |
+
+### Named slots
+
+Every adapter middleware targets a named **slot** in the pipeline:
+
+```
+raw → router → post-router → resource-broker → post-resource-broker → governance
+```
+
+Open slots (available to middleware):
+
+| Slot | When to use |
+|------|-------------|
+| `raw` | Before routing — rarely needed. Logging, request ID stamping. |
+| `post-router` | After backend selection, before rate limiting. Request signing, header injection. |
+| `post-resource-broker` | After rate limiting, before permissions. **Default for most middleware.** Cost tracking, circuit breaker, fallback logic. |
+
+Reserved slots (`router`, `resource-broker`, `governance`) are system-only. Targeting one in your manifest is a validation error.
+
+Declare the slot and set `priority` for ordering within it:
+
+```ts
+export const manifest: AdapterManifest = {
+  // ...existing fields...
+  middlewares: [
+    {
+      id: 'cost-tracker',
+      handler: './middlewares/cost-tracker.js',
+      slot: 'post-resource-broker',  // named slot — recommended
+      target: 'llm',
+      priority: 10,
+    },
+  ],
+};
+```
+
+### Priority
+
+`priority` is **local to the slot** — it orders middleware within the same slot, not across all stages. Default is `0`.
+
+```
+post-resource-broker slot (applied in this order):
+  priority 0  → circuit-breaker   (innermost — closest to underlying adapter)
+  priority 10 → cost-tracker
+  priority 20 → request-logger    (outermost — first to intercept incoming calls)
+```
+
+Lower priority number = applied first = innermost wrapper = intercepts calls last. Higher number = outermost = intercepts calls first. When in doubt: put the middleware that should run closest to the real adapter at priority 0.
+
+Because priority is local, adding a new system stage never shifts your numbers. Two middleware from different adapters in the same slot are sorted by priority; ties resolve by load order.
+
+If you need fine-grained placement relative to a specific stage rather than a slot, use `after` or `before`:
+
+```ts
+{ id: 'my-mw', handler: '...', after: 'resource-broker', target: 'llm' }
+```
+
+Use `after`/`before` only when you genuinely need relative ordering to a specific stage. For everything else, `slot` is simpler and more resilient to future pipeline changes.
+
+### Lifecycle hooks
+
+The middleware function runs once per plugin — it wraps the adapter when the plugin is set up. Use `ctx.lifecycle` for setup and teardown:
+
+```ts
+export const middleware: AdapterMiddlewareFn<ILLM> = (adapter, ctx) => {
+  // Stateful middleware — one instance per plugin
+  const stats = { calls: 0, totalMs: 0 };
+
+  ctx.lifecycle.onReady(() => {
+    console.log(`[${ctx.pluginId}] cost tracker ready`);
+  });
+
+  ctx.lifecycle.onDispose(async () => {
+    await flushStats(ctx.pluginId, stats);
+  });
+
+  // Subscribe to a platform event
+  ctx.lifecycle.on('resource-broker:quota-reset:llm', () => {
+    stats.calls = 0;
+  });
+
+  return {
+    ...adapter,
+    complete: async (prompt, options) => {
+      stats.calls++;
+      const start = Date.now();
+      const result = await adapter.complete(prompt, options);
+      stats.totalMs += Date.now() - start;
+      return result;
+    },
+  };
+};
+```
+
+- **`onReady(fn)`** — called after the full pipeline is assembled, before the first call arrives.
+- **`onDispose(fn)`** — called when the plugin is unloaded or the context is torn down. Use it to flush buffers, close connections, clear timers.
+- **`on(event, fn)`** — subscribe to a platform lifecycle event. Currently documented event: `resource-broker:quota-reset:<adapter>` (fires when rate-limit quota resets for an adapter).
+
+### When to use middleware vs a full adapter
+
+| Scenario | Use |
+|----------|-----|
+| Replace the entire backing store | Full adapter (`createAdapter`) |
+| Intercept calls to the existing adapter | Middleware (`middlewares[]`) |
+| Observability, cost tracking, circuit breaking | Middleware |
+| Change how data is stored or fetched | Full adapter |
+| Per-plugin state that resets on unload | Middleware (`onDispose`) |
+
+See [Concepts → Adapter System → Middleware pipeline](/concepts/adapter-system#middleware-pipeline) for the full picture.
 
 ## What's next
 

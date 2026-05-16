@@ -11,10 +11,11 @@ import path from 'node:path';
 import type { TrieBackedRegistry } from '../../registry/service';
 
 type CompletionResult = CommandResult & { ok: boolean; status: string; script: string; shell: string };
-type InstallResult   = CommandResult & { ok: boolean; status: string; shell: string; profilePath: string; alreadyInstalled: boolean };
+type InstallResult   = CommandResult & { ok: boolean; status: string; shell: string; profilePath: string; alreadyInstalled: boolean; aliasInstalled: boolean };
 
-const MARKER      = '# kb completion';
-const STATIC_FILE = path.join(os.homedir(), '.config', 'kb', 'completion.zsh');
+const MARKER        = '# kb completion';
+const ALIAS_MARKER  = '# kb alias';
+const STATIC_FILE   = path.join(os.homedir(), '.config', 'kb', 'completion.zsh');
 
 // ─── Dynamic scripts (fallback) ───────────────────────────────────────────────
 
@@ -156,6 +157,27 @@ function profileLine(shell: string): string {
   return `${MARKER}\ncommand -v kb &>/dev/null && eval "$(kb completion bash 2>/dev/null)" || true`;
 }
 
+function aliasLine(shell: string): string {
+  if (shell === 'fish') {
+    return [
+      ALIAS_MARKER,
+      `alias kb='pnpm --silent kb'`,
+      `function pnpm`,
+      `  if test "$argv[1]" = "kb"`,
+      `    command pnpm --silent $argv`,
+      `  else`,
+      `    command pnpm $argv`,
+      `  end`,
+      `end`,
+    ].join('\n');
+  }
+  return [
+    ALIAS_MARKER,
+    `alias kb='pnpm --silent kb'`,
+    `pnpm() { if [[ "$1" == "kb" ]]; then command pnpm --silent "$@"; else command pnpm "$@"; fi }`,
+  ].join('\n');
+}
+
 // ─── Auto-update ──────────────────────────────────────────────────────────────
 
 function commandsHash(registry: TrieBackedRegistry): string {
@@ -226,7 +248,12 @@ export function createCompletionCommand(registry: TrieBackedRegistry) {
           // Static file already updated — profile line unchanged, just updated the file
         }
 
-        return { ok: true, status: 'success', shell, profilePath: rcPath, alreadyInstalled } as InstallResult;
+        const aliasAlreadyInstalled = existing.includes(ALIAS_MARKER);
+        if (!aliasAlreadyInstalled) {
+          await fs.appendFile(rcPath, `\n${aliasLine(shell)}\n`);
+        }
+
+        return { ok: true, status: 'success', shell, profilePath: rcPath, alreadyInstalled, aliasInstalled: !aliasAlreadyInstalled } as InstallResult;
       }
 
       // ── print dynamic script ───────────────────────────────────────────────
@@ -246,11 +273,13 @@ export function createCompletionCommand(registry: TrieBackedRegistry) {
       }
       if (r.alreadyInstalled) {
         process.stdout.write(`Profile already configured: ${r.profilePath}\n`);
-        process.stdout.write(`Run: source ${r.profilePath}\n`);
       } else {
         process.stdout.write(`✓ Added to ${r.profilePath}\n`);
-        process.stdout.write(`Run: source ${r.profilePath}\n`);
       }
+      if (r.aliasInstalled) {
+        process.stdout.write(`✓ Alias kb='pnpm --silent kb' added\n`);
+      }
+      process.stdout.write(`Run: source ${r.profilePath}\n`);
     },
   });
 }

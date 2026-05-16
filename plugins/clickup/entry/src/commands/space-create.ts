@@ -7,6 +7,7 @@ type SpaceCreateFlags = {
   color?: string;
   private?: boolean;
   json?: boolean;
+  full?: boolean;
 };
 
 export default defineCommand({
@@ -15,7 +16,7 @@ export default defineCommand({
 
   handler: {
     async execute(ctx: PluginContextV3, input: CLIInput<SpaceCreateFlags>) {
-      const { name, color, json } = input.flags;
+      const { name, color, json, full } = input.flags;
       if (!name) {
         validationError(ctx, '--name is required', undefined, json);
         return { exitCode: 1, result: null };
@@ -29,7 +30,7 @@ export default defineCommand({
         });
 
         if (json) {
-          ctx.ui?.json?.(space);
+          ctx.ui?.json?.(full ? space : { id: space.id, name: space.name });
         } else {
           ctx.ui?.success?.('Space created', {
             sections: [{ items: [`id: ${space.id}`, `name: ${space.name}`] }],

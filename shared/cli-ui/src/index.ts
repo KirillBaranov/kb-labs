@@ -43,3 +43,4 @@ export * from './log-display';
 export * from './badge';
 export * from './tasks';
 export * from './interactive/index';
+export { createBaseStdoutUI, NOOP_PROMPTS, type UIPrompts } from './stdout-ui.js';

@@ -18,6 +18,7 @@ import {
   saveRefreshToken,
   consumeRefreshToken,
   savePublicKey,
+  isHandleTaken,
 } from './store.js';
 import {
   signAccessToken,
@@ -36,12 +37,18 @@ export class AuthService {
   // ── Register ──────────────────────────────────────────────────────────────
 
   async register(req: RegisterRequest): Promise<RegisterResponse & { clientSecret: string }> {
+    if (req.handle && await isHandleTaken(this.cache, req.handle)) {
+      throw Object.assign(new Error(`Handle '${req.handle}' is already taken`), { code: 'HANDLE_TAKEN' });
+    }
+
     const secret = generateClientSecret();
     const record = buildClientRecord({
       name: req.name,
       capabilities: req.capabilities ?? [],
       publicKey: req.publicKey,
       secret,
+      handle: req.handle,
+      email: req.email,
     });
 
     await saveClient(this.cache, record);
@@ -52,9 +59,10 @@ export class AuthService {
 
     return {
       clientId: record.clientId,
-      clientSecret: secret,   // returned ONCE, never stored in plaintext
+      clientSecret: secret,
       hostId: record.hostId,
       namespaceId: record.namespaceId,
+      handle: record.handle,
     };
   }
 

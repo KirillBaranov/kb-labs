@@ -127,7 +127,7 @@ export default defineCommand({
 
       if (!Number.isFinite(days) || days <= 0) {
         const err = { success: false, error: '--days must be a positive number' };
-        ctx.ui.write(JSON.stringify(err, null, 2) + '\n');
+        ctx.ui?.json?.(err);
         return { exitCode: 1, response: err };
       }
 
@@ -135,7 +135,7 @@ export default defineCommand({
       const files = await listEventFiles(analyticsDir, days);
       if (files.length === 0) {
         const out = { success: true, message: 'No analytics files found for selected period', runs: 0 };
-        ctx.ui.write(JSON.stringify(out, null, 2) + '\n');
+        ctx.ui?.json?.(out);
         return { exitCode: 0, response: out };
       }
 
@@ -150,7 +150,7 @@ export default defineCommand({
       const report = buildReport(runs, regressions, { days, sessionIdFilter });
 
       if (json) {
-        ctx.ui.write(JSON.stringify({ success: true, report }, null, 2) + '\n');
+        ctx.ui?.json?.({ success: true, report });
       } else {
         printReport(ctx, report);
       }

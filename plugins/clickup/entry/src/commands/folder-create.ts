@@ -6,6 +6,7 @@ type FolderCreateFlags = {
   space: string;
   name: string;
   json?: boolean;
+  full?: boolean;
 };
 
 export default defineCommand({
@@ -14,7 +15,7 @@ export default defineCommand({
 
   handler: {
     async execute(ctx: PluginContextV3, input: CLIInput<FolderCreateFlags>) {
-      const { space, name, json } = input.flags;
+      const { space, name, json, full } = input.flags;
       if (!space) {
         validationError(ctx, '--space is required', 'Use `kb clickup workspace` to find the space ID', json);
         return { exitCode: 1, result: null };
@@ -28,7 +29,7 @@ export default defineCommand({
         const folder = await createFolder(requireApiKey(), space, { name });
 
         if (json) {
-          ctx.ui?.json?.(folder);
+          ctx.ui?.json?.(full ? folder : { id: folder.id, name: folder.name });
         } else {
           ctx.ui?.success?.('Folder created', {
             sections: [{ items: [`id: ${folder.id}`, `name: ${folder.name}`] }],

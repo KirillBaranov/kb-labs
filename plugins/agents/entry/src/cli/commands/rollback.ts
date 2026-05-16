@@ -116,7 +116,7 @@ export default defineCommand({
 
 function output(ctx: PluginContextV3, asJson: boolean, data: unknown, exitCode: number): { exitCode: number } {
   if (asJson) {
-    ctx.ui.write(JSON.stringify(data, null, 2) + '\n');
+    ctx.ui?.json?.(data);
   } else {
     const d = data as Record<string, unknown>;
     if (d['success']) {

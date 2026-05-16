@@ -18,7 +18,8 @@ import { createId } from '../utils/index.js';
 import { createTraceContext } from './trace.js';
 import { createRuntimeAPI } from '../runtime/index.js';
 import { createPluginAPI, type EventEmitterFn, type PluginInvokerFn, type CreatePluginAPIOptions } from '../api/index.js';
-import { createGovernedPlatformServices } from '../platform/governed.js';
+import { applyPluginGovernance } from '../platform/pipeline.js';
+import type { LoadedMiddleware } from '../platform/pipeline.js';
 import { createStreamingLogger } from './streaming-logger.js';
 import { createStreamingUI } from './streaming-ui.js';
 
@@ -62,6 +63,12 @@ export interface CreateContextOptions {
    * Output directory for artifacts (optional)
    */
   outdir?: string;
+
+  /**
+   * Resolved adapter middlewares from loaded adapter manifests.
+   * Applied in slot/priority order before system governance.
+   */
+  adapterMiddlewares?: LoadedMiddleware[];
 }
 
 export interface CreateContextResult<TConfig = unknown> {
@@ -97,7 +104,7 @@ export interface CreateContextResult<TConfig = unknown> {
 export function createPluginContextV3<TConfig = unknown>(
   options: CreateContextOptions
 ): CreateContextResult<TConfig> {
-  const { descriptor, platform, ui, signal, eventEmitter, pluginInvoker, cwd, outdir } = options;
+  const { descriptor, platform, ui, signal, eventEmitter, pluginInvoker, cwd, outdir, adapterMiddlewares } = options;
 
   // 1. Build stable correlation IDs.
   // Preserve incoming request/trace when available to keep cross-node correlation intact.
@@ -137,13 +144,14 @@ export function createPluginContextV3<TConfig = unknown>(
     outdir,
   });
 
-  // 5. Apply permission governance to platform services
-  // IMPORTANT: This must be done BEFORE passing platform to handlers
-  // to ensure permission checks are enforced
-  const governedPlatform = createGovernedPlatformServices(
+  // 5. Apply adapter middlewares + permission governance to platform services.
+  // Middlewares run first (in slot/priority order), governance wraps last.
+  // IMPORTANT: Must be done BEFORE passing platform to handlers.
+  const governedPlatform = applyPluginGovernance(
     platform,
     descriptor.permissions,
-    descriptor.pluginId
+    descriptor.pluginId,
+    adapterMiddlewares ?? [],
   );
 
   // 5.1. Enrich logger with host context (observability fields)

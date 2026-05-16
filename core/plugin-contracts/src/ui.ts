@@ -346,6 +346,8 @@ export interface RichOutputSectionItem {
   text: string;
   /** Render text in muted/dim color */
   dim?: boolean;
+  /** Hard-truncate to N visible chars instead of wrapping. Use large value (e.g. 500) to prevent wrapping without truncation. */
+  truncate?: number;
 }
 
 /** A section item — either a plain string or a rich descriptor */
@@ -377,6 +379,8 @@ export interface MessageOptions {
   hint?: string;
   /** Suggested command to run — shown as `$ <command>` */
   command?: string;
+  /** Summary key-value pairs rendered before sections */
+  summary?: Record<string, string | number | boolean>;
 }
 
 /**
@@ -385,6 +389,7 @@ export interface MessageOptions {
 export interface ChainItem {
   title: string;
   sections?: OutputSection[];
+  summary?: Record<string, string | number | boolean>;
   status?: 'success' | 'error' | 'info' | 'warning';
   timing?: number;
 }

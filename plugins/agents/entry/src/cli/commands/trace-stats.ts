@@ -59,7 +59,7 @@ export default defineCommand({
           loaded.error.kind === 'too_large' ? 'FILE_TOO_LARGE' :
           'CORRUPTED_TRACE';
         const err = error(code, formatTraceLoadError(loaded.error));
-        ctx.ui.write(JSON.stringify(err, null, 2) + '\n');
+        ctx.ui?.json?.(err);
         return { exitCode: 1, response: err };
       }
 
@@ -83,7 +83,7 @@ export default defineCommand({
 
       // Output
       if (flags.json) {
-        ctx.ui.write(JSON.stringify(response, null, 2) + '\n');
+        ctx.ui?.json?.(response);
       } else {
         printHumanReadable(ctx, stats);
       }
@@ -92,7 +92,7 @@ export default defineCommand({
     } catch (err) {
       logger.error('trace:stats error:', err instanceof Error ? err : undefined);
       const errResponse = error('IO_ERROR', err instanceof Error ? err.message : String(err));
-      ctx.ui.write(JSON.stringify(errResponse, null, 2) + '\n');
+      ctx.ui?.json?.(errResponse);
       return { exitCode: 1, response: errResponse };
     }
     },

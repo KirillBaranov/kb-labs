@@ -24,14 +24,9 @@ export default defineCommand({
       }
 
       const sections = buildBaselineReport(snapshot);
-      for (const section of sections) {
-        ui?.success?.(section.header, {
-          title: section.header,
-          sections: [{ header: '', items: section.lines }],
-        });
-      }
-
-      ui?.success?.('Baseline captured successfully', {});
+      ui?.success?.('Baseline captured successfully', {
+        sections: sections.map(s => ({ header: s.header, items: s.lines })),
+      });
       return { exitCode: 0 };
     },
   },
