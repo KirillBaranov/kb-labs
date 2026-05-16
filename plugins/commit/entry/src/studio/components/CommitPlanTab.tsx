@@ -237,15 +237,9 @@ export function CommitPlanTab({ scope }: CommitPlanTabProps) {
 
       {/* Generating */}
       {generate.isLoading && (
-        <UICard style={{ padding: '12px 0 8px' }}>
-          {[70, 85, 55].map((w, i) => (
-            <UIFlex key={i} align="center" gap={8} style={{ padding: '10px 24px' }}>
-              <UISkeletonText width={36} height="20px" />
-              <UISkeletonText width={`${w}%`} height="14px" />
-              <UISkeletonText width={32} height="12px" style={{ marginLeft: 'auto' }} />
-            </UIFlex>
-          ))}
-          <div style={{ textAlign: 'center', paddingTop: 16 }}>
+        <UICard style={{ padding: '16px 24px' }}>
+          <UISkeletonText width={['100%', '85%', '65%']} height="16px" gap={12} />
+          <div style={{ textAlign: 'center', paddingTop: 20 }}>
             <UIShimmerText duration="1.8s">
               Analyzing {filesChanged} files...
             </UIShimmerText>

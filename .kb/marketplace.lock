@@ -4,7 +4,7 @@
     "@kb-labs/adapters-workspace-worktree": {
       "version": "2.94.0",
       "integrity": "sha256-pcHGiP1OoCS/eKxLonBUz0+CluyGS5PRXnTTohEVgi4=",
-      "resolvedPath": "./node_modules/@kb-labs/adapters-workspace-worktree",
+      "resolvedPath": "./adapters/workspace-worktree",
       "installedAt": "2026-05-16T11:51:11.151Z",
       "source": "marketplace",
       "primaryKind": "adapter",
@@ -17,7 +17,7 @@
     "@kb-labs/adapters-workspace-localfs": {
       "version": "2.94.0",
       "integrity": "sha256-OPWNTwFiaFKjESon/N+rJErSLXeb+8wGOcZFxs3AZNw=",
-      "resolvedPath": "./node_modules/@kb-labs/adapters-workspace-localfs",
+      "resolvedPath": "./adapters/workspace-localfs",
       "installedAt": "2026-05-16T11:51:30.856Z",
       "source": "marketplace",
       "primaryKind": "adapter",
@@ -30,7 +30,7 @@
     "@kb-labs/adapters-workspace-agent": {
       "version": "2.94.0",
       "integrity": "sha256-F8PJCu/x+3gAVzyT6IawA48VyKVd4txWA+3MYv5yb1U=",
-      "resolvedPath": "./node_modules/@kb-labs/adapters-workspace-agent",
+      "resolvedPath": "./adapters/workspace-agent",
       "installedAt": "2026-05-16T11:51:50.309Z",
       "source": "marketplace",
       "primaryKind": "adapter",
@@ -43,7 +43,7 @@
     "@kb-labs/adapters-vibeproxy": {
       "version": "2.94.0",
       "integrity": "sha256-sYL7dp1oUcCLIJKUzMaRyE9dseGGLXz/EgKLHGHCbOk=",
-      "resolvedPath": "./node_modules/@kb-labs/adapters-vibeproxy",
+      "resolvedPath": "./adapters/vibeproxy",
       "installedAt": "2026-05-16T11:52:11.334Z",
       "source": "marketplace",
       "primaryKind": "adapter",
@@ -56,7 +56,7 @@
     "@kb-labs/adapters-sqlite": {
       "version": "2.94.0",
       "integrity": "sha256-Yu9DCPOJg6fv4Yk2PqYDbARUF2tRh59x25ovbKWwrtI=",
-      "resolvedPath": "./node_modules/@kb-labs/adapters-sqlite",
+      "resolvedPath": "./adapters/sqlite",
       "installedAt": "2026-05-16T11:52:32.753Z",
       "source": "marketplace",
       "primaryKind": "adapter",
@@ -69,7 +69,7 @@
     "@kb-labs/adapters-snapshot-localfs": {
       "version": "2.94.0",
       "integrity": "sha256-dnIQd3ZtAp+mI+uYsFNhecJn/q23i1/LrFkKrZF4oys=",
-      "resolvedPath": "./node_modules/@kb-labs/adapters-snapshot-localfs",
+      "resolvedPath": "./adapters/snapshot-localfs",
       "installedAt": "2026-05-16T11:52:51.358Z",
       "source": "marketplace",
       "primaryKind": "adapter",
@@ -82,7 +82,7 @@
     "@kb-labs/adapters-redis": {
       "version": "2.94.0",
       "integrity": "sha256-aztLu/YHVZnIPCfPrlRj3qfLbcvZsd3kKLMxWq+veZk=",
-      "resolvedPath": "./node_modules/@kb-labs/adapters-redis",
+      "resolvedPath": "./adapters/redis",
       "installedAt": "2026-05-16T11:53:09.508Z",
       "source": "marketplace",
       "primaryKind": "adapter",
@@ -95,7 +95,7 @@
     "@kb-labs/adapters-qdrant": {
       "version": "2.94.0",
       "integrity": "sha256-bfkItaSeoUOV6yWv9bDG0M+NgPSJKWzaW/0sNc9aDsA=",
-      "resolvedPath": "./node_modules/@kb-labs/adapters-qdrant",
+      "resolvedPath": "./adapters/qdrant",
       "installedAt": "2026-05-16T11:53:28.719Z",
       "source": "marketplace",
       "primaryKind": "adapter",
@@ -108,7 +108,7 @@
     "@kb-labs/adapters-pino": {
       "version": "2.94.0",
       "integrity": "sha256-mAvY2CJ5qHI2KgXfulSTRLXlfg19OHj7xaJFAsWPTns=",
-      "resolvedPath": "./node_modules/@kb-labs/adapters-pino",
+      "resolvedPath": "./adapters/pino",
       "installedAt": "2026-05-16T11:53:50.797Z",
       "source": "marketplace",
       "primaryKind": "adapter",
@@ -121,7 +121,7 @@
     "@kb-labs/adapters-openai": {
       "version": "2.94.0",
       "integrity": "sha256-7eHE5Xe4/t/tXqI81FTraH6944z+LrJ5RT6bqCDQSQg=",
-      "resolvedPath": "./node_modules/@kb-labs/adapters-openai",
+      "resolvedPath": "./adapters/openai",
       "installedAt": "2026-05-16T11:54:11.951Z",
       "source": "marketplace",
       "primaryKind": "adapter",
@@ -416,7 +416,7 @@
         "studio-widget",
         "studio-menu"
       ],
-      "enabled": false
+      "enabled": true
     },
     "@kb-labs/agent": {
       "version": "2.14.0",
