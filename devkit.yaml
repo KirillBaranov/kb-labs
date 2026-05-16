@@ -679,9 +679,9 @@ coverage:
   # target  = goal for Q3-2026, raise incrementally each quarter
   thresholds:
     #                   statements  functions  branches
-    # current:               ~2%       44%       49%
-    # target Q3-2026:        65%       70%       60%
-    core:    { statements: 0,  functions: 50, branches: 50 }
+    # current:               ~2%       67%       82%
+    # target Q3-2026:        65%       75%       75%
+    core:    { statements: 0,  functions: 60, branches: 60 }
 
     #                   statements  functions  branches
     # current:              49%       11%       83%

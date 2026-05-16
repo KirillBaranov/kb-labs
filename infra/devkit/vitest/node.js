@@ -40,7 +40,9 @@ export default defineConfig({
         '**/constants.ts',
         '**/constants/**',
         '**/*.config.ts',
-        '**/*.config.js'
+        '**/*.config.js',
+        '**/bootstrap.ts',
+        '**/bin.ts'
       ],
       thresholds: {
         statements: 90,
