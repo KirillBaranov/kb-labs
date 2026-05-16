@@ -1,14 +1,17 @@
 /**
  * @module @kb-labs/workflow-cli/ws/logs-channel
- * WebSocket channel for real-time job logs streaming
+ * WebSocket channel for real-time job logs streaming.
  *
- * Uses platform.logs.subscribe() to stream logs filtered by jobId (runId).
- * Clients send Subscribe message with jobId to start receiving logs.
+ * Polls the workflow daemon REST API to stream logs to the client.
+ * Uses HTTP polling instead of in-process ring buffer because the daemon
+ * runs in a separate process and its logs are not shared via the ring buffer.
  */
 
 import { defineWebSocket, defineMessage, MessageRouter } from '@kb-labs/sdk';
 import type { WSMessage } from '@kb-labs/sdk';
-import type { LogRecord, LogQuery } from '@kb-labs/core-platform';
+import { getWorkflowDaemonUrl } from '../http-client.js';
+
+const POLL_INTERVAL_MS = 1_500;
 
 // Define typed messages
 const SubscribeMsg = defineMessage<{ jobId: string; level?: string }>('subscribe');
@@ -24,27 +27,28 @@ const LogMsg = defineMessage<{
 
 const ErrorMsg = defineMessage<{ error: string }>('error');
 
-// Incoming/Outgoing types (discriminated unions)
 type Incoming = ReturnType<typeof SubscribeMsg.create> | ReturnType<typeof UnsubscribeMsg.create>;
 
 type Outgoing =
   | ReturnType<typeof LogMsg.create>
-  | ReturnType<ReturnType<typeof defineMessage<{ jobId: string; status: string }>>['create']>
   | ReturnType<typeof ErrorMsg.create>;
 
-// Store active subscriptions per connection
-const subscriptions = new Map<string, () => void>();
+// Module-level state keyed by ctx.requestId (stable per WS connection)
+const pollingTimers = new Map<string, ReturnType<typeof setInterval>>();
+const logOffsets = new Map<string, number>();
 
-/**
- * Convert LogRecord level to channel level type
- */
-function normalizeLevel(level: LogRecord['level']): 'info' | 'warn' | 'error' | 'debug' {
+type DaemonLog = {
+  timestamp: string;
+  level: string;
+  message: string;
+  context?: Record<string, unknown>;
+};
+
+function normalizeLevel(level: string): 'info' | 'warn' | 'error' | 'debug' {
   switch (level) {
     case 'trace':
     case 'debug':
       return 'debug';
-    case 'info':
-      return 'info';
     case 'warn':
       return 'warn';
     case 'error':
@@ -55,27 +59,31 @@ function normalizeLevel(level: LogRecord['level']): 'info' | 'warn' | 'error' | 
   }
 }
 
-/**
- * Check if log level matches filter
- */
-function levelMatches(logLevel: LogRecord['level'], filterLevel?: string): boolean {
-  if (!filterLevel || filterLevel === 'all') {
-    return true;
-  }
+function levelMatches(logLevel: string, filterLevel?: string): boolean {
+  if (!filterLevel || filterLevel === 'all') { return true; }
+  const levelOrder: Record<string, number> = { debug: 0, trace: 0, info: 1, warn: 2, error: 3, fatal: 3 };
+  return (levelOrder[logLevel] ?? 1) >= (levelOrder[filterLevel] ?? 0);
+}
 
-  const levelOrder: Record<string, number> = {
-    debug: 0,
-    trace: 0,
-    info: 1,
-    warn: 2,
-    error: 3,
-    fatal: 3,
-  };
+async function fetchLogs(jobId: string, offset: number): Promise<DaemonLog[]> {
+  const daemonUrl = getWorkflowDaemonUrl();
+  const url = `${daemonUrl}/api/v1/jobs/${encodeURIComponent(jobId)}/logs?limit=200&offset=${offset}`;
+  const res = await fetch(url);
+  if (!res.ok) { return []; }
+  const body = await res.json() as { ok?: boolean; data?: { logs?: DaemonLog[] } };
+  return body?.data?.logs ?? [];
+}
 
-  const logPriority = levelOrder[logLevel] ?? 1;
-  const filterPriority = levelOrder[filterLevel] ?? 0;
+async function checkJobExists(jobId: string): Promise<boolean> {
+  const daemonUrl = getWorkflowDaemonUrl();
+  const res = await fetch(`${daemonUrl}/api/v1/jobs/${encodeURIComponent(jobId)}`);
+  return res.status !== 404;
+}
 
-  return logPriority >= filterPriority;
+function clearConnection(connectionId: string): void {
+  const timer = pollingTimers.get(connectionId);
+  if (timer) { clearInterval(timer); pollingTimers.delete(connectionId); }
+  logOffsets.delete(connectionId);
 }
 
 export default defineWebSocket<unknown, Incoming, Outgoing>({
@@ -83,126 +91,90 @@ export default defineWebSocket<unknown, Incoming, Outgoing>({
   description: 'Real-time job logs streaming',
 
   handler: {
-    async onConnect(ctx, sender) {
-      const connectionId = sender.getConnectionId();
-      ctx.platform.logger.info('[logs-channel] Client connected', { connectionId });
-
-      // Check if streaming is available
-      const capabilities = ctx.platform.logs.getCapabilities();
-      if (!capabilities.hasStreaming) {
-        await sender.send(
-          ErrorMsg.create({
-            error: 'Log streaming not available. Enable logRingBuffer adapter in config.',
-          })
-        );
-        sender.close(1011, 'Streaming not available');
-      }
+    async onConnect(ctx, _sender) {
+      ctx.platform.logger.info('[logs-channel] Client connected', { connectionId: ctx.requestId });
     },
 
     async onMessage(ctx, message, sender) {
-      const connectionId = sender.getConnectionId();
+      const connectionId = ctx.requestId;
 
       const router = new MessageRouter()
-        .on(SubscribeMsg, async (ctx, payload, _rawSender) => {
+        .on(SubscribeMsg, async (_ctx, payload) => {
           const { jobId, level } = payload;
 
-          ctx.platform.logger.info('[logs-channel] Subscribing to logs', { connectionId, jobId, level });
-
-          // Unsubscribe from previous subscription if exists
-          const existingUnsubscribe = subscriptions.get(connectionId);
-          if (existingUnsubscribe) {
-            existingUnsubscribe();
+          // Validate job exists before subscribing
+          const exists = await checkJobExists(jobId).catch(() => true);
+          if (!exists) {
+            await sender.send(ErrorMsg.create({ error: `Job ${jobId} not found` }));
+            sender.close(1008, 'Job not found');
+            return;
           }
 
-          // Build filter for job logs
-          const filter: LogQuery = {
-            source: jobId, // Logs are tagged with jobId as source
-          };
+          // Clear any existing subscription
+          clearConnection(connectionId);
+          logOffsets.set(connectionId, 0);
 
-          // Subscribe to log stream
-          const unsubscribe = ctx.platform.logs.subscribe((log: LogRecord) => {
-            // Additional filtering by level
-            if (!levelMatches(log.level, level)) {
-              return;
-            }
+          // Fetch and stream existing logs
+          const initialLogs = await fetchLogs(jobId, 0).catch(() => [] as DaemonLog[]);
+          let offset = 0;
+          for (const log of initialLogs) {
+            if (!levelMatches(log.level, level)) { continue; }
+            await sender.send(LogMsg.create({
+              timestamp: log.timestamp,
+              level: normalizeLevel(log.level),
+              message: log.message,
+              context: log.context,
+            }));
+          }
+          offset = initialLogs.length;
+          logOffsets.set(connectionId, offset);
 
-            // Also check if log belongs to this job via fields
-            const logJobId = log.fields?.jobId ?? log.fields?.runId ?? log.source;
-            if (logJobId !== jobId) {
-              return;
-            }
-
-            // Send log to client
-            sender.send(
-              LogMsg.create({
-                timestamp: new Date(log.timestamp).toISOString(),
+          // Poll for new logs
+          const timer = setInterval(async () => {
+            const currentOffset = logOffsets.get(connectionId) ?? 0;
+            const newLogs = await fetchLogs(jobId, currentOffset).catch(() => [] as DaemonLog[]);
+            if (newLogs.length === 0) { return; }
+            for (const log of newLogs) {
+              if (!levelMatches(log.level, level)) { continue; }
+              await sender.send(LogMsg.create({
+                timestamp: log.timestamp,
                 level: normalizeLevel(log.level),
                 message: log.message,
-                context: log.fields,
-              })
-            ).catch((err) => {
-              ctx.platform.logger.error('[logs-channel] Failed to send log', err instanceof Error ? err : undefined);
-            });
-          }, filter);
+                context: log.context,
+              })).catch(() => { /* socket may have closed */ });
+            }
+            logOffsets.set(connectionId, currentOffset + newLogs.length);
+          }, POLL_INTERVAL_MS);
 
-          // Store unsubscribe function
-          subscriptions.set(connectionId, unsubscribe);
-
-          // Send confirmation
-          await sender.send(
-            LogMsg.create({
-              timestamp: new Date().toISOString(),
-              level: 'info',
-              message: `Subscribed to logs for job ${jobId} (level: ${level || 'all'})`,
-            })
-          );
+          pollingTimers.set(connectionId, timer);
         })
-        .on(UnsubscribeMsg, async (ctx, _payload, _rawSender) => {
-          ctx.platform.logger.info('[logs-channel] Unsubscribing from logs', { connectionId });
-
-          // Cleanup subscription
-          const unsubscribe = subscriptions.get(connectionId);
-          if (unsubscribe) {
-            unsubscribe();
-            subscriptions.delete(connectionId);
-          }
-
-          await sender.send(
-            LogMsg.create({
-              timestamp: new Date().toISOString(),
-              level: 'info',
-              message: 'Unsubscribed from logs',
-            })
-          );
+        .on(UnsubscribeMsg, async (_ctx) => {
+          clearConnection(connectionId);
+          await sender.send(LogMsg.create({
+            timestamp: new Date().toISOString(),
+            level: 'info',
+            message: 'Unsubscribed from logs',
+          }));
         });
 
       await router.handle(ctx, message as WSMessage, sender.raw);
     },
 
-    async onDisconnect(ctx, code, reason) {
-      // Note: We don't have access to sender here, need to cleanup by other means
-      // The connectionId would need to be stored during onConnect
-      ctx.platform.logger.info('[logs-channel] Client disconnected', { code, reason });
-
-      // Cleanup is handled automatically when connection is removed from registry
-      // The subscription will be cleaned up when the socket closes
+    async onDisconnect(ctx, _code, _reason) {
+      clearConnection(ctx.requestId);
+      ctx.platform.logger.info('[logs-channel] Client disconnected', { connectionId: ctx.requestId });
     },
 
     async onError(ctx, error, sender) {
       ctx.platform.logger.error('[logs-channel] Error', error);
+      clearConnection(ctx.requestId);
       try {
         await sender.send(ErrorMsg.create({ error: error.message }));
-      } catch (sendError) {
-        ctx.platform.logger.error('[logs-channel] Failed to send error message', sendError instanceof Error ? sendError : undefined);
+      } catch {
+        // socket may be closed
       }
-    },
-
-    cleanup() {
-      // Note: This is called after each lifecycle event, not on final cleanup
-      // For connection-specific cleanup, we handle it in onDisconnect and onMessage
     },
   },
 });
 
-// Export for testing
-export { subscriptions, normalizeLevel, levelMatches };
+export { normalizeLevel, levelMatches };

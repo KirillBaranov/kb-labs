@@ -254,7 +254,7 @@ export function registerWorkflowsAPI(options: RegisterWorkflowsAPIOptions): void
 
     const sendEvent = (type: string, payload: unknown) => {
       if (raw.writableEnded) {return;}
-      raw.write(`event: workflow.event\n`);
+      raw.write(`event: ${type}\n`);
       raw.write(`data: ${JSON.stringify({ type, runId, payload, timestamp: new Date().toISOString() })}\n\n`);
     };
 
