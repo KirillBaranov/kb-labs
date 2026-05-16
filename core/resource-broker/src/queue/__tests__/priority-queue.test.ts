@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { PriorityQueue } from '../priority-queue.js';
 import type { QueueItem } from '../../types.js';
 

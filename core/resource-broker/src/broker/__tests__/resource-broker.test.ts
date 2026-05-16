@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { ResourceBroker } from '../resource-broker.js';
 import { InMemoryRateLimitBackend } from '../../rate-limit/in-memory-backend.js';
 
@@ -22,7 +22,7 @@ describe('ResourceBroker — getStats', () => {
   it('uptime grows over time', async () => {
     const broker = makeBroker();
     const before = broker.getStats().uptime;
-    await new Promise(resolve => setTimeout(resolve, 20));
+    await new Promise<void>(resolve => { setTimeout(resolve, 20); });
     const after = broker.getStats().uptime;
 
     expect(after).toBeGreaterThan(before);

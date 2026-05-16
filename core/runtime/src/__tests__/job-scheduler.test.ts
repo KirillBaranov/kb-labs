@@ -42,7 +42,7 @@ async function waitForJob(
     if (status && status.status !== 'pending' && status.status !== 'running') {
       return;
     }
-    await new Promise(resolve => setTimeout(resolve, 10));
+    await new Promise<void>(resolve => { setTimeout(resolve, 10); });
   }
   throw new Error(`Job ${jobId} did not complete within ${maxMs}ms`);
 }
@@ -151,7 +151,7 @@ describe('JobScheduler', () => {
     it('cancels a pending job before execution', async () => {
       // Use a slow handler to ensure job stays pending
       scheduler.registerHandler('slow', async () => {
-        await new Promise(r => setTimeout(r, 5000));
+        await new Promise<void>(r => { setTimeout(r, 5000); });
       });
 
       // Use a scheduler with very slow poll to keep jobs pending
@@ -215,7 +215,7 @@ describe('JobScheduler', () => {
       scheduler.registerHandler('stats-job', async () => 'ok');
       await scheduler.submit({ type: 'stats-job', payload: {} });
       await scheduler.submit({ type: 'stats-job', payload: {} });
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise<void>(resolve => { setTimeout(resolve, 100); });
 
       const stats = scheduler.getStats();
       expect(stats.totalJobs).toBe(2);

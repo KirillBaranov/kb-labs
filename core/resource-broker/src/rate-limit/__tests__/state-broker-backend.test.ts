@@ -22,7 +22,7 @@ function makeBroker(): { broker: StateBroker; store: Map<string, unknown> } {
       }
       const prefix = pattern.replace(':*', '');
       for (const key of store.keys()) {
-        if (key.startsWith(prefix)) store.delete(key);
+        if (key.startsWith(prefix)) { store.delete(key); }
       }
     }),
     getStats: vi.fn(async () => ({ keys: 0, memory: 0 })),

@@ -109,7 +109,7 @@ describe('withRetry', () => {
     let calls = 0;
     const fn = vi.fn(async () => {
       calls++;
-      if (calls < 3) throw new Error('503 service unavailable');
+      if (calls < 3) { throw new Error('503 service unavailable'); }
       return 'ok';
     });
 

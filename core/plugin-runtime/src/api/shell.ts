@@ -3,6 +3,7 @@
  */
 
 import { spawn } from 'node:child_process';
+import { basename } from 'node:path';
 import type { ShellAPI, ExecResult, ExecOptions, PermissionSpec } from '@kb-labs/plugin-contracts';
 import { PermissionError } from '@kb-labs/plugin-contracts';
 
@@ -59,8 +60,8 @@ export function createShellAPI(options: CreateShellAPIOptions): ShellAPI {
         }
       }
 
-      // Check command whitelist
-      if (!allowedCommands.includes(command) && !allowedCommands.includes('*')) {
+      // Check command whitelist — match by exact string OR basename (so absolute paths work with bare-name allows)
+      if (!allowedCommands.includes(command) && !allowedCommands.includes(basename(command)) && !allowedCommands.includes('*')) {
         throw new PermissionError(`Command not in whitelist`, {
           command,
           allowedCommands,
