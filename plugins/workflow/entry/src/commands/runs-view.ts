@@ -51,7 +51,7 @@ function renderRun(run: WorkflowRunDetail): RunSection[] {
     `Status:   ${run.status.toUpperCase()}`,
     `Trigger:  ${trigger}`,
   ];
-  if (dur) summary.push(`Duration: ${dur}`);
+  if (dur) { summary.push(`Duration: ${dur}`); }
   if (run.inputs && Object.keys(run.inputs).length > 0) {
     summary.push(`Inputs:   ${JSON.stringify(run.inputs)}`);
   }
