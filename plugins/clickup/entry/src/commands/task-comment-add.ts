@@ -7,6 +7,7 @@ type TaskCommentAddFlags = {
   assignee?: number;
   notify?: boolean;
   json?: boolean;
+  full?: boolean;
 };
 
 export default defineCommand({
@@ -32,7 +33,7 @@ export default defineCommand({
         });
 
         if (input.flags.json) {
-          ctx.ui?.json?.(comment);
+          ctx.ui?.json?.(input.flags.full ? comment : { id: comment.id, comment_text: comment.comment_text, user: comment.user.username, date: comment.date });
         } else {
           ctx.ui?.success?.(`Comment added (id: ${comment.id})`);
         }

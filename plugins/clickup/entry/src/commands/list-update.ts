@@ -5,6 +5,7 @@ import { handleError, validationError } from '../utils/error.js';
 type ListUpdateFlags = {
   name?: string;
   json?: boolean;
+  full?: boolean;
 };
 
 export default defineCommand({
@@ -23,7 +24,7 @@ export default defineCommand({
         const list = await updateList(requireApiKey(), listId, { name: input.flags.name });
 
         if (input.flags.json) {
-          ctx.ui?.json?.(list);
+          ctx.ui?.json?.(input.flags.full ? list : { id: list.id, name: list.name });
         } else {
           ctx.ui?.success?.('List updated', {
             sections: [{ items: [`id: ${list.id}`, `name: ${list.name}`] }],

@@ -55,6 +55,11 @@
             "type": "command",
             "command": "cmd=$(jq -r '.tool_input.command // \"\"'); if echo \"$cmd\" | grep -qE '\\bpnpm\\s+kb\\s+release\\s+(run|publish)\\b'; then case \"$cmd\" in *--flow*) : ;; *) echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"pnpm kb release run/publish без --flow заблокирован. Используй pnpm release:platform или pnpm release:sdk\"}}' ;; esac; fi",
             "statusMessage": "Проверка release --flow..."
+          },
+          {
+            "type": "command",
+            "command": "cmd=$(jq -r '.tool_input.command // \"\"'); if echo \"$cmd\" | grep -qE '\\bpnpm\\s+kb-dev\\s+(start|restart|ensure)\\b'; then case \"$cmd\" in *--config*) : ;; *) echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"pnpm kb-dev start/restart/ensure без --config заблокирован. Используй: pnpm kb-dev start --config .kb/devservices.dev.yaml\"}}' ;; esac; fi",
+            "statusMessage": "Проверка pnpm kb-dev config..."
           }
         ]
       },

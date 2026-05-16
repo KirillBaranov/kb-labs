@@ -50,7 +50,7 @@ describe('clickup:folder.update', () => {
     expect(vi.mocked(updateFolder)).toHaveBeenCalledWith('test-api-key', 'folder-1', { name: 'Updated Folder' });
   });
 
-  it('FU-02: --json outputs updated folder', async () => {
+  it('FU-02: --json outputs slim updated folder', async () => {
     vi.mocked(updateFolder).mockResolvedValue(mockUpdatedFolder);
 
     const { ui, captured } = createCapturedUI();
@@ -62,6 +62,23 @@ describe('clickup:folder.update', () => {
 
     expect(result.exitCode).toBe(0);
     expect(captured.json[0]).toMatchObject({ id: 'folder-1', name: 'Updated Folder' });
+    expect(Object.keys(captured.json[0] as object)).toEqual(['id', 'name']);
+  });
+
+  it('FU-02b: --json --full outputs raw updated folder', async () => {
+    vi.mocked(updateFolder).mockResolvedValue(mockUpdatedFolder);
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await folderUpdateCommand.execute(
+      ctx,
+      mockCLIInput({ argv: ['folder-1'], flags: { name: 'Updated Folder', json: true, full: true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    const raw = captured.json[0] as typeof mockUpdatedFolder;
+    expect(raw.lists).toBeDefined();
+    expect(raw.orderindex).toBeDefined();
   });
 
   it('FU-03: missing folderId argv — exitCode 1, error shown', async () => {

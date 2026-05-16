@@ -21,10 +21,16 @@ export function registerAuthRoutes(app: FastifyInstance, authService: AuthServic
       return reply.code(400).send({ error: 'Bad Request', issues: parsed.error.issues });
     }
 
-    // Never forward unknown client-supplied fields (e.g. namespaceId).
-    const { name, capabilities, publicKey } = parsed.data;
-    const result = await authService.register({ name, capabilities, publicKey });
-    return reply.code(201).send(result);
+    const { name, capabilities, publicKey, handle, email } = parsed.data;
+    try {
+      const result = await authService.register({ name, capabilities, publicKey, handle, email });
+      return reply.code(201).send(result);
+    } catch (err) {
+      if (err instanceof Error && (err as NodeJS.ErrnoException).code === 'HANDLE_TAKEN') {
+        return reply.code(409).send({ error: 'Conflict', message: err.message });
+      }
+      throw err;
+    }
   });
 
   // Issue token pair

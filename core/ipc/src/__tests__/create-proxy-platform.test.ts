@@ -28,6 +28,8 @@ function createMockTransport(): ITransport & { calls: AdapterCall[] } {
     }),
     close: vi.fn(async () => {}),
     isClosed: vi.fn(() => false),
+    sendMessage: vi.fn(() => {}),
+    onPushMessage: vi.fn(() => () => {}),
   };
 }
 
@@ -146,10 +148,14 @@ describe('createProxyPlatform', () => {
       expect(transport.send).not.toHaveBeenCalled();
     });
 
-    it('should have noop eventBus (no transport calls)', async () => {
+    it('should proxy eventBus.publish via transport.send', async () => {
       const platform = createProxyPlatform({ transport });
       await platform.eventBus.publish('topic', { data: 1 });
-      expect(transport.send).not.toHaveBeenCalled();
+      expect(transport.send).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'adapter:call',
+        adapter: 'eventBus',
+        method: 'publish',
+      }));
     });
 
     it('should have noop logs (no transport calls)', async () => {

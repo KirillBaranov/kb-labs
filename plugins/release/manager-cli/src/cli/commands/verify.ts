@@ -127,7 +127,7 @@ export default defineCommand({
       if (flags.json) {
         ctx.ui?.json?.({ valid: isValid, hasPackages, hasBreaking, issues, plan });
       } else {
-        ctx.ui.sideBox({
+        ctx.ui?.sideBox?.({
           title: 'Release Verification',
           sections: buildVerifySections(isValid, hasPackages, hasBreaking, issues, ctx.ui.symbols),
           status: isValid ? 'success' : 'error',

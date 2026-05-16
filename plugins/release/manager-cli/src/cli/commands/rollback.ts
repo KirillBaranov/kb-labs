@@ -31,7 +31,7 @@ export default defineCommand({
       if (flags.json) {
         ctx.ui?.json?.({ exitCode: 4, message: 'Rollback completed' });
       } else {
-        ctx.ui.sideBox({
+        ctx.ui?.sideBox?.({
           title: 'Rollback',
           sections: [
             {

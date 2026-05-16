@@ -12,6 +12,7 @@
 import type {
   WorkerMessage,
   ExecuteMessage,
+  MiddlewaresInitMessage,
   ResultMessage,
   ErrorMessage,
   LogWorkerMessage,
@@ -21,11 +22,11 @@ import type {
   UIPromptMessage,
   UIPromptResultMessage,
 } from './types.js';
-import type { PlatformServices, UIFacade, UILogEntry, MessageOptions } from '@kb-labs/plugin-contracts';
+import type { PlatformServices, UIFacade, SelectChoice, MultiSelectChoice } from '@kb-labs/plugin-contracts';
 import { IPCTransport, UnixSocketTransport, createProxyPlatform } from '@kb-labs/core-ipc';
 import type { ITransport } from '@kb-labs/core-ipc';
-import { createGovernedPlatformServices } from '@kb-labs/plugin-runtime';
-import { sideBorderBox, safeColors, safeSymbols, formatTable, setJsonMode, metricsList } from '@kb-labs/shared-cli-ui';
+import type { LoadedMiddleware } from '@kb-labs/plugin-runtime';
+import { createBaseStdoutUI, setJsonMode, type UIPrompts } from '@kb-labs/shared-cli-ui';
 
 // Worker state
 const workerId = process.env.KB_WORKER_ID ?? 'unknown';
@@ -99,6 +100,10 @@ function createTransport(): ITransport {
 const transport = createTransport();
 const rawProxyPlatform = createProxyPlatform({ transport });
 
+// Adapter middlewares — resolved once when 'middlewares' message arrives from pool.
+// handleExecute awaits this promise so governance always runs with full middleware chain.
+let middlewaresPromise: Promise<LoadedMiddleware[]> | null = null;
+
 
 /**
  * Create a stdout UI with IPC proxy for interactive prompts.
@@ -107,120 +112,32 @@ const rawProxyPlatform = createProxyPlatform({ transport });
  * host process via IPC and the result is awaited.
  */
 function createStdoutUI(currentRequestId?: string): UIFacade {
-  return {
-    colors: safeColors,
-    symbols: safeSymbols,
-    write: (text: string) => { process.stdout.write(text + '\n'); },
-    info: (msg: string, options?: MessageOptions) => {
-      console.log(sideBorderBox({ title: options?.title || 'Info', sections: options?.sections || [{ items: [msg] }], status: 'info', timing: options?.timing }));
-    },
-    success: (msg: string, options?: MessageOptions) => {
-      console.log(sideBorderBox({ title: options?.title || 'Success', sections: options?.sections || [{ items: [msg] }], status: 'success', timing: options?.timing }));
-    },
-    warn: (msg: string, options?: MessageOptions) => {
-      console.log(sideBorderBox({ title: options?.title || 'Warning', sections: options?.sections || [{ items: [msg] }], status: 'warning', timing: options?.timing }));
-    },
-    error: (err: Error | string, options?: MessageOptions) => {
-      const message = err instanceof Error ? err.message : err;
-      const sections: Array<{ header?: string; items: Array<string | { text: string; dim?: boolean }> }> = [];
-      if (options?.sections && options.sections.length > 0) {
-        sections.push(...options.sections.map(s => ({ header: s.header, items: s.items })));
-      } else {
-        sections.push({ items: [message] });
-      }
-      if (options?.cause) { sections.push({ header: 'Cause', items: [{ text: options.cause, dim: true }] }); }
-      if (options?.hint) {
-        const hintItems: Array<string | { text: string; dim: boolean }> = [options.hint];
-        if (options.command) { hintItems.push({ text: `$ ${options.command}`, dim: true }); }
-        sections.push({ header: 'Hint', items: hintItems });
-      } else if (options?.command) {
-        sections.push({ header: 'Hint', items: [{ text: `$ ${options.command}`, dim: true }] });
-      }
-      console.error(sideBorderBox({ title: options?.title || 'Error', sections, status: 'error', timing: options?.timing }));
-    },
-    debug: (msg: string) => { if (process.env.DEBUG) { console.debug(msg); } },
-    spinner: (msg) => {
-      console.log(`${safeColors.primary('◆')} ${msg}`);
-      return {
-        update: (m) => console.log(`${safeColors.primary('◆')} ${m}`),
-        succeed: (m) => console.log(`${safeColors.success('✓')} ${m ?? msg}`),
-        fail: (m) => console.log(`${safeColors.error('✗')} ${m ?? msg}`),
-        stop: () => {},
-      };
-    },
-    table: (data, columns) => {
-      if (data.length === 0) {return;}
-      const cols = columns ?? Object.keys(data[0]!).map(k => ({ header: k, key: k }));
-      const rows = data.map(row => cols.map(col => String(row[col.key] ?? '')));
-      const lines = formatTable(
-        cols.map(c => ({ header: c.header, align: (c as { align?: 'left' | 'center' | 'right' }).align })),
-        rows,
-        { separator: '' },
-      );
-      for (const line of lines) { console.log(`  ${line}`); }
-    },
-    json: (data) => console.log(JSON.stringify(data, null, 2)),
-    newline: () => console.log(),
-    divider: () => console.log(safeColors.muted('─'.repeat(process.stdout.columns || 80))),
-    box: (content, title) => {
-      console.log(sideBorderBox({
-        title: title || '',
-        sections: [{ items: content.split('\n') }],
-        status: 'info',
-      }));
-    },
-    sideBox: (options) => {
-      const allSections = [];
-      if (options.summary && Object.keys(options.summary).length > 0) {
-        allSections.push({ items: metricsList(options.summary as Record<string, string | number>) });
-      }
-      allSections.push(...(options.sections ?? []).map(s => ({ header: s.header, items: s.items })));
-      console.log(sideBorderBox({
-        title: options.title,
-        sections: allSections,
-        status: options.status,
-        timing: options.timing,
-      }));
-    },
-    chain: (items) => {
-      for (const item of items) {
-        console.log(sideBorderBox({
-          title: item.title,
-          sections: (item.sections ?? []).map(s => ({ header: s.header, items: s.items })),
-          status: item.status,
-          timing: item.timing,
-        }));
-      }
-    },
+  const prompts: UIPrompts = {
     confirm: async (msg, opts) => {
-      const defaultValue = opts?.defaultValue ?? false;
-      if (!currentRequestId) {return defaultValue;}
-      return ipcPrompt(currentRequestId, { kind: 'confirm', message: msg, defaultValue }, defaultValue) as Promise<boolean>;
+      const dv = opts?.defaultValue ?? false;
+      if (!currentRequestId) { return dv; }
+      return ipcPrompt(currentRequestId, { kind: 'confirm', message: msg, defaultValue: dv }, dv) as Promise<boolean>;
     },
-
     prompt: async (msg, opts) => {
-      const defaultValue = opts?.default ?? '';
-      if (!currentRequestId) {return defaultValue;}
-      return ipcPrompt(currentRequestId, { kind: 'text', message: msg, defaultValue }, defaultValue) as Promise<string>;
+      const dv = opts?.default ?? '';
+      if (!currentRequestId) { return dv; }
+      return ipcPrompt(currentRequestId, { kind: 'text', message: msg, defaultValue: dv }, dv) as Promise<string>;
     },
-
-    select: async (msg, choices) => {
-      const defaultValue = choices[0]?.value;
-      if (!currentRequestId) {return defaultValue as never;}
-      return ipcPrompt(currentRequestId, { kind: 'select', message: msg, choices, defaultValue }, defaultValue) as Promise<never>;
+    select: async <T>(msg: string, choices: SelectChoice<T>[]) => {
+      const dv = choices[0]?.value;
+      if (!currentRequestId) { return dv as T; }
+      return ipcPrompt(currentRequestId, { kind: 'select', message: msg, choices, defaultValue: dv }, dv) as Promise<T>;
     },
-
-    multiSelect: async (msg, choices) => {
-      const defaultValue = choices.filter((c) => c.checked).map((c) => c.value);
-      if (!currentRequestId) {return defaultValue as never;}
-      return ipcPrompt(currentRequestId, { kind: 'multiSelect', message: msg, choices, defaultValue }, defaultValue) as Promise<never>;
-    },
-
-    log: (entry: UILogEntry) => {
-      const msg = entry.fields ? `${entry.message} ${JSON.stringify(entry.fields)}` : entry.message;
-      console.log(`[${entry.level.toUpperCase()}] ${msg}`);
+    multiSelect: async <T>(msg: string, choices: MultiSelectChoice<T>[]) => {
+      const dv = choices.filter(c => c.checked).map(c => c.value);
+      if (!currentRequestId) { return dv as T[]; }
+      return ipcPrompt(currentRequestId, { kind: 'multiSelect', message: msg, choices, defaultValue: dv }, dv) as Promise<T[]>;
     },
   };
+  return createBaseStdoutUI(prompts, (entry) => {
+    const msg = entry.fields ? `${entry.message} ${JSON.stringify(entry.fields)}` : entry.message;
+    console.log(`[${entry.level.toUpperCase()}] ${msg}`);
+  });
 }
 
 /**
@@ -235,6 +152,11 @@ async function handleExecute(message: ExecuteMessage): Promise<void> {
     const { noopUI } = await import('@kb-labs/plugin-contracts');
     const path = await import('node:path');
     const fs = await import('node:fs');
+
+    // Wait for adapter middlewares to be resolved (sent by pool right after 'ready').
+    // IPC ordering guarantees 'middlewares' arrives before 'execute', but resolution
+    // is async (dynamic imports), so we must await the promise.
+    const adapterMiddlewares = middlewaresPromise ? await middlewaresPromise : [];
 
     // Resolve handler path — strip export name (#default, #namedExport) before fs check
     const [handlerRef = request.handlerRef] = request.handlerRef.split('#');
@@ -256,14 +178,9 @@ async function handleExecute(message: ExecuteMessage): Promise<void> {
     }
 
     // Platform proxy: rawProxyPlatform forwards adapter calls to parent via IPC.
-    // Governed wrapper adds per-plugin permission enforcement (Layer 1).
-    // runInProcess() will set this as AsyncLocalStorage context so usePlatform()/useLLM()
-    // return the correct governed proxy — no global singleton patching needed.
-    const platform = createGovernedPlatformServices(
-      rawProxyPlatform as PlatformServices,
-      request.descriptor.permissions ?? {},
-      request.descriptor.pluginId,
-    );
+    // Governance (permissions + adapter middlewares) is applied inside runInProcess()
+    // via applyPluginGovernance — do NOT pre-govern here to avoid double-wrapping.
+    const platform = rawProxyPlatform as PlatformServices;
 
     // cwd = workspace root, not plugin dir
     const cwd = request.workspace?.cwd ?? process.cwd();
@@ -344,6 +261,7 @@ async function handleExecute(message: ExecuteMessage): Promise<void> {
         handlerPath,
         cwd,
         input: request.input,
+        adapterMiddlewares,
       });
     } finally {
       process.stdout.write = origStdoutWrite;
@@ -375,6 +293,16 @@ async function handleExecute(message: ExecuteMessage): Promise<void> {
       stack: error instanceof Error ? error.stack : undefined,
     });
   }
+}
+
+/**
+ * Handle middlewares init message from pool.
+ * Kicks off async resolution of adapter middleware handlers and caches the result.
+ */
+function handleMiddlewares(message: MiddlewaresInitMessage): void {
+  middlewaresPromise = import('@kb-labs/plugin-runtime').then(({ resolveAdapterMiddlewares }) =>
+    resolveAdapterMiddlewares(message.decls)
+  );
 }
 
 /**
@@ -410,6 +338,7 @@ function onMessage(message: WorkerMessage): void {
   if (isShuttingDown && message.type !== 'shutdown') { return; }
   switch (message.type) {
     case 'execute': handleExecute(message as ExecuteMessage); break;
+    case 'middlewares': handleMiddlewares(message as MiddlewaresInitMessage); break;
     case 'health': handleHealth(); break;
     case 'shutdown': handleShutdown(message as ShutdownMessage); break;
     case 'uiPromptResult': {

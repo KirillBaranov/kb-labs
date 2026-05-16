@@ -6,9 +6,10 @@
 import { platform, createServiceBootstrap, loadEnvFromRoot, getPlatformRoot } from '@kb-labs/core-runtime';
 import { createCorrelatedLogger } from '@kb-labs/shared-http';
 import { findRepoRoot } from '@kb-labs/core-sys';
+import { readKbConfig } from '@kb-labs/core-config';
 import { createServer } from '@kb-labs/marketplace-api';
 import { MarketplaceService } from '@kb-labs/marketplace-core';
-import { NpmPackageSource } from '@kb-labs/marketplace-npm';
+import { NpmPackageSource, RegistryPackageSource } from '@kb-labs/marketplace-npm';
 
 const DEFAULT_PORT = 5070;
 // Defaults to 0.0.0.0 for Docker/dev compat. Set KB_MARKETPLACE_HOST=127.0.0.1 to restrict to loopback.
@@ -39,9 +40,20 @@ export async function bootstrap(cwd: string): Promise<void> {
   // Use getPlatformRoot() — in installed mode this is the platform installation
   // dir (e.g. /kb-platform), not the project CWD where the daemon was started.
   const platformRoot = getPlatformRoot() ?? repoRoot;
+
+  // Read marketplace.registry config to wire up RegistryPackageSource for kb: specs
+  const kbConfig = await readKbConfig(repoRoot);
+  const registryConfig = (kbConfig?.data as Record<string, unknown> | undefined)?.marketplace as Record<string, unknown> | undefined;
+  const registryUrl = (registryConfig?.registry as Record<string, unknown> | undefined)?.url as string | undefined;
+
+  const registrySource = registryUrl
+    ? new RegistryPackageSource({ registryUrl, authToken: process.env.KB_REGISTRY_TOKEN })
+    : undefined;
+
   const service = new MarketplaceService({
     platformRoot,
     source: new NpmPackageSource(),
+    registrySource,
   });
 
   // Create and start Fastify server

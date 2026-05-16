@@ -149,11 +149,7 @@ export default defineCommand({
         loader?.fail(`Index build failed: ${message}`);
 
         if (flags.json) {
-          ctx.ui.info(JSON.stringify({
-            ok: false,
-            error: message,
-            timingMs: timing,
-          }));
+          ctx.ui?.json?.({ ok: false, error: message, timingMs: timing });
         } else if (!flags.quiet) {
           ctx.ui.error(`Index build failed: ${message}`);
         }

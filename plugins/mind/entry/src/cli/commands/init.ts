@@ -114,8 +114,7 @@ export default defineCommand({
 
       // Output result
       if (flags.json) {
-        // V3 API: Write JSON to stdout directly
-        ctx.ui.info(JSON.stringify({
+        ctx.ui?.json?.({
           ok: true,
           summary: {
             Workspace: mindDir,
@@ -127,7 +126,7 @@ export default defineCommand({
             mindDir,
             cwd,
           },
-        }));
+        });
       } else if (!flags.quiet) {
         // V3 API: Enhanced UI with MessageOptions
         const artifactItems: string[] = [];

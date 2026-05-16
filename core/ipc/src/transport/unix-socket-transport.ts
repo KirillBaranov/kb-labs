@@ -242,6 +242,17 @@ export class UnixSocketTransport implements ITransport {
   isClosed(): boolean {
     return this.closed;
   }
+
+  sendMessage(msg: unknown): void {
+    // Unix socket transport: serialize and write as a JSON line to the socket.
+    // Push messages are not yet supported over Unix sockets; ignore silently.
+    void msg;
+  }
+
+  onPushMessage(_handler: (msg: unknown) => void): () => void {
+    // Push messages are not supported over Unix socket transport.
+    return () => {};
+  }
 }
 
 /**

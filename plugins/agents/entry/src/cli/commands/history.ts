@@ -53,7 +53,7 @@ export default defineCommand({
           success: false,
           error: error instanceof Error ? error.message : String(error),
         };
-        ctx.ui.write(JSON.stringify(response, null, 2) + '\n');
+        ctx.ui?.json?.(response);
         return { exitCode: 1, response };
       }
     },
@@ -69,7 +69,7 @@ async function showSessionHistory(
   const info = await manager.getSessionInfo(sessionId);
   if (!info) {
     const err = { success: false, error: `Session not found: ${sessionId}` };
-    ctx.ui.write(JSON.stringify(err, null, 2) + '\n');
+    ctx.ui?.json?.(err);
     return { exitCode: 1, response: err };
   }
 
@@ -86,7 +86,7 @@ async function showSessionHistory(
   };
 
   if (asJson) {
-    ctx.ui.write(JSON.stringify(response, null, 2) + '\n');
+    ctx.ui?.json?.(response);
   } else {
     ctx.ui.write(`Session: ${sessionId}\n`);
     ctx.ui.write(`Runs: ${info.runCount} | Changes: ${changes.length}\n\n`);
@@ -125,7 +125,7 @@ async function showFileHistory(
   };
 
   if (asJson) {
-    ctx.ui.write(JSON.stringify(response, null, 2) + '\n');
+    ctx.ui?.json?.(response);
   } else {
     ctx.ui.write(`File: ${filePath}\n`);
     ctx.ui.write(`Changes: ${allChanges.length}\n\n`);
@@ -163,7 +163,7 @@ async function showAgentHistory(
   };
 
   if (asJson) {
-    ctx.ui.write(JSON.stringify(response, null, 2) + '\n');
+    ctx.ui?.json?.(response);
   } else {
     ctx.ui.write(`Agent: ${agentId}\n`);
     ctx.ui.write(`Changes: ${allChanges.length}\n\n`);
@@ -204,7 +204,7 @@ async function listAllSessions(
   };
 
   if (asJson) {
-    ctx.ui.write(JSON.stringify(response, null, 2) + '\n');
+    ctx.ui?.json?.(response);
   } else {
     ctx.ui.write(`Sessions: ${data.length}\n\n`);
     for (const s of data) {

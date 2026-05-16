@@ -5,6 +5,7 @@ import { handleError, validationError } from '../utils/error.js';
 type FolderUpdateFlags = {
   name: string;
   json?: boolean;
+  full?: boolean;
 };
 
 export default defineCommand({
@@ -27,7 +28,7 @@ export default defineCommand({
         const folder = await updateFolder(requireApiKey(), folderId, { name: input.flags.name });
 
         if (input.flags.json) {
-          ctx.ui?.json?.(folder);
+          ctx.ui?.json?.(input.flags.full ? folder : { id: folder.id, name: folder.name });
         } else {
           ctx.ui?.success?.('Folder updated', {
             sections: [{ items: [`id: ${folder.id}`, `name: ${folder.name}`] }],

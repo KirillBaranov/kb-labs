@@ -114,8 +114,12 @@ export default defineCommand<unknown, CLIInput<RunFlagsInput>, { exitCode: numbe
 
         return { exitCode: 0 };
       } catch (error) {
-        handleError(ctx, error, outputJson);
-        if (!outputJson) ctx.ui?.warn?.('Make sure workflow daemon is running: kb-workflow');
+        if (outputJson) {
+          handleError(ctx, error, true);
+        } else {
+          const message = error instanceof Error ? error.message : String(error);
+          ctx.ui?.error?.(message, { hint: 'Make sure workflow daemon is running: kb-workflow' });
+        }
         return { exitCode: 1 };
       }
     },

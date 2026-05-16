@@ -6,6 +6,7 @@ interface InstallFlags {
   dev?: boolean;
   json?: boolean;
   scope?: string;
+  token?: string;
 }
 
 interface InstallInput {
@@ -55,6 +56,7 @@ export default defineCommand<unknown, InstallInput, InstallResultData>({
         const result = await post<InstallResultData>('/packages/install', {
           specs: argv,
           dev: Boolean(flags.dev),
+          ...(flags.token ? { token: flags.token } : {}),
           ...scopeBody(scopeCtx),
         });
 

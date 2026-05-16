@@ -1,6 +1,7 @@
 import { defineCommand, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
 import { requireApiKey, getListTasks } from '@kb-labs/clickup-core';
 import { handleError, validationError } from '../utils/error.js';
+import { slimTask } from '../utils/slim.js';
 
 type ListTasksFlags = {
   status?: string;
@@ -9,6 +10,7 @@ type ListTasksFlags = {
   page?: number;
   closed?: boolean;
   json?: boolean;
+  full?: boolean;
 };
 
 export default defineCommand({
@@ -33,7 +35,7 @@ export default defineCommand({
         });
 
         if (input.flags.json) {
-          ctx.ui?.json?.(tasks);
+          ctx.ui?.json?.(input.flags.full ? tasks : tasks.map(slimTask));
           return { exitCode: 0, result: tasks };
         }
 

@@ -39,7 +39,7 @@ describe('clickup:task.get', () => {
     expect(result.exitCode).toBe(0);
   });
 
-  it('TG-02: --json outputs { task, comments }', async () => {
+  it('TG-02: --json outputs slim task object', async () => {
     vi.mocked(getTask).mockResolvedValue(mockTask);
     vi.mocked(getTaskComments).mockResolvedValue(mockComments);
 
@@ -48,6 +48,28 @@ describe('clickup:task.get', () => {
     const result = await taskGetCommand.execute(
       ctx,
       mockCLIInput({ argv: ['task-001'], flags: { json: true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    const slim = captured.json[0] as Record<string, unknown>;
+    expect(slim.id).toBe('task-001');
+    expect(slim.status).toBe('open');
+    expect(slim).toHaveProperty('description');
+    expect(slim).toHaveProperty('due_date');
+    expect(slim).toHaveProperty('url');
+    expect(slim).not.toHaveProperty('comments');
+    expect(slim).not.toHaveProperty('task');
+  });
+
+  it('TG-02b: --json --full outputs { task, comments }', async () => {
+    vi.mocked(getTask).mockResolvedValue(mockTask);
+    vi.mocked(getTaskComments).mockResolvedValue(mockComments);
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await taskGetCommand.execute(
+      ctx,
+      mockCLIInput({ argv: ['task-001'], flags: { json: true, full: true } }),
     );
 
     expect(result.exitCode).toBe(0);

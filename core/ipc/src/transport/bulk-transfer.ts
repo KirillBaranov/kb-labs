@@ -156,35 +156,33 @@ export class BulkTransferHelper {
       tempFilePaths: Array.from(this.tempFiles.values()),
     };
   }
+
+  static registerSignalHandlers(): void {
+    process.on('SIGINT', async () => {
+      await BulkTransferHelper.cleanup();
+      process.exit(0);
+    });
+
+    process.on('SIGTERM', async () => {
+      await BulkTransferHelper.cleanup();
+      process.exit(0);
+    });
+
+    process.on('uncaughtException', async (error) => {
+      console.error('[BulkTransferHelper] Uncaught exception, cleaning up temp files:', error);
+      await BulkTransferHelper.cleanup();
+      process.exit(1);
+    });
+  }
 }
 
-// Cleanup on process exit
+// Sync fallback cleanup on normal exit (no async, no logging)
 process.on('exit', () => {
-  // Sync cleanup (process.on('exit') doesn't support async)
   for (const path of BulkTransferHelper.getStats().tempFilePaths) {
     try {
       unlinkSync(path);
     } catch {
-      // Ignore
+      // ignore
     }
   }
-});
-
-// Cleanup on uncaught errors
-process.on('uncaughtException', async (error) => {
-  console.error('[BulkTransferHelper] Uncaught exception, cleaning up temp files:', error);
-  await BulkTransferHelper.cleanup();
-  process.exit(1);
-});
-
-process.on('SIGINT', async () => {
-  console.log('[BulkTransferHelper] SIGINT received, cleaning up temp files');
-  await BulkTransferHelper.cleanup();
-  process.exit(0);
-});
-
-process.on('SIGTERM', async () => {
-  console.log('[BulkTransferHelper] SIGTERM received, cleaning up temp files');
-  await BulkTransferHelper.cleanup();
-  process.exit(0);
 });

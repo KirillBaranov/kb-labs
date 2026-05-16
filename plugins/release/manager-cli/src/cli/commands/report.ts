@@ -76,7 +76,7 @@ export default defineCommand({
           ctx.ui?.json?.(report);
         } else {
           if (!ctx.ui) { throw new Error('UI not available'); }
-          ctx.ui.sideBox({
+          ctx.ui?.sideBox?.({
             title: 'Release Report',
             sections: buildReportSections(report),
             status: report.result.ok ? 'success' : 'error',

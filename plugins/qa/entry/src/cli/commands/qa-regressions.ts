@@ -25,10 +25,9 @@ export default defineCommand({
       }
 
       const sections = buildRegressionsReport(result, history);
-      for (const section of sections) {
-        ui?.success?.(section.header, {
-          title: section.header,
-          sections: [{ header: '', items: section.lines }],
+      if (sections.length > 0) {
+        ui?.success?.(sections[0]!.header, {
+          sections: sections.map(s => ({ header: s.header, items: s.lines })),
         });
       }
 

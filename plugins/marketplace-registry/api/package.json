@@ -1,0 +1,42 @@
+{
+  "name": "@kb-labs/marketplace-registry-api",
+  "description": "HTTP API for KB Labs Marketplace Registry",
+  "version": "2.94.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsup",
+    "clean": "rimraf dist",
+    "dev": "tsup --watch",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run --passWithNoTests -c ../../vitest.config.ts",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastify/multipart": "^9.0.3",
+    "@kb-labs/core-platform": "workspace:*",
+    "@kb-labs/marketplace-registry-contracts": "workspace:*",
+    "@kb-labs/marketplace-registry-core": "workspace:*",
+    "@kb-labs/gateway-auth": "workspace:*",
+    "@kb-labs/gateway-contracts": "workspace:*",
+    "@kb-labs/shared-http": "workspace:*",
+    "fastify": "^5.4.0"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "tsup": "^8.5.0",
+    "typescript": "^5",
+    "vitest": "^3.2.4"
+  },
+  "engines": { "node": ">=20.0.0", "pnpm": ">=9.0.0" },
+  "sideEffects": false
+}

@@ -98,7 +98,7 @@ export const platformSyncCommand = defineSystemCommand<PlatformSyncFlags, Platfo
   // eslint-disable-next-line sonarjs/cognitive-complexity
   formatter(result, ctx, flags) {
     if (flags.json) {
-      console.log(JSON.stringify(result.sync ?? result, null, 2));
+      ctx.ui?.json?.(result.sync ?? result);
       return;
     }
 

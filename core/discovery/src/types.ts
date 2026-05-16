@@ -63,6 +63,11 @@ export interface MarketplaceEntry {
   installedAt: string;
   /** How this package was installed */
   source: 'marketplace' | 'local';
+  /**
+   * Trust level: 'trusted' = signed by KB Labs Registry (sealed, no self-upgrade).
+   * 'untrusted' = installed from npm/local/workspace. Default: 'untrusted'.
+   */
+  trust?: 'trusted' | 'untrusted';
   /** Platform-issued signature (optional, for verified packages) */
   signature?: EntitySignature;
   /** Primary entity kind — discriminator for filtering (e.g., 'plugin', 'adapter') */

@@ -26,14 +26,7 @@ import { JobScheduler } from './core/job-scheduler.js';
 import { CronManager } from './core/cron-manager.js';
 import { WorkflowEngine } from './core/workflow-engine.js';
 
-// Import analytics wrappers for transparent metrics collection
-import {
-  AnalyticsLLM,
-  AnalyticsEmbeddings,
-  AnalyticsVectorStore,
-  AnalyticsCache,
-  AnalyticsStorage,
-} from '@kb-labs/core-platform';
+import { AnalyticsLLM } from '@kb-labs/core-platform';
 import type {
   IEnvironmentProvider,
   IWorkspaceProvider,
@@ -46,17 +39,12 @@ import type {
   LLMOptions,
   VectorFilter,
   VectorRecord,
+  RawMiddlewareDecl,
 } from '@kb-labs/core-platform';
 import type { ExecutionRequest } from '@kb-labs/core-contracts';
 
-import {
-  ResourceBroker,
-  InMemoryRateLimitBackend,
-  createQueuedLLM,
-  createQueuedEmbeddings,
-  createQueuedVectorStore,
-} from '@kb-labs/core-resource-broker';
-import type { RateLimitBackend } from '@kb-labs/core-resource-broker';
+import { ResourceBroker, InMemoryRateLimitBackend } from '@kb-labs/core-resource-broker';
+import type { RateLimitBackend, IResourceBroker } from '@kb-labs/core-resource-broker';
 
 // Import ExecutionBackend type only (implementation loaded dynamically to break circular dependency)
 
@@ -124,45 +112,6 @@ async function loadAdapter<T>(adapterPath: string, cwd: string, options?: unknow
 
 
 /**
- * Wrap an adapter with analytics tracking.
- * Returns the wrapped adapter if analytics is available, otherwise returns the original adapter.
- *
- * @param key - Adapter type key
- * @param instance - Real adapter instance
- * @returns Wrapped adapter with analytics or original adapter
- */
-function wrapWithAnalytics<K extends keyof AdapterTypes>(
-  key: K,
-  instance: AdapterTypes[K]
-): AdapterTypes[K] {
-  const analytics = platform.analytics;
-
-  // If no analytics adapter, return original (graceful degradation)
-  if (!analytics || analytics.constructor.name === 'NoOpAnalytics') {
-    return instance;
-  }
-
-  // Wrap each adapter type with its corresponding analytics wrapper.
-  // TypeScript cannot narrow a generic K in a switch, so we cast to the specific
-  // interface required by each wrapper's constructor, then back to AdapterTypes[K].
-  switch (key) {
-    case 'llm':
-      return new AnalyticsLLM(instance as unknown as ILLM, analytics) as unknown as AdapterTypes[K];
-    case 'embeddings':
-      return new AnalyticsEmbeddings(instance as unknown as IEmbeddings, analytics) as unknown as AdapterTypes[K];
-    case 'vectorStore':
-      return new AnalyticsVectorStore(instance as unknown as IVectorStore, analytics) as unknown as AdapterTypes[K];
-    case 'cache':
-      return new AnalyticsCache(instance as unknown as ICache, analytics) as unknown as AdapterTypes[K];
-    case 'storage':
-      return new AnalyticsStorage(instance as unknown as IStorage, analytics) as unknown as AdapterTypes[K];
-    default:
-      // For adapters without analytics wrappers (config, etc.), return original
-      return instance;
-  }
-}
-
-/**
  * Initialize core features with real implementations.
  */
 function initializeCoreFeatures(
@@ -224,10 +173,10 @@ function initializeResourceBroker(
 
   const broker = new ResourceBroker(backend);
 
-  // Register LLM resource and wrap adapter
+  // Register LLM resource with broker (queuing applied later by assemblePlatform.resourceBrokerFactory)
   if (container.hasAdapter('llm')) {
     const llmConfig = config.llm ?? {};
-    const realLLM = container.llm; // Save reference to real adapter
+    const realLLM = container.llm;
 
     broker.register('llm', {
       rateLimits: llmConfig.rateLimits ?? 'openai-tier-1',
@@ -240,17 +189,12 @@ function initializeResourceBroker(
         throw new Error(`Unknown LLM operation: ${operation}`);
       },
     });
-
-    // Replace adapter with Queued version - plugins see same interface
-    const queuedLLM = createQueuedLLM(broker, realLLM);
-    container.setAdapter('llm', queuedLLM);
-    platform.logger.debug('ResourceBroker: LLM adapter wrapped with queue');
   }
 
-  // Register Embeddings resource and wrap adapter
+  // Register Embeddings resource with broker (queuing applied later by assemblePlatform.resourceBrokerFactory)
   if (container.hasAdapter('embeddings')) {
     const embeddingsConfig = config.embeddings ?? {};
-    const realEmbeddings = container.embeddings; // Save reference to real adapter
+    const realEmbeddings = container.embeddings;
 
     broker.register('embeddings', {
       rateLimits: embeddingsConfig.rateLimits ?? 'openai-tier-1',
@@ -266,17 +210,12 @@ function initializeResourceBroker(
         throw new Error(`Unknown Embeddings operation: ${operation}`);
       },
     });
-
-    // Replace adapter with Queued version - plugins see same interface
-    const queuedEmbeddings = createQueuedEmbeddings(broker, realEmbeddings);
-    container.setAdapter('embeddings', queuedEmbeddings);
-    platform.logger.debug('ResourceBroker: Embeddings adapter wrapped with queue');
   }
 
-  // Register VectorStore resource and wrap adapter
+  // Register VectorStore resource with broker (queuing applied later by assemblePlatform.resourceBrokerFactory)
   if (container.hasAdapter('vectorStore')) {
     const vsConfig = config.vectorStore ?? {};
-    const realVectorStore = container.vectorStore; // Save reference to real adapter
+    const realVectorStore = container.vectorStore;
 
     broker.register('vectorStore', {
       rateLimits: vsConfig.maxConcurrent ? { maxConcurrentRequests: vsConfig.maxConcurrent } : {},
@@ -301,11 +240,6 @@ function initializeResourceBroker(
         }
       },
     });
-
-    // Replace adapter with Queued version - plugins see same interface
-    const queuedVectorStore = createQueuedVectorStore(broker, realVectorStore);
-    container.setAdapter('vectorStore', queuedVectorStore);
-    platform.logger.debug('ResourceBroker: VectorStore adapter wrapped with queue');
   }
 
   return broker;
@@ -339,6 +273,11 @@ export async function initPlatform(
   cwd: string = process.cwd(),
   uiProvider?: (hostType: string) => any,
   platformRoot?: string,
+  assemblyHook?: (
+    platform: PlatformContainer,
+    broker: IResourceBroker,
+    adapterConfig: Partial<Record<string, unknown>>,
+  ) => Partial<Record<string, unknown>>,
 ): Promise<PlatformContainer> {
 
   // ✅ Idempotent: If already initialized, return existing singleton
@@ -511,7 +450,7 @@ export async function initPlatform(
               );
             }
 
-            return { createAdapter: factory, manifest };
+            return { createAdapter: factory, manifest, pkgRoot: adapter.pkgRoot };
           } catch (err) {
             // Subpath file doesn't exist, try loading base package
             const baseModule = await import(
@@ -535,7 +474,7 @@ export async function initPlatform(
               );
             }
 
-            return { createAdapter: factory, manifest };
+            return { createAdapter: factory, manifest, pkgRoot: adapter.pkgRoot };
           }
         } else if (adapter) {
           // Load base package (no subpath)
@@ -560,9 +499,9 @@ export async function initPlatform(
             );
           }
 
-          return { createAdapter: factory, manifest };
+          return { createAdapter: factory, manifest, pkgRoot: adapter.pkgRoot };
         } else {
-          // Fallback to node_modules
+          // Fallback to node_modules — resolve pkgRoot via package.json
           const module = await import(modulePath);
 
           const factory = module.createAdapter || module.default;
@@ -580,7 +519,16 @@ export async function initPlatform(
             );
           }
 
-          return { createAdapter: factory, manifest };
+          // Resolve pkgRoot for npm packages via package.json resolution
+          let pkgRoot: string | undefined;
+          try {
+            const pkgJsonPath = import.meta.resolve(`${basePkgName}/package.json`);
+            pkgRoot = path.dirname(new URL(pkgJsonPath).pathname);
+          } catch {
+            // pkgRoot unavailable for this adapter — middleware handler files won't be loadable
+          }
+
+          return { createAdapter: factory, manifest, pkgRoot };
         }
       } catch (error) {
         throw new Error(
@@ -592,6 +540,9 @@ export async function initPlatform(
     // Build adapter configs for AdapterLoader
     // Supports both single adapter (string) and multi-adapter (string[]) config
     const adapterConfigs: Record<string, AdapterConfig> = {};
+
+    // Collect raw middleware declarations from adapter manifests (resolved later by execution backends)
+    const rawMiddlewareDecls: RawMiddlewareDecl[] = [];
 
     // Track all available adapters for multi-adapter routing (LLM tier switching, etc.)
     const availableAdapters: Record<string, string[]> = {};
@@ -626,6 +577,13 @@ export async function initPlatform(
           // Merge contexts with user options (user options can override)
           config: { ...contexts, ...baseOptions },
         };
+
+        // Collect middleware declarations from manifest
+        if (module.pkgRoot && module.manifest.middlewares?.length) {
+          for (const decl of module.manifest.middlewares) {
+            rawMiddlewareDecls.push({ pkgRoot: module.pkgRoot, decl });
+          }
+        }
 
         // Log multi-adapter setup
         if (adapterPackages.length > 1) {
@@ -686,23 +644,12 @@ export async function initPlatform(
       platform.logger.debug('initPlatform loaded adapter: analytics → FileAnalytics (set early for wrapping)');
     }
 
-    // Set adapters in platform (wrapped with analytics if available)
-    // NOTE: LLM gets special handling - LLMRouter wraps AFTER ResourceBroker
-    // Chain will be: LLMRouter → QueuedLLM → AnalyticsLLM → RawAdapter
+    // Set raw adapters in platform — analytics/router/broker wrapping is done by assemblePlatform
     for (const [name, instance] of loadedAdapters.entries()) {
-      // Skip analytics - already set above
-      if (name === 'analytics') {
-        continue;
-      }
-
-      // For LLM: only wrap with Analytics here, Router wrapping happens after ResourceBroker
-      const wrappedInstance = wrapWithAnalytics(name as keyof AdapterTypes, instance as AdapterTypes[keyof AdapterTypes]);
-      platform.setAdapter(name, wrappedInstance);
-
-      const wrapperName = (wrappedInstance as object).constructor?.name ?? 'Unknown';
-      const isWrapped = wrapperName.startsWith('Analytics');
+      if (name === 'analytics') {continue;}
+      platform.setAdapter(name, instance);
       platform.logger.debug(
-        `initPlatform loaded adapter: ${name} → ${Object.getPrototypeOf(instance as object)?.constructor?.name ?? 'Unknown'}${isWrapped ? ` (wrapped with ${wrapperName})` : ''}`
+        `initPlatform loaded adapter: ${name} → ${Object.getPrototypeOf(instance as object)?.constructor?.name ?? 'Unknown'}`
       );
     }
 
@@ -1018,9 +965,11 @@ export async function initPlatform(
     }
 
     // Initialize ResourceBroker for queue and rate limiting (optional)
+    let _assemblyBroker: IResourceBroker | undefined;
     try {
       const resourceBroker = initializeResourceBroker(platform, core.resourceBroker);
       platform.initResourceBroker(resourceBroker);
+      _assemblyBroker = resourceBroker;
       platform.logger.debug('initPlatform initialized ResourceBroker');
     } catch (error) {
       platform.logger.warn('Failed to initialize ResourceBroker, continuing without rate limiting', {
@@ -1028,115 +977,71 @@ export async function initPlatform(
       });
     }
 
-    // ══════════════════════════════════════════════════════════════════════
-    // Wrap LLM with Router (AFTER ResourceBroker)
-    // Chain: LLMRouter → QueuedLLM → AnalyticsLLM → RawAdapter
-    // This ensures useLLM({ tier }) can call resolve() on the outermost wrapper
-    // ══════════════════════════════════════════════════════════════════════
-    if (platform.hasAdapter('llm')) {
+    if (assemblyHook && _assemblyBroker) {
+      // ── Hook path: delegate adapter assembly to the caller (e.g. cli/bin) ──────────
+      // adapterLoader closes over loadModule() which is internal to initPlatform.
+      // It is built here and passed through adapterConfig so the hook (which calls
+      // assemblePlatform from @kb-labs/plugin-runtime) can include it in LLMRouterConfig.
       const llmOptions = (adapterOptions.llm ?? {}) as LLMAdapterOptions;
       const executionDefaults = llmOptions.executionDefaults;
-      const llmWithDefaults = createDefaultExecutionPolicyLLM(platform.llm, executionDefaults);
 
-      if (llmWithDefaults !== platform.llm) {
-        platform.setAdapter('llm', llmWithDefaults);
-        platform.logger.debug('initPlatform applied centralized LLM execution defaults');
+      // Apply defaultExecutionPolicy to raw LLM before analytics wrapping.
+      // Analytics will track calls that already have defaults merged — correct behaviour.
+      if (platform.hasAdapter('llm')) {
+        const withDefaults = createDefaultExecutionPolicyLLM(platform.llm, executionDefaults);
+        if (withDefaults !== platform.llm) {
+          platform.setAdapter('llm', withDefaults);
+          platform.logger.debug('initPlatform applied centralized LLM execution defaults (hook path)');
+        }
       }
 
-      try {
-        const { LLMRouter } = await import('@kb-labs/llm-router');
+      // adapterLoader must stay here — it captures loadModule + platform + executionDefaults.
+      const adapterLoader = async (adapterPackage: string): Promise<ILLM> => {
+        try {
+          const module = await loadModule(adapterPackage);
+          const rawLoaded = await module.createAdapter(llmOptions, {}) as unknown as ILLM;
+          const analytics = platform.analytics;
+          const withAnalytics =
+            analytics && analytics.constructor.name !== 'NoOpAnalytics'
+              ? new AnalyticsLLM(rawLoaded, analytics)
+              : rawLoaded;
+          return createDefaultExecutionPolicyLLM(withAnalytics, executionDefaults);
+        } catch (error) {
+          platform.logger.warn(`Failed to load adapter ${adapterPackage}`, {
+            error: error instanceof Error ? error.message : String(error),
+          });
+          throw error;
+        }
+      };
 
-        // Get current LLM (already QueuedLLM → AnalyticsLLM → RawAdapter)
-        const queuedLLM = llmWithDefaults;
-
-        // Create adapter loader function for multi-adapter support
-        // CRITICAL: Wrap loaded adapters with AnalyticsLLM for tracking
-        const adapterLoader = async (adapterPackage: string): Promise<ILLM> => {
-          try {
-            const module = await loadModule(adapterPackage);
-            // createAdapter returns unknown — this is an LLM adapter loader context,
-            // so we assert to ILLM (the factory must produce a valid ILLM or it will fail at runtime).
-            const loadedAdapter = await module.createAdapter(llmOptions, {}) as unknown as ILLM;
-
-            // Wrap with AnalyticsLLM if analytics is available
-            const analytics = platform.analytics;
-            const analyticsWrapped = analytics && analytics.constructor.name !== 'NoOpAnalytics'
-              ? new AnalyticsLLM(loadedAdapter, analytics)
-              : loadedAdapter;
-            const wrappedAdapter = createDefaultExecutionPolicyLLM(
-              analyticsWrapped,
-              executionDefaults
-            );
-
-            platform.logger.debug(`LLMRouter loaded adapter: ${adapterPackage}`, {
-              wrapped: wrappedAdapter !== loadedAdapter,
-            });
-            return wrappedAdapter;
-          } catch (error) {
-            platform.logger.warn(`Failed to load adapter ${adapterPackage}`, {
-              error: error instanceof Error ? error.message : String(error),
-            });
-            throw error;
-          }
-        };
-
-        // Build router config from adapter options
-        const routerConfig = {
+      // Build per-adapter config passed to assemblePlatform via hook.
+      const platformAssemblyConfig: Partial<Record<string, unknown>> = {};
+      if (platform.hasAdapter('llm')) {
+        platformAssemblyConfig.llm = {
           defaultTier: llmOptions.defaultTier ?? llmOptions.tier ?? 'small',
           tierMapping: llmOptions.tierMapping,
           capabilities: llmOptions.capabilities,
           adapterLoader,
+          logger: platform.logger,
+          _privacy: core.privacy?.enabled !== false
+            ? (core.privacy ?? { enabled: true })
+            : undefined,
         };
-
-        const llmRouter = new LLMRouter(
-          queuedLLM,
-          routerConfig,
-          platform.logger
-        );
-
-        // Replace LLM adapter with Router-wrapped version
-        platform.setAdapter('llm', llmRouter);
-
-        const modelInfo = llmOptions.tierMapping
-          ? `tierMapping with ${Object.keys(llmOptions.tierMapping).length} tiers`
-          : `tier: ${routerConfig.defaultTier}`;
-
-        const llmAdapters = availableAdapters['llm'] ?? [];
-        if (llmAdapters.length > 1) {
-          platform.logger.debug(`initPlatform LLM multi-adapter enabled`, {
-            adapters: llmAdapters,
-            primary: llmAdapters[0],
-          });
-        }
-
-        platform.logger.debug(`initPlatform wrapped LLM with Router (${modelInfo})`);
-      } catch (error) {
-        // LLMRouter not available - keep QueuedLLM as is
-        platform.logger.debug('LLMRouter not available, using QueuedLLM directly', {
-          error: error instanceof Error ? error.message : String(error),
-        });
       }
-    }
 
-    // ══════════════════════════════════════════════════════════════════════
-    // Wrap LLM with PII Redaction (outermost wrapper)
-    // Chain: PIIRedactionLLM → LLMRouter → QueuedLLM → AnalyticsLLM → RawAdapter
-    // Must be outermost so ALL LLM calls go through PII stripping.
-    // ══════════════════════════════════════════════════════════════════════
-    if (platform.hasAdapter('llm')) {
-      const privacyConfig = core.privacy;
-      // Enabled by default unless explicitly disabled
-      if (privacyConfig?.enabled !== false) {
-        const { createPIIRedactionLLM } = await import('@kb-labs/core-platform');
-        const currentLLM = platform.llm;
-        const piiLLM = createPIIRedactionLLM(currentLLM, privacyConfig ?? { enabled: true });
-        if (piiLLM !== currentLLM) {
-          platform.setAdapter('llm', piiLLM);
-          platform.logger.debug('initPlatform wrapped LLM with PIIRedaction', {
-            mode: privacyConfig?.mode ?? 'reversible',
-          });
+      const assembled = assemblyHook(platform, _assemblyBroker, platformAssemblyConfig);
+
+      // Apply assembled adapters back into the platform container.
+      for (const key of Object.keys(assembled)) {
+        const val = assembled[key];
+        if (val !== undefined) {
+          platform.setAdapter(key, val as never);
         }
       }
+
+      platform.logger.debug('initPlatform assembly via hook complete', {
+        assembledKeys: Object.keys(assembled).filter((k) => assembled[k] !== undefined),
+      });
     }
 
     // ══════════════════════════════════════════════════════════════════════
@@ -1204,6 +1109,14 @@ export async function initPlatform(
           error: err instanceof Error ? err.message : String(err),
         });
       }
+    }
+
+    // Store raw middleware declarations for execution backends to resolve at plugin run time
+    if (rawMiddlewareDecls.length > 0) {
+      platform.setAdapter('_middlewareDecls', rawMiddlewareDecls);
+      platform.logger.debug('initPlatform stored adapter middleware declarations', {
+        count: rawMiddlewareDecls.length,
+      });
     }
 
     // Start Unix Socket server to handle adapter calls from children (critical for V3 plugins)

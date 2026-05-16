@@ -1,0 +1,153 @@
+import * as path from 'node:path';
+import * as fs from 'node:fs/promises';
+import { defineCommand, handleError, validationError, useEnv, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { registryPostMultipart, registryPatch } from '../registry-http.js';
+import { packPlugin } from '../pack-plugin.js';
+
+interface PublishFlags {
+  private?: boolean;
+  path?: string;
+  metaOnly?: boolean;
+  json?: boolean;
+}
+
+interface PublishResultData {
+  handle: string;
+  name: string;
+  version: string;
+  visibility: string;
+  trust: string;
+  installCommand: string;
+  pageUrl?: string;
+}
+
+export default defineCommand<unknown, CLIInput<PublishFlags>, { exitCode: number }>({
+  id: 'marketplace:publish',
+  description: 'Publish plugin to KB Labs Registry',
+
+  handler: {
+    async execute(ctx: PluginContextV3, input: CLIInput<PublishFlags>): Promise<{ exitCode: number }> {
+      const { flags = {} } = input;
+      const pluginDir = path.resolve(ctx.cwd, flags.path ?? '.');
+      const visibility = flags.private ? 'private' : 'public';
+      const t0 = Date.now();
+
+      let pkgJson: Record<string, unknown>;
+      try {
+        const content = await fs.readFile(path.join(pluginDir, 'package.json'), 'utf-8');
+        pkgJson = JSON.parse(content) as Record<string, unknown>;
+      } catch {
+        validationError(ctx, 'Cannot read package.json in current directory', 'Run this command from the plugin root directory', flags.json);
+        return { exitCode: 1 };
+      }
+
+      if (!pkgJson.name || !pkgJson.version) {
+        validationError(ctx, 'package.json must have name and version fields', undefined, flags.json);
+        return { exitCode: 1 };
+      }
+
+      const kb = pkgJson['kb'] as Record<string, unknown> | undefined;
+      if (!kb?.manifest && !kb?.adapter) {
+        validationError(
+          ctx,
+          'Not a KB Labs plugin or adapter',
+          'Add a kb.manifest or kb.adapter field to package.json',
+          flags.json,
+        );
+        return { exitCode: 1 };
+      }
+
+      const meta = {
+        name: pkgJson.name as string,
+        version: pkgJson.version as string,
+        description: pkgJson.description as string | undefined,
+        author: pkgJson.author as unknown,
+        repository: pkgJson.repository as unknown,
+        keywords: pkgJson.keywords as string[] | undefined,
+        license: pkgJson.license as string | undefined,
+        homepage: pkgJson.homepage as string | undefined,
+      };
+
+      if (flags.metaOnly) {
+        try {
+          const handle = resolveHandle();
+          await registryPatch(`/packages/${handle}/${meta.name}/meta`, meta);
+          ctx.ui?.success?.('Metadata updated', {
+            sections: [{ header: 'Package', items: [`${meta.name} @ ${handle}`] }],
+            timing: Date.now() - t0,
+          });
+          return { exitCode: 0 };
+        } catch (err) {
+          handleError(ctx, err, flags.json);
+          return { exitCode: 1 };
+        }
+      }
+
+      const t1 = Date.now();
+      let tarball: Buffer;
+      let packMs: number;
+      try {
+        tarball = await packPlugin(pluginDir);
+        packMs = Date.now() - t1;
+      } catch (err) {
+        handleError(ctx, err, flags.json);
+        return { exitCode: 1 };
+      }
+
+      try {
+        const result = await registryPostMultipart<PublishResultData>(
+          '/packages/publish',
+          tarball,
+          { meta: JSON.stringify({ meta, visibility }) },
+        );
+
+        if (flags.json) {
+          ctx.ui?.json?.(result);
+          return { exitCode: 0 };
+        }
+
+        ctx.ui?.chain?.([
+          {
+            title: `Packed ${meta.name}@${meta.version}`,
+            timing: packMs,
+          },
+          {
+            title: `${result.name}@${result.version} published`,
+            status: 'success',
+            summary: {
+              'Visibility': result.visibility,
+              'Trust': result.trust === 'trusted' ? 'KB Labs Platform ✓' : 'community',
+              ...(result.pageUrl ? { 'Page': result.pageUrl } : {}),
+            },
+            sections: [{ header: 'Install', items: [{ text: result.installCommand, truncate: 500 }] }],
+            timing: Date.now() - t0,
+          },
+        ]);
+
+        return { exitCode: 0 };
+      } catch (err) {
+        if (flags.json) {
+          handleError(ctx, err, true);
+          return { exitCode: 1 };
+        }
+        const message = err instanceof Error ? err.message : String(err);
+        ctx.ui?.chain?.([
+          { title: `Packed ${meta.name}@${meta.version}`, timing: packMs },
+          {
+            title: 'Publish failed',
+            status: 'error',
+            sections: [{ items: [message] }],
+            timing: Date.now() - t0,
+          },
+        ]);
+        return { exitCode: 1 };
+      }
+    },
+  },
+});
+
+function resolveHandle(): string {
+  const handle = useEnv('KB_REGISTRY_AUTHOR_HANDLE');
+  if (!handle) { throw new Error('KB_REGISTRY_AUTHOR_HANDLE is not set'); }
+  return handle;
+}

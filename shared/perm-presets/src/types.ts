@@ -60,6 +60,14 @@ export interface PlatformPermissions {
   embeddings?: boolean;
   /** Event bus access */
   eventBus?: boolean | { publish?: string[]; subscribe?: string[] };
+  /** Notifier access */
+  notifier?: {
+    emit?: boolean;
+    subscribe?: {
+      sources: string[];
+      severity?: Array<'info' | 'warn' | 'critical'>;
+    };
+  };
 }
 
 /**

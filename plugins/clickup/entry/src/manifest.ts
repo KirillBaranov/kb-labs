@@ -37,11 +37,13 @@ export const manifest = {
         describe: 'Show full workspace hierarchy (spaces → folders → lists)',
         handler: './commands/workspace.js#default',
         flags: [
-          { name: 'json', type: 'boolean', description: 'Output raw JSON' },
+          { name: 'json', type: 'boolean', description: 'Output JSON (slim by default)' },
+          { name: 'full', type: 'boolean', description: 'Output full raw JSON (requires --json)' },
         ],
         examples: [
           'kb clickup workspace',
           'kb clickup workspace --json',
+          'kb clickup workspace --json --full',
         ],
       },
 
@@ -57,7 +59,8 @@ export const manifest = {
           { name: 'assignee', type: 'string',  description: 'Filter by assignee user IDs (comma-separated)' },
           { name: 'limit',    type: 'number',  description: 'Max results', default: 20 },
           { name: 'closed',   type: 'boolean', description: 'Include closed tasks' },
-          { name: 'json',     type: 'boolean', description: 'Output raw JSON' },
+          { name: 'json',     type: 'boolean', description: 'Output JSON (slim by default)' },
+          { name: 'full',     type: 'boolean', description: 'Output full raw JSON (requires --json)' },
         ],
         examples: [
           'kb clickup task search "my bug"',
@@ -70,7 +73,8 @@ export const manifest = {
         describe: 'Get full task details including comments',
         handler: './commands/task-get.js#default',
         flags: [
-          { name: 'json', type: 'boolean', description: 'Output raw JSON' },
+          { name: 'json', type: 'boolean', description: 'Output JSON (slim by default)' },
+          { name: 'full', type: 'boolean', description: 'Output full raw JSON (requires --json)' },
         ],
         examples: [
           'kb clickup task get abc123',
@@ -90,7 +94,8 @@ export const manifest = {
           { name: 'priority', type: 'number',  description: '1=urgent 2=high 3=normal 4=low' },
           { name: 'assignee', type: 'string',  description: 'Assignee user IDs (comma-separated)' },
           { name: 'due',      type: 'string',  description: 'Due date (ISO string or unix ms)' },
-          { name: 'json',     type: 'boolean', description: 'Output raw JSON' },
+          { name: 'json',     type: 'boolean', description: 'Output JSON (slim by default)' },
+          { name: 'full',     type: 'boolean', description: 'Output full raw JSON (requires --json)' },
         ],
         examples: [
           'kb clickup task create --list abc123 --name "Fix login bug" --priority 2',
@@ -110,7 +115,8 @@ export const manifest = {
           { name: 'assignee_add', type: 'string',  description: 'User IDs to add (comma-separated)' },
           { name: 'assignee_rem', type: 'string',  description: 'User IDs to remove (comma-separated)' },
           { name: 'due',          type: 'string',  description: 'Due date (ISO, unix ms, or "none")' },
-          { name: 'json',         type: 'boolean', description: 'Output raw JSON' },
+          { name: 'json',         type: 'boolean', description: 'Output JSON (slim by default)' },
+          { name: 'full',         type: 'boolean', description: 'Output full raw JSON (requires --json)' },
         ],
         examples: [
           'kb clickup task update abc123 --status "in progress"',
@@ -138,7 +144,8 @@ export const manifest = {
         describe: 'List comments on a task',
         handler: './commands/task-comment-list.js#default',
         flags: [
-          { name: 'json', type: 'boolean', description: 'Output raw JSON' },
+          { name: 'json', type: 'boolean', description: 'Output JSON (slim by default)' },
+          { name: 'full', type: 'boolean', description: 'Output full raw JSON (requires --json)' },
         ],
         examples: [
           'kb clickup task comment-list abc123',
@@ -154,7 +161,8 @@ export const manifest = {
           { name: 'text',    type: 'string',  description: 'Comment text (required)' },
           { name: 'assignee',type: 'number',  description: 'Assign comment to user ID' },
           { name: 'notify',  type: 'boolean', description: 'Notify all task watchers' },
-          { name: 'json',    type: 'boolean', description: 'Output raw JSON' },
+          { name: 'json',    type: 'boolean', description: 'Output JSON (slim by default)' },
+          { name: 'full',    type: 'boolean', description: 'Output full raw JSON (requires --json)' },
         ],
         examples: [
           'kb clickup task comment-add abc123 --text "Fixed in branch feature/x"',
@@ -171,7 +179,8 @@ export const manifest = {
           { name: 'name',    type: 'string',  description: 'Space name (required)' },
           { name: 'color',   type: 'string',  description: 'Space color (hex)' },
           { name: 'private', type: 'boolean', description: 'Make space private' },
-          { name: 'json',    type: 'boolean', description: 'Output raw JSON' },
+          { name: 'json',    type: 'boolean', description: 'Output JSON (slim by default)' },
+          { name: 'full',    type: 'boolean', description: 'Output full raw JSON (requires --json)' },
         ],
         examples: [
           'kb clickup space create --name "Engineering"',
@@ -186,7 +195,8 @@ export const manifest = {
         flags: [
           { name: 'name',  type: 'string',  description: 'New space name' },
           { name: 'color', type: 'string',  description: 'New color (hex)' },
-          { name: 'json',  type: 'boolean', description: 'Output raw JSON' },
+          { name: 'json',  type: 'boolean', description: 'Output JSON (slim by default)' },
+          { name: 'full',  type: 'boolean', description: 'Output full raw JSON (requires --json)' },
         ],
         examples: [
           'kb clickup space update spaceId --name "Backend"',
@@ -215,7 +225,8 @@ export const manifest = {
         flags: [
           { name: 'space', type: 'string',  description: 'Space ID (required)' },
           { name: 'name',  type: 'string',  description: 'Folder name (required)' },
-          { name: 'json',  type: 'boolean', description: 'Output raw JSON' },
+          { name: 'json',  type: 'boolean', description: 'Output JSON (slim by default)' },
+          { name: 'full',  type: 'boolean', description: 'Output full raw JSON (requires --json)' },
         ],
         examples: [
           'kb clickup folder create --space spaceId --name "Q3 Sprint"',
@@ -228,7 +239,8 @@ export const manifest = {
         handler: './commands/folder-update.js#default',
         flags: [
           { name: 'name', type: 'string',  description: 'New folder name (required)' },
-          { name: 'json', type: 'boolean', description: 'Output raw JSON' },
+          { name: 'json', type: 'boolean', description: 'Output JSON (slim by default)' },
+          { name: 'full', type: 'boolean', description: 'Output full raw JSON (requires --json)' },
         ],
         examples: [
           'kb clickup folder update folderId --name "Q4 Sprint"',
@@ -258,7 +270,8 @@ export const manifest = {
           { name: 'folder', type: 'string',  description: 'Folder ID (use instead of --space)' },
           { name: 'space',  type: 'string',  description: 'Space ID for folderless list' },
           { name: 'name',   type: 'string',  description: 'List name (required)' },
-          { name: 'json',   type: 'boolean', description: 'Output raw JSON' },
+          { name: 'json',   type: 'boolean', description: 'Output JSON (slim by default)' },
+          { name: 'full',   type: 'boolean', description: 'Output full raw JSON (requires --json)' },
         ],
         examples: [
           'kb clickup list create --folder folderId --name "Backlog"',
@@ -272,7 +285,8 @@ export const manifest = {
         handler: './commands/list-update.js#default',
         flags: [
           { name: 'name', type: 'string',  description: 'New list name' },
-          { name: 'json', type: 'boolean', description: 'Output raw JSON' },
+          { name: 'json', type: 'boolean', description: 'Output JSON (slim by default)' },
+          { name: 'full', type: 'boolean', description: 'Output full raw JSON (requires --json)' },
         ],
         examples: [
           'kb clickup list update listId --name "Sprint 5"',
@@ -304,7 +318,8 @@ export const manifest = {
           { name: 'limit',    type: 'number',  description: 'Max results', default: 50 },
           { name: 'page',     type: 'number',  description: 'Page number', default: 0 },
           { name: 'closed',   type: 'boolean', description: 'Include closed tasks' },
-          { name: 'json',     type: 'boolean', description: 'Output raw JSON' },
+          { name: 'json',     type: 'boolean', description: 'Output JSON (slim by default)' },
+          { name: 'full',     type: 'boolean', description: 'Output full raw JSON (requires --json)' },
         ],
         examples: [
           'kb clickup list tasks listId123',
@@ -317,7 +332,8 @@ export const manifest = {
         describe: 'List available statuses for a list',
         handler: './commands/list-statuses.js#default',
         flags: [
-          { name: 'json', type: 'boolean', description: 'Output raw JSON' },
+          { name: 'json', type: 'boolean', description: 'Output JSON (slim by default)' },
+          { name: 'full', type: 'boolean', description: 'Output full raw JSON (requires --json)' },
         ],
         examples: [
           'kb clickup list statuses listId123',

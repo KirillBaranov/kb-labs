@@ -19,6 +19,40 @@ overrides:
 importers:
 
   .:
+    dependencies:
+      '@kb-labs/adapters-openai':
+        specifier: ^2.94.0
+        version: 2.94.0(@kb-labs/core-platform@2.94.0)(ws@8.20.0)(zod@3.25.76)
+      '@kb-labs/adapters-pino':
+        specifier: ^2.94.0
+        version: 2.94.0(@kb-labs/core-platform@2.94.0)
+      '@kb-labs/adapters-qdrant':
+        specifier: ^2.94.0
+        version: 2.94.0(@kb-labs/core-platform@2.94.0)(typescript@5.9.3)
+      '@kb-labs/adapters-redis':
+        specifier: ^2.94.0
+        version: 2.94.0(@kb-labs/core-platform@2.94.0)
+      '@kb-labs/adapters-snapshot-localfs':
+        specifier: ^2.94.0
+        version: 2.94.0(@kb-labs/core-platform@2.94.0)
+      '@kb-labs/adapters-sqlite':
+        specifier: ^2.94.0
+        version: 2.94.0(@kb-labs/core-platform@2.94.0)
+      '@kb-labs/adapters-vibeproxy':
+        specifier: ^2.94.0
+        version: 2.94.0(@kb-labs/core-platform@2.94.0)
+      '@kb-labs/adapters-workspace-agent':
+        specifier: ^2.94.0
+        version: 2.94.0(@kb-labs/core-platform@2.94.0)
+      '@kb-labs/adapters-workspace-localfs':
+        specifier: ^2.94.0
+        version: 2.94.0(@kb-labs/core-platform@2.94.0)
+      '@kb-labs/adapters-workspace-worktree':
+        specifier: ^2.94.0
+        version: 2.94.0(@kb-labs/core-platform@2.94.0)
+      commit-entry:
+        specifier: link:kb:kirill/@kb-labs/commit-entry
+        version: link:kb:kirill/@kb-labs/commit-entry
     devDependencies:
       '@kb-labs/devkit':
         specifier: workspace:*
@@ -1408,6 +1442,9 @@ importers:
       '@kb-labs/core-platform':
         specifier: workspace:*
         version: link:../platform
+      '@kb-labs/core-runtime':
+        specifier: workspace:*
+        version: link:../runtime
       '@kb-labs/plugin-contracts':
         specifier: workspace:*
         version: link:../plugin-contracts
@@ -1448,9 +1485,18 @@ importers:
       '@kb-labs/core-contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@kb-labs/core-ipc':
+        specifier: workspace:*
+        version: link:../ipc
       '@kb-labs/core-platform':
         specifier: workspace:*
         version: link:../platform
+      '@kb-labs/core-resource-broker':
+        specifier: workspace:*
+        version: link:../resource-broker
+      '@kb-labs/llm-router':
+        specifier: workspace:*
+        version: link:../llm-router
       '@kb-labs/plugin-contracts':
         specifier: workspace:*
         version: link:../plugin-contracts
@@ -1461,6 +1507,9 @@ importers:
       '@kb-labs/devkit':
         specifier: workspace:*
         version: link:../../infra/devkit
+      '@kb-labs/shared-testing':
+        specifier: workspace:*
+        version: link:../../shared/testing
       '@types/node':
         specifier: ^24.3.3
         version: 24.12.2
@@ -1872,6 +1921,18 @@ importers:
       typescript:
         specifier: ^5.4.0
         version: 5.9.3
+
+  e2e/marketplace-registry:
+    devDependencies:
+      '@kb-labs/e2e-shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@kb-labs/shared-testing-e2e':
+        specifier: workspace:*
+        version: link:../../shared/testing-e2e
+      '@playwright/test':
+        specifier: ^1.51.1
+        version: 1.59.1
 
   e2e/platform:
     devDependencies:
@@ -3459,6 +3520,161 @@ importers:
         specifier: ^3.2.4
         version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
 
+  plugins/marketplace-registry/api:
+    dependencies:
+      '@fastify/multipart':
+        specifier: ^9.0.3
+        version: 9.4.0
+      '@kb-labs/core-platform':
+        specifier: workspace:*
+        version: link:../../../core/platform
+      '@kb-labs/gateway-auth':
+        specifier: workspace:*
+        version: link:../../gateway/auth
+      '@kb-labs/gateway-contracts':
+        specifier: workspace:*
+        version: link:../../gateway/contracts
+      '@kb-labs/marketplace-registry-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@kb-labs/marketplace-registry-core':
+        specifier: workspace:*
+        version: link:../core
+      '@kb-labs/shared-http':
+        specifier: workspace:*
+        version: link:../../../shared/http
+      fastify:
+        specifier: ^5.4.0
+        version: 5.8.5
+    devDependencies:
+      '@kb-labs/devkit':
+        specifier: workspace:*
+        version: link:../../../infra/devkit
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(@swc/core@1.15.24(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.9)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
+
+  plugins/marketplace-registry/app:
+    dependencies:
+      '@kb-labs/core-platform':
+        specifier: workspace:*
+        version: link:../../../core/platform
+      '@kb-labs/core-runtime':
+        specifier: workspace:*
+        version: link:../../../core/runtime
+      '@kb-labs/core-sys':
+        specifier: workspace:*
+        version: link:../../../core/sys
+      '@kb-labs/gateway-auth':
+        specifier: workspace:*
+        version: link:../../gateway/auth
+      '@kb-labs/marketplace-registry-api':
+        specifier: workspace:*
+        version: link:../api
+      '@kb-labs/marketplace-registry-core':
+        specifier: workspace:*
+        version: link:../core
+      '@kb-labs/shared-http':
+        specifier: workspace:*
+        version: link:../../../shared/http
+    devDependencies:
+      '@kb-labs/devkit':
+        specifier: workspace:*
+        version: link:../../../infra/devkit
+      '@types/node':
+        specifier: ^24.3.3
+        version: 24.12.2
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(@swc/core@1.15.24(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.9)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
+      tsx:
+        specifier: ^4.20.5
+        version: 4.21.0
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
+
+  plugins/marketplace-registry/contracts:
+    dependencies:
+      '@kb-labs/core-discovery':
+        specifier: workspace:*
+        version: link:../../../core/discovery
+    devDependencies:
+      '@kb-labs/devkit':
+        specifier: workspace:*
+        version: link:../../../infra/devkit
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(@swc/core@1.15.24(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.9)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
+
+  plugins/marketplace-registry/core:
+    dependencies:
+      '@kb-labs/core-discovery':
+        specifier: workspace:*
+        version: link:../../../core/discovery
+      '@kb-labs/core-platform':
+        specifier: workspace:*
+        version: link:../../../core/platform
+      '@kb-labs/marketplace-registry-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      '@kb-labs/devkit':
+        specifier: workspace:*
+        version: link:../../../infra/devkit
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(@swc/core@1.15.24(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.9)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
+
+  plugins/marketplace-registry/entry:
+    dependencies:
+      '@kb-labs/sdk':
+        specifier: workspace:*
+        version: link:../../../sdk/sdk
+      execa:
+        specifier: ^9.5.3
+        version: 9.6.1
+    devDependencies:
+      '@kb-labs/devkit':
+        specifier: workspace:*
+        version: link:../../../infra/devkit
+      '@kb-labs/shared-testing-e2e':
+        specifier: workspace:*
+        version: link:../../../shared/testing-e2e
+      '@types/node':
+        specifier: ^24.3.3
+        version: 24.12.2
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(@swc/core@1.15.24(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.9)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.46.1)(tsx@4.21.0)(yaml@2.8.3)
+
   plugins/marketplace/api:
     dependencies:
       '@fastify/swagger':
@@ -3572,6 +3788,9 @@ importers:
 
   plugins/marketplace/daemon:
     dependencies:
+      '@kb-labs/core-config':
+        specifier: workspace:*
+        version: link:../../../core/config
       '@kb-labs/core-platform':
         specifier: workspace:*
         version: link:../../../core/platform
@@ -3652,12 +3871,18 @@ importers:
 
   plugins/marketplace/npm:
     dependencies:
+      '@kb-labs/core-discovery':
+        specifier: workspace:*
+        version: link:../../../core/discovery
       '@kb-labs/marketplace-contracts':
         specifier: workspace:*
         version: link:../contracts
       execa:
         specifier: ^9.5.3
         version: 9.6.1
+      tar:
+        specifier: ^7.4.3
+        version: 7.5.15
     devDependencies:
       '@kb-labs/devkit':
         specifier: workspace:*
@@ -5664,6 +5889,9 @@ importers:
 
   shared/cli-ui:
     dependencies:
+      '@kb-labs/plugin-contracts':
+        specifier: workspace:*
+        version: link:../../core/plugin-contracts
       glob:
         specifier: ^11.0.0
         version: 11.1.0
@@ -7387,8 +7615,14 @@ packages:
   '@fastify/ajv-compiler@4.0.5':
     resolution: {integrity: sha512-KoWKW+MhvfTRWL4qrhUwAAZoaChluo0m0vbiJlGMt2GXvL4LVPQEjt8kSpHI3IBq5Rez8fg+XeH3cneztq+C7A==}
 
+  '@fastify/busboy@3.2.0':
+    resolution: {integrity: sha512-m9FVDXU3GT2ITSe0UaMA5rU3QkfC/UXtCU8y0gSN/GugTqtVldOBWIB5V6V3sbmenVZUIpU6f+mPEO2+m5iTaA==}
+
   '@fastify/cors@10.1.0':
     resolution: {integrity: sha512-MZyBCBJtII60CU9Xme/iE4aEy8G7QpzGR8zkdXZkDFt7ElEMachbE61tfhAG/bvSaULlqlf0huMT12T7iqEmdQ==}
+
+  '@fastify/deepmerge@3.2.1':
+    resolution: {integrity: sha512-N5Oqvltoa2r9z1tbx4xjky0oRR60v+T47Ic4J1ukoVQcptLOrIdRnCSdTGmOmajZuHVKlTnfcmrjyqsGEW1ztA==}
 
   '@fastify/error@4.2.0':
     resolution: {integrity: sha512-RSo3sVDXfHskiBZKBPRgnQTtIqpi/7zhJOEmAxCiBcM7d0uwdGdxLlsCaLzGs8v8NnxIRlfG0N51p5yFaOentQ==}
@@ -7404,6 +7638,9 @@ packages:
 
   '@fastify/merge-json-schemas@0.2.1':
     resolution: {integrity: sha512-OA3KGBCy6KtIvLf8DINC5880o5iBlDX4SxzLQS8HorJAbqluzLRn80UXU0bxZn7UOFhFgpRJDasfwn9nG4FG4A==}
+
+  '@fastify/multipart@9.4.0':
+    resolution: {integrity: sha512-Z404bzZeLSXTBmp/trCBuoVFX28pM7rhv849Q5TsbTFZHuk1lc4QjQITTPK92DKVpXmNtJXeHSSc7GYvqFpxAQ==}
 
   '@fastify/proxy-addr@5.1.0':
     resolution: {integrity: sha512-INS+6gh91cLUjB+PVHfu1UqcB76Sqtpyp7bnL+FYojhjygvOPA9ctiD/JDKsyD9Xgu4hUhCSJBPig/w7duNajw==}
@@ -7617,6 +7854,10 @@ packages:
     resolution: {integrity: sha512-AokJm4tuBHillT+FpMtxQ60n8ObyXBatq7jD2/JA9dxbDDokKQm8KMht5ibGzLVU9IJDIKK4TPKgMHEYMn3lMg==}
     engines: {node: '>=18'}
 
+  '@isaacs/fs-minipass@4.0.1':
+    resolution: {integrity: sha512-wgm9Ehl2jpeqP3zw/7mo3kRHFp5MEDhqAdwy1fTGkHAwnkGOVsgpvQhL8B5n1qlb01jV3n/bI0ZfZp5lWA1k4w==}
+    engines: {node: '>=18.0.0'}
+
   '@istanbuljs/schema@0.1.3':
     resolution: {integrity: sha512-ZXRY4jNvVgSVQ8DL3LTcakaAtXwTVUxE81hslsyD2AtoXW/wVob10HkOJ1X/pAlcI7D+2YoZKg5do8G/w6RYgA==}
     engines: {node: '>=8'}
@@ -7759,6 +8000,70 @@ packages:
     engines: {node: '>=10.0'}
     peerDependencies:
       tslib: '2'
+
+  '@kb-labs/adapters-openai@2.94.0':
+    resolution: {integrity: sha512-Wy+A7erDNA+DQW86muzGZ8+k686TGXfj/GOFXS6K/O5HXaS6Hx9RP7ARfqYWJdm5m8a//M3vKjKshml8EX/KmQ==}
+    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
+    peerDependencies:
+      '@kb-labs/core-platform': ^2.94.0
+
+  '@kb-labs/adapters-pino@2.94.0':
+    resolution: {integrity: sha512-AG79DYGCHMvmSIRqoRTHpTitchiT4R3eOQqQc4qw8fqun5N210Qoj4t1NA3ewuSQgmK6PZ+g/MvI4Q4dn7HXWw==}
+    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
+    peerDependencies:
+      '@kb-labs/core-platform': ^2.94.0
+
+  '@kb-labs/adapters-qdrant@2.94.0':
+    resolution: {integrity: sha512-ODLj5Nas+ZwP2FFYt1B8kqrOyQPhkJGK3wpYPD92fpAK/BrHEyj5aHfaCVIbSJ2DchvVqKkWX9oShTliKlN9pA==}
+    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
+    peerDependencies:
+      '@kb-labs/core-platform': ^2.94.0
+
+  '@kb-labs/adapters-redis@2.94.0':
+    resolution: {integrity: sha512-3T8RZ+76uHoILPXYKQPLUzljClq1/dH4mXoKaYqOVfGw1bBM4cmRgw5R/11k1Q06DD/27kr+ojzYdNZ2/SNCYA==}
+    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
+    peerDependencies:
+      '@kb-labs/core-platform': ^2.94.0
+
+  '@kb-labs/adapters-snapshot-localfs@2.94.0':
+    resolution: {integrity: sha512-ZkU6Big0K3G6kBXB9Cb8IttfuIivgpOPFLTLof42BHTq7Pw7erjpTBTDXr+KWYewzjRDuFzwN8dAcUwgYzZflg==}
+    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
+    peerDependencies:
+      '@kb-labs/core-platform': ^2.94.0
+
+  '@kb-labs/adapters-sqlite@2.94.0':
+    resolution: {integrity: sha512-+9yyBrLTb1OW4LIecj9+RQngxdGdcSnCYRg5kvTTI1AIHx+WcgINtXM5ILzY8JXrBtdSQo4Ds3qG1At2RPshUw==}
+    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
+    peerDependencies:
+      '@kb-labs/core-platform': ^2.94.0
+
+  '@kb-labs/adapters-vibeproxy@2.94.0':
+    resolution: {integrity: sha512-v3vo2Ur5zTy6Rti2ysByigGElNhqZtV+oBZ14dR+VbnV2SG9C/InPS59biv4EEvNgWF6kgo7o1A0JVhdRJ8RCA==}
+    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
+    peerDependencies:
+      '@kb-labs/core-platform': ^2.94.0
+
+  '@kb-labs/adapters-workspace-agent@2.94.0':
+    resolution: {integrity: sha512-QeU8sbfI8Vs3ggm5sDQkA7rvgA0H7PAI6FZ2A/SGzMEahp4KnFzwDS/Ar0oM/avdqo0vhppz6Lqeo3mB+s1ZEg==}
+    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
+    peerDependencies:
+      '@kb-labs/core-platform': ^2.94.0
+
+  '@kb-labs/adapters-workspace-localfs@2.94.0':
+    resolution: {integrity: sha512-5mqjfsxND2Xis3BSupIzHde76LqaDs2O3689bjOxp8hbTBxJPq1AiAkPFP1DbSRDXCiEdJmSV4G7M9E1dCya7Q==}
+    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
+    peerDependencies:
+      '@kb-labs/core-platform': ^2.94.0
+
+  '@kb-labs/adapters-workspace-worktree@2.94.0':
+    resolution: {integrity: sha512-id1y9w1H8nh7qlHjkoGOUcRW8YTo0wXD4onwvXcZw9wQsiWc4hiuYhBw8tbXbOeZ3eTZK6WicoEoHBKLjj2sew==}
+    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
+    peerDependencies:
+      '@kb-labs/core-platform': ^2.94.0
+
+  '@kb-labs/core-platform@2.94.0':
+    resolution: {integrity: sha512-zH0q/0jWt/iroLYRo6YZIzGHQizbWWbOfsFYYqpAsMLhEWqR27e1JAPK8AyqwMT/E+tQYzEaO9KvSjN6fDDkOg==}
+    engines: {node: '>=20.0.0', pnpm: '>=9.0.0'}
 
   '@kwsites/file-exists@1.1.1':
     resolution: {integrity: sha512-m9/5YGR18lIwxSFDwfE3oA7bWuq9kdau6ugN4H2rJeyhFQZcG9AgSHkQtSD15a8WvTgfz9aikZMrKPHvbpqFiw==}
@@ -9922,6 +10227,10 @@ packages:
   chownr@1.1.4:
     resolution: {integrity: sha512-jJ0bqzaylmJtVnNgzTeSOs8DPavpbYgEr/b0YL8/2GO3xJEhInFmhKMUnEJQjZumK7KXGFhUy89PrsJWlakBVg==}
 
+  chownr@3.0.0:
+    resolution: {integrity: sha512-+IxzY9BZOQd/XuYPRmrvEVjF/nqj5kgT4kEq7VofrDoM1MxoRjEWkrCC3EtLi59TVawxTAn+orJwFQcrqEN1+g==}
+    engines: {node: '>=18'}
+
   chrome-trace-event@1.0.4:
     resolution: {integrity: sha512-rNjApaLzuwaOTjCiT8lSDdGN1APCiqkChLMJxJPWLunPAt5fy8xgU9/jNOchV84wfIxrA0lRQB7oCT8jrn/wrQ==}
     engines: {node: '>=6.0'}
@@ -12083,6 +12392,10 @@ packages:
     resolution: {integrity: sha512-tEBHqDnIoM/1rXME1zgka9g6Q2lcoCkxHLuc7ODJ5BxbP5d4c2Z5cGgtXAku59200Cx7diuHTOYfSBD8n6mm8A==}
     engines: {node: '>=16 || 14 >=14.17'}
 
+  minizlib@3.1.0:
+    resolution: {integrity: sha512-KZxYo1BUkWD2TVFLr0MQoM8vUUigWD3LlD83a/75BqC+4qE0Hb1Vo5v1FgcfaNXvfXzr+5EhQ6ing/CaBijTlw==}
+    engines: {node: '>= 18'}
+
   mkdirp-classic@0.5.3:
     resolution: {integrity: sha512-gKLcREMhtuZRwRAfqP3RFW+TK4JqApVBtOIftVgjuABpAtpxhPGaDcfvbhNvD0B8iD1oUr/txX35NjcaY6Ns/A==}
 
@@ -13764,6 +14077,10 @@ packages:
     resolution: {integrity: sha512-ujeqbceABgwMZxEJnk2HDY2DlnUZ+9oEcb1KzTVfYHio0UE6dG71n60d8D2I4qNvleWrrXpmjpt7vZeF1LnMZQ==}
     engines: {node: '>=6'}
 
+  tar@7.5.15:
+    resolution: {integrity: sha512-dzGK0boVlC4W5QFuQN1EFSl3bIDYsk7Tj40U6eIBnK2k/8ml7TZ5agbI5j5+qnoVcAA+rNtBml8SEiLxZpNqRQ==}
+    engines: {node: '>=18'}
+
   tdigest@0.1.2:
     resolution: {integrity: sha512-+G0LLgjjo9BZX2MfdvPfH+MKLCrxlXSYec5DaPYP1fe6Iyhf0/fSmJ0bFiZ1F8BT6cGXl2LpltQptzjXKWEkKA==}
 
@@ -14490,6 +14807,10 @@ packages:
 
   yallist@4.0.0:
     resolution: {integrity: sha512-3wdGidZyq5PB084XLES5TpOSRA3wjXAlIWMhum2kRcv/41Sn2emQ0dycQW4uZXLejwKvg6EsvbdlVL+FYEct7A==}
+
+  yallist@5.0.0:
+    resolution: {integrity: sha512-YgvUTfwqyc7UXVMrB+SImsVYSmTS8X/tSrtdNZMImM+n7+QTriRXyXim0mBrTXNeqzVF0KWGgHPeiyViFFrNDw==}
+    engines: {node: '>=18'}
 
   yaml@2.8.3:
     resolution: {integrity: sha512-AvbaCLOO2Otw/lW5bmh9d/WEdcDFdQp2Z2ZUH3pX9U2ihyUY0nvLv7J6TrWowklRGPYbB/IuIMfYgxaCPg5Bpg==}
@@ -15240,10 +15561,14 @@ snapshots:
       ajv-formats: 3.0.1(ajv@8.18.0)
       fast-uri: 3.1.0
 
+  '@fastify/busboy@3.2.0': {}
+
   '@fastify/cors@10.1.0':
     dependencies:
       fastify-plugin: 5.1.0
       mnemonist: 0.40.0
+
+  '@fastify/deepmerge@3.2.1': {}
 
   '@fastify/error@4.2.0': {}
 
@@ -15266,6 +15591,14 @@ snapshots:
   '@fastify/merge-json-schemas@0.2.1':
     dependencies:
       dequal: 2.0.3
+
+  '@fastify/multipart@9.4.0':
+    dependencies:
+      '@fastify/busboy': 3.2.0
+      '@fastify/deepmerge': 3.2.1
+      '@fastify/error': 4.2.0
+      fastify-plugin: 5.1.0
+      secure-json-parse: 4.1.0
 
   '@fastify/proxy-addr@5.1.0':
     dependencies:
@@ -15479,6 +15812,10 @@ snapshots:
 
   '@isaacs/cliui@9.0.0': {}
 
+  '@isaacs/fs-minipass@4.0.1':
+    dependencies:
+      minipass: 7.1.3
+
   '@istanbuljs/schema@0.1.3': {}
 
   '@jridgewell/gen-mapping@0.3.13':
@@ -15631,6 +15968,63 @@ snapshots:
       '@jsonjoy.com/buffers': 17.67.0(tslib@2.8.1)
       '@jsonjoy.com/codegen': 17.67.0(tslib@2.8.1)
       tslib: 2.8.1
+
+  '@kb-labs/adapters-openai@2.94.0(@kb-labs/core-platform@2.94.0)(ws@8.20.0)(zod@3.25.76)':
+    dependencies:
+      '@kb-labs/core-platform': 2.94.0
+      openai: 4.104.0(ws@8.20.0)(zod@3.25.76)
+    transitivePeerDependencies:
+      - encoding
+      - ws
+      - zod
+
+  '@kb-labs/adapters-pino@2.94.0(@kb-labs/core-platform@2.94.0)':
+    dependencies:
+      '@kb-labs/core-platform': 2.94.0
+      pino: 9.14.0
+
+  '@kb-labs/adapters-qdrant@2.94.0(@kb-labs/core-platform@2.94.0)(typescript@5.9.3)':
+    dependencies:
+      '@kb-labs/core-platform': 2.94.0
+      '@qdrant/js-client-rest': 1.17.0(typescript@5.9.3)
+    transitivePeerDependencies:
+      - typescript
+
+  '@kb-labs/adapters-redis@2.94.0(@kb-labs/core-platform@2.94.0)':
+    dependencies:
+      '@kb-labs/core-platform': 2.94.0
+      ioredis: 5.10.1
+    transitivePeerDependencies:
+      - supports-color
+
+  '@kb-labs/adapters-snapshot-localfs@2.94.0(@kb-labs/core-platform@2.94.0)':
+    dependencies:
+      '@kb-labs/core-platform': 2.94.0
+
+  '@kb-labs/adapters-sqlite@2.94.0(@kb-labs/core-platform@2.94.0)':
+    dependencies:
+      '@kb-labs/core-platform': 2.94.0
+      better-sqlite3: 11.10.0
+
+  '@kb-labs/adapters-vibeproxy@2.94.0(@kb-labs/core-platform@2.94.0)':
+    dependencies:
+      '@kb-labs/core-platform': 2.94.0
+
+  '@kb-labs/adapters-workspace-agent@2.94.0(@kb-labs/core-platform@2.94.0)':
+    dependencies:
+      '@kb-labs/core-platform': 2.94.0
+
+  '@kb-labs/adapters-workspace-localfs@2.94.0(@kb-labs/core-platform@2.94.0)':
+    dependencies:
+      '@kb-labs/core-platform': 2.94.0
+
+  '@kb-labs/adapters-workspace-worktree@2.94.0(@kb-labs/core-platform@2.94.0)':
+    dependencies:
+      '@kb-labs/core-platform': 2.94.0
+
+  '@kb-labs/core-platform@2.94.0':
+    dependencies:
+      ulid: 2.4.0
 
   '@kwsites/file-exists@1.1.1':
     dependencies:
@@ -17954,6 +18348,8 @@ snapshots:
       readdirp: 4.1.2
 
   chownr@1.1.4: {}
+
+  chownr@3.0.0: {}
 
   chrome-trace-event@1.0.4: {}
 
@@ -20637,6 +21033,10 @@ snapshots:
 
   minipass@7.1.3: {}
 
+  minizlib@3.1.0:
+    dependencies:
+      minipass: 7.1.3
+
   mkdirp-classic@0.5.3: {}
 
   ml-array-max@1.2.4:
@@ -22695,6 +23095,14 @@ snapshots:
       inherits: 2.0.4
       readable-stream: 3.6.2
 
+  tar@7.5.15:
+    dependencies:
+      '@isaacs/fs-minipass': 4.0.1
+      chownr: 3.0.0
+      minipass: 7.1.3
+      minizlib: 3.1.0
+      yallist: 5.0.0
+
   tdigest@0.1.2:
     dependencies:
       bintrees: 1.0.2
@@ -23489,6 +23897,8 @@ snapshots:
   yallist@3.1.1: {}
 
   yallist@4.0.0: {}
+
+  yallist@5.0.0: {}
 
   yaml@2.8.3: {}
 

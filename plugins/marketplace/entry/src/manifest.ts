@@ -27,10 +27,10 @@ export const manifest = {
     ],
     commands: [
       // Top-level: kb marketplace <cmd>
-      { path: 'marketplace install',   describe: 'Install package(s)',           handler: './commands/install.js#default' },
-      { path: 'marketplace uninstall', describe: 'Uninstall package(s)',         handler: './commands/uninstall.js#default' },
-      { path: 'marketplace update',    describe: 'Update package(s)',            handler: './commands/update.js#default' },
-      { path: 'marketplace sync',      describe: 'Sync workspace to lock',       handler: './commands/sync.js#default' },
+      { path: 'marketplace install',   describe: 'Install package(s)',                           handler: './commands/install.js#default' },
+      { path: 'marketplace uninstall', describe: 'Uninstall package(s)',                         handler: './commands/uninstall.js#default' },
+      { path: 'marketplace update',    describe: 'Update package(s)',                            handler: './commands/update.js#default' },
+      { path: 'marketplace sync',      describe: 'Sync workspace to lock',                       handler: './commands/sync.js#default' },
       // Subgroup: kb marketplace plugins <cmd>
       { path: 'marketplace plugins list',    describe: 'List installed plugins',    handler: './commands/plugins/list.js#default' },
       { path: 'marketplace plugins enable',  describe: 'Enable a plugin',          handler: './commands/plugins/enable.js#default' },

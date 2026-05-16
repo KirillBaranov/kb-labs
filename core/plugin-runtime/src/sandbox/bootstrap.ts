@@ -6,9 +6,9 @@
  */
 
 import type { ParentMessage, ChildMessage, ExecuteMessage, LogMessage } from './ipc-protocol.js';
-import type { UIFacade, MessageOptions } from '@kb-labs/plugin-contracts';
+import type { UIFacade } from '@kb-labs/plugin-contracts';
 import { PluginError, wrapError, noopUI } from '@kb-labs/plugin-contracts';
-import { sideBorderBox, safeColors, safeSymbols, formatTable, setJsonMode, metricsList } from '@kb-labs/shared-cli-ui';
+import { createBaseStdoutUI, NOOP_PROMPTS, setJsonMode } from '@kb-labs/shared-cli-ui';
 import { createPluginContextV3 } from '../context/index.js';
 import { executeCleanup, type EventEmitterFn } from '../api/index.js';
 import { applySandboxPatches, type SandboxMode } from './harden.js';
@@ -32,134 +32,6 @@ import { setGlobalContext, clearGlobalContext } from './context-holder.js';
 // - platformReady Promise (no longer needed)
 import { connectToPlatform } from './platform-client.js';
 
-// Create simple stdout UI with MessageOptions support
-function createStdoutUI(): UIFacade {
-  return {
-    // Colors API from shared-cli-ui
-    colors: safeColors,
-
-    // Symbols API from shared-cli-ui
-    symbols: safeSymbols,
-
-    // Write text with newline
-    write: (text: string) => {
-      process.stdout.write(text + '\n');
-    },
-
-    info: (msg: string, options?: MessageOptions) => {
-      const boxOutput = sideBorderBox({
-        title: options?.title || 'Info',
-        sections: options?.sections || [{ items: [msg] }],
-        status: 'info',
-        timing: options?.timing,
-      });
-      console.log(boxOutput);
-    },
-    success: (msg: string, options?: MessageOptions) => {
-      const boxOutput = sideBorderBox({
-        title: options?.title || 'Success',
-        sections: options?.sections || [{ items: [msg] }],
-        status: 'success',
-        timing: options?.timing,
-      });
-      console.log(boxOutput);
-    },
-    warn: (msg: string, options?: MessageOptions) => {
-      const boxOutput = sideBorderBox({
-        title: options?.title || 'Warning',
-        sections: options?.sections || [{ items: [msg] }],
-        status: 'warning',
-        timing: options?.timing,
-      });
-      console.log(boxOutput);
-    },
-    error: (err: Error | string, options?: MessageOptions) => {
-      const message = err instanceof Error ? err.message : err;
-      const sections: Array<{ header?: string; items: Array<string | { text: string; dim?: boolean }> }> = [];
-      if (options?.sections && options.sections.length > 0) {
-        sections.push(...options.sections.map(s => ({ header: s.header, items: s.items })));
-      } else {
-        sections.push({ items: [message] });
-      }
-      if (options?.cause) {
-        sections.push({ header: 'Cause', items: [{ text: options.cause, dim: true }] });
-      }
-      if (options?.hint) {
-        const hintItems: Array<string | { text: string; dim: boolean }> = [options.hint];
-        if (options.command) { hintItems.push({ text: `$ ${options.command}`, dim: true }); }
-        sections.push({ header: 'Hint', items: hintItems });
-      } else if (options?.command) {
-        sections.push({ header: 'Hint', items: [{ text: `$ ${options.command}`, dim: true }] });
-      }
-      const boxOutput = sideBorderBox({ title: options?.title || 'Error', sections, status: 'error', timing: options?.timing });
-      console.error(boxOutput);
-    },
-    debug: (msg: string) => {
-      if (process.env.DEBUG) {console.debug(msg);}
-    },
-    spinner: (msg) => {
-      console.log(`${safeColors.primary('◆')} ${msg}`);
-      return {
-        update: (m) => console.log(`${safeColors.primary('◆')} ${m}`),
-        succeed: (m) => console.log(`${safeColors.success('✓')} ${m ?? msg}`),
-        fail: (m) => console.log(`${safeColors.error('✗')} ${m ?? msg}`),
-        stop: () => {},
-      };
-    },
-    table: (data, columns) => {
-      if (data.length === 0) { return; }
-      const cols = columns ?? Object.keys(data[0]!).map(k => ({ header: k, key: k }));
-      const rows = data.map(row => cols.map(col => String(row[col.key] ?? '')));
-      const lines = formatTable(
-        cols.map(c => ({ header: c.header, align: (c as { align?: 'left' | 'center' | 'right' }).align })),
-        rows,
-        { separator: '' },
-      );
-      for (const line of lines) { console.log(`  ${line}`); }
-    },
-    json: (data) => console.log(JSON.stringify(data, null, 2)),
-    newline: () => console.log(),
-    divider: () => console.log(safeColors.muted('─'.repeat(process.stdout.columns || 80))),
-    box: (content, title) => {
-      const boxOutput = sideBorderBox({
-        title: title || '',
-        sections: [{ items: content.split('\n') }],
-        status: 'info',
-      });
-      console.log(boxOutput);
-    },
-    sideBox: (options) => {
-      const allSections = [];
-      if (options.summary && Object.keys(options.summary).length > 0) {
-        allSections.push({ items: metricsList(options.summary as Record<string, string | number>) });
-      }
-      allSections.push(...(options.sections ?? []).map(s => ({ header: s.header, items: s.items })));
-      const boxOutput = sideBorderBox({
-        title: options.title,
-        sections: allSections,
-        status: options.status,
-        timing: options.timing,
-      });
-      console.log(boxOutput);
-    },
-    chain: (items) => {
-      for (const item of items) {
-        const boxOutput = sideBorderBox({
-          title: item.title,
-          sections: (item.sections ?? []).map(s => ({ header: s.header, items: s.items })),
-          status: item.status,
-          timing: item.timing,
-        });
-        console.log(boxOutput);
-      }
-    },
-    confirm: async (_msg, opts) => opts?.defaultValue ?? false,
-    prompt: async (_msg, opts) => opts?.default ?? '',
-    select: async (_msg, choices) => choices[0]?.value as never,
-    multiSelect: async (_msg, choices) => choices.filter((c) => c.checked).map((c) => c.value) as never,
-    log: () => {},
-  };
-}
 
 // Abort controller for cancellation
 const abortController = new AbortController();
@@ -195,7 +67,7 @@ process.on('message', async (msg: ParentMessage) => {
   if (jsonMode) {setJsonMode(true);}
 
   // Create stdout UI (plain text output)
-  let ui: UIFacade = createStdoutUI();
+  let ui: UIFacade = createBaseStdoutUI(NOOP_PROMPTS, () => {});
   if (jsonMode) {
     ui = {
       ...noopUI,

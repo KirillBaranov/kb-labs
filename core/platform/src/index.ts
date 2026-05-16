@@ -29,6 +29,8 @@ export type {
   AdapterExtension,
   AdapterCapabilities,
   AdapterFactory,
+  AdapterMiddlewareDecl,
+  RawMiddlewareDecl,
 } from './adapters/adapter-manifest.js';
 
 export type { IAnalytics } from './adapters/analytics.js';

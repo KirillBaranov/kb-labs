@@ -360,7 +360,7 @@ export async function createServer(
     registerAggregatedDocsRoutes(scope as unknown as Parameters<typeof registerAggregatedDocsRoutes>[0], config, cache);
 
 
-    registerInternalRoutes(scope as unknown as Parameters<typeof registerInternalRoutes>[0], process.env.GATEWAY_INTERNAL_SECRET, hostRegistry);
+    registerInternalRoutes(scope as unknown as Parameters<typeof registerInternalRoutes>[0], process.env.GATEWAY_INTERNAL_SECRET, hostRegistry, cache);
   });
 
   // ── Gateway WebSocket endpoints ────────────────────────────────────

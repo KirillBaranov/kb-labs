@@ -46,7 +46,7 @@ describe('clickup:list.statuses', () => {
     expect(vi.mocked(getListStatuses)).toHaveBeenCalledWith('test-api-key', 'list-1');
   });
 
-  it('LS-02: --json outputs statuses array', async () => {
+  it('LS-02: --json outputs slim statuses array', async () => {
     vi.mocked(getListStatuses).mockResolvedValue(mockStatuses);
 
     const { ui, captured } = createCapturedUI();
@@ -58,7 +58,26 @@ describe('clickup:list.statuses', () => {
 
     expect(result.exitCode).toBe(0);
     expect(Array.isArray(captured.json[0])).toBe(true);
-    expect((captured.json[0] as typeof mockStatuses)[0]).toMatchObject({ status: 'open' });
+    const slim = (captured.json[0] as Array<Record<string, unknown>>)[0];
+    expect(slim).toMatchObject({ status: 'open', type: 'open', color: '#000000' });
+    expect(slim).not.toHaveProperty('id');
+    expect(slim).not.toHaveProperty('orderindex');
+  });
+
+  it('LS-02b: --json --full outputs raw statuses array', async () => {
+    vi.mocked(getListStatuses).mockResolvedValue(mockStatuses);
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await listStatusesCommand.execute(
+      ctx,
+      mockCLIInput({ argv: ['list-1'], flags: { json: true, full: true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    const raw = (captured.json[0] as typeof mockStatuses)[0];
+    expect(raw.id).toBeDefined();
+    expect(raw.orderindex).toBeDefined();
   });
 
   it('LS-03: missing listId argv — exitCode 1, error shown', async () => {

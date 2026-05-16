@@ -72,6 +72,7 @@ export {
   SQLDatabaseProxy,
   DocumentDatabaseProxy,
   ConfigProxy,
+  EventBusProxy,
   createProxyPlatform,
   type CreateProxyPlatformOptions,
 } from './proxy/index';

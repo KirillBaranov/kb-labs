@@ -50,7 +50,7 @@ describe('clickup:list.update', () => {
     expect(vi.mocked(updateList)).toHaveBeenCalledWith('test-api-key', 'list-1', { name: 'Updated List' });
   });
 
-  it('LU-02: --json outputs updated list', async () => {
+  it('LU-02: --json outputs slim updated list', async () => {
     vi.mocked(updateList).mockResolvedValue(mockUpdatedList);
 
     const { ui, captured } = createCapturedUI();
@@ -62,6 +62,23 @@ describe('clickup:list.update', () => {
 
     expect(result.exitCode).toBe(0);
     expect(captured.json[0]).toMatchObject({ id: 'list-1', name: 'Updated List' });
+    expect(Object.keys(captured.json[0] as object)).toEqual(['id', 'name']);
+  });
+
+  it('LU-02b: --json --full outputs raw updated list', async () => {
+    vi.mocked(updateList).mockResolvedValue(mockUpdatedList);
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await listUpdateCommand.execute(
+      ctx,
+      mockCLIInput({ argv: ['list-1'], flags: { name: 'Updated List', json: true, full: true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    const raw = captured.json[0] as typeof mockUpdatedList;
+    expect(raw.orderindex).toBeDefined();
+    expect(raw.taskCount).toBeDefined();
   });
 
   it('LU-03: missing listId argv — exitCode 1, error shown', async () => {

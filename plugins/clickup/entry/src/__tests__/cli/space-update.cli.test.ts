@@ -50,7 +50,7 @@ describe('clickup:space.update', () => {
     expect(vi.mocked(updateSpace)).toHaveBeenCalledWith('test-api-key', 'space-1', expect.any(Object));
   });
 
-  it('SU-02: --json outputs updated space', async () => {
+  it('SU-02: --json outputs slim updated space', async () => {
     vi.mocked(updateSpace).mockResolvedValue(mockUpdatedSpace);
 
     const { ui, captured } = createCapturedUI();
@@ -62,6 +62,23 @@ describe('clickup:space.update', () => {
 
     expect(result.exitCode).toBe(0);
     expect(captured.json[0]).toMatchObject({ id: 'space-1', name: 'Updated Space' });
+    expect(Object.keys(captured.json[0] as object)).toEqual(['id', 'name']);
+  });
+
+  it('SU-02b: --json --full outputs raw updated space', async () => {
+    vi.mocked(updateSpace).mockResolvedValue(mockUpdatedSpace);
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await spaceUpdateCommand.execute(
+      ctx,
+      mockCLIInput({ argv: ['space-1'], flags: { name: 'Updated Space', json: true, full: true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    const raw = captured.json[0] as typeof mockUpdatedSpace;
+    expect(raw.folders).toBeDefined();
+    expect(raw.statuses).toBeDefined();
   });
 
   it('SU-03: missing spaceId argv — exitCode 1, error shown', async () => {

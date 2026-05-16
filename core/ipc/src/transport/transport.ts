@@ -77,26 +77,22 @@ export interface ITransport {
    * @throws TransportError if communication fails
    * @throws TimeoutError if timeout exceeded
    * @throws SerializationError if message cannot be serialized
-   *
-   * @example
-   * ```typescript
-   * const call: AdapterCall = {
-   *   type: 'adapter:call',
-   *   requestId: 'uuid-123',
-   *   adapter: 'vectorStore',
-   *   method: 'search',
-   *   args: [[0.1, 0.2, 0.3], 10],
-   *   timeout: 5000,
-   * };
-   *
-   * const response = await transport.send(call);
-   * if (response.error) {
-   *   throw deserialize(response.error);
-   * }
-   * return deserialize(response.result);
-   * ```
    */
   send(call: AdapterCall): Promise<AdapterResponse>;
+
+  /**
+   * Send a fire-and-forget message (no response expected).
+   * Used for EventBus subscribe/unsubscribe control messages.
+   */
+  sendMessage(msg: unknown): void;
+
+  /**
+   * Register a handler for push messages received from the parent (Parent → Child).
+   * Used by EventBusProxy to receive event bus events.
+   *
+   * @returns Unsubscribe function
+   */
+  onPushMessage(handler: (msg: unknown) => void): () => void;
 
   /**
    * Close transport and cleanup resources.
@@ -105,13 +101,6 @@ export interface ITransport {
    * - No new calls can be sent
    * - Pending calls are rejected with TransportError
    * - Listeners/connections are cleaned up
-   *
-   * @example
-   * ```typescript
-   * await transport.close();
-   * // All pending calls rejected
-   * // transport.send() will throw TransportError
-   * ```
    */
   close(): Promise<void>;
 

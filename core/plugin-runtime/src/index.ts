@@ -69,6 +69,10 @@ export {
 
 // Platform governance
 export { createGovernedPlatformServices } from './platform/governed.js';
+export { resolveAdapterMiddlewares } from './platform/middleware-loader.js';
+export type { RawMiddlewareDecl } from './platform/middleware-loader.js';
+export type { LoadedMiddleware, PlatformConfig } from './platform/pipeline.js';
+export { assemblePlatform } from './platform/pipeline.js';
 
 // Host Wrappers
 export {

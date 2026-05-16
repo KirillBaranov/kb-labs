@@ -157,7 +157,7 @@ export default defineCommand({
           artifacts: artifacts.map(a => ({ name: a.name, path: a.path, size: a.size ?? 0 })),
         });
       } else {
-        ctx.ui.sideBox({
+        ctx.ui?.sideBox?.({
           title: 'Changelog Generated',
           sections: buildChangelogSections(plan, format, artifacts),
           status: 'success',

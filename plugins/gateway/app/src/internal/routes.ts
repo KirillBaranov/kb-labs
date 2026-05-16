@@ -10,11 +10,13 @@
 import type { FastifyInstance } from 'fastify';
 import { globalDispatcher } from '../hosts/dispatcher.js';
 import type { HostRegistry } from '../hosts/registry.js';
+import { getClientByHandle } from '@kb-labs/gateway-auth';
 
 export function registerInternalRoutes(
   scope: FastifyInstance,
   internalSecret: string | undefined,
   hostRegistry: HostRegistry,
+  cache?: import('@kb-labs/core-platform').ICache,
 ): void {
   scope.post('/internal/dispatch', async (request, reply) => {
     const provided = request.headers['x-internal-secret'];
@@ -60,6 +62,22 @@ export function registerInternalRoutes(
       }
       return reply.code(502).send({ error: message });
     }
+  });
+
+  scope.get('/internal/auth/handle/:handle', async (request, reply) => {
+    const provided = request.headers['x-internal-secret'];
+    if (!internalSecret || provided !== internalSecret) {
+      return reply.code(403).send({ error: 'Forbidden' });
+    }
+    if (!cache) {
+      return reply.code(503).send({ error: 'Cache not available' });
+    }
+    const { handle } = request.params as { handle: string };
+    const record = await getClientByHandle(cache, handle);
+    if (!record) {
+      return reply.code(404).send({ error: 'Handle not found' });
+    }
+    return { namespaceId: record.namespaceId, name: record.name, handle: record.handle };
   });
 
   scope.post('/internal/resolve-host', async (request, reply) => {

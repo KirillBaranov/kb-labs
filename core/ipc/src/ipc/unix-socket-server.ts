@@ -80,6 +80,8 @@ export class UnixSocketServer {
    * Start listening for connections.
    */
   async start(): Promise<void> {
+    BulkTransferHelper.registerSignalHandlers();
+
     // Remove existing socket file if exists
     if (fs.existsSync(this.socketPath)) {
       fs.unlinkSync(this.socketPath);

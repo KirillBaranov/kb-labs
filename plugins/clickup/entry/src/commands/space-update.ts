@@ -6,6 +6,7 @@ type SpaceUpdateFlags = {
   name?: string;
   color?: string;
   json?: boolean;
+  full?: boolean;
 };
 
 export default defineCommand({
@@ -20,13 +21,13 @@ export default defineCommand({
         return { exitCode: 1, result: null };
       }
 
-      const { name, color, json } = input.flags;
+      const { name, color, json, full } = input.flags;
 
       try {
         const space = await updateSpace(requireApiKey(), spaceId, { name, color });
 
         if (json) {
-          ctx.ui?.json?.(space);
+          ctx.ui?.json?.(full ? space : { id: space.id, name: space.name });
         } else {
           ctx.ui?.success?.('Space updated', {
             sections: [{ items: [`id: ${space.id}`, `name: ${space.name}`] }],

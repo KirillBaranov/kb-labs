@@ -6,6 +6,7 @@
  */
 
 import type { ExecutionRequest, ExecutionResult } from '../../types.js';
+import type { RawMiddlewareDecl } from '@kb-labs/plugin-runtime';
 
 // ============================================================================
 // Worker Pool Configuration
@@ -122,16 +123,17 @@ export interface WorkerInfo {
  * Message types for IPC between pool and workers.
  */
 export type WorkerMessageType =
-  | 'execute'        // Pool -> Worker: execute request
-  | 'result'         // Worker -> Pool: execution result
-  | 'error'          // Worker -> Pool: execution error
-  | 'log'            // Worker -> Pool: ui/shell log entry (log.line events)
-  | 'loggerLog'      // Worker -> Pool: ctx.logger.* log entry (logger.line events). See ADR-0019.
-  | 'health'         // Pool -> Worker: health check request
-  | 'healthOk'       // Worker -> Pool: health check response
-  | 'shutdown'       // Pool -> Worker: graceful shutdown
-  | 'ready'          // Worker -> Pool: worker is ready
-  | 'uiPrompt'       // Worker -> Pool: request interactive prompt from host TTY
+  | 'execute'         // Pool -> Worker: execute request
+  | 'result'          // Worker -> Pool: execution result
+  | 'error'           // Worker -> Pool: execution error
+  | 'log'             // Worker -> Pool: ui/shell log entry (log.line events)
+  | 'loggerLog'       // Worker -> Pool: ctx.logger.* log entry (logger.line events). See ADR-0019.
+  | 'health'          // Pool -> Worker: health check request
+  | 'healthOk'        // Worker -> Pool: health check response
+  | 'shutdown'        // Pool -> Worker: graceful shutdown
+  | 'ready'           // Worker -> Pool: worker is ready
+  | 'middlewares'     // Pool -> Worker: adapter middleware declarations (sent once after ready)
+  | 'uiPrompt'        // Worker -> Pool: request interactive prompt from host TTY
   | 'uiPromptResult'; // Pool -> Worker: result of interactive prompt
 
 /**
@@ -268,6 +270,15 @@ export interface UIPromptResultMessage extends BaseWorkerMessage {
 }
 
 /**
+ * Adapter middleware declarations (Pool -> Worker).
+ * Sent once after worker signals ready; worker resolves and caches LoadedMiddleware[].
+ */
+export interface MiddlewaresInitMessage extends BaseWorkerMessage {
+  type: 'middlewares';
+  decls: RawMiddlewareDecl[];
+}
+
+/**
  * All message types union.
  */
 export type WorkerMessage =
@@ -280,6 +291,7 @@ export type WorkerMessage =
   | HealthOkMessage
   | ShutdownMessage
   | ReadyMessage
+  | MiddlewaresInitMessage
   | UIPromptMessage
   | UIPromptResultMessage;
 

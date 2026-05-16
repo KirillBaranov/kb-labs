@@ -36,7 +36,7 @@ export default defineCommand({
       const changeId = flags['change-id'] ?? flags.changeId;
       if (!changeId) {
         const err = { success: false, error: 'Missing required --change-id flag' };
-        ctx.ui.write(JSON.stringify(err, null, 2) + '\n');
+        ctx.ui?.json?.(err);
         return { exitCode: 1, response: err };
       }
 
@@ -64,7 +64,7 @@ export default defineCommand({
 
         if (!snapshot) {
           const err = { success: false, error: `Change not found: ${changeId}` };
-          ctx.ui.write(JSON.stringify(err, null, 2) + '\n');
+          ctx.ui?.json?.(err);
           return { exitCode: 1, response: err };
         }
 
@@ -82,7 +82,7 @@ export default defineCommand({
         };
 
         if (flags.json) {
-          ctx.ui.write(JSON.stringify(response, null, 2) + '\n');
+          ctx.ui?.json?.(response);
         } else {
           printDiff(ctx, snapshot, diff);
         }
@@ -94,7 +94,7 @@ export default defineCommand({
           success: false,
           error: err instanceof Error ? err.message : String(err),
         };
-        ctx.ui.write(JSON.stringify(errResponse, null, 2) + '\n');
+        ctx.ui?.json?.(errResponse);
         return { exitCode: 1, response: errResponse };
       }
     },

@@ -608,6 +608,12 @@
         "url": "http://localhost:5050",
         "prefix": "/plugins",
         "description": "Plugin widget bundles — served by REST API"
+      },
+      "marketplace-registry": {
+        "url": "http://localhost:5071",
+        "prefix": "/api/v1/registry",
+        "rewritePrefix": "/api/v1",
+        "description": "Marketplace Registry — publish, share, install kb:handle/name packages"
       }
     },
     "staticTokens": {
@@ -677,6 +683,10 @@
         "plugins/*/core",
         "adapters/*"
       ]
+    },
+    "registry": {
+      "url": "http://localhost:5071",
+      "comment": "Set KB_REGISTRY_TOKEN env var (gateway JWT) for publish auth. For prod: https://registry.kblabs.ru"
     }
   },
   "qa": {

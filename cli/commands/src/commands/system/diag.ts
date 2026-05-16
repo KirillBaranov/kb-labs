@@ -249,7 +249,7 @@ export const diag = defineSystemCommand<DiagFlags, DiagResult>({
   formatter(result, ctx, flags) {
     // Auto-handle JSON mode
     if (flags.json) {
-      console.log(JSON.stringify(result, null, 2));
+      ctx.ui?.json?.(result);
     } else {
       // Build UI from result data
       const hasErrors = result.summary.errors > 0;

@@ -59,6 +59,7 @@ import { selectTimeout } from './timeout-config';
  */
 export class IPCTransport implements ITransport {
   private pending = new Map<string, PendingRequest>();
+  private pushHandlers = new Set<(msg: unknown) => void>();
   private messageHandler: (msg: unknown) => void;
   private closed = false;
 
@@ -155,25 +156,31 @@ export class IPCTransport implements ITransport {
     }
   }
 
+  sendMessage(msg: unknown): void {
+    if (!this.closed && process.send) {
+      process.send(msg);
+    }
+  }
+
+  onPushMessage(handler: (msg: unknown) => void): () => void {
+    this.pushHandlers.add(handler);
+    return () => { this.pushHandlers.delete(handler); };
+  }
+
   private handleMessage(msg: unknown) {
-    // Ignore non-response messages
-    if (!isAdapterResponse(msg)) {
+    if (isAdapterResponse(msg)) {
+      const pending = this.pending.get(msg.requestId);
+      if (!pending) return;
+      clearTimeout(pending.timer);
+      this.pending.delete(msg.requestId);
+      pending.resolve(msg);
       return;
     }
 
-    // Find pending request
-    const pending = this.pending.get(msg.requestId);
-    if (!pending) {
-      // Response for unknown request (may have timed out)
-      return;
+    // Dispatch non-response messages (e.g. eventbus:push) to registered handlers
+    for (const handler of this.pushHandlers) {
+      handler(msg);
     }
-
-    // Clear timeout and remove from pending
-    clearTimeout(pending.timer);
-    this.pending.delete(msg.requestId);
-
-    // Resolve with response (caller will check for error field)
-    pending.resolve(msg);
   }
 
   async close(): Promise<void> {
@@ -192,6 +199,7 @@ export class IPCTransport implements ITransport {
       pending.reject(new TransportError('Transport closed'));
     }
     this.pending.clear();
+    this.pushHandlers.clear();
   }
 
   isClosed(): boolean {

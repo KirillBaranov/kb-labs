@@ -50,7 +50,9 @@ import type {
 import type { PlatformServices, UIFacade } from '@kb-labs/plugin-contracts';
 import type { ILogger, IWorkspaceProvider, WorkspaceDescriptor } from '@kb-labs/core-platform';
 import { noopUI } from '@kb-labs/plugin-contracts';
-import { runInProcess } from '@kb-labs/plugin-runtime';
+import { runInProcess, resolveAdapterMiddlewares } from '@kb-labs/plugin-runtime';
+import type { LoadedMiddleware, RawMiddlewareDecl } from '@kb-labs/plugin-runtime';
+import type { PlatformContainer } from '@kb-labs/core-runtime';
 import { localWorkspaceManager } from '../workspace/local.js';
 import type { WorkspaceLease } from '../workspace/types.js';
 import { normalizeError } from '../utils.js';
@@ -91,12 +93,25 @@ export class InProcessBackend implements ExecutionBackend {
   private startTime = Date.now();
   private readonly platform: PlatformServices;
   private readonly uiProvider: (hostType: HostType) => UIFacade;
+  private _middlewaresCache: LoadedMiddleware[] | null = null;
   private readonly pluginInvoker?: PluginInvokerFn;
 
   constructor(options: InProcessBackendOptions) {
     this.platform = options.platform;
     this.uiProvider = options.uiProvider ?? (() => noopUI);
     this.pluginInvoker = options.pluginInvoker;
+  }
+
+  private async getMiddlewares(): Promise<LoadedMiddleware[]> {
+    if (this._middlewaresCache !== null) return this._middlewaresCache;
+    const rawDecls = (this.platform as unknown as PlatformContainer)
+      .getAdapter('_middlewareDecls') ?? [];
+    const logger = this.platform.logger;
+    const resolved = await resolveAdapterMiddlewares(rawDecls, {
+      warn: (msg, meta) => logger.warn(msg, meta),
+    });
+    this._middlewaresCache = resolved;
+    return resolved;
   }
 
   // eslint-disable-next-line sonarjs/cognitive-complexity
@@ -206,6 +221,7 @@ export class InProcessBackend implements ExecutionBackend {
         ? { ...this.platform, logger: loggerOverride }
         : this.platform;
 
+      const adapterMiddlewares = await this.getMiddlewares();
       const runResult = await runInProcess({
         descriptor: requestToExecute.descriptor,  // Direct pass-through!
         platform: effectivePlatform,
@@ -217,6 +233,7 @@ export class InProcessBackend implements ExecutionBackend {
         signal: options?.signal,
         cwd: lease.cwd,           // From WorkspaceLease
         outdir: undefined,        // Optional, defaults to cwd/.kb/output
+        adapterMiddlewares,
       });
 
       // 6. Success is determined by absence of thrown error

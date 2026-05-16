@@ -2,124 +2,134 @@
   "schema": "kb.marketplace/2",
   "installed": {
     "@kb-labs/adapters-workspace-worktree": {
-      "version": "0.8.0",
-      "integrity": "sha256-gRbJNQ5F0iiDCJRRo63MBGV0Cn94Euk8TCm8iplu8LY=",
-      "resolvedPath": "./adapters/workspace-worktree",
-      "installedAt": "2026-04-11T10:50:13.102Z",
-      "source": "local",
+      "version": "2.94.0",
+      "integrity": "sha256-pcHGiP1OoCS/eKxLonBUz0+CluyGS5PRXnTTohEVgi4=",
+      "resolvedPath": "./node_modules/@kb-labs/adapters-workspace-worktree",
+      "installedAt": "2026-05-16T11:51:11.151Z",
+      "source": "marketplace",
       "primaryKind": "adapter",
       "provides": [
         "adapter"
       ],
-      "enabled": true
+      "enabled": true,
+      "trust": "untrusted"
     },
     "@kb-labs/adapters-workspace-localfs": {
-      "version": "0.8.0",
-      "integrity": "sha256-6bq0QXU/EktY/rC+3BXnw4eHWTxVfGcz0cXi3NUESeM=",
-      "resolvedPath": "./adapters/workspace-localfs",
-      "installedAt": "2026-04-11T10:50:13.103Z",
-      "source": "local",
+      "version": "2.94.0",
+      "integrity": "sha256-OPWNTwFiaFKjESon/N+rJErSLXeb+8wGOcZFxs3AZNw=",
+      "resolvedPath": "./node_modules/@kb-labs/adapters-workspace-localfs",
+      "installedAt": "2026-05-16T11:51:30.856Z",
+      "source": "marketplace",
       "primaryKind": "adapter",
       "provides": [
         "adapter"
       ],
-      "enabled": true
+      "enabled": true,
+      "trust": "untrusted"
     },
     "@kb-labs/adapters-workspace-agent": {
-      "version": "0.8.0",
-      "integrity": "sha256-h6BLAa128cq9kE2DeNoFcYjqEQRBte2uvTE27nlenlQ=",
-      "resolvedPath": "./adapters/workspace-agent",
-      "installedAt": "2026-04-11T10:50:13.103Z",
-      "source": "local",
+      "version": "2.94.0",
+      "integrity": "sha256-F8PJCu/x+3gAVzyT6IawA48VyKVd4txWA+3MYv5yb1U=",
+      "resolvedPath": "./node_modules/@kb-labs/adapters-workspace-agent",
+      "installedAt": "2026-05-16T11:51:50.309Z",
+      "source": "marketplace",
       "primaryKind": "adapter",
       "provides": [
         "adapter"
       ],
-      "enabled": true
+      "enabled": true,
+      "trust": "untrusted"
     },
     "@kb-labs/adapters-vibeproxy": {
-      "version": "0.8.0",
-      "integrity": "sha256-DiFzqUghpYrRoCYaIWHdNRgVGHoYBER6RzK6WDpS8us=",
-      "resolvedPath": "./adapters/vibeproxy",
-      "installedAt": "2026-04-11T10:50:13.104Z",
-      "source": "local",
+      "version": "2.94.0",
+      "integrity": "sha256-sYL7dp1oUcCLIJKUzMaRyE9dseGGLXz/EgKLHGHCbOk=",
+      "resolvedPath": "./node_modules/@kb-labs/adapters-vibeproxy",
+      "installedAt": "2026-05-16T11:52:11.334Z",
+      "source": "marketplace",
       "primaryKind": "adapter",
       "provides": [
         "adapter"
       ],
-      "enabled": true
+      "enabled": true,
+      "trust": "untrusted"
     },
     "@kb-labs/adapters-sqlite": {
-      "version": "0.8.0",
-      "integrity": "sha256-iRDIoSPnwM6zA8HZF/UK4cE5Gq2+zZAyEBmOtr78H2M=",
-      "resolvedPath": "./adapters/sqlite",
-      "installedAt": "2026-04-11T10:50:13.105Z",
-      "source": "local",
+      "version": "2.94.0",
+      "integrity": "sha256-Yu9DCPOJg6fv4Yk2PqYDbARUF2tRh59x25ovbKWwrtI=",
+      "resolvedPath": "./node_modules/@kb-labs/adapters-sqlite",
+      "installedAt": "2026-05-16T11:52:32.753Z",
+      "source": "marketplace",
       "primaryKind": "adapter",
       "provides": [
         "adapter"
       ],
-      "enabled": true
+      "enabled": true,
+      "trust": "untrusted"
     },
     "@kb-labs/adapters-snapshot-localfs": {
-      "version": "0.8.0",
-      "integrity": "sha256-o15lVdr/BCT2DKrb6TdLohSt4tW/dQPaROx5QzXKQpM=",
-      "resolvedPath": "./adapters/snapshot-localfs",
-      "installedAt": "2026-04-11T10:50:13.105Z",
-      "source": "local",
+      "version": "2.94.0",
+      "integrity": "sha256-dnIQd3ZtAp+mI+uYsFNhecJn/q23i1/LrFkKrZF4oys=",
+      "resolvedPath": "./node_modules/@kb-labs/adapters-snapshot-localfs",
+      "installedAt": "2026-05-16T11:52:51.358Z",
+      "source": "marketplace",
       "primaryKind": "adapter",
       "provides": [
         "adapter"
       ],
-      "enabled": true
+      "enabled": true,
+      "trust": "untrusted"
     },
     "@kb-labs/adapters-redis": {
-      "version": "0.8.0",
-      "integrity": "sha256-KJWEey/OJCGG5xQW7LsxqLbnAkvVWAESO2nwEKBKhzg=",
-      "resolvedPath": "./adapters/redis",
-      "installedAt": "2026-04-11T10:50:13.106Z",
-      "source": "local",
+      "version": "2.94.0",
+      "integrity": "sha256-aztLu/YHVZnIPCfPrlRj3qfLbcvZsd3kKLMxWq+veZk=",
+      "resolvedPath": "./node_modules/@kb-labs/adapters-redis",
+      "installedAt": "2026-05-16T11:53:09.508Z",
+      "source": "marketplace",
       "primaryKind": "adapter",
       "provides": [
         "adapter"
       ],
-      "enabled": true
+      "enabled": true,
+      "trust": "untrusted"
     },
     "@kb-labs/adapters-qdrant": {
-      "version": "0.8.0",
-      "integrity": "sha256-TrX0hwfpnTQEyOfODV0aa3LsLGAmcuxfiy7A7gckBas=",
-      "resolvedPath": "./adapters/qdrant",
-      "installedAt": "2026-04-11T10:50:13.106Z",
-      "source": "local",
+      "version": "2.94.0",
+      "integrity": "sha256-bfkItaSeoUOV6yWv9bDG0M+NgPSJKWzaW/0sNc9aDsA=",
+      "resolvedPath": "./node_modules/@kb-labs/adapters-qdrant",
+      "installedAt": "2026-05-16T11:53:28.719Z",
+      "source": "marketplace",
       "primaryKind": "adapter",
       "provides": [
         "adapter"
       ],
-      "enabled": true
+      "enabled": true,
+      "trust": "untrusted"
     },
     "@kb-labs/adapters-pino": {
-      "version": "0.8.0",
-      "integrity": "sha256-bF2RaO6g0b9ghESBMOhs/KgbnWl59n/4BTTZKFM5Ink=",
-      "resolvedPath": "./adapters/pino",
-      "installedAt": "2026-04-11T10:50:13.107Z",
-      "source": "local",
+      "version": "2.94.0",
+      "integrity": "sha256-mAvY2CJ5qHI2KgXfulSTRLXlfg19OHj7xaJFAsWPTns=",
+      "resolvedPath": "./node_modules/@kb-labs/adapters-pino",
+      "installedAt": "2026-05-16T11:53:50.797Z",
+      "source": "marketplace",
       "primaryKind": "adapter",
       "provides": [
         "adapter"
       ],
-      "enabled": true
+      "enabled": true,
+      "trust": "untrusted"
     },
     "@kb-labs/adapters-openai": {
-      "version": "0.8.0",
-      "integrity": "sha256-uOcypd07e7TnA9/J8hBvD/HyKQOkYGEn+Y86xo/aPY8=",
-      "resolvedPath": "./adapters/openai",
-      "installedAt": "2026-04-11T10:50:13.108Z",
-      "source": "local",
+      "version": "2.94.0",
+      "integrity": "sha256-7eHE5Xe4/t/tXqI81FTraH6944z+LrJ5RT6bqCDQSQg=",
+      "resolvedPath": "./node_modules/@kb-labs/adapters-openai",
+      "installedAt": "2026-05-16T11:54:11.951Z",
+      "source": "marketplace",
       "primaryKind": "adapter",
       "provides": [
         "adapter"
       ],
-      "enabled": true
+      "enabled": true,
+      "trust": "untrusted"
     },
     "@kb-labs/adapters-voyage-ai": {
       "version": "0.1.0",
@@ -280,7 +290,7 @@
     },
     "@kb-labs/workflow": {
       "version": "2.94.0",
-      "integrity": "sha256-2XSsOAlQLzlBZlXaBnr3UavrGTu6zrsJxy28ys0aTKk=",
+      "integrity": "sha256-viFNs13/bAS2u5rwIojcLLfZqQL6V7uXqtTZb4eJ22E=",
       "resolvedPath": "./plugins/workflow/entry",
       "installedAt": "2026-04-12T15:19:02.455Z",
       "source": "local",
@@ -297,7 +307,7 @@
     },
     "@kb-labs/review": {
       "version": "2.14.0",
-      "integrity": "sha256-YsTtRx7BW+oK9dScgWQ+3J64NTTujlNOHQVunJT2t6c=",
+      "integrity": "sha256-hDvFtQfrDSU4FDgC65KvTzb08Ch6jXAgxjDf0Queav4=",
       "resolvedPath": "./plugins/review/entry",
       "installedAt": "2026-04-12T15:19:02.456Z",
       "source": "local",
@@ -355,7 +365,7 @@
     },
     "@kb-labs/marketplace": {
       "version": "2.14.0",
-      "integrity": "sha256-viwnFofVS5pkaKK3qVMuUyGmG3zCp2iAXmPx33JfIXk=",
+      "integrity": "sha256-Aq7H+UT/Ql/phuQZSkXRPSyJzei+4LLx5jaNgw8F3Zk=",
       "resolvedPath": "./plugins/marketplace/entry",
       "installedAt": "2026-04-12T15:19:02.780Z",
       "source": "local",
@@ -368,7 +378,7 @@
     },
     "@kb-labs/host-agent": {
       "version": "2.14.0",
-      "integrity": "sha256-h+6SBz1N1cYf0x05lEcXYDnbdLmTCY1qPFFpM4ybGhM=",
+      "integrity": "sha256-VnZwtKJgs9zGm66T3vtnjucVVXSfSjoLsWfI36eZDRE=",
       "resolvedPath": "./plugins/host-agent/entry",
       "installedAt": "2026-04-12T15:19:02.781Z",
       "source": "local",
@@ -406,7 +416,7 @@
         "studio-widget",
         "studio-menu"
       ],
-      "enabled": true
+      "enabled": false
     },
     "@kb-labs/agent": {
       "version": "2.14.0",
@@ -427,7 +437,7 @@
     },
     "@kb-labs/scaffold": {
       "version": "0.1.0",
-      "integrity": "sha256-Ln/mLSQJj/wpsTB2mtuOBwAkCoyt89IZs+HWXGqp+K4=",
+      "integrity": "sha256-vHfw7lqhaG//nSyC9UD4+Dlb9oP3utlR0NA8S0pJTJ8=",
       "resolvedPath": "./plugins/scaffold/entry",
       "installedAt": "2026-04-14T16:05:02.438Z",
       "source": "local",
@@ -467,7 +477,7 @@
     },
     "@kb-labs/clickup": {
       "version": "0.1.0",
-      "integrity": "sha256-DvvjTW+rvDaT/FuGL1J2z8dbKqhAJxH0v9c5o6Aj9CI=",
+      "integrity": "sha256-yvW2oiz6+YtMSbRGtACy+FNvHc3Zk/bAHEqEQtXkNH8=",
       "resolvedPath": "./plugins/clickup/entry",
       "installedAt": "2026-05-14T21:11:02.022Z",
       "source": "local",
@@ -477,6 +487,58 @@
         "cli-command"
       ],
       "enabled": true
+    },
+    "@kb-labs/notifier-test": {
+      "version": "0.1.0",
+      "integrity": "sha256-NVb6dox4+lKJQrH2+5CghfVX3qb4smIiX1GZObJ9/Vs=",
+      "resolvedPath": "./tmp/notifier-test/packages/notifier-test-entry",
+      "installedAt": "2026-05-15T23:12:17.798Z",
+      "source": "local",
+      "primaryKind": "plugin",
+      "provides": [
+        "plugin",
+        "cli-command"
+      ],
+      "enabled": true
+    },
+    "kb:kirill/": {
+      "version": "kb-labs/commit-entry",
+      "integrity": "",
+      "resolvedPath": "./node_modules/kb:kirill",
+      "installedAt": "2026-05-15T23:44:47.572Z",
+      "source": "marketplace",
+      "primaryKind": "plugin",
+      "provides": [
+        "plugin"
+      ],
+      "enabled": true
+    },
+    "@kb-labs/adapters-telegram": {
+      "version": "0.1.0",
+      "integrity": "sha256-xHyz1/enylAAgMXO44E3GmN4nCwazOjLGrDkyvsRSug=",
+      "resolvedPath": "./adapters/telegram",
+      "installedAt": "2026-05-16T11:51:27.958Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": [
+        "adapter"
+      ],
+      "enabled": true,
+      "trust": "untrusted"
+    },
+    "@kb-labs/marketplace-registry": {
+      "version": "2.94.0",
+      "integrity": "sha256-oTqJvoEmFqwtJzrFqaFqOv1OuNNszN3Gc/cB3GcZThk=",
+      "resolvedPath": "./plugins/marketplace-registry/entry",
+      "installedAt": "2026-05-16T11:51:28.362Z",
+      "source": "local",
+      "primaryKind": "plugin",
+      "provides": [
+        "plugin",
+        "cli-command"
+      ],
+      "enabled": true,
+      "trust": "untrusted"
     }
   }
 }

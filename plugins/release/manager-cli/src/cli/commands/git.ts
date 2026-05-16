@@ -115,7 +115,7 @@ export default defineCommand({
         return { exitCode: 0, ...result };
       }
 
-      ctx.ui.sideBox({
+      ctx.ui?.sideBox?.({
         title: dryRun ? 'Git (dry-run)' : 'Git Operations',
         sections: buildGitSections(result, dryRun, ctx.ui.symbols),
         status: 'success',
