@@ -125,23 +125,30 @@ function wrapHandle(ws: WebSocket): WsHandle {
     collect<T = unknown>(count: number, timeoutMs = 5000): Promise<T[]> {
       return new Promise((resolvePromise, reject) => {
         const msgs: T[] = [];
+        const cleanup = () => { ws.off('message', onMessage); ws.off('close', onClose); };
         const timer = setTimeout(() => {
-          ws.off('message', onMessage);
+          cleanup();
           reject(
             new Error(
               `Timeout: expected ${count} WS messages, got ${msgs.length}: ${JSON.stringify(msgs)}`,
             ),
           );
         }, timeoutMs);
+        const onClose = (code: number, reason: Buffer) => {
+          clearTimeout(timer);
+          cleanup();
+          reject(new Error(`WebSocket closed (code=${code}) before collecting ${count} messages: ${reason.toString() || '(no reason)'}`));
+        };
         const onMessage = (raw: RawData) => {
           msgs.push(JSON.parse(raw.toString()) as T);
           if (msgs.length >= count) {
             clearTimeout(timer);
-            ws.off('message', onMessage);
+            cleanup();
             resolvePromise(msgs);
           }
         };
         ws.on('message', onMessage);
+        ws.on('close', onClose);
       });
     },
     close(code = 1000) {
