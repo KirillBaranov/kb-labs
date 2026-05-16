@@ -113,7 +113,7 @@ function createMockPlatformServices(): PlatformServices {
 }
 
 describe('createGovernedPlatformServices', () => {
-  let rawPlatform: PlatformServices;
+  let rawPlatform: { -readonly [K in keyof PlatformServices]: PlatformServices[K] };
 
   beforeEach(() => {
     rawPlatform = createMockPlatformServices();
@@ -516,8 +516,7 @@ describe('createGovernedPlatformServices', () => {
     function mockNotifier() {
       return {
         notify: vi.fn(async () => {}),
-        subscribe: vi.fn((_filter: unknown, handler: (...args: unknown[]) => unknown) => {
-          // return a real unsub fn so callers can use it
+        subscribe: vi.fn((_filter: unknown, _handler: (...args: unknown[]) => unknown) => {
           return () => {};
         }),
       };
@@ -531,17 +530,17 @@ describe('createGovernedPlatformServices', () => {
     });
 
     it('denies access when no permission declared', () => {
-      rawPlatform.notifier = mockNotifier() as any;
+      const platform = { ...rawPlatform, notifier: mockNotifier() as any };
       const permissions: PermissionSpec = { platform: {} };
-      const governed = createGovernedPlatformServices(rawPlatform, permissions, 'plugin');
+      const governed = createGovernedPlatformServices(platform, permissions, 'plugin');
       expect(() => governed.notifier!.notify({ title: 'T', body: 'B' })).toThrow(PermissionError);
     });
 
     it('emit is allowed with { emit: true }', async () => {
       const notifier = mockNotifier();
-      rawPlatform.notifier = notifier as any;
+      const platform = { ...rawPlatform, notifier: notifier as any };
       const permissions: PermissionSpec = { platform: { notifier: { emit: true } } };
-      const governed = createGovernedPlatformServices(rawPlatform, permissions, 'my-plugin');
+      const governed = createGovernedPlatformServices(platform, permissions, 'my-plugin');
 
       await governed.notifier!.notify({ title: 'T', body: 'B', severity: 'info' });
       expect(notifier.notify).toHaveBeenCalledOnce();
@@ -549,9 +548,9 @@ describe('createGovernedPlatformServices', () => {
 
     it('emit forces source = pluginId, ignoring what plugin passes', async () => {
       const notifier = mockNotifier();
-      rawPlatform.notifier = notifier as any;
+      const platform = { ...rawPlatform, notifier: notifier as any };
       const permissions: PermissionSpec = { platform: { notifier: { emit: true } } };
-      const governed = createGovernedPlatformServices(rawPlatform, permissions, 'my-plugin');
+      const governed = createGovernedPlatformServices(platform, permissions, 'my-plugin');
 
       await governed.notifier!.notify({ title: 'T', body: 'B', source: 'evil-plugin' });
       expect(notifier.notify).toHaveBeenCalledWith(
@@ -560,35 +559,34 @@ describe('createGovernedPlatformServices', () => {
     });
 
     it('emit denied when emit not declared', async () => {
-      rawPlatform.notifier = mockNotifier() as any;
+      const platform = { ...rawPlatform, notifier: mockNotifier() as any };
       const permissions: PermissionSpec = {
         platform: { notifier: { subscribe: { sources: ['*'] } } },
       };
-      const governed = createGovernedPlatformServices(rawPlatform, permissions, 'plugin');
+      const governed = createGovernedPlatformServices(platform, permissions, 'plugin');
       await expect(governed.notifier!.notify({ title: 'T', body: 'B' })).rejects.toThrow(PermissionError);
     });
 
     it('subscribe denied when subscribe not declared', () => {
-      rawPlatform.notifier = mockNotifier() as any;
+      const platform = { ...rawPlatform, notifier: mockNotifier() as any };
       const permissions: PermissionSpec = { platform: { notifier: { emit: true } } };
-      const governed = createGovernedPlatformServices(rawPlatform, permissions, 'plugin');
+      const governed = createGovernedPlatformServices(platform, permissions, 'plugin');
       expect(() => governed.notifier!.subscribe({}, vi.fn())).toThrow(PermissionError);
     });
 
-    it('subscribe wildcard sources: ['*'] receives from any source', async () => {
+    it('subscribe wildcard sources: ["*"] receives from any source', async () => {
       const notifier = mockNotifier();
-      // Make subscribe call handler immediately with a captured event
       let capturedHandler: ((e: unknown) => Promise<void>) | undefined;
       notifier.subscribe = vi.fn((_f: unknown, h: (e: unknown) => Promise<void>) => {
         capturedHandler = h;
         return () => {};
       });
-      rawPlatform.notifier = notifier as any;
+      const platform = { ...rawPlatform, notifier: notifier as any };
 
       const permissions: PermissionSpec = {
         platform: { notifier: { subscribe: { sources: ['*'] } } },
       };
-      const governed = createGovernedPlatformServices(rawPlatform, permissions, 'plugin');
+      const governed = createGovernedPlatformServices(platform, permissions, 'plugin');
       const handler = vi.fn(async () => {});
       governed.notifier!.subscribe({}, handler);
 
@@ -603,12 +601,12 @@ describe('createGovernedPlatformServices', () => {
         capturedHandler = h;
         return () => {};
       });
-      rawPlatform.notifier = notifier as any;
+      const platform = { ...rawPlatform, notifier: notifier as any };
 
       const permissions: PermissionSpec = {
         platform: { notifier: { subscribe: { sources: ['workflow-engine'] } } },
       };
-      const governed = createGovernedPlatformServices(rawPlatform, permissions, 'plugin');
+      const governed = createGovernedPlatformServices(platform, permissions, 'plugin');
       const handler = vi.fn(async () => {});
       governed.notifier!.subscribe({}, handler);
 
@@ -616,7 +614,7 @@ describe('createGovernedPlatformServices', () => {
       await capturedHandler!({ id: '2', title: 'T', body: 'B', severity: 'info', emittedAt: 0, source: 'workflow-engine' });
 
       expect(handler).toHaveBeenCalledOnce();
-      expect(handler.mock.calls[0][0]).toMatchObject({ source: 'workflow-engine' });
+      expect(handler).toHaveBeenCalledWith(expect.objectContaining({ source: 'workflow-engine' }));
     });
 
     it('subscribe enforces declared severity ceiling', async () => {
@@ -626,12 +624,12 @@ describe('createGovernedPlatformServices', () => {
         capturedHandler = h;
         return () => {};
       });
-      rawPlatform.notifier = notifier as any;
+      const platform = { ...rawPlatform, notifier: notifier as any };
 
       const permissions: PermissionSpec = {
         platform: { notifier: { subscribe: { sources: ['*'], severity: ['critical'] } } },
       };
-      const governed = createGovernedPlatformServices(rawPlatform, permissions, 'plugin');
+      const governed = createGovernedPlatformServices(platform, permissions, 'plugin');
       const handler = vi.fn(async () => {});
       governed.notifier!.subscribe({}, handler);
 
@@ -639,7 +637,7 @@ describe('createGovernedPlatformServices', () => {
       await capturedHandler!({ id: '2', title: 'T', body: 'B', severity: 'critical', emittedAt: 0 });
 
       expect(handler).toHaveBeenCalledOnce();
-      expect(handler.mock.calls[0][0]).toMatchObject({ severity: 'critical' });
+      expect(handler).toHaveBeenCalledWith(expect.objectContaining({ severity: 'critical' }));
     });
   });
 });

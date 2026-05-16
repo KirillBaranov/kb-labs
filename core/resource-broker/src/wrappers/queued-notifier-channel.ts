@@ -10,8 +10,8 @@ import type { INotifierChannel, NotificationCapability, NotificationEvent } from
 import type { IResourceBroker, ResourcePriority } from '../types.js';
 
 function severityToPriority(severity: NotificationEvent['severity']): ResourcePriority {
-  if (severity === 'critical') return 'high';
-  if (severity === 'warn') return 'normal';
+  if (severity === 'critical') {return 'high';}
+  if (severity === 'warn') {return 'normal';}
   return 'low';
 }
 

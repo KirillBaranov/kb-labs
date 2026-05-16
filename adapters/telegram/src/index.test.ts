@@ -11,7 +11,7 @@ const BASE_EVENT: NotificationEvent = {
 };
 
 function makeChannel() {
-  return createTelegramChannel({ type: 'telegram', botToken: 'bot123', chatId: '-1001234567890' }, 'tg');
+  return createTelegramChannel({ botToken: 'bot123', chatId: '-1001234567890' }, 'tg');
 }
 
 describe('TelegramChannel', () => {
@@ -31,7 +31,7 @@ describe('TelegramChannel', () => {
   });
 
   it('is unavailable when botToken is empty', () => {
-    const ch = createTelegramChannel({ type: 'telegram', botToken: '', chatId: '-1001' }, 'tg');
+    const ch = createTelegramChannel({ botToken: '', chatId: '-1001' }, 'tg');
     expect(ch.isAvailable()).toBe(false);
   });
 
@@ -59,7 +59,8 @@ describe('TelegramChannel', () => {
     const ch = makeChannel();
     await ch.send({ ...BASE_EVENT, title: '<script>', body: 'a & b > c' });
 
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string);
     expect(body.text).toContain('&lt;script&gt;');
     expect(body.text).toContain('a &amp; b &gt; c');
   });
@@ -69,7 +70,8 @@ describe('TelegramChannel', () => {
     const ch = makeChannel();
     await ch.send({ ...BASE_EVENT, body: 'x'.repeat(4000) });
 
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string);
     expect(body.text).toContain('…(truncated)');
     expect(body.text.length).toBeLessThan(4096);
   });
@@ -79,7 +81,8 @@ describe('TelegramChannel', () => {
     const ch = makeChannel();
     await ch.send({ ...BASE_EVENT, action: { url: 'https://example.com', label: 'Open' } });
 
-    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string);
     expect(body.text).toContain('<a href="https://example.com">Open</a>');
   });
 
@@ -87,14 +90,14 @@ describe('TelegramChannel', () => {
     fetchMock.mockResolvedValue({ ok: false, status: 429, text: async () => 'Too Many Requests' });
     const ch = makeChannel();
     await expect(ch.send(BASE_EVENT)).rejects.toThrow('429');
-    const err = await ch.send(BASE_EVENT).catch((e: unknown) => e as Error & { retryable?: boolean });
+    const err = (await ch.send(BASE_EVENT).catch((e: unknown) => e)) as Error & { retryable?: boolean };
     expect(err.retryable).not.toBe(false);
   });
 
   it('throws retryable error on 500', async () => {
     fetchMock.mockResolvedValue({ ok: false, status: 500, text: async () => 'Server Error' });
     const ch = makeChannel();
-    const err = await ch.send(BASE_EVENT).catch((e: unknown) => e as Error & { retryable?: boolean });
+    const err = (await ch.send(BASE_EVENT).catch((e: unknown) => e)) as Error & { retryable?: boolean };
     expect(err).toBeInstanceOf(Error);
     expect(err.retryable).not.toBe(false);
   });
@@ -102,7 +105,7 @@ describe('TelegramChannel', () => {
   it('marks 400 as non-retryable', async () => {
     fetchMock.mockResolvedValue({ ok: false, status: 400, text: async () => 'Bad Request' });
     const ch = makeChannel();
-    const err = await ch.send(BASE_EVENT).catch((e: unknown) => e as Error & { retryable?: boolean });
+    const err = (await ch.send(BASE_EVENT).catch((e: unknown) => e)) as Error & { retryable?: boolean };
     expect(err).toBeInstanceOf(Error);
     expect(err.retryable).toBe(false);
   });

@@ -111,6 +111,7 @@ export class StateBrokerRateLimitBackend implements RateLimitBackend {
   /**
    * @inheritdoc
    */
+  // eslint-disable-next-line sonarjs/cognitive-complexity
   async acquire(
     resource: string,
     tokens: number,
