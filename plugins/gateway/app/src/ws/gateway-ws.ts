@@ -56,11 +56,13 @@ export function attachGatewayWs(
     if (GATEWAY_WS_PATHS.has(pathname)) {
       // Gateway-own WS — handle directly with raw ws
       wss.handleUpgrade(req, socket, head, (ws) => {
-        if (pathname === '/hosts/connect') {
-          hostsHandler(ws, req);
-        } else {
-          clientsHandler(ws, req);
-        }
+        const handlerPromise = pathname === '/hosts/connect'
+          ? hostsHandler(ws, req)
+          : clientsHandler(ws, req);
+        handlerPromise.catch((err) => {
+          logger.error('Unhandled WS handler error', { pathname, error: String(err) });
+          try { ws.close(1011, 'Internal error'); } catch { /* already closed */ }
+        });
       });
     } else {
       // Delegate to @fastify/http-proxy for upstream WS proxy
