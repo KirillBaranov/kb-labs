@@ -20,6 +20,7 @@ workspace:
         - "e2e/platform"
         - "e2e/gateway"
         - "e2e/marketplace"
+        - "e2e/marketplace-registry"
         - "e2e/workflows"
         - "e2e/studio"
         - "e2e/plugins"
