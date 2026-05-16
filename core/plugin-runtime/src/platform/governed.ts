@@ -361,8 +361,8 @@ export function createGovernedPlatformServices(
           ? (filter, handler) => {
               return raw.notifier!.subscribe(filter, async (event) => {
                 // Enforce declared scope as hard ceiling.
-                if (allowedSources && !allowedSources.includes(event.source ?? '')) return;
-                if (allowedSeverity && !allowedSeverity.includes(event.severity ?? 'info')) return;
+                if (allowedSources && !allowedSources.includes(event.source ?? '')) { return; }
+                if (allowedSeverity && !allowedSeverity.includes(event.severity ?? 'info')) { return; }
                 await handler(event);
               });
             }
