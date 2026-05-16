@@ -53,6 +53,8 @@
     "release:platform:dry": "./tools/kb-devkit/kb-devkit run build && node ./cli/bin/dist/bin.js marketplace:clear-cache && node ./cli/bin/dist/bin.js release run --flow platform --skip-build --dry-run",
     "release:sdk": "node scripts/release-preflight.mjs && ./tools/kb-devkit/kb-devkit run build && node ./cli/bin/dist/bin.js marketplace:clear-cache && node ./cli/bin/dist/bin.js release run --flow sdk --skip-build --yes",
     "release:sdk:dry": "./tools/kb-devkit/kb-devkit run build && node ./cli/bin/dist/bin.js marketplace:clear-cache && node ./cli/bin/dist/bin.js release run --flow sdk --skip-build --dry-run",
+    "coverage": "./tools/kb-devkit/kb-devkit run test:coverage && node scripts/merge-coverage.mjs",
+    "coverage:json": "./tools/kb-devkit/kb-devkit run test:coverage && node scripts/merge-coverage.mjs --json",
     "test": "./tools/kb-devkit/kb-devkit run test",
     "test:catalog": "node scripts/test-catalog.mjs",
     "test:catalog:check": "node scripts/test-catalog.mjs --check",

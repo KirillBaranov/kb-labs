@@ -174,7 +174,7 @@ for p in d['worst'][:10]:
 
 # Generate HTML if genhtml is available
 if [ -f "$MERGED" ] && command -v genhtml &>/dev/null; then
-  genhtml "$MERGED" --output-directory "$OUT_DIR/html" --quiet --ignore-errors source,source,category --synthesize-missing 2>/dev/null
+  genhtml "$MERGED" --output-directory "$OUT_DIR/html" --quiet --ignore-errors source,inconsistent,corrupt,category --synthesize-missing 2>/dev/null || true
   echo ""
   echo "HTML report: $OUT_DIR/html/index.html"
 fi
