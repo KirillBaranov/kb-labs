@@ -40,6 +40,6 @@ export async function clickupFetch<T>(
   }
 
   const text = await res.text();
-  if (!text) return {} as T;
+  if (!text) { return {} as T; }
   return JSON.parse(text) as T;
 }

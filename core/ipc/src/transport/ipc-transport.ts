@@ -170,7 +170,7 @@ export class IPCTransport implements ITransport {
   private handleMessage(msg: unknown) {
     if (isAdapterResponse(msg)) {
       const pending = this.pending.get(msg.requestId);
-      if (!pending) return;
+      if (!pending) { return; }
       clearTimeout(pending.timer);
       this.pending.delete(msg.requestId);
       pending.resolve(msg);

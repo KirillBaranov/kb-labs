@@ -3,12 +3,11 @@
  * No direct filesystem or DB dependencies — swap adapters in kb.config.json.
  */
 
-import { createHash, generateKeyPairSync, sign as cryptoSign } from 'node:crypto';
+import { createHash, sign as cryptoSign } from 'node:crypto';
 import type { IStorage, ICache, ILogger } from '@kb-labs/core-platform';
 import type {
   RegistryEntry,
   RegistryVersionEntry,
-  RegistryVisibility,
   PackageMeta,
   PublishRequest,
   PublishResponse,

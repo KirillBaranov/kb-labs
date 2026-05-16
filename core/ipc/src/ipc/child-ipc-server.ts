@@ -92,7 +92,7 @@ export class ChildIPCServer {
    */
   private async handleMessage(msg: unknown): Promise<void> {
     if (isEventBusSubscribe(msg)) {
-      if (!this.platform.eventBus) return;
+      if (!this.platform.eventBus) { return; }
       const { subscriptionId, topic } = msg;
       const unsub = this.platform.eventBus.subscribe(topic, async (payload) => {
         if (this.child.connected) {
@@ -196,8 +196,8 @@ export class ChildIPCServer {
    */
   private getAdapter(name: string): unknown {
     // Handle dotted names that don't match property names directly
-    if (name === 'database.sql') return this.platform.sqlDatabase;
-    if (name === 'database.document') return this.platform.documentDatabase;
+    if (name === 'database.sql') { return this.platform.sqlDatabase; }
+    if (name === 'database.document') { return this.platform.documentDatabase; }
 
     const adapter = (this.platform as unknown as Record<string, unknown>)[name];
     if (adapter === undefined) {

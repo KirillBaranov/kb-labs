@@ -50,7 +50,7 @@ export class EventBusProxy implements IEventBus {
     });
 
     return () => {
-      if (!this.handlers.has(subscriptionId)) return;
+      if (!this.handlers.has(subscriptionId)) { return; }
       this.handlers.delete(subscriptionId);
       this.transport.sendMessage({
         type: 'eventbus:unsubscribe',
@@ -65,9 +65,9 @@ export class EventBusProxy implements IEventBus {
   }
 
   private handlePush(msg: unknown): void {
-    if (!isEventBusPush(msg)) return;
+    if (!isEventBusPush(msg)) { return; }
     const entry = this.handlers.get(msg.subscriptionId);
-    if (!entry) return;
+    if (!entry) { return; }
     const payload = deserialize(msg.payload);
     entry.handler(payload).catch(() => {});
   }

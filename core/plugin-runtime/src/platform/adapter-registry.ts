@@ -281,7 +281,7 @@ export const ADAPTER_REGISTRY = {
       createQueuedLLM(broker as IResourceBroker, raw),
     postAssemblyFactory: (raw: ILLM, config: unknown) => {
       const privacyCfg = (config as { _privacy?: PIIRedactionConfig })._privacy;
-      if (!privacyCfg || privacyCfg.enabled === false) return raw;
+      if (!privacyCfg || privacyCfg.enabled === false) { return raw; }
       return createPIIRedactionLLM(raw, privacyCfg);
     },
     governance: { strategy: 'wrap', fn: wrapLlm },

@@ -105,7 +105,7 @@ export class InProcessBackend implements ExecutionBackend {
   }
 
   private async getMiddlewares(): Promise<LoadedMiddleware[]> {
-    if (this._middlewaresCache !== null) return this._middlewaresCache;
+    if (this._middlewaresCache !== null) { return this._middlewaresCache; }
     const rawDecls = (this.platform as unknown as WithMiddlewareDecls)
       .getAdapter('_middlewareDecls') ?? [];
     const logger = this.platform.logger;
