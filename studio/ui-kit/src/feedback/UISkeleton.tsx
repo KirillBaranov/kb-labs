@@ -153,12 +153,14 @@ export function UISkeletonText({
   style,
 }: UISkeletonTextProps) {
   const { token } = theme.useToken();
-  const widths = Array.isArray(width) ? width : [width];
+  const isArray = Array.isArray(width);
+  const widths = isArray ? width : [width];
+  const outerWidth = isArray ? '100%' : (typeof width === 'number' ? `${width}px` : width);
 
   return (
     <span
       className={className}
-      style={{ display: 'inline-flex', flexDirection: 'column', gap, ...style }}
+      style={{ display: 'inline-flex', flexDirection: 'column', gap, width: outerWidth, ...style }}
     >
       {widths.map((w, i) => (
         <span
@@ -166,11 +168,11 @@ export function UISkeletonText({
           className={styles.skeletonText}
           style={{
             display: 'block',
-            width: typeof w === 'number' ? `${w}px` : w,
+            width: isArray ? (typeof w === 'number' ? `${w}px` : w) : '100%',
             height: typeof height === 'number' ? `${height}px` : height,
             borderRadius: token.borderRadiusSM,
             flexShrink: 0,
-            background: `linear-gradient(90deg, ${token.colorFillTertiary} 25%, ${token.colorFillSecondary} 37%, ${token.colorFillTertiary} 63%)`,
+            backgroundImage: `linear-gradient(90deg, ${token.colorBorder} 25%, ${token.colorBgLayout} 50%, ${token.colorBorder} 75%)`,
             backgroundSize: '400% 100%',
           }}
         />
