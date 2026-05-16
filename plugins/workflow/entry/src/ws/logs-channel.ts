@@ -65,18 +65,20 @@ function levelMatches(logLevel: string, filterLevel?: string): boolean {
   return (levelOrder[logLevel] ?? 1) >= (levelOrder[filterLevel] ?? 0);
 }
 
-async function fetchLogs(jobId: string, offset: number): Promise<DaemonLog[]> {
+async function fetchLogs(runId: string, offset: number, level?: string): Promise<DaemonLog[]> {
   const daemonUrl = getWorkflowDaemonUrl();
-  const url = `${daemonUrl}/api/v1/jobs/${encodeURIComponent(jobId)}/logs?limit=200&offset=${offset}`;
+  const params = new URLSearchParams({ limit: '200', offset: String(offset) });
+  if (level) { params.set('level', level); }
+  const url = `${daemonUrl}/api/v1/runs/${encodeURIComponent(runId)}/logs?${params}`;
   const res = await fetch(url);
   if (!res.ok) { return []; }
   const body = await res.json() as { ok?: boolean; data?: { logs?: DaemonLog[] } };
   return body?.data?.logs ?? [];
 }
 
-async function checkJobExists(jobId: string): Promise<boolean> {
+async function checkRunExists(runId: string): Promise<boolean> {
   const daemonUrl = getWorkflowDaemonUrl();
-  const res = await fetch(`${daemonUrl}/api/v1/jobs/${encodeURIComponent(jobId)}`);
+  const res = await fetch(`${daemonUrl}/api/v1/runs/${encodeURIComponent(runId)}`);
   return res.status !== 404;
 }
 
@@ -100,13 +102,13 @@ export default defineWebSocket<unknown, Incoming, Outgoing>({
 
       const router = new MessageRouter()
         .on(SubscribeMsg, async (_ctx, payload) => {
-          const { jobId, level } = payload;
+          const { jobId: runId, level } = payload;
 
-          // Validate job exists before subscribing
-          const exists = await checkJobExists(jobId).catch(() => true);
+          // Validate run exists before subscribing
+          const exists = await checkRunExists(runId).catch(() => true);
           if (!exists) {
-            await sender.send(ErrorMsg.create({ error: `Job ${jobId} not found` }));
-            sender.close(1008, 'Job not found');
+            await sender.send(ErrorMsg.create({ error: `Run ${runId} not found` }));
+            sender.close(1008, 'Run not found');
             return;
           }
 
@@ -115,7 +117,7 @@ export default defineWebSocket<unknown, Incoming, Outgoing>({
           logOffsets.set(connectionId, 0);
 
           // Fetch and stream existing logs
-          const initialLogs = await fetchLogs(jobId, 0).catch(() => [] as DaemonLog[]);
+          const initialLogs = await fetchLogs(runId, 0, level).catch(() => [] as DaemonLog[]);
           let offset = 0;
           for (const log of initialLogs) {
             if (!levelMatches(log.level, level)) { continue; }
@@ -132,7 +134,7 @@ export default defineWebSocket<unknown, Incoming, Outgoing>({
           // Poll for new logs
           const timer = setInterval(async () => {
             const currentOffset = logOffsets.get(connectionId) ?? 0;
-            const newLogs = await fetchLogs(jobId, currentOffset).catch(() => [] as DaemonLog[]);
+            const newLogs = await fetchLogs(runId, currentOffset, level).catch(() => [] as DaemonLog[]);
             if (newLogs.length === 0) { return; }
             for (const log of newLogs) {
               if (!levelMatches(log.level, level)) { continue; }
