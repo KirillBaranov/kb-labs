@@ -40,7 +40,9 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
   }
 
   // 4. Create host registry with cache + store
-  const registry = new HostRegistry(platform.cache, hostStore);
+  // Capture once so registry and server share the exact same cache instance.
+  const cache = platform.cache;
+  const registry = new HostRegistry(cache, hostStore);
 
   // 5. Restore persisted hosts into cache (best-effort — cache may be unavailable on cold start)
   let restoredCount = 0;
@@ -68,7 +70,7 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
 
   // 6. Seed static tokens into cache so resolveToken() accepts them
   for (const [token, entry] of Object.entries(config.staticTokens)) {
-    await platform.cache.set(`host:token:${token}`, entry);
+    await cache.set(`host:token:${token}`, entry);
     logger.info('Static token seeded', { hostId: entry.hostId, namespaceId: entry.namespaceId });
   }
 
@@ -88,7 +90,7 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
   const jwtConfig = { secret: jwtSecret ?? DEV_JWT_SECRET };
 
   // 8. Create server with injected registry
-  const server = await createServer(config, platform.cache, platform.logger, jwtConfig, registry);
+  const server = await createServer(config, cache, platform.logger, jwtConfig, registry);
 
   // 9. Listen
   const address = await server.listen({ port: config.port, host: '0.0.0.0' });

@@ -38,9 +38,14 @@ async function main(): Promise<void> {
     siteUrl: process.env.KB_SITE_URL ?? 'https://kblabs.ru',
   });
 
+  const DEV_JWT_SECRET = 'dev-insecure-secret-change-me';
   const jwtSecret = process.env.GATEWAY_JWT_SECRET;
-  const jwtConfig: JwtConfig | undefined = jwtSecret ? { secret: jwtSecret } : undefined;
-  if (!jwtSecret) { log.warn('GATEWAY_JWT_SECRET not set — authenticated routes disabled'); }
+  const isProduction = process.env.NODE_ENV === 'production';
+  if (!jwtSecret && isProduction) {
+    throw new Error('GATEWAY_JWT_SECRET must be set in production');
+  }
+  if (!jwtSecret) { log.warn('GATEWAY_JWT_SECRET not set — using insecure default (dev only, never use in production!)'); }
+  const jwtConfig: JwtConfig = { secret: jwtSecret ?? DEV_JWT_SECRET };
 
   const server = await createRegistryServer({ port, host, logger: platform.logger, registry: service, jwtConfig });
 

@@ -8,17 +8,16 @@ export default defineConfig({
     coverage: {
       ...nodePreset.test?.coverage,
       exclude: [
+        ...(nodePreset.test?.coverage?.exclude ?? []),
         '**/dist/**',
         '**/fixtures/**',
         '**/__tests__/**',
         '**/*.spec.*',
         '**/*.test.*',
-        'eslint.config.js',
         '**/vitest.config.ts',
         '**/tsup.config.ts',
         '**/tsconfig*.json',
         '**/index.ts',
-        '**/bin.ts',
       ],
     },
   },

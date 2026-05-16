@@ -152,6 +152,14 @@ export class PlatformContainer {
   private lifecycleHooks = new Map<string, PlatformLifecycleHooks>();
   private initialized = false;
 
+  // Fallback singletons — created once so multiple callers share the same instance.
+  // Without this, each platform.cache access would return a different MemoryCache object,
+  // causing data written in one call to be invisible to another (e.g. HTTP vs WS handlers).
+  private _fallbackCache?: ICache;
+  private _fallbackStorage?: IStorage;
+  private _fallbackLogger?: ILogger;
+  private _fallbackEventBus?: IEventBus;
+
   // ═══════════════════════════════════════════════════════════════════════════
   // ADAPTERS (replaceable via kb.config.json)
   // ═══════════════════════════════════════════════════════════════════════════
@@ -437,7 +445,7 @@ export class PlatformContainer {
 
   /** Cache adapter (fallback: MemoryCache) */
   get cache(): ICache {
-    return (this.adapters.get('cache') as ICache) ?? new MemoryCache();
+    return (this.adapters.get('cache') as ICache | undefined) ?? (this._fallbackCache ??= new MemoryCache());
   }
 
   /** Config adapter (fallback: NoOpConfig) */
@@ -447,17 +455,17 @@ export class PlatformContainer {
 
   /** Storage adapter (fallback: MemoryStorage) */
   get storage(): IStorage {
-    return (this.adapters.get('storage') as IStorage) ?? new MemoryStorage();
+    return (this.adapters.get('storage') as IStorage | undefined) ?? (this._fallbackStorage ??= new MemoryStorage());
   }
 
   /** Logger adapter (fallback: ConsoleLogger) */
   get logger(): ILogger {
-    return (this.adapters.get('logger') as ILogger) ?? new ConsoleLogger();
+    return (this.adapters.get('logger') as ILogger | undefined) ?? (this._fallbackLogger ??= new ConsoleLogger());
   }
 
   /** Event bus adapter (fallback: MemoryEventBus) */
   get eventBus(): IEventBus {
-    return (this.adapters.get('eventBus') as IEventBus) ?? new MemoryEventBus();
+    return (this.adapters.get('eventBus') as IEventBus | undefined) ?? (this._fallbackEventBus ??= new MemoryEventBus());
   }
 
   /** Inter-plugin invocation adapter (fallback: NoOpInvoke) */
@@ -751,6 +759,10 @@ export class PlatformContainer {
   reset(): void {
     this.adapters.clear();
     this.lifecycleHooks.clear();
+    this._fallbackCache = undefined;
+    this._fallbackStorage = undefined;
+    this._fallbackLogger = undefined;
+    this._fallbackEventBus = undefined;
     this._workflows = undefined;
     this._jobs = undefined;
     this._cron = undefined;
