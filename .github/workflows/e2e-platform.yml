@@ -207,6 +207,7 @@ jobs:
             e2e/platform/report/
             e2e/gateway/report/
             e2e/marketplace/report/
+            e2e/marketplace-registry/report/
             e2e/workflows/report/
             e2e/studio/report/
             e2e/plugins/report/
@@ -215,7 +216,7 @@ jobs:
       - name: Show checklist summary
         if: always()
         run: |
-          for domain in services platform gateway marketplace workflows studio plugins; do
+          for domain in services platform gateway marketplace marketplace-registry workflows studio plugins; do
             checklist="e2e/$domain/report/CHECKLIST.md"
             if [ -f "$checklist" ]; then
               echo "### E2E: $domain" >> $GITHUB_STEP_SUMMARY
