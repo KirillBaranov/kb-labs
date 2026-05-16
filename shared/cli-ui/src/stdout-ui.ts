@@ -1,4 +1,4 @@
-import type { UIFacade, UILogEntry, SelectChoice, MultiSelectChoice } from '@kb-labs/plugin-contracts';
+import type { UIFacade, SelectChoice, MultiSelectChoice } from '@kb-labs/plugin-contracts';
 import { safeColors, safeSymbols } from './colors.js';
 import { sideBorderBox, sideBorderChain, metricsList } from './modern-format.js';
 import { formatTable } from './table.js';

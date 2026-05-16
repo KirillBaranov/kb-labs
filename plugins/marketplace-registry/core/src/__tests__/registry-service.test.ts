@@ -30,6 +30,15 @@ function createMemoryCache(): ICache {
       store.set(key, { value, expiresAt: ttl ? Date.now() + ttl : undefined });
     },
     delete: async (key) => { store.delete(key); },
+    clear: async () => { store.clear(); },
+    setIfNotExists: async (key, value, ttl) => {
+      if (store.has(key)) { return false; }
+      store.set(key, { value, expiresAt: ttl ? Date.now() + ttl : undefined });
+      return true;
+    },
+    zadd: async () => {},
+    zrangebyscore: async () => [],
+    zrem: async () => {},
   };
 }
 

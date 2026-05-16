@@ -7,7 +7,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { promises as fs } from 'node:fs';
 import { randomUUID } from 'node:crypto';
-import type { AdapterTypes, PlatformContainer } from './container.js';
+import type { PlatformContainer } from './container.js';
 import type { PlatformConfig, CoreFeaturesConfig, ResourceBrokerConfig, LLMAdapterOptions, AdapterValue, NotifierAdapterOptions } from './config.js';
 import { platform } from './container.js';
 import { resolveAdapter } from './discover-adapters.js';
@@ -31,10 +31,6 @@ import type {
   IEnvironmentProvider,
   IWorkspaceProvider,
   ILLM,
-  IEmbeddings,
-  IVectorStore,
-  ICache,
-  IStorage,
   IAnalytics,
   LLMOptions,
   VectorFilter,
