@@ -161,7 +161,42 @@ jobs:
       - name: Run ${{ matrix.task }}
         run: ./tools/kb-devkit/kb-devkit run ${{ matrix.task }}
 
-  # ── 4. kb-create e2e smoke — always on main ─────────────────────────────────
+  # ── 4. Coverage — run tests with instrumentation + check thresholds ─────────
+  coverage:
+    name: coverage
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+        with: { run_install: false }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/kb-devkit/go.mod
+      - uses: actions/download-artifact@v4
+        with:
+          name: go-tools
+          path: tools-bin/
+      - name: Install Go tools
+        run: |
+          chmod +x tools-bin/*
+          cp tools-bin/kb-devkit tools/kb-devkit/kb-devkit
+          cp tools-bin/kb-dev    tools/kb-dev/kb-dev
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+      - run: tar xf dist-artifacts.tar
+      - run: pnpm install --frozen-lockfile
+      - name: Run coverage
+        run: pnpm coverage
+
+  # ── 5. kb-create e2e smoke — always on main ─────────────────────────────────
   # Full network-bound integration suite (real pnpm install from npm,
   # kb-dev download, config scaffolding). Always runs on main to catch
   # regressions from transitive npm deps not visible in PR diffs.

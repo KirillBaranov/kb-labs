@@ -186,11 +186,20 @@ export async function mountWebSocketChannels(
         ws.on('message', async (data: Buffer) => {
           try {
             const rawMessage = JSON.parse(data.toString());
+            // Support both nested format ({ type, payload: {...} }) and flat format
+            // ({ type, field1, field2 }) by extracting remaining fields as payload
+            // when payload is absent.
+            let payload = rawMessage.payload;
+            if (payload === undefined) {
+              // eslint-disable-next-line @typescript-eslint/no-unused-vars
+              const { type: _t, messageId: _mid, timestamp: _ts, ...rest } = rawMessage;
+              if (Object.keys(rest).length > 0) payload = rest;
+            }
             const messageInput: WSInput = {
               event: 'message',
               message: {
                 type: rawMessage.type,
-                payload: rawMessage.payload,
+                payload,
                 messageId: rawMessage.messageId,
                 timestamp: rawMessage.timestamp || Date.now(),
               },

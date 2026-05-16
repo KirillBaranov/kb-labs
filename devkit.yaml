@@ -652,3 +652,63 @@ custom_checks:
     run: node scripts/checks/check-test-pyramid.mjs
     on: [check]
     categories: [plugin-entry]
+
+# ──────────────────────────────────────────────────────────────────────────────
+# COVERAGE THRESHOLDS
+# Enforced by: node scripts/merge-coverage.mjs --check
+# Run:         pnpm coverage:check  (check only, no test re-run)
+#              pnpm coverage        (run tests + check)
+# ──────────────────────────────────────────────────────────────────────────────
+coverage:
+  # Map package name glob → threshold category (first match wins).
+  # Skip patterns must come before layer patterns to override correctly.
+  categories:
+    "*-types":              skip   # type definitions — minimal executable code
+    "*-contracts":          skip   # public shapes — tested via consumers
+    "@kb-labs/e2e-*":       skip   # e2e suites — no unit coverage
+    "@kb-labs/core-*":      core
+    "@kb-labs/sdk*":        sdk
+    "@kb-labs/shared-*":    shared
+    "@kb-labs/cli-*":       shared
+    "@kb-labs/adapters-*":  adapter
+    "@kb-labs/studio-*":    studio
+    "*-entry":              entry
+    "*":                    plugin
+
+  # current = floor matching today's data so CI is green immediately
+  # target  = goal for Q3-2026, raise incrementally each quarter
+  thresholds:
+    #                   statements  functions  branches
+    # current:               ~2%       44%       49%
+    # target Q3-2026:        65%       70%       60%
+    core:    { statements: 0,  functions: 50, branches: 50 }
+
+    #                   statements  functions  branches
+    # current:              49%       11%       83%
+    # target Q3-2026:       65%       70%       60%
+    # note: low fn% is expected — sdk is mostly re-exports
+    sdk:     { statements: 45, functions: 10, branches: 80 }
+
+    #                   statements  functions  branches
+    # current:               ~9%      38%       61%
+    # target Q3-2026:        50%      55%       50%
+    shared:  { statements: 8,  functions: 35, branches: 55 }
+
+    # plugin: not enforced yet — too many 0% packages from missing tests
+    # target Q3-2026: statements 40, functions 45, branches 40
+    plugin:  null
+
+    # entry: thin CLI shells, covered by journey tests
+    # target Q3-2026: statements 25, functions 30, branches 25
+    entry:   null
+
+    #                   statements  functions  branches
+    # current:                0%      38%       39%
+    # target Q3-2026:        40%      45%       35%
+    studio:  { statements: 0,  functions: 35, branches: 35 }
+
+    # adapter: integration-tested by nature, unit coverage low by design
+    # target Q3-2026: statements 20, functions 25, branches 15
+    adapter: null
+
+    skip:    null

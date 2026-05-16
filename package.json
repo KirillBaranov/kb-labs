@@ -54,6 +54,7 @@
     "release:sdk": "node scripts/release-preflight.mjs && ./tools/kb-devkit/kb-devkit run build && node ./cli/bin/dist/bin.js marketplace:clear-cache && node ./cli/bin/dist/bin.js release run --flow sdk --skip-build --yes",
     "release:sdk:dry": "./tools/kb-devkit/kb-devkit run build && node ./cli/bin/dist/bin.js marketplace:clear-cache && node ./cli/bin/dist/bin.js release run --flow sdk --skip-build --dry-run",
     "coverage": "./tools/kb-devkit/kb-devkit run test:coverage && node scripts/merge-coverage.mjs",
+    "coverage:check": "node scripts/merge-coverage.mjs --check",
     "coverage:json": "./tools/kb-devkit/kb-devkit run test:coverage && node scripts/merge-coverage.mjs --json",
     "test": "./tools/kb-devkit/kb-devkit run test",
     "test:catalog": "node scripts/test-catalog.mjs",
@@ -66,6 +67,7 @@
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
     "@types/node": "^24.3.3",
+    "js-yaml": "^4.1.1",
     "@vitest/coverage-istanbul": "^4.1.4",
     "@vitest/coverage-v8": "^3",
     "eslint": "^9.39.1",
