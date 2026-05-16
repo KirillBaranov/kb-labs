@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { QueuedVectorStore, createQueuedVectorStore } from '../queued-vector-store.js';
 import type { IVectorStore, VectorSearchResult, VectorRecord, VectorFilter } from '@kb-labs/core-platform';
 import type { IResourceBroker, ResourceResponse } from '../../types.js';
@@ -50,8 +50,8 @@ function makeVectorStore(withGet = true, withQuery = true): IVectorStore {
     delete: vi.fn(),
     count: vi.fn(),
   };
-  if (withGet) store.get = vi.fn();
-  if (withQuery) store.query = vi.fn();
+  if (withGet) { store.get = vi.fn(); }
+  if (withQuery) { store.query = vi.fn(); }
   return store as IVectorStore;
 }
 
@@ -59,10 +59,10 @@ function makeVectorStore(withGet = true, withQuery = true): IVectorStore {
 
 describe('QueuedVectorStore', () => {
   const mockResults: VectorSearchResult[] = [
-    { id: 'v1', score: 0.95, payload: { text: 'hello' } },
+    { id: 'v1', score: 0.95, metadata: { text: 'hello' } },
   ];
   const mockVectors: VectorRecord[] = [
-    { id: 'v1', vector: [0.1, 0.2], payload: {} },
+    { id: 'v1', vector: [0.1, 0.2], metadata: {} },
   ];
 
   describe('createQueuedVectorStore', () => {
@@ -87,7 +87,7 @@ describe('QueuedVectorStore', () => {
     it('passes filter argument to broker', async () => {
       const { broker, captured } = makeBroker([] as VectorSearchResult[]);
       const store = new QueuedVectorStore(broker, makeVectorStore());
-      const filter: VectorFilter = { must: [{ key: 'type', match: { value: 'doc' } }] };
+      const filter: VectorFilter = { field: 'type', operator: 'eq', value: 'doc' };
       await store.search([0.1], 3, filter);
       expect(captured[0]!.args[2]).toEqual(filter);
     });
@@ -178,7 +178,7 @@ describe('QueuedVectorStore', () => {
     it('routes to broker when underlying store supports query()', async () => {
       const { broker } = makeBroker(mockVectors);
       const store = new QueuedVectorStore(broker, makeVectorStore(true, true));
-      const filter: VectorFilter = { must: [] };
+      const filter: VectorFilter = { field: 'type', operator: 'eq', value: null };
       const result = await store.query(filter);
       expect(result).toEqual(mockVectors);
     });

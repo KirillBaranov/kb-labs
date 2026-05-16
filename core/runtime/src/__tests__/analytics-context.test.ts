@@ -98,12 +98,12 @@ describe('detectActor — CI environments', () => {
 
     try {
       const ctx = await createAnalyticsContext(tmpDir);
-      expect(ctx.actor.type).toBe('ci');
-      expect(ctx.actor.id).toBe('octocat');
+      expect(ctx.actor!.type).toBe('ci');
+      expect(ctx.actor!.id).toBe('octocat');
     } finally {
       for (const [k, v] of Object.entries(saved)) {
-        if (v === undefined) delete process.env[k];
-        else process.env[k] = v;
+        if (v === undefined) { delete process.env[k]; }
+        else { process.env[k] = v; }
       }
     }
   });
@@ -118,12 +118,12 @@ describe('detectActor — CI environments', () => {
 
     try {
       const ctx = await createAnalyticsContext(tmpDir);
-      expect(ctx.actor.type).toBe('ci');
-      expect(ctx.actor.id).toBe('ci-bot');
+      expect(ctx.actor!.type).toBe('ci');
+      expect(ctx.actor!.id).toBe('ci-bot');
     } finally {
       for (const [k, v] of Object.entries(saved)) {
-        if (v === undefined) delete process.env[k];
-        else process.env[k] = v;
+        if (v === undefined) { delete process.env[k]; }
+        else { process.env[k] = v; }
       }
     }
   });
@@ -149,13 +149,13 @@ describe('runId', () => {
 describe('buildContext', () => {
   it('includes workspace path in ctx', async () => {
     const ctx = await createAnalyticsContext(tmpDir);
-    expect(ctx.ctx.workspace).toBe(tmpDir);
+    expect(ctx.ctx!.workspace).toBe(tmpDir);
   });
 
   it('ctx.branch is set when running in a git repo', async () => {
     // We're in a git repo, so branch should be populated
     const ctx = await createAnalyticsContext('/Users/kirillbaranov/Desktop/kb-labs-workspace');
-    expect(ctx.ctx.branch).toBeDefined();
-    expect(typeof ctx.ctx.branch).toBe('string');
+    expect(ctx.ctx!.branch).toBeDefined();
+    expect(typeof ctx.ctx!.branch).toBe('string');
   });
 });

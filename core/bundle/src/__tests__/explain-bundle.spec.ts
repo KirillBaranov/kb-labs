@@ -10,8 +10,8 @@ async function copyDir(src: string, dest: string): Promise<void> {
   for (const entry of entries) {
     const srcPath = path.join(src, entry.name);
     const destPath = path.join(dest, entry.name);
-    if (entry.isDirectory()) await copyDir(srcPath, destPath);
-    else await fsp.copyFile(srcPath, destPath);
+    if (entry.isDirectory()) { await copyDir(srcPath, destPath); }
+    else { await fsp.copyFile(srcPath, destPath); }
   }
 }
 

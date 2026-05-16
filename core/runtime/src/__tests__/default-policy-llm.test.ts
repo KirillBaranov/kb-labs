@@ -24,8 +24,8 @@ function mockLLM(overrides: Partial<ILLM> = {}): ILLM & { lastOptions: LLMOption
 }
 
 const defaultPolicy: LLMExecutionPolicy = {
-  cache: { mode: 'auto' },
-  stream: { mode: 'disabled' },
+  cache: { mode: 'prefer' },
+  stream: { mode: 'off' },
 };
 
 // ── createDefaultExecutionPolicyLLM ──────────────────────────────────────────
@@ -55,8 +55,8 @@ describe('DefaultExecutionPolicyLLM — policy merging', () => {
     const llm = mockLLM();
     const wrapper = new DefaultExecutionPolicyLLM(llm, defaultPolicy);
     await wrapper.complete('hello');
-    expect(llm.lastOptions?.execution?.cache?.mode).toBe('auto');
-    expect(llm.lastOptions?.execution?.stream?.mode).toBe('disabled');
+    expect(llm.lastOptions?.execution?.cache?.mode).toBe('prefer');
+    expect(llm.lastOptions?.execution?.stream?.mode).toBe('off');
   });
 
   it('call-level cache overrides default cache, keeps default stream', async () => {
@@ -64,11 +64,11 @@ describe('DefaultExecutionPolicyLLM — policy merging', () => {
     const wrapper = new DefaultExecutionPolicyLLM(llm, defaultPolicy);
 
     await wrapper.complete('hello', {
-      execution: { cache: { mode: 'disabled' } },
+      execution: { cache: { mode: 'bypass' } },
     });
 
     // cache should be overridden, stream should come from defaults
-    expect(llm.lastOptions?.execution?.cache?.mode).toBe('disabled');
+    expect(llm.lastOptions?.execution?.cache?.mode).toBe('bypass');
     expect(llm.lastOptions?.execution?.stream?.mode).toBe('disabled');
   });
 
@@ -129,7 +129,7 @@ describe('chatWithTools', () => {
   });
 
   it('delegates to underlying LLM when chatWithTools is supported', async () => {
-    const mockResponse = { content: 'tool result', toolCalls: [] };
+    const mockResponse = { content: 'tool result', toolCalls: [], usage: { promptTokens: 0, completionTokens: 0 }, model: 'test' };
     const chatWithTools = vi.fn(async () => mockResponse);
     const llm = mockLLM({ chatWithTools });
 

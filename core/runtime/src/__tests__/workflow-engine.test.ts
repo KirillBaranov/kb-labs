@@ -262,7 +262,7 @@ describe('WorkflowEngine', () => {
     it('applies offset and limit', async () => {
       const def: WorkflowDefinition = { id: 'wf-page', name: 'Page', steps: [echoStep('s')] };
       engine.registerWorkflow(def);
-      for (let i = 0; i < 5; i++) await engine.execute('wf-page', i);
+      for (let i = 0; i < 5; i++) { await engine.execute('wf-page', i); }
       const page = await engine.list({ offset: 1, limit: 2 });
       expect(page).toHaveLength(2);
     });
