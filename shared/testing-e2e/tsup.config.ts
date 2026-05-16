@@ -3,7 +3,6 @@ import nodePreset from '@kb-labs/devkit/tsup/node';
 
 export default defineConfig({
   ...nodePreset,
-  format: ['esm', 'cjs'],
   entry: {
     index: 'src/index.ts',
   },
