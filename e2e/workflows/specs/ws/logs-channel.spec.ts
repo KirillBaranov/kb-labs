@@ -31,14 +31,14 @@ test('WS-L01: subscribe → receive log stream', async ({ request }) => {
     ws.send({ type: 'subscribe', jobId: runId, level: 'info' });
 
     // Should receive at least one log message
-    const msg = await expectWsMessage<{ type: string; level?: string; message?: string }>(
+    const msg = await expectWsMessage<{ type: string; payload?: { level?: string; message?: string } }>(
       ws,
       (m) => m.type === 'log',
       { timeoutMs: 15_000, label: 'first log message' },
     );
 
     expect(msg.type).toBe('log');
-    expect(msg.level).toBeTruthy();
+    expect(msg.payload?.level).toBeTruthy();
   });
 });
 
@@ -49,12 +49,12 @@ test('WS-L02: level filter — warn level excludes debug/info messages', async (
     ws.send({ type: 'subscribe', jobId: runId, level: 'warn' });
 
     // Collect a few messages with short timeout (may receive none if no warn/error logs)
-    const messages = await ws.collect<{ type: string; level?: string }>(3, 5_000).catch(() => []);
+    const messages = await ws.collect<{ type: string; payload?: { level?: string } }>(3, 5_000).catch(() => []);
 
     // All received log messages must be warn or error level
     const logMessages = messages.filter((m) => m.type === 'log');
     for (const msg of logMessages) {
-      expect(['warn', 'error']).toContain(msg.level);
+      expect(['warn', 'error']).toContain(msg.payload?.level);
     }
   });
 });
@@ -63,14 +63,14 @@ test('WS-L03: unknown jobId — server sends error message, does not hang', asyn
   await withWs(logsWsUrl('nonexistent-job-xyz'), async (ws) => {
     ws.send({ type: 'subscribe', jobId: 'nonexistent-job-xyz' });
 
-    const msg = await expectWsMessage<{ type: string; error?: string }>(
+    const msg = await expectWsMessage<{ type: string; payload?: { error?: string } }>(
       ws,
       (m) => m.type === 'error',
       { timeoutMs: 5_000, label: 'error message for unknown job' },
     );
 
     expect(msg.type).toBe('error');
-    expect(msg.error).toBeTruthy();
+    expect(msg.payload?.error).toBeTruthy();
   });
 });
 
