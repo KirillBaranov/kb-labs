@@ -120,6 +120,7 @@
     "@kb-labs/shared-cli-ui": ">=2.0.0",
     "@kb-labs/shared-command-kit": ">=2.0.0",
     "@kb-labs/shared-testing": ">=2.0.0",
+    "@kb-labs/shared-testing-platform": ">=2.0.0",
     "@kb-labs/shared-tool-kit": ">=2.0.0",
     "@kb-labs/studio-devtools": ">=2.0.0",
     "@kb-labs/studio-event-bus": ">=2.0.0",
