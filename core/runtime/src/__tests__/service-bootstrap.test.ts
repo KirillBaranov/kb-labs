@@ -17,7 +17,13 @@ import { promises as fs } from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { platform } from '../container.js';
-import { createServiceBootstrap, resetServiceBootstrap } from '../service-bootstrap.js';
+import {
+  createServiceBootstrap,
+  resetServiceBootstrap,
+  getPlatformRoot,
+  getProjectRoot,
+  loadEnvFromRoot,
+} from '../service-bootstrap.js';
 
 describe('createServiceBootstrap', () => {
   let tmpDir: string;
@@ -177,5 +183,92 @@ describe('createServiceBootstrap', () => {
     // can initialize again
     await createServiceBootstrap({ appId: 'reset-test-2', repoRoot: tmpDir });
     expect(platform.isInitialized).toBe(true);
+  });
+});
+
+// ─── getPlatformRoot / getProjectRoot ─────────────────────────────────────────
+
+describe('getPlatformRoot / getProjectRoot', () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    resetServiceBootstrap();
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'kb-roots-'));
+  });
+
+  afterEach(async () => {
+    resetServiceBootstrap();
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it('both return undefined before createServiceBootstrap is called', () => {
+    expect(getPlatformRoot()).toBeUndefined();
+    expect(getProjectRoot()).toBeUndefined();
+  });
+
+  it('both return a string (path) after createServiceBootstrap completes', async () => {
+    await createServiceBootstrap({ appId: 'roots-test', repoRoot: tmpDir });
+
+    expect(typeof getPlatformRoot()).toBe('string');
+    expect(typeof getProjectRoot()).toBe('string');
+  });
+
+  it('both revert to undefined after resetServiceBootstrap', async () => {
+    await createServiceBootstrap({ appId: 'roots-reset', repoRoot: tmpDir });
+    resetServiceBootstrap();
+
+    expect(getPlatformRoot()).toBeUndefined();
+    expect(getProjectRoot()).toBeUndefined();
+  });
+});
+
+// ─── loadEnvFromRoot ──────────────────────────────────────────────────────────
+
+describe('loadEnvFromRoot', () => {
+  let tmpDir: string;
+
+  beforeEach(async () => {
+    tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'kb-loadenv-'));
+  });
+
+  afterEach(async () => {
+    await fs.rm(tmpDir, { recursive: true, force: true });
+  });
+
+  it('parses KEY=VALUE from .env and sets process.env', async () => {
+    const key = 'LOAD_ENV_TEST_PARSED';
+    delete process.env[key];
+    await fs.writeFile(path.join(tmpDir, '.env'), `${key}=from-file\n`);
+
+    loadEnvFromRoot(tmpDir);
+
+    expect(process.env[key]).toBe('from-file');
+    delete process.env[key];
+  });
+
+  it('does not overwrite already-set environment variables', async () => {
+    const key = 'LOAD_ENV_TEST_NO_OVERWRITE';
+    process.env[key] = 'original';
+    await fs.writeFile(path.join(tmpDir, '.env'), `${key}=overwritten\n`);
+
+    loadEnvFromRoot(tmpDir);
+
+    expect(process.env[key]).toBe('original');
+    delete process.env[key];
+  });
+
+  it('does not throw when .env file does not exist', () => {
+    expect(() => loadEnvFromRoot(tmpDir)).not.toThrow();
+  });
+
+  it('ignores comment lines starting with #', async () => {
+    const key = 'LOAD_ENV_TEST_COMMENT';
+    delete process.env[key];
+    await fs.writeFile(path.join(tmpDir, '.env'), `# comment\n${key}=real\n`);
+
+    loadEnvFromRoot(tmpDir);
+
+    expect(process.env[key]).toBe('real');
+    delete process.env[key];
   });
 });
