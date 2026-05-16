@@ -3,7 +3,11 @@
 </p>
 
 <p align="center">
-  Self-hosted platform for programmable dev workflows and vendor-free infrastructure.
+  Automate engineering workflows. Extend AI agents safely. Control your infrastructure.
+</p>
+
+<p align="center">
+  Open-source · Self-hosted · No cloud required
 </p>
 
 <p align="center">
@@ -182,6 +186,18 @@ export function createAdapter(options: { apiKey: string; service: string }): ILo
 ```
 
 One line changed. No application code touched. The platform picks it up on next start.
+
+---
+
+## How KB Labs compares
+
+**GitHub Actions** — great CI. Lives only in the pipeline. KB Labs runs the same scenarios locally, in Studio, on a schedule — and with agents as first-class steps inside any workflow.
+
+**LangGraph** — graph orchestration for agents. Agents only, no engineering infrastructure around them. KB Labs gives agents isolation, permissions, and observability — and embeds them into workflows alongside your existing tooling.
+
+**MCP servers** — a common way to extend agents like Claude Code with external tools. Works, but every server is a new process to maintain, and there's no permission boundary: if the API allows it, the agent can do it. KB Labs plugins are different. You decide exactly what the agent can call. No `task delete` in the manifest — the agent physically cannot delete, regardless of what the underlying API supports. Internal agents go further: sandboxed execution, declared resource quotas, full audit trail.
+
+The ClickUp plugin in this repo is a real example: Claude Code uses `kb clickup task create` and `kb clickup task search` — it never touches the ClickUp API directly.
 
 ---
 
