@@ -2,7 +2,8 @@
  * @kb-labs/sdk/testing
  *
  * Test utilities for KB Labs plugin development.
- * Re-exports from @kb-labs/shared-testing.
+ * Re-exports from @kb-labs/shared-testing (pure mocks) and
+ * @kb-labs/shared-testing-platform (platform setup + context factory).
  *
  * @example
  * ```typescript
@@ -19,13 +20,8 @@
  * ```
  */
 
+// Pure mocks (no core-runtime dependency)
 export {
-  // Platform setup
-  setupTestPlatform,
-  type TestPlatformOptions,
-  type TestPlatformResult,
-
-  // Mock builders
   mockLLM,
   type MockLLM,
   type MockLLMInstance,
@@ -38,8 +34,13 @@ export {
   mockLogger,
   type MockLoggerInstance,
   type LogEntry,
+} from '@kb-labs/shared-testing';
 
-  // Context factory
+// Platform setup + context factory (requires core-runtime)
+export {
+  setupTestPlatform,
+  type TestPlatformOptions,
+  type TestPlatformResult,
   createTestContext,
   createMockPluginContextV3,
   createMockPlatformApi,
@@ -53,13 +54,11 @@ export {
   createMockTrace,
   type CreateTestContextOptions,
   type TestContextResult,
-
-  // Command test runner
   testCommand,
   type TestableHandler,
   type TestCommandOptions,
   type TestCommandResult,
-} from '@kb-labs/shared-testing';
+} from '@kb-labs/shared-testing-platform';
 
 // Tool mock builder
 export {
