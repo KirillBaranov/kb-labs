@@ -124,9 +124,17 @@ export function CommitPlanTab({ scope }: CommitPlanTabProps) {
     apply.mutate({ scope, commitIds }, {
       onSuccess: (data: any) => {
         refetchAll();
-        if (data.result?.success) {
-          notify.success(`${data.result.appliedCommits.length} commit(s) applied`);
+        const result = data.result;
+        const applied = result?.appliedCommits?.length ?? 0;
+        const errors: string[] = result?.errors ?? [];
+        if (result?.success) {
+          notify.success(`${applied} commit(s) applied`);
           setSelected(new Set());
+        } else if (applied > 0 && errors.length > 0) {
+          notify.warning(`${applied} commit(s) applied, ${errors.length} failed: ${errors[0]}`);
+          setSelected(new Set());
+        } else {
+          notify.error(errors[0] ?? 'Apply failed');
         }
       },
       onError: (e: Error) => notify.error(`Apply failed: ${e.message}`),
