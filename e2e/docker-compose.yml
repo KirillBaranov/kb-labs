@@ -62,6 +62,7 @@ services:
       - "4000:4000"   # gateway
       - "5050:5050"   # rest-api
       - "5070:5070"   # marketplace
+      - "5071:5071"   # marketplace-registry
       - "7777:7777"   # state-daemon
       - "7778:7778"   # workflow
     environment:

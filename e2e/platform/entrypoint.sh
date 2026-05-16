@@ -110,6 +110,21 @@ until curl -sf http://localhost:4000/ready > /dev/null 2>&1; do
 done
 
 echo "==> Platform fully ready after ${ATTEMPTS}x2s"
+
+echo "==> Waiting for marketplace-registry (/health)..."
+ATTEMPTS=0
+until curl -sf http://localhost:5071/health > /dev/null 2>&1; do
+  ATTEMPTS=$((ATTEMPTS + 1))
+  if [ "$ATTEMPTS" -ge 30 ]; then
+    echo "WARN: marketplace-registry did not respond after 60s — continuing anyway"
+    break
+  fi
+  sleep 2
+done
+if curl -sf http://localhost:5071/health > /dev/null 2>&1; then
+  echo "    marketplace-registry ready after ${ATTEMPTS}x2s"
+fi
+
 kb-dev status
 
 # Keep container alive while tests run

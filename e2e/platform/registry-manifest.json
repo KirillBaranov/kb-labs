@@ -46,6 +46,13 @@
       "gatewayPrefix": "/api/v1/marketplace"
     },
     {
+      "id": "marketplace-registry",
+      "pkg": "@kb-labs/marketplace-registry-app",
+      "description": "Marketplace registry (port 5071)",
+      "default": true,
+      "port": 5071
+    },
+    {
       "id": "studio",
       "pkg": "@kb-labs/studio-app",
       "description": "Web UI (port 3000)",

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mockCLIInput, createCapturedUI, createMockContext } from '@kb-labs/shared-testing-e2e';
+import { mockCLIInput, createCapturedUI, createMockContext } from '@kb-labs/shared-testing-e2e/cli';
 
 // Mock SDK hooks before importing the command
 vi.mock('@kb-labs/sdk', async (importOriginal) => {

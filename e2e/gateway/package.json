@@ -11,6 +11,7 @@
     "@kb-labs/gateway-app": "workspace:*",
     "@kb-labs/gateway-core": "workspace:*",
     "@kb-labs/rest-api-app": "workspace:*",
+    "@kb-labs/shared-testing-e2e": "workspace:*",
     "@kb-labs/workflow-daemon": "workspace:*",
     "@playwright/test": "^1.52.0",
     "typescript": "^5.4.0"

@@ -1,13 +1,10 @@
 /**
  * @kb-labs/shared-testing-e2e
  *
- * E2E test harness for the KB Labs platform.
+ * E2E test harness for the KB Labs platform. Playwright-safe — no vitest imports.
  *
- * CLI handler testing (no daemon required):
- *   - `mockCLIInput` — builds typed CLIInput<F> for handler tests
- *   - `mockObject` — partial override factory for any interface
- *   - `createCapturedUI` — UIFacade that records all calls for assertion
- *   - `createMockContext` — minimal PluginContextV3 mock for handler tests
+ * For CLI handler tests (vitest context) import from @kb-labs/shared-testing-e2e/cli:
+ *   - `mockCLIInput`, `mockObject`, `createCapturedUI`, `createMockContext`
  *
  * SSE helpers:
  *   - `collectSseEvents` — drain SSE stream into array
@@ -64,18 +61,6 @@ export type { IsolatedProjectRoot, IsolatedProjectRootOptions } from './isolated
 export { makeTestNamespace } from './namespace.js';
 
 export { findWorkspaceRoot, resolveWorkspaceRoot } from './workspace-root.js';
-
-// --- CLI handler testing helpers ---
-export { mockCLIInput } from './cli/mock-cli-input.js';
-export type { MockCLIInputOptions } from './cli/mock-cli-input.js';
-
-export { mockObject } from './cli/mock-object.js';
-
-export { createCapturedUI } from './cli/captured-ui.js';
-export type { UICapture, CapturedUI } from './cli/captured-ui.js';
-
-export { createMockContext } from './cli/mock-context.js';
-export type { MockContextOptions } from './cli/mock-context.js';
 
 // --- SSE helpers ---
 export { collectSseEvents, waitForSseEvent, expectSseTerminates } from './sse/collect.js';
