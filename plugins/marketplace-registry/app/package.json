@@ -5,6 +5,7 @@
   "type": "module",
   "main": "./dist/bootstrap.js",
   "files": ["dist"],
+  "kb": { "manifest": "./dist/manifest.js" },
   "scripts": {
     "build": "tsup",
     "clean": "rimraf dist",
@@ -17,6 +18,7 @@
   },
   "dependencies": {
     "@kb-labs/core-platform": "workspace:*",
+    "@kb-labs/plugin-contracts": "workspace:*",
     "@kb-labs/core-runtime": "workspace:*",
     "@kb-labs/core-sys": "workspace:*",
     "@kb-labs/gateway-auth": "workspace:*",

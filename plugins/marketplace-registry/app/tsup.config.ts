@@ -4,5 +4,5 @@ import nodePreset from '@kb-labs/devkit/tsup/node';
 export default defineConfig({
   ...nodePreset,
   tsconfig: 'tsconfig.build.json',
-  entry: ['src/bootstrap.ts'],
+  entry: ['src/bootstrap.ts', 'src/manifest.ts'],
 });
