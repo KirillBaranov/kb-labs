@@ -2,6 +2,7 @@
   "name": "@kb-labs/e2e-gateway",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "e2e": "playwright test"
   },
