@@ -1,6 +1,6 @@
 {
-  "name": "@kb-labs/shared-testing",
-  "description": "Test utilities for KB Labs plugin development — mock builders, platform setup, test context",
+  "name": "@kb-labs/shared-testing-platform",
+  "description": "Platform setup utilities for testing KB Labs plugins — createTestContext, setupTestPlatform, testCommand",
   "version": "2.94.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -28,6 +28,9 @@
   },
   "dependencies": {
     "@kb-labs/core-platform": "workspace:*",
+    "@kb-labs/core-runtime": "workspace:*",
+    "@kb-labs/plugin-contracts": "workspace:*",
+    "@kb-labs/shared-testing": "workspace:*",
     "vitest": "^3.2.4"
   },
   "devDependencies": {

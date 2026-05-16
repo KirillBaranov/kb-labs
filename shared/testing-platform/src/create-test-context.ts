@@ -1,5 +1,5 @@
 /**
- * @module @kb-labs/shared-testing/create-test-context
+ * @module @kb-labs/shared-testing-platform/create-test-context
  *
  * Enhanced test context factory that bridges ctx.platform and the global singleton.
  *
@@ -10,7 +10,7 @@
  *
  * @example
  * ```typescript
- * import { createTestContext, mockLLM } from '@kb-labs/shared-testing';
+ * import { createTestContext, mockLLM } from '@kb-labs/shared-testing-platform';
  *
  * const llm = mockLLM().onAnyComplete().respondWith('hello');
  * const { ctx, cleanup } = createTestContext({ platform: { llm } });
@@ -40,11 +40,8 @@ import type {
   SnapshotAPI,
 } from '@kb-labs/plugin-contracts';
 
+import { mockLLM, mockCache, mockStorage, mockLogger } from '@kb-labs/shared-testing';
 import { setupTestPlatform } from './setup-platform.js';
-import { mockLLM } from './mock-llm.js';
-import { mockCache } from './mock-cache.js';
-import { mockStorage } from './mock-storage.js';
-import { mockLogger } from './mock-logger.js';
 import { vi } from 'vitest';
 
 // ────────────────────────────────────────────────────────────────────
@@ -163,9 +160,9 @@ export function createMockUI(): UIFacade {
     newline: vi.fn(() => messages.push('')),
     divider: vi.fn(() => messages.push('-'.repeat(40))),
     box: vi.fn((content, title) => {
-      if (title) {messages.push(`+- ${title} -+`);}
+      if (title) { messages.push(`+- ${title} -+`); }
       messages.push(content);
-      if (title) {messages.push(`+${'-'.repeat(title.length + 4)}+`);}
+      if (title) { messages.push(`+${'-'.repeat(title.length + 4)}+`); }
     }),
     sideBox: vi.fn((options) => {
       messages.push(`+- ${options.title} -+`);
@@ -176,7 +173,7 @@ export function createMockUI(): UIFacade {
       }
       if (options.sections) {
         options.sections.forEach((section: { header?: string; items: string[] }) => {
-          if (section.header) {messages.push(`  ${section.header}:`);}
+          if (section.header) { messages.push(`  ${section.header}:`); }
           section.items.forEach((item: string) => messages.push(`    ${item}`));
         });
       }
@@ -401,28 +398,8 @@ export function createMockPluginContextV3<TConfig = unknown>(
 /**
  * Create a test context for plugin development.
  *
- * Unlike the original SDK version, this:
- * - Uses mock builders with vi.fn() spies (not noop functions)
- * - Syncs platform adapters to the global singleton by default
- * - Returns a cleanup function for afterEach()
- *
- * @example
- * ```typescript
- * import { createTestContext, mockLLM } from '@kb-labs/shared-testing';
- *
- * describe('my handler', () => {
- *   let cleanup: () => void;
- *
- *   beforeEach(() => {
- *     const llm = mockLLM().onAnyComplete().respondWith('ok');
- *     const result = createTestContext({ platform: { llm } });
- *     cleanup = result.cleanup;
- *     // Use result.ctx in your tests
- *   });
- *
- *   afterEach(() => cleanup());
- * });
- * ```
+ * Uses mock builders with vi.fn() spies and syncs platform adapters
+ * to the global singleton by default so that composables work in tests.
  */
 export function createTestContext<TConfig = unknown>(
   options: CreateTestContextOptions = {}
@@ -444,7 +421,6 @@ export function createTestContext<TConfig = unknown>(
 
   const resolvedOutdir = outdir ?? `${cwd}/.kb/output`;
 
-  // Build default host context
   const defaultHostContext: HostContext =
     hostContext ??
     (() => {
@@ -466,7 +442,6 @@ export function createTestContext<TConfig = unknown>(
       }
     })();
 
-  // Create default mocks (with spies, not noop)
   const defaultLogger = mockLogger();
   const defaultLLM = mockLLM();
   const defaultCache = mockCache();
@@ -532,13 +507,11 @@ export function createTestContext<TConfig = unknown>(
     },
   };
 
-  // Merge overrides
   const finalPlatform: PlatformServices = {
     ...defaultPlatform,
     ...platformOverrides,
   };
 
-  // Sync to global singleton
   let cleanupFn = () => {};
   if (syncSingleton) {
     const result = setupTestPlatform({
@@ -554,14 +527,12 @@ export function createTestContext<TConfig = unknown>(
     cleanupFn = result.cleanup;
   }
 
-  // UI
   const defaultUI = createMockUI();
   const finalUI: UIFacade = {
     ...defaultUI,
     ...uiOverrides,
   };
 
-  // Build context
   const ctx: PluginContextV3<TConfig> = {
     host,
     requestId: 'test-trace:test-span',

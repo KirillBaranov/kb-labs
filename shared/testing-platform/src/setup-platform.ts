@@ -1,5 +1,5 @@
 /**
- * @module @kb-labs/shared-testing/setup-platform
+ * @module @kb-labs/shared-testing-platform/setup-platform
  *
  * Solves the "singleton gap" problem: composables (useLLM, useCache, etc.)
  * read from the global platform singleton, but createTestContext() only
@@ -50,7 +50,7 @@ export interface TestPlatformResult {
  *
  * @example
  * ```typescript
- * import { setupTestPlatform, mockLLM } from '@kb-labs/shared-testing';
+ * import { setupTestPlatform, mockLLM } from '@kb-labs/shared-testing-platform';
  *
  * describe('my handler', () => {
  *   let cleanup: () => void;
@@ -63,12 +63,6 @@ export interface TestPlatformResult {
  *   });
  *
  *   afterEach(() => cleanup());
- *
- *   it('uses LLM', async () => {
- *     const llm = useLLM(); // Returns the test mock!
- *     const res = await llm!.complete('test');
- *     expect(res.content).toBe('hello');
- *   });
  * });
  * ```
  */

@@ -1,32 +1,18 @@
 /**
  * @kb-labs/shared-testing
  *
- * Test utilities for KB Labs plugin development.
+ * Pure mock builders for KB Labs plugin development.
+ * Only depends on @kb-labs/core-platform interfaces (Layer 0).
  *
- * Provides mock builders, platform setup, and test context factory
- * that solve the singleton gap between ctx.platform and composables.
+ * For platform setup utilities (createTestContext, testCommand, setupTestPlatform)
+ * that require @kb-labs/core-runtime, use @kb-labs/shared-testing-platform.
  *
  * @example
  * ```typescript
- * import {
- *   createTestContext,
- *   setupTestPlatform,
- *   mockLLM,
- *   mockCache,
- *   mockStorage,
- *   mockLogger,
- * } from '@kb-labs/shared-testing';
+ * import { mockLLM, mockCache, mockStorage, mockLogger } from '@kb-labs/shared-testing';
  * ```
  */
 
-// Platform setup (singleton gap fix)
-export {
-  setupTestPlatform,
-  type TestPlatformOptions,
-  type TestPlatformResult,
-} from './setup-platform.js';
-
-// Mock builders
 export {
   mockLLM,
   type MockLLM,
@@ -50,28 +36,3 @@ export {
   type MockLoggerInstance,
   type LogEntry,
 } from './mock-logger.js';
-
-// Test context factory
-export {
-  createTestContext,
-  createMockPluginContextV3,
-  createMockPlatformApi,
-  createMockPluginAPI,
-  createMockEnvironmentAPI,
-  createMockWorkspaceAPI,
-  createMockSnapshotAPI,
-  createInfraApiMocks,
-  createMockRuntime,
-  createMockUI,
-  createMockTrace,
-  type CreateTestContextOptions,
-  type TestContextResult,
-} from './create-test-context.js';
-
-// Command test runner
-export {
-  testCommand,
-  type TestableHandler,
-  type TestCommandOptions,
-  type TestCommandResult,
-} from './test-command.js';
