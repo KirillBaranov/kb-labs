@@ -23,7 +23,7 @@ async function startRun(request: Parameters<Parameters<typeof test>[1]>[0]['requ
 }
 
 function progressWsUrl(jobId: string): string {
-  return `${GATEWAY_WS}/v1/ws/plugins/workflow/progress/${jobId}`;
+  return `${GATEWAY_WS}/api/v1/ws/plugins/workflow/progress/${jobId}`;
 }
 
 // ── tests ─────────────────────────────────────────────────────────────────────

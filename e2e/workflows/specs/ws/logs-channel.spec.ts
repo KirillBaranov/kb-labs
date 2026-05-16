@@ -21,7 +21,7 @@ async function startRun(request: Parameters<Parameters<typeof test>[1]>[0]['requ
 }
 
 function logsWsUrl(jobId: string): string {
-  return `${GATEWAY_WS}/v1/ws/plugins/workflow/logs/${jobId}`;
+  return `${GATEWAY_WS}/api/v1/ws/plugins/workflow/logs/${jobId}`;
 }
 
 test('WS-L01: subscribe → receive log stream', async ({ request }) => {

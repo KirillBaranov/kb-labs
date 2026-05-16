@@ -60,8 +60,30 @@ export function createWsHandler(
       return;
     }
 
+    // 2. Start buffering hello BEFORE async auth to prevent race condition.
+    // Client may send hello during await resolveToken — capture it immediately.
+    let resolveHello!: (raw: Buffer) => void;
+    let rejectHello!: (err: Error) => void;
+    const helloRawPromise = new Promise<Buffer>((res, rej) => {
+      resolveHello = res;
+      rejectHello = rej;
+    });
+    const helloTimeout = setTimeout(() => {
+      socket.close(1008, 'Hello timeout');
+      rejectHello(new Error('Hello timeout'));
+    }, HELLO_TIMEOUT_MS);
+    socket.once('message', (raw) => {
+      clearTimeout(helloTimeout);
+      resolveHello(raw as Buffer);
+    });
+    socket.once('close', () => {
+      clearTimeout(helloTimeout);
+      rejectHello(new Error('Socket closed before hello'));
+    });
+
     const tokenEntry = await resolveToken(token, cache, jwtConfig);
     if (!tokenEntry || tokenEntry.type !== 'machine') {
+      clearTimeout(helloTimeout);
       logDiagnosticEvent(logger, {
         domain: 'service',
         event: 'gateway.hosts.ws.auth',
@@ -80,97 +102,74 @@ export function createWsHandler(
     const connectionId = randomUUID();
     const sessionId = randomUUID();
 
-    // 2. Wait for hello (with timeout)
+    // 3. Process buffered hello (may already be resolved if client was fast)
     let protocolVersion: string | null = null;
     let helloCaps: string[] = [];
-    let helloDone = false;
 
     const protocolVersions: readonly string[] = SUPPORTED_PROTOCOL_VERSIONS;
 
-    await new Promise<void>((resolve, reject) => {
-      const helloTimeout = setTimeout(() => {
-        if (!helloDone) {
-          helloDone = true;
-          logDiagnosticEvent(logger, {
-            domain: 'service',
-            event: 'gateway.hosts.ws.handshake',
-            level: 'warn',
-            reasonCode: 'websocket_hello_timeout',
-            message: 'Host WebSocket hello timed out',
-            outcome: 'failed',
-            serviceId: 'gateway',
-            route: '/hosts/connect',
-            evidence: {
-              hostId,
-              namespaceId,
-            },
-          });
-          socket.close(1008, 'Hello timeout');
-          reject(new Error('Hello timeout'));
-        }
-      }, HELLO_TIMEOUT_MS);
+    try {
+      const helloRaw = await helloRawPromise;
+      const msg = HelloMessageSchema.parse(JSON.parse(helloRaw.toString()));
 
-      socket.once('message', (raw) => {
-        if (helloDone) {return;}
-        helloDone = true;
-        clearTimeout(helloTimeout);
+      if (!protocolVersions.includes(msg.protocolVersion)) {
+        logDiagnosticEvent(logger, {
+          domain: 'service',
+          event: 'gateway.hosts.ws.handshake',
+          level: 'warn',
+          reasonCode: 'websocket_protocol_unsupported',
+          message: 'Host WebSocket protocol version is unsupported',
+          outcome: 'failed',
+          serviceId: 'gateway',
+          route: '/hosts/connect',
+          evidence: {
+            hostId,
+            namespaceId,
+            protocolVersion: msg.protocolVersion,
+            supportedVersions: [...SUPPORTED_PROTOCOL_VERSIONS],
+          },
+        });
+        send(socket, {
+          type: 'negotiate',
+          supportedVersions: [...SUPPORTED_PROTOCOL_VERSIONS],
+        });
+        socket.close(1008, 'Unsupported protocol version');
+        return;
+      }
 
-        try {
-          const msg = HelloMessageSchema.parse(JSON.parse(raw.toString()));
-
-          // Version negotiation
-          if (!protocolVersions.includes(msg.protocolVersion)) {
-            logDiagnosticEvent(logger, {
-              domain: 'service',
-              event: 'gateway.hosts.ws.handshake',
-              level: 'warn',
-              reasonCode: 'websocket_protocol_unsupported',
-              message: 'Host WebSocket protocol version is unsupported',
-              outcome: 'failed',
-              serviceId: 'gateway',
-              route: '/hosts/connect',
-              evidence: {
-                hostId,
-                namespaceId,
-                protocolVersion: msg.protocolVersion,
-                supportedVersions: [...SUPPORTED_PROTOCOL_VERSIONS],
-              },
-            });
-            send(socket, {
-              type: 'negotiate',
-              supportedVersions: [...SUPPORTED_PROTOCOL_VERSIONS],
-            });
-            socket.close(1008, 'Unsupported protocol version');
-            reject(new Error('Unsupported protocol version'));
-            return;
-          }
-
-          protocolVersion = msg.protocolVersion;
-          helloCaps = msg.capabilities ?? [];
-          resolve();
-        } catch (error) {
-          logDiagnosticEvent(logger, {
-            domain: 'service',
-            event: 'gateway.hosts.ws.handshake',
-            level: 'warn',
-            reasonCode: 'websocket_handshake_invalid',
-            message: 'Host WebSocket hello message is invalid',
-            outcome: 'failed',
-            error: error instanceof Error ? error : new Error(String(error)),
-            serviceId: 'gateway',
-            route: '/hosts/connect',
-            evidence: {
-              hostId,
-              namespaceId,
-            },
-          });
-          socket.close(1008, 'Invalid hello message');
-          reject(new Error('Invalid hello'));
-        }
-      });
-    }).catch(() => {
-      // socket already closed — errors logged above
-    });
+      protocolVersion = msg.protocolVersion;
+      helloCaps = msg.capabilities ?? [];
+    } catch (error) {
+      const isTimeout = error instanceof Error && error.message === 'Hello timeout';
+      if (isTimeout) {
+        logDiagnosticEvent(logger, {
+          domain: 'service',
+          event: 'gateway.hosts.ws.handshake',
+          level: 'warn',
+          reasonCode: 'websocket_hello_timeout',
+          message: 'Host WebSocket hello timed out',
+          outcome: 'failed',
+          serviceId: 'gateway',
+          route: '/hosts/connect',
+          evidence: { hostId, namespaceId },
+        });
+      } else if (!(error instanceof Error && error.message === 'Socket closed before hello')) {
+        logDiagnosticEvent(logger, {
+          domain: 'service',
+          event: 'gateway.hosts.ws.handshake',
+          level: 'warn',
+          reasonCode: 'websocket_handshake_invalid',
+          message: 'Host WebSocket hello message is invalid',
+          outcome: 'failed',
+          error: error instanceof Error ? error : new Error(String(error)),
+          serviceId: 'gateway',
+          route: '/hosts/connect',
+          evidence: { hostId, namespaceId },
+        });
+        socket.close(1008, 'Invalid hello message');
+      }
+      return;
+    }
 
     if (!protocolVersion) {return;}
 

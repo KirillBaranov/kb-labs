@@ -1,88 +1,72 @@
 /**
  * @module @kb-labs/workflow-cli/ws/progress-channel
- * WebSocket channel for real-time job progress updates
+ * WebSocket channel for real-time job progress updates.
+ *
+ * WS-P01 (actual step-level progress streaming) is a planned feature.
+ * WS-P02 (unknown jobId → error) is implemented via job existence check.
  */
 
 import { defineWebSocket, defineMessage, MessageRouter } from '@kb-labs/sdk';
 import type { WSMessage } from '@kb-labs/sdk';
+import { getWorkflowDaemonUrl } from '../http-client.js';
 
-// Define typed messages
 const SubscribeMsg = defineMessage<{ jobId: string }>('subscribe');
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 const UnsubscribeMsg = defineMessage<{}>('unsubscribe');
-
+const ErrorMsg = defineMessage<{ error: string }>('error');
 const StepStartMsg = defineMessage<{ stepName: string; stepIndex: number }>('step_start');
 
-// Type-only message definitions (used only in type unions)
-type StepProgressMsg = ReturnType<typeof defineMessage<{ stepName: string; progress: number; message?: string }>>;
-type StepCompleteMsg = ReturnType<typeof defineMessage<{
-  stepName: string;
-  status: 'completed' | 'failed';
-  durationMs: number;
-  error?: string;
-}>>;
-type JobCompleteMsg = ReturnType<typeof defineMessage<{ jobId: string; status: string; durationMs: number }>>;
-
-const ErrorMsg = defineMessage<{ error: string }>('error');
-
-// Incoming/Outgoing types
 type Incoming = ReturnType<typeof SubscribeMsg.create> | ReturnType<typeof UnsubscribeMsg.create>;
+type Outgoing = ReturnType<typeof StepStartMsg.create> | ReturnType<typeof ErrorMsg.create>;
 
-type Outgoing =
-  | ReturnType<typeof StepStartMsg.create>
-  | StepProgressMsg
-  | StepCompleteMsg
-  | JobCompleteMsg
-  | ReturnType<typeof ErrorMsg.create>;
+async function checkJobExists(jobId: string): Promise<boolean> {
+  const daemonUrl = getWorkflowDaemonUrl();
+  const res = await fetch(`${daemonUrl}/api/v1/jobs/${encodeURIComponent(jobId)}`);
+  return res.status !== 404;
+}
 
 export default defineWebSocket<unknown, Incoming, Outgoing>({
   path: '/progress/:jobId',
   description: 'Real-time job progress updates',
 
   handler: {
-    async onConnect(ctx, sender) {
-      // Note: jobId will come from path params via runtime, not ctx.params
-      ctx.platform.logger.info('[progress-channel] Client connected', { connectionId: sender.getConnectionId() });
-
-      // TODO: Subscribe to progress events from daemon/engine
-      // Client needs to send Subscribe message with jobId
+    async onConnect(ctx, _sender) {
+      ctx.platform.logger.info('[progress-channel] Client connected', { connectionId: ctx.requestId });
     },
 
     async onMessage(ctx, message, sender) {
       const router = new MessageRouter()
-        .on(SubscribeMsg, async (ctx, payload, _rawSender) => {
+        .on(SubscribeMsg, async (_ctx, payload) => {
           const { jobId } = payload;
 
-          ctx.platform.logger.info('[progress-channel] Subscribed to progress updates', { jobId });
+          const exists = await checkJobExists(jobId).catch(() => true);
+          if (!exists) {
+            await sender.send(ErrorMsg.create({ error: `Job ${jobId} not found` }));
+            sender.close(1008, 'Job not found');
+            return;
+          }
 
-          // TODO: Start streaming progress updates from engine
-          // For now, send confirmation via step start message
-          await sender.send(
-            StepStartMsg.create({
-              stepName: 'initialization',
-              stepIndex: 0,
-            })
-          );
+          ctx.platform.logger.info('[progress-channel] Subscribed to progress', { jobId });
+          // Progress streaming is not yet implemented — send acknowledgement only
+          await sender.send(StepStartMsg.create({ stepName: 'initialization', stepIndex: 0 }));
         })
-        .on(UnsubscribeMsg, async (ctx, _payload, _rawSender) => {
-          ctx.platform.logger.info('[progress-channel] Unsubscribed from progress updates');
-          // TODO: Stop streaming
+        .on(UnsubscribeMsg, async (_ctx) => {
+          ctx.platform.logger.info('[progress-channel] Unsubscribed');
         });
 
       await router.handle(ctx, message as WSMessage, sender.raw);
     },
 
-    async onDisconnect(ctx, code, reason) {
-      ctx.platform.logger.info('[progress-channel] Client disconnected', { code, reason });
-      // TODO: Cleanup subscriptions
+    async onDisconnect(ctx, _code, _reason) {
+      ctx.platform.logger.info('[progress-channel] Client disconnected', { connectionId: ctx.requestId });
     },
 
     async onError(ctx, error, sender) {
       ctx.platform.logger.error('[progress-channel] Error', error);
       try {
         await sender.send(ErrorMsg.create({ error: error.message }));
-      } catch (sendError) {
-        ctx.platform.logger.error('[progress-channel] Failed to send error message', sendError instanceof Error ? sendError : undefined);
+      } catch {
+        // socket may be closed
       }
     },
   },
