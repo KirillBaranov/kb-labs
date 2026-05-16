@@ -44,7 +44,8 @@ export async function bootstrap(cwd: string): Promise<void> {
   // Read marketplace.registry config to wire up RegistryPackageSource for kb: specs
   const kbConfig = await readKbConfig(repoRoot);
   const registryConfig = (kbConfig?.data as Record<string, unknown> | undefined)?.marketplace as Record<string, unknown> | undefined;
-  const registryUrl = (registryConfig?.registry as Record<string, unknown> | undefined)?.url as string | undefined;
+  const registryUrl = (registryConfig?.registry as Record<string, unknown> | undefined)?.url as string | undefined
+    ?? process.env.KB_REGISTRY_URL;
 
   const registrySource = registryUrl
     ? new RegistryPackageSource({ registryUrl, authToken: process.env.KB_REGISTRY_TOKEN })

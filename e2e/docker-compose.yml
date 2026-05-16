@@ -68,6 +68,7 @@ services:
     environment:
       NPM_CONFIG_REGISTRY: http://verdaccio:4873
       KB_TENANT_DEFAULT_TIER: enterprise
+      KB_REGISTRY_URL: http://localhost:5071
     healthcheck:
       test: ["CMD", "curl", "-sf", "http://localhost:4000/ready"]
       start_period: 180s
