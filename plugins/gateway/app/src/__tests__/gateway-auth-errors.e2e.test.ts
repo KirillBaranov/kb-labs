@@ -10,7 +10,7 @@ import {
   KbDevController,
   httpClient,
   type HttpClient,
-} from '@kb-labs/shared-testing-e2e';
+} from '@kb-labs/shared-testing-e2e/cli';
 
 const controller = new KbDevController();
 let client: HttpClient;

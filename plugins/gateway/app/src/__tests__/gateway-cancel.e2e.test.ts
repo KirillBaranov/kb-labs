@@ -16,7 +16,7 @@ import {
   registerAgent,
   registerHost,
   type HttpClient,
-} from '@kb-labs/shared-testing-e2e';
+} from '@kb-labs/shared-testing-e2e/cli';
 
 const NAMESPACE = 'ns-cancel-e2e';
 const controller = new KbDevController();

@@ -5,12 +5,14 @@ export default defineConfig({
   ...nodePreset,
   entry: {
     index: 'src/index.ts',
+    cli: 'src/cli.ts',
   },
   tsconfig: 'tsconfig.build.json',
   dts: {
     resolve: true,
     entry: {
       index: 'src/index.ts',
+      cli: 'src/cli.ts',
     },
   },
   external: [

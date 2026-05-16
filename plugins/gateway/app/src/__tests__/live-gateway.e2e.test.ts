@@ -19,7 +19,7 @@
 
 import { describe, it, expect, beforeAll, afterAll, afterEach } from 'vitest';
 import { WebSocket, type RawData } from 'ws';
-import { KbDevController } from '@kb-labs/shared-testing-e2e';
+import { KbDevController } from '@kb-labs/shared-testing-e2e/cli';
 
 // ── Config (populated in beforeAll via kb-dev) ────────────────────────────────
 
