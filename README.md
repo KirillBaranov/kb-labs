@@ -77,31 +77,67 @@ Or install individual Go tools standalone — no Node.js required:
 
 A plugin is a manifest + a handler. The platform discovers it, wires permissions, and exposes it as a CLI command, workflow step, or agent tool.
 
+Don't give agents direct API access — encapsulate the logic in a plugin and expose only the commands they need.
+
 ```typescript
-// plugins/release/src/manifest.ts
-import { combinePermissions, defineCommandFlags } from '@kb-labs/sdk'
+// plugins/clickup/entry/src/manifest.ts
+import { combinePermissions } from '@kb-labs/sdk'
+
+const permissions = combinePermissions()
+  .withEnv(['CLICKUP_API_KEY', 'CLICKUP_TEAM_ID'])
+  .withNetwork({ fetch: ['api.clickup.com'] })
+  .withQuotas({ timeoutMs: 30000, memoryMb: 128 })
+  .build()
 
 export const manifest = {
   schema: 'kb.plugin/3',
-  id: '@acme/release',
-  display: { name: 'Release', description: 'Cut a release and notify the team' },
+  id: '@kb-labs/clickup',
+  display: { name: 'ClickUp', description: 'Manage ClickUp tasks, lists, and comments from CLI and REST API' },
+  permissions,
   cli: {
-    commands: [{
-      id: 'run',
-      group: 'release',
-      describe: 'Run the release pipeline',
-      handler: './commands/run.js#default',
-      permissions: combinePermissions()
-        .withFs({ mode: 'read', allow: ['CHANGELOG.md', '.kb/**'] })
-        .build(),
-    }]
-  }
+    commands: [
+      {
+        path: 'clickup workspace',
+        describe: 'Show full workspace hierarchy (spaces → folders → lists)',
+        handler: './commands/workspace.js#default',
+        examples: ['kb clickup workspace', 'kb clickup workspace --json'],
+      },
+      {
+        path: 'clickup task create',
+        describe: 'Create a new task',
+        handler: './commands/task-create.js#default',
+        flags: [
+          { name: 'list',     type: 'string', description: 'Target list ID (required)' },
+          { name: 'name',     type: 'string', description: 'Task name (required)' },
+          { name: 'priority', type: 'number', description: '1=urgent 2=high 3=normal 4=low' },
+        ],
+        examples: ['kb clickup task create --list abc123 --name "Fix login bug" --priority 2'],
+      },
+      {
+        path: 'clickup task search',
+        describe: 'Search tasks across the workspace',
+        handler: './commands/task-search.js#default',
+        flags: [
+          { name: 'status', type: 'string', description: 'Filter by status (comma-separated)' },
+          { name: 'limit',  type: 'number', description: 'Max results', default: 20 },
+        ],
+        examples: ['kb clickup task search "auth bug" --status "in progress" --json'],
+      },
+    ],
+  },
 }
 ```
 
 ```bash
-kb release run
+# CLI commands auto-generated from the manifest
+kb clickup workspace
+kb clickup task create --list abc123 --name "Fix login bug" --priority 2
+kb clickup task search "auth bug" --status "in progress"
+
+# Same commands available as agent tools — no raw API access needed
 ```
+
+→ [See the full ClickUp plugin source](https://github.com/KirillBaranov/kb-labs/tree/main/plugins/clickup)
 
 ---
 

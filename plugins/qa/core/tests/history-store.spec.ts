@@ -108,8 +108,9 @@ describe('appendEntry', () => {
 
   it('trims to max 50 entries', () => {
     const rootDir = makeGitRoot();
+    const entry = createHistoryEntry(passedResults, rootDir);
     for (let i = 0; i < 55; i++) {
-      appendEntry(rootDir, createHistoryEntry(passedResults, rootDir));
+      appendEntry(rootDir, entry);
     }
     const history = loadHistory(rootDir);
     expect(history).toHaveLength(50);
