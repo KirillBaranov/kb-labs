@@ -58,9 +58,9 @@ export class NotifierImpl implements INotifier {
     handler: (event: NotificationEvent) => Promise<void>
   ): () => void {
     return this.opts.eventBus.subscribe<NotificationEvent>(NOTIFICATION_TOPIC, async (e) => {
-      if (filter.severity?.length && !filter.severity.includes(e.severity ?? 'info')) return;
-      if (filter.source && e.source !== filter.source) return;
-      if (filter.predicate && !filter.predicate(e)) return;
+      if (filter.severity?.length && !filter.severity.includes(e.severity ?? 'info')) {return;}
+      if (filter.source && e.source !== filter.source) {return;}
+      if (filter.predicate && !filter.predicate(e)) {return;}
       await handler(e);
     });
   }
@@ -73,7 +73,7 @@ export class NotifierImpl implements INotifier {
 
   private async handle(event: NotificationEvent): Promise<void> {
     const channelIds = this.matchRouting(event);
-    if (channelIds.length === 0) return;
+    if (channelIds.length === 0) {return;}
     await Promise.allSettled(channelIds.map((id) => this.dispatch(event, id)));
   }
 
@@ -120,9 +120,9 @@ export class NotifierImpl implements INotifier {
   private matchRouting(event: NotificationEvent): string[] {
     for (const rule of this.opts.routing) {
       const { match } = rule;
-      if (match.severity?.length && !match.severity.includes(event.severity ?? 'info')) continue;
-      if (match.source && event.source !== match.source) continue;
-      if (match.code && event.code !== match.code) continue;
+      if (match.severity?.length && !match.severity.includes(event.severity ?? 'info')) {continue;}
+      if (match.source && event.source !== match.source) {continue;}
+      if (match.code && event.code !== match.code) {continue;}
       return rule.channels;
     }
     return [];

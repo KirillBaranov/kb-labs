@@ -4,18 +4,7 @@ import type { IEventBus, ILogger, INotifierChannel, NotificationEvent } from '@k
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-function makeEvent(overrides: Partial<NotificationEvent> = {}): NotificationEvent {
-  return {
-    id: 'evt-1',
-    title: 'Hello',
-    body: 'World',
-    severity: 'info',
-    emittedAt: Date.now(),
-    ...overrides,
-  };
-}
-
-function makeChannel(id: string, sendFn = vi.fn<[NotificationEvent], Promise<void>>(async () => {})): INotifierChannel {
+function makeChannel(id: string, sendFn = vi.fn<(event: NotificationEvent) => Promise<void>>(async () => {})): INotifierChannel {
   return {
     id,
     capabilities: [],
@@ -29,10 +18,10 @@ function makeEventBus() {
   const handlers = new Map<string, Array<(e: unknown) => void>>();
   const bus: IEventBus = {
     publish: vi.fn(async (topic, event) => {
-      for (const h of handlers.get(topic) ?? []) h(event);
+      for (const h of handlers.get(topic) ?? []) {h(event);}
     }),
     subscribe: vi.fn((topic, handler) => {
-      if (!handlers.has(topic)) handlers.set(topic, []);
+      if (!handlers.has(topic)) {handlers.set(topic, []);}
       handlers.get(topic)!.push(handler as (e: unknown) => void);
       return () => {
         const arr = handlers.get(topic)!;
@@ -176,7 +165,7 @@ describe('NotifierImpl', () => {
   });
 
   it('publishes delivery.failed event when channel throws', async () => {
-    const ch = makeChannel('ch1', vi.fn(async () => { throw new Error('send failed'); }));
+    const ch = makeChannel('ch1', vi.fn<(event: NotificationEvent) => Promise<void>>(async () => { throw new Error('send failed'); }));
     const impl = new NotifierImpl({
       eventBus: bus,
       logger,
@@ -214,14 +203,14 @@ describe('NotifierImpl', () => {
 
   it('subscribe() filters by severity', async () => {
     const impl = new NotifierImpl({ eventBus: bus, logger, channels: {}, routing: [] });
-    const handler = vi.fn(async () => {});
+    const handler = vi.fn<(event: NotificationEvent) => Promise<void>>(async () => {});
 
     impl.subscribe({ severity: ['critical'] }, handler);
     await impl.notify({ title: 'T', body: 'B', severity: 'info' });
     await impl.notify({ title: 'T', body: 'B', severity: 'critical' });
 
     expect(handler).toHaveBeenCalledOnce();
-    expect(handler.mock.calls[0][0]).toMatchObject({ severity: 'critical' });
+    expect(handler.mock.lastCall![0]).toMatchObject({ severity: 'critical' });
   });
 
   it('subscribe() filters by source', async () => {
