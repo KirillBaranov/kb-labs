@@ -89,27 +89,37 @@ function wrapHandle(ws: WebSocket): WsHandle {
     ): Promise<T> {
       const timeoutMs = opts.timeoutMs ?? 5000;
       return new Promise((resolvePromise, reject) => {
-        const timer = setTimeout(() => {
+        const cleanup = () => {
           ws.off('message', onMessage);
+          ws.off('close', onClose);
+        };
+        const timer = setTimeout(() => {
+          cleanup();
           reject(new Error(`WebSocket message timeout after ${timeoutMs}ms`));
         }, timeoutMs);
+        const onClose = (code: number, reason: Buffer) => {
+          clearTimeout(timer);
+          cleanup();
+          reject(new Error(`WebSocket closed (code=${code}) before message: ${reason.toString() || '(no reason)'}`));
+        };
         const onMessage = (raw: RawData) => {
           let msg: T;
           try {
             msg = JSON.parse(raw.toString()) as T;
           } catch (err) {
             clearTimeout(timer);
-            ws.off('message', onMessage);
+            cleanup();
             reject(new Error(`Non-JSON WebSocket message: ${(err as Error).message}`));
             return;
           }
           if (!opts.predicate || opts.predicate(msg)) {
             clearTimeout(timer);
-            ws.off('message', onMessage);
+            cleanup();
             resolvePromise(msg);
           }
         };
         ws.on('message', onMessage);
+        ws.on('close', onClose);
       });
     },
     collect<T = unknown>(count: number, timeoutMs = 5000): Promise<T[]> {

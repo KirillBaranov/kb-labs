@@ -1,10 +1,20 @@
 import { defineConfig } from 'vitest/config'
+import { cpus } from 'os'
+
+const defaultForks = Math.max(1, Math.ceil(cpus().length / 2))
+const maxForks = process.env.VITEST_MAX_FORKS
+  ? parseInt(process.env.VITEST_MAX_FORKS, 10)
+  : defaultForks
 
 export default defineConfig({
   test: {
     environment: 'node',
     globals: false,
     reporters: ['default'],
+    pool: 'forks',
+    poolOptions: {
+      forks: { maxForks, minForks: 1 },
+    },
     include: ['**/*.{test,spec}.?(c|m)[jt]s?(x)'],
     exclude: [
       '**/node_modules/**',
