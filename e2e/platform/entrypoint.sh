@@ -68,6 +68,22 @@ jobs:
           command: exit 1
 EOF
 
+cat > .kb/workflows/e2e-slow.yml << 'EOF'
+name: e2e-slow
+version: 1.0.0
+description: E2E slow workflow — sleeps 10s so reconnect tests can observe in-progress runs
+on:
+  manual: true
+jobs:
+  wait:
+    runsOn: local
+    steps:
+      - name: Sleep
+        uses: builtin:shell
+        with:
+          command: sleep 10
+EOF
+
 # ── Step 3: Start backend services ────────────────────────────────────────
 # Start infra first (state-daemon), then backend group.
 # kb-dev start accepts one service/group name — not multiple.

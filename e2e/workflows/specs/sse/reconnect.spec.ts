@@ -9,12 +9,16 @@ import { WORKFLOW } from '@kb-labs/e2e-shared/urls.js';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-async function startRun(request: Parameters<Parameters<typeof test>[1]>[0]['request']): Promise<string> {
+async function startRun(
+  request: Parameters<Parameters<typeof test>[1]>[0]['request'],
+  workflowName = 'e2e-slow',
+): Promise<string> {
   const catalogRes = await request.get(`${WORKFLOW}/api/v1/workflows`);
   const catalog = await catalogRes.json();
   const workflows: Array<{ id?: string; name?: string }> =
     catalog.data?.workflows ?? catalog.data ?? catalog.workflows ?? [];
-  const wf = workflows.find((w) => (w.name ?? w.id) === 'e2e-hello') ?? workflows[0];
+  // Prefer the requested workflow; fall back to any available workflow.
+  const wf = workflows.find((w) => (w.name ?? w.id) === workflowName) ?? workflows[0];
   const id = wf?.id ?? wf?.name;
   if (!id) throw new Error('No workflow found in catalog');
 
@@ -83,7 +87,8 @@ test('SE-R01: reconnect does not duplicate live events', async ({ request }) => 
 test('SE-R02: run.finished is not missed on reconnect to already-terminal run', async ({ request }) => {
   test.setTimeout(60_000);
 
-  const runId = await startRun(request);
+  // Use a fast workflow — the test reconnects AFTER the run finishes
+  const runId = await startRun(request, 'e2e-hello');
   const url = eventsUrl(runId);
 
   // Wait for the run to reach terminal state on the first connection.
