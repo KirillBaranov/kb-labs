@@ -15,8 +15,10 @@ export async function expectWsMessage<T = unknown>(
   return ws.waitForMessage<T>({
     timeoutMs,
     predicate,
-  }).catch(() => {
-    throw new Error(`Timed out waiting for ${label} after ${timeoutMs}ms`);
+  }).catch((err: unknown) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    const isTimeout = msg.includes('timeout');
+    throw new Error(isTimeout ? `Timed out waiting for ${label} after ${timeoutMs}ms` : `${label}: ${msg}`);
   });
 }
 
