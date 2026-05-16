@@ -1,5 +1,8 @@
 import { defineConfig } from '@playwright/test'
 import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 // Each domain writes its own checklist into report/CHECKLIST.md
 process.env.CHECKLIST_OUT ??= path.join(__dirname, 'report', 'CHECKLIST.md')
