@@ -1,7 +1,10 @@
-import { execSync } from 'node:child_process';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
 import { existsSync, mkdirSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+
+const execAsync = promisify(exec);
 import type {
   IWorkspaceProvider,
   MaterializeWorkspaceRequest,
@@ -113,7 +116,7 @@ export class WorktreeWorkspaceAdapter implements IWorkspaceProvider {
     try {
       // Stage 1: Create worktree
       progress('worktree', `Creating worktree from ${safeBranch}...`, 10);
-      this.exec(
+      await this.exec(
         `git worktree add --detach "${worktreePath}" ${safeBranch}`,
         this.repoRoot,
         TIMEOUTS.worktree,
@@ -123,7 +126,7 @@ export class WorktreeWorkspaceAdapter implements IWorkspaceProvider {
       // Stage 2: Initialize submodules
       if (this.initSubmodules) {
         progress('submodules', 'Initializing submodules...', 30);
-        this.exec(
+        await this.exec(
           'git submodule update --recursive',
           worktreePath,
           TIMEOUTS.submodules,
@@ -134,7 +137,7 @@ export class WorktreeWorkspaceAdapter implements IWorkspaceProvider {
       // Stage 3: Install dependencies
       if (this.installDeps) {
         progress('dependencies', 'Installing dependencies (pnpm install)...', 65);
-        this.exec(
+        await this.exec(
           'pnpm install --frozen-lockfile',
           worktreePath,
           TIMEOUTS.install,
@@ -167,7 +170,7 @@ export class WorktreeWorkspaceAdapter implements IWorkspaceProvider {
       progress('failed', `Provisioning failed: ${error instanceof Error ? error.message : String(error)}`);
 
       try {
-        this.exec(`git worktree remove "${worktreePath}" --force`, this.repoRoot, TIMEOUTS.cleanup);
+        await this.exec(`git worktree remove "${worktreePath}" --force`, this.repoRoot, TIMEOUTS.cleanup);
       } catch { /* ignore cleanup errors */ }
 
       throw new Error(
@@ -192,13 +195,13 @@ export class WorktreeWorkspaceAdapter implements IWorkspaceProvider {
     }
 
     try {
-      this.exec(`git worktree remove "${record.worktreePath}" --force`, this.repoRoot, TIMEOUTS.cleanup);
+      await this.exec(`git worktree remove "${record.worktreePath}" --force`, this.repoRoot, TIMEOUTS.cleanup);
     } catch {
       if (existsSync(record.worktreePath)) {
         rmSync(record.worktreePath, { recursive: true, force: true });
       }
       try {
-        this.exec('git worktree prune', this.repoRoot, TIMEOUTS.cleanup);
+        await this.exec('git worktree prune', this.repoRoot, TIMEOUTS.cleanup);
       } catch { /* ignore */ }
     }
 
@@ -227,13 +230,9 @@ export class WorktreeWorkspaceAdapter implements IWorkspaceProvider {
     };
   }
 
-  private exec(command: string, cwd: string, timeout = 60_000): string {
-    return execSync(command, {
-      cwd,
-      encoding: 'utf8',
-      timeout,
-      stdio: ['pipe', 'pipe', 'pipe'],
-    });
+  private async exec(command: string, cwd: string, timeout = 60_000): Promise<string> {
+    const { stdout } = await execAsync(command, { cwd, encoding: 'utf8', timeout });
+    return stdout;
   }
 }
 
