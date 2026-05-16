@@ -1,5 +1,6 @@
 import { WorkflowDaemonClient } from '../../http-client.js';
-import type { WorkflowRunSummary } from '../../http-client.js';
+import type { WorkflowRunSummary, WorkflowRunDetail, JobStatusDetail } from '../../http-client.js';
+import type { WorkflowRunRequest } from '@kb-labs/workflow-contracts';
 
 type WorkflowClientInstance = InstanceType<typeof WorkflowDaemonClient>;
 
@@ -24,11 +25,11 @@ export const defaultWorkflowClient: WorkflowDaemonClient = {
     jobs: { total: 0, queued: 0, running: 0, completed: 0, failed: 0 },
   }),
 
-  runWorkflow: async (_id, _req) => ({ runId: 'run-test-123', status: 'queued' }),
+  runWorkflow: async (_id: string, _req: WorkflowRunRequest) => ({ runId: 'run-test-123', status: 'queued' }),
 
   listRuns: async () => [],
 
-  getRun: async (runId) => ({
+  getRun: async (runId: string): Promise<WorkflowRunDetail> => ({
     id: runId,
     name: 'test-workflow',
     status: 'running',
@@ -37,11 +38,11 @@ export const defaultWorkflowClient: WorkflowDaemonClient = {
 
   getRunLogs: async () => [],
 
-  getRunEventsUrl: (runId) => `http://localhost:7778/api/v1/runs/${runId}/events`,
+  getRunEventsUrl: (runId: string) => `http://localhost:7778/api/v1/runs/${runId}/events`,
 
   cancelRun: async () => {},
 
-  getJobStatus: async (jobId) => ({
+  getJobStatus: async (jobId: string): Promise<JobStatusDetail> => ({
     id: jobId,
     type: 'test',
     status: 'running',
