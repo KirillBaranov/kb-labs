@@ -23,7 +23,6 @@ import {
   AnalyticsStorage,
   PIIRedactionLLM,
 } from '@kb-labs/core-platform';
-import { QueuedLLM, QueuedEmbeddings, QueuedVectorStore } from '@kb-labs/core-resource-broker';
 import type { IResourceBroker } from '@kb-labs/core-resource-broker';
 import { LLMRouter } from '@kb-labs/llm-router';
 import { mockLLM, mockLogger } from '@kb-labs/shared-testing';

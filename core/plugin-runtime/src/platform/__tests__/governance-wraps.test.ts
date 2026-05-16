@@ -362,7 +362,7 @@ describe('wrapNotifier', () => {
 
     const received: unknown[] = [];
     wrapped.subscribe({} as never, async (e) => { received.push(e); });
-    await new Promise(r => setTimeout(r, 20));
+    await new Promise<void>(r => { setTimeout(r, 20); });
     expect(received).toHaveLength(1);
     expect((received[0] as any).source).toBe('allowed-plugin');
   });
@@ -384,7 +384,7 @@ describe('wrapNotifier', () => {
 
     const received: unknown[] = [];
     wrapped.subscribe({} as never, async (e) => { received.push(e); });
-    await new Promise(r => setTimeout(r, 20));
+    await new Promise<void>(r => { setTimeout(r, 20); });
     expect(received).toHaveLength(2);
   });
 });

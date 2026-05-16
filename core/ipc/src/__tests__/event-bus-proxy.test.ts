@@ -24,7 +24,7 @@ function createMockTransport() {
     isClosed: vi.fn(() => false),
   };
 
-  const push = (msg: unknown) => { for (const fn of pushListeners) fn(msg); };
+  const push = (msg: unknown) => { for (const fn of pushListeners) { fn(msg); } };
 
   return { transport, sentMessages, push };
 }
@@ -82,7 +82,7 @@ describe('EventBusProxy', () => {
     push({ type: 'eventbus:push', subscriptionId, topic: 'my-topic', payload: serialize({ data: 42 }) });
 
     // Allow async handler to settle
-    await new Promise(resolve => setTimeout(resolve, 0));
+    await new Promise<void>(resolve => { setTimeout(resolve, 0); });
     expect(handler).toHaveBeenCalledWith(expect.objectContaining({ data: 42 }));
   });
 
@@ -96,7 +96,7 @@ describe('EventBusProxy', () => {
     const subA = (sentMessages[0] as { subscriptionId: string }).subscriptionId;
     push({ type: 'eventbus:push', subscriptionId: subA, topic: 'topic-a', payload: serialize('ev') });
 
-    await new Promise(resolve => setTimeout(resolve, 0));
+    await new Promise<void>(resolve => { setTimeout(resolve, 0); });
     expect(handlerA).toHaveBeenCalledOnce();
     expect(handlerB).not.toHaveBeenCalled();
   });
@@ -121,7 +121,7 @@ describe('EventBusProxy', () => {
     push({ type: 'adapter:response', requestId: 'x', result: null });
     push({ type: 'something-else', data: 'blah' });
 
-    await new Promise(resolve => setTimeout(resolve, 0));
+    await new Promise<void>(resolve => { setTimeout(resolve, 0); });
     expect(handler).not.toHaveBeenCalled();
   });
 });

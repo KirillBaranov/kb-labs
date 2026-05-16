@@ -199,7 +199,7 @@ describe('call-chain: stream() path', () => {
       maxRetries: 0,
       timeout: 5000,
       executor: async (operation: string, args: unknown[]) => {
-        if (operation === 'complete') return rawLlm.complete(args[0] as string, args[1] as never);
+        if (operation === 'complete') { return rawLlm.complete(args[0] as string, args[1] as never); }
         throw new Error(`Unknown: ${operation}`);
       },
     });
@@ -250,7 +250,7 @@ describe('call-chain: broker enqueue mechanics', () => {
       maxRetries: 0,
       timeout: 5000,
       executor: async (operation: string, args: unknown[]) => {
-        if (operation === 'complete') return rawLlm.complete(args[0] as string, args[1] as never);
+        if (operation === 'complete') { return rawLlm.complete(args[0] as string, args[1] as never); }
         throw new Error(`Unknown: ${operation}`);
       },
     });

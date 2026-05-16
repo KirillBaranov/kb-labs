@@ -1,6 +1,6 @@
 import { pathToFileURL } from 'node:url';
 import * as nodePath from 'node:path';
-import type { AdapterMiddlewareDecl, RawMiddlewareDecl } from '@kb-labs/core-platform';
+import type { RawMiddlewareDecl } from '@kb-labs/core-platform';
 import type { LoadedMiddleware } from './pipeline.js';
 import type { AdapterMiddlewareFn } from './middleware.js';
 
