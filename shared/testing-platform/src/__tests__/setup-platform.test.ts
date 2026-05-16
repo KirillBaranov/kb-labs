@@ -1,9 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { platform } from '@kb-labs/core-runtime';
 import { setupTestPlatform } from '../setup-platform.js';
-import { mockLLM } from '../mock-llm.js';
-import { mockCache } from '../mock-cache.js';
-import { mockLogger } from '../mock-logger.js';
+import { mockLLM, mockCache, mockLogger } from '@kb-labs/shared-testing';
 
 describe('setupTestPlatform', () => {
   let cleanup: (() => void) | undefined;
