@@ -7,13 +7,14 @@ vi.mock('../../http-client.js', () => ({
 }));
 
 import { WorkflowDaemonClient } from '../../http-client.js';
+import type { WorkflowRunSummary } from '../../http-client.js';
 import runsListCommand from '../../commands/runs-list.js';
 
 const MockedClient = vi.mocked(WorkflowDaemonClient);
 
-const sampleRuns = [
-  { id: 'r-001', name: 'e2e-hello', status: 'success' as const, createdAt: new Date().toISOString(), durationMs: 1200 },
-  { id: 'r-002', name: 'e2e-world', status: 'running' as const, createdAt: new Date().toISOString() },
+const sampleRuns: WorkflowRunSummary[] = [
+  { id: 'r-001', name: 'e2e-hello', status: 'success', createdAt: new Date().toISOString(), durationMs: 1200 },
+  { id: 'r-002', name: 'e2e-world', status: 'running', createdAt: new Date().toISOString() },
 ];
 
 beforeEach(() => {
@@ -32,7 +33,7 @@ describe('workflow:runs-list', () => {
 
     expect(result.exitCode).toBe(0);
     expect(captured.table.length).toBeGreaterThan(0);
-    expect(captured.table[0].rows.length).toBe(2);
+    expect(captured.table[0]!.rows.length).toBe(2);
   });
 
   it('CL-02: --json returns array of WorkflowRunSummary', async () => {
@@ -53,9 +54,9 @@ describe('workflow:runs-list', () => {
 
   it('CL-03: --status running filters by status', async () => {
     MockedClient.mockImplementation(() => makeClient({
-      listRuns: async (params: { status?: string }) => {
+      listRuns: async (params: { status?: string; limit?: number; workflowId?: string } = {}) => {
         expect(params.status).toBe('running');
-        return [sampleRuns[1]];
+        return [sampleRuns[1]!];
       },
     }));
 
@@ -68,7 +69,7 @@ describe('workflow:runs-list', () => {
 
   it('CL-04: --limit 5 passes limit to client', async () => {
     MockedClient.mockImplementation(() => makeClient({
-      listRuns: async (params: { limit?: number }) => {
+      listRuns: async (params: { status?: string; limit?: number; workflowId?: string } = {}) => {
         expect(params.limit).toBe(5);
         return sampleRuns.slice(0, 1);
       },
@@ -83,9 +84,9 @@ describe('workflow:runs-list', () => {
 
   it('CL-05: --workflow filters by workflowId', async () => {
     MockedClient.mockImplementation(() => makeClient({
-      listRuns: async (params: { workflowId?: string }) => {
+      listRuns: async (params: { status?: string; limit?: number; workflowId?: string } = {}) => {
         expect(params.workflowId).toBe('e2e-hello');
-        return [sampleRuns[0]];
+        return [sampleRuns[0]!];
       },
     }));
 
