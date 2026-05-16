@@ -9,8 +9,8 @@
     "build": "tsup",
     "clean": "rimraf dist",
     "dev": "tsx watch src/bootstrap.ts",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
     "start": "node dist/bootstrap.js",
     "test": "vitest run --passWithNoTests -c ../../vitest.config.ts",
     "type-check": "tsc --noEmit"

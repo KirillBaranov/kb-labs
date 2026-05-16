@@ -21,8 +21,8 @@
     "build": "tsup",
     "clean": "rimraf dist",
     "dev": "tsup --watch",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
     "test": "vitest run --passWithNoTests -c ../../vitest.config.ts",
     "test:cli": "vitest run --config vitest.cli.config.ts --passWithNoTests",
     "type-check": "tsc --noEmit"
