@@ -1,8 +1,7 @@
 import { describe, it, expect, afterEach, vi } from 'vitest';
 import { resetPlatform } from '@kb-labs/core-runtime';
 import { testCommand } from '../test-command.js';
-import { mockLLM } from '../mock-llm.js';
-import { mockCache } from '../mock-cache.js';
+import { mockLLM, mockCache } from '@kb-labs/shared-testing';
 import type { PluginContextV3, CommandResult } from '@kb-labs/plugin-contracts';
 
 // ────────────────────────────────────────────────────────────────────

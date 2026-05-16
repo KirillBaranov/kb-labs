@@ -1,8 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { platform, resetPlatform } from '@kb-labs/core-runtime';
 import { createTestContext } from '../create-test-context.js';
-import { mockLLM } from '../mock-llm.js';
-import { mockCache } from '../mock-cache.js';
+import { mockLLM, mockCache } from '@kb-labs/shared-testing';
 
 describe('createTestContext', () => {
   afterEach(() => {
