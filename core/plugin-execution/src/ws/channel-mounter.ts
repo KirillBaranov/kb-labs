@@ -191,9 +191,8 @@ export async function mountWebSocketChannels(
             // when payload is absent.
             let payload = rawMessage.payload;
             if (payload === undefined) {
-              // eslint-disable-next-line @typescript-eslint/no-unused-vars
               const { type: _t, messageId: _mid, timestamp: _ts, ...rest } = rawMessage;
-              if (Object.keys(rest).length > 0) payload = rest;
+              if (Object.keys(rest).length > 0) { payload = rest; }
             }
             const messageInput: WSInput = {
               event: 'message',
