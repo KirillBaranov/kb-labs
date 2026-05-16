@@ -261,8 +261,14 @@ export function registerWorkflowsAPI(options: RegisterWorkflowsAPIOptions): void
     // Send current snapshot
     sendEvent('run.snapshot', run);
 
-    // If run already terminal — close immediately
+    // If run already terminal — emit the terminal event then close.
+    // Clients subscribing after completion still see the terminal event,
+    // not just the snapshot (makes the stream contract consistent).
     if (TERMINAL_STATUSES.includes(run.status)) {
+      const terminalType =
+        run.status === 'success' ? 'run.finished' :
+        run.status === 'failed' ? 'run.failed' : 'run.cancelled';
+      sendEvent(terminalType, run);
       raw.end();
       return;
     }

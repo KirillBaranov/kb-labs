@@ -26,6 +26,53 @@
 
 ---
 
+**KB Labs runs your engineering workflows.** Define once — run from CI, terminal, or on a schedule. Watch every step. Replace any infrastructure adapter without touching your code.
+
+![Workflow running — github-issue-to-pr: agent reads the issue, plans implementation, creates a branch](docs/assets/workflow-in-progress.png)
+
+*Agent executing `github-issue-to-pr`: fetched the issue, created a branch, now planning implementation — all observable in real time.*
+
+![AI-powered commit generation: 6 commits across 23 files, typed and grouped automatically](docs/assets/commit-plugin-ui-example.png)
+
+*Commit plugin groups your changes into typed commits with confidence scores. Review and apply in one click.*
+
+![Release Manager: plan → changelog → preview → publish, 167 packages, 131 commits](docs/assets/release-manager-ui-example.png)
+
+*Release Manager walks through the full cycle — plan, changelog, preview, publish — across the entire monorepo.*
+
+---
+
+## Install
+
+```bash
+curl -fsSL https://kblabs.ru/install.sh | sh
+```
+
+```bash
+kb-create --demo     # install + demo on your codebase
+kb-create --yes      # defaults, no wizard
+```
+
+Or install individual Go tools standalone — no Node.js required:
+
+| Tool | What it does |
+|------|-------------|
+| [kb-devkit](tools/kb-devkit) | Monorepo builds — topological order, content-addressable cache |
+| [kb-dev](tools/kb-dev) | Local service manager — start, stop, health probes |
+| [kb-deploy](tools/kb-deploy) | Deploy to any VPS — Docker + registry, plus **declarative `apply`** for fleet rollouts ([guide](docs/guides/delivery.md)) |
+| [kb-monitor](tools/kb-monitor) | Remote observability — health, logs, exec over SSH |
+
+---
+
+## What you get
+
+- **Workflows** — define release pipelines, QA gates, agent pipelines in code. Run from CLI, CI, or Studio UI. Every run is logged and observable.
+- **AI agents** — agents run as workflow steps with full isolation (in-process, worker-pool, or remote). Permissions declared, execution audited.
+- **Adapter layer** — 25+ contracts for LLM, cache, storage, logging, and more. Swap DataDog for ClickHouse, OpenAI for any compatible model — one line in config, no application code changed.
+- **Plugin system** — everything is a plugin. Ship your own commands, workflow steps, and agent tools. Install from the marketplace or build in-house.
+
+---
+
 ## Extend internally — plugins
 
 A plugin is a manifest + a handler. The platform discovers it, wires permissions, and exposes it as a CLI command, workflow step, or agent tool.
@@ -120,28 +167,6 @@ One line changed. No application code touched. The platform picks it up on next 
 CLI commands run **in-process** by default — no network hop, no Docker. Plugins call `useLLM()`, `useCache()`, `useStorage()` and the platform injects whichever adapter is configured in `kb.config.json`.
 
 → [Architecture overview](https://docs.kblabs.ru/concepts/overview) · [Plugin system](https://docs.kblabs.ru/concepts/plugin-system) · [Adapter system](https://docs.kblabs.ru/concepts/adapter-system)
-
----
-
-## Install
-
-```bash
-curl -fsSL https://kblabs.ru/install.sh | sh
-```
-
-```bash
-kb-create --demo     # install + demo on your codebase
-kb-create --yes      # defaults, no wizard
-```
-
-Or install individual Go tools standalone — no Node.js required:
-
-| Tool | What it does |
-|------|-------------|
-| [kb-devkit](tools/kb-devkit) | Monorepo builds — topological order, content-addressable cache |
-| [kb-dev](tools/kb-dev) | Local service manager — start, stop, health probes |
-| [kb-deploy](tools/kb-deploy) | Deploy to any VPS — Docker + registry, plus **declarative `apply`** for fleet rollouts ([guide](docs/guides/delivery.md)) |
-| [kb-monitor](tools/kb-monitor) | Remote observability — health, logs, exec over SSH |
 
 ---
 
