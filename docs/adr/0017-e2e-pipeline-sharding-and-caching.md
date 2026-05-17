@@ -121,6 +121,29 @@ Phase rollout order: 0 → 1 → 2 → 3. Each ships separately, validated again
 
 Revisit after Phase 3 lives one month on main: if shard flake-rate exceeds 2% or wall-clock target isn't met, fall back to fewer shards or fast-track Phase 4.
 
+## Measurements
+
+### Baseline (Phase 0 only)
+
+| Run | Build | E2E run | Publish | Total |
+|---|---:|---:|---:|---:|
+| `26003095850` | 422s | 254s | 144s | 1149s |
+| `26003358790` | 430s | 256s | 162s | 1193s |
+
+Variance between consecutive runs on similar code: **3.8%** — within the
+≤5% target for baseline stability. The largest single-step variance is
+in "Publish packages to Verdaccio" (~12.5%, network-IO bound).
+
+### Phase 1 cold (cache miss)
+
+| Run | Build | E2E run | Publish | Total |
+|---|---:|---:|---:|---:|
+| `26003870799` | 432s | 254s | 163s | 1182s |
+
+Cold-cache build matches baseline within variance (432s vs 422-430s, +2%).
+Cache populates on this run; the next run on the same dependency hash
+will exercise the warm restore path.
+
 ## References
 
 - [Plan file](../../.claude/plans/tender-strolling-wind.md)
