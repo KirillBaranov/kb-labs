@@ -195,6 +195,10 @@ export async function mountWebSocketChannels(
         ws.on('message', async (data: Buffer) => {
           try {
             const rawMessage = JSON.parse(data.toString());
+            server.log.info(
+              { plugin: manifest.id, channel: channel.path, connectionId, msgType: rawMessage?.type },
+              `[ws] message received — type=${rawMessage?.type}`
+            );
             // Support both nested format ({ type, payload: {...} }) and flat format
             // ({ type, field1, field2 }) by extracting remaining fields as payload
             // when payload is absent.
@@ -213,11 +217,25 @@ export async function mountWebSocketChannels(
               },
               sender,
             };
+            const t0 = Date.now();
             await executeChannelHandler(messageInput);
+            server.log.info(
+              { plugin: manifest.id, channel: channel.path, connectionId, durationMs: Date.now() - t0 },
+              `[ws] message handler completed`
+            );
           } catch (error) {
+            const errMessage = error instanceof Error ? error.message : String(error);
+            const errStack = error instanceof Error ? error.stack : undefined;
             server.log.error(
-              { err: error, plugin: manifest.id, channel: channel.path, connectionId },
-              `[ws] onMessage failed — plugin "${manifest.id}", channel "${channel.path}"`
+              {
+                err: error,
+                errorMessage: errMessage,
+                errorStack: errStack,
+                plugin: manifest.id,
+                channel: channel.path,
+                connectionId,
+              },
+              `[ws] onMessage failed — plugin "${manifest.id}", channel "${channel.path}": ${errMessage}`
             );
 
             // Call onError handler
