@@ -201,12 +201,19 @@ jobs:
         if: always()
         run: |
           mkdir -p /tmp/e2e-logs
-          docker compose -f e2e/docker-compose.yml logs --no-color platform > /tmp/e2e-logs/platform.log 2>&1 || true
+          docker compose -f e2e/docker-compose.yml logs --no-color platform > /tmp/e2e-logs/platform-bootstrap.log 2>&1 || true
           docker compose -f e2e/docker-compose.yml logs --no-color verdaccio > /tmp/e2e-logs/verdaccio.log 2>&1 || true
           docker compose -f e2e/docker-compose.yml ps > /tmp/e2e-logs/ps.txt 2>&1 || true
-          echo "--- platform.log size: $(wc -l < /tmp/e2e-logs/platform.log) lines"
-          echo "--- last 40 lines of platform.log:"
-          tail -40 /tmp/e2e-logs/platform.log || true
+          # Per-service runtime logs written by kb-dev are inside the container at
+          # /workspace/kb-e2e/.kb/logs/tmp/. Copy them out.
+          docker compose -f e2e/docker-compose.yml exec -T platform sh -c 'ls -la /workspace/kb-e2e/.kb/logs/tmp/ 2>&1' > /tmp/e2e-logs/services-ls.txt 2>&1 || true
+          docker compose -f e2e/docker-compose.yml cp platform:/workspace/kb-e2e/.kb/logs/tmp /tmp/e2e-logs/services 2>&1 || true
+          echo "--- services-ls.txt:"
+          cat /tmp/e2e-logs/services-ls.txt || true
+          echo "--- collected service log files:"
+          ls -la /tmp/e2e-logs/services/ 2>&1 || true
+          echo "--- last 30 lines of gateway log (if present):"
+          tail -30 /tmp/e2e-logs/services/gateway.log 2>&1 || tail -30 /tmp/e2e-logs/services/gateway*.log 2>&1 || echo "no gateway log file found"
         env:
           COMPOSE_PROJECT_NAME: kb-e2e-ci
 
