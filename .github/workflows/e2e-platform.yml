@@ -197,6 +197,27 @@ jobs:
 
       # ── Artifacts + summary ──────────────────────────────────────────────
 
+      - name: Dump platform container logs
+        if: always()
+        run: |
+          mkdir -p /tmp/e2e-logs
+          docker compose -f e2e/docker-compose.yml logs --no-color platform > /tmp/e2e-logs/platform.log 2>&1 || true
+          docker compose -f e2e/docker-compose.yml logs --no-color verdaccio > /tmp/e2e-logs/verdaccio.log 2>&1 || true
+          docker compose -f e2e/docker-compose.yml ps > /tmp/e2e-logs/ps.txt 2>&1 || true
+          echo "--- platform.log size: $(wc -l < /tmp/e2e-logs/platform.log) lines"
+          echo "--- last 40 lines of platform.log:"
+          tail -40 /tmp/e2e-logs/platform.log || true
+        env:
+          COMPOSE_PROJECT_NAME: kb-e2e-ci
+
+      - name: Upload platform logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: platform-logs-${{ github.run_id }}
+          path: /tmp/e2e-logs/
+          retention-days: 14
+
       - name: Upload Playwright reports
         if: always()
         uses: actions/upload-artifact@v4
