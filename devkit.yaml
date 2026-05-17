@@ -666,6 +666,10 @@ tasks:
       outputs: []
       deps:
         - "^build"
+      # E2E correctness depends on live platform services, not just source.
+      # Caching by input hash would return stale 'success' across runs even
+      # though no test process actually executed — disabled, same as test:cli.
+      cache: false
 
     - categories: [go-binary]
       command: make e2e
