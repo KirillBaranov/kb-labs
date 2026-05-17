@@ -1,0 +1,48 @@
+import {
+  defineCommand,
+  useConfig,
+  type CLIInput,
+  type PluginContextV3,
+} from '@kb-labs/sdk';
+import { analyzeCoupling } from '@kb-labs/quality-core';
+import { type QualityPluginConfig } from '@kb-labs/quality-contracts';
+import type { CouplingFlags } from './flags.js';
+
+export default defineCommand<unknown, CLIInput<CouplingFlags>, { exitCode: number }>({
+  id: 'quality:coupling',
+  description: 'Show coupling metrics per package (afferent/efferent/instability)',
+
+  handler: {
+    async execute(ctx: PluginContextV3, input: CLIInput<CouplingFlags>): Promise<{ exitCode: number }> {
+      const { flags } = input;
+      const config = await useConfig<QualityPluginConfig>();
+      const cwd = ctx.cwd ?? process.cwd();
+
+      const report = analyzeCoupling({ rootDir: cwd, layerMap: config?.layers, topN: flags.top });
+
+      if (flags.json) {
+        ctx.ui?.json?.(report);
+        return { exitCode: 0 };
+      }
+
+      const sorted =
+        flags.sort === 'coupled'
+          ? [...report.packages].sort((a, b) => b.afferent + b.efferent - (a.afferent + a.efferent))
+          : [...report.packages].sort((a, b) => b.instability - a.instability);
+
+      const top = sorted.slice(0, flags.top ?? 10);
+      const threshold = config?.thresholds?.instability ?? 0.85;
+
+      const items = top.map(p => {
+        const warn = p.instability > threshold ? ' ⚠ unstable' : '';
+        return `${p.name}  Ca: ${p.afferent}  Ce: ${p.efferent}  I: ${p.instability.toFixed(2)}${warn}`;
+      });
+
+      ctx.ui?.success?.(`Coupling — avg instability: ${report.avgInstability.toFixed(2)}`, {
+        sections: [{ header: `Top ${top.length} by instability`, items }],
+      });
+
+      return { exitCode: 0 };
+    },
+  },
+});
