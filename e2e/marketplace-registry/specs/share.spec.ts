@@ -30,7 +30,10 @@ async function publish(
   visibility: 'public' | 'private' = 'private',
 ) {
   const tarball = createTestTarball({ name: pkgName, version: TEST_VERSION, description: 'Share e2e test' })
-  const meta = JSON.stringify({ name: pkgName, version: TEST_VERSION, description: 'Share e2e test', keywords: ['e2e'], visibility })
+  const meta = JSON.stringify({
+    meta: { name: pkgName, version: TEST_VERSION, description: 'Share e2e test', keywords: ['e2e'] },
+    visibility,
+  })
   return request.post(`${REGISTRY}/api/v1/packages/publish`, {
     headers: { Authorization: `Bearer ${token}`, 'X-Author-Handle': TEST_HANDLE },
     multipart: {
