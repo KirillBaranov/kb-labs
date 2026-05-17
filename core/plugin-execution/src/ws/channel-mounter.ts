@@ -168,40 +168,21 @@ export async function mountWebSocketChannels(
           }
         };
 
-        // Call onConnect lifecycle
-        try {
-          const connectInput: WSInput = { event: 'connect', sender };
-          await executeChannelHandler(connectInput);
-        } catch (error) {
-          const errMessage = error instanceof Error ? error.message : String(error);
-          const errStack = error instanceof Error ? error.stack : undefined;
-          server.log.error(
-            {
-              err: error,
-              errorMessage: errMessage,
-              errorStack: errStack,
-              plugin: manifest.id,
-              channel: channel.path,
-              connectionId,
-            },
-            `[ws] onConnect failed — plugin "${manifest.id}", channel "${channel.path}": ${errMessage}`
-          );
-          ws.close(1011, 'Handler error');
-          connectionRegistry.unregister(connectionId);
-          return;
-        }
+        // Buffer messages that arrive while onConnect is still executing.
+        // Client-side WS goes 'open' as soon as the upgrade handshake completes
+        // — but onConnect can take tens of ms (esp. via IPC backend). Without
+        // this guard, the first message a fast client sends is dropped, which
+        // is the root cause of the e2e-workflows ws subscribe-timeout flakes.
+        let connectReady = false;
+        const pendingMessages: Buffer[] = [];
 
-        // Handle incoming messages
-        ws.on('message', async (data: Buffer) => {
+        const processMessage = async (data: Buffer): Promise<void> => {
           try {
             const rawMessage = JSON.parse(data.toString());
             server.log.info(
               { plugin: manifest.id, channel: channel.path, connectionId, msgType: rawMessage?.type },
               `[ws] message received — type=${rawMessage?.type}`
             );
-            // Support both nested format ({ type, payload: {...} }) and flat format
-            // ({ type, field1, field2 }) by extracting remaining fields as payload
-            // when payload is absent.
             let payload = rawMessage.payload;
             if (payload === undefined) {
               const { type: _t, messageId: _mid, timestamp: _ts, ...rest } = rawMessage;
@@ -237,14 +218,11 @@ export async function mountWebSocketChannels(
               },
               `[ws] onMessage failed — plugin "${manifest.id}", channel "${channel.path}": ${errMessage}`
             );
-
-            // Call onError handler
             const errorInput: WSInput = {
               event: 'error',
               error: error as Error,
               sender,
             };
-
             try {
               await executeChannelHandler(errorInput);
             } catch (err) {
@@ -254,7 +232,50 @@ export async function mountWebSocketChannels(
               );
             }
           }
+        };
+
+        // Attach the 'message' listener BEFORE awaiting onConnect so messages
+        // sent by an eager client are not dropped. Anything received before
+        // connectReady=true is buffered and dispatched in order after onConnect
+        // resolves.
+        ws.on('message', (data: Buffer) => {
+          if (!connectReady) {
+            pendingMessages.push(data);
+            return;
+          }
+          void processMessage(data);
         });
+
+        // Call onConnect lifecycle
+        try {
+          const connectInput: WSInput = { event: 'connect', sender };
+          await executeChannelHandler(connectInput);
+        } catch (error) {
+          const errMessage = error instanceof Error ? error.message : String(error);
+          const errStack = error instanceof Error ? error.stack : undefined;
+          server.log.error(
+            {
+              err: error,
+              errorMessage: errMessage,
+              errorStack: errStack,
+              plugin: manifest.id,
+              channel: channel.path,
+              connectionId,
+            },
+            `[ws] onConnect failed — plugin "${manifest.id}", channel "${channel.path}": ${errMessage}`
+          );
+          ws.close(1011, 'Handler error');
+          connectionRegistry.unregister(connectionId);
+          return;
+        }
+
+        // Drain any messages buffered during onConnect, then mark ready so
+        // subsequent messages go straight to processMessage.
+        connectReady = true;
+        for (const buffered of pendingMessages) {
+          void processMessage(buffered);
+        }
+        pendingMessages.length = 0;
 
         // Handle disconnect
         ws.on('close', async (code: number, reason: Buffer) => {
