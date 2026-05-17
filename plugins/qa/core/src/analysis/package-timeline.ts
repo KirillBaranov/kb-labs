@@ -50,7 +50,7 @@ export function buildPackageTimeline(
     streakCount = 1;
     for (let i = 1; i < entries.length; i++) {
       const s = entries[i]!.status === 'failed' ? 'failing' : 'passing';
-      if (s !== streakStatus) break;
+      if (s !== streakStatus) {break;}
       streakCount++;
     }
   }

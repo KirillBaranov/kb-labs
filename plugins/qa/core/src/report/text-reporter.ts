@@ -21,7 +21,7 @@ export function formatTaskName(task: string): string {
 }
 
 export function buildRunReport(snap: RunSnapshot | null): ReportSection[] {
-  if (!snap) return [{ header: 'Run', lines: ['No run data available.'] }];
+  if (!snap) {return [{ header: 'Run', lines: ['No run data available.'] }];}
 
   const sections: ReportSection[] = [];
   const tasks = [...new Set(snap.raw.results.map(r => r.Task))];
@@ -37,7 +37,7 @@ export function buildRunReport(snap: RunSnapshot | null): ReportSection[] {
     if (failedPkgs.length > 0) {
       const shown = failedPkgs.slice(0, 5);
       lines.push(...shown.map(p => `  ✗ ${p}`));
-      if (failedPkgs.length > 5) lines.push(`  ... ${failedPkgs.length - 5} more`);
+      if (failedPkgs.length > 5) {lines.push(`  ... ${failedPkgs.length - 5} more`);}
     }
 
     sections.push({ header: formatTaskName(task), lines });
@@ -54,13 +54,13 @@ export function buildRunReport(snap: RunSnapshot | null): ReportSection[] {
 }
 
 export function buildCheckReport(snap: CheckSnapshot | null): ReportSection[] {
-  if (!snap) return [{ header: 'Check', lines: ['No check data available.'] }];
+  if (!snap) {return [{ header: 'Check', lines: ['No check data available.'] }];}
 
   const sections: ReportSection[] = [];
 
   for (const [pkg, pkgData] of Object.entries(snap.raw.packages)) {
     const issues = pkgData.issues ?? [];
-    if (issues.length === 0) continue;
+    if (issues.length === 0) {continue;}
 
     const errors = issues.filter(i => i.severity === 'error').length;
     const warnings = issues.filter(i => i.severity === 'warning').length;
@@ -70,7 +70,7 @@ export function buildCheckReport(snap: CheckSnapshot | null): ReportSection[] {
     for (const issue of issues.slice(0, 5)) {
       lines.push(`  [${issue.severity}] ${issue.check}: ${issue.message}`);
     }
-    if (issues.length > 5) lines.push(`  ... ${issues.length - 5} more`);
+    if (issues.length > 5) {lines.push(`  ... ${issues.length - 5} more`);}
 
     sections.push({ header: pkg, lines });
   }
@@ -83,7 +83,7 @@ export function buildCheckReport(snap: CheckSnapshot | null): ReportSection[] {
 }
 
 export function buildStatsReport(snap: StatsSnapshot | null): ReportSection[] {
-  if (!snap) return [{ header: 'Stats', lines: ['No stats data available.'] }];
+  if (!snap) {return [{ header: 'Stats', lines: ['No stats data available.'] }];}
 
   const { score, grade, summary, by_category, coverage } = snap.raw;
 
@@ -110,7 +110,7 @@ export function buildStatsReport(snap: StatsSnapshot | null): ReportSection[] {
 
 export function buildHistoryTable(history: RunSnapshot[], limit = 20): ReportSection[] {
   const rows = [...history].reverse().slice(0, limit);
-  if (rows.length === 0) return [{ header: 'History', lines: ['No history available.'] }];
+  if (rows.length === 0) {return [{ header: 'History', lines: ['No history available.'] }];}
 
   const lines = rows.map(snap => {
     const status = snap.raw.ok ? 'pass' : 'fail';
@@ -138,8 +138,8 @@ export function buildTrendsReport(analysis: TrendAnalysis): ReportSection[] {
 
     if (trend.changelog.length > 0) {
       const last = trend.changelog[trend.changelog.length - 1]!;
-      if (last.newFailures.length > 0) lines.push(`  last regression: ${last.newFailures.slice(0, 3).join(', ')}`);
-      if (last.fixed.length > 0) lines.push(`  last fixed: ${last.fixed.slice(0, 3).join(', ')}`);
+      if (last.newFailures.length > 0) {lines.push(`  last regression: ${last.newFailures.slice(0, 3).join(', ')}`);}
+      if (last.fixed.length > 0) {lines.push(`  last fixed: ${last.fixed.slice(0, 3).join(', ')}`);}
     }
 
     sections.push({ header: formatTaskName(trend.task), lines });
@@ -160,7 +160,7 @@ export function buildRegressionsReport(detection: RegressionDetection): ReportSe
       `delta +${reg.delta}`,
       ...reg.newFailures.slice(0, 5).map(p => `  ✗ ${p}`),
     ];
-    if (reg.newFailures.length > 5) lines.push(`  ... ${reg.newFailures.length - 5} more`);
+    if (reg.newFailures.length > 5) {lines.push(`  ... ${reg.newFailures.length - 5} more`);}
     sections.push({ header: formatTaskName(reg.task), lines });
   }
 
@@ -172,7 +172,7 @@ export function buildRegressionsReport(detection: RegressionDetection): ReportSe
 }
 
 export function buildBaselineReport(baseline: BaselineData | null): ReportSection[] {
-  if (!baseline) return [{ header: 'Baseline', lines: ['No baseline set. Run `qa baseline update` to set one.'] }];
+  if (!baseline) {return [{ header: 'Baseline', lines: ['No baseline set. Run `qa baseline update` to set one.'] }];}
 
   const { score, grade } = baseline.stats;
   const totalIssues = Object.values(baseline.check.packages)
@@ -197,13 +197,13 @@ export function buildBaselineDiffReport(diff: BaselineCheckDiff): ReportSection[
 
   if (diff.newIssues.length > 0) {
     const lines = diff.newIssues.slice(0, 10).map(i => `  [${i.severity}] ${i.pkg}  ${i.check}: ${i.message}`);
-    if (diff.newIssues.length > 10) lines.push(`  ... ${diff.newIssues.length - 10} more`);
+    if (diff.newIssues.length > 10) {lines.push(`  ... ${diff.newIssues.length - 10} more`);}
     sections.push({ header: 'New Issues', lines });
   }
 
   if (diff.fixedIssues.length > 0) {
     const lines = diff.fixedIssues.slice(0, 10).map(i => `  [${i.severity}] ${i.pkg}  ${i.check}: ${i.message}`);
-    if (diff.fixedIssues.length > 10) lines.push(`  ... ${diff.fixedIssues.length - 10} more`);
+    if (diff.fixedIssues.length > 10) {lines.push(`  ... ${diff.fixedIssues.length - 10} more`);}
     sections.push({ header: 'Fixed Issues', lines });
   }
 

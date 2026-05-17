@@ -53,7 +53,7 @@ function resolveToPackageName(
   specifier: string,
   workspaceNames: Set<string>
 ): string | null {
-  if (specifier.startsWith('.') || specifier.startsWith('node:')) return null;
+  if (specifier.startsWith('.') || specifier.startsWith('node:')) {return null;}
 
   // Scoped package: @scope/name or @scope/name/subpath
   const scoped = specifier.match(/^(@[^/]+\/[^/]+)/);
@@ -64,7 +64,7 @@ function resolveToPackageName(
 
   // Unscoped: take first segment
   const name = specifier.split('/')[0];
-  if (name) return workspaceNames.has(name) ? name : null;
+  if (name) {return workspaceNames.has(name) ? name : null;}
 
   return null;
 }
@@ -90,7 +90,7 @@ export async function analyzeLayering(opts: LayeringOptions): Promise<LayeringRe
       .filter(pkg => pkg.layer >= 0) // skip unknown-layer packages (e2e, templates, etc.)
       .map(async pkg => {
         const srcDir = path.join(pkg.dir, 'src');
-        if (!fs.existsSync(srcDir)) return;
+        if (!fs.existsSync(srcDir)) {return;}
 
         const files = await globby('**/*.{ts,tsx}', {
           cwd: srcDir,
@@ -103,10 +103,10 @@ export async function analyzeLayering(opts: LayeringOptions): Promise<LayeringRe
           const specifiers = extractImportSpecifiers(file);
           for (const spec of specifiers) {
             const importedPkg = resolveToPackageName(spec, workspaceNames);
-            if (!importedPkg) continue;
+            if (!importedPkg) {continue;}
 
             const importedLayer = packageMap.get(importedPkg)?.layer ?? resolveLayer(importedPkg, rootDir, layerMap);
-            if (importedLayer < 0) continue;
+            if (importedLayer < 0) {continue;}
 
             // Violation: current package imports from a higher layer
             if (importedLayer > pkg.layer) {

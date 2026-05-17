@@ -34,9 +34,9 @@ export function analyzeBuildOrder(opts: BuildOrderOptions): BuildOrderResult {
   if (filterPackage && allNames.has(filterPackage)) {
     const visited = new Set<string>();
     const visit = (n: string) => {
-      if (visited.has(n)) return;
+      if (visited.has(n)) {return;}
       visited.add(n);
-      for (const d of deps.get(n) ?? []) visit(d);
+      for (const d of deps.get(n) ?? []) {visit(d);}
     };
     visit(filterPackage);
     names = [...visited];
@@ -56,7 +56,7 @@ export function analyzeBuildOrder(opts: BuildOrderOptions): BuildOrderResult {
   const sorted: string[] = [];
   const enqueued = new Set<string>();
   let queue = names.filter(n => (inDegree.get(n) ?? 0) === 0);
-  for (const n of queue) enqueued.add(n);
+  for (const n of queue) {enqueued.add(n);}
 
   while (queue.length > 0) {
     layers.push([...queue]);
@@ -64,7 +64,7 @@ export function analyzeBuildOrder(opts: BuildOrderOptions): BuildOrderResult {
     const next: string[] = [];
     for (const d of queue) {
       for (const n of names) {
-        if (enqueued.has(n)) continue;
+        if (enqueued.has(n)) {continue;}
         if ((deps.get(n) ?? new Set()).has(d)) {
           const deg = (inDegree.get(n) ?? 1) - 1;
           inDegree.set(n, deg);

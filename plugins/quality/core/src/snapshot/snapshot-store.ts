@@ -13,7 +13,7 @@ import type {
 } from '@kb-labs/quality-contracts';
 
 function readSnapshots(filePath: string): QualitySnapshot[] {
-  if (!existsSync(filePath)) return [];
+  if (!existsSync(filePath)) {return [];}
   try {
     return JSON.parse(readFileSync(filePath, 'utf-8')) as QualitySnapshot[];
   } catch {
@@ -23,7 +23,7 @@ function readSnapshots(filePath: string): QualitySnapshot[] {
 
 function writeSnapshots(filePath: string, data: QualitySnapshot[]): void {
   const dir = dirname(filePath);
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  if (!existsSync(dir)) {mkdirSync(dir, { recursive: true });}
   writeFileSync(filePath, JSON.stringify(data, null, 2));
 }
 
@@ -69,7 +69,7 @@ export class QualitySnapshotStore {
 
     const history = this.load();
     history.push(snap);
-    while (history.length > this.maxEntries) history.shift();
+    while (history.length > this.maxEntries) {history.shift();}
     writeSnapshots(this.snapshotPath, history);
     return snap;
   }

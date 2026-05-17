@@ -43,10 +43,10 @@ export async function runKnip(opts: RunKnipOptions): Promise<KnipReport> {
   // Run knip; ignore non-zero exit code since knip exits 1 when issues are found
   const result = await shell.exec('pnpm', ['knip', '--reporter', 'json'], { cwd: rootDir }).catch(() => null);
 
-  if (!result) return emptyReport();
+  if (!result) {return emptyReport();}
 
   const raw = result.stdout.trim();
-  if (!raw || raw === '{}' || raw === '[]') return emptyReport();
+  if (!raw || raw === '{}' || raw === '[]') {return emptyReport();}
 
   let parsed: KnipJsonOutput;
   try {

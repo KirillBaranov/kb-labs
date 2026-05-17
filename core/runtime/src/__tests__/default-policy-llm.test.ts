@@ -69,7 +69,7 @@ describe('DefaultExecutionPolicyLLM — policy merging', () => {
 
     // cache should be overridden, stream should come from defaults
     expect(llm.lastOptions?.execution?.cache?.mode).toBe('bypass');
-    expect(llm.lastOptions?.execution?.stream?.mode).toBe('disabled');
+    expect(llm.lastOptions?.execution?.stream?.mode).toBe('off');
   });
 
   it('does not mutate call-level options object', async () => {
@@ -155,7 +155,7 @@ describe('stream', () => {
 
     // Verify policy was merged into the call
     const callArg = (llm.stream as ReturnType<typeof vi.fn>).mock.calls[0]![1] as LLMOptions;
-    expect(callArg.execution?.cache?.mode).toBe('auto');
+    expect(callArg.execution?.cache?.mode).toBe('prefer');
     expect(callArg.temperature).toBe(0.3);
   });
 });

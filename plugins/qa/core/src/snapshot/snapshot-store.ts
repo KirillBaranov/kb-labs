@@ -20,7 +20,7 @@ import type {
 } from '@kb-labs/qa-contracts';
 
 function readJson<T>(filePath: string): T[] {
-  if (!existsSync(filePath)) return [];
+  if (!existsSync(filePath)) {return [];}
   try {
     return JSON.parse(readFileSync(filePath, 'utf-8')) as T[];
   } catch {
@@ -30,7 +30,7 @@ function readJson<T>(filePath: string): T[] {
 
 function writeJson(filePath: string, data: unknown): void {
   const dir = dirname(filePath);
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  if (!existsSync(dir)) {mkdirSync(dir, { recursive: true });}
   writeFileSync(filePath, JSON.stringify(data, null, 2));
 }
 
@@ -78,7 +78,7 @@ export class SnapshotStore {
     };
     const history = this.loadRunHistory();
     history.push(snap);
-    while (history.length > this.maxEntries) history.shift();
+    while (history.length > this.maxEntries) {history.shift();}
     writeJson(join(this.rootDir, PATHS.SNAPSHOTS_RUN), history);
     return snap;
   }
@@ -107,7 +107,7 @@ export class SnapshotStore {
     };
     const history = this.loadCheckHistory();
     history.push(snap);
-    while (history.length > this.maxEntries) history.shift();
+    while (history.length > this.maxEntries) {history.shift();}
     writeJson(join(this.rootDir, PATHS.SNAPSHOTS_CHECK), history);
     return snap;
   }
@@ -136,7 +136,7 @@ export class SnapshotStore {
     };
     const history = this.loadStatsHistory();
     history.push(snap);
-    while (history.length > this.maxEntries) history.shift();
+    while (history.length > this.maxEntries) {history.shift();}
     writeJson(join(this.rootDir, PATHS.SNAPSHOTS_STATS), history);
     return snap;
   }
@@ -165,7 +165,7 @@ export class SnapshotStore {
     };
     const history = this.loadGateHistory();
     history.push(snap);
-    while (history.length > this.maxEntries) history.shift();
+    while (history.length > this.maxEntries) {history.shift();}
     writeJson(join(this.rootDir, PATHS.SNAPSHOTS_GATE), history);
     return snap;
   }
@@ -174,7 +174,7 @@ export class SnapshotStore {
 
   loadBaseline(): BaselineData | null {
     const p = join(this.rootDir, PATHS.BASELINE);
-    if (!existsSync(p)) return null;
+    if (!existsSync(p)) {return null;}
     try {
       return JSON.parse(readFileSync(p, 'utf-8')) as BaselineData;
     } catch {
