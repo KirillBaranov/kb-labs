@@ -55,7 +55,18 @@ export async function* readSse(url: string, opts: SseOptions = {}): AsyncGenerat
 
   try {
     while (true) {
-      const { value, done } = await reader.read();
+      let chunk: { value?: Uint8Array; done: boolean };
+      try {
+        chunk = await reader.read();
+      } catch (err) {
+        // Timeout/abort is a normal termination signal for collectors that
+        // want "whatever arrived before the deadline" rather than an error.
+        if ((err as Error)?.name === 'AbortError' || controller.signal.aborted) {
+          return;
+        }
+        throw err;
+      }
+      const { value, done } = chunk;
       if (done) {return;}
       buffer += decoder.decode(value, { stream: true });
 

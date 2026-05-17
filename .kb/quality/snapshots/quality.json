@@ -100,5 +100,107 @@
       "branch": "main",
       "message": "fix(qa-contracts): add missing type files referenced by index.ts"
     }
+  },
+  {
+    "id": "c4b72d37-c52c-4b7d-b1f3-14fcef2e158d",
+    "timestamp": "2026-05-17T17:16:40.028Z",
+    "score": 73,
+    "grade": "C",
+    "dimensions": {
+      "architecture": {
+        "score": 10,
+        "grade": "F",
+        "details": [
+          "13 layering violation(s) in 4 package(s)",
+          "53 package(s) with instability > 0.85"
+        ]
+      },
+      "typescript": {
+        "score": 100,
+        "grade": "A",
+        "details": []
+      },
+      "deadCode": {
+        "score": 100,
+        "grade": "A",
+        "details": []
+      },
+      "depHygiene": {
+        "score": 100,
+        "grade": "A",
+        "details": []
+      },
+      "testCoverage": {
+        "score": 100,
+        "grade": "A",
+        "details": [
+          "no coverage data — skipped"
+        ]
+      }
+    },
+    "counters": {
+      "layeringViolations": 13,
+      "avgInstability": 0.64,
+      "anyCount": 0,
+      "tsIgnoreCount": 0,
+      "unusedFiles": 0,
+      "unusedDeps": 0
+    },
+    "git": {
+      "commit": "cedbdac1",
+      "branch": "main",
+      "message": "feat(marketplace): record original install spec on MarketplaceEntry"
+    }
+  },
+  {
+    "id": "01b102b6-49a2-4472-8c86-07e3ed4dafc4",
+    "timestamp": "2026-05-17T17:16:41.292Z",
+    "score": 73,
+    "grade": "C",
+    "dimensions": {
+      "architecture": {
+        "score": 10,
+        "grade": "F",
+        "details": [
+          "13 layering violation(s) in 4 package(s)",
+          "53 package(s) with instability > 0.85"
+        ]
+      },
+      "typescript": {
+        "score": 100,
+        "grade": "A",
+        "details": []
+      },
+      "deadCode": {
+        "score": 100,
+        "grade": "A",
+        "details": []
+      },
+      "depHygiene": {
+        "score": 100,
+        "grade": "A",
+        "details": []
+      },
+      "testCoverage": {
+        "score": 100,
+        "grade": "A",
+        "details": [
+          "no coverage data — skipped"
+        ]
+      }
+    },
+    "counters": {
+      "layeringViolations": 13,
+      "avgInstability": 0.64,
+      "anyCount": 0,
+      "tsIgnoreCount": 0,
+      "unusedFiles": 0,
+      "unusedDeps": 0
+    },
+    "git": {
+      "commit": "cedbdac1",
+      "branch": "main",
+      "message": "feat(marketplace): record original install spec on MarketplaceEntry"
+    }
   }
 ]
