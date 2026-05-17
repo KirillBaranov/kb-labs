@@ -451,7 +451,7 @@ tasks:
       deps:
         - "^build"
 
-    - categories: [ts-lib, ts-app]
+    - categories: [ts-lib, ts-app, adapter]
       command: tsup
       inputs:
         - "src/**"
