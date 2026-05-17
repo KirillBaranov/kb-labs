@@ -35,7 +35,7 @@
     "@kb-labs/sdk": "workspace:*",
     "conventional-commits-parser": "^4.0.0",
     "semver": "^7.6.3",
-    "simple-git": "^3.25.0"
+    "simple-git": "^3.36.0"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
