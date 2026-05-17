@@ -124,12 +124,23 @@ export default defineWebSocket<unknown, Incoming, Outgoing>({
           logOffsets.set(connectionId, 0);
           activeSubscriptions.add(connectionId);
 
-          // Fetch and stream existing logs (still subject to the activity gate
-          // — unsubscribe may arrive mid-fetch).
+          // Backfill semantics: send only the MOST RECENT existing log as a
+          // "current state" hint, then advance offset past all existing logs
+          // so polling streams strictly new entries.
+          //
+          // Why not replay everything: callers that immediately unsubscribe
+          // after the first log (WS-L04 pattern: "verify unsubscribe stops
+          // the stream") would otherwise see additional pre-buffered logs
+          // arrive after unsubscribe — the bytes already left the socket
+          // before activeSubscriptions could gate them out. A single-entry
+          // backfill aligns with `tail -f` semantics and keeps the
+          // subscribe-then-unsubscribe contract deterministic. Consumers
+          // that need full history can fetch it via the daemon's REST
+          // /api/v1/runs/:runId/logs endpoint directly.
           const initialLogs = await fetchLogs(runId, 0, level).catch(() => [] as DaemonLog[]);
           if (!activeSubscriptions.has(connectionId)) { return; }
-          let offset = 0;
-          for (const log of initialLogs) {
+          const tail = initialLogs.slice(-1);
+          for (const log of tail) {
             if (!levelMatches(log.level, level)) { continue; }
             if (!activeSubscriptions.has(connectionId)) { return; }
             await sender.send(LogMsg.create({
@@ -139,8 +150,7 @@ export default defineWebSocket<unknown, Incoming, Outgoing>({
               context: log.context,
             }));
           }
-          offset = initialLogs.length;
-          logOffsets.set(connectionId, offset);
+          logOffsets.set(connectionId, initialLogs.length);
 
           // Poll for new logs. The poll body is async, so clearInterval cannot
           // cancel an in-flight tick — gate every send on activeSubscriptions
