@@ -68,6 +68,11 @@ export function createWsHandler(
       resolveHello = res;
       rejectHello = rej;
     });
+    // Consume rejection so early-return paths (e.g. token rejected before the
+    // socket.once('close') listener fires) don't leak an unhandledRejection,
+    // which BulkTransferHelper's process-wide uncaughtException handler would
+    // escalate into process.exit(1), killing the gateway.
+    helloRawPromise.catch(() => { /* awaited below or intentionally discarded */ });
     const helloTimeout = setTimeout(() => {
       socket.close(1008, 'Hello timeout');
       rejectHello(new Error('Hello timeout'));
