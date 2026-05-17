@@ -12,6 +12,7 @@ import type { ManifestV3 } from '@kb-labs/plugin-contracts';
 import { validateManifest } from '@kb-labs/plugin-contracts';
 import { mountRoutes } from '@kb-labs/plugin-execution/http';
 import { mountWebSocketChannels } from '@kb-labs/plugin-execution';
+import { InProcessBackend } from '@kb-labs/plugin-execution-factory';
 import { combineManifestsToRegistry } from '@kb-labs/rest-api-core';
 import { platform } from '@kb-labs/core-runtime';
 import {
@@ -147,6 +148,12 @@ export async function registerPluginRoutes(
 
     // Use platform's unified ExecutionBackend (initialized in bootstrap.ts)
     const backend = platform.executionBackend;
+    // WS channels must always run in-process: the WSSender holds closures over
+    // the live ws socket and connectionRegistry — both bound to this host.
+    // Worker-pool serialization strips its methods (close/getConnectionId
+    // become undefined in the worker), so defineWebSocket's createTypedSender
+    // crashes with "Cannot read properties of undefined (reading 'bind')".
+    const wsBackend = new InProcessBackend({ platform });
 
     // Filter plugins that have routes or channels to mount
     const mountableManifests = manifests
@@ -396,7 +403,7 @@ export async function registerPluginRoutes(
             });
 
             const wsResult = await mountWebSocketChannels(server, manifest, {
-              backend,
+              backend: wsBackend,
               pluginRoot: pluginDistRoot,
               workspaceRoot,
               basePath: wsBasePath,
