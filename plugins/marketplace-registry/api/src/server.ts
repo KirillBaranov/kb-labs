@@ -55,7 +55,7 @@ export async function createRegistryServer(opts: RegistryServerOptions): Promise
     app.addHook('onRequest', createRegistryAuthMiddleware(jwtConfig));
   }
 
-  app.setErrorHandler((err: FastifyError, _request, reply) => {
+  app.setErrorHandler((err: FastifyError, request, reply) => {
     const code: string = (err as FastifyError & { code?: string }).code ?? 'UNKNOWN';
 
     if (code === 'PACKAGE_NOT_FOUND' || code === 'VERSION_NOT_FOUND') {
@@ -73,7 +73,12 @@ export async function createRegistryServer(opts: RegistryServerOptions): Promise
     if (err.statusCode === 401) {
       return reply.code(401).send({ error: 'Unauthorized', code: 'UNAUTHORIZED', message: err.message });
     }
-    throw err;
+    // Unhandled error — log full stack so failures surface in service logs.
+    logger.error('Unhandled registry error', err, {
+      route: `${request.method} ${request.url}`,
+      code,
+    });
+    return reply.code(500).send({ error: 'InternalServerError', code, message: err.message });
   });
 
   app.addHook('onRequest', async (request, reply) => {
