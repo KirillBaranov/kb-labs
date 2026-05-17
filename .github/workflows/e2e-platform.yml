@@ -83,6 +83,28 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # ── Phase 1 of ADR-0017: persist kb-devkit CAS across runs ───────────
+      # kb-devkit stores build outputs in a content-addressable store at
+      # .kb/devkit/objects/. Restoring it lets `pnpm build` skip rebuilding
+      # packages whose inputs are unchanged. Key includes lockfile, devkit
+      # config, and tsconfigs — anything that legitimately invalidates the
+      # whole graph. The exact SHA is appended for a unique cache per run;
+      # restore-keys fall back to the latest cache with the same
+      # lock/devkit/tsconfig hash.
+      #
+      # Safe to re-enable now: e2e task has `cache: false` (commit 6e9a0c3d)
+      # so test correctness can't be masked by stale cached results, and
+      # WS-L04 has a real single-entry-backfill fix (commit e6505ad0) so
+      # the cache no longer surfaces a pre-existing test flake.
+      - name: Restore kb-devkit build cache
+        uses: actions/cache@v4
+        with:
+          path: .kb/devkit/
+          key: devkit-build-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml', 'devkit.yaml', 'tsconfig*.json') }}-${{ github.sha }}
+          restore-keys: |
+            devkit-build-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml', 'devkit.yaml', 'tsconfig*.json') }}-
+            devkit-build-${{ runner.os }}-
+
       - name: Build all packages (topological order)
         run: pnpm build
 
