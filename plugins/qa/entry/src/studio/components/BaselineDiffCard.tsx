@@ -1,6 +1,5 @@
 /**
- * Baseline diff card — shows new failures, fixed packages, and delta per check type.
- * Includes "Update Baseline" button.
+ * Baseline diff card — shows new issues, fixed issues, score delta and grade delta.
  */
 
 import * as React from 'react';
@@ -11,161 +10,167 @@ import {
   UITag,
   UITypographyText,
   UIAlert,
-  UIButton,
-  UIPopconfirm,
-  UIMessage,
   UISpace,
   UIStatistic,
   UIIcon,
+  UISpin,
   useData,
-  useMutateData,
   useTheme,
 } from '@kb-labs/sdk/studio';
-import { formatCheckLabel } from '../utils/check-display';
-import type { QABaselineDiffResponse } from '@kb-labs/qa-contracts';
+import type { QABaselineDiffResponse, BaselineCheckDiff, CheckIssueDiff } from '@kb-labs/qa-contracts';
+import { QA_BASE_PATH, QA_ROUTES } from '@kb-labs/qa-contracts';
+
+function isError(data: QABaselineDiffResponse): data is { error: 'no-baseline' | 'no-check' | 'no-stats' } {
+  return 'error' in data;
+}
+
+function IssueList({ issues, color }: { issues: CheckIssueDiff[]; color: 'error' | 'success' | 'warning' }) {
+  const { antdToken: token } = useTheme();
+  const shown = issues.slice(0, 5);
+  return (
+    <div>
+      {shown.map((issue, idx) => (
+        <div key={idx} style={{ marginBottom: token.marginXXS }}>
+          <UITag color={issue.severity === 'error' ? 'error' : issue.severity === 'warning' ? 'warning' : 'default'} style={{ fontSize: token.fontSizeSM }}>
+            {issue.check}
+          </UITag>
+          <UITag style={{ fontSize: token.fontSizeSM }}>{issue.pkg}</UITag>
+          <span style={{ fontSize: token.fontSizeSM, color: token.colorTextSecondary }}>{issue.message.slice(0, 60)}{issue.message.length > 60 ? '…' : ''}</span>
+        </div>
+      ))}
+      {issues.length > 5 && (
+        <UITypographyText type="secondary" style={{ fontSize: token.fontSizeSM }}>
+          +{issues.length - 5} more
+        </UITypographyText>
+      )}
+    </div>
+  );
+}
+
+function DiffContent({ diff }: { diff: BaselineCheckDiff }) {
+  const { antdToken: token } = useTheme();
+  const hasNewIssues = diff.newIssueCount > 0;
+  const hasFixed = diff.fixedIssueCount > 0;
+
+  return (
+    <UICard
+      title={
+        <UISpace>
+          <UIIcon name="WarningOutlined" style={{ color: hasNewIssues ? token.colorError : token.colorSuccess }} />
+          <span>Baseline Diff</span>
+          {hasNewIssues && <UITag color="error">+{diff.newIssueCount} new issues</UITag>}
+          {hasFixed && <UITag color="success">{diff.fixedIssueCount} fixed</UITag>}
+        </UISpace>
+      }
+    >
+      <UIRow gutter={[16, 16]}>
+        {/* Score delta */}
+        <UICol xs={24} sm={8}>
+          <UICard size="small" style={{ textAlign: 'center' }}>
+            <UITypographyText strong>Score Delta</UITypographyText>
+            <div style={{ marginTop: token.marginXS }}>
+              <UIStatistic
+                value={Math.abs(diff.scoreDelta)}
+                prefix={
+                  diff.scoreDelta > 0
+                    ? <UIIcon name="ArrowUpOutlined" />
+                    : diff.scoreDelta < 0
+                      ? <UIIcon name="ArrowDownOutlined" />
+                      : null
+                }
+                valueStyle={{
+                  color: diff.scoreDelta < 0
+                    ? token.colorError
+                    : diff.scoreDelta > 0
+                      ? token.colorSuccess
+                      : token.colorTextSecondary,
+                  fontSize: token.fontSizeHeading3,
+                }}
+                suffix={diff.gradeDelta ? ` (${diff.gradeDelta})` : undefined}
+              />
+            </div>
+          </UICard>
+        </UICol>
+
+        {/* New issues */}
+        {diff.newIssues.length > 0 && (
+          <UICol xs={24} sm={8}>
+            <UICard size="small">
+              <UITypographyText type="danger" strong>New Issues ({diff.newIssues.length})</UITypographyText>
+              <div style={{ marginTop: token.marginXS }}>
+                <IssueList issues={diff.newIssues} color="error" />
+              </div>
+            </UICard>
+          </UICol>
+        )}
+
+        {/* Fixed issues */}
+        {diff.fixedIssues.length > 0 && (
+          <UICol xs={24} sm={8}>
+            <UICard size="small">
+              <UITypographyText type="success" strong>Fixed Issues ({diff.fixedIssues.length})</UITypographyText>
+              <div style={{ marginTop: token.marginXS }}>
+                <IssueList issues={diff.fixedIssues} color="success" />
+              </div>
+            </UICard>
+          </UICol>
+        )}
+      </UIRow>
+    </UICard>
+  );
+}
 
 export function BaselineDiffCard() {
-  const { antdToken: token } = useTheme();
-  const { data: diffData, isLoading } = useData<QABaselineDiffResponse>('/v1/plugins/qa/baseline/diff');
-  const { mutateAsync: updateBaseline, isLoading: isUpdating } = useMutateData<undefined, void>(
-    '/v1/plugins/qa/baseline/update',
-    'POST',
-  );
+  const { data: diffData, isLoading } = useData<QABaselineDiffResponse>(`${QA_BASE_PATH}${QA_ROUTES.BASELINE_DIFF}`);
 
-  const handleUpdateBaseline = async () => {
-    void UIMessage.loading('Updating baseline...', 0);
-    try {
-      await updateBaseline(undefined);
-      UIMessage.destroy();
-      UIMessage.success('Baseline updated successfully');
-    } catch (error) {
-      UIMessage.destroy();
-      UIMessage.error(`Failed to update baseline: ${error instanceof Error ? error.message : 'Unknown error'}`);
+  if (isLoading) { return <UISpin size="small" style={{ display: 'block', margin: '16px auto' }} />; }
+
+  if (!diffData) { return null; }
+
+  if (isError(diffData)) {
+    if (diffData.error === 'no-baseline') {
+      return (
+        <UIAlert
+          variant="warning"
+          showIcon
+          message="No baseline set"
+          description="Run QA checks and save a baseline to enable diff tracking."
+        />
+      );
     }
-  };
-
-  if (isLoading) { return null; }
-
-  if (!diffData?.baseline) {
+    if (diffData.error === 'no-check') {
+      return (
+        <UIAlert
+          variant="info"
+          showIcon
+          message="No check snapshot"
+          description="Run 'kb qa check --save' to generate a check snapshot."
+        />
+      );
+    }
     return (
       <UIAlert
-        variant="warning"
+        variant="info"
         showIcon
-        message="No baseline set"
-        description="Run QA first, then update baseline to enable diff tracking."
-        action={
-          <UIButton
-            variant="primary"
-            size="small"
-            icon={<UIIcon name="SaveOutlined" />}
-            onClick={() => void handleUpdateBaseline()}
-            loading={isUpdating}
-          >
-            Create Baseline
-          </UIButton>
-        }
+        message="No stats snapshot"
+        description="Run 'kb qa stats --save' to generate a stats snapshot."
       />
     );
   }
 
-  if (!diffData.hasDiff) {
+  const hasChanges = diffData.newIssueCount > 0 || diffData.fixedIssueCount > 0;
+
+  if (!hasChanges) {
     return (
       <UIAlert
         variant="success"
         showIcon
         icon={<UIIcon name="CheckCircleOutlined" />}
         message="No changes since baseline"
-        description={`Baseline from ${new Date(diffData.baseline.timestamp).toLocaleString()}`}
-        action={
-          <UIPopconfirm
-            title="Update baseline?"
-            description="This will set the current QA state as the new baseline."
-            onConfirm={() => void handleUpdateBaseline()}
-          >
-            <UIButton size="small" icon={<UIIcon name="SaveOutlined" />} loading={isUpdating}>
-              Update
-            </UIButton>
-          </UIPopconfirm>
-        }
+        description={`Score delta: ${diffData.scoreDelta >= 0 ? '+' : ''}${diffData.scoreDelta}${diffData.gradeDelta ? ` (grade: ${diffData.gradeDelta})` : ''}`}
       />
     );
   }
 
-  let totalNew = 0;
-  let totalFixed = 0;
-  for (const d of Object.values(diffData.diff)) {
-    totalNew += d.newFailures.length;
-    totalFixed += d.fixed.length;
-  }
-
-  return (
-    <UICard
-      title={
-        <UISpace>
-          <UIIcon name="WarningOutlined" style={{ color: totalNew > 0 ? token.colorError : token.colorSuccess }} />
-          <span>Baseline Diff</span>
-          {totalNew > 0 && <UITag color="error">+{totalNew} new failures</UITag>}
-          {totalFixed > 0 && <UITag color="success">{totalFixed} fixed</UITag>}
-        </UISpace>
-      }
-      extra={
-        <UIPopconfirm
-          title="Update baseline?"
-          description="This will set the current QA state as the new baseline."
-          onConfirm={() => void handleUpdateBaseline()}
-        >
-          <UIButton variant="primary" icon={<UIIcon name="SaveOutlined" />} loading={isUpdating} size="small">
-            Update Baseline
-          </UIButton>
-        </UIPopconfirm>
-      }
-    >
-      <UIRow gutter={[16, 16]}>
-        {Object.entries(diffData.diff).map(([ct, d]) => (
-          <UICol xs={24} sm={12} lg={6} key={ct}>
-            <UICard size="small" style={{ textAlign: 'center' }}>
-              <UITypographyText strong>{formatCheckLabel(ct)}</UITypographyText>
-              <div style={{ marginTop: token.marginXS }}>
-                <UIStatistic
-                  value={Math.abs(d.delta)}
-                  prefix={d.delta > 0 ? <UIIcon name="ArrowUpOutlined" /> : d.delta < 0 ? <UIIcon name="ArrowDownOutlined" /> : null}
-                  valueStyle={{
-                    color: d.delta > 0 ? token.colorError : d.delta < 0 ? token.colorSuccess : token.colorTextSecondary,
-                    fontSize: token.fontSizeHeading3,
-                  }}
-                  suffix={d.delta > 0 ? 'more failures' : d.delta < 0 ? 'fewer failures' : 'no change'}
-                />
-              </div>
-              {d.newFailures.length > 0 && (
-                <div style={{ marginTop: token.marginXS, textAlign: 'left' }}>
-                  <UITypographyText type="danger" style={{ fontSize: token.fontSizeSM }}>New failures:</UITypographyText>
-                  {d.newFailures.slice(0, 3).map((pkg) => (
-                    <div key={pkg}><UITag color="error" style={{ fontSize: token.fontSizeSM }}>{pkg}</UITag></div>
-                  ))}
-                  {d.newFailures.length > 3 && (
-                    <UITypographyText type="secondary" style={{ fontSize: token.fontSizeSM }}>
-                      +{d.newFailures.length - 3} more
-                    </UITypographyText>
-                  )}
-                </div>
-              )}
-              {d.fixed.length > 0 && (
-                <div style={{ marginTop: token.marginXS, textAlign: 'left' }}>
-                  <UITypographyText type="success" style={{ fontSize: token.fontSizeSM }}>Fixed:</UITypographyText>
-                  {d.fixed.slice(0, 3).map((pkg) => (
-                    <div key={pkg}><UITag color="success" style={{ fontSize: token.fontSizeSM }}>{pkg}</UITag></div>
-                  ))}
-                  {d.fixed.length > 3 && (
-                    <UITypographyText type="secondary" style={{ fontSize: token.fontSizeSM }}>
-                      +{d.fixed.length - 3} more
-                    </UITypographyText>
-                  )}
-                </div>
-              )}
-            </UICard>
-          </UICol>
-        ))}
-      </UIRow>
-    </UICard>
-  );
+  return <DiffContent diff={diffData} />;
 }

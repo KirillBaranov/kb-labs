@@ -1,7 +1,5 @@
 /**
  * Quality Plugin Manifest V3
- *
- * Monorepo quality analysis and automated fixes
  */
 
 import {
@@ -24,57 +22,38 @@ import {
   checkTypesFlags,
   checkTestsFlags,
   deadCodeFlags,
+  checkLayersFlags,
+  couplingFlags,
+  snapshotFlags,
+  historyFlags,
 } from './cli/commands/flags.js';
 
-/**
- * Build permissions using V3 combinePermissions builder pattern.
- * Quality plugin needs read/write access to entire monorepo for analysis and fixes.
- */
 const pluginPermissions = combinePermissions()
   .with(kbPlatformPreset)
-  .withFs({
-    mode: 'readWrite',
-    allow: ['**'], // Access to entire monorepo
-  })
-  .withPlatform({
-    cache: ['quality:'],  // Cache namespace prefix
-    analytics: true,      // Track command usage
-  })
-  .withQuotas({
-    timeoutMs: 300000,      // 5 minutes for long-running operations
-    memoryMb: 1024,         // 1GB memory
-  })
+  .withFs({ mode: 'readWrite', allow: ['**'] })
+  .withShell({ allow: ['pnpm', 'git'] })
+  .withPlatform({ cache: ['quality:'], analytics: true })
+  .withQuotas({ timeoutMs: 300_000, memoryMb: 1024 })
   .build();
 
-/**
- * Heavy operations permissions (builds, types, tests)
- * These operations scan the entire monorepo and can take a long time
- */
-const heavyOperationsPermissions = combinePermissions()
+const heavyPermissions = combinePermissions()
   .with(kbPlatformPreset)
-  .withFs({
-    mode: 'readWrite',
-    allow: ['**'],
-  })
-  .withPlatform({
-    cache: ['quality:'],
-    analytics: true,
-  })
-  .withQuotas({
-    timeoutMs: 600000,      // 10 minutes for heavy operations
-    memoryMb: 2048,         // 2GB memory
-  })
+  .withFs({ mode: 'readWrite', allow: ['**'] })
+  .withShell({ allow: ['pnpm', 'git'] })
+  .withPlatform({ cache: ['quality:'], analytics: true })
+  .withQuotas({ timeoutMs: 600_000, memoryMb: 2048 })
   .build();
 
 export const manifest = {
   schema: 'kb.plugin/3',
   id: '@kb-labs/quality',
   version: '0.1.0',
+  configSection: 'quality',
 
   display: {
-    name: 'Quality Tools',
-    description: 'Monorepo quality analysis and automated fixes',
-    tags: ['quality', 'monorepo', 'analysis', 'devtools'],
+    name: 'Quality',
+    description: 'Code quality, architecture analysis, and trend tracking',
+    tags: ['quality', 'architecture', 'coupling', 'monorepo'],
   },
 
   platform: {
@@ -83,404 +62,160 @@ export const manifest = {
   },
 
   cli: {
-    groupMeta: [
-      {
-        path: 'quality',
-        describe: 'Monorepo quality analysis and automated fixes.',
-      },
-    ],
+    groupMeta: [{ path: 'quality', describe: 'Code quality analysis and trend tracking.' }],
     commands: [
-      // ======================================================================
-      // quality:stats - Monorepo statistics and health score
-      // ======================================================================
+      // ── Overview ────────────────────────────────────────────────────────────
       {
         path: 'quality stats',
         category: 'Overview',
-        describe: 'Get monorepo statistics and health score',
-        longDescription:
-          'Analyzes monorepo structure, collects package statistics, dependency info, and calculates health score. ' +
-          'Results are cached for 5 minutes.',
-
+        describe: 'Monorepo statistics',
         handler: './cli/commands/stats.js#default',
-
         flags: defineCommandFlags(statsFlags),
-
-        examples: [
-          'kb quality:stats',
-          'kb quality:stats --health',
-          'kb quality:stats --json',
-          'kb quality:stats --md',
-        ],
-
+        examples: ['kb quality stats', 'kb quality stats --json'],
         permissions: pluginPermissions,
       },
-
-      // ======================================================================
-      // quality:health - Monorepo health check
-      // ======================================================================
       {
         path: 'quality health',
         category: 'Overview',
-        describe: 'Check monorepo health score',
-        longDescription:
-          'Analyzes monorepo health including dependency issues, structure problems, and build health. ' +
-          'Returns health score (0-100) with grade (A-F) and actionable recommendations.',
-
+        describe: 'Multidimensional health score (architecture, TypeScript, dead code, deps)',
         handler: './cli/commands/health.js#default',
-
         flags: defineCommandFlags(healthFlags),
-
-        examples: [
-          'kb quality:health',
-          'kb quality:health --detailed',
-          'kb quality:health --package @kb-labs/core',
-          'kb quality:health --json',
-        ],
-
+        examples: ['kb quality health', 'kb quality health --json', 'kb quality health --detailed'],
         permissions: pluginPermissions,
       },
-
-      // ======================================================================
-      // quality:fix-deps - Dependency auto-fixer
-      // ======================================================================
       {
-        path: 'quality fix-deps',
-        category: 'Dependencies',
-        describe: 'Auto-fix dependency issues',
-        longDescription:
-          'Automatically fixes dependency issues including removing unused deps, adding missing workspace deps, ' +
-          'and aligning duplicate versions. Supports --dry-run for previewing changes.',
-
-        handler: './cli/commands/fix-deps.js#default',
-
-        flags: defineCommandFlags(fixDepsFlags),
-
-        examples: [
-          'kb quality:fix-deps --stats',
-          'kb quality:fix-deps --remove-unused --dry-run',
-          'kb quality:fix-deps --align-versions',
-          'kb quality:fix-deps --all --dry-run',
-        ],
-
+        path: 'quality snapshot',
+        category: 'Overview',
+        describe: 'Collect all metrics and save a snapshot for trend tracking',
+        handler: './cli/commands/snapshot.js#default',
+        flags: defineCommandFlags(snapshotFlags),
+        examples: ['kb quality snapshot', 'kb quality snapshot --json'],
+        permissions: pluginPermissions,
+      },
+      {
+        path: 'quality history',
+        category: 'Overview',
+        describe: 'Show quality snapshot history and delta trends',
+        handler: './cli/commands/history.js#default',
+        flags: defineCommandFlags(historyFlags),
+        examples: ['kb quality history', 'kb quality history --json', 'kb quality history --limit 20'],
         permissions: pluginPermissions,
       },
 
-      // ======================================================================
-      // quality:build-order - Calculate build order with topological sort
-      // ======================================================================
+      // ── Architecture ─────────────────────────────────────────────────────────
+      {
+        path: 'quality check-layers',
+        category: 'Architecture',
+        describe: 'Detect layering violations (lower layer importing higher layer)',
+        handler: './cli/commands/check-layers.js#default',
+        flags: defineCommandFlags(checkLayersFlags),
+        examples: ['kb quality check-layers', 'kb quality check-layers --json', 'kb quality check-layers --package @kb-labs/plugins-qa'],
+        permissions: pluginPermissions,
+      },
+      {
+        path: 'quality coupling',
+        category: 'Architecture',
+        describe: 'Show coupling metrics per package (Ca/Ce/instability)',
+        handler: './cli/commands/coupling.js#default',
+        flags: defineCommandFlags(couplingFlags),
+        examples: ['kb quality coupling', 'kb quality coupling --json', 'kb quality coupling --sort coupled --top 20'],
+        permissions: pluginPermissions,
+      },
       {
         path: 'quality build-order',
-        category: 'Dependencies',
-        describe: 'Calculate build order using topological sort',
-        longDescription:
-          'Analyzes package dependencies and calculates correct build order using topological sort. ' +
-          'Shows build layers where each layer can be built in parallel. Detects circular dependencies.',
-
+        category: 'Architecture',
+        describe: 'Topological build order',
         handler: './cli/commands/build-order.js#default',
-
         flags: defineCommandFlags(buildOrderFlags),
-
-        examples: [
-          'kb quality:build-order',
-          'kb quality:build-order --layers',
-          'kb quality:build-order --package @kb-labs/core',
-          'kb quality:build-order --script > build.sh',
-        ],
-
+        examples: ['kb quality build-order', 'kb quality build-order --json'],
         permissions: pluginPermissions,
       },
-
-      // ======================================================================
-      // quality:cycles - Detect circular dependencies
-      // ======================================================================
       {
         path: 'quality cycles',
-        category: 'Dependencies',
+        category: 'Architecture',
         describe: 'Detect circular dependencies',
-        longDescription:
-          'Uses DFS to find all circular dependency chains in the monorepo. ' +
-          'Shows complete dependency cycles with recommendations for breaking them.',
-
         handler: './cli/commands/cycles.js#default',
-
         flags: defineCommandFlags(cyclesFlags),
-
-        examples: [
-          'kb quality:cycles',
-          'kb quality:cycles --json',
-        ],
-
+        examples: ['kb quality cycles', 'kb quality cycles --json'],
         permissions: pluginPermissions,
       },
 
-      // ======================================================================
-      // quality:visualize - Visualize dependency graph
-      // ======================================================================
-      {
-        path: 'quality visualize',
-        category: 'Dependencies',
-        describe: 'Visualize dependency graph',
-        longDescription:
-          'Visualize monorepo dependency graph in various formats: tree view, DOT format for graphviz, ' +
-          'reverse dependencies (who depends on this), impact analysis (what will be affected by changes), ' +
-          'and comprehensive graph statistics.',
-
-        handler: './cli/commands/visualize.js#default',
-
-        flags: defineCommandFlags(visualizeFlags),
-
-        examples: [
-          'kb quality:visualize --stats',
-          'kb quality:visualize --tree --package @kb-labs/core',
-          'kb quality:visualize --reverse --package @kb-labs/sdk',
-          'kb quality:visualize --impact --package @kb-labs/core',
-          'kb quality:visualize --dot > deps.dot',
-        ],
-
-        permissions: pluginPermissions,
-      },
-
-      // ======================================================================
-      // quality:check-builds - Check build status across monorepo
-      // ======================================================================
-      {
-        path: 'quality check-builds',
-        category: 'Checks',
-        describe: 'Check build status across monorepo',
-        longDescription:
-          'Analyzes build status across all packages with build scripts. ' +
-          'Detects build failures with error messages and stale builds (dist/ older than src/). ' +
-          'Results are cached for 10 minutes.',
-
-        handler: './cli/commands/check-builds.js#default',
-
-        flags: defineCommandFlags(checkBuildsFlags),
-
-        examples: [
-          'kb quality:check-builds',
-          'kb quality:check-builds --package @kb-labs/core',
-          'kb quality:check-builds --timeout 60000',
-          'kb quality:check-builds --json',
-          'kb quality:check-builds --refresh',
-        ],
-
-        permissions: heavyOperationsPermissions,
-      },
-
-      // ======================================================================
-      // quality:check-types - TypeScript type safety analysis
-      // ======================================================================
-      {
-        path: 'quality check-types',
-        category: 'Checks',
-        describe: 'Analyze TypeScript type safety across monorepo',
-        longDescription:
-          'Analyzes TypeScript type errors, warnings, and type coverage using TypeScript Compiler API. ' +
-          'Detects any usage, @ts-ignore comments, and calculates type coverage percentage. ' +
-          'Results are cached for 10 minutes.',
-
-        handler: './cli/commands/check-types.js#default',
-
-        flags: defineCommandFlags(checkTypesFlags),
-
-        examples: [
-          'kb quality:check-types',
-          'kb quality:check-types --package @kb-labs/core',
-          'kb quality:check-types --errors-only',
-          'kb quality:check-types --json',
-          'kb quality:check-types --refresh',
-        ],
-
-        permissions: heavyOperationsPermissions,
-      },
-
-      // ======================================================================
-      // quality:check-tests - Test execution and coverage tracking
-      // ======================================================================
-      {
-        path: 'quality check-tests',
-        category: 'Checks',
-        describe: 'Run tests and track coverage across monorepo',
-        longDescription:
-          'Runs tests across all packages with test scripts and collects coverage statistics. ' +
-          'Parses test output (vitest/jest) to extract test counts and reads coverage-summary.json. ' +
-          'Results are cached for 5 minutes.',
-
-        handler: './cli/commands/check-tests.js#default',
-
-        flags: defineCommandFlags(checkTestsFlags),
-
-        examples: [
-          'kb quality:check-tests',
-          'kb quality:check-tests --package @kb-labs/core',
-          'kb quality:check-tests --with-coverage',
-          'kb quality:check-tests --coverage-only',
-          'kb quality:check-tests --timeout 120000',
-          'kb quality:check-tests --json',
-        ],
-
-        permissions: heavyOperationsPermissions,
-      },
-
-      // ======================================================================
-      // quality:dead-code - Dead code file detection
-      // ======================================================================
+      // ── Checks ───────────────────────────────────────────────────────────────
       {
         path: 'quality dead-code',
         category: 'Checks',
-        describe: 'Detect dead (unreachable) source files',
-        longDescription:
-          'Analyzes import graph to find source files not reachable from any entry point ' +
-          '(package.json, tsup.config.ts, manifest.ts). Supports automated removal with ' +
-          'backup and restore capabilities. Zero false positives by design.',
-
+        describe: 'Detect unused files, exports, and deps via knip',
         handler: './cli/commands/dead-code.js#default',
-
         flags: defineCommandFlags(deadCodeFlags),
-
-        examples: [
-          'kb quality:dead-code',
-          'kb quality:dead-code --package @kb-labs/core',
-          'kb quality:dead-code --auto-remove --dry-run',
-          'kb quality:dead-code --auto-remove',
-          'kb quality:dead-code --list-backups',
-          'kb quality:dead-code --restore 2026-02-15T10-30-00',
-          'kb quality:dead-code --json',
-        ],
-
+        examples: ['kb quality dead-code', 'kb quality dead-code --json'],
+        permissions: pluginPermissions,
+      },
+      {
+        path: 'quality check-types',
+        category: 'Checks',
+        describe: 'TypeScript type safety analysis (any count, ts-ignore, errors)',
+        handler: './cli/commands/check-types.js#default',
+        flags: defineCommandFlags(checkTypesFlags),
+        examples: ['kb quality check-types', 'kb quality check-types --json'],
+        permissions: heavyPermissions,
+      },
+      {
+        path: 'quality check-builds',
+        category: 'Checks',
+        describe: 'Build status across monorepo',
+        handler: './cli/commands/check-builds.js#default',
+        flags: defineCommandFlags(checkBuildsFlags),
+        examples: ['kb quality check-builds', 'kb quality check-builds --json'],
+        permissions: heavyPermissions,
+      },
+      {
+        path: 'quality check-tests',
+        category: 'Checks',
+        describe: 'Run tests and track coverage',
+        handler: './cli/commands/check-tests.js#default',
+        flags: defineCommandFlags(checkTestsFlags),
+        examples: ['kb quality check-tests', 'kb quality check-tests --with-coverage'],
+        permissions: heavyPermissions,
+      },
+      {
+        path: 'quality fix-deps',
+        category: 'Fixes',
+        describe: 'Auto-fix dependency issues',
+        handler: './cli/commands/fix-deps.js#default',
+        flags: defineCommandFlags(fixDepsFlags),
+        examples: ['kb quality fix-deps --dry-run', 'kb quality fix-deps --all'],
+        permissions: pluginPermissions,
+      },
+      {
+        path: 'quality visualize',
+        category: 'Fixes',
+        describe: 'Visualize dependency graph',
+        handler: './cli/commands/visualize.js#default',
+        flags: defineCommandFlags(visualizeFlags),
+        examples: ['kb quality visualize --tree', 'kb quality visualize --dot'],
         permissions: pluginPermissions,
       },
     ],
   },
 
-  // REST API routes
   rest: {
     basePath: QUALITY_BASE_PATH,
     routes: [
-      // GET /stats
-      {
-        method: 'GET',
-        path: QUALITY_ROUTES.STATS,
-        handler: './rest/handlers/stats-handler.js#default',
-        input: {
-          zod: '@kb-labs/quality-contracts#StatsRequestSchema',
-        },
-        output: {
-          zod: '@kb-labs/quality-contracts#StatsResponseSchema',
-        },
-      },
-      // GET /health
-      {
-        method: 'GET',
-        path: QUALITY_ROUTES.HEALTH,
-        handler: './rest/handlers/health-handler.js#default',
-        input: {
-          zod: '@kb-labs/quality-contracts#HealthRequestSchema',
-        },
-        output: {
-          zod: '@kb-labs/quality-contracts#HealthResponseSchema',
-        },
-      },
-      // GET /dependencies
-      {
-        method: 'GET',
-        path: QUALITY_ROUTES.DEPENDENCIES,
-        handler: './rest/handlers/dependencies-handler.js#default',
-        input: {
-          zod: '@kb-labs/quality-contracts#DependenciesRequestSchema',
-        },
-        output: {
-          zod: '@kb-labs/quality-contracts#DependenciesResponseSchema',
-        },
-      },
-      // GET /build-order
-      {
-        method: 'GET',
-        path: QUALITY_ROUTES.BUILD_ORDER,
-        handler: './rest/handlers/build-order-handler.js#default',
-        input: {
-          zod: '@kb-labs/quality-contracts#BuildOrderRequestSchema',
-        },
-        output: {
-          zod: '@kb-labs/quality-contracts#BuildOrderResponseSchema',
-        },
-      },
-      // GET /cycles
-      {
-        method: 'GET',
-        path: QUALITY_ROUTES.CYCLES,
-        handler: './rest/handlers/cycles-handler.js#default',
-        input: {
-          zod: '@kb-labs/quality-contracts#CyclesRequestSchema',
-        },
-        output: {
-          zod: '@kb-labs/quality-contracts#CyclesResponseSchema',
-        },
-      },
-      // GET /graph
-      {
-        method: 'GET',
-        path: QUALITY_ROUTES.GRAPH,
-        handler: './rest/handlers/graph-handler.js#default',
-        input: {
-          zod: '@kb-labs/quality-contracts#GraphRequestSchema',
-        },
-        output: {
-          zod: '@kb-labs/quality-contracts#GraphResponseSchema',
-        },
-      },
-      // GET /stale
-      {
-        method: 'GET',
-        path: QUALITY_ROUTES.STALE,
-        handler: './rest/handlers/stale-handler.js#default',
-        input: {
-          zod: '@kb-labs/quality-contracts#StaleRequestSchema',
-        },
-        output: {
-          zod: '@kb-labs/quality-contracts#StaleResponseSchema',
-        },
-      },
-      // GET /builds
-      {
-        method: 'GET',
-        path: QUALITY_ROUTES.BUILDS,
-        handler: './rest/handlers/builds-handler.js#default',
-        input: {
-          zod: '@kb-labs/quality-contracts#BuildsRequestSchema',
-        },
-        output: {
-          zod: '@kb-labs/quality-contracts#BuildsResponseSchema',
-        },
-      },
-      // GET /types
-      {
-        method: 'GET',
-        path: QUALITY_ROUTES.TYPES,
-        handler: './rest/handlers/types-handler.js#default',
-        input: {
-          zod: '@kb-labs/quality-contracts#TypesRequestSchema',
-        },
-        output: {
-          zod: '@kb-labs/quality-contracts#TypesResponseSchema',
-        },
-      },
-      // GET /tests
-      {
-        method: 'GET',
-        path: QUALITY_ROUTES.TESTS,
-        handler: './rest/handlers/tests-handler.js#default',
-        input: {
-          zod: '@kb-labs/quality-contracts#TestsRequestSchema',
-        },
-        output: {
-          zod: '@kb-labs/quality-contracts#TestsResponseSchema',
-        },
-      },
+      { method: 'GET', path: QUALITY_ROUTES.STATS, handler: './rest/handlers/stats-handler.js#default' },
+      { method: 'GET', path: QUALITY_ROUTES.HEALTH, handler: './rest/handlers/health-handler.js#default' },
+      { method: 'GET', path: QUALITY_ROUTES.LAYERS, handler: './rest/handlers/layers-handler.js#default' },
+      { method: 'GET', path: QUALITY_ROUTES.COUPLING, handler: './rest/handlers/coupling-handler.js#default' },
+      { method: 'GET', path: QUALITY_ROUTES.DEAD_CODE, handler: './rest/handlers/knip-handler.js#default' },
+      { method: 'GET', path: QUALITY_ROUTES.HISTORY, handler: './rest/handlers/history-handler.js#default' },
+      { method: 'POST', path: QUALITY_ROUTES.SNAPSHOT, handler: './rest/handlers/snapshot-handler.js#default' },
+      { method: 'GET', path: QUALITY_ROUTES.DEPENDENCIES, handler: './rest/handlers/dependencies-handler.js#default' },
+      { method: 'GET', path: QUALITY_ROUTES.BUILD_ORDER, handler: './rest/handlers/build-order-handler.js#default' },
+      { method: 'GET', path: QUALITY_ROUTES.CYCLES, handler: './rest/handlers/cycles-handler.js#default' },
+      { method: 'GET', path: QUALITY_ROUTES.GRAPH, handler: './rest/handlers/graph-handler.js#default' },
+      { method: 'GET', path: QUALITY_ROUTES.STALE, handler: './rest/handlers/stale-handler.js#default' },
     ],
   },
 
-  // Studio V2 — Module Federation pages
   studio: {
     version: 2 as const,
     remoteName: 'qualityPlugin',

@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "@kb-labs/plugin-contracts": "workspace:*",
+    "js-yaml": "^4.1.0",
     "@kb-labs/qa-contracts": "workspace:*",
     "@kb-labs/qa-core": "workspace:*",
     "@kb-labs/sdk": "workspace:*",
@@ -47,6 +48,7 @@
     "@kb-labs/studio-plugin-tools": "workspace:*",
     "@rspack/cli": "latest",
     "@rspack/core": "latest",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^24.3.3",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

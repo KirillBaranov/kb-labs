@@ -1,161 +1,146 @@
 /**
- * Calculate monorepo health score
+ * Multidimensional health score calculation.
  *
- * Atomic functions for health checks and scoring.
+ * Composite score = weighted average of 5 dimensions:
+ *   architecture  30% — layering violations + avg instability
+ *   typescript    25% — any count + ts-ignore count
+ *   deadCode      20% — unused files + unused exports from knip
+ *   depHygiene    15% — unused + unlisted dependencies from knip
+ *   testCoverage  10% — avg test coverage % (optional, defaults to 100 if unavailable)
  */
 
-import { readFile, access } from 'node:fs/promises';
-import { join } from 'node:path';
-import globby from 'globby';
+import { DIMENSION_WEIGHTS, HEALTH_GRADES } from '@kb-labs/quality-contracts';
+import type {
+  HealthScore,
+  DimensionScore,
+  DimensionScores,
+  LayeringReport,
+  CouplingReport,
+  KnipReport,
+  TypeAnalysisResult,
+  QualityThresholds,
+} from '@kb-labs/quality-contracts';
 
-export interface HealthResult {
-  score: number;
-  grade: 'A' | 'B' | 'C' | 'D' | 'F';
-  issues: HealthIssue[];
-}
-
-export interface HealthIssue {
-  type: 'duplicate' | 'unused' | 'missing' | 'structure' | 'readme';
-  severity: 'high' | 'medium' | 'low';
-  message: string;
-  count: number;
-  penalty: number;
-}
-
-/**
- * Check for duplicate dependencies across packages
- */
-export async function checkDuplicateDependencies(rootDir: string, pkgFiles?: string[]): Promise<HealthIssue | null> {
-  const packageJsonFiles = pkgFiles ?? await globby('**/package.json', {
-    cwd: rootDir,
-    ignore: ['**/node_modules/**', '**/.git/**'],
-    absolute: true,
-  });
-
-  // Read all package.json files in parallel
-  const depVersions = new Map<string, Set<string>>();
-  const contents = await Promise.all(
-    packageJsonFiles.map(f => readFile(f, 'utf-8').catch(() => null))
-  );
-
-  for (const content of contents) {
-    if (!content) {continue;}
-    try {
-      const pkg = JSON.parse(content);
-      const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
-      for (const [name, version] of Object.entries(allDeps)) {
-        if (typeof version !== 'string') {continue;}
-        if (!depVersions.has(name)) {depVersions.set(name, new Set());}
-        depVersions.get(name)!.add(version);
-      }
-    } catch { /* skip invalid */ }
+function gradeFromScore(score: number): HealthScore['grade'] {
+  for (const [g, { min }] of Object.entries(HEALTH_GRADES) as [HealthScore['grade'], { min: number }][]) {
+    if (score >= min) return g;
   }
-
-  // Count duplicates (deps with more than 1 version)
-  const duplicates = Array.from(depVersions.entries()).filter(
-    ([, versions]) => versions.size > 1
-  );
-
-  if (duplicates.length === 0) {return null;}
-
-  const penalty = Math.min(duplicates.length * 2, 30); // Max -30 points
-
-  return {
-    type: 'duplicate',
-    severity: duplicates.length > 20 ? 'high' : duplicates.length > 10 ? 'medium' : 'low',
-    message: `Found ${duplicates.length} duplicate dependencies with different versions`,
-    count: duplicates.length,
-    penalty,
-  };
-}
-
-/**
- * Check for packages missing README
- */
-export async function checkMissingReadmes(rootDir: string, packageJsonFiles?: string[]): Promise<HealthIssue | null> {
-  const pkgFiles = packageJsonFiles ?? await globby('**/package.json', {
-    cwd: rootDir,
-    ignore: ['**/node_modules/**', '**/.git/**', 'package.json'],
-    absolute: true,
-  });
-
-  const hasReadme = async (pkgPath: string): Promise<boolean> => {
-    const dir = join(pkgPath, '..');
-    for (const name of ['README.md', 'readme.md', 'Readme.md']) {
-      try {
-        await access(join(dir, name));
-        return true;
-      } catch { /* not found */ }
-    }
-    return false;
-  };
-
-  const results = await Promise.all(pkgFiles.map(hasReadme));
-  const missingCount = results.filter(has => !has).length;
-
-  if (missingCount === 0) {return null;}
-
-  const penalty = Math.min(missingCount, 15); // Max -15 points
-
-  return {
-    type: 'readme',
-    severity: missingCount > 20 ? 'high' : missingCount > 10 ? 'medium' : 'low',
-    message: `Found ${missingCount} packages without README`,
-    count: missingCount,
-    penalty,
-  };
-}
-
-/**
- * Calculate health score from issues
- */
-export function calculateHealthScore(issues: HealthIssue[]): number {
-  const baseScore = 100;
-  const totalPenalty = issues.reduce((sum, issue) => sum + issue.penalty, 0);
-
-  return Math.max(0, baseScore - totalPenalty);
-}
-
-/**
- * Convert score to letter grade
- */
-export function scoreToGrade(score: number): 'A' | 'B' | 'C' | 'D' | 'F' {
-  if (score >= 90) {return 'A';}
-  if (score >= 80) {return 'B';}
-  if (score >= 70) {return 'C';}
-  if (score >= 60) {return 'D';}
   return 'F';
 }
 
-/**
- * Calculate complete health report
- */
-export async function calculateHealth(rootDir: string): Promise<HealthResult> {
-  const issues: HealthIssue[] = [];
+function clamp(n: number): number {
+  return Math.max(0, Math.min(100, Math.round(n)));
+}
 
-  // Single globby scan shared by all checks
-  // depth=6 covers workspace/subrepo/packages/pkg-name/src/... without scanning deep trees
-  const packageJsonFiles = await globby('**/package.json', {
-    cwd: rootDir,
-    ignore: ['**/node_modules/**', '**/.git/**', '**/.kb/**', '**/dist/**'],
-    absolute: true,
-    deep: 6,
-  });
+// ── Dimension scorers ─────────────────────────────────────────────────────────
 
-  const [duplicatesIssue, readmesIssue] = await Promise.all([
-    checkDuplicateDependencies(rootDir, packageJsonFiles),
-    checkMissingReadmes(rootDir, packageJsonFiles),
-  ]);
+function scoreArchitecture(
+  layering: LayeringReport,
+  coupling: CouplingReport,
+  thresholds: QualityThresholds
+): DimensionScore {
+  const details: string[] = [];
 
-  if (duplicatesIssue) {issues.push(duplicatesIssue);}
-  if (readmesIssue) {issues.push(readmesIssue);}
+  // Each violation costs 5 points, max -60
+  const layeringPenalty = Math.min(layering.totalViolations * 5, 60);
+  if (layering.totalViolations > 0) {
+    details.push(`${layering.totalViolations} layering violation(s) in ${layering.affectedPackages.length} package(s)`);
+  }
 
-  const score = calculateHealthScore(issues);
-  const grade = scoreToGrade(score);
+  // Packages above instability threshold cost 3 points each, max -30
+  const highInstability = coupling.packages.filter(p => p.instability > thresholds.instability);
+  const couplingPenalty = Math.min(highInstability.length * 3, 30);
+  if (highInstability.length > 0) {
+    details.push(`${highInstability.length} package(s) with instability > ${thresholds.instability}`);
+  }
 
-  return {
-    score,
-    grade,
-    issues,
+  const score = clamp(100 - layeringPenalty - couplingPenalty);
+  return { score, grade: gradeFromScore(score), details };
+}
+
+function scoreTypeScript(types: TypeAnalysisResult): DimensionScore {
+  const details: string[] = [];
+
+  const totalAny = types.packages.reduce((s, p) => s + p.anyCount, 0);
+  const anyPenalty = Math.min(totalAny * 0.5, 50);
+  if (totalAny > 0) details.push(`${totalAny} \`any\` usage(s)`);
+
+  const totalIgnore = types.packages.reduce((s, p) => s + p.tsIgnoreCount, 0);
+  const ignorePenalty = Math.min(totalIgnore * 2, 30);
+  if (totalIgnore > 0) details.push(`${totalIgnore} @ts-ignore(s)`);
+
+  const errorPenalty = Math.min(types.totalErrors * 3, 20);
+  if (types.totalErrors > 0) details.push(`${types.totalErrors} type error(s)`);
+
+  const score = clamp(100 - anyPenalty - ignorePenalty - errorPenalty);
+  return { score, grade: gradeFromScore(score), details };
+}
+
+function scoreDeadCode(knip: KnipReport): DimensionScore {
+  const details: string[] = [];
+
+  const filePenalty = Math.min(knip.unusedFiles.length * 2, 50);
+  if (knip.unusedFiles.length > 0) details.push(`${knip.unusedFiles.length} unused file(s)`);
+
+  const exportPenalty = Math.min(knip.unusedExports.length * 0.5, 30);
+  if (knip.unusedExports.length > 0) details.push(`${knip.unusedExports.length} unused export(s)`);
+
+  const score = clamp(100 - filePenalty - exportPenalty);
+  return { score, grade: gradeFromScore(score), details };
+}
+
+function scoreDepHygiene(knip: KnipReport): DimensionScore {
+  const details: string[] = [];
+
+  const unusedPenalty = Math.min(knip.unusedDependencies.length * 5, 50);
+  if (knip.unusedDependencies.length > 0) details.push(`${knip.unusedDependencies.length} unused dep(s)`);
+
+  const unlistedPenalty = Math.min(knip.unlistedDependencies.length * 10, 40);
+  if (knip.unlistedDependencies.length > 0) details.push(`${knip.unlistedDependencies.length} unlisted dep(s)`);
+
+  const score = clamp(100 - unusedPenalty - unlistedPenalty);
+  return { score, grade: gradeFromScore(score), details };
+}
+
+function scoreTestCoverage(avgCoverage: number | null): DimensionScore {
+  if (avgCoverage === null) {
+    return { score: 100, grade: 'A', details: ['no coverage data — skipped'] };
+  }
+  const score = clamp(avgCoverage);
+  const details = avgCoverage < 80 ? [`avg coverage ${avgCoverage.toFixed(1)}%`] : [];
+  return { score, grade: gradeFromScore(score), details };
+}
+
+// ── Public API ────────────────────────────────────────────────────────────────
+
+export interface HealthInput {
+  layering: LayeringReport;
+  coupling: CouplingReport;
+  types: TypeAnalysisResult;
+  knip: KnipReport;
+  totalPackages: number;
+  /** Average test coverage in %, or null if not collected */
+  avgTestCoverage: number | null;
+  thresholds: QualityThresholds;
+}
+
+export function calculateHealth(input: HealthInput): HealthScore {
+  const { layering, coupling, types, knip, avgTestCoverage, thresholds } = input;
+
+  const dimensions: DimensionScores = {
+    architecture: scoreArchitecture(layering, coupling, thresholds),
+    typescript: scoreTypeScript(types),
+    deadCode: scoreDeadCode(knip),
+    depHygiene: scoreDepHygiene(knip),
+    testCoverage: scoreTestCoverage(avgTestCoverage),
   };
+
+  const score = clamp(
+    Object.entries(DIMENSION_WEIGHTS).reduce(
+      (sum, [key, weight]) => sum + dimensions[key as keyof DimensionScores].score * weight,
+      0
+    )
+  );
+
+  return { score, grade: gradeFromScore(score), dimensions };
 }

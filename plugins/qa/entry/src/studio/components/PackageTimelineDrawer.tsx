@@ -18,7 +18,8 @@ import {
   useData,
   useTheme,
 } from '@kb-labs/sdk/studio';
-import type { QAPackageTimelineResponse } from '@kb-labs/qa-contracts';
+import type { PackageTimeline, PackageTaskHistory } from '@kb-labs/qa-contracts';
+import { QA_BASE_PATH } from '@kb-labs/qa-contracts';
 
 interface PackageTimelineDrawerProps {
   open: boolean;
@@ -26,18 +27,18 @@ interface PackageTimelineDrawerProps {
   onClose: () => void;
 }
 
-const CHECK_STATUS_TAG: Record<string, { color: string; iconName: string }> = {
+const TASK_STATUS_TAG: Record<string, { color: string; iconName: string }> = {
   passed: { color: 'success', iconName: 'CheckCircleOutlined' },
   failed: { color: 'error', iconName: 'CloseCircleOutlined' },
-  skipped: { color: 'default', iconName: 'MinusCircleOutlined' },
+  cached: { color: 'default', iconName: 'ThunderboltOutlined' },
 };
 
 export function PackageTimelineDrawer({ open, packageName, onClose }: PackageTimelineDrawerProps) {
   const { antdToken: token } = useTheme();
   const timelineUrl = packageName
-    ? `/v1/plugins/qa/packages/${encodeURIComponent(packageName)}/timeline`
+    ? `${QA_BASE_PATH}/packages/${encodeURIComponent(packageName)}/timeline`
     : null;
-  const { data, isLoading } = useData<QAPackageTimelineResponse>(timelineUrl ?? '');
+  const { data, isLoading } = useData<PackageTimeline>(timelineUrl ?? '');
 
   if (!packageName) { return null; }
 
@@ -46,7 +47,7 @@ export function PackageTimelineDrawer({ open, packageName, onClose }: PackageTim
       title={
         <UISpace>
           <span>Timeline: {packageName}</span>
-          {data?.flakyScore && data.flakyScore > 0.3 && (
+          {data && data.flakyScore > 0.3 && (
             <UITag color="warning" icon={<UIIcon name="WarningOutlined" />}>Flaky</UITag>
           )}
         </UISpace>
@@ -67,18 +68,15 @@ export function PackageTimelineDrawer({ open, packageName, onClose }: PackageTim
       {!isLoading && data && (
         <div>
           <UIRow gutter={16} style={{ marginBottom: token.marginLG }}>
-            <UICol span={6}>
+            <UICol span={8}>
               <UIStatistic
-                title="Repo"
-                value={data.repo}
-                valueStyle={{ fontSize: token.fontSize }}
-              />
-            </UICol>
-            <UICol span={6}>
-              <UIStatistic
-                title="Streak"
+                title="Current Streak"
                 value={data.currentStreak.count}
-                prefix={data.currentStreak.status === 'failing' ? <UIIcon name="FireOutlined" /> : <UIIcon name="CheckCircleOutlined" />}
+                prefix={
+                  data.currentStreak.status === 'failing'
+                    ? <UIIcon name="FireOutlined" />
+                    : <UIIcon name="CheckCircleOutlined" />
+                }
                 suffix={data.currentStreak.status}
                 valueStyle={{
                   fontSize: token.fontSize,
@@ -86,7 +84,7 @@ export function PackageTimelineDrawer({ open, packageName, onClose }: PackageTim
                 }}
               />
             </UICol>
-            <UICol span={6}>
+            <UICol span={8}>
               <UIStatistic
                 title="Flaky Score"
                 value={Math.round(data.flakyScore * 100)}
@@ -97,7 +95,7 @@ export function PackageTimelineDrawer({ open, packageName, onClose }: PackageTim
                 }}
               />
             </UICol>
-            <UICol span={6}>
+            <UICol span={8}>
               {data.firstFailure && (
                 <UIStatistic
                   title="First Failure"
@@ -108,16 +106,16 @@ export function PackageTimelineDrawer({ open, packageName, onClose }: PackageTim
             </UICol>
           </UIRow>
 
-          {data.flakyChecks.length > 0 && (
+          {data.flakyTasks.length > 0 && (
             <UIAlert
               variant="warning"
               showIcon
               icon={<UIIcon name="WarningOutlined" />}
-              message="Flaky checks detected"
+              message="Flaky tasks detected"
               description={
                 <UISpace>
-                  {data.flakyChecks.map((ct) => (
-                    <UITag key={ct} color="warning">{ct}</UITag>
+                  {data.flakyTasks.map((task) => (
+                    <UITag key={task} color="warning">{task}</UITag>
                   ))}
                 </UISpace>
               }
@@ -125,9 +123,9 @@ export function PackageTimelineDrawer({ open, packageName, onClose }: PackageTim
             />
           )}
 
-          <UITable
-            dataSource={data.entries}
-            rowKey="timestamp"
+          <UITable<PackageTaskHistory>
+            dataSource={data.history}
+            rowKey={(record) => `${record.timestamp}-${record.task}`}
             size="small"
             pagination={{ pageSize: 20 }}
             columns={[
@@ -137,56 +135,46 @@ export function PackageTimelineDrawer({ open, packageName, onClose }: PackageTim
                 key: 'timestamp',
                 width: 160,
                 render: (ts: string) => new Date(ts).toLocaleString(),
+                sorter: (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
+                defaultSortOrder: 'descend',
+              },
+              {
+                title: 'Task',
+                dataIndex: 'task',
+                key: 'task',
+                width: 120,
+                render: (task: string) => <UITag>{task}</UITag>,
+                filters: [...new Set(data.history.map(h => h.task))].map(t => ({ text: t, value: t })),
+                onFilter: (value, record) => record.task === value,
               },
               {
                 title: 'Commit',
-                key: 'git',
-                width: 120,
-                render: (_: unknown, record: { git: { commit: string }; checks: Record<string, string> }) => (
+                dataIndex: 'gitCommit',
+                key: 'gitCommit',
+                width: 100,
+                render: (commit: string) => (
                   <UITypographyText code style={{ fontSize: token.fontSizeSM }}>
-                    {record.git.commit.slice(0, 7)}
+                    {commit.slice(0, 7)}
                   </UITypographyText>
                 ),
               },
               {
-                title: 'Build',
-                key: 'build',
-                width: 80,
-                render: (_: unknown, record: { git: { commit: string }; checks: Record<string, string> }) => {
-                  const s = record.checks.build as keyof typeof CHECK_STATUS_TAG;
-                  const cfg = CHECK_STATUS_TAG[s];
-                  return cfg ? <UITag color={cfg.color} icon={<UIIcon name={cfg.iconName} />}>{s}</UITag> : <UITag>{s}</UITag>;
+                title: 'Status',
+                dataIndex: 'status',
+                key: 'status',
+                width: 100,
+                render: (status: keyof typeof TASK_STATUS_TAG) => {
+                  const cfg = TASK_STATUS_TAG[status];
+                  return cfg
+                    ? <UITag color={cfg.color} icon={<UIIcon name={cfg.iconName} />}>{status}</UITag>
+                    : <UITag>{status}</UITag>;
                 },
-              },
-              {
-                title: 'Lint',
-                key: 'lint',
-                width: 80,
-                render: (_: unknown, record: { git: { commit: string }; checks: Record<string, string> }) => {
-                  const s = record.checks.lint as keyof typeof CHECK_STATUS_TAG;
-                  const cfg = CHECK_STATUS_TAG[s];
-                  return cfg ? <UITag color={cfg.color} icon={<UIIcon name={cfg.iconName} />}>{s}</UITag> : <UITag>{s}</UITag>;
-                },
-              },
-              {
-                title: 'Types',
-                key: 'typeCheck',
-                width: 80,
-                render: (_: unknown, record: { git: { commit: string }; checks: Record<string, string> }) => {
-                  const s = record.checks.typeCheck as keyof typeof CHECK_STATUS_TAG;
-                  const cfg = CHECK_STATUS_TAG[s];
-                  return cfg ? <UITag color={cfg.color} icon={<UIIcon name={cfg.iconName} />}>{s}</UITag> : <UITag>{s}</UITag>;
-                },
-              },
-              {
-                title: 'Tests',
-                key: 'test',
-                width: 80,
-                render: (_: unknown, record: { git: { commit: string }; checks: Record<string, string> }) => {
-                  const s = record.checks.test as keyof typeof CHECK_STATUS_TAG;
-                  const cfg = CHECK_STATUS_TAG[s];
-                  return cfg ? <UITag color={cfg.color} icon={<UIIcon name={cfg.iconName} />}>{s}</UITag> : <UITag>{s}</UITag>;
-                },
+                filters: [
+                  { text: 'Passed', value: 'passed' },
+                  { text: 'Failed', value: 'failed' },
+                  { text: 'Cached', value: 'cached' },
+                ],
+                onFilter: (value, record) => record.status === value,
               },
             ]}
           />

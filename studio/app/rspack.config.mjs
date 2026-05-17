@@ -109,7 +109,7 @@ export default defineConfig({
     hot: true,
     historyApiFallback: true,
     proxy: [
-      { context: ['/api'], target: proxyTarget, changeOrigin: true },
+      { context: ['/api'], target: proxyTarget, changeOrigin: true, ws: true },
       { context: ['/plugins'], target: proxyTarget, changeOrigin: true },
     ],
   },

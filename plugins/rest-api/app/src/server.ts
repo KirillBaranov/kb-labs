@@ -22,6 +22,15 @@ import type { ILogger } from '@kb-labs/core-platform';
  */
 const kDisableRequestLogging = Symbol.for('fastify.disableRequestLogging');
 
+function serializeForLog(meta: object): string {
+  return JSON.stringify(meta, (_key, value) => {
+    if (value instanceof Error) {
+      return { name: value.name, message: value.message, stack: value.stack };
+    }
+    return value;
+  });
+}
+
 /**
  * Create a Pino-compatible wrapper for ILogger
  * Fastify 5 expects a Pino instance, but we want vendor independence
@@ -40,7 +49,7 @@ function createPinoCompatibleLogger(logger: ILogger): FastifyBaseLogger {
     // Pino log levels
     trace: (msg: string | object, ...args: unknown[]) => {
       if (typeof msg === 'object') {
-        logger.debug(JSON.stringify(msg), msg as Record<string, unknown>);
+        logger.debug(serializeForLog(msg), msg as Record<string, unknown>);
       } else {
         const meta = (typeof args[0] === 'object' && args[0] !== null) ? args[0] as Record<string, unknown> : undefined;
         logger.debug(msg, meta);
@@ -48,7 +57,7 @@ function createPinoCompatibleLogger(logger: ILogger): FastifyBaseLogger {
     },
     debug: (msg: string | object, ...args: unknown[]) => {
       if (typeof msg === 'object') {
-        logger.debug(JSON.stringify(msg), msg as Record<string, unknown>);
+        logger.debug(serializeForLog(msg), msg as Record<string, unknown>);
       } else {
         const meta = (typeof args[0] === 'object' && args[0] !== null) ? args[0] as Record<string, unknown> : undefined;
         logger.debug(msg, meta);
@@ -56,7 +65,7 @@ function createPinoCompatibleLogger(logger: ILogger): FastifyBaseLogger {
     },
     info: (msg: string | object, ...args: unknown[]) => {
       if (typeof msg === 'object') {
-        logger.info(JSON.stringify(msg), msg as Record<string, unknown>);
+        logger.info(serializeForLog(msg), msg as Record<string, unknown>);
       } else {
         const meta = (typeof args[0] === 'object' && args[0] !== null) ? args[0] as Record<string, unknown> : undefined;
         logger.info(msg, meta);
@@ -64,7 +73,7 @@ function createPinoCompatibleLogger(logger: ILogger): FastifyBaseLogger {
     },
     warn: (msg: string | object, ...args: unknown[]) => {
       if (typeof msg === 'object') {
-        logger.warn(JSON.stringify(msg), msg as Record<string, unknown>);
+        logger.warn(serializeForLog(msg), msg as Record<string, unknown>);
       } else {
         const meta = (typeof args[0] === 'object' && args[0] !== null) ? args[0] as Record<string, unknown> : undefined;
         logger.warn(msg, meta);
@@ -72,14 +81,14 @@ function createPinoCompatibleLogger(logger: ILogger): FastifyBaseLogger {
     },
     error: (msg: string | object, ...args: unknown[]) => {
       if (typeof msg === 'object') {
-        logger.error(JSON.stringify(msg), msg instanceof Error ? msg : undefined);
+        logger.error(serializeForLog(msg), msg instanceof Error ? msg : undefined);
       } else {
         logger.error(msg, args[0] instanceof Error ? args[0] : undefined);
       }
     },
     fatal: (msg: string | object, ...args: unknown[]) => {
       if (typeof msg === 'object') {
-        logger.error(`[FATAL] ${JSON.stringify(msg)}`, msg instanceof Error ? msg : undefined);
+        logger.error(`[FATAL] ${serializeForLog(msg)}`, msg instanceof Error ? msg : undefined);
       } else {
         logger.error(`[FATAL] ${msg}`, args[0] instanceof Error ? args[0] : undefined);
       }

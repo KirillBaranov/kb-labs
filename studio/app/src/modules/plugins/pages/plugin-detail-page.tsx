@@ -9,19 +9,46 @@ import {
   UITitle,
   UICard,
   UITable,
-  UIAccordion,
   UIButton,
   UIAlert,
   UITabs,
   type UITabItem,
   UIEmptyState,
   UIIcon,
+  UIMarkdownViewer,
 } from '@kb-labs/studio-ui-kit';
 import { useDataSources } from '@/providers/data-sources-provider';
 import type { PluginManifestEntry } from '@kb-labs/studio-data-client';
 import type { UITableColumn } from '@kb-labs/studio-ui-kit';
 import { PluginAIAssistantModal } from '../components/plugin-ai-assistant-modal';
 import { UIPage, UIPageHeader } from '@kb-labs/studio-ui-kit';
+
+function PluginMarkdownContent({
+  content,
+  loading,
+  error,
+  emptyText = 'No content available',
+}: {
+  content: string | null;
+  loading: boolean;
+  error: string | null;
+  emptyText?: string;
+}) {
+  if (loading) {
+    return (
+      <div style={{ textAlign: 'center', padding: '60px 0' }}>
+        <UISpin />
+      </div>
+    );
+  }
+  if (error) {
+    return <UIAlert variant="error" message="Failed to load content" description={error} showIcon />;
+  }
+  if (content === null) {
+    return <UIEmptyState description={emptyText} />;
+  }
+  return <UICard><UIMarkdownViewer content={content} /></UICard>;
+}
 
 export function PluginDetailPage() {
   const { pluginId: encodedPluginId } = useParams<{ pluginId: string }>();
@@ -31,8 +58,21 @@ export function PluginDetailPage() {
   const [plugin, setPlugin] = useState<PluginManifestEntry | null>(null);
   const [apiBasePath, setApiBasePath] = useState<string>('');
   const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
 
-  // Decode plugin ID from URL
+  // README state
+  const [readmeContent, setReadmeContent] = useState<string | null>(null);
+  const [readmeLoading, setReadmeLoading] = useState(false);
+  const [readmeError, setReadmeError] = useState<string | null>(null);
+  const [readmeLoaded, setReadmeLoaded] = useState(false);
+
+  // Changelog state
+  const [changelogContent, setChangelogContent] = useState<string | null>(null);
+  const [changelogLoading, setChangelogLoading] = useState(false);
+  const [changelogError, setChangelogError] = useState<string | null>(null);
+  const [changelogLoaded, setChangelogLoaded] = useState(false);
+  const [hasChangelog, setHasChangelog] = useState<boolean | null>(null);
+
   const pluginId = encodedPluginId ? decodeURIComponent(encodedPluginId) : '';
 
   const loadPlugin = useCallback(async () => {
@@ -52,6 +92,45 @@ export function PluginDetailPage() {
   useEffect(() => {
     loadPlugin();
   }, [loadPlugin]);
+
+  // Probe for changelog on mount — determines whether to show the tab
+  useEffect(() => {
+    if (!plugin || changelogLoaded || changelogLoading) return;
+    setChangelogLoading(true);
+    pluginsSource.getPluginChangelog(plugin.pluginId)
+      .then((content) => {
+        setChangelogContent(content);
+        setHasChangelog(content !== null);
+      })
+      .catch((err) => {
+        console.error('Failed to load changelog:', err);
+        setChangelogError(err instanceof Error ? err.message : 'Failed to load Changelog');
+        setHasChangelog(false);
+      })
+      .finally(() => {
+        setChangelogLoaded(true);
+        setChangelogLoading(false);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plugin?.pluginId]);
+
+  // Load README lazily when the tab is first opened
+  useEffect(() => {
+    if (activeTab !== 'readme' || !plugin || readmeLoaded || readmeLoading) return;
+    setReadmeLoading(true);
+    pluginsSource.getPluginReadme(plugin.pluginId)
+      .then((content) => {
+        setReadmeContent(content);
+      })
+      .catch((err) => {
+        setReadmeError(err instanceof Error ? err.message : 'Failed to load README');
+      })
+      .finally(() => {
+        setReadmeLoaded(true);
+        setReadmeLoading(false);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, plugin?.pluginId]);
 
   if (loading) {
     return (
@@ -87,13 +166,13 @@ export function PluginDetailPage() {
   const permissions = manifest.permissions;
   const platformReqs = manifest.platform;
 
-  const tabItems = [
+  const tabItems: UITabItem[] = [
     {
       key: 'overview',
       label: 'Overview',
       children: (
         <UISpace direction="vertical" size="large" style={{ width: '100%' }}>
-          {/* Validation Errors Alert */}
+          {/* Validation errors banner */}
           {plugin.validation && !plugin.validation.valid && (
             <UIAlert
               variant="error"
@@ -114,259 +193,265 @@ export function PluginDetailPage() {
             />
           )}
 
-          {/* Plugin Header Card */}
+          {/* Hero card */}
           <UICard>
-            <UISpace direction="vertical" size="middle" style={{ width: '100%' }}>
-              {/* Icon + Name + Version */}
-              <UISpace align="start" size="large">
-                <div style={{ fontSize: 64, lineHeight: 1 }}>{display?.icon || ''}</div>
-                <div style={{ flex: 1 }}>
-                  <UITitle level={2} style={{ marginBottom: 4 }}>
+            <UISpace align="start" size="large">
+              {display?.icon && (
+                <div style={{ fontSize: 56, lineHeight: 1, flexShrink: 0 }}>{display.icon}</div>
+              )}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <UISpace align="center" wrap style={{ marginBottom: 8 }}>
+                  <UITitle level={2} style={{ margin: 0 }}>
                     {display?.name || manifest.id}
                   </UITitle>
-                  <UISpace size="middle">
-                    <UITypographyText type="secondary" style={{ fontSize: 16 }}>
-                      v{manifest.version}
-                    </UITypographyText>
-                    <UITag color="blue">
-                      {typeof plugin.source === 'string'
-                        ? plugin.source
-                        : plugin.source?.kind || 'unknown'}
-                    </UITag>
-                    <UITag>{manifest.schema}</UITag>
-                  </UISpace>
-                </div>
-              </UISpace>
-
-              {/* Description */}
-              {display?.description && (
-                <UITypographyParagraph style={{ fontSize: 15, marginBottom: 0, color: 'rgba(0,0,0,0.65)' }}>
-                  {display.description}
-                </UITypographyParagraph>
-              )}
-
-              {/* Tags */}
-              {display?.tags && display.tags.length > 0 && (
-                <UISpace wrap>
-                  {display.tags.map((tag, idx) => (
-                    <UITag key={typeof tag === 'string' ? tag : `tag-${idx}`} color="default">
-                      {typeof tag === 'string' ? tag : JSON.stringify(tag)}
-                    </UITag>
-                  ))}
+                  <UITag color="blue" style={{ fontSize: 13 }}>
+                    v{manifest.version}
+                  </UITag>
+                  <UITag color="default">
+                    {typeof plugin.source === 'string'
+                      ? plugin.source
+                      : plugin.source?.kind || 'unknown'}
+                  </UITag>
+                  <UITag>{manifest.schema}</UITag>
                 </UISpace>
-              )}
 
-              {/* Metadata Row */}
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                  gap: 16,
-                  marginTop: 8,
-                }}
-              >
+                {display?.description && (
+                  <UITypographyParagraph style={{ fontSize: 15, marginBottom: 12, opacity: 0.75 }}>
+                    {display.description}
+                  </UITypographyParagraph>
+                )}
+
+                {display?.tags && display.tags.length > 0 && (
+                  <UISpace wrap style={{ marginBottom: 12 }}>
+                    {display.tags.map((tag, idx) => (
+                      <UITag key={typeof tag === 'string' ? tag : `tag-${idx}`} color="default">
+                        {typeof tag === 'string' ? tag : JSON.stringify(tag)}
+                      </UITag>
+                    ))}
+                  </UISpace>
+                )}
+
+                {(display?.homepage || display?.repository) && (
+                  <UISpace size="large">
+                    {display?.homepage && (
+                      <a href={display.homepage} target="_blank" rel="noopener noreferrer">
+                        <UISpace size="small">
+                          <UIIcon name="GlobalOutlined" />
+                          Homepage
+                        </UISpace>
+                      </a>
+                    )}
+                    {display?.repository && (
+                      <a href={display.repository} target="_blank" rel="noopener noreferrer">
+                        <UISpace size="small">
+                          <UIIcon name="LinkOutlined" />
+                          Repository
+                        </UISpace>
+                      </a>
+                    )}
+                  </UISpace>
+                )}
+              </div>
+            </UISpace>
+          </UICard>
+
+          {/* Metadata + Capabilities — two-column */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'minmax(260px, 320px) 1fr',
+              gap: 24,
+              alignItems: 'start',
+            }}
+          >
+            {/* Metadata card */}
+            <UICard title="Details">
+              <UISpace direction="vertical" size="middle" style={{ width: '100%' }}>
                 {display?.author && (
                   <div>
                     <UITypographyText type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
                       Author
                     </UITypographyText>
-                    <UISpace>
+                    <UISpace size="small">
                       <UIIcon name="UserOutlined" />
                       <UITypographyText>{display.author}</UITypographyText>
                     </UISpace>
                   </div>
                 )}
+
                 <div>
                   <UITypographyText type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
                     Plugin ID
                   </UITypographyText>
-                  <UITypographyText code copyable>
+                  <UITypographyText code copyable style={{ fontSize: 12 }}>
                     {manifest.id}
                   </UITypographyText>
                 </div>
-              </div>
 
-              {/* Links */}
-              {(display?.homepage || display?.repository) && (
-                <UISpace size="large">
-                  {display?.homepage && (
-                    <a href={display.homepage} target="_blank" rel="noopener noreferrer">
-                      <UISpace>
-                        <UIIcon name="GlobalOutlined" />
-                        Homepage
-                      </UISpace>
-                    </a>
-                  )}
-                  {display?.repository && (
-                    <a href={display.repository} target="_blank" rel="noopener noreferrer">
-                      <UISpace>
-                        <UIIcon name="LinkOutlined" />
-                        Repository
-                      </UISpace>
-                    </a>
-                  )}
-                </UISpace>
-              )}
-
-              {/* Timestamps */}
-              {(plugin.discoveredAt || plugin.buildTimestamp) && (
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                    gap: 16,
-                  }}
-                >
-                  {plugin.discoveredAt && (
-                    <div>
-                      <UITypographyText type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
-                        Discovered At
-                      </UITypographyText>
-                      <UISpace>
-                        <UIIcon name="SearchOutlined" />
-                        <UITypographyText>{new Date(plugin.discoveredAt).toLocaleString()}</UITypographyText>
-                      </UISpace>
-                    </div>
-                  )}
-                  {plugin.buildTimestamp && (
-                    <div>
-                      <UITypographyText type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
-                        Last Built
-                      </UITypographyText>
-                      <UISpace>
-                        <UIIcon name="ClockCircleOutlined" />
-                        <UITypographyText>{new Date(plugin.buildTimestamp).toLocaleString()}</UITypographyText>
-                      </UISpace>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Plugin Root (collapsible) */}
-              <UIAccordion
-                ghost
-                items={[
-                  {
-                    key: 'root',
-                    label: 'Plugin Root Path',
-                    children: (
-                      <UITypographyText code copyable style={{ fontSize: 12 }}>
-                        {plugin.pluginRoot}
-                      </UITypographyText>
-                    ),
-                  },
-                ]}
-              />
-            </UISpace>
-          </UICard>
-
-          {/* Capabilities Summary */}
-          <UICard title="Capabilities">
-            <UISpace direction="vertical" size="middle" style={{ width: '100%' }}>
-              <UISpace wrap size="large">
-                {cliCommands.length > 0 && (
+                {plugin.discoveredAt && (
                   <div>
-                    <UITag icon={<UIIcon name="CodeOutlined" />} color="blue" style={{ fontSize: 14, padding: '4px 12px' }}>
-                      {cliCommands.length} CLI Command{cliCommands.length > 1 ? 's' : ''}
-                    </UITag>
+                    <UITypographyText type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
+                      Discovered
+                    </UITypographyText>
+                    <UISpace size="small">
+                      <UIIcon name="SearchOutlined" />
+                      <UITypographyText style={{ fontSize: 13 }}>
+                        {new Date(plugin.discoveredAt).toLocaleString()}
+                      </UITypographyText>
+                    </UISpace>
                   </div>
                 )}
-                {restRoutes.length > 0 && (
+
+                {plugin.buildTimestamp && (
                   <div>
-                    <UITag icon={<UIIcon name="ApiOutlined" />} color="green" style={{ fontSize: 14, padding: '4px 12px' }}>
-                      {restRoutes.length} REST Route{restRoutes.length > 1 ? 's' : ''}
-                    </UITag>
-                  </div>
-                )}
-                {workflowHandlers.length > 0 && (
-                  <div>
-                    <UITag icon={<UIIcon name="NodeIndexOutlined" />} color="purple" style={{ fontSize: 14, padding: '4px 12px' }}>
-                      {workflowHandlers.length} Workflow{workflowHandlers.length > 1 ? 's' : ''}
-                    </UITag>
-                  </div>
-                )}
-                {jobs.length > 0 && (
-                  <div>
-                    <UITag icon={<UIIcon name="ClockCircleOutlined" />} color="orange" style={{ fontSize: 14, padding: '4px 12px' }}>
-                      {jobs.length} Scheduled Job{jobs.length > 1 ? 's' : ''}
-                    </UITag>
+                    <UITypographyText type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>
+                      Last Built
+                    </UITypographyText>
+                    <UISpace size="small">
+                      <UIIcon name="ClockCircleOutlined" />
+                      <UITypographyText style={{ fontSize: 13 }}>
+                        {new Date(plugin.buildTimestamp).toLocaleString()}
+                      </UITypographyText>
+                    </UISpace>
                   </div>
                 )}
               </UISpace>
+            </UICard>
 
-              {permissions && (
-                <UIAlert
-                  icon={<UIIcon name="LockOutlined" />}
-                  variant="warning"
-                  message="This plugin requires permissions"
-                  description="See Permissions tab for details"
-                  showIcon
-                />
-              )}
-              {platformReqs?.requires && platformReqs.requires.length > 0 && (
-                <UIAlert
-                  icon={<UIIcon name="DatabaseOutlined" />}
-                  variant="info"
-                  message="Platform Requirements"
-                  description={
-                    <UISpace wrap>
-                      {platformReqs.requires.map((req) => (
-                        <UITag key={req} color="cyan">
-                          {req}
-                        </UITag>
-                      ))}
-                    </UISpace>
-                  }
-                  showIcon
-                />
-              )}
-            </UISpace>
-          </UICard>
+            {/* Capabilities card */}
+            <UICard title="Capabilities">
+              <UISpace direction="vertical" size="middle" style={{ width: '100%' }}>
+                {(cliCommands.length > 0 || restRoutes.length > 0 || workflowHandlers.length > 0 || jobs.length > 0) ? (
+                  <UISpace wrap size="middle">
+                    {cliCommands.length > 0 && (
+                      <UITag icon={<UIIcon name="CodeOutlined" />} color="blue" style={{ fontSize: 13, padding: '4px 12px' }}>
+                        {cliCommands.length} CLI Command{cliCommands.length > 1 ? 's' : ''}
+                      </UITag>
+                    )}
+                    {restRoutes.length > 0 && (
+                      <UITag icon={<UIIcon name="ApiOutlined" />} color="green" style={{ fontSize: 13, padding: '4px 12px' }}>
+                        {restRoutes.length} REST Route{restRoutes.length > 1 ? 's' : ''}
+                      </UITag>
+                    )}
+                    {workflowHandlers.length > 0 && (
+                      <UITag icon={<UIIcon name="NodeIndexOutlined" />} color="purple" style={{ fontSize: 13, padding: '4px 12px' }}>
+                        {workflowHandlers.length} Workflow{workflowHandlers.length > 1 ? 's' : ''}
+                      </UITag>
+                    )}
+                    {jobs.length > 0 && (
+                      <UITag icon={<UIIcon name="ClockCircleOutlined" />} color="orange" style={{ fontSize: 13, padding: '4px 12px' }}>
+                        {jobs.length} Scheduled Job{jobs.length > 1 ? 's' : ''}
+                      </UITag>
+                    )}
+                  </UISpace>
+                ) : (
+                  <UIEmptyState description="No capabilities declared" />
+                )}
+
+                {permissions && (
+                  <UIAlert
+                    icon={<UIIcon name="LockOutlined" />}
+                    variant="warning"
+                    message="Requires permissions"
+                    description="See Permissions tab for details"
+                    showIcon
+                  />
+                )}
+                {platformReqs?.requires && platformReqs.requires.length > 0 && (
+                  <UIAlert
+                    icon={<UIIcon name="DatabaseOutlined" />}
+                    variant="info"
+                    message="Platform Requirements"
+                    description={
+                      <UISpace wrap>
+                        {platformReqs.requires.map((req) => (
+                          <UITag key={req} color="cyan">
+                            {req}
+                          </UITag>
+                        ))}
+                      </UISpace>
+                    }
+                    showIcon
+                  />
+                )}
+              </UISpace>
+            </UICard>
+          </div>
         </UISpace>
       ),
     },
-    cliCommands.length > 0 && {
+    {
+      key: 'readme',
+      label: 'README',
+      icon: <UIIcon name="FileTextOutlined" />,
+      children: (
+        <PluginMarkdownContent
+          content={readmeContent}
+          loading={readmeLoading}
+          error={readmeError}
+          emptyText="This plugin has no README.md"
+        />
+      ),
+    },
+    ...(cliCommands.length > 0 ? [{
       key: 'cli',
       label: `CLI Commands (${cliCommands.length})`,
       icon: <UIIcon name="CodeOutlined" />,
       children: <CLICommandsTable commands={cliCommands} />,
-    },
-    restRoutes.length > 0 && {
+    }] : []),
+    ...(restRoutes.length > 0 ? [{
       key: 'rest',
       label: `REST API (${restRoutes.length})`,
       icon: <UIIcon name="ApiOutlined" />,
       children: <RestRoutesTable routes={restRoutes} basePath={manifest.rest?.basePath} apiBasePath={apiBasePath} />,
-    },
-    workflowHandlers.length > 0 && {
+    }] : []),
+    ...(workflowHandlers.length > 0 ? [{
       key: 'workflows',
       label: `Workflows (${workflowHandlers.length})`,
       icon: <UIIcon name="NodeIndexOutlined" />,
       children: <WorkflowsTable handlers={workflowHandlers} />,
-    },
-    jobs.length > 0 && {
+    }] : []),
+    ...(jobs.length > 0 ? [{
       key: 'jobs',
       label: `Jobs (${jobs.length})`,
       icon: <UIIcon name="ClockCircleOutlined" />,
       children: <JobsTable jobs={jobs} />,
-    },
-    permissions && {
+    }] : []),
+    ...(permissions ? [{
       key: 'permissions',
       label: 'Permissions',
       icon: <UIIcon name="LockOutlined" />,
       children: <PermissionsView permissions={permissions} />,
-    },
+    }] : []),
+    ...(hasChangelog ? [{
+      key: 'changelog',
+      label: 'Changelog',
+      icon: <UIIcon name="HistoryOutlined" />,
+      children: (
+        <PluginMarkdownContent
+          content={changelogContent}
+          loading={changelogLoading}
+          error={changelogError}
+          emptyText="This plugin has no CHANGELOG.md"
+        />
+      ),
+    }] : []),
     {
       key: 'manifest',
       label: 'Raw Manifest (JSON)',
       children: (
         <UICard>
-          <pre style={{ overflow: 'auto', maxHeight: 600 }}>
+          <div style={{ marginBottom: 12 }}>
+            <UITypographyText type="secondary" style={{ fontSize: 12 }}>Plugin root: </UITypographyText>
+            <UITypographyText code copyable style={{ fontSize: 12 }}>{plugin.pluginRoot}</UITypographyText>
+          </div>
+          <pre style={{ overflow: 'auto', maxHeight: 600, margin: 0 }}>
             {JSON.stringify(manifest, null, 2)}
           </pre>
         </UICard>
       ),
     },
-  ].filter(Boolean);
+  ];
 
   const handleAskAI = async (question: string) => {
     if (!pluginId) {
@@ -394,7 +479,11 @@ export function PluginDetailPage() {
         </UIButton>
       </UISpace>
 
-      <UITabs items={tabItems.filter((t): t is UITabItem => !!t)} />
+      <UITabs
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        items={tabItems}
+      />
 
       <PluginAIAssistantModal
         open={aiModalOpen}
@@ -413,14 +502,10 @@ function CLICommandsTable({ commands }: { commands: any[] }) {
   const columns: UITableColumn<any>[] = [
     {
       title: 'Command',
-      dataIndex: 'id',
-      key: 'id',
-      render: (id, record) => (
-        <div>
-          <UITypographyText code strong>
-            {record.group ? `${record.group}:${id}` : id}
-          </UITypographyText>
-        </div>
+      dataIndex: 'path',
+      key: 'path',
+      render: (path: string) => (
+        <UITypographyText code strong>{path}</UITypographyText>
       ),
     },
     {
@@ -464,7 +549,7 @@ function CLICommandsTable({ commands }: { commands: any[] }) {
       <UITable
         columns={columns}
         dataSource={commands}
-        rowKey="id"
+        rowKey="path"
         pagination={false}
         expandable={{
           expandedRowRender: (record) =>

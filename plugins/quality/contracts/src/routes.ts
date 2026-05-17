@@ -3,61 +3,37 @@
  * REST API route constants for quality plugin
  */
 
-/**
- * REST API base path for quality plugin
- */
 export const QUALITY_BASE_PATH = '/v1/plugins/quality' as const;
 
-/**
- * REST API route paths (relative to basePath)
- */
 export const QUALITY_ROUTES = {
-  /** GET /stats - Get monorepo statistics */
+  /** GET /stats */
   STATS: '/stats',
-
-  /** GET /health - Get health score */
+  /** GET /health */
   HEALTH: '/health',
-
-  /** GET /dependencies - Get dependency issues */
+  /** GET /dependencies */
   DEPENDENCIES: '/dependencies',
-
-  /** GET /build-order - Get build order */
+  /** GET /build-order */
   BUILD_ORDER: '/build-order',
-
-  /** GET /cycles - Get circular dependencies */
+  /** GET /cycles */
   CYCLES: '/cycles',
-
-  /** GET /graph - Get dependency graph */
+  /** GET /graph */
   GRAPH: '/graph',
-
-  /** GET /stale - Get stale packages */
+  /** GET /stale */
   STALE: '/stale',
-
-  /** GET /builds - Get build status */
-  BUILDS: '/builds',
-
-  /** GET /types - Get type safety analysis */
-  TYPES: '/types',
-
-  /** GET /tests - Get test results and coverage */
-  TESTS: '/tests',
+  /** GET /layers — layering violation report */
+  LAYERS: '/layers',
+  /** GET /coupling — coupling metrics */
+  COUPLING: '/coupling',
+  /** GET /dead-code — knip report */
+  DEAD_CODE: '/dead-code',
+  /** GET /history — snapshot history */
+  HISTORY: '/history',
+  /** POST /snapshot — save snapshot */
+  SNAPSHOT: '/snapshot',
 } as const;
 
-/**
- * Full REST API URLs (basePath + route)
- * Useful for testing and documentation
- */
-export const QUALITY_FULL_ROUTES = {
-  STATS: `${QUALITY_BASE_PATH}${QUALITY_ROUTES.STATS}`,
-  HEALTH: `${QUALITY_BASE_PATH}${QUALITY_ROUTES.HEALTH}`,
-  DEPENDENCIES: `${QUALITY_BASE_PATH}${QUALITY_ROUTES.DEPENDENCIES}`,
-  BUILD_ORDER: `${QUALITY_BASE_PATH}${QUALITY_ROUTES.BUILD_ORDER}`,
-  CYCLES: `${QUALITY_BASE_PATH}${QUALITY_ROUTES.CYCLES}`,
-  GRAPH: `${QUALITY_BASE_PATH}${QUALITY_ROUTES.GRAPH}`,
-  STALE: `${QUALITY_BASE_PATH}${QUALITY_ROUTES.STALE}`,
-  BUILDS: `${QUALITY_BASE_PATH}${QUALITY_ROUTES.BUILDS}`,
-  TYPES: `${QUALITY_BASE_PATH}${QUALITY_ROUTES.TYPES}`,
-  TESTS: `${QUALITY_BASE_PATH}${QUALITY_ROUTES.TESTS}`,
-} as const;
+export const QUALITY_FULL_ROUTES = Object.fromEntries(
+  Object.entries(QUALITY_ROUTES).map(([k, v]) => [k, `${QUALITY_BASE_PATH}${v}`])
+) as { [K in keyof typeof QUALITY_ROUTES]: string };
 
-export type QualityRoute = typeof QUALITY_ROUTES[keyof typeof QUALITY_ROUTES];
+export type QualityRoute = (typeof QUALITY_ROUTES)[keyof typeof QUALITY_ROUTES];

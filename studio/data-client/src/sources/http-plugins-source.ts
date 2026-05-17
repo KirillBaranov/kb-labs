@@ -3,6 +3,7 @@
  */
 
 import type { HttpClient } from '../client/http-client';
+import { KBError } from '../errors/kb-error';
 import type {
   PluginsDataSource,
   PluginsRegistryResponse,
@@ -22,5 +23,37 @@ export class HttpPluginsSource implements PluginsDataSource {
       method: 'POST',
       data: request,
     });
+  }
+
+  async getPluginReadme(pluginId: string): Promise<string | null> {
+    const [scope, name] = this.splitPluginId(pluginId);
+    try {
+      return await this.client.fetch<string>(`/plugins/@${scope}/${name}/readme`, { responseType: 'text' });
+    } catch (error) {
+      if (error instanceof KBError && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  async getPluginChangelog(pluginId: string): Promise<string | null> {
+    const [scope, name] = this.splitPluginId(pluginId);
+    try {
+      return await this.client.fetch<string>(`/plugins/@${scope}/${name}/changelog`, { responseType: 'text' });
+    } catch (error) {
+      if (error instanceof KBError && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  }
+
+  private splitPluginId(pluginId: string): [string, string] {
+    const match = /^@([^/]+)\/(.+)$/.exec(pluginId);
+    if (!match || !match[1] || !match[2]) {
+      throw new KBError('VALIDATION_ERROR', `Invalid plugin ID format: ${pluginId}`, 400);
+    }
+    return [match[1], match[2]];
   }
 }

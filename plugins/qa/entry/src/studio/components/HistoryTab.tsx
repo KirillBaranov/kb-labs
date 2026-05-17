@@ -1,43 +1,62 @@
 /**
- * History tab - table of past QA runs with expandable failure details
+ * History tab - table of past QA runs with task columns derived dynamically.
  */
 
 import * as React from 'react';
 import { UITable, UITag, UISpin, UIAlert, UISpace, UIIcon, UIFlex, useData, useTheme, type UITableColumn } from '@kb-labs/sdk/studio';
-import type { QAHistoryResponse, HistoryEntry } from '@kb-labs/qa-contracts';
-import { formatCheckLabel } from '../utils/check-display';
+import type { QAHistoryResponse, RunSnapshot } from '@kb-labs/qa-contracts';
+import { QA_BASE_PATH, QA_ROUTES } from '@kb-labs/qa-contracts';
 
-function renderCheckColumn(entry: HistoryEntry, checkType: string) {
-  const s = entry.summary[checkType];
-  if (!s) {return '-';}
-  const hasFailed = s.failed > 0;
+function renderTaskColumn(snapshot: RunSnapshot, task: string) {
+  const results = (snapshot.raw.results ?? []).filter(r => r.Task === task);
+  if (results.length === 0) { return <span style={{ color: '#999' }}>—</span>; }
+  const failed = results.filter(r => !r.OK && !r.Cached).length;
+  const cached = results.filter(r => r.Cached).length;
+  const passed = results.filter(r => r.OK && !r.Cached).length;
+  if (failed > 0) {
+    return (
+      <UITag color="error" style={{ fontVariantNumeric: 'tabular-nums' }}>
+        {passed}/{results.length}
+      </UITag>
+    );
+  }
+  if (cached > 0) {
+    return (
+      <UITag color="default" style={{ fontVariantNumeric: 'tabular-nums' }}>
+        {cached} cached
+      </UITag>
+    );
+  }
   return (
-    <UITag color={hasFailed ? 'error' : 'success'} style={{ fontVariantNumeric: 'tabular-nums' }}>
-      {s.passed}/{s.passed + s.failed}
+    <UITag color="success" style={{ fontVariantNumeric: 'tabular-nums' }}>
+      {passed}/{results.length}
     </UITag>
   );
 }
 
 export function HistoryTab() {
   const { antdToken: token } = useTheme();
-  const { data, isLoading } = useData<QAHistoryResponse>('/v1/plugins/qa/history');
+  const { data, isLoading } = useData<QAHistoryResponse>(`${QA_BASE_PATH}${QA_ROUTES.HISTORY}`);
 
   if (isLoading) {
     return <UISpin size="large" style={{ display: 'block', margin: '48px auto' }} />;
   }
 
-  if (!data || data.entries.length === 0) {
+  if (!data || !data.snapshots || data.snapshots.length === 0) {
     return (
       <UIAlert
         variant="info"
         showIcon
         message="No QA history"
-        description="Run 'pnpm qa:save' to record QA results to history."
+        description="Run 'kb qa run --save' to record QA results to history."
       />
     );
   }
 
-  const columns: UITableColumn<HistoryEntry>[] = [
+  // Collect all unique tasks across snapshots
+  const allTasks = [...new Set(data.snapshots.flatMap(s => s.tasks ?? []))];
+
+  const columns: UITableColumn<RunSnapshot>[] = [
     {
       title: 'Date',
       dataIndex: 'timestamp',
@@ -49,74 +68,95 @@ export function HistoryTab() {
     },
     {
       title: 'Status',
-      dataIndex: 'status',
       key: 'status',
       width: 100,
-      render: (status: string) => (
-        <UITag
-          color={status === 'passed' ? 'success' : 'error'}
-          icon={status === 'passed' ? <UIIcon name="CheckCircleOutlined" /> : <UIIcon name="CloseCircleOutlined" />}
-        >
-          {status.toUpperCase()}
-        </UITag>
-      ),
+      render: (_, record) => {
+        const ok = record.raw.ok;
+        return (
+          <UITag
+            color={ok ? 'success' : 'error'}
+            icon={ok ? <UIIcon name="CheckCircleOutlined" /> : <UIIcon name="CloseCircleOutlined" />}
+          >
+            {ok ? 'PASSED' : 'FAILED'}
+          </UITag>
+        );
+      },
       filters: [
-        { text: 'Passed', value: 'passed' },
-        { text: 'Failed', value: 'failed' },
+        { text: 'Passed', value: true },
+        { text: 'Failed', value: false },
       ],
-      onFilter: (value, record) => record.status === value,
+      onFilter: (value, record) => record.raw.ok === value,
     },
     {
       title: 'Git',
       key: 'git',
       width: 220,
-      render: (_, record) => (
+      render: (_, record) => record.git ? (
         <UISpace direction="vertical" size={0}>
           <span><UIIcon name="BranchesOutlined" /> {record.git.branch}</span>
           <span style={{ color: token.colorTextSecondary, fontSize: token.fontSizeSM }}>
-            {record.git.commit.slice(0, 7)} - {record.git.message.slice(0, 40)}
+            {record.git.commit.slice(0, 7)} — {record.git.message.slice(0, 40)}
             {record.git.message.length > 40 ? '...' : ''}
           </span>
         </UISpace>
+      ) : <span style={{ color: token.colorTextSecondary }}>—</span>,
+    },
+    {
+      title: 'Total',
+      key: 'total',
+      width: 80,
+      align: 'center',
+      render: (_, record) => (
+        <span style={{ fontVariantNumeric: 'tabular-nums' }}>
+          {record.raw.summary.passed}/{record.raw.summary.total}
+        </span>
       ),
     },
-    ...(data.entries[0] ? Object.keys(data.entries[0].summary) : []).map((ct) => ({
-      title: formatCheckLabel(ct),
-      key: ct,
+    ...allTasks.map((task) => ({
+      title: task,
+      key: task,
       width: 90,
       align: 'center' as const,
-      render: (_: unknown, record: HistoryEntry) => renderCheckColumn(record, ct),
+      render: (_: unknown, record: RunSnapshot) => renderTaskColumn(record, task),
     })),
   ];
 
   return (
-    <UITable<HistoryEntry>
+    <UITable<RunSnapshot>
       columns={columns}
-      dataSource={data.entries}
-      rowKey="timestamp"
+      dataSource={data.snapshots}
+      rowKey="id"
       pagination={{ pageSize: 15 }}
       size="middle"
       expandable={{
-        expandedRowRender: (record) => (
-          <div style={{ padding: `${token.paddingXS}px ${token.paddingMD}px` }}>
-            {Object.keys(record.failedPackages).map((ct) => {
-              const failed = record.failedPackages[ct];
-              if (!failed || failed.length === 0) {return null;}
-              return (
-                <div key={ct} style={{ marginBottom: token.marginSM }}>
-                  <strong>{formatCheckLabel(ct)} failures ({failed.length}):</strong>
+        expandedRowRender: (record) => {
+          const failedResults = record.raw.results.filter(r => !r.OK && !r.Cached);
+          if (failedResults.length === 0) { return null; }
+
+          // Group by task
+          const byTask = new Map<string, string[]>();
+          for (const r of failedResults) {
+            const arr = byTask.get(r.Task) ?? [];
+            arr.push(r.Package);
+            byTask.set(r.Task, arr);
+          }
+
+          return (
+            <div style={{ padding: `${token.paddingXS}px ${token.paddingMD}px` }}>
+              {[...byTask.entries()].map(([task, pkgs]) => (
+                <div key={task} style={{ marginBottom: token.marginSM }}>
+                  <strong>{task} failures ({pkgs.length}):</strong>
                   <UIFlex wrap="wrap" gap={1} style={{ marginTop: token.marginXXS }}>
-                    {failed.map((pkg) => (
+                    {pkgs.map((pkg) => (
                       <UITag key={pkg} color="error" style={{ fontSize: token.fontSizeSM }}>{pkg}</UITag>
                     ))}
                   </UIFlex>
                 </div>
-              );
-            })}
-          </div>
-        ),
-        rowExpandable: (record) =>
-          Object.values(record.failedPackages).some((arr) => arr.length > 0),
+              ))}
+            </div>
+          );
+        },
+        rowExpandable: (record) => record.raw.results.some(r => !r.OK && !r.Cached),
       }}
     />
   );

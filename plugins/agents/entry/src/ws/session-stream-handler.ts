@@ -95,11 +95,16 @@ export default defineWebSocket<unknown, ClientMessage, ServerMessage>({
       const lastTurnSignatures = new Map<string, string>();
 
       // Send connection:ready immediately
-      await sender.send({
-        type: 'connection:ready',
-        payload: { runId: sessionId, connectedAt: new Date().toISOString() },
-        timestamp: Date.now(),
-      } satisfies ConnectionReadyMessage);
+      try {
+        await sender.send({
+          type: 'connection:ready',
+          payload: { runId: sessionId, connectedAt: new Date().toISOString() },
+          timestamp: Date.now(),
+        } satisfies ConnectionReadyMessage);
+      } catch (err) {
+        ctx.platform.logger.error(`[session-ws] Failed to send connection:ready: ${String(err)}`);
+        throw err;
+      }
 
       // Send conversation:snapshot (history)
       try {
@@ -174,7 +179,13 @@ export default defineWebSocket<unknown, ClientMessage, ServerMessage>({
       connectionState.set(ctx as object, { sessionId, callback: eventCallback });
 
       // Register on all currently active runs in this session
-      RunManager.addSessionListener(sessionId, eventCallback);
+      try {
+        RunManager.addSessionListener(sessionId, eventCallback);
+      } catch (err) {
+        ctx.platform.logger.error(`[session-ws] Failed to register session listener: ${String(err)}`);
+        throw err;
+      }
+      ctx.platform.logger.info(`[session-ws] Session listener registered for session ${sessionId}`);
     },
 
     async onMessage(ctx: PluginContextV3, message: ClientMessage, sender: TypedSender<ServerMessage>) {

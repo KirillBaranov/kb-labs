@@ -58,6 +58,11 @@ export const healthFlags = {
     default: false,
     alias: 'd',
   },
+  refresh: {
+    type: 'boolean',
+    description: 'Bypass cache and recompute',
+    default: false,
+  },
 } as const;
 
 /** Parsed value type for HealthFlags */
@@ -65,6 +70,7 @@ export type HealthFlags = {
   json?: boolean;
   package?: string;
   detailed?: boolean;
+  refresh?: boolean;
 };
 
 /**
@@ -380,6 +386,46 @@ export type CheckTestsFlags = {
   json?: boolean;
   refresh?: boolean;
 };
+
+/**
+ * Flags for quality:check-layers command
+ */
+export const checkLayersFlags = {
+  json: { type: 'boolean', description: 'Output JSON format', default: false },
+  package: { type: 'string', description: 'Filter violations by package name', alias: 'p' },
+} as const;
+
+export type CheckLayersFlags = { json?: boolean; package?: string };
+
+/**
+ * Flags for quality:coupling command
+ */
+export const couplingFlags = {
+  json: { type: 'boolean', description: 'Output JSON format', default: false },
+  sort: { type: 'string', description: 'Sort by: instability | coupled', default: 'instability' },
+  top: { type: 'number', description: 'Show top N packages', default: 10 },
+} as const;
+
+export type CouplingFlags = { json?: boolean; sort?: string; top?: number };
+
+/**
+ * Flags for quality:snapshot command
+ */
+export const snapshotFlags = {
+  json: { type: 'boolean', description: 'Output JSON format', default: false },
+} as const;
+
+export type SnapshotFlags = { json?: boolean };
+
+/**
+ * Flags for quality:history command
+ */
+export const historyFlags = {
+  json: { type: 'boolean', description: 'Output JSON format', default: false },
+  limit: { type: 'number', description: 'Number of entries to show', default: 10 },
+} as const;
+
+export type HistoryFlags = { json?: boolean; limit?: number };
 
 /**
  * Flags for quality:dead-code command

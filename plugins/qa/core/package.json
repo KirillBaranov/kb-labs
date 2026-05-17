@@ -10,18 +10,6 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./runner": {
-      "types": "./dist/runner/index.d.ts",
-      "import": "./dist/runner/index.js"
-    },
-    "./baseline": {
-      "types": "./dist/baseline/index.d.ts",
-      "import": "./dist/baseline/index.js"
-    },
-    "./history": {
-      "types": "./dist/history/index.d.ts",
-      "import": "./dist/history/index.js"
-    },
     "./report": {
       "types": "./dist/report/index.d.ts",
       "import": "./dist/report/index.js"
@@ -45,6 +33,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@kb-labs/sdk": "workspace:*",
     "@kb-labs/qa-contracts": "workspace:*"
   },
   "devDependencies": {

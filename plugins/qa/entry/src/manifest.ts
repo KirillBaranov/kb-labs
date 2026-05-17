@@ -1,9 +1,3 @@
-/**
- * QA Plugin Manifest V3
- *
- * Automated quality checks, baseline tracking, and regression detection.
- */
-
 import {
   combinePermissions,
   kbPlatformPreset,
@@ -11,18 +5,17 @@ import {
 } from '@kb-labs/sdk';
 import {
   qaRunFlags,
-  qaSaveFlags,
+  qaCheckFlags,
+  qaStatsFlags,
+  qaGateFlags,
   qaHistoryFlags,
   qaTrendsFlags,
   qaRegressionsFlags,
   baselineUpdateFlags,
   baselineStatusFlags,
-  qaCheckFlags,
+  baselineDiffFlags,
 } from './cli/commands/flags.js';
-import {
-  QA_BASE_PATH,
-  QA_ROUTES,
-} from '@kb-labs/qa-contracts';
+import { QA_BASE_PATH, QA_ROUTES } from '@kb-labs/qa-contracts';
 
 const pluginPermissions = combinePermissions()
   .with(kbPlatformPreset)
@@ -30,13 +23,15 @@ const pluginPermissions = combinePermissions()
     mode: 'readWrite',
     allow: ['**'],
   })
+  .withShell({
+    allow: ['kb-devkit', 'git'],
+  })
   .withPlatform({
-    cache: ['qa:'],
     analytics: true,
   })
   .withQuotas({
-    timeoutMs: 600000,
-    memoryMb: 2048,
+    timeoutMs: 600_000,
+    memoryMb: 512,
   })
   .build();
 
@@ -49,272 +44,123 @@ export const manifest = {
 
   display: {
     name: 'QA Plugin',
-    description: 'Automated quality checks and regression tracking',
-    tags: ['qa', 'quality', 'baseline', 'regression', 'testing'],
+    description: 'Smart wrapper around kb-devkit — history, trends, baseline diffing, and health UI',
+    tags: ['qa', 'quality', 'baseline', 'regression', 'devkit'],
   },
 
   platform: {
-    requires: ['storage'],
+    requires: [],
     optional: ['cache', 'analytics', 'logger'],
   },
 
   cli: {
     groupMeta: [
-      { path: 'qa', describe: 'Automated quality checks and regression tracking' },
+      { path: 'qa', describe: 'Quality assurance powered by kb-devkit' },
       { path: 'qa baseline', describe: 'Baseline management' },
     ],
     commands: [
       {
         path: 'qa run',
         category: 'Run',
-        describe: 'Run all QA checks (build, lint, types, tests)',
-        longDescription:
-          'Runs comprehensive QA checks across the monorepo: build, lint, type check, and tests. ' +
-          'Compares with baseline if available. Supports incremental builds and package filtering.',
+        describe: 'Run devkit tasks and record results',
         handler: './cli/commands/qa-run.js#default',
-        flags: defineCommandFlags(qaRunFlags),
+        flags: defineCommandFlags(qaRunFlags.schema),
         permissions: pluginPermissions,
       },
       {
         path: 'qa check',
         category: 'Run',
-        describe: 'Run a single QA check atomically',
-        longDescription:
-          'Runs one check by ID, optionally saves to history with caller context. ' +
-          'Designed for workflow steps: exit 0 = pass, exit 1 = blocker failed. ' +
-          'Supports diffOnly/newFiles strategies and structured JSON output for agents.',
+        describe: 'Run devkit structural checks',
         handler: './cli/commands/qa-check.js#default',
-        flags: defineCommandFlags(qaCheckFlags),
+        flags: defineCommandFlags(qaCheckFlags.schema),
         permissions: pluginPermissions,
       },
       {
-        path: 'qa save',
+        path: 'qa stats',
         category: 'Run',
-        describe: 'Run QA checks and save results to history',
-        longDescription:
-          'Runs all QA checks and saves the results as a history entry. ' +
-          'History is stored in .kb/qa/history.json (max 50 entries).',
-        handler: './cli/commands/qa-save.js#default',
-        flags: defineCommandFlags(qaSaveFlags),
+        describe: 'Show devkit health score and category breakdown',
+        handler: './cli/commands/qa-stats.js#default',
+        flags: defineCommandFlags(qaStatsFlags.schema),
+        permissions: pluginPermissions,
+      },
+      {
+        path: 'qa gate',
+        category: 'Run',
+        describe: 'Run pre-commit gate check (exits 1 if violations found)',
+        handler: './cli/commands/qa-gate.js#default',
+        flags: defineCommandFlags(qaGateFlags.schema),
         permissions: pluginPermissions,
       },
       {
         path: 'qa history',
         category: 'History',
         describe: 'Show QA run history',
-        longDescription: 'Displays the QA run history with pass/fail status for each check type.',
         handler: './cli/commands/qa-history.js#default',
-        flags: defineCommandFlags(qaHistoryFlags),
+        flags: defineCommandFlags(qaHistoryFlags.schema),
         permissions: pluginPermissions,
       },
       {
         path: 'qa trends',
         category: 'History',
         describe: 'Show QA quality trends over time',
-        longDescription:
-          'Analyzes quality trends by comparing failure counts over a sliding window of history entries.',
         handler: './cli/commands/qa-trends.js#default',
-        flags: defineCommandFlags(qaTrendsFlags),
+        flags: defineCommandFlags(qaTrendsFlags.schema),
         permissions: pluginPermissions,
       },
       {
         path: 'qa regressions',
         category: 'History',
-        describe: 'Detect regressions since last QA save',
-        longDescription:
-          'Compares the last two history entries to detect new failures. ' +
-          'Exits with code 1 if regressions are found. Use before merging.',
+        describe: 'Detect regressions since last run',
         handler: './cli/commands/qa-regressions.js#default',
-        flags: defineCommandFlags(qaRegressionsFlags),
+        flags: defineCommandFlags(qaRegressionsFlags.schema),
         permissions: pluginPermissions,
       },
       {
         path: 'qa baseline update',
         category: 'Baseline',
-        describe: 'Run full QA and save as new baseline',
-        longDescription:
-          'Runs all QA checks and saves the results as the current baseline. ' +
-          'Future qa:run calls will compare against this baseline.',
+        describe: 'Run check + stats and save as new baseline',
         handler: './cli/commands/baseline-update.js#default',
-        flags: defineCommandFlags(baselineUpdateFlags),
+        flags: defineCommandFlags(baselineUpdateFlags.schema),
         permissions: pluginPermissions,
       },
       {
         path: 'qa baseline status',
         category: 'Baseline',
-        describe: 'Show current baseline status',
-        longDescription: 'Displays the current baseline snapshot with pass/fail counts per check type.',
+        describe: 'Show current baseline',
         handler: './cli/commands/baseline-status.js#default',
-        flags: defineCommandFlags(baselineStatusFlags),
+        flags: defineCommandFlags(baselineStatusFlags.schema),
+        permissions: pluginPermissions,
+      },
+      {
+        path: 'qa baseline diff',
+        category: 'Baseline',
+        describe: 'Diff current state against baseline',
+        handler: './cli/commands/baseline-diff.js#default',
+        flags: defineCommandFlags(baselineDiffFlags.schema),
         permissions: pluginPermissions,
       },
     ],
   },
 
-  // REST API routes
   rest: {
     basePath: QA_BASE_PATH,
     routes: [
-      // GET /summary
-      {
-        method: 'GET',
-        path: QA_ROUTES.SUMMARY,
-        handler: './rest/handlers/summary-handler.js#default',
-        input: {
-          zod: '@kb-labs/qa-contracts#QASummaryRequestSchema',
-        },
-        output: {
-          zod: '@kb-labs/qa-contracts#QASummaryResponseSchema',
-        },
-      },
-      // GET /latest
-      {
-        method: 'GET',
-        path: QA_ROUTES.LATEST,
-        handler: './rest/handlers/latest-handler.js#default',
-        input: {
-          zod: '@kb-labs/qa-contracts#QALatestRequestSchema',
-        },
-        output: {
-          zod: '@kb-labs/qa-contracts#QALatestResponseSchema',
-        },
-      },
-      // GET /history
-      {
-        method: 'GET',
-        path: QA_ROUTES.HISTORY,
-        handler: './rest/handlers/history-handler.js#default',
-        input: {
-          zod: '@kb-labs/qa-contracts#QAHistoryRequestSchema',
-        },
-        output: {
-          zod: '@kb-labs/qa-contracts#QAHistoryResponseSchema',
-        },
-      },
-      // GET /trends
-      {
-        method: 'GET',
-        path: QA_ROUTES.TRENDS,
-        handler: './rest/handlers/trends-handler.js#default',
-        input: {
-          zod: '@kb-labs/qa-contracts#QATrendsRequestSchema',
-        },
-        output: {
-          zod: '@kb-labs/qa-contracts#QATrendsResponseSchema',
-        },
-      },
-      // GET /regressions
-      {
-        method: 'GET',
-        path: QA_ROUTES.REGRESSIONS,
-        handler: './rest/handlers/regressions-handler.js#default',
-        input: {
-          zod: '@kb-labs/qa-contracts#QARegressionsRequestSchema',
-        },
-        output: {
-          zod: '@kb-labs/qa-contracts#QARegressionsResponseSchema',
-        },
-      },
-      // GET /baseline
-      {
-        method: 'GET',
-        path: QA_ROUTES.BASELINE,
-        handler: './rest/handlers/baseline-handler.js#default',
-        input: {
-          zod: '@kb-labs/qa-contracts#QABaselineRequestSchema',
-        },
-        output: {
-          zod: '@kb-labs/qa-contracts#QABaselineResponseSchema',
-        },
-      },
-      // POST /run
-      {
-        method: 'POST',
-        path: QA_ROUTES.RUN,
-        handler: './rest/handlers/run-handler.js#default',
-        input: {
-          zod: '@kb-labs/qa-contracts#QARunRequestSchema',
-        },
-        output: {
-          zod: '@kb-labs/qa-contracts#QARunResponseSchema',
-        },
-      },
-      // GET /details — per-package details with error text
-      {
-        method: 'GET',
-        path: QA_ROUTES.DETAILS,
-        handler: './rest/handlers/details-handler.js#default',
-        input: {
-          zod: '@kb-labs/qa-contracts#QADetailsRequestSchema',
-        },
-        output: {
-          zod: '@kb-labs/qa-contracts#QADetailsResponseSchema',
-        },
-      },
-      // POST /run/check — run a single check type
-      {
-        method: 'POST',
-        path: QA_ROUTES.RUN_CHECK,
-        handler: './rest/handlers/run-check-handler.js#default',
-        input: {
-          zod: '@kb-labs/qa-contracts#QARunCheckRequestSchema',
-        },
-        output: {
-          zod: '@kb-labs/qa-contracts#QARunCheckResponseSchema',
-        },
-      },
-      // POST /baseline/update — update baseline from last run
-      {
-        method: 'POST',
-        path: QA_ROUTES.BASELINE_UPDATE,
-        handler: './rest/handlers/baseline-update-handler.js#default',
-        input: {
-          zod: '@kb-labs/qa-contracts#QABaselineUpdateRequestSchema',
-        },
-        output: {
-          zod: '@kb-labs/qa-contracts#QABaselineUpdateResponseSchema',
-        },
-      },
-      // GET /baseline/diff — diff current state vs baseline
-      {
-        method: 'GET',
-        path: QA_ROUTES.BASELINE_DIFF,
-        handler: './rest/handlers/baseline-diff-handler.js#default',
-        input: {
-          zod: '@kb-labs/qa-contracts#QABaselineDiffRequestSchema',
-        },
-        output: {
-          zod: '@kb-labs/qa-contracts#QABaselineDiffResponseSchema',
-        },
-      },
-      // GET /packages/:name/timeline — per-package QA timeline
-      {
-        method: 'GET',
-        path: QA_ROUTES.PACKAGE_TIMELINE,
-        handler: './rest/handlers/package-timeline-handler.js#default',
-        input: {
-          zod: '@kb-labs/qa-contracts#QAPackageTimelineRequestSchema',
-        },
-        output: {
-          zod: '@kb-labs/qa-contracts#QAPackageTimelineResponseSchema',
-        },
-      },
-      // GET /errors/groups — grouped errors by pattern
-      {
-        method: 'GET',
-        path: QA_ROUTES.ERROR_GROUPS,
-        handler: './rest/handlers/error-groups-handler.js#default',
-        input: {
-          zod: '@kb-labs/qa-contracts#QAErrorGroupsRequestSchema',
-        },
-        output: {
-          zod: '@kb-labs/qa-contracts#QAErrorGroupsResponseSchema',
-        },
-      },
+      { method: 'GET',  path: QA_ROUTES.SUMMARY,          handler: './rest/handlers/summary-handler.js#default' },
+      { method: 'POST', path: QA_ROUTES.RUN,               handler: './rest/handlers/run-handler.js#default' },
+      { method: 'POST', path: QA_ROUTES.CHECK,             handler: './rest/handlers/check-handler.js#default' },
+      { method: 'GET',  path: QA_ROUTES.STATS,             handler: './rest/handlers/stats-handler.js#default' },
+      { method: 'POST', path: QA_ROUTES.GATE,              handler: './rest/handlers/gate-handler.js#default' },
+      { method: 'GET',  path: QA_ROUTES.HISTORY,           handler: './rest/handlers/history-handler.js#default' },
+      { method: 'GET',  path: QA_ROUTES.TRENDS,            handler: './rest/handlers/trends-handler.js#default' },
+      { method: 'GET',  path: QA_ROUTES.REGRESSIONS,       handler: './rest/handlers/regressions-handler.js#default' },
+      { method: 'GET',  path: QA_ROUTES.BASELINE,          handler: './rest/handlers/baseline-handler.js#default' },
+      { method: 'POST', path: QA_ROUTES.BASELINE_UPDATE,   handler: './rest/handlers/baseline-update-handler.js#default' },
+      { method: 'GET',  path: QA_ROUTES.BASELINE_DIFF,     handler: './rest/handlers/baseline-diff-handler.js#default' },
+      { method: 'GET',  path: QA_ROUTES.PACKAGE_TIMELINE,  handler: './rest/handlers/package-timeline-handler.js#default' },
+      { method: 'GET',  path: QA_ROUTES.TASKS,             handler: './rest/handlers/tasks-handler.js#default' },
     ],
   },
 
-  // Studio V2 — Module Federation pages
   studio: {
     version: 2 as const,
     remoteName: 'qaPlugin',
