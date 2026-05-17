@@ -144,6 +144,65 @@ Cold-cache build matches baseline within variance (432s vs 422-430s, +2%).
 Cache populates on this run; the next run on the same dependency hash
 will exercise the warm restore path.
 
+### Phase 1 warm (cache hit) — REVERTED
+
+Two warm runs surfaced two issues:
+
+**Run `26004370372` (first warm):**
+- Build: 432s → 0s (cache fully restored, 47 MB tar) ✅
+- E2E run: failed instantly with `./tools/kb-devkit/kb-devkit: Permission denied`.
+  Build Go tools step did produce the binary, but the file had mode 0600
+  (no +x) when the e2e step tried to invoke it. Root cause TBD;
+  unrelated to cache content (cache path is `.kb/devkit/`, not `tools/`).
+  Mitigation: defensive `chmod +x` after the Go build and right before
+  the e2e invocation (commit `aedbc480`). Verified working.
+
+**Run `26004923126` (second warm, with chmod fix):**
+- Build: 0s cached ✅
+- E2E run: 13 suites, 12 passed, `e2e-workflows` failed with WS-L04
+  `unsubscribe stops the log stream` consistently (3 retries, all
+  failed with the same `Expected: 0 Received: 1` assertion).
+
+WS-L04 race is **pre-existing** and was masked in earlier all-green
+runs by an unrelated kb-devkit caching defect: the `e2e` task did not
+have `cache: false`, so `kb-devkit run e2e` returned `success cached`
+for every suite without actually running tests. That hid WS-L04 (and
+likely other flakes) under false positives. Fixed in commit `6e9a0c3d`
+(`cache: false` on the e2e task).
+
+Once `cache: false` was in place, WS-L04 surfaced as a real flake:
+
+```
+subscribe → server replays all initial logs (5+ in this workflow)
+→ test consumes first via waitForMessage
+→ test sends unsubscribe
+→ server processes unsubscribe (activeSubscriptions cleared)
+→ test collect(1, 1000) reads the SECOND pre-buffered log
+→ assertion fails: logs.length === 1, expected 0
+```
+
+The fault is test-side: it treats "logs after unsubscribe" as a proxy
+for "stream is active" but in reality the client buffer can hold
+multiple already-sent initial logs from the synchronous backfill.
+Server-side `activeSubscriptions` gates can't unsend bytes that have
+already left the socket.
+
+**Decision: revert Phase 1 (commit pending) to keep main green.** WS-L04
+needs a separate, focused fix (either drain client buffer before
+unsubscribe, or change subscribe semantics to not replay history
+eagerly) before Phase 1 can land. Phase 0 (instrumentation) stays — it
+is pure observability and proved itself in surfacing this exact issue.
+
+### Validated learning
+
+- kb-devkit's `e2e` task was silently caching success across runs — a
+  correctness bug that masked pre-existing flakiness. Permanently fixed.
+- The build-cache path itself works (47 MB tar restored cleanly, 0s
+  rebuild). Phase 1 is technically viable once WS-L04 is properly
+  fixed.
+- `tools/kb-devkit/kb-devkit` losing +x is a separate diagnostic to
+  carry forward — defensive chmod is in place, root cause TBD.
+
 ## References
 
 - [Plan file](../../.claude/plans/tender-strolling-wind.md)
