@@ -3,6 +3,7 @@ import { getTranslations } from 'next-intl/server';
 
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
+import { AgentControlSection } from '@/components/sections/AgentControlSection';
 import { BeliefsSection } from '@/components/sections/BeliefsSection';
 import { BuiltInOpenSection } from '@/components/sections/BuiltInOpenSection';
 import { FaqSection } from '@/components/sections/FaqSection';
@@ -99,9 +100,22 @@ export async function HomeSectionsPage({ locale }: HomeSectionsPageProps) {
           cta2={heroCta2}
           cta1Href={lp('/install')}
           cta2Href="https://github.com/KirillBaranov/kb-labs"
+          screenshot={{
+            src: '/screenshots/workflow-in-progress.png',
+            alt: 'KB Labs Studio — workflow running in real time: agent executing github-issue-to-pr, steps visible',
+          }}
         />
         <div className="container stack">
-          {/* ─── 1. Three things we believe ────────────────────────── */}
+          {/* ─── 1. Agent control — main differentiator ────────────── */}
+          <AgentControlSection
+            title={t('home.agentControl.title')}
+            lead={t('home.agentControl.lead')}
+            codeLabel={t('home.agentControl.codeLabel')}
+            codeCaption={t('home.agentControl.codeCaption')}
+            screenshotAlt={t('home.agentControl.screenshotAlt')}
+          />
+
+          {/* ─── 2. Three problems / three answers ─────────────────── */}
           <BeliefsSection
             title={beliefsTitle}
             lead={beliefsLead}
@@ -111,7 +125,7 @@ export async function HomeSectionsPage({ locale }: HomeSectionsPageProps) {
             }))}
           />
 
-          {/* ─── 2. We run on it + security markers ────────────────── */}
+          {/* ─── 3. We run on it + security markers ────────────────── */}
           <TrustStripSection
             label={trustLabel}
             items={trustItems}
@@ -121,7 +135,7 @@ export async function HomeSectionsPage({ locale }: HomeSectionsPageProps) {
             }))}
           />
 
-          {/* ─── 3. Same rails ─────────────────────────────────────── */}
+          {/* ─── 4. Same rails ─────────────────────────────────────── */}
           <SameRailsSection
             title={sameRailsTitle}
             lead={sameRailsLead}
@@ -129,7 +143,7 @@ export async function HomeSectionsPage({ locale }: HomeSectionsPageProps) {
             caption={sameRailsCaption}
           />
 
-          {/* ─── 4. Start beside your stack ────────────────────────── */}
+          {/* ─── 5. Start beside your stack ────────────────────────── */}
           <StartBesideSection
             title={startBesideTitle}
             lead={startBesideLead}
@@ -139,7 +153,7 @@ export async function HomeSectionsPage({ locale }: HomeSectionsPageProps) {
             ctaHref={localizeHref(startBesideCtaHref)}
           />
 
-          {/* ─── 5. Use cases ──────────────────────────────────────── */}
+          {/* ─── 6. Use cases ──────────────────────────────────────── */}
           <UseCasesSection
             title={t('home.useCases.title')}
             description={t('home.useCases.description')}

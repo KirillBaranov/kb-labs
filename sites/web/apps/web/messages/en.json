@@ -261,37 +261,44 @@
       "description": "Open-source workflow engine for releases, reviews, and AI agents. Self-hosted, plugin-first, yours to own. Replace CI glue with observable policy-first code."
     },
     "hero": {
-      "title": "We believe engineering should stay yours.",
-      "description": "An open-source engine for your workflows, reviews, releases, and infrastructure — where humans and agents play by the same rules. Self-hosted. Yours.",
+      "title": "Automate engineering workflows. Extend AI agents safely. Control your infrastructure.",
+      "description": "Open-source, self-hosted platform for engineering teams. One engine for releases, reviews, and agent pipelines — with full control over what your agents are allowed to do.",
       "body": "",
       "cta1": "Install",
       "cta2": "View on GitHub"
     },
+    "agentControl": {
+      "title": "Your agents do only what you allow.",
+      "lead": "Most tools give the LLM a key to everything. KB Labs gives it only the keys you cut. No command in the plugin manifest — the agent physically cannot call it, regardless of what the underlying API supports.",
+      "codeLabel": "Plugin manifest — declared permissions",
+      "codeCaption": "The ClickUp plugin is a real example: Claude Code calls `kb clickup task create`, never the ClickUp API directly. No `task delete` in the manifest — the agent cannot delete, full stop.",
+      "screenshotAlt": "KB Labs Studio — AI commit plugin grouping changes into typed commits with confidence scores"
+    },
     "beliefs": {
-      "title": "Three things we believe. Three things we're building.",
-      "lead": "We're not fighting anything. We're building what we wish already existed.",
+      "title": "Three problems. Three answers.",
+      "lead": "Not a philosophy. A list of things that were broken and are now fixed.",
       "rows": [
         {
           "id": "routine",
-          "belief": "Engineers shouldn't do by hand what a machine can do. Routine is a quiet tax on the craft.",
+          "belief": "You keep rewriting the same scripts. Releases, QA gates, reviews — manual every time. Something breaks, someone fixes it, nobody writes it down.",
           "answer": "Workflows.",
-          "answerLead": "One engine for releases, reviews, QA gates, and agent pipelines. The scripts you keep rewriting — expressed once, observed fully.",
+          "answerLead": "One engine. Define the workflow once, run it from CLI, CI, or Studio. Every step logged, every run observable.",
           "linkLabel": "See Workflows →",
           "linkHref": "/product/workflows"
         },
         {
           "id": "openness",
-          "belief": "Internal platforms should be open. The tools that make engineering teams strong don't need to live behind closed doors.",
-          "answer": "Open-source core and plugin system.",
-          "answerLead": "Everything is a plugin. Every plugin is code you can read, fork, and extend. No black boxes.",
+          "belief": "Every team builds the same internal tools. Once, badly, then nobody touches them. The person who wrote it left. Now it's load-bearing and untouchable.",
+          "answer": "Open-source plugin system.",
+          "answerLead": "Everything is a plugin — CLI commands, workflow steps, agent tools. Code you can read, fork, and extend. No black boxes.",
           "linkLabel": "See Plugins →",
           "linkHref": "/product/plugins"
         },
         {
           "id": "ownership",
-          "belief": "Your stack should stay yours. Switching a broker, a database, or an LLM shouldn't mean touching every service you own.",
+          "belief": "Switching your LLM provider means touching every service that calls it. Same with your logger, your cache, your broker. One change, ten files.",
           "answer": "Gateway and adapters.",
-          "answerLead": "25+ contract interfaces between your code and your infrastructure. Swap what's behind the contract. The code stays still.",
+          "answerLead": "25+ contract interfaces between your code and your infrastructure. Swap DataDog for ClickHouse in one config line. No application code changes.",
           "linkLabel": "See Gateway →",
           "linkHref": "/solutions/gateway"
         }

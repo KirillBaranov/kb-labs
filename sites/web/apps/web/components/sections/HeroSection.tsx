@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 
 type HeroSectionProps = {
@@ -8,9 +9,13 @@ type HeroSectionProps = {
   cta2: string;
   cta1Href: string;
   cta2Href: string;
+  screenshot?: {
+    src: string;
+    alt: string;
+  };
 };
 
-export function HeroSection({ title, description, body, cta1, cta2, cta1Href, cta2Href }: HeroSectionProps) {
+export function HeroSection({ title, description, body, cta1, cta2, cta1Href, cta2Href, screenshot }: HeroSectionProps) {
   return (
     <section className="hero-screen reveal home">
       {/* Grid overlay */}
@@ -54,6 +59,19 @@ export function HeroSection({ title, description, body, cta1, cta2, cta1Href, ct
           </Link>
         </div>
       </div>
+
+      {screenshot && (
+        <div className="hero-screenshot reveal">
+          <Image
+            src={screenshot.src}
+            alt={screenshot.alt}
+            width={1280}
+            height={720}
+            className="hero-screenshot-img"
+            priority
+          />
+        </div>
+      )}
     </section>
   );
 }

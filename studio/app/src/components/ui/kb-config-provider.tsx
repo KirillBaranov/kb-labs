@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { ConfigProvider } from 'antd';
+import { ConfigProvider, App } from 'antd';
 import type { ConfigProviderProps, ThemeConfig } from 'antd';
 import { getAntDesignTokens, getAntDesignComponents } from '@kb-labs/studio-hooks';
 import { ThemeTransitionOverlay } from './theme-transition-overlay';
@@ -115,7 +115,9 @@ export function KBConfigProvider({
   return (
     <KBConfigProviderContext.Provider value={value}>
       <ConfigProvider theme={themeConfig} {...configProps}>
-        {children}
+        <App>
+          {children}
+        </App>
         <ThemeTransitionOverlay show={showOverlay} theme={overlayTheme} />
       </ConfigProvider>
     </KBConfigProviderContext.Provider>
