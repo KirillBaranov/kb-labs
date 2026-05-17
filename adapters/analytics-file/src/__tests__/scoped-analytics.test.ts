@@ -11,7 +11,7 @@ import { createAdapter } from "../index.js";
 import type {
   IAnalytics,
   AnalyticsContext,
-} from "@kb-labs/core-platform/adapters";
+} from "@kb-labs/sdk/adapters";
 
 /** Local date stamp for event file names. Adapter uses local date, not UTC. */
 function todayStamp(): string {

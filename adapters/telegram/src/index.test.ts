@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createTelegramChannel } from './index.js';
-import type { NotificationEvent } from '@kb-labs/core-platform';
+import type { NotificationEvent } from '@kb-labs/sdk/adapters';
 
 const BASE_EVENT: NotificationEvent = {
   id: 'test-id',

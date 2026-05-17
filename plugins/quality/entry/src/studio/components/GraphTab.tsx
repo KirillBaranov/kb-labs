@@ -4,7 +4,7 @@
 
 import * as React from 'react';
 import type { DataNode } from 'antd/es/tree';
-import { useData, UICard, UISelect, UISpin, UIAlert, UITree, UIRow, UICol, UIStatistic } from '@kb-labs/sdk/studio';
+import { useData, UICard, UISelect, UISkeleton, UIAlert, UITree, UIRow, UICol, UIStatistic } from '@kb-labs/sdk/studio';
 import type { GraphResponse, BuildOrderResponse, GraphMode, GraphNode } from '@kb-labs/quality-contracts';
 
 export function GraphTab() {
@@ -27,11 +27,7 @@ export function GraphTab() {
   const { data, isLoading, isError } = useData<GraphResponse>(graphUrl);
 
   if (isLoading) {
-    return (
-      <div style={{ textAlign: 'center', padding: '40px' }}>
-        <UISpin size="large" />
-      </div>
-    );
+    return <UISkeleton active lines={6} style={{ padding: '24px 0' }} />;
   }
 
   if (isError) {

@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import type {
   IAnalytics,
-} from "@kb-labs/core-platform/adapters";
+} from "@kb-labs/sdk/adapters";
 
 const TEST_BASE_DIR = join(__dirname, `test-analytics-${randomUUID()}`);
 

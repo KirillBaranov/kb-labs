@@ -41,7 +41,7 @@ import type {
   IDisposable,
   SQLQueryResult,
   SQLTransaction,
-} from "@kb-labs/core-platform/adapters";
+} from "@kb-labs/sdk/adapters";
 
 
 // Re-export manifest

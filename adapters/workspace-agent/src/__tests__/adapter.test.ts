@@ -3,7 +3,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { AgentWorkspaceAdapter } from '../index.js';
-import type { MaterializeWorkspaceRequest } from '@kb-labs/core-platform';
+import type { MaterializeWorkspaceRequest } from '@kb-labs/sdk/adapters';
 
 // ── fetch mock helpers ────────────────────────────────────────────────────────
 

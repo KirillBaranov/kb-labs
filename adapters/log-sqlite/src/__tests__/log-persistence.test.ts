@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { LogSQLitePersistence } from "../index";
 import { createAdapter as createSQLiteDB } from "@kb-labs/adapters-sqlite";
-import type { LogRecord, ISQLDatabase } from "@kb-labs/core-platform/adapters";
+import type { LogRecord, ISQLDatabase } from "@kb-labs/sdk/adapters";
 
 describe("LogSQLitePersistence", () => {
   let db: ISQLDatabase;

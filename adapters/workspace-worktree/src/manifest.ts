@@ -1,4 +1,4 @@
-import type { AdapterManifest } from '@kb-labs/core-platform';
+import type { AdapterManifest } from '@kb-labs/sdk/adapters';
 
 export const manifest: AdapterManifest = {
   manifestVersion: '1.0.0',

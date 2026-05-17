@@ -25,6 +25,10 @@
       "types": "./dist/adapters/index.d.ts",
       "import": "./dist/adapters/index.js"
     },
+    "./adapters/infra": {
+      "types": "./dist/adapters/infra/index.d.ts",
+      "import": "./dist/adapters/infra/index.js"
+    },
     "./hooks": {
       "types": "./dist/hooks/index.d.ts",
       "import": "./dist/hooks/index.js"
@@ -74,6 +78,7 @@
   },
   "devDependencies": {
     "@kb-labs/core-platform": "workspace:*",
+    "@kb-labs/core-resource-broker": "workspace:*",
     "@kb-labs/core-runtime": "workspace:*",
     "@kb-labs/core-sys": "workspace:*",
     "@kb-labs/devkit": "workspace:*",
@@ -112,6 +117,7 @@
   ],
   "peerDependencies": {
     "@kb-labs/core-platform": ">=2.0.0",
+    "@kb-labs/core-resource-broker": ">=2.0.0",
     "@kb-labs/core-runtime": ">=2.0.0",
     "@kb-labs/core-sys": ">=2.0.0",
     "@kb-labs/perm-presets": ">=2.0.0",

@@ -4,7 +4,7 @@
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { LogRingBufferAdapter } from "../index";
-import type { LogRecord } from "@kb-labs/core-platform/adapters";
+import type { LogRecord } from "@kb-labs/sdk/adapters";
 
 describe("LogRingBufferAdapter", () => {
   let buffer: LogRingBufferAdapter;

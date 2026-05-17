@@ -22,7 +22,7 @@ import type {
   LLMTool,
   LLMToolCall,
   LLMProtocolCapabilities,
-} from "@kb-labs/core-platform";
+} from "@kb-labs/sdk/adapters";
 
 // ── Config ───────────────────────────────────────────────────────────────────
 

@@ -12,7 +12,7 @@ import type {
   SnapshotGarbageCollectResult,
   SnapshotProviderCapabilities,
   SnapshotStatus,
-} from '@kb-labs/core-platform';
+} from '@kb-labs/sdk/adapters';
 
 export { manifest } from './manifest.js';
 

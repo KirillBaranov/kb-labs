@@ -173,6 +173,16 @@ type DepsRules struct {
 	CheckUnused             bool `yaml:"check_unused"`
 	CheckCircular           bool `yaml:"check_circular"`
 	CheckVersionConsistency bool `yaml:"check_version_consistency"`
+
+	// AllowedKbDeps is an allowlist of @kb-labs/* dependencies the package
+	// is permitted to import (both via package.json and source code).
+	// Glob patterns are supported (e.g. "@kb-labs/sdk/*"). When non-empty,
+	// any @kb-labs/* dep or source import not matching an entry is reported.
+	AllowedKbDeps []string `yaml:"allowed_kb_deps"`
+
+	// ForbiddenKbDeps is a denylist of @kb-labs/* dependencies. Reported even
+	// if AllowedKbDeps would otherwise permit them — denylist wins.
+	ForbiddenKbDeps []string `yaml:"forbidden_kb_deps"`
 }
 
 // GoRules defines rules for Go packages.

@@ -33,7 +33,7 @@ import type {
   ISQLDatabase,
   SQLQueryResult,
   SQLTransaction,
-} from "@kb-labs/core-platform/adapters";
+} from "@kb-labs/sdk/adapters";
 
 /**
  * Permission configuration for SQL database access.

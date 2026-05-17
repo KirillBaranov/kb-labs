@@ -3,7 +3,7 @@
  */
 
 import * as React from 'react';
-import { useData, UICard, UITable, UITag, UISpin, UIAlert, UISpace, UIButton, UITypographyText, UIIcon } from '@kb-labs/sdk/studio';
+import { useData, UICard, UITable, UITag, UISkeleton, UIAlert, UISpace, UIButton, UITypographyText, UIIcon } from '@kb-labs/sdk/studio';
 import type { UITableColumn } from '@kb-labs/sdk/studio';
 import type { StaleResponse, StalePackage, StaleChain } from '@kb-labs/quality-contracts';
 
@@ -15,11 +15,7 @@ export function StaleTab() {
   );
 
   if (isLoading) {
-    return (
-      <div style={{ textAlign: 'center', padding: '40px' }}>
-        <UISpin size="large" />
-      </div>
-    );
+    return <UISkeleton active lines={6} style={{ padding: '24px 0' }} />;
   }
 
   if (isError) {

@@ -23,7 +23,7 @@ import type {
   BufferStatus,
   DlqStatus,
   DailyStats,
-} from '@kb-labs/core-platform/adapters';
+} from '@kb-labs/sdk/adapters';
 import {
   CREATE_EVENTS_TABLE,
   CREATE_INDEXES,

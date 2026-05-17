@@ -269,3 +269,73 @@ describe('assemblePlatform', () => {
     expect(() => assemblePlatform(raw, config, {} as never)).not.toThrow();
   });
 });
+
+// Regression: { ...PlatformContainer } spread loses prototype getters — adapters must be read
+// via property access, not spread, so class instances with prototype getters work correctly.
+describe('pipeline — prototype getter inputs (PlatformContainer regression)', () => {
+  // Simulate PlatformContainer: adapters stored privately, exposed only through prototype getters.
+  function createContainerLikePlatform(): PlatformServices {
+    const adapters = createMockPlatform();
+
+    class PlatformContainerStub {
+      // Private storage — NOT own enumerable properties, only accessible via getters.
+      readonly #adapters = adapters;
+
+      get logger()         { return this.#adapters.logger; }
+      get llm()            { return this.#adapters.llm; }
+      get embeddings()     { return this.#adapters.embeddings; }
+      get vectorStore()    { return this.#adapters.vectorStore; }
+      get cache()          { return this.#adapters.cache; }
+      get storage()        { return this.#adapters.storage; }
+      get analytics()      { return this.#adapters.analytics; }
+      get eventBus()       { return this.#adapters.eventBus; }
+      get config()         { return this.#adapters.config; }
+      get invoke()         { return this.#adapters.invoke; }
+      get sqlDatabase()    { return this.#adapters.sqlDatabase; }
+      get documentDatabase() { return this.#adapters.documentDatabase; }
+      get logs()           { return this.#adapters.logs; }
+    }
+
+    return new PlatformContainerStub() as unknown as PlatformServices;
+  }
+
+  it('applyPluginGovernance reads logger through prototype getter', () => {
+    const platform = createContainerLikePlatform();
+    // Sanity: spread loses the getters — own enumerable props are empty.
+    expect(Object.keys({ ...platform })).toHaveLength(0);
+
+    const permissions: PermissionSpec = {};
+    const governed = applyPluginGovernance(platform, permissions, 'test-plugin');
+
+    // logger must not be undefined — wrapLogger calls adapter.child({ plugin })
+    expect(governed.logger).toBeDefined();
+  });
+
+  it('applyPluginGovernance reads all adapters through prototype getters', () => {
+    const platform = createContainerLikePlatform();
+    const permissions: PermissionSpec = {
+      platform: { llm: true, cache: true, storage: true, embeddings: true, vectorStore: true },
+    };
+    const governed = applyPluginGovernance(platform, permissions, 'test-plugin');
+
+    expect(governed.logger).toBeDefined();
+    expect(governed.analytics).toBeDefined();
+    expect(governed.eventBus).toBeDefined();
+    // Permission-gated adapters must be accessible (not replaced with DeniedService)
+    expect(() => governed.llm.complete).not.toThrow();
+    expect(() => governed.cache.get).not.toThrow();
+    expect(() => governed.storage.read).not.toThrow();
+  });
+
+  it('assemblePlatform reads adapters through prototype getters', () => {
+    const platform = createContainerLikePlatform();
+    const config: PlatformConfig = {};
+    const result = assemblePlatform(platform, config, {} as never);
+
+    // All adapters must be defined (not undefined from a failed spread)
+    expect(result.logger).toBeDefined();
+    expect(result.analytics).toBeDefined();
+    expect(result.eventBus).toBeDefined();
+    expect(result.cache).toBeDefined();
+  });
+});

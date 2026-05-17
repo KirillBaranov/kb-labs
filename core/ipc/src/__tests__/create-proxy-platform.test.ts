@@ -66,12 +66,29 @@ describe('createProxyPlatform', () => {
       expect(platform.logger).toBe(customLogger);
     });
 
-    it('should use noop logger by default', () => {
+    it('should proxy logger via transport by default', async () => {
       const platform = createProxyPlatform({ transport });
-      // Noop logger should not throw
-      platform.logger.info('test');
-      platform.logger.error('test');
-      expect(transport.send).not.toHaveBeenCalled(); // Logger is local, not proxied
+      platform.logger.info('hello', { userId: 7 });
+      // Fire-and-forget — give the microtask queue a turn to dispatch.
+      await Promise.resolve();
+      expect(transport.send).toHaveBeenCalledTimes(1);
+      const call = transport.calls[0]!;
+      expect(call.adapter).toBe('logger');
+      expect(call.method).toBe('info');
+      expect(call.type).toBe('adapter:call');
+    });
+
+    it('child() merges bound context locally without an extra IPC call', async () => {
+      const platform = createProxyPlatform({ transport });
+      const child = platform.logger.child({ traceId: 'abc' });
+      // child() must not round-trip through IPC.
+      expect(transport.send).not.toHaveBeenCalled();
+      child.info('hi', { userId: 7 });
+      await Promise.resolve();
+      expect(transport.send).toHaveBeenCalledTimes(1);
+      const call = transport.calls[0]!;
+      expect(call.adapter).toBe('logger');
+      expect(call.method).toBe('info');
     });
   });
 

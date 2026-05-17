@@ -11,7 +11,7 @@
  *   R6 — AbortSignal.timeout(10_000) prevents infinite hang
  */
 
-import type { INotifierChannel, NotificationCapability, NotificationEvent } from '@kb-labs/core-platform';
+import type { INotifierChannel, NotificationCapability, NotificationEvent } from '@kb-labs/sdk/adapters';
 
 export { manifest } from './manifest.js';
 

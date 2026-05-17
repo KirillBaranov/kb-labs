@@ -20,8 +20,8 @@
  */
 
 import pino, { type Logger as PinoLoggerInstance } from "pino";
-import type { ILogger, ILogBuffer, LogRecord } from "@kb-labs/core-platform";
-import { generateLogId } from "@kb-labs/core-platform/adapters";
+import type { ILogger, ILogBuffer, LogRecord } from "@kb-labs/sdk/adapters";
+import { generateLogId } from "@kb-labs/sdk/adapters";
 import { LogRingBuffer } from "./log-ring-buffer";
 
 // Re-export manifest

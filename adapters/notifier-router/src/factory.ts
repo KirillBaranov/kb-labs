@@ -7,9 +7,9 @@
  * This factory knows nothing about specific channel implementations.
  */
 
-import type { INotifier, INotifierChannel } from '@kb-labs/core-platform';
-import { createQueuedNotifierChannel } from '@kb-labs/core-resource-broker';
-import type { NotifierAdapterOptions } from '@kb-labs/core-runtime';
+import type { INotifier, INotifierChannel } from '@kb-labs/sdk/adapters';
+import { createQueuedNotifierChannel } from '@kb-labs/sdk/adapters/infra';
+import type { NotifierAdapterOptions } from '@kb-labs/sdk/adapters/infra';
 import { NotifierImpl } from './notifier-impl.js';
 import type { NotifierRouterDeps } from './types.js';
 

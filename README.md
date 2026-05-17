@@ -150,24 +150,21 @@ kb clickup task search "auth bug" --status "in progress"
 An adapter implements a platform interface. Swap implementations without touching application code.
 
 ```typescript
-// adapters/logging-datadog/src/index.ts  (@acme/adapters-logging-datadog)
-import type { AdapterManifest, ILogger } from '@kb-labs/sdk/adapters'
+// adapters/logging-datadog/src/manifest.ts
+import type { AdapterManifest } from '@kb-labs/core-platform'
 
 export const manifest: AdapterManifest = {
   manifestVersion: '1.0.0',
   id: 'logging-datadog',
   name: 'Datadog Logger',
   version: '1.0.0',
+  description: 'Datadog logging adapter',
   type: 'extension',
   implements: 'ILogger',
   configSchema: {
     apiKey: { type: 'string', description: 'Datadog API key' },
     service: { type: 'string', default: 'my-app' },
   }
-}
-
-export function createAdapter(options: { apiKey: string; service: string }): ILogger {
-  return new DatadogLogger(options)
 }
 ```
 

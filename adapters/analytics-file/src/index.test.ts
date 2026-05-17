@@ -8,7 +8,7 @@ import createAdapter from "./index.js";
 import type {
   AnalyticsContext,
   IAnalytics,
-} from "@kb-labs/core-platform/adapters";
+} from "@kb-labs/sdk/adapters";
 import { readFile, unlink, mkdir } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";

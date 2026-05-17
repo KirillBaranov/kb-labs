@@ -5,20 +5,23 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/kb-labs/devkit/internal/config"
 	"github.com/kb-labs/devkit/internal/workspace"
 )
 
-// DepsRule checks dependency link: resolution and version consistency.
+// DepsRule checks dependency link: resolution, version consistency, and
+// allowlist/denylist of @kb-labs/* dependencies.
 type DepsRule struct{}
 
 func (r *DepsRule) Name() string { return "deps" }
 
 func (r *DepsRule) Check(pkg workspace.Package, preset config.Preset) []Issue {
 	rules := preset.Deps
-	if !rules.CheckLinks && !rules.CheckVersionConsistency {
+	hasBoundaryRules := len(rules.AllowedKbDeps) > 0 || len(rules.ForbiddenKbDeps) > 0
+	if !rules.CheckLinks && !rules.CheckVersionConsistency && !hasBoundaryRules {
 		return nil
 	}
 
@@ -29,8 +32,10 @@ func (r *DepsRule) Check(pkg workspace.Package, preset config.Preset) []Issue {
 	}
 
 	var raw struct {
-		Dependencies    map[string]string `json:"dependencies"`
-		DevDependencies map[string]string `json:"devDependencies"`
+		Name             string            `json:"name"`
+		Dependencies     map[string]string `json:"dependencies"`
+		DevDependencies  map[string]string `json:"devDependencies"`
+		PeerDependencies map[string]string `json:"peerDependencies"`
 	}
 	if err := json.Unmarshal(data, &raw); err != nil {
 		return nil
@@ -45,9 +50,17 @@ func (r *DepsRule) Check(pkg workspace.Package, preset config.Preset) []Issue {
 	for k, v := range raw.DevDependencies {
 		allDeps[k] = v
 	}
+	for k, v := range raw.PeerDependencies {
+		allDeps[k] = v
+	}
 
 	if rules.CheckLinks {
 		issues = append(issues, checkLinkDeps(pkg.Dir, allDeps, r.Name())...)
+	}
+
+	if hasBoundaryRules {
+		issues = append(issues, checkBoundaryDeps(pkg, raw.Name, allDeps, rules, r.Name())...)
+		issues = append(issues, checkBoundaryImports(pkg, raw.Name, rules, r.Name())...)
 	}
 
 	return issues
@@ -83,11 +96,10 @@ func checkLinkDeps(pkgDir string, deps map[string]string, checkName string) []Is
 			continue
 		}
 
-		// Verify the package name matches.
 		targetPkgJSON := filepath.Join(abs, "package.json")
 		targetData, err := os.ReadFile(targetPkgJSON)
 		if err != nil {
-			continue // no package.json at target, skip name check
+			continue
 		}
 		var targetPkg struct {
 			Name string `json:"name"`
@@ -105,4 +117,152 @@ func checkLinkDeps(pkgDir string, deps map[string]string, checkName string) []Is
 		}
 	}
 	return issues
+}
+
+// checkBoundaryDeps enforces allowed/forbidden @kb-labs/* dependencies declared
+// in package.json against the preset's lists.
+func checkBoundaryDeps(pkg workspace.Package, pkgName string, deps map[string]string, rules config.DepsRules, checkName string) []Issue {
+	var issues []Issue
+	for depName := range deps {
+		if !strings.HasPrefix(depName, "@kb-labs/") {
+			continue
+		}
+		// Self-dependency: a package is allowed to depend on its own
+		// subpackages (e.g. monorepo nested packages share scope).
+		if depName == pkgName {
+			continue
+		}
+		// AllowedKbDeps takes priority over ForbiddenKbDeps — an explicit
+		// allowlist entry is an intentional exception (e.g. gateway-auth in
+		// environment-docker).
+		if len(rules.AllowedKbDeps) > 0 && matchAny(depName, rules.AllowedKbDeps) {
+			continue
+		}
+		if matchAny(depName, rules.ForbiddenKbDeps) {
+			issues = append(issues, Issue{
+				Check:    checkName,
+				Severity: SeverityError,
+				Message: fmt.Sprintf(
+					"forbidden dependency %q in package.json — adapters/plugins must depend only on @kb-labs/sdk",
+					depName,
+				),
+				File: filepath.Join(pkg.Dir, "package.json"),
+			})
+			continue
+		}
+		if len(rules.AllowedKbDeps) > 0 && !matchAny(depName, rules.AllowedKbDeps) {
+			issues = append(issues, Issue{
+				Check:    checkName,
+				Severity: SeverityError,
+				Message: fmt.Sprintf(
+					"dependency %q is not in the allowlist — adapters/plugins must depend only on @kb-labs/sdk",
+					depName,
+				),
+				File: filepath.Join(pkg.Dir, "package.json"),
+			})
+		}
+	}
+	return issues
+}
+
+// importRe matches `from '...'` or `from "..."` strings in TS/JS sources.
+// We only care about @kb-labs/* specifiers, so the inner content is captured.
+var importRe = regexp.MustCompile(`from\s+['"](@kb-labs/[^'"]+)['"]`)
+
+// checkBoundaryImports walks the package source tree and reports any
+// @kb-labs/* import string that violates the allow/forbid lists.
+func checkBoundaryImports(pkg workspace.Package, pkgName string, rules config.DepsRules, checkName string) []Issue {
+	var issues []Issue
+	srcDir := filepath.Join(pkg.Dir, "src")
+	if _, err := os.Stat(srcDir); err != nil {
+		return nil
+	}
+
+	_ = filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil || info.IsDir() {
+			return nil
+		}
+		ext := filepath.Ext(path)
+		if ext != ".ts" && ext != ".tsx" && ext != ".mts" && ext != ".cts" && ext != ".js" && ext != ".mjs" && ext != ".cjs" {
+			return nil
+		}
+		data, rerr := os.ReadFile(path)
+		if rerr != nil {
+			return nil
+		}
+		for _, m := range importRe.FindAllSubmatch(data, -1) {
+			spec := string(m[1])
+			if spec == pkgName || strings.HasPrefix(spec, pkgName+"/") {
+				continue
+			}
+			// AllowedKbDeps takes priority over ForbiddenKbDeps.
+			if len(rules.AllowedKbDeps) > 0 && matchAny(spec, rules.AllowedKbDeps) {
+				continue
+			}
+			if matchAny(spec, rules.ForbiddenKbDeps) {
+				issues = append(issues, Issue{
+					Check:    checkName,
+					Severity: SeverityError,
+					Message: fmt.Sprintf(
+						"forbidden import %q — adapters/plugins must import only from @kb-labs/sdk",
+						spec,
+					),
+					File: path,
+				})
+				continue
+			}
+			if len(rules.AllowedKbDeps) > 0 && !matchAny(spec, rules.AllowedKbDeps) {
+				issues = append(issues, Issue{
+					Check:    checkName,
+					Severity: SeverityError,
+					Message: fmt.Sprintf(
+						"import %q is not in the allowlist — adapters/plugins must import only from @kb-labs/sdk",
+						spec,
+					),
+					File: path,
+				})
+			}
+		}
+		return nil
+	})
+	return issues
+}
+
+// matchAny reports whether s matches any of the glob-style patterns. A pattern
+// of "@kb-labs/foo" matches exact + any sub-path ("@kb-labs/foo", "@kb-labs/foo/bar").
+// A pattern with "*" is interpreted as a simple glob (* matches any non-slash run).
+func matchAny(s string, patterns []string) bool {
+	for _, p := range patterns {
+		if matchPattern(s, p) {
+			return true
+		}
+	}
+	return false
+}
+
+func matchPattern(s, pattern string) bool {
+	if strings.ContainsAny(pattern, "*?[") {
+		// Use filepath.Match for glob semantics. For multi-segment globs like
+		// "@kb-labs/core-*", filepath.Match treats "/" as a separator; we want
+		// it to be a regular char, so swap to a placeholder.
+		const slashPlaceholder = "\x00"
+		ps := strings.ReplaceAll(pattern, "/", slashPlaceholder)
+		ss := strings.ReplaceAll(s, "/", slashPlaceholder)
+		ok, err := filepath.Match(ps, ss)
+		if err == nil && ok {
+			return true
+		}
+		// Also allow the pattern to match a prefix followed by an additional
+		// sub-path: pattern "@kb-labs/sdk/*" should match "@kb-labs/sdk/adapters".
+		// Handle the common "<prefix>/*" trailing form explicitly.
+		if strings.HasSuffix(pattern, "/*") {
+			prefix := strings.TrimSuffix(pattern, "/*")
+			if s == prefix || strings.HasPrefix(s, prefix+"/") {
+				return true
+			}
+		}
+		return false
+	}
+	// Literal pattern: match exact or any sub-path.
+	return s == pattern || strings.HasPrefix(s, pattern+"/")
 }

@@ -2,7 +2,7 @@
  * @module @kb-labs/core-ipc/proxy/create-proxy-platform
  *
  * Create IPlatformAdapters with proxy adapters for cross-process execution.
- * All adapters (except logger) forward calls to parent process via IPC transport.
+ * All adapters forward calls to parent process via IPC transport.
  *
  * Returns IPlatformAdapters (strict type) — TypeScript enforces every field is present.
  * Adding a new adapter to IPlatformAdapters will break the build here until a proxy is added.
@@ -20,6 +20,7 @@ import { SQLDatabaseProxy } from './sql-database-proxy.js';
 import { DocumentDatabaseProxy } from './document-database-proxy.js';
 import { ConfigProxy } from './config-proxy.js';
 import { EventBusProxy } from './event-bus-proxy.js';
+import { LoggerProxy } from './logger-proxy.js';
 
 export interface CreateProxyPlatformOptions {
   /**
@@ -28,27 +29,12 @@ export interface CreateProxyPlatformOptions {
   transport: ITransport;
 
   /**
-   * Logger for the child process (local, NOT proxied — too chatty for IPC).
-   * Defaults to noop logger.
+   * Override logger for the child process. Defaults to a LoggerProxy that
+   * forwards calls to the parent host's real logger (pino) over IPC, so
+   * `useLogger()` inside worker-pool code surfaces in host logs with all
+   * correlation fields. Override only for tests or specialized embedders.
    */
   logger?: ILogger;
-}
-
-/**
- * Noop logger (default for child processes).
- */
-function createNoopLogger(): ILogger {
-  const noop = () => {};
-  const logger: ILogger = {
-    debug: noop,
-    info: noop,
-    warn: noop,
-    error: noop,
-    fatal: noop,
-    trace: noop,
-    child: () => logger,
-  };
-  return logger;
 }
 
 /**
@@ -64,7 +50,7 @@ export function createProxyPlatform(
   options: CreateProxyPlatformOptions
 ): IPlatformAdapters {
   const { transport } = options;
-  const logger = options.logger ?? createNoopLogger();
+  const logger = options.logger ?? new LoggerProxy(transport);
 
   // Proxy adapters — forward all calls via transport
   const cache = new CacheProxy(transport);

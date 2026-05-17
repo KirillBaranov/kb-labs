@@ -27,7 +27,7 @@
 import type {
   IStorage,
   StorageMetadata,
-} from "@kb-labs/core-platform/adapters";
+} from "@kb-labs/sdk/adapters";
 
 /**
  * Permission configuration for storage access.

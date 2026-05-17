@@ -3,7 +3,7 @@
  * Adapter manifest for Cache-backed EventBus.
  */
 
-import type { AdapterManifest } from '@kb-labs/core-platform';
+import type { AdapterManifest } from '@kb-labs/sdk/adapters';
 
 /**
  * Adapter manifest for Cache-backed EventBus.

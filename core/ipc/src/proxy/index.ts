@@ -14,4 +14,5 @@ export { SQLDatabaseProxy } from './sql-database-proxy.js';
 export { DocumentDatabaseProxy } from './document-database-proxy.js';
 export { ConfigProxy } from './config-proxy.js';
 export { EventBusProxy } from './event-bus-proxy.js';
+export { LoggerProxy, createLoggerProxy } from './logger-proxy.js';
 export { createProxyPlatform, type CreateProxyPlatformOptions } from './create-proxy-platform.js';

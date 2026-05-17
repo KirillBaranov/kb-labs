@@ -14,4 +14,5 @@ export * from './dead-code/index.js';
 export * from './workspace/scan-workspace.js';
 export * from './architecture/layering.js';
 export * from './architecture/coupling.js';
+export * from './architecture/build-order.js';
 export * from './snapshot/snapshot-store.js';

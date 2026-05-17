@@ -8,7 +8,7 @@
  * @example
  * ```typescript
  * import { UnixSocketServer } from '@kb-labs/adapters-transport';
- * import { usePlatform } from '@kb-labs/core-runtime';
+ * import { usePlatform } from '@kb-labs/sdk/adapters/infra';
  *
  * const server = new UnixSocketServer({ socketPath: '/tmp/kb-ipc.sock' });
  *

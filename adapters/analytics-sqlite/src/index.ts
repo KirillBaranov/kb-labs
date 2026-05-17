@@ -25,7 +25,7 @@ import type {
   BufferStatus,
   DlqStatus,
   DailyStats,
-} from '@kb-labs/core-platform/adapters';
+} from '@kb-labs/sdk/adapters';
 
 
 // ─── DDL ──────────────────────────────────────────────────────────────────────

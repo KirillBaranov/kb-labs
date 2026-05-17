@@ -8,7 +8,7 @@ import type {
   LogQuery,
   ILogBuffer,
   LogLevel,
-} from "@kb-labs/core-platform";
+} from "@kb-labs/sdk/adapters";
 
 /**
  * Ring buffer implementation for log storage

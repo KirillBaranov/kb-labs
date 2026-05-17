@@ -9,6 +9,7 @@ export default defineConfig({
     'command/index': 'src/command/index.ts',
     'manifest/index': 'src/manifest/index.ts',
     'adapters/index': 'src/adapters/index.ts',
+    'adapters/infra/index': 'src/adapters/infra/index.ts',
     'hooks/index': 'src/hooks/index.ts',
     'contracts/index': 'src/contracts/index.ts',
     'types/index': 'src/types/index.ts',
