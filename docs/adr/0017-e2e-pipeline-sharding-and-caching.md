@@ -187,11 +187,27 @@ multiple already-sent initial logs from the synchronous backfill.
 Server-side `activeSubscriptions` gates can't unsend bytes that have
 already left the socket.
 
-**Decision: revert Phase 1 (commit pending) to keep main green.** WS-L04
+**Decision: revert Phase 1 (commit `df51a197`) to keep main green.** WS-L04
 needs a separate, focused fix (either drain client buffer before
 unsubscribe, or change subscribe semantics to not replay history
 eagerly) before Phase 1 can land. Phase 0 (instrumentation) stays — it
 is pure observability and proved itself in surfacing this exact issue.
+
+### WS-L04 fix and Phase 1 re-enable
+
+Commit `e6505ad0` changes the logs-channel subscribe semantics to
+single-entry backfill (`tail -f`-style): only the most recent existing
+log is sent on subscribe, offset advances past all stored entries,
+polling streams strictly new logs. This eliminates the pre-buffer race
+without weakening test expectations.
+
+Run `26005817045` (post-fix, no Phase 1 cache):
+- All 8 suites passed, no retries: **services 20/0, platform 8/0,
+  plugins 8/0, gateway 14/0, workflows 43/0, studio 11/0,
+  marketplace 13/0, marketplace-registry 33/0**.
+- Confirmed WS-L04 is no longer flaky.
+
+Phase 1 cache re-enabled in commit (pending) on top of this baseline.
 
 ### Validated learning
 
