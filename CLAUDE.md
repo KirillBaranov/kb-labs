@@ -234,6 +234,7 @@ Skills live in `.claude/skills/`. Folder-based skills (`SKILL.md`) are user-invo
 | Core development | `.claude/skills/dev-core.md` | editing `core/**`, `sdk/**` |
 | Monorepo patterns | `.claude/skills/dev-monorepo.md` | cross-package work |
 | **Workflow investigation** | `.claude/skills/workflow.md` | editing `plugins/workflow/**` |
+| **Quality plugin** | `.claude/skills/quality.md` | editing `plugins/quality/**` or architecture/coupling tasks |
 | **ClickUp plugin** | `.claude/skills/clickup.md` | editing `plugins/clickup/**` or any clickup task |
 | Release pipeline | `.claude/skills/tool-release.md` | release / changelog tasks |
 | kb-devkit usage | `.claude/skills/tool-kb-devkit.md` | build / task runner questions |
