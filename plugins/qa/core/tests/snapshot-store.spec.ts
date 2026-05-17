@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { mkdirSync, rmSync, existsSync } from 'node:fs';
+import { mkdirSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { SnapshotStore } from '../src/snapshot/snapshot-store.js';
@@ -64,7 +64,7 @@ describe('SnapshotStore — run snapshots', () => {
 
   it('trims run history to maxEntries', () => {
     const store = new SnapshotStore(rootDir, 3);
-    for (let i = 0; i < 5; i++) store.saveRun(makeRun(), ['lint'], 100);
+    for (let i = 0; i < 5; i++) {store.saveRun(makeRun(), ['lint'], 100);}
     expect(store.loadRunHistory()).toHaveLength(3);
   });
 
@@ -100,7 +100,7 @@ describe('SnapshotStore — check snapshots', () => {
 
   it('trims check history', () => {
     const store = new SnapshotStore(rootDir, 2);
-    for (let i = 0; i < 4; i++) store.saveCheck(makeCheck(), 100);
+    for (let i = 0; i < 4; i++) {store.saveCheck(makeCheck(), 100);}
     expect(store.loadCheckHistory()).toHaveLength(2);
   });
 });

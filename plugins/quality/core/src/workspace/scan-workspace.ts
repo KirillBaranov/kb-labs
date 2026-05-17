@@ -41,7 +41,7 @@ export function scanWorkspace(
 ): WorkspacePackage[] {
   const packages: WorkspacePackage[] = [];
 
-  if (!fs.existsSync(rootDir)) return packages;
+  if (!fs.existsSync(rootDir)) {return packages;}
 
   // Top-level dirs that can contain packages
   const topDirs = ['core', 'sdk', 'shared', 'cli', 'adapters', 'studio', 'infra'];
@@ -49,15 +49,15 @@ export function scanWorkspace(
   const pluginDirs = ['plugins'];
 
   const collect = (dir: string, maxDepth: number) => {
-    if (!fs.existsSync(dir)) return;
+    if (!fs.existsSync(dir)) {return;}
     const pkgJson = path.join(dir, 'package.json');
     if (fs.existsSync(pkgJson)) {
       tryAddPackage(pkgJson);
       return; // don't descend further if this is a package
     }
-    if (maxDepth <= 0) return;
+    if (maxDepth <= 0) {return;}
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      if (!entry.isDirectory() || entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
+      if (!entry.isDirectory() || entry.name === 'node_modules' || entry.name.startsWith('.')) {continue;}
       collect(path.join(dir, entry.name), maxDepth - 1);
     }
   };
@@ -69,7 +69,7 @@ export function scanWorkspace(
         dependencies?: Record<string, string>;
         devDependencies?: Record<string, string>;
       };
-      if (!raw.name) return;
+      if (!raw.name) {return;}
       const dir = path.dirname(pkgJsonPath);
       packages.push({
         name: raw.name,

@@ -28,7 +28,7 @@ export class DevkitAdapter {
   }
 
   async run(tasks: string[]): Promise<DevkitRunOutput> {
-    if (tasks.length === 0) throw new Error('DevkitAdapter.run: tasks must not be empty');
+    if (tasks.length === 0) {throw new Error('DevkitAdapter.run: tasks must not be empty');}
     return this.invoke<DevkitRunOutput>(['run', ...tasks]);
   }
 

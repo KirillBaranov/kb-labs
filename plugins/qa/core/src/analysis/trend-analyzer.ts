@@ -16,7 +16,7 @@ function extractFailed(snap: RunSnapshot, task: string): string[] {
 function collectTasks(snapshots: RunSnapshot[]): string[] {
   const s = new Set<string>();
   for (const snap of snapshots) {
-    for (const r of snap.raw.results) s.add(r.Task);
+    for (const r of snap.raw.results) {s.add(r.Task);}
   }
   return [...s];
 }

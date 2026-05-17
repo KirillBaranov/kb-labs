@@ -22,7 +22,7 @@ export function resolveDevkitBin(rootDir: string, configPath?: string): string {
   }
 
   const local = join(rootDir, 'tools', 'kb-devkit', 'kb-devkit');
-  if (existsSync(local)) return local;
+  if (existsSync(local)) {return local;}
 
   return 'kb-devkit';
 }

@@ -23,7 +23,7 @@ import type {
 
 function gradeFromScore(score: number): HealthScore['grade'] {
   for (const [g, { min }] of Object.entries(HEALTH_GRADES) as [HealthScore['grade'], { min: number }][]) {
-    if (score >= min) return g;
+    if (score >= min) {return g;}
   }
   return 'F';
 }
@@ -63,14 +63,14 @@ function scoreTypeScript(types: TypeAnalysisResult): DimensionScore {
 
   const totalAny = types.packages.reduce((s, p) => s + p.anyCount, 0);
   const anyPenalty = Math.min(totalAny * 0.5, 50);
-  if (totalAny > 0) details.push(`${totalAny} \`any\` usage(s)`);
+  if (totalAny > 0) {details.push(`${totalAny} \`any\` usage(s)`);}
 
   const totalIgnore = types.packages.reduce((s, p) => s + p.tsIgnoreCount, 0);
   const ignorePenalty = Math.min(totalIgnore * 2, 30);
-  if (totalIgnore > 0) details.push(`${totalIgnore} @ts-ignore(s)`);
+  if (totalIgnore > 0) {details.push(`${totalIgnore} @ts-ignore(s)`);}
 
   const errorPenalty = Math.min(types.totalErrors * 3, 20);
-  if (types.totalErrors > 0) details.push(`${types.totalErrors} type error(s)`);
+  if (types.totalErrors > 0) {details.push(`${types.totalErrors} type error(s)`);}
 
   const score = clamp(100 - anyPenalty - ignorePenalty - errorPenalty);
   return { score, grade: gradeFromScore(score), details };
@@ -80,10 +80,10 @@ function scoreDeadCode(knip: KnipReport): DimensionScore {
   const details: string[] = [];
 
   const filePenalty = Math.min(knip.unusedFiles.length * 2, 50);
-  if (knip.unusedFiles.length > 0) details.push(`${knip.unusedFiles.length} unused file(s)`);
+  if (knip.unusedFiles.length > 0) {details.push(`${knip.unusedFiles.length} unused file(s)`);}
 
   const exportPenalty = Math.min(knip.unusedExports.length * 0.5, 30);
-  if (knip.unusedExports.length > 0) details.push(`${knip.unusedExports.length} unused export(s)`);
+  if (knip.unusedExports.length > 0) {details.push(`${knip.unusedExports.length} unused export(s)`);}
 
   const score = clamp(100 - filePenalty - exportPenalty);
   return { score, grade: gradeFromScore(score), details };
@@ -93,10 +93,10 @@ function scoreDepHygiene(knip: KnipReport): DimensionScore {
   const details: string[] = [];
 
   const unusedPenalty = Math.min(knip.unusedDependencies.length * 5, 50);
-  if (knip.unusedDependencies.length > 0) details.push(`${knip.unusedDependencies.length} unused dep(s)`);
+  if (knip.unusedDependencies.length > 0) {details.push(`${knip.unusedDependencies.length} unused dep(s)`);}
 
   const unlistedPenalty = Math.min(knip.unlistedDependencies.length * 10, 40);
-  if (knip.unlistedDependencies.length > 0) details.push(`${knip.unlistedDependencies.length} unlisted dep(s)`);
+  if (knip.unlistedDependencies.length > 0) {details.push(`${knip.unlistedDependencies.length} unlisted dep(s)`);}
 
   const score = clamp(100 - unusedPenalty - unlistedPenalty);
   return { score, grade: gradeFromScore(score), details };

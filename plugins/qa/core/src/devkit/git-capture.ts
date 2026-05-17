@@ -13,7 +13,7 @@ export async function captureGit(shell: ShellAPI, cwd: string): Promise<Snapshot
       shell.exec('git', ['log', '-1', '--format=%s'], { cwd, throwOnError: false }),
     ]);
 
-    if (!commitRes.ok) return undefined;
+    if (!commitRes.ok) {return undefined;}
 
     return {
       commit:  commitRes.stdout.trim(),
