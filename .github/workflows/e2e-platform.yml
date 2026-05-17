@@ -68,8 +68,15 @@ jobs:
 
       - name: Build Go tools for linux (kb-devkit, kb-dev)
         run: |
-          (cd tools/kb-devkit && CGO_ENABLED=0 go build -o kb-devkit .)
-          (cd tools/kb-dev    && CGO_ENABLED=0 go build -o kb-dev .)
+          # The macOS Mach-O binary is committed in tools/*/kb-* for local
+          # dev; on CI we always rebuild for Linux and ensure +x is set.
+          # actions/cache restore on .kb/devkit/ has been observed to
+          # interact with these binaries (root cause TBD) — explicit chmod
+          # is a small, safe guard.
+          (cd tools/kb-devkit && CGO_ENABLED=0 go build -o kb-devkit . && chmod +x kb-devkit)
+          (cd tools/kb-dev    && CGO_ENABLED=0 go build -o kb-dev    . && chmod +x kb-dev)
+          ls -la tools/kb-devkit/kb-devkit tools/kb-dev/kb-dev
+          file tools/kb-devkit/kb-devkit tools/kb-dev/kb-dev
 
       # ── Install + build monorepo ─────────────────────────────────────────
 
@@ -202,7 +209,12 @@ jobs:
       # Domains: services, platform, gateway, marketplace, workflows, studio, plugins
 
       - name: Run e2e tests
-        run: ./tools/kb-devkit/kb-devkit run e2e
+        run: |
+          # Diagnostic + defensive chmod — see "Build Go tools" comment.
+          ls -la tools/kb-devkit/kb-devkit
+          file tools/kb-devkit/kb-devkit
+          chmod +x tools/kb-devkit/kb-devkit tools/kb-dev/kb-dev || true
+          ./tools/kb-devkit/kb-devkit run e2e
         env:
           GATEWAY_URL:     http://localhost:4000
           REST_URL:        http://localhost:5050
