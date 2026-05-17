@@ -173,9 +173,18 @@ export async function mountWebSocketChannels(
           const connectInput: WSInput = { event: 'connect', sender };
           await executeChannelHandler(connectInput);
         } catch (error) {
+          const errMessage = error instanceof Error ? error.message : String(error);
+          const errStack = error instanceof Error ? error.stack : undefined;
           server.log.error(
-            { err: error, plugin: manifest.id, channel: channel.path, connectionId },
-            `[ws] onConnect failed — plugin "${manifest.id}", channel "${channel.path}"`
+            {
+              err: error,
+              errorMessage: errMessage,
+              errorStack: errStack,
+              plugin: manifest.id,
+              channel: channel.path,
+              connectionId,
+            },
+            `[ws] onConnect failed — plugin "${manifest.id}", channel "${channel.path}": ${errMessage}`
           );
           ws.close(1011, 'Handler error');
           connectionRegistry.unregister(connectionId);
