@@ -56,6 +56,14 @@ workspace:
       language: typescript
       preset: node-app
 
+    # Adapter packages — node-lib + SDK-only dependency boundary.
+    # Must come before ts-lib so adapters/* doesn't match ts-lib first.
+    adapter:
+      match:
+        - "adapters/*"
+      language: typescript
+      preset: adapter-lib
+
     # TypeScript libraries — full ruleset
     ts-lib:
       match:
@@ -64,7 +72,6 @@ workspace:
         - "cli/*"
         - "shared/*"
         - "plugins/*/*"
-        - "adapters/*"
         - "infra/devkit"
         - "studio/*"
         - "templates/*"
@@ -193,6 +200,37 @@ presets:
       check_links: true
       check_circular: true
       check_version_consistency: true
+
+  # Adapter packages — extends node-lib with an SDK-only dependency boundary.
+  # An adapter author may import only from @kb-labs/sdk (and its sub-paths);
+  # all platform internals (core-*, cli-*, shared-*, plugin-*, etc.) are
+  # surfaced through SDK barrels, not pulled directly.
+  adapter-lib:
+    extends: node-lib
+    dependencies:
+      check_links: true
+      check_circular: true
+      check_version_consistency: true
+      allowed_kb_deps:
+        - "@kb-labs/sdk"
+        - "@kb-labs/sdk/*"
+        - "@kb-labs/devkit"
+        - "@kb-labs/gateway-auth"   # environment adapters sign JWTs via gateway-auth
+        - "@kb-labs/adapters-sqlite" # low-level DB driver; higher-level adapters may build on it
+      forbidden_kb_deps:
+        - "@kb-labs/core-*"
+        - "@kb-labs/cli-*"
+        - "@kb-labs/shared-*"
+        - "@kb-labs/plugin-*"
+        - "@kb-labs/workflow-*"
+        - "@kb-labs/rest-api-*"
+        - "@kb-labs/studio-*"
+        - "@kb-labs/gateway-*"
+        - "@kb-labs/host-agent-*"
+        - "@kb-labs/state-*"
+        - "@kb-labs/tenant"
+        - "@kb-labs/perm-*"
+        - "@kb-labs/adapters-*"
 
   node-app:
     language: typescript

@@ -3,7 +3,7 @@
  * Type definitions for Cache-backed EventBus adapter.
  */
 
-import type { ICache } from '@kb-labs/core-platform';
+import type { ICache } from '@kb-labs/sdk/adapters';
 
 /**
  * Dependencies for Cache-backed EventBus adapter.

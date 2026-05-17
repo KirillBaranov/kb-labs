@@ -3,7 +3,7 @@
  * Adapter manifest for filesystem storage.
  */
 
-import type { AdapterManifest } from "@kb-labs/core-platform";
+import type { AdapterManifest } from "@kb-labs/sdk/adapters";
 
 /**
  * Adapter manifest for filesystem storage.

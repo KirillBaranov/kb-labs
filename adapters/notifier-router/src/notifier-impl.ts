@@ -13,8 +13,8 @@ import type {
   NotificationFilter,
   NotifierDeliveryEvent,
   Unsubscribe,
-} from '@kb-labs/core-platform';
-import type { NotifierRoutingRule } from '@kb-labs/core-runtime';
+} from '@kb-labs/sdk/adapters';
+import type { NotifierRoutingRule } from '@kb-labs/sdk/adapters/infra';
 
 export const NOTIFICATION_TOPIC = 'notification.emitted';
 export const DELIVERY_SUCCESS_TOPIC = 'notifier-delivery.success';

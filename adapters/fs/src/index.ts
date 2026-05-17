@@ -23,7 +23,7 @@ import fg from "fast-glob";
 import type {
   IStorage,
   StorageMetadata,
-} from "@kb-labs/core-platform/adapters";
+} from "@kb-labs/sdk/adapters";
 
 // Re-export manifest
 export { manifest } from "./manifest.js";

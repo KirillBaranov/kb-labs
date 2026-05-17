@@ -4,7 +4,7 @@
  */
 
 import OpenAI from "openai";
-import type { IEmbeddings } from "@kb-labs/core-platform";
+import type { IEmbeddings } from "@kb-labs/sdk/adapters";
 
 /**
  * Supported OpenAI embedding models and their dimensions.

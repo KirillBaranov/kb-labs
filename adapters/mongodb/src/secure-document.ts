@@ -30,7 +30,7 @@ import type {
   DocumentFilter,
   DocumentUpdate,
   FindOptions,
-} from "@kb-labs/core-platform/adapters";
+} from "@kb-labs/sdk/adapters";
 
 /**
  * Permission configuration for document database access.

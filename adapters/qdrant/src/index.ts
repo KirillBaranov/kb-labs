@@ -32,7 +32,7 @@ import type {
   VectorRecord,
   VectorSearchResult,
   VectorFilter,
-} from "@kb-labs/core-platform";
+} from "@kb-labs/sdk/adapters";
 
 // Re-export manifest
 export { manifest } from "./manifest.js";

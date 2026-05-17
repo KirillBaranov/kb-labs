@@ -3,7 +3,7 @@
  * Voyage AI implementation of IEmbeddings interface.
  */
 
-import type { IEmbeddings } from "@kb-labs/core-platform";
+import type { IEmbeddings } from "@kb-labs/sdk/adapters";
 
 export const EMBEDDING_MODELS = {
   "voyage-3": 1024,

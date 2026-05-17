@@ -142,6 +142,66 @@ export type {
 export type { IDisposable } from '@kb-labs/core-platform/adapters';
 export { isDisposable } from '@kb-labs/core-platform/adapters';
 
+// Notifier
+export type {
+  NotificationSeverity,
+  NotificationAudience,
+  NotificationCapability,
+  NotificationEvent,
+  NotificationFilter,
+  INotifierChannel,
+  INotifier,
+  NotifierDeliveryEvent,
+} from '@kb-labs/core-platform/adapters';
+
+// Workspace provider
+export type {
+  IWorkspaceProvider,
+  WorkspaceStatus,
+  WorkspaceMount,
+  MaterializeWorkspaceRequest,
+  WorkspaceDescriptor,
+  WorkspaceProgressEvent,
+  AttachWorkspaceRequest,
+  WorkspaceAttachment,
+  WorkspaceStatusResult,
+  WorkspaceProviderCapabilities,
+} from '@kb-labs/core-platform/adapters';
+
+// Environment provider
+export type {
+  IEnvironmentProvider,
+  EnvironmentStatus,
+  EnvironmentResources,
+  EnvironmentLease,
+  EnvironmentEndpoint,
+  CreateEnvironmentRequest,
+  ReserveEnvironmentRequest,
+  ReservedEnvironment,
+  StartEnvironmentRequest,
+  EnvironmentDescriptor,
+  EnvironmentStatusResult,
+  EnvironmentProviderCapabilities,
+} from '@kb-labs/core-platform/adapters';
+
+// Snapshot provider
+export type {
+  ISnapshotProvider,
+  ISnapshotManager,
+  SnapshotStatus,
+  CaptureSnapshotRequest,
+  SnapshotDescriptor,
+  RestoreSnapshotRequest,
+  RestoreSnapshotResult,
+  SnapshotStatusResult,
+  SnapshotGarbageCollectRequest,
+  SnapshotGarbageCollectResult,
+  SnapshotProviderCapabilities,
+} from '@kb-labs/core-platform/adapters';
+
+// Noop in-memory implementations (useful for tests and zero-config bootstrap)
+export { MemoryCache } from '@kb-labs/core-platform/noop';
+
 import type { AdapterManifest } from '@kb-labs/core-platform/adapters';
 
 /**

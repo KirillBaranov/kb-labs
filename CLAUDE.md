@@ -248,6 +248,7 @@ Skills live in `.claude/skills/`. Folder-based skills (`SKILL.md`) are user-invo
 | Config mode switching | `.claude/skills/config-mode.md` | switching dev/prod config, `.kb/kb.config.json` |
 | Site voice | `.claude/skills/kb-labs-site-voice.md` | editing `sites/**` |
 | Aeza proxy | `.claude/skills/aeza-proxy.md` | proxy / VPS tasks |
+| **Marketplace rehash** | `.claude/skills/marketplace-rehash.md` | stale lock hashes, NoOp/MockLLM fallback, `.kb/marketplace.lock`, `adapters/**` |
 
 <!-- BEGIN: KB Labs v1.5.0 (managed by kb-create) - DO NOT EDIT -->
 ## KB Labs Platform

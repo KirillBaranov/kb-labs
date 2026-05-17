@@ -14,6 +14,7 @@ import type {
 } from "@kb-labs/commit-contracts";
 import type { ApplyOptions } from "../types";
 import { getGitStatus, getAllChangedFiles } from "../analyzer/git-status";
+import { useLogger } from "@kb-labs/sdk";
 
 const GIT_HOOK_NAMES = [
   "pre-commit",
@@ -64,10 +65,21 @@ export async function applyCommitPlan(
 ): Promise<ApplyResult> {
   const appliedCommits: ApplyResult["appliedCommits"] = [];
   const errors: string[] = [];
+  const logger = useLogger();
+  const planFileCount = plan.commits.reduce((sum, c) => sum + c.files.length, 0);
+
+  await logger.info("apply: start", {
+    scope: options?.scope,
+    cwd,
+    commits: plan.commits.length,
+    planFiles: planFileCount,
+    force: !!options?.force,
+  });
 
   // 0. Validate plan integrity before touching git state.
   const integrityErrors = validatePlanIntegrity(plan);
   if (integrityErrors.length > 0) {
+    await logger.warn("apply: plan integrity failed", { errors: integrityErrors });
     return {
       success: false,
       appliedCommits: [],
@@ -307,9 +319,16 @@ export function formatCommitMessage(
 async function checkStaleness(
   cwd: string,
   plan: CommitPlan,
-  _scope?: string,
+  scope?: string,
 ): Promise<{ isStale: boolean; reason: string }> {
+  const logger = useLogger();
   const planFiles = new Set(plan.commits.flatMap((c) => c.files));
+
+  await logger.debug("checkStaleness: start", {
+    scope,
+    cwd,
+    planFiles: [...planFiles],
+  });
 
   // If no files in plan, nothing to check
   if (planFiles.size === 0) {
@@ -326,9 +345,24 @@ async function checkStaleness(
     const currentStatus = await getGitStatus(repoPath);
     const currentFiles = new Set(getAllChangedFiles(currentStatus));
 
+    await logger.debug("checkStaleness: repo status", {
+      repoPath,
+      staged: currentStatus.staged,
+      unstaged: currentStatus.unstaged,
+      untracked: currentStatus.untracked,
+      expected: fileInfos.map((f) => f.relativePath),
+    });
+
     // Check that all expected files are still changed
     for (const { relativePath, originalPath } of fileInfos) {
       if (!currentFiles.has(relativePath)) {
+        await logger.warn("checkStaleness: file not in current changes", {
+          scope,
+          repoPath,
+          originalPath,
+          relativePath,
+          currentFiles: [...currentFiles],
+        });
         return {
           isStale: true,
           reason: `File no longer has changes: ${originalPath}. Regenerate plan or use --force.`,

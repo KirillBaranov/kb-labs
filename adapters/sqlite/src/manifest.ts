@@ -3,7 +3,7 @@
  * Adapter manifest for SQLite database.
  */
 
-import type { AdapterManifest } from "@kb-labs/core-platform";
+import type { AdapterManifest } from "@kb-labs/sdk/adapters";
 
 /**
  * Adapter manifest for SQLite database.

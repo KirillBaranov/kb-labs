@@ -3,7 +3,7 @@
  */
 
 import * as React from 'react';
-import { useData, UICard, UITable, UITag, UISpin, UIAlert } from '@kb-labs/sdk/studio';
+import { useData, UICard, UITable, UITag, UISkeleton, UIAlert } from '@kb-labs/sdk/studio';
 import type { UITableColumn } from '@kb-labs/sdk/studio';
 import type {
   DependenciesResponse,
@@ -19,11 +19,7 @@ export function DependenciesTab() {
   );
 
   if (isLoading) {
-    return (
-      <div style={{ textAlign: 'center', padding: '40px' }}>
-        <UISpin size="large" />
-      </div>
-    );
+    return <UISkeleton active lines={6} style={{ padding: '24px 0' }} />;
   }
 
   if (isError) {

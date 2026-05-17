@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { CacheEventBusAdapter, createAdapter } from './index.js';
-import type { ICache } from '@kb-labs/core-platform';
+import type { ICache } from '@kb-labs/sdk/adapters';
 
 /**
  * Mock ICache implementation for testing.

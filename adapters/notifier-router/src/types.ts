@@ -2,9 +2,9 @@
  * @module @kb-labs/notifier-router/types
  */
 
-import type { IEventBus, ILogger, INotifierChannel } from '@kb-labs/core-platform';
-import type { IResourceBroker } from '@kb-labs/core-resource-broker';
-import type { NotifierAdapterOptions } from '@kb-labs/core-runtime';
+import type { IEventBus, ILogger, INotifierChannel } from '@kb-labs/sdk/adapters';
+import type { IResourceBroker } from '@kb-labs/sdk/adapters/infra';
+import type { NotifierAdapterOptions } from '@kb-labs/sdk/adapters/infra';
 
 export interface NotifierRouterDeps {
   eventBus: IEventBus;

@@ -54,8 +54,8 @@ import type {
   LogRecord,
   LogQuery,
   ISQLDatabase,
-} from "@kb-labs/core-platform/adapters";
-import { generateLogId } from "@kb-labs/core-platform/adapters";
+} from "@kb-labs/sdk/adapters";
+import { generateLogId } from "@kb-labs/sdk/adapters";
 
 /** Default retention: 7 days for warn/error/fatal */
 const DEFAULT_MAX_AGE = 7 * 24 * 60 * 60 * 1000;

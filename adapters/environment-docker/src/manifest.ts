@@ -3,7 +3,7 @@
  * Adapter manifest for Docker-based environment provider.
  */
 
-import type { AdapterManifest } from '@kb-labs/core-platform';
+import type { AdapterManifest } from '@kb-labs/sdk/adapters';
 
 /**
  * Adapter manifest for Docker environment provider.

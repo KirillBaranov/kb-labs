@@ -33,8 +33,8 @@
     "mongodb": "^6.12.0"
   },
   "devDependencies": {
-    "@kb-labs/core-platform": "workspace:*",
     "@kb-labs/devkit": "workspace:*",
+    "@kb-labs/sdk": "workspace:*",
     "@types/node": "^24.3.3",
     "eslint": "^9",
     "rimraf": "^6.0.1",
@@ -50,7 +50,7 @@
     "manifest": "./dist/manifest.js"
   },
   "peerDependencies": {
-    "@kb-labs/core-platform": "workspace:^"
+    "@kb-labs/sdk": "workspace:^"
   },
   "sideEffects": false
 }

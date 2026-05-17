@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/notifier-router",
-  "description": "Notification router — subscribes to EventBus and dispatches to INotifierChannel implementations",
+  "description": "Notification router \u2014 subscribes to EventBus and dispatches to INotifierChannel implementations",
   "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -26,14 +26,11 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@kb-labs/adapters-telegram": "workspace:*",
     "ulid": "^2.3.0"
   },
   "devDependencies": {
-    "@kb-labs/core-platform": "workspace:*",
-    "@kb-labs/core-resource-broker": "workspace:*",
-    "@kb-labs/core-runtime": "workspace:*",
     "@kb-labs/devkit": "workspace:*",
+    "@kb-labs/sdk": "workspace:*",
     "@types/node": "^24.3.3",
     "eslint": "^9",
     "rimraf": "^6.0.1",
@@ -42,9 +39,7 @@
     "vitest": "^3.2.4"
   },
   "peerDependencies": {
-    "@kb-labs/core-platform": "workspace:^",
-    "@kb-labs/core-resource-broker": "workspace:^",
-    "@kb-labs/core-runtime": "workspace:^"
+    "@kb-labs/sdk": "workspace:^"
   },
   "engines": {
     "node": ">=20.0.0",

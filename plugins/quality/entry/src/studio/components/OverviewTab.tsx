@@ -8,7 +8,7 @@ import {
   UIProgress,
   UITag,
   UIAlert,
-  UISpin,
+  UISkeleton,
   UISpace,
   UIIcon,
 } from '@kb-labs/sdk/studio';
@@ -54,7 +54,7 @@ export function OverviewTab() {
   const { data: historyData, isLoading: historyLoading } = useData<HistoryResponse>('/v1/plugins/quality/history');
 
   if (statsLoading || healthLoading || historyLoading) {
-    return <div style={{ textAlign: 'center', padding: 40 }}><UISpin size="large" /></div>;
+    return <UISkeleton active lines={8} style={{ padding: '24px 0' }} />;
   }
 
   const delta = historyData?.delta;

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NotifierImpl, NOTIFICATION_TOPIC, DELIVERY_SUCCESS_TOPIC, DELIVERY_FAILED_TOPIC } from './notifier-impl.js';
-import type { IEventBus, ILogger, INotifierChannel, NotificationEvent } from '@kb-labs/core-platform';
+import type { IEventBus, ILogger, INotifierChannel, NotificationEvent } from '@kb-labs/sdk/adapters';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 

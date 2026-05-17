@@ -444,6 +444,1346 @@
       },
       "cachedAt": "2026-05-16T11:54:11.953Z",
       "integrity": "sha256-7eHE5Xe4/t/tXqI81FTraH6944z+LrJ5RT6bqCDQSQg="
+    },
+    "@kb-labs/quality-entry": {
+      "manifestType": "plugin",
+      "manifest": {
+        "schema": "kb.plugin/3",
+        "id": "@kb-labs/quality",
+        "version": "0.1.0",
+        "configSection": "quality",
+        "display": {
+          "name": "Quality",
+          "description": "Code quality, architecture analysis, and trend tracking",
+          "tags": [
+            "quality",
+            "architecture",
+            "coupling",
+            "monorepo"
+          ]
+        },
+        "platform": {
+          "requires": [
+            "storage",
+            "cache"
+          ],
+          "optional": [
+            "analytics",
+            "logger"
+          ]
+        },
+        "cli": {
+          "groupMeta": [
+            {
+              "path": "quality",
+              "describe": "Code quality, architecture analysis, and trend tracking."
+            }
+          ],
+          "commands": [
+            {
+              "path": "quality stats",
+              "category": "Overview",
+              "describe": "Monorepo statistics",
+              "handler": "./cli/commands/stats.js#default",
+              "flags": [
+                {
+                  "name": "json",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Output JSON format"
+                },
+                {
+                  "name": "md",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Output Markdown table"
+                },
+                {
+                  "name": "health",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Show health score"
+                },
+                {
+                  "name": "refresh",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Bypass cache and recalculate"
+                }
+              ],
+              "examples": [
+                "kb quality stats",
+                "kb quality stats --json"
+              ],
+              "permissions": {
+                "fs": {
+                  "read": [
+                    ".kb/**",
+                    "**"
+                  ],
+                  "write": [
+                    ".kb/**",
+                    "**"
+                  ]
+                },
+                "env": {
+                  "read": [
+                    "HOME",
+                    "USER",
+                    "PATH",
+                    "TMPDIR",
+                    "NODE_ENV",
+                    "KB_*"
+                  ]
+                },
+                "shell": {
+                  "allow": [
+                    "pnpm",
+                    "git"
+                  ]
+                },
+                "platform": {
+                  "cache": [
+                    "quality:"
+                  ],
+                  "analytics": true
+                },
+                "quotas": {
+                  "timeoutMs": 300000,
+                  "memoryMb": 1024
+                }
+              }
+            },
+            {
+              "path": "quality health",
+              "category": "Overview",
+              "describe": "Multidimensional health score (architecture, TypeScript, dead code, deps)",
+              "handler": "./cli/commands/health.js#default",
+              "flags": [
+                {
+                  "name": "json",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Output JSON format"
+                },
+                {
+                  "name": "package",
+                  "type": "string",
+                  "alias": "p",
+                  "description": "Check health for specific package"
+                },
+                {
+                  "name": "detailed",
+                  "type": "boolean",
+                  "alias": "d",
+                  "default": false,
+                  "description": "Show detailed breakdown"
+                },
+                {
+                  "name": "refresh",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Bypass cache and recompute"
+                }
+              ],
+              "examples": [
+                "kb quality health",
+                "kb quality health --json",
+                "kb quality health --detailed"
+              ],
+              "permissions": {
+                "fs": {
+                  "read": [
+                    ".kb/**",
+                    "**"
+                  ],
+                  "write": [
+                    ".kb/**",
+                    "**"
+                  ]
+                },
+                "env": {
+                  "read": [
+                    "HOME",
+                    "USER",
+                    "PATH",
+                    "TMPDIR",
+                    "NODE_ENV",
+                    "KB_*"
+                  ]
+                },
+                "shell": {
+                  "allow": [
+                    "pnpm",
+                    "git"
+                  ]
+                },
+                "platform": {
+                  "cache": [
+                    "quality:"
+                  ],
+                  "analytics": true
+                },
+                "quotas": {
+                  "timeoutMs": 300000,
+                  "memoryMb": 1024
+                }
+              }
+            },
+            {
+              "path": "quality snapshot",
+              "category": "Overview",
+              "describe": "Collect all metrics and save a snapshot for trend tracking",
+              "handler": "./cli/commands/snapshot.js#default",
+              "flags": [
+                {
+                  "name": "json",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Output JSON format"
+                }
+              ],
+              "examples": [
+                "kb quality snapshot",
+                "kb quality snapshot --json"
+              ],
+              "permissions": {
+                "fs": {
+                  "read": [
+                    ".kb/**",
+                    "**"
+                  ],
+                  "write": [
+                    ".kb/**",
+                    "**"
+                  ]
+                },
+                "env": {
+                  "read": [
+                    "HOME",
+                    "USER",
+                    "PATH",
+                    "TMPDIR",
+                    "NODE_ENV",
+                    "KB_*"
+                  ]
+                },
+                "shell": {
+                  "allow": [
+                    "pnpm",
+                    "git"
+                  ]
+                },
+                "platform": {
+                  "cache": [
+                    "quality:"
+                  ],
+                  "analytics": true
+                },
+                "quotas": {
+                  "timeoutMs": 300000,
+                  "memoryMb": 1024
+                }
+              }
+            },
+            {
+              "path": "quality history",
+              "category": "Overview",
+              "describe": "Show quality snapshot history and delta trends",
+              "handler": "./cli/commands/history.js#default",
+              "flags": [
+                {
+                  "name": "json",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Output JSON format"
+                },
+                {
+                  "name": "limit",
+                  "type": "number",
+                  "default": 10,
+                  "description": "Number of entries to show"
+                }
+              ],
+              "examples": [
+                "kb quality history",
+                "kb quality history --json",
+                "kb quality history --limit 20"
+              ],
+              "permissions": {
+                "fs": {
+                  "read": [
+                    ".kb/**",
+                    "**"
+                  ],
+                  "write": [
+                    ".kb/**",
+                    "**"
+                  ]
+                },
+                "env": {
+                  "read": [
+                    "HOME",
+                    "USER",
+                    "PATH",
+                    "TMPDIR",
+                    "NODE_ENV",
+                    "KB_*"
+                  ]
+                },
+                "shell": {
+                  "allow": [
+                    "pnpm",
+                    "git"
+                  ]
+                },
+                "platform": {
+                  "cache": [
+                    "quality:"
+                  ],
+                  "analytics": true
+                },
+                "quotas": {
+                  "timeoutMs": 300000,
+                  "memoryMb": 1024
+                }
+              }
+            },
+            {
+              "path": "quality context",
+              "category": "Agent",
+              "describe": "Package context for agents: layer, dependents, dependencies (fast, stateless)",
+              "handler": "./cli/commands/context.js#default",
+              "flags": [
+                {
+                  "name": "package",
+                  "type": "string",
+                  "alias": "p",
+                  "description": "Package name to get context for"
+                },
+                {
+                  "name": "json",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Output JSON format"
+                }
+              ],
+              "examples": [
+                "kb quality context --package @kb-labs/sdk",
+                "kb quality context --package @kb-labs/sdk --json",
+                "kb quality context --json"
+              ],
+              "permissions": {
+                "fs": {
+                  "read": [
+                    ".kb/**",
+                    "**"
+                  ],
+                  "write": [
+                    ".kb/**",
+                    "**"
+                  ]
+                },
+                "env": {
+                  "read": [
+                    "HOME",
+                    "USER",
+                    "PATH",
+                    "TMPDIR",
+                    "NODE_ENV",
+                    "KB_*"
+                  ]
+                },
+                "shell": {
+                  "allow": [
+                    "pnpm",
+                    "git"
+                  ]
+                },
+                "platform": {
+                  "cache": [
+                    "quality:"
+                  ],
+                  "analytics": true
+                },
+                "quotas": {
+                  "timeoutMs": 300000,
+                  "memoryMb": 1024
+                }
+              }
+            },
+            {
+              "path": "quality gate",
+              "category": "Agent",
+              "describe": "Architecture gate: fail if new layering violations introduced",
+              "handler": "./cli/commands/gate.js#default",
+              "flags": [
+                {
+                  "name": "json",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Output JSON format"
+                },
+                {
+                  "name": "strict",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Fail even on pre-existing violations (not just new ones)"
+                }
+              ],
+              "examples": [
+                "kb quality gate",
+                "kb quality gate --json",
+                "kb quality gate --strict"
+              ],
+              "permissions": {
+                "fs": {
+                  "read": [
+                    ".kb/**",
+                    "**"
+                  ],
+                  "write": [
+                    ".kb/**",
+                    "**"
+                  ]
+                },
+                "env": {
+                  "read": [
+                    "HOME",
+                    "USER",
+                    "PATH",
+                    "TMPDIR",
+                    "NODE_ENV",
+                    "KB_*"
+                  ]
+                },
+                "shell": {
+                  "allow": [
+                    "pnpm",
+                    "git"
+                  ]
+                },
+                "platform": {
+                  "cache": [
+                    "quality:"
+                  ],
+                  "analytics": true
+                },
+                "quotas": {
+                  "timeoutMs": 300000,
+                  "memoryMb": 1024
+                }
+              }
+            },
+            {
+              "path": "quality check-layers",
+              "category": "Architecture",
+              "describe": "Detect layering violations (lower layer importing higher layer)",
+              "handler": "./cli/commands/check-layers.js#default",
+              "flags": [
+                {
+                  "name": "json",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Output JSON format"
+                },
+                {
+                  "name": "package",
+                  "type": "string",
+                  "alias": "p",
+                  "description": "Filter violations by package name"
+                }
+              ],
+              "examples": [
+                "kb quality check-layers",
+                "kb quality check-layers --json",
+                "kb quality check-layers --package @kb-labs/plugins-qa"
+              ],
+              "permissions": {
+                "fs": {
+                  "read": [
+                    ".kb/**",
+                    "**"
+                  ],
+                  "write": [
+                    ".kb/**",
+                    "**"
+                  ]
+                },
+                "env": {
+                  "read": [
+                    "HOME",
+                    "USER",
+                    "PATH",
+                    "TMPDIR",
+                    "NODE_ENV",
+                    "KB_*"
+                  ]
+                },
+                "shell": {
+                  "allow": [
+                    "pnpm",
+                    "git"
+                  ]
+                },
+                "platform": {
+                  "cache": [
+                    "quality:"
+                  ],
+                  "analytics": true
+                },
+                "quotas": {
+                  "timeoutMs": 300000,
+                  "memoryMb": 1024
+                }
+              }
+            },
+            {
+              "path": "quality coupling",
+              "category": "Architecture",
+              "describe": "Show coupling metrics per package (Ca/Ce/instability)",
+              "handler": "./cli/commands/coupling.js#default",
+              "flags": [
+                {
+                  "name": "json",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Output JSON format"
+                },
+                {
+                  "name": "sort",
+                  "type": "string",
+                  "default": "instability",
+                  "description": "Sort by: instability | coupled"
+                },
+                {
+                  "name": "top",
+                  "type": "number",
+                  "default": 10,
+                  "description": "Show top N packages"
+                }
+              ],
+              "examples": [
+                "kb quality coupling",
+                "kb quality coupling --json",
+                "kb quality coupling --sort coupled --top 20"
+              ],
+              "permissions": {
+                "fs": {
+                  "read": [
+                    ".kb/**",
+                    "**"
+                  ],
+                  "write": [
+                    ".kb/**",
+                    "**"
+                  ]
+                },
+                "env": {
+                  "read": [
+                    "HOME",
+                    "USER",
+                    "PATH",
+                    "TMPDIR",
+                    "NODE_ENV",
+                    "KB_*"
+                  ]
+                },
+                "shell": {
+                  "allow": [
+                    "pnpm",
+                    "git"
+                  ]
+                },
+                "platform": {
+                  "cache": [
+                    "quality:"
+                  ],
+                  "analytics": true
+                },
+                "quotas": {
+                  "timeoutMs": 300000,
+                  "memoryMb": 1024
+                }
+              }
+            },
+            {
+              "path": "quality build-order",
+              "category": "Architecture",
+              "describe": "Topological build order",
+              "handler": "./cli/commands/build-order.js#default",
+              "flags": [
+                {
+                  "name": "package",
+                  "type": "string",
+                  "alias": "p",
+                  "description": "Calculate build order for specific package"
+                },
+                {
+                  "name": "layers",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Show build layers (parallel groups)"
+                },
+                {
+                  "name": "script",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Output as shell script"
+                },
+                {
+                  "name": "json",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Output JSON format"
+                }
+              ],
+              "examples": [
+                "kb quality build-order",
+                "kb quality build-order --json"
+              ],
+              "permissions": {
+                "fs": {
+                  "read": [
+                    ".kb/**",
+                    "**"
+                  ],
+                  "write": [
+                    ".kb/**",
+                    "**"
+                  ]
+                },
+                "env": {
+                  "read": [
+                    "HOME",
+                    "USER",
+                    "PATH",
+                    "TMPDIR",
+                    "NODE_ENV",
+                    "KB_*"
+                  ]
+                },
+                "shell": {
+                  "allow": [
+                    "pnpm",
+                    "git"
+                  ]
+                },
+                "platform": {
+                  "cache": [
+                    "quality:"
+                  ],
+                  "analytics": true
+                },
+                "quotas": {
+                  "timeoutMs": 300000,
+                  "memoryMb": 1024
+                }
+              }
+            },
+            {
+              "path": "quality cycles",
+              "category": "Architecture",
+              "describe": "Detect circular dependencies",
+              "handler": "./cli/commands/cycles.js#default",
+              "flags": [
+                {
+                  "name": "json",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Output JSON format"
+                }
+              ],
+              "examples": [
+                "kb quality cycles",
+                "kb quality cycles --json"
+              ],
+              "permissions": {
+                "fs": {
+                  "read": [
+                    ".kb/**",
+                    "**"
+                  ],
+                  "write": [
+                    ".kb/**",
+                    "**"
+                  ]
+                },
+                "env": {
+                  "read": [
+                    "HOME",
+                    "USER",
+                    "PATH",
+                    "TMPDIR",
+                    "NODE_ENV",
+                    "KB_*"
+                  ]
+                },
+                "shell": {
+                  "allow": [
+                    "pnpm",
+                    "git"
+                  ]
+                },
+                "platform": {
+                  "cache": [
+                    "quality:"
+                  ],
+                  "analytics": true
+                },
+                "quotas": {
+                  "timeoutMs": 300000,
+                  "memoryMb": 1024
+                }
+              }
+            },
+            {
+              "path": "quality dead-code",
+              "category": "Checks",
+              "describe": "Detect unused files, exports, and deps via knip",
+              "handler": "./cli/commands/dead-code.js#default",
+              "flags": [
+                {
+                  "name": "package",
+                  "type": "string",
+                  "alias": "p",
+                  "description": "Scan specific package only"
+                },
+                {
+                  "name": "json",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Output JSON format"
+                },
+                {
+                  "name": "verbose",
+                  "type": "boolean",
+                  "alias": "v",
+                  "default": false,
+                  "description": "Show entry points and alive reasons"
+                },
+                {
+                  "name": "auto-remove",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Remove dead files (creates backup first)"
+                },
+                {
+                  "name": "dry-run",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Show what would be removed without actually deleting"
+                },
+                {
+                  "name": "restore",
+                  "type": "string",
+                  "description": "Restore files from backup ID"
+                },
+                {
+                  "name": "list-backups",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "List available backups"
+                },
+                {
+                  "name": "refresh",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Bypass cache and rescan"
+                }
+              ],
+              "examples": [
+                "kb quality dead-code",
+                "kb quality dead-code --json"
+              ],
+              "permissions": {
+                "fs": {
+                  "read": [
+                    ".kb/**",
+                    "**"
+                  ],
+                  "write": [
+                    ".kb/**",
+                    "**"
+                  ]
+                },
+                "env": {
+                  "read": [
+                    "HOME",
+                    "USER",
+                    "PATH",
+                    "TMPDIR",
+                    "NODE_ENV",
+                    "KB_*"
+                  ]
+                },
+                "shell": {
+                  "allow": [
+                    "pnpm",
+                    "git"
+                  ]
+                },
+                "platform": {
+                  "cache": [
+                    "quality:"
+                  ],
+                  "analytics": true
+                },
+                "quotas": {
+                  "timeoutMs": 300000,
+                  "memoryMb": 1024
+                }
+              }
+            },
+            {
+              "path": "quality check-types",
+              "category": "Checks",
+              "describe": "TypeScript type safety analysis (any count, ts-ignore, errors)",
+              "handler": "./cli/commands/check-types.js#default",
+              "flags": [
+                {
+                  "name": "package",
+                  "type": "string",
+                  "alias": "p",
+                  "description": "Analyze types for specific package"
+                },
+                {
+                  "name": "errors-only",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Show only packages with errors"
+                },
+                {
+                  "name": "json",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Output JSON format"
+                },
+                {
+                  "name": "refresh",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Bypass cache and analyze fresh"
+                }
+              ],
+              "examples": [
+                "kb quality check-types",
+                "kb quality check-types --json"
+              ],
+              "permissions": {
+                "fs": {
+                  "read": [
+                    ".kb/**",
+                    "**"
+                  ],
+                  "write": [
+                    ".kb/**",
+                    "**"
+                  ]
+                },
+                "env": {
+                  "read": [
+                    "HOME",
+                    "USER",
+                    "PATH",
+                    "TMPDIR",
+                    "NODE_ENV",
+                    "KB_*"
+                  ]
+                },
+                "shell": {
+                  "allow": [
+                    "pnpm",
+                    "git"
+                  ]
+                },
+                "platform": {
+                  "cache": [
+                    "quality:"
+                  ],
+                  "analytics": true
+                },
+                "quotas": {
+                  "timeoutMs": 600000,
+                  "memoryMb": 2048
+                }
+              }
+            },
+            {
+              "path": "quality check-builds",
+              "category": "Checks",
+              "describe": "Build status across monorepo",
+              "handler": "./cli/commands/check-builds.js#default",
+              "flags": [
+                {
+                  "name": "package",
+                  "type": "string",
+                  "alias": "p",
+                  "description": "Check builds for specific package"
+                },
+                {
+                  "name": "timeout",
+                  "type": "number",
+                  "default": 30000,
+                  "description": "Timeout per package in milliseconds"
+                },
+                {
+                  "name": "json",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Output JSON format"
+                },
+                {
+                  "name": "refresh",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Bypass cache and check fresh"
+                }
+              ],
+              "examples": [
+                "kb quality check-builds",
+                "kb quality check-builds --json"
+              ],
+              "permissions": {
+                "fs": {
+                  "read": [
+                    ".kb/**",
+                    "**"
+                  ],
+                  "write": [
+                    ".kb/**",
+                    "**"
+                  ]
+                },
+                "env": {
+                  "read": [
+                    "HOME",
+                    "USER",
+                    "PATH",
+                    "TMPDIR",
+                    "NODE_ENV",
+                    "KB_*"
+                  ]
+                },
+                "shell": {
+                  "allow": [
+                    "pnpm",
+                    "git"
+                  ]
+                },
+                "platform": {
+                  "cache": [
+                    "quality:"
+                  ],
+                  "analytics": true
+                },
+                "quotas": {
+                  "timeoutMs": 600000,
+                  "memoryMb": 2048
+                }
+              }
+            },
+            {
+              "path": "quality check-tests",
+              "category": "Checks",
+              "describe": "Run tests and track coverage",
+              "handler": "./cli/commands/check-tests.js#default",
+              "flags": [
+                {
+                  "name": "package",
+                  "type": "string",
+                  "alias": "p",
+                  "description": "Run tests for specific package"
+                },
+                {
+                  "name": "timeout",
+                  "type": "number",
+                  "default": 60000,
+                  "description": "Timeout per package in milliseconds"
+                },
+                {
+                  "name": "with-coverage",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Collect coverage statistics"
+                },
+                {
+                  "name": "coverage-only",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Only show existing coverage (skip test execution)"
+                },
+                {
+                  "name": "json",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Output JSON format"
+                },
+                {
+                  "name": "refresh",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Bypass cache and run fresh"
+                }
+              ],
+              "examples": [
+                "kb quality check-tests",
+                "kb quality check-tests --with-coverage"
+              ],
+              "permissions": {
+                "fs": {
+                  "read": [
+                    ".kb/**",
+                    "**"
+                  ],
+                  "write": [
+                    ".kb/**",
+                    "**"
+                  ]
+                },
+                "env": {
+                  "read": [
+                    "HOME",
+                    "USER",
+                    "PATH",
+                    "TMPDIR",
+                    "NODE_ENV",
+                    "KB_*"
+                  ]
+                },
+                "shell": {
+                  "allow": [
+                    "pnpm",
+                    "git"
+                  ]
+                },
+                "platform": {
+                  "cache": [
+                    "quality:"
+                  ],
+                  "analytics": true
+                },
+                "quotas": {
+                  "timeoutMs": 600000,
+                  "memoryMb": 2048
+                }
+              }
+            },
+            {
+              "path": "quality fix-deps",
+              "category": "Fixes",
+              "describe": "Auto-fix dependency issues",
+              "handler": "./cli/commands/fix-deps.js#default",
+              "flags": [
+                {
+                  "name": "dry-run",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Preview changes without applying them"
+                },
+                {
+                  "name": "remove-unused",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Remove unused dependencies"
+                },
+                {
+                  "name": "add-missing",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Add missing workspace dependencies"
+                },
+                {
+                  "name": "align-versions",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Align duplicate dependency versions"
+                },
+                {
+                  "name": "all",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Apply all fixes (remove-unused + add-missing + align-versions)"
+                },
+                {
+                  "name": "stats",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Show dependency statistics"
+                },
+                {
+                  "name": "json",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Output JSON format"
+                }
+              ],
+              "examples": [
+                "kb quality fix-deps --dry-run",
+                "kb quality fix-deps --all"
+              ],
+              "permissions": {
+                "fs": {
+                  "read": [
+                    ".kb/**",
+                    "**"
+                  ],
+                  "write": [
+                    ".kb/**",
+                    "**"
+                  ]
+                },
+                "env": {
+                  "read": [
+                    "HOME",
+                    "USER",
+                    "PATH",
+                    "TMPDIR",
+                    "NODE_ENV",
+                    "KB_*"
+                  ]
+                },
+                "shell": {
+                  "allow": [
+                    "pnpm",
+                    "git"
+                  ]
+                },
+                "platform": {
+                  "cache": [
+                    "quality:"
+                  ],
+                  "analytics": true
+                },
+                "quotas": {
+                  "timeoutMs": 300000,
+                  "memoryMb": 1024
+                }
+              }
+            },
+            {
+              "path": "quality visualize",
+              "category": "Fixes",
+              "describe": "Visualize dependency graph",
+              "handler": "./cli/commands/visualize.js#default",
+              "flags": [
+                {
+                  "name": "package",
+                  "type": "string",
+                  "alias": "p",
+                  "description": "Focus on specific package"
+                },
+                {
+                  "name": "tree",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Show dependency tree"
+                },
+                {
+                  "name": "dot",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Output DOT format for graphviz"
+                },
+                {
+                  "name": "stats",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Show graph statistics"
+                },
+                {
+                  "name": "reverse",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Show reverse dependencies (who depends on this)"
+                },
+                {
+                  "name": "impact",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Show impact analysis (what will be affected)"
+                },
+                {
+                  "name": "json",
+                  "type": "boolean",
+                  "default": false,
+                  "description": "Output JSON format"
+                }
+              ],
+              "examples": [
+                "kb quality visualize --tree",
+                "kb quality visualize --dot"
+              ],
+              "permissions": {
+                "fs": {
+                  "read": [
+                    ".kb/**",
+                    "**"
+                  ],
+                  "write": [
+                    ".kb/**",
+                    "**"
+                  ]
+                },
+                "env": {
+                  "read": [
+                    "HOME",
+                    "USER",
+                    "PATH",
+                    "TMPDIR",
+                    "NODE_ENV",
+                    "KB_*"
+                  ]
+                },
+                "shell": {
+                  "allow": [
+                    "pnpm",
+                    "git"
+                  ]
+                },
+                "platform": {
+                  "cache": [
+                    "quality:"
+                  ],
+                  "analytics": true
+                },
+                "quotas": {
+                  "timeoutMs": 300000,
+                  "memoryMb": 1024
+                }
+              }
+            }
+          ]
+        },
+        "rest": {
+          "basePath": "/v1/plugins/quality",
+          "routes": [
+            {
+              "method": "GET",
+              "path": "/stats",
+              "handler": "./rest/handlers/stats-handler.js#default"
+            },
+            {
+              "method": "GET",
+              "path": "/health",
+              "handler": "./rest/handlers/health-handler.js#default"
+            },
+            {
+              "method": "GET",
+              "path": "/layers",
+              "handler": "./rest/handlers/layers-handler.js#default"
+            },
+            {
+              "method": "GET",
+              "path": "/coupling",
+              "handler": "./rest/handlers/coupling-handler.js#default"
+            },
+            {
+              "method": "GET",
+              "path": "/dead-code",
+              "handler": "./rest/handlers/knip-handler.js#default"
+            },
+            {
+              "method": "GET",
+              "path": "/history",
+              "handler": "./rest/handlers/history-handler.js#default"
+            },
+            {
+              "method": "POST",
+              "path": "/snapshot",
+              "handler": "./rest/handlers/snapshot-handler.js#default"
+            },
+            {
+              "method": "GET",
+              "path": "/dependencies",
+              "handler": "./rest/handlers/dependencies-handler.js#default"
+            },
+            {
+              "method": "GET",
+              "path": "/build-order",
+              "handler": "./rest/handlers/build-order-handler.js#default"
+            },
+            {
+              "method": "GET",
+              "path": "/cycles",
+              "handler": "./rest/handlers/cycles-handler.js#default"
+            },
+            {
+              "method": "GET",
+              "path": "/graph",
+              "handler": "./rest/handlers/graph-handler.js#default"
+            },
+            {
+              "method": "GET",
+              "path": "/stale",
+              "handler": "./rest/handlers/stale-handler.js#default"
+            }
+          ]
+        },
+        "studio": {
+          "version": 2,
+          "remoteName": "qualityPlugin",
+          "pages": [
+            {
+              "id": "quality.overview",
+              "title": "Quality",
+              "icon": "CheckCircleOutlined",
+              "route": "/p/quality",
+              "entry": "./QualityOverview",
+              "order": 1
+            }
+          ],
+          "menus": [
+            {
+              "id": "quality",
+              "label": "Quality",
+              "icon": "CheckCircleOutlined",
+              "target": "quality.overview",
+              "order": 40
+            }
+          ]
+        },
+        "permissions": {
+          "fs": {
+            "read": [
+              ".kb/**",
+              "**"
+            ],
+            "write": [
+              ".kb/**",
+              "**"
+            ]
+          },
+          "env": {
+            "read": [
+              "HOME",
+              "USER",
+              "PATH",
+              "TMPDIR",
+              "NODE_ENV",
+              "KB_*"
+            ]
+          },
+          "shell": {
+            "allow": [
+              "pnpm",
+              "git"
+            ]
+          },
+          "platform": {
+            "cache": [
+              "quality:"
+            ],
+            "analytics": true
+          },
+          "quotas": {
+            "timeoutMs": 300000,
+            "memoryMb": 1024
+          }
+        }
+      },
+      "cachedAt": "2026-05-17T09:12:30.310Z",
+      "integrity": "sha256-5XWpMuYul+g/fNMDIGpT1aNwKcwtUfTu+D4RIcQL9yg="
     }
   }
 }

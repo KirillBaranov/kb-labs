@@ -13,7 +13,7 @@ import type {
   BufferStatus,
   DlqStatus,
   AnalyticsEvent as PlatformAnalyticsEvent,
-} from "@kb-labs/core-platform/adapters";
+} from "@kb-labs/sdk/adapters";
 
 // Re-export manifest
 export { manifest } from "./manifest.js";

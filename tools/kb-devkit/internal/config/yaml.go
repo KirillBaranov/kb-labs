@@ -166,10 +166,12 @@ type yamlStructure struct {
 }
 
 type yamlDeps struct {
-	CheckLinks              bool `yaml:"check_links"`
-	CheckUnused             bool `yaml:"check_unused"`
-	CheckCircular           bool `yaml:"check_circular"`
-	CheckVersionConsistency bool `yaml:"check_version_consistency"`
+	CheckLinks              bool     `yaml:"check_links"`
+	CheckUnused             bool     `yaml:"check_unused"`
+	CheckCircular           bool     `yaml:"check_circular"`
+	CheckVersionConsistency bool     `yaml:"check_version_consistency"`
+	AllowedKbDeps           []string `yaml:"allowed_kb_deps"`
+	ForbiddenKbDeps         []string `yaml:"forbidden_kb_deps"`
 }
 
 type yamlGo struct {
@@ -477,6 +479,8 @@ func mapPreset(v yamlPreset) Preset {
 			CheckUnused:             v.Deps.CheckUnused,
 			CheckCircular:           v.Deps.CheckCircular,
 			CheckVersionConsistency: v.Deps.CheckVersionConsistency,
+			AllowedKbDeps:           v.Deps.AllowedKbDeps,
+			ForbiddenKbDeps:         v.Deps.ForbiddenKbDeps,
 		},
 		Go: GoRules{
 			MinVersion: v.Go.MinVersion,

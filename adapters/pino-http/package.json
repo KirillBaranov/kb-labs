@@ -31,6 +31,7 @@
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
+    "@kb-labs/sdk": "workspace:*",
     "@types/node": "^24.3.3",
     "eslint": "^9",
     "rimraf": "^6.0.1",
@@ -45,5 +46,8 @@
   "kb": {
     "manifest": "./dist/manifest.js"
   },
-  "sideEffects": false
+  "sideEffects": false,
+  "peerDependencies": {
+    "@kb-labs/sdk": "workspace:^"
+  }
 }

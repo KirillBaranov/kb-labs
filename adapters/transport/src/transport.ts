@@ -12,7 +12,7 @@
  *
  * @example
  * ```typescript
- * import { ITransport, IPCTransport } from '@kb-labs/core-runtime/transport';
+ * import { ITransport, IPCTransport } from '@kb-labs/sdk/adapters/infra';
  *
  * const transport: ITransport = new IPCTransport();
  * const response = await transport.send({

@@ -1,58 +1,19 @@
-/**
- * POST /build-order handler
- *
- * Calculate build order with topological sort.
- * Returns build layers for parallel execution.
- */
-
-import { defineHandler, rethrowForRest, type PluginContextV3, type RestInput } from '@kb-labs/sdk';
-import {
-  buildDependencyGraph,
-  topologicalSort,
-  getBuildOrderForPackage,
-  type TopologicalSortResult,
-} from '@kb-labs/quality-core/graph';
-
-export type BuildOrderRequest = {
-  packageName?: string;
-};
-
-export type BuildOrderResponse = {
-  layers: string[][];
-  sorted: string[];
-  circular: string[][];
-  packageCount: number;
-  layerCount: number;
-  hasCircular: boolean;
-};
+import { defineHandler, rethrowForRest, useConfig, type PluginContextV3, type RestInput } from '@kb-labs/sdk';
+import { analyzeBuildOrder } from '@kb-labs/quality-core';
+import { defaultQualityConfig, type QualityPluginConfig } from '@kb-labs/quality-contracts';
 
 export default defineHandler({
-  async execute(
-    ctx: PluginContextV3,
-    input: RestInput<BuildOrderRequest, unknown>
-  ): Promise<BuildOrderResponse> {
+  async execute(ctx: PluginContextV3, input: RestInput<{ package?: string }, unknown>) {
     try {
-      const packageName = input.query?.packageName;
+      const config = await useConfig<QualityPluginConfig>();
+      const cfg = config ?? defaultQualityConfig;
+      const cwd = ctx.cwd ?? process.cwd();
 
-      // Build dependency graph
-      const graph = buildDependencyGraph(ctx.cwd);
-
-      // Calculate build order
-      let result: TopologicalSortResult;
-      if (packageName) {
-        result = getBuildOrderForPackage(graph, packageName);
-      } else {
-        result = topologicalSort(graph);
-      }
-
-      return {
-        layers: result.layers,
-        sorted: result.sorted,
-        circular: result.circular,
-        packageCount: result.sorted.length,
-        layerCount: result.layers.length,
-        hasCircular: result.circular.length > 0,
-      };
+      return analyzeBuildOrder({
+        rootDir: cwd,
+        layerMap: cfg.layers,
+        filterPackage: input.query?.package,
+      });
     } catch (err) {
       rethrowForRest(err);
     }

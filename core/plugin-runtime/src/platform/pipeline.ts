@@ -75,7 +75,9 @@ export function assemblePlatform(
   config: PlatformConfig,
   broker: IResourceBroker,
 ): PlatformServices {
-  const result = { ...raw };
+  const result = Object.fromEntries(
+    (Object.keys(ADAPTER_REGISTRY) as Array<keyof PlatformServices>).map(key => [key, raw[key]])
+  ) as unknown as PlatformServices;
   const analytics = raw.analytics;
 
   for (const key of Object.keys(ADAPTER_REGISTRY) as Array<keyof PlatformServices>) {
@@ -103,7 +105,7 @@ export function assemblePlatform(
       adapter = (def.postAssemblyFactory as (r: unknown, c: unknown) => unknown)(adapter, config[key]);
     }
 
-    (result as Record<string, unknown>)[key] = adapter;
+    (result as unknown as Record<string, unknown>)[key] = adapter;
   }
 
   return result;
@@ -132,7 +134,11 @@ export function applyPluginGovernance(
   lifecycle: AdapterLifecycle = NOOP_LIFECYCLE,
 ): PlatformServices {
   const ctx = { permissions, pluginId, lifecycle };
-  const result = { ...platform };
+  // Read each adapter through property access so prototype getters on PlatformContainer
+  // are evaluated — object spread only copies own enumerable properties, missing getters.
+  const result = Object.fromEntries(
+    (Object.keys(ADAPTER_REGISTRY) as Array<keyof PlatformServices>).map(key => [key, platform[key]])
+  ) as unknown as PlatformServices;
 
   for (const key of Object.keys(ADAPTER_REGISTRY) as Array<keyof PlatformServices>) {
     const def = ADAPTER_REGISTRY[key as keyof typeof ADAPTER_REGISTRY];
@@ -160,7 +166,7 @@ export function applyPluginGovernance(
     }
     // 'pass-through' → adapter unchanged
 
-    (result as Record<string, unknown>)[key] = adapter;
+    (result as unknown as Record<string, unknown>)[key] = adapter;
   }
 
   return result;

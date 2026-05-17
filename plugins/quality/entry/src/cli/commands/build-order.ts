@@ -5,165 +5,71 @@
  * Shows build layers where each layer can build in parallel.
  */
 
-import { defineCommand, type PluginContextV3, type UIFacade } from '@kb-labs/sdk';
-import {
-  buildDependencyGraph,
-  topologicalSort,
-  getBuildOrderForPackage,
-  type TopologicalSortResult,
-} from '@kb-labs/quality-core/graph';
+import { defineCommand, useConfig, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { analyzeBuildOrder } from '@kb-labs/quality-core';
+import { defaultQualityConfig, type QualityPluginConfig } from '@kb-labs/quality-contracts';
+import type { BuildOrderFlags } from './flags.js';
 
-type BuildOrderFlags = {
-  package?: string;
-  layers?: boolean;
-  script?: boolean;
-  json?: boolean;
-  argv?: string[];
-};
-
-type BuildOrderInput = BuildOrderFlags & { argv?: string[] };
-
-type BuildOrderCommandResult = {
-  exitCode: number;
-  result?: TopologicalSortResult;
-};
-
-export default defineCommand({
+export default defineCommand<unknown, CLIInput<BuildOrderFlags>, { exitCode: number }>({
   id: 'quality:build-order',
   description: 'Calculate build order using topological sort',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: BuildOrderInput): Promise<BuildOrderCommandResult> {
-      const { ui } = ctx;
+    async execute(ctx: PluginContextV3, input: CLIInput<BuildOrderFlags>): Promise<{ exitCode: number }> {
+      const { flags } = input;
+      const config = await useConfig<QualityPluginConfig>();
+      const cfg = config ?? defaultQualityConfig;
+      const cwd = ctx.cwd ?? process.cwd();
 
-      // V3: Flags may come wrapped in input.flags or passed directly
-      const flags = ('flags' in input && typeof (input as { flags?: unknown }).flags === 'object' && (input as { flags?: unknown }).flags !== null)
-        ? (input as { flags: BuildOrderInput }).flags
-        : input;
+      const result = analyzeBuildOrder({
+        rootDir: cwd,
+        layerMap: cfg.layers,
+        filterPackage: flags.package,
+      });
 
-      // Build dependency graph
-      const graph = buildDependencyGraph(ctx.cwd);
-
-      // Calculate build order
-      let result: TopologicalSortResult;
-      if (flags.package) {
-        result = getBuildOrderForPackage(graph, flags.package);
-      } else {
-        result = topologicalSort(graph);
-      }
-
-      // Check for circular dependencies
-      if (result.circular.length > 0) {
+      if (result.hasCircular) {
         if (flags.json) {
-          ui?.json?.({ ok: false, error: { code: 'CIRCULAR_DEPS', message: `Found ${result.circular.length} circular dependencies`, circular: result.circular } });
+          ctx.ui?.json?.({ ...result, ok: false });
         } else {
-          ui?.error?.(`Found ${result.circular.length} circular dependencies. Build order cannot be determined.`);
-          outputCircularDependencies(result.circular, ui);
+          ctx.ui?.error?.(`Circular dependencies detected — build order cannot be fully determined`, {
+            sections: result.circular.map((cycle, i) => ({
+              header: `Cycle ${i + 1}`,
+              items: cycle,
+            })),
+          });
         }
-        return { exitCode: 1, result };
+        return { exitCode: 1 };
       }
 
-      // Output results
-      outputBuildOrder(result, flags, ui);
+      if (flags.json) {
+        ctx.ui?.json?.(result);
+        return { exitCode: 0 };
+      }
 
-      return { exitCode: 0, result };
+      if (flags.script) {
+        for (let i = 0; i < result.layers.length; i++) {
+          const layer = result.layers[i];
+          if (!layer) continue;
+          ctx.ui?.success?.(`# Layer ${i + 1}`, { sections: [{ header: '', items: layer.map(p => `pnpm --filter "${p}" run build`) }] });
+        }
+        return { exitCode: 0 };
+      }
+
+      const sections = flags.layers
+        ? result.layers.map((layer, i) => ({
+            header: `Layer ${i + 1} — ${layer.length} package(s) (parallel)`,
+            items: layer,
+          }))
+        : [{ header: 'Build order', items: result.sorted.map((p, i) => `${i + 1}. ${p}`) }];
+
+      sections.push({
+        header: 'Summary',
+        items: [`${result.packageCount} packages in ${result.layerCount} layers`],
+      });
+
+      ctx.ui?.success?.(flags.package ? `Build order for ${flags.package}` : 'Monorepo build order', { sections });
+      return { exitCode: 0 };
     },
   },
 });
 
-/**
- * Output build order results
- */
-function outputBuildOrder(result: TopologicalSortResult, flags: BuildOrderFlags, ui: UIFacade | undefined) {
-  if (flags.json) {
-    ui?.json?.(result);
-    return;
-  }
-
-  if (flags.script) {
-    // Output as shell script
-    ui?.write?.('#!/bin/bash');
-    ui?.write?.('# Generated build script');
-    ui?.write?.('set -e');
-    ui?.write?.('');
-
-    for (let i = 0; i < result.layers.length; i++) {
-      const layer = result.layers[i];
-      if (!layer) {continue;}
-      ui?.write?.(`# Layer ${i + 1} (${layer.length} packages)`);
-      for (const pkg of layer) {
-        ui?.write?.(`pnpm --filter "${pkg}" run build`);
-      }
-      ui?.write?.('');
-    }
-    return;
-  }
-
-  // Build sections
-  const sections: Array<{ header: string; items: string[] }> = [];
-
-  if (flags.layers) {
-    // Show build layers
-    const layerItems: string[] = [];
-    for (let i = 0; i < result.layers.length; i++) {
-      const layer = result.layers[i];
-      if (!layer) {continue;}
-      layerItems.push(`Layer ${i + 1}: ${layer.length} packages (can build in parallel)`);
-      for (const pkg of layer) {
-        layerItems.push(`  • ${pkg}`);
-      }
-      layerItems.push('');
-    }
-    sections.push({ header: 'Build Layers', items: layerItems });
-  } else {
-    // Show sequential order
-    const orderItems = result.sorted.map((pkg, idx) => `${idx + 1}. ${pkg}`);
-    sections.push({ header: 'Build Order', items: orderItems });
-  }
-
-  // Summary
-  sections.push({
-    header: 'Summary',
-    items: [
-      `Total packages: ${result.sorted.length}`,
-      `Build layers: ${result.layers.length}`,
-      `Circular dependencies: ${result.circular.length}`,
-    ],
-  });
-
-  const title = flags.package
-    ? `📦 Build Order for ${flags.package}`
-    : '📦 Monorepo Build Order';
-
-  ui?.success?.('Build order calculated successfully', {
-    title,
-    sections,
-  });
-}
-
-/**
- * Output circular dependencies
- */
-function outputCircularDependencies(cycles: string[][], ui: UIFacade | undefined) {
-  const sections: Array<{ header: string; items: string[] }> = [];
-
-  for (let i = 0; i < cycles.length; i++) {
-    const cycle = cycles[i];
-    if (!cycle) {continue;}
-    sections.push({
-      header: `Cycle ${i + 1}`,
-      items: cycle.map((pkg, idx) => {
-        if (idx === cycle.length - 1) {
-          const firstPkg = cycle[0];
-          return `  ${pkg} → ${firstPkg ?? '?'} (circular!)`;
-        }
-        return `  ${pkg} →`;
-      }),
-    });
-  }
-
-  ui?.error?.('Circular dependencies detected', {
-    title: '⚠️ Circular Dependencies',
-    sections,
-  });
-}

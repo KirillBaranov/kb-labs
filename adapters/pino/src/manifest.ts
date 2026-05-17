@@ -3,7 +3,7 @@
  * Adapter manifest for Pino logger.
  */
 
-import type { AdapterManifest } from "@kb-labs/core-platform";
+import type { AdapterManifest } from "@kb-labs/sdk/adapters";
 
 /**
  * Adapter manifest for Pino logger.

@@ -15,7 +15,7 @@ import type {
   LLMToolCall,
   LLMProtocolCapabilities,
   LLMExecutionPolicy,
-} from "@kb-labs/core-platform";
+} from "@kb-labs/sdk/adapters";
 
 /**
  * Configuration for VibeProxy LLM adapter.

@@ -3,7 +3,7 @@
  */
 
 import * as React from 'react';
-import { useData, UICard, UITable, UITag, UISpin, UIAlert, UISelect, UISpace } from '@kb-labs/sdk/studio';
+import { useData, UICard, UITable, UITag, UISkeleton, UIAlert, UISelect, UISpace } from '@kb-labs/sdk/studio';
 import type { UITableColumn } from '@kb-labs/sdk/studio';
 import type { BuildOrderResponse, CyclesResponse } from '@kb-labs/quality-contracts';
 
@@ -18,11 +18,7 @@ export function BuildOrderTab() {
   const { data: cyclesData } = useData<CyclesResponse>('/v1/plugins/quality/cycles');
 
   if (isLoading) {
-    return (
-      <div style={{ textAlign: 'center', padding: '40px' }}>
-        <UISpin size="large" />
-      </div>
-    );
+    return <UISkeleton active lines={6} style={{ padding: '24px 0' }} />;
   }
 
   if (isError) {

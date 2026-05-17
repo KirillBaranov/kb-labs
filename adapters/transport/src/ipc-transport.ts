@@ -13,7 +13,7 @@
  *
  * @example
  * ```typescript
- * import { IPCTransport } from '@kb-labs/core-runtime/transport';
+ * import { IPCTransport } from '@kb-labs/sdk/adapters/infra';
  *
  * // In child process
  * const transport = new IPCTransport({ timeout: 10000 });
@@ -216,7 +216,7 @@ export class IPCTransport implements ITransport {
  *
  * @example
  * ```typescript
- * import { createIPCTransport } from '@kb-labs/core-runtime/transport';
+ * import { createIPCTransport } from '@kb-labs/sdk/adapters/infra';
  *
  * const transport = createIPCTransport();
  * // Use transport...

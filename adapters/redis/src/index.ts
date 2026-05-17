@@ -19,7 +19,7 @@
  */
 
 import Redis, { type RedisOptions } from "ioredis";
-import type { ICache } from "@kb-labs/core-platform";
+import type { ICache } from "@kb-labs/sdk/adapters";
 
 // Re-export manifest
 export { manifest } from "./manifest.js";

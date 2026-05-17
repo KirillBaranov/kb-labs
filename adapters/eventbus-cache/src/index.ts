@@ -5,7 +5,7 @@
  * @example
  * ```typescript
  * import { createAdapter } from '@kb-labs/adapters-eventbus-cache';
- * import { MemoryCache } from '@kb-labs/core-platform/noop';
+ * import { MemoryCache } from '@kb-labs/sdk/adapters';
  *
  * // When loaded by platform, deps are injected automatically.
  * // For manual usage:
@@ -30,7 +30,7 @@
  */
 
 import { randomUUID } from 'node:crypto';
-import type { IEventBus, ICache, EventHandler, Unsubscribe } from '@kb-labs/core-platform';
+import type { IEventBus, ICache, EventHandler, Unsubscribe } from '@kb-labs/sdk/adapters';
 import type { CacheEventBusConfig, StoredEvent, Subscription, CacheEventBusDeps } from './types.js';
 
 // Re-export manifest and types
