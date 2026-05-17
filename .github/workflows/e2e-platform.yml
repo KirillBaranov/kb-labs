@@ -259,3 +259,65 @@ jobs:
         run: docker compose -f e2e/docker-compose.yml down --volumes --remove-orphans
         env:
           COMPOSE_PROJECT_NAME: kb-e2e-ci
+
+      # ── Per-step timings (Phase 0 of ADR-0017) ───────────────────────────
+      # Fetches this run's step list from the GitHub Actions API, computes
+      # durations, writes a Markdown table to the step summary, and emits
+      # timings.json as an artifact so later phases can be benchmarked
+      # against a stable baseline.
+
+      - name: Emit timings
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.run_id }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p /tmp/e2e-timings
+          OUT_JSON=/tmp/e2e-timings/timings.json
+
+          # Pull jobs+steps for this run. The Emit timings step itself will
+          # appear in-progress (completedAt=null) — that is expected and the
+          # downstream filter drops it.
+          gh api "/repos/${REPO}/actions/runs/${RUN_ID}/jobs" \
+            --jq '{
+              run_id: '"$RUN_ID"',
+              repo: "'"$REPO"'",
+              jobs: [.jobs[] | {
+                name: .name,
+                conclusion: .conclusion,
+                started_at: .started_at,
+                completed_at: .completed_at,
+                steps: [.steps[] | select(.completed_at != null) | {
+                  name: .name,
+                  number: .number,
+                  conclusion: .conclusion,
+                  started_at: .started_at,
+                  completed_at: .completed_at,
+                  duration_s: (((.completed_at | fromdateiso8601) - (.started_at | fromdateiso8601)))
+                }]
+              }]
+            }' > "$OUT_JSON"
+
+          # Markdown summary
+          {
+            echo "## E2E timings"
+            echo ""
+            echo "Run: \`${RUN_ID}\` · ${REPO}"
+            echo ""
+            echo "| # | step | duration | conclusion |"
+            echo "|---|---|---:|---|"
+            jq -r '.jobs[0].steps[] | "| \(.number) | \(.name) | \(.duration_s | floor)s | \(.conclusion) |"' "$OUT_JSON"
+            echo ""
+            TOTAL=$(jq -r '[.jobs[0].steps[].duration_s] | add | floor' "$OUT_JSON")
+            echo "**Total measured:** ${TOTAL}s"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload timings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-timings-${{ github.run_id }}
+          path: /tmp/e2e-timings/
+          retention-days: 90

@@ -202,5 +202,209 @@
       "branch": "main",
       "message": "feat(marketplace): record original install spec on MarketplaceEntry"
     }
+  },
+  {
+    "id": "2a6f778a-71c0-48f3-aee5-34932ee6efa5",
+    "timestamp": "2026-05-17T20:59:26.879Z",
+    "score": 73,
+    "grade": "C",
+    "dimensions": {
+      "architecture": {
+        "score": 10,
+        "grade": "F",
+        "details": [
+          "13 layering violation(s) in 4 package(s)",
+          "53 package(s) with instability > 0.85"
+        ]
+      },
+      "typescript": {
+        "score": 100,
+        "grade": "A",
+        "details": []
+      },
+      "deadCode": {
+        "score": 100,
+        "grade": "A",
+        "details": []
+      },
+      "depHygiene": {
+        "score": 100,
+        "grade": "A",
+        "details": []
+      },
+      "testCoverage": {
+        "score": 100,
+        "grade": "A",
+        "details": [
+          "no coverage data — skipped"
+        ]
+      }
+    },
+    "counters": {
+      "layeringViolations": 13,
+      "avgInstability": 0.64,
+      "anyCount": 0,
+      "tsIgnoreCount": 0,
+      "unusedFiles": 0,
+      "unusedDeps": 0
+    },
+    "git": {
+      "commit": "e30dad73",
+      "branch": "main",
+      "message": "fix(workflow): gate in-flight poll sends on activeSubscriptions"
+    }
+  },
+  {
+    "id": "0d782dd2-282a-461a-988a-a6ae8716067c",
+    "timestamp": "2026-05-17T21:03:03.009Z",
+    "score": 73,
+    "grade": "C",
+    "dimensions": {
+      "architecture": {
+        "score": 10,
+        "grade": "F",
+        "details": [
+          "13 layering violation(s) in 4 package(s)",
+          "53 package(s) with instability > 0.85"
+        ]
+      },
+      "typescript": {
+        "score": 100,
+        "grade": "A",
+        "details": []
+      },
+      "deadCode": {
+        "score": 100,
+        "grade": "A",
+        "details": []
+      },
+      "depHygiene": {
+        "score": 100,
+        "grade": "A",
+        "details": []
+      },
+      "testCoverage": {
+        "score": 100,
+        "grade": "A",
+        "details": [
+          "no coverage data — skipped"
+        ]
+      }
+    },
+    "counters": {
+      "layeringViolations": 13,
+      "avgInstability": 0.64,
+      "anyCount": 0,
+      "tsIgnoreCount": 0,
+      "unusedFiles": 0,
+      "unusedDeps": 0
+    },
+    "git": {
+      "commit": "e30dad73",
+      "branch": "main",
+      "message": "fix(workflow): gate in-flight poll sends on activeSubscriptions"
+    }
+  },
+  {
+    "id": "89a043a9-3007-4083-90ec-4e54e14b063b",
+    "timestamp": "2026-05-17T21:03:17.155Z",
+    "score": 73,
+    "grade": "C",
+    "dimensions": {
+      "architecture": {
+        "score": 10,
+        "grade": "F",
+        "details": [
+          "13 layering violation(s) in 4 package(s)",
+          "53 package(s) with instability > 0.85"
+        ]
+      },
+      "typescript": {
+        "score": 100,
+        "grade": "A",
+        "details": []
+      },
+      "deadCode": {
+        "score": 100,
+        "grade": "A",
+        "details": []
+      },
+      "depHygiene": {
+        "score": 100,
+        "grade": "A",
+        "details": []
+      },
+      "testCoverage": {
+        "score": 100,
+        "grade": "A",
+        "details": [
+          "no coverage data — skipped"
+        ]
+      }
+    },
+    "counters": {
+      "layeringViolations": 13,
+      "avgInstability": 0.64,
+      "anyCount": 0,
+      "tsIgnoreCount": 0,
+      "unusedFiles": 0,
+      "unusedDeps": 0
+    },
+    "git": {
+      "commit": "e30dad73",
+      "branch": "main",
+      "message": "fix(workflow): gate in-flight poll sends on activeSubscriptions"
+    }
+  },
+  {
+    "id": "6582458c-76f1-4f05-80c0-795768300e80",
+    "timestamp": "2026-05-17T21:06:09.335Z",
+    "score": 73,
+    "grade": "C",
+    "dimensions": {
+      "architecture": {
+        "score": 10,
+        "grade": "F",
+        "details": [
+          "13 layering violation(s) in 4 package(s)",
+          "53 package(s) with instability > 0.85"
+        ]
+      },
+      "typescript": {
+        "score": 100,
+        "grade": "A",
+        "details": []
+      },
+      "deadCode": {
+        "score": 100,
+        "grade": "A",
+        "details": []
+      },
+      "depHygiene": {
+        "score": 100,
+        "grade": "A",
+        "details": []
+      },
+      "testCoverage": {
+        "score": 100,
+        "grade": "A",
+        "details": [
+          "no coverage data — skipped"
+        ]
+      }
+    },
+    "counters": {
+      "layeringViolations": 13,
+      "avgInstability": 0.64,
+      "anyCount": 0,
+      "tsIgnoreCount": 0,
+      "unusedFiles": 0,
+      "unusedDeps": 0
+    },
+    "git": {
+      "commit": "e30dad73",
+      "branch": "main",
+      "message": "fix(workflow): gate in-flight poll sends on activeSubscriptions"
+    }
   }
 ]

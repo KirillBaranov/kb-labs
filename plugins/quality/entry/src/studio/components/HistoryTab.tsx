@@ -10,6 +10,7 @@ import {
   UISpace,
   UIIcon,
   UIButton,
+  useNotification,
 } from '@kb-labs/sdk/studio';
 import type { UITableColumn } from '@kb-labs/sdk/studio';
 import type { HistoryResponse, QualitySnapshot } from '@kb-labs/quality-contracts';
@@ -75,17 +76,20 @@ const columns: UITableColumn<QualitySnapshot>[] = [
 ];
 
 export function HistoryTab() {
-  const { data, isLoading } = useData<HistoryResponse>('/v1/plugins/quality/history');
+  const { data, isLoading, refetch } = useData<HistoryResponse>('/v1/plugins/quality/history');
   const saveSnapshot = useMutateData<Record<string, never>, QualitySnapshot>('/v1/plugins/quality/snapshot');
-  const [saving, setSaving] = React.useState(false);
+  const notify = useNotification();
 
-  async function handleSnapshot() {
-    setSaving(true);
-    try {
-      await saveSnapshot.mutate({});
-    } finally {
-      setSaving(false);
-    }
+  function handleSnapshot() {
+    saveSnapshot.mutate({}, {
+      onSuccess: () => {
+        notify.success('Snapshot saved');
+        void refetch();
+      },
+      onError: (err: unknown) => {
+        notify.error(`Failed: ${err instanceof Error ? err.message : String(err)}`);
+      },
+    });
   }
 
   if (isLoading) {
@@ -94,20 +98,25 @@ export function HistoryTab() {
 
   const snapshots = data?.snapshots ?? [];
   const delta = data?.delta;
+  const hasAnyDelta = delta && Object.values(delta).some(v => v !== 0);
 
   return (
     <div>
       {delta && (
         <UICard title="Changes since last snapshot" style={{ marginBottom: 24 }}>
-          <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
-            <div><span style={{ color: '#8c8c8c' }}>Score </span>{deltaCell(delta.score, false)}</div>
-            <div><span style={{ color: '#8c8c8c' }}>Violations </span>{deltaCell(delta.layeringViolations)}</div>
-            <div><span style={{ color: '#8c8c8c' }}>Any count </span>{deltaCell(delta.anyCount)}</div>
-            <div><span style={{ color: '#8c8c8c' }}>Ts-ignore </span>{deltaCell(delta.tsIgnoreCount)}</div>
-            <div><span style={{ color: '#8c8c8c' }}>Unused files </span>{deltaCell(delta.unusedFiles)}</div>
-            <div><span style={{ color: '#8c8c8c' }}>Unused deps </span>{deltaCell(delta.unusedDeps)}</div>
-            <div><span style={{ color: '#8c8c8c' }}>Avg instability </span>{deltaCell(parseFloat(delta.avgInstability.toFixed(2)))}</div>
-          </div>
+          {!hasAnyDelta ? (
+            <span style={{ color: '#8c8c8c', fontSize: 13 }}>No changes since last snapshot</span>
+          ) : (
+            <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
+              <div><span style={{ color: '#8c8c8c' }}>Score </span>{deltaCell(delta.score, false)}</div>
+              <div><span style={{ color: '#8c8c8c' }}>Violations </span>{deltaCell(delta.layeringViolations)}</div>
+              <div><span style={{ color: '#8c8c8c' }}>Any count </span>{deltaCell(delta.anyCount)}</div>
+              <div><span style={{ color: '#8c8c8c' }}>Ts-ignore </span>{deltaCell(delta.tsIgnoreCount)}</div>
+              <div><span style={{ color: '#8c8c8c' }}>Unused files </span>{deltaCell(delta.unusedFiles)}</div>
+              <div><span style={{ color: '#8c8c8c' }}>Unused deps </span>{deltaCell(delta.unusedDeps)}</div>
+              <div><span style={{ color: '#8c8c8c' }}>Avg instability </span>{deltaCell(parseFloat(delta.avgInstability.toFixed(2)))}</div>
+            </div>
+          )}
         </UICard>
       )}
 
@@ -115,7 +124,7 @@ export function HistoryTab() {
         title={`Snapshot History (${snapshots.length})`}
         extra={
           <UIButton size="small" icon={<UIIcon name="CameraOutlined" />}
-            loading={saving} onClick={handleSnapshot}>
+            loading={saveSnapshot.isLoading} onClick={handleSnapshot}>
             Save Snapshot
           </UIButton>
         }

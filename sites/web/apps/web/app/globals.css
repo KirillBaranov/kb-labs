@@ -2274,3 +2274,115 @@ a {
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* ─── Hero screenshot ────────────────────────────────────────────────── */
+.hero-screenshot {
+  width: 100%;
+  max-width: 1100px;
+  margin: clamp(2rem, 4vw, 3.5rem) auto 0;
+  padding-inline: 1.5rem;
+  box-sizing: border-box;
+}
+
+.hero-screenshot-img {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  box-shadow: 0 4px 40px rgba(0, 0, 0, 0.08);
+  display: block;
+}
+
+/* ─── Agent Control ──────────────────────────────────────────────────── */
+.ac-section {
+  padding-block: clamp(3rem, 6vw, 5rem);
+  border-bottom: 1px solid var(--line);
+}
+
+.ac-head {
+  max-width: 62ch;
+  margin-bottom: clamp(2rem, 4vw, 3rem);
+}
+
+.ac-title {
+  margin: 0;
+  font-size: clamp(1.6rem, 3vw, 2.4rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+}
+
+.ac-lead {
+  margin: 0.6rem 0 0;
+  color: var(--muted);
+  font-size: 1.05rem;
+  line-height: 1.65;
+  max-width: 58ch;
+}
+
+.ac-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: clamp(2rem, 4vw, 4rem);
+  align-items: start;
+}
+
+.ac-code-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ac-code-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #a0a8b8;
+}
+
+.ac-code {
+  margin: 0;
+  padding: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  font-size: 0.82rem;
+  line-height: 1.7;
+  overflow-x: auto;
+  color: var(--text);
+}
+
+.ac-code code {
+  font-family: 'Geist Mono', 'SF Mono', 'Fira Code', monospace;
+}
+
+.ac-code-caption {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.ac-screenshot-wrap {
+  position: relative;
+}
+
+.ac-screenshot {
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.07);
+  display: block;
+}
+
+@media (max-width: 760px) {
+  .ac-body {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-screenshot {
+    padding-inline: 1rem;
+  }
+}
