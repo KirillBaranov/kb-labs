@@ -151,6 +151,7 @@ export class MarketplaceService implements MarketplaceServiceAPI {
         provides,
         trust,
         signature: resolved.signature,
+        spec,
       });
 
       await addToMarketplaceLock(scopeRoot, result.id, entry);

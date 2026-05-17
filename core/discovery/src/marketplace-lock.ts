@@ -151,6 +151,7 @@ export function createMarketplaceEntry(opts: {
   provides: EntityKind[];
   signature?: EntitySignature;
   trust?: 'trusted' | 'untrusted';
+  spec?: string;
 }): MarketplaceEntry {
   return {
     version: opts.version,
@@ -163,6 +164,7 @@ export function createMarketplaceEntry(opts: {
     enabled: true,
     signature: opts.signature,
     trust: opts.trust ?? 'untrusted',
+    spec: opts.spec,
   };
 }
 
