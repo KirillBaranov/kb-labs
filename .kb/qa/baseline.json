@@ -1,0 +1,2622 @@
+{
+  "timestamp": "2026-05-16T23:02:24.820Z",
+  "git": {
+    "commit": "5a885323",
+    "branch": "main",
+    "message": "fix(qa-contracts): add missing type files referenced by index.ts"
+  },
+  "check": {
+    "ok": false,
+    "packages": {
+      "@kb-labs/adapters-analytics-duckdb": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/adapters-analytics-file": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/adapters-analytics-sqlite": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/adapters-environment-docker": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/adapters-eventbus-cache": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/adapters-fs": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/adapters-kblabs-gateway": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/adapters-log-ringbuffer": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/adapters-log-sqlite": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/adapters-mongodb": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/adapters-openai": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/adapters-pino": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/adapters-pino-http": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/adapters-qdrant": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/adapters-redis": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/adapters-snapshot-localfs": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/adapters-sqlite": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/adapters-telegram": {
+        "ok": false,
+        "issues": [
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/telegram/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      "@kb-labs/adapters-transport": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/adapters-vibeproxy": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/adapters-voyage-ai": {
+        "ok": false,
+        "issues": [
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"src/index.ts\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/voyage-ai/src/index.ts",
+            "fix": "create src/index.ts",
+            "capability": "scaffoldable"
+          },
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/voyage-ai/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      "@kb-labs/adapters-workspace-agent": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/adapters-workspace-localfs": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/adapters-workspace-worktree": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/agent-contracts": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/agent-core": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/agent-entry": {
+        "ok": false,
+        "issues": [
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"test:cli\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/entry/package.json",
+            "fix": "add script \"test:cli\" to package.json",
+            "capability": "fixable"
+          }
+        ]
+      },
+      "@kb-labs/agent-history": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/agent-kernel": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/agent-mcp": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/agent-runtime": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/agent-sdk": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/agent-store": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/agent-tools": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/agent-tracing": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/cli-bin": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/cli-commands": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/cli-contracts": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/cli-runtime": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/clickup-contracts": {
+        "ok": false,
+        "issues": [
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required field \"engines\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/contracts/package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"dev\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/contracts/package.json",
+            "fix": "add script \"dev\" to package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"lint\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/contracts/package.json",
+            "fix": "add script \"lint\" to package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required engine \"node\": \">=20.0.0\" in engines field",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/contracts/package.json",
+            "fix": "add \"node\": \">=20.0.0\" to engines",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required engine \"pnpm\": \">=9.0.0\" in engines field",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/contracts/package.json",
+            "fix": "add \"pnpm\": \">=9.0.0\" to engines",
+            "capability": "fixable"
+          },
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/contracts/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      "@kb-labs/clickup-core": {
+        "ok": false,
+        "issues": [
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required field \"engines\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/core/package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"dev\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/core/package.json",
+            "fix": "add script \"dev\" to package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"lint\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/core/package.json",
+            "fix": "add script \"lint\" to package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required engine \"node\": \">=20.0.0\" in engines field",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/core/package.json",
+            "fix": "add \"node\": \">=20.0.0\" to engines",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required engine \"pnpm\": \">=9.0.0\" in engines field",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/core/package.json",
+            "fix": "add \"pnpm\": \">=9.0.0\" to engines",
+            "capability": "fixable"
+          },
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/core/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      "@kb-labs/clickup-entry": {
+        "ok": false,
+        "issues": [
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required field \"engines\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/entry/package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"dev\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/entry/package.json",
+            "fix": "add script \"dev\" to package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"lint\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/entry/package.json",
+            "fix": "add script \"lint\" to package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required engine \"node\": \">=20.0.0\" in engines field",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/entry/package.json",
+            "fix": "add \"node\": \">=20.0.0\" to engines",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required engine \"pnpm\": \">=9.0.0\" in engines field",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/entry/package.json",
+            "fix": "add \"pnpm\": \">=9.0.0\" to engines",
+            "capability": "fixable"
+          },
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/entry/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      "@kb-labs/commit-contracts": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/commit-core": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/commit-entry": {
+        "ok": false,
+        "issues": [
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"test:cli\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/commit/entry/package.json",
+            "fix": "add script \"test:cli\" to package.json",
+            "capability": "fixable"
+          }
+        ]
+      },
+      "@kb-labs/core-bundle": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/core-config": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/core-contracts": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/core-discovery": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/core-ipc": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/core-platform": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/core-policy": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/core-registry": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/core-resource-broker": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/core-runtime": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/core-sandbox": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/core-state-broker": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/core-state-daemon": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/core-sys": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/core-tenant": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/core-types": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/core-workspace": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/devkit": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/devlink-contracts": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/devlink-core": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/devlink-entry": {
+        "ok": false,
+        "issues": [
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"test:cli\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/devlink/entry/package.json",
+            "fix": "add script \"test:cli\" to package.json",
+            "capability": "fixable"
+          }
+        ]
+      },
+      "@kb-labs/e2e-gateway": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/e2e-marketplace": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/e2e-marketplace-registry": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/e2e-platform": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/e2e-plugins": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/e2e-services": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/e2e-studio": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/e2e-workflows": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/gateway-app": {
+        "ok": false,
+        "issues": [
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required devDependency \"typescript\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/gateway/app/package.json",
+            "fix": "add \"typescript\": \"^5\" to devDependencies",
+            "capability": "fixable"
+          }
+        ]
+      },
+      "@kb-labs/gateway-auth": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/gateway-contracts": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/gateway-core": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/gateway-runtime-server": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/github-contracts": {
+        "ok": false,
+        "issues": [
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required field \"engines\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/contracts/package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"dev\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/contracts/package.json",
+            "fix": "add script \"dev\" to package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"lint\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/contracts/package.json",
+            "fix": "add script \"lint\" to package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required engine \"node\": \">=20.0.0\" in engines field",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/contracts/package.json",
+            "fix": "add \"node\": \">=20.0.0\" to engines",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required engine \"pnpm\": \">=9.0.0\" in engines field",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/contracts/package.json",
+            "fix": "add \"pnpm\": \">=9.0.0\" to engines",
+            "capability": "fixable"
+          },
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/contracts/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      "@kb-labs/github-entry": {
+        "ok": false,
+        "issues": [
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required field \"engines\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/entry/package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"dev\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/entry/package.json",
+            "fix": "add script \"dev\" to package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"test:cli\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/entry/package.json",
+            "fix": "add script \"test:cli\" to package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"lint\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/entry/package.json",
+            "fix": "add script \"lint\" to package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required engine \"node\": \">=20.0.0\" in engines field",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/entry/package.json",
+            "fix": "add \"node\": \">=20.0.0\" to engines",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required engine \"pnpm\": \">=9.0.0\" in engines field",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/entry/package.json",
+            "fix": "add \"pnpm\": \">=9.0.0\" to engines",
+            "capability": "fixable"
+          },
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/entry/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      "@kb-labs/host-agent-app": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/host-agent-client": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/host-agent-contracts": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/host-agent-core": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/host-agent-entry": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/host-agent-fs": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/host-agent-transport": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/impact-contracts": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/impact-core": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/infra-worker-contracts": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/infra-worker-core": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/llm-router": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/marketplace-api": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/marketplace-app": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/marketplace-contracts": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/marketplace-core": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/marketplace-entry": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/marketplace-npm": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/marketplace-registry-api": {
+        "ok": false,
+        "issues": [
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace-registry/api/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      "@kb-labs/marketplace-registry-app": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/marketplace-registry-contracts": {
+        "ok": false,
+        "issues": [
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace-registry/contracts/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      "@kb-labs/marketplace-registry-core": {
+        "ok": false,
+        "issues": [
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace-registry/core/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      "@kb-labs/marketplace-registry-entry": {
+        "ok": false,
+        "issues": [
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace-registry/entry/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      "@kb-labs/mind-adapters": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/mind-contracts": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/mind-core": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/mind-embeddings": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/mind-engine": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/mind-entry": {
+        "ok": false,
+        "issues": [
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"test:cli\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/entry/package.json",
+            "fix": "add script \"test:cli\" to package.json",
+            "capability": "fixable"
+          }
+        ]
+      },
+      "@kb-labs/mind-indexer": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/mind-orchestrator": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/mind-types": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/mind-vector-store": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/notifier-router": {
+        "ok": false,
+        "issues": [
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/notifier-router/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      "@kb-labs/perm-presets": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/platform-client": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/plugin-contracts": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/plugin-execution": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/plugin-execution-factory": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/plugin-runtime": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/policy-contracts": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/policy-core": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/qa-contracts": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/qa-core": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/qa-entry": {
+        "ok": false,
+        "issues": [
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"test:cli\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/qa/entry/package.json",
+            "fix": "add script \"test:cli\" to package.json",
+            "capability": "fixable"
+          }
+        ]
+      },
+      "@kb-labs/quality-contracts": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/quality-core": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/quality-entry": {
+        "ok": false,
+        "issues": [
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"test:cli\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/quality/entry/package.json",
+            "fix": "add script \"test:cli\" to package.json",
+            "capability": "fixable"
+          }
+        ]
+      },
+      "@kb-labs/release-manager-changelog": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/release-manager-checks": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/release-manager-cli": {
+        "ok": false,
+        "issues": [
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"test:cli\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-cli/package.json",
+            "fix": "add script \"test:cli\" to package.json",
+            "capability": "fixable"
+          }
+        ]
+      },
+      "@kb-labs/release-manager-contracts": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/release-manager-core": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/rest-api-app": {
+        "ok": false,
+        "issues": [
+          {
+            "check": "tsconfig",
+            "severity": "error",
+            "message": "tsconfig.json extends \"../tsconfig.base.json\" but must extend a path matching \"@kb-labs/devkit/tsconfig/\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/rest-api/app/tsconfig.json",
+            "fix": "set \"extends\" to a path containing \"@kb-labs/devkit/tsconfig/\""
+          }
+        ]
+      },
+      "@kb-labs/rest-api-contracts": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/rest-api-core": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/review-contracts": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/review-core": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/review-entry": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/review-heuristic": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/review-llm": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/scaffold": {
+        "ok": false,
+        "issues": [
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/scaffold/entry/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      "@kb-labs/scaffold-contracts": {
+        "ok": false,
+        "issues": [
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/scaffold/contracts/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      "@kb-labs/scaffold-core": {
+        "ok": false,
+        "issues": [
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/scaffold/core/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      "@kb-labs/sdk": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/shared-cli-ui": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/shared-command-kit": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/shared-http": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/shared-testing": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/shared-testing-e2e": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/shared-testing-platform": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/shared-tool-kit": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/studio-app": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/studio-data-client": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/studio-devtools": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/studio-event-bus": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/studio-federation": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/studio-hooks": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/studio-plugin-tools": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/studio-ui-core": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/studio-ui-kit": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/telemetry-client": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/workflow-artifacts": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/workflow-constants": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/workflow-contracts": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/workflow-daemon": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/workflow-engine": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/workflow-entry": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/workflow-runtime": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/workflow-steps": {
+        "ok": true,
+        "issues": null
+      },
+      "@kb-labs/workflow-studio": {
+        "ok": true,
+        "issues": null
+      },
+      "github.com/kb-labs/dev": {
+        "ok": true,
+        "issues": null
+      },
+      "github.com/kb-labs/devkit": {
+        "ok": true,
+        "issues": null
+      },
+      "github.com/kb-labs/kb-deploy": {
+        "ok": true,
+        "issues": null
+      },
+      "github.com/kb-labs/kb-monitor": {
+        "ok": true,
+        "issues": null
+      },
+      "kb-create": {
+        "ok": true,
+        "issues": null
+      },
+      "kb-labs-web": {
+        "ok": true,
+        "issues": null
+      }
+    },
+    "results": [
+      {
+        "package": "@kb-labs/host-agent-client",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/host-agent-core",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/infra-worker-contracts",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/studio-federation",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/github-contracts",
+        "ok": false,
+        "issues": [
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required field \"engines\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/contracts/package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"dev\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/contracts/package.json",
+            "fix": "add script \"dev\" to package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"lint\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/contracts/package.json",
+            "fix": "add script \"lint\" to package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required engine \"node\": \">=20.0.0\" in engines field",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/contracts/package.json",
+            "fix": "add \"node\": \">=20.0.0\" to engines",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required engine \"pnpm\": \">=9.0.0\" in engines field",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/contracts/package.json",
+            "fix": "add \"pnpm\": \">=9.0.0\" to engines",
+            "capability": "fixable"
+          },
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/contracts/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      {
+        "package": "@kb-labs/rest-api-app",
+        "ok": false,
+        "issues": [
+          {
+            "check": "tsconfig",
+            "severity": "error",
+            "message": "tsconfig.json extends \"../tsconfig.base.json\" but must extend a path matching \"@kb-labs/devkit/tsconfig/\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/rest-api/app/tsconfig.json",
+            "fix": "set \"extends\" to a path containing \"@kb-labs/devkit/tsconfig/\""
+          }
+        ]
+      },
+      {
+        "package": "@kb-labs/adapters-analytics-sqlite",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/e2e-workflows",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/mind-orchestrator",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/gateway-auth",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/marketplace-registry-core",
+        "ok": false,
+        "issues": [
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace-registry/core/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      {
+        "package": "@kb-labs/mind-embeddings",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/studio-app",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/shared-http",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/shared-testing",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/rest-api-core",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/agent-history",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/adapters-pino",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/adapters-log-sqlite",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "kb-labs-web",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "github.com/kb-labs/dev",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/plugin-execution",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/gateway-app",
+        "ok": false,
+        "issues": [
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required devDependency \"typescript\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/gateway/app/package.json",
+            "fix": "add \"typescript\": \"^5\" to devDependencies",
+            "capability": "fixable"
+          }
+        ]
+      },
+      {
+        "package": "@kb-labs/gateway-runtime-server",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/workflow-studio",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/cli-bin",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/marketplace-registry-api",
+        "ok": false,
+        "issues": [
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace-registry/api/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      {
+        "package": "@kb-labs/marketplace-registry-entry",
+        "ok": false,
+        "issues": [
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace-registry/entry/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      {
+        "package": "@kb-labs/mind-vector-store",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/plugin-contracts",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/core-state-broker",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/host-agent-fs",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/workflow-contracts",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/core-workspace",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/marketplace-core",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/e2e-marketplace",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/adapters-eventbus-cache",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/workflow-constants",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/adapters-vibeproxy",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/adapters-workspace-localfs",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "github.com/kb-labs/devkit",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/github-entry",
+        "ok": false,
+        "issues": [
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required field \"engines\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/entry/package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"dev\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/entry/package.json",
+            "fix": "add script \"dev\" to package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"test:cli\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/entry/package.json",
+            "fix": "add script \"test:cli\" to package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"lint\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/entry/package.json",
+            "fix": "add script \"lint\" to package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required engine \"node\": \">=20.0.0\" in engines field",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/entry/package.json",
+            "fix": "add \"node\": \">=20.0.0\" to engines",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required engine \"pnpm\": \">=9.0.0\" in engines field",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/entry/package.json",
+            "fix": "add \"pnpm\": \">=9.0.0\" to engines",
+            "capability": "fixable"
+          },
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/entry/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      {
+        "package": "@kb-labs/workflow-steps",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/marketplace-npm",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/adapters-fs",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/release-manager-changelog",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/adapters-analytics-duckdb",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/mind-adapters",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/gateway-core",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/host-agent-transport",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/shared-tool-kit",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/cli-contracts",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/agent-runtime",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/agent-kernel",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/adapters-mongodb",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/e2e-plugins",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/core-policy",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/commit-core",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/commit-entry",
+        "ok": false,
+        "issues": [
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"test:cli\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/commit/entry/package.json",
+            "fix": "add script \"test:cli\" to package.json",
+            "capability": "fixable"
+          }
+        ]
+      },
+      {
+        "package": "@kb-labs/scaffold-core",
+        "ok": false,
+        "issues": [
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/scaffold/core/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      {
+        "package": "@kb-labs/workflow-entry",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/infra-worker-core",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/core-bundle",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/rest-api-contracts",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/scaffold",
+        "ok": false,
+        "issues": [
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/scaffold/entry/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      {
+        "package": "@kb-labs/workflow-artifacts",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/core-state-daemon",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/marketplace-api",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/shared-command-kit",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/studio-plugin-tools",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/plugin-execution-factory",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/core-resource-broker",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/adapters-analytics-file",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/mind-types",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/studio-data-client",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/perm-presets",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/cli-commands",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/marketplace-entry",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/marketplace-contracts",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/adapters-telegram",
+        "ok": false,
+        "issues": [
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/telegram/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      {
+        "package": "@kb-labs/studio-devtools",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/studio-hooks",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/gateway-contracts",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/qa-core",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/release-manager-checks",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/platform-client",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/adapters-pino-http",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "kb-create",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/adapters-environment-docker",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/core-types",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/e2e-studio",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "github.com/kb-labs/kb-monitor",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/workflow-runtime",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/agent-contracts",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/impact-core",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/adapters-qdrant",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/host-agent-contracts",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/review-heuristic",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/review-contracts",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/marketplace-registry-app",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/e2e-platform",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/e2e-marketplace-registry",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/agent-tools",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/impact-contracts",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/core-sandbox",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/clickup-entry",
+        "ok": false,
+        "issues": [
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required field \"engines\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/entry/package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"dev\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/entry/package.json",
+            "fix": "add script \"dev\" to package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"lint\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/entry/package.json",
+            "fix": "add script \"lint\" to package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required engine \"node\": \">=20.0.0\" in engines field",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/entry/package.json",
+            "fix": "add \"node\": \">=20.0.0\" to engines",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required engine \"pnpm\": \">=9.0.0\" in engines field",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/entry/package.json",
+            "fix": "add \"pnpm\": \">=9.0.0\" to engines",
+            "capability": "fixable"
+          },
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/entry/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      {
+        "package": "@kb-labs/host-agent-entry",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/sdk",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/adapters-voyage-ai",
+        "ok": false,
+        "issues": [
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"src/index.ts\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/voyage-ai/src/index.ts",
+            "fix": "create src/index.ts",
+            "capability": "scaffoldable"
+          },
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/voyage-ai/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      {
+        "package": "@kb-labs/adapters-openai",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/release-manager-core",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/agent-mcp",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/adapters-log-ringbuffer",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/adapters-redis",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/studio-ui-core",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/core-config",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/agent-tracing",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/core-sys",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/notifier-router",
+        "ok": false,
+        "issues": [
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/notifier-router/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      {
+        "package": "@kb-labs/core-discovery",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/plugin-runtime",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/devlink-contracts",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/host-agent-app",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/mind-engine",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/qa-contracts",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/marketplace-registry-contracts",
+        "ok": false,
+        "issues": [
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace-registry/contracts/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      {
+        "package": "@kb-labs/telemetry-client",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/mind-core",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/llm-router",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/devlink-entry",
+        "ok": false,
+        "issues": [
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"test:cli\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/devlink/entry/package.json",
+            "fix": "add script \"test:cli\" to package.json",
+            "capability": "fixable"
+          }
+        ]
+      },
+      {
+        "package": "@kb-labs/policy-core",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/workflow-daemon",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/marketplace-app",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/studio-event-bus",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/studio-ui-kit",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/core-tenant",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/clickup-core",
+        "ok": false,
+        "issues": [
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required field \"engines\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/core/package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"dev\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/core/package.json",
+            "fix": "add script \"dev\" to package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"lint\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/core/package.json",
+            "fix": "add script \"lint\" to package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required engine \"node\": \">=20.0.0\" in engines field",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/core/package.json",
+            "fix": "add \"node\": \">=20.0.0\" to engines",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required engine \"pnpm\": \">=9.0.0\" in engines field",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/core/package.json",
+            "fix": "add \"pnpm\": \">=9.0.0\" to engines",
+            "capability": "fixable"
+          },
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/core/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      {
+        "package": "@kb-labs/workflow-engine",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/cli-runtime",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/adapters-kblabs-gateway",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "github.com/kb-labs/kb-deploy",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/core-ipc",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/policy-contracts",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/shared-testing-e2e",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/clickup-contracts",
+        "ok": false,
+        "issues": [
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required field \"engines\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/contracts/package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"dev\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/contracts/package.json",
+            "fix": "add script \"dev\" to package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"lint\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/contracts/package.json",
+            "fix": "add script \"lint\" to package.json",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required engine \"node\": \">=20.0.0\" in engines field",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/contracts/package.json",
+            "fix": "add \"node\": \">=20.0.0\" to engines",
+            "capability": "fixable"
+          },
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required engine \"pnpm\": \">=9.0.0\" in engines field",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/contracts/package.json",
+            "fix": "add \"pnpm\": \">=9.0.0\" to engines",
+            "capability": "fixable"
+          },
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/clickup/contracts/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      {
+        "package": "@kb-labs/commit-contracts",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/devlink-core",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/release-manager-contracts",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/adapters-snapshot-localfs",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/agent-sdk",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/e2e-services",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/quality-core",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/review-core",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/shared-testing-platform",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/e2e-gateway",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/adapters-sqlite",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/adapters-workspace-worktree",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/devkit",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/qa-entry",
+        "ok": false,
+        "issues": [
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"test:cli\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/qa/entry/package.json",
+            "fix": "add script \"test:cli\" to package.json",
+            "capability": "fixable"
+          }
+        ]
+      },
+      {
+        "package": "@kb-labs/quality-contracts",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/release-manager-cli",
+        "ok": false,
+        "issues": [
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"test:cli\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-cli/package.json",
+            "fix": "add script \"test:cli\" to package.json",
+            "capability": "fixable"
+          }
+        ]
+      },
+      {
+        "package": "@kb-labs/scaffold-contracts",
+        "ok": false,
+        "issues": [
+          {
+            "check": "structure",
+            "severity": "error",
+            "message": "required file \"README.md\" not found",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/scaffold/contracts/README.md",
+            "fix": "create README.md",
+            "capability": "scaffoldable"
+          }
+        ]
+      },
+      {
+        "package": "@kb-labs/agent-core",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/adapters-transport",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/adapters-workspace-agent",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/core-registry",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/core-runtime",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/agent-entry",
+        "ok": false,
+        "issues": [
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"test:cli\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/entry/package.json",
+            "fix": "add script \"test:cli\" to package.json",
+            "capability": "fixable"
+          }
+        ]
+      },
+      {
+        "package": "@kb-labs/shared-cli-ui",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/core-platform",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/quality-entry",
+        "ok": false,
+        "issues": [
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"test:cli\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/quality/entry/package.json",
+            "fix": "add script \"test:cli\" to package.json",
+            "capability": "fixable"
+          }
+        ]
+      },
+      {
+        "package": "@kb-labs/mind-entry",
+        "ok": false,
+        "issues": [
+          {
+            "check": "package_json",
+            "severity": "error",
+            "message": "missing required script \"test:cli\"",
+            "file": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/entry/package.json",
+            "fix": "add script \"test:cli\" to package.json",
+            "capability": "fixable"
+          }
+        ]
+      },
+      {
+        "package": "@kb-labs/review-entry",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/review-llm",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/mind-contracts",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/mind-indexer",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/agent-store",
+        "ok": true,
+        "issues": null
+      },
+      {
+        "package": "@kb-labs/core-contracts",
+        "ok": true,
+        "issues": null
+      }
+    ],
+    "groups": {
+      "e2e-suite": 8,
+      "go-binary": 5,
+      "plugin-entry": 15,
+      "site": 1,
+      "spa": 2,
+      "ts-app": 8,
+      "ts-lib": 139
+    },
+    "capabilities": {
+      "fixable": 34,
+      "manual": 1,
+      "scaffoldable": 16
+    },
+    "summary": {
+      "total": 178,
+      "passed": 154,
+      "failed": 24,
+      "errors": 51,
+      "warnings": 0
+    },
+    "hint": "run 'kb-devkit fix' to auto-fix issues where possible"
+  },
+  "stats": {
+    "ok": false,
+    "score": 88,
+    "grade": "B",
+    "summary": {
+      "total": 178,
+      "healthy": 154,
+      "warning": 0,
+      "error": 24,
+      "total_errors": 51,
+      "total_warnings": 0
+    },
+    "by_category": {
+      "e2e-suite": {
+        "total": 8,
+        "healthy": 8,
+        "issues": 0,
+        "grade": "A"
+      },
+      "go-binary": {
+        "total": 5,
+        "healthy": 5,
+        "issues": 0,
+        "grade": "A"
+      },
+      "plugin-entry": {
+        "total": 15,
+        "healthy": 4,
+        "issues": 11,
+        "grade": "F"
+      },
+      "site": {
+        "total": 1,
+        "healthy": 1,
+        "issues": 0,
+        "grade": "A"
+      },
+      "spa": {
+        "total": 2,
+        "healthy": 2,
+        "issues": 0,
+        "grade": "A"
+      },
+      "ts-app": {
+        "total": 8,
+        "healthy": 6,
+        "issues": 2,
+        "grade": "C"
+      },
+      "ts-lib": {
+        "total": 139,
+        "healthy": 128,
+        "issues": 11,
+        "grade": "A"
+      }
+    },
+    "issues_by_type": {
+      "package_json": {
+        "check": "package_json",
+        "errors": 34,
+        "warnings": 0,
+        "packages": 13
+      },
+      "structure": {
+        "check": "structure",
+        "errors": 16,
+        "warnings": 0,
+        "packages": 15
+      },
+      "tsconfig": {
+        "check": "tsconfig",
+        "errors": 1,
+        "warnings": 0,
+        "packages": 1
+      }
+    },
+    "coverage": {
+      "with_eslint": {
+        "pass": 173,
+        "total": 173,
+        "pct": 100
+      },
+      "with_tsconfig": {
+        "pass": 172,
+        "total": 173,
+        "pct": 99.42196531791907
+      },
+      "with_readme": {
+        "pass": 158,
+        "total": 173,
+        "pct": 91.32947976878613
+      },
+      "with_engines": {
+        "pass": 136,
+        "total": 139,
+        "pct": 97.84172661870504
+      },
+      "with_exports": {
+        "pass": 139,
+        "total": 139,
+        "pct": 100
+      }
+    },
+    "top_issues": [
+      {
+        "check": "structure",
+        "message": "required file \"README.md\" not found",
+        "packages": 15
+      },
+      {
+        "check": "package_json",
+        "message": "missing required script \"test:cli\"",
+        "packages": 8
+      },
+      {
+        "check": "package_json",
+        "message": "missing required script \"dev\"",
+        "packages": 5
+      },
+      {
+        "check": "package_json",
+        "message": "missing required script \"lint\"",
+        "packages": 5
+      },
+      {
+        "check": "package_json",
+        "message": "missing required engine \"node\": \">=20.0.0\" in engines field",
+        "packages": 5
+      }
+    ]
+  }
+}

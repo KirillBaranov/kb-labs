@@ -1,0 +1,286 @@
+[
+  {
+    "id": "7107ae32-c72e-40aa-8d6c-e5cc3b44d49e",
+    "timestamp": "2026-05-16T22:43:53.883Z",
+    "durationMs": 1974,
+    "git": {
+      "commit": "5a885323",
+      "branch": "main",
+      "message": "fix(qa-contracts): add missing type files referenced by index.ts"
+    },
+    "kind": "stats",
+    "raw": {
+      "ok": false,
+      "score": 88,
+      "grade": "B",
+      "summary": {
+        "total": 178,
+        "healthy": 154,
+        "warning": 0,
+        "error": 24,
+        "total_errors": 51,
+        "total_warnings": 0
+      },
+      "by_category": {
+        "e2e-suite": {
+          "total": 8,
+          "healthy": 8,
+          "issues": 0,
+          "grade": "A"
+        },
+        "go-binary": {
+          "total": 5,
+          "healthy": 5,
+          "issues": 0,
+          "grade": "A"
+        },
+        "plugin-entry": {
+          "total": 15,
+          "healthy": 4,
+          "issues": 11,
+          "grade": "F"
+        },
+        "site": {
+          "total": 1,
+          "healthy": 1,
+          "issues": 0,
+          "grade": "A"
+        },
+        "spa": {
+          "total": 2,
+          "healthy": 2,
+          "issues": 0,
+          "grade": "A"
+        },
+        "ts-app": {
+          "total": 8,
+          "healthy": 6,
+          "issues": 2,
+          "grade": "C"
+        },
+        "ts-lib": {
+          "total": 139,
+          "healthy": 128,
+          "issues": 11,
+          "grade": "A"
+        }
+      },
+      "issues_by_type": {
+        "package_json": {
+          "check": "package_json",
+          "errors": 34,
+          "warnings": 0,
+          "packages": 13
+        },
+        "structure": {
+          "check": "structure",
+          "errors": 16,
+          "warnings": 0,
+          "packages": 15
+        },
+        "tsconfig": {
+          "check": "tsconfig",
+          "errors": 1,
+          "warnings": 0,
+          "packages": 1
+        }
+      },
+      "coverage": {
+        "with_eslint": {
+          "pass": 173,
+          "total": 173,
+          "pct": 100
+        },
+        "with_tsconfig": {
+          "pass": 172,
+          "total": 173,
+          "pct": 99.42196531791907
+        },
+        "with_readme": {
+          "pass": 158,
+          "total": 173,
+          "pct": 91.32947976878613
+        },
+        "with_engines": {
+          "pass": 136,
+          "total": 139,
+          "pct": 97.84172661870504
+        },
+        "with_exports": {
+          "pass": 139,
+          "total": 139,
+          "pct": 100
+        }
+      },
+      "top_issues": [
+        {
+          "check": "structure",
+          "message": "required file \"README.md\" not found",
+          "packages": 15
+        },
+        {
+          "check": "package_json",
+          "message": "missing required script \"test:cli\"",
+          "packages": 8
+        },
+        {
+          "check": "package_json",
+          "message": "missing required script \"lint\"",
+          "packages": 5
+        },
+        {
+          "check": "package_json",
+          "message": "missing required engine \"node\": \">=20.0.0\" in engines field",
+          "packages": 5
+        },
+        {
+          "check": "package_json",
+          "message": "missing required engine \"pnpm\": \">=9.0.0\" in engines field",
+          "packages": 5
+        }
+      ]
+    }
+  },
+  {
+    "id": "ee8a3469-5c4a-41e2-b5ac-5693873834ef",
+    "timestamp": "2026-05-16T23:05:51.322Z",
+    "durationMs": 1717,
+    "git": {
+      "commit": "5a885323",
+      "branch": "main",
+      "message": "fix(qa-contracts): add missing type files referenced by index.ts"
+    },
+    "kind": "stats",
+    "raw": {
+      "ok": false,
+      "score": 88,
+      "grade": "B",
+      "summary": {
+        "total": 178,
+        "healthy": 154,
+        "warning": 0,
+        "error": 24,
+        "total_errors": 51,
+        "total_warnings": 0
+      },
+      "by_category": {
+        "e2e-suite": {
+          "total": 8,
+          "healthy": 8,
+          "issues": 0,
+          "grade": "A"
+        },
+        "go-binary": {
+          "total": 5,
+          "healthy": 5,
+          "issues": 0,
+          "grade": "A"
+        },
+        "plugin-entry": {
+          "total": 15,
+          "healthy": 4,
+          "issues": 11,
+          "grade": "F"
+        },
+        "site": {
+          "total": 1,
+          "healthy": 1,
+          "issues": 0,
+          "grade": "A"
+        },
+        "spa": {
+          "total": 2,
+          "healthy": 2,
+          "issues": 0,
+          "grade": "A"
+        },
+        "ts-app": {
+          "total": 8,
+          "healthy": 6,
+          "issues": 2,
+          "grade": "C"
+        },
+        "ts-lib": {
+          "total": 139,
+          "healthy": 128,
+          "issues": 11,
+          "grade": "A"
+        }
+      },
+      "issues_by_type": {
+        "package_json": {
+          "check": "package_json",
+          "errors": 34,
+          "warnings": 0,
+          "packages": 13
+        },
+        "structure": {
+          "check": "structure",
+          "errors": 16,
+          "warnings": 0,
+          "packages": 15
+        },
+        "tsconfig": {
+          "check": "tsconfig",
+          "errors": 1,
+          "warnings": 0,
+          "packages": 1
+        }
+      },
+      "coverage": {
+        "with_eslint": {
+          "pass": 173,
+          "total": 173,
+          "pct": 100
+        },
+        "with_tsconfig": {
+          "pass": 172,
+          "total": 173,
+          "pct": 99.42196531791907
+        },
+        "with_readme": {
+          "pass": 158,
+          "total": 173,
+          "pct": 91.32947976878613
+        },
+        "with_engines": {
+          "pass": 136,
+          "total": 139,
+          "pct": 97.84172661870504
+        },
+        "with_exports": {
+          "pass": 139,
+          "total": 139,
+          "pct": 100
+        }
+      },
+      "top_issues": [
+        {
+          "check": "structure",
+          "message": "required file \"README.md\" not found",
+          "packages": 15
+        },
+        {
+          "check": "package_json",
+          "message": "missing required script \"test:cli\"",
+          "packages": 8
+        },
+        {
+          "check": "package_json",
+          "message": "missing required engine \"node\": \">=20.0.0\" in engines field",
+          "packages": 5
+        },
+        {
+          "check": "package_json",
+          "message": "missing required engine \"pnpm\": \">=9.0.0\" in engines field",
+          "packages": 5
+        },
+        {
+          "check": "package_json",
+          "message": "missing required field \"engines\"",
+          "packages": 5
+        }
+      ]
+    }
+  }
+]

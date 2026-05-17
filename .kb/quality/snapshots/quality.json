@@ -1,0 +1,104 @@
+[
+  {
+    "id": "de5cc93a-955d-42c2-a24b-15a6a4a912da",
+    "timestamp": "2026-05-17T08:07:16.232Z",
+    "score": 73,
+    "grade": "C",
+    "dimensions": {
+      "architecture": {
+        "score": 10,
+        "grade": "F",
+        "details": [
+          "13 layering violation(s) in 4 package(s)",
+          "52 package(s) with instability > 0.85"
+        ]
+      },
+      "typescript": {
+        "score": 100,
+        "grade": "A",
+        "details": []
+      },
+      "deadCode": {
+        "score": 100,
+        "grade": "A",
+        "details": []
+      },
+      "depHygiene": {
+        "score": 100,
+        "grade": "A",
+        "details": []
+      },
+      "testCoverage": {
+        "score": 100,
+        "grade": "A",
+        "details": [
+          "no coverage data — skipped"
+        ]
+      }
+    },
+    "counters": {
+      "layeringViolations": 13,
+      "avgInstability": 0.63,
+      "anyCount": 0,
+      "tsIgnoreCount": 0,
+      "unusedFiles": 0,
+      "unusedDeps": 0
+    },
+    "git": {
+      "commit": "5a885323",
+      "branch": "main",
+      "message": "fix(qa-contracts): add missing type files referenced by index.ts"
+    }
+  },
+  {
+    "id": "4a3ecf0f-657b-4ec6-a84e-d58b0f0a51cf",
+    "timestamp": "2026-05-17T08:07:24.997Z",
+    "score": 73,
+    "grade": "C",
+    "dimensions": {
+      "architecture": {
+        "score": 10,
+        "grade": "F",
+        "details": [
+          "13 layering violation(s) in 4 package(s)",
+          "52 package(s) with instability > 0.85"
+        ]
+      },
+      "typescript": {
+        "score": 100,
+        "grade": "A",
+        "details": []
+      },
+      "deadCode": {
+        "score": 100,
+        "grade": "A",
+        "details": []
+      },
+      "depHygiene": {
+        "score": 100,
+        "grade": "A",
+        "details": []
+      },
+      "testCoverage": {
+        "score": 100,
+        "grade": "A",
+        "details": [
+          "no coverage data — skipped"
+        ]
+      }
+    },
+    "counters": {
+      "layeringViolations": 13,
+      "avgInstability": 0.63,
+      "anyCount": 0,
+      "tsIgnoreCount": 0,
+      "unusedFiles": 0,
+      "unusedDeps": 0
+    },
+    "git": {
+      "commit": "5a885323",
+      "branch": "main",
+      "message": "fix(qa-contracts): add missing type files referenced by index.ts"
+    }
+  }
+]
