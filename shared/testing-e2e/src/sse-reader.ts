@@ -30,22 +30,25 @@ export interface SseOptions {
  */
 export async function* readSse(url: string, opts: SseOptions = {}): AsyncGenerator<SseEvent> {
   const timeoutMs = opts.timeoutMs ?? 30_000;
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  // Use a race-based timeout instead of AbortController on the fetch /
+  // reader: AbortController surfaces AbortError to callers that we cannot
+  // suppress reliably (the response stream pipes through Playwright's
+  // fixture cleanup, where re-throws happen outside this generator's
+  // try/catch). Race the read against a sleep and treat timeout as a
+  // clean end-of-stream — that is what every collectSseEvents-style
+  // caller expects.
+  const deadline = Date.now() + timeoutMs;
 
   let res: Response;
   try {
     res = await fetch(url, {
       headers: { accept: 'text/event-stream', ...opts.headers },
-      signal: controller.signal,
     });
   } catch (err) {
-    clearTimeout(timer);
     throw new Error(`SSE fetch failed: ${(err as Error).message}`);
   }
 
   if (!res.ok || !res.body) {
-    clearTimeout(timer);
     throw new Error(`SSE response not ok: ${res.status} ${res.statusText}`);
   }
 
@@ -53,21 +56,23 @@ export async function* readSse(url: string, opts: SseOptions = {}): AsyncGenerat
   const decoder = new TextDecoder();
   let buffer = '';
 
+  type ReadResult = { value?: Uint8Array; done: boolean };
+  const TIMEOUT_MARKER: ReadResult = { done: true };
+
   try {
     while (true) {
-      let chunk: { value?: Uint8Array; done: boolean };
-      try {
-        chunk = await reader.read();
-      } catch (err) {
-        // Timeout/abort is a normal termination signal for collectors that
-        // want "whatever arrived before the deadline" rather than an error.
-        if ((err as Error)?.name === 'AbortError' || controller.signal.aborted) {
-          return;
-        }
-        throw err;
-      }
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) { return; }
+
+      // Race the next chunk against the deadline. A timeout returns a
+      // synthetic "done" marker — no AbortError ever surfaces.
+      const chunk: ReadResult = await Promise.race([
+        reader.read() as Promise<ReadResult>,
+        new Promise<ReadResult>((resolve) => setTimeout(() => resolve(TIMEOUT_MARKER), remaining)),
+      ]);
+
       const { value, done } = chunk;
-      if (done) {return;}
+      if (done) { return; }
       buffer += decoder.decode(value, { stream: true });
 
       // SSE events are separated by a blank line (\n\n).
@@ -76,7 +81,7 @@ export async function* readSse(url: string, opts: SseOptions = {}): AsyncGenerat
         const rawEvent = buffer.slice(0, sepIdx);
         buffer = buffer.slice(sepIdx + 2);
         const parsed = parseEvent(rawEvent);
-        if (!parsed) {continue;}
+        if (!parsed) { continue; }
         yield parsed;
         if (opts.untilEvent && parsed.event === opts.untilEvent) {
           return;
@@ -84,8 +89,7 @@ export async function* readSse(url: string, opts: SseOptions = {}): AsyncGenerat
       }
     }
   } finally {
-    clearTimeout(timer);
-    try { reader.cancel(); } catch {
+    try { await reader.cancel(); } catch {
       // intentionally empty: reader may already be closed
     }
   }
