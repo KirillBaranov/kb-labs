@@ -601,11 +601,11 @@ a {
 
 .hero-screen {
   width: 100%;
-  min-height: calc(100svh - 74px);
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
-  padding: clamp(26px, 4.4vw, 52px) clamp(15px, 2.4vw, 30px);
+  padding: clamp(4rem, 8vw, 7rem) clamp(15px, 2.4vw, 30px) clamp(3rem, 6vw, 5rem);
   border-bottom: 1px solid var(--line);
   position: relative;
   overflow: hidden;
@@ -655,15 +655,15 @@ a {
 /* ── Radial rings graphic ────────────────────────────────────────────── */
 .hero-graphic {
   position: absolute;
-  bottom: -20px;
+  top: 0;
   left: 50%;
   transform: translateX(-50%);
   width: min(900px, 100%);
-  height: 340px;
+  height: 320px;
   pointer-events: none;
-  /* fade edges */
-  mask-image: linear-gradient(to top, black 0%, black 40%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to top, black 0%, black 40%, transparent 100%);
+  opacity: 0.5;
+  mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black 0%, transparent 100%);
 }
 
 .hero-rings {
@@ -672,10 +672,11 @@ a {
 }
 
 .hero-main {
-  max-width: 900px;
+  max-width: 860px;
+  width: 100%;
   display: grid;
   justify-items: center;
-  gap: 1.4rem;
+  gap: 1.25rem;
   position: relative;
   z-index: 1;
 }
@@ -696,11 +697,11 @@ a {
 .title {
   margin: 0;
   font-family: var(--font-heading), var(--font-body), sans-serif;
-  font-size: clamp(2rem, 5vw, 3.6rem);
-  line-height: 1.12;
+  font-size: clamp(1.75rem, 3.8vw, 2.9rem);
+  line-height: 1.15;
   letter-spacing: -0.03em;
   font-weight: 700;
-  max-width: 20ch;
+  max-width: 28ch;
 }
 
 .subtitle {
@@ -1327,6 +1328,20 @@ a {
 
 .bf-row-link:hover {
   opacity: 0.75;
+}
+
+.bf-row-screenshot {
+  margin-top: 1.25rem;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  box-shadow: 0 2px 24px rgba(0,0,0,0.07);
+}
+
+.bf-row-screenshot-img {
+  width: 100%;
+  height: auto;
+  display: block;
 }
 
 @media (max-width: 760px) {
@@ -2221,8 +2236,8 @@ a {
 
 @media (max-width: 900px) {
   .hero-screen {
-    min-height: calc(100svh - 128px);
     text-align: left;
+    padding: clamp(2.5rem, 6vw, 4rem) clamp(15px, 2.4vw, 30px) clamp(2rem, 5vw, 3.5rem);
   }
 
   .hero-main {
@@ -2232,7 +2247,6 @@ a {
   .cta-row {
     justify-content: flex-start;
   }
-
 }
 
 @media (max-width: 1200px) {
@@ -2278,18 +2292,23 @@ a {
 /* ─── Hero screenshot ────────────────────────────────────────────────── */
 .hero-screenshot {
   width: 100%;
-  max-width: 1100px;
-  margin: clamp(2rem, 4vw, 3.5rem) auto 0;
-  padding-inline: 1.5rem;
+  max-width: 1080px;
+  margin: clamp(2.5rem, 5vw, 4rem) auto 0;
+  padding-inline: clamp(1rem, 3vw, 2rem);
   box-sizing: border-box;
+  position: relative;
+  z-index: 1;
 }
 
 .hero-screenshot-img {
   width: 100%;
   height: auto;
-  border-radius: 12px;
+  border-radius: 14px;
   border: 1px solid var(--line);
-  box-shadow: 0 4px 40px rgba(0, 0, 0, 0.08);
+  box-shadow:
+    0 2px 0 rgba(0,0,0,0.04),
+    0 8px 48px rgba(0, 0, 0, 0.10),
+    0 24px 80px rgba(0, 0, 0, 0.06);
   display: block;
 }
 
@@ -2297,6 +2316,7 @@ a {
 .ac-section {
   padding-block: clamp(3rem, 6vw, 5rem);
   border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, #f9faff 0%, #fff 100%);
 }
 
 .ac-head {
@@ -2344,11 +2364,12 @@ a {
 .ac-code {
   margin: 0;
   padding: 1.5rem;
-  background: var(--surface);
+  background: #f7f8fa;
   border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
   border-radius: 10px;
-  font-size: 0.82rem;
-  line-height: 1.7;
+  font-size: 0.81rem;
+  line-height: 1.75;
   overflow-x: auto;
   color: var(--text);
 }
