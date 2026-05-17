@@ -1,2 +1,15 @@
-// REST API handlers
-export * from './schemas/hello-schema';
+export { default as healthHandler } from './handlers/health-handler';
+export { default as layersHandler } from './handlers/layers-handler';
+export { default as couplingHandler } from './handlers/coupling-handler';
+export { default as knipHandler } from './handlers/knip-handler';
+export { default as historyHandler } from './handlers/history-handler';
+export { default as snapshotHandler } from './handlers/snapshot-handler';
+export { default as statsHandler } from './handlers/stats-handler';
+export { default as buildOrderHandler } from './handlers/build-order-handler';
+export { default as cyclesHandler } from './handlers/cycles-handler';
+export { default as dependenciesHandler } from './handlers/dependencies-handler';
+export { default as graphHandler } from './handlers/graph-handler';
+export { default as staleHandler } from './handlers/stale-handler';
+export { default as buildsHandler } from './handlers/builds-handler';
+export { default as typesHandler } from './handlers/types-handler';
+export { default as testsHandler } from './handlers/tests-handler';

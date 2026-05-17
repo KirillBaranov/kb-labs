@@ -68,4 +68,16 @@ export interface PluginsDataSource {
    * Ask AI a question about a specific plugin
    */
   askAboutPlugin(pluginId: string, request: PluginAskRequest): Promise<PluginAskResponse>;
+
+  /**
+   * Get README.md content for a plugin.
+   * Returns raw markdown text, or null if README.md does not exist.
+   */
+  getPluginReadme(pluginId: string): Promise<string | null>;
+
+  /**
+   * Get CHANGELOG.md content for a plugin.
+   * Returns raw markdown text, or null if CHANGELOG.md does not exist.
+   */
+  getPluginChangelog(pluginId: string): Promise<string | null>;
 }

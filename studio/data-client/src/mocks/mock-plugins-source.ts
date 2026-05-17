@@ -212,4 +212,14 @@ export class MockPluginsSource implements PluginsDataSource {
       },
     };
   }
+
+  async getPluginReadme(_pluginId: string): Promise<string | null> {
+    await new Promise<void>((resolve) => { setTimeout(() => resolve(), 200); });
+    return '# Plugin README\n\nThis is a mock README for development purposes.';
+  }
+
+  async getPluginChangelog(_pluginId: string): Promise<string | null> {
+    await new Promise<void>((resolve) => { setTimeout(() => resolve(), 200); });
+    return null;
+  }
 }

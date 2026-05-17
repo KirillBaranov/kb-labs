@@ -228,3 +228,138 @@ export const StaleResponseSchema = z.object({
 });
 
 export type StaleResponse = z.infer<typeof StaleResponseSchema>;
+
+// ============================================================================
+// Health (multidimensional) API
+// ============================================================================
+
+export const DimensionScoreSchema = z.object({
+  score: z.number(),
+  grade: z.enum(['A', 'B', 'C', 'D', 'F']),
+  details: z.array(z.string()),
+});
+
+export const DimensionScoresSchema = z.object({
+  architecture: DimensionScoreSchema,
+  typescript: DimensionScoreSchema,
+  deadCode: DimensionScoreSchema,
+  depHygiene: DimensionScoreSchema,
+  testCoverage: DimensionScoreSchema,
+});
+
+export const HealthV2ResponseSchema = z.object({
+  score: z.number(),
+  grade: z.enum(['A', 'B', 'C', 'D', 'F']),
+  dimensions: DimensionScoresSchema,
+});
+
+export type HealthV2Response = z.infer<typeof HealthV2ResponseSchema>;
+
+// ============================================================================
+// Layering API
+// ============================================================================
+
+export const LayeringViolationSchema = z.object({
+  file: z.string(),
+  fromPackage: z.string(),
+  fromLayer: z.number(),
+  toPackage: z.string(),
+  toLayer: z.number(),
+  importSpecifier: z.string(),
+});
+
+export const LayeringResponseSchema = z.object({
+  violations: z.array(LayeringViolationSchema),
+  totalViolations: z.number(),
+  affectedPackages: z.array(z.string()),
+  layerMap: z.record(z.number()),
+});
+
+export type LayeringResponse = z.infer<typeof LayeringResponseSchema>;
+
+// ============================================================================
+// Coupling API
+// ============================================================================
+
+export const PackageCouplingSchema = z.object({
+  name: z.string(),
+  afferent: z.number(),
+  efferent: z.number(),
+  instability: z.number(),
+});
+
+export const CouplingResponseSchema = z.object({
+  packages: z.array(PackageCouplingSchema),
+  avgInstability: z.number(),
+  mostUnstable: z.array(PackageCouplingSchema),
+  mostCoupled: z.array(PackageCouplingSchema),
+});
+
+export type CouplingResponse = z.infer<typeof CouplingResponseSchema>;
+
+// ============================================================================
+// Dead code (Knip) API
+// ============================================================================
+
+export const KnipUnusedExportSchema = z.object({
+  file: z.string(),
+  symbol: z.string(),
+});
+
+export const KnipUnusedDependencySchema = z.object({
+  package: z.string(),
+  workspace: z.string(),
+});
+
+export const DeadCodeResponseSchema = z.object({
+  unusedFiles: z.array(z.string()),
+  unusedExports: z.array(KnipUnusedExportSchema),
+  unusedDependencies: z.array(KnipUnusedDependencySchema),
+  unlistedDependencies: z.array(KnipUnusedDependencySchema),
+  totalIssues: z.number(),
+});
+
+export type DeadCodeResponse = z.infer<typeof DeadCodeResponseSchema>;
+
+// ============================================================================
+// Snapshot / History API
+// ============================================================================
+
+export const QualitySnapshotSchema = z.object({
+  id: z.string(),
+  timestamp: z.string(),
+  git: z.object({
+    commit: z.string(),
+    branch: z.string(),
+    message: z.string(),
+  }),
+  score: z.number(),
+  grade: z.enum(['A', 'B', 'C', 'D', 'F']),
+  dimensions: DimensionScoresSchema,
+  counters: z.object({
+    layeringViolations: z.number(),
+    avgInstability: z.number(),
+    anyCount: z.number(),
+    tsIgnoreCount: z.number(),
+    unusedFiles: z.number(),
+    unusedDeps: z.number(),
+  }),
+});
+
+export const SnapshotDeltaSchema = z.object({
+  score: z.number(),
+  layeringViolations: z.number(),
+  anyCount: z.number(),
+  tsIgnoreCount: z.number(),
+  unusedFiles: z.number(),
+  unusedDeps: z.number(),
+  avgInstability: z.number(),
+});
+
+export const HistoryResponseSchema = z.object({
+  snapshots: z.array(QualitySnapshotSchema),
+  delta: SnapshotDeltaSchema.nullable(),
+  latest: QualitySnapshotSchema.nullable(),
+});
+
+export type HistoryResponse = z.infer<typeof HistoryResponseSchema>;

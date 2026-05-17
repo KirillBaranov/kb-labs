@@ -1,21 +1,31 @@
-// Runner
-export { runQA, runCustomChecks, getWorkspacePackages, getSubmoduleInfo, collectSubmoduleInfo, saveLastRun, loadLastRun } from './runner/index.js';
-export type { LastRunData } from './runner/index.js';
+// Devkit integration
+export { resolveDevkitBin } from './devkit/devkit-discovery.js';
+export { DevkitAdapter } from './devkit/devkit-adapter.js';
+export { captureGit } from './devkit/git-capture.js';
+export type { DevkitAdapterOptions } from './devkit/devkit-adapter.js';
 
-// Individual runners (for single-check execution)
-export { runLintCheck } from './runner/index.js';
-export { runTypeCheck } from './runner/index.js';
-export { runTestCheck } from './runner/index.js';
+// Snapshot store
+export { SnapshotStore } from './snapshot/snapshot-store.js';
 
-// Baseline
-export { loadBaseline, saveBaseline, captureBaseline, createBaselineFromResults, compareWithBaseline } from './baseline/index.js';
-
-// History
-export { loadHistory, saveHistory, createHistoryEntry, appendEntry, loadTrendHistory, appendTrendEntry, analyzeTrends, analyzeEnrichedTrends, detectRegressions, getPackageTimeline } from './history/index.js';
+// Analysis
+export { analyzeTrends } from './analysis/trend-analyzer.js';
+export { detectRegressions } from './analysis/regression-detector.js';
+export { compareWithBaseline } from './analysis/baseline-comparator.js';
+export { buildPackageTimeline } from './analysis/package-timeline.js';
 
 // Report
-export { buildJsonReport, buildDetailedJsonReport, buildRunReport, buildDetailedRunReport, buildHistoryTable, buildTrendsReport, buildRegressionsReport, buildBaselineReport, groupResults, groupErrors } from './report/index.js';
 export type { ReportSection } from './report/index.js';
-
-// Categories
-export { resolveCategories } from './categories/index.js';
+export {
+  formatTaskName,
+  buildRunReport,
+  buildCheckReport,
+  buildStatsReport,
+  buildHistoryTable,
+  buildTrendsReport,
+  buildRegressionsReport,
+  buildBaselineReport,
+  buildBaselineDiffReport,
+  buildRunJsonReport,
+  buildCheckJsonReport,
+  buildStatsJsonReport,
+} from './report/index.js';

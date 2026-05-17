@@ -1,8 +1,6 @@
-/**
- * QA plugin main page — build, lint, type check, and test results dashboard
- */
-
 import { UIPage, UIPageHeader, UITabs } from '@kb-labs/sdk/studio';
+import { RunTab } from '../components/RunTab';
+import { HealthTab } from '../components/HealthTab';
 import { OverviewTab } from '../components/OverviewTab';
 import { HistoryTab } from '../components/HistoryTab';
 import { TrendsTab } from '../components/TrendsTab';
@@ -13,6 +11,8 @@ export default function QADashboard() {
     <UITabs
       syncUrl="search"
       items={[
+        { key: 'run', label: 'Run', children: <RunTab /> },
+        { key: 'health', label: 'Health', children: <HealthTab /> },
         { key: 'overview', label: 'Overview', children: <OverviewTab /> },
         { key: 'history', label: 'History', children: <HistoryTab /> },
         { key: 'trends', label: 'Trends', children: <TrendsTab /> },

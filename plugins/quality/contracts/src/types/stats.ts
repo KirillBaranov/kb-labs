@@ -1,21 +1,15 @@
 /**
- * Types for quality:stats command
+ * Types for quality:stats and quality:health commands
  */
 
-import type { Issue } from './common.js';
+import type { DimensionScores } from './snapshot.js';
 
-/**
- * Health score for a package or repository
- */
 export interface HealthScore {
-  score: number; // 0-100
+  score: number;
   grade: 'A' | 'B' | 'C' | 'D' | 'F';
-  issues: Issue[];
+  dimensions: DimensionScores;
 }
 
-/**
- * Package statistics
- */
 export interface PackageStats {
   name: string;
   path?: string;
@@ -25,9 +19,6 @@ export interface PackageStats {
   bytes: number;
 }
 
-/**
- * Repository statistics
- */
 export interface RepositoryStats {
   name: string;
   packages: number;
@@ -36,9 +27,6 @@ export interface RepositoryStats {
   bytes: number;
 }
 
-/**
- * Dependency statistics
- */
 export interface DependencyStats {
   total: number;
   workspace: number;
@@ -47,9 +35,6 @@ export interface DependencyStats {
   topUsed: Array<{ name: string; count: number }>;
 }
 
-/**
- * Statistics result from quality:stats
- */
 export interface StatsResult {
   overview: {
     totalPackages: number;

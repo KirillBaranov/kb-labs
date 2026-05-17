@@ -1,12 +1,6 @@
-/**
- * Turn-based conversation UI — Claude Code style
- * Adapted from studio/modules/agents for plugin widget use.
- * UIKit-only: no CSS file, all styles via antd token.
- */
-
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { theme } from 'antd';
-import type { Turn, TurnStep, FileChangeSummary } from '@kb-labs/agent-contracts';
+import type { Turn, TurnStep, FileChangeSummary, ToolUseStep } from '@kb-labs/agent-contracts';
 import {
   useMutateData,
   useData,
@@ -16,17 +10,23 @@ import {
   UITag,
   UITypographyText,
   UIFlex,
+  UIIcon,
+  UIButton,
 } from '@kb-labs/sdk/studio';
 
 const { useToken } = theme;
 
+type Token = ReturnType<typeof useToken>['token'];
+
 interface ConversationViewProps {
   turns: Turn[];
   isLoading?: boolean;
+  isError?: boolean;
+  onRetry?: () => void;
   sessionId?: string | null;
 }
 
-export function ConversationView({ turns, isLoading, sessionId }: ConversationViewProps) {
+export function ConversationView({ turns, isLoading, isError, onRetry, sessionId }: ConversationViewProps) {
   const { token } = useToken();
 
   if (isLoading) {
@@ -35,6 +35,16 @@ export function ConversationView({ turns, isLoading, sessionId }: ConversationVi
         <UISpin size="small" />
         <UITypographyText type="secondary" style={{ fontSize: 13 }}>Loading history...</UITypographyText>
       </UIFlex>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div style={{ minHeight: 240, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+        <UIIcon name="DisconnectOutlined" style={{ fontSize: 24, color: token.colorTextTertiary }} />
+        <UITypographyText type="secondary">Failed to load history</UITypographyText>
+        {onRetry && <UIButton size="small" onClick={onRetry}>Retry</UIButton>}
+      </div>
     );
   }
 
@@ -57,11 +67,11 @@ export function ConversationView({ turns, isLoading, sessionId }: ConversationVi
 
 // ---------- TurnView ----------
 
-function TurnView({ turn, sessionId, token }: { turn: Turn; sessionId?: string | null; token: ReturnType<typeof useToken>['token'] }) {
+function TurnView({ turn, sessionId, token }: { turn: Turn; sessionId?: string | null; token: Token }) {
   if (turn.type === 'user') {
     const text = turn.steps.find((s) => s.type === 'text');
     return (
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-end', gap: 8 }}>
         <span style={{
           maxWidth: '68%',
           background: token.colorFillTertiary,
@@ -75,28 +85,36 @@ function TurnView({ turn, sessionId, token }: { turn: Turn; sessionId?: string |
         }}>
           {text?.type === 'text' ? text.content : ''}
         </span>
+        <div style={{
+          width: 28, height: 28, borderRadius: '50%',
+          background: token.colorFillSecondary,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+          <UIIcon name="UserOutlined" style={{ fontSize: 13, color: token.colorTextSecondary }} />
+        </div>
       </div>
     );
   }
 
   const isStreaming = turn.status === 'streaming';
+
   const textSteps = turn.steps.filter((s) => s.type === 'text');
   const visibleTextSteps = textSteps.filter(
     (s) => !isInternalProgressText(s.content ?? '') && s.content?.trim(),
   );
-  const hasInternalProgressText = textSteps.some((s) => isInternalProgressText(s.content ?? ''));
 
   const reportStep = turn.steps.find(
-    (s) => s.type === 'tool_use' && (s as import('@kb-labs/agent-contracts').ToolUseStep).toolName === 'report'
-  ) as import('@kb-labs/agent-contracts').ToolUseStep | undefined;
+    (s) => s.type === 'tool_use' && (s as ToolUseStep).toolName === 'report',
+  ) as ToolUseStep | undefined;
   const reportAnswer = (reportStep?.input as Record<string, unknown> | null)?.answer as string | undefined;
 
-  const visibleSteps = turn.steps.filter(
-    (s) => s.type !== 'text' && !(s.type === 'tool_use' && (s as import('@kb-labs/agent-contracts').ToolUseStep).toolName === 'report')
+  const actionSteps = turn.steps.filter(
+    (s) => s.type !== 'text' && !(s.type === 'tool_use' && (s as ToolUseStep).toolName === 'report'),
   );
-  const hasToolSteps = visibleSteps.length > 0 || isStreaming || hasInternalProgressText;
 
-  const answerContent = reportAnswer || null;
+  const hasActions = actionSteps.length > 0 || (isStreaming && textSteps.every((s) => isInternalProgressText(s.content ?? '')));
+  const answerContent = reportAnswer ?? null;
   const fileChanges = turn.metadata?.fileChanges;
   const runId = turn.metadata?.runId;
   const showFileChanges = !isStreaming && fileChanges && fileChanges.length > 0 && !!sessionId && !!runId;
@@ -111,27 +129,35 @@ function TurnView({ turn, sessionId, token }: { turn: Turn; sessionId?: string |
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {hasToolSteps && (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {/* Assistant header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{
+          width: 22, height: 22, borderRadius: '50%',
+          background: token.colorFillSecondary,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
+        }}>
+          <UIIcon name="RobotOutlined" style={{ fontSize: 12, color: token.colorTextSecondary }} />
+        </div>
+        <UITypographyText type="secondary" style={{ fontSize: 12 }}>Agent</UITypographyText>
+        <UITypographyText type="secondary" style={{ fontSize: 11 }}>· {formatRelativeTime(turn.startedAt)}</UITypographyText>
+        {isStreaming && <UITag color="processing" style={{ fontSize: 11, lineHeight: '18px' }}>Running</UITag>}
+        {turn.status === 'failed' && <UITag color="error" style={{ fontSize: 11, lineHeight: '18px' }}>Failed</UITag>}
+      </div>
+
+      {/* Actions group */}
+      {hasActions && (
         <div style={timelineStyle}>
-          {visibleSteps.map((step, i) => (
-            <StepRow
-              key={step.id}
-              step={step}
-              isLast={false}
-              isStreaming={isStreaming && i === visibleSteps.length - 1 && !answerContent && visibleTextSteps.length === 0}
-              token={token}
-            />
-          ))}
-          {isStreaming && (turn.steps.length === 0 || hasInternalProgressText) && (
-            <ThinkingRow token={token} />
-          )}
+          <ToolGroup steps={actionSteps} isStreaming={isStreaming} token={token} />
         </div>
       )}
+
+      {/* Final answer */}
       {answerContent && (
         <div style={timelineStyle}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-            <StepDot color={token.colorPrimary} pulse={false} />
+            <StepDot color={token.colorPrimary} />
             <UIMarkdownViewer content={answerContent} style={{ flex: 1 }} />
           </div>
         </div>
@@ -140,12 +166,14 @@ function TurnView({ turn, sessionId, token }: { turn: Turn; sessionId?: string |
         step.type === 'text' && step.content?.trim() ? (
           <div key={step.id} style={timelineStyle}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-              <StepDot color={token.colorPrimary} pulse={false} />
+              <StepDot color={token.colorPrimary} />
               <UIMarkdownViewer content={step.content} style={{ flex: 1 }} />
             </div>
           </div>
         ) : null
       ))}
+
+      {/* File changes */}
       {showFileChanges && (
         <div style={timelineStyle}>
           <FileChangesBlock
@@ -160,37 +188,115 @@ function TurnView({ turn, sessionId, token }: { turn: Turn; sessionId?: string |
   );
 }
 
+// ---------- ToolGroup ----------
+
+function summarizeTools(steps: TurnStep[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const s of steps) {
+    if (s.type === 'tool_use') {
+      const name = formatToolName((s as ToolUseStep).toolName);
+      counts[name] = (counts[name] ?? 0) + 1;
+    }
+  }
+  return counts;
+}
+
+function ToolGroup({ steps, isStreaming, token }: { steps: TurnStep[]; isStreaming: boolean; token: Token }) {
+  const [open, setOpen] = useState(isStreaming);
+
+  useEffect(() => {
+    if (isStreaming) { setOpen(true); }
+  }, [isStreaming]);
+
+  const toolCounts = summarizeTools(steps);
+  const summaryParts = Object.entries(toolCounts).map(([k, v]) => v > 1 ? `${k} ×${v}` : k);
+  const totalDurationMs = steps.reduce(
+    (s, t) => s + (t.type === 'tool_use' ? ((t as ToolUseStep).durationMs ?? 0) : 0),
+    0,
+  );
+
+  const toggleStyle: React.CSSProperties = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 5,
+    background: 'none',
+    border: 'none',
+    padding: '2px 0',
+    cursor: 'pointer',
+    fontSize: 12,
+    color: token.colorTextSecondary,
+    fontFamily: 'inherit',
+  };
+
+  return (
+    <div>
+      <button style={toggleStyle} onClick={() => setOpen((v) => !v)}>
+        <UIIcon
+          name={open ? 'DownOutlined' : 'RightOutlined'}
+          style={{ fontSize: 9, color: token.colorTextTertiary }}
+        />
+        {isStreaming
+          ? <UIIcon name="LoadingOutlined" style={{ fontSize: 11, color: token.colorTextTertiary }} />
+          : null}
+        <span style={{ fontWeight: 500, color: token.colorText }}>
+          {steps.length} {steps.length === 1 ? 'action' : 'actions'}
+        </span>
+        {!open && summaryParts.length > 0 && (
+          <span style={{ color: token.colorTextTertiary }}>— {summaryParts.join('  ')}</span>
+        )}
+        {!open && totalDurationMs > 0 && (
+          <span style={{ color: token.colorTextTertiary }}>· {(totalDurationMs / 1000).toFixed(1)}s</span>
+        )}
+      </button>
+
+      {open && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 5, marginTop: 4 }}>
+          {steps.map((step, i) => (
+            <StepRow
+              key={step.id}
+              step={step}
+              isLast={false}
+              isStreaming={isStreaming && i === steps.length - 1}
+              token={token}
+            />
+          ))}
+          {isStreaming && steps.length === 0 && <ThinkingRow token={token} />}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ---------- StepDot ----------
 
 function StepDot({ color, pulse }: { color: string; pulse?: boolean }) {
   return (
     <span style={{
       flexShrink: 0,
-      width: 10,
-      height: 10,
-      marginTop: 5,
+      width: 8,
+      height: 8,
+      marginTop: 6,
       borderRadius: '50%',
       background: color,
-      opacity: pulse ? 0.7 : 1,
-      animation: pulse ? 'none' : undefined,
+      opacity: pulse ? 0.6 : 1,
     }} />
   );
 }
 
 // ---------- ThinkingRow ----------
 
-function ThinkingRow({ token }: { token: ReturnType<typeof useToken>['token'] }) {
+function ThinkingRow({ token }: { token: Token }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-      <StepDot color={token.colorTextTertiary} pulse={true} />
-      <UITypographyText type="secondary" style={{ fontSize: 13 }}>Agent is analyzing and executing steps...</UITypographyText>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <UIIcon name="LoadingOutlined" style={{ fontSize: 11, color: token.colorTextTertiary }} />
+      <UITypographyText type="secondary" style={{ fontSize: 13 }}>Thinking...</UITypographyText>
     </div>
   );
 }
 
 // ---------- StepRow ----------
 
-function StepRow({ step, isStreaming, token }: { step: TurnStep; isLast: boolean; isStreaming: boolean; token: ReturnType<typeof useToken>['token'] }) {
+function StepRow({ step, isStreaming, token }: { step: TurnStep; isLast: boolean; isStreaming: boolean; token: Token }) {
   switch (step.type) {
     case 'thinking': {
       const content = step.content?.trim() ?? '';
@@ -211,7 +317,10 @@ function StepRow({ step, isStreaming, token }: { step: TurnStep; isLast: boolean
     case 'tool_result':
       return (
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-          <StepDot color={step.success ? token.colorSuccess : token.colorError} />
+          <UIIcon
+            name={step.success ? 'CheckCircleOutlined' : 'CloseCircleOutlined'}
+            style={{ fontSize: 13, marginTop: 2, color: step.success ? token.colorSuccess : token.colorError }}
+          />
           <div style={{ flex: 1 }}>
             <span style={{ fontSize: 13, color: token.colorTextSecondary }}>
               <span style={{ fontWeight: 500, color: token.colorText }}>{formatToolName(step.toolName)}</span>
@@ -229,10 +338,10 @@ function StepRow({ step, isStreaming, token }: { step: TurnStep; isLast: boolean
     case 'subagent':
       return (
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-          <StepDot color={token.colorPrimary} />
+          <UIIcon name="RobotOutlined" style={{ fontSize: 13, marginTop: 2, color: token.colorPrimary }} />
           <span style={{ fontSize: 13, color: token.colorTextSecondary }}>
             <span style={{ fontWeight: 500, color: token.colorText }}>Agent: {step.agentName}</span>
-            <span style={{ marginLeft: 6 }}> — {step.task?.slice(0, 60)}{(step.task?.length ?? 0) > 60 ? '...' : ''}</span>
+            <span style={{ marginLeft: 6 }}>— {step.task?.slice(0, 60)}{(step.task?.length ?? 0) > 60 ? '...' : ''}</span>
           </span>
         </div>
       );
@@ -240,7 +349,7 @@ function StepRow({ step, isStreaming, token }: { step: TurnStep; isLast: boolean
     case 'error':
       return (
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-          <StepDot color={token.colorError} />
+          <UIIcon name="ExclamationCircleOutlined" style={{ fontSize: 13, marginTop: 2, color: token.colorError }} />
           <div style={{ flex: 1 }}>
             <span style={{ fontSize: 13, fontWeight: 500, color: token.colorError }}>{step.code}</span>
             <p style={{ margin: '4px 0 0', fontSize: 12, color: token.colorError }}>{step.message}</p>
@@ -255,16 +364,8 @@ function StepRow({ step, isStreaming, token }: { step: TurnStep; isLast: boolean
 
 // ---------- ToolRow ----------
 
-function ToolRow({
-  step,
-  isStreaming,
-  token,
-}: {
-  step: import('@kb-labs/agent-contracts').ToolUseStep;
-  isStreaming: boolean;
-  token: ReturnType<typeof useToken>['token'];
-}) {
-  const [open, setOpen] = React.useState(false);
+function ToolRow({ step, isStreaming, token }: { step: ToolUseStep; isStreaming: boolean; token: Token }) {
+  const [open, setOpen] = useState(false);
 
   const isPending = step.status === 'pending';
   const isDone = step.status === 'done';
@@ -279,7 +380,7 @@ function ToolRow({
   const hasWriteInput = isWriteTool && isDone && !!(input?.content ?? input?.new_content);
   const canExpand = hasOutput || hasDiff || hasWriteInput || isError;
 
-  const dotColor = isPending
+  const iconColor = isPending
     ? (isStreaming ? token.colorTextTertiary : token.colorPrimary)
     : (isDone && !isFailed ? token.colorSuccess : token.colorError);
 
@@ -290,9 +391,11 @@ function ToolRow({
 
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-      <StepDot color={dotColor} pulse={isPending && isStreaming} />
+      <UIIcon
+        name={isPending && isStreaming ? 'LoadingOutlined' : toolIconName(step.toolName)}
+        style={{ fontSize: 13, marginTop: 2, color: iconColor, flexShrink: 0 }}
+      />
       <div style={{ flex: 1, minWidth: 0 }}>
-        {/* Header button */}
         <button
           onClick={() => canExpand && setOpen((v) => !v)}
           disabled={!canExpand}
@@ -307,6 +410,7 @@ function ToolRow({
             fontSize: 13,
             color: token.colorText,
             flexWrap: 'wrap',
+            fontFamily: 'inherit',
           }}
         >
           <span style={{ fontWeight: 500 }}>{formatToolName(step.toolName)}</span>
@@ -318,11 +422,6 @@ function ToolRow({
           {isDone && m?.resultCount !== undefined && (
             <span style={{ fontSize: 11, color: token.colorTextSecondary, background: token.colorFillSecondary, borderRadius: token.borderRadiusSM, padding: '0 5px' }}>
               {m.resultCount} results
-            </span>
-          )}
-          {isDone && m?.confidence !== undefined && (
-            <span style={{ fontSize: 11, color: token.colorTextSecondary, background: token.colorFillSecondary, borderRadius: token.borderRadiusSM, padding: '0 5px' }}>
-              {Math.round(m.confidence * 100)}%
             </span>
           )}
           {isDone && m?.exitCode !== undefined && m.exitCode !== 0 && (
@@ -340,11 +439,10 @@ function ToolRow({
             <span style={{ fontSize: 11, color: token.colorTextTertiary }}>{step.durationMs}ms</span>
           )}
           {canExpand && (
-            <span style={{ fontSize: 11, color: token.colorTextTertiary }}>{open ? 'collapse' : 'expand'}</span>
+            <span style={{ fontSize: 11, color: token.colorTextTertiary }}>{open ? '▲' : '▼'}</span>
           )}
         </button>
 
-        {/* Summary / file path */}
         {meta.summary && (
           <p style={{ margin: '2px 0 0', fontSize: 12, color: token.colorTextSecondary }}>
             {meta.filePath
@@ -353,10 +451,8 @@ function ToolRow({
           </p>
         )}
 
-        {/* Todo list */}
         {todoList != null && <TodoView todoList={todoList} token={token} />}
 
-        {/* Errors */}
         {isError && step.error && (
           <p style={{ margin: '4px 0 0', fontSize: 12, color: token.colorError }}>{step.error}</p>
         )}
@@ -364,7 +460,6 @@ function ToolRow({
           <p style={{ margin: '4px 0 0', fontSize: 12, color: token.colorError }}>{String(step.output)}</p>
         )}
 
-        {/* Expanded details */}
         {open && (
           <div style={{ marginTop: 6 }}>
             <ToolDetails step={step} hasDiff={hasDiff} hasOutput={hasOutput} token={token} />
@@ -377,17 +472,7 @@ function ToolRow({
 
 // ---------- ToolDetails ----------
 
-function ToolDetails({
-  step,
-  hasDiff,
-  hasOutput,
-  token,
-}: {
-  step: import('@kb-labs/agent-contracts').ToolUseStep;
-  hasDiff: boolean;
-  hasOutput: boolean;
-  token: ReturnType<typeof useToken>['token'];
-}) {
+function ToolDetails({ step, hasDiff, hasOutput, token }: { step: ToolUseStep; hasDiff: boolean; hasOutput: boolean; token: Token }) {
   const input = step.input as Record<string, unknown> | null | undefined;
   const toolLower = step.toolName.toLowerCase();
 
@@ -421,7 +506,8 @@ function ToolDetails({
               {filePath}
             </div>
           )}
-          <pre style={{ ...codePreStyle, background: token.colorFillSecondary, borderRadius: filePath ? `0 0 ${token.borderRadius}px ${token.borderRadius}px` : token.borderRadius }}
+          <pre
+            style={{ ...codePreStyle, background: token.colorFillSecondary, borderRadius: filePath ? `0 0 ${token.borderRadius}px ${token.borderRadius}px` : token.borderRadius }}
             className={ext ? `lang-${ext}` : undefined}
           >{String(content)}</pre>
         </div>
@@ -445,11 +531,7 @@ function ToolDetails({
     const isFailed = step.status === 'done' && step.success === false;
     const outputStr = formatOutput(step.output);
     if (isFailed) {
-      return (
-        <pre style={{ ...codePreStyle, background: token.colorErrorBg, color: token.colorError }}>
-          {outputStr}
-        </pre>
-      );
+      return <pre style={{ ...codePreStyle, background: token.colorErrorBg, color: token.colorError }}>{outputStr}</pre>;
     }
     return <UIMarkdownViewer content={outputStr} style={{ fontSize: 12 }} />;
   }
@@ -458,19 +540,13 @@ function ToolDetails({
 
 // ---------- DiffView ----------
 
-function DiffView({ diff, token }: { diff: string; token: ReturnType<typeof useToken>['token'] }) {
+function DiffView({ diff, token }: { diff: string; token: Token }) {
   const lines = diff.split('\n');
   return (
     <pre style={{
-      margin: 0,
-      padding: '8px 10px',
-      fontSize: 12,
-      lineHeight: 1.5,
-      borderRadius: token.borderRadius,
-      overflow: 'auto',
-      maxHeight: 300,
-      background: token.colorFillSecondary,
-      whiteSpace: 'pre',
+      margin: 0, padding: '8px 10px', fontSize: 12, lineHeight: 1.5,
+      borderRadius: token.borderRadius, overflow: 'auto', maxHeight: 300,
+      background: token.colorFillSecondary, whiteSpace: 'pre',
     }}>
       {lines.map((line, i) => {
         const color =
@@ -478,9 +554,7 @@ function DiffView({ diff, token }: { diff: string; token: ReturnType<typeof useT
           line.startsWith('-') && !line.startsWith('---') ? token.colorError :
           line.startsWith('@@') ? token.colorInfo :
           undefined;
-        return (
-          <span key={i} style={color ? { color } : undefined}>{line}{'\n'}</span>
-        );
+        return <span key={i} style={color ? { color } : undefined}>{line}{'\n'}</span>;
       })}
     </pre>
   );
@@ -488,8 +562,8 @@ function DiffView({ diff, token }: { diff: string; token: ReturnType<typeof useT
 
 // ---------- CopyPath ----------
 
-function CopyPath({ path, label, token }: { path: string; label: string; token: ReturnType<typeof useToken>['token'] }) {
-  const [copied, setCopied] = React.useState(false);
+function CopyPath({ path, label, token }: { path: string; label: string; token: Token }) {
+  const [copied, setCopied] = useState(false);
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     void navigator.clipboard.writeText(path).then(() => {
@@ -514,24 +588,20 @@ interface FileChangesBlockProps {
   sessionId: string;
   runId: string;
   fileChanges: FileChangeSummary[];
-  token: ReturnType<typeof useToken>['token'];
+  token: Token;
 }
 
 function FileChangesBlock({ sessionId, runId, fileChanges, token }: FileChangesBlockProps) {
-  const [dismissed, setDismissed] = React.useState<Set<string>>(new Set());
+  const [dismissed, setDismissed] = useState<Set<string>>(new Set());
   const rollback = useMutateData<{ runId?: string; changeIds?: string[] }, { rolledBack: number; skipped: number; conflicts: unknown[] }>(
-    `/v1/plugins/agents/sessions/${sessionId}/rollback`,
-    'POST'
+    `/v1/plugins/agents/sessions/${sessionId}/rollback`, 'POST',
   );
   const approve = useMutateData<{ runId?: string; changeIds?: string[] }, { approved: number }>(
-    `/v1/plugins/agents/sessions/${sessionId}/approve`,
-    'POST'
+    `/v1/plugins/agents/sessions/${sessionId}/approve`, 'POST',
   );
 
   const visible = fileChanges.filter((c) => !dismissed.has(c.changeId) && !c.approved);
   if (visible.length === 0) { return null; }
-
-  const allApproved = visible.every((c) => c.approved);
 
   const handleRollback = () => {
     UIModalConfirm({
@@ -544,7 +614,7 @@ function FileChangesBlock({ sessionId, runId, fileChanges, token }: FileChangesB
         try {
           const result = await rollback.mutateAsync({ runId });
           if (result.conflicts?.length) {
-            console.warn(`Rolled back: ${result.rolledBack}, skipped due to conflicts: ${result.skipped}`);
+            console.warn(`Rolled back: ${result.rolledBack}, skipped: ${result.skipped}`);
           }
           setDismissed(new Set(visible.map((c) => c.changeId)));
         } catch {
@@ -565,44 +635,26 @@ function FileChangesBlock({ sessionId, runId, fileChanges, token }: FileChangesB
 
   return (
     <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-      <StepDot color={token.colorSuccess} />
+      <UIIcon name="FileOutlined" style={{ fontSize: 13, marginTop: 2, color: token.colorSuccess }} />
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
           <UITypographyText style={{ fontSize: 13, fontWeight: 500 }}>
             {visible.length} {pluralFiles(visible.length)} changed
           </UITypographyText>
-          {!allApproved && (
-            <UIFlex gap={4}>
-              <button
-                onClick={handleApprove}
-                disabled={approve.isLoading || rollback.isLoading}
-                title="Approve all changes"
-                style={{
-                  background: token.colorSuccessBg,
-                  border: `1px solid ${token.colorSuccessBorder}`,
-                  color: token.colorSuccess,
-                  borderRadius: token.borderRadius,
-                  padding: '2px 8px',
-                  fontSize: 12,
-                  cursor: 'pointer',
-                }}
-              >✓</button>
-              <button
-                onClick={handleRollback}
-                disabled={rollback.isLoading || approve.isLoading}
-                title="Rollback all changes"
-                style={{
-                  background: token.colorErrorBg,
-                  border: `1px solid ${token.colorErrorBorder}`,
-                  color: token.colorError,
-                  borderRadius: token.borderRadius,
-                  padding: '2px 8px',
-                  fontSize: 12,
-                  cursor: 'pointer',
-                }}
-              >✕</button>
-            </UIFlex>
-          )}
+          <UIFlex gap={4}>
+            <button
+              onClick={() => void handleApprove()}
+              disabled={approve.isLoading || rollback.isLoading}
+              title="Approve all"
+              style={{ background: token.colorSuccessBg, border: `1px solid ${token.colorSuccessBorder}`, color: token.colorSuccess, borderRadius: token.borderRadius, padding: '2px 8px', fontSize: 12, cursor: 'pointer' }}
+            >✓</button>
+            <button
+              onClick={handleRollback}
+              disabled={rollback.isLoading || approve.isLoading}
+              title="Rollback all"
+              style={{ background: token.colorErrorBg, border: `1px solid ${token.colorErrorBorder}`, color: token.colorError, borderRadius: token.borderRadius, padding: '2px 8px', fontSize: 12, cursor: 'pointer' }}
+            >✕</button>
+          </UIFlex>
         </div>
         <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
           {visible.map((change) => (
@@ -626,18 +678,16 @@ interface FileChangeRowProps {
   change: FileChangeSummary;
   sessionId: string;
   onDismiss: () => void;
-  token: ReturnType<typeof useToken>['token'];
+  token: Token;
 }
 
 function FileChangeRow({ change, sessionId, onDismiss, token }: FileChangeRowProps) {
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = useState(false);
   const rollback = useMutateData<{ changeIds: string[] }, { rolledBack: number; skipped: number; conflicts: unknown[] }>(
-    `/v1/plugins/agents/sessions/${sessionId}/rollback`,
-    'POST'
+    `/v1/plugins/agents/sessions/${sessionId}/rollback`, 'POST',
   );
   const approve = useMutateData<{ changeIds: string[] }, { approved: number }>(
-    `/v1/plugins/agents/sessions/${sessionId}/approve`,
-    'POST'
+    `/v1/plugins/agents/sessions/${sessionId}/approve`, 'POST',
   );
 
   const diffUrl = open ? `/v1/plugins/agents/sessions/${sessionId}/changes/${encodeURIComponent(change.changeId)}/diff` : '';
@@ -680,12 +730,8 @@ function FileChangeRow({ change, sessionId, onDismiss, token }: FileChangeRowPro
       <div
         onClick={() => setOpen((v) => !v)}
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          fontSize: 12,
-          cursor: 'pointer',
-          padding: '2px 4px',
+          display: 'flex', alignItems: 'center', gap: 6,
+          fontSize: 12, cursor: 'pointer', padding: '2px 4px',
           borderRadius: token.borderRadiusSM,
           background: open ? token.colorFillSecondary : 'transparent',
         }}
@@ -699,18 +745,10 @@ function FileChangeRow({ change, sessionId, onDismiss, token }: FileChangeRowPro
         </span>
         {!change.approved && (
           <div style={{ display: 'flex', gap: 4 }} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
-            <button
-              onClick={handleApprove}
-              disabled={approve.isLoading}
-              title="Approve"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: token.colorSuccess, fontSize: 13, padding: '0 2px' }}
-            >✓</button>
-            <button
-              onClick={handleRollback}
-              disabled={rollback.isLoading}
-              title="Rollback"
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: token.colorError, fontSize: 13, padding: '0 2px' }}
-            >✕</button>
+            <button onClick={handleApprove} disabled={approve.isLoading} title="Approve"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: token.colorSuccess, fontSize: 13, padding: '0 2px' }}>✓</button>
+            <button onClick={handleRollback} disabled={rollback.isLoading} title="Rollback"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: token.colorError, fontSize: 13, padding: '0 2px' }}>✕</button>
           </div>
         )}
       </div>
@@ -740,22 +778,17 @@ interface TodoListData {
 }
 
 const TODO_STATUS_ICON: Record<string, string> = {
-  'completed': '✓',
+  completed: '✓',
   'in-progress': '●',
-  'blocked': '✕',
-  'pending': '○',
+  blocked: '✕',
+  pending: '○',
 };
 
-function TodoView({ todoList, token }: { todoList?: TodoListData; token: ReturnType<typeof useToken>['token'] }) {
+function TodoView({ todoList, token }: { todoList?: TodoListData; token: Token }) {
   if (!todoList?.items?.length) { return null; }
   const completed = todoList.items.filter((i) => i.status === 'completed').length;
   return (
-    <div style={{
-      marginTop: 6,
-      background: token.colorFillTertiary,
-      borderRadius: token.borderRadius,
-      padding: '8px 10px',
-    }}>
+    <div style={{ marginTop: 6, background: token.colorFillTertiary, borderRadius: token.borderRadius, padding: '8px 10px' }}>
       <div style={{ fontSize: 11, color: token.colorTextTertiary, marginBottom: 6, fontWeight: 500 }}>
         {completed}/{todoList.items.length}
       </div>
@@ -790,7 +823,20 @@ interface ToolMeta {
   badge?: string;
 }
 
-function getToolMeta(step: import('@kb-labs/agent-contracts').ToolUseStep): ToolMeta {
+function toolIconName(toolName: string): string {
+  const n = toolName.toLowerCase();
+  if (/read|open/.test(n)) { return 'FileTextOutlined'; }
+  if (/write|patch|edit/.test(n)) { return 'EditOutlined'; }
+  if (/bash|exec|shell|run/.test(n)) { return 'CodeOutlined'; }
+  if (/grep|search|glob|find/.test(n)) { return 'SearchOutlined'; }
+  if (/todo/.test(n)) { return 'CheckSquareOutlined'; }
+  if (/rag|mind|embed/.test(n)) { return 'BulbOutlined'; }
+  if (/agent|subagent/.test(n)) { return 'RobotOutlined'; }
+  if (/delete|remove/.test(n)) { return 'DeleteOutlined'; }
+  return 'ApiOutlined';
+}
+
+function getToolMeta(step: ToolUseStep): ToolMeta {
   const input = step.input as Record<string, unknown> | null | undefined;
   if (!input) { return {}; }
 
@@ -844,6 +890,20 @@ function formatToolName(name: string): string {
     .replace(/[_-]/g, ' ')
     .replace(/([a-z])([A-Z])/g, '$1 $2')
     .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatRelativeTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+  if (diffMins < 1) { return 'just now'; }
+  if (diffMins < 60) { return `${diffMins}m ago`; }
+  if (diffHours < 24) { return `${diffHours}h ago`; }
+  if (diffDays < 7) { return `${diffDays}d ago`; }
+  return date.toLocaleDateString();
 }
 
 function isNoisyThinking(content: string): boolean {

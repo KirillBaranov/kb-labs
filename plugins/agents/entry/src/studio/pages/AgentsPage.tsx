@@ -1,16 +1,14 @@
-/**
- * Agent chat page — Module Federation widget
- * Turn-based agent UI with snapshot-based architecture
- */
-
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { useData, useMutateData, UIInputTextArea, UIButton, UISpace, UIMessage, UICard, UISelect, UISwitch, UITypographyText, UIIcon, useUITheme } from '@kb-labs/sdk/studio';
-import { useAgentWebSocket, buildAgentWsUrl } from '../hooks/use-agent-websocket';
+import {
+  useData, useMutateData, useWebSocket,
+  UIInputTextArea, UIButton, UISpace, UIMessage, UICard,
+  UISelect, UISwitch, UITypographyText, UIIcon, useUITheme,
+} from '@kb-labs/sdk/studio';
+import type { WebSocketStatus } from '@kb-labs/sdk/studio';
 import { SessionSelector } from '../components/SessionSelector';
 import { ConversationView } from '../components/ConversationView';
-import type { AgentSessionInfo, Turn, AgentResponseMode } from '@kb-labs/agent-contracts';
-
+import type { AgentSessionInfo, Turn, AgentResponseMode, ServerMessage } from '@kb-labs/agent-contracts';
 
 type RunStatus = 'idle' | 'running' | 'completed' | 'failed' | 'stopped';
 
@@ -21,6 +19,7 @@ interface RunRequest {
   tier: 'small' | 'medium' | 'large';
   enableEscalation: boolean;
   responseMode: AgentResponseMode;
+  mode?: 'execute' | 'plan';
 }
 
 interface RunResponse {
@@ -41,22 +40,70 @@ function compareTurns(a: Turn, b: Turn): number {
   return a.startedAt.localeCompare(b.startedAt);
 }
 
+function buildAgentWsUrl(sessionId: string): string {
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const host = window.location.host;
+  return `${protocol}//${host}/api/v1/ws/plugins/agents/session/${sessionId}`;
+}
+
+// ---------- ConnectionBadge ----------
+
+function ConnectionBadge({
+  status,
+  sessionId,
+  onReconnect,
+}: {
+  status: WebSocketStatus;
+  sessionId: string | null;
+  onReconnect: () => void;
+}) {
+  const { token } = useUITheme();
+  if (!sessionId) { return null; }
+  if (status === 'connected') { return null; }
+
+  if (status === 'connecting') {
+    return (
+      <UISpace size={4}>
+        <UIIcon name="LoadingOutlined" style={{ fontSize: 12, color: token.colorTextTertiary }} />
+        <UITypographyText type="secondary" style={{ fontSize: 12 }}>Connecting...</UITypographyText>
+      </UISpace>
+    );
+  }
+
+  return (
+    <UISpace size={4}>
+      <UIIcon name="DisconnectOutlined" style={{ fontSize: 12, color: token.colorError }} />
+      <UIButton
+        variant="link"
+        size="small"
+        style={{ padding: 0, fontSize: 12, height: 'auto' }}
+        onClick={onReconnect}
+      >
+        Reconnect
+      </UIButton>
+    </UISpace>
+  );
+}
+
+// ---------- AgentsPage ----------
+
 function AgentsPage() {
   const { token } = useUITheme();
-  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(
-    () => searchParams.get('session')
+    () => searchParams.get('session'),
   );
   const [loadedSessionId, setLoadedSessionId] = useState<string | null>(
-    () => searchParams.get('session')
+    () => searchParams.get('session'),
   );
 
   const [task, setTask] = useState('');
   const [currentRunId, setCurrentRunId] = useState<string | null>(null);
   const [runStatus, setRunStatus] = useState<RunStatus>('idle');
   const [optimisticUserTurns, setOptimisticUserTurns] = useState<Turn[]>([]);
+  const [wsTurns, setWsTurns] = useState<Turn[]>([]);
   const [responseMode, setResponseMode] = useState<AgentResponseMode>('auto');
   const [tier, setTier] = useState<'small' | 'medium' | 'large'>('medium');
   const [enableEscalation, setEnableEscalation] = useState(true);
@@ -64,42 +111,78 @@ function AgentsPage() {
   const [inputFocused, setInputFocused] = useState(false);
 
   const agentId = 'mind-assistant';
-
   const wsUrl = currentSessionId ? buildAgentWsUrl(currentSessionId) : null;
 
   const startRunMutation = useMutateData<RunRequest, RunResponse>('/v1/plugins/agents/run', 'POST');
   const stopMutation = useMutateData<StopRequest, unknown>(
     currentRunId ? `/v1/plugins/agents/run/${currentRunId}/stop` : '/v1/plugins/agents/run/noop/stop',
-    'POST'
+    'POST',
   );
 
   const sessionTurnsUrl = currentSessionId ? `/v1/plugins/agents/sessions/${currentSessionId}/turns` : '';
-  const { data: sessionTurnsData, isFetching: turnsFetching, refetch: refetchTurns } = useData<{ turns: Turn[]; total: number }>(
-    sessionTurnsUrl,
-    { enabled: !!currentSessionId },
-  );
+  const {
+    data: sessionTurnsData,
+    isFetching: turnsFetching,
+    isError: turnsError,
+    refetch: refetchTurns,
+  } = useData<{ turns: Turn[]; total: number }>(sessionTurnsUrl, { enabled: !!currentSessionId });
 
   useEffect(() => {
-    if (currentSessionId && sessionTurnsData && !turnsFetching) {
+    if (currentSessionId && (sessionTurnsData || turnsError) && !turnsFetching) {
       setLoadedSessionId(currentSessionId);
     }
-  }, [currentSessionId, sessionTurnsData, turnsFetching]);
+  }, [currentSessionId, sessionTurnsData, turnsError, turnsFetching]);
 
-  const ws = useAgentWebSocket({
-    url: wsUrl,
-    onComplete: (success, summary) => {
-      setRunStatus(success ? 'completed' : 'failed');
-      void refetchTurns();
-      console.log('[AgentsPage] Run completed:', summary);
-    },
-    onTurnsChanged: () => {
-      setOptimisticUserTurns([]);
-    },
-    onError: (error) => {
-      console.error('[AgentsPage] WebSocket error:', error);
-      UIMessage.error(`Connection error: ${error.message}`);
+  const ws = useWebSocket<unknown, ServerMessage>(wsUrl, {
+    reconnect: true,
+    maxReconnects: 10,
+    reconnectIntervalMs: 2000,
+    onMessage: (data) => {
+      switch (data.type) {
+        case 'conversation:snapshot': {
+          const all = [...data.payload.completedTurns, ...data.payload.activeTurns]
+            .sort((a, b) => a.sequence - b.sequence);
+          setWsTurns(all);
+          setOptimisticUserTurns([]);
+          break;
+        }
+        case 'turn:snapshot': {
+          const { turn } = data.payload;
+          setWsTurns((prev) => {
+            const idx = prev.findIndex((t) => t.id === turn.id);
+            if (idx >= 0) {
+              const next = [...prev];
+              next[idx] = turn;
+              return next;
+            }
+            return [...prev, turn].sort((a, b) => a.sequence - b.sequence);
+          });
+          break;
+        }
+        case 'run:completed': {
+          const { success, summary } = data.payload;
+          setRunStatus(success ? 'completed' : 'failed');
+          setOptimisticUserTurns([]);
+          void refetchTurns();
+          console.log('[AgentsPage] Run completed:', summary);
+          break;
+        }
+        case 'error': {
+          const { code, message } = data.payload;
+          UIMessage.error(`Agent error [${code}]: ${message}`);
+          break;
+        }
+      }
     },
   });
+
+  // Auto-scroll to bottom on new turns
+  useEffect(() => {
+    const el = scrollContainerRef.current;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
+    }
+  }, [wsTurns.length, optimisticUserTurns.length]);
 
   const handleSessionChange = useCallback((sessionId: string, _session: AgentSessionInfo) => {
     setCurrentSessionId(sessionId);
@@ -108,7 +191,8 @@ function AgentsPage() {
     setCurrentRunId(null);
     setRunStatus('idle');
     setOptimisticUserTurns([]);
-    ws.clearTurns();
+    setWsTurns([]);
+    ws.clear();
   }, [ws, setSearchParams]);
 
   const handleNewChat = useCallback(() => {
@@ -118,7 +202,8 @@ function AgentsPage() {
     setCurrentRunId(null);
     setRunStatus('idle');
     setOptimisticUserTurns([]);
-    ws.clearTurns();
+    setWsTurns([]);
+    ws.clear();
   }, [ws, setSearchParams]);
 
   const handleStart = useCallback(async () => {
@@ -148,6 +233,7 @@ function AgentsPage() {
         tier,
         enableEscalation,
         responseMode,
+        mode: agentMode,
       });
 
       if (!currentSessionId) {
@@ -157,25 +243,23 @@ function AgentsPage() {
       }
 
       setCurrentRunId(response.runId);
+
+      // If WS already connected, clear optimistic after short delay as a safety net
+      if (ws.isConnected) {
+        setTimeout(() => setOptimisticUserTurns([]), 500);
+      }
     } catch (error) {
       setOptimisticUserTurns((prev) => prev.filter((t) => t.id !== optimisticTurn.id));
       setRunStatus('failed');
       UIMessage.error(`Failed to start: ${error instanceof Error ? error.message : String(error)}`);
     }
   }, [
-    task,
-    agentId,
-    currentSessionId,
-    tier,
-    enableEscalation,
-    responseMode,
-    setSearchParams,
-    startRunMutation,
+    task, agentId, currentSessionId, tier, enableEscalation,
+    responseMode, agentMode, setSearchParams, startRunMutation, ws,
   ]);
 
   const handleStop = useCallback(async () => {
     if (!currentRunId) { return; }
-
     try {
       await stopMutation.mutateAsync({ reason: 'Stopped by user' });
       setRunStatus('stopped');
@@ -199,9 +283,8 @@ function AgentsPage() {
     if (isSwitchingSession) { return []; }
 
     const restTurns = sessionTurnsData?.turns ?? [];
-    const wsTurns = ws.turns;
-
     const merged = new Map<string, Turn>();
+
     if (wsTurns.length === 0) {
       for (const t of restTurns) { merged.set(t.id, t); }
     } else {
@@ -213,7 +296,7 @@ function AgentsPage() {
       [...merged.values()]
         .filter((t) => t.type === 'user')
         .flatMap((t) => t.steps.filter((s) => s.type === 'text').map((s) => s.content?.trim()))
-        .filter(Boolean)
+        .filter(Boolean),
     );
     for (const t of optimisticUserTurns) {
       const text = t.steps.find((s) => s.type === 'text')?.content?.trim();
@@ -233,7 +316,7 @@ function AgentsPage() {
     if (!lastUserTurn) { return turns; }
 
     const hasCompletedAssistantAfterUser = turns.some(
-      (t) => t.type === 'assistant' && t.status === 'completed' && t.sequence > lastUserTurn.sequence
+      (t) => t.type === 'assistant' && t.status === 'completed' && t.sequence > lastUserTurn.sequence,
     );
     if (hasCompletedAssistantAfterUser) { return turns; }
 
@@ -254,166 +337,163 @@ function AgentsPage() {
   const isLoading = isSwitchingSession || (turnsFetching && turns.length === 0 && !!currentSessionId);
 
   return (
-    <div style={{ padding: 16, height: '100%' }}>
-      <UICard
-        title={
-          <UISpace>
-            <UIIcon name="RobotOutlined" />
-            <span>Agent</span>
-          </UISpace>
-        }
-        extra={
-          <SessionSelector
-            currentSessionId={currentSessionId}
-            onSessionChange={handleSessionChange}
-            onNewChat={handleNewChat}
-          />
-        }
-        style={{
-          height: '100%',
+    <div style={{ height: '100%', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+    <UICard
+      title={
+        <UISpace>
+          <UIIcon name="RobotOutlined" />
+          <span>Agent</span>
+        </UISpace>
+      }
+      extra={
+        <SessionSelector
+          currentSessionId={currentSessionId}
+          onSessionChange={handleSessionChange}
+          onNewChat={handleNewChat}
+        />
+      }
+      style={{ height: '100%', display: 'flex', flexDirection: 'column' }}
+      styles={{
+        body: {
+          flex: 1,
           display: 'flex',
           flexDirection: 'column',
-        }}
-        styles={{
-          body: {
-            flex: 1,
-            display: 'flex',
-            flexDirection: 'column',
-            padding: 0,
-            overflow: 'hidden',
-          },
+          padding: 0,
+          overflow: 'hidden',
+        },
+      }}
+    >
+      <div ref={scrollContainerRef} style={{ flex: 1, overflow: 'auto' }}>
+        <ConversationView
+          turns={turnsWithThinkingLoader}
+          isLoading={isLoading}
+          isError={turnsError}
+          onRetry={() => void refetchTurns()}
+          sessionId={currentSessionId}
+        />
+      </div>
+
+      <div
+        style={{
+          borderTop: `1px solid ${token.colorBorderSecondary}`,
+          padding: '12px 16px',
+          background: token.colorBgContainer,
         }}
       >
         <div
-          ref={scrollContainerRef}
-          style={{ flex: 1, overflow: 'auto' }}
-        >
-          <ConversationView
-            turns={turnsWithThinkingLoader}
-            isLoading={isLoading}
-            sessionId={currentSessionId}
-          />
-        </div>
-
-        <div
+          onFocus={() => setInputFocused(true)}
+          onBlur={() => setInputFocused(false)}
           style={{
-            borderTop: `1px solid ${token.colorBorderSecondary}`,
-            padding: '12px 16px',
+            border: `1px solid ${
+              inputFocused
+                ? (agentMode === 'execute' ? token.colorError : token.colorPrimary)
+                : (agentMode === 'plan' ? token.colorPrimary : token.colorBorder)
+            }`,
+            borderRadius: token.borderRadiusLG,
             background: token.colorBgContainer,
-            display: 'flex',
-            justifyContent: 'center',
+            boxShadow: inputFocused
+              ? `0 0 0 2px ${agentMode === 'execute' ? token.colorErrorBg : token.colorPrimaryBg}`
+              : 'none',
+            transition: 'border-color 0.2s, box-shadow 0.2s',
+            overflow: 'hidden',
           }}
         >
-          <div
-            onFocus={() => setInputFocused(true)}
-            onBlur={() => setInputFocused(false)}
-            style={{
-              width: '65%',
-              maxWidth: 780,
-              border: `1px solid ${
-                inputFocused
-                  ? (agentMode === 'execute' ? token.colorError : token.colorPrimary)
-                  : (agentMode === 'plan' ? token.colorPrimary : token.colorBorder)
-              }`,
-              borderRadius: token.borderRadiusLG,
-              background: token.colorBgContainer,
-              boxShadow: inputFocused
-                ? `0 0 0 2px ${agentMode === 'execute' ? token.colorErrorBg : token.colorPrimaryBg}`
-                : 'none',
-              transition: 'border-color 0.2s, box-shadow 0.2s',
-              overflow: 'hidden',
-            }}
-          >
-            <UIInputTextArea
-              value={task}
-              onChange={(e) => setTask(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Message..."
-              autoSize={{ minRows: 2, maxRows: 8 }}
-              disabled={isRunning}
-              variant="borderless"
-              style={{ resize: 'none', padding: '10px 12px 4px', border: 'none', boxShadow: 'none', outline: 'none' }}
-            />
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px 8px' }}>
-              <UISpace size={6}>
-                <UISelect
-                  value={agentMode}
-                  onChange={(v) => setAgentMode(v as 'execute' | 'plan')}
-                  disabled={isRunning}
+          <UIInputTextArea
+            value={task}
+            onChange={(e) => setTask(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Message..."
+            autoSize={{ minRows: 2, maxRows: 8 }}
+            disabled={isRunning}
+            variant="borderless"
+            style={{ resize: 'none', padding: '10px 12px 4px', border: 'none', boxShadow: 'none', outline: 'none' }}
+          />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px 8px' }}>
+            <UISpace size={6}>
+              <ConnectionBadge
+                status={ws.status}
+                sessionId={currentSessionId}
+                onReconnect={() => ws.connect()}
+              />
+              <UISelect
+                value={agentMode}
+                onChange={(v) => setAgentMode(v as 'execute' | 'plan')}
+                disabled={isRunning}
+                size="small"
+                variant="borderless"
+                style={{ width: 110 }}
+                options={[
+                  { value: 'execute', label: 'Execute' },
+                  { value: 'plan', label: 'Plan' },
+                ]}
+              />
+              <UISelect
+                value={responseMode}
+                onChange={(v) => setResponseMode(v as AgentResponseMode)}
+                disabled={isRunning}
+                size="small"
+                variant="borderless"
+                style={{ width: 80 }}
+                options={[
+                  { value: 'auto', label: 'Auto' },
+                  { value: 'brief', label: 'Brief' },
+                  { value: 'deep', label: 'Deep' },
+                ]}
+              />
+              <UISelect
+                value={tier}
+                onChange={(v) => setTier(v as 'small' | 'medium' | 'large')}
+                disabled={isRunning}
+                size="small"
+                variant="borderless"
+                style={{ width: 100 }}
+                options={[
+                  { value: 'small', label: 'Small' },
+                  { value: 'medium', label: 'Medium' },
+                  { value: 'large', label: 'Large' },
+                ]}
+              />
+              <UISpace size={4} align="center">
+                <UISwitch
+                  checked={enableEscalation}
+                  onChange={setEnableEscalation}
+                  disabled={isRunning || tier === 'large'}
                   size="small"
-                  variant="borderless"
-                  style={{ width: 110 }}
-                  options={[
-                    { value: 'execute', label: 'Execute' },
-                    { value: 'plan', label: 'Plan' },
-                  ]}
                 />
-                <UISelect
-                  value={responseMode}
-                  onChange={(v) => setResponseMode(v as AgentResponseMode)}
-                  disabled={isRunning}
-                  size="small"
-                  variant="borderless"
-                  style={{ width: 80 }}
-                  options={[
-                    { value: 'auto', label: 'Auto' },
-                    { value: 'brief', label: 'Brief' },
-                    { value: 'deep', label: 'Deep' },
-                  ]}
-                />
-                <UISelect
-                  value={tier}
-                  onChange={(v) => setTier(v as 'small' | 'medium' | 'large')}
-                  disabled={isRunning}
-                  size="small"
-                  variant="borderless"
-                  style={{ width: 100 }}
-                  options={[
-                    { value: 'small', label: 'Small' },
-                    { value: 'medium', label: 'Medium' },
-                    { value: 'large', label: 'Large' },
-                  ]}
-                />
-                <UISpace size={4} align="center">
-                  <UISwitch
-                    checked={enableEscalation}
-                    onChange={setEnableEscalation}
-                    disabled={isRunning || tier === 'large'}
-                    size="small"
-                  />
-                  <UITypographyText type="secondary" style={{ fontSize: 12 }}>
-                    Auto escalate
-                  </UITypographyText>
-                </UISpace>
+                <UITypographyText type="secondary" style={{ fontSize: 12 }}>
+                  Auto escalate
+                </UITypographyText>
               </UISpace>
-              <div>
-                {isRunning ? (
-                  <UIButton
-                    danger
-                    size="small"
-                    icon={stopMutation.isLoading ? <UIIcon name="LoadingOutlined" /> : <UIIcon name="StopOutlined" />}
-                    onClick={handleStop}
-                    disabled={stopMutation.isLoading}
-                  >
-                    Stop
-                  </UIButton>
-                ) : (
-                  <UIButton
-                    variant="primary"
-                    size="small"
-                    icon={startRunMutation.isLoading ? <UIIcon name="LoadingOutlined" /> : <UIIcon name="SendOutlined" />}
-                    onClick={handleStart}
-                    disabled={!task.trim() || startRunMutation.isLoading}
-                  >
-                    Send
-                  </UIButton>
-                )}
-              </div>
+            </UISpace>
+            <div>
+              {isRunning ? (
+                <UIButton
+                  danger
+                  size="small"
+                  icon={stopMutation.isLoading ? <UIIcon name="LoadingOutlined" /> : <UIIcon name="StopOutlined" />}
+                  onClick={handleStop}
+                  disabled={stopMutation.isLoading}
+                >
+                  Stop
+                </UIButton>
+              ) : (
+                <UIButton
+                  variant="primary"
+                  size="small"
+                  icon={startRunMutation.isLoading ? <UIIcon name="LoadingOutlined" /> : <UIIcon name="SendOutlined" />}
+                  onClick={handleStart}
+                  disabled={!task.trim() || startRunMutation.isLoading}
+                >
+                  Send
+                </UIButton>
+              )}
             </div>
           </div>
         </div>
-      </UICard>
+      </div>
+    </UICard>
     </div>
   );
 }
+
 export default AgentsPage;

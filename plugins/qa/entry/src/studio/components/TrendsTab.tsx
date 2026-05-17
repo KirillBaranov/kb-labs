@@ -1,5 +1,5 @@
 /**
- * Trends tab — time-series chart, summary cards with velocity, changelog timeline
+ * Trends tab — time-series chart, summary cards with velocity, changelog timeline.
  */
 
 import * as React from 'react';
@@ -8,29 +8,29 @@ import {
   UITimeline, UITimelineItem, UIEmptyState, UIIcon, UIStatisticsChart, UIFlex,
   useData, useTheme,
 } from '@kb-labs/sdk/studio';
-import type { QAEnrichedTrendsResponse, EnrichedTrendResult, TrendChangelogEntry } from '@kb-labs/qa-contracts';
-import { getCheckIcon, formatCheckLabel } from '../utils/check-display';
+import type { TrendAnalysis, TaskTrend, TaskTrendChangelog } from '@kb-labs/qa-contracts';
+import { QA_BASE_PATH, QA_ROUTES } from '@kb-labs/qa-contracts';
 
 type AntToken = ReturnType<typeof useTheme>['antdToken'];
 
-function getTrendColor(trend: string, token: AntToken): string {
-  switch (trend) {
+function getTrendColor(direction: string, token: AntToken): string {
+  switch (direction) {
     case 'regression': return token.colorError;
     case 'improvement': return token.colorSuccess;
     default: return token.colorTextSecondary;
   }
 }
 
-function getTrendIcon(trend: string): React.ReactNode {
-  switch (trend) {
+function getTrendIcon(direction: string): React.ReactNode {
+  switch (direction) {
     case 'regression': return <UIIcon name="ArrowUpOutlined" />;
     case 'improvement': return <UIIcon name="ArrowDownOutlined" />;
     default: return <UIIcon name="MinusOutlined" />;
   }
 }
 
-function getTrendTag(trend: string): React.ReactNode {
-  switch (trend) {
+function getTrendTag(direction: string): React.ReactNode {
+  switch (direction) {
     case 'regression': return <UITag color="error">Regression</UITag>;
     case 'improvement': return <UITag color="success">Improvement</UITag>;
     default: return <UITag>No Change</UITag>;
@@ -46,33 +46,32 @@ function formatTimestamp(iso: string): string {
   return `${mo}-${dd} ${hh}:${mm}`;
 }
 
-function buildChartData(trends: EnrichedTrendResult[]) {
+function buildChartData(tasks: TaskTrend[]) {
   const rows: Array<{ date: string; value: number; category: string }> = [];
-  for (const trend of trends) {
-    const label = trend.label ?? formatCheckLabel(trend.checkType);
+  for (const trend of tasks) {
     for (const point of trend.timeSeries) {
-      rows.push({ date: formatTimestamp(point.timestamp), value: point.failed, category: label });
+      rows.push({ date: formatTimestamp(point.timestamp), value: point.failed, category: trend.task });
     }
   }
   return rows;
 }
 
-function buildMergedChangelog(trends: EnrichedTrendResult[]) {
+function buildMergedChangelog(tasks: TaskTrend[]) {
   const byCommit = new Map<string, {
     timestamp: string;
     gitCommit: string;
     gitMessage: string;
-    changes: Array<{ checkType: string; entry: TrendChangelogEntry }>;
+    changes: Array<{ task: string; entry: TaskTrendChangelog }>;
   }>();
 
-  for (const trend of trends) {
+  for (const trend of tasks) {
     for (const entry of trend.changelog) {
       let group = byCommit.get(entry.gitCommit);
       if (!group) {
         group = { timestamp: entry.timestamp, gitCommit: entry.gitCommit, gitMessage: entry.gitMessage, changes: [] };
         byCommit.set(entry.gitCommit, group);
       }
-      group.changes.push({ checkType: trend.checkType, entry });
+      group.changes.push({ task: trend.task, entry });
     }
   }
 
@@ -81,28 +80,30 @@ function buildMergedChangelog(trends: EnrichedTrendResult[]) {
 
 export function TrendsTab() {
   const { antdToken: token } = useTheme();
-  const [window, setWindow] = React.useState<number | undefined>(undefined);
+  const [windowSize, setWindowSize] = React.useState<number | undefined>(undefined);
 
-  const trendsUrl = window ? `/v1/plugins/qa/trends?window=${window}&enriched=true` : '/v1/plugins/qa/trends?enriched=true';
-  const { data, isLoading } = useData<QAEnrichedTrendsResponse>(trendsUrl);
+  const trendsUrl = windowSize
+    ? `${QA_BASE_PATH}${QA_ROUTES.TRENDS}?window=${windowSize}`
+    : `${QA_BASE_PATH}${QA_ROUTES.TRENDS}`;
+  const { data, isLoading } = useData<TrendAnalysis>(trendsUrl);
 
   if (isLoading) {
     return <UISpin size="large" style={{ display: 'block', margin: '48px auto' }} />;
   }
 
-  if (!data || data.trends.length === 0) {
+  if (!data || data.tasks.length === 0) {
     return (
       <UIAlert
         variant="info"
         showIcon
         message="Not enough data for trend analysis"
-        description="Need at least 2 history entries. Run 'pnpm qa:save' multiple times."
+        description="Need at least 2 history entries. Run 'kb qa run --save' multiple times."
       />
     );
   }
 
-  const chartData = buildChartData(data.trends);
-  const mergedChangelog = buildMergedChangelog(data.trends);
+  const chartData = buildChartData(data.tasks);
+  const mergedChangelog = buildMergedChangelog(data.tasks);
 
   return (
     <div>
@@ -114,8 +115,8 @@ export function TrendsTab() {
         <UISpace>
           <span>Window size:</span>
           <UISelect
-            value={window ?? data.window}
-            onChange={(val) => setWindow(val as number | undefined)}
+            value={windowSize ?? data.window}
+            onChange={(val) => setWindowSize(val as number | undefined)}
             style={{ width: 80 }}
             options={[
               { label: '5', value: 5 },
@@ -142,29 +143,33 @@ export function TrendsTab() {
 
       {/* Summary Cards */}
       <UIRow gutter={[16, 16]} style={{ marginTop: token.marginMD }}>
-        {data.trends.map((trend) => (
-          <UICol xs={24} sm={12} key={trend.checkType}>
+        {data.tasks.map((trend) => (
+          <UICol xs={24} sm={12} key={trend.task}>
             <UICard size="small">
               <UIRow align="middle" gutter={16}>
                 <UICol flex="auto">
                   <UISpace>
-                    {getCheckIcon(trend.checkType)}
+                    <UIIcon name="ExperimentOutlined" />
                     <span style={{ fontWeight: 600, fontSize: token.fontSizeLG }}>
-                      {trend.label ?? formatCheckLabel(trend.checkType)}
+                      {trend.task}
                     </span>
-                    {getTrendTag(trend.trend)}
+                    {getTrendTag(trend.direction)}
                   </UISpace>
                 </UICol>
               </UIRow>
               <UIRow gutter={16} style={{ marginTop: token.marginSM }}>
-                <UICol span={6}><UIStatistic title="Previous" value={trend.previous} valueStyle={{ fontSize: token.fontSizeHeading4 }} /></UICol>
-                <UICol span={6}><UIStatistic title="Current" value={trend.current} valueStyle={{ fontSize: token.fontSizeHeading4 }} /></UICol>
+                <UICol span={6}>
+                  <UIStatistic title="Previous" value={trend.previous} valueStyle={{ fontSize: token.fontSizeHeading4 }} />
+                </UICol>
+                <UICol span={6}>
+                  <UIStatistic title="Current" value={trend.current} valueStyle={{ fontSize: token.fontSizeHeading4 }} />
+                </UICol>
                 <UICol span={6}>
                   <UIStatistic
                     title="Delta"
                     value={Math.abs(trend.delta)}
-                    prefix={getTrendIcon(trend.trend)}
-                    valueStyle={{ color: getTrendColor(trend.trend, token), fontSize: token.fontSizeHeading4 }}
+                    prefix={getTrendIcon(trend.direction)}
+                    valueStyle={{ color: getTrendColor(trend.direction, token), fontSize: token.fontSizeHeading4 }}
                   />
                 </UICol>
                 <UICol span={6}>
@@ -172,9 +177,22 @@ export function TrendsTab() {
                     title="Velocity"
                     value={Math.abs(trend.velocity)}
                     precision={1}
-                    prefix={trend.velocity > 0 ? <UIIcon name="ArrowUpOutlined" /> : trend.velocity < 0 ? <UIIcon name="ArrowDownOutlined" /> : <UIIcon name="MinusOutlined" />}
+                    prefix={
+                      trend.velocity > 0
+                        ? <UIIcon name="ArrowUpOutlined" />
+                        : trend.velocity < 0
+                          ? <UIIcon name="ArrowDownOutlined" />
+                          : <UIIcon name="MinusOutlined" />
+                    }
                     suffix="/run"
-                    valueStyle={{ color: trend.velocity > 0 ? token.colorError : trend.velocity < 0 ? token.colorSuccess : token.colorTextSecondary, fontSize: token.fontSizeHeading4 }}
+                    valueStyle={{
+                      color: trend.velocity > 0
+                        ? token.colorError
+                        : trend.velocity < 0
+                          ? token.colorSuccess
+                          : token.colorTextSecondary,
+                      fontSize: token.fontSizeHeading4,
+                    }}
                   />
                 </UICol>
               </UIRow>
@@ -202,10 +220,12 @@ export function TrendsTab() {
                       {new Date(group.timestamp).toLocaleString()}
                     </span>
                   </div>
-                  <div style={{ fontSize: token.fontSize, color: token.colorTextSecondary, marginBottom: token.marginXS }}>{group.gitMessage}</div>
-                  {group.changes.map(({ checkType, entry }) => (
-                    <div key={checkType} style={{ marginBottom: token.marginXXS }}>
-                      <span style={{ fontWeight: 500 }}>{formatCheckLabel(checkType)}:</span>
+                  <div style={{ fontSize: token.fontSize, color: token.colorTextSecondary, marginBottom: token.marginXS }}>
+                    {group.gitMessage}
+                  </div>
+                  {group.changes.map(({ task, entry }) => (
+                    <div key={task} style={{ marginBottom: token.marginXXS }}>
+                      <span style={{ fontWeight: 500 }}>{task}:</span>
                       {entry.newFailures.length > 0 && (
                         <span style={{ marginLeft: 8 }}>
                           <UITag color="error" style={{ fontSize: token.fontSizeSM }}>+{entry.newFailures.length} new</UITag>

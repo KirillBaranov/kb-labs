@@ -176,7 +176,7 @@ Content display components
 |-----------|-------------|-------|
 | **UIDiffViewer** | UIDiffViewer | ❌ |
 | **UIJsonViewer** | UIJsonViewer component - JSON content viewer | ❌ |
-| **UIMarkdownViewer** | UIMarkdownViewer component - Markdown content viewer | ❌ |
+| **UIMarkdownViewer** | UIMarkdownViewer | ❌ |
 
 <!-- AUTO-GENERATED:END -->
 

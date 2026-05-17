@@ -96,3 +96,25 @@ export interface DeadCodeRemovalResult {
   exportsCleanedUp: number;
   manifest: DeadCodeBackupManifest;
 }
+
+// ── Knip integration ─────────────────────────────────────────────────────────
+
+export interface KnipUnusedExport {
+  file: string;
+  symbol: string;
+}
+
+export interface KnipUnusedDependency {
+  package: string;
+  workspace: string;
+}
+
+/** Parsed output from `knip --reporter json` */
+export interface KnipReport {
+  unusedFiles: string[];
+  unusedExports: KnipUnusedExport[];
+  unusedDependencies: KnipUnusedDependency[];
+  unlistedDependencies: KnipUnusedDependency[];
+  /** Total issue count for quick health scoring */
+  totalIssues: number;
+}

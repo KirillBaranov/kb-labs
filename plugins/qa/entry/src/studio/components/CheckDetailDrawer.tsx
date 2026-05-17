@@ -1,6 +1,6 @@
 /**
- * Drawer showing per-package details for a specific check type.
- * Opens when a check card is clicked on the overview tab.
+ * Drawer showing per-package issues from the latest check snapshot.
+ * Opens from the overview tab or can be used standalone.
  */
 
 import * as React from 'react';
@@ -11,113 +11,140 @@ import {
   UIInput,
   UISpace,
   UITypographyText,
-  UIButton,
-  UIMessage,
-  UIAccordion,
+  UIAlert,
+  UIEmptyState,
+  UISpin,
   UIIcon,
+  UIAccordion,
   useData,
-  useMutateData,
   useTheme,
 } from '@kb-labs/sdk/studio';
-import type { QADetailsResponse, QARunCheckRequest, QARunCheckResponse } from '@kb-labs/qa-contracts';
+import type { CheckSnapshot, DevkitCheckIssue } from '@kb-labs/qa-contracts';
+import { QA_BASE_PATH, QA_ROUTES } from '@kb-labs/qa-contracts';
 
 interface CheckDetailDrawerProps {
   open: boolean;
-  checkType: string | null;
-  checkLabel: string;
   onClose: () => void;
 }
 
-const STATUS_CONFIG: Record<string, { color: string; iconName: string }> = {
-  passed: { color: 'success', iconName: 'CheckCircleOutlined' },
-  failed: { color: 'error', iconName: 'CloseCircleOutlined' },
-  skipped: { color: 'default', iconName: 'MinusCircleOutlined' },
+const SEVERITY_CONFIG: Record<string, { color: string; iconName: string }> = {
+  error:   { color: 'error',   iconName: 'CloseCircleOutlined' },
+  warning: { color: 'warning', iconName: 'WarningOutlined' },
+  info:    { color: 'default', iconName: 'InfoCircleOutlined' },
 };
 
-export function CheckDetailDrawer({ open, checkType, checkLabel, onClose }: CheckDetailDrawerProps) {
+interface FlatIssue extends DevkitCheckIssue {
+  pkg: string;
+}
+
+/** Summary endpoint shape as documented in the REST API contract. */
+interface SummaryResponse {
+  latestRun: unknown;
+  latestCheck: CheckSnapshot | null;
+  latestStats: unknown;
+  baseline: unknown;
+}
+
+export function CheckDetailDrawer({ open, onClose }: CheckDetailDrawerProps) {
   const { antdToken: token } = useTheme();
-  const { data: details, isLoading } = useData<QADetailsResponse>('/v1/plugins/qa/details');
-  const { mutateAsync: runCheck, isLoading: isRunning } = useMutateData<QARunCheckRequest, QARunCheckResponse>(
-    '/v1/plugins/qa/run/check',
-    'POST',
-  );
   const [search, setSearch] = React.useState('');
 
-  if (!checkType) { return null; }
-
-  const checkData = details?.checks[checkType];
-
-  const allPackages = [
-    ...(checkData?.failed ?? []).map((p) => ({ ...p, status: 'failed' as const })),
-    ...(checkData?.passed ?? []).map((p) => ({ ...p, status: 'passed' as const })),
-    ...(checkData?.skipped ?? []).map((p) => ({ ...p, status: 'skipped' as const })),
-  ].filter((p) =>
-    !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.repo.toLowerCase().includes(search.toLowerCase()),
+  const { data: summaryData, isLoading } = useData<SummaryResponse>(
+    `${QA_BASE_PATH}${QA_ROUTES.SUMMARY}`,
   );
 
-  const handleRunCheck = async () => {
-    void UIMessage.loading(`Running ${checkLabel}...`, 0);
-    try {
-      const data = await runCheck({ checkType: checkType as 'lint' | 'typeCheck' | 'test' });
-      UIMessage.destroy();
-      if (data.status === 'passed') {
-        UIMessage.success(`${checkLabel} passed in ${(data.durationMs / 1000).toFixed(1)}s`);
-      } else {
-        UIMessage.warning(`${checkLabel}: ${data.result.failed.length} failures in ${(data.durationMs / 1000).toFixed(1)}s`);
-      }
-    } catch (error) {
-      UIMessage.destroy();
-      UIMessage.error(`${checkLabel} failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  };
+  const latestCheck = summaryData?.latestCheck ?? null;
 
-  const canRerun = checkType !== 'build';
+  // Flatten all issues from all packages
+  const allIssues: FlatIssue[] = React.useMemo(() => {
+    if (!latestCheck) { return []; }
+    const issues: FlatIssue[] = [];
+    for (const [pkg, pkgData] of Object.entries(latestCheck.raw.packages)) {
+      for (const issue of pkgData.issues ?? []) {
+        issues.push({ ...issue, pkg });
+      }
+    }
+    return issues;
+  }, [latestCheck]);
+
+  const filteredIssues = React.useMemo(() => {
+    if (!search) { return allIssues; }
+    const q = search.toLowerCase();
+    return allIssues.filter(
+      (i) =>
+        i.pkg.toLowerCase().includes(q) ||
+        i.check.toLowerCase().includes(q) ||
+        i.message.toLowerCase().includes(q) ||
+        (i.file ?? '').toLowerCase().includes(q),
+    );
+  }, [allIssues, search]);
+
+  const errorCount = filteredIssues.filter(i => i.severity === 'error').length;
+  const warningCount = filteredIssues.filter(i => i.severity === 'warning').length;
 
   const columns = [
     {
-      title: 'Status',
-      dataIndex: 'status',
-      key: 'status',
-      width: 80,
+      title: 'Severity',
+      dataIndex: 'severity',
+      key: 'severity',
+      width: 90,
       filters: [
-        { text: 'Failed', value: 'failed' },
-        { text: 'Passed', value: 'passed' },
-        { text: 'Skipped', value: 'skipped' },
+        { text: 'Error', value: 'error' },
+        { text: 'Warning', value: 'warning' },
+        { text: 'Info', value: 'info' },
       ],
-      onFilter: (value: unknown, record: { status: string }) => record.status === value,
-      render: (status: keyof typeof STATUS_CONFIG) => {
-        const cfg = STATUS_CONFIG[status];
-        return <UITag color={cfg?.color} icon={cfg ? <UIIcon name={cfg.iconName} /> : undefined}>{status}</UITag>;
+      onFilter: (value: unknown, record: FlatIssue) => record.severity === value,
+      render: (severity: string) => {
+        const cfg = SEVERITY_CONFIG[severity];
+        return cfg
+          ? <UITag color={cfg.color} icon={<UIIcon name={cfg.iconName} />}>{severity}</UITag>
+          : <UITag>{severity}</UITag>;
       },
     },
     {
       title: 'Package',
-      dataIndex: 'name',
-      key: 'name',
-      sorter: (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name),
-      render: (name: string) => (
-        <UITypographyText code style={{ fontSize: token.fontSizeSM }}>{name}</UITypographyText>
+      dataIndex: 'pkg',
+      key: 'pkg',
+      width: 200,
+      sorter: (a: FlatIssue, b: FlatIssue) => a.pkg.localeCompare(b.pkg),
+      render: (pkg: string) => (
+        <UITypographyText code style={{ fontSize: token.fontSizeSM }}>{pkg}</UITypographyText>
       ),
     },
     {
-      title: 'Repo',
-      dataIndex: 'repo',
-      key: 'repo',
-      width: 180,
-      filters: [...new Set(allPackages.map((p) => p.repo))].map((r) => ({ text: r, value: r })),
-      onFilter: (value: unknown, record: { repo: string }) => record.repo === value,
-      render: (repo: string) => <UITag>{repo}</UITag>,
+      title: 'Check',
+      dataIndex: 'check',
+      key: 'check',
+      width: 150,
+      render: (check: string) => <UITag style={{ fontSize: token.fontSizeSM }}>{check}</UITag>,
+    },
+    {
+      title: 'Message',
+      dataIndex: 'message',
+      key: 'message',
+      render: (message: string, record: FlatIssue) => (
+        <div>
+          <span style={{ fontSize: token.fontSizeSM }}>{message}</span>
+          {record.file && (
+            <div>
+              <UITypographyText type="secondary" style={{ fontSize: token.fontSizeSM }}>
+                {record.file}
+              </UITypographyText>
+            </div>
+          )}
+        </div>
+      ),
     },
   ];
 
-  const expandedRowRender = (record: { error?: string }) => {
-    if (!record.error) { return null; }
+  const expandedRowRender = (record: FlatIssue) => {
+    if (!record.fix) { return null; }
     return (
       <UIAccordion
         ghost
         items={[{
           key: '1',
-          label: 'Error output',
+          label: 'Suggested fix',
           children: (
             <pre style={{
               background: token.colorFillTertiary,
@@ -125,12 +152,12 @@ export function CheckDetailDrawer({ open, checkType, checkLabel, onClose }: Chec
               padding: token.paddingSM,
               borderRadius: token.borderRadius,
               fontSize: token.fontSizeSM,
-              maxHeight: 300,
+              maxHeight: 200,
               overflow: 'auto',
               whiteSpace: 'pre-wrap',
               wordBreak: 'break-all',
             }}>
-              {record.error}
+              {record.fix}
             </pre>
           ),
         }]}
@@ -142,51 +169,57 @@ export function CheckDetailDrawer({ open, checkType, checkLabel, onClose }: Chec
     <UIDrawer
       title={
         <UISpace>
-          <span>{checkLabel} Details</span>
-          <UITag color={checkData?.failed.length ? 'error' : 'success'}>
-            {checkData?.failed.length ?? 0} failed
-          </UITag>
+          <span>Check Issues</span>
+          {errorCount > 0 && <UITag color="error">{errorCount} errors</UITag>}
+          {warningCount > 0 && <UITag color="warning">{warningCount} warnings</UITag>}
         </UISpace>
       }
       placement="right"
-      width={720}
+      width={820}
       open={open}
       onClose={onClose}
-      extra={
-        canRerun && (
-          <UIButton
-            variant="primary"
-            icon={<UIIcon name="PlayCircleOutlined" />}
-            onClick={() => void handleRunCheck()}
-            loading={isRunning}
-            size="small"
-          >
-            Re-run {checkLabel}
-          </UIButton>
-        )
-      }
     >
-      <UIInput
-        placeholder="Filter by package or repo..."
-        prefix={<UIIcon name="SearchOutlined" />}
-        value={search}
-        onChange={(value) => setSearch(value)}
-        style={{ marginBottom: token.marginMD }}
-        allowClear
-      />
+      {isLoading && (
+        <UISpin size="large" style={{ display: 'block', margin: '48px auto' }} />
+      )}
 
-      <UITable
-        dataSource={allPackages}
-        columns={columns}
-        rowKey="name"
-        size="small"
-        loading={isLoading}
-        pagination={{ pageSize: 50 }}
-        expandable={{
-          expandedRowRender,
-          rowExpandable: (record) => !!record.error,
-        }}
-      />
+      {!isLoading && !latestCheck && (
+        <UIAlert
+          variant="info"
+          showIcon
+          message="No check data available"
+          description="Run 'kb qa check --save' to generate check results."
+        />
+      )}
+
+      {!isLoading && latestCheck && (
+        <>
+          <UIInput
+            placeholder="Filter by package, check, message, or file..."
+            prefix={<UIIcon name="SearchOutlined" />}
+            value={search}
+            onChange={(value) => setSearch(value)}
+            style={{ marginBottom: token.marginMD }}
+            allowClear
+          />
+
+          {filteredIssues.length === 0 ? (
+            <UIEmptyState description={search ? 'No issues match your filter' : 'No issues found'} />
+          ) : (
+            <UITable<FlatIssue>
+              dataSource={filteredIssues}
+              columns={columns}
+              rowKey={(record: FlatIssue, idx?: number) => `${record.pkg}-${record.check}-${idx ?? 0}`}
+              size="small"
+              pagination={{ pageSize: 50 }}
+              expandable={{
+                expandedRowRender,
+                rowExpandable: (record) => !!record.fix,
+              }}
+            />
+          )}
+        </>
+      )}
     </UIDrawer>
   );
 }

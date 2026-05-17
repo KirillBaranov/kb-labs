@@ -655,6 +655,82 @@ export async function registerPluginSnapshotRoutes(
     }
   });
 
+  // Plugin README — serves README.md from plugin root directory
+  server.get<{
+    Params: { scope: string; name: string };
+  }>(`${basePath}/plugins/@:scope/:name/readme`, {
+    schema: { hide: true },
+  }, async (request, reply) => {
+    const { scope, name } = request.params;
+
+    if (!scope || !name) {
+      return reply.code(400).send({ error: 'Invalid plugin identifier' });
+    }
+
+    const pluginId = `@${scope}/${name}`;
+    const snapshot = registry.snapshot();
+    const manifests = extractSnapshotManifests(snapshot);
+    const entry = manifests.find(e => e.pluginId === pluginId);
+
+    if (!entry) {
+      return reply.code(404).send({ error: `Plugin not found: ${pluginId}` });
+    }
+
+    const readmePath = path.join(entry.pluginRoot, 'README.md');
+
+    if (!readmePath.startsWith(entry.pluginRoot)) {
+      return reply.code(400).send({ error: 'Invalid path' });
+    }
+
+    try {
+      const content = await fs.readFile(readmePath, 'utf-8');
+      return reply.code(200).header('Content-Type', 'text/plain; charset=utf-8').send(content);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return reply.code(404).send({ error: 'README.md not found' });
+      }
+      return reply.code(500).send({ error: 'Failed to read README.md' });
+    }
+  });
+
+  // Plugin Changelog — serves CHANGELOG.md from plugin root directory
+  server.get<{
+    Params: { scope: string; name: string };
+  }>(`${basePath}/plugins/@:scope/:name/changelog`, {
+    schema: { hide: true },
+  }, async (request, reply) => {
+    const { scope, name } = request.params;
+
+    if (!scope || !name) {
+      return reply.code(400).send({ error: 'Invalid plugin identifier' });
+    }
+
+    const pluginId = `@${scope}/${name}`;
+    const snapshot = registry.snapshot();
+    const manifests = extractSnapshotManifests(snapshot);
+    const entry = manifests.find(e => e.pluginId === pluginId);
+
+    if (!entry) {
+      return reply.code(404).send({ error: `Plugin not found: ${pluginId}` });
+    }
+
+    const changelogPath = path.join(entry.pluginRoot, 'CHANGELOG.md');
+
+    if (!changelogPath.startsWith(entry.pluginRoot)) {
+      return reply.code(400).send({ error: 'Invalid path' });
+    }
+
+    try {
+      const content = await fs.readFile(changelogPath, 'utf-8');
+      return reply.code(200).header('Content-Type', 'text/plain; charset=utf-8').send(content);
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+        return reply.code(404).send({ error: 'CHANGELOG.md not found' });
+      }
+      return reply.code(500).send({ error: 'Failed to read CHANGELOG.md' });
+    }
+  });
+
   // Studio Registry V2 — returns plugin pages and menus for Module Federation
   server.get(`${basePath}/studio/registry`, {
     schema: { tags: ['Studio'], summary: 'Get Studio Registry V2 (plugin pages for Module Federation)' },

@@ -1,15 +1,15 @@
 /**
- * Regressions tab — detect and display new failures since last QA save
+ * Regressions tab — detect and display new failures since the previous run snapshot.
  */
 
 import * as React from 'react';
 import { UIAlert, UICard, UITag, UISpin, UISpace, UIEmptyState, UIIcon, UIFlex, useData, useTheme } from '@kb-labs/sdk/studio';
-import { getCheckIcon, formatCheckLabel } from '../utils/check-display';
-import type { QARegressionsResponse } from '@kb-labs/qa-contracts';
+import type { RegressionDetection } from '@kb-labs/qa-contracts';
+import { QA_BASE_PATH, QA_ROUTES } from '@kb-labs/qa-contracts';
 
 export function RegressionsTab() {
   const { antdToken: token } = useTheme();
-  const { data, isLoading } = useData<QARegressionsResponse>('/v1/plugins/qa/regressions');
+  const { data, isLoading } = useData<RegressionDetection>(`${QA_BASE_PATH}${QA_ROUTES.REGRESSIONS}`);
 
   if (isLoading) {
     return <UISpin size="large" style={{ display: 'block', margin: '48px auto' }} />;
@@ -21,7 +21,7 @@ export function RegressionsTab() {
         variant="info"
         showIcon
         message="Not enough data for regression detection"
-        description="Need at least 2 history entries. Run 'pnpm qa:save' multiple times."
+        description="Need at least 2 history entries. Run 'kb qa run --save' multiple times."
       />
     );
   }
@@ -34,7 +34,15 @@ export function RegressionsTab() {
           showIcon
           icon={<UIIcon name="CheckCircleOutlined" />}
           message="No regressions detected"
-          description="All check types show the same or fewer failures compared to the previous QA run."
+          description={
+            <UISpace direction="vertical" size={0}>
+              <span>All tasks show the same or fewer failures compared to the previous run.</span>
+              <span style={{ color: token.colorTextSecondary, fontSize: token.fontSizeSM }}>
+                Compared: {new Date(data.comparedAt.previous).toLocaleString()} →{' '}
+                {new Date(data.comparedAt.current).toLocaleString()}
+              </span>
+            </UISpace>
+          }
           style={{ marginBottom: token.marginLG }}
         />
         <UIEmptyState description="No regressions to display" />
@@ -49,7 +57,15 @@ export function RegressionsTab() {
         showIcon
         icon={<UIIcon name="WarningOutlined" />}
         message={`${data.regressions.length} regression${data.regressions.length > 1 ? 's' : ''} detected`}
-        description="The following check types have new failures compared to the previous QA run."
+        description={
+          <UISpace direction="vertical" size={0}>
+            <span>The following tasks have new failures compared to the previous run.</span>
+            <span style={{ fontSize: token.fontSizeSM, color: token.colorTextSecondary }}>
+              Compared: {new Date(data.comparedAt.previous).toLocaleString()} →{' '}
+              {new Date(data.comparedAt.current).toLocaleString()}
+            </span>
+          </UISpace>
+        }
         style={{ marginBottom: token.marginLG }}
       />
 
@@ -58,8 +74,8 @@ export function RegressionsTab() {
           key={idx}
           title={
             <UISpace>
-              {getCheckIcon(reg.checkType)}
-              <span>{formatCheckLabel(reg.checkType)}</span>
+              <UIIcon name="ExperimentOutlined" />
+              <span>{reg.task}</span>
               <UITag color="error">+{reg.delta} new failure{reg.delta > 1 ? 's' : ''}</UITag>
             </UISpace>
           }
@@ -86,10 +102,9 @@ export function RegressionsTab() {
           <div>
             <p>Fix the regressions above before merging. Recommendations:</p>
             <ol style={{ margin: 0, paddingLeft: 20 }}>
-              <li>Run <code>pnpm qa --json</code> to see detailed error messages</li>
+              <li>Run <code>kb qa run</code> to see detailed error output</li>
               <li>Fix the failing packages</li>
-              <li>Re-run <code>pnpm qa:save</code> to verify fixes</li>
-              <li>Update baseline if needed: <code>pnpm kb baseline:update</code></li>
+              <li>Re-run <code>kb qa run --save</code> to verify fixes</li>
             </ol>
           </div>
         }

@@ -366,11 +366,8 @@ export function getAntDesignComponents(): ThemeConfig['components'] {
       colorLinkHover: 'var(--link-hover)',
       colorLinkActive: 'var(--link-hover)',
 
-      // ============ Solid button (filled buttons) ============
-      solidTextColor: 'var(--text-primary)', // Text color for solid buttons
-
       // ============ Danger button ============
-      dangerColor: 'var(--error)', // Danger button text & border color
+      // dangerColor: default is colorTextLightSolid (white) — correct for solid danger button
       dangerShadow: '0 2px 0 rgba(220, 38, 38, 0.1)',
 
       // Danger ghost button

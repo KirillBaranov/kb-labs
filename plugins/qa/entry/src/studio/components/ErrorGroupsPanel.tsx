@@ -1,6 +1,6 @@
 /**
- * Panel showing errors grouped by pattern (ESLint rules, TS codes, etc.)
- * Helps identify the most impactful errors to fix first.
+ * Issues-by-type panel using DevkitStatsOutput.issues_by_type.
+ * Shows check types with error/warning counts and package impact.
  */
 
 import * as React from 'react';
@@ -16,140 +16,120 @@ import {
   useData,
   useTheme,
 } from '@kb-labs/sdk/studio';
-import type { QAErrorGroupsResponse } from '@kb-labs/qa-contracts';
+import type { DevkitStatsIssueType, StatsSnapshot } from '@kb-labs/qa-contracts';
+import { QA_BASE_PATH, QA_ROUTES } from '@kb-labs/qa-contracts';
 
-const CHECK_TYPE_CONFIG: Record<string, { color: string; iconName: string; label: string }> = {
-  build: { color: 'red', iconName: 'BugOutlined', label: 'Build' },
-  lint: { color: 'orange', iconName: 'FileSearchOutlined', label: 'Lint' },
-  typeCheck: { color: 'blue', iconName: 'FileTextOutlined', label: 'Types' },
-  test: { color: 'purple', iconName: 'ExperimentOutlined', label: 'Tests' },
-};
+/** Summary endpoint shape as documented in the REST API contract. */
+interface SummaryResponse {
+  latestRun: unknown;
+  latestCheck: unknown;
+  latestStats: StatsSnapshot | null;
+  baseline: unknown;
+}
+
+interface IssueTypeRow extends DevkitStatsIssueType {
+  key: string;
+}
 
 export function ErrorGroupsPanel() {
   const { antdToken: token } = useTheme();
-  const { data, isLoading } = useData<QAErrorGroupsResponse>('/v1/plugins/qa/errors/groups');
+
+  const { data: summaryData, isLoading } = useData<SummaryResponse>(
+    `${QA_BASE_PATH}${QA_ROUTES.SUMMARY}`,
+  );
 
   if (isLoading) {
     return <UISpin size="large" style={{ display: 'block', margin: '48px auto' }} />;
   }
 
-  if (!data || (data.groups.length === 0 && data.ungrouped === 0)) {
-    return null;
-  }
+  const latestStats = summaryData?.latestStats ?? null;
+  if (!latestStats) { return null; }
+
+  const issuesByType = latestStats.raw.issues_by_type;
+  const rows: IssueTypeRow[] = Object.entries(issuesByType).map(([key, val]) => ({ key, ...val }));
+
+  if (rows.length === 0) { return null; }
 
   const columns = [
     {
-      title: 'Pattern',
-      dataIndex: 'pattern',
-      key: 'pattern',
-      render: (pattern: string) => (
-        <UITypographyText code style={{ fontSize: token.fontSizeSM }}>{pattern}</UITypographyText>
+      title: 'Check',
+      dataIndex: 'check',
+      key: 'check',
+      render: (check: string) => (
+        <UITypographyText code style={{ fontSize: token.fontSizeSM }}>{check}</UITypographyText>
       ),
     },
     {
-      title: 'Type',
-      dataIndex: 'checkType',
-      key: 'checkType',
-      width: 100,
-      filters: Object.entries(CHECK_TYPE_CONFIG).map(([key, cfg]) => ({
-        text: cfg.label,
-        value: key,
-      })),
-      onFilter: (value: unknown, record: { checkType: string }) => record.checkType === value,
-      render: (ct: string) => {
-        const cfg = CHECK_TYPE_CONFIG[ct];
-        return cfg ? (
-          <UITag color={cfg.color} icon={<UIIcon name={cfg.iconName} />}>{cfg.label}</UITag>
-        ) : (
-          <UITag>{ct}</UITag>
-        );
-      },
-    },
-    {
-      title: 'Affected',
-      dataIndex: 'count',
-      key: 'count',
-      width: 100,
-      sorter: (a: { count: number }, b: { count: number }) => a.count - b.count,
+      title: 'Errors',
+      dataIndex: 'errors',
+      key: 'errors',
+      width: 90,
+      sorter: (a: IssueTypeRow, b: IssueTypeRow) => a.errors - b.errors,
       defaultSortOrder: 'descend' as const,
-      render: (count: number) => (
-        <UIBadge count={count} style={{ backgroundColor: count > 5 ? token.colorError : count > 2 ? token.colorWarning : token.colorSuccess }} />
+      render: (errors: number) => (
+        errors > 0
+          ? <UIBadge count={errors} style={{ backgroundColor: token.colorError }} />
+          : <span style={{ color: token.colorTextSecondary }}>—</span>
       ),
     },
     {
-      title: 'Packages',
+      title: 'Warnings',
+      dataIndex: 'warnings',
+      key: 'warnings',
+      width: 100,
+      sorter: (a: IssueTypeRow, b: IssueTypeRow) => a.warnings - b.warnings,
+      render: (warnings: number) => (
+        warnings > 0
+          ? <UIBadge count={warnings} style={{ backgroundColor: token.colorWarning }} />
+          : <span style={{ color: token.colorTextSecondary }}>—</span>
+      ),
+    },
+    {
+      title: 'Packages Affected',
       dataIndex: 'packages',
       key: 'packages',
-      render: (packages: string[]) => (
-        <UISpace wrap size={[4, 4]}>
-          {packages.slice(0, 3).map((pkg) => (
-            <UITag key={pkg} style={{ fontSize: token.fontSizeSM }}>{pkg}</UITag>
-          ))}
-          {packages.length > 3 && (
-            <UITypographyText type="secondary" style={{ fontSize: token.fontSizeSM }}>
-              +{packages.length - 3} more
-            </UITypographyText>
-          )}
+      width: 150,
+      sorter: (a: IssueTypeRow, b: IssueTypeRow) => a.packages - b.packages,
+      render: (packages: number) => (
+        <UISpace>
+          <UIBadge count={packages} style={{ backgroundColor: packages > 5 ? token.colorError : packages > 2 ? token.colorWarning : token.colorSuccess }} />
+          <span style={{ fontSize: token.fontSizeSM, color: token.colorTextSecondary }}>packages</span>
         </UISpace>
       ),
     },
+    {
+      title: 'Impact',
+      key: 'impact',
+      width: 90,
+      render: (_: unknown, record: IssueTypeRow) => {
+        const total = record.errors + record.warnings;
+        if (total === 0) { return <UITag>Clean</UITag>; }
+        if (record.errors > 0) { return <UITag color="error">High</UITag>; }
+        return <UITag color="warning">Medium</UITag>;
+      },
+    },
   ];
 
-  const expandedRowRender = (record: { example?: string; packages: string[] }) => (
-    <div>
-      <UITypographyText type="secondary" style={{ fontSize: token.fontSizeSM }}>Example:</UITypographyText>
-      <pre style={{
-        background: token.colorFillTertiary,
-        color: token.colorText,
-        padding: token.paddingXS,
-        borderRadius: token.borderRadiusSM,
-        fontSize: token.fontSizeSM,
-        maxHeight: 150,
-        overflow: 'auto',
-        whiteSpace: 'pre-wrap',
-        wordBreak: 'break-all',
-        marginTop: token.marginXXS,
-      }}>
-        {record.example}
-      </pre>
-      {record.packages.length > 3 && (
-        <div style={{ marginTop: token.marginXS }}>
-          <UITypographyText type="secondary" style={{ fontSize: token.fontSizeSM }}>All affected packages:</UITypographyText>
-          <div style={{ marginTop: token.marginXXS }}>
-            <UISpace wrap size={[4, 4]}>
-              {record.packages.map((pkg: string) => (
-                <UITag key={pkg} style={{ fontSize: token.fontSizeSM }}>{pkg}</UITag>
-              ))}
-            </UISpace>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+  const totalErrors = rows.reduce((s, r) => s + r.errors, 0);
+  const totalWarnings = rows.reduce((s, r) => s + r.warnings, 0);
 
   return (
     <UICard
       title={
         <UISpace>
           <UIIcon name="BugOutlined" />
-          <span>Error Groups</span>
-          <UITag>{data.groups.length} patterns</UITag>
-          {data.ungrouped > 0 && (
-            <UITag color="default">{data.ungrouped} unique errors</UITag>
-          )}
+          <span>Issues by Type</span>
+          {totalErrors > 0 && <UITag color="error">{totalErrors} errors</UITag>}
+          {totalWarnings > 0 && <UITag color="warning">{totalWarnings} warnings</UITag>}
         </UISpace>
       }
     >
-      <UITable
-        dataSource={data.groups}
+      <UITable<IssueTypeRow>
+        dataSource={rows}
         columns={columns}
-        rowKey="pattern"
+        rowKey="key"
         size="small"
-        pagination={{ pageSize: 10 }}
-        expandable={{
-          expandedRowRender,
-          rowExpandable: () => true,
-        }}
+        pagination={rows.length > 10 ? { pageSize: 10 } : false}
       />
     </UICard>
   );
