@@ -151,12 +151,11 @@ export default defineWebSocket<unknown, Incoming, Outgoing>({
           pollingTimers.set(connectionId, timer);
         })
         .on(UnsubscribeMsg, async (_ctx) => {
+          // Stop the polling timer and clear offsets. No confirmation
+          // message is emitted on purpose: clients use unsubscribe to
+          // expect a quiet stream, and emitting a synthetic LogMsg here
+          // would surface as a new log to consumers like WS-L04.
           clearConnection(connectionId);
-          await sender.send(LogMsg.create({
-            timestamp: new Date().toISOString(),
-            level: 'info',
-            message: 'Unsubscribed from logs',
-          }));
         });
 
       await router.handle(ctx, message as WSMessage, sender.raw);

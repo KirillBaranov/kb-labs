@@ -282,5 +282,153 @@
         }
       ]
     }
+  },
+  {
+    "id": "deed4ba2-5138-457f-9d42-70f65cf46d79",
+    "timestamp": "2026-05-17T17:21:10.418Z",
+    "durationMs": 2023,
+    "git": {
+      "commit": "b96f0114",
+      "branch": "main",
+      "message": "fix(testing-e2e): treat SSE read AbortError as normal termination"
+    },
+    "kind": "stats",
+    "raw": {
+      "ok": false,
+      "score": 88,
+      "grade": "B",
+      "summary": {
+        "total": 178,
+        "healthy": 154,
+        "warning": 0,
+        "error": 24,
+        "total_errors": 51,
+        "total_warnings": 0
+      },
+      "by_category": {
+        "adapter": {
+          "total": 25,
+          "healthy": 22,
+          "issues": 3,
+          "grade": "B"
+        },
+        "e2e-suite": {
+          "total": 8,
+          "healthy": 8,
+          "issues": 0,
+          "grade": "A"
+        },
+        "go-binary": {
+          "total": 5,
+          "healthy": 5,
+          "issues": 0,
+          "grade": "A"
+        },
+        "plugin-entry": {
+          "total": 15,
+          "healthy": 4,
+          "issues": 11,
+          "grade": "F"
+        },
+        "site": {
+          "total": 1,
+          "healthy": 1,
+          "issues": 0,
+          "grade": "A"
+        },
+        "spa": {
+          "total": 2,
+          "healthy": 2,
+          "issues": 0,
+          "grade": "A"
+        },
+        "ts-app": {
+          "total": 8,
+          "healthy": 6,
+          "issues": 2,
+          "grade": "C"
+        },
+        "ts-lib": {
+          "total": 114,
+          "healthy": 106,
+          "issues": 8,
+          "grade": "A"
+        }
+      },
+      "issues_by_type": {
+        "package_json": {
+          "check": "package_json",
+          "errors": 34,
+          "warnings": 0,
+          "packages": 13
+        },
+        "structure": {
+          "check": "structure",
+          "errors": 16,
+          "warnings": 0,
+          "packages": 15
+        },
+        "tsconfig": {
+          "check": "tsconfig",
+          "errors": 1,
+          "warnings": 0,
+          "packages": 1
+        }
+      },
+      "coverage": {
+        "with_eslint": {
+          "pass": 173,
+          "total": 173,
+          "pct": 100
+        },
+        "with_tsconfig": {
+          "pass": 172,
+          "total": 173,
+          "pct": 99.42196531791907
+        },
+        "with_readme": {
+          "pass": 158,
+          "total": 173,
+          "pct": 91.32947976878613
+        },
+        "with_engines": {
+          "pass": 111,
+          "total": 114,
+          "pct": 97.36842105263158
+        },
+        "with_exports": {
+          "pass": 114,
+          "total": 114,
+          "pct": 100
+        }
+      },
+      "top_issues": [
+        {
+          "check": "structure",
+          "message": "required file \"README.md\" not found",
+          "packages": 15
+        },
+        {
+          "check": "package_json",
+          "message": "missing required script \"test:cli\"",
+          "packages": 8
+        },
+        {
+          "check": "package_json",
+          "message": "missing required script \"dev\"",
+          "packages": 5
+        },
+        {
+          "check": "package_json",
+          "message": "missing required script \"lint\"",
+          "packages": 5
+        },
+        {
+          "check": "package_json",
+          "message": "missing required engine \"node\": \">=20.0.0\" in engines field",
+          "packages": 5
+        }
+      ]
+    }
   }
 ]
