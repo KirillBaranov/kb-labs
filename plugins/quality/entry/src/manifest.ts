@@ -26,6 +26,8 @@ import {
   couplingFlags,
   snapshotFlags,
   historyFlags,
+  contextFlags,
+  gateFlags,
 } from './cli/commands/flags.js';
 
 const pluginPermissions = combinePermissions()
@@ -62,7 +64,7 @@ export const manifest = {
   },
 
   cli: {
-    groupMeta: [{ path: 'quality', describe: 'Code quality analysis and trend tracking.' }],
+    groupMeta: [{ path: 'quality', describe: 'Code quality, architecture analysis, and trend tracking.' }],
     commands: [
       // ── Overview ────────────────────────────────────────────────────────────
       {
@@ -99,6 +101,34 @@ export const manifest = {
         handler: './cli/commands/history.js#default',
         flags: defineCommandFlags(historyFlags),
         examples: ['kb quality history', 'kb quality history --json', 'kb quality history --limit 20'],
+        permissions: pluginPermissions,
+      },
+
+      // ── Agent ────────────────────────────────────────────────────────────────
+      {
+        path: 'quality context',
+        category: 'Agent',
+        describe: 'Package context for agents: layer, dependents, dependencies (fast, stateless)',
+        handler: './cli/commands/context.js#default',
+        flags: defineCommandFlags(contextFlags),
+        examples: [
+          'kb quality context --package @kb-labs/sdk',
+          'kb quality context --package @kb-labs/sdk --json',
+          'kb quality context --json',
+        ],
+        permissions: pluginPermissions,
+      },
+      {
+        path: 'quality gate',
+        category: 'Agent',
+        describe: 'Architecture gate: fail if new layering violations introduced',
+        handler: './cli/commands/gate.js#default',
+        flags: defineCommandFlags(gateFlags),
+        examples: [
+          'kb quality gate',
+          'kb quality gate --json',
+          'kb quality gate --strict',
+        ],
         permissions: pluginPermissions,
       },
 

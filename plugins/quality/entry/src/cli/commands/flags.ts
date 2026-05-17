@@ -484,3 +484,39 @@ export type DeadCodeFlags = {
   'list-backups'?: boolean;
   refresh?: boolean;
 };
+
+export const contextFlags = {
+  package: {
+    type: 'string',
+    description: 'Package name to get context for',
+    alias: 'p',
+  },
+  json: {
+    type: 'boolean',
+    description: 'Output JSON format',
+    default: false,
+  },
+} as const;
+
+export type ContextFlags = {
+  package?: string;
+  json?: boolean;
+};
+
+export const gateFlags = {
+  json: {
+    type: 'boolean',
+    description: 'Output JSON format',
+    default: false,
+  },
+  strict: {
+    type: 'boolean',
+    description: 'Fail even on pre-existing violations (not just new ones)',
+    default: false,
+  },
+} as const;
+
+export type GateFlags = {
+  json?: boolean;
+  strict?: boolean;
+};
