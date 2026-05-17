@@ -46,12 +46,10 @@ fetch "$CAND_ID" "$TMP/cand"
 jq -n \
   --slurpfile base "$TMP/base/timings.json" \
   --slurpfile cand "$TMP/cand/timings.json" '
-  def steps(t): t[0].jobs[0].steps | map({key:.name, value:.duration_s}) | from_entries;
-  def names(t): t[0].jobs[0].steps | map(.name);
-  ($base | names) as $bn |
-  ($cand | names) as $cn |
-  ($base | steps) as $bs |
-  ($cand | steps) as $cs |
+  ($base[0].jobs[0].steps | map(.name)) as $bn |
+  ($cand[0].jobs[0].steps | map(.name)) as $cn |
+  ($base[0].jobs[0].steps | map({key:.name, value:.duration_s}) | from_entries) as $bs |
+  ($cand[0].jobs[0].steps | map({key:.name, value:.duration_s}) | from_entries) as $cs |
   ($bn + $cn | unique) as $all |
   {
     base_run: $base[0].run_id,
