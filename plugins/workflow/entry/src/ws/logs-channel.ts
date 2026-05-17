@@ -36,6 +36,12 @@ type Outgoing =
 // Module-level state keyed by ctx.requestId (stable per WS connection)
 const pollingTimers = new Map<string, ReturnType<typeof setInterval>>();
 const logOffsets = new Map<string, number>();
+// "active" gate. Set on subscribe, cleared on unsubscribe/disconnect. The
+// polling callback is async — clearInterval stops future ticks but cannot
+// cancel an in-flight `await fetchLogs(...)`. The poll body must consult
+// this gate before sending so a late-resolving fetch from a just-stopped
+// subscription doesn't emit one stray log after unsubscribe (WS-L04).
+const activeSubscriptions = new Set<string>();
 
 type DaemonLog = {
   timestamp: string;
@@ -83,6 +89,7 @@ async function checkRunExists(runId: string): Promise<boolean> {
 }
 
 function clearConnection(connectionId: string): void {
+  activeSubscriptions.delete(connectionId);
   const timer = pollingTimers.get(connectionId);
   if (timer) { clearInterval(timer); pollingTimers.delete(connectionId); }
   logOffsets.delete(connectionId);
@@ -112,15 +119,19 @@ export default defineWebSocket<unknown, Incoming, Outgoing>({
             return;
           }
 
-          // Clear any existing subscription
+          // Clear any existing subscription, then mark active.
           clearConnection(connectionId);
           logOffsets.set(connectionId, 0);
+          activeSubscriptions.add(connectionId);
 
-          // Fetch and stream existing logs
+          // Fetch and stream existing logs (still subject to the activity gate
+          // — unsubscribe may arrive mid-fetch).
           const initialLogs = await fetchLogs(runId, 0, level).catch(() => [] as DaemonLog[]);
+          if (!activeSubscriptions.has(connectionId)) { return; }
           let offset = 0;
           for (const log of initialLogs) {
             if (!levelMatches(log.level, level)) { continue; }
+            if (!activeSubscriptions.has(connectionId)) { return; }
             await sender.send(LogMsg.create({
               timestamp: log.timestamp,
               level: normalizeLevel(log.level),
@@ -131,13 +142,18 @@ export default defineWebSocket<unknown, Incoming, Outgoing>({
           offset = initialLogs.length;
           logOffsets.set(connectionId, offset);
 
-          // Poll for new logs
+          // Poll for new logs. The poll body is async, so clearInterval cannot
+          // cancel an in-flight tick — gate every send on activeSubscriptions
+          // so a late fetch resolving after unsubscribe stays silent.
           const timer = setInterval(async () => {
+            if (!activeSubscriptions.has(connectionId)) { return; }
             const currentOffset = logOffsets.get(connectionId) ?? 0;
             const newLogs = await fetchLogs(runId, currentOffset, level).catch(() => [] as DaemonLog[]);
+            if (!activeSubscriptions.has(connectionId)) { return; }
             if (newLogs.length === 0) { return; }
             for (const log of newLogs) {
               if (!levelMatches(log.level, level)) { continue; }
+              if (!activeSubscriptions.has(connectionId)) { return; }
               await sender.send(LogMsg.create({
                 timestamp: log.timestamp,
                 level: normalizeLevel(log.level),
