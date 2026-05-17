@@ -195,6 +195,7 @@ export class RegistryService {
       allowlist: [...entry.allowlist, namespaceId],
       updatedAt: new Date().toISOString(),
     });
+    await this.invalidateCaches(authorHandle, name);
   }
 
   async createShareToken(
