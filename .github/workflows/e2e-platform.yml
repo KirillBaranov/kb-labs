@@ -204,16 +204,17 @@ jobs:
           docker compose -f e2e/docker-compose.yml logs --no-color platform > /tmp/e2e-logs/platform-bootstrap.log 2>&1 || true
           docker compose -f e2e/docker-compose.yml logs --no-color verdaccio > /tmp/e2e-logs/verdaccio.log 2>&1 || true
           docker compose -f e2e/docker-compose.yml ps > /tmp/e2e-logs/ps.txt 2>&1 || true
-          # Per-service runtime logs written by kb-dev are inside the container at
-          # /workspace/kb-e2e/.kb/logs/tmp/. Copy them out.
-          docker compose -f e2e/docker-compose.yml exec -T platform sh -c 'ls -la /workspace/kb-e2e/.kb/logs/tmp/ 2>&1' > /tmp/e2e-logs/services-ls.txt 2>&1 || true
-          docker compose -f e2e/docker-compose.yml cp platform:/workspace/kb-e2e/.kb/logs/tmp /tmp/e2e-logs/services 2>&1 || true
-          echo "--- services-ls.txt:"
-          cat /tmp/e2e-logs/services-ls.txt || true
-          echo "--- collected service log files:"
-          ls -la /tmp/e2e-logs/services/ 2>&1 || true
-          echo "--- last 30 lines of gateway log (if present):"
-          tail -30 /tmp/e2e-logs/services/gateway.log 2>&1 || tail -30 /tmp/e2e-logs/services/gateway*.log 2>&1 || echo "no gateway log file found"
+          # Find and copy all .log files + .kb directory from the platform container.
+          docker compose -f e2e/docker-compose.yml exec -T platform sh -c 'find / -name "*.log" -size +0c 2>/dev/null | grep -v proc' > /tmp/e2e-logs/log-files-list.txt 2>&1 || true
+          echo "--- log files found in container:"
+          cat /tmp/e2e-logs/log-files-list.txt || true
+          docker compose -f e2e/docker-compose.yml cp platform:/workspace/kb-e2e/.kb /tmp/e2e-logs/kb-dir 2>&1 || true
+          docker compose -f e2e/docker-compose.yml cp platform:/root/kb-platform/.kb /tmp/e2e-logs/platform-kb-dir 2>&1 || true
+          docker compose -f e2e/docker-compose.yml exec -T platform sh -c 'kb-dev status 2>&1' > /tmp/e2e-logs/kb-dev-status.txt 2>&1 || true
+          echo "--- kb-dev-status:"
+          cat /tmp/e2e-logs/kb-dev-status.txt || true
+          echo "--- kb-dir tree (max 3 levels):"
+          find /tmp/e2e-logs/kb-dir -maxdepth 3 -type f 2>&1 | head -40 || true
         env:
           COMPOSE_PROJECT_NAME: kb-e2e-ci
 
