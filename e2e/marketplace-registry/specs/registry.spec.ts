@@ -14,7 +14,10 @@ const TEST_VERSION = '1.0.0'
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function buildMeta(name: string, visibility: 'public' | 'private' = 'public'): string {
-  return JSON.stringify({ name, version: TEST_VERSION, description: 'E2E test package', keywords: ['e2e'], visibility })
+  return JSON.stringify({
+    meta: { name, version: TEST_VERSION, description: 'E2E test package', keywords: ['e2e'] },
+    visibility,
+  })
 }
 
 async function publish(
@@ -279,7 +282,10 @@ test('RG-Q02: GET /packages?q= matches by keyword', async ({ request }) => {
   const keyword = `e2ekw-${suffix}`
 
   const tarball = createTestTarball({ name: pkgName, version: TEST_VERSION, keywords: [keyword] })
-  const meta = JSON.stringify({ name: pkgName, version: TEST_VERSION, keywords: [keyword], visibility: 'public' })
+  const meta = JSON.stringify({
+    meta: { name: pkgName, version: TEST_VERSION, keywords: [keyword] },
+    visibility: 'public',
+  })
   const pub = await request.post(`${REGISTRY}/api/v1/packages/publish`, {
     headers: { Authorization: `Bearer ${token}`, 'X-Author-Handle': TEST_HANDLE },
     multipart: {
@@ -301,7 +307,10 @@ test('RG-Q03: GET /packages?q= does not return private packages', async ({ reque
   const pkgName = `e2e-searchpriv-${suffix}`
 
   const tarball = createTestTarball({ name: pkgName, version: TEST_VERSION, description: `unique-priv-${suffix}` })
-  const meta = JSON.stringify({ name: pkgName, version: TEST_VERSION, description: `unique-priv-${suffix}`, visibility: 'private' })
+  const meta = JSON.stringify({
+    meta: { name: pkgName, version: TEST_VERSION, description: `unique-priv-${suffix}` },
+    visibility: 'private',
+  })
   const pub = await request.post(`${REGISTRY}/api/v1/packages/publish`, {
     headers: { Authorization: `Bearer ${token}`, 'X-Author-Handle': TEST_HANDLE },
     multipart: {
