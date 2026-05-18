@@ -49,7 +49,7 @@ test('WFD-04: workflow found by name from .kb/workflows is runnable', async ({ r
   test.skip(!first, 'No workflows discovered — check .kb/workflows directory')
 
   const id = first!.id ?? first!.name
-  const run = await request.post(`${WORKFLOW}/api/v1/workflows/${id}/runs`, { data: {} })
+  const run = await request.post(`${WORKFLOW}/api/v1/workflows/${encodeURIComponent(id)}/runs`, { data: {} })
   expect([200, 201, 202]).toContain(run.status())
 })
 
