@@ -243,7 +243,42 @@ unchanged. WS-L04 stable across runs.
 
 ¹ Phase 1 cache still warm from previous run.
 ² .tgz cache miss; 19s is the cache action's lookup + return-empty overhead.
-Next push exercises warm restore (pack should drop to ~3s).
+
+### Phase 2 — warm (validated)
+
+| Run | Build | Pack | .tgz restore | E2E run | Publish | Total | All suites |
+|---|---:|---:|---:|---:|---:|---:|---|
+| `26019898822` | 1s | 0s | 15s | 68s | 164s | 530s | 8/8, 0 retries |
+
+Pack 77s → 0s (cache hit). Publish unchanged (sequential pnpm loop).
+
+### Phase 2.5 (partial) — parallel publish
+
+publish.sh restructured to run `pnpm publish` in a parallel pool
+(xargs -P 4, tunable via `PUBLISH_PARALLELISM`). Same idempotent
+semantics; 409/"already exists" still treated as success.
+
+| Run | Build | Pack | E2E run | Publish | Total | All suites |
+|---|---:|---:|---:|---:|---:|---|
+| `26020420484` | 0s | 0s | 68s | **71s** | **419s** | 8/8, 0 retries |
+
+Publish 164s → 71s (−57%). The remaining half of Phase 2.5 — caching
+the Verdaccio storage volume to skip publish entirely on warm — needs
+a CI-only docker-compose override; deferred.
+
+### Cumulative wall-clock vs baseline
+
+| State | Total | Δ baseline | Δ % |
+|---|---:|---:|---:|
+| Phase 0 baseline (`26003095850`) | 1149s | — | — |
+| Phase 1 cold (`26006334356`) | 1152s | +3s | +0% |
+| Phase 1 warm (`26018829619`) | 590s | −559s | **−49%** |
+| Phase 2 warm (`26019898822`) | 530s | −619s | **−54%** |
+| Phase 2 + parallel publish (`26020420484`) | **419s** | **−730s** | **−63%** |
+
+**Result so far: 19 min → ~7 min** on a typical warm PR — already
+inside the 8–9 min prediction from the plan, without Phase 3 matrix
+sharding.
 
 ### Validated learning
 
