@@ -99,7 +99,7 @@ export function defineCommand<TConfig = unknown, TInput = unknown, TResult = unk
   definition: CommandDefinition<TConfig, TInput, TResult>
 ): CommandHandlerV3<TConfig, TInput, TResult> {
   return {
-    execute: async (context, input) => {
+    execute: (context, input) => {
       if (context.host !== 'cli' && context.host !== 'workflow') {
         throw new Error(
           `Command ${definition.id} can only run in CLI or workflow host (current: ${context.host})`
@@ -108,9 +108,11 @@ export function defineCommand<TConfig = unknown, TInput = unknown, TResult = unk
 
       const flags = (input as { flags?: Record<string, unknown> })?.flags;
       if (flags?.['dry-run'] && typeof definition.handler.intent === 'function') {
-        const intent = await definition.handler.intent(context, input);
-        renderDryRunIntent(context.ui, intent);
-        return { exitCode: 0, result: intent as unknown as TResult };
+        return (async () => {
+          const intent = await definition.handler.intent!(context, input);
+          renderDryRunIntent(context.ui, intent);
+          return { exitCode: 0, result: intent as unknown as TResult };
+        })();
       }
 
       return definition.handler.execute(context, input);
