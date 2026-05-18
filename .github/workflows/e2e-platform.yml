@@ -115,8 +115,36 @@ jobs:
 
       # ── Pack packages for Verdaccio ──────────────────────────────────────
 
+      # ── Phase 2 of ADR-0017: cache packed .tgz between runs ──────────────
+      # pack-all.sh deterministically packs `dist/` outputs into .tgz
+      # files. When dist/ contents haven't changed (Phase 1 cache hit) and
+      # package.json versions are identical, the produced .tgz are
+      # byte-identical too — caching them skips ~75s of `pnpm pack` loops.
+      # The Verdaccio publish step still re-uploads (volume is fresh per
+      # run); deferring publish-skip to Phase 2.5 once Verdaccio storage
+      # is also cached.
+      - name: Restore packed .tgz cache
+        id: tgz-cache
+        uses: actions/cache@v4
+        with:
+          path: e2e/packages/
+          key: e2e-tgz-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json') }}
+          restore-keys: |
+            e2e-tgz-${{ runner.os }}-
+
       - name: Pack @kb-labs/* packages
+        if: steps.tgz-cache.outputs.cache-hit != 'true'
         run: bash e2e/scripts/pack-all.sh
+
+      - name: Verify packed .tgz cache contents
+        if: steps.tgz-cache.outputs.cache-hit == 'true'
+        run: |
+          count=$(ls e2e/packages/*.tgz 2>/dev/null | wc -l)
+          echo "Restored $count packed tarballs from cache"
+          if [ "$count" -lt 100 ]; then
+            echo "::warning::Cached tgz set looks incomplete (<100 files), repacking"
+            bash e2e/scripts/pack-all.sh
+          fi
 
       - name: List packed packages
         run: ls -lh e2e/packages/*.tgz | wc -l && echo "tarballs packed"
