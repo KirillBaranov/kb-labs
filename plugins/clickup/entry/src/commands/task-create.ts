@@ -13,6 +13,7 @@ type TaskCreateFlags = {
   parent?: string;
   json?: boolean;
   full?: boolean;
+  'dry-run'?: boolean;
 };
 
 function parseDue(due: string): number | undefined {
@@ -28,6 +29,14 @@ export default defineCommand({
   description: 'Create a new task',
 
   handler: {
+    async intent(_ctx: PluginContextV3, input: CLIInput<TaskCreateFlags>) {
+      const { list, name } = input.flags;
+      return {
+        summary: `Create task "${name ?? '(unnamed)'}" in list ${list ?? '(unknown)'}`,
+        operations: [{ type: 'create' as const, resource: 'task', details: { list, name } }],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: CLIInput<TaskCreateFlags>) {
       const { list, name, desc, status, priority, assignee, due, parent, json, full } = input.flags;
 

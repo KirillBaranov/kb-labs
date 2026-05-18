@@ -97,7 +97,7 @@ Some have daemons (HTTP ports) — that's an implementation detail, not an archi
 
 ```bash
 # Search code semantically
-pnpm kb mind rag-query --text "your question" --agent
+pnpm kb mind search --text "your question" --agent
 
 # Run specific plugin tests
 pnpm --filter @kb-labs/mind-engine test

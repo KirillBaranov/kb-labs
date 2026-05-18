@@ -65,9 +65,32 @@ export default defineCommand({
   description: 'Bump package.json versions according to release plan',
 
   handler: {
+    async intent(ctx: PluginContextV3, input: CLIInput<VersionFlags>) {
+      const { flags } = input;
+      const cwd = ctx.cwd || process.cwd();
+      const repoRoot = await findRepoRoot(cwd);
+      const fileConfig = await useConfig<ReleaseConfig>();
+      const config: ReleaseConfig = { ...fileConfig, ...(flags.bump && { bump: flags.bump }) };
+
+      const plan = await planRelease({
+        cwd: repoRoot,
+        config,
+        scope: flags.scope,
+        bumpOverride: flags.bump as VersionBump | undefined,
+      });
+
+      return {
+        summary: `Bump versions for ${plan.packages.length} package(s)`,
+        operations: plan.packages.map(p => ({
+          type: 'update' as const,
+          resource: 'package-version',
+          details: { package: p.name, from: p.currentVersion ?? 'unknown', to: p.nextVersion ?? 'unknown' },
+        })),
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: CLIInput<VersionFlags>): Promise<ReleaseVersionResult> {
       const { flags } = input;
-      const dryRun = flags['dry-run'] ?? false;
       const cwd = ctx.cwd || process.cwd();
       const repoRoot = await findRepoRoot(cwd);
 
@@ -93,26 +116,6 @@ export default defineCommand({
         else { ctx.ui?.write?.(msg); }
         console.log('::kb-output::' + JSON.stringify({ ok: true, updated: 0 }));
         return { exitCode: 0, ok: true, updated: 0, updates: [] };
-      }
-
-      if (dryRun) {
-        const dryUpdates = plan.packages.map(p => ({
-          package: p.name,
-          from: p.currentVersion || 'unknown',
-          to: p.nextVersion || 'unknown',
-          updated: false,
-        }));
-        console.log('::kb-output::' + JSON.stringify({ ok: true, updated: 0 }));
-        if (flags.json) {
-          ctx.ui?.json?.({ ok: true, updated: 0, updates: dryUpdates, dryRun: true });
-          return { exitCode: 0, ok: true, updated: 0, updates: dryUpdates };
-        }
-        ctx.ui?.sideBox?.({
-          title: 'Version Bump (dry-run)',
-          sections: buildVersionSections(dryUpdates, true, ctx.ui.symbols),
-          status: 'success',
-        });
-        return { exitCode: 0, ok: true, updated: 0, updates: dryUpdates };
       }
 
       const versionLoader = useLoader(`Bumping ${plan.packages.length} package version(s)...`);

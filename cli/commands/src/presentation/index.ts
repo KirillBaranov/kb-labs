@@ -7,4 +7,5 @@ export {
 export { renderProductHelp } from "./product-help";
 export { renderManifestCommandHelp } from "./manifest-help";
 export { renderHelp } from "./registry-help";
+export { generateCommandSchema } from "./schema-generator";
 

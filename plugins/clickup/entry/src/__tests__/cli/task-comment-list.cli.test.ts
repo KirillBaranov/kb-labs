@@ -6,7 +6,7 @@ vi.mock('@kb-labs/clickup-core', () => ({
   requireApiKey: vi.fn().mockReturnValue('test-api-key'),
   getTaskComments: vi.fn(),
   ClickUpApiError: class ClickUpApiError extends Error {
-    constructor(public message: string, public status: number, public code: string) {
+    constructor(public override message: string, public status: number, public code: string) {
       super(message);
     }
   },
@@ -26,7 +26,7 @@ beforeEach(() => {
   vi.mocked(requireApiKey).mockReturnValue('test-api-key');
 });
 
-describe('clickup:task.comment.list', () => {
+describe('clickup:task comments list', () => {
   it('TCL-01: lists comments and renders chain', async () => {
     vi.mocked(getTaskComments).mockResolvedValue(mockComments);
 
@@ -52,7 +52,7 @@ describe('clickup:task.comment.list', () => {
 
     expect(result.exitCode).toBe(0);
     expect(Array.isArray(captured.json[0])).toBe(true);
-    const slim = (captured.json[0] as Array<Record<string, unknown>>)[0];
+    const slim = (captured.json[0] as Array<Record<string, unknown>>)[0]!;
     expect(slim.id).toBe('comment-1');
     expect(typeof slim.user).toBe('string');
     expect(slim).not.toHaveProperty('resolved');
@@ -70,7 +70,7 @@ describe('clickup:task.comment.list', () => {
     );
 
     expect(result.exitCode).toBe(0);
-    const raw = (captured.json[0] as typeof mockComments)[0];
+    const raw = (captured.json[0] as typeof mockComments)[0]!;
     expect(typeof raw.user).toBe('object');
     expect(raw.resolved).toBeDefined();
   });

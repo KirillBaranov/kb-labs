@@ -74,6 +74,7 @@ export const manifest = {
       {
         path: 'quality stats',
         category: 'Overview',
+        operationType: 'read' as const,
         describe: 'Monorepo statistics',
         handler: './cli/commands/stats.js#default',
         flags: defineCommandFlags(statsFlags),
@@ -83,6 +84,7 @@ export const manifest = {
       {
         path: 'quality health',
         category: 'Overview',
+        operationType: 'analyze' as const,
         describe: 'Multidimensional health score (architecture, TypeScript, dead code, deps)',
         handler: './cli/commands/health.js#default',
         flags: defineCommandFlags(healthFlags),
@@ -92,6 +94,7 @@ export const manifest = {
       {
         path: 'quality snapshot',
         category: 'Overview',
+        operationType: 'mutate' as const,
         describe: 'Collect all metrics and save a snapshot for trend tracking',
         handler: './cli/commands/snapshot.js#default',
         flags: defineCommandFlags(snapshotFlags),
@@ -101,6 +104,7 @@ export const manifest = {
       {
         path: 'quality history',
         category: 'Overview',
+        operationType: 'read' as const,
         describe: 'Show quality snapshot history and delta trends',
         handler: './cli/commands/history.js#default',
         flags: defineCommandFlags(historyFlags),
@@ -112,6 +116,7 @@ export const manifest = {
       {
         path: 'quality context',
         category: 'Agent',
+        operationType: 'read' as const,
         describe: 'Package context for agents: layer, dependents, dependencies (fast, stateless)',
         handler: './cli/commands/context.js#default',
         flags: defineCommandFlags(contextFlags),
@@ -125,6 +130,7 @@ export const manifest = {
       {
         path: 'quality gate',
         category: 'Agent',
+        operationType: 'analyze' as const,
         describe: 'Architecture gate: fail if new layering violations introduced',
         handler: './cli/commands/gate.js#default',
         flags: defineCommandFlags(gateFlags),
@@ -140,6 +146,7 @@ export const manifest = {
       {
         path: 'quality check layers',
         category: 'Architecture',
+        operationType: 'analyze' as const,
         describe: 'Detect layering violations (lower layer importing higher layer)',
         handler: './cli/commands/check-layers.js#default',
         flags: defineCommandFlags(checkLayersFlags),
@@ -149,6 +156,7 @@ export const manifest = {
       {
         path: 'quality coupling',
         category: 'Architecture',
+        operationType: 'analyze' as const,
         describe: 'Show coupling metrics per package (Ca/Ce/instability)',
         handler: './cli/commands/coupling.js#default',
         flags: defineCommandFlags(couplingFlags),
@@ -158,6 +166,7 @@ export const manifest = {
       {
         path: 'quality build order',
         category: 'Architecture',
+        operationType: 'analyze' as const,
         describe: 'Topological build order',
         handler: './cli/commands/build-order.js#default',
         flags: defineCommandFlags(buildOrderFlags),
@@ -167,6 +176,7 @@ export const manifest = {
       {
         path: 'quality cycles',
         category: 'Architecture',
+        operationType: 'analyze' as const,
         describe: 'Detect circular dependencies',
         handler: './cli/commands/cycles.js#default',
         flags: defineCommandFlags(cyclesFlags),
@@ -178,6 +188,7 @@ export const manifest = {
       {
         path: 'quality dead code',
         category: 'Checks',
+        operationType: 'analyze' as const,
         describe: 'Detect unused files, exports, and deps via knip',
         handler: './cli/commands/dead-code.js#default',
         flags: defineCommandFlags(deadCodeFlags),
@@ -187,6 +198,7 @@ export const manifest = {
       {
         path: 'quality check types',
         category: 'Checks',
+        operationType: 'analyze' as const,
         describe: 'TypeScript type safety analysis (any count, ts-ignore, errors)',
         handler: './cli/commands/check-types.js#default',
         flags: defineCommandFlags(checkTypesFlags),
@@ -196,6 +208,7 @@ export const manifest = {
       {
         path: 'quality check builds',
         category: 'Checks',
+        operationType: 'analyze' as const,
         describe: 'Build status across monorepo',
         handler: './cli/commands/check-builds.js#default',
         flags: defineCommandFlags(checkBuildsFlags),
@@ -205,6 +218,7 @@ export const manifest = {
       {
         path: 'quality check tests',
         category: 'Checks',
+        operationType: 'execute' as const,
         describe: 'Run tests and track coverage',
         handler: './cli/commands/check-tests.js#default',
         flags: defineCommandFlags(checkTestsFlags),
@@ -214,6 +228,7 @@ export const manifest = {
       {
         path: 'quality fix deps',
         category: 'Fixes',
+        operationType: 'mutate' as const,
         describe: 'Auto-fix dependency issues',
         handler: './cli/commands/fix-deps.js#default',
         flags: defineCommandFlags(fixDepsFlags),
@@ -223,6 +238,7 @@ export const manifest = {
       {
         path: 'quality visualize',
         category: 'Fixes',
+        operationType: 'analyze' as const,
         describe: 'Visualize dependency graph',
         handler: './cli/commands/visualize.js#default',
         flags: defineCommandFlags(visualizeFlags),

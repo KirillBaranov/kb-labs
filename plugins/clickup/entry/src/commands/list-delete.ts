@@ -5,6 +5,7 @@ import { handleError, validationError } from '../utils/error.js';
 type ListDeleteFlags = {
   force?: boolean;
   json?: boolean;
+  'dry-run'?: boolean;
 };
 
 export default defineCommand({
@@ -12,6 +13,14 @@ export default defineCommand({
   description: 'Delete a list',
 
   handler: {
+    async intent(_ctx: PluginContextV3, input: CLIInput<ListDeleteFlags>) {
+      const [listId] = input.argv;
+      return {
+        summary: `Delete list ${listId ?? '(unknown)'}`,
+        operations: [{ type: 'delete' as const, resource: 'list', details: { listId } }],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: CLIInput<ListDeleteFlags>) {
       const listId = input.argv[0] as string | undefined;
       if (!listId) {

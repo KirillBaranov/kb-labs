@@ -96,4 +96,18 @@ describe('clickup:folder.delete', () => {
     expect(result.exitCode).toBe(1);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
+
+  it('FD-06: --dry-run shows intent, deleteFolder is NOT called', async () => {
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await folderDeleteCommand.execute(
+      ctx,
+      mockCLIInput({ argv: ['folder-1'], flags: { 'dry-run': true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(vi.mocked(deleteFolder)).not.toHaveBeenCalled();
+    expect(captured.infos[0]?.message).toContain('Dry-run');
+    expect(captured.infos[0]?.message).toContain('folder-1');
+  });
 });

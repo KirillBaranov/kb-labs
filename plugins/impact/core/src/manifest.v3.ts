@@ -40,6 +40,7 @@ export const manifest = {
       {
         path: 'impact check',
         describe: 'Full impact analysis (packages + docs)',
+        operationType: 'analyze' as const,
         longDescription:
           'Analyzes workspace changes to determine affected packages (direct, dependent, transitive) and stale documentation.',
 
@@ -57,6 +58,7 @@ export const manifest = {
       {
         path: 'impact packages',
         describe: 'Package dependency impact analysis',
+        operationType: 'read' as const,
         longDescription:
           'Shows which packages are directly changed, which depend on them, and which are transitively affected.',
 
@@ -74,6 +76,7 @@ export const manifest = {
       {
         path: 'impact docs',
         describe: 'Documentation impact analysis',
+        operationType: 'read' as const,
         longDescription:
           'Checks which documentation files are stale, need review, or require reindexing based on package changes.',
 

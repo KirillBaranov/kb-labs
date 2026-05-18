@@ -22,6 +22,14 @@ export default defineCommand({
   description: 'Clear current commit plan',
 
   handler: {
+    async intent(_ctx: PluginContextV3, input: ResetInput) {
+      const scope = input.scope ?? 'root';
+      return {
+        summary: `Clear commit plan (scope: "${scope}")`,
+        operations: [{ type: 'delete' as const, resource: 'commit-plan', details: { scope } }],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: ResetInput): Promise<ResetResult> {
       const startTime = Date.now();
       const cwd = (await findRepoRoot(ctx.cwd || process.cwd())) ?? process.cwd();

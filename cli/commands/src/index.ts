@@ -27,3 +27,5 @@ export { createCompletionCommand } from "./commands/system/completion";
 
 // Logs commands (agent-first log viewing and analysis)
 export { logsDiagnose, logsContext, logsSummarize, logsQuery, logsSearch, logsGet, logsStats } from "./commands/system/logs";
+
+export { generateCommandSchema } from "./presentation/schema-generator";

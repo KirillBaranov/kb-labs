@@ -7,6 +7,7 @@ interface InstallFlags {
   json?: boolean;
   scope?: string;
   token?: string;
+  'dry-run'?: boolean;
 }
 
 interface InstallInput {
@@ -31,6 +32,19 @@ export default defineCommand<unknown, InstallInput, InstallResultData>({
   description: 'Install package(s) from marketplace',
 
   handler: {
+    async intent(_ctx: PluginContextV3, input: InstallInput) {
+      const argv = input.argv ?? [];
+      const packages = argv.length > 0 ? argv : ['(no packages specified)'];
+      return {
+        summary: `Install ${packages.join(', ')} from marketplace`,
+        operations: packages.map(pkg => ({
+          type: 'create' as const,
+          resource: 'marketplace-package',
+          details: { package: pkg },
+        })),
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: InstallInput): Promise<CommandResult<InstallResultData>> {
       const argv = input.argv ?? [];
       const flags = (input.flags ?? input) as InstallFlags;

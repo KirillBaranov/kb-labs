@@ -65,3 +65,15 @@ export {
   mockTool,
   type MockToolInstance,
 } from '@kb-labs/shared-tool-kit/testing';
+
+// CLI handler test helpers (requires vitest)
+export {
+  mockCLIInput,
+  type MockCLIInputOptions,
+  mockObject,
+  createCapturedUI,
+  type UICapture,
+  type CapturedUI,
+  createMockContext,
+  type MockContextOptions,
+} from '@kb-labs/shared-testing-e2e/cli';

@@ -10,6 +10,17 @@ export default defineCommand({
   description: 'Create or update the API snapshot for packages in a repo. Run after npm publish.',
 
   handler: {
+    async intent(_ctx: PluginContextV3, input: SnapshotInput) {
+      const flags = (input as { flags?: SnapshotInput }).flags ?? input;
+      const path = flags.path ?? '(unknown)';
+      return {
+        summary: `Create or update API snapshot for "${path}"`,
+        operations: [
+          { type: 'create' as const, resource: 'file', details: { path: `.kb/api-snapshots/${path}` } },
+        ],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: SnapshotInput): Promise<{ exitCode: number }> {
       const flags = (input as { flags?: SnapshotInput }).flags ?? input;
 

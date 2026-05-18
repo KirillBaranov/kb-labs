@@ -268,3 +268,13 @@ export type {
   StudioPageEntry,
   StudioMenuEntry,
 } from './studio.js';
+
+// CLI Command Archetypes (opt-in interfaces for plugin authors)
+export type {
+  ArchetypeInput,
+  MutateOperation,
+  MutateIntent,
+  ExecuteIntent,
+  MutateHandler,
+  ExecuteHandler,
+} from './archetypes.js';

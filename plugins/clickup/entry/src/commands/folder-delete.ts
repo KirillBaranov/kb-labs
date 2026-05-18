@@ -5,6 +5,7 @@ import { handleError, validationError } from '../utils/error.js';
 type FolderDeleteFlags = {
   force?: boolean;
   json?: boolean;
+  'dry-run'?: boolean;
 };
 
 export default defineCommand({
@@ -12,6 +13,14 @@ export default defineCommand({
   description: 'Delete a folder',
 
   handler: {
+    async intent(_ctx: PluginContextV3, input: CLIInput<FolderDeleteFlags>) {
+      const [folderId] = input.argv;
+      return {
+        summary: `Delete folder ${folderId ?? '(unknown)'}`,
+        operations: [{ type: 'delete' as const, resource: 'folder', details: { folderId } }],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: CLIInput<FolderDeleteFlags>) {
       const folderId = input.argv[0] as string | undefined;
       if (!folderId) {

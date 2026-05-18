@@ -76,14 +76,14 @@ kb mind verify        # verify workspace + index consistency
 ### Indexing
 
 ```bash
-kb mind rag-index     # build / rebuild the full index
+kb mind index     # build / rebuild the full index
 ```
 
 ### Querying
 
 ```bash
-kb mind rag-query --text "how does auth work"
-kb mind rag-query --text "where is the LLM called" --agent   # multi-step reasoning
+kb mind search --text "how does auth work"
+kb mind search --text "where is the LLM called" --agent   # multi-step reasoning
 ```
 
 ### Document sync (incremental updates)
@@ -102,8 +102,8 @@ kb mind sync-status                                # show sync health
 |---------|-------------|
 | `kb mind init` | Initialize mind workspace |
 | `kb mind verify` | Verify workspace and index consistency |
-| `kb mind rag-index` | Build or rebuild the RAG index |
-| `kb mind rag-query` | Run a semantic query |
+| `kb mind index` | Build or rebuild the RAG index |
+| `kb mind search` | Run a semantic query |
 | `kb mind sync-add` | Add a document to sync |
 | `kb mind sync-update` | Update a synced document |
 | `kb mind sync-delete` | Delete a synced document |

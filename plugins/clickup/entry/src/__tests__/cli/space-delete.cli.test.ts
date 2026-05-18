@@ -96,4 +96,18 @@ describe('clickup:space.delete', () => {
     expect(result.exitCode).toBe(1);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
+
+  it('SD-06: --dry-run shows intent, deleteSpace is NOT called', async () => {
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await spaceDeleteCommand.execute(
+      ctx,
+      mockCLIInput({ argv: ['space-1'], flags: { 'dry-run': true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(vi.mocked(deleteSpace)).not.toHaveBeenCalled();
+    expect(captured.infos[0]?.message).toContain('Dry-run');
+    expect(captured.infos[0]?.message).toContain('space-1');
+  });
 });

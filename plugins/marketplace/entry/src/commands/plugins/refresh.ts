@@ -4,6 +4,7 @@ import { defineCommand, handleError, type CLIInput, type PluginContextV3 } from 
 
 interface RefreshFlags {
   json?: boolean;
+  'dry-run'?: boolean;
 }
 
 export default defineCommand<unknown, CLIInput<RefreshFlags>, { exitCode: number }>({
@@ -11,6 +12,15 @@ export default defineCommand<unknown, CLIInput<RefreshFlags>, { exitCode: number
   description: 'Clear CLI discovery cache',
 
   handler: {
+    async intent(_ctx: PluginContextV3, _input: CLIInput<RefreshFlags>) {
+      return {
+        summary: 'Clear CLI discovery cache',
+        operations: [
+          { type: 'delete' as const, resource: 'file', details: { path: '.kb/cache/cli-manifests.json' } },
+        ],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: CLIInput<RefreshFlags>): Promise<{ exitCode: number }> {
       const { flags = {} } = input;
 

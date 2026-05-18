@@ -45,6 +45,7 @@ export const manifest: ManifestV3 = {
     commands: [
       {
         path: 'infra prepare',
+        operationType: 'execute' as const,
         describe: 'Materialize workspace, optional environment, and optional snapshot.',
         handler: './cli/commands/prepare-infra.js#default',
         flags: defineCommandFlags({
@@ -59,6 +60,7 @@ export const manifest: ManifestV3 = {
       },
       {
         path: 'infra snapshot capture',
+        operationType: 'execute' as const,
         describe: 'Capture snapshot for workspace/environment.',
         handler: './cli/commands/capture-snapshot.js#default',
         flags: defineCommandFlags({
@@ -70,6 +72,7 @@ export const manifest: ManifestV3 = {
       },
       {
         path: 'infra snapshot restore',
+        operationType: 'execute' as const,
         describe: 'Restore snapshot to workspace/environment target.',
         handler: './cli/commands/restore-snapshot.js#default',
         flags: defineCommandFlags({

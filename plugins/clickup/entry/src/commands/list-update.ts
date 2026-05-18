@@ -6,6 +6,7 @@ type ListUpdateFlags = {
   name?: string;
   json?: boolean;
   full?: boolean;
+  'dry-run'?: boolean;
 };
 
 export default defineCommand({
@@ -13,6 +14,18 @@ export default defineCommand({
   description: 'Update a list',
 
   handler: {
+    async intent(_ctx: PluginContextV3, input: CLIInput<ListUpdateFlags>) {
+      const [listId] = input.argv;
+      const skipKeys = new Set(['json', 'full', 'dry-run']);
+      const changes = Object.entries(input.flags)
+        .filter(([k, v]) => !skipKeys.has(k) && v !== undefined)
+        .map(([k, v]) => `${k}=${JSON.stringify(v)}`);
+      return {
+        summary: `Update list ${listId ?? '(unknown)'}`,
+        operations: [{ type: 'update' as const, resource: 'list', details: { listId, changes } }],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: CLIInput<ListUpdateFlags>) {
       const listId = input.argv[0] as string | undefined;
       if (!listId) {

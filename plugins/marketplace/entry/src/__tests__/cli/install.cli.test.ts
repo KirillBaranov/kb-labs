@@ -137,4 +137,15 @@ describe('marketplace:install', () => {
     expect(result.exitCode).toBe(0);
     expect(result.result?.warnings).toContain('Peer dependency mismatch');
   });
+
+  it('CI-08: --dry-run shows intent, HTTP post is NOT called', async () => {
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await installCommand.execute(ctx, mockCLIInput({ argv: ['my-plugin'], flags: { 'dry-run': true } }));
+
+    expect(result.exitCode).toBe(0);
+    expect(mockedPost).not.toHaveBeenCalled();
+    expect(captured.infos[0]?.message).toContain('Dry-run');
+    expect(captured.infos[0]?.message).toContain('my-plugin');
+  });
 });

@@ -12,7 +12,7 @@ export const DEFAULT_IMPACT_CONFIG: ImpactPluginConfig = {
     {
       match: '@kb-labs/mind-*',
       action: 'reindex',
-      command: 'pnpm kb mind rag-index --scope default',
+      command: 'pnpm kb mind index --scope default',
     },
     { match: '@kb-labs/workflow-*', docs: ['docs/DEVELOPMENT-PROCESS.md'], action: 'review' },
     { match: '__new_package__', action: 'regenerate', command: 'pnpm map' },

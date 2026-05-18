@@ -5,6 +5,7 @@ import { handleError, validationError } from '../utils/error.js';
 type SpaceDeleteFlags = {
   force?: boolean;
   json?: boolean;
+  'dry-run'?: boolean;
 };
 
 export default defineCommand({
@@ -12,6 +13,14 @@ export default defineCommand({
   description: 'Delete a space',
 
   handler: {
+    async intent(_ctx: PluginContextV3, input: CLIInput<SpaceDeleteFlags>) {
+      const [spaceId] = input.argv;
+      return {
+        summary: `Delete space ${spaceId ?? '(unknown)'}`,
+        operations: [{ type: 'delete' as const, resource: 'space', details: { spaceId } }],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: CLIInput<SpaceDeleteFlags>) {
       const spaceId = input.argv[0] as string | undefined;
       if (!spaceId) {

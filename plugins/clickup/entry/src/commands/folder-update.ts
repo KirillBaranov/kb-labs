@@ -6,6 +6,7 @@ type FolderUpdateFlags = {
   name: string;
   json?: boolean;
   full?: boolean;
+  'dry-run'?: boolean;
 };
 
 export default defineCommand({
@@ -13,6 +14,14 @@ export default defineCommand({
   description: 'Rename a folder',
 
   handler: {
+    async intent(_ctx: PluginContextV3, input: CLIInput<FolderUpdateFlags>) {
+      const [folderId] = input.argv;
+      return {
+        summary: `Rename folder ${folderId ?? '(unknown)'} to "${input.flags.name ?? '(unnamed)'}"`,
+        operations: [{ type: 'update' as const, resource: 'folder', details: { folderId, name: input.flags.name } }],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: CLIInput<FolderUpdateFlags>) {
       const folderId = input.argv[0] as string | undefined;
       if (!folderId) {

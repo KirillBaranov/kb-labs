@@ -96,7 +96,7 @@
 ### Mind RAG Search Flow
 
 ```
-1. User runs: pnpm kb mind rag-query --text "..." --agent
+1. User runs: pnpm kb mind search --text "..." --agent
 
 2. Mind Engine → Embed query → @kb-labs/adapters-qdrant
 

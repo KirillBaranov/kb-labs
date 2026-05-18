@@ -161,4 +161,14 @@ describe('marketplace:update', () => {
     expect(result.exitCode).toBe(0);
     expect(result.result?.warnings).toContain('Breaking change in v2.0.0');
   });
+
+  it('CUP-09: --dry-run shows intent, HTTP post is NOT called', async () => {
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await updateCommand.execute(ctx, mockCLIInput({ argv: ['plugin-a'], flags: { 'dry-run': true } }));
+
+    expect(result.exitCode).toBe(0);
+    expect(mockedPost).not.toHaveBeenCalled();
+    expect(captured.infos[0]?.message).toContain('Dry-run');
+  });
 });
