@@ -169,6 +169,58 @@ function HeroBlock({ step, onApprove }: HeroBlockProps) {
   );
 }
 
+// ─── Preparing block ──────────────────────────────────────────────
+
+function PreparingBlock({ startedAt }: { startedAt?: string }) {
+  const elapsed = useElapsedTimer(startedAt);
+  return (
+    <div style={{
+      padding: '20px 24px',
+      background: 'var(--bg-secondary)',
+      border: '1px solid var(--border-primary)',
+      borderRadius: 10,
+      marginBottom: 'var(--spacing-section)',
+      position: 'relative',
+      overflow: 'hidden',
+    }}>
+      {/* Indeterminate shimmer bar at top */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+        background: 'var(--border-primary)',
+      }}>
+        <div style={{
+          position: 'absolute', top: 0, height: '100%', width: '40%',
+          background: 'linear-gradient(90deg, transparent, var(--link), transparent)',
+          animation: 'kb-prep-slide 1.6s ease-in-out infinite',
+        }} />
+      </div>
+      <style>{`
+        @keyframes kb-prep-slide {
+          0%   { left: -40%; }
+          100% { left: 140%; }
+        }
+      `}</style>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <UIIcon name="LoadingOutlined" spin style={{ color: 'var(--link)', fontSize: 14, flexShrink: 0 }} />
+        <UITypographyText style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
+          Preparing execution environment
+        </UITypographyText>
+        {elapsed && (
+          <UITypographyText className="typo-caption text-tertiary" style={{ marginLeft: 'auto' }}>
+            {elapsed}
+          </UITypographyText>
+        )}
+      </div>
+      <UITypographyText className="typo-description text-secondary" style={{ display: 'block', marginTop: 6, marginLeft: 24 }}>
+        Provisioning workspace, scheduling steps…
+      </UITypographyText>
+    </div>
+  );
+}
+
+// ─── Main view ────────────────────────────────────────────────────
+
 interface DashboardViewProps {
   run: WorkflowRun;
   onApprove?: (step: StepRun) => void;
@@ -178,6 +230,7 @@ export function DashboardView({ run, onApprove }: DashboardViewProps) {
   const phases = getPhaseStatuses(run);
   const allSteps = flatSteps(run);
 
+  const isRunActive = run.status === 'running' || run.status === 'queued';
   const currentStep = allSteps.find(
     (s) => s.status === 'running' || s.status === 'waiting_approval',
   );
@@ -185,6 +238,9 @@ export function DashboardView({ run, onApprove }: DashboardViewProps) {
   const futureSteps = allSteps.filter(
     (s) => s.status === 'queued' || (s.status as string) === 'pending',
   );
+
+  // Show preparing state when run is active but no step has started yet
+  const isPreparing = isRunActive && !currentStep && completedSteps.length === 0;
 
   return (
     <div>
@@ -200,6 +256,9 @@ export function DashboardView({ run, onApprove }: DashboardViewProps) {
           <PhaseProgressBar phases={phases} />
         </div>
       )}
+
+      {/* Preparing: run active but no step started yet */}
+      {isPreparing && <PreparingBlock startedAt={run.startedAt} />}
 
       {/* Hero: current step */}
       {currentStep && (
