@@ -266,6 +266,20 @@ Publish 164s → 71s (−57%). The remaining half of Phase 2.5 — caching
 the Verdaccio storage volume to skip publish entirely on warm — needs
 a CI-only docker-compose override; deferred.
 
+### Phase 2.5 — cold (Verdaccio storage cache populate)
+
+| Run | Build | Pack | E2E run | Publish | Total | All suites |
+|---|---:|---:|---:|---:|---:|---|
+| `26023732806` | 0s | 0s | 68s | 69s | 475s | 8/8, 0 retries |
+
+Bind-mount mechanism validated end-to-end:
+- `e2e/docker-compose.ci.yml` swaps named volume for bind path
+- `COMPOSE_FILE` env var loads both files automatically
+- uid 10001:65533 chown handled by pre-start step
+- Cache save round-trip via post-job chown back to runner uid
+
+Next push exercises warm Verdaccio cache — expected Publish ~10s.
+
 ### Cumulative wall-clock vs baseline
 
 | State | Total | Δ baseline | Δ % |
@@ -275,6 +289,7 @@ a CI-only docker-compose override; deferred.
 | Phase 1 warm (`26018829619`) | 590s | −559s | **−49%** |
 | Phase 2 warm (`26019898822`) | 530s | −619s | **−54%** |
 | Phase 2 + parallel publish (`26020420484`) | **419s** | **−730s** | **−63%** |
+| Phase 2.5 cold (`26023732806`) | 475s | −674s | −59% |
 
 **Result so far: 19 min → ~7 min** on a typical warm PR — already
 inside the 8–9 min prediction from the plan, without Phase 3 matrix
