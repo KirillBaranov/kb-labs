@@ -16,7 +16,8 @@ what it checks, and how to see the current state.
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                                                                 │
-│  PR opens/updates  ────────►  CI (PR)                           │
+│  PR opens/updates  ──┬──────►  CI (PR)                          │
+│                      └──────►  E2E Platform Tests  (paths-ignore)│
 │                                                                 │
 │  Push to main      ──┬──────►  CI                  (paths-ignore)│
 │                      ├──────►  E2E Platform Tests  (paths-ignore)│
@@ -43,7 +44,7 @@ what it checks, and how to see the current state.
 |---|:-:|:-:|:-:|:-:|:-:|:-:|
 | **CI** (`ci.yml`) | ✅ paths-ignore | — | — | — | — | ✅ |
 | **CI (PR)** (`ci-pr.yml`) | — | ✅ open/sync/reopen | — | — | — | — |
-| **E2E Platform Tests** (`e2e-platform.yml`) | ✅ paths-ignore | — | — | ✅ after Release Binaries | ✅ Mon 9:00 UTC | ✅ |
+| **E2E Platform Tests** (`e2e-platform.yml`) | ✅ paths-ignore | ✅ open/sync/reopen, paths-ignore | — | ✅ after Release Binaries | ✅ Mon 9:00 UTC | ✅ |
 | **E2E Install Flow** (`e2e-install.yml`) | — | — | — | ✅ after Release Binaries | ✅ Mon 8:00 UTC | ✅ |
 | **Deploy** (`deploy.yml`) | ✅ paths-only | — | — | — | — | ✅ |
 | **Release Binaries** (`release-binaries.yml`) | — | — | ✅ `v*-binaries` | — | — | ✅ |
@@ -68,15 +69,16 @@ what it checks, and how to see the current state.
 **Concurrency:** per PR number; pushing to a PR cancels the prior CI (PR) run.
 
 ### E2E Platform Tests (`e2e-platform.yml`)
-**Purpose:** end-to-end platform tests via `kb-devkit run e2e` across 8 domains. See [ADR-0017](./adr/0017-e2e-pipeline-sharding-and-caching.md) for architecture.
+**Purpose:** end-to-end platform tests via `kb-devkit run e2e` across 8 domains. See [ADR-0017](./adr/0017-e2e-pipeline-sharding-and-caching.md) for architecture, [ADR-0019](./adr/0019-pr-e2e-gate.md) for the PR-gate decision.
 **When:**
-- Every push to `main` (with `paths-ignore`).
+- **Every PR push** (`opened`, `synchronize`, `reopened`) with `paths-ignore`.
+- Every push to `main` (with `paths-ignore`) — safety net.
 - After every successful "Release Binaries" run (smoke test on the published binaries).
 - Weekly Monday 09:00 UTC (canary).
 - Manual dispatch.
 
 **Skips:** same as CI plus `sites/**`. Marketing site is deployed by `deploy.yml` and doesn't run on the platform.
-**Concurrency:** `e2e-platform-${{ github.ref }}`, `cancel-in-progress: true`.
+**Concurrency:** `e2e-platform-${{ github.event.pull_request.number || github.ref }}`, `cancel-in-progress: true`. Successive pushes inside the same PR (typical agent flow) cancel earlier runs, so the cost is one full run per PR settle point, not per push.
 **Structure:** 8-shard matrix (one per `@kb-labs/e2e-<suite>`) + aggregator. Branch protection points at the aggregator's `Platform E2E` check.
 **Typical duration:** ~8 min wall-clock; per shard ~5–8 min.
 
@@ -137,21 +139,29 @@ The README top renders main-branch status badges for **CI**, **E2E Platform Test
 ### Branch protection (the required check)
 For `main`, only the aggregator job is required: **Platform E2E**. The 8 individual shards (`Platform E2E / services`, `… / workflows`, etc.) are visible in the PR/commit view for triage and re-run, but only the aggregator gates merges.
 
+**Required checks (set in `Settings → Branches → main`):**
+- `Platform E2E` — the aggregator from `e2e-platform.yml` matrix
+- `CI (PR)` jobs — `Build Go tools`, `Build TS (devkit)`, `Deps (syncpack)`, `Plugin structure`, `lint`, `type-check`, `test`
+
+With these required, a PR cannot merge until both `CI (PR)` and the PR-triggered `Platform E2E` are green. See [ADR-0019](./adr/0019-pr-e2e-gate.md).
+
 ---
 
 ## Common scenarios
 
 | What I push | What runs |
 |---|---|
-| `README.md` only | CodeQL only |
-| `docs/**/*.md` only | CodeQL only |
-| `sites/web/**` only | Deploy + CI + CodeQL (E2E skipped) |
-| `plugins/workflow/**` | CI + E2E Platform Tests + CodeQL |
-| `core/runtime/**` | CI + E2E Platform Tests + Deploy + CodeQL |
-| `.github/workflows/e2e-platform.yml` | CI + E2E Platform Tests + CodeQL (the workflow file itself isn't in `paths-ignore`) |
+| `README.md` only (to main) | CodeQL only |
+| `docs/**/*.md` only (to main) | CodeQL only |
+| `sites/web/**` only (to main) | Deploy + CI + CodeQL (E2E skipped) |
+| `plugins/workflow/**` (to main) | CI + E2E Platform Tests + CodeQL |
+| `core/runtime/**` (to main) | CI + E2E Platform Tests + Deploy + CodeQL |
+| `.github/workflows/e2e-platform.yml` (to main) | CI + E2E Platform Tests + CodeQL (the workflow file itself isn't in `paths-ignore`) |
+| Any non-doc/-site code in a **PR** | CI (PR) + E2E Platform Tests (full matrix, branch protection required) |
+| Doc-only / sites-only in a **PR** | CI (PR) only — E2E skipped by `paths-ignore` |
 | `v0.5.0-binaries` tag pushed | Release Binaries → triggers E2E Install Flow + E2E Platform Tests |
 | `kb commit` / `git commit` on a release | Whatever the diff matches above |
-| Three commits in 30 seconds | Only the last one's CI + E2E run fully; earlier two are cancelled (visible in UI) |
+| Three commits in 30 seconds (PR or main) | Only the last one's CI + E2E run fully; earlier two are cancelled (visible in UI) |
 
 ---
 
