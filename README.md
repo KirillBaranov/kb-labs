@@ -271,15 +271,13 @@ workflow. For a terminal view:
 ./scripts/ci-status.sh 7d        # summary of the last 7 days
 ```
 
-E2E Platform Tests and CI workflows have `paths-ignore` set: changes
-that only touch `**/*.md`, `docs/**`, `sites/**` (for E2E only),
-`.claude/**`, `.vscode/**`, or `.idea/**` skip those workflows. Skipped
-runs do not appear in the Actions tab — they are simply not triggered.
-
-Both workflows use `concurrency.cancel-in-progress`: pushing a new
-commit while a previous run is still going cancels the older run.
-Cancelled runs **do** appear in the Actions UI marked as "cancelled"
-so nothing is silently dropped.
+**Full CI/CD reference:** [`docs/ci-cd.md`](docs/ci-cd.md) — what runs
+when, what each workflow does, skip rules, concurrency, common
+scenarios. Read it before changing trigger rules. Decisions behind
+the setup are recorded in
+[ADR-0017](docs/adr/0017-e2e-pipeline-sharding-and-caching.md) and
+[ADR-0018](docs/adr/0018-ci-compute-budget-and-transparency.md);
+operational budget reference in [`docs/ci-budget.md`](docs/ci-budget.md).
 
 ---
 
