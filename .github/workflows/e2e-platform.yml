@@ -39,16 +39,38 @@ on:
       - 'LICENSE'
       - '.github/ISSUE_TEMPLATE/**'
       - '.github/PULL_REQUEST_TEMPLATE.md'
+  # PR gate (ADR-0019): full E2E matrix runs on every push to a PR so
+  # that nothing reaches main without E2E green. cancel-in-progress in
+  # the concurrency block below collapses rapid agent pushes to a single
+  # final run per PR. paths-ignore is identical to the push variant —
+  # PRs that only touch docs/sites/editor-state don't need E2E either.
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'sites/**'
+      - '.claude/**'
+      - '.vscode/**'
+      - '.idea/**'
+      - '.editorconfig'
+      - 'LICENSE'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE.md'
   workflow_dispatch:
   schedule:
     - cron: '0 9 * * 1'
 
-# Concurrency: only the latest run for a given ref keeps going. Old runs
-# get cancelled with a visible "cancelled" state in the Actions UI — they
-# are not silently dropped. This prevents 3 rapid pushes from queueing 3
-# full E2E runs when only the last commit matters.
+# Concurrency: only the latest run for a given target keeps going. Old
+# runs get cancelled with a visible "cancelled" state in the Actions UI —
+# they are not silently dropped.
+#
+# - For PRs the target is the PR number, so successive pushes inside the
+#   same PR cancel earlier runs (agent-heavy flow).
+# - For main pushes the target is the ref, so rapid commits to main also
+#   collapse to the latest run.
 concurrency:
-  group: e2e-platform-${{ github.ref }}
+  group: e2e-platform-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 permissions:
