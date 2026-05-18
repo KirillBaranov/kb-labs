@@ -59,7 +59,7 @@
     "@kb-labs/devkit": "workspace:*",
     "@module-federation/enhanced": "^2.3.3",
     "@rspack/cli": "^1.7.0",
-    "@rspack/core": "^1.7.0",
+    "@rspack/core": "^2.0.3",
     "@rspack/plugin-react-refresh": "^1.6.0",
     "@types/dompurify": "^3.2.0",
     "@types/node": "^24.3.3",
