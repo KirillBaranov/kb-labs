@@ -214,7 +214,26 @@ Run `26005817045` (post-fix, no Phase 1 cache):
 | `26006334356` | 434s | 249s | 145s | 1152s | 8/8 pass, 0 retries |
 
 Cold matches baseline within variance (+0.3% total vs `26003095850`).
-Next push exercises warm restore.
+
+### Phase 1 — warm cache (validated)
+
+| Run | Build | Cache restore | E2E run | Publish | Total | All suites |
+|---|---:|---:|---:|---:|---:|---|
+| `26018829619` | **0s** | 17s | 67s | 161s | **590s** | 8/8 pass, 0 retries |
+
+| Metric | Cold | Warm | Δ |
+|---|---:|---:|---:|
+| Build all packages | 434s | 0s | **−434s** |
+| E2E run | 249s | 67s | −182s¹ |
+| **Total wall-clock** | **1152s** | **590s** | **−562s (−49%)** |
+
+¹ E2E delta is partly cache (some kb-devkit pre-task work), partly variance.
+Real test execution time is similar; kb-devkit overhead drops significantly
+when CAS is warm.
+
+Phase 1 stable and delivering close to the predicted 14–16 min range
+(actual: ~10 min on a typical PR with unchanged source). Cold path
+unchanged. WS-L04 stable across runs.
 
 ### Validated learning
 
