@@ -10,12 +10,15 @@ import type { WorkflowLogEvent } from '@kb-labs/workflow-contracts/rest-api'
 import { usePipelineModel } from '../../hooks/use-pipeline-graph'
 import type { PipelineStep } from '../../hooks/use-pipeline-graph'
 import { StepDetailDrawer } from './StepDetailDrawer'
+import { useElapsedTimer } from '@kb-labs/sdk/studio'
 
 // ─── CSS ──────────────────────────────────────────────────────────────────────
 
 const ANIM_CSS = `
-@keyframes kb-spin    { 0% { transform: rotate(0deg) } 100% { transform: rotate(360deg) } }
-@keyframes kb-shimmer { 0% { left: -60% } 100% { left: 120% } }
+@keyframes kb-spin        { 0% { transform: rotate(0deg) } 100% { transform: rotate(360deg) } }
+@keyframes kb-shimmer     { 0% { left: -60% } 100% { left: 120% } }
+@keyframes kb-step-done   { 0% { transform: scale(0.6); opacity: 0 } 60% { transform: scale(1.2) } 100% { transform: scale(1); opacity: 1 } }
+@keyframes kb-step-fail   { 0%,100% { transform: translateX(0) } 20%,60% { transform: translateX(-3px) } 40%,80% { transform: translateX(3px) } }
 `
 let injected = false
 function injectCss() {
@@ -203,8 +206,10 @@ function StepRow({ step, isReworkGate, isReworkTarget, reworkActive, targetStepN
   const isFailed  = status === 'failed'
   const isRunning = status === 'running'
   const isQueued  = status === 'queued'
+  const isSuccess = status === 'success'
   const isApproval = stepType === 'approval'
   const isGate     = stepType === 'gate'
+  const elapsed   = useElapsedTimer(isRunning ? stepRun.startedAt : undefined)
 
   // Gate outputs for restart detection
   const gateOutputs = isGate ? stepRun.outputs as GateOutputs | undefined : undefined
@@ -276,11 +281,15 @@ function StepRow({ step, isReworkGate, isReworkTarget, reworkActive, targetStepN
               ↩ {iteration.current}/{iteration.max}
             </span>
           )}
-          {formatDuration(stepRun.durationMs) && (
-            <span style={{ fontSize: 12, color: 'var(--text-tertiary)' }}>
+          {(isRunning && elapsed) ? (
+            <span style={{ fontSize: 12, color: 'var(--text-tertiary)', fontVariantNumeric: 'tabular-nums', minWidth: 36, textAlign: 'right' }}>
+              {elapsed}
+            </span>
+          ) : formatDuration(stepRun.durationMs) ? (
+            <span style={{ fontSize: 12, color: 'var(--text-tertiary)', animation: isSuccess ? 'kb-step-done 0.3s ease-out' : isFailed ? 'kb-step-fail 0.35s ease-out' : undefined }}>
               {formatDuration(stepRun.durationMs)}
             </span>
-          )}
+          ) : null}
           {isWaiting ? (
             <span style={{
               fontSize: 12, fontWeight: 600, color: 'var(--info)',
