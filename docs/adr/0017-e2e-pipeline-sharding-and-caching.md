@@ -235,6 +235,16 @@ Phase 1 stable and delivering close to the predicted 14–16 min range
 (actual: ~10 min on a typical PR with unchanged source). Cold path
 unchanged. WS-L04 stable across runs.
 
+### Phase 2 — cold cache (populate)
+
+| Run | Build | Pack | .tgz restore | E2E run | Publish | Total | All suites |
+|---|---:|---:|---:|---:|---:|---:|---|
+| `26019340119` | 0s¹ | 77s | 19s² | 68s | 164s | 673s | 8/8, 0 retries |
+
+¹ Phase 1 cache still warm from previous run.
+² .tgz cache miss; 19s is the cache action's lookup + return-empty overhead.
+Next push exercises warm restore (pack should drop to ~3s).
+
 ### Validated learning
 
 - kb-devkit's `e2e` task was silently caching success across runs — a
