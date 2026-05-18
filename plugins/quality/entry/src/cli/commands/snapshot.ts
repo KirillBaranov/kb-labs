@@ -35,6 +35,15 @@ export default defineCommand<unknown, CLIInput<SnapshotFlags>, { exitCode: numbe
   description: 'Collect all quality metrics and save a snapshot for trend tracking',
 
   handler: {
+    async intent(_ctx: PluginContextV3, _input: CLIInput<SnapshotFlags>) {
+      return {
+        summary: 'Collect all quality metrics and save snapshot for trend tracking',
+        operations: [
+          { type: 'create' as const, resource: 'file', details: { path: '.kb/quality/snapshots/<timestamp>.json' } },
+        ],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: CLIInput<SnapshotFlags>): Promise<{ exitCode: number }> {
       const { flags } = input;
       const config = await useConfig<QualityPluginConfig>();

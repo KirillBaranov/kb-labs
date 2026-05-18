@@ -13,8 +13,8 @@ import type { FlagSchemaDefinition } from '../flags/types';
  * ```
  * ❌ Missing required flag: --text
  *
- * Usage: kb mind rag-query --text <query>
- * Hint: Try kb mind rag-query --help
+ * Usage: kb mind search --text <query>
+ * Hint: Try kb mind search --help
  * ```
  */
 export function formatValidationError(
@@ -72,8 +72,8 @@ export function formatValidationError(
  * Generate a usage line from command name and schema
  *
  * @example
- * generateUsageLine('kb mind rag-query', schema, 'text')
- * // Returns: 'kb mind rag-query --text <query> [options]'
+ * generateUsageLine('kb mind search', schema, 'text')
+ * // Returns: 'kb mind search --text <query> [options]'
  */
 function generateUsageLine(
   commandName: string,

@@ -61,7 +61,7 @@ describe('clickup:list.tasks', () => {
 
     expect(result.exitCode).toBe(0);
     expect(Array.isArray(captured.json[0])).toBe(true);
-    const slim = (captured.json[0] as Array<Record<string, unknown>>)[0];
+    const slim = (captured.json[0] as Array<Record<string, unknown>>)[0]!;
     expect(slim.id).toBe('task-1');
     expect(typeof slim.status).toBe('string');
     expect(slim).toHaveProperty('due_date');
@@ -81,7 +81,7 @@ describe('clickup:list.tasks', () => {
     );
 
     expect(result.exitCode).toBe(0);
-    const raw = (captured.json[0] as typeof mockTasks)[0];
+    const raw = (captured.json[0] as typeof mockTasks)[0]!;
     expect(typeof raw.status).toBe('object');
     expect(raw.date_created).toBeDefined();
   });

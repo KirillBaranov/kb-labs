@@ -31,6 +31,14 @@ export default defineCommand({
   description: 'Apply current commit plan',
 
   handler: {
+    async intent(_ctx: PluginContextV3, input: ApplyInput) {
+      const scope = input.scope ?? 'root';
+      return {
+        summary: `Apply current commit plan (scope: "${scope}")`,
+        operations: [{ type: 'create' as const, resource: 'git-commits', details: { scope } }],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: ApplyInput): Promise<ApplyResult> {
       const startTime = Date.now();
       const cwd = (await findRepoRoot(ctx.cwd || process.cwd())) ?? process.cwd();

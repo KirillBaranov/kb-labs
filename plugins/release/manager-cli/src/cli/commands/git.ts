@@ -53,9 +53,36 @@ export default defineCommand({
   description: 'Commit, tag, and push release changes',
 
   handler: {
+    async intent(ctx: PluginContextV3, input: CLIInput<GitFlags>) {
+      const { flags } = input;
+      const cwd = ctx.cwd || process.cwd();
+      const repoRoot = await findRepoRoot(cwd);
+      const fileConfig = await useConfig<ReleaseConfig>();
+      const config: ReleaseConfig = { ...fileConfig, ...(flags.bump && { bump: flags.bump }) };
+
+      const plan = await planRelease({
+        cwd: repoRoot,
+        config,
+        scope: flags.scope,
+        bumpOverride: flags.bump as VersionBump | undefined,
+      });
+
+      return {
+        summary: `Commit, tag, and push release for ${plan.packages.length} package(s)`,
+        operations: [
+          { type: 'create' as const, resource: 'git-commit', details: { packages: plan.packages.length } },
+          ...plan.packages.map(p => ({
+            type: 'create' as const,
+            resource: 'git-tag',
+            details: { tag: `${p.name}@${p.nextVersion ?? 'unknown'}` },
+          })),
+          { type: 'create' as const, resource: 'git-push', details: { scope: flags.scope ?? 'root' } },
+        ],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: CLIInput<GitFlags>): Promise<ReleaseGitResult> {
       const { flags } = input;
-      const dryRun = flags['dry-run'] ?? false;
       const noVerify = flags['no-verify'] ?? false;
       const cwd = ctx.cwd || process.cwd();
       const repoRoot = await findRepoRoot(cwd);
@@ -86,19 +113,17 @@ export default defineCommand({
 
       const scopePath = await resolveScopePath(repoRoot, flags.scope ?? 'root');
 
-      const gitLoader = useLoader(dryRun ? 'Dry-run: skipping git operations' : 'Committing, tagging, pushing...');
+      const gitLoader = useLoader('Committing, tagging, pushing...');
       gitLoader.start();
 
       const result = await commitAndTagRelease({
         cwd: scopePath,
         plan,
-        dryRun,
+        dryRun: false,
         noVerify,
       });
 
-      if (dryRun) {
-        gitLoader.succeed('Dry-run: no git operations performed');
-      } else if (result.pushed) {
+      if (result.pushed) {
         gitLoader.succeed(`Committed, tagged (${result.tagged.length}), pushed`);
       } else {
         gitLoader.succeed(`Committed, tagged (${result.tagged.length})`);
@@ -116,8 +141,8 @@ export default defineCommand({
       }
 
       ctx.ui?.sideBox?.({
-        title: dryRun ? 'Git (dry-run)' : 'Git Operations',
-        sections: buildGitSections(result, dryRun, ctx.ui.symbols),
+        title: 'Git Operations',
+        sections: buildGitSections(result, false, ctx.ui.symbols),
         status: 'success',
       });
 

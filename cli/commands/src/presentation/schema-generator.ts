@@ -13,9 +13,9 @@ function flagToProperty(flag: FlagDefinition): JsonSchemaProperty {
     type: flag.type === 'array' ? 'array' : flag.type,
     description: flag.description ?? flag.describe,
   };
-  if (flag.default !== undefined) prop.default = flag.default;
-  if (flag.choices?.length) prop.enum = flag.choices;
-  if (flag.type === 'array') prop.items = { type: 'string' };
+  if (flag.default !== undefined) { prop.default = flag.default; }
+  if (flag.choices?.length) { prop.enum = flag.choices; }
+  if (flag.type === 'array') { prop.items = { type: 'string' }; }
   return prop;
 }
 
@@ -29,7 +29,7 @@ export function generateCommandSchema(manifest: CommandManifest): object {
 
   for (const flag of manifest.flags ?? []) {
     properties[flag.name] = flagToProperty(flag);
-    if (flag.required) required.push(flag.name);
+    if (flag.required) { required.push(flag.name); }
   }
 
   return {

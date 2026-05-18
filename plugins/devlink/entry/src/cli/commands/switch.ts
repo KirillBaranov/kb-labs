@@ -1,4 +1,4 @@
-import { defineCommand, useLoader, TimingTracker, handleError, type PluginContextV3, type CommandResult } from '@kb-labs/sdk';
+import { defineCommand, useLoader, TimingTracker, handleError, type PluginContextV3, type CommandResult, type CLIInput } from '@kb-labs/sdk';
 import { discoverMonorepos, buildPackageMapFiltered, buildPlan, applyPlan, createBackup, loadState, saveState, checkGitDirty, updateWorkspaceYamls } from '@kb-labs/devlink-core';
 import type { DevlinkMode } from '@kb-labs/devlink-contracts';
 import { existsSync, unlinkSync, rmSync } from 'node:fs';
@@ -16,33 +16,56 @@ interface SwitchFlags {
   'clean-locks'?: boolean;
 }
 
-interface SwitchInput {
-  argv?: string[];
-  flags?: SwitchFlags;
-  mode?: DevlinkMode;
-  'dry-run'?: boolean;
-  repos?: string;
-  yes?: boolean;
-  json?: boolean;
-}
-
 interface SwitchResult {
   mode: DevlinkMode;
   changed: number;
-  dryRun: boolean;
   backupId?: string;
 }
 
-export default defineCommand<unknown, SwitchInput, SwitchResult>({
+export default defineCommand<unknown, CLIInput<SwitchFlags>, SwitchResult>({
   id: 'devlink:switch',
   description: 'Switch cross-repo deps between link: and npm mode',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: SwitchInput): Promise<CommandResult<SwitchResult>> {
-      const tracker = new TimingTracker();
-      const flags = (input.flags ?? input) as SwitchFlags;
+    async intent(ctx: PluginContextV3, input: CLIInput<SwitchFlags>) {
+      const flags = input.flags;
       const mode = flags.mode;
-      const dryRun = flags['dry-run'] ?? false;
+      const rootDir = ctx.cwd ?? process.cwd();
+      const scopedRepos = flags.repos ? flags.repos.split(',').map(s => s.trim()) : undefined;
+      const ttlMs = (flags.ttl ?? 24) * 60 * 60 * 1000;
+
+      let monorepos;
+      let packageMap;
+      try {
+        monorepos = discoverMonorepos(rootDir);
+        packageMap = await buildPackageMapFiltered(monorepos, rootDir, ttlMs, mode);
+      } catch {
+        return {
+          summary: `Switch dependencies to ${mode ?? '(unknown)'} mode`,
+          operations: [{ type: 'update' as const, resource: 'package-json', details: { mode } }],
+        };
+      }
+
+      const plan = buildPlan(mode, packageMap, monorepos, rootDir, { scopedRepos });
+      const byRepo = new Map<string, number>();
+      for (const item of plan.items) {
+        byRepo.set(item.monorepo, (byRepo.get(item.monorepo) ?? 0) + 1);
+      }
+
+      return {
+        summary: `Switch ${plan.items.length} dependencies to ${mode} mode across ${byRepo.size} repo(s)`,
+        operations: [...byRepo.entries()].map(([repo, count]) => ({
+          type: 'update' as const,
+          resource: 'dependencies',
+          details: { repo, count, mode },
+        })),
+      };
+    },
+
+    async execute(ctx: PluginContextV3, input: CLIInput<SwitchFlags>): Promise<CommandResult<SwitchResult>> {
+      const tracker = new TimingTracker();
+      const flags = input.flags;
+      const mode = flags.mode;
       const outputJson = flags.json ?? false;
       const scopedRepos = flags.repos ? flags.repos.split(',').map(s => s.trim()) : undefined;
       const ttlMs = (flags.ttl ?? 24) * 60 * 60 * 1000;
@@ -78,33 +101,10 @@ export default defineCommand<unknown, SwitchInput, SwitchResult>({
 
       if (plan.items.length === 0 && !flags.install) {
         ctx.ui?.info?.('No changes needed — dependencies are already in the requested mode.');
-        return { exitCode: 0, result: { mode, changed: 0, dryRun }, meta: { timing: tracker.total() } };
+        return { exitCode: 0, result: { mode, changed: 0 }, meta: { timing: tracker.total() } };
       }
 
-      // 4. Dry-run: show plan and exit
-      if (dryRun) {
-        const result: SwitchResult = { mode, changed: plan.items.length, dryRun: true };
-        if (outputJson) {
-          ctx.ui?.json?.({ ...result, items: plan.items });
-        } else {
-          const byRepo = new Map<string, number>();
-          for (const item of plan.items) {
-            byRepo.set(item.monorepo, (byRepo.get(item.monorepo) ?? 0) + 1);
-          }
-          const repoLines = [...byRepo.entries()].map(([repo, count]) => `${repo}: ${count} change(s)`);
-          ctx.ui?.success?.(`[dry-run] Would switch ${plan.items.length} dependencies to ${mode} mode`, {
-            title: 'DevLink — Dry Run',
-            sections: [
-              { header: 'Changes by repo', items: repoLines },
-              { header: 'Note', items: ['No files were modified. Remove --dry-run to apply.'] },
-            ],
-            timing: tracker.total(),
-          });
-        }
-        return { exitCode: 0, result, meta: { timing: tracker.total() } };
-      }
-
-      // 5. Always create backup (even if no deps change — install cleans node_modules)
+      // 4. Always create backup (even if no deps change — install cleans node_modules)
       const currentState = loadState(rootDir);
       const modeAtBackup = currentState.currentMode ?? mode;
       const allPackageJsons = monorepos.flatMap(m => m.packagePaths);
@@ -213,7 +213,6 @@ export default defineCommand<unknown, SwitchInput, SwitchResult>({
       const result: SwitchResult = {
         mode,
         changed: applyResult.applied,
-        dryRun: false,
         backupId,
       };
 

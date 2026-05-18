@@ -108,4 +108,18 @@ describe('clickup:space.create', () => {
     expect(result.exitCode).toBe(1);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
+
+  it('SC-05: --dry-run shows intent, createSpace is NOT called', async () => {
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await spaceCreateCommand.execute(
+      ctx,
+      mockCLIInput({ flags: { name: 'My Space', 'dry-run': true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(vi.mocked(createSpace)).not.toHaveBeenCalled();
+    expect(captured.infos[0]?.message).toContain('Dry-run');
+    expect(captured.infos[0]?.message).toContain('My Space');
+  });
 });

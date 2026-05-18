@@ -5,6 +5,7 @@ import { resolveCliScope, scopeBody, CliScopeError } from '../../scope.js';
 interface UnlinkFlags {
   json?: boolean;
   scope?: string;
+  'dry-run'?: boolean;
 }
 
 interface UnlinkInput {
@@ -17,6 +18,14 @@ export default defineCommand<unknown, UnlinkInput, { packageId: string; scope: s
   description: 'Unlink a plugin',
 
   handler: {
+    async intent(_ctx: PluginContextV3, input: UnlinkInput) {
+      const packageId = input.argv?.[0] ?? '(unknown)';
+      return {
+        summary: `Unlink plugin "${packageId}"`,
+        operations: [{ type: 'delete' as const, resource: 'plugin-link', details: { packageId } }],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: UnlinkInput): Promise<CommandResult<{ packageId: string; scope: string }>> {
       const packageId = input.argv?.[0];
       const flags = (input.flags ?? input) as UnlinkFlags;

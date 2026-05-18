@@ -6,17 +6,14 @@
  * - Add missing workspace dependencies
  * - Align duplicate dependency versions
  *
- * Supports --dry-run for previewing changes without applying
+ * Supports --dry-run via intent() for previewing changes without applying
  */
 
-import { defineCommand, validationError, type PluginContextV3, useLoader } from '@kb-labs/sdk';
+import { defineCommand, validationError, type PluginContextV3, useLoader, type CLIInput } from '@kb-labs/sdk';
 import type { UIFacade } from '@kb-labs/sdk';
 import type { FixDepsFlags } from './flags.js';
 import fs from 'node:fs';
 import path from 'node:path';
-
-// Input type with backward compatibility
-type FixDepsInput = FixDepsFlags & { argv?: string[] };
 
 /** Minimal package.json structure used by fix-deps */
 interface PackageJson {
@@ -37,7 +34,6 @@ interface FixResult {
   removedDeps: Array<{ package: string; dep: string }>;
   addedDeps: Array<{ package: string; dep: string; version: string }>;
   alignedDeps: Array<{ dep: string; from: string; to: string; packages: string[] }>;
-  dryRun: boolean;
 }
 
 type FixDepsCommandResult = {
@@ -51,28 +47,56 @@ export default defineCommand({
   description: 'Auto-fix dependency issues',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: FixDepsInput): Promise<FixDepsCommandResult> {
+    async intent(_ctx: PluginContextV3, input: CLIInput<FixDepsFlags>) {
+      const flags = input.flags;
+      const removeUnused = flags['remove-unused'] || flags.all;
+      const addMissing = flags['add-missing'] || flags.all;
+      const alignVersions = flags['align-versions'] || flags.all;
+
+      const packages = findPackages(_ctx.cwd);
+      const preview = await runAnalysis(packages, { removeUnused, addMissing, alignVersions, dryRun: true });
+
+      const operations = [
+        ...preview.alignedDeps.map(a => ({
+          type: 'update' as const,
+          resource: 'dependency',
+          details: { dep: a.dep, from: a.from, to: a.to, packages: a.packages },
+        })),
+        ...preview.addedDeps.map(a => ({
+          type: 'create' as const,
+          resource: 'dependency',
+          details: { package: a.package, dep: a.dep, version: a.version },
+        })),
+        ...preview.removedDeps.map(r => ({
+          type: 'delete' as const,
+          resource: 'dependency',
+          details: { package: r.package, dep: r.dep },
+        })),
+      ];
+
+      const total = operations.length;
+      return {
+        summary: total > 0
+          ? `Fix ${total} dependency issue(s) across ${preview.packagesScanned} packages`
+          : `No dependency issues found in ${preview.packagesScanned} packages`,
+        operations,
+      };
+    },
+
+    async execute(ctx: PluginContextV3, input: CLIInput<FixDepsFlags>): Promise<FixDepsCommandResult> {
       const { ui, platform } = ctx;
-
-      // V3: Flags may come wrapped in input.flags or passed directly
-      const flags = ('flags' in input && typeof (input as { flags?: unknown }).flags === 'object' && (input as { flags?: unknown }).flags !== null)
-        ? (input as { flags: FixDepsInput }).flags
-        : input;
-
-      const dryRun = flags['dry-run'] ?? false;
+      const flags = input.flags;
       const removeUnused = flags['remove-unused'] || flags.all;
       const addMissing = flags['add-missing'] || flags.all;
       const alignVersions = flags['align-versions'] || flags.all;
       const showStats = flags.stats;
 
-      // If stats requested, show dependency statistics
       if (showStats) {
         const stats = await getDependencyStats(ctx.cwd);
         outputStats(stats, flags, ui);
         return { exitCode: 0 };
       }
 
-      // If no fix flags specified, show error
       if (!removeUnused && !addMissing && !alignVersions) {
         validationError(ctx, 'No fix options specified', 'Use --remove-unused, --add-missing, --align-versions, or --all', flags.json);
         return { exitCode: 1 };
@@ -81,61 +105,51 @@ export default defineCommand({
       const loader = useLoader('Scanning packages...');
       loader.start();
 
-      const result: FixResult = {
-        packagesScanned: 0,
-        removedDeps: [],
-        addedDeps: [],
-        alignedDeps: [],
-        dryRun,
-      };
-
       const packages = findPackages(ctx.cwd);
-      result.packagesScanned = packages.length;
-
       loader.update({ text: `Scanned ${packages.length} packages` });
 
-      // 1. Align versions first (if requested)
-      if (alignVersions) {
-        loader.update({ text: 'Analyzing duplicate dependencies...' });
-        const aligned = await alignDuplicateVersions(packages, dryRun);
-        result.alignedDeps = aligned;
-      }
-
-      // 2. Add missing workspace dependencies
-      if (addMissing) {
-        loader.update({ text: 'Checking for missing workspace dependencies...' });
-        const added = await addMissingWorkspaceDeps(packages, dryRun);
-        result.addedDeps = added;
-      }
-
-      // 3. Remove unused dependencies
-      if (removeUnused) {
-        loader.update({ text: 'Checking for unused dependencies...' });
-        const removed = await removeUnusedDeps(packages, dryRun);
-        result.removedDeps = removed;
-      }
+      const result = await runAnalysis(packages, { removeUnused, addMissing, alignVersions, dryRun: false });
 
       loader.succeed('Dependency analysis completed');
 
-      // Track analytics
       await platform.analytics.track('quality:fix-deps', {
-        dryRun,
+        dryRun: false,
         packagesScanned: result.packagesScanned,
         removedCount: result.removedDeps.length,
         addedCount: result.addedDeps.length,
         alignedCount: result.alignedDeps.length,
       });
 
-      // Output results
-      outputResults(result, flags, ui);
+      outputResults({ ...result, dryRun: false }, flags, ui);
 
-      return {
-        exitCode: 0,
-        result,
-      };
+      return { exitCode: 0, result };
     },
   },
 });
+
+async function runAnalysis(
+  packages: PackageEntry[],
+  opts: { removeUnused?: boolean | null; addMissing?: boolean | null; alignVersions?: boolean | null; dryRun: boolean },
+): Promise<FixResult & { packagesScanned: number }> {
+  const result: FixResult & { packagesScanned: number } = {
+    packagesScanned: packages.length,
+    removedDeps: [],
+    addedDeps: [],
+    alignedDeps: [],
+  };
+
+  if (opts.alignVersions) {
+    result.alignedDeps = await alignDuplicateVersions(packages, opts.dryRun);
+  }
+  if (opts.addMissing) {
+    result.addedDeps = await addMissingWorkspaceDeps(packages, opts.dryRun);
+  }
+  if (opts.removeUnused) {
+    result.removedDeps = await removeUnusedDeps(packages, opts.dryRun);
+  }
+
+  return result;
+}
 
 /**
  * Find all packages in the monorepo
@@ -232,7 +246,6 @@ async function alignDuplicateVersions(
 ): Promise<Array<{ dep: string; from: string; to: string; packages: string[] }>> {
   const aligned: Array<{ dep: string; from: string; to: string; packages: string[] }> = [];
 
-  // Find all dependencies and their versions
   const depVersions = new Map<string, Map<string, Set<string>>>();
 
   for (const pkg of packages) {
@@ -242,7 +255,7 @@ async function alignDuplicateVersions(
     };
 
     for (const [dep, version] of Object.entries(deps)) {
-      if (dep.startsWith('@kb-labs/')) {continue;} // Skip workspace deps
+      if (dep.startsWith('@kb-labs/')) {continue;}
 
       if (!depVersions.has(dep)) {
         depVersions.set(dep, new Map());
@@ -256,11 +269,9 @@ async function alignDuplicateVersions(
     }
   }
 
-  // Find duplicates and determine most common version
   for (const [dep, versions] of depVersions.entries()) {
     if (versions.size <= 1) {continue;}
 
-    // Find most common version
     const versionCounts = Array.from(versions.entries()).map(([ver, pkgs]) => ({
       version: ver,
       count: pkgs.size,
@@ -271,17 +282,10 @@ async function alignDuplicateVersions(
     const targetVersion = versionCounts[0]?.version;
     if (!targetVersion) {continue;}
 
-    // Align all packages to target version
     for (const { version, packages: pkgNames } of versionCounts.slice(1)) {
-      aligned.push({
-        dep,
-        from: version,
-        to: targetVersion,
-        packages: pkgNames,
-      });
+      aligned.push({ dep, from: version, to: targetVersion, packages: pkgNames });
 
       if (!dryRun) {
-        // Apply changes to package.json files
         for (const pkgName of pkgNames) {
           const pkg = packages.find(p => p.name === pkgName);
           if (!pkg) {continue;}
@@ -311,7 +315,6 @@ async function addMissingWorkspaceDeps(
 ): Promise<Array<{ package: string; dep: string; version: string }>> {
   const added: Array<{ package: string; dep: string; version: string }> = [];
 
-  // Build map of workspace packages
   const workspacePackages = new Map<string, string>();
   for (const pkg of packages) {
     if (pkg.name.startsWith('@kb-labs/')) {
@@ -319,14 +322,12 @@ async function addMissingWorkspaceDeps(
     }
   }
 
-  // Check each package for missing workspace deps
   for (const pkg of packages) {
     const packageDir = path.dirname(pkg.path);
     const srcDir = path.join(packageDir, 'src');
 
     if (!fs.existsSync(srcDir)) {continue;}
 
-    // Scan imports
     const imports = scanImports(srcDir);
     const currentDeps = {
       ...pkg.json.dependencies,
@@ -335,11 +336,7 @@ async function addMissingWorkspaceDeps(
 
     for (const imp of imports) {
       if (imp.startsWith('@kb-labs/') && workspacePackages.has(imp) && !currentDeps[imp]) {
-        added.push({
-          package: pkg.name,
-          dep: imp,
-          version: 'workspace:*',
-        });
+        added.push({ package: pkg.name, dep: imp, version: 'workspace:*' });
 
         if (!dryRun) {
           if (!pkg.json.dependencies) {
@@ -370,7 +367,6 @@ async function removeUnusedDeps(
 
     if (!fs.existsSync(srcDir)) {continue;}
 
-    // Scan imports
     const imports = new Set(scanImports(srcDir));
 
     const deps = {
@@ -379,15 +375,10 @@ async function removeUnusedDeps(
     };
 
     for (const dep of Object.keys(deps)) {
-      // Skip protected dependencies
       if (isProtectedDep(dep)) {continue;}
 
-      // Check if dependency is used
       if (!imports.has(dep)) {
-        removed.push({
-          package: pkg.name,
-          dep,
-        });
+        removed.push({ package: pkg.name, dep });
 
         if (!dryRun) {
           delete pkg.json.dependencies?.[dep];
@@ -418,13 +409,11 @@ function scanImports(dir: string): string[] {
       } else if (entry.isFile() && /\.(ts|tsx|js|jsx)$/.test(entry.name)) {
         const content = fs.readFileSync(fullPath, 'utf-8');
 
-        // Match import statements
         const importRegex = /(?:import|require)\s*\(?['"]([^'"]+)['"]\)?/g;
         let match;
         while ((match = importRegex.exec(content)) !== null) {
           const imp = match[1];
           if (!imp) {continue;}
-          // Extract package name (handle scoped packages)
           const pkgName = imp.startsWith('@') ? imp.split('/').slice(0, 2).join('/') : imp.split('/')[0];
           if (pkgName) {
             imports.push(pkgName);
@@ -443,17 +432,8 @@ function scanImports(dir: string): string[] {
  */
 function isProtectedDep(dep: string): boolean {
   const protectedDeps = [
-    'typescript',
-    'tsup',
-    'esbuild',
-    'vite',
-    'rollup',
-    'rimraf',
-    'vitest',
-    'jest',
-    'playwright',
-    'eslint',
-    'prettier',
+    'typescript', 'tsup', 'esbuild', 'vite', 'rollup', 'rimraf',
+    'vitest', 'jest', 'playwright', 'eslint', 'prettier',
   ];
 
   return protectedDeps.some(p => dep === p || dep.startsWith(`${p}-`) || dep.startsWith(`@${p}/`));
@@ -487,7 +467,7 @@ function outputStats(stats: DependencyStats, flags: FixDepsFlags, ui: UIFacade |
   }
 
   ui?.success?.('Dependency statistics', {
-    title: '📊 Dependency Statistics',
+    title: 'Dependency Statistics',
     sections,
   });
 }
@@ -495,7 +475,7 @@ function outputStats(stats: DependencyStats, flags: FixDepsFlags, ui: UIFacade |
 /**
  * Output fix results
  */
-function outputResults(result: FixResult, flags: FixDepsFlags, ui: UIFacade | undefined) {
+function outputResults(result: FixResult & { dryRun: boolean }, flags: FixDepsFlags, ui: UIFacade | undefined) {
   if (flags.json) {
     ui?.json?.(result);
     return;
@@ -503,72 +483,43 @@ function outputResults(result: FixResult, flags: FixDepsFlags, ui: UIFacade | un
 
   const sections: Array<{ header: string; items: string[] }> = [];
 
-  // Summary
-  const summaryItems = [
-    `Packages Scanned: ${result.packagesScanned}`,
-    `Mode: ${result.dryRun ? '🔍 Dry Run (no changes applied)' : '✅ Changes Applied'}`,
-  ];
-  sections.push({ header: 'Summary', items: summaryItems });
+  sections.push({
+    header: 'Summary',
+    items: [`Packages Scanned: ${result.packagesScanned}`],
+  });
 
-  // Aligned dependencies
   if (result.alignedDeps.length > 0) {
-    const alignedItems = result.alignedDeps.map(
-      a => `${a.dep}: ${a.from} → ${a.to} (${a.packages.length} packages)`
-    );
-    sections.push({ header: 'Aligned Versions', items: alignedItems.slice(0, 10) });
+    const items = result.alignedDeps
+      .slice(0, 10)
+      .map(a => `${a.dep}: ${a.from} → ${a.to} (${a.packages.length} packages)`);
     if (result.alignedDeps.length > 10) {
-      const lastSection = sections[sections.length - 1];
-      if (lastSection) {
-        lastSection.items.push(`... and ${result.alignedDeps.length - 10} more`);
-      }
+      items.push(`... and ${result.alignedDeps.length - 10} more`);
     }
+    sections.push({ header: 'Aligned Versions', items });
   }
 
-  // Added dependencies
   if (result.addedDeps.length > 0) {
-    const addedItems = result.addedDeps.map(a => `${a.package}: +${a.dep}`);
-    sections.push({ header: 'Added Dependencies', items: addedItems.slice(0, 10) });
+    const items = result.addedDeps.slice(0, 10).map(a => `${a.package}: +${a.dep}`);
     if (result.addedDeps.length > 10) {
-      const lastSection = sections[sections.length - 1];
-      if (lastSection) {
-        lastSection.items.push(`... and ${result.addedDeps.length - 10} more`);
-      }
+      items.push(`... and ${result.addedDeps.length - 10} more`);
     }
+    sections.push({ header: 'Added Dependencies', items });
   }
 
-  // Removed dependencies
   if (result.removedDeps.length > 0) {
-    const removedItems = result.removedDeps.map(r => `${r.package}: -${r.dep}`);
-    sections.push({ header: 'Removed Dependencies', items: removedItems.slice(0, 10) });
+    const items = result.removedDeps.slice(0, 10).map(r => `${r.package}: -${r.dep}`);
     if (result.removedDeps.length > 10) {
-      const lastSection = sections[sections.length - 1];
-      if (lastSection) {
-        lastSection.items.push(`... and ${result.removedDeps.length - 10} more`);
-      }
+      items.push(`... and ${result.removedDeps.length - 10} more`);
     }
+    sections.push({ header: 'Removed Dependencies', items });
   }
 
-  // No changes
-  if (
-    result.alignedDeps.length === 0 &&
-    result.addedDeps.length === 0 &&
-    result.removedDeps.length === 0
-  ) {
-    sections.push({ header: 'Result', items: ['✅ No issues found!'] });
+  if (result.alignedDeps.length === 0 && result.addedDeps.length === 0 && result.removedDeps.length === 0) {
+    sections.push({ header: 'Result', items: ['No issues found!'] });
   }
-
-  // Next steps for dry run
-  if (result.dryRun && (result.alignedDeps.length > 0 || result.addedDeps.length > 0 || result.removedDeps.length > 0)) {
-    sections.push({
-      header: 'Next Steps',
-      items: ['Remove --dry-run flag to apply changes', 'Run `pnpm install` after applying changes'],
-    });
-  }
-
-  const title = result.dryRun ? '🔍 Dependency Fix Preview' : '✅ Dependency Fix Complete';
 
   ui?.success?.('Dependency fix completed', {
-    title,
+    title: 'Dependency Fix Complete',
     sections,
   });
 }

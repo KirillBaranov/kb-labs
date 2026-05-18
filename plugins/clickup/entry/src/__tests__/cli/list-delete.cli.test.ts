@@ -96,4 +96,18 @@ describe('clickup:list.delete', () => {
     expect(result.exitCode).toBe(1);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
+
+  it('LD-06: --dry-run shows intent, deleteList is NOT called', async () => {
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await listDeleteCommand.execute(
+      ctx,
+      mockCLIInput({ argv: ['list-1'], flags: { 'dry-run': true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(vi.mocked(deleteList)).not.toHaveBeenCalled();
+    expect(captured.infos[0]?.message).toContain('Dry-run');
+    expect(captured.infos[0]?.message).toContain('list-1');
+  });
 });

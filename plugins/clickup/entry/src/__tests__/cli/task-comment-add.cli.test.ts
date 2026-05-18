@@ -6,7 +6,7 @@ vi.mock('@kb-labs/clickup-core', () => ({
   requireApiKey: vi.fn().mockReturnValue('test-api-key'),
   addTaskComment: vi.fn(),
   ClickUpApiError: class ClickUpApiError extends Error {
-    constructor(public message: string, public status: number, public code: string) {
+    constructor(public override message: string, public status: number, public code: string) {
       super(message);
     }
   },
@@ -107,5 +107,19 @@ describe('clickup:task comments add', () => {
 
     expect(result.exitCode).toBe(1);
     expect(captured.errors.length).toBeGreaterThan(0);
+  });
+
+  it('TCA-06: --dry-run shows intent, addTaskComment is NOT called', async () => {
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await taskCommentAddCommand.execute(
+      ctx,
+      mockCLIInput({ argv: ['task-001'], flags: { text: 'Hello', 'dry-run': true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(vi.mocked(addTaskComment)).not.toHaveBeenCalled();
+    expect(captured.infos[0]?.message).toContain('Dry-run');
+    expect(captured.infos[0]?.message).toContain('task-001');
   });
 });

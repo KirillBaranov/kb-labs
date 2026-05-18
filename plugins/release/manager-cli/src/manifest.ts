@@ -102,6 +102,7 @@ export const manifest = {
         path: 'release plan',
         category: 'Pipeline',
         describe: 'Analyze changes and prepare release plan',
+        operationType: 'analyze' as const,
         longDescription: 'Detect modified packages and compute version bumps based on changes',
 
         handler: './cli/commands/plan.js#default',
@@ -130,6 +131,7 @@ export const manifest = {
         path: 'release run',
         category: 'Pipeline',
         describe: 'Execute release process (plan, check, publish)',
+        operationType: 'execute' as const,
         longDescription: 'Run full release: plan versions, run checks, publish packages',
 
         handler: './cli/commands/run.js#default',
@@ -169,6 +171,7 @@ export const manifest = {
         path: 'release publish',
         category: 'Publish',
         describe: 'Publish packages to npm registry',
+        operationType: 'execute' as const,
         longDescription: 'Smart npm publish with interactive 2FA support and better UX',
 
         handler: './cli/commands/publish.js#default',
@@ -201,6 +204,7 @@ export const manifest = {
         path: 'release rollback',
         category: 'Utilities',
         describe: 'Rollback last release',
+        operationType: 'mutate' as const,
         longDescription: 'Restore workspace state from backup snapshot',
 
         handler: './cli/commands/rollback.js#default',
@@ -217,6 +221,7 @@ export const manifest = {
         path: 'release report',
         category: 'Utilities',
         describe: 'Show last release report',
+        operationType: 'read' as const,
         longDescription: 'Display the most recent release execution report',
 
         handler: './cli/commands/report.js#default',
@@ -233,6 +238,7 @@ export const manifest = {
         path: 'release changelog',
         category: 'Utilities',
         describe: 'Generate changelog from conventional commits',
+        operationType: 'read' as const,
         longDescription: 'Parse git history and generate changelog with conventional commits support',
 
         handler: './cli/commands/changelog.js#default',
@@ -284,6 +290,7 @@ export const manifest = {
         path: 'release verify',
         category: 'Validation',
         describe: 'Validate release readiness',
+        operationType: 'analyze' as const,
         longDescription: 'Validate release readiness via flag gates (packages, breaking changes, commit types)',
 
         handler: './cli/commands/verify.js#default',
@@ -310,6 +317,7 @@ export const manifest = {
         path: 'release checks',
         category: 'Validation',
         describe: 'Run pre-release checks from release config',
+        operationType: 'analyze' as const,
         longDescription: 'Execute custom checks defined in release config (lint, test, audit, etc.)',
 
         handler: './cli/commands/checks.js#default',
@@ -331,6 +339,7 @@ export const manifest = {
         path: 'release build',
         category: 'Publish',
         describe: 'Build packages from release plan',
+        operationType: 'execute' as const,
         longDescription: 'Build all packages in plan into temp dir then atomically swap dist/',
 
         handler: './cli/commands/build.js#default',
@@ -352,6 +361,7 @@ export const manifest = {
         path: 'release pack',
         category: 'Publish',
         describe: 'Verify built package artifacts via npm pack',
+        operationType: 'execute' as const,
         longDescription: 'Run npm pack checks: directory imports, test file leaks, missing exports, syntax errors',
 
         handler: './cli/commands/pack.js#default',
@@ -373,6 +383,7 @@ export const manifest = {
         path: 'release version',
         category: 'Publish',
         describe: 'Bump package.json versions per release plan',
+        operationType: 'mutate' as const,
         longDescription: 'Update version fields in package.json files based on computed plan',
 
         handler: './cli/commands/version.js#default',
@@ -402,6 +413,7 @@ export const manifest = {
         path: 'release git',
         category: 'Publish',
         describe: 'Commit, tag, and push release changes',
+        operationType: 'mutate' as const,
         longDescription: 'Create release commit, create version tags, and push to remote',
 
         handler: './cli/commands/git.js#default',

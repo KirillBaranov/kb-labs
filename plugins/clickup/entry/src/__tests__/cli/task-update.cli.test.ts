@@ -6,7 +6,7 @@ vi.mock('@kb-labs/clickup-core', () => ({
   requireApiKey: vi.fn().mockReturnValue('test-api-key'),
   updateTask: vi.fn(),
   ClickUpApiError: class ClickUpApiError extends Error {
-    constructor(public message: string, public status: number, public code: string) {
+    constructor(public override message: string, public status: number, public code: string) {
       super(message);
     }
   },
@@ -84,6 +84,20 @@ describe('clickup:task.update', () => {
 
     expect(result.exitCode).toBe(1);
     expect(captured.errors.length).toBeGreaterThan(0);
+  });
+
+  it('TU-05: --dry-run shows intent, updateTask is NOT called', async () => {
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await taskUpdateCommand.execute(
+      ctx,
+      mockCLIInput({ argv: ['task-001'], flags: { name: 'New Name', 'dry-run': true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(vi.mocked(updateTask)).not.toHaveBeenCalled();
+    expect(captured.infos[0]?.message).toContain('Dry-run');
+    expect(captured.infos[0]?.message).toContain('task-001');
   });
 
   it('TU-04: core error returns exitCode 1', async () => {

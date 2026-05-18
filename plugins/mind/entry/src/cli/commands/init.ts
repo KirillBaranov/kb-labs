@@ -45,6 +45,19 @@ export default defineCommand({
   // Permissions are manifest-wide in V3
 
   handler: {
+    async intent(_ctx: PluginContextV3, input: InitInput) {
+      const cwd = input.flags.cwd || _ctx.cwd;
+      const mindDir = join(cwd, '.kb/mind');
+      return {
+        summary: `Initialize mind workspace at ${mindDir}`,
+        operations: [
+          { type: 'create' as const, resource: 'directory', details: { path: mindDir } },
+          { type: 'create' as const, resource: 'file', details: { path: join(mindDir, 'index.json') } },
+          { type: 'create' as const, resource: 'file', details: { path: join(mindDir, 'api-index.json') } },
+        ],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: InitInput): Promise<InitResult> {
       const startTime = Date.now();
       const { flags } = input;

@@ -75,7 +75,7 @@ describe('clickup:list.statuses', () => {
     );
 
     expect(result.exitCode).toBe(0);
-    const raw = (captured.json[0] as typeof mockStatuses)[0];
+    const raw = (captured.json[0] as typeof mockStatuses)[0]!;
     expect(raw.id).toBeDefined();
     expect(raw.orderindex).toBeDefined();
   });

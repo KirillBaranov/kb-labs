@@ -118,4 +118,18 @@ describe('clickup:folder.update', () => {
     expect(result.exitCode).toBe(1);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
+
+  it('FU-06: --dry-run shows intent, updateFolder is NOT called', async () => {
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await folderUpdateCommand.execute(
+      ctx,
+      mockCLIInput({ argv: ['folder-1'], flags: { name: 'New Name', 'dry-run': true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(vi.mocked(updateFolder)).not.toHaveBeenCalled();
+    expect(captured.infos[0]?.message).toContain('Dry-run');
+    expect(captured.infos[0]?.message).toContain('folder-1');
+  });
 });

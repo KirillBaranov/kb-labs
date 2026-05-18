@@ -55,6 +55,7 @@ export const manifest = {
       {
         path: 'policy detect',
         describe: 'Detect policy category for changed or specified repos',
+        operationType: 'analyze' as const,
         longDescription:
           'Determines the category for repos based on git changes or a specified path, then resolves applicable policy rules.',
 
@@ -77,6 +78,7 @@ export const manifest = {
       {
         path: 'policy check',
         describe: 'Run policy checks for changed repos or a specific path',
+        operationType: 'analyze' as const,
         longDescription:
           'Runs all applicable policy rules for detected repos. Exits with code 1 on violations. Use in CI or pnpm done pipeline.',
 
@@ -99,6 +101,7 @@ export const manifest = {
       {
         path: 'policy rules',
         describe: 'Show all configured policy rules and their categories',
+        operationType: 'read' as const,
 
         handler: './cli/commands/rules.js#default',
 
@@ -115,6 +118,7 @@ export const manifest = {
       {
         path: 'policy snapshot',
         describe: 'Create or update API snapshot for a repo (run after npm publish)',
+        operationType: 'mutate' as const,
         longDescription:
           'Extracts exported symbols from dist/*.d.ts files and saves them to .kb/api-snapshots/. Used by api-compat-check to detect breaking changes.',
 

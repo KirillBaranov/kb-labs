@@ -19,6 +19,15 @@ export default defineCommand({
   description: 'Rollback last release',
 
   handler: {
+    async intent(_ctx: PluginContextV3, _input: CLIInput<RollbackFlags>) {
+      return {
+        summary: 'Rollback last release from backup snapshot',
+        operations: [
+          { type: 'update' as const, resource: 'package-json-files', details: { source: 'release-snapshot' } },
+        ],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: CLIInput<RollbackFlags>): Promise<ReleaseRollbackResult> {
       const { flags } = input;
       const cwd = ctx.cwd || process.cwd();

@@ -63,6 +63,7 @@ export const manifest = {
       {
         path: 'review run',
         describe: 'Run code review analysis',
+        operationType: 'execute' as const,
         longDescription:
           'Analyzes code using heuristic engines (ESLint, Ruff, etc.) and optionally LLM analyzers. ' +
           'Supports three modes: heuristic (CI, fast), full (local, comprehensive), llm (deep analysis).',

@@ -2,7 +2,7 @@ import { defineCommand, validationError, handleError, type PluginContextV3, type
 import { post } from '../../http.js';
 import { resolveCliScope, scopeBody, CliScopeError } from '../../scope.js';
 
-interface EnableFlags { json?: boolean; scope?: string }
+interface EnableFlags { json?: boolean; scope?: string; 'dry-run'?: boolean }
 interface EnableInput { argv?: string[]; flags?: EnableFlags }
 
 export default defineCommand<unknown, EnableInput, { packageId: string; scope: string }>({
@@ -10,6 +10,14 @@ export default defineCommand<unknown, EnableInput, { packageId: string; scope: s
   description: 'Enable a plugin',
 
   handler: {
+    async intent(_ctx: PluginContextV3, input: EnableInput) {
+      const packageId = input.argv?.[0] ?? '(unknown)';
+      return {
+        summary: `Enable plugin "${packageId}"`,
+        operations: [{ type: 'update' as const, resource: 'plugin', details: { packageId, enabled: true } }],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: EnableInput): Promise<CommandResult<{ packageId: string; scope: string }>> {
       const packageId = input.argv?.[0];
       const flags = (input.flags ?? input) as EnableFlags;

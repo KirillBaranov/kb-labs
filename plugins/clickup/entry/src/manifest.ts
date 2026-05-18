@@ -136,11 +136,11 @@ export const manifest = {
         describe: 'Delete a task',
         handler: './commands/task-delete.js#default',
         flags: [
-          { name: 'force', type: 'boolean', description: 'Skip confirmation' },
-          { name: 'json',  type: 'boolean', description: 'Output raw JSON' },
+          { name: 'json', type: 'boolean', description: 'Output raw JSON' },
         ],
         examples: [
-          'kb clickup task delete abc123 --force',
+          'kb clickup task delete abc123 --yes',
+          'kb clickup task delete abc123 --dry-run',
         ],
       },
 

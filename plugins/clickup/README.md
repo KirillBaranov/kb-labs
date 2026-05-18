@@ -76,8 +76,8 @@ kb clickup task delete <taskId> --force
 ### Comments
 
 ```bash
-kb clickup task comment-list <taskId>
-kb clickup task comment-add  <taskId> --text "Fixed in branch feature/x"
+kb clickup task comments list <taskId>
+kb clickup task comments add  <taskId> --text "Fixed in branch feature/x"
 ```
 
 ### Lists
