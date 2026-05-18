@@ -1,0 +1,20 @@
+# CI-only docker-compose override.
+#
+# Swaps the named `verdaccio-storage` volume for a host bind mount so that
+# the storage tree can be persisted between GitHub Actions runs via
+# actions/cache@v4 (path: e2e/.verdaccio-storage).
+#
+# Local development keeps using the named volume from docker-compose.yml —
+# this file is only loaded when explicitly passed via `-f` (the workflow
+# does so). The named volume in the base file is overridden, not removed,
+# so other tooling that references it still works.
+
+services:
+  verdaccio:
+    user: "10001:65533"
+    volumes:
+      # Drop the named-volume mount inherited from docker-compose.yml by
+      # re-listing only the two paths we want — Compose volumes lists are
+      # replaced, not merged, when an override sets them.
+      - ./verdaccio/config.yaml:/verdaccio/conf/config.yaml:ro
+      - ./.verdaccio-storage:/verdaccio/storage
