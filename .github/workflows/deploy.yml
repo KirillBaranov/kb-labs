@@ -45,12 +45,12 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: tools/kb-deploy/go.mod
+          go-version: '1.25'
           cache-dependency-path: tools/kb-deploy/go.sum
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: tools/kb-devkit/go.mod
+          go-version: '1.25'
           cache-dependency-path: tools/kb-devkit/go.sum
 
       - name: Build kb-devkit
