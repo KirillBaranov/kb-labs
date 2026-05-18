@@ -37,7 +37,7 @@ const mockManifests: PluginsRegistryResponse = {
         cli: {
           commands: [
             {
-              path: 'mind rag-query',
+              path: 'mind search',
               describe: 'Query the RAG index',
               handler: './dist/commands/rag-query.js',
               flags: [
@@ -46,7 +46,7 @@ const mockManifests: PluginsRegistryResponse = {
               ],
             },
             {
-              path: 'mind rag-index',
+              path: 'mind index',
               describe: 'Build RAG index',
               handler: './dist/commands/rag-index.js',
               flags: [

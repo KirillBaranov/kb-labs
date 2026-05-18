@@ -21,7 +21,7 @@ beforeEach(() => {
   MockedClient.mockReset();
 });
 
-describe('workflow:runs-list', () => {
+describe('workflow:runs list', () => {
   it('CL-01: renders table when runs exist', async () => {
     MockedClient.mockImplementation(() => makeClient({
       listRuns: async () => sampleRuns,

@@ -48,7 +48,7 @@ export async function verifyIndexes(cwd: string): Promise<VerifyResult> {
         ok: false,
         code: 'MIND_NO_INDEX',
         inconsistencies: ['Main index file not found'],
-        hint: 'Run "kb mind rag-index" to initialize indexes',
+        hint: 'Run "kb mind index" to initialize indexes',
       };
     }
 
@@ -125,7 +125,7 @@ export async function verifyIndexes(cwd: string): Promise<VerifyResult> {
     const code = ok ? null : 'MIND_INDEX_INCONSISTENT';
     const hint = ok
       ? 'All indexes are consistent and up to date'
-      : 'Run "kb mind rag-index" to rebuild indexes';
+      : 'Run "kb mind index" to rebuild indexes';
 
     return { ok, code, inconsistencies, hint };
   } catch (error: unknown) {
