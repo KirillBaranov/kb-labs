@@ -305,7 +305,7 @@ export async function executeCli(
       const actualRest = routeResult.rest;
 
       if (flagsObj['schema'] && manifestCmd.manifest.operationType) {
-        presenter.json(generateCommandSchema(manifestCmd.manifest));
+        process.stdout.write(JSON.stringify(generateCommandSchema(manifestCmd.manifest), null, 2) + '\n');
         return 0;
       }
 

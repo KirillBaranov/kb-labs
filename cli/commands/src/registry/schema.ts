@@ -48,6 +48,7 @@ export const CommandManifestSchema = z.object({
   manifestV2: z.any().optional(),
   pkgRoot: z.string().optional(),
   _synthetic: z.boolean().optional(),
+  operationType: z.enum(['read', 'mutate', 'execute', 'analyze']).optional(),
 }).refine(
   (data) => {
     if (data.requires) {
