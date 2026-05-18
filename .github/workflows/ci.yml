@@ -3,17 +3,30 @@ name: CI
 on:
   push:
     branches: [main]
+    # Skip workflow on changes that cannot affect lint / type-check / tests.
+    # Sites code is intentionally NOT ignored here — it's part of the
+    # monorepo and is type-checked / linted by CI even though it deploys
+    # via deploy.yml.
     paths-ignore:
       - '**/*.md'
+      - 'docs/**'
+      - '.claude/**'
       - '.vscode/**'
       - '.idea/**'
+      - '.editorconfig'
+      - 'LICENSE'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE.md'
   workflow_dispatch: {}
 
 permissions:
   contents: read
 
+# Group by ref (branch) instead of SHA so a new commit cancels the
+# in-flight run of the previous one. Cancelled runs are visible in the
+# UI — not silently dropped.
 concurrency:
-  group: ci-main-${{ github.sha }}
+  group: ci-main-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

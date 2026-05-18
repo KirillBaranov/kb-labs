@@ -44,6 +44,8 @@ interface TrieNode {
   systemCommand?: SystemCommand;
   systemGroup?: SystemGroup;
   groupDescribe?: string;
+  /** packageName of the first plugin to register a command under this top-level group. */
+  ownerPackage?: string;
 }
 
 function makeNode(): TrieNode {
@@ -104,15 +106,49 @@ function findDeep(
 export class TrieRouter {
   private readonly root: TrieNode = makeNode();
 
-  insertCommand(segments: readonly string[], cmd: RegisteredCommand): void {
-    let node = this.root;
-    for (const seg of segments) {
+  /**
+   * Insert a plugin command into the trie.
+   *
+   * Enforces 1-manifest-1-namespace: the first packageName to register any command
+   * under a top-level group becomes the owner. Subsequent packages with a different
+   * packageName are rejected (collides: true) — the caller is responsible for warning
+   * and marking the command as shadowed.
+   *
+   * Returns { collides: false } on success, or { collides: true, ownerPackage } on conflict.
+   */
+  insertCommand(
+    segments: readonly string[],
+    cmd: RegisteredCommand,
+  ): { collides: false } | { collides: true; ownerPackage: string | undefined } {
+    if (segments.length === 0) {
+      return { collides: false }; // empty path guarded upstream
+    }
+
+    const incoming = cmd.packageName ?? '__unknown__';
+
+    // Ownership check on the top-level group node
+    const topSeg = segments[0]!;
+    if (!this.root.children.has(topSeg)) {
+      this.root.children.set(topSeg, makeNode());
+    }
+    const groupNode = this.root.children.get(topSeg)!;
+
+    if (groupNode.ownerPackage === undefined) {
+      groupNode.ownerPackage = incoming;
+    } else if (groupNode.ownerPackage !== incoming) {
+      return { collides: true, ownerPackage: groupNode.ownerPackage };
+    }
+
+    // Walk/create remaining nodes and store the command
+    let node = groupNode;
+    for (const seg of segments.slice(1)) {
       if (!node.children.has(seg)) {
         node.children.set(seg, makeNode());
       }
       node = node.children.get(seg)!;
     }
     node.command = cmd;
+    return { collides: false };
   }
 
   insertSystemCommand(cmd: SystemCommand): void {

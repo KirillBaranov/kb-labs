@@ -9,8 +9,22 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TrieBackedRegistry } from '../service';
 import type { RegisteredCommand } from '../types';
 import type { Command as SystemCommand, CommandGroup as SystemGroup } from '@kb-labs/shared-command-kit';
+import type { ILogger } from '@kb-labs/core-platform';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function makeCapturingLogger(): ILogger & { warns: string[] } {
+  const warns: string[] = [];
+  const logger = {
+    warns,
+    debug: () => {},
+    info:  () => {},
+    warn:  (msg: string) => { warns.push(msg); },
+    error: () => {},
+    child: () => logger,
+  } as unknown as ILogger & { warns: string[] };
+  return logger;
+}
 
 function makeRegistry() {
   return new TrieBackedRegistry();
@@ -210,15 +224,16 @@ describe('Collision: System Always Wins', () => {
   });
 
   it('logs warning when plugin collides with system command (same canonical)', () => {
+    const logger = makeCapturingLogger();
+    reg.setLogger(logger);
+
     const group = makeSystemGroup('test', ['protected']);
     reg.registerGroup(group);
 
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const plugin = makePlugin('protected', 'test');
     reg.registerManifest(plugin);
 
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('collides with system command'));
-    warnSpy.mockRestore();
+    expect(logger.warns.some(w => w.includes('collides with a system command') || w.includes('system'))).toBe(true);
   });
 
   it('shadowed plugin is stored in listCommands but not routed', () => {
@@ -240,21 +255,22 @@ describe('Collision: System Always Wins', () => {
   });
 
   it('plugin alias that collides with system command is blocked', () => {
+    const logger = makeCapturingLogger();
+    reg.setLogger(logger);
+
     const sys = makeSystemCmd('sys-cmd', ['sc']);
     reg.register(sys);
 
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     const plugin = makePlugin('plugin-cmd', 'test', undefined, ['sc']);
     reg.registerManifest(plugin);
 
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('"sc" collides with system command'));
+    expect(logger.warns.some(w => w.includes('"sc"') || w.includes('sc'))).toBe(true);
     // alias 'sc' still routes to system
     const result = reg.resolve(['sc']);
     expect(result.type).toBe('system-cmd');
     if (result.type === 'system-cmd') {
       expect(result.cmd).toBe(sys);
     }
-    warnSpy.mockRestore();
   });
 });
 

@@ -26,9 +26,30 @@ on:
     types: [completed]
   push:
     branches: [main]
+    # Skip on changes that cannot affect platform/plugin behaviour.
+    # Run anyway by triggering manually (workflow_dispatch) if in doubt.
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'sites/**'           # marketing site; deployed by deploy.yml separately
+      - '.claude/**'         # editor agent state
+      - '.vscode/**'
+      - '.idea/**'
+      - '.editorconfig'
+      - 'LICENSE'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE.md'
   workflow_dispatch:
   schedule:
     - cron: '0 9 * * 1'
+
+# Concurrency: only the latest run for a given ref keeps going. Old runs
+# get cancelled with a visible "cancelled" state in the Actions UI — they
+# are not silently dropped. This prevents 3 rapid pushes from queueing 3
+# full E2E runs when only the last commit matters.
+concurrency:
+  group: e2e-platform-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
