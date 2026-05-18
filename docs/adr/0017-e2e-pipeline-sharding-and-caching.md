@@ -207,7 +207,14 @@ Run `26005817045` (post-fix, no Phase 1 cache):
   marketplace 13/0, marketplace-registry 33/0**.
 - Confirmed WS-L04 is no longer flaky.
 
-Phase 1 cache re-enabled in commit (pending) on top of this baseline.
+### Phase 1 — cold cache (re-enable)
+
+| Run | Build | E2E run | Publish | Total | All suites |
+|---|---:|---:|---:|---:|---|
+| `26006334356` | 434s | 249s | 145s | 1152s | 8/8 pass, 0 retries |
+
+Cold matches baseline within variance (+0.3% total vs `26003095850`).
+Next push exercises warm restore.
 
 ### Validated learning
 
