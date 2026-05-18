@@ -127,7 +127,7 @@ export function createBaseStdoutUI(
       const cols = columns ?? Object.keys(data[0]!).map(k => ({ header: k, key: k }));
       const rows = data.map(row => cols.map(col => String(row[col.key] ?? '')));
       const lines = formatTable(
-        cols.map(c => ({ header: c.header, align: (c as { align?: 'left' | 'center' | 'right' }).align })),
+        cols.map(c => ({ header: c.header, width: (c as { width?: number }).width, align: (c as { align?: 'left' | 'center' | 'right' }).align })),
         rows,
         { separator: '' },
       );

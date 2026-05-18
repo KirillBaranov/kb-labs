@@ -3,8 +3,9 @@
  * Workflow run detail page with live SSE logs, jobs/steps accordion, and approval modal
  */
 
+import React from 'react'
 import { UIPage, UIPageHeader, UIPageSection } from '@kb-labs/sdk/studio'
-import { useMemo, useState, useEffect, useRef } from 'react'
+import { useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   UIButton, UITypographyText,
@@ -12,9 +13,10 @@ import {
 } from '@kb-labs/sdk/studio'
 import type { UIAccordionItem, UITabItem } from '@kb-labs/sdk/studio'
 import { useData, useMutateData, useSSE } from '@kb-labs/sdk/studio'
-import type { WorkflowRun, StepRun } from '@kb-labs/workflow-contracts'
+import type { WorkflowRun, JobRun, StepRun } from '@kb-labs/workflow-contracts'
 import type { WorkflowLogEvent } from '@kb-labs/workflow-contracts/rest-api'
 import { WorkflowStatusBadge } from '../components/shared/WorkflowStatusBadge'
+import { ConnectionBadge } from '../components/shared/ConnectionBadge'
 import { ApprovalModal } from '../components/ApprovalModal'
 import { PipelineView } from '../components/pipeline/PipelineView'
 import { DashboardView } from '../components/dashboard/DashboardView'
@@ -214,6 +216,52 @@ function buildLogGroups(events: WorkflowLogEvent[], run: WorkflowRun): JobLogGro
   }
 
   return Array.from(jobMap.values())
+}
+
+// ─── SSE state patching ────────────────────────────────────────────
+
+/** Apply a single SSE state event to a run snapshot — returns a patched copy. */
+function applyStateEvent(run: WorkflowRun, ev: WorkflowLogEvent): WorkflowRun {
+  const { type, jobId, stepId, payload } = ev
+
+  if (type === 'run.started') {
+    return { ...run, status: 'running', startedAt: (payload?.startedAt as string) ?? run.startedAt }
+  }
+  if (type === 'run.finished') return { ...run, status: 'success' }
+  if (type === 'run.failed') return { ...run, status: 'failed' }
+  if (type === 'run.cancelled') return { ...run, status: 'cancelled' }
+
+  if (!jobId) return run
+
+  const jobs = run.jobs.map(j => {
+    if (j.id !== jobId) return j
+
+    if (type.startsWith('job.')) {
+      const newStatus = eventTypeToStatus(type) as JobRun['status']
+      return {
+        ...j,
+        status: newStatus,
+        startedAt: type === 'job.started' ? ((payload?.startedAt as string) ?? j.startedAt) : j.startedAt,
+        durationMs: (payload?.durationMs as number) ?? j.durationMs,
+      }
+    }
+
+    if (!stepId) return j
+
+    const steps = j.steps.map(s => {
+      if (s.id !== stepId) return s
+      if (!type.startsWith('step.')) return s
+      return {
+        ...s,
+        status: eventTypeToStatus(type) as StepRun['status'],
+        startedAt: type === 'step.started' ? ((payload?.startedAt as string) ?? s.startedAt) : s.startedAt,
+        durationMs: (payload?.durationMs as number) ?? s.durationMs,
+      }
+    })
+    return { ...j, steps }
+  })
+
+  return { ...run, jobs }
 }
 
 const LOG_OUTPUT_KEYS = new Set(['stdout', 'stderr', 'exitCode', 'ok'])
@@ -465,24 +513,102 @@ function JobStepLog({ events, run, onApprove }: JobStepLogProps) {
   )
 }
 
+// ─── Skeleton ──────────────────────────────────────────────────────
+
+const SKEL: React.CSSProperties = {
+  background: 'var(--border-primary)',
+  borderRadius: 4,
+  animation: 'kb-skel-pulse 1.5s ease-in-out infinite',
+}
+
+function SkeletonBlock({ width, height, style }: { width: number | string; height: number; style?: React.CSSProperties }) {
+  return <div style={{ ...SKEL, width, height, ...style }} />
+}
+
+function RunDetailSkeleton() {
+  return (
+    <>
+      <style>{`
+        @keyframes kb-skel-pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+      `}</style>
+      {/* Status bar */}
+      <div style={{ display: 'flex', gap: 12, padding: '12px 16px', background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', borderRadius: 8, marginBottom: 24 }}>
+        <SkeletonBlock width={60} height={20} />
+        <SkeletonBlock width={120} height={20} />
+        <SkeletonBlock width={80} height={20} />
+        <SkeletonBlock width={140} height={20} style={{ marginLeft: 'auto' }} />
+      </div>
+      {/* Phase bar */}
+      <SkeletonBlock width="100%" height={32} style={{ marginBottom: 16, borderRadius: 8 }} />
+      {/* Hero card */}
+      <div style={{ padding: '20px 24px', background: 'var(--bg-secondary)', border: '1px solid var(--border-primary)', borderRadius: 10, marginBottom: 16 }}>
+        <SkeletonBlock width={200} height={16} style={{ marginBottom: 12 }} />
+        <SkeletonBlock width="60%" height={12} />
+      </div>
+      {/* Step rows */}
+      {[1, 2, 3].map(i => (
+        <div key={i} style={{ display: 'flex', gap: 8, padding: '8px 12px', border: '1px solid var(--border-primary)', borderRadius: 6, marginBottom: 6 }}>
+          <SkeletonBlock width={14} height={14} style={{ borderRadius: '50%', flexShrink: 0 }} />
+          <SkeletonBlock width={`${50 + i * 15}%`} height={14} />
+        </div>
+      ))}
+    </>
+  )
+}
+
+const TERMINAL_STATUSES = new Set(['success', 'failed', 'cancelled', 'skipped', 'dlq'])
+// State events that patch run data — do not contain log lines
+const STATE_EVENT_PREFIXES = ['run.', 'job.', 'step.']
+
 export default function WorkflowRunDetail() {
   const params = useParams<{ runId: string }>()
   const runId = params.runId ?? null
+
+  // Polling reduced to 10s — SSE is now the primary state source
   const { data: runData, isLoading, error, refetch } = useData<{ run: WorkflowRun }>(
     runId ? `/v1/runs/${runId}` : '/v1/runs/__none__',
-    { enabled: !!runId, pollingMs: 3000 },
+    { enabled: !!runId, pollingMs: 10_000 },
   )
-  const run = runData?.run ?? (runData as unknown as WorkflowRun | undefined)
+
+  // Local run copy — gets updated by both REST poll and SSE state events
+  const [localRun, setLocalRun] = useState<WorkflowRun | null>(null)
+  useEffect(() => {
+    const fetched = runData?.run ?? (runData as unknown as WorkflowRun | undefined) ?? null
+    if (fetched) setLocalRun(fetched)
+  }, [runData])
+
+  const run = localRun
   const cancelMutation = useMutateData<string, void>(`/v1/runs/${runId}/cancel`)
   const resolveApproval = useMutateData<
     { runId: string; jobId: string; stepId: string; action: string; comment?: string },
     unknown
   >('/v1/approval/resolve')
-  const isRunActive = run != null && !['success', 'failed', 'cancelled', 'skipped', 'dlq'].includes(run.status)
+  const isRunActive = run != null && !TERMINAL_STATUSES.has(run.status)
 
-  const { events, error: logError, isConnected } = useSSE<WorkflowLogEvent>(
-    isRunActive && runId ? `/v1/workflows/runs/${runId}/events` : null,
-    { params: { follow: 1 }, reconnect: true },
+  const [lastEventAt, setLastEventAt] = useState<Date | undefined>(undefined)
+
+  const handleSseEvent = useCallback((ev: WorkflowLogEvent) => {
+    const isStateEvent = STATE_EVENT_PREFIXES.some(p => ev.type.startsWith(p)) && ev.type !== 'log.appended'
+    if (isStateEvent) {
+      setLocalRun(prev => prev ? applyStateEvent(prev, ev) : prev)
+    }
+    setLastEventAt(new Date())
+  }, [])
+
+  // Fix: guard SSE with !isLoading to avoid race where SSE opens before first fetch
+  // Fix: use 'workflow.event' — server sends named events, not generic 'message'
+  const { events, error: logError, connectionStatus } = useSSE<WorkflowLogEvent>(
+    isRunActive && runId && !isLoading ? `/v1/workflows/runs/${runId}/events` : null,
+    {
+      events: 'workflow.event',
+      terminalEvents: ['workflow.done'],
+      params: { follow: 1 },
+      reconnect: true,
+      onEvent: handleSseEvent,
+    },
   )
 
   const [approvalStep, setApprovalStep] = useState<StepRun | null>(null)
@@ -494,6 +620,7 @@ export default function WorkflowRunDetail() {
     engineering: { label: 'Engineering' },
   } as const
 
+  // On SSE error during active run — trigger a poll to resync state
   useEffect(() => {
     if (logError && isRunActive) {
       void refetch()
@@ -535,7 +662,8 @@ export default function WorkflowRunDetail() {
           { title: shortRunId },
         ]}
         actions={
-          <div style={{ display: 'flex', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <ConnectionBadge status={connectionStatus} lastEventAt={lastEventAt} />
             <UIButton onClick={() => refetch()} disabled={isLoading}>
               Refresh
             </UIButton>
@@ -564,7 +692,11 @@ export default function WorkflowRunDetail() {
         />
       )}
 
-      {isLoading && <UIPageSection><Text>Loading workflow run...</Text></UIPageSection>}
+      {isLoading && (
+        <UIPageSection>
+          <RunDetailSkeleton />
+        </UIPageSection>
+      )}
       {!isLoading && !run && !error && <UIPageSection><Text>Workflow run not found.</Text></UIPageSection>}
       {run && (
         <UIPageSection>
@@ -619,8 +751,10 @@ export default function WorkflowRunDetail() {
             <ViewModeSelector views={VIEW_MODES} current={viewMode} onChange={setViewMode} />
           </div>
 
-          {isRunActive && !isConnected && !logError && <UIAlert variant="info" message="Connecting to event stream..." showIcon style={{ marginBottom: 12 }} />}
-          {isRunActive && logError && <UIAlert variant="error" message="Event stream error" description={logError.message} style={{ marginBottom: 12 }} />}
+          {/* Only show SSE error banner when run is still active — terminal close is not an error */}
+          {isRunActive && logError && connectionStatus !== 'reconnecting' && (
+            <UIAlert variant="warning" message="Reconnecting to event stream…" description="Using polling as fallback" style={{ marginBottom: 12 }} />
+          )}
 
           {viewMode === 'dashboard' && (
             <DashboardView
