@@ -60,35 +60,45 @@ else
   echo "    Using basic-auth (no token available)"
 fi
 
-echo "==> Publishing packages (pnpm publish for sha512 integrity)..."
-PUBLISHED=0
-FAILED=0
+PARALLELISM="${PUBLISH_PARALLELISM:-4}"
+echo "==> Publishing packages (pnpm publish for sha512 integrity, parallel x${PARALLELISM})..."
 
-for tarball in /packages/*.tgz; do
-  [ -f "$tarball" ] || continue
+# Each pnpm publish handshakes with Verdaccio per package. Sequential
+# loop over 160+ tarballs takes ~160s of mostly-idle waiting. Running
+# a small parallel pool keeps Verdaccio's request queue full without
+# overwhelming it. Tunable via PUBLISH_PARALLELISM env.
+#
+# xargs is the most portable parallel primitive available in /bin/sh.
+# The worker is inlined into `sh -c` since POSIX sh lacks `export -f`.
+
+TARBALLS=$(ls /packages/*.tgz 2>/dev/null)
+[ -z "$TARBALLS" ] && { echo "ERROR: no tarballs found in /packages"; exit 1; }
+TOTAL=$(echo "$TARBALLS" | wc -l | tr -d ' ')
+
+# Worker: published-or-409 → echo ✓/~ and exit 0; anything else → exit 1.
+# REGISTRY is exported above; the worker reads it from env.
+WORKER='
+  tarball="$1"
   pkg=$(basename "$tarball")
-
-  # pnpm publish accepts tarball paths; --no-git-checks skips git workspace check
   OUTPUT=$(pnpm publish "$tarball" --registry "$REGISTRY" --no-git-checks 2>&1) && {
     echo "  ✓ $pkg"
-    PUBLISHED=$((PUBLISHED + 1))
-  } || {
-    # Treat "already exists" as success (idempotent publish)
-    if echo "$OUTPUT" | grep -qi "409\|E409\|already present\|already exists\|EPUBLISHCONFLICT\|is already published"; then
-      echo "  ~ $pkg (already exists — skipped)"
-      PUBLISHED=$((PUBLISHED + 1))
-    else
-      echo "  ✗ $pkg"
-      echo "$OUTPUT" | grep -v "^npm notice" | head -3 | sed 's/^/    /'
-      FAILED=$((FAILED + 1))
-    fi
-  }
-done
+    exit 0
+  } || true
+  if echo "$OUTPUT" | grep -qi "409\|E409\|already present\|already exists\|EPUBLISHCONFLICT\|is already published"; then
+    echo "  ~ $pkg (already exists — skipped)"
+    exit 0
+  fi
+  echo "  ✗ $pkg"
+  echo "$OUTPUT" | grep -v "^npm notice" | head -3 | sed "s/^/    /"
+  exit 1
+'
 
-echo "==> Published: $PUBLISHED  Failed: $FAILED"
+export REGISTRY
 
-if [ "$FAILED" -gt 0 ]; then
-  echo "ERROR: Some packages failed to publish"
+if echo "$TARBALLS" | xargs -n 1 -P "$PARALLELISM" -I {} sh -c "$WORKER" _ {}; then
+  echo "==> Published: $TOTAL  Failed: 0"
+else
+  echo "==> ERROR: at least one package failed to publish"
   exit 1
 fi
 
