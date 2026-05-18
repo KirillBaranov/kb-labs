@@ -243,10 +243,29 @@ jobs:
         env:
           COMPOSE_PROJECT_NAME: kb-e2e-ci
 
+      # When the Verdaccio storage cache hit, every package is already
+      # published (cache key includes the .tgz hash). pnpm publish would
+      # still spend ~65s walking 163 packages just to confirm 409 for
+      # each. Skip the step entirely when the cache is warm.
       - name: Publish packages to Verdaccio
+        if: steps.verdaccio-cache.outputs.cache-hit != 'true'
         run: docker compose run --rm publisher
         env:
           COMPOSE_PROJECT_NAME: kb-e2e-ci
+
+      - name: Confirm Verdaccio has expected package count (warm cache)
+        if: steps.verdaccio-cache.outputs.cache-hit == 'true'
+        run: |
+          # Sanity check: number of cached package dirs should match the
+          # number of @kb-labs/* tarballs we packed. If not, the cache is
+          # stale and we fall through to a full re-publish.
+          tgz_count=$(ls e2e/packages/*.tgz 2>/dev/null | wc -l | tr -d ' ')
+          pkg_dirs=$(find e2e/.verdaccio-storage/@kb-labs -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
+          echo "Tarballs packed: $tgz_count   Verdaccio pkg dirs: $pkg_dirs"
+          if [ "$pkg_dirs" -lt "$((tgz_count / 2))" ]; then
+            echo "::warning::Cached Verdaccio storage looks incomplete ($pkg_dirs < $tgz_count/2), running publish anyway"
+            docker compose run --rm publisher
+          fi
 
       - name: Start platform
         run: docker compose up -d --no-build platform
