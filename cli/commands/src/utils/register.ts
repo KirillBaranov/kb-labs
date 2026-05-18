@@ -49,6 +49,7 @@ export async function registerBuiltinCommands(
     return;
   }
   _registered = true;
+  registry.setLogger(log);
   registry.markPartial(true);
   registeredCommands.length = 0;
 

@@ -28,6 +28,12 @@
   <img src="https://img.shields.io/badge/pnpm-workspace-F69220.svg" alt="pnpm workspace">
 </p>
 
+<p align="center">
+  <a href="https://github.com/KirillBaranov/kb-labs/actions/workflows/ci.yml?query=branch%3Amain"><img src="https://github.com/KirillBaranov/kb-labs/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+  <a href="https://github.com/KirillBaranov/kb-labs/actions/workflows/e2e-platform.yml?query=branch%3Amain"><img src="https://github.com/KirillBaranov/kb-labs/actions/workflows/e2e-platform.yml/badge.svg?branch=main" alt="E2E Platform"></a>
+  <a href="https://github.com/KirillBaranov/kb-labs/actions/workflows/deploy.yml?query=branch%3Amain"><img src="https://github.com/KirillBaranov/kb-labs/actions/workflows/deploy.yml/badge.svg?branch=main" alt="Deploy"></a>
+</p>
+
 ---
 
 **KB Labs runs your engineering workflows.** Define once — run from CI, terminal, or on a schedule. Watch every step. Replace any infrastructure adapter without touching your code.
@@ -253,6 +259,27 @@ Core defines interfaces. Adapters implement them. Plugins use them. Core never k
 ## Contributing
 
 Issues and PRs are welcome. Check [open issues](https://github.com/KirillBaranov/kb-labs/issues) for good first contributions. For larger changes, open an issue first. Monorepo conventions in [CLAUDE.md](CLAUDE.md).
+
+### CI state at a glance
+
+The badges at the top of this README track main-branch status of each
+workflow. For a terminal view:
+
+```bash
+./scripts/ci-status.sh           # latest run per workflow on main
+./scripts/ci-status.sh 24h       # what ran in the last 24h + compute spend
+./scripts/ci-status.sh 7d        # summary of the last 7 days
+```
+
+E2E Platform Tests and CI workflows have `paths-ignore` set: changes
+that only touch `**/*.md`, `docs/**`, `sites/**` (for E2E only),
+`.claude/**`, `.vscode/**`, or `.idea/**` skip those workflows. Skipped
+runs do not appear in the Actions tab — they are simply not triggered.
+
+Both workflows use `concurrency.cancel-in-progress`: pushing a new
+commit while a previous run is still going cancels the older run.
+Cancelled runs **do** appear in the Actions UI marked as "cancelled"
+so nothing is silently dropped.
 
 ---
 
