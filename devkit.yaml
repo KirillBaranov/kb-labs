@@ -717,6 +717,7 @@ coverage:
     "*-types":              skip   # type definitions — minimal executable code
     "*-contracts":          skip   # public shapes — tested via consumers
     "@kb-labs/e2e-*":       skip   # e2e suites — no unit coverage
+    "@kb-labs/core-ipc":    skip   # IPC proxies/transport — covered by integration, hard to unit-test
     "@kb-labs/core-*":      core
     "@kb-labs/sdk*":        sdk
     "@kb-labs/shared-*":    shared
