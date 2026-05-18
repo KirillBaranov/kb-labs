@@ -143,4 +143,14 @@ describe('marketplace:sync', () => {
     expect(result.exitCode).toBe(1);
     expect(mockedPost).not.toHaveBeenCalled();
   });
+
+  it('CS-07: --dry-run shows intent, HTTP post is NOT called', async () => {
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await syncCommand.execute(ctx, mockCLIInput({ flags: { 'dry-run': true } }));
+
+    expect(result.exitCode).toBe(0);
+    expect(mockedPost).not.toHaveBeenCalled();
+    expect(captured.infos[0]?.message).toContain('Dry-run');
+  });
 });

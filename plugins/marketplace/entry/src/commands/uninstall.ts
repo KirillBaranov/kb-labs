@@ -5,6 +5,7 @@ import { resolveCliScope, scopeBody, CliScopeError } from '../scope.js';
 interface UninstallFlags {
   json?: boolean;
   scope?: string;
+  'dry-run'?: boolean;
 }
 
 interface UninstallInput {
@@ -17,6 +18,19 @@ export default defineCommand<unknown, UninstallInput, { removed: string[]; scope
   description: 'Uninstall package(s) from marketplace',
 
   handler: {
+    async intent(_ctx: PluginContextV3, input: UninstallInput) {
+      const argv = input.argv ?? [];
+      const packages = argv.length > 0 ? argv : ['(no packages specified)'];
+      return {
+        summary: `Uninstall ${packages.join(', ')} from marketplace`,
+        operations: packages.map(pkg => ({
+          type: 'delete' as const,
+          resource: 'marketplace-package',
+          details: { package: pkg },
+        })),
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: UninstallInput): Promise<CommandResult<{ removed: string[]; scope: string }>> {
       const argv = input.argv ?? [];
       const flags = (input.flags ?? input) as UninstallFlags;

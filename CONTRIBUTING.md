@@ -181,7 +181,7 @@ Cross-cutting decisions go in `docs/adr/`. Module-specific decisions go in `<mod
 
 - **Issues**: [GitHub Issues](https://github.com/KirillBaranov/kb-labs/issues)
 - **Context**: [CLAUDE.md](CLAUDE.md) has full platform context
-- **Code search**: `pnpm kb mind rag-query --text "your question"` (requires Mind plugin + Qdrant)
+- **Code search**: `pnpm kb mind search --text "your question"` (requires Mind plugin + Qdrant)
 
 ## License
 

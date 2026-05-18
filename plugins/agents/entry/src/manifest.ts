@@ -132,6 +132,7 @@ export const manifest = {
         path: 'agent run',
         category: 'Run',
         describe: 'Run agent task (execute, plan, edit, or debug)',
+        operationType: 'execute' as const,
         longDescription:
           'Unified agent command with multiple modes: ' +
           'execute (default) - run task immediately, ' +
@@ -159,6 +160,7 @@ export const manifest = {
         path: 'agent trace stats',
         category: 'Trace',
         describe: 'Show trace statistics: tokens, cost, timing',
+        operationType: 'read' as const,
         longDescription:
           'Analyze trace file to show comprehensive statistics: ' +
           'iterations, LLM calls, token usage, tool usage, timing, and cost. ' +
@@ -180,6 +182,7 @@ export const manifest = {
         path: 'agent trace filter',
         category: 'Trace',
         describe: 'Filter trace events by type for debugging',
+        operationType: 'read' as const,
         longDescription:
           'Filter trace events by type (llm:call, tool:execution, error:captured, etc.). ' +
           'Use this to debug specific aspects of agent execution. ' +
@@ -202,6 +205,7 @@ export const manifest = {
         path: 'agent trace iteration',
         category: 'Trace',
         describe: 'View all events for a specific iteration',
+        operationType: 'read' as const,
         longDescription:
           'Show all trace events for a specific iteration number. ' +
           'Useful for debugging what happened in a particular loop iteration. ' +
@@ -224,6 +228,7 @@ export const manifest = {
         path: 'agent trace context',
         category: 'Trace',
         describe: 'Inspect context window and truncations per iteration',
+        operationType: 'read' as const,
         longDescription:
           'Shows the full context timeline for debugging agent behavior. ' +
           'For each LLM call: what messages are in the sliding window, ' +
@@ -247,6 +252,7 @@ export const manifest = {
         path: 'agent trace diagnose',
         category: 'Trace',
         describe: 'Diagnose what went wrong in an agent run',
+        operationType: 'analyze' as const,
         longDescription:
           'Comprehensive diagnostic report for agent execution. ' +
           'Analyzes errors, context window health (drops, truncations), ' +
@@ -269,6 +275,7 @@ export const manifest = {
         path: 'agent quality report',
         category: 'Quality',
         describe: 'Show quality control report for recent agent runs',
+        operationType: 'analyze' as const,
         longDescription:
           'Aggregates agent KPI telemetry from analytics buffer and shows ' +
           'quality, token usage, tool efficiency, drift, and regression alerts. ' +
@@ -295,6 +302,7 @@ export const manifest = {
         path: 'agent history',
         category: 'History',
         describe: 'Show file change history for agent sessions',
+        operationType: 'read' as const,
         longDescription:
           'View file changes made by agents during execution. ' +
           'Filter by session, file, or agent. Shows timestamps, operations, and change metadata.',
@@ -319,6 +327,7 @@ export const manifest = {
         path: 'agent diff',
         category: 'History',
         describe: 'Show diff for specific file change',
+        operationType: 'read' as const,
         longDescription:
           'Display line-by-line diff for a specific file change. ' +
           'Shows additions, deletions, and modifications with context.',
@@ -339,6 +348,7 @@ export const manifest = {
         path: 'agent rollback',
         category: 'History',
         describe: 'Rollback file changes made by agents',
+        operationType: 'mutate' as const,
         longDescription:
           'Rollback file changes made by agents. ' +
           'Supports rollback by change ID, file path, agent ID, session, or timestamp. ' +

@@ -19,6 +19,15 @@ export default defineCommand<unknown, CLIInput<BaselineUpdateFlags>, { exitCode:
   description: 'Run check + stats and save as new baseline',
 
   handler: {
+    async intent(_ctx: PluginContextV3, _input: CLIInput<BaselineUpdateFlags>) {
+      return {
+        summary: 'Run QA check + stats and save as new baseline',
+        operations: [
+          { type: 'create' as const, resource: 'file', details: { path: '.kb/qa/baseline.json' } },
+        ],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: CLIInput<BaselineUpdateFlags>): Promise<{ exitCode: number }> {
       const { flags } = input;
       const config = await useConfig<QAPluginConfig>();

@@ -2,22 +2,30 @@ import { defineCommand, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk
 import { requireApiKey, deleteTask } from '@kb-labs/clickup-core';
 import { handleError, validationError } from '../utils/error.js';
 
-type TaskDeleteFlags = { force?: boolean; json?: boolean };
+type TaskDeleteFlags = { yes?: boolean; json?: boolean; 'dry-run'?: boolean };
 
 export default defineCommand({
   id: 'clickup:task.delete',
   description: 'Delete a task',
 
   handler: {
+    async intent(_ctx: PluginContextV3, input: CLIInput<TaskDeleteFlags>) {
+      const [taskId] = input.argv;
+      return {
+        summary: `Delete task ${taskId ?? '(unknown)'}`,
+        operations: [{ type: 'delete' as const, resource: 'task', details: { taskId } }],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: CLIInput<TaskDeleteFlags>) {
       const [taskId] = input.argv;
       if (!taskId) {
-        validationError(ctx, 'Task ID is required', 'Usage: kb clickup task delete <taskId> --force', input.flags.json);
+        validationError(ctx, 'Task ID is required', 'Usage: kb clickup task delete <taskId> --yes', input.flags.json);
         return { exitCode: 1, result: null };
       }
 
-      if (!input.flags.force) {
-        validationError(ctx, `--force is required to delete task ${taskId}`, 'Add --force to confirm deletion', input.flags.json);
+      if (!input.flags.yes) {
+        validationError(ctx, `--yes is required to delete task ${taskId}`, 'Add --yes to confirm deletion', input.flags.json);
         return { exitCode: 1, result: null };
       }
 

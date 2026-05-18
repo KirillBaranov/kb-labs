@@ -97,7 +97,7 @@ plugins/kb-labs-impact/
     {
       "match": "@kb-labs/mind-*",
       "action": "reindex",
-      "command": "pnpm kb mind rag-index --scope default"
+      "command": "pnpm kb mind index --scope default"
     },
     {
       "match": "__new_package__",
@@ -119,7 +119,7 @@ plugins/kb-labs-impact/
       { "file": "CLAUDE.md", "reason": "@kb-labs/sdk changed", "action": "review sections mentioning SDK" }
     ],
     "reindex": [
-      { "reason": "@kb-labs/mind-engine changed", "command": "pnpm kb mind rag-index --scope default" }
+      { "reason": "@kb-labs/mind-engine changed", "command": "pnpm kb mind index --scope default" }
     ]
   }
 }
@@ -177,7 +177,7 @@ plugins/kb-labs-impact/
 
   Reindex (1):
     Mind RAG — @kb-labs/mind-engine changed
-    → Run: pnpm kb mind rag-index --scope default
+    → Run: pnpm kb mind index --scope default
 ```
 
 ## Критерии готовности

@@ -106,4 +106,18 @@ describe('clickup:list.update', () => {
     expect(result.exitCode).toBe(1);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
+
+  it('LU-05: --dry-run shows intent, updateList is NOT called', async () => {
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await listUpdateCommand.execute(
+      ctx,
+      mockCLIInput({ argv: ['list-1'], flags: { name: 'New Name', 'dry-run': true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(vi.mocked(updateList)).not.toHaveBeenCalled();
+    expect(captured.infos[0]?.message).toContain('Dry-run');
+    expect(captured.infos[0]?.message).toContain('list-1');
+  });
 });

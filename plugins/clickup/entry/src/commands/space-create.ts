@@ -8,6 +8,7 @@ type SpaceCreateFlags = {
   private?: boolean;
   json?: boolean;
   full?: boolean;
+  'dry-run'?: boolean;
 };
 
 export default defineCommand({
@@ -15,6 +16,14 @@ export default defineCommand({
   description: 'Create a new space',
 
   handler: {
+    async intent(_ctx: PluginContextV3, input: CLIInput<SpaceCreateFlags>) {
+      const { name } = input.flags;
+      return {
+        summary: `Create space "${name ?? '(unnamed)'}"`,
+        operations: [{ type: 'create' as const, resource: 'space', details: { name } }],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: CLIInput<SpaceCreateFlags>) {
       const { name, color, json, full } = input.flags;
       if (!name) {

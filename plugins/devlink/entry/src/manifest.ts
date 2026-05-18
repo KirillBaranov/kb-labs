@@ -48,6 +48,7 @@ export const manifest = {
         path: 'devlink switch',
         category: 'Mode',
         describe: 'Switch deps between local link: and npm (CI/CD) mode',
+        operationType: 'mutate' as const,
         longDescription:
           'Replaces all cross-repo @kb-labs/* dependencies across monorepos. ' +
           'Creates a backup before applying. Run pnpm install after switching.',
@@ -69,6 +70,7 @@ export const manifest = {
         path: 'devlink status',
         category: 'Mode',
         describe: 'Show current state of cross-repo dependencies',
+        operationType: 'read' as const,
         longDescription:
           'Displays the current linking mode, counts of link: vs npm dependencies, ' +
           'and any discrepancies across all monorepos.',
@@ -89,6 +91,7 @@ export const manifest = {
         path: 'devlink plan',
         category: 'Mode',
         describe: 'Preview what would change when switching mode',
+        operationType: 'read' as const,
         longDescription:
           'Shows all dependency changes that would be made without applying them. ' +
           'Useful for reviewing before running switch.',
@@ -109,6 +112,7 @@ export const manifest = {
         path: 'devlink freeze',
         category: 'State',
         describe: 'Freeze current dependency state to lock file',
+        operationType: 'mutate' as const,
         longDescription:
           'Saves a snapshot of current dependency mode to .kb/devlink/lock.json. ' +
           'Use to record a stable known-good state.',
@@ -128,6 +132,7 @@ export const manifest = {
         path: 'devlink undo',
         category: 'State',
         describe: 'Restore previous dependency state from last backup',
+        operationType: 'mutate' as const,
         longDescription:
           'Restores package.json files from the most recent backup created by switch. ' +
           'Run pnpm install after undoing.',
@@ -147,6 +152,7 @@ export const manifest = {
         path: 'devlink backups',
         category: 'State',
         describe: 'List and restore backups',
+        operationType: 'read' as const,
         longDescription:
           'Lists all available backups. Use --restore <id> to restore a specific backup.',
 

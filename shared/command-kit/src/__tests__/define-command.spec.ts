@@ -292,3 +292,117 @@ describe('defineCommand', () => {
     expect(result.exitCode).toBe(0);
   });
 });
+
+describe('defineCommand — dry-run routing', () => {
+  let mockCtx: any;
+
+  beforeEach(() => {
+    mockCtx = {
+      host: 'cli',
+      requestId: 'req-1',
+      pluginId: '@kb-labs/test',
+      cwd: '/test',
+      ui: {
+        info: vi.fn(),
+        success: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+        json: vi.fn(),
+        write: vi.fn(),
+      },
+      platform: { logger: { info: vi.fn(), error: vi.fn() } },
+      runtime: { fs: {}, fetch: vi.fn(), env: vi.fn() },
+      api: {},
+      trace: { traceId: 't1', spanId: 's1' },
+    };
+  });
+
+  it('calls intent() when dry-run flag is true and intent is defined', async () => {
+    const intent = vi.fn().mockResolvedValue({
+      summary: 'Delete task abc',
+      operations: [{ type: 'delete', resource: 'task', details: { taskId: 'abc' } }],
+    });
+    const execute = vi.fn();
+
+    const command = defineCommand({
+      id: 'test:dry',
+      handler: { intent, execute },
+    });
+
+    const result = await command.execute(mockCtx, { flags: { 'dry-run': true }, argv: ['abc'] });
+
+    expect(intent).toHaveBeenCalledOnce();
+    expect(execute).not.toHaveBeenCalled();
+    expect(result.exitCode).toBe(0);
+    expect(mockCtx.ui.info).toHaveBeenCalledWith(
+      expect.stringContaining('Dry-run: Delete task abc'),
+      expect.objectContaining({ sections: expect.any(Array) }),
+    );
+  });
+
+  it('calls execute() when dry-run is false', async () => {
+    const intent = vi.fn();
+    const execute = vi.fn().mockResolvedValue({ exitCode: 0 });
+
+    const command = defineCommand({
+      id: 'test:dry',
+      handler: { intent, execute },
+    });
+
+    await command.execute(mockCtx, { flags: { 'dry-run': false }, argv: [] });
+
+    expect(execute).toHaveBeenCalledOnce();
+    expect(intent).not.toHaveBeenCalled();
+  });
+
+  it('calls execute() when dry-run is true but intent is not defined', async () => {
+    const execute = vi.fn().mockResolvedValue({ exitCode: 0 });
+
+    const command = defineCommand({
+      id: 'test:no-intent',
+      handler: { execute },
+    });
+
+    await command.execute(mockCtx, { flags: { 'dry-run': true }, argv: [] });
+
+    expect(execute).toHaveBeenCalledOnce();
+  });
+
+  it('renders MutateIntent with operations list', async () => {
+    const command = defineCommand({
+      id: 'test:mutate',
+      handler: {
+        intent: async () => ({
+          summary: 'Create task X',
+          operations: [{ type: 'create', resource: 'task', details: { name: 'X' } }],
+        }),
+        execute: vi.fn(),
+      },
+    });
+
+    await command.execute(mockCtx, { flags: { 'dry-run': true }, argv: [] });
+
+    const [msg, opts] = mockCtx.ui.info.mock.calls[0];
+    expect(msg).toBe('Dry-run: Create task X');
+    expect(opts.sections[0].items[0]).toContain('CREATE task');
+  });
+
+  it('renders ExecuteIntent without operations (no sections)', async () => {
+    const command = defineCommand({
+      id: 'test:execute',
+      handler: {
+        intent: async () => ({
+          summary: 'Run workflow build',
+          estimatedDurationMs: 5000,
+        }),
+        execute: vi.fn(),
+      },
+    });
+
+    await command.execute(mockCtx, { flags: { 'dry-run': true }, argv: [] });
+
+    const [msg] = mockCtx.ui.info.mock.calls[0];
+    expect(msg).toContain('Dry-run: Run workflow build');
+    expect(msg).toContain('~5s');
+  });
+});

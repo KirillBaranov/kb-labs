@@ -8,6 +8,7 @@ type TaskCommentAddFlags = {
   notify?: boolean;
   json?: boolean;
   full?: boolean;
+  'dry-run'?: boolean;
 };
 
 export default defineCommand({
@@ -15,6 +16,14 @@ export default defineCommand({
   description: 'Add a comment to a task',
 
   handler: {
+    async intent(_ctx: PluginContextV3, input: CLIInput<TaskCommentAddFlags>) {
+      const [taskId] = input.argv;
+      return {
+        summary: `Add comment to task ${taskId ?? '(unknown)'}`,
+        operations: [{ type: 'create' as const, resource: 'comment', details: { taskId, text: input.flags.text } }],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: CLIInput<TaskCommentAddFlags>) {
       const [taskId] = input.argv;
       if (!taskId) {

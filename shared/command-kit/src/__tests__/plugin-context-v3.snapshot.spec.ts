@@ -86,8 +86,10 @@ describe('PluginContextV3 Structure Snapshot', () => {
           "api",
           "cwd",
           "host",
+          "hostContext",
           "platform",
           "pluginId",
+          "pluginVersion",
           "requestId",
           "runtime",
           "trace",
@@ -154,20 +156,19 @@ describe('PluginContextV3 Structure Snapshot', () => {
       expect(uiMethods).toMatchInlineSnapshot(`
         [
           "colors",
-          "completeProgress",
           "confirm",
           "error",
-          "failProgress",
           "info",
           "json",
           "keyValue",
           "list",
+          "message",
           "prompt",
-          "startProgress",
           "success",
+          "symbols",
           "table",
-          "updateProgress",
           "warn",
+          "warning",
           "write",
         ]
       `);
@@ -194,9 +195,15 @@ describe('PluginContextV3 Structure Snapshot', () => {
         [
           "analytics",
           "cache",
+          "config",
+          "documentDatabase",
           "embeddings",
+          "eventBus",
+          "invoke",
           "llm",
           "logger",
+          "logs",
+          "sqlDatabase",
           "storage",
           "vectorStore",
         ]
@@ -225,7 +232,6 @@ describe('PluginContextV3 Structure Snapshot', () => {
           "env",
           "fetch",
           "fs",
-          "state",
         ]
       `);
 

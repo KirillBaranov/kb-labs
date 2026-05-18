@@ -104,6 +104,7 @@ export const manifest = {
         path: 'commit',
         category: 'Pipeline',
         describe: 'Generate and apply commits (default flow).',
+        operationType: 'execute' as const,
         longDescription:
           'Analyzes changes, generates commit plan with LLM, applies commits locally. ' +
           'Use --dry-run to preview without applying, --with-push to push after applying.',
@@ -126,6 +127,7 @@ export const manifest = {
         path: 'commit generate',
         category: 'Pipeline',
         describe: 'Generate commit plan from git changes.',
+        operationType: 'execute' as const,
         longDescription:
           'Analyzes staged and unstaged changes using git diff, then uses LLM to group ' +
           'related changes and generate conventional commit messages.',
@@ -146,6 +148,7 @@ export const manifest = {
         path: 'commit apply',
         category: 'Pipeline',
         describe: 'Apply current commit plan (create local commits).',
+        operationType: 'mutate' as const,
         longDescription:
           'Creates git commits according to the current plan. Checks for staleness ' +
           '(working tree changes since plan generation) unless --force is used.',
@@ -165,6 +168,7 @@ export const manifest = {
         path: 'commit push',
         category: 'Pipeline',
         describe: 'Push commits to remote repository.',
+        operationType: 'execute' as const,
         longDescription:
           'Pushes local commits to the remote. Refuses force push to protected branches ' +
           '(main, master) by default.',
@@ -183,6 +187,7 @@ export const manifest = {
         path: 'commit open',
         category: 'Plan',
         describe: 'Show current commit plan.',
+        operationType: 'read' as const,
         longDescription: 'Displays the current commit plan if one exists.',
 
         handler: './cli/commands/open.js#default',
@@ -200,6 +205,7 @@ export const manifest = {
         path: 'commit reset',
         category: 'Plan',
         describe: 'Clear current commit plan.',
+        operationType: 'mutate' as const,
         longDescription: 'Removes the current commit plan from storage.',
 
         handler: './cli/commands/reset.js#default',

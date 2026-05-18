@@ -17,6 +17,15 @@ export default defineCommand<unknown, FreezeInput, LockFile>({
   description: 'Freeze current dependency state to lock file',
 
   handler: {
+    async intent(_ctx: PluginContextV3, _input: FreezeInput) {
+      return {
+        summary: 'Freeze current dependency state to lock file',
+        operations: [
+          { type: 'create' as const, resource: 'file', details: { path: '.kb/devlink/lock.json' } },
+        ],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: FreezeInput): Promise<CommandResult<LockFile>> {
       const tracker = new TimingTracker();
       const flags = (input.flags ?? input) as FreezeFlags;

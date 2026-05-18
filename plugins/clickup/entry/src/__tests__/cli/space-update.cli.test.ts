@@ -106,4 +106,18 @@ describe('clickup:space.update', () => {
     expect(result.exitCode).toBe(1);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
+
+  it('SU-05: --dry-run shows intent, updateSpace is NOT called', async () => {
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await spaceUpdateCommand.execute(
+      ctx,
+      mockCLIInput({ argv: ['space-1'], flags: { name: 'New Name', 'dry-run': true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(vi.mocked(updateSpace)).not.toHaveBeenCalled();
+    expect(captured.infos[0]?.message).toContain('Dry-run');
+    expect(captured.infos[0]?.message).toContain('space-1');
+  });
 });

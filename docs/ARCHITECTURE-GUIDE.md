@@ -63,7 +63,7 @@
 | **Marketplace** | 5070 | Unified entity marketplace — install, manage, discover plugins, adapters, workflows. **Binds to 127.0.0.1.** | `pnpm kb marketplace install`, plugin management |
 | **State Daemon** | 7777 | Distributed state — workflow state, locks, counters. **Binds to 127.0.0.1.** | Always (dependency of Workflow + Gateway) |
 | **Redis** | 6379 | Cache backend. Survives process restarts (unlike InMemory) | Optional. Useful when Gateway restarts shouldn't lose host registry |
-| **Qdrant** | 6333 | Vector database for Mind RAG semantic search | `pnpm kb mind rag-query`, `pnpm kb mind rag-index` |
+| **Qdrant** | 6333 | Vector database for Mind RAG semantic search | `pnpm kb mind search`, `pnpm kb mind index` |
 | **Studio** | 3000 | Web UI — dashboards, QA, workflow monitoring, host management | When you want the browser UI |
 | **Host Agent** | — | Daemon connecting this machine to Gateway via WebSocket | Remote execution, multi-machine setups |
 | **Runtime Server** | — | Plugin execution host with `execution` capability | Server-side plugin execution |
@@ -112,7 +112,7 @@ Qdrant :6333 (standalone, no deps)
 **Exception:** Mind RAG needs Qdrant:
 ```bash
 pnpm dev:start qdrant    # Just Qdrant, nothing else
-pnpm kb mind rag-query --text "..." --agent
+pnpm kb mind search --text "..." --agent
 ```
 
 ### Solo developer (with Studio UI)

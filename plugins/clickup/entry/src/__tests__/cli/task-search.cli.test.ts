@@ -7,7 +7,7 @@ vi.mock('@kb-labs/clickup-core', () => ({
   requireTeamId: vi.fn().mockReturnValue('team-123'),
   searchTasks: vi.fn(),
   ClickUpApiError: class ClickUpApiError extends Error {
-    constructor(public message: string, public status: number, public code: string) {
+    constructor(public override message: string, public status: number, public code: string) {
       super(message);
     }
   },
@@ -51,7 +51,7 @@ describe('clickup:task.search', () => {
 
     expect(result.exitCode).toBe(0);
     expect(Array.isArray(captured.json[0])).toBe(true);
-    const slim = (captured.json[0] as Array<Record<string, unknown>>)[0];
+    const slim = (captured.json[0] as Array<Record<string, unknown>>)[0]!;
     expect(slim.id).toBe('task-001');
     expect(typeof slim.status).toBe('string');
     expect(slim).toHaveProperty('due_date');
@@ -71,7 +71,7 @@ describe('clickup:task.search', () => {
     );
 
     expect(result.exitCode).toBe(0);
-    const raw = (captured.json[0] as typeof mockTasks)[0];
+    const raw = (captured.json[0] as typeof mockTasks)[0]!;
     expect(typeof raw.status).toBe('object');
     expect(raw.date_created).toBeDefined();
   });

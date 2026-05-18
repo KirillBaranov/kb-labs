@@ -22,6 +22,15 @@ export default defineCommand<unknown, UndoInput, UndoResult>({
   description: 'Restore previous dependency state from last backup',
 
   handler: {
+    async intent(_ctx: PluginContextV3, _input: UndoInput) {
+      return {
+        summary: 'Restore previous dependency state from last backup',
+        operations: [
+          { type: 'update' as const, resource: 'package-json-files', details: { source: 'last-backup' } },
+        ],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: UndoInput): Promise<CommandResult<UndoResult>> {
       const tracker = new TimingTracker();
       const flags = (input.flags ?? input) as UndoFlags;

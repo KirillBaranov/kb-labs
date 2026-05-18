@@ -1,12 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mockCLIInput, createCapturedUI, createMockContext } from '@kb-labs/shared-testing-e2e/cli';
 
-// Mock clickup-core before importing the command
 vi.mock('@kb-labs/clickup-core', () => ({
   requireApiKey: vi.fn().mockReturnValue('test-api-key'),
   deleteTask: vi.fn(),
   ClickUpApiError: class ClickUpApiError extends Error {
-    constructor(public message: string, public status: number, public code: string) {
+    constructor(public override message: string, public status: number, public code: string) {
       super(message);
     }
   },
@@ -21,14 +20,14 @@ beforeEach(() => {
 });
 
 describe('clickup:task.delete', () => {
-  it('TD-01: deletes a task with --force and prints success', async () => {
+  it('TD-01: deletes a task with --yes and prints success', async () => {
     vi.mocked(deleteTask).mockResolvedValue(undefined);
 
     const { ui, captured } = createCapturedUI();
     const ctx = createMockContext({ ui });
     const result = await taskDeleteCommand.execute(
       ctx,
-      mockCLIInput({ argv: ['task-001'], flags: { force: true } }),
+      mockCLIInput({ argv: ['task-001'], flags: { yes: true } }),
     );
 
     expect(result.exitCode).toBe(0);
@@ -43,7 +42,7 @@ describe('clickup:task.delete', () => {
     const ctx = createMockContext({ ui });
     const result = await taskDeleteCommand.execute(
       ctx,
-      mockCLIInput({ argv: ['task-001'], flags: { force: true, json: true } }),
+      mockCLIInput({ argv: ['task-001'], flags: { yes: true, json: true } }),
     );
 
     expect(result.exitCode).toBe(0);
@@ -55,14 +54,14 @@ describe('clickup:task.delete', () => {
     const ctx = createMockContext({ ui });
     const result = await taskDeleteCommand.execute(
       ctx,
-      mockCLIInput({ argv: [], flags: { force: true } }),
+      mockCLIInput({ argv: [], flags: { yes: true } }),
     );
 
     expect(result.exitCode).toBe(1);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
-  it('TD-04: missing --force returns exitCode 1', async () => {
+  it('TD-04: missing --yes returns exitCode 1 with hint', async () => {
     const { ui, captured } = createCapturedUI();
     const ctx = createMockContext({ ui });
     const result = await taskDeleteCommand.execute(
@@ -81,10 +80,38 @@ describe('clickup:task.delete', () => {
     const ctx = createMockContext({ ui });
     const result = await taskDeleteCommand.execute(
       ctx,
-      mockCLIInput({ argv: ['task-001'], flags: { force: true } }),
+      mockCLIInput({ argv: ['task-001'], flags: { yes: true } }),
     );
 
     expect(result.exitCode).toBe(1);
     expect(captured.errors.length).toBeGreaterThan(0);
+  });
+
+  it('TD-06: --dry-run shows intent, deleteTask is NOT called', async () => {
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await taskDeleteCommand.execute(
+      ctx,
+      mockCLIInput({ argv: ['task-001'], flags: { 'dry-run': true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(deleteTask).not.toHaveBeenCalled();
+    expect(captured.infos.length).toBeGreaterThan(0);
+    expect(captured.infos[0]?.message).toContain('Dry-run');
+    expect(captured.infos[0]?.message).toContain('task-001');
+  });
+
+  it('TD-07: --dry-run with --yes still shows intent only (dry-run wins)', async () => {
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await taskDeleteCommand.execute(
+      ctx,
+      mockCLIInput({ argv: ['task-001'], flags: { 'dry-run': true, yes: true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(deleteTask).not.toHaveBeenCalled();
+    expect(captured.infos.length).toBeGreaterThan(0);
   });
 });

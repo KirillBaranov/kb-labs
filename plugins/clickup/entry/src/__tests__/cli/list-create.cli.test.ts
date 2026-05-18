@@ -97,7 +97,7 @@ describe('clickup:list.create', () => {
     const ctx = createMockContext({ ui });
     const result = await listCreateCommand.execute(
       ctx,
-      mockCLIInput({ flags: { folder: 'folder-1' } }),
+      mockCLIInput({ flags: { folder: 'folder-1' } }) as Parameters<typeof listCreateCommand.execute>[1],
     );
 
     expect(result.exitCode).toBe(1);
@@ -109,7 +109,7 @@ describe('clickup:list.create', () => {
     const ctx = createMockContext({ ui });
     const result = await listCreateCommand.execute(
       ctx,
-      mockCLIInput({ flags: { name: 'My List' } }),
+      mockCLIInput({ flags: { name: 'My List' } }) as Parameters<typeof listCreateCommand.execute>[1],
     );
 
     expect(result.exitCode).toBe(1);
@@ -128,5 +128,19 @@ describe('clickup:list.create', () => {
 
     expect(result.exitCode).toBe(1);
     expect(captured.errors.length).toBeGreaterThan(0);
+  });
+
+  it('LC-07: --dry-run shows intent, HTTP is NOT called', async () => {
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await listCreateCommand.execute(
+      ctx,
+      mockCLIInput({ flags: { folder: 'folder-1', name: 'My List', 'dry-run': true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(vi.mocked(createListInFolder)).not.toHaveBeenCalled();
+    expect(captured.infos[0]?.message).toContain('Dry-run');
+    expect(captured.infos[0]?.message).toContain('My List');
   });
 });

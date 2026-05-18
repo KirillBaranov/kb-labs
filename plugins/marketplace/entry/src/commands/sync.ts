@@ -8,6 +8,7 @@ interface SyncFlags {
   'auto-enable'?: boolean;
   json?: boolean;
   scope?: string;
+  'dry-run'?: boolean;
 }
 
 interface SyncInput {
@@ -32,6 +33,15 @@ export default defineCommand<unknown, SyncInput, SyncResultData>({
   description: 'Sync workspace — scan for entities and populate lock',
 
   handler: {
+    async intent(_ctx: PluginContextV3, _input: SyncInput) {
+      return {
+        summary: 'Sync workspace — scan for entities and populate lock file',
+        operations: [
+          { type: 'update' as const, resource: 'marketplace-lock', details: { action: 'sync-workspace' } },
+        ],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: SyncInput): Promise<CommandResult<SyncResultData>> {
       const flags = (input.flags ?? input) as SyncFlags;
       const cwd = ctx.cwd ?? process.cwd();

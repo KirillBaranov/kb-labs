@@ -46,6 +46,7 @@ export const manifest = {
       {
         path: 'workspace register',
         describe: 'Register this machine with a Platform Gateway.',
+        operationType: 'mutate' as const,
         longDescription:
           'Calls POST /auth/register on the given Gateway URL, receives credentials, ' +
           'and writes ~/.kb/agent.json. Must be run once before starting the Workspace Agent daemon.',
@@ -63,6 +64,7 @@ export const manifest = {
       {
         path: 'workspace status',
         describe: 'Show Workspace Agent connection status.',
+        operationType: 'read' as const,
         longDescription:
           'Connects to the daemon via IPC socket and queries its status (connected, hostId, gatewayUrl, capabilities). ' +
           'Start the daemon with `kb workspace:start` or `pnpm dev:start:host-agent`.',
@@ -80,6 +82,7 @@ export const manifest = {
       {
         path: 'workspace list',
         describe: 'List all connected Workspace Agents.',
+        operationType: 'read' as const,
         longDescription:
           'Queries the Gateway REST API for all registered hosts and shows their status, capabilities, and last seen time.',
 
