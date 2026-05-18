@@ -290,10 +290,13 @@ Next push exercises warm Verdaccio cache — expected Publish ~10s.
 | Phase 2 warm (`26019898822`) | 530s | −619s | **−54%** |
 | Phase 2 + parallel publish (`26020420484`) | **419s** | **−730s** | **−63%** |
 | Phase 2.5 cold (`26023732806`) | 475s | −674s | −59% |
+| Phase 2.5 warm (Verdaccio cache hit) (`26024198935`) | 418s | −731s | −64% |
+| Phase 2.5 final (publish skipped) (`26024665171`) | **399s** | **−750s** | **−65%** |
 
-**Result so far: 19 min → ~7 min** on a typical warm PR — already
-inside the 8–9 min prediction from the plan, without Phase 3 matrix
-sharding.
+**Result: 19 min → ~6.6 min on a typical warm PR.** All 8 suites green,
+0 retries across the validated run sequence. Phase 3 (matrix sharding)
+proceeds as planned — not for wall-clock (already in target) but for
+failure isolation and scalability headroom.
 
 ### Validated learning
 
