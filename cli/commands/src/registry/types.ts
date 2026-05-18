@@ -36,6 +36,8 @@ export interface CommandManifest {
   pkgRoot?: string;
   /** Internal flag: true for synthetic "unavailable" manifests that must not be cached. */
   _synthetic?: boolean;
+  /** Archetype from manifest — drives automatic flag injection and --schema generation. */
+  operationType?: 'read' | 'mutate' | 'execute' | 'analyze';
 }
 
 export interface FlagDefinition {

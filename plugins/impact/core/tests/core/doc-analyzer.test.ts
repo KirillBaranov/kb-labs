@@ -6,7 +6,7 @@ const config: ImpactPluginConfig = {
   docRules: [
     { match: '@kb-labs/sdk', docs: ['CLAUDE.md'], action: 'review' },
     { match: '*-cli', docs: ['CLI-REFERENCE.md'], action: 'regenerate', command: 'pnpm kb docs generate-cli-reference' },
-    { match: '@kb-labs/mind-*', action: 'reindex', command: 'pnpm kb mind rag-index --scope default' },
+    { match: '@kb-labs/mind-*', action: 'reindex', command: 'pnpm kb mind index --scope default' },
   ],
 };
 
@@ -30,7 +30,7 @@ describe('analyzeDocImpact', () => {
     const impacted: PackageImpact[] = [{ name: '@kb-labs/mind-engine', repo: 'plugins/mind', level: 'direct' }];
     const result = analyzeDocImpact(impacted, config);
     expect(result.reindex).toHaveLength(1);
-    expect(result.reindex[0].command).toBe('pnpm kb mind rag-index --scope default');
+    expect(result.reindex[0].command).toBe('pnpm kb mind index --scope default');
   });
 
   it('deduplicates matching docs', () => {

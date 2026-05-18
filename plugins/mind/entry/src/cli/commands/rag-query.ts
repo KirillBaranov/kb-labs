@@ -104,7 +104,7 @@ export default defineCommand({
         }
 
         ctx.ui.error('Provide --text "<query>" to run rag:query.');
-        ctx.ui.info('Use: kb mind rag-query --text "your query"');
+        ctx.ui.info('Use: kb mind search --text "your query"');
         ctx.ui.info('Add --scope to search in specific scope');
         ctx.ui.info('Add --intent to specify intent (summary, search, similar, nav)');
 

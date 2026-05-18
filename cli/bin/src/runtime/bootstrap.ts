@@ -14,6 +14,7 @@ import {
   renderManifestCommandHelp,
   renderProductHelp,
   registry,
+  generateCommandSchema,
   type RegisteredCommand,
 } from "@kb-labs/cli-commands";
 import type { Presenter } from "@kb-labs/cli-runtime";
@@ -302,6 +303,11 @@ export async function executeCli(
     case 'command': {
       const manifestCmd = routeResult.command;
       const actualRest = routeResult.rest;
+
+      if (flagsObj['schema'] && manifestCmd.manifest.operationType) {
+        presenter.json(generateCommandSchema(manifestCmd.manifest));
+        return 0;
+      }
 
       if (global.help) {
         if (global.json) {

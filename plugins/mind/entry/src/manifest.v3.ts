@@ -110,47 +110,56 @@ export const manifest = {
     commands: [
       {
         path: 'mind init',
+        operationType: 'mutate' as const,
         describe: 'Initialize mind workspace',
         handler: './cli/commands/init.js#default',
       },
       {
         path: 'mind verify',
+        operationType: 'analyze' as const,
         describe: 'Verify workspace consistency',
         handler: './cli/commands/verify.js#default',
       },
       {
         path: 'mind index',
+        operationType: 'execute' as const,
         describe: 'Build Mind indexes',
         handler: './cli/commands/rag-index.js#default',
       },
       {
         path: 'mind search',
+        operationType: 'read' as const,
         describe: 'Run semantic search query',
         handler: './cli/commands/rag-query.js#default',
       },
       // Sync subgroup commands
       {
         path: 'mind sync add',
+        operationType: 'mutate' as const,
         describe: 'Add document to sync',
         handler: './cli/commands/sync-add.js#default',
       },
       {
         path: 'mind sync update',
+        operationType: 'mutate' as const,
         describe: 'Update synced document',
         handler: './cli/commands/sync-update.js#default',
       },
       {
         path: 'mind sync delete',
+        operationType: 'mutate' as const,
         describe: 'Delete synced document',
         handler: './cli/commands/sync-delete.js#default',
       },
       {
         path: 'mind sync list',
+        operationType: 'read' as const,
         describe: 'List synced documents',
         handler: './cli/commands/sync-list.js#default',
       },
       {
         path: 'mind sync status',
+        operationType: 'read' as const,
         describe: 'Show sync status',
         handler: './cli/commands/sync-status.js#default',
       },

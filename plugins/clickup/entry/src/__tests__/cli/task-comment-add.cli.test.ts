@@ -21,7 +21,7 @@ beforeEach(() => {
   vi.mocked(requireApiKey).mockReturnValue('test-api-key');
 });
 
-describe('clickup:task.comment.add', () => {
+describe('clickup:task comments add', () => {
   it('TCA-01: adds a comment and prints success', async () => {
     vi.mocked(addTaskComment).mockResolvedValue(mockComment);
 

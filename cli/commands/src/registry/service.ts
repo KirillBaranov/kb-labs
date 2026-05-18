@@ -15,6 +15,7 @@ import {
   type RegistryDiagnostics,
 } from './trie-router';
 import type { Command as SystemCommand, CommandGroup as SystemGroup } from '@kb-labs/shared-command-kit';
+import { getArchetypeFlags, schemaFlag } from './archetype-flags.js';
 
 // ─── Validation ───────────────────────────────────────────────────────────────
 
@@ -91,6 +92,19 @@ export class TrieBackedRegistry {
       this.logger.warn(`[registry] Plugin "${pkg}" tried to register "${segs.join(' ')}" but it collides with a system command. Command will be shadowed.`);
       cmd.shadowed = true;
       return;
+    }
+
+    // ── Archetype flag injection (opt-in via operationType) ───────────────────
+    if (cmd.manifest.operationType) {
+      const injected = getArchetypeFlags(cmd.manifest.operationType, cmd.manifest.flags ?? []);
+      if (injected.length > 0) {
+        cmd.manifest.flags = [...(cmd.manifest.flags ?? []), ...injected];
+      }
+    }
+
+    // ── --schema flag (all commands with operationType) ───────────────────────
+    if (cmd.manifest.operationType && !cmd.manifest.flags?.some(f => f.name === 'schema')) {
+      cmd.manifest.flags = [...(cmd.manifest.flags ?? []), schemaFlag];
     }
 
     // ── Namespace ownership — 1 manifest = 1 namespace (ADR-0018) ─────────────

@@ -173,6 +173,15 @@ export interface CliCommandDecl {
   category?: string;
   /** Alternative full paths for this command (e.g., ['cu task search']) */
   aliases?: string[];
+  /**
+   * Opt-in command archetype. Declaring it enables automatic flag injection
+   * (standard flags for the archetype) and `--schema` output generation.
+   *   read    → --output, --limit, --offset
+   *   mutate  → --output, --dry-run, --yes
+   *   execute → --output, --wait, --watch, --timeout, --yes
+   *   analyze → --output, --format, --stream
+   */
+  operationType?: 'read' | 'mutate' | 'execute' | 'analyze';
 }
 
 /**
