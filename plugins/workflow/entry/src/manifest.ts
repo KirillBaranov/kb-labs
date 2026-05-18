@@ -59,6 +59,8 @@ export const manifest = {
   cli: {
     groupMeta: [
       { path: 'workflow', describe: 'Workflow daemon commands' },
+      { path: 'workflow runs', describe: 'Workflow run management (list, view, watch, rerun)' },
+      { path: 'workflow job', describe: 'Raw job execution' },
     ],
     commands: [
       {
@@ -125,7 +127,7 @@ export const manifest = {
         ],
       },
       {
-        path: 'workflow job-run',
+        path: 'workflow job run',
         category: 'Jobs',
         describe: 'Submit a raw job for execution.',
         longDescription:
@@ -134,14 +136,14 @@ export const manifest = {
         handler: './commands/run.js#default',
         flags: defineCommandFlags(runFlags),
         examples: [
-          'kb workflow job-run --handler=mind:rag-query --input=\'{"text":"test"}\'',
-          'kb workflow job-run --handler=mind:rag-query --input=\'{"text":"test"}\' --wait',
-          'kb workflow job-run --handler=mind:rag-query --input=\'{"text":"test"}\' --priority=8',
-          'kb workflow job-run --handler=mind:rag-query --input=\'{"text":"test"}\' --json',
+          'kb workflow job run --handler=mind:search --input=\'{"text":"test"}\'',
+          'kb workflow job run --handler=mind:search --input=\'{"text":"test"}\' --wait',
+          'kb workflow job run --handler=mind:search --input=\'{"text":"test"}\' --priority=8',
+          'kb workflow job run --handler=mind:search --input=\'{"text":"test"}\' --json',
         ],
       },
       {
-        path: 'workflow runs-list',
+        path: 'workflow runs list',
         category: 'Runs',
         describe: 'List workflow runs.',
         longDescription:
@@ -150,14 +152,14 @@ export const manifest = {
         handler: './commands/runs-list.js#default',
         flags: defineCommandFlags(runsListFlags),
         examples: [
-          'kb workflow runs-list',
-          'kb workflow runs-list --status=failed',
-          'kb workflow runs-list --status=failed --limit=5',
-          'kb workflow runs-list --workflow=my-workflow --json',
+          'kb workflow runs list',
+          'kb workflow runs list --status=failed',
+          'kb workflow runs list --status=failed --limit=5',
+          'kb workflow runs list --workflow=my-workflow --json',
         ],
       },
       {
-        path: 'workflow runs-view',
+        path: 'workflow runs view',
         category: 'Runs',
         describe: 'View run details for incident investigation.',
         longDescription:
@@ -167,15 +169,15 @@ export const manifest = {
         handler: './commands/runs-view.js#default',
         flags: defineCommandFlags(runsViewFlags),
         examples: [
-          'kb workflow runs-view <runId>',
-          'kb workflow runs-view <runId> --log-failed',
-          'kb workflow runs-view <runId> --log',
-          'kb workflow runs-view <runId> --json=status,jobs',
-          'kb workflow runs-view <runId> --json=all',
+          'kb workflow runs view <runId>',
+          'kb workflow runs view <runId> --log-failed',
+          'kb workflow runs view <runId> --log',
+          'kb workflow runs view <runId> --json=status,jobs',
+          'kb workflow runs view <runId> --json=all',
         ],
       },
       {
-        path: 'workflow runs-watch',
+        path: 'workflow runs watch',
         category: 'Runs',
         describe: 'Stream workflow run events in real-time.',
         longDescription:
@@ -183,10 +185,10 @@ export const manifest = {
           'Automatically exits when the run finishes.',
         handler: './commands/runs-watch.js#default',
         flags: defineCommandFlags(runsWatchFlags),
-        examples: ['kb workflow runs-watch <runId>', 'kb workflow runs-watch <runId> --json'],
+        examples: ['kb workflow runs watch <runId>', 'kb workflow runs watch <runId> --json'],
       },
       {
-        path: 'workflow runs-rerun',
+        path: 'workflow runs rerun',
         category: 'Runs',
         describe: 'Rerun a workflow run.',
         longDescription:
@@ -195,9 +197,9 @@ export const manifest = {
         handler: './commands/runs-rerun.js#default',
         flags: defineCommandFlags(runsRerunFlags),
         examples: [
-          'kb workflow runs-rerun <runId>',
-          'kb workflow runs-rerun <runId> --failed-only',
-          'kb workflow runs-rerun <runId> --json',
+          'kb workflow runs rerun <runId>',
+          'kb workflow runs rerun <runId> --failed-only',
+          'kb workflow runs rerun <runId> --json',
         ],
       },
       {

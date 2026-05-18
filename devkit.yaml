@@ -695,6 +695,15 @@ custom_checks:
     on: [check]
     categories: [plugin-entry]
 
+  # CLI manifest naming conventions (ADR-0018, docs/plans/cli-naming-audit.md)
+  # Rules: no kebab in path segments, no reserved namespaces, single-word top-level.
+  # Known violations are tracked in KNOWN_VIOLATIONS inside the script — warnings only.
+  # Remove from allowlist as commands are renamed.
+  - name: cli-naming
+    run: node scripts/checks/check-cli-naming.mjs
+    on: [check]
+    categories: [plugin-entry]
+
 # ──────────────────────────────────────────────────────────────────────────────
 # COVERAGE THRESHOLDS
 # Enforced by: node scripts/merge-coverage.mjs --check

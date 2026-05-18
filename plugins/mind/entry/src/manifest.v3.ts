@@ -105,6 +105,7 @@ export const manifest = {
   cli: {
     groupMeta: [
       { path: 'mind', describe: 'AI code search and RAG commands' },
+      { path: 'mind sync', describe: 'Document sync management (add, update, delete, list, status)' },
     ],
     commands: [
       {
@@ -118,38 +119,38 @@ export const manifest = {
         handler: './cli/commands/verify.js#default',
       },
       {
-        path: 'mind rag-index',
+        path: 'mind index',
         describe: 'Build Mind indexes',
         handler: './cli/commands/rag-index.js#default',
       },
       {
-        path: 'mind rag-query',
-        describe: 'Run semantic RAG query',
+        path: 'mind search',
+        describe: 'Run semantic search query',
         handler: './cli/commands/rag-query.js#default',
       },
-      // Sync commands (5 separate commands instead of subcommands)
+      // Sync subgroup commands
       {
-        path: 'mind sync-add',
+        path: 'mind sync add',
         describe: 'Add document to sync',
         handler: './cli/commands/sync-add.js#default',
       },
       {
-        path: 'mind sync-update',
+        path: 'mind sync update',
         describe: 'Update synced document',
         handler: './cli/commands/sync-update.js#default',
       },
       {
-        path: 'mind sync-delete',
+        path: 'mind sync delete',
         describe: 'Delete synced document',
         handler: './cli/commands/sync-delete.js#default',
       },
       {
-        path: 'mind sync-list',
+        path: 'mind sync list',
         describe: 'List synced documents',
         handler: './cli/commands/sync-list.js#default',
       },
       {
-        path: 'mind sync-status',
+        path: 'mind sync status',
         describe: 'Show sync status',
         handler: './cli/commands/sync-status.js#default',
       },

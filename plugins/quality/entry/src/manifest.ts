@@ -64,7 +64,11 @@ export const manifest = {
   },
 
   cli: {
-    groupMeta: [{ path: 'quality', describe: 'Code quality, architecture analysis, and trend tracking.' }],
+    groupMeta: [
+      { path: 'quality', describe: 'Code quality, architecture analysis, and trend tracking.' },
+      { path: 'quality check', describe: 'Static analysis checks (layers, types, builds, tests)' },
+      { path: 'quality fix', describe: 'Auto-fix quality issues' },
+    ],
     commands: [
       // ── Overview ────────────────────────────────────────────────────────────
       {
@@ -134,12 +138,12 @@ export const manifest = {
 
       // ── Architecture ─────────────────────────────────────────────────────────
       {
-        path: 'quality check-layers',
+        path: 'quality check layers',
         category: 'Architecture',
         describe: 'Detect layering violations (lower layer importing higher layer)',
         handler: './cli/commands/check-layers.js#default',
         flags: defineCommandFlags(checkLayersFlags),
-        examples: ['kb quality check-layers', 'kb quality check-layers --json', 'kb quality check-layers --package @kb-labs/plugins-qa'],
+        examples: ['kb quality check layers', 'kb quality check layers --json', 'kb quality check layers --package @kb-labs/plugins-qa'],
         permissions: pluginPermissions,
       },
       {
@@ -152,12 +156,12 @@ export const manifest = {
         permissions: pluginPermissions,
       },
       {
-        path: 'quality build-order',
+        path: 'quality build order',
         category: 'Architecture',
         describe: 'Topological build order',
         handler: './cli/commands/build-order.js#default',
         flags: defineCommandFlags(buildOrderFlags),
-        examples: ['kb quality build-order', 'kb quality build-order --json'],
+        examples: ['kb quality build order', 'kb quality build order --json'],
         permissions: pluginPermissions,
       },
       {
@@ -172,48 +176,48 @@ export const manifest = {
 
       // ── Checks ───────────────────────────────────────────────────────────────
       {
-        path: 'quality dead-code',
+        path: 'quality dead code',
         category: 'Checks',
         describe: 'Detect unused files, exports, and deps via knip',
         handler: './cli/commands/dead-code.js#default',
         flags: defineCommandFlags(deadCodeFlags),
-        examples: ['kb quality dead-code', 'kb quality dead-code --json'],
+        examples: ['kb quality dead code', 'kb quality dead code --json'],
         permissions: pluginPermissions,
       },
       {
-        path: 'quality check-types',
+        path: 'quality check types',
         category: 'Checks',
         describe: 'TypeScript type safety analysis (any count, ts-ignore, errors)',
         handler: './cli/commands/check-types.js#default',
         flags: defineCommandFlags(checkTypesFlags),
-        examples: ['kb quality check-types', 'kb quality check-types --json'],
+        examples: ['kb quality check types', 'kb quality check types --json'],
         permissions: heavyPermissions,
       },
       {
-        path: 'quality check-builds',
+        path: 'quality check builds',
         category: 'Checks',
         describe: 'Build status across monorepo',
         handler: './cli/commands/check-builds.js#default',
         flags: defineCommandFlags(checkBuildsFlags),
-        examples: ['kb quality check-builds', 'kb quality check-builds --json'],
+        examples: ['kb quality check builds', 'kb quality check builds --json'],
         permissions: heavyPermissions,
       },
       {
-        path: 'quality check-tests',
+        path: 'quality check tests',
         category: 'Checks',
         describe: 'Run tests and track coverage',
         handler: './cli/commands/check-tests.js#default',
         flags: defineCommandFlags(checkTestsFlags),
-        examples: ['kb quality check-tests', 'kb quality check-tests --with-coverage'],
+        examples: ['kb quality check tests', 'kb quality check tests --with-coverage'],
         permissions: heavyPermissions,
       },
       {
-        path: 'quality fix-deps',
+        path: 'quality fix deps',
         category: 'Fixes',
         describe: 'Auto-fix dependency issues',
         handler: './cli/commands/fix-deps.js#default',
         flags: defineCommandFlags(fixDepsFlags),
-        examples: ['kb quality fix-deps --dry-run', 'kb quality fix-deps --all'],
+        examples: ['kb quality fix deps --dry-run', 'kb quality fix deps --all'],
         permissions: pluginPermissions,
       },
       {

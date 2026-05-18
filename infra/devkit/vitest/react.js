@@ -33,12 +33,11 @@ export default defineConfig({
         '**/*.config.ts',
         '**/*.config.js'
       ],
-      thresholds: {
-        statements: 90,
-        branches: 85,
-        functions: 90,
-        lines: 90
-      }
+      // No global thresholds in the preset — enforce per-package via
+      // devkit.yaml coverage.categories/thresholds (current floors,
+      // raised quarterly). The previous 90/85/90/90 values broke every
+      // consumer that wasn't already at target, with no migration path.
+      thresholds: {}
     }
   }
 })

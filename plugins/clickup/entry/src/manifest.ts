@@ -23,11 +23,12 @@ export const manifest = {
 
   cli: {
     groupMeta: [
-      { path: 'clickup',        describe: 'ClickUp task management' },
-      { path: 'clickup task',   describe: 'Task operations' },
-      { path: 'clickup list',   describe: 'List operations' },
-      { path: 'clickup space',  describe: 'Space operations' },
-      { path: 'clickup folder', describe: 'Folder operations' },
+      { path: 'clickup',                describe: 'ClickUp task management' },
+      { path: 'clickup task',           describe: 'Task operations' },
+      { path: 'clickup task comments',  describe: 'Task comment operations' },
+      { path: 'clickup list',           describe: 'List operations' },
+      { path: 'clickup space',          describe: 'Space operations' },
+      { path: 'clickup folder',         describe: 'Folder operations' },
     ],
     commands: [
       // ── Workspace ────────────────────────────────────────────────────────────
@@ -139,7 +140,7 @@ export const manifest = {
 
       // ── Comments ─────────────────────────────────────────────────────────────
       {
-        path: 'clickup task comment-list',
+        path: 'clickup task comments list',
         category: 'Comments',
         describe: 'List comments on a task',
         handler: './commands/task-comment-list.js#default',
@@ -148,12 +149,12 @@ export const manifest = {
           { name: 'full', type: 'boolean', description: 'Output full raw JSON (requires --json)' },
         ],
         examples: [
-          'kb clickup task comment-list abc123',
-          'kb clickup task comment-list abc123 --json',
+          'kb clickup task comments list abc123',
+          'kb clickup task comments list abc123 --json',
         ],
       },
       {
-        path: 'clickup task comment-add',
+        path: 'clickup task comments add',
         category: 'Comments',
         describe: 'Add a comment to a task',
         handler: './commands/task-comment-add.js#default',
@@ -165,7 +166,7 @@ export const manifest = {
           { name: 'full',    type: 'boolean', description: 'Output full raw JSON (requires --json)' },
         ],
         examples: [
-          'kb clickup task comment-add abc123 --text "Fixed in branch feature/x"',
+          'kb clickup task comments add abc123 --text "Fixed in branch feature/x"',
         ],
       },
 
