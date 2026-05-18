@@ -12,6 +12,7 @@ type TaskUpdateFlags = {
   due?: string;
   json?: boolean;
   full?: boolean;
+  'dry-run'?: boolean;
 };
 
 function parseDue(due: string): number | null {
@@ -28,6 +29,22 @@ export default defineCommand({
   description: 'Update an existing task',
 
   handler: {
+    async intent(_ctx: PluginContextV3, input: CLIInput<TaskUpdateFlags>) {
+      const [taskId] = input.argv;
+      const skipKeys = new Set(['json', 'full', 'dry-run', 'yes', 'output']);
+      const changes = Object.entries(input.flags)
+        .filter(([k, v]) => !skipKeys.has(k) && v !== undefined)
+        .map(([k, v]) => `${k}=${JSON.stringify(v)}`);
+      return {
+        summary: `Update task ${taskId ?? '(unknown)'}`,
+        operations: [{
+          type: 'update' as const,
+          resource: 'task',
+          details: { taskId, changes },
+        }],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: CLIInput<TaskUpdateFlags>) {
       const [taskId] = input.argv;
       if (!taskId) {

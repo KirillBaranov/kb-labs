@@ -14,7 +14,7 @@ cd /Users/kirillbaranov/Desktop/kb-labs
 pnpm kb marketplace plugins refresh
 
 # Актуализировать индекс
-pnpm kb mind rag-index
+pnpm kb mind index
 
 # Быстрый прогон (thinking)
 node ./kb-labs-mind/packages/mind-engine/scripts/run-quality-eval.mjs

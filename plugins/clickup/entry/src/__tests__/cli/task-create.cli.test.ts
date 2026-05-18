@@ -6,7 +6,7 @@ vi.mock('@kb-labs/clickup-core', () => ({
   requireApiKey: vi.fn().mockReturnValue('test-api-key'),
   createTask: vi.fn(),
   ClickUpApiError: class ClickUpApiError extends Error {
-    constructor(public message: string, public status: number, public code: string) {
+    constructor(public override message: string, public status: number, public code: string) {
       super(message);
     }
   },
@@ -76,7 +76,7 @@ describe('clickup:task.create', () => {
     const ctx = createMockContext({ ui });
     const result = await taskCreateCommand.execute(
       ctx,
-      mockCLIInput({ flags: { name: 'My Task' } }),
+      mockCLIInput({ flags: { name: 'My Task' } }) as Parameters<typeof taskCreateCommand.execute>[1],
     );
 
     expect(result.exitCode).toBe(1);
@@ -88,11 +88,25 @@ describe('clickup:task.create', () => {
     const ctx = createMockContext({ ui });
     const result = await taskCreateCommand.execute(
       ctx,
-      mockCLIInput({ flags: { list: 'list-1' } }),
+      mockCLIInput({ flags: { list: 'list-1' } }) as Parameters<typeof taskCreateCommand.execute>[1],
     );
 
     expect(result.exitCode).toBe(1);
     expect(captured.errors.length).toBeGreaterThan(0);
+  });
+
+  it('TC-08: --dry-run shows intent, createTask is NOT called', async () => {
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await taskCreateCommand.execute(
+      ctx,
+      mockCLIInput({ flags: { list: 'list-1', name: 'My Task', 'dry-run': true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(vi.mocked(createTask)).not.toHaveBeenCalled();
+    expect(captured.infos[0]?.message).toContain('Dry-run');
+    expect(captured.infos[0]?.message).toContain('My Task');
   });
 
   it('TC-05: core error returns exitCode 1', async () => {

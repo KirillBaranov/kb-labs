@@ -66,6 +66,7 @@ export const manifest = {
       {
         path: 'workflow health',
         category: 'Daemon',
+        operationType: 'read' as const,
         describe: 'Check workflow daemon health status.',
         longDescription:
           'Performs a health check on the workflow daemon by making an HTTP request to /health endpoint. ' +
@@ -77,6 +78,7 @@ export const manifest = {
       {
         path: 'workflow metrics',
         category: 'Daemon',
+        operationType: 'read' as const,
         describe: 'Get workflow daemon metrics.',
         longDescription:
           'Fetches comprehensive metrics from the workflow daemon including total runs, queued jobs, ' +
@@ -88,6 +90,7 @@ export const manifest = {
       {
         path: 'workflow status',
         category: 'Jobs',
+        operationType: 'read' as const,
         describe: 'Get status of a specific workflow job.',
         longDescription:
           'Retrieves detailed status information for a specific job by ID, including current state, ' +
@@ -99,6 +102,7 @@ export const manifest = {
       {
         path: 'workflow logs',
         category: 'Jobs',
+        operationType: 'read' as const,
         describe: 'Get logs for a specific workflow job.',
         longDescription:
           'Fetches execution logs for a specific job by ID.',
@@ -113,6 +117,7 @@ export const manifest = {
       {
         path: 'workflow list',
         category: 'Jobs',
+        operationType: 'read' as const,
         describe: 'List active workflow executions.',
         longDescription:
           'Lists all currently active workflow executions or cron jobs. Can be filtered by status (running, queued, ' +
@@ -129,6 +134,7 @@ export const manifest = {
       {
         path: 'workflow job run',
         category: 'Jobs',
+        operationType: 'execute' as const,
         describe: 'Submit a raw job for execution.',
         longDescription:
           'Submits a job to the workflow daemon for execution. Requires a handler (plugin command) and ' +
@@ -145,6 +151,7 @@ export const manifest = {
       {
         path: 'workflow runs list',
         category: 'Runs',
+        operationType: 'read' as const,
         describe: 'List workflow runs.',
         longDescription:
           'Lists workflow runs with status, trigger, and duration. Filter by status (failed, running, success) ' +
@@ -161,6 +168,7 @@ export const manifest = {
       {
         path: 'workflow runs view',
         category: 'Runs',
+        operationType: 'read' as const,
         describe: 'View run details for incident investigation.',
         longDescription:
           'Shows full run details: jobs, steps, resolvedInputs, gate decisions, errors. ' +
@@ -179,6 +187,7 @@ export const manifest = {
       {
         path: 'workflow runs watch',
         category: 'Runs',
+        operationType: 'execute' as const,
         describe: 'Stream workflow run events in real-time.',
         longDescription:
           'Connects to the run event stream via SSE and prints events as they happen. ' +
@@ -190,6 +199,7 @@ export const manifest = {
       {
         path: 'workflow runs rerun',
         category: 'Runs',
+        operationType: 'mutate' as const,
         describe: 'Rerun a workflow run.',
         longDescription:
           'Reruns a workflow by re-submitting it with the same inputs. ' +
@@ -205,6 +215,7 @@ export const manifest = {
       {
         path: 'workflow run',
         category: 'Runs',
+        operationType: 'execute' as const,
         describe: 'Run workflow by ID.',
         longDescription:
           'Runs a workflow definition by workflow ID via /api/v1/workflows/:id/run endpoint. ' +

@@ -14,6 +14,14 @@ export default defineCommand({
   description: 'Create a new folder in a space',
 
   handler: {
+    async intent(_ctx: PluginContextV3, input: CLIInput<FolderCreateFlags>) {
+      const { space, name } = input.flags;
+      return {
+        summary: `Create folder "${name ?? '(unnamed)'}" in space ${space ?? '(unknown)'}`,
+        operations: [{ type: 'create' as const, resource: 'folder', details: { space, name } }],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: CLIInput<FolderCreateFlags>) {
       const { space, name, json, full } = input.flags;
       if (!space) {

@@ -146,6 +146,21 @@ describe('workspace:register', () => {
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
+  it('CR-09: --dry-run shows intent, fetch and writeFile are NOT called', async () => {
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await registerCommand.execute(
+      ctx,
+      mockCLIInput({ flags: { gateway: VALID_GATEWAY, workspace: ['/tmp'], 'dry-run': true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(vi.mocked(fetch)).not.toHaveBeenCalled();
+    expect(vi.mocked(writeFile)).not.toHaveBeenCalled();
+    expect(captured.infos[0]?.message).toContain('Dry-run');
+    expect(captured.infos[0]?.message).toContain(VALID_GATEWAY);
+  });
+
   it('CR-08: gateway response missing required fields — exitCode 1', async () => {
     vi.mocked(fetch).mockResolvedValue({
       ok: true,

@@ -35,6 +35,7 @@ export const manifest = {
       {
         path: 'clickup workspace',
         category: 'Workspace',
+        operationType: 'read' as const,
         describe: 'Show full workspace hierarchy (spaces → folders → lists)',
         handler: './commands/workspace.js#default',
         flags: [
@@ -52,6 +53,7 @@ export const manifest = {
       {
         path: 'clickup task search',
         category: 'Tasks',
+        operationType: 'read' as const,
         describe: 'Search tasks across the workspace',
         handler: './commands/task-search.js#default',
         flags: [
@@ -71,6 +73,7 @@ export const manifest = {
       {
         path: 'clickup task get',
         category: 'Tasks',
+        operationType: 'read' as const,
         describe: 'Get full task details including comments',
         handler: './commands/task-get.js#default',
         flags: [
@@ -85,6 +88,7 @@ export const manifest = {
       {
         path: 'clickup task create',
         category: 'Tasks',
+        operationType: 'mutate' as const,
         describe: 'Create a new task',
         handler: './commands/task-create.js#default',
         flags: [
@@ -106,6 +110,7 @@ export const manifest = {
       {
         path: 'clickup task update',
         category: 'Tasks',
+        operationType: 'mutate' as const,
         describe: 'Update an existing task',
         handler: './commands/task-update.js#default',
         flags: [
@@ -127,14 +132,15 @@ export const manifest = {
       {
         path: 'clickup task delete',
         category: 'Tasks',
+        operationType: 'mutate' as const,
         describe: 'Delete a task',
         handler: './commands/task-delete.js#default',
         flags: [
-          { name: 'force', type: 'boolean', description: 'Skip confirmation' },
-          { name: 'json',  type: 'boolean', description: 'Output raw JSON' },
+          { name: 'json', type: 'boolean', description: 'Output raw JSON' },
         ],
         examples: [
-          'kb clickup task delete abc123 --force',
+          'kb clickup task delete abc123 --yes',
+          'kb clickup task delete abc123 --dry-run',
         ],
       },
 
@@ -142,6 +148,7 @@ export const manifest = {
       {
         path: 'clickup task comments list',
         category: 'Comments',
+        operationType: 'read' as const,
         describe: 'List comments on a task',
         handler: './commands/task-comment-list.js#default',
         flags: [
@@ -156,6 +163,7 @@ export const manifest = {
       {
         path: 'clickup task comments add',
         category: 'Comments',
+        operationType: 'mutate' as const,
         describe: 'Add a comment to a task',
         handler: './commands/task-comment-add.js#default',
         flags: [
@@ -174,6 +182,7 @@ export const manifest = {
       {
         path: 'clickup space create',
         category: 'Spaces',
+        operationType: 'mutate' as const,
         describe: 'Create a new space',
         handler: './commands/space-create.js#default',
         flags: [
@@ -191,6 +200,7 @@ export const manifest = {
       {
         path: 'clickup space update',
         category: 'Spaces',
+        operationType: 'mutate' as const,
         describe: 'Update a space',
         handler: './commands/space-update.js#default',
         flags: [
@@ -206,6 +216,7 @@ export const manifest = {
       {
         path: 'clickup space delete',
         category: 'Spaces',
+        operationType: 'mutate' as const,
         describe: 'Delete a space',
         handler: './commands/space-delete.js#default',
         flags: [
@@ -221,6 +232,7 @@ export const manifest = {
       {
         path: 'clickup folder create',
         category: 'Folders',
+        operationType: 'mutate' as const,
         describe: 'Create a new folder in a space',
         handler: './commands/folder-create.js#default',
         flags: [
@@ -236,6 +248,7 @@ export const manifest = {
       {
         path: 'clickup folder update',
         category: 'Folders',
+        operationType: 'mutate' as const,
         describe: 'Rename a folder',
         handler: './commands/folder-update.js#default',
         flags: [
@@ -250,6 +263,7 @@ export const manifest = {
       {
         path: 'clickup folder delete',
         category: 'Folders',
+        operationType: 'mutate' as const,
         describe: 'Delete a folder',
         handler: './commands/folder-delete.js#default',
         flags: [
@@ -265,6 +279,7 @@ export const manifest = {
       {
         path: 'clickup list create',
         category: 'Lists',
+        operationType: 'mutate' as const,
         describe: 'Create a new list in a folder or space',
         handler: './commands/list-create.js#default',
         flags: [
@@ -282,6 +297,7 @@ export const manifest = {
       {
         path: 'clickup list update',
         category: 'Lists',
+        operationType: 'mutate' as const,
         describe: 'Update a list',
         handler: './commands/list-update.js#default',
         flags: [
@@ -296,6 +312,7 @@ export const manifest = {
       {
         path: 'clickup list delete',
         category: 'Lists',
+        operationType: 'mutate' as const,
         describe: 'Delete a list',
         handler: './commands/list-delete.js#default',
         flags: [
@@ -311,6 +328,7 @@ export const manifest = {
       {
         path: 'clickup list tasks',
         category: 'Lists',
+        operationType: 'read' as const,
         describe: 'List tasks in a specific list',
         handler: './commands/list-tasks.js#default',
         flags: [
@@ -330,6 +348,7 @@ export const manifest = {
       {
         path: 'clickup list statuses',
         category: 'Lists',
+        operationType: 'read' as const,
         describe: 'List available statuses for a list',
         handler: './commands/list-statuses.js#default',
         flags: [

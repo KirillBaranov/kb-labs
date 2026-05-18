@@ -47,7 +47,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('workflow:runs-watch', () => {
+describe('workflow:runs watch', () => {
   it('CW-01: missing runId — error message, exitCode 1', async () => {
     const { ui, captured } = createCapturedUI();
     const ctx = createMockContext({ ui });

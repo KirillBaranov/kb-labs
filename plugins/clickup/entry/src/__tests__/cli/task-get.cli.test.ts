@@ -7,7 +7,7 @@ vi.mock('@kb-labs/clickup-core', () => ({
   getTask: vi.fn(),
   getTaskComments: vi.fn(),
   ClickUpApiError: class ClickUpApiError extends Error {
-    constructor(public message: string, public status: number, public code: string) {
+    constructor(public override message: string, public status: number, public code: string) {
       super(message);
     }
   },

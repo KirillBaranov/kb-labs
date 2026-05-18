@@ -10,6 +10,7 @@ import { WorkflowDaemonClient } from '../http-client.js';
 interface RunsRerunFlags {
   json?: boolean;
   'failed-only'?: boolean;
+  'dry-run'?: boolean;
 }
 
 export default defineCommand<unknown, CLIInput<RunsRerunFlags>, { exitCode: number }>({
@@ -17,6 +18,15 @@ export default defineCommand<unknown, CLIInput<RunsRerunFlags>, { exitCode: numb
   description: 'Rerun a workflow run',
 
   handler: {
+    async intent(_ctx: PluginContextV3, input: CLIInput<RunsRerunFlags>) {
+      const runId = input.argv[0];
+      const failedOnly = input.flags?.['failed-only'];
+      return {
+        summary: `Rerun workflow run ${runId ?? '(unknown)'}${failedOnly ? ' (failed jobs only)' : ''}`,
+        operations: [{ type: 'create' as const, resource: 'workflow-run', details: { sourceRunId: runId, failedOnly } }],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: CLIInput<RunsRerunFlags>): Promise<{ exitCode: number }> {
       const { flags, argv = [] } = input;
       const outputJson = flags?.json ?? false;

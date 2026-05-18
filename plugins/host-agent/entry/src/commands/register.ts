@@ -3,19 +3,19 @@
  * Register this machine with a Platform Gateway and save credentials to ~/.kb/agent.json.
  */
 
-import { defineCommand, validationError, handleError, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, validationError, handleError, type PluginContextV3, type CLIInput } from '@kb-labs/sdk';
 import { writeFile, mkdir, stat } from 'node:fs/promises';
 import { join, resolve, normalize } from 'node:path';
 import { homedir, hostname } from 'node:os';
 
-type RegisterInput = {
-  gateway: string;
+interface RegisterFlags {
+  gateway?: string;
   name?: string;
   workspace?: string[];
   namespace?: string;
   json?: boolean;
-  flags?: RegisterInput;
-};
+  'dry-run'?: boolean;
+}
 
 type RegisterResult = {
   exitCode: number;
@@ -27,12 +27,25 @@ export default defineCommand({
   description: 'Register this machine with a Platform Gateway',
 
   handler: {
-    async execute(ctx: PluginContextV3, rawInput: RegisterInput): Promise<RegisterResult> {
-      const input: RegisterInput = rawInput.flags ?? rawInput;
-      const gatewayUrl = (input.gateway ?? '').replace(/\/$/, '');
-      const name = input.name ?? hostname();
-      const namespaceId = input.namespace ?? 'default';
-      const rawWorkspace = input.workspace;
+    async intent(_ctx: PluginContextV3, input: CLIInput<RegisterFlags>) {
+      const flags = input.flags;
+      const gatewayUrl = (flags.gateway ?? '').replace(/\/$/, '');
+      const name = flags.name ?? '(this machine)';
+      return {
+        summary: `Register workspace agent with Gateway ${gatewayUrl || '(unknown)'}`,
+        operations: [
+          { type: 'create' as const, resource: 'agent-credentials', details: { name, gateway: gatewayUrl } },
+          { type: 'create' as const, resource: 'file', details: { path: '~/.kb/agent.json' } },
+        ],
+      };
+    },
+
+    async execute(ctx: PluginContextV3, input: CLIInput<RegisterFlags>): Promise<RegisterResult> {
+      const flags = input.flags;
+      const gatewayUrl = (flags.gateway ?? '').replace(/\/$/, '');
+      const name = flags.name ?? hostname();
+      const namespaceId = flags.namespace ?? 'default';
+      const rawWorkspace = flags.workspace;
       const rawPaths = rawWorkspace
         ? (Array.isArray(rawWorkspace) ? rawWorkspace : [rawWorkspace as unknown as string])
         : [process.cwd()];
@@ -44,20 +57,20 @@ export default defineCommand({
         let pathStat: Awaited<ReturnType<typeof stat>> | null = null;
         try { pathStat = await stat(resolved); } catch { /* will error below */ }
         if (!pathStat?.isDirectory()) {
-          validationError(ctx, `Workspace path does not exist or is not a directory: ${resolved}`, undefined, input.json);
+          validationError(ctx, `Workspace path does not exist or is not a directory: ${resolved}`, undefined, flags.json);
           return { exitCode: 1 };
         }
         workspacePaths.push(resolved);
       }
 
       if (!gatewayUrl) {
-        validationError(ctx, '--gateway is required', 'Usage: kb workspace:register --gateway http://localhost:4000', input.json);
+        validationError(ctx, '--gateway is required', 'Usage: kb workspace:register --gateway http://localhost:4000', flags.json);
         return { exitCode: 1 };
       }
 
       // Validate URL
       if (!gatewayUrl.startsWith('http://') && !gatewayUrl.startsWith('https://')) {
-        validationError(ctx, 'Invalid gateway URL — must start with http:// or https://', undefined, input.json);
+        validationError(ctx, 'Invalid gateway URL — must start with http:// or https://', undefined, flags.json);
         return { exitCode: 1 };
       }
 
@@ -72,14 +85,14 @@ export default defineCommand({
           body: JSON.stringify({ name, namespaceId, capabilities: ['filesystem', 'git', 'execution', 'search', 'shell'] }),
         });
       } catch (err) {
-        handleError(ctx, err instanceof Error ? new Error(`Failed to reach Gateway: ${err.message}`) : err, input.json);
+        handleError(ctx, err instanceof Error ? new Error(`Failed to reach Gateway: ${err.message}`) : err, flags.json);
         return { exitCode: 1 };
       }
 
       if (!res.ok) {
         const rawBody = await res.text().catch(() => '');
         const body = rawBody.slice(0, 200).replace(/[\r\n]/g, ' ');
-        handleError(ctx, new Error(`Gateway returned ${res.status}: ${body}`), input.json);
+        handleError(ctx, new Error(`Gateway returned ${res.status}: ${body}`), flags.json);
         return { exitCode: 1 };
       }
 
@@ -87,19 +100,19 @@ export default defineCommand({
       try {
         data = await res.json() as typeof data;
       } catch {
-        handleError(ctx, new Error('Gateway response is not valid JSON'), input.json);
+        handleError(ctx, new Error('Gateway response is not valid JSON'), flags.json);
         return { exitCode: 1 };
       }
 
       if (!data.clientId || !data.clientSecret || !data.hostId) {
-        handleError(ctx, new Error('Gateway response is missing required fields (clientId, clientSecret, hostId)'), input.json);
+        handleError(ctx, new Error('Gateway response is missing required fields (clientId, clientSecret, hostId)'), flags.json);
         return { exitCode: 1 };
       }
 
       // Format validation — secrets must be non-empty strings with safe characters only
       const SECRET_PATTERN = /^[A-Za-z0-9_\-+/=]{16,}$/;
       if (typeof data.clientSecret !== 'string' || !SECRET_PATTERN.test(data.clientSecret)) {
-        handleError(ctx, new Error('Gateway returned an invalid client secret (unexpected format)'), input.json);
+        handleError(ctx, new Error('Gateway returned an invalid client secret (unexpected format)'), flags.json);
         return { exitCode: 1 };
       }
 
@@ -124,7 +137,7 @@ export default defineCommand({
 
       await writeFile(configPath, JSON.stringify(agentConfig, null, 2), { mode: 0o600 });
 
-      if (input.json) {
+      if (flags.json) {
         ctx.ui?.json?.({ configPath, hostId: data.hostId, clientId: data.clientId });
       } else {
         ctx.ui?.success?.('Workspace Agent registered', {

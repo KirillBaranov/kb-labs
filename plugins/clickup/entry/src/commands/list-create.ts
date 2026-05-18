@@ -8,6 +8,7 @@ type ListCreateFlags = {
   name: string;
   json?: boolean;
   full?: boolean;
+  'dry-run'?: boolean;
 };
 
 export default defineCommand({
@@ -15,6 +16,15 @@ export default defineCommand({
   description: 'Create a new list in a folder or space',
 
   handler: {
+    async intent(_ctx: PluginContextV3, input: CLIInput<ListCreateFlags>) {
+      const { folder, space, name } = input.flags;
+      const parent = folder ? `folder ${folder}` : space ? `space ${space}` : '(unknown)';
+      return {
+        summary: `Create list "${name}" in ${parent}`,
+        operations: [{ type: 'create' as const, resource: 'list', details: { folder, space, name } }],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: CLIInput<ListCreateFlags>) {
       const { folder, space, name, json, full } = input.flags;
       if (!name) {

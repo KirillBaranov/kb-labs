@@ -461,6 +461,7 @@ async function loadManifest(manifestPath: string, pkgName: string, pkgRoot?: str
       examples: cmd.examples,
       loader: createManifestV3Loader(cmd.path),
       package: pkgName,
+      operationType: cmd.operationType,
     };
     commandManifest.manifestV2 = manifest;
     commandManifest.pkgRoot = baseRoot;

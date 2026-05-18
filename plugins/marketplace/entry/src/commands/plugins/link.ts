@@ -6,6 +6,7 @@ import { resolveCliScope, scopeBody, CliScopeError } from '../../scope.js';
 interface LinkFlags {
   scope?: string;
   json?: boolean;
+  'dry-run'?: boolean;
 }
 
 interface LinkInput {
@@ -27,6 +28,14 @@ export default defineCommand<unknown, LinkInput, { id: string; scope: string }>(
   description: 'Link a local plugin for development',
 
   handler: {
+    async intent(_ctx: PluginContextV3, input: LinkInput) {
+      const pluginPath = input.argv?.[0] ?? '(unknown)';
+      return {
+        summary: `Link local plugin at "${pluginPath}"`,
+        operations: [{ type: 'create' as const, resource: 'plugin-link', details: { path: pluginPath } }],
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: LinkInput): Promise<CommandResult<{ id: string; scope: string }>> {
       const pluginPath = input.argv?.[0];
       const flags = (input.flags ?? input) as LinkFlags;

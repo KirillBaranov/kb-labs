@@ -83,7 +83,7 @@ describe('clickup:folder.create', () => {
     const ctx = createMockContext({ ui });
     const result = await folderCreateCommand.execute(
       ctx,
-      mockCLIInput({ flags: { name: 'My Folder' } }),
+      mockCLIInput({ flags: { name: 'My Folder' } }) as Parameters<typeof folderCreateCommand.execute>[1],
     );
 
     expect(result.exitCode).toBe(1);
@@ -95,7 +95,7 @@ describe('clickup:folder.create', () => {
     const ctx = createMockContext({ ui });
     const result = await folderCreateCommand.execute(
       ctx,
-      mockCLIInput({ flags: { space: 'space-1' } }),
+      mockCLIInput({ flags: { space: 'space-1' } }) as Parameters<typeof folderCreateCommand.execute>[1],
     );
 
     expect(result.exitCode).toBe(1);
@@ -114,5 +114,19 @@ describe('clickup:folder.create', () => {
 
     expect(result.exitCode).toBe(1);
     expect(captured.errors.length).toBeGreaterThan(0);
+  });
+
+  it('FC-06: --dry-run shows intent, createFolder is NOT called', async () => {
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await folderCreateCommand.execute(
+      ctx,
+      mockCLIInput({ flags: { space: 'space-1', name: 'My Folder', 'dry-run': true } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(vi.mocked(createFolder)).not.toHaveBeenCalled();
+    expect(captured.infos[0]?.message).toContain('Dry-run');
+    expect(captured.infos[0]?.message).toContain('My Folder');
   });
 });

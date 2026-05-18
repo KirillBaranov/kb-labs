@@ -112,7 +112,7 @@ cp docs/plans/plan-template.md docs/plans/2026-03-17-add-retry.md
 
 ```bash
 # 1. Поиск кода
-pnpm kb mind rag-query --text "где реализован X?" --agent
+pnpm kb mind search --text "где реализован X?" --agent
 
 # 2. Правки в суб-репо
 cd plugins/kb-labs-mind

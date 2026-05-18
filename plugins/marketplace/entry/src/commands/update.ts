@@ -5,6 +5,7 @@ import { resolveCliScope, scopeBody, CliScopeError } from '../scope.js';
 interface UpdateFlags {
   json?: boolean;
   scope?: string;
+  'dry-run'?: boolean;
 }
 
 interface UpdateInput {
@@ -29,6 +30,19 @@ export default defineCommand<unknown, UpdateInput, UpdateResultData>({
   description: 'Update marketplace package(s)',
 
   handler: {
+    async intent(_ctx: PluginContextV3, input: UpdateInput) {
+      const argv = input.argv ?? [];
+      const targets = argv.length > 0 ? argv : ['all installed packages'];
+      return {
+        summary: `Update ${targets.join(', ')}`,
+        operations: targets.map(pkg => ({
+          type: 'update' as const,
+          resource: 'marketplace-package',
+          details: { package: pkg },
+        })),
+      };
+    },
+
     async execute(ctx: PluginContextV3, input: UpdateInput): Promise<CommandResult<UpdateResultData>> {
       const argv = input.argv ?? [];
       const flags = (input.flags ?? input) as UpdateFlags;
