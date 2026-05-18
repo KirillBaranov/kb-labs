@@ -298,6 +298,56 @@ Next push exercises warm Verdaccio cache — expected Publish ~10s.
 proceeds as planned — not for wall-clock (already in target) but for
 failure isolation and scalability headroom.
 
+### Phase 3 — matrix sharding by suite (validated)
+
+Run `26025333657` — first matrix run, 8 shards + aggregator:
+
+| Shard | Time | | Shard | Time |
+|---|---:|---|---|---:|
+| studio | 485s | | gateway | 338s |
+| marketplace | 444s | | platform | 335s |
+| workflows | 417s | | services | 329s |
+| plugins | 387s | | marketplace-registry | 328s |
+| | | | aggregator | 2s |
+
+**Wall-clock: 8m11s.** All 8 suites green, 0 retries, aggregator green.
+
+This is **~1.5 min worse than the single-job baseline (6.6 min)**, not
+better — sharding paid the cost we expected. The longest shard's
+breakdown explains where:
+
+- Build platform image: 97s (vs ~65s single-job)
+- Cache Docker layers (platform) restore: 82s (vs ~35s single-job)
+
+Eight shards pulling the same ~500 MB buildx cache concurrently doubles
+the per-shard restore time; the platform Dockerfile build also runs
+8 times in parallel rather than once. That ~80s × 8 setup tax is the
+unavoidable cost of "each shard runs the full pipeline" sharding.
+
+**What we gained:** failure isolation (one bad shard no longer hides
+others), per-suite visible status checks, GitHub UI re-run-only-failed
+shard for ~5 min instead of 8.
+
+**What we lost:** ~1.5 min wall-clock, ~8× compute-minutes. Acceptable
+on public OSS (GH-hosted runners are free for this repo) and worth the
+isolation in the team's daily workflow.
+
+**Cumulative trajectory:**
+
+| State | Wall-clock | Compute-min | Failure isolation |
+|---|---:|---:|---|
+| Baseline | ~20 min | ~22 | ❌ |
+| Phase 1–2.5 (single job) | ~6.6 min | ~7 | ❌ |
+| **Phase 3 (8-shard matrix)** | **~8 min** | **~65** | **✅** |
+
+### Potential Phase 4 (optional, not implemented)
+
+If wall-clock < 7 min becomes a hard requirement, the right next move
+is **build-once / test-many**: one `build` job produces a platform
+image artifact, the 8 test shards `docker load` it instead of
+rebuilding. Estimated wall-clock ~7 min, much lower compute. Deferred
+until there's a real wall-clock complaint — current matrix is fine.
+
 ### Validated learning
 
 - kb-devkit's `e2e` task was silently caching success across runs — a
