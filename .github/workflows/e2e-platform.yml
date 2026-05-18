@@ -35,10 +35,36 @@ permissions:
 
 jobs:
   e2e:
-    name: Platform E2E
+    # Phase 3 of ADR-0017: matrix sharding by suite.
+    # Each shard runs the FULL setup (build/pack/publish/platform-up) but
+    # filters `kb-devkit run e2e` to a single @kb-labs/e2e-<suite> package.
+    # Wall-clock = max(shard time); failure of one suite no longer hides
+    # the result of the others. All caches (Phase 1/2/2.5) are hit by
+    # every shard in parallel — GitHub Actions cache handles concurrent
+    # reads fine.
+    #
+    # The aggregator job below collapses 8 matrix outcomes into a single
+    # required status check `Platform E2E`, so branch protection rules
+    # do not need to change.
+    name: Platform E2E / ${{ matrix.suite }}
     runs-on: ubuntu-latest
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
-    timeout-minutes: 60
+    timeout-minutes: 30
+
+    strategy:
+      # One failing shard must not cancel the others — we want to see the
+      # full picture of which suites are red.
+      fail-fast: false
+      matrix:
+        suite:
+          - services
+          - platform
+          - plugins
+          - gateway
+          - workflows
+          - studio
+          - marketplace
+          - marketplace-registry
 
     # Apply the CI-only override globally so every `docker compose` call
     # below picks up the bind-mounted Verdaccio storage automatically.
@@ -47,7 +73,7 @@ jobs:
     # from docker-compose.yml because it does not set COMPOSE_FILE.
     env:
       COMPOSE_FILE: e2e/docker-compose.yml:e2e/docker-compose.ci.yml
-      COMPOSE_PROJECT_NAME: kb-e2e-ci
+      COMPOSE_PROJECT_NAME: kb-e2e-ci-${{ matrix.suite }}
 
     steps:
       - name: Checkout
@@ -227,8 +253,6 @@ jobs:
 
       - name: Start Verdaccio registry
         run: docker compose up -d verdaccio
-        env:
-          COMPOSE_PROJECT_NAME: kb-e2e-ci
 
       - name: Wait for Verdaccio to be healthy
         run: |
@@ -240,8 +264,6 @@ jobs:
             fi
             sleep 2
           done
-        env:
-          COMPOSE_PROJECT_NAME: kb-e2e-ci
 
       # When the Verdaccio storage cache hit, every package is already
       # published (cache key includes the .tgz hash). pnpm publish would
@@ -250,8 +272,6 @@ jobs:
       - name: Publish packages to Verdaccio
         if: steps.verdaccio-cache.outputs.cache-hit != 'true'
         run: docker compose run --rm publisher
-        env:
-          COMPOSE_PROJECT_NAME: kb-e2e-ci
 
       - name: Confirm Verdaccio has expected package count (warm cache)
         if: steps.verdaccio-cache.outputs.cache-hit == 'true'
@@ -269,8 +289,6 @@ jobs:
 
       - name: Start platform
         run: docker compose up -d --no-build platform
-        env:
-          COMPOSE_PROJECT_NAME: kb-e2e-ci
 
       - name: Wait for platform to be healthy
         run: |
@@ -287,12 +305,10 @@ jobs:
             fi
             sleep 5
           done
-        env:
-          COMPOSE_PROJECT_NAME: kb-e2e-ci
 
-      # ── Run E2E suite ────────────────────────────────────────────────────
-      # kb-devkit runs each domain in parallel (concurrency: NumCPU-1).
-      # Domains: services, platform, gateway, marketplace, workflows, studio, plugins
+      # ── Run E2E suite (single, this shard's) ─────────────────────────────
+      # The shard runs only its matrix-assigned suite. The kb-devkit task
+      # filter --packages keys on workspace package name @kb-labs/e2e-<x>.
 
       - name: Run e2e tests
         run: |
@@ -300,7 +316,7 @@ jobs:
           ls -la tools/kb-devkit/kb-devkit
           file tools/kb-devkit/kb-devkit
           chmod +x tools/kb-devkit/kb-devkit tools/kb-dev/kb-dev || true
-          ./tools/kb-devkit/kb-devkit run e2e
+          ./tools/kb-devkit/kb-devkit run e2e --packages "@kb-labs/e2e-${{ matrix.suite }}"
         env:
           GATEWAY_URL:     http://localhost:4000
           REST_URL:        http://localhost:5050
@@ -330,14 +346,12 @@ jobs:
           cat /tmp/e2e-logs/kb-dev-status.txt || true
           echo "--- kb-dir tree (max 3 levels):"
           find /tmp/e2e-logs/kb-dir -maxdepth 3 -type f 2>&1 | head -40 || true
-        env:
-          COMPOSE_PROJECT_NAME: kb-e2e-ci
 
       - name: Upload platform logs
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: platform-logs-${{ github.run_id }}
+          name: platform-logs-${{ github.run_id }}-${{ matrix.suite }}
           path: /tmp/e2e-logs/
           retention-days: 14
 
@@ -345,35 +359,23 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-${{ github.run_id }}
-          path: |
-            e2e/services/report/
-            e2e/platform/report/
-            e2e/gateway/report/
-            e2e/marketplace/report/
-            e2e/marketplace-registry/report/
-            e2e/workflows/report/
-            e2e/studio/report/
-            e2e/plugins/report/
+          name: playwright-report-${{ github.run_id }}-${{ matrix.suite }}
+          path: e2e/${{ matrix.suite }}/report/
           retention-days: 14
 
       - name: Show checklist summary
         if: always()
         run: |
-          for domain in services platform gateway marketplace marketplace-registry workflows studio plugins; do
-            checklist="e2e/$domain/report/CHECKLIST.md"
-            if [ -f "$checklist" ]; then
-              echo "### E2E: $domain" >> $GITHUB_STEP_SUMMARY
-              cat "$checklist" >> $GITHUB_STEP_SUMMARY
-              echo "" >> $GITHUB_STEP_SUMMARY
-            fi
-          done
+          checklist="e2e/${{ matrix.suite }}/report/CHECKLIST.md"
+          if [ -f "$checklist" ]; then
+            echo "### E2E: ${{ matrix.suite }}" >> $GITHUB_STEP_SUMMARY
+            cat "$checklist" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
 
       - name: Cleanup
         if: always()
         run: docker compose down --volumes --remove-orphans
-        env:
-          COMPOSE_PROJECT_NAME: kb-e2e-ci
 
       # actions/cache@v4 saves the cache as a Post step running under the
       # GitHub runner user, not the verdaccio container uid. Chown the
@@ -443,6 +445,30 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: e2e-timings-${{ github.run_id }}
+          name: e2e-timings-${{ github.run_id }}-${{ matrix.suite }}
           path: /tmp/e2e-timings/
           retention-days: 90
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Aggregator — single required status check.
+  #
+  # Branch protection points at `Platform E2E` (this job's name). It collapses
+  # the 8 matrix shards into one pass/fail signal. Individual per-shard
+  # checks (Platform E2E / <suite>) stay visible for at-a-glance triage and
+  # for re-running only the failing shard via the GitHub UI.
+  # ─────────────────────────────────────────────────────────────────────────
+  aggregate:
+    name: Platform E2E
+    needs: e2e
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check matrix outcome
+        run: |
+          echo "matrix-result=${{ needs.e2e.result }}"
+          if [ "${{ needs.e2e.result }}" = "success" ]; then
+            echo "All 8 E2E shards passed."
+            exit 0
+          fi
+          echo "::error::At least one E2E shard did not succeed (matrix result: ${{ needs.e2e.result }})."
+          exit 1
