@@ -15,7 +15,7 @@ async function startRun(request: Parameters<Parameters<typeof test>[1]>[0]['requ
   const id = wf?.id ?? wf?.name;
   if (!id) throw new Error('No workflow found in catalog');
 
-  const runRes = await request.post(`${WORKFLOW}/api/v1/workflows/${id}/runs`, { data: {} });
+  const runRes = await request.post(`${WORKFLOW}/api/v1/workflows/${encodeURIComponent(id)}/runs`, { data: {} });
   const body = await runRes.json();
   const runId: string = body.data?.runId ?? body.data?.id ?? body.runId;
   if (!runId) throw new Error(`Failed to start run: ${JSON.stringify(body)}`);
