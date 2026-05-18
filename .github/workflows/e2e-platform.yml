@@ -40,6 +40,15 @@ jobs:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     timeout-minutes: 60
 
+    # Apply the CI-only override globally so every `docker compose` call
+    # below picks up the bind-mounted Verdaccio storage automatically.
+    # The override only swaps the verdaccio volume — platform/publisher
+    # services are untouched. Local dev keeps the named-volume default
+    # from docker-compose.yml because it does not set COMPOSE_FILE.
+    env:
+      COMPOSE_FILE: e2e/docker-compose.yml:e2e/docker-compose.ci.yml
+      COMPOSE_PROJECT_NAME: kb-e2e-ci
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -191,8 +200,33 @@ jobs:
 
       # ── Start infrastructure ─────────────────────────────────────────────
 
+      # ── Phase 2.5 of ADR-0017: persist Verdaccio storage between runs ────
+      # docker-compose.ci.yml bind-mounts ./e2e/.verdaccio-storage into the
+      # verdaccio container at /verdaccio/storage. Caching that host path
+      # lets pnpm publish hit the warm-set 409 fast-path for every package,
+      # cutting Publish from ~70s (parallel x4) to ~10s on warm cache.
+      #
+      # Cache key includes the .tgz hash — so a changed package set
+      # invalidates and triggers a full re-publish.
+      - name: Restore Verdaccio storage cache
+        id: verdaccio-cache
+        uses: actions/cache@v4
+        with:
+          path: e2e/.verdaccio-storage
+          key: verdaccio-storage-${{ runner.os }}-${{ hashFiles('e2e/packages/**/*.tgz') }}
+          restore-keys: |
+            verdaccio-storage-${{ runner.os }}-
+
+      - name: Prepare Verdaccio storage permissions
+        run: |
+          mkdir -p e2e/.verdaccio-storage
+          # Container runs as 10001:65533 (verdaccio:nogroup); host runner
+          # is a different uid. Make the bind mount writable by the
+          # container user without requiring root in subsequent steps.
+          sudo chown -R 10001:65533 e2e/.verdaccio-storage
+
       - name: Start Verdaccio registry
-        run: docker compose -f e2e/docker-compose.yml up -d verdaccio
+        run: docker compose up -d verdaccio
         env:
           COMPOSE_PROJECT_NAME: kb-e2e-ci
 
@@ -200,7 +234,7 @@ jobs:
         run: |
           echo "Waiting for Verdaccio..."
           for i in $(seq 1 30); do
-            if docker compose -f e2e/docker-compose.yml ps verdaccio | grep -q "healthy"; then
+            if docker compose ps verdaccio | grep -q "healthy"; then
               echo "Verdaccio is healthy after $((i * 2))s"
               break
             fi
@@ -210,12 +244,12 @@ jobs:
           COMPOSE_PROJECT_NAME: kb-e2e-ci
 
       - name: Publish packages to Verdaccio
-        run: docker compose -f e2e/docker-compose.yml run --rm publisher
+        run: docker compose run --rm publisher
         env:
           COMPOSE_PROJECT_NAME: kb-e2e-ci
 
       - name: Start platform
-        run: docker compose -f e2e/docker-compose.yml up -d --no-build platform
+        run: docker compose up -d --no-build platform
         env:
           COMPOSE_PROJECT_NAME: kb-e2e-ci
 
@@ -229,7 +263,7 @@ jobs:
             fi
             if [ $i -eq 60 ]; then
               echo "Platform failed to start — dumping logs"
-              docker compose -f e2e/docker-compose.yml logs platform | tail -100
+              docker compose logs platform | tail -100
               exit 1
             fi
             sleep 5
@@ -263,16 +297,16 @@ jobs:
         if: always()
         run: |
           mkdir -p /tmp/e2e-logs
-          docker compose -f e2e/docker-compose.yml logs --no-color platform > /tmp/e2e-logs/platform-bootstrap.log 2>&1 || true
-          docker compose -f e2e/docker-compose.yml logs --no-color verdaccio > /tmp/e2e-logs/verdaccio.log 2>&1 || true
-          docker compose -f e2e/docker-compose.yml ps > /tmp/e2e-logs/ps.txt 2>&1 || true
+          docker compose logs --no-color platform > /tmp/e2e-logs/platform-bootstrap.log 2>&1 || true
+          docker compose logs --no-color verdaccio > /tmp/e2e-logs/verdaccio.log 2>&1 || true
+          docker compose ps > /tmp/e2e-logs/ps.txt 2>&1 || true
           # Find and copy all .log files + .kb directory from the platform container.
-          docker compose -f e2e/docker-compose.yml exec -T platform sh -c 'find / -name "*.log" -size +0c 2>/dev/null | grep -v proc' > /tmp/e2e-logs/log-files-list.txt 2>&1 || true
+          docker compose exec -T platform sh -c 'find / -name "*.log" -size +0c 2>/dev/null | grep -v proc' > /tmp/e2e-logs/log-files-list.txt 2>&1 || true
           echo "--- log files found in container:"
           cat /tmp/e2e-logs/log-files-list.txt || true
-          docker compose -f e2e/docker-compose.yml cp platform:/workspace/kb-e2e/.kb /tmp/e2e-logs/kb-dir 2>&1 || true
-          docker compose -f e2e/docker-compose.yml cp platform:/root/kb-platform/.kb /tmp/e2e-logs/platform-kb-dir 2>&1 || true
-          docker compose -f e2e/docker-compose.yml exec -T platform sh -c 'kb-dev status 2>&1' > /tmp/e2e-logs/kb-dev-status.txt 2>&1 || true
+          docker compose cp platform:/workspace/kb-e2e/.kb /tmp/e2e-logs/kb-dir 2>&1 || true
+          docker compose cp platform:/root/kb-platform/.kb /tmp/e2e-logs/platform-kb-dir 2>&1 || true
+          docker compose exec -T platform sh -c 'kb-dev status 2>&1' > /tmp/e2e-logs/kb-dev-status.txt 2>&1 || true
           echo "--- kb-dev-status:"
           cat /tmp/e2e-logs/kb-dev-status.txt || true
           echo "--- kb-dir tree (max 3 levels):"
@@ -318,9 +352,19 @@ jobs:
 
       - name: Cleanup
         if: always()
-        run: docker compose -f e2e/docker-compose.yml down --volumes --remove-orphans
+        run: docker compose down --volumes --remove-orphans
         env:
           COMPOSE_PROJECT_NAME: kb-e2e-ci
+
+      # actions/cache@v4 saves the cache as a Post step running under the
+      # GitHub runner user, not the verdaccio container uid. Chown the
+      # bind-mounted storage back so tar can read every file.
+      - name: Restore Verdaccio storage ownership for cache save
+        if: always()
+        run: |
+          if [ -d e2e/.verdaccio-storage ]; then
+            sudo chown -R "$(id -u):$(id -g)" e2e/.verdaccio-storage
+          fi
 
       # ── Per-step timings (Phase 0 of ADR-0017) ───────────────────────────
       # Fetches this run's step list from the GitHub Actions API, computes

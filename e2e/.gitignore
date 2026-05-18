@@ -1,0 +1,6 @@
+# Verdaccio storage bind mount used by CI (docker-compose.ci.yml).
+# Created at runtime, persisted via actions/cache@v4. Never committed.
+.verdaccio-storage/
+
+# Packed tarballs are produced by pack-all.sh and consumed by Verdaccio.
+packages/*.tgz
