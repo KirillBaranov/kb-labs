@@ -161,7 +161,7 @@ export function createCLIUIFacade(presenter?: PresenterDelegate): UIFacade {
       const cols: TableColumn[] = columns ?? Object.keys(data[0]!).map(k => ({ header: k, key: k }));
       const rows = data.map(row => cols.map(col => String(row[col.key] ?? '')));
       const lines = formatTable(
-        cols.map(c => ({ header: c.header, align: c.align })),
+        cols.map(c => ({ header: c.header, width: c.width, align: c.align })),
         rows,
         { separator: '' },
       );

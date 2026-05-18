@@ -552,7 +552,7 @@ export default function WorkflowRunDetail() {
         }
       />
 
-      {error && <UIAlert variant="error" message="Failed to load workflow run" description={String(error)} closable />}
+      {error && <UIAlert variant="error" message="Failed to load workflow run" description={String(error)} showIcon closable />}
 
       {hasPendingApprovals && (
         <UIAlert
@@ -625,7 +625,16 @@ export default function WorkflowRunDetail() {
           </div>
 
           {isRunActive && !isConnected && !logError && <UIAlert variant="info" message="Connecting to event stream..." showIcon style={{ marginBottom: 12 }} />}
-          {isRunActive && logError && <UIAlert variant="error" message="Event stream error" description={logError.message} style={{ marginBottom: 12 }} />}
+          {isRunActive && logError && (
+            <UIAlert
+              variant="error"
+              message="Event stream error"
+              description={logError.message}
+              showIcon
+              action={<UIButton size="small" onClick={() => refetch()}>Retry</UIButton>}
+              style={{ marginBottom: 12 }}
+            />
+          )}
 
           {viewMode === 'dashboard' && (
             <DashboardView

@@ -9,6 +9,7 @@ import {
   UISpace,
   UIIcon,
   UITag,
+  useElapsedTimer,
 } from '@kb-labs/sdk/studio';
 import type { WorkflowRun, StepRun, StepArtifact } from '@kb-labs/workflow-contracts';
 import { PhaseProgressBar, type PhaseStatus } from '../shared/PhaseProgressBar';
@@ -59,6 +60,7 @@ function HeroBlock({ step, onApprove }: HeroBlockProps) {
   const rt = step as StepRunRuntime;
   const isWaiting = step.status === 'waiting_approval';
   const isRunning = step.status === 'running';
+  const elapsed = useElapsedTimer(isRunning || isWaiting ? step.startedAt : undefined);
   // artifacts is Record<name, StepArtifact> in contracts
   const artifactsMap = step.spec?.artifacts as Record<string, StepArtifact> | undefined;
   const artifacts = artifactsMap ? Object.values(artifactsMap) : [];
@@ -77,11 +79,9 @@ function HeroBlock({ step, onApprove }: HeroBlockProps) {
         <UITypographyText style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-primary)' }}>
           {step.spec?.summary ?? step.name}
         </UITypographyText>
-        {step.durationMs && (
-          <UITypographyText className="typo-caption text-tertiary" style={{ marginLeft: 'auto' }}>
-            {formatDurationMs(step.durationMs)}
-          </UITypographyText>
-        )}
+        <UITypographyText className="typo-caption text-tertiary" style={{ marginLeft: 'auto' }}>
+          {step.durationMs ? formatDurationMs(step.durationMs) : elapsed ? elapsed : null}
+        </UITypographyText>
       </div>
 
       {/* Progress message */}
@@ -156,11 +156,13 @@ function HeroBlock({ step, onApprove }: HeroBlockProps) {
         </div>
       )}
 
-      {/* Running indicator */}
+      {/* Running indicator with elapsed time */}
       {isRunning && !rt.progressMessage && (
         <UISpace className="gap-tight" style={{ marginTop: 6 }}>
           <UIIcon name="LoadingOutlined" spin style={{ color: 'var(--link)', fontSize: 13 }} />
-          <UITypographyText className="typo-caption text-secondary">Running...</UITypographyText>
+          <UITypographyText className="typo-caption text-secondary">
+            {elapsed ? `Running for ${elapsed}` : 'Running…'}
+          </UITypographyText>
         </UISpace>
       )}
     </div>

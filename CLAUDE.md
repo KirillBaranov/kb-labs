@@ -145,6 +145,10 @@ Key helpers in `@kb-labs/shared-testing-e2e`:
 - `collectSseEvents()`, `expectSseTerminates()`, `assertSseOrder()` — SSE tests
 - `withWs()`, `expectWsMessage()`, `expectWsClose()` — WS tests
 
+### Bug fix rule
+
+Every bug fix **must** be accompanied by a test that fails before the fix and passes after. No exceptions. The test documents the root cause and prevents regression.
+
 ## Common Tasks
 
 ```bash
