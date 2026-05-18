@@ -39,11 +39,12 @@ export const manifest: ManifestV3 = {
   },
   cli: {
     groupMeta: [
-      { path: 'infra-worker', describe: 'Infra worker provisioning commands' },
+      { path: 'infra', describe: 'Infrastructure provisioning commands' },
+      { path: 'infra snapshot', describe: 'Workspace and environment snapshot management' },
     ],
     commands: [
       {
-        path: 'infra-worker prepare',
+        path: 'infra prepare',
         describe: 'Materialize workspace, optional environment, and optional snapshot.',
         handler: './cli/commands/prepare-infra.js#default',
         flags: defineCommandFlags({
@@ -57,7 +58,7 @@ export const manifest: ManifestV3 = {
         }),
       },
       {
-        path: 'infra-worker capture-snapshot',
+        path: 'infra snapshot capture',
         describe: 'Capture snapshot for workspace/environment.',
         handler: './cli/commands/capture-snapshot.js#default',
         flags: defineCommandFlags({
@@ -68,7 +69,7 @@ export const manifest: ManifestV3 = {
         }),
       },
       {
-        path: 'infra-worker restore-snapshot',
+        path: 'infra snapshot restore',
         describe: 'Restore snapshot to workspace/environment target.',
         handler: './cli/commands/restore-snapshot.js#default',
         flags: defineCommandFlags({

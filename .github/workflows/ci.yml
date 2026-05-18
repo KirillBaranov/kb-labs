@@ -43,7 +43,7 @@ jobs:
           fetch-depth: 0   # full history so `git diff origin/main...HEAD` works
       - uses: actions/setup-go@v5
         with:
-          go-version-file: tools/kb-devkit/go.mod
+          go-version: '1.25'
           cache-dependency-path: |
             tools/kb-devkit/go.sum
             tools/kb-dev/go.sum
@@ -156,7 +156,7 @@ jobs:
           cache: pnpm
       - uses: actions/setup-go@v5
         with:
-          go-version-file: tools/kb-devkit/go.mod
+          go-version: '1.25'
       - uses: actions/download-artifact@v4
         with:
           name: go-tools
@@ -191,7 +191,7 @@ jobs:
           cache: pnpm
       - uses: actions/setup-go@v5
         with:
-          go-version-file: tools/kb-devkit/go.mod
+          go-version: '1.25'
       - uses: actions/download-artifact@v4
         with:
           name: go-tools
@@ -231,7 +231,7 @@ jobs:
           cache: pnpm
       - uses: actions/setup-go@v5
         with:
-          go-version-file: tools/kb-create/go.mod
+          go-version: '1.25'
       - uses: actions/download-artifact@v4
         with:
           name: go-tools
