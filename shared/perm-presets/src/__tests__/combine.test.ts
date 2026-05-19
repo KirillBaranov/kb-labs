@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { combine, combinePresets } from '../combine';
 import { minimal, gitWorkflow, npmPublish, kbPlatform } from '../presets';
 import type { PermissionPreset } from '../types';
+import type { PermissionSpec } from '@kb-labs/plugin-contracts';
 
 describe('combine()', () => {
   it('should return empty spec when nothing added', () => {
@@ -289,6 +290,30 @@ describe('combine()', () => {
         .build();
 
       expect(result.env?.read).toContain('CUSTOM_VAR');
+    });
+  });
+
+  describe('build() output type alignment', () => {
+    it('should return value assignable to plugin-contracts PermissionSpec without cast', () => {
+      const result = combine()
+        .withFs({ mode: 'readWrite', allow: ['src/**'] })
+        .withPlatform({ cache: ['agent:'] })
+        .build();
+
+      // Must compile without 'as PermissionSpec'
+      const spec: PermissionSpec = result;
+      expect(spec.fs?.read).toEqual(['src/**']);
+      expect(spec.fs?.write).toEqual(['src/**']);
+    });
+
+    it('withPlatform cache string[] should produce { namespaces } in build output', () => {
+      const result = combine().withPlatform({ cache: ['agent:', 'llm:'] }).build();
+      expect(result.platform?.cache).toEqual({ namespaces: ['agent:', 'llm:'] });
+    });
+
+    it('withPlatform storage string[] should produce { paths } in build output', () => {
+      const result = combine().withPlatform({ storage: ['uploads/', 'temp/'] }).build();
+      expect(result.platform?.storage).toEqual({ paths: ['uploads/', 'temp/'] });
     });
   });
 });

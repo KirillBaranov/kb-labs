@@ -1,7 +1,6 @@
 import {
-  combinePermissions,
-  kbPlatformPreset,
-  defineCommandFlags,
+  cmd, group, mergeCliGroups, GET, POST,
+  combinePermissions, kbPlatformPreset,
 } from '@kb-labs/sdk';
 import {
   qaRunFlags,
@@ -19,24 +18,14 @@ import { QA_BASE_PATH, QA_ROUTES } from '@kb-labs/qa-contracts';
 
 const pluginPermissions = combinePermissions()
   .with(kbPlatformPreset)
-  .withFs({
-    mode: 'readWrite',
-    allow: ['**'],
-  })
-  .withShell({
-    allow: ['kb-devkit', 'git'],
-  })
-  .withPlatform({
-    analytics: true,
-  })
-  .withQuotas({
-    timeoutMs: 600_000,
-    memoryMb: 512,
-  })
+  .withFs({ mode: 'readWrite', allow: ['**'] })
+  .withShell({ allow: ['kb-devkit', 'git'] })
+  .withPlatform({ analytics: true })
+  .withQuotas({ timeoutMs: 600_000, memoryMb: 512 })
   .build();
 
 export const manifest = {
-  schema: 'kb.plugin/3',
+  schema: 'kb.plugin/3' as const,
   id: '@kb-labs/qa',
   version: '0.1.0',
 
@@ -53,121 +42,58 @@ export const manifest = {
     optional: ['cache', 'analytics', 'logger'],
   },
 
-  cli: {
-    groupMeta: [
-      { path: 'qa', describe: 'Quality assurance powered by kb-devkit' },
-      { path: 'qa baseline', describe: 'Baseline management' },
-    ],
-    commands: [
-      {
-        path: 'qa run',
-        category: 'Run',
-        describe: 'Run devkit tasks and record results',
-        operationType: 'execute' as const,
-        handler: './cli/commands/qa-run.js#default',
-        flags: defineCommandFlags(qaRunFlags.schema),
-        permissions: pluginPermissions,
-      },
-      {
-        path: 'qa check',
-        category: 'Run',
-        describe: 'Run devkit structural checks',
-        operationType: 'analyze' as const,
-        handler: './cli/commands/qa-check.js#default',
-        flags: defineCommandFlags(qaCheckFlags.schema),
-        permissions: pluginPermissions,
-      },
-      {
-        path: 'qa stats',
-        category: 'Run',
-        describe: 'Show devkit health score and category breakdown',
-        operationType: 'read' as const,
-        handler: './cli/commands/qa-stats.js#default',
-        flags: defineCommandFlags(qaStatsFlags.schema),
-        permissions: pluginPermissions,
-      },
-      {
-        path: 'qa gate',
-        category: 'Run',
-        describe: 'Run pre-commit gate check (exits 1 if violations found)',
-        operationType: 'analyze' as const,
-        handler: './cli/commands/qa-gate.js#default',
-        flags: defineCommandFlags(qaGateFlags.schema),
-        permissions: pluginPermissions,
-      },
-      {
-        path: 'qa history',
-        category: 'History',
-        describe: 'Show QA run history',
-        operationType: 'read' as const,
-        handler: './cli/commands/qa-history.js#default',
-        flags: defineCommandFlags(qaHistoryFlags.schema),
-        permissions: pluginPermissions,
-      },
-      {
-        path: 'qa trends',
-        category: 'History',
-        describe: 'Show QA quality trends over time',
-        operationType: 'read' as const,
-        handler: './cli/commands/qa-trends.js#default',
-        flags: defineCommandFlags(qaTrendsFlags.schema),
-        permissions: pluginPermissions,
-      },
-      {
-        path: 'qa regressions',
-        category: 'History',
-        describe: 'Detect regressions since last run',
-        operationType: 'read' as const,
-        handler: './cli/commands/qa-regressions.js#default',
-        flags: defineCommandFlags(qaRegressionsFlags.schema),
-        permissions: pluginPermissions,
-      },
-      {
-        path: 'qa baseline update',
-        category: 'Baseline',
-        describe: 'Run check + stats and save as new baseline',
-        operationType: 'mutate' as const,
-        handler: './cli/commands/baseline-update.js#default',
-        flags: defineCommandFlags(baselineUpdateFlags.schema),
-        permissions: pluginPermissions,
-      },
-      {
-        path: 'qa baseline status',
-        category: 'Baseline',
-        describe: 'Show current baseline',
-        operationType: 'read' as const,
-        handler: './cli/commands/baseline-status.js#default',
-        flags: defineCommandFlags(baselineStatusFlags.schema),
-        permissions: pluginPermissions,
-      },
-      {
-        path: 'qa baseline diff',
-        category: 'Baseline',
-        describe: 'Diff current state against baseline',
-        operationType: 'read' as const,
-        handler: './cli/commands/baseline-diff.js#default',
-        flags: defineCommandFlags(baselineDiffFlags.schema),
-        permissions: pluginPermissions,
-      },
-    ],
-  },
+  cli: mergeCliGroups(
+    group({ path: 'qa', describe: 'Quality assurance powered by kb-devkit', category: 'Run' }, [
+      cmd('qa run', './cli/commands/qa-run.js#default', 'Run devkit tasks and record results')
+        .execute().flags(qaRunFlags.schema).perms(pluginPermissions),
+
+      cmd('qa check', './cli/commands/qa-check.js#default', 'Run devkit structural checks')
+        .analyze().flags(qaCheckFlags.schema).perms(pluginPermissions),
+
+      cmd('qa stats', './cli/commands/qa-stats.js#default', 'Show devkit health score and category breakdown')
+        .read().flags(qaStatsFlags.schema).perms(pluginPermissions),
+
+      cmd('qa gate', './cli/commands/qa-gate.js#default', 'Run pre-commit gate check (exits 1 if violations found)')
+        .analyze().flags(qaGateFlags.schema).perms(pluginPermissions),
+
+      cmd('qa history', './cli/commands/qa-history.js#default', 'Show QA run history')
+        .read().category('History').flags(qaHistoryFlags.schema).perms(pluginPermissions),
+
+      cmd('qa trends', './cli/commands/qa-trends.js#default', 'Show QA quality trends over time')
+        .read().category('History').flags(qaTrendsFlags.schema).perms(pluginPermissions),
+
+      cmd('qa regressions', './cli/commands/qa-regressions.js#default', 'Detect regressions since last run')
+        .read().category('History').flags(qaRegressionsFlags.schema).perms(pluginPermissions),
+    ]),
+
+    group({ path: 'qa baseline', describe: 'Baseline management', category: 'Baseline' }, [
+      cmd('qa baseline update', './cli/commands/baseline-update.js#default', 'Run check + stats and save as new baseline')
+        .mutate().flags(baselineUpdateFlags.schema).perms(pluginPermissions),
+
+      cmd('qa baseline status', './cli/commands/baseline-status.js#default', 'Show current baseline')
+        .read().flags(baselineStatusFlags.schema).perms(pluginPermissions),
+
+      cmd('qa baseline diff', './cli/commands/baseline-diff.js#default', 'Diff current state against baseline')
+        .read().flags(baselineDiffFlags.schema).perms(pluginPermissions),
+    ]),
+  ),
 
   rest: {
     basePath: QA_BASE_PATH,
     routes: [
-      { method: 'GET',  path: QA_ROUTES.SUMMARY,          handler: './rest/handlers/summary-handler.js#default' },
-      { method: 'POST', path: QA_ROUTES.RUN,               handler: './rest/handlers/run-handler.js#default' },
-      { method: 'POST', path: QA_ROUTES.CHECK,             handler: './rest/handlers/check-handler.js#default' },
-      { method: 'GET',  path: QA_ROUTES.STATS,             handler: './rest/handlers/stats-handler.js#default' },
-      { method: 'POST', path: QA_ROUTES.GATE,              handler: './rest/handlers/gate-handler.js#default' },
-      { method: 'GET',  path: QA_ROUTES.HISTORY,           handler: './rest/handlers/history-handler.js#default' },
-      { method: 'GET',  path: QA_ROUTES.TRENDS,            handler: './rest/handlers/trends-handler.js#default' },
-      { method: 'GET',  path: QA_ROUTES.REGRESSIONS,       handler: './rest/handlers/regressions-handler.js#default' },
-      { method: 'GET',  path: QA_ROUTES.BASELINE,          handler: './rest/handlers/baseline-handler.js#default' },
-      { method: 'POST', path: QA_ROUTES.BASELINE_UPDATE,   handler: './rest/handlers/baseline-update-handler.js#default' },
-      { method: 'GET',  path: QA_ROUTES.BASELINE_DIFF,     handler: './rest/handlers/baseline-diff-handler.js#default' },
-      { method: 'GET',  path: QA_ROUTES.PACKAGE_TIMELINE,  handler: './rest/handlers/package-timeline-handler.js#default' },
-      { method: 'GET',  path: QA_ROUTES.TASKS,             handler: './rest/handlers/tasks-handler.js#default' },
+      GET(QA_ROUTES.SUMMARY,          './rest/handlers/summary-handler.js#default'),
+      POST(QA_ROUTES.RUN,             './rest/handlers/run-handler.js#default'),
+      POST(QA_ROUTES.CHECK,           './rest/handlers/check-handler.js#default'),
+      GET(QA_ROUTES.STATS,            './rest/handlers/stats-handler.js#default'),
+      POST(QA_ROUTES.GATE,            './rest/handlers/gate-handler.js#default'),
+      GET(QA_ROUTES.HISTORY,          './rest/handlers/history-handler.js#default'),
+      GET(QA_ROUTES.TRENDS,           './rest/handlers/trends-handler.js#default'),
+      GET(QA_ROUTES.REGRESSIONS,      './rest/handlers/regressions-handler.js#default'),
+      GET(QA_ROUTES.BASELINE,         './rest/handlers/baseline-handler.js#default'),
+      POST(QA_ROUTES.BASELINE_UPDATE, './rest/handlers/baseline-update-handler.js#default'),
+      GET(QA_ROUTES.BASELINE_DIFF,    './rest/handlers/baseline-diff-handler.js#default'),
+      GET(QA_ROUTES.PACKAGE_TIMELINE, './rest/handlers/package-timeline-handler.js#default'),
+      GET(QA_ROUTES.TASKS,            './rest/handlers/tasks-handler.js#default'),
     ],
   },
 
@@ -175,23 +101,10 @@ export const manifest = {
     version: 2 as const,
     remoteName: 'qaPlugin',
     pages: [
-      {
-        id: 'qa.overview',
-        title: 'QA',
-        icon: 'ExperimentOutlined',
-        route: '/p/qa',
-        entry: './QADashboard',
-        order: 1,
-      },
+      { id: 'qa.overview', title: 'QA', icon: 'ExperimentOutlined', route: '/p/qa', entry: './QADashboard', order: 1 },
     ],
     menus: [
-      {
-        id: 'qa',
-        label: 'QA',
-        icon: 'ExperimentOutlined',
-        target: 'qa.overview',
-        order: 50,
-      },
+      { id: 'qa', label: 'QA', icon: 'ExperimentOutlined', target: 'qa.overview', order: 50 },
     ],
   },
 

@@ -202,6 +202,23 @@ export {
   // permissions,
   generateExamples,
   type ExampleCase,
+  // Manifest helpers (ADR-0007)
+  createManifest,
+  cmd,
+  group,
+  mergeCliGroups,
+  GET,
+  POST,
+  PUT,
+  PATCH,
+  DELETE,
+  type PluginId,
+  type SemVer,
+  type HandlerRef,
+  type RestBase,
+  type WsBase,
+  type CliGroup,
+  type CmdBuilder,
 } from './manifest/index.js';
 
 // Re-export contracts for convenience

@@ -1,6 +1,5 @@
-import { combinePermissions } from '@kb-labs/sdk';
+import { cmd, group, mergeCliGroups, GET, POST, PATCH, DELETE, combinePermissions } from '@kb-labs/sdk';
 import { CLICKUP_BASE_PATH, CLICKUP_ROUTES } from '@kb-labs/clickup-contracts';
-
 
 const permissions = combinePermissions()
   .withEnv(['CLICKUP_API_KEY', 'CLICKUP_TEAM_ID'])
@@ -9,7 +8,7 @@ const permissions = combinePermissions()
   .build();
 
 export const manifest = {
-  schema: 'kb.plugin/3',
+  schema: 'kb.plugin/3' as const,
   id: '@kb-labs/clickup',
   version: '0.1.0',
 
@@ -21,464 +20,242 @@ export const manifest = {
 
   permissions,
 
-  cli: {
-    groupMeta: [
-      { path: 'clickup',                describe: 'ClickUp task management' },
-      { path: 'clickup task',           describe: 'Task operations' },
-      { path: 'clickup task comments',  describe: 'Task comment operations' },
-      { path: 'clickup list',           describe: 'List operations' },
-      { path: 'clickup space',          describe: 'Space operations' },
-      { path: 'clickup folder',         describe: 'Folder operations' },
-    ],
-    commands: [
-      // ── Workspace ────────────────────────────────────────────────────────────
-      {
-        path: 'clickup workspace',
-        category: 'Workspace',
-        operationType: 'read' as const,
-        describe: 'Show full workspace hierarchy (spaces → folders → lists)',
-        handler: './commands/workspace.js#default',
-        flags: [
-          { name: 'json', type: 'boolean', description: 'Output JSON (slim by default)' },
-          { name: 'full', type: 'boolean', description: 'Output full raw JSON (requires --json)' },
-        ],
-        examples: [
-          'kb clickup workspace',
-          'kb clickup workspace --json',
-          'kb clickup workspace --json --full',
-        ],
-      },
+  cli: mergeCliGroups(
+    group({ path: 'clickup', describe: 'ClickUp task management', category: 'Workspace' }, [
+      cmd('clickup workspace', './commands/workspace.js#default', 'Show full workspace hierarchy (spaces → folders → lists)')
+        .read()
+        .flags({
+          json: { type: 'boolean', description: 'Output JSON (slim by default)' },
+          full: { type: 'boolean', description: 'Output full raw JSON (requires --json)' },
+        })
+        .examples(['kb clickup workspace', 'kb clickup workspace --json', 'kb clickup workspace --json --full']),
+    ]),
 
-      // ── Tasks ─────────────────────────────────────────────────────────────────
-      {
-        path: 'clickup task search',
-        category: 'Tasks',
-        operationType: 'read' as const,
-        describe: 'Search tasks across the workspace',
-        handler: './commands/task-search.js#default',
-        flags: [
-          { name: 'list',     type: 'string',  description: 'Filter by list ID' },
-          { name: 'status',   type: 'string',  description: 'Filter by status (comma-separated)' },
-          { name: 'assignee', type: 'string',  description: 'Filter by assignee user IDs (comma-separated)' },
-          { name: 'limit',    type: 'number',  description: 'Max results', default: 20 },
-          { name: 'closed',   type: 'boolean', description: 'Include closed tasks' },
-          { name: 'json',     type: 'boolean', description: 'Output JSON (slim by default)' },
-          { name: 'full',     type: 'boolean', description: 'Output full raw JSON (requires --json)' },
-        ],
-        examples: [
-          'kb clickup task search "my bug"',
-          'kb clickup task search --status "in progress" --json',
-        ],
-      },
-      {
-        path: 'clickup task get',
-        category: 'Tasks',
-        operationType: 'read' as const,
-        describe: 'Get full task details including comments',
-        handler: './commands/task-get.js#default',
-        flags: [
-          { name: 'json', type: 'boolean', description: 'Output JSON (slim by default)' },
-          { name: 'full', type: 'boolean', description: 'Output full raw JSON (requires --json)' },
-        ],
-        examples: [
-          'kb clickup task get abc123',
-          'kb clickup task get abc123 --json',
-        ],
-      },
-      {
-        path: 'clickup task create',
-        category: 'Tasks',
-        operationType: 'mutate' as const,
-        describe: 'Create a new task',
-        handler: './commands/task-create.js#default',
-        flags: [
-          { name: 'list',     type: 'string',  description: 'Target list ID (required)' },
-          { name: 'name',     type: 'string',  description: 'Task name (required)' },
-          { name: 'desc',     type: 'string',  description: 'Task description' },
-          { name: 'status',   type: 'string',  description: 'Initial status' },
-          { name: 'priority', type: 'number',  description: '1=urgent 2=high 3=normal 4=low' },
-          { name: 'assignee', type: 'string',  description: 'Assignee user IDs (comma-separated)' },
-          { name: 'due',      type: 'string',  description: 'Due date (ISO string or unix ms)' },
-          { name: 'json',     type: 'boolean', description: 'Output JSON (slim by default)' },
-          { name: 'full',     type: 'boolean', description: 'Output full raw JSON (requires --json)' },
-        ],
-        examples: [
+    group({ path: 'clickup task', describe: 'Task operations', category: 'Tasks' }, [
+      cmd('clickup task search', './commands/task-search.js#default', 'Search tasks across the workspace')
+        .read()
+        .flags({
+          list:     { type: 'string',  description: 'Filter by list ID' },
+          status:   { type: 'string',  description: 'Filter by status (comma-separated)' },
+          assignee: { type: 'string',  description: 'Filter by assignee user IDs (comma-separated)' },
+          limit:    { type: 'number',  description: 'Max results', default: 20 },
+          closed:   { type: 'boolean', description: 'Include closed tasks' },
+          json:     { type: 'boolean', description: 'Output JSON (slim by default)' },
+          full:     { type: 'boolean', description: 'Output full raw JSON (requires --json)' },
+        })
+        .examples(['kb clickup task search "my bug"', 'kb clickup task search --status "in progress" --json']),
+
+      cmd('clickup task get', './commands/task-get.js#default', 'Get full task details including comments')
+        .read()
+        .flags({
+          json: { type: 'boolean', description: 'Output JSON (slim by default)' },
+          full: { type: 'boolean', description: 'Output full raw JSON (requires --json)' },
+        })
+        .examples(['kb clickup task get abc123', 'kb clickup task get abc123 --json']),
+
+      cmd('clickup task create', './commands/task-create.js#default', 'Create a new task')
+        .mutate()
+        .flags({
+          list:     { type: 'string',  description: 'Target list ID (required)' },
+          name:     { type: 'string',  description: 'Task name (required)' },
+          desc:     { type: 'string',  description: 'Task description' },
+          status:   { type: 'string',  description: 'Initial status' },
+          priority: { type: 'number',  description: '1=urgent 2=high 3=normal 4=low' },
+          assignee: { type: 'string',  description: 'Assignee user IDs (comma-separated)' },
+          due:      { type: 'string',  description: 'Due date (ISO string or unix ms)' },
+          json:     { type: 'boolean', description: 'Output JSON (slim by default)' },
+          full:     { type: 'boolean', description: 'Output full raw JSON (requires --json)' },
+        })
+        .examples([
           'kb clickup task create --list abc123 --name "Fix login bug" --priority 2',
           'kb clickup task create --list abc123 --name "Task" --json',
-        ],
-      },
-      {
-        path: 'clickup task update',
-        category: 'Tasks',
-        operationType: 'mutate' as const,
-        describe: 'Update an existing task',
-        handler: './commands/task-update.js#default',
-        flags: [
-          { name: 'name',         type: 'string',  description: 'New task name' },
-          { name: 'desc',         type: 'string',  description: 'New description' },
-          { name: 'status',       type: 'string',  description: 'New status' },
-          { name: 'priority',     type: 'number',  description: '1=urgent 2=high 3=normal 4=low' },
-          { name: 'assignee_add', type: 'string',  description: 'User IDs to add (comma-separated)' },
-          { name: 'assignee_rem', type: 'string',  description: 'User IDs to remove (comma-separated)' },
-          { name: 'due',          type: 'string',  description: 'Due date (ISO, unix ms, or "none")' },
-          { name: 'json',         type: 'boolean', description: 'Output JSON (slim by default)' },
-          { name: 'full',         type: 'boolean', description: 'Output full raw JSON (requires --json)' },
-        ],
-        examples: [
+        ]),
+
+      cmd('clickup task update', './commands/task-update.js#default', 'Update an existing task')
+        .mutate()
+        .flags({
+          name:         { type: 'string',  description: 'New task name' },
+          desc:         { type: 'string',  description: 'New description' },
+          status:       { type: 'string',  description: 'New status' },
+          priority:     { type: 'number',  description: '1=urgent 2=high 3=normal 4=low' },
+          assignee_add: { type: 'string',  description: 'User IDs to add (comma-separated)' },
+          assignee_rem: { type: 'string',  description: 'User IDs to remove (comma-separated)' },
+          due:          { type: 'string',  description: 'Due date (ISO, unix ms, or "none")' },
+          json:         { type: 'boolean', description: 'Output JSON (slim by default)' },
+          full:         { type: 'boolean', description: 'Output full raw JSON (requires --json)' },
+        })
+        .examples([
           'kb clickup task update abc123 --status "in progress"',
           'kb clickup task update abc123 --priority 1 --json',
-        ],
-      },
-      {
-        path: 'clickup task delete',
-        category: 'Tasks',
-        operationType: 'mutate' as const,
-        describe: 'Delete a task',
-        handler: './commands/task-delete.js#default',
-        flags: [
-          { name: 'json', type: 'boolean', description: 'Output raw JSON' },
-        ],
-        examples: [
-          'kb clickup task delete abc123 --yes',
-          'kb clickup task delete abc123 --dry-run',
-        ],
-      },
+        ]),
 
-      // ── Comments ─────────────────────────────────────────────────────────────
-      {
-        path: 'clickup task comments list',
-        category: 'Comments',
-        operationType: 'read' as const,
-        describe: 'List comments on a task',
-        handler: './commands/task-comment-list.js#default',
-        flags: [
-          { name: 'json', type: 'boolean', description: 'Output JSON (slim by default)' },
-          { name: 'full', type: 'boolean', description: 'Output full raw JSON (requires --json)' },
-        ],
-        examples: [
-          'kb clickup task comments list abc123',
-          'kb clickup task comments list abc123 --json',
-        ],
-      },
-      {
-        path: 'clickup task comments add',
-        category: 'Comments',
-        operationType: 'mutate' as const,
-        describe: 'Add a comment to a task',
-        handler: './commands/task-comment-add.js#default',
-        flags: [
-          { name: 'text',    type: 'string',  description: 'Comment text (required)' },
-          { name: 'assignee',type: 'number',  description: 'Assign comment to user ID' },
-          { name: 'notify',  type: 'boolean', description: 'Notify all task watchers' },
-          { name: 'json',    type: 'boolean', description: 'Output JSON (slim by default)' },
-          { name: 'full',    type: 'boolean', description: 'Output full raw JSON (requires --json)' },
-        ],
-        examples: [
-          'kb clickup task comments add abc123 --text "Fixed in branch feature/x"',
-        ],
-      },
+      cmd('clickup task delete', './commands/task-delete.js#default', 'Delete a task')
+        .mutate()
+        .flags({
+          json: { type: 'boolean', description: 'Output raw JSON' },
+        })
+        .examples(['kb clickup task delete abc123 --yes', 'kb clickup task delete abc123 --dry-run']),
+    ]),
 
-      // ── Spaces ───────────────────────────────────────────────────────────────
-      {
-        path: 'clickup space create',
-        category: 'Spaces',
-        operationType: 'mutate' as const,
-        describe: 'Create a new space',
-        handler: './commands/space-create.js#default',
-        flags: [
-          { name: 'name',    type: 'string',  description: 'Space name (required)' },
-          { name: 'color',   type: 'string',  description: 'Space color (hex)' },
-          { name: 'private', type: 'boolean', description: 'Make space private' },
-          { name: 'json',    type: 'boolean', description: 'Output JSON (slim by default)' },
-          { name: 'full',    type: 'boolean', description: 'Output full raw JSON (requires --json)' },
-        ],
-        examples: [
-          'kb clickup space create --name "Engineering"',
-          'kb clickup space create --name "Design" --color "#ff0000"',
-        ],
-      },
-      {
-        path: 'clickup space update',
-        category: 'Spaces',
-        operationType: 'mutate' as const,
-        describe: 'Update a space',
-        handler: './commands/space-update.js#default',
-        flags: [
-          { name: 'name',  type: 'string',  description: 'New space name' },
-          { name: 'color', type: 'string',  description: 'New color (hex)' },
-          { name: 'json',  type: 'boolean', description: 'Output JSON (slim by default)' },
-          { name: 'full',  type: 'boolean', description: 'Output full raw JSON (requires --json)' },
-        ],
-        examples: [
-          'kb clickup space update spaceId --name "Backend"',
-        ],
-      },
-      {
-        path: 'clickup space delete',
-        category: 'Spaces',
-        operationType: 'mutate' as const,
-        describe: 'Delete a space',
-        handler: './commands/space-delete.js#default',
-        flags: [
-          { name: 'force', type: 'boolean', description: 'Skip confirmation' },
-          { name: 'json',  type: 'boolean', description: 'Output raw JSON' },
-        ],
-        examples: [
-          'kb clickup space delete spaceId --force',
-        ],
-      },
+    group({ path: 'clickup task comments', describe: 'Task comment operations', category: 'Comments' }, [
+      cmd('clickup task comments list', './commands/task-comment-list.js#default', 'List comments on a task')
+        .read()
+        .flags({
+          json: { type: 'boolean', description: 'Output JSON (slim by default)' },
+          full: { type: 'boolean', description: 'Output full raw JSON (requires --json)' },
+        })
+        .examples(['kb clickup task comments list abc123', 'kb clickup task comments list abc123 --json']),
 
-      // ── Folders ───────────────────────────────────────────────────────────────
-      {
-        path: 'clickup folder create',
-        category: 'Folders',
-        operationType: 'mutate' as const,
-        describe: 'Create a new folder in a space',
-        handler: './commands/folder-create.js#default',
-        flags: [
-          { name: 'space', type: 'string',  description: 'Space ID (required)' },
-          { name: 'name',  type: 'string',  description: 'Folder name (required)' },
-          { name: 'json',  type: 'boolean', description: 'Output JSON (slim by default)' },
-          { name: 'full',  type: 'boolean', description: 'Output full raw JSON (requires --json)' },
-        ],
-        examples: [
-          'kb clickup folder create --space spaceId --name "Q3 Sprint"',
-        ],
-      },
-      {
-        path: 'clickup folder update',
-        category: 'Folders',
-        operationType: 'mutate' as const,
-        describe: 'Rename a folder',
-        handler: './commands/folder-update.js#default',
-        flags: [
-          { name: 'name', type: 'string',  description: 'New folder name (required)' },
-          { name: 'json', type: 'boolean', description: 'Output JSON (slim by default)' },
-          { name: 'full', type: 'boolean', description: 'Output full raw JSON (requires --json)' },
-        ],
-        examples: [
-          'kb clickup folder update folderId --name "Q4 Sprint"',
-        ],
-      },
-      {
-        path: 'clickup folder delete',
-        category: 'Folders',
-        operationType: 'mutate' as const,
-        describe: 'Delete a folder',
-        handler: './commands/folder-delete.js#default',
-        flags: [
-          { name: 'force', type: 'boolean', description: 'Skip confirmation' },
-          { name: 'json',  type: 'boolean', description: 'Output raw JSON' },
-        ],
-        examples: [
-          'kb clickup folder delete folderId --force',
-        ],
-      },
+      cmd('clickup task comments add', './commands/task-comment-add.js#default', 'Add a comment to a task')
+        .mutate()
+        .flags({
+          text:    { type: 'string',  description: 'Comment text (required)' },
+          assignee:{ type: 'number',  description: 'Assign comment to user ID' },
+          notify:  { type: 'boolean', description: 'Notify all task watchers' },
+          json:    { type: 'boolean', description: 'Output JSON (slim by default)' },
+          full:    { type: 'boolean', description: 'Output full raw JSON (requires --json)' },
+        })
+        .examples(['kb clickup task comments add abc123 --text "Fixed in branch feature/x"']),
+    ]),
 
-      // ── List CRUD ─────────────────────────────────────────────────────────────
-      {
-        path: 'clickup list create',
-        category: 'Lists',
-        operationType: 'mutate' as const,
-        describe: 'Create a new list in a folder or space',
-        handler: './commands/list-create.js#default',
-        flags: [
-          { name: 'folder', type: 'string',  description: 'Folder ID (use instead of --space)' },
-          { name: 'space',  type: 'string',  description: 'Space ID for folderless list' },
-          { name: 'name',   type: 'string',  description: 'List name (required)' },
-          { name: 'json',   type: 'boolean', description: 'Output JSON (slim by default)' },
-          { name: 'full',   type: 'boolean', description: 'Output full raw JSON (requires --json)' },
-        ],
-        examples: [
+    group({ path: 'clickup list', describe: 'List operations', category: 'Lists' }, [
+      cmd('clickup list tasks', './commands/list-tasks.js#default', 'List tasks in a specific list')
+        .read()
+        .flags({
+          status:   { type: 'string',  description: 'Filter by status (comma-separated)' },
+          assignee: { type: 'string',  description: 'Filter by user IDs (comma-separated)' },
+          limit:    { type: 'number',  description: 'Max results', default: 50 },
+          page:     { type: 'number',  description: 'Page number', default: 0 },
+          closed:   { type: 'boolean', description: 'Include closed tasks' },
+          json:     { type: 'boolean', description: 'Output JSON (slim by default)' },
+          full:     { type: 'boolean', description: 'Output full raw JSON (requires --json)' },
+        })
+        .examples(['kb clickup list tasks listId123', 'kb clickup list tasks listId123 --status "open" --json']),
+
+      cmd('clickup list statuses', './commands/list-statuses.js#default', 'List available statuses for a list')
+        .read()
+        .flags({
+          json: { type: 'boolean', description: 'Output JSON (slim by default)' },
+          full: { type: 'boolean', description: 'Output full raw JSON (requires --json)' },
+        })
+        .examples(['kb clickup list statuses listId123', 'kb clickup list statuses listId123 --json']),
+
+      cmd('clickup list create', './commands/list-create.js#default', 'Create a new list in a folder or space')
+        .mutate()
+        .flags({
+          folder: { type: 'string',  description: 'Folder ID (use instead of --space)' },
+          space:  { type: 'string',  description: 'Space ID for folderless list' },
+          name:   { type: 'string',  description: 'List name (required)' },
+          json:   { type: 'boolean', description: 'Output JSON (slim by default)' },
+          full:   { type: 'boolean', description: 'Output full raw JSON (requires --json)' },
+        })
+        .examples([
           'kb clickup list create --folder folderId --name "Backlog"',
           'kb clickup list create --space spaceId --name "Inbox"',
-        ],
-      },
-      {
-        path: 'clickup list update',
-        category: 'Lists',
-        operationType: 'mutate' as const,
-        describe: 'Update a list',
-        handler: './commands/list-update.js#default',
-        flags: [
-          { name: 'name', type: 'string',  description: 'New list name' },
-          { name: 'json', type: 'boolean', description: 'Output JSON (slim by default)' },
-          { name: 'full', type: 'boolean', description: 'Output full raw JSON (requires --json)' },
-        ],
-        examples: [
-          'kb clickup list update listId --name "Sprint 5"',
-        ],
-      },
-      {
-        path: 'clickup list delete',
-        category: 'Lists',
-        operationType: 'mutate' as const,
-        describe: 'Delete a list',
-        handler: './commands/list-delete.js#default',
-        flags: [
-          { name: 'force', type: 'boolean', description: 'Skip confirmation' },
-          { name: 'json',  type: 'boolean', description: 'Output raw JSON' },
-        ],
-        examples: [
-          'kb clickup list delete listId --force',
-        ],
-      },
+        ]),
 
-      // ── List ─────────────────────────────────────────────────────────────────
-      {
-        path: 'clickup list tasks',
-        category: 'Lists',
-        operationType: 'read' as const,
-        describe: 'List tasks in a specific list',
-        handler: './commands/list-tasks.js#default',
-        flags: [
-          { name: 'status',   type: 'string',  description: 'Filter by status (comma-separated)' },
-          { name: 'assignee', type: 'string',  description: 'Filter by user IDs (comma-separated)' },
-          { name: 'limit',    type: 'number',  description: 'Max results', default: 50 },
-          { name: 'page',     type: 'number',  description: 'Page number', default: 0 },
-          { name: 'closed',   type: 'boolean', description: 'Include closed tasks' },
-          { name: 'json',     type: 'boolean', description: 'Output JSON (slim by default)' },
-          { name: 'full',     type: 'boolean', description: 'Output full raw JSON (requires --json)' },
-        ],
-        examples: [
-          'kb clickup list tasks listId123',
-          'kb clickup list tasks listId123 --status "open" --json',
-        ],
-      },
-      {
-        path: 'clickup list statuses',
-        category: 'Lists',
-        operationType: 'read' as const,
-        describe: 'List available statuses for a list',
-        handler: './commands/list-statuses.js#default',
-        flags: [
-          { name: 'json', type: 'boolean', description: 'Output JSON (slim by default)' },
-          { name: 'full', type: 'boolean', description: 'Output full raw JSON (requires --json)' },
-        ],
-        examples: [
-          'kb clickup list statuses listId123',
-          'kb clickup list statuses listId123 --json',
-        ],
-      },
-    ],
-  },
+      cmd('clickup list update', './commands/list-update.js#default', 'Update a list')
+        .mutate()
+        .flags({
+          name: { type: 'string',  description: 'New list name' },
+          json: { type: 'boolean', description: 'Output JSON (slim by default)' },
+          full: { type: 'boolean', description: 'Output full raw JSON (requires --json)' },
+        })
+        .examples(['kb clickup list update listId --name "Sprint 5"']),
+
+      cmd('clickup list delete', './commands/list-delete.js#default', 'Delete a list')
+        .mutate()
+        .flags({
+          force: { type: 'boolean', description: 'Skip confirmation' },
+          json:  { type: 'boolean', description: 'Output raw JSON' },
+        })
+        .examples(['kb clickup list delete listId --force']),
+    ]),
+
+    group({ path: 'clickup space', describe: 'Space operations', category: 'Spaces' }, [
+      cmd('clickup space create', './commands/space-create.js#default', 'Create a new space')
+        .mutate()
+        .flags({
+          name:    { type: 'string',  description: 'Space name (required)' },
+          color:   { type: 'string',  description: 'Space color (hex)' },
+          private: { type: 'boolean', description: 'Make space private' },
+          json:    { type: 'boolean', description: 'Output JSON (slim by default)' },
+          full:    { type: 'boolean', description: 'Output full raw JSON (requires --json)' },
+        })
+        .examples(['kb clickup space create --name "Engineering"', 'kb clickup space create --name "Design" --color "#ff0000"']),
+
+      cmd('clickup space update', './commands/space-update.js#default', 'Update a space')
+        .mutate()
+        .flags({
+          name:  { type: 'string',  description: 'New space name' },
+          color: { type: 'string',  description: 'New color (hex)' },
+          json:  { type: 'boolean', description: 'Output JSON (slim by default)' },
+          full:  { type: 'boolean', description: 'Output full raw JSON (requires --json)' },
+        })
+        .examples(['kb clickup space update spaceId --name "Backend"']),
+
+      cmd('clickup space delete', './commands/space-delete.js#default', 'Delete a space')
+        .mutate()
+        .flags({
+          force: { type: 'boolean', description: 'Skip confirmation' },
+          json:  { type: 'boolean', description: 'Output raw JSON' },
+        })
+        .examples(['kb clickup space delete spaceId --force']),
+    ]),
+
+    group({ path: 'clickup folder', describe: 'Folder operations', category: 'Folders' }, [
+      cmd('clickup folder create', './commands/folder-create.js#default', 'Create a new folder in a space')
+        .mutate()
+        .flags({
+          space: { type: 'string',  description: 'Space ID (required)' },
+          name:  { type: 'string',  description: 'Folder name (required)' },
+          json:  { type: 'boolean', description: 'Output JSON (slim by default)' },
+          full:  { type: 'boolean', description: 'Output full raw JSON (requires --json)' },
+        })
+        .examples(['kb clickup folder create --space spaceId --name "Q3 Sprint"']),
+
+      cmd('clickup folder update', './commands/folder-update.js#default', 'Rename a folder')
+        .mutate()
+        .flags({
+          name: { type: 'string',  description: 'New folder name (required)' },
+          json: { type: 'boolean', description: 'Output JSON (slim by default)' },
+          full: { type: 'boolean', description: 'Output full raw JSON (requires --json)' },
+        })
+        .examples(['kb clickup folder update folderId --name "Q4 Sprint"']),
+
+      cmd('clickup folder delete', './commands/folder-delete.js#default', 'Delete a folder')
+        .mutate()
+        .flags({
+          force: { type: 'boolean', description: 'Skip confirmation' },
+          json:  { type: 'boolean', description: 'Output raw JSON' },
+        })
+        .examples(['kb clickup folder delete folderId --force']),
+    ]),
+  ),
 
   rest: {
     basePath: CLICKUP_BASE_PATH,
     routes: [
-      {
-        method: 'GET',
-        path: CLICKUP_ROUTES.WORKSPACE,
-        handler: './rest/handlers/workspace-handler.js#default',
-      },
-      {
-        method: 'GET',
-        path: CLICKUP_ROUTES.TASKS_SEARCH,
-        handler: './rest/handlers/search-handler.js#default',
-      },
-      {
-        method: 'GET',
-        path: CLICKUP_ROUTES.TASK,
-        handler: './rest/handlers/task-get-handler.js#default',
-      },
-      {
-        method: 'POST',
-        path: CLICKUP_ROUTES.TASKS_IN_LIST,
-        handler: './rest/handlers/task-create-handler.js#default',
-        input: { zod: '@kb-labs/clickup-contracts#CreateTaskSchema' },
-      },
-      {
-        method: 'PATCH',
-        path: CLICKUP_ROUTES.TASK,
-        handler: './rest/handlers/task-update-handler.js#default',
-        input: { zod: '@kb-labs/clickup-contracts#UpdateTaskSchema' },
-      },
-      {
-        method: 'DELETE',
-        path: CLICKUP_ROUTES.TASK,
-        handler: './rest/handlers/task-delete-handler.js#default',
-      },
-      {
-        method: 'GET',
-        path: CLICKUP_ROUTES.TASKS_IN_LIST,
-        handler: './rest/handlers/list-tasks-handler.js#default',
-      },
-      {
-        method: 'GET',
-        path: CLICKUP_ROUTES.LIST_STATUSES,
-        handler: './rest/handlers/list-statuses-handler.js#default',
-      },
-      {
-        method: 'GET',
-        path: CLICKUP_ROUTES.TASK_COMMENTS,
-        handler: './rest/handlers/task-comments-handler.js#default',
-      },
-      {
-        method: 'POST',
-        path: CLICKUP_ROUTES.TASK_COMMENTS,
-        handler: './rest/handlers/task-comment-add-handler.js#default',
-        input: { zod: '@kb-labs/clickup-contracts#AddCommentSchema' },
-      },
-      // ── Spaces
-      {
-        method: 'POST',
-        path: CLICKUP_ROUTES.SPACES,
-        handler: './rest/handlers/space-create-handler.js#default',
-        input: { zod: '@kb-labs/clickup-contracts#CreateSpaceSchema' },
-      },
-      {
-        method: 'PATCH',
-        path: CLICKUP_ROUTES.SPACE,
-        handler: './rest/handlers/space-update-handler.js#default',
-        input: { zod: '@kb-labs/clickup-contracts#UpdateSpaceSchema' },
-      },
-      {
-        method: 'DELETE',
-        path: CLICKUP_ROUTES.SPACE,
-        handler: './rest/handlers/space-delete-handler.js#default',
-      },
-      // ── Folders
-      {
-        method: 'POST',
-        path: CLICKUP_ROUTES.SPACE_FOLDERS,
-        handler: './rest/handlers/folder-create-handler.js#default',
-        input: { zod: '@kb-labs/clickup-contracts#CreateFolderSchema' },
-      },
-      {
-        method: 'PATCH',
-        path: CLICKUP_ROUTES.FOLDER,
-        handler: './rest/handlers/folder-update-handler.js#default',
-        input: { zod: '@kb-labs/clickup-contracts#UpdateFolderSchema' },
-      },
-      {
-        method: 'DELETE',
-        path: CLICKUP_ROUTES.FOLDER,
-        handler: './rest/handlers/folder-delete-handler.js#default',
-      },
-      // ── Lists CRUD
-      {
-        method: 'POST',
-        path: CLICKUP_ROUTES.FOLDER_LISTS,
-        handler: './rest/handlers/list-create-handler.js#default',
-        input: { zod: '@kb-labs/clickup-contracts#CreateListSchema' },
-      },
-      {
-        method: 'POST',
-        path: CLICKUP_ROUTES.SPACE_LISTS,
-        handler: './rest/handlers/list-create-handler.js#default',
-        input: { zod: '@kb-labs/clickup-contracts#CreateListSchema' },
-      },
-      {
-        method: 'PATCH',
-        path: CLICKUP_ROUTES.LIST,
-        handler: './rest/handlers/list-update-handler.js#default',
-        input: { zod: '@kb-labs/clickup-contracts#UpdateListSchema' },
-      },
-      {
-        method: 'DELETE',
-        path: CLICKUP_ROUTES.LIST,
-        handler: './rest/handlers/list-delete-handler.js#default',
-      },
+      GET(CLICKUP_ROUTES.WORKSPACE,     './rest/handlers/workspace-handler.js#default'),
+      GET(CLICKUP_ROUTES.TASKS_SEARCH,  './rest/handlers/search-handler.js#default'),
+      GET(CLICKUP_ROUTES.TASK,          './rest/handlers/task-get-handler.js#default'),
+      POST(CLICKUP_ROUTES.TASKS_IN_LIST,'./rest/handlers/task-create-handler.js#default',  { input: { zod: '@kb-labs/clickup-contracts#CreateTaskSchema' } }),
+      PATCH(CLICKUP_ROUTES.TASK,        './rest/handlers/task-update-handler.js#default',  { input: { zod: '@kb-labs/clickup-contracts#UpdateTaskSchema' } }),
+      DELETE(CLICKUP_ROUTES.TASK,       './rest/handlers/task-delete-handler.js#default'),
+      GET(CLICKUP_ROUTES.TASKS_IN_LIST, './rest/handlers/list-tasks-handler.js#default'),
+      GET(CLICKUP_ROUTES.LIST_STATUSES, './rest/handlers/list-statuses-handler.js#default'),
+      GET(CLICKUP_ROUTES.TASK_COMMENTS, './rest/handlers/task-comments-handler.js#default'),
+      POST(CLICKUP_ROUTES.TASK_COMMENTS,'./rest/handlers/task-comment-add-handler.js#default', { input: { zod: '@kb-labs/clickup-contracts#AddCommentSchema' } }),
+      POST(CLICKUP_ROUTES.SPACES,       './rest/handlers/space-create-handler.js#default',  { input: { zod: '@kb-labs/clickup-contracts#CreateSpaceSchema' } }),
+      PATCH(CLICKUP_ROUTES.SPACE,       './rest/handlers/space-update-handler.js#default',  { input: { zod: '@kb-labs/clickup-contracts#UpdateSpaceSchema' } }),
+      DELETE(CLICKUP_ROUTES.SPACE,      './rest/handlers/space-delete-handler.js#default'),
+      POST(CLICKUP_ROUTES.SPACE_FOLDERS,'./rest/handlers/folder-create-handler.js#default', { input: { zod: '@kb-labs/clickup-contracts#CreateFolderSchema' } }),
+      PATCH(CLICKUP_ROUTES.FOLDER,      './rest/handlers/folder-update-handler.js#default', { input: { zod: '@kb-labs/clickup-contracts#UpdateFolderSchema' } }),
+      DELETE(CLICKUP_ROUTES.FOLDER,     './rest/handlers/folder-delete-handler.js#default'),
+      POST(CLICKUP_ROUTES.FOLDER_LISTS, './rest/handlers/list-create-handler.js#default',   { input: { zod: '@kb-labs/clickup-contracts#CreateListSchema' } }),
+      POST(CLICKUP_ROUTES.SPACE_LISTS,  './rest/handlers/list-create-handler.js#default',   { input: { zod: '@kb-labs/clickup-contracts#CreateListSchema' } }),
+      PATCH(CLICKUP_ROUTES.LIST,        './rest/handlers/list-update-handler.js#default',   { input: { zod: '@kb-labs/clickup-contracts#UpdateListSchema' } }),
+      DELETE(CLICKUP_ROUTES.LIST,       './rest/handlers/list-delete-handler.js#default'),
     ],
   },
 };
