@@ -56,10 +56,10 @@ test('QL-05: GET /cycles returns cycles array with count and hasCircular', async
   const body = await res.json()
   const d = body.data ?? body
   expect(Array.isArray(d.cycles)).toBe(true)
-  expect(typeof d.count).toBe('number')
+  expect(typeof d.cycleCount).toBe('number')
   expect(typeof d.hasCircular).toBe('boolean')
-  expect(Array.isArray(d.affected)).toBe(true)
-  expect(d.count).toBe(d.cycles.length)
+  expect(Array.isArray(d.affectedPackages)).toBe(true)
+  expect(d.cycleCount).toBe(d.cycles.length)
 })
 
 test('QL-06: GET /layers returns violations with totalViolations', async ({ request }) => {
