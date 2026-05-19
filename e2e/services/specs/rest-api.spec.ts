@@ -7,10 +7,11 @@ test('RA-01: GET /observability/describe returns service identity', async ({ req
   const res = await request.get(`${REST}/observability/describe`)
   expect(res.status()).toBe(200)
   const body = await res.json()
-  // ServiceObservabilityDescribe: { serviceId, instanceId, serviceType, ... }
-  expect(typeof (body.serviceId ?? body.id)).toBe('string')
-  expect(typeof body.serviceType).toBe('string')
-  expect(typeof body.version).toBe('string')
+  // Response may be wrapped in { ok, data, meta } envelope
+  const desc = body.data ?? body
+  expect(typeof (desc.serviceId ?? desc.id)).toBe('string')
+  expect(typeof desc.serviceType).toBe('string')
+  expect(typeof desc.version).toBe('string')
 })
 
 // ── Prometheus metrics ────────────────────────────────────────────────────────
@@ -20,8 +21,8 @@ test('RA-02: GET /api/v1/metrics returns Prometheus exposition with process metr
   expect(res.status()).toBe(200)
   expect(res.headers()['content-type']).toMatch(/text/)
   const text = await res.text()
-  // Standard process metrics always present in prom-client
-  expect(text).toMatch(/process_cpu_seconds_total|nodejs_eventloop_lag/)
+  // KB Labs custom metrics always present
+  expect(text).toMatch(/http_request_duration_ms|kb_plugins_mount_total/)
   // At least one HELP line
   expect(text).toMatch(/^# HELP /m)
 })
@@ -32,10 +33,11 @@ test('RA-03: GET /openapi-plugins.json returns merged OpenAPI with paths', async
   const res = await request.get(`${REST}/openapi-plugins.json`)
   expect(res.status()).toBe(200)
   const body = await res.json()
-  // Merged spec is an object; merged specs have `paths` key
-  expect(typeof body).toBe('object')
-  // Either it's a merged OpenAPI doc with paths or an array of specs
-  const hasPaths = body.paths !== undefined || Array.isArray(body) || body.info !== undefined
+  // Response may be wrapped in { ok, data, meta } envelope
+  const spec = body.data ?? body
+  expect(typeof spec).toBe('object')
+  // Either it's a merged OpenAPI doc with paths, or array of specs, or has info
+  const hasPaths = spec.paths !== undefined || Array.isArray(spec) || spec.info !== undefined
   expect(hasPaths).toBe(true)
 })
 
