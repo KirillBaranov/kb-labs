@@ -1,23 +1,45 @@
 import { test, expect } from '@playwright/test'
 import { GATEWAY } from '@kb-labs/e2e-shared/urls.js'
-import { getAccessToken } from '@kb-labs/e2e-shared/auth.js'
+import { registerAgent, issueToken } from '@kb-labs/e2e-shared/auth.js'
+
+async function registerHostForAgent(
+  request: Parameters<Parameters<typeof test>[1]>[0]['request'],
+  name: string,
+): Promise<{ hostId: string; token: string }> {
+  const creds = await registerAgent(request, `e2e-agent-${name}`)
+  const namespaceId: string = (creds as Record<string, string>).namespaceId ?? 'e2e'
+  const tokens = await issueToken(request, creds)
+
+  const regRes = await request.post(`${GATEWAY}/hosts/register`, {
+    data: { name, namespaceId, capabilities: [], workspacePaths: [] },
+  })
+  expect([200, 201]).toContain(regRes.status())
+  const body = await regRes.json()
+  const hostId: string = body.hostId ?? body.data?.hostId ?? body.id
+  expect(hostId).toBeTruthy()
+  return { hostId, token: tokens.accessToken }
+}
 
 test('GW-H-01: POST /hosts/register returns hostId and machineToken', async ({ request }) => {
+  const creds = await registerAgent(request, 'e2e-agent-h01')
+  const namespaceId: string = (creds as Record<string, string>).namespaceId ?? 'e2e'
+
   const res = await request.post(`${GATEWAY}/hosts/register`, {
-    data: { name: 'e2e-host-reg', namespaceId: 'e2e', capabilities: [], workspacePaths: [] },
+    data: { name: 'e2e-host-reg', namespaceId, capabilities: [], workspacePaths: [] },
   })
   expect([200, 201]).toContain(res.status())
   const body = await res.json()
   const hostId: string = body.hostId ?? body.data?.hostId ?? body.id
-  const token: string = body.machineToken ?? body.data?.machineToken ?? body.token
+  const machineToken: string = body.machineToken ?? body.data?.machineToken ?? body.token
   expect(hostId).toBeTruthy()
-  expect(token).toBeTruthy()
+  expect(machineToken).toBeTruthy()
 })
 
 test('GW-H-02: GET /hosts with token returns array', async ({ request }) => {
-  const token = await getAccessToken(request)
+  const creds = await registerAgent(request)
+  const tokens = await issueToken(request, creds)
   const res = await request.get(`${GATEWAY}/hosts`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Authorization: `Bearer ${tokens.accessToken}` },
   })
   expect(res.status()).toBe(200)
   const body = await res.json()
@@ -26,16 +48,8 @@ test('GW-H-02: GET /hosts with token returns array', async ({ request }) => {
 })
 
 test('GW-H-03: GET /hosts/:hostId returns registered host detail', async ({ request }) => {
-  // Register a host first
-  const regRes = await request.post(`${GATEWAY}/hosts/register`, {
-    data: { name: 'e2e-host-get', namespaceId: 'e2e', capabilities: [], workspacePaths: [] },
-  })
-  expect([200, 201]).toContain(regRes.status())
-  const regBody = await regRes.json()
-  const hostId: string = regBody.hostId ?? regBody.data?.hostId ?? regBody.id
-  expect(hostId).toBeTruthy()
+  const { hostId, token } = await registerHostForAgent(request, 'e2e-host-get')
 
-  const token = await getAccessToken(request)
   const res = await request.get(`${GATEWAY}/hosts/${encodeURIComponent(hostId)}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
@@ -46,14 +60,8 @@ test('GW-H-03: GET /hosts/:hostId returns registered host detail', async ({ requ
 })
 
 test('GW-H-04: DELETE /hosts/:hostId removes the host', async ({ request }) => {
-  const regRes = await request.post(`${GATEWAY}/hosts/register`, {
-    data: { name: 'e2e-host-del', namespaceId: 'e2e', capabilities: [], workspacePaths: [] },
-  })
-  const regBody = await regRes.json()
-  const hostId: string = regBody.hostId ?? regBody.data?.hostId ?? regBody.id
-  expect(hostId).toBeTruthy()
+  const { hostId, token } = await registerHostForAgent(request, 'e2e-host-del')
 
-  const token = await getAccessToken(request)
   const delRes = await request.delete(`${GATEWAY}/hosts/${encodeURIComponent(hostId)}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
