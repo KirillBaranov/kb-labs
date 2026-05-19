@@ -163,13 +163,13 @@ describe('combine()', () => {
         .withPlatform({
           llm: { models: ['gpt-4', 'claude-3'] },
           vectorStore: { collections: ['docs', 'code'] },
-          eventBus: { publish: ['events.*'], subscribe: ['jobs.*'] },
+          events: { publish: ['events.*'], subscribe: ['jobs.*'] },
         })
         .build();
 
       expect(result.platform?.llm).toEqual({ models: ['gpt-4', 'claude-3'] });
       expect(result.platform?.vectorStore).toEqual({ collections: ['docs', 'code'] });
-      expect(result.platform?.eventBus).toEqual({ publish: ['events.*'], subscribe: ['jobs.*'] });
+      expect(result.platform?.events).toEqual({ publish: ['events.*'], subscribe: ['jobs.*'] });
     });
 
     it('should merge platform arrays (union)', () => {

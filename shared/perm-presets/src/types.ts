@@ -61,7 +61,7 @@ export interface PlatformPermissions {
   /** Embeddings access */
   embeddings?: boolean;
   /** Event bus access */
-  eventBus?: boolean | { publish?: string[]; subscribe?: string[] };
+  events?: boolean | { publish?: string[]; subscribe?: string[] };
   /** Notifier access */
   notifier?: {
     emit?: boolean;
