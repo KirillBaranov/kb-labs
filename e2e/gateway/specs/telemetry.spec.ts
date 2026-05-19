@@ -16,9 +16,10 @@ test('GW-TEL-02: POST /telemetry/v1/ingest with valid event and token returns 2x
     data: {
       events: [
         {
+          source: 'e2e-test',
           type: 'e2e.test',
           timestamp: new Date().toISOString(),
-          data: { source: 'e2e-test' },
+          payload: { env: 'e2e' },
         },
       ],
     },

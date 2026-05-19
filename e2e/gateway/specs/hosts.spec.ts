@@ -4,7 +4,7 @@ import { getAccessToken } from '@kb-labs/e2e-shared/auth.js'
 
 test('GW-H-01: POST /hosts/register returns hostId and machineToken', async ({ request }) => {
   const res = await request.post(`${GATEWAY}/hosts/register`, {
-    data: { name: 'e2e-host-reg', namespaceId: 'e2e' },
+    data: { name: 'e2e-host-reg', namespaceId: 'e2e', capabilities: [], workspacePaths: [] },
   })
   expect([200, 201]).toContain(res.status())
   const body = await res.json()
@@ -28,7 +28,7 @@ test('GW-H-02: GET /hosts with token returns array', async ({ request }) => {
 test('GW-H-03: GET /hosts/:hostId returns registered host detail', async ({ request }) => {
   // Register a host first
   const regRes = await request.post(`${GATEWAY}/hosts/register`, {
-    data: { name: 'e2e-host-get', namespaceId: 'e2e' },
+    data: { name: 'e2e-host-get', namespaceId: 'e2e', capabilities: [], workspacePaths: [] },
   })
   expect([200, 201]).toContain(regRes.status())
   const regBody = await regRes.json()
@@ -47,7 +47,7 @@ test('GW-H-03: GET /hosts/:hostId returns registered host detail', async ({ requ
 
 test('GW-H-04: DELETE /hosts/:hostId removes the host', async ({ request }) => {
   const regRes = await request.post(`${GATEWAY}/hosts/register`, {
-    data: { name: 'e2e-host-del', namespaceId: 'e2e' },
+    data: { name: 'e2e-host-del', namespaceId: 'e2e', capabilities: [], workspacePaths: [] },
   })
   const regBody = await regRes.json()
   const hostId: string = regBody.hostId ?? regBody.data?.hostId ?? regBody.id
