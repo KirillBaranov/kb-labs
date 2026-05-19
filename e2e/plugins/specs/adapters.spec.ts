@@ -22,7 +22,8 @@ test('A-02: storage adapter registered', async ({ request }) => {
   const body = await res.json()
   if (res.status() === 200) {
     expect(body.ok).toBe(true)
-    expect(typeof body.data.totalRequests).toBe('number')
+    // Storage returns readOperations/writeOperations (not totalRequests)
+    expect(typeof body.data.readOperations).toBe('number')
   } else {
     expect(body.error?.code).toBe('ANALYTICS_NOT_IMPLEMENTED')
   }
