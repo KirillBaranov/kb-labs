@@ -50,10 +50,16 @@ export function spawnCliCommand(args: string[], opts: SpawnCliOptions = {}): Pro
   const timeoutMs = opts.timeoutMs ?? 30_000;
 
   return new Promise((resolvePromise) => {
+    // Force silent logging so no diagnostic lines pollute stdout.
+    // KB_OUTPUT_MODE=json suppresses the pino adapter; KB_LOG_LEVEL=silent
+    // suppresses the ConsoleLogger fallback (used before initPlatform).
+    const isJsonCmd = args.includes('--json');
     const child = spawn(bin, argv, {
       cwd: workspaceRoot,
       env: {
         ...(process.env as Record<string, string>),
+        KB_LOG_LEVEL: 'silent',
+        ...(isJsonCmd ? { KB_OUTPUT_MODE: 'json' } : {}),
         ...(opts.env ?? {}),
       },
       stdio: ['ignore', 'pipe', 'pipe'],
