@@ -11,7 +11,7 @@
  */
 
 import {
-  cmd, group, mergeCliGroups, GET, POST, PATCH, DELETE,
+  defineCommandFlags,
   combinePermissions,
   gitWorkflowPreset,
   kbPlatformPreset,
@@ -90,76 +90,289 @@ export const manifest = {
   //   ),
   // },
 
-  cli: mergeCliGroups(
-    group({ path: 'commit', describe: 'AI-powered conventional commit generation.', category: 'Pipeline' }, [
-      cmd('commit', './cli/commands/run.js#default', 'Generate and apply commits (default flow).')
-        .execute()
-        .long(
+  // V3: cli wrapper with commands array
+  cli: {
+    groupMeta: [
+      {
+        path: 'commit',
+        describe: 'AI-powered conventional commit generation.',
+      },
+    ],
+    commands: [
+      // Main command: commit (default flow)
+      {
+        path: 'commit',
+        category: 'Pipeline',
+        describe: 'Generate and apply commits (default flow).',
+        operationType: 'execute' as const,
+        longDescription:
           'Analyzes changes, generates commit plan with LLM, applies commits locally. ' +
           'Use --dry-run to preview without applying, --with-push to push after applying.',
-        )
-        .flags(runFlags)
-        .examples(['kb commit commit', 'kb commit commit --dry-run', 'kb commit commit --with-push', 'kb commit commit --scope "src/components/**"']),
 
-      cmd('commit generate', './cli/commands/generate.js#default', 'Generate commit plan from git changes.')
-        .execute()
-        .long(
+        // ✅ V3: handler with #default suffix
+        handler: './cli/commands/run.js#default',
+
+        flags: defineCommandFlags(runFlags),
+
+        examples: [
+          'kb commit commit',
+          'kb commit commit --dry-run',
+          'kb commit commit --with-push',
+          'kb commit commit --scope "src/components/**"',
+        ],
+      },
+
+      // commit:generate - Generate commit plan
+      {
+        path: 'commit generate',
+        category: 'Pipeline',
+        describe: 'Generate commit plan from git changes.',
+        operationType: 'execute' as const,
+        longDescription:
           'Analyzes staged and unstaged changes using git diff, then uses LLM to group ' +
           'related changes and generate conventional commit messages.',
-        )
-        .flags(generateFlags)
-        .examples(['kb commit generate', 'kb commit generate --json', 'kb commit generate --scope "packages/**"']),
 
-      cmd('commit apply', './cli/commands/apply.js#default', 'Apply current commit plan (create local commits).')
-        .mutate()
-        .long('Creates git commits according to the current plan. Checks for staleness (working tree changes since plan generation) unless --force is used.')
-        .flags(applyFlags)
-        .examples(['kb commit apply', 'kb commit apply --force']),
+        handler: './cli/commands/generate.js#default',
 
-      cmd('commit push', './cli/commands/push.js#default', 'Push commits to remote repository.')
-        .execute()
-        .long('Pushes local commits to the remote. Refuses force push to protected branches (main, master) by default.')
-        .flags(pushFlags)
-        .examples(['kb commit push']),
+        flags: defineCommandFlags(generateFlags),
 
-      cmd('commit open', './cli/commands/open.js#default', 'Show current commit plan.')
-        .read()
-        .category('Plan')
-        .long('Displays the current commit plan if one exists.')
-        .flags(jsonOnlyFlags)
-        .examples(['kb commit open', 'kb commit open --json']),
+        examples: [
+          'kb commit generate',
+          'kb commit generate --json',
+          'kb commit generate --scope "packages/**"',
+        ],
+      },
 
-      cmd('commit reset', './cli/commands/reset.js#default', 'Clear current commit plan.')
-        .mutate()
-        .category('Plan')
-        .long('Removes the current commit plan from storage.')
-        .flags(emptyFlags)
-        .examples(['kb commit reset']),
-    ]),
-  ),
+      // commit:apply - Apply commit plan
+      {
+        path: 'commit apply',
+        category: 'Pipeline',
+        describe: 'Apply current commit plan (create local commits).',
+        operationType: 'mutate' as const,
+        longDescription:
+          'Creates git commits according to the current plan. Checks for staleness ' +
+          '(working tree changes since plan generation) unless --force is used.',
+
+        handler: './cli/commands/apply.js#default',
+
+        flags: defineCommandFlags(applyFlags),
+
+        examples: [
+          'kb commit apply',
+          'kb commit apply --force',
+        ],
+      },
+
+      // commit:push - Push commits
+      {
+        path: 'commit push',
+        category: 'Pipeline',
+        describe: 'Push commits to remote repository.',
+        operationType: 'execute' as const,
+        longDescription:
+          'Pushes local commits to the remote. Refuses force push to protected branches ' +
+          '(main, master) by default.',
+
+        handler: './cli/commands/push.js#default',
+
+        flags: defineCommandFlags(pushFlags),
+
+        examples: [
+          'kb commit push',
+        ],
+      },
+
+      // commit:open - Show current plan
+      {
+        path: 'commit open',
+        category: 'Plan',
+        describe: 'Show current commit plan.',
+        operationType: 'read' as const,
+        longDescription: 'Displays the current commit plan if one exists.',
+
+        handler: './cli/commands/open.js#default',
+
+        flags: defineCommandFlags(jsonOnlyFlags),
+
+        examples: [
+          'kb commit open',
+          'kb commit open --json',
+        ],
+      },
+
+      // commit:reset - Clear current plan
+      {
+        path: 'commit reset',
+        category: 'Plan',
+        describe: 'Clear current commit plan.',
+        operationType: 'mutate' as const,
+        longDescription: 'Removes the current commit plan from storage.',
+
+        handler: './cli/commands/reset.js#default',
+
+        flags: defineCommandFlags(emptyFlags),
+
+        examples: [
+          'kb commit reset',
+        ],
+      },
+    ],
+  },
 
   capabilities: [],
 
   // ✅ V3: Manifest-first permissions using composable presets
   permissions: pluginPermissions,
 
+  // REST API routes (inherit permissions from manifest)
   rest: {
     basePath: COMMIT_BASE_PATH,
     routes: [
-      GET(COMMIT_ROUTES.SCOPES,            './rest/handlers/scopes-handler.js#default',      { output: { zod: '@kb-labs/sdk#SelectDataSchema' } }),
-      GET(COMMIT_ROUTES.STATUS,            './rest/handlers/status-handler.js#default',      { output: { zod: '@kb-labs/commit-contracts#StatusResponseSchema' } }),
-      POST(COMMIT_ROUTES.GENERATE,         './rest/handlers/generate-handler.js#default',    { input: { zod: '@kb-labs/commit-contracts#GenerateRequestSchema' }, output: { zod: '@kb-labs/commit-contracts#GenerateResponseSchema' }, timeoutMs: 300000 }),
-      GET(COMMIT_ROUTES.PLAN,              './rest/handlers/plan-handler.js#default',        { output: { zod: '@kb-labs/commit-contracts#PlanResponseSchema' } }),
-      POST(COMMIT_ROUTES.APPLY,            './rest/handlers/apply-handler.js#default',       { input: { zod: '@kb-labs/commit-contracts#ApplyRequestSchema' }, output: { zod: '@kb-labs/commit-contracts#ApplyResponseSchema' }, timeoutMs: 600000 }),
-      POST(COMMIT_ROUTES.PUSH,             './rest/handlers/push-handler.js#default',        { input: { zod: '@kb-labs/commit-contracts#PushRequestSchema' }, output: { zod: '@kb-labs/commit-contracts#PushResponseSchema' }, timeoutMs: 600000 }),
-      DELETE(COMMIT_ROUTES.RESET,          './rest/handlers/reset-handler.js#default',       { output: { zod: '@kb-labs/commit-contracts#ResetResponseSchema' } }),
-      GET(COMMIT_ROUTES.GIT_STATUS,        './rest/handlers/git-status-handler.js#default',  { output: { zod: '@kb-labs/commit-contracts#GitStatusResponseSchema' } }),
-      GET(COMMIT_ROUTES.FILES,             './rest/handlers/files-handler.js#default'),
-      GET(COMMIT_ROUTES.DIFF,              './rest/handlers/diff-handler.js#default',        { output: { zod: '@kb-labs/commit-contracts#FileDiffResponseSchema' } }),
-      POST(COMMIT_ROUTES.SUMMARIZE,        './rest/handlers/summarize-handler.js#default',   { input: { zod: '@kb-labs/commit-contracts#SummarizeRequestSchema' }, output: { zod: '@kb-labs/commit-contracts#SummarizeResponseSchema' } }),
-      GET(COMMIT_ROUTES.ACTIONS,           './rest/handlers/actions-handler.js#default',     { output: { zod: '@kb-labs/commit-contracts#ActionsResponseSchema' } }),
-      PATCH(COMMIT_ROUTES.PATCH_PLAN,      './rest/handlers/patch-plan-handler.js#default',  { input: { zod: '@kb-labs/commit-contracts#PatchPlanRequestSchema' }, output: { zod: '@kb-labs/commit-contracts#PatchPlanResponseSchema' } }),
-      POST(COMMIT_ROUTES.REGENERATE_COMMIT,'./rest/handlers/regenerate-handler.js#default',  { input: { zod: '@kb-labs/commit-contracts#RegenerateCommitRequestSchema' }, output: { zod: '@kb-labs/commit-contracts#RegenerateCommitResponseSchema' }, timeoutMs: 300000 }),
+    // GET /scopes
+    {
+      method: 'GET',
+      path: COMMIT_ROUTES.SCOPES,
+      handler: './rest/handlers/scopes-handler.js#default',
+      output: {
+        zod: '@kb-labs/sdk#SelectDataSchema',
+      },
+    },
+    // GET /status
+    {
+      method: 'GET',
+      path: COMMIT_ROUTES.STATUS,
+      handler: './rest/handlers/status-handler.js#default',
+      output: {
+        zod: '@kb-labs/commit-contracts#StatusResponseSchema',
+      },
+    },
+    // POST /generate
+    {
+      method: 'POST',
+      path: COMMIT_ROUTES.GENERATE,
+      handler: './rest/handlers/generate-handler.js#default',
+      input: {
+        zod: '@kb-labs/commit-contracts#GenerateRequestSchema',
+      },
+      output: {
+        zod: '@kb-labs/commit-contracts#GenerateResponseSchema',
+      },
+      timeoutMs: 300000, // 5 minutes for LLM analysis
+    },
+    // GET /plan
+    {
+      method: 'GET',
+      path: COMMIT_ROUTES.PLAN,
+      handler: './rest/handlers/plan-handler.js#default',
+      output: {
+        zod: '@kb-labs/commit-contracts#PlanResponseSchema',
+      },
+    },
+    // POST /apply
+    {
+      method: 'POST',
+      path: COMMIT_ROUTES.APPLY,
+      handler: './rest/handlers/apply-handler.js#default',
+      input: {
+        zod: '@kb-labs/commit-contracts#ApplyRequestSchema',
+      },
+      output: {
+        zod: '@kb-labs/commit-contracts#ApplyResponseSchema',
+      },
+      timeoutMs: 600000, // 10 min for pre/post hooks
+    },
+    // POST /push
+    {
+      method: 'POST',
+      path: COMMIT_ROUTES.PUSH,
+      handler: './rest/handlers/push-handler.js#default',
+      input: {
+        zod: '@kb-labs/commit-contracts#PushRequestSchema',
+      },
+      output: {
+        zod: '@kb-labs/commit-contracts#PushResponseSchema',
+      },
+      timeoutMs: 600000, // 10 min for pre/post push hooks
+    },
+    // DELETE /plan
+    {
+      method: 'DELETE',
+      path: COMMIT_ROUTES.RESET,
+      handler: './rest/handlers/reset-handler.js#default',
+      output: {
+        zod: '@kb-labs/commit-contracts#ResetResponseSchema',
+      },
+    },
+    // GET /git-status
+    {
+      method: 'GET',
+      path: COMMIT_ROUTES.GIT_STATUS,
+      handler: './rest/handlers/git-status-handler.js#default',
+      output: {
+        zod: '@kb-labs/commit-contracts#GitStatusResponseSchema',
+      },
+    },
+    // GET /files
+    {
+      method: 'GET',
+      path: COMMIT_ROUTES.FILES,
+      handler: './rest/handlers/files-handler.js#default',
+    },
+    // GET /diff
+    {
+      method: 'GET',
+      path: COMMIT_ROUTES.DIFF,
+      handler: './rest/handlers/diff-handler.js#default',
+      output: {
+        zod: '@kb-labs/commit-contracts#FileDiffResponseSchema',
+      },
+    },
+    // POST /summarize
+    {
+      method: 'POST',
+      path: COMMIT_ROUTES.SUMMARIZE,
+      handler: './rest/handlers/summarize-handler.js#default',
+      input: {
+        zod: '@kb-labs/commit-contracts#SummarizeRequestSchema',
+      },
+      output: {
+        zod: '@kb-labs/commit-contracts#SummarizeResponseSchema',
+      },
+    },
+    // GET /actions
+    {
+      method: 'GET',
+      path: COMMIT_ROUTES.ACTIONS,
+      handler: './rest/handlers/actions-handler.js#default',
+      output: {
+        zod: '@kb-labs/commit-contracts#ActionsResponseSchema',
+      },
+    },
+    // PATCH /plan — edit a single commit in the plan
+    {
+      method: 'PATCH',
+      path: COMMIT_ROUTES.PATCH_PLAN,
+      handler: './rest/handlers/patch-plan-handler.js#default',
+      input: {
+        zod: '@kb-labs/commit-contracts#PatchPlanRequestSchema',
+      },
+      output: {
+        zod: '@kb-labs/commit-contracts#PatchPlanResponseSchema',
+      },
+    },
+    // POST /regenerate-commit — regenerate a single commit with LLM
+    {
+      method: 'POST',
+      path: COMMIT_ROUTES.REGENERATE_COMMIT,
+      handler: './rest/handlers/regenerate-handler.js#default',
+      input: {
+        zod: '@kb-labs/commit-contracts#RegenerateCommitRequestSchema',
+      },
+      output: {
+        zod: '@kb-labs/commit-contracts#RegenerateCommitResponseSchema',
+      },
+      timeoutMs: 300000, // 5 minutes for LLM analysis
+    },
     ],
   },
 

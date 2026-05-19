@@ -25,9 +25,7 @@
     "test:watch": "vitest",
     "type-check": "tsc --noEmit"
   },
-  "dependencies": {
-    "@kb-labs/plugin-contracts": "workspace:*"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
     "@types/node": "^24.3.3",

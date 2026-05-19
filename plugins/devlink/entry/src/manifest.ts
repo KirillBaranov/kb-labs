@@ -1,4 +1,4 @@
-import { cmd, group, mergeCliGroups, combinePermissions, generateExamples } from '@kb-labs/sdk';
+import { defineCommandFlags, combinePermissions, generateExamples } from '@kb-labs/sdk';
 import {
   switchFlags,
   statusFlags,
@@ -18,13 +18,13 @@ const pluginPermissions = combinePermissions()
     cache: [DEVLINK_CACHE_PREFIX],
   })
   .withQuotas({
-    timeoutMs: 1800000,
+    timeoutMs: 1800000, // 30 min — switch --install runs pnpm install in 29 sub-repos
     memoryMb: 512,
   })
   .build();
 
 export const manifest = {
-  schema: 'kb.plugin/3' as const,
+  schema: 'kb.plugin/3',
   id: '@kb-labs/devlink',
   version: '1.0.0',
 
@@ -39,89 +39,137 @@ export const manifest = {
     optional: [],
   },
 
-  cli: mergeCliGroups(
-    group({ path: 'devlink', describe: 'Cross-repo link: dependency management' }, [
-      cmd('devlink switch', './cli/commands/switch.js#default', 'Switch deps between local link: and npm (CI/CD) mode')
-        .mutate()
-        .category('Mode')
-        .long(
+  cli: {
+    groupMeta: [
+      { path: 'devlink', describe: 'Cross-repo link: dependency management' },
+    ],
+    commands: [
+      {
+        path: 'devlink switch',
+        category: 'Mode',
+        describe: 'Switch deps between local link: and npm (CI/CD) mode',
+        operationType: 'mutate' as const,
+        longDescription:
           'Replaces all cross-repo @kb-labs/* dependencies across monorepos. ' +
           'Creates a backup before applying. Run pnpm install after switching.',
-        )
-        .flags(switchFlags)
-        .examples(generateExamples('switch', 'devlink', [
+
+        handler: './cli/commands/switch.js#default',
+
+        flags: defineCommandFlags(switchFlags),
+
+        examples: generateExamples('switch', 'devlink', [
           { description: 'Switch to npm mode (CI/CD)', flags: { mode: 'npm' } },
           { description: 'Switch to local mode (development)', flags: { mode: 'local' } },
           { description: 'Preview changes without applying', flags: { mode: 'local', 'dry-run': true } },
           { description: 'Switch specific repos only', flags: { mode: 'npm', repos: 'kb-labs-cli,kb-labs-core' } },
-        ])),
+        ]),
 
-      cmd('devlink status', './cli/commands/status.js#default', 'Show current state of cross-repo dependencies')
-        .read()
-        .category('Mode')
-        .long(
+        permissions: pluginPermissions,
+      },
+      {
+        path: 'devlink status',
+        category: 'Mode',
+        describe: 'Show current state of cross-repo dependencies',
+        operationType: 'read' as const,
+        longDescription:
           'Displays the current linking mode, counts of link: vs npm dependencies, ' +
           'and any discrepancies across all monorepos.',
-        )
-        .flags(statusFlags)
-        .examples(generateExamples('status', 'devlink', [
+
+        handler: './cli/commands/status.js#default',
+
+        flags: defineCommandFlags(statusFlags),
+
+        examples: generateExamples('status', 'devlink', [
           { description: 'Show summary status', flags: {} },
           { description: 'Verbose output with all deps', flags: { verbose: true } },
           { description: 'JSON output for scripting', flags: { json: true } },
-        ])),
+        ]),
 
-      cmd('devlink plan', './cli/commands/plan.js#default', 'Preview what would change when switching mode')
-        .read()
-        .category('Mode')
-        .long(
+        permissions: pluginPermissions,
+      },
+      {
+        path: 'devlink plan',
+        category: 'Mode',
+        describe: 'Preview what would change when switching mode',
+        operationType: 'read' as const,
+        longDescription:
           'Shows all dependency changes that would be made without applying them. ' +
           'Useful for reviewing before running switch.',
-        )
-        .flags(planFlags)
-        .examples(generateExamples('plan', 'devlink', [
+
+        handler: './cli/commands/plan.js#default',
+
+        flags: defineCommandFlags(planFlags),
+
+        examples: generateExamples('plan', 'devlink', [
           { description: 'Plan switch to local mode', flags: { mode: 'local' } },
           { description: 'Plan switch to npm mode', flags: { mode: 'npm' } },
           { description: 'JSON output for scripting', flags: { mode: 'npm', json: true } },
-        ])),
+        ]),
 
-      cmd('devlink freeze', './cli/commands/freeze.js#default', 'Freeze current dependency state to lock file')
-        .mutate()
-        .category('State')
-        .long(
+        permissions: pluginPermissions,
+      },
+      {
+        path: 'devlink freeze',
+        category: 'State',
+        describe: 'Freeze current dependency state to lock file',
+        operationType: 'mutate' as const,
+        longDescription:
           'Saves a snapshot of current dependency mode to .kb/devlink/lock.json. ' +
           'Use to record a stable known-good state.',
-        )
-        .flags(freezeFlags)
-        .examples(generateExamples('freeze', 'devlink', [
+
+        handler: './cli/commands/freeze.js#default',
+
+        flags: defineCommandFlags(freezeFlags),
+
+        examples: generateExamples('freeze', 'devlink', [
           { description: 'Freeze current state', flags: {} },
           { description: 'JSON output', flags: { json: true } },
-        ])),
+        ]),
 
-      cmd('devlink undo', './cli/commands/undo.js#default', 'Restore previous dependency state from last backup')
-        .mutate()
-        .category('State')
-        .long(
+        permissions: pluginPermissions,
+      },
+      {
+        path: 'devlink undo',
+        category: 'State',
+        describe: 'Restore previous dependency state from last backup',
+        operationType: 'mutate' as const,
+        longDescription:
           'Restores package.json files from the most recent backup created by switch. ' +
           'Run pnpm install after undoing.',
-        )
-        .flags(undoFlags)
-        .examples(generateExamples('undo', 'devlink', [
+
+        handler: './cli/commands/undo.js#default',
+
+        flags: defineCommandFlags(undoFlags),
+
+        examples: generateExamples('undo', 'devlink', [
           { description: 'Undo last switch', flags: {} },
           { description: 'JSON output', flags: { json: true } },
-        ])),
+        ]),
 
-      cmd('devlink backups', './cli/commands/backups.js#default', 'List and restore backups')
-        .read()
-        .category('State')
-        .long('Lists all available backups. Use --restore <id> to restore a specific backup.')
-        .flags(backupsFlags)
-        .examples(generateExamples('backups', 'devlink', [
+        permissions: pluginPermissions,
+      },
+      {
+        path: 'devlink backups',
+        category: 'State',
+        describe: 'List and restore backups',
+        operationType: 'read' as const,
+        longDescription:
+          'Lists all available backups. Use --restore <id> to restore a specific backup.',
+
+        handler: './cli/commands/backups.js#default',
+
+        flags: defineCommandFlags(backupsFlags),
+
+        examples: generateExamples('backups', 'devlink', [
           { description: 'List all backups', flags: {} },
           { description: 'JSON output', flags: { json: true } },
           { description: 'Restore specific backup', flags: { restore: '<backup-id>' } },
-        ])),
-    ]),
-  ),
+        ]),
+
+        permissions: pluginPermissions,
+      },
+    ],
+  },
 
   permissions: pluginPermissions,
 };
