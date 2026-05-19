@@ -440,6 +440,21 @@ describe('HostRegistry with IHostStore (dual-layer)', () => {
 
       expect(await registry.deregister('ghost', 'ns')).toBe(false);
     });
+
+    it('returns true and clears cache when no persistent store (cache-only mode)', async () => {
+      const { cache } = makeCache();
+      const registry = new HostRegistry(cache); // no store
+
+      const { descriptor } = await registry.register({
+        name: 'cache-only-host', namespaceId: 'ns', capabilities: [], workspacePaths: [],
+      });
+
+      const deleted = await registry.deregister(descriptor.hostId, 'ns');
+      expect(deleted).toBe(true);
+
+      // Host is no longer reachable
+      expect(await registry.get(descriptor.hostId, 'ns')).toBeNull();
+    });
   });
 
   describe('ensureRegistered', () => {

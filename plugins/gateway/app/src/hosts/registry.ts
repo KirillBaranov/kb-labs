@@ -225,14 +225,17 @@ export class HostRegistry {
   }
 
   async deregister(hostId: string, namespaceId: string): Promise<boolean> {
-    // Remove from store
-    const deleted = this.store ? await this.store.delete(hostId, namespaceId) : false;
-
-    // Remove from cache
+    if (this.store) {
+      const deleted = await this.store.delete(hostId, namespaceId);
+      await this.cache.delete(this.hostKey(namespaceId, hostId));
+      await this.removeFromIndex(namespaceId, hostId);
+      return deleted;
+    }
+    // No persistent store — cache is the source of truth.
+    const exists = !!(await this.cache.get<HostDescriptor>(this.hostKey(namespaceId, hostId)));
     await this.cache.delete(this.hostKey(namespaceId, hostId));
     await this.removeFromIndex(namespaceId, hostId);
-
-    return deleted;
+    return exists;
   }
 
   async ensureRegistered(
