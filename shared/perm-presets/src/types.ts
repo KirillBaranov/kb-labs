@@ -91,6 +91,10 @@ export interface PermissionSpec {
   /** Network permissions */
   network?: {
     fetch?: string[];
+    /** Raw TCP connect targets. Patterns: 'imap.gmail.com:993', '*.smtp.example.com:587' */
+    tcp?: { connect?: string[] };
+    /** WebSocket connect targets. Patterns: 'wss://api.openai.com', 'wss://*.slack.com' */
+    ws?: { connect?: string[] };
   };
   /** Platform service permissions */
   platform?: PlatformPermissions;
@@ -124,6 +128,10 @@ export interface RuntimePermissionSpec {
   /** Network permissions */
   network?: {
     fetch?: string[];
+    /** Raw TCP connect targets. Patterns: 'imap.gmail.com:993', '*.smtp.example.com:587' */
+    tcp?: { connect?: string[] };
+    /** WebSocket connect targets. Patterns: 'wss://api.openai.com', 'wss://*.slack.com' */
+    ws?: { connect?: string[] };
   };
   /** Platform service permissions */
   platform?: PlatformPermissions;

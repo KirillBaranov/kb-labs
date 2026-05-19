@@ -293,6 +293,89 @@ describe('combine()', () => {
   });
 });
 
+describe('TCP + WebSocket network permissions', () => {
+  it('should merge non-overlapping TCP hosts from two presets', () => {
+    const result = combine()
+      .withNetwork({ tcp: { connect: ['imap.gmail.com:993'] } })
+      .withNetwork({ tcp: { connect: ['smtp.mailgun.org:587'] } })
+      .build();
+
+    expect(result.network?.tcp?.connect).toContain('imap.gmail.com:993');
+    expect(result.network?.tcp?.connect).toContain('smtp.mailgun.org:587');
+  });
+
+  it('should deduplicate overlapping TCP hosts', () => {
+    const result = combine()
+      .withNetwork({ tcp: { connect: ['imap.gmail.com:993', 'smtp.mailgun.org:587'] } })
+      .withNetwork({ tcp: { connect: ['imap.gmail.com:993', 'smtp.example.com:465'] } })
+      .build();
+
+    const hosts = result.network?.tcp?.connect ?? [];
+    const imapCount = hosts.filter(h => h === 'imap.gmail.com:993').length;
+    expect(imapCount).toBe(1);
+    expect(hosts).toContain('smtp.mailgun.org:587');
+    expect(hosts).toContain('smtp.example.com:465');
+  });
+
+  it('should merge non-overlapping WebSocket targets from two presets', () => {
+    const result = combine()
+      .withNetwork({ ws: { connect: ['wss://api.openai.com'] } })
+      .withNetwork({ ws: { connect: ['wss://gateway.discord.gg'] } })
+      .build();
+
+    expect(result.network?.ws?.connect).toContain('wss://api.openai.com');
+    expect(result.network?.ws?.connect).toContain('wss://gateway.discord.gg');
+  });
+
+  it('should deduplicate overlapping WebSocket targets', () => {
+    const result = combine()
+      .withNetwork({ ws: { connect: ['wss://api.openai.com', 'wss://*.slack.com'] } })
+      .withNetwork({ ws: { connect: ['wss://api.openai.com', 'wss://gateway.discord.gg'] } })
+      .build();
+
+    const targets = result.network?.ws?.connect ?? [];
+    const openaiCount = targets.filter(t => t === 'wss://api.openai.com').length;
+    expect(openaiCount).toBe(1);
+    expect(targets).toContain('wss://*.slack.com');
+    expect(targets).toContain('wss://gateway.discord.gg');
+  });
+
+  it('should combine tcp and ws via withNetwork builder', () => {
+    const result = combine()
+      .withNetwork({
+        tcp: { connect: ['imap.gmail.com:993'] },
+        ws: { connect: ['wss://api.openai.com'] },
+      })
+      .build();
+
+    expect(result.network?.tcp?.connect).toContain('imap.gmail.com:993');
+    expect(result.network?.ws?.connect).toContain('wss://api.openai.com');
+  });
+
+  it('should not include ws in output when only tcp is set', () => {
+    const result = combine()
+      .withNetwork({ tcp: { connect: ['imap.gmail.com:993'] } })
+      .build();
+
+    expect(result.network?.tcp?.connect).toContain('imap.gmail.com:993');
+    expect(result.network?.ws).toBeUndefined();
+  });
+
+  it('should keep fetch alongside tcp and ws', () => {
+    const result = combine()
+      .withNetwork({
+        fetch: ['api.example.com'],
+        tcp: { connect: ['smtp.example.com:465'] },
+        ws: { connect: ['wss://ws.example.com'] },
+      })
+      .build();
+
+    expect(result.network?.fetch).toContain('api.example.com');
+    expect(result.network?.tcp?.connect).toContain('smtp.example.com:465');
+    expect(result.network?.ws?.connect).toContain('wss://ws.example.com');
+  });
+});
+
 describe('combinePresets()', () => {
   it('should combine multiple presets at once', () => {
     const result = combinePresets(minimal, gitWorkflow, kbPlatform);
