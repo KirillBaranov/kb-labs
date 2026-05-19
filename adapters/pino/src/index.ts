@@ -63,13 +63,16 @@ export class PinoLoggerAdapter implements ILogger {
   private bindings: Record<string, unknown> = {};
 
   constructor(config: PinoLoggerConfig = {}) {
-    // Resolve log level with priority: ENV var > config.level > 'info'
-    // This allows overriding via KB_LOG_LEVEL or LOG_LEVEL environment variables
-    const resolvedLevel =
-      (process.env.KB_LOG_LEVEL as PinoLoggerConfig["level"]) ??
-      (process.env.LOG_LEVEL as PinoLoggerConfig["level"]) ??
-      config.level ??
-      "info";
+    // In JSON output mode (--json flag), stdout must be clean for machine parsing.
+    // Force silent regardless of any inherited env or config level so pino never
+    // contaminates stdout with diagnostic log lines.
+    const resolvedLevel = process.env.KB_OUTPUT_MODE === 'json'
+      ? 'silent'
+      : // Resolve log level with priority: ENV var > config.level > 'info'
+        (process.env.KB_LOG_LEVEL as PinoLoggerConfig["level"]) ??
+        (process.env.LOG_LEVEL as PinoLoggerConfig["level"]) ??
+        config.level ??
+        "info";
 
     // Initialize log buffer if streaming is enabled
     if (config.streaming?.enabled) {
