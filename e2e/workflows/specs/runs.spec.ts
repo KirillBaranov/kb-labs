@@ -34,7 +34,7 @@ async function startRun(
   request: Parameters<Parameters<typeof test>[1]>[0]['request'],
   workflowId: string,
 ): Promise<string | undefined> {
-  const res = await request.post(`${WORKFLOW}/api/v1/workflows/${workflowId}/runs`, { data: {} })
+  const res = await request.post(`${WORKFLOW}/api/v1/workflows/${encodeURIComponent(workflowId)}/runs`, { data: {} })
   if (!res.ok()) return undefined
   const body = await res.json()
   return body.data?.runId ?? body.data?.id ?? body.runId ?? body.id

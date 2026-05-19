@@ -20,7 +20,7 @@ async function startRun(
   workflowId: string,
   input: Record<string, unknown> = {},
 ): Promise<string> {
-  const res = await request.post(`${WORKFLOW}/api/v1/workflows/${workflowId}/runs`, {
+  const res = await request.post(`${WORKFLOW}/api/v1/workflows/${encodeURIComponent(workflowId)}/runs`, {
     data: input,
   })
   expect([200, 201]).toContain(res.status())
