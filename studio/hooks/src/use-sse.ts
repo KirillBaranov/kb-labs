@@ -2,11 +2,15 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 
 // ─── Types ─────────────────────────────────────────────────────────
 
+export type SSEConnectionStatus = 'connecting' | 'live' | 'reconnecting' | 'closed';
+
 export interface UseSSEOptions<T> {
   /** SSE event name(s) to listen on (default: 'message') */
   events?: string | string[];
   /** Event that signals the stream is done (auto-closes connection) */
   doneEvent?: string;
+  /** SSE event names that indicate the stream ended cleanly (no error raised on close) */
+  terminalEvents?: string[];
   /** Enable/disable the hook (default: true) */
   enabled?: boolean;
   /** Auto-reconnect on error (default: false) */
@@ -38,7 +42,11 @@ export interface UseSSEReturn<T> {
   latest: T | undefined;
   /** Whether EventSource is connected */
   isConnected: boolean;
-  /** Last error */
+  /** Granular connection status */
+  connectionStatus: SSEConnectionStatus;
+  /** True if stream closed via a terminal/done event (not a network error) */
+  closedClean: boolean;
+  /** Last error (null when closed cleanly) */
   error: Error | null;
   /** Manually close the connection */
   close: () => void;
@@ -78,6 +86,7 @@ export function useSSE<T = unknown>(
   const {
     events: eventNames = 'message',
     doneEvent,
+    terminalEvents,
     enabled = true,
     reconnect = false,
     maxReconnects = 5,
@@ -95,11 +104,14 @@ export function useSSE<T = unknown>(
   const [latest, setLatest] = useState<T | undefined>(undefined);
   const [error, setError] = useState<Error | null>(null);
   const [isConnected, setIsConnected] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<SSEConnectionStatus>('closed');
+  const [closedClean, setClosedClean] = useState(false);
   const [reconnectCount, setReconnectCount] = useState(0);
 
   const esRef = useRef<EventSource | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const closedByUser = useRef(false);
+  const closedByTerminal = useRef(false);
 
   // Stable refs for callbacks to avoid re-subscribing on every render
   const onEventRef = useRef(onEvent);
@@ -116,6 +128,7 @@ export function useSSE<T = unknown>(
   // Stable serialized deps for objects/arrays — avoids inline JSON.stringify in dep array
   const eventNamesKey = JSON.stringify(eventNames);
   const paramsKey = JSON.stringify(params);
+  const terminalEventsKey = JSON.stringify(terminalEvents);
 
   const close = useCallback(() => {
     closedByUser.current = true;
@@ -128,6 +141,8 @@ export function useSSE<T = unknown>(
       esRef.current = null;
     }
     setIsConnected(false);
+    setConnectionStatus('closed');
+    setClosedClean(true);
   }, []);
 
   const clear = useCallback(() => {
@@ -147,10 +162,13 @@ export function useSSE<T = unknown>(
     }
 
     closedByUser.current = false;
+    closedByTerminal.current = false;
     setItems([]);
     setLatest(undefined);
     setError(null);
+    setClosedClean(false);
     setReconnectCount(0);
+    setConnectionStatus('connecting');
 
     let attempt = 0;
 
@@ -181,19 +199,30 @@ export function useSSE<T = unknown>(
         es.addEventListener(name, handleMessage as EventListener);
       }
 
-      if (doneEvent) {
-        es.addEventListener(doneEvent, () => {
+      // Terminal events close the stream cleanly — no error raised
+      const allTerminal = [
+        ...(terminalEvents ?? []),
+        ...(doneEvent ? [doneEvent] : []),
+      ];
+      for (const name of allTerminal) {
+        es.addEventListener(name, () => {
+          closedByTerminal.current = true;
           es.close();
           esRef.current = null;
           setIsConnected(false);
+          setConnectionStatus('closed');
+          setClosedClean(true);
           onDoneRef.current?.();
         });
       }
+
+      // Legacy doneEvent kept for backward compat (already covered above, but no-op duplicate)
 
       es.onopen = () => {
         attempt = 0;
         setReconnectCount(0);
         setIsConnected(true);
+        setConnectionStatus('live');
         setError(null);
         onOpenRef.current?.();
       };
@@ -203,7 +232,9 @@ export function useSSE<T = unknown>(
         esRef.current = null;
         setIsConnected(false);
 
-        if (closedByUser.current) {
+        // Clean close by user or terminal event — suppress error
+        if (closedByUser.current || closedByTerminal.current) {
+          setConnectionStatus('closed');
           return;
         }
 
@@ -214,8 +245,11 @@ export function useSSE<T = unknown>(
         if (reconnect && attempt < maxReconnects) {
           attempt++;
           setReconnectCount(attempt);
+          setConnectionStatus('reconnecting');
           const delay = reconnectIntervalMs * Math.pow(2, attempt - 1);
           reconnectTimer.current = setTimeout(connect, delay);
+        } else {
+          setConnectionStatus('closed');
         }
       };
     }
@@ -234,9 +268,9 @@ export function useSSE<T = unknown>(
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [endpoint, enabled, doneEvent, reconnect, maxReconnects, reconnectIntervalMs, maxEvents, eventNamesKey, paramsKey]);
+  }, [endpoint, enabled, doneEvent, reconnect, maxReconnects, reconnectIntervalMs, maxEvents, eventNamesKey, paramsKey, terminalEventsKey]);
 
-  return { events: items, latest, isConnected, error, close, clear, reconnectCount };
+  return { events: items, latest, isConnected, connectionStatus, closedClean, error, close, clear, reconnectCount };
 }
 
 // ─── Helpers ───────────────────────────────────────────────────────
