@@ -28,9 +28,12 @@ if (!process.env.LOG_LEVEL && !process.env.KB_LOG_LEVEL) {
 }
 
 // Check for --json flag BEFORE imports to ensure auto-init uses correct mode
-// This prevents ConsoleSink from being created when user wants JSON output
+// This prevents ConsoleSink from being created when user wants JSON output.
+// In --json mode, stdout must be machine-readable (no pino log lines mixed in),
+// so force KB_LOG_LEVEL to 'silent' regardless of any inherited env value.
 if (process.argv.includes('--json')) {
   process.env.KB_OUTPUT_MODE = 'json';
+  process.env.KB_LOG_LEVEL = 'silent';
 }
 
 
