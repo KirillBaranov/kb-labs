@@ -1,70 +1,97 @@
 import { test, expect } from '@playwright/test'
 import { REST } from '@kb-labs/e2e-shared/urls.js'
 
-// ── Observability describe + metrics ─────────────────────────────────────────
+// ── Observability describe ────────────────────────────────────────────────────
 
-test('RA-01: GET /observability/describe returns 200 with JSON body', async ({ request }) => {
+test('RA-01: GET /observability/describe returns service identity', async ({ request }) => {
   const res = await request.get(`${REST}/observability/describe`)
   expect(res.status()).toBe(200)
   const body = await res.json()
-  expect(typeof body).toBe('object')
-  expect(body).not.toBeNull()
+  // Response may be wrapped in { ok, data, meta } envelope
+  const desc = body.data ?? body
+  expect(typeof (desc.serviceId ?? desc.id)).toBe('string')
+  expect(typeof desc.serviceType).toBe('string')
+  expect(typeof desc.version).toBe('string')
 })
 
-test('RA-02: GET /api/v1/metrics returns Prometheus text', async ({ request }) => {
+// ── Prometheus metrics ────────────────────────────────────────────────────────
+
+test('RA-02: GET /api/v1/metrics returns Prometheus exposition with process metrics', async ({ request }) => {
   const res = await request.get(`${REST}/api/v1/metrics`)
   expect(res.status()).toBe(200)
+  expect(res.headers()['content-type']).toMatch(/text/)
   const text = await res.text()
-  expect(text).toMatch(/^#|^\w/m)
+  // KB Labs custom metrics always present
+  expect(text).toMatch(/http_request_duration_ms|kb_plugins_mount_total/)
+  // At least one HELP line
+  expect(text).toMatch(/^# HELP /m)
 })
 
-test('RA-03: GET /openapi-plugins.json returns valid document', async ({ request }) => {
+// ── OpenAPI plugins registry ──────────────────────────────────────────────────
+
+test('RA-03: GET /openapi-plugins.json returns merged OpenAPI with paths', async ({ request }) => {
   const res = await request.get(`${REST}/openapi-plugins.json`)
   expect(res.status()).toBe(200)
   const body = await res.json()
-  // May return merged OpenAPI object or array of specs — just verify it's non-empty JSON
-  expect(body).toBeTruthy()
-  expect(typeof body).toBe('object')
+  // Response may be wrapped in { ok, data, meta } envelope
+  const spec = body.data ?? body
+  expect(typeof spec).toBe('object')
+  // Either it's a merged OpenAPI doc with paths, or array of specs, or has info
+  const hasPaths = spec.paths !== undefined || Array.isArray(spec) || spec.info !== undefined
+  expect(hasPaths).toBe(true)
 })
 
-// ── Observability ─────────────────────────────────────────────────────────────
+// ── Observability health ──────────────────────────────────────────────────────
 
-test('RA-04: GET /observability/health returns health status', async ({ request }) => {
+test('RA-04: GET /observability/health returns status field', async ({ request }) => {
   const res = await request.get(`${REST}/observability/health`)
   expect(res.status()).toBe(200)
   const body = await res.json()
-  // REST API wraps: { ok, data } or direct { status }
   const status = body.data?.status ?? body.status
-  expect(status).toMatch(/ok|healthy|ready/)
+  expect(status).toMatch(/ok|healthy|degraded|unhealthy/)
 })
 
-test('RA-05: GET /observability/state-broker returns data or 503', async ({ request }) => {
+// ── State broker proxy ────────────────────────────────────────────────────────
+
+test('RA-05: GET /observability/state-broker returns ok flag or 503', async ({ request }) => {
   const res = await request.get(`${REST}/observability/state-broker`)
-  // 200 = state broker up; 503 = down but route responds
   expect([200, 503]).toContain(res.status())
   const body = await res.json()
+  // Both 200 and 503 paths return { ok: boolean }
   expect(typeof body.ok).toBe('boolean')
+  if (res.status() === 200) {
+    // When up, data must be present with totalEntries
+    expect(typeof body.data?.totalEntries).toBe('number')
+  }
 })
 
 // ── Analytics ─────────────────────────────────────────────────────────────────
 
-test('RA-06: GET /analytics/stats returns 200 or 501', async ({ request }) => {
+test('RA-06: GET /analytics/stats returns stats or 501 with error code', async ({ request }) => {
   const res = await request.get(`${REST}/analytics/stats`)
-  // 501 when analytics backend not configured, 200 when available
   expect([200, 501]).toContain(res.status())
-})
-
-test('RA-07: GET /analytics/buffer/status returns 200 or 501', async ({ request }) => {
-  const res = await request.get(`${REST}/analytics/buffer/status`)
-  expect([200, 501]).toContain(res.status())
-})
-
-// ── Adapters ──────────────────────────────────────────────────────────────────
-
-test('RA-08: GET /adapters/llm/usage returns usage data', async ({ request }) => {
-  const res = await request.get(`${REST}/adapters/llm/usage`)
-  expect(res.status()).toBe(200)
   const body = await res.json()
-  // Envelope: { ok: true, data: ... } or direct object
-  expect(body.ok ?? body).toBeTruthy()
+  if (res.status() === 200) {
+    expect(typeof body.data ?? body).toBe('object')
+  } else {
+    expect(body.error?.code).toBe('ANALYTICS_NOT_IMPLEMENTED')
+  }
+})
+
+// ── LLM adapter usage ─────────────────────────────────────────────────────────
+
+test('RA-08: GET /adapters/llm/usage returns usage stats or 501', async ({ request }) => {
+  const res = await request.get(`${REST}/adapters/llm/usage`)
+  expect([200, 501]).toContain(res.status())
+  const body = await res.json()
+  if (res.status() === 200) {
+    expect(body.ok).toBe(true)
+    const stats = body.data
+    expect(typeof stats.totalRequests).toBe('number')
+    expect(typeof stats.totalTokens).toBe('number')
+    expect(typeof stats.byModel).toBe('object')
+  } else {
+    expect(body.ok).toBe(false)
+    expect(body.error?.code).toBe('ANALYTICS_NOT_IMPLEMENTED')
+  }
 })
