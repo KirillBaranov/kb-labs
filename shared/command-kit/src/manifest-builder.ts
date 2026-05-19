@@ -168,13 +168,13 @@ export class CmdBuilder {
       handler: this._state.handler,
       describe: this._state.describe,
     };
-    if (this._state.operationType !== undefined) decl.operationType = this._state.operationType;
-    if (this._state.longDescription !== undefined) decl.longDescription = this._state.longDescription;
-    if (this._state.flags !== undefined) decl.flags = this._state.flags;
-    if (this._state.examples !== undefined) decl.examples = this._state.examples;
-    if (this._state.category !== undefined) decl.category = this._state.category;
-    if (this._state.aliases !== undefined) decl.aliases = this._state.aliases;
-    if (this._state.permissions !== undefined) decl.permissions = this._state.permissions;
+    if (this._state.operationType !== undefined) { decl.operationType = this._state.operationType; }
+    if (this._state.longDescription !== undefined) { decl.longDescription = this._state.longDescription; }
+    if (this._state.flags !== undefined) { decl.flags = this._state.flags; }
+    if (this._state.examples !== undefined) { decl.examples = this._state.examples; }
+    if (this._state.category !== undefined) { decl.category = this._state.category; }
+    if (this._state.aliases !== undefined) { decl.aliases = this._state.aliases; }
+    if (this._state.permissions !== undefined) { decl.permissions = this._state.permissions; }
     return decl;
   }
 }

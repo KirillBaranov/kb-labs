@@ -1,5 +1,5 @@
 import type { PermissionSpec as ContractsPermissionSpec } from '@kb-labs/plugin-contracts';
-import type { PermissionSpec, PermissionPreset, PresetBuilder, RuntimePermissionSpec, PlatformPermissions } from './types';
+import type { PermissionSpec, PermissionPreset, PresetBuilder, PlatformPermissions } from './types';
 
 /**
  * Merge two string arrays, removing duplicates
