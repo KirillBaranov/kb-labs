@@ -7,7 +7,6 @@ test('RA-01: GET /observability/describe returns service identity', async ({ req
   const res = await request.get(`${REST}/observability/describe`)
   expect(res.status()).toBe(200)
   const body = await res.json()
-  // Response may be wrapped in { ok, data, meta } envelope
   const desc = body.data ?? body
   expect(typeof (desc.serviceId ?? desc.id)).toBe('string')
   expect(typeof desc.serviceType).toBe('string')
@@ -21,9 +20,7 @@ test('RA-02: GET /api/v1/metrics returns Prometheus exposition with process metr
   expect(res.status()).toBe(200)
   expect(res.headers()['content-type']).toMatch(/text/)
   const text = await res.text()
-  // KB Labs custom metrics always present
   expect(text).toMatch(/http_request_duration_ms|kb_plugins_mount_total/)
-  // At least one HELP line
   expect(text).toMatch(/^# HELP /m)
 })
 
@@ -33,10 +30,8 @@ test('RA-03: GET /openapi-plugins.json returns merged OpenAPI with paths', async
   const res = await request.get(`${REST}/openapi-plugins.json`)
   expect(res.status()).toBe(200)
   const body = await res.json()
-  // Response may be wrapped in { ok, data, meta } envelope
   const spec = body.data ?? body
   expect(typeof spec).toBe('object')
-  // Either it's a merged OpenAPI doc with paths, or array of specs, or has info
   const hasPaths = spec.paths !== undefined || Array.isArray(spec) || spec.info !== undefined
   expect(hasPaths).toBe(true)
 })
@@ -57,10 +52,8 @@ test('RA-05: GET /observability/state-broker returns ok flag or 503', async ({ r
   const res = await request.get(`${REST}/observability/state-broker`)
   expect([200, 503]).toContain(res.status())
   const body = await res.json()
-  // Both 200 and 503 paths return { ok: boolean }
   expect(typeof body.ok).toBe('boolean')
   if (res.status() === 200) {
-    // When up, data must be present with totalEntries
     expect(typeof body.data?.totalEntries).toBe('number')
   }
 })
@@ -92,6 +85,62 @@ test('RA-08: GET /adapters/llm/usage returns usage stats or 501', async ({ reque
     expect(typeof stats.byModel).toBe('object')
   } else {
     expect(body.ok).toBe(false)
+    expect(body.error?.code).toBe('ANALYTICS_NOT_IMPLEMENTED')
+  }
+})
+
+// ── Additional adapter usage endpoints ───────────────────────────────────────
+
+test('RA-09: GET /adapters/embeddings/usage returns stats or 501', async ({ request }) => {
+  const res = await request.get(`${REST}/adapters/embeddings/usage`)
+  expect([200, 501]).toContain(res.status())
+  const body = await res.json()
+  if (res.status() === 200) {
+    expect(body.ok).toBe(true)
+    expect(typeof body.data.totalRequests).toBe('number')
+  } else {
+    expect(body.error?.code).toBe('ANALYTICS_NOT_IMPLEMENTED')
+  }
+})
+
+test('RA-10: GET /adapters/storage/usage returns stats or 501', async ({ request }) => {
+  const res = await request.get(`${REST}/adapters/storage/usage`)
+  expect([200, 501]).toContain(res.status())
+  const body = await res.json()
+  if (res.status() === 200) {
+    expect(body.ok).toBe(true)
+    // Storage returns readOperations/writeOperations (not totalRequests)
+    expect(typeof body.data.readOperations).toBe('number')
+    expect(typeof body.data.writeOperations).toBe('number')
+  } else {
+    expect(body.error?.code).toBe('ANALYTICS_NOT_IMPLEMENTED')
+  }
+})
+
+test('RA-11: GET /adapters/cache/usage returns stats or 501', async ({ request }) => {
+  const res = await request.get(`${REST}/adapters/cache/usage`)
+  expect([200, 501]).toContain(res.status())
+  const body = await res.json()
+  if (res.status() === 200) {
+    expect(body.ok).toBe(true)
+    // Cache returns totalGets/hits (not totalRequests)
+    expect(typeof body.data.totalGets).toBe('number')
+    expect(typeof body.data.hits).toBe('number')
+  } else {
+    expect(body.error?.code).toBe('ANALYTICS_NOT_IMPLEMENTED')
+  }
+})
+
+test('RA-12: GET /adapters/vectorstore/usage returns stats or 501', async ({ request }) => {
+  const res = await request.get(`${REST}/adapters/vectorstore/usage`)
+  expect([200, 501]).toContain(res.status())
+  const body = await res.json()
+  if (res.status() === 200) {
+    expect(body.ok).toBe(true)
+    // Vectorstore returns searchQueries/upsertOperations (not totalRequests)
+    expect(typeof body.data.searchQueries).toBe('number')
+    expect(typeof body.data.upsertOperations).toBe('number')
+  } else {
     expect(body.error?.code).toBe('ANALYTICS_NOT_IMPLEMENTED')
   }
 })
