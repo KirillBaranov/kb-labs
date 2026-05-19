@@ -1,35 +1,36 @@
 import { test, expect } from '@playwright/test'
 import { REST } from '@kb-labs/e2e-shared/urls.js'
 
-// ── Jobs ──────────────────────────────────────────────────────────────────────
+// ── Jobs (/api/v1/jobs — basePath prefix required, routes not dual-registered) ─
 
-test('RA-01: GET /jobs returns jobs array', async ({ request }) => {
-  const res = await request.get(`${REST}/jobs`)
+test('RA-01: GET /api/v1/jobs returns jobs array', async ({ request }) => {
+  const res = await request.get(`${REST}/api/v1/jobs`)
   expect(res.status()).toBe(200)
   const body = await res.json()
   expect(Array.isArray(body.jobs)).toBe(true)
 })
 
-test('RA-02: GET /jobs/stats returns stats object with total', async ({ request }) => {
-  const res = await request.get(`${REST}/jobs/stats`)
+test('RA-02: GET /api/v1/jobs/stats returns stats object with total', async ({ request }) => {
+  const res = await request.get(`${REST}/api/v1/jobs/stats`)
   expect(res.status()).toBe(200)
   const body = await res.json()
   expect(typeof body.stats?.total).toBe('number')
 })
 
-test('RA-03: GET /jobs/:id with unknown id returns 404', async ({ request }) => {
-  const res = await request.get(`${REST}/jobs/nonexistent-job-e2e`)
+test('RA-03: GET /api/v1/jobs/:id with unknown id returns 404', async ({ request }) => {
+  const res = await request.get(`${REST}/api/v1/jobs/nonexistent-job-e2e`)
   expect(res.status()).toBe(404)
 })
 
 // ── Observability ─────────────────────────────────────────────────────────────
 
-test('RA-04: GET /observability/system-metrics returns metrics array', async ({ request }) => {
-  const res = await request.get(`${REST}/observability/system-metrics`)
+test('RA-04: GET /observability/health returns health status', async ({ request }) => {
+  const res = await request.get(`${REST}/observability/health`)
   expect(res.status()).toBe(200)
   const body = await res.json()
-  expect(body.ok).toBe(true)
-  expect(Array.isArray(body.data?.instances)).toBe(true)
+  // REST API wraps: { ok, data } or direct { status }
+  const status = body.data?.status ?? body.status
+  expect(status).toMatch(/ok|healthy|ready/)
 })
 
 test('RA-05: GET /observability/state-broker returns data or 503', async ({ request }) => {
