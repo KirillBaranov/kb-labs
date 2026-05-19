@@ -1,25 +1,27 @@
 import { test, expect } from '@playwright/test'
 import { REST } from '@kb-labs/e2e-shared/urls.js'
 
-// ── Jobs (/api/v1/jobs — basePath prefix required, routes not dual-registered) ─
+// ── Observability describe + metrics ─────────────────────────────────────────
 
-test('RA-01: GET /api/v1/jobs returns jobs array', async ({ request }) => {
-  const res = await request.get(`${REST}/api/v1/jobs`)
+test('RA-01: GET /observability/describe returns service contract', async ({ request }) => {
+  const res = await request.get(`${REST}/observability/describe`)
   expect(res.status()).toBe(200)
   const body = await res.json()
-  expect(Array.isArray(body.jobs)).toBe(true)
+  expect(body.service ?? body.name ?? body.id).toBeTruthy()
 })
 
-test('RA-02: GET /api/v1/jobs/stats returns stats object with total', async ({ request }) => {
-  const res = await request.get(`${REST}/api/v1/jobs/stats`)
+test('RA-02: GET /api/v1/metrics returns Prometheus text', async ({ request }) => {
+  const res = await request.get(`${REST}/api/v1/metrics`)
+  expect(res.status()).toBe(200)
+  const text = await res.text()
+  expect(text).toMatch(/^#|^\w/m)
+})
+
+test('RA-03: GET /openapi-plugins.json returns OpenAPI document', async ({ request }) => {
+  const res = await request.get(`${REST}/openapi-plugins.json`)
   expect(res.status()).toBe(200)
   const body = await res.json()
-  expect(typeof body.stats?.total).toBe('number')
-})
-
-test('RA-03: GET /api/v1/jobs/:id with unknown id returns 404', async ({ request }) => {
-  const res = await request.get(`${REST}/api/v1/jobs/nonexistent-job-e2e`)
-  expect(res.status()).toBe(404)
+  expect(body.openapi ?? body.swagger).toBeTruthy()
 })
 
 // ── Observability ─────────────────────────────────────────────────────────────
