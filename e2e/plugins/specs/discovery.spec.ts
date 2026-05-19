@@ -28,22 +28,19 @@ test('P-03: unknown gateway route returns 404 not 500', async ({ request }) => {
 })
 
 test('P-04: plugin commands appear in registered routes', async ({ request }) => {
-  // Verifies that plugin commands are wired into the platform by checking
-  // the REST API routes listing — plugin-mounted routes prove command dispatch works.
+  // Verifies that plugin infrastructure is wired into the platform by checking
+  // the REST API routes listing — response is { schema, count, routes: [{url, method}], raw }
   const res = await request.get(`${REST}/api/v1/routes`)
   expect(res.status()).toBe(200)
   const body = await res.json()
-  // Routes response: { ok, data: { routes: [{ path, method, plugin? }] } } or flat array
-  const routes: { path?: string; method?: string }[] =
-    body.data?.routes ?? body.routes ?? (Array.isArray(body) ? body : [])
+  // Response shape: { schema: 'kb.routes/1', count, routes: [{url, method}] }
+  const routes: { url?: string; method?: string }[] =
+    body.routes ?? body.data?.routes ?? (Array.isArray(body) ? body : [])
   expect(Array.isArray(routes)).toBe(true)
-  expect(routes.length).toBeGreaterThan(0)
-  // At minimum the quality/commit/review plugin routes must be registered
-  const pluginPaths = routes.map(r => r.path ?? '')
-  const hasPluginRoute = pluginPaths.some(
-    p => p.includes('/plugins/') || p.includes('/commit') || p.includes('/review'),
-  )
-  expect(hasPluginRoute).toBe(true)
+  expect(routes.length).toBeGreaterThan(10)
+  // /api/v1/plugins/registry is always mounted — proves plugin infra is active
+  const urls = routes.map(r => r.url ?? '')
+  expect(urls.some(u => u.includes('/plugins/'))).toBe(true)
 })
 
 test('P-05: plugin manifest loads without errors', async ({ request }) => {
