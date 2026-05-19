@@ -1,3 +1,5 @@
+import type { PermissionSpec as ContractsPermissionSpec } from '@kb-labs/plugin-contracts';
+
 /**
  * Platform service permissions
  */
@@ -111,41 +113,10 @@ export interface PermissionSpec {
 }
 
 /**
- * Runtime permission specification (explicit format)
- * This is the format used by plugin-runtime fs-shim.
- * Matches PermissionSpec from @kb-labs/plugin-contracts.
+ * Runtime permission specification — canonical output of build().
+ * Alias for plugin-contracts PermissionSpec so manifests can use either import.
  */
-export interface RuntimePermissionSpec {
-  /** File system permissions - explicit read/write lists */
-  fs?: {
-    read?: string[];
-    write?: string[];
-  };
-  /** Environment variable permissions */
-  env?: {
-    read?: string[];
-  };
-  /** Network permissions */
-  network?: {
-    fetch?: string[];
-    /** Raw TCP connect targets. Patterns: 'imap.gmail.com:993', '*.smtp.example.com:587' */
-    tcp?: { connect?: string[] };
-    /** WebSocket connect targets. Patterns: 'wss://api.openai.com', 'wss://*.slack.com' */
-    ws?: { connect?: string[] };
-  };
-  /** Platform service permissions */
-  platform?: PlatformPermissions;
-  /** Shell execution permissions */
-  shell?: {
-    allow?: string[];
-  };
-  /** Resource quotas */
-  quotas?: {
-    timeoutMs?: number;
-    memoryMb?: number;
-    cpuMs?: number;
-  };
-}
+export type RuntimePermissionSpec = ContractsPermissionSpec;
 
 /**
  * A preset is a named permission configuration
@@ -204,5 +175,5 @@ export interface PresetBuilder {
    */
   withDatabase(database: PlatformPermissions['database']): PresetBuilder;
   /** Build the final permission spec (converts to runtime format) */
-  build(): RuntimePermissionSpec;
+  build(): ContractsPermissionSpec;
 }

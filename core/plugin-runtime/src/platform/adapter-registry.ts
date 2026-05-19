@@ -173,7 +173,7 @@ const wrapCache: AdapterMiddlewareFn<CacheAdapter> = (adapter, ctx) => {
 
   const checkKey = (key: string) => {
     if (perm === true) {return;}
-    const allowed = Array.isArray(perm) ? perm : (perm as { namespaces?: string[] }).namespaces ?? [];
+    const allowed = (perm as { namespaces?: string[] }).namespaces ?? [];
     if (!allowed.some((ns) => key.startsWith(ns))) {
       throw new PermissionError(
         `Cache key '${key}' not allowed. Permitted namespaces: ${allowed.join(', ')}`,

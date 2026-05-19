@@ -1,3 +1,4 @@
+import type { PermissionSpec as ContractsPermissionSpec } from '@kb-labs/plugin-contracts';
 import type { PermissionSpec, PermissionPreset, PresetBuilder, RuntimePermissionSpec, PlatformPermissions } from './types';
 
 /**
@@ -134,15 +135,15 @@ function mergeSpecs(base: PermissionSpec, next: PermissionSpec): PermissionSpec 
 }
 
 /**
- * Convert declarative PermissionSpec to explicit RuntimePermissionSpec
+ * Convert declarative PermissionSpec to explicit ContractsPermissionSpec.
  *
  * Transforms:
- *   { mode: 'readWrite', allow: ['*.json'] }
- * Into:
- *   { read: ['*.json'], write: ['*.json'] }
+ *   fs: { mode: 'readWrite', allow: ['*.json'] } → fs: { read: ['*.json'], write: ['*.json'] }
+ *   platform.cache: ['ns:'] → platform.cache: { namespaces: ['ns:'] }
+ *   platform.storage: ['path/'] → platform.storage: { paths: ['path/'] }
  */
-function toRuntimeFormat(spec: PermissionSpec): RuntimePermissionSpec {
-  const result: RuntimePermissionSpec = {};
+function toRuntimeFormat(spec: PermissionSpec): ContractsPermissionSpec {
+  const result: ContractsPermissionSpec = {};
 
   // Convert fs: mode + allow → read[] + write[]
   if (spec.fs) {
@@ -150,10 +151,7 @@ function toRuntimeFormat(spec: PermissionSpec): RuntimePermissionSpec {
     result.fs = {};
 
     if (allow && allow.length > 0) {
-      // read is always granted for allowed paths
       result.fs.read = [...allow];
-
-      // write only if mode is 'readWrite'
       if (mode === 'readWrite') {
         result.fs.write = [...allow];
       }
@@ -162,10 +160,7 @@ function toRuntimeFormat(spec: PermissionSpec): RuntimePermissionSpec {
     if (Object.keys(result.fs).length === 0) {delete result.fs;}
   }
 
-  // env, network, shell, platform, quotas pass through unchanged
-  if (spec.env) {
-    result.env = { ...spec.env };
-  }
+  if (spec.env) { result.env = { ...spec.env }; }
 
   if (spec.network) {
     result.network = {};
@@ -175,17 +170,22 @@ function toRuntimeFormat(spec: PermissionSpec): RuntimePermissionSpec {
     if (Object.keys(result.network).length === 0) {delete result.network;}
   }
 
-  if (spec.shell) {
-    result.shell = { ...spec.shell };
-  }
+  if (spec.shell) { result.shell = { ...spec.shell }; }
 
   if (spec.platform) {
-    result.platform = { ...spec.platform };
+    const { cache, storage, ...rest } = spec.platform;
+    result.platform = {
+      ...rest as NonNullable<ContractsPermissionSpec['platform']>,
+      ...(cache !== undefined && {
+        cache: Array.isArray(cache) ? { namespaces: cache } : cache,
+      }),
+      ...(storage !== undefined && {
+        storage: Array.isArray(storage) ? { paths: storage } : storage as boolean | { paths?: string[] },
+      }),
+    };
   }
 
-  if (spec.quotas) {
-    result.quotas = { ...spec.quotas };
-  }
+  if (spec.quotas) { result.quotas = { ...spec.quotas }; }
 
   return result;
 }
@@ -270,7 +270,7 @@ export function combine(): PresetBuilder {
       return builder;
     },
 
-    build(): RuntimePermissionSpec {
+    build(): ContractsPermissionSpec {
       return toRuntimeFormat(accumulated);
     },
   };
@@ -286,7 +286,7 @@ export function combine(): PresetBuilder {
  * const permissions = combinePresets(presets.gitWorkflow, presets.npmPublish);
  * ```
  */
-export function combinePresets(...presets: (PermissionPreset | PermissionSpec)[]): RuntimePermissionSpec {
+export function combinePresets(...presets: (PermissionPreset | PermissionSpec)[]): ContractsPermissionSpec {
   let builder = combine();
   for (const preset of presets) {
     builder = builder.with(preset);
