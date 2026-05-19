@@ -14,6 +14,7 @@ export * from './helpers/index';
 export * from './define-system-command';
 // Removed: output-helpers (success, error, warning, info, result helpers) - no longer used
 export * from './manifest';
+export * from './manifest-builder';
 // TODO: V3 migration - permissions helpers need to be rewritten for V3 PermissionSpec structure
 // export * from './permissions';
 export * from './validation/index';

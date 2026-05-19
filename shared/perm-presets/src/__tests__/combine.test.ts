@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { combine, combinePresets } from '../combine';
 import { minimal, gitWorkflow, npmPublish, kbPlatform } from '../presets';
 import type { PermissionPreset } from '../types';
+import type { PermissionSpec } from '@kb-labs/plugin-contracts';
 
 describe('combine()', () => {
   it('should return empty spec when nothing added', () => {
@@ -152,8 +153,8 @@ describe('combine()', () => {
         })
         .build();
 
-      expect(result.platform?.cache).toEqual(['git-status:', 'workflow:']);
-      expect(result.platform?.storage).toEqual(['uploads/', 'temp/']);
+      expect(result.platform?.cache).toEqual({ namespaces: ['git-status:', 'workflow:'] });
+      expect(result.platform?.storage).toEqual({ paths: ['uploads/', 'temp/'] });
     });
 
     it('should add platform permissions with objects', () => {
@@ -162,13 +163,13 @@ describe('combine()', () => {
         .withPlatform({
           llm: { models: ['gpt-4', 'claude-3'] },
           vectorStore: { collections: ['docs', 'code'] },
-          eventBus: { publish: ['events.*'], subscribe: ['jobs.*'] },
+          events: { publish: ['events.*'], subscribe: ['jobs.*'] },
         })
         .build();
 
       expect(result.platform?.llm).toEqual({ models: ['gpt-4', 'claude-3'] });
       expect(result.platform?.vectorStore).toEqual({ collections: ['docs', 'code'] });
-      expect(result.platform?.eventBus).toEqual({ publish: ['events.*'], subscribe: ['jobs.*'] });
+      expect(result.platform?.events).toEqual({ publish: ['events.*'], subscribe: ['jobs.*'] });
     });
 
     it('should merge platform arrays (union)', () => {
@@ -183,9 +184,9 @@ describe('combine()', () => {
         })
         .build();
 
-      // Arrays should be merged (union)
-      expect(result.platform?.cache).toEqual(['git-status:', 'workflow:']);
-      expect(result.platform?.storage).toEqual(['uploads/', 'temp/']);
+      // Arrays should be merged (union) and normalized to canonical format
+      expect(result.platform?.cache).toEqual({ namespaces: ['git-status:', 'workflow:'] });
+      expect(result.platform?.storage).toEqual({ paths: ['uploads/', 'temp/'] });
     });
 
     it('should merge platform objects (spread)', () => {
@@ -235,7 +236,7 @@ describe('combine()', () => {
         .build();
 
       expect(result.platform?.llm).toBe(true);
-      expect(result.platform?.cache).toEqual(['preset:', 'custom:']);
+      expect(result.platform?.cache).toEqual({ namespaces: ['preset:', 'custom:'] });
       expect(result.platform?.analytics).toBe(true);
     });
 
@@ -249,12 +250,12 @@ describe('combine()', () => {
         })
         .build();
 
-      // Should deduplicate git-status:
-      const cache = result.platform?.cache as string[];
-      expect(cache).toHaveLength(3);
-      expect(cache).toContain('git-status:');
-      expect(cache).toContain('workflow:');
-      expect(cache).toContain('cache:');
+      // Should deduplicate git-status: and normalize to { namespaces }
+      const cache = result.platform?.cache as { namespaces?: string[] };
+      expect(cache?.namespaces).toHaveLength(3);
+      expect(cache?.namespaces).toContain('git-status:');
+      expect(cache?.namespaces).toContain('workflow:');
+      expect(cache?.namespaces).toContain('cache:');
     });
 
     it('should handle undefined platform gracefully', () => {
@@ -275,9 +276,9 @@ describe('combine()', () => {
         })
         .build();
 
-      // Platform permissions should pass through to runtime format unchanged
+      // Platform permissions pass to runtime format; cache normalizes to { namespaces }
       expect(result.platform?.llm).toEqual({ models: ['gpt-4'] });
-      expect(result.platform?.cache).toEqual(['git:']);
+      expect(result.platform?.cache).toEqual({ namespaces: ['git:'] });
       expect(result.platform?.analytics).toBe(true);
     });
   });
@@ -290,6 +291,89 @@ describe('combine()', () => {
 
       expect(result.env?.read).toContain('CUSTOM_VAR');
     });
+  });
+});
+
+describe('TCP + WebSocket network permissions', () => {
+  it('should merge non-overlapping TCP hosts from two presets', () => {
+    const result = combine()
+      .withNetwork({ tcp: { connect: ['imap.gmail.com:993'] } })
+      .withNetwork({ tcp: { connect: ['smtp.mailgun.org:587'] } })
+      .build();
+
+    expect(result.network?.tcp?.connect).toContain('imap.gmail.com:993');
+    expect(result.network?.tcp?.connect).toContain('smtp.mailgun.org:587');
+  });
+
+  it('should deduplicate overlapping TCP hosts', () => {
+    const result = combine()
+      .withNetwork({ tcp: { connect: ['imap.gmail.com:993', 'smtp.mailgun.org:587'] } })
+      .withNetwork({ tcp: { connect: ['imap.gmail.com:993', 'smtp.example.com:465'] } })
+      .build();
+
+    const hosts = result.network?.tcp?.connect ?? [];
+    const imapCount = hosts.filter(h => h === 'imap.gmail.com:993').length;
+    expect(imapCount).toBe(1);
+    expect(hosts).toContain('smtp.mailgun.org:587');
+    expect(hosts).toContain('smtp.example.com:465');
+  });
+
+  it('should merge non-overlapping WebSocket targets from two presets', () => {
+    const result = combine()
+      .withNetwork({ ws: { connect: ['wss://api.openai.com'] } })
+      .withNetwork({ ws: { connect: ['wss://gateway.discord.gg'] } })
+      .build();
+
+    expect(result.network?.ws?.connect).toContain('wss://api.openai.com');
+    expect(result.network?.ws?.connect).toContain('wss://gateway.discord.gg');
+  });
+
+  it('should deduplicate overlapping WebSocket targets', () => {
+    const result = combine()
+      .withNetwork({ ws: { connect: ['wss://api.openai.com', 'wss://*.slack.com'] } })
+      .withNetwork({ ws: { connect: ['wss://api.openai.com', 'wss://gateway.discord.gg'] } })
+      .build();
+
+    const targets = result.network?.ws?.connect ?? [];
+    const openaiCount = targets.filter(t => t === 'wss://api.openai.com').length;
+    expect(openaiCount).toBe(1);
+    expect(targets).toContain('wss://*.slack.com');
+    expect(targets).toContain('wss://gateway.discord.gg');
+  });
+
+  it('should combine tcp and ws via withNetwork builder', () => {
+    const result = combine()
+      .withNetwork({
+        tcp: { connect: ['imap.gmail.com:993'] },
+        ws: { connect: ['wss://api.openai.com'] },
+      })
+      .build();
+
+    expect(result.network?.tcp?.connect).toContain('imap.gmail.com:993');
+    expect(result.network?.ws?.connect).toContain('wss://api.openai.com');
+  });
+
+  it('should not include ws in output when only tcp is set', () => {
+    const result = combine()
+      .withNetwork({ tcp: { connect: ['imap.gmail.com:993'] } })
+      .build();
+
+    expect(result.network?.tcp?.connect).toContain('imap.gmail.com:993');
+    expect(result.network?.ws).toBeUndefined();
+  });
+
+  it('should keep fetch alongside tcp and ws', () => {
+    const result = combine()
+      .withNetwork({
+        fetch: ['api.example.com'],
+        tcp: { connect: ['smtp.example.com:465'] },
+        ws: { connect: ['wss://ws.example.com'] },
+      })
+      .build();
+
+    expect(result.network?.fetch).toContain('api.example.com');
+    expect(result.network?.tcp?.connect).toContain('smtp.example.com:465');
+    expect(result.network?.ws?.connect).toContain('wss://ws.example.com');
   });
 });
 
@@ -393,11 +477,34 @@ describe('Real-world scenarios', () => {
 
     // Platform services
     expect(result.platform?.llm).toBe(true);
-    expect(result.platform?.cache).toEqual(['git-status:']);
+    expect(result.platform?.cache).toEqual({ namespaces: ['git-status:'] });
     expect(result.platform?.analytics).toBe(true);
 
     // Quotas
     expect(result.quotas?.timeoutMs).toBe(600000);
     expect(result.quotas?.memoryMb).toBe(512);
+  });
+});
+
+describe('build() output type alignment', () => {
+  it('should return value assignable to plugin-contracts PermissionSpec without cast', () => {
+    const result = combine()
+      .withFs({ mode: 'readWrite', allow: ['src/**'] })
+      .withPlatform({ cache: ['agent:'] })
+      .build();
+    const spec: PermissionSpec = result;
+    expect(spec.fs?.read).toEqual(['src/**']);
+    expect(spec.fs?.write).toEqual(['src/**']);
+    expect(spec.platform?.cache).toEqual({ namespaces: ['agent:'] });
+  });
+
+  it('withPlatform cache string[] should produce { namespaces } in build output', () => {
+    const result = combine().withPlatform({ cache: ['agent:', 'llm:'] }).build();
+    expect(result.platform?.cache).toEqual({ namespaces: ['agent:', 'llm:'] });
+  });
+
+  it('withPlatform storage string[] should produce { paths } in build output', () => {
+    const result = combine().withPlatform({ storage: ['uploads/', 'temp/'] }).build();
+    expect(result.platform?.storage).toEqual({ paths: ['uploads/', 'temp/'] });
   });
 });

@@ -26,6 +26,20 @@ export interface PermissionSpec {
   network?: {
     /** Allowed URL patterns for fetch (glob: *, **.domain.com, etc.) */
     fetch?: string[];
+    /**
+     * Raw TCP connect targets (host:port patterns).
+     *
+     * @example
+     * tcp: { connect: ['imap.gmail.com:993', '*.smtp.example.com:587'] }
+     */
+    tcp?: { connect?: string[] };
+    /**
+     * WebSocket connect targets (URL patterns).
+     *
+     * @example
+     * ws: { connect: ['wss://api.openai.com', 'wss://*.slack.com'] }
+     */
+    ws?: { connect?: string[] };
   };
 
   /**
@@ -238,6 +252,8 @@ export const DEFAULT_PERMISSIONS: PermissionSpec = {
   },
   network: {
     fetch: [], // No network by default
+    tcp: { connect: [] },
+    ws: { connect: [] },
   },
   env: {
     read: [], // Only NODE_ENV, CI, DEBUG (always allowed by runtime)

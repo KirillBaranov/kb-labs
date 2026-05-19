@@ -325,9 +325,9 @@ describe('createGovernedPlatformServices', () => {
       expect(rawPlatform.cache.clear).toHaveBeenCalledWith('test:*');
     });
 
-    it('should allow cache operations when permission is string[] (builder format)', async () => {
+    it('should allow cache operations when permission is { namespaces } (builder output format)', async () => {
       const permissions: PermissionSpec = {
-        platform: { cache: ['commit:'] as any },
+        platform: { cache: { namespaces: ['commit:'] } },
       };
       const governed = createGovernedPlatformServices(rawPlatform, permissions, 'test-plugin');
 
@@ -340,9 +340,9 @@ describe('createGovernedPlatformServices', () => {
       expect(rawPlatform.cache.delete).toHaveBeenCalledWith('commit:plan');
     });
 
-    it('should enforce namespace restrictions when permission is string[]', async () => {
+    it('should enforce namespace restrictions when permission is { namespaces }', async () => {
       const permissions: PermissionSpec = {
-        platform: { cache: ['commit:'] as any },
+        platform: { cache: { namespaces: ['commit:'] } },
       };
       const governed = createGovernedPlatformServices(rawPlatform, permissions, 'test-plugin');
 

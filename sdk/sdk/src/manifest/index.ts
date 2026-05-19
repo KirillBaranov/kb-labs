@@ -9,6 +9,28 @@ export { defineManifest, defineCommandFlags } from '@kb-labs/shared-command-kit'
 // TODO: V3 migration - permissions helpers need to be rewritten for V3 PermissionSpec structure
 // export { permissions } from '@kb-labs/shared-command-kit';
 
+// Manifest helpers: optional boilerplate-reduction utilities
+export {
+  createManifest,
+  cmd,
+  group,
+  mergeCliGroups,
+  GET,
+  POST,
+  PUT,
+  PATCH,
+  DELETE,
+} from '@kb-labs/shared-command-kit';
+export type {
+  PluginId,
+  SemVer,
+  HandlerRef,
+  RestBase,
+  WsBase,
+  CliGroup,
+  CmdBuilder,
+} from '@kb-labs/shared-command-kit';
+
 /**
  * Generate command examples for V3 manifests
  *
