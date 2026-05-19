@@ -71,3 +71,7 @@ export { assertSseOrder, assertNoSseDuplicates } from './sse/assert.js';
 // --- WebSocket helpers ---
 export { withWs } from './ws/lifecycle.js';
 export { expectWsMessage, expectWsClose } from './ws/assert.js';
+
+// --- CLI process runner ---
+export { spawnCliCommand, spawnCliJson } from './cli-runner.js';
+export type { CliResult, SpawnCliOptions } from './cli-runner.js';

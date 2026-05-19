@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test'
-import { REST, WORKFLOW } from '@kb-labs/e2e-shared/urls.js'
+import type { APIRequestContext } from '@playwright/test'
+import { REST, WORKFLOW } from '@kb-labs/sdk/e2e'
 
 /**
  * Workflow runs lifecycle tests.
@@ -18,7 +19,7 @@ type WorkflowEntry = { id?: string; name?: string }
 type RunEntry = { id?: string; runId?: string; status?: string }
 
 async function getFirstWorkflow(
-  request: Parameters<Parameters<typeof test>[1]>[0]['request'],
+  request: APIRequestContext,
 ): Promise<WorkflowEntry | undefined> {
   const res = await request.get(`${WORKFLOW}/api/v1/workflows`)
   if (!res.ok()) return undefined
@@ -31,7 +32,7 @@ async function getFirstWorkflow(
 }
 
 async function startRun(
-  request: Parameters<Parameters<typeof test>[1]>[0]['request'],
+  request: APIRequestContext,
   workflowId: string,
 ): Promise<string | undefined> {
   const res = await request.post(`${WORKFLOW}/api/v1/workflows/${workflowId}/runs`, { data: {} })

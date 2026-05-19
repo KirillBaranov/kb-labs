@@ -1,8 +1,9 @@
 import { test, expect } from '@playwright/test';
-import { collectSseEvents, assertNoSseDuplicates } from '@kb-labs/shared-testing-e2e';
-import { WORKFLOW } from '@kb-labs/e2e-shared/urls.js';
+import type { APIRequestContext } from '@playwright/test';
+import { collectSseEvents, assertNoSseDuplicates } from '@kb-labs/sdk/e2e';
+import { WORKFLOW } from '@kb-labs/sdk/e2e';
 
-async function startRun(request: Parameters<Parameters<typeof test>[1]>[0]['request']): Promise<string> {
+async function startRun(request: APIRequestContext): Promise<string> {
   const catalogRes = await request.get(`${WORKFLOW}/api/v1/workflows`);
   const catalog = await catalogRes.json();
   const workflows: Array<{ id?: string; name?: string }> =

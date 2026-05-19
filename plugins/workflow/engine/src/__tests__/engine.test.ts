@@ -339,6 +339,45 @@ describe('WorkflowEngine', () => {
   });
 
 
+  describe('Run Completion — durationMs', () => {
+    const spec: WorkflowSpec = {
+      name: 'Test',
+      version: '1.0.0',
+      on: { manual: true },
+      jobs: {
+        main: {
+          runsOn: 'local',
+          retries: { max: 0, backoff: 'lin' },
+          steps: [{ name: 'Step 1', uses: 'builtin:shell', with: { run: 'echo hi' } }],
+        },
+      },
+    };
+
+    it('sets durationMs on run after all jobs succeed', async () => {
+      const run = await engine.createRun({ spec, trigger: { type: 'manual' } });
+      await engine.markJobStarted(run.id, run.jobs[0]!.id);
+      await engine.markJobCompleted(run.id, run.jobs[0]!.id);
+
+      const finished = await engine.getRun(run.id);
+      expect(finished?.status).toBe('success');
+      // durationMs must be a non-negative number (may be 0 in fast unit tests)
+      expect(typeof finished?.durationMs).toBe('number');
+      expect(finished!.durationMs!).toBeGreaterThanOrEqual(0);
+    });
+
+    it('sets durationMs on run when job goes to DLQ (no retry config)', async () => {
+      const run = await engine.createRun({ spec, trigger: { type: 'manual' } });
+      await engine.markJobStarted(run.id, run.jobs[0]!.id);
+      // No retry config → job goes to DLQ, run status becomes 'dlq'
+      await engine.markJobFailed(run.id, run.jobs[0]!.id, new Error('boom'));
+
+      const finished = await engine.getRun(run.id);
+      expect(finished?.status).toBe('dlq');
+      expect(typeof finished?.durationMs).toBe('number');
+      expect(finished!.durationMs!).toBeGreaterThanOrEqual(0);
+    });
+  });
+
   describe('Dispose', () => {
     it('should cleanup resources on dispose', async () => {
       await engine.dispose();

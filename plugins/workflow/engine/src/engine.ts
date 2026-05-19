@@ -390,8 +390,10 @@ export class WorkflowEngine {
     // Update run status based on job outcomes
     if (allSuccess) {
       await this.stateStore.updateRun(runId, (draft) => {
+        const now = new Date().toISOString()
         draft.status = 'success'
-        draft.finishedAt = new Date().toISOString()
+        draft.finishedAt = now
+        draft.durationMs = computeDurationMs(draft.startedAt ?? draft.queuedAt, now)
         return draft
       })
       this.logger.info('Workflow run completed successfully', { runId })
@@ -411,8 +413,10 @@ export class WorkflowEngine {
       })
     } else if (anyFailed) {
       await this.stateStore.updateRun(runId, (draft) => {
+        const now = new Date().toISOString()
         draft.status = 'failed'
-        draft.finishedAt = new Date().toISOString()
+        draft.finishedAt = now
+        draft.durationMs = computeDurationMs(draft.startedAt ?? draft.queuedAt, now)
         return draft
       })
       this.logger.info('Workflow run failed', { runId })
@@ -728,6 +732,7 @@ export class WorkflowEngine {
 
     // Update run status to 'dlq'
     await this.stateStore.updateRun(runId, (draft) => {
+      const now = new Date().toISOString()
       draft.status = 'dlq'
       draft.result = {
         status: 'dlq',
@@ -739,7 +744,8 @@ export class WorkflowEngine {
           },
         },
       }
-      draft.finishedAt = new Date().toISOString()
+      draft.finishedAt = now
+      draft.durationMs = computeDurationMs(draft.startedAt ?? draft.queuedAt, now)
     })
 
     // Store in cache with DLQ prefix

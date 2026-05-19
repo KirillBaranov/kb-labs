@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { WORKFLOW } from '@kb-labs/e2e-shared/urls.js'
+import { WORKFLOW } from '@kb-labs/sdk/e2e'
 
 // Workflow daemon must discover workflow/cron definitions from .kb/workflows/
 // in both platformRoot and projectRoot. This is distinct from the engine being healthy.
@@ -53,5 +53,18 @@ test('WFD-04: workflow found by name from .kb/workflows is runnable', async ({ r
   expect([200, 201, 202]).toContain(run.status())
 })
 
-test('WFD-05: workflow defined in projectRoot/.kb/workflows overrides platformRoot definition', async () => { test.skip(true, 'not yet implemented') })
-test('WFD-06: invalid workflow YAML in .kb/workflows is reported in /ready diagnostics', async () => { test.skip(true, 'not yet implemented') })
+// WFD-05: skipped — the daemon reads projectRoot at startup from KB_PROJECT_ROOT env.
+// There is no API to change projectRoot mid-run or pass it per-request via /refresh.
+// Requires: daemon API to accept X-Project-Root header on /refresh, or a separate
+// daemon instance started with a custom projectRoot in globalSetup.
+test('WFD-05: workflow defined in projectRoot/.kb/workflows overrides platformRoot definition', async () => {
+  test.skip(true, 'daemon does not expose per-request projectRoot override — needs daemon API change')
+})
+
+// WFD-06: skipped — the /ready endpoint returns component availability (engine, catalog, cron),
+// not YAML parse errors. WorkflowService does not surface file-level parse errors to /ready.
+// Requires: WorkflowService.refreshManifests() to collect parse errors and expose them
+// via a /ready diagnostics field (e.g. components.workflowCatalog.errors).
+test('WFD-06: invalid workflow YAML in .kb/workflows is reported in /ready diagnostics', async () => {
+  test.skip(true, '/ready does not expose YAML parse errors — needs WorkflowService + server changes')
+})

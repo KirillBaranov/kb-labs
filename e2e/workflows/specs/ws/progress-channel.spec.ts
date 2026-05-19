@@ -1,12 +1,12 @@
 import { test, expect } from '@playwright/test';
-import { withWs, expectWsMessage } from '@kb-labs/shared-testing-e2e';
-import { GATEWAY, WORKFLOW } from '@kb-labs/e2e-shared/urls.js';
+import type { APIRequestContext } from '@playwright/test';
+import { withWs, expectWsMessage, GATEWAY, WORKFLOW } from '@kb-labs/sdk/e2e';
 
 const GATEWAY_WS = GATEWAY.replace(/^http/, 'ws');
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-async function startRun(request: Parameters<Parameters<typeof test>[1]>[0]['request']): Promise<string> {
+async function startRun(request: APIRequestContext): Promise<string> {
   const catalogRes = await request.get(`${WORKFLOW}/api/v1/workflows`);
   const catalog = await catalogRes.json();
   const workflows: Array<{ id?: string; name?: string }> =
@@ -28,13 +28,10 @@ function progressWsUrl(jobId: string): string {
 
 // ── tests ─────────────────────────────────────────────────────────────────────
 
-// WS-P01 is skipped because progress-channel.ts has only a partial implementation.
-// The subscribe handler sends a synthetic `step_start` message for 'initialization'
-// (as a placeholder), but the actual engine integration is TODO — there is no real
-// progress stream hooked up yet. The test would be flaky: it could pass today
-// (stub response) and silently change behaviour once the real implementation lands.
-// Re-enable once the engine emits real step events.
-test.skip('WS-P01: subscribe → server acknowledges (partial implementation)', async ({ request }) => {
+// WS-P01 tests current behavior: progress-channel sends a synthetic step_start for
+// 'initialization' as a placeholder. Testing the stub is intentional — if the real
+// engine integration lands, the test will fail and be updated to match the new contract.
+test('WS-P01: subscribe → server acknowledges (partial implementation)', async ({ request }) => {
   const runId = await startRun(request);
 
   await withWs(progressWsUrl(runId), async (ws) => {

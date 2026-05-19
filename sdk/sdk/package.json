@@ -53,6 +53,10 @@
       "types": "./dist/testing/index.d.ts",
       "import": "./dist/testing/index.js"
     },
+    "./e2e": {
+      "types": "./dist/e2e/index.d.ts",
+      "import": "./dist/e2e/index.js"
+    },
     "./platform": {
       "types": "./dist/platform/index.d.ts",
       "import": "./dist/platform/index.js"

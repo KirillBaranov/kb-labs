@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { WORKFLOW } from '@kb-labs/e2e-shared/urls.js'
+import { WORKFLOW } from '@kb-labs/sdk/e2e'
 
 // Workflow engine must discover and expose workflow templates
 // declared in plugin manifests under workflows.templates[].

@@ -1,0 +1,220 @@
+name: E2E Workflows (dev branch)
+
+# Lightweight shard that runs ONLY the `workflows` E2E suite.
+# Triggers on feat/e2e-workflow-coverage pushes and PRs targeting main
+# from that branch. Reuses the same Docker + Verdaccio setup as the
+# full platform matrix but skips the other 7 suites.
+
+on:
+  push:
+    branches:
+      - feat/e2e-workflow-coverage
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'e2e/workflows/**'
+      - 'plugins/workflow/**'
+      - 'shared/testing-e2e/**'
+      - 'sdk/sdk/src/e2e/**'
+      - '.github/workflows/e2e-workflows-dev.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-workflows-dev-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  COMPOSE_FILE: e2e/docker-compose.yml:e2e/docker-compose.ci.yml
+  COMPOSE_PROJECT_NAME: kb-e2e-ci-workflows-dev
+
+jobs:
+  e2e-workflows:
+    name: E2E / workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/kb-create/go.mod
+          cache-dependency-path: |
+            tools/kb-create/go.sum
+            tools/kb-dev/go.sum
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Build Go tools for linux
+        run: |
+          (cd tools/kb-devkit && CGO_ENABLED=0 go build -o kb-devkit . && chmod +x kb-devkit)
+          (cd tools/kb-dev    && CGO_ENABLED=0 go build -o kb-dev    . && chmod +x kb-dev)
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Restore kb-devkit build cache
+        uses: actions/cache@v4
+        with:
+          path: .kb/devkit/
+          key: devkit-build-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml', 'devkit.yaml', 'tsconfig*.json') }}-${{ github.sha }}
+          restore-keys: |
+            devkit-build-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml', 'devkit.yaml', 'tsconfig*.json') }}-
+            devkit-build-${{ runner.os }}-
+
+      - name: Build all packages
+        run: pnpm build
+
+      - name: Install Playwright browsers
+        run: cd e2e/workflows && pnpm exec playwright install chromium --with-deps
+
+      - name: Restore packed .tgz cache
+        id: tgz-cache
+        uses: actions/cache@v4
+        with:
+          path: e2e/packages/
+          key: e2e-tgz-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json') }}
+          restore-keys: e2e-tgz-${{ runner.os }}-
+
+      - name: Pack @kb-labs/* packages
+        if: steps.tgz-cache.outputs.cache-hit != 'true'
+        run: bash e2e/scripts/pack-all.sh
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers (platform)
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache-platform
+          key: buildx-platform-${{ hashFiles('e2e/platform/Dockerfile', 'e2e/platform/entrypoint.sh', 'e2e/platform/registry-manifest.json', 'tools/kb-create/**', 'tools/kb-dev/**') }}
+          restore-keys: buildx-platform-
+
+      - name: Cache Docker layers (publisher)
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache-publisher
+          key: buildx-publisher-${{ hashFiles('e2e/publisher/**', 'e2e/packages/**') }}
+          restore-keys: buildx-publisher-
+
+      - name: Build platform image
+        run: |
+          docker buildx build \
+            --cache-from type=local,src=/tmp/.buildx-cache-platform \
+            --cache-to   type=local,dest=/tmp/.buildx-cache-platform,mode=max \
+            --load \
+            -t kb-e2e-ci-platform:latest \
+            -f e2e/platform/Dockerfile .
+
+      - name: Build publisher image
+        run: |
+          docker buildx build \
+            --cache-from type=local,src=/tmp/.buildx-cache-publisher \
+            --cache-to   type=local,dest=/tmp/.buildx-cache-publisher,mode=max \
+            --load \
+            -t kb-e2e-ci-publisher:latest \
+            -f e2e/publisher/Dockerfile \
+            e2e/
+
+      - name: Restore Verdaccio storage cache
+        id: verdaccio-cache
+        uses: actions/cache@v4
+        with:
+          path: e2e/.verdaccio-storage
+          key: verdaccio-storage-${{ runner.os }}-${{ hashFiles('e2e/packages/**/*.tgz') }}
+          restore-keys: verdaccio-storage-${{ runner.os }}-
+
+      - name: Prepare Verdaccio storage permissions
+        run: |
+          mkdir -p e2e/.verdaccio-storage
+          sudo chown -R 10001:65533 e2e/.verdaccio-storage
+
+      - name: Start Verdaccio registry
+        run: docker compose up -d verdaccio
+
+      - name: Wait for Verdaccio
+        run: |
+          for i in $(seq 1 30); do
+            if docker compose ps verdaccio | grep -q "healthy"; then
+              echo "Verdaccio healthy after $((i * 2))s"; break
+            fi
+            sleep 2
+          done
+
+      - name: Publish packages to Verdaccio
+        if: steps.verdaccio-cache.outputs.cache-hit != 'true'
+        run: docker compose run --rm publisher
+
+      - name: Start platform
+        run: docker compose up -d --no-build platform
+
+      - name: Wait for platform
+        run: |
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:4000/ready > /dev/null 2>&1; then
+              echo "Platform ready after $((i * 5))s"; break
+            fi
+            if [ $i -eq 60 ]; then
+              docker compose logs platform | tail -100; exit 1
+            fi
+            sleep 5
+          done
+
+      - name: Run workflows e2e
+        run: |
+          chmod +x tools/kb-devkit/kb-devkit tools/kb-dev/kb-dev || true
+          ./tools/kb-devkit/kb-devkit run e2e --packages "@kb-labs/e2e-workflows"
+        env:
+          GATEWAY_URL:     http://localhost:4000
+          REST_URL:        http://localhost:5050
+          MARKETPLACE_URL: http://localhost:5070
+          REGISTRY_URL:    http://localhost:5071
+          WORKFLOW_URL:    http://localhost:7778
+          STATE_URL:       http://localhost:7777
+          CI: "true"
+
+      - name: Dump platform logs
+        if: always()
+        run: |
+          mkdir -p /tmp/e2e-logs
+          docker compose logs --no-color platform > /tmp/e2e-logs/platform.log 2>&1 || true
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-workflows-${{ github.run_id }}
+          path: e2e/workflows/report/
+          retention-days: 14
+
+      - name: Show checklist summary
+        if: always()
+        run: |
+          if [ -f "e2e/workflows/report/CHECKLIST.md" ]; then
+            echo "### E2E: workflows" >> $GITHUB_STEP_SUMMARY
+            cat "e2e/workflows/report/CHECKLIST.md" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down --volumes --remove-orphans
+
+      - name: Restore Verdaccio storage ownership
+        if: always()
+        run: |
+          if [ -d e2e/.verdaccio-storage ]; then
+            sudo chown -R "$(id -u):$(id -g)" e2e/.verdaccio-storage
+          fi

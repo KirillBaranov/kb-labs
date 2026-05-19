@@ -14,6 +14,7 @@ export default defineConfig({
     'contracts/index': 'src/contracts/index.ts',
     'types/index': 'src/types/index.ts',
     'testing/index': 'src/testing/index.ts',
+    'e2e/index': 'src/e2e/index.ts',
     'studio/index': 'src/studio/index.ts',
     'studio-build/index': 'src/studio-build/index.ts',
     'platform/index': 'src/platform/index.ts',

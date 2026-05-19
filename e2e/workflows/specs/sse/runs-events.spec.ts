@@ -1,16 +1,17 @@
 import { test, expect } from '@playwright/test';
+import type { APIRequestContext } from '@playwright/test';
 import {
   collectSseEvents,
   waitForSseEvent,
   expectSseTerminates,
   assertSseOrder,
   assertNoSseDuplicates,
-} from '@kb-labs/shared-testing-e2e';
-import { WORKFLOW } from '@kb-labs/e2e-shared/urls.js';
+} from '@kb-labs/sdk/e2e';
+import { WORKFLOW } from '@kb-labs/sdk/e2e';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
-async function startRun(request: Parameters<Parameters<typeof test>[1]>[0]['request']): Promise<string> {
+async function startRun(request: APIRequestContext): Promise<string> {
   // Find a fast workflow (e2e-hello is scaffolded by the platform as smoke test)
   const catalogRes = await request.get(`${WORKFLOW}/api/v1/workflows`);
   const catalog = await catalogRes.json();

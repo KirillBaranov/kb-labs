@@ -14,7 +14,7 @@ export default defineConfig({
   reporter: [
     ['list'],
     ['html', { outputFolder: 'report', open: 'never' }],
-    ['@kb-labs/e2e-shared/reporter.js'],
+    ['./checklist-reporter.ts'],
   ],
   use: { actionTimeout: 10_000 },
 })

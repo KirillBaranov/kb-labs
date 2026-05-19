@@ -181,15 +181,46 @@ export class WorkflowDaemonClient {
   }
 
   /**
-   * Get workflow metrics (raw metrics data from daemon)
+   * Get workflow metrics from /api/v1/stats (JSON) and map to WorkflowMetricsData shape.
+   * /metrics returns Prometheus text/plain — not suitable for programmatic use.
    */
   async getMetrics(): Promise<WorkflowMetricsData> {
-    const response = await fetch(`${this.baseUrl}/metrics`);
+    const response = await fetch(`${this.baseUrl}/api/v1/stats`);
     if (!response.ok) {
       throw new Error(`Failed to get metrics: ${response.statusText}`);
     }
-    const data = await this.parseJsonResponse<unknown>(response);
-    return this.unwrapData<WorkflowMetricsData>(data);
+    const payload = await this.parseJsonResponse<unknown>(response);
+    const stats = this.unwrapData<{
+      jobs: { running: number; pending: number; completed: number; failed: number };
+      workflows?: unknown;
+      crons?: unknown;
+      activeExecutions?: unknown;
+      recentActivity?: unknown;
+    }>(payload);
+
+    const j = stats.jobs;
+    const total = j.running + j.pending + j.completed + j.failed;
+    return {
+      runs: {
+        total,
+        queued: j.pending,
+        running: j.running,
+        completed: j.completed,
+        failed: j.failed,
+        cancelled: 0,
+      },
+      jobs: {
+        total,
+        queued: j.pending,
+        running: j.running,
+        completed: j.completed,
+        failed: j.failed,
+      },
+      workflows: stats.workflows,
+      crons: stats.crons,
+      activeExecutions: stats.activeExecutions,
+      recentActivity: stats.recentActivity,
+    };
   }
 
   /**
