@@ -177,7 +177,7 @@ describe('Cache governance via runInProcess', () => {
     `);
 
     const result = await runInProcess({
-      descriptor: makeDescriptor('test-cache-ns', { platform: { cache: ['ns:'] } }),
+      descriptor: makeDescriptor('test-cache-ns', { platform: { cache: { namespaces: ['ns:'] } } }),
       platform, ui: mockUI, handlerPath: path, input: {}, cwd: testDir,
     });
 

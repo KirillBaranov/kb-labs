@@ -24,7 +24,7 @@ export interface SandboxPatchOptions {
 }
 
 export interface SandboxViolationEvent {
-  kind: 'module' | 'fetch' | 'env' | 'exit' | 'fs';
+  kind: 'module' | 'fetch' | 'env' | 'exit' | 'fs' | 'tcp' | 'ws';
   target: string;
   decision: 'allow' | 'block';
   message: string;
@@ -96,6 +96,9 @@ export function applySandboxPatches(options: SandboxPatchOptions): PatchRestore 
   // 5. Patch process.chdir() (prevent directory escape)
   restoreFns.push(patchProcessChdir(permissions, mode, emitViolation));
 
+  // 6. Patch globalThis.WebSocket (Node 22+ built-in WS egress control)
+  restoreFns.push(patchWebSocket(permissions, mode, emitViolation));
+
   // Return cleanup function
   return () => {
     for (const restore of restoreFns) {
@@ -151,7 +154,17 @@ function patchRequire(
       return 'Code execution/isolation is not allowed in plugins.';
     }
     if (id.includes('net') || id.includes('tls')) {
-      return 'Low-level network access is blocked. Use ctx.runtime.fetch() instead.';
+      const tcpHosts = permissions.network?.tcp?.connect ?? [];
+      if (tcpHosts.length > 0) {
+        return (
+          `TCP permission is declared (${tcpHosts.join(', ')}) but the net/tls proxy is not yet implemented.\n` +
+          `Tracked in: feat(sandbox): implement TCP net.connect proxy`
+        );
+      }
+      return (
+        'Low-level TCP access requires "network.tcp.connect" permission in the manifest.\n' +
+        'If you need HTTP/HTTPS, use ctx.runtime.fetch() instead.'
+      );
     }
     return 'If you need this functionality, request it via ctx.platform APIs.';
   }
@@ -400,6 +413,109 @@ function patchProcessExit(
   // Return restore function
   return () => {
     process.exit = originalExit;
+  };
+}
+
+/**
+ * Match a URL string against a ws permission pattern.
+ *
+ * Supported patterns:
+ *   '*'                    – allow any WebSocket URL
+ *   'wss://*.slack.com'    – protocol + wildcard subdomain
+ *   'wss://api.openai.com' – exact protocol + hostname
+ *   '*.slack.com'          – any protocol, wildcard subdomain
+ *   'api.openai.com'       – any protocol, exact hostname
+ */
+function matchesWsPattern(pattern: string, url: string): boolean {
+  if (pattern === '*') {return true;}
+
+  try {
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname;
+    const protocol = urlObj.protocol.replace(':', ''); // 'wss' | 'ws'
+
+    if (pattern.includes('://')) {
+      const sepIdx = pattern.indexOf('://');
+      const patternProtocol = pattern.slice(0, sepIdx);
+      const patternHost = pattern.slice(sepIdx + 3); // after '://'
+
+      if (patternProtocol !== protocol) {return false;}
+
+      if (patternHost.startsWith('*.')) {
+        return hostname.endsWith(patternHost.slice(1)); // *.slack.com → .slack.com
+      }
+      return hostname === patternHost;
+    }
+
+    // Hostname-only pattern
+    if (pattern.startsWith('*.')) {
+      return hostname.endsWith(pattern.slice(1));
+    }
+    return hostname === pattern || hostname.endsWith('.' + pattern);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Patch globalThis.WebSocket to enforce network.ws.connect[] permissions.
+ *
+ * Covers Node.js 22+ built-in WebSocket (undici-backed).
+ * TODO: does NOT cover the `ws` npm package — it uses net.connect which is
+ *   already blocked by patchRequire. A full ws-proxy shim is tracked in:
+ *   feat(sandbox): implement TCP net.connect proxy
+ */
+function patchWebSocket(
+  permissions: PermissionSpec,
+  mode: SandboxMode,
+  emitViolation: (event: SandboxViolationEvent) => void
+): PatchRestore {
+  const OriginalWebSocket = (globalThis as Record<string, unknown>).WebSocket as
+    | (new (...args: unknown[]) => unknown)
+    | undefined;
+
+  if (!OriginalWebSocket) {
+    // Built-in WebSocket not available (Node < 22), nothing to patch
+    return () => {};
+  }
+
+  if (!originals.has('WebSocket')) {
+    originals.set('WebSocket', OriginalWebSocket);
+  }
+
+  const allowedPatterns = permissions.network?.ws?.connect ?? [];
+
+  class SandboxedWebSocket extends (OriginalWebSocket as typeof WebSocket) {
+    constructor(url: string | URL, protocols?: string | string[]) {
+      const urlStr = url.toString();
+
+      const isAllowed =
+        allowedPatterns.length > 0 &&
+        allowedPatterns.some(pattern => matchesWsPattern(pattern, urlStr));
+
+      if (!isAllowed) {
+        const message =
+          allowedPatterns.length === 0
+            ? `WebSocket connection to "${urlStr}" is blocked. Add "network.ws.connect" permission to manifest.`
+            : `WebSocket connection to "${urlStr}" is not allowed.\n` +
+              `Allowed patterns: ${allowedPatterns.join(', ')}\n` +
+              `Add to manifest: permissions.network.ws.connect`;
+
+        emitViolation({ kind: 'ws', target: urlStr, decision: 'block', message });
+
+        if (mode === 'enforce') {
+          throw new Error(`[SANDBOX] ${message}`);
+        }
+      }
+
+      super(url, protocols as string);
+    }
+  }
+
+  (globalThis as Record<string, unknown>).WebSocket = SandboxedWebSocket;
+
+  return () => {
+    (globalThis as Record<string, unknown>).WebSocket = OriginalWebSocket;
   };
 }
 

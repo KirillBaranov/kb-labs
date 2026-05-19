@@ -59,3 +59,9 @@ export function createFetchShim(options: CreateFetchShimOptions): FetchShim {
     return globalThis.fetch(input, init);
   };
 }
+
+// TODO: TCP enforcement shim — when net-shim is added, check
+//   permissions.network?.tcp?.connect[] against outbound TCP connections
+//   using globToRegex() (same pattern as fetch enforcement above).
+// TODO: WebSocket enforcement shim — intercept new WebSocket(url) and
+//   validate url against permissions.network?.ws?.connect[].

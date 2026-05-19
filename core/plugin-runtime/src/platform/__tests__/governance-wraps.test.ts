@@ -111,46 +111,46 @@ describe('wrapCache', () => {
   });
 
   it('enforces namespace prefix on get', async () => {
-    const wrapped = wrapCache(base, makeCtx({ cache: ['ns:'] }));
+    const wrapped = wrapCache(base, makeCtx({ cache: { namespaces: ['ns:'] } }));
     await expect(wrapped.get('other:key')).rejects.toThrow(PermissionError);
     await expect(wrapped.get('ns:key')).resolves.toBeNull();
   });
 
   it('enforces namespace prefix on set', async () => {
     const adapter = { ...base, set: vi.fn(async () => {}) };
-    const wrapped = wrapCache(adapter, makeCtx({ cache: ['ns:'] }));
+    const wrapped = wrapCache(adapter, makeCtx({ cache: { namespaces: ['ns:'] } }));
     await expect(wrapped.set('bad:key', 'v')).rejects.toThrow(PermissionError);
     await wrapped.set('ns:key', 'v');
     expect(adapter.set).toHaveBeenCalledWith('ns:key', 'v', undefined);
   });
 
   it('enforces namespace prefix on delete', async () => {
-    const wrapped = wrapCache(base, makeCtx({ cache: ['ns:'] }));
+    const wrapped = wrapCache(base, makeCtx({ cache: { namespaces: ['ns:'] } }));
     await expect(wrapped.delete('other:key')).rejects.toThrow(PermissionError);
   });
 
   it('enforces namespace prefix on zadd', async () => {
-    const wrapped = wrapCache(base, makeCtx({ cache: ['ns:'] }));
+    const wrapped = wrapCache(base, makeCtx({ cache: { namespaces: ['ns:'] } }));
     await expect(wrapped.zadd('bad:set', 1, 'member')).rejects.toThrow(PermissionError);
   });
 
   it('enforces namespace prefix on zrangebyscore', async () => {
-    const wrapped = wrapCache(base, makeCtx({ cache: ['ns:'] }));
+    const wrapped = wrapCache(base, makeCtx({ cache: { namespaces: ['ns:'] } }));
     await expect(wrapped.zrangebyscore('bad:set', 0, 10)).rejects.toThrow(PermissionError);
   });
 
   it('enforces namespace prefix on zrem', async () => {
-    const wrapped = wrapCache(base, makeCtx({ cache: ['ns:'] }));
+    const wrapped = wrapCache(base, makeCtx({ cache: { namespaces: ['ns:'] } }));
     await expect(wrapped.zrem('bad:set', 'member')).rejects.toThrow(PermissionError);
   });
 
   it('enforces namespace prefix on setIfNotExists', async () => {
-    const wrapped = wrapCache(base, makeCtx({ cache: ['ns:'] }));
+    const wrapped = wrapCache(base, makeCtx({ cache: { namespaces: ['ns:'] } }));
     await expect(wrapped.setIfNotExists('bad:key', 'v')).rejects.toThrow(PermissionError);
   });
 
   it('clear() requires full permission (true), denies on namespace-scoped', async () => {
-    const wrapped = wrapCache(base, makeCtx({ cache: ['ns:'] }));
+    const wrapped = wrapCache(base, makeCtx({ cache: { namespaces: ['ns:'] } }));
     await expect(wrapped.clear()).rejects.toThrow(PermissionError);
   });
 

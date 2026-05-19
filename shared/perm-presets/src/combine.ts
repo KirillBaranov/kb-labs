@@ -1,4 +1,5 @@
-import type { PermissionSpec, PermissionPreset, PresetBuilder, RuntimePermissionSpec, PlatformPermissions } from './types';
+import type { PermissionSpec as ContractsPermissionSpec } from '@kb-labs/plugin-contracts';
+import type { PermissionSpec, PermissionPreset, PresetBuilder, PlatformPermissions } from './types';
 
 /**
  * Merge two string arrays, removing duplicates
@@ -7,6 +8,18 @@ function mergeArrays(a?: string[], b?: string[]): string[] | undefined {
   if (!a && !b) {return undefined;}
   const set = new Set([...(a ?? []), ...(b ?? [])]);
   return set.size > 0 ? [...set] : undefined;
+}
+
+/**
+ * Merge { connect?: string[] } specs for TCP and WebSocket
+ */
+function mergeConnectSpec(
+  a?: { connect?: string[] },
+  b?: { connect?: string[] }
+): { connect?: string[] } | undefined {
+  if (!a && !b) {return undefined;}
+  const connect = mergeArrays(a?.connect, b?.connect);
+  return connect !== undefined ? { connect } : {};
 }
 
 /**
@@ -84,8 +97,12 @@ function mergeSpecs(base: PermissionSpec, next: PermissionSpec): PermissionSpec 
   if (base.network || next.network) {
     result.network = {
       fetch: mergeArrays(base.network?.fetch, next.network?.fetch),
+      tcp: mergeConnectSpec(base.network?.tcp, next.network?.tcp),
+      ws: mergeConnectSpec(base.network?.ws, next.network?.ws),
     };
     if (result.network.fetch === undefined) {delete result.network.fetch;}
+    if (result.network.tcp === undefined) {delete result.network.tcp;}
+    if (result.network.ws === undefined) {delete result.network.ws;}
     if (Object.keys(result.network).length === 0) {delete result.network;}
   }
 
@@ -118,15 +135,15 @@ function mergeSpecs(base: PermissionSpec, next: PermissionSpec): PermissionSpec 
 }
 
 /**
- * Convert declarative PermissionSpec to explicit RuntimePermissionSpec
+ * Convert declarative PermissionSpec to explicit ContractsPermissionSpec.
  *
  * Transforms:
- *   { mode: 'readWrite', allow: ['*.json'] }
- * Into:
- *   { read: ['*.json'], write: ['*.json'] }
+ *   fs: { mode: 'readWrite', allow: ['*.json'] } → fs: { read: ['*.json'], write: ['*.json'] }
+ *   platform.cache: ['ns:'] → platform.cache: { namespaces: ['ns:'] }
+ *   platform.storage: ['path/'] → platform.storage: { paths: ['path/'] }
  */
-function toRuntimeFormat(spec: PermissionSpec): RuntimePermissionSpec {
-  const result: RuntimePermissionSpec = {};
+function toRuntimeFormat(spec: PermissionSpec): ContractsPermissionSpec {
+  const result: ContractsPermissionSpec = {};
 
   // Convert fs: mode + allow → read[] + write[]
   if (spec.fs) {
@@ -134,10 +151,7 @@ function toRuntimeFormat(spec: PermissionSpec): RuntimePermissionSpec {
     result.fs = {};
 
     if (allow && allow.length > 0) {
-      // read is always granted for allowed paths
       result.fs.read = [...allow];
-
-      // write only if mode is 'readWrite'
       if (mode === 'readWrite') {
         result.fs.write = [...allow];
       }
@@ -146,26 +160,32 @@ function toRuntimeFormat(spec: PermissionSpec): RuntimePermissionSpec {
     if (Object.keys(result.fs).length === 0) {delete result.fs;}
   }
 
-  // env, network, shell, platform, quotas pass through unchanged
-  if (spec.env) {
-    result.env = { ...spec.env };
-  }
+  if (spec.env) { result.env = { ...spec.env }; }
 
   if (spec.network) {
-    result.network = { ...spec.network };
+    result.network = {};
+    if (spec.network.fetch) {result.network.fetch = [...spec.network.fetch];}
+    if (spec.network.tcp) {result.network.tcp = { ...spec.network.tcp };}
+    if (spec.network.ws) {result.network.ws = { ...spec.network.ws };}
+    if (Object.keys(result.network).length === 0) {delete result.network;}
   }
 
-  if (spec.shell) {
-    result.shell = { ...spec.shell };
-  }
+  if (spec.shell) { result.shell = { ...spec.shell }; }
 
   if (spec.platform) {
-    result.platform = { ...spec.platform };
+    const { cache, storage, ...rest } = spec.platform;
+    result.platform = {
+      ...rest as NonNullable<ContractsPermissionSpec['platform']>,
+      ...(cache !== undefined && {
+        cache: Array.isArray(cache) ? { namespaces: cache } : cache,
+      }),
+      ...(storage !== undefined && {
+        storage: Array.isArray(storage) ? { paths: storage } : storage as boolean | { paths?: string[] },
+      }),
+    };
   }
 
-  if (spec.quotas) {
-    result.quotas = { ...spec.quotas };
-  }
+  if (spec.quotas) { result.quotas = { ...spec.quotas }; }
 
   return result;
 }
@@ -250,7 +270,7 @@ export function combine(): PresetBuilder {
       return builder;
     },
 
-    build(): RuntimePermissionSpec {
+    build(): ContractsPermissionSpec {
       return toRuntimeFormat(accumulated);
     },
   };
@@ -266,7 +286,7 @@ export function combine(): PresetBuilder {
  * const permissions = combinePresets(presets.gitWorkflow, presets.npmPublish);
  * ```
  */
-export function combinePresets(...presets: (PermissionPreset | PermissionSpec)[]): RuntimePermissionSpec {
+export function combinePresets(...presets: (PermissionPreset | PermissionSpec)[]): ContractsPermissionSpec {
   let builder = combine();
   for (const preset of presets) {
     builder = builder.with(preset);
