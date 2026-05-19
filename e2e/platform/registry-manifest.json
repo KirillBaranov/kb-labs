@@ -108,6 +108,12 @@
       "pkg": "@kb-labs/release-manager-cli",
       "description": "Release manager — plan, publish, workflow templates",
       "default": true
+    },
+    {
+      "id": "quality",
+      "pkg": "@kb-labs/quality-entry",
+      "description": "Code quality, architecture analysis",
+      "default": true
     }
   ],
   "binaries": [
