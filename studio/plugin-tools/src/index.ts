@@ -30,11 +30,11 @@ export const STUDIO_SHARED_DEPS: Record<string, { singleton: boolean; requiredVe
   '@ant-design/icons': { singleton: true, requiredVersion: '^5.4.0' },
   '@tanstack/react-query': { singleton: true, requiredVersion: '^5.0.0' },
   zustand: { singleton: true, requiredVersion: '^5.0.0' },
-  '@kb-labs/studio-hooks': { singleton: true, requiredVersion: '^0.1.0' },
-  '@kb-labs/studio-event-bus': { singleton: true, requiredVersion: '^0.1.0' },
-  '@kb-labs/studio-ui-kit': { singleton: true, requiredVersion: '^0.1.0' },
-  '@kb-labs/studio-ui-core': { singleton: true, requiredVersion: '^0.1.0' },
-  '@kb-labs/sdk': { singleton: true, requiredVersion: '^0.1.0' },
+  '@kb-labs/studio-hooks': { singleton: true, requiredVersion: '^2.0.0' },
+  '@kb-labs/studio-event-bus': { singleton: true, requiredVersion: '^2.0.0' },
+  '@kb-labs/studio-ui-kit': { singleton: true, requiredVersion: '^2.0.0' },
+  '@kb-labs/studio-ui-core': { singleton: true, requiredVersion: '^2.0.0' },
+  '@kb-labs/sdk': { singleton: true, requiredVersion: '^2.0.0' },
 };
 
 export interface KbStudioRemoteOptions {

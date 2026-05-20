@@ -1,4 +1,6 @@
 {
+  "schemaVersion": "1.0",
+  "scope": "root",
   "packages": [
     {
       "name": "@kb-labs/adapters-analytics-duckdb",
@@ -7,7 +9,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. These enhancements warrant a minor version increase as they expand the package's capabilities while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/adapters-analytics-file",
@@ -16,7 +19,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate because it introduces new features, including the inbox plugin with email handling commands and updates to the manifests format, while also including several bug fixes and test enhancements. These additions and improvements warrant a minor version increase as they enhance functionality without introducing breaking changes."
     },
     {
       "name": "@kb-labs/adapters-analytics-sqlite",
@@ -25,7 +29,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new functionality without breaking existing features. This justifies a minor version increase as it enhances the package while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/adapters-environment-docker",
@@ -34,7 +39,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 3 docs, 7 test, 4 feat, 4 fix, 1 unknown, 1 chore"
     },
     {
       "name": "@kb-labs/adapters-eventbus-cache",
@@ -43,7 +49,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. The minor bump reflects the introduction of these enhancements while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/adapters-fs",
@@ -52,7 +59,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump is appropriate as it introduces new features such as the inbox plugin with email handling commands and updates to the manifests format, along with several bug fixes and documentation enhancements. These additions and improvements warrant a minor version increase, indicating backward-compatible functionality has been added."
     },
     {
       "name": "@kb-labs/adapters-kblabs-gateway",
@@ -61,7 +69,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 3 docs, 7 test, 4 feat, 4 fix, 1 unknown, 1 chore"
     },
     {
       "name": "@kb-labs/adapters-log-ringbuffer",
@@ -70,7 +79,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This minor version bump is appropriate due to the addition of the new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality."
     },
     {
       "name": "@kb-labs/adapters-log-sqlite",
@@ -79,7 +89,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. The inclusion of several documentation updates and test enhancements further supports the minor version increment."
     },
     {
       "name": "@kb-labs/adapters-mongodb",
@@ -88,7 +99,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The release introduces a new inbox plugin with email handling commands and migrates existing manifests to a new format, which qualifies as a minor version bump due to the addition of new features without breaking existing functionality."
     },
     {
       "name": "@kb-labs/notifier-router",
@@ -97,7 +109,8 @@
       "currentVersion": "0.1.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and several documentation updates, which introduce new features while maintaining backward compatibility. This justifies a minor version increase as it enhances functionality without breaking existing features."
     },
     {
       "name": "@kb-labs/adapters-openai",
@@ -106,16 +119,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/adapters-pino-http",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/pino-http",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 3 docs, 7 test, 4 feat, 4 fix, 1 unknown, 1 chore"
     },
     {
       "name": "@kb-labs/adapters-pino",
@@ -124,25 +129,18 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. Minor version increments are warranted for such enhancements and new features that are backward compatible."
     },
     {
-      "name": "@kb-labs/adapters-redis",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/redis",
+      "name": "@kb-labs/adapters-pino-http",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/pino-http",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/adapters-snapshot-localfs",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/snapshot-localfs",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 3 docs, 7 test, 4 feat, 4 fix, 1 unknown, 1 chore"
     },
     {
       "name": "@kb-labs/adapters-qdrant",
@@ -151,7 +149,28 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the introduction of new features, specifically the inbox plugin with email handling commands, and the migration of manifests to a new format, which enhances functionality without breaking existing features. The minor bump reflects these enhancements and the addition of tests to ensure stability."
+    },
+    {
+      "name": "@kb-labs/adapters-redis",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/redis",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. The inclusion of new features justifies the minor version increment as per semantic versioning guidelines."
+    },
+    {
+      "name": "@kb-labs/adapters-snapshot-localfs",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/snapshot-localfs",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The release introduces a new inbox plugin with email handling commands and migrates existing manifests to a new format, which adds new functionality without breaking existing features. This justifies a minor version bump as it enhances the package while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/adapters-sqlite",
@@ -160,7 +179,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This aligns with semantic versioning principles, warranting a minor version increase."
     },
     {
       "name": "@kb-labs/adapters-telegram",
@@ -169,7 +189,8 @@
       "currentVersion": "0.1.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 3 docs, 7 test, 4 feat, 4 fix, 1 unknown, 1 chore"
     },
     {
       "name": "@kb-labs/adapters-transport",
@@ -178,7 +199,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This aligns with the semantic versioning principle of incrementing the minor version for new features that are backward compatible."
     },
     {
       "name": "@kb-labs/adapters-vibeproxy",
@@ -187,7 +209,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of new features, specifically the inbox plugin with email handling commands, and the migration of manifests to a new format, which are significant enhancements but do not introduce breaking changes. The minor version increase reflects these new functionalities while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/adapters-voyage-ai",
@@ -196,7 +219,8 @@
       "currentVersion": "0.1.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 3 docs, 7 test, 4 feat, 4 fix, 1 unknown, 1 chore"
     },
     {
       "name": "@kb-labs/adapters-workspace-agent",
@@ -205,7 +229,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This justifies a minor version increase as it enhances the package while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/adapters-workspace-localfs",
@@ -214,7 +239,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. The minor bump reflects these enhancements while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/adapters-workspace-worktree",
@@ -223,7 +249,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 3 docs, 7 test, 4 feat, 4 fix, 1 unknown, 1 chore"
     },
     {
       "name": "@kb-labs/cli-bin",
@@ -232,7 +259,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 3 docs, 7 test, 4 feat, 4 fix, 1 unknown, 1 chore"
     },
     {
       "name": "@kb-labs/cli-commands",
@@ -241,7 +269,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. The inclusion of tests and documentation enhancements further supports the minor version increase as they improve the package's usability and reliability."
     },
     {
       "name": "@kb-labs/cli-contracts",
@@ -250,7 +279,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This aligns with semantic versioning, where minor version increments are used for backward-compatible feature additions."
     },
     {
       "name": "@kb-labs/cli-runtime",
@@ -259,7 +289,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. The minor bump reflects these enhancements while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/core-bundle",
@@ -268,7 +299,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. The inclusion of several documentation updates and tests further supports this minor version increase, as they enhance the package's usability and reliability."
     },
     {
       "name": "@kb-labs/core-config",
@@ -277,7 +309,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The release introduces a new inbox plugin with email handling commands and migrates existing manifests to a new format, which are both new features. This justifies a minor version bump as it adds functionality without breaking existing features."
     },
     {
       "name": "@kb-labs/core-contracts",
@@ -286,7 +319,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of new features, specifically the inbox plugin with email handling commands, and the migration of manifests to a new format. These enhancements introduce new functionality without breaking existing features, justifying a minor version increase."
     },
     {
       "name": "@kb-labs/core-discovery",
@@ -295,7 +329,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This aligns with the semantic versioning rules for a minor version increase, as it adds new capabilities while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/core-ipc",
@@ -304,7 +339,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands, which introduces new functionality without breaking existing features. This qualifies as a minor version increase as it adds features in a backward-compatible manner."
     },
     {
       "name": "@kb-labs/llm-router",
@@ -313,7 +349,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This justifies a minor version increase as it enhances the package's capabilities while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/core-platform",
@@ -322,7 +359,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This minor version bump is appropriate due to the addition of new features, specifically the inbox plugin with email handling commands, and the migration of manifests to a new format, alongside several bug fixes and documentation updates. These enhancements introduce new functionality without breaking existing features, justifying a minor version increment."
     },
     {
       "name": "@kb-labs/plugin-contracts",
@@ -331,7 +369,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of new features, including the inbox plugin with email handling commands, and the migration of manifests to a new format, which are both significant enhancements. Additionally, the inclusion of tests and documentation improvements supports the minor version increase as they enhance the overall functionality without introducing breaking changes."
     },
     {
       "name": "@kb-labs/plugin-execution",
@@ -340,7 +379,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. The minor version increase reflects these enhancements while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/plugin-execution-factory",
@@ -349,7 +389,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate because it introduces a new inbox plugin with email handling commands and migrates existing manifests to a new format, which are both new features. Additionally, several bug fixes and documentation improvements were made, justifying a minor version increase."
     },
     {
       "name": "@kb-labs/plugin-runtime",
@@ -358,7 +399,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of new features, specifically the inbox plugin with email handling commands, alongside several documentation updates and bug fixes. The introduction of new functionality aligns with the semantic versioning rules for a minor version increase."
     },
     {
       "name": "@kb-labs/core-policy",
@@ -367,7 +409,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump is appropriate because new features were introduced, including the inbox plugin with email handling commands and migration of manifests to a new format, alongside several bug fixes and test enhancements. These additions and improvements warrant a minor version increase as they enhance functionality without breaking existing features."
     },
     {
       "name": "@kb-labs/core-registry",
@@ -376,7 +419,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands, along with various documentation updates and tests, which introduce new features without breaking existing functionality."
     },
     {
       "name": "@kb-labs/core-resource-broker",
@@ -385,7 +429,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This minor version bump is appropriate due to the addition of the new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality."
     },
     {
       "name": "@kb-labs/core-runtime",
@@ -394,7 +439,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of new features, specifically the inbox plugin with email handling commands, and the migration of manifests to a new format, which enhances functionality without introducing breaking changes."
     },
     {
       "name": "@kb-labs/core-sandbox",
@@ -403,7 +449,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands, along with several documentation updates and tests, which collectively introduce new features without breaking existing functionality."
     },
     {
       "name": "@kb-labs/core-state-broker",
@@ -412,7 +459,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This qualifies as a minor version increase as it enhances the package while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/core-sys",
@@ -421,7 +469,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This qualifies as a minor version increase as it enhances the package while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/telemetry-client",
@@ -430,7 +479,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and several documentation updates, which introduce new features without breaking existing functionality. This qualifies as a minor version increase as it enhances the package while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/core-tenant",
@@ -439,7 +489,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 3 docs, 7 test, 4 feat, 4 fix, 1 unknown, 1 chore"
     },
     {
       "name": "@kb-labs/core-types",
@@ -448,7 +499,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of the new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This qualifies as a minor version increase as it adds functionality in a backward-compatible manner."
     },
     {
       "name": "@kb-labs/core-workspace",
@@ -457,7 +509,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of new features, specifically the inbox plugin with email handling commands, and the migration of manifests to a new format, which introduces new functionality without breaking existing features. This justifies a minor version increase as it enhances the package while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/devkit",
@@ -466,16 +519,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/sdk",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/sdk/sdk",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.21.2",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This aligns with the semantic versioning rules for a minor version increase, as it adds new capabilities while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/platform-client",
@@ -484,25 +529,18 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This qualifies as a minor version increase as it adds new capabilities while maintaining backward compatibility."
     },
     {
-      "name": "@kb-labs/shared-cli-ui",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/shared/cli-ui",
+      "name": "@kb-labs/sdk",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/sdk/sdk",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
+      "currentVersion": "2.21.2",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/perm-presets",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/shared/perm-presets",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump is appropriate as it introduces a new inbox plugin with email handling commands and migrates existing manifests to a new format, which qualifies as a minor update due to the addition of new features without breaking existing functionality."
     },
     {
       "name": "@kb-labs/shared-command-kit",
@@ -511,7 +549,18 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 3 docs, 7 test, 4 feat, 4 fix, 1 unknown, 1 chore"
+    },
+    {
+      "name": "@kb-labs/shared-cli-ui",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/shared/cli-ui",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "This minor version bump is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality."
     },
     {
       "name": "@kb-labs/shared-http",
@@ -520,16 +569,18 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The release includes new features such as the inbox plugin with email handling commands and migration of manifests to a new format, along with several bug fixes and tests. These additions and improvements warrant a minor version bump as they introduce new functionality without breaking existing features."
     },
     {
-      "name": "@kb-labs/shared-testing-e2e",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/shared/testing-e2e",
+      "name": "@kb-labs/perm-presets",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/shared/perm-presets",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of new features, specifically the inbox plugin with email handling commands, and the migration of manifests to a new format. These enhancements are significant but do not introduce breaking changes, justifying a minor version increase."
     },
     {
       "name": "@kb-labs/shared-testing",
@@ -538,16 +589,28 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of new features, including the inbox plugin with email handling commands and the migration of manifests to a new format, along with several bug fixes and documentation improvements. These enhancements introduce new functionality while maintaining backward compatibility, justifying a minor version increase."
     },
     {
-      "name": "@kb-labs/studio-app",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/app",
+      "name": "@kb-labs/shared-testing-e2e",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/shared/testing-e2e",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and significant documentation updates, which introduce new features without breaking existing functionality. The minor bump reflects the introduction of these enhancements while maintaining backward compatibility."
+    },
+    {
+      "name": "@kb-labs/shared-testing-platform",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/shared/testing-platform",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The release introduces a new inbox plugin with email handling commands and several enhancements to documentation and testing, which collectively add new features without breaking existing functionality. This justifies a minor version bump as it reflects the addition of new capabilities while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/shared-tool-kit",
@@ -556,7 +619,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate as it introduces a new inbox plugin with email handling commands, along with several documentation updates and tests, which align with the criteria for a minor version increase due to the addition of new features without breaking changes."
     },
     {
       "name": "@kb-labs/studio-devtools",
@@ -565,16 +629,18 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This minor version bump is appropriate due to the addition of new features, specifically the inbox plugin with email handling commands, along with several documentation updates and tests, which enhance the package without introducing breaking changes."
     },
     {
-      "name": "@kb-labs/studio-data-client",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/data-client",
+      "name": "@kb-labs/studio-app",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/app",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This qualifies as a minor version increase as it enhances the package while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/studio-event-bus",
@@ -583,16 +649,18 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. The inclusion of several documentation updates and tests further supports the minor version increment as these changes enhance the package's usability and reliability."
     },
     {
-      "name": "@kb-labs/studio-hooks",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/hooks",
+      "name": "@kb-labs/studio-data-client",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/data-client",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 3 docs, 7 test, 4 feat, 4 fix, 1 unknown, 1 chore"
     },
     {
       "name": "@kb-labs/studio-federation",
@@ -601,16 +669,18 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. The inclusion of several documentation updates and tests further supports the minor version increment as it enhances the package's usability and reliability."
     },
     {
-      "name": "@kb-labs/studio-ui-core",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/ui-core",
+      "name": "@kb-labs/studio-hooks",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/hooks",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. The minor bump reflects these enhancements while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/studio-plugin-tools",
@@ -619,7 +689,18 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of new features, specifically the inbox plugin with email handling commands, and improvements in documentation and tests. These enhancements introduce new functionality without breaking existing features, justifying a minor version increase."
+    },
+    {
+      "name": "@kb-labs/studio-ui-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/ui-core",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "This version bump is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. The minor version increase reflects these enhancements while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/studio-ui-kit",
@@ -628,7 +709,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate as it introduces new features, including the addition of an inbox plugin with email handling commands and migration of manifests to a new format, while also including several bug fixes and documentation updates. These enhancements and fixes qualify for a minor version increase, as they add functionality without breaking existing features."
     },
     {
       "name": "@kb-labs/clickup-contracts",
@@ -637,7 +719,8 @@
       "currentVersion": "0.1.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of new features such as the inbox plugin with email handling commands and migration of manifests to a new format, alongside several bug fixes and documentation improvements. This constitutes a minor version increment as it introduces new functionality without breaking existing features."
     },
     {
       "name": "@kb-labs/clickup-core",
@@ -646,34 +729,8 @@
       "currentVersion": "0.1.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/commit-contracts",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/commit/contracts",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/commit-entry",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/commit/entry",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/agent-contracts",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/contracts",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of new features such as the inbox plugin with email handling commands and the migration of manifests to a new format, alongside several bug fixes and improvements in tests. This justifies a minor version increase as it introduces new functionality while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/clickup-entry",
@@ -682,124 +739,8 @@
       "currentVersion": "0.1.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/agent-core",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/core",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/commit-core",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/commit/core",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/agent-history",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/history",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/agent-kernel",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/kernel",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/agent-entry",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/entry",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/agent-runtime",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/runtime",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/agent-store",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/store",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/agent-tracing",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/tracing",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/agent-tools",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/tools",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/agent-mcp",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/mcp",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/agent-sdk",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/sdk",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/github-contracts",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/contracts",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/github-entry",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/entry",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump is appropriate because it introduces new features such as the inbox plugin with email handling commands and updates to the manifests, along with several bug fixes and documentation improvements. These enhancements and fixes warrant a minor version increase as they add functionality without breaking existing features."
     },
     {
       "name": "@kb-labs/devlink-contracts",
@@ -808,7 +749,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of new features, specifically the inbox plugin with email handling commands, and the migration of manifests to a new format. These enhancements introduce new functionality without breaking existing features, justifying a minor version increase."
     },
     {
       "name": "@kb-labs/devlink-core",
@@ -817,7 +759,48 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands, which is a new feature, along with various documentation updates and bug fixes. These enhancements warrant a minor version increase as they introduce new functionality without breaking existing features."
+    },
+    {
+      "name": "@kb-labs/commit-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/commit/core",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This aligns with the semantic versioning principle of incrementing the minor version for new features that are backward compatible."
+    },
+    {
+      "name": "@kb-labs/commit-entry",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/commit/entry",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. The minor bump reflects these enhancements while maintaining backward compatibility."
+    },
+    {
+      "name": "@kb-labs/agent-contracts",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/contracts",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. The inclusion of several bug fixes and documentation updates further justifies a minor version increase."
+    },
+    {
+      "name": "@kb-labs/agent-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/core",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the introduction of new features, specifically the addition of the inbox plugin with email handling commands, along with several documentation updates and bug fixes. These enhancements and fixes align with the criteria for a minor version increase as they add functionality without breaking existing features."
     },
     {
       "name": "@kb-labs/devlink-entry",
@@ -826,25 +809,88 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the introduction of a new inbox plugin with email handling commands, which constitutes a new feature, along with several documentation updates and bug fixes. This aligns with the semantic versioning rules for a minor version increase, as new features have been added without breaking existing functionality."
     },
     {
-      "name": "@kb-labs/impact-contracts",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/impact/contracts",
+      "name": "@kb-labs/commit-contracts",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/commit/contracts",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This warrants a minor version increase as it enhances the package while maintaining backward compatibility."
     },
     {
-      "name": "@kb-labs/impact-core",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/impact/core",
+      "name": "@kb-labs/agent-entry",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/entry",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump is appropriate because it introduces new features, specifically the addition of the inbox plugin with email handling commands, along with several documentation updates and bug fixes. These enhancements and improvements justify a minor version increase as they add functionality without breaking existing features."
+    },
+    {
+      "name": "@kb-labs/agent-history",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/history",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. The presence of new features justifies a minor version increase according to semantic versioning guidelines."
+    },
+    {
+      "name": "@kb-labs/agent-mcp",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/mcp",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This qualifies as a minor version increase as it enhances the package while maintaining backward compatibility."
+    },
+    {
+      "name": "@kb-labs/agent-runtime",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/runtime",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate as it introduces new features, including the inbox plugin with email handling commands and the migration of manifests to a new format, alongside several bug fixes and test enhancements. These additions and improvements warrant a minor version increase according to semantic versioning principles."
+    },
+    {
+      "name": "@kb-labs/agent-kernel",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/kernel",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of new features, specifically the inbox plugin with email handling commands, alongside various documentation updates and bug fixes. These enhancements and improvements warrant a minor version increase as they introduce new functionality without breaking existing features."
+    },
+    {
+      "name": "@kb-labs/agent-store",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/store",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands, along with several documentation updates and minor bug fixes. These enhancements introduce new functionality without breaking existing features, justifying a minor version increase."
+    },
+    {
+      "name": "@kb-labs/agent-tools",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/tools",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands, which constitutes a new feature. Additionally, there are several bug fixes and documentation updates, aligning with the criteria for a minor version increase."
     },
     {
       "name": "@kb-labs/gateway-app",
@@ -853,7 +899,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands, along with several documentation updates and tests, which introduce new functionality without breaking existing features."
     },
     {
       "name": "@kb-labs/gateway-auth",
@@ -862,7 +909,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality."
     },
     {
       "name": "@kb-labs/gateway-contracts",
@@ -871,7 +919,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands, along with several documentation updates and bug fixes, which collectively introduce new features without breaking existing functionality."
     },
     {
       "name": "@kb-labs/gateway-core",
@@ -880,7 +929,28 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This qualifies as a minor version increase as it adds new capabilities while maintaining backward compatibility."
+    },
+    {
+      "name": "@kb-labs/agent-tracing",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/tracing",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of new features, specifically the inbox plugin with email handling commands, as well as significant documentation updates. These enhancements warrant a minor version increase as they introduce new functionality without breaking existing features."
+    },
+    {
+      "name": "@kb-labs/agent-sdk",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/agents/sdk",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. The minor bump reflects these enhancements while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/gateway-runtime-server",
@@ -889,16 +959,28 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. The inclusion of several bug fixes and documentation improvements further supports the minor version increment."
     },
     {
-      "name": "@kb-labs/infra-worker-contracts",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/infra-worker/plugin-template-contracts",
+      "name": "@kb-labs/impact-contracts",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/impact/contracts",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The release introduces a new inbox plugin with email handling commands and migrates existing manifests to a new format, which are both new features. Additionally, there are several bug fixes and documentation updates, justifying a minor version bump."
+    },
+    {
+      "name": "@kb-labs/github-contracts",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/contracts",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. The inclusion of tests and documentation enhancements further supports the minor version increment as they improve the package's usability and reliability."
     },
     {
       "name": "@kb-labs/host-agent-app",
@@ -907,25 +989,28 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the introduction of a new inbox plugin with email handling commands and the migration of manifests to a new format, which are both new features. Additionally, there are several bug fixes and improvements, but no breaking changes, justifying a minor version increase."
     },
     {
-      "name": "@kb-labs/infra-worker-core",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/infra-worker/plugin-template-core",
+      "name": "@kb-labs/impact-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/impact/core",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate as it introduces new features, specifically the addition of the inbox plugin with email handling commands, and improvements in documentation, which align with the criteria for a minor version increase. Additionally, there are bug fixes and enhancements that do not break existing functionality, justifying the minor increment."
     },
     {
-      "name": "@kb-labs/host-agent-core",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/host-agent/core",
+      "name": "@kb-labs/github-entry",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/github/entry",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands, which introduces new functionality without breaking existing features. This qualifies as a minor version increase as it enhances the package's capabilities while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/host-agent-client",
@@ -934,7 +1019,18 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of new features, specifically the inbox plugin with email handling commands, along with various documentation updates and tests. These enhancements represent a minor change as they introduce new functionality without breaking existing features."
+    },
+    {
+      "name": "@kb-labs/host-agent-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/host-agent/core",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands, which constitutes a new feature, along with several documentation updates and tests. This aligns with semantic versioning as it introduces new functionality without breaking existing features."
     },
     {
       "name": "@kb-labs/host-agent-contracts",
@@ -943,7 +1039,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality."
     },
     {
       "name": "@kb-labs/host-agent-entry",
@@ -952,16 +1049,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/marketplace-contracts",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace/contracts",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This aligns with semantic versioning, where minor version increments are used for backward-compatible feature additions."
     },
     {
       "name": "@kb-labs/host-agent-fs",
@@ -970,7 +1059,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This aligns with semantic versioning guidelines for a minor version increase, as it enhances the package while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/host-agent-transport",
@@ -979,43 +1069,38 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality."
     },
     {
-      "name": "@kb-labs/marketplace-core",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace/core",
+      "name": "@kb-labs/inbox-contracts",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/inbox/contracts",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
+      "currentVersion": "0.1.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the introduction of a new inbox plugin with email handling commands, along with several documentation updates and tests, which collectively enhance the package's functionality without introducing breaking changes. This aligns with a minor version increase as it adds new features while maintaining backward compatibility."
     },
     {
-      "name": "@kb-labs/marketplace-entry",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace/entry",
+      "name": "@kb-labs/inbox-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/inbox/core",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
+      "currentVersion": "0.1.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the introduction of a new inbox plugin with email handling commands and several documentation updates, which enhance the package's functionality without introducing breaking changes. This qualifies as a minor version increase as it adds new features while maintaining backward compatibility."
     },
     {
-      "name": "@kb-labs/marketplace-app",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace/daemon",
+      "name": "@kb-labs/inbox-entry",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/inbox/entry",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
+      "currentVersion": "0.1.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/marketplace-npm",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace/npm",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the introduction of a new inbox plugin with email handling commands and several documentation updates, which enhance the package's functionality without introducing breaking changes. This qualifies as a minor version increase as it adds new features while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/marketplace-api",
@@ -1024,25 +1109,68 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, both of which introduce new features without breaking existing functionality. This aligns with semantic versioning, where minor version increments are used for backward-compatible feature additions."
     },
     {
-      "name": "@kb-labs/policy-core",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/policy/core",
+      "name": "@kb-labs/marketplace-contracts",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace/contracts",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality."
     },
     {
-      "name": "@kb-labs/marketplace-registry-app",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace-registry/app",
+      "name": "@kb-labs/marketplace-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace/core",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 1 chore, 3 docs, 7 test, 4 feat, 4 fix, 1 unknown"
+    },
+    {
+      "name": "@kb-labs/marketplace-entry",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace/entry",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 1 chore, 3 docs, 7 test, 4 feat, 4 fix, 1 unknown"
+    },
+    {
+      "name": "@kb-labs/marketplace-app",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace/daemon",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 1 chore, 3 docs, 7 test, 4 feat, 4 fix, 1 unknown"
+    },
+    {
+      "name": "@kb-labs/marketplace-npm",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace/npm",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This aligns with the semantic versioning rules for a minor version increase, as it adds new capabilities while maintaining backward compatibility."
+    },
+    {
+      "name": "@kb-labs/infra-worker-contracts",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/infra-worker/plugin-template-contracts",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 1 chore, 3 docs, 7 test, 4 feat, 4 fix, 1 unknown"
     },
     {
       "name": "@kb-labs/marketplace-registry-api",
@@ -1051,25 +1179,18 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality."
     },
     {
-      "name": "@kb-labs/marketplace-registry-core",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace-registry/core",
+      "name": "@kb-labs/infra-worker-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/infra-worker/plugin-template-core",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/policy-contracts",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/policy/contracts",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of new features, specifically the inbox plugin with email handling commands, and the migration of manifests to a new format, which enhance functionality without introducing breaking changes."
     },
     {
       "name": "@kb-labs/marketplace-registry-contracts",
@@ -1078,16 +1199,18 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands, along with the migration of manifests to a new format, which introduces new features without breaking existing functionality."
     },
     {
-      "name": "@kb-labs/qa-contracts",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/qa/contracts",
+      "name": "@kb-labs/marketplace-registry-app",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace-registry/app",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands, alongside several documentation updates and tests, which collectively introduce new features without breaking existing functionality."
     },
     {
       "name": "@kb-labs/marketplace-registry-entry",
@@ -1096,88 +1219,38 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which are both new features that enhance functionality without introducing breaking changes."
     },
     {
-      "name": "@kb-labs/qa-entry",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/qa/entry",
+      "name": "@kb-labs/marketplace-registry-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace-registry/core",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This qualifies as a minor version increase as it adds new capabilities while maintaining backward compatibility."
     },
     {
-      "name": "@kb-labs/qa-core",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/qa/core",
+      "name": "@kb-labs/policy-contracts",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/policy/contracts",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 1 chore, 3 docs, 7 test, 4 feat, 4 fix, 1 unknown"
     },
     {
-      "name": "@kb-labs/quality-core",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/quality/core",
+      "name": "@kb-labs/policy-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/policy/core",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/quality-contracts",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/quality/contracts",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/release-manager-changelog",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-changelog",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/quality-entry",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/quality/entry",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/release-manager-contracts",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-contracts",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/release-manager-checks",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-checks",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/release-manager-cli",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-cli",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality."
     },
     {
       "name": "@kb-labs/mind-adapters",
@@ -1186,16 +1259,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/release-manager-core",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-core",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and several documentation updates, which introduce new features without breaking existing functionality. This aligns with the semantic versioning rules for a minor version increase, as it adds new capabilities while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/mind-contracts",
@@ -1204,7 +1269,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump is appropriate because it introduces a new feature with the addition of the inbox plugin and its associated email handling commands, along with several documentation updates and tests. These enhancements qualify for a minor version increase as they add functionality without breaking existing features."
     },
     {
       "name": "@kb-labs/mind-core",
@@ -1213,7 +1279,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands, which introduces new functionality without breaking existing features. This qualifies as a minor version increase as it enhances the package while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/mind-embeddings",
@@ -1222,7 +1289,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality."
     },
     {
       "name": "@kb-labs/mind-engine",
@@ -1231,16 +1299,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/mind-indexer",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/indexer",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 1 chore, 3 docs, 7 test, 4 feat, 4 fix, 1 unknown"
     },
     {
       "name": "@kb-labs/mind-entry",
@@ -1249,7 +1309,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump is appropriate because it introduces a new inbox plugin with email handling commands and includes several documentation updates and tests, which are consistent with the criteria for a minor version increase that allows for new features without breaking changes."
     },
     {
       "name": "@kb-labs/mind-orchestrator",
@@ -1258,7 +1319,18 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The release introduces a new inbox plugin with email handling commands and updates to the documentation, which adds new functionality without breaking existing features. This justifies a minor version bump as it enhances the package while maintaining backward compatibility."
+    },
+    {
+      "name": "@kb-labs/mind-indexer",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/mind/indexer",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands, which introduces new functionality without breaking existing features. The presence of new features and improvements justifies a minor version increase according to semantic versioning guidelines."
     },
     {
       "name": "@kb-labs/mind-types",
@@ -1267,79 +1339,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/rest-api-contracts",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/rest-api/contracts",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/rest-api-core",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/rest-api/core",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/rest-api-app",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/rest-api/app",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/review-core",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/review/core",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/review-heuristic",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/review/heuristic",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/review-llm",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/review/llm",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/review-contracts",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/review/contracts",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/review-entry",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/review/entry",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands, which introduces new features without breaking existing functionality. This qualifies as a minor version increase as it enhances the package while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/mind-vector-store",
@@ -1348,7 +1349,148 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality."
+    },
+    {
+      "name": "@kb-labs/quality-contracts",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/quality/contracts",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This qualifies as a minor version increase as it enhances the package's capabilities while maintaining backward compatibility."
+    },
+    {
+      "name": "@kb-labs/quality-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/quality/core",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality."
+    },
+    {
+      "name": "@kb-labs/qa-contracts",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/qa/contracts",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of new features, specifically the inbox plugin with email handling commands, as well as improvements to documentation and tests. These enhancements introduce new functionality without breaking existing features, justifying a minor version increase."
+    },
+    {
+      "name": "@kb-labs/qa-entry",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/qa/entry",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of the new inbox plugin with email handling commands, which introduces new functionality without breaking existing features. This qualifies as a minor version increase as it enhances the package while maintaining backward compatibility."
+    },
+    {
+      "name": "@kb-labs/qa-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/qa/core",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 1 chore, 3 docs, 7 test, 4 feat, 4 fix, 1 unknown"
+    },
+    {
+      "name": "@kb-labs/rest-api-app",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/rest-api/app",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of new features, specifically the inbox plugin with email handling commands, and the migration of manifests to a new format, which enhance functionality without introducing breaking changes."
+    },
+    {
+      "name": "@kb-labs/quality-entry",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/quality/entry",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands, which constitutes a new feature, alongside various documentation updates and tests. The introduction of new features justifies a minor version increase according to semantic versioning guidelines."
+    },
+    {
+      "name": "@kb-labs/rest-api-contracts",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/rest-api/contracts",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of new features, specifically the inbox plugin with email handling commands, and the migration of manifests to a new format, which enhances functionality without introducing breaking changes."
+    },
+    {
+      "name": "@kb-labs/rest-api-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/rest-api/core",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of new features, specifically the inbox plugin with email handling commands, and the migration of manifests to a new format. These enhancements introduce new functionality without breaking existing features, justifying a minor version increase."
+    },
+    {
+      "name": "@kb-labs/release-manager-changelog",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-changelog",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality."
+    },
+    {
+      "name": "@kb-labs/release-manager-checks",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-checks",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The release introduces a new inbox plugin with email handling commands and migrates existing manifests to a new format, which adds significant new functionality without breaking existing features. This warrants a minor version bump as it enhances the package while maintaining backward compatibility."
+    },
+    {
+      "name": "@kb-labs/release-manager-cli",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-cli",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This qualifies as a minor version increase as it enhances the package's capabilities while maintaining backward compatibility."
+    },
+    {
+      "name": "@kb-labs/release-manager-contracts",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-contracts",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality."
+    },
+    {
+      "name": "@kb-labs/release-manager-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/release/manager-core",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This aligns with semantic versioning guidelines for a minor version increase as it adds functionality in a backward-compatible manner."
     },
     {
       "name": "@kb-labs/scaffold-contracts",
@@ -1357,7 +1499,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality."
     },
     {
       "name": "@kb-labs/scaffold-core",
@@ -1366,7 +1509,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of new features, specifically the inbox plugin with email handling commands, and the migration of manifests to a new format, which are both non-breaking enhancements. This justifies a minor version increase as it introduces new functionality while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/scaffold",
@@ -1375,7 +1519,48 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump is appropriate as it introduces a new feature with the addition of the inbox plugin that includes email handling commands, along with several documentation updates and tests. Since new features have been added without breaking existing functionality, a minor version bump is warranted."
+    },
+    {
+      "name": "@kb-labs/review-core",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/review/core",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and several documentation updates, which introduce new features without breaking existing functionality. As these changes enhance the package's capabilities while maintaining backward compatibility, a minor version increase is warranted."
+    },
+    {
+      "name": "@kb-labs/review-heuristic",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/review/heuristic",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This aligns with the semantic versioning guidelines for a minor version increase, as it adds functionality in a backward-compatible manner."
+    },
+    {
+      "name": "@kb-labs/review-contracts",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/review/contracts",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and migration of existing manifests to a new format, which introduces new features without breaking existing functionality. This aligns with the semantic versioning principle of incrementing the minor version for new features that are backward compatible."
+    },
+    {
+      "name": "@kb-labs/review-llm",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/review/llm",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands, which introduces new functionality without breaking existing features. This qualifies as a minor version increase as it enhances the package while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/core-state-daemon",
@@ -1384,7 +1569,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands, alongside other enhancements and documentation updates. This qualifies as a minor version increase since it introduces new features without breaking existing functionality."
     },
     {
       "name": "@kb-labs/workflow-artifacts",
@@ -1393,25 +1579,18 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 1 chore, 3 docs, 7 test, 4 feat, 4 fix, 1 unknown"
     },
     {
-      "name": "@kb-labs/workflow-contracts",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/workflow/contracts",
+      "name": "@kb-labs/review-entry",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/review/entry",
       "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/workflow-daemon",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/workflow/daemon",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality."
     },
     {
       "name": "@kb-labs/workflow-constants",
@@ -1420,7 +1599,18 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This qualifies as a minor version increase as it enhances the package while maintaining backward compatibility."
+    },
+    {
+      "name": "@kb-labs/workflow-contracts",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/workflow/contracts",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality."
     },
     {
       "name": "@kb-labs/workflow-engine",
@@ -1429,7 +1619,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This qualifies as a minor version increase as it enhances the package with new capabilities while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/workflow-entry",
@@ -1438,16 +1629,8 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/workflow-steps",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/workflow/steps",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "This version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality."
     },
     {
       "name": "@kb-labs/workflow-runtime",
@@ -1456,7 +1639,28 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "Based on 20 commit(s): 1 chore, 3 docs, 7 test, 4 feat, 4 fix, 1 unknown"
+    },
+    {
+      "name": "@kb-labs/workflow-daemon",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/workflow/daemon",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features while maintaining backward compatibility. This qualifies as a minor version increase as it enhances functionality without breaking existing features."
+    },
+    {
+      "name": "@kb-labs/workflow-steps",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/workflow/steps",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This qualifies as a minor version increase as it enhances the package while maintaining backward compatibility."
     },
     {
       "name": "@kb-labs/notifier-test-core",
@@ -1465,7 +1669,8 @@
       "currentVersion": "0.1.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the introduction of new features, specifically the addition of the inbox plugin with email handling commands and migration of manifests to a new format, along with several documentation updates and tests. These enhancements signify a significant improvement in functionality, justifying a minor version increase."
     },
     {
       "name": "@kb-labs/notifier-test-contracts",
@@ -1474,7 +1679,8 @@
       "currentVersion": "0.1.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the introduction of a new inbox plugin with email handling commands and significant updates to documentation and tests, indicating the addition of new features and improvements. This warrants a minor version increase as it adds functionality in a backward-compatible manner."
     },
     {
       "name": "@kb-labs/notifier-test-entry",
@@ -1483,16 +1689,8 @@
       "currentVersion": "0.1.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
-    },
-    {
-      "name": "@kb-labs/adapter-noop",
-      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/e2e/delivery/fixtures/packages/adapter-noop",
-      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
-      "currentVersion": "2.94.0",
-      "nextVersion": "2.95.0",
-      "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the introduction of new features, including the inbox plugin with email handling commands and the migration of manifests to a new format, along with several documentation updates and tests. This indicates significant enhancements and additions, justifying a minor version increase."
     },
     {
       "name": "@kb-labs/gateway-test",
@@ -1501,10 +1699,22 @@
       "currentVersion": "2.94.0",
       "nextVersion": "2.95.0",
       "bump": "minor",
-      "isPublished": false
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the introduction of a new inbox plugin with email handling commands and the migration of manifests to a new format, which are both new features. This qualifies as a minor version increase since it adds functionality in a backward-compatible manner."
+    },
+    {
+      "name": "@kb-labs/adapter-noop",
+      "path": "/Users/kirillbaranov/Desktop/kb-labs-workspace/e2e/delivery/fixtures/packages/adapter-noop",
+      "gitRoot": "/Users/kirillbaranov/Desktop/kb-labs-workspace",
+      "currentVersion": "2.94.0",
+      "nextVersion": "2.95.0",
+      "bump": "minor",
+      "isPublished": false,
+      "reason": "The version bump to 2.95.0 is appropriate due to the addition of a new inbox plugin with email handling commands and the migration of manifests to a new format, which introduces new features without breaking existing functionality. This aligns with semantic versioning rules for a minor version increase, as it adds new capabilities while maintaining backward compatibility."
     }
   ],
   "strategy": "semver",
   "registry": "https://registry.npmjs.org",
-  "rollbackEnabled": true
+  "rollbackEnabled": true,
+  "createdAt": "2026-05-20T09:22:40.547Z"
 }
