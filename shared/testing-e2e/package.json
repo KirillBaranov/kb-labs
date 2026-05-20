@@ -36,7 +36,7 @@
     "@kb-labs/shared-command-kit": "workspace:*",
     "nanoid": "^5.0.0",
     "vitest": "^3.2.4",
-    "ws": "^8.18.0"
+    "ws": "^8.20.1"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
