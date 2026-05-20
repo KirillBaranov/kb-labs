@@ -1,0 +1,38 @@
+{
+  "id": "cli-manifest",
+  "name": "CLI Manifest Conventions",
+  "description": "Reviews CLI manifest files for naming convention violations. Run with: kb review run --preset=cli-manifest --files=\"**/manifest*.ts\"",
+
+  "include": [
+    "**/manifest.ts",
+    "**/manifest.v3.ts",
+    "**/manifest.v2.ts"
+  ],
+  "exclude": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/*.d.ts",
+    "**/*.spec.ts",
+    "**/*.test.ts"
+  ],
+
+  "atomicRules": {
+    "cli": {
+      "include": ["namespace-conventions"]
+    }
+  },
+
+  "context": {
+    "conventions": {},
+    "documents": [
+      {
+        "id": "cli-naming-audit",
+        "title": "CLI Naming Audit",
+        "content": "Reference document: docs/plans/cli-naming-audit.md — contains the full command surface, identified problems (P1–P10), naming rules, and refactoring candidates.",
+        "type": "guide"
+      }
+    ],
+    "examples": [],
+    "relatedADRs": []
+  }
+}

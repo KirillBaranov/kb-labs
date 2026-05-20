@@ -1,0 +1,37 @@
+{
+  "name": "@kb-labs/inbox-core",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Business logic for inbox plugin (IMAP/SMTP, pure, testable in isolation)",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": ["dist"],
+  "sideEffects": false,
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "tsup",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@kb-labs/inbox-contracts": "workspace:*",
+    "@kb-labs/sdk": "workspace:*",
+    "imapflow": "^1.0.0",
+    "nodemailer": "^6.9.0"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.0.0",
+    "@types/nodemailer": "^6.4.0",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
+  }
+}
