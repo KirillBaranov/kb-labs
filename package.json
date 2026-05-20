@@ -94,7 +94,7 @@
       "@fastify/reply-from": ">=12.6.2",
       "@fastify/static": ">=9.1.1",
       "follow-redirects": ">=1.16.0",
-      "hono": ">=4.12.14",
+      "hono": ">=4.12.21",
       "koa": ">=2.16.4",
       "webpack-dev-server": ">=5.2.4",
       "ws": ">=8.20.1"
