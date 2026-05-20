@@ -251,7 +251,7 @@ export const manifest = {
   rest: {
     basePath: QUALITY_BASE_PATH,
     routes: [
-      { method: 'GET', path: QUALITY_ROUTES.STATS, handler: './rest/handlers/stats-handler.js#default' },
+      { method: 'GET', path: QUALITY_ROUTES.STATS, handler: './rest/handlers/stats-handler.js#default', timeoutMs: 120_000 },
       { method: 'GET', path: QUALITY_ROUTES.HEALTH, handler: './rest/handlers/health-handler.js#default' },
       { method: 'GET', path: QUALITY_ROUTES.LAYERS, handler: './rest/handlers/layers-handler.js#default' },
       { method: 'GET', path: QUALITY_ROUTES.COUPLING, handler: './rest/handlers/coupling-handler.js#default' },
