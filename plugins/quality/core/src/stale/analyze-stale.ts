@@ -128,7 +128,7 @@ async function analyzePackage(
 
   // Check if dependencies were rebuilt after this package
   if (distModTime) {
-    const deps = packageJson.dependencies || {};
+    const _deps = packageJson.dependencies || {};
     const node = graph.nodes.get(name);
 
     if (node) {
