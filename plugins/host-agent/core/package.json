@@ -28,7 +28,7 @@
     "@kb-labs/gateway-contracts": "workspace:*",
     "@kb-labs/host-agent-contracts": "workspace:*",
     "@kb-labs/host-agent-transport": "workspace:*",
-    "ws": "^8.18.0"
+    "ws": "^8.20.1"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
