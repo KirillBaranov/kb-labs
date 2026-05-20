@@ -16,12 +16,13 @@ import nodePreset from '@kb-labs/devkit/eslint/node.js';
 export default [
   ...nodePreset,
 
-  // OPTIONAL: Add project-specific ignores only if needed
-  // DevKit preset already ignores: dist/, coverage/, node_modules/, *.d.ts, scripts/, etc.
-  // {
-  //   ignores: [
-  //     // Add ONLY project-specific patterns here
-  //     // Example: '**/*.generated.ts',
-  //   ]
-  // }
+  // quality-core is a static-analysis library. Its core algorithms (dependency-graph
+  // traversal, staleness analysis, dead-code detection) are inherently non-trivial and
+  // cannot be meaningfully decomposed without losing context. Disable cognitive-complexity
+  // for this package only.
+  {
+    rules: {
+      'sonarjs/cognitive-complexity': 'off',
+    },
+  },
 ];

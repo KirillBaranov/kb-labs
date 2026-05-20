@@ -5,7 +5,7 @@ import {
   type PluginContextV3,
 } from '@kb-labs/sdk';
 import { analyzeLayering } from '@kb-labs/quality-core';
-import { type QualityPluginConfig } from '@kb-labs/quality-contracts';
+import { type QualityPluginConfig, type LayeringViolation } from '@kb-labs/quality-contracts';
 import type { CheckLayersFlags } from './flags.js';
 
 export default defineCommand<unknown, CLIInput<CheckLayersFlags>, { exitCode: number }>({
@@ -26,8 +26,8 @@ export default defineCommand<unknown, CLIInput<CheckLayersFlags>, { exitCode: nu
       const filtered = flags.package
         ? {
             ...report,
-            violations: report.violations.filter(v => v.fromPackage.includes(flags.package!)),
-            totalViolations: report.violations.filter(v => v.fromPackage.includes(flags.package!)).length,
+            violations: report.violations.filter((v: LayeringViolation) => v.fromPackage.includes(flags.package!)),
+            totalViolations: report.violations.filter((v: LayeringViolation) => v.fromPackage.includes(flags.package!)).length,
           }
         : report;
 
@@ -50,7 +50,7 @@ export default defineCommand<unknown, CLIInput<CheckLayersFlags>, { exitCode: nu
 
       const sections = [...byPackage.entries()].map(([pkg, vs]) => ({
         header: `${pkg} (Layer ${vs[0]?.fromLayer})`,
-        items: vs.map(v => `→ ${v.toPackage} (Layer ${v.toLayer})  ${v.importSpecifier}`),
+        items: vs.map((v: LayeringViolation) => `→ ${v.toPackage} (Layer ${v.toLayer})  ${v.importSpecifier}`),
       }));
 
       ctx.ui?.error?.(`${filtered.totalViolations} layering violation(s) in ${filtered.affectedPackages.length} package(s)`, { sections });
