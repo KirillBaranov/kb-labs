@@ -27,8 +27,8 @@ const mockReadFile = vi.mocked(fsReadFile);
 const mockGlobby = vi.mocked(globby);
 
 function setupGitLsFiles(files: string[]) {
-  mockExecFile.mockImplementation((_cmd, _args, _opts, cb: (err: null, stdout: string) => void) => {
-    cb(null, files.join('\0') + '\0');
+  mockExecFile.mockImplementation((_cmd, _args, _opts, cb) => {
+    cb?.(null, files.join('\0') + '\0', '');
     return {} as never;
   });
 }

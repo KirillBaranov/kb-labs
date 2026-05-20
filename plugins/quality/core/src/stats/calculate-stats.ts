@@ -37,7 +37,7 @@ async function getSourceFiles(rootDir: string): Promise<string[]> {
       ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', ...SOURCE_PATTERNS],
       { cwd: rootDir, maxBuffer: 64 * 1024 * 1024 },
       (err, stdout) => {
-        if (err || !stdout) return resolve([]);
+        if (err || !stdout) { return resolve([]); }
         resolve(
           stdout
             .split('\0')
@@ -50,7 +50,7 @@ async function getSourceFiles(rootDir: string): Promise<string[]> {
 }
 
 async function estimateLoc(files: string[], totalSize: number): Promise<number> {
-  if (files.length === 0) return 0;
+  if (files.length === 0) { return 0; }
 
   const indices = new Set<number>();
   while (indices.size < Math.min(LOC_SAMPLE_SIZE, files.length)) {
@@ -63,7 +63,7 @@ async function estimateLoc(files: string[], totalSize: number): Promise<number> 
   let sampleBytes = 0;
   let sampleLines = 0;
   for (const c of contents) {
-    if (!c) continue;
+    if (!c) { continue; }
     sampleBytes += Buffer.byteLength(c, 'utf-8');
     sampleLines += c.split('\n').length;
   }

@@ -172,7 +172,7 @@ function parseTestOutput(output: string): { total?: number; passed?: number; fai
 /**
  * Run async tasks with concurrency limit
  */
-async function runWithConcurrency<T, R>(
+async function _runWithConcurrency<T, R>(
   items: T[],
   handler: (item: T) => Promise<R>,
   concurrency: number

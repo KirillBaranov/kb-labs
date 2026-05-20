@@ -105,7 +105,7 @@ function createProgram(packageDir: string, tsconfigPath: string): ts.Program | n
       rootNames: parsedConfig.fileNames,
       options: parsedConfig.options,
     });
-  } catch (err) {
+  } catch {
     return null;
   }
 }
