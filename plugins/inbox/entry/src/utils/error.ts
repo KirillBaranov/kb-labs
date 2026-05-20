@@ -1,8 +1,6 @@
 import type { PluginContextV3 } from '@kb-labs/sdk';
 import { InboxError, type InboxErrorCode } from '@kb-labs/inbox-core';
 
-export { validationError } from '@kb-labs/sdk';
-
 // HTTP status codes for REST layer
 const REST_STATUS: Record<InboxErrorCode, number> = {
   ENV_MISSING:            400,

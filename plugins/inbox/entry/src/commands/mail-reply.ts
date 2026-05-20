@@ -1,6 +1,6 @@
-import { defineCommand, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, validationError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
 import { resolveAccount, getMessage, replyMessage } from '@kb-labs/inbox-core';
-import { handleError, validationError } from '../utils/error.js';
+import { handleError } from '../utils/error.js';
 
 type ReplyFlags = {
   body?: string;

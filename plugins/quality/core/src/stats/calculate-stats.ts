@@ -7,6 +7,26 @@
 import { readFile, stat } from 'node:fs/promises';
 import globby from 'globby';
 
+const SOURCE_IGNORE = [
+  '**/node_modules/**',
+  '**/dist/**',
+  '**/.git/**',
+  '**/.kb/**',
+  '**/build/**',
+  '**/*.test.{ts,tsx,js,jsx}',
+  '**/*.spec.{ts,tsx,js,jsx}',
+];
+
+async function readFilesBatched(files: string[], concurrency = 64): Promise<(string | null)[]> {
+  const results: (string | null)[] = new Array(files.length).fill(null);
+  for (let i = 0; i < files.length; i += concurrency) {
+    const batch = files.slice(i, i + concurrency);
+    const batchResults = await Promise.all(batch.map(f => readFile(f, 'utf-8').catch(() => null)));
+    results.splice(i, batchResults.length, ...batchResults);
+  }
+  return results;
+}
+
 export interface MonorepoStats {
   packages: number;
   loc: number;
@@ -20,13 +40,12 @@ export interface MonorepoStats {
 export async function calculateLinesOfCode(rootDir: string, sourceFiles?: string[]): Promise<number> {
   const files = sourceFiles ?? await globby('**/*.{ts,tsx,js,jsx}', {
     cwd: rootDir,
-    ignore: ['**/node_modules/**', '**/dist/**', '**/.git/**', '**/.kb/**', '**/build/**',
-      '**/*.test.{ts,tsx,js,jsx}', '**/*.spec.{ts,tsx,js,jsx}'],
+    ignore: SOURCE_IGNORE,
     absolute: true,
     deep: 8,
   });
 
-  const contents = await Promise.all(files.map(f => readFile(f, 'utf-8').catch(() => null)));
+  const contents = await readFilesBatched(files);
   return contents.reduce((sum, c) => sum + (c ? c.split('\n').length : 0), 0);
 }
 
@@ -36,7 +55,7 @@ export async function calculateLinesOfCode(rootDir: string, sourceFiles?: string
 export async function calculateSize(rootDir: string, sourceFiles?: string[]): Promise<number> {
   const files = sourceFiles ?? await globby('**/*.{ts,tsx,js,jsx}', {
     cwd: rootDir,
-    ignore: ['**/node_modules/**', '**/dist/**', '**/.git/**', '**/.kb/**', '**/build/**'],
+    ignore: SOURCE_IGNORE,
     absolute: true,
     deep: 8,
   });
@@ -78,10 +97,9 @@ export async function countPackages(rootDir: string): Promise<number> {
  * Calculate all stats at once
  */
 export async function calculateStats(rootDir: string): Promise<MonorepoStats> {
-  // Single scan for source files shared by LOC and size
   const sourceFiles = await globby('**/*.{ts,tsx,js,jsx}', {
     cwd: rootDir,
-    ignore: ['**/node_modules/**', '**/dist/**', '**/.git/**', '**/.kb/**', '**/build/**'],
+    ignore: SOURCE_IGNORE,
     absolute: true,
     deep: 8,
   });
