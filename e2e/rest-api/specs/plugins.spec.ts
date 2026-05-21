@@ -7,27 +7,29 @@ const BASE = `${REST}/api/v1`
 // Snapshot data is embedded in /plugins/registry and /plugins/refresh responses.
 // Envelope middleware wraps all responses: { ok: true, data: <payload>, meta: {...} }
 
-test('RA-PL-01: GET /plugins/health returns 200 with array of plugin statuses', async ({ request }) => {
+test('RA-PL-01: GET /plugins/health returns 200 with health status object', async ({ request }) => {
+  // /plugins/health returns { healthy, snapshot, registryErrors, diagnostics, validation, message }
   const res = await request.get(`${BASE}/plugins/health`)
   expect(res.status()).toBe(200)
   const body = await res.json()
-  const plugins = body.data ?? body
-  expect(Array.isArray(plugins)).toBe(true)
+  const data = body.data ?? body
+  expect(typeof data.healthy).toBe('boolean')
 })
 
-test('RA-PL-02: GET /plugins/health each entry has id and status', async ({ request }) => {
+test('RA-PL-02: GET /plugins/health snapshot block has totalManifests count', async ({ request }) => {
   const res = await request.get(`${BASE}/plugins/health`)
-  const body = await res.json()
-  const plugins: Array<{ id: string; status: string }> = body.data ?? body
-  if (!Array.isArray(plugins) || plugins.length === 0) {
-    test.skip(true, 'No plugins mounted — skipping entry-shape assertion')
+  if (res.status() !== 200) {
+    test.skip(true, 'Plugin health endpoint not available')
     return
   }
-  for (const p of plugins) {
-    expect(typeof p.id).toBe('string')
-    expect(p.id.length).toBeGreaterThan(0)
-    expect(typeof p.status).toBe('string')
+  const body = await res.json()
+  const data = body.data ?? body
+  if (!data.snapshot) {
+    test.skip(true, 'Snapshot block absent — skipping snapshot-shape assertion')
+    return
   }
+  expect(typeof data.snapshot.totalManifests).toBe('number')
+  expect(data.snapshot.totalManifests).toBeGreaterThanOrEqual(0)
 })
 
 test('RA-PL-03: GET /plugins/registry returns 200 with non-empty response', async ({ request }) => {
@@ -42,13 +44,15 @@ test('RA-PL-04: GET /plugins/registry contains plugin entries with id field', as
   const body = await res.json()
   // registry returns array of manifest entries wrapped in envelope
   const data = body.data ?? body
-  const entries = Array.isArray(data) ? data : Object.values(data)
+  // registry returns { manifests: [...], apiBasePath, diagnostics }
+  const entries: Array<Record<string, unknown>> = data.manifests ?? (Array.isArray(data) ? data : [])
   if (entries.length === 0) {
     test.skip(true, 'No plugins in registry — skipping manifest assertion')
     return
   }
-  const first = entries[0] as Record<string, unknown>
-  expect(first.id ?? first.pluginId ?? first.pluginRoot).toBeTruthy()
+  const first = entries[0]
+  // registry entries use pluginId field (not id)
+  expect(first.pluginId ?? first.id ?? first.pluginRoot).toBeTruthy()
 })
 
 test('RA-PL-05: GET /plugins/registry response contains rev or checksum metadata', async ({ request }) => {

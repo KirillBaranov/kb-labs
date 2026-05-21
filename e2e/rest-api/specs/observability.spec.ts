@@ -63,11 +63,11 @@ test('RA-OB-06: GET /routes returns non-empty list containing health and ready',
   const data = body.data ?? body
   const routes: unknown[] = Array.isArray(data) ? data : (data.routes ?? [])
   expect(routes.length).toBeGreaterThan(0)
-  const paths = routes.map((r: unknown) =>
-    typeof r === 'string' ? r : (r as { path: string }).path,
-  )
-  const hasHealth = paths.some((p: string) => p.includes('/health'))
-  const hasReady = paths.some((p: string) => p.includes('/ready'))
+  const paths = routes
+    .map((r: unknown) => (typeof r === 'string' ? r : (r as { path?: string }).path))
+    .filter((p): p is string => typeof p === 'string')
+  const hasHealth = paths.some((p) => p.includes('/health'))
+  const hasReady = paths.some((p) => p.includes('/ready'))
   expect(hasHealth).toBe(true)
   expect(hasReady).toBe(true)
 })

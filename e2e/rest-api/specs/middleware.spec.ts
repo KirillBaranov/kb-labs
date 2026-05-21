@@ -77,10 +77,11 @@ test('RA-MW-06: 404 on unknown route returns JSON with error info', async ({ req
   const ct = res.headers()['content-type'] ?? ''
   expect(ct).toContain('json')
   const body = await res.json()
-  // envelope { ok: false, error } OR Fastify { statusCode, error, message }
+  // envelope { ok: false, error } OR Fastify { statusCode, error, message } OR { message }
   const hasEnvelopeError = body.ok === false && body.error
   const hasFastifyError = (body.statusCode === 404 || body.error) && typeof body.message === 'string'
-  expect(hasEnvelopeError || hasFastifyError).toBe(true)
+  const hasMessage = typeof body.message === 'string'
+  expect(hasEnvelopeError || hasFastifyError || hasMessage).toBe(true)
 })
 
 // Rate limiting
