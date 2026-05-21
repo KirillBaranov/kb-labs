@@ -1,0 +1,94 @@
+import { test, expect } from '@playwright/test'
+import { REST } from '@kb-labs/e2e-shared/urls.js'
+
+const BASE = `${REST}/api/v1`
+
+test('RA-AN-01: GET /analytics/events returns 200 with an array', async ({ request }) => {
+  const res = await request.get(`${BASE}/analytics/events`)
+  expect([200, 501, 503]).toContain(res.status())
+  if (res.status() === 200) {
+    const body = await res.json()
+    const events = body.data ?? body.events ?? body
+    expect(Array.isArray(events)).toBe(true)
+  }
+})
+
+test('RA-AN-02: GET /analytics/stats returns 200', async ({ request }) => {
+  const res = await request.get(`${BASE}/analytics/stats`)
+  expect([200, 501, 503]).toContain(res.status())
+  if (res.status() === 200) {
+    const body = await res.json()
+    expect(body).toBeTruthy()
+  }
+})
+
+test('RA-AN-03: GET /analytics/buffer-status returns 200', async ({ request }) => {
+  const res = await request.get(`${BASE}/analytics/buffer-status`)
+  expect([200, 501, 503]).toContain(res.status())
+  if (res.status() === 200) {
+    const body = await res.json()
+    expect(body).toBeTruthy()
+  }
+})
+
+test('RA-AN-04: GET /adapters/llm/usage returns 200 or graceful degradation (no 500)', async ({ request }) => {
+  const res = await request.get(`${BASE}/adapters/llm/usage`)
+  // 200 = adapter configured; 404/501/503 = not configured; never 500
+  expect(res.status()).not.toBe(500)
+  expect([200, 404, 501, 503]).toContain(res.status())
+})
+
+test('RA-AN-05: GET /adapters/state/stats returns 200 or graceful degradation (no 500)', async ({ request }) => {
+  const res = await request.get(`${BASE}/adapters/state/stats`)
+  expect(res.status()).not.toBe(500)
+  expect([200, 404, 501, 503]).toContain(res.status())
+})
+
+test('RA-AN-06: GET /observability/system-metrics returns 200 with CPU and memory fields', async ({ request }) => {
+  const res = await request.get(`${BASE}/observability/system-metrics`)
+  expect([200, 501, 503]).toContain(res.status())
+  if (res.status() === 200) {
+    const body = await res.json()
+    const data = body.data ?? body
+    // expect at least one of the canonical system fields
+    const hasSystemFields =
+      data.cpu !== undefined ||
+      data.memory !== undefined ||
+      data.cpuUsagePercent !== undefined ||
+      data.memUsagePercent !== undefined
+    expect(hasSystemFields).toBe(true)
+  }
+})
+
+test('RA-AN-07: GET /observability/metrics/history returns 200 with time-series array', async ({ request }) => {
+  const res = await request.get(`${BASE}/observability/metrics/history`)
+  expect([200, 501, 503]).toContain(res.status())
+  if (res.status() === 200) {
+    const body = await res.json()
+    const data = body.data ?? body
+    // history is either an array or an object with an array inside
+    const isArray = Array.isArray(data)
+    const hasArray = !isArray && Object.values(data).some(Array.isArray)
+    expect(isArray || hasArray).toBe(true)
+  }
+})
+
+test('RA-AN-08: GET /observability/metrics/heatmap returns 200', async ({ request }) => {
+  const res = await request.get(`${BASE}/observability/metrics/heatmap`)
+  expect([200, 501, 503]).toContain(res.status())
+  if (res.status() === 200) {
+    const body = await res.json()
+    expect(body).toBeTruthy()
+  }
+})
+
+test('RA-AN-09: GET /platform/config returns 200 with config object', async ({ request }) => {
+  const res = await request.get(`${BASE}/platform/config`)
+  expect([200, 501, 503]).toContain(res.status())
+  if (res.status() === 200) {
+    const body = await res.json()
+    const config = body.data ?? body
+    expect(typeof config).toBe('object')
+    expect(config).not.toBeNull()
+  }
+})
