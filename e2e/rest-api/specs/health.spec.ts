@@ -4,26 +4,31 @@ import { REST } from '@kb-labs/e2e-shared/urls.js'
 const BASE = `${REST}/api/v1`
 
 // Sprint 1 — Базовое здоровье сервера
-// Все эндпоинты публичны (auth живёт на gateway, не на rest-api)
+// Все эндпоинты публичны (auth живёт на gateway, не на rest-api).
+//
+// Envelope middleware оборачивает ВСЕ ответы в { ok: true, data: <payload>, meta: {...} }.
+// Используем `body.data ?? body` для совместимости со старыми версиями без обёртки.
 
 test('RA-H-01: GET /health returns 200 with kb.health/1 schema', async ({ request }) => {
   const res = await request.get(`${BASE}/health`)
   expect(res.status()).toBe(200)
   const body = await res.json()
-  expect(body.schema).toBe('kb.health/1')
+  const data = body.data ?? body
+  expect(data.schema).toBe('kb.health/1')
 })
 
 test('RA-H-02: GET /health response contains required top-level fields', async ({ request }) => {
   const res = await request.get(`${BASE}/health`)
   expect(res.status()).toBe(200)
   const body = await res.json()
-  expect(typeof body.uptimeSec).toBe('number')
-  expect(body.uptimeSec).toBeGreaterThanOrEqual(0)
-  expect(body.version).toBeDefined()
-  expect(typeof body.version.kbLabs).toBe('string')
-  expect(body.registry).toBeDefined()
-  expect(['healthy', 'degraded', 'unhealthy']).toContain(body.status)
-  expect(Array.isArray(body.components)).toBe(true)
+  const data = body.data ?? body
+  expect(typeof data.uptimeSec).toBe('number')
+  expect(data.uptimeSec).toBeGreaterThanOrEqual(0)
+  expect(data.version).toBeDefined()
+  expect(typeof data.version.kbLabs).toBe('string')
+  expect(data.registry).toBeDefined()
+  expect(['healthy', 'degraded', 'unhealthy']).toContain(data.status)
+  expect(Array.isArray(data.components)).toBe(true)
 })
 
 test('RA-H-03: GET /health response contains X-Request-Id header', async ({ request }) => {
@@ -35,7 +40,8 @@ test('RA-H-03: GET /health response contains X-Request-Id header', async ({ requ
 test('RA-H-04: GET /health registry block has required shape', async ({ request }) => {
   const res = await request.get(`${BASE}/health`)
   const body = await res.json()
-  const reg = body.registry
+  const data = body.data ?? body
+  const reg = data.registry
   expect(typeof reg.total).toBe('number')
   expect(typeof reg.withRest).toBe('number')
   expect(typeof reg.withStudio).toBe('number')
@@ -47,6 +53,7 @@ test('RA-H-04: GET /health registry block has required shape', async ({ request 
 test('RA-H-05: GET /health ts field is a valid ISO-8601 timestamp', async ({ request }) => {
   const res = await request.get(`${BASE}/health`)
   const body = await res.json()
-  const ts = Date.parse(body.ts)
+  const data = body.data ?? body
+  const ts = Date.parse(data.ts)
   expect(Number.isNaN(ts)).toBe(false)
 })

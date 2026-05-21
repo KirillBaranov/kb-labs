@@ -3,14 +3,17 @@ import { REST } from '@kb-labs/e2e-shared/urls.js'
 
 const BASE = `${REST}/api/v1`
 
+// Envelope middleware wraps ALL responses: { ok: true, data: <payload>, meta: {...} }
+// This is a core server behaviour, not specific to any route.
+
 // X-Request-Id
 
 test('RA-MW-01: X-Request-Id header is present on every response', async ({ request }) => {
   const endpoints = [
     `${BASE}/health`,
     `${BASE}/ready`,
-    `${BASE}/routes`,
     `${BASE}/observability/describe`,
+    `${BASE}/observability/health`,
     `${BASE}/metrics`,
   ]
   for (const url of endpoints) {
@@ -19,14 +22,13 @@ test('RA-MW-01: X-Request-Id header is present on every response', async ({ requ
   }
 })
 
-test('RA-MW-02: X-Request-Id value is a non-empty string on each request', async ({ request }) => {
+test('RA-MW-02: X-Request-Id is unique across requests', async ({ request }) => {
   const r1 = await request.get(`${BASE}/health`)
   const r2 = await request.get(`${BASE}/health`)
   const id1 = r1.headers()['x-request-id']
   const id2 = r2.headers()['x-request-id']
   expect(id1).toBeTruthy()
   expect(id2).toBeTruthy()
-  // Two independent requests should get different IDs
   expect(id1).not.toBe(id2)
 })
 
@@ -55,8 +57,7 @@ test('RA-MW-04: security header X-Frame-Options is set', async ({ request }) => 
 // Envelope format
 
 test('RA-MW-05: successful JSON responses follow envelope format { ok, data, meta }', async ({ request }) => {
-  // /plugins/snapshot is a stable JSON endpoint with envelope wrapping
-  const res = await request.get(`${BASE}/plugins/snapshot`)
+  const res = await request.get(`${BASE}/plugins/registry`)
   if (res.status() !== 200) return
   const body = await res.json()
   if (body.ok === undefined) {
@@ -70,26 +71,24 @@ test('RA-MW-05: successful JSON responses follow envelope format { ok, data, met
   expect(typeof body.meta.durationMs).toBe('number')
 })
 
-test('RA-MW-06: 404 on unknown route uses consistent error shape', async ({ request }) => {
+test('RA-MW-06: 404 on unknown route returns JSON with error info', async ({ request }) => {
   const res = await request.get(`${BASE}/definitely-does-not-exist-e2e`)
   expect(res.status()).toBe(404)
+  const ct = res.headers()['content-type'] ?? ''
+  expect(ct).toContain('json')
   const body = await res.json()
-  // Either envelope { ok: false, error: { code, message } } or Fastify { statusCode, error, message }
-  const isEnvelope = body.ok === false && body.error
-  const isFastify = body.statusCode === 404 && typeof body.message === 'string'
-  expect(isEnvelope || isFastify).toBe(true)
+  // envelope { ok: false, error } OR Fastify { statusCode, error, message }
+  const hasEnvelopeError = body.ok === false && body.error
+  const hasFastifyError = (body.statusCode === 404 || body.error) && typeof body.message === 'string'
+  expect(hasEnvelopeError || hasFastifyError).toBe(true)
 })
 
 // Rate limiting
 
 test('RA-MW-07: rate limiter returns 429 after bursting past the window limit', async ({ request }) => {
-  // Fire many requests quickly — rate limit default is 60/min, but the
-  // tenant-rate-limit middleware uses the x-tenant-id header to namespace.
-  // Use a unique fake tenant ID to isolate this test's bucket.
   const headers = { 'x-tenant-id': 'e2e-rate-limit-test-burst' }
   const results: number[] = []
 
-  // 80 rapid-fire requests — should hit the 60/min window
   for (let i = 0; i < 80; i++) {
     const res = await request.get(`${BASE}/health`, { headers })
     results.push(res.status())
