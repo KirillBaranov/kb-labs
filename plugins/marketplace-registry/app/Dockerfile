@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM node:20-slim AS runner
 WORKDIR /app
 
