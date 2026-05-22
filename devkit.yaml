@@ -24,6 +24,7 @@ workspace:
         - "e2e/workflows"
         - "e2e/studio"
         - "e2e/plugins"
+        - "e2e/rest-api"
       language: typescript
       preset: e2e-suite
 
