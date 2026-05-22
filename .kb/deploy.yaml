@@ -1,3 +1,4 @@
+# deploy targets — managed by kb-deploy
 registry: ghcr.io/kirillbaranov
 
 infrastructure:
