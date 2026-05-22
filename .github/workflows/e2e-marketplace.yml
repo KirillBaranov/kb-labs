@@ -92,8 +92,9 @@ jobs:
         with:
           path: e2e/packages/
           key: e2e-tgz-${{ runner.os }}-${{ github.sha }}
-          restore-keys: |
-            e2e-tgz-${{ runner.os }}-
+          # No restore-keys: only exact sha match is safe.
+          # Using a previous sha's tgzs would restore stale binaries and break
+          # tests that depend on source changes (e.g. fixes in marketplace-core).
 
       # ── Build Docker images ───────────────────────────────────────────────
 
