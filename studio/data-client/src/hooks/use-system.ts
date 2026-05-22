@@ -2,6 +2,15 @@ import { useQuery } from '@tanstack/react-query';
 import type { SystemDataSource } from '../sources/system-source';
 import { qk } from '../query-keys';
 
+export function usePlatformHealth(source: SystemDataSource) {
+  return useQuery({
+    queryKey: qk.system.platformHealth(),
+    queryFn: () => source.getPlatformHealth?.() ?? Promise.resolve(null),
+    refetchInterval: 30_000,
+    staleTime: 15_000,
+  });
+}
+
 export function useHealthStatus(source: SystemDataSource) {
   return useQuery({
     queryKey: qk.system.health.live(),

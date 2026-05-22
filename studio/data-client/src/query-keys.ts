@@ -60,9 +60,16 @@ export const qk = {
       live: () => [...qk.system.all, 'health', 'live'] as const,
       ready: () => [...qk.system.all, 'health', 'ready'] as const,
     },
+    platformHealth: () => [...qk.system.all, 'platform-health'] as const,
     info: () => [...qk.system.all, 'info'] as const,
     capabilities: () => [...qk.system.all, 'capabilities'] as const,
     config: () => [...qk.system.all, 'config'] as const,
+  },
+
+  // Plugins queries
+  plugins: {
+    all: ['plugins'] as const,
+    registry: () => [...qk.plugins.all, 'registry'] as const,
   },
   workflows: {
     all: ['workflows'] as const,

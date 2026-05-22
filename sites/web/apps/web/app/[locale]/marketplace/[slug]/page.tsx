@@ -4,19 +4,22 @@ import { notFound } from 'next/navigation';
 import { setRequestLocale } from 'next-intl/server';
 import { SiteHeader } from '@/components/SiteHeader';
 import { SiteFooter } from '@/components/SiteFooter';
-import { MARKETPLACE_ITEMS, TYPE_LABELS, getItemBySlug } from '@/lib/marketplace-data';
+import { TYPE_LABELS, fetchRegistryItems, fetchRegistryItem } from '@/lib/marketplace-data';
 import { buildPageMetadata } from '@/lib/page-metadata';
 import s from './page.module.css';
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
+export const dynamicParams = true;
+
 export async function generateStaticParams() {
-  return MARKETPLACE_ITEMS.map((item) => ({ slug: item.slug }));
+  const items = await fetchRegistryItems();
+  return items.map((item) => ({ slug: item.slug }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params;
-  const item = getItemBySlug(slug);
+  const item = await fetchRegistryItem(slug);
   if (!item) return {};
   return buildPageMetadata({
     locale,
@@ -30,7 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function PluginPage({ params }: Props) {
   const { locale, slug } = await params;
   setRequestLocale(locale);
-  const item = getItemBySlug(slug);
+  const item = await fetchRegistryItem(slug);
   if (!item) notFound();
 
   const paragraphs = item.longDescription.split('\n\n');

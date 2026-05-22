@@ -6,6 +6,7 @@ on:
     paths:
       - 'sites/web/**'
       - 'plugins/gateway/**'
+      - 'plugins/marketplace-registry/**'
       - 'adapters/openai/**'
       - 'adapters/redis/**'
       - 'adapters/sqlite/**'
@@ -76,6 +77,9 @@ jobs:
 
       - name: Deploy gateway-app (pnpm deploy)
         run: pnpm deploy --filter @kb-labs/gateway-app --prod .kb/deploy/gateway-app
+
+      - name: Deploy marketplace-registry-app (pnpm deploy)
+        run: pnpm deploy --filter @kb-labs/marketplace-registry-app --prod .kb/deploy/marketplace-registry-app
 
       - name: Login to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin

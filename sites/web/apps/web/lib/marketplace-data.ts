@@ -297,3 +297,87 @@ export const TYPE_LABELS: Record<PluginType | 'all', string> = {
 export const ALL_TAGS = Array.from(
   new Set(MARKETPLACE_ITEMS.flatMap((item) => item.tags)),
 ).sort();
+
+// ---------------------------------------------------------------------------
+// Registry API integration
+// ---------------------------------------------------------------------------
+
+const REGISTRY_URL = process.env.KB_REGISTRY_URL ?? 'https://api.kblabs.ru/api/v1/registry';
+
+interface RegistryAuthor { name: string; email?: string; url?: string }
+interface RegistrySummary {
+  handle: string;
+  name: string;
+  fullName: string;
+  version: string;
+  description?: string;
+  author?: RegistryAuthor | string;
+  keywords?: string[];
+  primaryKind: string;
+  trust: string;
+  installs: number;
+  publishedAt: string;
+}
+
+function kindToPluginType(kind: string): PluginType {
+  if (kind === 'adapter') return 'adapter';
+  if (kind === 'studio-widget') return 'widget';
+  return 'plugin';
+}
+
+function authorString(author?: RegistryAuthor | string): string {
+  if (!author) return 'Unknown';
+  if (typeof author === 'string') return author;
+  return author.name;
+}
+
+function packageSlug(name: string): string {
+  // "@kb-labs/commit-entry" → "commit-entry"
+  const parts = name.split('/');
+  return parts[parts.length - 1] ?? name.replace(/^@/, '');
+}
+
+function summaryToItem(s: RegistrySummary): MarketplaceItem {
+  return {
+    slug: packageSlug(s.name),
+    name: s.name.split('/').pop() ?? s.name,
+    type: kindToPluginType(s.primaryKind),
+    version: s.version,
+    author: authorString(s.author),
+    authorType: s.trust === 'trusted' ? 'official' : 'community',
+    description: s.description ?? '',
+    longDescription: s.description ?? '',
+    tags: s.keywords ?? [],
+    installCmd: `kb marketplace install kb:${s.fullName}`,
+    weeklyDownloads: s.installs,
+    stars: 0,
+    updatedAt: s.publishedAt.slice(0, 10),
+  };
+}
+
+export async function fetchRegistryItems(): Promise<MarketplaceItem[]> {
+  try {
+    const res = await fetch(`${REGISTRY_URL}/packages`, {
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) return [];
+    const data = await res.json() as RegistrySummary[];
+    return data.map(summaryToItem);
+  } catch {
+    return [];
+  }
+}
+
+export async function fetchRegistryItem(slug: string): Promise<MarketplaceItem | undefined> {
+  try {
+    const res = await fetch(`${REGISTRY_URL}/packages`, {
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) return undefined;
+    const data = await res.json() as RegistrySummary[];
+    const match = data.find((s) => packageSlug(s.name) === slug);
+    return match ? summaryToItem(match) : undefined;
+  } catch {
+    return undefined;
+  }
+}

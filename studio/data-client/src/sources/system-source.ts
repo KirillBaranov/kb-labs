@@ -20,8 +20,31 @@ export interface RoutesResponse {
   raw?: string;
 }
 
+export interface PlatformHealthComponent {
+  id: string;
+  version?: string;
+  restRoutes?: number;
+  studioWidgets?: number;
+  lastError?: string;
+}
+
+export interface PlatformHealthSnapshot {
+  status: 'healthy' | 'degraded';
+  uptimeSec: number;
+  registry: {
+    total: number;
+    withRest: number;
+    withStudio: number;
+    errors: number;
+    partial: boolean;
+    stale: boolean;
+  };
+  components: PlatformHealthComponent[];
+}
+
 export interface SystemDataSource {
   getHealth(): Promise<HealthStatus>;
+  getPlatformHealth?(): Promise<PlatformHealthSnapshot>;
   getReady?(): Promise<ReadyResponse | NotReadyResponse>;
   getInfo?(): Promise<SystemInfoPayload>;
   getCapabilities?(): Promise<SystemCapabilitiesPayload>;

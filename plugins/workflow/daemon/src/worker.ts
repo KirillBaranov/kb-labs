@@ -494,7 +494,15 @@ export async function createWorkflowWorker(
               jobId: job.id,
               stepId: step.id,
               attempt: 1,
-              env: freshRun?.env || ({} as Record<string, string>),
+              env: {
+                // KB_PLATFORM_ROOT: where platform code (dist/, node_modules) lives.
+                // Shell steps can use this to reference platform commands when the
+                // worktree doesn't have compiled dist/ directories.
+                KB_PLATFORM_ROOT: workspaceRoot,
+                // KB_WORKSPACE_ROOT: the actual execution context (worktree or project dir).
+                KB_WORKSPACE_ROOT: runWorkspace,
+                ...(freshRun?.env || {}),
+              },
               // Secrets resolution not yet implemented: run.secrets contains names only.
               // When a platform secrets store is available, resolve names → values here.
               secrets: ((): Record<string, string> => {

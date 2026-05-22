@@ -7,6 +7,8 @@ import { SiteFooter } from '@/components/SiteFooter';
 import { routing } from '@/i18n/routing';
 import s from './page.module.css';
 import { buildPageMetadata } from '@/lib/page-metadata';
+import { fetchRegistryItems } from '@/lib/marketplace-data';
+import { MarketplaceCatalog } from './MarketplaceCatalog';
 
 
 type Props = { params: Promise<{ locale: string }> };
@@ -31,6 +33,8 @@ export default async function MarketplacePage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
 
+  const items = await fetchRegistryItems();
+
   return (
     <>
       <SiteHeader />
@@ -46,18 +50,22 @@ export default async function MarketplacePage({ params }: Props) {
         </section>
 
         <section className={s.catalogSection}>
-          <div className={s.emptyState}>
-            <div className={s.emptyCount}>0</div>
-            <p className={s.emptyTitle}>No extensions listed yet</p>
-            <p className={s.emptyDesc}>
-              The marketplace infrastructure is ready. Extensions will be listed here once
-              the platform goes public. Official plugins, community adapters, widgets, and hooks
-              — all installable with a single command.
-            </p>
-            <p className={s.emptyNote}>
-              Community submissions will open alongside the public launch.
-            </p>
-          </div>
+          {items.length === 0 ? (
+            <div className={s.emptyState}>
+              <div className={s.emptyCount}>0</div>
+              <p className={s.emptyTitle}>No extensions listed yet</p>
+              <p className={s.emptyDesc}>
+                The marketplace infrastructure is ready. Extensions will be listed here once
+                the platform goes public. Official plugins, community adapters, widgets, and hooks
+                — all installable with a single command.
+              </p>
+              <p className={s.emptyNote}>
+                Community submissions will open alongside the public launch.
+              </p>
+            </div>
+          ) : (
+            <MarketplaceCatalog items={items} />
+          )}
         </section>
 
         <section className={s.ctaSection}>

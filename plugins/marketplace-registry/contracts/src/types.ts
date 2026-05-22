@@ -3,7 +3,7 @@
  * Shared types for the KB Labs Marketplace Registry.
  */
 
-import type { EntitySignature } from '@kb-labs/core-discovery';
+import type { EntitySignature, EntityKind } from '@kb-labs/core-discovery';
 
 // ---------------------------------------------------------------------------
 // Package metadata (read from package.json at publish time)
@@ -55,6 +55,8 @@ export interface RegistryEntry {
   name: string;
   /** Author handle (e.g. "kirill") */
   authorHandle: string;
+  /** Primary entity kind declared at publish time */
+  primaryKind: EntityKind;
   /** Author namespaceId (from gateway auth) */
   authorNamespaceId: string;
   /** Visibility: public (listed in catalog) or private (allowlist only) */
@@ -88,6 +90,8 @@ export interface PublishRequest {
   /** package.json metadata */
   meta: PackageMeta;
   visibility: RegistryVisibility;
+  /** Primary entity kind (plugin, adapter, studio-widget, …) */
+  primaryKind: EntityKind;
 }
 
 export interface PublishResponse {
@@ -123,6 +127,7 @@ export interface RegistryPackageSummary {
   description?: string;
   author?: PackageAuthor | string;
   keywords?: string[];
+  primaryKind: EntityKind;
   featured: boolean;
   badges: string[];
   trust: RegistryTrust;

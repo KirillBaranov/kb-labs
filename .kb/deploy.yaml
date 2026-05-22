@@ -58,6 +58,32 @@ targets:
       exec: false
       rollback: true
 
+  kb-marketplace-registry:
+    watch:
+      - plugins/marketplace-registry/**
+      - adapters/redis/**
+      - adapters/pino/**
+      - adapters/fs/**
+      - adapters/log-ringbuffer/**
+      - core/**
+      - shared/**
+    image: kb-marketplace-registry
+    dockerfile: plugins/marketplace-registry/app/Dockerfile
+    context: .
+    ssh:
+      host: ${SSH_HOST}
+      user: ${SSH_USER}
+      key_env: SSH_KEY
+    remote:
+      compose_file: ~/kb-labs/docker-compose.backend.yml
+      service: kb-marketplace-registry
+      container_name: kb-marketplace-registry
+    permissions:
+      logs: true
+      health: true
+      exec: false
+      rollback: true
+
   kb-labs-web:
     watch:
       - sites/web/**

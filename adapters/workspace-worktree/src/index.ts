@@ -1,6 +1,6 @@
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
-import { existsSync, mkdirSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, rmSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
@@ -27,6 +27,18 @@ export interface WorktreeWorkspaceAdapterConfig {
   branch?: string;
   initSubmodules?: boolean;
   installDeps?: boolean;
+  /**
+   * Relative paths (from repo root) of tool dist/ directories to symlink from the
+   * platform into the worktree. Only link tool binaries the agent should never
+   * rebuild — package dist/ directories are left absent so agent builds write into
+   * the worktree, not the platform.
+   *
+   * Default: ['cli/bin/dist'] — makes `pnpm kb` resolve to the platform's CLI.
+   * Set to [] to disable all symlinking.
+   */
+  toolDistPaths?: string[];
+  /** @deprecated use toolDistPaths: [] to disable */
+  symlinkPlatformDist?: boolean;
   workspace?: WorkspaceContext;
 }
 
@@ -52,6 +64,7 @@ export class WorktreeWorkspaceAdapter implements IWorkspaceProvider {
   private readonly defaultBranch: string;
   private readonly initSubmodules: boolean;
   private readonly installDeps: boolean;
+  private readonly toolDistPaths: string[];
   private readonly records = new Map<string, WorktreeRecord>();
 
   constructor(config: WorktreeWorkspaceAdapterConfig = {}) {
@@ -60,6 +73,9 @@ export class WorktreeWorkspaceAdapter implements IWorkspaceProvider {
     this.defaultBranch = config.branch ?? 'main';
     this.initSubmodules = config.initSubmodules ?? true;
     this.installDeps = config.installDeps ?? true;
+    // Default: link only the kb CLI binary so `pnpm kb` works in the worktree.
+    // Agent builds other packages fresh into the worktree's own dist/ directories.
+    this.toolDistPaths = config.toolDistPaths ?? (config.symlinkPlatformDist === false ? [] : ['cli/bin/dist']);
   }
 
   async materialize(request: MaterializeWorkspaceRequest): Promise<WorkspaceDescriptor> {
@@ -142,7 +158,17 @@ export class WorktreeWorkspaceAdapter implements IWorkspaceProvider {
           worktreePath,
           TIMEOUTS.install,
         );
-        progress('dependencies', 'Dependencies installed', 95);
+        progress('dependencies', 'Dependencies installed', 90);
+      }
+
+      // Stage 4: Symlink specific tool dist/ directories from the platform.
+      // dist/ is gitignored, so the worktree won't have compiled tool binaries.
+      // Only tool binaries (e.g. cli/bin/dist) are linked — package dist/ dirs
+      // are left absent so agent builds produce output in the worktree, not the platform.
+      if (this.toolDistPaths.length > 0) {
+        progress('dist-links', 'Linking platform tool binaries...', 95);
+        await this.symlinkDistFromPlatform(worktreePath);
+        progress('dist-links', 'Tool binaries linked', 98);
       }
 
       progress('ready', 'Workspace ready', 100);
@@ -228,6 +254,33 @@ export class WorktreeWorkspaceAdapter implements IWorkspaceProvider {
       supportsAttach: true,
       supportsRelease: true,
     };
+  }
+
+  /**
+   * Symlink specific platform tool dist directories into the worktree.
+   *
+   * Only tool binaries that the agent should never rebuild are linked (e.g. the kb CLI).
+   * Package dist/ directories that the agent may build are intentionally left absent so
+   * agent builds write into the worktree, not the platform.
+   *
+   * Default tool paths to link (relative to repo root):
+   *   cli/bin/dist  — makes `pnpm kb` resolve to the platform's compiled CLI binary
+   */
+  private async symlinkDistFromPlatform(worktreePath: string): Promise<void> {
+    const toolDists = this.toolDistPaths;
+    for (const relative of toolDists) {
+      const platDist = path.join(this.repoRoot, relative);
+      if (!existsSync(platDist)) continue;
+      const worktreeDist = path.join(worktreePath, relative);
+      if (!existsSync(worktreeDist)) {
+        mkdirSync(path.dirname(worktreeDist), { recursive: true });
+        try {
+          symlinkSync(platDist, worktreeDist, 'dir');
+        } catch {
+          // ignore — another process may have raced us
+        }
+      }
+    }
   }
 
   private async exec(command: string, cwd: string, timeout = 60_000): Promise<string> {

@@ -445,7 +445,7 @@ export class SandboxRunner implements Runner {
     }
 
     if (uses === 'builtin:shell') {
-      return this.resolveBuiltinShell(spec)
+      return this.resolveBuiltinShell(spec, request.workspace)
     }
 
     if (uses === 'builtin:approval' || uses === 'builtin:gate') {
@@ -583,6 +583,7 @@ export class SandboxRunner implements Runner {
    */
   private async resolveBuiltinShell(
     spec: StepSpec,
+    workspace?: string,
   ): Promise<PluginCommandResolution> {
     // Use import.meta.resolve to find @kb-labs/workflow-steps package
     // This supports ES module exports properly
@@ -600,10 +601,17 @@ export class SandboxRunner implements Runner {
       )
     }
 
-    // Build shell handler input
+    // Build shell handler input.
+    // KB_PLATFORM_ROOT: where compiled platform binaries live (command sources).
+    // KB_WORKSPACE_ROOT: the worktree/execution context path (where files are).
+    // Together these give shell steps an explicit separation of concerns.
     const shellInput = {
       command,
-      env: typeof withBlock.env === 'object' ? (withBlock.env as Record<string, string>) : undefined,
+      env: {
+        KB_PLATFORM_ROOT: this.workspaceRoot,
+        ...(workspace ? { KB_WORKSPACE_ROOT: workspace } : {}),
+        ...(typeof withBlock.env === 'object' ? (withBlock.env as Record<string, string>) : {}),
+      },
       timeout: typeof withBlock.timeout === 'number' ? withBlock.timeout : undefined,
       throwOnError: typeof withBlock.throwOnError === 'boolean' ? withBlock.throwOnError : false,
     }

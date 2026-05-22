@@ -62,6 +62,7 @@ function makePkg(overrides?: Partial<Parameters<RegistryService['publish']>[1]['
       ...overrides,
     },
     visibility: 'public' as const,
+    primaryKind: 'plugin' as const,
   };
 }
 
@@ -231,6 +232,7 @@ describe('RegistryService.canAccess', () => {
       name: 'my-plugin',
       authorHandle: 'kirill',
       authorNamespaceId: 'ns-kirill',
+      primaryKind: 'plugin',
       visibility: 'private',
       trust: 'untrusted',
       allowlist: ['ns-bob'],

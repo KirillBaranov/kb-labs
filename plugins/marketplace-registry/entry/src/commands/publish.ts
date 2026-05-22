@@ -83,6 +83,8 @@ export default defineCommand<unknown, CLIInput<PublishFlags>, { exitCode: number
         }
       }
 
+      const primaryKind = kb?.adapter ? 'adapter' : 'plugin';
+
       const t1 = Date.now();
       let tarball: Buffer;
       let packMs: number;
@@ -98,7 +100,7 @@ export default defineCommand<unknown, CLIInput<PublishFlags>, { exitCode: number
         const result = await registryPostMultipart<PublishResultData>(
           '/packages/publish',
           tarball,
-          { meta: JSON.stringify({ meta, visibility }) },
+          { meta: JSON.stringify({ meta, visibility, primaryKind }) },
         );
 
         if (flags.json) {
