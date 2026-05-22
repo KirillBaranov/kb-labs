@@ -85,7 +85,7 @@ jobs:
           tail -5 /tmp/build.log
 
       - name: Pack .tgz for Verdaccio
-        run: node e2e/scripts/pack-all.mjs 2>&1 | tail -20
+        run: bash e2e/scripts/pack-all.sh 2>&1 | tail -20
 
       - name: Restore packed .tgz cache
         uses: actions/cache@v4
