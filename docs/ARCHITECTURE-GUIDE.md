@@ -94,7 +94,7 @@ Qdrant :6333 (standalone, no deps)
 
 **Start order:** Redis → State Daemon → Workflow → REST API → Gateway → Studio
 
-`pnpm dev:start` handles this automatically.
+`kb-dev start` handles this automatically.
 
 ---
 
@@ -111,39 +111,39 @@ Qdrant :6333 (standalone, no deps)
 
 **Exception:** Mind RAG needs Qdrant:
 ```bash
-pnpm dev:start qdrant    # Just Qdrant, nothing else
+kb-dev start qdrant    # Just Qdrant, nothing else
 pnpm kb mind search --text "..." --agent
 ```
 
 ### Solo developer (with Studio UI)
 
 ```bash
-pnpm dev:start           # Starts everything
+kb-dev start           # Starts everything
 # → http://localhost:3000
 ```
 
 Or minimal set:
 ```bash
-pnpm dev:start backend   # State Daemon + Workflow + REST API + Gateway
-pnpm dev:start studio    # Studio (auto-starts REST API dep)
+kb-dev start backend   # State Daemon + Workflow + REST API + Gateway
+kb-dev start studio    # Studio (auto-starts REST API dep)
 ```
 
 ### Team setup (multiple machines)
 
 Each developer machine:
 ```bash
-pnpm dev:start host-agent   # Connects to shared Gateway
+kb-dev start host-agent   # Connects to shared Gateway
 ```
 
 Shared server:
 ```bash
-pnpm dev:start infra backend   # All infrastructure + backend
+kb-dev start infra backend   # All infrastructure + backend
 ```
 
 ### CI / Production
 
 ```bash
-pnpm dev:start infra backend   # No Studio, no agents
+kb-dev start infra backend   # No Studio, no agents
 # Gateway handles external API access
 ```
 
@@ -220,9 +220,9 @@ Supported inventory baseline:
 ### Start/Stop
 
 ```bash
-pnpm dev:start              # Start all
-pnpm dev:start backend      # Start group
-pnpm dev:start rest         # Start single + deps
+kb-dev start              # Start all
+kb-dev start backend      # Start group
+kb-dev start rest         # Start single + deps
 pnpm dev:stop               # Stop all
 pnpm dev:stop rest          # Stop single
 pnpm dev:restart gateway    # Restart + cascade dependents

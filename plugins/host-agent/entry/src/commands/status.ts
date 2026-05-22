@@ -44,7 +44,7 @@ export default defineCommand({
         if (input.json) {
           ctx.ui?.json?.({ running: false });
         } else {
-          ctx.ui?.info?.('Workspace Agent is not running. Start with: pnpm dev:start host-agent');
+          ctx.ui?.info?.('Workspace Agent is not running. Start with: kb-dev start host-agent');
         }
         return { exitCode: 0, running: false };
       }

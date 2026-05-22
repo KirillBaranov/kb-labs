@@ -41,7 +41,7 @@ export default defineCommand<unknown, HealthInput, { exitCode: number }>({
           handleError(ctx, error, true);
         } else {
           const message = error instanceof Error ? error.message : String(error);
-          ctx.ui?.error?.(message, { hint: 'Make sure workflow daemon is running: kb-workflow' });
+          ctx.ui?.error?.(message, { hint: 'Start with: kb-dev start workflow' });
         }
         return { exitCode: 1 };
       }
