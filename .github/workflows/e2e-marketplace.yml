@@ -84,17 +84,18 @@ jobs:
           ./kb-devkit run build 2>&1 | tee /tmp/build.log
           tail -5 /tmp/build.log
 
-      - name: Pack .tgz for Verdaccio
-        run: bash e2e/scripts/pack-all.sh 2>&1 | tail -20
-
       - name: Restore packed .tgz cache
+        id: tgz-cache
         uses: actions/cache@v4
         with:
           path: e2e/packages/
-          key: e2e-tgz-${{ runner.os }}-${{ github.sha }}
-          # No restore-keys: only exact sha match is safe.
-          # Using a previous sha's tgzs would restore stale binaries and break
-          # tests that depend on source changes (e.g. fixes in marketplace-core).
+          key: e2e-tgz-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json') }}
+          # No restore-keys: content-hash key means a miss = source changed.
+          # A stale tgz from a different build would hide code changes in CI.
+
+      - name: Pack .tgz for Verdaccio
+        if: steps.tgz-cache.outputs.cache-hit != 'true'
+        run: bash e2e/scripts/pack-all.sh 2>&1 | tail -20
 
       # ── Build Docker images ───────────────────────────────────────────────
 
