@@ -301,7 +301,7 @@ Standard 5-field cron format:
 
 2. **Start daemon:**
    ```bash
-   pnpm kb-workflow
+   kb-dev start workflow
    ```
 
 3. **Verify discovery:**

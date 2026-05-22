@@ -93,7 +93,7 @@ export default defineCommand<unknown, ListInput, { exitCode: number }>({
         return { exitCode: 0 };
       } catch (error) {
         handleError(ctx, error, outputJson);
-        if (!outputJson) { ctx.ui?.warn?.('Make sure workflow daemon is running: kb-workflow'); }
+        if (!outputJson) { ctx.ui?.warn?.('Start with: kb-dev start workflow'); }
         return { exitCode: 1 };
       }
     },

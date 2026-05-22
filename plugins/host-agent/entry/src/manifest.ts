@@ -67,7 +67,7 @@ export const manifest = {
         operationType: 'read' as const,
         longDescription:
           'Connects to the daemon via IPC socket and queries its status (connected, hostId, gatewayUrl, capabilities). ' +
-          'Start the daemon with `kb workspace:start` or `pnpm dev:start:host-agent`.',
+          'Start the daemon with `kb workspace:start` or `kb-dev start host-agent`.',
 
         handler: './commands/status.js#default',
 

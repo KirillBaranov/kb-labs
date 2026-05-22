@@ -151,7 +151,7 @@ export default defineCommand({
               `Config:     ${configPath}`,
             ],
           }],
-          hint: 'Next: start the daemon with `pnpm dev:start:host-agent` or `kb workspace:start`.',
+          hint: 'Next: start the daemon with `kb-dev start host-agent` or `kb workspace:start`.',
         });
       }
 
