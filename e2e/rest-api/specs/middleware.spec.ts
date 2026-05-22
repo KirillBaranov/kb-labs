@@ -77,10 +77,12 @@ test('RA-MW-06: 404 on unknown route returns JSON with error info', async ({ req
   const ct = res.headers()['content-type'] ?? ''
   expect(ct).toContain('json')
   const body = await res.json()
-  // envelope { ok: false, error } OR Fastify { statusCode, error, message } OR { message }
-  const hasEnvelopeError = body.ok === false && body.error
-  const hasFastifyError = (body.statusCode === 404 || body.error) && typeof body.message === 'string'
-  const hasMessage = typeof body.message === 'string'
+  // Envelope middleware wraps all responses including 404: { ok: true, data: {...}, meta }
+  // Unwrap data layer first, then check error shape
+  const errorData = body.data ?? body
+  const hasEnvelopeError = !!(body.ok === false && body.error)
+  const hasFastifyError = !!(errorData.statusCode === 404 && errorData.error)
+  const hasMessage = typeof (errorData.message ?? body.message) === 'string'
   expect(hasEnvelopeError || hasFastifyError || hasMessage).toBe(true)
 })
 

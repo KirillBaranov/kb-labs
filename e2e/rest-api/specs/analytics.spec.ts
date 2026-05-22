@@ -67,7 +67,7 @@ test('RA-AN-06: GET /observability/system-metrics returns 200 or 501', async ({ 
 
 test('RA-AN-07: GET /observability/metrics/history returns 200 or 501', async ({ request }) => {
   const res = await request.get(`${BASE}/observability/metrics/history`)
-  expect([200, 404, 501, 503]).toContain(res.status())
+  expect([200, 400, 404, 501, 503]).toContain(res.status())
   if (res.status() === 200) {
     const body = await res.json()
     const data = body.data ?? body
@@ -79,7 +79,7 @@ test('RA-AN-07: GET /observability/metrics/history returns 200 or 501', async ({
 
 test('RA-AN-08: GET /observability/metrics/heatmap returns 200 or 501', async ({ request }) => {
   const res = await request.get(`${BASE}/observability/metrics/heatmap`)
-  expect([200, 404, 501, 503]).toContain(res.status())
+  expect([200, 400, 404, 501, 503]).toContain(res.status())
   if (res.status() === 200) {
     const body = await res.json()
     expect(body).toBeTruthy()

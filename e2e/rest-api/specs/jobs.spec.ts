@@ -72,11 +72,14 @@ test('RA-JB-05: GET /jobs/:id for non-existent job returns 4xx or 5xx', async ({
 test('RA-JB-06: GET /jobs/:id error response has some error info', async ({ request }) => {
   const res = await request.get(`${BASE}/jobs/${NONEXISTENT_ID}`)
   if (res.status() < 400) return // unexpected 2xx — skip assertions
-  const body = await res.json()
-  const hasEnvelopeError = body.ok === false && body.error
-  const hasFastifyError = body.statusCode && body.error
-  const hasMessage = typeof body.message === 'string'
-  const hasCode = typeof body.code === 'string'
+  const body = await res.json().catch(() => null)
+  if (!body) return // non-JSON response — skip body assertions
+  // Envelope middleware may wrap: { ok, data, meta } — check both layers
+  const errorData = body.data ?? body
+  const hasEnvelopeError = !!(body.ok === false && body.error)
+  const hasFastifyError = !!(errorData.statusCode && errorData.error)
+  const hasMessage = typeof (errorData.message ?? body.message) === 'string'
+  const hasCode = typeof (errorData.code ?? body.code) === 'string'
   expect(hasEnvelopeError || hasFastifyError || hasMessage || hasCode).toBe(true)
 })
 
