@@ -188,13 +188,20 @@ export class MarketplaceService implements MarketplaceServiceAPI {
   async uninstall(ctx: ScopeContext, packageIds: string[]): Promise<void> {
     const scopeRoot = resolveScopeRoot(this.roots, ctx);
     for (const id of packageIds) {
-      // Run pre-uninstall hook
+      // Look up the entry first — if not tracked we skip source removal (idempotent).
       const entry = await this.getEntry(ctx, id);
-      if (entry) {
-        const strategy = this.strategies.get(entry.primaryKind);
-        if (strategy?.beforeUninstall) {
-          await strategy.beforeUninstall(id, this, ctx);
-        }
+
+      if (!entry) {
+        // Package not in lock — nothing to uninstall. Remove any stale cache entries
+        // but do not call source.remove (pnpm would fail on an unknown package).
+        await removeCacheEntry(scopeRoot, id);
+        continue;
+      }
+
+      // Run pre-uninstall hook
+      const strategy = this.strategies.get(entry.primaryKind);
+      if (strategy?.beforeUninstall) {
+        await strategy.beforeUninstall(id, this, ctx);
       }
 
       await removeFromMarketplaceLock(scopeRoot, id);
