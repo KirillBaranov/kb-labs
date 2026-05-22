@@ -79,6 +79,7 @@
         "description": "Marketplace Registry"
       }
     },
-    "staticTokens": {}
+    "staticTokens": {},
+    "configVersion": 2
   }
 }
