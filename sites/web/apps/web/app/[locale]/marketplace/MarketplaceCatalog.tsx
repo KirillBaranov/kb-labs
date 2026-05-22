@@ -2,8 +2,8 @@
 
 import { useState, useMemo } from 'react';
 import { useLocale } from 'next-intl';
-import { MARKETPLACE_ITEMS, TYPE_LABELS } from '@/lib/marketplace-data';
-import type { PluginType } from '@/lib/marketplace-data';
+import { TYPE_LABELS } from '@/lib/marketplace-data';
+import type { MarketplaceItem, PluginType } from '@/lib/marketplace-data';
 import s from './page.module.css';
 
 const TYPE_OPTIONS: (PluginType | 'all')[] = ['all', 'plugin', 'adapter', 'widget', 'hook'];
@@ -51,7 +51,7 @@ function NavIcon({ type }: { type: PluginType | 'all' }) {
   return <TypeIcon type={type as PluginType} size={15} />;
 }
 
-export function MarketplaceCatalog() {
+export function MarketplaceCatalog({ items }: { items: MarketplaceItem[] }) {
   const locale = useLocale();
   const [activeType, setActiveType] = useState<PluginType | 'all'>('all');
   const [activeAuthor, setActiveAuthor] = useState<'all' | 'official' | 'community'>('all');
@@ -62,26 +62,26 @@ export function MarketplaceCatalog() {
       TYPE_OPTIONS.map((t) => [
         t,
         t === 'all'
-          ? MARKETPLACE_ITEMS.length
-          : MARKETPLACE_ITEMS.filter((i) => i.type === t).length,
+          ? items.length
+          : items.filter((i) => i.type === t).length,
       ]),
     )
-  , []);
+  , [items]);
 
   const filtered = useMemo(() => {
-    let items = MARKETPLACE_ITEMS;
-    if (activeType !== 'all') items = items.filter((i) => i.type === activeType);
-    if (activeAuthor !== 'all') items = items.filter((i) => i.authorType === activeAuthor);
+    let result = items;
+    if (activeType !== 'all') result = result.filter((i) => i.type === activeType);
+    if (activeAuthor !== 'all') result = result.filter((i) => i.authorType === activeAuthor);
     if (query.trim()) {
       const q = query.toLowerCase();
-      items = items.filter(
+      result = result.filter(
         (i) =>
           i.name.toLowerCase().includes(q) ||
           i.description.toLowerCase().includes(q),
       );
     }
-    return items;
-  }, [activeType, activeAuthor, query]);
+    return result;
+  }, [items, activeType, activeAuthor, query]);
 
   return (
     <div className={s.root}>
@@ -125,7 +125,7 @@ export function MarketplaceCatalog() {
               </span>
               <span style={{ textTransform: 'capitalize' }}>{a}</span>
               <span className={s.sidebarCount}>
-                {MARKETPLACE_ITEMS.filter((i) => i.authorType === a).length}
+                {items.filter((i) => i.authorType === a).length}
               </span>
             </button>
           ))}

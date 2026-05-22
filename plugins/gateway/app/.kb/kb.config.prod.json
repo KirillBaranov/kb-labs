@@ -71,6 +71,12 @@
         "url": "http://kb-marketplace:5070",
         "prefix": "/api/v1/marketplace",
         "description": "Marketplace Service"
+      },
+      "registry": {
+        "url": "http://kb-marketplace-registry:5071",
+        "prefix": "/api/v1/registry",
+        "rewritePrefix": "/api/v1",
+        "description": "Marketplace Registry"
       }
     },
     "staticTokens": {}

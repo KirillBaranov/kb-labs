@@ -60,7 +60,7 @@ export class RegistryService {
     authorHandle: string,
     authorNamespaceId: string,
   ): Promise<PublishResponse> {
-    const { meta, visibility } = req;
+    const { meta, visibility, primaryKind } = req;
     const { name, version } = meta;
 
     if (tarball.length > MAX_TARBALL_SIZE) {
@@ -101,6 +101,7 @@ export class RegistryService {
       ? {
           ...existing,
           visibility,
+          primaryKind,
           trust: visibility === 'public' && signature ? 'trusted' : existing.trust,
           versions: [...existing.versions, versionEntry],
           meta,
@@ -110,6 +111,7 @@ export class RegistryService {
           name,
           authorHandle,
           authorNamespaceId,
+          primaryKind,
           visibility,
           trust: visibility === 'public' && signature ? 'trusted' : 'untrusted',
           allowlist: [],
@@ -379,6 +381,7 @@ export class RegistryService {
         description: entry.meta.description,
         author: entry.meta.author,
         keywords: entry.meta.keywords,
+        primaryKind: entry.primaryKind ?? 'plugin',
         featured: entry.featured,
         badges: entry.badges,
         trust: entry.trust,

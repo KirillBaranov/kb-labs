@@ -1,0 +1,26 @@
+{
+  "platform": {
+    "adapters": {
+      "logger": "@kb-labs/adapters-pino",
+      "cache": "@kb-labs/adapters-redis",
+      "storage": "@kb-labs/adapters-fs",
+      "logRingBuffer": "@kb-labs/adapters-log-ringbuffer"
+    },
+    "adapterOptions": {
+      "logger": {
+        "level": "info",
+        "streaming": {
+          "enabled": true,
+          "bufferSize": 1000,
+          "bufferMaxAge": 3600000
+        }
+      },
+      "cache": {
+        "url": "redis://kb-redis:6379"
+      },
+      "storage": {
+        "basePath": "/app/.kb/storage"
+      }
+    }
+  }
+}

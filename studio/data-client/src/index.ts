@@ -40,6 +40,7 @@ export * from './mocks/mock-plugins-source';
 export * from './factory';
 export * from './query-keys';
 export * from './hooks/use-system';
+export * from './hooks/use-plugins';
 export * from './hooks/use-workflows';
 export * from './hooks/use-observability';
 export * from './hooks/use-analytics';

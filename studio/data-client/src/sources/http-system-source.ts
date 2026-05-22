@@ -5,7 +5,7 @@
 
 import type { HttpClient } from '../client/http-client';
 import { KBError } from '../errors/kb-error';
-import type { SystemDataSource, RoutesResponse } from './system-source';
+import type { SystemDataSource, RoutesResponse, PlatformHealthSnapshot } from './system-source';
 import type {
   ReadyResponse,
   NotReadyResponse,
@@ -24,6 +24,10 @@ import type { HealthStatus } from '../contracts/system';
  */
 export class HttpSystemSource implements SystemDataSource {
   constructor(private client: HttpClient) {}
+
+  async getPlatformHealth(): Promise<PlatformHealthSnapshot> {
+    return this.client.fetch<PlatformHealthSnapshot>('/health');
+  }
 
   async getHealth(): Promise<HealthStatus> {
     const snapshot = await this.client.fetch<ServiceObservabilityHealth>('/observability/health');

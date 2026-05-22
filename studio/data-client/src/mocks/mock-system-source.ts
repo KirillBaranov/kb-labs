@@ -1,4 +1,4 @@
-import type { SystemDataSource, RoutesResponse } from '../sources/system-source';
+import type { SystemDataSource, RoutesResponse, PlatformHealthSnapshot } from '../sources/system-source';
 import type { HealthStatus } from '../contracts/system';
 import type { ServiceObservabilityHealth } from '@kb-labs/core-contracts';
 
@@ -47,6 +47,30 @@ export class MockSystemSource implements SystemDataSource {
         { name: 'plugin-routes', ok: true, latency: 120 },
       ],
       snapshot,
+    };
+  }
+
+  async getPlatformHealth(): Promise<PlatformHealthSnapshot> {
+    await delay(120);
+    return {
+      status: 'healthy',
+      uptimeSec: 3600,
+      registry: {
+        total: 6,
+        withRest: 4,
+        withStudio: 3,
+        errors: 0,
+        partial: false,
+        stale: false,
+      },
+      components: [
+        { id: '@kb-labs/quality', version: '0.1.0', restRoutes: 11, studioWidgets: 1 },
+        { id: '@kb-labs/workflow', version: '0.1.0', restRoutes: 6, studioWidgets: 1 },
+        { id: '@kb-labs/marketplace', version: '0.1.0', restRoutes: 5, studioWidgets: 1 },
+        { id: '@kb-labs/mind', version: '0.1.0', restRoutes: 3, studioWidgets: 0 },
+        { id: '@kb-labs/commit', version: '0.1.0', restRoutes: 0, studioWidgets: 0 },
+        { id: '@kb-labs/release', version: '0.1.0', restRoutes: 4, studioWidgets: 0 },
+      ],
     };
   }
 
