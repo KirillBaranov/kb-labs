@@ -89,7 +89,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: e2e/packages/
-          key: e2e-tgz-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json') }}
+          key: e2e-tgz-v2-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json') }}
           # No restore-keys: content-hash key means a miss = source changed.
           # A stale tgz from a different build would hide code changes in CI.
 
