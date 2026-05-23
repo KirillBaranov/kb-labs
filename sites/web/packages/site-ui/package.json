@@ -5,7 +5,7 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".":            "./src/index.ts",
+    ".": "./src/index.ts",
     "./tokens.css": "./tokens.css"
   },
   "scripts": {
@@ -17,6 +17,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.474.0",
+    "shiki": "^4.0.2",
     "tailwind-merge": "^2.5.4"
   },
   "devDependencies": {
