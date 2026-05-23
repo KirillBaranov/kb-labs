@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* styles */
 :root {
   --bg: #f7f7f8;
