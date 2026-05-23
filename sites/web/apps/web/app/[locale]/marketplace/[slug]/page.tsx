@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { setRequestLocale } from 'next-intl/server';
+import { compileMDX } from 'next-mdx-remote/rsc';
+import remarkGfm from 'remark-gfm';
 import { SiteHeader } from '@/components/SiteHeader';
 import { SiteFooter } from '@/components/SiteFooter';
 import { TYPE_LABELS, fetchRegistryItems, fetchRegistryItem } from '@/lib/marketplace-data';
@@ -36,7 +38,25 @@ export default async function PluginPage({ params }: Props) {
   const item = await fetchRegistryItem(slug);
   if (!item) notFound();
 
+  // Compile README markdown if present
+  let readmeContent: React.ReactNode | null = null;
+  if (item.readme) {
+    try {
+      const { content } = await compileMDX({
+        source: item.readme,
+        options: { mdxOptions: { remarkPlugins: [remarkGfm] } },
+      });
+      readmeContent = content;
+    } catch {
+      // fall back to About section if MDX compilation fails
+    }
+  }
+
   const paragraphs = item.longDescription.split('\n\n');
+  const hasRequirements =
+    (item.permissions && item.permissions.length > 0) ||
+    (item.envVars && item.envVars.length > 0) ||
+    (item.allowedHosts && item.allowedHosts.length > 0);
 
   return (
     <>
@@ -119,13 +139,19 @@ export default async function PluginPage({ params }: Props) {
               </div>
             </div>
 
-            {/* About */}
-            <section className={s.section}>
-              <h2 className={s.sectionTitle}>About</h2>
-              {paragraphs.map((p, i) => (
-                <p key={i} className={s.bodyText}>{p}</p>
-              ))}
-            </section>
+            {/* README (if available) or About fallback */}
+            {readmeContent ? (
+              <section className={s.section}>
+                <div className={s.readme}>{readmeContent}</div>
+              </section>
+            ) : (
+              <section className={s.section}>
+                <h2 className={s.sectionTitle}>About</h2>
+                {paragraphs.map((p, i) => (
+                  <p key={i} className={s.bodyText}>{p}</p>
+                ))}
+              </section>
+            )}
 
             {/* Commands */}
             {item.commands && item.commands.length > 0 && (
@@ -142,38 +168,38 @@ export default async function PluginPage({ params }: Props) {
               </section>
             )}
 
-            {/* Permissions + env vars as simple lists */}
-            {((item.permissions && item.permissions.length > 0) ||
-              (item.envVars && item.envVars.length > 0) ||
-              (item.allowedHosts && item.allowedHosts.length > 0)) && (
+            {/* Requirements — collapsible accordion */}
+            {hasRequirements && (
               <section className={s.section}>
-                <h2 className={s.sectionTitle}>Requirements</h2>
-                <div className={s.reqGrid}>
-                  {item.permissions && item.permissions.length > 0 && (
-                    <div className={s.reqGroup}>
-                      <p className={s.reqLabel}>Permissions</p>
-                      {item.permissions.map((p) => (
-                        <p key={p} className={s.reqItem}><code>{p}</code></p>
-                      ))}
-                    </div>
-                  )}
-                  {item.allowedHosts && item.allowedHosts.length > 0 && (
-                    <div className={s.reqGroup}>
-                      <p className={s.reqLabel}>Network access</p>
-                      {item.allowedHosts.map((h) => (
-                        <p key={h} className={s.reqItem}><code>{h}</code></p>
-                      ))}
-                    </div>
-                  )}
-                  {item.envVars && item.envVars.length > 0 && (
-                    <div className={s.reqGroup}>
-                      <p className={s.reqLabel}>Environment variables</p>
-                      {item.envVars.map((v) => (
-                        <p key={v} className={s.reqItem}><code>{v}</code></p>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <details className={s.reqDetails}>
+                  <summary className={s.reqSummary}>Requirements</summary>
+                  <div className={s.reqGrid}>
+                    {item.permissions && item.permissions.length > 0 && (
+                      <div className={s.reqGroup}>
+                        <p className={s.reqLabel}>Permissions</p>
+                        {item.permissions.map((p) => (
+                          <p key={p} className={s.reqItem}><code>{p}</code></p>
+                        ))}
+                      </div>
+                    )}
+                    {item.allowedHosts && item.allowedHosts.length > 0 && (
+                      <div className={s.reqGroup}>
+                        <p className={s.reqLabel}>Network access</p>
+                        {item.allowedHosts.map((h) => (
+                          <p key={h} className={s.reqItem}><code>{h}</code></p>
+                        ))}
+                      </div>
+                    )}
+                    {item.envVars && item.envVars.length > 0 && (
+                      <div className={s.reqGroup}>
+                        <p className={s.reqLabel}>Environment variables</p>
+                        {item.envVars.map((v) => (
+                          <p key={v} className={s.reqItem}><code>{v}</code></p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </details>
               </section>
             )}
           </div>
@@ -182,12 +208,12 @@ export default async function PluginPage({ params }: Props) {
           <aside className={s.sidebar}>
             <dl className={s.metaList}>
               <div className={s.metaRow}>
-                <dt>Downloads</dt>
-                <dd>{item.weeklyDownloads.toLocaleString()}<span>/wk</span></dd>
-              </div>
-              <div className={s.metaRow}>
-                <dt>Stars</dt>
-                <dd>{item.stars}</dd>
+                <dt>Installs</dt>
+                <dd>
+                  {item.weeklyDownloads > 0
+                    ? item.weeklyDownloads.toLocaleString()
+                    : <span className={s.comingSoon}>tracked soon</span>}
+                </dd>
               </div>
               <div className={s.metaRow}>
                 <dt>Version</dt>

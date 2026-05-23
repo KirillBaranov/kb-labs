@@ -57,6 +57,19 @@ export default defineCommand<unknown, CLIInput<PublishFlags>, { exitCode: number
         return { exitCode: 1 };
       }
 
+      // Read README (non-fatal)
+      let readme: string | undefined;
+      for (const candidate of ['README.md', 'README.mdx', 'readme.md', 'Readme.md']) {
+        readme = await fs.readFile(path.join(pluginDir, candidate), 'utf-8').catch(() => undefined);
+        if (readme) break;
+      }
+
+      // Extract manifest fields for the detail page
+      const manifest = (kb?.manifest ?? {}) as Record<string, unknown>;
+      const manifestCommands = Array.isArray(manifest['commands'])
+        ? (manifest['commands'] as Array<{ id?: string; name?: string }>).map(c => c.id ?? c.name ?? '').filter(Boolean)
+        : undefined;
+
       const meta = {
         name: pkgJson.name as string,
         version: pkgJson.version as string,
@@ -66,6 +79,11 @@ export default defineCommand<unknown, CLIInput<PublishFlags>, { exitCode: number
         keywords: pkgJson.keywords as string[] | undefined,
         license: pkgJson.license as string | undefined,
         homepage: pkgJson.homepage as string | undefined,
+        readme,
+        permissions: manifest['permissions'] as string[] | undefined,
+        envVars: manifest['envVars'] as string[] | undefined,
+        allowedHosts: manifest['allowedHosts'] as string[] | undefined,
+        commands: manifestCommands,
       };
 
       if (flags.metaOnly) {

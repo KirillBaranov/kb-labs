@@ -9,6 +9,7 @@ export interface TerminalBlockProps {
   className?: string;
   autoPlay?: boolean;
   loop?: boolean;
+  bare?: boolean;
 }
 
 interface TerminalState {
@@ -25,6 +26,7 @@ export function TerminalBlock({
   className,
   autoPlay = true,
   loop = false,
+  bare = false,
 }: TerminalBlockProps) {
   const [state, setState] = React.useState<TerminalState>({
     completedLines: [],
@@ -36,11 +38,21 @@ export function TerminalBlock({
 
   const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = React.useRef(true);
+  const visibleRef = React.useRef(false);
+  const containerRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     mountedRef.current = true;
+    const el = containerRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { visibleRef.current = entry.isIntersecting; },
+      { threshold: 0.1 }
+    );
+    observer.observe(el);
     return () => {
       mountedRef.current = false;
+      observer.disconnect();
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
@@ -49,7 +61,10 @@ export function TerminalBlock({
     if (!autoPlay || commands.length === 0) return;
 
     function tick() {
-      if (!mountedRef.current) return;
+      if (!mountedRef.current || !visibleRef.current) {
+        timeoutRef.current = setTimeout(tick, 200);
+        return;
+      }
 
       setState((prev) => {
         if (prev.phase === 'done') {
@@ -116,8 +131,34 @@ export function TerminalBlock({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state, autoPlay, loop, commands]);
 
+  const body = (
+    <div className="bg-[#0d0e11] text-[#e8eaf0] font-mono text-sm p-4 min-h-[120px]">
+      {state.completedLines.map((line, i) => (
+        <div key={i} className="text-[#8890a0] mb-1">
+          <span className="text-[#5a6070] mr-2">{prompt}</span>
+          {line}
+        </div>
+      ))}
+      {state.phase !== 'done' && (
+        <div className="flex items-center">
+          <span className="text-[#5a6070] mr-2">{prompt}</span>
+          <span>{state.currentText}</span>
+          <span className="animate-pulse ml-0.5">_</span>
+        </div>
+      )}
+    </div>
+  );
+
+  if (bare) {
+    return (
+      <div ref={containerRef} className={cn('w-full', className)}>
+        {body}
+      </div>
+    );
+  }
+
   return (
-    <div className={cn('rounded-xl border border-line overflow-hidden shadow-card-lg', className)}>
+    <div ref={containerRef} className={cn('rounded-xl border border-line overflow-hidden shadow-card-lg', className)}>
       {/* Title bar */}
       <div className="bg-surface border-b border-line px-4 py-3 flex items-center gap-3">
         <div className="flex items-center gap-1.5">
@@ -127,23 +168,7 @@ export function TerminalBlock({
         </div>
         <span className="text-xs text-muted font-mono mx-auto">Terminal</span>
       </div>
-
-      {/* Body */}
-      <div className="bg-[#0d0e11] text-[#e8eaf0] font-mono text-sm p-4 min-h-[120px]">
-        {state.completedLines.map((line, i) => (
-          <div key={i} className="text-[#8890a0] mb-1">
-            <span className="text-[#5a6070] mr-2">{prompt}</span>
-            {line}
-          </div>
-        ))}
-        {state.phase !== 'done' && (
-          <div className="flex items-center">
-            <span className="text-[#5a6070] mr-2">{prompt}</span>
-            <span>{state.currentText}</span>
-            <span className="animate-pulse ml-0.5">_</span>
-          </div>
-        )}
-      </div>
+      {body}
     </div>
   );
 }

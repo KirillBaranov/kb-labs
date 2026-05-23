@@ -30,6 +30,16 @@ export interface PackageMeta {
   keywords?: string[];
   license?: string;
   homepage?: string;
+  /** README.md content captured at publish time (markdown). */
+  readme?: string;
+  /** Permissions declared in kb.manifest.permissions. */
+  permissions?: string[];
+  /** Environment variables declared in kb.manifest.envVars. */
+  envVars?: string[];
+  /** Allowed network hosts declared in kb.manifest.allowedHosts. */
+  allowedHosts?: string[];
+  /** CLI command IDs registered by the plugin. */
+  commands?: string[];
 }
 
 // ---------------------------------------------------------------------------
