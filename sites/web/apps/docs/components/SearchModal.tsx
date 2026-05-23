@@ -8,6 +8,7 @@ import s from './SearchModal.module.css';
 
 type Props = {
   onClose: () => void;
+  locale: string;
 };
 
 type Result = {
@@ -23,7 +24,7 @@ function highlight(text: string, query: string): string {
   return text.replace(new RegExp(`(${escaped})`, 'gi'), '<mark>$1</mark>');
 }
 
-export function SearchModal({ onClose }: Props) {
+export function SearchModal({ onClose, locale }: Props) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Result[]>([]);
   const [loading, setLoading] = useState(false);
@@ -53,7 +54,7 @@ export function SearchModal({ onClose }: Props) {
       return;
     }
     setLoading(true);
-    fetch('/api/search-index')
+    fetch(`/api/search-index?locale=${locale}`)
       .then((r) => r.json())
       .then((data: SearchRecord[]) => {
         cachedIndex = data;

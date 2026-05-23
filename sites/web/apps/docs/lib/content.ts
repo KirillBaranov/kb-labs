@@ -9,7 +9,7 @@ import remarkGfm from 'remark-gfm';
 import { MdxComponents } from '@/components/MdxComponents';
 
 const prettyCodeOptions: PrettyCodeOptions = {
-  themes: { light: 'github-light', dark: 'github-dark-dimmed' },
+  theme: { light: 'github-light', dark: 'github-dark-dimmed' },
   keepBackground: false,
   defaultLang: 'plaintext',
   bypassInlineCode: true,
