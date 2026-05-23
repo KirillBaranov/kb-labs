@@ -21,6 +21,24 @@ services:
     networks:
       - kb-backend
 
+  kb-marketplace-registry:
+    image: ghcr.io/kirillbaranov/kb-marketplace-registry:${IMAGE_TAG:-latest}
+    container_name: kb-marketplace-registry
+    environment:
+      - NODE_ENV=production
+      - KB_REGISTRY_URL=${KB_REGISTRY_URL:-https://api.kblabs.ru/api/v1/registry}
+      - KB_REGISTRY_PORT=5071
+      - KB_SITE_URL=${KB_SITE_URL:-https://kblabs.ru}
+      - GATEWAY_JWT_SECRET=${GATEWAY_JWT_SECRET}
+      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+    depends_on:
+      - kb-redis
+      - kb-minio
+    restart: unless-stopped
+    networks:
+      - kb-backend
+
   kb-gateway:
     image: ghcr.io/kirillbaranov/kb-gateway:${IMAGE_TAG:-latest}
     container_name: kb-gateway

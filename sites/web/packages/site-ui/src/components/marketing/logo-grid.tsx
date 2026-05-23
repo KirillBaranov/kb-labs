@@ -16,19 +16,13 @@ export interface LogoGridProps {
   className?: string;
 }
 
-const speedMap: Record<string, string> = {
-  slow: '40s',
-  normal: '25s',
-  fast: '15s',
-};
-
-function LogoItem({ logo }: { logo: LogoItem }) {
+function LogoCell({ logo }: { logo: LogoItem }) {
   return (
     <div
       className={cn(
-        'h-8 flex items-center justify-center',
-        'opacity-40 hover:opacity-70 transition-opacity duration-200',
-        'grayscale hover:grayscale-0',
+        'flex h-8 items-center justify-center',
+        'opacity-40 grayscale transition-[opacity,filter] duration-200',
+        'hover:opacity-70 hover:grayscale-0',
         logo.className
       )}
     >
@@ -36,7 +30,7 @@ function LogoItem({ logo }: { logo: LogoItem }) {
         // eslint-disable-next-line @next/next/no-img-element
         <img src={logo.src} alt={logo.name} className="h-full w-auto object-contain" />
       ) : (
-        <span className="font-mono text-muted/50 text-sm font-semibold tracking-wide">
+        <span className="font-mono text-sm font-semibold tracking-wide text-muted/50">
           {logo.name}
         </span>
       )}
@@ -45,39 +39,27 @@ function LogoItem({ logo }: { logo: LogoItem }) {
 }
 
 export function LogoGrid({ logos, mode = 'marquee', speed = 'normal', className }: LogoGridProps) {
-  const duration = speedMap[speed];
-
   if (mode === 'grid') {
     return (
-      <div className={cn('grid grid-cols-3 md:grid-cols-6 gap-6 items-center', className)}>
+      <div className={cn('grid grid-cols-3 items-center gap-6 md:grid-cols-6', className)}>
         {logos.map((logo, i) => (
-          <LogoItem key={i} logo={logo} />
+          <LogoCell key={i} logo={logo} />
         ))}
       </div>
     );
   }
 
-  // Marquee mode — duplicate logos for seamless loop
   const doubled = [...logos, ...logos];
 
   return (
-    <div className={cn('overflow-hidden w-full', className)}>
-      <style>{`
-        @keyframes marquee {
-          from { transform: translateX(0); }
-          to { transform: translateX(-50%); }
-        }
-      `}</style>
+    <div className={cn('w-full overflow-hidden', className)}>
       <div
-        className="flex gap-10 items-center w-max hover:[animation-play-state:paused]"
-        style={{
-          animation: `marquee ${duration} linear infinite`,
-          willChange: 'transform',
-        }}
+        className="marquee-track flex w-max items-center gap-10 hover:[animation-play-state:paused]"
+        data-speed={speed}
       >
         {doubled.map((logo, i) => (
           <div key={i} className="shrink-0">
-            <LogoItem logo={logo} />
+            <LogoCell logo={logo} />
           </div>
         ))}
       </div>
