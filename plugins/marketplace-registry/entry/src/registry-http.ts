@@ -2,9 +2,15 @@
  * HTTP client for KB Labs Registry service.
  *
  * Credential provider chain (in priority order):
- *   1. Env vars KB_REGISTRY_TOKEN + KB_GATEWAY_URL [+ KB_REGISTRY_AUTHOR_HANDLE] — for CI/CD
- *   2. ~/.kb/credentials.json — written by `kb auth login`, includes handle after /auth/me
- *   3. Error — "Run: kb auth login"
+ *   1. KB_REGISTRY_URL + KB_REGISTRY_TOKEN — explicit registry URL (CI/CD, closed-loop mirror)
+ *   2. KB_GATEWAY_URL  + KB_REGISTRY_TOKEN — legacy CI/CD (derives registry URL from gateway)
+ *   3. ~/.kb/credentials.json + KB_REGISTRY_URL — credentials file with explicit registry URL override
+ *   4. ~/.kb/credentials.json fully — credentials file, derives registry URL from gatewayUrl
+ *   5. Error — "Run: kb auth login"
+ *
+ * KB_REGISTRY_URL decouples the data layer (where the registry lives) from the execution
+ * layer (which gateway runs the CLI command). Useful when the registry is behind a different
+ * URL than the execution gateway — e.g. closed-loop mirrors or local dev pointing to prod registry.
  *
  * Token auto-refresh: if accessToken is within 60s of expiry, exchanges refreshToken
  * via POST /auth/refresh and overwrites ~/.kb/credentials.json (chmod 600).
@@ -35,11 +41,30 @@ interface StoredCredentials {
   namespaceId?: string;
 }
 
+/**
+ * Resolve registry base URL from env vars only (used when a token is passed explicitly).
+ * Priority: KB_REGISTRY_URL → KB_GATEWAY_URL → localhost fallback.
+ */
+function resolveBaseUrlFromEnv(): string {
+  const regUrl  = useEnv('KB_REGISTRY_URL');
+  const gateway = useEnv('KB_GATEWAY_URL');
+  if (regUrl)  { return regUrl.replace(/\/$/, ''); }
+  if (gateway) { return `${gateway.replace(/\/$/, '')}${REGISTRY_GATEWAY_PREFIX}`; }
+  return `http://127.0.0.1:4000${REGISTRY_GATEWAY_PREFIX}`;
+}
+
 async function resolveAuth(): Promise<ResolvedAuth> {
-  // 1. Env vars override (CI/CD)
   const envToken   = useEnv('KB_REGISTRY_TOKEN');
-  const envGateway = useEnv('KB_GATEWAY_URL');
+  const envRegUrl  = useEnv('KB_REGISTRY_URL');         // explicit registry base URL (data layer)
+  const envGateway = useEnv('KB_GATEWAY_URL');           // legacy: derive registry URL from gateway
   const envHandle  = useEnv('KB_REGISTRY_AUTHOR_HANDLE');
+
+  // 1. Explicit registry URL + token (CI/CD, closed-loop mirror)
+  if (envToken && envRegUrl) {
+    return { token: envToken, baseUrl: envRegUrl.replace(/\/$/, ''), handle: envHandle ?? '' };
+  }
+
+  // 2. Legacy: token + gateway URL → derive registry base URL
   if (envToken && envGateway) {
     return {
       token: envToken,
@@ -48,7 +73,7 @@ async function resolveAuth(): Promise<ResolvedAuth> {
     };
   }
 
-  // 2. ~/.kb/credentials.json
+  // 3–4. ~/.kb/credentials.json
   let creds: StoredCredentials;
   try {
     creds = JSON.parse(await readFile(CREDENTIALS_PATH, 'utf-8')) as StoredCredentials;
@@ -85,11 +110,13 @@ async function resolveAuth(): Promise<ResolvedAuth> {
     );
   }
 
-  return {
-    token: creds.accessToken,
-    baseUrl: `${creds.gatewayUrl.replace(/\/$/, '')}${REGISTRY_GATEWAY_PREFIX}`,
-    handle: creds.handle,
-  };
+  // 3. credentials + KB_REGISTRY_URL override (execution gateway ≠ registry URL)
+  // 4. credentials fully (gatewayUrl used to derive registry base URL)
+  const baseUrl = envRegUrl
+    ? envRegUrl.replace(/\/$/, '')
+    : `${creds.gatewayUrl.replace(/\/$/, '')}${REGISTRY_GATEWAY_PREFIX}`;
+
+  return { token: creds.accessToken, baseUrl, handle: creds.handle };
 }
 
 /**
@@ -107,7 +134,7 @@ export async function registryPost<T = unknown>(
   token?: string,
 ): Promise<T> {
   const auth = token
-    ? { token, baseUrl: `${(useEnv('KB_GATEWAY_URL') ?? 'http://127.0.0.1:4000').replace(/\/$/, '')}${REGISTRY_GATEWAY_PREFIX}` }
+    ? { token, baseUrl: resolveBaseUrlFromEnv() }
     : await resolveAuth();
 
   const url = `${auth.baseUrl}${path}`;
@@ -146,7 +173,7 @@ export async function registryPostMultipart<T = unknown>(
   const auth = token
     ? {
         token,
-        baseUrl: `${(useEnv('KB_GATEWAY_URL') ?? 'http://127.0.0.1:4000').replace(/\/$/, '')}${REGISTRY_GATEWAY_PREFIX}`,
+        baseUrl: resolveBaseUrlFromEnv(),
         handle: authorHandle ?? useEnv('KB_REGISTRY_AUTHOR_HANDLE') ?? '',
       }
     : await resolveAuth();
@@ -188,7 +215,7 @@ export async function registryPatch<T = unknown>(
   token?: string,
 ): Promise<T> {
   const auth = token
-    ? { token, baseUrl: `${(useEnv('KB_GATEWAY_URL') ?? 'http://127.0.0.1:4000').replace(/\/$/, '')}${REGISTRY_GATEWAY_PREFIX}` }
+    ? { token, baseUrl: resolveBaseUrlFromEnv() }
     : await resolveAuth();
 
   const url = `${auth.baseUrl}${path}`;

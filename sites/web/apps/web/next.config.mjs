@@ -10,7 +10,12 @@ const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
 const nextConfig = {
   output: 'standalone',
   pageExtensions: ['ts', 'tsx', 'mdx'],
-  transpilePackages: ['@kb-labs/web-i18n', '@kb-labs/web-data-source'],
+  transpilePackages: [
+    '@kb-labs/web-i18n',
+    '@kb-labs/web-data-source',
+    '@kb-labs/web-site-tokens',
+    '@kb-labs/web-site-ui',
+  ],
   outputFileTracingRoot: process.env.NEXT_TRACING_ROOT ?? path.join(currentDir, '../../'),
   outputFileTracingIncludes: {
     '/': ['./middleware.ts'],

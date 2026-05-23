@@ -7,6 +7,7 @@ import { CookieBanner } from '@/components/CookieBanner';
 import { ScrollReveal } from '@/components/ScrollReveal';
 import { routing } from '@/i18n/routing';
 import '../globals.css';
+import '@kb-labs/web-site-ui/tokens.css';
 
 const headingFont = localFont({
   src: [
