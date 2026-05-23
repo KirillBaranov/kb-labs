@@ -19,6 +19,7 @@ export type MarketplaceItem = {
   stars: number;
   updatedAt: string;
   docs?: string;
+  readme?: string;
 };
 
 export const MARKETPLACE_ITEMS: MarketplaceItem[] = [
@@ -305,6 +306,23 @@ export const ALL_TAGS = Array.from(
 const REGISTRY_URL = process.env.KB_REGISTRY_URL ?? 'https://api.kblabs.ru/api/v1/registry';
 
 interface RegistryAuthor { name: string; email?: string; url?: string }
+
+interface RegistryEntryMeta {
+  description?: string;
+  readme?: string;
+  permissions?: string[];
+  envVars?: string[];
+  allowedHosts?: string[];
+  commands?: string[];
+  [key: string]: unknown;
+}
+
+interface RegistryEntryDetail {
+  name: string;
+  authorHandle: string;
+  meta: RegistryEntryMeta;
+}
+
 interface RegistrySummary {
   handle: string;
   name: string;
@@ -337,13 +355,19 @@ function packageSlug(name: string): string {
   return parts[parts.length - 1] ?? name.replace(/^@/, '');
 }
 
-function summaryToItem(s: RegistrySummary): MarketplaceItem {
+function summaryToItem(s: RegistrySummary, detail?: RegistryEntryDetail): MarketplaceItem {
+  const rawName = s.name.split('/').pop() ?? s.name;
+  // Strip "-entry" suffix for display: "clickup-entry" → "clickup"
+  const displayName = rawName.replace(/-entry$/, '');
+  // Use handle as author fallback when author field is absent
+  const author = authorString(s.author) !== 'Unknown' ? authorString(s.author) : s.handle;
+  const meta = detail?.meta;
   return {
     slug: packageSlug(s.name),
-    name: s.name.split('/').pop() ?? s.name,
+    name: displayName,
     type: kindToPluginType(s.primaryKind),
     version: s.version,
-    author: authorString(s.author),
+    author,
     authorType: s.trust === 'trusted' ? 'official' : 'community',
     description: s.description ?? '',
     longDescription: s.description ?? '',
@@ -352,6 +376,11 @@ function summaryToItem(s: RegistrySummary): MarketplaceItem {
     weeklyDownloads: s.installs,
     stars: 0,
     updatedAt: s.publishedAt.slice(0, 10),
+    readme: meta?.readme,
+    permissions: meta?.permissions,
+    envVars: meta?.envVars,
+    allowedHosts: meta?.allowedHosts,
+    commands: meta?.commands,
   };
 }
 
@@ -362,7 +391,7 @@ export async function fetchRegistryItems(): Promise<MarketplaceItem[]> {
     });
     if (!res.ok) return [];
     const data = await res.json() as RegistrySummary[];
-    return data.map(summaryToItem);
+    return data.map((s) => summaryToItem(s));
   } catch {
     return [];
   }
@@ -370,13 +399,30 @@ export async function fetchRegistryItems(): Promise<MarketplaceItem[]> {
 
 export async function fetchRegistryItem(slug: string): Promise<MarketplaceItem | undefined> {
   try {
-    const res = await fetch(`${REGISTRY_URL}/packages`, {
+    // Fetch list to find the matching summary (needed for handle + full package name)
+    const listRes = await fetch(`${REGISTRY_URL}/packages`, {
       next: { revalidate: 300 },
     });
-    if (!res.ok) return undefined;
-    const data = await res.json() as RegistrySummary[];
+    if (!listRes.ok) return undefined;
+    const data = await listRes.json() as RegistrySummary[];
     const match = data.find((s) => packageSlug(s.name) === slug);
-    return match ? summaryToItem(match) : undefined;
+    if (!match) return undefined;
+
+    // Fetch full entry for readme + manifest fields
+    let detail: RegistryEntryDetail | undefined;
+    try {
+      const detailRes = await fetch(
+        `${REGISTRY_URL}/packages/${match.handle}/${encodeURIComponent(match.name)}`,
+        { next: { revalidate: 300 } },
+      );
+      if (detailRes.ok) {
+        detail = await detailRes.json() as RegistryEntryDetail;
+      }
+    } catch {
+      // non-fatal — render without readme/manifest fields
+    }
+
+    return summaryToItem(match, detail);
   } catch {
     return undefined;
   }

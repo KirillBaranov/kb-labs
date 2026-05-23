@@ -72,6 +72,7 @@ export function LogoGrid({ logos, mode = 'marquee', speed = 'normal', className 
         className="flex gap-10 items-center w-max hover:[animation-play-state:paused]"
         style={{
           animation: `marquee ${duration} linear infinite`,
+          willChange: 'transform',
         }}
       >
         {doubled.map((logo, i) => (
