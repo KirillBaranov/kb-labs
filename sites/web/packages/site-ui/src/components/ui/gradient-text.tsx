@@ -4,7 +4,9 @@ import { cn } from '../../lib/utils';
 export interface GradientTextProps {
   children: React.ReactNode;
   className?: string;
+  /** CSS color value or var(). Defaults to accent color. */
   from?: string;
+  /** CSS color value or var(). Defaults to 60% text color. */
   to?: string;
   shimmer?: boolean;
 }
@@ -12,37 +14,19 @@ export interface GradientTextProps {
 export function GradientText({
   children,
   className,
-  from = 'accent',
-  to = 'kb-text/60',
+  from = 'rgb(var(--color-accent))',
+  to = 'rgb(var(--color-text) / 0.55)',
   shimmer = false,
 }: GradientTextProps) {
-  const shimmerStyle: React.CSSProperties = shimmer
-    ? {
-        backgroundSize: '200% auto',
-        animation: 'shimmer 3s ease infinite',
-      }
-    : {};
-
   return (
-    <>
-      {shimmer && (
-        <style>{`
-          @keyframes shimmer {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-          }
-        `}</style>
-      )}
-      <span
-        className={cn(
-          'bg-clip-text text-transparent bg-gradient-to-r',
-          `from-${from} to-${to}`,
-          className
-        )}
-        style={shimmerStyle}
-      >
-        {children}
-      </span>
-    </>
+    <span
+      className={cn('bg-clip-text text-transparent', shimmer && 'gradient-text-shimmer', className)}
+      style={{
+        backgroundImage: `linear-gradient(to right, ${from}, ${to})`,
+        ...(shimmer ? { backgroundSize: '200% auto' } : {}),
+      }}
+    >
+      {children}
+    </span>
   );
 }

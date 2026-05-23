@@ -24,7 +24,7 @@ export async function CodeBlock({ code, language = 'typescript', filename, class
   return (
     <div className={cn('rounded-xl border border-line-strong overflow-hidden shadow-card', className)}>
       {hasHeader && (
-        <div className="flex items-center justify-between px-4 py-2 border-b border-line bg-bg">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-line bg-surface">
           <div className="flex items-center gap-2">
             {filename && (
               <span className="text-xs text-muted font-mono">{filename}</span>
@@ -41,7 +41,7 @@ export async function CodeBlock({ code, language = 'typescript', filename, class
       )}
       <div
         className={cn(
-          '[&>pre]:p-4 [&>pre]:overflow-x-auto [&>pre]:text-sm [&>pre]:leading-relaxed [&>pre]:rounded-none',
+          '[&>pre]:m-0 [&>pre]:p-4 [&>pre]:overflow-x-auto [&>pre]:text-sm [&>pre]:leading-relaxed [&>pre]:rounded-none',
           'shiki-container'
         )}
         // eslint-disable-next-line react/no-danger
