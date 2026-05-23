@@ -100,6 +100,9 @@ export type { PluginSurfaceDiagramProps } from './components/marketing/plugin-su
 export { PluginLifecycleDiagram } from './components/marketing/plugin-lifecycle-diagram';
 export type { PluginLifecycleDiagramProps } from './components/marketing/plugin-lifecycle-diagram';
 
+export { GatewayAdapterSwapDiagram } from './components/marketing/gateway-adapter-swap-diagram';
+export type { GatewayAdapterSwapDiagramProps } from './components/marketing/gateway-adapter-swap-diagram';
+
 export { PainCards } from './components/marketing/pain-cards';
 
 export { GridSection } from './components/marketing/grid-section';

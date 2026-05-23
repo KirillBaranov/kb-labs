@@ -9,10 +9,9 @@ import remarkGfm from 'remark-gfm';
 import { MdxComponents } from '@/components/MdxComponents';
 
 const prettyCodeOptions: PrettyCodeOptions = {
-  theme: 'github-dark-dimmed',
-  keepBackground: true,
+  themes: { light: 'github-light', dark: 'github-dark-dimmed' },
+  keepBackground: false,
   defaultLang: 'plaintext',
-  // Don't apply theme colors to inline code — we style it ourselves in CSS
   bypassInlineCode: true,
 };
 
@@ -20,29 +19,20 @@ export type Frontmatter = {
   title: string;
   description?: string;
   updatedAt?: string;
-  /** Sort order within its nav group (lower = earlier). Defaults to +Infinity → alphabetical. */
   order?: number;
-  /** If true, page is excluded from the sidebar navigation. */
   hidden?: boolean;
 };
 
 const contentRoot = path.resolve(process.cwd(), 'content');
 
-/** Resolves slug array → file path, trying both <slug>.mdx and <slug>/index.mdx */
-function resolveFilePath(slugParts: string[]): string | null {
-  const base = path.join(contentRoot, ...slugParts);
+function resolveFilePath(localeDir: string, slugParts: string[]): string | null {
+  const base = path.join(contentRoot, localeDir, ...slugParts);
   if (fs.existsSync(`${base}.mdx`)) return `${base}.mdx`;
   if (fs.existsSync(path.join(base, 'index.mdx'))) return path.join(base, 'index.mdx');
   return null;
 }
 
-export async function getDocPage(slugParts: string[]) {
-  const filePath = resolveFilePath(slugParts);
-
-  if (!filePath) {
-    return null;
-  }
-
+async function loadPage(filePath: string) {
   const raw = fs.readFileSync(filePath, 'utf8');
   const { content, data } = matter(raw);
 
@@ -64,9 +54,24 @@ export async function getDocPage(slugParts: string[]) {
   };
 }
 
-/** Extract h2/h3 headings from raw MDX for ToC */
-export function extractHeadings(slugParts: string[]): { id: string; text: string; level: 2 | 3 }[] {
-  const filePath = resolveFilePath(slugParts);
+export async function getDocPage(locale: string, slugParts: string[]) {
+  const localePath = resolveFilePath(locale, slugParts);
+  if (localePath) {
+    return { ...(await loadPage(localePath)), isFallback: false };
+  }
+
+  if (locale !== 'en') {
+    const fallbackPath = resolveFilePath('en', slugParts);
+    if (fallbackPath) {
+      return { ...(await loadPage(fallbackPath)), isFallback: true };
+    }
+  }
+
+  return null;
+}
+
+export function extractHeadings(locale: string, slugParts: string[]): { id: string; text: string; level: 2 | 3 }[] {
+  const filePath = resolveFilePath(locale, slugParts) ?? resolveFilePath('en', slugParts);
   if (!filePath) return [];
 
   const raw = fs.readFileSync(filePath, 'utf8');

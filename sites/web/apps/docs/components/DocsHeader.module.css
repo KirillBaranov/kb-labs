@@ -4,7 +4,7 @@
   z-index: 40;
   height: var(--docs-header-height);
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(var(--bg-rgb), 0.92);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
@@ -60,7 +60,7 @@
 
 .navTab:hover {
   color: var(--fg);
-  background: #f4f4f5;
+  background: color-mix(in oklab, var(--fg) 6%, transparent);
 }
 
 .navTabActive {
@@ -86,7 +86,7 @@
   border: 1px solid var(--line);
   border-radius: 8px;
   padding: 0 0.75rem;
-  background: #fafafa;
+  background: var(--surface);
   cursor: pointer;
   transition: border-color 0.12s, background 0.12s;
   color: var(--fg-muted);
@@ -98,7 +98,7 @@
 
 .search:hover {
   border-color: var(--line-strong);
-  background: #f4f4f5;
+  background: color-mix(in oklab, var(--fg) 6%, transparent);
 }
 
 .searchIcon {
@@ -118,7 +118,7 @@
   gap: 0.15rem;
   font-size: 0.7rem;
   color: var(--fg-subtle);
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 4px;
   padding: 0.1em 0.4em;
@@ -146,7 +146,7 @@
 }
 
 .iconBtn:hover {
-  background: #f4f4f5;
+  background: color-mix(in oklab, var(--fg) 6%, transparent);
   color: var(--fg);
 }
 
@@ -168,5 +168,5 @@
 }
 
 .ctaBtn:hover {
-  background: #333;
+  opacity: 0.85;
 }
