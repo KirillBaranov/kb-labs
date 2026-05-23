@@ -2,8 +2,16 @@
  * @module cli-core/gateway/transport-resolver
  *
  * Determines which transport to use for CLI → Gateway communication.
- * Priority: Host Agent IPC → Direct Gateway HTTP.
- * If nothing available — throws (no offline mode).
+ *
+ * Priority:
+ *   1. Host Agent IPC socket (~/.kb/agent.sock) — for workspace agent / same-host deployment
+ *   2. KB_GATEWAY_URL env var — explicit execution gateway (CI/CD, remote platform)
+ *   3. null — no gateway configured; caller falls back to local execution
+ *
+ * NOTE: credentials.json is intentionally NOT used for execution routing.
+ * It is a registry/identity credential file (tokens, handle) — not platform topology config.
+ * The execution gateway URL must be provided explicitly via KB_GATEWAY_URL or IPC socket.
+ * Auth tokens for the HTTP transport are still loaded from credentials.json when available.
  */
 
 import * as path from 'node:path';
@@ -19,32 +27,24 @@ const HOST_AGENT_SOCKET = path.join(os.homedir(), '.kb', 'agent.sock');
 
 /**
  * Resolve the best available transport for CLI → Gateway communication.
- *
- * Priority:
- * 1. Host Agent IPC socket (same host, low latency)
- * 2. Direct Gateway HTTP (remote, needs credentials)
- * 3. Error — no offline mode
+ * Returns null when no gateway is configured — callers fall back to local execution.
  */
-export async function resolveTransport(): Promise<IGatewayClient> {
-  // 1. Check if Host Agent IPC socket is alive
+export async function resolveTransport(): Promise<IGatewayClient | null> {
+  // 1. Host Agent IPC socket (same-host deployment, workspace agent)
   if (await isSocketAlive(HOST_AGENT_SOCKET)) {
     return new HostAgentTransport(HOST_AGENT_SOCKET);
   }
 
-  // 2. Check if Gateway credentials exist
-  const credentialsManager = new CredentialsManager();
-  const credentials = await credentialsManager.load();
-  if (credentials) {
-    return new HttpSseGatewayTransport(
-      { gatewayUrl: credentials.gatewayUrl },
-      credentialsManager,
-    );
+  // 2. Explicit execution gateway via KB_GATEWAY_URL
+  const gatewayUrl = process.env['KB_GATEWAY_URL'];
+  if (gatewayUrl) {
+    // Auth tokens from credentials.json if available (non-fatal if absent)
+    const credentialsManager = new CredentialsManager();
+    return new HttpSseGatewayTransport({ gatewayUrl }, credentialsManager);
   }
 
-  // 3. No offline mode — error
-  throw new Error(
-    'Gateway unavailable. Run "kb auth login" to configure Gateway connection.',
-  );
+  // 3. No gateway configured — fall back to local execution
+  return null;
 }
 
 /**
