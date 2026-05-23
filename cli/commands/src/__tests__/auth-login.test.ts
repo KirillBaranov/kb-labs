@@ -160,7 +160,7 @@ describe('kb auth login', () => {
   it('AL-05: token endpoint returns 401 — exitCode 1', async () => {
     mockFetch.mockResolvedValueOnce(makeJsonResponse({ error: 'Unauthorized' }, 401));
 
-    const captured = { errors: [], output: [], json: [] };
+    const captured: { errors: string[]; output: string[]; json: unknown[] } = { errors: [], output: [], json: [] };
     const ctx = makeCtx(captured);
 
     const exitCode = await authLogin.run(ctx, [], {

@@ -109,6 +109,18 @@ export type { CookieBannerProps } from './components/marketing/cookie-banner';
 export { AnnouncementBar } from './components/marketing/announcement-bar';
 export type { AnnouncementBarProps } from './components/marketing/announcement-bar';
 
+export { BlogCard } from './components/marketing/blog-card';
+export type { BlogCardProps } from './components/marketing/blog-card';
+
+export { TestimonialCard } from './components/marketing/testimonial-card';
+export type { TestimonialCardProps } from './components/marketing/testimonial-card';
+
+export { ChangelogEntry } from './components/marketing/changelog-entry';
+export type { ChangelogEntryProps, ChangeItem, ChangeType } from './components/marketing/changelog-entry';
+
+export { Prose } from './components/ui/prose';
+export type { ProseProps } from './components/ui/prose';
+
 // Effects
 export { AnimateOnScroll } from './components/effects/animate-on-scroll';
 export type { AnimateOnScrollProps } from './components/effects/animate-on-scroll';
