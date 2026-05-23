@@ -11,6 +11,8 @@
   --primary-foreground:   var(--color-surface);
   --secondary:            var(--color-bg);
   --secondary-foreground: var(--color-text);
+  --muted:                var(--color-bg);
+  --muted-foreground:     var(--color-muted);
   --destructive:          239 68 68;
   --destructive-foreground: 255 255 255;
   --border:               var(--color-line);
@@ -44,6 +46,35 @@
   font-weight: var(--shiki-dark-font-weight);
   text-decoration: var(--shiki-dark-text-decoration);
 }
+
+/* ── AnimateOnScroll — data-attribute driven ─────────────────────────────── */
+[data-animate] {
+  transition:
+    opacity  0.6s cubic-bezier(0.22, 1, 0.36, 1) var(--anim-delay, 0ms),
+    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1) var(--anim-delay, 0ms);
+}
+[data-animate="fade"]       { opacity: 0; }
+[data-animate="slide-up"]   { opacity: 0; transform: translateY(24px); }
+[data-animate="slide-left"] { opacity: 0; transform: translateX(24px); }
+[data-animate="scale"]      { opacity: 0; transform: scale(0.95); }
+[data-animate][data-visible]  { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-animate] {
+    transition: opacity 0.1s;
+    transform: none !important;
+  }
+}
+
+/* ── LogoGrid marquee ────────────────────────────────────────────────────── */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.marquee-track                         { animation: marquee 25s linear infinite; }
+.marquee-track[data-speed="slow"]      { animation-duration: 40s; }
+.marquee-track[data-speed="normal"]    { animation-duration: 25s; }
+.marquee-track[data-speed="fast"]      { animation-duration: 15s; }
 
 .dark {
   --destructive:          220 38 38;
