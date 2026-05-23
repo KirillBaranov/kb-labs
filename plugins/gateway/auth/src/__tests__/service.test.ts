@@ -110,6 +110,29 @@ describe('AuthService', () => {
     });
   });
 
+  describe('me', () => {
+    it('returns profile with hostId and namespaceId for registered client', async () => {
+      const { hostId, namespaceId } = await service.register({ name: 'laptop', capabilities: [] });
+
+      const profile = await service.me(hostId);
+      expect(profile).not.toBeNull();
+      expect(profile!.hostId).toBe(hostId);
+      expect(profile!.namespaceId).toBe(namespaceId);
+    });
+
+    it('returns handle when set during registration', async () => {
+      const { hostId } = await service.register({ name: 'laptop', capabilities: [], handle: 'kirill' });
+
+      const profile = await service.me(hostId);
+      expect(profile!.handle).toBe('kirill');
+    });
+
+    it('returns null for unknown hostId', async () => {
+      const profile = await service.me('host_unknown');
+      expect(profile).toBeNull();
+    });
+  });
+
   describe('refreshTokens', () => {
     it('issues new token pair on valid refresh token', async () => {
       const { clientId, clientSecret } = await service.register({

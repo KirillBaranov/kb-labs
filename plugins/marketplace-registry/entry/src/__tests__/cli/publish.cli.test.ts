@@ -6,10 +6,11 @@ vi.mock('../../pack-plugin.js', () => ({
   packPlugin: vi.fn(),
 }));
 
-// Mock registry HTTP client
+// Mock registry HTTP client (includes resolveRegistryHandle — credential provider chain)
 vi.mock('../../registry-http.js', () => ({
   registryPostMultipart: vi.fn(),
   registryPatch: vi.fn(),
+  resolveRegistryHandle: vi.fn(),
 }));
 
 // Mock fs only for package.json reads
@@ -20,13 +21,14 @@ vi.mock('node:fs/promises', async (importOriginal) => {
 
 import * as fsPromises from 'node:fs/promises';
 import * as packModule from '../../pack-plugin.js';
-import { registryPostMultipart, registryPatch } from '../../registry-http.js';
+import { registryPostMultipart, registryPatch, resolveRegistryHandle } from '../../registry-http.js';
 import publishCommand from '../../commands/publish.js';
 
 const mockedReadFile = vi.mocked(fsPromises.readFile);
 const mockedPackPlugin = vi.mocked(packModule.packPlugin);
 const mockedPostMultipart = vi.mocked(registryPostMultipart);
 const mockedPatch = vi.mocked(registryPatch);
+const mockedResolveHandle = vi.mocked(resolveRegistryHandle);
 
 const VALID_PKG = JSON.stringify({
   name: 'my-plugin',
@@ -54,26 +56,26 @@ function createCtxWithHandle(ui?: ReturnType<typeof createCapturedUI>['ui']) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  process.env.KB_REGISTRY_AUTHOR_HANDLE = 'kirill';
   mockedReadFile.mockResolvedValue(VALID_PKG as any);
   mockedPackPlugin.mockResolvedValue(FAKE_TARBALL);
   mockedPostMultipart.mockResolvedValue(PUBLISH_RESULT);
-});
-
-afterEach(() => {
-  delete process.env.KB_REGISTRY_AUTHOR_HANDLE;
+  mockedResolveHandle.mockResolvedValue('kirill');
 });
 
 describe('marketplace:publish', () => {
-  it('PB-01: publishes successfully — shows name@version and install command', async () => {
+  it('PB-01: publishes successfully — chain shows name@version and install command', async () => {
     const { ui, captured } = createCapturedUI();
     const ctx = createCtxWithHandle(ui);
     const result = await publishCommand.execute(ctx, mockCLIInput({ flags: {} }));
 
     expect(result.exitCode).toBe(0);
-    expect(captured.success[0]?.message).toContain('my-plugin@1.0.0');
-    expect(captured.success[0]?.message).toContain('published');
-    expect(captured.success[0]?.opts?.summary).toMatchObject({ Visibility: 'public' });
+    // publish.ts uses ctx.ui.chain() — two items: pack step + publish step
+    const chainCall = captured.chain[0];
+    expect(chainCall).toBeDefined();
+    const successItem = chainCall?.find(item => item.status === 'success');
+    expect(successItem?.title).toContain('my-plugin@1.0.0');
+    expect(successItem?.title).toContain('published');
+    expect(successItem?.summary).toMatchObject({ Visibility: 'public' });
   });
 
   it('PB-02: --json outputs structured result', async () => {
@@ -139,6 +141,23 @@ describe('marketplace:publish', () => {
     expect(captured.success.length).toBeGreaterThan(0);
   });
 
+  it('PB-11: --meta-only uses handle from credential chain, not KB_REGISTRY_AUTHOR_HANDLE', async () => {
+    // env var is deliberately absent — handle must come from resolveRegistryHandle()
+    delete process.env.KB_REGISTRY_AUTHOR_HANDLE;
+    mockedPatch.mockResolvedValue(undefined);
+    mockedResolveHandle.mockResolvedValue('from-creds');
+
+    const { ui } = createCapturedUI();
+    const ctx = createCtxWithHandle(ui);
+    const result = await publishCommand.execute(ctx, mockCLIInput({ flags: { metaOnly: true } }));
+
+    expect(result.exitCode).toBe(0);
+    expect(mockedResolveHandle).toHaveBeenCalled();
+    // URL path must contain the handle resolved from credentials
+    const [patchPath] = mockedPatch.mock.calls[0]!;
+    expect(patchPath).toContain('from-creds');
+  });
+
   it('PB-08: packPlugin failure — exitCode 1, error shown', async () => {
     mockedPackPlugin.mockRejectedValue(new Error('pnpm pack failed'));
     const { ui, captured } = createCapturedUI();
@@ -149,14 +168,18 @@ describe('marketplace:publish', () => {
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
-  it('PB-09: registry HTTP error — exitCode 1, error shown', async () => {
+  it('PB-09: registry HTTP error — exitCode 1, error shown in chain', async () => {
     mockedPostMultipart.mockRejectedValue(new Error('Registry publish failed (422): version exists'));
     const { ui, captured } = createCapturedUI();
     const ctx = createCtxWithHandle(ui);
     const result = await publishCommand.execute(ctx, mockCLIInput({ flags: {} }));
 
     expect(result.exitCode).toBe(1);
-    expect(captured.errors.length).toBeGreaterThan(0);
+    // publish.ts uses ctx.ui.chain() for error output — error item has status: 'error'
+    const chainCall = captured.chain[0];
+    expect(chainCall).toBeDefined();
+    const errorItem = chainCall?.find(item => item.status === 'error');
+    expect(errorItem?.title).toBe('Publish failed');
   });
 
   it('PB-10: packPlugin called with resolved plugin dir', async () => {

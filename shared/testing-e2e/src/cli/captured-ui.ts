@@ -1,5 +1,5 @@
 import { noopUI } from '@kb-labs/plugin-contracts';
-import type { UIFacade, UILogEntry, MessageOptions, TableColumn } from '@kb-labs/plugin-contracts';
+import type { UIFacade, UILogEntry, MessageOptions, TableColumn, ChainItem } from '@kb-labs/plugin-contracts';
 
 export interface UICapture {
   /** Arguments passed to ctx.ui.json() */
@@ -18,6 +18,8 @@ export interface UICapture {
   logs: UILogEntry[];
   /** Raw strings passed to ctx.ui.write() */
   writes: string[];
+  /** Arguments passed to ctx.ui.chain() — each element is the full ChainItem[] array */
+  chain: ChainItem[][];
 }
 
 export interface CapturedUI {
@@ -39,6 +41,7 @@ export function createCapturedUI(): CapturedUI {
     infos: [],
     logs: [],
     writes: [],
+    chain: [],
   };
 
   const ui: UIFacade = {
@@ -77,6 +80,10 @@ export function createCapturedUI(): CapturedUI {
 
     log(entry: UILogEntry): void {
       captured.logs.push(entry);
+    },
+
+    chain(items: ChainItem[]): void {
+      captured.chain.push(items);
     },
   };
 
