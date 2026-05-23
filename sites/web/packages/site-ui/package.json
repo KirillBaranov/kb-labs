@@ -1,0 +1,31 @@
+{
+  "name": "@kb-labs/web-site-ui",
+  "description": "KB Labs site UI kit — React components with Tailwind, theming, and lucide icons",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".":            "./src/index.ts",
+    "./tokens.css": "./tokens.css"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@kb-labs/web-site-tokens": "workspace:*",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.474.0",
+    "tailwind-merge": "^2.5.4"
+  },
+  "devDependencies": {
+    "@kb-labs/web-config": "workspace:*",
+    "@types/react": "^19.0.0",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.6.3"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
+  }
+}
