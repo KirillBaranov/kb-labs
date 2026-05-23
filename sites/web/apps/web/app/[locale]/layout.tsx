@@ -107,6 +107,10 @@ export default async function LocaleLayout({ children, params }: Props) {
 
   return (
     <html lang={locale}>
+      <head>
+        {/* Runs before hydration to prevent flash of wrong theme */}
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('kb-theme');var s=t||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');if(s==='dark')document.documentElement.classList.add('dark')}catch(e){}})()` }} />
+      </head>
       <body className={`${headingFont.variable} ${bodyFont.variable}`}>
         <script
           type="application/ld+json"

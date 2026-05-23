@@ -6,7 +6,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./tokens.css": "./tokens.css"
+    "./tokens.css": "./src/styles/tokens.css"
   },
   "scripts": {
     "build": "tsc --noEmit",
@@ -14,6 +14,12 @@
   },
   "dependencies": {
     "@kb-labs/web-site-tokens": "workspace:*",
+    "@radix-ui/react-dialog": "^1.1.4",
+    "@radix-ui/react-dropdown-menu": "^2.1.4",
+    "@radix-ui/react-popover": "^1.1.4",
+    "@radix-ui/react-select": "^2.1.4",
+    "@radix-ui/react-slot": "^1.1.1",
+    "@radix-ui/react-toast": "^1.2.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.474.0",
@@ -23,10 +29,12 @@
   "devDependencies": {
     "@kb-labs/web-config": "workspace:*",
     "@types/react": "^19.0.0",
+    "next": "^15.5.18",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.6.3"
   },
   "peerDependencies": {
+    "next": ">=14.0.0",
     "react": "^19.0.0"
   }
 }

@@ -21,10 +21,10 @@
       "provides": ["adapter"],
       "enabled": true
     },
-    "@kb-labs/adapters-fs": {
+    "@kb-labs/adapters-s3": {
       "version": "0.8.0",
       "integrity": "",
-      "resolvedPath": "./node_modules/@kb-labs/adapters-fs",
+      "resolvedPath": "./node_modules/@kb-labs/adapters-s3",
       "installedAt": "2026-05-23T00:00:00.000Z",
       "source": "local",
       "primaryKind": "adapter",
