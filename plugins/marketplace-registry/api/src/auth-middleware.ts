@@ -38,19 +38,6 @@ export function createRegistryAuthMiddleware(jwtConfig: JwtConfig) {
     const token = authHeader?.match(/^Bearer\s+(.+)$/i)?.[1] ?? null;
     if (!token) { return; } // public routes proceed without authContext; protected routes use requireAuth
 
-    // Admin token bypass — for CLI publishing without a full gateway JWT
-    const adminToken = process.env['KB_REGISTRY_ADMIN_TOKEN'];
-    if (adminToken && token === adminToken) {
-      request.authContext = {
-        type: 'access',
-        userId: 'admin',
-        namespaceId: 'ns-kirill',
-        tier: 'pro',
-        permissions: ['host:connect', 'admin'],
-      };
-      return;
-    }
-
     const payload = await verifyAccessToken(token, jwtConfig);
     if (!payload) {
       // Token present but invalid — reject immediately
