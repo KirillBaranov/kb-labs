@@ -45,7 +45,7 @@
 }
 
 .groupTitle:hover {
-  background: #f5f5f5;
+  background: color-mix(in oklab, var(--fg) 5%, transparent);
 }
 
 /* ─── Chevron ────────────────────────────────────────────────────── */
@@ -75,7 +75,9 @@
 
 /* ─── Nav item (shared) ──────────────────────────────────────────── */
 .item {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   font-size: 0.8125rem;
   color: var(--fg-muted);
   padding: 0.3rem 0.5rem;
@@ -86,15 +88,34 @@
 
 .item:hover {
   color: var(--fg);
-  background: #f5f5f5;
+  background: color-mix(in oklab, var(--fg) 5%, transparent);
 }
 
 .itemActive {
   color: var(--fg) !important;
   font-weight: 500;
-  background: #f0f0f2;
+  background: color-mix(in oklab, var(--fg) 8%, transparent);
 }
 
 .itemActive:hover {
-  background: #ebebed;
+  background: color-mix(in oklab, var(--fg) 10%, transparent);
+}
+
+/* ─── Untranslated badge ─────────────────────────────────────────── */
+.item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.untranslatedTag {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: var(--fg-subtle);
+  background: color-mix(in oklab, var(--fg) 6%, transparent);
+  border-radius: 3px;
+  padding: 0.05em 0.35em;
+  flex-shrink: 0;
+  line-height: 1.5;
 }
