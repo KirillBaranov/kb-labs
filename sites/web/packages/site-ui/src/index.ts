@@ -11,6 +11,34 @@ export type { BadgeProps } from './components/ui/badge';
 export { Input } from './components/ui/input';
 export type { InputProps } from './components/ui/input';
 
+export { Textarea } from './components/ui/textarea';
+export type { TextareaProps } from './components/ui/textarea';
+
+export {
+  Select, SelectGroup, SelectValue, SelectTrigger,
+  SelectContent, SelectLabel, SelectItem, SelectSeparator,
+  SelectScrollUpButton, SelectScrollDownButton,
+} from './components/ui/select';
+
+export { FormField } from './components/ui/form-field';
+export type { FormFieldProps } from './components/ui/form-field';
+
+export { Alert } from './components/ui/alert';
+export type { AlertProps } from './components/ui/alert';
+
+export {
+  Dialog, DialogTrigger, DialogPortal, DialogOverlay, DialogClose,
+  DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription,
+} from './components/ui/dialog';
+
+export {
+  Toast, ToastProvider, ToastViewport, ToastTitle, ToastDescription,
+  ToastAction, ToastClose,
+} from './components/ui/toast';
+export type { ToastProps, ToastActionElement, ToastVariant } from './components/ui/toast';
+
+export { Toaster } from './components/ui/toaster';
+
 export { ThemeToggle } from './components/ui/theme-toggle';
 export type { ThemeToggleProps } from './components/ui/theme-toggle';
 
@@ -69,6 +97,18 @@ export type { LogoGridProps, LogoItem } from './components/marketing/logo-grid';
 export { MockupFrame } from './components/marketing/mockup-frame';
 export type { MockupFrameProps } from './components/marketing/mockup-frame';
 
+export { PricingCard } from './components/marketing/pricing-card';
+export type { PricingCardProps } from './components/marketing/pricing-card';
+
+export { ComparisonTable } from './components/marketing/comparison-table';
+export type { ComparisonTableProps, ComparisonCategory, ComparisonRow } from './components/marketing/comparison-table';
+
+export { CookieBanner } from './components/marketing/cookie-banner';
+export type { CookieBannerProps } from './components/marketing/cookie-banner';
+
+export { AnnouncementBar } from './components/marketing/announcement-bar';
+export type { AnnouncementBarProps } from './components/marketing/announcement-bar';
+
 // Effects
 export { AnimateOnScroll } from './components/effects/animate-on-scroll';
 export type { AnimateOnScrollProps } from './components/effects/animate-on-scroll';
@@ -85,6 +125,8 @@ export type { DotPatternProps, GridPatternProps } from './components/effects/dot
 // Hooks
 export { useTheme } from './hooks/useTheme';
 export type { Theme } from './hooks/useTheme';
+
+export { useToast, toast } from './hooks/useToast';
 
 // Utils
 export { cn } from './lib/utils';

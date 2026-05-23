@@ -15,7 +15,7 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
           'text-[0.97rem] text-kb-text placeholder:text-muted/60',
           'font-inherit outline-none transition-[border-color,box-shadow] duration-150',
           error
-            ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
+            ? 'border-destructive focus:border-destructive focus:ring-2 focus:ring-destructive/20'
             : 'border-line-strong focus:border-accent focus:ring-2 focus:ring-accent/[0.12]',
           'disabled:opacity-60 disabled:cursor-not-allowed',
           className

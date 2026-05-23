@@ -19,8 +19,6 @@ export function Section({
       className={cn(
         'py-[clamp(3rem,6vw,5rem)]',
         !noBorder && 'border-b border-line',
-        variant === 'default' && 'bg-surface',
-        variant === 'tinted' && 'bg-bg',
         className
       )}
       {...props}

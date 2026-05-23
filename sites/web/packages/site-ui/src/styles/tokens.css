@@ -1,5 +1,22 @@
 /* KB Labs design tokens — RGB channels for Tailwind opacity modifiers */
 :root {
+  /* shadcn/ui compatibility — point to our channel values */
+  --background:           var(--color-bg);
+  --foreground:           var(--color-text);
+  --card:                 var(--color-surface);
+  --card-foreground:      var(--color-text);
+  --popover:              var(--color-surface);
+  --popover-foreground:   var(--color-text);
+  --primary:              var(--color-text);
+  --primary-foreground:   var(--color-surface);
+  --secondary:            var(--color-bg);
+  --secondary-foreground: var(--color-text);
+  --destructive:          239 68 68;
+  --destructive-foreground: 255 255 255;
+  --border:               var(--color-line);
+  --input:                var(--color-line-strong);
+  --ring:                 var(--color-accent);
+  --radius:               10px;
   --color-bg:           234 237 244;
   --color-surface:      255 255 255;
   --color-text:         11 13 20;
@@ -29,6 +46,7 @@
 }
 
 .dark {
+  --destructive:          220 38 38;
   --color-bg:           9 11 16;
   --color-surface:      15 18 26;
   --color-text:         230 234 244;

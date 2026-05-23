@@ -1,3 +1,4 @@
+import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
 import { cn } from '../../lib/utils';
@@ -26,16 +27,13 @@ export const buttonVariants = cva(
           'bg-transparent text-kb-text ring-1 ring-inset ring-line-strong hover:ring-accent hover:text-accent',
       },
       size: {
-        sm: 'px-[0.75rem] py-[0.38rem] text-[0.8rem]',
-        md: 'px-[1.1rem]  py-[0.65rem] text-[0.95rem]',
-        lg: 'px-[1.6rem]  py-[0.9rem]  text-[1.05rem]',
+        sm:   'px-[0.75rem] py-[0.38rem] text-[0.8rem]',
+        md:   'px-[1.1rem]  py-[0.65rem] text-[0.95rem]',
+        lg:   'px-[1.6rem]  py-[0.9rem]  text-[1.05rem]',
         icon: 'size-9 p-0',
       },
     },
-    defaultVariants: {
-      variant: 'primary',
-      size: 'md',
-    },
+    defaultVariants: { variant: 'primary', size: 'md' },
   }
 );
 
@@ -46,48 +44,58 @@ type ButtonBaseProps = ButtonVariants & {
   children?: React.ReactNode;
 };
 
-type ButtonAsButton = ButtonBaseProps &
-  Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, keyof ButtonBaseProps> & {
-    href?: undefined;
-    asChild?: false;
-  };
+type ButtonAsChild = ButtonBaseProps & {
+  asChild: true;
+  href?: undefined;
+} & React.HTMLAttributes<HTMLElement>;
 
-type ButtonAsLink = ButtonBaseProps &
-  Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, keyof ButtonBaseProps> & {
-    href: string;
-    asChild?: false;
-  };
+type ButtonAsLink = ButtonBaseProps & {
+  asChild?: false;
+  href: string;
+} & Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, keyof ButtonBaseProps>;
 
-export type ButtonProps = ButtonAsButton | ButtonAsLink;
+type ButtonAsButton = ButtonBaseProps & {
+  asChild?: false;
+  href?: undefined;
+} & Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, keyof ButtonBaseProps>;
 
-export const Button = React.forwardRef<
-  HTMLButtonElement | HTMLAnchorElement,
-  ButtonProps
->(({ className, variant, size, children, href, ...props }, ref) => {
-  const classes = cn(buttonVariants({ variant, size }), className);
+export type ButtonProps = ButtonAsChild | ButtonAsLink | ButtonAsButton;
 
-  if (href !== undefined) {
+export const Button = React.forwardRef<HTMLElement, ButtonProps>(
+  ({ className, variant, size, children, asChild, href, ...props }, ref) => {
+    const classes = cn(buttonVariants({ variant, size }), className);
+
+    if (asChild) {
+      return (
+        <Slot ref={ref as React.Ref<HTMLElement>} className={classes} {...props}>
+          {children}
+        </Slot>
+      );
+    }
+
+    if (href !== undefined) {
+      return (
+        <a
+          href={href}
+          ref={ref as React.Ref<HTMLAnchorElement>}
+          className={classes}
+          {...(props as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
+        >
+          {children}
+        </a>
+      );
+    }
+
     return (
-      <a
-        href={href}
-        ref={ref as React.Ref<HTMLAnchorElement>}
+      <button
+        ref={ref as React.Ref<HTMLButtonElement>}
         className={classes}
-        {...(props as React.AnchorHTMLAttributes<HTMLAnchorElement>)}
+        {...(props as React.ButtonHTMLAttributes<HTMLButtonElement>)}
       >
         {children}
-      </a>
+      </button>
     );
   }
-
-  return (
-    <button
-      ref={ref as React.Ref<HTMLButtonElement>}
-      className={classes}
-      {...(props as React.ButtonHTMLAttributes<HTMLButtonElement>)}
-    >
-      {children}
-    </button>
-  );
-});
+);
 
 Button.displayName = 'Button';

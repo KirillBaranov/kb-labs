@@ -1,0 +1,48 @@
+{
+  "name": "@kb-labs/adapters-s3",
+  "description": "S3-compatible storage adapter implementing IStorage interface (supports MinIO)",
+  "version": "2.94.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "clean": "rimraf dist",
+    "dev": "tsup --watch",
+    "test": "vitest run --passWithNoTests",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.0.0"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@kb-labs/sdk": "workspace:*",
+    "@types/node": "^24.3.3",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "kb": {
+    "manifest": "./dist/manifest.js"
+  },
+  "peerDependencies": {
+    "@kb-labs/sdk": "workspace:^"
+  },
+  "sideEffects": false
+}

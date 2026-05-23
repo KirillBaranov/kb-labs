@@ -62,9 +62,9 @@ targets:
   kb-marketplace-registry:
     watch:
       - plugins/marketplace-registry/**
+      - adapters/s3/**
       - adapters/redis/**
       - adapters/pino/**
-      - adapters/fs/**
       - adapters/log-ringbuffer/**
       - core/**
       - shared/**
