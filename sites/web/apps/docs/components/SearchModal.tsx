@@ -16,7 +16,7 @@ type Result = {
   matches?: readonly { key?: string; value?: string; indices: readonly [number, number][] }[];
 };
 
-let cachedIndex: SearchRecord[] | null = null;
+const indexCache: Record<string, SearchRecord[]> = {};
 
 function highlight(text: string, query: string): string {
   if (!query.trim()) return text;
@@ -48,20 +48,19 @@ export function SearchModal({ onClose, locale }: Props) {
 
   // Load index once
   useEffect(() => {
-    if (fuseRef.current) return;
-    if (cachedIndex) {
-      fuseRef.current = buildFuse(cachedIndex);
+    if (indexCache[locale]) {
+      fuseRef.current = buildFuse(indexCache[locale]);
       return;
     }
     setLoading(true);
     fetch(`/api/search-index?locale=${locale}`)
       .then((r) => r.json())
       .then((data: SearchRecord[]) => {
-        cachedIndex = data;
+        indexCache[locale] = data;
         fuseRef.current = buildFuse(data);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [locale]);
 
   const search = useCallback((q: string) => {
     if (!fuseRef.current || !q.trim()) {

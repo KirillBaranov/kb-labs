@@ -53,7 +53,7 @@ export default defineCommand<unknown, CLIInput<RunsListFlags>, { exitCode: numbe
         const client = new WorkflowDaemonClient();
         const runs = await client.listRuns({
           status: flags?.status,
-          limit: typeof limit === 'number' ? limit : 20,
+          limit: Number(limit) || 20,
           workflowId: flags?.workflow,
         });
 
