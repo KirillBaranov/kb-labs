@@ -128,7 +128,7 @@ export const authLogin = defineSystemCommand<LoginFlags, LoginResult>({
       });
     } else {
       ctx.ui?.write?.(`Authenticated with Gateway at ${gatewayUrl}\n`);
-      if (handle) ctx.ui?.write?.(`Handle: ${handle}\n`);
+      if (handle) { ctx.ui?.write?.(`Handle: ${handle}\n`); }
       ctx.ui?.write?.(`Token expires in ${Math.floor(tokenData.expiresIn / 60)} minutes (auto-refresh enabled).\n`);
     }
 
