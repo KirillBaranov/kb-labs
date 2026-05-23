@@ -81,22 +81,6 @@ jobs:
       - name: Deploy marketplace-registry-app (pnpm deploy)
         run: pnpm deploy --filter @kb-labs/marketplace-registry-app --prod .kb/deploy/marketplace-registry-app
 
-      - name: Provision VPS env (idempotent)
-        env:
-          SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_USER: ${{ secrets.SSH_USER }}
-          SSH_KEY: ${{ secrets.SSH_KEY }}
-          KB_REGISTRY_ADMIN_TOKEN: ${{ secrets.KB_REGISTRY_ADMIN_TOKEN }}
-        run: |
-          echo "$SSH_KEY" > /tmp/deploy_key && chmod 600 /tmp/deploy_key
-          # Write admin token to VPS .env (idempotent)
-          ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" \
-            "grep -q KB_REGISTRY_ADMIN_TOKEN ~/kb-labs/.env 2>/dev/null || printf '%s\n' 'KB_REGISTRY_ADMIN_TOKEN=$KB_REGISTRY_ADMIN_TOKEN' >> ~/kb-labs/.env"
-          # Patch docker-compose to expose KB_REGISTRY_ADMIN_TOKEN to the container (idempotent)
-          ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no "$SSH_USER@$SSH_HOST" \
-            "grep -q 'KB_REGISTRY_ADMIN_TOKEN' ~/kb-labs/docker-compose.backend.yml || sed -i 's/- KB_REGISTRY_URL=/- KB_REGISTRY_ADMIN_TOKEN\n      - KB_REGISTRY_URL=/' ~/kb-labs/docker-compose.backend.yml"
-          rm -f /tmp/deploy_key
-
       - name: Login to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
