@@ -22,9 +22,9 @@ export async function CodeBlock({ code, language = 'typescript', filename, class
   const hasHeader = Boolean(filename || language);
 
   return (
-    <div className={cn('rounded-xl border border-line overflow-hidden', className)}>
+    <div className={cn('rounded-xl border border-line-strong overflow-hidden shadow-card', className)}>
       {hasHeader && (
-        <div className="flex items-center justify-between px-4 py-2 border-b border-line/50 bg-surface/5">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-line bg-bg">
           <div className="flex items-center gap-2">
             {filename && (
               <span className="text-xs text-muted font-mono">{filename}</span>
