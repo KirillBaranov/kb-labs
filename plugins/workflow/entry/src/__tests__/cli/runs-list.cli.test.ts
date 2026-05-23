@@ -120,4 +120,19 @@ describe('workflow:runs list', () => {
     expect(result.exitCode).toBe(1);
     expect(captured.errors.length).toBeGreaterThan(0);
   });
+
+  it('CL-08: --limit "3" (string) passes limit=3 to client', async () => {
+    MockedClient.mockImplementation(() => makeClient({
+      listRuns: async (params: { status?: string; limit?: number; workflowId?: string } = {}) => {
+        expect(params.limit).toBe(3);
+        return sampleRuns.slice(0, 1);
+      },
+    }));
+
+    const { ui } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await runsListCommand.execute(ctx, mockCLIInput({ flags: { limit: '3' as unknown as number } }));
+
+    expect(result.exitCode).toBe(0);
+  });
 });

@@ -16,6 +16,18 @@
   --code-border: #d9dde6;
   --code-fg: #374151;
 
+  /* Code blocks */
+  --code-block-bg: #f6f8fa;
+  --code-block-toolbar-bg: #eef0f4;
+  --code-block-border: #d9dde6;
+  --code-block-toolbar-border: #d0d5df;
+  --code-block-lang: #6e7681;
+  --code-block-btn: #57606a;
+  --code-block-btn-border: #d0d5df;
+  --code-block-btn-hover-bg: #e6e8ec;
+  --code-block-highlight-line: rgba(84, 174, 255, 0.1);
+  --code-block-highlight-bar: #0969da;
+
   /* Docs layout */
   --docs-header-height: 60px;
   --docs-sidebar-width: 280px;
@@ -39,6 +51,18 @@
   --code-bg: #1e2030;
   --code-border: #26293a;
   --code-fg: #c0caf5;
+
+  /* Code blocks */
+  --code-block-bg: #22272e;
+  --code-block-toolbar-bg: #1c2128;
+  --code-block-border: #373c4e;
+  --code-block-toolbar-border: #2d333b;
+  --code-block-lang: #768390;
+  --code-block-btn: #adbac7;
+  --code-block-btn-border: #2d333b;
+  --code-block-btn-hover-bg: #2d333b;
+  --code-block-highlight-line: rgba(99, 110, 123, 0.15);
+  --code-block-highlight-bar: #539bf5;
 }
 
 /* ─── Shiki dual-theme ───────────────────────────────────────────────── */
