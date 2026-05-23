@@ -19,6 +19,10 @@ export interface GatewayCredentials {
   refreshToken: string;
   /** Unix timestamp (ms) when accessToken expires */
   expiresAt: number;
+  /** Author handle for marketplace publish (from /auth/me after login) */
+  handle?: string;
+  /** Namespace ID (from /auth/me after login) */
+  namespaceId?: string;
 }
 
 /**

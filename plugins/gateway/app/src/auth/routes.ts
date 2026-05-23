@@ -3,6 +3,7 @@
  * POST /auth/register  — register new agent, get clientId + clientSecret
  * POST /auth/token     — exchange credentials for JWT pair
  * POST /auth/refresh   — rotate refresh token, get new pair
+ * GET  /auth/me        — return profile for the authenticated caller
  */
 
 import type { FastifyInstance } from 'fastify';
@@ -61,5 +62,15 @@ export function registerAuthRoutes(app: FastifyInstance, authService: AuthServic
     }
 
     return reply.send(tokens);
+  });
+
+  // Get caller profile (requires auth — intentionally NOT in PUBLIC_ROUTES)
+  app.get('/auth/me', { schema: { tags: ['Auth'], summary: 'Get profile for the authenticated caller' } }, async (request, reply) => {
+    const { userId } = (request as any).authContext; // userId = hostId (JWT sub), set by auth middleware
+    const profile = await authService.me(userId);
+    if (!profile) {
+      return reply.code(404).send({ error: 'Not found', message: 'Client record not found' });
+    }
+    return reply.send(profile);
   });
 }

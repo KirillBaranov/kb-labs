@@ -19,6 +19,7 @@ import {
   consumeRefreshToken,
   savePublicKey,
   isHandleTaken,
+  getClientByHostId,
 } from './store.js';
 import {
   signAccessToken,
@@ -118,6 +119,14 @@ export class AuthService {
     await saveRefreshToken(this.cache, newRefreshToken, hostId, stored.namespaceId);
 
     return { accessToken, refreshToken: newRefreshToken, expiresIn, tokenType: 'Bearer' };
+  }
+
+  // ── Profile lookup ────────────────────────────────────────────────────────
+
+  async me(hostId: string): Promise<{ hostId: string; handle?: string; namespaceId: string } | null> {
+    const record = await getClientByHostId(this.cache, hostId);
+    if (!record) { return null; }
+    return { hostId: record.hostId, handle: record.handle, namespaceId: record.namespaceId };
   }
 
   // ── Verify access token → AuthContext ────────────────────────────────────
