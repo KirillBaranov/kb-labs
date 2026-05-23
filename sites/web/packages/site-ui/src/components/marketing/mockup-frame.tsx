@@ -35,21 +35,20 @@ export function MockupFrame({
     >
       {type === 'browser' ? (
         <>
-          <div className="bg-surface border-b border-line px-4 py-3 flex items-center gap-3">
+          <div className="bg-chrome border-b border-line px-4 py-3 flex items-center gap-3">
             <TrafficLights />
             <div className="flex-1 flex justify-center">
               <div className="bg-bg rounded-md px-3 py-1 text-xs text-muted font-mono text-center max-w-[280px] w-full truncate">
                 {url ?? 'localhost:3000'}
               </div>
             </div>
-            {/* Spacer to balance traffic lights */}
             <div className="w-[46px]" />
           </div>
           <div>{children}</div>
         </>
       ) : (
         <>
-          <div className="bg-surface border-b border-line px-4 py-3 flex items-center gap-3">
+          <div className="bg-chrome border-b border-line px-4 py-3 flex items-center gap-3">
             <TrafficLights />
             <span className="text-xs text-muted mx-auto">{title}</span>
           </div>

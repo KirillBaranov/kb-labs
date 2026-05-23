@@ -1,15 +1,35 @@
 /* KB Labs design tokens — RGB channels for Tailwind opacity modifiers */
 :root {
-  --color-bg:           247 247 248;
+  /* shadcn/ui compatibility — point to our channel values */
+  --background:           var(--color-bg);
+  --foreground:           var(--color-text);
+  --card:                 var(--color-surface);
+  --card-foreground:      var(--color-text);
+  --popover:              var(--color-surface);
+  --popover-foreground:   var(--color-text);
+  --primary:              var(--color-text);
+  --primary-foreground:   var(--color-surface);
+  --secondary:            var(--color-bg);
+  --secondary-foreground: var(--color-text);
+  --muted:                var(--color-bg);
+  --muted-foreground:     var(--color-muted);
+  --destructive:          239 68 68;
+  --destructive-foreground: 255 255 255;
+  --border:               var(--color-line);
+  --input:                var(--color-line-strong);
+  --ring:                 var(--color-accent);
+  --radius:               10px;
+  --color-bg:           234 237 244;
   --color-surface:      255 255 255;
-  --color-text:         15 17 21;
-  --color-muted:        92 97 109;
-  --color-line:         217 221 230;
-  --color-line-strong:  196 202 216;
-  --color-accent:       12 102 255;
+  --color-text:         11 13 20;
+  --color-muted:        86 96 118;
+  --color-line:         186 194 212;
+  --color-line-strong:  108 118 142;
+  --color-accent:       10 84 226;
 
   --nav-height: 74px;
   --container:  1140px;
+  --chrome-bg:  228 232 242;
 }
 
 /* Shiki dual-theme via CSS variables — defaultColor: false */
@@ -28,12 +48,53 @@
   text-decoration: var(--shiki-dark-text-decoration);
 }
 
+/* ── AnimateOnScroll — data-attribute driven ─────────────────────────────── */
+[data-animate] {
+  transition:
+    opacity  0.6s cubic-bezier(0.22, 1, 0.36, 1) var(--anim-delay, 0ms),
+    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1) var(--anim-delay, 0ms);
+}
+[data-animate="fade"]       { opacity: 0; }
+[data-animate="slide-up"]   { opacity: 0; transform: translateY(24px); }
+[data-animate="slide-left"] { opacity: 0; transform: translateX(24px); }
+[data-animate="scale"]      { opacity: 0; transform: scale(0.95); }
+[data-animate][data-visible]  { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  [data-animate] {
+    transition: opacity 0.1s;
+    transform: none !important;
+  }
+}
+
+/* ── Component chrome (MockupFrame, CodeBlock header) ───────────────────── */
+.bg-chrome { background: rgb(var(--chrome-bg)); }
+
+/* ── GradientText shimmer ───────────────────────────────────────────────── */
+@keyframes gradient-shimmer {
+  0%, 100% { background-position: 0% 50%; }
+  50%       { background-position: 100% 50%; }
+}
+.gradient-text-shimmer { animation: gradient-shimmer 3s ease infinite; }
+
+/* ── LogoGrid marquee ────────────────────────────────────────────────────── */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.marquee-track                         { animation: marquee 25s linear infinite; }
+.marquee-track[data-speed="slow"]      { animation-duration: 40s; }
+.marquee-track[data-speed="normal"]    { animation-duration: 25s; }
+.marquee-track[data-speed="fast"]      { animation-duration: 15s; }
+
 .dark {
-  --color-bg:           13 14 17;
-  --color-surface:      20 22 28;
-  --color-text:         237 239 244;
-  --color-muted:        148 158 176;
-  --color-line:         38 41 58;
-  --color-line-strong:  55 60 78;
-  --color-accent:       59 130 246;
+  --destructive:          220 38 38;
+  --chrome-bg:          38 44 64;
+  --color-bg:           9 11 16;
+  --color-surface:      15 18 26;
+  --color-text:         230 234 244;
+  --color-muted:        128 140 166;
+  --color-line:         44 54 78;
+  --color-line-strong:  86 100 138;
+  --color-accent:       58 130 246;
 }
