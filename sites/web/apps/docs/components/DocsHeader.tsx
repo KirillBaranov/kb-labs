@@ -2,7 +2,10 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { SearchModal } from './SearchModal';
+import { LocaleSwitcher } from './LocaleSwitcher';
+import { ThemeToggle } from './ThemeToggle';
 import s from './DocsHeader.module.css';
 
 function GithubIcon() {
@@ -22,13 +25,18 @@ function SearchIcon() {
   );
 }
 
-export function DocsHeader() {
+type Props = {
+  locale: string;
+  slug: string[];
+};
+
+export function DocsHeader({ locale, slug }: Props) {
+  const t = useTranslations('header');
   const [open, setOpen] = useState(false);
 
   const openSearch = useCallback(() => setOpen(true), []);
   const closeSearch = useCallback(() => setOpen(false), []);
 
-  // ⌘K / Ctrl+K
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -44,30 +52,34 @@ export function DocsHeader() {
     <>
       <header className={s.header}>
         <div className={s.inner}>
-          <Link href="/quick-start" className={s.brand}>
+          <Link href={`/${locale}/quick-start`} className={s.brand}>
             <span className={s.brandName}>KB Labs</span>
             <span className={s.brandTag}>Docs</span>
           </Link>
 
           <nav className={s.navTabs}>
-            <Link href="/quick-start" className={`${s.navTab} ${s.navTabActive}`}>Docs</Link>
-            <a href="https://kblabs.ru/changelog" className={s.navTab} target="_blank" rel="noopener noreferrer">Changelog</a>
+            <Link href={`/${locale}/quick-start`} className={`${s.navTab} ${s.navTabActive}`}>Docs</Link>
+            <a href="https://kblabs.ru/changelog" className={s.navTab} target="_blank" rel="noopener noreferrer">
+              {t('changelog')}
+            </a>
           </nav>
 
           <div className={s.searchWrap}>
             <button
               className={s.search}
               onClick={openSearch}
-              aria-label="Search documentation (⌘K)"
+              aria-label={`${t('search')} (${t('searchKbd')})`}
               type="button"
             >
               <SearchIcon />
-              <span className={s.searchText}>Search documentation…</span>
-              <kbd className={s.searchKbd}>⌘ K</kbd>
+              <span className={s.searchText}>{t('search')}</span>
+              <kbd className={s.searchKbd}>{t('searchKbd')}</kbd>
             </button>
           </div>
 
           <div className={s.right}>
+            <LocaleSwitcher locale={locale} slug={slug} />
+            <ThemeToggle />
             <a
               className={s.iconBtn}
               href="https://github.com/KirillBaranov/kb-labs"
@@ -77,12 +89,14 @@ export function DocsHeader() {
             >
               <GithubIcon />
             </a>
-            <a className={s.ctaBtn} href="https://kblabs.ru/en/signup" target="_blank" rel="noopener noreferrer">Join waitlist</a>
+            <a className={s.ctaBtn} href="https://kblabs.ru/en/signup" target="_blank" rel="noopener noreferrer">
+              {t('waitlist')}
+            </a>
           </div>
         </div>
       </header>
 
-      {open && <SearchModal onClose={closeSearch} />}
+      {open && <SearchModal onClose={closeSearch} locale={locale} />}
     </>
   );
 }

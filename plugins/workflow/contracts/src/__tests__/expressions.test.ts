@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { evaluateExpression, interpolateString, resolveExpression, interpolateObject, resolveValue } from '../expressions'
+import { evaluateExpression, interpolateString, resolveExpression, interpolateObject, resolveValue, coerceToString } from '../expressions'
 import type { ExpressionContext } from '../types'
 
 describe('Expression Evaluation', () => {
@@ -360,6 +360,40 @@ describe('|| (logical OR / default value) operator', () => {
   })
 })
 
+describe('coerceToString (BUG-001 — direct unit)', () => {
+  it('returns string values unchanged', () => {
+    expect(coerceToString('hello')).toBe('hello')
+    expect(coerceToString('{"foo":1}')).toBe('{"foo":1}')
+  })
+
+  it('JSON.stringifies objects', () => {
+    expect(coerceToString({ vendor: 'ACME', amount: 5000 })).toBe('{"vendor":"ACME","amount":5000}')
+  })
+
+  it('JSON.stringifies arrays', () => {
+    expect(coerceToString([{ desc: 'Consulting' }])).toBe('[{"desc":"Consulting"}]')
+  })
+
+  it('handles boolean', () => {
+    expect(coerceToString(true)).toBe('true')
+    expect(coerceToString(false)).toBe('false')
+  })
+
+  it('handles number', () => {
+    expect(coerceToString(42)).toBe('42')
+    expect(coerceToString(0)).toBe('0')
+  })
+
+  it('handles null and undefined as empty string', () => {
+    expect(coerceToString(null)).toBe('')
+    expect(coerceToString(undefined)).toBe('')
+  })
+
+  it('does not produce [object Object] for plain objects', () => {
+    expect(coerceToString({ vendor: "O'Brien LLC" })).not.toContain('[object Object]')
+  })
+})
+
 describe('coerceToString — object serialization (BUG-001)', () => {
   const ctx: ExpressionContext = {
     env: {},
@@ -417,3 +451,51 @@ describe('coerceToString — object serialization (BUG-001)', () => {
   })
 })
 
+describe('env block coercion (BUG-001 — worker.ts fix)', () => {
+  // Mirrors the fix in worker.ts: after interpolateObject, apply coerceToString to each value
+  // so that object/array inputs become valid JSON strings, not "[object Object]".
+  const ctx: ExpressionContext = {
+    env: {},
+    trigger: { type: 'manual' },
+    steps: {},
+    inputs: {
+      invoice_payload: { vendor: 'ACME Corp', amount: 15000, currency: 'USD' },
+      tags: ['urgent', 'finance'],
+    },
+  }
+
+  it('coercing interpolateObject result produces string env values for object inputs', () => {
+    const raw = interpolateObject(
+      { KB_INVOICE_PAYLOAD: '${{ inputs.invoice_payload }}' },
+      ctx,
+    )
+    const envVars = Object.fromEntries(
+      Object.entries(raw).map(([k, v]) => [k, coerceToString(v)])
+    )
+    expect(envVars['KB_INVOICE_PAYLOAD']).toBe('{"vendor":"ACME Corp","amount":15000,"currency":"USD"}')
+    expect(envVars['KB_INVOICE_PAYLOAD']).not.toContain('[object Object]')
+  })
+
+  it('coercing interpolateObject result produces string env values for array inputs', () => {
+    const raw = interpolateObject(
+      { KB_TAGS: '${{ inputs.tags }}' },
+      ctx,
+    )
+    const envVars = Object.fromEntries(
+      Object.entries(raw).map(([k, v]) => [k, coerceToString(v)])
+    )
+    expect(envVars['KB_TAGS']).toBe('["urgent","finance"]')
+  })
+
+  it('string env values pass through unchanged after coercion', () => {
+    const raw = interpolateObject(
+      { KB_ENV: 'production', KB_VERSION: '1.2.3' },
+      ctx,
+    )
+    const envVars = Object.fromEntries(
+      Object.entries(raw).map(([k, v]) => [k, coerceToString(v)])
+    )
+    expect(envVars['KB_ENV']).toBe('production')
+    expect(envVars['KB_VERSION']).toBe('1.2.3')
+  })
+})

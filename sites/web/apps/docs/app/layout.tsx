@@ -1,16 +1,15 @@
 import type { Metadata } from 'next';
 import { Inter, Plus_Jakarta_Sans } from 'next/font/google';
-import { Analytics } from '@/components/Analytics';
 import './globals.css';
 
 const headingFont = Plus_Jakarta_Sans({
-  subsets: ['latin'],
+  subsets: ['latin', 'cyrillic'],
   variable: '--font-heading',
   display: 'swap',
 });
 
 const bodyFont = Inter({
-  subsets: ['latin'],
+  subsets: ['latin', 'cyrillic'],
   variable: '--font-body',
   display: 'swap',
 });
@@ -40,10 +39,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html suppressHydrationWarning>
       <body className={`${headingFont.variable} ${bodyFont.variable}`}>
         {children}
-        <Analytics />
       </body>
     </html>
   );

@@ -216,7 +216,7 @@ export function resolveValue(path: string, context: ExpressionContext): unknown 
 /**
  * Coerce value to string for comparison
  */
-function coerceToString(value: unknown): string {
+export function coerceToString(value: unknown): string {
   if (value === null || value === undefined) {
     return ''
   }
