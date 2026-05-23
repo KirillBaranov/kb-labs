@@ -1,0 +1,23 @@
+/* KB Labs design tokens — RGB channels for Tailwind opacity modifiers */
+:root {
+  --color-bg:           247 247 248;
+  --color-surface:      255 255 255;
+  --color-text:         15 17 21;
+  --color-muted:        92 97 109;
+  --color-line:         217 221 230;
+  --color-line-strong:  196 202 216;
+  --color-accent:       12 102 255;
+
+  --nav-height: 74px;
+  --container:  1140px;
+}
+
+.dark {
+  --color-bg:           13 14 17;
+  --color-surface:      20 22 28;
+  --color-text:         237 239 244;
+  --color-muted:        148 158 176;
+  --color-line:         38 41 58;
+  --color-line-strong:  55 60 78;
+  --color-accent:       59 130 246;
+}
