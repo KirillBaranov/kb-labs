@@ -92,9 +92,9 @@ export function BentoCard({
     >
       {icon && <div className="text-muted w-fit">{icon}</div>}
       <div className="flex flex-col gap-1.5">
-        <h3 className="text-kb-text font-semibold text-base leading-snug">{title}</h3>
+        <h3 className="m-0 text-base font-semibold leading-snug text-kb-text">{title}</h3>
         {description && (
-          <p className="text-muted text-sm leading-relaxed">{description}</p>
+          <p className="m-0 text-sm leading-relaxed text-muted">{description}</p>
         )}
       </div>
       {children && <div className="flex-1">{children}</div>}

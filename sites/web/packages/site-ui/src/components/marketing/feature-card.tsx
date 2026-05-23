@@ -38,11 +38,11 @@ export function FeatureCard({
         </div>
       )}
       <div className="flex flex-col gap-2">
-        <h3 className="text-[1.2rem] font-bold leading-snug tracking-tight text-kb-text">
+        <h3 className="m-0 text-[1.2rem] font-bold leading-snug tracking-tight text-kb-text">
           {title}
         </h3>
         {description && (
-          <p className="text-[0.95rem] leading-[1.65] text-muted">{description}</p>
+          <p className="m-0 text-[0.95rem] leading-[1.65] text-muted">{description}</p>
         )}
       </div>
       {children}
