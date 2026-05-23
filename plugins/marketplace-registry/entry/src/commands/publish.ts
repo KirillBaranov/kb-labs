@@ -1,7 +1,7 @@
 import * as path from 'node:path';
 import * as fs from 'node:fs/promises';
-import { defineCommand, handleError, validationError, useEnv, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
-import { registryPostMultipart, registryPatch } from '../registry-http.js';
+import { defineCommand, handleError, validationError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { registryPostMultipart, registryPatch, resolveRegistryHandle } from '../registry-http.js';
 import { packPlugin } from '../pack-plugin.js';
 
 interface PublishFlags {
@@ -70,7 +70,7 @@ export default defineCommand<unknown, CLIInput<PublishFlags>, { exitCode: number
 
       if (flags.metaOnly) {
         try {
-          const handle = resolveHandle();
+          const handle = await resolveRegistryHandle();
           await registryPatch(`/packages/${handle}/${meta.name}/meta`, meta);
           ctx.ui?.success?.('Metadata updated', {
             sections: [{ header: 'Package', items: [`${meta.name} @ ${handle}`] }],
@@ -148,8 +148,3 @@ export default defineCommand<unknown, CLIInput<PublishFlags>, { exitCode: number
   },
 });
 
-function resolveHandle(): string {
-  const handle = useEnv('KB_REGISTRY_AUTHOR_HANDLE');
-  if (!handle) { throw new Error('KB_REGISTRY_AUTHOR_HANDLE is not set'); }
-  return handle;
-}

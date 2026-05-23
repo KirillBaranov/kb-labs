@@ -90,6 +90,22 @@ export const authLogin = defineSystemCommand<LoginFlags, LoginResult>({
       expiresIn: number;
     };
 
+    // Fetch profile (handle, namespaceId) via /auth/me
+    let handle: string | undefined;
+    let namespaceId: string | undefined;
+    try {
+      const meRes = await fetch(`${gatewayUrl}/auth/me`, {
+        headers: { Authorization: `Bearer ${tokenData.accessToken}` },
+      });
+      if (meRes.ok) {
+        const profile = await meRes.json() as { handle?: string; namespaceId?: string };
+        handle = profile.handle;
+        namespaceId = profile.namespaceId;
+      }
+    } catch {
+      // /auth/me failure is non-fatal — credentials still saved without profile
+    }
+
     // Save credentials
     const credentialsManager = new CredentialsManager();
     const expiresAt = Date.now() + tokenData.expiresIn * 1000;
@@ -99,6 +115,8 @@ export const authLogin = defineSystemCommand<LoginFlags, LoginResult>({
       accessToken: tokenData.accessToken,
       refreshToken: tokenData.refreshToken,
       expiresAt,
+      handle,
+      namespaceId,
     });
 
     if (flags.json) {
@@ -106,9 +124,11 @@ export const authLogin = defineSystemCommand<LoginFlags, LoginResult>({
         ok: true,
         gatewayUrl,
         expiresIn: tokenData.expiresIn,
+        ...(handle ? { handle } : {}),
       });
     } else {
       ctx.ui?.write?.(`Authenticated with Gateway at ${gatewayUrl}\n`);
+      if (handle) ctx.ui?.write?.(`Handle: ${handle}\n`);
       ctx.ui?.write?.(`Token expires in ${Math.floor(tokenData.expiresIn / 60)} minutes (auto-refresh enabled).\n`);
     }
 
