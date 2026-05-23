@@ -82,6 +82,26 @@ export type { FeatureCardProps } from './components/marketing/feature-card';
 export { StepCard } from './components/marketing/step-card';
 export type { StepCardProps } from './components/marketing/step-card';
 
+export { WorkflowDiagram } from './components/marketing/workflow-diagram';
+export type { WorkflowDiagramProps } from './components/marketing/workflow-diagram';
+
+export { AgentDiagram } from './components/marketing/agent-diagram';
+export type { AgentDiagramProps } from './components/marketing/agent-diagram';
+
+export { WorkflowRunBlock } from './components/marketing/workflow-run-block';
+export type { WorkflowRunBlockProps } from './components/marketing/workflow-run-block';
+
+export { WorkflowLiveGraph } from './components/marketing/workflow-live-graph';
+export type { WorkflowLiveGraphProps } from './components/marketing/workflow-live-graph';
+
+export { PluginSurfaceDiagram } from './components/marketing/plugin-surface-diagram';
+export type { PluginSurfaceDiagramProps } from './components/marketing/plugin-surface-diagram';
+
+export { PluginLifecycleDiagram } from './components/marketing/plugin-lifecycle-diagram';
+export type { PluginLifecycleDiagramProps } from './components/marketing/plugin-lifecycle-diagram';
+
+export { PainCards } from './components/marketing/pain-cards';
+
 export { GridSection } from './components/marketing/grid-section';
 export type { GridSectionProps } from './components/marketing/grid-section';
 
@@ -136,7 +156,7 @@ export type { DotPatternProps, GridPatternProps } from './components/effects/dot
 
 // Hooks
 export { useTheme } from './hooks/useTheme';
-export type { Theme } from './hooks/useTheme';
+export type { Theme, ThemePreference } from './hooks/useTheme';
 
 export { useToast, toast } from './hooks/useToast';
 

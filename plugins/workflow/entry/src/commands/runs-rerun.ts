@@ -8,6 +8,7 @@ import { defineCommand, validationError, handleError, type CLIInput, type Plugin
 import { WorkflowDaemonClient } from '../http-client.js';
 
 interface RunsRerunFlags {
+  'run-id'?: string;
   json?: boolean;
   'failed-only'?: boolean;
   'dry-run'?: boolean;
@@ -19,7 +20,7 @@ export default defineCommand<unknown, CLIInput<RunsRerunFlags>, { exitCode: numb
 
   handler: {
     async intent(_ctx: PluginContextV3, input: CLIInput<RunsRerunFlags>) {
-      const runId = input.argv[0];
+      const runId = input.flags?.['run-id'] ?? input.argv[0];
       const failedOnly = input.flags?.['failed-only'];
       return {
         summary: `Rerun workflow run ${runId ?? '(unknown)'}${failedOnly ? ' (failed jobs only)' : ''}`,
@@ -30,10 +31,10 @@ export default defineCommand<unknown, CLIInput<RunsRerunFlags>, { exitCode: numb
     async execute(ctx: PluginContextV3, input: CLIInput<RunsRerunFlags>): Promise<{ exitCode: number }> {
       const { flags, argv = [] } = input;
       const outputJson = flags?.json ?? false;
-      const runId = argv[0];
+      const runId = flags?.['run-id'] ?? argv[0];
 
       if (!runId) {
-        validationError(ctx, 'Missing run ID', 'Usage: kb workflow runs-rerun <runId> [--failed-only]', outputJson);
+        validationError(ctx, 'Missing run ID', 'Usage: kb workflow runs-rerun <runId> [--run-id=<id>] [--failed-only]', outputJson);
         return { exitCode: 1 };
       }
       const failedOnly = flags?.['failed-only'] ?? false;

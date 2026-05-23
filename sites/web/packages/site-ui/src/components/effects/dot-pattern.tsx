@@ -8,7 +8,8 @@ export interface DotPatternProps {
 }
 
 export function DotPattern({ className, size = 24, cr = 1 }: DotPatternProps) {
-  const patternId = 'dot-pattern';
+  const id = React.useId();
+  const patternId = `dot-pattern-${id.replace(/:/g, '')}`;
 
   return (
     <svg
@@ -42,7 +43,8 @@ export interface GridPatternProps {
 }
 
 export function GridPattern({ className, size = 24 }: GridPatternProps) {
-  const patternId = 'grid-pattern';
+  const id = React.useId();
+  const patternId = `grid-pattern-${id.replace(/:/g, '')}`;
 
   return (
     <svg

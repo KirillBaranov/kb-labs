@@ -478,7 +478,7 @@
     },
     "@kb-labs/clickup": {
       "version": "0.1.0",
-      "integrity": "sha256-yvW2oiz6+YtMSbRGtACy+FNvHc3Zk/bAHEqEQtXkNH8=",
+      "integrity": "sha256-RXxWWjx3dx90CtXxzu+VHZ9ZlOuRwy5p2m65RJ5dkns=",
       "resolvedPath": "./plugins/clickup/entry",
       "installedAt": "2026-05-14T21:11:02.022Z",
       "source": "local",

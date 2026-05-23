@@ -26,7 +26,7 @@ export function SectionHeader({
   return (
     <div
       className={cn(
-        'mb-[clamp(2rem,4vw,3rem)]',
+        'mb-8',
         action && 'flex items-start justify-between gap-6',
         className
       )}

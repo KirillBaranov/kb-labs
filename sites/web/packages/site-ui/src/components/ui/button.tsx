@@ -6,7 +6,7 @@ import { cn } from '../../lib/utils';
 export const buttonVariants = cva(
   [
     'inline-flex items-center justify-center gap-2 whitespace-nowrap',
-    'rounded-md font-[650] leading-none border-0 outline-none cursor-pointer',
+    'rounded-md font-semibold leading-none border-0 outline-none cursor-pointer',
     'transition-all duration-[180ms] ease-out',
     'hover:-translate-y-0.5 active:translate-y-0',
     'disabled:opacity-60 disabled:cursor-not-allowed disabled:transform-none',
@@ -27,9 +27,9 @@ export const buttonVariants = cva(
           'bg-transparent text-kb-text ring-1 ring-inset ring-line-strong hover:ring-accent hover:text-accent',
       },
       size: {
-        sm:   'px-[0.75rem] py-[0.38rem] text-[0.8rem]',
-        md:   'px-[1.1rem]  py-[0.65rem] text-[0.95rem]',
-        lg:   'px-[1.6rem]  py-[0.9rem]  text-[1.05rem]',
+        sm:   'px-3    py-1.5  text-[0.8rem]',
+        md:   'px-4    py-2.5  text-[0.9rem]',
+        lg:   'px-6    py-3    text-[1rem]',
         icon: 'size-9 p-0',
       },
     },

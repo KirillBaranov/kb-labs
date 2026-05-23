@@ -305,6 +305,7 @@ export const JobRunSchema = z.object({
   pendingDependencies: z.array(z.string().min(1)).optional(),
   blocked: z.boolean().optional(),
   priority: z.enum(['high', 'normal', 'low']).optional(),
+  if: z.string().optional(),
   steps: z.array(StepRunSchema),
 })
 

@@ -482,7 +482,17 @@ export async function createWorkflowWorker(
             ? { ...baseSpec, with: { ...(baseSpec.with ?? {}), env: { ...(baseSpec.with?.['env'] as Record<string, string> | undefined ?? {}), ...interpolatedEnv } } }
             : baseSpec;
           const interpolatedSpec = interpolatedWith
-            ? { ...specWithEnv, with: { ...(specWithEnv.with ?? {}), ...interpolatedWith } }
+            ? {
+                ...specWithEnv,
+                with: {
+                  ...(specWithEnv.with ?? {}),
+                  ...interpolatedWith,
+                  // spec.env (interpolatedEnv) must survive the spread of interpolatedWith.env
+                  ...(interpolatedEnv
+                    ? { env: { ...(interpolatedWith['env'] as Record<string, string> | undefined ?? {}), ...interpolatedEnv } }
+                    : {}),
+                },
+              }
             : specWithEnv;
 
           // Delegate execution to the execution plane.
@@ -564,6 +574,15 @@ export async function createWorkflowWorker(
               resolvedInputs: interpolatedWith,
               errorCode: result.error?.code,
             });
+
+            if (step.continueOnError) {
+              stepLogger.warn('[step] continueOnError=true — continuing despite failure', {
+                runId: run.id,
+                jobId: job.id,
+                stepId: step.id,
+              });
+              continue;
+            }
             throw error;
           }
 
