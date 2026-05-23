@@ -124,6 +124,7 @@
         }
       },
       "workspace": {
+        "worktreeDir": "/tmp/kb-worktrees",
         "gatewayUrl": "http://localhost:4000",
         "namespaceId": "default",
         "cacheDir": ".kb/runtime/workspaces"

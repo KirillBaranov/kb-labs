@@ -5,19 +5,27 @@ export type SectionProps = React.HTMLAttributes<HTMLElement> & {
   as?: React.ElementType;
   variant?: 'default' | 'tinted';
   noBorder?: boolean;
+  size?: 'sm' | 'md' | 'lg';
+};
+
+const SIZE = {
+  sm: 'py-20',
+  md: 'py-28',
+  lg: 'py-36',
 };
 
 export function Section({
   as: Tag = 'section',
   className,
   variant = 'default',
-  noBorder = false,
+  noBorder = true,
+  size = 'sm',
   ...props
 }: SectionProps) {
   return (
     <Tag
       className={cn(
-        'py-[clamp(3rem,6vw,5rem)]',
+        SIZE[size],
         !noBorder && 'border-b border-line',
         className
       )}

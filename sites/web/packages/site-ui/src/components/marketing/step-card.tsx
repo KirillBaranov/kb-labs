@@ -15,8 +15,8 @@ export function StepCard({ num, title, description, children, className }: StepC
   return (
     <div
       className={cn(
-        'flex flex-col gap-[0.6rem] rounded-xl border border-line bg-surface',
-        'p-[clamp(1.5rem,3vw,2rem)]',
+        'flex flex-col gap-2 rounded-xl border border-line bg-surface',
+        'p-5',
         className
       )}
     >

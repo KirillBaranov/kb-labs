@@ -58,6 +58,8 @@
 [data-animate="slide-up"]   { opacity: 0; transform: translateY(24px); }
 [data-animate="slide-left"] { opacity: 0; transform: translateX(24px); }
 [data-animate="scale"]      { opacity: 0; transform: scale(0.95); }
+[data-animate="grow-down"]  { opacity: 0; transform: scaleY(0); transform-origin: top; }
+[data-animate="grow-right"] { opacity: 0; transform: scaleX(0); transform-origin: left; }
 [data-animate][data-visible]  { opacity: 1; transform: none; }
 
 @media (prefers-reduced-motion: reduce) {

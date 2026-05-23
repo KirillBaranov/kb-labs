@@ -11,7 +11,8 @@ import type { WorkflowRunDetail } from '../http-client.js';
 import { WorkflowDaemonClient } from '../http-client.js';
 
 interface RunsViewFlags {
-  json?: string;
+  'run-id'?: string;
+  json?: string | boolean;
   log?: boolean;
   'log-failed'?: boolean;
   step?: string;
@@ -128,13 +129,14 @@ export default defineCommand<unknown, CLIInput<RunsViewFlags>, { exitCode: numbe
   handler: {
     async execute(ctx: PluginContextV3, input: CLIInput<RunsViewFlags>): Promise<{ exitCode: number }> {
       const { flags, argv = [] } = input;
-      const jsonFields = flags?.json;
-      const runId = argv[0];
-
-      if (!runId) {
-        validationError(ctx, 'Missing run ID', 'Usage: kb workflow runs-view <runId> [--log-failed] [--log] [--json=fields]', !!jsonFields);
-        return { exitCode: 1 };
-      }
+      const rawJson = flags?.json;
+      const jsonFields: string | undefined =
+        rawJson === true || rawJson === ''
+          ? 'all'
+          : typeof rawJson === 'string'
+            ? rawJson
+            : undefined;
+      let runId = flags?.['run-id'] ?? argv[0];
 
       const showLogFailed = flags?.['log-failed'] ?? false;
       const showLog = flags?.log ?? false;
@@ -142,6 +144,18 @@ export default defineCommand<unknown, CLIInput<RunsViewFlags>, { exitCode: numbe
 
       try {
         const client = new WorkflowDaemonClient();
+
+        // No run ID supplied — use the latest run (like `gh run view`)
+        if (!runId) {
+          const latest = await client.listRuns({ limit: 1 });
+          if (!latest.length) {
+            ctx.ui?.info?.('No runs found');
+            return { exitCode: 0 };
+          }
+          runId = latest[0]!.id!;
+          ctx.ui?.info?.(`Showing latest run: ${runId}`);
+        }
+
         const run = await client.getRun(runId);
 
         // --json=fields output (--json=all for full, --json=status,jobs for selective)

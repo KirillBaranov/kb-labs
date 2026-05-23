@@ -25,7 +25,7 @@ export function FeatureCard({
     <Tag
       href={href}
       className={cn(
-        'flex flex-col gap-3 bg-surface p-[clamp(1.75rem,3vw,2.5rem)]',
+        'flex flex-col gap-3 bg-surface p-4',
         'transition-all duration-200',
         'hover:bg-bg hover:shadow-[inset_0_-2px_0_0_rgb(var(--color-accent))]',
         href && 'cursor-pointer',

@@ -168,3 +168,35 @@ test('WR-09: REST proxy — POST /plugins/workflow/workflows/:id/run returns run
   const data = body.data ?? body
   expect(data.runId ?? data.id).toBeTruthy()
 })
+
+// ── WR-10: GET /runs?limit=1 — foundation for "latest run" UX ───────────────
+// Verifies the API constraint that enables `kb workflow runs view` (no args)
+// to show the latest run without requiring a run ID.
+
+test('WR-10: GET /runs?limit=1 — returns at most one run', async ({ request }) => {
+  const res = await request.get(`${WORKFLOW}/api/v1/runs?limit=1`)
+  expect(res.status()).toBe(200)
+  const body = await res.json()
+  const runs: RunEntry[] = body.data?.runs ?? body.data ?? body.runs ?? (Array.isArray(body) ? body : [])
+  expect(Array.isArray(runs)).toBe(true)
+  expect(runs.length).toBeLessThanOrEqual(1)
+})
+
+// ── WR-11: GET /runs?limit=1 after a run — returns the newest run ────────────
+
+test('WR-11: GET /runs?limit=1 — returns latest run after a new one is started', async ({ request }) => {
+  const wf = await getFirstWorkflow(request)
+  test.skip(!wf, 'no workflows in catalog')
+
+  const runId = await startRun(request, wf!.id ?? wf!.name!)
+  test.skip(!runId, 'could not start run')
+
+  const res = await request.get(`${WORKFLOW}/api/v1/runs?limit=1`)
+  expect(res.status()).toBe(200)
+  const body = await res.json()
+  const runs: RunEntry[] = body.data?.runs ?? body.data ?? body.runs ?? (Array.isArray(body) ? body : [])
+  expect(runs.length).toBe(1)
+  // The newest run should appear first
+  const latestId = runs[0]?.id ?? runs[0]?.runId
+  expect(latestId).toBe(runId)
+})

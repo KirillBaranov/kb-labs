@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { mockCLIInput, createCapturedUI, createMockContext } from '@kb-labs/shared-testing-e2e/cli';
-import { makeClient } from '../helpers/defaults.js';
+import { makeClient, defaultWorkflowClient } from '../helpers/defaults.js';
 
 vi.mock('../../http-client.js', () => ({
   WorkflowDaemonClient: vi.fn(),
@@ -39,6 +39,7 @@ function mockFetchWithSse(events: Array<{ type: string; payload?: Record<string,
 beforeEach(() => {
   MockedClient.mockReset();
   MockedClient.mockImplementation(() => makeClient({
+    ...defaultWorkflowClient,
     getRunEventsUrl: (runId: string) => `http://localhost:7778/api/v1/runs/${runId}/events`,
   }));
 });
@@ -48,13 +49,37 @@ afterEach(() => {
 });
 
 describe('workflow:runs watch', () => {
-  it('CW-01: missing runId — error message, exitCode 1', async () => {
+  it('CW-01: no runId and no runs → exitCode 0, info message', async () => {
+    MockedClient.mockImplementation(() => makeClient({
+      ...defaultWorkflowClient,
+      listRuns: async () => [],
+      getRunEventsUrl: (runId: string) => `http://localhost:7778/api/v1/runs/${runId}/events`,
+    }));
+
     const { ui, captured } = createCapturedUI();
     const ctx = createMockContext({ ui });
     const result = await runsWatchCommand.execute(ctx, mockCLIInput({ argv: [] }));
 
-    expect(result.exitCode).toBe(1);
-    expect(captured.errors.length).toBeGreaterThan(0);
+    expect(result.exitCode).toBe(0);
+    expect(captured.infos.some(i => i.message.includes('No runs found'))).toBe(true);
+  });
+
+  it('CW-01b: no runId → auto-fetches latest and watches it', async () => {
+    MockedClient.mockImplementation(() => makeClient({
+      ...defaultWorkflowClient,
+      listRuns: async () => [{ id: 'run-latest', name: 'deploy', status: 'running' as const, createdAt: new Date().toISOString() }],
+      getRunEventsUrl: (runId: string) => `http://localhost:7778/api/v1/runs/${runId}/events`,
+    }));
+    mockFetchWithSse([
+      { type: 'run.finished', payload: { status: 'success' } },
+    ]);
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await runsWatchCommand.execute(ctx, mockCLIInput({ argv: [] }));
+
+    expect(result.exitCode).toBe(0);
+    expect(captured.infos.some(i => i.message.includes('run-latest'))).toBe(true);
   });
 
   it('CW-02: streams events until run.finished, exits with 0', async () => {

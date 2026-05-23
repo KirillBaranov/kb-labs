@@ -360,3 +360,60 @@ describe('|| (logical OR / default value) operator', () => {
   })
 })
 
+describe('coerceToString — object serialization (BUG-001)', () => {
+  const ctx: ExpressionContext = {
+    env: {},
+    trigger: { type: 'manual' },
+    steps: {
+      parse: {
+        outputs: {
+          payload: { amount: 100, currency: 'USD' },
+          items: [1, 2, 3],
+          nested: { a: { b: 'deep' } },
+        },
+      },
+    },
+    inputs: {
+      invoice_payload: { vendor: 'Acme', total: 250 },
+      tags: ['alpha', 'beta'],
+    },
+  }
+
+  it('interpolateString: object input serializes to JSON, not [object Object]', () => {
+    const result = interpolateString("--argjson payload '${{ inputs.invoice_payload }}'", ctx)
+    expect(result).toBe("--argjson payload '{\"vendor\":\"Acme\",\"total\":250}'")
+    expect(result).not.toContain('[object Object]')
+  })
+
+  it('interpolateString: array input serializes to JSON array', () => {
+    const result = interpolateString('tags=${{ inputs.tags }}', ctx)
+    expect(result).toBe('tags=["alpha","beta"]')
+  })
+
+  it('interpolateString: step output object serializes to JSON', () => {
+    const result = interpolateString('result=${{ steps.parse.outputs.payload }}', ctx)
+    expect(result).toBe('result={"amount":100,"currency":"USD"}')
+  })
+
+  it('interpolateString: nested object serializes to JSON', () => {
+    const result = interpolateString('x=${{ steps.parse.outputs.nested }}', ctx)
+    expect(result).toBe('x={"a":{"b":"deep"}}')
+  })
+
+  it('evaluateExpression: object == string comparison does not silently misfire', () => {
+    // object coerced via JSON.stringify won't equal a plain string accidentally
+    const result = evaluateExpression('steps.parse.outputs.payload == "ok"', ctx)
+    expect(result).toBe(false)
+  })
+
+  it('evaluateExpression: object != string is true (no [object Object] confusion)', () => {
+    const result = evaluateExpression('steps.parse.outputs.payload != "[object Object]"', ctx)
+    expect(result).toBe(true)
+  })
+
+  it('resolveExpression: single-expr object still returns raw object (type-preserving path)', () => {
+    const result = resolveExpression('${{ steps.parse.outputs.payload }}', ctx)
+    expect(result).toEqual({ amount: 100, currency: 'USD' })
+  })
+})
+
