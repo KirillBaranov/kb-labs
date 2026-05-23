@@ -35,7 +35,7 @@ export function SectionHeader({
         {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
         <h2
           className={cn(
-            'text-[clamp(1.6rem,3vw,2.4rem)] font-bold leading-[1.1]',
+            'm-0 text-[clamp(1.6rem,3vw,2.4rem)] font-bold leading-[1.1]',
             'tracking-tight text-kb-text',
             centered && 'max-w-[20ch]',
             titleClassName
@@ -46,7 +46,7 @@ export function SectionHeader({
         {subtitle && (
           <p
             className={cn(
-              'text-[1.05rem] leading-[1.65] text-muted',
+              'm-0 text-[1.05rem] leading-[1.65] text-muted',
               centered ? 'max-w-[52ch]' : 'max-w-[42ch]'
             )}
           >

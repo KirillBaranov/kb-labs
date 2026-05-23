@@ -21,11 +21,11 @@ export function StepCard({ num, title, description, children, className }: StepC
       )}
     >
       <span className="text-[0.75rem] font-bold tracking-[0.08em] text-muted">{label}</span>
-      <h3 className="text-[1.1rem] font-bold leading-snug tracking-tight text-kb-text">
+      <h3 className="m-0 text-[1.1rem] font-bold leading-snug tracking-tight text-kb-text">
         {title}
       </h3>
       {description && (
-        <p className="text-[0.95rem] leading-[1.6] text-muted">{description}</p>
+        <p className="m-0 text-[0.95rem] leading-[1.6] text-muted">{description}</p>
       )}
       {children}
     </div>
