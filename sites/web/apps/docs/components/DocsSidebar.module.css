@@ -102,12 +102,6 @@
 }
 
 /* ─── Untranslated badge ─────────────────────────────────────────── */
-.item {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
 .untranslatedTag {
   font-size: 0.65rem;
   font-weight: 600;
