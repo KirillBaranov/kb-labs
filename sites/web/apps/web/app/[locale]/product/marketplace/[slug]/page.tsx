@@ -6,7 +6,7 @@ import { compileMDX } from 'next-mdx-remote/rsc';
 import remarkGfm from 'remark-gfm';
 import { SiteHeader } from '@/components/SiteHeader';
 import { SiteFooter } from '@/components/SiteFooter';
-import { Container } from '@kb-labs/web-site-ui';
+import { Badge, Button, Container, GlowCard, Section, TerminalBlock } from '@kb-labs/web-site-ui';
 import { fetchRegistryItems, fetchRegistryItem } from '@/lib/marketplace-data';
 import { buildPageMetadata } from '@/lib/page-metadata';
 
@@ -65,7 +65,7 @@ export default async function PluginPage({ params }: Props) {
         <Container className="py-8 pb-20">
 
           {/* ── Back link ── */}
-          <Link href={`/${locale}/product/marketplace`} className="mb-8 flex items-center gap-1.5 text-sm text-muted/60 hover:text-kb-text transition-colors">
+          <Link href={`/${locale}/product/marketplace`} className="mb-8 inline-flex items-center gap-1.5 text-sm text-muted/60 hover:text-kb-text transition-colors">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
               <path d="M9 11L5 7l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
@@ -74,7 +74,7 @@ export default async function PluginPage({ params }: Props) {
 
           {/* ── Page header ── */}
           <div className="mb-10 flex items-start gap-5">
-            <div className="flex size-14 shrink-0 items-center justify-center rounded-xl border border-line bg-surface/60 text-muted">
+            <div className="flex size-14 shrink-0 items-center justify-center rounded-xl border border-line bg-surface/60 text-muted/70">
               {item.type === 'plugin' && (
                 <svg width="28" height="28" viewBox="0 0 14 14" fill="none">
                   <rect x="1" y="1" width="5" height="5" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
@@ -122,24 +122,9 @@ export default async function PluginPage({ params }: Props) {
             <div className="min-w-0 flex-1 flex flex-col gap-8">
 
               {/* Install block */}
-              <div className="rounded-xl border border-line bg-surface/40 p-4">
+              <div>
                 <p className="mb-2 text-[0.65rem] font-semibold uppercase tracking-widest text-muted/50">{t('marketplace.detail.installLabel')}</p>
-                <div className="flex items-center gap-3 rounded-lg bg-bg px-4 py-2.5 font-mono text-sm text-kb-text">
-                  <code className="flex-1">{item.installCmd}</code>
-                  <button
-                    className="flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 text-xs text-muted/60 hover:text-kb-text transition-colors"
-                    aria-label={t('marketplace.detail.copyAriaLabel')}
-                    data-copy={item.installCmd}
-                    data-copy-text={t('marketplace.detail.copyBtn')}
-                    data-copied-text={t('marketplace.detail.copiedBtn')}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 14 14" fill="none" aria-hidden>
-                      <rect x="4" y="4" width="8" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
-                      <path d="M2 10V2.5A.5.5 0 012.5 2H10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
-                    </svg>
-                    {t('marketplace.detail.copyBtn')}
-                  </button>
-                </div>
+                <TerminalBlock commands={[item.installCmd]} bare />
               </div>
 
               {/* README or About */}

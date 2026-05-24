@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import s from './legal.module.css';
 
 const NAV = [
   { label: 'Privacy Policy', href: '/legal/privacy' },
@@ -17,26 +16,32 @@ type Props = {
 
 export function LegalLayout({ title, updated, currentHref, children }: Props) {
   return (
-    <div className={s.wrap}>
-      <nav className={s.sidebar}>
-        <span className={s.sidebarLabel}>Legal</span>
+    <div className="mx-auto flex max-w-5xl gap-10 px-4 py-12 sm:px-6 lg:px-8 lg:flex-row flex-col">
+      {/* Sidebar */}
+      <nav className="lg:w-48 shrink-0 flex flex-col gap-1">
+        <span className="mb-2 px-3 text-[0.6rem] font-semibold uppercase tracking-widest text-muted/50">Legal</span>
         {NAV.map((item) => (
           <Link
             key={item.href}
             href={item.href}
-            className={`${s.sidebarLink}${item.href === currentHref ? ` ${s.active}` : ''}`}
+            className={`rounded-lg px-3 py-2 text-sm transition-colors ${
+              item.href === currentHref
+                ? 'bg-surface text-kb-text font-medium'
+                : 'text-muted/70 hover:bg-surface/60 hover:text-kb-text'
+            }`}
           >
             {item.label}
           </Link>
         ))}
       </nav>
 
-      <article className={s.doc}>
-        <header className={s.docHeader}>
-          <h1>{title}</h1>
-          <span className={s.docMeta}>Last updated: {updated}</span>
+      {/* Document */}
+      <article className="min-w-0 flex-1">
+        <header className="mb-8 border-b border-line pb-6">
+          <h1 className="text-2xl font-bold tracking-tight text-kb-text sm:text-3xl">{title}</h1>
+          <span className="mt-2 block text-sm text-muted/50">Last updated: {updated}</span>
         </header>
-        <div className={s.prose}>
+        <div className="prose prose-invert max-w-none">
           {children}
         </div>
       </article>

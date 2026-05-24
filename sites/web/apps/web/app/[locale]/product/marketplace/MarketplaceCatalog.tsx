@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
+import { Badge, GlowCard, Input } from '@kb-labs/web-site-ui';
 import type { MarketplaceItem, PluginType } from '@/lib/marketplace-data';
 
 const TYPE_OPTIONS: (PluginType | 'all')[] = ['all', 'plugin', 'adapter', 'widget'];
@@ -150,20 +151,14 @@ export function MarketplaceCatalog({ items, locale }: { items: MarketplaceItem[]
       {/* ── Content ── */}
       <div className="min-w-0 flex-1">
         <div className="mb-5 flex items-center gap-3">
-          <div className="relative flex-1">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-muted/40" width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
-              <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.5"/>
-              <path d="M10 10l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-            </svg>
-            <input
-              className="w-full rounded-lg border border-line bg-surface/40 py-2 pl-9 pr-3 text-sm text-kb-text placeholder:text-muted/40 outline-none focus:border-accent"
-              type="search"
-              placeholder={t('marketplace.catalog.searchPlaceholder')}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              aria-label={t('marketplace.catalog.searchAriaLabel')}
-            />
-          </div>
+          <Input
+            type="search"
+            placeholder={t('marketplace.catalog.searchPlaceholder')}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label={t('marketplace.catalog.searchAriaLabel')}
+            className="flex-1"
+          />
           <p className="shrink-0 text-sm text-muted/50">{t('marketplace.catalog.resultCount', { count: filtered.length })}</p>
         </div>
 
@@ -180,22 +175,20 @@ export function MarketplaceCatalog({ items, locale }: { items: MarketplaceItem[]
         ) : (
           <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
             {filtered.map((item) => (
-              <a
-                key={item.slug}
-                className="flex flex-col gap-2.5 rounded-xl border border-line bg-surface/30 p-4 no-underline transition-colors hover:border-accent/40 hover:bg-surface/60"
-                href={`/${locale}/product/marketplace/${item.slug}`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-line bg-surface/60 text-muted">
-                    <TypeIcon type={item.type} size={18} />
+              <a key={item.slug} href={`/${locale}/product/marketplace/${item.slug}`} className="no-underline">
+                <GlowCard className="flex h-full flex-col gap-2.5 p-4">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-line bg-surface/60 text-muted">
+                      <TypeIcon type={item.type} size={18} />
+                    </div>
+                    {item.authorType === 'official' && (
+                      <Badge variant="accent" className="ml-auto text-[0.6rem]">Official</Badge>
+                    )}
                   </div>
-                  {item.authorType === 'official' && (
-                    <span className="ml-auto rounded px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wider bg-accent text-white">Official</span>
-                  )}
-                </div>
-                <h3 className="text-sm font-semibold text-kb-text">{item.name}</h3>
-                <p className="flex-1 text-xs leading-relaxed text-muted/70">{item.description}</p>
-                <p className="text-xs text-muted/40">by {item.author}</p>
+                  <h3 className="text-sm font-semibold text-kb-text">{item.name}</h3>
+                  <p className="flex-1 text-xs leading-relaxed text-muted/70">{item.description}</p>
+                  <p className="text-xs text-muted/40">by {item.author}</p>
+                </GlowCard>
               </a>
             ))}
           </div>

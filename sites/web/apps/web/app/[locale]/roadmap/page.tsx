@@ -5,8 +5,8 @@ import { routing } from '@/i18n/routing';
 
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
-import s from './page.module.css';
 import { buildPageMetadata } from '@/lib/page-metadata';
+import { Container, Section } from '@kb-labs/web-site-ui';
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -37,11 +37,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   });
 }
 
-const statusClass: Record<string, string> = {
-  shipped: s.statusShipped,
-  'in-progress': s.statusInProgress,
-  planned: s.statusPlanned,
-  exploring: s.statusExploring,
+const statusStyles: Record<string, { badge: string; dot: string }> = {
+  shipped:     { badge: 'bg-accent/15 text-accent border-accent/20',           dot: 'bg-accent' },
+  'in-progress': { badge: 'bg-blue-500/15 text-blue-400 border-blue-500/20',   dot: 'bg-blue-400' },
+  planned:     { badge: 'bg-muted/10 text-muted/60 border-line',               dot: 'bg-muted/40' },
+  exploring:   { badge: 'bg-orange-500/15 text-orange-400 border-orange-500/20', dot: 'bg-orange-400' },
 };
 
 const statusLabel: Record<string, string> = {
@@ -69,101 +69,147 @@ export default async function RoadmapPage({ params }: Props) {
       <SiteHeader />
       <main>
 
-        <section className={s.hero}>
-          <h1>{t('roadmap.hero.title')}</h1>
-          <p>{t('roadmap.hero.description')}</p>
-        </section>
+        <Section className="border-b border-line">
+          <Container>
+            <div className="py-16 text-center">
+              <h1 className="text-4xl font-bold tracking-tight text-kb-text sm:text-5xl">
+                {t('roadmap.hero.title')}
+              </h1>
+              <p className="mt-4 text-lg text-muted/70">{t('roadmap.hero.description')}</p>
+            </div>
+          </Container>
+        </Section>
 
-        {/* ── Horizontal quarter nav ── */}
-        <nav className={s.quarterNav}>
-          <div className={s.quarterNavInner}>
-            {quarters.map((q) => {
-              const isCurrent = q.status === 'in-progress';
+        {/* Quarter nav pills */}
+        <div className="sticky top-0 z-10 border-b border-line bg-bg/90 backdrop-blur">
+          <Container>
+            <nav className="flex gap-2 overflow-x-auto py-3 scrollbar-none">
+              {quarters.map((q) => {
+                const isCurrent = q.status === 'in-progress';
+                const st = statusStyles[q.status];
+                return (
+                  <a
+                    key={q.id}
+                    href={`#${q.id}`}
+                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors ${st.badge} ${isCurrent ? 'ring-1 ring-blue-400/40' : ''}`}
+                  >
+                    {isCurrent && <span className={`size-1.5 rounded-full ${st.dot} animate-pulse`} />}
+                    {q.label}
+                  </a>
+                );
+              })}
+            </nav>
+          </Container>
+        </div>
+
+        {/* Legend */}
+        <Container>
+          <div className="flex flex-wrap gap-2 py-5">
+            {(['shipped', 'in-progress', 'planned', 'exploring'] as const).map((key) => {
+              const st = statusStyles[key];
               return (
-                <a
-                  key={q.id}
-                  href={`#${q.id}`}
-                  className={`${s.quarterPill} ${statusClass[q.status]} ${isCurrent ? s.quarterCurrent : ''}`}
-                >
-                  <span className={s.quarterPillLabel}>{q.label}</span>
-                  {isCurrent && <span className={s.currentDot} />}
-                </a>
+                <span key={key} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-0.5 text-xs font-medium ${st.badge}`}>
+                  <span className={`size-1.5 rounded-full ${st.dot}`} />
+                  {statusLabel[key]}
+                </span>
               );
             })}
           </div>
-        </nav>
+        </Container>
 
-        {/* ── Legend ── */}
-        <section className={s.legend}>
-          {(['shipped', 'in-progress', 'planned', 'exploring'] as const).map((key) => (
-            <span key={key} className={`${s.legendPill} ${statusClass[key]}`}>
-              {statusLabel[key]}
-            </span>
-          ))}
-        </section>
+        {/* Timeline */}
+        <Section>
+          <Container>
+            <div className="flex flex-col gap-8 pb-16">
+              {quarters.map((q) => {
+                const { done, total } = getProgress(q);
+                const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                const isCurrent = q.status === 'in-progress';
+                const st = statusStyles[q.status];
 
-        {/* ── Timeline ── */}
-        <section className={s.timeline}>
-          {quarters.map((q) => {
-            const { done, total } = getProgress(q);
-            const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-            const isCurrent = q.status === 'in-progress';
-
-            return (
-              <div
-                key={q.id}
-                id={q.id}
-                className={`${s.quarterCard} ${isCurrent ? s.quarterCardCurrent : ''}`}
-              >
-                <div className={s.quarterHeader}>
-                  <div>
-                    <h2 className={s.quarterLabel}>
-                      {q.label}
-                      {isCurrent && <span className={s.currentBadge}>Current</span>}
-                    </h2>
-                    <span className={s.quarterTheme}>{q.theme}</span>
-                  </div>
-                  <div className={s.quarterMeta}>
-                    <span className={`${s.badge} ${statusClass[q.status]}`}>
-                      {statusLabel[q.status]}
-                    </span>
-                    {(q.status === 'shipped' || q.status === 'in-progress') && (
-                      <div className={s.progressWrap}>
-                        <div className={s.progressBar}>
-                          <div className={s.progressFill} style={{ width: `${pct}%` }} />
+                return (
+                  <div
+                    key={q.id}
+                    id={q.id}
+                    className={`rounded-xl border bg-surface/20 ${isCurrent ? 'border-blue-500/30 ring-1 ring-blue-500/10' : 'border-line'}`}
+                  >
+                    {/* Quarter header */}
+                    <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line p-5">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-base font-semibold text-kb-text">{q.label}</h2>
+                          {isCurrent && (
+                            <span className="rounded bg-blue-500/15 px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wider text-blue-400">
+                              Current
+                            </span>
+                          )}
                         </div>
-                        <span className={s.progressLabel}>{done}/{total}</span>
+                        <p className="mt-0.5 text-sm text-muted/60">{q.theme}</p>
                       </div>
-                    )}
-                  </div>
-                </div>
-
-                <ul className={s.itemList}>
-                  {q.items.map((item, i) => (
-                    <li key={i} className={s.item}>
-                      <div className={s.itemTop}>
-                        <span className={s.itemTitle}>{item.title}</span>
-                        <span className={`${s.badgeSmall} ${statusClass[item.status]}`}>
-                          {statusLabel[item.status]}
+                      <div className="flex items-center gap-3">
+                        <span className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${st.badge}`}>
+                          {statusLabel[q.status]}
                         </span>
+                        {(q.status === 'shipped' || q.status === 'in-progress') && (
+                          <div className="flex items-center gap-2">
+                            <div className="h-1.5 w-24 overflow-hidden rounded-full bg-line">
+                              <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${pct}%` }} />
+                            </div>
+                            <span className="text-xs text-muted/50">{done}/{total}</span>
+                          </div>
+                        )}
                       </div>
-                      <p className={s.itemDesc}>{item.description}</p>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            );
-          })}
-        </section>
+                    </div>
 
-        <section className="final-cta-block reveal">
-          <h2>{t('roadmap.cta.title')}</h2>
-          <p>{t('roadmap.cta.description')}</p>
-          <div className="cta-row">
-            <Link className="btn primary" href={`/${locale}/install`}>{t('roadmap.cta.startBtn')}</Link>
-            <Link className="btn secondary" href={`/${locale}/contact`}>{t('roadmap.cta.contactBtn')}</Link>
-          </div>
-        </section>
+                    {/* Items */}
+                    <ul className="divide-y divide-line">
+                      {q.items.map((item, i) => {
+                        const ist = statusStyles[item.status];
+                        return (
+                          <li key={i} className="flex flex-col gap-1.5 p-4">
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="text-sm font-medium text-kb-text">{item.title}</span>
+                              <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[0.65rem] font-medium ${ist.badge}`}>
+                                {statusLabel[item.status]}
+                              </span>
+                            </div>
+                            <p className="text-xs leading-relaxed text-muted/60">{item.description}</p>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                );
+              })}
+            </div>
+          </Container>
+        </Section>
+
+        {/* CTA */}
+        <Section className="border-t border-line bg-surface/40">
+          <Container>
+            <div className="py-16 text-center">
+              <h2 className="text-2xl font-bold tracking-tight text-kb-text sm:text-3xl">
+                {t('roadmap.cta.title')}
+              </h2>
+              <p className="mt-4 text-base text-muted/70">{t('roadmap.cta.description')}</p>
+              <div className="mt-8 flex flex-wrap justify-center gap-3">
+                <Link
+                  href={`/${locale}/install`}
+                  className="rounded-lg bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                >
+                  {t('roadmap.cta.startBtn')}
+                </Link>
+                <Link
+                  href={`/${locale}/contact`}
+                  className="rounded-lg border border-line px-5 py-2.5 text-sm font-semibold text-kb-text transition-colors hover:bg-surface"
+                >
+                  {t('roadmap.cta.contactBtn')}
+                </Link>
+              </div>
+            </div>
+          </Container>
+        </Section>
 
       </main>
       <SiteFooter />
