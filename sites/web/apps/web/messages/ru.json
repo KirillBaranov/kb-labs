@@ -4670,12 +4670,12 @@
     "kbdevMetaTitle": "kb-dev — KB Labs",
     "prodWorkflowsEyebrow": "Программируемый dev loop",
     "cmpTableHeaders": [
-      "Функция",
+      "ВОЗМОЖНОСТЬ",
+      "KB Labs ВЫ",
       "GitHub Actions",
-      "n8n / Make",
-      "Jenkins",
+      "n8n / Zapier",
       "Temporal",
-      "KB Labs"
+      "LangChain"
     ],
     "ucHeroTitle": "Реальные сценарии.",
     "plugHeroDescription": "Устанавливаешь один пакет — движок регистрирует CLI команды, REST роуты и страницу в Studio. Без ручных конфигов. Права объявлены в манифесте — видишь до установки.",
@@ -4710,133 +4710,106 @@
     "devkitCtaEyebrow": "Установить",
     "cmpTableCategories": [
       {
+        "label": "ИНФРАСТРУКТУРА",
         "rows": [
           {
-            "feature": "Работает на вашей инфраструктуре",
+            "feature": "Self-hosted / on-prem",
             "values": [
-              "Нет",
-              "Нет / cloud-first",
-              "Self-hostable",
-              "Да",
-              "Да"
+              true,
+              false,
+              true,
+              true,
+              true
             ]
           },
           {
-            "feature": "Code-first воркфлоу",
+            "feature": "Vendor-neutral адаптеры",
             "values": [
-              "YAML (ограниченно)",
-              "No-code GUI",
-              "Код (Python/Go)",
-              "Groovy/YAML",
-              "YAML + TypeScript плагины"
+              true,
+              false,
+              false,
+              false,
+              "~"
             ]
           },
           {
-            "feature": "AI review встроен",
+            "feature": "Install за 5 минут",
             "values": [
-              "Нет",
-              "Нет",
-              "Нет",
-              "Нет",
-              "Да"
-            ]
-          },
-          {
-            "feature": "Модель плагинов/расширений",
-            "values": [
-              "Actions маркетплейс",
-              "Коннекторы",
-              "Activities",
-              "Плагины",
-              "Typed SDK + манифест"
-            ]
-          },
-          {
-            "feature": "Права на уровне плагина",
-            "values": [
-              "Нет",
-              "Нет",
-              "Нет",
-              "Нет",
-              "Да — объявлены + enforced"
-            ]
-          },
-          {
-            "feature": "Аудит-трейл каждого запуска",
-            "values": [
-              "Частично",
-              "Частично",
-              "Да",
-              "Частично",
-              "Полный — каждый шаг трейсится"
+              true,
+              false,
+              true,
+              false,
+              true
             ]
           }
         ]
       },
       {
+        "label": "WORKFLOW & АВТОМАТИЗАЦИЯ",
         "rows": [
           {
-            "feature": "Отслеживание QA-трендов",
+            "feature": "Code-first workflows",
             "values": [
-              "Нет",
-              "Нет",
-              "Нет",
-              "Нет",
-              "Да"
+              true,
+              true,
+              false,
+              true,
+              false
             ]
           },
           {
-            "feature": "Агентные воркфлоу",
+            "feature": "Plugin-система",
             "values": [
-              "Нет",
-              "Ограниченно",
-              "Нет",
-              "Нет",
-              "Да — первоклассно"
+              true,
+              true,
+              true,
+              false,
+              false
             ]
           },
           {
-            "feature": "Поддержка локальной разработки",
+            "feature": "Human approval gates",
             "values": [
-              "Ограниченно",
-              "Да",
-              "Да",
-              "Да",
-              "Да — kb-dev"
+              true,
+              false,
+              true,
+              true,
+              false
             ]
           }
         ]
       },
       {
+        "label": "AI & DEV LOOP",
         "rows": [
           {
-            "feature": "Лицензия",
+            "feature": "AI-шаги out of the box",
             "values": [
-              "Проприетарная",
-              "Apache 2 / Проприетарная",
-              "MIT",
-              "MIT",
-              "MIT"
+              true,
+              false,
+              true,
+              false,
+              true
             ]
           },
           {
-            "feature": "Время установки",
+            "feature": "Dev loop фокус",
             "values": [
-              "N/A (cloud)",
-              "~1 час",
-              "~4 часа",
-              "~2 часа",
-              "< 5 минут"
+              true,
+              false,
+              false,
+              false,
+              false
             ]
           },
           {
-            "feature": "Без облака по умолчанию",
+            "feature": "Аудит-лог и трассировка",
             "values": [
-              "Нет",
-              "Нет",
-              "Опционально",
-              "Да",
-              "Да"
+              true,
+              true,
+              false,
+              true,
+              false
             ]
           }
         ]

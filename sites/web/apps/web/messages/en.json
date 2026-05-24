@@ -4671,11 +4671,11 @@
     "prodWorkflowsEyebrow": "Programmable dev loop",
     "cmpTableHeaders": [
       "Feature",
+      "KB Labs",
       "GitHub Actions",
-      "n8n / Make",
-      "Jenkins",
+      "n8n / Zapier",
       "Temporal",
-      "KB Labs"
+      "LangChain"
     ],
     "ucHeroTitle": "Real scenarios.",
     "plugHeroDescription": "Install one package — the engine registers CLI commands, REST routes, and a Studio page. No manual config. Permissions declared in the manifest — visible before install.",
@@ -4710,133 +4710,106 @@
     "devkitCtaEyebrow": "Install",
     "cmpTableCategories": [
       {
+        "label": "INFRASTRUCTURE",
         "rows": [
           {
-            "feature": "Runs on your infra",
+            "feature": "Self-hosted / on-prem",
             "values": [
-              "No",
-              "No / cloud-first",
-              "Self-hostable",
-              "Yes",
-              "Yes"
+              true,
+              false,
+              true,
+              true,
+              true
             ]
           },
+          {
+            "feature": "Vendor-neutral adapters",
+            "values": [
+              true,
+              false,
+              false,
+              false,
+              "~"
+            ]
+          },
+          {
+            "feature": "Install in 5 minutes",
+            "values": [
+              true,
+              false,
+              true,
+              false,
+              true
+            ]
+          }
+        ]
+      },
+      {
+        "label": "WORKFLOW & AUTOMATION",
+        "rows": [
           {
             "feature": "Code-first workflows",
             "values": [
-              "YAML (limited)",
-              "No-code GUI",
-              "Code (Python/Go)",
-              "Groovy/YAML",
-              "YAML + TypeScript plugins"
+              true,
+              true,
+              false,
+              true,
+              false
             ]
           },
           {
-            "feature": "AI review built in",
+            "feature": "Plugin system",
             "values": [
-              "No",
-              "No",
-              "No",
-              "No",
-              "Yes"
+              true,
+              true,
+              true,
+              false,
+              false
             ]
           },
           {
-            "feature": "Plugin/extension model",
+            "feature": "Human approval gates",
             "values": [
-              "Actions marketplace",
-              "Connectors",
-              "Activities",
-              "Plugins",
-              "Typed SDK + manifest"
-            ]
-          },
-          {
-            "feature": "Per-plugin permissions",
-            "values": [
-              "No",
-              "No",
-              "No",
-              "No",
-              "Yes — declared + enforced"
-            ]
-          },
-          {
-            "feature": "Audit trail per run",
-            "values": [
-              "Partial",
-              "Partial",
-              "Yes",
-              "Partial",
-              "Full — every step traced"
+              true,
+              false,
+              true,
+              true,
+              false
             ]
           }
         ]
       },
       {
+        "label": "AI & DEV LOOP",
         "rows": [
           {
-            "feature": "QA trend tracking",
+            "feature": "AI steps out of the box",
             "values": [
-              "No",
-              "No",
-              "No",
-              "No",
-              "Yes"
+              true,
+              false,
+              true,
+              false,
+              true
             ]
           },
           {
-            "feature": "Agent workflows",
+            "feature": "Dev loop focus",
             "values": [
-              "No",
-              "Limited",
-              "No",
-              "No",
-              "Yes — first-class"
+              true,
+              false,
+              false,
+              false,
+              false
             ]
           },
           {
-            "feature": "Local development support",
+            "feature": "Audit log & tracing",
             "values": [
-              "Limited",
-              "Yes",
-              "Yes",
-              "Yes",
-              "Yes — kb-dev"
-            ]
-          }
-        ]
-      },
-      {
-        "rows": [
-          {
-            "feature": "License",
-            "values": [
-              "Proprietary",
-              "Apache 2 / Proprietary",
-              "MIT",
-              "MIT",
-              "MIT"
-            ]
-          },
-          {
-            "feature": "Install time",
-            "values": [
-              "N/A (cloud)",
-              "~1 hour",
-              "~4 hours",
-              "~2 hours",
-              "< 5 minutes"
-            ]
-          },
-          {
-            "feature": "Cloud-free by default",
-            "values": [
-              "No",
-              "No",
-              "Optional",
-              "Yes",
-              "Yes"
+              true,
+              true,
+              false,
+              true,
+              false
             ]
           }
         ]
