@@ -4008,7 +4008,7 @@
     "monFeaturesTitle": "Детали, которые важны.",
     "cmpCtaDescription": "Один install, пять минут — и первый workflow работает на вашей машине.",
     "monCommandsFootnote": "Все команды поддерживают --json для скриптов и агентных workflow",
-    "secHeroEyebrow": "Безопасность",
+    "secHeroEyebrow": "БЕЗОПАСНОСТЬ",
     "prodWorkflowsLink": "Как устроены workflows →",
     "gwMetaDesc": "Единая точка входа. Любой сервис получает LLM, EventBus, Cache и Storage через HTTP — без привязки к вендорам.",
     "monHeroTitleHighlight": "агент",
@@ -4050,23 +4050,23 @@
     "secStats": [
       {
         "value": "100%",
-        "label": "on-premise",
-        "description": "Без облаков — у вас на инфраструктуре"
+        "label": "Open source",
+        "description": "Весь код на GitHub. Никаких чёрных ящиков."
       },
       {
         "value": "0",
-        "label": "телеметрии по умолчанию",
-        "description": "Только по явному согласию"
+        "label": "Облачных зависимостей",
+        "description": "По умолчанию. Всё работает локально."
+      },
+      {
+        "value": "0",
+        "label": "Данных на серверах",
+        "description": "Мы не храним ваш код и состояние."
       },
       {
         "value": "3",
-        "label": "режима изоляции",
-        "description": "In-process, subprocess, container"
-      },
-      {
-        "value": "MIT",
-        "label": "лицензия",
-        "description": "Полный код открыт для аудита"
+        "label": "Режима изоляции плагинов",
+        "description": "In-process, subprocess/container и worker-pool."
       }
     ],
     "secAuthFacts": [
@@ -4643,7 +4643,7 @@
     ],
     "prodCtaTitle": "Начни прямо сейчас.",
     "plugCtaTitle": "Первый плагин — за 5 минут.",
-    "secHeroDescription": "KB Labs работает on-prem по умолчанию, open source от и до, и ничего не отправляет наружу без вашего явного действия. Все утверждения ниже верифицируемы в исходном коде.",
+    "secHeroDescription": "KB Labs работает on-prem по умолчанию, open source от начала до конца, и никогда не отправляет данные без вашего явного действия. Всё проверяемо в исходниках.",
     "deployFeaturesEyebrow": "Как это работает",
     "secMetaDesc": "On-prem по умолчанию, open source, данные только с вашего ведома, песочница для плагинов, JWT-аутентификация Gateway.",
     "prodMetaDesc": "Open-source движок для AI-эпохи разработки. Программируемые workflow для релизов, ревью и AI-агентов.",
