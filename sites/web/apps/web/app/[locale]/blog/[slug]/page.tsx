@@ -1,14 +1,17 @@
 import type { Metadata } from 'next';
-
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { setRequestLocale } from 'next-intl/server';
+import { setRequestLocale, getTranslations } from 'next-intl/server';
+import { ChevronLeft, ChevronRight, Clock, Calendar } from 'lucide-react';
 
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import { getBlogPost, listBlogPosts, type Lang } from '@/lib/content';
 import { buildPageMetadata } from '@/lib/page-metadata';
-import { Container, Section } from '@kb-labs/web-site-ui';
+import { Container, DotPattern, Eyebrow } from '@kb-labs/web-site-ui';
+import { ShareButtons } from './ShareButtons';
+
+// ── Static params ─────────────────────────────────────────────────────────────
 
 export function generateStaticParams() {
   const posts = listBlogPosts('en');
@@ -18,16 +21,18 @@ export function generateStaticParams() {
   ]);
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ locale: string; slug: string }> }): Promise<Metadata> {
+// ── Metadata ──────────────────────────────────────────────────────────────────
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; slug: string }>;
+}): Promise<Metadata> {
   const { locale, slug } = await params;
   const lang = (locale === 'ru' ? 'ru' : 'en') as Lang;
 
   let post;
-  try {
-    post = await getBlogPost(lang, slug);
-  } catch {
-    return {};
-  }
+  try { post = await getBlogPost(lang, slug); } catch { return {}; }
 
   const { frontmatter: fm } = post;
   const meta = buildPageMetadata({
@@ -40,73 +45,212 @@ export async function generateMetadata({ params }: { params: Promise<{ locale: s
 
   return {
     ...meta,
-    openGraph: {
-      ...meta.openGraph,
-      type: 'article',
-      publishedTime: fm.date,
-    },
+    openGraph: { ...meta.openGraph, type: 'article', publishedTime: fm.date },
   };
 }
 
-export default async function BlogPostPage({ params }: { params: Promise<{ locale: string; slug: string }> }) {
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function formatDate(iso: string | undefined, locale: string): string {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString(locale, { month: 'long', year: 'numeric', day: 'numeric' });
+}
+
+const BASE_URL = 'https://kblabs.ru';
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default async function BlogPostPage({
+  params,
+}: {
+  params: Promise<{ locale: string; slug: string }>;
+}) {
   const { locale, slug } = await params;
   setRequestLocale(locale);
+  const t = await getTranslations({ locale });
 
   const lang = (locale === 'ru' ? 'ru' : 'en') as Lang;
 
   let post;
-  try {
-    post = await getBlogPost(lang, slug);
-  } catch {
-    notFound();
-  }
+  try { post = await getBlogPost(lang, slug); } catch { notFound(); }
 
   const { frontmatter: fm, content } = post;
+
+  // All posts for related + prev/next
+  const allPosts = listBlogPosts(lang).filter((p) => !p.frontmatter.draft);
+  const currentIndex = allPosts.findIndex((p) => p.slug === slug);
+  const prevPost = currentIndex < allPosts.length - 1 ? allPosts[currentIndex + 1] : null;
+  const nextPost = currentIndex > 0 ? allPosts[currentIndex - 1] : null;
+
+  // Related posts — same tag, exclude current, max 3
+  const related = allPosts
+    .filter((p) => p.slug !== slug && p.frontmatter.tag === fm.tag)
+    .slice(0, 3);
+
+  const postUrl = `${BASE_URL}/${locale}/blog/${slug}`;
 
   return (
     <>
       <SiteHeader />
       <main>
 
-        <Section className="border-b border-line">
-          <Container>
-            <div className="py-14">
-              <Link
-                href={`/${locale}/blog`}
-                className="mb-8 inline-flex items-center gap-1.5 text-sm text-muted/60 hover:text-kb-text transition-colors"
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
-                  <path d="M9 11L5 7l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                All posts
-              </Link>
+        {/* ── Hero ── */}
+        <section className="relative overflow-hidden border-b border-line pb-12 pt-16">
+          <DotPattern className="absolute inset-0 z-0 opacity-30" />
+          <Container className="relative z-10">
 
+            {/* Back link */}
+            <Link
+              href={`/${locale}/blog`}
+              className="mb-8 inline-flex items-center gap-1 text-sm text-muted/50 transition-colors hover:text-kb-text"
+            >
+              <ChevronLeft size={15} />
+              {t('blog.allPosts')}
+            </Link>
+
+            <div className="mx-auto max-w-2xl">
+              {/* Tag */}
               {fm.tag && (
-                <span className="mb-4 inline-block rounded-md border border-line px-2 py-0.5 text-xs text-muted/60">
-                  {fm.tag}
-                </span>
+                <div className="mb-4">
+                  <Eyebrow>
+                    <Link
+                      href={`/${locale}/blog?tag=${encodeURIComponent(fm.tag)}`}
+                      className="hover:text-accent transition-colors"
+                    >
+                      {fm.tag}
+                    </Link>
+                  </Eyebrow>
+                </div>
               )}
-              <h1 className="mt-2 text-3xl font-bold tracking-tight text-kb-text sm:text-4xl">{fm.title}</h1>
-              <div className="mt-4 flex items-center gap-3 text-sm text-muted/50">
-                <span>{fm.date ? new Date(fm.date).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }) : ''}</span>
-                {fm.readTime && (
-                  <>
-                    <span className="size-1 rounded-full bg-muted/30" />
-                    <span>{fm.readTime}</span>
-                  </>
-                )}
+
+              {/* Title */}
+              <h1 className="mb-6 text-3xl font-bold leading-tight tracking-tight text-kb-text sm:text-4xl">
+                {fm.title}
+              </h1>
+
+              {/* Meta row */}
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div className="flex items-center gap-4 text-sm text-muted/50">
+                  {fm.date && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Calendar size={13} />
+                      {formatDate(fm.date, locale)}
+                    </span>
+                  )}
+                  {fm.readTime && (
+                    <span className="inline-flex items-center gap-1.5">
+                      <Clock size={13} />
+                      {fm.readTime}
+                    </span>
+                  )}
+                  {fm.author && (
+                    <span className="font-medium text-muted/60">{fm.author}</span>
+                  )}
+                </div>
+
+                <ShareButtons title={fm.title} url={postUrl} />
               </div>
             </div>
           </Container>
-        </Section>
+        </section>
 
-        <Section>
+        {/* ── Article ── */}
+        <section className="py-14">
           <Container>
-            <article className="prose prose-invert max-w-none py-12">
+            <article className="
+              mx-auto max-w-2xl
+              prose prose-invert
+              prose-headings:font-bold prose-headings:tracking-tight prose-headings:text-kb-text
+              prose-p:text-muted/80 prose-p:leading-relaxed
+              prose-a:text-accent prose-a:no-underline hover:prose-a:underline
+              prose-code:rounded prose-code:bg-surface prose-code:px-1.5 prose-code:py-0.5 prose-code:font-mono prose-code:text-[0.9em] prose-code:text-kb-text prose-code:before:content-none prose-code:after:content-none
+              prose-pre:rounded-xl prose-pre:border prose-pre:border-line prose-pre:bg-surface prose-pre:text-[0.88rem]
+              prose-strong:text-kb-text
+              prose-hr:border-line
+              prose-blockquote:border-accent/40 prose-blockquote:text-muted/70
+              prose-th:text-kb-text prose-td:text-muted/70
+              prose-li:text-muted/80
+            ">
               {content}
             </article>
           </Container>
-        </Section>
+        </section>
+
+        {/* ── Prev / Next ── */}
+        {(prevPost || nextPost) && (
+          <section className="border-t border-line">
+            <Container>
+              <div className="grid grid-cols-1 gap-px py-8 sm:grid-cols-2">
+                {prevPost ? (
+                  <Link
+                    href={`/${locale}/blog/${prevPost.slug}`}
+                    className="group flex flex-col gap-1 rounded-xl p-4 transition-colors hover:bg-surface/50"
+                  >
+                    <span className="inline-flex items-center gap-1 text-xs text-muted/40">
+                      <ChevronLeft size={13} />
+                      {t('blog.prevPost')}
+                    </span>
+                    <span className="text-sm font-medium text-kb-text/80 transition-colors group-hover:text-accent">
+                      {prevPost.frontmatter.title}
+                    </span>
+                  </Link>
+                ) : <div />}
+
+                {nextPost && (
+                  <Link
+                    href={`/${locale}/blog/${nextPost.slug}`}
+                    className="group flex flex-col items-end gap-1 rounded-xl p-4 transition-colors hover:bg-surface/50"
+                  >
+                    <span className="inline-flex items-center gap-1 text-xs text-muted/40">
+                      {t('blog.nextPost')}
+                      <ChevronRight size={13} />
+                    </span>
+                    <span className="text-sm font-medium text-kb-text/80 transition-colors group-hover:text-accent">
+                      {nextPost.frontmatter.title}
+                    </span>
+                  </Link>
+                )}
+              </div>
+            </Container>
+          </section>
+        )}
+
+        {/* ── Related posts ── */}
+        {related.length > 0 && (
+          <section className="border-t border-line bg-surface/30 py-14">
+            <Container>
+              <p className="mb-6 text-[0.65rem] font-bold uppercase tracking-wider text-muted/35">
+                {t('blog.relatedPosts')}
+              </p>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {related.map((p) => (
+                  <Link
+                    key={p.slug}
+                    href={`/${locale}/blog/${p.slug}`}
+                    className="group flex flex-col gap-2 rounded-2xl border border-line bg-surface p-5 no-underline transition-colors hover:border-accent/30"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[0.68rem] text-muted/40">
+                        {formatDate(p.frontmatter.date, locale)}
+                      </span>
+                      {p.frontmatter.readTime && (
+                        <span className="ml-auto font-mono text-[0.68rem] text-muted/35">
+                          {p.frontmatter.readTime}
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-sm font-semibold leading-snug text-kb-text transition-colors group-hover:text-accent">
+                      {p.frontmatter.title}
+                    </h3>
+                    <p className="text-xs leading-relaxed text-muted/55">
+                      {p.frontmatter.excerpt ?? p.frontmatter.description}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            </Container>
+          </section>
+        )}
 
       </main>
       <SiteFooter />

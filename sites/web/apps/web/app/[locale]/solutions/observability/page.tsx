@@ -252,7 +252,7 @@ export default async function ObservabilityPage({ params }: Props) {
                 <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm divide-y divide-line">
                   {backendsTable.map(({ label, value }) => (
                     <div key={label} className="flex items-baseline gap-4 px-5 py-3.5">
-                      <span className="w-20 flex-shrink-0 text-sm font-semibold uppercase tracking-wider text-muted/40">{label}</span>
+                      <span className="flex-shrink-0 whitespace-nowrap text-[0.65rem] font-bold uppercase tracking-wider text-muted/35">{label}</span>
                       <span className="text-sm text-muted/70">{value}</span>
                     </div>
                   ))}

@@ -339,6 +339,9 @@
     "typeNew": "New",
     "releases": [
       {
+        "version": "v1.4.0",
+        "date": "May 2026",
+        "title": "Plugin scaffolding + Studio refresh",
         "changes": [
           {
             "type": "new",
@@ -367,6 +370,9 @@
         ]
       },
       {
+        "version": "v1.3.0",
+        "date": "Apr 2026",
+        "title": "Agent SDK + workspace agent",
         "changes": [
           {
             "type": "new",
@@ -391,6 +397,9 @@
         ]
       },
       {
+        "version": "v1.2.0",
+        "date": "Mar 2026",
+        "title": "Workflow engine stabilization",
         "changes": [
           {
             "type": "new",
@@ -415,6 +424,9 @@
         ]
       },
       {
+        "version": "v1.1.0",
+        "date": "Feb 2026",
+        "title": "Gateway adapters + policy layer",
         "changes": [
           {
             "type": "new",
@@ -441,7 +453,9 @@
     ],
     "hero": {
       "title": "Changelog",
-      "subtitle": "New features, improvements, and fixes — updated with each release."
+      "titleHighlight": "what shipped.",
+      "eyebrow": "Releases",
+      "subtitle": "Every release, every change."
     },
     "typeFixed": "Fixed",
     "typeImproved": "Improved"
@@ -3432,7 +3446,25 @@
     },
     "painSection": {
       "title": "Every team builds the same thing. From scratch.",
-      "eyebrow": "The problems"
+      "eyebrow": "The problems",
+      "pains": [
+        {
+          "title": "Your agent went somewhere it shouldn't",
+          "description": "Give your agent only the tools you explicitly allow. A plugin without access is simply unavailable."
+        },
+        {
+          "title": "Automation held together with bash",
+          "description": "Workflows in YAML. The engine tracks execution, writes logs, and retries on failure."
+        },
+        {
+          "title": "Switched the broker — rewrite every subscriber",
+          "description": "Services publish events through the gateway. Redis, Kafka, RabbitMQ — swap the adapter in config, subscribers never notice."
+        },
+        {
+          "title": "Every tool is its own island",
+          "description": "Commit, review, release, deploy — one workflow, one platform, one place to look."
+        }
+      ]
     },
     "hero": {
       "title": "AI control plane for developers."
@@ -3681,6 +3713,11 @@
     },
     "quarters": [
       {
+        "id": "q2-2026",
+        "quarter": "Q2 2026",
+        "theme": "Public launch",
+        "status": "in-progress",
+        "current": true,
         "items": [
           {
             "title": "Go Tooling Stabilization",
@@ -3715,6 +3752,11 @@
         ]
       },
       {
+        "id": "q3-2026",
+        "quarter": "Q3 2026",
+        "theme": "Ecosystem",
+        "status": "planned",
+        "current": false,
         "items": [
           {
             "title": "Utility Plugin Pack",
@@ -3739,6 +3781,11 @@
         ]
       },
       {
+        "id": "q4-2026",
+        "quarter": "Q4 2026",
+        "theme": "Enterprise readiness",
+        "status": "planned",
+        "current": false,
         "items": [
           {
             "title": "Notification Contract",
@@ -3763,6 +3810,11 @@
         ]
       },
       {
+        "id": "q1-2027",
+        "quarter": "Q1 2027",
+        "theme": "Distribution",
+        "status": "exploring",
+        "current": false,
         "items": [
           {
             "title": "KB Labs Registry",
@@ -3787,6 +3839,11 @@
         ]
       },
       {
+        "id": "q2-2027",
+        "quarter": "Q2 2027",
+        "theme": "Scale",
+        "status": "exploring",
+        "current": false,
         "items": [
           {
             "title": "Hosted Platform",
@@ -3820,7 +3877,14 @@
     "hero": {
       "title": "Product Roadmap",
       "description": "What we're building, what's next, and where we're headed. Updated quarterly."
-    }
+    },
+    "statusShipped": "Shipped",
+    "statusInProgress": "In Progress",
+    "statusPlanned": "Planned",
+    "statusExploring": "Exploring",
+    "statusCurrent": "Now",
+    "heroEyebrow": "Roadmap",
+    "heroTitleHighlight": "what's next."
   },
   "page": {
     "ucOwnerLabel": "Owner:",
@@ -3888,6 +3952,22 @@
         "how": "Agents run as plugins inside the same policy-first runtime as your standard workflows — same governance, same observability.",
         "result": "One controlled system for agent automation. No separate stack to maintain or secure.",
         "owner": "CTO / AI Platform Team"
+      },
+      {
+        "title": "Inbox Automation",
+        "hook": "Your email inbox is a graveyard of unread alerts and manual tasks.",
+        "situation": "Notifications, reports, and action items pile up in email. There's no automation layer — someone has to read, triage, and act manually every time.",
+        "how": "A workflow monitors the inbox, classifies incoming messages, routes them to the right handler — ClickUp task, script, or notification — and tracks every action taken.",
+        "result": "Zero-touch triage for routine emails. Actionable items surface immediately in the right system. Nothing gets lost.",
+        "owner": "Engineering Lead / Operations"
+      },
+      {
+        "title": "ClickUp Task Automation",
+        "hook": "Your task tracker is a passive record, not an active system.",
+        "situation": "ClickUp has the status, but nothing acts on it. Tasks sit unchanged, updates happen manually, and the gap between what's in code and what's in the tracker keeps growing.",
+        "how": "Workflows read and write ClickUp tasks via the KB Labs plugin — triggered by code events, status changes, or schedules. No manual sync required.",
+        "result": "ClickUp reflects reality automatically. Tasks update when code merges. Blockers and overdue items surface without anyone checking.",
+        "owner": "Engineering Lead / Project Manager"
       }
     ],
     "gwHeroTitleHighlight": "for any service",
@@ -5106,9 +5186,22 @@
       "description": "Engineering notes, platform updates, and thinking out loud from the KB Labs team."
     },
     "hero": {
-      "title": "Blog",
-      "subtitle": "Engineering notes, platform updates, and thinking out loud."
-    }
+      "title": "Thinking",
+      "subtitle": "Engineering notes, platform updates, and thinking out loud.",
+      "eyebrow": "From the team",
+      "titleHighlight": "out loud."
+    },
+    "searchPlaceholder": "Search posts…",
+    "filterAll": "All",
+    "noResults": "No posts match your search.",
+    "readPost": "Read post →",
+    "prevPage": "← Previous",
+    "nextPage": "Next →",
+    "pageOf": "Page {page} of {total}",
+    "allPosts": "All posts",
+    "prevPost": "Previous",
+    "nextPost": "Next",
+    "relatedPosts": "Related posts"
   },
   "contact": {
     "channels": [

@@ -9,6 +9,7 @@ import {
   Button,
   CodeBlock,
   Container,
+  CopyButton,
   DotPattern,
   Eyebrow,
   GradientText,
@@ -313,8 +314,10 @@ export default async function MonorepoOpsPage({ params }: Props) {
                   <p className="mx-auto mb-8 max-w-sm text-base text-muted/60">
                     {t('page.ctaNote')}
                   </p>
-                  <div className="mx-auto mb-8 max-w-lg overflow-hidden rounded-xl border border-line bg-surface">
-                    <CodeBlock code={INSTALL_IMPACT} language="bash" />
+                  <div className="mx-auto mb-8 flex max-w-md items-center justify-between gap-3 rounded-xl border border-line bg-surface/60 px-4 py-3">
+                    {/* i18n-ignore: terminal command */}
+                    <code className="font-mono text-[0.85rem] text-kb-text">kb marketplace install @kb-labs/impact-entry</code>
+                    <CopyButton code="kb marketplace install @kb-labs/impact-entry" className="shrink-0" />
                   </div>
                   <div className="flex flex-wrap justify-center gap-3">
                     <Button variant="primary" size="lg" href="https://docs.kblabs.ru/tools/kb-devkit" target="_blank" rel="noopener noreferrer">

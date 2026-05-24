@@ -1,6 +1,7 @@
 import path from 'path';
 import { fileURLToPath } from 'url';
 import type { Config } from 'tailwindcss';
+import typography from '@tailwindcss/typography';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -79,4 +80,5 @@ export default {
       },
     },
   },
+  plugins: [typography],
 } satisfies Config;

@@ -46,6 +46,8 @@ export default async function HomePage({ params }: Props) {
   setRequestLocale(locale);
   const t = await getTranslations({ locale });
 
+  const painItems = t.raw('home.painSection.pains') as Array<{ title: string; description: string }>;
+
   const INTEGRATION_CATEGORIES = [
     {
       label: t('home.integrationsSection.cats.llm'),
@@ -148,7 +150,7 @@ export default async function HomePage({ params }: Props) {
               />
             </AnimateOnScroll>
             <AnimateOnScroll animation="slide-up" delay={60}>
-              <PainCards />
+              <PainCards items={painItems} />
             </AnimateOnScroll>
           </Container>
         </Section>
