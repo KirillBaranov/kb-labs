@@ -1,34 +1,37 @@
 import Link from 'next/link';
+import styles from './legal.module.css';
 
-const NAV = [
-  { label: 'Privacy Policy', href: '/legal/privacy' },
-  { label: 'Terms of Service', href: '/legal/terms' },
-  { label: 'Data Processing', href: '/legal/dpa' },
-  { label: 'Cookie Policy', href: '/legal/cookies' },
-];
+type NavItem = { label: string; href: string };
 
 type Props = {
   title: string;
   updated: string;
+  lastUpdatedLabel: string;
+  navTitle: string;
+  navItems: NavItem[];
   currentHref: string;
   children: React.ReactNode;
 };
 
-export function LegalLayout({ title, updated, currentHref, children }: Props) {
+export function LegalLayout({
+  title,
+  updated,
+  lastUpdatedLabel,
+  navTitle,
+  navItems,
+  currentHref,
+  children,
+}: Props) {
   return (
-    <div className="mx-auto flex max-w-5xl gap-10 px-4 py-12 sm:px-6 lg:px-8 lg:flex-row flex-col">
+    <div className={styles.wrap}>
       {/* Sidebar */}
-      <nav className="lg:w-48 shrink-0 flex flex-col gap-1">
-        <span className="mb-2 px-3 text-[0.6rem] font-semibold uppercase tracking-widest text-muted/50">Legal</span>
-        {NAV.map((item) => (
+      <nav className={styles.sidebar}>
+        <span className={styles.sidebarLabel}>{navTitle}</span>
+        {navItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}
-            className={`rounded-lg px-3 py-2 text-sm transition-colors ${
-              item.href === currentHref
-                ? 'bg-surface text-kb-text font-medium'
-                : 'text-muted/70 hover:bg-surface/60 hover:text-kb-text'
-            }`}
+            className={`${styles.sidebarLink}${item.href === currentHref ? ` ${styles.active}` : ''}`}
           >
             {item.label}
           </Link>
@@ -36,14 +39,14 @@ export function LegalLayout({ title, updated, currentHref, children }: Props) {
       </nav>
 
       {/* Document */}
-      <article className="min-w-0 flex-1">
-        <header className="mb-8 border-b border-line pb-6">
-          <h1 className="text-2xl font-bold tracking-tight text-kb-text sm:text-3xl">{title}</h1>
-          <span className="mt-2 block text-sm text-muted/50">Last updated: {updated}</span>
+      <article className={styles.doc}>
+        <header className={styles.docHeader}>
+          <h1>{title}</h1>
+          <span className={styles.docMeta}>
+            {lastUpdatedLabel} {updated}
+          </span>
         </header>
-        <div className="prose prose-invert max-w-none">
-          {children}
-        </div>
+        <div className={styles.prose}>{children}</div>
       </article>
     </div>
   );
