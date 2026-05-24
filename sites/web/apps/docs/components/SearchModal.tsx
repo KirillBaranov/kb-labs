@@ -8,6 +8,7 @@ import s from './SearchModal.module.css';
 
 type Props = {
   onClose: () => void;
+  locale: string;
 };
 
 type Result = {
@@ -15,7 +16,7 @@ type Result = {
   matches?: readonly { key?: string; value?: string; indices: readonly [number, number][] }[];
 };
 
-let cachedIndex: SearchRecord[] | null = null;
+const indexCache: Record<string, SearchRecord[]> = {};
 
 function highlight(text: string, query: string): string {
   if (!query.trim()) return text;
@@ -23,7 +24,7 @@ function highlight(text: string, query: string): string {
   return text.replace(new RegExp(`(${escaped})`, 'gi'), '<mark>$1</mark>');
 }
 
-export function SearchModal({ onClose }: Props) {
+export function SearchModal({ onClose, locale }: Props) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Result[]>([]);
   const [loading, setLoading] = useState(false);
@@ -47,20 +48,19 @@ export function SearchModal({ onClose }: Props) {
 
   // Load index once
   useEffect(() => {
-    if (fuseRef.current) return;
-    if (cachedIndex) {
-      fuseRef.current = buildFuse(cachedIndex);
+    if (indexCache[locale]) {
+      fuseRef.current = buildFuse(indexCache[locale]);
       return;
     }
     setLoading(true);
-    fetch('/api/search-index')
+    fetch(`/api/search-index?locale=${locale}`)
       .then((r) => r.json())
       .then((data: SearchRecord[]) => {
-        cachedIndex = data;
+        indexCache[locale] = data;
         fuseRef.current = buildFuse(data);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [locale]);
 
   const search = useCallback((q: string) => {
     if (!fuseRef.current || !q.trim()) {

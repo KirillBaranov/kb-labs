@@ -146,6 +146,7 @@ export class RunCoordinator {
         pendingDependencies: [...needs],
         blocked: needs.length > 0,
         priority,
+        if: jobSpec.if,
       })
     }
 

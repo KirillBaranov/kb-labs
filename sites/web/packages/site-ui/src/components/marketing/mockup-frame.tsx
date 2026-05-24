@@ -29,7 +29,7 @@ export function MockupFrame({
   return (
     <div
       className={cn(
-        'rounded-xl border border-line-strong overflow-hidden shadow-card-lg',
+        'rounded-xl border border-line overflow-hidden shadow-card-lg',
         className
       )}
     >

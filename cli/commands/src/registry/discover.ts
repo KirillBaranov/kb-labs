@@ -43,14 +43,13 @@ const DEBUG_MODE = process.env.DEBUG_SANDBOX === '1' || process.env.NODE_ENV ===
 const log = (level: 'debug' | 'info' | 'warn' | 'error', message: string, fields?: Record<string, unknown>): void => {
   if (!DEBUG_MODE) {return;}
 
-  // In debug mode, use console for immediate output (no lazy logger initialization)
+  // All discovery logs go to stderr — never stdout — so they don't pollute --json output
   const prefix = level === 'error' ? '✗' : level === 'warn' ? '⚠' : level === 'info' ? 'ℹ' : '🔍';
-  const logFn = level === 'error' ? console.error : level === 'warn' ? console.warn : console.log;
 
   if (fields) {
-    logFn(`${prefix} [discover] ${message}`, fields);
+    console.error(`${prefix} [discover] ${message}`, fields);
   } else {
-    logFn(`${prefix} [discover] ${message}`);
+    console.error(`${prefix} [discover] ${message}`);
   }
 };
 

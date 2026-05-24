@@ -59,7 +59,7 @@ export function registerApprovalsAPI(options: ApprovalsAPIOptions): void {
               stepId: step.id,
               stepName: step.name,
               specId: step.spec.id,
-              context: (step.spec.with ?? {}) as Record<string, unknown>,
+              context: (step.resolvedInputs ?? step.spec.with ?? {}) as Record<string, unknown>,
               waitingSince: step.startedAt,
             });
           }

@@ -201,9 +201,13 @@ export type RunsListFlags = typeof runsListFlags;
  * Flags for workflow:runs-view command
  */
 export const runsViewFlags = {
+  'run-id': {
+    type: 'string',
+    description: 'Run ID to inspect (alias for positional argument)',
+  },
   json: {
     type: 'string',
-    description: 'Output specific fields as JSON (comma-separated, e.g. "status,jobs"). Use "all" for full output.',
+    description: 'Output specific fields as JSON. Use --json (no value) or --json=all for full output, or --json=field1,field2 for selective fields.',
   },
   log: {
     type: 'boolean',
@@ -227,6 +231,10 @@ export type RunsViewFlags = typeof runsViewFlags;
  * Flags for workflow:runs-watch command
  */
 export const runsWatchFlags = {
+  'run-id': {
+    type: 'string',
+    description: 'Run ID to watch (alias for positional argument)',
+  },
   json: {
     type: 'boolean',
     description: 'Output events as JSON',
@@ -240,6 +248,10 @@ export type RunsWatchFlags = typeof runsWatchFlags;
  * Flags for workflow:runs-rerun command
  */
 export const runsRerunFlags = {
+  'run-id': {
+    type: 'string',
+    description: 'Run ID to rerun (alias for positional argument)',
+  },
   json: {
     type: 'boolean',
     description: OUTPUT_JSON_DESCRIPTION,

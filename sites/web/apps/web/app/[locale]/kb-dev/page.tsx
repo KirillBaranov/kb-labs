@@ -1,13 +1,22 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { setRequestLocale } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
-import { CopyButton } from '@/components/CopyButton';
-import { PlatformCommand, PlatformBinaryTable } from '@/components/platform';
-import s from './page.module.css';
+import {
+  AnimateOnScroll,
+  BorderBeam,
+  Button,
+  CodeBlock,
+  Container,
+  DotPattern,
+  Eyebrow,
+  GradientText,
+  Section,
+  TerminalBlock,
+} from '@kb-labs/web-site-ui';
 import { buildPageMetadata } from '@/lib/page-metadata';
+import { ExternalLink } from 'lucide-react';
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -17,24 +26,65 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale });
   return buildPageMetadata({
     locale,
-    title: t('kbDev.meta.title'),
-    description: t('kbDev.meta.description'),
+    title: 'kb-dev — KB Labs',
+    description: 'Один бинарник, который запускает сервисы в правильном порядке, ждёт пока они реально поднимутся, и нормально останавливает всё при выходе.',
     path: '/kb-dev',
   });
 }
 
+// ── Content ───────────────────────────────────────────────────────────────────
+
+const DEVSERVICES_YAML = `\
+name: my-project
+
+services:
+  postgres:
+    type: docker
+    command: docker run --rm -p 5432:5432 postgres:16
+    health_check: localhost:5432
+    port: 5432
+
+  api:
+    command: pnpm dev
+    port: 3000
+    health_check: http://localhost:3000/health
+    depends_on: [postgres]
+
+  worker:
+    command: pnpm worker
+    depends_on: [postgres]`;
+
+const COMMANDS = [
+  { cmd: 'kb-dev start',                    desc: 'Запустить все сервисы в порядке зависимостей. Можно указать имя или группу.' },
+  { cmd: 'kb-dev stop',                     desc: 'Остановить сервисы. --cascade останавливает всё, что зависит от цели.' },
+  { cmd: 'kb-dev status',                   desc: 'Таблица статусов с latency health-пробы. --json для скриптов.' },
+  { cmd: 'kb-dev doctor',                   desc: 'Проверить окружение: node, docker, конфликты портов. Даёт hint для каждой проблемы.' },
+  { cmd: 'kb-dev ready api --timeout 30s',  desc: 'Блокировать до тех пор, пока сервис не станет alive. Gate в CI или агентных сценариях.' },
+  { cmd: 'kb-dev watch --json',             desc: 'Стримить события жизненного цикла как JSONL: health, crashed, restarting, alive.' },
+];
+
+const FEATURES = [
+  {
+    title: 'Health check перед стартом зависимых',
+    detail: 'HTTP, TCP и командные пробы с замером latency. Сервис считается alive только после того, как проверка прошла — не раньше.',
+  },
+  {
+    title: 'Топологическая сортировка',
+    detail: 'Строит граф зависимостей и запускает параллельно в пределах слоя. Postgres всегда поднимется до api, порядок гарантирован.',
+  },
+  {
+    title: 'Watchdog с экспоненциальным backoff',
+    detail: 'Упавший сервис перезапускается автоматически, до 5 попыток. Убивает группу процессов целиком — никаких зависших дочерних.',
+  },
+];
+
+// ── Page ─────────────────────────────────────────────────────────────────────
+
 export default async function KbDevPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const t = await getTranslations({ locale });
-
-  const FEATURES = t.raw('kbDev.features.list') as Array<{ title: string; description: string }>;
-  const COMMANDS = t.raw('kbDev.commands.list') as Array<{ cmd: string; description: string }>;
-  const PLATFORMS = t.raw('kbDev.download.platforms') as Array<{ platform: string; file: string }>;
-  const PAIN_ITEMS = t.raw('kbDev.pain.items') as Array<{ scenario: string; fix: string }>;
 
   return (
     <>
@@ -42,135 +92,170 @@ export default async function KbDevPage({ params }: Props) {
       <main>
 
         {/* ── Hero ── */}
-        <section className={s.hero}>
-          <span className={s.eyebrow}>{t('kbDev.hero.eyebrow')}</span>
-          <h1>{t('kbDev.hero.title')}</h1>
-          <p>{t('kbDev.hero.description')}</p>
-          <div className={s.heroCta}>
-            <PlatformCommand commands={{ unix: t('kbDev.hero.installCmd') }} />
-            <a
-              className="btn"
-              href="https://docs.kblabs.ru/services/kb-dev"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {t('kbDev.hero.docsBtn')}
-            </a>
-            <a
-              className="btn secondary"
-              href="https://github.com/KirillBaranov/kb-labs/releases/latest"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {t('kbDev.hero.releasesBtn')}
-            </a>
-          </div>
-        </section>
+        <section className="relative overflow-hidden py-20 pb-12">
+          <DotPattern className="absolute inset-0 z-0 opacity-40" />
+          <Container className="relative z-10">
+            <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+              <AnimateOnScroll>
+                <Eyebrow className="mb-4">Service Manager · Go</Eyebrow>
+                <h1 className="mb-5 text-4xl font-bold leading-tight tracking-tight text-kb-text sm:text-5xl">
+                  Хватит жонглировать{' '}
+                  <GradientText>вкладками терминала</GradientText>
+                </h1>
+                <p className="mb-8 text-lg leading-relaxed text-muted/70">
+                  Один бинарник, который запускает сервисы в правильном порядке,
+                  ждёт пока они реально поднимутся, и нормально останавливает
+                  всё при выходе.
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <Button asChild size="lg">
+                    <a href="https://docs.kblabs.ru/services/kb-dev" target="_blank" rel="noopener noreferrer">
+                      Документация
+                      <ExternalLink className="ml-2 size-4" />
+                    </a>
+                  </Button>
+                  <Button asChild variant="outline" size="lg">
+                    <a href="https://github.com/KirillBaranov/kb-labs/releases/latest" target="_blank" rel="noopener noreferrer">
+                      GitHub Releases
+                      <ExternalLink className="ml-2 size-4" />
+                    </a>
+                  </Button>
+                </div>
+              </AnimateOnScroll>
 
-        {/* ── Pain ── */}
-        <section className={s.painSection}>
-          <div className={s.sectionHeader}>
-            <h2>{t('kbDev.pain.title')}</h2>
-          </div>
-          <div className={s.painGrid}>
-            {PAIN_ITEMS.map((item, i) => (
-              <div key={i} className={s.painCard}>
-                <p className={s.painScenario}>{item.scenario}</p>
-                <p className={s.painFix}>{item.fix}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <hr className={s.divider} />
-
-        {/* ── Config example ── */}
-        <section className={s.configSection}>
-          <div className={s.configText}>
-            <h2>{t('kbDev.config.title')}</h2>
-            <p>{t('kbDev.config.description')}</p>
-            <p className={s.configNote}>{t('kbDev.config.note')}</p>
-          </div>
-          <div className={s.configCode}>
-            <div className={s.codeHeader}>
-              <span className={s.codeFilename}>devservices.yaml</span>
-              <CopyButton text={t('kbDev.config.example')} />
+              <AnimateOnScroll delay={100}>
+                <TerminalBlock
+                  commands={[
+                    'curl -fsSL https://kblabs.ru/kb-dev/install.sh | sh',
+                    'kb-dev start',
+                    'kb-dev status',
+                    'kb-dev doctor',
+                  ]}
+                  loop
+                />
+              </AnimateOnScroll>
             </div>
-            <pre className={s.codeBlock}><code>{t('kbDev.config.example')}</code></pre>
-          </div>
+          </Container>
         </section>
 
-        <hr className={s.divider} />
+        {/* ── devservices.yaml ── */}
+        <Section className="border-t border-line">
+          <Container>
+            <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+              <AnimateOnScroll>
+                <Eyebrow className="mb-3">Конфигурация</Eyebrow>
+                <h2 className="mb-4 text-3xl font-bold tracking-tight text-kb-text">
+                  Один файл. Любой проект.
+                </h2>
+                <p className="mb-4 text-base leading-relaxed text-muted/70">
+                  Положи <code className="rounded px-1.5 py-0.5 font-mono text-[0.85em] bg-surface text-kb-text/75">devservices.yaml</code> в
+                  корень проекта — kb-dev найдёт его автоматически, поднимаясь
+                  по директориям от текущей.
+                </p>
+                <p className="text-base leading-relaxed text-muted/70">
+                  Работает с любым стеком: Docker, pnpm, npm, make, shell.
+                  KB Labs использует <code className="rounded px-1.5 py-0.5 font-mono text-[0.85em] bg-surface text-kb-text/75">.kb/devservices.yaml</code> — тот же формат.
+                </p>
+              </AnimateOnScroll>
 
-        {/* ── Features grid ── */}
-        <section className={s.featuresSection}>
-          <div className={s.sectionHeader}>
-            <h2>{t('kbDev.features.title')}</h2>
-            <p>{t('kbDev.features.description')}</p>
-          </div>
-          <div className={s.featuresGrid}>
-            {FEATURES.map((f) => (
-              <div key={f.title} className={s.featureCard}>
-                <h3>{f.title}</h3>
-                <p>{f.description}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <hr className={s.divider} />
+              <AnimateOnScroll delay={100}>
+                <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
+                  <CodeBlock code={DEVSERVICES_YAML} language="yaml" />
+                </div>
+              </AnimateOnScroll>
+            </div>
+          </Container>
+        </Section>
 
         {/* ── Commands ── */}
-        <section className={s.commandsSection}>
-          <div className={s.sectionHeader}>
-            <h2>{t('kbDev.commands.title')}</h2>
-            <p>{t('kbDev.commands.description')}</p>
-          </div>
-          <div className={s.commandsTable}>
-            {COMMANDS.map((item) => (
-              <div key={item.cmd} className={s.commandRow}>
-                <div className={s.codeWrap}>
-                  <pre className={s.codeBlock}><code>{item.cmd}</code></pre>
-                  <CopyButton text={item.cmd} />
-                </div>
-                <p>{item.description}</p>
+        <Section className="bg-surface/50">
+          <Container>
+            <AnimateOnScroll>
+              <div className="mx-auto mb-12 max-w-xl text-center">
+                <Eyebrow className="mb-3">Команды</Eyebrow>
+                <h2 className="text-3xl font-bold tracking-tight text-kb-text">
+                  Всё поддаётся автоматизации.
+                </h2>
               </div>
-            ))}
-          </div>
-        </section>
+            </AnimateOnScroll>
 
-        <hr className={s.divider} />
+            <AnimateOnScroll delay={80}>
+              <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
+                {COMMANDS.map((item, i) => (
+                  <div
+                    key={item.cmd}
+                    className={`flex flex-col gap-1.5 px-6 py-4 sm:flex-row sm:items-baseline sm:gap-6 ${i < COMMANDS.length - 1 ? 'border-b border-line' : ''}`}
+                  >
+                    <code className="flex-shrink-0 font-mono text-[0.82rem] text-kb-text/85 sm:w-64">
+                      {item.cmd}
+                    </code>
+                    <span className="text-sm leading-relaxed text-muted/60">{item.desc}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 text-center font-mono text-[0.65rem] text-muted/30">
+                Все команды поддерживают --json для скриптов и CI
+              </p>
+            </AnimateOnScroll>
+          </Container>
+        </Section>
 
-        {/* ── Download + KB Labs note ── */}
-        <section className={s.twoCol}>
-          <div>
-            <h2>{t('kbDev.download.title')}</h2>
-            <p>{t('kbDev.download.description')}</p>
-            <PlatformBinaryTable
-              binaries={PLATFORMS}
-              downloadLabel={t('kbDev.download.downloadBtn')}
-              baseUrl="https://github.com/KirillBaranov/kb-labs/releases/latest/download"
-              colPlatform={t('kbDev.download.colPlatform')}
-              colBinary={t('kbDev.download.colBinary')}
-              colDownload={t('kbDev.download.colDownload')}
-            />
-          </div>
-          <div className={s.kbLabsNote}>
-            <div className={s.noteIcon} aria-hidden="true">
-              <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-                <rect x="2" y="2" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
-                <rect x="10" y="2" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
-                <rect x="2" y="10" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
-                <rect x="10" y="10" width="6" height="6" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
-              </svg>
+        {/* ── Features ── */}
+        <Section>
+          <Container>
+            <AnimateOnScroll>
+              <div className="mx-auto mb-12 max-w-xl text-center">
+                <Eyebrow className="mb-3">Как это работает</Eyebrow>
+                <h2 className="text-3xl font-bold tracking-tight text-kb-text">
+                  Детали, которые важны.
+                </h2>
+              </div>
+            </AnimateOnScroll>
+
+            <div className="grid gap-6 lg:grid-cols-3">
+              {FEATURES.map((f, i) => (
+                <AnimateOnScroll key={f.title} delay={i * 80}>
+                  <div className="flex h-full flex-col rounded-2xl border border-line bg-surface p-6 shadow-sm">
+                    <h3 className="mb-3 text-base font-semibold text-kb-text">{f.title}</h3>
+                    <p className="mt-auto text-sm leading-relaxed text-muted/60">{f.detail}</p>
+                  </div>
+                </AnimateOnScroll>
+              ))}
             </div>
-            <h3>{t('kbDev.kbLabsNote.title')}</h3>
-            <p>{t('kbDev.kbLabsNote.description')}</p>
-            <Link className={s.link} href={`/${locale}/install`}>
-              {t('kbDev.kbLabsNote.link')}
-            </Link>
-          </div>
-        </section>
+          </Container>
+        </Section>
+
+        {/* ── CTA ── */}
+        <Section className="bg-bg">
+          <Container>
+            <AnimateOnScroll>
+              <div className="relative overflow-hidden rounded-3xl border border-line bg-bg px-8 py-16 text-center">
+                <BorderBeam />
+                <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[360px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/[0.06] blur-[90px]" />
+                <div className="relative z-10">
+                  <Eyebrow className="mb-4">Установить</Eyebrow>
+                  <h2 className="mb-4 text-[clamp(1.8rem,3.5vw,2.8rem)] font-bold leading-tight tracking-tight text-kb-text">
+                    Один бинарник. Без зависимостей.
+                  </h2>
+                  <div className="mx-auto mb-8 max-w-xl overflow-hidden rounded-xl border border-line bg-surface">
+                    <CodeBlock
+                      code="curl -fsSL https://kblabs.ru/kb-dev/install.sh | sh"
+                      language="bash"
+                    />
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-3">
+                    <Button variant="primary" size="lg" href="https://docs.kblabs.ru/services/kb-dev" target="_blank" rel="noopener noreferrer">
+                      Документация
+                    </Button>
+                    <Button variant="secondary" size="lg" href="https://github.com/KirillBaranov/kb-labs/releases/latest" target="_blank" rel="noopener noreferrer">
+                      GitHub Releases
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </AnimateOnScroll>
+          </Container>
+        </Section>
 
       </main>
       <SiteFooter />

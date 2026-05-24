@@ -1,20 +1,80 @@
-/* ─── Design tokens ─────────────────────────────────────────────────── */
+/* ─── Design tokens — light (aligned with site-tokens lightColors) ───── */
 :root {
-  --bg: #ffffff;
+  --bg: #f7f7f8;
+  --bg-rgb: 247 247 248;
   --surface: #ffffff;
-  --fg: #111111;
-  --fg-muted: #555555;
-  --fg-subtle: #888888;
-  --line: #f0f0f0;
-  --line-strong: #e0e0e0;
-  --accent: #0070f3;
-  --accent-hover: #0060d0;
+  --fg: #0f1115;
+  --fg-muted: #5c616d;
+  --fg-subtle: #949eb0;
+  --line: #d9dde6;
+  --line-strong: #c4cad8;
+  --accent: #0c66ff;
+  --accent-hover: #0052d9;
+
+  /* Inline code */
+  --code-bg: #eef0f5;
+  --code-border: #d9dde6;
+  --code-fg: #374151;
+
+  /* Code blocks */
+  --code-block-bg: #f6f8fa;
+  --code-block-toolbar-bg: #eef0f4;
+  --code-block-border: #d9dde6;
+  --code-block-toolbar-border: #d0d5df;
+  --code-block-lang: #6e7681;
+  --code-block-btn: #57606a;
+  --code-block-btn-border: #d0d5df;
+  --code-block-btn-hover-bg: #e6e8ec;
+  --code-block-highlight-line: rgba(84, 174, 255, 0.1);
+  --code-block-highlight-bar: #0969da;
 
   /* Docs layout */
   --docs-header-height: 60px;
   --docs-sidebar-width: 280px;
   --docs-toc-width: 220px;
   --docs-content-max: 680px;
+}
+
+/* ─── Design tokens — dark (aligned with site-tokens darkColors) ──────── */
+[data-theme="dark"] {
+  --bg: #0d0e11;
+  --bg-rgb: 13 14 17;
+  --surface: #14161c;
+  --fg: #edeff4;
+  --fg-muted: #949eb0;
+  --fg-subtle: #5c616d;
+  --line: #26293a;
+  --line-strong: #373c4e;
+  --accent: #3b82f6;
+  --accent-hover: #60a5fa;
+
+  --code-bg: #1e2030;
+  --code-border: #26293a;
+  --code-fg: #c0caf5;
+
+  /* Code blocks */
+  --code-block-bg: #22272e;
+  --code-block-toolbar-bg: #1c2128;
+  --code-block-border: #373c4e;
+  --code-block-toolbar-border: #2d333b;
+  --code-block-lang: #768390;
+  --code-block-btn: #adbac7;
+  --code-block-btn-border: #2d333b;
+  --code-block-btn-hover-bg: #2d333b;
+  --code-block-highlight-line: rgba(99, 110, 123, 0.15);
+  --code-block-highlight-bar: #539bf5;
+}
+
+/* ─── Shiki dual-theme ───────────────────────────────────────────────── */
+[data-theme="light"] .shiki,
+[data-theme="light"] .shiki span {
+  color: var(--shiki-light) !important;
+  background-color: var(--shiki-light-bg) !important;
+}
+[data-theme="dark"] .shiki,
+[data-theme="dark"] .shiki span {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
 }
 
 /* ─── Reset ─────────────────────────────────────────────────────────── */
@@ -128,16 +188,15 @@ a {
   margin-bottom: 0;
 }
 
-/* Inline code — backtick spans in prose text */
+/* Inline code */
 .prose :not(pre) > code {
   font-family: 'Geist Mono', 'SF Mono', 'Fira Code', monospace;
   font-size: 0.8em;
-  background: #f0f0f2 !important;
-  border: 1px solid #e4e4e7;
+  background: var(--code-bg) !important;
+  border: 1px solid var(--code-border);
   border-radius: 4px;
   padding: 0.12em 0.42em;
-  /* rehype-pretty-code injects color via inline style — override it */
-  color: #374151 !important;
+  color: var(--code-fg) !important;
 }
 
 /* Block code — handled entirely by CodeBlock component */
@@ -177,7 +236,7 @@ a {
   text-align: left;
   font-weight: 600;
   color: var(--fg);
-  background: #fafafa;
+  background: var(--surface);
   border-bottom: 1px solid var(--line);
   padding: 0.6rem 0.875rem;
   font-size: 0.8125rem;

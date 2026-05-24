@@ -8,6 +8,7 @@ import { defineCommand, validationError, handleError, type CLIInput, type Plugin
 import { WorkflowDaemonClient } from '../http-client.js';
 
 interface RunsWatchFlags {
+  'run-id'?: string;
   json?: boolean;
 }
 
@@ -28,15 +29,22 @@ export default defineCommand<unknown, CLIInput<RunsWatchFlags>, { exitCode: numb
     async execute(ctx: PluginContextV3, input: CLIInput<RunsWatchFlags>): Promise<{ exitCode: number }> {
       const { flags, argv = [] } = input;
       const outputJson = flags?.json ?? false;
-      const runId = argv[0];
-
-      if (!runId) {
-        validationError(ctx, 'Missing run ID', 'Usage: kb workflow runs-watch <runId>', outputJson);
-        return { exitCode: 1 };
-      }
+      let runId = flags?.['run-id'] ?? argv[0];
 
       try {
         const client = new WorkflowDaemonClient();
+
+        // No run ID supplied — watch the latest run (like `gh run watch`)
+        if (!runId) {
+          const latest = await client.listRuns({ limit: 1 });
+          if (!latest.length) {
+            ctx.ui?.info?.('No runs found');
+            return { exitCode: 0 };
+          }
+          runId = latest[0]!.id!;
+          ctx.ui?.info?.(`Watching latest run: ${runId}`);
+        }
+
         const eventsUrl = client.getRunEventsUrl(runId);
 
         ctx.ui?.info?.(`Watching run ${runId} (Ctrl+C to stop)...`);
