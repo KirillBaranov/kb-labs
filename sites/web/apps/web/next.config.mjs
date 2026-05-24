@@ -6,7 +6,9 @@ import createMDX from '@next/mdx';
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
-const withMDX = createMDX({});
+const withMDX = createMDX({
+  extension: /\.mdx?$/,
+});
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
