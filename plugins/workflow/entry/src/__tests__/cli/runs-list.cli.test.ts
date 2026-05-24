@@ -135,4 +135,19 @@ describe('workflow:runs list', () => {
 
     expect(result.exitCode).toBe(0);
   });
+
+  it('CL-09: formatDuration returns "0ms" for durationMs=0 (BUG-007)', async () => {
+    MockedClient.mockImplementation(() => makeClient({
+      listRuns: async () => [
+        { id: 'r-003', name: 'instant', status: 'success' as const, createdAt: new Date().toISOString(), durationMs: 0 },
+      ],
+    }));
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    await runsListCommand.execute(ctx, mockCLIInput({ flags: {} }));
+
+    const durCell = captured.table[0]?.rows[0]?.['Dur'];
+    expect(durCell).toBe('0ms');
+  });
 });
