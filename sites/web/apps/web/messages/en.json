@@ -36,7 +36,11 @@
   "nav": {
     "login": "Log in",
     "megamenu": {
+      "core": {
+        "label": "Platform"
+      },
       "tools": {
+        "label": "Tools",
         "kbMonitor": {
           "title": "kb-monitor",
           "description": "Watch deployments and services over time"
@@ -57,6 +61,12 @@
           "title": "Marketplace",
           "description": "Plugins and adapters you can drop in"
         }
+      },
+      "delivery": {
+        "label": "Delivery"
+      },
+      "platformOps": {
+        "label": "Platform Ops"
       },
       "solutions": {
         "releaseAutomation": {
@@ -107,6 +117,7 @@
         }
       },
       "project": {
+        "label": "Project",
         "contact": {
           "title": "Contact",
           "description": "Get in touch directly"
@@ -129,6 +140,7 @@
         }
       },
       "learn": {
+        "label": "Learn",
         "demo": {
           "title": "Live Demo",
           "description": "Watch a workflow run end-to-end"
@@ -704,7 +716,7 @@
       },
       {
         "title": "Trigger",
-        "description": "Start from git events, API calls, schedules, or manual invocation."
+        "description": "Start from schedules, API calls, webhooks, or manual invocation from the CLI."
       },
       {
         "title": "Execute",
@@ -741,20 +753,20 @@
       ],
       "realWorkflowItems": [
         {
-          "title": "Release pipeline",
-          "description": "lint → type-check → test → AI review → QA gate → build → publish. Every step traced."
+          "label": "Release pipeline",
+          "desc": "lint → type-check → test → AI review → QA gate → build → publish. Every step traced."
         },
         {
-          "title": "AI code review",
-          "description": "On every commit or PR: diff → LLM review → inline comments → approval gate."
+          "label": "AI code review",
+          "desc": "On every commit or PR: diff → LLM review → inline comments → approval gate."
         },
         {
-          "title": "QA regression tracker",
-          "description": "Recurring checks on every change. Surfaces trend degradation before it ships."
+          "label": "QA regression tracker",
+          "desc": "Recurring checks on every change. Surfaces trend degradation before it ships."
         },
         {
-          "title": "Agent workflow",
-          "description": "Autonomous agents as first-class steps. Same permissions model, same observability."
+          "label": "Agent workflow",
+          "desc": "Autonomous agents as first-class steps. Same permissions model, same observability."
         }
       ],
       "heroTitleGradient": "Releases, reviews, agents.",
@@ -764,27 +776,27 @@
       "useCases": [
         {
           "title": "Release automation",
-          "description": "Declarative release pipeline that runs every time. No scripts to remember."
+          "desc": "Declarative release pipeline that runs every time. No scripts to remember."
         },
         {
           "title": "AI-assisted review",
-          "description": "LLM review as a gated step — runs after lint, blocks merge on issues."
+          "desc": "LLM review as a gated step — runs after lint, blocks merge on issues."
         },
         {
           "title": "QA trend tracking",
-          "description": "Recurring quality checks that surface regression signals before they ship."
+          "desc": "Recurring quality checks that surface regression signals before they ship."
         },
         {
           "title": "Agent orchestration",
-          "description": "Autonomous agents as workflow steps with sandboxed permissions."
+          "desc": "Autonomous agents as workflow steps with sandboxed permissions."
         },
         {
           "title": "Deploy coordination",
-          "description": "Build → push → pull → restart — orchestrated with health verification."
+          "desc": "Build → push → pull → restart — orchestrated with health verification."
         },
         {
           "title": "Custom automation",
-          "description": "Any engineering process that runs more than once belongs in a workflow."
+          "desc": "Any engineering process that runs more than once belongs in a workflow."
         }
       ],
       "mentalModelPara3Start": "Every run is fully observable. Trace the entire execution graph with",
@@ -793,7 +805,7 @@
       "heroEyebrow": "Workflow Engine",
       "ctaTitle": "Replace your script chaos with workflows.",
       "mentalModelPara1": "A workflow is a YAML file that lives in your repo, gets reviewed in PRs, and ships in the same release as the rest of your code. No GUI-only logic, no hidden state.",
-      "triggersSubtitle": "Workflows trigger on git events, schedules, webhooks, API calls, or manually from the CLI.",
+      "triggersSubtitle": "Workflows trigger on schedules, webhooks, API calls, or manually from the CLI.",
       "heroTitleSecond": "One engine.",
       "triggersEyebrow": "Triggers",
       "primitivesTitle": "Three building blocks.",
@@ -803,16 +815,22 @@
       "docsBtn": "Read the docs",
       "primitives": [
         {
-          "title": "Steps",
-          "description": "Atomic units of work — a plugin call, a shell command, or an agent invocation."
+          "id": "shell",
+          "name": "builtin:shell",
+          "desc": "Runs any shell command — scripts, CLI tools, your own binaries. Output is logged and available to downstream steps.",
+          "detail": "run · with · env · artifacts"
         },
         {
-          "title": "Jobs",
-          "description": "Groups of steps that run together. Jobs can depend on other jobs."
+          "id": "gate",
+          "name": "builtin:gate",
+          "desc": "Conditional routing with named routes and iteration limits. Directs the workflow to a branch or restarts a step with fresh context.",
+          "detail": "routes · maxIterations · restartFrom"
         },
         {
-          "title": "Triggers",
-          "description": "Git events, API calls, schedules, or manual invocation from CLI or Studio."
+          "id": "approval",
+          "name": "builtin:approval",
+          "desc": "Pauses the workflow and waits for a human decision. Supports approve/reject with an optional comment.",
+          "detail": "approve · reject · comment"
         }
       ],
       "primitivesEyebrow": "Primitives",
@@ -823,12 +841,12 @@
       "primitivesSubtitle": "Every workflow — from a two-step script to a multi-day process — is built from these three primitives.",
       "triggers": [
         {
-          "label": "Git push",
-          "description": "Run on every commit to a branch or tag."
+          "label": "CLI",
+          "description": "kb workflow run <name> from terminal or CI script."
         },
         {
-          "label": "Pull request",
-          "description": "Trigger review and QA gates on PR open or update."
+          "label": "Studio",
+          "description": "One-click run from the web UI with real-time log stream."
         },
         {
           "label": "Schedule",
@@ -839,12 +857,12 @@
           "description": "POST to the workflow endpoint from any system."
         },
         {
-          "label": "CLI",
-          "description": "kb workflow run <name> from terminal or CI script."
+          "label": "Git push",
+          "description": "Run on every commit to a branch or tag."
         },
         {
-          "label": "Studio",
-          "description": "One-click run from the web UI with real-time log stream."
+          "label": "Pull request",
+          "description": "Trigger review and QA gates on PR open or update."
         }
       ]
     },
@@ -3158,9 +3176,10 @@
       "description": "Self-hosted workflows, agents, and plugins. Run AI automation on your own infrastructure with full control."
     },
     "ctaSection": {
+      "eyebrow": "Get started",
       "title": "Run it on one real workflow.",
       "installBtn": "Install",
-      "description": "Install KB Labs on your own machine, point it at one process you actually own, and see how the engine fits."
+      "description": "One command. Runs on your machine. First workflow live in under an hour."
     },
     "workflowSection": {
       "title": "Define once. Run anywhere. Trace everything.",
@@ -3171,6 +3190,9 @@
     },
     "trustSection": {
       "title": "KB Labs runs on KB Labs — every day.",
+      "titleStart": "KB Labs runs on",
+      "titleHighlight": "KB Labs",
+      "titleSuffix": "— every day.",
       "stat1Label": "self-hosted",
       "stat3Value": "<1h",
       "stat2Label": "license",
@@ -3409,7 +3431,7 @@
       "licenseNote": "KBPL1.1 + MIT · No vendor lock-in · Founder reads every issue"
     },
     "painSection": {
-      "title": "Engineering teams keep rebuilding the same things.",
+      "title": "Every team builds the same thing. From scratch.",
       "eyebrow": "The problems"
     },
     "hero": {
@@ -3805,15 +3827,15 @@
     "kbdevFeatures": [
       {
         "title": "Knows when a service actually died",
-        "description": "Tracks real PIDs because it spawned the processes. No port scanning, no stale state."
+        "detail": "Tracks real PIDs because it spawned the processes. No port scanning, no stale state."
       },
       {
         "title": "Doesn't call it alive until it responds",
-        "description": "HTTP, TCP, and command health probes with latency. Reports alive only after the check passes."
+        "detail": "HTTP, TCP, and command health probes with latency. Reports alive only after the check passes."
       },
       {
         "title": "Starts in the right order",
-        "description": "Reads service dependencies from devservices.yaml and starts in topological order automatically."
+        "detail": "Reads service dependencies from devservices.yaml and starts in topological order automatically."
       }
     ],
     "kbdevHeroTitle": "Stop juggling",
@@ -4112,15 +4134,15 @@
     "monFeatures": [
       {
         "title": "Health across every target, one command",
-        "description": "health runs HTTP or TCP probes against every target defined in deploy.yaml. Pass or fail per service, with latency."
+        "detail": "health runs HTTP or TCP probes against every target defined in deploy.yaml. Pass or fail per service, with latency."
       },
       {
         "title": "Running state, uptime, and image SHA",
-        "description": "status gives you the three things you always want during an incident — current state, how long it's been that way, and exactly what's running."
+        "detail": "status gives you the three things you always want during an incident — current state, how long it's been that way, and exactly what's running."
       },
       {
         "title": "Remote logs without SSH sessions",
-        "description": "logs streams docker logs from the host. --lines for a tail, --follow for live tail. No more SSH into a box just to tail a file."
+        "detail": "logs streams docker logs from the host. --lines for a tail, --follow for live tail. No more SSH into a box just to tail a file."
       }
     ],
     "deployCtaTitle": "One binary. No Kubernetes.",
@@ -4132,27 +4154,27 @@
     "deployCommands": [
       {
         "cmd": "kb-deploy run",
-        "note": "Build and deploy affected targets (git diff against last deployed SHA)."
+        "desc": "Build and deploy affected targets (git diff against last deployed SHA)."
       },
       {
         "cmd": "kb-deploy run --all",
-        "note": "Force a full deploy of every target regardless of git state."
+        "desc": "Force a full deploy of every target regardless of git state."
       },
       {
         "cmd": "kb-deploy run kb-labs-web",
-        "note": "Deploy a specific target by name. Useful for hotfixes and targeted redeploys."
+        "desc": "Deploy a specific target by name. Useful for hotfixes and targeted redeploys."
       },
       {
         "cmd": "kb-deploy status",
-        "note": "Show the last deployed SHA per target and whether each is in sync with HEAD."
+        "desc": "Show the last deployed SHA per target and whether each is in sync with HEAD."
       },
       {
         "cmd": "kb-deploy list",
-        "note": "List every target configured in .kb/deploy.yaml, with their compose files and hosts."
+        "desc": "List every target configured in .kb/deploy.yaml, with their compose files and hosts."
       },
       {
         "cmd": "kb-deploy infra up",
-        "note": "Bring up stateful infra declared under infrastructure. Idempotent: running services are skipped."
+        "desc": "Bring up stateful infra declared under infrastructure. Idempotent: running services are skipped."
       }
     ],
     "prodHeroDescription": "KB Labs is an open-source runtime for the modern dev loop. Workflows turn releases, review, QA, and AI agents into code. The infra layer keeps every external vendor behind a single contract. Both parts — one install, one machine.",
@@ -4204,19 +4226,19 @@
     "buildCommands": [
       {
         "cmd": "kb-devkit run build",
-        "note": "Build all packages in dependency order. Skips unchanged packages via SHA cache."
+        "desc": "Build all packages in dependency order. Skips unchanged packages via SHA cache."
       },
       {
         "cmd": "kb-devkit run build --affected",
-        "note": "Build only changed packages and their downstream dependents."
+        "desc": "Build only changed packages and their downstream dependents."
       },
       {
         "cmd": "kb-devkit run build --packages @kb-labs/workflow-entry",
-        "note": "Build a specific package by name."
+        "desc": "Build a specific package by name."
       },
       {
         "cmd": "kb-devkit run build lint test",
-        "note": "Chain multiple tasks in one pass, each in correct dep order."
+        "desc": "Chain multiple tasks in one pass, each in correct dep order."
       }
     ],
     "secDisclosureTitle": "Found a vulnerability?",
@@ -4416,45 +4438,45 @@
     "impactCommands": [
       {
         "cmd": "kb-devkit run build --affected",
-        "note": "Resolve affected set via git diff + BFS through the dependency graph."
+        "desc": "Resolve affected set via git diff + BFS through the dependency graph."
       },
       {
         "cmd": "pnpm kb impact analyze",
-        "note": "Show which packages and tests are affected by current changes."
+        "desc": "Show which packages and tests are affected by current changes."
       },
       {
         "cmd": "pnpm kb impact report",
-        "note": "Export a structured impact report with dependency paths."
+        "desc": "Export a structured impact report with dependency paths."
       },
       {
         "cmd": "pnpm kb plugins clear-cache",
-        "note": "Force-invalidate the CLI discovery cache after a build."
+        "desc": "Force-invalidate the CLI discovery cache after a build."
       }
     ],
     "kbdevCommands": [
       {
         "cmd": "kb-dev start",
-        "note": "Start all services in dependency order. Health-probes before reporting alive."
+        "desc": "Start all services in dependency order. Health-probes before reporting alive."
       },
       {
         "cmd": "kb-dev stop",
-        "note": "Gracefully stop all running services."
+        "desc": "Gracefully stop all running services."
       },
       {
         "cmd": "kb-dev status",
-        "note": "Show running state, PID, port, and uptime per service."
+        "desc": "Show running state, PID, port, and uptime per service."
       },
       {
         "cmd": "kb-dev restart workflow",
-        "note": "Restart a specific service by name."
+        "desc": "Restart a specific service by name."
       },
       {
         "cmd": "kb-dev logs gateway --follow",
-        "note": "Stream live logs for a service. Ctrl-C to stop."
+        "desc": "Stream live logs for a service. Ctrl-C to stop."
       },
       {
         "cmd": "kb-dev doctor",
-        "note": "Run environment diagnostics: ports, deps, config, health."
+        "desc": "Run environment diagnostics: ports, deps, config, health."
       }
     ],
     "stateHeroDocsBtn": "Documentation",
@@ -4462,31 +4484,31 @@
     "monCommands": [
       {
         "cmd": "kb-monitor health",
-        "note": "Run health probes against every target. Pass or fail per service, with response latency."
+        "desc": "Run health probes against every target. Pass or fail per service, with response latency."
       },
       {
         "cmd": "kb-monitor health kb-labs-web",
-        "note": "Probe a specific target. Useful for post-deploy verification in CI or agent workflows."
+        "desc": "Probe a specific target. Useful for post-deploy verification in CI or agent workflows."
       },
       {
         "cmd": "kb-monitor status",
-        "note": "Running state, uptime, and image SHA for every target. The three things you need during an incident."
+        "desc": "Running state, uptime, and image SHA for every target. The three things you need during an incident."
       },
       {
         "cmd": "kb-monitor status --json",
-        "note": "Structured output for agents and dashboards. Stable schema, every field documented."
+        "desc": "Structured output for agents and dashboards. Stable schema, every field documented."
       },
       {
         "cmd": "kb-monitor logs kb-labs-web --lines 100",
-        "note": "Fetch the last 100 lines of logs for a target. No SSH session, no docker ps needed."
+        "desc": "Fetch the last 100 lines of logs for a target. No SSH session, no docker ps needed."
       },
       {
         "cmd": "kb-monitor logs kb-labs-web --follow",
-        "note": "Stream live logs for a target from your laptop. Ctrl-C to stop, no cleanup needed."
+        "desc": "Stream live logs for a target from your laptop. Ctrl-C to stop, no cleanup needed."
       },
       {
         "cmd": "kb-monitor exec kb-labs-web -- df -h",
-        "note": "Execute a command inside the running container. Any command after -- is passed through verbatim."
+        "desc": "Execute a command inside the running container. Any command after -- is passed through verbatim."
       }
     ],
     "devkitHeroTitleHighlight": "one second.",
@@ -4556,27 +4578,27 @@
     "commands": [
       {
         "cmd": "pnpm kb mind search --text \"how does X work\"",
-        "note": "Semantic search across the full codebase."
+        "desc": "Semantic search across the full codebase."
       },
       {
         "cmd": "pnpm kb mind search --text \"RoutingBackend\" --agent",
-        "note": "Agent-mode output: JSON lines with sources and confidence."
+        "desc": "Agent-mode output: JSON lines with sources and confidence."
       },
       {
         "cmd": "pnpm kb mind reindex",
-        "note": "Force full re-index of the codebase into the vector store."
+        "desc": "Force full re-index of the codebase into the vector store."
       },
       {
         "cmd": "pnpm kb mind reindex --affected",
-        "note": "Re-index only files changed since last index run."
+        "desc": "Re-index only files changed since last index run."
       },
       {
         "cmd": "pnpm kb mind status",
-        "note": "Show index health: total chunks, last indexed, backend status."
+        "desc": "Show index health: total chunks, last indexed, backend status."
       },
       {
         "cmd": "pnpm kb mind config",
-        "note": "Show active embedding model and vector store connection."
+        "desc": "Show active embedding model and vector store connection."
       }
     ],
     "secSandboxTitle": "Four layers of sandbox isolation.",
@@ -4600,23 +4622,23 @@
     "healthCommands": [
       {
         "cmd": "kb-devkit check",
-        "note": "Validate all packages against devkit.yaml rules: naming, tsconfig, eslint, deps."
+        "desc": "Validate all packages against devkit.yaml rules: naming, tsconfig, eslint, deps."
       },
       {
         "cmd": "kb-devkit stats",
-        "note": "Workspace health score (A–F), issue counts by category, coverage metrics."
+        "desc": "Workspace health score (A–F), issue counts by category, coverage metrics."
       },
       {
         "cmd": "kb-devkit fix",
-        "note": "Auto-fix safe violations. Use --dry-run to preview without writing."
+        "desc": "Auto-fix safe violations. Use --dry-run to preview without writing."
       },
       {
         "cmd": "kb-devkit gate",
-        "note": "Check staged files only. Exits with code 1 on violations. For pre-commit hooks."
+        "desc": "Check staged files only. Exits with code 1 on violations. For pre-commit hooks."
       },
       {
         "cmd": "pnpm kb plugins list",
-        "note": "List all installed plugins with their version and enabled state."
+        "desc": "List all installed plugins with their version and enabled state."
       }
     ],
     "ucResultLabel": "The outcome",
@@ -4632,27 +4654,27 @@
     "devkitCommands": [
       {
         "cmd": "kb-devkit run build",
-        "note": "Run build across all packages in dependency order. Cached results restore in ~1ms."
+        "desc": "Run build across all packages in dependency order. Cached results restore in ~1ms."
       },
       {
         "cmd": "kb-devkit run build --affected",
-        "note": "Run only on packages changed relative to HEAD, plus all their downstream dependents."
+        "desc": "Run only on packages changed relative to HEAD, plus all their downstream dependents."
       },
       {
         "cmd": "kb-devkit run build lint test",
-        "note": "Chain multiple tasks. Each respects its own inputs, outputs, and dep ordering."
+        "desc": "Chain multiple tasks. Each respects its own inputs, outputs, and dep ordering."
       },
       {
         "cmd": "kb-devkit run build --packages @scope/pkg-a,@scope/pkg-b",
-        "note": "Target specific packages by name. Useful for focused rebuilds during development."
+        "desc": "Target specific packages by name. Useful for focused rebuilds during development."
       },
       {
         "cmd": "kb-devkit check",
-        "note": "Validate all packages against devkit.yaml rules: naming, tsconfig, eslint, deps, structure."
+        "desc": "Validate all packages against devkit.yaml rules: naming, tsconfig, eslint, deps, structure."
       },
       {
         "cmd": "kb-devkit stats",
-        "note": "Workspace health score (A–F), issue counts by category, coverage metrics."
+        "desc": "Workspace health score (A–F), issue counts by category, coverage metrics."
       }
     ],
     "prodCtaTitle": "Get started now.",
@@ -4664,19 +4686,19 @@
     "monitorCommands": [
       {
         "cmd": "kb-monitor health",
-        "note": "Probe every declared target. Pass/fail with latency."
+        "desc": "Probe every declared target. Pass/fail with latency."
       },
       {
         "cmd": "kb-monitor status",
-        "note": "Running state, uptime, image SHA per target."
+        "desc": "Running state, uptime, image SHA per target."
       },
       {
         "cmd": "kb-monitor logs <target> --follow",
-        "note": "Stream live logs from any target. No SSH needed."
+        "desc": "Stream live logs from any target. No SSH needed."
       },
       {
         "cmd": "kb-monitor status --json",
-        "note": "Machine-readable output for agents and dashboards."
+        "desc": "Machine-readable output for agents and dashboards."
       }
     ],
     "contactHeroDescription": "Small team — we read everything and respond fast.",
@@ -4835,17 +4857,17 @@
       {
         "step": "1",
         "title": "Scaffold",
-        "description": "Run kb-create plugin my-plugin. Manifest, handlers, and tsconfig in place."
+        "desc": "Run kb-create plugin my-plugin. Manifest, handlers, and tsconfig in place."
       },
       {
         "step": "2",
         "title": "Implement",
-        "description": "Write typed handlers. Import from @kb-labs/sdk only — no internal deps."
+        "desc": "Write typed handlers. Import from @kb-labs/sdk only — no internal deps."
       },
       {
         "step": "3",
         "title": "Register",
-        "description": "Install locally or publish to the marketplace. kb plugins list shows it immediately."
+        "desc": "Install locally or publish to the marketplace. kb plugins list shows it immediately."
       }
     ],
     "kbdevConfigLead2": "Works with any stack: Docker, pnpm, npm, make, shell. KB Labs uses .kb/devservices.yaml — same format.",
@@ -4880,21 +4902,24 @@
     "stateModes": [
       {
         "badge": "Development",
+        "badgeCls": "bg-emerald-500/10 text-emerald-400 ring-emerald-500/20",
         "title": "In-Memory",
-        "latency": "~1ms",
-        "description": "Fast in-process cache. No infrastructure required. Data resets on restart."
+        "when": "~1ms latency",
+        "detail": "Fast in-process cache. No infrastructure required. Data resets on restart."
       },
       {
         "badge": "Production",
+        "badgeCls": "bg-blue-500/10 text-blue-400 ring-blue-500/20",
         "title": "Redis",
-        "latency": "~5ms",
-        "description": "Shared state across instances with persistence. Same API — swap with a config change."
+        "when": "~5ms latency",
+        "detail": "Shared state across instances with persistence. Same API — swap with a config change."
       },
       {
         "badge": "Edge",
+        "badgeCls": "bg-purple-500/10 text-purple-400 ring-purple-500/20",
         "title": "Custom adapter",
-        "latency": "depends",
-        "description": "Implement ICache and bind in kb.config.json. Any backend you choose."
+        "when": "any latency",
+        "detail": "Implement ICache and bind in kb.config.json. Any backend you choose."
       }
     ],
     "plugSurfaceTitle": "One manifest — three surfaces",
@@ -4980,20 +5005,20 @@
     "stateCtaEyebrow": "Try it now",
     "prodGatewayTitle": "Every external vendor behind one contract.",
     "deployConfigEyebrow": "Configuration",
-    "gwPlatformLead": "POST /platform/v1/{adapter}/{method} — nine adapters with a clear method allowlist. Streaming automatic when the method returns AsyncIterable.",
+    "gwPlatformLead": "POST /platform/v1/:adapter/:method — nine adapters with a clear method allowlist. Streaming automatic when the method returns AsyncIterable.",
     "deployConfigLead2": "SSH_KEY is the name of an env variable holding the PEM key. Locally — in .env, in CI — as a secret.",
     "devkitFeatures": [
       {
         "title": "Identical inputs, zero work",
-        "description": "SHA256 hash of all input files. Cache hit restores outputs in ~1ms. No rebuild, no rerun, no wait."
+        "detail": "SHA256 hash of all input files. Cache hit restores outputs in ~1ms. No rebuild, no rerun, no wait."
       },
       {
         "title": "Runs in the right order",
-        "description": "DAG across all (package × task) pairs. Packages with no interdependencies run in parallel. deps: [\"^build\"] means what it says."
+        "detail": "DAG across all (package × task) pairs. Packages with no interdependencies run in parallel. deps: [\"^build\"] means what it says."
       },
       {
         "title": "Knows what actually changed",
-        "description": "git diff inside each submodule, BFS through the reverse dependency graph. --affected targets only what needs to run."
+        "detail": "git diff inside each submodule, BFS through the reverse dependency graph. --affected targets only what needs to run."
       }
     ],
     "prodExploreEyebrow": "More in the platform",
@@ -5005,15 +5030,15 @@
     "deployFeatures": [
       {
         "title": "Deploys only what changed",
-        "description": "Affected targets are detected via git diff against the last deployed SHA. Nothing untouched rebuilds."
+        "detail": "Affected targets are detected via git diff against the last deployed SHA. Nothing untouched rebuilds."
       },
       {
         "title": "Builds, pushes, pulls, restarts — in order",
-        "description": "Build on your machine or in CI, push to the registry, pull on the host, docker compose up. Each step is verified before the next."
+        "detail": "Build on your machine or in CI, push to the registry, pull on the host, docker compose up. Each step is verified before the next."
       },
       {
         "title": "Tracks last-deployed SHA per target",
-        "description": "Every target remembers what it's currently running. status shows you the drift between HEAD and prod for each service."
+        "detail": "Every target remembers what it's currently running. status shows you the drift between HEAD and prod for each service."
       }
     ],
     "gwAiTitle": "OpenAI-compatible. No vendor lock-in.",

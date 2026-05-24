@@ -257,7 +257,7 @@ export default async function HomePage({ params }: Props) {
                         {cat.items.map(item => (
                           <span
                             key={item}
-                            className="rounded-md bg-bg px-2 py-0.5 font-mono text-[0.75rem] text-kb-text/70"
+                            className="rounded-md border border-white/15 bg-white/[0.07] px-2 py-0.5 font-mono text-[0.75rem] text-kb-text/80"
                           >
                             {item}
                           </span>
@@ -286,7 +286,13 @@ export default async function HomePage({ params }: Props) {
             <AnimateOnScroll animation="fade">
               <SectionHeader
                 eyebrow={t('home.trustSection.eyebrow')}
-                title={t('home.trustSection.title')}
+                title={
+                  <>
+                    {t('home.trustSection.titleStart')}{' '}
+                    <GradientText shimmer>{t('home.trustSection.titleHighlight')}</GradientText>
+                    {' '}{t('home.trustSection.titleSuffix')}
+                  </>
+                }
                 subtitle={t('home.trustSection.subtitle')}
               />
             </AnimateOnScroll>
@@ -352,9 +358,10 @@ export default async function HomePage({ params }: Props) {
         <Section>
           <Container>
             <div className="relative overflow-hidden rounded-3xl border border-line bg-bg px-8 py-16 text-center shadow-sm">
-              <BorderBeam size={300} duration={12} colorFrom="var(--color-accent)" colorTo="transparent" />
+              <BorderBeam />
               <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[320px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/[0.07] blur-[80px]" />
               <div className="relative z-10 flex flex-col items-center gap-5">
+                <Eyebrow>{t('home.ctaSection.eyebrow')}</Eyebrow>
                 <h2 className="max-w-[22ch] text-[clamp(1.75rem,3.5vw,2.4rem)] font-bold leading-[1.1] tracking-tight text-kb-text">
                   {t('home.ctaSection.title')}
                 </h2>
