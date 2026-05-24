@@ -37,12 +37,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   });
 }
 
-const statusStyles: Record<string, { badge: string; dot: string }> = {
-  shipped:     { badge: 'bg-accent/15 text-accent border-accent/20',           dot: 'bg-accent' },
-  'in-progress': { badge: 'bg-blue-500/15 text-blue-400 border-blue-500/20',   dot: 'bg-blue-400' },
-  planned:     { badge: 'bg-muted/10 text-muted/60 border-line',               dot: 'bg-muted/40' },
-  exploring:   { badge: 'bg-orange-500/15 text-orange-400 border-orange-500/20', dot: 'bg-orange-400' },
+const FALLBACK_STYLE = { badge: 'bg-muted/10 text-muted/60 border-line', dot: 'bg-muted/40' };
+
+const STATUS_STYLES: Record<string, { badge: string; dot: string }> = {
+  shipped:       { badge: 'bg-accent/15 text-accent border-accent/20',              dot: 'bg-accent' },
+  'in-progress': { badge: 'bg-blue-500/15 text-blue-400 border-blue-500/20',        dot: 'bg-blue-400' },
+  planned:       { badge: 'bg-muted/10 text-muted/60 border-line',                  dot: 'bg-muted/40' },
+  exploring:     { badge: 'bg-orange-500/15 text-orange-400 border-orange-500/20',  dot: 'bg-orange-400' },
 };
+
+function getStyle(status: string) {
+  return STATUS_STYLES[status] ?? FALLBACK_STYLE;
+}
 
 const statusLabel: Record<string, string> = {
   shipped: 'Shipped',
@@ -86,7 +92,7 @@ export default async function RoadmapPage({ params }: Props) {
             <nav className="flex gap-2 overflow-x-auto py-3 scrollbar-none">
               {quarters.map((q) => {
                 const isCurrent = q.status === 'in-progress';
-                const st = statusStyles[q.status];
+                const st = getStyle(q.status);
                 return (
                   <a
                     key={q.id}
@@ -106,7 +112,7 @@ export default async function RoadmapPage({ params }: Props) {
         <Container>
           <div className="flex flex-wrap gap-2 py-5">
             {(['shipped', 'in-progress', 'planned', 'exploring'] as const).map((key) => {
-              const st = statusStyles[key];
+              const st = getStyle(key);
               return (
                 <span key={key} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-0.5 text-xs font-medium ${st.badge}`}>
                   <span className={`size-1.5 rounded-full ${st.dot}`} />
@@ -125,7 +131,7 @@ export default async function RoadmapPage({ params }: Props) {
                 const { done, total } = getProgress(q);
                 const pct = total > 0 ? Math.round((done / total) * 100) : 0;
                 const isCurrent = q.status === 'in-progress';
-                const st = statusStyles[q.status];
+                const st = getStyle(q.status);
 
                 return (
                   <div
@@ -148,7 +154,7 @@ export default async function RoadmapPage({ params }: Props) {
                       </div>
                       <div className="flex items-center gap-3">
                         <span className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${st.badge}`}>
-                          {statusLabel[q.status]}
+                          {statusLabel[q.status] ?? q.status}
                         </span>
                         {(q.status === 'shipped' || q.status === 'in-progress') && (
                           <div className="flex items-center gap-2">
@@ -164,13 +170,13 @@ export default async function RoadmapPage({ params }: Props) {
                     {/* Items */}
                     <ul className="divide-y divide-line">
                       {q.items.map((item, i) => {
-                        const ist = statusStyles[item.status];
+                        const ist = getStyle(item.status);
                         return (
                           <li key={i} className="flex flex-col gap-1.5 p-4">
                             <div className="flex items-center justify-between gap-3">
                               <span className="text-sm font-medium text-kb-text">{item.title}</span>
                               <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[0.65rem] font-medium ${ist.badge}`}>
-                                {statusLabel[item.status]}
+                                {statusLabel[item.status] ?? item.status}
                               </span>
                             </div>
                             <p className="text-xs leading-relaxed text-muted/60">{item.description}</p>
