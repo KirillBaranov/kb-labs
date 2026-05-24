@@ -155,7 +155,11 @@
         "description": "Dedicated support, SLA, governance controls — shaped around how your team already runs."
       }
     },
-    "start": "Install"
+    "start": "Install",
+    "product": "Product",
+    "solutions": "Solutions",
+    "resources": "Resources",
+    "pricing": "Pricing"
   },
   "kbDevkit": {
     "download": {
@@ -902,7 +906,13 @@
       "authorLabel": "Author",
       "comingSoonDesc": "Plugins are being indexed. Check back shortly.",
       "resultCount": "{count} results",
-      "noResultsQuery": "No results for \"{query}\"."
+      "noResultsQuery": "No results for \"{query}\".",
+      "typeAll": "All",
+      "typePlugin": "Plugins",
+      "typeAdapter": "Adapters",
+      "typeWidget": "Widgets",
+      "official": "Official",
+      "community": "Community"
     },
     "meta": {
       "title": "Marketplace",

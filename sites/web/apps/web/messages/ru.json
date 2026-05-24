@@ -155,7 +155,11 @@
         "description": "Выделенная поддержка, SLA, governance-контроли — под ваш процесс."
       }
     },
-    "start": "Установить"
+    "start": "Установить",
+    "product": "Продукт",
+    "solutions": "Решения",
+    "resources": "Ресурсы",
+    "pricing": "Цены"
   },
   "kbDevkit": {
     "download": {
@@ -902,7 +906,13 @@
       "authorLabel": "Автор",
       "comingSoonDesc": "Больше расширений скоро появятся.",
       "resultCount": "{count} расширений",
-      "noResultsQuery": "Нет результатов для"
+      "noResultsQuery": "Нет результатов для",
+      "typeAll": "Все",
+      "typePlugin": "Плагины",
+      "typeAdapter": "Адаптеры",
+      "typeWidget": "Виджеты",
+      "official": "Официальные",
+      "community": "Сообщество"
     },
     "meta": {
       "title": "Маркетплейс",

@@ -3,7 +3,6 @@
 import { useState, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import type { MarketplaceItem, PluginType } from '@/lib/marketplace-data';
-import s from './page.module.css';
 
 const TYPE_OPTIONS: (PluginType | 'all')[] = ['all', 'plugin', 'adapter', 'widget'];
 
@@ -89,37 +88,46 @@ export function MarketplaceCatalog({ items, locale }: { items: MarketplaceItem[]
     );
   }
 
+  const sidebarItemCls = (active: boolean) =>
+    `flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-sm transition-colors ${
+      active ? 'bg-surface text-kb-text font-medium' : 'text-muted hover:bg-surface/60 hover:text-kb-text'
+    }`;
+
   return (
-    <div className={s.root}>
+    <div className="flex gap-8 items-start">
       {/* ── Sidebar ── */}
-      <nav className={s.sidebar}>
-        <div className={s.sidebarSection}>
-          <p className={s.sidebarLabel}>{t('marketplace.catalog.categoriesLabel')}</p>
+      <nav className="w-44 shrink-0 flex flex-col gap-5">
+        <div className="flex flex-col gap-0.5">
+          <p className="mb-1 px-2 text-[0.6rem] font-semibold uppercase tracking-widest text-muted/50">
+            {t('marketplace.catalog.categoriesLabel')}
+          </p>
           {TYPE_OPTIONS.map((type) => {
-            const typeKey = type === 'all' ? 'typeAll' : type === 'plugin' ? 'typePlugin' : type === 'adapter' ? 'typeAdapter' : type === 'widget' ? 'typeWidget' : 'typeHook';
+            const typeKey = type === 'all' ? 'typeAll' : type === 'plugin' ? 'typePlugin' : type === 'adapter' ? 'typeAdapter' : 'typeWidget';
             return (
               <button
                 key={type}
-                className={`${s.sidebarItem}${activeType === type && activeAuthor === 'all' ? ` ${s.sidebarItemActive}` : ''}`}
+                className={sidebarItemCls(activeType === type && activeAuthor === 'all')}
                 onClick={() => { setActiveType(type); setActiveAuthor('all'); }}
               >
-                <span className={s.sidebarItemIcon}><NavIcon type={type} /></span>
+                <span className="flex size-4 shrink-0 items-center justify-center text-muted/60"><NavIcon type={type} /></span>
                 <span>{t(`marketplace.catalog.${typeKey}`)}</span>
-                <span className={s.sidebarCount}>{typeCounts[type]}</span>
+                <span className="ml-auto text-xs text-muted/40">{typeCounts[type]}</span>
               </button>
             );
           })}
         </div>
 
-        <div className={s.sidebarSection}>
-          <p className={s.sidebarLabel}>{t('marketplace.catalog.authorLabel')}</p>
+        <div className="flex flex-col gap-0.5">
+          <p className="mb-1 px-2 text-[0.6rem] font-semibold uppercase tracking-widest text-muted/50">
+            {t('marketplace.catalog.authorLabel')}
+          </p>
           {(['official', 'community'] as const).map((a) => (
             <button
               key={a}
-              className={`${s.sidebarItem}${activeAuthor === a ? ` ${s.sidebarItemActive}` : ''}`}
+              className={sidebarItemCls(activeAuthor === a)}
               onClick={() => { setActiveAuthor(activeAuthor === a ? 'all' : a); }}
             >
-              <span className={s.sidebarItemIcon}>
+              <span className="flex size-4 shrink-0 items-center justify-center text-muted/60">
                 {a === 'official' ? (
                   <svg width="15" height="15" viewBox="0 0 14 14" fill="none" aria-hidden>
                     <path d="M7 1.5L2 3.5V7c0 2.8 2 4.8 5 5.5 3-.7 5-2.7 5-5.5V3.5L7 1.5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/>
@@ -133,22 +141,22 @@ export function MarketplaceCatalog({ items, locale }: { items: MarketplaceItem[]
                 )}
               </span>
               <span>{t(`marketplace.catalog.${a}`)}</span>
-              <span className={s.sidebarCount}>{items.filter((i) => i.authorType === a).length}</span>
+              <span className="ml-auto text-xs text-muted/40">{items.filter((i) => i.authorType === a).length}</span>
             </button>
           ))}
         </div>
       </nav>
 
       {/* ── Content ── */}
-      <div className={s.content}>
-        <div className={s.topbar}>
-          <div className={s.searchWrap}>
-            <svg className={s.searchIcon} width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
+      <div className="min-w-0 flex-1">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="relative flex-1">
+            <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-muted/40" width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden>
               <circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.5"/>
               <path d="M10 10l3.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
             </svg>
             <input
-              className={s.searchInput}
+              className="w-full rounded-lg border border-line bg-surface/40 py-2 pl-9 pr-3 text-sm text-kb-text placeholder:text-muted/40 outline-none focus:border-accent"
               type="search"
               placeholder={t('marketplace.catalog.searchPlaceholder')}
               value={query}
@@ -156,34 +164,38 @@ export function MarketplaceCatalog({ items, locale }: { items: MarketplaceItem[]
               aria-label={t('marketplace.catalog.searchAriaLabel')}
             />
           </div>
-          <p className={s.resultCount}>{t('marketplace.catalog.resultCount', { count: filtered.length })}</p>
+          <p className="shrink-0 text-sm text-muted/50">{t('marketplace.catalog.resultCount', { count: filtered.length })}</p>
         </div>
 
         {filtered.length === 0 ? (
-          <div className={s.empty}>
-            <p>{query ? t('marketplace.catalog.noResultsQuery', { query }) : t('marketplace.catalog.noResults')}</p>
+          <div className="py-20 text-center">
+            <p className="text-muted/60">{query ? t('marketplace.catalog.noResultsQuery', { query }) : t('marketplace.catalog.noResults')}</p>
             <button
-              className={s.emptyReset}
+              className="mt-3 text-sm text-accent underline"
               onClick={() => { setQuery(''); setActiveType('all'); setActiveAuthor('all'); }}
             >
               {t('marketplace.catalog.resetFilters')}
             </button>
           </div>
         ) : (
-          <div className={s.grid}>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-3">
             {filtered.map((item) => (
-              <a key={item.slug} className={s.card} href={`/${locale}/product/marketplace/${item.slug}`}>
-                <div className={s.cardHead}>
-                  <div className={`${s.cardIcon} ${s[`icon-${item.type}`]}`}>
-                    <TypeIcon type={item.type} size={22} />
+              <a
+                key={item.slug}
+                className="flex flex-col gap-2.5 rounded-xl border border-line bg-surface/30 p-4 no-underline transition-colors hover:border-accent/40 hover:bg-surface/60"
+                href={`/${locale}/product/marketplace/${item.slug}`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <div className="flex size-8 shrink-0 items-center justify-center rounded-lg border border-line bg-surface/60 text-muted">
+                    <TypeIcon type={item.type} size={18} />
                   </div>
                   {item.authorType === 'official' && (
-                    <span className={s.officialBadge}>Official</span>
+                    <span className="ml-auto rounded px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wider bg-accent text-white">Official</span>
                   )}
                 </div>
-                <h3 className={s.cardName}>{item.name}</h3>
-                <p className={s.cardDesc}>{item.description}</p>
-                <p className={s.cardAuthor}>by {item.author}</p>
+                <h3 className="text-sm font-semibold text-kb-text">{item.name}</h3>
+                <p className="flex-1 text-xs leading-relaxed text-muted/70">{item.description}</p>
+                <p className="text-xs text-muted/40">by {item.author}</p>
               </a>
             ))}
           </div>
