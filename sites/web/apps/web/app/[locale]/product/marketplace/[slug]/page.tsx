@@ -9,7 +9,6 @@ import { SiteFooter } from '@/components/SiteFooter';
 import { Container } from '@kb-labs/web-site-ui';
 import { fetchRegistryItems, fetchRegistryItem } from '@/lib/marketplace-data';
 import { buildPageMetadata } from '@/lib/page-metadata';
-import s from './page.module.css';
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
@@ -66,7 +65,7 @@ export default async function PluginPage({ params }: Props) {
         <Container className="py-8 pb-20">
 
           {/* ── Back link ── */}
-          <Link href={`/${locale}/product/marketplace`} className={s.backLink}>
+          <Link href={`/${locale}/product/marketplace`} className="mb-8 flex items-center gap-1.5 text-sm text-muted/60 hover:text-kb-text transition-colors">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden>
               <path d="M9 11L5 7l4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
@@ -74,8 +73,8 @@ export default async function PluginPage({ params }: Props) {
           </Link>
 
           {/* ── Page header ── */}
-          <div className={s.pageHeader}>
-            <div className={`${s.typeIcon} ${s[`icon-${item.type}`]}`}>
+          <div className="mb-10 flex items-start gap-5">
+            <div className="flex size-14 shrink-0 items-center justify-center rounded-xl border border-line bg-surface/60 text-muted">
               {item.type === 'plugin' && (
                 <svg width="28" height="28" viewBox="0 0 14 14" fill="none">
                   <rect x="1" y="1" width="5" height="5" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
@@ -104,31 +103,31 @@ export default async function PluginPage({ params }: Props) {
                 </svg>
               )}
             </div>
-            <div className={s.pageHeaderText}>
-              <div className={s.pageHeaderMeta}>
-                <span className={`${s.typeBadge} ${s[`type-${item.type}`]}`}>
+            <div className="flex flex-col gap-1.5">
+              <div className="flex items-center gap-2">
+                <span className="rounded-md border border-line px-2 py-0.5 text-xs font-medium text-muted/70">
                   {t(`marketplace.detail.type${item.type.charAt(0).toUpperCase()}${item.type.slice(1)}` as never)}
                 </span>
                 {item.authorType === 'official' && (
-                  <span className={s.officialBadge}>Official</span>
+                  <span className="rounded px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wider bg-accent text-white">Official</span>
                 )}
               </div>
-              <h1 className={s.name}>{item.name}</h1>
-              <p className={s.tagline}>{item.description}</p>
+              <h1 className="text-2xl font-bold tracking-tight text-kb-text">{item.name}</h1>
+              <p className="text-base text-muted/70">{item.description}</p>
             </div>
           </div>
 
-          <div className={s.layout}>
+          <div className="flex gap-10 items-start lg:flex-row flex-col">
             {/* ── Main content ── */}
-            <div className={s.content}>
+            <div className="min-w-0 flex-1 flex flex-col gap-8">
 
               {/* Install block */}
-              <div className={s.installBlock}>
-                <p className={s.installLabel}>{t('marketplace.detail.installLabel')}</p>
-                <div className={s.installCmd}>
-                  <code>{item.installCmd}</code>
+              <div className="rounded-xl border border-line bg-surface/40 p-4">
+                <p className="mb-2 text-[0.65rem] font-semibold uppercase tracking-widest text-muted/50">{t('marketplace.detail.installLabel')}</p>
+                <div className="flex items-center gap-3 rounded-lg bg-bg px-4 py-2.5 font-mono text-sm text-kb-text">
+                  <code className="flex-1">{item.installCmd}</code>
                   <button
-                    className={s.copyBtn}
+                    className="flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1 text-xs text-muted/60 hover:text-kb-text transition-colors"
                     aria-label={t('marketplace.detail.copyAriaLabel')}
                     data-copy={item.installCmd}
                     data-copy-text={t('marketplace.detail.copyBtn')}
@@ -145,27 +144,25 @@ export default async function PluginPage({ params }: Props) {
 
               {/* README or About */}
               {readmeContent ? (
-                <section className={s.section}>
-                  <div className={s.readme}>{readmeContent}</div>
-                </section>
+                <section className="prose prose-invert max-w-none">{readmeContent}</section>
               ) : (
-                <section className={s.section}>
-                  <h2 className={s.sectionTitle}>{t('marketplace.detail.aboutTitle')}</h2>
+                <section className="flex flex-col gap-4">
+                  <h2 className="text-lg font-semibold text-kb-text">{t('marketplace.detail.aboutTitle')}</h2>
                   {paragraphs.map((p, i) => (
-                    <p key={i} className={s.bodyText}>{p}</p>
+                    <p key={i} className="text-sm leading-relaxed text-muted/70">{p}</p>
                   ))}
                 </section>
               )}
 
               {/* Commands */}
               {item.commands && item.commands.length > 0 && (
-                <section className={s.section}>
-                  <h2 className={s.sectionTitle}>{t('marketplace.detail.commandsTitle')}</h2>
-                  <div className={s.commandList}>
+                <section className="flex flex-col gap-3">
+                  <h2 className="text-lg font-semibold text-kb-text">{t('marketplace.detail.commandsTitle')}</h2>
+                  <div className="flex flex-col gap-2">
                     {item.commands.map((cmd) => (
-                      <div key={cmd} className={s.commandRow}>
-                        <code className={s.commandCode}>{cmd}</code>
-                        <span className={s.commandHint}>kb {cmd} --help</span>
+                      <div key={cmd} className="flex items-center gap-4 rounded-lg border border-line bg-surface/30 px-4 py-2.5">
+                        <code className="font-mono text-sm text-kb-text">{cmd}</code>
+                        <span className="ml-auto text-xs text-muted/40">kb {cmd} --help</span>
                       </div>
                     ))}
                   </div>
@@ -174,32 +171,26 @@ export default async function PluginPage({ params }: Props) {
 
               {/* Requirements */}
               {hasRequirements && (
-                <section className={s.section}>
-                  <details className={s.reqDetails}>
-                    <summary className={s.reqSummary}>{t('marketplace.detail.requirementsTitle')}</summary>
-                    <div className={s.reqGrid}>
+                <section>
+                  <details className="rounded-xl border border-line">
+                    <summary className="cursor-pointer px-4 py-3 text-sm font-medium text-kb-text">{t('marketplace.detail.requirementsTitle')}</summary>
+                    <div className="grid gap-4 border-t border-line p-4 sm:grid-cols-3">
                       {item.permissions && item.permissions.length > 0 && (
-                        <div className={s.reqGroup}>
-                          <p className={s.reqLabel}>{t('marketplace.detail.permissionsLabel')}</p>
-                          {item.permissions.map((p) => (
-                            <p key={p} className={s.reqItem}><code>{p}</code></p>
-                          ))}
+                        <div className="flex flex-col gap-1.5">
+                          <p className="text-[0.6rem] font-semibold uppercase tracking-widest text-muted/50">{t('marketplace.detail.permissionsLabel')}</p>
+                          {item.permissions.map((p) => <p key={p} className="text-xs text-muted/70"><code>{p}</code></p>)}
                         </div>
                       )}
                       {item.allowedHosts && item.allowedHosts.length > 0 && (
-                        <div className={s.reqGroup}>
-                          <p className={s.reqLabel}>{t('marketplace.detail.networkLabel')}</p>
-                          {item.allowedHosts.map((h) => (
-                            <p key={h} className={s.reqItem}><code>{h}</code></p>
-                          ))}
+                        <div className="flex flex-col gap-1.5">
+                          <p className="text-[0.6rem] font-semibold uppercase tracking-widest text-muted/50">{t('marketplace.detail.networkLabel')}</p>
+                          {item.allowedHosts.map((h) => <p key={h} className="text-xs text-muted/70"><code>{h}</code></p>)}
                         </div>
                       )}
                       {item.envVars && item.envVars.length > 0 && (
-                        <div className={s.reqGroup}>
-                          <p className={s.reqLabel}>{t('marketplace.detail.envLabel')}</p>
-                          {item.envVars.map((v) => (
-                            <p key={v} className={s.reqItem}><code>{v}</code></p>
-                          ))}
+                        <div className="flex flex-col gap-1.5">
+                          <p className="text-[0.6rem] font-semibold uppercase tracking-widest text-muted/50">{t('marketplace.detail.envLabel')}</p>
+                          {item.envVars.map((v) => <p key={v} className="text-xs text-muted/70"><code>{v}</code></p>)}
                         </div>
                       )}
                     </div>
@@ -209,40 +200,28 @@ export default async function PluginPage({ params }: Props) {
             </div>
 
             {/* ── Sidebar ── */}
-            <aside className={s.sidebar}>
-              <dl className={s.metaList}>
-                <div className={s.metaRow}>
-                  <dt>{t('marketplace.detail.downloadsLabel')}</dt>
-                  <dd>
-                    {item.weeklyDownloads > 0
-                      ? item.weeklyDownloads.toLocaleString(locale)
-                      : <span className={s.comingSoon}>{t('marketplace.detail.comingSoon')}</span>}
-                  </dd>
-                </div>
-                <div className={s.metaRow}>
-                  <dt>{t('marketplace.detail.versionLabel')}</dt>
-                  <dd>v{item.version}</dd>
-                </div>
-                <div className={s.metaRow}>
-                  <dt>{t('marketplace.detail.authorLabel')}</dt>
-                  <dd>{item.author}</dd>
-                </div>
-                <div className={s.metaRow}>
-                  <dt>{t('marketplace.detail.updatedLabel')}</dt>
-                  <dd>{item.updatedAt}</dd>
-                </div>
-                <div className={s.metaRow}>
-                  <dt>{t('marketplace.detail.typeLabel')}</dt>
-                  <dd>{t(`marketplace.detail.type${item.type.charAt(0).toUpperCase()}${item.type.slice(1)}` as never)}</dd>
-                </div>
+            <aside className="w-full lg:w-56 shrink-0 flex flex-col gap-5">
+              <dl className="flex flex-col divide-y divide-line rounded-xl border border-line">
+                {[
+                  [t('marketplace.detail.downloadsLabel'), item.weeklyDownloads > 0 ? item.weeklyDownloads.toLocaleString(locale) : t('marketplace.detail.comingSoon')],
+                  [t('marketplace.detail.versionLabel'), `v${item.version}`],
+                  [t('marketplace.detail.authorLabel'), item.author],
+                  [t('marketplace.detail.updatedLabel'), item.updatedAt],
+                  [t('marketplace.detail.typeLabel'), t(`marketplace.detail.type${item.type.charAt(0).toUpperCase()}${item.type.slice(1)}` as never)],
+                ].map(([label, value]) => (
+                  <div key={label} className="flex justify-between px-3 py-2.5 text-sm">
+                    <dt className="text-muted/50">{label}</dt>
+                    <dd className="font-medium text-kb-text">{value}</dd>
+                  </div>
+                ))}
               </dl>
 
               {item.tags.length > 0 && (
-                <div className={s.sideTagsWrap}>
-                  <p className={s.sideTagsLabel}>{t('marketplace.detail.tagsLabel')}</p>
-                  <div className={s.sideTags}>
-                    {item.tags.map((t) => (
-                      <span key={t} className={s.sideTag}>{t}</span>
+                <div className="flex flex-col gap-2">
+                  <p className="text-[0.6rem] font-semibold uppercase tracking-widest text-muted/50">{t('marketplace.detail.tagsLabel')}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {item.tags.map((tag) => (
+                      <span key={tag} className="rounded-md border border-line px-2 py-0.5 text-xs text-muted/60">{tag}</span>
                     ))}
                   </div>
                 </div>
