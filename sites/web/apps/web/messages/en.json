@@ -4008,7 +4008,7 @@
     "monFeaturesTitle": "The details that matter.",
     "cmpCtaDescription": "One install, five minutes — first workflow running on your machine.",
     "monCommandsFootnote": "All commands support --json for scripts and agent workflows",
-    "secHeroEyebrow": "Security",
+    "secHeroEyebrow": "SECURITY",
     "prodWorkflowsLink": "How workflows work →",
     "gwMetaDesc": "Single entry point. Any service gets LLM, EventBus, Cache, and Storage over HTTP — no vendor lock-in.",
     "monHeroTitleHighlight": "agent watch.",
@@ -4050,23 +4050,23 @@
     "secStats": [
       {
         "value": "100%",
-        "label": "on-prem",
-        "description": "No cloud required"
+        "label": "Open source",
+        "description": "All code on GitHub. No black boxes."
       },
       {
         "value": "0",
-        "label": "telemetry default",
-        "description": "Opt-in only"
+        "label": "Cloud dependencies",
+        "description": "By default. Everything runs locally."
+      },
+      {
+        "value": "0",
+        "label": "Data on our servers",
+        "description": "We don't store your code or state."
       },
       {
         "value": "3",
-        "label": "isolation modes",
-        "description": "In-process, subprocess, container"
-      },
-      {
-        "value": "MIT",
-        "label": "license",
-        "description": "Full source auditable"
+        "label": "Plugin isolation modes",
+        "description": "In-process, subprocess/container, and worker-pool."
       }
     ],
     "secAuthFacts": [
