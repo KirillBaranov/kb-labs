@@ -94,7 +94,7 @@
 
 .expandBtn:hover,
 .closeBtn:hover {
-  background: #f0f1f4;
+  background: var(--line);
   color: var(--text, #0f1115);
 }
 
@@ -148,7 +148,7 @@
 }
 
 .chip:hover {
-  background: #f4f5f8;
+  background: var(--line);
   border-color: var(--accent, #0c66ff);
   color: var(--accent, #0c66ff);
 }
@@ -177,7 +177,7 @@
 
 .bubbleAssistant {
   align-self: flex-start;
-  background: #f0f1f5;
+  background: var(--line);
   color: var(--text, #0f1115);
   border-bottom-left-radius: 4px;
 }
@@ -217,7 +217,7 @@
   gap: 4px;
   padding: 0.6rem 0.85rem;
   align-self: flex-start;
-  background: #f0f1f5;
+  background: var(--line);
   border-radius: 12px;
   border-bottom-left-radius: 4px;
   animation: bubbleIn 200ms ease both;

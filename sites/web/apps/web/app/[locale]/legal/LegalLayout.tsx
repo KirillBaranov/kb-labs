@@ -1,44 +1,52 @@
 import Link from 'next/link';
-import s from './legal.module.css';
+import styles from './legal.module.css';
 
-const NAV = [
-  { label: 'Privacy Policy', href: '/legal/privacy' },
-  { label: 'Terms of Service', href: '/legal/terms' },
-  { label: 'Data Processing', href: '/legal/dpa' },
-  { label: 'Cookie Policy', href: '/legal/cookies' },
-];
+type NavItem = { label: string; href: string };
 
 type Props = {
   title: string;
   updated: string;
+  lastUpdatedLabel: string;
+  navTitle: string;
+  navItems: NavItem[];
   currentHref: string;
   children: React.ReactNode;
 };
 
-export function LegalLayout({ title, updated, currentHref, children }: Props) {
+export function LegalLayout({
+  title,
+  updated,
+  lastUpdatedLabel,
+  navTitle,
+  navItems,
+  currentHref,
+  children,
+}: Props) {
   return (
-    <div className={s.wrap}>
-      <nav className={s.sidebar}>
-        <span className={s.sidebarLabel}>Legal</span>
-        {NAV.map((item) => (
+    <div className={styles.wrap}>
+      {/* Sidebar */}
+      <nav className={styles.sidebar}>
+        <span className={styles.sidebarLabel}>{navTitle}</span>
+        {navItems.map((item) => (
           <Link
             key={item.href}
             href={item.href}
-            className={`${s.sidebarLink}${item.href === currentHref ? ` ${s.active}` : ''}`}
+            className={`${styles.sidebarLink}${item.href === currentHref ? ` ${styles.active}` : ''}`}
           >
             {item.label}
           </Link>
         ))}
       </nav>
 
-      <article className={s.doc}>
-        <header className={s.docHeader}>
+      {/* Document */}
+      <article className={styles.doc}>
+        <header className={styles.docHeader}>
           <h1>{title}</h1>
-          <span className={s.docMeta}>Last updated: {updated}</span>
+          <span className={styles.docMeta}>
+            {lastUpdatedLabel} {updated}
+          </span>
         </header>
-        <div className={s.prose}>
-          {children}
-        </div>
+        <div className={styles.prose}>{children}</div>
       </article>
     </div>
   );
