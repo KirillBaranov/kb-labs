@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 
 interface ScreenshotLightboxProps {
   src: string;
@@ -12,6 +13,7 @@ interface ScreenshotLightboxProps {
 }
 
 export function ScreenshotLightbox({ src, alt, url, className }: ScreenshotLightboxProps) {
+  const t = useTranslations('ui');
   const [open, setOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
 
@@ -47,7 +49,7 @@ export function ScreenshotLightbox({ src, alt, url, className }: ScreenshotLight
         type="button"
         onClick={() => setOpen(false)}
         className="absolute right-5 top-5 rounded-full bg-white/10 p-2 text-white/60 transition-colors hover:bg-white/20 hover:text-white"
-        aria-label="Закрыть"
+        aria-label={t('closeLightbox')}
       >
         <X className="size-5" />
       </button>
@@ -93,7 +95,7 @@ export function ScreenshotLightbox({ src, alt, url, className }: ScreenshotLight
         type="button"
         onClick={() => setOpen(true)}
         className="group block w-full cursor-zoom-in text-left"
-        aria-label={`Открыть скриншот: ${alt}`}
+        aria-label={t('openScreenshot', { alt })}
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img

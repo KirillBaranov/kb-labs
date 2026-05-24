@@ -43,7 +43,7 @@ export function TestimonialCard({
       </blockquote>
 
       <figcaption className="flex items-center gap-3">
-        <div className="flex size-9 shrink-0 items-center justify-center rounded-full border border-line bg-bg text-xs font-semibold text-muted overflow-hidden">
+        <div className="flex size-9 shrink-0 items-center justify-center rounded-full border border-line bg-bg text-sm font-semibold text-muted overflow-hidden">
           {avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={avatarUrl} alt={author} className="h-full w-full object-cover" />
@@ -54,7 +54,7 @@ export function TestimonialCard({
         <div className="flex flex-col gap-0.5">
           <span className="text-sm font-semibold leading-none text-kb-text">{author}</span>
           {(role || company) && (
-            <span className="text-xs text-muted">
+            <span className="text-sm text-muted">
               {[role, company].filter(Boolean).join(', ')}
             </span>
           )}

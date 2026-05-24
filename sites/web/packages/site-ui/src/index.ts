@@ -1,4 +1,7 @@
 // Primitives
+export { DataTable } from './components/ui/data-table';
+export type { DataTableProps, DataTableColumn, DataTableRow } from './components/ui/data-table';
+
 export { Button, buttonVariants } from './components/ui/button';
 export type { ButtonProps, ButtonVariants } from './components/ui/button';
 
@@ -140,6 +143,8 @@ export type { TestimonialCardProps } from './components/marketing/testimonial-ca
 
 export { ChangelogEntry } from './components/marketing/changelog-entry';
 export type { ChangelogEntryProps, ChangeItem, ChangeType } from './components/marketing/changelog-entry';
+export { RoadmapEntry } from './components/marketing/roadmap-entry';
+export type { RoadmapEntryProps, RoadmapItem, RoadmapStatus } from './components/marketing/roadmap-entry';
 
 export { Prose } from './components/ui/prose';
 export type { ProseProps } from './components/ui/prose';

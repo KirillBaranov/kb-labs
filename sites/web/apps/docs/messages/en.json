@@ -1,0 +1,31 @@
+{
+  "header": {
+    "search": "Search documentation…",
+    "searchKbd": "⌘ K",
+    "changelog": "Changelog",
+    "waitlist": "Join waitlist"
+  },
+  "sidebar": {
+    "untranslated": "EN"
+  },
+  "banner": {
+    "text": "This page hasn't been translated to Russian yet.",
+    "cta": "Help translate on GitHub →"
+  },
+  "feedback": {
+    "helpful": "Was this helpful?",
+    "yes": "Yes",
+    "no": "No",
+    "thanks": "Thanks for the feedback!"
+  },
+  "page": {
+    "editOnGithub": "Edit this page on GitHub →",
+    "lastUpdated": "Last updated"
+  },
+  "notFound": {
+    "code": "404",
+    "heading": "Page not found",
+    "sub": "This page doesn't exist or hasn't been written yet.",
+    "back": "Back to docs"
+  }
+}

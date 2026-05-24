@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { setRequestLocale } from 'next-intl/server';
+import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
@@ -26,10 +26,11 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'productStudio' });
   return buildPageMetadata({
     locale,
-    title: 'Studio — KB Labs',
-    description: 'Веб-интерфейс для управления платформой. Маркетплейс плагинов, воркфлоу, аналитика LLM, observability — всё в одном окне.',
+    title: t('meta.title'),
+    description: t('meta.description'),
     path: '/product/studio',
   });
 }
@@ -37,6 +38,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function StudioPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
+
+  const t = await getTranslations({ locale, namespace: 'productStudio' });
 
   return (
     <>
@@ -48,23 +51,21 @@ export default async function StudioPage({ params }: Props) {
           <DotPattern className="absolute inset-0 z-0 opacity-40" />
           <Container className="relative z-10">
             <div className="mx-auto max-w-2xl text-center">
-              <Eyebrow className="mb-4">Web UI · Studio</Eyebrow>
+              <Eyebrow className="mb-4">{t('hero.eyebrow')}</Eyebrow>
               <h1 className="mb-5 text-4xl font-bold leading-tight tracking-tight text-kb-text sm:text-5xl">
-                Вся платформа{' '}
-                <GradientText>в одном окне</GradientText>
+                {t('hero.title')}{' '}
+                <GradientText>{t('hero.titleHighlight')}</GradientText>
               </h1>
               <p className="mb-8 text-lg leading-relaxed text-muted/70">
-                Studio — SPA для управления KB Labs. Маркетплейс, воркфлоу,
-                аналитика LLM, observability и настройки адаптеров. Плагины
-                добавляют свои страницы через Module Federation.
+                {t('hero.description')}
               </p>
               <div className="flex flex-wrap justify-center gap-3">
                 <Button asChild size="lg">
-                  <a href={`/${locale}/install`}>Установить</a>
+                  <a href={`/${locale}/install`}>{t('hero.installBtn')}</a>
                 </Button>
                 <Button asChild variant="outline" size="lg">
                   <a href="https://docs.kblabs.ru/services/studio" target="_blank" rel="noopener noreferrer">
-                    Документация
+                    {t('hero.docsBtn')}
                     <ExternalLink className="ml-2 size-4" />
                   </a>
                 </Button>
@@ -100,18 +101,16 @@ export default async function StudioPage({ params }: Props) {
               </AnimateOnScroll>
 
               <AnimateOnScroll delay={100}>
-                <Eyebrow className="mb-3">Observability</Eyebrow>
+                <Eyebrow className="mb-3">{t('observability.eyebrow')}</Eyebrow>
                 <h2 className="mb-4 text-3xl font-bold tracking-tight text-kb-text">
-                  Live Logs. Метрики. События.
+                  {t('observability.title')}
                 </h2>
                 <p className="mb-6 text-base leading-relaxed text-muted/70">
-                  Реальное время — не маркетинг. Логи стримятся через SSE,
-                  фильтруются без перезагрузки. Prometheus-метрики и State Broker
-                  инспектор — в том же интерфейсе.
+                  {t('observability.description')}
                 </p>
                 <Button asChild variant="outline" size="sm">
                   <a href="https://docs.kblabs.ru/services/studio" target="_blank" rel="noopener noreferrer">
-                    Документация
+                    {t('observability.docsBtn')}
                     <ExternalLink className="ml-2 size-3.5" />
                   </a>
                 </Button>
@@ -125,18 +124,16 @@ export default async function StudioPage({ params }: Props) {
           <Container>
             <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
               <AnimateOnScroll>
-                <Eyebrow className="mb-3">Analytics</Eyebrow>
+                <Eyebrow className="mb-3">{t('analytics.eyebrow')}</Eyebrow>
                 <h2 className="mb-4 text-3xl font-bold tracking-tight text-kb-text">
-                  Токены. Стоимость. Кэш.
+                  {t('analytics.title')}
                 </h2>
                 <p className="mb-6 text-base leading-relaxed text-muted/70">
-                  LLM Usage показывает всё что проходит через AI Gateway:
-                  запросы, токены, стоимость и Cache Savings — по каждой модели
-                  за выбранный период.
+                  {t('analytics.description')}
                 </p>
                 <Button asChild variant="outline" size="sm">
                   <a href="https://docs.kblabs.ru/services/studio" target="_blank" rel="noopener noreferrer">
-                    Документация
+                    {t('analytics.docsBtn')}
                     <ExternalLink className="ml-2 size-3.5" />
                   </a>
                 </Button>
@@ -160,19 +157,16 @@ export default async function StudioPage({ params }: Props) {
           <Container>
             <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
               <AnimateOnScroll>
-                <Eyebrow className="mb-3">Plugin Pages</Eyebrow>
+                <Eyebrow className="mb-3">{t('pluginPages.eyebrow')}</Eyebrow>
                 <h2 className="mb-4 text-3xl font-bold tracking-tight text-kb-text">
-                  Плагин добавляет страницу. Studio подхватывает.
+                  {t('pluginPages.title')}
                 </h2>
                 <p className="mb-6 text-base leading-relaxed text-muted/70">
-                  Плагин декларирует Studio-страницы в манифесте — Studio
-                  подключает их через Module Federation без перезапуска.
-                  Agent, Quality, Commit, QA, Release в сайдбаре — это всё
-                  отдельные плагины.
+                  {t('pluginPages.description')}
                 </p>
                 <Button asChild variant="outline" size="sm">
                   <a href="https://docs.kblabs.ru/services/studio" target="_blank" rel="noopener noreferrer">
-                    Документация
+                    {t('pluginPages.docsBtn')}
                     <ExternalLink className="ml-2 size-3.5" />
                   </a>
                 </Button>
@@ -182,7 +176,7 @@ export default async function StudioPage({ params }: Props) {
                 <MockupFrame type="browser" url="localhost:3000/marketplace">
                   <ScreenshotLightbox
                     src="/screenshots/marketplace-ui.png"
-                    alt="KB Labs Studio — плагины в сайдбаре"
+                    alt="KB Labs Studio — Plugin Pages"
                     url="localhost:3000/marketplace"
                   />
                 </MockupFrame>
@@ -199,20 +193,19 @@ export default async function StudioPage({ params }: Props) {
                 <BorderBeam />
                 <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[360px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/[0.06] blur-[90px]" />
                 <div className="relative z-10">
-                  <Eyebrow className="mb-4">Попробуйте прямо сейчас</Eyebrow>
+                  <Eyebrow className="mb-4">{t('cta.eyebrow')}</Eyebrow>
                   <h2 className="mb-4 text-[clamp(1.8rem,3.5vw,2.8rem)] font-bold leading-tight tracking-tight text-kb-text">
-                    Запускается вместе с платформой.
+                    {t('cta.title')}
                   </h2>
                   <p className="mx-auto mb-8 max-w-[44ch] text-[1.05rem] leading-[1.7] text-muted">
-                    kb-dev start поднимает Studio автоматически.
-                    Плагины добавляют свои страницы без перезапуска.
+                    {t('cta.description')}
                   </p>
                   <div className="flex flex-wrap justify-center gap-3">
                     <Button variant="primary" size="lg" href={`/${locale}/install`}>
-                      Установить
+                      {t('cta.installBtn')}
                     </Button>
                     <Button variant="secondary" size="lg" href="https://docs.kblabs.ru/services/studio" target="_blank" rel="noopener noreferrer">
-                      Документация
+                      {t('cta.docsBtn')}
                     </Button>
                   </div>
                 </div>

@@ -17,7 +17,7 @@ export function CopyButton({ code, className }: { code: string; className?: stri
     <button
       onClick={handleCopy}
       className={cn(
-        'flex items-center gap-1.5 text-xs text-muted hover:text-kb-text transition-colors duration-150',
+        'flex items-center gap-1.5 text-sm text-muted hover:text-kb-text transition-colors duration-150',
         'bg-transparent border-0 outline-none cursor-pointer',
         className
       )}

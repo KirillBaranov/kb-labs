@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { createWebDataSources, type ChatMessage } from '@kb-labs/web-data-source';
+import { useTranslations } from 'next-intl';
 import s from './AiAssistant.module.css';
 
 /* ── Icons ── */
@@ -64,6 +65,7 @@ interface AiAssistantProps {
 }
 
 export function AiAssistant({ open, onClose, locale }: AiAssistantProps) {
+  const t = useTranslations('ui');
   const source = useMemo(
     () => createWebDataSources({ mode: 'mock' }).aiAssistant,
     [],
@@ -130,7 +132,7 @@ export function AiAssistant({ open, onClose, locale }: AiAssistantProps) {
           {
             id: `e-${Date.now()}`,
             role: 'assistant',
-            text: locale === 'ru' ? 'Произошла ошибка. Попробуйте ещё раз.' : 'Something went wrong. Please try again.',
+            text: t('aiError'),
           },
         ]);
       } finally {
@@ -180,7 +182,7 @@ export function AiAssistant({ open, onClose, locale }: AiAssistantProps) {
           {messages.length === 0 && !isLoading && (
             <div className={s.starter}>
               <p className={s.starterText}>
-                {locale === 'ru' ? 'Спросите что-нибудь о KB Labs' : 'Ask anything about KB Labs'}
+                {t('aiStarterText')}
               </p>
               <div className={s.chips}>
                 {suggestedQuestions.map((q) => (
@@ -238,7 +240,7 @@ export function AiAssistant({ open, onClose, locale }: AiAssistantProps) {
                 handleSend();
               }
             }}
-            placeholder={locale === 'ru' ? 'Задайте вопрос...' : 'Ask a question...'}
+            placeholder={t('aiPlaceholder')}
             disabled={isLoading}
           />
           <button

@@ -1,0 +1,146 @@
+---
+title: "LLM Setup"
+description: "What LLM adapter runs by default, why it's there, and how to switch to your own key."
+updatedAt: "2026-04-15"
+order: 2
+---
+
+KB Labs uses an LLM for commit generation, code review, agents, RAG queries, and more. This guide explains what runs out of the box, what the platform handles for you, and when you'd switch to your own provider.
+
+## What runs by default
+
+After `kb-create my-project`, your project's `.kb/kb.config.jsonc` has this:
+
+```jsonc
+{
+  "platform": {
+    "adapters": {
+      "llm": "@kb-labs/adapters-kblabs-gateway",
+      // ...
+    }
+  },
+  "adapterOptions": {
+    "llm": {
+      "gatewayURL": "https://api.kblabs.ru",
+      "kbClientId": "clt_...",
+      "kbClientSecret": "..."
+    }
+  }
+}
+```
+
+This wires every `useLLM()` call to the **KB Labs Gateway** — a hosted proxy maintained by the project. Bootstrapping auto-registers a device identity and writes credentials for you. A small free tier is included for onboarding (the exact quota is subject to change as the gateway matures).
+
+The gateway exists to remove the "got a key?" step from onboarding — zero-friction default so the platform actually works minutes after install. It's not meant as a long-term production provider. Move to your own key when you start running real workloads.
+
+## What the platform handles vs what plugins handle
+
+Clear split:
+
+**Platform provides:**
+- Normalized `ILLM` interface so plugin code is adapter-agnostic (`useLLM()` is the only call site).
+- Adapter wiring — whichever package is listed in `platform.adapters.llm` is what `useLLM()` returns.
+- Analytics instrumentation — every LLM call is counted, timed, attributed to a plugin.
+- Auth plumbing for the KB Labs Gateway adapter (token refresh via `kbClientId`/`kbClientSecret`).
+
+**Plugin decides:**
+- Retry strategy on transient failures. The platform doesn't auto-retry `complete()` calls.
+- Whether a given LLM response is usable (does the JSON parse? does the structured output match the schema?).
+- What to do when the response isn't usable — retry the prompt, fall back to a non-LLM path, or fail hard.
+
+For example, `kb commit commit --dry-run` uses an LLM to plan commits but has a heuristic fallback baked in: if the model returns invalid JSON after the plugin's own retries, the plugin generates a plan from diff statistics alone. That's a plugin design choice, not a platform error. The commit still succeeds; the output just tells you `Generator: Heuristics` so you know which path ran.
+
+Other plugins may fail hard when the LLM is unavailable. Check the plugin's own docs for behavior.
+
+## When to switch adapters
+
+Switch when you hit any of these:
+
+- **Free tier runs out.** The gateway's default tier covers onboarding, not ongoing use. Sustained workloads (agents, RAG, bulk reviews) need their own provider account.
+- **You need a specific model.** If you need a model or fine-tune the gateway doesn't expose, or a local model, use the provider adapter directly.
+- **You want your own billing / SLA.** Production workloads want the LLM call to go to your own provider account with your own rate limits and audit trail.
+- **You need on-prem / data residency.** The gateway is a remote proxy. When requests can't leave your network, swap to `@kb-labs/adapters-openai` pointed at an internal inference server via the `baseURL` option.
+
+## Switching to your own OpenAI key
+
+**1.** Edit `.kb/kb.config.jsonc`:
+
+```jsonc
+{
+  "platform": {
+    "adapters": {
+      "llm": "@kb-labs/adapters-openai"
+    }
+  },
+  "adapterOptions": {
+    "llm": {
+      "apiKey": "sk-...",
+      "model": "gpt-4o-mini"
+    }
+  }
+}
+```
+
+**2.** Prefer environment variables over hardcoded keys:
+
+```jsonc
+{
+  "adapterOptions": {
+    "llm": {
+      "apiKey": "${OPENAI_API_KEY}",
+      "model": "gpt-4o-mini"
+    }
+  }
+}
+```
+
+Then `export OPENAI_API_KEY=sk-...` in your shell, or put it in a `.env` file at your project root. Make sure `.env` is in your `.gitignore` before committing.
+
+**3.** Restart services so the new config loads:
+
+```bash
+kb-dev stop
+kb-dev start
+```
+
+## Verifying it works
+
+Run something that uses the LLM and watch which generator ran:
+
+```bash
+kb commit commit --dry-run
+```
+
+The output has a `Generator:` line. `LLM` means the provider responded with usable output. `Heuristics` means the plugin fell back — either the LLM returned something unparseable, or requests failed and the plugin chose to degrade gracefully.
+
+If you expected `LLM` and got `Heuristics`, check:
+
+- **Provider reachable?** `curl -fsSL https://api.openai.com/v1/models -H "Authorization: Bearer $OPENAI_API_KEY" | head` — should return JSON, not an error.
+- **Credentials wired?** `kb-dev logs rest | grep -i llm` — look for auth or 401 messages.
+- **Adapter loaded?** Your `.kb/kb.config.jsonc` `platform.adapters.llm` points at the package you intend, and that package is installed (`ls ~/kb-platform/node_modules/@kb-labs/adapters-openai`).
+
+## Using multiple adapters (routing)
+
+The `llm` key accepts an array for fallback chains:
+
+```jsonc
+{
+  "platform": {
+    "adapters": {
+      "llm": [
+        "@kb-labs/adapters-openai",
+        "@kb-labs/adapters-kblabs-gateway"
+      ]
+    }
+  }
+}
+```
+
+The first entry is primary — that's what `useLLM()` returns by default. Subsequent entries are loaded and registered with the adapter loader; the ILLM reference documents how plugins can request a specific adapter via options. See [ILLM Reference](/adapters/interfaces/llm).
+
+## What to read next
+
+- [Configuration → kb.config.jsonc](/configuration/kb-config) — the full config schema.
+- [Adapters → Overview](/adapters) — the adapter model (interface-first, swap in one line).
+- [Adapters → ILLM](/adapters/interfaces/llm) — interface reference: `complete`, `stream`, `chatWithTools`.
+- [Guides → First Adapter](/guides/first-adapter) — build your own LLM adapter.
