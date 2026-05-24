@@ -1,3 +1,4 @@
+import * as React from 'react';
 import { codeToHtml } from 'shiki';
 import { cn } from '../../lib/utils';
 import { CopyButton } from './copy-button';
@@ -7,11 +8,12 @@ export interface CodeBlockProps {
   language?: string;
   filename?: string;
   className?: string;
+  style?: React.CSSProperties;
   /** Render without outer card wrapper — use when already inside a styled container. */
   bare?: boolean;
 }
 
-export async function CodeBlock({ code, language = 'typescript', filename, className, bare = false }: CodeBlockProps) {
+export async function CodeBlock({ code, language = 'typescript', filename, className, style, bare = false }: CodeBlockProps) {
   const html = await codeToHtml(code.trim(), {
     lang: language,
     themes: {
@@ -51,7 +53,7 @@ export async function CodeBlock({ code, language = 'typescript', filename, class
 
   if (bare) {
     return (
-      <div className={cn('overflow-hidden', className)}>
+      <div className={cn('overflow-hidden', className)} style={style}>
         {header}
         {body}
       </div>
@@ -59,7 +61,7 @@ export async function CodeBlock({ code, language = 'typescript', filename, class
   }
 
   return (
-    <div className={cn('rounded-xl border border-line overflow-hidden shadow-card', className)}>
+    <div className={cn('rounded-xl border border-line overflow-hidden shadow-card', className)} style={style}>
       {header}
       {body}
     </div>
