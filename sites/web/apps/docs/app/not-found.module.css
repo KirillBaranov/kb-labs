@@ -43,7 +43,7 @@
   height: 38px;
   padding: 0 1.25rem;
   border-radius: 8px;
-  background: #111;
+  background: var(--accent);
   color: #fff;
   font-size: 0.875rem;
   font-weight: 500;

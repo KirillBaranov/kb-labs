@@ -1,0 +1,41 @@
+---
+title: "Use Cases"
+description: "Real things people build on KB Labs — and how to reproduce them."
+updatedAt: "2026-04-07"
+order: 1
+---
+
+The rest of the docs explains **what** KB Labs is and **how** the pieces fit. This section answers the question that usually comes first:
+
+> "Okay, but what do people actually build with this?"
+
+Two kinds of content live here:
+
+## Built with KB Labs
+
+Real plugins maintained in the KB Labs monorepo. Each page is a short breakdown: the problem, the shape of the solution, the primitives used, and where to read the code.
+
+- [Mind — Semantic code search](/use-cases/showcase-mind) — hybrid BM25 + vector RAG over a codebase, with anti-hallucination verification.
+- [Commit Plugin — AI commit messages](/use-cases/showcase-commit-plugin) — generates conventional commits from `git diff` with a two-phase LLM escalation.
+- [AI Review — Automated code review](/use-cases/showcase-ai-review) — heuristic + LLM review with presets, runs in CI or locally.
+- [DevLink — Cross-repo dependency manager](/use-cases/showcase-devlink) — switches `link:` ↔ npm across a monorepo of submodules.
+
+These are useful as **reference implementations**: when you start building your own plugin, it's faster to read a working one than to read the docs.
+
+## Scenarios
+
+Problem-first walkthroughs. Each one describes a pain point, sketches a solution built on KB Labs primitives, shows the 20 lines of code that matter, and links to the guide that covers the full setup.
+
+- [AI code review on every PR](/use-cases/scenario-ai-code-review) — how `kb review run` plugs into CI and gives actionable feedback.
+- [Release notes from commits](/use-cases/scenario-release-notes) — a small plugin that turns a commit range into a draft changelog.
+- [Team linter as a plugin](/use-cases/scenario-team-linter) — wrap your internal style guide in a plugin so everyone on the team runs the same checks.
+
+Scenarios always end with a **"Reproduce this"** section — the concrete guide to follow and what to change.
+
+## How to use this section
+
+- **Browsing for ideas?** Start with *Built with KB Labs* — seeing real plugins makes the abstract concepts click faster than any tutorial.
+- **Got a specific pain point?** Jump to *Scenarios* and look for one that rhymes with yours. You'll rarely find an exact match, but the building blocks will be the same.
+- **Ready to build?** Use a scenario as a spec, then follow the linked guide. The scenarios are intentionally light on boilerplate — the guides cover that.
+
+If you build something interesting on KB Labs and want it listed here, open a PR against this section. A good showcase page is ~150 lines, links to the source, and tells the honest story (including what's hard).

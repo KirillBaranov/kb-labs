@@ -1,0 +1,35 @@
+.root {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  margin-bottom: 1.5rem;
+  background: color-mix(in oklab, var(--accent) 8%, transparent);
+  border: 1px solid color-mix(in oklab, var(--accent) 20%, transparent);
+  border-radius: 8px;
+  font-size: 0.875rem;
+  flex-wrap: wrap;
+}
+
+.icon {
+  flex-shrink: 0;
+}
+
+.text {
+  color: var(--fg-muted);
+  flex: 1;
+  min-width: 0;
+}
+
+.cta {
+  color: var(--accent);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.12s;
+}
+
+.cta:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}

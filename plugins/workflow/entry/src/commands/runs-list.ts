@@ -23,6 +23,7 @@ const STATUS_ICON: Record<string, string> = {
 function relativeTime(isoStr?: string): string {
   if (!isoStr) { return 'N/A'; }
   const diffMs = Date.now() - new Date(isoStr).getTime();
+  if (diffMs <= 0) { return 'just now'; }
   const sec = Math.floor(diffMs / 1000);
   if (sec < 60) { return `${sec}s ago`; }
   const min = Math.floor(sec / 60);

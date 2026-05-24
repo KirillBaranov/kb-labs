@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { setRequestLocale } from 'next-intl/server';
+import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
@@ -26,10 +26,11 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'page' });
   return buildPageMetadata({
     locale,
-    title: 'Gateway — KB Labs',
-    description: 'Единая точка входа. Любой сервис получает LLM, EventBus, Cache и Storage через HTTP — без привязки к вендорам.',
+    title: t('gwMetaTitle'),
+    description: t('gwMetaDesc'),
     path: '/product/gateway',
   });
 }
@@ -89,6 +90,8 @@ export default async function GatewayPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
 
+  const t = await getTranslations({ locale, namespace: 'page' });
+
   return (
     <>
       <SiteHeader />
@@ -99,25 +102,24 @@ export default async function GatewayPage({ params }: Props) {
           <DotPattern className="absolute inset-0 z-0 opacity-40" />
           <Container className="relative z-10">
             <div className="mx-auto max-w-2xl text-center">
+              {/* i18n-ignore: brand + port label */}
               <Eyebrow className="mb-4">Infrastructure · :4000</Eyebrow>
               <h1 className="mb-5 text-4xl font-bold leading-tight tracking-tight text-kb-text sm:text-5xl">
-                Платформенные возможности{' '}
-                <GradientText>для любого сервиса</GradientText>
+                {t('gwHeroTitle')}{' '}
+                <GradientText>{t('gwHeroTitleHighlight')}</GradientText>
               </h1>
               <p className="mb-8 text-lg leading-relaxed text-muted/70">
-                Любой HTTP-сервис получает LLM, EventBus, Cache и Storage через
-                единый endpoint. Провайдеры меняются в конфиге — потребители
-                не трогаются.
+                {t('gwHeroDescription')}
               </p>
               <div className="flex flex-wrap justify-center gap-3">
                 <Button asChild size="lg">
                   <a href="https://docs.kblabs.ru/gateway" target="_blank" rel="noopener noreferrer">
-                    Документация
+                    {t('gwHeroDocsBtn')}
                     <ExternalLink className="ml-2 size-4" />
                   </a>
                 </Button>
                 <Button asChild variant="outline" size="lg">
-                  <a href={`/${locale}/install`}>Установить</a>
+                  <a href={`/${locale}/install`}>{t('gwHeroInstallBtn')}</a>
                 </Button>
               </div>
             </div>
@@ -132,20 +134,17 @@ export default async function GatewayPage({ params }: Props) {
           <Container>
             <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
               <AnimateOnScroll>
+                {/* i18n-ignore: brand name */}
                 <Eyebrow className="mb-3">Platform API</Eyebrow>
                 <h2 className="mb-4 text-3xl font-bold tracking-tight text-kb-text">
-                  Один endpoint. Все адаптеры.
+                  {t('gwPlatformTitle')}
                 </h2>
                 <p className="mb-6 text-base leading-relaxed text-muted/70">
-                  <code className="rounded px-1.5 py-0.5 font-mono text-[0.85em] bg-surface text-kb-text/75">
-                    POST /platform/v1/{'{adapter}/{method}'}
-                  </code>{' '}
-                  — девять адаптеров с чётким allowlist методов. Стриминг
-                  автоматически если метод возвращает AsyncIterable.
+                  {t('gwPlatformLead')}
                 </p>
                 <Button asChild variant="outline" size="sm">
                   <a href="https://docs.kblabs.ru/gateway" target="_blank" rel="noopener noreferrer">
-                    Документация
+                    {t('gwPlatformDocsBtn')}
                     <ExternalLink className="ml-2 size-3.5" />
                   </a>
                 </Button>
@@ -155,7 +154,6 @@ export default async function GatewayPage({ params }: Props) {
                   <CodeBlock
                     code={PLATFORM_API_CODE}
                     language="bash"
-                    style={{ maxHeight: 400, overflowY: 'auto' }}
                   />
                 </div>
               </AnimateOnScroll>
@@ -172,23 +170,21 @@ export default async function GatewayPage({ params }: Props) {
                   <CodeBlock
                     code={LLM_CODE}
                     language="bash"
-                    style={{ maxHeight: 400, overflowY: 'auto' }}
                   />
                 </div>
               </AnimateOnScroll>
               <AnimateOnScroll delay={100}>
+                {/* i18n-ignore: brand name */}
                 <Eyebrow className="mb-3">AI Gateway</Eyebrow>
                 <h2 className="mb-4 text-3xl font-bold tracking-tight text-kb-text">
-                  OpenAI-compatible. Без привязки к вендору.
+                  {t('gwAiTitle')}
                 </h2>
                 <p className="mb-6 text-base leading-relaxed text-muted/70">
-                  Поле <code className="rounded px-1.5 py-0.5 font-mono text-[0.85em] bg-surface text-kb-text/75">model</code> — это тир (small · medium · large),
-                  а не имя модели. LLM Router резолвит тир в конкретный адаптер.
-                  Меняешь провайдера в конфиге — все вызовы подхватывают автоматически.
+                  {t('gwAiLead')}
                 </p>
                 <Button asChild variant="outline" size="sm">
                   <a href="https://docs.kblabs.ru/gateway" target="_blank" rel="noopener noreferrer">
-                    Документация
+                    {t('gwAiDocsBtn')}
                     <ExternalLink className="ml-2 size-3.5" />
                   </a>
                 </Button>
@@ -202,20 +198,17 @@ export default async function GatewayPage({ params }: Props) {
           <Container>
             <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
               <AnimateOnScroll>
+                {/* i18n-ignore: brand name */}
                 <Eyebrow className="mb-3">Telemetry</Eyebrow>
                 <h2 className="mb-4 text-3xl font-bold tracking-tight text-kb-text">
-                  События от любого сервиса. Без схемы.
+                  {t('gwTelemetryTitle')}
                 </h2>
                 <p className="mb-6 text-base leading-relaxed text-muted/70">
-                  <code className="rounded px-1.5 py-0.5 font-mono text-[0.85em] bg-surface text-kb-text/75">
-                    POST /telemetry/v1/ingest
-                  </code>{' '}
-                  — батч до 500 событий, dot-notation типы, свободный payload.
-                  Пишет в IAnalytics — SQLite, DuckDB или файл.
+                  {t('gwTelemetryLead')}
                 </p>
                 <Button asChild variant="outline" size="sm">
                   <a href="https://docs.kblabs.ru/gateway" target="_blank" rel="noopener noreferrer">
-                    Документация
+                    {t('gwTelemetryDocsBtn')}
                     <ExternalLink className="ml-2 size-3.5" />
                   </a>
                 </Button>
@@ -225,7 +218,6 @@ export default async function GatewayPage({ params }: Props) {
                   <CodeBlock
                     code={TELEMETRY_CODE}
                     language="bash"
-                    style={{ maxHeight: 400, overflowY: 'auto' }}
                   />
                 </div>
               </AnimateOnScroll>
@@ -241,20 +233,19 @@ export default async function GatewayPage({ params }: Props) {
                 <BorderBeam />
                 <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[360px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/[0.06] blur-[90px]" />
                 <div className="relative z-10">
-                  <Eyebrow className="mb-4">Попробуйте прямо сейчас</Eyebrow>
+                  <Eyebrow className="mb-4">{t('gwCtaEyebrow')}</Eyebrow>
                   <h2 className="mb-4 text-[clamp(1.8rem,3.5vw,2.8rem)] font-bold leading-tight tracking-tight text-kb-text">
-                    Один порт. Все возможности.
+                    {t('gwCtaTitle')}
                   </h2>
                   <p className="mx-auto mb-8 max-w-[44ch] text-[1.05rem] leading-[1.7] text-muted">
-                    Провайдеры меняются в конфиге — сервисы не трогаются.
-                    Gateway запускается вместе с платформой.
+                    {t('gwCtaDescription')}
                   </p>
                   <div className="flex flex-wrap justify-center gap-3">
                     <Button variant="primary" size="lg" href={`/${locale}/install`}>
-                      Установить
+                      {t('gwCtaInstallBtn')}
                     </Button>
                     <Button variant="secondary" size="lg" href="https://docs.kblabs.ru/gateway" target="_blank" rel="noopener noreferrer">
-                      Документация
+                      {t('gwCtaDocsBtn')}
                     </Button>
                   </div>
                 </div>

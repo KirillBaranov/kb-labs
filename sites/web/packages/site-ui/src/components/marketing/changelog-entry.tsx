@@ -58,7 +58,7 @@ export function ChangelogEntry({
         <div className="flex flex-wrap items-center gap-2.5">
           <span className="font-mono text-sm font-bold text-kb-text">{version}</span>
           {latest && <Badge variant="accent">Latest</Badge>}
-          <span className="text-xs text-muted">{date}</span>
+          <span className="text-sm text-muted">{date}</span>
         </div>
 
         {title && (
@@ -77,7 +77,7 @@ export function ChangelogEntry({
             return (
               <div key={type}>
                 <span className={cn(
-                  'mb-1.5 inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-[0.07em]',
+                  'mb-1.5 inline-flex items-center gap-1.5 text-sm font-bold uppercase tracking-[0.07em]',
                   'before:size-1.5 before:rounded-full before:content-[""]',
                   typeClass
                 )}>

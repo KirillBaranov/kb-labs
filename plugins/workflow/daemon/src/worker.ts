@@ -89,6 +89,12 @@ export async function createWorkflowWorker(
     debugMode = process.env['WORKFLOW_DEBUG'] === 'true',
   } = options;
 
+  // Clean up stale worktrees from previous daemon runs on startup.
+  const wsProvider = platform.getAdapter<IWorkspaceProvider>('workspace');
+  if (wsProvider && typeof (wsProvider as { startupCleanup?: () => Promise<void> }).startupCleanup === 'function') {
+    (wsProvider as { startupCleanup: () => Promise<void> }).startupCleanup().catch(() => {});
+  }
+
   let isRunning = false;
   let stopRequested = false;
 

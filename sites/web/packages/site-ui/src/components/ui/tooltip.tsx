@@ -24,7 +24,7 @@ export function Tooltip({ children, content, side = 'top', className }: TooltipP
       <div
         className={cn(
           'absolute pointer-events-none z-50 whitespace-nowrap',
-          'bg-surface border border-line rounded-md px-2 py-1 text-xs text-kb-text shadow-card',
+          'bg-surface border border-line rounded-md px-2 py-1 text-sm text-kb-text shadow-card',
           'opacity-0 group-hover:opacity-100 transition-opacity duration-150',
           sideClasses[side]
         )}

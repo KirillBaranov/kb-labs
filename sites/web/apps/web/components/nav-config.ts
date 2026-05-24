@@ -54,7 +54,7 @@ export const NAV_DROPDOWNS: NavDropdown[] = [
         items: [
           { key: 'product.workflows', href: '/product/workflows', icon: 'Workflows' },
           { key: 'product.plugins', href: '/product/plugins', icon: 'Plugin System' },
-          { key: 'product.gateway', href: '/solutions/gateway', icon: 'Gateway' },
+          { key: 'product.gateway', href: '/product/gateway', icon: 'Gateway' },
           { key: 'product.stateBroker', href: '/product/state-broker', icon: 'State Broker' },
           { key: 'product.studio', href: '/product/studio', icon: 'Studio' },
         ],
@@ -62,11 +62,11 @@ export const NAV_DROPDOWNS: NavDropdown[] = [
       {
         headingKey: 'nav.megamenu.tools.label',
         items: [
-          { key: 'tools.kbDev', href: '/kb-dev', icon: 'kb-dev' },
-          { key: 'tools.kbDevkit', href: '/kb-devkit', icon: 'kb-devkit' },
-          { key: 'tools.kbDeploy', href: '/kb-deploy', icon: 'kb-deploy' },
-          { key: 'tools.kbMonitor', href: '/kb-monitor', icon: 'kb-monitor' },
-          { key: 'tools.marketplace', href: '/marketplace', icon: 'Marketplace' },
+          { key: 'tools.kbDev', href: '/product/kb-dev', icon: 'kb-dev' },
+          { key: 'tools.kbDevkit', href: '/product/kb-devkit', icon: 'kb-devkit' },
+          { key: 'tools.kbDeploy', href: '/product/kb-deploy', icon: 'kb-deploy' },
+          { key: 'tools.kbMonitor', href: '/product/kb-monitor', icon: 'kb-monitor' },
+          { key: 'tools.marketplace', href: '/product/marketplace', icon: 'Marketplace' },
         ],
       },
     ],
@@ -103,6 +103,7 @@ export const NAV_DROPDOWNS: NavDropdown[] = [
         headingKey: 'nav.megamenu.learn.label',
         items: [
           { key: 'learn.docs', href: 'https://docs.kblabs.ru', external: true, icon: 'Docs' },
+          { key: 'learn.demo', href: '/demo', icon: 'Demo' },
           { key: 'learn.blog', href: '/blog', icon: 'Blog' },
           { key: 'learn.useCases', href: '/use-cases', icon: 'Use Cases' },
           { key: 'learn.compare', href: '/compare', icon: 'Compare' },
@@ -115,6 +116,7 @@ export const NAV_DROPDOWNS: NavDropdown[] = [
           { key: 'project.changelog', href: '/changelog', icon: 'Changelog' },
           { key: 'project.security', href: '/security', icon: 'Security' },
           { key: 'project.about', href: '/about', icon: 'About' },
+          { key: 'project.contact', href: '/contact', icon: 'Contact' },
         ],
       },
     ],

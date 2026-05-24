@@ -5,9 +5,9 @@ import { usePathname } from 'next/navigation';
 
 const translations: Record<string, { description: string; goHome: string; contact: string }> = {
   ru: {
-    description: 'Страница не существует или была перемещена.',
-    goHome: 'На главную',
-    contact: 'Связаться',
+    description: 'Страница не существует или была перемещена.', // i18n-ignore
+    goHome: 'На главную', // i18n-ignore
+    contact: 'Связаться', // i18n-ignore
   },
   en: {
     description: "The page you're looking for doesn't exist or has been moved.",
@@ -51,14 +51,14 @@ export default function RootNotFound() {
               fontSize: '0.85rem', fontWeight: 500, color: '#0f1115', textDecoration: 'none',
               background: '#fff',
             }}>
-              {locale === 'ru' ? 'Войти' : 'Log in'}
+              {locale === 'ru' ? 'Войти' : 'Log in'} {/* i18n-ignore */}
             </Link>
             <Link href={`/${locale}/install`} style={{
               padding: '0.4rem 1rem', borderRadius: 8, border: 'none',
               fontSize: '0.85rem', fontWeight: 600, color: '#fff', textDecoration: 'none',
               background: '#0f1115',
             }}>
-              {locale === 'ru' ? 'Установить' : 'Install'}
+              {locale === 'ru' ? 'Установить' : 'Install'} {/* i18n-ignore */}
             </Link>
           </div>
         </header>

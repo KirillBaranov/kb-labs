@@ -177,12 +177,12 @@ export function WorkflowDiagram({ className }: WorkflowDiagramProps) {
         <div className="flex gap-3 pt-0 min-w-[240px]">
           <div {...step(DELAYS.leafLeft)} data-visible={vis} className="flex-1 rounded-xl border border-amber-200/60 bg-amber-50/20 px-3 py-2.5 shadow-sm dark:border-amber-900/30 dark:bg-amber-950/10">
             <div className="mb-1.5 font-mono text-[0.6rem] text-amber-600/70">score &lt; 7</div>
-            <div className="font-mono text-xs font-semibold text-kb-text">request-changes</div>
+            <div className="font-mono text-sm font-semibold text-kb-text">request-changes</div>
             <div className="mt-0.5 font-mono text-[0.68rem] text-muted/60">github.comment</div>
           </div>
           <div {...step(DELAYS.leafRight)} data-visible={vis} className="flex-1 rounded-xl border border-emerald-200/60 bg-emerald-50/20 px-3 py-2.5 shadow-sm dark:border-emerald-900/30 dark:bg-emerald-950/10">
             <div className="mb-1.5 font-mono text-[0.6rem] text-emerald-600/70">score ≥ 7</div>
-            <div className="font-mono text-xs font-semibold text-kb-text">approve</div>
+            <div className="font-mono text-sm font-semibold text-kb-text">approve</div>
             <div className="mt-0.5 font-mono text-[0.68rem] text-muted/60">github.approve</div>
           </div>
         </div>
