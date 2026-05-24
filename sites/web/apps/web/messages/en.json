@@ -273,12 +273,36 @@
     "faqSection": {
       "eyebrow": "FAQ",
       "items": [
-        null,
-        null,
-        null,
-        null,
-        null,
-        null
+        {
+          "id": "faq-1",
+          "question": "We already have a full stack. Do we need to migrate?",
+          "answer": "No. KB Labs is designed to sit beside what you already run. Install it, connect one workflow, and keep everything else untouched. You grow the surface area when it makes sense for your team — never because the tool asked you to."
+        },
+        {
+          "id": "faq-2",
+          "question": "Is it free? Will it stay free?",
+          "answer": "The OSS core is free and will stay free. It's the engine, and the engine doesn't close. A commercial support layer is on the roadmap for teams that need guarantees — SLA, dedicated support, advanced governance — but it's additive, never a gate in front of the core."
+        },
+        {
+          "id": "faq-3",
+          "question": "I work alone, or with a tiny team. Is this still for me?",
+          "answer": "Especially for you. KB Labs is built on the idea that a person plus agents is a team. A plugin-agent can run your reviews. An external agent like Claude or Codex can drive your workflows through the same contracts. You stay in control of what they're allowed to do. Solo builders with agents get the most value from this from day one."
+        },
+        {
+          "id": "faq-4",
+          "question": "How does KB Labs treat humans, agents, and bots?",
+          "answer": "The same way. KB Labs is a runtime with one permissions model, one observability surface, and one extension contract — applied equally to any kind of runner. A human running a workflow, an internal plugin-agent, an external agent, a CI bot — they all declare what they're allowed to do and the runtime enforces it. No one gets privileges. No one escapes the rails. MCP is on the roadmap as the next protocol-level extension of this."
+        },
+        {
+          "id": "faq-5",
+          "question": "How long does on-prem setup actually take?",
+          "answer": "One command installs the launcher. A working environment with your first workflow is typically ready within an hour. No cloud dependency, no provisioning ceremony."
+        },
+        {
+          "id": "faq-6",
+          "question": "We already have CI/CD. Why not just extend that?",
+          "answer": "CI/CD is great at build and deploy. KB Labs is for everything around it — commit policy, AI review gates, QA trend tracking, release coordination, agent workflows. Things that don't belong in a pipeline YAML and don't scale as config."
+        }
       ]
     },
     "ctaSection": {
@@ -875,10 +899,26 @@
       "titleEnd": "for engineers.",
       "subtitle": "KB Labs is a self-hosted, open-source platform for AI workflows, plugin-based automation, and infrastructure abstraction — built in public since 2025.",
       "stats": [
-        null,
-        null,
-        null,
-        null
+        {
+          "value": "100%",
+          "label": "open source",
+          "description": "Every line auditable on GitHub"
+        },
+        {
+          "value": "0",
+          "label": "cloud dependencies",
+          "description": "Runs fully on your infrastructure"
+        },
+        {
+          "value": "35+",
+          "label": "plugins",
+          "description": "Marketplace entities available today"
+        },
+        {
+          "value": "1",
+          "label": "solo founder",
+          "description": "Built by Kirill, 24, since 2025"
+        }
       ],
       "storyEyebrow": "Origin",
       "storyTitle": "From one overnight MVP to a full platform.",
@@ -887,20 +927,47 @@
       "storyPara3": "Today: 145+ packages, a real release pipeline, Go binaries for build orchestration and service management. Public launch is summer 2026. The source has been open the whole time.",
       "timelineLabel": "Timeline",
       "timeline": [
-        null,
-        null,
-        null,
-        null,
-        null
+        {
+          "period": "2025 Q1",
+          "event": "Started building the core platform in private"
+        },
+        {
+          "period": "2025 Q3",
+          "event": "First public GitHub commit, monorepo structure settled"
+        },
+        {
+          "period": "2025 Q4",
+          "event": "Workflow engine, Gateway, and plugin system shipped"
+        },
+        {
+          "period": "2026 Q1",
+          "event": "Studio UI, marketplace, and agent system added"
+        },
+        {
+          "period": "Now",
+          "event": "Public launch preparation, docs, and site in progress"
+        }
       ],
       "timelineNow": "Now",
       "whysEyebrow": "Why we build this",
       "whysTitle": "Four principles behind every decision.",
       "whys": [
-        null,
-        null,
-        null,
-        null
+        {
+          "title": "Because vendor lock-in is a business model.",
+          "body": "Every SaaS tool starts with a smooth onboarding. The switching costs appear later, after you've wired your workflow through their API. KB Labs is MIT-licensed and self-hosted. Your data, your code, your infra."
+        },
+        {
+          "title": "Because small teams deserve platform engineering too.",
+          "body": "Large companies have entire teams building internal developer platforms. Everyone else pieces together subscriptions. KB Labs is that platform — open source, installable in one command."
+        },
+        {
+          "title": "Because AI tooling needs a runtime, not a prompt.",
+          "body": "Dropping an LLM call into your codebase is not AI infrastructure. KB Labs gives AI agents the same typed contracts, permission enforcement, and observability as everything else."
+        },
+        {
+          "title": "Because infrastructure should be code, not ceremony.",
+          "body": "Workflows, policies, pipelines — all version-controlled YAML. Reviewed, tested, and deployed the same way as the product code it serves."
+        }
       ],
       "pullQuote": "Open the closed.",
       "pullQuoteMuted": "Every system boundary must be open for inspection, replacement, and extension.",
@@ -1204,48 +1271,157 @@
     ],
     "page": {
       "stats": [
-        null,
-        null,
-        null,
-        null
+        {
+          "value": "100%",
+          "label": "on-prem",
+          "description": "No cloud required"
+        },
+        {
+          "value": "0",
+          "label": "telemetry default",
+          "description": "Opt-in only"
+        },
+        {
+          "value": "3",
+          "label": "isolation modes",
+          "description": "In-process, subprocess, container"
+        },
+        {
+          "value": "MIT",
+          "label": "license",
+          "description": "Full source auditable"
+        }
       ],
       "dataFlow": [
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null
+        {
+          "dataType": "Source code",
+          "destination": "Your machine only",
+          "condition": "Never transmitted",
+          "status": "local"
+        },
+        {
+          "dataType": "Workflow state",
+          "destination": "Your machine only",
+          "condition": "Never transmitted",
+          "status": "local"
+        },
+        {
+          "dataType": "LLM prompts",
+          "destination": "Your chosen provider",
+          "condition": "Only when you trigger AI features",
+          "status": "consent"
+        },
+        {
+          "dataType": "Git diffs (demo)",
+          "destination": "Gateway proxy",
+          "condition": "Only in demo mode, opt-in",
+          "status": "consent"
+        },
+        {
+          "dataType": "Crash reports",
+          "destination": "Never collected",
+          "condition": "No error tracking",
+          "status": "never"
+        },
+        {
+          "dataType": "Usage analytics",
+          "destination": "Never collected",
+          "condition": "No telemetry by default",
+          "status": "never"
+        },
+        {
+          "dataType": "API keys",
+          "destination": "Local config only (0600)",
+          "condition": "Never logged or transmitted",
+          "status": "local"
+        }
       ],
       "pillars": [
-        null,
-        null,
-        null
+        {
+          "title": "On-prem by default",
+          "description": "KB Labs runs entirely on your infrastructure. No cloud dependency, no data leaving your network. You control where your code, workflow state, and logs are stored."
+        },
+        {
+          "title": "Consent-first data sharing",
+          "description": "Nothing is sent externally without explicit user consent. The CLI installer asks before every network call. Demo mode offers three choices: gateway proxy, local only, or bring your own API key."
+        },
+        {
+          "title": "Open source & auditable",
+          "description": "The entire platform is open source. Every line of code is auditable. No black boxes, no hidden telemetry, no trust-us-it's-safe. Verify yourself."
+        }
       ],
       "sandboxLayers": [
-        null,
-        null,
-        null,
-        null
+        {
+          "num": "1",
+          "title": "Manifest declaration",
+          "description": "Plugins declare required capabilities upfront. Runtime refuses undeclared access."
+        },
+        {
+          "num": "2",
+          "title": "In-process isolation",
+          "description": "Default mode. Plugin runs in the same process with permission enforcement via middleware."
+        },
+        {
+          "num": "3",
+          "title": "Subprocess isolation",
+          "description": "Plugin spawns in a child process. IPC-only communication, no shared memory."
+        },
+        {
+          "num": "4",
+          "title": "Container isolation",
+          "description": "Plugin runs in an OCI container. Full filesystem and network isolation."
+        }
       ],
       "authFacts": [
-        null,
-        null,
-        null,
-        null,
-        null,
-        null
+        {
+          "label": "Token scope",
+          "value": "Device-scoped JWT"
+        },
+        {
+          "label": "Token storage",
+          "value": "Local file, 0600 permissions"
+        },
+        {
+          "label": "Token sharing",
+          "value": "Never shared across users"
+        },
+        {
+          "label": "Auth method",
+          "value": "JWT Bearer tokens"
+        },
+        {
+          "label": "Key rotation",
+          "value": "CLI command: kb gateway rotate"
+        },
+        {
+          "label": "Revocation",
+          "value": "Immediate, no TTL dependency"
+        }
       ],
       "complianceItems": [
-        null,
-        null,
-        null
+        {
+          "name": "Open Source",
+          "status": "Available",
+          "description": "MIT-licensed. Full source code available on GitHub for audit and contribution.",
+          "statusClass": "available"
+        },
+        {
+          "name": "DPA",
+          "status": "Available",
+          "description": "Data processing agreement available on request for organizations that require it.",
+          "statusClass": "available"
+        },
+        {
+          "name": "RBAC & SSO",
+          "status": "In progress",
+          "description": "Role-based access control and SSO (SAML/OIDC) planned for Enterprise tier.",
+          "statusClass": "in-progress"
+        }
       ],
       "disclosureSteps": [
-        null,
-        null,
-        null
+        "Email security@kblabs.dev with full details",
+        "We respond within 72 hours and confirm scope",
+        "Fix ships in the next patch release with credit"
       ]
     }
   },
@@ -1830,46 +2006,115 @@
       "realWorkflowsEyebrow": "Real workflows",
       "realWorkflowsTitle": "Workflows we ship on ourselves.",
       "realWorkflowItems": [
-        null,
-        null,
-        null,
-        null
+        {
+          "title": "Release pipeline",
+          "description": "lint → type-check → test → AI review → QA gate → build → publish. Every step traced."
+        },
+        {
+          "title": "AI code review",
+          "description": "On every commit or PR: diff → LLM review → inline comments → approval gate."
+        },
+        {
+          "title": "QA regression tracker",
+          "description": "Recurring checks on every change. Surfaces trend degradation before it ships."
+        },
+        {
+          "title": "Agent workflow",
+          "description": "Autonomous agents as first-class steps. Same permissions model, same observability."
+        }
       ],
       "primitivesEyebrow": "Primitives",
       "primitivesTitle": "Three building blocks.",
       "primitivesSubtitle": "Every workflow — from a two-step script to a multi-day process — is built from these three primitives.",
       "primitives": [
-        null,
-        null,
-        null
+        {
+          "title": "Steps",
+          "description": "Atomic units of work — a plugin call, a shell command, or an agent invocation."
+        },
+        {
+          "title": "Jobs",
+          "description": "Groups of steps that run together. Jobs can depend on other jobs."
+        },
+        {
+          "title": "Triggers",
+          "description": "Git events, API calls, schedules, or manual invocation from CLI or Studio."
+        }
       ],
       "triggersEyebrow": "Triggers",
       "triggersTitle": "Start from anything.",
       "triggersSubtitle": "Workflows trigger on git events, schedules, webhooks, API calls, or manually from the CLI.",
       "triggers": [
-        null,
-        null,
-        null,
-        null,
-        null,
-        null
+        {
+          "label": "Git push",
+          "description": "Run on every commit to a branch or tag."
+        },
+        {
+          "label": "Pull request",
+          "description": "Trigger review and QA gates on PR open or update."
+        },
+        {
+          "label": "Schedule",
+          "description": "Cron-based recurring runs — QA scans, nightly builds."
+        },
+        {
+          "label": "API call",
+          "description": "POST to the workflow endpoint from any system."
+        },
+        {
+          "label": "CLI",
+          "description": "kb workflow run <name> from terminal or CI script."
+        },
+        {
+          "label": "Studio",
+          "description": "One-click run from the web UI with real-time log stream."
+        }
       ],
       "triggerCustom": "+ custom trigger",
       "useCasesEyebrow": "Use cases",
       "useCasesTitle": "What teams use workflows for.",
       "useCases": [
-        null,
-        null,
-        null,
-        null,
-        null,
-        null
+        {
+          "title": "Release automation",
+          "description": "Declarative release pipeline that runs every time. No scripts to remember."
+        },
+        {
+          "title": "AI-assisted review",
+          "description": "LLM review as a gated step — runs after lint, blocks merge on issues."
+        },
+        {
+          "title": "QA trend tracking",
+          "description": "Recurring quality checks that surface regression signals before they ship."
+        },
+        {
+          "title": "Agent orchestration",
+          "description": "Autonomous agents as workflow steps with sandboxed permissions."
+        },
+        {
+          "title": "Deploy coordination",
+          "description": "Build → push → pull → restart — orchestrated with health verification."
+        },
+        {
+          "title": "Custom automation",
+          "description": "Any engineering process that runs more than once belongs in a workflow."
+        }
       ],
       "statsItems": [
-        null,
-        null,
-        null,
-        null
+        {
+          "value": "25+",
+          "label": "built-in step types"
+        },
+        {
+          "value": "3",
+          "label": "execution modes"
+        },
+        {
+          "value": "100%",
+          "label": "local execution"
+        },
+        {
+          "value": "0",
+          "label": "cloud dependency"
+        }
       ],
       "ctaEyebrow": "Get started",
       "ctaTitle": "Replace your script chaos with workflows.",
@@ -1969,23 +2214,64 @@
       "title": "Eight steps. Strict order.",
       "subtitle": "Each step can run standalone. Each fails explicitly — with a clear message.",
       "stages": [
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null
+        {
+          "stage": "1",
+          "label": "Lint",
+          "detail": "ESLint across all affected packages. Fast — only what changed."
+        },
+        {
+          "stage": "2",
+          "label": "Type-check",
+          "detail": "tsc project references in dependency order. Catches cross-package type errors."
+        },
+        {
+          "stage": "3",
+          "label": "Test",
+          "detail": "Vitest with coverage. Skips packages with no changed files."
+        },
+        {
+          "stage": "4",
+          "label": "AI Review",
+          "detail": "LLM reviews the diff for logic errors, security issues, and style violations."
+        },
+        {
+          "stage": "5",
+          "label": "QA Gate",
+          "detail": "Package-level quality checks. Fails if degradation is detected."
+        },
+        {
+          "stage": "6",
+          "label": "Impact",
+          "detail": "Dependency graph analysis — which packages and tests are actually affected."
+        },
+        {
+          "stage": "7",
+          "label": "Build",
+          "detail": "Topological build with DTS. Only changed packages + dependents rebuild."
+        },
+        {
+          "stage": "8",
+          "label": "Release",
+          "detail": "Publish to npm + GitHub Release with changelog. Gated by all prior stages."
+        }
       ]
     },
     "designDecisions": {
       "eyebrow": "Why it works this way",
       "title": "Three decisions that matter.",
       "items": [
-        null,
-        null,
-        null
+        {
+          "title": "Workflows as code, not config",
+          "detail": "Release pipelines live in YAML under version control — reviewed, diffable, and revertable like any other change. No GUI state to export, no vendor format to migrate from."
+        },
+        {
+          "title": "Every stage is a plugin",
+          "detail": "Lint, review, QA, deploy — each step is a typed plugin with declared capabilities. Swap any stage without touching the rest of the pipeline."
+        },
+        {
+          "title": "Fail fast, trace everything",
+          "detail": "Stages run in order with explicit dependencies. The first failure stops the pipeline. Every run is fully traced: inputs, outputs, timing, and plugin calls."
+        }
       ]
     },
     "flows": {
@@ -1997,8 +2283,18 @@
       "strategyLabel": "strategy",
       "configNote": "A flow fully replaces the global {code} config — it doesn't merge. Packages are selected by glob patterns.",
       "runs": [
-        null,
-        null
+        {
+          "cmd": "pnpm kb workflow run release",
+          "packages": "@kb-labs/core-platform, @kb-labs/sdk",
+          "strategy": "affected",
+          "note": "Runs lint → type-check → test → AI review → build → publish. Only changed packages."
+        },
+        {
+          "cmd": "pnpm kb workflow run release --all",
+          "packages": "All 35+ packages",
+          "strategy": "full",
+          "note": "Force full pipeline regardless of git state. Used for major releases."
+        }
       ]
     },
     "checks": {
@@ -2011,11 +2307,11 @@
       "title": "Everything in one file. No extra config.",
       "lead": "Config lives in {configFile} alongside other KB Labs settings. No separate {releaseConfig}.",
       "items": [
-        null,
-        null,
-        null,
-        null,
-        null
+        "release.workflow — path to the release workflow YAML",
+        "release.targets — which packages to include in the pipeline",
+        "release.gates — required stages that must pass before publish",
+        "release.aiReview — model and prompt config for AI review step",
+        "release.npm — registry URL, access level, and publish token"
       ]
     },
     "pipelineStages": [
@@ -2583,11 +2879,26 @@
       "indexEyebrow": "Indexing",
       "indexTitle": "Incremental by content-hash.",
       "indexTable": [
-        null,
-        null,
-        null,
-        null,
-        null
+        {
+          "label": "Source files",
+          "value": "All .ts, .tsx, .js, .jsx files in tracked packages"
+        },
+        {
+          "label": "Index backend",
+          "value": "Qdrant vector store (local or remote)"
+        },
+        {
+          "label": "Embedding model",
+          "value": "Configured via adapter — openai, cohere, or custom"
+        },
+        {
+          "label": "Re-index trigger",
+          "value": "Automatic on kb-dev start or manual via pnpm kb mind reindex"
+        },
+        {
+          "label": "Search mode",
+          "value": "Semantic (dense), keyword (sparse), or hybrid"
+        }
       ],
       "verifyEyebrow": "Source verification",
       "verifyTitle": "Not in the index — it'll say so honestly.",
@@ -2599,24 +2910,60 @@
       "commandsEyebrow": "Commands",
       "commandsTitle": "For humans and agents.",
       "commands": [
-        null,
-        null,
-        null,
-        null,
-        null,
-        null
+        {
+          "cmd": "pnpm kb mind search --text \"how does X work\"",
+          "note": "Semantic search across the full codebase."
+        },
+        {
+          "cmd": "pnpm kb mind search --text \"RoutingBackend\" --agent",
+          "note": "Agent-mode output: JSON lines with sources and confidence."
+        },
+        {
+          "cmd": "pnpm kb mind reindex",
+          "note": "Force full re-index of the codebase into the vector store."
+        },
+        {
+          "cmd": "pnpm kb mind reindex --affected",
+          "note": "Re-index only files changed since last index run."
+        },
+        {
+          "cmd": "pnpm kb mind status",
+          "note": "Show index health: total chunks, last indexed, backend status."
+        },
+        {
+          "cmd": "pnpm kb mind config",
+          "note": "Show active embedding model and vector store connection."
+        }
       ],
       "agentEyebrow": "AI agents",
       "agentTitle": "First-class tool for agent workflows.",
       "agentLead1": "--agent returns structured JSON with schemaVersion: \"agent-response-v1\". Agents get exact citations with file position — no guessing context.",
       "agentLead2": "Three modes: instant — fast, auto — balanced, thinking — reasoning chain before the answer.",
       "agentTable": [
-        null,
-        null,
-        null,
-        null,
-        null,
-        null
+        {
+          "label": "Input",
+          "value": "Natural language query or structured JSON prompt"
+        },
+        {
+          "label": "Retrieval",
+          "value": "Top-K semantic search with confidence threshold"
+        },
+        {
+          "label": "Context window",
+          "value": "Sources injected into LLM context automatically"
+        },
+        {
+          "label": "Output",
+          "value": "Structured answer with file citations"
+        },
+        {
+          "label": "Audit",
+          "value": "Every search logged with query, sources, and latency"
+        },
+        {
+          "label": "Model",
+          "value": "Configured via Gateway — swap without code changes"
+        }
       ],
       "ctaEyebrow": "Install",
       "ctaTitle": "Semantic search. Honest answers."
@@ -2802,33 +3149,93 @@
       "pipelineEyebrow": "Unified pipeline",
       "pipelineTitle": "From commit to merge.",
       "pipeline": [
-        null,
-        null,
-        null
+        {
+          "step": "1. Lint",
+          "cmd": "kb-devkit run lint",
+          "desc": "ESLint across all packages in dependency order. Only changed packages re-lint."
+        },
+        {
+          "step": "2. Type-check",
+          "cmd": "kb-devkit run type-check",
+          "desc": "tsc --noEmit with project references. Type errors in dependencies surface first."
+        },
+        {
+          "step": "3. AI Review",
+          "cmd": "pnpm kb review run",
+          "desc": "LLM review of the diff. Finds logic errors, security issues, and anti-patterns."
+        }
       ],
       "layers": [
         {
+          "eyebrow": "Static analysis",
+          "title": "Lint and type-check — fast, every change.",
+          "body": "ESLint and TypeScript run in dependency order across all packages. Only changed packages re-run. Cache restores in ~1ms for unchanged outputs.",
+          "install": "pnpm kb plugins install quality",
           "commands": [
-            null,
-            null,
-            null,
-            null
+            {
+              "cmd": "kb-devkit run lint",
+              "note": "Lint all packages in dependency order."
+            },
+            {
+              "cmd": "kb-devkit run lint --affected",
+              "note": "Lint only changed packages and dependents."
+            },
+            {
+              "cmd": "kb-devkit run type-check",
+              "note": "TypeScript check with project references."
+            },
+            {
+              "cmd": "kb-devkit gate",
+              "note": "Check staged files only. For pre-commit hooks."
+            }
           ]
         },
         {
+          "eyebrow": "AI code review",
+          "title": "LLM review on every diff — architecture-aware.",
+          "body": "The review plugin sends your diff to the configured LLM with your architecture as context. Finds logic errors, security issues, and anti-patterns that linters miss. Runs as a gated workflow step.",
+          "install": "pnpm kb plugins install review",
           "commands": [
-            null,
-            null,
-            null,
-            null
+            {
+              "cmd": "pnpm kb review run",
+              "note": "Review current diff against HEAD."
+            },
+            {
+              "cmd": "pnpm kb review run --pr 42",
+              "note": "Review a specific PR by number."
+            },
+            {
+              "cmd": "pnpm kb review config",
+              "note": "Show active model and prompt configuration."
+            },
+            {
+              "cmd": "pnpm kb review history",
+              "note": "List past reviews with verdict and timestamp."
+            }
           ]
         },
         {
+          "eyebrow": "QA trends",
+          "title": "Track quality over time — catch regressions before they ship.",
+          "body": "The QA plugin runs recurring checks on every change and tracks results by package over time. Surfaces trend degradation — a package that was 95% passing last week and is 80% today gets flagged before it ships.",
+          "install": "pnpm kb plugins install qa",
           "commands": [
-            null,
-            null,
-            null,
-            null
+            {
+              "cmd": "pnpm kb qa run",
+              "note": "Run QA checks on the current workspace."
+            },
+            {
+              "cmd": "pnpm kb qa run --affected",
+              "note": "Run only on changed packages."
+            },
+            {
+              "cmd": "pnpm kb qa trends",
+              "note": "Show quality trend per package over last N runs."
+            },
+            {
+              "cmd": "pnpm kb qa report",
+              "note": "Export structured QA report with pass/fail history."
+            }
           ]
         }
       ],
@@ -2884,10 +3291,22 @@
       "buildTitle": "Change one package — only the chain rebuilds.",
       "buildLead": "Dependency graph + topological order + SHA256 content-addressable cache. Same content — 0ms, regardless of package count.",
       "buildCommands": [
-        null,
-        null,
-        null,
-        null
+        {
+          "cmd": "kb-devkit run build",
+          "note": "Build all packages in dependency order. Skips unchanged packages via SHA cache."
+        },
+        {
+          "cmd": "kb-devkit run build --affected",
+          "note": "Build only changed packages and their downstream dependents."
+        },
+        {
+          "cmd": "kb-devkit run build --packages @kb-labs/workflow-entry",
+          "note": "Build a specific package by name."
+        },
+        {
+          "cmd": "kb-devkit run build lint test",
+          "note": "Chain multiple tasks in one pass, each in correct dep order."
+        }
       ],
       "tabAffected": "--affected",
       "tabCached": "full (all cached)",
@@ -2896,20 +3315,47 @@
       "healthLead1": "Static audit of every package by presets: ESLint config, TSConfig, README, engines, exports. Health score 0–100 with A–F grade — degradation is immediately visible per category.",
       "healthLead2": "Need custom logic? {code} in devkit.yaml — a shell command that receives a JSON package context and returns {result}. License headers, barrel exports, naming conventions — anything.",
       "healthCommands": [
-        null,
-        null,
-        null,
-        null,
-        null
+        {
+          "cmd": "kb-devkit check",
+          "note": "Validate all packages against devkit.yaml rules: naming, tsconfig, eslint, deps."
+        },
+        {
+          "cmd": "kb-devkit stats",
+          "note": "Workspace health score (A–F), issue counts by category, coverage metrics."
+        },
+        {
+          "cmd": "kb-devkit fix",
+          "note": "Auto-fix safe violations. Use --dry-run to preview without writing."
+        },
+        {
+          "cmd": "kb-devkit gate",
+          "note": "Check staged files only. Exits with code 1 on violations. For pre-commit hooks."
+        },
+        {
+          "cmd": "pnpm kb plugins list",
+          "note": "List all installed plugins with their version and enabled state."
+        }
       ],
       "impactEyebrow": "Impact",
       "impactTitle": "What breaks. What to test.",
       "impactLead": "The Impact plugin builds a reverse graph and shows the cascade: direct → dependent → transitive packages. Tests — only what's actually affected. Build plan with the devkit command included.",
       "impactCommands": [
-        null,
-        null,
-        null,
-        null
+        {
+          "cmd": "kb-devkit run build --affected",
+          "note": "Resolve affected set via git diff + BFS through the dependency graph."
+        },
+        {
+          "cmd": "pnpm kb impact analyze",
+          "note": "Show which packages and tests are affected by current changes."
+        },
+        {
+          "cmd": "pnpm kb impact report",
+          "note": "Export a structured impact report with dependency paths."
+        },
+        {
+          "cmd": "pnpm kb plugins clear-cache",
+          "note": "Force-invalidate the CLI discovery cache after a build."
+        }
       ],
       "ctaEyebrow": "Install",
       "ctaTitle": "Graph. Cache. Impact. All in one.",
@@ -3024,9 +3470,18 @@
       "backendsTitle": "SQLite, DuckDB, or flat file.",
       "backendsLead": "Pick the backend in kb.config.json — one line. Data stays local, no external service.",
       "backendsTable": [
-        null,
-        null,
-        null
+        {
+          "label": "Pino (structured logs)",
+          "value": "Default. JSON lines, compatible with any log aggregator."
+        },
+        {
+          "label": "OpenTelemetry",
+          "value": "Export traces and metrics to Jaeger, Tempo, or OTLP endpoint."
+        },
+        {
+          "label": "Custom adapter",
+          "value": "Implement ILogger/IMetrics and bind via kb.config.json."
+        }
       ],
       "queryEyebrow": "Queries",
       "queryTitle": "getStats. getDailyStats. breakdownBy on payload.",
@@ -3036,10 +3491,22 @@
       "monitorTitle": "kb-monitor — health, logs, exec into container.",
       "monitorLead": "For deployed services — a dedicated Go binary. Health checks, streaming logs, exec into containers. Works with any service deployed via kb-deploy.",
       "monitorCommands": [
-        null,
-        null,
-        null,
-        null
+        {
+          "cmd": "kb-monitor health",
+          "note": "Probe every declared target. Pass/fail with latency."
+        },
+        {
+          "cmd": "kb-monitor status",
+          "note": "Running state, uptime, image SHA per target."
+        },
+        {
+          "cmd": "kb-monitor logs <target> --follow",
+          "note": "Stream live logs from any target. No SSH needed."
+        },
+        {
+          "cmd": "kb-monitor status --json",
+          "note": "Machine-readable output for agents and dashboards."
+        }
       ],
       "ctaEyebrow": "Self-hosted",
       "ctaTitle": "Your data. No SaaS in the way.",
@@ -3316,10 +3783,22 @@
       "eyebrow": "How it works",
       "title": "From trigger to result in four steps.",
       "items": [
-        null,
-        null,
-        null,
-        null
+        {
+          "title": "Write a .kb/workflow.yaml",
+          "description": "Define triggers, jobs, and steps in a YAML file next to your code."
+        },
+        {
+          "title": "Run kb workflow start",
+          "description": "The daemon picks it up, resolves plugins, and begins execution."
+        },
+        {
+          "title": "Watch real-time output",
+          "description": "Stream live logs, step status, and artifacts from the CLI or Studio."
+        },
+        {
+          "title": "Inspect the result",
+          "description": "Audit the full run: inputs, outputs, timing, and plugin calls — all local."
+        }
       ]
     },
     "cta": {
@@ -3331,122 +3810,344 @@
   },
   "config": {
     "items": [
-      null,
-      null,
-      null,
-      null,
-      null
+      "release.workflow — path to the release workflow YAML",
+      "release.targets — which packages to include in the pipeline",
+      "release.gates — required stages that must pass before publish",
+      "release.aiReview — model and prompt config for AI review step",
+      "release.npm — registry URL, access level, and publish token"
     ]
   },
   "designDecisions": {
     "items": [
-      null,
-      null,
-      null
+      {
+        "title": "Workflows as code, not config",
+        "detail": "Release pipelines live in YAML under version control — reviewed, diffable, and revertable like any other change. No GUI state to export, no vendor format to migrate from."
+      },
+      {
+        "title": "Every stage is a plugin",
+        "detail": "Lint, review, QA, deploy — each step is a typed plugin with declared capabilities. Swap any stage without touching the rest of the pipeline."
+      },
+      {
+        "title": "Fail fast, trace everything",
+        "detail": "Stages run in order with explicit dependencies. The first failure stops the pipeline. Every run is fully traced: inputs, outputs, timing, and plugin calls."
+      }
     ]
   },
   "flows": {
     "runs": [
-      null,
-      null
+      {
+        "cmd": "pnpm kb workflow run release",
+        "packages": "@kb-labs/core-platform, @kb-labs/sdk",
+        "strategy": "affected",
+        "note": "Runs lint → type-check → test → AI review → build → publish. Only changed packages."
+      },
+      {
+        "cmd": "pnpm kb workflow run release --all",
+        "packages": "All 35+ packages",
+        "strategy": "full",
+        "note": "Force full pipeline regardless of git state. Used for major releases."
+      }
     ]
   },
   "pipeline": {
     "stages": [
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null
+      {
+        "stage": "1",
+        "label": "Lint",
+        "detail": "ESLint across all affected packages. Fast — only what changed."
+      },
+      {
+        "stage": "2",
+        "label": "Type-check",
+        "detail": "tsc project references in dependency order. Catches cross-package type errors."
+      },
+      {
+        "stage": "3",
+        "label": "Test",
+        "detail": "Vitest with coverage. Skips packages with no changed files."
+      },
+      {
+        "stage": "4",
+        "label": "AI Review",
+        "detail": "LLM reviews the diff for logic errors, security issues, and style violations."
+      },
+      {
+        "stage": "5",
+        "label": "QA Gate",
+        "detail": "Package-level quality checks. Fails if degradation is detected."
+      },
+      {
+        "stage": "6",
+        "label": "Impact",
+        "detail": "Dependency graph analysis — which packages and tests are actually affected."
+      },
+      {
+        "stage": "7",
+        "label": "Build",
+        "detail": "Topological build with DTS. Only changed packages + dependents rebuild."
+      },
+      {
+        "stage": "8",
+        "label": "Release",
+        "detail": "Publish to npm + GitHub Release with changelog. Gated by all prior stages."
+      }
     ]
   },
   "page": {
     "indexTable": [
-      null,
-      null,
-      null,
-      null,
-      null
+      {
+        "label": "Source files",
+        "value": "All .ts, .tsx, .js, .jsx files in tracked packages"
+      },
+      {
+        "label": "Index backend",
+        "value": "Qdrant vector store (local or remote)"
+      },
+      {
+        "label": "Embedding model",
+        "value": "Configured via adapter — openai, cohere, or custom"
+      },
+      {
+        "label": "Re-index trigger",
+        "value": "Automatic on kb-dev start or manual via pnpm kb mind reindex"
+      },
+      {
+        "label": "Search mode",
+        "value": "Semantic (dense), keyword (sparse), or hybrid"
+      }
     ],
     "commands": [
-      null,
-      null,
-      null,
-      null,
-      null,
-      null
+      {
+        "cmd": "pnpm kb mind search --text \"how does X work\"",
+        "note": "Semantic search across the full codebase."
+      },
+      {
+        "cmd": "pnpm kb mind search --text \"RoutingBackend\" --agent",
+        "note": "Agent-mode output: JSON lines with sources and confidence."
+      },
+      {
+        "cmd": "pnpm kb mind reindex",
+        "note": "Force full re-index of the codebase into the vector store."
+      },
+      {
+        "cmd": "pnpm kb mind reindex --affected",
+        "note": "Re-index only files changed since last index run."
+      },
+      {
+        "cmd": "pnpm kb mind status",
+        "note": "Show index health: total chunks, last indexed, backend status."
+      },
+      {
+        "cmd": "pnpm kb mind config",
+        "note": "Show active embedding model and vector store connection."
+      }
     ],
     "agentTable": [
-      null,
-      null,
-      null,
-      null,
-      null,
-      null
+      {
+        "label": "Input",
+        "value": "Natural language query or structured JSON prompt"
+      },
+      {
+        "label": "Retrieval",
+        "value": "Top-K semantic search with confidence threshold"
+      },
+      {
+        "label": "Context window",
+        "value": "Sources injected into LLM context automatically"
+      },
+      {
+        "label": "Output",
+        "value": "Structured answer with file citations"
+      },
+      {
+        "label": "Audit",
+        "value": "Every search logged with query, sources, and latency"
+      },
+      {
+        "label": "Model",
+        "value": "Configured via Gateway — swap without code changes"
+      }
     ],
     "buildCommands": [
-      null,
-      null,
-      null,
-      null
+      {
+        "cmd": "kb-devkit run build",
+        "note": "Build all packages in dependency order. Skips unchanged packages via SHA cache."
+      },
+      {
+        "cmd": "kb-devkit run build --affected",
+        "note": "Build only changed packages and their downstream dependents."
+      },
+      {
+        "cmd": "kb-devkit run build --packages @kb-labs/workflow-entry",
+        "note": "Build a specific package by name."
+      },
+      {
+        "cmd": "kb-devkit run build lint test",
+        "note": "Chain multiple tasks in one pass, each in correct dep order."
+      }
     ],
     "healthCommands": [
-      null,
-      null,
-      null,
-      null,
-      null
+      {
+        "cmd": "kb-devkit check",
+        "note": "Validate all packages against devkit.yaml rules: naming, tsconfig, eslint, deps."
+      },
+      {
+        "cmd": "kb-devkit stats",
+        "note": "Workspace health score (A–F), issue counts by category, coverage metrics."
+      },
+      {
+        "cmd": "kb-devkit fix",
+        "note": "Auto-fix safe violations. Use --dry-run to preview without writing."
+      },
+      {
+        "cmd": "kb-devkit gate",
+        "note": "Check staged files only. Exits with code 1 on violations. For pre-commit hooks."
+      },
+      {
+        "cmd": "pnpm kb plugins list",
+        "note": "List all installed plugins with their version and enabled state."
+      }
     ],
     "impactCommands": [
-      null,
-      null,
-      null,
-      null
+      {
+        "cmd": "kb-devkit run build --affected",
+        "note": "Resolve affected set via git diff + BFS through the dependency graph."
+      },
+      {
+        "cmd": "pnpm kb impact analyze",
+        "note": "Show which packages and tests are affected by current changes."
+      },
+      {
+        "cmd": "pnpm kb impact report",
+        "note": "Export a structured impact report with dependency paths."
+      },
+      {
+        "cmd": "pnpm kb plugins clear-cache",
+        "note": "Force-invalidate the CLI discovery cache after a build."
+      }
     ],
     "pipeline": [
-      null,
-      null,
-      null
+      {
+        "step": "1. Lint",
+        "cmd": "kb-devkit run lint",
+        "desc": "ESLint across all packages in dependency order. Only changed packages re-lint."
+      },
+      {
+        "step": "2. Type-check",
+        "cmd": "kb-devkit run type-check",
+        "desc": "tsc --noEmit with project references. Type errors in dependencies surface first."
+      },
+      {
+        "step": "3. AI Review",
+        "cmd": "pnpm kb review run",
+        "desc": "LLM review of the diff. Finds logic errors, security issues, and anti-patterns."
+      }
     ],
     "layers": [
       {
+        "eyebrow": "Static analysis",
+        "title": "Lint and type-check — fast, every change.",
+        "body": "ESLint and TypeScript run in dependency order across all packages. Only changed packages re-run. Cache restores in ~1ms for unchanged outputs.",
+        "install": "pnpm kb plugins install quality",
         "commands": [
-          null,
-          null,
-          null,
-          null
+          {
+            "cmd": "kb-devkit run lint",
+            "note": "Lint all packages in dependency order."
+          },
+          {
+            "cmd": "kb-devkit run lint --affected",
+            "note": "Lint only changed packages and dependents."
+          },
+          {
+            "cmd": "kb-devkit run type-check",
+            "note": "TypeScript check with project references."
+          },
+          {
+            "cmd": "kb-devkit gate",
+            "note": "Check staged files only. For pre-commit hooks."
+          }
         ]
       },
       {
+        "eyebrow": "AI code review",
+        "title": "LLM review on every diff — architecture-aware.",
+        "body": "The review plugin sends your diff to the configured LLM with your architecture as context. Finds logic errors, security issues, and anti-patterns that linters miss. Runs as a gated workflow step.",
+        "install": "pnpm kb plugins install review",
         "commands": [
-          null,
-          null,
-          null,
-          null
+          {
+            "cmd": "pnpm kb review run",
+            "note": "Review current diff against HEAD."
+          },
+          {
+            "cmd": "pnpm kb review run --pr 42",
+            "note": "Review a specific PR by number."
+          },
+          {
+            "cmd": "pnpm kb review config",
+            "note": "Show active model and prompt configuration."
+          },
+          {
+            "cmd": "pnpm kb review history",
+            "note": "List past reviews with verdict and timestamp."
+          }
         ]
       },
       {
+        "eyebrow": "QA trends",
+        "title": "Track quality over time — catch regressions before they ship.",
+        "body": "The QA plugin runs recurring checks on every change and tracks results by package over time. Surfaces trend degradation — a package that was 95% passing last week and is 80% today gets flagged before it ships.",
+        "install": "pnpm kb plugins install qa",
         "commands": [
-          null,
-          null,
-          null,
-          null
+          {
+            "cmd": "pnpm kb qa run",
+            "note": "Run QA checks on the current workspace."
+          },
+          {
+            "cmd": "pnpm kb qa run --affected",
+            "note": "Run only on changed packages."
+          },
+          {
+            "cmd": "pnpm kb qa trends",
+            "note": "Show quality trend per package over last N runs."
+          },
+          {
+            "cmd": "pnpm kb qa report",
+            "note": "Export structured QA report with pass/fail history."
+          }
         ]
       }
     ],
     "backendsTable": [
-      null,
-      null,
-      null
+      {
+        "label": "Pino (structured logs)",
+        "value": "Default. JSON lines, compatible with any log aggregator."
+      },
+      {
+        "label": "OpenTelemetry",
+        "value": "Export traces and metrics to Jaeger, Tempo, or OTLP endpoint."
+      },
+      {
+        "label": "Custom adapter",
+        "value": "Implement ILogger/IMetrics and bind via kb.config.json."
+      }
     ],
     "monitorCommands": [
-      null,
-      null,
-      null,
-      null
+      {
+        "cmd": "kb-monitor health",
+        "note": "Probe every declared target. Pass/fail with latency."
+      },
+      {
+        "cmd": "kb-monitor status",
+        "note": "Running state, uptime, image SHA per target."
+      },
+      {
+        "cmd": "kb-monitor logs <target> --follow",
+        "note": "Stream live logs from any target. No SSH needed."
+      },
+      {
+        "cmd": "kb-monitor status --json",
+        "note": "Machine-readable output for agents and dashboards."
+      }
     ],
     "secMetaTitle": "Security — KB Labs",
     "secMetaDesc": "On-prem by default, open source, plugin sandboxing, JWT Gateway auth. No data leaves without your consent.",
@@ -3455,22 +4156,73 @@
     "secHeroTitleHighlight": "stay on your machine.",
     "secHeroDescription": "KB Labs runs on-prem by default, open source end-to-end, and never sends data without your explicit action. Everything below is verifiable in source.",
     "secStats": [
-      null,
-      null,
-      null,
-      null
+      {
+        "value": "100%",
+        "label": "on-prem",
+        "description": "No cloud required"
+      },
+      {
+        "value": "0",
+        "label": "telemetry default",
+        "description": "Opt-in only"
+      },
+      {
+        "value": "3",
+        "label": "isolation modes",
+        "description": "In-process, subprocess, container"
+      },
+      {
+        "value": "MIT",
+        "label": "license",
+        "description": "Full source auditable"
+      }
     ],
     "secDataFlowEyebrow": "Data flows",
     "secDataFlowTitle": "What leaves your network.",
     "secDataFlowSubtitle": "Full data movement map — no \"approximately\" or \"sometimes\".",
     "secDataFlow": [
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null
+      {
+        "dataType": "Source code",
+        "destination": "Your machine only",
+        "condition": "Never transmitted",
+        "status": "local"
+      },
+      {
+        "dataType": "Workflow state",
+        "destination": "Your machine only",
+        "condition": "Never transmitted",
+        "status": "local"
+      },
+      {
+        "dataType": "LLM prompts",
+        "destination": "Your chosen provider",
+        "condition": "Only when you trigger AI features",
+        "status": "conditional"
+      },
+      {
+        "dataType": "Git diffs (demo)",
+        "destination": "Gateway proxy",
+        "condition": "Only in demo mode, opt-in",
+        "status": "conditional"
+      },
+      {
+        "dataType": "Crash reports",
+        "destination": "Never collected",
+        "condition": "No error tracking",
+        "status": "local"
+      },
+      {
+        "dataType": "Usage analytics",
+        "destination": "Never collected",
+        "condition": "No telemetry by default",
+        "status": "local"
+      },
+      {
+        "dataType": "API keys",
+        "destination": "Local config only (0600)",
+        "condition": "Never logged or transmitted",
+        "status": "local"
+      }
     ],
     "secTableHeaderType": "Data type",
     "secTableHeaderDest": "Destination",
@@ -3479,45 +4231,103 @@
     "secPillarsEyebrow": "Core principles",
     "secPillarsTitle": "Secure by default, not optional.",
     "secPillars": [
-      null,
-      null,
-      null
+      {
+        "title": "On-prem by default",
+        "description": "KB Labs runs entirely on your infrastructure. No cloud dependency, no data leaving your network. You control where your code, workflow state, and logs are stored."
+      },
+      {
+        "title": "Consent-first data sharing",
+        "description": "Nothing is sent externally without explicit user consent. The CLI installer asks before every network call. Demo mode offers three choices: gateway proxy, local only, or bring your own API key."
+      },
+      {
+        "title": "Open source & auditable",
+        "description": "The entire platform is open source. Every line of code is auditable. No black boxes, no hidden telemetry, no trust-us-it's-safe. Verify yourself."
+      }
     ],
     "secSandboxEyebrow": "Plugin isolation",
     "secSandboxTitle": "Four layers of sandbox isolation.",
     "secSandboxSubtitle": "A plugin cannot access resources it didn't declare in its manifest — that's a contract, not a recommendation.",
     "secSandboxLayers": [
-      null,
-      null,
-      null,
-      null
+      {
+        "num": "1",
+        "title": "Manifest declaration",
+        "description": "Plugins declare required capabilities upfront. Runtime refuses undeclared access."
+      },
+      {
+        "num": "2",
+        "title": "In-process isolation",
+        "description": "Default mode. Plugin runs in the same process with permission enforcement via middleware."
+      },
+      {
+        "num": "3",
+        "title": "Subprocess isolation",
+        "description": "Plugin spawns in a child process. IPC-only communication, no shared memory."
+      },
+      {
+        "num": "4",
+        "title": "Container isolation",
+        "description": "Plugin runs in an OCI container. Full filesystem and network isolation."
+      }
     ],
     "secAuthEyebrow": "JWT authentication",
     "secAuthTitle": "Tokens live on your machine.",
     "secAuthSubtitle": "Gateway uses no centralized auth service — keys are generated and stored locally.",
     "secAuthFacts": [
-      null,
-      null,
-      null,
-      null,
-      null,
-      null
+      {
+        "label": "Token scope",
+        "value": "Device-scoped JWT"
+      },
+      {
+        "label": "Token storage",
+        "value": "Local file, 0600 permissions"
+      },
+      {
+        "label": "Token sharing",
+        "value": "Never shared across users"
+      },
+      {
+        "label": "Auth method",
+        "value": "JWT Bearer tokens"
+      },
+      {
+        "label": "Key rotation",
+        "value": "CLI command: kb gateway rotate"
+      },
+      {
+        "label": "Revocation",
+        "value": "Immediate, no TTL dependency"
+      }
     ],
     "secComplianceEyebrow": "Standards compliance",
     "secComplianceTitle": "Honest about certifications.",
     "secComplianceSubtitle": "Early stage — no lies about status.",
     "secComplianceItems": [
-      null,
-      null,
-      null
+      {
+        "name": "Open Source",
+        "status": "Available",
+        "description": "MIT-licensed. Full source code available on GitHub for audit and contribution.",
+        "statusClass": "available"
+      },
+      {
+        "name": "DPA",
+        "status": "Available",
+        "description": "Data processing agreement available on request for organizations that require it.",
+        "statusClass": "available"
+      },
+      {
+        "name": "RBAC & SSO",
+        "status": "In progress",
+        "description": "Role-based access control and SSO (SAML/OIDC) planned for Enterprise tier.",
+        "statusClass": "in-progress"
+      }
     ],
     "secDisclosureEyebrow": "Responsible disclosure",
     "secDisclosureTitle": "Found a vulnerability?",
     "secDisclosureBody": "If you found a vulnerability — contact us before public disclosure. We respond within 48 hours and publicly thank researchers after the fix ships.",
     "secDisclosureSteps": [
-      null,
-      null,
-      null
+      "Email security@kblabs.dev with full details",
+      "We respond within 72 hours and confirm scope",
+      "Fix ships in the next patch release with credit"
     ],
     "secDisclosureBtn": "Email security",
     "secCtaEyebrow": "Questions?",
@@ -3532,41 +4342,74 @@
     "cmpHeroTitleHighlight": "and where it doesn't.",
     "cmpHeroDescription": "We're not for everyone — and we're upfront about that. Here's a concrete breakdown of each alternative, including cases where the right answer is something else.",
     "cmpTableHeaders": [
-      null,
-      null,
-      null,
-      null,
-      null,
-      null
+      "Feature",
+      "GitHub Actions",
+      "n8n / Make",
+      "Jenkins",
+      "Temporal",
+      "KB Labs"
     ],
     "cmpTableCategories": [
       {
         "rows": [
           {
+            "feature": "Runs on your infra",
             "values": [
-              null,
-              null,
-              null,
-              null,
-              null
+              "No",
+              "No / cloud-first",
+              "Self-hostable",
+              "Yes",
+              "Yes"
             ]
           },
           {
+            "feature": "Code-first workflows",
             "values": [
-              null,
-              null,
-              null,
-              null,
-              null
+              "YAML (limited)",
+              "No-code GUI",
+              "Code (Python/Go)",
+              "Groovy/YAML",
+              "YAML + TypeScript plugins"
             ]
           },
           {
+            "feature": "AI review built in",
             "values": [
-              null,
-              null,
-              null,
-              null,
-              null
+              "No",
+              "No",
+              "No",
+              "No",
+              "Yes"
+            ]
+          },
+          {
+            "feature": "Plugin/extension model",
+            "values": [
+              "Actions marketplace",
+              "Connectors",
+              "Activities",
+              "Plugins",
+              "Typed SDK + manifest"
+            ]
+          },
+          {
+            "feature": "Per-plugin permissions",
+            "values": [
+              "No",
+              "No",
+              "No",
+              "No",
+              "Yes — declared + enforced"
+            ]
+          },
+          {
+            "feature": "Audit trail per run",
+            "values": [
+              "Partial",
+              "Partial",
+              "Yes",
+              "Partial",
+              "Full — every step traced"
             ]
           }
         ]
@@ -3574,30 +4417,33 @@
       {
         "rows": [
           {
+            "feature": "QA trend tracking",
             "values": [
-              null,
-              null,
-              null,
-              null,
-              null
+              "No",
+              "No",
+              "No",
+              "No",
+              "Yes"
             ]
           },
           {
+            "feature": "Agent workflows",
             "values": [
-              null,
-              null,
-              null,
-              null,
-              null
+              "No",
+              "Limited",
+              "No",
+              "No",
+              "Yes — first-class"
             ]
           },
           {
+            "feature": "Local development support",
             "values": [
-              null,
-              null,
-              null,
-              null,
-              null
+              "Limited",
+              "Yes",
+              "Yes",
+              "Yes",
+              "Yes — kb-dev"
             ]
           }
         ]
@@ -3605,30 +4451,33 @@
       {
         "rows": [
           {
+            "feature": "License",
             "values": [
-              null,
-              null,
-              null,
-              null,
-              null
+              "Proprietary",
+              "Apache 2 / Proprietary",
+              "MIT",
+              "MIT",
+              "MIT"
             ]
           },
           {
+            "feature": "Install time",
             "values": [
-              null,
-              null,
-              null,
-              null,
-              null
+              "N/A (cloud)",
+              "~1 hour",
+              "~4 hours",
+              "~2 hours",
+              "< 5 minutes"
             ]
           },
           {
+            "feature": "Cloud-free by default",
             "values": [
-              null,
-              null,
-              null,
-              null,
-              null
+              "No",
+              "No",
+              "Optional",
+              "Yes",
+              "Yes"
             ]
           }
         ]
@@ -3639,52 +4488,68 @@
     "cmpMatrixLegend": "✓ yes · ~ partial · – no · — not applicable",
     "cmpAlternatives": [
       {
+        "num": "01",
+        "label": "GitHub Actions / GitLab CI",
+        "verdict": "Great for build and deploy. Not designed for developer tooling.",
         "good": [
-          null,
-          null,
-          null
+          "Tight integration with GitHub/GitLab events",
+          "Huge action marketplace",
+          "Handles build and deploy pipelines well"
         ],
         "kb": [
-          null,
-          null,
-          null
-        ]
+          "Runs on your infra — secrets never leave your network",
+          "Covers what CI/CD ignores: review gates, QA trends, agent workflows",
+          "Works beside Actions, not instead of it"
+        ],
+        "note": ""
       },
       {
+        "num": "02",
+        "label": "n8n / Make / Zapier",
+        "verdict": "Fast to start. Hard to maintain at engineering scale.",
         "good": [
-          null,
-          null,
-          null
+          "No-code setup for simple integrations",
+          "Wide library of pre-built connectors",
+          "Good for business process automation"
         ],
         "kb": [
-          null,
-          null,
-          null
-        ]
+          "Workflows are code — reviewable, testable, version-controlled",
+          "Typed plugin contracts replace GUI nodes",
+          "Every run is traceable end-to-end"
+        ],
+        "note": ""
       },
       {
+        "num": "03",
+        "label": "Temporal / Prefect / Airflow",
+        "verdict": "Excellent for distributed systems. KB Labs solves a different problem.",
         "good": [
-          null,
-          null,
-          null
+          "Industry-proven for distributed workflow orchestration",
+          "Strong durability and retry guarantees",
+          "Built for data pipelines and long-running jobs"
         ],
         "kb": [
-          null,
-          null,
-          null
-        ]
+          "Designed for development teams, not data engineers",
+          "No distributed systems infrastructure to operate",
+          "Covers code review, release, QA — not data pipelines"
+        ],
+        "note": "Different tools for different problems. We complement, not compete."
       },
       {
+        "num": "04",
+        "label": "Custom internal tools",
+        "verdict": "You own the code. You also own every bug and upgrade.",
         "good": [
-          null,
-          null,
-          null
+          "Fully custom to your exact requirements",
+          "No external dependencies or vendor risk",
+          "You control the roadmap"
         ],
         "kb": [
-          null,
-          null,
-          null
-        ]
+          "Open source — fork it, own it, no vendor lock-in",
+          "Plugin SDK means you extend without maintaining core",
+          "Community-maintained, not just you"
+        ],
+        "note": ""
       }
     ],
     "cmpGoodLabel": "What they do well",
@@ -3692,12 +4557,30 @@
     "cmpObjectionsEyebrow": "Objections",
     "cmpObjectionsTitle": "Common questions — straight answers.",
     "cmpObjections": [
-      null,
-      null,
-      null,
-      null,
-      null,
-      null
+      {
+        "question": "We're already on GitHub Actions — why switch?",
+        "answer": "You don't have to switch. KB Labs handles what CI/CD doesn't — review gates, AI orchestration, QA trends, agent workflows. Run it beside Actions."
+      },
+      {
+        "question": "Is this just another workflow tool?",
+        "answer": "No. KB Labs is a runtime with a permissions model, an extension system, and observability built in. Workflows are one capability, not the whole product."
+      },
+      {
+        "question": "We have 2 engineers. Too complex?",
+        "answer": "One-command install. First workflow in under an hour. The complexity scales with your team, not the other way around."
+      },
+      {
+        "question": "What about data privacy?",
+        "answer": "Self-hosted by default. Nothing leaves your network unless you explicitly route it. No telemetry, no analytics, no cloud backend owned by anyone else."
+      },
+      {
+        "question": "We don't have a dedicated DevOps person.",
+        "answer": "KB Labs is designed for engineers who own their own infra. The CLI is the primary interface. No GUI required, no YAML wizards."
+      },
+      {
+        "question": "How do agents fit in?",
+        "answer": "As first-class workflow steps with typed contracts and permission enforcement. The same runtime governs humans, bots, and agents."
+      }
     ],
     "cmpCtaTitle": "Easier to try than to compare.",
     "cmpCtaDescription": "One install, five minutes — first workflow running on your machine.",
@@ -3711,10 +4594,22 @@
     "plugHeroInstallBtn": "Install KB Labs",
     "plugHeroDocsBtn": "Documentation",
     "plugStats": [
-      null,
-      null,
-      null,
-      null
+      {
+        "value": "35+",
+        "label": "marketplace entities"
+      },
+      {
+        "value": "19",
+        "label": "plugins available"
+      },
+      {
+        "value": "21",
+        "label": "adapters available"
+      },
+      {
+        "value": "1 day",
+        "label": "typical plugin build"
+      }
     ],
     "plugSdkEyebrow": "SDK",
     "plugSdkTitle": "Just the business logic",
@@ -3739,9 +4634,21 @@
     "plugEcoEyebrow": "Ecosystem",
     "plugEcoTitle": "Build and publish your own plugin",
     "plugEcoSteps": [
-      null,
-      null,
-      null
+      {
+        "step": "1",
+        "title": "Scaffold",
+        "description": "Run kb-create plugin my-plugin. Manifest, handlers, and tsconfig in place."
+      },
+      {
+        "step": "2",
+        "title": "Implement",
+        "description": "Write typed handlers. Import from @kb-labs/sdk only — no internal deps."
+      },
+      {
+        "step": "3",
+        "title": "Register",
+        "description": "Install locally or publish to the marketplace. kb plugins list shows it immediately."
+      }
     ],
     "plugCtaEyebrow": "Try it now",
     "plugCtaTitle": "First plugin in 5 minutes.",
@@ -3773,31 +4680,71 @@
     "prodWorkflowsTitle": "Releases, review, and AI agents as code.",
     "prodWorkflowsLead": "We replace brittle shell scripts and CI YAML with one programmable system for releases, code review, QA gates, commit policy, and AI agent runs. Everything lives in code you can read, diff, and review in a PR.",
     "prodWorkflowsBullets": [
-      null,
-      null,
-      null,
-      null
+      {
+        "text": "Step-by-step orchestration with dependency resolution"
+      },
+      {
+        "text": "Built-in retry and timeout policies"
+      },
+      {
+        "text": "AI agents as first-class steps — sandbox, audit, observability built in"
+      },
+      {
+        "text": "Real-time execution dashboard with structured logs"
+      }
     ],
     "prodWorkflowsLink": "How workflows work →",
     "prodGatewayEyebrow": "Infra layer",
     "prodGatewayTitle": "Every external vendor behind one contract.",
     "prodGatewayLead": "LLM, cache, databases, vector stores, object storage, event bus, observability — all through stable platform interfaces. Around 21 open-source adapters in the catalogue today. Swap any of them with one config line — code in your services stays untouched.",
     "prodGatewayBullets": [
-      null,
-      null,
-      null,
-      null
+      {
+        "text": "Vendor abstraction: LLM, cache, DB, storage, event bus — one interface"
+      },
+      {
+        "text": "Swap any provider with a config line change"
+      },
+      {
+        "text": "Telemetry: every LLM call tracked — tokens, cost, latency"
+      },
+      {
+        "text": "Plugin isolation: each plugin gets a governed adapter slice"
+      }
     ],
     "prodGatewayLink": "See the contracts →",
     "prodExploreEyebrow": "More in the platform",
     "prodExploreTitle": "Go deeper.",
     "prodExploreItems": [
-      null,
-      null,
-      null,
-      null,
-      null,
-      null
+      {
+        "title": "Workflows",
+        "description": "Declarative automation engine.",
+        "href": "/product/workflows"
+      },
+      {
+        "title": "Gateway",
+        "description": "Vendor-agnostic adapter layer.",
+        "href": "/product/gateway"
+      },
+      {
+        "title": "Studio",
+        "description": "Web UI for monitoring and management.",
+        "href": "/product/studio"
+      },
+      {
+        "title": "Plugins",
+        "description": "Open extension system.",
+        "href": "/product/plugins"
+      },
+      {
+        "title": "State Broker",
+        "description": "Zero-config shared state.",
+        "href": "/product/state-broker"
+      },
+      {
+        "title": "kb-dev",
+        "description": "Local service manager.",
+        "href": "/tools/kb-dev"
+      }
     ],
     "prodCtaTitle": "Get started now.",
     "prodCtaInstallBtn": "Install KB Labs",
@@ -3816,19 +4763,46 @@
     "kbdevCommandsTitle": "Everything is scriptable.",
     "kbdevCommandsFootnote": "All commands support --json for scripts and CI",
     "kbdevCommands": [
-      null,
-      null,
-      null,
-      null,
-      null,
-      null
+      {
+        "cmd": "kb-dev start",
+        "note": "Start all services in dependency order. Health-probes before reporting alive."
+      },
+      {
+        "cmd": "kb-dev stop",
+        "note": "Gracefully stop all running services."
+      },
+      {
+        "cmd": "kb-dev status",
+        "note": "Show running state, PID, port, and uptime per service."
+      },
+      {
+        "cmd": "kb-dev restart workflow",
+        "note": "Restart a specific service by name."
+      },
+      {
+        "cmd": "kb-dev logs gateway --follow",
+        "note": "Stream live logs for a service. Ctrl-C to stop."
+      },
+      {
+        "cmd": "kb-dev doctor",
+        "note": "Run environment diagnostics: ports, deps, config, health."
+      }
     ],
     "kbdevFeaturesEyebrow": "How it works",
     "kbdevFeaturesTitle": "The details that matter.",
     "kbdevFeatures": [
-      null,
-      null,
-      null
+      {
+        "title": "Knows when a service actually died",
+        "description": "Tracks real PIDs because it spawned the processes. No port scanning, no stale state."
+      },
+      {
+        "title": "Doesn't call it alive until it responds",
+        "description": "HTTP, TCP, and command health probes with latency. Reports alive only after the check passes."
+      },
+      {
+        "title": "Starts in the right order",
+        "description": "Reads service dependencies from devservices.yaml and starts in topological order automatically."
+      }
     ],
     "kbdevCtaEyebrow": "Install",
     "kbdevCtaTitle": "One binary. No dependencies.",
@@ -3843,9 +4817,24 @@
     "stateModesEyebrow": "When to use what",
     "stateModesTitle": "Three modes. One API.",
     "stateModes": [
-      null,
-      null,
-      null
+      {
+        "badge": "Development",
+        "title": "In-Memory",
+        "latency": "~1ms",
+        "description": "Fast in-process cache. No infrastructure required. Data resets on restart."
+      },
+      {
+        "badge": "Production",
+        "title": "Redis",
+        "latency": "~5ms",
+        "description": "Shared state across instances with persistence. Same API — swap with a config change."
+      },
+      {
+        "badge": "Edge",
+        "title": "Custom adapter",
+        "latency": "depends",
+        "description": "Implement ICache and bind in kb.config.json. Any backend you choose."
+      }
     ],
     "stateApiTitle": "Four routes. Nothing extra.",
     "stateApiLead": "GET · PUT · DELETE /state/:key plus POST /state/clear. Keys are namespaced: tenant:default:namespace:key. TTL in milliseconds, default 5 minutes.",
@@ -3883,15 +4872,43 @@
     "contactHeroDescription": "Small team — we read everything and respond fast.",
     "contactChannelsEyebrow": "How can we help?",
     "contactChannels": [
-      null,
-      null,
-      null,
-      null
+      {
+        "label": "Sales",
+        "description": "Discuss pricing, enterprise plans, or custom contracts.",
+        "action": "Talk to sales →",
+        "href": "mailto:kirillBaranovJob@yandex.ru"
+      },
+      {
+        "label": "Support",
+        "description": "Technical issues, bugs, or questions about the platform.",
+        "action": "Open an issue →",
+        "href": "https://github.com/KirillBaranov/kb-labs/issues"
+      },
+      {
+        "label": "Partnerships",
+        "description": "Integrations, reseller programs, or joint go-to-market.",
+        "action": "Get in touch →",
+        "href": "mailto:kirillBaranovJob@yandex.ru"
+      },
+      {
+        "label": "Press",
+        "description": "Media inquiries, interviews, and press kit requests.",
+        "action": "Contact press →",
+        "href": "mailto:kirillBaranovJob@yandex.ru"
+      }
     ],
     "contactCommunityEyebrow": "Community",
     "contactCommunity": [
-      null,
-      null
+      {
+        "label": "GitHub",
+        "description": "File issues, browse source, contribute.",
+        "href": "https://github.com/KirillBaranov/kb-labs"
+      },
+      {
+        "label": "Telegram",
+        "description": "DM the founder directly — fastest way to get a response.",
+        "href": "https://t.me/kirill_baranov"
+      }
     ],
     "contactLocationEyebrow": "Location",
     "contactLocationDesc": "Remote team. Russia.",
@@ -3911,20 +4928,50 @@
     "monCommandsTitle": "Everything is scriptable.",
     "monCommandsFootnote": "All commands support --json for scripts and agent workflows",
     "monCommands": [
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null
+      {
+        "cmd": "kb-monitor health",
+        "note": "Run health probes against every target. Pass or fail per service, with response latency."
+      },
+      {
+        "cmd": "kb-monitor health kb-labs-web",
+        "note": "Probe a specific target. Useful for post-deploy verification in CI or agent workflows."
+      },
+      {
+        "cmd": "kb-monitor status",
+        "note": "Running state, uptime, and image SHA for every target. The three things you need during an incident."
+      },
+      {
+        "cmd": "kb-monitor status --json",
+        "note": "Structured output for agents and dashboards. Stable schema, every field documented."
+      },
+      {
+        "cmd": "kb-monitor logs kb-labs-web --lines 100",
+        "note": "Fetch the last 100 lines of logs for a target. No SSH session, no docker ps needed."
+      },
+      {
+        "cmd": "kb-monitor logs kb-labs-web --follow",
+        "note": "Stream live logs for a target from your laptop. Ctrl-C to stop, no cleanup needed."
+      },
+      {
+        "cmd": "kb-monitor exec kb-labs-web -- df -h",
+        "note": "Execute a command inside the running container. Any command after -- is passed through verbatim."
+      }
     ],
     "monFeaturesEyebrow": "How it works",
     "monFeaturesTitle": "The details that matter.",
     "monFeatures": [
-      null,
-      null,
-      null
+      {
+        "title": "Health across every target, one command",
+        "description": "health runs HTTP or TCP probes against every target defined in deploy.yaml. Pass or fail per service, with latency."
+      },
+      {
+        "title": "Running state, uptime, and image SHA",
+        "description": "status gives you the three things you always want during an incident — current state, how long it's been that way, and exactly what's running."
+      },
+      {
+        "title": "Remote logs without SSH sessions",
+        "description": "logs streams docker logs from the host. --lines for a tail, --follow for live tail. No more SSH into a box just to tail a file."
+      }
     ],
     "monCtaEyebrow": "Install",
     "monCtaTitle": "Set up once. Forget about monitoring.",
@@ -3943,19 +4990,46 @@
     "deployCommandsTitle": "Everything is scriptable.",
     "deployCommandsFootnote": "All commands support --json for scripts and CI",
     "deployCommands": [
-      null,
-      null,
-      null,
-      null,
-      null,
-      null
+      {
+        "cmd": "kb-deploy run",
+        "note": "Build and deploy affected targets (git diff against last deployed SHA)."
+      },
+      {
+        "cmd": "kb-deploy run --all",
+        "note": "Force a full deploy of every target regardless of git state."
+      },
+      {
+        "cmd": "kb-deploy run kb-labs-web",
+        "note": "Deploy a specific target by name. Useful for hotfixes and targeted redeploys."
+      },
+      {
+        "cmd": "kb-deploy status",
+        "note": "Show the last deployed SHA per target and whether each is in sync with HEAD."
+      },
+      {
+        "cmd": "kb-deploy list",
+        "note": "List every target configured in .kb/deploy.yaml, with their compose files and hosts."
+      },
+      {
+        "cmd": "kb-deploy infra up",
+        "note": "Bring up stateful infra declared under infrastructure. Idempotent: running services are skipped."
+      }
     ],
     "deployFeaturesEyebrow": "How it works",
     "deployFeaturesTitle": "The details that matter.",
     "deployFeatures": [
-      null,
-      null,
-      null
+      {
+        "title": "Deploys only what changed",
+        "description": "Affected targets are detected via git diff against the last deployed SHA. Nothing untouched rebuilds."
+      },
+      {
+        "title": "Builds, pushes, pulls, restarts — in order",
+        "description": "Build on your machine or in CI, push to the registry, pull on the host, docker compose up. Each step is verified before the next."
+      },
+      {
+        "title": "Tracks last-deployed SHA per target",
+        "description": "Every target remembers what it's currently running. status shows you the drift between HEAD and prod for each service."
+      }
     ],
     "deployCtaEyebrow": "Install",
     "deployCtaTitle": "One binary. No Kubernetes.",
@@ -3974,31 +5048,110 @@
     "devkitCommandsTitle": "Everything is scriptable.",
     "devkitCommandsFootnote": "All commands support --json for scripts and CI",
     "devkitCommands": [
-      null,
-      null,
-      null,
-      null,
-      null,
-      null
+      {
+        "cmd": "kb-devkit run build",
+        "note": "Run build across all packages in dependency order. Cached results restore in ~1ms."
+      },
+      {
+        "cmd": "kb-devkit run build --affected",
+        "note": "Run only on packages changed relative to HEAD, plus all their downstream dependents."
+      },
+      {
+        "cmd": "kb-devkit run build lint test",
+        "note": "Chain multiple tasks. Each respects its own inputs, outputs, and dep ordering."
+      },
+      {
+        "cmd": "kb-devkit run build --packages @scope/pkg-a,@scope/pkg-b",
+        "note": "Target specific packages by name. Useful for focused rebuilds during development."
+      },
+      {
+        "cmd": "kb-devkit check",
+        "note": "Validate all packages against devkit.yaml rules: naming, tsconfig, eslint, deps, structure."
+      },
+      {
+        "cmd": "kb-devkit stats",
+        "note": "Workspace health score (A–F), issue counts by category, coverage metrics."
+      }
     ],
     "devkitFeaturesEyebrow": "How it works",
     "devkitFeaturesTitle": "The details that matter.",
     "devkitFeatures": [
-      null,
-      null,
-      null
+      {
+        "title": "Identical inputs, zero work",
+        "description": "SHA256 hash of all input files. Cache hit restores outputs in ~1ms. No rebuild, no rerun, no wait."
+      },
+      {
+        "title": "Runs in the right order",
+        "description": "DAG across all (package × task) pairs. Packages with no interdependencies run in parallel. deps: [\"^build\"] means what it says."
+      },
+      {
+        "title": "Knows what actually changed",
+        "description": "git diff inside each submodule, BFS through the reverse dependency graph. --affected targets only what needs to run."
+      }
     ],
     "devkitCtaEyebrow": "Install",
     "devkitCtaTitle": "One binary. Any TypeScript/Node.js monorepo.",
     "devkitCtaDocsBtn": "Documentation",
     "ucItems": [
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null
-    ]
+      {
+        "title": "Release Orchestration",
+        "hook": "Your releases live in five Slack threads, three scripts, and a prayer.",
+        "situation": "Every release is a manual coordination exercise — CI jobs, chat messages, local scripts, people who might be on leave.",
+        "how": "tests → checks → AI review → QA gate → final approve. One declarative workflow. Plugins enforce each step.",
+        "result": "Release cycle: days → minutes. Every step traced. No one skips the gate.",
+        "owner": "Head of Engineering / Tech Lead"
+      },
+      {
+        "title": "QA Regressions and Trends",
+        "hook": "You find out about the regression after the customer does.",
+        "situation": "Quality signals are scattered — lint here, tests there, trends nowhere. Issues surface post-release when remediation costs the most.",
+        "how": "A QA plugin runs recurring checks on every change, tracks package-level trends, and surfaces degradation signals before they ship.",
+        "result": "Catch regressions at commit time, not in production. Remediation cost drops significantly.",
+        "owner": "QA Lead / Engineering Manager"
+      },
+      {
+        "title": "Commit and Change Policy",
+        "hook": "Your commit history is a graveyard of 'fix', 'wip', and 'asdf'.",
+        "situation": "Commit discipline lives in a Confluence page nobody reads. Enforcement depends on who reviews and whether they care that day.",
+        "how": "A commit plugin enforces policy at the workflow level — message format, scope, type — declared once, applied everywhere.",
+        "result": "Consistent change history across the team. Fewer manual fixups before release.",
+        "owner": "Tech Lead / Platform Team"
+      },
+      {
+        "title": "AI Review Gate",
+        "hook": "Code review is your slowest and most inconsistent step.",
+        "situation": "Review throughput is a bottleneck. Quality bar varies by reviewer, by day, by team. Some PRs get ten comments, others slip through.",
+        "how": "AI review runs as a required pipeline stage with declarative policy — not a suggestion, a gate. Configurable per repo.",
+        "result": "Faster cycle times. A consistent quality baseline that doesn't depend on who's available.",
+        "owner": "CTO / Engineering Manager"
+      },
+      {
+        "title": "Monorepo Dependency Ops",
+        "hook": "Your monorepo changes are a game of 'hope nothing breaks'.",
+        "situation": "Dependency updates, package sequencing, and governance live in ad-hoc scripts and tribal knowledge. Every big change is a gamble.",
+        "how": "Plugins handle dependency operations, build sequencing, and package governance — declaratively, with change tracking.",
+        "result": "Predictable monorepo changes. CI glue code replaced by observable, repeatable workflows.",
+        "owner": "Platform Engineer / Monorepo Owner"
+      },
+      {
+        "title": "Internal Agent Workflows",
+        "hook": "Your AI agents are ungoverned scripts running on someone's laptop.",
+        "situation": "Agent scenarios are bolted onto separate stacks with no unified policy, no audit trail, and no way to enforce security boundaries.",
+        "how": "Agents run as plugins inside the same policy-first runtime as your standard workflows — same governance, same observability.",
+        "result": "One controlled system for agent automation. No separate stack to maintain or secure.",
+        "owner": "CTO / AI Platform Team"
+      }
+    ],
+    "secFlowStatus": {
+      "local": {
+        "label": "On your machine"
+      },
+      "conditional": {
+        "label": "Sent with consent"
+      },
+      "infra": {
+        "label": "External infra"
+      }
+    }
   }
 }
