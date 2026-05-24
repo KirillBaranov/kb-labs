@@ -3388,11 +3388,11 @@
     },
     "heroCurrent": {
       "installBtn": "Установить",
-      "titleGradient": "Автоматизируйте инженерные воркфлоу.",
-      "eyebrow": "Open source · Self-hosted",
-      "titleSecond": "Контролируйте своих AI-агентов.",
-      "description": "Один движок для релизов, ревью, commit-политик и AI-агентов. Self-hosted, plugin-first, ваш навсегда.",
-      "licenseNote": "KBPL1.1 + MIT · Без регистрации · Без лимитов"
+      "titleGradient": "Open-source платформа",
+      "eyebrow": "OPEN-SOURCE · SELF-HOSTED · PRIVATE BETA",
+      "titleSecond": "для автоматизации разработки",
+      "description": "Code review, коммиты, релизы — на автопилоте. Self-hosted, под вашим контролем.",
+      "licenseNote": "KBPL1.1 + MIT · Без vendor lock-in · Основатель читает каждый issue"
     },
     "painSection": {
       "title": "Инженерные команды снова и снова строят одно и то же.",
