@@ -76,7 +76,6 @@ export function ScreenshotLightbox({ src, alt, url, className }: ScreenshotLight
             <div className="w-[46px]" />
           </div>
         )}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src}
           alt={alt}
@@ -97,7 +96,6 @@ export function ScreenshotLightbox({ src, alt, url, className }: ScreenshotLight
         className="group block w-full cursor-zoom-in text-left"
         aria-label={t('openScreenshot', { alt })}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={src}
           alt={alt}

@@ -90,7 +90,7 @@ export function AiAssistant({ open, onClose, locale }: AiAssistantProps) {
         setIsLoading(false);
       }
     },
-    [input, isLoading, locale, messages, source, simulateStreaming],
+    [input, isLoading, locale, messages, source, simulateStreaming, t],
   );
 
   const suggestedQuestions = source.getSuggestedQuestions(locale);
