@@ -109,7 +109,7 @@
       "project": {
         "contact": {
           "title": "Contact",
-          "description": "Get in touch with the team"
+          "description": "Get in touch directly"
         },
         "about": {
           "title": "About",
@@ -149,6 +149,10 @@
           "title": "Blog",
           "description": "Engineering notes and deep dives"
         }
+      },
+      "enterprise": {
+        "title": "For larger organizations",
+        "description": "Dedicated support, SLA, governance controls — shaped around how your team already runs."
       }
     },
     "start": "Install"
@@ -3380,11 +3384,11 @@
       ]
     },
     "agentsSection": {
-      "title": "Agents work inside the same rails as your team.",
-      "para1Start": "Your agent calls",
-      "para2": "Same permissions model, same observability surface, same audit trail. Whether it's a human, Claude, or Codex — the runtime enforces the same rules.",
-      "para1End": "— a typed command declared in a plugin manifest. No manifest entry = the agent cannot call it. You cut the keys.",
-      "eyebrow": "Agent control"
+      "title": "Agent calls the command. Not your key.",
+      "para1Start": "Write a plugin — the agent gets a set of commands. Keys, access rights, audit — inside the plugin. The agent doesn't know how GitHub works — it just calls",
+      "para2": "KB Labs native agents go further — every step is traced, analytics calculated automatically, nothing is lost.",
+      "para1End": ".",
+      "eyebrow": "Agents"
     },
     "heroCurrent": {
       "installBtn": "Install",
