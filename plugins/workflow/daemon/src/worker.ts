@@ -19,6 +19,7 @@ import {
   interpolateObject,
   interpolateString,
   evaluateExpression,
+  coerceToString,
 } from '@kb-labs/workflow-contracts';
 import type { GateInput } from '@kb-labs/workflow-steps';
 import { GateHandler, type GateDecision } from '@kb-labs/workflow-steps';
@@ -355,8 +356,15 @@ export async function createWorkflowWorker(
           // --- Interpolate spec.env and forward to shell handler ---
           // step.spec.env values may contain ${{ }} expressions. Interpolate them
           // and pass as with.env so builtin:shell merges them into process.env.
-          const interpolatedEnv = step.spec.env
-            ? (interpolateObject(step.spec.env as Record<string, unknown>, exprCtx) as Record<string, string>)
+          // coerceToString ensures object/array inputs become valid JSON strings
+          // rather than "[object Object]" when assigned to env vars.
+          const interpolatedEnvRaw = step.spec.env
+            ? interpolateObject(step.spec.env as Record<string, unknown>, exprCtx)
+            : undefined;
+          const interpolatedEnv: Record<string, string> | undefined = interpolatedEnvRaw
+            ? Object.fromEntries(
+                Object.entries(interpolatedEnvRaw).map(([k, v]) => [k, coerceToString(v)])
+              )
             : undefined;
 
           // Debug: show raw spec.with vs resolved interpolatedWith
@@ -482,7 +490,17 @@ export async function createWorkflowWorker(
             ? { ...baseSpec, with: { ...(baseSpec.with ?? {}), env: { ...(baseSpec.with?.['env'] as Record<string, string> | undefined ?? {}), ...interpolatedEnv } } }
             : baseSpec;
           const interpolatedSpec = interpolatedWith
-            ? { ...specWithEnv, with: { ...(specWithEnv.with ?? {}), ...interpolatedWith } }
+            ? {
+                ...specWithEnv,
+                with: {
+                  ...(specWithEnv.with ?? {}),
+                  ...interpolatedWith,
+                  // spec.env (interpolatedEnv) must survive the spread of interpolatedWith.env
+                  ...(interpolatedEnv
+                    ? { env: { ...(interpolatedWith['env'] as Record<string, string> | undefined ?? {}), ...interpolatedEnv } }
+                    : {}),
+                },
+              }
             : specWithEnv;
 
           // Delegate execution to the execution plane.
@@ -564,6 +582,15 @@ export async function createWorkflowWorker(
               resolvedInputs: interpolatedWith,
               errorCode: result.error?.code,
             });
+
+            if (step.continueOnError) {
+              stepLogger.warn('[step] continueOnError=true — continuing despite failure', {
+                runId: run.id,
+                jobId: job.id,
+                stepId: step.id,
+              });
+              continue;
+            }
             throw error;
           }
 

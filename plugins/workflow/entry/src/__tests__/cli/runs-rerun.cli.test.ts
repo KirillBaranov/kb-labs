@@ -66,6 +66,30 @@ describe('workflow:runs rerun', () => {
     expect(captured.json[0]).toMatchObject({ ok: true });
   });
 
+  it('RRR-02b: --run-id flag works as alias for positional arg', async () => {
+    MockedClient.mockImplementation(() => makeClient({
+      ...defaultWorkflowClient,
+      getRun: async () => ({
+        id: 'run-abc',
+        name: 'build',
+        status: 'success' as const,
+        createdAt: new Date().toISOString(),
+        metadata: { workflowId: 'build' },
+      }),
+      runWorkflow: async () => ({ runId: 'run-new-alias', status: 'queued' }),
+    }));
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await runsRerunCommand.execute(
+      ctx,
+      mockCLIInput({ argv: [], flags: { 'run-id': 'run-abc' } }),
+    );
+
+    expect(result.exitCode).toBe(0);
+    expect(captured.success.length).toBeGreaterThan(0);
+  });
+
   it('RRR-03: missing run ID returns exitCode 1', async () => {
     const { ui, captured } = createCapturedUI();
     const ctx = createMockContext({ ui });

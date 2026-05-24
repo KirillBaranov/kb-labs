@@ -160,7 +160,15 @@ async function handleExecute(message: ExecuteMessage): Promise<void> {
 
     // Resolve handler path — strip export name (#default, #namedExport) before fs check
     const [handlerRef = request.handlerRef] = request.handlerRef.split('#');
-    const handlerPath = path.resolve(request.pluginRoot, handlerRef);
+    let handlerPath = path.resolve(request.pluginRoot, handlerRef);
+
+    // Fallback: try dist/<handlerRef> if the direct path doesn't exist (plugin built into dist/)
+    if (!fs.existsSync(handlerPath)) {
+      const distPath = path.resolve(request.pluginRoot, 'dist', handlerRef.replace(/^\.\//, ''));
+      if (fs.existsSync(distPath)) {
+        handlerPath = distPath;
+      }
+    }
 
     if (!fs.existsSync(handlerPath)) {
       sendError(requestId, {

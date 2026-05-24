@@ -346,4 +346,176 @@ describe('WorkflowEngine', () => {
       expect(true).toBe(true);
     });
   });
+
+  describe('Job-level if: condition (BUG-002)', () => {
+    // Helper: build a two-job spec where job-b depends on job-a.
+    // job-b has an optional `if` condition.
+    function makeSpec(jobBIf?: string): WorkflowSpec {
+      return {
+        name: 'If Test',
+        version: '1.0.0',
+        on: { manual: true },
+        jobs: {
+          'job-a': {
+            runsOn: 'local',
+            steps: [
+              {
+                id: 'result',
+                name: 'Emit result',
+                uses: 'builtin:shell',
+                with: { run: 'echo test' },
+              },
+            ],
+          },
+          'job-b': {
+            runsOn: 'local',
+            needs: ['job-a'],
+            ...(jobBIf !== undefined ? { if: jobBIf } : {}),
+            steps: [{ name: 'Step B', uses: 'builtin:shell', with: { run: 'echo b' } }],
+          },
+        },
+      };
+    }
+
+    it('job with if: "false" is marked success (skipped) when dependency completes', async () => {
+      const run = await engine.createRun({ spec: makeSpec('false'), trigger: { type: 'manual' } });
+      const jobAId = run.jobs.find(j => j.jobName === 'job-a')!.id;
+
+      await engine.markJobCompleted(run.id, jobAId);
+
+      const updated = await engine.getRun(run.id);
+      const jobB = updated?.jobs.find(j => j.jobName === 'job-b');
+      expect(jobB?.status).toBe('success');
+      expect(jobB?.finishedAt).toBeDefined();
+    });
+
+    it('job with if: "true" is enqueued (not skipped) when dependency completes', async () => {
+      const run = await engine.createRun({ spec: makeSpec('true'), trigger: { type: 'manual' } });
+      const jobAId = run.jobs.find(j => j.jobName === 'job-a')!.id;
+
+      await engine.markJobCompleted(run.id, jobAId);
+
+      const updated = await engine.getRun(run.id);
+      const jobB = updated?.jobs.find(j => j.jobName === 'job-b');
+      // Should be enqueued for execution (queued or running), not skipped immediately
+      expect(jobB?.status).not.toBe('success');
+      // finishedAt must NOT be set — job was not skipped
+      expect(jobB?.finishedAt).toBeUndefined();
+    });
+
+    it('job without if: condition always runs when dependency completes', async () => {
+      const run = await engine.createRun({ spec: makeSpec(undefined), trigger: { type: 'manual' } });
+      const jobAId = run.jobs.find(j => j.jobName === 'job-a')!.id;
+
+      await engine.markJobCompleted(run.id, jobAId);
+
+      const updated = await engine.getRun(run.id);
+      const jobB = updated?.jobs.find(j => j.jobName === 'job-b');
+      expect(jobB?.status).not.toBe('success');
+      expect(jobB?.finishedAt).toBeUndefined();
+    });
+
+    it('if: ${{ ... }} wrapper is stripped and expression is evaluated', async () => {
+      const run = await engine.createRun({
+        spec: makeSpec("${{ steps.result.outputs.tier == 'go' }}"),
+        trigger: { type: 'manual' },
+      });
+
+      // Simulate job-a completing with step output: steps.result.outputs.tier = 'go'
+      const jobAId = run.jobs.find(j => j.jobName === 'job-a')!.id;
+      const stepId = run.jobs.find(j => j.jobName === 'job-a')!.steps[0].id;
+
+      // Manually write step output into state so buildExpressionContext sees it
+      const stateStore = (engine as any).stateStore;
+      await stateStore.updateStep(run.id, jobAId, stepId, (draft: any) => {
+        draft.status = 'success';
+        draft.outputs = { tier: 'go' };
+      });
+
+      await engine.markJobCompleted(run.id, jobAId);
+
+      const updated = await engine.getRun(run.id);
+      const jobB = updated?.jobs.find(j => j.jobName === 'job-b');
+      // tier == 'go' → true → job-b should be enqueued, not skipped
+      expect(jobB?.status).not.toBe('success');
+      expect(jobB?.finishedAt).toBeUndefined();
+    });
+
+    it('if: expression false when step output does not match', async () => {
+      const run = await engine.createRun({
+        spec: makeSpec("${{ steps.result.outputs.tier == 'other' }}"),
+        trigger: { type: 'manual' },
+      });
+
+      const jobAId = run.jobs.find(j => j.jobName === 'job-a')!.id;
+      const stepId = run.jobs.find(j => j.jobName === 'job-a')!.steps[0].id;
+
+      const stateStore = (engine as any).stateStore;
+      await stateStore.updateStep(run.id, jobAId, stepId, (draft: any) => {
+        draft.status = 'success';
+        draft.outputs = { tier: 'go' };
+      });
+
+      await engine.markJobCompleted(run.id, jobAId);
+
+      const updated = await engine.getRun(run.id);
+      const jobB = updated?.jobs.find(j => j.jobName === 'job-b');
+      // tier != 'other' → false → job-b skipped
+      expect(jobB?.status).toBe('success');
+      expect(jobB?.finishedAt).toBeDefined();
+    });
+
+    it('cascading: downstream job of skipped job is also evaluated', async () => {
+      // job-a → job-b (if: false, skipped) → job-c (no condition)
+      const spec: WorkflowSpec = {
+        name: 'Cascade Test',
+        version: '1.0.0',
+        on: { manual: true },
+        jobs: {
+          'job-a': {
+            runsOn: 'local',
+            steps: [{ name: 'A', uses: 'builtin:shell', with: { run: 'echo a' } }],
+          },
+          'job-b': {
+            runsOn: 'local',
+            needs: ['job-a'],
+            if: 'false',
+            steps: [{ name: 'B', uses: 'builtin:shell', with: { run: 'echo b' } }],
+          },
+          'job-c': {
+            runsOn: 'local',
+            needs: ['job-b'],
+            steps: [{ name: 'C', uses: 'builtin:shell', with: { run: 'echo c' } }],
+          },
+        },
+      };
+
+      const run = await engine.createRun({ spec, trigger: { type: 'manual' } });
+      const jobAId = run.jobs.find(j => j.jobName === 'job-a')!.id;
+
+      await engine.markJobCompleted(run.id, jobAId);
+
+      const updated = await engine.getRun(run.id);
+      const jobB = updated?.jobs.find(j => j.jobName === 'job-b');
+      const jobC = updated?.jobs.find(j => j.jobName === 'job-c');
+
+      // job-b skipped
+      expect(jobB?.status).toBe('success');
+      // job-c unblocked and enqueued (not skipped — no if:)
+      expect(jobC?.status).not.toBe('success');
+      expect(jobC?.finishedAt).toBeUndefined();
+    });
+
+    it('skipped job logs the condition', async () => {
+      const run = await engine.createRun({ spec: makeSpec('false'), trigger: { type: 'manual' } });
+      const jobAId = run.jobs.find(j => j.jobName === 'job-a')!.id;
+
+      await engine.markJobCompleted(run.id, jobAId);
+
+      expect(logger.info).toHaveBeenCalledWith(
+        'Job skipped: if condition false',
+        expect.objectContaining({ runId: run.id, condition: 'false' }),
+      );
+    });
+  });
 });

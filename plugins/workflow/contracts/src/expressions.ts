@@ -216,12 +216,15 @@ export function resolveValue(path: string, context: ExpressionContext): unknown 
 /**
  * Coerce value to string for comparison
  */
-function coerceToString(value: unknown): string {
+export function coerceToString(value: unknown): string {
   if (value === null || value === undefined) {
     return ''
   }
   if (typeof value === 'boolean') {
     return value ? 'true' : 'false'
+  }
+  if (typeof value === 'object') {
+    return JSON.stringify(value)
   }
   return String(value)
 }

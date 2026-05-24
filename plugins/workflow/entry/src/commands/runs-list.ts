@@ -33,7 +33,7 @@ function relativeTime(isoStr?: string): string {
 }
 
 function formatDuration(ms?: number): string {
-  if (!ms) { return ''; }
+  if (ms === undefined || ms === null) { return ''; }
   if (ms < 1000) { return `${ms}ms`; }
   if (ms < 60000) { return `${(ms / 1000).toFixed(1)}s`; }
   return `${Math.floor(ms / 60000)}m${Math.floor((ms % 60000) / 1000)}s`;
@@ -53,7 +53,7 @@ export default defineCommand<unknown, CLIInput<RunsListFlags>, { exitCode: numbe
         const client = new WorkflowDaemonClient();
         const runs = await client.listRuns({
           status: flags?.status,
-          limit: typeof limit === 'number' ? limit : 20,
+          limit: Number(limit) || 20,
           workflowId: flags?.workflow,
         });
 

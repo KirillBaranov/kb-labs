@@ -20,10 +20,6 @@ type PageMeta = {
   hidden?: boolean;
 };
 
-/**
- * Humanize a file/directory name: "rest-api" → "REST API", "workflow-engine" → "Workflow Engine".
- * Keeps common acronyms uppercase.
- */
 function humanize(name: string): string {
   const acronyms = new Set(['api', 'cli', 'sdk', 'rest', 'url', 'ui', 'id', 'llm', 'ci', 'cd']);
   return name
@@ -32,7 +28,6 @@ function humanize(name: string): string {
     .join(' ');
 }
 
-/** Read optional `_meta.json` in a directory. */
 function readDirMeta(dirAbs: string): GroupMeta {
   const metaPath = path.join(dirAbs, '_meta.json');
   if (!fs.existsSync(metaPath)) return {};
@@ -43,7 +38,6 @@ function readDirMeta(dirAbs: string): GroupMeta {
   }
 }
 
-/** Read frontmatter from an MDX file without compiling it. */
 function readPageMeta(fileAbs: string): PageMeta {
   try {
     const raw = fs.readFileSync(fileAbs, 'utf8');
@@ -53,29 +47,36 @@ function readPageMeta(fileAbs: string): PageMeta {
   }
 }
 
-/** Build a single NavItem from an .mdx file (or `dir/index.mdx`). */
-function fileToItem(relSlug: string[], fileAbs: string, fallbackLabel: string): { item: NavItem; order: number; hidden: boolean } {
+function pageExistsInLocale(localeDir: string, relSlug: string[]): boolean {
+  const base = path.join(contentRoot, localeDir, ...relSlug);
+  return fs.existsSync(`${base}.mdx`) || fs.existsSync(path.join(base, 'index.mdx'));
+}
+
+function fileToItem(
+  locale: string,
+  relSlug: string[],
+  fileAbs: string,
+  fallbackLabel: string,
+): { item: NavItem; order: number; hidden: boolean } {
   const meta = readPageMeta(fileAbs);
   const label = meta.title ?? humanize(fallbackLabel);
-  const href = '/' + relSlug.join('/');
+  const href = `/${locale}/` + relSlug.join('/');
+  const untranslated = locale !== 'en' && !pageExistsInLocale(locale, relSlug);
   return {
-    item: { label, href },
+    item: { label, href, untranslated },
     order: meta.order ?? Number.POSITIVE_INFINITY,
     hidden: meta.hidden === true,
   };
 }
 
-/** Walk a top-level directory and collect NavItems (flat, one level deep — nested dirs get their own index page). */
-function collectGroupItems(groupDirAbs: string, groupSlug: string): NavItem[] {
+function collectGroupItems(locale: string, groupDirAbs: string, groupSlug: string): NavItem[] {
   const entries = fs.readdirSync(groupDirAbs, { withFileTypes: true });
   const items: Array<{ item: NavItem; order: number; hidden: boolean }> = [];
 
-  // 1. index.mdx of the group itself is the group landing page
   const indexPath = path.join(groupDirAbs, 'index.mdx');
   if (fs.existsSync(indexPath)) {
-    const { item, order, hidden } = fileToItem([groupSlug], indexPath, 'Overview');
+    const { item, order, hidden } = fileToItem(locale, [groupSlug], indexPath, 'Overview');
     if (!hidden) {
-      // Force landing to sort first unless explicitly ordered
       items.push({ item, order: order === Number.POSITIVE_INFINITY ? -1 : order, hidden });
     }
   }
@@ -86,15 +87,14 @@ function collectGroupItems(groupDirAbs: string, groupSlug: string): NavItem[] {
     if (entry.isFile() && entry.name.endsWith('.mdx') && entry.name !== 'index.mdx') {
       const base = entry.name.replace(/\.mdx$/, '');
       const fileAbs = path.join(groupDirAbs, entry.name);
-      items.push(fileToItem([groupSlug, base], fileAbs, base));
+      items.push(fileToItem(locale, [groupSlug, base], fileAbs, base));
       continue;
     }
 
     if (entry.isDirectory()) {
-      // Nested directory: use its index.mdx as an item in the parent group
       const nestedIndex = path.join(groupDirAbs, entry.name, 'index.mdx');
       if (fs.existsSync(nestedIndex)) {
-        items.push(fileToItem([groupSlug, entry.name], nestedIndex, entry.name));
+        items.push(fileToItem(locale, [groupSlug, entry.name], nestedIndex, entry.name));
       }
     }
   }
@@ -109,19 +109,15 @@ function collectGroupItems(groupDirAbs: string, groupSlug: string): NavItem[] {
 }
 
 /**
- * Walk `content/` and build the navigation tree.
- *
- * Rules:
- *   - Top-level `.mdx` files become items in a "Start Here" group (if no _meta.json overrides).
- *   - Top-level directories become NavGroups; their title comes from `_meta.json` or humanized dir name.
- *   - Inside each group: `.mdx` files become items; nested dirs are represented by their `index.mdx`.
- *   - Pages and groups can set `order` in frontmatter / `_meta.json` for explicit sorting.
- *   - Any file or directory with `hidden: true` is skipped.
+ * Build nav for the given locale.
+ * Falls back to reading `content/en/` for structure; marks items without locale translation.
  */
-export function buildNavFromContent(): NavGroup[] {
-  if (!fs.existsSync(contentRoot)) return [];
+export function buildNavFromContent(locale: string): NavGroup[] {
+  // Always read structure from 'en' as the source of truth for what pages exist
+  const enRoot = path.join(contentRoot, 'en');
+  if (!fs.existsSync(enRoot)) return [];
 
-  const entries = fs.readdirSync(contentRoot, { withFileTypes: true });
+  const entries = fs.readdirSync(enRoot, { withFileTypes: true });
 
   const topLevelItems: Array<{ item: NavItem; order: number; hidden: boolean }> = [];
   const groups: Array<{ group: NavGroup; order: number; hidden: boolean }> = [];
@@ -129,20 +125,19 @@ export function buildNavFromContent(): NavGroup[] {
   for (const entry of entries) {
     if (entry.name.startsWith('_') || entry.name.startsWith('.')) continue;
 
-    // Top-level MDX file (except index.mdx which is the site homepage)
     if (entry.isFile() && entry.name.endsWith('.mdx') && entry.name !== 'index.mdx') {
       const base = entry.name.replace(/\.mdx$/, '');
-      const fileAbs = path.join(contentRoot, entry.name);
-      topLevelItems.push(fileToItem([base], fileAbs, base));
+      const fileAbs = path.join(enRoot, entry.name);
+      topLevelItems.push(fileToItem(locale, [base], fileAbs, base));
       continue;
     }
 
     if (entry.isDirectory()) {
-      const groupDirAbs = path.join(contentRoot, entry.name);
+      const groupDirAbs = path.join(enRoot, entry.name);
       const meta = readDirMeta(groupDirAbs);
       if (meta.hidden) continue;
 
-      const items = collectGroupItems(groupDirAbs, entry.name);
+      const items = collectGroupItems(locale, groupDirAbs, entry.name);
       if (items.length === 0) continue;
 
       groups.push({

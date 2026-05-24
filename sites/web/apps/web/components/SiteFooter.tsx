@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
+import { ThemeToggle } from '@kb-labs/web-site-ui';
 
 export function SiteFooter() {
   const locale = useLocale();
@@ -167,6 +168,7 @@ export function SiteFooter() {
         <div className="footer-shell">
           <div className="footer-bar-inner">
             <small>&copy; {currentYear} KB Labs. {t('footer.legal')}</small>
+            <ThemeToggle />
           </div>
         </div>
       </div>

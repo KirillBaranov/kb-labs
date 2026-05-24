@@ -2,7 +2,9 @@ import type {
   WorkflowRun,
   WorkflowSpec,
   JobRun,
+  ExpressionContext,
 } from '@kb-labs/workflow-contracts'
+import { evaluateExpression } from '@kb-labs/workflow-contracts'
 import {
   EVENT_NAMES,
   WORKFLOW_REDIS_CHANNEL,
@@ -357,15 +359,70 @@ export class WorkflowEngine {
 
     // Release jobs that were blocked waiting for this job to complete.
     if (job?.jobName) {
+      const run = await this.stateStore.getRun(runId)
+      const exprCtx = this.buildExpressionContext(run)
       const released = await this.stateStore.releaseBlockedJobs(runId, job.jobName)
       for (const releasedJob of released) {
-        await this.scheduler.enqueueJob(runId, releasedJob, releasedJob.priority ?? 'normal')
-        this.logger.info('Unblocked dependent job', { runId, jobId: releasedJob.id, unlockedBy: job.jobName })
+        if (releasedJob.if && !this.evaluateJobIf(releasedJob.if, exprCtx)) {
+          await this.skipJob(runId, releasedJob)
+        } else {
+          await this.scheduler.enqueueJob(runId, releasedJob, releasedJob.priority ?? 'normal')
+          this.logger.info('Unblocked dependent job', { runId, jobId: releasedJob.id, unlockedBy: job.jobName })
+        }
       }
     }
 
     // Check if all jobs in run are completed - update run status
     await this.checkRunCompletion(runId)
+  }
+
+  /** Build a minimal ExpressionContext from run state (for job-level if evaluation). */
+  private buildExpressionContext(run: WorkflowRun | undefined | null): ExpressionContext {
+    const ctx: ExpressionContext = {
+      env: run?.env ?? {},
+      trigger: run?.trigger ?? { type: 'manual' },
+      inputs: run?.inputs ?? {},
+      steps: {},
+    }
+    if (run) {
+      for (const j of run.jobs) {
+        for (const s of j.steps) {
+          if (s.status === 'success' && s.spec.id) {
+            ctx.steps[s.spec.id] = { outputs: (s.outputs ?? {}) as Record<string, unknown> }
+          }
+        }
+      }
+    }
+    return ctx
+  }
+
+  /** Evaluate a job-level `if:` expression. Strips ${{ }} wrapper if present. */
+  private evaluateJobIf(condition: string, ctx: ExpressionContext): boolean {
+    const raw = condition.trim().replace(/^\$\{\{\s*/, '').replace(/\s*\}\}$/, '')
+    return evaluateExpression(raw, ctx)
+  }
+
+  /** Mark a job as skipped (success) and release any jobs blocked on it. */
+  private async skipJob(runId: string, job: JobRun): Promise<void> {
+    const now = new Date().toISOString()
+    await this.stateStore.updateJob(runId, job.id, (draft) => {
+      draft.status = 'success'
+      draft.startedAt = now
+      draft.finishedAt = now
+    })
+    this.logger.info('Job skipped: if condition false', { runId, jobId: job.id, condition: job.if })
+    // Release dependents of the skipped job (treat skip as success for DAG purposes)
+    const downstream = await this.stateStore.releaseBlockedJobs(runId, job.jobName)
+    const run = await this.stateStore.getRun(runId)
+    const exprCtx = this.buildExpressionContext(run)
+    for (const downstreamJob of downstream) {
+      if (downstreamJob.if && !this.evaluateJobIf(downstreamJob.if, exprCtx)) {
+        await this.skipJob(runId, downstreamJob)
+      } else {
+        await this.scheduler.enqueueJob(runId, downstreamJob, downstreamJob.priority ?? 'normal')
+        this.logger.info('Unblocked dependent job', { runId, jobId: downstreamJob.id, unlockedBy: job.jobName })
+      }
+    }
   }
 
   /**

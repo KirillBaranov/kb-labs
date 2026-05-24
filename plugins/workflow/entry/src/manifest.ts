@@ -172,12 +172,15 @@ export const manifest = {
         describe: 'View run details for incident investigation.',
         longDescription:
           'Shows full run details: jobs, steps, resolvedInputs, gate decisions, errors. ' +
+          'Without a run ID shows the latest run (like gh run view). ' +
           'Use --log-failed to see only the logs from failed steps (fastest path to root cause). ' +
           'Use --json=status,jobs for selective JSON output.',
         handler: './commands/runs-view.js#default',
         flags: defineCommandFlags(runsViewFlags),
         examples: [
+          'kb workflow runs view',
           'kb workflow runs view <runId>',
+          'kb workflow runs view --run-id=<runId>',
           'kb workflow runs view <runId> --log-failed',
           'kb workflow runs view <runId> --log',
           'kb workflow runs view <runId> --json=status,jobs',
@@ -191,10 +194,11 @@ export const manifest = {
         describe: 'Stream workflow run events in real-time.',
         longDescription:
           'Connects to the run event stream via SSE and prints events as they happen. ' +
+          'Without a run ID watches the latest run (like gh run watch). ' +
           'Automatically exits when the run finishes.',
         handler: './commands/runs-watch.js#default',
         flags: defineCommandFlags(runsWatchFlags),
-        examples: ['kb workflow runs watch <runId>', 'kb workflow runs watch <runId> --json'],
+        examples: ['kb workflow runs watch', 'kb workflow runs watch <runId>', 'kb workflow runs watch --run-id=<runId>', 'kb workflow runs watch <runId> --json'],
       },
       {
         path: 'workflow runs rerun',
@@ -208,6 +212,7 @@ export const manifest = {
         flags: defineCommandFlags(runsRerunFlags),
         examples: [
           'kb workflow runs rerun <runId>',
+          'kb workflow runs rerun --run-id=<runId>',
           'kb workflow runs rerun <runId> --failed-only',
           'kb workflow runs rerun <runId> --json',
         ],

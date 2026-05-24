@@ -58,6 +58,7 @@ function NavGroupSection({ group, pathname }: { group: NavGroup; pathname: strin
                   className={`${s.item}${active ? ` ${s.itemActive}` : ''}`}
                 >
                   {item.label}
+                  {item.untranslated && <span className={s.untranslatedTag}>EN</span>}
                 </Link>
               </li>
             );
@@ -88,6 +89,7 @@ export function DocsSidebar({ nav }: DocsSidebarProps) {
                 className={`${s.item}${active ? ` ${s.itemActive}` : ''}`}
               >
                 {item.label}
+                {item.untranslated && <span className={s.untranslatedTag}>EN</span>}
               </Link>
             );
           })}

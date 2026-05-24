@@ -17,7 +17,7 @@
   left: 50%;
   transform: translateX(-50%);
   width: min(640px, calc(100vw - 2rem));
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line-strong);
   border-radius: 12px;
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.18), 0 4px 16px rgba(0, 0, 0, 0.08);
@@ -62,7 +62,7 @@
 .escKbd {
   font-size: 0.7rem;
   color: var(--fg-subtle);
-  background: #f4f4f5;
+  background: color-mix(in oklab, var(--fg) 6%, transparent);
   border: 1px solid var(--line-strong);
   border-radius: 4px;
   padding: 0.15em 0.45em;
@@ -107,7 +107,7 @@
 
 .result:hover,
 .resultActive {
-  background: #f4f4f5;
+  background: color-mix(in oklab, var(--fg) 6%, transparent);
 }
 
 .resultTitle {
@@ -142,7 +142,7 @@
 
 /* Highlight matches */
 .result mark {
-  background: #fff4a8;
+  background: color-mix(in oklab, var(--accent) 20%, transparent);
   color: inherit;
   border-radius: 2px;
   padding: 0 1px;
