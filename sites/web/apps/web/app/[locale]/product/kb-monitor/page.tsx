@@ -9,6 +9,7 @@ import {
   Button,
   CodeBlock,
   Container,
+  CopyButton,
   DotPattern,
   Eyebrow,
   GradientText,
@@ -228,11 +229,10 @@ export default async function KbMonitorPage({ params }: Props) {
                   <h2 className="mb-4 text-[clamp(1.8rem,3.5vw,2.8rem)] font-bold leading-tight tracking-tight text-kb-text">
                     {t('monCtaTitle')}
                   </h2>
-                  <div className="mx-auto mb-8 max-w-xl overflow-hidden rounded-xl border border-line bg-surface">
-                    <CodeBlock
-                      code="curl -fsSL https://kblabs.ru/kb-monitor/install.sh | sh"
-                      language="bash"
-                    />
+                  <div className="mx-auto mb-8 flex max-w-md items-center justify-between gap-3 rounded-xl border border-line bg-surface/60 px-4 py-3">
+                    {/* i18n-ignore: terminal command */}
+                    <code className="font-mono text-[0.85rem] text-kb-text">curl -fsSL https://kblabs.ru/kb-monitor/install.sh | sh</code>
+                    <CopyButton code="curl -fsSL https://kblabs.ru/kb-monitor/install.sh | sh" className="shrink-0" />
                   </div>
                   <div className="flex flex-wrap justify-center gap-3">
                     <Button variant="primary" size="lg" href="https://docs.kblabs.ru/services/kb-monitor" target="_blank" rel="noopener noreferrer">

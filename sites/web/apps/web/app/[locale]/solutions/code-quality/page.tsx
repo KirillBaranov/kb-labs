@@ -104,20 +104,25 @@ export default async function CodeQualityPage({ params }: Props) {
 
             <AnimateOnScroll delay={60}>
               <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
-                {pipeline.map((p, i) => (
-                  <div
-                    key={p.step}
-                    className={`flex flex-col gap-2 px-6 py-5 sm:flex-row sm:items-baseline sm:gap-6 ${i < pipeline.length - 1 ? 'border-b border-line' : ''}`}
-                  >
-                    <span className="w-24 flex-shrink-0 text-sm font-semibold uppercase tracking-widest text-muted/40">
-                      {p.step}
-                    </span>
-                    <code className="flex-shrink-0 font-mono text-[0.8rem] font-semibold text-kb-text/85 sm:w-72">
-                      {p.cmd}
-                    </code>
-                    <span className="text-sm leading-relaxed text-muted/50">{p.desc}</span>
-                  </div>
-                ))}
+                <div className="grid grid-cols-[max-content_max-content_1fr]">
+                  {pipeline.map((p, i) => {
+                    const notLast = i < pipeline.length - 1;
+                    const border = notLast ? 'border-b border-line' : '';
+                    return (
+                      <>
+                        <span key={`${p.step}-step`} className={`pl-6 pr-8 py-6 whitespace-nowrap text-[0.65rem] font-bold uppercase tracking-wider text-muted/35 ${border}`}>
+                          {p.step}
+                        </span>
+                        <code key={`${p.step}-cmd`} className={`py-6 pr-10 font-mono text-[0.8rem] font-semibold text-kb-text/85 ${border}`}>
+                          {p.cmd}
+                        </code>
+                        <span key={`${p.step}-desc`} className={`py-6 pr-6 text-sm leading-relaxed text-muted/50 ${border}`}>
+                          {p.desc}
+                        </span>
+                      </>
+                    );
+                  })}
+                </div>
               </div>
             </AnimateOnScroll>
           </Container>
@@ -168,8 +173,9 @@ export default async function CodeQualityPage({ params }: Props) {
                   <h2 className="mb-4 text-[clamp(1.8rem,3.5vw,2.8rem)] font-bold leading-tight tracking-tight text-kb-text">
                     {t('page.ctaTitle')}
                   </h2>
-                  <div className="mx-auto mb-8 max-w-xl overflow-hidden rounded-xl border border-line bg-surface">
-                    <CodeBlock code={INSTALL_ALL} language="bash" />
+                  <div className="mx-auto mb-8 max-w-md overflow-hidden rounded-xl border border-line bg-surface/60">
+                    {/* i18n-ignore: terminal commands */}
+                    <CodeBlock code={INSTALL_ALL} language="bash" bare />
                   </div>
                   <div className="flex flex-wrap justify-center gap-3">
                     <Button variant="primary" size="lg" href="https://docs.kblabs.ru/plugins/quality" target="_blank" rel="noopener noreferrer">

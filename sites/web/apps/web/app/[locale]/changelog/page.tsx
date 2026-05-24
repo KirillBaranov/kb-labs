@@ -4,7 +4,16 @@ import { routing } from '@/i18n/routing';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import { buildPageMetadata } from '@/lib/page-metadata';
-import { Container, Section } from '@kb-labs/web-site-ui';
+import {
+  AnimateOnScroll,
+  ChangelogEntry,
+  Container,
+  DotPattern,
+  Eyebrow,
+  GradientText,
+  Section,
+  type ChangeType,
+} from '@kb-labs/web-site-ui';
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -24,22 +33,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   });
 }
 
-type ChangeItem = {
-  type: 'new' | 'improved' | 'fixed';
-  text: string;
-};
-
 type Release = {
   version: string;
   date: string;
-  summary: string;
-  changes: ChangeItem[];
-};
-
-const typeStyles: Record<ChangeItem['type'], string> = {
-  new: 'bg-accent/15 text-accent',
-  improved: 'bg-blue-500/15 text-blue-400',
-  fixed: 'bg-orange-500/15 text-orange-400',
+  title?: string;
+  summary?: string;
+  changes: Array<{ type: ChangeType; text: string }>;
 };
 
 export default async function ChangelogPage({ params }: Props) {
@@ -49,10 +48,12 @@ export default async function ChangelogPage({ params }: Props) {
 
   const releases = t.raw('changelog.releases') as Release[];
 
-  const typeLabel: Record<ChangeItem['type'], string> = {
-    new: t('changelog.typeNew'),
+  const labels: Partial<Record<ChangeType, string>> = {
+    new:      t('changelog.typeNew'),
+    added:    t('changelog.typeNew'),
     improved: t('changelog.typeImproved'),
-    fixed: t('changelog.typeFixed'),
+    changed:  t('changelog.typeImproved'),
+    fixed:    t('changelog.typeFixed'),
   };
 
   return (
@@ -60,43 +61,41 @@ export default async function ChangelogPage({ params }: Props) {
       <SiteHeader />
       <main>
 
-        <Section className="border-b border-line">
-          <Container>
-            <div className="py-16 text-center">
-              <h1 className="text-4xl font-bold tracking-tight text-kb-text sm:text-5xl">
-                {t('changelog.hero.title')}
-              </h1>
-              <p className="mt-4 text-lg text-muted/70">{t('changelog.hero.subtitle')}</p>
-            </div>
+        {/* ── Hero ── */}
+        <section className="relative overflow-hidden border-b border-line py-20 pb-16">
+          <DotPattern className="absolute inset-0 z-0 opacity-40" />
+          <Container className="relative z-10">
+            <AnimateOnScroll>
+              <div className="mx-auto max-w-2xl text-center">
+                <Eyebrow className="mb-4">{t('changelog.hero.eyebrow')}</Eyebrow>
+                <h1 className="mb-4 text-4xl font-bold leading-tight tracking-tight text-kb-text sm:text-5xl">
+                  {t('changelog.hero.title')}{' '}
+                  <GradientText>{t('changelog.hero.titleHighlight')}</GradientText>
+                </h1>
+                <p className="text-lg leading-relaxed text-muted/70">
+                  {t('changelog.hero.subtitle')}
+                </p>
+              </div>
+            </AnimateOnScroll>
           </Container>
-        </Section>
+        </section>
 
+        {/* ── Timeline ── */}
         <Section>
           <Container>
-            <div className="py-12 flex flex-col gap-10">
-              {releases.map((release) => (
-                <div key={release.version} className="flex flex-col gap-5 sm:flex-row sm:gap-10">
-                  {/* Left: version + date */}
-                  <div className="shrink-0 sm:w-32 sm:pt-1">
-                    <span className="font-mono text-sm font-semibold text-kb-text">{release.version}</span>
-                    <p className="mt-0.5 text-xs text-muted/50">{release.date}</p>
-                  </div>
-
-                  {/* Right: content */}
-                  <div className="flex-1 rounded-xl border border-line bg-surface/30 p-5 flex flex-col gap-4">
-                    <p className="text-sm leading-relaxed text-muted/70">{release.summary}</p>
-                    <ul className="flex flex-col gap-2.5">
-                      {release.changes.map((item, i) => (
-                        <li key={i} className="flex items-start gap-3">
-                          <span className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wider ${typeStyles[item.type]}`}>
-                            {typeLabel[item.type]}
-                          </span>
-                          <span className="text-sm text-muted/80">{item.text}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
+            <div className="pt-4 pb-8">
+              {releases.map((release, i) => (
+                <ChangelogEntry
+                  key={release.version}
+                  version={release.version}
+                  date={release.date}
+                  title={release.title}
+                  summary={release.summary}
+                  changes={release.changes}
+                  latest={i === 0}
+                  last={i === releases.length - 1}
+                  labels={labels}
+                />
               ))}
             </div>
           </Container>

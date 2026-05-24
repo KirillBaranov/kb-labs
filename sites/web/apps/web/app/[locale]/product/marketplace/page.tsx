@@ -48,22 +48,24 @@ export default async function MarketplacePage({ params }: Props) {
       <main>
 
         {/* ── Hero ── */}
-        <section className="relative overflow-hidden border-b border-line py-16">
-          <DotPattern className="absolute inset-0 z-0 opacity-30" />
+        <section className="relative overflow-hidden border-b border-line pb-14 pt-20">
+          <DotPattern className="absolute inset-0 z-0 opacity-25" />
+          <div aria-hidden className="pointer-events-none absolute left-1/2 top-0 h-[380px] w-[560px] -translate-x-1/2 rounded-full bg-accent/[0.05] blur-[90px]" />
           <Container className="relative z-10">
             <AnimateOnScroll>
-              <Eyebrow className="mb-4">Marketplace</Eyebrow>
-              <h1 className="mb-4 max-w-2xl text-4xl font-bold leading-tight tracking-tight text-kb-text sm:text-5xl">
-                <GradientText>{t('marketplace.hero.title')}</GradientText>
+              {/* i18n-ignore: brand label */}
+              <Eyebrow className="mb-5">Marketplace</Eyebrow>
+              <h1 className="mb-5 max-w-2xl text-[clamp(2.2rem,4.5vw,3.4rem)] font-bold leading-[1.08] tracking-tight text-kb-text">
+                <GradientText shimmer>{t('marketplace.hero.title')}</GradientText>
               </h1>
-              <p className="max-w-xl text-lg leading-relaxed text-muted/70">
+              <p className="max-w-[50ch] text-[1.05rem] leading-[1.75] text-muted">
                 {t('marketplace.hero.description')}
-                {items.length > 0 && (
-                  <span className="ml-2 font-mono text-sm text-muted/40">
-                    {t('marketplace.hero.extensionsCount', { count: items.length })}
-                  </span>
-                )}
               </p>
+              {items.length > 0 && (
+                <p className="mt-3 font-mono text-[0.75rem] text-muted/40">
+                  {t('marketplace.hero.extensionsCount', { count: items.length })}
+                </p>
+              )}
             </AnimateOnScroll>
           </Container>
         </section>

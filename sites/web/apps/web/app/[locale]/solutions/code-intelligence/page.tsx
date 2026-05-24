@@ -9,6 +9,7 @@ import {
   Button,
   CodeBlock,
   Container,
+  CopyButton,
   DotPattern,
   Eyebrow,
   GradientText,
@@ -166,7 +167,7 @@ export default async function CodeIntelligencePage({ params }: Props) {
                 <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm divide-y divide-line">
                   {indexTable.map(({ label, value }) => (
                     <div key={label} className="flex items-baseline gap-4 px-5 py-3.5">
-                      <span className="w-24 flex-shrink-0 text-sm font-semibold uppercase tracking-wider text-muted/40">{label}</span>
+                      <span className="flex-shrink-0 whitespace-nowrap text-[0.65rem] font-bold uppercase tracking-wider text-muted/35">{label}</span>
                       <span className="text-sm text-muted/70">{value}</span>
                     </div>
                   ))}
@@ -269,7 +270,7 @@ export default async function CodeIntelligencePage({ params }: Props) {
                 <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm divide-y divide-line">
                   {agentTable.map(({ label, value }) => (
                     <div key={label} className="flex items-baseline gap-4 px-5 py-3.5">
-                      <span className="w-24 flex-shrink-0 text-sm font-semibold uppercase tracking-wider text-muted/40">{label}</span>
+                      <span className="flex-shrink-0 whitespace-nowrap text-[0.65rem] font-bold uppercase tracking-wider text-muted/35">{label}</span>
                       <span className="text-sm text-muted/70">{value}</span>
                     </div>
                   ))}
@@ -291,9 +292,10 @@ export default async function CodeIntelligencePage({ params }: Props) {
                   <h2 className="mb-4 text-[clamp(1.8rem,3.5vw,2.8rem)] font-bold leading-tight tracking-tight text-kb-text">
                     {t('page.ctaTitle')}
                   </h2>
-                  <div className="mx-auto mb-8 max-w-xl overflow-hidden rounded-xl border border-line bg-surface">
+                  <div className="mx-auto mb-8 flex max-w-md items-center justify-between gap-3 rounded-xl border border-line bg-surface/60 px-4 py-3">
                     {/* i18n-ignore: terminal command */}
-                    <CodeBlock code="kb marketplace install @kb-labs/mind-entry" language="bash" />
+                    <code className="font-mono text-[0.85rem] text-kb-text">kb marketplace install @kb-labs/mind-entry</code>
+                    <CopyButton code="kb marketplace install @kb-labs/mind-entry" className="shrink-0" />
                   </div>
                   <div className="flex flex-wrap justify-center gap-3">
                     <Button variant="primary" size="lg" href="https://docs.kblabs.ru/plugins/mind" target="_blank" rel="noopener noreferrer">

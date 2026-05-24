@@ -9,6 +9,7 @@ import {
   Button,
   CodeBlock,
   Container,
+  CopyButton,
   DotPattern,
   Eyebrow,
   GradientText,
@@ -275,16 +276,23 @@ export default async function PlatformApiPage({ params }: Props) {
                 <p className="mb-6 text-base leading-relaxed text-muted/70">
                   {t('page.adaptersLead')}
                 </p>
-                <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm divide-y divide-line">
-                  {ADAPTERS.map(({ label, providers, note }) => (
-                    <div key={label} className="flex items-start gap-4 px-5 py-3.5">
-                      <span className="w-28 flex-shrink-0 text-sm font-semibold uppercase tracking-wider text-muted/40 pt-0.5">{label}</span>
-                      <div>
-                        <div className="text-sm text-kb-text/80">{providers}</div>
-                        <div className="text-sm text-muted/50 mt-0.5">{note}</div>
-                      </div>
-                    </div>
-                  ))}
+                <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
+                  <div className="grid grid-cols-[max-content_1fr]">
+                    {ADAPTERS.map(({ label, providers, note }, i) => {
+                      const border = i < ADAPTERS.length - 1 ? 'border-b border-line' : '';
+                      return (
+                        <>
+                          <span key={`${label}-lbl`} className={`pl-5 pr-5 py-3.5 whitespace-nowrap text-[0.65rem] font-bold uppercase tracking-wider text-muted/35 ${border}`}>
+                            {label}
+                          </span>
+                          <div key={`${label}-val`} className={`py-3.5 pr-5 ${border}`}>
+                            <div className="text-sm text-kb-text/80">{providers}</div>
+                            <div className="text-sm text-muted/50 mt-0.5">{note}</div>
+                          </div>
+                        </>
+                      );
+                    })}
+                  </div>
                 </div>
               </AnimateOnScroll>
 
@@ -371,13 +379,22 @@ export default async function PlatformApiPage({ params }: Props) {
                 <p className="mb-6 text-base leading-relaxed text-muted/70">
                   {t('page.configLead')}
                 </p>
-                <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm divide-y divide-line">
-                  {CONFIG_TABLE.map(({ label, value }) => (
-                    <div key={label} className="flex items-baseline gap-4 px-5 py-3.5">
-                      <span className="w-28 flex-shrink-0 text-sm font-semibold uppercase tracking-wider text-muted/40">{label}</span>
-                      <span className="text-sm text-muted/70">{value}</span>
-                    </div>
-                  ))}
+                <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
+                  <div className="grid grid-cols-[max-content_1fr]">
+                    {CONFIG_TABLE.map(({ label, value }, i) => {
+                      const border = i < CONFIG_TABLE.length - 1 ? 'border-b border-line' : '';
+                      return (
+                        <>
+                          <span key={`${label}-lbl`} className={`pl-5 pr-5 py-3.5 whitespace-nowrap text-[0.65rem] font-bold uppercase tracking-wider text-muted/35 ${border}`}>
+                            {label}
+                          </span>
+                          <span key={`${label}-val`} className={`py-3.5 pr-5 text-sm text-muted/70 ${border}`}>
+                            {value}
+                          </span>
+                        </>
+                      );
+                    })}
+                  </div>
                 </div>
               </AnimateOnScroll>
 
@@ -405,9 +422,10 @@ export default async function PlatformApiPage({ params }: Props) {
                   <p className="mx-auto mb-8 max-w-sm text-base text-muted/60">
                     {t('page.ctaNote')}
                   </p>
-                  <div className="mx-auto mb-8 max-w-lg overflow-hidden rounded-xl border border-line bg-surface">
+                  <div className="mx-auto mb-8 flex max-w-md items-center justify-between gap-3 rounded-xl border border-line bg-surface/60 px-4 py-3">
                     {/* i18n-ignore: terminal command */}
-                    <CodeBlock code="npm install @kb-labs/sdk" language="bash" />
+                    <code className="font-mono text-[0.85rem] text-kb-text">npm install @kb-labs/sdk</code>
+                    <CopyButton code="npm install @kb-labs/sdk" className="shrink-0" />
                   </div>
                   <div className="flex flex-wrap justify-center gap-3">
                     <Button variant="primary" size="lg" href="https://docs.kblabs.ru/platform-api" target="_blank" rel="noopener noreferrer">

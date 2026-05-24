@@ -68,6 +68,7 @@ export type { TerminalBlockProps } from './components/ui/terminal-block';
 
 export { CodeBlock } from './components/ui/code-block';
 export type { CodeBlockProps } from './components/ui/code-block';
+export { CopyButton } from './components/ui/copy-button';
 
 // Marketing
 export { Container } from './components/marketing/container';
@@ -107,6 +108,7 @@ export { GatewayAdapterSwapDiagram } from './components/marketing/gateway-adapte
 export type { GatewayAdapterSwapDiagramProps } from './components/marketing/gateway-adapter-swap-diagram';
 
 export { PainCards } from './components/marketing/pain-cards';
+export type { PainCardsProps, PainItem } from './components/marketing/pain-cards';
 
 export { GridSection } from './components/marketing/grid-section';
 export type { GridSectionProps } from './components/marketing/grid-section';

@@ -139,38 +139,31 @@ function PlatformGraphic() {
 
 /* ── Pain rows ────────────────────────────────────────────── */
 
-const PAINS = [
-  {
-    title: 'Агент пошёл куда не звали',
-    description: 'Даёте агенту только те инструменты, которые сами разрешили. Плагин без доступа — недоступен.',
-    graphic: <AgentGraphic />,
-  },
-  {
-    title: 'Автоматизация держится на bash',
-    description: 'Workflow в YAML. Движок следит за выполнением, пишет логи, повторяет при ошибке.',
-    graphic: <WorkflowGraphic />,
-  },
-  {
-    title: 'Сменили брокер — переписывай всех подписчиков',
-    description: 'Сервисы публикуют события через gateway. Redis, Kafka, RabbitMQ — меняете адаптер в конфиге, подписчики не замечают.',
-    graphic: <EventBusGraphic />,
-  },
-  {
-    title: 'Каждый инструмент — отдельный остров',
-    description: 'Commit, review, release, deploy — один workflow, одна платформа, одни логи.',
-    graphic: <PlatformGraphic />,
-  },
+const GRAPHICS = [
+  <AgentGraphic />,
+  <WorkflowGraphic />,
+  <EventBusGraphic />,
+  <PlatformGraphic />,
 ];
 
-export function PainCards() {
+export interface PainItem {
+  title: string;
+  description: string;
+}
+
+export interface PainCardsProps {
+  items: PainItem[];
+}
+
+export function PainCards({ items }: PainCardsProps) {
   return (
     <div className="overflow-hidden rounded-2xl border border-line">
-      {PAINS.map((pain, i) => (
+      {items.map((pain, i) => (
         <div
           key={pain.title}
           className={cn(
             'grid grid-cols-1 md:grid-cols-[1fr_1.2fr]',
-            i < PAINS.length - 1 && 'border-b border-line',
+            i < items.length - 1 && 'border-b border-line',
           )}
         >
           {/* Text */}
@@ -181,7 +174,7 @@ export function PainCards() {
 
           {/* Visual */}
           <div className="flex items-center justify-center border-t border-line bg-bg p-8 md:border-l md:border-t-0">
-            {pain.graphic}
+            {GRAPHICS[i]}
           </div>
         </div>
       ))}
