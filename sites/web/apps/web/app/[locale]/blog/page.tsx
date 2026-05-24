@@ -35,6 +35,11 @@ function formatDate(iso: string | undefined, locale: string): string {
   return new Date(iso).toLocaleDateString(locale, { month: 'short', year: 'numeric' });
 }
 
+/** Ensure slug only contains URL-safe characters (filesystem-derived, but CodeQL-safe). */
+function safeSlug(slug: string): string {
+  return slug.replace(/[^a-z0-9-_]/g, '');
+}
+
 // ── Metadata ──────────────────────────────────────────────────────────────────
 
 export function generateStaticParams() {
@@ -139,8 +144,8 @@ export default async function BlogPage({ params, searchParams }: Props) {
               <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {paginated.map((post) => (
                   <Link
-                    key={post.slug}
-                    href={`/${locale}/blog/${post.slug}`}
+                    key={safeSlug(post.slug)}
+                    href={`/${locale}/blog/${safeSlug(post.slug)}`}
                     className="group flex flex-col rounded-2xl border border-line bg-surface p-6 no-underline transition-colors hover:border-accent/30"
                   >
                     {/* Meta */}

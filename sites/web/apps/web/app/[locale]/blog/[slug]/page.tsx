@@ -56,6 +56,11 @@ function formatDate(iso: string | undefined, locale: string): string {
   return new Date(iso).toLocaleDateString(locale, { month: 'long', year: 'numeric', day: 'numeric' });
 }
 
+/** Ensure slug only contains URL-safe characters (filesystem-derived, but CodeQL-safe). */
+function safeSlug(slug: string): string {
+  return slug.replace(/[^a-z0-9-_]/g, '');
+}
+
 const BASE_URL = 'https://kblabs.ru';
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -183,7 +188,7 @@ export default async function BlogPostPage({
               <div className="grid grid-cols-1 gap-px py-8 sm:grid-cols-2">
                 {prevPost ? (
                   <Link
-                    href={`/${locale}/blog/${prevPost.slug}`}
+                    href={`/${locale}/blog/${safeSlug(prevPost.slug)}`}
                     className="group flex flex-col gap-1 rounded-xl p-4 transition-colors hover:bg-surface/50"
                   >
                     <span className="inline-flex items-center gap-1 text-xs text-muted/40">
@@ -198,7 +203,7 @@ export default async function BlogPostPage({
 
                 {nextPost && (
                   <Link
-                    href={`/${locale}/blog/${nextPost.slug}`}
+                    href={`/${locale}/blog/${safeSlug(nextPost.slug)}`}
                     className="group flex flex-col items-end gap-1 rounded-xl p-4 transition-colors hover:bg-surface/50"
                   >
                     <span className="inline-flex items-center gap-1 text-xs text-muted/40">
@@ -225,8 +230,8 @@ export default async function BlogPostPage({
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                 {related.map((p) => (
                   <Link
-                    key={p.slug}
-                    href={`/${locale}/blog/${p.slug}`}
+                    key={safeSlug(p.slug)}
+                    href={`/${locale}/blog/${safeSlug(p.slug)}`}
                     className="group flex flex-col gap-2 rounded-2xl border border-line bg-surface p-5 no-underline transition-colors hover:border-accent/30"
                   >
                     <div className="flex items-center gap-2">
