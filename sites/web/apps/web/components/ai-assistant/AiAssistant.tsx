@@ -3,57 +3,9 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { createWebDataSources, type ChatMessage } from '@kb-labs/web-data-source';
+import { useTranslations } from 'next-intl';
+import { Sparkles, X, Send, Maximize2, Minimize2 } from 'lucide-react';
 import s from './AiAssistant.module.css';
-
-/* ── Icons ── */
-
-function SparkleIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-      <path d="M8 1l1.8 4.2L14 7l-4.2 1.8L8 13l-1.8-4.2L2 7l4.2-1.8z" fill="currentColor" />
-    </svg>
-  );
-}
-
-function CloseIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-      <path d="M2 2l10 10M12 2L2 12" />
-    </svg>
-  );
-}
-
-function SendIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14 2L7 9" />
-      <path d="M14 2l-5 12-2-5-5-2z" />
-    </svg>
-  );
-}
-
-function ExpandIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M8.5 1.5H12.5V5.5" />
-      <path d="M5.5 12.5H1.5V8.5" />
-      <path d="M12.5 1.5L8 6" />
-      <path d="M1.5 12.5L6 8" />
-    </svg>
-  );
-}
-
-function CollapseIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-      {/* Top-right corner piece at center, arrow pointing to top-right */}
-      <path d="M6 1.5V5.5H2" />
-      <path d="M8 12.5V8.5H12" />
-      <path d="M6 5.5L1 1" />
-      <path d="M8 8.5L13 13" />
-    </svg>
-  );
-}
 
 /* ── Component ── */
 
@@ -64,6 +16,7 @@ interface AiAssistantProps {
 }
 
 export function AiAssistant({ open, onClose, locale }: AiAssistantProps) {
+  const t = useTranslations('ui');
   const source = useMemo(
     () => createWebDataSources({ mode: 'mock' }).aiAssistant,
     [],
@@ -130,7 +83,7 @@ export function AiAssistant({ open, onClose, locale }: AiAssistantProps) {
           {
             id: `e-${Date.now()}`,
             role: 'assistant',
-            text: locale === 'ru' ? 'Произошла ошибка. Попробуйте ещё раз.' : 'Something went wrong. Please try again.',
+            text: t('aiError'),
           },
         ]);
       } finally {
@@ -162,15 +115,15 @@ export function AiAssistant({ open, onClose, locale }: AiAssistantProps) {
         {/* Header */}
         <div className={s.header}>
           <div className={s.headerTitle}>
-            <SparkleIcon />
+            <Sparkles size={15} />
             <span>Ask AI</span>
           </div>
           <div className={s.headerButtons}>
             <button className={s.expandBtn} onClick={() => setExpanded((v) => !v)} aria-label={expanded ? 'Collapse' : 'Expand'}>
-              {expanded ? <CollapseIcon /> : <ExpandIcon />}
+              {expanded ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
             </button>
             <button className={s.closeBtn} onClick={() => { onClose(); setExpanded(false); }} aria-label="Close">
-              <CloseIcon />
+              <X size={14} />
             </button>
           </div>
         </div>
@@ -180,7 +133,7 @@ export function AiAssistant({ open, onClose, locale }: AiAssistantProps) {
           {messages.length === 0 && !isLoading && (
             <div className={s.starter}>
               <p className={s.starterText}>
-                {locale === 'ru' ? 'Спросите что-нибудь о KB Labs' : 'Ask anything about KB Labs'}
+                {t('aiStarterText')}
               </p>
               <div className={s.chips}>
                 {suggestedQuestions.map((q) => (
@@ -238,7 +191,7 @@ export function AiAssistant({ open, onClose, locale }: AiAssistantProps) {
                 handleSend();
               }
             }}
-            placeholder={locale === 'ru' ? 'Задайте вопрос...' : 'Ask a question...'}
+            placeholder={t('aiPlaceholder')}
             disabled={isLoading}
           />
           <button
@@ -247,7 +200,7 @@ export function AiAssistant({ open, onClose, locale }: AiAssistantProps) {
             disabled={!input.trim() || isLoading}
             aria-label="Send"
           >
-            <SendIcon />
+            <Send size={15} />
           </button>
         </div>
       </aside>
