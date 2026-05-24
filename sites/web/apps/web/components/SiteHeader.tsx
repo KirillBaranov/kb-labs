@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import { useLocale, useTranslations } from 'next-intl';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { Sparkles } from 'lucide-react';
 import { NAV_DROPDOWNS, NAV_LINKS, MOBILE_EXTRA_PRODUCT_ITEMS, MENU_ORDER as MENU_ORDER_CFG } from './nav-config';
 
 const AiAssistant = dynamic(
@@ -410,7 +411,7 @@ export function SiteHeader() {
         <div className="nav-actions">
           <LanguageSwitcher />
           <button className="nav-btn ai-ask" onClick={() => setAiOpen(true)} aria-label="Ask AI">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1l2 4.5L14.5 7.5l-4.5 2L8 14l-2-4.5L1.5 7.5l4.5-2z" fill="currentColor"/></svg>
+            <Sparkles size={15} />
           </button>
           <Link className="nav-btn ghost" href={lp('/signup')}>{t('nav.login')}</Link>
           <Link className="nav-btn solid" href={lp('/install')}>{t('nav.start')}</Link>

@@ -2914,7 +2914,10 @@
     }
   },
   "legal": {
+    "navTitle": "Legal",
+    "lastUpdated": "Last updated:",
     "terms": {
+      "updated": "January 2026",
       "sections": [
         {
           "title": "The service",
@@ -2977,6 +2980,7 @@
       }
     },
     "dpa": {
+      "updated": "January 2026",
       "sections": [
         {
           "title": "Definitions",
@@ -3041,6 +3045,7 @@
       }
     },
     "privacy": {
+      "updated": "April 2026",
       "sections": [
         {
           "title": "What we collect",
@@ -3107,6 +3112,7 @@
       }
     },
     "cookies": {
+      "updated": "April 2026",
       "sections": [
         {
           "title": "What are cookies?",

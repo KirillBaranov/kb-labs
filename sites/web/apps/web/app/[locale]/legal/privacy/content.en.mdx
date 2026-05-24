@@ -1,0 +1,114 @@
+KB Labs ("we", "us", "our") operates the KB Labs platform and website. This Privacy Policy explains what data we collect, why we collect it, and how you can control it.
+
+## What we collect
+
+We collect the following categories of data:
+
+- **Account data** — name, email address, and password (hashed) when you register.
+- **Usage data** — workflow runs, API calls, plugin invocations, and feature usage, aggregated and used to improve the platform.
+- **Cookies** — session cookies required for authentication and optional analytics cookies. See our [Cookie Policy](/legal/cookies).
+
+## How we use your data
+
+- To provide, operate, and improve the KB Labs platform
+- To send transactional emails (account activity, billing receipts)
+- To send product updates, if you have opted in
+- To detect, prevent, and investigate security incidents
+- To comply with legal obligations
+
+We do not sell your data. We do not use your workflow content to train machine learning models.
+
+## Website & docs analytics
+
+We collect anonymous usage analytics on **kblabs.ru** and **docs.kblabs.ru** to understand how visitors use the site and which documentation pages are helpful.
+
+**What we collect:**
+
+- Page views (URL path, referrer, UTM parameters)
+- Outbound link clicks (destination URL, link text)
+- CTA clicks (e.g. "Install" button)
+- Install command copy events
+- Doc page feedback (👍/👎 per page — no free-text, no identity)
+- Anonymous device ID (random UUID stored in `localStorage`, not linked to your identity)
+
+**What we do NOT collect:**
+
+- Name, email, or any personally identifiable information
+- IP addresses (not stored in analytics)
+- Browser fingerprints
+
+Analytics on **kblabs.ru** are **opt-in** — you must accept cookies via the banner before any events are sent. On **docs.kblabs.ru** we collect only anonymous page view data and explicit doc feedback without a consent gate, as no personal data is processed.
+
+All analytics flow through the KB Labs Gateway (`api.kblabs.ru`) and are stored in a self-hosted JSONL file. No third-party analytics services (Google Analytics, Segment, PostHog, etc.) are used. See our [Cookie Policy](/legal/cookies) for localStorage details.
+
+## CLI telemetry (kb-create)
+
+When you install KB Labs via `kb-create`, the installer may collect anonymous usage telemetry if you opt in during the setup wizard. Telemetry is **off by default** and requires explicit consent.
+
+**What we collect:**
+
+- Operating system and architecture (e.g. macOS arm64)
+- kb-create version
+- Package manager used (pnpm, npm)
+- Services and plugins selected
+- Install duration, success or failure status
+- Demo consent choice (demo / local / own key)
+- Anonymous device ID (random, not linked to your identity)
+
+**What we do NOT collect:**
+
+- Source code, file contents, or diffs
+- File names or project structure
+- API keys or credentials
+- IP addresses (not logged by our Gateway)
+
+Telemetry is sent to the KB Labs Gateway with a device-scoped JWT token. You can disable telemetry at any time by setting `KB_TELEMETRY_DISABLED=true` or toggling it off in the setup wizard.
+
+## Demo mode (AI-powered code review)
+
+When you run `kb-create --demo`, the installer offers an AI-powered code review of your recent commits. This feature requires explicit consent before any data leaves your machine.
+
+**Three consent options:**
+
+- **Yes, run demo** — git diffs from your last commits are sent to the KB Labs Gateway, which proxies them to OpenAI for analysis. Diffs are **not stored** — the Gateway is a pass-through proxy. 50 free AI calls are included per device.
+- **Local only** — no network requests are made. Only local checks run (commit policy, build, test, lint). No data leaves your machine.
+- **Use my own API key** — diffs are sent directly to your chosen LLM provider. KB Labs Gateway is bypassed entirely — we see nothing.
+
+The Gateway logs only token counts for rate-limiting purposes. No diff content, file names, or code is stored or logged. Demo tokens expire after the call limit is reached.
+
+## Data sharing
+
+We share data only with:
+
+- **Infrastructure providers** — cloud hosting and storage (under DPA)
+- **Analytics** — aggregated, anonymised usage data only
+- **Legal requirements** — when required by applicable law
+
+## Data retention
+
+We retain account data for the duration of your subscription plus 30 days after deletion. Workflow run logs are retained according to your plan (7 days on Hobby, 30 days on Pro, configurable on Enterprise). Anonymised usage analytics may be retained indefinitely.
+
+## Your rights
+
+Under GDPR and applicable law, you have the right to:
+
+- Access the personal data we hold about you
+- Correct inaccurate data
+- Request deletion ("right to be forgotten")
+- Export your data in a portable format
+- Object to or restrict processing
+- Withdraw consent at any time
+
+To exercise any of these rights, email [privacy@kblabs.ru](mailto:privacy@kblabs.ru). We respond within 30 days.
+
+## Security
+
+We use encryption at rest (AES-256) and in transit (TLS 1.3), access controls, and regular security reviews. For details, see our [Security page](/security).
+
+## Changes to this policy
+
+We'll notify you by email and update the "last updated" date before making material changes. Continued use of the platform after changes constitutes acceptance.
+
+## Contact
+
+Questions? Email [privacy@kblabs.ru](mailto:privacy@kblabs.ru) or write to KB Labs, Remote-first, Russia.
