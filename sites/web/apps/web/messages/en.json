@@ -4522,28 +4522,28 @@
     "plugPermLead2": "This isn't a hard guarantee — with in-process execution the platform enforces declared permissions, but full OS isolation requires container or remote mode.",
     "cmpObjections": [
       {
-        "question": "We're already on GitHub Actions — why switch?",
-        "answer": "You don't have to switch. KB Labs handles what CI/CD doesn't — review gates, AI orchestration, QA trends, agent workflows. Run it beside Actions."
+        "q": "We're already on GitHub Actions — why switch?",
+        "a": "You don't have to switch. KB Labs handles what CI/CD doesn't — review gates, AI orchestration, QA trends, agent workflows. Run it beside Actions."
       },
       {
-        "question": "Is this just another workflow tool?",
-        "answer": "No. KB Labs is a runtime with a permissions model, an extension system, and observability built in. Workflows are one capability, not the whole product."
+        "q": "Is this just another workflow tool?",
+        "a": "No. KB Labs is a runtime with a permissions model, an extension system, and observability built in. Workflows are one capability, not the whole product."
       },
       {
-        "question": "We have 2 engineers. Too complex?",
-        "answer": "One-command install. First workflow in under an hour. The complexity scales with your team, not the other way around."
+        "q": "We have 2 engineers. Too complex?",
+        "a": "One-command install. First workflow in under an hour. The complexity scales with your team, not the other way around."
       },
       {
-        "question": "What about data privacy?",
-        "answer": "Self-hosted by default. Nothing leaves your network unless you explicitly route it. No telemetry, no analytics, no cloud backend owned by anyone else."
+        "q": "What about data privacy?",
+        "a": "Self-hosted by default. Nothing leaves your network unless you explicitly route it. No telemetry, no analytics, no cloud backend owned by anyone else."
       },
       {
-        "question": "We don't have a dedicated DevOps person.",
-        "answer": "KB Labs is designed for engineers who own their own infra. The CLI is the primary interface. No GUI required, no YAML wizards."
+        "q": "We don't have a dedicated DevOps person.",
+        "a": "KB Labs is designed for engineers who own their own infra. The CLI is the primary interface. No GUI required, no YAML wizards."
       },
       {
-        "question": "How do agents fit in?",
-        "answer": "As first-class workflow steps with typed contracts and permission enforcement. The same runtime governs humans, bots, and agents."
+        "q": "How do agents fit in?",
+        "a": "As first-class workflow steps with typed contracts and permission enforcement. The same runtime governs humans, bots, and agents."
       }
     ],
     "monHeroDocsBtn": "Documentation",
