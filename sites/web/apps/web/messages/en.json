@@ -3388,11 +3388,11 @@
     },
     "heroCurrent": {
       "installBtn": "Install",
-      "titleGradient": "Automate engineering workflows.",
-      "eyebrow": "Open source · Self-hosted",
-      "titleSecond": "Control your AI agents.",
-      "description": "One engine for releases, reviews, commit policy, and AI agent pipelines. Self-hosted, plugin-first, yours to own.",
-      "licenseNote": "KBPL1.1 + MIT · No sign-up · No usage limits"
+      "titleGradient": "Open-source platform",
+      "eyebrow": "OPEN-SOURCE · SELF-HOSTED · PRIVATE BETA",
+      "titleSecond": "for dev automation",
+      "description": "Code review, commits, releases — on autopilot. Self-hosted, under your control.",
+      "licenseNote": "KBPL1.1 + MIT · No vendor lock-in · Founder reads every issue"
     },
     "painSection": {
       "title": "Engineering teams keep rebuilding the same things.",
