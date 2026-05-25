@@ -85,10 +85,14 @@ async function readObjectAtRoot(
   if (!configPath) {
     return { data: {} };
   }
+  // Past this point we always return `path: configPath` — the file exists,
+  // even if we couldn't extract usable data from it. Callers rely on the
+  // path field to distinguish "layer absent" (path undefined) from "layer
+  // present but degraded" (path set + diagnostics).
   const read = await readJsonWithDiagnostics<unknown>(configPath);
   diagnostics.push(...read.diagnostics);
   if (!read.ok) {
-    return { data: {} };
+    return { path: configPath, data: {} };
   }
   const data = read.data;
   if (typeof data !== 'object' || data === null || Array.isArray(data)) {
