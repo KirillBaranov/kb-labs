@@ -1,20 +1,30 @@
 /**
- * @module @kb-labs/core/config/overlay/merged-raw
+ * @module @kb-labs/core-config/api/effective-config
  *
- * Overlay-aware raw config reader.
+ * Canonical "give me the effective raw config" entry point.
  *
- * Returns the effective raw config seen by a plugin reading its own section
- * directly (bypassing `loadPlatformConfig`). The three layers, deep-merged
- * with `mergeOverlay`:
+ * Assembles the three configuration layers any KB Labs project may have
+ * and returns the deep-merged result plus diagnostics about how it was
+ * resolved:
  *
- *   1. `platformRoot/.kb/kb.config.*`  (optional baseline; installed mode)
- *   2. `projectRoot/.kb/kb.config.*`   (project layer)
- *   3. `projectRoot/.kb/overlays/*.jsonc`  (scenario overlays; lex-sorted)
+ *   1. `<platformRoot>/.kb/kb.config.*`  — platform baseline (installed
+ *      mode only; absent in solo dev where projectRoot == platformRoot)
+ *   2. `<projectRoot>/.kb/kb.config.*`   — project layer
+ *   3. `<projectRoot>/.kb/overlays/*.jsonc`  — scenario overlays applied
+ *      by `kb-dev ensure --scenario`, lex-sorted
  *
- * The layered merge lives here, in core-config, so that no plugin has to
- * re-implement platform↔project resolution alongside overlay handling.
+ * Each layer is deep-merged onto the previous via `mergeOverlay`. Overlays
+ * are intentionally *project-only* — overlay files placed under the
+ * platform root are ignored. Plugins that read their own section from the
+ * raw config (gateway.*, mind.*, workflow.*, ...) should use this rather
+ * than re-implementing the layering.
  *
  * Returns `null` only when none of the three layers contributed anything.
+ *
+ * This is complementary to `@kb-labs/core-runtime :: loadPlatformConfig`,
+ * which produces the structured `PlatformConfig` view (adapters, core,
+ * execution). Use `loadEffectiveConfig` when you need the full raw shape;
+ * use `loadPlatformConfig` when you need platform initialisation.
  */
 
 import { promises as fsp } from 'node:fs';
@@ -22,8 +32,8 @@ import path from 'node:path';
 
 import { readJsonWithDiagnostics } from '../runtime/runtime.js';
 import type { Diagnostic } from '../types/index.js';
-import { loadOverlays } from './loader.js';
-import { mergeOverlay } from './merge.js';
+import { loadOverlays } from '../overlay/loader.js';
+import { mergeOverlay } from '../overlay/merge.js';
 
 const CONFIG_CANDIDATES = [
   path.join('.kb', 'kb.config.jsonc'),
@@ -32,25 +42,24 @@ const CONFIG_CANDIDATES = [
   'kb.config.json',
 ] as const;
 
-export interface MergedRawConfigResult {
-  /** Effective merged data (platform ← project ← overlays). */
+export interface EffectiveConfigResult {
+  /** Deep-merged effective data (platform ← project ← overlays). */
   data: Record<string, unknown>;
-  /** Absolute path to the platform config file, if one was loaded. */
+  /** Absolute path to the platform-root config file, if one was loaded. */
   platformConfigPath?: string;
-  /** Absolute path to the project config file, if one was loaded. */
+  /** Absolute path to the project-root config file, if one was loaded. */
   projectConfigPath?: string;
   /** Absolute paths of overlays applied, in merge order. */
   overlayPaths: string[];
-  /** Non-fatal diagnostics (malformed files, etc). */
+  /** Non-fatal diagnostics (malformed files, layer rejected, etc). */
   diagnostics: Diagnostic[];
 }
 
-export interface ReadMergedRawConfigOptions {
+export interface LoadEffectiveConfigOptions {
   /**
-   * Optional platform installation root. When set and distinct from
+   * Optional platform installation root. When provided and distinct from
    * `projectRoot`, its `kb.config.*` is read first and used as the
-   * deep-merge baseline. Overlays are *not* read from this root —
-   * overlays are a project-local concept.
+   * deep-merge baseline. Overlays are *not* read from this root.
    */
   platformRoot?: string;
 }
@@ -94,13 +103,13 @@ async function readObjectAtRoot(
 }
 
 /**
- * Read the effective raw config, deep-merged across platform → project →
- * project overlays. See module doc for layering details.
+ * Load the effective project config — deep-merged across platform → project
+ * → project overlays. Returns `null` when nothing contributed.
  */
-export async function readMergedRawConfig(
+export async function loadEffectiveConfig(
   projectRoot: string,
-  options: ReadMergedRawConfigOptions = {},
-): Promise<MergedRawConfigResult | null> {
+  options: LoadEffectiveConfigOptions = {},
+): Promise<EffectiveConfigResult | null> {
   const diagnostics: Diagnostic[] = [];
 
   const usePlatform =

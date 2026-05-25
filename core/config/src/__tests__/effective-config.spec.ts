@@ -3,10 +3,10 @@ import { promises as fsp } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
-import { readMergedRawConfig } from '../overlay/merged-raw';
+import { loadEffectiveConfig } from '../api/effective-config';
 
 async function makeTmpDir() {
-  return fsp.mkdtemp(path.join(os.tmpdir(), 'kb-merged-raw-'));
+  return fsp.mkdtemp(path.join(os.tmpdir(), 'kb-effective-config-'));
 }
 
 async function writeProjectConfig(root: string, contents: string) {
@@ -21,7 +21,7 @@ async function writeOverlay(root: string, name: string, contents: string) {
   await fsp.writeFile(path.join(dir, name), contents, 'utf8');
 }
 
-describe('readMergedRawConfig', () => {
+describe('loadEffectiveConfig', () => {
   let tmp: string;
 
   beforeEach(async () => {
@@ -33,13 +33,13 @@ describe('readMergedRawConfig', () => {
   });
 
   it('returns null when neither project config nor overlays exist', async () => {
-    const res = await readMergedRawConfig(tmp);
+    const res = await loadEffectiveConfig(tmp);
     expect(res).toBeNull();
   });
 
   it('returns project config unchanged when no overlays exist', async () => {
     await writeProjectConfig(tmp, '{"gateway":{"port":4000}}');
-    const res = await readMergedRawConfig(tmp);
+    const res = await loadEffectiveConfig(tmp);
     expect(res).not.toBeNull();
     expect(res!.data).toEqual({ gateway: { port: 4000 } });
     expect(res!.overlayPaths).toEqual([]);
@@ -56,7 +56,7 @@ describe('readMergedRawConfig', () => {
       'pressure.jsonc',
       '{"gateway":{"pressure":{"safetyMargin":1,"perService":{"rest":5}}}}',
     );
-    const res = await readMergedRawConfig(tmp);
+    const res = await loadEffectiveConfig(tmp);
     expect(res!.data).toEqual({
       gateway: {
         port: 4000,
@@ -76,13 +76,13 @@ describe('readMergedRawConfig', () => {
       'multi.jsonc',
       `{"adapters":{"kb:merge":{"llm":"append"},"llm":["vibeproxy"]}}`,
     );
-    const res = await readMergedRawConfig(tmp);
+    const res = await loadEffectiveConfig(tmp);
     expect(res!.data).toEqual({ adapters: { llm: ['openai', 'vibeproxy'] } });
   });
 
   it('returns overlay-only result when project config is absent', async () => {
     await writeOverlay(tmp, 'p.jsonc', '{"gateway":{"port":5000}}');
-    const res = await readMergedRawConfig(tmp);
+    const res = await loadEffectiveConfig(tmp);
     expect(res).not.toBeNull();
     expect(res!.data).toEqual({ gateway: { port: 5000 } });
     expect(res!.projectConfigPath).toBeUndefined();
@@ -90,7 +90,7 @@ describe('readMergedRawConfig', () => {
 
   it('reports diagnostic when project config is not an object', async () => {
     await writeProjectConfig(tmp, '[1,2,3]');
-    const res = await readMergedRawConfig(tmp);
+    const res = await loadEffectiveConfig(tmp);
     expect(res).not.toBeNull();
     expect(res!.diagnostics.some(d => d.code === 'CONFIG_NOT_OBJECT')).toBe(true);
     expect(res!.data).toEqual({});
@@ -116,7 +116,7 @@ describe('readMergedRawConfig', () => {
       JSON.stringify({ gateway: { pressure: { enabled: true } } }),
     );
 
-    const res = await readMergedRawConfig(projectRoot, { platformRoot });
+    const res = await loadEffectiveConfig(projectRoot, { platformRoot });
     expect(res).not.toBeNull();
     expect(res!.data).toEqual({
       gateway: {
@@ -133,7 +133,7 @@ describe('readMergedRawConfig', () => {
 
   it('ignores platformRoot when it equals projectRoot (no double-merge)', async () => {
     await writeProjectConfig(tmp, '{"gateway":{"port":4000}}');
-    const res = await readMergedRawConfig(tmp, { platformRoot: tmp });
+    const res = await loadEffectiveConfig(tmp, { platformRoot: tmp });
     expect(res!.data).toEqual({ gateway: { port: 4000 } });
     expect(res!.platformConfigPath).toBeUndefined();
     expect(res!.projectConfigPath).toBe(path.join(tmp, '.kb', 'kb.config.json'));
@@ -149,7 +149,7 @@ describe('readMergedRawConfig', () => {
     );
     await writeProjectConfig(projectRoot, '{"gateway":{"port":4000}}');
 
-    const res = await readMergedRawConfig(projectRoot, { platformRoot });
+    const res = await loadEffectiveConfig(projectRoot, { platformRoot });
     expect(res!.data).toEqual({ gateway: { port: 4000 } });
     expect(res!.overlayPaths).toEqual([]);
   });

@@ -32,5 +32,10 @@ export { clearCaches } from './cache/fs-cache.js';
 // Validation API
 export { validateProductConfig, registerProductSchema } from './validation/validate-config.js';
 
-// Overlay API (`.kb/overlays/*.jsonc` deep-merge)
+// Overlay primitives (`mergeOverlay`, `loadOverlays`) used by the layered
+// loader below and by services that need raw access.
 export * from './overlay/index.js';
+
+// Canonical layered config loader: platform → project → project overlays.
+// Use this when reading the raw effective config (e.g. plugin sections).
+export * from './api/effective-config.js';

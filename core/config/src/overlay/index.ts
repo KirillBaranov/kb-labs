@@ -10,8 +10,3 @@ export {
   type LoadOverlaysResult,
 } from './loader.js';
 
-export {
-  readMergedRawConfig,
-  type MergedRawConfigResult,
-  type ReadMergedRawConfigOptions,
-} from './merged-raw.js';
