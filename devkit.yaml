@@ -727,6 +727,13 @@ custom_checks:
     on: [check]
     categories: [plugin-entry]
 
+  # SEO guard for kblabs.ru + docs.kblabs.ru.
+  # Blocks CI on: page.tsx without metadata, sitemap routes with no matching page.
+  # Warns on: blog posts missing ru/ translation.
+  - name: seo-lint
+    run: node sites/web/scripts/seo-check.mjs
+    on: [check]
+
 # ──────────────────────────────────────────────────────────────────────────────
 # COVERAGE THRESHOLDS
 # Enforced by: node scripts/merge-coverage.mjs --check

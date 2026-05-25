@@ -271,7 +271,7 @@ export default async function HomePage({ params }: Props) {
                 <div className="border-t border-line bg-bg px-5 py-3">
                   <p className="text-[0.8rem] text-muted/60">
                     {t('home.integrationsSection.notFound')}{' '}
-                    <a href={`/${locale}/product#gateway`} className="underline underline-offset-2 hover:text-muted">
+                    <a href="https://docs.kblabs.ru/en/guides/first-adapter" target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-muted">
                       {t('home.integrationsSection.writeAdapter')}
                     </a>
                     {' '}{t('home.integrationsSection.adapterSuffix')}
