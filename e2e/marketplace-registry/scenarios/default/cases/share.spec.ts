@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { REGISTRY } from '@kb-labs/e2e-shared/urls.js'
 import { getAccessToken } from '@kb-labs/e2e-shared/auth.js'
-import { createTestTarball } from '../fixtures/create-test-tarball.js'
+import { createTestTarball } from '../../../fixtures/create-test-tarball.js'
 
 function jwtNamespaceId(token: string): string {
   const payload = JSON.parse(Buffer.from(token.split('.')[1]!, 'base64url').toString()) as Record<string, unknown>

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { MARKETPLACE, REGISTRY } from '@kb-labs/e2e-shared/urls.js'
 import { getAccessToken } from '@kb-labs/e2e-shared/auth.js'
-import { createTestTarball } from '../../marketplace-registry/fixtures/create-test-tarball.js'
+import { createTestTarball } from '../../../../marketplace-registry/fixtures/create-test-tarball.js'
 
 // ── Marketplace install via KB Registry ───────────────────────────────────────
 // Requires: kb-dev start (gateway + marketplace :5070 + registry :5071 running)

@@ -1,14 +1,16 @@
 /**
  * E2E: HTTP pressure control via core ResourceBroker (ADR-0056).
  *
- * Assumes the gateway was started with KB_GATEWAY_CONFIG_PATH pointing at
- * `e2e/gateway/fixtures/kb.config.pressure.json`:
+ * Configuration is applied by `kb-dev ensure --scenario` via
+ * `e2e/gateway/scenarios/pressure/overlay.jsonc`:
  *
  *   - perService.rest:      5 req/s    (resource `gateway:service:rest`)
  *   - perRoute /health:     3 req/s    (resource `gateway:route:health`)
  *   - perTenant:            30 req/min (resource `gateway:tenant:<namespaceId>`)
  *
- * The fixture sets `safetyMargin: 1` so the configured numbers are exact.
+ * The overlay sets `safetyMargin: 1` so the configured numbers are exact.
+ * The runner ensures this scenario before invoking Playwright, so the
+ * gateway is already in pressure mode when the cases start.
  */
 
 import { test, expect, type APIRequestContext } from '@playwright/test';
@@ -45,18 +47,11 @@ async function registerWithNamespace(
 }
 
 test.describe('Gateway pressure control', () => {
-  // Auto-skip the whole suite if the running gateway was not started with
-  // pressure-overlay config. Lets the spec live in main without breaking CI
-  // on stacks that didn't load `KB_GATEWAY_CONFIG_PATH` overlay.
-  test.beforeAll(async ({ request }) => {
-    const probe = await fireMany(request, `${GATEWAY}/health`, 12);
-    const anyRejected = probe.some(r => r.status === 429);
-    test.skip(
-      !anyRejected,
-      'Gateway is running without pressure overlay — skipping pressure-control specs. ' +
-        'To run: start gateway with KB_GATEWAY_CONFIG_PATH=$(pwd)/e2e/gateway/fixtures/kb.config.pressure.json',
-    );
-    // Wait past the RPS window so the actual tests start from a clean slate.
+  test.beforeAll(async () => {
+    // The runner applied the pressure overlay and restarted gateway before
+    // this hook fires; no per-spec env-var probe needed.
+    // Brief settle so an upstream warmup request doesn't burn through the
+    // RPS window of the first case.
     await new Promise(resolve => setTimeout(resolve, 1500));
   });
 

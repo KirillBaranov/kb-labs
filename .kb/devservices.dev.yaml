@@ -9,6 +9,12 @@ groups:
   execution: [runtime-server]
   ai:        [omniroute]
 
+  # E2E test domain groups. Referenced by `scenario.yaml :: domain:` so the
+  # runner can bring up exactly what a scenario needs before applying
+  # overlays. Only domains with overlay-using scenarios are listed here —
+  # default scenarios run against whatever `kb-dev start` already brought up.
+  e2e-gateway: [state-daemon, workflow, rest, marketplace, marketplace-registry, gateway]
+
 services:
   qdrant:
     name: Qdrant Vector DB

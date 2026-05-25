@@ -131,6 +131,16 @@ func (m *Manager) ResolveEnv() {
 	m.envCache = cache
 }
 
+// GroupMembers returns the service IDs belonging to the named devservices
+// group, or nil when no such group exists. Used by scenario apply to bring
+// a domain online before restarting its services.
+func (m *Manager) GroupMembers(name string) []string {
+	if services, ok := m.cfg.Groups[name]; ok {
+		return append([]string(nil), services...)
+	}
+	return nil
+}
+
 // withLock acquires a cross-process file lock for mutation operations.
 // Prevents two concurrent kb-dev instances from starting/stopping the same services.
 func (m *Manager) withLock(fn func() *Result) *Result {

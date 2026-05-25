@@ -45,12 +45,16 @@ import { existsSync, readFileSync } from 'node:fs'
 import {
   readJsonWithDiagnostics,
   mergeWithFieldPolicy,
+  loadOverlays,
+  mergeOverlay,
+  validateProductConfig,
   type FieldMergePolicy,
 } from '@kb-labs/core-config'
 import { resolveRoots, type RootsResolution } from '@kb-labs/core-workspace'
 
 import { CONFIG_FIELD_SCOPE, type PlatformConfig } from './config.js'
 import { interpolateConfig } from './config-interpolation.js'
+import { PLATFORM_CONFIG_PRODUCT } from './schema/platform-config-schema.js'
 
 function expandPlatformDir(raw: string, projectRoot: string): string {
   let value = raw.trim()
@@ -123,6 +127,12 @@ export interface LoadPlatformConfigResult {
     ignoredProjectFields?: string[]
     /** Set when project config pointed to a different platformRoot via `platform.dir`. */
     platformDirOverride?: string
+    /**
+     * Absolute paths of overlay files applied on top of the merged config, in
+     * the order they were merged (lexicographic by file name). Empty/omitted
+     * when `.kb/overlays/` is absent.
+     */
+    overlays?: string[]
   }
 }
 
@@ -345,9 +355,35 @@ export async function loadPlatformConfig(
   )
 
   // Ensure `adapters` is always defined so callers can destructure safely.
-  const merged: PlatformConfig = {
+  let merged: PlatformConfig = {
     adapters: {},
     ...mergeResult.value,
+  }
+
+  // Apply overlay layer (`.kb/overlays/*.jsonc`) — the final, highest-priority
+  // layer. Used by e2e scenarios and ad-hoc tweaks; absent in normal projects.
+  // Overlay semantics differ from the platform↔project merge: arrays replace
+  // by default, with opt-in append via the `kb:merge` directive.
+  const overlayResult = await loadOverlays(roots.projectRoot)
+  const appliedOverlays: string[] = []
+  for (const overlay of overlayResult.overlays) {
+    merged = mergeOverlay(merged, overlay.data)
+    appliedOverlays.push(overlay.path)
+  }
+
+  // Validate the post-overlay structure. Catches gross breakage (overlay sets
+  // `adapters: "string"`) early, before the platform tries to use the config.
+  // The schema is intentionally permissive on sub-properties — it only guards
+  // the top-level shape.
+  const validation = validateProductConfig(PLATFORM_CONFIG_PRODUCT, merged)
+  if (!validation.ok) {
+    const detail =
+      validation.errors
+        ?.map((e) => `${e.instancePath || '/'}: ${e.message ?? 'invalid'}`)
+        .join('; ') ?? 'unknown validation error'
+    throw new Error(
+      `Platform config is invalid after applying overlays (${appliedOverlays.length} overlay(s)): ${detail}`,
+    )
   }
 
   // Resolve ${ENV_VAR} placeholders in string values (e.g. baseURL, urls, secrets
@@ -372,6 +408,7 @@ export async function loadPlatformConfig(
           ? mergeResult.ignoredProjectFields
           : undefined,
       platformDirOverride,
+      overlays: appliedOverlays.length > 0 ? appliedOverlays : undefined,
     },
   }
 }

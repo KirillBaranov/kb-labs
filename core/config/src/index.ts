@@ -30,4 +30,7 @@ export * from './utils/fs-atomic.js';
 export { clearCaches } from './cache/fs-cache.js';
 
 // Validation API
-export { validateProductConfig } from './validation/validate-config.js';
+export { validateProductConfig, registerProductSchema } from './validation/validate-config.js';
+
+// Overlay API (`.kb/overlays/*.jsonc` deep-merge)
+export * from './overlay/index.js';
