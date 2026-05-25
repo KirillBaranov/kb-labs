@@ -102,7 +102,7 @@ export function RoadmapEntry({
                 <div className="h-1 w-20 overflow-hidden rounded-full bg-line">
                   <div className="h-full rounded-full bg-kb-text/30 transition-all duration-500" style={{ width: `${pct}%` }} />
                 </div>
-                <span className="font-mono text-[0.65rem] tabular-nums text-muted/40">{shipped}/{total}</span>
+                <span className="font-mono text-[0.65rem] tabular-nums text-muted/55 dark:text-muted/40">{shipped}/{total}</span>
               </div>
             )}
           </div>

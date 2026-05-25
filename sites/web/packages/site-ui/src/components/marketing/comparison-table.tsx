@@ -43,7 +43,7 @@ function Cell({ value, highlight }: { value: string | boolean; highlight: boolea
   if (value === '~') {
     return (
       <span className={base}>
-        <Slash className="size-3.5 text-muted/35" aria-label="Partial" />
+        <Slash className="size-3.5 text-muted/50 dark:text-muted/35" aria-label="Partial" />
       </span>
     );
   }
@@ -95,7 +95,7 @@ export function ComparisonTable({ headers, categories, highlightCol, className }
                 <tr className="border-b border-line bg-bg/40">
                   <td
                     colSpan={headers.length}
-                    className="px-5 py-2 text-[0.65rem] font-bold uppercase tracking-widest text-muted/35"
+                    className="px-5 py-2 text-[0.65rem] font-bold uppercase tracking-widest text-muted/50 dark:text-muted/35"
                   >
                     {cat.label}
                   </td>

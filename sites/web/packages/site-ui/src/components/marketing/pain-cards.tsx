@@ -26,7 +26,7 @@ function AgentGraphic() {
             <span className={cn('text-[0.62rem] font-bold', ok ? 'text-emerald-500' : 'text-red-400')}>
               {ok ? '✓' : '✗'}
             </span>
-            <span className={cn('font-mono text-[0.68rem]', ok ? 'text-muted/80' : 'text-muted/35 line-through')}>
+            <span className={cn('font-mono text-[0.68rem]', ok ? 'text-muted/80' : 'text-muted/50 dark:text-muted/35 line-through')}>
               {label}
             </span>
           </div>
@@ -86,7 +86,7 @@ function EventBusGraphic() {
         <div className="font-mono text-[0.63rem] font-semibold text-muted">EventBus</div>
         <div className="mt-1.5 flex flex-col gap-1">
           <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 font-mono text-[0.55rem] text-emerald-600/80">Redis</span>
-          <span className="rounded bg-line/40 px-1.5 py-0.5 font-mono text-[0.55rem] text-muted/35 line-through ring-1 ring-inset ring-line">Kafka</span>
+          <span className="rounded bg-line/40 px-1.5 py-0.5 font-mono text-[0.55rem] text-muted/50 dark:text-muted/35 line-through ring-1 ring-inset ring-line">Kafka</span>
         </div>
       </div>
 
@@ -100,11 +100,11 @@ function EventBusGraphic() {
       <div className="flex flex-col gap-2">
         <div className="rounded-xl border border-line bg-surface px-3 py-2 shadow-sm">
           <div className="font-mono text-[0.63rem] text-muted/70">service-b</div>
-          <div className="mt-0.5 font-mono text-[0.58rem] text-muted/40">on("user.created")</div>
+          <div className="mt-0.5 font-mono text-[0.58rem] text-muted/55 dark:text-muted/40">on("user.created")</div>
         </div>
         <div className="rounded-xl border border-line bg-surface px-3 py-2 shadow-sm">
           <div className="font-mono text-[0.63rem] text-muted/70">service-c</div>
-          <div className="mt-0.5 font-mono text-[0.58rem] text-muted/40">on("user.created")</div>
+          <div className="mt-0.5 font-mono text-[0.58rem] text-muted/55 dark:text-muted/40">on("user.created")</div>
         </div>
       </div>
     </div>

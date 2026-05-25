@@ -13,6 +13,7 @@ import {
   DotPattern,
   Eyebrow,
   GradientText,
+  LabelValueTable,
   MockupFrame,
   Section,
   Tabs,
@@ -164,14 +165,7 @@ export default async function CodeIntelligencePage({ params }: Props) {
               </AnimateOnScroll>
 
               <AnimateOnScroll delay={80}>
-                <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm divide-y divide-line">
-                  {indexTable.map(({ label, value }) => (
-                    <div key={label} className="flex items-baseline gap-4 px-5 py-3.5">
-                      <span className="w-[10rem] flex-shrink-0 whitespace-nowrap text-[0.65rem] font-bold uppercase tracking-wider text-muted/45 dark:text-muted/35">{label}</span>
-                      <span className="text-sm text-muted/80 dark:text-muted/70">{value}</span>
-                    </div>
-                  ))}
-                </div>
+                <LabelValueTable items={indexTable} valueClassName="text-muted/80 dark:text-muted/70" />
               </AnimateOnScroll>
             </div>
           </Container>
@@ -267,14 +261,7 @@ export default async function CodeIntelligencePage({ params }: Props) {
               </AnimateOnScroll>
 
               <AnimateOnScroll delay={80}>
-                <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm divide-y divide-line">
-                  {agentTable.map(({ label, value }) => (
-                    <div key={label} className="flex items-baseline gap-4 px-5 py-3.5">
-                      <span className="w-[10rem] flex-shrink-0 whitespace-nowrap text-[0.65rem] font-bold uppercase tracking-wider text-muted/45 dark:text-muted/35">{label}</span>
-                      <span className="text-sm text-muted/80 dark:text-muted/70">{value}</span>
-                    </div>
-                  ))}
-                </div>
+                <LabelValueTable items={agentTable} valueClassName="text-muted/80 dark:text-muted/70" />
               </AnimateOnScroll>
             </div>
           </Container>

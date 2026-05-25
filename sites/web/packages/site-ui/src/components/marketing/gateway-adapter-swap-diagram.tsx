@@ -142,7 +142,7 @@ export function GatewayAdapterSwapDiagram({ className }: GatewayAdapterSwapDiagr
       {/* Gateway box */}
       <div style={fad(visible)} className="rounded-2xl border border-accent/30 bg-accent/[0.04] px-5 py-3.5 text-center">
         <span className="font-mono text-sm font-bold text-kb-text">Gateway</span>
-        <span className="ml-2 font-mono text-sm text-muted/40">:4000</span>
+        <span className="ml-2 font-mono text-sm text-muted/55 dark:text-muted/40">:4000</span>
       </div>
 
       {/* Connector ↓ */}
@@ -163,7 +163,7 @@ export function GatewayAdapterSwapDiagram({ className }: GatewayAdapterSwapDiagr
               )}
             >
               {/* Adapter name */}
-              <span className="w-[5.5rem] flex-shrink-0 font-mono text-[0.68rem] text-muted/45">
+              <span className="w-[5.5rem] flex-shrink-0 font-mono text-[0.68rem] text-muted/60 dark:text-muted/45">
                 {adapter.name}
               </span>
 
