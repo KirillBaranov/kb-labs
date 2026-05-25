@@ -252,7 +252,7 @@ export default async function ObservabilityPage({ params }: Props) {
                 <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm divide-y divide-line">
                   {backendsTable.map(({ label, value }) => (
                     <div key={label} className="flex items-baseline gap-4 px-5 py-3.5">
-                      <span className="flex-shrink-0 whitespace-nowrap text-[0.65rem] font-bold uppercase tracking-wider text-muted/35">{label}</span>
+                      <span className="flex-shrink-0 whitespace-nowrap text-[0.65rem] font-bold uppercase tracking-wider text-muted/50 dark:text-muted/35">{label}</span>
                       <span className="text-sm text-muted/70">{value}</span>
                     </div>
                   ))}
@@ -369,7 +369,7 @@ export default async function ObservabilityPage({ params }: Props) {
                   <h2 className="mb-4 text-[clamp(1.8rem,3.5vw,2.8rem)] font-bold leading-tight tracking-tight text-kb-text">
                     {t('page.ctaTitle')}
                   </h2>
-                  <p className="mx-auto mb-8 max-w-sm text-base text-muted/60">
+                  <p className="mx-auto mb-8 max-w-sm text-base text-muted/75 dark:text-muted/60">
                     {t('page.ctaNote')}
                   </p>
                   <div className="flex flex-wrap justify-center gap-3">

@@ -119,7 +119,7 @@ export default async function AboutPage({ params }: Props) {
 
                   {/* Timeline */}
                   <div>
-                    <p className="mb-5 text-[0.65rem] font-semibold uppercase tracking-widest text-muted/40">
+                    <p className="mb-5 text-[0.65rem] font-semibold uppercase tracking-widest text-muted/55 dark:text-muted/40">
                       {t('about.page.timelineLabel')}
                     </p>
                     <div className="flex flex-col">
@@ -142,7 +142,7 @@ export default async function AboutPage({ params }: Props) {
                             </div>
                             <div className="pb-5">
                               <p className={`mb-0.5 font-mono text-[0.65rem] font-bold uppercase tracking-wider ${
-                                item.current ? 'text-accent' : 'text-muted/40'
+                                item.current ? 'text-accent' : 'text-muted/55 dark:text-muted/40'
                               }`}>
                                 {item.period}
                                 {item.current && (
@@ -204,9 +204,9 @@ export default async function AboutPage({ params }: Props) {
               <div className="mx-auto max-w-3xl text-center">
                 <p className="text-2xl font-bold leading-snug tracking-tight text-kb-text sm:text-3xl lg:text-[2.2rem]">
                   {t('about.page.pullQuote')}{' '}
-                  <span className="text-muted/40">{t('about.page.pullQuoteMuted')}</span>
+                  <span className="text-muted/60 dark:text-muted/40">{t('about.page.pullQuoteMuted')}</span>
                 </p>
-                <p className="mt-5 text-sm text-muted/50">
+                <p className="mt-5 text-sm text-muted/65 dark:text-muted/50">
                   {t('about.page.pullQuoteAuthor')}
                 </p>
               </div>

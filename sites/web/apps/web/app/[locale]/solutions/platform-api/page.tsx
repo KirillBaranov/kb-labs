@@ -282,7 +282,7 @@ export default async function PlatformApiPage({ params }: Props) {
                       const border = i < ADAPTERS.length - 1 ? 'border-b border-line' : '';
                       return (
                         <>
-                          <span key={`${label}-lbl`} className={`pl-5 pr-5 py-3.5 whitespace-nowrap text-[0.65rem] font-bold uppercase tracking-wider text-muted/35 ${border}`}>
+                          <span key={`${label}-lbl`} className={`pl-5 pr-5 py-3.5 whitespace-nowrap text-[0.65rem] font-bold uppercase tracking-wider text-muted/50 dark:text-muted/35 ${border}`}>
                             {label}
                           </span>
                           <div key={`${label}-val`} className={`py-3.5 pr-5 ${border}`}>
@@ -385,7 +385,7 @@ export default async function PlatformApiPage({ params }: Props) {
                       const border = i < CONFIG_TABLE.length - 1 ? 'border-b border-line' : '';
                       return (
                         <>
-                          <span key={`${label}-lbl`} className={`pl-5 pr-5 py-3.5 whitespace-nowrap text-[0.65rem] font-bold uppercase tracking-wider text-muted/35 ${border}`}>
+                          <span key={`${label}-lbl`} className={`pl-5 pr-5 py-3.5 whitespace-nowrap text-[0.65rem] font-bold uppercase tracking-wider text-muted/50 dark:text-muted/35 ${border}`}>
                             {label}
                           </span>
                           <span key={`${label}-val`} className={`py-3.5 pr-5 text-sm text-muted/70 ${border}`}>

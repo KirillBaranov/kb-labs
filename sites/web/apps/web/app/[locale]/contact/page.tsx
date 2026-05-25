@@ -151,12 +151,12 @@ export default async function ContactPage({ params }: Props) {
                     <div className="flex-1 rounded-2xl border border-line bg-surface p-5">
                       <p className="mb-4 text-sm text-muted/70">{t('contactLocationDesc')}</p>
                       <div className="grid grid-cols-[auto_1fr] items-baseline gap-x-3 gap-y-2 text-sm">
-                        <span className="text-muted/40">{t('contactGeneralLabel')}</span>
+                        <span className="text-muted/55 dark:text-muted/40">{t('contactGeneralLabel')}</span>
                         {/* i18n-ignore: email address */}
                         <a href="mailto:hello@kblabs.ru" className="text-kb-text hover:underline underline-offset-4">
                           hello@kblabs.ru
                         </a>
-                        <span className="text-muted/40">{t('contactSecurityLabel')}</span>
+                        <span className="text-muted/55 dark:text-muted/40">{t('contactSecurityLabel')}</span>
                         {/* i18n-ignore: email address */}
                         <a href="mailto:security@kblabs.ru" className="text-kb-text hover:underline underline-offset-4">
                           security@kblabs.ru

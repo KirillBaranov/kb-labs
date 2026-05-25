@@ -190,7 +190,7 @@ export default async function ReleaseAutomationPage({ params }: Props) {
             <div className="grid items-start gap-6 lg:grid-cols-2">
               <AnimateOnScroll delay={0}>
                 {/* i18n-ignore: terminal command label */}
-                <p className="mb-2 h-5 text-sm font-semibold uppercase tracking-widest text-muted/40">
+                <p className="mb-2 h-5 text-sm font-semibold uppercase tracking-widest text-muted/55 dark:text-muted/40">
                   kb release run
                 </p>
                 <div className="overflow-hidden rounded-2xl border border-line bg-[#0f1115]">
@@ -202,7 +202,7 @@ export default async function ReleaseAutomationPage({ params }: Props) {
 
               <AnimateOnScroll delay={80}>
                 {/* i18n-ignore: filename label */}
-                <p className="mb-2 h-5 text-sm font-semibold uppercase tracking-widest text-muted/40">
+                <p className="mb-2 h-5 text-sm font-semibold uppercase tracking-widest text-muted/55 dark:text-muted/40">
                   CHANGELOG.md · corporate-ai
                 </p>
                 <div className="overflow-hidden rounded-2xl border border-line bg-surface">
@@ -210,7 +210,7 @@ export default async function ReleaseAutomationPage({ params }: Props) {
                     <CodeBlock code={CHANGELOG_OUTPUT} language="markdown" />
                   </div>
                 </div>
-                <p className="mt-2.5 text-sm leading-relaxed text-muted/40">
+                <p className="mt-2.5 text-sm leading-relaxed text-muted/55 dark:text-muted/40">
                   {t('changelogNote', { templates: 'corporate-ai, corporate, technical, compact' })}
                 </p>
               </AnimateOnScroll>
@@ -304,16 +304,16 @@ export default async function ReleaseAutomationPage({ params }: Props) {
                         {f.cmd}
                       </code>
                       <div className="grid grid-cols-[72px_1fr] gap-x-3 gap-y-1 text-sm">
-                        <span className="text-muted/40">{t('flows.packagesLabel')}</span>
+                        <span className="text-muted/55 dark:text-muted/40">{t('flows.packagesLabel')}</span>
                         <code className="font-mono text-muted/70">{f.packages}</code>
-                        <span className="text-muted/40">{t('flows.strategyLabel')}</span>
+                        <span className="text-muted/55 dark:text-muted/40">{t('flows.strategyLabel')}</span>
                         <span className="text-muted/70">{f.strategy}</span>
                       </div>
                       <p className="mt-3 border-t border-line pt-2.5 text-sm text-muted/50">{f.note}</p>
                     </div>
                   ))}
                 </div>
-                <p className="mt-2.5 text-sm leading-relaxed text-muted/40">
+                <p className="mt-2.5 text-sm leading-relaxed text-muted/55 dark:text-muted/40">
                   {t('flows.configNote', { code: 'packages' })}
                 </p>
               </AnimateOnScroll>
@@ -327,7 +327,7 @@ export default async function ReleaseAutomationPage({ params }: Props) {
             <div className="grid gap-12 lg:grid-cols-2 lg:items-start">
               <AnimateOnScroll delay={80}>
                 {/* i18n-ignore: section label */}
-                <p className="mb-2 h-5 text-sm font-semibold uppercase tracking-widest text-muted/40">
+                <p className="mb-2 h-5 text-sm font-semibold uppercase tracking-widest text-muted/55 dark:text-muted/40">
                   checks config
                 </p>
                 <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">

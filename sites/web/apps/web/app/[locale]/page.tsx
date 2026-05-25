@@ -175,7 +175,7 @@ export default async function HomePage({ params }: Props) {
                   variant="card"
                   contentClassName="h-[460px]"
                   extra={
-                    <span className="font-mono text-[0.68rem] text-muted/40">
+                    <span className="font-mono text-[0.68rem] text-muted/55 dark:text-muted/40">
                       {/* i18n-ignore */}
                       code-review.yaml
                     </span>

@@ -110,7 +110,7 @@ export default async function CodeQualityPage({ params }: Props) {
                     const border = notLast ? 'border-b border-line' : '';
                     return (
                       <>
-                        <span key={`${p.step}-step`} className={`pl-6 pr-8 py-6 whitespace-nowrap text-[0.65rem] font-bold uppercase tracking-wider text-muted/35 ${border}`}>
+                        <span key={`${p.step}-step`} className={`pl-6 pr-8 py-6 whitespace-nowrap text-[0.65rem] font-bold uppercase tracking-wider text-muted/50 dark:text-muted/35 ${border}`}>
                           {p.step}
                         </span>
                         <code key={`${p.step}-cmd`} className={`py-6 pr-10 font-mono text-[0.8rem] font-semibold text-kb-text/85 ${border}`}>

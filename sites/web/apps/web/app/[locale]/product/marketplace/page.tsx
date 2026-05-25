@@ -62,7 +62,7 @@ export default async function MarketplacePage({ params }: Props) {
                 {t('marketplace.hero.description')}
               </p>
               {items.length > 0 && (
-                <p className="mt-3 font-mono text-[0.75rem] text-muted/40">
+                <p className="mt-3 font-mono text-[0.75rem] text-muted/55 dark:text-muted/40">
                   {t('marketplace.hero.extensionsCount', { count: items.length })}
                 </p>
               )}

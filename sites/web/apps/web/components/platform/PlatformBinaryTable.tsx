@@ -67,7 +67,7 @@ export function PlatformBinaryTable({
           <code className="font-mono text-sm text-muted/60">{item.file}</code>
         ),
         download: item.unsupported ? (
-          <span className="text-sm text-muted/30">not supported yet</span>
+          <span className="text-sm text-muted/45 dark:text-muted/30">not supported yet</span>
         ) : (
           <a
             href={`${baseUrl}/${item.file}`}
