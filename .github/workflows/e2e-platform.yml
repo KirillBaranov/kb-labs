@@ -153,8 +153,14 @@ jobs:
           # is a small, safe guard.
           (cd tools/kb-devkit && CGO_ENABLED=0 go build -o kb-devkit . && chmod +x kb-devkit)
           (cd tools/kb-dev    && CGO_ENABLED=0 go build -o kb-dev    . && chmod +x kb-dev)
+          # kb-labs-e2e-runner shells out to `kb-dev ensure --scenario` to
+          # apply test overlays; install the binary on PATH so the runner
+          # finds it on the host (the platform inside Docker has its own
+          # copy via kb-create).
+          sudo install -m 0755 tools/kb-dev/kb-dev /usr/local/bin/kb-dev
           ls -la tools/kb-devkit/kb-devkit tools/kb-dev/kb-dev
           file tools/kb-devkit/kb-devkit tools/kb-dev/kb-dev
+          kb-dev --version
 
       # ── Install + build monorepo ─────────────────────────────────────────
 

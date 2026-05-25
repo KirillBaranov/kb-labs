@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/kb-labs/dev/internal/manager"
@@ -67,30 +68,31 @@ func runEnsure(cmd *cobra.Command, args []string) error {
 // Idempotent: a repeat invocation with no overlay drift produces an empty
 // plan and skips the restart phase.
 func runEnsureScenario(cmd *cobra.Command, scenarioPath string) error {
-	cfgResult, err := FindConfig()
-	if err != nil {
-		return err
-	}
-	projectRoot := cfgResult.ProjectDir
-
-	mgr, err := loadManager()
-	if err != nil {
-		return err
-	}
-
 	var scen *scenario.Scenario
 	if scenarioPath == scenario.DefaultScenarioName {
 		scen = nil // ComputeDiff(nil) is the reset operation
 	} else {
-		// Honour relative paths against the user's cwd; absolute paths pass through.
 		path := scenarioPath
 		if !filepath.IsAbs(path) {
 			path = filepath.Clean(path)
 		}
-		scen, err = scenario.Load(path)
+		s, err := scenario.Load(path)
 		if err != nil {
 			return err
 		}
+		scen = s
+	}
+
+	// Manager is only needed when the scenario asks us to mutate services
+	// (Restarts) or to ensure a domain group alive. For pure-overlay or
+	// `--scenario default` invocations we never touch the service manager,
+	// so we can run without `devservices.yaml` — useful for CI hosts that
+	// orchestrate the platform via Docker and only need overlay file ops.
+	needsManager := scen != nil && (len(scen.Restarts) > 0 || scen.Domain != "")
+
+	projectRoot, err := resolveScenarioProjectRoot(needsManager)
+	if err != nil {
+		return err
 	}
 
 	plan, err := scenario.ComputeDiff(projectRoot, scen)
@@ -110,10 +112,19 @@ func runEnsureScenario(cmd *cobra.Command, scenarioPath string) error {
 		})
 	}
 
+	if !needsManager {
+		return emitEnsureResult(combined)
+	}
+
+	mgr, err := loadManager()
+	if err != nil {
+		return err
+	}
+
 	// Cold-start handling: ensure the scenario's domain group is alive, even
 	// when the plan was empty (e.g. files were already on disk but services
 	// were dead).
-	if scen != nil && scen.Domain != "" {
+	if scen.Domain != "" {
 		members := mgr.GroupMembers(scen.Domain)
 		if len(members) > 0 {
 			ensured := mgr.Ensure(cmd.Context(), members)
@@ -128,7 +139,7 @@ func runEnsureScenario(cmd *cobra.Command, scenarioPath string) error {
 
 	// Restart only when the overlay state actually changed. A clean
 	// re-apply is a true no-op.
-	if !plan.IsEmpty() && scen != nil && len(scen.Restarts) > 0 {
+	if !plan.IsEmpty() && len(scen.Restarts) > 0 {
 		restarted := mgr.Restart(cmd.Context(), scen.Restarts, false, false)
 		combined.Actions = append(combined.Actions, restarted.Actions...)
 		if !restarted.OK {
@@ -138,6 +149,37 @@ func runEnsureScenario(cmd *cobra.Command, scenarioPath string) error {
 	}
 
 	return emitEnsureResult(combined)
+}
+
+// resolveScenarioProjectRoot picks the project root for overlay file
+// operations. When the scenario needs the service manager (restarts or
+// domain) we go through the normal `devservices.yaml` discovery so we
+// agree on the project root with the rest of kb-dev. When it doesn't,
+// we accept a missing `devservices.yaml` and fall back to the nearest
+// directory containing `.kb/` or, finally, the current working directory.
+func resolveScenarioProjectRoot(needsManager bool) (string, error) {
+	cfg, err := FindConfig()
+	if err == nil {
+		return cfg.ProjectDir, nil
+	}
+	if needsManager {
+		return "", err
+	}
+	cwd, werr := os.Getwd()
+	if werr != nil {
+		return "", werr
+	}
+	dir := cwd
+	for {
+		if info, statErr := os.Stat(filepath.Join(dir, ".kb")); statErr == nil && info.IsDir() {
+			return dir, nil
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return cwd, nil
+		}
+		dir = parent
+	}
 }
 
 func scenarioServiceLabel(s *scenario.Scenario) string {

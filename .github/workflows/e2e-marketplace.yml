@@ -63,6 +63,7 @@ jobs:
         run: |
           (cd tools/kb-devkit && CGO_ENABLED=0 go build -o kb-devkit . && chmod +x kb-devkit)
           (cd tools/kb-dev    && CGO_ENABLED=0 go build -o kb-dev    . && chmod +x kb-dev)
+          sudo install -m 0755 tools/kb-dev/kb-dev /usr/local/bin/kb-dev
 
       # ── Install + build monorepo ─────────────────────────────────────────
 
