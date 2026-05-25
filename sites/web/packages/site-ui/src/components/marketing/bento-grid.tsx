@@ -6,11 +6,24 @@ import { cn } from '../../lib/utils';
 export interface BentoGridProps {
   children: React.ReactNode;
   className?: string;
+  /**
+   * Tight bordered variant — 1px gap acts as divider line,
+   * no individual card borders needed.
+   */
+  bordered?: boolean;
 }
 
-export function BentoGrid({ children, className }: BentoGridProps) {
+export function BentoGrid({ children, className, bordered = false }: BentoGridProps) {
   return (
-    <div className={cn('grid grid-cols-1 md:grid-cols-3 gap-4', className)}>
+    <div
+      className={cn(
+        'grid grid-cols-1 md:grid-cols-3',
+        bordered
+          ? 'gap-px bg-line rounded-2xl border border-line overflow-hidden'
+          : 'gap-4',
+        className,
+      )}
+    >
       {children}
     </div>
   );
@@ -25,6 +38,8 @@ export interface BentoCardProps {
   span?: 1 | 2 | 3;
   glow?: boolean;
   glowColor?: string;
+  /** Must match parent BentoGrid bordered prop */
+  bordered?: boolean;
 }
 
 const spanClass: Record<number, string> = {
@@ -42,6 +57,7 @@ export function BentoCard({
   span = 1,
   glow = true,
   glowColor = 'rgba(12, 102, 255, 0.13)',
+  bordered = false,
 }: BentoCardProps) {
   const ref = React.useRef<HTMLDivElement>(null);
   const rafRef = React.useRef<number | null>(null);
@@ -84,17 +100,19 @@ export function BentoCard({
       onMouseLeave={handleMouseLeave}
       style={bgStyle}
       className={cn(
-        'bg-surface border border-line-strong rounded-xl p-6 flex flex-col gap-3',
-        'hover:border-accent/40 transition-[border-color] duration-200',
+        'flex flex-col gap-3',
+        bordered
+          ? 'bg-surface p-6'
+          : 'bg-surface border border-line-strong rounded-xl p-6 hover:border-accent/40 transition-[border-color] duration-200',
         spanClass[span],
-        className
+        className,
       )}
     >
       {icon && <div className="text-muted w-fit">{icon}</div>}
       <div className="flex flex-col gap-1.5">
         <h3 className="m-0 text-base font-semibold leading-snug text-kb-text">{title}</h3>
         {description && (
-          <p className="m-0 text-sm leading-relaxed text-muted">{description}</p>
+          <p className="m-0 text-sm leading-relaxed text-muted/60">{description}</p>
         )}
       </div>
       {children && <div className="flex-1">{children}</div>}
