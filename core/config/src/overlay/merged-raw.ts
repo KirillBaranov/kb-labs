@@ -1,22 +1,20 @@
 /**
  * @module @kb-labs/core/config/overlay/merged-raw
  *
- * Overlay-aware raw config reader. Returns the project's `kb.config.*`
- * deep-merged with `.kb/overlays/*.jsonc` overlays.
+ * Overlay-aware raw config reader.
  *
- * Use this when a plugin needs to read its own section from the project
- * config and wants to honor scenario overlays applied via
- * `kb-dev ensure --scenario`. Plugins that consume `loadPlatformConfig`
- * already get this for free — this helper exists for plugins that read
- * their own section (e.g. `gateway`, `mind`) bypassing the platform
- * loader.
+ * Returns the effective raw config seen by a plugin reading its own section
+ * directly (bypassing `loadPlatformConfig`). The three layers, deep-merged
+ * with `mergeOverlay`:
  *
- * Semantics match the platform loader:
- *   - base = project `kb.config.json` / `kb.config.jsonc` (whichever exists)
- *   - overlays = `.kb/overlays/*.jsonc`, lex-sorted, applied with
- *     `mergeOverlay` (arrays replace by default, `kb:merge: append` honoured)
+ *   1. `platformRoot/.kb/kb.config.*`  (optional baseline; installed mode)
+ *   2. `projectRoot/.kb/kb.config.*`   (project layer)
+ *   3. `projectRoot/.kb/overlays/*.jsonc`  (scenario overlays; lex-sorted)
  *
- * Returns `null` when neither a project config nor any overlay file exists.
+ * The layered merge lives here, in core-config, so that no plugin has to
+ * re-implement platform↔project resolution alongside overlay handling.
+ *
+ * Returns `null` only when none of the three layers contributed anything.
  */
 
 import { promises as fsp } from 'node:fs';
@@ -27,7 +25,7 @@ import type { Diagnostic } from '../types/index.js';
 import { loadOverlays } from './loader.js';
 import { mergeOverlay } from './merge.js';
 
-const PROJECT_CONFIG_CANDIDATES = [
+const CONFIG_CANDIDATES = [
   path.join('.kb', 'kb.config.jsonc'),
   path.join('.kb', 'kb.config.json'),
   'kb.config.jsonc',
@@ -35,8 +33,10 @@ const PROJECT_CONFIG_CANDIDATES = [
 ] as const;
 
 export interface MergedRawConfigResult {
-  /** Effective merged data (project config + overlays). */
+  /** Effective merged data (platform ← project ← overlays). */
   data: Record<string, unknown>;
+  /** Absolute path to the platform config file, if one was loaded. */
+  platformConfigPath?: string;
   /** Absolute path to the project config file, if one was loaded. */
   projectConfigPath?: string;
   /** Absolute paths of overlays applied, in merge order. */
@@ -45,9 +45,19 @@ export interface MergedRawConfigResult {
   diagnostics: Diagnostic[];
 }
 
-async function findProjectConfig(projectRoot: string): Promise<string | undefined> {
-  for (const rel of PROJECT_CONFIG_CANDIDATES) {
-    const full = path.join(projectRoot, rel);
+export interface ReadMergedRawConfigOptions {
+  /**
+   * Optional platform installation root. When set and distinct from
+   * `projectRoot`, its `kb.config.*` is read first and used as the
+   * deep-merge baseline. Overlays are *not* read from this root —
+   * overlays are a project-local concept.
+   */
+  platformRoot?: string;
+}
+
+async function findConfigInRoot(root: string): Promise<string | undefined> {
+  for (const rel of CONFIG_CANDIDATES) {
+    const full = path.join(root, rel);
     try {
       await fsp.access(full);
       return full;
@@ -58,46 +68,64 @@ async function findProjectConfig(projectRoot: string): Promise<string | undefine
   return undefined;
 }
 
+async function readObjectAtRoot(
+  root: string,
+  diagnostics: Diagnostic[],
+): Promise<{ path?: string; data: Record<string, unknown> }> {
+  const configPath = await findConfigInRoot(root);
+  if (!configPath) {
+    return { data: {} };
+  }
+  const read = await readJsonWithDiagnostics<unknown>(configPath);
+  diagnostics.push(...read.diagnostics);
+  if (!read.ok) {
+    return { data: {} };
+  }
+  const data = read.data;
+  if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+    diagnostics.push({
+      level: 'error',
+      code: 'CONFIG_NOT_OBJECT',
+      message: `Config must be a JSON object at top level: ${configPath}`,
+    });
+    return { path: configPath, data: {} };
+  }
+  return { path: configPath, data: data as Record<string, unknown> };
+}
+
 /**
- * Read the project's `kb.config.*` and apply `.kb/overlays/*.jsonc` on top.
- *
- * Returns `null` only when neither the project config nor any overlay exists.
- * When the project config is missing but overlays are present, returns the
- * overlay merge starting from an empty base.
+ * Read the effective raw config, deep-merged across platform → project →
+ * project overlays. See module doc for layering details.
  */
-export async function readMergedRawConfig(projectRoot: string): Promise<MergedRawConfigResult | null> {
+export async function readMergedRawConfig(
+  projectRoot: string,
+  options: ReadMergedRawConfigOptions = {},
+): Promise<MergedRawConfigResult | null> {
   const diagnostics: Diagnostic[] = [];
 
-  const configPath = await findProjectConfig(projectRoot);
-  let base: Record<string, unknown> = {};
-  let projectConfigPath: string | undefined;
+  const usePlatform =
+    !!options.platformRoot && options.platformRoot !== projectRoot;
 
-  if (configPath) {
-    const read = await readJsonWithDiagnostics<unknown>(configPath);
-    diagnostics.push(...read.diagnostics);
-    if (read.ok) {
-      const data = read.data;
-      if (typeof data === 'object' && data !== null && !Array.isArray(data)) {
-        base = data as Record<string, unknown>;
-        projectConfigPath = configPath;
-      } else {
-        diagnostics.push({
-          level: 'error',
-          code: 'CONFIG_NOT_OBJECT',
-          message: `Project config must be a JSON object at top level: ${configPath}`,
-        });
-      }
-    }
-  }
+  const platformLayer = usePlatform
+    ? await readObjectAtRoot(options.platformRoot!, diagnostics)
+    : { data: {} as Record<string, unknown> };
+  const projectLayer = await readObjectAtRoot(projectRoot, diagnostics);
 
   const overlayResult = await loadOverlays(projectRoot);
   diagnostics.push(...overlayResult.diagnostics);
 
-  if (!configPath && overlayResult.overlays.length === 0) {
+  const nothingFound =
+    !platformLayer.path &&
+    !projectLayer.path &&
+    overlayResult.overlays.length === 0;
+  if (nothingFound) {
     return null;
   }
 
-  let merged: Record<string, unknown> = base;
+  let merged: Record<string, unknown> = mergeOverlay(
+    platformLayer.data,
+    projectLayer.data,
+  );
   const overlayPaths: string[] = [];
   for (const overlay of overlayResult.overlays) {
     merged = mergeOverlay(merged, overlay.data);
@@ -106,7 +134,8 @@ export async function readMergedRawConfig(projectRoot: string): Promise<MergedRa
 
   return {
     data: merged,
-    projectConfigPath,
+    platformConfigPath: platformLayer.path,
+    projectConfigPath: projectLayer.path,
     overlayPaths,
     diagnostics,
   };

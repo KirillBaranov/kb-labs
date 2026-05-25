@@ -95,4 +95,62 @@ describe('readMergedRawConfig', () => {
     expect(res!.diagnostics.some(d => d.code === 'CONFIG_NOT_OBJECT')).toBe(true);
     expect(res!.data).toEqual({});
   });
+
+  it('deep-merges platform → project → overlays when platformRoot is provided', async () => {
+    const projectRoot = path.join(tmp, 'project');
+    const platformRoot = path.join(tmp, 'platform');
+    await fsp.mkdir(path.join(platformRoot, '.kb'), { recursive: true });
+    await fsp.writeFile(
+      path.join(platformRoot, '.kb', 'kb.config.json'),
+      JSON.stringify({
+        gateway: { port: 4000, upstreams: { rest: { url: 'http://rest' } } },
+      }),
+    );
+    await writeProjectConfig(
+      projectRoot,
+      JSON.stringify({ gateway: { staticTokens: { 'dev-token': { hostId: 'x' } } } }),
+    );
+    await writeOverlay(
+      projectRoot,
+      'pressure.jsonc',
+      JSON.stringify({ gateway: { pressure: { enabled: true } } }),
+    );
+
+    const res = await readMergedRawConfig(projectRoot, { platformRoot });
+    expect(res).not.toBeNull();
+    expect(res!.data).toEqual({
+      gateway: {
+        port: 4000,
+        upstreams: { rest: { url: 'http://rest' } },
+        staticTokens: { 'dev-token': { hostId: 'x' } },
+        pressure: { enabled: true },
+      },
+    });
+    expect(res!.platformConfigPath).toBe(path.join(platformRoot, '.kb', 'kb.config.json'));
+    expect(res!.projectConfigPath).toBe(path.join(projectRoot, '.kb', 'kb.config.json'));
+    expect(res!.overlayPaths).toHaveLength(1);
+  });
+
+  it('ignores platformRoot when it equals projectRoot (no double-merge)', async () => {
+    await writeProjectConfig(tmp, '{"gateway":{"port":4000}}');
+    const res = await readMergedRawConfig(tmp, { platformRoot: tmp });
+    expect(res!.data).toEqual({ gateway: { port: 4000 } });
+    expect(res!.platformConfigPath).toBeUndefined();
+    expect(res!.projectConfigPath).toBe(path.join(tmp, '.kb', 'kb.config.json'));
+  });
+
+  it('overlays only ever come from projectRoot, not platformRoot', async () => {
+    const projectRoot = path.join(tmp, 'project');
+    const platformRoot = path.join(tmp, 'platform');
+    await fsp.mkdir(path.join(platformRoot, '.kb', 'overlays'), { recursive: true });
+    await fsp.writeFile(
+      path.join(platformRoot, '.kb', 'overlays', 'leak.jsonc'),
+      '{"gateway":{"port":9999}}',
+    );
+    await writeProjectConfig(projectRoot, '{"gateway":{"port":4000}}');
+
+    const res = await readMergedRawConfig(projectRoot, { platformRoot });
+    expect(res!.data).toEqual({ gateway: { port: 4000 } });
+    expect(res!.overlayPaths).toEqual([]);
+  });
 });

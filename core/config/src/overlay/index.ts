@@ -13,4 +13,5 @@ export {
 export {
   readMergedRawConfig,
   type MergedRawConfigResult,
+  type ReadMergedRawConfigOptions,
 } from './merged-raw.js';
