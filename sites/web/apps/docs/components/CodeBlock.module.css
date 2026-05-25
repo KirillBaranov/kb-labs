@@ -3,8 +3,8 @@
   margin: 1.25rem 0;
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid #27272a;
-  background: #22272e; /* matches github-dark-dimmed */
+  border: 1px solid var(--code-block-border);
+  background: var(--code-block-bg);
 }
 
 .toolbar {
@@ -13,8 +13,8 @@
   justify-content: space-between;
   height: 36px;
   padding: 0 0.5rem 0 0.875rem;
-  background: #1c2128;
-  border-bottom: 1px solid #2d333b;
+  background: var(--code-block-toolbar-bg);
+  border-bottom: 1px solid var(--code-block-toolbar-border);
 }
 
 .lang {
@@ -22,7 +22,7 @@
   font-weight: 600;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #768390;
+  color: var(--code-block-lang);
   font-family: 'Geist Mono', 'SF Mono', 'Fira Code', monospace;
 }
 
@@ -32,10 +32,10 @@
   gap: 0.35rem;
   height: 26px;
   padding: 0 0.625rem;
-  border: 1px solid #2d333b;
+  border: 1px solid var(--code-block-btn-border);
   border-radius: 6px;
   background: transparent;
-  color: #adbac7;
+  color: var(--code-block-btn);
   font-size: 0.72rem;
   font-family: inherit;
   cursor: pointer;
@@ -44,21 +44,21 @@
 }
 
 .copyBtn:hover {
-  background: #2d333b;
-  color: #fff;
-  border-color: #444c56;
+  background: var(--code-block-btn-hover-bg);
+  color: var(--fg);
+  border-color: var(--code-block-border);
 }
 
 .copyBtn svg {
   flex-shrink: 0;
 }
 
-/* Reset our prose `pre` styles so rehype-pretty-code's tokens render cleanly */
+/* Reset prose `pre` styles so rehype-pretty-code tokens render cleanly */
 .pre {
   margin: 0 !important;
   padding: 1rem 0 !important;
-  background: #22272e !important;
-  color: #adbac7 !important;
+  background: var(--code-block-bg) !important;
+  color: var(--fg-muted) !important;
   border: none !important;
   border-radius: 0 !important;
   font-size: 0.8125rem;
@@ -84,15 +84,15 @@
   border-left: 2px solid transparent;
 }
 
-/* Highlighted lines support (`{1,3-5}` after the lang) */
+/* Highlighted lines */
 .pre code [data-highlighted-line] {
-  background: rgba(99, 110, 123, 0.15);
-  border-left-color: #539bf5;
+  background: var(--code-block-highlight-line);
+  border-left-color: var(--code-block-highlight-bar);
 }
 
 /* Inline highlighted words */
 .pre code [data-highlighted-chars] {
-  background: rgba(99, 110, 123, 0.25);
+  background: color-mix(in oklab, var(--code-block-highlight-bar) 20%, transparent);
   border-radius: 3px;
   padding: 0 2px;
 }

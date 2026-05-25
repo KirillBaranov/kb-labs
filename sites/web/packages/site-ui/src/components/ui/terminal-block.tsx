@@ -166,7 +166,7 @@ export function TerminalBlock({
           <span className="size-3 rounded-full bg-[#febc2e]" />
           <span className="size-3 rounded-full bg-[#28c840]" />
         </div>
-        <span className="text-xs text-muted font-mono mx-auto">Terminal</span>
+        <span className="text-sm text-muted font-mono mx-auto">Terminal</span>
       </div>
       {body}
     </div>

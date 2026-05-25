@@ -4,6 +4,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
 import { Analytics } from '@/components/Analytics';
 import { CookieBanner } from '@/components/CookieBanner';
+import { ThemeApplicator } from '@/components/ThemeApplicator';
 import { ScrollReveal } from '@/components/ScrollReveal';
 import { routing } from '@/i18n/routing';
 import '../globals.css';
@@ -45,36 +46,23 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   return {
     metadataBase: new URL(SITE_URL),
-    title: {
-      default: SITE_NAME,
-      template: `%s — ${SITE_NAME}`,
-    },
+    title: { default: SITE_NAME, template: `%s — ${SITE_NAME}` },
     description: t('meta.siteDescription'),
     openGraph: {
       type: 'website',
       siteName: SITE_NAME,
-      title: {
-        default: SITE_NAME,
-        template: `%s — ${SITE_NAME}`,
-      },
+      title: { default: SITE_NAME, template: `%s — ${SITE_NAME}` },
       description: t('meta.siteDescription'),
       url: `${SITE_URL}/${locale}`,
     },
     twitter: {
       card: 'summary_large_image',
-      title: {
-        default: SITE_NAME,
-        template: `%s — ${SITE_NAME}`,
-      },
+      title: { default: SITE_NAME, template: `%s — ${SITE_NAME}` },
       description: t('meta.siteDescription'),
     },
     alternates: {
       canonical: `${SITE_URL}/${locale}`,
-      languages: {
-        ru: `${SITE_URL}/ru`,
-        en: `${SITE_URL}/en`,
-        'x-default': `${SITE_URL}/en`,
-      },
+      languages: { ru: `${SITE_URL}/ru`, en: `${SITE_URL}/en`, 'x-default': `${SITE_URL}/en` },
     },
   };
 }
@@ -86,37 +74,25 @@ const organizationSchema = {
   url: 'https://kblabs.ru',
   logo: 'https://kblabs.ru/og-image.png',
   foundingDate: '2024',
-  founder: {
-    '@type': 'Person',
-    name: 'Kirill Baranov',
-    url: 'https://k-baranov.ru',
-  },
-  sameAs: [
-    'https://github.com/KirillBaranov/kb-labs',
-    'https://www.npmjs.com/org/kb-labs',
-  ],
-  description:
-    'Open-source self-hosted platform for engineering teams: workflow engine, AI infrastructure, plugin system, and developer tooling.',
+  founder: { '@type': 'Person', name: 'Kirill Baranov', url: 'https://k-baranov.ru' },
+  sameAs: ['https://github.com/KirillBaranov/kb-labs', 'https://www.npmjs.com/org/kb-labs'],
+  description: 'Open-source self-hosted platform for engineering teams: workflow engine, AI infrastructure, plugin system, and developer tooling.',
 };
 
 export default async function LocaleLayout({ children, params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-
   const messages = await getMessages();
 
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
-        {/* Runs before hydration to prevent flash of wrong theme */}
         <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('kb-theme');var s=t||(window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light');if(s==='dark')document.documentElement.classList.add('dark')}catch(e){}})()` }} />
       </head>
       <body className={`${headingFont.variable} ${bodyFont.variable}`}>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
-        />
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }} />
         <NextIntlClientProvider messages={messages}>
+          <ThemeApplicator />
           {children}
           <Analytics locale={locale} />
           <CookieBanner />

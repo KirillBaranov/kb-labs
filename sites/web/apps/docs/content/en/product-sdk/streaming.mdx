@@ -1,0 +1,291 @@
+---
+title: "Telemetry"
+description: "The AnalyticsProxy — buffered events, unbuffered track/identify, batch flush, shutdown."
+updatedAt: "2026-04-07"
+order: 7
+---
+
+`platform.telemetry` is the fourth typed proxy in `@kb-labs/platform-client`. It's the one that differs most from the others: instead of every call being an immediate HTTP round-trip, telemetry events are **buffered** and flushed in batches to a dedicated ingestion endpoint.
+
+This page covers the two layers of the analytics proxy — unbuffered direct calls and buffered convenience methods — and when to use which.
+
+## Two layers, different endpoints
+
+The `AnalyticsProxy` exposes two distinct flows:
+
+1. **Unbuffered.** `track()` and `identify()` go through the Unified Platform API (`POST /platform/v1/analytics/{method}`). Every call is one HTTP round-trip. Use for infrequent, high-value events where you want synchronous confirmation.
+2. **Buffered.** `event()`, `metric()`, `log()` push into an in-memory buffer. The buffer flushes to `POST /telemetry/v1/ingest` every 5 seconds or when it reaches 50 events. Use for high-throughput telemetry where you don't want to block calling code on every event.
+
+Both layers are on the same `platform.telemetry` object. You can mix them in the same application.
+
+## Unbuffered methods
+
+### `track(eventName, properties?)`
+
+```ts
+await platform.telemetry.track('user.signup', {
+  plan: 'pro',
+  source: 'marketing-page',
+});
+```
+
+Posts immediately to the server. Returns when the server acknowledges. If the call fails, it throws — you can catch and retry or log the failure.
+
+Use for events that are important enough to block on:
+
+- User signups, subscription changes, critical state transitions.
+- Events that your frontend needs confirmation of before showing success.
+- Infrequent business events where the latency cost is irrelevant.
+
+### `identify(userId, traits?)`
+
+```ts
+await platform.telemetry.identify('user-123', {
+  email: 'alice@example.com',
+  plan: 'pro',
+  createdAt: '2026-01-15T10:30:00Z',
+});
+```
+
+Same characteristics as `track` — immediate, awaitable, throws on failure. Use it once per session to associate the current user with their traits.
+
+## Buffered methods
+
+### `event(type, payload?, tags?)`
+
+```ts
+platform.telemetry.event('page.viewed', {
+  path: '/dashboard',
+  referrer: 'https://google.com',
+});
+```
+
+Returns synchronously. The event is pushed into the internal buffer; it goes out to the server on the next flush. If the flush fails, `onError` in the constructor is called with the error — you don't see it directly at the call site.
+
+**No `await`.** The method is `void`, not `async`. Calling code doesn't block.
+
+### `metric(name, value, tags?)`
+
+```ts
+platform.telemetry.metric('request.duration_ms', 142, { endpoint: '/api/users' });
+```
+
+Convenience wrapper around `event('metric', { name, value }, tags)`. Use for numeric measurements.
+
+### `log(level, message, data?)`
+
+```ts
+platform.telemetry.log('info', 'User clicked button', { buttonId: 'cta-1' });
+platform.telemetry.log('error', 'Failed to load data', { error: err.message });
+```
+
+Convenience wrapper around `event('log', { level, message, ...data })`. Use for log-shaped messages you want to ship off the frontend or off a worker process.
+
+Levels: `'debug' | 'info' | 'warn' | 'error'`.
+
+## Batching configuration
+
+The batch size and flush interval are hardcoded in the constructor:
+
+- **Batch size**: 50 events. When the buffer reaches 50, it flushes immediately (without waiting for the timer).
+- **Flush interval**: 5 seconds. Every 5 seconds, whatever's in the buffer is sent.
+- **Not configurable via `KBPlatformOptions`.** The values are fixed in the current client.
+
+If you need different batching behavior (bigger batches, longer intervals, per-tenant buffers), you'd have to fork the client or wrap `platform.telemetry` with your own buffering layer. For most use cases, 50/5s is fine.
+
+## Manual flush
+
+Sometimes you want to force a flush — right before a process exits, when you've just emitted a critical event, or before you ask the user for confirmation and don't want to lose in-flight events:
+
+```ts
+await platform.telemetry.flush();
+```
+
+Returns when the current buffer has been sent (or raised an error through `onError`). It's safe to call `flush()` multiple times; concurrent flushes are serialized internally.
+
+## Shutdown
+
+The most important call. Before your process exits:
+
+```ts
+process.on('SIGTERM', async () => {
+  await platform.telemetry.shutdown();
+  // or equivalently:
+  await platform.shutdown();
+  process.exit(0);
+});
+```
+
+`shutdown()` does three things:
+
+1. **Stops the flush timer** so no new background flushes happen.
+2. **Drains the buffer** by flushing repeatedly until it's empty.
+3. **Returns** when everything has been sent (or failed via `onError`).
+
+Without `shutdown()`, any events still in the buffer at process exit are lost. For long-running servers and daemons, wire this into every shutdown path (SIGTERM, SIGINT, fatal error cleanup).
+
+## `onError` for background failures
+
+Buffered flushes happen in the background — there's no caller to throw at if they fail. The `onError` callback passed to `KBPlatform` is where those failures surface:
+
+```ts
+const platform = new KBPlatform({
+  endpoint: 'http://gateway:4000',
+  apiKey: process.env.KB_API_KEY!,
+  onError: (err) => {
+    console.error('[platform-client] telemetry flush failed:', err);
+    // Optionally: retry queue, dead-letter log, alert
+  },
+});
+```
+
+`onError` is called for:
+
+- Telemetry flush failures (network errors, 5xx responses from `/telemetry/v1/ingest`).
+- Non-critical errors that the client caught but doesn't want to throw to the caller.
+
+It is **not** called for:
+
+- Failures from direct `platform.llm.complete(...)`, `platform.cache.get(...)`, etc. Those throw normally at the call site.
+- Failures from `platform.telemetry.track(...)` or `identify(...)`. Those also throw.
+
+The distinction: `onError` is for the background/fire-and-forget path; everything else throws.
+
+## Default tags
+
+Every emitted event carries the `defaultTags` you passed to the constructor, merged with any per-call `tags`:
+
+```ts
+const platform = new KBPlatform({
+  endpoint: 'http://gateway:4000',
+  apiKey: '...',
+  defaultTags: {
+    source: 'release-tool',
+    env: 'production',
+    region: 'us-east',
+  },
+});
+
+platform.telemetry.event('release.started', { version: '1.0.0' }, {
+  // Per-call tag — merged with defaults
+  stage: 'canary',
+});
+
+// The server receives:
+// {
+//   source: 'release-tool',     // from defaultTags
+//   type: 'release.started',
+//   timestamp: '...',
+//   payload: { version: '1.0.0' },
+//   tags: {
+//     env: 'production',         // defaultTags
+//     region: 'us-east',         // defaultTags
+//     stage: 'canary',           // per-call
+//   },
+// }
+```
+
+The `source` tag is special — if you don't set it in `defaultTags.source`, the client defaults it to `'platform-client'`. Set it explicitly to something meaningful (`'my-backend'`, `'release-tool'`, `'ci-runner'`) so events are identifiable in your analytics pipeline.
+
+## `TelemetryEvent` shape
+
+The schema sent to `/telemetry/v1/ingest`:
+
+```ts
+interface TelemetryEvent {
+  source: string;              // from defaultTags.source or override
+  type: string;                // user-provided event name
+  timestamp?: string;          // ISO 8601, set by the client
+  payload?: Record<string, unknown>;
+  tags?: Record<string, string>;
+}
+```
+
+The client populates `source` and `timestamp` automatically; `type`, `payload`, and `tags` come from your calls.
+
+## Order of operations
+
+Events are flushed **in the order they were emitted**. If you call `event()` three times and then `flush()`, all three events arrive in the order they were emitted — the server doesn't reorder.
+
+However, **direct methods are NOT ordered with respect to buffered methods**. If you do:
+
+```ts
+platform.telemetry.event('step.1');
+await platform.telemetry.track('milestone');   // unbuffered, arrives immediately
+platform.telemetry.event('step.2');
+```
+
+The server might receive them in any of these orders depending on flush timing:
+
+- `milestone` → `step.1` → `step.2` (if `step.1` hadn't flushed yet)
+- `step.1` → `milestone` → `step.2` (if `step.1` was in a flushing batch)
+- `milestone` → `step.2` → `step.1` (worst case)
+
+If you need strict ordering, use only one of the two layers. For most analytics use cases, approximate ordering is fine.
+
+## Common patterns
+
+### Backend request telemetry
+
+```ts
+async function handleRequest(req, res) {
+  const start = Date.now();
+
+  try {
+    const result = await doWork(req);
+    platform.telemetry.metric('request.duration_ms', Date.now() - start, {
+      endpoint: req.path,
+      status: 'ok',
+    });
+    return result;
+  } catch (err) {
+    platform.telemetry.event('request.error', {
+      endpoint: req.path,
+      error: err.message,
+      durationMs: Date.now() - start,
+    });
+    throw err;
+  }
+}
+```
+
+### Periodic flush in a long-running service
+
+The default 5s timer already handles this. You only need explicit `flush()` before shutdown:
+
+```ts
+process.on('SIGTERM', async () => {
+  await platform.shutdown();  // flushes telemetry and stops timers
+  process.exit(0);
+});
+```
+
+### Emitting high-value events synchronously
+
+```ts
+// Important events: block on confirmation
+await platform.telemetry.track('subscription.upgraded', {
+  userId: user.id,
+  plan: 'enterprise',
+  mrr: 999,
+});
+
+// Lower-value events: fire and forget
+platform.telemetry.event('button.clicked', { buttonId: 'upgrade' });
+```
+
+## Gotchas
+
+- **Buffered events are lost on crash.** If your process crashes before a flush completes, in-flight events in the buffer are gone. For mission-critical events, use `track()` or `identify()` to force immediate delivery.
+- **`onError` only fires for background failures.** Calling-site failures throw normally. Don't expect `onError` to catch everything.
+- **Batch size and interval are fixed.** 50 and 5000ms. No public config.
+- **`flush()` is not atomic.** If the buffer has 120 events, `flush()` sends them in 3 batches of 50 (two batches of 50 + one of 20). The promise resolves when the last batch is done. Events added during the flush join the next batch.
+- **`shutdown()` is idempotent but slow.** It drains the buffer completely before returning. For very full buffers in low-bandwidth environments, this can take a while.
+- **Network failures during flush don't retry.** The client sends once; on failure, it calls `onError` with the batch and loses those events. If you need retry, implement a queue in `onError`.
+
+## What to read next
+
+- **[Overview](/product-sdk/overview)** — how telemetry fits into the broader package.
+- **[Authentication](/product-sdk/authentication)** — token scoping for multi-tenant telemetry.
+- **[Error handling](/product-sdk/errors)** — handling failures across all proxies.
+- **[Adapters → IAnalytics](/adapters/interfaces/analytics)** — the server-side adapter interface receiving these events.

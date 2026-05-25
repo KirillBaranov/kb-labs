@@ -1,0 +1,243 @@
+---
+title: "kb-monitor"
+description: "Remote observability for deployed services and infrastructure — health checks, status, logs, and exec over SSH with structured JSON output for agents."
+updatedAt: "2026-04-10"
+order: 11
+---
+
+`kb-monitor` is a standalone Go binary for remote observability of deployed services. It connects to VPS hosts over SSH and checks health, fetches status, streams logs, and runs commands inside containers — all without a sidecar agent on the server.
+
+It reads the same `.kb/deploy.yaml` as `kb-deploy`, so no additional config is needed once your deploy config is set up.
+
+## Install
+
+```bash
+curl -fsSL https://kblabs.ru/kb-monitor/install.sh | sh
+```
+
+Or download a binary directly from [GitHub Releases](https://github.com/KirillBaranov/kb-labs/releases/latest).
+
+**Build from source:**
+
+```bash
+git clone https://github.com/KirillBaranov/kb-labs
+cd kb-labs/tools/kb-monitor && make build
+```
+
+## Quick start
+
+```bash
+# Health check all deployed services
+kb-monitor health
+
+# Runtime status (uptime, image SHA) for all targets
+kb-monitor status
+
+# Infrastructure services state
+kb-monitor infra
+
+# Tail logs
+kb-monitor logs kb-labs-web --lines 100
+kb-monitor logs kb-labs-web --follow
+
+# Run a command inside a container
+kb-monitor exec kb-labs-web -- ls /app
+```
+
+## Configuration
+
+`kb-monitor` reads `.kb/deploy.yaml` from the repo root (discovered by walking up from `cwd`). It extends the deploy config with a `permissions:` block per target that controls which operations agents are allowed to perform.
+
+### Permissions
+
+```yaml
+targets:
+  kb-labs-web:
+    # ... ssh, remote, etc. ...
+    permissions:
+      logs: true       # kb-monitor logs
+      health: true     # kb-monitor health
+      exec: false      # kb-monitor exec (disabled by default)
+      rollback: true   # reserved for future rollback support
+```
+
+When `permissions:` is absent, safe defaults apply: `logs: true`, `health: true`, `exec: false`, `rollback: true`.
+
+### Infrastructure
+
+`kb-monitor infra` reads the `infrastructure:` block from `deploy.yaml` and shows state for each service:
+
+```yaml
+infrastructure:
+  qdrant:
+    type: docker-image
+    image: qdrant/qdrant:latest
+    ssh:
+      host: ${SSH_HOST}
+      user: ${SSH_USER}
+      key_env: SSH_KEY
+```
+
+No additional config is needed — infra monitoring uses the same SSH credentials as deployment.
+
+## Commands
+
+### `kb-monitor health`
+
+Check running state of all deployed application targets.
+
+```bash
+kb-monitor health                # all targets
+kb-monitor health kb-labs-web    # specific target
+kb-monitor health --json
+```
+
+```
+[ OK ] kb-labs-web           running
+[ OK ] kb-labs-docs          running
+```
+
+Multiple containers on the same host are checked in a single SSH session — one TCP connection per host regardless of how many services are on it.
+
+### `kb-monitor status`
+
+Detailed runtime status: running state, uptime, and image SHA.
+
+```bash
+kb-monitor status
+kb-monitor status kb-labs-web
+kb-monitor status --json
+```
+
+```
+    ● kb-labs-web           running  running
+      started: 2026-04-10T12:00:00Z
+      image:   sha256:abc123def456...
+
+    ● kb-labs-docs          running  running
+      started: 2026-04-10T11:30:00Z
+      image:   sha256:789xyz...
+```
+
+### `kb-monitor infra`
+
+Show runtime state of infrastructure services (Qdrant, Redis, etc.).
+
+```bash
+kb-monitor infra
+kb-monitor infra --json
+```
+
+```
+[ OK ] qdrant               running   qdrant/qdrant:latest
+[ OK ] redis                running   redis:7-alpine
+```
+
+### `kb-monitor logs`
+
+Fetch or stream logs from a deployed service.
+
+```bash
+kb-monitor logs kb-labs-web                  # last 100 lines (default)
+kb-monitor logs kb-labs-web --lines 500      # custom line count
+kb-monitor logs kb-labs-web --follow         # stream in real time (Ctrl+C to stop)
+
+kb-monitor logs kb-labs-web --json           # last N lines as JSON
+```
+
+`--follow` and `--json` are incompatible — streaming produces continuous output, not a single JSON object.
+
+Requires `permissions.logs: true` (default).
+
+### `kb-monitor exec`
+
+Run a command inside a container.
+
+```bash
+kb-monitor exec kb-labs-web -- ls /app
+kb-monitor exec kb-labs-web -- env
+kb-monitor exec kb-labs-web -- cat /app/config.json
+
+kb-monitor exec kb-labs-web --json -- ls /app
+```
+
+Requires `permissions.exec: true` (disabled by default — enable explicitly per target).
+
+## JSON contracts
+
+All commands support `--json`. One JSON object per invocation, exit 0 on success, exit 1 on tool-level error.
+
+```json
+// kb-monitor health --json
+{ "ok": true, "results": [
+  { "target": "kb-labs-web",  "status": "running" },
+  { "target": "kb-labs-docs", "status": "running" }
+]}
+
+// kb-monitor status --json
+{ "ok": true, "targets": [
+  { "service": "kb-labs-web", "running": true, "health": "running",
+    "started_at": "2026-04-10T12:00:00Z", "image_sha": "sha256:abc..." }
+]}
+
+// kb-monitor infra --json
+{ "ok": true, "services": [
+  { "name": "qdrant", "image": "qdrant/qdrant:latest", "running": true, "state": "running" },
+  { "name": "redis",  "image": "redis:7-alpine",       "running": true, "state": "running" }
+]}
+
+// kb-monitor logs --json
+{ "ok": true, "target": "kb-labs-web", "lines": "web_1  | [INFO] Server started\n..." }
+
+// kb-monitor exec --json
+{ "ok": true, "target": "kb-labs-web", "output": "dist/\nnode_modules/\n" }
+
+// SSH unreachable — target-level failure, ok still true
+{ "ok": true, "results": [
+  { "target": "kb-labs-web", "status": "unknown", "error": "dial tcp: connection refused" }
+]}
+
+// Tool-level error (config not found, exec disabled)
+{ "ok": false, "hint": "exec is disabled for target \"kb-labs-web\"" }
+```
+
+**Key distinction:**
+- SSH failure for a specific target → `ok: true`, target has `"error"` field, exit 0. The caller decides what to do.
+- Tool error (missing config, disabled permission) → `ok: false`, exit 1.
+
+## Agent usage
+
+`kb-monitor` is designed to be driven by AI agents. All commands return `ok: true` when the tool itself succeeds, even if some targets are unreachable — the agent can inspect per-target errors and decide on retry or escalation.
+
+```bash
+# Agent checks health before deciding whether to deploy
+kb-monitor health --json
+
+# Agent fetches logs after a failed deploy
+kb-monitor logs kb-labs-web --lines 200 --json
+
+# Agent inspects running environment
+kb-monitor exec kb-labs-web --json -- env
+```
+
+## How it works
+
+`kb-monitor` opens **one TCP SSH connection per host** and batches all container checks into a single SSH session using shell script joining:
+
+```bash
+docker inspect web --format {{.State.Running}} 2>/dev/null || echo false; echo ---SEP---; \
+docker inspect docs --format {{.State.Running}} 2>/dev/null || echo false; echo ---SEP---
+```
+
+This means 10 services on the same host → 1 TCP connection, 1 SSH session. No `MaxStartups` rate-limit issues, no repeated handshakes.
+
+For log streaming (`--follow`), a long-lived SSH session is held open and closed cleanly on `SIGINT`/`SIGTERM` by sending `SIGTERM` to the remote process before disconnecting.
+
+## KB Labs integration
+
+Inside KB Labs, `.kb/deploy.yaml` configures both application targets (web, docs) and infrastructure (Qdrant, Redis) with explicit permission grants per target. Agents use `kb-monitor` to verify deployments, diagnose issues, and fetch logs without needing direct VPS access.
+
+## What to read next
+
+- [kb-deploy](/services/kb-deploy) — deploy targets and manage infrastructure.
+- [Source on GitHub](https://github.com/KirillBaranov/kb-labs/tree/main/tools/kb-monitor) — Go source, issues, releases.

@@ -32,7 +32,7 @@ export function PricingCard({ name, price, note, badge, features, cta, href, fea
       )}
 
       <div className="flex flex-col gap-1">
-        <span className="text-xs font-bold uppercase tracking-[0.09em] text-muted">{name}</span>
+        <span className="text-sm font-bold uppercase tracking-[0.09em] text-muted">{name}</span>
         <div className="flex items-baseline gap-1 mt-1">
           <span className="text-[2.4rem] font-bold tracking-tight text-kb-text leading-none">{price}</span>
         </div>

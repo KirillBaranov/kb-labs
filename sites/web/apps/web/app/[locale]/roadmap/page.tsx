@@ -1,26 +1,23 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
-
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
-import s from './page.module.css';
 import { buildPageMetadata } from '@/lib/page-metadata';
+import {
+  AnimateOnScroll,
+  BorderBeam,
+  Button,
+  Container,
+  DotPattern,
+  Eyebrow,
+  GradientText,
+  RoadmapEntry,
+  Section,
+  type RoadmapStatus,
+} from '@kb-labs/web-site-ui';
 
 type Props = { params: Promise<{ locale: string }> };
-
-type Quarter = {
-  id: string;
-  label: string;
-  theme: string;
-  status: 'shipped' | 'in-progress' | 'planned' | 'exploring';
-  items: Array<{
-    title: string;
-    description: string;
-    status: 'shipped' | 'in-progress' | 'planned' | 'exploring';
-  }>;
-};
 
 export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
@@ -37,133 +34,120 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   });
 }
 
-const statusClass: Record<string, string> = {
-  shipped: s.statusShipped,
-  'in-progress': s.statusInProgress,
-  planned: s.statusPlanned,
-  exploring: s.statusExploring,
+type QuarterData = {
+  id: string;
+  quarter: string;
+  theme: string;
+  status: RoadmapStatus;
+  current?: boolean;
+  items: Array<{ title: string; description?: string; status: RoadmapStatus }>;
 };
-
-const statusLabel: Record<string, string> = {
-  shipped: 'Shipped',
-  'in-progress': 'In Progress',
-  planned: 'Planned',
-  exploring: 'Exploring',
-};
-
-function getProgress(q: Quarter): { done: number; total: number } {
-  const total = q.items.length;
-  const done = q.items.filter((i) => i.status === 'shipped').length;
-  return { done, total };
-}
 
 export default async function RoadmapPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations({ locale });
 
-  const quarters = t.raw('roadmap.quarters') as Quarter[];
+  const quarters = t.raw('roadmap.quarters') as QuarterData[];
+
+  const labels = {
+    shipped:    t('roadmap.statusShipped'),
+    inProgress: t('roadmap.statusInProgress'),
+    planned:    t('roadmap.statusPlanned'),
+    exploring:  t('roadmap.statusExploring'),
+    current:    t('roadmap.statusCurrent'),
+  };
 
   return (
     <>
       <SiteHeader />
       <main>
 
-        <section className={s.hero}>
-          <h1>{t('roadmap.hero.title')}</h1>
-          <p>{t('roadmap.hero.description')}</p>
+        {/* ── Hero ── */}
+        <section className="relative overflow-hidden border-b border-line py-20 pb-16">
+          <DotPattern className="absolute inset-0 z-0 opacity-40" />
+          <Container className="relative z-10">
+            <AnimateOnScroll>
+              <div className="mx-auto max-w-2xl text-center">
+                <Eyebrow className="mb-4">{t('roadmap.heroEyebrow')}</Eyebrow>
+                <h1 className="mb-4 text-4xl font-bold leading-tight tracking-tight text-kb-text sm:text-5xl">
+                  {t('roadmap.hero.title')}{' '}
+                  <GradientText>{t('roadmap.heroTitleHighlight')}</GradientText>
+                </h1>
+                <p className="text-lg leading-relaxed text-muted/70">
+                  {t('roadmap.hero.description')}
+                </p>
+              </div>
+            </AnimateOnScroll>
+          </Container>
         </section>
 
-        {/* ── Horizontal quarter nav ── */}
-        <nav className={s.quarterNav}>
-          <div className={s.quarterNavInner}>
-            {quarters.map((q) => {
-              const isCurrent = q.status === 'in-progress';
-              return (
+        {/* ── Quarter nav ── */}
+        <div className="sticky top-0 z-10 border-b border-line bg-bg/90 backdrop-blur">
+          <Container>
+            <nav className="flex gap-2 overflow-x-auto py-3">
+              {quarters.map((q) => (
                 <a
                   key={q.id}
                   href={`#${q.id}`}
-                  className={`${s.quarterPill} ${statusClass[q.status]} ${isCurrent ? s.quarterCurrent : ''}`}
+                  className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1 font-mono text-xs text-muted/60 transition-colors hover:text-kb-text ${q.current ? 'border-accent/30 bg-accent/5 text-accent' : ''}`}
                 >
-                  <span className={s.quarterPillLabel}>{q.label}</span>
-                  {isCurrent && <span className={s.currentDot} />}
+                  {q.current && <span className="size-1.5 rounded-full bg-accent animate-pulse" />}
+                  {q.quarter}
                 </a>
-              );
-            })}
-          </div>
-        </nav>
-
-        {/* ── Legend ── */}
-        <section className={s.legend}>
-          {(['shipped', 'in-progress', 'planned', 'exploring'] as const).map((key) => (
-            <span key={key} className={`${s.legendPill} ${statusClass[key]}`}>
-              {statusLabel[key]}
-            </span>
-          ))}
-        </section>
+              ))}
+            </nav>
+          </Container>
+        </div>
 
         {/* ── Timeline ── */}
-        <section className={s.timeline}>
-          {quarters.map((q) => {
-            const { done, total } = getProgress(q);
-            const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-            const isCurrent = q.status === 'in-progress';
+        <Section>
+          <Container>
+            <div className="pt-4 pb-8">
+              {quarters.map((q, i) => (
+                <div key={q.id} id={q.id}>
+                  <RoadmapEntry
+                    quarter={q.quarter}
+                    theme={q.theme}
+                    status={q.status}
+                    items={q.items}
+                    current={q.current}
+                    last={i === quarters.length - 1}
+                    labels={labels}
+                  />
+                </div>
+              ))}
+            </div>
+          </Container>
+        </Section>
 
-            return (
-              <div
-                key={q.id}
-                id={q.id}
-                className={`${s.quarterCard} ${isCurrent ? s.quarterCardCurrent : ''}`}
-              >
-                <div className={s.quarterHeader}>
-                  <div>
-                    <h2 className={s.quarterLabel}>
-                      {q.label}
-                      {isCurrent && <span className={s.currentBadge}>Current</span>}
-                    </h2>
-                    <span className={s.quarterTheme}>{q.theme}</span>
-                  </div>
-                  <div className={s.quarterMeta}>
-                    <span className={`${s.badge} ${statusClass[q.status]}`}>
-                      {statusLabel[q.status]}
-                    </span>
-                    {(q.status === 'shipped' || q.status === 'in-progress') && (
-                      <div className={s.progressWrap}>
-                        <div className={s.progressBar}>
-                          <div className={s.progressFill} style={{ width: `${pct}%` }} />
-                        </div>
-                        <span className={s.progressLabel}>{done}/{total}</span>
-                      </div>
-                    )}
+        {/* ── CTA ── */}
+        <Section className="bg-bg">
+          <Container>
+            <AnimateOnScroll>
+              <div className="relative overflow-hidden rounded-3xl border border-line bg-bg px-8 py-16 text-center">
+                <BorderBeam />
+                <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[360px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/[0.06] blur-[90px]" />
+                <div className="relative z-10">
+                  <h2 className="mb-3 text-3xl font-bold tracking-tight text-kb-text">
+                    {t('roadmap.cta.title')}
+                  </h2>
+                  <p className="mx-auto mb-8 max-w-lg text-base leading-relaxed text-muted/70">
+                    {t('roadmap.cta.description')}
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-3">
+                    <Button variant="primary" size="lg" href={`/${locale}/install`}>
+                      {t('roadmap.cta.startBtn')}
+                    </Button>
+                    <Button variant="secondary" size="lg" href={`/${locale}/contact`}>
+                      {t('roadmap.cta.contactBtn')}
+                    </Button>
                   </div>
                 </div>
-
-                <ul className={s.itemList}>
-                  {q.items.map((item, i) => (
-                    <li key={i} className={s.item}>
-                      <div className={s.itemTop}>
-                        <span className={s.itemTitle}>{item.title}</span>
-                        <span className={`${s.badgeSmall} ${statusClass[item.status]}`}>
-                          {statusLabel[item.status]}
-                        </span>
-                      </div>
-                      <p className={s.itemDesc}>{item.description}</p>
-                    </li>
-                  ))}
-                </ul>
               </div>
-            );
-          })}
-        </section>
-
-        <section className="final-cta-block reveal">
-          <h2>{t('roadmap.cta.title')}</h2>
-          <p>{t('roadmap.cta.description')}</p>
-          <div className="cta-row">
-            <Link className="btn primary" href={`/${locale}/install`}>{t('roadmap.cta.startBtn')}</Link>
-            <Link className="btn secondary" href={`/${locale}/contact`}>{t('roadmap.cta.contactBtn')}</Link>
-          </div>
-        </section>
+            </AnimateOnScroll>
+          </Container>
+        </Section>
 
       </main>
       <SiteFooter />
