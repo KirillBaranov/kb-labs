@@ -14,7 +14,7 @@ export type ColorScale = {
 };
 
 export const lightColors: ColorScale = {
-  bg:         { hex: '#edf0f6', rgb: '237 240 246' },
+  bg:         { hex: '#f4f5f7', rgb: '244 245 247' },
   surface:    { hex: '#ffffff', rgb: '255 255 255' },
   text:       { hex: '#0f1115', rgb: '15 17 21' },
   muted:      { hex: '#5c616d', rgb: '92 97 109' },

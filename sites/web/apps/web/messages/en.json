@@ -3326,7 +3326,7 @@
     "integrationsSection": {
       "title": "21+ adapters. Swap any vendor in config.",
       "writeAdapter": "Write your own adapter",
-      "llmNote": "OpenAI-compatible endpoint — works with any provider",
+      "llmNote": "Implement ILLM — any provider works",
       "eyebrow": "Integrations",
       "subtitle": "Every external dependency — LLM, database, vector store, cache, storage — is behind a typed contract. Change the implementation without touching your code.",
       "cats": {

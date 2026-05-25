@@ -82,11 +82,11 @@ function EventBusGraphic() {
       <div className="h-px w-4 flex-shrink-0 bg-line-strong" />
 
       {/* EventBus */}
-      <div className="flex-shrink-0 rounded-xl border border-line-strong bg-bg px-3 py-3 shadow-sm text-center">
+      <div className="flex-shrink-0 rounded-xl border border-line-strong bg-surface dark:bg-bg px-3 py-3 shadow-sm text-center">
         <div className="font-mono text-[0.63rem] font-semibold text-muted">EventBus</div>
         <div className="mt-1.5 flex flex-col gap-1">
           <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 font-mono text-[0.55rem] text-emerald-600/80">Redis</span>
-          <span className="rounded bg-bg px-1.5 py-0.5 font-mono text-[0.55rem] text-muted/35 line-through ring-1 ring-inset ring-line">Kafka</span>
+          <span className="rounded bg-line/40 px-1.5 py-0.5 font-mono text-[0.55rem] text-muted/35 line-through ring-1 ring-inset ring-line">Kafka</span>
         </div>
       </div>
 

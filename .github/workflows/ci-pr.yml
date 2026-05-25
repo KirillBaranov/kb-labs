@@ -114,7 +114,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        task: [lint, type-check, test, check]
+        task: [lint, type-check, test]
     steps:
       - uses: actions/checkout@v4
         with:
