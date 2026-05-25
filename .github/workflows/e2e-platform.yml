@@ -377,6 +377,14 @@ jobs:
           WORKFLOW_URL:    http://localhost:7778
           STATE_URL:       http://localhost:7777
           CI: "true"
+          # The e2e-runner is on the GH Actions host; the platform (and its
+          # kb-dev) lives in a Docker container. Route kb-dev calls into the
+          # container via `docker compose exec` so scenario overlays land
+          # inside /workspace/kb-e2e/.kb/overlays/ where the in-container
+          # gateway-app reads them.
+          KB_LABS_E2E_DOCKER_TARGET: platform
+          KB_LABS_E2E_DOCKER_WORKDIR: /workspace/kb-e2e
+          KB_LABS_E2E_DOCKER_E2E_HOST_PATH: /workspace/e2e-host
 
       # ── Artifacts + summary ──────────────────────────────────────────────
 

@@ -56,7 +56,9 @@ describe('loadOverlays', () => {
     const res = await loadOverlays(tmp);
     expect(res.diagnostics).toEqual([]);
     expect(res.overlays).toHaveLength(1);
-    expect(res.overlays[0].data).toEqual({ adapters: { llm: 'openai' } });
+    const overlay = res.overlays[0];
+    if (!overlay) {throw new Error('expected one overlay');}
+    expect(overlay.data).toEqual({ adapters: { llm: 'openai' } });
   });
 
   it('ignores non-.jsonc files', async () => {
