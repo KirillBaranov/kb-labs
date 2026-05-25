@@ -82,25 +82,24 @@ export type { IStorage, StorageMetadata } from "./storage.js";
 
 // Database
 export type {
-  // Shared
-  SignalOpts,
+  // SQL
+  ISQLDatabase,
+  SQLQueryResult,
+  SQLTransaction,
   // Document
   IDocumentDatabase,
-  IDocumentTransaction,
   BaseDocument,
   DocumentFilter,
   DocumentUpdate,
   FilterOperators,
   FindOptions,
-  Projection,
-  ProjectOpts,
-  IndexSpec,
-  EnsureCollectionOpts,
-  BulkOp,
-  BulkResult,
   // Key-Value
-  IKVStore,
-  SetOpts,
+  IKeyValueDatabase,
+  // Time-Series
+  ITimeSeriesDatabase,
+  TimeSeriesPoint,
+  // Provider
+  IDatabaseProvider,
 } from "./database.js";
 
 // Logger

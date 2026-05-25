@@ -15,6 +15,9 @@ export { MemoryEventBus, NoOpEventBus } from './event-bus.js';
 export { NoOpInvoke } from './invoke.js';
 export { MemoryArtifacts } from './artifacts.js';
 export {
+  NoOpSQLDatabase,
   NoOpDocumentDatabase,
-  NoOpKVStore,
+  NoOpKVDatabase,
+  NoOpTimeSeriesDatabase,
+  NoOpDatabaseProvider,
 } from './database.js';

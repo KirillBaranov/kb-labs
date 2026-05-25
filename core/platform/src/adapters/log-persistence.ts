@@ -13,7 +13,7 @@
  */
 
 import type { LogRecord, LogQuery } from "./logger";
-import type { IDocumentDatabase } from './database.js';
+import type { ISQLDatabase } from "./database";
 
 /**
  * Persistent log storage for historical queries.
@@ -248,17 +248,16 @@ export interface LogRetentionPolicy {
  */
 export interface LogPersistenceConfig {
   /**
-   * Document database backing log storage. The persistence layer writes log
-   * entries as documents into a `logs` collection — same abstraction that
-   * the rest of the platform uses for any structured data.
+   * Database adapter for storage.
+   * Must be ISQLDatabase (SQLite, PostgreSQL, etc.)
    */
-  documentDatabase: IDocumentDatabase;
+  database: ISQLDatabase;
 
   /**
-   * Collection name for logs.
+   * Table name for logs.
    * @default 'logs'
    */
-  collection?: string;
+  tableName?: string;
 
   /**
    * Batch size for bulk writes.

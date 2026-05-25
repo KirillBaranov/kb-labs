@@ -22,8 +22,8 @@ export {
   MemoryEventBus,
   NoOpEventBus,
   NoOpInvoke,
+  NoOpSQLDatabase,
   NoOpDocumentDatabase,
-  NoOpKVStore,
 } from './adapters/index.js';
 
 // Platform factory

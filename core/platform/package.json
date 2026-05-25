@@ -19,11 +19,6 @@
       "import": "./dist/adapters/index.js",
       "require": "./dist/adapters/index.cjs"
     },
-    "./adapters/contract": {
-      "types": "./dist/adapters/contract/index.d.ts",
-      "import": "./dist/adapters/contract/index.js",
-      "require": "./dist/adapters/contract/index.cjs"
-    },
     "./core": {
       "types": "./dist/core/index.d.ts",
       "import": "./dist/core/index.js",
