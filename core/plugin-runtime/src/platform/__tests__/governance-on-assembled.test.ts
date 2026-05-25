@@ -18,6 +18,7 @@ import { mockLLM, mockLogger, mockCache } from '@kb-labs/shared-testing';
 function makeMockBroker(): IResourceBroker {
   return {
     register: vi.fn(),
+    registerLimit: vi.fn(),
     enqueue: vi.fn(async () => ({
       success: true as const,
       data: { content: 'assembled-ok', usage: { promptTokens: 1, completionTokens: 1 }, model: 'gpt-4o' },
@@ -26,6 +27,10 @@ function makeMockBroker(): IResourceBroker {
       processingTime: 0,
       totalTime: 0,
     })) as unknown as IResourceBroker['enqueue'],
+    tryAcquire: vi.fn(async () => ({
+      allowed: false,
+      release: async () => {},
+    })),
     getStats: vi.fn(() => ({ resources: {}, totalRequests: 0, totalSuccess: 0, totalErrors: 0, queueSize: 0, uptime: 0 })),
     shutdown: vi.fn(async () => {}),
     isShuttingDown: vi.fn(() => false),
