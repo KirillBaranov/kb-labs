@@ -1,0 +1,35 @@
+{
+  "gateway": {
+    "port": 4000,
+    "upstreams": {
+      "rest": {
+        "url": "http://localhost:5050",
+        "prefix": "/api/v1",
+        "description": "REST API — main platform BFF (used by E2E)"
+      }
+    },
+    "staticTokens": {
+      "dev-studio-token": {
+        "hostId": "studio",
+        "namespaceId": "default"
+      }
+    },
+    "pressure": {
+      "enabled": true,
+      "perService": {
+        "rest": { "requestsPerSecond": 5, "safetyMargin": 1 }
+      },
+      "perRoute": [
+        {
+          "resource": "gateway:route:health",
+          "pathPrefix": "/health",
+          "limits": { "requestsPerSecond": 3, "safetyMargin": 1 }
+        }
+      ],
+      "perTenant": {
+        "enabled": true,
+        "limits": { "requestsPerMinute": 30, "safetyMargin": 1 }
+      }
+    }
+  }
+}
