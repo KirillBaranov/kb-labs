@@ -146,8 +146,8 @@ func TestScanFindsEntities(t *testing.T) {
 	if result.Adapters[0].ID != "test-cache" {
 		t.Errorf("adapter ID = %q, want test-cache", result.Adapters[0].ID)
 	}
-	if result.Adapters[0].Implements != "ICache" {
-		t.Errorf("adapter Implements = %q, want ICache", result.Adapters[0].Implements)
+	if !result.Adapters[0].Implements.Has("ICache") {
+		t.Errorf("adapter Implements = %v, want to include ICache", result.Adapters[0].Implements)
 	}
 
 	// Service
@@ -198,7 +198,7 @@ func TestGenerateMarketplaceLock(t *testing.T) {
 		}},
 		Adapters: []AdapterEntry{{
 			ID: "bar-cache", Version: "2.0.0", ResolvedPath: "./node_modules/bar-cache",
-			Implements: "ICache",
+			Implements: ImplementsField{"ICache"},
 		}},
 	}
 

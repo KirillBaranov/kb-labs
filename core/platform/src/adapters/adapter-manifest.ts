@@ -205,13 +205,17 @@ export interface AdapterManifest {
   type: AdapterType;
 
   /**
-   * Interface this adapter implements.
-   * Convention: PascalCase interface name (e.g., "ILogger", "ILogRingBuffer")
+   * Contracts this adapter implements.
    *
-   * This is informational - TypeScript provides compile-time type safety.
-   * No runtime type checking is performed.
+   * Single contract: `implements: 'ILogger'`.
+   * Multi-role driver: `implements: ['IDocumentDatabase', 'IKVStore']` —
+   * one package fills several platform slots (e.g. sqlite ships both a
+   * document store and a KV store on a shared connection).
+   *
+   * Convention: PascalCase interface name. Informational only — TypeScript
+   * provides compile-time type safety, no runtime type checking is performed.
    */
-  implements: string;
+  implements: string | string[];
 
   // ═══════════════════════════════════════════════════════════════════════════
   // Dependencies

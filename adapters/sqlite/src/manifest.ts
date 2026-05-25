@@ -21,9 +21,9 @@ export const manifest: AdapterManifest = {
   author: 'KB Labs Team',
   license: 'KBPL-1.1',
   type: 'core',
-  // Two roles served from one driver. Older runtimes that expect a string
-  // see the first entry; updated registry handles the array.
-  implements: ['IDocumentDatabase', 'IKVStore'] as unknown as string,
+  // Multi-role driver: one package fills both the documentDatabase and the
+  // kvStore platform slots on a shared better-sqlite3 connection.
+  implements: ['IDocumentDatabase', 'IKVStore'],
   contexts: ['workspace'],
   capabilities: {
     transactions: true,
