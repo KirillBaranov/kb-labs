@@ -152,6 +152,18 @@ jobs:
           rm -f /tmp/deploy_key
           exit $FAILED
 
+      - name: Cleanup unused images on server
+        if: steps.smoke.outcome == 'success'
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+        run: |
+          echo "$SSH_KEY" > /tmp/deploy_key && chmod 600 /tmp/deploy_key
+          ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no "${SSH_USER}@${SSH_HOST}" \
+            "docker image prune -af"
+          rm -f /tmp/deploy_key
+
       - name: Rollback on smoke failure
         if: steps.smoke.outcome == 'failure'
         env:
