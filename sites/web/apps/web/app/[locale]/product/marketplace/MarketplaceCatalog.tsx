@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, type ElementType } from 'react';
+import { useState, useMemo, type ElementType, type ChangeEvent } from 'react';
 import { useTranslations } from 'next-intl';
 import { Input } from '@kb-labs/web-site-ui';
 import { LayoutGrid, Puzzle, Plug, Monitor, ShieldCheck, Users } from 'lucide-react';
@@ -121,7 +121,7 @@ export function MarketplaceCatalog({ items, locale }: { items: MarketplaceItem[]
             type="search"
             placeholder={t('marketplace.catalog.searchPlaceholder')}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)}
             aria-label={t('marketplace.catalog.searchAriaLabel')}
             className="flex-1"
           />
