@@ -39,9 +39,11 @@ function ok(msg) {
 console.log('\n[1] Checking page.tsx files for generateMetadata / export const metadata...');
 
 const SKIP_PAGES = [
-  // Root stubs
+  // Root stubs and redirect/catch-all pages — no metadata needed
   'app/layout.tsx',
   'app/not-found.tsx',
+  'app/page.tsx',                        // docs root: redirect('/ru')
+  'app/[locale]/[...rest]/page.tsx',     // web catch-all: notFound()
 ];
 
 function checkPagesInDir(appDir, appName) {
