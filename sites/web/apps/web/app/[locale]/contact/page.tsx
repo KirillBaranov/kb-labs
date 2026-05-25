@@ -99,7 +99,7 @@ export default async function ContactPage({ params }: Props) {
                             rel={ch.external ? 'noopener noreferrer' : undefined}
                             className="text-sm text-accent hover:underline underline-offset-4"
                           >
-                            {ch.action} →
+                            {ch.action}
                           </a>
                         </GlowCard>
                       </AnimateOnScroll>
