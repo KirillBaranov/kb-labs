@@ -1,6 +1,6 @@
 {
-  "name": "@kb-labs/adapters-mongodb",
-  "description": "MongoDB adapter implementing IDocumentDatabase (permissions enforced at the platform layer, not here).",
+  "name": "@kb-labs/adapters-log-document",
+  "description": "ILogPersistence implementation backed by IDocumentDatabase (dogfooded — same abstraction the rest of the platform uses).",
   "version": "2.94.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -25,10 +25,9 @@
     "test:watch": "vitest",
     "type-check": "tsc --noEmit"
   },
-  "dependencies": {
-    "mongodb": "^6.12.0"
-  },
   "devDependencies": {
+    "@kb-labs/adapters-sqlite": "workspace:*",
+    "@kb-labs/core-platform": "workspace:*",
     "@kb-labs/devkit": "workspace:*",
     "@kb-labs/sdk": "workspace:*",
     "@types/node": "^24.3.3",
@@ -46,6 +45,7 @@
     "manifest": "./dist/manifest.js"
   },
   "peerDependencies": {
+    "@kb-labs/core-platform": "workspace:^",
     "@kb-labs/sdk": "workspace:^"
   },
   "sideEffects": false

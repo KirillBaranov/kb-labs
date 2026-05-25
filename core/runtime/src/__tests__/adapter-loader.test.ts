@@ -178,8 +178,8 @@ describe('AdapterLoader', () => {
     const loader = new AdapterLoader();
 
     const configs: Record<string, AdapterConfig> = {
-      logPersistence: { module: '@kb-labs/adapters-log-sqlite', config: {} },
-      // Missing 'db' adapter
+      logPersistence: { module: '@kb-labs/adapters-log-document', config: {} },
+      // Missing 'documentDatabase' adapter
     };
 
     const loadModule = vi.fn(async () => {
@@ -191,7 +191,7 @@ describe('AdapterLoader', () => {
           version: '1.0.0',
           type: 'extension',
           implements: 'ILogPersistence',
-          requires: { adapters: ['db'] },
+          requires: { adapters: ['documentDatabase'] },
         } as AdapterManifest,
         createAdapter: vi.fn(),
       };
@@ -199,7 +199,7 @@ describe('AdapterLoader', () => {
 
     await expect(
       loader.buildDependencyGraph(configs, loadModule)
-    ).rejects.toThrow('requires adapter "db"');
+    ).rejects.toThrow('requires adapter "documentDatabase"');
   });
 
   it('should explain runtime token vs manifest id mismatch', async () => {
@@ -281,11 +281,11 @@ describe('AdapterLoader', () => {
     const loader = new AdapterLoader();
 
     const configs: Record<string, AdapterConfig> = {
-      db: { module: '@kb-labs/adapters-sqlite', config: {} },
-      logPersistence: { module: '@kb-labs/adapters-log-sqlite', config: {} },
+      documentDatabase: { module: '@kb-labs/adapters-sqlite', config: {} },
+      logPersistence: { module: '@kb-labs/adapters-log-document', config: {} },
     };
 
-    const mockDB = { query: vi.fn() };
+    const mockDB = { find: vi.fn(), insertMany: vi.fn(), ensureCollection: vi.fn() };
     const mockPersistence = { write: vi.fn() };
 
     const loadModule = vi.fn(async (modulePath: string) => {
@@ -293,28 +293,28 @@ describe('AdapterLoader', () => {
         return {
           manifest: {
             manifestVersion: '1.0.0',
-            id: 'sqlite-db',
+            id: 'sqlite-stores',
             name: 'SQLite',
             version: '1.0.0',
             type: 'core',
-            implements: 'ISQLDatabase',
+            implements: 'IDocumentDatabase',
           } as AdapterManifest,
           createAdapter: vi.fn(() => mockDB),
         };
       }
-      if (modulePath === '@kb-labs/adapters-log-sqlite') {
+      if (modulePath === '@kb-labs/adapters-log-document') {
         return {
           manifest: {
             manifestVersion: '1.0.0',
-            id: 'log-persistence',
+            id: 'log-document',
             name: 'Log Persistence',
             version: '1.0.0',
             type: 'extension',
             implements: 'ILogPersistence',
-            requires: { adapters: [{ id: 'db', alias: 'database' }] },
+            requires: { adapters: [{ id: 'documentDatabase', alias: 'documentDatabase' }] },
           } as AdapterManifest,
           createAdapter: vi.fn((config, deps) => {
-            expect(deps.database).toBe(mockDB);
+            expect(deps.documentDatabase).toBe(mockDB);
             return mockPersistence;
           }),
         };
@@ -324,7 +324,7 @@ describe('AdapterLoader', () => {
 
     const adapters = await loader.loadAdapters(configs, loadModule);
 
-    expect(adapters.get('db')).toBe(mockDB);
+    expect(adapters.get('documentDatabase')).toBe(mockDB);
     expect(adapters.get('logPersistence')).toBe(mockPersistence);
   });
 

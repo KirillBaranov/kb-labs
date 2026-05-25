@@ -289,8 +289,14 @@ importers:
         specifier: ^3.2.4
         version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
 
-  adapters/log-ringbuffer:
+  adapters/log-document:
     devDependencies:
+      '@kb-labs/adapters-sqlite':
+        specifier: workspace:*
+        version: link:../sqlite
+      '@kb-labs/core-platform':
+        specifier: workspace:*
+        version: link:../../core/platform
       '@kb-labs/devkit':
         specifier: workspace:*
         version: link:../../infra/devkit
@@ -299,7 +305,7 @@ importers:
         version: link:../../sdk/sdk
       '@types/node':
         specifier: ^24.3.3
-        version: 24.12.2
+        version: 24.12.4
       eslint:
         specifier: ^9
         version: 9.39.4(jiti@2.6.1)
@@ -314,13 +320,10 @@ importers:
         version: 5.9.3
       vitest:
         specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.4)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
 
-  adapters/log-sqlite:
+  adapters/log-ringbuffer:
     devDependencies:
-      '@kb-labs/adapters-sqlite':
-        specifier: workspace:*
-        version: link:../sqlite
       '@kb-labs/devkit':
         specifier: workspace:*
         version: link:../../infra/devkit
@@ -627,6 +630,9 @@ importers:
         specifier: ^11.8.0
         version: 11.10.0
     devDependencies:
+      '@kb-labs/core-platform':
+        specifier: workspace:*
+        version: link:../../core/platform
       '@kb-labs/devkit':
         specifier: workspace:*
         version: link:../../infra/devkit
@@ -1651,6 +1657,9 @@ importers:
         specifier: workspace:*
         version: link:../../plugins/gateway/core
     devDependencies:
+      '@kb-labs/adapters-sqlite':
+        specifier: workspace:*
+        version: link:../../adapters/sqlite
       '@kb-labs/devkit':
         specifier: workspace:*
         version: link:../../infra/devkit
@@ -2951,12 +2960,12 @@ importers:
       '@kb-labs/adapters-fs':
         specifier: workspace:*
         version: link:../../../adapters/fs
+      '@kb-labs/adapters-log-document':
+        specifier: workspace:*
+        version: link:../../../adapters/log-document
       '@kb-labs/adapters-log-ringbuffer':
         specifier: workspace:*
         version: link:../../../adapters/log-ringbuffer
-      '@kb-labs/adapters-log-sqlite':
-        specifier: workspace:*
-        version: link:../../../adapters/log-sqlite
       '@kb-labs/adapters-openai':
         specifier: workspace:*
         version: link:../../../adapters/openai

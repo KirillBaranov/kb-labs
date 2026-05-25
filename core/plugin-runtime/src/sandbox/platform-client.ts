@@ -184,26 +184,51 @@ export async function connectToPlatform(socketPath?: string): Promise<PlatformSe
       isAvailable: async (pluginId: string, command?: string) => rpcClient!.call('invoke', 'isAvailable', [pluginId, command]),
     },
 
-    // SQL database via RPC
-    sqlDatabase: {
-      query: async (sql: string, params?: unknown[]) => rpcClient!.call('database.sql', 'query', [sql, params]),
-      transaction: async () => rpcClient!.call('database.sql', 'transaction', []),
-      close: async () => rpcClient!.call('database.sql', 'close', []),
-    },
-
-    // Document database via RPC
+    // Document database via RPC — fronts the new IDocumentDatabase contract.
+    // findStream() and transaction() are intentionally rejected: async
+    // iterators and closure callbacks cannot cross the IPC boundary. The
+    // worker should accumulate writes into a single bulkWrite() instead.
     documentDatabase: (() => {
       const svc = 'database.document';
       return {
         find: async (collection: string, filter: unknown, options?: unknown) => rpcClient!.call(svc, 'find', [collection, filter, options]),
+        findStream: () => { throw new Error('findStream() is not supported over IPC. Use bounded find({ limit }) and paginate.'); },
         findById: async (collection: string, id: string) => rpcClient!.call(svc, 'findById', [collection, id]),
+        count: async (collection: string, filter?: unknown) => rpcClient!.call(svc, 'count', [collection, filter]),
         insertOne: async (collection: string, doc: unknown) => rpcClient!.call(svc, 'insertOne', [collection, doc]),
+        insertMany: async (collection: string, docs: unknown[]) => rpcClient!.call(svc, 'insertMany', [collection, docs]),
+        updateOne: async (collection: string, filter: unknown, update: unknown, options?: unknown) => rpcClient!.call(svc, 'updateOne', [collection, filter, update, options]),
         updateMany: async (collection: string, filter: unknown, update: unknown) => rpcClient!.call(svc, 'updateMany', [collection, filter, update]),
         updateById: async (collection: string, id: string, update: unknown) => rpcClient!.call(svc, 'updateById', [collection, id, update]),
         deleteMany: async (collection: string, filter: unknown) => rpcClient!.call(svc, 'deleteMany', [collection, filter]),
         deleteById: async (collection: string, id: string) => rpcClient!.call(svc, 'deleteById', [collection, id]),
-        count: async (collection: string, filter?: unknown) => rpcClient!.call(svc, 'count', [collection, filter]),
-        close: async () => rpcClient!.call(svc, 'close', []),
+        bulkWrite: async (collection: string, ops: unknown[]) => rpcClient!.call(svc, 'bulkWrite', [collection, ops]),
+        transaction: async () => { throw new Error('transaction() is not supported over IPC. Collect writes into bulkWrite().'); },
+        ensureCollection: async (name: string, options?: unknown) => rpcClient!.call(svc, 'ensureCollection', [name, options]),
+        ping: async () => rpcClient!.call(svc, 'ping', []),
+        close: async (options?: unknown) => rpcClient!.call(svc, 'close', [options]),
+      };
+    })(),
+
+    // KV store via RPC
+    kvStore: (() => {
+      const svc = 'database.kv';
+      return {
+        get: async (key: string) => rpcClient!.call(svc, 'get', [key]),
+        getMany: async (keys: string[]) => rpcClient!.call(svc, 'getMany', [keys]),
+        set: async (key: string, value: unknown, options?: unknown) => rpcClient!.call(svc, 'set', [key, value, options]),
+        setMany: async (entries: unknown[]) => rpcClient!.call(svc, 'setMany', [entries]),
+        setIfNotExists: async (key: string, value: unknown, options?: unknown) => rpcClient!.call(svc, 'setIfNotExists', [key, value, options]),
+        delete: async (key: string) => rpcClient!.call(svc, 'delete', [key]),
+        exists: async (key: string) => rpcClient!.call(svc, 'exists', [key]),
+        cas: async (key: string, expected: unknown, next: unknown, options?: unknown) => rpcClient!.call(svc, 'cas', [key, expected, next, options]),
+        incr: async (key: string, delta?: number, options?: unknown) => rpcClient!.call(svc, 'incr', [key, delta, options]),
+        ttl: async (key: string) => rpcClient!.call(svc, 'ttl', [key]),
+        expire: async (key: string, ttlMs: number) => rpcClient!.call(svc, 'expire', [key, ttlMs]),
+        persist: async (key: string) => rpcClient!.call(svc, 'persist', [key]),
+        scan: () => { throw new Error('scan() is not supported over IPC. Use bounded getMany() with an explicit key list.'); },
+        ping: async () => rpcClient!.call(svc, 'ping', []),
+        close: async (options?: unknown) => rpcClient!.call(svc, 'close', [options]),
       };
     })(),
 

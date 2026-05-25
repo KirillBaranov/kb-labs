@@ -16,8 +16,8 @@ import { LLMProxy } from './llm-proxy.js';
 import { EmbeddingsProxy } from './embeddings-proxy.js';
 import { VectorStoreProxy } from './vector-store-proxy.js';
 import { StorageProxy } from './storage-proxy.js';
-import { SQLDatabaseProxy } from './sql-database-proxy.js';
 import { DocumentDatabaseProxy } from './document-database-proxy.js';
+import { KVStoreProxy } from './kv-store-proxy.js';
 import type { ILogger, IEventBus, IAnalytics } from '@kb-labs/core-platform';
 
 export interface CreateProxyPlatformOptions {
@@ -107,8 +107,8 @@ export async function createProxyPlatform(
   const embeddings = new EmbeddingsProxy(transport);
   const vectorStore = new VectorStoreProxy(transport);
   const storage = new StorageProxy(transport);
-  const sqlDatabase = new SQLDatabaseProxy(transport);
   const documentDatabase = new DocumentDatabaseProxy(transport);
+  const kvStore = new KVStoreProxy(transport);
 
   // Logger is NOT proxied (local or noop)
   const logger = options.logger ?? createNoopLogger();
@@ -138,8 +138,8 @@ export async function createProxyPlatform(
   platform.setAdapter('embeddings', embeddings);
   platform.setAdapter('vectorStore', vectorStore);
   platform.setAdapter('storage', storage);
-  platform.setAdapter('sqlDatabase', sqlDatabase);
   platform.setAdapter('documentDatabase', documentDatabase);
+  platform.setAdapter('kvStore', kvStore);
   platform.setAdapter('eventBus', eventBus as unknown as IEventBus);
   platform.setAdapter('analytics', analytics as unknown as IAnalytics);
 

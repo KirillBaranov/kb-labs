@@ -47,7 +47,7 @@ vi.mock('../hosts/registry.js', () => ({
 }));
 
 vi.mock('@kb-labs/gateway-core', () => ({
-  SqliteHostStore: vi.fn(),
+  HostStore: vi.fn(),
 }));
 
 vi.mock('@kb-labs/shared-http', () => ({

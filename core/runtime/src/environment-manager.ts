@@ -10,7 +10,7 @@ import type {
   EnvironmentStatusResult,
   EnvironmentLease,
 } from '@kb-labs/core-platform';
-import type { ISQLDatabase } from '@kb-labs/core-platform/adapters';
+import type { IDocumentDatabase } from '@kb-labs/core-platform/adapters';
 import { randomUUID } from 'node:crypto';
 import type { PlatformContainer } from './container.js';
 import { EnvironmentLeaseStore } from './environment-lease-store.js';
@@ -35,9 +35,9 @@ export class EnvironmentManager {
     private readonly platform: Pick<PlatformContainer, 'getAdapter' | 'logger'>,
     options: EnvironmentManagerOptions = {}
   ) {
-    const db = this.platform.getAdapter<ISQLDatabase>('sqlDatabase');
-    if (db) {
-      this.store = new EnvironmentLeaseStore(db);
+    const docs = this.platform.getAdapter<IDocumentDatabase>('documentDatabase');
+    if (docs) {
+      this.store = new EnvironmentLeaseStore(docs);
     }
 
     this.janitorIntervalMs = options.janitorIntervalMs ?? 60_000;
