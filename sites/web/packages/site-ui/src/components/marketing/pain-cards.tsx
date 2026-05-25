@@ -152,10 +152,12 @@ export interface PainItem {
 }
 
 export interface PainCardsProps {
-  items: PainItem[];
+  items?: PainItem[];
 }
 
-export function PainCards({ items }: PainCardsProps) {
+const DEFAULT_ITEMS: PainItem[] = [];
+
+export function PainCards({ items = DEFAULT_ITEMS }: PainCardsProps) {
   return (
     <div className="overflow-hidden rounded-2xl border border-line">
       {items.map((pain, i) => (
