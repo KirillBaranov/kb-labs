@@ -1,200 +1,247 @@
 /**
  * @module @kb-labs/core-platform/noop/adapters/database
- * NoOp database implementations for testing.
  *
- * These adapters throw errors when called - they exist only to satisfy
- * type requirements when database access is not configured.
+ * Default implementations used when no concrete adapter is configured.
+ *
+ * Both throw on real I/O operations — the platform still constructs them so
+ * that `platform.documentDatabase` / `platform.kvStore` always have a value
+ * and the type checker is happy. The error makes the misconfiguration
+ * obvious as soon as a plugin tries to use the adapter, rather than failing
+ * silently.
+ *
+ * `ping()` and `close()` are the exceptions: both succeed so that
+ * health-check loops and graceful shutdown work uniformly whether or not the
+ * adapter is configured.
  */
 
 import type {
-  ISQLDatabase,
-  SQLQueryResult,
-  SQLTransaction,
   IDocumentDatabase,
+  IDocumentTransaction,
   BaseDocument,
   DocumentFilter,
   DocumentUpdate,
   FindOptions,
-  IKeyValueDatabase,
-  ITimeSeriesDatabase,
-  TimeSeriesPoint,
-  IDatabaseProvider,
+  ProjectOpts,
+  SignalOpts,
+  EnsureCollectionOpts,
+  BulkOp,
+  BulkResult,
+  IKVStore,
+  SetOpts,
 } from '../../adapters/database.js';
 
-// ============================================================================
-// SQL DATABASE (NoOp)
-// ============================================================================
+const NOT_CONFIGURED_DOC = 'Document database is not configured. Set `adapters.documentDatabase` in kb.config.json.';
+const NOT_CONFIGURED_KV = 'KV store is not configured. Set `adapters.kvStore` in kb.config.json.';
 
 /**
- * NoOp SQL database - throws on all operations.
- * Used when SQL database is not configured.
- */
-export class NoOpSQLDatabase implements ISQLDatabase {
-  async query<T = unknown>(_sql: string, _params?: unknown[]): Promise<SQLQueryResult<T>> {
-    throw new Error('SQL database not configured');
-  }
-
-  async transaction(): Promise<SQLTransaction> {
-    throw new Error('SQL database not configured');
-  }
-
-  async close(): Promise<void> {
-    // NoOp - nothing to close
-  }
-}
-
-// ============================================================================
-// DOCUMENT DATABASE (NoOp)
-// ============================================================================
-
-/**
- * NoOp document database - throws on all operations.
- * Used when document database is not configured.
+ * NoOp document database — every operation throws.
+ *
+ * Plugins that don't declare `permissions.platform.database.document` should
+ * never receive a real instance, so this NoOp serves both as the default and
+ * as a guard against unintentional storage use.
  */
 export class NoOpDocumentDatabase implements IDocumentDatabase {
-  async find<T extends BaseDocument>(
+  async find<T extends BaseDocument, P = T>(
     _collection: string,
     _filter: DocumentFilter<T>,
-    _options?: FindOptions
-  ): Promise<T[]> {
-    throw new Error('Document database not configured');
+    _options?: FindOptions & ProjectOpts<T, P> & SignalOpts,
+  ): Promise<P[]> {
+    throw new Error(NOT_CONFIGURED_DOC);
   }
 
-  async findById<T extends BaseDocument>(_collection: string, _id: string): Promise<T | null> {
-    throw new Error('Document database not configured');
+  // eslint-disable-next-line require-yield
+  async *findStream<T extends BaseDocument, P = T>(
+    _collection: string,
+    _filter: DocumentFilter<T>,
+    _options?: FindOptions & ProjectOpts<T, P> & SignalOpts & { batchSize?: number },
+  ): AsyncIterable<P> {
+    throw new Error(NOT_CONFIGURED_DOC);
+  }
+
+  async findById<T extends BaseDocument>(
+    _collection: string,
+    _id: string,
+    _options?: SignalOpts,
+  ): Promise<T | null> {
+    throw new Error(NOT_CONFIGURED_DOC);
+  }
+
+  async count<T extends BaseDocument>(
+    _collection: string,
+    _filter: DocumentFilter<T>,
+    _options?: SignalOpts,
+  ): Promise<number> {
+    throw new Error(NOT_CONFIGURED_DOC);
   }
 
   async insertOne<T extends BaseDocument>(
     _collection: string,
-    _document: Omit<T, 'id' | 'createdAt' | 'updatedAt'>
+    _doc: Omit<T, 'id' | 'createdAt' | 'updatedAt'>,
+    _options?: SignalOpts,
   ): Promise<T> {
-    throw new Error('Document database not configured');
+    throw new Error(NOT_CONFIGURED_DOC);
+  }
+
+  async insertMany<T extends BaseDocument>(
+    _collection: string,
+    _docs: Array<Omit<T, 'id' | 'createdAt' | 'updatedAt'>>,
+    _options?: SignalOpts,
+  ): Promise<T[]> {
+    throw new Error(NOT_CONFIGURED_DOC);
+  }
+
+  async updateOne<T extends BaseDocument>(
+    _collection: string,
+    _filter: DocumentFilter<T>,
+    _update: DocumentUpdate<T>,
+    _options?: SignalOpts & { upsert?: boolean },
+  ): Promise<T | null> {
+    throw new Error(NOT_CONFIGURED_DOC);
   }
 
   async updateMany<T extends BaseDocument>(
     _collection: string,
     _filter: DocumentFilter<T>,
-    _update: DocumentUpdate<T>
+    _update: DocumentUpdate<T>,
+    _options?: SignalOpts,
   ): Promise<number> {
-    throw new Error('Document database not configured');
+    throw new Error(NOT_CONFIGURED_DOC);
   }
 
   async updateById<T extends BaseDocument>(
     _collection: string,
     _id: string,
-    _update: DocumentUpdate<T>
+    _update: DocumentUpdate<T>,
+    _options?: SignalOpts,
   ): Promise<T | null> {
-    throw new Error('Document database not configured');
+    throw new Error(NOT_CONFIGURED_DOC);
   }
 
-  async deleteMany<T extends BaseDocument>(_collection: string, _filter: DocumentFilter<T>): Promise<number> {
-    throw new Error('Document database not configured');
+  async deleteMany<T extends BaseDocument>(
+    _collection: string,
+    _filter: DocumentFilter<T>,
+    _options?: SignalOpts,
+  ): Promise<number> {
+    throw new Error(NOT_CONFIGURED_DOC);
   }
 
-  async deleteById(_collection: string, _id: string): Promise<boolean> {
-    throw new Error('Document database not configured');
+  async deleteById(
+    _collection: string,
+    _id: string,
+    _options?: SignalOpts,
+  ): Promise<boolean> {
+    throw new Error(NOT_CONFIGURED_DOC);
   }
 
-  async count<T extends BaseDocument>(_collection: string, _filter: DocumentFilter<T>): Promise<number> {
-    throw new Error('Document database not configured');
+  async bulkWrite<T extends BaseDocument>(
+    _collection: string,
+    _ops: Array<BulkOp<T>>,
+    _options?: SignalOpts,
+  ): Promise<BulkResult> {
+    throw new Error(NOT_CONFIGURED_DOC);
   }
 
-  async close(): Promise<void> {
-    // NoOp - nothing to close
-  }
-}
-
-// ============================================================================
-// KEY-VALUE DATABASE (NoOp)
-// ============================================================================
-
-/**
- * NoOp key-value database - throws on all operations.
- * Used when KV database is not configured.
- */
-export class NoOpKVDatabase implements IKeyValueDatabase {
-  async get(_key: string): Promise<string | null> {
-    throw new Error('Key-value database not configured');
+  async transaction<T>(_fn: (tx: IDocumentTransaction) => Promise<T>): Promise<T> {
+    throw new Error(NOT_CONFIGURED_DOC);
   }
 
-  async set(_key: string, _value: string, _ttlMs?: number): Promise<void> {
-    throw new Error('Key-value database not configured');
+  async ensureCollection(_name: string, _options?: EnsureCollectionOpts): Promise<void> {
+    throw new Error(NOT_CONFIGURED_DOC);
   }
 
-  async delete(_key: string): Promise<boolean> {
-    throw new Error('Key-value database not configured');
+  async ping(): Promise<{ ok: boolean; latencyMs: number }> {
+    return { ok: true, latencyMs: 0 };
   }
 
-  async exists(_key: string): Promise<boolean> {
-    throw new Error('Key-value database not configured');
-  }
-
-  async keys(_pattern: string): Promise<string[]> {
-    throw new Error('Key-value database not configured');
-  }
-
-  async close(): Promise<void> {
-    // NoOp - nothing to close
+  async close(_options?: { drainTimeoutMs?: number }): Promise<void> {
+    /* nothing to close */
   }
 }
 
-// ============================================================================
-// TIME-SERIES DATABASE (NoOp)
-// ============================================================================
-
 /**
- * NoOp time-series database - throws on all operations.
- * Used when time-series database is not configured.
+ * NoOp KV store — every read/write throws.
+ *
+ * Mirrors `NoOpDocumentDatabase` in spirit: the platform always has an
+ * instance; misconfiguration surfaces as an obvious error on first real use.
  */
-export class NoOpTimeSeriesDatabase implements ITimeSeriesDatabase {
-  async write(_metric: string, _point: TimeSeriesPoint): Promise<void> {
-    throw new Error('Time-series database not configured');
+export class NoOpKVStore implements IKVStore {
+  async get<T = unknown>(_key: string, _options?: SignalOpts): Promise<T | null> {
+    throw new Error(NOT_CONFIGURED_KV);
   }
 
-  async writeBatch(_metric: string, _points: TimeSeriesPoint[]): Promise<void> {
-    throw new Error('Time-series database not configured');
+  async getMany<T = unknown>(_keys: string[], _options?: SignalOpts): Promise<Array<T | null>> {
+    throw new Error(NOT_CONFIGURED_KV);
   }
 
-  async query(
-    _metric: string,
-    _startTime: number,
-    _endTime: number,
-    _tags?: Record<string, string>
-  ): Promise<TimeSeriesPoint[]> {
-    throw new Error('Time-series database not configured');
+  async set<T = unknown>(_key: string, _value: T, _options?: SetOpts): Promise<boolean> {
+    throw new Error(NOT_CONFIGURED_KV);
   }
 
-  async close(): Promise<void> {
-    // NoOp - nothing to close
-  }
-}
-
-// ============================================================================
-// DATABASE PROVIDER (NoOp)
-// ============================================================================
-
-/**
- * NoOp database provider - returns NoOp adapters for all database types.
- * Used when databases are not configured.
- */
-export class NoOpDatabaseProvider implements IDatabaseProvider {
-  async getSQLDatabase(_name: string): Promise<ISQLDatabase> {
-    return new NoOpSQLDatabase();
+  async setMany<T = unknown>(
+    _entries: Array<{ key: string; value: T; ttlMs?: number }>,
+    _options?: SignalOpts,
+  ): Promise<void> {
+    throw new Error(NOT_CONFIGURED_KV);
   }
 
-  async getDocumentDatabase(_name: string): Promise<IDocumentDatabase> {
-    return new NoOpDocumentDatabase();
+  async setIfNotExists<T = unknown>(
+    _key: string,
+    _value: T,
+    _options?: { ttlMs?: number } & SignalOpts,
+  ): Promise<boolean> {
+    throw new Error(NOT_CONFIGURED_KV);
   }
 
-  async getKeyValueDatabase(_name: string): Promise<IKeyValueDatabase> {
-    return new NoOpKVDatabase();
+  async delete(_key: string, _options?: SignalOpts): Promise<boolean> {
+    throw new Error(NOT_CONFIGURED_KV);
   }
 
-  async getTimeSeriesDatabase(_name: string): Promise<ITimeSeriesDatabase> {
-    return new NoOpTimeSeriesDatabase();
+  async exists(_key: string, _options?: SignalOpts): Promise<boolean> {
+    throw new Error(NOT_CONFIGURED_KV);
   }
 
-  async close(): Promise<void> {
-    // NoOp - nothing to close
+  async cas<T = unknown>(
+    _key: string,
+    _expected: T,
+    _next: T,
+    _options?: { ttlMs?: number } & SignalOpts,
+  ): Promise<boolean> {
+    throw new Error(NOT_CONFIGURED_KV);
+  }
+
+  async incr(
+    _key: string,
+    _delta?: number,
+    _options?: { ttlMs?: number } & SignalOpts,
+  ): Promise<number> {
+    throw new Error(NOT_CONFIGURED_KV);
+  }
+
+  async ttl(_key: string): Promise<number | null> {
+    throw new Error(NOT_CONFIGURED_KV);
+  }
+
+  async expire(_key: string, _ttlMs: number): Promise<boolean> {
+    throw new Error(NOT_CONFIGURED_KV);
+  }
+
+  async persist(_key: string): Promise<boolean> {
+    throw new Error(NOT_CONFIGURED_KV);
+  }
+
+  // eslint-disable-next-line require-yield
+  async *scan(
+    _prefix?: string,
+    _options?: { batchSize?: number } & SignalOpts,
+  ): AsyncIterable<{ key: string; value: unknown }> {
+    throw new Error(NOT_CONFIGURED_KV);
+  }
+
+  async ping(): Promise<{ ok: boolean; latencyMs: number }> {
+    return { ok: true, latencyMs: 0 };
+  }
+
+  async close(_options?: { drainTimeoutMs?: number }): Promise<void> {
+    /* nothing to close */
   }
 }
