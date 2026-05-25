@@ -17,7 +17,7 @@
 import type { FastifyRequest, FastifyReply, onRequestHookHandler, preHandlerHookHandler, onResponseHookHandler } from 'fastify';
 import type { IResourceBroker, TryAcquireResult } from '@kb-labs/core-resource-broker';
 import type { ILogger } from '@kb-labs/core-platform';
-import type { GatewayConfig, PressureConfig } from '@kb-labs/gateway-contracts';
+import type { GatewayConfig } from '@kb-labs/gateway-contracts';
 import { resolveResourceId } from './resolve.js';
 
 import './types.js';
