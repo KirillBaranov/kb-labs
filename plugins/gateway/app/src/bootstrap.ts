@@ -7,6 +7,7 @@ import { SqliteHostStore } from '@kb-labs/gateway-core';
 import { loadGatewayConfig } from './config.js';
 import { createServer } from './server.js';
 import { HostRegistry } from './hosts/registry.js';
+import { registerPressureLimits } from './pressure/index.js';
 
 export async function bootstrap(repoRoot: string = process.cwd()): Promise<void> {
   // 1. Initialize platform (loads .env + adapters from kb.config.json)
@@ -89,7 +90,15 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
   }
   const jwtConfig = { secret: jwtSecret ?? DEV_JWT_SECRET };
 
-  // 8. Create server with injected registry
+  // 8. Register HTTP pressure-control limits (ADR-0056). No-op when
+  //    `gateway.pressure` is absent or disabled in config.
+  if (platform.hasResourceBroker) {
+    registerPressureLimits(platform.resourceBroker, config.pressure, platform.logger);
+  } else {
+    logger.warn('Resource broker unavailable — pressure control disabled');
+  }
+
+  // 9. Create server with injected registry
   const server = await createServer(config, cache, platform.logger, jwtConfig, registry);
 
   // 9. Listen

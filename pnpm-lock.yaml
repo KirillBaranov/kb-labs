@@ -2981,6 +2981,9 @@ importers:
       '@kb-labs/core-registry':
         specifier: workspace:*
         version: link:../../../core/registry
+      '@kb-labs/core-resource-broker':
+        specifier: workspace:*
+        version: link:../../../core/resource-broker
       '@kb-labs/core-runtime':
         specifier: workspace:*
         version: link:../../../core/runtime

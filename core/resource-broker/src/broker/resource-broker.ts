@@ -14,6 +14,8 @@ import type {
   RateLimitBackend,
   RateLimitConfig,
   QueueItem,
+  TryAcquireOptions,
+  TryAcquireResult,
 } from '../types.js';
 import { DEFAULT_RATE_LIMIT_CONFIG, DEFAULT_RETRY_CONFIG } from '../types.js';
 import { PriorityQueue } from '../queue/priority-queue.js';
@@ -26,6 +28,8 @@ import { shouldRetry, sleep } from '../retry/retry-strategy.js';
 interface RegisteredResource {
   config: ResourceConfig;
   rateLimits: RateLimitConfig;
+  /** True when the resource was created via `registerLimit` (pressure-only, no queue). */
+  limitOnly: boolean;
   stats: {
     totalRequests: number;
     totalSuccess: number;
@@ -99,6 +103,43 @@ export class ResourceBroker implements IResourceBroker {
     this.resources.set(resource, {
       config,
       rateLimits,
+      limitOnly: false,
+      stats: {
+        totalRequests: 0,
+        totalSuccess: 0,
+        totalErrors: 0,
+        totalWaitTime: 0,
+        totalProcessingTime: 0,
+      },
+    });
+
+    this.activeProcessing.set(resource, 0);
+  }
+
+  /**
+   * Register a resource for limit-only usage (no executor, no queue).
+   *
+   * The resource can only be used via `tryAcquire`. Calls to `enqueue` on
+   * a limit-only resource resolve with `{ success: false, error }`.
+   */
+  registerLimit(resource: string, rateLimits: RateLimitConfig | string): void {
+    const resolved =
+      typeof rateLimits === 'string'
+        ? getRateLimitConfig(rateLimits)
+        : rateLimits;
+
+    this.resources.set(resource, {
+      config: {
+        rateLimits,
+        executor: async () => {
+          throw new Error(
+            `Cannot execute on limit-only resource '${resource}' ` +
+              `(registered via registerLimit)`
+          );
+        },
+      },
+      rateLimits: resolved,
+      limitOnly: true,
       stats: {
         totalRequests: 0,
         totalSuccess: 0,
@@ -143,6 +184,20 @@ export class ResourceBroker implements IResourceBroker {
       });
     }
 
+    if (registered.limitOnly) {
+      return Promise.resolve({
+        success: false,
+        error: new Error(
+          `Cannot enqueue on limit-only resource '${request.resource}' ` +
+            `(registered via registerLimit — use tryAcquire instead)`
+        ),
+        retries: 0,
+        waitTime: 0,
+        processingTime: 0,
+        totalTime: 0,
+      });
+    }
+
     // Create full request
     const fullRequest: ResourceRequest = {
       ...request,
@@ -167,6 +222,62 @@ export class ResourceBroker implements IResourceBroker {
       // Start processing if not already running
       this.processQueue();
     });
+  }
+
+  /**
+   * Atomically check and reserve rate-limit capacity without queueing.
+   *
+   * Use for HTTP-style "check + reject" pressure control. On `allowed=true`,
+   * the caller MUST invoke `result.release()` once the work is done. On
+   * `allowed=false`, `release` is a no-op so callers can use the
+   * unconditional `try { ... } finally { result.release() }` pattern.
+   *
+   * Throws if the resource has not been registered (programming error,
+   * distinct from a rate-limit decision). Returns `{ allowed: false, release: noop }`
+   * after `shutdown()`.
+   */
+  async tryAcquire(
+    resource: string,
+    opts?: TryAcquireOptions
+  ): Promise<TryAcquireResult> {
+    const noopRelease = async (): Promise<void> => {};
+
+    if (this.shuttingDown) {
+      return {
+        allowed: false,
+        release: noopRelease,
+      };
+    }
+
+    const registered = this.resources.get(resource);
+    if (!registered) {
+      throw new Error(`Resource not registered: ${resource}`);
+    }
+
+    const tokens = opts?.tokens ?? 0;
+    const result = await this.rateLimitBackend.acquire(
+      resource,
+      tokens,
+      registered.rateLimits
+    );
+
+    if (!result.allowed) {
+      return { ...result, release: noopRelease };
+    }
+
+    const currentActive = this.activeProcessing.get(resource) ?? 0;
+    this.activeProcessing.set(resource, currentActive + 1);
+
+    let released = false;
+    const release = async (): Promise<void> => {
+      if (released) {return;}
+      released = true;
+      await this.rateLimitBackend.release(resource);
+      const active = this.activeProcessing.get(resource) ?? 1;
+      this.activeProcessing.set(resource, Math.max(0, active - 1));
+    };
+
+    return { ...result, release };
   }
 
   /**

@@ -324,8 +324,41 @@ export interface ResourceStats {
 }
 
 /**
+ * Options for `IResourceBroker.tryAcquire`.
+ */
+export interface TryAcquireOptions {
+  /**
+   * Estimated tokens for this acquisition.
+   * Default: 0 — HTTP endpoints typically don't consume LLM tokens.
+   */
+  tokens?: number;
+}
+
+/**
+ * Result of `IResourceBroker.tryAcquire`. Extends `AcquireResult` with a
+ * caller-bound `release` handle.
+ *
+ * Contract:
+ * - When `allowed=true`, the caller MUST invoke `release()` once the work
+ *   is done (typically in a `finally` block).
+ * - `release()` is idempotent: multiple calls are safe.
+ * - When `allowed=false`, `release()` is a no-op so callers can use the
+ *   unconditional `try { ... } finally { result.release() }` pattern.
+ */
+export interface TryAcquireResult extends AcquireResult {
+  release: () => Promise<void>;
+}
+
+/**
  * Main resource broker interface.
  * Coordinates queues, rate limiting, and execution for all resources.
+ *
+ * Supports two patterns:
+ * - **queue + execute** — `register` + `enqueue`. For LLM, embeddings, vector
+ *   store calls where long, asynchronous work is queued and retried.
+ * - **check + reject** — `registerLimit` + `tryAcquire`. For HTTP endpoints
+ *   (webhook routers, public APIs) that need an immediate accept/reject
+ *   decision without queueing.
  */
 export interface IResourceBroker {
   /**
@@ -337,6 +370,18 @@ export interface IResourceBroker {
   register(resource: string, config: ResourceConfig): void;
 
   /**
+   * Register a resource for limit-only usage (no executor, no queue).
+   *
+   * Use together with `tryAcquire` for HTTP-style "check + reject" pressure
+   * control. Calling `enqueue` against a limit-only resource resolves with
+   * `{ success: false, error }` — it does not throw.
+   *
+   * @param resource - Resource identifier
+   * @param rateLimits - Rate limit configuration or preset name
+   */
+  registerLimit(resource: string, rateLimits: RateLimitConfig | string): void;
+
+  /**
    * Enqueue a request for execution.
    * Returns a promise that resolves when the request completes.
    *
@@ -346,6 +391,25 @@ export interface IResourceBroker {
   enqueue<T>(
     request: Omit<ResourceRequest, 'id' | 'createdAt'>
   ): Promise<ResourceResponse<T>>;
+
+  /**
+   * Atomically check and reserve rate-limit capacity without queueing.
+   * Returns immediately. Intended for HTTP endpoints that must accept or
+   * reject inbound requests synchronously.
+   *
+   * - On `allowed=true`, the caller MUST invoke `result.release()` once the
+   *   request has been served.
+   * - On `allowed=false`, `result.release()` is a no-op.
+   * - Throws if the resource has not been registered (programming error).
+   * - Returns `{ allowed: false, release: noop }` after `shutdown()`.
+   *
+   * @param resource - Resource identifier
+   * @param opts - Acquisition options (e.g., estimated tokens)
+   */
+  tryAcquire(
+    resource: string,
+    opts?: TryAcquireOptions
+  ): Promise<TryAcquireResult>;
 
   /**
    * Get broker statistics.
