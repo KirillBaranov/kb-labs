@@ -206,27 +206,25 @@ export default async function EnterprisePage({ params }: Props) {
         <Section>
           <Container>
             <AnimateOnScroll>
-              <div className="mx-auto max-w-2xl">
-                <div className="relative overflow-hidden rounded-3xl border border-line bg-surface p-10 text-center">
-                  <BorderBeam />
-                  <div className="relative z-10">
-                    <div className="mx-auto mb-5 flex size-12 items-center justify-center rounded-xl border border-line bg-bg text-muted">
-                      <MessageCircle size={22} />
-                    </div>
-                    <h2 className="mb-3 text-2xl font-bold tracking-tight text-kb-text">
-                      {t('enterprise.cta.title')}
-                    </h2>
-                    <p className="mx-auto mb-8 max-w-md text-sm leading-relaxed text-muted/60">
-                      {t('enterprise.cta.description')}
-                    </p>
-                    <div className="flex flex-wrap justify-center gap-3">
-                      <Button variant="primary" href={`/${locale}/contact`}>
-                        {t('enterprise.cta.salesBtn')}
-                      </Button>
-                      <Button variant="secondary" href="mailto:kirillBaranovJob@yandex.ru"> {/* i18n-ignore */}
-                        kirillBaranovJob@yandex.ru {/* i18n-ignore */}
-                      </Button>
-                    </div>
+              <div className="relative overflow-hidden rounded-3xl border border-line bg-bg px-8 py-16 text-center">
+                <BorderBeam />
+                <div className="relative z-10">
+                  <div className="mx-auto mb-5 flex size-12 items-center justify-center rounded-xl border border-line bg-surface text-muted">
+                    <MessageCircle size={22} />
+                  </div>
+                  <h2 className="mb-3 text-3xl font-bold tracking-tight text-kb-text">
+                    {t('enterprise.cta.title')}
+                  </h2>
+                  <p className="mx-auto mb-8 max-w-md text-base leading-relaxed text-muted/60">
+                    {t('enterprise.cta.description')}
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-3">
+                    <Button variant="primary" size="lg" href={`/${locale}/contact`}>
+                      {t('enterprise.cta.salesBtn')}
+                    </Button>
+                    <Button variant="secondary" size="lg" href="mailto:kirillBaranovJob@yandex.ru"> {/* i18n-ignore */}
+                      kirillBaranovJob@yandex.ru {/* i18n-ignore */}
+                    </Button>
                   </div>
                 </div>
               </div>

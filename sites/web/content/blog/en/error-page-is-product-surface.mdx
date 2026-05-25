@@ -1,0 +1,72 @@
+---
+title: "An error page is a product surface, not a debug screen"
+description: "5xx is shown to users who have the maximum option to leave. Treating it as a piece of temporary tech-debt is losing the moment in which you most need their trust."
+lang: en
+slug: error-page-is-product-surface
+date: '2026-05-25'
+author: KB Labs
+tag: Product
+excerpt: "An error page is the last thing a user sees before closing the tab. A default 'Internal Server Error 500' is a signal that you didn't notice this mattered. This is the kind of thing you fix once and forget."
+readTime: 4 min read
+tags:
+  - product
+  - ux
+  - infrastructure
+---
+
+3am, prod went down for four minutes. The gateway returned nginx's default page: "502 Bad Gateway" in white-on-black, monolithic heading, no trace of a brand. Someone screenshotted it and posted with the caption "KB Labs production, very polished".
+
+Fixed by morning. Too late — the screenshot already had 1,200 views.
+
+This episode is about how teams treat 5xx pages as a **technical detail to be styled someday**, and why that's a mistake.
+
+## The shallow read
+
+"Yeah, we know we should make a nice 500 page. When there's time. Right now the priority is features."
+
+Wrong categorization. The 500 page isn't cosmetics. It's part of the **product surface**, and it's shown precisely when the product **most needs trust**.
+
+## The deeper read
+
+Think about who sees a 5xx page. It's:
+
+- A user who just clicked something and didn't get an answer.
+- A customer with a report-via-your-API deadline in an hour.
+- A journalist who landed on your site for the first time from a tweet.
+- A senior engineer who is right now deciding whether to recommend you to their team.
+
+Every one of them, in that moment, has the **maximum option to leave**. If you return a monolithic "Internal Server Error 500", you're telling them: "we didn't notice this mattered." And they leave.
+
+The error page is **the last thing they see** before closing the tab or writing something about you in public. Treating it as a debug screen is ignoring the audience at the moment of peak sensitivity.
+
+## What should be on the page
+
+You don't need a monument. You need it to be visible that the team didn't forget about this moment.
+
+**Brand.** Logo, colors, typeface. Recognition is the signal "we're here, we see this."
+
+**Voice.** Not `Internal Server Error 500`. Something like:
+
+> Something broke on our side. We already know and we're fixing it. Please try again in a minute.
+
+Direct, no jargon. If you know the upstream is down, say so — don't hide behind vague "an error has occurred".
+
+**Request ID.** A short identifier the user can copy and send to support. It turns a scary moment into a useful one — the user becomes a participant in the fix instead of a victim of it.
+
+**What shouldn't be there.** No stack traces, no framework names, no `X-Powered-By`, `X-Runtime`, `X-Debug-Token` headers. That's both a security risk (attack surface map) and a signal "we don't control what we return".
+
+**API clients.** If the request has `Accept: application/json`, return JSON, not HTML. HTML in a JSON client's parser produces a second bug on top of the first one. Clean JSON with the same fields (error, message, request_id) — about five lines of nginx config.
+
+## Once, then forget
+
+The good news: this is one-time work. One HTML file, one JSON fallback, ~30 lines of nginx config with `proxy_intercept_errors on` and `error_page 500 502 503 504 = @handler`. After that your entire infrastructure automatically returns a branded page on any upstream error — gateway, web, docs, future services.
+
+Invest once and **never again** accidentally show a user nginx's black-and-white screen.
+
+## The principle
+
+> An error page is a **product surface**, not part of the debug infrastructure. It's seen by the people deciding whether to stay or leave, at the moment of peak sensitivity. Making it good costs a day. Not making it costs reputation.
+
+This is the kind of work that's easy to defer — it doesn't ship features, it doesn't move dashboard metrics. But not doing it means that every time you have a prod incident, you also turn the trust dial down on yourself, by hand.
+
+Don't give users extra reasons to write you off.

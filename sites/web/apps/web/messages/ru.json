@@ -1680,6 +1680,10 @@
             "commitPolicy": "Commit and change policy",
             "monorepo": "Monorepo dependency operations"
           }
+        },
+        "useCaseOther": {
+          "label": "Опишите свой сценарий",
+          "placeholder": "Расскажите, что автоматизируете..."
         }
       },
       "emailPlaceholder": "work@email.com"

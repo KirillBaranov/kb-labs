@@ -1,0 +1,125 @@
+---
+title: "Pressure as a platform primitive: one ResourceBroker for LLMs and HTTP"
+description: We had two ways to manage load — queue+execute for LLM calls, check+reject for HTTP. Then we noticed they were the same problem with different exhaustion strategies. Here is what collapsing them into one broker bought us.
+lang: en
+slug: resource-broker-pressure-control
+date: '2026-05-25'
+author: KB Labs
+tag: Architecture
+excerpt: "Rate-limiting LLMs and rate-limiting webhooks look like different problems. They are the same problem with different exhaustion strategies. One broker, two methods, one config plane."
+readTime: 6 min read
+tags:
+  - architecture
+  - rate-limiting
+  - gateway
+---
+
+Two scenarios. They look unrelated.
+
+**3am.** Stripe is replaying a backlog of failed webhooks at 200 requests per second. Your `/webhooks/stripe` endpoint writes to a queue and returns 200. But the queue lives behind an auth service that is itself throttling. Requests pile up, sockets exhaust, Stripe gives up on this server and ships the load to a sibling region. You wake up to a Slack ping.
+
+**Daytime.** Your LLM batch job has been quietly waiting in an internal queue for an hour. It hit the OpenAI TPM limit, the broker is doing exponential backoff, retries are transparent. Nothing pages. Everything is fine. Eventually the batch finishes.
+
+Same root cause — we are pushing more than the downstream wants. Two completely different code paths, two different config files, two different dashboards. When something goes wrong on one side, the other side has no opinion. When you want to add a per-tenant cap that covers *both*, there is nowhere obvious to put it.
+
+This is the shape of most platforms after a year. We were halfway to building exactly that, and stopped.
+
+## The insight
+
+Both scenarios ask the same question — *is there capacity on this resource right now?* — and the answer machinery is identical: a counter against a window, with a backend that can be in-memory or distributed. The thing that differs is what you do with a "no":
+
+- **queue+execute** — wait. The caller has time. Slot will be free eventually, retry transparently. This is the LLM/embeddings case.
+- **check+reject** — return `429`, optionally with `Retry-After`. The caller (an HTTP client) has its own circuit breaker. Let them retry on their own terms. This is the webhook case.
+
+One abstraction, two exhaustion strategies. Not two abstractions.
+
+## What the API looks like
+
+`IResourceBroker` got two new methods that sit alongside the existing `register`/`enqueue`:
+
+```typescript
+interface IResourceBroker {
+  // queue+execute (LLMs, embeddings, vector store) — unchanged
+  register(resource: string, config: ResourceConfig): void;
+  enqueue<T>(request: ResourceRequest): Promise<ResourceResponse<T>>;
+
+  // check+reject (HTTP, webhooks, anything sync)
+  registerLimit(resource: string, rateLimits: RateLimitConfig): void;
+  tryAcquire(resource: string, opts?): Promise<TryAcquireResult>;
+}
+
+interface TryAcquireResult {
+  allowed: boolean;
+  waitTimeMs?: number;
+  release: () => Promise<void>; // idempotent; no-op when allowed=false
+}
+```
+
+`tryAcquire` is atomic check-and-reserve against the same backend `enqueue` uses. The release handle is a closure bound to that specific acquisition — there is no public `release(resource)` that can be misused. When `allowed` is false the release is a no-op, so callers can write the same `try { ... } finally { result.release(); }` shape unconditionally.
+
+## How it lands in the gateway
+
+The KB Labs gateway is the Fastify server that fronts every HTTP-facing service in the platform. That makes it the right place to apply pressure: a single chokepoint, before any request reaches a downstream worker. Adding rate-limiting to each service individually would duplicate state and prevent fleet-wide limits — both reasons to keep it here.
+
+The wiring is three Fastify hooks, each at a different layer:
+
+- **`onRequest`** runs first, before auth. Resolves the request to a resource id (route override beats upstream match), calls `tryAcquire`, returns `429` if denied. Cheap floor against floods.
+- **`preHandler`** runs after auth, inside the authenticated scope. Keyed by `namespaceId` from the JWT, lazy-registers a per-tenant resource on first sight. Precise quota per tenant.
+- **`onResponse`** releases every slot reserved during the request. Aborted connections are caught via `request.raw.on('close', ...)` as a safety net; idempotency of `release` makes double-fire harmless.
+
+WebSocket and SSE upgrades skip pressure entirely — long-lived connections would hold a slot past `onResponse`, and that is a problem for v2.
+
+Config lives in the gateway's existing `kb.config.json` under a new `pressure` key:
+
+```jsonc
+{
+  "gateway": {
+    "pressure": {
+      "enabled": true,
+      "perService": {
+        "rest": { "requestsPerSecond": 50 }
+      },
+      "perRoute": [{
+        "resource": "gateway:route:webhooks-github",
+        "pathPrefix": "/api/v1/webhooks/github",
+        "limits": { "requestsPerSecond": 100, "maxConcurrentRequests": 200 }
+      }],
+      "perTenant": {
+        "enabled": true,
+        "limits": { "requestsPerMinute": 6000 }
+      }
+    }
+  }
+}
+```
+
+Downstream services — `rest-api`, `workflow`, `marketplace` — change nothing. They already sit behind the gateway. Pressure is applied before the request crosses the boundary.
+
+## What collapsing them bought us
+
+**One config plane.** Operators reason about rate limits in one place. LLM TPM, webhook RPS, tenant quotas — same schema, same units, same backend. No "see also `rate-limiter.config.json`" footnotes.
+
+**One observability surface.** Every limit-only resource shows up in `broker.getStats()` next to the queued ones. When the gateway returns a `429`, the structured log carries the same `resource` id you would see on a queue-depth dashboard. Tying a user-visible error to platform load is one join, not three.
+
+**Composable strategies.** Want "wait up to 200ms, then reject" for an HTTP endpoint that can tolerate a small wait? You can build it on top of `tryAcquire` in user code, without touching the broker. Want a single tenant quota that drains for both their LLM calls *and* their webhook traffic? Use the same resource id for both `enqueue` and `tryAcquire`. The broker does not care; the backend tracks state per `resource` string.
+
+**One backend swap.** In-memory backend for solo / dev. `StateBroker`-backed distributed backend for production multi-instance. The choice is one constructor argument in `ResourceBroker`, and both APIs benefit at the same time. We did not have to write a second distributed implementation for HTTP-only limits.
+
+## What we deliberately did not do
+
+A few non-decisions worth naming.
+
+**No "rate limiter" type in the SDK.** Plugin authors who want pressure control use the same `IResourceBroker` reference the LLM wrapper uses. One concept to learn, not two.
+
+**No per-acquire log on the hot path.** `tryAcquire` runs on every inbound HTTP request — logging "allowed" 1000 times per second is unhelpful and expensive. The broker is silent; only rejections log, with structured fields (`resource`, `layer`, `waitTimeMs`, `namespaceId`) for triage.
+
+**No global `release(resource)`.** A free-standing release method has no way to enforce one-release-per-acquire. The handle pattern makes the lifecycle obvious from the call site, idempotent at the broker layer, and forward-compatible with `Symbol.asyncDispose` when we move target to ES2024.
+
+## What's next
+
+The gateway integration is the first consumer. Two follow-ups are queued:
+
+1. **Manifest-driven limits.** Plugins that register HTTP routes will declare their own pressure budget in the manifest. The gateway picks it up at boot — no separate config edit per plugin.
+2. **A `/admin/pressure/stats` endpoint.** Same `getStats()` output, exposed for ops dashboards. Limit-only resources currently report zeros in queue fields; the endpoint will tag them so dashboards do not misread an empty queue as a healthy queue.
+
+The full design is in [ADR-0056](https://github.com/KirillBaranov/kb-labs/blob/main/core/docs/adr/0056-resource-broker-pressure-control.md). The interesting line in the ADR is the one we did not write — there is no "and we also built a separate rate-limiter for HTTP." That was the temptation. Resisting it was the actual work.

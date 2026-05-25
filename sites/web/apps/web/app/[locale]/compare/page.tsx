@@ -4,6 +4,7 @@ import { routing } from '@/i18n/routing';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import {
+  Accordion,
   AnimateOnScroll,
   BorderBeam,
   Button,
@@ -11,11 +12,10 @@ import {
   Container,
   DotPattern,
   Eyebrow,
-  GlowCard,
   GradientText,
   Section,
 } from '@kb-labs/web-site-ui';
-import type { ComparisonCategory } from '@kb-labs/web-site-ui';
+import type { AccordionItem, ComparisonCategory } from '@kb-labs/web-site-ui';
 import { buildPageMetadata } from '@/lib/page-metadata';
 
 type Props = { params: Promise<{ locale: string }> };
@@ -176,16 +176,14 @@ export default async function ComparePage({ params }: Props) {
                   {t('page.cmpObjectionsTitle')}
                 </h2>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {objections.map((obj) => (
-                  <GlowCard
-                    key={obj.q}
-                    className="rounded-2xl border border-line bg-surface p-5"
-                  >
-                    <p className="mb-2 text-sm font-semibold text-kb-text">«{obj.q}»</p>
-                    <p className="text-sm leading-relaxed text-muted/60">{obj.a}</p>
-                  </GlowCard>
-                ))}
+              <div className="mx-auto max-w-2xl">
+                <Accordion
+                  items={objections.map((obj): AccordionItem => ({
+                    id: obj.q,
+                    question: `«${obj.q}»`,
+                    answer: obj.a,
+                  }))}
+                />
               </div>
             </AnimateOnScroll>
           </Container>

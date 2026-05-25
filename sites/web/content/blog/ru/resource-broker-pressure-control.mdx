@@ -1,0 +1,125 @@
+---
+title: "Давление как примитив платформы: один ResourceBroker для LLM и HTTP"
+description: У нас было два способа управлять нагрузкой — queue+execute для LLM и check+reject для HTTP. Потом мы заметили, что это одна и та же задача с разными стратегиями исчерпания. Что нам дало схлопывание их в один брокер.
+lang: ru
+slug: resource-broker-pressure-control
+date: '2026-05-25'
+author: KB Labs
+tag: Architecture
+excerpt: "Rate-limiting для LLM и rate-limiting для вебхуков выглядят как разные задачи. Это одна задача с разными стратегиями исчерпания. Один брокер, два метода, один config plane."
+readTime: 6 мин чтения
+tags:
+  - architecture
+  - rate-limiting
+  - gateway
+---
+
+Две ситуации. Выглядят несвязанными.
+
+**3 часа ночи.** Stripe доливает бэклог упавших вебхуков со скоростью 200 запросов в секунду. Ваш `/webhooks/stripe` пишет в очередь и возвращает 200. Только очередь живёт за auth-сервисом, который и сам уже throttle-ит. Запросы копятся, сокеты заканчиваются, Stripe бросает этот сервер и переключает нагрузку на соседний регион. Вы просыпаетесь от Slack-уведомления.
+
+**Днём.** LLM-батч уже час тихо ждёт во внутренней очереди. Он уперся в TPM-лимит OpenAI, брокер делает экспоненциальный backoff, ретраи прозрачны. Никто никому не звонит. Всё в порядке. Батч в конце концов докрутится.
+
+Корень один — мы пушим больше, чем downstream хочет. Но это два разных code path, два разных конфига, два разных дашборда. Когда что-то идёт не так с одной стороны, у другой нет никакого мнения. Когда захочется добавить per-tenant лимит, который покрывает *оба* потока — некуда положить.
+
+Это типичная форма платформы через год работы. Мы были на полпути к ровно такому же — и остановились.
+
+## Инсайт
+
+Обе ситуации задают один и тот же вопрос — *есть ли сейчас капасити на этом ресурсе?* — и машинерия ответа идентичная: счётчик в окне, backend in-memory или distributed. Различается только то, что вы делаете с «нет»:
+
+- **queue+execute** — ждать. У вызывающего есть время. Слот рано или поздно освободится, ретрай прозрачен. Это случай LLM/embeddings.
+- **check+reject** — вернуть `429`, опционально с `Retry-After`. У вызывающего (HTTP-клиента) свой circuit breaker. Пусть ретраит на своих условиях. Это случай вебхуков.
+
+Одна абстракция, две стратегии исчерпания. Не две абстракции.
+
+## Как выглядит API
+
+`IResourceBroker` получил два новых метода рядом с уже существующими `register`/`enqueue`:
+
+```typescript
+interface IResourceBroker {
+  // queue+execute (LLM, embeddings, vector store) — без изменений
+  register(resource: string, config: ResourceConfig): void;
+  enqueue<T>(request: ResourceRequest): Promise<ResourceResponse<T>>;
+
+  // check+reject (HTTP, вебхуки, любой sync)
+  registerLimit(resource: string, rateLimits: RateLimitConfig): void;
+  tryAcquire(resource: string, opts?): Promise<TryAcquireResult>;
+}
+
+interface TryAcquireResult {
+  allowed: boolean;
+  waitTimeMs?: number;
+  release: () => Promise<void>; // идемпотентен; noop при allowed=false
+}
+```
+
+`tryAcquire` — атомарный check-and-reserve поверх того же backend, который использует `enqueue`. Release-замыкание привязано к конкретной acquisition — публичного `release(resource)`, которым можно злоупотребить, нет. Если `allowed` равно false, release — noop, и вызывающий пишет одинаковый `try { ... } finally { result.release(); }` безусловно.
+
+## Как это легло в gateway
+
+KB Labs gateway — это Fastify-сервер, через который проходит весь HTTP-трафик сервисов платформы. Это правильное место для pressure: единственный choke point до того, как запрос дойдёт до downstream worker. Добавлять rate-limit в каждый сервис отдельно — значит дублировать state и терять возможность держать единые лимиты на весь кластер. Оба соображения держат логику здесь.
+
+Wiring — три Fastify-хука, каждый на своём слое:
+
+- **`onRequest`** срабатывает первым, до auth. Резолвит запрос в resource id (route override приоритетнее upstream-матча), зовёт `tryAcquire`, возвращает `429` при отказе. Дешёвый floor против флуда.
+- **`preHandler`** срабатывает после auth, внутри аутентифицированного scope. Ключуется по `namespaceId` из JWT, лениво регистрирует per-tenant ресурс на первом запросе. Точечная квота на тенанта.
+- **`onResponse`** освобождает каждый слот, занятый за запрос. Aborted-соединения подстрахованы через `request.raw.on('close', ...)`; идемпотентность `release` делает двойной вызов безопасным.
+
+WebSocket и SSE pressure пропускают — долгие коннекты держали бы слот после `onResponse`, и это задача для v2.
+
+Конфиг живёт в существующем `kb.config.json` gateway под новым ключом `pressure`:
+
+```jsonc
+{
+  "gateway": {
+    "pressure": {
+      "enabled": true,
+      "perService": {
+        "rest": { "requestsPerSecond": 50 }
+      },
+      "perRoute": [{
+        "resource": "gateway:route:webhooks-github",
+        "pathPrefix": "/api/v1/webhooks/github",
+        "limits": { "requestsPerSecond": 100, "maxConcurrentRequests": 200 }
+      }],
+      "perTenant": {
+        "enabled": true,
+        "limits": { "requestsPerMinute": 6000 }
+      }
+    }
+  }
+}
+```
+
+Downstream-сервисы — `rest-api`, `workflow`, `marketplace` — не меняются. Они уже стоят за gateway, pressure применяется до пересечения границы.
+
+## Что дало схлопывание
+
+**Один config plane.** Операторы думают про лимиты в одном месте. TPM для LLM, RPS для вебхуков, квоты тенантов — одна схема, одни единицы, один backend. Никаких сносок «см. также `rate-limiter.config.json`».
+
+**Одна observability-поверхность.** Каждый limit-only ресурс показывается в `broker.getStats()` рядом с queued. Когда gateway возвращает `429`, структурированный лог несёт тот же `resource` id, который вы видите на дашборде глубины очереди. Связать пользовательскую ошибку с нагрузкой платформы — это один join, а не три.
+
+**Composable стратегии.** Хочется «подождать до 200ms, потом отказать» для эндпоинта, который выдерживает небольшое ожидание? Соберёте поверх `tryAcquire` в user-коде, не трогая брокер. Хочется единую тенантскую квоту, которая тратится и на LLM-вызовы, *и* на вебхук-трафик? Используйте один и тот же resource id и для `enqueue`, и для `tryAcquire`. Брокеру всё равно — backend хранит state по строке `resource`.
+
+**Один swap backend.** In-memory для solo / dev. Distributed на StateBroker для production multi-instance. Выбор — один аргумент конструктора `ResourceBroker`, и оба API получают выгоду одновременно. Нам не пришлось писать вторую distributed-реализацию ради HTTP-лимитов.
+
+## Чего мы намеренно не сделали
+
+Пара не-решений, которые стоит назвать.
+
+**Никакого «rate limiter» типа в SDK.** Авторы плагинов, которым нужен pressure control, используют тот же `IResourceBroker`, что и обёртка LLM. Один концепт для изучения, а не два.
+
+**Никаких логов на каждом acquire по hot path.** `tryAcquire` срабатывает на каждом входящем HTTP-запросе — писать «allowed» 1000 раз в секунду бесполезно и дорого. Брокер молчит; логируются только отказы, со структурированными полями (`resource`, `layer`, `waitTimeMs`, `namespaceId`) для триажа.
+
+**Никакого глобального `release(resource)`.** Свободный release-метод не умеет принудить «один release на один acquire». Паттерн с handle делает жизненный цикл очевидным от call site, идемпотентным на уровне брокера и forward-compatible с `Symbol.asyncDispose`, когда мы поднимем target до ES2024.
+
+## Что дальше
+
+Интеграция в gateway — первый потребитель. В очереди два follow-up:
+
+1. **Manifest-driven limits.** Плагины, регистрирующие HTTP-маршруты, будут декларировать свой pressure-бюджет в манифесте. Gateway подхватит на старте — без отдельной правки конфига на каждый плагин.
+2. **Эндпоинт `/admin/pressure/stats`.** Тот же вывод `getStats()`, выставленный для ops-дашбордов. Limit-only ресурсы сейчас возвращают нули в queue-полях; эндпоинт промаркирует их так, чтобы дашборды не приняли пустую очередь за здоровую.
+
+Полный дизайн — в [ADR-0056](https://github.com/KirillBaranov/kb-labs/blob/main/core/docs/adr/0056-resource-broker-pressure-control.md). Интересная строчка ADR — та, которую мы *не* написали: там нет «и мы также сделали отдельный rate-limiter для HTTP». Это и был соблазн. Устоять — и было настоящей работой.

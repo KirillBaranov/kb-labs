@@ -1679,6 +1679,10 @@
             "commitPolicy": "Commit policies",
             "monorepo": "Monorepo tooling"
           }
+        },
+        "useCaseOther": {
+          "label": "Describe your use case",
+          "placeholder": "Tell us what you're automating..."
         }
       },
       "emailPlaceholder": "you@company.com"
