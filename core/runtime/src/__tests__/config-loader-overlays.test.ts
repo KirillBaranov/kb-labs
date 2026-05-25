@@ -164,4 +164,46 @@ describe('loadPlatformConfig: overlays', () => {
       }),
     ).rejects.toThrow(/Platform config is invalid after applying overlays/)
   })
+
+  it('propagates overlay loader diagnostics into sources.overlayDiagnostics', async () => {
+    // Regression: previously the overlay step in core-runtime captured only
+    // overlay paths and silently dropped `loadOverlays().diagnostics`, so a
+    // malformed JSONC file was invisibly skipped. Now diagnostics are
+    // exposed via sources.overlayDiagnostics for observability.
+    const platformRoot = path.join(tmpDir, 'o7-platform')
+    const projectRoot = path.join(tmpDir, 'o7-project')
+    makePlatformDir(platformRoot)
+    makeProjectDir(projectRoot, { platform: { adapters: { llm: 'openai' } } })
+    writeOverlay(projectRoot, 'a-good.jsonc', '{ "adapters": { "llm": "anthropic" } }')
+    writeOverlay(projectRoot, 'b-broken.jsonc', '{ this is not valid json')
+    writeOverlay(projectRoot, 'c-array.jsonc', '[1, 2, 3]')
+
+    const result = await loadPlatformConfig({
+      startDir: projectRoot,
+      env: { KB_PLATFORM_ROOT: platformRoot, KB_PROJECT_ROOT: projectRoot },
+      loadEnvFile: false,
+    })
+
+    expect(result.platformConfig.adapters).toEqual({ llm: 'anthropic' })
+    expect(result.sources.overlayDiagnostics).toBeDefined()
+    const codes = result.sources.overlayDiagnostics!.map((d) => d.code)
+    expect(codes).toContain('JSON_PARSE_FAILED')
+    expect(codes).toContain('OVERLAY_NOT_OBJECT')
+  })
+
+  it('sources.overlayDiagnostics is omitted when there are no issues', async () => {
+    const platformRoot = path.join(tmpDir, 'o8-platform')
+    const projectRoot = path.join(tmpDir, 'o8-project')
+    makePlatformDir(platformRoot)
+    makeProjectDir(projectRoot, { platform: { adapters: { llm: 'openai' } } })
+    writeOverlay(projectRoot, 'p.jsonc', '{ "adapters": { "llm": "x" } }')
+
+    const result = await loadPlatformConfig({
+      startDir: projectRoot,
+      env: { KB_PLATFORM_ROOT: platformRoot, KB_PROJECT_ROOT: projectRoot },
+      loadEnvFile: false,
+    })
+
+    expect(result.sources.overlayDiagnostics).toBeUndefined()
+  })
 })

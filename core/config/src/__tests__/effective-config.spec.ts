@@ -206,6 +206,16 @@ describe('loadEffectiveConfig — deep-merge semantics', () => {
     expect(res!.data).toEqual({ existing: 1, new: 2 });
   });
 
+  it('platform↔project arrays CONCATENATE (mergeDefined semantics, same as loadPlatformConfig)', async () => {
+    // Regression: previously loadEffectiveConfig used mergeOverlay (REPLACE)
+    // for the platform↔project layer too, which gave a different shape than
+    // loadPlatformConfig (concat). Both APIs must agree on this step.
+    await writePlatformConfig(c.platform, '{"sources":["a"]}');
+    await writeProjectConfig(c.project, '{"sources":["b"]}');
+    const res = await loadEffectiveConfig(c.project, { platformRoot: c.platform });
+    expect(res!.data.sources).toEqual(['a', 'b']);
+  });
+
   it('overlay arrays REPLACE base arrays by default', async () => {
     await writeProjectConfig(c.project, '{"items":[1,2,3]}');
     await writeOverlay(c.project, 'p.jsonc', '{"items":[4]}');
@@ -283,12 +293,18 @@ describe('loadEffectiveConfig — deep-merge semantics', () => {
 describe('loadEffectiveConfig — file format precedence', () => {
   const c = makeFixture();
 
-  it('prefers .kb/kb.config.jsonc over .kb/kb.config.json', async () => {
+  it('.kb/kb.config.json wins over .kb/kb.config.jsonc when both exist', async () => {
+    // .kb/kb.config.json is the machine-written / scan-updated authoritative
+    // file; .kb/kb.config.jsonc is the template snapshot. Both are read, the
+    // .json layered on top — same convention kb-create produces.
     await writeProjectConfig(c.project, '{"src":"jsonc"}', '.kb/kb.config.jsonc');
     await writeProjectConfig(c.project, '{"src":"json"}', '.kb/kb.config.json');
     const res = await loadEffectiveConfig(c.project);
-    expect(res!.data.src).toBe('jsonc');
-    expect(res!.projectConfigPath).toMatch(/kb\.config\.jsonc$/);
+    expect(res!.data.src).toBe('json');
+    expect(res!.projectConfigPaths.map((p) => path.basename(p))).toEqual([
+      'kb.config.jsonc',
+      'kb.config.json',
+    ]);
   });
 
   it('falls through to root-level kb.config.jsonc when .kb/ absent', async () => {
@@ -296,6 +312,13 @@ describe('loadEffectiveConfig — file format precedence', () => {
     const res = await loadEffectiveConfig(c.project);
     expect(res!.data.src).toBe('root');
     expect(res!.projectConfigPath).toMatch(/[/\\]kb\.config\.jsonc$/);
+  });
+
+  it('.kb/ files win over root-level files in the same root (precedence)', async () => {
+    await writeProjectConfig(c.project, '{"src":"root"}', 'kb.config.jsonc');
+    await writeProjectConfig(c.project, '{"src":"kb"}', '.kb/kb.config.jsonc');
+    const res = await loadEffectiveConfig(c.project);
+    expect(res!.data.src).toBe('kb');
   });
 
   it('parses JSONC with line comments and trailing commas', async () => {
@@ -312,6 +335,51 @@ describe('loadEffectiveConfig — file format precedence', () => {
     const res = await loadEffectiveConfig(c.project);
     expect(res!.data).toEqual({ gateway: { port: 4000 } });
     expect(res!.diagnostics).toEqual([]);
+  });
+
+  it('deep-merges BOTH .kb/kb.config.jsonc and .kb/kb.config.json when both exist (.json wins)', async () => {
+    // Regression: kb-create writes both files — `.jsonc` is the human/template
+    // snapshot, `.json` is the scan-updated authoritative version. The loader
+    // must read both and let `.json` override `.jsonc` rather than silently
+    // shadowing one by picking only the first existing file.
+    await writeProjectConfig(
+      c.project,
+      JSON.stringify({
+        gateway: {
+          upstreams: { rest: { url: 'http://rest:5050' } },
+          // template-derived widgets prefix
+          widgets: { prefix: '/plugins' },
+        },
+      }),
+      '.kb/kb.config.jsonc',
+    );
+    await writeProjectConfig(
+      c.project,
+      JSON.stringify({
+        gateway: {
+          // scan-updated widgets prefix overrides template
+          widgets: { prefix: '/api/v1/widgets' },
+          // scan-added new upstream
+          plugins: { url: 'http://plugins:9000' },
+        },
+      }),
+      '.kb/kb.config.json',
+    );
+
+    const res = await loadEffectiveConfig(c.project);
+    expect(res!.data).toEqual({
+      gateway: {
+        upstreams: { rest: { url: 'http://rest:5050' } },
+        widgets: { prefix: '/api/v1/widgets' }, // .json wins
+        plugins: { url: 'http://plugins:9000' }, // added by .json
+      },
+    });
+    expect(res!.projectConfigPaths).toEqual([
+      path.join(c.project, '.kb', 'kb.config.jsonc'),
+      path.join(c.project, '.kb', 'kb.config.json'),
+    ]);
+    // Back-compat alias is the LAST file in the merge order.
+    expect(res!.projectConfigPath).toBe(path.join(c.project, '.kb', 'kb.config.json'));
   });
 
   it('parses JSONC overlays with comments', async () => {

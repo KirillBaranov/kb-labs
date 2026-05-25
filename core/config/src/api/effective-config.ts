@@ -30,24 +30,52 @@
 import { promises as fsp } from 'node:fs';
 import path from 'node:path';
 
-import { readJsonWithDiagnostics } from '../runtime/runtime.js';
+import { readJsonWithDiagnostics, mergeDefined } from '../runtime/runtime.js';
 import type { Diagnostic } from '../types/index.js';
 import { loadOverlays } from '../overlay/loader.js';
 import { mergeOverlay } from '../overlay/merge.js';
 
+// Order matters: each entry is deep-merged onto the previous one within the
+// same root, so the LAST file found wins on conflicts. Convention:
+//
+//   1. `kb.config.jsonc`         (root, human-edited template)
+//   2. `kb.config.json`          (root, machine-written)
+//   3. `.kb/kb.config.jsonc`     (preferred location, human-edited)
+//   4. `.kb/kb.config.json`      (preferred location, machine-written — wins)
+//
+// In installed mode `kb-create` writes both `.kb/kb.config.jsonc` (full
+// template snapshot) and `.kb/kb.config.json` (scan-updated authoritative
+// snapshot). Reading only one of them would silently shadow the other —
+// reading both, with `.json` last, lets the scan-derived values override
+// the static template, which matches kb-create's intent.
 const CONFIG_CANDIDATES = [
-  path.join('.kb', 'kb.config.jsonc'),
-  path.join('.kb', 'kb.config.json'),
   'kb.config.jsonc',
   'kb.config.json',
+  path.join('.kb', 'kb.config.jsonc'),
+  path.join('.kb', 'kb.config.json'),
 ] as const;
 
 export interface EffectiveConfigResult {
   /** Deep-merged effective data (platform ← project ← overlays). */
   data: Record<string, unknown>;
-  /** Absolute path to the platform-root config file, if one was loaded. */
+  /**
+   * Absolute paths of platform-root config files actually loaded, in merge
+   * order. Empty when no platform config file was found (or when
+   * `platformRoot` was not provided / equals `projectRoot`).
+   */
+  platformConfigPaths: string[];
+  /** Absolute paths of project-root config files actually loaded, in merge order. */
+  projectConfigPaths: string[];
+  /**
+   * Deprecated single-path alias for the LAST platform config file applied.
+   * Prefer `platformConfigPaths`. Kept for callers that only need to know
+   * "did we load any platform config?".
+   */
   platformConfigPath?: string;
-  /** Absolute path to the project-root config file, if one was loaded. */
+  /**
+   * Deprecated single-path alias for the LAST project config file applied.
+   * Prefer `projectConfigPaths`.
+   */
   projectConfigPath?: string;
   /** Absolute paths of overlays applied, in merge order. */
   overlayPaths: string[];
@@ -64,46 +92,65 @@ export interface LoadEffectiveConfigOptions {
   platformRoot?: string;
 }
 
-async function findConfigInRoot(root: string): Promise<string | undefined> {
+async function findAllConfigsInRoot(root: string): Promise<string[]> {
+  const found: string[] = [];
   for (const rel of CONFIG_CANDIDATES) {
     const full = path.join(root, rel);
     try {
       await fsp.access(full);
-      return full;
+      found.push(full);
     } catch {
-      // continue
+      // missing — skip
     }
   }
-  return undefined;
+  return found;
 }
 
-async function readObjectAtRoot(
+/**
+ * Read every config file present at `root`, deep-merging them in
+ * CONFIG_CANDIDATES order (later wins). Each file is parsed independently;
+ * a malformed or non-object file emits a diagnostic but does not abort the
+ * read of the remaining files at this root.
+ *
+ * Returns the list of paths actually loaded plus the merged data.
+ */
+async function readObjectsAtRoot(
   root: string,
   diagnostics: Diagnostic[],
-): Promise<{ path?: string; data: Record<string, unknown> }> {
-  const configPath = await findConfigInRoot(root);
-  if (!configPath) {
-    return { data: {} };
+): Promise<{ paths: string[]; data: Record<string, unknown> }> {
+  const paths = await findAllConfigsInRoot(root);
+  let merged: Record<string, unknown> = {};
+  const loaded: string[] = [];
+
+  for (const configPath of paths) {
+    const read = await readJsonWithDiagnostics<unknown>(configPath);
+    diagnostics.push(...read.diagnostics);
+    // Past this point we record `configPath` as loaded — the file existed,
+    // even if its content was unusable. Callers rely on `paths` to
+    // distinguish "layer absent" from "layer present but degraded".
+    loaded.push(configPath);
+    if (!read.ok) {
+      continue;
+    }
+    const data = read.data;
+    if (typeof data !== 'object' || data === null || Array.isArray(data)) {
+      diagnostics.push({
+        level: 'error',
+        code: 'CONFIG_NOT_OBJECT',
+        message: `Config must be a JSON object at top level: ${configPath}`,
+      });
+      continue;
+    }
+    // Within a single root we layer files (e.g. .jsonc template + .json
+    // scan-update) using `mergeDefined` — the SAME semantics
+    // `loadPlatformConfig` uses for its platform↔project merge. Arrays
+    // concatenate at this layer; overlay-style array REPLACEMENT is
+    // reserved for the explicit overlay step below and the `kb:merge`
+    // directive within overlays.
+    merged = mergeDefined(merged, data as Record<string, unknown>);
   }
-  // Past this point we always return `path: configPath` — the file exists,
-  // even if we couldn't extract usable data from it. Callers rely on the
-  // path field to distinguish "layer absent" (path undefined) from "layer
-  // present but degraded" (path set + diagnostics).
-  const read = await readJsonWithDiagnostics<unknown>(configPath);
-  diagnostics.push(...read.diagnostics);
-  if (!read.ok) {
-    return { path: configPath, data: {} };
-  }
-  const data = read.data;
-  if (typeof data !== 'object' || data === null || Array.isArray(data)) {
-    diagnostics.push({
-      level: 'error',
-      code: 'CONFIG_NOT_OBJECT',
-      message: `Config must be a JSON object at top level: ${configPath}`,
-    });
-    return { path: configPath, data: {} };
-  }
-  return { path: configPath, data: data as Record<string, unknown> };
+
+  return { paths: loaded, data: merged };
 }
 
 /**
@@ -120,25 +167,30 @@ export async function loadEffectiveConfig(
     !!options.platformRoot && options.platformRoot !== projectRoot;
 
   const platformLayer = usePlatform
-    ? await readObjectAtRoot(options.platformRoot!, diagnostics)
-    : { data: {} as Record<string, unknown> };
-  const projectLayer = await readObjectAtRoot(projectRoot, diagnostics);
+    ? await readObjectsAtRoot(options.platformRoot!, diagnostics)
+    : { paths: [] as string[], data: {} as Record<string, unknown> };
+  const projectLayer = await readObjectsAtRoot(projectRoot, diagnostics);
 
   const overlayResult = await loadOverlays(projectRoot);
   diagnostics.push(...overlayResult.diagnostics);
 
   const nothingFound =
-    !platformLayer.path &&
-    !projectLayer.path &&
+    platformLayer.paths.length === 0 &&
+    projectLayer.paths.length === 0 &&
     overlayResult.overlays.length === 0;
   if (nothingFound) {
     return null;
   }
 
-  let merged: Record<string, unknown> = mergeOverlay(
+  // Platform ← project: SAME semantics as loadPlatformConfig — `mergeDefined`
+  // (arrays concatenate). Keeps both APIs returning the same shape for the
+  // shared two-layer step.
+  let merged: Record<string, unknown> = mergeDefined(
     platformLayer.data,
     projectLayer.data,
   );
+  // Overlays: REPLACE semantics for arrays (with opt-in `kb:merge: append`)
+  // — overlays are the explicit override layer, not a deep-merge layer.
   const overlayPaths: string[] = [];
   for (const overlay of overlayResult.overlays) {
     merged = mergeOverlay(merged, overlay.data);
@@ -147,8 +199,11 @@ export async function loadEffectiveConfig(
 
   return {
     data: merged,
-    platformConfigPath: platformLayer.path,
-    projectConfigPath: projectLayer.path,
+    platformConfigPaths: platformLayer.paths,
+    projectConfigPaths: projectLayer.paths,
+    platformConfigPath:
+      platformLayer.paths[platformLayer.paths.length - 1],
+    projectConfigPath: projectLayer.paths[projectLayer.paths.length - 1],
     overlayPaths,
     diagnostics,
   };

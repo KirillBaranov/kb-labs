@@ -48,6 +48,7 @@ import {
   loadOverlays,
   mergeOverlay,
   validateProductConfig,
+  type Diagnostic,
   type FieldMergePolicy,
 } from '@kb-labs/core-config'
 import { resolveRoots, type RootsResolution } from '@kb-labs/core-workspace'
@@ -133,6 +134,14 @@ export interface LoadPlatformConfigResult {
      * when `.kb/overlays/` is absent.
      */
     overlays?: string[]
+    /**
+     * Non-fatal diagnostics from the overlay loader: malformed JSONC files,
+     * overlays with non-object top-level (`OVERLAY_NOT_OBJECT`), read errors.
+     * Each entry corresponds to an overlay file that was found but skipped or
+     * partially parsed — present here even though the rest of the load
+     * completed. Empty/omitted when the overlay step produced no diagnostics.
+     */
+    overlayDiagnostics?: Diagnostic[]
   }
 }
 
@@ -409,6 +418,10 @@ export async function loadPlatformConfig(
           : undefined,
       platformDirOverride,
       overlays: appliedOverlays.length > 0 ? appliedOverlays : undefined,
+      overlayDiagnostics:
+        overlayResult.diagnostics.length > 0
+          ? overlayResult.diagnostics
+          : undefined,
     },
   }
 }

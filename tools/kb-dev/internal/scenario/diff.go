@@ -2,11 +2,34 @@ package scenario
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 )
+
+// ManifestFilename is the per-project state file in `.kb/overlays/` that
+// records which files the scenario subsystem owns. It is the SINGLE source
+// of truth for "which overlays should be removed on `--scenario default`":
+// without it the system would have to guess from filename heuristics, and
+// any user-placed file whose name happened to include `__` would be
+// mis-classified and silently deleted (see ADR-0001 promise that user
+// files are preserved).
+const ManifestFilename = ".kb-scenario.json"
+
+// Manifest is the on-disk record of which files the scenario subsystem
+// placed under `.kb/overlays/`, along with the active scenario name.
+type Manifest struct {
+	// Scenario is the name of the currently-applied scenario, or empty when
+	// no scenario is active (default-reset state).
+	Scenario string `json:"scenario"`
+	// Files is the list of basenames under `.kb/overlays/` that this
+	// subsystem wrote. `--scenario default` removes exactly these files;
+	// anything else in the directory is treated as a user file and left
+	// untouched.
+	Files []string `json:"files"`
+}
 
 // PlanAction is a single filesystem mutation in a scenario plan.
 type PlanAction struct {
@@ -32,31 +55,44 @@ type Plan struct {
 	// so an Apply that replaces a previous scenario never has both old and
 	// new files visible simultaneously.
 	Actions []PlanAction
+
+	// NextManifest is the manifest content that Apply must write atomically
+	// at the end of the run. Captured here (rather than recomputed in Apply)
+	// so the plan is self-describing and testable.
+	NextManifest Manifest
+
+	// manifestChanged tracks whether the on-disk manifest differs from
+	// NextManifest. Even when file actions are empty (e.g. a stale manifest
+	// after manual file deletion), we may still need to rewrite the manifest.
+	manifestChanged bool
 }
 
 // IsEmpty reports whether the plan would change anything on disk.
-// Idempotent apply: re-running the same scenario yields an empty plan.
-func (p *Plan) IsEmpty() bool { return len(p.Actions) == 0 }
+// Idempotent apply: re-running the same scenario yields an empty plan
+// (no file mutations AND no manifest change).
+func (p *Plan) IsEmpty() bool { return len(p.Actions) == 0 && !p.manifestChanged }
 
 // ComputeDiff compares the current `.kb/overlays/` against the target
 // scenario and returns the actions needed to reach the target state.
 //
-// Rules:
-//   - Scenario-managed files (basename containing `__`) belonging to other
-//     scenarios are removed.
-//   - Files belonging to the target scenario whose content matches the
-//     source overlay are kept (no-op).
-//   - Files belonging to the target scenario whose content has drifted are
-//     scheduled for rewrite.
-//   - Missing target files are scheduled for write.
-//   - User-placed files (no `__` infix) are always preserved.
+// Ownership tracking:
+//   - The set of files the subsystem owns is read from `.kb-scenario.json`
+//     in `.kb/overlays/`. Anything not listed there is a user file and is
+//     untouched by `--scenario default`.
+//   - The target scenario's set of files becomes the new manifest after
+//     Apply.
 //
-// When `target` is nil, the plan removes every scenario-managed file
-// (`default` reset).
+// When `target` is nil, the plan removes every previously-managed file
+// (`default` reset) and clears the manifest.
 func ComputeDiff(projectRoot string, target *Scenario) (*Plan, error) {
 	overlaysDir := filepath.Join(projectRoot, ".kb", "overlays")
 
-	currentBytes, err := readCurrentScenarioFiles(overlaysDir)
+	manifest, err := readManifest(overlaysDir)
+	if err != nil {
+		return nil, err
+	}
+
+	currentBytes, err := readManagedFiles(overlaysDir, manifest.Files)
 	if err != nil {
 		return nil, err
 	}
@@ -64,15 +100,14 @@ func ComputeDiff(projectRoot string, target *Scenario) (*Plan, error) {
 	plan := &Plan{Scenario: target, OverlaysDir: overlaysDir}
 
 	if target == nil {
-		// Default reset: remove every scenario-managed file.
-		removeNames := make([]string, 0, len(currentBytes))
-		for name := range currentBytes {
-			removeNames = append(removeNames, name)
-		}
+		// Default reset: remove every file we own; clear the manifest.
+		removeNames := append([]string(nil), manifest.Files...)
 		sort.Strings(removeNames)
 		for _, name := range removeNames {
 			plan.Actions = append(plan.Actions, PlanAction{Op: "remove", File: name})
 		}
+		plan.NextManifest = Manifest{Scenario: "", Files: nil}
+		plan.manifestChanged = manifest.Scenario != "" || len(manifest.Files) > 0
 		return plan, nil
 	}
 
@@ -91,7 +126,7 @@ func ComputeDiff(projectRoot string, target *Scenario) (*Plan, error) {
 		desired[target.TargetFilename(src)] = want{source: full, content: data}
 	}
 
-	// Removes: every scenario-managed file not in desired.
+	// Removes: every previously-managed file not in desired.
 	var removeNames []string
 	for name := range currentBytes {
 		if _, keep := desired[name]; !keep {
@@ -117,11 +152,34 @@ func ComputeDiff(projectRoot string, target *Scenario) (*Plan, error) {
 		plan.Actions = append(plan.Actions, PlanAction{Op: "write", File: name, Source: w.source})
 	}
 
+	// New manifest: scenario name + sorted list of target files.
+	desiredNames := make([]string, 0, len(desired))
+	for name := range desired {
+		desiredNames = append(desiredNames, name)
+	}
+	sort.Strings(desiredNames)
+	plan.NextManifest = Manifest{Scenario: target.Name, Files: desiredNames}
+	plan.manifestChanged = !manifestEqual(manifest, plan.NextManifest)
+
 	return plan, nil
+}
+
+func manifestEqual(a, b Manifest) bool {
+	if a.Scenario != b.Scenario || len(a.Files) != len(b.Files) {
+		return false
+	}
+	for i := range a.Files {
+		if a.Files[i] != b.Files[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // Apply executes the plan against the filesystem. Creates `.kb/overlays/`
 // when needed. Atomic-ish: writes go through a temp file rename per file.
+// Manifest is updated last so a crash mid-Apply leaves either the old or
+// the new state coherent.
 //
 // Apply is safe to call when the plan is empty (no-op).
 func (p *Plan) Apply() error {
@@ -156,32 +214,73 @@ func (p *Plan) Apply() error {
 			return fmt.Errorf("unknown plan op: %q", a.Op)
 		}
 	}
+
+	// Persist the manifest atomically after all file actions succeeded.
+	if err := writeManifest(p.OverlaysDir, p.NextManifest); err != nil {
+		return err
+	}
 	return nil
 }
 
-// readCurrentScenarioFiles returns the content of every scenario-managed
-// file currently in `.kb/overlays/`. Returns an empty map when the
-// directory does not exist.
-func readCurrentScenarioFiles(overlaysDir string) (map[string][]byte, error) {
-	out := make(map[string][]byte)
-	entries, err := os.ReadDir(overlaysDir)
+// readManifest loads the per-overlay manifest. Returns an empty Manifest
+// when the file does not exist (first run, or after `--scenario default`
+// previously cleared it). A malformed manifest is reported as an error so
+// the caller can refuse to act on ambiguous state.
+func readManifest(overlaysDir string) (Manifest, error) {
+	full := filepath.Join(overlaysDir, ManifestFilename)
+	data, err := os.ReadFile(full)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return out, nil
+			return Manifest{}, nil
 		}
-		return nil, fmt.Errorf("read overlays dir: %w", err)
+		return Manifest{}, fmt.Errorf("read manifest %s: %w", full, err)
 	}
-	for _, e := range entries {
-		if e.IsDir() {
-			continue
+	var m Manifest
+	if err := json.Unmarshal(data, &m); err != nil {
+		return Manifest{}, fmt.Errorf("parse manifest %s: %w", full, err)
+	}
+	return m, nil
+}
+
+// writeManifest persists the manifest atomically (tmp + rename). When the
+// new manifest is empty (no scenario, no files) the file is removed so the
+// `.kb/overlays/` directory looks pristine in default state.
+func writeManifest(overlaysDir string, m Manifest) error {
+	full := filepath.Join(overlaysDir, ManifestFilename)
+	if m.Scenario == "" && len(m.Files) == 0 {
+		if err := os.Remove(full); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("remove manifest %s: %w", full, err)
 		}
-		name := e.Name()
-		if _, managed := IsScenarioManaged(name); !managed {
-			continue
-		}
-		data, err := os.ReadFile(filepath.Join(overlaysDir, name))
+		return nil
+	}
+	data, err := json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal manifest: %w", err)
+	}
+	data = append(data, '\n')
+	tmp := full + ".tmp"
+	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+		return fmt.Errorf("write manifest %s: %w", tmp, err)
+	}
+	if err := os.Rename(tmp, full); err != nil {
+		return fmt.Errorf("rename manifest %s -> %s: %w", tmp, full, err)
+	}
+	return nil
+}
+
+// readManagedFiles returns the content of every file listed in the manifest.
+// Files listed but missing on disk are skipped silently (drift recovery).
+// Files NOT in the manifest are user files and are never read here.
+func readManagedFiles(overlaysDir string, managed []string) (map[string][]byte, error) {
+	out := make(map[string][]byte)
+	for _, name := range managed {
+		full := filepath.Join(overlaysDir, name)
+		data, err := os.ReadFile(full)
 		if err != nil {
-			return nil, fmt.Errorf("read overlay %s: %w", name, err)
+			if os.IsNotExist(err) {
+				continue
+			}
+			return nil, fmt.Errorf("read overlay %s: %w", full, err)
 		}
 		out[name] = data
 	}

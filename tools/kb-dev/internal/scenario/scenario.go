@@ -121,16 +121,3 @@ func (s *Scenario) TargetFilename(source string) string {
 	return s.Name + scenarioPrefixSeparator + filepath.Base(source)
 }
 
-// IsScenarioManaged reports whether a file in .kb/overlays/ was placed by
-// some scenario (i.e. its name contains the prefix separator). Returns the
-// scenario name and true when managed.
-func IsScenarioManaged(filename string) (string, bool) {
-	if !strings.HasSuffix(filename, ".jsonc") {
-		return "", false
-	}
-	idx := strings.Index(filename, scenarioPrefixSeparator)
-	if idx <= 0 {
-		return "", false
-	}
-	return filename[:idx], true
-}

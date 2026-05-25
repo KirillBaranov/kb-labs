@@ -102,28 +102,6 @@ func TestTargetFilename(t *testing.T) {
 	}
 }
 
-func TestIsScenarioManaged(t *testing.T) {
-	cases := []struct {
-		name   string
-		wantOk bool
-		wantOw string
-	}{
-		{"pressure__overlay.jsonc", true, "pressure"},
-		{"multi-tenant__a.jsonc", true, "multi-tenant"},
-		{"plain.jsonc", false, ""},
-		{"__prefixfree.jsonc", false, ""},     // empty owner
-		{"pressure_underscore.jsonc", false, ""}, // single underscore
-		{"pressure__overlay.json", false, ""}, // not .jsonc
-	}
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			owner, ok := IsScenarioManaged(c.name)
-			if ok != c.wantOk || owner != c.wantOw {
-				t.Errorf("got (%q, %v) want (%q, %v)", owner, ok, c.wantOw, c.wantOk)
-			}
-		})
-	}
-}
 
 func TestComputeDiff_FreshApply(t *testing.T) {
 	project := t.TempDir()
@@ -174,12 +152,17 @@ func TestComputeDiff_Idempotent(t *testing.T) {
 func TestComputeDiff_ReplacesOtherScenario(t *testing.T) {
 	project := t.TempDir()
 
-	// Pretend an old scenario `multi-tenant` was active.
-	overlaysDir := filepath.Join(project, ".kb", "overlays")
-	if err := os.MkdirAll(overlaysDir, 0o755); err != nil {
+	// Apply a prior scenario `multi-tenant` cleanly so the manifest reflects
+	// its files as managed. Then compute diff for a different scenario and
+	// expect the previous files to be removed.
+	prior := loadFixture(t, "multi-tenant", map[string]string{
+		"old.jsonc": `{}`,
+	}, []string{"old.jsonc"})
+	plan, err := ComputeDiff(project, prior)
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(overlaysDir, "multi-tenant__old.jsonc"), []byte(`{}`), 0o644); err != nil {
+	if err := plan.Apply(); err != nil {
 		t.Fatal(err)
 	}
 
@@ -187,12 +170,12 @@ func TestComputeDiff_ReplacesOtherScenario(t *testing.T) {
 		"overlay.jsonc": `{"x":1}`,
 	}, []string{"overlay.jsonc"})
 
-	plan, err := ComputeDiff(project, scen)
+	plan2, err := ComputeDiff(project, scen)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	ops := opSummary(plan)
+	ops := opSummary(plan2)
 	want := []string{"remove multi-tenant__old.jsonc", "write pressure__overlay.jsonc"}
 	if !sliceEqual(ops, want) {
 		t.Errorf("ops: got %v want %v", ops, want)
@@ -268,14 +251,25 @@ func TestComputeDiff_DriftedContent(t *testing.T) {
 
 func TestComputeDiff_DefaultResetClearsScenarios(t *testing.T) {
 	project := t.TempDir()
-	overlaysDir := filepath.Join(project, ".kb", "overlays")
-	if err := os.MkdirAll(overlaysDir, 0o755); err != nil {
+
+	// Apply a real scenario so the manifest reflects pressure__* as managed,
+	// then drop a user file alongside (with the same `__` infix the legacy
+	// heuristic would have mis-classified).
+	scen := loadFixture(t, "pressure", map[string]string{
+		"a.jsonc": `{}`,
+		"b.jsonc": `{}`,
+	}, []string{"a.jsonc", "b.jsonc"})
+	priorPlan, err := ComputeDiff(project, scen)
+	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"pressure__a.jsonc", "pressure__b.jsonc", "user.jsonc"} {
-		if err := os.WriteFile(filepath.Join(overlaysDir, name), []byte(`{}`), 0o644); err != nil {
-			t.Fatal(err)
-		}
+	if err := priorPlan.Apply(); err != nil {
+		t.Fatal(err)
+	}
+
+	overlaysDir := filepath.Join(project, ".kb", "overlays")
+	if err := os.WriteFile(filepath.Join(overlaysDir, "user.jsonc"), []byte(`{}`), 0o644); err != nil {
+		t.Fatal(err)
 	}
 
 	plan, err := ComputeDiff(project, nil)
@@ -297,6 +291,89 @@ func TestComputeDiff_DefaultResetClearsScenarios(t *testing.T) {
 	sort.Strings(remaining)
 	if !sliceEqual(remaining, []string{"user.jsonc"}) {
 		t.Errorf("after default reset got %v, want only user.jsonc", remaining)
+	}
+}
+
+func TestComputeDiff_DefaultReset_PreservesUserFileWithDoubleUnderscore(t *testing.T) {
+	// Regression: the old heuristic (filename contains `__`) would
+	// mis-classify ANY user file with `__` in its name as scenario-managed
+	// and delete it on `--scenario default`. With manifest-based ownership
+	// only files we actually wrote are removed.
+	project := t.TempDir()
+
+	scen := loadFixture(t, "pressure", map[string]string{
+		"overlay.jsonc": `{"x":1}`,
+	}, []string{"overlay.jsonc"})
+	priorPlan, err := ComputeDiff(project, scen)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := priorPlan.Apply(); err != nil {
+		t.Fatal(err)
+	}
+
+	overlaysDir := filepath.Join(project, ".kb", "overlays")
+	// Collision-shaped user file: looks like a scenario-owned file by the
+	// legacy heuristic, but we never wrote it, so the manifest does not
+	// list it.
+	userFile := filepath.Join(overlaysDir, "my__notes.jsonc")
+	if err := os.WriteFile(userFile, []byte(`{"user":"keep me"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	plan, err := ComputeDiff(project, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := plan.Apply(); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := os.Stat(userFile); err != nil {
+		t.Fatalf("user file my__notes.jsonc deleted by --scenario default: %v", err)
+	}
+	data, _ := os.ReadFile(userFile)
+	if string(data) != `{"user":"keep me"}` {
+		t.Errorf("user file content changed: %s", data)
+	}
+}
+
+func TestComputeDiff_ManifestRecordsActiveScenario(t *testing.T) {
+	project := t.TempDir()
+	scen := loadFixture(t, "pressure", map[string]string{
+		"overlay.jsonc": `{"x":1}`,
+	}, []string{"overlay.jsonc"})
+
+	plan, err := ComputeDiff(project, scen)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := plan.Apply(); err != nil {
+		t.Fatal(err)
+	}
+
+	manifestPath := filepath.Join(project, ".kb", "overlays", ManifestFilename)
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		t.Fatalf("manifest not written: %v", err)
+	}
+	if !strings.Contains(string(data), `"scenario": "pressure"`) {
+		t.Errorf("manifest missing scenario name: %s", data)
+	}
+	if !strings.Contains(string(data), "pressure__overlay.jsonc") {
+		t.Errorf("manifest missing file entry: %s", data)
+	}
+
+	// After --scenario default, manifest file is removed.
+	resetPlan, err := ComputeDiff(project, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := resetPlan.Apply(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(manifestPath); !os.IsNotExist(err) {
+		t.Errorf("manifest should be removed after default reset, stat err=%v", err)
 	}
 }
 

@@ -155,8 +155,10 @@ func runEnsureScenario(cmd *cobra.Command, scenarioPath string) error {
 // operations. When the scenario needs the service manager (restarts or
 // domain) we go through the normal `devservices.yaml` discovery so we
 // agree on the project root with the rest of kb-dev. When it doesn't,
-// we accept a missing `devservices.yaml` and fall back to the nearest
-// directory containing `.kb/` or, finally, the current working directory.
+// we accept a missing `devservices.yaml` and walk up looking for a
+// `.kb/` marker directory. If neither is found we ERROR — silently
+// writing overlay files to an unrelated cwd would be a footgun: the
+// command would report success while applying to the wrong project.
 func resolveScenarioProjectRoot(needsManager bool) (string, error) {
 	cfg, err := FindConfig()
 	if err == nil {
@@ -176,7 +178,7 @@ func resolveScenarioProjectRoot(needsManager bool) (string, error) {
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			return cwd, nil
+			return "", fmt.Errorf("no project root found: walked up from %s but neither devservices.yaml nor .kb/ directory exists. Run from inside a KB Labs project or pass --config explicitly", cwd)
 		}
 		dir = parent
 	}

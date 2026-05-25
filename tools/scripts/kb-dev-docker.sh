@@ -9,13 +9,13 @@
 # forwards to the container.
 #
 # Path translation: any positional arg that starts with KB_HOST_E2E
-# (default: `$GITHUB_WORKSPACE/e2e` or `$PWD/e2e`) is rewritten to start
-# with KB_CONTAINER_E2E (default: `/workspace/e2e-host`). This matches the
-# bind mount declared in `e2e/docker-compose.yml`.
+# (default: `$GITHUB_WORKSPACE/e2e` or `<repo-with-.git>/e2e`) is rewritten
+# to start with KB_CONTAINER_E2E (default: `/workspace/e2e-host`). This
+# matches the bind mount declared in `e2e/docker-compose.yml`.
 #
 # Environment:
 #   KB_HOST_E2E         host path to repo's `e2e/` directory
-#                       (default: `${GITHUB_WORKSPACE:-$PWD}/e2e`)
+#                       (default: `${GITHUB_WORKSPACE:-<repo>}/e2e`)
 #   KB_CONTAINER_E2E    mount path inside the container
 #                       (default: `/workspace/e2e-host`)
 #   KB_CONTAINER_WORKDIR  workdir for `docker compose exec`
@@ -31,10 +31,19 @@ REPO_ROOT="${GITHUB_WORKSPACE:-}"
 if [[ -z "$REPO_ROOT" ]]; then
   # Fall back to walking up for the `.git` marker so the script is usable
   # outside GitHub Actions too.
-  REPO_ROOT="$PWD"
-  while [[ "$REPO_ROOT" != "/" && ! -e "$REPO_ROOT/.git" ]]; do
-    REPO_ROOT="$(dirname "$REPO_ROOT")"
+  cand="$PWD"
+  while [[ "$cand" != "/" && ! -e "$cand/.git" ]]; do
+    cand="$(dirname "$cand")"
   done
+  # Loop above exits at `/` whether or not `.git` was found — verify
+  # explicitly. Falling back to `/` would silently make HOST_E2E=`/e2e`,
+  # mistranslate every path, and produce a confusing `docker compose`
+  # error after the fact.
+  if [[ ! -e "$cand/.git" ]]; then
+    echo "kb-dev-docker.sh: cannot locate repo root — set GITHUB_WORKSPACE or run from inside a git checkout (no .git found while walking up from $PWD)" >&2
+    exit 1
+  fi
+  REPO_ROOT="$cand"
 fi
 
 HOST_E2E="${KB_HOST_E2E:-$REPO_ROOT/e2e}"
@@ -44,8 +53,11 @@ TARGET="${KB_DOCKER_TARGET:-platform}"
 
 translated=()
 for arg in "$@"; do
+  # `${var#pattern}` parameter expansion treats `pattern` as a glob. Wrap
+  # `$HOST_E2E` in single-element quoted form so brackets/asterisks/etc.
+  # in a self-hosted runner's workspace path are matched literally.
   if [[ "$arg" == "$HOST_E2E"/* ]]; then
-    arg="$CONTAINER_E2E/${arg#$HOST_E2E/}"
+    arg="$CONTAINER_E2E/${arg#"$HOST_E2E"/}"
   fi
   translated+=("$arg")
 done
