@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { setRequestLocale } from 'next-intl/server';
+import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
@@ -25,39 +25,14 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
+  const t = await getTranslations({ locale, namespace: 'page' });
   return buildPageMetadata({
     locale,
-    title: 'State Broker — KB Labs',
-    description: 'Состояние между вызовами плагинов. In-memory, daemon или Redis — один и тот же API.',
+    title: t('stateMetaTitle'),
+    description: t('stateMetaDesc'),
     path: '/product/state-broker',
   });
 }
-
-// ── Data ─────────────────────────────────────────────────────────────────────
-
-const WHEN_TO_USE = [
-  {
-    badge: 'In-process',
-    badgeCls: 'bg-bg text-muted/60 ring-line',
-    title: 'Один процесс',
-    when: 'Единственный плагин или сервис без daemon',
-    detail: 'InMemoryStateBroker встроен, TTL 300s по умолчанию, cleanup каждые 30s. Ноль настроек — работает сразу.',
-  },
-  {
-    badge: 'Daemon · :7777',
-    badgeCls: 'bg-accent/10 text-accent/80 ring-accent/20',
-    title: 'Несколько сервисов',
-    when: 'Плагины и сервисы шарят состояние',
-    detail: 'kb-dev start поднимает State Daemon. Состояние живёт между перезапусками плагинов и доступно всем сервисам.',
-  },
-  {
-    badge: 'Platform adapter',
-    badgeCls: 'bg-emerald-500/10 text-emerald-600/80 ring-emerald-500/20',
-    title: 'Продакшн',
-    when: 'Несколько инстансов, распределённая система',
-    detail: 'Меняешь backend на Redis в kb.config.json — API остаётся прежним. Тот же get/set/delete, другой провайдер.',
-  },
-];
 
 // ── Code example ─────────────────────────────────────────────────────────────
 
@@ -80,11 +55,22 @@ POST /state/clear?pattern=tenant:default:mind:*
 
 # 204 No Content`;
 
+type ModeItem = {
+  badge: string;
+  badgeCls: string;
+  title: string;
+  when: string;
+  detail: string;
+};
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function StateBrokerPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
+
+  const t = await getTranslations({ locale, namespace: 'page' });
+  const stateModes = t.raw('stateModes') as ModeItem[];
 
   return (
     <>
@@ -96,23 +82,22 @@ export default async function StateBrokerPage({ params }: Props) {
           <DotPattern className="absolute inset-0 z-0 opacity-40" />
           <Container className="relative z-10">
             <div className="mx-auto max-w-2xl text-center">
+              {/* i18n-ignore: brand + port label */}
               <Eyebrow className="mb-4">State · :7777</Eyebrow>
               <h1 className="mb-5 text-4xl font-bold leading-tight tracking-tight text-kb-text sm:text-5xl">
-                Состояние{' '}
-                <GradientText>между вызовами</GradientText>
+                {t('stateHeroTitle')}{' '}
+                <GradientText>{t('stateHeroTitleHighlight')}</GradientText>
               </h1>
               <p className="mb-8 text-lg leading-relaxed text-muted/70">
-                Плагины stateless по умолчанию — каждый вызов начинается заново.
-                State Broker хранит состояние с TTL: in-memory, daemon или Redis.
-                API не меняется.
+                {t('stateHeroDescription')}
               </p>
               <div className="flex flex-wrap justify-center gap-3">
                 <Button asChild size="lg">
-                  <a href={`/${locale}/install`}>Установить</a>
+                  <a href={`/${locale}/install`}>{t('stateHeroInstallBtn')}</a>
                 </Button>
                 <Button asChild variant="outline" size="lg">
                   <a href="https://docs.kblabs.ru/state-broker" target="_blank" rel="noopener noreferrer">
-                    Документация
+                    {t('stateHeroDocsBtn')}
                     <ExternalLink className="ml-2 size-4" />
                   </a>
                 </Button>
@@ -121,20 +106,20 @@ export default async function StateBrokerPage({ params }: Props) {
           </Container>
         </section>
 
-        {/* ── Когда юзать ── */}
+        {/* ── Modes ── */}
         <Section className="border-t border-line">
           <Container>
             <AnimateOnScroll>
               <div className="mx-auto mb-12 max-w-xl text-center">
-                <Eyebrow className="mb-3">Когда что использовать</Eyebrow>
+                <Eyebrow className="mb-3">{t('stateModesEyebrow')}</Eyebrow>
                 <h2 className="text-3xl font-bold tracking-tight text-kb-text">
-                  Три режима. Один API.
+                  {t('stateModesTitle')}
                 </h2>
               </div>
             </AnimateOnScroll>
 
             <div className="grid gap-6 lg:grid-cols-3">
-              {WHEN_TO_USE.map((item, i) => (
+              {stateModes.map((item, i) => (
                 <AnimateOnScroll key={item.badge} delay={i * 80}>
                   <div className="flex h-full flex-col rounded-2xl border border-line bg-surface p-6 shadow-sm">
                     <span className={`mb-4 self-start rounded-md px-2.5 py-1 font-mono text-[0.68rem] font-medium ring-1 ring-inset ${item.badgeCls}`}>
@@ -155,21 +140,17 @@ export default async function StateBrokerPage({ params }: Props) {
           <Container>
             <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
               <AnimateOnScroll>
+                {/* i18n-ignore: HTTP acronym label */}
                 <Eyebrow className="mb-3">HTTP API</Eyebrow>
                 <h2 className="mb-4 text-3xl font-bold tracking-tight text-kb-text">
-                  Четыре маршрута. Ничего лишнего.
+                  {t('stateApiTitle')}
                 </h2>
                 <p className="mb-6 text-base leading-relaxed text-muted/70">
-                  <code className="rounded px-1.5 py-0.5 font-mono text-[0.85em] bg-surface text-kb-text/75">GET · PUT · DELETE /state/:key</code>{' '}
-                  плюс{' '}
-                  <code className="rounded px-1.5 py-0.5 font-mono text-[0.85em] bg-surface text-kb-text/75">POST /state/clear</code>.
-                  Ключи namespaced:{' '}
-                  <code className="rounded px-1.5 py-0.5 font-mono text-[0.85em] bg-surface text-kb-text/75">tenant:default:namespace:key</code>.
-                  TTL в миллисекундах, по умолчанию 5 минут.
+                  {t('stateApiLead')}
                 </p>
                 <Button asChild variant="outline" size="sm">
                   <a href="https://docs.kblabs.ru/state-broker" target="_blank" rel="noopener noreferrer">
-                    Документация
+                    {t('stateApiDocsBtn')}
                     <ExternalLink className="ml-2 size-3.5" />
                   </a>
                 </Button>
@@ -180,7 +161,6 @@ export default async function StateBrokerPage({ params }: Props) {
                   <CodeBlock
                     code={API_CODE}
                     language="bash"
-                    style={{ maxHeight: 420, overflowY: 'auto' }}
                   />
                 </div>
               </AnimateOnScroll>
@@ -196,20 +176,19 @@ export default async function StateBrokerPage({ params }: Props) {
                 <BorderBeam />
                 <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[360px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/[0.06] blur-[90px]" />
                 <div className="relative z-10">
-                  <Eyebrow className="mb-4">Попробуйте прямо сейчас</Eyebrow>
+                  <Eyebrow className="mb-4">{t('stateCtaEyebrow')}</Eyebrow>
                   <h2 className="mb-4 text-[clamp(1.8rem,3.5vw,2.8rem)] font-bold leading-tight tracking-tight text-kb-text">
-                    Запускается вместе с платформой.
+                    {t('stateCtaTitle')}
                   </h2>
                   <p className="mx-auto mb-8 max-w-[44ch] text-[1.05rem] leading-[1.7] text-muted">
-                    kb-dev start поднимает State Daemon автоматически.
-                    Меняешь backend в конфиге — сервисы не трогаешь.
+                    {t('stateCtaDescription')}
                   </p>
                   <div className="flex flex-wrap justify-center gap-3">
                     <Button variant="primary" size="lg" href={`/${locale}/install`}>
-                      Установить
+                      {t('stateCtaInstallBtn')}
                     </Button>
                     <Button variant="secondary" size="lg" href="https://docs.kblabs.ru/state-broker" target="_blank" rel="noopener noreferrer">
-                      Документация
+                      {t('stateCtaDocsBtn')}
                     </Button>
                   </div>
                 </div>

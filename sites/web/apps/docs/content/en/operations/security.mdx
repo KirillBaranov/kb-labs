@@ -1,0 +1,171 @@
+---
+title: "Security"
+description: "Threat model, sandbox boundaries, secret management, and hardening guidance."
+updatedAt: "2026-04-07"
+order: 3
+---
+
+KB Labs is designed to run untrusted plugin code. The platform's security model is built around that reality: every plugin declares its permissions up front, the runtime enforces them at every syscall, and the process boundaries between services limit blast radius when something goes wrong. This page covers the threat model, the sandbox layers, secret management, and hardening recommendations for production.
+
+## Threat model
+
+KB Labs protects against these threats:
+
+1. **A plugin trying to read files or env vars it shouldn't.** The permissions system declares filesystem and env access up front; runtime shims refuse anything outside the allow-list.
+2. **A plugin trying to call a network endpoint it shouldn't.** Network permissions are allow-listed by host pattern.
+3. **A plugin trying to exfiltrate data via stdout/stderr.** Output goes through the UI facade and analytics pipeline, which attribute every event to the source plugin.
+4. **A compromised plugin crashing the host process.** Plugin execution runs in worker threads or subprocesses by default; a plugin crash doesn't take down the service.
+5. **A compromised plugin consuming unbounded resources.** Quotas (`timeoutMs`, `memoryMb`, `cpuMs`) cap execution.
+6. **A stolen gateway JWT being used indefinitely.** JWTs are short-lived; refresh tokens rotate. A stolen access token expires within the hour.
+
+KB Labs **does not** protect against:
+
+- **A malicious adapter.** Adapters run with full Node privileges — they're infrastructure code, not user code. If you install an adapter from a source you don't trust, it can do anything. Only install adapters from verified sources.
+- **A compromised platform process.** Once the REST API or workflow daemon is running, it has full access to `kb.config.json` secrets and can read/write anywhere permitted by the OS. Use OS-level isolation (containers, users, filesystem permissions) to limit blast radius.
+- **Timing side-channels.** Plugin execution times are observable via analytics. Don't rely on execution time to hide secrets.
+- **Malicious plugin updates.** The marketplace verifies SHA-256 integrity hashes on install, but a compromised upstream registry can publish a malicious update with a matching hash if they control both the package and the hash source. Verified platform signatures (roadmap) will close this gap.
+
+## The sandbox layers
+
+Plugin code runs through five layers, each enforcing a different slice of the security model:
+
+### 1. Permission declaration
+
+Every plugin's `manifest.permissions` lists, declaratively, what the plugin wants to do. Validated at load time:
+
+```ts
+permissions: combinePermissions()
+  .with(kbPlatformPreset)
+  .withFs({ mode: 'readWrite', allow: ['.kb/commit/**'] })
+  .withPlatform({ llm: true, cache: ['commit:'] })
+  .build()
+```
+
+See [Plugins → Permissions](/plugins/permissions).
+
+### 2. Runtime shims
+
+The `ctx.runtime.*` API isn't Node's `fs` / `fetch` / `process.env` — it's a shim layer that intercepts every call and checks it against the declared permissions. A plugin that declares `fs.allow: ['.kb/commit/**']` and tries to read `/etc/passwd` gets a permission error before any IO happens.
+
+Source: `@kb-labs/plugin-runtime/src/runtime/*-shim.ts`. The shims are the same code path in dev and production.
+
+### 3. Process isolation
+
+Depending on `platform.execution.mode`, handlers run in:
+
+- **`in-process`** — the service's own Node process. No isolation. Only safe for first-party plugins in dev.
+- **`worker-pool`** — pooled worker threads. Each worker has its own V8 isolate. A crash takes down one worker, not the service. Default for single-node production.
+- **`container`** — Docker container per handler execution. Full OS-level isolation. Use for multi-tenant deployments or for running untrusted plugins.
+- **`remote`** — roadmap. Offload to a dedicated execution service.
+
+See [Concepts → Execution Model](/concepts/execution-model) and [Configuration → kb.config.json → execution](/configuration/kb-config#platformexecution).
+
+### 4. Resource quotas
+
+The permission spec includes a `quotas` section enforced at runtime:
+
+```ts
+quotas: {
+  timeoutMs: 600_000,   // 10 minutes max wall-clock
+  memoryMb: 512,         // 512 MB RSS
+  cpuMs: 120_000,        // 2 minutes of CPU
+}
+```
+
+The worker-pool and container execution backends enforce these via OS-level mechanisms (timeouts, memory limits, cgroup CPU limits). In-process execution respects the timeout only; memory and CPU limits are advisory.
+
+### 5. Audit trail
+
+Every handler execution produces analytics events recording which plugin ran, which handler, how long it took, how many tokens it used, whether it succeeded. Logs carry the same correlation IDs. If a plugin behaves unexpectedly, you can reconstruct what it did after the fact.
+
+Per-tenant attribution is preserved across the pipeline, so multi-tenant deployments can answer "what did tenant X's plugin do today".
+
+## Gateway authentication
+
+Everything external flows through the gateway, which enforces authentication. See [Gateway → Authentication](/gateway/authentication) for the full model. Key points:
+
+- **Bearer tokens** on every proxied request. Either static tokens (for dev/service accounts) or runtime-minted JWTs.
+- **`GATEWAY_JWT_SECRET`** is the HMAC signing key for all JWTs. **Required in production.** The gateway falls back to an insecure default with a warning if unset — do not ship that to production.
+- **Host agents** use a separate auth flow (client credentials → short-lived JWT → WebSocket upgrade).
+- **`/internal/dispatch`** uses `GATEWAY_INTERNAL_SECRET` — a separate shared secret, not a JWT. It's the internal seam between platform services and container execution; keep it off public networks.
+
+## Secret management
+
+**Never put secrets in `kb.config.json`.** The config file is treated as public configuration — safe to commit, safe to share, safe to show in diagnostic output. Secrets go in environment variables or a secret manager.
+
+### Recommended patterns
+
+- **Dev**: `.env` file in the workspace root. Never commit it.
+- **Single-host production**: `systemd` `EnvironmentFile` pointing at a `chmod 600` file, owned by the service user.
+- **Kubernetes**: `Secret` resources referenced via `envFrom` in the Deployment spec.
+- **Vault / AWS Secrets Manager / Azure Key Vault**: sidecar or init-container that populates env vars before the service starts.
+- **Docker/compose**: `secrets:` block with mounted files, read at startup.
+
+### Which variables carry secrets
+
+From the full [Environment Variables](/configuration/environment-variables) reference, the security-sensitive ones are:
+
+| Variable | Why it's sensitive |
+|---|---|
+| `GATEWAY_JWT_SECRET` | Forging any JWT for any host |
+| `GATEWAY_INTERNAL_SECRET` | Calling `/internal/dispatch` directly |
+| `OPENAI_API_KEY` | LLM cost attribution, rate limits |
+| `ANTHROPIC_API_KEY` | Same |
+| `QDRANT_API_KEY` | Vector store write access |
+| Plugin-specific env (`GITHUB_TOKEN`, `NPM_TOKEN`, `SLACK_WEBHOOK`, ...) | Whatever those credentials protect |
+
+Handle all of these through your secret manager. Don't commit them, don't log them, don't echo them in error messages.
+
+### What the platform does with secrets
+
+When a plugin declares `env.read: ['OPENAI_API_KEY']`, the runtime passes that specific env var through to the plugin's sandbox — but only that one. Plugins can't read env vars they haven't declared. Adapters, on the other hand, run with full process env access because they're trusted code paths.
+
+Secret values are not logged. The logger redacts env var values; diagnostic events carry references (e.g. `"var": "OPENAI_API_KEY"`) but never the actual values.
+
+## Hardening checklist
+
+For production deployments:
+
+- [ ] **Set `GATEWAY_JWT_SECRET`** to a 32+ byte random value from a secret manager.
+- [ ] **Set `GATEWAY_INTERNAL_SECRET`** to a separate 32+ byte random value if using container-mode execution.
+- [ ] **Run as a non-root user.** Every service should run under a dedicated user with no login shell.
+- [ ] **Filesystem permissions.** The service user should own the workspace directory; no other user should have write access.
+- [ ] **Don't expose internal services.** Only the gateway should be externally reachable. REST API, workflow daemon, marketplace, state daemon should all be on an internal network.
+- [ ] **TLS termination.** Put a reverse proxy (Caddy, nginx, Traefik) in front of the gateway for TLS and rate limiting. See [Gateway → Self-Hosted](/gateway/self-hosted).
+- [ ] **Restrict plugin sources.** Only install plugins from trusted sources. For internal deployments, host your own npm registry and allowlist the packages that can be installed.
+- [ ] **Set execution mode to `worker-pool` or `container`.** Never run production with `in-process` execution unless every plugin is first-party and fully trusted.
+- [ ] **Configure per-plugin quotas.** Review every installed plugin's permission spec and ensure quotas are set. A rogue plugin without quotas can run forever.
+- [ ] **Enable structured logging.** Ship logs to a SIEM or log aggregator so you have an audit trail.
+- [ ] **Monitor diagnostic events.** Set alerts on `reasonCode:*_failed` and `level:error` in your log aggregator.
+- [ ] **Rotate secrets.** JWT secrets, API keys, service account credentials — all on a rotation schedule appropriate to your security policy.
+- [ ] **Review permissions on updates.** When upgrading a plugin, check the diff in its `permissions` field. New file or network permissions are a change that should be approved, not auto-applied.
+
+## Plugin signature verification (roadmap)
+
+The discovery layer reads a `signature` field on each marketplace entry. Today it's unpopulated by the npm-backed marketplace — every plugin loads as "unsigned" with an info-level diagnostic. When the platform marketplace ships with its own registry, signatures will be verified at install time and at every service startup:
+
+- **Signed plugin loads normally**, with a positive diagnostic.
+- **Unsigned plugin loads with a warning**, same as today.
+- **Plugin with an invalid signature is refused.** The signature check is a hard gate once it's enabled.
+
+Signatures are ed25519 over the package content, signed by the platform after automated quality checks (types, lint, tests). For the current state of the infrastructure, see [Plugins → Publishing → Signed packages](/plugins/publishing#signed-packages-future).
+
+## Incident response
+
+When a plugin goes rogue (unexpected behavior, excessive resource usage, security violation):
+
+1. **Disable the plugin**: `pnpm kb marketplace plugins disable @scope/name`. This sets `enabled: false` in the lock file without uninstalling.
+2. **Check logs and analytics** for the time window in question. Filter by `pluginId` to see what it did.
+3. **Review the plugin's permissions** in its manifest. Anything it did within declared permissions is technically "allowed" — you may need to tighten the manifest for the next install.
+4. **Tighten the permissions** in your own `kb.config.json` if the deployment has any plugin-specific overrides.
+5. **Uninstall**: `pnpm kb marketplace uninstall @scope/name` once the investigation is done.
+
+For severe incidents (suspected compromise), rotate `GATEWAY_JWT_SECRET` to invalidate all outstanding tokens and force reauth across all clients.
+
+## What to read next
+
+- **[Plugins → Permissions](/plugins/permissions)** — the permission model in full.
+- **[Gateway → Authentication](/gateway/authentication)** — token types, rotation, claims.
+- **[Concepts → Execution Model](/concepts/execution-model)** — isolation layers and their trade-offs.
+- **[Operations → Deployment](/operations/deployment)** — hardening deployment topology.
+- **[Operations → Runbooks](/operations/runbooks)** — specific incident procedures.

@@ -1,0 +1,29 @@
+---
+title: "Concepts"
+description: "Mental models for understanding how KB Labs works."
+updatedAt: "2026-04-07"
+---
+
+Before you start building on the platform it helps to have a clear picture of the moving parts. These pages cover the core ideas you'll encounter everywhere else in the docs.
+
+## What's in this section
+
+- **[Architecture Overview](/concepts/overview)** — A bird's-eye view: which services exist, how requests flow between them, and where extension points live. Start here if you're new.
+- **[Plugin System](/concepts/plugin-system)** — What a plugin is, what it can and cannot do, how it's discovered, sandboxed, and executed.
+- **[Adapter System](/concepts/adapter-system)** — How the platform abstracts away concrete backends (LLMs, caches, databases) through swappable adapters.
+- **[Execution Model](/concepts/execution-model)** — The four execution backends (in-process, worker pool, subprocess, container) and when to use each.
+- **[Workflow Engine](/concepts/workflow-engine)** — Declarative multi-step jobs: triggers, steps, artifact passing, and execution targets.
+- **[Permissions Model](/concepts/permissions)** — The allow-list sandbox every plugin runs inside.
+- **[Multi-Tenancy](/concepts/multi-tenancy)** — Tenant IDs, rate limiting, quotas, and how isolation works today.
+
+## Recommended reading order
+
+If you're here for the first time:
+
+1. [Architecture Overview](/concepts/overview) — understand the big picture.
+2. [Plugin System](/concepts/plugin-system) — plugins are how you extend everything.
+3. [Adapter System](/concepts/adapter-system) — adapters are how you change the platform's dependencies.
+4. [Execution Model](/concepts/execution-model) — understand how plugin code actually runs.
+5. [Permissions Model](/concepts/permissions) — understand what plugin code is allowed to do.
+
+The [Workflow Engine](/concepts/workflow-engine) and [Multi-Tenancy](/concepts/multi-tenancy) pages are more specialized — read them when those topics become relevant to what you're building.

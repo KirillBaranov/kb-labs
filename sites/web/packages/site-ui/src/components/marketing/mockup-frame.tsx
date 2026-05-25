@@ -38,7 +38,7 @@ export function MockupFrame({
           <div className="bg-chrome border-b border-line px-4 py-3 flex items-center gap-3">
             <TrafficLights />
             <div className="flex-1 flex justify-center">
-              <div className="bg-bg rounded-md px-3 py-1 text-xs text-muted font-mono text-center max-w-[280px] w-full truncate">
+              <div className="bg-bg rounded-md px-3 py-1 text-sm text-muted font-mono text-center max-w-[280px] w-full truncate">
                 {url ?? 'localhost:3000'}
               </div>
             </div>
@@ -50,7 +50,7 @@ export function MockupFrame({
         <>
           <div className="bg-chrome border-b border-line px-4 py-3 flex items-center gap-3">
             <TrafficLights />
-            <span className="text-xs text-muted mx-auto">{title}</span>
+            <span className="text-sm text-muted mx-auto">{title}</span>
           </div>
           <div className="bg-[#0d0e11]">{children}</div>
         </>

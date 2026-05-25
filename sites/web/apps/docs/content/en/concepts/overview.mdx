@@ -1,0 +1,110 @@
+---
+title: "Architecture Overview"
+description: "How KB Labs services fit together."
+updatedAt: "2026-04-07"
+order: 1
+---
+
+KB Labs is not a monolith. It's a set of cooperating services — a CLI, a REST API, a workflow engine, a marketplace, a Studio web app, and a gateway in front of them — plus an extension system (plugins and adapters) that lets you build on top without touching the core. This page explains what each piece does and how they connect.
+
+## Services at a glance
+
+```
+  Developer
+     │
+     ├──── pnpm kb <cmd>  ──────▶  CLI runtime
+     │                                  │
+     └──── browser  ────────────▶  Studio (port 3000)
+                                        │
+                              ┌─────────▼──────────┐
+                              │   Gateway (:4000)  │
+                              └─────────┬──────────┘
+                                        │ routes by path
+               ┌────────────────────────┼───────────────────────┐
+               ▼                        ▼                        ▼
+        REST API (:5050)      Workflow daemon (:7778)   Marketplace (:5070)
+               │                        │
+               └──────────┬─────────────┘
+                           ▼
+                   Plugin Runtime
+                 (sandbox + APIs)
+                           │
+                ┌──────────┴──────────┐
+                ▼                     ▼
+          Plugin handler        Adapter layer
+          (user code)       (LLM, cache, storage, ...)
+```
+
+All external traffic (browser, CI, external webhooks) passes through the **Gateway**. The CLI communicates directly with the REST API or dispatches through the gateway depending on the operation. Studio is a React application that talks to the gateway's aggregated API.
+
+## The services
+
+### CLI runtime
+
+The CLI (`pnpm kb`) is the primary developer interface. It loads plugin manifests from the marketplace lock and dispatches commands to their handler code. In the default (in-process) execution mode, handler code runs inside the CLI process itself — there's no roundtrip to the REST API for most commands. For remote or sandboxed execution the CLI routes through the gateway.
+
+### REST API (port 5050)
+
+The REST API service hosts:
+- Platform management routes (`/api/v1/health`, `/api/v1/routes`, ...)
+- Plugin REST contributions (`/api/v1/plugins/<name>/<route>`)
+- Webhook entry points
+
+It also owns the OpenAPI spec at `/openapi.json` and exposes Swagger UI at `/docs` in non-production environments.
+
+### Workflow daemon (port 7778)
+
+Handles workflow run lifecycle: enqueue, dispatch, poll, artifact storage. Workflows are declarative YAML (or JSON) specs that chain jobs and steps together. The daemon picks up runs, resolves the execution target for each step, and invokes plugin handlers via the same plugin runtime the CLI and REST API use.
+
+### Marketplace service (port 5070)
+
+Manages the install/uninstall/update lifecycle for all entity types: plugins, adapters, workflows, skills, hooks, and widgets. It reads and writes `.kb/marketplace.lock` and maintains the manifest cache. The CLI's marketplace commands are thin HTTP clients against this service.
+
+### Gateway (port 4000)
+
+A reverse proxy that aggregates the REST API and workflow daemon behind a single URL. Handles authentication, tenant extraction, and request routing. Studio and external integrations hit the gateway rather than individual services.
+
+### Studio (port 3000)
+
+The web UI. Serves a Next.js application that communicates with the gateway. Studio pages contributed by plugins are mounted via Module Federation at runtime — installing a plugin that contributes a Studio page makes it appear in the sidebar without rebuilding Studio itself.
+
+### State daemon (port 7777)
+
+A lightweight in-process state broker used by the REST API, workflow daemon, and gateway for coordination: distributed locks, rate-limit counters, short-lived ephemeral state. Not a general-purpose database — it holds only transient data.
+
+## The extension model
+
+KB Labs has two extension points. They're complementary and sit at different layers.
+
+### Plugins
+
+Plugins are packages that contribute *features*: CLI commands, REST routes, workflow step handlers, Studio pages, webhooks, cron jobs. They run inside a sandbox (the plugin runtime) that enforces a permission allow-list. Plugin code calls `useLLM()`, `useCache()`, `useStorage()` — it doesn't care which concrete backend is behind those calls.
+
+See [Plugin System](/concepts/plugin-system) for the full model.
+
+### Adapters
+
+Adapters provide *concrete backends* for platform services: `ILLM` (OpenAI, Anthropic, local), `ICache` (in-memory, Redis), `IVectorStore` (Qdrant, in-memory), `IStorage` (filesystem, S3), `ILogger`. You swap adapters in `kb.config.json`. Plugins never reference adapters directly — they use SDK hooks, and the platform injects whichever adapter is configured.
+
+See [Adapter System](/concepts/adapter-system) for the full model.
+
+## Data flow: a CLI command
+
+To make this concrete, here's what happens when you run `pnpm kb commit commit`:
+
+1. The CLI runtime reads `.kb/marketplace.lock`, finds the `@kb-labs/commit-plugin` entry.
+2. It resolves the `commit:commit` command to a handler reference in the manifest.
+3. The plugin runtime builds a `PluginContextV3` with sandbox shims wired to the platform's adapters.
+4. The handler module is imported (in-process by default) and `handler.execute(ctx, input)` is called.
+5. The handler calls `useLLM()` to get the configured LLM adapter and `ctx.runtime.shell.exec` to run git commands. Both go through the sandbox.
+6. The result is returned to the CLI, which formats and prints it.
+
+No network hop to the REST API. No Docker container. The gateway and remote services are not involved for local CLI commands unless the execution mode is configured otherwise.
+
+## What to read next
+
+- [Plugin System](/concepts/plugin-system) — the extension model in depth.
+- [Adapter System](/concepts/adapter-system) — concrete backends and how they're configured.
+- [Execution Model](/concepts/execution-model) — the four ways plugin handlers can run.
+- [Services → REST API](/services/rest-api) — full REST API service docs.
+- [Services → Gateway](/services/gateway) — gateway routing and authentication.

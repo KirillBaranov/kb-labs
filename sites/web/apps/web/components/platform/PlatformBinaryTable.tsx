@@ -1,7 +1,8 @@
 'use client';
 
 import { usePlatform, OS } from '@/hooks/usePlatform';
-import s from './platform.module.css';
+import { DataTable } from '@kb-labs/web-site-ui';
+import type { DataTableColumn, DataTableRow } from '@kb-labs/web-site-ui';
 
 export interface BinaryEntry {
   platform: string;
@@ -14,15 +15,14 @@ interface Props {
   binaries: BinaryEntry[];
   downloadLabel?: string;
   baseUrl: string;
-  /** Column header labels */
   colPlatform?: string;
   colBinary?: string;
   colDownload?: string;
 }
 
 const OS_KEYWORDS: Record<OS, string[]> = {
-  mac: ['darwin', 'macos', 'mac'],
-  linux: ['linux'],
+  mac:     ['darwin', 'macos', 'mac'],
+  linux:   ['linux'],
   windows: ['windows'],
 };
 
@@ -30,9 +30,6 @@ function matchesOS(file: string, os: OS): boolean {
   return OS_KEYWORDS[os].some((kw) => file.toLowerCase().includes(kw));
 }
 
-/**
- * Binary download table that highlights the row matching the user's platform.
- */
 export function PlatformBinaryTable({
   binaries,
   downloadLabel = 'Download',
@@ -43,36 +40,47 @@ export function PlatformBinaryTable({
 }: Props) {
   const os = usePlatform();
 
-  return (
-    <div className={s.table}>
-      <div className={s.tableHead}>
-        <span>{colPlatform}</span>
-        <span>{colBinary}</span>
-        <span>{colDownload}</span>
-      </div>
-      {binaries.map((item) => {
-        const highlighted = os !== null && !item.unsupported && matchesOS(item.file, os);
-        return (
-          <div
-            key={item.file}
-            className={[s.tableRow, highlighted ? s.tableRowHighlighted : '', item.unsupported ? s.tableRowUnsupported : ''].filter(Boolean).join(' ')}
+  const columns: DataTableColumn[] = [
+    { key: 'platform', label: colPlatform },
+    { key: 'binary',   label: colBinary },
+    { key: 'download', label: colDownload, align: 'text-right' },
+  ];
+
+  const rows: DataTableRow[] = binaries.map((item) => {
+    const highlighted = os !== null && !item.unsupported && matchesOS(item.file, os);
+    return {
+      key:       item.file,
+      highlight: highlighted,
+      muted:     item.unsupported,
+      cells: {
+        platform: (
+          <span className="flex items-center gap-2 font-medium text-kb-text">
+            {highlighted && (
+              <span className="inline-flex rounded-full bg-accent/15 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wider text-accent">
+                your platform
+              </span>
+            )}
+            {item.platform}
+          </span>
+        ),
+        binary: (
+          <code className="font-mono text-sm text-muted/60">{item.file}</code>
+        ),
+        download: item.unsupported ? (
+          <span className="text-sm text-muted/30">not supported yet</span>
+        ) : (
+          <a
+            href={`${baseUrl}/${item.file}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-medium text-accent hover:underline underline-offset-4"
           >
-            <span>
-              {highlighted && <span className={s.platformBadge}>your platform</span>}
-              {item.platform}
-            </span>
-            <code>{item.file}</code>
-            {item.unsupported
-              ? <span className={s.unsupportedLabel}>not supported yet</span>
-              : (
-                <a href={`${baseUrl}/${item.file}`} target="_blank" rel="noopener noreferrer">
-                  {downloadLabel}
-                </a>
-              )
-            }
-          </div>
-        );
-      })}
-    </div>
-  );
+            {downloadLabel} →
+          </a>
+        ),
+      },
+    };
+  });
+
+  return <DataTable columns={columns} rows={rows} />;
 }

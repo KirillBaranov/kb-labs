@@ -696,6 +696,28 @@ custom_checks:
     on: [check]
     categories: [plugin-entry]
 
+  # i18n translation guard for @kb-labs/web-site.
+  # Blocks CI on: EN↔RU key mismatch, missing keys, hardcoded Cyrillic in .tsx.
+  # UNUSED keys are emitted as warnings (autoFixable — devkit fix removes them).
+  # Suppress per-line with: // i18n-ignore
+  # Script self-filters: skips all packages except @kb-labs/web-site.
+  - name: i18n-check
+    run: node sites/web/apps/web/scripts/i18n-check.mjs
+    fix: node sites/web/apps/web/scripts/i18n-check.mjs
+    on: [check]
+    language: typescript
+
+  # Broken-link guard for KB Labs sites (web + docs).
+  # Blocks CI on: internal href with no matching Next.js route, or a controlled-domain
+  # URL (kblabs.ru, docs.kblabs.ru, status.kblabs.ru) that returns 4xx.
+  # 5xx / timeouts are warnings only.
+  # Suppress per-line with: // link-ignore
+  # Script self-filters: skips all packages except @kb-labs/web-site.
+  - name: check-links
+    run: node sites/web/apps/web/scripts/check-links.mjs
+    on: [check]
+    language: typescript
+
   # CLI manifest naming conventions (ADR-0018, docs/plans/cli-naming-audit.md)
   # Rules: no kebab in path segments, no reserved namespaces, single-word top-level.
   # Known violations are tracked in KNOWN_VIOLATIONS inside the script — warnings only.

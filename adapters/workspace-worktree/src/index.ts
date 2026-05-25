@@ -1,6 +1,6 @@
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
-import { existsSync, mkdirSync, rmSync, symlinkSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, rmSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 
@@ -49,6 +49,8 @@ interface WorktreeRecord {
   status: WorkspaceStatus;
   createdAt: string;
   runId?: string;
+  /** Reference count — number of jobs currently using this workspace */
+  refCount: number;
 }
 
 const TIMEOUTS = {
@@ -94,6 +96,7 @@ export class WorktreeWorkspaceAdapter implements IWorkspaceProvider {
     if (existsSync(worktreePath)) {
       const existing = this.records.get(workspaceId);
       if (existing) {
+        existing.refCount++;
         onProgress?.({ stage: 'reuse', message: 'Reusing existing worktree', progress: 100 });
         return {
           workspaceId,
@@ -108,7 +111,7 @@ export class WorktreeWorkspaceAdapter implements IWorkspaceProvider {
       // Worktree exists on disk but not in records (stale) — reuse anyway
       onProgress?.({ stage: 'reuse', message: 'Reusing existing worktree (recovered)', progress: 100 });
       const now = new Date().toISOString();
-      this.records.set(workspaceId, { workspaceId, worktreePath, branch, status: 'ready', createdAt: now, runId });
+      this.records.set(workspaceId, { workspaceId, worktreePath, branch, status: 'ready', createdAt: now, runId, refCount: 1 });
       return {
         workspaceId,
         provider: 'worktree',
@@ -180,6 +183,7 @@ export class WorktreeWorkspaceAdapter implements IWorkspaceProvider {
         status: 'ready',
         createdAt: new Date().toISOString(),
         runId,
+        refCount: 1,
       };
       this.records.set(workspaceId, record);
 
@@ -220,6 +224,19 @@ export class WorktreeWorkspaceAdapter implements IWorkspaceProvider {
       return;
     }
 
+    record.refCount--;
+    // Keep the worktree alive for the entire run — subsequent jobs of the same run
+    // reuse it and see all accumulated changes (agent edits, build artifacts, etc.).
+    // Cleanup happens on daemon restart (startupCleanup) or explicit destroy().
+    record.status = 'released';
+  }
+
+  async destroy(workspaceId: string): Promise<void> {
+    const record = this.records.get(workspaceId);
+    if (!record) {
+      return;
+    }
+
     try {
       await this.exec(`git worktree remove "${record.worktreePath}" --force`, this.repoRoot, TIMEOUTS.cleanup);
     } catch {
@@ -231,8 +248,26 @@ export class WorktreeWorkspaceAdapter implements IWorkspaceProvider {
       } catch { /* ignore */ }
     }
 
-    record.status = 'released';
     this.records.delete(workspaceId);
+  }
+
+  async startupCleanup(): Promise<void> {
+    if (!existsSync(this.worktreeBaseDir)) {
+      return;
+    }
+    const entries = readdirSync(this.worktreeBaseDir);
+    for (const entry of entries) {
+      const worktreePath = path.join(this.worktreeBaseDir, entry);
+      try {
+        await this.exec(`git worktree remove "${worktreePath}" --force`, this.repoRoot, TIMEOUTS.cleanup);
+      } catch {
+        rmSync(worktreePath, { recursive: true, force: true });
+      }
+    }
+    try {
+      await this.exec('git worktree prune', this.repoRoot, TIMEOUTS.cleanup);
+    } catch { /* ignore */ }
+    this.records.clear();
   }
 
   async getStatus(workspaceId: string): Promise<WorkspaceStatusResult> {

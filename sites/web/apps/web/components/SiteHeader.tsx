@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import { useLocale, useTranslations } from 'next-intl';
 import { LanguageSwitcher } from './LanguageSwitcher';
+import { Sparkles } from 'lucide-react';
 import { NAV_DROPDOWNS, NAV_LINKS, MOBILE_EXTRA_PRODUCT_ITEMS, MENU_ORDER as MENU_ORDER_CFG } from './nav-config';
 
 const AiAssistant = dynamic(
@@ -205,6 +206,18 @@ const ICONS: Record<string, React.ReactNode> = {
       <path d="M2 12c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
     </svg>
   ),
+  Contact: (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <path d="M1.5 3a1 1 0 011-1h9a1 1 0 011 1v7a1 1 0 01-1 1h-9a1 1 0 01-1-1V3z" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M1.5 3.5L7 7.5l5.5-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  ),
+  Demo: (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <rect x="1" y="2.5" width="12" height="8" rx="1.5" stroke="currentColor" strokeWidth="1.3"/>
+      <path d="M5.5 5.5l4 2-4 2V5.5z" fill="currentColor"/>
+    </svg>
+  ),
 };
 
 
@@ -398,7 +411,7 @@ export function SiteHeader() {
         <div className="nav-actions">
           <LanguageSwitcher />
           <button className="nav-btn ai-ask" onClick={() => setAiOpen(true)} aria-label="Ask AI">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1l2 4.5L14.5 7.5l-4.5 2L8 14l-2-4.5L1.5 7.5l4.5-2z" fill="currentColor"/></svg>
+            <Sparkles size={15} />
           </button>
           <Link className="nav-btn ghost" href={lp('/signup')}>{t('nav.login')}</Link>
           <Link className="nav-btn solid" href={lp('/install')}>{t('nav.start')}</Link>

@@ -15,24 +15,58 @@
 
 .codeWrap {
   position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgb(var(--color-bg));
 }
 
+/* trigger copy button visibility on wrap hover */
 .codeWrap:hover button[data-copy] {
   opacity: 1;
 }
 
 .codeBlock {
   margin: 0;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: #f5f7fb;
-  padding: 0.75rem 2.5rem 0.75rem 0.9rem;
+  /* no border/radius here — codeWrap owns them */
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  /* right padding = fade width + button space */
+  padding: 0.75rem 3.5rem 0.75rem 0.9rem;
   overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.codeBlock::-webkit-scrollbar {
+  display: none;
+}
+
+/* gradient overlay: transparent → bg of the box */
+.fade {
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 4rem;
+  background: linear-gradient(to right, transparent, rgb(var(--color-bg)));
+}
+
+/* slot that keeps the copy button pinned to the right */
+.copySlot {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  padding-right: 0.5rem;
 }
 
 .codeBlock code {
   font-size: 0.86rem;
-  color: #202633;
+  color: rgb(var(--color-text));
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
 }
 
@@ -41,7 +75,7 @@
   border: 1px solid var(--line);
   border-radius: 12px;
   overflow: hidden;
-  background: #fff;
+  background: rgb(var(--color-bg));
 }
 
 .tableHead,
@@ -55,7 +89,7 @@
 
 .tableHead {
   border-bottom: 1px solid var(--line);
-  background: #f6f8fc;
+  background: rgb(var(--color-surface));
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.07em;
@@ -64,7 +98,7 @@
 }
 
 .tableRow {
-  border-bottom: 1px solid #edf0f6;
+  border-bottom: 1px solid var(--line);
 }
 
 .tableRow:last-child {
@@ -81,12 +115,12 @@
 
 .tableRow code {
   font-size: 0.82rem;
-  color: #4a5260;
+  color: rgb(var(--color-text));
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
 }
 
 .tableRowHighlighted {
-  background: #f0f5ff;
+  background: rgb(var(--color-surface) / 0.6);
 }
 
 .tableRowUnsupported {

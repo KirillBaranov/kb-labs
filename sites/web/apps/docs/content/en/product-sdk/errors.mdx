@@ -1,0 +1,346 @@
+---
+title: "Error Handling"
+description: "How platform-client reports errors, what they mean, and how to retry them."
+updatedAt: "2026-04-07"
+order: 9
+---
+
+`@kb-labs/platform-client` has a deliberately simple error model: every proxy method throws a plain `Error` when something goes wrong, and every error's `message` comes from either the server's `PlatformCallResponse.error` or from the HTTP layer when the server didn't respond with a valid response.
+
+There's no error class hierarchy, no retry logic, no circuit breaker, no exponential backoff. The client is ~300 lines of zero-dep code; anything beyond basic HTTP dispatch belongs in your calling code.
+
+This page covers what the errors look like, how to classify them, and patterns for retries and timeouts.
+
+## The error shape
+
+Every failure — from `platform.llm.complete(...)`, `platform.cache.get(...)`, `platform.call(...)`, `platform.telemetry.track(...)`, whatever — surfaces as a plain `Error` with one of these messages:
+
+### 1. Server-side error with structured response
+
+The server returned a valid `PlatformCallResponse` with `ok: false`:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "message": "LLM adapter not configured",
+    "code": "ADAPTER_UNAVAILABLE"
+  },
+  "durationMs": 12
+}
+```
+
+The client throws:
+
+```ts
+new Error('LLM adapter not configured')
+```
+
+The `code` field from the response is dropped — only the `message` survives. If you need the code, you'll have to catch the error, re-request with `platform.call()` directly, and inspect the raw response body yourself.
+
+### 2. HTTP-level error with non-JSON body
+
+The server returned an HTTP error status (4xx, 5xx) but didn't send a valid `PlatformCallResponse`:
+
+```
+HTTP 401 Unauthorized
+body: "invalid token"
+```
+
+The client throws:
+
+```ts
+new Error('Platform API error: 401 invalid token')
+```
+
+Format: `Platform API error: {status} {body}`. The body is whatever text the server returned; if parsing fails, it's the empty string.
+
+### 3. Network-level error
+
+The fetch itself failed — connection refused, DNS error, timeout before the server responded. The client lets the native `fetch` error bubble up:
+
+```ts
+// TypeError: fetch failed
+// cause: Error: connect ECONNREFUSED 127.0.0.1:4000
+```
+
+This is a `TypeError` (from `fetch`), not a regular `Error`. Check `err instanceof TypeError` or `err.message.includes('fetch failed')` if you need to distinguish.
+
+### 4. Response parse error
+
+The server responded but the body isn't valid JSON or doesn't match the expected shape. The client throws:
+
+```ts
+new Error('Unknown platform error')
+```
+
+This is rare — usually means the server is misbehaving or you're hitting the wrong URL.
+
+## Classifying errors
+
+Since the client throws plain `Error`s, classification is by message matching. Not elegant, but works:
+
+```ts
+async function safeLLMCall(prompt: string): Promise<string | null> {
+  try {
+    const response = await platform.llm.complete(prompt);
+    return response.content;
+  } catch (err) {
+    if (!(err instanceof Error)) throw err;
+
+    // Network errors — likely recoverable
+    if (err.message.includes('fetch failed') || err.message.includes('ECONNREFUSED')) {
+      console.warn('Gateway unreachable, skipping LLM');
+      return null;
+    }
+
+    // Auth errors — not recoverable by retry
+    if (err.message.includes('401') || err.message.includes('403')) {
+      throw new Error('Authentication failed — check KB_API_KEY');
+    }
+
+    // Rate limit — retry after backoff
+    if (err.message.includes('429')) {
+      console.warn('Rate limited, will retry later');
+      return null;
+    }
+
+    // Server error — retry once
+    if (err.message.includes('500') || err.message.includes('502')) {
+      console.warn('Server error, retrying once');
+      try {
+        const response = await platform.llm.complete(prompt);
+        return response.content;
+      } catch {
+        return null;
+      }
+    }
+
+    // Everything else — bubble up
+    throw err;
+  }
+}
+```
+
+You can build a thin wrapper like this once and reuse it across all proxy calls.
+
+## Retry with exponential backoff
+
+The client doesn't retry. For operations you want to retry on transient failures:
+
+```ts
+async function withRetry<T>(
+  operation: () => Promise<T>,
+  options: { maxAttempts?: number; baseDelayMs?: number } = {},
+): Promise<T> {
+  const { maxAttempts = 3, baseDelayMs = 1000 } = options;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      return await operation();
+    } catch (err) {
+      const isLastAttempt = attempt === maxAttempts - 1;
+      if (isLastAttempt) throw err;
+
+      const message = err instanceof Error ? err.message : String(err);
+
+      // Only retry on transient failures
+      const isRetriable =
+        message.includes('fetch failed') ||
+        message.includes('ECONNREFUSED') ||
+        message.includes('429') ||
+        message.includes('500') ||
+        message.includes('502') ||
+        message.includes('503') ||
+        message.includes('504');
+
+      if (!isRetriable) throw err;
+
+      const delay = baseDelayMs * Math.pow(2, attempt);
+      await new Promise((r) => setTimeout(r, delay));
+    }
+  }
+
+  throw new Error('unreachable');
+}
+
+// Usage:
+const response = await withRetry(
+  () => platform.llm.complete('Explain this code'),
+  { maxAttempts: 3, baseDelayMs: 1000 },
+);
+```
+
+`maxAttempts: 3` with `baseDelayMs: 1000` gives you attempts at 0s, 1s, 2s (delays between attempts), with a total upper bound around 3 seconds plus per-call latency. Tune to your latency budget.
+
+**Don't retry non-idempotent operations** without care. `llm.complete` is fine (a retry is just another LLM call — same or different output, no side effects). `cache.set` is fine (idempotent). `platform.call('workflows', 'run', ...)` is **not** safe to retry without an `idempotencyKey` — you'll create duplicate workflow runs.
+
+## Timeouts
+
+The client doesn't set request timeouts. Native `fetch` in Node can hang indefinitely on slow responses. To add a timeout, wrap calls with `AbortController`:
+
+```ts
+async function withTimeout<T>(
+  operation: (signal: AbortSignal) => Promise<T>,
+  timeoutMs: number,
+): Promise<T> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await operation(controller.signal);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+```
+
+But **`@kb-labs/platform-client` doesn't accept an `AbortSignal` on its methods.** The signal has to be passed to the underlying `fetch`, and the client's `call()` doesn't expose that.
+
+To get real timeouts, you can:
+
+1. **Wrap with `Promise.race`** — a simpler option for per-call timeouts:
+
+```ts
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs),
+    ),
+  ]);
+}
+
+// Usage:
+const response = await withTimeout(
+  platform.llm.complete('long prompt'),
+  30_000,
+  'llm.complete',
+);
+```
+
+This doesn't abort the underlying fetch — the request keeps running on the server. But it stops your calling code from waiting.
+
+2. **Install a global fetch timeout** via a fetch override or a custom dispatcher. Fine for Node with `undici`; trickier in browsers.
+
+3. **Fork the client** to accept an `AbortSignal` parameter on `call()`. The current client doesn't expose this.
+
+For most use cases, `Promise.race` is enough. If you're building a high-reliability service where request budgets matter, you probably want the fork path.
+
+## `onError` callback
+
+The `onError` option on the constructor is **not** for proxy method errors — those throw normally. It's specifically for background failures:
+
+- **Telemetry flush failures.** When the batched telemetry buffer can't be sent to `/telemetry/v1/ingest`.
+- Other future background paths the client adds.
+
+```ts
+const platform = new KBPlatform({
+  endpoint: 'http://gateway:4000',
+  apiKey: process.env.KB_API_KEY!,
+  onError: (err) => {
+    console.error('[platform-client] background error:', err);
+    // Optionally: write to a dead-letter log, alert, retry queue
+  },
+});
+```
+
+If you don't pass `onError`, background failures are silently swallowed. This is fine for fire-and-forget telemetry where losing events is acceptable; it's a problem if you need every event to be delivered.
+
+## Handling all four layers
+
+A defensive wrapper covering error cases, retries, and timeouts:
+
+```ts
+interface SafeCallOptions {
+  retries?: number;
+  timeoutMs?: number;
+  label?: string;
+}
+
+async function safeCall<T>(
+  operation: () => Promise<T>,
+  options: SafeCallOptions = {},
+): Promise<T | null> {
+  const { retries = 0, timeoutMs = 30_000, label = 'platform call' } = options;
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await Promise.race([
+        operation(),
+        new Promise<T>((_, reject) =>
+          setTimeout(() => reject(new Error(`${label} timed out`)), timeoutMs),
+        ),
+      ]);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      const isRetriable = /fetch failed|ECONNREFUSED|429|5\d\d/.test(message);
+
+      if (attempt < retries && isRetriable) {
+        const delay = 1000 * Math.pow(2, attempt);
+        await new Promise((r) => setTimeout(r, delay));
+        continue;
+      }
+
+      console.error(`${label} failed after ${attempt + 1} attempt(s):`, message);
+      return null;
+    }
+  }
+
+  return null;
+}
+
+// Usage:
+const response = await safeCall(
+  () => platform.llm.complete('hello'),
+  { retries: 3, timeoutMs: 30_000, label: 'llm.complete' },
+);
+
+if (response) {
+  console.log(response.content);
+} else {
+  console.log('LLM unavailable, using fallback');
+}
+```
+
+This is your code, not the SDK's. The client is intentionally minimal; add the layers you need.
+
+## Error attribution across proxies
+
+Every proxy throws the same plain-`Error` shape. To distinguish "which call failed" for logging, wrap each call with a label:
+
+```ts
+async function tryCall<T>(label: string, op: () => Promise<T>): Promise<T> {
+  try {
+    return await op();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new Error(`[${label}] ${msg}`);
+  }
+}
+
+const llmResult = await tryCall('llm.complete', () =>
+  platform.llm.complete('hello'),
+);
+
+const cacheHit = await tryCall('cache.get:user', () =>
+  platform.cache.get('user:123'),
+);
+```
+
+This makes stack traces and log lines much easier to read when you're debugging production issues.
+
+## Gotchas
+
+- **No error codes.** The `code` field from `PlatformCallResponse.error` is dropped by the client. If you need codes, use `platform.call()` and inspect the raw response.
+- **No timeout.** Calls hang until the server responds. Wrap with `Promise.race` for a caller-side timeout.
+- **No retry.** Implement your own retry layer.
+- **`TypeError` for network errors.** Native `fetch` throws `TypeError`, not `Error`, on network-level failures. Adjust your `instanceof` checks if you rely on them.
+- **`onError` only catches background failures.** Not the same as a global error handler for all calls.
+
+## What to read next
+
+- **[Overview](/product-sdk/overview)** — the `PlatformCallResponse` shape and the Unified Platform API.
+- **[Authentication](/product-sdk/authentication)** — handling 401/403 errors.
+- **[Typed Proxies](/product-sdk/commands)** — the proxies that throw on failure.
+- **[Telemetry](/product-sdk/streaming)** — the one place `onError` is actually useful.

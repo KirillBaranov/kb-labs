@@ -121,6 +121,25 @@ describe('workflow:runs list', () => {
     expect(captured.errors.length).toBeGreaterThan(0);
   });
 
+  it('CL-09: future startedAt renders as "just now" (not negative)', async () => {
+    const futureDate = new Date(Date.now() + 60_000).toISOString();
+    MockedClient.mockImplementation(() => makeClient({
+      listRuns: async () => [
+        { id: 'r-future', name: 'future-run', status: 'running', createdAt: futureDate, startedAt: futureDate },
+      ],
+    }));
+
+    const { ui, captured } = createCapturedUI();
+    const ctx = createMockContext({ ui });
+    const result = await runsListCommand.execute(ctx, mockCLIInput({ flags: {} }));
+
+    expect(result.exitCode).toBe(0);
+    const row = captured.table[0]!.rows[0]!;
+    const whenCell = row['When'] as string;
+    expect(whenCell).toBe('just now');
+    expect(whenCell).not.toMatch(/-\d/);
+  });
+
   it('CL-08: --limit "3" (string) passes limit=3 to client', async () => {
     MockedClient.mockImplementation(() => makeClient({
       listRuns: async (params: { status?: string; limit?: number; workflowId?: string } = {}) => {
@@ -136,7 +155,7 @@ describe('workflow:runs list', () => {
     expect(result.exitCode).toBe(0);
   });
 
-  it('CL-09: formatDuration returns "0ms" for durationMs=0 (BUG-007)', async () => {
+  it('CL-10: formatDuration returns "0ms" for durationMs=0 (BUG-007)', async () => {
     MockedClient.mockImplementation(() => makeClient({
       listRuns: async () => [
         { id: 'r-003', name: 'instant', status: 'success' as const, createdAt: new Date().toISOString(), durationMs: 0 },

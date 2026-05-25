@@ -1,8 +1,4 @@
 .btn {
-  position: absolute;
-  top: 50%;
-  right: 0.6rem;
-  transform: translateY(-50%);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -13,18 +9,23 @@
   background: transparent;
   color: #8a93a6;
   cursor: pointer;
-  opacity: 0;
+  /* always visible — parent CommandField handles the fade overlay */
+  opacity: 0.5;
   transition: opacity 150ms ease, background 150ms ease, color 150ms ease, border-color 150ms ease;
   flex-shrink: 0;
   padding: 0;
 }
 
-.btn:hover {
-  background: #fff;
-  border-color: #d9deea;
-  color: #202633;
+/* when inside CommandField group hovered */
+.btn:hover,
+:global(.group:hover) .btn {
+  opacity: 1;
+  background: rgb(var(--color-surface));
+  border-color: rgb(var(--color-line));
+  color: rgb(var(--color-text));
 }
 
+/* legacy: used standalone in PlatformCommand (parent triggers on hover) */
 .btn.visible {
   opacity: 1;
 }

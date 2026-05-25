@@ -1,10 +1,17 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import createNextIntlPlugin from 'next-intl/plugin';
+import createMDX from '@next/mdx';
+import remarkGfm from 'remark-gfm';
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 
 const withNextIntl = createNextIntlPlugin('./i18n/request.ts');
+const withMDX = createMDX({
+  options: {
+    remarkPlugins: [remarkGfm],
+  },
+});
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -22,5 +29,5 @@ const nextConfig = {
   },
 };
 
-export default withNextIntl(nextConfig);
+export default withNextIntl(withMDX(nextConfig));
 
