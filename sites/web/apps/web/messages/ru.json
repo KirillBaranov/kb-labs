@@ -1,6 +1,7 @@
 {
   "meta": {
-    "siteDescription": "KB Labs: self-hosted open-source платформа для инженеров — workflow-движок, AI-инфраструктура, система плагинов и инструменты разработки."
+    "siteDescription": "KB Labs: self-hosted open-source платформа для инженеров — workflow-движок, AI-инфраструктура, система плагинов и инструменты разработки.",
+    "siteName": "KB Labs"
   },
   "solutionPlatformApi": {
     "page": {
@@ -31,6 +32,29 @@
       "heroDescription": "Одна строка подключения — и в любом Node/TS/JS приложении появляется LLM, кэш, векторный поиск, телеметрия. Адаптер меняется в конфиге, код не трогаешь.",
       "externalTitle": "Три строки — и платформа работает.",
       "pluginsLead1": "Плагины работают с теми же адаптерами через хуки из SDK — напрямую в памяти, без сетевого слоя. Тот же ILLM, ICache, IAnalytics — одинаковые интерфейсы, другая доставка."
+    },
+    "meta": {
+      "title": "Platform Client — KB Labs",
+      "description": "Zero-dependency TypeScript-клиент для ваших сервисов. Один импорт даёт кеш, базы данных, vector stores, LLM и аналитику — всё через Gateway."
+    },
+    "hero": {
+      "title": "Один клиент для ваших сервисов. Никаких вендорных SDK.",
+      "description": "@kb-labs/platform-client — это zero-dependency TypeScript SDK, который ваши продукты импортируют один раз и используют везде. Кеш, базы данных, vector stores, LLM, аналитика — всё через единый клиент, который маршрутизирует запросы через Gateway.",
+      "startBtn": "Установить",
+      "contactBtn": "Связаться с нами"
+    },
+    "configCaption": "Один клиент. Много backend'ов. Ноль переписываний.",
+    "architecture": {
+      "title": "Как это работает"
+    },
+    "adapters": {
+      "title": "Что вам даёт клиент"
+    },
+    "cta": {
+      "title": "Один импорт. Каждая capability. Никакой вендорной обвязки.",
+      "description": "Установите @kb-labs/platform-client в свой сервис, подключите к вашему Gateway — и перестаньте писать одну и ту же инфраструктурную обвязку в каждом продукте.",
+      "startBtn": "Установить",
+      "contactBtn": "Связаться с нами"
     }
   },
   "nav": {
@@ -171,7 +195,12 @@
     "product": "Продукт",
     "solutions": "Решения",
     "resources": "Ресурсы",
-    "pricing": "Цены"
+    "pricing": "Цены",
+    "enterprise": "Enterprise",
+    "marketplace": "Маркетплейс",
+    "install": "Установка",
+    "docs": "Документация",
+    "useCases": "Сценарии"
   },
   "kbDevkit": {
     "download": {
@@ -196,7 +225,13 @@
           "platform": "Windows (x86_64)",
           "file": "kb-devkit-windows-amd64.exe"
         }
-      ]
+      ],
+      "title": "Скачать",
+      "description": "Готовые бинарники для macOS, Linux. SHA-256 чексуммы включены в каждый релиз.",
+      "colPlatform": "Платформа",
+      "colBinary": "Бинарник",
+      "colDownload": "Скачать",
+      "downloadBtn": "Скачать"
     },
     "commands": {
       "list": [
@@ -236,7 +271,9 @@
           "cmd": "kb-devkit bundle @scope/pkg --docker",
           "description": "Обрезать монорепо до минимального Docker build context. Резолвит транзитивные workspace:* зависимости, создаёт урезанный pnpm-workspace.yaml. --docker делит на json/ (слой deps) и full/ (слой сборки)."
         }
-      ]
+      ],
+      "title": "Команды",
+      "description": "Все команды поддерживают --json для скриптов и агентных сценариев."
     },
     "features": {
       "list": [
@@ -268,7 +305,9 @@
           "title": "Docker build context pruning",
           "description": "kb-devkit bundle резолвит полное замыкание workspace:* и оставляет только пакеты нужные для сборки цели. Аналог turbo prune — добавьте перед pnpm install в Dockerfile."
         }
-      ]
+      ],
+      "title": "Как это работает",
+      "description": "Детали, которые важны, когда монорепо вырастает."
     },
     "pain": {
       "items": [
@@ -284,7 +323,31 @@
           "scenario": "У каждого пакета своя схема команд. В одном npm run build, в другом make, в третьем что-то самописное. Невозможно запустить всё единообразно.",
           "fix": "Один devkit.yaml в корне репозитория. Одна команда запускает build, lint, test — для всех пакетов, в правильном порядке."
         }
-      ]
+      ],
+      "title": "Знакомо."
+    },
+    "meta": {
+      "title": "kb-devkit — умная сборка для больших монорепо",
+      "description": "Content-addressable кэш задач, обнаружение затронутых пакетов, проверки качества — один Go-бинарник для любого TypeScript/Node.js монорепо."
+    },
+    "hero": {
+      "eyebrow": "Open Source",
+      "title": "Сборка 100 пакетов за 1 секунду.",
+      "description": "Content-addressable кэш, параллельное выполнение и обнаружение затронутых пакетов. kb-devkit запускает только то, что действительно изменилось.",
+      "installCmd": "curl -fsSL https://kblabs.ru/kb-devkit/install.sh | sh",
+      "releasesBtn": "GitHub Releases",
+      "docsBtn": "Документация"
+    },
+    "config": {
+      "title": "Один файл конфигурации.",
+      "description": "Положите devkit.yaml в корень репозитория. Объявите задачи и пресеты один раз — kb-devkit найдёт все пакеты автоматически.",
+      "note": "Задачи поддерживают зависимости (^build = сначала собрать все deps), content-addressable кэш и параллельное выполнение. Используйте cache: false для задач с побочными эффектами.",
+      "example": "schemaVersion: 2\n\nworkspace:\n  discovery:\n    - \"packages/**\"\n  categories:\n    default:\n      match: [\"packages/**\"]\n      preset: node-lib\n\ntasks:\n  build:\n    command: tsup\n    inputs: [\"src/**\", \"tsup.config.ts\", \"tsconfig*.json\"]\n    outputs: [\"dist/**\"]\n    deps: [\"^build\"]\n\n  lint:\n    command: eslint src/\n    inputs: [\"src/**\", \"eslint.config.*\"]\n    outputs: []\n\n  test:\n    command: vitest run --passWithNoTests\n    inputs: [\"src/**\", \"test/**\"]\n    outputs: [\"coverage/**\"]\n    deps: [\"build\"]\n\n  deploy:\n    command: ./scripts/deploy.sh\n    inputs: [\"dist/**\"]\n    cache: false\n\naffected:\n  strategy: git"
+    },
+    "kbLabsNote": {
+      "title": "Часть KB Labs",
+      "description": "kb-devkit поставляется как самостоятельный инструмент и как часть платформы KB Labs. При установке KB Labs kb-devkit включается автоматически.",
+      "link": "Установить KB Labs →"
     }
   },
   "pipeline": {
@@ -458,7 +521,12 @@
       "subtitle": "Каждый релиз, каждое изменение."
     },
     "typeFixed": "Исправлено",
-    "typeImproved": "Улучшено"
+    "typeImproved": "Улучшено",
+    "heroTitle": "Что нового.",
+    "heroDescription": "Новые функции, улучшения и исправления — обновляется с каждым релизом.",
+    "newer": "← Новее",
+    "older": "Старее →",
+    "latest": "latest"
   },
   "useCases": {
     "items": [
@@ -510,7 +578,27 @@
         "result": "Один контролируемый контур для agent automation. Никаких отдельных стеков для поддержки и защиты.",
         "owner": "CTO / AI Platform Team"
       }
-    ]
+    ],
+    "meta": {
+      "title": "Сценарии использования",
+      "description": "Поймите, зачем KB Labs вашей команде: практические инженерные use cases для on-prem plugin-based автоматизации."
+    },
+    "hero": {
+      "title": "Реальные сценарии. Реальные workflow.",
+      "subtitle": "Конкретные вещи, которые команды автоматизируют через KB Labs сегодня — без абстрактных обещаний."
+    },
+    "labels": {
+      "situation": "Как это бывает",
+      "how": "Как это работает",
+      "result": "Что получается",
+      "owner": "Владелец"
+    },
+    "cta": {
+      "title": "Есть похожий сценарий в вашей команде?",
+      "description": "Опишите текущий процесс, и мы поможем выбрать первый workflow для миграции в KB Labs.",
+      "installBtn": "Установить",
+      "contactBtn": "Обсудить сценарий"
+    }
   },
   "solutionReleaseAutomation": {
     "meta": {
@@ -639,7 +727,10 @@
       "title": "Хотите навести порядок в релизном пайплайне?",
       "installBtn": "Установить KB Labs",
       "docsBtn": "Документация Release",
-      "eyebrow": "Начать"
+      "eyebrow": "Начать",
+      "description": "Замените разрозненные конфиги одним управляемым, наблюдаемым workflow.",
+      "startBtn": "Установить",
+      "contactBtn": "Связаться с нами"
     },
     "benefits": [
       {
@@ -681,7 +772,10 @@
       "titlePrefix": "Мы релизим",
       "eyebrow": "Release Automation · Plugin",
       "description": "Один плагин закрывает весь цикл: проверки, сборка, changelog, npm publish, git тег. Без скриптов, без памятки в Notion, без «кажется забыл запушить тег».",
-      "titleHighlight": "150+ пакетов"
+      "titleHighlight": "150+ пакетов",
+      "title": "Релизные пайплайны как код, а не как YAML, которому вы не доверяете.",
+      "startBtn": "Установить",
+      "contactBtn": "Связаться с нами"
     },
     "flows": {
       "title": "Независимые релизы для разных частей монорепо.",
@@ -720,7 +814,15 @@
         "label": "трассируемые релизы"
       }
     ],
-    "changelogNote": "Четыре встроенных шаблона: {templates}. Если LLM недоступен — fallback на plain список."
+    "changelogNote": "Четыре встроенных шаблона: {templates}. Если LLM недоступен — fallback на plain список.",
+    "comparisonTitle": "До и после",
+    "comparisonSubtitle": "Что меняется, когда вы переносите пайплайны в KB Labs.",
+    "beforeLabel": "Без KB Labs",
+    "beforeTitle": "Хрупкие скрипты, ручные шаги",
+    "afterLabel": "С KB Labs",
+    "afterTitle": "Управляемые, наблюдаемые пайплайны",
+    "featuresTitle": "Что входит в пайплайн",
+    "featuresSubtitle": "Работает на движке workflow KB Labs."
   },
   "productWorkflows": {
     "steps": [
@@ -925,7 +1027,27 @@
         "value": "100%",
         "label": "покрытие аудитом"
       }
-    ]
+    ],
+    "hero": {
+      "title": "Программируемый движок для вашего dev loop.",
+      "description": "Релизы, ревью, QA, commit policy, запуски AI-агентов — всё описывается кодом, всё работает на одном движке. Наблюдаемо по умолчанию, управляется политиками, версионируется в git.",
+      "startBtn": "Установить",
+      "contactBtn": "Связаться с нами"
+    },
+    "codeSection": {
+      "title": "Описывайте workflow как код",
+      "description": "YAML-workflow со встроенными политиками повтора, таймаутов и отката. Никаких shell-скриптов."
+    },
+    "benefitsTitle": "Почему команды выбирают Workflows",
+    "benefitsSubtitle": "Что даёт движок workflow KB Labs.",
+    "howTitle": "Как это работает",
+    "howSubtitle": "От описания до выполнения — четыре шага.",
+    "cta": {
+      "title": "Готовы заменить разрозненные скрипты на один workflow?",
+      "description": "Поставьте KB Labs и запустите первый workflow за несколько минут.",
+      "startBtn": "Установить",
+      "contactBtn": "Связаться с нами"
+    }
   },
   "marketplace": {
     "catalog": {
@@ -944,7 +1066,8 @@
       "typeAdapter": "Адаптеры",
       "typeWidget": "Виджеты",
       "official": "Официальные",
-      "community": "Сообщество"
+      "community": "Сообщество",
+      "typeHook": "Хуки"
     },
     "meta": {
       "title": "Маркетплейс",
@@ -968,7 +1091,11 @@
       "downloadsLabel": "Загрузки в неделю",
       "permissionsLabel": "Разрешения",
       "copyAriaLabel": "Скопировать команду установки",
-      "backLink": "Маркетплейс"
+      "backLink": "Маркетплейс",
+      "typePlugin": "Плагин",
+      "typeAdapter": "Адаптер",
+      "typeWidget": "Виджет",
+      "typeHook": "Хук"
     },
     "cta": {
       "title": "Создайте расширение для KB Labs.",
@@ -1062,7 +1189,8 @@
               "pro": "По запросу",
               "enterprise": true
             }
-          ]
+          ],
+          "label": "Разработчикам"
         },
         "support": {
           "rows": [
@@ -1130,7 +1258,10 @@
         "dedicated": "Выделенный менеджер",
         "sla": "SLA"
       },
-      "heading": "Что включено в каждый тариф."
+      "heading": "Что включено в каждый тариф.",
+      "title": "Сравнение тарифов",
+      "yes": "✓",
+      "no": "—"
     },
     "meta": {
       "title": "Цены — KB Labs",
@@ -1164,7 +1295,8 @@
           "a": "Начните с одного дорогого процесса — обычно это релизы или ревью. Перенесите в workflow, оцените эффект. Потом двигайтесь дальше."
         }
       ],
-      "heading": "Частые вопросы"
+      "heading": "Частые вопросы",
+      "title": "Частые вопросы"
     },
     "tiers": {
       "pro": {
@@ -1179,7 +1311,8 @@
           "Запускаетесь за минуты, не за дни",
           "Платите за удобство, а не за функции",
           "Переехать обратно на self-hosted можно в любой момент"
-        ]
+        ],
+        "ctaHref": "/signup"
       },
       "enterprise": {
         "name": "Enterprise",
@@ -1192,7 +1325,8 @@
           "Разработка плагинов под ваши процессы профессионально",
           "Плагины — ваша собственность, приватные по умолчанию",
           "Runtime развивается одинаково для всех — без приватных изменений ядра"
-        ]
+        ],
+        "ctaHref": "/contact"
       },
       "hobby": {
         "name": "OSS Core",
@@ -1205,20 +1339,25 @@
           "Агенты, observability и audit — в коробке",
           "Все адаптеры из публичного каталога",
           "Без paywall, лимитов и телеметрии, которую вы не запрашивали"
-        ]
+        ],
+        "ctaHref": "/install"
       }
     },
     "cta": {
       "contactBtn": "Связаться с нами",
       "startBtn2": "Установить",
       "description2": "Установите KB Labs на своей машине и направьте на один реальный процесс.",
-      "title2": "Готовы попробовать на своих воркфлоу?"
+      "title2": "Готовы попробовать на своих воркфлоу?",
+      "title": "Хотите попробовать на своих процессах?",
+      "description": "Поможем выбрать первый workflow — и посмотреть, что изменится, до того как масштабировать на всю команду.",
+      "startBtn": "Установить"
     },
     "hero": {
       "eyebrow": "ЦЕНЫ",
       "titleLine1": "Движок — открытый.",
       "titleLine2": "Удобства — по желанию.",
-      "subtitle": "Runtime, SDK, CLI, весь plugin-стек — MIT + KBPL1.1, self-hosted, без лимитов и телеметрии. Это не стартовый план — это KB Labs. Деньги делаем на хостинге, поддержке и разработке под заказ. Ядро не трогаем."
+      "subtitle": "Runtime, SDK, CLI, весь plugin-стек — MIT + KBPL1.1, self-hosted, без лимитов и телеметрии. Это не стартовый план — это KB Labs. Деньги делаем на хостинге, поддержке и разработке под заказ. Ядро не трогаем.",
+      "title": "Open source сегодня. Коммерческий слой — в roadmap."
     }
   },
   "compare": {
@@ -1247,7 +1386,22 @@
           "KB Labs даёт агентам ту же систему типизированных плагинов, которую используют человеческие воркфлоу — с разрешениями, observability и прямым доступом к кодовой базе, документам и внутренним инструментам. Без клея. MCP в планах."
         ]
       }
-    ]
+    ],
+    "meta": {
+      "title": "Почему KB Labs — честное сравнение",
+      "description": "Как KB Labs соотносится с GitHub Actions, n8n, Temporal и AI-агентами. Честный ответ на каждый вопрос."
+    },
+    "eyebrow": "Альтернативы",
+    "hero": {
+      "title": "Как KB Labs соотносится с альтернативами.",
+      "subtitle": "Мы подходим не всем. Вот честный ответ по самым частым альтернативам — включая случаи, когда правильный ответ — что-то другое."
+    },
+    "cta": {
+      "title": "Остались вопросы?",
+      "description": "Расскажите про вашу ситуацию. Мы честно скажем, подходит ли KB Labs.",
+      "startBtn": "Установить",
+      "contactBtn": "Связаться с нами"
+    }
   },
   "productPlugins": {
     "capabilities": [
@@ -1297,7 +1451,28 @@
         "description": "Реагируйте на события жизненного цикла — pre-commit, post-deploy, on-error.",
         "color": "#10b981"
       }
-    ]
+    ],
+    "meta": {
+      "title": "Система плагинов — KB Labs",
+      "description": "Расширяйте KB Labs типизированными плагинами с декларацией возможностей, работающими в управляемой среде выполнения."
+    },
+    "hero": {
+      "title": "Расширяйте движок — безопасно.",
+      "description": "Пишете плагины на TypeScript SDK. Объявляете возможности заранее. Runtime обеспечивает то, что плагин может и не может делать.",
+      "startBtn": "Установить",
+      "docsBtn": "Документация",
+      "contactBtn": "Связаться с нами"
+    },
+    "manifestCaption": "Каждый плагин начинается с типизированного манифеста — возможности, разрешения и метаданные объявлены заранее.",
+    "ecosystemTitle": "Экосистема плагинов",
+    "featureStatement": "Одна команда для установки. Ноль конфигурации для запуска.",
+    "featureDescription": "Установите любой плагин из маркетплейса, и он заработает сразу. Среда выполнения разрешает зависимости, проверяет возможности и управляет версиями — вам не нужно ничего настраивать.",
+    "cta": {
+      "title": "Создайте свой первый плагин за минуты",
+      "description": "TypeScript SDK, шаблоны и документация для быстрого старта.",
+      "startBtn": "Установить",
+      "contactBtn": "Связаться с нами"
+    }
   },
   "enterprise": {
     "meta": {
@@ -1384,7 +1559,8 @@
     "cta": {
       "title": "Хотите начать разговор?",
       "salesBtn": "Связаться с командой",
-      "description": "Расскажите, что решает ваша команда. Мы честно скажем, что подходит сегодняшнему движку, а что ещё в roadmap."
+      "description": "Расскажите, что решает ваша команда. Мы честно скажем, что подходит сегодняшнему движку, а что ещё в roadmap.",
+      "emailBtn": "kirillBaranovJob@yandex.ru"
     },
     "hero": {
       "ctaPrimary": "Начать разговор",
@@ -1392,7 +1568,8 @@
       "eyebrow": "Enterprise",
       "subtitle": "Сегодня поставляется open-source движок. Поверх него мы строим коммерческий слой для крупных организаций — усиленный governance, коммерческая поддержка, SLA. Если ваша команда оценивает KB Labs для внутреннего внедрения, здесь начинается этот разговор.",
       "titleLine2": "в масштабе.",
-      "ctaSecondary": "Установить OSS движок"
+      "ctaSecondary": "Установить OSS движок",
+      "title": "Для команд, внедряющих KB Labs в масштабе."
     },
     "stats": [
       {
@@ -1407,7 +1584,19 @@
       {
         "label": "привязка к вендору"
       }
-    ]
+    ],
+    "whyTitle": "Что мы формируем",
+    "featuresTitle": "Текущее состояние и план",
+    "meta2": {
+      "dealSize": "Формат работы сейчас",
+      "dealSizeValue": "Ранние on-prem внедрения",
+      "contractLength": "Enterprise горизонт",
+      "contractLengthValue": "Ориентир: Q3-Q4 2026+",
+      "onboarding": "Старт с OSS",
+      "onboardingValue": "Минуты до первого запуска",
+      "responseTime": "Поддержка roadmap",
+      "responseTimeValue": "Через контакт с командой"
+    }
   },
   "solutionObservability": {
     "page": {
@@ -1484,7 +1673,8 @@
           "role": "Разработчик",
           "sees": "Трейсы запросов, разбивка задержки, потребление бюджета, детали ошибок"
         }
-      ]
+      ],
+      "title": "Кому это полезно"
     },
     "valueProps": {
       "items": [
@@ -1512,7 +1702,24 @@
           "title": "Кастомные дашборды через плагины",
           "description": "Платформа предоставляет сырые данные. Ваши команды строят визуализации как плагины — без vendor lock-in."
         }
-      ]
+      ],
+      "title": "Зачем централизованная наблюдаемость"
+    },
+    "meta": {
+      "title": "Observability — KB Labs",
+      "description": "Один слой телеметрии для каждого продукта на движке. Self-hosted, расширяется плагинами, без сторонних SaaS на пути данных."
+    },
+    "hero": {
+      "title": "Один слой телеметрии для каждого продукта на движке.",
+      "description": "События, метрики и логи из каждого workflow, плагина и сервиса проходят через единый ingestion-слой, который вы контролируете. Self-hosted по умолчанию. Никакого стороннего SaaS на пути данных, если вы сами его туда не поставите.",
+      "startBtn": "Установить",
+      "contactBtn": "Связаться с нами"
+    },
+    "cta": {
+      "title": "Хватит работать вслепую по всем продуктам",
+      "description": "Централизованная телеметрия. Единая аналитика. Ваша инфраструктура, ваши данные.",
+      "startBtn": "Установить",
+      "contactBtn": "Связаться с нами"
     }
   },
   "kbDev": {
@@ -1538,7 +1745,13 @@
           "platform": "Windows (x86_64)",
           "file": "kb-dev-windows-amd64.exe"
         }
-      ]
+      ],
+      "title": "Скачать",
+      "description": "Готовые бинарники для macOS, Linux. SHA-256 чексуммы включены в каждый релиз.",
+      "colPlatform": "Платформа",
+      "colBinary": "Бинарник",
+      "colDownload": "Скачать",
+      "downloadBtn": "Скачать"
     },
     "commands": {
       "list": [
@@ -1574,7 +1787,9 @@
           "cmd": "kb-dev watch --json",
           "description": "Стримить события жизненного цикла как JSONL: health, crashed, restarting, alive."
         }
-      ]
+      ],
+      "title": "Команды",
+      "description": "Все команды поддерживают --json для скриптов и агентных сценариев."
     },
     "features": {
       "list": [
@@ -1602,7 +1817,9 @@
           "title": "Каждая команда поддаётся автоматизации",
           "description": "Каждая команда отдаёт структурированный JSON с полем ok. Ошибки содержат hint с точной командой для исправления. Работает в CI, Makefile и агентных сценариях."
         }
-      ]
+      ],
+      "title": "Как это работает",
+      "description": "Детали, которые важны, когда боль уже знакома."
     },
     "pain": {
       "items": [
@@ -1618,7 +1835,31 @@
           "scenario": "Запускаешь make dev, всё выглядит запущенным, но API сразу падает — postgres ещё не был готов. Перезапускаешь. Иногда работает, иногда нет.",
           "fix": "kb-dev ждёт, пока health check пройдёт, прежде чем запустить то, что от него зависит. Никаких гонок."
         }
-      ]
+      ],
+      "title": "Знакомо."
+    },
+    "meta": {
+      "title": "kb-dev — хватит жонглировать вкладками терминала",
+      "description": "Один Go-бинарник, который запускает сервисы в правильном порядке, перезапускает после падения и говорит, кто держит порт 3000. Работает с любым проектом."
+    },
+    "hero": {
+      "eyebrow": "Open Source",
+      "title": "Хватит жонглировать вкладками терминала.",
+      "description": "Один бинарник, который запускает сервисы в правильном порядке, ждёт пока они реально поднимутся, и нормально останавливает всё при выходе.",
+      "installCmd": "curl -fsSL https://kblabs.ru/kb-dev/install.sh | sh",
+      "releasesBtn": "GitHub Releases",
+      "docsBtn": "Документация"
+    },
+    "config": {
+      "title": "Один файл, любой проект.",
+      "description": "Положите devservices.yaml в корень проекта. kb-dev найдёт его автоматически, поднимаясь по директориям от текущей.",
+      "note": "Проекты KB Labs используют .kb/devservices.yaml — тот же формат, другое место.",
+      "example": "name: my-project\n\nservices:\n  postgres:\n    type: docker\n    command: docker run --rm -p 5432:5432 postgres:16\n    health_check: localhost:5432\n    port: 5432\n\n  api:\n    command: pnpm dev\n    port: 3000\n    health_check: http://localhost:3000/health\n    depends_on: [postgres]\n\n  worker:\n    command: pnpm worker\n    depends_on: [postgres]"
+    },
+    "kbLabsNote": {
+      "title": "Часть KB Labs",
+      "description": "kb-dev поставляется как самостоятельный инструмент и как часть платформы KB Labs. При установке KB Labs kb-dev включается автоматически.",
+      "link": "Установить KB Labs →"
     }
   },
   "config": {
@@ -1683,20 +1924,24 @@
         },
         "useCaseOther": {
           "label": "Опишите свой сценарий",
-          "placeholder": "Расскажите, что автоматизируете..."
+          "placeholder": "Расскажите что автоматизируете и какой стек используете..."
         }
       },
-      "emailPlaceholder": "work@email.com"
+      "emailPlaceholder": "work@email.com",
+      "note": "Отправляя форму, вы соглашаетесь с нашей <privacyLink>Политикой конфиденциальности</privacyLink>."
     },
     "hero": {
       "titlePrefix": "Вступите в",
       "titleHighlight": "список ожидания SaaS."
-    }
+    },
+    "title": "Запросите доступ к будущей SaaS-версии KB Labs"
   },
   "product": {
     "hero": {
       "title": "Один движок. Две части, которые поставляются вместе.",
-      "description": "KB Labs — open-source runtime для современного dev loop. Workflows превращают релизы, ревью, QA и AI-агентов в код. Слой инфраструктуры держит каждого внешнего вендора за единым контрактом. Обе части — в одном install, на одной машине."
+      "description": "KB Labs — open-source runtime для современного dev loop. Workflows превращают релизы, ревью, QA и AI-агентов в код. Слой инфраструктуры держит каждого внешнего вендора за единым контрактом. Обе части — в одном install, на одной машине.",
+      "startBtn": "Установить",
+      "docsBtn": "Читать документацию"
     },
     "pillars": {
       "gateway": {
@@ -1705,7 +1950,13 @@
           "Нужен Kafka, RabbitMQ или NATS? Пишете свой адаптер под тот же контракт — загружается идентично нашим",
           "Multi-tenant routing, audit и observability встроены в слой",
           "Ноль прямых вендорных зависимостей в ядре"
-        ]
+        ],
+        "anchor": "gateway",
+        "eyebrow": "Слой инфраструктуры",
+        "heading": "Каждый внешний вендор за одним контрактом.",
+        "lead": "LLM, кеш, базы данных, vector stores, object storage, event bus, observability — всё через стабильные интерфейсы платформы. Около 21 open-source адаптера в каталоге сегодня: OpenAI, Postgres, SQLite, MongoDB, Redis, Qdrant, Docker и другие. Меняете любого из них одной строчкой в конфиге — код в ваших сервисах остаётся нетронутым.",
+        "ctaLabel": "Посмотреть контракты →",
+        "ctaHref": "/solutions/gateway"
       },
       "workflows": {
         "bullets": [
@@ -1713,8 +1964,31 @@
           "AI-агенты как first-class steps — sandbox, audit и observability встроены",
           "Workflow описаны кодом, поставляются как плагины, версионируются в git",
           "Спроектирован жить рядом с вашим CI, а не заменять его"
-        ]
+        ],
+        "anchor": "workflows",
+        "eyebrow": "Программируемый dev loop",
+        "heading": "Релизы, ревью и AI-агенты как код.",
+        "lead": "Мы заменяем хрупкие shell-скрипты и CI YAML одной программируемой системой для релизов, code review, QA-гейтов, commit policy и запусков AI-агентов. Всё живёт в коде, который можно читать, дифать и ревьюить в PR — так же, как работает остальная ваша инженерия.",
+        "ctaLabel": "Как устроены workflows →",
+        "ctaHref": "/product/workflows"
+      },
+      "foundation": {
+        "label": "Как они складываются вместе",
+        "title": "Один движок, один runtime, один install.",
+        "description": "Обе части поставляются в одном пакете — один runtime, одна plugin-система, один on-prem install. Движок остаётся стабильным, а слой вендоров под ним — заменяемым. Так мы делаем следующую миграцию спринтом, а не кварталом."
       }
+    },
+    "meta": {
+      "title": "Продукт — KB Labs",
+      "description": "Open-source движок для AI-эпохи разработки. Программируемые workflow для релизов, ревью и AI-агентов. Слой инфраструктуры, который ставит каждого вендора за один контракт."
+    },
+    "exploreTitle": "Подробнее",
+    "exploreDesc": "Как работают отдельные части движка — и для чего их используют.",
+    "cta": {
+      "title": "Хотите попробовать на своём workflow?",
+      "description": "Поставьте KB Labs на свою машину, подключите один процесс из тех, что реально болят, и посмотрите как движок себя покажет.",
+      "startBtn": "Установить",
+      "contactBtn": "Обсудить внедрение"
     }
   },
   "solutionCodeIntelligence": {
@@ -1749,7 +2023,11 @@
           "Исследовать детали реализации",
           "Баланс скорости и глубины",
           "По умолчанию для большинства запросов"
-        ]
+        ],
+        "name": "Auto",
+        "speed": "~60 сек",
+        "badge": "Рекомендуемый",
+        "description": "Сбалансированный режим с автоопределением сложности запроса и адаптивной глубиной поиска."
       },
       "thinking": {
         "useCases": [
@@ -1757,7 +2035,10 @@
           "Кросс-модульный анализ",
           "Сравнение реализаций",
           "Трассировка end-to-end потоков"
-        ]
+        ],
+        "name": "Thinking",
+        "speed": "~90 сек",
+        "description": "Глубокий многоэтапный анализ для сложных архитектурных вопросов и кросс-модульного исследования."
       },
       "instant": {
         "useCases": [
@@ -1765,8 +2046,13 @@
           "Найти конкретный файл",
           "Быстрые справочные проверки",
           "Простые поисковые запросы"
-        ]
-      }
+        ],
+        "name": "Instant",
+        "speed": "~30 сек",
+        "description": "Быстрый поиск конкретных классов, функций или интерфейсов. Минимум LLM-вызовов."
+      },
+      "title": "Три режима для любого сценария",
+      "description": "Выберите глубину анализа под вашу задачу."
     },
     "page": {
       "tabNotFound": "Не найдено",
@@ -1866,6 +2152,33 @@
       "heroTitle": "Ищи по смыслу,",
       "heroDescription": "Семантический поиск по кодовой базе. Возвращает цитаты с позицией в файле и оценкой уверенности. Мы используем его сами — чтобы навигировать KB Labs и давать AI-агентам контекст без галлюцинаций.",
       "verifyLead1": "Каждый ответ привязан к реальным чанкам из индекса с точным файлом и строками. Система не может сослаться на источник, которого нет в кодовой базе."
+    },
+    "hero": {
+      "title": "Поиск по коду по смыслу, а не по совпадению строки.",
+      "description": "Mind RAG — это семантический поисковый движок, который мы используем сами, чтобы навигировать KB Labs. Работает на уровне концепций, возвращает цитаты источников и оценки уверенности, и даёт AI-агентам first-class инструмент, который не галлюцинирует.",
+      "startBtn": "Установить",
+      "docsBtn": "Документация",
+      "contactBtn": "Связаться с нами"
+    },
+    "searchDemo": {
+      "label": "Поиск по кодовой базе",
+      "placeholder": "Как гибридный поиск объединяет результаты?"
+    },
+    "accuracy": {
+      "title": "Точность поиска по уровню сложности запросов",
+      "easy": "ЛЕГКИЕ",
+      "medium": "СРЕДНИЕ",
+      "hard": "СЛОЖНЫЕ",
+      "average": "Средний балл: 7.0 / 10"
+    },
+    "codeExample": {
+      "title": "Работает прямо из терминала"
+    },
+    "cta": {
+      "title": "Попробуйте поиск по своей кодовой базе.",
+      "description": "Семантический поиск для инженеров и AI-агентов — с оценками уверенности, цитированием источников и защитой от галлюцинаций.",
+      "startBtn": "Установить",
+      "contactBtn": "Связаться с нами"
     }
   },
   "security": {
@@ -2085,12 +2398,36 @@
         "title": "Прозрачность демо-режима",
         "description": "В демо-режиме для AI-ревью отправляются только git diff — никогда полный исходный код. Gateway работает как pass-through прокси: контент не сохраняется и не логируется. Учитываются только счётчики токенов для rate-limiting."
       }
-    ]
+    ],
+    "meta": {
+      "title": "Безопасность",
+      "description": "On-prem по умолчанию, open source, данные только с вашего ведома, песочница для плагинов, JWT-аутентификация Gateway."
+    },
+    "hero": {
+      "title": "Ваш код и данные остаются на вашей машине.",
+      "subtitle": "KB Labs работает on-prem по умолчанию, open source от и до, и ничего не отправляет наружу без вашего ведома. Всё можно проверить в исходном коде."
+    },
+    "practicesTitle": "Что мы делаем сейчас",
+    "complianceTitle": "Дорожная карта compliance",
+    "cta": {
+      "title": "Вопросы о безопасности?",
+      "description": "Мы за прозрачность. Спрашивайте что угодно — NDA не нужен для честных ответов.",
+      "contactBtn": "Написать нам",
+      "emailBtn": "kirillBaranovJob@yandex.ru"
+    },
+    "statusReady": "Доступно",
+    "statusPlanned": "Планируется",
+    "practicesSubtitle": "Как мы защищаем ваши данные и инфраструктуру прямо сейчас."
   },
   "notFound": {
     "description": "Страница не существует или была перемещена.",
     "contact": "Написать нам",
-    "goHome": "На главную"
+    "goHome": "На главную",
+    "code": "Ошибка",
+    "title": "Страница не найдена",
+    "terminalError": "Ошибка 404: маршрут не найден",
+    "terminalCheck": "проверьте",
+    "terminalRoutes": "доступные маршруты"
   },
   "solutionCodeQuality": {
     "meta": {
@@ -2216,6 +2553,37 @@
         }
       ],
       "heroDescription": "Три плагина закрывают весь цикл: pre-commit gate, code review на changeset, архитектурный анализ в CI. Каждый работает сам по себе — или вместе как один pipeline."
+    },
+    "hero": {
+      "badge": "Code Quality",
+      "title": "Quality-гейты на каждом изменении.",
+      "description": "Мы запускаем baseline regression checks, AI code review и полный QA на каждом pull request — автоматически, на том же движке, который двигает наши собственные релизы. Построено как плагины, конфигурируется per repo.",
+      "startBtn": "Установить",
+      "contactBtn": "Связаться с нами"
+    },
+    "pipeline": {
+      "title": "Каждое изменение проходит через пайплайн качества"
+    },
+    "metrics": {
+      "title": "От хаоса к уверенности",
+      "subtitle": "Посмотрите, какую разницу дают baseline-гейты на реальном монорепо из 125 пакетов.",
+      "beforeLabel": "До",
+      "afterLabel": "После"
+    },
+    "toolsSection": {
+      "title": "Три уровня контроля качества",
+      "subtitle": "Каждый инструмент ловит свой класс проблем. Вместе они закрывают качество полностью."
+    },
+    "stats": {
+      "typeErrors": "ошибок типов отслеживается",
+      "lintErrors": "ошибок линтинга в baseline",
+      "regressionDetection": "обнаружение регрессий"
+    },
+    "cta": {
+      "title": "Ловите регрессии до мержа, не после.",
+      "description": "Поставьте KB Labs on-prem и подключите quality gates — на одном репо или сразу по всей команде.",
+      "startBtn": "Установить",
+      "contactBtn": "Связаться с нами"
     }
   },
   "kbDeploy": {
@@ -2241,7 +2609,13 @@
           "platform": "Windows (x86_64)",
           "file": "kb-deploy-windows-amd64.exe"
         }
-      ]
+      ],
+      "title": "Скачать",
+      "description": "Готовые бинарники для macOS, Linux. SHA-256 есть в каждом релизе.",
+      "colPlatform": "Платформа",
+      "colBinary": "Бинарник",
+      "colDownload": "Скачать",
+      "downloadBtn": "Скачать"
     },
     "commands": {
       "list": [
@@ -2277,7 +2651,9 @@
           "cmd": "kb-deploy infra down <name>",
           "description": "Остановить и удалить конкретный infra-сервис. Тома сохраняются, если явно не попросить иначе."
         }
-      ]
+      ],
+      "title": "Команды",
+      "description": "Все команды поддерживают --json — для скриптов и агентных workflow."
     },
     "features": {
       "list": [
@@ -2305,7 +2681,9 @@
           "title": "Все команды удобны для скриптов",
           "description": "У каждой команды есть --json со структурированным выводом. Подходит для CI, Makefile и агентных workflow. У ошибок есть подсказки."
         }
-      ]
+      ],
+      "title": "Как это работает",
+      "description": "То, что важно когда деплой становится рутиной."
     },
     "pain": {
       "items": [
@@ -2321,7 +2699,8 @@
           "scenario": "Половина инфры — база, кеш, брокер — живёт отдельно от приложения. Никто ими не управляет вместе. Поднимаете их ad-hoc compose-файлами, которые потом никто не поддерживает.",
           "fix": "kb-deploy infra up поднимает stateful-слой из того же deploy.yaml. Один файл, идемпотентно, без drift."
         }
-      ]
+      ],
+      "title": "Знакомо?"
     },
     "compareCompose": {
       "rows": [
@@ -2360,7 +2739,37 @@
           "compose": "Нет",
           "kbDeploy": "status показывает SHA drift по каждой цели"
         }
-      ]
+      ],
+      "title": "Знаете docker compose — уже знаете kb-deploy.",
+      "description": "Та же ментальная модель, та же форма YAML, тот же ритм up/down — только расширенный тем, что compose намеренно не делает.",
+      "headers": {
+        "feature": "Что нужно",
+        "compose": "docker compose",
+        "kbDeploy": "kb-deploy"
+      }
+    },
+    "meta": {
+      "title": "kb-deploy — docker compose, но для прода",
+      "description": "docker compose на стероидах для продакшена: git-aware диф, мультихост по SSH, build → push → pull → restart одной командой, stateful-инфра в том же файле."
+    },
+    "hero": {
+      "eyebrow": "Open Source",
+      "title": "Деплой до того как нужен Kubernetes.",
+      "description": "docker compose, только для прода — git-aware, мультихост, по SSH. Build, push, pull, restart — по порядку, только то что поменялось. Один бинарь, один конфиг, никакого кластера.",
+      "installCmd": "curl -fsSL https://kblabs.ru/kb-deploy/install.sh | sh",
+      "releasesBtn": "GitHub Releases",
+      "docsBtn": "Документация"
+    },
+    "config": {
+      "title": "Один файл. Приложения и инфра вместе.",
+      "description": "Положите .kb/deploy.yaml в репозиторий. kb-deploy прочитает и решит что собрать, что запушить и что перезапустить — по SSH, на целевом хосте.",
+      "note": "SSH_KEY — имя env-переменной с PEM-ключом. Локально — в .env, в CI — как секрет.",
+      "example": "registry: ghcr.io/your-org\n\ntargets:\n  api:\n    watch: [apps/api/**]\n    image: my-project/api\n    ssh:\n      host: ${SSH_HOST}\n      user: ${SSH_USER}\n      key_env: SSH_KEY\n    remote:\n      compose_file: ~/app/docker-compose.yml\n      service: api\n\n  web:\n    watch: [apps/web/**]\n    image: my-project/web\n    ssh:\n      host: ${SSH_HOST}\n      user: ${SSH_USER}\n      key_env: SSH_KEY\n    remote:\n      compose_file: ~/app/docker-compose.yml\n      service: web\n\ninfrastructure:\n  postgres:\n    type: docker-image\n    image: postgres:16\n    ssh:\n      host: ${SSH_HOST}\n      user: ${SSH_USER}\n      key_env: SSH_KEY\n    volumes:\n      - postgres_data:/var/lib/postgresql/data\n    restart: unless-stopped\n\n  redis:\n    type: docker-image\n    image: redis:7-alpine\n    ssh:\n      host: ${SSH_HOST}\n      user: ${SSH_USER}\n      key_env: SSH_KEY\n    restart: unless-stopped"
+    },
+    "kbLabsNote": {
+      "title": "Часть KB Labs",
+      "description": "kb-deploy есть как отдельный бинарь и как часть платформы KB Labs. Ставите KB Labs — kb-deploy уже внутри.",
+      "link": "Установить KB Labs →"
     }
   },
   "footer": {
@@ -2368,18 +2777,27 @@
       "community": {
         "title": "Сообщество",
         "github": "GitHub",
-        "founder": "Кирилл Баранов"
+        "founder": "Кирилл Баранов",
+        "docs": "Документация"
       },
       "resources": {
         "title": "Ресурсы",
-        "useCases": "Сценарии"
+        "useCases": "Сценарии",
+        "blog": "Блог",
+        "about": "О нас",
+        "contact": "Контакты",
+        "changelog": "Changelog"
       },
       "platform": {
         "title": "Платформа",
         "pluginSystem": "Система плагинов",
         "productOverview": "Обзор продукта",
         "stateBroker": "State Broker",
-        "workflowEngine": "Workflow Engine"
+        "workflowEngine": "Workflow Engine",
+        "workflows": "Workflow Engine",
+        "plugins": "Плагины",
+        "studio": "Studio UI",
+        "enterprise": "Enterprise"
       },
       "secure": {
         "title": "Безопасность",
@@ -2394,15 +2812,24 @@
         "kbDev": "kb-dev",
         "cli": "CLI Reference",
         "sdk": "SDK Reference",
-        "restApi": "REST API"
+        "restApi": "REST API",
+        "gettingStarted": "Быстрый старт"
       },
       "build": {
         "studio": "Studio",
-        "docs": "Документация"
+        "docs": "Документация",
+        "title": "Разработка",
+        "changelog": "Changelog",
+        "status": "Статус"
       },
       "start": {
         "pricing": "Цены",
-        "enterprise": "Enterprise"
+        "enterprise": "Enterprise",
+        "title": "Начало",
+        "product": "Продукт",
+        "marketplace": "Маркетплейс",
+        "install": "Установка",
+        "useCases": "Сценарии"
       },
       "learn": {
         "title": "Узнать",
@@ -2432,7 +2859,8 @@
         "demo": "Демо",
         "install": "Установка",
         "pricing": "Цены",
-        "enterprise": "Enterprise"
+        "enterprise": "Enterprise",
+        "waitlist": "Waitlist"
       },
       "roadmap": "Дорожная карта",
       "compare": "Сравнение",
@@ -2440,10 +2868,27 @@
         "title": "Компания",
         "contact": "Контакты",
         "about": "О нас",
-        "blog": "Блог"
+        "blog": "Блог",
+        "github": "GitHub"
+      },
+      "securityLegal": {
+        "title": "Безопасность и документы",
+        "security": "Безопасность",
+        "privacy": "Конфиденциальность",
+        "terms": "Условия",
+        "dpa": "DPA",
+        "cookies": "Политика cookies"
       }
     },
-    "legal": "Все права защищены."
+    "legal": "Все права защищены.",
+    "tagline": "Open-source движок для AI-эпохи разработки. Self-hosted, code-first, на своей машине.",
+    "bottomLinks": {
+      "privacy": "Конфиденциальность",
+      "terms": "Условия",
+      "dpa": "DPA",
+      "cookies": "Cookies",
+      "status": "Статус"
+    }
   },
   "solutionMonorepoOps": {
     "meta": {
@@ -2562,7 +3007,36 @@
         "count": "91 пакет",
         "description": "Анализ через TypeScript Compiler API. Покрытие типов, цепочки влияния, проблемные зоны."
       }
-    ]
+    ],
+    "hero": {
+      "title": "Операции с монорепо, которые масштабируются вместе с кодовой базой.",
+      "stat": "Для репозиториев, которые переросли ad-hoc скрипты.",
+      "description": "DevKit и DevLink справляются с работой, которую монорепо тихо накапливает: кросс-репо зависимости, разрешение порядка сборки, здоровье зависимостей, проверки консистентности. Мы используем оба сами для управления KB Labs.",
+      "startBtn": "Установить",
+      "contactBtn": "Связаться с нами"
+    },
+    "scale": {
+      "caption": "Каждая точка — это пакет. Сгруппированы по репозиториям. Вот чем управляет KB Labs."
+    },
+    "showcase": {
+      "title": "18 инструментов DevKit для любого сценария",
+      "subtitle": "От анализа зависимостей до автоматических исправлений — специализированные инструменты для управления монорепо."
+    },
+    "terminal": {
+      "title": "Одна команда, чтобы проверить всё"
+    },
+    "devlink": {
+      "title": "Кросс-репо зависимости? Решено",
+      "problem": "В multi-repo пакеты зависят друг от друга через границы репозиториев. Руками синхронизировать link:-пути, workspace-файлы и lockfile — долго и ненадёжно.",
+      "solution": "DevLink управляет всеми кросс-репо зависимостями автоматически. Переключайтесь между локальной разработкой (симлинки) и npm-версиями (для публикации) одной командой. Workspace-файлы и lockfile перегенерируются на лету.",
+      "tagline": "Одна команда исправляет всё."
+    },
+    "cta": {
+      "title": "Наведите порядок в монорепо.",
+      "description": "Поставьте KB Labs — и получите 18 инструментов для управления пакетами, зависимостями и качеством на любом масштабе.",
+      "startBtn": "Установить",
+      "contactBtn": "Связаться с нами"
+    }
   },
   "flows": {
     "runs": [
@@ -2603,7 +3077,13 @@
           "platform": "Windows (x86_64)",
           "file": "kb-monitor-windows-amd64.exe"
         }
-      ]
+      ],
+      "title": "Скачать",
+      "description": "Готовые бинарники для macOS, Linux. SHA-256 есть в каждом релизе.",
+      "colPlatform": "Платформа",
+      "colBinary": "Бинарник",
+      "colDownload": "Скачать",
+      "downloadBtn": "Скачать"
     },
     "commands": {
       "list": [
@@ -2639,7 +3119,9 @@
           "cmd": "kb-monitor infra",
           "description": "Состояние stateful-сервисов из deploy.yaml."
         }
-      ]
+      ],
+      "title": "Команды",
+      "description": "Все команды поддерживают --json — для скриптов и агентных workflow."
     },
     "features": {
       "list": [
@@ -2667,7 +3149,9 @@
           "title": "Все команды удобны для скриптов",
           "description": "У каждой команды есть --json со стабильной и задокументированной схемой. CI и агенты получают чистый слой данных."
         }
-      ]
+      ],
+      "title": "Как это работает",
+      "description": "То, что важно когда сервисы уже работают."
     },
     "pain": {
       "items": [
@@ -2683,7 +3167,38 @@
           "scenario": "Агент написал хотфикс и задеплоил его. Теперь ему нужно убедиться что деплой прошёл и сервис здоров. Без структурированного вывода ему приходится парсить docker ps глазами.",
           "fix": "У всех команд есть --json со стабильной схемой. Агент получает чистые данные, а не скрипит по экрану."
         }
-      ]
+      ],
+      "title": "Знакомо?"
+    },
+    "meta": {
+      "title": "kb-monitor — Настроил один раз, дальше смотрит агент",
+      "description": "Agent-native наблюдение за сервисами, задеплоенными через kb-deploy. Health, uptime, SHA образов, логи, exec — всё через --json. Агент гоняет сам, а вы забываете что мониторинг это вообще задача."
+    },
+    "hero": {
+      "eyebrow": "Open Source",
+      "title": "Настроил один раз. Дальше смотрит агент.",
+      "description": "kb-monitor наблюдает за сервисами, которые раскатал kb-deploy. У всех команд есть --json со стабильной схемой — агент сам гоняет health, читает логи и реагирует. Вы перестаёте думать о мониторинге как о задаче.",
+      "installCmd": "curl -fsSL https://kblabs.ru/kb-monitor/install.sh | sh",
+      "releasesBtn": "GitHub Releases",
+      "docsBtn": "Документация"
+    },
+    "agentWatchdog": {
+      "title": "Мониторинг как то, что делает ваш агент.",
+      "description": "Все команды kb-monitor отдают JSON со стабильной задокументированной схемой. Прицепите к ним агента по расписанию — и мониторинг перестаёт быть человеческой задачей. Становится петлёй, которая сама себя гоняет.",
+      "codeCaption": "agent-watchdog.sh",
+      "codeExample": "# раз в пять минут, через cron\nkb-monitor status --json > /tmp/state.json\n\n# агент читает состояние, думает, реагирует:\n#   - health упал на kb-labs-web → kb-deploy run kb-labs-web\n#   - в проде новый SHA → запостить в #releases\n#   - контейнер перезапускается → вытянуть логи и завести issue\n#\n# правила вы написали один раз. в терминал больше не заходите.",
+      "note": "Тот же паттерн работает с любым агентом — Claude, Codex, свой plugin-агент внутри KB Labs. Контракт — это стабильная схема JSON."
+    },
+    "config": {
+      "title": "Тот же файл, что у kb-deploy.",
+      "description": "kb-monitor читает .kb/deploy.yaml — тот же, из которого раскатываются сервисы. Никаких вторых источников правды и параллельных инвентарей.",
+      "note": "Деплой и наблюдение по дизайну идут в паре. Если kb-deploy знает про цель, kb-monitor знает про неё тоже.",
+      "example": "registry: ghcr.io/your-org\n\ntargets:\n  api:\n    watch: [apps/api/**]\n    image: my-project/api\n    ssh:\n      host: ${SSH_HOST}\n      user: ${SSH_USER}\n      key_env: SSH_KEY\n    remote:\n      compose_file: ~/app/docker-compose.yml\n      service: api\n    permissions:\n      logs: true\n      health: true\n      exec: false\n\ninfrastructure:\n  postgres:\n    type: docker-image\n    image: postgres:16\n    ssh:\n      host: ${SSH_HOST}\n      user: ${SSH_USER}\n      key_env: SSH_KEY\n    restart: unless-stopped"
+    },
+    "kbLabsNote": {
+      "title": "Часть KB Labs",
+      "description": "kb-monitor есть как отдельный бинарь и как часть платформы KB Labs. Ставите KB Labs — kb-monitor уже внутри.",
+      "link": "Установить KB Labs →"
     }
   },
   "install": {
@@ -2707,7 +3222,8 @@
           "note": "Показывает установленные компоненты, пакетный менеджер и путь платформы."
         }
       ],
-      "heading": "Три шага до рабочего workspace."
+      "heading": "Три шага до рабочего workspace.",
+      "description": "Рекомендуется для разработчиков и команд, которые хотят начать быстро."
     },
     "prerequisites": {
       "title": "Требования",
@@ -2748,18 +3264,24 @@
       "eyebrow": "Что дальше",
       "installPlugin": "Установить плагин",
       "examplesLink": "Смотреть примеры",
-      "heading": "После установки"
+      "heading": "После установки",
+      "title": "После установки"
     },
     "enterprise": {
       "link": "Смотреть опции Enterprise-развёртывания →",
-      "description": "SSH-доступ лучше подходит для приватных репозиториев и автоматизации развёртывания. При первой установке используйте {code} как основной способ, а SSH-провизионирование добавьте позже."
+      "description": "SSH-доступ лучше подходит для приватных репозиториев и автоматизации развёртывания. При первой установке используйте {code} как основной способ, а SSH-провизионирование добавьте позже.",
+      "title": "Для Enterprise"
     },
     "hero": {
       "description2": "Один скрипт устанавливает лаунчер и инициализирует первый workspace. Быстрая установка через curl или бинарные файлы напрямую.",
       "eyebrow2": "Начать",
       "titleLine1": "Установите KB Labs",
       "titleLine2": "одной командой.",
-      "releasesBtn": "Открыть последний релиз"
+      "releasesBtn": "Открыть последний релиз",
+      "eyebrow": "KB Labs Launcher",
+      "title": "Установите KB Labs одной командой.",
+      "description": "{code} устанавливает платформу и готовит первое рабочее пространство без ручной настройки. Используйте быструю установку или скачайте бинарники напрямую.",
+      "downloadBtn": "Скачать install.sh"
     },
     "binaries": {
       "subheading": "Для окружений без curl или если вы предпочитаете ручную установку.",
@@ -2791,7 +3313,9 @@
           "file": "kb-create-windows-amd64.exe",
           "unsupported": true
         }
-      ]
+      ],
+      "title": "Ручная установка бинарников",
+      "description": "Для сред, где {code} недоступен."
     }
   },
   "productStudio": {
@@ -2886,7 +3410,8 @@
           "title": "Меняете backend — код не двигается",
           "description": "Меняете одну строку в .kb/kb.config.json. Код вашего сервиса не меняется. Вендор под контрактом заменяется, поведение над контрактом сохраняется."
         }
-      ]
+      ],
+      "title": "Как это работает"
     },
     "valueProps": {
       "items": [
@@ -2914,7 +3439,24 @@
           "title": "Self-hosted, open source, без чёрных ящиков",
           "description": "Работает на вашей инфраструктуре. Данные не покидают вашу сеть, если вы это не настроили. Каждая строка каждого адаптера доступна для аудита."
         }
-      ]
+      ],
+      "title": "Что живёт за контрактом"
+    },
+    "meta": {
+      "title": "Слой инфраструктуры — KB Labs",
+      "description": "Каждый внешний вендор — LLM, кеш, база данных, vector store, event bus и другие — за одним контрактом. Меняете любого из них одной строчкой в конфиге. Ваш код не меняется."
+    },
+    "hero": {
+      "title": "Каждый вендор — за одним контрактом.",
+      "description": "Кеш, базы данных, vector stores, event bus, LLM и другие — всё через стабильные интерфейсы. Меняете вендора одной строчкой в конфиге; код вашего сервиса не меняется.",
+      "startBtn": "Установить",
+      "contactBtn": "Связаться с нами"
+    },
+    "cta": {
+      "title": "Хватит реализовывать одну и ту же вендорную обвязку в каждом продукте.",
+      "description": "Один слой контрактов. Адаптеры, которые вы меняете в конфиге. На том же движке, который вы устанавливаете одной командой.",
+      "startBtn": "Установить",
+      "contactBtn": "Связаться с нами"
     }
   },
   "legal": {
@@ -2981,7 +3523,9 @@
       "meta": {
         "title": "Условия использования",
         "description": "Условия, регулирующие использование платформы и сервисов KB Labs."
-      }
+      },
+      "title": "Условия использования",
+      "intro": "Настоящие Условия использования («Условия») регулируют использование платформы и сервисов KB Labs. Создавая аккаунт или используя платформу, вы соглашаетесь с этими Условиями."
     },
     "dpa": {
       "updated": "Январь 2026",
@@ -3046,7 +3590,9 @@
       "meta": {
         "title": "Соглашение об обработке данных",
         "description": "Соглашение об обработке данных KB Labs (DPA) — как мы обрабатываем персональные данные от вашего имени как соответствующий GDPR обработчик данных."
-      }
+      },
+      "title": "Соглашение об обработке данных",
+      "intro": "Настоящее Соглашение об обработке данных («DPA») дополняет наши Условия использования и применяется там, где KB Labs обрабатывает персональные данные от вашего имени в качестве обработчика данных согласно GDPR или эквивалентному законодательству о защите данных."
     },
     "privacy": {
       "updated": "Апрель 2026",
@@ -3113,7 +3659,9 @@
       "meta": {
         "title": "Политика конфиденциальности",
         "description": "Как KB Labs собирает, использует и защищает ваши персональные данные."
-      }
+      },
+      "title": "Политика конфиденциальности",
+      "intro": "KB Labs («мы», «нас», «наш») управляет платформой и сайтом KB Labs. Эта Политика конфиденциальности объясняет, какие данные мы собираем, зачем их собираем и как вы можете ими управлять."
     },
     "cookies": {
       "updated": "Апрель 2026",
@@ -3191,8 +3739,18 @@
       "meta": {
         "title": "Политика cookies",
         "description": "Какие cookies использует KB Labs, зачем и как вы можете ими управлять."
-      }
-    }
+      },
+      "title": "Политика cookies",
+      "intro": "Эта Политика cookies объясняет, какие cookies использует KB Labs, зачем и как вы можете ими управлять."
+    },
+    "nav": {
+      "privacy": "Конфиденциальность",
+      "terms": "Условия использования",
+      "dpa": "Обработка данных",
+      "cookies": "Политика cookies"
+    },
+    "docsLabel": "Документы",
+    "updatedLabel": "Обновлено:"
   },
   "home": {
     "meta": {
@@ -3247,7 +3805,12 @@
           "title": "Посмотреть как работает.",
           "description": "Полная трассировка, шаг за шагом, на вашей машине."
         }
-      ]
+      ],
+      "title": "Поставьте рядом со своим стеком. Не вместо.",
+      "lead": "Мигрировать ничего не надо. Поставьте KB Labs рядом с тем, что у вас уже работает, подключите один workflow и посмотрите, как он себя покажет. Всё остальное не трогайте.",
+      "note": "Когда появится смысл добавить второй workflow — добавите. Когда не появится — не добавляйте. Темп выбираете вы.",
+      "cta": "Читать install guide →",
+      "ctaHref": "/install"
     },
     "useCases": {
       "items": [
@@ -3299,7 +3862,16 @@
           "result": "Один контролируемый контур для agent automation. Никаких отдельных стеков для поддержки и защиты.",
           "owner": "CTO / AI Platform Team"
         }
-      ]
+      ],
+      "title": "Узнаёте себя?",
+      "description": "Шесть сценариев, где команды заменили скотч-автоматизацию одной управляемой платформой.",
+      "labels": {
+        "situation": "Как это бывает",
+        "how": "Как это работает",
+        "result": "Результат",
+        "owner": "Владелец"
+      },
+      "cta": "Все сценарии →"
     },
     "trust": {
       "securityMarkers": [
@@ -3325,7 +3897,8 @@
         "AI-РЕВЬЮ НА КАЖДОМ PR",
         "РЕГРЕССИИ ЛОВИМ ДО МЕРЖА",
         "АВТОМАТИЗАЦИЯ ПО ВСЕМУ МОНОРЕПО"
-      ]
+      ],
+      "label": "Мы запускаем KB Labs на KB Labs — каждый день, на том же движке, который поставите вы."
     },
     "integrationsSection": {
       "title": "21+ адаптер. Меняйте вендора в конфиге.",
@@ -3437,7 +4010,9 @@
           "description": "Что вышло на этой неделе.",
           "href": "/changelog"
         }
-      ]
+      ],
+      "title": "Проект ранний. Код открыт. Приходите смотреть, как он строится.",
+      "lead": "Мы показываем работу по мере того, как она идёт. Ничего не прячем. Без «маркетинг сначала». Если хотите увидеть, как на самом деле делается open-source инженерная платформа — всё публично."
     },
     "agentsSection": {
       "title": "Агент вызывает команду. Не ваш ключ.",
@@ -3477,7 +4052,11 @@
       ]
     },
     "hero": {
-      "title": "Ваши инструменты должны оставаться вашими."
+      "title": "Ваши инструменты должны оставаться вашими.",
+      "description": "Open-source движок для релизов, ревью, workflow и инфраструктуры. Люди и агенты — по одним правилам. Self-hosted. Ваш.",
+      "body": "",
+      "cta1": "Установить",
+      "cta2": "Открыть на GitHub"
     },
     "beliefs": {
       "rows": [
@@ -3505,7 +4084,9 @@
           "linkLabel": "Посмотреть Gateway →",
           "linkHref": "/solutions/gateway"
         }
-      ]
+      ],
+      "title": "Три вещи, в которые мы верим. И три вещи, которые мы строим.",
+      "lead": "Мы ни с чем не воюем. Мы просто делаем то, чего нам самим не хватало."
     },
     "sameRails": {
       "points": [
@@ -3521,7 +4102,23 @@
           "title": "Один контракт расширения.",
           "description": "Люди пишут плагины. Агенты пишут плагины. Расширяют платформу все через те же интерфейсы, по тем же правилам."
         }
-      ]
+      ],
+      "title": "Одни рельсы. Люди, агенты, и всё, что будет дальше.",
+      "lead": "Платформа — это набор правил и runtime, который их применяет. В KB Labs рельсы одни для всех: для вас, ваших коллег, внутренних plugin-агентов, внешних агентов вроде Claude или Codex, CI-ботов, будущих MCP-подключений. Одна модель прав, одна поверхность наблюдаемости, один контракт расширения.",
+      "caption": "Человек плюс агенты — это тоже команда. KB Labs видит их так с первого дня. MCP — в roadmap: как протокольное расширение той же модели, а не надстройка сбоку."
+    },
+    "agentControl": {
+      "title": "Агент делает только то, что вы разрешили.",
+      "lead": "Большинство инструментов выдают LLM ключ от всего. KB Labs выдаёт только те ключи, которые вы нарезали. Нет команды в манифесте плагина — агент физически не может её вызвать, независимо от того, что поддерживает API.",
+      "codeLabel": "Манифест плагина — объявленные разрешения",
+      "codeCaption": "ClickUp-плагин — реальный пример: Claude Code вызывает `kb clickup task create`, никогда не обращаясь к ClickUp API напрямую. Нет `task delete` в манифесте — агент не может удалить, точка.",
+      "screenshotAlt": "KB Labs Studio — AI-плагин для коммитов группирует изменения в типизированные коммиты с оценкой уверенности"
+    },
+    "finalCta": {
+      "title": "Запустите на одном реальном workflow.",
+      "description": "Поставьте KB Labs на свою машину и попробуйте на одном процессе, которым вы сами владеете. Без регистрации, без trial-гейта, без лимитов.",
+      "installBtn": "Установить",
+      "contactBtn": "Написать команде"
     }
   },
   "ui": {
@@ -3670,7 +4267,29 @@
       "В 2025 году CTO компании, где я работал лидом фронтенда, запустил AI-ревью для команды бэкенда. Меня это не устраивало — ни инструмент, ни подход. За ночь собрал MVP AI Review для фронтов и бэков вместе. На следующий день обсудили архитектуру — половину предложений приняли. Мне этого было мало.",
       "Выложил первую версию на GitHub как OSS. Потом захотел больше — не просто ревью, а полноценную инфраструктуру под AI-инструменты. Маленькими шажками инструмент вырос в workflow-движок, plugin-систему, AI-шлюз.",
       "Сейчас KB Labs — 145+ пакетов, собственный release pipeline, Go-бинарники для сборки и управления сервисами. Публичный релиз — лето 2026. Исходники открыты, `@kb-labs/review` — один из первых плагинов."
-    ]
+    ],
+    "hero": {
+      "title": "Open the closed",
+      "subtitle": "Workflow-движок, AI-шлюз, plugin-система — на твоей машине. Замени любой компонент одной строкой конфига."
+    },
+    "founder": {
+      "label": "Основатель",
+      "name": "Кирилл Баранов",
+      "bio": "Лид фронтенда, который за ночь собрал AI-ревью в ответ на решение CTO — и не смог остановиться. Строю KB Labs публично с 2025 года.",
+      "links": {
+        "site": "k-baranov.ru",
+        "github": "GitHub",
+        "twitter": "X"
+      }
+    },
+    "principlesTitle": "Как мы строим",
+    "originLabel": "История",
+    "cta": {
+      "title": "Стройте на том, что остаётся открытым.",
+      "description": "Установите KB Labs на свою машину, запустите на реальном workflow — и сохраняйте полную архитектурную свободу по мере роста.",
+      "startBtn": "Установить",
+      "contactBtn": "Написать нам"
+    }
   },
   "productStateBroker": {
     "comparisonRows": [
@@ -3714,7 +4333,40 @@
         "latency": "распределённо",
         "description": "Гео-реплицированное состояние с маршрутизацией по регионам. Выделенные бэкенды для тенантов."
       }
-    ]
+    ],
+    "meta": {
+      "title": "State Broker — KB Labs",
+      "description": "Распределённое управление состоянием без Redis — встроено в платформу для воркфлоу, плагинов и сервисов."
+    },
+    "hero": {
+      "title": "Распределённое состояние без инфраструктурных затрат",
+      "description": "Общее состояние между workflow, плагинами и сервисами — без внешних зависимостей.",
+      "startBtn": "Установить",
+      "docsBtn": "Документация",
+      "contactBtn": "Связаться с нами"
+    },
+    "architectureTitle": "Как это работает вместе",
+    "archWorkflow": "Workflow",
+    "archBroker": "State Broker",
+    "archPlugin": "Плагин",
+    "archRedis": "Redis (опционально)",
+    "comparisonTitle": "Почему не просто Redis?",
+    "comparisonHeaders": {
+      "feature": "Возможность",
+      "traditional": "Традиционно",
+      "stateBroker": "State Broker"
+    },
+    "codeExamples": {
+      "cacheLabel": "Cache API",
+      "pubsubLabel": "Pub/Sub"
+    },
+    "scalingTitle": "Путь масштабирования",
+    "cta": {
+      "title": "Состояние без внешних зависимостей",
+      "description": "Поставьте KB Labs — State Broker идёт в комплекте, настройки не нужны.",
+      "startBtn": "Установить",
+      "contactBtn": "Связаться с нами"
+    }
   },
   "roadmap": {
     "meta": {
@@ -3882,7 +4534,9 @@
       "title": "Хотите повлиять на дорожную карту?",
       "contactBtn": "Связаться",
       "startBtn": "Установить",
-      "description": "Расскажите о вашем сценарии использования — это поможет нам расставить приоритеты."
+      "description": "Расскажите о вашем сценарии использования — это поможет нам расставить приоритеты.",
+      "eyebrow": "Влияйте на приоритеты",
+      "githubBtn": "GitHub Discussions"
     },
     "hero": {
       "title": "Дорожная карта",
@@ -3894,7 +4548,16 @@
     "statusExploring": "Исследуем",
     "statusCurrent": "Сейчас",
     "heroEyebrow": "Роадмап",
-    "heroTitleHighlight": "что дальше."
+    "heroTitleHighlight": "что дальше.",
+    "legend": {
+      "shipped": "Готово",
+      "inProgress": "В работе",
+      "planned": "Запланировано",
+      "exploring": "Исследуем"
+    },
+    "eyebrow": "Дорожная карта",
+    "heroTitle": "Что строим и куда идём.",
+    "heroDescription": "Квартальный план — без маркетинговых обещаний. Обновляется по мере продвижения."
   },
   "page": {
     "ucOwnerLabel": "Владелец:",
@@ -5211,7 +5874,13 @@
     "allPosts": "Все посты",
     "prevPost": "Предыдущий",
     "nextPost": "Следующий",
-    "relatedPosts": "Похожие посты"
+    "relatedPosts": "Похожие посты",
+    "eyebrow": "Блог",
+    "heroTitle": "Инженерные заметки",
+    "heroDescription": "Архитектурные решения, обновления платформы и размышления вслух от команды KB Labs.",
+    "noResultsTag": "Нет статей в категории «{tag}».",
+    "paginationPrev": "← Назад",
+    "paginationNext": "Далее →"
   },
   "contact": {
     "channels": [
@@ -5251,7 +5920,20 @@
         "description": "Написать основателю напрямую — самый быстрый способ.",
         "href": "https://t.me/kirill_baranov"
       }
-    ]
+    ],
+    "meta": {
+      "title": "Контакты",
+      "description": "Свяжитесь с командой KB Labs — по вопросам продаж, технической поддержки, партнёрства или прессы."
+    },
+    "hero": {
+      "title": "Свяжитесь с нами",
+      "subtitle": "Мы небольшая команда — читаем всё и отвечаем быстро."
+    },
+    "channelsTitle": "Чем можем помочь?",
+    "communityTitle": "Сообщество",
+    "basedIn": "Расположение",
+    "location": "Удалённая команда.\nРоссия.",
+    "generalInquiries": "Общие вопросы:"
   },
   "designDecisions": {
     "items": [
@@ -5268,5 +5950,19 @@
         "detail": "Стадии идут в порядке с явными зависимостями. Первая ошибка останавливает пайплайн. Каждый запуск полностью трейсится: входы, выходы, тайминг и вызовы плагинов."
       }
     ]
+  },
+  "aiAssistant": {
+    "title": "Ask AI",
+    "expand": "Развернуть",
+    "collapse": "Свернуть",
+    "close": "Закрыть",
+    "send": "Отправить",
+    "starterText": "Спросите что-нибудь о KB Labs",
+    "placeholder": "Задайте вопрос...",
+    "errorText": "Произошла ошибка. Попробуйте ещё раз."
+  },
+  "screenshotLightbox": {
+    "close": "Закрыть",
+    "open": "Открыть скриншот: {alt}"
   }
 }
