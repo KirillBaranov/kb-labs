@@ -74,12 +74,12 @@ export function StatCard({ value, label, description, trend, className }: StatCa
       </div>
       <div className="text-muted text-sm font-medium">{label}</div>
       {description && (
-        <div className="text-muted/70 text-xs">{description}</div>
+        <div className="text-muted/70 text-sm">{description}</div>
       )}
       {trend && (
         <div
           className={cn(
-            'inline-flex items-center gap-1 text-xs font-medium mt-1 w-fit px-2 py-0.5 rounded-full',
+            'inline-flex items-center gap-1 text-sm font-medium mt-1 w-fit px-2 py-0.5 rounded-full',
             trend.up
               ? 'bg-green-500/10 text-green-500'
               : 'bg-red-500/10 text-red-500'

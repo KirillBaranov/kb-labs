@@ -1,0 +1,295 @@
+---
+title: "Artifacts"
+description: "Named outputs: produce, consume, merge across jobs and runs."
+updatedAt: "2026-04-07"
+order: 6
+---
+
+Artifacts are named outputs of workflow execution. They're how a build job passes a compiled bundle to a test job, how a review job passes an issue list to an approval step, and how a run aggregates its findings for display in Studio.
+
+The engine tracks artifacts at two granularities: **step artifacts** (declared on a step, consumed inside the same run) and **job artifacts** (declared at the job level, with produce/consume lists and merge strategies for cross-job and cross-run aggregation).
+
+This page covers the contract side. The physical storage for artifact contents comes from [`IStorage`](/adapters/interfaces/storage) or whatever backend the adapter implements.
+
+## Step artifacts
+
+Steps declare the artifacts they produce via the `artifacts` field on `StepSpec`:
+
+```ts
+artifacts?: Record<string, StepArtifact>
+
+interface StepArtifact {
+  type: 'markdown' | 'issues' | 'table' | 'diff' | 'log' | 'json' | 'link';
+  source: string;              // min length 1
+  label: string;               // min length 1
+  digest?: string;             // content hash for deduplication
+  showInSummary?: boolean;     // include in run summary
+}
+```
+
+### Types
+
+Each type tells clients how to render the artifact:
+
+- **`markdown`** — prose. Rendered as HTML in Studio, piped through a terminal renderer in the CLI.
+- **`issues`** — structured list of issues (linter findings, security warnings, review comments). Rendered as an interactive list.
+- **`table`** — tabular data with columns. Rendered as a grid.
+- **`diff`** — unified diff. Rendered with syntax highlighting.
+- **`log`** — raw log stream. Rendered as a monospace block with line numbers.
+- **`json`** — arbitrary JSON. Rendered as a collapsible tree.
+- **`link`** — an external URL. Rendered as a clickable link with the `label`.
+
+### Declaration shape
+
+The record key is your internal name for the artifact. Later steps reference it by that name.
+
+```json
+{
+  "name": "Run linter",
+  "id": "lint",
+  "uses": "builtin:shell",
+  "with": {
+    "command": "pnpm lint --format json > .kb/out/lint.json"
+  },
+  "artifacts": {
+    "lint-report": {
+      "type": "issues",
+      "source": ".kb/out/lint.json",
+      "label": "Lint findings",
+      "showInSummary": true
+    }
+  }
+}
+```
+
+**`source`** is where the client looks to resolve the artifact content. It's typically a file path relative to `ctx.cwd`, but adapters can interpret it however they want (an output key, a URL, an object-store ID). The engine doesn't parse it — it passes the string to whatever is rendering the artifact.
+
+**`digest`** lets clients deduplicate: if two steps produce an artifact with the same digest, the UI can show it once and link from multiple places.
+
+**`showInSummary: true`** promotes the artifact into the run's top-level summary card in Studio. Use sparingly — if everything is in the summary, nothing is.
+
+## Job artifacts
+
+Jobs have a richer artifact model: explicit `produce` and `consume` lists, plus a `merge` strategy for combining artifacts from multiple runs.
+
+```ts
+artifacts?: {
+  produce?: string[];
+  consume?: string[];
+  merge?: {
+    strategy: 'append' | 'overwrite' | 'json-merge';
+    from: { runId: string; jobId?: string }[];  // min length 1
+  };
+}
+```
+
+### Produce and consume
+
+```json
+{
+  "jobs": {
+    "build": {
+      "runsOn": "sandbox",
+      "steps": [...],
+      "artifacts": { "produce": ["dist", "build-manifest"] }
+    },
+    "test": {
+      "runsOn": "sandbox",
+      "needs": ["build"],
+      "steps": [...],
+      "artifacts": { "consume": ["dist"] }
+    }
+  }
+}
+```
+
+The engine enforces the produce/consume relationship: a job that `consume`s an artifact cannot start until a job that `produce`s it has completed. This is independent of `needs` — `needs` is about DAG ordering, `produce`/`consume` is about data availability. In practice you'll often declare both.
+
+Names in these lists are strings. The engine treats them as opaque keys — it doesn't know what "dist" means, only that `build` emits something called `dist` and `test` needs something called `dist`. The actual binary/text content is handed off by whatever adapter materializes the artifact.
+
+### Merge
+
+```ts
+merge?: {
+  strategy: 'append' | 'overwrite' | 'json-merge';
+  from: { runId: string; jobId?: string }[];
+}
+```
+
+Merge lets a job pull artifacts from **previous runs** — not from the current run, but from historical ones. The primary use case is aggregation: "combine the lint results from the last 10 runs so we can see the trend".
+
+- **`'append'`** — concatenate list/array content. Each source's artifact is pushed onto the combined result.
+- **`'overwrite'`** — later sources win. Equivalent to "take the most recent non-null value for each field".
+- **`'json-merge'`** — deep-merge JSON objects. Scalar values are overwritten; objects are recursively merged; arrays are concatenated.
+
+`from` is a non-empty list of sources. Each source is a `runId` (required) and an optional `jobId`. Without `jobId`, the engine pulls the entire run's artifact set; with `jobId`, it scopes to that job.
+
+```json
+{
+  "jobs": {
+    "aggregate": {
+      "runsOn": "local",
+      "artifacts": {
+        "consume": ["lint-report"],
+        "merge": {
+          "strategy": "append",
+          "from": [
+            { "runId": "${{ trigger.payload.previousRunIds[0] }}" },
+            { "runId": "${{ trigger.payload.previousRunIds[1] }}" },
+            { "runId": "${{ trigger.payload.previousRunIds[2] }}" }
+          ]
+        }
+      },
+      "steps": [...]
+    }
+  }
+}
+```
+
+The engine resolves the sources before the job starts, fetches each artifact, applies the strategy, and hands the combined result to the consuming steps.
+
+## Artifacts at the run level
+
+```ts
+interface WorkflowRun {
+  artifacts?: string[];
+  // ...
+}
+```
+
+`run.artifacts` is the aggregate: every artifact produced by any job in the run, flattened into a single array. Studio and the CLI read this field to show "all outputs from this run" without walking the job tree.
+
+The run-level list is read-only — the engine populates it as jobs complete. You don't declare it in the spec.
+
+## Presentation vs content
+
+There are two sides to an artifact:
+
+1. **Presentation** (`StepArtifact.type`, `label`, `showInSummary`) — what clients render.
+2. **Content** — the bytes the `source` points to.
+
+The workflow contracts cover only the presentation side. How content is stored, versioned, and garbage-collected is the adapter's problem:
+
+- A local filesystem adapter just keeps files under a per-run directory and resolves `source` as a relative path.
+- A cloud adapter uploads to object storage and resolves `source` as an S3 key or URL.
+- A snapshot-backed adapter writes to an immutable snapshot and garbage-collects by retention policy.
+
+Plugins and workflow authors don't see this split — they write files and declare artifacts; the platform handles the rest.
+
+## Typical patterns
+
+### CI: build → test → report
+
+```json
+{
+  "jobs": {
+    "build": {
+      "runsOn": "sandbox",
+      "steps": [
+        { "name": "Build", "uses": "builtin:shell", "with": { "command": "pnpm build" } }
+      ],
+      "artifacts": { "produce": ["dist"] }
+    },
+    "test": {
+      "runsOn": "sandbox",
+      "needs": ["build"],
+      "steps": [
+        {
+          "name": "Test",
+          "id": "t",
+          "uses": "builtin:shell",
+          "with": { "command": "pnpm test --reporter json > .kb/out/test-report.json" },
+          "artifacts": {
+            "test-report": {
+              "type": "json",
+              "source": ".kb/out/test-report.json",
+              "label": "Test results",
+              "showInSummary": true
+            }
+          }
+        }
+      ],
+      "artifacts": { "consume": ["dist"] }
+    }
+  }
+}
+```
+
+### Code review: generate → show → approve
+
+```json
+{
+  "jobs": {
+    "review": {
+      "runsOn": "sandbox",
+      "steps": [
+        {
+          "name": "AI review",
+          "uses": "plugin:ai-review:run",
+          "artifacts": {
+            "review": {
+              "type": "issues",
+              "source": "outputs.issues",
+              "label": "AI review findings",
+              "showInSummary": true
+            },
+            "summary": {
+              "type": "markdown",
+              "source": "outputs.summary",
+              "label": "Review summary"
+            }
+          }
+        },
+        {
+          "name": "Approve",
+          "uses": "builtin:approval",
+          "with": {
+            "title": "Accept the AI review?",
+            "context": { "issueCount": "${{ steps.review.outputs.issueCount }}" }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+
+### Trend: aggregate across last N runs
+
+```json
+{
+  "jobs": {
+    "weekly-quality-report": {
+      "runsOn": "local",
+      "artifacts": {
+        "consume": ["lint-report", "test-report"],
+        "merge": {
+          "strategy": "append",
+          "from": [
+            { "runId": "${{ trigger.payload.runs[0] }}" },
+            { "runId": "${{ trigger.payload.runs[1] }}" },
+            { "runId": "${{ trigger.payload.runs[2] }}" }
+          ]
+        }
+      },
+      "steps": [
+        { "name": "Render report", "uses": "plugin:quality:weekly-report" }
+      ]
+    }
+  }
+}
+```
+
+## Gotchas
+
+- **Produce/consume names are just strings.** A typo in `consume` that doesn't match any `produce` will block the job indefinitely (waiting for something that'll never arrive). Validate names at spec-authoring time with your own tooling.
+- **Merge `from` must be non-empty.** The schema enforces `min(1)`. An empty list is a validation error.
+- **Source format is adapter-specific.** Don't assume `.kb/out/report.json` will resolve to a local file in every deployment — containerized runs see a different filesystem. Use well-known paths your plugin controls, or use step output keys.
+- **`showInSummary` is advisory.** Clients can choose to ignore it if they're showing a condensed view.
+
+## What to read next
+
+- [Steps](/workflows/steps) — `StepArtifact` in the step shape.
+- [Jobs](/workflows/jobs) — `produce`/`consume` in the job shape.
+- [Patterns](/workflows/patterns) — more end-to-end recipes.
+- [IStorage](/adapters/interfaces/storage) — the adapter interface artifact content typically flows through.

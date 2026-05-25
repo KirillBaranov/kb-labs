@@ -82,11 +82,11 @@ function EventBusGraphic() {
       <div className="h-px w-4 flex-shrink-0 bg-line-strong" />
 
       {/* EventBus */}
-      <div className="flex-shrink-0 rounded-xl border border-line-strong bg-bg px-3 py-3 shadow-sm text-center">
+      <div className="flex-shrink-0 rounded-xl border border-line-strong bg-surface dark:bg-bg px-3 py-3 shadow-sm text-center">
         <div className="font-mono text-[0.63rem] font-semibold text-muted">EventBus</div>
         <div className="mt-1.5 flex flex-col gap-1">
           <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 font-mono text-[0.55rem] text-emerald-600/80">Redis</span>
-          <span className="rounded bg-bg px-1.5 py-0.5 font-mono text-[0.55rem] text-muted/35 line-through ring-1 ring-inset ring-line">Kafka</span>
+          <span className="rounded bg-line/40 px-1.5 py-0.5 font-mono text-[0.55rem] text-muted/35 line-through ring-1 ring-inset ring-line">Kafka</span>
         </div>
       </div>
 
@@ -139,38 +139,33 @@ function PlatformGraphic() {
 
 /* ── Pain rows ────────────────────────────────────────────── */
 
-const PAINS = [
-  {
-    title: 'Агент пошёл куда не звали',
-    description: 'Даёте агенту только те инструменты, которые сами разрешили. Плагин без доступа — недоступен.',
-    graphic: <AgentGraphic />,
-  },
-  {
-    title: 'Автоматизация держится на bash',
-    description: 'Workflow в YAML. Движок следит за выполнением, пишет логи, повторяет при ошибке.',
-    graphic: <WorkflowGraphic />,
-  },
-  {
-    title: 'Сменили брокер — переписывай всех подписчиков',
-    description: 'Сервисы публикуют события через gateway. Redis, Kafka, RabbitMQ — меняете адаптер в конфиге, подписчики не замечают.',
-    graphic: <EventBusGraphic />,
-  },
-  {
-    title: 'Каждый инструмент — отдельный остров',
-    description: 'Commit, review, release, deploy — один workflow, одна платформа, одни логи.',
-    graphic: <PlatformGraphic />,
-  },
+const GRAPHICS = [
+  <AgentGraphic />,
+  <WorkflowGraphic />,
+  <EventBusGraphic />,
+  <PlatformGraphic />,
 ];
 
-export function PainCards() {
+export interface PainItem {
+  title: string;
+  description: string;
+}
+
+export interface PainCardsProps {
+  items?: PainItem[];
+}
+
+const DEFAULT_ITEMS: PainItem[] = [];
+
+export function PainCards({ items = DEFAULT_ITEMS }: PainCardsProps) {
   return (
     <div className="overflow-hidden rounded-2xl border border-line">
-      {PAINS.map((pain, i) => (
+      {items.map((pain, i) => (
         <div
           key={pain.title}
           className={cn(
             'grid grid-cols-1 md:grid-cols-[1fr_1.2fr]',
-            i < PAINS.length - 1 && 'border-b border-line',
+            i < items.length - 1 && 'border-b border-line',
           )}
         >
           {/* Text */}
@@ -181,7 +176,7 @@ export function PainCards() {
 
           {/* Visual */}
           <div className="flex items-center justify-center border-t border-line bg-bg p-8 md:border-l md:border-t-0">
-            {pain.graphic}
+            {GRAPHICS[i]}
           </div>
         </div>
       ))}

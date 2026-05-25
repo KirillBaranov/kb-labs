@@ -1,11 +1,22 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
-
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
-import s from './page.module.css';
+import {
+  AnimateOnScroll,
+  BorderBeam,
+  Button,
+  CodeBlock,
+  Container,
+  CopyButton,
+  DotPattern,
+  Eyebrow,
+  GradientText,
+  MockupFrame,
+  Section,
+  Tabs,
+} from '@kb-labs/web-site-ui';
 import { buildPageMetadata } from '@/lib/page-metadata';
 
 type Props = { params: Promise<{ locale: string }> };
@@ -16,202 +27,289 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale });
+  const t = await getTranslations({ locale, namespace: 'solutionCodeIntelligence' });
   return buildPageMetadata({
     locale,
-    title: t('solutionCodeIntelligence.meta.title'),
-    description: t('solutionCodeIntelligence.meta.description'),
+    title: t('meta.title'),
+    description: t('meta.description'),
     path: '/solutions/code-intelligence',
+    imageSegment: 'solutions',
   });
 }
 
-type FeatureItem = { title: string; description: string };
-type ModeData = { name: string; speed: string; badge?: string; description: string; useCases: string[] };
+// ── Content ───────────────────────────────────────────────────────────────────
 
-const FEATURE_ICONS = [
-  /* Hybrid Search */
-  <svg key="hybrid" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>,
-  /* Anti-Hallucination */
-  <svg key="verify" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>,
-  /* Agent-Ready */
-  <svg key="agent" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" /><path d="M9 9h6v6H9z" /></svg>,
-  /* Incremental Indexing */
-  <svg key="index" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 17 10 11 4 5" /><line x1="12" y1="19" x2="20" y2="19" /></svg>,
-];
+// i18n-ignore
+const INDEX_OUTPUT = `$ kb mind index
 
-export default async function MindRagPage({ params }: Props) {
+  ✓  Index updated in 22s (incremental)
+
+  Files      discovered: 1 840 · processed: 68 · skipped: 1 772
+  Chunks     stored: 9 440 · updated: 480 · rate: 7.06/file
+  Cleanup    deleted files: 3 · deleted chunks: 22`;
+
+// i18n-ignore
+const FOUND_OUTPUT = `$ kb mind search --text "как работает pipeline релиза" --agent // i18n-ignore
+
+{
+  "chunks": [
+    {
+      "path": "plugins/release/manager-core/src/pipeline.ts",
+      "span": { "startLine": 1, "endLine": 12 },
+      "score": 0.94,
+      "text": "Flow: plan → snapshot → checks → build → verify..."
+    },
+    {
+      "path": "plugins/release/manager-cli/src/cli/commands/run.ts",
+      "span": { "startLine": 180, "endLine": 210 },
+      "score": 0.87,
+      "text": "const result = await runReleasePipeline({..."
+    }
+  ],
+  "contextText": "Release pipeline состоит из 8 последовательных шагов...", // i18n-ignore
+  "meta": { "schemaVersion": "agent-response-v1", "timingMs": 14200 }
+}`;
+
+// i18n-ignore
+const LOW_CONF_OUTPUT = `$ kb mind search --text "конфигурация redis кластера" --agent // i18n-ignore
+
+{
+  "quality": {
+    "confidence": 0.28,
+    "completeness": "minimal"
+  },
+  "candidates": [ ... ],
+  "warnings": [{
+    "code": "LOW_CONFIDENCE",
+    "message": "Answer confidence is low (28%). Some claims may not be fully supported by sources."
+  }],
+  "meta": { "schemaVersion": "agent-response-v1" }
+}`;
+
+// i18n-ignore
+const NOT_FOUND_OUTPUT = `$ kb mind search --text "как работает GraphQL федерация" --agent // i18n-ignore
+
+{
+  "quality": {
+    "confidence": 0,
+    "coverage": 0,
+    "completeness": "minimal"
+  },
+  "candidates": [],
+  "answer": "В индексированной кодовой базе не найдено релевантной информации.", // i18n-ignore
+  "meta": { "schemaVersion": "agent-response-v1", "timingMs": 180 }
+}`;
+
+// ── Page ─────────────────────────────────────────────────────────────────────
+
+export default async function CodeIntelligencePage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const t = await getTranslations({ locale });
 
-  const featureItems = t.raw('solutionCodeIntelligence.featureGrid.items') as FeatureItem[];
-  const modeInstant = t.raw('solutionCodeIntelligence.modes.instant') as ModeData;
-  const modeAuto = t.raw('solutionCodeIntelligence.modes.auto') as ModeData;
-  const modeThinking = t.raw('solutionCodeIntelligence.modes.thinking') as ModeData;
-  const modes: Array<ModeData & { icon: string; accent?: boolean }> = [
-    { ...modeInstant, icon: '\u26A1' },
-    { ...modeAuto, icon: '\uD83D\uDD04', accent: true },
-    { ...modeThinking, icon: '\uD83E\uDDE0' },
-  ];
+  const t = await getTranslations({ locale, namespace: 'solutionCodeIntelligence' });
+
+  const indexTable = t.raw('page.indexTable') as Array<{ label: string; value: string }>;
+  const commands = t.raw('page.commands') as Array<{ cmd: string; note: string }>;
+  const agentTable = t.raw('page.agentTable') as Array<{ label: string; value: string }>;
 
   return (
     <>
       <SiteHeader />
       <main>
 
-        {/* ── 1. Hero ── */}
-        <section className={s.hero}>
-          <h1>{t('solutionCodeIntelligence.hero.title')}</h1>
-          <p>{t('solutionCodeIntelligence.hero.description')}</p>
-          <div className={s.heroCta}>
-            <Link className="btn primary" href={`/${locale}/install`}>{t('solutionCodeIntelligence.hero.startBtn')}</Link>
-            <Link className="btn secondary" href={`/${locale}/contact`}>{t('solutionCodeIntelligence.hero.contactBtn')}</Link>
-          </div>
-        </section>
-
-        {/* ── 2. Search Demo Mockup ── */}
-        <div className={s.searchDemo} aria-hidden>
-          <div className={s.searchInput}>
-            <svg className={s.searchIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            <span>{t('solutionCodeIntelligence.searchDemo.placeholder')}</span>
-            <span className={s.searchLabel}>{t('solutionCodeIntelligence.searchDemo.label')}</span>
-          </div>
-
-          <div className={s.resultCards}>
-            <div className={s.resultCard}>
-              <div className={s.resultMeta}>
-                <span className={s.resultPath}>packages/mind-engine/src/search/hybrid-search.ts</span>
-                <span className={s.confidenceBadge}>0.92</span>
-              </div>
-              <span className={s.resultSnippet}>
-                Combines BM25 keyword scoring with vector cosine similarity using Reciprocal Rank Fusion to merge ranked lists into a single result set.
-              </span>
-            </div>
-
-            <div className={s.resultCard}>
-              <div className={s.resultMeta}>
-                <span className={s.resultPath}>packages/mind-engine/src/search/rrf-merger.ts</span>
-                <span className={s.confidenceBadge}>0.87</span>
-              </div>
-              <span className={s.resultSnippet}>
-                RRF formula: score(d) = 1/(k + rank_bm25(d)) + 1/(k + rank_vector(d)), default k=60 for balanced fusion weight.
-              </span>
-            </div>
-
-            <div className={s.resultCard}>
-              <div className={s.resultMeta}>
-                <span className={s.resultPath}>packages/mind-engine/src/embeddings/vector-store.ts</span>
-                <span className={s.confidenceBadge}>0.81</span>
-              </div>
-              <span className={s.resultSnippet}>
-                VectorStore interface provides nearest-neighbor lookup over code chunk embeddings stored in Qdrant collections.
-              </span>
-            </div>
-          </div>
-        </div>
-
-        {/* ── 3. Accuracy Stats ── */}
-        <section className={s.accuracy}>
-          <h2>{t('solutionCodeIntelligence.accuracy.title')}</h2>
-          <div className={s.accuracyBar}>
-            <div className={s.accuracySegment}>
-              <span>{t('solutionCodeIntelligence.accuracy.easy')}</span>
-              <span className={s.accuracyScore}>0.63</span>
-            </div>
-            <div className={s.accuracySegment}>
-              <span>{t('solutionCodeIntelligence.accuracy.medium')}</span>
-              <span className={s.accuracyScore}>0.78</span>
-            </div>
-            <div className={s.accuracySegment}>
-              <span>{t('solutionCodeIntelligence.accuracy.hard')}</span>
-              <span className={s.accuracyScore}>0.70</span>
-            </div>
-          </div>
-          <span className={s.accuracyAverage}>{t('solutionCodeIntelligence.accuracy.average')}</span>
-        </section>
-
-        {/* ── 4. Mode Cards ── */}
-        <section className={s.modes}>
-          <div className={s.modesHeader}>
-            <h2>{t('solutionCodeIntelligence.modes.title')}</h2>
-            <p>{t('solutionCodeIntelligence.modes.description')}</p>
-          </div>
-          <div className={s.modeGrid}>
-            {modes.map((mode) => (
-              <div key={mode.name} className={`${s.modeCard}${mode.accent ? ` ${s.modeCardAccent}` : ''}`}>
-                <div className={s.modeTop}>
-                  <span className={s.modeIcon}>{mode.icon}</span>
-                  <span className={s.modeName}>{mode.name}</span>
-                  {mode.badge && <span className={s.modeBadge}>{mode.badge}</span>}
+        {/* ── Hero ── */}
+        <section className="relative overflow-hidden border-b border-line py-20 pb-16">
+          <DotPattern className="absolute inset-0 z-0 opacity-40" />
+          <Container className="relative z-10">
+            <AnimateOnScroll>
+              <div className="mx-auto max-w-3xl text-center">
+                <Eyebrow className="mb-4">{t('page.heroEyebrow')}</Eyebrow>
+                <h1 className="mb-5 text-4xl font-bold leading-tight tracking-tight text-kb-text sm:text-5xl lg:text-6xl">
+                  {t('page.heroTitle')}{' '}
+                  <GradientText>{t('page.heroTitleHighlight')}</GradientText>
+                </h1>
+                <p className="mx-auto mb-8 max-w-xl text-lg leading-relaxed text-muted/70">
+                  {t('page.heroDescription')}
+                </p>
+                <div className="flex flex-wrap justify-center gap-3">
+                  <Button variant="primary" size="lg" href="https://docs.kblabs.ru/plugins/mind" target="_blank" rel="noopener noreferrer">
+                    {t('page.docsBtn')}
+                  </Button>
+                  <Button variant="secondary" size="lg" href={`/${locale}/install`}>
+                    {t('page.installBtn')}
+                  </Button>
                 </div>
-                <span className={s.modeSpeed}>{mode.speed}</span>
-                <p className={s.modeDesc}>{mode.description}</p>
-                <ul className={s.modeUseCases}>
-                  {mode.useCases.map((uc) => (
-                    <li key={uc}>{uc}</li>
+              </div>
+            </AnimateOnScroll>
+          </Container>
+        </section>
+
+        {/* ── Index ── */}
+        <Section className="border-b border-line">
+          <Container>
+            <AnimateOnScroll>
+              <div className="mx-auto mb-10 max-w-xl text-center">
+                <Eyebrow className="mb-3">{t('page.indexEyebrow')}</Eyebrow>
+                <h2 className="text-3xl font-bold tracking-tight text-kb-text">
+                  {t('page.indexTitle')}
+                </h2>
+              </div>
+            </AnimateOnScroll>
+
+            <div className="grid items-start gap-8 lg:grid-cols-2">
+              <AnimateOnScroll delay={0}>
+                <MockupFrame type="terminal">
+                  <pre className="whitespace-pre p-5 font-mono text-[0.78rem] leading-[1.85] text-slate-300">{INDEX_OUTPUT}</pre>
+                </MockupFrame>
+              </AnimateOnScroll>
+
+              <AnimateOnScroll delay={80}>
+                <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm divide-y divide-line">
+                  {indexTable.map(({ label, value }) => (
+                    <div key={label} className="flex items-baseline gap-4 px-5 py-3.5">
+                      <span className="flex-shrink-0 whitespace-nowrap text-[0.65rem] font-bold uppercase tracking-wider text-muted/35">{label}</span>
+                      <span className="text-sm text-muted/70">{value}</span>
+                    </div>
                   ))}
-                </ul>
+                </div>
+              </AnimateOnScroll>
+            </div>
+          </Container>
+        </Section>
+
+        {/* ── Honest answers ── */}
+        <Section className="border-b border-line bg-surface/40">
+          <Container>
+            <div className="grid gap-12 lg:grid-cols-2 lg:items-start">
+              <AnimateOnScroll>
+                <Eyebrow className="mb-3">{t('page.verifyEyebrow')}</Eyebrow>
+                <h2 className="mb-4 text-3xl font-bold tracking-tight text-kb-text">
+                  {t('page.verifyTitle')}
+                </h2>
+                <p className="mb-4 text-base leading-relaxed text-muted/70">
+                  {t('page.verifyLead1')}
+                </p>
+                <p className="text-base leading-relaxed text-muted/70">
+                  {t('page.verifyLead2')}
+                </p>
+              </AnimateOnScroll>
+
+              <AnimateOnScroll delay={80}>
+                <Tabs
+                  variant="card"
+                  contentClassName="max-h-[360px] overflow-auto"
+                  items={[
+                    {
+                      id: 'found',
+                      label: t('page.tabFound'),
+                      content: <CodeBlock code={FOUND_OUTPUT} language="json" bare />,
+                    },
+                    {
+                      id: 'low_conf',
+                      label: t('page.tabLowConf'),
+                      content: <CodeBlock code={LOW_CONF_OUTPUT} language="json" bare />,
+                    },
+                    {
+                      id: 'not_found',
+                      label: t('page.tabNotFound'),
+                      content: <CodeBlock code={NOT_FOUND_OUTPUT} language="json" bare />,
+                    },
+                  ]}
+                />
+              </AnimateOnScroll>
+            </div>
+          </Container>
+        </Section>
+
+        {/* ── Commands ── */}
+        <Section className="border-b border-line">
+          <Container>
+            <AnimateOnScroll>
+              <div className="mx-auto mb-10 max-w-xl text-center">
+                <Eyebrow className="mb-3">{t('page.commandsEyebrow')}</Eyebrow>
+                <h2 className="text-3xl font-bold tracking-tight text-kb-text">
+                  {t('page.commandsTitle')}
+                </h2>
               </div>
-            ))}
-          </div>
-        </section>
+            </AnimateOnScroll>
 
-        {/* ── 5. Code Example ── */}
-        <section className={s.codeExample}>
-          <h2>{t('solutionCodeIntelligence.codeExample.title')}</h2>
-          <div className={s.codeBlock}>
-            <div className={s.codeBlockBar}>
-              <span className={s.codeDot} />
-              <span className={s.codeDot} />
-              <span className={s.codeDot} />
-              <span>Terminal</span>
-            </div>
-            <div className={s.codeContent}>
-              <div className={s.codeLine}>
-                <span className={s.codePrompt}>$ </span>
-                <span className={s.codeCmd}>pnpm kb mind rag-query </span>
-                <span className={s.codeFlag}>--text </span>
-                <span className={s.codeString}>&quot;How does hybrid search work?&quot;</span>
-                <span className={s.codeFlag}> --agent</span>
+            <AnimateOnScroll delay={60}>
+              <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
+                {commands.map((c, i) => (
+                  <div
+                    key={c.cmd}
+                    className={`flex flex-col gap-1.5 px-6 py-4 sm:flex-row sm:items-baseline sm:gap-6 ${i < commands.length - 1 ? 'border-b border-line' : ''}`}
+                  >
+                    <code className="flex-shrink-0 font-mono text-[0.78rem] text-kb-text/85 sm:w-72">{c.cmd}</code>
+                    <span className="text-sm leading-relaxed text-muted/50">{c.note}</span>
+                  </div>
+                ))}
               </div>
-              <span className={s.codeDivider} />
-              <div className={s.codeLine}><span className={s.codeComment}>{'// Response (JSON)'}</span></div>
-              <div className={s.codeLine}><span className={s.codeBrace}>{'{'}</span></div>
-              <div className={s.codeLine}>{'  '}<span className={s.codeKey}>&quot;confidence&quot;</span>: <span className={s.codeNumber}>0.87</span>,</div>
-              <div className={s.codeLine}>{'  '}<span className={s.codeKey}>&quot;mode&quot;</span>: <span className={s.codeValue}>&quot;auto&quot;</span>,</div>
-              <div className={s.codeLine}>{'  '}<span className={s.codeKey}>&quot;sources&quot;</span>: [</div>
-              <div className={s.codeLine}>{'    '}<span className={s.codeValue}>&quot;packages/mind-engine/src/search/hybrid-search.ts&quot;</span>,</div>
-              <div className={s.codeLine}>{'    '}<span className={s.codeValue}>&quot;packages/mind-engine/src/search/rrf-merger.ts&quot;</span></div>
-              <div className={s.codeLine}>{'  '}],</div>
-              <div className={s.codeLine}>{'  '}<span className={s.codeKey}>&quot;answer&quot;</span>: <span className={s.codeValue}>&quot;Hybrid search combines BM25 keyword...&quot;</span></div>
-              <div className={s.codeLine}><span className={s.codeBrace}>{'}'}</span></div>
-            </div>
-          </div>
-        </section>
+            </AnimateOnScroll>
+          </Container>
+        </Section>
 
-        {/* ── 6. Feature Grid (2x2) ── */}
-        <div className={s.featureGrid}>
-          {featureItems.map((item, i) => (
-            <div key={item.title} className={s.featureCard}>
-              <div className={s.featureCardIcon}>{FEATURE_ICONS[i]}</div>
-              <h3>{item.title}</h3>
-              <p>{item.description}</p>
-            </div>
-          ))}
-        </div>
+        {/* ── Agent-first ── */}
+        <Section className="border-b border-line bg-surface/40">
+          <Container>
+            <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
+              <AnimateOnScroll>
+                <Eyebrow className="mb-3">{t('page.agentEyebrow')}</Eyebrow>
+                <h2 className="mb-4 text-3xl font-bold tracking-tight text-kb-text">
+                  {t('page.agentTitle')}
+                </h2>
+                <p className="mb-4 text-base leading-relaxed text-muted/70">
+                  {t('page.agentLead1')}
+                </p>
+                <p className="text-base leading-relaxed text-muted/70">
+                  {t('page.agentLead2')}
+                </p>
+              </AnimateOnScroll>
 
-        {/* ── 7. CTA ── */}
-        <section className="final-cta-block reveal">
-          <h2>{t('solutionCodeIntelligence.cta.title')}</h2>
-          <p>{t('solutionCodeIntelligence.cta.description')}</p>
-          <div className="cta-row">
-            <Link className="btn primary" href={`/${locale}/install`}>{t('solutionCodeIntelligence.cta.startBtn')}</Link>
-            <Link className="btn secondary" href={`/${locale}/contact`}>{t('solutionCodeIntelligence.cta.contactBtn')}</Link>
-          </div>
-        </section>
+              <AnimateOnScroll delay={80}>
+                <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm divide-y divide-line">
+                  {agentTable.map(({ label, value }) => (
+                    <div key={label} className="flex items-baseline gap-4 px-5 py-3.5">
+                      <span className="flex-shrink-0 whitespace-nowrap text-[0.65rem] font-bold uppercase tracking-wider text-muted/35">{label}</span>
+                      <span className="text-sm text-muted/70">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              </AnimateOnScroll>
+            </div>
+          </Container>
+        </Section>
+
+        {/* ── CTA ── */}
+        <Section className="bg-bg">
+          <Container>
+            <AnimateOnScroll>
+              <div className="relative overflow-hidden rounded-3xl border border-line bg-bg px-8 py-16 text-center">
+                <BorderBeam />
+                <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[360px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/[0.06] blur-[90px]" />
+                <div className="relative z-10">
+                  <Eyebrow className="mb-4">{t('page.ctaEyebrow')}</Eyebrow>
+                  <h2 className="mb-4 text-[clamp(1.8rem,3.5vw,2.8rem)] font-bold leading-tight tracking-tight text-kb-text">
+                    {t('page.ctaTitle')}
+                  </h2>
+                  <div className="mx-auto mb-8 flex max-w-md items-center justify-between gap-3 rounded-xl border border-line bg-surface/60 px-4 py-3">
+                    {/* i18n-ignore: terminal command */}
+                    <code className="font-mono text-[0.85rem] text-kb-text">kb marketplace install @kb-labs/mind-entry</code>
+                    <CopyButton code="kb marketplace install @kb-labs/mind-entry" className="shrink-0" />
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-3">
+                    <Button variant="primary" size="lg" href="https://docs.kblabs.ru/plugins/mind" target="_blank" rel="noopener noreferrer">
+                      {t('page.docsBtn')}
+                    </Button>
+                    <Button variant="secondary" size="lg" href={`/${locale}/install`}>
+                      {t('page.installBtn')}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </AnimateOnScroll>
+          </Container>
+        </Section>
 
       </main>
       <SiteFooter />

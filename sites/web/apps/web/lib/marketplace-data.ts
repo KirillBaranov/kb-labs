@@ -22,8 +22,9 @@ export type MarketplaceItem = {
   readme?: string;
 };
 
-export const MARKETPLACE_ITEMS: MarketplaceItem[] = [
-  // ─── Official Plugins ──────────────────────────────────────────────────
+// Static items removed — data comes exclusively from the registry API.
+
+const _REMOVED: MarketplaceItem[] = [
   {
     slug: 'workflow-entry',
     name: 'Workflow CLI',
@@ -272,21 +273,6 @@ export const MARKETPLACE_ITEMS: MarketplaceItem[] = [
   },
 ];
 
-export function getItemBySlug(slug: string): MarketplaceItem | undefined {
-  return MARKETPLACE_ITEMS.find((item) => item.slug === slug);
-}
-
-export function getFilteredItems(type?: PluginType | 'all', tag?: string): MarketplaceItem[] {
-  let items = MARKETPLACE_ITEMS;
-  if (type && type !== 'all') {
-    items = items.filter((item) => item.type === type);
-  }
-  if (tag) {
-    items = items.filter((item) => item.tags.includes(tag));
-  }
-  return items;
-}
-
 export const TYPE_LABELS: Record<PluginType | 'all', string> = {
   all: 'All',
   plugin: 'Plugins',
@@ -295,9 +281,6 @@ export const TYPE_LABELS: Record<PluginType | 'all', string> = {
   hook: 'Hooks',
 };
 
-export const ALL_TAGS = Array.from(
-  new Set(MARKETPLACE_ITEMS.flatMap((item) => item.tags)),
-).sort();
 
 // ---------------------------------------------------------------------------
 // Registry API integration

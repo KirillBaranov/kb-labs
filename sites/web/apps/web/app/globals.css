@@ -4,7 +4,7 @@
 
 /* styles */
 :root {
-  --bg: #f7f7f8;
+  --bg: #f4f5f7;
   --surface: #ffffff;
   --text: #0f1115;
   --muted: #5c616d;
@@ -1772,6 +1772,11 @@ a {
   border-radius: 12px;
   background: var(--surface);
   padding: 1.35rem;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.07);
+}
+
+.dark .card {
+  box-shadow: none;
 }
 
 .mdx {
@@ -1794,7 +1799,6 @@ a {
 
 /* ─── Footer (Vercel-style 2-row) ──────────────────────────────────── */
 .footer {
-  margin-top: 2.4rem;
   border-top: 1px solid var(--line);
   background: var(--surface);
   transition: background 0.2s ease, border-color 0.2s ease;
@@ -1889,126 +1893,6 @@ a {
 }
 
 /* ─── Waitlist form ──────────────────────────────────────────────────── */
-.waitlist-form {
-  display: grid;
-  gap: 0.5rem;
-  width: 100%;
-  max-width: 420px;
-}
-
-.waitlist-form--lg {
-  max-width: 520px;
-  gap: 0.7rem;
-}
-
-.waitlist-input {
-  width: 100%;
-  min-width: 0;
-  padding: 0.65rem 1rem;
-  border-radius: 10px;
-  border: 1px solid var(--line-strong);
-  background: #fff;
-  font-size: 0.97rem;
-  font-family: inherit;
-  color: var(--text);
-  outline: none;
-  transition: border-color 150ms ease, box-shadow 150ms ease;
-}
-
-.waitlist-form--lg .waitlist-input {
-  padding: 0.78rem 1.1rem;
-  font-size: 1rem;
-}
-
-.waitlist-input::placeholder {
-  color: #a0a8b8;
-}
-
-.waitlist-input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(12, 102, 255, 0.12);
-}
-
-.waitlist-btn {
-  width: 100%;
-  padding: 0.72rem 1.15rem;
-  border-radius: 10px;
-  border: none;
-  background: #101215;
-  color: #fff;
-  font-size: 0.92rem;
-  font-weight: 650;
-  font-family: inherit;
-  cursor: pointer;
-  transition: background 150ms ease, transform 160ms ease, box-shadow 160ms ease;
-}
-
-.waitlist-form--lg .waitlist-btn {
-  padding: 0.78rem 1.3rem;
-  font-size: 0.97rem;
-}
-
-.waitlist-btn:hover:not(:disabled) {
-  background: #1e2230;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(15, 17, 21, 0.18);
-}
-
-.waitlist-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.waitlist-field {
-  display: grid;
-  gap: 0.32rem;
-}
-
-.waitlist-field-label {
-  font-size: 0.76rem;
-  color: #8790a2;
-  font-weight: 650;
-}
-
-.waitlist-select {
-  width: 100%;
-  min-width: 0;
-  padding: 0.68rem 2.4rem 0.68rem 0.85rem;
-  border-radius: 10px;
-  border: 1px solid var(--line-strong);
-  background: #fff url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238790a2' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 0.85rem center;
-  font-size: 0.94rem;
-  font-family: inherit;
-  color: var(--text);
-  outline: none;
-  appearance: none;
-  -webkit-appearance: none;
-  cursor: pointer;
-  transition: border-color 150ms ease, box-shadow 150ms ease;
-}
-
-.waitlist-form--lg .waitlist-select {
-  padding: 0.74rem 2.4rem 0.74rem 0.9rem;
-}
-
-.waitlist-select:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(12, 102, 255, 0.12);
-}
-
-.waitlist-select:disabled {
-  opacity: 0.7;
-}
-
-.waitlist-thanks {
-  font-size: 0.95rem;
-  color: var(--muted);
-  padding: 0.65rem 0;
-}
-
-.waitlist-thanks--lg {
-  font-size: 1.05rem;
-}
 
 .hero-subtext {
   margin: 0;
