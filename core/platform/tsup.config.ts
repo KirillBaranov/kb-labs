@@ -6,6 +6,7 @@ export default defineConfig({
   entry: {
     index: 'src/index.ts',
     'adapters/index': 'src/adapters/index.ts',
+    'adapters/contract/index': 'src/adapters/contract/index.ts',
     'core/index': 'src/core/index.ts',
     'serializable/index': 'src/serializable/index.ts',
     'noop/index': 'src/noop/index.ts',

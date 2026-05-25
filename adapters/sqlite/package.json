@@ -1,6 +1,6 @@
 {
   "name": "@kb-labs/adapters-sqlite",
-  "description": "SQLite adapter implementing ISQLDatabase interface",
+  "description": "SQLite adapters for IDocumentDatabase and IKVStore (one driver, two roles, one file).",
   "version": "2.94.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -10,9 +10,9 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./secure-sql": {
-      "types": "./dist/secure-sql.d.ts",
-      "import": "./dist/secure-sql.js"
+    "./kv": {
+      "types": "./dist/kv.d.ts",
+      "import": "./dist/kv.js"
     }
   },
   "files": [
@@ -33,6 +33,7 @@
     "better-sqlite3": "^11.8.0"
   },
   "devDependencies": {
+    "@kb-labs/core-platform": "workspace:*",
     "@kb-labs/devkit": "workspace:*",
     "@kb-labs/sdk": "workspace:*",
     "@types/better-sqlite3": "^7.6.0",
@@ -51,6 +52,7 @@
     "manifest": "./dist/manifest.js"
   },
   "peerDependencies": {
+    "@kb-labs/core-platform": "workspace:^",
     "@kb-labs/sdk": "workspace:^"
   },
   "sideEffects": false
