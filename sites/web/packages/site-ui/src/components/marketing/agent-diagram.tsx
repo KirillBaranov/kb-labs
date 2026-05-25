@@ -38,7 +38,7 @@ export function AgentDiagram({ className }: AgentDiagramProps) {
       <div className="flex justify-center">
         <div className="flex flex-col items-center gap-0.5">
           <div className="h-4 w-px bg-line-strong" />
-          <span className="font-mono text-[0.58rem] text-muted/40">plugin commands</span>
+          <span className="font-mono text-[0.65rem] text-muted/55 dark:text-muted/40">plugin commands</span>
           <div className="h-4 w-px bg-line-strong" />
         </div>
       </div>
@@ -60,7 +60,7 @@ export function AgentDiagram({ className }: AgentDiagramProps) {
             <span aria-hidden="true">🔑</span>
             <span className="text-muted/50">key:</span>
             <span className="text-muted/70">ghp_xxx</span>
-            <span className="ml-auto text-emerald-500/70 text-[0.58rem]">stored in plugin</span>
+            <span className="ml-auto text-emerald-600/80 dark:text-emerald-500/70 text-[0.65rem]">stored in plugin</span>
           </div>
 
           {/* Permissions */}

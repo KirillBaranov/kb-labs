@@ -129,8 +129,8 @@ export function GatewayAdapterSwapDiagram({ className }: GatewayAdapterSwapDiagr
             <span className="font-mono text-[0.68rem] text-kb-text/60">{label}</span>
           </div>
         ))}
-        <div className="rounded-lg border border-dashed border-line/40 px-3 py-1.5 flex-shrink-0">
-          <span className="font-mono text-[0.65rem] text-muted/30">{CONSUMER_YOURS}</span>
+        <div className="rounded-lg border border-dashed border-line-strong/50 dark:border-line/40 px-3 py-1.5 flex-shrink-0">
+          <span className="font-mono text-[0.65rem] text-muted/50 dark:text-muted/30">{CONSUMER_YOURS}</span>
         </div>
       </div>
 
@@ -180,14 +180,14 @@ export function GatewayAdapterSwapDiagram({ className }: GatewayAdapterSwapDiagr
               </span>
 
               {/* Swap indicator */}
-              <span className="ml-auto font-mono text-[0.58rem] text-muted/20">⇄</span>
+              <span className="ml-auto font-mono text-[0.65rem] text-muted/40 dark:text-muted/20">⇄</span>
             </div>
           );
         })}
       </div>
 
       {/* Caption */}
-      <p style={fad(visible)} className="mt-3 text-center font-mono text-[0.62rem] text-muted/30">
+      <p style={fad(visible)} className="mt-3 text-center font-mono text-[0.72rem] text-muted/60 dark:text-muted/30">
         потребители не меняются · провайдер меняется в конфиге
       </p>
     </div>

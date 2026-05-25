@@ -167,8 +167,8 @@ export default async function CodeIntelligencePage({ params }: Props) {
                 <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm divide-y divide-line">
                   {indexTable.map(({ label, value }) => (
                     <div key={label} className="flex items-baseline gap-4 px-5 py-3.5">
-                      <span className="flex-shrink-0 whitespace-nowrap text-[0.65rem] font-bold uppercase tracking-wider text-muted/35">{label}</span>
-                      <span className="text-sm text-muted/70">{value}</span>
+                      <span className="w-[10rem] flex-shrink-0 whitespace-nowrap text-[0.65rem] font-bold uppercase tracking-wider text-muted/45 dark:text-muted/35">{label}</span>
+                      <span className="text-sm text-muted/80 dark:text-muted/70">{value}</span>
                     </div>
                   ))}
                 </div>
@@ -270,8 +270,8 @@ export default async function CodeIntelligencePage({ params }: Props) {
                 <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm divide-y divide-line">
                   {agentTable.map(({ label, value }) => (
                     <div key={label} className="flex items-baseline gap-4 px-5 py-3.5">
-                      <span className="flex-shrink-0 whitespace-nowrap text-[0.65rem] font-bold uppercase tracking-wider text-muted/35">{label}</span>
-                      <span className="text-sm text-muted/70">{value}</span>
+                      <span className="w-[10rem] flex-shrink-0 whitespace-nowrap text-[0.65rem] font-bold uppercase tracking-wider text-muted/45 dark:text-muted/35">{label}</span>
+                      <span className="text-sm text-muted/80 dark:text-muted/70">{value}</span>
                     </div>
                   ))}
                 </div>
