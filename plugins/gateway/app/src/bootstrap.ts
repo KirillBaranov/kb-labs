@@ -1,5 +1,5 @@
 import { logDiagnosticEvent } from '@kb-labs/core-platform';
-import { platform, createServiceBootstrap, getPlatformRoot } from '@kb-labs/core-runtime';
+import { platform, createServiceBootstrap, getPlatformRoot, getProjectRoot } from '@kb-labs/core-runtime';
 import { createCorrelatedLogger } from '@kb-labs/shared-http';
 import type { IHostStore } from '@kb-labs/gateway-contracts';
 import type { ISQLDatabase } from '@kb-labs/core-platform';
@@ -22,9 +22,13 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
   });
   logger.info('Platform initialized', { repoRoot });
 
-  // 2. Load gateway config — reads gateway.upstreams from kb.config.json (project),
-  // falling back to the platform installation config in installed mode.
-  const config = await loadGatewayConfig(repoRoot, getPlatformRoot());
+  // 2. Load gateway config — reads platform baseline + project layer +
+  // `.kb/overlays/*.jsonc`. Use the resolved roots from core-runtime
+  // (which honour KB_PROJECT_ROOT and the platform.dir override) rather
+  // than process.cwd() — in installed mode the gateway process is
+  // spawned with cwd at the platform root, and we MUST not conflate
+  // that with the project root.
+  const config = await loadGatewayConfig(getProjectRoot() ?? repoRoot, getPlatformRoot());
   logger.info('Gateway config loaded', {
     port: config.port,
     upstreams: Object.keys(config.upstreams),
