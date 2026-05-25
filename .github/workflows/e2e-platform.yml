@@ -153,14 +153,8 @@ jobs:
           # is a small, safe guard.
           (cd tools/kb-devkit && CGO_ENABLED=0 go build -o kb-devkit . && chmod +x kb-devkit)
           (cd tools/kb-dev    && CGO_ENABLED=0 go build -o kb-dev    . && chmod +x kb-dev)
-          # kb-labs-e2e-runner shells out to `kb-dev ensure --scenario` to
-          # apply test overlays; install the binary on PATH so the runner
-          # finds it on the host (the platform inside Docker has its own
-          # copy via kb-create).
-          sudo install -m 0755 tools/kb-dev/kb-dev /usr/local/bin/kb-dev
           ls -la tools/kb-devkit/kb-devkit tools/kb-dev/kb-dev
           file tools/kb-devkit/kb-devkit tools/kb-dev/kb-dev
-          kb-dev --version
 
       # ── Install + build monorepo ─────────────────────────────────────────
 
@@ -377,14 +371,10 @@ jobs:
           WORKFLOW_URL:    http://localhost:7778
           STATE_URL:       http://localhost:7777
           CI: "true"
-          # The e2e-runner is on the GH Actions host; the platform (and its
-          # kb-dev) lives in a Docker container. Route kb-dev calls into the
-          # container via `docker compose exec` so scenario overlays land
-          # inside /workspace/kb-e2e/.kb/overlays/ where the in-container
-          # gateway-app reads them.
-          KB_LABS_E2E_DOCKER_TARGET: platform
-          KB_LABS_E2E_DOCKER_WORKDIR: /workspace/kb-e2e
-          KB_LABS_E2E_DOCKER_E2E_HOST_PATH: /workspace/e2e-host
+          # The e2e-runner stays environment-agnostic — it just calls
+          # `$KB_DEV_BIN`. On CI the binary is a small wrapper that proxies
+          # into the platform container; locally `kb-dev` runs directly.
+          KB_DEV_BIN: ${{ github.workspace }}/tools/scripts/kb-dev-docker.sh
 
       # ── Artifacts + summary ──────────────────────────────────────────────
 

@@ -1,17 +1,6 @@
 import { readJsonWithDiagnostics, readMergedRawConfig } from '@kb-labs/core-config';
 import { GatewayConfigSchema, type GatewayConfig } from '@kb-labs/gateway-contracts';
 
-/**
- * Explicit absolute path to a gateway config file. When set, takes precedence
- * over the project/platform discovery chain.
- *
- * @deprecated Use `kb-dev ensure --scenario` to manage gateway-specific
- *   config via `.kb/overlays/*.jsonc` instead. This env var is kept as an
- *   escape hatch for legacy entrypoints and will be removed once all callers
- *   migrate.
- */
-const EXPLICIT_CONFIG_ENV = 'KB_GATEWAY_CONFIG_PATH';
-
 function extractGatewaySection(data: Record<string, unknown> | undefined): GatewayConfig | null {
   if (!data || typeof data.gateway !== 'object' || data.gateway === null) {
     return null;
@@ -51,21 +40,11 @@ async function tryLoadGatewayFromPlatform(platformRoot: string): Promise<Gateway
 }
 
 export async function loadGatewayConfig(repoRoot: string, platformRoot?: string): Promise<GatewayConfig> {
-  // Explicit path wins — kept as an escape hatch for legacy entrypoints.
-  // Prefer `kb-dev ensure --scenario` for new code.
-  const explicit = process.env[EXPLICIT_CONFIG_ENV];
-  if (explicit && explicit.length > 0) {
-    const result = await readJsonWithDiagnostics<{ gateway?: unknown }>(explicit);
-    if (result.ok && result.data.gateway) {
-      return GatewayConfigSchema.parse(result.data.gateway);
-    }
-  }
-
-  // Project config + overlays.
+  // Project config (with `.kb/overlays/*.jsonc` deep-merged on top).
   const fromProject = await tryLoadGatewayFromProject(repoRoot);
   if (fromProject) { return fromProject; }
 
-  // Platform defaults (installed mode).
+  // Platform defaults (installed mode) — read-only, no overlays.
   if (platformRoot && platformRoot !== repoRoot) {
     const fromPlatform = await tryLoadGatewayFromPlatform(platformRoot);
     if (fromPlatform) { return fromPlatform; }

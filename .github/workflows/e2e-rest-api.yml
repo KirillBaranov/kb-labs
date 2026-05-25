@@ -63,7 +63,6 @@ jobs:
         run: |
           (cd tools/kb-devkit && CGO_ENABLED=0 go build -o kb-devkit . && chmod +x kb-devkit)
           (cd tools/kb-dev    && CGO_ENABLED=0 go build -o kb-dev    . && chmod +x kb-dev)
-          sudo install -m 0755 tools/kb-dev/kb-dev /usr/local/bin/kb-dev
 
       # ── Install + build monorepo ─────────────────────────────────────────
 
@@ -222,9 +221,7 @@ jobs:
           WORKFLOW_URL:    http://localhost:7778
           STATE_URL:       http://localhost:7777
           CI: "true"
-          KB_LABS_E2E_DOCKER_TARGET: platform
-          KB_LABS_E2E_DOCKER_WORKDIR: /workspace/kb-e2e
-          KB_LABS_E2E_DOCKER_E2E_HOST_PATH: /workspace/e2e-host
+          KB_DEV_BIN: ${{ github.workspace }}/tools/scripts/kb-dev-docker.sh
 
       # ── Artifacts + summary ──────────────────────────────────────────────
 
