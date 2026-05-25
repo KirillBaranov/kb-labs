@@ -25,7 +25,7 @@ import type {
   RawMiddlewareDecl,
 } from '@kb-labs/core-platform';
 import type { IExecutionBackend } from '@kb-labs/core-contracts';
-import type { IDocumentDatabase, IKVStore } from '@kb-labs/core-platform/adapters';
+import type { ISQLDatabase, IDocumentDatabase } from '@kb-labs/core-platform/adapters';
 
 import type { IResourceBroker } from '@kb-labs/core-resource-broker';
 import type { EnvironmentManager } from './environment-manager.js';
@@ -45,8 +45,8 @@ import {
   ConsoleLogger,
   MemoryEventBus,
   NoOpInvoke,
+  NoOpSQLDatabase,
   NoOpDocumentDatabase,
-  NoOpKVStore,
   NoOpWorkflowEngine,
   NoOpJobScheduler,
   NoOpCronManager,
@@ -70,8 +70,8 @@ export interface CoreAdapterTypes {
   logger: ILogger;
   eventBus: IEventBus;
   invoke: IInvoke;
+  sqlDatabase: ISQLDatabase;
   documentDatabase: IDocumentDatabase;
-  kvStore: IKVStore;
   notifier: INotifier;
 }
 
@@ -473,14 +473,14 @@ export class PlatformContainer {
     return (this.adapters.get('invoke') as IInvoke) ?? new NoOpInvoke();
   }
 
+  /** SQL database adapter (fallback: NoOpSQLDatabase — throws on use) */
+  get sqlDatabase(): ISQLDatabase {
+    return (this.adapters.get('sqlDatabase') as ISQLDatabase) ?? new NoOpSQLDatabase();
+  }
+
   /** Document database adapter (fallback: NoOpDocumentDatabase — throws on use) */
   get documentDatabase(): IDocumentDatabase {
     return (this.adapters.get('documentDatabase') as IDocumentDatabase) ?? new NoOpDocumentDatabase();
-  }
-
-  /** Durable key-value store adapter (fallback: NoOpKVStore — throws on use) */
-  get kvStore(): IKVStore {
-    return (this.adapters.get('kvStore') as IKVStore) ?? new NoOpKVStore();
   }
 
   /** Notifier adapter (optional — undefined when adapters.notifier is not configured). */

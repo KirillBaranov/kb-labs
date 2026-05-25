@@ -92,14 +92,9 @@ export type { IEmbeddings } from './adapters/embeddings.js';
 export type { ICache } from './adapters/cache.js';
 
 export type {
-  IDocumentDatabase,
-  IDocumentTransaction,
-  BaseDocument,
-  DocumentFilter,
-  DocumentUpdate,
-  FindOptions,
-  IKVStore,
-  SetOpts,
+  ISQLDatabase,
+  SQLQueryResult,
+  SQLTransaction,
 } from './adapters/database.js';
 
 export type { IConfig } from './adapters/config.js';

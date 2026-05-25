@@ -15,7 +15,7 @@ import type { ILogger } from './adapters/logger.js';
 import type { IEventBus } from './adapters/event-bus.js';
 import type { IInvoke } from './adapters/invoke.js';
 import type { ILogReader } from './adapters/log-reader.js';
-import type { IDocumentDatabase, IKVStore } from './adapters/database.js';
+import type { ISQLDatabase, IDocumentDatabase } from './adapters/database.js';
 import type { IArtifacts } from './adapters/artifacts.js';
 import type { ISnapshotManager } from './snapshot/snapshot-provider.js';
 import type { INotifier } from './adapters/notifier.js';
@@ -58,11 +58,11 @@ export interface IPlatformAdapters {
   /** Invoke adapter (cross-plugin invocation) */
   readonly invoke: IInvoke;
 
-  /** Document database (sqlite-JSONB, MongoDB, postgres-JSONB). */
-  readonly documentDatabase: IDocumentDatabase;
+  /** SQL database adapter (SQLite, PostgreSQL, etc.) */
+  readonly sqlDatabase: ISQLDatabase;
 
-  /** Durable key-value store (sqlite, Redis, postgres KV table). */
-  readonly kvStore: IKVStore;
+  /** Document database adapter (MongoDB, etc.) */
+  readonly documentDatabase: IDocumentDatabase;
 
   /** Log reader for querying and subscribing to logs */
   readonly logs: ILogReader;

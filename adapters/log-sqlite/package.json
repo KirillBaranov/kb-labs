@@ -1,6 +1,6 @@
 {
-  "name": "@kb-labs/adapters-sqlite",
-  "description": "SQLite adapter implementing ISQLDatabase interface",
+  "name": "@kb-labs/adapters-log-sqlite",
+  "description": "SQLite persistence adapter for KB Labs logs",
   "version": "2.94.0",
   "type": "module",
   "main": "./dist/index.js",
@@ -9,14 +9,11 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    },
-    "./secure-sql": {
-      "types": "./dist/secure-sql.d.ts",
-      "import": "./dist/secure-sql.js"
     }
   },
   "files": [
     "dist",
+    "src/schema.sql",
     "README.md"
   ],
   "scripts": {
@@ -29,13 +26,10 @@
     "test:watch": "vitest",
     "type-check": "tsc --noEmit"
   },
-  "dependencies": {
-    "better-sqlite3": "^11.8.0"
-  },
   "devDependencies": {
+    "@kb-labs/adapters-sqlite": "workspace:*",
     "@kb-labs/devkit": "workspace:*",
     "@kb-labs/sdk": "workspace:*",
-    "@types/better-sqlite3": "^7.6.0",
     "@types/node": "^24.3.3",
     "eslint": "^9",
     "rimraf": "^6.0.1",
