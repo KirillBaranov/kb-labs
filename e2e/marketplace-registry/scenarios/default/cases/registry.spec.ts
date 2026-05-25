@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 import { GATEWAY, REGISTRY } from '@kb-labs/e2e-shared/urls.js'
 import { getAccessToken } from '@kb-labs/e2e-shared/auth.js'
-import { createTestTarball } from '../fixtures/create-test-tarball.js'
+import { createTestTarball } from '../../../fixtures/create-test-tarball.js'
 
 // ── Registry lifecycle e2e ────────────────────────────────────────────────────
 // Requires: kb-dev start (gateway + marketplace-registry both running)

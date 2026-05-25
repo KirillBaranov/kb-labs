@@ -9,6 +9,9 @@
     "./auth.js": "./src/auth.ts",
     "./reporter.js": "./src/reporter.ts"
   },
+  "bin": {
+    "kb-labs-e2e-runner": "./bin/kb-labs-e2e-runner.mjs"
+  },
   "devDependencies": {
     "@playwright/test": "^1.52.0",
     "typescript": "^5.4.0"
