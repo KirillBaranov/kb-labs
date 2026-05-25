@@ -22,6 +22,8 @@ COPY --from=deps /app/sites/      ./sites/
 COPY .kb/bundle/web-site/full/ .
 # MDX content lives outside the app dir — copy explicitly
 COPY sites/web/content ./sites/web/content
+# public/ is not included in the bundle — copy explicitly so Next.js can serve static assets
+COPY sites/web/apps/web/public ./sites/web/apps/web/public
 
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_TRACING_ROOT=/app
@@ -38,7 +40,8 @@ RUN addgroup --system --gid 1001 nodejs && \
     adduser  --system --uid 1001 nextjs
 
 COPY --from=builder /app/sites/web/apps/web/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/sites/web/apps/web/.next/static ./sites/web/apps/web/.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/sites/web/apps/web/.next/static  ./sites/web/apps/web/.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/sites/web/apps/web/public         ./sites/web/apps/web/public
 
 USER nextjs
 
