@@ -91,31 +91,31 @@ export default async function UseCasesPage({ params }: Props) {
 
                   {/* Content */}
                   <div>
-                    <p className="mb-2 text-sm italic text-muted/45">{item.hook}</p>
+                    <p className="mb-2 text-sm italic text-muted/60 dark:text-muted/45">{item.hook}</p>
                     <h2 className="mb-8 text-2xl font-bold tracking-tight text-kb-text">{item.title}</h2>
 
                     <div className="grid gap-8 sm:grid-cols-3">
                       <div>
-                        <span className="mb-2 block text-[0.6rem] font-bold uppercase tracking-wider text-muted/35">
+                        <span className="mb-2 block text-[0.6rem] font-bold uppercase tracking-wider text-muted/50 dark:text-muted/35">
                           {t('ucSituationLabel')}
                         </span>
                         <p className="text-sm leading-relaxed text-muted/65">{item.situation}</p>
                       </div>
                       <div>
-                        <span className="mb-2 block text-[0.6rem] font-bold uppercase tracking-wider text-muted/35">
+                        <span className="mb-2 block text-[0.6rem] font-bold uppercase tracking-wider text-muted/50 dark:text-muted/35">
                           {t('ucHowLabel')}
                         </span>
                         <p className="text-sm leading-relaxed text-muted/65">{item.how}</p>
                       </div>
                       <div>
-                        <span className="mb-2 block text-[0.6rem] font-bold uppercase tracking-wider text-muted/35">
+                        <span className="mb-2 block text-[0.6rem] font-bold uppercase tracking-wider text-muted/50 dark:text-muted/35">
                           {t('ucResultLabel')}
                         </span>
                         <p className="text-sm leading-relaxed text-muted/65">{item.result}</p>
                       </div>
                     </div>
 
-                    <p className="mt-8 text-[0.72rem] text-muted/35">
+                    <p className="mt-8 text-[0.72rem] text-muted/50 dark:text-muted/35">
                       {t('ucOwnerLabel')} {item.owner}
                     </p>
                   </div>

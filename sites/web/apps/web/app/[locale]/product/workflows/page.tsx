@@ -406,7 +406,7 @@ export default async function WorkflowsPage({ params }: Props) {
                     className="flex items-center gap-2 rounded-full border border-line bg-surface px-4 py-2"
                   >
                     <span className="text-muted/50 text-sm" aria-hidden="true">{trigger.icon}</span>
-                    <span className={`font-mono text-[0.82rem] ${trigger.badge === 'soon' ? 'text-muted/40' : 'text-muted/80'}`}>
+                    <span className={`font-mono text-[0.82rem] ${trigger.badge === 'soon' ? 'text-muted/55 dark:text-muted/40' : 'text-muted/80'}`}>
                       {trigger.label}
                     </span>
                     {trigger.badge === 'beta' && (
@@ -416,7 +416,7 @@ export default async function WorkflowsPage({ params }: Props) {
                       </span>
                     )}
                     {trigger.badge === 'soon' && (
-                      <span className="rounded px-1.5 py-0.5 font-mono text-[0.6rem] font-semibold uppercase tracking-wider bg-line text-muted/40 ring-1 ring-inset ring-line">
+                      <span className="rounded px-1.5 py-0.5 font-mono text-[0.6rem] font-semibold uppercase tracking-wider bg-line text-muted/55 dark:text-muted/40 ring-1 ring-inset ring-line">
                         {/* i18n-ignore */}
                         soon
                       </span>
@@ -424,7 +424,7 @@ export default async function WorkflowsPage({ params }: Props) {
                   </div>
                 ))}
                 <div className="flex items-center gap-2 rounded-full border border-dashed border-line px-4 py-2">
-                  <span className="font-mono text-[0.82rem] text-muted/40">{t('productWorkflows.page.triggerCustom')}</span>
+                  <span className="font-mono text-[0.82rem] text-muted/55 dark:text-muted/40">{t('productWorkflows.page.triggerCustom')}</span>
                 </div>
               </div>
             </AnimateOnScroll>

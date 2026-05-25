@@ -66,7 +66,7 @@ export function MarketplaceCatalog({ items, locale }: { items: MarketplaceItem[]
       {/* ── Sidebar ── */}
       <nav className="w-40 shrink-0 flex flex-col gap-6">
         <div className="flex flex-col gap-0.5">
-          <p className="mb-2 px-3 text-[0.6rem] font-bold uppercase tracking-[0.1em] text-muted/40">
+          <p className="mb-2 px-3 text-[0.6rem] font-bold uppercase tracking-[0.1em] text-muted/55 dark:text-muted/40">
             {t('marketplace.catalog.categoriesLabel')}
           </p>
           {TYPE_OPTIONS.map((type) => {
@@ -81,7 +81,7 @@ export function MarketplaceCatalog({ items, locale }: { items: MarketplaceItem[]
               >
                 <Icon size={14} className="shrink-0 opacity-70" />
                 <span className="flex-1 text-left">{t(`marketplace.catalog.${typeKey}`)}</span>
-                <span className={`text-xs tabular-nums ${isActive ? 'text-accent/60' : 'text-muted/30'}`}>
+                <span className={`text-xs tabular-nums ${isActive ? 'text-accent/60' : 'text-muted/45 dark:text-muted/30'}`}>
                   {typeCounts[type]}
                 </span>
               </button>
@@ -90,7 +90,7 @@ export function MarketplaceCatalog({ items, locale }: { items: MarketplaceItem[]
         </div>
 
         <div className="flex flex-col gap-0.5">
-          <p className="mb-2 px-3 text-[0.6rem] font-bold uppercase tracking-[0.1em] text-muted/40">
+          <p className="mb-2 px-3 text-[0.6rem] font-bold uppercase tracking-[0.1em] text-muted/55 dark:text-muted/40">
             {t('marketplace.catalog.authorLabel')}
           </p>
           {(['official', 'community'] as const).map((a) => {
@@ -104,7 +104,7 @@ export function MarketplaceCatalog({ items, locale }: { items: MarketplaceItem[]
               >
                 <Icon size={14} className="shrink-0 opacity-70" />
                 <span className="flex-1 text-left">{t(`marketplace.catalog.${a}`)}</span>
-                <span className={`text-xs tabular-nums ${isActive ? 'text-accent/60' : 'text-muted/30'}`}>
+                <span className={`text-xs tabular-nums ${isActive ? 'text-accent/60' : 'text-muted/45 dark:text-muted/30'}`}>
                   {items.filter((i) => i.authorType === a).length}
                 </span>
               </button>
@@ -125,7 +125,7 @@ export function MarketplaceCatalog({ items, locale }: { items: MarketplaceItem[]
             aria-label={t('marketplace.catalog.searchAriaLabel')}
             className="flex-1"
           />
-          <p className="shrink-0 font-mono text-[0.75rem] text-muted/40">
+          <p className="shrink-0 font-mono text-[0.75rem] text-muted/55 dark:text-muted/40">
             {t('marketplace.catalog.resultCount', { count: filtered.length })}
           </p>
         </div>
@@ -171,7 +171,7 @@ export function MarketplaceCatalog({ items, locale }: { items: MarketplaceItem[]
                   </div>
 
                   {/* Footer */}
-                  <p className="mt-auto font-mono text-[0.7rem] text-muted/35">by {item.author}</p>
+                  <p className="mt-auto font-mono text-[0.7rem] text-muted/50 dark:text-muted/35">by {item.author}</p>
                 </div>
               </a>
             ))}

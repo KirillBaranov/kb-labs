@@ -170,7 +170,7 @@ export default async function EnterprisePage({ params }: Props) {
 
                   {/* Today */}
                   <div className="bg-surface/60 px-5 py-2.5">
-                    <span className="text-sm font-bold uppercase tracking-widest text-muted/40">{t('enterprise.featuresLabelToday')}</span>
+                    <span className="text-sm font-bold uppercase tracking-widest text-muted/55 dark:text-muted/40">{t('enterprise.featuresLabelToday')}</span>
                   </div>
                   {FEATURES_TODAY.map((f) => (
                     <div key={f.title} className="flex items-start gap-4 px-5 py-4">
@@ -184,11 +184,11 @@ export default async function EnterprisePage({ params }: Props) {
 
                   {/* Roadmap */}
                   <div className="bg-surface/60 px-5 py-2.5">
-                    <span className="text-sm font-bold uppercase tracking-widest text-muted/40">Roadmap</span>
+                    <span className="text-sm font-bold uppercase tracking-widest text-muted/55 dark:text-muted/40">Roadmap</span>
                   </div>
                   {FEATURES_ROADMAP.map((f) => (
                     <div key={f.title} className="flex items-start gap-4 px-5 py-4">
-                      <Clock size={16} className="mt-0.5 shrink-0 text-muted/30" />
+                      <Clock size={16} className="mt-0.5 shrink-0 text-muted/45 dark:text-muted/30" />
                       <div className="flex flex-col gap-0.5">
                         <span className="text-sm font-semibold text-kb-text">{f.title}</span>
                         <span className="text-sm leading-relaxed text-muted/60">{f.description}</span>

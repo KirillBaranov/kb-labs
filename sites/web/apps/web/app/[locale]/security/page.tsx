@@ -153,10 +153,10 @@ export default async function SecurityPage({ params }: Props) {
                 <table className="w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-line">
-                      <th className="px-5 py-3 text-left text-[0.65rem] font-semibold uppercase tracking-widest text-muted/40">{t('page.secTableHeaderType')}</th>
-                      <th className="px-4 py-3 text-left text-[0.65rem] font-semibold uppercase tracking-widest text-muted/40">{t('page.secTableHeaderDest')}</th>
-                      <th className="hidden px-4 py-3 text-left text-[0.65rem] font-semibold uppercase tracking-widest text-muted/40 sm:table-cell">{t('page.secTableHeaderCond')}</th>
-                      <th className="px-4 py-3 text-left text-[0.65rem] font-semibold uppercase tracking-widest text-muted/40">{t('page.secTableHeaderStatus')}</th>
+                      <th className="px-5 py-3 text-left text-[0.65rem] font-semibold uppercase tracking-widest text-muted/55 dark:text-muted/40">{t('page.secTableHeaderType')}</th>
+                      <th className="px-4 py-3 text-left text-[0.65rem] font-semibold uppercase tracking-widest text-muted/55 dark:text-muted/40">{t('page.secTableHeaderDest')}</th>
+                      <th className="hidden px-4 py-3 text-left text-[0.65rem] font-semibold uppercase tracking-widest text-muted/55 dark:text-muted/40 sm:table-cell">{t('page.secTableHeaderCond')}</th>
+                      <th className="px-4 py-3 text-left text-[0.65rem] font-semibold uppercase tracking-widest text-muted/55 dark:text-muted/40">{t('page.secTableHeaderStatus')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line">
@@ -234,7 +234,7 @@ export default async function SecurityPage({ params }: Props) {
                         <div className="flex size-9 items-center justify-center rounded-lg border border-line bg-bg text-muted">
                           <Icon size={18} />
                         </div>
-                        <span className="font-mono text-[0.65rem] font-bold text-muted/30">{layer.num}</span>
+                        <span className="font-mono text-[0.65rem] font-bold text-muted/45 dark:text-muted/30">{layer.num}</span>
                       </div>
                       <p className="mb-1.5 text-sm font-semibold text-kb-text">{layer.title}</p>
                       <p className="text-sm leading-relaxed text-muted/60">{layer.description}</p>

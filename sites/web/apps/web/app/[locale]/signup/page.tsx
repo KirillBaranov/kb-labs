@@ -114,7 +114,7 @@ export default async function SignupPage({ params }: Props) {
                         {t('signup.form.description')}
                       </p>
                       <WaitlistForm />
-                      <p className="mt-5 text-xs text-muted/35">
+                      <p className="mt-5 text-xs text-muted/50 dark:text-muted/35">
                         {t('signup.form.notePrefix')}{' '}
                         <Link
                           href={`/${locale}/legal/privacy`}

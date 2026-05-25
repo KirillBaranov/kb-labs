@@ -90,7 +90,7 @@ export default async function ComparePage({ params }: Props) {
                 categories={tableCategories}
                 highlightCol={1}
               />
-              <p className="mt-3 text-right text-sm text-muted/30">
+              <p className="mt-3 text-right text-sm text-muted/45 dark:text-muted/30">
                 {t('page.cmpMatrixLegend')}
               </p>
             </AnimateOnScroll>
@@ -125,13 +125,13 @@ export default async function ComparePage({ params }: Props) {
                     <div className="grid gap-6 sm:grid-cols-2">
                       {/* Good at */}
                       <div>
-                        <p className="mb-3 text-[0.65rem] font-semibold uppercase tracking-widest text-muted/40">
+                        <p className="mb-3 text-[0.65rem] font-semibold uppercase tracking-widest text-muted/55 dark:text-muted/40">
                           {t('page.cmpGoodLabel')}
                         </p>
                         <ul className="space-y-2">
                           {alt.good.map((item) => (
                             <li key={item} className="flex items-start gap-2 text-sm text-muted/60">
-                              <span className="mt-0.5 flex-shrink-0 text-muted/30">✓</span>
+                              <span className="mt-0.5 flex-shrink-0 text-muted/45 dark:text-muted/30">✓</span>
                               {item}
                             </li>
                           ))}

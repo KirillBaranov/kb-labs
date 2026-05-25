@@ -103,7 +103,7 @@ export default async function HomeV2Page({ params }: Props) {
                   variant="card"
                   contentClassName="h-[460px]"
                   extra={
-                    <span className="font-mono text-[0.68rem] text-muted/40">
+                    <span className="font-mono text-[0.68rem] text-muted/55 dark:text-muted/40">
                       code-review.yaml
                     </span>
                   }

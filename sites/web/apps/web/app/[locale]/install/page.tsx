@@ -220,7 +220,7 @@ export default async function InstallPage({ params }: Props) {
                         </div>
                         <div className="flex-1 space-y-3 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="font-mono text-[0.65rem] font-bold text-muted/30">{step.num}</span>
+                            <span className="font-mono text-[0.65rem] font-bold text-muted/45 dark:text-muted/30">{step.num}</span>
                             <h3 className="text-sm font-semibold text-kb-text">{step.title}</h3>
                           </div>
                           {step.usePlatform ? (
