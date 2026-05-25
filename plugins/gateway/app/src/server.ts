@@ -23,6 +23,11 @@ import { attachGatewayWs } from './ws/gateway-ws.js';
 import { GatewayObservabilityCollector } from './observability/collector.js';
 import { randomUUID } from 'node:crypto';
 import { registerInternalRoutes } from './internal/routes.js';
+import {
+  createPressureOnRequest,
+  createPressurePreHandler,
+  createPressureOnResponse,
+} from './pressure/index.js';
 
 /** Strip bearer tokens from query params before logging (prevents JWT leakage in access logs). */
 function redactQueryToken(url: string): string {
@@ -64,6 +69,16 @@ export async function createServer(
   await app.register(fastifyCors, { origin: false });
   const observability = new GatewayObservabilityCollector(config);
   observability.register(app);
+
+  // ── Pressure control (ADR-0056) ────────────────────────────────────
+  // Registered BEFORE upstream proxies so 429 is returned before the request
+  // is forwarded. No-op when `config.pressure` is absent or disabled.
+  if (config.pressure && config.pressure.enabled !== false && platform.hasResourceBroker) {
+    const deps = { broker: platform.resourceBroker, logger, config };
+    app.addHook('onRequest', createPressureOnRequest(deps));
+    app.addHook('onResponse', createPressureOnResponse());
+  }
+
   app.addHook('onRequest', async (request, reply) => {
     const requestId = (request.headers['x-request-id'] as string | undefined) || request.id || randomUUID();
     const traceId = (request.headers['x-trace-id'] as string | undefined) || randomUUID();
@@ -128,6 +143,14 @@ export async function createServer(
   // not to proxy upstreams registered above.
   await app.register(async function gatewayRoutes(scope) {
     scope.addHook('onRequest', createAuthMiddleware(cache, jwtConfig));
+
+    // Per-tenant pressure (ADR-0056). Runs after auth so AuthContext is set.
+    if (config.pressure?.perTenant?.enabled === true && platform.hasResourceBroker) {
+      scope.addHook(
+        'preHandler',
+        createPressurePreHandler({ broker: platform.resourceBroker, logger, config }),
+      );
+    }
 
     // Auth service + public routes (/auth/register, /auth/token, /auth/refresh)
     const authService = new AuthService(cache, jwtConfig);

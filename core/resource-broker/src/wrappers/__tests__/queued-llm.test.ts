@@ -23,6 +23,8 @@ describe('QueuedLLM', () => {
   let mockBroker: {
     enqueue: ReturnType<typeof vi.fn>;
     register: ReturnType<typeof vi.fn>;
+    registerLimit: ReturnType<typeof vi.fn>;
+    tryAcquire: ReturnType<typeof vi.fn>;
     getStats: ReturnType<typeof vi.fn>;
     shutdown: ReturnType<typeof vi.fn>;
     isShuttingDown: ReturnType<typeof vi.fn>;
@@ -54,6 +56,11 @@ describe('QueuedLLM', () => {
         };
       }),
       register: vi.fn(),
+      registerLimit: vi.fn(),
+      tryAcquire: vi.fn(async () => ({
+        allowed: false,
+        release: async () => {},
+      })),
       getStats: vi.fn(() => ({
         resources: {},
         totalRequests: 0,

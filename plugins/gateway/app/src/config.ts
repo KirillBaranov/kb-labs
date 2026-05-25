@@ -1,6 +1,12 @@
 import { findNearestConfig, readJsonWithDiagnostics } from '@kb-labs/core-config';
 import { GatewayConfigSchema, type GatewayConfig } from '@kb-labs/gateway-contracts';
 
+/**
+ * Explicit absolute path to a gateway config file. When set, takes precedence
+ * over the cwd-relative search. Useful for tests and ops overlays.
+ */
+const EXPLICIT_CONFIG_ENV = 'KB_GATEWAY_CONFIG_PATH';
+
 const CONFIG_FILENAMES = [
   '.kb/kb.config.jsonc',
   '.kb/kb.config.json',
@@ -31,6 +37,15 @@ async function tryLoadGatewayFromDir(dir: string): Promise<GatewayConfig | null>
 }
 
 export async function loadGatewayConfig(repoRoot: string, platformRoot?: string): Promise<GatewayConfig> {
+  // Explicit path wins (used by tests, ops overlays).
+  const explicit = process.env[EXPLICIT_CONFIG_ENV];
+  if (explicit && explicit.length > 0) {
+    const result = await readJsonWithDiagnostics<{ gateway?: unknown }>(explicit);
+    if (result.ok && result.data.gateway) {
+      return GatewayConfigSchema.parse(result.data.gateway);
+    }
+  }
+
   // Project config overrides platform defaults
   const fromProject = await tryLoadGatewayFromDir(repoRoot);
   if (fromProject) { return fromProject; }

@@ -60,6 +60,8 @@ export type {
   ResourceBrokerStats,
   ResourceStats,
   IResourceBroker,
+  TryAcquireOptions,
+  TryAcquireResult,
   // Retry
   ErrorType,
   RetryConfig,
