@@ -259,7 +259,7 @@ export default async function HomePage({ params }: Props) {
                         {cat.items.map(item => (
                           <span
                             key={item}
-                            className="rounded-md border border-white/15 bg-white/[0.07] px-2 py-0.5 font-mono text-[0.75rem] text-kb-text/80"
+                            className="rounded-md border border-line bg-surface px-2 py-0.5 font-mono text-[0.75rem] text-kb-text/80 dark:border-white/15 dark:bg-white/[0.07]"
                           >
                             {item}
                           </span>
