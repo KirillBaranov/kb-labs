@@ -26,7 +26,7 @@ export function AgentDiagram({ className }: AgentDiagramProps) {
             { cmd: 'kb slack notify',     arg: '"deployed to prod"' },
           ].map(({ cmd, arg }) => (
             <div key={cmd} className="flex items-baseline gap-1.5 font-mono text-[0.68rem]">
-              <span className="text-muted/40">$</span>
+              <span className="text-muted/55 dark:text-muted/40">$</span>
               <span className="text-accent/80">{cmd}</span>
               <span className="text-muted/50">{arg}</span>
             </div>
@@ -74,7 +74,7 @@ export function AgentDiagram({ className }: AgentDiagramProps) {
               <span className={cn('text-[0.6rem] font-bold', ok ? 'text-emerald-500' : 'text-red-400')}>
                 {ok ? '✓' : '✗'}
               </span>
-              <span className={cn('font-mono text-[0.63rem]', ok ? 'text-muted/80' : 'text-muted/35 line-through')}>
+              <span className={cn('font-mono text-[0.63rem]', ok ? 'text-muted/80' : 'text-muted/50 dark:text-muted/35 line-through')}>
                 {label}
               </span>
             </div>

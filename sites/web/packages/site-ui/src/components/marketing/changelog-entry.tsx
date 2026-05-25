@@ -77,7 +77,7 @@ export function ChangelogEntry({
               Latest
             </span>
           )}
-          <span className="font-mono text-xs text-muted/45">{date}</span>
+          <span className="font-mono text-xs text-muted/60 dark:text-muted/45">{date}</span>
         </div>
 
         {/* Card */}

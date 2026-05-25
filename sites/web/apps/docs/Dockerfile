@@ -15,9 +15,8 @@ RUN corepack enable pnpm && pnpm install --frozen-lockfile --filter @kb-labs/doc
 FROM base AS builder
 WORKDIR /app
 
-COPY --from=deps /app/node_modules                              ./node_modules
-COPY --from=deps /app/sites/web/apps/docs/node_modules          ./sites/web/apps/docs/node_modules
-COPY --from=deps /app/sites/web/packages/og/node_modules        ./sites/web/packages/og/node_modules
+COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app/sites/      ./sites/
 
 # full/ contains sources of all packages in the closure
 COPY .kb/bundle/docs-site/full/ .

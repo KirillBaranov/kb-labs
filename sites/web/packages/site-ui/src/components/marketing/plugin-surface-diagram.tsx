@@ -122,7 +122,7 @@ export function PluginSurfaceDiagram({ className }: PluginSurfaceDiagramProps) {
           </span>
           <div className="min-w-0 flex-1">
             <code className="block truncate font-mono text-[0.78rem] text-kb-text/85">{plugin.cli.cmd}</code>
-            <code className="block truncate font-mono text-[0.68rem] text-muted/40">{plugin.cli.sub}</code>
+            <code className="block truncate font-mono text-[0.68rem] text-muted/55 dark:text-muted/40">{plugin.cli.sub}</code>
           </div>
         </div>
 
@@ -133,7 +133,7 @@ export function PluginSurfaceDiagram({ className }: PluginSurfaceDiagramProps) {
           </span>
           <div className="min-w-0 flex-1">
             <code className="block truncate font-mono text-[0.78rem] text-kb-text/85">{plugin.rest.endpoint}</code>
-            <code className="block truncate font-mono text-[0.68rem] text-muted/40">{plugin.rest.sub}</code>
+            <code className="block truncate font-mono text-[0.68rem] text-muted/55 dark:text-muted/40">{plugin.rest.sub}</code>
           </div>
         </div>
 
@@ -144,7 +144,7 @@ export function PluginSurfaceDiagram({ className }: PluginSurfaceDiagramProps) {
           </span>
           <div className="min-w-0 flex-1">
             <code className="block truncate font-mono text-[0.78rem] text-kb-text/85">{plugin.studio.path}</code>
-            <code className="block truncate font-mono text-[0.68rem] text-muted/40">full page</code>
+            <code className="block truncate font-mono text-[0.68rem] text-muted/55 dark:text-muted/40">full page</code>
           </div>
         </div>
       </div>

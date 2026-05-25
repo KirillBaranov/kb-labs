@@ -1,4 +1,7 @@
 // Primitives
+export { LabelValueTable } from './components/ui/label-value-table';
+export type { LabelValueTableProps, LabelValueItem } from './components/ui/label-value-table';
+
 export { DataTable } from './components/ui/data-table';
 export type { DataTableProps, DataTableColumn, DataTableRow } from './components/ui/data-table';
 

@@ -151,7 +151,7 @@ export function PluginLifecycleDiagram({ className }: PluginLifecycleDiagramProp
                   <span className="font-mono text-[0.95rem] font-bold text-kb-text">
                     {stage.label}
                   </span>
-                  <span className="font-mono text-[0.7rem] text-muted/45">{stage.sub}</span>
+                  <span className="font-mono text-[0.7rem] text-muted/60 dark:text-muted/45">{stage.sub}</span>
                 </div>
 
                 {/* Chips */}

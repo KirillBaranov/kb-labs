@@ -33,7 +33,7 @@ export async function CodeBlock({ code, language = 'typescript', filename, class
           <span className="text-sm text-muted/60 font-mono">{language}</span>
         )}
         {filename && language && (
-          <span className="text-sm text-muted/40 font-mono">{language}</span>
+          <span className="text-sm text-muted/55 dark:text-muted/40 font-mono">{language}</span>
         )}
       </div>
       <CopyButton code={code.trim()} />
