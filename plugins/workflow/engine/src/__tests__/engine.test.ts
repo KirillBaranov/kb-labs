@@ -423,7 +423,7 @@ describe('WorkflowEngine', () => {
 
       // Simulate job-a completing with step output: steps.result.outputs.tier = 'go'
       const jobAId = run.jobs.find(j => j.jobName === 'job-a')!.id;
-      const stepId = run.jobs.find(j => j.jobName === 'job-a')!.steps[0].id;
+      const stepId = run.jobs.find(j => j.jobName === 'job-a')!.steps[0]!.id;
 
       // Manually write step output into state so buildExpressionContext sees it
       const stateStore = (engine as any).stateStore;
@@ -448,7 +448,7 @@ describe('WorkflowEngine', () => {
       });
 
       const jobAId = run.jobs.find(j => j.jobName === 'job-a')!.id;
-      const stepId = run.jobs.find(j => j.jobName === 'job-a')!.steps[0].id;
+      const stepId = run.jobs.find(j => j.jobName === 'job-a')!.steps[0]!.id;
 
       const stateStore = (engine as any).stateStore;
       await stateStore.updateStep(run.id, jobAId, stepId, (draft: any) => {
