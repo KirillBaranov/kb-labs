@@ -81,6 +81,21 @@ jobs:
       - name: Deploy marketplace-registry-app (pnpm deploy)
         run: pnpm deploy --filter @kb-labs/marketplace-registry-app --prod .kb/deploy/marketplace-registry-app
 
+      - name: Capture pre-deploy images (for rollback)
+        id: pre_deploy
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+        run: |
+          echo "$SSH_KEY" > /tmp/deploy_key && chmod 600 /tmp/deploy_key
+          SSH="ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST}"
+          WEB=$($SSH "docker inspect kb-labs-web  --format '{{.Config.Image}}' 2>/dev/null || true")
+          DOCS=$($SSH "docker inspect kb-labs-docs --format '{{.Config.Image}}' 2>/dev/null || true")
+          echo "web=${WEB}"   >> "$GITHUB_OUTPUT"
+          echo "docs=${DOCS}" >> "$GITHUB_OUTPUT"
+          echo "Pre-deploy: web=${WEB} docs=${DOCS}"
+
       - name: Login to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
@@ -99,4 +114,76 @@ jobs:
           fi
 
       - name: Show status
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
         run: ./tools/kb-deploy/kb-deploy status
+
+      - name: Smoke test
+        id: smoke
+        continue-on-error: true
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+        run: |
+          echo "$SSH_KEY" > /tmp/deploy_key && chmod 600 /tmp/deploy_key
+          SSH="ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST}"
+
+          echo "Waiting 30s for containers to be ready..."
+          sleep 30
+
+          check() {
+            local name=$1 url=$2
+            for i in 1 2 3; do
+              $SSH "curl -sf --max-time 10 '${url}' > /dev/null" \
+                && echo "${name}: OK" && return 0
+              echo "${name}: attempt ${i}/3 failed, retrying in 10s..."
+              sleep 10
+            done
+            echo "::error::${name} smoke test failed — ${url} did not return 200"
+            return 1
+          }
+
+          FAILED=0
+          check "web"  "http://localhost:3000/" || FAILED=1
+          check "docs" "http://localhost:3001/" || FAILED=1
+          rm -f /tmp/deploy_key
+          exit $FAILED
+
+      - name: Rollback on smoke failure
+        if: steps.smoke.outcome == 'failure'
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          WEB_IMAGE:  ${{ steps.pre_deploy.outputs.web }}
+          DOCS_IMAGE: ${{ steps.pre_deploy.outputs.docs }}
+        run: |
+          echo "$SSH_KEY" > /tmp/deploy_key && chmod 600 /tmp/deploy_key
+          SSH="ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST}"
+
+          rollback() {
+            local container=$1 image=$2 port=$3
+            if [ -z "$image" ]; then
+              echo "No pre-deploy image for ${container}, skipping rollback"
+              return
+            fi
+            echo "Rolling back ${container} → ${image}"
+            $SSH "docker pull '${image}' \
+              && docker stop '${container}' \
+              && docker rm   '${container}' \
+              && docker run -d \
+                   --name '${container}' \
+                   --restart unless-stopped \
+                   -p '${port}:${port}' \
+                   '${image}'"
+          }
+
+          rollback "kb-labs-web"  "$WEB_IMAGE"  3000
+          rollback "kb-labs-docs" "$DOCS_IMAGE" 3001
+
+          rm -f /tmp/deploy_key
+          echo "::error::Smoke test failed — rolled back web to ${WEB_IMAGE}, docs to ${DOCS_IMAGE}"
+          exit 1
