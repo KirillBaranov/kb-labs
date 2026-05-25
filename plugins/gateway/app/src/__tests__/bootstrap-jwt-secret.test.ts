@@ -22,6 +22,7 @@ vi.mock('@kb-labs/core-runtime', () => ({
   },
   createServiceBootstrap: vi.fn().mockResolvedValue(undefined),
   getPlatformRoot: vi.fn().mockReturnValue('/tmp/kb-platform'),
+  getProjectRoot: vi.fn().mockReturnValue('/tmp/kb-project'),
 }));
 
 vi.mock('../config.js', () => ({

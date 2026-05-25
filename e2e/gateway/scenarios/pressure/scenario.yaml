@@ -1,0 +1,11 @@
+# Gateway pressure-control scenario.
+#
+# Applies HTTP rate limits to the gateway via overlay.jsonc, then restarts
+# gateway so the new pressure config takes effect. The runner ensures the
+# `e2e-gateway` group is alive before applying.
+name: gateway-pressure
+overlays:
+  - overlay.jsonc
+restarts:
+  - gateway
+domain: e2e-gateway

@@ -221,6 +221,7 @@ jobs:
           WORKFLOW_URL:    http://localhost:7778
           STATE_URL:       http://localhost:7777
           CI: "true"
+          KB_DEV_BIN: ${{ github.workspace }}/tools/scripts/kb-dev-docker.sh
 
       # ── Artifacts + summary ──────────────────────────────────────────────
 

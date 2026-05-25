@@ -8,7 +8,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 process.env.CHECKLIST_OUT ??= path.join(__dirname, 'report', 'CHECKLIST.md')
 
 export default defineConfig({
-  testDir: './specs',
+  testDir: './scenarios',
+  testMatch: '**/cases/**/*.spec.ts',
   timeout: 30_000,
   retries: process.env.CI ? 2 : 0,
   reporter: [

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "e2e": "playwright test"
+    "e2e": "kb-labs-e2e-runner"
   },
   "devDependencies": {
     "@kb-labs/e2e-shared": "workspace:*",

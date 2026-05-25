@@ -371,6 +371,10 @@ jobs:
           WORKFLOW_URL:    http://localhost:7778
           STATE_URL:       http://localhost:7777
           CI: "true"
+          # The e2e-runner stays environment-agnostic — it just calls
+          # `$KB_DEV_BIN`. On CI the binary is a small wrapper that proxies
+          # into the platform container; locally `kb-dev` runs directly.
+          KB_DEV_BIN: ${{ github.workspace }}/tools/scripts/kb-dev-docker.sh
 
       # ── Artifacts + summary ──────────────────────────────────────────────
 

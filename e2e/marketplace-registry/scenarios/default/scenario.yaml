@@ -1,0 +1,6 @@
+# Baseline scenario for marketplace-registry e2e domain.
+# Applies no overlays — the unmodified project config is in effect.
+# The runner ensures this scenario before any other; reset on completion.
+name: marketplace-registry-default
+overlays: []
+restarts: []
