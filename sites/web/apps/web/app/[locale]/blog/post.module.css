@@ -87,7 +87,7 @@
 }
 
 .article pre {
-  background: #f4f6fa;
+  background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 1.25rem 1.5rem;
@@ -95,16 +95,20 @@
   margin: 0 0 1.5rem;
   font-size: 0.875rem;
   line-height: 1.65;
+  color: var(--text);
 }
 
 .article code {
   font-family: 'Berkeley Mono', 'Fira Code', 'Cascadia Code', monospace;
   font-size: 0.875em;
+  color: var(--text);
 }
 
 .article p code,
 .article li code {
-  background: #f0f2f7;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--accent);
   padding: 0.15em 0.4em;
   border-radius: 4px;
 }

@@ -1,11 +1,21 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
-
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
-import s from './page.module.css';
+import {
+  AnimateOnScroll,
+  BorderBeam,
+  Button,
+  CodeBlock,
+  Container,
+  DotPattern,
+  Eyebrow,
+  GradientText,
+  MockupFrame,
+  Section,
+  Tabs,
+} from '@kb-labs/web-site-ui';
 import { buildPageMetadata } from '@/lib/page-metadata';
 
 type Props = { params: Promise<{ locale: string }> };
@@ -16,52 +26,144 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale });
+  const t = await getTranslations({ locale, namespace: 'solutionObservability' });
   return buildPageMetadata({
     locale,
-    title: t('solutionObservability.meta.title'),
-    description: t('solutionObservability.meta.description'),
+    title: t('page.meta.title'),
+    description: t('page.meta.description'),
     path: '/solutions/observability',
+    imageSegment: 'solutions',
   });
 }
 
-type ValueProp = { title: string; description: string };
-type Audience = { role: string; sees: string };
+// ── Content ───────────────────────────────────────────────────────────────────
 
-const VALUE_ICONS = [
-  /* 1: Funnel / ingestion */
-  <svg key="i1" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M2 3h16l-5 6v5l-2 2V9L2 3z" />
-  </svg>,
-  /* 2: Brain / LLM tracking */
-  <svg key="i2" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-    <circle cx="10" cy="10" r="7" /><path d="M7 10c0-2 1.5-3 3-3s3 1 3 3-1.5 3-3 3" /><circle cx="10" cy="10" r="1" />
-  </svg>,
-  /* 3: Code / SDK */
-  <svg key="i3" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="6 7 2 10 6 13" /><polyline points="14 7 18 10 14 13" /><line x1="11" y1="4" x2="9" y2="16" />
-  </svg>,
-  /* 4: Cloud / external */
-  <svg key="i4" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M5 16h10a4 4 0 000-8 5 5 0 00-10 2 3 3 0 000 6z" />
-  </svg>,
-  /* 5: Database / storage */
-  <svg key="i5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-    <ellipse cx="10" cy="5" rx="7" ry="3" /><path d="M3 5v10c0 1.66 3.13 3 7 3s7-1.34 7-3V5" /><path d="M3 10c0 1.66 3.13 3 7 3s7-1.34 7-3" />
-  </svg>,
-  /* 6: Grid / dashboards */
-  <svg key="i6" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round">
-    <rect x="2" y="2" width="7" height="7" rx="1" /><rect x="11" y="2" width="7" height="4" rx="1" /><rect x="2" y="11" width="7" height="4" rx="1" /><rect x="11" y="8" width="7" height="7" rx="1" />
-  </svg>,
-];
+// i18n-ignore: code example
+const PLUGIN_TRACK_CODE = `// В любом плагине — через SDK // i18n-ignore
+import { useAnalytics } from '@kb-labs/sdk';
+
+const analytics = useAnalytics();
+
+await analytics.track('commit.plan.generated', {
+  scope:             'root',
+  filesChanged:      14,
+  commitsGenerated:  3,
+  llmUsed:           true,
+  tokensUsed:        1840,
+  durationMs:        4200,
+});`;
+
+// i18n-ignore: code example
+const MANIFEST_CODE = `// manifest.ts — включить в разрешения плагина // i18n-ignore
+const permissions = combinePermissions()
+  .withPlatform({
+    analytics: true,   // доступ к platform.analytics // i18n-ignore
+    llm:       true,
+    cache:     ['my-plugin'],
+  })
+  .build();`;
+
+// i18n-ignore: code example
+const CONFIG_SQLITE = `// kb.config.json
+{
+  "platform": {
+    "adapters": {
+      "analytics": "@kb-labs/adapters-analytics-sqlite"
+    },
+    "adapterOptions": {
+      "analytics": {
+        "filename": ".kb/analytics/analytics.sqlite"
+      }
+    }
+  }
+}`;
+
+// i18n-ignore: code example
+const CONFIG_DUCKDB = `// kb.config.json
+{
+  "platform": {
+    "adapters": {
+      "analytics": "@kb-labs/adapters-analytics-duckdb"
+    },
+    "adapterOptions": {
+      "analytics": {
+        "dbPath": ".kb/analytics/analytics.duckdb"
+      }
+    }
+  }
+}`;
+
+// i18n-ignore: code example
+const CONFIG_FILE = `// kb.config.json
+{
+  "platform": {
+    "adapters": {
+      "analytics": "@kb-labs/adapters-analytics-file"
+    },
+    "adapterOptions": {
+      "analytics": {
+        "path": ".kb/analytics/events.jsonl"
+      }
+    }
+  }
+}`;
+
+// i18n-ignore: code example
+const QUERY_STATS = `// getStats() — агрегат по всем событиям // i18n-ignore
+const stats = await analytics.getStats();
+// {
+//   totalEvents: 4821,
+//   byType: {
+//     "commit.plan.generated": 312,
+//     "commit.push.success":   289,
+//     "workflow.run.completed": 1840,
+//   },
+//   bySource: { "commit": 601, "workflow": 1840 },
+//   byActor:  { "user:kirill": 4200 },
+//   timeRange: { from: "2026-05-01T...", to: "2026-05-24T..." }
+// }`;
+
+// i18n-ignore: code example
+const QUERY_DAILY = `// getDailyStats() — time-series с группировкой // i18n-ignore
+const daily = await analytics.getDailyStats({
+  type:        'commit.plan.generated',
+  groupBy:     'hour',          // hour | day | week | month
+  breakdownBy: 'payload.scope', // dot-notation в JSON payload
+  from:        '2026-05-01',
+  to:          '2026-05-24',
+});
+// [
+//   { date: "2026-05-24 09", count: 12, breakdown: "root" },
+//   { date: "2026-05-24 09", count:  3, breakdown: "packages/core" },
+//   ...
+// ]`;
+
+// i18n-ignore: terminal output
+const MONITOR_OUTPUT = `$ kb-monitor health
+
+  gateway       ✓  healthy   uptime 14d 3h
+  rest-api      ✓  healthy   uptime 14d 3h
+  workflow      ✓  healthy   uptime  6d 1h
+  marketplace   ✓  healthy   uptime  6d 1h
+  state         ✓  healthy   uptime 14d 3h
+
+$ kb-monitor logs workflow --follow
+
+  [workflow] 14:23:01 run abc123 started · trigger=manual
+  [workflow] 14:23:02 step "checkout" completed [0.3s]
+  [workflow] 14:23:08 step "build"    completed [5.9s]
+  [workflow] 14:23:09 run abc123 finished · status=success`;
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function ObservabilityPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const t = await getTranslations({ locale });
 
-  const valueProps = t.raw('solutionObservability.valueProps.items') as ValueProp[];
-  const audiences = t.raw('solutionObservability.audiences.items') as Audience[];
+  const t = await getTranslations({ locale, namespace: 'solutionObservability' });
+
+  const backendsTable = t.raw('page.backendsTable') as Array<{ label: string; value: string }>;
+  const monitorCommands = t.raw('page.monitorCommands') as Array<{ cmd: string; note: string }>;
 
   return (
     <>
@@ -69,84 +171,220 @@ export default async function ObservabilityPage({ params }: Props) {
       <main>
 
         {/* ── Hero ── */}
-        <section className={s.hero}>
-          <span className={s.badge}>Observability</span>
-          <h1>{t('solutionObservability.hero.title')}</h1>
-          <p>{t('solutionObservability.hero.description')}</p>
-          <div className={s.heroCta}>
-            <Link className="btn primary" href={`/${locale}/install`}>
-              {t('solutionObservability.hero.startBtn')}
-            </Link>
-            <Link className="btn secondary" href={`/${locale}/contact`}>
-              {t('solutionObservability.hero.contactBtn')}
-            </Link>
-          </div>
-        </section>
-
-        {/* ── Value propositions ── */}
-        <section className={s.valueSection}>
-          <div className={s.container}>
-            <h2>{t('solutionObservability.valueProps.title')}</h2>
-            <div className={s.valueGrid}>
-              {valueProps.map((item, i) => (
-                <div key={item.title} className={s.valueCard}>
-                  <div className={s.valueIcon}>{VALUE_ICONS[i]}</div>
-                  <h3>{item.title}</h3>
-                  <p>{item.description}</p>
+        <section className="relative overflow-hidden border-b border-line py-20 pb-16">
+          <DotPattern className="absolute inset-0 z-0 opacity-40" />
+          <Container className="relative z-10">
+            <AnimateOnScroll>
+              <div className="mx-auto max-w-3xl text-center">
+                {/* i18n-ignore: brand name */}
+                <Eyebrow className="mb-4">Observability · Analytics</Eyebrow>
+                <h1 className="mb-5 text-4xl font-bold leading-tight tracking-tight text-kb-text sm:text-5xl lg:text-6xl">
+                  {t('page.heroTitle')}{' '}
+                  <GradientText>{t('page.heroTitleHighlight')}</GradientText>
+                </h1>
+                <p className="mx-auto mb-8 max-w-xl text-lg leading-relaxed text-muted/70">
+                  {t('page.heroDescription')}
+                </p>
+                <div className="flex flex-wrap justify-center gap-3">
+                  <Button variant="primary" size="lg" href="https://docs.kblabs.ru/observability" target="_blank" rel="noopener noreferrer">
+                    {t('page.docsBtn')}
+                  </Button>
+                  <Button variant="secondary" size="lg" href={`/${locale}/install`}>
+                    {t('page.installBtn')}
+                  </Button>
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
+            </AnimateOnScroll>
+          </Container>
         </section>
 
-        {/* ── Who benefits ── */}
-        <section className={s.audienceSection}>
-          <div className={s.container}>
-            <h2>{t('solutionObservability.audiences.title')}</h2>
-            <div className={s.audienceGrid}>
-              {audiences.map((a) => (
-                <div key={a.role} className={s.audienceCard}>
-                  <h3>{a.role}</h3>
-                  <p>{a.sees}</p>
+        {/* ── Events ── */}
+        <Section className="border-b border-line">
+          <Container>
+            <div className="grid gap-12 lg:grid-cols-2 lg:items-start">
+              <AnimateOnScroll>
+                <Eyebrow className="mb-3">{t('page.eventsEyebrow')}</Eyebrow>
+                <h2 className="mb-4 text-3xl font-bold tracking-tight text-kb-text">
+                  {t('page.eventsTitle')}
+                </h2>
+                <p className="mb-4 text-base leading-relaxed text-muted/70">
+                  {t('page.eventsLead1')}
+                </p>
+                <p className="text-base leading-relaxed text-muted/70">
+                  {t('page.eventsLead2')}
+                </p>
+              </AnimateOnScroll>
+
+              <AnimateOnScroll delay={80}>
+                <Tabs
+                  variant="card"
+                  contentClassName="max-h-[320px] overflow-auto"
+                  items={[
+                    {
+                      id: 'track',
+                      label: 'track()', // i18n-ignore: API method name
+                      content: <CodeBlock code={PLUGIN_TRACK_CODE} language="typescript" bare />,
+                    },
+                    {
+                      id: 'manifest',
+                      label: 'manifest.ts', // i18n-ignore: filename
+                      content: <CodeBlock code={MANIFEST_CODE} language="typescript" bare />,
+                    },
+                  ]}
+                />
+              </AnimateOnScroll>
+            </div>
+          </Container>
+        </Section>
+
+        {/* ── Backends ── */}
+        <Section className="border-b border-line bg-surface/40">
+          <Container>
+            <div className="grid gap-12 lg:grid-cols-2 lg:items-start">
+              <AnimateOnScroll className="lg:order-2">
+                <Eyebrow className="mb-3">{t('page.backendsEyebrow')}</Eyebrow>
+                <h2 className="mb-4 text-3xl font-bold tracking-tight text-kb-text">
+                  {t('page.backendsTitle')}
+                </h2>
+                <p className="mb-4 text-base leading-relaxed text-muted/70">
+                  {t('page.backendsLead')}
+                </p>
+                <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm divide-y divide-line">
+                  {backendsTable.map(({ label, value }) => (
+                    <div key={label} className="flex items-baseline gap-4 px-5 py-3.5">
+                      <span className="flex-shrink-0 whitespace-nowrap text-[0.65rem] font-bold uppercase tracking-wider text-muted/35">{label}</span>
+                      <span className="text-sm text-muted/70">{value}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </AnimateOnScroll>
+
+              <AnimateOnScroll delay={80} className="lg:order-1">
+                <Tabs
+                  variant="card"
+                  contentClassName="max-h-[280px] overflow-auto"
+                  items={[
+                    {
+                      id: 'sqlite',
+                      label: 'SQLite', // i18n-ignore: brand name
+                      content: <CodeBlock code={CONFIG_SQLITE} language="json" bare />,
+                    },
+                    {
+                      id: 'duckdb',
+                      label: 'DuckDB', // i18n-ignore: brand name
+                      content: <CodeBlock code={CONFIG_DUCKDB} language="json" bare />,
+                    },
+                    {
+                      id: 'file',
+                      label: 'File', // i18n-ignore: tech term
+                      content: <CodeBlock code={CONFIG_FILE} language="json" bare />,
+                    },
+                  ]}
+                />
+              </AnimateOnScroll>
             </div>
-          </div>
-        </section>
+          </Container>
+        </Section>
 
-        {/* ── SDK example ── */}
-        <section className={s.codeSection}>
-          <div className={s.container}>
-            <div className={s.codeBlock}>
-              <div className={s.codeDots}><span /><span /><span /></div>
-              <pre><code>{`import { KBTelemetry } from '@kb-labs/telemetry-client';
+        {/* ── Query ── */}
+        <Section className="border-b border-line">
+          <Container>
+            <div className="grid gap-12 lg:grid-cols-2 lg:items-start">
+              <AnimateOnScroll>
+                <Eyebrow className="mb-3">{t('page.queryEyebrow')}</Eyebrow>
+                <h2 className="mb-4 text-3xl font-bold tracking-tight text-kb-text">
+                  {t('page.queryTitle')}
+                </h2>
+                <p className="mb-4 text-base leading-relaxed text-muted/70">
+                  {t('page.queryLead1')}
+                </p>
+                <p className="text-base leading-relaxed text-muted/70">
+                  {t('page.queryLead2')}
+                </p>
+              </AnimateOnScroll>
 
-const telemetry = new KBTelemetry({
-  endpoint: 'http://gateway:4000',
-  apiKey: process.env.KB_API_KEY,
-  source: 'my-product',
-});
-
-telemetry.event('user.signup', { plan: 'pro' });
-telemetry.metric('api_latency_ms', 142);
-telemetry.log('info', 'Payment processed', { amount: 99 });`}</code></pre>
+              <AnimateOnScroll delay={80}>
+                <Tabs
+                  variant="card"
+                  contentClassName="max-h-[320px] overflow-auto"
+                  items={[
+                    {
+                      id: 'stats',
+                      label: 'getStats()', // i18n-ignore: API method name
+                      content: <CodeBlock code={QUERY_STATS} language="typescript" bare />,
+                    },
+                    {
+                      id: 'daily',
+                      label: 'getDailyStats()', // i18n-ignore: API method name
+                      content: <CodeBlock code={QUERY_DAILY} language="typescript" bare />,
+                    },
+                  ]}
+                />
+              </AnimateOnScroll>
             </div>
-          </div>
-        </section>
+          </Container>
+        </Section>
+
+        {/* ── Monitor ── */}
+        <Section className="border-b border-line bg-surface/40">
+          <Container>
+            <div className="grid gap-12 lg:grid-cols-2 lg:items-start">
+              <AnimateOnScroll className="lg:order-2">
+                <Eyebrow className="mb-3">{t('page.monitorEyebrow')}</Eyebrow>
+                <h2 className="mb-4 text-3xl font-bold tracking-tight text-kb-text">
+                  {t('page.monitorTitle')}
+                </h2>
+                <p className="mb-6 text-base leading-relaxed text-muted/70">
+                  {t('page.monitorLead')}
+                </p>
+                <div className="overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
+                  {monitorCommands.map((c, i, arr) => (
+                    <div key={c.cmd} className={`flex flex-col gap-1 px-5 py-3.5 sm:flex-row sm:items-baseline sm:gap-4 ${i < arr.length - 1 ? 'border-b border-line' : ''}`}>
+                      <code className="flex-shrink-0 font-mono text-[0.78rem] text-kb-text/85 sm:w-60">{c.cmd}</code>
+                      <span className="text-sm leading-relaxed text-muted/50">{c.note}</span>
+                    </div>
+                  ))}
+                </div>
+              </AnimateOnScroll>
+
+              <AnimateOnScroll delay={80} className="lg:order-1">
+                {/* i18n-ignore: terminal output */}
+                <MockupFrame type="terminal" title="kb-monitor">
+                  <pre className="whitespace-pre p-5 font-mono text-[0.73rem] leading-[1.85] text-slate-300">{MONITOR_OUTPUT}</pre>
+                </MockupFrame>
+              </AnimateOnScroll>
+            </div>
+          </Container>
+        </Section>
 
         {/* ── CTA ── */}
-        <section className="final-cta-block reveal">
-          <h2>{t('solutionObservability.cta.title')}</h2>
-          <p>{t('solutionObservability.cta.description')}</p>
-          <div className="cta-row">
-            <Link className="btn primary" href={`/${locale}/install`}>
-              {t('solutionObservability.cta.startBtn')}
-            </Link>
-            <Link className="btn secondary" href={`/${locale}/contact`}>
-              {t('solutionObservability.cta.contactBtn')}
-            </Link>
-          </div>
-        </section>
+        <Section className="bg-bg">
+          <Container>
+            <AnimateOnScroll>
+              <div className="relative overflow-hidden rounded-3xl border border-line bg-bg px-8 py-16 text-center">
+                <BorderBeam />
+                <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[360px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/[0.06] blur-[90px]" />
+                <div className="relative z-10">
+                  <Eyebrow className="mb-4">{t('page.ctaEyebrow')}</Eyebrow>
+                  <h2 className="mb-4 text-[clamp(1.8rem,3.5vw,2.8rem)] font-bold leading-tight tracking-tight text-kb-text">
+                    {t('page.ctaTitle')}
+                  </h2>
+                  <p className="mx-auto mb-8 max-w-sm text-base text-muted/60">
+                    {t('page.ctaNote')}
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-3">
+                    <Button variant="primary" size="lg" href="https://docs.kblabs.ru/observability" target="_blank" rel="noopener noreferrer">
+                      {t('page.docsBtn')}
+                    </Button>
+                    <Button variant="secondary" size="lg" href={`/${locale}/install`}>
+                      {t('page.installBtn')}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </AnimateOnScroll>
+          </Container>
+        </Section>
 
       </main>
       <SiteFooter />

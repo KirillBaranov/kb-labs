@@ -161,12 +161,12 @@
   color: #fff;
   padding: 0.4rem 0.875rem;
   border-radius: 6px;
-  background: var(--fg);
+  background: var(--accent);
   transition: background 0.12s;
   white-space: nowrap;
   margin-left: 0.125rem;
 }
 
 .ctaBtn:hover {
-  opacity: 0.85;
+  background: var(--accent-hover);
 }

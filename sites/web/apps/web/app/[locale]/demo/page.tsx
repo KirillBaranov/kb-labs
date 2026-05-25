@@ -1,13 +1,29 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { setRequestLocale } from 'next-intl/server';
+import { getTranslations, setRequestLocale } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
 
 import { SiteFooter } from '@/components/SiteFooter';
 import { SiteHeader } from '@/components/SiteHeader';
 import { WorkflowDemo } from '@/components/workflow-demo/WorkflowDemo';
-import s from './page.module.css';
 import { buildPageMetadata } from '@/lib/page-metadata';
+
+import {
+  AnimateOnScroll,
+  BorderBeam,
+  Button,
+  Container,
+  DotPattern,
+  Eyebrow,
+  GlowCard,
+  GradientText,
+  Section,
+} from '@kb-labs/web-site-ui';
+import {
+  GitBranch,
+  Layers,
+  RefreshCw,
+  UserCheck,
+} from 'lucide-react';
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -17,10 +33,11 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
+  const t = await getTranslations({ locale });
   return buildPageMetadata({
     locale,
-    title: 'Interactive Demo — KB Labs',
-    description: 'See KB Labs workflow engine in action. Run a simulated AI-assisted development pipeline — from planning to commit.',
+    title: t('demo.meta.title'),
+    description: t('demo.meta.description'),
     path: '/demo',
   });
 }
@@ -28,6 +45,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function DemoPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const t = await getTranslations({ locale });
+
+  const HOW_IT_WORKS_ICONS = [GitBranch, Layers, RefreshCw, UserCheck];
+  const HOW_IT_WORKS = (t.raw('demo.howItWorks.items') as Array<{ title: string; description: string }>).map(
+    (item, i) => ({ ...item, icon: HOW_IT_WORKS_ICONS[i] }),
+  );
 
   return (
     <>
@@ -35,76 +58,89 @@ export default async function DemoPage({ params }: Props) {
       <main>
 
         {/* ── Hero ── */}
-        <section className={s.hero}>
-          <span className={s.badge}>Interactive Demo</span>
-          <h1>See the pipeline in action</h1>
-          <p>
-            Run a simulated AI-assisted development pipeline. Switch between a standard dev-cycle
-            and an enterprise compliance flow. Click &quot;Run Pipeline&quot; to start — approve gates
-            to progress.
-          </p>
+        <section className="relative overflow-hidden border-b border-line py-20 pb-16">
+          <DotPattern className="absolute inset-0 z-0 opacity-40" />
+          <Container className="relative z-10">
+            <AnimateOnScroll>
+              <div className="mx-auto max-w-3xl text-center">
+                <Eyebrow className="mb-4">{t('demo.hero.eyebrow')}</Eyebrow>
+                <h1 className="mb-5 text-4xl font-bold leading-tight tracking-tight text-kb-text sm:text-5xl lg:text-6xl">
+                  {t('demo.hero.titlePrefix')}{' '}
+                  <GradientText>{t('demo.hero.titleGradient')}</GradientText>
+                </h1>
+                <p className="mx-auto max-w-xl text-lg leading-relaxed text-muted/70">
+                  {t('demo.hero.description')}
+                </p>
+              </div>
+            </AnimateOnScroll>
+          </Container>
         </section>
 
-        {/* ── Full Demo ── */}
-        <section className={s.demoWrap}>
-          <WorkflowDemo />
-        </section>
+        {/* ── Demo ── */}
+        <div className="border-b border-line py-8 lg:py-12">
+          <Container>
+            <WorkflowDemo />
+          </Container>
+        </div>
 
-        {/* ── How It Works ── */}
-        <section className={s.explainer}>
-          <h2>What you just saw</h2>
-          <div className={s.explainerGrid}>
-            <div className={s.explainerCard}>
-              <div className={s.explainerIcon}>
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="10" cy="10" r="7" />
-                  <path d="M10 6v4l2.5 1.5" />
-                </svg>
+        {/* ── How it works ── */}
+        <Section className="border-b border-line bg-surface/40">
+          <Container>
+            <AnimateOnScroll>
+              <div className="mx-auto max-w-2xl">
+                <Eyebrow className="mb-4">{t('demo.howItWorks.eyebrow')}</Eyebrow>
+                <h2 className="mb-8 text-3xl font-bold tracking-tight text-kb-text">
+                  {t('demo.howItWorks.title')}
+                </h2>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  {HOW_IT_WORKS.map((item, i) => {
+                    const Icon = item.icon;
+                    return (
+                      <AnimateOnScroll key={item.title} delay={i * 50}>
+                        <GlowCard className="flex h-full flex-col gap-4 rounded-2xl border border-line p-5">
+                          <div className="flex size-9 items-center justify-center rounded-lg border border-line bg-bg text-muted">
+                            <Icon size={17} />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <p className="text-sm font-semibold text-kb-text">{item.title}</p>
+                            <p className="text-sm leading-relaxed text-muted/60">{item.description}</p>
+                          </div>
+                        </GlowCard>
+                      </AnimateOnScroll>
+                    );
+                  })}
+                </div>
               </div>
-              <h3>Real workflow steps</h3>
-              <p>Each step maps to a real YAML definition. The same engine runs your automation in production.</p>
-            </div>
-            <div className={s.explainerCard}>
-              <div className={s.explainerIcon}>
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M3 10h14M10 3v14" />
-                </svg>
-              </div>
-              <h3>Composable from 3 blocks</h3>
-              <p><code>shell</code>, <code>gate</code>, and <code>approval</code> — three primitives that compose into any pipeline.</p>
-            </div>
-            <div className={s.explainerCard}>
-              <div className={s.explainerIcon}>
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M4 8l3 3 3-3" />
-                  <path d="M10 8l3 3 3-3" />
-                </svg>
-              </div>
-              <h3>Rework loops</h3>
-              <p>Failed review? The gate automatically sends changes back for rework — up to 3 iterations.</p>
-            </div>
-            <div className={s.explainerCard}>
-              <div className={s.explainerIcon}>
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="3" width="14" height="14" rx="2" />
-                  <path d="M7 10l2 2 4-4" />
-                </svg>
-              </div>
-              <h3>Human-in-the-loop</h3>
-              <p>Approval gates pause the pipeline until a human decides. Add as many as your compliance requires.</p>
-            </div>
-          </div>
-        </section>
+            </AnimateOnScroll>
+          </Container>
+        </Section>
 
         {/* ── CTA ── */}
-        <section className="final-cta-block reveal">
-          <h2>Ready to build your own pipeline?</h2>
-          <p>Install KB Labs on-prem and define workflows as YAML — from simple dev-cycles to enterprise compliance.</p>
-          <div className="cta-row">
-            <Link className="btn primary" href={`/${locale}/install`}>Install On-Prem</Link>
-            <Link className="btn secondary" href={`/${locale}/product/workflows`}>Learn more</Link>
-          </div>
-        </section>
+        <Section>
+          <Container>
+            <AnimateOnScroll>
+              <div className="relative overflow-hidden rounded-3xl border border-line bg-surface px-8 py-16 text-center">
+                <BorderBeam />
+                <div className="relative z-10">
+                  <h2 className="mb-3 text-3xl font-bold tracking-tight text-kb-text">
+                    {t('demo.cta.title')}
+                  </h2>
+                  <p className="mx-auto mb-8 max-w-lg text-base leading-relaxed text-muted/70">
+                    {t('demo.cta.description')}
+                  </p>
+                  <div className="flex flex-wrap justify-center gap-3">
+                    <Button variant="primary" size="lg" href={`/${locale}/install`}>
+                      {t('demo.cta.installBtn')}
+                    </Button>
+                    <Button variant="secondary" size="lg" href={`/${locale}/product/workflows`}>
+                      {t('demo.cta.workflowsBtn')}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </AnimateOnScroll>
+          </Container>
+        </Section>
 
       </main>
       <SiteFooter />

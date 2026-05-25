@@ -251,6 +251,7 @@ Skills live in `.claude/skills/`. Folder-based skills (`SKILL.md`) are user-invo
 | Commit style | `.claude/skills/commit.md` | git commit messages |
 | Config mode switching | `.claude/skills/config-mode.md` | switching dev/prod config, `.kb/kb.config.json` |
 | Site voice | `.claude/skills/kb-labs-site-voice.md` | editing `sites/**` |
+| **Broken link checker** | `.claude/skills/check-links.md` | editing `sites/web/**`, broken links, `check-links.mjs` |
 | Aeza proxy | `.claude/skills/aeza-proxy.md` | proxy / VPS tasks |
 | **Marketplace rehash** | `.claude/skills/marketplace-rehash.md` | stale lock hashes, NoOp/MockLLM fallback, `.kb/marketplace.lock`, `adapters/**` |
 

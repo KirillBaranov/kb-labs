@@ -28,6 +28,20 @@
   --code-block-highlight-line: rgba(84, 174, 255, 0.1);
   --code-block-highlight-bar: #0969da;
 
+  /* Callouts */
+  --callout-info-bg: #eff6ff;
+  --callout-info-border: #3b82f6;
+  --callout-info-fg: #1e40af;
+  --callout-warning-bg: #fffbeb;
+  --callout-warning-border: #f59e0b;
+  --callout-warning-fg: #92400e;
+  --callout-tip-bg: #f0fdf4;
+  --callout-tip-border: #22c55e;
+  --callout-tip-fg: #166534;
+  --callout-danger-bg: #fef2f2;
+  --callout-danger-border: #ef4444;
+  --callout-danger-fg: #991b1b;
+
   /* Docs layout */
   --docs-header-height: 60px;
   --docs-sidebar-width: 280px;
@@ -52,6 +66,20 @@
   --code-border: #26293a;
   --code-fg: #c0caf5;
 
+  /* Callouts */
+  --callout-info-bg: rgba(59, 130, 246, 0.1);
+  --callout-info-border: #3b82f6;
+  --callout-info-fg: #93c5fd;
+  --callout-warning-bg: rgba(245, 158, 11, 0.1);
+  --callout-warning-border: #f59e0b;
+  --callout-warning-fg: #fcd34d;
+  --callout-tip-bg: rgba(34, 197, 94, 0.1);
+  --callout-tip-border: #22c55e;
+  --callout-tip-fg: #86efac;
+  --callout-danger-bg: rgba(239, 68, 68, 0.1);
+  --callout-danger-border: #ef4444;
+  --callout-danger-fg: #fca5a5;
+
   /* Code blocks */
   --code-block-bg: #22272e;
   --code-block-toolbar-bg: #1c2128;
@@ -66,13 +94,12 @@
 }
 
 /* ─── Shiki dual-theme ───────────────────────────────────────────────── */
-[data-theme="light"] .shiki,
-[data-theme="light"] .shiki span {
+/* rehype-pretty-code sets data-theme on <pre>, tokens get --shiki-* inline vars */
+html[data-theme="light"] pre[data-theme] span {
   color: var(--shiki-light) !important;
   background-color: var(--shiki-light-bg) !important;
 }
-[data-theme="dark"] .shiki,
-[data-theme="dark"] .shiki span {
+html[data-theme="dark"] pre[data-theme] span {
   color: var(--shiki-dark) !important;
   background-color: var(--shiki-dark-bg) !important;
 }

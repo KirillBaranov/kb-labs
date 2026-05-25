@@ -1,35 +1,30 @@
 import * as React from 'react';
 import { cn } from '../../lib/utils';
 
-type AlertVariant = 'default' | 'success' | 'warning' | 'danger' | 'info';
+type AlertVariant = 'info' | 'success' | 'warning' | 'danger';
+
+const styles: Record<AlertVariant, string> = {
+  info:    'bg-accent/[0.08] border-accent/25 text-accent',
+  success: 'bg-emerald-500/[0.08] border-emerald-500/25 text-emerald-700 dark:text-emerald-400',
+  warning: 'bg-amber-500/[0.08] border-amber-500/25 text-amber-700 dark:text-amber-400',
+  danger:  'bg-destructive/[0.08] border-destructive/25 text-destructive',
+};
 
 export interface AlertProps {
   variant?: AlertVariant;
   title?: string;
-  className?: string;
   children?: React.ReactNode;
+  className?: string;
 }
 
-const variantStyles: Record<AlertVariant, string> = {
-  default:  'border-line bg-surface text-kb-text',
-  success:  'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-  warning:  'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400',
-  danger:   'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400',
-  info:     'border-accent/30 bg-accent/10 text-accent',
-};
-
-export function Alert({ variant = 'default', title, className, children }: AlertProps) {
+export function Alert({ variant = 'info', title, children, className }: AlertProps) {
   return (
     <div
       role="alert"
-      className={cn(
-        'rounded-md border px-4 py-3 text-sm',
-        variantStyles[variant],
-        className
-      )}
+      className={cn('rounded-lg border px-4 py-3 text-sm leading-relaxed', styles[variant], className)}
     >
-      {title && <p className="mb-1 font-semibold">{title}</p>}
-      {children}
+      {title && <p className="m-0 mb-0.5 font-semibold">{title}</p>}
+      {children && <p className="m-0 opacity-90">{children}</p>}
     </div>
   );
 }

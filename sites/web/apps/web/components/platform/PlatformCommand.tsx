@@ -46,7 +46,11 @@ export function PlatformCommand({ commands, className }: Props) {
       <span className={s.label}>{label}</span>
       <div className={s.codeWrap}>
         <pre className={s.codeBlock}><code>{cmd}</code></pre>
-        <CopyButton text={cmd} onCopy={handleCopy} />
+        {/* gradient fade before copy button */}
+        <div aria-hidden className={s.fade} />
+        <div className={s.copySlot}>
+          <CopyButton text={cmd} onCopy={handleCopy} />
+        </div>
       </div>
     </div>
   );

@@ -1,13 +1,16 @@
+import fs from 'node:fs';
+import path from 'node:path';
 import type { MetadataRoute } from 'next';
 
 import { listBlogPosts } from '@/lib/content';
 
 const SITE_URL = 'https://kblabs.ru';
+const BUILD_DATE = new Date();
+const CONTENT_ROOT = path.resolve(process.cwd(), '../../content');
 
 const staticRoutes: Array<{ path: string; priority: number; changeFrequency: MetadataRoute.Sitemap[0]['changeFrequency'] }> = [
   { path: '', priority: 1.0, changeFrequency: 'weekly' },
   { path: '/install', priority: 0.9, changeFrequency: 'monthly' },
-  { path: '/product', priority: 0.9, changeFrequency: 'monthly' },
   { path: '/product/workflows', priority: 0.9, changeFrequency: 'monthly' },
   { path: '/product/plugins', priority: 0.8, changeFrequency: 'monthly' },
   { path: '/product/state-broker', priority: 0.8, changeFrequency: 'monthly' },
@@ -39,14 +42,15 @@ const staticRoutes: Array<{ path: string; priority: number; changeFrequency: Met
 export default function sitemap(): MetadataRoute.Sitemap {
   const entries: MetadataRoute.Sitemap = [];
 
-  for (const { path, priority, changeFrequency } of staticRoutes) {
+  for (const { path: routePath, priority, changeFrequency } of staticRoutes) {
     entries.push({
-      url: `${SITE_URL}/ru${path}`,
+      url: `${SITE_URL}/ru${routePath}`,
+      lastModified: BUILD_DATE,
       alternates: {
         languages: {
-          ru: `${SITE_URL}/ru${path}`,
-          en: `${SITE_URL}/en${path}`,
-          'x-default': `${SITE_URL}/en${path}`,
+          ru: `${SITE_URL}/ru${routePath}`,
+          en: `${SITE_URL}/en${routePath}`,
+          'x-default': `${SITE_URL}${routePath}`,
         },
       },
       changeFrequency,
@@ -56,16 +60,17 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   const posts = listBlogPosts('en').filter((p) => !p.frontmatter.draft);
   for (const post of posts) {
+    const ruExists = fs.existsSync(path.join(CONTENT_ROOT, 'blog', 'ru', `${post.slug}.mdx`));
     entries.push({
       url: `${SITE_URL}/ru/blog/${post.slug}`,
+      lastModified: post.frontmatter.date ? new Date(post.frontmatter.date) : BUILD_DATE,
       alternates: {
         languages: {
-          ru: `${SITE_URL}/ru/blog/${post.slug}`,
+          ...(ruExists ? { ru: `${SITE_URL}/ru/blog/${post.slug}` } : {}),
           en: `${SITE_URL}/en/blog/${post.slug}`,
-          'x-default': `${SITE_URL}/en/blog/${post.slug}`,
+          'x-default': `${SITE_URL}/blog/${post.slug}`,
         },
       },
-      lastModified: post.frontmatter.date ? new Date(post.frontmatter.date) : undefined,
       changeFrequency: 'monthly',
       priority: 0.7,
     });
