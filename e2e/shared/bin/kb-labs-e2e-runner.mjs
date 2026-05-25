@@ -26,7 +26,7 @@
  *                           (useful when chaining domain runs in CI)
  */
 
-import { readdir, access } from 'node:fs/promises';
+import { readdir, access, writeFile, mkdir } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 
@@ -137,7 +137,35 @@ async function main() {
     }
   }
 
+  // Write a structured summary into the domain's report/ so it survives
+  // wrappers that capture/truncate stdout (kb-devkit, in particular). CI
+  // uploads `report/` as an artifact; this gives reviewers per-scenario
+  // pass/fail without having to mine the merged stdout.
+  await writeSummary(results);
+
   process.exit(anyFailed ? 1 : 0);
+}
+
+async function writeSummary(results) {
+  const reportDir = path.join(CWD, 'report');
+  try {
+    await mkdir(reportDir, { recursive: true });
+    const payload = {
+      domain: path.basename(CWD),
+      scenarios: results,
+      anyFailed: results.some((r) => r.status !== 'pass'),
+      timestamp: new Date().toISOString(),
+    };
+    await writeFile(
+      path.join(reportDir, 'scenarios-summary.json'),
+      JSON.stringify(payload, null, 2),
+      'utf8',
+    );
+  } catch (err) {
+    process.stderr.write(
+      `[e2e-runner] note: failed to write scenarios-summary.json: ${err?.message ?? err}\n`,
+    );
+  }
 }
 
 main().catch((err) => {
