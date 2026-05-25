@@ -1140,72 +1140,72 @@
       "eyebrow": "FAQ",
       "items": [
         {
-          "q": "So the primary path today is on-prem OSS, right?",
-          "a": "Yes. As of March 5, 2026, KB Labs prioritizes early OSS on-prem adoption for engineering teams."
+          "q": "Is OSS Core really free forever?",
+          "a": "Yes. Runtime, SDK, CLI and workflow engine — MIT + KBPL1.1. No freemium, no paywall, no future limits. We make money on Cloud hosting, enterprise support, and custom plugin development. Gating the core would break the whole model."
         },
         {
-          "q": "When should we expect full enterprise capabilities?",
-          "a": "Enterprise layers are planned after early-user validation, with current target window around Q3-Q4 2026 and beyond."
+          "q": "How is Cloud different from self-hosted?",
+          "a": "Only the infrastructure. Same open engine, same capabilities. Cloud is for teams who want to ship today without thinking about updates, backups and monitoring."
         },
         {
-          "q": "Is this a no-code business automation tool?",
-          "a": "No. KB Labs is intended for engineering teams building and operating plugin-based automation workflows."
+          "q": "What does Enterprise plugin development include?",
+          "a": "We build plugins for your specific workflows. The plugins are your property, private by default. You can open-source them if you choose. We do not make private changes to the core — it evolves the same for everyone."
         },
         {
-          "q": "How do you prove practical value today?",
-          "a": "We run KB Labs on KB Labs every day. Release automation, commit flows, QA gates, AI review, dependency management, and AI agents — all of it ships as plugins on the same engine you'll install."
+          "q": "Is on-prem OSS the main scenario right now?",
+          "a": "Yes. The current focus is early on-prem adoption with engineering teams. Cloud and enterprise tracks are being shaped together with early adopters."
         },
         {
-          "q": "How will ecosystem monetization work?",
-          "a": "Planned model includes subscription plugins from KB Labs and marketplace flows for community extensions with platform commission."
+          "q": "Is this a no-code tool for business teams?",
+          "a": "No. The platform is built for engineering teams who create and maintain plugins for their own processes. The CLI is the primary interface."
         },
         {
-          "q": "We already have heavy custom scripts. Where should we start?",
-          "a": "Start with one expensive workflow, usually release management. Migrate it first and measure cycle-time and maintenance impact."
+          "q": "We have a lot of custom automation already. Where do we start?",
+          "a": "Pick one expensive process — usually releases or review. Move it into a workflow, measure the impact. Then expand from there."
         }
       ],
       "heading": "Common questions"
     },
     "tiers": {
       "pro": {
-        "price": "Early access",
-        "note": "Pricing TBD — shaped by what early adopters need.",
+        "name": "Cloud",
+        "price": "Coming soon",
+        "badge": "On roadmap",
+        "note": "Same engine — we host it.",
+        "cta": "Join waitlist",
         "features": [
-          "Maintained plugin packs for common workflows",
-          "Updates and support for those packs",
-          "Patterns we already run on the same engine",
-          "Built on top of the open core, never around it",
-          "Growing alongside the public catalog"
-        ],
-        "badge": "Coming soon",
-        "cta": "Join the waitlist",
-        "name": "Pro"
+          "Same open engine, zero infra setup",
+          "Updates, backups, monitoring — our problem",
+          "Up and running in minutes, not days",
+          "You pay for convenience, not for features",
+          "Migrate back to self-hosted any time"
+        ]
       },
       "enterprise": {
-        "price": "Custom",
-        "note": "Driven by real adopters, not a feature checklist.",
+        "name": "Enterprise",
+        "price": "Talk to us",
+        "note": "On-prem support or custom plugin development.",
+        "cta": "Start a conversation",
         "features": [
-          "Stronger governance and security controls",
-          "Commercial support and SLA",
-          "Help with rollout in larger codebases",
-          "Custom contracts where they fit",
-          "Driven by what early adopters actually need"
-        ],
-        "cta": "Talk to us",
-        "name": "Enterprise"
+          "On-prem with SLA, rollout help and a dedicated channel",
+          "Governance setup for your security perimeter",
+          "Professional plugin development for your workflows",
+          "Plugins are your IP, private by default",
+          "The runtime evolves the same for everyone — no private core changes"
+        ]
       },
       "hobby": {
+        "name": "OSS Core",
         "price": "Free",
-        "note": "Forever. No card required.",
+        "note": "Forever · Self-hosted · No limits",
+        "cta": "Install",
         "features": [
-          "One-command on-prem installation",
-          "Full plugin SDK, CLI, and runtime",
-          "Workflows, agents, observability, and audit included",
-          "Every adapter in the public catalog",
-          "No lock-in and no telemetry you didn't opt into"
-        ],
-        "cta": "Install now",
-        "name": "Hobby"
+          "One-command install on your own infrastructure",
+          "Full runtime, SDK, CLI and workflow engine",
+          "Agents, observability and audit out of the box",
+          "All adapters from the public catalog",
+          "No paywall, no usage limits, no telemetry you did not ask for"
+        ]
       }
     },
     "cta": {
@@ -1215,10 +1215,10 @@
       "title2": "Ready to try it on your workflows?"
     },
     "hero": {
-      "titleLine1": "Free today.",
-      "eyebrow": "Pricing",
-      "subtitle": "KB Labs is free to install and run. The commercial layer is on the roadmap — nothing is charged before it ships.",
-      "titleLine2": "Commercial layer on the roadmap."
+      "eyebrow": "PRICING",
+      "titleLine1": "The engine is open.",
+      "titleLine2": "Pay only for convenience.",
+      "subtitle": "Runtime, SDK, CLI, the full plugin stack — MIT + KBPL1.1, self-hosted, no limits, no telemetry. This is not a free tier — this is KB Labs. We make money on hosting, support, and custom development. The core stays open."
     }
   },
   "compare": {
