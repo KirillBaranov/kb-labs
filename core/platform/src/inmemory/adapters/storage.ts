@@ -9,15 +9,21 @@ import type { IStorage, StorageMetadata } from '../../adapters/storage.js';
  * In-memory storage for testing and local development.
  * Data is lost when the process exits.
  */
+interface StorageEntry {
+  data: Buffer;
+  /** ISO 8601 timestamp of the last write. */
+  lastModified: string;
+}
+
 export class InMemoryStorage implements IStorage {
-  private store = new Map<string, Buffer>();
+  private store = new Map<string, StorageEntry>();
 
   async read(path: string): Promise<Buffer | null> {
-    return this.store.get(path) ?? null;
+    return this.store.get(path)?.data ?? null;
   }
 
   async write(path: string, data: Buffer): Promise<void> {
-    this.store.set(path, data);
+    this.store.set(path, { data, lastModified: new Date().toISOString() });
   }
 
   async delete(path: string): Promise<void> {
@@ -43,13 +49,13 @@ export class InMemoryStorage implements IStorage {
    * Optional method - implements IStorage.stat().
    */
   async stat(path: string): Promise<StorageMetadata | null> {
-    const data = this.store.get(path);
-    if (!data) {return null;}
+    const entry = this.store.get(path);
+    if (!entry) { return null; }
 
     return {
       path,
-      size: data.byteLength,
-      lastModified: new Date().toISOString(),
+      size: entry.data.byteLength,
+      lastModified: entry.lastModified,
       contentType: 'application/octet-stream',
     };
   }
@@ -59,12 +65,12 @@ export class InMemoryStorage implements IStorage {
    * Optional method - implements IStorage.copy().
    */
   async copy(sourcePath: string, destPath: string): Promise<void> {
-    const data = this.store.get(sourcePath);
-    if (!data) {
+    const entry = this.store.get(sourcePath);
+    if (!entry) {
       throw new Error(`Source file not found: ${sourcePath}`);
     }
-    // Copy buffer (create new instance)
-    this.store.set(destPath, Buffer.from(data));
+    // Copy buffer (create new instance); preserve original write time.
+    this.store.set(destPath, { data: Buffer.from(entry.data), lastModified: entry.lastModified });
   }
 
   /**
@@ -72,11 +78,11 @@ export class InMemoryStorage implements IStorage {
    * Optional method - implements IStorage.move().
    */
   async move(sourcePath: string, destPath: string): Promise<void> {
-    const data = this.store.get(sourcePath);
-    if (!data) {
+    const entry = this.store.get(sourcePath);
+    if (!entry) {
       throw new Error(`Source file not found: ${sourcePath}`);
     }
-    this.store.set(destPath, data);
+    this.store.set(destPath, entry);
     this.store.delete(sourcePath);
   }
 
@@ -86,12 +92,12 @@ export class InMemoryStorage implements IStorage {
    */
   async listWithMetadata(prefix: string): Promise<StorageMetadata[]> {
     const results: StorageMetadata[] = [];
-    for (const [path, data] of this.store.entries()) {
+    for (const [path, entry] of this.store.entries()) {
       if (path.startsWith(prefix)) {
         results.push({
           path,
-          size: data.byteLength,
-          lastModified: new Date().toISOString(),
+          size: entry.data.byteLength,
+          lastModified: entry.lastModified,
           contentType: 'application/octet-stream',
         });
       }

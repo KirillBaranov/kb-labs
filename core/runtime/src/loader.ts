@@ -151,35 +151,73 @@ function fillAdapterFallbacksAndRecord(
   const status = getAdapterStatusRegistry();
   const now = (): string => new Date().toISOString();
 
-  const failures: string[] = [];
+  const slots = Object.keys(ADAPTER_DEFAULTS) as AdapterSlot[];
 
-  for (const slot of Object.keys(ADAPTER_DEFAULTS) as AdapterSlot[]) {
+  // Pre-scan: fail-fast before installing any fallbacks if a configured adapter
+  // failed to load. This prevents the platform from starting in a half-initialised
+  // state where some slots have InMemory/NoOp fallbacks while others are missing.
+  const failures: string[] = [];
+  for (const slot of slots) {
+    const configuredPkg = getPrimaryAdapter(adapters[slot]);
+    if (configuredPkg && !container.hasAdapter(slot)) {
+      failures.push(`  - "${slot}" was configured as "${configuredPkg}" but no adapter was loaded.`);
+    }
+  }
+  if (failures.length > 0) {
+    const lines = [
+      'Platform startup aborted: configured adapters failed to load.',
+      ...failures,
+      '',
+      'A configured adapter must succeed at every stage (import, factory, validation).',
+      'Check kb.config.json, .kb/marketplace.lock, and that the listed packages are installed.',
+      'Run `kb platform provision --mode reconcile` (deploy) or `kb marketplace install <pkg>` (dev).',
+    ];
+    throw new Error(lines.join('\n'));
+  }
+
+  // Main pass: record real adapters and install InMemory/NoOp fallbacks.
+  for (const slot of slots) {
+    // Idempotency guard: skip slots already recorded (prevents double-call
+    // corruption when fillAdapterFallbacksAndRecord is called on both child
+    // and parent paths in the same process — the second call is a no-op).
+    if (status.get(slot)) {
+      continue;
+    }
+
     const desc = ADAPTER_DEFAULTS[slot];
     const configuredPkg = getPrimaryAdapter(adapters[slot]);
-    const hasReal = container.hasAdapter(slot);
+    const hasPresent = container.hasAdapter(slot);
 
-    // Branch 1: configured + loaded.
-    if (hasReal) {
-      const impl = container.getAdapter(slot) as object;
-      const implName = configuredPkg ?? Object.getPrototypeOf(impl)?.constructor?.name ?? 'unknown';
-      const row: AdapterSlotStatus = {
+    // Branch 1: configured + loaded — record as real.
+    if (hasPresent && configuredPkg) {
+      status.record({
         slot,
         mode: 'real',
-        implementation: implName,
+        implementation: configuredPkg,
         configuredPackage: configuredPkg,
         recordedAt: now(),
-      };
-      status.record(row);
+      });
       continue;
     }
 
-    // Branch 2: configured but not loaded — fail-fast.
-    if (configuredPkg) {
-      failures.push(`  - "${slot}" was configured as "${configuredPkg}" but no adapter was loaded.`);
+    // Branch 1b: adapter present but not in config — bootstrap fallback
+    // (e.g. ConsoleLogger seeded in the container constructor).
+    // Re-classify by fallback policy: do NOT record as 'real'.
+    if (hasPresent && !configuredPkg) {
+      const impl = container.getAdapter(slot) as object;
+      const implName = Object.getPrototypeOf(impl)?.constructor?.name ?? 'unknown';
+      const mode = desc.defaultFallback === 'inmemory' ? 'inmemory' : 'noop';
+      status.record({
+        slot,
+        mode,
+        implementation: implName,
+        reason: 'not-configured',
+        recordedAt: now(),
+      });
       continue;
     }
 
-    // Branch 3: not configured — apply per-slot fallback policy.
+    // Branch 3: not configured and not present — install fallback per policy.
     if (desc.defaultFallback === 'inmemory') {
       const factory = (inmemoryFactories as Record<string, (() => unknown) | undefined>)[slot];
       if (!factory) {
@@ -228,19 +266,6 @@ function fillAdapterFallbacksAndRecord(
       `Adapter "${slot}" using NoOp fallback — calls will throw AdapterUnavailableError`,
       { slot, reason: 'not-configured' },
     );
-  }
-
-  // Fail-fast if any configured slot didn't load.
-  if (failures.length > 0) {
-    const lines = [
-      'Platform startup aborted: configured adapters failed to load.',
-      ...failures,
-      '',
-      'A configured adapter must succeed at every stage (import, factory, validation).',
-      'Check kb.config.json, .kb/marketplace.lock, and that the listed packages are installed.',
-      'Run `kb platform provision --mode reconcile` (deploy) or `kb marketplace install <pkg>` (dev).',
-    ];
-    throw new Error(lines.join('\n'));
   }
 
   // Boot summary — one line, scannable in logs.

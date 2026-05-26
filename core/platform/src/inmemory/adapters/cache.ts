@@ -54,8 +54,13 @@ export class InMemoryCache implements ICache {
       return;
     }
 
-    // Simple glob pattern matching (supports * wildcard)
-    const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
+    // Escape regex metacharacters in the literal parts of the pattern, then
+    // convert the glob wildcard (*) to a regex wildcard (.*). Without escaping
+    // first, a pattern like "user.session:*" would compile to "user.session:.*"
+    // where the unescaped dot matches any character, silently deleting keys like
+    // "user_session:abc".
+    const escaped = pattern.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp('^' + escaped.replace(/\*/g, '.*') + '$');
     for (const key of this.store.keys()) {
       if (regex.test(key)) {
         this.store.delete(key);
@@ -118,12 +123,15 @@ export class InMemoryCache implements ICache {
   // ═══════════════════════════════════════════════════════════════════════
 
   async setIfNotExists<T>(key: string, value: T, ttl?: number): Promise<boolean> {
-    // Check if key already exists
-    if (this.store.has(key)) {
+    // Use get() instead of store.has() so that expired entries are not treated
+    // as live. store.has() returns true for a key even after its TTL has elapsed,
+    // while get() evicts the entry and returns null — maintaining atomicity
+    // semantics: "set only if the key does not currently resolve to a value".
+    const existing = await this.get<T>(key);
+    if (existing !== null) {
       return false;
     }
 
-    // Key doesn't exist, set it
     await this.set(key, value, ttl);
     return true;
   }
