@@ -54,6 +54,7 @@ import {
 } from '@kb-labs/core-platform/noop';
 
 import { HybridLogReader } from './services/hybrid-log-reader.js';
+import { getAdapterStatusFor } from './adapter-status.js';
 
 /**
  * Core adapter types (known at compile time).
@@ -231,6 +232,29 @@ export class PlatformContainer {
   hasAdapter(key: string): boolean;
   hasAdapter(key: string): boolean {
     return this.adapters.has(key);
+  }
+
+  /**
+   * Check whether a slot is backed by a REAL configured adapter (as
+   * opposed to an InMemory or NoOp fallback installed by the loader).
+   *
+   * Different from `hasAdapter()`, which after the new loader returns
+   * `true` for ALL slots — because every slot is filled by either a real
+   * adapter, an InMemory fallback, or a NoOp stub. `isReal()` is the
+   * version that callers want when they ask "did the operator configure
+   * this?" (e.g. resource broker decides whether to initialize against
+   * a real LLM).
+   *
+   * Backed by the global adapter-status registry. Returns `false` if
+   * the registry has no entry for the slot yet (i.e. before
+   * `initPlatform()` has run).
+   *
+   * @param slot - Core adapter slot name
+   */
+  isReal<K extends CoreAdapterName>(slot: K): boolean;
+  isReal(slot: string): boolean;
+  isReal(slot: string): boolean {
+    return getAdapterStatusFor(slot as never)?.mode === 'real';
   }
 
   /**

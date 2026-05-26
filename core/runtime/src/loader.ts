@@ -24,6 +24,7 @@ import { createDefaultExecutionPolicyLLM } from './wrappers/default-execution-po
 import { ResourceManager } from './core/resource-manager.js';
 import { JobScheduler } from './core/job-scheduler.js';
 import { CronManager } from './core/cron-manager.js';
+import { resetAdapterStatus } from './adapter-status.js';
 import { WorkflowEngine } from './core/workflow-engine.js';
 
 import { AnalyticsLLM } from '@kb-labs/core-platform';
@@ -1172,4 +1173,5 @@ export async function initPlatform(
  */
 export function resetPlatform(): void {
   platform.reset();
+  resetAdapterStatus();
 }
