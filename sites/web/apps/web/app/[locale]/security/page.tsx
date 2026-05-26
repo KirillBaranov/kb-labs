@@ -86,7 +86,7 @@ export default async function SecurityPage({ params }: Props) {
       <main>
 
         {/* ── Hero ── */}
-        <section className="relative overflow-hidden border-b border-line py-20 pb-16">
+        <section className="relative overflow-hidden border-b border-line py-10 pb-8 sm:py-20 sm:pb-16">
           <DotPattern className="absolute inset-0 z-0 opacity-40" />
           <Container className="relative z-10">
             <AnimateOnScroll>
@@ -108,7 +108,7 @@ export default async function SecurityPage({ params }: Props) {
         <section className="border-b border-line bg-surface/40 py-10">
           <Container>
             <AnimateOnScroll>
-              <div className="grid grid-cols-2 gap-8 lg:grid-cols-4">
+              <div className="grid grid-cols-2 gap-4 sm:gap-8 lg:grid-cols-4">
                 {secStats.map((s, i) => (
                   <div
                     key={i}
@@ -353,7 +353,7 @@ export default async function SecurityPage({ params }: Props) {
         <Section className="bg-bg">
           <Container>
             <AnimateOnScroll>
-              <div className="relative overflow-hidden rounded-3xl border border-line bg-bg px-8 py-16 text-center">
+              <div className="relative overflow-hidden rounded-3xl border border-line bg-bg px-5 py-10 sm:px-8 sm:py-16 text-center">
                 <BorderBeam />
                 <div className="relative z-10">
                   <Eyebrow className="mb-4">{t('page.secCtaEyebrow')}</Eyebrow>

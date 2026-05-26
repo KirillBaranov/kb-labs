@@ -83,7 +83,7 @@ export default async function EnterprisePage({ params }: Props) {
       <main>
 
         {/* ── Hero ── */}
-        <section className="relative overflow-hidden border-b border-line py-24 pb-20">
+        <section className="relative overflow-hidden border-b border-line py-12 pb-10 sm:py-24 sm:pb-20">
           <DotPattern className="absolute inset-0 z-0 opacity-40" />
           <Container className="relative z-10">
             <AnimateOnScroll>
@@ -206,7 +206,7 @@ export default async function EnterprisePage({ params }: Props) {
         <Section>
           <Container>
             <AnimateOnScroll>
-              <div className="relative overflow-hidden rounded-3xl border border-line bg-bg px-8 py-16 text-center">
+              <div className="relative overflow-hidden rounded-3xl border border-line bg-bg px-5 py-10 sm:px-8 sm:py-16 text-center">
                 <BorderBeam />
                 <div className="relative z-10">
                   <div className="mx-auto mb-5 flex size-12 items-center justify-center rounded-xl border border-line bg-surface text-muted">

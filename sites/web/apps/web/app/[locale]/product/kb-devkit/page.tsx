@@ -219,7 +219,7 @@ export default async function KbDevkitPage({ params }: Props) {
         <Section className="bg-bg">
           <Container>
             <AnimateOnScroll>
-              <div className="relative overflow-hidden rounded-3xl border border-line bg-bg px-8 py-16 text-center">
+              <div className="relative overflow-hidden rounded-3xl border border-line bg-bg px-5 py-10 sm:px-8 sm:py-16 text-center">
                 <BorderBeam />
                 <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[360px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/[0.06] blur-[90px]" />
                 <div className="relative z-10">
