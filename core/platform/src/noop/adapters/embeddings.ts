@@ -1,46 +1,59 @@
 /**
  * @module @kb-labs/core-platform/noop/adapters/embeddings
- * Mock embeddings implementation.
+ *
+ * NoOp `IEmbeddings` — throws `AdapterUnavailableError` on use.
+ *
+ * Test doubles with deterministic vectors live in
+ * `@kb-labs/shared-testing-platform/mocks` (MockEmbeddings).
  */
 
+import { AdapterUnavailableError } from '../../errors.js';
 import type { IEmbeddings } from '../../adapters/embeddings.js';
 
+const SLOT = 'embeddings';
+
+export class NoOpEmbeddings implements IEmbeddings {
+  readonly dimensions = 0;
+
+  async embed(_text: string): Promise<number[]> {
+    throw new AdapterUnavailableError(SLOT);
+  }
+
+  async embedBatch(_texts: string[]): Promise<number[][]> {
+    throw new AdapterUnavailableError(SLOT);
+  }
+
+  async getDimensions(): Promise<number> {
+    throw new AdapterUnavailableError(SLOT);
+  }
+}
+
 /**
- * Mock embeddings that generates deterministic vectors based on text hash.
- * Useful for testing without API calls.
+ * @deprecated Use `MockEmbeddings` from
+ *   `@kb-labs/shared-testing-platform/mocks` for tests, or configure a
+ *   real adapter for production. Kept here temporarily until consumers
+ *   migrate; this re-export will be removed.
  */
 export class MockEmbeddings implements IEmbeddings {
   readonly dimensions = 1536;
 
-  /**
-   * Simple hash function for deterministic embedding generation.
-   */
   private hash(text: string): number {
     let hash = 0;
     for (let i = 0; i < text.length; i++) {
-      const char = text.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash; // Convert to 32-bit integer
+      hash = ((hash << 5) - hash) + text.charCodeAt(i);
+      hash = hash & hash;
     }
     return hash;
   }
 
-  /**
-   * Generate a deterministic vector based on text.
-   */
   private generateVector(text: string): number[] {
     const seed = this.hash(text);
-    const vector: number[] = [];
-
+    const vec: number[] = [];
     for (let i = 0; i < this.dimensions; i++) {
-      // Use seeded pseudo-random to generate consistent vectors
-      const value = Math.sin(seed * (i + 1)) * 0.5;
-      vector.push(value);
+      vec.push(Math.sin(seed * (i + 1)) * 0.5);
     }
-
-    // Normalize the vector
-    const magnitude = Math.sqrt(vector.reduce((sum, v) => sum + v * v, 0));
-    return vector.map((v) => v / magnitude);
+    const mag = Math.sqrt(vec.reduce((s, v) => s + v * v, 0));
+    return vec.map((v) => v / mag);
   }
 
   async embed(text: string): Promise<number[]> {
@@ -48,13 +61,9 @@ export class MockEmbeddings implements IEmbeddings {
   }
 
   async embedBatch(texts: string[]): Promise<number[][]> {
-    return texts.map((text) => this.generateVector(text));
+    return texts.map((t) => this.generateVector(t));
   }
 
-  /**
-   * Get the dimensions of the embeddings.
-   * This method is needed for IPC/Unix Socket transport to access the dimensions property.
-   */
   async getDimensions(): Promise<number> {
     return this.dimensions;
   }

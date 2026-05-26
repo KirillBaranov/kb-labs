@@ -19,6 +19,23 @@
  */
 
 // ═══════════════════════════════════════════════════════════════════════════
+// ERRORS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export { AdapterUnavailableError } from './errors.js';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ADAPTER DEFAULTS — per-slot fallback policy (consulted by the loader)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export { ADAPTER_DEFAULTS } from './adapter-defaults.js';
+export type {
+  AdapterSlot,
+  AdapterDefault,
+  DefaultFallbackMode,
+} from './adapter-defaults.js';
+
+// ═══════════════════════════════════════════════════════════════════════════
 // ADAPTER INTERFACES (replaceable implementations via kb.config.json)
 // ═══════════════════════════════════════════════════════════════════════════
 
