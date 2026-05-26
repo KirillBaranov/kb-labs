@@ -18,6 +18,10 @@ const withMDX = createMDX({
 const nextConfig = {
   output: 'standalone',
   pageExtensions: ['ts', 'tsx', 'mdx'],
+  images: {
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 31536000,
+  },
   transpilePackages: [
     '@kb-labs/web-i18n',
     '@kb-labs/web-data-source',

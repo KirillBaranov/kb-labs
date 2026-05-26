@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import NextImage from 'next/image';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
@@ -77,6 +78,7 @@ export function ScreenshotLightbox({ src, alt, url, className, loading = 'lazy' 
             <div className="w-[46px]" />
           </div>
         )}
+        {/* Use regular img in lightbox — it's a full-res overlay, no optimization needed */}
         <img
           src={src}
           alt={alt}
@@ -90,19 +92,23 @@ export function ScreenshotLightbox({ src, alt, url, className, loading = 'lazy' 
 
   return (
     <>
-      {/* Thumbnail */}
+      {/* Thumbnail — next/image for automatic WebP/AVIF + proper srcset */}
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="group block w-full cursor-zoom-in text-left"
+        className="group relative block w-full cursor-zoom-in text-left"
         aria-label={t('openScreenshot', { alt })}
       >
-        <img
+        <NextImage
           src={src}
           alt={alt}
+          width={1440}
+          height={900}
+          className={`w-full h-auto transition-opacity duration-200 group-hover:opacity-90 ${className ?? ''}`}
           loading={loading}
-          draggable={false}
-          className={`w-full transition-opacity duration-200 group-hover:opacity-90 ${className ?? ''}`}
+          priority={loading === 'eager'}
+          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 1140px"
+          quality={85}
         />
       </button>
 
