@@ -16,14 +16,14 @@
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
-  createSqliteDocumentDatabase,
-  createSqliteKVStore,
-  SqliteDocumentDatabase,
-  SqliteKVStore,
-} from '@kb-labs/adapters-sqlite';
+  createInMemoryDocumentDatabase,
+  createInMemoryKVStore,
+  InMemoryDocumentDatabase,
+  InMemoryKVStore,
+} from '@kb-labs/core-platform/adapters/testing';
 import { PermissionError } from '@kb-labs/plugin-contracts';
-import type { PermissionSpec, BaseDocument } from '@kb-labs/plugin-contracts';
-import type { IDocumentTransaction } from '@kb-labs/core-platform/adapters';
+import type { PermissionSpec } from '@kb-labs/plugin-contracts';
+import type { IDocumentTransaction, BaseDocument } from '@kb-labs/core-platform/adapters';
 import {
   wrapDocumentDatabase,
   wrapKVStore,
@@ -43,10 +43,10 @@ const kvPerms = (): PermissionSpec =>
   ({ platform: { database: { kvStore: {} } } });
 
 describe('wrapDocumentDatabase', () => {
-  let raw: SqliteDocumentDatabase;
+  let raw: InMemoryDocumentDatabase;
 
   beforeEach(async () => {
-    raw = createSqliteDocumentDatabase({ filename: ':memory:', ttlSweepIntervalMs: 0 });
+    raw = createInMemoryDocumentDatabase();
     await raw.ensureCollection('workflow__runs');
     await raw.ensureCollection('auth__users');
   });
@@ -311,10 +311,10 @@ describe('wrapDocumentDatabase', () => {
 });
 
 describe('wrapKVStore', () => {
-  let raw: SqliteKVStore;
+  let raw: InMemoryKVStore;
 
   beforeEach(() => {
-    raw = createSqliteKVStore({ filename: ':memory:', ttlSweepIntervalMs: 0 });
+    raw = createInMemoryKVStore();
   });
 
   afterEach(async () => {

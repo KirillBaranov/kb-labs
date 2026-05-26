@@ -187,50 +187,50 @@ export function wrapDocumentDatabase(
   // `PermissionError` from resolve*() is converted into a rejected Promise,
   // matching the contract callers rely on (`await db.find(...)`).
   const wrap: IDocumentDatabase = {
-    async find<T extends BaseDocument, P = T>(c, f, o?: FindOptions & ProjectOpts<T, P> & SignalOpts) {
-      return raw.find<T, P>(resolveRead(c), f as DocumentFilter<T>, o);
+    async find<T extends BaseDocument, P = T>(c: string, f: DocumentFilter<T>, o?: FindOptions & ProjectOpts<T, P> & SignalOpts): Promise<P[]> {
+      return raw.find<T, P>(resolveRead(c), f, o);
     },
     // findStream stays a generator — the resolve check happens up-front but
     // any sync throw inside the generator body is delivered on the first
     // `.next()` call (i.e. when the consumer starts iterating), which is
     // what `for await` callers expect.
     findStream<T extends BaseDocument, P = T>(
-      c,
-      f,
+      c: string,
+      f: DocumentFilter<T>,
       o?: FindOptions & ProjectOpts<T, P> & SignalOpts & { batchSize?: number },
-    ) {
+    ): AsyncIterable<P> {
       const resolved = resolveRead(c);
-      return raw.findStream<T, P>(resolved, f as DocumentFilter<T>, o);
+      return raw.findStream<T, P>(resolved, f, o);
     },
-    async findById<T extends BaseDocument>(c, id, o?: SignalOpts) {
+    async findById<T extends BaseDocument>(c: string, id: string, o?: SignalOpts): Promise<T | null> {
       return raw.findById<T>(resolveRead(c), id, o);
     },
-    async count<T extends BaseDocument>(c, f, o?: SignalOpts) {
-      return raw.count<T>(resolveRead(c), f as DocumentFilter<T>, o);
+    async count<T extends BaseDocument>(c: string, f: DocumentFilter<T>, o?: SignalOpts): Promise<number> {
+      return raw.count<T>(resolveRead(c), f, o);
     },
 
-    async insertOne<T extends BaseDocument>(c, doc, o?: SignalOpts) {
+    async insertOne<T extends BaseDocument>(c: string, doc: Omit<T, 'id' | 'createdAt' | 'updatedAt'>, o?: SignalOpts): Promise<T> {
       return raw.insertOne<T>(resolveWrite(c), doc, o);
     },
-    async insertMany<T extends BaseDocument>(c, docs, o?: SignalOpts) {
+    async insertMany<T extends BaseDocument>(c: string, docs: Array<Omit<T, 'id' | 'createdAt' | 'updatedAt'>>, o?: SignalOpts): Promise<T[]> {
       return raw.insertMany<T>(resolveWrite(c), docs, o);
     },
-    async updateOne<T extends BaseDocument>(c, f, u, o?: SignalOpts & { upsert?: boolean }) {
-      return raw.updateOne<T>(resolveWrite(c), f as DocumentFilter<T>, u as DocumentUpdate<T>, o);
+    async updateOne<T extends BaseDocument>(c: string, f: DocumentFilter<T>, u: DocumentUpdate<T>, o?: SignalOpts & { upsert?: boolean }): Promise<T | null> {
+      return raw.updateOne<T>(resolveWrite(c), f, u, o);
     },
-    async updateMany<T extends BaseDocument>(c, f, u, o?: SignalOpts) {
-      return raw.updateMany<T>(resolveWrite(c), f as DocumentFilter<T>, u as DocumentUpdate<T>, o);
+    async updateMany<T extends BaseDocument>(c: string, f: DocumentFilter<T>, u: DocumentUpdate<T>, o?: SignalOpts): Promise<number> {
+      return raw.updateMany<T>(resolveWrite(c), f, u, o);
     },
-    async updateById<T extends BaseDocument>(c, id, u, o?: SignalOpts) {
-      return raw.updateById<T>(resolveWrite(c), id, u as DocumentUpdate<T>, o);
+    async updateById<T extends BaseDocument>(c: string, id: string, u: DocumentUpdate<T>, o?: SignalOpts): Promise<T | null> {
+      return raw.updateById<T>(resolveWrite(c), id, u, o);
     },
-    async deleteMany<T extends BaseDocument>(c, f, o?: SignalOpts) {
-      return raw.deleteMany<T>(resolveWrite(c), f as DocumentFilter<T>, o);
+    async deleteMany<T extends BaseDocument>(c: string, f: DocumentFilter<T>, o?: SignalOpts): Promise<number> {
+      return raw.deleteMany<T>(resolveWrite(c), f, o);
     },
-    async deleteById(c, id, o?: SignalOpts) {
+    async deleteById(c: string, id: string, o?: SignalOpts): Promise<boolean> {
       return raw.deleteById(resolveWrite(c), id, o);
     },
-    async bulkWrite<T extends BaseDocument>(c, ops: Array<BulkOp<T>>, o?: SignalOpts): Promise<BulkResult> {
+    async bulkWrite<T extends BaseDocument>(c: string, ops: Array<BulkOp<T>>, o?: SignalOpts): Promise<BulkResult> {
       // Every op in the batch is implicitly write on the same collection.
       return raw.bulkWrite<T>(resolveWrite(c), ops, o);
     },
@@ -266,34 +266,34 @@ function makeGovernedTx(
   const resolveWrite = (c: string): string => resolveCollection(pluginId, acl, allowDDL, c, 'write');
 
   return {
-    find<T extends BaseDocument, P = T>(c, f, o?: FindOptions & ProjectOpts<T, P> & SignalOpts) {
-      return raw.find<T, P>(resolveRead(c), f as DocumentFilter<T>, o);
+    find<T extends BaseDocument, P = T>(c: string, f: DocumentFilter<T>, o?: FindOptions & ProjectOpts<T, P> & SignalOpts): Promise<P[]> {
+      return raw.find<T, P>(resolveRead(c), f, o);
     },
-    findById<T extends BaseDocument>(c, id, o?: SignalOpts) {
+    findById<T extends BaseDocument>(c: string, id: string, o?: SignalOpts): Promise<T | null> {
       return raw.findById<T>(resolveRead(c), id, o);
     },
-    count<T extends BaseDocument>(c, f, o?: SignalOpts) {
-      return raw.count<T>(resolveRead(c), f as DocumentFilter<T>, o);
+    count<T extends BaseDocument>(c: string, f: DocumentFilter<T>, o?: SignalOpts): Promise<number> {
+      return raw.count<T>(resolveRead(c), f, o);
     },
-    insertOne<T extends BaseDocument>(c, doc, o?: SignalOpts) {
+    insertOne<T extends BaseDocument>(c: string, doc: Omit<T, 'id' | 'createdAt' | 'updatedAt'>, o?: SignalOpts): Promise<T> {
       return raw.insertOne<T>(resolveWrite(c), doc, o);
     },
-    insertMany<T extends BaseDocument>(c, docs, o?: SignalOpts) {
+    insertMany<T extends BaseDocument>(c: string, docs: Array<Omit<T, 'id' | 'createdAt' | 'updatedAt'>>, o?: SignalOpts): Promise<T[]> {
       return raw.insertMany<T>(resolveWrite(c), docs, o);
     },
-    updateOne<T extends BaseDocument>(c, f, u, o?: SignalOpts & { upsert?: boolean }) {
-      return raw.updateOne<T>(resolveWrite(c), f as DocumentFilter<T>, u as DocumentUpdate<T>, o);
+    updateOne<T extends BaseDocument>(c: string, f: DocumentFilter<T>, u: DocumentUpdate<T>, o?: SignalOpts & { upsert?: boolean }): Promise<T | null> {
+      return raw.updateOne<T>(resolveWrite(c), f, u, o);
     },
-    updateMany<T extends BaseDocument>(c, f, u, o?: SignalOpts) {
-      return raw.updateMany<T>(resolveWrite(c), f as DocumentFilter<T>, u as DocumentUpdate<T>, o);
+    updateMany<T extends BaseDocument>(c: string, f: DocumentFilter<T>, u: DocumentUpdate<T>, o?: SignalOpts): Promise<number> {
+      return raw.updateMany<T>(resolveWrite(c), f, u, o);
     },
-    updateById<T extends BaseDocument>(c, id, u, o?: SignalOpts) {
-      return raw.updateById<T>(resolveWrite(c), id, u as DocumentUpdate<T>, o);
+    updateById<T extends BaseDocument>(c: string, id: string, u: DocumentUpdate<T>, o?: SignalOpts): Promise<T | null> {
+      return raw.updateById<T>(resolveWrite(c), id, u, o);
     },
-    deleteMany<T extends BaseDocument>(c, f, o?: SignalOpts) {
-      return raw.deleteMany<T>(resolveWrite(c), f as DocumentFilter<T>, o);
+    deleteMany<T extends BaseDocument>(c: string, f: DocumentFilter<T>, o?: SignalOpts): Promise<number> {
+      return raw.deleteMany<T>(resolveWrite(c), f, o);
     },
-    deleteById(c, id, o?: SignalOpts) {
+    deleteById(c: string, id: string, o?: SignalOpts): Promise<boolean> {
       return raw.deleteById(resolveWrite(c), id, o);
     },
   };

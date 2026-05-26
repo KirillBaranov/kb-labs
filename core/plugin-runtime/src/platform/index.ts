@@ -14,3 +14,9 @@ export {
 } from './pipeline-slots.js';
 export type { SlotName, SlotDef, SystemStageName, AdapterMiddlewareDecl } from './pipeline-slots.js';
 export type { AdapterMiddlewareFn, MiddlewareContext, AdapterLifecycle, GovernanceDef, IPCDef, AdapterDescriptor } from './middleware.js';
+export {
+  wrapDocumentDatabase,
+  wrapKVStore,
+  validateDatabaseGrants,
+} from './database-governance.js';
+export type { ManifestForGrantValidation } from './database-governance.js';

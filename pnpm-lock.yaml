@@ -636,6 +636,12 @@ importers:
       '@kb-labs/devkit':
         specifier: workspace:*
         version: link:../../infra/devkit
+      '@kb-labs/plugin-contracts':
+        specifier: workspace:*
+        version: link:../../core/plugin-contracts
+      '@kb-labs/plugin-runtime':
+        specifier: workspace:*
+        version: link:../../core/plugin-runtime
       '@kb-labs/sdk':
         specifier: workspace:*
         version: link:../../sdk/sdk
@@ -1499,9 +1505,6 @@ importers:
         specifier: workspace:*
         version: link:../../shared/cli-ui
     devDependencies:
-      '@kb-labs/adapters-sqlite':
-        specifier: workspace:*
-        version: link:../../adapters/sqlite
       '@kb-labs/devkit':
         specifier: workspace:*
         version: link:../../infra/devkit

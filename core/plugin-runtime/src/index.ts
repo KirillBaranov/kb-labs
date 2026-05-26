@@ -73,6 +73,12 @@ export { resolveAdapterMiddlewares } from './platform/middleware-loader.js';
 export type { RawMiddlewareDecl } from './platform/middleware-loader.js';
 export type { LoadedMiddleware, PlatformConfig } from './platform/pipeline.js';
 export { assemblePlatform } from './platform/pipeline.js';
+export {
+  wrapDocumentDatabase,
+  wrapKVStore,
+  validateDatabaseGrants,
+} from './platform/database-governance.js';
+export type { ManifestForGrantValidation } from './platform/database-governance.js';
 
 // Host Wrappers
 export {
