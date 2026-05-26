@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { DocsHeader } from './DocsHeader';
+import { DocsBodyWrapper } from './DocsBodyWrapper';
 import { DocsFeedback } from './DocsFeedback';
 import { DocsSidebar } from './DocsSidebar';
 import { DocsToc } from './DocsToc';
@@ -91,53 +92,53 @@ export async function DocsLayout({ children, locale, toc, slug, isFallback, page
   const editLocale = isFallback ? 'en' : locale;
   const editUrl = `https://github.com/KirillBaranov/kb-labs/blob/main/sites/web/apps/docs/content/${editLocale}/${slug.join('/')}.mdx`;
 
+  const sidebarSlot = <DocsSidebar nav={nav} />;
+  const tocSlot = <DocsToc items={toc} />;
+  const contentSlot = (
+    <>
+      {crumb && (
+        <nav className={s.breadcrumb} aria-label="Breadcrumb">
+          <Link href={`/${locale}/quick-start`} className={s.breadcrumbLink}>
+            KB Labs
+          </Link>
+          <span className={s.breadcrumbSep}>/</span>
+          {renderBreadcrumb(crumb)}
+        </nav>
+      )}
+      <article className={`prose ${s.article}`}>
+        {isFallback && locale !== 'en' && <TranslationBanner slug={slug} />}
+        {pageTitle && (
+          <div className={s.pageHeader}>
+            <h1>{pageTitle}</h1>
+            {pageUpdatedAt && (
+              <p className={s.pageUpdatedAt}>{t('lastUpdated')} {formatDate(pageUpdatedAt, locale)}</p>
+            )}
+            <hr className={s.pageHeaderDivider} />
+            {pageDescription && <p className={s.pageDescription}>{pageDescription}</p>}
+          </div>
+        )}
+        {children}
+      </article>
+      <footer className={s.pageFooter}>
+        <a
+          href={editUrl}
+          className={s.editLink}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {t('editOnGithub')}
+        </a>
+        <DocsFeedback />
+      </footer>
+    </>
+  );
+
   return (
     <div className={s.root}>
       <DocsHeader locale={locale} slug={slug} />
-      <div className={s.body}>
-        <aside className={s.sidebar}>
-          <DocsSidebar nav={nav} />
-        </aside>
-        <main className={s.content}>
-          {crumb && (
-            <nav className={s.breadcrumb} aria-label="Breadcrumb">
-              <Link href={`/${locale}/quick-start`} className={s.breadcrumbLink}>
-                KB Labs
-              </Link>
-              <span className={s.breadcrumbSep}>/</span>
-              {renderBreadcrumb(crumb)}
-            </nav>
-          )}
-          <article className={`prose ${s.article}`}>
-            {isFallback && locale !== 'en' && <TranslationBanner slug={slug} />}
-            {pageTitle && (
-              <div className={s.pageHeader}>
-                <h1>{pageTitle}</h1>
-                {pageUpdatedAt && (
-                  <p className={s.pageUpdatedAt}>{t('lastUpdated')} {formatDate(pageUpdatedAt, locale)}</p>
-                )}
-                <hr className={s.pageHeaderDivider} />
-                {pageDescription && <p className={s.pageDescription}>{pageDescription}</p>}
-              </div>
-            )}
-            {children}
-          </article>
-          <footer className={s.pageFooter}>
-            <a
-              href={editUrl}
-              className={s.editLink}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {t('editOnGithub')}
-            </a>
-            <DocsFeedback />
-          </footer>
-        </main>
-        <aside className={s.toc}>
-          <DocsToc items={toc} />
-        </aside>
-      </div>
+      <DocsBodyWrapper sidebar={sidebarSlot} toc={tocSlot}>
+        {contentSlot}
+      </DocsBodyWrapper>
     </div>
   );
 }
