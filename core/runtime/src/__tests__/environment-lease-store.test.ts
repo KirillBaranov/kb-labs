@@ -179,7 +179,12 @@ class InMemoryDocumentDatabase implements IDocumentDatabase {
 
   // The rest of IDocumentDatabase — unused by EnvironmentLeaseStore but
   // required to satisfy the interface. They throw so misuse surfaces loud.
-  async *findStream<T extends BaseDocument>(_c: string, _f: DocumentFilter<T>): AsyncIterable<T> {
+  // eslint-disable-next-line require-yield
+  async *findStream<T extends BaseDocument, P = T>(
+    _c: string,
+    _f: DocumentFilter<T>,
+    _options?: FindOptions & ProjectOpts<T, P> & SignalOpts & { batchSize?: number },
+  ): AsyncIterable<P> {
     throw new Error('findStream not implemented in test fake');
   }
   async bulkWrite<T extends BaseDocument>(_c: string, _ops: Array<BulkOp<T>>): Promise<BulkResult> {

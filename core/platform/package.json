@@ -79,6 +79,12 @@
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
   },
+  "peerDependencies": {
+    "vitest": "^3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vitest": { "optional": true }
+  },
   "keywords": [
     "abstractions",
     "hexagonal-architecture",

@@ -158,8 +158,8 @@ function createPlatformServices(platformContainer: PlatformContainer): PlatformS
     analytics: platformContainer.analytics,
     eventBus: platformContainer.eventBus,
     invoke: platformContainer.invoke,
-    sqlDatabase: platformContainer.sqlDatabase,
     documentDatabase: platformContainer.documentDatabase,
+    kvStore: platformContainer.kvStore,
     logs: platformContainer.logs,
   };
 }

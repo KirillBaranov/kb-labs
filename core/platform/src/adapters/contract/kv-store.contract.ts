@@ -217,7 +217,7 @@ export function runKVStoreContract(factory: KVContractFactory): void {
       skipIf('keys become invisible after TTL', async () => {
         await kv.set('temp', 'v', { ttlMs: 50 });
         expect(await kv.get('temp')).toBe('v');
-        await new Promise((r) => setTimeout(r, 120));
+        await new Promise((r) => { setTimeout(r, 120); });
         expect(await kv.get('temp')).toBeNull();
         expect(await kv.exists('temp')).toBe(false);
       });

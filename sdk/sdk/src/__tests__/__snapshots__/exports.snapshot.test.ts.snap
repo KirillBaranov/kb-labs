@@ -75,10 +75,10 @@ exports[`SDK Exports Snapshot > Test Context Structure > should match platform s
   "embeddings",
   "eventBus",
   "invoke",
+  "kvStore",
   "llm",
   "logger",
   "logs",
-  "sqlDatabase",
   "storage",
   "vectorStore",
 ]

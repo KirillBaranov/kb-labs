@@ -178,7 +178,7 @@ export function runDocumentDatabaseContract(factory: ContractFactory): void {
           active: true,
         });
         const originalUpdatedAt = inserted.updatedAt;
-        await new Promise((r) => setTimeout(r, 5));
+        await new Promise((r) => { setTimeout(r, 5); });
 
         const updated = await db.updateById<User>('users', inserted.id, {
           $set: { name: 'New', age: 26 },
@@ -579,7 +579,7 @@ export function runDocumentDatabaseContract(factory: ContractFactory): void {
         await db.insertOne<Session>('sessions', { expiresAt: future, userId: 'live-user' });
 
         // TTL sweepers are best-effort — give the driver a brief moment.
-        await new Promise((r) => setTimeout(r, 50));
+        await new Promise((r) => { setTimeout(r, 50); });
 
         const visible = await db.find<Session>('sessions', {});
         const userIds = visible.map((s: Session) => s.userId);
