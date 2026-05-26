@@ -14,58 +14,58 @@ tags:
   - infrastructure
 ---
 
-Open-source product. The README promises "deploy in 10 minutes". A user clones, installs, gets a 502 a minute later — because the maintainers run an nginx in front of the service with a specific `proxy_pass` and forgot to mention it. Or worse: the repo contains the maintainer's actual prod config with a hard-coded IP, and one day an API key lands in a commit.
+Open-source product. The README says "deploy in 10 minutes". Someone clones it, runs it, gets a 502 — because the maintainers run nginx with a specific `proxy_pass` in front and forgot to mention it.
 
-Two different failure modes, one symptom: **trying to do two different jobs with one repo**.
+Or worse: an API key ended up in a public commit because the prod config lived in the same repo.
 
-## The shallow read
+Same bug, different shape: one repo trying to do two different jobs.
 
-"We need to separate the example from the real config." So `examples/` folders appear. `docs/deployment-example/`. Notes in the README.
+## An examples/ folder doesn't help
 
-Almost everyone does this. And it **doesn't hold up**: the example lives apart from reality and drifts within a month. Nobody updates `examples/nginx.conf` when they change the real `nginx.conf` on the VPS. A year in, the example is broken, and new users get 502s.
+The first instinct is always the same: "let's separate the example from the real thing." So `examples/` folders appear. `docs/deployment-example/`. Notes in the README.
 
-## The deeper read
+Doesn't work. Within a month the example drifts from reality. Nobody updates `examples/nginx.conf` when they're fixing the real config at 3am. A year later the example is broken and new users get 502s again.
 
-These are **two different artifacts** with different properties.
+Not because maintainers are lazy. Two things with different lifecycles just can't coexist cleanly in one place.
 
-**Reference deployment** is part of the product. Generic. Placeholders instead of domains and ports. Updated when the service model changes (new config field, new default port). Versioned with the product. Contributors see it, review it, test it. It's a **public artifact**.
+## These are two different things
 
-**Production deployment** is your team's operational reality. Specific domains, specific certs, IP addresses, habits. Updated when convenient. Contains secrets in cleartext or encrypted at rest. It's a **private artifact**.
+The deployment template that users copy — that's part of the product. It's generic, with `{{ DOMAIN }}` and `${PORT}` instead of real values. It changes when the product changes. Contributors see it, CI validates it. It's public.
 
-They have **different lifecycles**, different read/write rules, different audiences. Squeezing them into one repo is like keeping the production database and a SQL tutorial in the same schema. You'll break either the lesson or the prod.
+Your actual deployment is yours. Real domains, certificates, IPs, secrets. Changes when you need it to. Nobody else needs to know it exists. It's private.
 
-## What doesn't work
+Mixing them in one repo is like keeping your production database and a SQL tutorial in the same schema. You'll break either the lesson or the prod.
 
-A few approaches look reasonable, and I'd like to save you the hour of thinking through them:
+## Three approaches that don't work
 
-**One public repo + `.gitignore` on the private files.** One typo in gitignore and a secret is in public git history forever. `git clean -fdx` wipes the infra. `find` and `grep` keep walking into it. Psychologically — it's a landmine you set under yourself.
+**`.gitignore` on the private files.** One typo and a secret is in public git history forever. `git clean -fdx` wipes the infra. A landmine you set under yourself.
 
-**Submodule pointing at a private repo.** Leaks the existence of the private repo via `.gitmodules`. Contributors fail to clone (you won't give them SSH access). And submodules are a maintenance burden: pinning, drift, "forgot to update".
+**Submodule pointing at a private repo.** Leaks the private repo's existence through `.gitmodules`. Contributors can't clone. Submodules are also a maintenance burden: pinning, drift.
 
-**"Just docs."** Drifts from reality within 2–3 deploys. Nobody opens a docs PR when fixing prod at 3am.
+**"We'll document it."** Drifts from reality within 2–3 deploys. Nobody opens a docs PR at 3am.
 
 ## What works
 
-**Two independent repositories.** No code-level coupling.
+Two separate repos. No code-level coupling.
 
-- **Public**: the product's monorepo. Contains `templates/nginx/`, `templates/deploy/`, `templates/plugin/`. Templates with `{{ DOMAIN }}`, `${PORT}`, README explaining usage. It's part of the product — contributors see it, CI builds it, changes go through review.
+**Public** — the product's monorepo. Has `templates/nginx/`, `templates/deploy/` with placeholders and a README. Everyone sees it, it goes through review, it versions with the product.
 
-- **Private**: a separate repo with the actual infra. Real nginx config with real domains, secrets (or pointers to your secret manager), CI/CD that ships to your VPS. No reference to it from the public repo — users shouldn't even know it exists.
+**Private** — your actual infra. Real domains, certificates, secrets, CI/CD for your VPS. No reference to it from the public repo — users don't need to know it exists.
 
-The link between them lives **only in the private repo's docs**: "deploys `github.com/<org>/<product>`, images from `ghcr.io/<org>/*`, derived from `templates/nginx/`". The public repo knows nothing about the private one.
+The only link is in the private repo's docs: "deploys `github.com/<org>/<product>`, based on `templates/nginx/`". The public repo knows nothing about the private one.
 
-## When this pays off
+## When it pays off
 
-This setup is more expensive than the one-repo version up front — two places to commit, two workflows to maintain, two READMEs to keep honest. It pays off in three situations:
+This setup costs more up front: two places to commit, two workflows. It pays off in three situations.
 
-1. **Open source.** Any repo where the code sees the world. Skipping this is just a question of when, not if, something leaks.
-2. **The first customer.** When someone deploys your product themselves, it becomes critical to have a clean template, separated from your habits. Otherwise the customer copies your `kblabs.ru` into their config and then has to debug why it failed.
-3. **The team grows.** A junior can't have SSH to prod, but they can absolutely PR `templates/nginx/`. Splitting the artifact lets you delegate safely.
+**Open source.** If the code is public — it's not "if something leaks", it's "when".
 
-## The principle
+**The first customer.** When someone starts deploying your product themselves, they need a clean template without your specific domains baked in. Otherwise they copy your `kblabs.ru.conf` and spend time figuring out why it failed.
 
-> Your production deployment is **not a reference deployment**. Splitting them across two repos isn't duplication — it's **acknowledging two different artifacts** with different rules.
+**The team grows.** You can't give a junior SSH to prod, but you can give them a PR to `templates/nginx/`. The separation makes delegation safe.
 
-When I recently set up nginx + preview environments for kblabs.ru, I was tempted to put it all in the monorepo under `infra/`. I didn't, for exactly this reason. We now have `templates/nginx/` (public template, generic, for customers) and `kb-labs-infra` (private, my prod, with all deploy secrets). It'll pay off the first time a customer tries to self-host — they'll have something clean to copy without having to decode my specific `kblabs.ru.conf`.
+---
 
-Don't make one repo do two jobs.
+When I set up nginx for kblabs.ru, I was tempted to put it all under `infra/` in the monorepo. Didn't. Now we have `templates/nginx/` (public, generic) and `kb-labs-infra` (private, with the real secrets). When the first customer tries to self-host — they'll have something clean to copy, without having to decode my specific config.
+
+One repo shouldn't do two jobs.
