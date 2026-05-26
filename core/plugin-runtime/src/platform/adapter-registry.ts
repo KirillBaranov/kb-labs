@@ -48,6 +48,7 @@ import {
   EventBusProxy,
 } from '@kb-labs/core-ipc';
 import type { AdapterDescriptor, AdapterMiddlewareFn } from './middleware.js';
+import { wrapDocumentDatabase, wrapKVStore } from './database-governance.js';
 
 // ─── Shared helpers ─────────────────────────────────────────────────────────
 
@@ -354,12 +355,20 @@ export const ADAPTER_REGISTRY = {
   },
 
   documentDatabase: {
-    governance: { strategy: 'pass-through' },
+    governance: {
+      strategy: 'wrap',
+      fn: (adapter, ctx) =>
+        wrapDocumentDatabase(adapter, ctx.pluginId, ctx.permissions),
+    },
     ipc: { strategy: 'proxy', create: (t) => new DocumentDatabaseProxy(t) },
   },
 
   kvStore: {
-    governance: { strategy: 'pass-through' },
+    governance: {
+      strategy: 'wrap',
+      fn: (adapter, ctx) =>
+        wrapKVStore(adapter, ctx.pluginId, ctx.permissions),
+    },
     ipc: { strategy: 'proxy', create: (t) => new KVStoreProxy(t) },
   },
 

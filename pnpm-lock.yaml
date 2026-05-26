@@ -1499,6 +1499,9 @@ importers:
         specifier: workspace:*
         version: link:../../shared/cli-ui
     devDependencies:
+      '@kb-labs/adapters-sqlite':
+        specifier: workspace:*
+        version: link:../../adapters/sqlite
       '@kb-labs/devkit':
         specifier: workspace:*
         version: link:../../infra/devkit
