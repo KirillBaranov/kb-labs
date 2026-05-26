@@ -70,7 +70,9 @@ export type AuthState = LoadingState | AuthenticatedState | AnonymousState;
 
 // ── Context ───────────────────────────────────────────────────────────────────
 
-const AuthContext = createContext<AuthState | null>(null);
+// Exported so guards and tests can inject a mock auth state without spinning
+// up the full AuthProvider (which requires a real fetch environment).
+export const AuthContext = createContext<AuthState | null>(null);
 
 // ── Provider ──────────────────────────────────────────────────────────────────
 

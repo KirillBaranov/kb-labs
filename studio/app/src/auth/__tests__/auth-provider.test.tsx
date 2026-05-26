@@ -73,7 +73,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  cleanup();
+  // cleanup() is called globally by vitest-setup.ts
   vi.unstubAllGlobals();
 });
 
