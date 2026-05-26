@@ -35,23 +35,12 @@ import type { RunExecutor } from './run-executor.js';
 import type { RunOrchestrator } from './run-orchestrator.js';
 
 import {
-  NoOpAnalytics,
-  MemoryVectorStore,
-  MockLLM,
-  MockEmbeddings,
-  MemoryCache,
-  NoOpConfig,
-  MemoryStorage,
-  ConsoleLogger,
-  MemoryEventBus,
-  NoOpInvoke,
-  NoOpDocumentDatabase,
-  NoOpKVStore,
   NoOpWorkflowEngine,
   NoOpJobScheduler,
   NoOpCronManager,
   NoOpResourceManager,
 } from '@kb-labs/core-platform/noop';
+import { ConsoleLogger } from '@kb-labs/core-platform/inmemory';
 
 import { HybridLogReader } from './services/hybrid-log-reader.js';
 import { getAdapterStatusFor } from './adapter-status.js';
@@ -153,13 +142,16 @@ export class PlatformContainer {
   private lifecycleHooks = new Map<string, PlatformLifecycleHooks>();
   private initialized = false;
 
-  // Fallback singletons — created once so multiple callers share the same instance.
-  // Without this, each platform.cache access would return a different MemoryCache object,
-  // causing data written in one call to be invisible to another (e.g. HTTP vs WS handlers).
-  private _fallbackCache?: ICache;
-  private _fallbackStorage?: IStorage;
-  private _fallbackLogger?: ILogger;
-  private _fallbackEventBus?: IEventBus;
+  constructor() {
+    // Bootstrap logger: callers (including `initPlatform()` itself) start
+    // logging from the very first instruction, well before the loader has
+    // had a chance to install a real logger or run its fallback pass.
+    // Seeding ConsoleLogger here keeps `platform.logger` non-undefined at
+    // all times. Loader's fallback pass either records this default as
+    // `mode: 'inmemory'` or replaces it with a configured logger and
+    // records `mode: 'real'`.
+    this.adapters.set('logger', new ConsoleLogger());
+  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // ADAPTERS (replaceable via kb.config.json)
@@ -447,67 +439,77 @@ export class PlatformContainer {
     return services;
   }
 
-  /** Analytics adapter (fallback: NoOpAnalytics) */
+  // ─── Adapter getters ────────────────────────────────────────────────────
+  // After `initPlatform()` every slot in ADAPTER_DEFAULTS is guaranteed to
+  // be filled — either by a real adapter loaded from kb.config.json, by an
+  // InMemory honest fallback, or by a NoOp stub. The loader's
+  // `fillAdapterFallbacksAndRecord()` pass enforces this. Getters therefore
+  // do not perform their own fallback synthesis: that would create a
+  // second source of truth and let stale instances leak across callers.
+  // What's actually wired into each slot is queryable via
+  // `getAdapterStatus()` from `@kb-labs/core-runtime`.
+
+  /** Analytics adapter. */
   get analytics(): IAnalytics {
-    return (this.adapters.get('analytics') as IAnalytics) ?? new NoOpAnalytics();
+    return this.adapters.get('analytics') as IAnalytics;
   }
 
-  /** Vector store adapter (fallback: MemoryVectorStore) */
+  /** Vector store adapter. */
   get vectorStore(): IVectorStore {
-    return (this.adapters.get('vectorStore') as IVectorStore) ?? new MemoryVectorStore();
+    return this.adapters.get('vectorStore') as IVectorStore;
   }
 
-  /** LLM adapter (fallback: MockLLM) */
+  /** LLM adapter. */
   get llm(): ILLM {
-    return (this.adapters.get('llm') as ILLM) ?? new MockLLM();
+    return this.adapters.get('llm') as ILLM;
   }
 
-  /** Embeddings adapter (fallback: MockEmbeddings) */
+  /** Embeddings adapter. */
   get embeddings(): IEmbeddings {
-    return (this.adapters.get('embeddings') as IEmbeddings) ?? new MockEmbeddings();
+    return this.adapters.get('embeddings') as IEmbeddings;
   }
 
-  /** Cache adapter (fallback: MemoryCache) */
+  /** Cache adapter. */
   get cache(): ICache {
-    return (this.adapters.get('cache') as ICache | undefined) ?? (this._fallbackCache ??= new MemoryCache());
+    return this.adapters.get('cache') as ICache;
   }
 
-  /** Config adapter (fallback: NoOpConfig) */
+  /** Config adapter. */
   get config(): IConfig {
-    return (this.adapters.get('config') as IConfig) ?? new NoOpConfig();
+    return this.adapters.get('config') as IConfig;
   }
 
-  /** Storage adapter (fallback: MemoryStorage) */
+  /** Storage adapter. */
   get storage(): IStorage {
-    return (this.adapters.get('storage') as IStorage | undefined) ?? (this._fallbackStorage ??= new MemoryStorage());
+    return this.adapters.get('storage') as IStorage;
   }
 
-  /** Logger adapter (fallback: ConsoleLogger) */
+  /** Logger adapter. */
   get logger(): ILogger {
-    return (this.adapters.get('logger') as ILogger | undefined) ?? (this._fallbackLogger ??= new ConsoleLogger());
+    return this.adapters.get('logger') as ILogger;
   }
 
-  /** Event bus adapter (fallback: MemoryEventBus) */
+  /** Event bus adapter. */
   get eventBus(): IEventBus {
-    return (this.adapters.get('eventBus') as IEventBus | undefined) ?? (this._fallbackEventBus ??= new MemoryEventBus());
+    return this.adapters.get('eventBus') as IEventBus;
   }
 
-  /** Inter-plugin invocation adapter (fallback: NoOpInvoke) */
+  /** Inter-plugin invocation adapter. */
   get invoke(): IInvoke {
-    return (this.adapters.get('invoke') as IInvoke) ?? new NoOpInvoke();
+    return this.adapters.get('invoke') as IInvoke;
   }
 
-  /** Document database adapter (fallback: NoOpDocumentDatabase — throws on use) */
+  /** Document database adapter. */
   get documentDatabase(): IDocumentDatabase {
-    return (this.adapters.get('documentDatabase') as IDocumentDatabase) ?? new NoOpDocumentDatabase();
+    return this.adapters.get('documentDatabase') as IDocumentDatabase;
   }
 
-  /** Durable key-value store adapter (fallback: NoOpKVStore — throws on use) */
+  /** Durable key-value store adapter. */
   get kvStore(): IKVStore {
-    return (this.adapters.get('kvStore') as IKVStore) ?? new NoOpKVStore();
+    return this.adapters.get('kvStore') as IKVStore;
   }
 
-  /** Notifier adapter (optional — undefined when adapters.notifier is not configured). */
+  /** Notifier adapter. */
   get notifier(): INotifier | undefined {
     return this.adapters.get('notifier') as INotifier | undefined;
   }
@@ -782,11 +784,9 @@ export class PlatformContainer {
    */
   reset(): void {
     this.adapters.clear();
+    // Re-seed bootstrap logger — same reasoning as the constructor.
+    this.adapters.set('logger', new ConsoleLogger());
     this.lifecycleHooks.clear();
-    this._fallbackCache = undefined;
-    this._fallbackStorage = undefined;
-    this._fallbackLogger = undefined;
-    this._fallbackEventBus = undefined;
     this._workflows = undefined;
     this._jobs = undefined;
     this._cron = undefined;

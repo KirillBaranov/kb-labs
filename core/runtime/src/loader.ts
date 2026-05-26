@@ -24,7 +24,14 @@ import { createDefaultExecutionPolicyLLM } from './wrappers/default-execution-po
 import { ResourceManager } from './core/resource-manager.js';
 import { JobScheduler } from './core/job-scheduler.js';
 import { CronManager } from './core/cron-manager.js';
-import { resetAdapterStatus } from './adapter-status.js';
+import {
+  getAdapterStatusRegistry,
+  resetAdapterStatus,
+  type AdapterSlotStatus,
+} from './adapter-status.js';
+import { ADAPTER_DEFAULTS, type AdapterSlot } from '@kb-labs/core-platform';
+import { inmemoryFactories } from '@kb-labs/core-platform/inmemory';
+import { noopFactories } from '@kb-labs/core-platform/noop';
 import { WorkflowEngine } from './core/workflow-engine.js';
 
 import { AnalyticsLLM } from '@kb-labs/core-platform';
@@ -109,6 +116,145 @@ async function loadAdapter<T>(adapterPath: string, cwd: string, options?: unknow
 
 
 /**
+ * Walk `ADAPTER_DEFAULTS`, decide the mode of every slot, install
+ * fallbacks where needed, and record the result in the global adapter
+ * status registry.
+ *
+ * Three branches per slot:
+ *
+ * 1. **Configured + loaded successfully** → record `mode: 'real'` with
+ *    the configured package name.
+ *
+ * 2. **Configured but NOT loaded** → fail-fast. The operator asked for a
+ *    specific adapter; silent degradation would hide a real bug.
+ *    Implementations of `AdapterLoader` that swallow individual failures
+ *    are responsible for surfacing them earlier; this function is the
+ *    last line of defence that turns the silent miss into a thrown
+ *    error.
+ *
+ * 3. **Not configured** → install the policy-driven fallback from
+ *    `ADAPTER_DEFAULTS[slot].defaultFallback`. Either an InMemory honest
+ *    implementation or a NoOp stub that throws `AdapterUnavailableError`
+ *    on use.
+ *
+ * After this function returns, every slot in `ADAPTER_DEFAULTS` is
+ * guaranteed to be filled (except `snapshotManager`, which has no
+ * sensible NoOp shape — callers handle `undefined` for it specifically).
+ *
+ * Throws on the configured-but-failed branch only; never throws for
+ * legitimately unconfigured slots.
+ */
+function fillAdapterFallbacksAndRecord(
+  container: PlatformContainer,
+  adapters: Record<string, AdapterValue | undefined>,
+): void {
+  const status = getAdapterStatusRegistry();
+  const now = (): string => new Date().toISOString();
+
+  const failures: string[] = [];
+
+  for (const slot of Object.keys(ADAPTER_DEFAULTS) as AdapterSlot[]) {
+    const desc = ADAPTER_DEFAULTS[slot];
+    const configuredPkg = getPrimaryAdapter(adapters[slot]);
+    const hasReal = container.hasAdapter(slot);
+
+    // Branch 1: configured + loaded.
+    if (hasReal) {
+      const impl = container.getAdapter(slot) as object;
+      const implName = configuredPkg ?? Object.getPrototypeOf(impl)?.constructor?.name ?? 'unknown';
+      const row: AdapterSlotStatus = {
+        slot,
+        mode: 'real',
+        implementation: implName,
+        configuredPackage: configuredPkg,
+        recordedAt: now(),
+      };
+      status.record(row);
+      continue;
+    }
+
+    // Branch 2: configured but not loaded — fail-fast.
+    if (configuredPkg) {
+      failures.push(`  - "${slot}" was configured as "${configuredPkg}" but no adapter was loaded.`);
+      continue;
+    }
+
+    // Branch 3: not configured — apply per-slot fallback policy.
+    if (desc.defaultFallback === 'inmemory') {
+      const factory = (inmemoryFactories as Record<string, (() => unknown) | undefined>)[slot];
+      if (!factory) {
+        // Coverage gap between ADAPTER_DEFAULTS and inmemoryFactories. The
+        // satisfies-typed factory map is supposed to make this impossible;
+        // surface it loudly so the missing entry gets added.
+        throw new Error(
+          `inmemoryFactories has no entry for slot "${slot}", but ADAPTER_DEFAULTS demands InMemory fallback. ` +
+            `Add a factory to core/platform/src/inmemory/index.ts.`,
+        );
+      }
+      const impl = factory();
+      container.setAdapter(slot, impl as never);
+      status.record({
+        slot,
+        mode: 'inmemory',
+        implementation: Object.getPrototypeOf(impl as object)?.constructor?.name ?? 'unknown',
+        reason: 'not-configured',
+        recordedAt: now(),
+      });
+      container.logger.warn(
+        `Adapter "${slot}" using InMemory fallback — data lives in-process only`,
+        { slot, reason: 'not-configured' },
+      );
+      continue;
+    }
+
+    // defaultFallback === 'noop'
+    const factory = (noopFactories as Record<string, (() => unknown) | undefined>)[slot];
+    if (!factory) {
+      // Slot legitimately has no NoOp stub (e.g. snapshotManager). Leave
+      // the container entry undefined; consumers handle `undefined` for
+      // optional slots already.
+      continue;
+    }
+    const impl = factory();
+    container.setAdapter(slot, impl as never);
+    status.record({
+      slot,
+      mode: 'noop',
+      implementation: Object.getPrototypeOf(impl as object)?.constructor?.name ?? 'unknown',
+      reason: 'not-configured',
+      recordedAt: now(),
+    });
+    container.logger.warn(
+      `Adapter "${slot}" using NoOp fallback — calls will throw AdapterUnavailableError`,
+      { slot, reason: 'not-configured' },
+    );
+  }
+
+  // Fail-fast if any configured slot didn't load.
+  if (failures.length > 0) {
+    const lines = [
+      'Platform startup aborted: configured adapters failed to load.',
+      ...failures,
+      '',
+      'A configured adapter must succeed at every stage (import, factory, validation).',
+      'Check kb.config.json, .kb/marketplace.lock, and that the listed packages are installed.',
+      'Run `kb platform provision --mode reconcile` (deploy) or `kb marketplace install <pkg>` (dev).',
+    ];
+    throw new Error(lines.join('\n'));
+  }
+
+  // Boot summary — one line, scannable in logs.
+  const counts = { real: 0, inmemory: 0, noop: 0 };
+  for (const row of status.list()) {
+    counts[row.mode]++;
+  }
+  container.logger.info(
+    `Adapters initialised: ${counts.real} real, ${counts.inmemory} inmemory, ${counts.noop} noop`,
+    counts,
+  );
+}
+
+/**
  * Initialize core features with real implementations.
  */
 function initializeCoreFeatures(
@@ -171,7 +317,7 @@ function initializeResourceBroker(
   const broker = new ResourceBroker(backend);
 
   // Register LLM resource with broker (queuing applied later by assemblePlatform.resourceBrokerFactory)
-  if (container.hasAdapter('llm')) {
+  if (container.isReal('llm')) {
     const llmConfig = config.llm ?? {};
     const realLLM = container.llm;
 
@@ -189,7 +335,7 @@ function initializeResourceBroker(
   }
 
   // Register Embeddings resource with broker (queuing applied later by assemblePlatform.resourceBrokerFactory)
-  if (container.hasAdapter('embeddings')) {
+  if (container.isReal('embeddings')) {
     const embeddingsConfig = config.embeddings ?? {};
     const realEmbeddings = container.embeddings;
 
@@ -210,7 +356,7 @@ function initializeResourceBroker(
   }
 
   // Register VectorStore resource with broker (queuing applied later by assemblePlatform.resourceBrokerFactory)
-  if (container.hasAdapter('vectorStore')) {
+  if (container.isReal('vectorStore')) {
     const vsConfig = config.vectorStore ?? {};
     const realVectorStore = container.vectorStore;
 
@@ -356,6 +502,15 @@ export async function initPlatform(
       platform.setAdapter('storage', new StorageProxy(transport));
       platform.logger.debug('initPlatform created StorageProxy');
     }
+
+    // Fill remaining slots with InMemory/NoOp fallbacks and populate the
+    // adapter-status registry. Slots the parent already wired through a
+    // proxy stay untouched and are recorded as `mode: 'real'`; slots
+    // without a proxy fall back per `ADAPTER_DEFAULTS`.
+    fillAdapterFallbacksAndRecord(
+      platform,
+      adapters as Record<string, AdapterValue | undefined>,
+    );
 
     // ⚠️ CRITICAL: Do NOT create ExecutionBackend in child process!
     // Child processes ARE the workers - creating backend here would spawn infinite workers.
@@ -594,46 +749,10 @@ export async function initPlatform(
       }
     }
 
-    // Load adapters with dependency resolution
+    // Load adapters with dependency resolution. Configured adapters that
+    // fail to load surface in the next pass via `fillAdapterFallbacksAndRecord`,
+    // which throws a single combined error listing every failed slot.
     const loadedAdapters = await loader.loadAdapters(adapterConfigs, loadModule);
-
-    // Phase 7: loud failure when config declares adapters but nothing loaded.
-    //
-    // This catches the silent noop fallback that used to hide missing
-    // packages in Docker deployments: kb.config.json declared `adapters.llm`,
-    // but `.kb/marketplace.lock` was missing/empty, so `discoverAdapters()`
-    // returned an empty map, so nothing was registered, so `platform.llm`
-    // silently fell back to `new MockLLM()` at first use.
-    //
-    // We log loudly but do NOT throw — services should still boot in a
-    // degraded mode so operators can log in and diagnose. The message
-    // includes the exact command to fix it.
-    const declaredRoles = Object.keys(adapters).filter((name) => {
-      const value = (adapters as Record<string, unknown>)[name] as AdapterValue | undefined;
-      return normalizeAdapterValue(value).length > 0;
-    });
-
-    if (declaredRoles.length > 0 && loadedAdapters.size === 0) {
-      const lines = [
-        'Platform config declares adapters but none were discovered.',
-        `  Roles declared: ${declaredRoles.join(', ')}`,
-        '  This usually means .kb/marketplace.lock is missing or empty,',
-        '  or the listed packages are not installed on disk.',
-        '  Fix: run "kb platform provision --mode reconcile" during image build,',
-        '       or "kb marketplace install <package>" in development.',
-        '  Services will boot with NoOp adapters until this is resolved.',
-      ];
-      platform.logger.error(lines.join('\n'));
-    } else if (declaredRoles.length > 0) {
-      // Per-role check: declared but not actually loaded.
-      const missingRoles = declaredRoles.filter((name) => !loadedAdapters.has(name));
-      for (const role of missingRoles) {
-        platform.logger.warn(
-          `initPlatform: adapter role "${role}" was declared in config but no adapter was loaded — ` +
-          `NoOp fallback will be used. Check marketplace.lock and re-run "kb platform provision".`,
-        );
-      }
-    }
 
     // CRITICAL: Set analytics adapter FIRST (without wrapping) so wrapWithAnalytics() can use it
     if (loadedAdapters.has('analytics')) {
@@ -664,6 +783,18 @@ export async function initPlatform(
         error: error instanceof Error ? error.message : String(error),
       });
     }
+
+    // ══════════════════════════════════════════════════════════════════════
+    // Fill remaining slots with InMemory/NoOp fallbacks per ADAPTER_DEFAULTS,
+    // record what's wired into each slot, and fail-fast on any configured
+    // adapter that didn't load. After this call, every slot in
+    // ADAPTER_DEFAULTS is filled (or, for snapshotManager which has no
+    // sensible NoOp, is intentionally left undefined).
+    // ══════════════════════════════════════════════════════════════════════
+    fillAdapterFallbacksAndRecord(
+      platform,
+      adapters as Record<string, AdapterValue | undefined>,
+    );
 
     // ══════════════════════════════════════════════════════════════════════
     // Initialize ExecutionBackend (AFTER adapters, BEFORE core features)
@@ -984,7 +1115,7 @@ export async function initPlatform(
 
       // Apply defaultExecutionPolicy to raw LLM before analytics wrapping.
       // Analytics will track calls that already have defaults merged — correct behaviour.
-      if (platform.hasAdapter('llm')) {
+      if (platform.isReal('llm')) {
         const withDefaults = createDefaultExecutionPolicyLLM(platform.llm, executionDefaults);
         if (withDefaults !== platform.llm) {
           platform.setAdapter('llm', withDefaults);
@@ -1013,7 +1144,7 @@ export async function initPlatform(
 
       // Build per-adapter config passed to assemblePlatform via hook.
       const platformAssemblyConfig: Partial<Record<string, unknown>> = {};
-      if (platform.hasAdapter('llm')) {
+      if (platform.isReal('llm')) {
         platformAssemblyConfig.llm = {
           defaultTier: llmOptions.defaultTier ?? llmOptions.tier ?? 'small',
           tierMapping: llmOptions.tierMapping,

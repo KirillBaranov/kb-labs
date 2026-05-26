@@ -73,8 +73,12 @@ describe('Platform Loader', () => {
       // ConfigAdapter is ALWAYS created in parent process
       expect(platform.hasAdapter('config')).toBe(true);
 
-      // Note: cache is not created unless specified (uses fallback MemoryCache via getter)
-      expect(platform.hasAdapter('cache')).toBe(false);
+      // After the new loader pass every slot in ADAPTER_DEFAULTS is filled,
+      // either by a real adapter, an InMemory honest fallback, or a NoOp
+      // stub. `hasAdapter('cache')` therefore returns true — `isReal('cache')`
+      // is the right test for "did the operator configure this?".
+      expect(platform.hasAdapter('cache')).toBe(true);
+      expect(platform.isReal('cache')).toBe(false);
     });
 
     it('should create ConfigAdapter automatically', async () => {
@@ -160,12 +164,25 @@ describe('Platform Loader', () => {
     it('should detect configured vs fallback adapters', async () => {
       await initPlatform({});
 
-      // ConfigAdapter is explicitly configured (always created in parent process)
+      // ConfigAdapter is explicitly created by the runtime, so `isConfigured`
+      // is true even without an entry in kb.config.json.
       expect(platform.isConfigured('config')).toBe(true);
 
-      // cache/llm/vectorStore are NOT configured, will use fallbacks via lazy getters
-      expect(platform.isConfigured('cache')).toBe(false);
-      expect(platform.isConfigured('vectorStore')).toBe(false);
+      // After the new loader pass every slot in ADAPTER_DEFAULTS is filled —
+      // either with a real adapter, an InMemory fallback, or a NoOp stub —
+      // so `hasAdapter()` returns true for both `cache` and `vectorStore`.
+      // The diagnostic operators care about is `isReal()`: it returns true
+      // only for slots backed by an actual configured adapter.
+      //
+      // (Note: in worker processes — including vitest — slots like `llm` and
+      // `config` are wired through IPC proxies and therefore report
+      // `isReal=true`. The asserts below pick two slots that have NO proxy
+      // in worker mode either, so the test holds in both parent and child
+      // contexts.)
+      expect(platform.hasAdapter('cache')).toBe(true);
+      expect(platform.isReal('cache')).toBe(false);
+      expect(platform.hasAdapter('documentDatabase')).toBe(true);
+      expect(platform.isReal('documentDatabase')).toBe(false);
     });
   });
 
@@ -192,12 +209,17 @@ describe('Platform Loader', () => {
 
     it('should clear adapters on reset', async () => {
       await initPlatform({});
-      const configBefore = platform.hasAdapter('config');
+      expect(platform.hasAdapter('config')).toBe(true);
 
       resetPlatform();
 
+      // resetPlatform clears every loader-installed adapter. The
+      // bootstrap logger is re-seeded by reset() so logging keeps working.
       expect(platform.hasAdapter('config')).toBe(false);
-      expect(platform.getConfiguredServices().size).toBe(0);
+      expect(platform.hasAdapter('cache')).toBe(false);
+      // Only the bootstrap logger remains.
+      expect(platform.getConfiguredServices().size).toBe(1);
+      expect(platform.getConfiguredServices().has('logger')).toBe(true);
     });
 
     it('should re-create core features after reset', async () => {
