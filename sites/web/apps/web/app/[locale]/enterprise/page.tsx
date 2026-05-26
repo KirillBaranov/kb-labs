@@ -223,7 +223,7 @@ export default async function EnterprisePage({ params }: Props) {
                       {t('enterprise.cta.salesBtn')}
                     </Button>
                     <Button variant="secondary" size="lg" href="mailto:kirillBaranovJob@yandex.ru"> {/* i18n-ignore */}
-                      kirillBaranovJob@yandex.ru {/* i18n-ignore */}
+                      <span className="break-all">kirillBaranovJob@yandex.ru</span> {/* i18n-ignore */}
                     </Button>
                   </div>
                 </div>

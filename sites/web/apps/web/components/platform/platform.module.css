@@ -3,6 +3,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
+  width: 100%;
+  min-width: 0;
 }
 
 .label {
@@ -19,6 +21,7 @@
   border: 1px solid var(--line);
   border-radius: 10px;
   background: rgb(var(--color-bg));
+  max-width: 100%;
 }
 
 /* trigger copy button visibility on wrap hover */
