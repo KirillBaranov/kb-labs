@@ -616,6 +616,38 @@ export interface ManifestV3 {
 
   /** Studio pages (Module Federation remotes) */
   studio?: StudioConfig;
+
+  /**
+   * Resources this plugin exports for other plugins to depend on.
+   *
+   * Currently scoped to document-database collections — cross-plugin reads
+   * (e.g. `billing` reading `users` from `auth`) require the OWNER to opt
+   * in via this field AND the consumer to declare a matching grant in
+   * `permissions.platform.database.document.access`. The install-time
+   * validator rejects any consumer grant without a corresponding export.
+   *
+   * Treat exports as a public surface: removing a collection here is a
+   * breaking change for any plugin that grants on it.
+   */
+  exports?: {
+    /**
+     * Document collections this plugin owns and offers to consumers.
+     *
+     * @example
+     * exports: {
+     *   collections: [
+     *     { name: 'users', ops: ['read'] },      // read-only API for other plugins
+     *     { name: 'sessions' },                   // default ['read']
+     *   ]
+     * }
+     */
+    collections?: Array<{
+      /** Collection name (no namespace prefix). Must match an entry in `permissions.platform.database.document.owns`. */
+      name: string;
+      /** Operations exposed to other plugins. Default: `['read']`. */
+      ops?: Array<'read' | 'write'>;
+    }>;
+  };
 }
 
 /**

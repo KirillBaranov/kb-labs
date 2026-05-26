@@ -7,11 +7,11 @@
       ],
       "embeddings": "@kb-labs/adapters-openai/embeddings",
       "storage": "@kb-labs/adapters-fs",
-      "db": "@kb-labs/adapters-sqlite",
-      "documentDb": "@kb-labs/adapters-mongodb",
+      "documentDatabase": "@kb-labs/adapters-sqlite",
+      "kvStore": "@kb-labs/adapters-sqlite/kv",
       "logger": "@kb-labs/adapters-pino",
       "logRingBuffer": "@kb-labs/adapters-log-ringbuffer",
-      "logPersistence": "@kb-labs/adapters-log-sqlite",
+      "logPersistence": "@kb-labs/adapters-log-document",
       "analytics": "@kb-labs/adapters-analytics-sqlite",
       "vectorStore": "@kb-labs/adapters-qdrant",
       "cache": "@kb-labs/adapters-redis",
@@ -83,12 +83,11 @@
       "storage": {
         "basePath": ".kb/storage"
       },
-      "db": {
+      "documentDatabase": {
         "filename": ".kb/database/kb.sqlite"
       },
-      "documentDb": {
-        "uri": "mongodb://admin:password@localhost:27017",
-        "database": "kb-labs"
+      "kvStore": {
+        "filename": ".kb/database/kb.sqlite"
       },
       "vectorStore": {
         "url": "http://localhost:6333",
@@ -112,7 +111,7 @@
         "maxSize": 100
       },
       "logPersistence": {
-        "tableName": "logs",
+        "collection": "logs",
         "batchSize": 100,
         "flushInterval": 5000,
         "retention": {

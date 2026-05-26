@@ -96,6 +96,10 @@ export {
   useStorage,
   useCache,
   isCacheAvailable,
+  useDocumentDatabase,
+  isDocumentDatabaseAvailable,
+  useKVStore,
+  isKVStoreAvailable,
   useEnv,
   // LLM types (for tier-based selection)
   type LLMTier,

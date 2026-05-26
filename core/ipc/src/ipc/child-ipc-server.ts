@@ -192,12 +192,12 @@ export class ChildIPCServer {
    * Get adapter from platform by name.
    * Dynamic dispatch — no hardcoded switch; new adapters in IPlatformAdapters
    * are automatically available without touching this file.
-   * The dotted names ('database.sql', 'database.document') are mapped explicitly.
+   * The dotted names ('database.document', 'database.kv') are mapped explicitly.
    */
   private getAdapter(name: string): unknown {
     // Handle dotted names that don't match property names directly
-    if (name === 'database.sql') { return this.platform.sqlDatabase; }
     if (name === 'database.document') { return this.platform.documentDatabase; }
+    if (name === 'database.kv') { return this.platform.kvStore; }
 
     const adapter = (this.platform as unknown as Record<string, unknown>)[name];
     if (adapter === undefined) {

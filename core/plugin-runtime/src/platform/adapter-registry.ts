@@ -42,12 +42,13 @@ import {
   EmbeddingsProxy,
   VectorStoreProxy,
   StorageProxy,
-  SQLDatabaseProxy,
   DocumentDatabaseProxy,
+  KVStoreProxy,
   ConfigProxy,
   EventBusProxy,
 } from '@kb-labs/core-ipc';
 import type { AdapterDescriptor, AdapterMiddlewareFn } from './middleware.js';
+import { wrapDocumentDatabase, wrapKVStore } from './database-governance.js';
 
 // ─── Shared helpers ─────────────────────────────────────────────────────────
 
@@ -353,14 +354,22 @@ export const ADAPTER_REGISTRY = {
     },
   },
 
-  sqlDatabase: {
-    governance: { strategy: 'pass-through' },
-    ipc: { strategy: 'proxy', create: (t) => new SQLDatabaseProxy(t) },
+  documentDatabase: {
+    governance: {
+      strategy: 'wrap',
+      fn: (adapter, ctx) =>
+        wrapDocumentDatabase(adapter, ctx.pluginId, ctx.permissions),
+    },
+    ipc: { strategy: 'proxy', create: (t) => new DocumentDatabaseProxy(t) },
   },
 
-  documentDatabase: {
-    governance: { strategy: 'pass-through' },
-    ipc: { strategy: 'proxy', create: (t) => new DocumentDatabaseProxy(t) },
+  kvStore: {
+    governance: {
+      strategy: 'wrap',
+      fn: (adapter, ctx) =>
+        wrapKVStore(adapter, ctx.pluginId, ctx.permissions),
+    },
+    ipc: { strategy: 'proxy', create: (t) => new KVStoreProxy(t) },
   },
 
   logs: {

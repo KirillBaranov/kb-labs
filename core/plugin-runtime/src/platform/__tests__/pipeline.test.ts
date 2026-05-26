@@ -31,8 +31,8 @@ function createMockPlatform(): PlatformServices {
     eventBus: { publish: makeNoop(), subscribe: vi.fn(() => () => {}) } as unknown as PlatformServices['eventBus'],
     config: {} as PlatformServices['config'],
     invoke: { call: makeNoop(), isAvailable: makeNoop() } as unknown as PlatformServices['invoke'],
-    sqlDatabase: {} as PlatformServices['sqlDatabase'],
     documentDatabase: {} as PlatformServices['documentDatabase'],
+    kvStore: {} as PlatformServices['kvStore'],
     logs: {} as PlatformServices['logs'],
   };
 }
@@ -291,8 +291,8 @@ describe('pipeline — prototype getter inputs (PlatformContainer regression)', 
       get eventBus()       { return this.#adapters.eventBus; }
       get config()         { return this.#adapters.config; }
       get invoke()         { return this.#adapters.invoke; }
-      get sqlDatabase()    { return this.#adapters.sqlDatabase; }
       get documentDatabase() { return this.#adapters.documentDatabase; }
+      get kvStore()        { return this.#adapters.kvStore; }
       get logs()           { return this.#adapters.logs; }
     }
 

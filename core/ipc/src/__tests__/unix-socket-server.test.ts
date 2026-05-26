@@ -64,8 +64,8 @@ describe('UnixSocketServer', () => {
       storage: {} as any,
       eventBus: {} as any,
       invoke: {} as any,
-      sqlDatabase: {} as any,
       documentDatabase: {} as any,
+      kvStore: {} as any,
       logs: {} as any,
     };
   });

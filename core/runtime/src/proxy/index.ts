@@ -21,5 +21,4 @@ export * from './cache-proxy';
 export * from './llm-proxy';
 export * from './embeddings-proxy';
 export * from './storage-proxy';
-export * from './sql-database-proxy';
 export * from './document-database-proxy';

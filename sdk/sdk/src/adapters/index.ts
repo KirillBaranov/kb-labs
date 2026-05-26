@@ -84,19 +84,25 @@ export type { IStorage, StorageMetadata } from '@kb-labs/core-platform/adapters'
 
 // Databases
 export type {
-  ISQLDatabase,
-  SQLQueryResult,
-  SQLTransaction,
+  // Shared
+  SignalOpts,
+  // Document
   IDocumentDatabase,
+  IDocumentTransaction,
   BaseDocument,
   DocumentFilter,
   DocumentUpdate,
   FilterOperators,
   FindOptions,
-  IKeyValueDatabase,
-  ITimeSeriesDatabase,
-  TimeSeriesPoint,
-  IDatabaseProvider,
+  Projection,
+  ProjectOpts,
+  IndexSpec,
+  EnsureCollectionOpts,
+  BulkOp,
+  BulkResult,
+  // Key-Value
+  IKVStore,
+  SetOpts,
 } from '@kb-labs/core-platform/adapters';
 
 // Logger

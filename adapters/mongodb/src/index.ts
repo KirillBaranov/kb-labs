@@ -1,445 +1,789 @@
 /**
  * @module @kb-labs/adapters-mongodb
- * MongoDB adapter implementing IDocumentDatabase interface.
  *
- * Features:
- * - Based on official MongoDB Node.js driver
- * - Connection pooling (automatic)
- * - Type-safe document operations
- * - Query operators ($eq, $ne, $gt, etc.)
- * - Projection and sorting support
+ * MongoDB implementation of `IDocumentDatabase`.
  *
- * @example
- * ```typescript
- * import { createAdapter } from '@kb-labs/adapters-mongodb';
+ * Storage model:
+ * - Each platform "collection" maps 1:1 to a Mongo collection of the same
+ *   name. Documents are stored at the top level (no envelope) — the
+ *   contract's three system fields (`id`, `createdAt`, `updatedAt`) become
+ *   `_id` (string ULID), and two Unix-ms `Date` / `number` fields.
+ * - `id` ↔ `_id` is translated transparently on every boundary so callers
+ *   never see Mongo's `_id` naming.
  *
- * const db = createAdapter({
- *   uri: 'mongodb://localhost:27017',
- *   database: 'myapp',
- * });
+ * Filter / update translation:
+ * - Most operators (`$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, `$in`,
+ *   `$nin`, `$exists`, `$and`, `$or`, `$set`, `$unset`, `$inc`) map 1:1.
+ * - `$startsWith` / `$contains` / `$endsWith` become anchored `$regex`
+ *   patterns with their argument escaped, in case-sensitive mode — matches
+ *   the contract's portable substring semantics.
  *
- * // Find documents
- * const users = await db.find('users', { age: { $gt: 18 } }, { limit: 10 });
+ * Transactions / bulkWrite:
+ * - `bulkWrite` and `insertMany` run inside a Mongo session-level
+ *   transaction so they're truly atomic (no partial inserts). This
+ *   requires the Mongo deployment to be a replica set — single-node
+ *   `mongod` will throw on the first `startTransaction`. That's a
+ *   deployment caveat, not a contract divergence.
  *
- * // Insert document
- * await db.insertOne('users', { name: 'Alice', age: 25 });
+ * TTL:
+ * - `ensureCollection({ indexes: [{ path, ttl }] })` creates a Mongo TTL
+ *   index with `expireAfterSeconds = ttl / 1000`. The adapter stores the
+ *   indexed field as a `Date` so Mongo's TTL monitor can sweep it; the
+ *   value remains a Unix-ms `number` to the caller.
  *
- * // Update documents
- * await db.updateMany('users', { age: { $lt: 18 } }, { $set: { minor: true } });
- *
- * // Close connection
- * await db.close();
- * ```
+ * What is intentionally NOT here:
+ * - Aggregation pipeline, change streams, text search, `$lookup`, full
+ *   regex (PCRE flavours) — these are Mongo-only and would break the
+ *   abstraction.
  */
 
-import { randomUUID } from "node:crypto";
+import { randomUUID } from 'node:crypto';
 import {
   MongoClient,
   type Db,
-  type Collection,
-  type Document,
+  type ClientSession,
   type Filter,
   type Sort,
   type UpdateFilter,
-  type OptionalUnlessRequiredId,
-} from "mongodb";
+  type AnyBulkWriteOperation,
+  type IndexSpecification,
+} from 'mongodb';
 import type {
   IDocumentDatabase,
+  IDocumentTransaction,
   BaseDocument,
   DocumentFilter,
   DocumentUpdate,
+  FilterOperators,
   FindOptions,
-} from "@kb-labs/sdk/adapters";
+  ProjectOpts,
+  SignalOpts,
+  EnsureCollectionOpts,
+  IndexSpec,
+  BulkOp,
+  BulkResult,
+} from '@kb-labs/sdk/adapters';
 
-// Re-export manifest
-export { manifest } from "./manifest.js";
+export { manifest } from './manifest.js';
 
-/**
- * Configuration for MongoDB adapter.
- */
+const META_COLLECTION = '_kb_collections';
+
+interface CollectionMeta {
+  ttlPath?: string;
+  ttlMs?: number;
+}
+
+interface MetaDoc {
+  _id: string;            // collection name
+  ttlPath?: string;
+  ttlMs?: number;
+}
+
 export interface MongoDBConfig {
-  /**
-   * MongoDB connection URI.
-   * @example 'mongodb://localhost:27017'
-   * @example 'mongodb+srv://user:pass@cluster.mongodb.net'
-   */
   uri: string;
-
-  /**
-   * Database name.
-   */
   database: string;
-
-  /**
-   * Connection options (optional).
-   */
   options?: {
-    /** Max pool size (default: 10) */
     maxPoolSize?: number;
-    /** Server selection timeout in ms (default: 30000) */
     serverSelectionTimeoutMS?: number;
   };
 }
 
+const now = (): number => Date.now();
+
+const throwIfAborted = (signal?: AbortSignal): void => {
+  if (signal?.aborted) {
+    throw new DOMException('Aborted', 'AbortError');
+  }
+};
+
+const likeEscape = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+// ────────────────────────────────────────────────────────────────────────────
+// Filter & update translation
+// ────────────────────────────────────────────────────────────────────────────
+
+const mapField = (key: string): string => (key === 'id' ? '_id' : key);
+
+const translateFilter = <T>(filter: DocumentFilter<T>): Filter<Document> => {
+  const out: Record<string, unknown> = {};
+  for (const [rawKey, value] of Object.entries(filter)) {
+    if (rawKey === '$and' || rawKey === '$or') {
+      const arr = value as Array<DocumentFilter<T>>;
+      if (!Array.isArray(arr) || arr.length === 0) {continue;}
+      out[rawKey] = arr.map((sub) => translateFilter<T>(sub));
+      continue;
+    }
+    const key = mapField(rawKey);
+
+    if (value === null || value === undefined) {
+      out[key] = null;
+      continue;
+    }
+
+    if (typeof value === 'object' && !Array.isArray(value)) {
+      const ops = value as FilterOperators<unknown>;
+      const hasOperator = Object.keys(ops).some((k) => k.startsWith('$'));
+      if (hasOperator) {
+        out[key] = translateOperators(ops);
+        continue;
+      }
+    }
+    out[key] = value;
+  }
+  return out as Filter<Document>;
+};
+
+const translateOperators = (ops: FilterOperators<unknown>): Record<string, unknown> => {
+  const mongo: Record<string, unknown> = {};
+  if ('$eq' in ops) {mongo.$eq = ops.$eq;}
+  if ('$ne' in ops) {mongo.$ne = ops.$ne;}
+  if ('$gt' in ops) {mongo.$gt = ops.$gt;}
+  if ('$gte' in ops) {mongo.$gte = ops.$gte;}
+  if ('$lt' in ops) {mongo.$lt = ops.$lt;}
+  if ('$lte' in ops) {mongo.$lte = ops.$lte;}
+  if ('$in' in ops) {mongo.$in = ops.$in;}
+  if ('$nin' in ops) {mongo.$nin = ops.$nin;}
+  if ('$exists' in ops) {mongo.$exists = ops.$exists;}
+  if ('$startsWith' in ops && typeof ops.$startsWith === 'string') {
+    mongo.$regex = `^${likeEscape(ops.$startsWith)}`;
+  }
+  if ('$contains' in ops && typeof ops.$contains === 'string') {
+    mongo.$regex = likeEscape(ops.$contains);
+  }
+  if ('$endsWith' in ops && typeof ops.$endsWith === 'string') {
+    mongo.$regex = `${likeEscape(ops.$endsWith)}$`;
+  }
+  return mongo;
+};
+
+const translateProjection = <T, P>(p?: ProjectOpts<T, P>['project']): Record<string, 0 | 1> | undefined => {
+  if (!p) {return undefined;}
+  const out: Record<string, 0 | 1> = {};
+  for (const [k, v] of Object.entries(p as Record<string, 0 | 1>)) {
+    out[mapField(k)] = v;
+  }
+  return out;
+};
+
+const translateSort = (sort?: Record<string, 1 | -1>): Sort | undefined => {
+  if (!sort) {return undefined;}
+  const out: Record<string, 1 | -1> = {};
+  for (const [k, v] of Object.entries(sort)) {out[mapField(k)] = v;}
+  return out as Sort;
+};
+
 /**
- * MongoDB implementation of IDocumentDatabase interface.
- *
- * Design:
- * - Uses official MongoDB Node.js driver
- * - Connection pooling handled automatically
- * - Type-safe operations with generics
- * - Maps MongoDB operators to DocumentFilter format
+ * Build the `$set` / `$inc` / `$unset` payload, mapping `id`→`_id`,
+ * adding `updatedAt`, and (for upsert paths) seeding `createdAt`.
  */
+const buildUpdate = <T>(
+  update: DocumentUpdate<T>,
+  options: { upsert?: boolean } = {},
+): UpdateFilter<Document> => {
+  const $set: Record<string, unknown> = { updatedAt: now() };
+  const $unset: Record<string, 1 | true> = {};
+  const $inc: Record<string, number> = {};
+  const $setOnInsert: Record<string, unknown> = {};
+
+  if (update.$set) {
+    for (const [k, v] of Object.entries(update.$set)) {
+      if (k === 'id' || k === 'createdAt' || k === 'updatedAt') {continue;}
+      $set[k] = v;
+    }
+  }
+  if (update.$unset) {
+    for (const k of Object.keys(update.$unset)) {
+      if (k === 'id' || k === 'createdAt' || k === 'updatedAt') {continue;}
+      $unset[k] = 1;
+    }
+  }
+  if (update.$inc) {
+    for (const [k, n] of Object.entries(update.$inc)) {
+      if (k === 'id' || k === 'createdAt' || k === 'updatedAt') {continue;}
+      $inc[k] = n as number;
+    }
+  }
+  if (options.upsert) {
+    $setOnInsert._id = randomUUID();
+    $setOnInsert.createdAt = now();
+  }
+
+  const out: UpdateFilter<Document> = {};
+  if (Object.keys($set).length > 0) {(out as Record<string, unknown>).$set = $set;}
+  if (Object.keys($unset).length > 0) {(out as Record<string, unknown>).$unset = $unset;}
+  if (Object.keys($inc).length > 0) {(out as Record<string, unknown>).$inc = $inc;}
+  if (Object.keys($setOnInsert).length > 0) {(out as Record<string, unknown>).$setOnInsert = $setOnInsert;}
+  return out;
+};
+
+const fromMongo = <T extends BaseDocument>(doc: Document | null, meta?: CollectionMeta): T | null => {
+  if (!doc) {return null;}
+  const { _id, ...rest } = doc as { _id: unknown } & Record<string, unknown>;
+  const out: Record<string, unknown> = { ...rest, id: _id as string };
+  // TTL field stored as Date → expose as Unix-ms number per contract.
+  if (meta?.ttlPath && out[meta.ttlPath] instanceof Date) {
+    out[meta.ttlPath] = (out[meta.ttlPath] as Date).getTime();
+  }
+  return out as T;
+};
+
+const toMongoBody = (
+  body: Record<string, unknown>,
+  meta?: CollectionMeta,
+): Record<string, unknown> => {
+  if (!meta?.ttlPath) {return body;}
+  const v = body[meta.ttlPath];
+  if (typeof v === 'number') {
+    return { ...body, [meta.ttlPath]: new Date(v) };
+  }
+  return body;
+};
+
+// ────────────────────────────────────────────────────────────────────────────
+// Adapter
+// ────────────────────────────────────────────────────────────────────────────
+
 export class MongoDBAdapter implements IDocumentDatabase {
-  private client: MongoClient;
-  private db: Db;
+  private readonly client: MongoClient;
+  private readonly db: Db;
+  private readonly meta = new Map<string, CollectionMeta>();
+  private metaLoaded: Promise<void> | null = null;
   private closed = false;
 
   constructor(private config: MongoDBConfig) {
     this.client = new MongoClient(config.uri, {
       maxPoolSize: config.options?.maxPoolSize ?? 10,
-      serverSelectionTimeoutMS:
-        config.options?.serverSelectionTimeoutMS ?? 30000,
+      serverSelectionTimeoutMS: config.options?.serverSelectionTimeoutMS ?? 30_000,
     });
-
-    // Will connect lazily on first operation
     this.db = this.client.db(config.database);
   }
 
-  /**
-   * Ensure connection is established.
-   */
+  // ──────────────────────────────────────────────────────────────────────────
+  // Lifecycle
+  // ──────────────────────────────────────────────────────────────────────────
+
   private async ensureConnected(): Promise<void> {
-    if (this.closed) {
-      throw new Error("Database connection is closed");
-    }
-
-    // MongoDB driver connects lazily, but we can trigger it explicitly
+    if (this.closed) {throw new Error('Document database is closed');}
     await this.client.connect();
+    if (!this.metaLoaded) {
+      this.metaLoaded = (async () => {
+        const docs = await this.db.collection<MetaDoc>(META_COLLECTION).find({}).toArray();
+        for (const d of docs) {
+          this.meta.set(d._id, { ttlPath: d.ttlPath, ttlMs: d.ttlMs });
+        }
+      })();
+    }
+    await this.metaLoaded;
   }
 
-  /**
-   * Get collection reference.
-   */
-  private getCollection<T extends BaseDocument>(
-    collection: string,
-  ): Collection<T> {
-    return this.db.collection<T>(collection);
+  async ping(): Promise<{ ok: boolean; latencyMs: number }> {
+    const start = Date.now();
+    try {
+      await this.client.db('admin').command({ ping: 1 });
+      return { ok: true, latencyMs: Date.now() - start };
+    } catch {
+      return { ok: false, latencyMs: Date.now() - start };
+    }
   }
 
-  /**
-   * Find documents matching a filter.
-   *
-   * @param collection - Collection name
-   * @param filter - Query filter
-   * @param options - Find options (limit, skip, sort, projection)
-   * @returns Array of matching documents
-   */
-  async find<T extends BaseDocument>(
-    collection: string,
-    filter: DocumentFilter<T>,
-    options?: FindOptions,
-  ): Promise<T[]> {
+  async close(opts?: { drainTimeoutMs?: number }): Promise<void> {
+    if (this.closed) {return;}
+    this.closed = true;
+    try {
+      // The Mongo driver supports a `force` option; we deliberately wait
+      // for in-flight ops to finish (up to the caller-provided timeout).
+      await Promise.race([
+        this.client.close(),
+        new Promise<void>((resolve) =>
+          setTimeout(resolve, opts?.drainTimeoutMs ?? 5000),
+        ),
+      ]);
+    } catch {
+      /* swallow — already-closed or transport error at shutdown */
+    }
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Schema
+  // ──────────────────────────────────────────────────────────────────────────
+
+  async ensureCollection(name: string, opts?: EnsureCollectionOpts): Promise<void> {
     await this.ensureConnected();
 
-    const col = this.getCollection<T>(collection);
-    let cursor = col.find(filter as Filter<T>);
-
-    // Apply options
-    if (options?.limit) {
-      cursor = cursor.limit(options.limit);
-    }
-    if (options?.skip) {
-      cursor = cursor.skip(options.skip);
-    }
-    if (options?.sort) {
-      cursor = cursor.sort(options.sort as Sort);
+    // Idempotent collection creation.
+    const existing = await this.db.listCollections({ name }).toArray();
+    if (existing.length === 0) {
+      try {
+        await this.db.createCollection(name);
+      } catch {
+        // Race: another process beat us to it. Safe to ignore.
+      }
     }
 
-    return cursor.toArray() as Promise<T[]>;
+    let ttlPath: string | undefined;
+    let ttlMs: number | undefined;
+    const indexSpecs: IndexSpecification[] = [];
+
+    for (const idx of opts?.indexes ?? []) {
+      indexSpecs.push(this.translateIndexSpec(idx));
+      if (idx.ttl !== undefined) {
+        if (Array.isArray(idx.path)) {
+          throw new Error('TTL indexes do not support composite paths');
+        }
+        ttlPath = idx.path;
+        ttlMs = idx.ttl;
+      }
+    }
+
+    if (indexSpecs.length > 0) {
+      const col = this.db.collection(name);
+      // Convert to the shape `createIndexes` expects.
+      const descriptors = (opts?.indexes ?? []).map((idx) => ({
+        key: this.indexKey(idx),
+        name: this.indexName(idx),
+        ...(idx.unique ? { unique: true } : {}),
+        ...(idx.sparse ? { sparse: true } : {}),
+        ...(idx.ttl !== undefined ? { expireAfterSeconds: Math.floor(idx.ttl / 1000) } : {}),
+      }));
+      try {
+        await col.createIndexes(descriptors);
+      } catch (err) {
+        // `createIndexes` is idempotent on identical specs; if a definition
+        // changed (e.g. unique flag flip) the driver throws. Re-throwing
+        // here is correct — the operator has to migrate manually.
+        throw err;
+      }
+    }
+
+    await this.db.collection<MetaDoc>(META_COLLECTION).updateOne(
+      { _id: name },
+      { $set: { _id: name, ttlPath: ttlPath ?? undefined, ttlMs: ttlMs ?? undefined } },
+      { upsert: true },
+    );
+    this.meta.set(name, { ttlPath, ttlMs });
   }
 
-  /**
-   * Find a single document by ID.
-   *
-   * @param collection - Collection name
-   * @param id - Document ID
-   * @returns Document or null if not found
-   */
+  private indexKey(idx: IndexSpec): Record<string, 1> {
+    const paths = Array.isArray(idx.path) ? idx.path : [idx.path];
+    const out: Record<string, 1> = {};
+    for (const p of paths) {out[mapField(p)] = 1;}
+    return out;
+  }
+
+  private indexName(idx: IndexSpec): string {
+    const paths = Array.isArray(idx.path) ? idx.path : [idx.path];
+    const flat = paths.map((p) => p.replace(/\./g, '_')).join('__');
+    return `idx_${flat}${idx.unique ? '__u' : ''}${idx.ttl !== undefined ? '__ttl' : ''}`;
+  }
+
+  private translateIndexSpec(idx: IndexSpec): IndexSpecification {
+    return ({
+      key: this.indexKey(idx),
+      name: this.indexName(idx),
+    } as unknown) as IndexSpecification;
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Reads
+  // ──────────────────────────────────────────────────────────────────────────
+
+  async find<T extends BaseDocument, P = T>(
+    collection: string,
+    filter: DocumentFilter<T>,
+    options?: FindOptions & ProjectOpts<T, P> & SignalOpts,
+  ): Promise<P[]> {
+    await this.ensureConnected();
+    throwIfAborted(options?.signal);
+    const meta = this.meta.get(collection);
+    const col = this.db.collection(collection);
+    let cursor = col.find(translateFilter<T>(filter));
+    const proj = translateProjection<T, P>(options?.project);
+    if (proj) {cursor = cursor.project(proj);}
+    if (options?.sort) {cursor = cursor.sort(translateSort(options.sort) as Sort);}
+    if (options?.skip !== undefined) {cursor = cursor.skip(options.skip);}
+    if (options?.limit !== undefined) {cursor = cursor.limit(options.limit);}
+    const docs = await cursor.toArray();
+    return docs.map((d) => fromMongo<T>(d, meta) as unknown as P);
+  }
+
+  async *findStream<T extends BaseDocument, P = T>(
+    collection: string,
+    filter: DocumentFilter<T>,
+    options?: FindOptions & ProjectOpts<T, P> & SignalOpts & { batchSize?: number },
+  ): AsyncIterable<P> {
+    await this.ensureConnected();
+    const meta = this.meta.get(collection);
+    const col = this.db.collection(collection);
+    let cursor = col.find(translateFilter<T>(filter));
+    const proj = translateProjection<T, P>(options?.project);
+    if (proj) {cursor = cursor.project(proj);}
+    if (options?.sort) {cursor = cursor.sort(translateSort(options.sort) as Sort);}
+    if (options?.batchSize) {cursor = cursor.batchSize(options.batchSize);}
+    try {
+      for await (const doc of cursor) {
+        if (options?.signal?.aborted) {break;}
+        yield fromMongo<T>(doc, meta) as unknown as P;
+      }
+    } finally {
+      await cursor.close().catch(() => {/* ignore */});
+    }
+  }
+
   async findById<T extends BaseDocument>(
     collection: string,
     id: string,
+    options?: SignalOpts,
   ): Promise<T | null> {
     await this.ensureConnected();
-
-    const col = this.getCollection<T>(collection);
-    const doc = await col.findOne({ _id: id } as Filter<T>);
-
-    return doc as T | null;
+    throwIfAborted(options?.signal);
+    const meta = this.meta.get(collection);
+    const doc = await this.db.collection(collection).findOne(({ _id: id } as unknown) as Filter<Document>);
+    return fromMongo<T>(doc, meta);
   }
 
-  /**
-   * Insert a single document.
-   *
-   * @param collection - Collection name
-   * @param document - Document to insert
-   * @returns Inserted document with generated fields
-   */
+  async count<T extends BaseDocument>(
+    collection: string,
+    filter: DocumentFilter<T>,
+    options?: SignalOpts,
+  ): Promise<number> {
+    await this.ensureConnected();
+    throwIfAborted(options?.signal);
+    return this.db.collection(collection).countDocuments(translateFilter<T>(filter));
+  }
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Writes
+  // ──────────────────────────────────────────────────────────────────────────
+
   async insertOne<T extends BaseDocument>(
     collection: string,
-    document: Omit<T, "id" | "createdAt" | "updatedAt">,
+    doc: Omit<T, 'id' | 'createdAt' | 'updatedAt'>,
+    options?: SignalOpts,
   ): Promise<T> {
     await this.ensureConnected();
-
-    const col = this.getCollection<T>(collection);
-
-    // Add generated fields (timestamps are Unix timestamps in milliseconds)
-    const now = Date.now();
-    const docWithMeta = {
-      ...document,
-      id: randomUUID(),
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    await col.insertOne(docWithMeta as OptionalUnlessRequiredId<T>);
-
-    return docWithMeta as T;
+    throwIfAborted(options?.signal);
+    const meta = this.meta.get(collection);
+    const ts = now();
+    const id = randomUUID();
+    const body = toMongoBody({ ...(doc as Record<string, unknown>) }, meta);
+    await this.db.collection(collection).insertOne(({
+      _id: id,
+      ...body,
+      createdAt: ts,
+      updatedAt: ts,
+    }) as never);
+    return { ...(doc as object), id, createdAt: ts, updatedAt: ts } as T;
   }
 
-  /**
-   * Insert multiple documents.
-   *
-   * @param collection - Collection name
-   * @param documents - Documents to insert
-   * @returns Array of inserted document IDs
-   */
   async insertMany<T extends BaseDocument>(
     collection: string,
-    documents: Array<Omit<T, "_id">>,
-  ): Promise<string[]> {
+    docs: Array<Omit<T, 'id' | 'createdAt' | 'updatedAt'>>,
+    options?: SignalOpts,
+  ): Promise<T[]> {
     await this.ensureConnected();
-
-    if (documents.length === 0) {
-      return [];
-    }
-
-    const col = this.getCollection<T>(collection);
-    const result = await col.insertMany(
-      documents as OptionalUnlessRequiredId<T>[],
-    );
-
-    return Object.values(result.insertedIds).map(String);
+    throwIfAborted(options?.signal);
+    if (docs.length === 0) {return [];}
+    return this.runAtomic(async (session) => {
+      const meta = this.meta.get(collection);
+      const ts = now();
+      const records = docs.map((d) => ({
+        _id: randomUUID(),
+        ...toMongoBody({ ...(d as Record<string, unknown>) }, meta),
+        createdAt: ts,
+        updatedAt: ts,
+      }));
+      await this.db.collection(collection).insertMany(records as never[], { session, ordered: true });
+      return records.map((r) => ({
+        ...(r as Record<string, unknown>),
+        id: r._id,
+      })) as unknown as T[];
+    });
   }
 
-  /**
-   * Update a single document.
-   *
-   * @param collection - Collection name
-   * @param filter - Query filter
-   * @param update - Update operations
-   * @returns Number of documents modified
-   */
   async updateOne<T extends BaseDocument>(
     collection: string,
     filter: DocumentFilter<T>,
     update: DocumentUpdate<T>,
-  ): Promise<number> {
+    options?: SignalOpts & { upsert?: boolean },
+  ): Promise<T | null> {
     await this.ensureConnected();
-
-    const col = this.getCollection<T>(collection);
-    const result = await col.updateOne(
-      filter as Filter<T>,
-      update as UpdateFilter<T>,
+    throwIfAborted(options?.signal);
+    const meta = this.meta.get(collection);
+    const doc = await this.db.collection(collection).findOneAndUpdate(
+      translateFilter<T>(filter),
+      buildUpdate<T>(update, { upsert: options?.upsert }),
+      { upsert: options?.upsert ?? false, returnDocument: 'after' },
     );
-
-    return result.modifiedCount;
+    return fromMongo<T>(doc as Document | null, meta);
   }
 
-  /**
-   * Update multiple documents.
-   *
-   * @param collection - Collection name
-   * @param filter - Query filter
-   * @param update - Update operations
-   * @returns Number of documents modified
-   */
   async updateMany<T extends BaseDocument>(
     collection: string,
     filter: DocumentFilter<T>,
     update: DocumentUpdate<T>,
+    options?: SignalOpts,
   ): Promise<number> {
     await this.ensureConnected();
-
-    const col = this.getCollection<T>(collection);
-    const result = await col.updateMany(
-      filter as Filter<T>,
-      update as UpdateFilter<T>,
-    );
-
-    return result.modifiedCount;
+    throwIfAborted(options?.signal);
+    const result = await this.db
+      .collection(collection)
+      .updateMany(translateFilter<T>(filter), buildUpdate<T>(update));
+    return result.matchedCount;
   }
 
-  /**
-   * Update a single document by ID.
-   *
-   * @param collection - Collection name
-   * @param id - Document ID
-   * @param update - Update operations
-   * @returns Updated document or null if not found
-   */
   async updateById<T extends BaseDocument>(
     collection: string,
     id: string,
     update: DocumentUpdate<T>,
+    options?: SignalOpts,
   ): Promise<T | null> {
     await this.ensureConnected();
-
-    const col = this.getCollection<T>(collection);
-
-    // findOneAndUpdate returns the updated document
-    const result = await col.findOneAndUpdate(
-      { id } as Filter<T>,
-      {
-        ...update,
-        $set: { ...(update.$set ?? {}), updatedAt: Date.now() },
-      } as UpdateFilter<T>,
-      { returnDocument: "after" },
+    throwIfAborted(options?.signal);
+    const meta = this.meta.get(collection);
+    const doc = await this.db.collection(collection).findOneAndUpdate(
+      ({ _id: id } as unknown) as Filter<Document>,
+      buildUpdate<T>(update),
+      { returnDocument: 'after' },
     );
-
-    return result as T | null;
+    return fromMongo<T>(doc as Document | null, meta);
   }
 
-  /**
-   * Delete a single document.
-   *
-   * @param collection - Collection name
-   * @param filter - Query filter
-   * @returns Number of documents deleted
-   */
-  async deleteOne<T extends BaseDocument>(
-    collection: string,
-    filter: DocumentFilter<T>,
-  ): Promise<number> {
-    await this.ensureConnected();
-
-    const col = this.getCollection<T>(collection);
-    const result = await col.deleteOne(filter as Filter<T>);
-
-    return result.deletedCount ?? 0;
-  }
-
-  /**
-   * Delete multiple documents.
-   *
-   * @param collection - Collection name
-   * @param filter - Query filter
-   * @returns Number of documents deleted
-   */
   async deleteMany<T extends BaseDocument>(
     collection: string,
     filter: DocumentFilter<T>,
+    options?: SignalOpts,
   ): Promise<number> {
     await this.ensureConnected();
-
-    const col = this.getCollection<T>(collection);
-    const result = await col.deleteMany(filter as Filter<T>);
-
-    return result.deletedCount ?? 0;
+    throwIfAborted(options?.signal);
+    const result = await this.db
+      .collection(collection)
+      .deleteMany(translateFilter<T>(filter));
+    return result.deletedCount;
   }
 
-  /**
-   * Delete a single document by ID.
-   *
-   * @param collection - Collection name
-   * @param id - Document ID
-   * @returns True if deleted, false if not found
-   */
-  async deleteById(collection: string, id: string): Promise<boolean> {
+  async deleteById(collection: string, id: string, options?: SignalOpts): Promise<boolean> {
     await this.ensureConnected();
-
-    const col = this.getCollection(collection);
-    const result = await col.deleteOne({ id } as Filter<Document>);
-
-    return (result.deletedCount ?? 0) > 0;
+    throwIfAborted(options?.signal);
+    const result = await this.db
+      .collection(collection)
+      .deleteOne(({ _id: id } as unknown) as Filter<Document>);
+    return result.deletedCount > 0;
   }
 
-  /**
-   * Count documents matching a filter.
-   *
-   * @param collection - Collection name
-   * @param filter - Query filter
-   * @returns Number of matching documents
-   */
-  async count<T extends BaseDocument>(
+  async bulkWrite<T extends BaseDocument>(
     collection: string,
-    filter: DocumentFilter<T>,
-  ): Promise<number> {
+    ops: Array<BulkOp<T>>,
+    options?: SignalOpts,
+  ): Promise<BulkResult> {
     await this.ensureConnected();
-
-    const col = this.getCollection<T>(collection);
-    return col.countDocuments(filter as Filter<T>);
+    throwIfAborted(options?.signal);
+    if (ops.length === 0) {return { inserted: 0, updated: 0, deleted: 0 };}
+    return this.runAtomic(async (session) => {
+      const meta = this.meta.get(collection);
+      const ts = now();
+      const mongoOps = ops.map((op): AnyBulkWriteOperation<Document> => {
+        if (op.type === 'insert') {
+          return {
+            insertOne: {
+              document: {
+                _id: randomUUID(),
+                ...toMongoBody({ ...(op.doc as Record<string, unknown>) }, meta),
+                createdAt: ts,
+                updatedAt: ts,
+              } as never,
+            },
+          };
+        }
+        if (op.type === 'update') {
+          return {
+            updateOne: {
+              filter: translateFilter<T>(op.filter),
+              update: buildUpdate<T>(op.update, { upsert: op.upsert }),
+              upsert: op.upsert ?? false,
+            },
+          };
+        }
+        return {
+          deleteMany: { filter: translateFilter<T>(op.filter) },
+        };
+      });
+      const result = await this.db
+        .collection<Document>(collection)
+        .bulkWrite(mongoOps, { session, ordered: true });
+      return {
+        inserted: result.insertedCount,
+        updated: result.modifiedCount + result.upsertedCount,
+        deleted: result.deletedCount,
+      };
+    });
   }
 
-  /**
-   * Close the database connection.
-   */
-  async close(): Promise<void> {
-    if (!this.closed) {
-      await this.client.close();
-      this.closed = true;
+  // ──────────────────────────────────────────────────────────────────────────
+  // Transactions
+  // ──────────────────────────────────────────────────────────────────────────
+
+  async transaction<R>(fn: (tx: IDocumentTransaction) => Promise<R>): Promise<R> {
+    await this.ensureConnected();
+    const session = this.client.startSession();
+    try {
+      let result!: R;
+      await session.withTransaction(async () => {
+        result = await fn(this.makeTxFacade(session));
+      });
+      return result;
+    } finally {
+      await session.endSession();
     }
   }
 
-  // ═══════════════════════════════════════════════════════════════════════
-  // Utility methods (not part of IDocumentDatabase interface)
-  // ═══════════════════════════════════════════════════════════════════════
-
   /**
-   * Check if database is open.
+   * Run an operation inside an ambient transaction if one exists; otherwise
+   * open and commit a fresh one. Used by `insertMany` and `bulkWrite` for
+   * all-or-nothing semantics.
    */
-  isOpen(): boolean {
-    return !this.closed;
+  private async runAtomic<R>(
+    fn: (session: ClientSession | undefined) => Promise<R>,
+  ): Promise<R> {
+    // We have no way to detect an ambient session from the caller; for
+    // single-op atomicity Mongo's bulk operations are already transactional
+    // on a replica set when given a session. Open a one-shot session.
+    const session = this.client.startSession();
+    try {
+      let out!: R;
+      await session.withTransaction(async () => {
+        out = await fn(session);
+      });
+      return out;
+    } finally {
+      await session.endSession();
+    }
   }
 
-  /**
-   * Get underlying MongoDB client (for advanced usage).
-   * Use with caution - bypasses adapter interface.
-   */
-  getRawClient(): MongoClient {
-    return this.client;
-  }
-
-  /**
-   * Get underlying MongoDB Db instance (for advanced usage).
-   * Use with caution - bypasses adapter interface.
-   */
-  getRawDatabase(): Db {
-    return this.db;
+  private makeTxFacade(session: ClientSession): IDocumentTransaction {
+    const self = this;
+    return {
+      async find<T extends BaseDocument, P = T>(
+        collection: string,
+        filter: DocumentFilter<T>,
+        options?: FindOptions & ProjectOpts<T, P> & SignalOpts,
+      ): Promise<P[]> {
+        const meta = self.meta.get(collection);
+        let cursor = self.db.collection(collection).find(translateFilter<T>(filter), { session });
+        const proj = translateProjection<T, P>(options?.project);
+        if (proj) {cursor = cursor.project(proj);}
+        if (options?.sort) {cursor = cursor.sort(translateSort(options.sort) as Sort);}
+        if (options?.skip !== undefined) {cursor = cursor.skip(options.skip);}
+        if (options?.limit !== undefined) {cursor = cursor.limit(options.limit);}
+        const docs = await cursor.toArray();
+        return docs.map((d) => fromMongo<T>(d, meta) as unknown as P);
+      },
+      async findById<T extends BaseDocument>(collection: string, id: string): Promise<T | null> {
+        const meta = self.meta.get(collection);
+        const doc = await self.db
+          .collection(collection)
+          .findOne(({ _id: id } as unknown) as Filter<Document>, { session });
+        return fromMongo<T>(doc, meta);
+      },
+      async count<T extends BaseDocument>(collection: string, filter: DocumentFilter<T>): Promise<number> {
+        return self.db
+          .collection(collection)
+          .countDocuments(translateFilter<T>(filter), { session });
+      },
+      async insertOne<T extends BaseDocument>(
+        collection: string,
+        doc: Omit<T, 'id' | 'createdAt' | 'updatedAt'>,
+      ): Promise<T> {
+        const meta = self.meta.get(collection);
+        const ts = now();
+        const id = randomUUID();
+        const body = toMongoBody({ ...(doc as Record<string, unknown>) }, meta);
+        await self.db.collection(collection).insertOne(
+          { _id: id, ...body, createdAt: ts, updatedAt: ts } as never,
+          { session },
+        );
+        return { ...(doc as object), id, createdAt: ts, updatedAt: ts } as T;
+      },
+      async insertMany<T extends BaseDocument>(
+        collection: string,
+        docs: Array<Omit<T, 'id' | 'createdAt' | 'updatedAt'>>,
+      ): Promise<T[]> {
+        if (docs.length === 0) {return [];}
+        const meta = self.meta.get(collection);
+        const ts = now();
+        const records = docs.map((d) => ({
+          _id: randomUUID(),
+          ...toMongoBody({ ...(d as Record<string, unknown>) }, meta),
+          createdAt: ts,
+          updatedAt: ts,
+        }));
+        await self.db.collection(collection).insertMany(records as never[], { session, ordered: true });
+        return records.map((r) => ({ ...(r as Record<string, unknown>), id: r._id })) as unknown as T[];
+      },
+      async updateOne<T extends BaseDocument>(
+        collection: string,
+        filter: DocumentFilter<T>,
+        update: DocumentUpdate<T>,
+        options?: { upsert?: boolean },
+      ): Promise<T | null> {
+        const meta = self.meta.get(collection);
+        const doc = await self.db.collection(collection).findOneAndUpdate(
+          translateFilter<T>(filter),
+          buildUpdate<T>(update, { upsert: options?.upsert }),
+          { session, upsert: options?.upsert ?? false, returnDocument: 'after' },
+        );
+        return fromMongo<T>(doc as Document | null, meta);
+      },
+      async updateMany<T extends BaseDocument>(
+        collection: string,
+        filter: DocumentFilter<T>,
+        update: DocumentUpdate<T>,
+      ): Promise<number> {
+        const result = await self.db
+          .collection(collection)
+          .updateMany(translateFilter<T>(filter), buildUpdate<T>(update), { session });
+        return result.matchedCount;
+      },
+      async updateById<T extends BaseDocument>(
+        collection: string,
+        id: string,
+        update: DocumentUpdate<T>,
+      ): Promise<T | null> {
+        const meta = self.meta.get(collection);
+        const doc = await self.db.collection(collection).findOneAndUpdate(
+          ({ _id: id } as unknown) as Filter<Document>,
+          buildUpdate<T>(update),
+          { session, returnDocument: 'after' },
+        );
+        return fromMongo<T>(doc as Document | null, meta);
+      },
+      async deleteMany<T extends BaseDocument>(
+        collection: string,
+        filter: DocumentFilter<T>,
+      ): Promise<number> {
+        const result = await self.db
+          .collection(collection)
+          .deleteMany(translateFilter<T>(filter), { session });
+        return result.deletedCount;
+      },
+      async deleteById(collection: string, id: string): Promise<boolean> {
+        const result = await self.db
+          .collection(collection)
+          .deleteOne(({ _id: id } as unknown) as Filter<Document>, { session });
+        return result.deletedCount > 0;
+      },
+    };
   }
 }
 
 /**
- * Create MongoDB database adapter.
- * This is the factory function called by initPlatform() when loading adapters.
- *
- * @param config - MongoDB configuration
- * @returns MongoDB adapter instance
- *
- * @example
- * ```typescript
- * const db = createAdapter({
- *   uri: 'mongodb://localhost:27017',
- *   database: 'myapp',
- *   options: {
- *     maxPoolSize: 20,
- *   },
- * });
- * ```
+ * Factory used by the platform when loading via the adapter manifest.
  */
 export function createAdapter(config: MongoDBConfig): MongoDBAdapter {
   return new MongoDBAdapter(config);
 }
 
-// Default export for direct import
 export default createAdapter;
+
+// Minimal Document type alias for translateFilter return — we deliberately
+// don't import Mongo's `Document` as a value to avoid runtime weight.
+type Document = Record<string, unknown>;

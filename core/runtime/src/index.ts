@@ -129,8 +129,8 @@ export { CacheProxy, createCacheProxy } from './proxy/cache-proxy.js';
 export { LLMProxy } from './proxy/llm-proxy.js';
 export { EmbeddingsProxy } from './proxy/embeddings-proxy.js';
 export { StorageProxy, createStorageProxy } from './proxy/storage-proxy.js';
-export { SQLDatabaseProxy, createSQLDatabaseProxy } from './proxy/sql-database-proxy.js';
 export { DocumentDatabaseProxy, createDocumentDatabaseProxy } from './proxy/document-database-proxy.js';
+export { KVStoreProxy, createKVStoreProxy } from './proxy/kv-store-proxy.js';
 export {
   createProxyPlatform,
   closeProxyPlatform,

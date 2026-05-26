@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import type { ISQLDatabase } from '@kb-labs/core-platform/adapters';
+import type { IDocumentDatabase } from '@kb-labs/core-platform/adapters';
 import { initPlatform, resetPlatform } from '../loader.js';
 import { platform } from '../container.js';
 import { startFullCycle } from '../use-cases/start-full-cycle.js';
@@ -173,12 +173,13 @@ describe('initPlatform environment orchestration e2e', () => {
       const status = await platform.environmentManager!.getEnvironmentStatus(environmentId);
       expect(status.status).toBe('terminated');
 
-      const db = platform.getAdapter<ISQLDatabase>('sqlDatabase')!;
-      const leaseRows = await db.query(
-        'SELECT status FROM environment_leases WHERE environment_id = ?',
-        [environmentId]
+      const docs = platform.getAdapter<IDocumentDatabase>('documentDatabase')!;
+      const leases = await docs.find<{ id: string; createdAt: number; updatedAt: number; status: string; environmentId: string }>(
+        'environment_leases',
+        { environmentId: { $eq: environmentId } },
+        { limit: 1 },
       );
-      expect((leaseRows.rows?.[0] as any)?.status).toBe('terminated');
+      expect(leases[0]?.status).toBe('terminated');
     }
   );
 });
