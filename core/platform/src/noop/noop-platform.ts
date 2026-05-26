@@ -1,53 +1,42 @@
 /**
  * @module @kb-labs/core-platform/noop/noop-platform
- * Factory for a fully no-op platform object.
+ * Factory for a mixed fallback platform object.
  *
- * Assembles all existing no-op adapter implementations into a single object
- * that satisfies PlatformServices (plugin-contracts) structurally.
+ * Slots with an honest in-process implementation (cache, storage, etc.)
+ * are wired with InMemory* variants so the process can function without
+ * external infrastructure. Slots that require a real provider (llm,
+ * embeddings) are wired with NoOp* stubs that throw `AdapterUnavailableError`
+ * on use — failing loudly rather than silently returning garbage.
  *
  * Use in:
  * - Worker subprocess fallback (no IPC socket available)
- * - Tests that don't need real platform services
+ * - Tests that need lightweight platform wiring without a real adapter
  *
  * @example
  * import { createNoOpPlatform } from '@kb-labs/core-platform/noop';
  * const platform = createNoOpPlatform();
  */
 
-import { NoOpLogger } from './adapters/logger.js';
-import { MockLLM } from './adapters/llm.js';
-import { MemoryCache } from './adapters/cache.js';
-import { MockEmbeddings } from './adapters/embeddings.js';
-import { MemoryVectorStore } from './adapters/vector-store.js';
-import { MemoryStorage } from './adapters/storage.js';
-import { NoOpAnalytics } from './adapters/analytics.js';
-import { NoOpEventBus } from './adapters/event-bus.js';
-import type { ILogReader, LogCapabilities } from '../adapters/log-reader.js';
-
-const noOpLogReader: ILogReader = {
-  query: async () => ({ logs: [], total: 0, hasMore: false, source: 'buffer' as const }),
-  getById: async () => null,
-  search: async () => ({ logs: [], total: 0, hasMore: false }),
-  subscribe: () => () => {},
-  getStats: async () => ({}),
-  getCapabilities: (): LogCapabilities => ({
-    hasBuffer: false,
-    hasPersistence: false,
-    hasSearch: false,
-    hasStreaming: false,
-  }),
-};
+import { ConsoleLogger } from '../inmemory/adapters/logger.js';
+import { InMemoryCache } from '../inmemory/adapters/cache.js';
+import { InMemoryVectorStore } from '../inmemory/adapters/vector-store.js';
+import { InMemoryStorage } from '../inmemory/adapters/storage.js';
+import { InMemoryEventBus } from '../inmemory/adapters/event-bus.js';
+import { InMemoryAnalyticsBuffer } from '../inmemory/adapters/analytics-buffer.js';
+import { NoOpLLM } from './adapters/llm.js';
+import { NoOpEmbeddings } from './adapters/embeddings.js';
+import { NoOpLogReader } from './adapters/log-reader.js';
 
 export function createNoOpPlatform() {
   return {
-    logger: new NoOpLogger(),
-    llm: new MockLLM(),
-    cache: new MemoryCache(),
-    embeddings: new MockEmbeddings(),
-    vectorStore: new MemoryVectorStore(),
-    storage: new MemoryStorage(),
-    analytics: new NoOpAnalytics(),
-    eventBus: new NoOpEventBus(),
-    logs: noOpLogReader,
+    logger:      new ConsoleLogger(),
+    llm:         new NoOpLLM(),
+    cache:       new InMemoryCache(),
+    embeddings:  new NoOpEmbeddings(),
+    vectorStore: new InMemoryVectorStore(),
+    storage:     new InMemoryStorage(),
+    analytics:   new InMemoryAnalyticsBuffer(),
+    eventBus:    new InMemoryEventBus(),
+    logs:        new NoOpLogReader(),
   };
 }

@@ -1,5 +1,5 @@
 /**
- * @module @kb-labs/core-platform/adapters/testing/in-memory-document-database
+ * @module @kb-labs/core-platform/inmemory/adapters/document-database
  *
  * In-memory `IDocumentDatabase` for tests. Lives in `core-platform` (lowest
  * layer) so any consumer of the contract can use it without pulling in a real

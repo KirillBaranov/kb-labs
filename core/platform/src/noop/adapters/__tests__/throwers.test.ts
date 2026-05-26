@@ -75,9 +75,9 @@ describe('NoOpNotifier', () => {
     await expect(
       notifier.notify({
         severity: 'info',
-        type: 'test.event',
+        code: 'test.event',
         title: 'hi',
-        message: 'msg',
+        body: 'msg',
       }),
     ).resolves.toBeUndefined();
   });

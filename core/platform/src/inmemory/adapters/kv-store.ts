@@ -1,5 +1,5 @@
 /**
- * @module @kb-labs/core-platform/adapters/testing/in-memory-kv-store
+ * @module @kb-labs/core-platform/inmemory/adapters/kv-store
  *
  * In-memory `IKVStore` for tests. Sufficient for governance / wrapper tests:
  * full method surface, TTL respected on read (lazy expiry), atomic CAS / incr

@@ -35,16 +35,6 @@ export {
   NoOpNotifier,
   NoOpLogReader,
   NoOpLogger,
-  // Deprecated re-exports — see `./adapters/index.ts` for details.
-  MemoryVectorStore,
-  MemoryCache,
-  MemoryStorage,
-  MemoryArtifacts,
-  MemoryEventBus,
-  NoOpEventBus,
-  ConsoleLogger,
-  MockLLM,
-  MockEmbeddings,
 } from './adapters/index.js';
 
 // ── Platform factory ─────────────────────────────────────────────────────────

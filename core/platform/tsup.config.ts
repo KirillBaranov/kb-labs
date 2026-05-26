@@ -7,7 +7,6 @@ export default defineConfig({
     index: 'src/index.ts',
     'adapters/index': 'src/adapters/index.ts',
     'adapters/contract/index': 'src/adapters/contract/index.ts',
-    'adapters/testing/index': 'src/adapters/testing/index.ts',
     'inmemory/index': 'src/inmemory/index.ts',
     'inmemory/adapters/index': 'src/inmemory/adapters/index.ts',
     'core/index': 'src/core/index.ts',

@@ -8,8 +8,7 @@
  * to the caller about model behaviour. Throwing forces operators to wire
  * up a real provider.
  *
- * Test doubles with programmable responses live in
- * `@kb-labs/shared-testing-platform/mocks` (MockLLM).
+ * Programmable test doubles live in `@kb-labs/shared-testing` (mockLLM).
  */
 
 import { AdapterUnavailableError } from '../../errors.js';
@@ -17,7 +16,6 @@ import type {
   ILLM,
   LLMMessage,
   LLMOptions,
-  LLMProtocolCapabilities,
   LLMResponse,
   LLMToolCallOptions,
   LLMToolCallResponse,
@@ -47,39 +45,5 @@ export class NoOpLLM implements ILLM {
     _options: LLMToolCallOptions,
   ): Promise<LLMToolCallResponse> {
     throw new AdapterUnavailableError(SLOT);
-  }
-}
-
-/**
- * @deprecated Use `MockLLM` from `@kb-labs/shared-testing-platform/mocks`
- *   for tests, or configure a real adapter for production. Kept here
- *   temporarily until consumers migrate; this re-export will be removed.
- */
-export class MockLLM implements ILLM {
-  getProtocolCapabilities(): LLMProtocolCapabilities {
-    return {
-      cache: { supported: false },
-      stream: { supported: true },
-    };
-  }
-
-  async complete(prompt: string, options?: LLMOptions): Promise<LLMResponse> {
-    const content = `[Mock LLM Response] Received prompt of ${prompt.length} characters.`;
-    return {
-      content,
-      usage: {
-        promptTokens: Math.ceil(prompt.length / 4),
-        completionTokens: Math.ceil(content.length / 4),
-      },
-      model: options?.model ?? 'mock-model',
-    };
-  }
-
-  async *stream(prompt: string, _options?: LLMOptions): AsyncIterable<string> {
-    const response = `[Mock LLM Stream] Received prompt of ${prompt.length} characters.`;
-    for (const word of response.split(' ')) {
-      yield word + ' ';
-      await new Promise((r) => { setTimeout(r, 50); });
-    }
   }
 }
