@@ -254,7 +254,7 @@ const applyUpdate = (
   row: Record<string, unknown>,
   update: DocumentUpdate<unknown>,
 ): Record<string, unknown> => {
-  const next = { ...row, updatedAt: Date.now() };
+  const next: Record<string, unknown> = { ...row, updatedAt: Date.now() };
   if (update.$set) {
     for (const [k, v] of Object.entries(update.$set)) {
       if (k === 'id' || k === 'createdAt' || k === 'updatedAt') {continue;}

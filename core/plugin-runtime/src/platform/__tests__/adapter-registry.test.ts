@@ -9,8 +9,8 @@ describe('ADAPTER_REGISTRY', () => {
     // in adapter-registry.ts is removed, this test catches the gap at runtime too.
     const expectedKeys: Array<keyof Required<PlatformServices>> = [
       'logger', 'llm', 'embeddings', 'vectorStore', 'cache', 'storage',
-      'analytics', 'eventBus', 'config', 'invoke', 'sqlDatabase',
-      'documentDatabase', 'logs', 'notifier', 'artifacts', 'snapshotManager',
+      'analytics', 'eventBus', 'config', 'invoke',
+      'documentDatabase', 'kvStore', 'logs', 'notifier', 'artifacts', 'snapshotManager',
     ];
 
     for (const key of expectedKeys) {
