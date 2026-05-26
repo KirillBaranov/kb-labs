@@ -156,7 +156,7 @@ export default async function InstallPage({ params }: Props) {
                   {t('install.hero.description2')}
                 </p>
                 <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-end sm:justify-center">
-                  <PlatformCommand commands={{ unix: 'curl -fsSL https://kblabs.ru/install.sh | sh' }} /> {/* i18n-ignore */}
+                  <PlatformCommand commands={{ unix: 'curl -fsSL https://kblabs.ru/install.sh | sh' }} className="w-full sm:w-auto sm:min-w-[360px]" /> {/* i18n-ignore */}
                   <Button
                     variant="secondary"
                     size="lg"
