@@ -170,3 +170,31 @@
 .ctaBtn:hover {
   background: var(--accent-hover);
 }
+
+/* ─── Mobile ─────────────────────────────────────────────────────────── */
+@media (max-width: 720px) {
+  .inner {
+    padding-left: 3.5rem; /* room for hamburger */
+    padding-right: 0.75rem;
+  }
+
+  .navTabs {
+    display: none;
+  }
+
+  .searchKbd {
+    display: none;
+  }
+
+  .ctaBtn {
+    display: none;
+  }
+
+  .searchWrap {
+    padding: 0 0.5rem;
+  }
+
+  .brandTag {
+    display: none;
+  }
+}
