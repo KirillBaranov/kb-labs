@@ -162,13 +162,22 @@ export async function signUserAccessToken(
   return { token, expiresInSec: opts.ttlSec, jti };
 }
 
+/**
+ * Sign a user refresh token.
+ *
+ * When the caller already owns the `jti` (typical: the sessions-store
+ * minted it inside `createSession`/`rotateRefresh`), pass it via the
+ * second argument so the JWT and the store agree on the identifier.
+ * Otherwise the helper generates one — used by tests that don't go
+ * through sessions-store.
+ */
 export async function signUserRefreshToken(
-  opts: SignUserTokenOptions,
+  opts: SignUserTokenOptions & { jti?: string },
   config: JwtConfig,
 ): Promise<string> {
   const key = getSecretKey(config.secret);
   const now = Math.floor(Date.now() / 1000);
-  const jti = randomUUID();
+  const jti = opts.jti ?? randomUUID();
   return new SignJWT({
     tenantId: opts.tenantId,
     fam: opts.familyId,
