@@ -1,193 +1,178 @@
 /**
- * @module @kb-labs/core-ipc/proxy
- * IPC proxy for IDocumentDatabase adapter.
+ * @module @kb-labs/core-ipc/proxy/document-database
  *
- * This proxy forwards all document database operations to the parent process via IPC.
- * The parent process owns the real document adapter (e.g., MongoDBAdapter).
+ * Child-side proxy for `IDocumentDatabase`. All RPCs go to `database.document`
+ * on the parent, where the real adapter lives.
  *
- * Benefits:
- * - Single database connection (consistent data access across all workers)
- * - Reduced memory usage (no duplicate connections)
- * - No race conditions (centralized transaction management)
+ * Two operations cannot cross the IPC boundary as-is:
  *
- * @example
- * ```typescript
- * import { DocumentDatabaseProxy, createIPCTransport } from '@kb-labs/core-ipc';
+ * - `transaction(fn)` — the callback closes over caller-side state, there is
+ *    no way to ship it to the parent. Plugins that need transactional writes
+ *    from a worker should accumulate the operations and issue a single
+ *    `bulkWrite` (which IS atomic on the parent).
  *
- * // In child process (sandbox worker)
- * const transport = createIPCTransport();
- * const db = new DocumentDatabaseProxy(transport);
+ * - `findStream` — async iterators do not map cleanly to RPC. Workers should
+ *    use bounded `find({ limit })` calls and paginate explicitly.
  *
- * // Use like normal IDocumentDatabase
- * const users = await db.find('users', { age: { $gt: 18 } }, { limit: 10 });
- * console.log(users);
- *
- * // Update by ID
- * const updated = await db.updateById('users', '123', { $set: { active: true } });
- * ```
+ * Both are deliberate trade-offs: keeping the proxy honest about its
+ * limitations beats faking semantics that quietly break.
  */
 
 import type {
   IDocumentDatabase,
+  IDocumentTransaction,
   BaseDocument,
   DocumentFilter,
   DocumentUpdate,
   FindOptions,
+  ProjectOpts,
+  SignalOpts,
+  EnsureCollectionOpts,
+  BulkOp,
+  BulkResult,
 } from '@kb-labs/core-platform/adapters';
 import type { ITransport } from '../transport/transport';
 import { RemoteAdapter } from './remote-adapter';
 
-/**
- * IPC proxy for IDocumentDatabase adapter.
- *
- * All method calls are forwarded to the parent process via IPC.
- * The parent process executes the call on the real document adapter
- * (e.g., MongoDBAdapter) and returns the result.
- */
-export class DocumentDatabaseProxy extends RemoteAdapter<IDocumentDatabase> implements IDocumentDatabase {
-  /**
-   * Create a document database proxy.
-   *
-   * @param transport - IPC transport to communicate with parent
-   */
+export class DocumentDatabaseProxy
+  extends RemoteAdapter<IDocumentDatabase>
+  implements IDocumentDatabase
+{
   constructor(transport: ITransport) {
     super('database.document', transport);
   }
 
-  /**
-   * Find documents matching a filter.
-   *
-   * @param collection - Collection name
-   * @param filter - Query filter
-   * @param options - Find options (limit, skip, sort)
-   * @returns Array of matching documents
-   */
-  async find<T extends BaseDocument>(
+  async find<T extends BaseDocument, P = T>(
     collection: string,
     filter: DocumentFilter<T>,
-    options?: FindOptions
-  ): Promise<T[]> {
-    return (await this.callRemote('find', [collection, filter, options])) as T[];
+    options?: FindOptions & ProjectOpts<T, P> & SignalOpts,
+  ): Promise<P[]> {
+    return (await this.callRemote('find', [collection, filter, stripSignal(options)])) as P[];
   }
 
-  /**
-   * Find a single document by ID.
-   *
-   * @param collection - Collection name
-   * @param id - Document ID
-   * @returns Document or null if not found
-   */
-  async findById<T extends BaseDocument>(collection: string, id: string): Promise<T | null> {
+  // eslint-disable-next-line require-yield
+  async *findStream<T extends BaseDocument, P = T>(
+    _collection: string,
+    _filter: DocumentFilter<T>,
+    _options?: FindOptions & ProjectOpts<T, P> & SignalOpts & { batchSize?: number },
+  ): AsyncIterable<P> {
+    throw new Error(
+      'findStream() is not supported over IPC. Use bounded find({ limit }) and paginate explicitly.',
+    );
+  }
+
+  async findById<T extends BaseDocument>(
+    collection: string,
+    id: string,
+    _options?: SignalOpts,
+  ): Promise<T | null> {
     return (await this.callRemote('findById', [collection, id])) as T | null;
   }
 
-  /**
-   * Insert a single document.
-   *
-   * @param collection - Collection name
-   * @param document - Document to insert (id, createdAt, updatedAt will be added)
-   * @returns Inserted document with generated fields
-   */
-  async insertOne<T extends BaseDocument>(
-    collection: string,
-    document: Omit<T, 'id' | 'createdAt' | 'updatedAt'>
-  ): Promise<T> {
-    return (await this.callRemote('insertOne', [collection, document])) as T;
-  }
-
-  /**
-   * Update documents matching a filter.
-   *
-   * @param collection - Collection name
-   * @param filter - Query filter
-   * @param update - Update operations
-   * @returns Number of documents updated
-   */
-  async updateMany<T extends BaseDocument>(
-    collection: string,
-    filter: DocumentFilter<T>,
-    update: DocumentUpdate<T>
-  ): Promise<number> {
-    return (await this.callRemote('updateMany', [collection, filter, update])) as number;
-  }
-
-  /**
-   * Update a single document by ID.
-   *
-   * @param collection - Collection name
-   * @param id - Document ID
-   * @param update - Update operations
-   * @returns Updated document or null if not found
-   */
-  async updateById<T extends BaseDocument>(
-    collection: string,
-    id: string,
-    update: DocumentUpdate<T>
-  ): Promise<T | null> {
-    return (await this.callRemote('updateById', [collection, id, update])) as T | null;
-  }
-
-  /**
-   * Delete documents matching a filter.
-   *
-   * @param collection - Collection name
-   * @param filter - Query filter
-   * @returns Number of documents deleted
-   */
-  async deleteMany<T extends BaseDocument>(
-    collection: string,
-    filter: DocumentFilter<T>
-  ): Promise<number> {
-    return (await this.callRemote('deleteMany', [collection, filter])) as number;
-  }
-
-  /**
-   * Delete a single document by ID.
-   *
-   * @param collection - Collection name
-   * @param id - Document ID
-   * @returns True if deleted, false if not found
-   */
-  async deleteById(collection: string, id: string): Promise<boolean> {
-    return (await this.callRemote('deleteById', [collection, id])) as boolean;
-  }
-
-  /**
-   * Count documents matching a filter.
-   *
-   * @param collection - Collection name
-   * @param filter - Query filter
-   * @returns Number of matching documents
-   */
   async count<T extends BaseDocument>(
     collection: string,
-    filter: DocumentFilter<T>
+    filter: DocumentFilter<T>,
+    _options?: SignalOpts,
   ): Promise<number> {
     return (await this.callRemote('count', [collection, filter])) as number;
   }
 
-  /**
-   * Close the database connection.
-   */
-  async close(): Promise<void> {
-    await this.callRemote('close', []);
+  async insertOne<T extends BaseDocument>(
+    collection: string,
+    doc: Omit<T, 'id' | 'createdAt' | 'updatedAt'>,
+    _options?: SignalOpts,
+  ): Promise<T> {
+    return (await this.callRemote('insertOne', [collection, doc])) as T;
+  }
+
+  async insertMany<T extends BaseDocument>(
+    collection: string,
+    docs: Array<Omit<T, 'id' | 'createdAt' | 'updatedAt'>>,
+    _options?: SignalOpts,
+  ): Promise<T[]> {
+    return (await this.callRemote('insertMany', [collection, docs])) as T[];
+  }
+
+  async updateOne<T extends BaseDocument>(
+    collection: string,
+    filter: DocumentFilter<T>,
+    update: DocumentUpdate<T>,
+    options?: SignalOpts & { upsert?: boolean },
+  ): Promise<T | null> {
+    return (await this.callRemote('updateOne', [
+      collection,
+      filter,
+      update,
+      { upsert: options?.upsert },
+    ])) as T | null;
+  }
+
+  async updateMany<T extends BaseDocument>(
+    collection: string,
+    filter: DocumentFilter<T>,
+    update: DocumentUpdate<T>,
+    _options?: SignalOpts,
+  ): Promise<number> {
+    return (await this.callRemote('updateMany', [collection, filter, update])) as number;
+  }
+
+  async updateById<T extends BaseDocument>(
+    collection: string,
+    id: string,
+    update: DocumentUpdate<T>,
+    _options?: SignalOpts,
+  ): Promise<T | null> {
+    return (await this.callRemote('updateById', [collection, id, update])) as T | null;
+  }
+
+  async deleteMany<T extends BaseDocument>(
+    collection: string,
+    filter: DocumentFilter<T>,
+    _options?: SignalOpts,
+  ): Promise<number> {
+    return (await this.callRemote('deleteMany', [collection, filter])) as number;
+  }
+
+  async deleteById(collection: string, id: string, _options?: SignalOpts): Promise<boolean> {
+    return (await this.callRemote('deleteById', [collection, id])) as boolean;
+  }
+
+  async bulkWrite<T extends BaseDocument>(
+    collection: string,
+    ops: Array<BulkOp<T>>,
+    _options?: SignalOpts,
+  ): Promise<BulkResult> {
+    return (await this.callRemote('bulkWrite', [collection, ops])) as BulkResult;
+  }
+
+  async transaction<T>(_fn: (tx: IDocumentTransaction) => Promise<T>): Promise<T> {
+    throw new Error(
+      'transaction() is not supported over IPC. Collect your writes into a single bulkWrite() instead.',
+    );
+  }
+
+  async ensureCollection(name: string, options?: EnsureCollectionOpts): Promise<void> {
+    await this.callRemote('ensureCollection', [name, options]);
+  }
+
+  async ping(): Promise<{ ok: boolean; latencyMs: number }> {
+    return (await this.callRemote('ping', [])) as { ok: boolean; latencyMs: number };
+  }
+
+  async close(options?: { drainTimeoutMs?: number }): Promise<void> {
+    await this.callRemote('close', [options]);
   }
 }
 
-/**
- * Create a document database proxy with IPC transport.
- *
- * @param transport - IPC transport to use
- * @returns Document database proxy instance
- *
- * @example
- * ```typescript
- * import { createDocumentDatabaseProxy, createIPCTransport } from '@kb-labs/core-ipc';
- *
- * const transport = createIPCTransport();
- * const db = createDocumentDatabaseProxy(transport);
- * ```
- */
+const stripSignal = <T extends SignalOpts | undefined>(
+  options: T,
+): Omit<NonNullable<T>, 'signal'> | undefined => {
+  if (!options) {return undefined;}
+  const { signal: _signal, ...rest } = options;
+  void _signal;
+  return rest;
+};
+
 export function createDocumentDatabaseProxy(transport: ITransport): DocumentDatabaseProxy {
   return new DocumentDatabaseProxy(transport);
 }

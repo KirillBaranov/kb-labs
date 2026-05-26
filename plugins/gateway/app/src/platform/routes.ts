@@ -31,8 +31,23 @@ const ALLOWED_METHODS: Record<string, Set<string>> = {
   embeddings: new Set(['embed']),
   storage: new Set(['read', 'write', 'delete', 'list', 'exists']),
   eventBus: new Set(['publish', 'subscribe']),
-  sqlDatabase: new Set(['query', 'execute']),
-  documentDatabase: new Set(['find', 'findOne', 'insert', 'update', 'delete']),
+  documentDatabase: new Set([
+    'find', 'findById', 'count',
+    'insertOne', 'insertMany',
+    'updateOne', 'updateMany', 'updateById',
+    'deleteMany', 'deleteById',
+    'bulkWrite',
+    'ensureCollection',
+    'ping',
+  ]),
+  kvStore: new Set([
+    'get', 'getMany',
+    'set', 'setMany', 'setIfNotExists',
+    'delete', 'exists',
+    'cas', 'incr',
+    'ttl', 'expire', 'persist',
+    'ping',
+  ]),
 };
 
 // ── Adapter resolution ────────────────────────────────────────────────────
@@ -47,8 +62,8 @@ function resolveAdapter(name: string): unknown | undefined {
     embeddings: () => platform.embeddings,
     storage: () => platform.storage,
     eventBus: () => platform.eventBus,
-    sqlDatabase: () => platform.sqlDatabase,
     documentDatabase: () => platform.documentDatabase,
+    kvStore: () => platform.kvStore,
   };
 
   const getter = adapterMap[name];

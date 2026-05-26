@@ -75,8 +75,8 @@ function createMockPlatform(): PlatformServices {
       call: vi.fn(async () => ({ success: false, error: 'noop' })),
       isAvailable: vi.fn(async () => false),
     } as unknown as PlatformServices['invoke'],
-    sqlDatabase: {} as PlatformServices['sqlDatabase'],
     documentDatabase: {} as PlatformServices['documentDatabase'],
+    kvStore: {} as PlatformServices['kvStore'],
     logs: {} as PlatformServices['logs'],
   };
 }

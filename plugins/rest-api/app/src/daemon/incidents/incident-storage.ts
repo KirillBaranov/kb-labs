@@ -3,8 +3,29 @@
  * Incident history storage service (SQLite-backed)
  */
 
-import type { ISQLDatabase } from '@kb-labs/core-platform/adapters';
 import { platform } from '@kb-labs/core-runtime';
+
+/**
+ * Minimal SQL-shaped interface used internally by the incident store.
+ *
+ * `ISQLDatabase` is no longer a public platform contract (plugins use
+ * `IDocumentDatabase` / `IKVStore`). The incident subsystem leans on SQL
+ * specifics (FTS5, complex aggregations) that don't map cleanly onto the
+ * document API — until that's redesigned, the store owns its own SQL
+ * surface locally and accepts any object that satisfies this shape.
+ *
+ * TODO: migrate to `IDocumentDatabase` + `IAnalytics` once the FTS story
+ * is sorted at the platform level.
+ */
+interface SqlLikeBackend {
+  query<T = unknown>(
+    sql: string,
+    params?: unknown[],
+  ): Promise<{ rows: T[]; rowCount: number }>;
+  exec?(sql: string): Promise<void>;
+  transaction?(): Promise<unknown>;
+}
+type ISQLDatabase = SqlLikeBackend;
 
 /**
  * Incident severity levels

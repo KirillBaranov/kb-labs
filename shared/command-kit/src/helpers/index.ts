@@ -40,6 +40,8 @@ export { useVectorStore, isVectorStoreAvailable } from './use-vector-store.js';
 export { useAnalytics, trackAnalyticsEvent } from './use-analytics.js';
 export { useStorage } from './use-storage.js';
 export { useCache, isCacheAvailable } from './use-cache.js';
+export { useDocumentDatabase, isDocumentDatabaseAvailable } from './use-document-database.js';
+export { useKVStore, isKVStoreAvailable } from './use-kv-store.js';
 
 // Notifications
 export { useNotifications } from './use-notifications.js';

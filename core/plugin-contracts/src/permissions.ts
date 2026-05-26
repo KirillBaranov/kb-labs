@@ -194,6 +194,90 @@ export interface PermissionSpec {
       /** Allowed target namespaces (glob patterns) */
       namespaces?: string[];
     };
+
+    /**
+     * Storage abstractions (`IDocumentDatabase`, `IKVStore`).
+     *
+     * Two separate sub-permissions; declare only what the plugin needs.
+     * Absent / `false` for a sub-permission means the platform serves a
+     * deny stub — every call throws `PermissionError`.
+     *
+     * Collections / keys are namespaced per plugin under the hood. Without
+     * grants a plugin only sees its own data. Cross-plugin access is opt-in
+     * via the bidirectional `access` mechanism described below.
+     */
+    database?: {
+      /**
+       * Document database access.
+       *
+       * @example
+       * // Plugin owns two collections; no cross-plugin access.
+       * database: { document: { owns: ['runs', 'steps'] } }
+       *
+       * @example
+       * // Plugin reads users from `auth` (auth must export it).
+       * database: {
+       *   document: {
+       *     owns: ['invoices'],
+       *     access: [{ collection: 'users', owner: 'auth', ops: ['read'] }],
+       *   },
+       * }
+       *
+       * @example
+       * // Plugin needs to create / migrate its own collections at startup.
+       * database: { document: { owns: ['runs'], ddl: { ownCollections: true } } }
+       */
+      document?: {
+        /**
+         * Collections owned by this plugin. Full CRUD is allowed on every
+         * listed collection. `ensureCollection` requires `ddl.ownCollections`.
+         *
+         * Collection names are namespaced under the plugin: a plugin asking
+         * for `"runs"` actually sees `<pluginId>__runs` on disk. Names in
+         * this list MUST NOT contain `__`.
+         */
+        owns?: string[];
+
+        /**
+         * Read / write into collections owned by other plugins.
+         *
+         * The grant is bidirectional: the owning plugin MUST also declare
+         * `exports.collections` for the listed collection (see plugin
+         * manifest), otherwise `install` fails. This prevents one plugin
+         * from silently asserting access to another plugin's data.
+         */
+        access?: Array<{
+          /** Collection name as exposed by the owner (no namespace prefix). */
+          collection: string;
+          /** PluginId that owns the collection and must export it. */
+          owner: string;
+          /** Operations granted: `read` covers find/findById/count/findStream; `write` covers insert/update/delete/bulkWrite. */
+          ops: Array<'read' | 'write'>;
+        }>;
+
+        /**
+         * DDL surface. `ensureCollection` is treated as a separate privilege
+         * because it can create indexes, including unique indexes that affect
+         * subsequent writes.
+         */
+        ddl?: {
+          /** Allow `ensureCollection` for collections in `owns`. Default: false. */
+          ownCollections?: boolean;
+        };
+      };
+
+      /**
+       * KV store access. Keys live in a per-plugin namespace — the wrapper
+       * prefixes every key with `<pluginId>:`, so two plugins setting
+       * `"counter"` do not collide. Cross-plugin reads are NOT supported
+       * (use `IInvoke` for plugin-to-plugin communication instead).
+       *
+       * Empty object = "this plugin uses KV". A `boolean` shorthand is
+       * intentionally NOT accepted because future scope flags
+       * (e.g. quotas) attach to the object form.
+       */
+      kvStore?: Record<string, never>;
+    };
   };
 
   /**

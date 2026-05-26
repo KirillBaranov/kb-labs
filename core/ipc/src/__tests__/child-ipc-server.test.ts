@@ -59,8 +59,8 @@ function createMockPlatform(): IPlatformAdapters {
     eventBus: { publish: vi.fn(), subscribe: vi.fn() } as any,
     config: { getConfig: vi.fn(), getRawConfig: vi.fn() } as any,
     invoke: { call: vi.fn(), isAvailable: vi.fn() } as any,
-    sqlDatabase: { query: vi.fn(), transaction: vi.fn(), close: vi.fn() } as any,
-    documentDatabase: { find: vi.fn(), findById: vi.fn(), insertOne: vi.fn(), updateMany: vi.fn(), updateById: vi.fn(), deleteMany: vi.fn(), deleteById: vi.fn(), count: vi.fn(), close: vi.fn() } as any,
+    documentDatabase: { find: vi.fn(), findStream: vi.fn(), findById: vi.fn(), count: vi.fn(), insertOne: vi.fn(), insertMany: vi.fn(), updateOne: vi.fn(), updateMany: vi.fn(), updateById: vi.fn(), deleteMany: vi.fn(), deleteById: vi.fn(), bulkWrite: vi.fn(), transaction: vi.fn(), ensureCollection: vi.fn(), ping: vi.fn(), close: vi.fn() } as any,
+    kvStore: { get: vi.fn(), getMany: vi.fn(), set: vi.fn(), setMany: vi.fn(), setIfNotExists: vi.fn(), delete: vi.fn(), exists: vi.fn(), cas: vi.fn(), incr: vi.fn(), ttl: vi.fn(), expire: vi.fn(), persist: vi.fn(), scan: vi.fn(), ping: vi.fn(), close: vi.fn() } as any,
     logs: { query: vi.fn(), getById: vi.fn(), search: vi.fn(), subscribe: vi.fn(), getStats: vi.fn(), getCapabilities: vi.fn() } as any,
   };
 }

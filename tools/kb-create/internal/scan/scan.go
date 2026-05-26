@@ -44,14 +44,56 @@ type PluginEntry struct {
 }
 
 // AdapterEntry describes a discovered adapter.
+//
+// `Implements` is normalised to a slice even when the manifest declares a
+// single contract — that lets one driver implement multiple contracts at
+// once (e.g. `@kb-labs/adapters-sqlite` ships both `IDocumentDatabase` and
+// `IKVStore`). The custom unmarshaller below accepts either shape on the
+// wire.
 type AdapterEntry struct {
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	Version      string `json:"version"`
-	Description  string `json:"description"`
-	ResolvedPath string `json:"resolvedPath"`
-	Implements   string `json:"implements"`
-	Type         string `json:"type"`
+	ID           string           `json:"id"`
+	Name         string           `json:"name"`
+	Version      string           `json:"version"`
+	Description  string           `json:"description"`
+	ResolvedPath string           `json:"resolvedPath"`
+	Implements   ImplementsField  `json:"implements"`
+	Type         string           `json:"type"`
+}
+
+// ImplementsField holds the contracts an adapter satisfies. Accepts either
+// a JSON string (`"ICache"`) or a JSON array (`["IDocumentDatabase", "IKVStore"]`)
+// when decoding; always serialises back as an array.
+type ImplementsField []string
+
+// UnmarshalJSON accepts both string and []string forms.
+func (i *ImplementsField) UnmarshalJSON(data []byte) error {
+	// Try array first (the canonical / forward-looking shape).
+	var arr []string
+	if err := json.Unmarshal(data, &arr); err == nil {
+		*i = arr
+		return nil
+	}
+	// Fall back to single string (legacy single-contract manifests).
+	var s string
+	if err := json.Unmarshal(data, &s); err != nil {
+		return fmt.Errorf("implements: expected string or []string, got %s", string(data))
+	}
+	if s == "" {
+		*i = nil
+	} else {
+		*i = []string{s}
+	}
+	return nil
+}
+
+// Has reports whether the adapter advertises the given contract.
+func (i ImplementsField) Has(contract string) bool {
+	for _, c := range i {
+		if c == contract {
+			return true
+		}
+	}
+	return false
 }
 
 // ServiceEntry describes a discovered service.

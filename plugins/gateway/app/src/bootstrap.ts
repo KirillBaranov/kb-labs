@@ -2,8 +2,8 @@ import { logDiagnosticEvent } from '@kb-labs/core-platform';
 import { platform, createServiceBootstrap, getPlatformRoot, getProjectRoot } from '@kb-labs/core-runtime';
 import { createCorrelatedLogger } from '@kb-labs/shared-http';
 import type { IHostStore } from '@kb-labs/gateway-contracts';
-import type { ISQLDatabase } from '@kb-labs/core-platform';
-import { SqliteHostStore } from '@kb-labs/gateway-core';
+import type { IDocumentDatabase } from '@kb-labs/core-platform/adapters';
+import { HostStore } from '@kb-labs/gateway-core';
 import { loadGatewayConfig } from './config.js';
 import { createServer } from './server.js';
 import { HostRegistry } from './hosts/registry.js';
@@ -34,12 +34,14 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
     upstreams: Object.keys(config.upstreams),
   });
 
-  // 3. Create persistent host store (SQLite if available, otherwise cache-only)
+  // 3. Create persistent host store backed by the platform document database.
+  // The same code runs on sqlite locally and on postgres/mongo in prod — the
+  // gateway has no business knowing which driver is wired underneath.
   let hostStore: IHostStore | undefined;
-  const db = platform.getAdapter<ISQLDatabase>('sqlDatabase');
-  if (db) {
-    hostStore = new SqliteHostStore(db);
-    logger.info('Host store: SQLite (persistent)');
+  const docs = platform.getAdapter<IDocumentDatabase>('documentDatabase');
+  if (docs) {
+    hostStore = new HostStore(docs);
+    logger.info('Host store: documentDatabase-backed (persistent)');
   } else {
     logger.warn('Host store: none (cache-only, hosts will be lost on restart)');
   }

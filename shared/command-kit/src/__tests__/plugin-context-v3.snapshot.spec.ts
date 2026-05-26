@@ -56,8 +56,8 @@ describe('PluginContextV3 Structure Snapshot', () => {
         logs: {} as any,
         config: {} as any,
         invoke: {} as PlatformServices['invoke'],
-        sqlDatabase: {} as any,
         documentDatabase: {} as PlatformServices['documentDatabase'],
+        kvStore: {} as PlatformServices['kvStore'],
       },
       runtime: {
         fs: {} as any,
@@ -200,10 +200,10 @@ describe('PluginContextV3 Structure Snapshot', () => {
           "embeddings",
           "eventBus",
           "invoke",
+          "kvStore",
           "llm",
           "logger",
           "logs",
-          "sqlDatabase",
           "storage",
           "vectorStore",
         ]

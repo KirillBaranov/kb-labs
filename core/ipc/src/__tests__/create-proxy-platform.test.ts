@@ -55,8 +55,8 @@ describe('createProxyPlatform', () => {
       expect(platform.eventBus).toBeDefined();
       expect(platform.config).toBeDefined();
       expect(platform.invoke).toBeDefined();
-      expect(platform.sqlDatabase).toBeDefined();
       expect(platform.documentDatabase).toBeDefined();
+      expect(platform.kvStore).toBeDefined();
       expect(platform.logs).toBeDefined();
     });
 
