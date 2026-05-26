@@ -141,7 +141,7 @@ export default async function InstallPage({ params }: Props) {
       <main>
 
         {/* ── Hero ── */}
-        <section className="relative overflow-hidden border-b border-line py-24 pb-20">
+        <section className="relative overflow-hidden border-b border-line py-12 pb-10 sm:py-24 sm:pb-20">
           <DotPattern className="absolute inset-0 z-0 opacity-40" />
           <Container className="relative z-10">
             <AnimateOnScroll>

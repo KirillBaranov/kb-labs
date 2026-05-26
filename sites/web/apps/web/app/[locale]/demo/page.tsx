@@ -58,7 +58,7 @@ export default async function DemoPage({ params }: Props) {
       <main>
 
         {/* ── Hero ── */}
-        <section className="relative overflow-hidden border-b border-line py-20 pb-16">
+        <section className="relative overflow-hidden border-b border-line py-10 pb-8 sm:py-20 sm:pb-16">
           <DotPattern className="absolute inset-0 z-0 opacity-40" />
           <Container className="relative z-10">
             <AnimateOnScroll>
@@ -119,7 +119,7 @@ export default async function DemoPage({ params }: Props) {
         <Section>
           <Container>
             <AnimateOnScroll>
-              <div className="relative overflow-hidden rounded-3xl border border-line bg-surface px-8 py-16 text-center">
+              <div className="relative overflow-hidden rounded-3xl border border-line bg-surface px-5 py-10 sm:px-8 sm:py-16 text-center">
                 <BorderBeam />
                 <div className="relative z-10">
                   <h2 className="mb-3 text-3xl font-bold tracking-tight text-kb-text">

@@ -61,10 +61,10 @@ export function MarketplaceCatalog({ items, locale }: { items: MarketplaceItem[]
     }`;
 
   return (
-    <div className="flex gap-10 items-start">
+    <div className="flex flex-col gap-6 sm:flex-row sm:gap-10 sm:items-start">
 
       {/* ── Sidebar ── */}
-      <nav className="w-40 shrink-0 flex flex-col gap-6">
+      <nav className="flex flex-row flex-wrap gap-x-4 gap-y-4 sm:w-40 sm:shrink-0 sm:flex-col sm:gap-6">
         <div className="flex flex-col gap-0.5">
           <p className="mb-2 px-3 text-[0.6rem] font-bold uppercase tracking-[0.1em] text-muted/55 dark:text-muted/40">
             {t('marketplace.catalog.categoriesLabel')}

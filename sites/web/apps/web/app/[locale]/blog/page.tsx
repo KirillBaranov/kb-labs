@@ -105,7 +105,7 @@ export default async function BlogPage({ params, searchParams }: Props) {
       <main>
 
         {/* ── Hero ── */}
-        <section className="relative overflow-hidden border-b border-line py-20 pb-16">
+        <section className="relative overflow-hidden border-b border-line py-10 pb-8 sm:py-20 sm:pb-16">
           <DotPattern className="absolute inset-0 z-0 opacity-40" />
           <Container className="relative z-10">
             <AnimateOnScroll>

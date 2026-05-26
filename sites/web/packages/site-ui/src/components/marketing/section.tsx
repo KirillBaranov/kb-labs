@@ -9,9 +9,9 @@ export type SectionProps = React.HTMLAttributes<HTMLElement> & {
 };
 
 const SIZE = {
-  sm: 'py-20',
-  md: 'py-28',
-  lg: 'py-36',
+  sm: 'py-12 sm:py-20',
+  md: 'py-16 sm:py-28',
+  lg: 'py-20 sm:py-36',
 };
 
 export function Section({

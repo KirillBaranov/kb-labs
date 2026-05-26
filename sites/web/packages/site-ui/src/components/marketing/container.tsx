@@ -9,7 +9,7 @@ export function Container({ className, maxWidth, style, ...props }: ContainerPro
   return (
     <div
       className={cn(
-        'mx-auto w-[min(calc(100%-2.4rem),var(--container,1140px))]',
+        'mx-auto w-[min(calc(100%-1.5rem),var(--container,1140px))] sm:w-[min(calc(100%-2.4rem),var(--container,1140px))]',
         className
       )}
       style={maxWidth ? { '--container': maxWidth, ...style } as React.CSSProperties : style}

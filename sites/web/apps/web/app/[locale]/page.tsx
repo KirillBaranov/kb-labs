@@ -107,7 +107,7 @@ export default async function HomePage({ params }: Props) {
       <main>
 
         {/* ── Hero ──────────────────────────────────────────────── */}
-        <div className="relative overflow-hidden bg-surface pb-20 pt-24">
+        <div className="relative overflow-hidden bg-surface pb-12 pt-14 sm:pb-20 sm:pt-24">
           <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[560px] w-[720px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/[0.07] blur-[110px]" />
           <DotPattern className="opacity-[0.35]" />
           <Container>
@@ -359,7 +359,7 @@ export default async function HomePage({ params }: Props) {
         {/* ── Final CTA ─────────────────────────────────────────── */}
         <Section>
           <Container>
-            <div className="relative overflow-hidden rounded-3xl border border-line bg-bg px-8 py-16 text-center shadow-sm">
+            <div className="relative overflow-hidden rounded-3xl border border-line bg-bg px-5 py-10 sm:px-8 sm:py-16 text-center shadow-sm">
               <BorderBeam />
               <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[320px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/[0.07] blur-[80px]" />
               <div className="relative z-10 flex flex-col items-center gap-5">
