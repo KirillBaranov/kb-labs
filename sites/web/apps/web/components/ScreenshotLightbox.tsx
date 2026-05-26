@@ -10,9 +10,10 @@ interface ScreenshotLightboxProps {
   alt: string;
   url?: string;
   className?: string;
+  loading?: 'lazy' | 'eager';
 }
 
-export function ScreenshotLightbox({ src, alt, url, className }: ScreenshotLightboxProps) {
+export function ScreenshotLightbox({ src, alt, url, className, loading = 'lazy' }: ScreenshotLightboxProps) {
   const t = useTranslations('ui');
   const [open, setOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
@@ -99,7 +100,7 @@ export function ScreenshotLightbox({ src, alt, url, className }: ScreenshotLight
         <img
           src={src}
           alt={alt}
-          loading="lazy"
+          loading={loading}
           draggable={false}
           className={`w-full transition-opacity duration-200 group-hover:opacity-90 ${className ?? ''}`}
         />
