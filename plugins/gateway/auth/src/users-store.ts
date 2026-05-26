@@ -157,6 +157,16 @@ export class UsersStore {
     );
   }
 
+  /** List all users for a given tenant. */
+  async listByTenant(tenantId: string): Promise<User[]> {
+    await this.ensureSchema();
+    const docs = await this.docs.find<UserDoc>(
+      COLLECTION,
+      { tenantId: { $eq: tenantId } },
+    );
+    return docs.map(docToUser);
+  }
+
   async delete(userId: string): Promise<void> {
     await this.ensureSchema();
     await this.docs.deleteMany<UserDoc>(COLLECTION, { userId: { $eq: userId } });

@@ -14,6 +14,10 @@ const PUBLIC_ROUTES = new Set([
   '/auth/register',
   '/auth/token',
   '/auth/refresh',
+  // User-auth public endpoints (ADR-0020, Phase 1.16).
+  '/auth/login',
+  '/auth/activate',
+  '/auth/providers',
   '/internal/dispatch', // has its own x-internal-secret auth
   '/internal/resolve-host', // has its own x-internal-secret auth
 ]);
@@ -32,6 +36,11 @@ export function createAuthMiddleware(cache: ICache, jwtConfig: JwtConfig) {
     const rawPath = new URL(request.url, 'http://localhost').pathname;
     const routePath = rawPath.replace(/\/+/g, '/').replace(/\/+$/, '') || '/';
     if (PUBLIC_ROUTES.has(routePath)) {return;}
+
+    // User already authenticated via cookie — skip machine Bearer requirement.
+    // The user-auth middleware (onRequest, runs first) set this if the
+    // kb_access cookie was present and valid.
+    if (request.userAuthContext) {return;}
 
     // Bearer header takes precedence; fall back to ?access_token= for SSE
     // connections where browsers cannot set custom headers.

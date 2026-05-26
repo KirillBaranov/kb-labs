@@ -4,8 +4,22 @@ import { createCorrelatedLogger } from '@kb-labs/shared-http';
 import type { IHostStore } from '@kb-labs/gateway-contracts';
 import type { IDocumentDatabase } from '@kb-labs/core-platform/adapters';
 import { HostStore } from '@kb-labs/gateway-core';
+import {
+  UsersStore,
+  CredentialsStore,
+  MembershipsStore,
+  SessionsStore,
+  InvitesStore,
+  ProviderRegistry,
+  createEmailPasswordProvider,
+  createPasswordPolicy,
+  createUserAuthService,
+  createStubPDP,
+  createTenantResolver,
+  ensureBootstrapAdmin,
+} from '@kb-labs/gateway-auth';
 import { loadGatewayConfig } from './config.js';
-import { createServer } from './server.js';
+import { createServer, type UserAuthServerDeps } from './server.js';
 import { HostRegistry } from './hosts/registry.js';
 import { registerPressureLimits } from './pressure/index.js';
 
@@ -44,6 +58,107 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
     logger.info('Host store: documentDatabase-backed (persistent)');
   } else {
     logger.warn('Host store: none (cache-only, hosts will be lost on restart)');
+  }
+
+  // 3b. User auth infrastructure (ADR-0020). Only available when the
+  //     documentDatabase adapter is wired; gracefully absent otherwise.
+  let userAuth: UserAuthServerDeps | undefined;
+  if (docs) {
+    // Auth config with explicit defaults (config.auth is optional, fields have zod defaults
+    // only when the auth section is present and parsed; here we apply our own fallbacks).
+    const accessTtlSec = config.auth?.sessionAccessTtlSec ?? 900;
+    const refreshTtlSec = config.auth?.sessionRefreshTtlSec ?? 30 * 24 * 3600;
+    const graceWindowMs = (config.auth?.refreshGraceWindowSec ?? 5) * 1000;
+    const bcryptCost = config.auth?.bcryptCost ?? 12;
+    const cookieSecure = config.auth?.cookieSecure ?? true;
+    const tenantPattern = config.tenants?.pattern ?? '{tenant}.kblabs.ru';
+    const bootstrapTenantId =
+      config.auth?.bootstrap?.tenantId ??
+      process.env.GATEWAY_BOOTSTRAP_TENANT_ID ??
+      'kblabs-cloud';
+
+    const users = new UsersStore(docs);
+    const credentials = new CredentialsStore(docs);
+    const memberships = new MembershipsStore(docs);
+    const sessions = new SessionsStore(docs, {
+      refreshTtlMs: refreshTtlSec * 1000,
+      graceWindowMs,
+    });
+    const invites = new InvitesStore(docs);
+    const providers = new ProviderRegistry();
+
+    const emailPwd = createEmailPasswordProvider({
+      users,
+      credentials,
+      tenantId: bootstrapTenantId,
+      bcryptCost,
+    });
+    providers.register(emailPwd);
+
+    const passwordPolicy = createPasswordPolicy({
+      minLength: config.auth?.passwordPolicy?.minLength ?? 8,
+      maxLength: config.auth?.passwordPolicy?.maxLength ?? 256,
+      hibpEnabled: config.auth?.passwordPolicy?.hibpEnabled ?? true,
+    });
+
+    const pdp = createStubPDP({ memberships });
+
+    const tenantResolver = createTenantResolver({ pattern: tenantPattern });
+
+    const userAuthService = createUserAuthService({
+      users,
+      credentials,
+      memberships,
+      sessions,
+      invites,
+      providers,
+      passwordPolicy,
+      jwtConfig: { secret: process.env.GATEWAY_JWT_SECRET ?? 'dev-insecure-secret-change-me' },
+      accessTtlSec,
+      refreshTtlSec,
+      bcryptCost,
+    });
+
+    // Seed bootstrap admin account (step 1.14). Idempotent.
+    const adminEmail =
+      config.auth?.bootstrap?.adminEmail ?? process.env.GATEWAY_BOOTSTRAP_ADMIN_EMAIL;
+    const adminPassword = process.env.GATEWAY_BOOTSTRAP_ADMIN_PASSWORD;
+    await ensureBootstrapAdmin({
+      bootstrap:
+        adminEmail && adminPassword
+          ? { adminEmail, adminPassword, tenantId: bootstrapTenantId }
+          : undefined,
+      users,
+      credentials,
+      memberships,
+      bcryptCost,
+      logger,
+    }).catch((err) => {
+      logger.warn('Bootstrap admin seed failed (non-fatal)', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    });
+
+    userAuth = {
+      userAuthService,
+      users,
+      sessions,
+      invites,
+      providers,
+      pdp,
+      tenantResolver,
+      cookieSecure,
+      accessTtlSec,
+      refreshTtlSec,
+    };
+
+    logger.info('User auth infrastructure initialised', {
+      tenantPattern,
+      bootstrapTenantId,
+      cookieSecure,
+    });
+  } else {
+    logger.warn('User auth unavailable: no documentDatabase adapter configured');
   }
 
   // 4. Create host registry with cache + store
@@ -104,8 +219,8 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
     logger.warn('Resource broker unavailable — pressure control disabled');
   }
 
-  // 9. Create server with injected registry
-  const server = await createServer(config, cache, platform.logger, jwtConfig, registry);
+  // 9. Create server with injected registry and optional user auth deps
+  const server = await createServer(config, cache, platform.logger, jwtConfig, registry, userAuth);
 
   // 9. Listen
   const address = await server.listen({ port: config.port, host: '0.0.0.0' });

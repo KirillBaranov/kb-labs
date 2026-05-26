@@ -211,4 +211,14 @@ export class InvitesStore {
       { $set: { status: 'revoked' } },
     );
   }
+
+  /** List all invites for a tenant (active + used + revoked). */
+  async listByTenant(tenantId: string): Promise<InviteRecord[]> {
+    await this.ensureSchema();
+    const docs = await this.docs.find<InviteDoc>(
+      COLLECTION,
+      { tenantId: { $eq: tenantId } },
+    );
+    return docs.map(docToInvite);
+  }
 }
