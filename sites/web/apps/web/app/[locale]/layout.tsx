@@ -3,9 +3,8 @@ import localFont from 'next/font/local';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
 import { Analytics } from '@/components/Analytics';
-import { CookieBanner } from '@/components/CookieBanner';
 import { ThemeApplicator } from '@/components/ThemeApplicator';
-import { ScrollReveal } from '@/components/ScrollReveal';
+import { DeferredCookieBanner } from '@/components/DeferredCookieBanner';
 import { routing } from '@/i18n/routing';
 import '../globals.css';
 import '@kb-labs/web-site-ui/tokens.css';
@@ -95,8 +94,7 @@ export default async function LocaleLayout({ children, params }: Props) {
           <ThemeApplicator />
           {children}
           <Analytics locale={locale} />
-          <CookieBanner />
-          <ScrollReveal />
+          <DeferredCookieBanner />
         </NextIntlClientProvider>
       </body>
     </html>

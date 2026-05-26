@@ -20,7 +20,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ant-design/charts": "^2.6.6",
     "@kb-labs/sdk": "workspace:*",
     "@kb-labs/web-data-source": "workspace:*",
     "@kb-labs/web-i18n": "workspace:*",
@@ -31,7 +30,6 @@
     "@mdx-js/react": "^3.0.1",
     "@next/mdx": "^15.4.6",
     "@tailwindcss/typography": "^0.5.19",
-    "antd": "^5.27.1",
     "dayjs": "^1.11.13",
     "gray-matter": "^4.0.3",
     "lucide-react": "^0.474.0",
