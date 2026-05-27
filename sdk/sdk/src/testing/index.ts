@@ -67,7 +67,7 @@ export {
   type InMemoryDocumentDatabaseOptions,
   InMemoryKVStore,
   createInMemoryKVStore,
-} from '@kb-labs/core-platform/adapters/testing';
+} from '@kb-labs/shared-testing-platform';
 
 // Tool mock builder
 export {

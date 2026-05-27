@@ -3,10 +3,7 @@
   "extends": "@kb-labs/devkit/tsconfig/node.json",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "dist",
-    "paths": {
-      "@kb-labs/core-platform/adapters/testing": ["../../core/platform/src/adapters/testing/index.ts"]
-    }
+    "outDir": "dist"
   },
   "include": ["src"]
 }

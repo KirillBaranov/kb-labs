@@ -48,6 +48,18 @@ export {
   type TestCommandResult,
 } from './test-command.js';
 
+// In-memory storage implementations for tests (IDocumentDatabase / IKVStore)
+export {
+  InMemoryDocumentDatabase,
+  createInMemoryDocumentDatabase,
+  type InMemoryDocumentDatabaseOptions,
+} from './in-memory-document-database.js';
+
+export {
+  InMemoryKVStore,
+  createInMemoryKVStore,
+} from './in-memory-kv-store.js';
+
 // Re-export pure mocks for convenience (consumers can use one import)
 export {
   mockLLM,
