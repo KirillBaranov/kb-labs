@@ -23,13 +23,6 @@ export interface WebhookSecretEntry {
   previousExpiresAt?: number;
 }
 
-export interface WebhookSecretStore {
-  get(ns: string, pluginId: string, event: string, instanceId?: string): Promise<WebhookSecretEntry | null>;
-  set(ns: string, pluginId: string, event: string, entry: WebhookSecretEntry, instanceId?: string): Promise<void>;
-  rotate(ns: string, pluginId: string, event: string, newSecret: string, instanceId?: string): Promise<WebhookSecretEntry>;
-  delete(ns: string, pluginId: string, event: string, instanceId?: string): Promise<void>;
-}
-
 /** Grace window for previous secret after rotation: 24 hours. */
 const PREVIOUS_SECRET_GRACE_MS = 86_400_000;
 
