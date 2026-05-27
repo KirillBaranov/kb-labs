@@ -54,7 +54,7 @@ function getByDotPath(obj: unknown, path: string): unknown {
   const parts = path.split('.');
   let current: unknown = obj;
   for (const part of parts) {
-    if (!current || typeof current !== 'object') return undefined;
+    if (!current || typeof current !== 'object') { return undefined; }
     current = (current as Record<string, unknown>)[part];
   }
   return current;
@@ -91,7 +91,7 @@ export async function registerWebhookRoutes(
 
   for (const entry of manifests) {
     const { pluginId, manifest, pluginRoot } = entry;
-    if (!manifest.webhooks?.handlers.length) continue;
+    if (!manifest.webhooks?.handlers.length) { continue; }
 
     for (const decl of manifest.webhooks.handlers) {
       if (!decl.auth) {
@@ -111,7 +111,7 @@ export async function registerWebhookRoutes(
     }
   }
 
-  if (declMap.size === 0) return 0;
+  if (declMap.size === 0) { return 0; }
 
   // Capture raw body for HMAC / custom auth verification.
   // NOTE: this scope must contain only webhook delivery routes — the preParsing
@@ -330,7 +330,7 @@ function makeAuthBackend(
   return {
     async execute({ handlerRef, pluginRoot, input }) {
       const hostId = globalDispatcher.firstHostWithCapability(namespaceId, 'execution');
-      if (!hostId) throw new Error('No execution host connected for custom auth');
+      if (!hostId) { throw new Error('No execution host connected for custom auth'); }
       // Pass pluginId so the host-agent's LocalPluginResolver can find the plugin root,
       // and pluginRoot as an absolute path hint for environments that support it.
       return globalDispatcher.call(namespaceId, hostId, 'execution', 'execute', [

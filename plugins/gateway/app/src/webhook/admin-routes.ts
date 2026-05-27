@@ -138,8 +138,8 @@ export function registerWebhookAdminRoutes(
     const webhooks: Array<{ pluginId: string; event: string; multi: boolean; provisioned: boolean }> = [];
 
     for (const entry of manifests) {
-      if (filterPluginId && entry.pluginId !== filterPluginId) continue;
-      if (!entry.manifest.webhooks?.handlers) continue;
+      if (filterPluginId && entry.pluginId !== filterPluginId) { continue; }
+      if (!entry.manifest.webhooks?.handlers) { continue; }
 
       for (const decl of entry.manifest.webhooks.handlers) {
         // For multi webhooks the provisioned check is per-instanceId; we show false
