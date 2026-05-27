@@ -1,17 +1,17 @@
 /**
  * Platform Services for V3 Plugin System
  *
- * Governed access to platform capabilities: LLM, embeddings, vector store, cache, storage, analytics.
- * In sandbox mode, these are RPC proxies to the parent process.
+ * Two types define the service boundary:
  *
- * IMPORTANT: V3 directly uses core platform contracts - no wrappers, no adapters.
- * Platform provides services, runtime just passes them through.
+ * - `PluginServices`   — what plugin code can access (governed, sandboxed)
+ * - `PlatformServices` — full surface for services/infrastructure (superset)
  *
- * PlatformServices is an alias for IPlatformAdapters — single source of truth.
- * Permission enforcement is handled by the governed wrapper, not by type restriction.
+ * Governance (`applyPluginGovernance`) always returns `PluginServices`.
+ * Platform-only adapters (e.g. serviceTransport) extend `PlatformServices`
+ * but are absent from `PluginServices` — TypeScript enforces this at compile time.
  */
 
-import type { IPlatformAdapters } from '@kb-labs/core-platform';
+import type { IPlatformAdapters, IPluginAdapters } from '@kb-labs/core-platform';
 
 // Re-export core platform adapter interfaces directly
 export type {
@@ -34,13 +34,25 @@ export type {
 } from '@kb-labs/core-platform/adapters';
 
 // ============================================================================
-// Platform Services
+// Plugin Services — plugin-visible surface
 // ============================================================================
 
 /**
- * Platform services type.
+ * Adapter surface available to plugin code.
  *
- * Alias for IPlatformAdapters — the single source of truth for all platform adapter fields.
- * Plugins import this type; permission enforcement is handled by the governed wrapper at runtime.
+ * This is what `ctx.platform` exposes. Governance returns this type.
+ * Platform-only adapters are intentionally absent.
+ */
+export type PluginServices = IPluginAdapters;
+
+// ============================================================================
+// Platform Services — full surface for services/infrastructure
+// ============================================================================
+
+/**
+ * Full adapter surface for services and infrastructure code.
+ *
+ * Superset of PluginServices. Gateway, workflow, rest-api receive this
+ * at bootstrap. Never passed directly to plugin handlers.
  */
 export type PlatformServices = IPlatformAdapters;

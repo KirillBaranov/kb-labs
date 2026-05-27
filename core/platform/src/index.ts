@@ -283,7 +283,7 @@ export type {
   ResourceAvailability,
   TenantQuotas,
 } from './core/resources.js';
-export type { IPlatformAdapters } from './platform-adapters.js';
+export type { IPlatformAdapters, IPluginAdapters } from './platform-adapters.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // DISPOSABLE (graceful shutdown lifecycle)

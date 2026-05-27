@@ -4,7 +4,7 @@
  */
 
 import type { ILogger } from '@kb-labs/core-platform';
-import type { PlatformServices } from './platform.js';
+import type { PluginServices } from './platform.js';
 import type { StateAPI } from './api.js';
 import type { EventsAPI } from './api.js';
 import type { ShellAPI } from './api.js';
@@ -52,7 +52,7 @@ export interface JobContext {
    * Platform adapters (same as plugin ctx.platform)
    * Access to llm, embeddings, cache, etc.
    */
-  platform: PlatformServices;
+  platform: PluginServices;
 
   /**
    * Update job progress (0-100)

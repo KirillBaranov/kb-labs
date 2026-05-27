@@ -21,13 +21,15 @@ import type { ISnapshotManager } from './snapshot/snapshot-provider.js';
 import type { INotifier } from './adapters/notifier.js';
 
 /**
- * Platform adapters container interface.
- * Provides access to all platform adapters for IPC proxying.
+ * Plugin-visible adapter surface.
  *
- * This interface is implemented by PlatformContainer in core-runtime.
- * IPC servers in core-ipc use this interface to access adapters.
+ * This is the subset of platform adapters that plugin code can access.
+ * Governance, execution backends, and ALS all operate on this type.
+ *
+ * Platform-only adapters (e.g. serviceTransport) extend IPlatformAdapters
+ * but are intentionally absent here so they never reach plugin context.
  */
-export interface IPlatformAdapters {
+export interface IPluginAdapters {
   /** Logger adapter */
   readonly logger: ILogger;
 
@@ -75,4 +77,16 @@ export interface IPlatformAdapters {
 
   /** Notifier adapter (optional — only when adapters.notifier is configured). */
   readonly notifier?: INotifier;
+}
+
+/**
+ * Full platform adapter surface — for services and infrastructure only.
+ *
+ * Extends IPluginAdapters with platform-internal adapters that must never
+ * be exposed to plugin code. Services (gateway, workflow, rest-api) receive
+ * this type at bootstrap. Plugin governance always returns IPluginAdapters.
+ */
+export interface IPlatformAdapters extends IPluginAdapters {
+  // Platform-only adapters go here.
+  // Currently empty — populated when IServiceTransport is added (ADR-0021).
 }
