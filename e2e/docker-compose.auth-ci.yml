@@ -15,10 +15,30 @@
 # This gives Playwright a single origin for both the UI and the API,
 # so SameSite=Strict cookies work correctly end-to-end.
 #
+# Also overrides the platform service to mount e2e/auth/overlay.jsonc into
+# .kb/overlays/ — this wires SQLite as documentDatabase + kvStore so the
+# gateway initialises userAuth (ADR-0020) and registers /auth/* routes.
+#
 # Phase 3 (infra) will replace this with the real nginx wildcard config.
 # This file is CI-only; local dev uses `kb-dev start` + Vite dev server.
 
 services:
+  # Override platform service for auth E2E:
+  #   - Mounts auth-e2e overlay (wires SQLite as documentDatabase + kvStore)
+  #     so the gateway initializes userAuth (ADR-0020) and registers /auth/*
+  #     routes. The config loader picks up all .kb/overlays/*.jsonc files.
+  #   - GATEWAY_BOOTSTRAP_* seeds the admin user on first gateway startup.
+  platform:
+    volumes:
+      - ../e2e/auth/overlay.jsonc:/workspace/kb-e2e/.kb/overlays/auth-e2e.jsonc:ro
+    environment:
+      GATEWAY_BOOTSTRAP_ADMIN_EMAIL: "admin@kb-cloud.test"
+      GATEWAY_BOOTSTRAP_ADMIN_PASSWORD: "AdminPass123!"
+      GATEWAY_BOOTSTRAP_TENANT_ID: "kb-cloud"
+      AUTH_ACCESS_TTL_SEC: "${AUTH_ACCESS_TTL_SEC:-900}"
+      AUTH_REFRESH_TTL_SEC: "${AUTH_REFRESH_TTL_SEC:-2592000}"
+      AUTH_INVITE_TTL_MS: "${AUTH_INVITE_TTL_MS:-604800000}"
+
   studio:
     image: nginx:1.27-alpine
     depends_on:
