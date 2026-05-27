@@ -338,7 +338,21 @@ func generateFull(opts Options) string {
 	b.WriteString("    \"storage\": { \"baseDir\": \".kb/storage\" },\n")
 	b.WriteString("    \"logger\": { \"level\": \"info\" },\n")
 	b.WriteString("    \"logRingBuffer\": { \"maxSize\": 100 },\n")
-	b.WriteString("    \"analytics\": { \"filename\": \".kb/analytics/events.jsonl\" }\n")
+	if opts.DocumentDatabase != "" {
+		// analytics is no longer the last entry — add trailing comma.
+		b.WriteString("    \"analytics\": { \"filename\": \".kb/analytics/events.jsonl\" },\n")
+		b.WriteString("    // Persistent document store options — filename is relative to the platform dir.\n")
+		b.WriteString("    // Both documentDatabase and kvStore share the same file (single WAL connection).\n")
+		b.WriteString("    \"documentDatabase\": { \"filename\": \".kb/data/platform.db\" }")
+		if opts.KVStore != "" {
+			b.WriteString(",\n")
+			b.WriteString("    \"kvStore\": { \"filename\": \".kb/data/platform.db\" }\n")
+		} else {
+			b.WriteString("\n")
+		}
+	} else {
+		b.WriteString("    \"analytics\": { \"filename\": \".kb/analytics/events.jsonl\" }\n")
+	}
 	b.WriteString("  },\n\n")
 
 	// ── gateway section ───────────────────────────────────────────────────

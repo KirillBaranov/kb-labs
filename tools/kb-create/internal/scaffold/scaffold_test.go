@@ -63,6 +63,9 @@ func TestWritePlatformConfig_DocumentDatabase(t *testing.T) {
 
 	assertContains(t, content, `"documentDatabase": "@kb-labs/adapters-sqlite"`, "documentDatabase adapter")
 	assertContains(t, content, `"kvStore": "@kb-labs/adapters-sqlite/kv"`, "kvStore adapter")
+	// adapterOptions must include the filename so the sqlite adapter can initialise.
+	assertContains(t, content, `"documentDatabase": { "filename": ".kb/data/platform.db" }`, "documentDatabase adapterOptions")
+	assertContains(t, content, `"kvStore": { "filename": ".kb/data/platform.db" }`, "kvStore adapterOptions")
 }
 
 func TestWritePlatformConfig_NoDocumentDatabase(t *testing.T) {
