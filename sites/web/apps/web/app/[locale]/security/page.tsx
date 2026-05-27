@@ -44,6 +44,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: t('page.secMetaTitle'),
     description: t('page.secMetaDesc'),
     path: '/security',
+    imageSegment: 'security',
   });
 }
 

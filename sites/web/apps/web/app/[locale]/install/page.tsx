@@ -43,6 +43,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: t('install.meta.title'),
     description: t('install.meta.description'),
     path: '/install',
+    imageSegment: 'install',
   });
 }
 
