@@ -1,11 +1,9 @@
 import type { APIRequestContext } from '@playwright/test'
 import { GATEWAY } from './urls.js'
 
-// E2E machine token — seeded into the gateway cache via GATEWAY_E2E_MACHINE_TOKEN
-// env var (set in docker-compose.yml). Has machine:register permission.
-// Not a secret; safe to hardcode for E2E.
-const E2E_MACHINE_TOKEN =
-  process.env['GATEWAY_E2E_MACHINE_TOKEN'] ?? 'e2e-insecure-machine-register-token'
+// E2E machine token — seeded by entrypoint.sh via .kb/overlays/e2e-tokens.jsonc.
+// Has machine:register + host:connect permissions. Not a secret; E2E-only.
+const E2E_MACHINE_TOKEN = 'e2e-insecure-machine-register-token'
 
 export interface AuthCredentials {
   clientId: string

@@ -17,9 +17,9 @@ import { test, expect, type APIRequestContext } from '@playwright/test';
 import { GATEWAY } from '@kb-labs/e2e-shared/urls.js';
 import { issueToken } from '@kb-labs/e2e-shared/auth.js';
 
-// E2E machine token with machine:register permission (seeded via GATEWAY_E2E_MACHINE_TOKEN).
-const E2E_MACHINE_TOKEN =
-  process.env['GATEWAY_E2E_MACHINE_TOKEN'] ?? 'e2e-insecure-machine-register-token';
+// E2E machine token — seeded by entrypoint.sh via .kb/overlays/e2e-tokens.jsonc.
+// Has machine:register permission; value matches the overlay.
+const E2E_MACHINE_TOKEN = 'e2e-insecure-machine-register-token';
 
 async function fireMany(
   request: APIRequestContext,

@@ -229,22 +229,6 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
     logger.info('Static token seeded', { hostId: entry.hostId, namespaceId: entry.namespaceId });
   }
 
-  // 6b. E2E-only: seed an ephemeral machine token with MACHINE_REGISTER permission
-  //     so integration/E2E tests can call /auth/register without setting up a full
-  //     admin user. Never set GATEWAY_E2E_MACHINE_TOKEN in production.
-  const e2eMachineToken = process.env.GATEWAY_E2E_MACHINE_TOKEN;
-  if (e2eMachineToken) {
-    if (process.env.NODE_ENV === 'production') {
-      logger.warn('GATEWAY_E2E_MACHINE_TOKEN is set in production — ignoring (not safe)');
-    } else {
-      await cache.set(`host:token:${e2eMachineToken}`, {
-        hostId: 'e2e-machine',
-        namespaceId: 'e2e',
-        permissions: ['machine:register', 'host:connect'],
-      });
-      logger.warn('E2E machine token seeded (GATEWAY_E2E_MACHINE_TOKEN) — do NOT use in production');
-    }
-  }
 
   // 7. Build JWT config — secret required; no fallback in production.
   const DEV_JWT_SECRET = 'dev-insecure-secret-change-me';
