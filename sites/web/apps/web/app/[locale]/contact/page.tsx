@@ -29,12 +29,13 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: 'page' });
+  const t = await getTranslations({ locale, namespace: 'contact' });
   return buildPageMetadata({
     locale,
-    title: t('contactMetaTitle'),
-    description: t('contactMetaDesc'),
+    title: t('meta.title'),
+    description: t('meta.description'),
     path: '/contact',
+    imageSegment: 'contact',
   });
 }
 
@@ -49,9 +50,9 @@ export default async function ContactPage({ params }: Props) {
   const { locale: _locale } = await params;
   setRequestLocale(_locale);
 
-  const t = await getTranslations({ locale: _locale, namespace: 'page' });
-  const channels = t.raw('contactChannels') as ChannelItem[];
-  const community = t.raw('contactCommunity') as CommunityItem[];
+  const t = await getTranslations({ locale: _locale, namespace: 'contact' });
+  const channels = t.raw('channels') as ChannelItem[];
+  const community = t.raw('community') as CommunityItem[];
 
   return (
     <>
@@ -64,12 +65,12 @@ export default async function ContactPage({ params }: Props) {
           <Container className="relative z-10">
             <AnimateOnScroll>
               <div className="mx-auto max-w-3xl text-center">
-                <Eyebrow className="mb-4">{t('contactHeroEyebrow')}</Eyebrow>
+                <Eyebrow className="mb-4">{t('heroEyebrow')}</Eyebrow>
                 <h1 className="mb-5 text-4xl font-bold leading-tight tracking-tight text-kb-text sm:text-5xl lg:text-6xl">
-                  {t('contactHeroTitle')}
+                  {t('heroTitle')}
                 </h1>
                 <p className="mx-auto max-w-xl text-lg leading-relaxed text-muted/70">
-                  {t('contactHeroDescription')}
+                  {t('heroDescription')}
                 </p>
               </div>
             </AnimateOnScroll>
@@ -81,7 +82,7 @@ export default async function ContactPage({ params }: Props) {
           <Container>
             <AnimateOnScroll>
               <div className="mx-auto max-w-2xl">
-                <Eyebrow className="mb-6">{t('contactChannelsEyebrow')}</Eyebrow>
+                <Eyebrow className="mb-6">{t('channelsEyebrow')}</Eyebrow>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {channels.map((ch, i) => {
                     const Icon = CHANNEL_ICONS[i];
@@ -120,7 +121,7 @@ export default async function ContactPage({ params }: Props) {
 
                   {/* Community */}
                   <div>
-                    <Eyebrow className="mb-6">{t('contactCommunityEyebrow')}</Eyebrow>
+                    <Eyebrow className="mb-6">{t('communityEyebrow')}</Eyebrow>
                     <div className="flex flex-col gap-3">
                       {community.map((item, i) => {
                         const Icon = COMMUNITY_ICONS[i];
@@ -147,16 +148,16 @@ export default async function ContactPage({ params }: Props) {
 
                   {/* Location + email */}
                   <div className="flex flex-col">
-                    <Eyebrow className="mb-6">{t('contactLocationEyebrow')}</Eyebrow>
+                    <Eyebrow className="mb-6">{t('locationEyebrow')}</Eyebrow>
                     <div className="flex-1 rounded-2xl border border-line bg-surface p-5">
-                      <p className="mb-4 text-sm text-muted/70">{t('contactLocationDesc')}</p>
+                      <p className="mb-4 text-sm text-muted/70">{t('locationDesc')}</p>
                       <div className="grid grid-cols-[auto_1fr] items-baseline gap-x-3 gap-y-2 text-sm">
-                        <span className="text-muted/55 dark:text-muted/40">{t('contactGeneralLabel')}</span>
+                        <span className="text-muted/55 dark:text-muted/40">{t('generalLabel')}</span>
                         {/* i18n-ignore: email address */}
                         <a href="mailto:hello@kblabs.ru" className="text-kb-text hover:underline underline-offset-4">
                           hello@kblabs.ru
                         </a>
-                        <span className="text-muted/55 dark:text-muted/40">{t('contactSecurityLabel')}</span>
+                        <span className="text-muted/55 dark:text-muted/40">{t('securityLabel')}</span>
                         {/* i18n-ignore: email address */}
                         <a href="mailto:security@kblabs.ru" className="text-kb-text hover:underline underline-offset-4">
                           security@kblabs.ru

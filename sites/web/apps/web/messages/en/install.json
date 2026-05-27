@@ -1,0 +1,74 @@
+{
+  "install": {
+    "meta": {
+      "title": "Install — KB Labs",
+      "description": "Install KB Labs in one command. Get the launcher, bootstrap your workspace, and start automating in minutes."
+    },
+    "quickInstall": {
+      "title": "Quick install",
+      "steps": [
+        {
+          "title": "Install the launcher",
+          "note": "Downloads the correct binary and installs to ~/.local/bin."
+        },
+        {
+          "title": "Bootstrap your project",
+          "note": "Interactive wizard configures platform and project directories."
+        },
+        {
+          "title": "Verify installation",
+          "note": "Shows installed components, package manager, and platform path."
+        }
+      ],
+      "heading": "Three steps to a working workspace."
+    },
+    "pinVersion": {
+      "title": "Pin a version",
+      "checksumTitle": "Verify checksum",
+      "description": "Use a specific version to guarantee reproducible installs across environments.",
+      "heading": "Pin a specific version"
+    },
+    "prerequisites": {
+      "title": "Prerequisites"
+    },
+    "prereqs": {
+      "os": "macOS or Linux",
+      "osNote": "Windows support via WSL2"
+    },
+    "afterInstall": {
+      "steps": [
+        {
+          "title": "Start local services"
+        },
+        {
+          "title": "Read the docs"
+        }
+      ],
+      "examples": "Browse examples",
+      "eyebrow": "What's next",
+      "installPlugin": "Install your first plugin",
+      "examplesLink": "View use cases →",
+      "heading": "After installation"
+    },
+    "enterprise": {
+      "link": "Talk to us about enterprise",
+      "description": "Looking for air-gapped install, custom deployment, or commercial support?"
+    },
+    "hero": {
+      "description2": "One script installs the launcher and bootstraps your first workspace. Quick install via curl, or download binaries directly.",
+      "eyebrow2": "Get started",
+      "titleLine1": "Install KB Labs",
+      "titleLine2": "in one command.",
+      "releasesBtn": "All releases"
+    },
+    "binaries": {
+      "colDownload": "Download",
+      "colBinary": "Binary",
+      "colPlatform": "Platform",
+      "eyebrow": "Manual install",
+      "subheading": "For environments where curl is restricted or you prefer manual installation.",
+      "downloadBtn": "Download",
+      "heading": "Download binaries directly"
+    }
+  }
+}

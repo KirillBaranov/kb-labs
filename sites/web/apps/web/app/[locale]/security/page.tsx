@@ -38,12 +38,13 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale });
+  const t = await getTranslations({ locale, namespace: 'security' });
   return buildPageMetadata({
     locale,
-    title: t('page.secMetaTitle'),
-    description: t('page.secMetaDesc'),
+    title: t('meta.title'),
+    description: t('meta.description'),
     path: '/security',
+    imageSegment: 'security',
   });
 }
 
@@ -69,16 +70,16 @@ export default async function SecurityPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const t = await getTranslations({ locale });
+  const t = await getTranslations({ locale, namespace: 'security' });
 
-  const secStats = t.raw('page.secStats') as Array<{ value: string; label: string; description: string }>;
-  const secDataFlow = t.raw('page.secDataFlow') as Array<{ dataType: string; destination: string; condition: string; status: FlowStatus }>;
-  const secFlowStatus = t.raw('page.secFlowStatus') as Record<FlowStatus, { label: string }>;
-  const secPillars = t.raw('page.secPillars') as Array<{ title: string; description: string }>;
-  const secSandboxLayers = t.raw('page.secSandboxLayers') as Array<{ num: string; title: string; description: string }>;
-  const secAuthFacts = t.raw('page.secAuthFacts') as Array<{ label: string; value: string }>;
-  const secComplianceItems = t.raw('page.secComplianceItems') as Array<{ name: string; status: string; statusClass: string; description: string }>;
-  const secDisclosureSteps = t.raw('page.secDisclosureSteps') as string[];
+  const secStats = t.raw('stats') as Array<{ value: string; label: string; description: string }>;
+  const secDataFlow = t.raw('dataFlow') as Array<{ dataType: string; destination: string; condition: string; status: FlowStatus }>;
+  const secFlowStatus = t.raw('flowStatus') as Record<FlowStatus, { label: string }>;
+  const secPillars = t.raw('pillars') as Array<{ title: string; description: string }>;
+  const secSandboxLayers = t.raw('sandboxLayers') as Array<{ num: string; title: string; description: string }>;
+  const secAuthFacts = t.raw('authFacts') as Array<{ label: string; value: string }>;
+  const secComplianceItems = t.raw('complianceItems') as Array<{ name: string; status: string; statusClass: string; description: string }>;
+  const secDisclosureSteps = t.raw('disclosureSteps') as string[];
 
   return (
     <>
@@ -91,13 +92,13 @@ export default async function SecurityPage({ params }: Props) {
           <Container className="relative z-10">
             <AnimateOnScroll>
               <div className="mx-auto max-w-3xl text-center">
-                <Eyebrow className="mb-4">{t('page.secHeroEyebrow')}</Eyebrow>
+                <Eyebrow className="mb-4">{t('heroEyebrow')}</Eyebrow>
                 <h1 className="mb-5 text-4xl font-bold leading-tight tracking-tight text-kb-text sm:text-5xl lg:text-6xl">
-                  {t('page.secHeroTitle')}{' '}
-                  <GradientText>{t('page.secHeroTitleHighlight')}</GradientText>
+                  {t('heroTitle')}{' '}
+                  <GradientText>{t('heroTitleHighlight')}</GradientText>
                 </h1>
                 <p className="mx-auto max-w-2xl text-lg leading-relaxed text-muted/70">
-                  {t('page.secHeroDescription')}
+                  {t('heroDescription')}
                 </p>
               </div>
             </AnimateOnScroll>
@@ -127,12 +128,12 @@ export default async function SecurityPage({ params }: Props) {
           <Container>
             <AnimateOnScroll>
               <div className="mx-auto mb-10 max-w-xl text-center">
-                <Eyebrow className="mb-3">{t('page.secDataFlowEyebrow')}</Eyebrow>
+                <Eyebrow className="mb-3">{t('dataFlowEyebrow')}</Eyebrow>
                 <h2 className="text-3xl font-bold tracking-tight text-kb-text">
-                  {t('page.secDataFlowTitle')}
+                  {t('dataFlowTitle')}
                 </h2>
                 <p className="mt-3 text-sm text-muted/60">
-                  {t('page.secDataFlowSubtitle')}
+                  {t('dataFlowSubtitle')}
                 </p>
               </div>
             </AnimateOnScroll>
@@ -153,10 +154,10 @@ export default async function SecurityPage({ params }: Props) {
                 <table className="w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-line">
-                      <th className="px-5 py-3 text-left text-[0.65rem] font-semibold uppercase tracking-widest text-muted/55 dark:text-muted/40">{t('page.secTableHeaderType')}</th>
-                      <th className="px-4 py-3 text-left text-[0.65rem] font-semibold uppercase tracking-widest text-muted/55 dark:text-muted/40">{t('page.secTableHeaderDest')}</th>
-                      <th className="hidden px-4 py-3 text-left text-[0.65rem] font-semibold uppercase tracking-widest text-muted/55 dark:text-muted/40 sm:table-cell">{t('page.secTableHeaderCond')}</th>
-                      <th className="px-4 py-3 text-left text-[0.65rem] font-semibold uppercase tracking-widest text-muted/55 dark:text-muted/40">{t('page.secTableHeaderStatus')}</th>
+                      <th className="px-5 py-3 text-left text-[0.65rem] font-semibold uppercase tracking-widest text-muted/55 dark:text-muted/40">{t('tableHeaderType')}</th>
+                      <th className="px-4 py-3 text-left text-[0.65rem] font-semibold uppercase tracking-widest text-muted/55 dark:text-muted/40">{t('tableHeaderDest')}</th>
+                      <th className="hidden px-4 py-3 text-left text-[0.65rem] font-semibold uppercase tracking-widest text-muted/55 dark:text-muted/40 sm:table-cell">{t('tableHeaderCond')}</th>
+                      <th className="px-4 py-3 text-left text-[0.65rem] font-semibold uppercase tracking-widest text-muted/55 dark:text-muted/40">{t('tableHeaderStatus')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-line">
@@ -189,9 +190,9 @@ export default async function SecurityPage({ params }: Props) {
           <Container>
             <AnimateOnScroll>
               <div className="mx-auto mb-10 max-w-xl text-center">
-                <Eyebrow className="mb-3">{t('page.secPillarsEyebrow')}</Eyebrow>
+                <Eyebrow className="mb-3">{t('pillarsEyebrow')}</Eyebrow>
                 <h2 className="text-3xl font-bold tracking-tight text-kb-text">
-                  {t('page.secPillarsTitle')}
+                  {t('pillarsTitle')}
                 </h2>
               </div>
             </AnimateOnScroll>
@@ -215,12 +216,12 @@ export default async function SecurityPage({ params }: Props) {
           <Container>
             <AnimateOnScroll>
               <div className="mx-auto mb-10 max-w-xl text-center">
-                <Eyebrow className="mb-3">{t('page.secSandboxEyebrow')}</Eyebrow>
+                <Eyebrow className="mb-3">{t('sandboxEyebrow')}</Eyebrow>
                 <h2 className="text-3xl font-bold tracking-tight text-kb-text">
-                  {t('page.secSandboxTitle')}
+                  {t('sandboxTitle')}
                 </h2>
                 <p className="mt-3 text-sm text-muted/60">
-                  {t('page.secSandboxSubtitle')}
+                  {t('sandboxSubtitle')}
                 </p>
               </div>
             </AnimateOnScroll>
@@ -256,12 +257,12 @@ export default async function SecurityPage({ params }: Props) {
                     <KeyRound size={20} />
                   </div>
                   <div>
-                    <Eyebrow className="mb-2">{t('page.secAuthEyebrow')}</Eyebrow>
+                    <Eyebrow className="mb-2">{t('authEyebrow')}</Eyebrow>
                     <h2 className="text-3xl font-bold tracking-tight text-kb-text">
-                      {t('page.secAuthTitle')}
+                      {t('authTitle')}
                     </h2>
                     <p className="mt-2 text-sm text-muted/60">
-                      {t('page.secAuthSubtitle')}
+                      {t('authSubtitle')}
                     </p>
                   </div>
                 </div>
@@ -290,11 +291,11 @@ export default async function SecurityPage({ params }: Props) {
           <Container>
             <AnimateOnScroll>
               <div className="mx-auto mb-10 max-w-xl text-center">
-                <Eyebrow className="mb-3">{t('page.secComplianceEyebrow')}</Eyebrow>
+                <Eyebrow className="mb-3">{t('complianceEyebrow')}</Eyebrow>
                 <h2 className="text-3xl font-bold tracking-tight text-kb-text">
-                  {t('page.secComplianceTitle')}
+                  {t('complianceTitle')}
                 </h2>
-                <p className="mt-3 text-sm text-muted/60">{t('page.secComplianceSubtitle')}</p>
+                <p className="mt-3 text-sm text-muted/60">{t('complianceSubtitle')}</p>
               </div>
             </AnimateOnScroll>
             <AnimateOnScroll delay={60}>
@@ -324,12 +325,12 @@ export default async function SecurityPage({ params }: Props) {
                   <div className="mb-4 flex size-10 items-center justify-center rounded-xl border border-line bg-bg text-muted">
                     <MailOpen size={20} />
                   </div>
-                  <Eyebrow className="mb-2">{t('page.secDisclosureEyebrow')}</Eyebrow>
+                  <Eyebrow className="mb-2">{t('disclosureEyebrow')}</Eyebrow>
                   <h2 className="mb-3 text-2xl font-bold tracking-tight text-kb-text">
-                    {t('page.secDisclosureTitle')}
+                    {t('disclosureTitle')}
                   </h2>
                   <p className="mb-6 text-sm leading-relaxed text-muted/70">
-                    {t('page.secDisclosureBody')}
+                    {t('disclosureBody')}
                   </p>
                   <div className="mb-6 space-y-2 rounded-xl border border-line bg-bg px-5 py-4">
                     {secDisclosureSteps.map((step, i) => (
@@ -341,7 +342,7 @@ export default async function SecurityPage({ params }: Props) {
                   </div>
                   {/* i18n-ignore: email address */}
                   <Button variant="secondary" size="sm" href="mailto:security@kblabs.ru">
-                    {t('page.secDisclosureBtn')}
+                    {t('disclosureBtn')}
                   </Button>
                 </GlowCard>
               </div>
@@ -356,16 +357,16 @@ export default async function SecurityPage({ params }: Props) {
               <div className="relative overflow-hidden rounded-3xl border border-line bg-bg px-5 py-10 sm:px-8 sm:py-16 text-center">
                 <BorderBeam />
                 <div className="relative z-10">
-                  <Eyebrow className="mb-4">{t('page.secCtaEyebrow')}</Eyebrow>
+                  <Eyebrow className="mb-4">{t('ctaEyebrow')}</Eyebrow>
                   <h2 className="mb-3 text-3xl font-bold tracking-tight text-kb-text">
-                    {t('page.secCtaTitle')}
+                    {t('ctaTitle')}
                   </h2>
                   <p className="mx-auto mb-8 max-w-md text-base text-muted/60">
-                    {t('page.secCtaBody')}
+                    {t('ctaBody')}
                   </p>
                   <div className="flex flex-wrap justify-center gap-3">
                     <Button variant="primary" size="lg" href={`/${locale}/contact`}>
-                      {t('page.secCtaContactBtn')}
+                      {t('ctaContactBtn')}
                     </Button>
                     <Button
                       variant="secondary"
@@ -374,7 +375,7 @@ export default async function SecurityPage({ params }: Props) {
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      {t('page.secCtaGithubBtn')}
+                      {t('ctaGithubBtn')}
                     </Button>
                   </div>
                 </div>

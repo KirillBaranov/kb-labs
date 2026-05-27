@@ -1,0 +1,65 @@
+{
+  "signup": {
+    "meta": {
+      "title": "Join the waitlist — KB Labs",
+      "description": "Get early access to KB Labs SaaS. Shape what we build by telling us about your workflow."
+    },
+    "perks": [
+      {
+        "label": "Early SaaS access",
+        "description": "Invitations to private cloud releases as capabilities become available."
+      },
+      {
+        "label": "Integration priority",
+        "description": "Your workflow and infrastructure requirements influence what we build first."
+      },
+      {
+        "label": "Direct line to product",
+        "description": "We map your path: on-prem today, SaaS later if it fits."
+      }
+    ],
+    "eyebrow": "Early access",
+    "form": {
+      "title": "Request access",
+      "submitting": "Submitting...",
+      "notePrefix": "By submitting you agree to our",
+      "description": "Tell us a bit about your use case. We review every submission personally.",
+      "noteSuffix": ".",
+      "emailAriaLabel": "Work email",
+      "privacyLink": "Privacy Policy",
+      "success": "You're on the list. We'll be in touch.",
+      "submit": "Request access",
+      "fields": {
+        "deploymentPreference": {
+          "label": "Deployment preference",
+          "options": {
+            "onPremNow": "On-prem today",
+            "undecided": "Not sure yet",
+            "saasLater": "SaaS when it's ready"
+          }
+        },
+        "useCase": {
+          "label": "Primary use case",
+          "options": {
+            "qa": "QA gates",
+            "agentWorkflows": "Agent workflows",
+            "release": "Release automation",
+            "other": "Something else",
+            "commitPolicy": "Commit policies",
+            "monorepo": "Monorepo tooling"
+          }
+        },
+        "useCaseOther": {
+          "label": "Describe your use case",
+          "placeholder": "What are you automating and what stack do you use..."
+        }
+      },
+      "emailPlaceholder": "you@company.com"
+    },
+    "description": "Join early adopters running KB Labs on real infrastructure. Your needs shape what we build.",
+    "hero": {
+      "titlePrefix": "Join the",
+      "titleHighlight": "SaaS waitlist."
+    }
+  }
+}

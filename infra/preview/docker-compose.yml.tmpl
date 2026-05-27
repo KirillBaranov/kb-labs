@@ -1,0 +1,52 @@
+# Per-PR preview compose stack. Rendered by the preview workflow and
+# scp'd to the VPS at ~/kb-previews/pr-${PR_NUMBER}/docker-compose.yml.
+#
+# Placeholders (substituted with envsubst at workflow time):
+#   ${PR_NUMBER}     GitHub PR number
+#   ${WEB_PORT}      Host port for the web container      (PR_NUMBER*10 + 30000)
+#   ${GATEWAY_PORT}  Host port for the gateway container  (PR_NUMBER*10 + 30001)
+#   ${DOCS_PORT}     Host port for the docs container     (PR_NUMBER*10 + 30002)
+#
+# kb-deploy sets IMAGE_TAG=<short-sha> on the remote host before `up -d`.
+# All containers share a dedicated network so they can reach each other by
+# service name (gateway, web, docs).
+
+services:
+  gateway:
+    image: ghcr.io/kirillbaranov/kb-gateway:${IMAGE_TAG}
+    container_name: kb-preview-pr-${PR_NUMBER}-gateway
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${GATEWAY_PORT}:4000"
+    environment:
+      KB_LABS_ENV: preview
+      KB_LABS_PR: "${PR_NUMBER}"
+    networks: [preview]
+
+  web:
+    image: ghcr.io/kirillbaranov/kb-site-web:${IMAGE_TAG}
+    container_name: kb-preview-pr-${PR_NUMBER}-web
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${WEB_PORT}:3000"
+    environment:
+      KB_LABS_ENV: preview
+      KB_LABS_PR: "${PR_NUMBER}"
+      KB_LABS_API_URL: https://pr-${PR_NUMBER}-api.stage.kblabs.ru
+    depends_on: [gateway]
+    networks: [preview]
+
+  docs:
+    image: ghcr.io/kirillbaranov/kb-site-docs:${IMAGE_TAG}
+    container_name: kb-preview-pr-${PR_NUMBER}-docs
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${DOCS_PORT}:3001"
+    environment:
+      KB_LABS_ENV: preview
+      KB_LABS_PR: "${PR_NUMBER}"
+    networks: [preview]
+
+networks:
+  preview:
+    name: kb-preview-pr-${PR_NUMBER}

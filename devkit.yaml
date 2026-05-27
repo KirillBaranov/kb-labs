@@ -718,6 +718,17 @@ custom_checks:
     on: [check]
     language: typescript
 
+  # SEO guard for @kb-labs/web-site.
+  # Blocks CI on: missing generateMetadata, imageSegment not set, opengraph-image.tsx absent,
+  # OG image using non-.meta.* i18n keys, title/description out of length bounds.
+  # JSON-LD absence is a warning only (future work).
+  # Suppress per-file with: // seo-ignore <rule> (rules: og-image, og-keys, jsonld, title-brand)
+  # Script self-filters: skips all packages except @kb-labs/web-site.
+  - name: seo-check
+    run: node sites/web/apps/web/scripts/seo-check.mjs
+    on: [check]
+    language: typescript
+
   # CLI manifest naming conventions (ADR-0018, docs/plans/cli-naming-audit.md)
   # Rules: no kebab in path segments, no reserved namespaces, single-word top-level.
   # Known violations are tracked in KNOWN_VIOLATIONS inside the script — warnings only.

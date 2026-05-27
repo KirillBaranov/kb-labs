@@ -28,6 +28,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: t('signup.meta.title'),
     description: t('signup.meta.description'),
     path: '/signup',
+    imageSegment: 'default',
   });
 }
 
