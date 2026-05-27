@@ -41,7 +41,7 @@ import type {
   JwtConfig,
   SessionResult,
   RateLimiter,
-  type TenantResolver,
+  TenantResolver,
 } from '@kb-labs/gateway-auth';
 import { AuthError, verifyCsrfToken } from '@kb-labs/gateway-auth';
 import { PERMISSIONS } from '@kb-labs/core-contracts';
