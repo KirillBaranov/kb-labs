@@ -69,6 +69,10 @@ services:
       NPM_CONFIG_REGISTRY: http://verdaccio:4873
       KB_TENANT_DEFAULT_TIER: enterprise
       KB_REGISTRY_URL: http://localhost:5071
+      # E2E-only static machine token with machine:register permission.
+      # Passed to the gateway so E2E tests can call /auth/register via Bearer.
+      # Never set this in production.
+      GATEWAY_E2E_MACHINE_TOKEN: e2e-insecure-machine-register-token
     # Mount the host monorepo's `e2e/` tree read-only so the runner outside
     # Docker can apply scenarios inside the platform container via
     # `docker compose exec`. The container's `kb-dev` reads scenario.yaml +

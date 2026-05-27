@@ -17,6 +17,10 @@ import { test, expect, type APIRequestContext } from '@playwright/test';
 import { GATEWAY } from '@kb-labs/e2e-shared/urls.js';
 import { issueToken } from '@kb-labs/e2e-shared/auth.js';
 
+// E2E machine token with machine:register permission (seeded via GATEWAY_E2E_MACHINE_TOKEN).
+const E2E_MACHINE_TOKEN =
+  process.env['GATEWAY_E2E_MACHINE_TOKEN'] ?? 'e2e-insecure-machine-register-token';
+
 async function fireMany(
   request: APIRequestContext,
   url: string,
@@ -37,8 +41,10 @@ async function registerWithNamespace(
   namespaceId: string,
   name: string,
 ) {
+  // /auth/register requires MACHINE_REGISTER permission — use the E2E machine token.
   const res = await request.post(`${GATEWAY}/auth/register`, {
     data: { name, namespaceId, capabilities: [] },
+    headers: { Authorization: `Bearer ${E2E_MACHINE_TOKEN}` },
   });
   if (!res.ok()) {
     throw new Error(`register failed: ${res.status()} ${await res.text()}`);
