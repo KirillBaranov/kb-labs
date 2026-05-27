@@ -12,6 +12,7 @@ import { describe, it, expect, vi, beforeAll, afterAll, beforeEach } from 'vites
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { ILogger } from '@kb-labs/core-platform';
 import type { ManifestV3 } from '@kb-labs/plugin-contracts';
+import type { IResourceBroker } from '@kb-labs/core-resource-broker';
 import { InMemoryCache } from '@kb-labs/core-platform/inmemory';
 import { WebhookSecretStore } from '../webhook/secret-store.js';
 import { registerWebhookAdminRoutes } from '../webhook/admin-routes.js';
@@ -59,6 +60,15 @@ function makeAuthContext(namespaceId = NS) {
   };
 }
 
+/** Broker stub that always allows requests (no rate limiting in tests). */
+function makeMockBroker(): IResourceBroker {
+  const noop = async () => {};
+  return {
+    registerLimit: vi.fn(),
+    tryAcquire: vi.fn().mockResolvedValue({ allowed: true, release: noop }),
+  } as unknown as IResourceBroker;
+}
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('webhook admin routes', () => {
@@ -88,6 +98,7 @@ describe('webhook admin routes', () => {
       backend: mockBackend as never,
       manifests,
       baseUrl: BASE_URL,
+      broker: makeMockBroker(),
     });
 
     await app.ready();
@@ -175,6 +186,7 @@ describe('webhook admin routes', () => {
         backend: mockBackend as never,
         manifests,
         baseUrl: BASE_URL,
+        broker: makeMockBroker(),
       });
       await appNoAuth.ready();
 
@@ -215,6 +227,7 @@ describe('webhook admin routes', () => {
         backend: isolatedBackend as never,
         manifests,
         baseUrl: BASE_URL,
+        broker: makeMockBroker(),
       });
       await isolatedApp.ready();
 
@@ -256,6 +269,7 @@ describe('webhook admin routes', () => {
         backend: mockBackend as never,
         manifests,
         baseUrl: BASE_URL,
+        broker: makeMockBroker(),
       });
       await appNoAuth.ready();
 
@@ -315,6 +329,7 @@ describe('webhook admin routes', () => {
         backend: mockBackend as never,
         manifests,
         baseUrl: BASE_URL,
+        broker: makeMockBroker(),
       });
       await appNoAuth.ready();
 

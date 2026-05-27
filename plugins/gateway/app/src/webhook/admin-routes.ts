@@ -29,8 +29,8 @@ export interface RegisterWebhookAdminRoutesOptions {
   backend: ProvisionBackend;
   manifests: WebhookManifestEntry[];
   baseUrl: string;
-  /** Optional rate limiter — when provided, admin routes are rate-limited. */
-  broker?: IResourceBroker;
+  /** Rate limiter — admin routes are always rate-limited. */
+  broker: IResourceBroker;
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -50,13 +50,11 @@ export function registerWebhookAdminRoutes(
   const { cache, logger, backend, manifests, baseUrl, broker } = options;
   const secretStore = new WebhookSecretStore(cache);
 
-  // Register per-resource rate limits when a broker is available.
+  // Register per-resource rate limits.
   // Admin operations are infrequent; conservative limits prevent abuse.
-  if (broker) {
-    broker.registerLimit(RL_PROVISION, { requestsPerMinute: 10 });
-    broker.registerLimit(RL_LIST, { requestsPerMinute: 60 });
-    broker.registerLimit(RL_REVOKE, { requestsPerMinute: 10 });
-  }
+  broker.registerLimit(RL_PROVISION, { requestsPerMinute: 10 });
+  broker.registerLimit(RL_LIST, { requestsPerMinute: 60 });
+  broker.registerLimit(RL_REVOKE, { requestsPerMinute: 10 });
 
   // ── POST /api/v1/webhooks/provision ─────────────────────────────────────────
 
@@ -67,7 +65,7 @@ export function registerWebhookAdminRoutes(
     }
 
     // Rate limit provisioning requests
-    if (broker) {
+    {
       const acquired = await broker.tryAcquire(RL_PROVISION);
       try {
         if (!acquired.allowed) {
@@ -122,7 +120,7 @@ export function registerWebhookAdminRoutes(
     }
 
     // Rate limit list requests
-    if (broker) {
+    {
       const acquired = await broker.tryAcquire(RL_LIST);
       try {
         if (!acquired.allowed) {
@@ -173,7 +171,7 @@ export function registerWebhookAdminRoutes(
       }
 
       // Rate limit revoke requests
-      if (broker) {
+      {
         const acquired = await broker.tryAcquire(RL_REVOKE);
         try {
           if (!acquired.allowed) {
@@ -202,7 +200,7 @@ export function registerWebhookAdminRoutes(
       }
 
       // Rate limit revoke requests
-      if (broker) {
+      {
         const acquired = await broker.tryAcquire(RL_REVOKE);
         try {
           if (!acquired.allowed) {
