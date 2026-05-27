@@ -5,7 +5,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { QueuedEmbeddings } from '../queued-embeddings';
 import { ResourceBroker, InMemoryRateLimitBackend } from '../../index';
-import { MockEmbeddings } from '@kb-labs/core-platform/noop';
+import { MockEmbeddings } from '@kb-labs/shared-testing';
 
 describe('QueuedEmbeddings', () => {
   let broker: ResourceBroker;

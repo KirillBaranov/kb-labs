@@ -1,49 +1,49 @@
 /**
  * @module @kb-labs/core-platform/noop/adapters/llm
- * Mock LLM implementation.
+ *
+ * NoOp `ILLM` — every functional call throws `AdapterUnavailableError`.
+ *
+ * Selected as the default fallback for the `llm` slot because no honest
+ * in-process fake exists: any deterministic-but-fake response would lie
+ * to the caller about model behaviour. Throwing forces operators to wire
+ * up a real provider.
+ *
+ * Programmable test doubles live in `@kb-labs/shared-testing` (mockLLM).
  */
 
+import { AdapterUnavailableError } from '../../errors.js';
 import type {
   ILLM,
+  LLMMessage,
   LLMOptions,
   LLMResponse,
-  LLMProtocolCapabilities,
+  LLMToolCallOptions,
+  LLMToolCallResponse,
 } from '../../adapters/llm.js';
 
-/**
- * Mock LLM that returns placeholder responses.
- * Useful for testing without API calls.
- */
-export class MockLLM implements ILLM {
-  getProtocolCapabilities(): LLMProtocolCapabilities {
-    return {
-      cache: { supported: false },
-      stream: { supported: true },
-    };
+const SLOT = 'llm';
+
+export class NoOpLLM implements ILLM {
+  async complete(_prompt: string, _options?: LLMOptions): Promise<LLMResponse> {
+    throw new AdapterUnavailableError(SLOT);
   }
 
-  async complete(prompt: string, options?: LLMOptions): Promise<LLMResponse> {
-    const content = `[Mock LLM Response] Received prompt of ${prompt.length} characters.`;
-
+  stream(_prompt: string, _options?: LLMOptions): AsyncIterable<string> {
     return {
-      content,
-      usage: {
-        promptTokens: Math.ceil(prompt.length / 4),
-        completionTokens: Math.ceil(content.length / 4),
+      [Symbol.asyncIterator]() {
+        return {
+          async next(): Promise<IteratorResult<string>> {
+            throw new AdapterUnavailableError(SLOT);
+          },
+        };
       },
-      model: options?.model ?? 'mock-model',
     };
   }
 
-  async *stream(prompt: string, options?: LLMOptions): AsyncIterable<string> {
-    const response = `[Mock LLM Stream] Received prompt of ${prompt.length} characters.`;
-    const words = response.split(' ');
-
-    for (const word of words) {
-      yield word + ' ';
-      await new Promise((resolve) => {
-        setTimeout(resolve, 50);
-      });
-    }
+  async chatWithTools(
+    _messages: LLMMessage[],
+    _options: LLMToolCallOptions,
+  ): Promise<LLMToolCallResponse> {
+    throw new AdapterUnavailableError(SLOT);
   }
 }

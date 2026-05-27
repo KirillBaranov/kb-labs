@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: item.name,
     description: item.description,
     path: `/product/marketplace/${slug}`,
-    imageSegment: 'marketplace',
+    imageSegment: 'product/marketplace',
   });
 }
 

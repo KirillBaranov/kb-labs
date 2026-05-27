@@ -2,7 +2,7 @@ import Fastify from 'fastify';
 import fastifyCookie from '@fastify/cookie';
 import fastifyCors from '@fastify/cors';
 import fastifyHttpProxy from '@fastify/http-proxy';
-import { platform } from '@kb-labs/core-runtime';
+import { platform, getAdapterStatus } from '@kb-labs/core-runtime';
 import {
   createCorrelatedLogger,
   createServiceReadyResponse,
@@ -332,6 +332,15 @@ export async function createServer(
 
     scope.get('/health', { schema: { tags: ['System'], summary: 'Gateway health check' } }, async () => {
       return collectHealthSnapshot();
+    });
+
+    scope.get('/health/adapters', {
+      schema: {
+        tags: ['System'],
+        summary: 'Platform adapter status — mode (real | inmemory | noop) per slot',
+      },
+    }, async () => {
+      return getAdapterStatus();
     });
 
     scope.get('/ready', { schema: { tags: ['System'], summary: 'Gateway readiness check' } }, async (_request, reply) => {

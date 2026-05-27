@@ -74,4 +74,5 @@ export {
   mockLogger,
   type MockLoggerInstance,
   type LogEntry,
+  MockEmbeddings,
 } from '@kb-labs/shared-testing';

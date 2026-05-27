@@ -31,6 +31,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: t('roadmap.meta.title'),
     description: t('roadmap.meta.description'),
     path: '/roadmap',
+    imageSegment: 'roadmap',
   });
 }
 

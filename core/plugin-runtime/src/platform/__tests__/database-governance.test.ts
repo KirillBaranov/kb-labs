@@ -20,7 +20,7 @@ import {
   createInMemoryKVStore,
   InMemoryDocumentDatabase,
   InMemoryKVStore,
-} from '@kb-labs/core-platform/adapters/testing';
+} from '@kb-labs/core-platform/inmemory';
 import { PermissionError } from '@kb-labs/plugin-contracts';
 import type { PermissionSpec } from '@kb-labs/plugin-contracts';
 import type { IDocumentTransaction, BaseDocument } from '@kb-labs/core-platform/adapters';

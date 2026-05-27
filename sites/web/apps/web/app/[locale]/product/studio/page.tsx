@@ -32,6 +32,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: t('meta.title'),
     description: t('meta.description'),
     path: '/product/studio',
+    imageSegment: 'product/studio',
   });
 }
 
@@ -47,7 +48,7 @@ export default async function StudioPage({ params }: Props) {
       <main>
 
         {/* ── Hero ── */}
-        <section className="relative overflow-hidden py-20 pb-10">
+        <section className="relative overflow-hidden py-10 pb-8 sm:py-20 sm:pb-10">
           <DotPattern className="absolute inset-0 z-0 opacity-40" />
           <Container className="relative z-10">
             <div className="mx-auto max-w-2xl text-center">
@@ -79,6 +80,7 @@ export default async function StudioPage({ params }: Props) {
                     src="/screenshots/marketplace-ui.png"
                     alt="KB Labs Studio — Marketplace"
                     url="localhost:3000/marketplace"
+                    loading="eager"
                   />
                 </MockupFrame>
               </div>

@@ -31,3 +31,13 @@ export {
   type LLMTier,
   type UseLLMOptions,
 } from '@kb-labs/shared-command-kit';
+
+// Adapter status — global registry, no plugin context needed.
+// Returns the mode ('real' | 'inmemory' | 'noop') for each platform slot
+// so plugins can branch on capability at runtime.
+export {
+  getAdapterStatus as useAdapterStatus,
+  getAdapterStatusFor,
+  type AdapterMode,
+  type AdapterSlotStatus,
+} from '@kb-labs/core-runtime';

@@ -18,11 +18,13 @@ import type { GatewayConfig } from '@kb-labs/gateway-contracts';
 // ── Mocks ─────────────────────────────────────────────────────────────────
 
 let mockAdapters: Record<string, unknown> = {};
+let mockAdapterStatuses: unknown[] = [];
 
 vi.mock('@kb-labs/core-runtime', () => ({
   platform: {
     getAdapter: (name: string) => mockAdapters[name],
   },
+  getAdapterStatus: () => mockAdapterStatuses,
 }));
 
 // Mock fetch for upstream probing
@@ -206,5 +208,54 @@ describe('Gateway /health endpoint', () => {
         }),
       }),
     );
+  });
+});
+
+describe('Gateway /health/adapters endpoint', () => {
+  let app: Awaited<ReturnType<typeof buildHealthApp>>;
+
+  afterEach(async () => {
+    if (app) { await app.close(); }
+    vi.clearAllMocks();
+  });
+
+  it('returns 200 with adapter status array', async () => {
+    mockAdapters = {};
+    mockAdapterStatuses = [
+      { slot: 'cache', mode: 'inmemory', implementation: 'InMemoryCache', reason: 'not-configured', recordedAt: new Date().toISOString() },
+      { slot: 'llm', mode: 'noop', implementation: 'NoOpLLM', reason: 'not-configured', recordedAt: new Date().toISOString() },
+    ];
+    app = await buildHealthApp();
+
+    const res = await app.inject({ method: 'GET', url: '/health/adapters' });
+    expect(res.statusCode).toBe(200);
+
+    const body = res.json();
+    expect(Array.isArray(body)).toBe(true);
+    expect(body).toHaveLength(2);
+    expect(body[0]).toMatchObject({ slot: 'cache', mode: 'inmemory' });
+    expect(body[1]).toMatchObject({ slot: 'llm', mode: 'noop' });
+  });
+
+  it('returns empty array when no statuses recorded', async () => {
+    mockAdapters = {};
+    mockAdapterStatuses = [];
+    app = await buildHealthApp();
+
+    const res = await app.inject({ method: 'GET', url: '/health/adapters' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual([]);
+  });
+
+  it('is public (no auth required)', async () => {
+    // /health/adapters should be accessible without Authorization header.
+    mockAdapters = {};
+    mockAdapterStatuses = [];
+    app = await buildHealthApp();
+
+    // No Authorization header — should NOT get 401.
+    const res = await app.inject({ method: 'GET', url: '/health/adapters' });
+    expect(res.statusCode).not.toBe(401);
+    expect(res.statusCode).toBe(200);
   });
 });
