@@ -16,27 +16,6 @@ import {
   GATEWAY,
 } from '../fixtures/auth.js'
 
-// ── Shared setup: create a member account for use in 17 & 18 ─────────────────
-
-async function createMember(
-  browser: Parameters<typeof browser.newContext>[0] extends infer T ? never : ReturnType<typeof import('@playwright/test').test>['_pool']['browsers'][0],
-  adminPage: import('@playwright/test').Page,
-  adminCtx: import('@playwright/test').BrowserContext,
-  request: import('@playwright/test').APIRequestContext,
-): Promise<{ memberEmail: string; memberCookieHeader: string; memberCtx: import('@playwright/test').BrowserContext }> {
-  const adminCookieHeader = await getAdminCookieHeader(adminCtx)
-  const memberEmail = uniqueEmail('member')
-  const activationUrl = await inviteUser(request, memberEmail, adminCookieHeader)
-
-  const memberCtx = await (adminPage.context().browser()!).newContext()
-  const memberPage = await memberCtx.newPage()
-  await activateUser(memberPage, activationUrl, 'MemberPass123!')
-
-  const memberCookies = await cookieMap(memberCtx)
-  const memberCookieHeader = Object.entries(memberCookies).map(([k, v]) => `${k}=${v}`).join('; ')
-  return { memberEmail, memberCookieHeader, memberCtx }
-}
-
 // ── 17. Disable user mid-session (CD-1): next request before expiry → 401 ─────
 
 test('AUTH-17: disable user mid-session → next request returns 401 (CD-1)', async ({

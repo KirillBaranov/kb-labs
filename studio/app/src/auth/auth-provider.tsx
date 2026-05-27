@@ -26,6 +26,7 @@ import {
   useEffect,
   useCallback,
   useMemo,
+  useRef,
   type ReactNode,
 } from 'react';
 import type { Permission } from '@kb-labs/core-contracts';
@@ -110,6 +111,11 @@ export function AuthProvider({ children, _fetch, _getCookie }: AuthProviderProps
   const [user, setUser] = useState<PublicUser | undefined>(undefined);
   const [permissions, setPermissions] = useState<Set<Permission>>(new Set());
 
+  // Ref that always holds the current status so the unauthenticated event
+  // handler can read it without a stale closure (no goAnonymous if loading).
+  const statusRef = useRef<AuthStatus>('loading');
+  useEffect(() => { statusRef.current = status; }, [status]);
+
   // ── Helpers ──────────────────────────────────────────────────────────────
 
   const goAnonymous = useCallback(() => {
@@ -162,9 +168,16 @@ export function AuthProvider({ children, _fetch, _getCookie }: AuthProviderProps
   }, [fetchFn, goAnonymous, loadPermissions]);
 
   // ── auth:unauthenticated event ────────────────────────────────────────────
+  // Guard: ignore the event while the initial session check is still in flight.
+  // If the event arrives during loading and we go anonymous immediately,
+  // RequireAuth redirects to /login before the mount fetch resolves. The mount
+  // check is the authoritative source of truth for initial auth state.
 
   useEffect(() => {
-    const handler = () => goAnonymous();
+    const handler = () => {
+      if (statusRef.current === 'loading') return;
+      goAnonymous();
+    };
     window.addEventListener('auth:unauthenticated', handler);
     return () => window.removeEventListener('auth:unauthenticated', handler);
   }, [goAnonymous]);

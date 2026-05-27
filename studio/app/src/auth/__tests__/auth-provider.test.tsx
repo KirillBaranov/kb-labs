@@ -263,6 +263,98 @@ describe('logout()', () => {
     expect(screen.getByTestId('status').textContent).toBe('anonymous');
     expect(screen.getByTestId('permCount').textContent).toBe('0');
   });
+
+  it('sends X-CSRF-Token header on logout (double-submit CSRF)', async () => {
+    const fakeCsrf = 'test-csrf-token-abc123';
+    const logoutHeaders: Record<string, string>[] = [];
+
+    const mockF = vi.fn((url: string, init?: RequestInit) => {
+      // Capture headers on the logout call to verify CSRF injection.
+      if (String(url).includes('/logout')) {
+        logoutHeaders.push((init?.headers as Record<string, string>) ?? {});
+      }
+      const body = String(url).includes('/me')
+        ? ME_RESPONSE
+        : String(url).includes('/permissions')
+          ? PERMS_RESPONSE
+          : { ok: true };
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(body) });
+    }) as unknown as typeof fetch;
+
+    vi.stubGlobal('fetch', mockF);
+
+    let authRef: ReturnType<typeof useAuth> | null = null;
+    function Grabber() { authRef = useAuth(); return <TestComponent />; }
+
+    // _getCookie injects a known CSRF token for testing.
+    render(
+      <AuthProvider _getCookie={(name) => name === 'kb_csrf' ? fakeCsrf : undefined}>
+        <Grabber />
+      </AuthProvider>,
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('status').textContent).toBe('authenticated'),
+    );
+
+    await act(async () => { await authRef!.logout(); });
+
+    expect(logoutHeaders, 'logout was never called').toHaveLength(1);
+    expect(
+      logoutHeaders[0]?.['X-CSRF-Token'],
+      'X-CSRF-Token header must be set on logout',
+    ).toBe(fakeCsrf);
+  });
+});
+
+describe('auth:unauthenticated event — loading guard', () => {
+  it('ignores the event while status is loading (prevents premature /login redirect)', async () => {
+    // Never resolve /api/auth/me — keeps status in 'loading' indefinitely.
+    let resolveMe!: (v: unknown) => void;
+    const neverResolve = vi.fn((url: string) => {
+      if (url.includes('/api/auth/me')) {
+        return new Promise((res) => { resolveMe = res; });
+      }
+      return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) });
+    });
+    vi.stubGlobal('fetch', neverResolve);
+
+    render(
+      <AuthProvider>
+        <TestComponent />
+      </AuthProvider>,
+    );
+
+    // Status must be 'loading' while fetch hangs.
+    expect(screen.getByTestId('status').textContent).toBe('loading');
+
+    // Fire auth:unauthenticated — must be ignored during loading.
+    act(() => {
+      window.dispatchEvent(new CustomEvent('auth:unauthenticated'));
+    });
+
+    // Still loading (not bounced to anonymous).
+    expect(screen.getByTestId('status').textContent).toBe('loading');
+
+    // Now resolve the fetch — should authenticate normally.
+    await act(async () => {
+      resolveMe({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve(ME_RESPONSE),
+      });
+    });
+
+    // The stub for permissions also needs to work now.
+    vi.stubGlobal('fetch', mockFetch({
+      '/api/auth/permissions': { status: 200, body: PERMS_RESPONSE },
+    }));
+
+    // Ultimately lands on authenticated (not anonymous from the spurious event).
+    await waitFor(() =>
+      expect(screen.getByTestId('status').textContent).toBe('authenticated'),
+    );
+  });
 });
 
 describe('auth:unauthenticated event', () => {
