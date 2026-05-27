@@ -10,24 +10,15 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { ICache } from '@kb-labs/core-platform';
-import type { JwtConfig } from '@kb-labs/gateway-auth';
+import { signAccessToken, type JwtConfig } from '@kb-labs/gateway-auth';
 import { PERMISSIONS } from '@kb-labs/core-contracts';
 import { createAuthMiddleware } from '../auth/middleware.js';
 import { registerAuthRoutes } from '../auth/routes.js';
 
-// ── Minimal stub cache ────────────────────────────────────────────────────────
-
-const ADMIN_MACHINE_TOKEN = 'test-admin-machine-token';
+// ── Minimal stub cache (no pre-seeded static tokens) ─────────────────────────
 
 function makeCache(): ICache {
   const store = new Map<string, unknown>();
-  // Pre-seed an admin machine token with MACHINE_REGISTER permission so tests
-  // can authenticate as a privileged machine client via Bearer header.
-  store.set(`host:token:${ADMIN_MACHINE_TOKEN}`, {
-    hostId: 'test-admin-host',
-    namespaceId: 'test-ns',
-    permissions: [PERMISSIONS.MACHINE_REGISTER],
-  });
   return {
     async get<T>(k: string) { return (store.get(k) as T) ?? null; },
     async set(k: string, v: unknown) { store.set(k, v); },
@@ -36,9 +27,24 @@ function makeCache(): ICache {
   } as unknown as ICache;
 }
 
-/** Returns the Authorization header for the pre-seeded admin machine token. */
+// ── JWT-based admin token ─────────────────────────────────────────────────────
+
+const testJwtConfig: JwtConfig = { secret: 'test-secret' };
+
+/** Signs a machine JWT with the given permissions using the test JWT secret. */
+async function makeMachineJwt(permissions: string[]): Promise<string> {
+  const { token } = await signAccessToken(
+    { hostId: 'test-admin-host', namespaceId: 'test-ns', tier: 'free', type: 'machine', permissions },
+    testJwtConfig,
+  );
+  return token;
+}
+
+let adminToken: string;
+
+/** Returns the Authorization header for the JWT-based admin machine token. */
 function adminAuthHeader(): Record<string, string> {
-  return { Authorization: `Bearer ${ADMIN_MACHINE_TOKEN}` };
+  return { Authorization: `Bearer ${adminToken}` };
 }
 
 // ── Mocked AuthService ────────────────────────────────────────────────────────
@@ -52,12 +58,13 @@ function makeAuthService() {
   };
 }
 
-const testJwtConfig: JwtConfig = { secret: 'test-secret' };
-
 let app: FastifyInstance;
 let authService: ReturnType<typeof makeAuthService>;
 
 beforeAll(async () => {
+  // Mint a real JWT with MACHINE_REGISTER permission — no static token needed.
+  adminToken = await makeMachineJwt([PERMISSIONS.MACHINE_REGISTER]);
+
   authService = makeAuthService();
   app = Fastify({ logger: false });
 

@@ -1,4 +1,5 @@
 import { logDiagnosticEvent } from '@kb-labs/core-platform';
+import { createInMemoryDocumentDatabase } from '@kb-labs/core-platform/inmemory';
 import { platform, createServiceBootstrap, getPlatformRoot, getProjectRoot } from '@kb-labs/core-runtime';
 import { createCorrelatedLogger } from '@kb-labs/shared-http';
 import type { IHostStore } from '@kb-labs/gateway-contracts';
@@ -51,21 +52,26 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
   });
 
   // 3. Create persistent host store backed by the platform document database.
+  // Falls back to an in-memory implementation so user auth works without a
+  // configured adapter (dev / CI environments with no external DB).
   // The same code runs on sqlite locally and on postgres/mongo in prod — the
   // gateway has no business knowing which driver is wired underneath.
   let hostStore: IHostStore | undefined;
-  const docs = platform.getAdapter<IDocumentDatabase>('documentDatabase');
-  if (docs) {
+  const configuredDocs = platform.getAdapter<IDocumentDatabase>('documentDatabase');
+  const docs: IDocumentDatabase = configuredDocs ?? createInMemoryDocumentDatabase();
+  if (configuredDocs) {
     hostStore = new HostStore(docs);
     logger.info('Host store: documentDatabase-backed (persistent)');
   } else {
-    logger.warn('Host store: none (cache-only, hosts will be lost on restart)');
+    hostStore = new HostStore(docs);
+    logger.warn('documentDatabase: in-memory fallback (data lost on restart)');
+    logger.warn('Host store: in-memory (hosts will be lost on restart)');
   }
 
-  // 3b. User auth infrastructure (ADR-0020). Only available when the
-  //     documentDatabase adapter is wired; gracefully absent otherwise.
+  // 3b. User auth infrastructure (ADR-0020). Always available — uses in-memory
+  //     documentDatabase when no persistent adapter is configured.
   let userAuth: UserAuthServerDeps | undefined;
-  if (docs) {
+  {
     // Auth config with explicit defaults (config.auth is optional, fields have zod defaults
     // only when the auth section is present and parsed; here we apply our own fallbacks).
     // Env vars allow E2E CI to override TTLs and cookie security without touching the config
@@ -189,9 +195,8 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
       tenantPattern,
       bootstrapTenantId,
       cookieSecure,
+      persistent: !!configuredDocs,
     });
-  } else {
-    logger.warn('User auth unavailable: no documentDatabase adapter configured');
   }
 
   // 4. Create host registry with cache + store
@@ -223,14 +228,7 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
     logger.info('Restored hosts from store', { count: restoredCount });
   }
 
-  // 6. Seed static tokens into cache so resolveToken() accepts them
-  for (const [token, entry] of Object.entries(config.staticTokens)) {
-    await cache.set(`host:token:${token}`, entry);
-    logger.info('Static token seeded', { hostId: entry.hostId, namespaceId: entry.namespaceId });
-  }
-
-
-  // 7. Build JWT config — secret required; no fallback in production.
+  // 6. Build JWT config — secret required; no fallback in production.
   const DEV_JWT_SECRET = 'dev-insecure-secret-change-me';
   const jwtSecret = process.env.GATEWAY_JWT_SECRET;
   const isProduction = process.env.NODE_ENV === 'production';

@@ -17,10 +17,6 @@ import { test, expect, type APIRequestContext } from '@playwright/test';
 import { GATEWAY } from '@kb-labs/e2e-shared/urls.js';
 import { issueToken } from '@kb-labs/e2e-shared/auth.js';
 
-// E2E machine token — seeded by entrypoint.sh via .kb/overlays/e2e-tokens.jsonc.
-// Has machine:register permission; value matches the overlay.
-const E2E_MACHINE_TOKEN = 'e2e-insecure-machine-register-token';
-
 async function fireMany(
   request: APIRequestContext,
   url: string,
@@ -41,10 +37,20 @@ async function registerWithNamespace(
   namespaceId: string,
   name: string,
 ) {
-  // /auth/register requires MACHINE_REGISTER permission — use the E2E machine token.
+  // Login as bootstrap admin to get session cookies for /auth/register.
+  const loginRes = await request.post(`${GATEWAY}/api/auth/login`, {
+    data: {
+      email: process.env['GATEWAY_BOOTSTRAP_ADMIN_EMAIL'] ?? 'admin@e2e.test',
+      password: process.env['GATEWAY_BOOTSTRAP_ADMIN_PASSWORD'] ?? 'E2eBootstrapPass1!',
+      tenantId: process.env['GATEWAY_BOOTSTRAP_TENANT_ID'] ?? 'kblabs-cloud',
+    },
+  });
+  if (!loginRes.ok()) {
+    throw new Error(`admin login failed: ${loginRes.status()} ${await loginRes.text()}`);
+  }
+
   const res = await request.post(`${GATEWAY}/auth/register`, {
     data: { name, namespaceId, capabilities: [] },
-    headers: { Authorization: `Bearer ${E2E_MACHINE_TOKEN}` },
   });
   if (!res.ok()) {
     throw new Error(`register failed: ${res.status()} ${await res.text()}`);

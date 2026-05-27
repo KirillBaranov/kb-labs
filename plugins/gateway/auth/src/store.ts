@@ -22,6 +22,8 @@ export interface ClientRecord {
   tier: 'free' | 'pro' | 'enterprise';
   name: string;
   capabilities: string[];
+  /** Permissions embedded in issued JWTs. If absent, defaults to ['host:connect']. */
+  permissions?: string[];
   publicKey?: string;
   createdAt: number;
   /** Unique human-readable handle for the marketplace (e.g. "kirill"). Immutable once set. */
@@ -97,6 +99,7 @@ export async function verifyClientSecret(
 export function buildClientRecord(opts: {
   name: string;
   capabilities: string[];
+  permissions?: string[];
   publicKey?: string;
   secret: string;
   namespaceId?: string;
@@ -111,6 +114,7 @@ export function buildClientRecord(opts: {
     tier: 'free',
     name: opts.name,
     capabilities: opts.capabilities,
+    permissions: opts.permissions,
     publicKey: opts.publicKey,
     createdAt: Date.now(),
     handle: opts.handle,

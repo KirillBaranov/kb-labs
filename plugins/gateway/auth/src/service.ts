@@ -80,6 +80,7 @@ export class AuthService {
           namespaceId: record.namespaceId,
           tier: record.tier,
           type: 'machine',
+          permissions: record.permissions ?? ['host:connect'],
         },
         this.jwtConfig,
       ),
@@ -140,7 +141,7 @@ export class AuthService {
       userId: payload.sub,
       namespaceId: payload.namespaceId,
       tier: payload.tier,
-      permissions: ['host:connect'],
+      permissions: payload.permissions ?? ['host:connect'],
     };
   }
 }

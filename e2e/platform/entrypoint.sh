@@ -33,26 +33,12 @@ mkdir -p /workspace && cd /workspace
 kb-create kb-e2e --yes --dev-manifest /e2e-registry-manifest.json
 cd kb-e2e
 
-# Seed a static E2E machine token so tests can call /auth/register via Bearer.
-# /auth/register requires machine:register permission (ADR-0020). The token
-# value matches E2E_MACHINE_TOKEN in e2e/shared/src/auth.ts.
-# Uses the existing overlay mechanism — no special production-code paths.
-mkdir -p .kb/overlays
-cat > .kb/overlays/e2e-tokens.jsonc << 'EOF'
-{
-  // E2E-only: pre-seeds a machine token with machine:register permission.
-  // Allows tests to call POST /auth/register without bootstrapping an admin user.
-  "gateway": {
-    "staticTokens": {
-      "e2e-insecure-machine-register-token": {
-        "hostId": "e2e-machine",
-        "namespaceId": "e2e",
-        "permissions": ["machine:register", "host:connect"]
-      }
-    }
-  }
-}
-EOF
+# Bootstrap admin for E2E — gateway creates this user on first start.
+# Tests obtain machine-client credentials by logging in as admin and calling
+# POST /auth/register (no static tokens needed).
+export GATEWAY_BOOTSTRAP_ADMIN_EMAIL=admin@e2e.test
+export GATEWAY_BOOTSTRAP_ADMIN_PASSWORD='E2eBootstrapPass1!'
+export GATEWAY_BOOTSTRAP_TENANT_ID=kblabs-cloud
 
 # Scaffold test workflows used by E2E suite
 mkdir -p .kb/workflows

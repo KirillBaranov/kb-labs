@@ -24,6 +24,8 @@ export interface SignAccessTokenOptions {
   namespaceId: string;
   tier: 'free' | 'pro' | 'enterprise';
   type: TokenType;
+  /** Permissions to embed in the JWT payload. Defaults to [] when absent. */
+  permissions?: string[];
 }
 
 export async function signAccessToken(
@@ -37,6 +39,7 @@ export async function signAccessToken(
     namespaceId: opts.namespaceId,
     tier: opts.tier,
     type: opts.type,
+    permissions: opts.permissions ?? [],
   })
     .setProtectedHeader({ alg: 'HS256' })
     .setSubject(opts.hostId)

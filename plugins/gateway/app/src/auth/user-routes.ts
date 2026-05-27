@@ -239,10 +239,10 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
 
   // ── POST /auth/login ────────────────────────────────────────────────────────
   // Public (in PUBLIC_ROUTES). Rate-limited per-IP + per-email via fixed-window counter.
-  app.post<{ Body: { email?: string; password?: string; providerId?: string } }>('/auth/login', {
+  app.post<{ Body: { email?: string; password?: string; providerId?: string; tenantId?: string } }>('/auth/login', {
     schema: { tags: ['Auth'], summary: 'Login with email/password (sets session cookies)' },
   }, async (request, reply) => {
-    const { email, password, providerId } = request.body ?? {};
+    const { email, password, providerId, tenantId: bodyTenantId } = request.body ?? {};
     if (typeof email !== 'string' || !email) {
       return reply.code(400).send({ error: 'Bad Request', message: 'email is required' });
     }
@@ -270,9 +270,9 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
       }
     }
 
-    // Derive tenantId from Host header.
+    // Derive tenantId: body field takes precedence (API clients), then Host header (browser).
     const host = typeof request.headers.host === 'string' ? request.headers.host : '';
-    const tenantId = host.split('.')[0] ?? '';
+    const tenantId = bodyTenantId ?? host.split('.')[0] ?? '';
 
     try {
       const result = await userAuthService.login(
