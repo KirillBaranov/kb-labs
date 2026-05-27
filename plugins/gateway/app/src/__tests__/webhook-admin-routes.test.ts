@@ -87,7 +87,8 @@ describe('webhook admin routes', () => {
 
     app = Fastify({ logger: false });
 
-    // Inject auth context (simulates gatewayRoutes scope)
+    // Inject auth context (simulates gatewayRoutes scope).
+    // lgtm[js/missing-rate-limiting] - test setup only; production routes have broker-based rate limiting
     app.addHook('preHandler', async (request) => {
       (request as { authContext?: unknown }).authContext = makeAuthContext();
     });
@@ -218,6 +219,7 @@ describe('webhook admin routes', () => {
       const isolatedBackend = { execute: vi.fn().mockResolvedValue({ ok: true }) };
       const isolatedApp = Fastify({ logger: false });
 
+      // lgtm[js/missing-rate-limiting] - test setup only; production routes have broker-based rate limiting
       isolatedApp.addHook('preHandler', async (request) => {
         (request as { authContext?: unknown }).authContext = makeAuthContext();
       });
