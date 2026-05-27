@@ -1,3 +1,4 @@
+// seo-ignore og-keys (blog OG image intentionally uses hero section text for visual impact)
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { getTranslations, setRequestLocale } from 'next-intl/server';

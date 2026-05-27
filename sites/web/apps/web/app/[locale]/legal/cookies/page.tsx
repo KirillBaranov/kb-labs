@@ -22,6 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: t('legal.cookies.meta.title'),
     description: t('legal.cookies.meta.description'),
     path: '/legal/cookies',
+    imageSegment: 'default',
   });
 }
 

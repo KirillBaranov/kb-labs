@@ -29,6 +29,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: t('ucMetaTitle'),
     description: t('ucMetaDesc'),
     path: '/use-cases',
+    imageSegment: 'use-cases',
   });
 }
 

@@ -30,7 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: t('meta.title'),
     description: t('meta.description'),
     path: '/solutions/code-quality',
-    imageSegment: 'solutions',
+    imageSegment: 'solutions/code-quality',
   });
 }
 

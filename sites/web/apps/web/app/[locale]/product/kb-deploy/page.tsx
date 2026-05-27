@@ -33,6 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: t('deployMetaTitle'),
     description: t('deployMetaDesc'),
     path: '/product/kb-deploy',
+    imageSegment: 'product/kb-deploy',
   });
 }
 

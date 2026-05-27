@@ -33,7 +33,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: t('meta.title'),
     description: t('meta.description'),
     path: '/solutions/monorepo-ops',
-    imageSegment: 'solutions',
+    imageSegment: 'solutions/monorepo-ops',
   });
 }
 
