@@ -187,10 +187,10 @@ export class InvitesStore {
       { tokenHash: { $eq: tokenHash } },
       { limit: 1 },
     );
-    if (!doc) return null;
-    if (doc.status !== 'active') return null;
+    if (!doc) {return null;}
+    if (doc.status !== 'active') {return null;}
     // CD-9 explicit expiry check — TTL sweep is best-effort.
-    if (doc.expiresAt <= this.now()) return null;
+    if (doc.expiresAt <= this.now()) {return null;}
     return docToInvite(doc);
   }
 

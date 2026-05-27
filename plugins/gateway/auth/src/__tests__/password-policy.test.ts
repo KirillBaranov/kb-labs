@@ -107,7 +107,7 @@ describe('HIBP integration', () => {
     });
     const r = await policy.validate('long-strong-novel-password');
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.warning).toBe('hibp_unavailable');
+    if (r.ok) {expect(r.warning).toBe('hibp_unavailable');}
   });
 
   it('does not call HIBP when hibpEnabled = false', async () => {

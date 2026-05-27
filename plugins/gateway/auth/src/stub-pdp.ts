@@ -43,7 +43,7 @@ export const createStubPDP = (opts: StubPDPOptions): IPolicyDecisionPoint => {
   const permissionsForUser = async (identity: Identity): Promise<ReadonlyArray<string>> => {
     const list = await opts.memberships.listByUser(identity.userId);
     const inTenant = list.find(m => m.tenantId === identity.tenantId);
-    if (!inTenant) return [];
+    if (!inTenant) {return [];}
     return GROUP_PERMISSIONS[inTenant.groupId];
   };
 

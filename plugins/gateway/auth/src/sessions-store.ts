@@ -207,7 +207,7 @@ export class SessionsStore {
         { jti: { $eq: oldJti } },
         { limit: 1 },
       );
-      if (!current) return { tag: 'not-found' };
+      if (!current) {return { tag: 'not-found' };}
 
       // Reuse / grace branch.
       if (current.consumedAt !== undefined) {
@@ -299,7 +299,7 @@ export class SessionsStore {
     await this.docs.transaction(async (tx) => {
       const families = await tx.find<FamilyDoc>(FAMILIES, { userId: { $eq: userId } });
       const targets = families.filter(f => f.familyId !== exceptFamilyId).map(f => f.familyId);
-      if (targets.length === 0) return;
+      if (targets.length === 0) {return;}
       await tx.deleteMany<RefreshDoc>(
         REFRESHES,
         { $and: [{ userId: { $eq: userId } }, { familyId: { $in: targets } }] },

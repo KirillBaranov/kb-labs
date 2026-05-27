@@ -70,7 +70,7 @@ function mockActivateFetch(result: 'ok' | 'expired' | 'weak_password') {
       });
     }
     return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) });
-  }) as unknown as typeof fetch;
+  });
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

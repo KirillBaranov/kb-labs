@@ -61,10 +61,10 @@ export const createTenantResolver = (opts: TenantResolverOptions): TenantResolve
 
   return {
     resolve(host: string | undefined): string | null {
-      if (!host) return null;
+      if (!host) {return null;}
       const normalised = host.toLowerCase().split(':')[0] ?? '';
-      if (!normalised) return null;
-      if (cache.has(normalised)) return cache.get(normalised)!;
+      if (!normalised) {return null;}
+      if (cache.has(normalised)) {return cache.get(normalised)!;}
 
       let result: string | null = null;
       const m = normalised.match(re);
@@ -78,7 +78,7 @@ export const createTenantResolver = (opts: TenantResolverOptions): TenantResolve
       if (cache.size >= CACHE_LIMIT) {
         // Crude LRU — drop the oldest insert.
         const firstKey = cache.keys().next().value;
-        if (firstKey !== undefined) cache.delete(firstKey);
+        if (firstKey !== undefined) {cache.delete(firstKey);}
       }
       cache.set(normalised, result);
       return result;

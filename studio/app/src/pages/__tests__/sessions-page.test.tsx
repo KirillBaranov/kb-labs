@@ -59,7 +59,7 @@ function mockFetch(responses: Record<string, { status: number; body: unknown }>)
       status,
       json: () => Promise.resolve(body),
     });
-  }) as unknown as typeof fetch;
+  });
 }
 
 function renderPage(auth = makeAuth()) {

@@ -163,7 +163,7 @@ export function createUserRefreshFn(
     reply: FastifyReply,
   ): Promise<boolean> {
     const refreshCookie = getCookies(request)[COOKIE_REFRESH];
-    if (!refreshCookie) return false;
+    if (!refreshCookie) {return false;}
 
     try {
       const result = await userAuthService.refresh(refreshCookie);
@@ -273,8 +273,8 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
     schema: { tags: ['Auth'], summary: 'Logout and clear session cookies' },
   }, async (request, reply) => {
     const ctx = requireUser(request, reply);
-    if (!ctx) return;
-    if (!checkCsrf(request, reply)) return;
+    if (!ctx) {return;}
+    if (!checkCsrf(request, reply)) {return;}
 
     const refreshCookie = getCookies(request)[COOKIE_REFRESH];
     if (refreshCookie) {
@@ -292,7 +292,7 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
     schema: { tags: ['Auth'], summary: 'List permissions for the authenticated user' },
   }, async (request, reply) => {
     const ctx = requireUser(request, reply);
-    if (!ctx) return;
+    if (!ctx) {return;}
 
     const permissions = await pdp.enumeratePermissions({
       userId: ctx.userId,
@@ -353,8 +353,8 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
     schema: { tags: ['Auth'], summary: 'Change password (revokes all other sessions)' },
   }, async (request, reply) => {
     const ctx = requireUser(request, reply);
-    if (!ctx) return;
-    if (!checkCsrf(request, reply)) return;
+    if (!ctx) {return;}
+    if (!checkCsrf(request, reply)) {return;}
 
     const { currentPassword, newPassword } = request.body ?? {};
     if (!currentPassword || !newPassword) {
@@ -392,7 +392,7 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
     schema: { tags: ['Auth'], summary: 'List active sessions for the authenticated user' },
   }, async (request, reply) => {
     const ctx = requireUser(request, reply);
-    if (!ctx) return;
+    if (!ctx) {return;}
 
     const families = await sessions.listFamiliesByUser(ctx.userId);
     return reply.send({
@@ -414,8 +414,8 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
     schema: { tags: ['Auth'], summary: 'Revoke all sessions except the current one' },
   }, async (request, reply) => {
     const ctx = requireUser(request, reply);
-    if (!ctx) return;
-    if (!checkCsrf(request, reply)) return;
+    if (!ctx) {return;}
+    if (!checkCsrf(request, reply)) {return;}
 
     await sessions.revokeAllUserSessionsExcept(ctx.userId, ctx.familyId);
     return reply.send({ ok: true });
@@ -427,8 +427,8 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
     schema: { tags: ['Auth'], summary: 'Revoke a specific session family' },
   }, async (request, reply) => {
     const ctx = requireUser(request, reply);
-    if (!ctx) return;
-    if (!checkCsrf(request, reply)) return;
+    if (!ctx) {return;}
+    if (!checkCsrf(request, reply)) {return;}
 
     const { fam } = request.params;
 
@@ -451,7 +451,7 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
     permission: string,
   ): Promise<boolean> {
     const ctx = requireUser(request, reply);
-    if (!ctx) return false;
+    if (!ctx) {return false;}
 
     const decision = await pdp.check(
       { userId: ctx.userId, tenantId: ctx.tenantId, type: 'user' },
@@ -469,8 +469,8 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
   app.post<{ Body: { email?: string; groupId?: string } }>('/auth/invites', {
     schema: { tags: ['Auth'], summary: 'Create an invite for a new user (admin only)' },
   }, async (request, reply) => {
-    if (!(await requirePermission(request, reply, PERMISSIONS.INVITES_WRITE))) return;
-    if (!checkCsrf(request, reply)) return;
+    if (!(await requirePermission(request, reply, PERMISSIONS.INVITES_WRITE))) {return;}
+    if (!checkCsrf(request, reply)) {return;}
 
     const ctx = request.userAuthContext!;
     const { email, groupId } = request.body ?? {};
@@ -497,8 +497,8 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
   app.post<{ Params: { id: string } }>('/auth/invites/:id/revoke', {
     schema: { tags: ['Auth'], summary: 'Revoke a pending invite (admin only)' },
   }, async (request, reply) => {
-    if (!(await requirePermission(request, reply, PERMISSIONS.INVITES_WRITE))) return;
-    if (!checkCsrf(request, reply)) return;
+    if (!(await requirePermission(request, reply, PERMISSIONS.INVITES_WRITE))) {return;}
+    if (!checkCsrf(request, reply)) {return;}
 
     await invites.revoke(request.params.id);
     return reply.send({ ok: true });
@@ -508,7 +508,7 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
   app.get('/auth/invites', {
     schema: { tags: ['Auth'], summary: 'List invites for the tenant (admin only)' },
   }, async (request, reply) => {
-    if (!(await requirePermission(request, reply, PERMISSIONS.INVITES_READ))) return;
+    if (!(await requirePermission(request, reply, PERMISSIONS.INVITES_READ))) {return;}
 
     const ctx = request.userAuthContext!;
     const all = await invites.listByTenant(ctx.tenantId);
@@ -519,7 +519,7 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
   app.get('/auth/users', {
     schema: { tags: ['Auth'], summary: 'List users for the tenant (admin only)' },
   }, async (request, reply) => {
-    if (!(await requirePermission(request, reply, PERMISSIONS.USERS_READ))) return;
+    if (!(await requirePermission(request, reply, PERMISSIONS.USERS_READ))) {return;}
 
     const ctx = request.userAuthContext!;
     const all = await users.listByTenant(ctx.tenantId);
@@ -539,8 +539,8 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
   app.post<{ Params: { id: string } }>('/auth/users/:id/disable', {
     schema: { tags: ['Auth'], summary: 'Disable a user account (immediate via CD-1)' },
   }, async (request, reply) => {
-    if (!(await requirePermission(request, reply, PERMISSIONS.USERS_WRITE))) return;
-    if (!checkCsrf(request, reply)) return;
+    if (!(await requirePermission(request, reply, PERMISSIONS.USERS_WRITE))) {return;}
+    if (!checkCsrf(request, reply)) {return;}
 
     const { id } = request.params;
     const target = await users.getById(id);
@@ -558,8 +558,8 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
   app.post<{ Params: { id: string } }>('/auth/users/:id/enable', {
     schema: { tags: ['Auth'], summary: 'Re-enable a disabled user account' },
   }, async (request, reply) => {
-    if (!(await requirePermission(request, reply, PERMISSIONS.USERS_WRITE))) return;
-    if (!checkCsrf(request, reply)) return;
+    if (!(await requirePermission(request, reply, PERMISSIONS.USERS_WRITE))) {return;}
+    if (!checkCsrf(request, reply)) {return;}
 
     const { id } = request.params;
     const target = await users.getById(id);

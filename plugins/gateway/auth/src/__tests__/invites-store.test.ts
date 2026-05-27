@@ -180,7 +180,7 @@ describe('findByToken', () => {
     const { activationToken } = await invites.createInvite({
       email: 'a@b.c', tenantId: t1, groupId: 'tenant-member', createdBy: 'a', ttlMs: 1,
     });
-    await new Promise(r => setTimeout(r, 10));
+    await new Promise<void>(r => { setTimeout(r, 10); });
     expect(await invites.findByToken(activationToken)).toBeNull();
   });
 });

@@ -24,8 +24,9 @@
 
 import bcrypt from 'bcryptjs';
 import type { IIdentityProvider, IdentityResult } from '@kb-labs/core-contracts';
-import { UsersStore, canonicalizeEmail } from '../users-store.js';
-import { CredentialsStore } from '../credentials-store.js';
+import type { UsersStore} from '../users-store.js';
+import { canonicalizeEmail } from '../users-store.js';
+import type { CredentialsStore } from '../credentials-store.js';
 
 export interface EmailPasswordProviderOptions {
   users: UsersStore;
@@ -55,7 +56,7 @@ interface PasswordInput {
 }
 
 const isPasswordInput = (raw: unknown): raw is PasswordInput => {
-  if (!raw || typeof raw !== 'object') return false;
+  if (!raw || typeof raw !== 'object') {return false;}
   const r = raw as Record<string, unknown>;
   return typeof r.email === 'string' && typeof r.password === 'string'
     && r.email.length > 0 && r.password.length > 0;

@@ -24,7 +24,7 @@ beforeEach(() => {
   kv = createInMemoryKVStore();
 });
 
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms));
+const sleep = (ms: number) => new Promise<void>(r => { setTimeout(r, ms); });
 
 describe('createRateLimiter', () => {
   it('allows up to max, blocks beyond', async () => {
@@ -33,7 +33,7 @@ describe('createRateLimiter', () => {
     for (let i = 0; i < 3; i++) {
       const r = await rl.check('login:email:a@b.c', cfg);
       expect(r.allowed).toBe(true);
-      if (r.allowed) expect(r.remaining).toBe(2 - i);
+      if (r.allowed) {expect(r.remaining).toBe(2 - i);}
     }
     const fourth = await rl.check('login:email:a@b.c', cfg);
     expect(fourth.allowed).toBe(false);
@@ -54,7 +54,7 @@ describe('createRateLimiter', () => {
     const fresh = await rl.check('k', cfg);
     // Counter should have reset to 1.
     expect(fresh.allowed).toBe(true);
-    if (fresh.allowed) expect(fresh.remaining).toBe(4);
+    if (fresh.allowed) {expect(fresh.remaining).toBe(4);}
   });
 
   it('isolates keys', async () => {

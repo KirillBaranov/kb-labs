@@ -25,8 +25,9 @@ import { canonicalizeEmail } from './users-store.js';
 import type { CredentialsStore } from './credentials-store.js';
 import type { MembershipsStore } from './memberships-store.js';
 import type { InvitesStore } from './invites-store.js';
+import type {
+  SessionsStore} from './sessions-store.js';
 import {
-  SessionsStore,
   RefreshExpiredError,
   RefreshNotFoundError,
   RefreshReuseDetectedError,
@@ -123,7 +124,7 @@ const toPublicUser = (u: User): PublicUser => ({
 });
 
 const mapPolicyResultToError = (r: ValidationResult): AuthError | null => {
-  if (r.ok) return null;
+  if (r.ok) {return null;}
   return new AuthError('weak_password', r.reason);
 };
 
@@ -213,9 +214,9 @@ export const createUserAuthService = (opts: UserAuthServiceOptions) => {
     try {
       rotated = await opts.sessions.rotateRefresh(payload.jti);
     } catch (err) {
-      if (err instanceof RefreshReuseDetectedError) throw new AuthError('refresh_reuse');
-      if (err instanceof RefreshExpiredError) throw new AuthError('invalid_refresh');
-      if (err instanceof RefreshNotFoundError) throw new AuthError('invalid_refresh');
+      if (err instanceof RefreshReuseDetectedError) {throw new AuthError('refresh_reuse');}
+      if (err instanceof RefreshExpiredError) {throw new AuthError('invalid_refresh');}
+      if (err instanceof RefreshNotFoundError) {throw new AuthError('invalid_refresh');}
       throw err;
     }
 
@@ -226,7 +227,7 @@ export const createUserAuthService = (opts: UserAuthServiceOptions) => {
   // ── logout ────────────────────────────────────────────────────────
   const logout = async (refreshToken: string): Promise<void> => {
     const payload = await verifyUserRefreshToken(refreshToken, opts.jwtConfig);
-    if (!payload) return; // idempotent for garbage tokens
+    if (!payload) {return;} // idempotent for garbage tokens
     await opts.sessions.revokeFamily(payload.familyId);
   };
 
@@ -244,11 +245,11 @@ export const createUserAuthService = (opts: UserAuthServiceOptions) => {
       throw new AuthError('invalid_current_password');
     }
     const ok = await bcrypt.compare(input.currentPassword, cred.hash);
-    if (!ok) throw new AuthError('invalid_current_password');
+    if (!ok) {throw new AuthError('invalid_current_password');}
 
     const policyResult = await opts.passwordPolicy.validate(input.newPassword);
     const polErr = mapPolicyResultToError(policyResult);
-    if (polErr) throw polErr;
+    if (polErr) {throw polErr;}
 
     const hash = await bcrypt.hash(input.newPassword, opts.bcryptCost);
     await opts.credentials.setCredential({
@@ -265,11 +266,11 @@ export const createUserAuthService = (opts: UserAuthServiceOptions) => {
   // ── activate ──────────────────────────────────────────────────────
   const activate = async (input: ActivateInput): Promise<SessionResult> => {
     const invite = await opts.invites.findByToken(input.activationToken);
-    if (!invite) throw new AuthError('invalid_invite');
+    if (!invite) {throw new AuthError('invalid_invite');}
 
     const policyResult = await opts.passwordPolicy.validate(input.password);
     const polErr = mapPolicyResultToError(policyResult);
-    if (polErr) throw polErr;
+    if (polErr) {throw polErr;}
 
     // Create the user, credential, and membership. We never touch
     // pre-existing records — the invites store enforces no-duplicate-

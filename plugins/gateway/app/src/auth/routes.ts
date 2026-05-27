@@ -82,7 +82,7 @@ export function registerAuthRoutes(
     const refreshCookie = cookies?.[COOKIE_REFRESH];
     if (refreshCookie && userExt) {
       const handled = await userExt.userRefreshFn(request, reply);
-      if (handled) return;
+      if (handled) {return;}
     }
 
     // Machine body refresh (existing logic).

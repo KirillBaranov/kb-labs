@@ -46,7 +46,7 @@ function mockFetchProviders(loginResult: 'ok' | 'fail') {
       status: 404,
       json: () => Promise.resolve({}),
     });
-  }) as unknown as typeof fetch;
+  });
 }
 
 function makeAnonymousAuth(loginFn: (email: string, password: string) => Promise<void>): AuthState {

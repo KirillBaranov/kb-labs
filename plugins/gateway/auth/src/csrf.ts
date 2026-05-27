@@ -32,8 +32,8 @@ export const verifyCsrfToken = (
   cookie: string | undefined,
   header: string | undefined,
 ): boolean => {
-  if (!cookie || !header) return false;
-  if (cookie.length !== header.length) return false;
+  if (!cookie || !header) {return false;}
+  if (cookie.length !== header.length) {return false;}
   const a = Buffer.from(cookie, 'utf8');
   const b = Buffer.from(header, 'utf8');
   // Buffers of identical length — safe to call timingSafeEqual.

@@ -69,9 +69,9 @@ const queryHibp = async (
   const text = await resp.text();
   for (const line of text.split(/\r?\n/)) {
     const trimmed = line.trim();
-    if (!trimmed) continue;
+    if (!trimmed) {continue;}
     const sepIdx = trimmed.indexOf(':');
-    if (sepIdx < 0) continue;
+    if (sepIdx < 0) {continue;}
     const suffix = trimmed.slice(0, sepIdx).toUpperCase();
     if (suffix === wantedSuffix) {
       const count = Number.parseInt(trimmed.slice(sepIdx + 1), 10);

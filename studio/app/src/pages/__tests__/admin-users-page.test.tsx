@@ -40,7 +40,7 @@ function mockFetch(responses: Record<string, { status: number; body: unknown }>)
     if (!match) return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve({}) });
     const [, { status, body }] = match;
     return Promise.resolve({ ok: status < 400, status, json: () => Promise.resolve(body) });
-  }) as unknown as typeof fetch;
+  });
 }
 
 function renderPage(auth = makeAuth()) {

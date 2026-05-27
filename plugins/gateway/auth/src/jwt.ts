@@ -199,9 +199,9 @@ interface RawUserClaims extends JWTPayload {
 }
 
 const normaliseAccess = (raw: RawUserClaims): UserAccessPayload | null => {
-  if (raw.type !== 'user') return null;
-  if (!raw.sub || !raw.tenantId || !raw.fam || !raw.jti) return null;
-  if (typeof raw.iat !== 'number' || typeof raw.exp !== 'number') return null;
+  if (raw.type !== 'user') {return null;}
+  if (!raw.sub || !raw.tenantId || !raw.fam || !raw.jti) {return null;}
+  if (typeof raw.iat !== 'number' || typeof raw.exp !== 'number') {return null;}
   return {
     userId: raw.sub,
     tenantId: raw.tenantId,
@@ -214,9 +214,9 @@ const normaliseAccess = (raw: RawUserClaims): UserAccessPayload | null => {
 };
 
 const normaliseRefresh = (raw: RawUserClaims): UserRefreshPayload | null => {
-  if (raw.type !== 'refresh') return null;
-  if (!raw.sub || !raw.tenantId || !raw.fam || !raw.jti) return null;
-  if (typeof raw.iat !== 'number' || typeof raw.exp !== 'number') return null;
+  if (raw.type !== 'refresh') {return null;}
+  if (!raw.sub || !raw.tenantId || !raw.fam || !raw.jti) {return null;}
+  if (typeof raw.iat !== 'number' || typeof raw.exp !== 'number') {return null;}
   return {
     userId: raw.sub,
     tenantId: raw.tenantId,

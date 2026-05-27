@@ -73,9 +73,9 @@ describe('ChangePasswordPage', () => {
   });
 
   it('calls POST /api/auth/password/change with correct body', async () => {
-    const mockF = vi.fn(() =>
+    const mockF = vi.fn((_url: string, _init?: RequestInit) =>
       Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true }) }),
-    ) as unknown as typeof fetch;
+    );
     vi.stubGlobal('fetch', mockF);
 
     renderPage();
@@ -95,7 +95,7 @@ describe('ChangePasswordPage', () => {
   it('shows success message on successful password change', async () => {
     vi.stubGlobal('fetch', vi.fn(() =>
       Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ok: true }) }),
-    ) as unknown as typeof fetch);
+    ));
 
     renderPage();
     fill('OldPass!', 'NewSecret123!', 'NewSecret123!');
@@ -116,7 +116,7 @@ describe('ChangePasswordPage', () => {
         status: 400,
         json: () => Promise.resolve({ error: 'invalid_current_password' }),
       }),
-    ) as unknown as typeof fetch);
+    ));
 
     renderPage();
     fill('Wrong!1', 'NewSecret123!', 'NewSecret123!');

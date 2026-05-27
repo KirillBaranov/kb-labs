@@ -212,7 +212,7 @@ async function loginAndGetCookies(
   const parsed: Record<string, string> = {};
   for (const c of cookieList) {
     const [kv] = c.split(';');
-    if (!kv) continue;
+    if (!kv) {continue;}
     const eq = kv.indexOf('=');
     if (eq > 0) {
       parsed[kv.slice(0, eq).trim()] = kv.slice(eq + 1).trim();
