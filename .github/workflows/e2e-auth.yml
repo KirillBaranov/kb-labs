@@ -239,37 +239,11 @@ jobs:
             sleep 5
           done
 
-      # ── Apply auth E2E overlay ──────────────────────────────────────────────
-      # The overlay at /e2e-auth-overlay.jsonc (mounted from e2e/auth/overlay.jsonc)
-      # wires SQLite as documentDatabase + kvStore. Without it the gateway starts
-      # without a documentDatabase and /auth/* routes are never registered.
-      #
-      # We copy it into .kb/overlays/ and restart gateway (using the same overlay
-      # mechanism as gateway E2E pressure scenarios). This must happen BEFORE the
-      # studio nginx healthcheck which polls /api/auth/providers.
-
-      - name: Apply auth E2E overlay (wire SQLite, restart gateway)
-        run: |
-          docker compose exec -T platform sh -c '
-            mkdir -p /workspace/kb-e2e/.kb/overlays &&
-            cp /e2e-auth-overlay.jsonc /workspace/kb-e2e/.kb/overlays/auth-e2e.jsonc &&
-            kb-dev restart gateway
-          '
-
-      - name: Wait for gateway to recover after overlay restart
-        run: |
-          echo "Waiting for gateway to re-register /auth/* routes (up to 2 min)..."
-          for i in $(seq 1 24); do
-            if curl -sf http://localhost:4000/auth/providers > /dev/null 2>&1; then
-              echo "Gateway /auth/providers ready after $((i * 5))s"; break
-            fi
-            if [ $i -eq 24 ]; then
-              echo "Gateway /auth/providers did not come up after overlay restart — dumping logs"
-              docker compose logs platform | tail -60
-              exit 1
-            fi
-            sleep 5
-          done
+      # ── Configure bootstrap admin via gateway env ───────────────────────────
+      # documentDatabase (SQLite) is configured via adapterConfig in
+      # registry-manifest.json — kb-create writes it into kb.config.jsonc at
+      # bootstrap time so the gateway starts with userAuth already initialised.
+      # No overlay or runtime restart needed.
 
       - name: Start Studio nginx proxy
         run: docker compose up -d studio

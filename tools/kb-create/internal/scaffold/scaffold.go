@@ -31,12 +31,20 @@ const DefaultGatewayURL = "https://api.kblabs.ru"
 
 // Options controls which sections are included in the generated config.
 type Options struct {
-	PlatformDir        string
-	Services           []string      // selected service IDs (e.g. "rest", "workflow")
-	Plugins            []string      // selected plugin IDs  (e.g. "mind", "agents")
-	DemoMode           bool          // generate demo workflow template
-	GatewayCredentials *GatewayCreds // non-nil → write adapterOptions.llm (demo only)
+	PlatformDir         string
+	Services            []string        // selected service IDs (e.g. "rest", "workflow")
+	Plugins             []string        // selected plugin IDs  (e.g. "mind", "agents")
+	DemoMode            bool            // generate demo workflow template
+	GatewayCredentials  *GatewayCreds   // non-nil → write adapterOptions.llm (demo only)
 	PreservedLLMOptions json.RawMessage // non-nil → write adapterOptions.llm verbatim (update preserve)
+	// DocumentDatabase is the npm package that implements IDocumentDatabase
+	// (e.g. "@kb-labs/adapters-sqlite"). When non-empty it is written into the
+	// adapters section of the generated platform config so the gateway can
+	// initialise features that require durable document storage (e.g. user auth).
+	DocumentDatabase string
+	// KVStore is the npm package that implements IKVStore
+	// (e.g. "@kb-labs/adapters-sqlite/kv"). Written alongside DocumentDatabase.
+	KVStore string
 }
 
 // WritePlatformConfig writes the full platform config to platformDir/.kb/kb.config.jsonc.
@@ -143,6 +151,12 @@ func ReadPlatformOptions(platformDir string, projectDir ...string) Options {
 		AdapterOptions struct {
 			LLM json.RawMessage `json:"llm"`
 		} `json:"adapterOptions"`
+		Platform struct {
+			Adapters struct {
+				DocumentDatabase string `json:"documentDatabase"`
+				KVStore          string `json:"kvStore"`
+			} `json:"adapters"`
+		} `json:"platform"`
 	}
 	if err := json.Unmarshal([]byte(cleaned), &cfg); err != nil {
 		return opts
@@ -158,6 +172,10 @@ func ReadPlatformOptions(platformDir string, projectDir ...string) Options {
 			opts.Plugins = append(opts.Plugins, name)
 		}
 	}
+	// Preserve documentDatabase and kvStore so kb-create update does not
+	// remove adapters that were set from the manifest's adapterConfig.
+	opts.DocumentDatabase = cfg.Platform.Adapters.DocumentDatabase
+	opts.KVStore = cfg.Platform.Adapters.KVStore
 	// Preserve existing LLM adapter options (e.g. gateway URL + credentials)
 	// so that kb-create update does not reset --llm configuration.
 	llmRaw := string(cfg.AdapterOptions.LLM)
@@ -276,7 +294,17 @@ func generateFull(opts Options) string {
       "logRingBuffer": "@kb-labs/adapters-log-ringbuffer",
 
       // Analytics — JSONL file, no native dependencies.
-      "analytics": "@kb-labs/adapters-analytics-file"
+      "analytics": "@kb-labs/adapters-analytics-file"`)
+	if opts.DocumentDatabase != "" {
+		b.WriteString(",\n\n      // Persistent document store — required for user auth (ADR-0020)\n")
+		b.WriteString("      // and other features that need durable storage.\n")
+		fmt.Fprintf(&b, "      \"documentDatabase\": %s", quote(opts.DocumentDatabase))
+	}
+	if opts.KVStore != "" {
+		b.WriteString(",\n\n      // Key-value store — used for sessions, rate limiting, etc.\n")
+		fmt.Fprintf(&b, "      \"kvStore\": %s", quote(opts.KVStore))
+	}
+	b.WriteString(`
     },
 
     // Plugin execution mode: "worker-pool" (isolated workers, stable) or

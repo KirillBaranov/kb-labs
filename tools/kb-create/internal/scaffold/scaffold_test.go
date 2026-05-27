@@ -47,6 +47,40 @@ func TestWritePlatformConfig_FullSelection(t *testing.T) {
 	assertContains(t, content, "//", "JSONC comments")
 }
 
+func TestWritePlatformConfig_DocumentDatabase(t *testing.T) {
+	platformDir := t.TempDir()
+
+	err := WritePlatformConfig(platformDir, Options{
+		PlatformDir:      platformDir,
+		DocumentDatabase: "@kb-labs/adapters-sqlite",
+		KVStore:          "@kb-labs/adapters-sqlite/kv",
+	})
+	if err != nil {
+		t.Fatalf("WritePlatformConfig() error = %v", err)
+	}
+
+	content := readKbConfig(t, platformDir)
+
+	assertContains(t, content, `"documentDatabase": "@kb-labs/adapters-sqlite"`, "documentDatabase adapter")
+	assertContains(t, content, `"kvStore": "@kb-labs/adapters-sqlite/kv"`, "kvStore adapter")
+}
+
+func TestWritePlatformConfig_NoDocumentDatabase(t *testing.T) {
+	platformDir := t.TempDir()
+
+	err := WritePlatformConfig(platformDir, Options{PlatformDir: platformDir})
+	if err != nil {
+		t.Fatalf("WritePlatformConfig() error = %v", err)
+	}
+
+	content := readKbConfig(t, platformDir)
+
+	// When not set, documentDatabase must not appear in the generated config.
+	if strings.Contains(content, "documentDatabase") {
+		t.Error("documentDatabase should not appear when Options.DocumentDatabase is empty")
+	}
+}
+
 func TestWritePlatformConfig_AlwaysOverwrites(t *testing.T) {
 	platformDir := t.TempDir()
 	opts := Options{PlatformDir: platformDir, Services: []string{"rest"}}

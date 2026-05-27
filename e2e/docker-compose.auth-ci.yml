@@ -15,26 +15,17 @@
 # This gives Playwright a single origin for both the UI and the API,
 # so SameSite=Strict cookies work correctly end-to-end.
 #
-# Also overrides the platform service to mount e2e/auth/overlay.jsonc into
-# .kb/overlays/ — this wires SQLite as documentDatabase + kvStore so the
-# gateway initialises userAuth (ADR-0020) and registers /auth/* routes.
+# documentDatabase (SQLite) is configured in registry-manifest.json via
+# adapterConfig — kb-create wires it into kb.config.jsonc at platform
+# bootstrap time. No overlay or runtime restart needed.
 #
 # Phase 3 (infra) will replace this with the real nginx wildcard config.
 # This file is CI-only; local dev uses `kb-dev start` + Vite dev server.
 
 services:
-  # Override platform service for auth E2E:
-  #   - Mounts auth-e2e overlay (wires SQLite as documentDatabase + kvStore)
-  #     so the gateway initializes userAuth (ADR-0020) and registers /auth/*
-  #     routes. The config loader picks up all .kb/overlays/*.jsonc files.
-  #   - GATEWAY_BOOTSTRAP_* seeds the admin user on first gateway startup.
+  # Override platform service to inject bootstrap env vars.
+  # GATEWAY_BOOTSTRAP_* seeds the admin user on first gateway startup.
   platform:
-    volumes:
-      # Mount overlay at a stable path outside the workspace so Docker does
-      # not pre-create /workspace/kb-e2e/ before kb-create runs. The CI
-      # workflow applies it via `kb-dev ensure` after the platform is up and
-      # gateway is healthy, then restarts gateway so /auth/* routes register.
-      - ../e2e/auth/overlay.jsonc:/e2e-auth-overlay.jsonc:ro
     environment:
       GATEWAY_BOOTSTRAP_ADMIN_EMAIL: "admin@kb-cloud.test"
       GATEWAY_BOOTSTRAP_ADMIN_PASSWORD: "AdminPass123!"
