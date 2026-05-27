@@ -56,6 +56,7 @@ export interface UserAuthServerDeps {
   cookieSecure: boolean;
   accessTtlSec: number;
   refreshTtlSec: number;
+  inviteTtlMs: number;
 }
 
 /** Strip bearer tokens from query params before logging (prevents JWT leakage in access logs). */
@@ -229,6 +230,7 @@ export async function createServer(
           cookieOpts: { cookieSecure: userAuth.cookieSecure },
           accessTtlSec: userAuth.accessTtlSec,
           refreshTtlSec: userAuth.refreshTtlSec,
+          inviteTtlMs: userAuth.inviteTtlMs,
           jwtConfig,
         },
       );

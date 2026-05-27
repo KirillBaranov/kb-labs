@@ -66,11 +66,24 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
   if (docs) {
     // Auth config with explicit defaults (config.auth is optional, fields have zod defaults
     // only when the auth section is present and parsed; here we apply our own fallbacks).
-    const accessTtlSec = config.auth?.sessionAccessTtlSec ?? 900;
-    const refreshTtlSec = config.auth?.sessionRefreshTtlSec ?? 30 * 24 * 3600;
+    // Env vars allow E2E CI to override TTLs and cookie security without touching the config
+    // file (e.g. AUTH_ACCESS_TTL_SEC=5 for session-lifecycle tests, AUTH_COOKIE_SECURE=false
+    // for HTTP-only CI environments).
+    const accessTtlSec =
+      config.auth?.sessionAccessTtlSec ??
+      (process.env.AUTH_ACCESS_TTL_SEC ? parseInt(process.env.AUTH_ACCESS_TTL_SEC, 10) : 900);
+    const refreshTtlSec =
+      config.auth?.sessionRefreshTtlSec ??
+      (process.env.AUTH_REFRESH_TTL_SEC
+        ? parseInt(process.env.AUTH_REFRESH_TTL_SEC, 10)
+        : 30 * 24 * 3600);
     const graceWindowMs = (config.auth?.refreshGraceWindowSec ?? 5) * 1000;
     const bcryptCost = config.auth?.bcryptCost ?? 12;
-    const cookieSecure = config.auth?.cookieSecure ?? true;
+    // AUTH_COOKIE_SECURE=false disables Secure flag for HTTP-only CI environments.
+    // In production (HTTPS) leave unset or set to true.
+    const cookieSecure =
+      config.auth?.cookieSecure ??
+      (process.env.AUTH_COOKIE_SECURE === 'false' ? false : true);
     const tenantPattern = config.tenants?.pattern ?? '{tenant}.kblabs.ru';
     const bootstrapTenantId =
       config.auth?.bootstrap?.tenantId ??
@@ -139,6 +152,11 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
       });
     });
 
+    // AUTH_INVITE_TTL_MS env var overrides config (used in E2E to test short-lived invites).
+    const inviteTtlMs = process.env.AUTH_INVITE_TTL_MS
+      ? parseInt(process.env.AUTH_INVITE_TTL_MS, 10)
+      : (config.auth?.inviteTtlMs ?? 7 * 24 * 60 * 60 * 1000);
+
     userAuth = {
       userAuthService,
       users,
@@ -150,6 +168,7 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
       cookieSecure,
       accessTtlSec,
       refreshTtlSec,
+      inviteTtlMs,
     };
 
     logger.info('User auth infrastructure initialised', {

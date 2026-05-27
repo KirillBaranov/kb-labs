@@ -96,6 +96,8 @@ export const AuthConfigSchema = z.object({
   bcryptCost: z.number().int().min(4).max(31).default(12),
   passwordPolicy: AuthPasswordPolicySchema.default({}),
   rateLimit: AuthRateLimitSchema.default({}),
+  /** Invite link TTL in milliseconds. Default 7 days. */
+  inviteTtlMs: z.number().int().positive().default(7 * 24 * 60 * 60 * 1000),
   /** Bootstrap admin account seeding. Credentials come from env vars. */
   bootstrap: AuthBootstrapSchema,
 });

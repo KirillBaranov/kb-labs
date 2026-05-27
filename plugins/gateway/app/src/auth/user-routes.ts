@@ -95,6 +95,7 @@ export interface UserAuthRouteDeps {
   cookieOpts: CookieOptions;
   accessTtlSec: number;
   refreshTtlSec: number;
+  inviteTtlMs: number;
   jwtConfig: JwtConfig;
 }
 
@@ -190,7 +191,7 @@ export function createUserRefreshFn(
 // ── Route registrar ───────────────────────────────────────────────────────────
 
 export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRouteDeps): void {
-  const { userAuthService, users, sessions, invites, providers, pdp, cookieOpts } = deps;
+  const { userAuthService, users, sessions, invites, providers, pdp, cookieOpts, inviteTtlMs } = deps;
 
   // ── GET /auth/me ────────────────────────────────────────────────────────────
   // Handles both user cookie auth and machine Bearer auth. User takes precedence.
@@ -483,7 +484,7 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
       tenantId: ctx.tenantId,
       groupId: groupId as 'tenant-admin' | 'tenant-member',
       createdBy: ctx.userId,
-      ttlMs: 7 * 24 * 60 * 60 * 1000,
+      ttlMs: inviteTtlMs,
     });
 
     const host = typeof request.headers.host === 'string' ? request.headers.host : 'localhost';

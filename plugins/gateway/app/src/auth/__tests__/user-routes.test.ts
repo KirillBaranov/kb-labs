@@ -132,6 +132,7 @@ async function buildApp(): Promise<TestCtx> {
     cookieOpts: { cookieSecure: false },
     accessTtlSec: 900,
     refreshTtlSec: HOUR / 1000,
+    inviteTtlMs: HOUR,
     jwtConfig: JWT,
   };
 
