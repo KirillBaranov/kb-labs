@@ -62,14 +62,20 @@ test('AUTH-27: rate limit per-IP — 11th failed login within 1m → 429', async
   request,
 }) => {
   // Requires: gateway configured with loginPerIp limit of 10/m.
-  // This test uses a unique email to avoid triggering per-email rate limit.
+  // Use a unique spoofed X-Forwarded-For IP so this test's per-IP counter
+  // is isolated and does not exhaust the shared E2E IP limit for other tests.
+  // Fastify trustProxy: true takes the leftmost IP from X-Forwarded-For.
+  const ISOLATED_IP = '192.168.254.27'
   const email = uniqueEmail('ratelimit27')
 
   let lastStatus = 0
   for (let i = 0; i < 12; i++) {
     const res = await request.post(`${GATEWAY}/api/auth/login`, {
       data: { email, password: 'WrongPass!' },
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Forwarded-For': ISOLATED_IP,
+      },
     })
     lastStatus = res.status()
     if (lastStatus === 429) break
@@ -83,15 +89,20 @@ test('AUTH-28: rate limit per-email — 6th failed login for same email → 429'
   request,
 }) => {
   // The gateway rate-limits by email regardless of source IP.
-  // In CI/local we can't spoof different IPs, so we just verify the
-  // per-email counter kicks in after the configured threshold.
+  // Use a unique spoofed X-Forwarded-For IP so this test's per-IP counter
+  // is isolated and does not exhaust the shared E2E IP limit for other tests.
+  // Fastify trustProxy: true takes the leftmost IP from X-Forwarded-For.
+  const ISOLATED_IP = '192.168.254.28'
   const email = uniqueEmail('ratelimit28')
 
   let lastStatus = 0
   for (let i = 0; i < 8; i++) {
     const res = await request.post(`${GATEWAY}/api/auth/login`, {
       data: { email, password: 'WrongPass!' },
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Forwarded-For': ISOLATED_IP,
+      },
     })
     lastStatus = res.status()
     if (lastStatus === 429) break
