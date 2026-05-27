@@ -47,6 +47,7 @@ describe('InMemoryInvoke', () => {
 
   it('stringifies non-Error throws', async () => {
     invoke.register('p', 'str', () => {
+      // eslint-disable-next-line no-throw-literal
       throw 'string-fail';
     });
     const res = await invoke.call({ pluginId: 'p', command: 'str', input: {} });

@@ -54,7 +54,7 @@ describe('InMemoryStorage', () => {
   it('stat reports the actual write time (not a fresh Date())', async () => {
     await storage.write('k', Buffer.from('x'));
     const first = (await storage.stat('k'))!.lastModified;
-    await new Promise((r) => setTimeout(r, 5));
+    await new Promise((r) => { setTimeout(r, 5); });
     const second = (await storage.stat('k'))!.lastModified;
     expect(second).toBe(first);
   });

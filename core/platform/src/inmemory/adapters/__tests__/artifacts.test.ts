@@ -43,7 +43,7 @@ describe('InMemoryArtifacts', () => {
   it('write preserves createdAt across overwrites', async () => {
     await store.write('k', { v: 1 });
     const first = await store.getMeta('k');
-    await new Promise((r) => setTimeout(r, 5));
+    await new Promise((r) => { setTimeout(r, 5); });
     await store.write('k', { v: 2 });
     const second = await store.getMeta('k');
     expect(second?.createdAt).toEqual(first?.createdAt);

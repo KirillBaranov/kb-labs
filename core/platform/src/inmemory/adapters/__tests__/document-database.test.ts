@@ -145,7 +145,7 @@ describe('InMemoryDocumentDatabase', () => {
 
     it('$set updates fields and bumps updatedAt', async () => {
       const before = await db.findById<User>('users', aliceId);
-      await new Promise((r) => setTimeout(r, 2));
+      await new Promise((r) => { setTimeout(r, 2); });
       const updated = await db.updateOne<User>('users', { id: aliceId }, { $set: { age: 31 } });
       expect(updated?.age).toBe(31);
       expect((updated?.updatedAt ?? 0) >= (before?.updatedAt ?? 0)).toBe(true);
