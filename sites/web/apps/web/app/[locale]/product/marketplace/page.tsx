@@ -1,3 +1,4 @@
+// seo-ignore og-keys (marketplace OG intentionally uses hero/eyebrow text for visual richness)
 import type { Metadata } from 'next';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
@@ -28,10 +29,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const t = await getTranslations({ locale });
   return buildPageMetadata({
     locale,
-    title: `${t('marketplace.meta.title')} — KB Labs`,
+    title: t('marketplace.meta.title'),
     description: t('marketplace.meta.description'),
     path: '/product/marketplace',
-    imageSegment: 'marketplace',
+    imageSegment: 'product/marketplace',
   });
 }
 
