@@ -34,7 +34,7 @@
       "whys": [
         {
           "title": "Because vendor lock-in is a business model.",
-          "body": "Every SaaS tool starts with a smooth onboarding. The switching costs appear later, after you've wired your workflow through their API. KB Labs is MIT-licensed and self-hosted. Your data, your code, your infra."
+          "body": "Every SaaS tool starts with a smooth onboarding. The switching costs appear later, after you've wired your workflow through their API. KB Labs is dual-licensed (MIT + KBPL) and self-hosted. Your data, your code, your infra."
         },
         {
           "title": "Because small teams deserve platform engineering too.",
