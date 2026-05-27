@@ -28,8 +28,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const t = await getTranslations({ locale, namespace: 'stateBroker' });
   return buildPageMetadata({
     locale,
-    title: t('metaTitle'),
-    description: t('metaDesc'),
+    title: t('meta.title'),
+    description: t('meta.description'),
     path: '/product/state-broker',
     imageSegment: 'product/state-broker',
   });

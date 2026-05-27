@@ -1,5 +1,9 @@
 {
   "kbDev": {
+    "meta": {
+      "title": "kb-dev — KB Labs",
+      "description": "One binary that starts services in the right order, waits until they're actually up, and shuts everything down cleanly on exit."
+    },
     "features": [
       {
         "title": "Knows when a service actually died",
@@ -16,7 +20,6 @@
     ],
     "heroTitle": "Stop juggling",
     "featuresEyebrow": "How it works",
-    "metaDesc": "One binary that starts services in the right order, waits until they're actually up, and shuts everything down cleanly on exit.",
     "heroTitleHighlight": "terminal tabs",
     "heroDocsBtn": "Documentation",
     "ctaDocsBtn": "Documentation",
@@ -52,7 +55,6 @@
     "heroDescription": "One binary that starts services in the right order, waits until they're actually up, and shuts everything down cleanly on exit.",
     "ctaEyebrow": "Install",
     "ctaTitle": "One binary. No dependencies.",
-    "metaTitle": "kb-dev — KB Labs",
     "configLead1": "Drop devservices.yaml in the project root — kb-dev finds it automatically by walking up from the current directory.",
     "configLead2": "Works with any stack: Docker, pnpm, npm, make, shell. KB Labs uses .kb/devservices.yaml — same format.",
     "commandsFootnote": "All commands support --json for scripts and CI",

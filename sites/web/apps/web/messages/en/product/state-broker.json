@@ -1,14 +1,16 @@
 {
   "stateBroker": {
+    "meta": {
+      "title": "State Broker — KB Labs",
+      "description": "State between plugin calls. In-memory, daemon, or Redis — one API."
+    },
     "heroTitleHighlight": "between calls",
     "apiLead": "GET · PUT · DELETE /state/:key plus POST /state/clear. Keys are namespaced: tenant:default:namespace:key. TTL in milliseconds, default 5 minutes.",
     "heroDescription": "Plugins are stateless by default — every call starts fresh. State Broker stores state with TTL: in-memory, daemon, or Redis. The API never changes.",
-    "metaTitle": "State Broker — KB Labs",
     "apiTitle": "Four routes. Nothing extra.",
     "ctaDocsBtn": "Documentation",
     "heroDocsBtn": "Documentation",
     "apiDocsBtn": "Documentation",
-    "metaDesc": "State between plugin calls. In-memory, daemon, or Redis — one API.",
     "heroTitle": "State",
     "ctaDescription": "kb-dev start brings up the State Daemon automatically. Switch the backend in config — don't touch your services.",
     "ctaTitle": "Starts with the platform.",

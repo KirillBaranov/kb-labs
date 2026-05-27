@@ -13,7 +13,7 @@ export default async function OpengraphImage({
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'useCases' });
   return renderOgImage({
-    title: t('metaTitle'),
-    description: t('metaDesc'),
+    title: t('meta.title'),
+    description: t('meta.description'),
   });
 }

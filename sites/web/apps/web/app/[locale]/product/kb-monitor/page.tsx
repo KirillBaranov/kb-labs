@@ -30,8 +30,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const t = await getTranslations({ locale, namespace: 'kbMonitor' });
   return buildPageMetadata({
     locale,
-    title: t('metaTitle'),
-    description: t('metaDesc'),
+    title: t('meta.title'),
+    description: t('meta.description'),
     path: '/product/kb-monitor',
     imageSegment: 'product/kb-monitor',
   });

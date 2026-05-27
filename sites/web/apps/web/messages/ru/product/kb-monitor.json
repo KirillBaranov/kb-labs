@@ -1,5 +1,9 @@
 {
   "kbMonitor": {
+    "meta": {
+      "title": "kb-monitor — KB Labs",
+      "description": "Agent-native наблюдение за сервисами. Health, uptime, SHA образов, логи, exec — всё через --json."
+    },
     "featuresTitle": "Детали, которые важны.",
     "commandsFootnote": "Все команды поддерживают --json для скриптов и агентных workflow",
     "heroTitleHighlight": "агент",
@@ -22,7 +26,6 @@
     "ctaTitle": "Настроил один раз. Забыл про мониторинг.",
     "ctaEyebrow": "Установить",
     "heroTitle": "Настроил один раз. Дальше смотрит",
-    "metaTitle": "kb-monitor — KB Labs",
     "commandsEyebrow": "Команды",
     "heroDescription": "kb-monitor наблюдает за сервисами, которые раскатал kb-deploy. У всех команд есть --json со стабильной схемой — агент сам гоняет health, читает логи и реагирует.",
     "configEyebrow": "Конфигурация",
@@ -60,7 +63,6 @@
     "configLead1": "kb-monitor читает .kb/deploy.yaml — тот же, из которого раскатываются сервисы. Никаких вторых источников правды и параллельных инвентарей.",
     "ctaDocsBtn": "Документация",
     "commandsTitle": "Всё поддаётся автоматизации.",
-    "featuresEyebrow": "Как это работает",
-    "metaDesc": "Agent-native наблюдение за сервисами. Health, uptime, SHA образов, логи, exec — всё через --json."
+    "featuresEyebrow": "Как это работает"
   }
 }

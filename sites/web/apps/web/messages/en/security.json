@@ -1,5 +1,9 @@
 {
   "security": {
+    "meta": {
+      "title": "Security — KB Labs",
+      "description": "On-prem by default, open source, plugin sandboxing, JWT Gateway auth. No data leaves without your consent."
+    },
     "authTitle": "Tokens live on your machine.",
     "ctaGithubBtn": "View code on GitHub",
     "dataFlow": [
@@ -48,7 +52,6 @@
     ],
     "heroEyebrow": "SECURITY",
     "dataFlowTitle": "What leaves your network.",
-    "metaTitle": "Security — KB Labs",
     "disclosureSteps": [
       "Email security@kblabs.dev with full details",
       "We respond within 72 hours and confirm scope",
@@ -178,7 +181,6 @@
     "authEyebrow": "JWT authentication",
     "sandboxSubtitle": "A plugin cannot access resources it didn't declare in its manifest — that's a contract, not a recommendation.",
     "heroDescription": "KB Labs runs on-prem by default, open source end-to-end, and never sends data without your explicit action. Everything below is verifiable in source.",
-    "metaDesc": "On-prem by default, open source, plugin sandboxing, JWT Gateway auth. No data leaves without your consent.",
     "pillars": [
       {
         "title": "On-prem by default",

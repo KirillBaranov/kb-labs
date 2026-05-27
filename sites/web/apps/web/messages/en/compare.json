@@ -1,5 +1,9 @@
 {
   "compare": {
+    "meta": {
+      "title": "Why KB Labs — Honest Comparison",
+      "description": "How KB Labs compares to GitHub Actions, n8n, Temporal, and AI agents."
+    },
     "ctaTitle": "Easier to try than to compare.",
     "ctaDescription": "One install, five minutes — first workflow running on your machine.",
     "kbLabel": "Where KB Labs adds value",
@@ -7,12 +11,10 @@
     "heroDescription": "We're not for everyone — and we're upfront about that. Here's a concrete breakdown of each alternative, including cases where the right answer is something else.",
     "matrixTitle": "Who does what.",
     "docsBtn": "Documentation",
-    "metaDesc": "How KB Labs compares to GitHub Actions, n8n, Temporal, and AI agents.",
     "heroTitleHighlight": "and where it doesn't.",
     "matrixEyebrow": "Feature matrix",
     "matrixLegend": "✓ yes · ~ partial · – no · — not applicable",
     "goodLabel": "What they do well",
-    "metaTitle": "Why KB Labs — Honest Comparison",
     "installBtn": "Install KB Labs",
     "objections": [
       {

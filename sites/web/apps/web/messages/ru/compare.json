@@ -1,5 +1,9 @@
 {
   "compare": {
+    "meta": {
+      "title": "Почему KB Labs — честное сравнение",
+      "description": "Как KB Labs соотносится с GitHub Actions, n8n, Temporal и AI-агентами."
+    },
     "ctaTitle": "Проще попробовать, чем сравнивать.",
     "ctaDescription": "Один install, пять минут — и первый workflow работает на вашей машине.",
     "kbLabel": "Где KB Labs берёт своё",
@@ -7,12 +11,10 @@
     "heroDescription": "Мы подходим не всем — и честно об этом говорим. Вот конкретный разбор по каждой альтернативе, включая случаи когда правильный ответ — что-то другое.",
     "matrixTitle": "Кто что умеет.",
     "docsBtn": "Документация",
-    "metaDesc": "Как KB Labs соотносится с GitHub Actions, n8n, Temporal и AI-агентами.",
     "heroTitleHighlight": "и где нет.",
     "matrixEyebrow": "Сравнение по фичам",
     "matrixLegend": "✓ да · / частично · – нет · — не применимо",
     "goodLabel": "Что у них хорошо",
-    "metaTitle": "Почему KB Labs — честное сравнение",
     "installBtn": "Установить KB Labs",
     "objections": [
       {

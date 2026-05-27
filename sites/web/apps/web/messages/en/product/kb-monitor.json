@@ -1,5 +1,9 @@
 {
   "kbMonitor": {
+    "meta": {
+      "title": "kb-monitor — KB Labs",
+      "description": "Agent-native service observability. Health, uptime, image SHA, logs, exec — all with --json."
+    },
     "featuresTitle": "The details that matter.",
     "commandsFootnote": "All commands support --json for scripts and agent workflows",
     "heroTitleHighlight": "agent watch.",
@@ -22,7 +26,6 @@
     "ctaTitle": "Set up once. Forget about monitoring.",
     "ctaEyebrow": "Install",
     "heroTitle": "Set it up once. Let the",
-    "metaTitle": "kb-monitor — KB Labs",
     "commandsEyebrow": "Commands",
     "heroDescription": "kb-monitor observes services deployed by kb-deploy. Every command has --json with a stable schema — the agent runs health checks, reads logs, and reacts autonomously.",
     "configEyebrow": "Configuration",
@@ -60,7 +63,6 @@
     "configLead1": "kb-monitor reads .kb/deploy.yaml — the same file used to deploy services. No second source of truth, no parallel inventory.",
     "ctaDocsBtn": "Documentation",
     "commandsTitle": "Everything is scriptable.",
-    "featuresEyebrow": "How it works",
-    "metaDesc": "Agent-native service observability. Health, uptime, image SHA, logs, exec — all with --json."
+    "featuresEyebrow": "How it works"
   }
 }

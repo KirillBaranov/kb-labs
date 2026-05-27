@@ -233,8 +233,7 @@ for (const file of pageFiles) {
         const ogSource = readFileSync(ogFile, 'utf8');
         // OG image must use .meta. keys, not hero/subtitle/etc.
         const tCalls = [...ogSource.matchAll(/\bt\s*\(\s*['"]([^'"]+)['"]\s*\)/g)].map(m => m[1]);
-        // Accept nested (meta.title, page.meta.title) and camelCase (metaTitle, metaDesc) patterns.
-        const usesMetaKey = tCalls.some(k => k.includes('meta.') || k.includes('Meta') || k.startsWith('meta'));
+        const usesMetaKey = tCalls.some(k => k.includes('meta.') || k.includes('Meta'));
         if (tCalls.length > 0 && !usesMetaKey) {
           issues.push(toDevkitIssue(ogFile, 1,
             `[BAD_OG_KEYS] ${relative(ROOT, ogFile)} — uses non-meta keys (${tCalls.slice(0, 2).join(', ')}); use .meta.title/.meta.description to stay in sync with page metadata`));

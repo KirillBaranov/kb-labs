@@ -1,8 +1,11 @@
 {
   "gateway": {
+    "meta": {
+      "title": "Gateway — KB Labs",
+      "description": "Single entry point. Any service gets LLM, EventBus, Cache, and Storage over HTTP — no vendor lock-in."
+    },
     "heroTitleHighlight": "for any service",
     "telemetryTitle": "Events from any service. No schema.",
-    "metaDesc": "Single entry point. Any service gets LLM, EventBus, Cache, and Storage over HTTP — no vendor lock-in.",
     "ctaDescription": "Providers swap in config — services stay untouched. Gateway starts with the platform.",
     "heroInstallBtn": "Install",
     "ctaDocsBtn": "Documentation",
@@ -13,7 +16,6 @@
     "platformTitle": "One endpoint. All adapters.",
     "ctaEyebrow": "Try it now",
     "platformDocsBtn": "Documentation",
-    "metaTitle": "Gateway — KB Labs",
     "telemetryDocsBtn": "Documentation",
     "aiDocsBtn": "Documentation",
     "platformLead": "POST /platform/v1/:adapter/:method — nine adapters with a clear method allowlist. Streaming automatic when the method returns AsyncIterable.",

@@ -1,14 +1,16 @@
 {
   "stateBroker": {
+    "meta": {
+      "title": "State Broker — KB Labs",
+      "description": "Состояние между вызовами плагинов. In-memory, daemon или Redis — один и тот же API."
+    },
     "heroTitleHighlight": "между вызовами",
     "apiLead": "GET · PUT · DELETE /state/:key плюс POST /state/clear. Ключи namespaced: tenant:default:namespace:key. TTL в миллисекундах, по умолчанию 5 минут.",
     "heroDescription": "Плагины stateless по умолчанию — каждый вызов начинается заново. State Broker хранит состояние с TTL: in-memory, daemon или Redis. API не меняется.",
-    "metaTitle": "State Broker — KB Labs",
     "apiTitle": "Четыре маршрута. Ничего лишнего.",
     "ctaDocsBtn": "Документация",
     "heroDocsBtn": "Документация",
     "apiDocsBtn": "Документация",
-    "metaDesc": "Состояние между вызовами плагинов. In-memory, daemon или Redis — один и тот же API.",
     "heroTitle": "Состояние",
     "ctaDescription": "kb-dev start поднимает State Daemon автоматически. Меняешь backend в конфиге — сервисы не трогаешь.",
     "ctaTitle": "Запускается вместе с платформой.",

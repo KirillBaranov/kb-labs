@@ -1,5 +1,9 @@
 {
   "kbDeploy": {
+    "meta": {
+      "title": "kb-deploy — KB Labs",
+      "description": "docker compose для прода — git-aware диф, мультихост по SSH, build → push → pull → restart одной командой."
+    },
     "configTitle": "Один файл. Приложения и инфра вместе.",
     "ctaDocsBtn": "Документация",
     "featuresTitle": "Детали, которые важны.",
@@ -37,7 +41,6 @@
     "commandsEyebrow": "Команды",
     "configLead1": "Положи .kb/deploy.yaml в репозиторий. kb-deploy прочитает и решит что собрать, что запушить и что перезапустить — по SSH, на целевом хосте.",
     "ctaEyebrow": "Установить",
-    "metaDesc": "docker compose для прода — git-aware диф, мультихост по SSH, build → push → pull → restart одной командой.",
     "heroTitleHighlight": "Kubernetes",
     "featuresEyebrow": "Как это работает",
     "configEyebrow": "Конфигурация",
@@ -56,7 +59,6 @@
         "detail": "status показывает что сейчас крутится в проде и насколько это разошлось с HEAD в репозитории."
       }
     ],
-    "metaTitle": "kb-deploy — KB Labs",
     "commandsFootnote": "Все команды поддерживают --json для скриптов и CI"
   }
 }

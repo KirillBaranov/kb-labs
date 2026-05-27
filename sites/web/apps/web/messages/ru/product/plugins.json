@@ -1,5 +1,9 @@
 {
   "plugins": {
+    "meta": {
+      "title": "Plugin System — KB Labs",
+      "description": "Устанавливаешь один пакет — получаешь CLI, REST API и Studio сразу. Открытый SDK для своих плагинов."
+    },
     "ctaDocsBtn": "Документация",
     "sdkLead2": "ctx.ui.success() работает одинаково из CLI, Workflow вызова.",
     "ctaDescription": "Установите KB Labs, запустите scaffold, добавьте логику. CLI, REST API и Studio готовы автоматически.",
@@ -8,7 +12,6 @@
     "permTitle": "Видишь права до установки",
     "surfaceLead2": "Не нужно настраивать роутер, регистрировать команды или писать конфиг Studio. Поставил пакет — всё работает.",
     "surfaceEyebrow": "Как это работает",
-    "metaTitle": "Plugin System — KB Labs",
     "sdkLead1": "Плагин общается с абстракциями — ctx.ui, useLLM(). Какой провайдер стоит за ними, как роутится запрос, куда идут логи — всё это платформа.",
     "heroTitleRest": "платформы",
     "ctaInstallBtn": "Установить",
@@ -35,7 +38,6 @@
     "lifecycleLead1": "После установки платформа записывает пакет в .kb/marketplace.lock с SHA-256 чексуммой. При каждом старте discovery проверяет целостность и загружает манифест.",
     "lifecycleLead2": "Из манифеста извлекаются entity kinds — семь типов сущностей: CLI команды, REST роуты, Studio страницы, workflow handlers, webhook handlers, WebSocket каналы, cron расписания. Один плагин может регистрировать любое их сочетание.",
     "surfaceLead3": "Плагины изолированы: каждый получает только те ресурсы платформы, которые объявил. Полная OS-изоляция — с container/remote режимом исполнения.",
-    "metaDesc": "Устанавливаешь один пакет — получаешь CLI, REST API и Studio сразу. Открытый SDK для своих плагинов.",
     "lifecycleLead3": "При вызове команды движок выбирает execution backend. In-process — дефолт, минимальный overhead. Subprocess и worker-pool — изоляция процесса. Remote — полная OS-изоляция на отдельной машине.",
     "surfaceLead1": "Плагин объявляет CLI команды, REST роуты и Studio страницу в одном файле — manifest.ts. При установке движок регистрирует всё автоматически.",
     "permLead1": "Каждый плагин декларирует в манифесте что ему нужно: читать git, вызывать LLM, писать в fs. Ты видишь это ещё до install.",

@@ -1,6 +1,9 @@
 {
   "kbDevkit": {
-    "metaDesc": "Content-addressable кэш задач, обнаружение затронутых пакетов, проверки качества — один Go-бинарник для любого TypeScript/Node.js монорепо.",
+    "meta": {
+      "title": "kb-devkit — KB Labs",
+      "description": "Content-addressable кэш задач, обнаружение затронутых пакетов, проверки качества — один Go-бинарник для любого TypeScript/Node.js монорепо."
+    },
     "configTitle": "Один файл. Любой монорепо.",
     "configEyebrow": "Конфигурация",
     "heroTitle": "Сборка 100 пакетов за",
@@ -14,7 +17,6 @@
     "heroDocsBtn": "Документация",
     "heroTitleHighlight": "секунду.",
     "ctaTitle": "Один бинарник. Любой TypeScript/Node.js монорепо.",
-    "metaTitle": "kb-devkit — KB Labs",
     "featuresEyebrow": "Как это работает",
     "commands": [
       {

@@ -41,8 +41,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const t = await getTranslations({ locale, namespace: 'security' });
   return buildPageMetadata({
     locale,
-    title: t('metaTitle'),
-    description: t('metaDesc'),
+    title: t('meta.title'),
+    description: t('meta.description'),
     path: '/security',
     imageSegment: 'security',
   });

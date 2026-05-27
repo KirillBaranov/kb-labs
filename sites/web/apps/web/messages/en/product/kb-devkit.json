@@ -1,6 +1,9 @@
 {
   "kbDevkit": {
-    "metaDesc": "Content-addressable task cache, affected package detection, quality checks — one Go binary for any TypeScript/Node.js monorepo.",
+    "meta": {
+      "title": "kb-devkit — KB Labs",
+      "description": "Content-addressable task cache, affected package detection, quality checks — one Go binary for any TypeScript/Node.js monorepo."
+    },
     "configTitle": "One file. Any monorepo.",
     "configEyebrow": "Configuration",
     "heroTitle": "Build 100 packages in",
@@ -14,7 +17,6 @@
     "heroDocsBtn": "Documentation",
     "heroTitleHighlight": "one second.",
     "ctaTitle": "One binary. Any TypeScript/Node.js monorepo.",
-    "metaTitle": "kb-devkit — KB Labs",
     "featuresEyebrow": "How it works",
     "commands": [
       {

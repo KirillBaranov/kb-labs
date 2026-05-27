@@ -1,5 +1,9 @@
 {
   "useCases": {
+    "meta": {
+      "title": "Сценарии использования — KB Labs",
+      "description": "Поймите, зачем KB Labs вашей команде: практические инженерные use cases для on-prem plugin-based автоматизации."
+    },
     "ownerLabel": "Владелец:",
     "items": [
       {
@@ -71,13 +75,11 @@
     "ctaTitle": "Готовы автоматизировать свой dev loop?",
     "heroDescription": "Конкретные вещи, которые команды автоматизируют через KB Labs сегодня — без абстрактных обещаний.",
     "ctaInstallBtn": "Установить KB Labs",
-    "metaDesc": "Поймите, зачем KB Labs вашей команде: практические инженерные use cases для on-prem plugin-based автоматизации.",
     "heroTitleHighlight": "Реальные workflow.",
     "situationLabel": "Как это бывает",
     "resultLabel": "Что получается",
     "heroTitle": "Реальные сценарии.",
     "ctaDescription": "On-prem, открытый код, без vendor lock-in.",
-    "metaTitle": "Сценарии использования — KB Labs",
     "ctaContactBtn": "Связаться",
     "howLabel": "Как это работает"
   }

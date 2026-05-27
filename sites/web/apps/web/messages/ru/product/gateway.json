@@ -1,8 +1,11 @@
 {
   "gateway": {
+    "meta": {
+      "title": "Gateway — KB Labs",
+      "description": "Единая точка входа. Любой сервис получает LLM, EventBus, Cache и Storage через HTTP — без привязки к вендорам."
+    },
     "heroTitleHighlight": "для любого сервиса",
     "telemetryTitle": "События от любого сервиса. Без схемы.",
-    "metaDesc": "Единая точка входа. Любой сервис получает LLM, EventBus, Cache и Storage через HTTP — без привязки к вендорам.",
     "ctaDescription": "Провайдеры меняются в конфиге — сервисы не трогаются. Gateway запускается вместе с платформой.",
     "heroInstallBtn": "Установить",
     "ctaDocsBtn": "Документация",
@@ -13,7 +16,6 @@
     "platformTitle": "Один endpoint. Все адаптеры.",
     "ctaEyebrow": "Попробуйте прямо сейчас",
     "platformDocsBtn": "Документация",
-    "metaTitle": "Gateway — KB Labs",
     "telemetryDocsBtn": "Документация",
     "aiDocsBtn": "Документация",
     "platformLead": "POST /platform/v1/:adapter/:method — девять адаптеров с чётким allowlist методов. Стриминг автоматически если метод возвращает AsyncIterable.",

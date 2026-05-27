@@ -1,7 +1,10 @@
 {
   "contact": {
+    "meta": {
+      "title": "Contact — KB Labs",
+      "description": "Get in touch with the KB Labs team."
+    },
     "securityLabel": "Security",
-    "metaTitle": "Contact — KB Labs",
     "channelsEyebrow": "How can we help?",
     "heroTitle": "Get in touch",
     "community": [
@@ -47,7 +50,6 @@
       }
     ],
     "heroEyebrow": "Contact",
-    "locationEyebrow": "Location",
-    "metaDesc": "Get in touch with the KB Labs team."
+    "locationEyebrow": "Location"
   }
 }
