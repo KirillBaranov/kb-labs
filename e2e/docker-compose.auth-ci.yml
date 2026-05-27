@@ -30,7 +30,11 @@ services:
   #   - GATEWAY_BOOTSTRAP_* seeds the admin user on first gateway startup.
   platform:
     volumes:
-      - ../e2e/auth/overlay.jsonc:/workspace/kb-e2e/.kb/overlays/auth-e2e.jsonc:ro
+      # Mount overlay at a stable path outside the workspace so Docker does
+      # not pre-create /workspace/kb-e2e/ before kb-create runs. The CI
+      # workflow applies it via `kb-dev ensure` after the platform is up and
+      # gateway is healthy, then restarts gateway so /auth/* routes register.
+      - ../e2e/auth/overlay.jsonc:/e2e-auth-overlay.jsonc:ro
     environment:
       GATEWAY_BOOTSTRAP_ADMIN_EMAIL: "admin@kb-cloud.test"
       GATEWAY_BOOTSTRAP_ADMIN_PASSWORD: "AdminPass123!"
