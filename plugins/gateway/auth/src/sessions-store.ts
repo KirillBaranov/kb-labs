@@ -157,7 +157,6 @@ export class SessionsStore {
         familyId,
         userId: input.userId,
         tenantId: input.tenantId,
-        createdAt: now,
         lastUsedAt: now,
         userAgent: input.deviceCtx.userAgent,
         ipFirst: input.deviceCtx.ip,
