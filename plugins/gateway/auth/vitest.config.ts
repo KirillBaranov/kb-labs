@@ -1,21 +1,19 @@
 import { defineConfig, mergeConfig } from 'vitest/config';
-import { fileURLToPath } from 'url';
-import path from 'path';
 import baseConfig from '../../vitest.config.js';
 
-// Resolve workspace root so we can alias the testing subpath export.
-// Vite 7 + pnpm workspace links have a known issue where vite:import-analysis
-// cannot resolve @kb-labs/core-platform/adapters/testing via the package.json
-// exports map. Pointing directly at the source bypasses that resolution.
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+// Vite 7 + pnpm workspace links cannot resolve the adapters/testing subpath
+// export via the package exports map (vite:import-analysis fails). Using
+// test.alias to map the import directly to the TypeScript source file so that
+// vite processes it natively, bypassing the broken subpath resolution.
+const corePlatformTesting = new URL(
+  '../../../core/platform/src/adapters/testing/index.ts',
+  import.meta.url,
+).pathname;
 
 export default mergeConfig(baseConfig, defineConfig({
-  resolve: {
+  test: {
     alias: {
-      '@kb-labs/core-platform/adapters/testing': path.resolve(
-        __dirname,
-        '../../../core/platform/src/adapters/testing/index.ts',
-      ),
+      '@kb-labs/core-platform/adapters/testing': corePlatformTesting,
     },
   },
 }));
