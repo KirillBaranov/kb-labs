@@ -22,6 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: t('legal.dpa.meta.title'),
     description: t('legal.dpa.meta.description'),
     path: '/legal/dpa',
+    imageSegment: 'default',
   });
 }
 

@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: t('meta.title'),
     description: t('meta.description'),
     path: '/solutions/release-automation',
-    imageSegment: 'solutions',
+    imageSegment: 'solutions/release-automation',
   });
 }
 

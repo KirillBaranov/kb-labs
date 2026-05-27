@@ -20,33 +20,31 @@ Two scenes.
 
 **Scene two.** Same engineer puts the `preview` label on the PR. CI builds three docker images, pushes them to the registry, brings up web/api/docs containers on the VPS, renders three subdomains. The reviewer opens a URL — it shows the same page as `main`, because the change was in `core/`, which the frontend doesn't touch. RAM eaten, preview stack idling until the PR closes.
 
-These two scenes are about the same gap in the platform, and both highlight what we were doing wrong.
+Both scenes are about the same gap.
 
-## The shallow read
+## The usual pitch: affected speeds up the build
 
 Most monorepo tools support **affected detection**: diff against a known point, find changed packages, expand through the reverse-dependency graph, rebuild only those. Turbo, Nx, kb-devkit — they all do this.
 
-The usual pitch: "affected speeds up the build." True, but that's the cheapest of its effects. Build-skip saves seconds. At that level, affected is a **runtime optimization**.
+The usual pitch: "affected speeds up the build." True. But that's the cheapest of its effects — build-skip saves seconds. If you stop at the build, you miss everything else.
 
-This is the shallow read, and it traps you: you apply affected only to steps you can measure in seconds. Build, test, lint. Then you stop.
+## It's actually a signal
 
-## The deeper read
+Affected isn't "don't rebuild unnecessary things." It's the answer to: **which part of the world does this change actually touch?**
 
-Affected isn't an optimization of one step. It's a **statement about which slice of the world is touched by the current change**. It's the **input to a decision**: do this work at all?
+And that answer is just as useful at every layer of the stack.
 
-Reframed this way, the same signal applies at every layer of the stack, and each layer unlocks a different decision.
+### Layer 1: the build
 
-### Layer 1: sources (build-affected)
-
-Decision: **which packages to rebuild.** The answer drives the compiler. Saves CPU seconds.
+Decision: **what to rebuild.** The answer drives the compiler. Saves CPU seconds.
 
 ```bash
 kb-devkit run build --affected
 ```
 
-### Layer 2: artifacts (deploy-affected)
+### Layer 2: artifacts
 
-Decision: **which docker images to build and push to the registry.** The answer drives CI and network traffic. Saves tens of seconds, registry storage, and avoids waking up the production rollout for no reason.
+Decision: **which docker images to build and push.** The answer drives CI and network traffic. Saves tens of seconds, registry space, and keeps production rollouts from triggering for no reason.
 
 ```yaml
 # .kb/deploy.yaml
@@ -56,17 +54,15 @@ targets:
     image: kb-gateway
 ```
 
-kb-deploy compares `watch:` globs against the git diff. If no file matches, the target is skipped — no build, no push, no SSH.
+kb-deploy compares `watch:` globs against the git diff. Nothing matched — target skipped. No build, no push, no SSH.
 
-### Layer 3: environments (environment-affected)
+### Layer 3: environments
 
-Decision: **whether to spin up a preview stack on the VPS at all.** The answer no longer moves CPU and network — it moves a whole docker compose: containers, RAM, ports, nginx routes, subdomains. Saves minutes of wall time, ~1 GB of RAM, and the PR's signal-to-noise ratio (no "here's the preview" comment that nobody opens).
+Decision: **whether to spin up a preview at all.** The answer moves a whole docker compose: containers, RAM, ports, nginx routes, subdomains. Saves minutes, ~1 GB of RAM, and keeps the PR thread from filling up with "here's the preview" comments that nobody opens.
 
-This is the most expensive layer — and the one most platforms treat as "always on". Vercel boots a preview on every commit. Render does too. The CI-vendor pitch is "preview on every PR" as a feature.
+Vercel and Render pitch "preview on every PR" as a feature. It works for them — you pay for more runtime. But a PR that only touches server-side logic with no user-facing change doesn't need three containers spun up for it.
 
-But that's an **expensive default**, profitable for the vendor (you pay for more runtime) and noisy for the team. A PR that touches only server-side business logic or internal plugins has no user-facing change. Spinning up a three-container stack for it is noise, not signal.
-
-In our CI it now looks like this:
+In our CI it looks like this:
 
 ```bash
 CHANGED=$(git diff --name-only origin/main...HEAD)
@@ -77,38 +73,32 @@ AFFECTED=()
 [[ ${#AFFECTED[@]} -eq 0 ]] && { echo "no UI affected — skipping preview"; exit 0; }
 ```
 
-Eight lines. The decision: run a ~10-minute pipeline, or not. If the PR has nothing visible to a human eye — the pipeline doesn't run. Nothing is lost.
+Eight lines. Something visible to a human — spin it up. Nothing — don't. Nobody loses anything.
 
-## Layers compose
+## When the layers stack
 
-The interesting thing happens when the layers stack.
+PR with one commit in `sites/web/apps/web/components/Header.tsx`:
 
-Take a PR with one commit in `sites/web/apps/web/components/Header.tsx`.
+- **Layer 1**: rebuild only `kb-labs-web` and its dependents.
+- **Layer 2**: push only `kb-site-web`. Gateway and docs — untouched.
+- **Layer 3**: spin up a preview with the web container only. No gateway, no docs.
 
-- **Layer 1** says: rebuild `kb-labs-web` and its reverse dependencies only.
-- **Layer 2** says: push only `ghcr.io/.../kb-site-web` (gateway and docs untouched).
-- **Layer 3** says: spin up a preview with the web container only. No gateway, no docs.
+One question, three savings. Each one an order of magnitude larger than the last: seconds → minutes → minutes + RAM + UX.
 
-Every layer **answers the same question** (what changed?), but solves its own problem. One signal — three savings. And each saving is an order of magnitude larger than the previous one: seconds → minutes → minutes + RAM + PR UX.
+## How to tell when it's missing
 
-## Where it's missing
+A good signal: a "do this or not" decision that you can't answer cleanly. You usually paper over it with a flag: `if: env.BRANCH == 'main'`, `--all`, a manual approval. Flags accumulate, the platform stops deciding on its own.
 
-A good signal of a missing abstraction is a "do or don't" decision you can't answer cleanly. You usually paper over it with a flag: `if: env.BRANCH == 'main'`, `--all`, a manual approval. These patches accumulate, and the platform loses the ability to decide on its own.
-
-If you catch yourself reaching for one of those patches — that's a signal that affected is missing at this layer. Ask: **what does the system already know about my change?** If there's an answer — that's the input. If not — that's the abstraction worth adding.
+If you catch yourself reaching for one of those flags — ask: what does the system already know about this change? If there's an answer — that's the input. If not — that's what's missing.
 
 ## Implementation note
 
-For this to actually work, the `watch:` globs have to be expressed **the same way at every layer**. Ours are path-globs: `plugins/gateway/**`, `sites/web/apps/web/**`. The same syntax in kb-devkit, in kb-deploy, in the preview pipeline.
+`watch:` globs need to be **expressed the same way at every layer**. Ours are path-globs: `plugins/gateway/**`, `sites/web/apps/web/**`. Same syntax in kb-devkit, kb-deploy, and the preview pipeline.
 
-That's not an accident. When one signal is consumed at three layers, it has to have a common representation — otherwise they drift, and the platform starts making contradictory decisions on different layers. You get a class of bug along the lines of "build skipped X, but deploy built X — why?". The only fix is to collapse the representation to one.
+When one signal is used at three layers, it needs one representation. Otherwise the layers drift and you get bugs like "build skipped X but deploy built X — why?" The fix is always the same: collapse to one form.
 
-## The principle
+---
 
-> Affected isn't a build optimization. It's the **input signal to every "do or don't" decision** at every layer of the platform.
+For us, affected ended up as three independent implementations — at the build, artifact, and environment layers. All three grew at different times from different problems. Wiring them together for preview environments, it became clear it was the same move applied three times. One signal, three uses, three classes of savings.
 
-If you're building a platform, every time a new "do or don't" decision appears, ask: "what does affected say?" If there's an answer — that's already an input. If not — that's the abstraction you're missing.
-
-For us, this question led to three independent implementations — at the source, artifact, and environment layers. All three were born at different times for different problems. Recently, wiring them up together for preview environments, it became visible that they're **the same move applied three times**. Each time, a different class of savings.
-
-That's what a mature platform looks like: one piece of knowledge, several applications. No duplicated logic.
+Affected isn't a build optimization. It's the question "does this even need to happen?" asked at every layer.
