@@ -42,7 +42,11 @@ describe('PlatformContainer', () => {
     it('should have initial state', () => {
       expect(platform.isInitialized).toBe(false);
       expect(platform.hasResourceBroker).toBe(false);
-      expect(platform.getConfiguredServices().size).toBe(0);
+      // After reset() the container is bootstrap-seeded with a ConsoleLogger
+      // so anyone (including initPlatform itself) can log from line one.
+      // Everything else is empty until initPlatform() runs.
+      expect(platform.getConfiguredServices().size).toBe(1);
+      expect(platform.getConfiguredServices().has('logger')).toBe(true);
     });
   });
 
@@ -103,34 +107,28 @@ describe('PlatformContainer', () => {
     });
   });
 
-  describe('NoOp Fallbacks', () => {
-    it('should return NoOp analytics when not configured', () => {
-      const analytics = platform.analytics;
-      expect(analytics).toBeDefined();
-      expect(analytics.track).toBeTypeOf('function');
+  describe('Pre-init adapter access', () => {
+    // The container no longer synthesises lazy fallbacks inside getters —
+    // that's the loader's job (see fillAdapterFallbacksAndRecord). Direct
+    // access to a slot before `initPlatform()` returns `undefined`, EXCEPT
+    // for `logger` which is bootstrap-seeded so logging works from line one.
+
+    it('returns the bootstrap logger before initPlatform()', () => {
+      const logger = platform.logger;
+      expect(logger).toBeDefined();
+      expect(logger.info).toBeTypeOf('function');
     });
 
-    it('should return MockLLM when not configured', () => {
-      const llm = platform.llm;
-      expect(llm).toBeDefined();
-      expect(llm.complete).toBeTypeOf('function');
+    it('returns undefined-typed for un-seeded slots before initPlatform()', () => {
+      // Casting to unknown because the static getter type asserts the value,
+      // but the runtime contract before init is "not yet wired".
+      expect(platform.analytics as unknown).toBeUndefined();
+      expect(platform.llm as unknown).toBeUndefined();
+      expect(platform.cache as unknown).toBeUndefined();
+      expect(platform.vectorStore as unknown).toBeUndefined();
     });
 
-    it('should return MemoryCache when not configured', () => {
-      const cache = platform.cache;
-      expect(cache).toBeDefined();
-      expect(cache.get).toBeTypeOf('function');
-      expect(cache.set).toBeTypeOf('function');
-    });
-
-    it('should return MemoryVectorStore when not configured', () => {
-      const vectorStore = platform.vectorStore;
-      expect(vectorStore).toBeDefined();
-      expect(vectorStore.search).toBeTypeOf('function');
-      expect(vectorStore.upsert).toBeTypeOf('function');
-    });
-
-    it('should return configured adapter instead of fallback', () => {
+    it('returns a configured adapter immediately after setAdapter()', () => {
       const mockLLM: ILLM = {
         complete: async () => ({ content: 'custom', model: 'test', usage: { promptTokens: 10, completionTokens: 5 } }),
         stream: async function* () { yield 'custom'; },
@@ -318,7 +316,7 @@ describe('PlatformContainer', () => {
       expect(() => platform.resourceBroker).toThrow('ResourceBroker not initialized');
     });
 
-    it('should reset to NoOp fallbacks', () => {
+    it('clears configured adapters back to undefined (but keeps the bootstrap logger)', () => {
       const mockLLM: ILLM = {
         complete: async () => ({ content: 'test', model: 'test', usage: { promptTokens: 10, completionTokens: 5 } }),
         stream: async function* () { yield 'test'; },
@@ -327,60 +325,52 @@ describe('PlatformContainer', () => {
       platform.setAdapter('llm', mockLLM);
       platform.reset();
 
-      // Should fallback to MockLLM
-      const llm = platform.llm;
-      expect(llm).toBeDefined();
-      expect(llm).not.toBe(mockLLM);
+      // LLM was explicitly cleared by reset().
+      expect(platform.llm as unknown).toBeUndefined();
+      // Logger is re-seeded by reset() — bootstrap invariant.
+      expect(platform.logger).toBeDefined();
+      expect(platform.logger.info).toBeTypeOf('function');
     });
   });
 
-  describe('Lazy Getters', () => {
-    it('should use lazy getter for llm', () => {
-      // Before setting adapter
-      const llm1 = platform.llm;
-      expect(llm1).toBeDefined();
-
-      // Set custom adapter
+  describe('Adapter getters', () => {
+    it('returns exactly the instance passed to setAdapter() — no wrapping, no lazy synthesis', () => {
       const mockLLM: ILLM = {
         complete: async () => ({ content: 'test', model: 'test', usage: { promptTokens: 10, completionTokens: 5 } }),
         stream: async function* () { yield 'test'; },
       };
       platform.setAdapter('llm', mockLLM);
-
-      // After setting adapter
-      const llm2 = platform.llm;
-      expect(llm2).toBe(mockLLM);
+      expect(platform.llm).toBe(mockLLM);
     });
 
-    it('should use lazy getter for cache', () => {
-      const cache1 = platform.cache;
-      expect(cache1).toBeDefined();
-
-      const mockCache = {
-        get: async () => 'cached' as any,
+    it('overwriting via setAdapter() replaces the previous instance', () => {
+      const mockCache1 = {
+        get: async () => 'a' as never,
         set: async () => {},
         delete: async () => {},
       } as unknown as ICache;
-      platform.setAdapter('cache', mockCache);
-
-      const cache2 = platform.cache;
-      expect(cache2).toBe(mockCache);
+      const mockCache2 = {
+        get: async () => 'b' as never,
+        set: async () => {},
+        delete: async () => {},
+      } as unknown as ICache;
+      platform.setAdapter('cache', mockCache1);
+      platform.setAdapter('cache', mockCache2);
+      expect(platform.cache).toBe(mockCache2);
     });
 
-    it('should use lazy getter for vectorStore', () => {
-      const vs1 = platform.vectorStore;
-      expect(vs1).toBeDefined();
-
+    it('returns undefined for an unset core slot (caller must initPlatform first)', () => {
       const mockVS: IVectorStore = {
         search: async () => [],
         upsert: async () => {},
         delete: async () => {},
         count: async () => 0,
       };
+      // vectorStore is unset → undefined
+      expect(platform.vectorStore as unknown).toBeUndefined();
+      // After setAdapter the same getter returns the real instance.
       platform.setAdapter('vectorStore', mockVS);
-
-      const vs2 = platform.vectorStore;
-      expect(vs2).toBe(mockVS);
+      expect(platform.vectorStore).toBe(mockVS);
     });
   });
 

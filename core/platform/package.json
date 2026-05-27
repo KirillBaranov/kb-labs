@@ -49,10 +49,15 @@
       "import": "./dist/noop/core/index.js",
       "require": "./dist/noop/core/index.cjs"
     },
-    "./adapters/testing": {
-      "types": "./dist/adapters/testing/index.d.ts",
-      "import": "./dist/adapters/testing/index.js",
-      "require": "./dist/adapters/testing/index.cjs"
+    "./inmemory": {
+      "types": "./dist/inmemory/index.d.ts",
+      "import": "./dist/inmemory/index.js",
+      "require": "./dist/inmemory/index.cjs"
+    },
+    "./inmemory/adapters": {
+      "types": "./dist/inmemory/adapters/index.d.ts",
+      "import": "./dist/inmemory/adapters/index.js",
+      "require": "./dist/inmemory/adapters/index.cjs"
     }
   },
   "files": [

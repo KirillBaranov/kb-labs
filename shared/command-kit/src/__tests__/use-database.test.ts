@@ -63,9 +63,11 @@ describe('database hooks (default platform / no ALS)', () => {
       expect(typeof docs?.close).toBe('function');
     });
 
-    it('NoOp default rejects writes with a clear error', async () => {
+    it('InMemory default: writes succeed (documentDatabase falls back to InMemoryDocumentDatabase)', async () => {
       const docs = useDocumentDatabase();
-      await expect(docs!.insertOne('anything', {})).rejects.toThrow(/not configured/i);
+      // documentDatabase defaultFallback is 'inmemory' — writes work out of the box.
+      const result = await docs!.insertOne('test-col', { name: 'hello' });
+      expect(result.id).toBeDefined();
     });
 
     it('ping() always succeeds even on the NoOp default', async () => {
@@ -108,9 +110,11 @@ describe('database hooks (default platform / no ALS)', () => {
       expect(typeof kv?.close).toBe('function');
     });
 
-    it('NoOp default rejects reads with a clear error', async () => {
+    it('InMemory default: reads return null (kvStore falls back to InMemoryKVStore)', async () => {
       const kv = useKVStore();
-      await expect(kv!.get('anything')).rejects.toThrow(/not configured/i);
+      // kvStore defaultFallback is 'inmemory' — reads return null for missing keys.
+      const result = await kv!.get('nonexistent-key');
+      expect(result).toBeNull();
     });
   });
 
