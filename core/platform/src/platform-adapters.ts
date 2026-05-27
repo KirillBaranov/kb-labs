@@ -19,6 +19,7 @@ import type { IDocumentDatabase, IKVStore } from './adapters/database.js';
 import type { IArtifacts } from './adapters/artifacts.js';
 import type { ISnapshotManager } from './snapshot/snapshot-provider.js';
 import type { INotifier } from './adapters/notifier.js';
+import type { IServiceTransport } from './adapters/service-transport.js';
 
 /**
  * Plugin-visible adapter surface.
@@ -87,6 +88,10 @@ export interface IPluginAdapters {
  * this type at bootstrap. Plugin governance always returns IPluginAdapters.
  */
 export interface IPlatformAdapters extends IPluginAdapters {
-  // Platform-only adapters go here.
-  // Currently empty — populated when IServiceTransport is added (ADR-0021).
+  /**
+   * Service-to-service transport (gateway → internal services).
+   * Platform-only — not in ADAPTER_REGISTRY, never reaches plugin context.
+   * See ADR-0022.
+   */
+  readonly serviceTransport?: IServiceTransport;
 }

@@ -25,13 +25,16 @@
  * adapter surface without manual review.
  */
 
-import type { IPlatformAdapters } from './platform-adapters.js';
+import type { IPluginAdapters } from './platform-adapters.js';
 
 /**
- * Union of every slot in `IPlatformAdapters`. Used to type fallback tables,
- * factory maps, and status records.
+ * Union of every plugin-visible adapter slot.
+ *
+ * Covers IPluginAdapters only — platform-only adapters (e.g. serviceTransport)
+ * are intentionally excluded: they have no inmemory/noop fallback and are never
+ * managed by the plugin runtime.
  */
-export type AdapterSlot = keyof IPlatformAdapters;
+export type AdapterSlot = keyof IPluginAdapters;
 
 /**
  * Default fallback choice when a slot is not configured.

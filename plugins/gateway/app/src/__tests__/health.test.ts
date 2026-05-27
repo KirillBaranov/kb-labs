@@ -11,7 +11,7 @@
  *     - upstream health probing
  */
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import type { ICache, ILogger } from '@kb-labs/core-platform';
+import type { ICache, ILogger, IServiceTransport, ServiceTransportResponse } from '@kb-labs/core-platform';
 import type { JwtConfig } from '@kb-labs/gateway-auth';
 import type { GatewayConfig } from '@kb-labs/gateway-contracts';
 
@@ -26,10 +26,6 @@ vi.mock('@kb-labs/core-runtime', () => ({
   },
   getAdapterStatus: () => mockAdapterStatuses,
 }));
-
-// Mock fetch for upstream probing
-const mockFetch = vi.fn();
-vi.stubGlobal('fetch', mockFetch);
 
 function makeCache(): ICache {
   const store = new Map<string, unknown>();
@@ -51,10 +47,25 @@ const noopLogger: ILogger = {
 
 const stubJwtConfig: JwtConfig = { secret: 'test-secret' };
 
+function makeTransport(callResult?: ServiceTransportResponse): IServiceTransport {
+  const mockCall = vi.fn().mockResolvedValue(
+    callResult ?? { ok: true, statusCode: 200, payload: { ok: true } },
+  );
+  return {
+    connectionInfo: vi.fn().mockReturnValue({ baseUrl: 'http://localhost' }),
+    call: mockCall,
+    stream: vi.fn(),
+    health: vi.fn(),
+  } as unknown as IServiceTransport;
+}
+
+let mockTransport: IServiceTransport = makeTransport();
+
 // ── App builder ───────────────────────────────────────────────────────────
 
 async function buildHealthApp(
   config: Partial<GatewayConfig> = {},
+  transport?: IServiceTransport,
 ) {
   // Dynamically import createServer — it uses the mocked platform
   const { createServer } = await import('../server.js');
@@ -67,7 +78,7 @@ async function buildHealthApp(
   };
 
   const cache = makeCache();
-  return createServer(fullConfig, cache, noopLogger, stubJwtConfig);
+  return createServer(fullConfig, cache, noopLogger, stubJwtConfig, undefined, transport ?? mockTransport);
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────
@@ -162,16 +173,16 @@ describe('Gateway /health endpoint', () => {
 
   it('probes upstream health', async () => {
     mockAdapters = { llm: { complete: vi.fn() } };
-    mockFetch.mockResolvedValueOnce({ ok: true });
+    const transport = makeTransport({ ok: true, statusCode: 200, payload: { ok: true } });
 
     app = await buildHealthApp({
       upstreams: {
         'rest-api': {
-          url: 'http://localhost:5050',
+          serviceId: 'rest-api',
           prefix: '/api/v1',
         },
       },
-    });
+    }, transport);
 
     const res = await app.inject({ method: 'GET', url: '/health' });
     const body = res.json();
@@ -182,16 +193,20 @@ describe('Gateway /health endpoint', () => {
 
   it('logs structured diagnostics when upstream health probe fails', async () => {
     mockAdapters = { llm: { complete: vi.fn() } };
-    mockFetch.mockRejectedValueOnce(new Error('connect ETIMEDOUT'));
+    const transport: IServiceTransport = {
+      connectionInfo: vi.fn().mockReturnValue({ baseUrl: 'http://localhost' }),
+      call: vi.fn().mockRejectedValue(new Error('connect ETIMEDOUT')),
+      stream: vi.fn(),
+    } as unknown as IServiceTransport;
 
     app = await buildHealthApp({
       upstreams: {
         workflow: {
-          url: 'http://localhost:7778',
+          serviceId: 'workflow',
           prefix: '/api/v1/workflow',
         },
       },
-    });
+    }, transport);
 
     const res = await app.inject({ method: 'GET', url: '/health' });
     expect(res.statusCode).toBe(200);
@@ -204,7 +219,7 @@ describe('Gateway /health endpoint', () => {
         route: '/api/v1/workflow/health',
         evidence: expect.objectContaining({
           upstreamId: 'workflow',
-          upstreamUrl: 'http://localhost:7778',
+          serviceId: 'workflow',
         }),
       }),
     );

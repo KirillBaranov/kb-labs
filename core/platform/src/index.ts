@@ -309,3 +309,13 @@ export type {
   INotifier,
   NotifierDeliveryEvent,
 } from './adapters/notifier.js';
+
+// Service transport (platform-only — not in ADAPTER_REGISTRY, never reaches plugin context)
+export type {
+  IServiceTransport,
+  ServiceConnectionInfo,
+  ServiceTransportRequest,
+  ServiceTransportResponse,
+  ServiceTransportStream,
+  ServiceTransportHealth,
+} from './adapters/service-transport.js';

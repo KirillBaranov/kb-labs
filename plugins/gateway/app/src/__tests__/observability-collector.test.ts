@@ -11,7 +11,7 @@ const config: GatewayConfig = {
   port: 4000,
   upstreams: {
     rest: {
-      url: 'http://localhost:5050',
+      serviceId: 'rest',
       prefix: '/api/v1',
     },
   },
