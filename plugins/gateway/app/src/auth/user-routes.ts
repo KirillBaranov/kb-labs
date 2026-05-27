@@ -41,6 +41,7 @@ import type {
   JwtConfig,
   SessionResult,
   RateLimiter,
+  type TenantResolver,
 } from '@kb-labs/gateway-auth';
 import { AuthError, verifyCsrfToken } from '@kb-labs/gateway-auth';
 import { PERMISSIONS } from '@kb-labs/core-contracts';
@@ -93,6 +94,8 @@ export interface UserAuthRouteDeps {
   invites: InvitesStore;
   providers: ProviderRegistry;
   pdp: IPolicyDecisionPoint;
+  /** Resolves the tenant from the Host header — used to prevent tenantId bypass via body. */
+  tenantResolver: TenantResolver;
   cookieOpts: CookieOptions;
   accessTtlSec: number;
   refreshTtlSec: number;
@@ -200,7 +203,7 @@ export function createUserRefreshFn(
 // ── Route registrar ───────────────────────────────────────────────────────────
 
 export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRouteDeps): void {
-  const { userAuthService, users, sessions, invites, providers, pdp, cookieOpts, inviteTtlMs, rateLimiter, authRateLimit } = deps;
+  const { userAuthService, users, sessions, invites, providers, pdp, tenantResolver, cookieOpts, inviteTtlMs, rateLimiter, authRateLimit } = deps;
   // Apply config defaults so the rest of the handler can use them without null-checks.
   const authRateLimitCfg = { loginPerIpPerMinute: 10, loginPerEmailPerMinute: 5, ...authRateLimit };
 
@@ -270,9 +273,13 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
       }
     }
 
-    // Derive tenantId: body field takes precedence (API clients), then Host header (browser).
+    // Derive tenantId — Host header is authoritative (set by nginx in production).
+    // bodyTenantId is accepted only as a fallback when the Host doesn't resolve to
+    // a valid tenant (e.g. direct gateway access: localhost:4000, CI without nginx).
+    // This prevents tenant isolation bypass via body in subdomain deployments.
     const host = typeof request.headers.host === 'string' ? request.headers.host : '';
-    const tenantId = bodyTenantId ?? host.split('.')[0] ?? '';
+    const hostTenant = tenantResolver.resolve(host);
+    const tenantId = hostTenant ?? bodyTenantId ?? '';
 
     try {
       const result = await userAuthService.login(

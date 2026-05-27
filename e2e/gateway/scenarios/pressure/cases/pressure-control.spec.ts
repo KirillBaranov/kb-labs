@@ -38,7 +38,7 @@ async function registerWithNamespace(
   name: string,
 ) {
   // Login as bootstrap admin to get session cookies for /auth/register.
-  const loginRes = await request.post(`${GATEWAY}/api/auth/login`, {
+  const loginRes = await request.post(`${GATEWAY}/auth/login`, {
     data: {
       email: process.env['GATEWAY_BOOTSTRAP_ADMIN_EMAIL'] ?? 'admin@e2e.test',
       password: process.env['GATEWAY_BOOTSTRAP_ADMIN_PASSWORD'] ?? 'E2eBootstrapPass1!',

@@ -129,6 +129,7 @@ async function buildApp(): Promise<TestCtx> {
     invites,
     providers,
     pdp,
+    tenantResolver,
     cookieOpts: { cookieSecure: false },
     accessTtlSec: 900,
     refreshTtlSec: HOUR / 1000,

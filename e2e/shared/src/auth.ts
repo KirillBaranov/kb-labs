@@ -27,7 +27,7 @@ export async function registerAgent(
   namespaceId = 'e2e',
 ): Promise<AuthCredentials> {
   // Login as bootstrap admin — pass tenantId explicitly (no subdomain in E2E).
-  const loginRes = await request.post(`${GATEWAY}/api/auth/login`, {
+  const loginRes = await request.post(`${GATEWAY}/auth/login`, {
     data: { email: E2E_ADMIN_EMAIL, password: E2E_ADMIN_PASSWORD, tenantId: E2E_ADMIN_TENANT },
   })
   if (!loginRes.ok()) {

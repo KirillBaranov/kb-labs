@@ -231,6 +231,7 @@ export async function createServer(
           invites: userAuth.invites,
           providers: userAuth.providers,
           pdp: userAuth.pdp,
+          tenantResolver: userAuth.tenantResolver,
           cookieOpts: { cookieSecure: userAuth.cookieSecure },
           accessTtlSec: userAuth.accessTtlSec,
           refreshTtlSec: userAuth.refreshTtlSec,
