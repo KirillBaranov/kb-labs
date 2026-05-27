@@ -30,9 +30,10 @@ services:
       GATEWAY_BOOTSTRAP_ADMIN_EMAIL: "admin@kb-cloud.test"
       GATEWAY_BOOTSTRAP_ADMIN_PASSWORD: "AdminPass123!"
       GATEWAY_BOOTSTRAP_TENANT_ID: "kb-cloud"
-      # Disable Secure cookie flag — CI serves over HTTP (nginx :4001, no TLS).
-      # In production (HTTPS) this must be true (default).
-      AUTH_COOKIE_SECURE: "false"
+      # Do NOT set AUTH_COOKIE_SECURE=false here. Cookies default to Secure=true, which is
+      # correct: Chromium treats http://localhost as a secure origin (by spec) and WILL
+      # send Secure-flagged cookies over the loopback interface. This lets AUTH-02 / AUTH-29
+      # verify the Secure attribute while keeping cookies functional in the CI HTTP context.
       AUTH_ACCESS_TTL_SEC: "${AUTH_ACCESS_TTL_SEC:-900}"
       AUTH_REFRESH_TTL_SEC: "${AUTH_REFRESH_TTL_SEC:-2592000}"
       AUTH_INVITE_TTL_MS: "${AUTH_INVITE_TTL_MS:-604800000}"
