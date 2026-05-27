@@ -3,7 +3,9 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { RouterProvider } from 'react-router-dom';
 import { KBConfigProvider } from '@/components/ui/kb-config-provider';
 import { DataSourcesProvider } from './providers/data-sources-provider';
-import { AuthProvider } from './providers/auth-provider';
+// Real auth provider (ADR-0020) replaces old localStorage-based fake.
+// The old providers/auth-provider.tsx is kept for backward-compat during migration.
+import { AuthProvider } from './auth/auth-provider';
 import { RegistryV2Provider } from './providers/registry-v2-provider';
 import { SettingsProvider } from './providers/settings-provider';
 import { EventBusProvider } from '@kb-labs/studio-event-bus';
