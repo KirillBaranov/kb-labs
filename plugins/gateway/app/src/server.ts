@@ -212,6 +212,7 @@ export async function createServer(
             userAuthService: userAuth.userAuthService,
             cookieOpts: { cookieSecure: userAuth.cookieSecure },
           }),
+          pdp: userAuth.pdp,
         }
       : undefined;
     registerAuthRoutes(scope as unknown as Parameters<typeof registerAuthRoutes>[0], authService, userExt);

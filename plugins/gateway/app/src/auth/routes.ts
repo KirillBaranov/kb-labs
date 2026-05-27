@@ -12,12 +12,13 @@
  */
 
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
-import type { AuthService } from '@kb-labs/gateway-auth';
+import type { AuthService, IPolicyDecisionPoint } from '@kb-labs/gateway-auth';
 import {
   RegisterRequestSchema,
   TokenRequestSchema,
   RefreshRequestSchema,
 } from '@kb-labs/gateway-contracts';
+import { PERMISSIONS } from '@kb-labs/core-contracts';
 import { COOKIE_REFRESH } from './user-cookies.js';
 
 export interface MachineAuthRoutesUserExt {
@@ -25,6 +26,8 @@ export interface MachineAuthRoutesUserExt {
    *  Must write the reply and return true; return false to fall through to
    *  the machine body-refresh path. */
   userRefreshFn: (request: FastifyRequest, reply: FastifyReply) => Promise<boolean>;
+  /** PDP for checking MACHINE_REGISTER permission on cookie-authenticated admin users. */
+  pdp: IPolicyDecisionPoint;
 }
 
 export function registerAuthRoutes(
@@ -33,14 +36,36 @@ export function registerAuthRoutes(
   userExt?: MachineAuthRoutesUserExt,
 ): void {
   // Register new agent.
-  // NOTE: This route is in PUBLIC_ROUTES (machine middleware bypass), but the
-  //       handler requires the caller to be authenticated as a machine client
-  //       with MACHINE_REGISTER permission. Public bypass is needed so that the
-  //       first-time bootstrap flow can register before any machine client exists.
-  //       In practice, the gateway is only reachable from trusted networks on
-  //       the initial bootstrap; post-bootstrap, the PDP check here enforces the
-  //       permission gate.
+  // Requires MACHINE_REGISTER permission. Auth checks:
+  //   - Anonymous (no cookie, no Bearer) → 401 from machine-auth middleware
+  //   - Cookie-auth user without permission → 403 (PDP check below)
+  //   - Cookie-auth admin with MACHINE_REGISTER → 200
+  //   - Bearer-auth machine with machine:register in JWT permissions → 200
   app.post('/auth/register', { schema: { tags: ['Auth'], summary: 'Register new agent and get credentials' } }, async (request, reply) => {
+    // Gate behind MACHINE_REGISTER permission.
+    // Two auth paths: cookie-authenticated user (userAuthContext) or Bearer machine (authContext).
+    const userCtx = request.userAuthContext;
+    const machineCtx = request.authContext;
+
+    if (userCtx && userExt?.pdp) {
+      // Cookie-authenticated user — check via PDP.
+      const decision = await userExt.pdp.check(
+        { userId: userCtx.userId, tenantId: userCtx.tenantId, type: 'user' },
+        PERMISSIONS.MACHINE_REGISTER,
+      );
+      if (!decision.allow) {
+        return reply.code(403).send({ error: 'Forbidden', message: `Permission denied: ${PERMISSIONS.MACHINE_REGISTER}` });
+      }
+    } else if (machineCtx) {
+      // Bearer-authenticated machine — check permissions embedded in JWT.
+      if (!machineCtx.permissions.includes(PERMISSIONS.MACHINE_REGISTER)) {
+        return reply.code(403).send({ error: 'Forbidden', message: `Permission denied: ${PERMISSIONS.MACHINE_REGISTER}` });
+      }
+    } else {
+      // No auth context at all (should have been caught by middleware, but guard defensively).
+      return reply.code(401).send({ error: 'Unauthorized', message: 'Authentication required' });
+    }
+
     const parsed = RegisterRequestSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: 'Bad Request', issues: parsed.error.issues });
@@ -49,7 +74,7 @@ export function registerAuthRoutes(
     const { name, capabilities, publicKey, handle, email } = parsed.data;
     try {
       const result = await authService.register({ name, capabilities, publicKey, handle, email });
-      return reply.code(201).send(result);
+      return reply.code(200).send(result);
     } catch (err) {
       if (err instanceof Error && (err as NodeJS.ErrnoException).code === 'HANDLE_TAKEN') {
         return reply.code(409).send({ error: 'Conflict', message: err.message });

@@ -12,7 +12,8 @@ const PUBLIC_ROUTES = new Set([
   '/hosts/register',
   // /hosts/connect and /clients/connect are handled at the HTTP upgrade level
   // by gateway-ws.ts (raw ws) — they never reach Fastify routing.
-  '/auth/register',
+  // NOTE: /auth/register is NOT public — it requires MACHINE_REGISTER permission
+  //       (cookie-auth admin or Bearer machine with that permission).
   '/auth/token',
   '/auth/refresh',
   // User-auth public endpoints (ADR-0020, Phase 1.16).

@@ -145,6 +145,7 @@ async function buildApp(): Promise<TestCtx> {
       userAuthService,
       cookieOpts: { cookieSecure: false },
     }),
+    pdp,
   };
 
   const app = Fastify({ logger: false, trustProxy: true });

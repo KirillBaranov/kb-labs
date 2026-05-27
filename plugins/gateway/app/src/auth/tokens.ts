@@ -17,8 +17,10 @@ export async function resolveToken(
   const jwtContext = await authService.verify(token);
   if (jwtContext) {return jwtContext;}
 
-  // Fallback: static machine token in ICache (v1 compat — dev-studio-token etc.)
-  const machineEntry = await cache.get<{ hostId: string; namespaceId: string }>(
+  // Fallback: static machine token in ICache (v1 compat — dev-studio-token etc.).
+  // The cache entry may include a `permissions` array; defaults to ['host:connect']
+  // for backward compatibility with entries that pre-date this field.
+  const machineEntry = await cache.get<{ hostId: string; namespaceId: string; permissions?: string[] }>(
     `host:token:${token}`,
   );
   if (machineEntry) {
@@ -27,7 +29,7 @@ export async function resolveToken(
       userId: machineEntry.hostId,
       namespaceId: machineEntry.namespaceId,
       tier: 'free',
-      permissions: ['host:connect'],
+      permissions: machineEntry.permissions ?? ['host:connect'],
     };
   }
 
