@@ -16,6 +16,7 @@
 
 import type { FastifyInstance } from 'fastify';
 import type { ICache, ILogger } from '@kb-labs/core-platform';
+import type { IResourceBroker } from '@kb-labs/core-resource-broker';
 import { WebhookSecretStore } from './secret-store.js';
 import { provisionWebhook, type ProvisionBackend } from './provision.js';
 import type { WebhookManifestEntry } from './router.js';
@@ -28,7 +29,17 @@ export interface RegisterWebhookAdminRoutesOptions {
   backend: ProvisionBackend;
   manifests: WebhookManifestEntry[];
   baseUrl: string;
+  /** Optional rate limiter — when provided, admin routes are rate-limited. */
+  broker?: IResourceBroker;
 }
+
+// ── Public API ────────────────────────────────────────────────────────────────
+
+// ── Rate limit resources ──────────────────────────────────────────────────────
+
+const RL_PROVISION = 'webhook-admin:provision';
+const RL_LIST = 'webhook-admin:list';
+const RL_REVOKE = 'webhook-admin:revoke';
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
@@ -36,8 +47,16 @@ export function registerWebhookAdminRoutes(
   scope: FastifyInstance,
   options: RegisterWebhookAdminRoutesOptions,
 ): void {
-  const { cache, logger, backend, manifests, baseUrl } = options;
+  const { cache, logger, backend, manifests, baseUrl, broker } = options;
   const secretStore = new WebhookSecretStore(cache);
+
+  // Register per-resource rate limits when a broker is available.
+  // Admin operations are infrequent; conservative limits prevent abuse.
+  if (broker) {
+    broker.registerLimit(RL_PROVISION, { requestsPerMinute: 10 });
+    broker.registerLimit(RL_LIST, { requestsPerMinute: 60 });
+    broker.registerLimit(RL_REVOKE, { requestsPerMinute: 10 });
+  }
 
   // ── POST /api/v1/webhooks/provision ─────────────────────────────────────────
 
@@ -45,6 +64,19 @@ export function registerWebhookAdminRoutes(
     const auth = request.authContext;
     if (!auth) {
       return reply.code(401).send({ error: 'Unauthorized' });
+    }
+
+    // Rate limit provisioning requests
+    if (broker) {
+      const acquired = await broker.tryAcquire(RL_PROVISION);
+      try {
+        if (!acquired.allowed) {
+          const retryAfterSec = acquired.waitTimeMs ? Math.max(1, Math.ceil(acquired.waitTimeMs / 1000)) : 1;
+          return reply.code(429).header('Retry-After', String(retryAfterSec)).send({ error: 'Too Many Requests' });
+        }
+      } finally {
+        await acquired.release();
+      }
     }
 
     const body = request.body as Record<string, unknown> | undefined;
@@ -89,6 +121,19 @@ export function registerWebhookAdminRoutes(
       return reply.code(401).send({ error: 'Unauthorized' });
     }
 
+    // Rate limit list requests
+    if (broker) {
+      const acquired = await broker.tryAcquire(RL_LIST);
+      try {
+        if (!acquired.allowed) {
+          const retryAfterSec = acquired.waitTimeMs ? Math.max(1, Math.ceil(acquired.waitTimeMs / 1000)) : 1;
+          return reply.code(429).header('Retry-After', String(retryAfterSec)).send({ error: 'Too Many Requests' });
+        }
+      } finally {
+        await acquired.release();
+      }
+    }
+
     const query = request.query as Record<string, string | undefined>;
     const filterPluginId = query.pluginId;
 
@@ -127,6 +172,19 @@ export function registerWebhookAdminRoutes(
         return reply.code(401).send({ error: 'Unauthorized' });
       }
 
+      // Rate limit revoke requests
+      if (broker) {
+        const acquired = await broker.tryAcquire(RL_REVOKE);
+        try {
+          if (!acquired.allowed) {
+            const retryAfterSec = acquired.waitTimeMs ? Math.max(1, Math.ceil(acquired.waitTimeMs / 1000)) : 1;
+            return reply.code(429).header('Retry-After', String(retryAfterSec)).send({ error: 'Too Many Requests' });
+          }
+        } finally {
+          await acquired.release();
+        }
+      }
+
       const { pluginId, event } = request.params;
       await secretStore.delete(auth.namespaceId, pluginId, event);
       return reply.code(204).send();
@@ -141,6 +199,19 @@ export function registerWebhookAdminRoutes(
       const auth = request.authContext;
       if (!auth) {
         return reply.code(401).send({ error: 'Unauthorized' });
+      }
+
+      // Rate limit revoke requests
+      if (broker) {
+        const acquired = await broker.tryAcquire(RL_REVOKE);
+        try {
+          if (!acquired.allowed) {
+            const retryAfterSec = acquired.waitTimeMs ? Math.max(1, Math.ceil(acquired.waitTimeMs / 1000)) : 1;
+            return reply.code(429).header('Retry-After', String(retryAfterSec)).send({ error: 'Too Many Requests' });
+          }
+        } finally {
+          await acquired.release();
+        }
       }
 
       const { pluginId, event, instanceId } = request.params;
