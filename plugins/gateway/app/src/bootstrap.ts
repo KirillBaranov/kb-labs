@@ -16,8 +16,10 @@ import {
   createUserAuthService,
   createStubPDP,
   createTenantResolver,
+  createRateLimiter,
   ensureBootstrapAdmin,
 } from '@kb-labs/gateway-auth';
+import type { IKVStore } from '@kb-labs/core-platform/adapters';
 import { loadGatewayConfig } from './config.js';
 import { createServer, type UserAuthServerDeps } from './server.js';
 import { HostRegistry } from './hosts/registry.js';
@@ -157,6 +159,16 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
       ? parseInt(process.env.AUTH_INVITE_TTL_MS, 10)
       : (config.auth?.inviteTtlMs ?? 7 * 24 * 60 * 60 * 1000);
 
+    // Rate limiter — uses kvStore if available; silently absent otherwise.
+    const kv = platform.getAdapter<IKVStore>('kvStore');
+    const rateLimiter = kv ? createRateLimiter(kv) : undefined;
+    if (!kv) {
+      logger.warn('kvStore adapter not configured — auth rate limiting disabled');
+    }
+
+    const loginPerIpPerMinute = config.auth?.rateLimit?.loginPerIpPerMinute ?? 10;
+    const loginPerEmailPerMinute = config.auth?.rateLimit?.loginPerEmailPerMinute ?? 5;
+
     userAuth = {
       userAuthService,
       users,
@@ -169,6 +181,8 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
       accessTtlSec,
       refreshTtlSec,
       inviteTtlMs,
+      rateLimiter,
+      authRateLimit: { loginPerIpPerMinute, loginPerEmailPerMinute },
     };
 
     logger.info('User auth infrastructure initialised', {

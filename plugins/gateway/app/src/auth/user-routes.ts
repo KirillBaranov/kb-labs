@@ -40,6 +40,7 @@ import type {
   IPolicyDecisionPoint,
   JwtConfig,
   SessionResult,
+  RateLimiter,
 } from '@kb-labs/gateway-auth';
 import { AuthError, verifyCsrfToken } from '@kb-labs/gateway-auth';
 import { PERMISSIONS } from '@kb-labs/core-contracts';
@@ -97,6 +98,14 @@ export interface UserAuthRouteDeps {
   refreshTtlSec: number;
   inviteTtlMs: number;
   jwtConfig: JwtConfig;
+  /** Fixed-window rate limiter for login/activate endpoints. Optional — rate limiting
+   *  is silently skipped when absent (e.g. unit tests without IKVStore). */
+  rateLimiter?: RateLimiter;
+  /** Rate limit thresholds (defaults applied when rateLimiter is present). */
+  authRateLimit?: {
+    loginPerIpPerMinute: number;
+    loginPerEmailPerMinute: number;
+  };
 }
 
 // ── Cookie helpers ────────────────────────────────────────────────────────────
@@ -191,7 +200,9 @@ export function createUserRefreshFn(
 // ── Route registrar ───────────────────────────────────────────────────────────
 
 export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRouteDeps): void {
-  const { userAuthService, users, sessions, invites, providers, pdp, cookieOpts, inviteTtlMs } = deps;
+  const { userAuthService, users, sessions, invites, providers, pdp, cookieOpts, inviteTtlMs, rateLimiter, authRateLimit } = deps;
+  // Apply config defaults so the rest of the handler can use them without null-checks.
+  const authRateLimitCfg = { loginPerIpPerMinute: 10, loginPerEmailPerMinute: 5, ...authRateLimit };
 
   // ── GET /auth/me ────────────────────────────────────────────────────────────
   // Handles both user cookie auth and machine Bearer auth. User takes precedence.
@@ -227,7 +238,7 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
   });
 
   // ── POST /auth/login ────────────────────────────────────────────────────────
-  // Public (in PUBLIC_ROUTES). Rate-limited per-IP + per-email in production.
+  // Public (in PUBLIC_ROUTES). Rate-limited per-IP + per-email via fixed-window counter.
   app.post<{ Body: { email?: string; password?: string; providerId?: string } }>('/auth/login', {
     schema: { tags: ['Auth'], summary: 'Login with email/password (sets session cookies)' },
   }, async (request, reply) => {
@@ -237,6 +248,26 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
     }
     if (typeof password !== 'string' || !password) {
       return reply.code(400).send({ error: 'Bad Request', message: 'password is required' });
+    }
+
+    // Rate limiting (per-IP and per-email) — silently skipped when no rateLimiter configured.
+    if (rateLimiter) {
+      const perIpMax = authRateLimitCfg.loginPerIpPerMinute;
+      const perEmailMax = authRateLimitCfg.loginPerEmailPerMinute;
+      const emailNorm = email.toLowerCase().trim();
+
+      const [ipResult, emailResult] = await Promise.all([
+        rateLimiter.check(`rl:login:ip:${request.ip}`, { max: perIpMax, windowMs: 60_000 }),
+        rateLimiter.check(`rl:login:email:${emailNorm}`, { max: perEmailMax, windowMs: 60_000 }),
+      ]);
+
+      if (!ipResult.allowed || !emailResult.allowed) {
+        const retryAfter = !ipResult.allowed
+          ? ipResult.retryAfterSec
+          : (!emailResult.allowed ? emailResult.retryAfterSec : 60);
+        reply.header('Retry-After', String(retryAfter));
+        return reply.code(429).send({ error: 'Too Many Requests', message: 'Rate limit exceeded', retryAfterSec: retryAfter });
+      }
     }
 
     // Derive tenantId from Host header.
