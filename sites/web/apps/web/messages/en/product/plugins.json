@@ -1,18 +1,18 @@
 {
-  "page": {
-    "plugCtaDocsBtn": "Documentation",
-    "plugSdkLead2": "ctx.ui.success() works the same from CLI or a Workflow step.",
-    "plugCtaDescription": "Install KB Labs, run scaffold, add your logic. CLI, REST API, and Studio are ready automatically.",
-    "plugPermEyebrow": "Permissions",
-    "plugLifecycleTitle": "Plugin lifecycle",
-    "plugPermTitle": "See permissions before install",
-    "plugSurfaceLead2": "No router config, no command registration, no Studio config. Install the package — everything works.",
-    "plugSurfaceEyebrow": "How it works",
-    "plugMetaTitle": "Plugin System — KB Labs",
-    "plugSdkLead1": "A plugin talks to abstractions — ctx.ui, useLLM(). Which provider is behind them, how requests are routed, where logs go — that's the platform's job.",
-    "plugHeroTitleRest": "a platform unit",
-    "plugCtaInstallBtn": "Install",
-    "plugStats": [
+  "plugins": {
+    "ctaDocsBtn": "Documentation",
+    "sdkLead2": "ctx.ui.success() works the same from CLI or a Workflow step.",
+    "ctaDescription": "Install KB Labs, run scaffold, add your logic. CLI, REST API, and Studio are ready automatically.",
+    "permEyebrow": "Permissions",
+    "lifecycleTitle": "Plugin lifecycle",
+    "permTitle": "See permissions before install",
+    "surfaceLead2": "No router config, no command registration, no Studio config. Install the package — everything works.",
+    "surfaceEyebrow": "How it works",
+    "metaTitle": "Plugin System — KB Labs",
+    "sdkLead1": "A plugin talks to abstractions — ctx.ui, useLLM(). Which provider is behind them, how requests are routed, where logs go — that's the platform's job.",
+    "heroTitleRest": "a platform unit",
+    "ctaInstallBtn": "Install",
+    "stats": [
       {
         "value": "35+",
         "label": "marketplace entities"
@@ -30,23 +30,23 @@
         "label": "typical plugin build"
       }
     ],
-    "plugLifecycleEyebrow": "How it works",
-    "plugSdkEyebrow": "SDK",
-    "plugLifecycleLead1": "After install the platform records the package in .kb/marketplace.lock with a SHA-256 checksum. On every start, discovery verifies integrity and loads the manifest.",
-    "plugLifecycleLead2": "The manifest extracts entity kinds — seven types: CLI commands, REST routes, Studio pages, workflow handlers, webhook handlers, WebSocket channels, cron schedules. One plugin can register any combination.",
-    "plugSurfaceLead3": "Plugins are isolated: each gets only the platform resources it declared. Full OS isolation available in container/remote execution mode.",
-    "plugMetaDesc": "Install one package — get CLI commands, REST routes, and a Studio page automatically. Open SDK for your own plugins.",
-    "plugLifecycleLead3": "On command invocation the engine picks an execution backend. In-process is the default — minimal overhead. Subprocess and worker-pool add process isolation. Remote gives full OS isolation on a separate machine.",
-    "plugSurfaceLead1": "A plugin declares CLI commands, REST routes, and a Studio page in one file — manifest.ts. On install, the engine registers everything automatically.",
-    "plugPermLead1": "Every plugin declares in its manifest what it needs: read git, call LLM, write to fs. You see this before running install.",
-    "plugPermLead2": "This isn't a hard guarantee — with in-process execution the platform enforces declared permissions, but full OS isolation requires container or remote mode.",
-    "plugHeroInstallBtn": "Install KB Labs",
-    "plugSdkTitle": "Just the business logic",
-    "plugPermLead3": "Like mobile app permissions: you know what the plugin wants and make an informed decision.",
-    "plugCtaTitle": "First plugin in 5 minutes.",
-    "plugHeroTitleHighlight": "A plugin is",
-    "plugHeroDescription": "Install one package — the engine registers CLI commands, REST routes, and a Studio page. No manual config. Permissions declared in the manifest — visible before install.",
-    "plugEcoSteps": [
+    "lifecycleEyebrow": "How it works",
+    "sdkEyebrow": "SDK",
+    "lifecycleLead1": "After install the platform records the package in .kb/marketplace.lock with a SHA-256 checksum. On every start, discovery verifies integrity and loads the manifest.",
+    "lifecycleLead2": "The manifest extracts entity kinds — seven types: CLI commands, REST routes, Studio pages, workflow handlers, webhook handlers, WebSocket channels, cron schedules. One plugin can register any combination.",
+    "surfaceLead3": "Plugins are isolated: each gets only the platform resources it declared. Full OS isolation available in container/remote execution mode.",
+    "metaDesc": "Install one package — get CLI commands, REST routes, and a Studio page automatically. Open SDK for your own plugins.",
+    "lifecycleLead3": "On command invocation the engine picks an execution backend. In-process is the default — minimal overhead. Subprocess and worker-pool add process isolation. Remote gives full OS isolation on a separate machine.",
+    "surfaceLead1": "A plugin declares CLI commands, REST routes, and a Studio page in one file — manifest.ts. On install, the engine registers everything automatically.",
+    "permLead1": "Every plugin declares in its manifest what it needs: read git, call LLM, write to fs. You see this before running install.",
+    "permLead2": "This isn't a hard guarantee — with in-process execution the platform enforces declared permissions, but full OS isolation requires container or remote mode.",
+    "heroInstallBtn": "Install KB Labs",
+    "sdkTitle": "Just the business logic",
+    "permLead3": "Like mobile app permissions: you know what the plugin wants and make an informed decision.",
+    "ctaTitle": "First plugin in 5 minutes.",
+    "heroTitleHighlight": "A plugin is",
+    "heroDescription": "Install one package — the engine registers CLI commands, REST routes, and a Studio page. No manual config. Permissions declared in the manifest — visible before install.",
+    "ecoSteps": [
       {
         "step": "1",
         "title": "Scaffold",
@@ -63,11 +63,11 @@
         "desc": "Install locally or publish to the marketplace. kb plugins list shows it immediately."
       }
     ],
-    "plugSurfaceTitle": "One manifest — three surfaces",
-    "plugHeroDocsBtn": "Documentation",
-    "plugEcoEyebrow": "Ecosystem",
-    "plugEcoTitle": "Build and publish your own plugin",
-    "plugSdkDocsBtn": "SDK documentation",
-    "plugCtaEyebrow": "Try it now"
+    "surfaceTitle": "One manifest — three surfaces",
+    "heroDocsBtn": "Documentation",
+    "ecoEyebrow": "Ecosystem",
+    "ecoTitle": "Build and publish your own plugin",
+    "sdkDocsBtn": "SDK documentation",
+    "ctaEyebrow": "Try it now"
   }
 }

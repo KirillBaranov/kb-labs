@@ -1,12 +1,12 @@
 {
-  "page": {
-    "deployConfigTitle": "One file. Apps and infra together.",
-    "deployCtaDocsBtn": "Documentation",
-    "deployFeaturesTitle": "The details that matter.",
-    "deployCommandsTitle": "Everything is scriptable.",
-    "deployHeroDescription": "docker compose for production — git-aware, multi-host, over SSH. Build, push, pull, restart — in order, only what changed. One binary, one config, no cluster.",
-    "deployCtaTitle": "One binary. No Kubernetes.",
-    "deployCommands": [
+  "kbDeploy": {
+    "configTitle": "One file. Apps and infra together.",
+    "ctaDocsBtn": "Documentation",
+    "featuresTitle": "The details that matter.",
+    "commandsTitle": "Everything is scriptable.",
+    "heroDescription": "docker compose for production — git-aware, multi-host, over SSH. Build, push, pull, restart — in order, only what changed. One binary, one config, no cluster.",
+    "ctaTitle": "One binary. No Kubernetes.",
+    "commands": [
       {
         "cmd": "kb-deploy run",
         "desc": "Build and deploy affected targets (git diff against last deployed SHA)."
@@ -32,17 +32,17 @@
         "desc": "Bring up stateful infra declared under infrastructure. Idempotent: running services are skipped."
       }
     ],
-    "deployHeroTitle": "Deploy before you need",
-    "deployHeroDocsBtn": "Documentation",
-    "deployCommandsEyebrow": "Commands",
-    "deployConfigLead1": "Drop .kb/deploy.yaml in the repo. kb-deploy reads it and decides what to build, push, and restart — over SSH, on the target host.",
-    "deployCtaEyebrow": "Install",
-    "deployMetaDesc": "docker compose for production — git-aware diff, multi-host over SSH, build → push → pull → restart in one command.",
-    "deployHeroTitleHighlight": "Kubernetes.",
-    "deployFeaturesEyebrow": "How it works",
-    "deployConfigEyebrow": "Configuration",
-    "deployConfigLead2": "SSH_KEY is the name of an env variable holding the PEM key. Locally — in .env, in CI — as a secret.",
-    "deployFeatures": [
+    "heroTitle": "Deploy before you need",
+    "heroDocsBtn": "Documentation",
+    "commandsEyebrow": "Commands",
+    "configLead1": "Drop .kb/deploy.yaml in the repo. kb-deploy reads it and decides what to build, push, and restart — over SSH, on the target host.",
+    "ctaEyebrow": "Install",
+    "metaDesc": "docker compose for production — git-aware diff, multi-host over SSH, build → push → pull → restart in one command.",
+    "heroTitleHighlight": "Kubernetes.",
+    "featuresEyebrow": "How it works",
+    "configEyebrow": "Configuration",
+    "configLead2": "SSH_KEY is the name of an env variable holding the PEM key. Locally — in .env, in CI — as a secret.",
+    "features": [
       {
         "title": "Deploys only what changed",
         "detail": "Affected targets are detected via git diff against the last deployed SHA. Nothing untouched rebuilds."
@@ -56,7 +56,7 @@
         "detail": "Every target remembers what it's currently running. status shows you the drift between HEAD and prod for each service."
       }
     ],
-    "deployMetaTitle": "kb-deploy — KB Labs",
-    "deployCommandsFootnote": "All commands support --json for scripts and CI"
+    "metaTitle": "kb-deploy — KB Labs",
+    "commandsFootnote": "All commands support --json for scripts and CI"
   }
 }

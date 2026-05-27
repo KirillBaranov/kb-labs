@@ -1,9 +1,9 @@
 {
-  "page": {
-    "monFeaturesTitle": "The details that matter.",
-    "monCommandsFootnote": "All commands support --json for scripts and agent workflows",
-    "monHeroTitleHighlight": "agent watch.",
-    "monFeatures": [
+  "kbMonitor": {
+    "featuresTitle": "The details that matter.",
+    "commandsFootnote": "All commands support --json for scripts and agent workflows",
+    "heroTitleHighlight": "agent watch.",
+    "features": [
       {
         "title": "Health across every target, one command",
         "detail": "health runs HTTP or TCP probes against every target defined in deploy.yaml. Pass or fail per service, with latency."
@@ -17,16 +17,16 @@
         "detail": "logs streams docker logs from the host. --lines for a tail, --follow for live tail. No more SSH into a box just to tail a file."
       }
     ],
-    "monConfigTitle": "Same file as kb-deploy.",
-    "monConfigLead2": "Deploy and observability are paired by design. If kb-deploy knows about a target, kb-monitor does too.",
-    "monCtaTitle": "Set up once. Forget about monitoring.",
-    "monCtaEyebrow": "Install",
-    "monHeroTitle": "Set it up once. Let the",
-    "monMetaTitle": "kb-monitor — KB Labs",
-    "monCommandsEyebrow": "Commands",
-    "monHeroDescription": "kb-monitor observes services deployed by kb-deploy. Every command has --json with a stable schema — the agent runs health checks, reads logs, and reacts autonomously.",
-    "monConfigEyebrow": "Configuration",
-    "monCommands": [
+    "configTitle": "Same file as kb-deploy.",
+    "configLead2": "Deploy and observability are paired by design. If kb-deploy knows about a target, kb-monitor does too.",
+    "ctaTitle": "Set up once. Forget about monitoring.",
+    "ctaEyebrow": "Install",
+    "heroTitle": "Set it up once. Let the",
+    "metaTitle": "kb-monitor — KB Labs",
+    "commandsEyebrow": "Commands",
+    "heroDescription": "kb-monitor observes services deployed by kb-deploy. Every command has --json with a stable schema — the agent runs health checks, reads logs, and reacts autonomously.",
+    "configEyebrow": "Configuration",
+    "commands": [
       {
         "cmd": "kb-monitor health",
         "desc": "Run health probes against every target. Pass or fail per service, with response latency."
@@ -56,11 +56,11 @@
         "desc": "Execute a command inside the running container. Any command after -- is passed through verbatim."
       }
     ],
-    "monHeroDocsBtn": "Documentation",
-    "monConfigLead1": "kb-monitor reads .kb/deploy.yaml — the same file used to deploy services. No second source of truth, no parallel inventory.",
-    "monCtaDocsBtn": "Documentation",
-    "monCommandsTitle": "Everything is scriptable.",
-    "monFeaturesEyebrow": "How it works",
-    "monMetaDesc": "Agent-native service observability. Health, uptime, image SHA, logs, exec — all with --json."
+    "heroDocsBtn": "Documentation",
+    "configLead1": "kb-monitor reads .kb/deploy.yaml — the same file used to deploy services. No second source of truth, no parallel inventory.",
+    "ctaDocsBtn": "Documentation",
+    "commandsTitle": "Everything is scriptable.",
+    "featuresEyebrow": "How it works",
+    "metaDesc": "Agent-native service observability. Health, uptime, image SHA, logs, exec — all with --json."
   }
 }

@@ -26,11 +26,11 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: 'page' });
+  const t = await getTranslations({ locale, namespace: 'gateway' });
   return buildPageMetadata({
     locale,
-    title: t('gwMetaTitle'),
-    description: t('gwMetaDesc'),
+    title: t('metaTitle'),
+    description: t('metaDesc'),
     path: '/product/gateway',
   });
 }
@@ -90,7 +90,7 @@ export default async function GatewayPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const t = await getTranslations({ locale, namespace: 'page' });
+  const t = await getTranslations({ locale, namespace: 'gateway' });
 
   return (
     <>
@@ -105,21 +105,21 @@ export default async function GatewayPage({ params }: Props) {
               {/* i18n-ignore: brand + port label */}
               <Eyebrow className="mb-4">Infrastructure · :4000</Eyebrow>
               <h1 className="mb-5 text-4xl font-bold leading-tight tracking-tight text-kb-text sm:text-5xl">
-                {t('gwHeroTitle')}{' '}
-                <GradientText>{t('gwHeroTitleHighlight')}</GradientText>
+                {t('heroTitle')}{' '}
+                <GradientText>{t('heroTitleHighlight')}</GradientText>
               </h1>
               <p className="mb-8 text-lg leading-relaxed text-muted/70">
-                {t('gwHeroDescription')}
+                {t('heroDescription')}
               </p>
               <div className="flex flex-wrap justify-center gap-3">
                 <Button asChild size="lg">
                   <a href="https://docs.kblabs.ru/gateway" target="_blank" rel="noopener noreferrer">
-                    {t('gwHeroDocsBtn')}
+                    {t('heroDocsBtn')}
                     <ExternalLink className="ml-2 size-4" />
                   </a>
                 </Button>
                 <Button asChild variant="outline" size="lg">
-                  <a href={`/${locale}/install`}>{t('gwHeroInstallBtn')}</a>
+                  <a href={`/${locale}/install`}>{t('heroInstallBtn')}</a>
                 </Button>
               </div>
             </div>
@@ -137,14 +137,14 @@ export default async function GatewayPage({ params }: Props) {
                 {/* i18n-ignore: brand name */}
                 <Eyebrow className="mb-3">Platform API</Eyebrow>
                 <h2 className="mb-4 text-3xl font-bold tracking-tight text-kb-text">
-                  {t('gwPlatformTitle')}
+                  {t('platformTitle')}
                 </h2>
                 <p className="mb-6 text-base leading-relaxed text-muted/70">
-                  {t('gwPlatformLead')}
+                  {t('platformLead')}
                 </p>
                 <Button asChild variant="outline" size="sm">
                   <a href="https://docs.kblabs.ru/gateway" target="_blank" rel="noopener noreferrer">
-                    {t('gwPlatformDocsBtn')}
+                    {t('platformDocsBtn')}
                     <ExternalLink className="ml-2 size-3.5" />
                   </a>
                 </Button>
@@ -177,14 +177,14 @@ export default async function GatewayPage({ params }: Props) {
                 {/* i18n-ignore: brand name */}
                 <Eyebrow className="mb-3">AI Gateway</Eyebrow>
                 <h2 className="mb-4 text-3xl font-bold tracking-tight text-kb-text">
-                  {t('gwAiTitle')}
+                  {t('aiTitle')}
                 </h2>
                 <p className="mb-6 text-base leading-relaxed text-muted/70">
-                  {t('gwAiLead')}
+                  {t('aiLead')}
                 </p>
                 <Button asChild variant="outline" size="sm">
                   <a href="https://docs.kblabs.ru/gateway" target="_blank" rel="noopener noreferrer">
-                    {t('gwAiDocsBtn')}
+                    {t('aiDocsBtn')}
                     <ExternalLink className="ml-2 size-3.5" />
                   </a>
                 </Button>
@@ -201,14 +201,14 @@ export default async function GatewayPage({ params }: Props) {
                 {/* i18n-ignore: brand name */}
                 <Eyebrow className="mb-3">Telemetry</Eyebrow>
                 <h2 className="mb-4 text-3xl font-bold tracking-tight text-kb-text">
-                  {t('gwTelemetryTitle')}
+                  {t('telemetryTitle')}
                 </h2>
                 <p className="mb-6 text-base leading-relaxed text-muted/70">
-                  {t('gwTelemetryLead')}
+                  {t('telemetryLead')}
                 </p>
                 <Button asChild variant="outline" size="sm">
                   <a href="https://docs.kblabs.ru/gateway" target="_blank" rel="noopener noreferrer">
-                    {t('gwTelemetryDocsBtn')}
+                    {t('telemetryDocsBtn')}
                     <ExternalLink className="ml-2 size-3.5" />
                   </a>
                 </Button>
@@ -233,19 +233,19 @@ export default async function GatewayPage({ params }: Props) {
                 <BorderBeam />
                 <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[360px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/[0.06] blur-[90px]" />
                 <div className="relative z-10">
-                  <Eyebrow className="mb-4">{t('gwCtaEyebrow')}</Eyebrow>
+                  <Eyebrow className="mb-4">{t('ctaEyebrow')}</Eyebrow>
                   <h2 className="mb-4 text-[clamp(1.8rem,3.5vw,2.8rem)] font-bold leading-tight tracking-tight text-kb-text">
-                    {t('gwCtaTitle')}
+                    {t('ctaTitle')}
                   </h2>
                   <p className="mx-auto mb-8 max-w-[44ch] text-[1.05rem] leading-[1.7] text-muted">
-                    {t('gwCtaDescription')}
+                    {t('ctaDescription')}
                   </p>
                   <div className="flex flex-wrap justify-center gap-3">
                     <Button variant="primary" size="lg" href={`/${locale}/install`}>
-                      {t('gwCtaInstallBtn')}
+                      {t('ctaInstallBtn')}
                     </Button>
                     <Button variant="secondary" size="lg" href="https://docs.kblabs.ru/gateway" target="_blank" rel="noopener noreferrer">
-                      {t('gwCtaDocsBtn')}
+                      {t('ctaDocsBtn')}
                     </Button>
                   </div>
                 </div>

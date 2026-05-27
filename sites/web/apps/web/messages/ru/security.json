@@ -1,8 +1,8 @@
 {
-  "page": {
-    "secAuthTitle": "Токены живут на вашей машине.",
-    "secCtaGithubBtn": "Посмотреть код на GitHub",
-    "secDataFlow": [
+  "security": {
+    "authTitle": "Токены живут на вашей машине.",
+    "ctaGithubBtn": "Посмотреть код на GitHub",
+    "dataFlow": [
       {
         "dataType": "Исходный код",
         "destination": "Только ваш компьютер",
@@ -46,15 +46,15 @@
         "status": "local"
       }
     ],
-    "secHeroEyebrow": "БЕЗОПАСНОСТЬ",
-    "secDataFlowTitle": "Что покидает вашу сеть.",
-    "secMetaTitle": "Безопасность — KB Labs",
-    "secDisclosureSteps": [
+    "heroEyebrow": "БЕЗОПАСНОСТЬ",
+    "dataFlowTitle": "Что покидает вашу сеть.",
+    "metaTitle": "Безопасность — KB Labs",
+    "disclosureSteps": [
       "Напишите на security@kblabs.dev с полным описанием проблемы",
       "Мы ответим в течение 72 часов и подтвердим область уязвимости",
       "Исправление выйдет в следующем патч-релизе с упоминанием автора"
     ],
-    "secStats": [
+    "stats": [
       {
         "value": "100%",
         "label": "Open source",
@@ -76,7 +76,7 @@
         "description": "In-process, subprocess/container и worker-pool."
       }
     ],
-    "secAuthFacts": [
+    "authFacts": [
       {
         "label": "Область токена",
         "value": "Device-scoped JWT"
@@ -102,20 +102,20 @@
         "value": "Немедленный, без зависимости от TTL"
       }
     ],
-    "secTableHeaderDest": "Куда",
-    "secTableHeaderCond": "Условие",
-    "secCtaBody": "Если у вас особые требования к безопасности или вы хотите провести аудит — свяжитесь напрямую.",
-    "secTableHeaderType": "Тип данных",
-    "secDisclosureTitle": "Нашли уязвимость?",
-    "secDisclosureEyebrow": "Ответственное раскрытие",
-    "secDisclosureBtn": "Написать в security",
-    "secDisclosureBody": "Если вы нашли уязвимость — напишите нам до публичного раскрытия. Мы отвечаем в течение 48 часов и публично благодарим исследователей после выпуска фикса.",
-    "secDataFlowSubtitle": "Полная карта передвижения данных — без «примерно» и «иногда».",
-    "secHeroTitle": "Ваш код и данные",
-    "secPillarsEyebrow": "Основные принципы",
-    "secTableHeaderStatus": "Статус",
-    "secPillarsTitle": "Безопасность по умолчанию, не опционально.",
-    "secSandboxLayers": [
+    "tableHeaderDest": "Куда",
+    "tableHeaderCond": "Условие",
+    "ctaBody": "Если у вас особые требования к безопасности или вы хотите провести аудит — свяжитесь напрямую.",
+    "tableHeaderType": "Тип данных",
+    "disclosureTitle": "Нашли уязвимость?",
+    "disclosureEyebrow": "Ответственное раскрытие",
+    "disclosureBtn": "Написать в security",
+    "disclosureBody": "Если вы нашли уязвимость — напишите нам до публичного раскрытия. Мы отвечаем в течение 48 часов и публично благодарим исследователей после выпуска фикса.",
+    "dataFlowSubtitle": "Полная карта передвижения данных — без «примерно» и «иногда».",
+    "heroTitle": "Ваш код и данные",
+    "pillarsEyebrow": "Основные принципы",
+    "tableHeaderStatus": "Статус",
+    "pillarsTitle": "Безопасность по умолчанию, не опционально.",
+    "sandboxLayers": [
       {
         "num": "1",
         "title": "Декларация в манифесте",
@@ -137,9 +137,9 @@
         "description": "Плагин работает в OCI-контейнере. Полная изоляция файловой системы и сети."
       }
     ],
-    "secHeroTitleHighlight": "остаются на вашей машине.",
-    "secComplianceTitle": "Честно про сертификации.",
-    "secComplianceItems": [
+    "heroTitleHighlight": "остаются на вашей машине.",
+    "complianceTitle": "Честно про сертификации.",
+    "complianceItems": [
       {
         "name": "Open Source",
         "status": "Доступно",
@@ -159,10 +159,10 @@
         "statusClass": "planned"
       }
     ],
-    "secComplianceSubtitle": "Ранняя стадия — не врём про статус.",
-    "secCtaEyebrow": "Остались вопросы?",
-    "secSandboxTitle": "Четыре слоя sandbox-изоляции.",
-    "secFlowStatus": {
+    "complianceSubtitle": "Ранняя стадия — не врём про статус.",
+    "ctaEyebrow": "Остались вопросы?",
+    "sandboxTitle": "Четыре слоя sandbox-изоляции.",
+    "flowStatus": {
       "local": {
         "label": "На вашей машине"
       },
@@ -173,13 +173,13 @@
         "label": "Внешняя инфра"
       }
     },
-    "secSandboxEyebrow": "Изоляция плагинов",
-    "secAuthSubtitle": "Gateway не использует централизованный сервис аутентификации — ключи генерируются и хранятся локально.",
-    "secAuthEyebrow": "JWT-аутентификация",
-    "secSandboxSubtitle": "Плагин не может получить доступ к ресурсам, которые не объявил в манифесте — это контракт, а не рекомендация.",
-    "secHeroDescription": "KB Labs работает on-prem по умолчанию, open source от начала до конца, и никогда не отправляет данные без вашего явного действия. Всё проверяемо в исходниках.",
-    "secMetaDesc": "On-prem по умолчанию, open source, данные только с вашего ведома, песочница для плагинов, JWT-аутентификация Gateway.",
-    "secPillars": [
+    "sandboxEyebrow": "Изоляция плагинов",
+    "authSubtitle": "Gateway не использует централизованный сервис аутентификации — ключи генерируются и хранятся локально.",
+    "authEyebrow": "JWT-аутентификация",
+    "sandboxSubtitle": "Плагин не может получить доступ к ресурсам, которые не объявил в манифесте — это контракт, а не рекомендация.",
+    "heroDescription": "KB Labs работает on-prem по умолчанию, open source от начала до конца, и никогда не отправляет данные без вашего явного действия. Всё проверяемо в исходниках.",
+    "metaDesc": "On-prem по умолчанию, open source, данные только с вашего ведома, песочница для плагинов, JWT-аутентификация Gateway.",
+    "pillars": [
       {
         "title": "On-prem по умолчанию",
         "description": "KB Labs работает полностью на вашей инфраструктуре. Нет облачных зависимостей, данные не покидают вашу сеть. Вы контролируете где хранятся код, состояние workflow и логи."
@@ -193,9 +193,9 @@
         "description": "Вся платформа — open source. Каждая строка кода доступна для аудита. Никаких чёрных ящиков, скрытой телеметрии или «поверьте нам». Проверяйте сами."
       }
     ],
-    "secCtaTitle": "Поговорим о безопасности.",
-    "secCtaContactBtn": "Связаться",
-    "secDataFlowEyebrow": "Потоки данных",
-    "secComplianceEyebrow": "Соответствие стандартам"
+    "ctaTitle": "Поговорим о безопасности.",
+    "ctaContactBtn": "Связаться",
+    "dataFlowEyebrow": "Потоки данных",
+    "complianceEyebrow": "Соответствие стандартам"
   }
 }

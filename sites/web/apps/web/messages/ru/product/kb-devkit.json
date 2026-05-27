@@ -1,22 +1,22 @@
 {
-  "page": {
-    "devkitMetaDesc": "Content-addressable кэш задач, обнаружение затронутых пакетов, проверки качества — один Go-бинарник для любого TypeScript/Node.js монорепо.",
-    "devkitConfigTitle": "Один файл. Любой монорепо.",
-    "devkitConfigEyebrow": "Конфигурация",
-    "devkitHeroTitle": "Сборка 100 пакетов за",
-    "devkitFeaturesTitle": "Детали, которые важны.",
-    "devkitCommandsEyebrow": "Команды",
-    "devkitCommandsFootnote": "Все команды поддерживают --json для скриптов и CI",
-    "devkitConfigLead2": "Поддерживает pnpm, npm, yarn workspaces. Внутри KB Labs управляет сборкой 125+ пакетов.",
-    "devkitCommandsTitle": "Всё поддаётся автоматизации.",
-    "devkitConfigLead1": "Положи devkit.yaml в корень репозитория. kb-devkit найдёт все пакеты автоматически и запустит задачи в правильном порядке, учитывая зависимости между пакетами.",
-    "devkitHeroDescription": "Content-addressable кэш, параллельное выполнение и обнаружение затронутых пакетов. kb-devkit запускает только то, что действительно изменилось.",
-    "devkitHeroDocsBtn": "Документация",
-    "devkitHeroTitleHighlight": "секунду.",
-    "devkitCtaTitle": "Один бинарник. Любой TypeScript/Node.js монорепо.",
-    "devkitMetaTitle": "kb-devkit — KB Labs",
-    "devkitFeaturesEyebrow": "Как это работает",
-    "devkitCommands": [
+  "kbDevkit": {
+    "metaDesc": "Content-addressable кэш задач, обнаружение затронутых пакетов, проверки качества — один Go-бинарник для любого TypeScript/Node.js монорепо.",
+    "configTitle": "Один файл. Любой монорепо.",
+    "configEyebrow": "Конфигурация",
+    "heroTitle": "Сборка 100 пакетов за",
+    "featuresTitle": "Детали, которые важны.",
+    "commandsEyebrow": "Команды",
+    "commandsFootnote": "Все команды поддерживают --json для скриптов и CI",
+    "configLead2": "Поддерживает pnpm, npm, yarn workspaces. Внутри KB Labs управляет сборкой 125+ пакетов.",
+    "commandsTitle": "Всё поддаётся автоматизации.",
+    "configLead1": "Положи devkit.yaml в корень репозитория. kb-devkit найдёт все пакеты автоматически и запустит задачи в правильном порядке, учитывая зависимости между пакетами.",
+    "heroDescription": "Content-addressable кэш, параллельное выполнение и обнаружение затронутых пакетов. kb-devkit запускает только то, что действительно изменилось.",
+    "heroDocsBtn": "Документация",
+    "heroTitleHighlight": "секунду.",
+    "ctaTitle": "Один бинарник. Любой TypeScript/Node.js монорепо.",
+    "metaTitle": "kb-devkit — KB Labs",
+    "featuresEyebrow": "Как это работает",
+    "commands": [
       {
         "cmd": "kb-devkit run build",
         "desc": "Запустить задачу build для всех пакетов с кэшем и параллельным выполнением."
@@ -42,9 +42,9 @@
         "desc": "Показать health score (A–F), количество проблем по категориям и метрики покрытия по всем пакетам."
       }
     ],
-    "devkitCtaEyebrow": "Установить",
-    "devkitCtaDocsBtn": "Документация",
-    "devkitFeatures": [
+    "ctaEyebrow": "Установить",
+    "ctaDocsBtn": "Документация",
+    "features": [
       {
         "title": "Content-addressable кэш",
         "detail": "SHA256 входных файлов → ключ кэша. Попадание — артефакты восстанавливаются за ~1ms. Промах — задача выполняется и результат сохраняется. Один файл в двух пакетах хранится один раз."

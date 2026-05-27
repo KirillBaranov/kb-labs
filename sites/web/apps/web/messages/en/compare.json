@@ -1,20 +1,20 @@
 {
-  "page": {
-    "cmpCtaTitle": "Easier to try than to compare.",
-    "cmpCtaDescription": "One install, five minutes — first workflow running on your machine.",
-    "cmpKbLabel": "Where KB Labs adds value",
-    "cmpObjectionsTitle": "Common questions — straight answers.",
-    "cmpHeroDescription": "We're not for everyone — and we're upfront about that. Here's a concrete breakdown of each alternative, including cases where the right answer is something else.",
-    "cmpMatrixTitle": "Who does what.",
-    "cmpDocsBtn": "Documentation",
-    "cmpMetaDesc": "How KB Labs compares to GitHub Actions, n8n, Temporal, and AI agents.",
-    "cmpHeroTitleHighlight": "and where it doesn't.",
-    "cmpMatrixEyebrow": "Feature matrix",
-    "cmpMatrixLegend": "✓ yes · ~ partial · – no · — not applicable",
-    "cmpGoodLabel": "What they do well",
-    "cmpMetaTitle": "Why KB Labs — Honest Comparison",
-    "cmpInstallBtn": "Install KB Labs",
-    "cmpObjections": [
+  "compare": {
+    "ctaTitle": "Easier to try than to compare.",
+    "ctaDescription": "One install, five minutes — first workflow running on your machine.",
+    "kbLabel": "Where KB Labs adds value",
+    "objectionsTitle": "Common questions — straight answers.",
+    "heroDescription": "We're not for everyone — and we're upfront about that. Here's a concrete breakdown of each alternative, including cases where the right answer is something else.",
+    "matrixTitle": "Who does what.",
+    "docsBtn": "Documentation",
+    "metaDesc": "How KB Labs compares to GitHub Actions, n8n, Temporal, and AI agents.",
+    "heroTitleHighlight": "and where it doesn't.",
+    "matrixEyebrow": "Feature matrix",
+    "matrixLegend": "✓ yes · ~ partial · – no · — not applicable",
+    "goodLabel": "What they do well",
+    "metaTitle": "Why KB Labs — Honest Comparison",
+    "installBtn": "Install KB Labs",
+    "objections": [
       {
         "q": "We're already on GitHub Actions — why switch?",
         "a": "You don't have to switch. KB Labs handles what CI/CD doesn't — review gates, AI orchestration, QA trends, agent workflows. Run it beside Actions."
@@ -40,8 +40,8 @@
         "a": "As first-class workflow steps with typed contracts and permission enforcement. The same runtime governs humans, bots, and agents."
       }
     ],
-    "cmpHeroEyebrow": "Honest comparison",
-    "cmpTableHeaders": [
+    "heroEyebrow": "Honest comparison",
+    "tableHeaders": [
       "Feature",
       "KB Labs",
       "GitHub Actions",
@@ -49,7 +49,7 @@
       "Temporal",
       "LangChain"
     ],
-    "cmpTableCategories": [
+    "tableCategories": [
       {
         "label": "INFRASTRUCTURE",
         "rows": [
@@ -156,7 +156,7 @@
         ]
       }
     ],
-    "cmpAlternatives": [
+    "alternatives": [
       {
         "num": "01",
         "label": "GitHub Actions / GitLab CI",
@@ -222,7 +222,7 @@
         "note": ""
       }
     ],
-    "cmpHeroTitle": "Where KB Labs fits —",
-    "cmpObjectionsEyebrow": "Objections"
+    "heroTitle": "Where KB Labs fits —",
+    "objectionsEyebrow": "Objections"
   }
 }

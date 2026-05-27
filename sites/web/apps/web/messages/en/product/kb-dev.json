@@ -1,6 +1,6 @@
 {
-  "page": {
-    "kbdevFeatures": [
+  "kbDev": {
+    "features": [
       {
         "title": "Knows when a service actually died",
         "detail": "Tracks real PIDs because it spawned the processes. No port scanning, no stale state."
@@ -14,16 +14,16 @@
         "detail": "Reads service dependencies from devservices.yaml and starts in topological order automatically."
       }
     ],
-    "kbdevHeroTitle": "Stop juggling",
-    "kbdevFeaturesEyebrow": "How it works",
-    "kbdevMetaDesc": "One binary that starts services in the right order, waits until they're actually up, and shuts everything down cleanly on exit.",
-    "kbdevHeroTitleHighlight": "terminal tabs",
-    "kbdevHeroDocsBtn": "Documentation",
-    "kbdevCtaDocsBtn": "Documentation",
-    "kbdevCommandsTitle": "Everything is scriptable.",
-    "kbdevCommandsEyebrow": "Commands",
-    "kbdevConfigTitle": "One file. Any project.",
-    "kbdevCommands": [
+    "heroTitle": "Stop juggling",
+    "featuresEyebrow": "How it works",
+    "metaDesc": "One binary that starts services in the right order, waits until they're actually up, and shuts everything down cleanly on exit.",
+    "heroTitleHighlight": "terminal tabs",
+    "heroDocsBtn": "Documentation",
+    "ctaDocsBtn": "Documentation",
+    "commandsTitle": "Everything is scriptable.",
+    "commandsEyebrow": "Commands",
+    "configTitle": "One file. Any project.",
+    "commands": [
       {
         "cmd": "kb-dev start",
         "desc": "Start all services in dependency order. Health-probes before reporting alive."
@@ -49,14 +49,14 @@
         "desc": "Run environment diagnostics: ports, deps, config, health."
       }
     ],
-    "kbdevHeroDescription": "One binary that starts services in the right order, waits until they're actually up, and shuts everything down cleanly on exit.",
-    "kbdevCtaEyebrow": "Install",
-    "kbdevCtaTitle": "One binary. No dependencies.",
-    "kbdevMetaTitle": "kb-dev — KB Labs",
-    "kbdevConfigLead1": "Drop devservices.yaml in the project root — kb-dev finds it automatically by walking up from the current directory.",
-    "kbdevConfigLead2": "Works with any stack: Docker, pnpm, npm, make, shell. KB Labs uses .kb/devservices.yaml — same format.",
-    "kbdevCommandsFootnote": "All commands support --json for scripts and CI",
-    "kbdevFeaturesTitle": "The details that matter.",
-    "kbdevConfigEyebrow": "Configuration"
+    "heroDescription": "One binary that starts services in the right order, waits until they're actually up, and shuts everything down cleanly on exit.",
+    "ctaEyebrow": "Install",
+    "ctaTitle": "One binary. No dependencies.",
+    "metaTitle": "kb-dev — KB Labs",
+    "configLead1": "Drop devservices.yaml in the project root — kb-dev finds it automatically by walking up from the current directory.",
+    "configLead2": "Works with any stack: Docker, pnpm, npm, make, shell. KB Labs uses .kb/devservices.yaml — same format.",
+    "commandsFootnote": "All commands support --json for scripts and CI",
+    "featuresTitle": "The details that matter.",
+    "configEyebrow": "Configuration"
   }
 }

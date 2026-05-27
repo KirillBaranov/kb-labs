@@ -1,10 +1,10 @@
 {
-  "page": {
-    "contactSecurityLabel": "Security",
-    "contactMetaTitle": "Contact — KB Labs",
-    "contactChannelsEyebrow": "How can we help?",
-    "contactHeroTitle": "Get in touch",
-    "contactCommunity": [
+  "contact": {
+    "securityLabel": "Security",
+    "metaTitle": "Contact — KB Labs",
+    "channelsEyebrow": "How can we help?",
+    "heroTitle": "Get in touch",
+    "community": [
       {
         "label": "GitHub",
         "description": "File issues, browse source, contribute.",
@@ -16,11 +16,11 @@
         "href": "https://t.me/kirill_baranov"
       }
     ],
-    "contactCommunityEyebrow": "Community",
-    "contactGeneralLabel": "General",
-    "contactLocationDesc": "Remote team. Russia.",
-    "contactHeroDescription": "Small team — we read everything and respond fast.",
-    "contactChannels": [
+    "communityEyebrow": "Community",
+    "generalLabel": "General",
+    "locationDesc": "Remote team. Russia.",
+    "heroDescription": "Small team — we read everything and respond fast.",
+    "channels": [
       {
         "label": "Sales",
         "description": "Discuss pricing, enterprise plans, or custom contracts.",
@@ -46,8 +46,8 @@
         "href": "mailto:kirillBaranovJob@yandex.ru"
       }
     ],
-    "contactHeroEyebrow": "Contact",
-    "contactLocationEyebrow": "Location",
-    "contactMetaDesc": "Get in touch with the KB Labs team."
+    "heroEyebrow": "Contact",
+    "locationEyebrow": "Location",
+    "metaDesc": "Get in touch with the KB Labs team."
   }
 }

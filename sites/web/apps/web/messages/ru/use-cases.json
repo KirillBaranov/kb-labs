@@ -1,7 +1,7 @@
 {
-  "page": {
-    "ucOwnerLabel": "Владелец:",
-    "ucItems": [
+  "useCases": {
+    "ownerLabel": "Владелец:",
+    "items": [
       {
         "title": "Release Orchestration",
         "hook": "Ваши релизы живут в пяти Slack-тредах, трёх скриптах и молитве.",
@@ -67,18 +67,18 @@
         "owner": "Engineering Lead / Project Manager"
       }
     ],
-    "ucHeroEyebrow": "Сценарии использования",
-    "ucCtaTitle": "Готовы автоматизировать свой dev loop?",
-    "ucHeroDescription": "Конкретные вещи, которые команды автоматизируют через KB Labs сегодня — без абстрактных обещаний.",
-    "ucCtaInstallBtn": "Установить KB Labs",
-    "ucMetaDesc": "Поймите, зачем KB Labs вашей команде: практические инженерные use cases для on-prem plugin-based автоматизации.",
-    "ucHeroTitleHighlight": "Реальные workflow.",
-    "ucSituationLabel": "Как это бывает",
-    "ucResultLabel": "Что получается",
-    "ucHeroTitle": "Реальные сценарии.",
-    "ucCtaDescription": "On-prem, открытый код, без vendor lock-in.",
-    "ucMetaTitle": "Сценарии использования — KB Labs",
-    "ucCtaContactBtn": "Связаться",
-    "ucHowLabel": "Как это работает"
+    "heroEyebrow": "Сценарии использования",
+    "ctaTitle": "Готовы автоматизировать свой dev loop?",
+    "heroDescription": "Конкретные вещи, которые команды автоматизируют через KB Labs сегодня — без абстрактных обещаний.",
+    "ctaInstallBtn": "Установить KB Labs",
+    "metaDesc": "Поймите, зачем KB Labs вашей команде: практические инженерные use cases для on-prem plugin-based автоматизации.",
+    "heroTitleHighlight": "Реальные workflow.",
+    "situationLabel": "Как это бывает",
+    "resultLabel": "Что получается",
+    "heroTitle": "Реальные сценарии.",
+    "ctaDescription": "On-prem, открытый код, без vendor lock-in.",
+    "metaTitle": "Сценарии использования — KB Labs",
+    "ctaContactBtn": "Связаться",
+    "howLabel": "Как это работает"
   }
 }

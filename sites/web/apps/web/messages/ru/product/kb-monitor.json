@@ -1,9 +1,9 @@
 {
-  "page": {
-    "monFeaturesTitle": "Детали, которые важны.",
-    "monCommandsFootnote": "Все команды поддерживают --json для скриптов и агентных workflow",
-    "monHeroTitleHighlight": "агент",
-    "monFeatures": [
+  "kbMonitor": {
+    "featuresTitle": "Детали, которые важны.",
+    "commandsFootnote": "Все команды поддерживают --json для скриптов и агентных workflow",
+    "heroTitleHighlight": "агент",
+    "features": [
       {
         "title": "Health по всем целям одной командой",
         "detail": "health запускает HTTP или TCP-проверки по каждой цели из deploy.yaml. Pass или fail, с задержкой ответа."
@@ -17,16 +17,16 @@
         "detail": "logs стримит docker logs с хоста. --lines для tail, --follow для live. Никаких заходов на хост ради одного файла логов."
       }
     ],
-    "monConfigTitle": "Тот же файл, что у kb-deploy.",
-    "monConfigLead2": "Деплой и наблюдение по дизайну идут в паре. Если kb-deploy знает про цель, kb-monitor знает про неё тоже.",
-    "monCtaTitle": "Настроил один раз. Забыл про мониторинг.",
-    "monCtaEyebrow": "Установить",
-    "monHeroTitle": "Настроил один раз. Дальше смотрит",
-    "monMetaTitle": "kb-monitor — KB Labs",
-    "monCommandsEyebrow": "Команды",
-    "monHeroDescription": "kb-monitor наблюдает за сервисами, которые раскатал kb-deploy. У всех команд есть --json со стабильной схемой — агент сам гоняет health, читает логи и реагирует.",
-    "monConfigEyebrow": "Конфигурация",
-    "monCommands": [
+    "configTitle": "Тот же файл, что у kb-deploy.",
+    "configLead2": "Деплой и наблюдение по дизайну идут в паре. Если kb-deploy знает про цель, kb-monitor знает про неё тоже.",
+    "ctaTitle": "Настроил один раз. Забыл про мониторинг.",
+    "ctaEyebrow": "Установить",
+    "heroTitle": "Настроил один раз. Дальше смотрит",
+    "metaTitle": "kb-monitor — KB Labs",
+    "commandsEyebrow": "Команды",
+    "heroDescription": "kb-monitor наблюдает за сервисами, которые раскатал kb-deploy. У всех команд есть --json со стабильной схемой — агент сам гоняет health, читает логи и реагирует.",
+    "configEyebrow": "Конфигурация",
+    "commands": [
       {
         "cmd": "kb-monitor health",
         "desc": "Запустить health-проверки по всем целям. Pass или fail для каждой, с задержкой ответа."
@@ -56,11 +56,11 @@
         "desc": "Выполнить команду внутри работающего контейнера. Всё после -- уходит как есть."
       }
     ],
-    "monHeroDocsBtn": "Документация",
-    "monConfigLead1": "kb-monitor читает .kb/deploy.yaml — тот же, из которого раскатываются сервисы. Никаких вторых источников правды и параллельных инвентарей.",
-    "monCtaDocsBtn": "Документация",
-    "monCommandsTitle": "Всё поддаётся автоматизации.",
-    "monFeaturesEyebrow": "Как это работает",
-    "monMetaDesc": "Agent-native наблюдение за сервисами. Health, uptime, SHA образов, логи, exec — всё через --json."
+    "heroDocsBtn": "Документация",
+    "configLead1": "kb-monitor читает .kb/deploy.yaml — тот же, из которого раскатываются сервисы. Никаких вторых источников правды и параллельных инвентарей.",
+    "ctaDocsBtn": "Документация",
+    "commandsTitle": "Всё поддаётся автоматизации.",
+    "featuresEyebrow": "Как это работает",
+    "metaDesc": "Agent-native наблюдение за сервисами. Health, uptime, SHA образов, логи, exec — всё через --json."
   }
 }

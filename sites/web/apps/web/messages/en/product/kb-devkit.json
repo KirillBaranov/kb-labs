@@ -1,22 +1,22 @@
 {
-  "page": {
-    "devkitMetaDesc": "Content-addressable task cache, affected package detection, quality checks — one Go binary for any TypeScript/Node.js monorepo.",
-    "devkitConfigTitle": "One file. Any monorepo.",
-    "devkitConfigEyebrow": "Configuration",
-    "devkitHeroTitle": "Build 100 packages in",
-    "devkitFeaturesTitle": "The details that matter.",
-    "devkitCommandsEyebrow": "Commands",
-    "devkitCommandsFootnote": "All commands support --json for scripts and CI",
-    "devkitConfigLead2": "Supports pnpm, npm, yarn workspaces. Inside KB Labs it manages the build of 125+ packages.",
-    "devkitCommandsTitle": "Everything is scriptable.",
-    "devkitConfigLead1": "Drop devkit.yaml in the repo root. kb-devkit finds all packages automatically and runs tasks in the right order, respecting inter-package dependencies.",
-    "devkitHeroDescription": "Content-addressable cache, parallel execution, and affected package detection. kb-devkit runs only what actually changed.",
-    "devkitHeroDocsBtn": "Documentation",
-    "devkitHeroTitleHighlight": "one second.",
-    "devkitCtaTitle": "One binary. Any TypeScript/Node.js monorepo.",
-    "devkitMetaTitle": "kb-devkit — KB Labs",
-    "devkitFeaturesEyebrow": "How it works",
-    "devkitCommands": [
+  "kbDevkit": {
+    "metaDesc": "Content-addressable task cache, affected package detection, quality checks — one Go binary for any TypeScript/Node.js monorepo.",
+    "configTitle": "One file. Any monorepo.",
+    "configEyebrow": "Configuration",
+    "heroTitle": "Build 100 packages in",
+    "featuresTitle": "The details that matter.",
+    "commandsEyebrow": "Commands",
+    "commandsFootnote": "All commands support --json for scripts and CI",
+    "configLead2": "Supports pnpm, npm, yarn workspaces. Inside KB Labs it manages the build of 125+ packages.",
+    "commandsTitle": "Everything is scriptable.",
+    "configLead1": "Drop devkit.yaml in the repo root. kb-devkit finds all packages automatically and runs tasks in the right order, respecting inter-package dependencies.",
+    "heroDescription": "Content-addressable cache, parallel execution, and affected package detection. kb-devkit runs only what actually changed.",
+    "heroDocsBtn": "Documentation",
+    "heroTitleHighlight": "one second.",
+    "ctaTitle": "One binary. Any TypeScript/Node.js monorepo.",
+    "metaTitle": "kb-devkit — KB Labs",
+    "featuresEyebrow": "How it works",
+    "commands": [
       {
         "cmd": "kb-devkit run build",
         "desc": "Run build across all packages in dependency order. Cached results restore in ~1ms."
@@ -42,9 +42,9 @@
         "desc": "Workspace health score (A–F), issue counts by category, coverage metrics."
       }
     ],
-    "devkitCtaEyebrow": "Install",
-    "devkitCtaDocsBtn": "Documentation",
-    "devkitFeatures": [
+    "ctaEyebrow": "Install",
+    "ctaDocsBtn": "Documentation",
+    "features": [
       {
         "title": "Identical inputs, zero work",
         "detail": "SHA256 hash of all input files. Cache hit restores outputs in ~1ms. No rebuild, no rerun, no wait."

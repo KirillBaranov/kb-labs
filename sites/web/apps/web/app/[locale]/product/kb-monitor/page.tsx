@@ -27,11 +27,11 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: 'page' });
+  const t = await getTranslations({ locale, namespace: 'kbMonitor' });
   return buildPageMetadata({
     locale,
-    title: t('monMetaTitle'),
-    description: t('monMetaDesc'),
+    title: t('metaTitle'),
+    description: t('metaDesc'),
     path: '/product/kb-monitor',
   });
 }
@@ -76,9 +76,9 @@ export default async function KbMonitorPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const t = await getTranslations({ locale, namespace: 'page' });
-  const monCommands = t.raw('monCommands') as CommandItem[];
-  const monFeatures = t.raw('monFeatures') as FeatureItem[];
+  const t = await getTranslations({ locale, namespace: 'kbMonitor' });
+  const monCommands = t.raw('commands') as CommandItem[];
+  const monFeatures = t.raw('features') as FeatureItem[];
 
   return (
     <>
@@ -94,16 +94,16 @@ export default async function KbMonitorPage({ params }: Props) {
                 {/* i18n-ignore: brand + tech label */}
                 <Eyebrow className="mb-4">Observability · Go</Eyebrow>
                 <h1 className="mb-5 text-4xl font-bold leading-tight tracking-tight text-kb-text sm:text-5xl">
-                  {t('monHeroTitle')}{' '}
-                  <GradientText>{t('monHeroTitleHighlight')}</GradientText>.
+                  {t('heroTitle')}{' '}
+                  <GradientText>{t('heroTitleHighlight')}</GradientText>.
                 </h1>
                 <p className="mb-8 text-lg leading-relaxed text-muted/70">
-                  {t('monHeroDescription')}
+                  {t('heroDescription')}
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <Button asChild size="lg">
                     <a href="https://docs.kblabs.ru/services/kb-monitor" target="_blank" rel="noopener noreferrer">
-                      {t('monHeroDocsBtn')}
+                      {t('heroDocsBtn')}
                       <ExternalLink className="ml-2 size-4" />
                     </a>
                   </Button>
@@ -136,15 +136,15 @@ export default async function KbMonitorPage({ params }: Props) {
           <Container>
             <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
               <AnimateOnScroll>
-                <Eyebrow className="mb-3">{t('monConfigEyebrow')}</Eyebrow>
+                <Eyebrow className="mb-3">{t('configEyebrow')}</Eyebrow>
                 <h2 className="mb-4 text-3xl font-bold tracking-tight text-kb-text">
-                  {t('monConfigTitle')}
+                  {t('configTitle')}
                 </h2>
                 <p className="mb-4 text-base leading-relaxed text-muted/70">
-                  {t('monConfigLead1')}
+                  {t('configLead1')}
                 </p>
                 <p className="text-base leading-relaxed text-muted/70">
-                  {t('monConfigLead2')}
+                  {t('configLead2')}
                 </p>
               </AnimateOnScroll>
 
@@ -164,9 +164,9 @@ export default async function KbMonitorPage({ params }: Props) {
           <Container>
             <AnimateOnScroll>
               <div className="mx-auto mb-12 max-w-xl text-center">
-                <Eyebrow className="mb-3">{t('monCommandsEyebrow')}</Eyebrow>
+                <Eyebrow className="mb-3">{t('commandsEyebrow')}</Eyebrow>
                 <h2 className="text-3xl font-bold tracking-tight text-kb-text">
-                  {t('monCommandsTitle')}
+                  {t('commandsTitle')}
                 </h2>
               </div>
             </AnimateOnScroll>
@@ -186,7 +186,7 @@ export default async function KbMonitorPage({ params }: Props) {
                 ))}
               </div>
               <p className="mt-3 text-center font-mono text-[0.65rem] text-muted/45 dark:text-muted/30">
-                {t('monCommandsFootnote')}
+                {t('commandsFootnote')}
               </p>
             </AnimateOnScroll>
           </Container>
@@ -197,9 +197,9 @@ export default async function KbMonitorPage({ params }: Props) {
           <Container>
             <AnimateOnScroll>
               <div className="mx-auto mb-12 max-w-xl text-center">
-                <Eyebrow className="mb-3">{t('monFeaturesEyebrow')}</Eyebrow>
+                <Eyebrow className="mb-3">{t('featuresEyebrow')}</Eyebrow>
                 <h2 className="text-3xl font-bold tracking-tight text-kb-text">
-                  {t('monFeaturesTitle')}
+                  {t('featuresTitle')}
                 </h2>
               </div>
             </AnimateOnScroll>
@@ -225,9 +225,9 @@ export default async function KbMonitorPage({ params }: Props) {
                 <BorderBeam />
                 <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[360px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/[0.06] blur-[90px]" />
                 <div className="relative z-10">
-                  <Eyebrow className="mb-4">{t('monCtaEyebrow')}</Eyebrow>
+                  <Eyebrow className="mb-4">{t('ctaEyebrow')}</Eyebrow>
                   <h2 className="mb-4 text-[clamp(1.8rem,3.5vw,2.8rem)] font-bold leading-tight tracking-tight text-kb-text">
-                    {t('monCtaTitle')}
+                    {t('ctaTitle')}
                   </h2>
                   <div className="mx-auto mb-8 flex max-w-md items-center justify-between gap-3 rounded-xl border border-line bg-surface/60 px-4 py-3">
                     {/* i18n-ignore: terminal command */}
@@ -236,7 +236,7 @@ export default async function KbMonitorPage({ params }: Props) {
                   </div>
                   <div className="flex flex-wrap justify-center gap-3">
                     <Button variant="primary" size="lg" href="https://docs.kblabs.ru/services/kb-monitor" target="_blank" rel="noopener noreferrer">
-                      {t('monCtaDocsBtn')}
+                      {t('ctaDocsBtn')}
                     </Button>
                     <Button variant="secondary" size="lg" href="https://github.com/KirillBaranov/kb-labs/releases/latest" target="_blank" rel="noopener noreferrer">
                       {/* i18n-ignore: brand name */}

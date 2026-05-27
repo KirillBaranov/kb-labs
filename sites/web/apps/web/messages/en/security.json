@@ -1,8 +1,8 @@
 {
-  "page": {
-    "secAuthTitle": "Tokens live on your machine.",
-    "secCtaGithubBtn": "View code on GitHub",
-    "secDataFlow": [
+  "security": {
+    "authTitle": "Tokens live on your machine.",
+    "ctaGithubBtn": "View code on GitHub",
+    "dataFlow": [
       {
         "dataType": "Source code",
         "destination": "Your machine only",
@@ -46,15 +46,15 @@
         "status": "local"
       }
     ],
-    "secHeroEyebrow": "SECURITY",
-    "secDataFlowTitle": "What leaves your network.",
-    "secMetaTitle": "Security — KB Labs",
-    "secDisclosureSteps": [
+    "heroEyebrow": "SECURITY",
+    "dataFlowTitle": "What leaves your network.",
+    "metaTitle": "Security — KB Labs",
+    "disclosureSteps": [
       "Email security@kblabs.dev with full details",
       "We respond within 72 hours and confirm scope",
       "Fix ships in the next patch release with credit"
     ],
-    "secStats": [
+    "stats": [
       {
         "value": "100%",
         "label": "Open source",
@@ -76,7 +76,7 @@
         "description": "In-process, subprocess/container, and worker-pool."
       }
     ],
-    "secAuthFacts": [
+    "authFacts": [
       {
         "label": "Token scope",
         "value": "Device-scoped JWT"
@@ -102,20 +102,20 @@
         "value": "Immediate, no TTL dependency"
       }
     ],
-    "secTableHeaderDest": "Destination",
-    "secTableHeaderCond": "Condition",
-    "secCtaBody": "If you have special security requirements or want to run an audit — reach out directly.",
-    "secTableHeaderType": "Data type",
-    "secDisclosureTitle": "Found a vulnerability?",
-    "secDisclosureEyebrow": "Responsible disclosure",
-    "secDisclosureBtn": "Email security",
-    "secDisclosureBody": "If you found a vulnerability — contact us before public disclosure. We respond within 48 hours and publicly thank researchers after the fix ships.",
-    "secDataFlowSubtitle": "Full data movement map — no \"approximately\" or \"sometimes\".",
-    "secHeroTitle": "Your code and data",
-    "secPillarsEyebrow": "Core principles",
-    "secTableHeaderStatus": "Status",
-    "secPillarsTitle": "Secure by default, not optional.",
-    "secSandboxLayers": [
+    "tableHeaderDest": "Destination",
+    "tableHeaderCond": "Condition",
+    "ctaBody": "If you have special security requirements or want to run an audit — reach out directly.",
+    "tableHeaderType": "Data type",
+    "disclosureTitle": "Found a vulnerability?",
+    "disclosureEyebrow": "Responsible disclosure",
+    "disclosureBtn": "Email security",
+    "disclosureBody": "If you found a vulnerability — contact us before public disclosure. We respond within 48 hours and publicly thank researchers after the fix ships.",
+    "dataFlowSubtitle": "Full data movement map — no \"approximately\" or \"sometimes\".",
+    "heroTitle": "Your code and data",
+    "pillarsEyebrow": "Core principles",
+    "tableHeaderStatus": "Status",
+    "pillarsTitle": "Secure by default, not optional.",
+    "sandboxLayers": [
       {
         "num": "1",
         "title": "Manifest declaration",
@@ -137,9 +137,9 @@
         "description": "Plugin runs in an OCI container. Full filesystem and network isolation."
       }
     ],
-    "secHeroTitleHighlight": "stay on your machine.",
-    "secComplianceTitle": "Honest about certifications.",
-    "secComplianceItems": [
+    "heroTitleHighlight": "stay on your machine.",
+    "complianceTitle": "Honest about certifications.",
+    "complianceItems": [
       {
         "name": "Open Source",
         "status": "Available",
@@ -159,10 +159,10 @@
         "statusClass": "in-progress"
       }
     ],
-    "secComplianceSubtitle": "Early stage — no lies about status.",
-    "secCtaEyebrow": "Questions?",
-    "secSandboxTitle": "Four layers of sandbox isolation.",
-    "secFlowStatus": {
+    "complianceSubtitle": "Early stage — no lies about status.",
+    "ctaEyebrow": "Questions?",
+    "sandboxTitle": "Four layers of sandbox isolation.",
+    "flowStatus": {
       "local": {
         "label": "On your machine"
       },
@@ -173,13 +173,13 @@
         "label": "External infra"
       }
     },
-    "secSandboxEyebrow": "Plugin isolation",
-    "secAuthSubtitle": "Gateway uses no centralized auth service — keys are generated and stored locally.",
-    "secAuthEyebrow": "JWT authentication",
-    "secSandboxSubtitle": "A plugin cannot access resources it didn't declare in its manifest — that's a contract, not a recommendation.",
-    "secHeroDescription": "KB Labs runs on-prem by default, open source end-to-end, and never sends data without your explicit action. Everything below is verifiable in source.",
-    "secMetaDesc": "On-prem by default, open source, plugin sandboxing, JWT Gateway auth. No data leaves without your consent.",
-    "secPillars": [
+    "sandboxEyebrow": "Plugin isolation",
+    "authSubtitle": "Gateway uses no centralized auth service — keys are generated and stored locally.",
+    "authEyebrow": "JWT authentication",
+    "sandboxSubtitle": "A plugin cannot access resources it didn't declare in its manifest — that's a contract, not a recommendation.",
+    "heroDescription": "KB Labs runs on-prem by default, open source end-to-end, and never sends data without your explicit action. Everything below is verifiable in source.",
+    "metaDesc": "On-prem by default, open source, plugin sandboxing, JWT Gateway auth. No data leaves without your consent.",
+    "pillars": [
       {
         "title": "On-prem by default",
         "description": "KB Labs runs entirely on your infrastructure. No cloud dependency, no data leaving your network. You control where your code, workflow state, and logs are stored."
@@ -193,9 +193,9 @@
         "description": "The entire platform is open source. Every line of code is auditable. No black boxes, no hidden telemetry, no trust-us-it's-safe. Verify yourself."
       }
     ],
-    "secCtaTitle": "Let's talk security.",
-    "secCtaContactBtn": "Contact us",
-    "secDataFlowEyebrow": "Data flows",
-    "secComplianceEyebrow": "Standards compliance"
+    "ctaTitle": "Let's talk security.",
+    "ctaContactBtn": "Contact us",
+    "dataFlowEyebrow": "Data flows",
+    "complianceEyebrow": "Standards compliance"
   }
 }

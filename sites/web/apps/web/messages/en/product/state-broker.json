@@ -1,19 +1,19 @@
 {
-  "page": {
-    "stateHeroTitleHighlight": "between calls",
-    "stateApiLead": "GET · PUT · DELETE /state/:key plus POST /state/clear. Keys are namespaced: tenant:default:namespace:key. TTL in milliseconds, default 5 minutes.",
-    "stateHeroDescription": "Plugins are stateless by default — every call starts fresh. State Broker stores state with TTL: in-memory, daemon, or Redis. The API never changes.",
-    "stateMetaTitle": "State Broker — KB Labs",
-    "stateApiTitle": "Four routes. Nothing extra.",
-    "stateCtaDocsBtn": "Documentation",
-    "stateHeroDocsBtn": "Documentation",
-    "stateApiDocsBtn": "Documentation",
-    "stateMetaDesc": "State between plugin calls. In-memory, daemon, or Redis — one API.",
-    "stateHeroTitle": "State",
-    "stateCtaDescription": "kb-dev start brings up the State Daemon automatically. Switch the backend in config — don't touch your services.",
-    "stateCtaTitle": "Starts with the platform.",
-    "stateCtaInstallBtn": "Install",
-    "stateModes": [
+  "stateBroker": {
+    "heroTitleHighlight": "between calls",
+    "apiLead": "GET · PUT · DELETE /state/:key plus POST /state/clear. Keys are namespaced: tenant:default:namespace:key. TTL in milliseconds, default 5 minutes.",
+    "heroDescription": "Plugins are stateless by default — every call starts fresh. State Broker stores state with TTL: in-memory, daemon, or Redis. The API never changes.",
+    "metaTitle": "State Broker — KB Labs",
+    "apiTitle": "Four routes. Nothing extra.",
+    "ctaDocsBtn": "Documentation",
+    "heroDocsBtn": "Documentation",
+    "apiDocsBtn": "Documentation",
+    "metaDesc": "State between plugin calls. In-memory, daemon, or Redis — one API.",
+    "heroTitle": "State",
+    "ctaDescription": "kb-dev start brings up the State Daemon automatically. Switch the backend in config — don't touch your services.",
+    "ctaTitle": "Starts with the platform.",
+    "ctaInstallBtn": "Install",
+    "modes": [
       {
         "badge": "Development",
         "badgeCls": "bg-emerald-500/10 text-emerald-400 ring-emerald-500/20",
@@ -36,9 +36,9 @@
         "detail": "Implement ICache and bind in kb.config.json. Any backend you choose."
       }
     ],
-    "stateHeroInstallBtn": "Install",
-    "stateModesEyebrow": "When to use what",
-    "stateCtaEyebrow": "Try it now",
-    "stateModesTitle": "Three modes. One API."
+    "heroInstallBtn": "Install",
+    "modesEyebrow": "When to use what",
+    "ctaEyebrow": "Try it now",
+    "modesTitle": "Three modes. One API."
   }
 }

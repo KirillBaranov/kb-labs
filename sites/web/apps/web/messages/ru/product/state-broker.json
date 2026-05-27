@@ -1,19 +1,19 @@
 {
-  "page": {
-    "stateHeroTitleHighlight": "между вызовами",
-    "stateApiLead": "GET · PUT · DELETE /state/:key плюс POST /state/clear. Ключи namespaced: tenant:default:namespace:key. TTL в миллисекундах, по умолчанию 5 минут.",
-    "stateHeroDescription": "Плагины stateless по умолчанию — каждый вызов начинается заново. State Broker хранит состояние с TTL: in-memory, daemon или Redis. API не меняется.",
-    "stateMetaTitle": "State Broker — KB Labs",
-    "stateApiTitle": "Четыре маршрута. Ничего лишнего.",
-    "stateCtaDocsBtn": "Документация",
-    "stateHeroDocsBtn": "Документация",
-    "stateApiDocsBtn": "Документация",
-    "stateMetaDesc": "Состояние между вызовами плагинов. In-memory, daemon или Redis — один и тот же API.",
-    "stateHeroTitle": "Состояние",
-    "stateCtaDescription": "kb-dev start поднимает State Daemon автоматически. Меняешь backend в конфиге — сервисы не трогаешь.",
-    "stateCtaTitle": "Запускается вместе с платформой.",
-    "stateCtaInstallBtn": "Установить",
-    "stateModes": [
+  "stateBroker": {
+    "heroTitleHighlight": "между вызовами",
+    "apiLead": "GET · PUT · DELETE /state/:key плюс POST /state/clear. Ключи namespaced: tenant:default:namespace:key. TTL в миллисекундах, по умолчанию 5 минут.",
+    "heroDescription": "Плагины stateless по умолчанию — каждый вызов начинается заново. State Broker хранит состояние с TTL: in-memory, daemon или Redis. API не меняется.",
+    "metaTitle": "State Broker — KB Labs",
+    "apiTitle": "Четыре маршрута. Ничего лишнего.",
+    "ctaDocsBtn": "Документация",
+    "heroDocsBtn": "Документация",
+    "apiDocsBtn": "Документация",
+    "metaDesc": "Состояние между вызовами плагинов. In-memory, daemon или Redis — один и тот же API.",
+    "heroTitle": "Состояние",
+    "ctaDescription": "kb-dev start поднимает State Daemon автоматически. Меняешь backend в конфиге — сервисы не трогаешь.",
+    "ctaTitle": "Запускается вместе с платформой.",
+    "ctaInstallBtn": "Установить",
+    "modes": [
       {
         "badge": "Разработка",
         "badgeCls": "bg-emerald-500/10 text-emerald-400 ring-emerald-500/20",
@@ -36,9 +36,9 @@
         "detail": "Реализуйте ICache и подключите в kb.config.json. Любой бэкенд на ваш выбор."
       }
     ],
-    "stateHeroInstallBtn": "Установить",
-    "stateModesEyebrow": "Когда что использовать",
-    "stateCtaEyebrow": "Попробуйте прямо сейчас",
-    "stateModesTitle": "Три режима. Один API."
+    "heroInstallBtn": "Установить",
+    "modesEyebrow": "Когда что использовать",
+    "ctaEyebrow": "Попробуйте прямо сейчас",
+    "modesTitle": "Три режима. Один API."
   }
 }

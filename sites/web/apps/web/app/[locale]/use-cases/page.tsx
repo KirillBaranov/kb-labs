@@ -23,11 +23,11 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: 'page' });
+  const t = await getTranslations({ locale, namespace: 'useCases' });
   return buildPageMetadata({
     locale,
-    title: t('ucMetaTitle'),
-    description: t('ucMetaDesc'),
+    title: t('metaTitle'),
+    description: t('metaDesc'),
     path: '/use-cases',
   });
 }
@@ -45,8 +45,8 @@ export default async function UseCasesPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const t = await getTranslations({ locale, namespace: 'page' });
-  const ucItems = t.raw('ucItems') as UseCaseItem[];
+  const t = await getTranslations({ locale, namespace: 'useCases' });
+  const ucItems = t.raw('items') as UseCaseItem[];
 
   return (
     <>
@@ -59,13 +59,13 @@ export default async function UseCasesPage({ params }: Props) {
           <Container className="relative z-10">
             <AnimateOnScroll>
               <div className="mx-auto max-w-3xl text-center">
-                <Eyebrow className="mb-4">{t('ucHeroEyebrow')}</Eyebrow>
+                <Eyebrow className="mb-4">{t('heroEyebrow')}</Eyebrow>
                 <h1 className="mb-5 text-4xl font-bold leading-tight tracking-tight text-kb-text sm:text-5xl lg:text-6xl">
-                  {t('ucHeroTitle')}{' '}
-                  <GradientText>{t('ucHeroTitleHighlight')}</GradientText>
+                  {t('heroTitle')}{' '}
+                  <GradientText>{t('heroTitleHighlight')}</GradientText>
                 </h1>
                 <p className="mx-auto max-w-xl text-lg leading-relaxed text-muted/70">
-                  {t('ucHeroDescription')}
+                  {t('heroDescription')}
                 </p>
               </div>
             </AnimateOnScroll>
@@ -97,26 +97,26 @@ export default async function UseCasesPage({ params }: Props) {
                     <div className="grid gap-8 sm:grid-cols-3">
                       <div>
                         <span className="mb-2 block text-[0.6rem] font-bold uppercase tracking-wider text-muted/50 dark:text-muted/35">
-                          {t('ucSituationLabel')}
+                          {t('situationLabel')}
                         </span>
                         <p className="text-sm leading-relaxed text-muted/65">{item.situation}</p>
                       </div>
                       <div>
                         <span className="mb-2 block text-[0.6rem] font-bold uppercase tracking-wider text-muted/50 dark:text-muted/35">
-                          {t('ucHowLabel')}
+                          {t('howLabel')}
                         </span>
                         <p className="text-sm leading-relaxed text-muted/65">{item.how}</p>
                       </div>
                       <div>
                         <span className="mb-2 block text-[0.6rem] font-bold uppercase tracking-wider text-muted/50 dark:text-muted/35">
-                          {t('ucResultLabel')}
+                          {t('resultLabel')}
                         </span>
                         <p className="text-sm leading-relaxed text-muted/65">{item.result}</p>
                       </div>
                     </div>
 
                     <p className="mt-8 text-[0.72rem] text-muted/50 dark:text-muted/35">
-                      {t('ucOwnerLabel')} {item.owner}
+                      {t('ownerLabel')} {item.owner}
                     </p>
                   </div>
 
@@ -135,17 +135,17 @@ export default async function UseCasesPage({ params }: Props) {
                 <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[360px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/[0.06] blur-[90px]" />
                 <div className="relative z-10">
                   <h2 className="mb-3 text-3xl font-bold tracking-tight text-kb-text">
-                    {t('ucCtaTitle')}
+                    {t('ctaTitle')}
                   </h2>
                   <p className="mx-auto mb-8 max-w-lg text-base leading-relaxed text-muted/70">
-                    {t('ucCtaDescription')}
+                    {t('ctaDescription')}
                   </p>
                   <div className="flex flex-wrap justify-center gap-3">
                     <Button variant="primary" size="lg" href={`/${locale}/install`}>
-                      {t('ucCtaInstallBtn')}
+                      {t('ctaInstallBtn')}
                     </Button>
                     <Button variant="secondary" size="lg" href={`/${locale}/contact`}>
-                      {t('ucCtaContactBtn')}
+                      {t('ctaContactBtn')}
                     </Button>
                   </div>
                 </div>

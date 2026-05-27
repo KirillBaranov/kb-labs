@@ -1,18 +1,18 @@
 {
-  "page": {
-    "plugCtaDocsBtn": "Документация",
-    "plugSdkLead2": "ctx.ui.success() работает одинаково из CLI, Workflow вызова.",
-    "plugCtaDescription": "Установите KB Labs, запустите scaffold, добавьте логику. CLI, REST API и Studio готовы автоматически.",
-    "plugPermEyebrow": "Permissions",
-    "plugLifecycleTitle": "Жизненный цикл плагина",
-    "plugPermTitle": "Видишь права до установки",
-    "plugSurfaceLead2": "Не нужно настраивать роутер, регистрировать команды или писать конфиг Studio. Поставил пакет — всё работает.",
-    "plugSurfaceEyebrow": "Как это работает",
-    "plugMetaTitle": "Plugin System — KB Labs",
-    "plugSdkLead1": "Плагин общается с абстракциями — ctx.ui, useLLM(). Какой провайдер стоит за ними, как роутится запрос, куда идут логи — всё это платформа.",
-    "plugHeroTitleRest": "платформы",
-    "plugCtaInstallBtn": "Установить",
-    "plugStats": [
+  "plugins": {
+    "ctaDocsBtn": "Документация",
+    "sdkLead2": "ctx.ui.success() работает одинаково из CLI, Workflow вызова.",
+    "ctaDescription": "Установите KB Labs, запустите scaffold, добавьте логику. CLI, REST API и Studio готовы автоматически.",
+    "permEyebrow": "Permissions",
+    "lifecycleTitle": "Жизненный цикл плагина",
+    "permTitle": "Видишь права до установки",
+    "surfaceLead2": "Не нужно настраивать роутер, регистрировать команды или писать конфиг Studio. Поставил пакет — всё работает.",
+    "surfaceEyebrow": "Как это работает",
+    "metaTitle": "Plugin System — KB Labs",
+    "sdkLead1": "Плагин общается с абстракциями — ctx.ui, useLLM(). Какой провайдер стоит за ними, как роутится запрос, куда идут логи — всё это платформа.",
+    "heroTitleRest": "платформы",
+    "ctaInstallBtn": "Установить",
+    "stats": [
       {
         "value": "35+",
         "label": "сущностей маркетплейса"
@@ -30,23 +30,23 @@
         "label": "типичная разработка плагина"
       }
     ],
-    "plugLifecycleEyebrow": "Как работает",
-    "plugSdkEyebrow": "SDK",
-    "plugLifecycleLead1": "После установки платформа записывает пакет в .kb/marketplace.lock с SHA-256 чексуммой. При каждом старте discovery проверяет целостность и загружает манифест.",
-    "plugLifecycleLead2": "Из манифеста извлекаются entity kinds — семь типов сущностей: CLI команды, REST роуты, Studio страницы, workflow handlers, webhook handlers, WebSocket каналы, cron расписания. Один плагин может регистрировать любое их сочетание.",
-    "plugSurfaceLead3": "Плагины изолированы: каждый получает только те ресурсы платформы, которые объявил. Полная OS-изоляция — с container/remote режимом исполнения.",
-    "plugMetaDesc": "Устанавливаешь один пакет — получаешь CLI, REST API и Studio сразу. Открытый SDK для своих плагинов.",
-    "plugLifecycleLead3": "При вызове команды движок выбирает execution backend. In-process — дефолт, минимальный overhead. Subprocess и worker-pool — изоляция процесса. Remote — полная OS-изоляция на отдельной машине.",
-    "plugSurfaceLead1": "Плагин объявляет CLI команды, REST роуты и Studio страницу в одном файле — manifest.ts. При установке движок регистрирует всё автоматически.",
-    "plugPermLead1": "Каждый плагин декларирует в манифесте что ему нужно: читать git, вызывать LLM, писать в fs. Ты видишь это ещё до install.",
-    "plugPermLead2": "Это не жёсткая гарантия — при in-process исполнении платформа проверяет запрошенные права, но полная OS-изоляция требует container или remote режима.",
-    "plugHeroInstallBtn": "Установить KB Labs",
-    "plugSdkTitle": "Только бизнес-логика",
-    "plugPermLead3": "Как permissions в мобильных приложениях: ты знаешь что плагин хочет и принимаешь осознанное решение.",
-    "plugCtaTitle": "Первый плагин — за 5 минут.",
-    "plugHeroTitleHighlight": "Плагин — это unit",
-    "plugHeroDescription": "Устанавливаешь один пакет — движок регистрирует CLI команды, REST роуты и страницу в Studio. Без ручных конфигов. Права объявлены в манифесте — видишь до установки.",
-    "plugEcoSteps": [
+    "lifecycleEyebrow": "Как работает",
+    "sdkEyebrow": "SDK",
+    "lifecycleLead1": "После установки платформа записывает пакет в .kb/marketplace.lock с SHA-256 чексуммой. При каждом старте discovery проверяет целостность и загружает манифест.",
+    "lifecycleLead2": "Из манифеста извлекаются entity kinds — семь типов сущностей: CLI команды, REST роуты, Studio страницы, workflow handlers, webhook handlers, WebSocket каналы, cron расписания. Один плагин может регистрировать любое их сочетание.",
+    "surfaceLead3": "Плагины изолированы: каждый получает только те ресурсы платформы, которые объявил. Полная OS-изоляция — с container/remote режимом исполнения.",
+    "metaDesc": "Устанавливаешь один пакет — получаешь CLI, REST API и Studio сразу. Открытый SDK для своих плагинов.",
+    "lifecycleLead3": "При вызове команды движок выбирает execution backend. In-process — дефолт, минимальный overhead. Subprocess и worker-pool — изоляция процесса. Remote — полная OS-изоляция на отдельной машине.",
+    "surfaceLead1": "Плагин объявляет CLI команды, REST роуты и Studio страницу в одном файле — manifest.ts. При установке движок регистрирует всё автоматически.",
+    "permLead1": "Каждый плагин декларирует в манифесте что ему нужно: читать git, вызывать LLM, писать в fs. Ты видишь это ещё до install.",
+    "permLead2": "Это не жёсткая гарантия — при in-process исполнении платформа проверяет запрошенные права, но полная OS-изоляция требует container или remote режима.",
+    "heroInstallBtn": "Установить KB Labs",
+    "sdkTitle": "Только бизнес-логика",
+    "permLead3": "Как permissions в мобильных приложениях: ты знаешь что плагин хочет и принимаешь осознанное решение.",
+    "ctaTitle": "Первый плагин — за 5 минут.",
+    "heroTitleHighlight": "Плагин — это unit",
+    "heroDescription": "Устанавливаешь один пакет — движок регистрирует CLI команды, REST роуты и страницу в Studio. Без ручных конфигов. Права объявлены в манифесте — видишь до установки.",
+    "ecoSteps": [
       {
         "step": "1",
         "title": "Скаффолд",
@@ -63,11 +63,11 @@
         "desc": "Установите локально или опубликуйте в маркетплейс. kb plugins list покажет сразу."
       }
     ],
-    "plugSurfaceTitle": "Один манифест — три поверхности",
-    "plugHeroDocsBtn": "Документация",
-    "plugEcoEyebrow": "Экосистема",
-    "plugEcoTitle": "Создай и опубликуй свой плагин",
-    "plugSdkDocsBtn": "SDK документация",
-    "plugCtaEyebrow": "Попробуйте прямо сейчас"
+    "surfaceTitle": "Один манифест — три поверхности",
+    "heroDocsBtn": "Документация",
+    "ecoEyebrow": "Экосистема",
+    "ecoTitle": "Создай и опубликуй свой плагин",
+    "sdkDocsBtn": "SDK документация",
+    "ctaEyebrow": "Попробуйте прямо сейчас"
   }
 }

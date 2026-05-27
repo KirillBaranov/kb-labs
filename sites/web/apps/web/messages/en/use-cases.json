@@ -1,7 +1,7 @@
 {
-  "page": {
-    "ucOwnerLabel": "Owner:",
-    "ucItems": [
+  "useCases": {
+    "ownerLabel": "Owner:",
+    "items": [
       {
         "title": "Release Orchestration",
         "hook": "Your releases live in five Slack threads, three scripts, and a prayer.",
@@ -67,18 +67,18 @@
         "owner": "Engineering Lead / Project Manager"
       }
     ],
-    "ucHeroEyebrow": "Use Cases",
-    "ucCtaTitle": "Ready to automate your dev loop?",
-    "ucHeroDescription": "Concrete things teams automate with KB Labs today — no abstract promises.",
-    "ucCtaInstallBtn": "Install KB Labs",
-    "ucMetaDesc": "Practical engineering use cases for on-prem, plugin-based automation — what teams actually build with KB Labs.",
-    "ucHeroTitleHighlight": "Real workflows.",
-    "ucSituationLabel": "The situation",
-    "ucResultLabel": "The outcome",
-    "ucHeroTitle": "Real scenarios.",
-    "ucCtaDescription": "On-prem, open source, no vendor lock-in.",
-    "ucMetaTitle": "Use Cases — KB Labs",
-    "ucCtaContactBtn": "Get in touch",
-    "ucHowLabel": "How it works"
+    "heroEyebrow": "Use Cases",
+    "ctaTitle": "Ready to automate your dev loop?",
+    "heroDescription": "Concrete things teams automate with KB Labs today — no abstract promises.",
+    "ctaInstallBtn": "Install KB Labs",
+    "metaDesc": "Practical engineering use cases for on-prem, plugin-based automation — what teams actually build with KB Labs.",
+    "heroTitleHighlight": "Real workflows.",
+    "situationLabel": "The situation",
+    "resultLabel": "The outcome",
+    "heroTitle": "Real scenarios.",
+    "ctaDescription": "On-prem, open source, no vendor lock-in.",
+    "metaTitle": "Use Cases — KB Labs",
+    "ctaContactBtn": "Get in touch",
+    "howLabel": "How it works"
   }
 }
