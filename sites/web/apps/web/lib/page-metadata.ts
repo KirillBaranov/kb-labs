@@ -17,15 +17,15 @@ interface PageMetadataOptions {
    */
   path?: string;
   /**
-   * Optional override for the OG image. By default, the closest matching
-   * `opengraph-image.tsx` route is used (Next.js convention) — but only when the
-   * **same segment** ships one. To make every page fall back to the global
-   * landing-page image, this helper forces an explicit absolute image URL
-   * pointing at `<SITE_URL>/<locale>/opengraph-image`. Pages that ship their
-   * own `opengraph-image.tsx` should pass `imageSegment: '<segment>'` so the
-   * helper points to that segment's image instead (e.g. `'blog'`, `'marketplace'`).
+   * Required. Segment path (relative to `[locale]/`) where this page's
+   * `opengraph-image.tsx` lives — e.g. `'blog'`, `'product/kb-dev'`.
+   * Pass `'default'` only to explicitly fall back to the global landing-page
+   * OG image (pages excluded from search indexing such as /demo, /signup, legal).
+   *
+   * Every indexed page must ship its own `opengraph-image.tsx`; passing anything
+   * other than `'default'` without that file is an error caught by `seo-check`.
    */
-  imageSegment?: string;
+  imageSegment: string;
 }
 
 /**
@@ -37,6 +37,9 @@ interface PageMetadataOptions {
  *     only applies to the segment that owns the file.
  *   - Page-level `openGraph` / `twitter` in `generateMetadata` fully replaces
  *     the parent layout's fields (no deep merge for `card`, `images`, etc.).
+ *   - `title: { absolute }` bypasses the root layout template (`%s — KB Labs`)
+ *     so that the full branded title stored in messages is used as-is and
+ *     `<title>` stays in sync with `og:title`.
  *
  * Result: every page that goes through this helper renders rich social cards.
  */
@@ -44,11 +47,13 @@ export function buildPageMetadata(options: PageMetadataOptions): Metadata {
   const { locale, title, description, path = '', imageSegment } = options;
 
   const canonical = `${SITE_URL}/${locale}${path}`;
-  const ogImagePath = imageSegment ? `/${locale}/${imageSegment}/opengraph-image` : `/${locale}/opengraph-image`;
+  const ogImagePath = imageSegment !== 'default'
+    ? `/${locale}/${imageSegment}/opengraph-image`
+    : `/${locale}/opengraph-image`;
   const ogImageUrl = `${SITE_URL}${ogImagePath}`;
 
   return {
-    title,
+    title: { absolute: title },
     description,
     openGraph: {
       type: 'website',
