@@ -6,10 +6,13 @@
  *
  * The invite activation URL is returned from the server and copied to clipboard.
  * No email is sent — the admin shares the link manually.
+ *
+ * All mutations use the shared authClient which injects CSRF headers automatically.
  */
 
 import * as React from 'react';
 import { RequirePermission } from '@/auth/guards';
+import { authClient } from '../auth/shared-client.js';
 
 interface InviteRecord {
   inviteId: string;
@@ -28,10 +31,9 @@ function InvitesList() {
 
   const loadInvites = React.useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetch('/api/auth/invites', { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to load invites');
-      const data = await res.json() as InviteRecord[];
+      const data = await authClient.fetch<InviteRecord[]>('/auth/invites');
       setInvites(data);
     } catch {
       setError('Failed to load invites');
@@ -48,23 +50,17 @@ function InvitesList() {
     setError(null);
     setCopyMessage(null);
     try {
-      const res = await fetch('/api/auth/invites', {
+      const data = await authClient.fetch<{ activationUrl: string }>('/auth/invites', {
         method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { error?: string };
-        throw new Error(body.error ?? 'Failed to create invite');
-      }
-      const data = await res.json() as { activationUrl: string };
       await navigator.clipboard.writeText(data.activationUrl);
       setCopyMessage('Activation URL copied to clipboard!');
       setEmail('');
       await loadInvites();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to create invite');
+      const body = (err as { body?: { error?: string } }).body;
+      setError(body?.error ?? 'Failed to create invite');
     } finally {
       setCreating(false);
     }
@@ -72,10 +68,7 @@ function InvitesList() {
 
   const handleRevoke = async (inviteId: string) => {
     try {
-      await fetch(`/api/auth/invites/${inviteId}/revoke`, {
-        method: 'POST',
-        credentials: 'include',
-      });
+      await authClient.fetch<unknown>(`/auth/invites/${inviteId}/revoke`, { method: 'POST' });
       await loadInvites();
     } catch {
       setError('Failed to revoke invite');

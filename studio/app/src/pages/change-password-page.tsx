@@ -6,9 +6,12 @@
  * POST /api/auth/password/change with { currentPassword, newPassword }.
  * On success: shows confirmation message; user stays logged in
  * (other devices are signed out server-side by revoking their refresh families).
+ *
+ * All mutations use the shared authClient which injects CSRF headers automatically.
  */
 
 import * as React from 'react';
+import { authClient } from '../auth/shared-client.js';
 
 export function ChangePasswordPage() {
   const [current, setCurrent] = React.useState('');
@@ -35,25 +38,18 @@ export function ChangePasswordPage() {
 
     setLoading(true);
     try {
-      const res = await fetch('/api/auth/password/change', {
+      await authClient.fetch<unknown>('/auth/password/change', {
         method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ currentPassword: current, newPassword: newPwd }),
       });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({})) as { error?: string };
-        setError(body.error ?? 'Password change failed');
-        return;
-      }
 
       setSuccess(true);
       setCurrent('');
       setNewPwd('');
       setConfirm('');
-    } catch {
-      setError('Password change failed. Please try again.');
+    } catch (err: unknown) {
+      const body = (err as { body?: { error?: string } }).body;
+      setError(body?.error ?? 'Password change failed. Please try again.');
     } finally {
       setLoading(false);
     }

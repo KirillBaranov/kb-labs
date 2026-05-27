@@ -3,10 +3,13 @@
  *
  * Admin users management page (ADR-0020, Phase 2.8).
  * Requires USERS_READ permission to view; USERS_WRITE to disable/enable.
+ *
+ * All mutations use the shared authClient which injects CSRF headers automatically.
  */
 
 import * as React from 'react';
 import { RequirePermission } from '@/auth/guards';
+import { authClient } from '../auth/shared-client.js';
 
 interface UserRecord {
   userId: string;
@@ -22,10 +25,9 @@ function UsersList() {
 
   const loadUsers = React.useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetch('/api/auth/users', { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to load users');
-      const data = await res.json() as UserRecord[];
+      const data = await authClient.fetch<UserRecord[]>('/auth/users');
       setUsers(data);
     } catch {
       setError('Failed to load users');
@@ -39,10 +41,7 @@ function UsersList() {
   const handleToggle = async (user: UserRecord) => {
     const action = user.status === 'active' ? 'disable' : 'enable';
     try {
-      await fetch(`/api/auth/users/${user.userId}/${action}`, {
-        method: 'POST',
-        credentials: 'include',
-      });
+      await authClient.fetch<unknown>(`/auth/users/${user.userId}/${action}`, { method: 'POST' });
       await loadUsers();
     } catch {
       setError(`Failed to ${action} user`);

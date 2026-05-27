@@ -32,7 +32,7 @@ import { pluginsRoutes, pluginsNavigation } from './modules/plugins/routes';
 import { analyticsRoutes, analyticsNavigation } from './modules/analytics/routes';
 import { observabilityRoutes, observabilityNavigation } from './modules/observability/routes';
 import { settingsRoutes, settingsNavigation } from './modules/settings/routes';
-import { authRoutes } from './modules/auth/routes';
+// authRoutes removed — the old fake role-select login was replaced by the real LoginPage above.
 
 type PluginNavRoute = {
   key: string;
@@ -248,7 +248,6 @@ export const router = createBrowserRouter([
     element: <ActivatePage />,
     errorElement: <ErrorBoundary />,
   },
-  ...authRoutes,
   // Protected routes (RequireAuth gate before Layout renders)
   {
     element: <RequireAuth><Layout /></RequireAuth>,

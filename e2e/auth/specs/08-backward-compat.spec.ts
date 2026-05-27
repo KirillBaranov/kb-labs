@@ -133,10 +133,13 @@ test('AUTH-33: /auth/register anonymous → 401, member → 403, admin → 200; 
 
   // Invite + activate a member.
   const memberEmail = uniqueEmail('member33')
+  const adminCookies33b = await cookieMap(context)
   const inviteRes = await request.post(`${GATEWAY}/api/auth/invites`, {
     data: { email: memberEmail },
     headers: {
-      Cookie: Object.entries(await cookieMap(context)).map(([k, v]) => `${k}=${v}`).join('; '),
+      Cookie: Object.entries(adminCookies33b).map(([k, v]) => `${k}=${v}`).join('; '),
+      // CSRF required on mutating cookie-auth endpoints.
+      'X-CSRF-Token': adminCookies33b['kb_csrf'] ?? '',
       'Content-Type': 'application/json',
     },
   })

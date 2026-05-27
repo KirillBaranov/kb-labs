@@ -1,10 +1,10 @@
 /**
  * Auth E2E — Basic scenarios (ADR-0020, Phase 4).
- * Scenarios: 1, 2, 3, 4
+ * Scenarios: 1, 2, 3, 4, CD-4
  */
 
 import { test, expect } from '@playwright/test'
-import { loginAsAdmin, cookieMap, GATEWAY } from '../fixtures/auth.js'
+import { loginAsAdmin, cookieMap, GATEWAY, ADMIN_EMAIL, ADMIN_PASSWORD } from '../fixtures/auth.js'
 
 // ── 1. Cold visit without cookie → redirect to /login ─────────────────────────
 
@@ -126,4 +126,38 @@ test('AUTH-04: wrong credentials → error message, no session cookies', async (
   // CD-8: timing should be non-trivial (bcrypt takes ~300ms at cost=12).
   // We verify it doesn't return instantly (< 50ms = no dummy bcrypt).
   expect(elapsed).toBeGreaterThan(50)
+})
+
+// ── CD-4. Email canonicalization: uppercase + spaces login works ──────────────
+
+test('AUTH-CD4: email canonicalization — login with uppercase/padded email succeeds', async ({
+  page,
+  context,
+  request,
+}) => {
+  // ADMIN_EMAIL is stored lowercase in the DB (CD-4 canonicalization on write).
+  // Login with mixed case + surrounding spaces must resolve to the same user.
+  const paddedUpperEmail = `  ${ADMIN_EMAIL.toUpperCase()}  `
+
+  await context.clearCookies()
+  await page.goto('/login')
+  await page.waitForSelector('input[type="email"]')
+
+  await page.fill('input[type="email"]', paddedUpperEmail)
+  await page.fill('input[type="password"]', ADMIN_PASSWORD)
+  await page.click('button[type="submit"]')
+
+  // Should navigate away from /login — auth succeeded.
+  await expect(page).not.toHaveURL(/\/login/, { timeout: 10_000 })
+
+  // /api/auth/me must return the admin user's email (canonical lowercase).
+  const cookies = await cookieMap(context)
+  const cookieHeader = Object.entries(cookies).map(([k, v]) => `${k}=${v}`).join('; ')
+  const meRes = await request.get(`${GATEWAY}/api/auth/me`, {
+    headers: { Cookie: cookieHeader },
+  })
+  expect(meRes.status()).toBe(200)
+  const me = await meRes.json() as { email: string }
+  // Server stores and returns canonical (lowercase, trimmed) email.
+  expect(me.email).toBe(ADMIN_EMAIL.toLowerCase().trim())
 })

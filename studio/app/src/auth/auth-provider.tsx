@@ -80,9 +80,23 @@ export interface AuthProviderProps {
   children: ReactNode;
   /** Override fetch for testing. Defaults to globalThis.fetch. */
   _fetch?: typeof fetch;
+  /** Override cookie reader for testing. Defaults to document.cookie. */
+  _getCookie?: (name: string) => string | undefined;
 }
 
-export function AuthProvider({ children, _fetch }: AuthProviderProps) {
+function defaultGetCookie(name: string): string | undefined {
+  if (typeof document === 'undefined') return undefined;
+  const match = document.cookie.match(
+    new RegExp(`(?:^|; )${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}=([^;]*)`),
+  );
+  return match ? decodeURIComponent(match[1]!) : undefined;
+}
+
+export function AuthProvider({ children, _fetch, _getCookie }: AuthProviderProps) {
+  const getCookie = useMemo(
+    () => _getCookie ?? defaultGetCookie,
+    [_getCookie],
+  );
   // Stable reference that always delegates to the current globalThis.fetch at call
   // time, so vi.stubGlobal replacements in tests take effect without requiring a
   // re-render. useMemo keeps the reference identity stable across re-renders so
@@ -185,15 +199,18 @@ export function AuthProvider({ children, _fetch }: AuthProviderProps) {
   );
 
   const logout = useCallback(async (): Promise<void> => {
+    // Logout is a mutating endpoint protected by CSRF (double-submit pattern).
+    const csrfToken = getCookie('kb_csrf');
     try {
       await fetchFn('/api/auth/logout', {
         method: 'POST',
         credentials: 'include',
+        headers: csrfToken ? { 'X-CSRF-Token': csrfToken } : {},
       });
     } finally {
       goAnonymous();
     }
-  }, [fetchFn, goAnonymous]);
+  }, [fetchFn, getCookie, goAnonymous]);
 
   // ── Render ────────────────────────────────────────────────────────────────
 

@@ -80,7 +80,8 @@ export function createAuthHttpClient(opts: AuthHttpClientOptions = {}): AuthHttp
   const refreshPath = opts.refreshPath ?? `${baseURL}/auth/refresh`;
   const onUnauthenticated = opts.onUnauthenticated ?? (() => {});
   const broadcastTimeoutMs = opts.broadcastTimeoutMs ?? DEFAULT_BROADCAST_TIMEOUT_MS;
-  const fetchFn = opts._fetch ?? globalThis.fetch.bind(globalThis);
+  // Lazy delegate so vi.stubGlobal('fetch', ...) in tests is picked up at call time.
+  const fetchFn: typeof fetch = opts._fetch ?? ((...args) => globalThis.fetch(...args));
   const BCClass = opts._BroadcastChannel ?? globalThis.BroadcastChannel;
   const getCookie = opts._getCookie ?? defaultGetCookie;
 
@@ -94,7 +95,10 @@ export function createAuthHttpClient(opts: AuthHttpClientOptions = {}): AuthHttp
     const method = (init.method ?? 'GET').toUpperCase();
 
     const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
+      // Only set Content-Type when there is a body — GET/HEAD requests must not send it.
+      ...(init.body !== undefined && init.body !== null
+        ? { 'Content-Type': 'application/json' }
+        : {}),
       ...(init.headers as Record<string, string> | undefined),
     };
 

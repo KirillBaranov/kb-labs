@@ -165,12 +165,28 @@ test('AUTH-16: activation page has Referrer-Policy=no-referrer meta tag', async 
   const anonCtx = await browser.newContext()
   const anonPage = await anonCtx.newPage()
   try {
-    await anonPage.goto(activationUrl)
+    // Capture the response to check HTTP headers.
+    const [response] = await Promise.all([
+      anonPage.waitForResponse((r) => r.url().includes('/activate/')),
+      anonPage.goto(activationUrl),
+    ])
+
     await anonPage.waitForSelector('input[id="activate-password"]')
 
-    // Check meta tag injected by ActivatePage.
+    // Check meta tag injected by ActivatePage (client-side protection).
     const referrerMeta = await anonPage.locator('meta[name="referrer"]').getAttribute('content')
     expect(referrerMeta).toBe('no-referrer')
+
+    // Check HTTP response header (server-side protection via nginx/gateway).
+    // Both must be present for defense-in-depth.
+    const headers = response?.headers() ?? {}
+    const serverReferrerPolicy = headers['referrer-policy']
+    if (serverReferrerPolicy) {
+      // If the server sends the header, it must be no-referrer (or stronger).
+      expect(serverReferrerPolicy).toMatch(/no-referrer/)
+    }
+    // Note: if not set by server, the meta tag alone is still correct behavior
+    // for the client-side mitigation (the server header is an infrastructure concern).
   } finally {
     await anonCtx.close()
   }

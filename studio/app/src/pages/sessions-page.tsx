@@ -5,9 +5,12 @@
  *
  * Shows the user's active sessions with device info, IP, and last-used time.
  * Allows revoking individual sessions or all other sessions at once.
+ *
+ * All mutations use the shared authClient which injects CSRF headers automatically.
  */
 
 import * as React from 'react';
+import { authClient } from '../auth/shared-client.js';
 
 interface SessionFamily {
   familyId: string;
@@ -24,10 +27,9 @@ export function SessionsPage() {
 
   const loadSessions = React.useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetch('/api/auth/sessions', { credentials: 'include' });
-      if (!res.ok) throw new Error('Failed to load sessions');
-      const data = await res.json() as SessionFamily[];
+      const data = await authClient.fetch<SessionFamily[]>('/auth/sessions');
       setSessions(data);
     } catch {
       setError('Failed to load sessions');
@@ -42,10 +44,7 @@ export function SessionsPage() {
 
   const handleRevoke = async (familyId: string) => {
     try {
-      await fetch(`/api/auth/sessions/${familyId}/revoke`, {
-        method: 'POST',
-        credentials: 'include',
-      });
+      await authClient.fetch<unknown>(`/auth/sessions/${familyId}/revoke`, { method: 'POST' });
       await loadSessions();
     } catch {
       setError('Failed to revoke session');
@@ -54,10 +53,7 @@ export function SessionsPage() {
 
   const handleRevokeAll = async () => {
     try {
-      await fetch('/api/auth/sessions/revoke-all', {
-        method: 'POST',
-        credentials: 'include',
-      });
+      await authClient.fetch<unknown>('/auth/sessions/revoke-all', { method: 'POST' });
       await loadSessions();
     } catch {
       setError('Failed to sign out all devices');
