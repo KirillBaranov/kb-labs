@@ -161,8 +161,12 @@ export class JobBroker {
       fields: Record<string, unknown>;
     };
 
-    // Filter by runId, then optionally by stepId
-    const filtered = (queryResult.logs as LogEntry[]).filter((log) => {
+    // Filter by runId, then optionally by stepId.
+    // queryResult.logs may be null/undefined when the log adapter returns an
+    // empty result set (e.g. noop adapter in worker-pool mode) — guard with ??.
+    const filtered = ((queryResult.logs ?? []) as LogEntry[]).filter((log) => {
+      // Guard against malformed entries with missing fields object.
+      if (!log.fields) {return false;}
       if (log.fields['runId'] !== runId) {
         return false;
       }
