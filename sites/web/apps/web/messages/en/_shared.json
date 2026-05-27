@@ -1,6 +1,16 @@
 {
   "nav": {
     "login": "Log in",
+    "start": "Install",
+    "product": "Product",
+    "solutions": "Solutions",
+    "resources": "Resources",
+    "pricing": "Pricing",
+    "enterprise": "Enterprise",
+    "marketplace": "Marketplace",
+    "install": "Install",
+    "docs": "Docs",
+    "useCases": "Use Cases",
     "megamenu": {
       "tools": {
         "kbMonitor": {
@@ -116,8 +126,7 @@
           "description": "Engineering notes and deep dives"
         }
       }
-    },
-    "start": "Install"
+    }
   },
   "footer": {
     "sections": {

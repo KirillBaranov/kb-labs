@@ -1,6 +1,16 @@
 {
   "nav": {
     "login": "Войти",
+    "start": "Установить",
+    "product": "Продукт",
+    "solutions": "Решения",
+    "resources": "Ресурсы",
+    "pricing": "Цены",
+    "enterprise": "Enterprise",
+    "marketplace": "Маркетплейс",
+    "install": "Установка",
+    "docs": "Документация",
+    "useCases": "Сценарии",
     "megamenu": {
       "tools": {
         "kbMonitor": {
@@ -116,8 +126,7 @@
           "description": "Инженерные заметки и разборы"
         }
       }
-    },
-    "start": "Установить"
+    }
   },
   "footer": {
     "sections": {
