@@ -98,6 +98,7 @@ exports[`SDK Exports Snapshot > Type Exports > should export core contract types
 
 exports[`SDK Exports Snapshot > should match snapshot of all exported names 1`] = `
 [
+  "AdapterUnavailableError",
   "DELETE",
   "FileFeedbackStore",
   "FileHistoryStore",
@@ -141,6 +142,8 @@ exports[`SDK Exports Snapshot > should match snapshot of all exported names 1`] 
   "formatError",
   "fullEnvPreset",
   "generateExamples",
+  "getAdapterStatus",
+  "getAdapterStatusFor",
   "getDegradedStatus",
   "getLLMTier",
   "getMonitoringSnapshot",
@@ -196,6 +199,7 @@ exports[`SDK Exports Snapshot > should match snapshot of all exported names 1`] 
 
 exports[`SDK Exports Snapshot > should match snapshot of exported functions 1`] = `
 [
+  "AdapterUnavailableError",
   "DELETE",
   "FileFeedbackStore",
   "FileHistoryStore",
@@ -236,6 +240,8 @@ exports[`SDK Exports Snapshot > should match snapshot of exported functions 1`] 
   "formatCommandHelp",
   "formatError",
   "generateExamples",
+  "getAdapterStatus",
+  "getAdapterStatusFor",
   "getDegradedStatus",
   "getLLMTier",
   "getMonitoringSnapshot",

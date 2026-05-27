@@ -13,10 +13,29 @@
  * // Import core feature interfaces
  * import type { IWorkflowEngine, IJobScheduler } from '@kb-labs/core-platform';
  *
- * // Import NoOp implementations for testing
- * import { NoOpAnalytics, MemoryCache } from '@kb-labs/core-platform/noop';
+ * // Import NoOp stubs (throw on use)
+ * import { NoOpAnalytics, NoOpLLM } from '@kb-labs/core-platform/noop';
+ * // Import InMemory implementations (honest in-process fallbacks)
+ * import { InMemoryCache } from '@kb-labs/core-platform/inmemory';
  * ```
  */
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ERRORS
+// ═══════════════════════════════════════════════════════════════════════════
+
+export { AdapterUnavailableError } from './errors.js';
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ADAPTER DEFAULTS — per-slot fallback policy (consulted by the loader)
+// ═══════════════════════════════════════════════════════════════════════════
+
+export { ADAPTER_DEFAULTS } from './adapter-defaults.js';
+export type {
+  AdapterSlot,
+  AdapterDefault,
+  DefaultFallbackMode,
+} from './adapter-defaults.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ADAPTER INTERFACES (replaceable implementations via kb.config.json)

@@ -159,6 +159,18 @@ export {
   type DegradedOptions,
 } from './monitoring.js';
 
+// Adapter status registry — what's actually wired into each slot
+export {
+  getAdapterStatus,
+  getAdapterStatusFor,
+  getAdapterStatusRegistry,
+  resetAdapterStatus,
+  type AdapterMode,
+  type AdapterSlotStatus,
+  type AdapterStatusRegistry,
+  type AdapterStatusReason,
+} from './adapter-status.js';
+
 // Orchestration services
 export { EnvironmentManager } from './environment-manager.js';
 export { WorkspaceManager } from './workspace-manager.js';

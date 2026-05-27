@@ -205,8 +205,10 @@ export type {
   SnapshotProviderCapabilities,
 } from '@kb-labs/core-platform/adapters';
 
-// Noop in-memory implementations (useful for tests and zero-config bootstrap)
-export { MemoryCache } from '@kb-labs/core-platform/noop';
+// In-memory implementations (useful for tests and zero-config bootstrap)
+export { InMemoryCache } from '@kb-labs/core-platform/inmemory';
+/** @deprecated Use `InMemoryCache` instead. Kept for backwards compatibility. */
+export { InMemoryCache as MemoryCache } from '@kb-labs/core-platform/inmemory';
 
 import type { AdapterManifest } from '@kb-labs/core-platform/adapters';
 

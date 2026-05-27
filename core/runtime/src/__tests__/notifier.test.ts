@@ -20,9 +20,17 @@ function makeStubNotifier(): INotifier {
 describe('platform notifier slot', () => {
   beforeEach(() => resetPlatform());
 
-  it('is undefined when adapters.notifier not configured', async () => {
+  it('is a NoOpNotifier when adapters.notifier is not configured (silent drop)', async () => {
     await initPlatform({ adapters: {} });
-    expect(platform.notifier).toBeUndefined();
+    // After the loader fallback pass the slot is filled with NoOpNotifier
+    // — notifications are silently dropped, never thrown. `isReal()` is
+    // false to signal "no real channel".
+    expect(platform.notifier).toBeDefined();
+    expect(platform.isReal('notifier')).toBe(false);
+    // notify() resolves silently — no throw.
+    await expect(
+      platform.notifier?.notify({ severity: 'info', title: 't', body: 'b' }),
+    ).resolves.toBeUndefined();
   });
 
   it('is accessible via platform.notifier after setAdapter', async () => {

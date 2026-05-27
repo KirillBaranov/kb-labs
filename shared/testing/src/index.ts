@@ -36,3 +36,5 @@ export {
   type MockLoggerInstance,
   type LogEntry,
 } from './mock-logger.js';
+
+export { MockEmbeddings } from './mock-embeddings.js';
