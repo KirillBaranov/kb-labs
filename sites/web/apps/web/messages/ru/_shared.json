@@ -12,7 +12,21 @@
     "docs": "Документация",
     "useCases": "Сценарии",
     "megamenu": {
+      "core": {
+        "label": "Платформа"
+      },
+      "delivery": {
+        "label": "Доставка"
+      },
+      "platformOps": {
+        "label": "Platform Ops"
+      },
+      "enterprise": {
+        "title": "Enterprise",
+        "description": "Кастомный деплой, SLA и выделенная поддержка"
+      },
       "tools": {
+        "label": "Инструменты",
         "kbMonitor": {
           "title": "kb-monitor",
           "description": "Наблюдение за деплоем и сервисами во времени"
@@ -83,6 +97,7 @@
         }
       },
       "project": {
+        "label": "Проект",
         "contact": {
           "title": "Контакты",
           "description": "Написать напрямую"
@@ -105,6 +120,7 @@
         }
       },
       "learn": {
+        "label": "Материалы",
         "demo": {
           "title": "Live Demo",
           "description": "Workflow от начала до конца вживую"

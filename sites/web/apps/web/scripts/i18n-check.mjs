@@ -376,6 +376,8 @@ const navDerivedRefs  = [];
 if (existsSync(NAV_CONFIG_FILE)) {
   const navSrc = readFileSync(NAV_CONFIG_FILE, 'utf8');
   const lineOf = posToLineFn(navSrc);
+
+  // Derive nav.megamenu.X.title + nav.megamenu.X.description from NavItem `key:` values.
   const NAV_ITEM_KEY_REGEX = /\bkey\s*:\s*['"]([^'"]+)['"]/g;
   let nm;
   while ((nm = NAV_ITEM_KEY_REGEX.exec(navSrc)) !== null) {
@@ -384,6 +386,14 @@ if (existsSync(NAV_CONFIG_FILE)) {
     for (const suffix of ['title', 'description']) {
       navDerivedRefs.push({ key: `nav.megamenu.${itemKey}.${suffix}`, file: NAV_CONFIG_FILE, line });
     }
+  }
+
+  // Register all direct string-valued nav keys: headingKey, labelKey, descKey.
+  // These are passed as variables to t() in SiteHeader so the regex can't see them.
+  const DIRECT_KEY_REGEX = /\b(?:headingKey|labelKey|descKey)\s*:\s*['"]([^'"]+)['"]/g;
+  let dm;
+  while ((dm = DIRECT_KEY_REGEX.exec(navSrc)) !== null) {
+    navDerivedRefs.push({ key: dm[1], file: NAV_CONFIG_FILE, line: lineOf(dm.index) });
   }
 }
 

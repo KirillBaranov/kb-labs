@@ -12,7 +12,21 @@
     "docs": "Docs",
     "useCases": "Use Cases",
     "megamenu": {
+      "core": {
+        "label": "Platform"
+      },
+      "delivery": {
+        "label": "Delivery"
+      },
+      "platformOps": {
+        "label": "Platform Ops"
+      },
+      "enterprise": {
+        "title": "Enterprise",
+        "description": "Custom deployment, SLA, and dedicated support"
+      },
       "tools": {
+        "label": "Developer Tools",
         "kbMonitor": {
           "title": "kb-monitor",
           "description": "Watch deployments and services over time"
@@ -83,6 +97,7 @@
         }
       },
       "project": {
+        "label": "Project",
         "contact": {
           "title": "Contact",
           "description": "Get in touch directly"
@@ -105,6 +120,7 @@
         }
       },
       "learn": {
+        "label": "Learn",
         "demo": {
           "title": "Live Demo",
           "description": "Watch a workflow run end-to-end"
