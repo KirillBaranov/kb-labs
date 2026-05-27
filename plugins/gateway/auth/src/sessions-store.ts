@@ -50,6 +50,7 @@ interface FamilyDoc extends BaseDocument {
   familyId: string;
   userId: string;
   tenantId: string;
+  createdAt: number;
   lastUsedAt: number;
   userAgent?: string;
   ipFirst?: string;
@@ -156,6 +157,7 @@ export class SessionsStore {
         familyId,
         userId: input.userId,
         tenantId: input.tenantId,
+        createdAt: now,
         lastUsedAt: now,
         userAgent: input.deviceCtx.userAgent,
         ipFirst: input.deviceCtx.ip,
@@ -231,6 +233,11 @@ export class SessionsStore {
           }
           // Replacement vanished (family revoked between consume and retry).
           // Fall through to reuse detection.
+        }
+        // If the token is also past its expiry, it was legitimately rotated long ago —
+        // treat as stale retry, not theft. Family stays alive.
+        if (current.expiresAt <= now) {
+          return { tag: 'expired' };
         }
         return { tag: 'reuse', familyId: current.familyId };
       }
