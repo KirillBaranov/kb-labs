@@ -39,15 +39,19 @@ export function createAuthMiddleware(cache: ICache, jwtConfig: JwtConfig) {
     const routePath = rawPath.replace(/\/+/g, '/').replace(/\/+$/, '') || '/';
     if (PUBLIC_ROUTES.has(routePath)) {return;}
 
-    // User already authenticated via cookie — skip machine Bearer requirement.
-    // The user-auth middleware (onRequest, runs first) set this if the
-    // kb_access cookie was present and valid.
-    if (request.userAuthContext) {return;}
-
     // Bearer header takes precedence; fall back to ?access_token= for SSE
     // connections where browsers cannot set custom headers.
     const queryToken = (request.query as Record<string, string | undefined>)['access_token'];
     const token = extractBearerToken(request.headers.authorization) ?? queryToken ?? null;
+
+    // Skip machine Bearer check when the request is already user-authenticated
+    // via cookie AND no explicit Bearer token was provided.
+    // When BOTH cookie and Bearer are present (e.g. a Playwright context that
+    // accumulated session cookies while also sending machine credentials), we
+    // honour the Bearer token so that machine-auth context (namespaceId, etc.)
+    // is populated — critical for per-tenant rate limiting and route permissions.
+    if (!token && request.userAuthContext) {return;}
+
     if (!token) {
       return reply.code(401).send({ error: 'Unauthorized', message: 'Missing Authorization header' });
     }

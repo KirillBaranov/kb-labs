@@ -172,8 +172,15 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
       logger.warn('kvStore adapter not configured — auth rate limiting disabled');
     }
 
-    const loginPerIpPerMinute = config.auth?.rateLimit?.loginPerIpPerMinute ?? 10;
-    const loginPerEmailPerMinute = config.auth?.rateLimit?.loginPerEmailPerMinute ?? 5;
+    // AUTH_LOGIN_RATE_LIMIT_PER_IP / AUTH_LOGIN_RATE_LIMIT_PER_EMAIL env vars override
+    // config (used in E2E where many specs call /auth/login from the same IP in rapid
+    // succession — the production defaults of 10/m and 5/m would trigger false 429s).
+    const loginPerIpPerMinute = process.env.AUTH_LOGIN_RATE_LIMIT_PER_IP
+      ? parseInt(process.env.AUTH_LOGIN_RATE_LIMIT_PER_IP, 10)
+      : (config.auth?.rateLimit?.loginPerIpPerMinute ?? 10);
+    const loginPerEmailPerMinute = process.env.AUTH_LOGIN_RATE_LIMIT_PER_EMAIL
+      ? parseInt(process.env.AUTH_LOGIN_RATE_LIMIT_PER_EMAIL, 10)
+      : (config.auth?.rateLimit?.loginPerEmailPerMinute ?? 5);
 
     userAuth = {
       userAuthService,
