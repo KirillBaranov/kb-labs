@@ -1,0 +1,41 @@
+{
+  "productStudio": {
+    "meta": {
+      "title": "Studio — KB Labs",
+      "description": "The web UI layer of KB Labs. Plugins declare their pages and navigation; Studio renders everything in one place."
+    },
+    "analytics": {
+      "title": "Track every token. Attribute every cost.",
+      "docsBtn": "Analytics docs",
+      "eyebrow": "LLM Analytics",
+      "description": "Provider breakdowns, model comparisons, latency histograms, and per-plugin spend — all in one view. No third-party analytics required."
+    },
+    "pluginPages": {
+      "title": "Each plugin brings its own pages.",
+      "docsBtn": "Plugin SDK docs",
+      "eyebrow": "Plugin UI",
+      "description": "Install a plugin and its UI appears in the sidebar automatically. Plugins declare their own routes; Studio assembles the interface."
+    },
+    "cta": {
+      "title": "Studio ships with the platform.",
+      "installBtn": "Install KB Labs",
+      "docsBtn": "Studio docs",
+      "eyebrow": "Get started",
+      "description": "One install command, one launch command. Studio is included — no separate setup, no extra config."
+    },
+    "observability": {
+      "title": "Live logs. Real-time traces.",
+      "docsBtn": "Observability docs",
+      "eyebrow": "Observability",
+      "description": "Every workflow run, agent call, and plugin event captured in real time. Stream logs as they happen, filter by plugin or severity, export traces for post-mortem."
+    },
+    "hero": {
+      "title": "One shell. Every plugin.",
+      "installBtn": "Install KB Labs",
+      "docsBtn": "Studio docs",
+      "eyebrow": "Studio",
+      "description": "Studio is the UI surface of KB Labs. Install a plugin — it appears in the sidebar. Plugins declare their own pages and nav items; Studio assembles them into a single interface without any extra wiring.",
+      "titleHighlight": "Plugin-first."
+    }
+  }
+}

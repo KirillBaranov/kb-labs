@@ -1,0 +1,33 @@
+{
+  "solutionPlatformApi": {
+    "page": {
+      "meta": {
+        "title": "Platform API — KB Labs",
+        "description": "LLM, кэш, векторный поиск, телеметрия — одна строка подключения из любого Node/TS приложения. Адаптер меняется в конфиге, код не трогаешь."
+      },
+      "externalLead2": "Внутри плагинов — те же адаптеры через in-process хуки useLLM(), useCache() — без HTTP round-trip.",
+      "externalLead1": "KBPlatform из @kb-labs/sdk/platform — HTTP-клиент для Gateway. Zero внешних зависимостей, использует нативный fetch. Все вызовы идут через POST /platform/v1/[adapter]/[method].",
+      "adaptersLead": "Каждый адаптер — типизированный прокси над Unified Platform API. Провайдер выбирается в конфиге — код один и тот же и для OpenAI, и для любого кастомного адаптера.",
+      "externalEyebrow": "Внешние приложения",
+      "adaptersTitle": "LLM. Кэш. Векторы. Телеметрия.",
+      "pluginsEyebrow": "Внутри плагинов",
+      "installBtn": "Установить KB Labs",
+      "ctaEyebrow": "Platform API",
+      "ctaTitle": "Один SDK. Любое Node приложение.",
+      "configLead": "Провайдер LLM, бэкенд кэша, векторная БД — всё в kb.config.json. Поменял одну строку — и весь стек переехал на другой провайдер. Плагины и внешние приложения используют один и тот же интерфейс.",
+      "ctaNote": "LLM, кэш, поиск и телеметрия — без vendor lock-in. Адаптер меняется в конфиге.",
+      "pluginsTitle": "In-process хуки. Ноль HTTP overhead.",
+      "tabHooks": "хуки",
+      "docsBtn": "Документация",
+      "heroTitleHighlight": "Из любого приложения.",
+      "pluginsLead2": "Доступ к адаптерам декларируется в manifest.ts через withPlatform(). Платформа применяет governance, квоты и изоляцию namespace автоматически.",
+      "configEyebrow": "Конфигурация",
+      "heroTitle": "LLM. Кэш. Поиск.",
+      "configTitle": "Меняешь адаптер. Код не трогаешь.",
+      "adaptersEyebrow": "Адаптеры",
+      "heroDescription": "Одна строка подключения — и в любом Node/TS/JS приложении появляется LLM, кэш, векторный поиск, телеметрия. Адаптер меняется в конфиге, код не трогаешь.",
+      "externalTitle": "Три строки — и платформа работает.",
+      "pluginsLead1": "Плагины работают с теми же адаптерами через хуки из SDK — напрямую в памяти, без сетевого слоя. Тот же ILLM, ICache, IAnalytics — одинаковые интерфейсы, другая доставка."
+    }
+  }
+}

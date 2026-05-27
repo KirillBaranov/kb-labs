@@ -1,0 +1,70 @@
+# Preview deploy manifest — rendered per-PR by .github/workflows/preview.yml.
+#
+# Placeholders (substituted with envsubst at workflow time):
+#   ${PR_NUMBER}     GitHub PR number (e.g. 42)
+#
+# The rendered file is passed to `kb-deploy plan` / `kb-deploy apply` with
+# --config. Use the same watch: globs as prod so affected detection picks
+# the same set of targets we'd ship to production for these changes.
+
+registry: ghcr.io/kirillbaranov
+
+targets:
+  kb-gateway:
+    watch:
+      - plugins/gateway/**
+      - adapters/openai/**
+      - adapters/redis/**
+      - adapters/sqlite/**
+      - adapters/pino/**
+      - adapters/fs/**
+      - adapters/log-sqlite/**
+      - adapters/log-ringbuffer/**
+      - adapters/eventbus-cache/**
+      - core/**
+      - shared/**
+    image: kb-gateway
+    dockerfile: plugins/gateway/app/Dockerfile
+    context: .
+    ssh:
+      host: ${SSH_HOST}
+      user: ${SSH_USER}
+      key_path_env: DEPLOY_KEY
+    remote:
+      compose_file: ~/kb-previews/pr-${PR_NUMBER}/docker-compose.yml
+      service: gateway
+      container_name: kb-preview-pr-${PR_NUMBER}-gateway
+
+  kb-labs-web:
+    watch:
+      - sites/web/apps/web/**
+      - sites/web/packages/**
+    image: kb-site-web
+    dockerfile: sites/web/apps/web/Dockerfile
+    context: .
+    bundle: "@kb-labs/web-site"
+    ssh:
+      host: ${SSH_HOST}
+      user: ${SSH_USER}
+      key_path_env: DEPLOY_KEY
+    remote:
+      compose_file: ~/kb-previews/pr-${PR_NUMBER}/docker-compose.yml
+      service: web
+      container_name: kb-preview-pr-${PR_NUMBER}-web
+
+  kb-labs-docs:
+    watch:
+      - sites/web/apps/docs/**
+      - sites/web/packages/**
+    image: kb-site-docs
+    dockerfile: sites/web/apps/docs/Dockerfile
+    context: .
+    bundle: "@kb-labs/docs-site"
+    ssh:
+      host: ${SSH_HOST}
+      user: ${SSH_USER}
+      key_path_env: DEPLOY_KEY
+    remote:
+      compose_file: ~/kb-previews/pr-${PR_NUMBER}/docker-compose.yml
+      service: docs
+      container_name: kb-preview-pr-${PR_NUMBER}-docs

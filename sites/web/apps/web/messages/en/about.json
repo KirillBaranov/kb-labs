@@ -1,0 +1,100 @@
+{
+  "about": {
+    "meta": {
+      "title": "About — KB Labs",
+      "description": "The story behind KB Labs: why we're building an open-source AI control plane and who's behind it."
+    },
+    "page": {
+      "storyPara1": "In 2025 I was a frontend lead when my CTO rolled out AI code review for the backend only. I disagreed with the tool and the approach. I built a full MVP overnight — frontend and backend together — and we shipped half my proposals the next day.",
+      "timeline": [
+        {
+          "period": "2025 Q1",
+          "event": "Started building the core platform in private"
+        },
+        {
+          "period": "2025 Q3",
+          "event": "First public GitHub commit, monorepo structure settled"
+        },
+        {
+          "period": "2025 Q4",
+          "event": "Workflow engine, Gateway, and plugin system shipped"
+        },
+        {
+          "period": "2026 Q1",
+          "event": "Studio UI, marketplace, and agent system added"
+        },
+        {
+          "period": "Now",
+          "event": "Public launch preparation, docs, and site in progress"
+        }
+      ],
+      "subtitle": "KB Labs is a self-hosted, open-source platform for AI workflows, plugin-based automation, and infrastructure abstraction — built in public since 2025.",
+      "founderInitials": "KB",
+      "journeyText": "Follow the build in",
+      "whys": [
+        {
+          "title": "Because vendor lock-in is a business model.",
+          "body": "Every SaaS tool starts with a smooth onboarding. The switching costs appear later, after you've wired your workflow through their API. KB Labs is dual-licensed (MIT + KBPL) and self-hosted. Your data, your code, your infra."
+        },
+        {
+          "title": "Because small teams deserve platform engineering too.",
+          "body": "Large companies have entire teams building internal developer platforms. Everyone else pieces together subscriptions. KB Labs is that platform — open source, installable in one command."
+        },
+        {
+          "title": "Because AI tooling needs a runtime, not a prompt.",
+          "body": "Dropping an LLM call into your codebase is not AI infrastructure. KB Labs gives AI agents the same typed contracts, permission enforcement, and observability as everything else."
+        },
+        {
+          "title": "Because infrastructure should be code, not ceremony.",
+          "body": "Workflows, policies, pipelines — all version-controlled YAML. Reviewed, tested, and deployed the same way as the product code it serves."
+        }
+      ],
+      "whysEyebrow": "Why we build this",
+      "journeyTwitter": "X / Twitter",
+      "titleGradient": "open infrastructure",
+      "journeyGhDiscussions": "GitHub Discussions",
+      "storyEyebrow": "Origin",
+      "pullQuoteAuthor": "Kirill Baranov · Founder, KB Labs",
+      "storyPara2": "I published the first version as open source, then kept going. A review tool became a workflow engine, which became a plugin system, which became an infrastructure gateway. KB Labs is what happens when you can't stop.",
+      "titleEnd": "for engineers.",
+      "storyTitle": "From one overnight MVP to a full platform.",
+      "eyebrow": "About",
+      "pullQuoteMuted": "Every system boundary must be open for inspection, replacement, and extension.",
+      "journeyOr": "or on",
+      "founderBio2": "The platform is 145+ packages today. It manages its own releases, CI, and code review through itself. Public launch is summer 2026.",
+      "founderQuote": "I build what I wish I had. An infrastructure layer that's yours to own, inspect, and replace — without a migration project every time you change your mind.",
+      "storyPara3": "Today: 145+ packages, a real release pipeline, Go binaries for build orchestration and service management. Public launch is summer 2026. The source has been open the whole time.",
+      "titleStart": "Building",
+      "whysTitle": "Four principles behind every decision.",
+      "pullQuote": "Open the closed.",
+      "timelineLabel": "Timeline",
+      "founderBio1": "I'm a frontend lead who built an AI review tool overnight and couldn't stop. I've been building KB Labs in public since 2025 — shipping code, writing about the decisions, and keeping the source open the whole way.",
+      "journeyContactLink": "Reach out directly.",
+      "founderTitle": "Founder · Frontend lead turned platform builder",
+      "journeyContact": "Want to talk?",
+      "timelineNow": "Now",
+      "stats": [
+        {
+          "value": "100%",
+          "label": "open source",
+          "description": "Every line auditable on GitHub"
+        },
+        {
+          "value": "0",
+          "label": "cloud dependencies",
+          "description": "Runs fully on your infrastructure"
+        },
+        {
+          "value": "20+",
+          "label": "plugins",
+          "description": "Marketplace entities available today"
+        },
+        {
+          "value": "1",
+          "label": "solo founder",
+          "description": "Building since 2025"
+        }
+      ]
+    }
+  }
+}

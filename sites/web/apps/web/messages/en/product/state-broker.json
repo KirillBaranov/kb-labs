@@ -1,0 +1,46 @@
+{
+  "stateBroker": {
+    "meta": {
+      "title": "State Broker — KB Labs",
+      "description": "State between plugin calls. In-memory, daemon, or Redis — one API."
+    },
+    "heroTitleHighlight": "between calls",
+    "apiLead": "GET · PUT · DELETE /state/:key plus POST /state/clear. Keys are namespaced: tenant:default:namespace:key. TTL in milliseconds, default 5 minutes.",
+    "heroDescription": "Plugins are stateless by default — every call starts fresh. State Broker stores state with TTL: in-memory, daemon, or Redis. The API never changes.",
+    "apiTitle": "Four routes. Nothing extra.",
+    "ctaDocsBtn": "Documentation",
+    "heroDocsBtn": "Documentation",
+    "apiDocsBtn": "Documentation",
+    "heroTitle": "State",
+    "ctaDescription": "kb-dev start brings up the State Daemon automatically. Switch the backend in config — don't touch your services.",
+    "ctaTitle": "Starts with the platform.",
+    "ctaInstallBtn": "Install",
+    "modes": [
+      {
+        "badge": "Development",
+        "badgeCls": "bg-emerald-500/10 text-emerald-400 ring-emerald-500/20",
+        "title": "In-Memory",
+        "when": "~1ms latency",
+        "detail": "Fast in-process cache. No infrastructure required. Data resets on restart."
+      },
+      {
+        "badge": "Production",
+        "badgeCls": "bg-blue-500/10 text-blue-400 ring-blue-500/20",
+        "title": "Redis",
+        "when": "~5ms latency",
+        "detail": "Shared state across instances with persistence. Same API — swap with a config change."
+      },
+      {
+        "badge": "Edge",
+        "badgeCls": "bg-purple-500/10 text-purple-400 ring-purple-500/20",
+        "title": "Custom adapter",
+        "when": "any latency",
+        "detail": "Implement ICache and bind in kb.config.json. Any backend you choose."
+      }
+    ],
+    "heroInstallBtn": "Install",
+    "modesEyebrow": "When to use what",
+    "ctaEyebrow": "Try it now",
+    "modesTitle": "Three modes. One API."
+  }
+}

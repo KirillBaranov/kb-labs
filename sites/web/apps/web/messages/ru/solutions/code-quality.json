@@ -1,0 +1,111 @@
+{
+  "solutionCodeQuality": {
+    "meta": {
+      "title": "Code Quality — KB Labs",
+      "description": "Quality-гейты как код. AI review, baseline regression tracking и автоматизированный QA по монорепо — на том же движке, который вы установите."
+    },
+    "page": {
+      "docsBtn": "Документация",
+      "heroTitleHighlight": "видны до мержа.",
+      "pipeline": [
+        {
+          "step": "1. Lint",
+          "cmd": "kb-devkit run lint",
+          "desc": "ESLint по всем пакетам в порядке зависимостей. Только изменённые пакеты перезапускаются."
+        },
+        {
+          "step": "2. Type-check",
+          "cmd": "kb-devkit run type-check",
+          "desc": "tsc с project references. Ошибки типов в зависимостях всплывают первыми."
+        },
+        {
+          "step": "3. AI Review",
+          "cmd": "pnpm kb review run",
+          "desc": "LLM-ревью диффа. Находит логические ошибки, проблемы безопасности и антипаттерны."
+        }
+      ],
+      "pipelineEyebrow": "Единый pipeline",
+      "installBtn": "Установить KB Labs",
+      "ctaEyebrow": "Установить",
+      "heroEyebrow": "Code Quality · 3 плагина",
+      "heroTitle": "Регрессии",
+      "pipelineTitle": "От коммита до мержа.",
+      "ctaTitle": "Три плагина. Полный цикл контроля.",
+      "layers": [
+        {
+          "eyebrow": "Статический анализ",
+          "title": "Lint и type-check — быстро, на каждое изменение.",
+          "body": "ESLint и TypeScript запускаются в порядке зависимостей по всем пакетам. Только изменённые пакеты перезапускаются. Кэш восстанавливается за ~1ms для неизменённых результатов.",
+          "install": "pnpm kb plugins install quality",
+          "commands": [
+            {
+              "cmd": "kb-devkit run lint",
+              "note": "Lint всех пакетов в порядке зависимостей."
+            },
+            {
+              "cmd": "kb-devkit run lint --affected",
+              "note": "Lint только изменённых пакетов и зависимых."
+            },
+            {
+              "cmd": "kb-devkit run type-check",
+              "note": "TypeScript проверка с project references."
+            },
+            {
+              "cmd": "kb-devkit gate",
+              "note": "Проверка только staged-файлов. Для pre-commit хуков."
+            }
+          ]
+        },
+        {
+          "eyebrow": "AI code review",
+          "title": "LLM-ревью каждого диффа — с контекстом архитектуры.",
+          "body": "Плагин review отправляет дифф в настроенный LLM с архитектурой как контекстом. Находит логические ошибки, проблемы безопасности и антипаттерны, которые линтеры пропускают. Работает как гейтированный шаг воркфлоу.",
+          "install": "pnpm kb plugins install review",
+          "commands": [
+            {
+              "cmd": "pnpm kb review run",
+              "note": "Ревью текущего диффа относительно HEAD."
+            },
+            {
+              "cmd": "pnpm kb review run --pr 42",
+              "note": "Ревью конкретного PR по номеру."
+            },
+            {
+              "cmd": "pnpm kb review config",
+              "note": "Показать активную модель и конфиг промпта."
+            },
+            {
+              "cmd": "pnpm kb review history",
+              "note": "История ревью с вердиктом и временем."
+            }
+          ]
+        },
+        {
+          "eyebrow": "QA-тренды",
+          "title": "Отслеживайте качество во времени — ловите регрессии до отгрузки.",
+          "body": "QA-плагин запускает периодические проверки на каждое изменение и отслеживает результаты по пакету во времени. Сигнализирует о деградации тренда — пакет был на 95% неделю назад и 80% сегодня — до того как это уйдёт в прод.",
+          "install": "pnpm kb plugins install qa",
+          "commands": [
+            {
+              "cmd": "pnpm kb qa run",
+              "note": "Запуск QA-проверок в текущем воркспейсе."
+            },
+            {
+              "cmd": "pnpm kb qa run --affected",
+              "note": "Только по изменённым пакетам."
+            },
+            {
+              "cmd": "pnpm kb qa trends",
+              "note": "Тренд качества по пакету за последние N запусков."
+            },
+            {
+              "cmd": "pnpm kb qa report",
+              "note": "Экспорт структурированного QA-отчёта с историей."
+            }
+          ]
+        }
+      ],
+      "heroDescription": "Три плагина закрывают весь цикл: pre-commit gate, code review на changeset, архитектурный анализ в CI. Каждый работает сам по себе — или вместе как один pipeline."
+    }
+  }
+}

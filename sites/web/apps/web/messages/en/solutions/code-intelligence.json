@@ -1,0 +1,107 @@
+{
+  "solutionCodeIntelligence": {
+    "meta": {
+      "title": "Code Intelligence — KB Labs",
+      "description": "Semantic code search built for engineers and AI agents — with confidence scores, source citations, and verification against hallucinations."
+    },
+    "page": {
+      "tabNotFound": "Not found",
+      "indexTable": [
+        {
+          "label": "Source files",
+          "value": "All .ts, .tsx, .js, .jsx files in tracked packages"
+        },
+        {
+          "label": "Index backend",
+          "value": "Qdrant vector store (local or remote)"
+        },
+        {
+          "label": "Embedding model",
+          "value": "Configured via adapter — openai, cohere, or custom"
+        },
+        {
+          "label": "Re-index trigger",
+          "value": "Automatic on kb-dev start or manual via pnpm kb mind reindex"
+        },
+        {
+          "label": "Search mode",
+          "value": "Semantic (dense), keyword (sparse), or hybrid"
+        }
+      ],
+      "tabLowConf": "Low confidence",
+      "agentTable": [
+        {
+          "label": "Input",
+          "value": "Natural language query or structured JSON prompt"
+        },
+        {
+          "label": "Retrieval",
+          "value": "Top-K semantic search with confidence threshold"
+        },
+        {
+          "label": "Context window",
+          "value": "Sources injected into LLM context automatically"
+        },
+        {
+          "label": "Output",
+          "value": "Structured answer with file citations"
+        },
+        {
+          "label": "Audit",
+          "value": "Every search logged with query, sources, and latency"
+        },
+        {
+          "label": "Model",
+          "value": "Configured via Gateway — swap without code changes"
+        }
+      ],
+      "installBtn": "Install KB Labs",
+      "ctaEyebrow": "Install",
+      "heroEyebrow": "Code Intelligence · Mind RAG",
+      "ctaTitle": "Semantic search. Honest answers.",
+      "commands": [
+        {
+          "cmd": "pnpm kb mind search --text \"how does X work\"",
+          "note": "Semantic search across the full codebase."
+        },
+        {
+          "cmd": "pnpm kb mind search --text \"RoutingBackend\" --agent",
+          "note": "Agent-mode output: JSON lines with sources and confidence."
+        },
+        {
+          "cmd": "pnpm kb mind reindex",
+          "note": "Force full re-index of the codebase into the vector store."
+        },
+        {
+          "cmd": "pnpm kb mind reindex --affected",
+          "note": "Re-index only files changed since last index run."
+        },
+        {
+          "cmd": "pnpm kb mind status",
+          "note": "Show index health: total chunks, last indexed, backend status."
+        },
+        {
+          "cmd": "pnpm kb mind config",
+          "note": "Show active embedding model and vector store connection."
+        }
+      ],
+      "verifyTitle": "Not in the index — it'll say so honestly.",
+      "verifyLead2": "If nothing is found — returns completeness: \"minimal\" and an explicit message. If found but uncertain — LOW_CONFIDENCE warning with a percentage. Low confidence results are not cached.",
+      "agentLead2": "Three modes: instant — fast, auto — balanced, thinking — reasoning chain before the answer.",
+      "docsBtn": "Documentation",
+      "agentEyebrow": "AI agents",
+      "agentTitle": "First-class tool for agent workflows.",
+      "tabFound": "Found",
+      "heroTitleHighlight": "not by string match.",
+      "verifyEyebrow": "Source verification",
+      "agentLead1": "--agent returns structured JSON with schemaVersion: \"agent-response-v1\". Agents get exact citations with file position — no guessing context.",
+      "indexEyebrow": "Indexing",
+      "commandsEyebrow": "Commands",
+      "commandsTitle": "For humans and agents.",
+      "indexTitle": "Incremental by content-hash.",
+      "heroTitle": "Search by meaning,",
+      "heroDescription": "Semantic code search. Returns citations with file position and confidence scores. We use it ourselves — to navigate KB Labs and give AI agents context without hallucinations.",
+      "verifyLead1": "Every answer is tied to real chunks from the index with exact file and line numbers. The system cannot cite a source that isn't in the codebase."
+    }
+  }
+}

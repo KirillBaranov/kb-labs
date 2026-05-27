@@ -1,0 +1,133 @@
+{
+  "home": {
+    "meta": {
+      "title": "KB Labs — AI Control Plane for Developers",
+      "description": "Self-hosted workflows, agents, and plugins. Run AI automation on your own infrastructure with full control."
+    },
+    "ctaSection": {
+      "eyebrow": "Get started",
+      "title": "Run it on one real workflow.",
+      "installBtn": "Install",
+      "description": "One command. Runs on your machine. First workflow live in under an hour."
+    },
+    "workflowSection": {
+      "title": "Define once. Run anywhere. Trace everything.",
+      "tabDiagram": "Diagram",
+      "tabYaml": "YAML",
+      "eyebrow": "Workflows",
+      "description": "Releases, reviews, QA gates, AI agents — all described as code, running on one engine. Version them in git, run them from CLI or CI, inspect every step."
+    },
+    "trustSection": {
+      "titleStart": "KB Labs runs on",
+      "titleHighlight": "KB Labs",
+      "titleSuffix": "— every day.",
+      "stat1Label": "self-hosted",
+      "stat3Value": "<1h",
+      "stat2Label": "license",
+      "subtitle": "Releases, code review, commit policy, QA gates, dependency management — all running as plugins on the same engine you'll install.",
+      "quote": "I build on KB Labs every day. Every release, every review gate, every QA check. It's the same engine you install.",
+      "stat2Desc": "Full source on GitHub, forever",
+      "stat1Desc": "No cloud dependency in the core path",
+      "stat3Desc": "From install to a working workflow",
+      "stat3Label": "first workflow",
+      "stat2Value": "DUAL",
+      "stat1Value": "100%",
+      "eyebrow": "We run it ourselves"
+    },
+    "integrationsSection": {
+      "title": "21+ adapters. Swap any vendor in config.",
+      "writeAdapter": "Write your own adapter",
+      "llmNote": "Implement ILLM — any provider works",
+      "eyebrow": "Integrations",
+      "subtitle": "Every external dependency — LLM, database, vector store, cache, storage — is behind a typed contract. Change the implementation without touching your code.",
+      "cats": {
+        "databases": "Databases",
+        "storage": "Storage",
+        "comms": "Comms",
+        "vector": "Vector",
+        "observability": "Observability",
+        "llm": "LLM"
+      },
+      "notFound": "Don't see what you need?",
+      "adapterSuffix": "— same contract, loads identically."
+    },
+    "faq": {
+      "title": "Frequently asked questions"
+    },
+    "faqSection": {
+      "eyebrow": "FAQ",
+      "items": [
+        {
+          "id": "faq-1",
+          "question": "We already have a full stack. Do we need to migrate?",
+          "answer": "No. KB Labs is designed to sit beside what you already run. Install it, connect one workflow, and keep everything else untouched. You grow the surface area when it makes sense for your team — never because the tool asked you to."
+        },
+        {
+          "id": "faq-2",
+          "question": "Is it free? Will it stay free?",
+          "answer": "The OSS core is free and will stay free. It's the engine, and the engine doesn't close. A commercial support layer is on the roadmap for teams that need guarantees — SLA, dedicated support, advanced governance — but it's additive, never a gate in front of the core."
+        },
+        {
+          "id": "faq-3",
+          "question": "I work alone, or with a tiny team. Is this still for me?",
+          "answer": "Especially for you. KB Labs is built on the idea that a person plus agents is a team. A plugin-agent can run your reviews. An external agent like Claude or Codex can drive your workflows through the same contracts. You stay in control of what they're allowed to do. Solo builders with agents get the most value from this from day one."
+        },
+        {
+          "id": "faq-4",
+          "question": "How does KB Labs treat humans, agents, and bots?",
+          "answer": "The same way. KB Labs is a runtime with one permissions model, one observability surface, and one extension contract — applied equally to any kind of runner. A human running a workflow, an internal plugin-agent, an external agent, a CI bot — they all declare what they're allowed to do and the runtime enforces it. No one gets privileges. No one escapes the rails. MCP is on the roadmap as the next protocol-level extension of this."
+        },
+        {
+          "id": "faq-5",
+          "question": "How long does on-prem setup actually take?",
+          "answer": "One command installs the launcher. A working environment with your first workflow is typically ready within an hour. No cloud dependency, no provisioning ceremony."
+        },
+        {
+          "id": "faq-6",
+          "question": "We already have CI/CD. Why not just extend that?",
+          "answer": "CI/CD is great at build and deploy. KB Labs is for everything around it — commit policy, AI review gates, QA trend tracking, release coordination, agent workflows. Things that don't belong in a pipeline YAML and don't scale as config."
+        }
+      ]
+    },
+    "agentsSection": {
+      "title": "Agent calls the command. Not your key.",
+      "para1Start": "Write a plugin — the agent gets a set of commands. Keys, access rights, audit — inside the plugin. The agent doesn't know how GitHub works — it just calls",
+      "para2": "KB Labs native agents go further — every step is traced, analytics calculated automatically, nothing is lost.",
+      "para1End": ".",
+      "eyebrow": "Agents"
+    },
+    "heroCurrent": {
+      "installBtn": "Install",
+      "titleGradient": "Open-source platform",
+      "eyebrow": "OPEN-SOURCE · SELF-HOSTED · PRIVATE BETA",
+      "titleSecond": "for dev automation",
+      "description": "Code review, commits, releases — on autopilot. Self-hosted, under your control.",
+      "licenseNote": "KBPL1.1 + MIT · No vendor lock-in · Founder reads every issue"
+    },
+    "painSection": {
+      "title": "Every team builds the same thing. From scratch.",
+      "eyebrow": "The problems",
+      "pains": [
+        {
+          "title": "Your agent went somewhere it shouldn't",
+          "description": "Give your agent only the tools you explicitly allow. A plugin without access is simply unavailable."
+        },
+        {
+          "title": "Automation held together with bash",
+          "description": "Workflows in YAML. The engine tracks execution, writes logs, and retries on failure."
+        },
+        {
+          "title": "Switched the broker — rewrite every subscriber",
+          "description": "Services publish events through the gateway. Redis, Kafka, RabbitMQ — swap the adapter in config, subscribers never notice."
+        },
+        {
+          "title": "Every tool is its own island",
+          "description": "Commit, review, release, deploy — one workflow, one platform, one place to look."
+        }
+      ]
+    },
+    "hero": {
+      "title": "AI control plane for developers."
+    }
+  }
+}
