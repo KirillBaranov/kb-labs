@@ -16,6 +16,38 @@ import {
   GATEWAY,
 } from '../fixtures/auth.js'
 
+// ── Shared helper: invite + activate a fresh member account ──────────────────
+//
+// Returns the member's email, a pre-built cookie header for direct API calls,
+// and the BrowserContext so the caller can perform UI actions or close it.
+// Caller is responsible for closing memberCtx in a finally block.
+
+async function createMember(
+  browser: import('@playwright/test').Browser,
+  adminCtx: import('@playwright/test').BrowserContext,
+  request: import('@playwright/test').APIRequestContext,
+  password = 'MemberPass123!',
+): Promise<{
+  memberEmail: string
+  memberCookieHeader: string
+  memberCtx: import('@playwright/test').BrowserContext
+}> {
+  const adminCookieHeader = await getAdminCookieHeader(adminCtx)
+  const memberEmail = uniqueEmail('member')
+  const activationUrl = await inviteUser(request, memberEmail, adminCookieHeader)
+
+  const memberCtx = await browser.newContext()
+  const memberPage = await memberCtx.newPage()
+  await activateUser(memberPage, activationUrl, password)
+
+  const memberCookies = await cookieMap(memberCtx)
+  const memberCookieHeader = Object.entries(memberCookies)
+    .map(([k, v]) => `${k}=${v}`)
+    .join('; ')
+
+  return { memberEmail, memberCookieHeader, memberCtx }
+}
+
 // ── 17. Disable user mid-session (CD-1): next request before expiry → 401 ─────
 
 test('AUTH-17: disable user mid-session → next request returns 401 (CD-1)', async ({
