@@ -10,6 +10,7 @@
  *   KB_GATEWAY_TOKEN  – optional auth token for the gateway
  *   KB_EVENTS_BASE_URL – SSE/events base URL (defaults to KB_API_BASE_URL)
  *   PORT              – Studio server port   (default: 3000)
+ *   HOST              – bind address (default: 0.0.0.0; set 127.0.0.1 to restrict to loopback)
  *
  * In production, put nginx/ALB/Cloudflare in front — they handle proxying.
  * This server only serves static files.
@@ -22,6 +23,7 @@ import { fileURLToPath } from 'node:url';
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const DIST = resolve(__dirname, 'dist');
 const PORT = Number(process.env.PORT ?? 3000);
+const HOST = process.env.HOST ?? '0.0.0.0';
 
 // Runtime config — values come from the process environment.
 // null values are omitted so the SPA falls back to its own defaults.
@@ -90,7 +92,7 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
+server.listen(PORT, HOST, () => {
   console.log(`Studio  http://localhost:${PORT}`);
   console.log(`API     ${runtimeConfig.KB_API_BASE_URL}`);
 });

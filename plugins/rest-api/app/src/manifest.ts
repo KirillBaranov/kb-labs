@@ -14,6 +14,7 @@ export const manifest: ServiceManifest = {
   dependsOn: ['qdrant'],
   env: {
     PORT: { description: 'HTTP port', default: '5050' },
+    REST_API_HOST: { description: 'Bind host', default: '127.0.0.1' },
     NODE_ENV: { description: 'Environment mode', default: 'development' },
   },
 };
