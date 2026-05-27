@@ -53,8 +53,10 @@ describe('setupTestPlatform', () => {
     const result = setupTestPlatform({ llm: mockLLM() });
     cleanup = result.cleanup;
 
-    // cache should be the fallback from PlatformContainer, not the mock
-    expect(platform.hasAdapter('cache')).toBe(false);
+    // cache was not provided — it falls back to InMemory (present, but not a
+    // user mock). isReal() returns false for fallback adapters.
+    expect(platform.hasAdapter('cache')).toBe(true);
+    expect(platform.isReal('cache')).toBe(false);
   });
 
   it('cleanup should reset the platform', () => {
@@ -62,27 +64,31 @@ describe('setupTestPlatform', () => {
     const result = setupTestPlatform({ llm });
 
     expect(platform.hasAdapter('llm')).toBe(true);
+    expect(platform.llm).toBe(llm);
 
     result.cleanup();
     cleanup = undefined;
 
-    expect(platform.hasAdapter('llm')).toBe(false);
+    // After cleanup the mock is gone — llm falls back to NoOp (present but not real).
+    expect(platform.llm).not.toBe(llm);
+    expect(platform.isReal('llm')).toBe(false);
   });
 
   it('should reset previous state before setting new adapters', () => {
     // First setup — sets llm
     const llm1 = mockLLM();
     setupTestPlatform({ llm: llm1 });
-    expect(platform.hasAdapter('llm')).toBe(true);
+    expect(platform.llm).toBe(llm1);
 
     // Second setup — should clear llm1, only set cache
     const cache = mockCache();
     const r2 = setupTestPlatform({ cache });
     cleanup = r2.cleanup;
 
-    // llm was cleared by the second setupTestPlatform() reset
-    expect(platform.hasAdapter('llm')).toBe(false);
-    // cache was set
+    // llm mock was cleared — replaced by NoOp fallback (present, not real)
+    expect(platform.llm).not.toBe(llm1);
+    expect(platform.isReal('llm')).toBe(false);
+    // cache was set as the user's mock
     expect(platform.cache).toBe(cache);
   });
 });

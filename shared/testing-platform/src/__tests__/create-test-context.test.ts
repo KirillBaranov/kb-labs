@@ -64,8 +64,10 @@ describe('createTestContext', () => {
       // ctx.platform has the mock
       expect(ctx.platform.llm).toBe(llm);
 
-      // Global singleton should NOT have it (it was reset before the test)
-      expect(platform.hasAdapter('llm')).toBe(false);
+      // Global singleton was reset but NOT synced — it has the NoOp fallback,
+      // not the user's mock. isReal() distinguishes mock from fallback.
+      expect(platform.llm).not.toBe(llm);
+      expect(platform.isReal('llm')).toBe(false);
 
       cleanup();
     });
@@ -74,11 +76,13 @@ describe('createTestContext', () => {
       const llm = mockLLM();
       const { cleanup } = createTestContext({ platform: { llm } });
 
-      expect(platform.hasAdapter('llm')).toBe(true);
+      expect(platform.llm).toBe(llm);
 
       cleanup();
 
-      expect(platform.hasAdapter('llm')).toBe(false);
+      // Mock is gone after cleanup — NoOp fallback is in place (present, not real).
+      expect(platform.llm).not.toBe(llm);
+      expect(platform.isReal('llm')).toBe(false);
     });
   });
 
