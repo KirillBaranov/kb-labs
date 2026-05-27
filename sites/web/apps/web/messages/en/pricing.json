@@ -60,8 +60,7 @@
         {
           "q": "Is this a no-code tool for business teams?",
           "a": "No. The platform is built for engineering teams who create and maintain plugins for their own processes. The CLI is the primary interface."
-        },
-        null
+        }
       ],
       "heading": "Common questions"
     },
