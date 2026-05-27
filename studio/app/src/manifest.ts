@@ -14,6 +14,7 @@ export const manifest: ServiceManifest = {
   dependsOn: ['rest', 'gateway'],
   env: {
     PORT: { description: 'HTTP port', default: '3000' },
+    HOST: { description: 'Bind host', default: '127.0.0.1' },
   },
 };
 
