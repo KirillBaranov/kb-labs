@@ -85,14 +85,14 @@
           "description": "Runs fully on your infrastructure"
         },
         {
-          "value": "35+",
+          "value": "20+",
           "label": "plugins",
           "description": "Marketplace entities available today"
         },
         {
           "value": "1",
           "label": "solo founder",
-          "description": "Built by Kirill, 24, since 2025"
+          "description": "Building since 2025"
         }
       ]
     }
