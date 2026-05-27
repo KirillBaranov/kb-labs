@@ -141,18 +141,27 @@ export class JobBroker {
       : Date.now() - 3_600_000; // 1-hour fallback
     const endTime = run.finishedAt ? new Date(run.finishedAt).getTime() : Date.now();
 
-    // Query a wide batch from the log store (in-memory adapter keeps everything)
-    const queryResult = await this.platform.logs.query(
-      {
-        from: startTime,
-        to: endTime,
-        level: options?.level && options.level !== 'all' ? options.level as LogLevel : undefined,
-      },
-      {
-        limit: 2000,
-        offset: 0,
-      },
-    );
+    // Query a wide batch from the log store.
+    // Guard against the log backend being unavailable (e.g. no logRingBuffer or
+    // logPersistence adapter configured) — HybridLogReader.query() throws
+    // "No log storage backend available" in that case. Return empty array so the
+    // endpoint responds with 200+[] instead of 500.
+    let queryResult: { logs?: unknown[] } = { logs: [] };
+    try {
+      queryResult = await this.platform.logs.query(
+        {
+          from: startTime,
+          to: endTime,
+          level: options?.level && options.level !== 'all' ? options.level as LogLevel : undefined,
+        },
+        {
+          limit: 2000,
+          offset: 0,
+        },
+      );
+    } catch {
+      this.logger.warn('Log backend unavailable — returning empty log list for run', { runId });
+    }
 
     type LogEntry = {
       timestamp: number;

@@ -108,7 +108,7 @@ describe('JobBroker._queryLogs — null/undefined log safety', () => {
     expect(Array.isArray(result)).toBe(true);
     // Only the valid entry matching runId-4 should survive
     expect(result).toHaveLength(1);
-    expect(result[0].message).toBe('ok');
+    expect(result.map((r) => r.message)).toEqual(['ok']);
   });
 
   it('returns [] when run does not exist', async () => {
@@ -119,6 +119,32 @@ describe('JobBroker._queryLogs — null/undefined log safety', () => {
     );
 
     const result = await broker.getJobLogs('nonexistent');
+    expect(Array.isArray(result)).toBe(true);
+    expect(result).toHaveLength(0);
+  });
+
+  it('returns [] when platform.logs.query() throws (no log backend configured)', async () => {
+    // HybridLogReader throws "No log storage backend available" when neither
+    // logPersistence nor logRingBuffer is configured. The endpoint must return
+    // 200+[] rather than propagating the error as 500.
+    const run = {
+      id: 'run-5',
+      startedAt: new Date().toISOString(),
+      finishedAt: new Date().toISOString(),
+    };
+    const broker = new JobBroker(
+      buildEngine(run) as never,
+      buildLogger() as never,
+      {
+        logs: {
+          query: vi.fn(async () => {
+            throw new Error('No log storage backend available. Configure logPersistence or logRingBuffer in kb.config.json');
+          }),
+        },
+      } as never,
+    );
+
+    const result = await broker.getJobLogs('run-5');
     expect(Array.isArray(result)).toBe(true);
     expect(result).toHaveLength(0);
   });
