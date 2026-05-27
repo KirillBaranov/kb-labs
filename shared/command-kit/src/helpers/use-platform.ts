@@ -31,7 +31,9 @@ import { platform as globalPlatform } from '@kb-labs/core-runtime';
  * @returns Platform services with correct adapters for current context
  */
 export function usePlatform(): typeof globalPlatform {
-  return (platformContext.getStore() as typeof globalPlatform) ?? globalPlatform;
+  // ALS stores PlatformServices (governed wrapper); at runtime it is always
+  // structurally compatible with PlatformContainer — the cast is safe.
+  return (platformContext.getStore() as unknown as typeof globalPlatform) ?? globalPlatform;
 }
 
 /**

@@ -540,7 +540,7 @@ export function createTestContext<TConfig = unknown>(
         case 'workflow':
           return { host: 'workflow', workflowId: 'test-wf', runId: 'test-run', stepId: 'test-step' };
         case 'webhook':
-          return { host: 'webhook', event: 'test:event' };
+          return { host: 'webhook', event: 'test:event', namespaceId: 'ns-test', webhookId: 'wh-test-001' };
       }
     })();
 
