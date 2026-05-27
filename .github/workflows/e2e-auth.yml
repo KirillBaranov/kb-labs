@@ -175,8 +175,11 @@ jobs:
         with:
           path: e2e/.verdaccio-storage
           key: verdaccio-storage-${{ runner.os }}-${{ hashFiles('e2e/packages/**/*.tgz') }}
-          restore-keys: |
-            verdaccio-storage-${{ runner.os }}-
+          # No restore-keys: Verdaccio storage must only be reused when it
+          # was built from the exact same source tarballs.
+          # A partial-match restore would leave old package versions in
+          # Verdaccio — the publisher skips 409-conflicting packages —
+          # so the platform ends up running stale code.
 
       - name: Prepare Verdaccio storage permissions
         run: |
