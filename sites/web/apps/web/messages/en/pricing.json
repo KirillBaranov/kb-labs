@@ -1,0 +1,123 @@
+{
+  "pricing": {
+    "comparison": {
+      "platformRows": {
+        "cloudHosting": "Cloud hosting",
+        "pluginSdk": "Plugin SDK",
+        "marketplace": "Marketplace ecosystem",
+        "onPrem": "On-prem deployment",
+        "premiumPlugins": "Premium plugin packs"
+      },
+      "colFeature": "Feature",
+      "securityRows": {
+        "auditLog": "Audit trails and tracing",
+        "governance": "Enterprise governance package",
+        "sandbox": "Plugin sandboxing"
+      },
+      "categories": {
+        "platform": {
+          "label": "Platform"
+        },
+        "support": {
+          "label": "Support"
+        },
+        "security": {
+          "label": "Security & compliance"
+        }
+      },
+      "eyebrow": "Compare plans",
+      "supportRows": {
+        "community": "Community support",
+        "priority": "Priority support",
+        "dedicated": "Dedicated support channel",
+        "sla": "SLA guarantees"
+      },
+      "heading": "Feature breakdown"
+    },
+    "meta": {
+      "title": "Pricing — KB Labs",
+      "description": "KB Labs is free today. Open-source core, no telemetry, no lock-in. Commercial layer coming later."
+    },
+    "faq": {
+      "eyebrow": "FAQ",
+      "items": [
+        {
+          "q": "Is OSS Core really free forever?",
+          "a": "Yes. Runtime, SDK, CLI and workflow engine — MIT + KBPL1.1. No freemium, no paywall, no future limits. We make money on Cloud hosting, enterprise support, and custom plugin development. Gating the core would break the whole model."
+        },
+        {
+          "q": "How is Cloud different from self-hosted?",
+          "a": "Only the infrastructure. Same open engine, same capabilities. Cloud is for teams who want to ship today without thinking about updates, backups and monitoring."
+        },
+        {
+          "q": "What does Enterprise plugin development include?",
+          "a": "We build plugins for your specific workflows. The plugins are your property, private by default. You can open-source them if you choose. We do not make private changes to the core — it evolves the same for everyone."
+        },
+        {
+          "q": "Is on-prem OSS the main scenario right now?",
+          "a": "Yes. The current focus is early on-prem adoption with engineering teams. Cloud and enterprise tracks are being shaped together with early adopters."
+        },
+        {
+          "q": "Is this a no-code tool for business teams?",
+          "a": "No. The platform is built for engineering teams who create and maintain plugins for their own processes. The CLI is the primary interface."
+        },
+        null
+      ],
+      "heading": "Common questions"
+    },
+    "tiers": {
+      "pro": {
+        "name": "Cloud",
+        "price": "Coming soon",
+        "badge": "On roadmap",
+        "note": "Same engine — we host it.",
+        "cta": "Join waitlist",
+        "features": [
+          "Same open engine, zero infra setup",
+          "Updates, backups, monitoring — our problem",
+          "Up and running in minutes, not days",
+          "You pay for convenience, not for features",
+          "Migrate back to self-hosted any time"
+        ]
+      },
+      "enterprise": {
+        "name": "Enterprise",
+        "price": "Talk to us",
+        "note": "On-prem support or custom plugin development.",
+        "cta": "Start a conversation",
+        "features": [
+          "On-prem with SLA, rollout help and a dedicated channel",
+          "Governance setup for your security perimeter",
+          "Professional plugin development for your workflows",
+          "Plugins are your IP, private by default",
+          "The runtime evolves the same for everyone — no private core changes"
+        ]
+      },
+      "hobby": {
+        "name": "OSS Core",
+        "price": "Free",
+        "note": "Forever · Self-hosted · No limits",
+        "cta": "Install",
+        "features": [
+          "One-command install on your own infrastructure",
+          "Full runtime, SDK, CLI and workflow engine",
+          "Agents, observability and audit out of the box",
+          "All adapters from the public catalog",
+          "No paywall, no usage limits, no telemetry you did not ask for"
+        ]
+      }
+    },
+    "cta": {
+      "startBtn2": "Install now",
+      "contactBtn": "Contact us",
+      "description2": "Install KB Labs on your own machine and point it at one process you actually own.",
+      "title2": "Ready to try it on your workflows?"
+    },
+    "hero": {
+      "eyebrow": "PRICING",
+      "titleLine1": "The engine is open.",
+      "titleLine2": "Pay only for convenience.",
+      "subtitle": "Runtime, SDK, CLI, the full plugin stack — MIT + KBPL1.1, self-hosted, no limits, no telemetry. This is not a free tier — this is KB Labs. We make money on hosting, support, and custom development. The core stays open."
+    }
+  }
+}

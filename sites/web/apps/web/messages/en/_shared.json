@@ -1,0 +1,219 @@
+{
+  "nav": {
+    "login": "Log in",
+    "megamenu": {
+      "tools": {
+        "kbMonitor": {
+          "title": "kb-monitor",
+          "description": "Watch deployments and services over time"
+        },
+        "kbDev": {
+          "title": "kb-dev",
+          "description": "Run local services with health and traces"
+        },
+        "kbDevkit": {
+          "title": "kb-devkit",
+          "description": "Monorepo quality tools and task runner"
+        },
+        "kbDeploy": {
+          "title": "kb-deploy",
+          "description": "Ship to prod before Kubernetes is worth it"
+        },
+        "marketplace": {
+          "title": "Marketplace",
+          "description": "Plugins and adapters you can drop in"
+        }
+      },
+      "solutions": {
+        "releaseAutomation": {
+          "title": "Release Automation",
+          "description": "Releases as one declarative workflow"
+        },
+        "monorepoOps": {
+          "title": "Monorepo Ops",
+          "description": "Predictable cross-repo changes and deps"
+        },
+        "platformApi": {
+          "title": "Platform API",
+          "description": "Integrate internal systems into workflows"
+        },
+        "codeIntelligence": {
+          "title": "Code Intelligence",
+          "description": "Semantic search across your codebase"
+        },
+        "observability": {
+          "title": "Observability",
+          "description": "One surface for runs, logs, and traces"
+        },
+        "codeQuality": {
+          "title": "Code Quality",
+          "description": "Review and QA gates on every change"
+        }
+      },
+      "product": {
+        "plugins": {
+          "title": "Plugins",
+          "description": "Everything is a plugin. Every plugin is open code"
+        },
+        "gateway": {
+          "title": "Gateway",
+          "description": "25+ contracts between your code and your infra"
+        },
+        "stateBroker": {
+          "title": "State Broker",
+          "description": "Distributed state without Redis lock-in"
+        },
+        "workflows": {
+          "title": "Workflows",
+          "description": "One engine for releases, reviews, QA, and agents"
+        },
+        "studio": {
+          "title": "Studio",
+          "description": "Visual UI for plugins and workflows"
+        }
+      },
+      "project": {
+        "contact": {
+          "title": "Contact",
+          "description": "Get in touch directly"
+        },
+        "about": {
+          "title": "About",
+          "description": "Who we are and why this exists"
+        },
+        "roadmap": {
+          "title": "Roadmap",
+          "description": "What's next, what's in progress"
+        },
+        "changelog": {
+          "title": "Changelog",
+          "description": "What shipped this week"
+        },
+        "security": {
+          "title": "Security",
+          "description": "Permissions, audit trail, on-prem"
+        }
+      },
+      "learn": {
+        "demo": {
+          "title": "Live Demo",
+          "description": "Watch a workflow run end-to-end"
+        },
+        "compare": {
+          "title": "Compare",
+          "description": "KB Labs vs alternatives"
+        },
+        "docs": {
+          "title": "Documentation",
+          "description": "Full platform reference"
+        },
+        "useCases": {
+          "title": "Use Cases",
+          "description": "Real-world automation scenarios"
+        },
+        "blog": {
+          "title": "Blog",
+          "description": "Engineering notes and deep dives"
+        }
+      }
+    },
+    "start": "Install"
+  },
+  "footer": {
+    "sections": {
+      "community": {
+        "title": "Community",
+        "github": "GitHub",
+        "founder": "Kirill Baranov"
+      },
+      "resources": {
+        "title": "Resources",
+        "useCases": "Use Cases"
+      },
+      "platform": {
+        "title": "Platform",
+        "pluginSystem": "Plugin System",
+        "productOverview": "Product Overview",
+        "stateBroker": "State Broker",
+        "workflowEngine": "Workflow Engine"
+      },
+      "secure": {
+        "title": "Secure",
+        "terms": "Terms",
+        "dpa": "DPA",
+        "privacy": "Privacy",
+        "cookies": "Cookies",
+        "security": "Security"
+      },
+      "developers": {
+        "title": "Developers",
+        "kbDev": "kb-dev",
+        "cli": "CLI Reference",
+        "sdk": "SDK Reference",
+        "restApi": "REST API"
+      },
+      "build": {
+        "studio": "Studio",
+        "docs": "Documentation"
+      },
+      "start": {
+        "pricing": "Pricing",
+        "enterprise": "Enterprise"
+      },
+      "learn": {
+        "title": "Learn",
+        "demo": "Demo",
+        "roadmap": "Roadmap",
+        "changelog": "Changelog",
+        "blog": "Blog"
+      },
+      "marketplace": {
+        "title": "Marketplace",
+        "community": "Community Plugins",
+        "browse": "Browse Plugins",
+        "official": "Official Plugins"
+      },
+      "solutions": {
+        "title": "Solutions",
+        "releaseAutomation": "Release Automation",
+        "aiGateway": "Gateway",
+        "monorepoOps": "Monorepo Ops",
+        "platformApi": "Platform Client",
+        "codeIntelligence": "Code Intelligence",
+        "observability": "Observability",
+        "codeQuality": "Code Quality"
+      },
+      "getStarted": {
+        "title": "Get Started",
+        "demo": "Demo",
+        "install": "Install",
+        "pricing": "Pricing",
+        "enterprise": "Enterprise"
+      },
+      "roadmap": "Roadmap",
+      "compare": "Compare",
+      "company": {
+        "title": "Company",
+        "contact": "Contact",
+        "about": "About",
+        "blog": "Blog"
+      }
+    },
+    "legal": "All rights reserved."
+  },
+  "ui": {
+    "aiError": "Something went wrong. Please try again.",
+    "openScreenshot": "Open screenshot: {alt}",
+    "aiPlaceholder": "Ask a question...",
+    "closeLightbox": "Close",
+    "aiStarterText": "Ask anything about KB Labs"
+  },
+  "notFound": {
+    "description": "The page you're looking for doesn't exist or has been moved.",
+    "contact": "Contact us",
+    "goHome": "Go home"
+  },
+  "meta": {
+    "siteDescription": "Self-hosted AI control plane for developers. Workflows, agents, and plugins — on your own infrastructure."
+  }
+}

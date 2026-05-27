@@ -1,0 +1,25 @@
+{
+  "page": {
+    "gwHeroTitleHighlight": "для любого сервиса",
+    "gwTelemetryTitle": "События от любого сервиса. Без схемы.",
+    "gwMetaDesc": "Единая точка входа. Любой сервис получает LLM, EventBus, Cache и Storage через HTTP — без привязки к вендорам.",
+    "gwCtaDescription": "Провайдеры меняются в конфиге — сервисы не трогаются. Gateway запускается вместе с платформой.",
+    "gwHeroInstallBtn": "Установить",
+    "gwCtaDocsBtn": "Документация",
+    "gwHeroTitle": "Платформенные возможности",
+    "gwAiLead": "Поле model — это тир (small · medium · large), а не имя модели. LLM Router резолвит тир в конкретный адаптер. Меняешь провайдера в конфиге — все вызовы подхватывают автоматически.",
+    "gwHeroDocsBtn": "Документация",
+    "gwTelemetryLead": "POST /telemetry/v1/ingest — батч до 500 событий, dot-notation типы, свободный payload. Пишет в IAnalytics — SQLite, DuckDB или файл.",
+    "gwPlatformTitle": "Один endpoint. Все адаптеры.",
+    "gwCtaEyebrow": "Попробуйте прямо сейчас",
+    "gwPlatformDocsBtn": "Документация",
+    "gwMetaTitle": "Gateway — KB Labs",
+    "gwTelemetryDocsBtn": "Документация",
+    "gwAiDocsBtn": "Документация",
+    "gwPlatformLead": "POST /platform/v1/:adapter/:method — девять адаптеров с чётким allowlist методов. Стриминг автоматически если метод возвращает AsyncIterable.",
+    "gwCtaInstallBtn": "Установить",
+    "gwAiTitle": "OpenAI-compatible. Без привязки к вендору.",
+    "gwHeroDescription": "Любой HTTP-сервис получает LLM, EventBus, Cache и Storage через единый endpoint. Провайдеры меняются в конфиге — потребители не трогаются.",
+    "gwCtaTitle": "Один порт. Все возможности."
+  }
+}

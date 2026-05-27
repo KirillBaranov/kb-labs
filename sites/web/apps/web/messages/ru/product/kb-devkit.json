@@ -1,0 +1,62 @@
+{
+  "page": {
+    "devkitMetaDesc": "Content-addressable кэш задач, обнаружение затронутых пакетов, проверки качества — один Go-бинарник для любого TypeScript/Node.js монорепо.",
+    "devkitConfigTitle": "Один файл. Любой монорепо.",
+    "devkitConfigEyebrow": "Конфигурация",
+    "devkitHeroTitle": "Сборка 100 пакетов за",
+    "devkitFeaturesTitle": "Детали, которые важны.",
+    "devkitCommandsEyebrow": "Команды",
+    "devkitCommandsFootnote": "Все команды поддерживают --json для скриптов и CI",
+    "devkitConfigLead2": "Поддерживает pnpm, npm, yarn workspaces. Внутри KB Labs управляет сборкой 125+ пакетов.",
+    "devkitCommandsTitle": "Всё поддаётся автоматизации.",
+    "devkitConfigLead1": "Положи devkit.yaml в корень репозитория. kb-devkit найдёт все пакеты автоматически и запустит задачи в правильном порядке, учитывая зависимости между пакетами.",
+    "devkitHeroDescription": "Content-addressable кэш, параллельное выполнение и обнаружение затронутых пакетов. kb-devkit запускает только то, что действительно изменилось.",
+    "devkitHeroDocsBtn": "Документация",
+    "devkitHeroTitleHighlight": "секунду.",
+    "devkitCtaTitle": "Один бинарник. Любой TypeScript/Node.js монорепо.",
+    "devkitMetaTitle": "kb-devkit — KB Labs",
+    "devkitFeaturesEyebrow": "Как это работает",
+    "devkitCommands": [
+      {
+        "cmd": "kb-devkit run build",
+        "desc": "Запустить задачу build для всех пакетов с кэшем и параллельным выполнением."
+      },
+      {
+        "cmd": "kb-devkit run build lint test --affected",
+        "desc": "Выполнить build, lint, test только для пакетов, изменённых в git, и их downstream-зависимостей."
+      },
+      {
+        "cmd": "kb-devkit run build --no-cache",
+        "desc": "Пропустить чтение и запись кэша для этого запуска. Артефакты не восстанавливаются."
+      },
+      {
+        "cmd": "kb-devkit check",
+        "desc": "Проверить все пакеты по правилам из devkit.yaml: именование, tsconfig, eslint, зависимости, структура."
+      },
+      {
+        "cmd": "kb-devkit fix",
+        "desc": "Применить безопасные автоматические исправления для нарушений, найденных командой check."
+      },
+      {
+        "cmd": "kb-devkit stats",
+        "desc": "Показать health score (A–F), количество проблем по категориям и метрики покрытия по всем пакетам."
+      }
+    ],
+    "devkitCtaEyebrow": "Установить",
+    "devkitCtaDocsBtn": "Документация",
+    "devkitFeatures": [
+      {
+        "title": "Content-addressable кэш",
+        "detail": "SHA256 входных файлов → ключ кэша. Попадание — артефакты восстанавливаются за ~1ms. Промах — задача выполняется и результат сохраняется. Один файл в двух пакетах хранится один раз."
+      },
+      {
+        "title": "Затронутые пакеты + downstream BFS",
+        "detail": "Находит пакеты, изменённые в git. Затем обходит граф обратных зависимостей BFS и включает всех downstream-потребителей. Три стратегии: git, submodules, command."
+      },
+      {
+        "title": "DAG-планировщик",
+        "detail": "Зависимости задач образуют граф. Алгоритм Кана разбивает его на слои: пакеты внутри слоя выполняются параллельно, слои — последовательно."
+      }
+    ]
+  }
+}

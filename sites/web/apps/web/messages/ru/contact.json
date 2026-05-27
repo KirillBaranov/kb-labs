@@ -1,0 +1,53 @@
+{
+  "page": {
+    "contactSecurityLabel": "Безопасность",
+    "contactMetaTitle": "Контакты — KB Labs",
+    "contactChannelsEyebrow": "Чем можем помочь?",
+    "contactHeroTitle": "Свяжитесь с нами",
+    "contactCommunity": [
+      {
+        "label": "GitHub",
+        "description": "Issues, исходный код, pull requests.",
+        "href": "https://github.com/KirillBaranov/kb-labs"
+      },
+      {
+        "label": "Telegram",
+        "description": "Написать основателю напрямую — самый быстрый способ.",
+        "href": "https://t.me/kirill_baranov"
+      }
+    ],
+    "contactCommunityEyebrow": "Сообщество",
+    "contactGeneralLabel": "Общие вопросы",
+    "contactLocationDesc": "Удалённая команда. Россия.",
+    "contactHeroDescription": "Мы небольшая команда — читаем всё и отвечаем быстро.",
+    "contactChannels": [
+      {
+        "label": "Продажи",
+        "description": "Обсудить цены, enterprise-планы или кастомные контракты.",
+        "action": "Написать в продажи →",
+        "href": "mailto:kirillBaranovJob@yandex.ru"
+      },
+      {
+        "label": "Поддержка",
+        "description": "Технические проблемы, баги или вопросы о платформе.",
+        "action": "Открыть issue →",
+        "href": "https://github.com/KirillBaranov/kb-labs/issues"
+      },
+      {
+        "label": "Партнёрства",
+        "description": "Интеграции, реселлерские программы или co-marketing.",
+        "action": "Написать →",
+        "href": "mailto:kirillBaranovJob@yandex.ru"
+      },
+      {
+        "label": "Пресса",
+        "description": "Медиазапросы, интервью и пресс-кит.",
+        "action": "Написать в пресс-службу →",
+        "href": "mailto:kirillBaranovJob@yandex.ru"
+      }
+    ],
+    "contactHeroEyebrow": "Контакты",
+    "contactLocationEyebrow": "Расположение",
+    "contactMetaDesc": "Свяжитесь с командой KB Labs."
+  }
+}

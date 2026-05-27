@@ -1,0 +1,228 @@
+{
+  "page": {
+    "cmpCtaTitle": "Easier to try than to compare.",
+    "cmpCtaDescription": "One install, five minutes — first workflow running on your machine.",
+    "cmpKbLabel": "Where KB Labs adds value",
+    "cmpObjectionsTitle": "Common questions — straight answers.",
+    "cmpHeroDescription": "We're not for everyone — and we're upfront about that. Here's a concrete breakdown of each alternative, including cases where the right answer is something else.",
+    "cmpMatrixTitle": "Who does what.",
+    "cmpDocsBtn": "Documentation",
+    "cmpMetaDesc": "How KB Labs compares to GitHub Actions, n8n, Temporal, and AI agents.",
+    "cmpHeroTitleHighlight": "and where it doesn't.",
+    "cmpMatrixEyebrow": "Feature matrix",
+    "cmpMatrixLegend": "✓ yes · ~ partial · – no · — not applicable",
+    "cmpGoodLabel": "What they do well",
+    "cmpMetaTitle": "Why KB Labs — Honest Comparison",
+    "cmpInstallBtn": "Install KB Labs",
+    "cmpObjections": [
+      {
+        "q": "We're already on GitHub Actions — why switch?",
+        "a": "You don't have to switch. KB Labs handles what CI/CD doesn't — review gates, AI orchestration, QA trends, agent workflows. Run it beside Actions."
+      },
+      {
+        "q": "Is this just another workflow tool?",
+        "a": "No. KB Labs is a runtime with a permissions model, an extension system, and observability built in. Workflows are one capability, not the whole product."
+      },
+      {
+        "q": "We have 2 engineers. Too complex?",
+        "a": "One-command install. First workflow in under an hour. The complexity scales with your team, not the other way around."
+      },
+      {
+        "q": "What about data privacy?",
+        "a": "Self-hosted by default. Nothing leaves your network unless you explicitly route it. No telemetry, no analytics, no cloud backend owned by anyone else."
+      },
+      {
+        "q": "We don't have a dedicated DevOps person.",
+        "a": "KB Labs is designed for engineers who own their own infra. The CLI is the primary interface. No GUI required, no YAML wizards."
+      },
+      {
+        "q": "How do agents fit in?",
+        "a": "As first-class workflow steps with typed contracts and permission enforcement. The same runtime governs humans, bots, and agents."
+      }
+    ],
+    "cmpHeroEyebrow": "Honest comparison",
+    "cmpTableHeaders": [
+      "Feature",
+      "KB Labs",
+      "GitHub Actions",
+      "n8n / Zapier",
+      "Temporal",
+      "LangChain"
+    ],
+    "cmpTableCategories": [
+      {
+        "label": "INFRASTRUCTURE",
+        "rows": [
+          {
+            "feature": "Self-hosted / on-prem",
+            "values": [
+              true,
+              false,
+              true,
+              true,
+              true
+            ]
+          },
+          {
+            "feature": "Vendor-neutral adapters",
+            "values": [
+              true,
+              false,
+              false,
+              false,
+              "~"
+            ]
+          },
+          {
+            "feature": "Install in 5 minutes",
+            "values": [
+              true,
+              false,
+              true,
+              false,
+              true
+            ]
+          }
+        ]
+      },
+      {
+        "label": "WORKFLOW & AUTOMATION",
+        "rows": [
+          {
+            "feature": "Code-first workflows",
+            "values": [
+              true,
+              true,
+              false,
+              true,
+              false
+            ]
+          },
+          {
+            "feature": "Plugin system",
+            "values": [
+              true,
+              true,
+              true,
+              false,
+              false
+            ]
+          },
+          {
+            "feature": "Human approval gates",
+            "values": [
+              true,
+              false,
+              true,
+              true,
+              false
+            ]
+          }
+        ]
+      },
+      {
+        "label": "AI & DEV LOOP",
+        "rows": [
+          {
+            "feature": "AI steps out of the box",
+            "values": [
+              true,
+              false,
+              true,
+              false,
+              true
+            ]
+          },
+          {
+            "feature": "Dev loop focus",
+            "values": [
+              true,
+              false,
+              false,
+              false,
+              false
+            ]
+          },
+          {
+            "feature": "Audit log & tracing",
+            "values": [
+              true,
+              true,
+              false,
+              true,
+              false
+            ]
+          }
+        ]
+      }
+    ],
+    "cmpAlternatives": [
+      {
+        "num": "01",
+        "label": "GitHub Actions / GitLab CI",
+        "verdict": "Great for build and deploy. Not designed for developer tooling.",
+        "good": [
+          "Tight integration with GitHub/GitLab events",
+          "Huge action marketplace",
+          "Handles build and deploy pipelines well"
+        ],
+        "kb": [
+          "Runs on your infra — secrets never leave your network",
+          "Covers what CI/CD ignores: review gates, QA trends, agent workflows",
+          "Works beside Actions, not instead of it"
+        ],
+        "note": ""
+      },
+      {
+        "num": "02",
+        "label": "n8n / Make / Zapier",
+        "verdict": "Fast to start. Hard to maintain at engineering scale.",
+        "good": [
+          "No-code setup for simple integrations",
+          "Wide library of pre-built connectors",
+          "Good for business process automation"
+        ],
+        "kb": [
+          "Workflows are code — reviewable, testable, version-controlled",
+          "Typed plugin contracts replace GUI nodes",
+          "Every run is traceable end-to-end"
+        ],
+        "note": ""
+      },
+      {
+        "num": "03",
+        "label": "Temporal / Prefect / Airflow",
+        "verdict": "Excellent for distributed systems. KB Labs solves a different problem.",
+        "good": [
+          "Industry-proven for distributed workflow orchestration",
+          "Strong durability and retry guarantees",
+          "Built for data pipelines and long-running jobs"
+        ],
+        "kb": [
+          "Designed for development teams, not data engineers",
+          "No distributed systems infrastructure to operate",
+          "Covers code review, release, QA — not data pipelines"
+        ],
+        "note": "Different tools for different problems. We complement, not compete."
+      },
+      {
+        "num": "04",
+        "label": "Custom internal tools",
+        "verdict": "You own the code. You also own every bug and upgrade.",
+        "good": [
+          "Fully custom to your exact requirements",
+          "No external dependencies or vendor risk",
+          "You control the roadmap"
+        ],
+        "kb": [
+          "Open source — fork it, own it, no vendor lock-in",
+          "Plugin SDK means you extend without maintaining core",
+          "Community-maintained, not just you"
+        ],
+        "note": ""
+      }
+    ],
+    "cmpHeroTitle": "Where KB Labs fits —",
+    "cmpObjectionsEyebrow": "Objections"
+  }
+}

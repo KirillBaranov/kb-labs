@@ -1,0 +1,44 @@
+{
+  "page": {
+    "stateHeroTitleHighlight": "между вызовами",
+    "stateApiLead": "GET · PUT · DELETE /state/:key плюс POST /state/clear. Ключи namespaced: tenant:default:namespace:key. TTL в миллисекундах, по умолчанию 5 минут.",
+    "stateHeroDescription": "Плагины stateless по умолчанию — каждый вызов начинается заново. State Broker хранит состояние с TTL: in-memory, daemon или Redis. API не меняется.",
+    "stateMetaTitle": "State Broker — KB Labs",
+    "stateApiTitle": "Четыре маршрута. Ничего лишнего.",
+    "stateCtaDocsBtn": "Документация",
+    "stateHeroDocsBtn": "Документация",
+    "stateApiDocsBtn": "Документация",
+    "stateMetaDesc": "Состояние между вызовами плагинов. In-memory, daemon или Redis — один и тот же API.",
+    "stateHeroTitle": "Состояние",
+    "stateCtaDescription": "kb-dev start поднимает State Daemon автоматически. Меняешь backend в конфиге — сервисы не трогаешь.",
+    "stateCtaTitle": "Запускается вместе с платформой.",
+    "stateCtaInstallBtn": "Установить",
+    "stateModes": [
+      {
+        "badge": "Разработка",
+        "badgeCls": "bg-emerald-500/10 text-emerald-400 ring-emerald-500/20",
+        "title": "In-Memory",
+        "when": "~1ms latency",
+        "detail": "Быстрый in-process кэш. Инфраструктура не нужна. Данные сбрасываются при перезапуске."
+      },
+      {
+        "badge": "Продакшн",
+        "badgeCls": "bg-blue-500/10 text-blue-400 ring-blue-500/20",
+        "title": "Redis",
+        "when": "~5ms latency",
+        "detail": "Общее состояние между инстансами с персистентностью. Тот же API — меняется конфигом."
+      },
+      {
+        "badge": "Edge",
+        "badgeCls": "bg-purple-500/10 text-purple-400 ring-purple-500/20",
+        "title": "Кастомный адаптер",
+        "when": "любой latency",
+        "detail": "Реализуйте ICache и подключите в kb.config.json. Любой бэкенд на ваш выбор."
+      }
+    ],
+    "stateHeroInstallBtn": "Установить",
+    "stateModesEyebrow": "Когда что использовать",
+    "stateCtaEyebrow": "Попробуйте прямо сейчас",
+    "stateModesTitle": "Три режима. Один API."
+  }
+}

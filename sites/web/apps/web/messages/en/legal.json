@@ -1,0 +1,34 @@
+{
+  "legal": {
+    "navTitle": "Legal",
+    "lastUpdated": "Last updated:",
+    "terms": {
+      "updated": "January 2026",
+      "meta": {
+        "title": "Terms of Service",
+        "description": "Terms governing your use of the KB Labs platform and services."
+      }
+    },
+    "dpa": {
+      "updated": "January 2026",
+      "meta": {
+        "title": "Data Processing Agreement",
+        "description": "KB Labs Data Processing Agreement (DPA) — how we process personal data on your behalf as a GDPR-compliant data processor."
+      }
+    },
+    "privacy": {
+      "updated": "April 2026",
+      "meta": {
+        "title": "Privacy Policy",
+        "description": "How KB Labs collects, uses, and protects your personal data."
+      }
+    },
+    "cookies": {
+      "updated": "April 2026",
+      "meta": {
+        "title": "Cookie Policy",
+        "description": "What cookies KB Labs uses, why we use them, and how you can control them."
+      }
+    }
+  }
+}

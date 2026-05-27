@@ -113,13 +113,54 @@ function deleteDeep(obj, dotPath) {
   const last = parts[parts.length - 1];
   if (!(last in cur)) return;
   delete cur[last];
-  // prune empty parent objects bottom-up
+  // prune empty parent objects bottom-up (skip arrays — handled by pruneDeadCollections)
   for (let i = stack.length - 1; i >= 1; i--) {
     const { node, key } = stack[i];
     if (key && typeof node[key] === 'object' && !Array.isArray(node[key]) && Object.keys(node[key]).length === 0) {
       delete node[key];
     }
   }
+}
+
+/**
+ * After individual leaf deletions, arrays can be left as [undefined, undefined, ...]
+ * which JSON.stringify serialises as [null, null, ...].  Walk the tree recursively
+ * and remove any array (or object) whose every leaf descendant is null/undefined,
+ * then prune newly-empty parent objects bottom-up.
+ *
+ * Returns true if the node is now "dead" (should be deleted by its parent).
+ */
+function pruneDeadCollections(node) {
+  if (node === null || node === undefined) return true;
+  if (typeof node !== 'object') return false; // primitive — alive
+  if (Array.isArray(node)) {
+    // Mark sparse/null slots dead; recurse into object/array elements.
+    let allDead = true;
+    for (let i = 0; i < node.length; i++) {
+      if (node[i] === null || node[i] === undefined) {
+        // already dead
+      } else if (typeof node[i] === 'object') {
+        if (pruneDeadCollections(node[i])) {
+          delete node[i]; // splice semantics: mark sparse
+        } else {
+          allDead = false;
+        }
+      } else {
+        allDead = false; // live primitive
+      }
+    }
+    return allDead;
+  }
+  // Plain object
+  let allDead = true;
+  for (const key of Object.keys(node)) {
+    if (pruneDeadCollections(node[key])) {
+      delete node[key];
+    } else {
+      allDead = false;
+    }
+  }
+  return allDead;
 }
 
 // ─── Devkit helpers ───────────────────────────────────────────────────────────
@@ -336,6 +377,9 @@ if (FIX_MODE && unusedKeys.length > 0) {
     deleteDeep(enMut, key);
     deleteDeep(ruMut, key);
   }
+  // Prune arrays that became all-null after leaf deletions (sparse-array artifact).
+  pruneDeadCollections(enMut);
+  pruneDeadCollections(ruMut);
   const enPath = join(MESSAGES_DIR, 'en.json');
   const ruPath = join(MESSAGES_DIR, 'ru.json');
   if (DRY_RUN) {

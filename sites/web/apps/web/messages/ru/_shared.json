@@ -1,0 +1,219 @@
+{
+  "nav": {
+    "login": "Войти",
+    "megamenu": {
+      "tools": {
+        "kbMonitor": {
+          "title": "kb-monitor",
+          "description": "Наблюдение за деплоем и сервисами во времени"
+        },
+        "kbDev": {
+          "title": "kb-dev",
+          "description": "Локальные сервисы с health и трассировкой"
+        },
+        "kbDevkit": {
+          "title": "kb-devkit",
+          "description": "Инструменты качества и таск-раннер для монорепо"
+        },
+        "kbDeploy": {
+          "title": "kb-deploy",
+          "description": "Деплой в прод до того как Kubernetes стал нужен"
+        },
+        "marketplace": {
+          "title": "Marketplace",
+          "description": "Готовые плагины и адаптеры"
+        }
+      },
+      "solutions": {
+        "releaseAutomation": {
+          "title": "Release Automation",
+          "description": "Релизы как один декларативный workflow"
+        },
+        "monorepoOps": {
+          "title": "Monorepo Ops",
+          "description": "Предсказуемые изменения в монорепо"
+        },
+        "platformApi": {
+          "title": "Platform API",
+          "description": "Интеграция внутренних систем в workflow"
+        },
+        "codeIntelligence": {
+          "title": "Code Intelligence",
+          "description": "Семантический поиск по кодовой базе"
+        },
+        "observability": {
+          "title": "Observability",
+          "description": "Одна поверхность для запусков, логов, трассировки"
+        },
+        "codeQuality": {
+          "title": "Code Quality",
+          "description": "Ревью и QA-гейты на каждое изменение"
+        }
+      },
+      "product": {
+        "plugins": {
+          "title": "Plugins",
+          "description": "Всё — плагин. Каждый плагин открытый код"
+        },
+        "gateway": {
+          "title": "Gateway",
+          "description": "25+ контрактов между вашим кодом и инфрой"
+        },
+        "stateBroker": {
+          "title": "State Broker",
+          "description": "Распределённое состояние без привязки к Redis"
+        },
+        "workflows": {
+          "title": "Workflows",
+          "description": "Один движок для релизов, ревью, QA и агентов"
+        },
+        "studio": {
+          "title": "Studio",
+          "description": "Визуальный UI для плагинов и workflow"
+        }
+      },
+      "project": {
+        "contact": {
+          "title": "Контакты",
+          "description": "Написать напрямую"
+        },
+        "about": {
+          "title": "О проекте",
+          "description": "Кто мы и зачем это всё"
+        },
+        "roadmap": {
+          "title": "Roadmap",
+          "description": "Что дальше, что в работе"
+        },
+        "changelog": {
+          "title": "Changelog",
+          "description": "Что вышло на этой неделе"
+        },
+        "security": {
+          "title": "Безопасность",
+          "description": "Права, трассировка, on-prem"
+        }
+      },
+      "learn": {
+        "demo": {
+          "title": "Live Demo",
+          "description": "Workflow от начала до конца вживую"
+        },
+        "compare": {
+          "title": "Сравнение",
+          "description": "KB Labs vs альтернативы"
+        },
+        "docs": {
+          "title": "Документация",
+          "description": "Полная справка по платформе"
+        },
+        "useCases": {
+          "title": "Сценарии",
+          "description": "Реальные примеры автоматизации"
+        },
+        "blog": {
+          "title": "Блог",
+          "description": "Инженерные заметки и разборы"
+        }
+      }
+    },
+    "start": "Установить"
+  },
+  "footer": {
+    "sections": {
+      "community": {
+        "title": "Сообщество",
+        "github": "GitHub",
+        "founder": "Кирилл Баранов"
+      },
+      "resources": {
+        "title": "Ресурсы",
+        "useCases": "Сценарии"
+      },
+      "platform": {
+        "title": "Платформа",
+        "pluginSystem": "Система плагинов",
+        "productOverview": "Обзор продукта",
+        "stateBroker": "State Broker",
+        "workflowEngine": "Workflow Engine"
+      },
+      "secure": {
+        "title": "Безопасность",
+        "terms": "Условия",
+        "dpa": "DPA",
+        "privacy": "Конфиденциальность",
+        "cookies": "Cookies",
+        "security": "Безопасность"
+      },
+      "developers": {
+        "title": "Разработчикам",
+        "kbDev": "kb-dev",
+        "cli": "CLI Reference",
+        "sdk": "SDK Reference",
+        "restApi": "REST API"
+      },
+      "build": {
+        "studio": "Studio",
+        "docs": "Документация"
+      },
+      "start": {
+        "pricing": "Цены",
+        "enterprise": "Enterprise"
+      },
+      "learn": {
+        "title": "Узнать",
+        "demo": "Демо",
+        "roadmap": "Дорожная карта",
+        "changelog": "Changelog",
+        "blog": "Блог"
+      },
+      "marketplace": {
+        "title": "Маркетплейс",
+        "community": "Сообщество",
+        "browse": "Все плагины",
+        "official": "Официальные"
+      },
+      "solutions": {
+        "title": "Решения",
+        "releaseAutomation": "Автоматизация релизов",
+        "aiGateway": "Gateway",
+        "monorepoOps": "Монорепо операции",
+        "platformApi": "Platform Client",
+        "codeIntelligence": "Code Intelligence",
+        "observability": "Наблюдаемость",
+        "codeQuality": "Качество кода"
+      },
+      "getStarted": {
+        "title": "Начать",
+        "demo": "Демо",
+        "install": "Установка",
+        "pricing": "Цены",
+        "enterprise": "Enterprise"
+      },
+      "roadmap": "Дорожная карта",
+      "compare": "Сравнение",
+      "company": {
+        "title": "Компания",
+        "contact": "Контакты",
+        "about": "О нас",
+        "blog": "Блог"
+      }
+    },
+    "legal": "Все права защищены."
+  },
+  "ui": {
+    "aiError": "Произошла ошибка. Попробуйте ещё раз.",
+    "openScreenshot": "Открыть скриншот: {alt}",
+    "aiPlaceholder": "Задайте вопрос...",
+    "closeLightbox": "Закрыть",
+    "aiStarterText": "Спросите что-нибудь о KB Labs"
+  },
+  "notFound": {
+    "description": "Страница не существует или была перемещена.",
+    "contact": "Написать нам",
+    "goHome": "На главную"
+  },
+  "meta": {
+    "siteDescription": "KB Labs: self-hosted open-source платформа для инженеров — workflow-движок, AI-инфраструктура, система плагинов и инструменты разработки."
+  }
+}

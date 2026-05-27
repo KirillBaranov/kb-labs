@@ -1,0 +1,53 @@
+{
+  "page": {
+    "contactSecurityLabel": "Security",
+    "contactMetaTitle": "Contact — KB Labs",
+    "contactChannelsEyebrow": "How can we help?",
+    "contactHeroTitle": "Get in touch",
+    "contactCommunity": [
+      {
+        "label": "GitHub",
+        "description": "File issues, browse source, contribute.",
+        "href": "https://github.com/KirillBaranov/kb-labs"
+      },
+      {
+        "label": "Telegram",
+        "description": "DM the founder directly — fastest way to get a response.",
+        "href": "https://t.me/kirill_baranov"
+      }
+    ],
+    "contactCommunityEyebrow": "Community",
+    "contactGeneralLabel": "General",
+    "contactLocationDesc": "Remote team. Russia.",
+    "contactHeroDescription": "Small team — we read everything and respond fast.",
+    "contactChannels": [
+      {
+        "label": "Sales",
+        "description": "Discuss pricing, enterprise plans, or custom contracts.",
+        "action": "Talk to sales →",
+        "href": "mailto:kirillBaranovJob@yandex.ru"
+      },
+      {
+        "label": "Support",
+        "description": "Technical issues, bugs, or questions about the platform.",
+        "action": "Open an issue →",
+        "href": "https://github.com/KirillBaranov/kb-labs/issues"
+      },
+      {
+        "label": "Partnerships",
+        "description": "Integrations, reseller programs, or joint go-to-market.",
+        "action": "Get in touch →",
+        "href": "mailto:kirillBaranovJob@yandex.ru"
+      },
+      {
+        "label": "Press",
+        "description": "Media inquiries, interviews, and press kit requests.",
+        "action": "Contact press →",
+        "href": "mailto:kirillBaranovJob@yandex.ru"
+      }
+    ],
+    "contactHeroEyebrow": "Contact",
+    "contactLocationEyebrow": "Location",
+    "contactMetaDesc": "Get in touch with the KB Labs team."
+  }
+}

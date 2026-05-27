@@ -1,0 +1,62 @@
+{
+  "page": {
+    "deployConfigTitle": "One file. Apps and infra together.",
+    "deployCtaDocsBtn": "Documentation",
+    "deployFeaturesTitle": "The details that matter.",
+    "deployCommandsTitle": "Everything is scriptable.",
+    "deployHeroDescription": "docker compose for production — git-aware, multi-host, over SSH. Build, push, pull, restart — in order, only what changed. One binary, one config, no cluster.",
+    "deployCtaTitle": "One binary. No Kubernetes.",
+    "deployCommands": [
+      {
+        "cmd": "kb-deploy run",
+        "desc": "Build and deploy affected targets (git diff against last deployed SHA)."
+      },
+      {
+        "cmd": "kb-deploy run --all",
+        "desc": "Force a full deploy of every target regardless of git state."
+      },
+      {
+        "cmd": "kb-deploy run kb-labs-web",
+        "desc": "Deploy a specific target by name. Useful for hotfixes and targeted redeploys."
+      },
+      {
+        "cmd": "kb-deploy status",
+        "desc": "Show the last deployed SHA per target and whether each is in sync with HEAD."
+      },
+      {
+        "cmd": "kb-deploy list",
+        "desc": "List every target configured in .kb/deploy.yaml, with their compose files and hosts."
+      },
+      {
+        "cmd": "kb-deploy infra up",
+        "desc": "Bring up stateful infra declared under infrastructure. Idempotent: running services are skipped."
+      }
+    ],
+    "deployHeroTitle": "Deploy before you need",
+    "deployHeroDocsBtn": "Documentation",
+    "deployCommandsEyebrow": "Commands",
+    "deployConfigLead1": "Drop .kb/deploy.yaml in the repo. kb-deploy reads it and decides what to build, push, and restart — over SSH, on the target host.",
+    "deployCtaEyebrow": "Install",
+    "deployMetaDesc": "docker compose for production — git-aware diff, multi-host over SSH, build → push → pull → restart in one command.",
+    "deployHeroTitleHighlight": "Kubernetes.",
+    "deployFeaturesEyebrow": "How it works",
+    "deployConfigEyebrow": "Configuration",
+    "deployConfigLead2": "SSH_KEY is the name of an env variable holding the PEM key. Locally — in .env, in CI — as a secret.",
+    "deployFeatures": [
+      {
+        "title": "Deploys only what changed",
+        "detail": "Affected targets are detected via git diff against the last deployed SHA. Nothing untouched rebuilds."
+      },
+      {
+        "title": "Builds, pushes, pulls, restarts — in order",
+        "detail": "Build on your machine or in CI, push to the registry, pull on the host, docker compose up. Each step is verified before the next."
+      },
+      {
+        "title": "Tracks last-deployed SHA per target",
+        "detail": "Every target remembers what it's currently running. status shows you the drift between HEAD and prod for each service."
+      }
+    ],
+    "deployMetaTitle": "kb-deploy — KB Labs",
+    "deployCommandsFootnote": "All commands support --json for scripts and CI"
+  }
+}

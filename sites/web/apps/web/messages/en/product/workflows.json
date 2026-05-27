@@ -1,0 +1,143 @@
+{
+  "productWorkflows": {
+    "meta": {
+      "title": "Workflows — KB Labs",
+      "description": "Compose deterministic workflows from typed primitives. Run them on your own infrastructure with full observability."
+    },
+    "page": {
+      "useCasesEyebrow": "Use cases",
+      "statsItems": [
+        {
+          "value": "25+",
+          "label": "built-in step types"
+        },
+        {
+          "value": "3",
+          "label": "execution modes"
+        },
+        {
+          "value": "100%",
+          "label": "local execution"
+        },
+        {
+          "value": "0",
+          "label": "cloud dependency"
+        }
+      ],
+      "realWorkflowItems": [
+        {
+          "label": "Release pipeline",
+          "desc": "lint → type-check → test → AI review → QA gate → build → publish. Every step traced."
+        },
+        {
+          "label": "AI code review",
+          "desc": "On every commit or PR: diff → LLM review → inline comments → approval gate."
+        },
+        {
+          "label": "QA regression tracker",
+          "desc": "Recurring checks on every change. Surfaces trend degradation before it ships."
+        },
+        {
+          "label": "Agent workflow",
+          "desc": "Autonomous agents as first-class steps. Same permissions model, same observability."
+        }
+      ],
+      "heroTitleGradient": "Releases, reviews, agents.",
+      "ctaDescription": "Install KB Labs and run your first workflow in under an hour. No cloud dependency, no sign-up.",
+      "triggersTitle": "Start from anything.",
+      "mentalModelEyebrow": "Mental model",
+      "useCases": [
+        {
+          "title": "Release automation",
+          "desc": "Declarative release pipeline that runs every time. No scripts to remember."
+        },
+        {
+          "title": "AI-assisted review",
+          "desc": "LLM review as a gated step — runs after lint, blocks merge on issues."
+        },
+        {
+          "title": "QA trend tracking",
+          "desc": "Recurring quality checks that surface regression signals before they ship."
+        },
+        {
+          "title": "Agent orchestration",
+          "desc": "Autonomous agents as workflow steps with sandboxed permissions."
+        },
+        {
+          "title": "Deploy coordination",
+          "desc": "Build → push → pull → restart — orchestrated with health verification."
+        },
+        {
+          "title": "Custom automation",
+          "desc": "Any engineering process that runs more than once belongs in a workflow."
+        }
+      ],
+      "mentalModelPara3Start": "Every run is fully observable. Trace the entire execution graph with",
+      "installBtn": "Install",
+      "ctaEyebrow": "Get started",
+      "heroEyebrow": "Workflow Engine",
+      "ctaTitle": "Replace your script chaos with workflows.",
+      "mentalModelPara1": "A workflow is a YAML file that lives in your repo, gets reviewed in PRs, and ships in the same release as the rest of your code. No GUI-only logic, no hidden state.",
+      "triggersSubtitle": "Workflows trigger on schedules, webhooks, API calls, or manually from the CLI.",
+      "heroTitleSecond": "One engine.",
+      "triggersEyebrow": "Triggers",
+      "primitivesTitle": "Three building blocks.",
+      "mentalModelTitle": "Workflows are code. Not config.",
+      "triggerCustom": "+ custom trigger",
+      "useCasesTitle": "What teams use workflows for.",
+      "docsBtn": "Read the docs",
+      "primitives": [
+        {
+          "id": "shell",
+          "name": "builtin:shell",
+          "desc": "Runs any shell command — scripts, CLI tools, your own binaries. Output is logged and available to downstream steps.",
+          "detail": "run · with · env · artifacts"
+        },
+        {
+          "id": "gate",
+          "name": "builtin:gate",
+          "desc": "Conditional routing with named routes and iteration limits. Directs the workflow to a branch or restarts a step with fresh context.",
+          "detail": "routes · maxIterations · restartFrom"
+        },
+        {
+          "id": "approval",
+          "name": "builtin:approval",
+          "desc": "Pauses the workflow and waits for a human decision. Supports approve/reject with an optional comment.",
+          "detail": "approve · reject · comment"
+        }
+      ],
+      "primitivesEyebrow": "Primitives",
+      "realWorkflowsEyebrow": "Real workflows",
+      "realWorkflowsTitle": "Workflows we ship on ourselves.",
+      "heroDescription": "Define workflows as code. Run them from CLI, CI, or Studio. Every step logged, every run observable, every policy enforced.",
+      "mentalModelPara2": "Steps declare dependencies. The engine resolves them, runs what can run in parallel, and waits for what needs to wait. You write what, not how.",
+      "primitivesSubtitle": "Every workflow — from a two-step script to a multi-day process — is built from these three primitives.",
+      "triggers": [
+        {
+          "label": "CLI",
+          "description": "kb workflow run <name> from terminal or CI script."
+        },
+        {
+          "label": "Studio",
+          "description": "One-click run from the web UI with real-time log stream."
+        },
+        {
+          "label": "Schedule",
+          "description": "Cron-based recurring runs — QA scans, nightly builds."
+        },
+        {
+          "label": "API call",
+          "description": "POST to the workflow endpoint from any system."
+        },
+        {
+          "label": "Git push",
+          "description": "Run on every commit to a branch or tag."
+        },
+        {
+          "label": "Pull request",
+          "description": "Trigger review and QA gates on PR open or update."
+        }
+      ]
+    }
+  }
+}

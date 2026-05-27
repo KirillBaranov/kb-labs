@@ -1,0 +1,73 @@
+{
+  "page": {
+    "plugCtaDocsBtn": "Документация",
+    "plugSdkLead2": "ctx.ui.success() работает одинаково из CLI, Workflow вызова.",
+    "plugCtaDescription": "Установите KB Labs, запустите scaffold, добавьте логику. CLI, REST API и Studio готовы автоматически.",
+    "plugPermEyebrow": "Permissions",
+    "plugLifecycleTitle": "Жизненный цикл плагина",
+    "plugPermTitle": "Видишь права до установки",
+    "plugSurfaceLead2": "Не нужно настраивать роутер, регистрировать команды или писать конфиг Studio. Поставил пакет — всё работает.",
+    "plugSurfaceEyebrow": "Как это работает",
+    "plugMetaTitle": "Plugin System — KB Labs",
+    "plugSdkLead1": "Плагин общается с абстракциями — ctx.ui, useLLM(). Какой провайдер стоит за ними, как роутится запрос, куда идут логи — всё это платформа.",
+    "plugHeroTitleRest": "платформы",
+    "plugCtaInstallBtn": "Установить",
+    "plugStats": [
+      {
+        "value": "35+",
+        "label": "сущностей маркетплейса"
+      },
+      {
+        "value": "19",
+        "label": "плагинов доступно"
+      },
+      {
+        "value": "21",
+        "label": "адаптеров доступно"
+      },
+      {
+        "value": "1 день",
+        "label": "типичная разработка плагина"
+      }
+    ],
+    "plugLifecycleEyebrow": "Как работает",
+    "plugSdkEyebrow": "SDK",
+    "plugLifecycleLead1": "После установки платформа записывает пакет в .kb/marketplace.lock с SHA-256 чексуммой. При каждом старте discovery проверяет целостность и загружает манифест.",
+    "plugLifecycleLead2": "Из манифеста извлекаются entity kinds — семь типов сущностей: CLI команды, REST роуты, Studio страницы, workflow handlers, webhook handlers, WebSocket каналы, cron расписания. Один плагин может регистрировать любое их сочетание.",
+    "plugSurfaceLead3": "Плагины изолированы: каждый получает только те ресурсы платформы, которые объявил. Полная OS-изоляция — с container/remote режимом исполнения.",
+    "plugMetaDesc": "Устанавливаешь один пакет — получаешь CLI, REST API и Studio сразу. Открытый SDK для своих плагинов.",
+    "plugLifecycleLead3": "При вызове команды движок выбирает execution backend. In-process — дефолт, минимальный overhead. Subprocess и worker-pool — изоляция процесса. Remote — полная OS-изоляция на отдельной машине.",
+    "plugSurfaceLead1": "Плагин объявляет CLI команды, REST роуты и Studio страницу в одном файле — manifest.ts. При установке движок регистрирует всё автоматически.",
+    "plugPermLead1": "Каждый плагин декларирует в манифесте что ему нужно: читать git, вызывать LLM, писать в fs. Ты видишь это ещё до install.",
+    "plugPermLead2": "Это не жёсткая гарантия — при in-process исполнении платформа проверяет запрошенные права, но полная OS-изоляция требует container или remote режима.",
+    "plugHeroInstallBtn": "Установить KB Labs",
+    "plugSdkTitle": "Только бизнес-логика",
+    "plugPermLead3": "Как permissions в мобильных приложениях: ты знаешь что плагин хочет и принимаешь осознанное решение.",
+    "plugCtaTitle": "Первый плагин — за 5 минут.",
+    "plugHeroTitleHighlight": "Плагин — это unit",
+    "plugHeroDescription": "Устанавливаешь один пакет — движок регистрирует CLI команды, REST роуты и страницу в Studio. Без ручных конфигов. Права объявлены в манифесте — видишь до установки.",
+    "plugEcoSteps": [
+      {
+        "step": "1",
+        "title": "Скаффолд",
+        "desc": "Запустите kb-create plugin my-plugin. Манифест, хэндлеры и tsconfig готовы."
+      },
+      {
+        "step": "2",
+        "title": "Реализация",
+        "desc": "Напишите типизированные хэндлеры. Импорт только из @kb-labs/sdk."
+      },
+      {
+        "step": "3",
+        "title": "Регистрация",
+        "desc": "Установите локально или опубликуйте в маркетплейс. kb plugins list покажет сразу."
+      }
+    ],
+    "plugSurfaceTitle": "Один манифест — три поверхности",
+    "plugHeroDocsBtn": "Документация",
+    "plugEcoEyebrow": "Экосистема",
+    "plugEcoTitle": "Создай и опубликуй свой плагин",
+    "plugSdkDocsBtn": "SDK документация",
+    "plugCtaEyebrow": "Попробуйте прямо сейчас"
+  }
+}

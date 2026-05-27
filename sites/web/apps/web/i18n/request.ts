@@ -1,5 +1,43 @@
 import { getRequestConfig } from 'next-intl/server';
+import { headers } from 'next/headers';
 import { routing } from './routing';
+
+/**
+ * Resolve the page-specific message chunk for a given pathname.
+ *
+ * Convention: URL path X → messages/<locale>/X.json
+ * Greedy fallback: /product/kb-dev → tries product/kb-dev → tries product → {}
+ *
+ * Dynamic segments ([slug], [id], etc.) are already excluded from static pages
+ * — if no chunk file exists the function silently returns {}.
+ */
+async function resolvePageChunk(
+  pathname: string,
+  locale: string,
+): Promise<Record<string, unknown>> {
+  // Strip locale prefix: /en/pricing → pricing, /ru/product/kb-dev → product/kb-dev
+  const stripped = pathname.replace(/^\/(en|ru)(\/|$)/, '').replace(/\/$/, '');
+  const segments = stripped.split('/').filter(Boolean);
+
+  if (segments.length === 0) {
+    // Root path: load home chunk
+    segments.push('home');
+  }
+
+  // Try from deepest to shallowest
+  for (let depth = segments.length; depth > 0; depth--) {
+    const candidate = segments.slice(0, depth).join('/');
+    try {
+      // Dynamic import — Next.js bundles these at build time
+      const mod = await import(`../messages/${locale}/${candidate}.json`);
+      return mod.default as Record<string, unknown>;
+    } catch {
+      // No chunk for this path segment — try shorter
+    }
+  }
+
+  return {};
+}
 
 export default getRequestConfig(async ({ requestLocale }) => {
   let locale = await requestLocale;
@@ -8,8 +46,18 @@ export default getRequestConfig(async ({ requestLocale }) => {
     locale = routing.defaultLocale;
   }
 
+  // x-pathname is injected by middleware.ts
+  const pathname = (await headers()).get('x-pathname') ?? `/${locale}`;
+
+  const [shared, page] = await Promise.all([
+    import(`../messages/${locale}/_shared.json`)
+      .then((m) => m.default as Record<string, unknown>)
+      .catch(() => ({} as Record<string, unknown>)),
+    resolvePageChunk(pathname, locale),
+  ]);
+
   return {
     locale,
-    messages: (await import(`../messages/${locale}.json`)).default,
+    messages: { ...shared, ...page },
   };
 });

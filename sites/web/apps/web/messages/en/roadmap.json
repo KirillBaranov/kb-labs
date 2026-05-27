@@ -1,0 +1,182 @@
+{
+  "roadmap": {
+    "meta": {
+      "title": "Product Roadmap — KB Labs",
+      "description": "What we're building and when — quarterly development plan."
+    },
+    "quarters": [
+      {
+        "id": "q2-2026",
+        "quarter": "Q2 2026",
+        "theme": "Public launch",
+        "status": "in-progress",
+        "current": true,
+        "items": [
+          {
+            "title": "Go Tooling Stabilization",
+            "description": "kb-devkit, kb-dev, kb-deploy, kb-monitor — stable releases with cross-platform binaries and install scripts.",
+            "status": "in-progress"
+          },
+          {
+            "title": "E2E Testing on Critical Paths",
+            "description": "End-to-end coverage for installation, service startup, and core product workflows.",
+            "status": "in-progress"
+          },
+          {
+            "title": "Demo Scenario",
+            "description": "kb-create --demo: install the platform and see the full cycle (commit plugin + gateway) working on your own codebase.",
+            "status": "in-progress"
+          },
+          {
+            "title": "Public Launch on GitHub",
+            "description": "Open-source monorepo, npm packages (core/sdk/shared under MIT), GitHub Releases with binaries.",
+            "status": "planned"
+          },
+          {
+            "title": "REST API v1",
+            "description": "OpenAPI-documented platform API with authentication and rate limiting.",
+            "status": "shipped"
+          },
+          {
+            "title": "Documentation",
+            "description": "90+ pages of docs covering architecture, SDK, guides, and operations.",
+            "status": "shipped"
+          }
+        ]
+      },
+      {
+        "id": "q3-2026",
+        "quarter": "Q3 2026",
+        "theme": "Ecosystem",
+        "status": "planned",
+        "current": false,
+        "items": [
+          {
+            "title": "Utility Plugin Pack",
+            "description": "A set of broadly useful plugins: notifications, scheduling, environment management, and more.",
+            "status": "planned"
+          },
+          {
+            "title": "Plugin SDK Stabilization",
+            "description": "Stable plugin API, versioned contracts, comprehensive SDK documentation and examples.",
+            "status": "planned"
+          },
+          {
+            "title": "Community Adapters",
+            "description": "Extension points are open today — anyone can write a Kafka, RabbitMQ, NATS, or any HTTP adapter.",
+            "status": "planned"
+          },
+          {
+            "title": "Studio v1.0",
+            "description": "Web UI for workflow monitoring, execution history, and plugin management.",
+            "status": "planned"
+          }
+        ]
+      },
+      {
+        "id": "q4-2026",
+        "quarter": "Q4 2026",
+        "theme": "Enterprise readiness",
+        "status": "planned",
+        "current": false,
+        "items": [
+          {
+            "title": "Notification Contract",
+            "description": "Unified notification interface — plugins send notifications, adapters deliver them (Slack, Telegram, email, webhooks).",
+            "status": "planned"
+          },
+          {
+            "title": "RBAC — Role-Based Access Control",
+            "description": "Permission system for platform resources: who can run what, access which services, and manage which plugins.",
+            "status": "planned"
+          },
+          {
+            "title": "Mind RAG v2",
+            "description": "Multi-repo search, improved anti-hallucination, and cross-project intelligence.",
+            "status": "planned"
+          },
+          {
+            "title": "Workflow Templates",
+            "description": "Pre-built workflow templates for common automation patterns: CI, releases, code review, onboarding.",
+            "status": "planned"
+          }
+        ]
+      },
+      {
+        "id": "q1-2027",
+        "quarter": "Q1 2027",
+        "theme": "Distribution",
+        "status": "exploring",
+        "current": false,
+        "items": [
+          {
+            "title": "KB Labs Registry",
+            "description": "Own package registry for plugins and adapters — publish, version, and distribute without npm.",
+            "status": "exploring"
+          },
+          {
+            "title": "Marketplace v2",
+            "description": "Full marketplace experience: discover, install, rate, and review plugins from the registry.",
+            "status": "exploring"
+          },
+          {
+            "title": "Plugin Verification",
+            "description": "Automated security and compatibility checks for published plugins.",
+            "status": "exploring"
+          },
+          {
+            "title": "ABAC — Attribute-Based Access Control",
+            "description": "Fine-grained permissions beyond roles: conditions based on resource attributes, time, environment.",
+            "status": "exploring"
+          }
+        ]
+      },
+      {
+        "id": "q2-2027",
+        "quarter": "Q2 2027",
+        "theme": "Scale",
+        "status": "exploring",
+        "current": false,
+        "items": [
+          {
+            "title": "Hosted Platform",
+            "description": "Managed KB Labs — same platform, zero ops. For teams that want the product without running infrastructure.",
+            "status": "exploring"
+          },
+          {
+            "title": "Multi-Tenant Production",
+            "description": "Isolated tenants, resource quotas, and org-level administration.",
+            "status": "exploring"
+          },
+          {
+            "title": "Enterprise Integrations",
+            "description": "SSO (SAML/OIDC), audit log export, and compliance tooling — driven by customer needs.",
+            "status": "exploring"
+          },
+          {
+            "title": "Agent Marketplace",
+            "description": "Pre-built AI agents with governed execution — install, configure, and run from the marketplace.",
+            "status": "exploring"
+          }
+        ]
+      }
+    ],
+    "cta": {
+      "title": "Want to influence the roadmap?",
+      "contactBtn": "Talk to us",
+      "startBtn": "Install",
+      "description": "Share your use case and help us prioritize what matters to your team."
+    },
+    "hero": {
+      "title": "Product Roadmap",
+      "description": "What we're building, what's next, and where we're headed. Updated quarterly."
+    },
+    "statusShipped": "Shipped",
+    "statusInProgress": "In Progress",
+    "statusPlanned": "Planned",
+    "statusExploring": "Exploring",
+    "statusCurrent": "Now",
+    "heroEyebrow": "Roadmap",
+    "heroTitleHighlight": "what's next."
+  }
+}

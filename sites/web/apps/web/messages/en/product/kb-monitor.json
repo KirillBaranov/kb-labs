@@ -1,0 +1,66 @@
+{
+  "page": {
+    "monFeaturesTitle": "The details that matter.",
+    "monCommandsFootnote": "All commands support --json for scripts and agent workflows",
+    "monHeroTitleHighlight": "agent watch.",
+    "monFeatures": [
+      {
+        "title": "Health across every target, one command",
+        "detail": "health runs HTTP or TCP probes against every target defined in deploy.yaml. Pass or fail per service, with latency."
+      },
+      {
+        "title": "Running state, uptime, and image SHA",
+        "detail": "status gives you the three things you always want during an incident — current state, how long it's been that way, and exactly what's running."
+      },
+      {
+        "title": "Remote logs without SSH sessions",
+        "detail": "logs streams docker logs from the host. --lines for a tail, --follow for live tail. No more SSH into a box just to tail a file."
+      }
+    ],
+    "monConfigTitle": "Same file as kb-deploy.",
+    "monConfigLead2": "Deploy and observability are paired by design. If kb-deploy knows about a target, kb-monitor does too.",
+    "monCtaTitle": "Set up once. Forget about monitoring.",
+    "monCtaEyebrow": "Install",
+    "monHeroTitle": "Set it up once. Let the",
+    "monMetaTitle": "kb-monitor — KB Labs",
+    "monCommandsEyebrow": "Commands",
+    "monHeroDescription": "kb-monitor observes services deployed by kb-deploy. Every command has --json with a stable schema — the agent runs health checks, reads logs, and reacts autonomously.",
+    "monConfigEyebrow": "Configuration",
+    "monCommands": [
+      {
+        "cmd": "kb-monitor health",
+        "desc": "Run health probes against every target. Pass or fail per service, with response latency."
+      },
+      {
+        "cmd": "kb-monitor health kb-labs-web",
+        "desc": "Probe a specific target. Useful for post-deploy verification in CI or agent workflows."
+      },
+      {
+        "cmd": "kb-monitor status",
+        "desc": "Running state, uptime, and image SHA for every target. The three things you need during an incident."
+      },
+      {
+        "cmd": "kb-monitor status --json",
+        "desc": "Structured output for agents and dashboards. Stable schema, every field documented."
+      },
+      {
+        "cmd": "kb-monitor logs kb-labs-web --lines 100",
+        "desc": "Fetch the last 100 lines of logs for a target. No SSH session, no docker ps needed."
+      },
+      {
+        "cmd": "kb-monitor logs kb-labs-web --follow",
+        "desc": "Stream live logs for a target from your laptop. Ctrl-C to stop, no cleanup needed."
+      },
+      {
+        "cmd": "kb-monitor exec kb-labs-web -- df -h",
+        "desc": "Execute a command inside the running container. Any command after -- is passed through verbatim."
+      }
+    ],
+    "monHeroDocsBtn": "Documentation",
+    "monConfigLead1": "kb-monitor reads .kb/deploy.yaml — the same file used to deploy services. No second source of truth, no parallel inventory.",
+    "monCtaDocsBtn": "Documentation",
+    "monCommandsTitle": "Everything is scriptable.",
+    "monFeaturesEyebrow": "How it works",
+    "monMetaDesc": "Agent-native service observability. Health, uptime, image SHA, logs, exec — all with --json."
+  }
+}
