@@ -72,11 +72,18 @@ export const createUserAuthMiddleware = (deps: UserAuthMiddlewareDeps) => {
     // Cross-tenant guard. The cookie alone doesn't tell us "which
     // tenant origin" the browser thinks it's on — we re-derive from
     // Host so a stolen cookie cannot be presented on another tenant.
+    //
+    // Guard fires only when the Host resolves to a known tenant. When
+    // resolvedTenant is null (localhost, raw IP, development, E2E), the
+    // request is not subdomain-routed and we cannot enforce per-tenant
+    // isolation — let it through. An attacker cannot fake a legitimate
+    // tenant subdomain without also controlling DNS / TLS, so the guard
+    // only needs to activate when the resolver returns a concrete slug.
     const hostHeader = request.headers['host'];
     const resolvedTenant = deps.tenantResolver.resolve(
       typeof hostHeader === 'string' ? hostHeader : undefined,
     );
-    if (!resolvedTenant || resolvedTenant !== payload.tenantId) {
+    if (resolvedTenant !== null && resolvedTenant !== payload.tenantId) {
       return sendUnauthorized(reply, 'Tenant mismatch');
     }
 

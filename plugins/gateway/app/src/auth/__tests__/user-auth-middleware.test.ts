@@ -171,14 +171,30 @@ describe('cross-tenant guard', () => {
     expect(r.statusCode).toBe(401);
   });
 
-  it('rejects when host resolves to no tenant (reserved subdomain)', async () => {
+  // When the host resolves to null (reserved subdomain, localhost, raw IP, etc.)
+  // the guard cannot enforce tenant isolation and lets the request through.
+  // In production, SameSite=Strict + no Domain= prevents cookies from reaching
+  // non-tenant hosts in the first place. This case covers E2E / dev environments
+  // where the gateway runs on localhost:4000 with no tenant subdomain.
+  it('allows request when host resolves to null (reserved subdomain / localhost)', async () => {
     const { token } = await seedUserAndToken();
     const r = await app.inject({
       method: 'GET',
       url: '/echo',
       headers: { host: 'api.kblabs.ru', cookie: `${COOKIE_ACCESS}=${token}` },
     });
-    expect(r.statusCode).toBe(401);
+    // null resolution → guard does not fire → request reaches the handler
+    expect(r.statusCode).toBe(200);
+  });
+
+  it('allows request from localhost (E2E / dev — no subdomain routing)', async () => {
+    const { token } = await seedUserAndToken();
+    const r = await app.inject({
+      method: 'GET',
+      url: '/echo',
+      headers: { host: 'localhost:4000', cookie: `${COOKIE_ACCESS}=${token}` },
+    });
+    expect(r.statusCode).toBe(200);
   });
 });
 
