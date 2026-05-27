@@ -145,7 +145,7 @@
     },
     "@kb-labs/adapters-mongodb": {
       "version": "0.8.0",
-      "integrity": "sha256-fH/TreEVe3NrkKQOcrTq7uI1fSwnpeEew8zSQKlq54g=",
+      "integrity": "sha256-uENOzMnJWx074u9y+KKKNXUrCckg6ckpVxuPH9jNStE=",
       "resolvedPath": "./adapters/mongodb",
       "installedAt": "2026-04-11T10:50:13.109Z",
       "source": "local",

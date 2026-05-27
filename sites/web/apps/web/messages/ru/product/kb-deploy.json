@@ -1,0 +1,64 @@
+{
+  "kbDeploy": {
+    "meta": {
+      "title": "kb-deploy — KB Labs",
+      "description": "docker compose для прода — git-aware диф, мультихост по SSH, build → push → pull → restart одной командой."
+    },
+    "configTitle": "Один файл. Приложения и инфра вместе.",
+    "ctaDocsBtn": "Документация",
+    "featuresTitle": "Детали, которые важны.",
+    "commandsTitle": "Всё поддаётся автоматизации.",
+    "heroDescription": "docker compose для прода — git-aware, мультихост, по SSH. Build, push, pull, restart — по порядку, только то что поменялось. Один бинарь, один конфиг, никакого кластера.",
+    "ctaTitle": "Один бинарник. Без Kubernetes.",
+    "commands": [
+      {
+        "cmd": "kb-deploy run",
+        "desc": "Собрать и раскатать затронутые цели (git diff против последнего SHA)."
+      },
+      {
+        "cmd": "kb-deploy run --all",
+        "desc": "Полный деплой всех целей, вне зависимости от git."
+      },
+      {
+        "cmd": "kb-deploy run kb-labs-web",
+        "desc": "Раскатать конкретную цель по имени. Удобно для хотфиксов."
+      },
+      {
+        "cmd": "kb-deploy status",
+        "desc": "Показать последний задеплоенный SHA для каждой цели и насколько он отстал от HEAD."
+      },
+      {
+        "cmd": "kb-deploy list",
+        "desc": "Список целей из .kb/deploy.yaml — с compose-файлами и хостами."
+      },
+      {
+        "cmd": "kb-deploy infra up",
+        "desc": "Поднять stateful-инфру из infrastructure. Идемпотентно: работающие сервисы пропускаются."
+      }
+    ],
+    "heroTitle": "Деплой до того как нужен",
+    "heroDocsBtn": "Документация",
+    "commandsEyebrow": "Команды",
+    "configLead1": "Положи .kb/deploy.yaml в репозиторий. kb-deploy прочитает и решит что собрать, что запушить и что перезапустить — по SSH, на целевом хосте.",
+    "ctaEyebrow": "Установить",
+    "heroTitleHighlight": "Kubernetes",
+    "featuresEyebrow": "Как это работает",
+    "configEyebrow": "Конфигурация",
+    "configLead2": "SSH_KEY — имя env-переменной с PEM-ключом. Локально — в .env, в CI — как секрет.",
+    "features": [
+      {
+        "title": "Раскатывает только то, что изменилось",
+        "detail": "Затронутые цели определяются по git diff против последнего задеплоенного SHA. Ничего лишнего не пересобирается."
+      },
+      {
+        "title": "Собирает, пушит, вытягивает, перезапускает — по порядку",
+        "detail": "Сборка локально или в CI, push в registry, pull на хосте, docker compose up. Каждый шаг проверяется до начала следующего."
+      },
+      {
+        "title": "Помнит последний SHA для каждой цели",
+        "detail": "status показывает что сейчас крутится в проде и насколько это разошлось с HEAD в репозитории."
+      }
+    ],
+    "commandsFootnote": "Все команды поддерживают --json для скриптов и CI"
+  }
+}

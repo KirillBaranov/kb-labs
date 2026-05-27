@@ -1,0 +1,64 @@
+{
+  "solutionObservability": {
+    "page": {
+      "monitorTitle": "kb-monitor — health, логи, exec в контейнер.",
+      "meta": {
+        "title": "Observability — KB Labs",
+        "description": "Каждый плагин, воркфлоу и сервис пишет события через единый IAnalytics. DuckDB, SQLite или файл — данные у вас."
+      },
+      "queryLead1": "DuckDB адаптер реализует полный IAnalytics: time-series через date_trunc, группировка по любому полю в JSON payload через dot-нотацию, фильтры по type/source/actor/from/to.",
+      "monitorCommands": [
+        {
+          "cmd": "kb-monitor health",
+          "note": "Проверка каждого объявленного таргета. Pass/fail с задержкой."
+        },
+        {
+          "cmd": "kb-monitor status",
+          "note": "Состояние, uptime и image SHA по каждому таргету."
+        },
+        {
+          "cmd": "kb-monitor logs <target> --follow",
+          "note": "Стриминг живых логов. Без SSH."
+        },
+        {
+          "cmd": "kb-monitor status --json",
+          "note": "Машиночитаемый вывод для агентов и дашбордов."
+        }
+      ],
+      "installBtn": "Установить KB Labs",
+      "ctaEyebrow": "Self-hosted",
+      "eventsTitle": "Плагин включает аналитику одной строкой в манифесте.",
+      "ctaTitle": "Данные у вас. Никакого SaaS на пути.",
+      "backendsTitle": "SQLite, DuckDB или плоский файл.",
+      "monitorLead": "Для задеплоенных сервисов — отдельный Go-инструмент. Health checks, стриминг логов, выполнение команд внутри контейнера. Работает с любым сервисом, задеплоенным через kb-deploy.",
+      "ctaNote": "Analytics адаптеры входят в платформу. kb-monitor — отдельный Go-бинарь.",
+      "eventsEyebrow": "Трекинг событий",
+      "backendsLead": "Бэкенд выбирается в kb.config.json — одна строка. Данные хранятся локально, нет никакого внешнего сервиса.",
+      "backendsTable": [
+        {
+          "label": "Pino (структурированные логи)",
+          "value": "По умолчанию. JSON-строки, совместим с любым агрегатором."
+        },
+        {
+          "label": "OpenTelemetry",
+          "value": "Экспорт трейсов и метрик в Jaeger, Tempo или OTLP endpoint."
+        },
+        {
+          "label": "Кастомный адаптер",
+          "value": "Реализуйте ILogger/IMetrics и подключите через kb.config.json."
+        }
+      ],
+      "queryLead2": "REST API возвращает те же данные через /api/v1/observability/metrics/history для дашбордов.",
+      "queryTitle": "getStats. getDailyStats. breakdownBy по payload.",
+      "docsBtn": "Документация",
+      "heroTitleHighlight": "Ваш бэкенд.",
+      "backendsEyebrow": "Бэкенды",
+      "heroTitle": "Все события.",
+      "monitorEyebrow": "Сервисы",
+      "heroDescription": "Каждый плагин, воркфлоу и сервис пишет события через единый IAnalytics. DuckDB, SQLite или плоский файл — данные хранятся у вас, никакого стороннего SaaS.",
+      "eventsLead1": "analytics: true в permissions — и в коде плагина доступен useAnalytics() из SDK или ctx.platform.analytics. Схема события kb.v1: type, ts, source, runId, actor, ctx, payload.",
+      "eventsLead2": "Платформа сама обогащает контекст: product, version, runId. Плагин передаёт только смысловые поля.",
+      "queryEyebrow": "Запросы"
+    }
+  }
+}

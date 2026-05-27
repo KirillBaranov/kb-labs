@@ -174,7 +174,30 @@ jobs:
       - name: Run ${{ matrix.task }}
         run: ./tools/kb-devkit/kb-devkit run ${{ matrix.task }}
 
-  # ── 4. Coverage — run tests with instrumentation + check thresholds ─────────
+  # ── 4. Site quality checks — seo, i18n, broken links ──────────────────────
+  site-checks:
+    name: site checks
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { run_install: false }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+      - run: tar xf dist-artifacts.tar
+      - run: pnpm install --frozen-lockfile
+      - name: SEO check
+        run: node sites/web/apps/web/scripts/seo-check.mjs --no-color
+      - name: i18n check
+        run: node sites/web/apps/web/scripts/i18n-check.mjs
+
+  # ── 5. Coverage — run tests with instrumentation + check thresholds ─────────
   coverage:
     name: coverage
     runs-on: ubuntu-latest
