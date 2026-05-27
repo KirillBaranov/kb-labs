@@ -396,8 +396,8 @@
   },
   "changelog": {
     "meta": {
-      "title": "Changelog",
-      "description": "New features, improvements, and fixes in KB Labs."
+      "title": "Changelog — KB Labs",
+      "description": "New features, improvements, and bug fixes in KB Labs — released continuously as we build in public."
     },
     "typeNew": "New",
     "releases": [
@@ -603,7 +603,7 @@
   "solutionReleaseAutomation": {
     "meta": {
       "title": "Release Automation — KB Labs",
-      "description": "One plugin we ship 150+ packages through — every time, one command."
+      "description": "One plugin we ship 150+ packages through — every time, one command. Automated release pipeline built on KB Labs."
     },
     "pipelineStages": [
       {
@@ -1070,7 +1070,7 @@
       "typeHook": "Hooks"
     },
     "meta": {
-      "title": "Marketplace",
+      "title": "Marketplace — KB Labs",
       "description": "KB Labs extension ecosystem: working plugins today and marketplace monetization on roadmap."
     },
     "detail": {
@@ -3521,8 +3521,8 @@
         }
       ],
       "meta": {
-        "title": "Terms of Service",
-        "description": "Terms governing your use of the KB Labs platform and services."
+        "title": "Terms of Service — KB Labs",
+        "description": "Terms governing your use of the KB Labs platform and services. Understand your rights and responsibilities as a user."
       },
       "title": "Terms of Service",
       "intro": "These Terms of Service (\"Terms\") govern your use of the KB Labs platform and services. By creating an account or using the platform, you agree to these Terms."
@@ -3588,7 +3588,7 @@
         }
       ],
       "meta": {
-        "title": "Data Processing Agreement",
+        "title": "Data Processing Agreement — KB Labs",
         "description": "KB Labs Data Processing Agreement (DPA) — how we process personal data on your behalf as a GDPR-compliant data processor."
       },
       "title": "Data Processing Agreement",
@@ -3657,8 +3657,8 @@
         }
       ],
       "meta": {
-        "title": "Privacy Policy",
-        "description": "How KB Labs collects, uses, and protects your personal data."
+        "title": "Privacy Policy — KB Labs",
+        "description": "How KB Labs collects, uses, and protects your personal data. Your privacy is central to how we build this platform."
       },
       "title": "Privacy Policy",
       "intro": "KB Labs (\"we\", \"us\", \"our\") operates the KB Labs platform and website. This Privacy Policy explains what data we collect, why we collect it, and how you can control it."
@@ -3737,7 +3737,7 @@
         }
       ],
       "meta": {
-        "title": "Cookie Policy",
+        "title": "Cookie Policy — KB Labs",
         "description": "What cookies KB Labs uses, why we use them, and how you can control them."
       },
       "title": "Cookie Policy",
@@ -4371,7 +4371,7 @@
   "roadmap": {
     "meta": {
       "title": "Product Roadmap — KB Labs",
-      "description": "What we're building and when — quarterly development plan."
+      "description": "What we are building and when — quarterly development plan and upcoming milestones for the KB Labs platform."
     },
     "quarters": [
       {
@@ -5064,7 +5064,7 @@
     "devkitConfigLead2": "Supports pnpm, npm, yarn workspaces. Inside KB Labs it manages the build of 125+ packages.",
     "plugLifecycleLead2": "The manifest extracts entity kinds — seven types: CLI commands, REST routes, Studio pages, workflow handlers, webhook handlers, WebSocket channels, cron schedules. One plugin can register any combination.",
     "cmpDocsBtn": "Documentation",
-    "cmpMetaDesc": "How KB Labs compares to GitHub Actions, n8n, Temporal, and AI agents.",
+    "cmpMetaDesc": "How KB Labs compares to GitHub Actions, n8n, Temporal, and AI agent frameworks.",
     "ucCtaInstallBtn": "Install KB Labs",
     "cmpHeroTitleHighlight": "and where it doesn't.",
     "plugSurfaceLead3": "Plugins are isolated: each gets only the platform resources it declared. Full OS isolation available in container/remote execution mode.",
@@ -5322,7 +5322,7 @@
       }
     ],
     "monHeroDocsBtn": "Documentation",
-    "stateMetaDesc": "State between plugin calls. In-memory, daemon, or Redis — one API.",
+    "stateMetaDesc": "Shared state between plugin calls without external dependencies. In-memory, daemon-backed, or Redis — one API, zero config.",
     "plugHeroInstallBtn": "Install KB Labs",
     "monConfigLead1": "kb-monitor reads .kb/deploy.yaml — the same file used to deploy services. No second source of truth, no parallel inventory.",
     "plugSdkTitle": "Just the business logic",
@@ -5803,7 +5803,7 @@
     "ucCtaContactBtn": "Get in touch",
     "deployCommandsFootnote": "All commands support --json for scripts and CI",
     "prodWorkflowsLead": "We replace brittle shell scripts and CI YAML with one programmable system for releases, code review, QA gates, commit policy, and AI agent runs. Everything lives in code you can read, diff, and review in a PR.",
-    "contactMetaDesc": "Get in touch with the KB Labs team.",
+    "contactMetaDesc": "Get in touch with the KB Labs team for sales inquiries, technical questions, partnership proposals, or press requests.",
     "gwHeroDescription": "Any HTTP service gets LLM, EventBus, Cache, and Storage through a single endpoint. Providers swap in config — consumers stay untouched.",
     "secDataFlowEyebrow": "Data flows",
     "stateModesTitle": "Three modes. One API.",
@@ -5855,7 +5855,7 @@
   "blog": {
     "readMore": "Read more →",
     "meta": {
-      "title": "Blog",
+      "title": "Engineering Blog — KB Labs",
       "description": "Engineering notes, platform updates, and thinking out loud from the KB Labs team."
     },
     "hero": {

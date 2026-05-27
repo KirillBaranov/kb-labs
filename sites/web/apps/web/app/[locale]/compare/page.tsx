@@ -32,6 +32,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: t('page.cmpMetaTitle'),
     description: t('page.cmpMetaDesc'),
     path: '/compare',
+    imageSegment: 'compare',
   });
 }
 
