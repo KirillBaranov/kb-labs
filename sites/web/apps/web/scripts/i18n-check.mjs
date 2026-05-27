@@ -2,6 +2,13 @@
 /**
  * i18n-check.mjs — translation guard for KB Labs site.
  *
+ * Source of truth: messages/en/**\/*.json + messages/ru/**\/*.json (per-namespace chunks).
+ * The legacy monolithic messages/en.json and messages/ru.json are no longer read.
+ *
+ * Chunk format:
+ *   _shared.json   → flat: { nav: {...}, footer: {...}, ... }  (multiple top-level keys)
+ *   *.json         → wrapped: { [namespace]: { ... } }          (single top-level key)
+ *
  * Runs in two modes:
  *
  *   STANDALONE  (direct invocation from sites/web/apps/web/):
@@ -19,25 +26,32 @@
  *     Output: {"issues":[...]} to stdout.
  *
  *   DEVKIT FIX  (via kb-devkit fix, KB_DEVKIT_MODE=fix):
- *     Removes UNUSED keys from both en.json and ru.json.
+ *     Removes UNUSED keys from chunk files.
  *     Returns remaining issues after the fix.
  *
  * Checks:
- *   1. MISMATCH   — en.json / ru.json have different key sets          → error
- *   2. MISSING    — code references a key absent from messages          → error
- *   3. HARDCODED  — Cyrillic text ≥ 4 chars in .tsx not via t()        → error
- *   4. UNUSED     — messages key never referenced in source             → warning (--strict → error) [autoFixable]
+ *   1. MISMATCH   — en/ru chunks have different key sets            → error
+ *   2. MISSING    — code references a key absent from messages       → error
+ *   3. HARDCODED  — Cyrillic text ≥ 4 chars in .tsx not via t()     → error
+ *   4. UNUSED     — messages key never referenced in source          → warning (--strict → error)
  *
  * Autofix (devkit fix / --fix):
- *   UNUSED keys are deleted from both JSON files. Empty parent objects are pruned.
+ *   UNUSED keys are deleted from both en and ru chunk files.
  *
  * Suppression:
  *   // i18n-ignore  at end of any source line → skips HARDCODED for that line.
  *   Dynamic template-literal keys (t(`key.${x}`)) are excluded from #2 and #4.
  */
 
-import { readFileSync, readdirSync, existsSync, writeFileSync, writeSync } from 'node:fs';
-import { join, extname, relative } from 'node:path';
+import {
+  readFileSync,
+  readdirSync,
+  existsSync,
+  writeFileSync,
+  writeSync,
+  mkdirSync,
+} from 'node:fs';
+import { join, extname, relative, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // ─── Mode ─────────────────────────────────────────────────────────────────────
@@ -56,7 +70,7 @@ const HARDCODED_ONLY_PKGS = new Set([
   '@kb-labs/docs-site',
 ]);
 
-// ─── Shared utilities (defined early — used by devkit early-exit paths) ───────
+// ─── Shared utilities ─────────────────────────────────────────────────────────
 
 const SOURCE_EXTS = new Set(['.tsx', '.ts']);
 
@@ -67,6 +81,15 @@ function* walk(dir) {
     const full = join(dir, entry.name);
     if (entry.isDirectory()) yield* walk(full);
     else if (SOURCE_EXTS.has(extname(entry.name))) yield full;
+  }
+}
+
+function* walkJson(dir) {
+  if (!existsSync(dir)) return;
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) yield* walkJson(full);
+    else if (entry.name.endsWith('.json')) yield full;
   }
 }
 
@@ -97,6 +120,59 @@ function extractHardcoded(filePath) {
   return issues;
 }
 
+// ─── Chunk utilities ──────────────────────────────────────────────────────────
+
+const ROOT         = join(fileURLToPath(import.meta.url), '..', '..');
+const MESSAGES_DIR = join(ROOT, 'messages');
+
+/**
+ * Load all chunk files for a locale and merge into a single message object.
+ * _shared.json is merged flat; all other chunks are wrapped in their namespace key.
+ *
+ * Returns { messages, chunkFiles } where chunkFiles maps absolute path → parsed JSON.
+ */
+function loadChunks(locale) {
+  const localeDir = join(MESSAGES_DIR, locale);
+  if (!existsSync(localeDir)) return { messages: {}, chunkFiles: new Map() };
+
+  const messages   = {};
+  const chunkFiles = new Map(); // absPath → raw parsed JSON
+
+  for (const filePath of walkJson(localeDir)) {
+    const raw  = readFileSync(filePath, 'utf8');
+    const data = JSON.parse(raw);
+    chunkFiles.set(filePath, data);
+
+    if (basename(filePath) === '_shared.json') {
+      // Flat merge — _shared has multiple top-level keys (nav, footer, ui, notFound, meta)
+      Object.assign(messages, data);
+    } else {
+      // Wrapped — single top-level key = namespace
+      Object.assign(messages, data);
+    }
+  }
+
+  return { messages, chunkFiles };
+}
+
+function flattenKeys(obj, prefix = '', leavesOnly = false) {
+  const out = new Set();
+  const entries = Array.isArray(obj)
+    ? obj.map((v, i) => [String(i), v])
+    : Object.entries(obj ?? {});
+  for (const [k, v] of entries) {
+    const full   = prefix ? `${prefix}.${k}` : k;
+    const isLeaf = v === null || typeof v !== 'object';
+    if (isLeaf) {
+      out.add(full);
+    } else {
+      if (!leavesOnly) out.add(full);
+      for (const sub of flattenKeys(v, full, leavesOnly)) out.add(sub);
+    }
+  }
+  return out;
+}
+
 // ─── JSON fix utilities ───────────────────────────────────────────────────────
 
 /** Delete a leaf key at a dot-path and prune empty parent objects. */
@@ -106,25 +182,75 @@ function deleteDeep(obj, dotPath) {
   let cur = obj;
   for (let i = 0; i < parts.length - 1; i++) {
     const next = cur[parts[i]];
-    if (next == null || typeof next !== 'object') return; // key doesn't exist
+    if (next == null || typeof next !== 'object') return;
     stack.push({ node: cur, key: parts[i] });
     cur = next;
   }
   const last = parts[parts.length - 1];
-  if (!(last in cur)) return;
-  delete cur[last];
-  // prune empty parent objects bottom-up
+
+  if (Array.isArray(cur)) {
+    // Use splice for arrays to avoid sparse holes that serialize as null
+    const idx = Number(last);
+    if (!Number.isNaN(idx) && idx < cur.length) {
+      cur.splice(idx, 1);
+    }
+  } else {
+    if (!(last in cur)) return;
+    delete cur[last];
+  }
+
+  // Prune empty parent objects/arrays bottom-up
   for (let i = stack.length - 1; i >= 1; i--) {
     const { node, key } = stack[i];
-    if (key && typeof node[key] === 'object' && !Array.isArray(node[key]) && Object.keys(node[key]).length === 0) {
+    if (!key) continue;
+    const child = node[key];
+    if (child == null) continue;
+    if (Array.isArray(child) && child.length === 0) {
+      delete node[key];
+    } else if (!Array.isArray(child) && typeof child === 'object' && Object.keys(child).length === 0) {
       delete node[key];
     }
   }
 }
 
+/**
+ * After leaf deletions, arrays become sparse → JSON.stringify → [null, null, ...]
+ * which causes infinite --fix loops. Recursively remove dead collections.
+ * Returns true if this node should be deleted by its parent.
+ */
+function pruneDeadCollections(node) {
+  if (node === null || node === undefined) return true;
+  if (typeof node !== 'object') return false;
+  if (Array.isArray(node)) {
+    let allDead = true;
+    for (let i = 0; i < node.length; i++) {
+      if (node[i] === null || node[i] === undefined) {
+        // already dead
+      } else if (typeof node[i] === 'object') {
+        if (pruneDeadCollections(node[i])) {
+          delete node[i];
+        } else {
+          allDead = false;
+        }
+      } else {
+        allDead = false;
+      }
+    }
+    return allDead;
+  }
+  let allDead = true;
+  for (const key of Object.keys(node)) {
+    if (pruneDeadCollections(node[key])) {
+      delete node[key];
+    } else {
+      allDead = false;
+    }
+  }
+  return allDead;
+}
+
 // ─── Devkit helpers ───────────────────────────────────────────────────────────
 
-/** Write JSON to stdout synchronously, then exit. Safe on pipes. */
 function exitWithJson(obj) {
   writeSync(1, JSON.stringify(obj));
   process.exit(0);
@@ -155,10 +281,9 @@ if (DEVKIT_MODE) {
         toDevkitIssue(file, line, '[HARDCODED] Raw Cyrillic text — use a prop/token or add // i18n-ignore')),
     });
   }
-  // Falls through to full check for @kb-labs/web-site
 }
 
-// ─── Colors (standalone output) ───────────────────────────────────────────────
+// ─── Colors ───────────────────────────────────────────────────────────────────
 
 const c = NO_COLOR
   ? { red: s => s, yellow: s => s, green: s => s, gray: s => s, bold: s => s }
@@ -170,40 +295,13 @@ const c = NO_COLOR
       bold:   s => `\x1b[1m${s}\x1b[0m`,
     };
 
-// ─── Paths (web-site root) ────────────────────────────────────────────────────
+// ─── Load messages from chunks ────────────────────────────────────────────────
 
-const ROOT         = join(fileURLToPath(import.meta.url), '..', '..');
-const MESSAGES_DIR = join(ROOT, 'messages');
-const SOURCE_DIRS  = [join(ROOT, 'app'), join(ROOT, 'components')];
+const SOURCE_DIRS = [join(ROOT, 'app'), join(ROOT, 'components')];
 
-// ─── Load messages ────────────────────────────────────────────────────────────
+const { messages: enJson, chunkFiles: enChunks } = loadChunks('en');
+const { messages: ruJson, chunkFiles: ruChunks } = loadChunks('ru');
 
-function flattenKeys(obj, prefix = '', leavesOnly = false) {
-  const out = new Set();
-  const entries = Array.isArray(obj)
-    ? obj.map((v, i) => [String(i), v])
-    : Object.entries(obj);
-  for (const [k, v] of entries) {
-    const full = prefix ? `${prefix}.${k}` : k;
-    const isLeaf = v === null || typeof v !== 'object';
-    if (isLeaf) {
-      out.add(full);
-    } else {
-      if (!leavesOnly) out.add(full);
-      for (const sub of flattenKeys(v, full, leavesOnly)) out.add(sub);
-    }
-  }
-  return out;
-}
-
-function loadMessages(locale) {
-  const p = join(MESSAGES_DIR, `${locale}.json`);
-  if (!existsSync(p)) throw new Error(`Missing message file: ${p}`);
-  return JSON.parse(readFileSync(p, 'utf8'));
-}
-
-const enJson     = loadMessages('en');
-const ruJson     = loadMessages('ru');
 const enAllKeys  = flattenKeys(enJson, '', false);
 const enLeafKeys = flattenKeys(enJson, '', true);
 const ruLeafKeys = flattenKeys(ruJson, '', true);
@@ -238,7 +336,6 @@ function extractRefs(filePath) {
   const src    = readFileSync(filePath, 'utf8');
   const lineOf = posToLineFn(src);
 
-  // Collect all namespaces declared in this file
   const namespaces = new Set();
   NS_REGEX.lastIndex = 0;
   let nsm;
@@ -246,10 +343,8 @@ function extractRefs(filePath) {
     const ns = nsm[1] || nsm[2];
     if (ns) namespaces.add(ns);
   }
-  // Single namespace → all t() keys are relative to it
-  // Multiple namespaces in one file → can't reliably prefix, use as-is
-  const singleNs   = namespaces.size === 1 ? [...namespaces][0] : null;
-  const hasNs      = namespaces.size > 0;
+  const singleNs = namespaces.size === 1 ? [...namespaces][0] : null;
+  const hasNs    = namespaces.size > 0;
 
   const refs = [];
   KEY_REGEX.lastIndex = 0;
@@ -257,7 +352,6 @@ function extractRefs(filePath) {
   while ((m = KEY_REGEX.exec(src)) !== null) {
     const key = m[2].trim();
     if (!key || key.startsWith('{')) continue;
-    // Non-namespaced files: skip bare keys (no dot) to reduce false positives
     if (!hasNs && !key.includes('.')) continue;
     const fullKey = singleNs ? `${singleNs}.${key}` : key;
     refs.push({ key: fullKey, file: filePath, line: lineOf(m.index) });
@@ -275,15 +369,15 @@ for (const ref of allRefs) {
 
 // ─── Nav-config derived key check ────────────────────────────────────────────
 // SiteHeader renders nav items via template literals: t(`nav.megamenu.${item.key}.title`)
-// Static regex can't resolve these — so we read nav-config.ts directly, extract
-// every NavItem key string, and verify the expected message keys exist in en.json.
 
 const NAV_CONFIG_FILE = join(ROOT, 'components', 'nav-config.ts');
-const navDerivedRefs  = []; // { key, file, line }
+const navDerivedRefs  = [];
 
 if (existsSync(NAV_CONFIG_FILE)) {
   const navSrc = readFileSync(NAV_CONFIG_FILE, 'utf8');
   const lineOf = posToLineFn(navSrc);
+
+  // Derive nav.megamenu.X.title + nav.megamenu.X.description from NavItem `key:` values.
   const NAV_ITEM_KEY_REGEX = /\bkey\s*:\s*['"]([^'"]+)['"]/g;
   let nm;
   while ((nm = NAV_ITEM_KEY_REGEX.exec(navSrc)) !== null) {
@@ -293,29 +387,38 @@ if (existsSync(NAV_CONFIG_FILE)) {
       navDerivedRefs.push({ key: `nav.megamenu.${itemKey}.${suffix}`, file: NAV_CONFIG_FILE, line });
     }
   }
+
+  // Register all direct string-valued nav keys: headingKey, labelKey, descKey.
+  // These are passed as variables to t() in SiteHeader so the regex can't see them.
+  const DIRECT_KEY_REGEX = /\b(?:headingKey|labelKey|descKey)\s*:\s*['"]([^'"]+)['"]/g;
+  let dm;
+  while ((dm = DIRECT_KEY_REGEX.exec(navSrc)) !== null) {
+    navDerivedRefs.push({ key: dm[1], file: NAV_CONFIG_FILE, line: lineOf(dm.index) });
+  }
 }
 
-// Register nav-derived refs so UNUSED check accounts for them too
 for (const { key, file, line } of navDerivedRefs) {
   if (!refsByKey.has(key)) refsByKey.set(key, []);
   refsByKey.get(key).push({ file, line });
 }
 
-// ─── Run all checks ───────────────────────────────────────────────────────────
+// ─── Run checks ───────────────────────────────────────────────────────────────
 
-const missingInRu   = [...enLeafKeys].filter(k => !ruLeafKeys.has(k));
-const extraInRu     = [...ruLeafKeys].filter(k => !enLeafKeys.has(k));
+// MISMATCH: compare merged en vs ru leaf key sets
+const missingInRu = [...enLeafKeys].filter(k => !ruLeafKeys.has(k));
+const extraInRu   = [...ruLeafKeys].filter(k => !enLeafKeys.has(k));
 
+// MISSING: referenced in code but absent from merged messages
 const missingRefs = [];
 for (const [key, locs] of refsByKey) {
   if (!enAllKeys.has(key)) missingRefs.push({ key, locs });
 }
 missingRefs.sort((a, b) => a.key.localeCompare(b.key));
 
+// HARDCODED: Cyrillic text in .tsx not via t()
 const hardcodedIssues = sourceFiles.flatMap(f => extractHardcoded(f));
 
-// A leaf key is "covered" if any of its ancestors is referenced (e.g. via t.raw()).
-// Deleting such keys would corrupt the object/array consumed by t.raw().
+// UNUSED: leaf keys never referenced (ancestor check for t.raw() coverage)
 function isCoveredByAncestor(key) {
   const parts = key.split('.');
   for (let i = 1; i < parts.length; i++) {
@@ -326,26 +429,64 @@ function isCoveredByAncestor(key) {
 
 const unusedKeys = [...enLeafKeys].filter(k => !refsByKey.has(k) && !isCoveredByAncestor(k)).sort();
 
-// ─── AUTOFIX: delete UNUSED keys from both JSON files ────────────────────────
+// ─── AUTOFIX: delete UNUSED keys from chunk files ─────────────────────────────
 
 if (FIX_MODE && unusedKeys.length > 0) {
-  // Work on mutable copies so we can re-check after deletion.
-  const enMut = JSON.parse(JSON.stringify(enJson));
-  const ruMut = JSON.parse(JSON.stringify(ruJson));
-  for (const key of unusedKeys) {
-    deleteDeep(enMut, key);
-    deleteDeep(ruMut, key);
-  }
-  const enPath = join(MESSAGES_DIR, 'en.json');
-  const ruPath = join(MESSAGES_DIR, 'ru.json');
-  if (DRY_RUN) {
-    // no-op — standalone prints summary below; devkit prints nothing for dry-run
-  } else {
-    writeFileSync(enPath, JSON.stringify(enMut, null, 2) + '\n', 'utf8');
-    writeFileSync(ruPath, JSON.stringify(ruMut, null, 2) + '\n', 'utf8');
+  // Group unused keys by which en chunk file they belong to.
+  // A key belongs to chunk C if it starts with any top-level key of C.
+  const chunkKeyPrefixes = new Map(); // chunkAbsPath → Set of top-level keys
+
+  for (const [absPath, data] of enChunks) {
+    chunkKeyPrefixes.set(absPath, new Set(Object.keys(data)));
   }
 
-  // Devkit fix mode: return remaining issues (UNUSED are now gone).
+  /** Find the chunk file that owns a given dot-path key. */
+  function findOwnerChunk(dotKey) {
+    const topKey = dotKey.split('.')[0];
+    for (const [absPath, prefixes] of chunkKeyPrefixes) {
+      if (prefixes.has(topKey)) return absPath;
+    }
+    return null;
+  }
+
+  // Group keys by owner chunk
+  const fixMap = new Map(); // en chunk absPath → keys to delete
+  for (const key of unusedKeys) {
+    const owner = findOwnerChunk(key);
+    if (!owner) continue;
+    if (!fixMap.has(owner)) fixMap.set(owner, []);
+    fixMap.get(owner).push(key);
+  }
+
+  let totalFixed = 0;
+
+  if (!DRY_RUN) {
+    for (const [enPath, keys] of fixMap) {
+      // Derive ru chunk path from en path
+      const ruPath = enPath.replace(
+        join(MESSAGES_DIR, 'en'),
+        join(MESSAGES_DIR, 'ru'),
+      );
+
+      const enMut = JSON.parse(JSON.stringify(enChunks.get(enPath)));
+      const ruData = existsSync(ruPath) ? JSON.parse(readFileSync(ruPath, 'utf8')) : {};
+      const ruMut  = JSON.parse(JSON.stringify(ruData));
+
+      for (const key of keys) {
+        deleteDeep(enMut, key);
+        deleteDeep(ruMut, key);
+      }
+      pruneDeadCollections(enMut);
+      pruneDeadCollections(ruMut);
+
+      writeFileSync(enPath, JSON.stringify(enMut, null, 2) + '\n', 'utf8');
+      if (existsSync(ruPath)) {
+        writeFileSync(ruPath, JSON.stringify(ruMut, null, 2) + '\n', 'utf8');
+      }
+      totalFixed += keys.length;
+    }
+  }
+
   if (DEVKIT_FIX) {
     const remaining = [];
     for (const { key, locs } of missingRefs) {
@@ -359,26 +500,25 @@ if (FIX_MODE && unusedKeys.length > 0) {
     exitWithJson({ issues: remaining });
   }
 
-  // Standalone fix mode: print summary and exit — don't show stale data.
   if (!DEVKIT_MODE) {
     const action = DRY_RUN ? 'Would remove' : 'Removed';
-    console.log(`✅  ${action} ${unusedKeys.length} unused keys from en.json + ru.json`);
+    console.log(`✅  ${action} ${unusedKeys.length} unused keys from en + ru chunks`);
     process.exit(0);
   }
 }
 
-// ─── DEVKIT output (full check for @kb-labs/web-site) ────────────────────────
+// ─── DEVKIT output ────────────────────────────────────────────────────────────
 
 if (DEVKIT_MODE) {
   const issues = [];
 
   for (const k of missingInRu) {
-    issues.push(toDevkitIssue(join(ROOT, 'messages', 'ru.json'), 0,
-      `[MISMATCH] Key "${k}" present in en.json but missing from ru.json`));
+    issues.push(toDevkitIssue(join(MESSAGES_DIR, 'ru'), 0,
+      `[MISMATCH] Key "${k}" present in en chunks but missing from ru chunks`));
   }
   for (const k of extraInRu) {
-    issues.push(toDevkitIssue(join(ROOT, 'messages', 'en.json'), 0,
-      `[MISMATCH] Key "${k}" present in ru.json but missing from en.json`));
+    issues.push(toDevkitIssue(join(MESSAGES_DIR, 'en'), 0,
+      `[MISMATCH] Key "${k}" present in ru chunks but missing from en chunks`));
   }
   for (const { key, locs } of missingRefs) {
     for (const loc of locs) {
@@ -395,14 +535,14 @@ if (DEVKIT_MODE) {
       check: 'i18n-check',
       severity: 'warning',
       message: `[UNUSED] Key "${key}" in messages but never referenced in source`,
-      file: join(ROOT, 'messages', 'en.json'),
+      file: join(MESSAGES_DIR, 'en'),
       autoFix: true,
       fix: 'node sites/web/apps/web/scripts/i18n-check.mjs --fix',
     });
   }
 
   exitWithJson({ issues });
-} else {
+}
 
 // ─── STANDALONE output ────────────────────────────────────────────────────────
 
@@ -414,7 +554,8 @@ const LINE = () => console.log(c.gray(SEP));
 NL();
 console.log(c.bold('KB Labs i18n Check'));
 LINE();
-console.log(c.gray(`Messages : en.json (${enLeafKeys.size} leaf keys) · ru.json (${ruLeafKeys.size} leaf keys)`));
+console.log(c.gray(`Messages : ${enChunks.size} en chunks · ${ruChunks.size} ru chunks`));
+console.log(c.gray(`Keys     : en ${enLeafKeys.size} leaves · ru ${ruLeafKeys.size} leaves`));
 console.log(c.gray(`Source   : ${sourceFiles.length} files in app/ + components/`));
 console.log(c.gray(`Refs     : ${refsByKey.size} unique keys referenced`));
 NL();
@@ -423,20 +564,22 @@ NL();
 if (missingInRu.length > 0 || extraInRu.length > 0) {
   exitCode = 1;
   const total = missingInRu.length + extraInRu.length;
-  console.log(c.red(c.bold(`❌  MISMATCH (${total}) — en.json and ru.json have different key sets`)));
+  console.log(c.red(c.bold(`❌  MISMATCH (${total}) — en and ru chunks have different key sets`)));
   NL();
   if (missingInRu.length > 0) {
-    console.log(c.red(`   Missing in ru.json (${missingInRu.length}):`));
-    missingInRu.forEach(k => console.log(c.red(`     · ${k}`)));
+    console.log(c.red(`   Missing in ru (${missingInRu.length}):`));
+    missingInRu.slice(0, 20).forEach(k => console.log(c.red(`     · ${k}`)));
+    if (missingInRu.length > 20) console.log(c.red(`     … and ${missingInRu.length - 20} more`));
     NL();
   }
   if (extraInRu.length > 0) {
-    console.log(c.red(`   Extra in ru.json / missing in en.json (${extraInRu.length}):`));
-    extraInRu.forEach(k => console.log(c.red(`     · ${k}`)));
+    console.log(c.red(`   Extra in ru / missing in en (${extraInRu.length}):`));
+    extraInRu.slice(0, 20).forEach(k => console.log(c.red(`     · ${k}`)));
+    if (extraInRu.length > 20) console.log(c.red(`     … and ${extraInRu.length - 20} more`));
     NL();
   }
 } else {
-  console.log(c.green('✅  MISMATCH  — en.json = ru.json key sets'));
+  console.log(c.green('✅  MISMATCH  — en and ru chunks are in sync'));
   NL();
 }
 
@@ -488,7 +631,8 @@ if (unusedKeys.length > 0) {
   } else {
     NL();
   }
-  unusedKeys.forEach(k => console.log(STRICT ? c.red(`   · ${k}`) : c.yellow(`   · ${k}`)));
+  unusedKeys.slice(0, 40).forEach(k => console.log(STRICT ? c.red(`   · ${k}`) : c.yellow(`   · ${k}`)));
+  if (unusedKeys.length > 40) console.log(c.yellow(`   … and ${unusedKeys.length - 40} more`));
   NL();
 } else {
   console.log(c.green('✅  UNUSED    — every messages key is referenced'));
@@ -502,7 +646,7 @@ if (exitCode === 0 && unusedKeys.length === 0) {
 } else if (exitCode === 0) {
   console.log(
     c.green('✅  No fatal errors.') +
-    c.yellow(`  (${unusedKeys.length} unused — run --strict to enforce)`),
+    c.yellow(`  (${unusedKeys.length} unused — run --strict to enforce, --fix to remove)`),
   );
 } else {
   const parts = [
@@ -516,4 +660,3 @@ if (exitCode === 0 && unusedKeys.length === 0) {
 NL();
 
 process.exit(exitCode);
-} // end else (DEVKIT_MODE)

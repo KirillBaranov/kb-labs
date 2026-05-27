@@ -14,7 +14,7 @@ export const manifest: ServiceManifest = {
   dependsOn: ['state-daemon'],
   env: {
     KB_REGISTRY_PORT: { description: 'HTTP port', default: '5071' },
-    KB_REGISTRY_HOST: { description: 'Bind host', default: '0.0.0.0' },
+    KB_REGISTRY_HOST: { description: 'Bind host', default: '127.0.0.1' },
   },
 };
 

@@ -40,6 +40,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: t('enterprise.meta.title'),
     description: t('enterprise.meta.description'),
     path: '/enterprise',
+    imageSegment: 'enterprise',
   });
 }
 

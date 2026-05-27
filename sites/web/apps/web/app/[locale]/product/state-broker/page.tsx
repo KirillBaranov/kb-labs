@@ -25,12 +25,13 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: 'page' });
+  const t = await getTranslations({ locale, namespace: 'stateBroker' });
   return buildPageMetadata({
     locale,
-    title: t('stateMetaTitle'),
-    description: t('stateMetaDesc'),
+    title: t('meta.title'),
+    description: t('meta.description'),
     path: '/product/state-broker',
+    imageSegment: 'product/state-broker',
   });
 }
 
@@ -69,8 +70,8 @@ export default async function StateBrokerPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const t = await getTranslations({ locale, namespace: 'page' });
-  const stateModes = t.raw('stateModes') as ModeItem[];
+  const t = await getTranslations({ locale, namespace: 'stateBroker' });
+  const stateModes = t.raw('modes') as ModeItem[];
 
   return (
     <>
@@ -85,19 +86,19 @@ export default async function StateBrokerPage({ params }: Props) {
               {/* i18n-ignore: brand + port label */}
               <Eyebrow className="mb-4">State · :7777</Eyebrow>
               <h1 className="mb-5 text-4xl font-bold leading-tight tracking-tight text-kb-text sm:text-5xl">
-                {t('stateHeroTitle')}{' '}
-                <GradientText>{t('stateHeroTitleHighlight')}</GradientText>
+                {t('heroTitle')}{' '}
+                <GradientText>{t('heroTitleHighlight')}</GradientText>
               </h1>
               <p className="mb-8 text-lg leading-relaxed text-muted/70">
-                {t('stateHeroDescription')}
+                {t('heroDescription')}
               </p>
               <div className="flex flex-wrap justify-center gap-3">
                 <Button asChild size="lg">
-                  <a href={`/${locale}/install`}>{t('stateHeroInstallBtn')}</a>
+                  <a href={`/${locale}/install`}>{t('heroInstallBtn')}</a>
                 </Button>
                 <Button asChild variant="outline" size="lg">
                   <a href="https://docs.kblabs.ru/state-broker" target="_blank" rel="noopener noreferrer">
-                    {t('stateHeroDocsBtn')}
+                    {t('heroDocsBtn')}
                     <ExternalLink className="ml-2 size-4" />
                   </a>
                 </Button>
@@ -111,9 +112,9 @@ export default async function StateBrokerPage({ params }: Props) {
           <Container>
             <AnimateOnScroll>
               <div className="mx-auto mb-12 max-w-xl text-center">
-                <Eyebrow className="mb-3">{t('stateModesEyebrow')}</Eyebrow>
+                <Eyebrow className="mb-3">{t('modesEyebrow')}</Eyebrow>
                 <h2 className="text-3xl font-bold tracking-tight text-kb-text">
-                  {t('stateModesTitle')}
+                  {t('modesTitle')}
                 </h2>
               </div>
             </AnimateOnScroll>
@@ -143,14 +144,14 @@ export default async function StateBrokerPage({ params }: Props) {
                 {/* i18n-ignore: HTTP acronym label */}
                 <Eyebrow className="mb-3">HTTP API</Eyebrow>
                 <h2 className="mb-4 text-3xl font-bold tracking-tight text-kb-text">
-                  {t('stateApiTitle')}
+                  {t('apiTitle')}
                 </h2>
                 <p className="mb-6 text-base leading-relaxed text-muted/70">
-                  {t('stateApiLead')}
+                  {t('apiLead')}
                 </p>
                 <Button asChild variant="outline" size="sm">
                   <a href="https://docs.kblabs.ru/state-broker" target="_blank" rel="noopener noreferrer">
-                    {t('stateApiDocsBtn')}
+                    {t('apiDocsBtn')}
                     <ExternalLink className="ml-2 size-3.5" />
                   </a>
                 </Button>
@@ -176,19 +177,19 @@ export default async function StateBrokerPage({ params }: Props) {
                 <BorderBeam />
                 <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[360px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/[0.06] blur-[90px]" />
                 <div className="relative z-10">
-                  <Eyebrow className="mb-4">{t('stateCtaEyebrow')}</Eyebrow>
+                  <Eyebrow className="mb-4">{t('ctaEyebrow')}</Eyebrow>
                   <h2 className="mb-4 text-[clamp(1.8rem,3.5vw,2.8rem)] font-bold leading-tight tracking-tight text-kb-text">
-                    {t('stateCtaTitle')}
+                    {t('ctaTitle')}
                   </h2>
                   <p className="mx-auto mb-8 max-w-[44ch] text-[1.05rem] leading-[1.7] text-muted">
-                    {t('stateCtaDescription')}
+                    {t('ctaDescription')}
                   </p>
                   <div className="flex flex-wrap justify-center gap-3">
                     <Button variant="primary" size="lg" href={`/${locale}/install`}>
-                      {t('stateCtaInstallBtn')}
+                      {t('ctaInstallBtn')}
                     </Button>
                     <Button variant="secondary" size="lg" href="https://docs.kblabs.ru/state-broker" target="_blank" rel="noopener noreferrer">
-                      {t('stateCtaDocsBtn')}
+                      {t('ctaDocsBtn')}
                     </Button>
                   </div>
                 </div>

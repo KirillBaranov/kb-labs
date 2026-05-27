@@ -1,0 +1,42 @@
+{
+  "demo": {
+    "meta": {
+      "title": "Live Demo — KB Labs",
+      "description": "See the KB Labs workflow engine running — trigger a workflow, watch it execute step by step, and inspect the full trace."
+    },
+    "howItWorks": {
+      "title": "From trigger to result in four steps.",
+      "eyebrow": "How it works",
+      "items": [
+        {
+          "title": "Write a .kb/workflow.yaml",
+          "description": "Define triggers, jobs, and steps in a YAML file next to your code."
+        },
+        {
+          "title": "Run kb workflow start",
+          "description": "The daemon picks it up, resolves plugins, and begins execution."
+        },
+        {
+          "title": "Watch real-time output",
+          "description": "Stream live logs, step status, and artifacts from the CLI or Studio."
+        },
+        {
+          "title": "Inspect the result",
+          "description": "Audit the full run: inputs, outputs, timing, and plugin calls — all local."
+        }
+      ]
+    },
+    "cta": {
+      "title": "Run it on your own workflow.",
+      "installBtn": "Install",
+      "workflowsBtn": "See workflows",
+      "description": "Install KB Labs and point it at a process you actually own. No sign-up, no limits."
+    },
+    "hero": {
+      "titleGradient": "run live.",
+      "titlePrefix": "Watch a workflow",
+      "eyebrow": "Interactive demo",
+      "description": "Trigger a real KB Labs workflow and see the engine execute each step — with full observability. No install needed."
+    }
+  }
+}

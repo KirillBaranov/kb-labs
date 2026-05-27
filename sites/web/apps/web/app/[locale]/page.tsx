@@ -38,6 +38,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     locale,
     title: t('home.meta.title'),
     description: t('home.meta.description'),
+    imageSegment: 'default',
   });
 }
 

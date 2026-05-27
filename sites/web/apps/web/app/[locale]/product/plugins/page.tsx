@@ -29,12 +29,13 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: 'page' });
+  const t = await getTranslations({ locale, namespace: 'plugins' });
   return buildPageMetadata({
     locale,
-    title: t('plugMetaTitle'),
-    description: t('plugMetaDesc'),
+    title: t('meta.title'),
+    description: t('meta.description'),
     path: '/product/plugins',
+    imageSegment: 'product/plugins',
   });
 }
 
@@ -124,10 +125,10 @@ export default async function PluginsPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const t = await getTranslations({ locale, namespace: 'page' });
+  const t = await getTranslations({ locale, namespace: 'plugins' });
 
-  const plugStats = t.raw('plugStats') as Array<{ value: string; label: string }>;
-  const plugEcoSteps = t.raw('plugEcoSteps') as Array<{ step: string; title: string; desc: string }>;
+  const plugStats = t.raw('stats') as Array<{ value: string; label: string }>;
+  const plugEcoSteps = t.raw('ecoSteps') as Array<{ step: string; title: string; desc: string }>;
 
   return (
     <>
@@ -146,18 +147,18 @@ export default async function PluginsPage({ params }: Props) {
                 {/* i18n-ignore: brand name */}
                 <Eyebrow className="mb-5">Plugin System</Eyebrow>
                 <h1 className="mb-5 text-[clamp(2rem,4.5vw,3.2rem)] font-bold leading-[1.08] tracking-tight text-kb-text">
-                  <GradientText shimmer>{t('plugHeroTitleHighlight')}</GradientText>
-                  <span className="block">{t('plugHeroTitleRest')}</span>
+                  <GradientText shimmer>{t('heroTitleHighlight')}</GradientText>
+                  <span className="block">{t('heroTitleRest')}</span>
                 </h1>
                 <p className="mb-8 max-w-[48ch] text-[1.05rem] leading-[1.75] text-muted">
-                  {t('plugHeroDescription')}
+                  {t('heroDescription')}
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <Button variant="primary" size="lg" href={`/${locale}/install`}>
-                    {t('plugHeroInstallBtn')}
+                    {t('heroInstallBtn')}
                   </Button>
                   <Button variant="secondary" size="lg" href="https://docs.kblabs.ru/plugins" target="_blank" rel="noopener noreferrer">
-                    {t('plugHeroDocsBtn')}
+                    {t('heroDocsBtn')}
                   </Button>
                 </div>
               </div>
@@ -246,19 +247,19 @@ export default async function PluginsPage({ params }: Props) {
               {/* Right: text */}
               <AnimateOnScroll animation="slide-up" delay={100}>
                 <SectionHeader
-                  eyebrow={t('plugSdkEyebrow')}
-                  title={t('plugSdkTitle')}
+                  eyebrow={t('sdkEyebrow')}
+                  title={t('sdkTitle')}
                 />
                 <div className="mb-8 space-y-4 text-[1rem] leading-[1.75] text-muted">
                   <p>
-                    {t('plugSdkLead1')}
+                    {t('sdkLead1')}
                   </p>
                   <p>
-                    {t('plugSdkLead2')}
+                    {t('sdkLead2')}
                   </p>
                 </div>
                 <Button variant="secondary" size="md" href="https://docs.kblabs.ru/plugins" target="_blank" rel="noopener noreferrer">
-                  {t('plugSdkDocsBtn')}
+                  {t('sdkDocsBtn')}
                   <ExternalLink className="size-4" />
                 </Button>
               </AnimateOnScroll>
@@ -280,18 +281,18 @@ export default async function PluginsPage({ params }: Props) {
               {/* Right: text */}
               <AnimateOnScroll animation="slide-up" delay={120}>
                 <SectionHeader
-                  eyebrow={t('plugSurfaceEyebrow')}
-                  title={t('plugSurfaceTitle')}
+                  eyebrow={t('surfaceEyebrow')}
+                  title={t('surfaceTitle')}
                 />
                 <div className="space-y-4 text-[1rem] leading-[1.75] text-muted">
                   <p>
-                    {t('plugSurfaceLead1')}
+                    {t('surfaceLead1')}
                   </p>
                   <p>
-                    {t('plugSurfaceLead2')}
+                    {t('surfaceLead2')}
                   </p>
                   <p>
-                    {t('plugSurfaceLead3')}
+                    {t('surfaceLead3')}
                   </p>
                 </div>
               </AnimateOnScroll>
@@ -308,18 +309,18 @@ export default async function PluginsPage({ params }: Props) {
               {/* Left: text */}
               <AnimateOnScroll animation="slide-up">
                 <SectionHeader
-                  eyebrow={t('plugLifecycleEyebrow')}
-                  title={t('plugLifecycleTitle')}
+                  eyebrow={t('lifecycleEyebrow')}
+                  title={t('lifecycleTitle')}
                 />
                 <div className="space-y-4 text-[1rem] leading-[1.75] text-muted">
                   <p>
-                    {t('plugLifecycleLead1')}
+                    {t('lifecycleLead1')}
                   </p>
                   <p>
-                    {t('plugLifecycleLead2')}
+                    {t('lifecycleLead2')}
                   </p>
                   <p>
-                    {t('plugLifecycleLead3')}
+                    {t('lifecycleLead3')}
                   </p>
                 </div>
               </AnimateOnScroll>
@@ -341,18 +342,18 @@ export default async function PluginsPage({ params }: Props) {
               {/* Left: text */}
               <AnimateOnScroll animation="slide-up">
                 <SectionHeader
-                  eyebrow={t('plugPermEyebrow')}
-                  title={t('plugPermTitle')}
+                  eyebrow={t('permEyebrow')}
+                  title={t('permTitle')}
                 />
                 <div className="space-y-4 text-[1rem] leading-[1.75] text-muted">
                   <p>
-                    {t('plugPermLead1')}
+                    {t('permLead1')}
                   </p>
                   <p>
-                    {t('plugPermLead2')}
+                    {t('permLead2')}
                   </p>
                   <p>
-                    {t('plugPermLead3')}
+                    {t('permLead3')}
                   </p>
                 </div>
               </AnimateOnScroll>
@@ -389,8 +390,8 @@ export default async function PluginsPage({ params }: Props) {
               {/* Right: text */}
               <AnimateOnScroll animation="slide-up" delay={100}>
                 <SectionHeader
-                  eyebrow={t('plugEcoEyebrow')}
-                  title={t('plugEcoTitle')}
+                  eyebrow={t('ecoEyebrow')}
+                  title={t('ecoTitle')}
                 />
                 <div className="space-y-5">
                   {plugEcoSteps.map((item) => (
@@ -419,19 +420,19 @@ export default async function PluginsPage({ params }: Props) {
                 <BorderBeam />
                 <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[360px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/[0.06] blur-[90px]" />
                 <div className="relative z-10">
-                  <Eyebrow className="mb-4">{t('plugCtaEyebrow')}</Eyebrow>
+                  <Eyebrow className="mb-4">{t('ctaEyebrow')}</Eyebrow>
                   <h2 className="mb-4 text-[clamp(1.8rem,3.5vw,2.8rem)] font-bold leading-tight tracking-tight text-kb-text">
-                    {t('plugCtaTitle')}
+                    {t('ctaTitle')}
                   </h2>
                   <p className="mx-auto mb-8 max-w-[44ch] text-[1.05rem] leading-[1.7] text-muted">
-                    {t('plugCtaDescription')}
+                    {t('ctaDescription')}
                   </p>
                   <div className="flex flex-wrap justify-center gap-3">
                     <Button variant="primary" size="lg" href={`/${locale}/install`}>
-                      {t('plugCtaInstallBtn')}
+                      {t('ctaInstallBtn')}
                     </Button>
                     <Button variant="secondary" size="lg" href="https://docs.kblabs.ru/plugins" target="_blank" rel="noopener noreferrer">
-                      {t('plugCtaDocsBtn')}
+                      {t('ctaDocsBtn')}
                     </Button>
                   </div>
                 </div>

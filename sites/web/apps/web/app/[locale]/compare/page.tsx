@@ -26,12 +26,13 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale });
+  const t = await getTranslations({ locale, namespace: 'compare' });
   return buildPageMetadata({
     locale,
-    title: t('page.cmpMetaTitle'),
-    description: t('page.cmpMetaDesc'),
+    title: t('meta.title'),
+    description: t('meta.description'),
     path: '/compare',
+    imageSegment: 'compare',
   });
 }
 
@@ -39,11 +40,11 @@ export default async function ComparePage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const t = await getTranslations({ locale });
+  const t = await getTranslations({ locale, namespace: 'compare' });
 
-  const tableHeaders = t.raw('page.cmpTableHeaders') as string[];
-  const tableCategories = t.raw('page.cmpTableCategories') as ComparisonCategory[];
-  const alternatives = t.raw('page.cmpAlternatives') as Array<{
+  const tableHeaders = t.raw('tableHeaders') as string[];
+  const tableCategories = t.raw('tableCategories') as ComparisonCategory[];
+  const alternatives = t.raw('alternatives') as Array<{
     num: string;
     label: string;
     verdict: string;
@@ -51,7 +52,7 @@ export default async function ComparePage({ params }: Props) {
     kb: string[];
     note: string | null;
   }>;
-  const objections = t.raw('page.cmpObjections') as Array<{ q: string; a: string }>;
+  const objections = t.raw('objections') as Array<{ q: string; a: string }>;
 
   return (
     <>
@@ -64,13 +65,13 @@ export default async function ComparePage({ params }: Props) {
           <Container className="relative z-10">
             <AnimateOnScroll>
               <div className="mx-auto max-w-3xl text-center">
-                <Eyebrow className="mb-4">{t('page.cmpHeroEyebrow')}</Eyebrow>
+                <Eyebrow className="mb-4">{t('heroEyebrow')}</Eyebrow>
                 <h1 className="mb-5 text-4xl font-bold leading-tight tracking-tight text-kb-text sm:text-5xl lg:text-6xl">
-                  {t('page.cmpHeroTitle')}{' '}
-                  <GradientText>{t('page.cmpHeroTitleHighlight')}</GradientText>
+                  {t('heroTitle')}{' '}
+                  <GradientText>{t('heroTitleHighlight')}</GradientText>
                 </h1>
                 <p className="mx-auto max-w-xl text-lg leading-relaxed text-muted/60">
-                  {t('page.cmpHeroDescription')}
+                  {t('heroDescription')}
                 </p>
               </div>
             </AnimateOnScroll>
@@ -82,8 +83,8 @@ export default async function ComparePage({ params }: Props) {
           <Container>
             <AnimateOnScroll>
               <div className="mb-8 text-center">
-                <Eyebrow className="mb-3">{t('page.cmpMatrixEyebrow')}</Eyebrow>
-                <h2 className="text-2xl font-bold tracking-tight text-kb-text">{t('page.cmpMatrixTitle')}</h2>
+                <Eyebrow className="mb-3">{t('matrixEyebrow')}</Eyebrow>
+                <h2 className="text-2xl font-bold tracking-tight text-kb-text">{t('matrixTitle')}</h2>
               </div>
               <ComparisonTable
                 headers={tableHeaders}
@@ -91,7 +92,7 @@ export default async function ComparePage({ params }: Props) {
                 highlightCol={1}
               />
               <p className="mt-3 text-right text-sm text-muted/45 dark:text-muted/30">
-                {t('page.cmpMatrixLegend')}
+                {t('matrixLegend')}
               </p>
             </AnimateOnScroll>
           </Container>
@@ -126,7 +127,7 @@ export default async function ComparePage({ params }: Props) {
                       {/* Good at */}
                       <div>
                         <p className="mb-3 text-[0.65rem] font-semibold uppercase tracking-widest text-muted/55 dark:text-muted/40">
-                          {t('page.cmpGoodLabel')}
+                          {t('goodLabel')}
                         </p>
                         <ul className="space-y-2">
                           {alt.good.map((item) => (
@@ -141,7 +142,7 @@ export default async function ComparePage({ params }: Props) {
                       {/* KB Labs edge */}
                       <div>
                         <p className="mb-3 text-[0.65rem] font-semibold uppercase tracking-widest text-accent/70">
-                          {t('page.cmpKbLabel')}
+                          {t('kbLabel')}
                         </p>
                         <ul className="space-y-2">
                           {alt.kb.map((item) => (
@@ -171,9 +172,9 @@ export default async function ComparePage({ params }: Props) {
           <Container>
             <AnimateOnScroll>
               <div className="mb-10 text-center">
-                <Eyebrow className="mb-3">{t('page.cmpObjectionsEyebrow')}</Eyebrow>
+                <Eyebrow className="mb-3">{t('objectionsEyebrow')}</Eyebrow>
                 <h2 className="text-2xl font-bold tracking-tight text-kb-text">
-                  {t('page.cmpObjectionsTitle')}
+                  {t('objectionsTitle')}
                 </h2>
               </div>
               <div className="mx-auto max-w-2xl">
@@ -197,17 +198,17 @@ export default async function ComparePage({ params }: Props) {
                 <BorderBeam />
                 <div className="relative z-10">
                   <h2 className="mb-3 text-3xl font-bold tracking-tight text-kb-text">
-                    {t('page.cmpCtaTitle')}
+                    {t('ctaTitle')}
                   </h2>
                   <p className="mx-auto mb-8 max-w-md text-base text-muted/60">
-                    {t('page.cmpCtaDescription')}
+                    {t('ctaDescription')}
                   </p>
                   <div className="flex flex-wrap justify-center gap-3">
                     <Button variant="primary" size="lg" href={`/${locale}/install`}>
-                      {t('page.cmpInstallBtn')}
+                      {t('installBtn')}
                     </Button>
                     <Button variant="secondary" size="lg" href="https://docs.kblabs.ru" target="_blank" rel="noopener noreferrer">
-                      {t('page.cmpDocsBtn')}
+                      {t('docsBtn')}
                     </Button>
                   </div>
                 </div>

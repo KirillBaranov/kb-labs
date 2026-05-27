@@ -1,0 +1,33 @@
+{
+  "solutionPlatformApi": {
+    "page": {
+      "meta": {
+        "title": "Platform API — KB Labs",
+        "description": "LLM, cache, vector search, telemetry — one connection line from any Node/TS app. Swap the adapter in config, code stays the same."
+      },
+      "externalLead2": "Inside plugins — same adapters via in-process hooks useLLM(), useCache() — no HTTP round-trip.",
+      "externalLead1": "KBPlatform from @kb-labs/sdk/platform is an HTTP client for the Gateway. Zero external dependencies, uses native fetch. All calls go through POST /platform/v1/{adapter}/{method}.",
+      "adaptersLead": "Each adapter is a typed proxy over the Unified Platform API. Provider is set in config — same code works for OpenAI and any custom adapter.",
+      "externalEyebrow": "External apps",
+      "adaptersTitle": "LLM. Cache. Vectors. Telemetry.",
+      "pluginsEyebrow": "Inside plugins",
+      "installBtn": "Install KB Labs",
+      "ctaEyebrow": "Platform API",
+      "ctaTitle": "One SDK. Any Node app.",
+      "configLead": "LLM provider, cache backend, vector DB — all in kb.config.json. Change one line and the entire stack moves to a different provider. Plugins and external apps share the same interface.",
+      "ctaNote": "LLM, cache, search, and telemetry — no vendor lock-in. Adapter swaps in config.",
+      "pluginsTitle": "In-process hooks. Zero HTTP overhead.",
+      "tabHooks": "hooks",
+      "docsBtn": "Documentation",
+      "heroTitleHighlight": "From any application.",
+      "pluginsLead2": "Adapter access is declared in manifest.ts via withPlatform(). Platform applies governance, quotas, and namespace isolation automatically.",
+      "configEyebrow": "Configuration",
+      "heroTitle": "LLM. Cache. Search.",
+      "configTitle": "Swap adapter. Zero code changes.",
+      "adaptersEyebrow": "Adapters",
+      "heroDescription": "One connection line — and any Node/TS/JS app gets LLM, cache, vector search, and telemetry. Swap the adapter in config, never touch the code.",
+      "externalTitle": "Three lines. Platform is live.",
+      "pluginsLead1": "Plugins use the same adapters via SDK hooks — directly in memory, no network layer. Same ILLM, ICache, IAnalytics interfaces, different delivery."
+    }
+  }
+}

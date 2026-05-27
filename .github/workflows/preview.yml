@@ -1,0 +1,312 @@
+name: preview
+
+# Spin a per-PR preview environment at *.stage.kblabs.ru.
+#
+# Triggers:
+#   - PR opened with the "preview" label
+#   - PR synchronized (new commit) while it has the "preview" label
+#   - "preview" label added to an existing PR
+#
+# Tear-down is handled by preview-teardown.yml on PR close.
+#
+# Architecture (see infra/preview/README.md for the full picture):
+#   1. Discover affected services via our own git diff (base..HEAD) — we don't
+#      use kb-deploy's built-in affected because it diffs HEAD~1..HEAD, which
+#      under-counts changes on multi-commit PRs.
+#   2. If only platform changed (no UI service touched) → exit, no preview.
+#   3. envsubst → render deploy.yaml.tmpl, then `yq` filter to keep only
+#      the affected targets in the manifest.
+#   4. envsubst → render docker-compose.yml.tmpl, scp to VPS.
+#   5. kb-deploy apply  → build, push to GHCR, ssh, docker compose up.
+#   6. ssh kb-preview-apply per affected service → nginx site + reload.
+#   7. PR comment with the URLs (stable HTML marker for find-or-update).
+
+on:
+  pull_request:
+    types: [opened, synchronize, labeled]
+
+concurrency:
+  # Newer push for the same PR cancels in-flight deploy. preview-teardown.yml
+  # shares this group with cancel-in-progress: true as well — see its comment.
+  group: preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    name: gate (label check)
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.check.outputs.run }}
+    steps:
+      - id: check
+        run: |
+          set -euo pipefail
+          LABELS='${{ toJson(github.event.pull_request.labels.*.name) }}'
+          if echo "$LABELS" | jq -e 'index("preview")' >/dev/null; then
+              echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+              echo "PR does not have the 'preview' label — skipping."
+              echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  affected:
+    name: detect affected services
+    needs: gate
+    if: needs.gate.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.detect.outputs.services }}    # comma-separated list of kb-deploy target names
+      has-any:  ${{ steps.detect.outputs.has-any }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect affected services from PR diff
+        id: detect
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          # Compare against the PR base, not HEAD~1. Covers multi-commit PRs
+          # correctly. github.event.pull_request.base.sha is the tip of the
+          # base branch at PR time — for a typical PR vs main, that's main's
+          # tip, which is what we want.
+          git fetch --no-tags --depth=1 origin "$BASE_SHA" 2>/dev/null || true
+          CHANGED="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          echo "::group::Changed files"
+          echo "$CHANGED"
+          echo "::endgroup::"
+
+          # Map paths → kb-deploy target name. The path globs MUST stay in sync
+          # with the `watch:` blocks in infra/preview/deploy.yaml.tmpl.
+          AFFECTED=()
+          matches() { echo "$CHANGED" | grep -qE "$1"; }
+
+          # web — only the site itself + shared web packages
+          if matches '^sites/web/apps/web/' \
+             || matches '^sites/web/packages/'; then
+              AFFECTED+=("kb-labs-web")
+          fi
+          # docs — same shared web packages affect docs too
+          if matches '^sites/web/apps/docs/' \
+             || matches '^sites/web/packages/'; then
+              AFFECTED+=("kb-labs-docs")
+          fi
+          # gateway — platform-level paths trigger a rebuild
+          if matches '^plugins/gateway/' \
+             || matches '^adapters/(openai|redis|sqlite|pino|fs|log-sqlite|log-ringbuffer|eventbus-cache)/' \
+             || matches '^core/' \
+             || matches '^shared/'; then
+              AFFECTED+=("kb-gateway")
+          fi
+
+          if [[ ${#AFFECTED[@]} -eq 0 ]]; then
+              echo "No UI/gateway service affected by this PR — preview not needed."
+              echo "has-any=false" >> "$GITHUB_OUTPUT"
+              echo "services="     >> "$GITHUB_OUTPUT"
+              exit 0
+          fi
+          IFS=,
+          echo "services=${AFFECTED[*]}" >> "$GITHUB_OUTPUT"
+          echo "has-any=true"            >> "$GITHUB_OUTPUT"
+          echo "affected services: ${AFFECTED[*]}"
+
+  deploy:
+    name: deploy preview
+    needs: affected
+    if: needs.affected.outputs.has-any == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write   # to comment URLs back on the PR
+      packages: write        # to push images to GHCR
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+      AFFECTED:  ${{ needs.affected.outputs.services }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resource guard (max 2 concurrent previews)
+        env:
+          HOST: ${{ secrets.PREVIEW_SSH_HOST }}
+          USER: ${{ secrets.PREVIEW_SSH_USER }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          echo "${{ secrets.PREVIEW_SSH_KEY }}" > ~/.ssh/preview.key
+          chmod 0600 ~/.ssh/preview.key
+          ssh-keyscan -H "$HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          # Count existing preview dirs other than the one for *this* PR.
+          OTHERS=$(ssh -i ~/.ssh/preview.key "$USER@$HOST" \
+              "ls ~/kb-previews/ 2>/dev/null | grep -v '^pr-${PR_NUMBER}\$' | wc -l")
+          if [ "$OTHERS" -ge 2 ]; then
+              echo "::error::Already $OTHERS other previews live on the VPS — refusing to start a third (4 GB RAM budget)."
+              echo "Tear down an unused one first: ssh $USER@$HOST 'ls ~/kb-previews/'"
+              exit 1
+          fi
+
+      - name: Compute preview ports
+        id: ports
+        run: |
+          set -euo pipefail
+          BASE=$(( PR_NUMBER * 10 + 30000 ))
+          echo "web_port=$(( BASE + 0 ))"     >> "$GITHUB_OUTPUT"
+          echo "gateway_port=$(( BASE + 1 ))" >> "$GITHUB_OUTPUT"
+          echo "docs_port=$(( BASE + 2 ))"    >> "$GITHUB_OUTPUT"
+
+      - name: Install kb-deploy + yq
+        run: |
+          set -euo pipefail
+          VERSION=$(curl -fsSL https://api.github.com/repos/KirillBaranov/kb-labs/releases/latest | jq -r .tag_name)
+          curl -fsSL "https://github.com/KirillBaranov/kb-labs/releases/download/${VERSION}/kb-deploy-linux-amd64" \
+              -o /usr/local/bin/kb-deploy
+          chmod +x /usr/local/bin/kb-deploy
+          kb-deploy --version
+          # yq for filtering the rendered manifest down to affected targets.
+          # We intentionally don't trust kb-deploy's own affected detection
+          # (HEAD~1 semantics — see job `affected` for why).
+          sudo curl -fsSL "https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64" \
+              -o /usr/local/bin/yq
+          sudo chmod +x /usr/local/bin/yq
+          yq --version
+
+      - name: Render preview manifests (filtered to affected)
+        run: |
+          set -euo pipefail
+          export PR_NUMBER
+          export SSH_HOST="${{ secrets.PREVIEW_SSH_HOST }}"
+          export SSH_USER="${{ secrets.PREVIEW_SSH_USER }}"
+          export WEB_PORT="${{ steps.ports.outputs.web_port }}"
+          export GATEWAY_PORT="${{ steps.ports.outputs.gateway_port }}"
+          export DOCS_PORT="${{ steps.ports.outputs.docs_port }}"
+
+          mkdir -p .kb/deploy/_rendered
+          envsubst '${PR_NUMBER} ${SSH_HOST} ${SSH_USER}' \
+              < infra/preview/deploy.yaml.tmpl \
+              > .kb/deploy/_rendered/preview.yaml
+          envsubst '${PR_NUMBER} ${WEB_PORT} ${GATEWAY_PORT} ${DOCS_PORT}' \
+              < infra/preview/docker-compose.yml.tmpl \
+              > .kb/deploy/_rendered/docker-compose.yml
+
+          # Drop targets that aren't affected by this PR. The template ships
+          # all three; this prunes by our own diff-based decision.
+          ALL=(kb-gateway kb-labs-web kb-labs-docs)
+          IFS=',' read -ra KEEP <<< "$AFFECTED"
+          for t in "${ALL[@]}"; do
+              if [[ ! " ${KEEP[*]} " =~ " ${t} " ]]; then
+                  yq -i "del(.targets.\"${t}\")" .kb/deploy/_rendered/preview.yaml
+              fi
+          done
+
+          echo "::group::Filtered preview.yaml"
+          cat .kb/deploy/_rendered/preview.yaml
+          echo "::endgroup::"
+          echo "::group::docker-compose.yml"
+          cat .kb/deploy/_rendered/docker-compose.yml
+          echo "::endgroup::"
+
+      - name: Reuse SSH key from guard step
+        run: |
+          # Key was already written in "Resource guard". Just double-check it's there.
+          test -s ~/.ssh/preview.key
+
+      - name: Stage compose file on VPS
+        env:
+          HOST: ${{ secrets.PREVIEW_SSH_HOST }}
+          USER: ${{ secrets.PREVIEW_SSH_USER }}
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/preview.key "$USER@$HOST" "mkdir -p ~/kb-previews/pr-${PR_NUMBER}"
+          scp -i ~/.ssh/preview.key \
+              .kb/deploy/_rendered/docker-compose.yml \
+              "$USER@$HOST:~/kb-previews/pr-${PR_NUMBER}/docker-compose.yml"
+
+      - name: Apply (build, push, deploy)
+        env:
+          DEPLOY_KEY: /home/runner/.ssh/preview.key
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # GHCR auth for the LOCAL docker push.
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io \
+              -u "${{ github.actor }}" --password-stdin
+          # kb-deploy plan/apply still runs its own internal affected detection,
+          # but our pre-filter has already pruned the manifest down to only the
+          # targets we care about — so plan can only mark them dirty (always
+          # the case for a fresh build) or no-op (we never want that here).
+          kb-deploy apply --config .kb/deploy/_rendered/preview.yaml --yes
+
+      - name: Wire nginx for each affected service
+        env:
+          HOST: ${{ secrets.PREVIEW_SSH_HOST }}
+          USER: ${{ secrets.PREVIEW_SSH_USER }}
+        run: |
+          set -euo pipefail
+          # Map kb-deploy target names → preview service identifier + port.
+          # Mirrors infra/preview/docker-compose.yml.tmpl.
+          declare -A SERVICE_MAP=(
+              [kb-gateway]="gateway:${{ steps.ports.outputs.gateway_port }}"
+              [kb-labs-web]="web:${{ steps.ports.outputs.web_port }}"
+              [kb-labs-docs]="docs:${{ steps.ports.outputs.docs_port }}"
+          )
+          IFS=',' read -ra TARGETS <<< "$AFFECTED"
+          for target in "${TARGETS[@]}"; do
+              spec="${SERVICE_MAP[$target]:-}"
+              if [[ -z "$spec" ]]; then
+                  echo "::warning::unknown target $target — skipping nginx wiring"
+                  continue
+              fi
+              svc="${spec%%:*}"
+              port="${spec##*:}"
+              echo "wiring nginx: PR=$PR_NUMBER service=$svc port=$port"
+              ssh -i ~/.ssh/preview.key "$USER@$HOST" \
+                  "sudo /usr/local/sbin/kb-preview-apply '$PR_NUMBER' '$svc' '$port'"
+          done
+
+      - name: Comment URLs on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = process.env.PR_NUMBER;
+            const affected = process.env.AFFECTED.split(',').filter(Boolean);
+            const urls = {
+              'kb-labs-web':  `https://pr-${pr}.stage.kblabs.ru`,
+              'kb-gateway':   `https://pr-${pr}-api.stage.kblabs.ru`,
+              'kb-labs-docs': `https://pr-${pr}-docs.stage.kblabs.ru`,
+            };
+            const lines = affected
+              .map(t => urls[t] ? `- **${t}** → ${urls[t]}` : null)
+              .filter(Boolean);
+            // Stable marker survives the deploy ↔ teardown body changes, so
+            // we always update the same comment instead of posting new ones.
+            const MARKER = '<!-- kb-preview-comment -->';
+            const body = [
+              MARKER,
+              '## 🚀 Preview environment',
+              '',
+              `Deployed for PR #${pr} (commit ${context.sha.slice(0,7)})`,
+              '',
+              ...lines,
+              '',
+              '_Tear-down happens automatically when this PR is closed._',
+            ].join('\n');
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: Number(pr),
+            });
+            const mine = comments.find(c => c.user.type === 'Bot' && c.body.includes(MARKER));
+            if (mine) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                comment_id: mine.id, body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: Number(pr), body,
+              });
+            }

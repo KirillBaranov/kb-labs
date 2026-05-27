@@ -35,6 +35,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: t('productWorkflows.meta.title'),
     description: t('productWorkflows.meta.description'),
     path: '/product/workflows',
+    imageSegment: 'product/workflows',
   });
 }
 
