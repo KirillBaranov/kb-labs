@@ -148,6 +148,8 @@ describe('getLoggerMetadataFromHost', () => {
         event: 'pull_request.opened',
         source: 'github',
         payload: { action: 'opened', number: 123 },
+        namespaceId: 'ns-test',
+        webhookId: 'wh-001',
       };
 
       const meta = getLoggerMetadataFromHost(context);
@@ -163,6 +165,8 @@ describe('getLoggerMetadataFromHost', () => {
       const context: WebhookHostContext = {
         host: 'webhook',
         event: 'custom.event',
+        namespaceId: 'ns-test',
+        webhookId: 'wh-002',
         // source is optional
       };
 
@@ -294,6 +298,8 @@ describe('getLoggerMetadataFromHost', () => {
           ref: 'refs/heads/main',
           commits: [{ message: 'fix: bug' }],
         },
+        namespaceId: 'ns-test',
+        webhookId: 'wh-003',
       };
 
       const meta = getLoggerMetadataFromHost(context);

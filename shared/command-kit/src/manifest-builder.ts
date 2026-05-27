@@ -16,6 +16,8 @@ import type {
   CliCommandDecl,
   CliGroupMeta,
   RestRouteDecl,
+  WebhookHandlerDecl,
+  WebhookAuthConfig,
   PermissionSpec,
 } from '@kb-labs/plugin-contracts';
 import { defineCommandFlags } from './manifest.js';
@@ -310,6 +312,32 @@ export const PATCH = (path: string, handler: HandlerRef, opts?: RouteOpts): Rest
  */
 export const DELETE = (path: string, handler: HandlerRef, opts?: RouteOpts): RestRouteDecl =>
   routeHelper('DELETE', path, handler, opts);
+
+// ─── Webhook handler helpers ──────────────────────────────────────────────────
+
+type WebhookOpts = Omit<WebhookHandlerDecl, 'event' | 'handler'>;
+
+/**
+ * Declare a webhook handler in the plugin manifest.
+ *
+ * `auth` is required at the call site — the gateway will refuse to start if
+ * any webhook handler has no auth config.
+ *
+ * @example
+ * ```ts
+ * webhook('alert', './webhooks/alert.js#default', {
+ *   auth: { type: 'secret', header: 'X-Webhook-Secret' },
+ *   async: true,
+ * })
+ * ```
+ */
+export function webhook(
+  event: string,
+  handler: HandlerRef,
+  opts: WebhookOpts & { auth: WebhookAuthConfig },
+): WebhookHandlerDecl {
+  return { event, handler, ...opts };
+}
 
 // ─── Manifest entry point ─────────────────────────────────────────────────────
 

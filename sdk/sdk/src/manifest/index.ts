@@ -20,6 +20,7 @@ export {
   PUT,
   PATCH,
   DELETE,
+  webhook,
 } from '@kb-labs/shared-command-kit';
 export type {
   PluginId,
