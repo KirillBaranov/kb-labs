@@ -19,7 +19,7 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import bcrypt from 'bcryptjs';
-import { createInMemoryDocumentDatabase } from '@kb-labs/core-platform/adapters/testing';
+import { createInMemoryDocumentDatabase } from '@kb-labs/sdk/testing';
 import type { IDocumentDatabase } from '@kb-labs/core-platform/adapters';
 import { UsersStore } from '../users-store.js';
 import { CredentialsStore } from '../credentials-store.js';

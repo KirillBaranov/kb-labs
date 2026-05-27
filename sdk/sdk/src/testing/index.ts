@@ -60,6 +60,15 @@ export {
   type TestCommandResult,
 } from '@kb-labs/shared-testing-platform';
 
+// In-memory storage implementations (IDocumentDatabase / IKVStore)
+export {
+  InMemoryDocumentDatabase,
+  createInMemoryDocumentDatabase,
+  type InMemoryDocumentDatabaseOptions,
+  InMemoryKVStore,
+  createInMemoryKVStore,
+} from '@kb-labs/core-platform/adapters/testing';
+
 // Tool mock builder
 export {
   mockTool,

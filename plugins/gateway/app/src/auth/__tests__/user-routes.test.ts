@@ -27,7 +27,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import Fastify, { type FastifyInstance } from 'fastify';
 import fastifyCookie from '@fastify/cookie';
-import { createInMemoryDocumentDatabase } from '@kb-labs/core-platform/adapters/testing';
+import { createInMemoryDocumentDatabase } from '@kb-labs/sdk/testing';
 import type { ICache } from '@kb-labs/core-platform';
 import {
   UsersStore,

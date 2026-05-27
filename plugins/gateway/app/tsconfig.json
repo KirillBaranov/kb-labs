@@ -3,9 +3,6 @@
   "include": ["src"],
   "compilerOptions": {
     "noEmit": true,
-    "types": ["node", "@fastify/swagger"],
-    "paths": {
-      "@kb-labs/core-platform/adapters/testing": ["../../../core/platform/src/adapters/testing/index.ts"]
-    }
+    "types": ["node", "@fastify/swagger"]
   }
 }

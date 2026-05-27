@@ -19,7 +19,7 @@
  */
 
 import { describe, expect, it, beforeEach } from 'vitest';
-import { createInMemoryDocumentDatabase } from '@kb-labs/core-platform/adapters/testing';
+import { createInMemoryDocumentDatabase } from '@kb-labs/sdk/testing';
 import type { BaseDocument, IDocumentDatabase } from '@kb-labs/core-platform/adapters';
 import { InvitesStore } from '../invites-store.js';
 

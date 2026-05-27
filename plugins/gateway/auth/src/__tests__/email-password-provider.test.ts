@@ -15,7 +15,7 @@
 
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import bcrypt from 'bcryptjs';
-import { createInMemoryDocumentDatabase } from '@kb-labs/core-platform/adapters/testing';
+import { createInMemoryDocumentDatabase } from '@kb-labs/sdk/testing';
 import { UsersStore } from '../users-store.js';
 import { CredentialsStore } from '../credentials-store.js';
 import { createEmailPasswordProvider } from '../providers/email-password.js';

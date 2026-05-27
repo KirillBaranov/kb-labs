@@ -14,7 +14,7 @@
  */
 
 import { describe, expect, it, beforeEach } from 'vitest';
-import { createInMemoryKVStore } from '@kb-labs/core-platform/adapters/testing';
+import { createInMemoryKVStore } from '@kb-labs/sdk/testing';
 import type { IKVStore } from '@kb-labs/core-platform/adapters';
 import { createRateLimiter } from '../rate-limit.js';
 

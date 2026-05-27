@@ -11,7 +11,7 @@
  */
 
 import { describe, expect, it, beforeEach } from 'vitest';
-import { createInMemoryDocumentDatabase } from '@kb-labs/core-platform/adapters/testing';
+import { createInMemoryDocumentDatabase } from '@kb-labs/sdk/testing';
 import type { IDocumentDatabase } from '@kb-labs/core-platform/adapters';
 import { UsersStore } from '../users-store.js';
 
