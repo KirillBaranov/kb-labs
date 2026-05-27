@@ -3,7 +3,9 @@
   "compilerOptions": {
     "outDir": "dist",
     "baseUrl": ".",
-    "paths": {}
+    "paths": {
+      "@kb-labs/core-platform/adapters/testing": ["../../core/platform/src/adapters/testing/index.ts"]
+    }
   },
   "include": [
     "src/**/*"
