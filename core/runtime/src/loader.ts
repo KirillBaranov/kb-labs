@@ -27,7 +27,6 @@ import { CronManager } from './core/cron-manager.js';
 import {
   getAdapterStatusRegistry,
   resetAdapterStatus,
-  type AdapterSlotStatus,
 } from './adapter-status.js';
 import { ADAPTER_DEFAULTS, type AdapterSlot } from '@kb-labs/core-platform';
 import { inmemoryFactories } from '@kb-labs/core-platform/inmemory';
@@ -1330,4 +1329,8 @@ export async function initPlatform(
 export function resetPlatform(): void {
   platform.reset();
   resetAdapterStatus();
+  // Re-seed InMemory/NoOp fallbacks so the container is usable immediately
+  // after reset — tests that call resetPlatform() without initPlatform() get
+  // a consistent default state (same as initPlatform with no adapters configured).
+  fillAdapterFallbacksAndRecord(platform, {});
 }

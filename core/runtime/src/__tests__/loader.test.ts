@@ -213,13 +213,15 @@ describe('Platform Loader', () => {
 
       resetPlatform();
 
-      // resetPlatform clears every loader-installed adapter. The
-      // bootstrap logger is re-seeded by reset() so logging keeps working.
-      expect(platform.hasAdapter('config')).toBe(false);
-      expect(platform.hasAdapter('cache')).toBe(false);
-      // Only the bootstrap logger remains.
-      expect(platform.getConfiguredServices().size).toBe(1);
-      expect(platform.getConfiguredServices().has('logger')).toBe(true);
+      // resetPlatform re-seeds all InMemory/NoOp defaults so that tests
+      // using resetPlatform() without initPlatform() get a usable container.
+      // Every slot in ADAPTER_DEFAULTS is present; none are 'real'.
+      expect(platform.hasAdapter('config')).toBe(true);
+      expect(platform.hasAdapter('cache')).toBe(true);
+      expect(platform.hasAdapter('logger')).toBe(true);
+      // No slot is in 'real' mode after a bare reset (no real adapters configured).
+      expect(platform.isReal('cache')).toBe(false);
+      expect(platform.isReal('config')).toBe(false);
     });
 
     it('should re-create core features after reset', async () => {
