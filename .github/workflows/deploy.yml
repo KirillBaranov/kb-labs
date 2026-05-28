@@ -44,6 +44,15 @@ jobs:
         with:
           fetch-depth: 0  # full history for multi-commit push diff
 
+      - name: Restore deploy state
+        uses: actions/cache/restore@v4
+        with:
+          path: .kb/deploy/state.json
+          key: deploy-state-${{ github.ref_name }}-${{ github.sha }}
+          restore-keys: |
+            deploy-state-${{ github.ref_name }}-
+            deploy-state-
+
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25'
@@ -199,3 +208,10 @@ jobs:
           rm -f /tmp/deploy_key
           echo "::error::Smoke test failed — rolled back web to ${WEB_IMAGE}, docs to ${DOCS_IMAGE}"
           exit 1
+
+      - name: Save deploy state
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: .kb/deploy/state.json
+          key: deploy-state-${{ github.ref_name }}-${{ github.sha }}

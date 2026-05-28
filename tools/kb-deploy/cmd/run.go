@@ -45,6 +45,13 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 
 	o := newOutput()
 
+	// Load state first — needed for state-aware affected detection.
+	stPath := stateFilePath(repoRoot)
+	s, err := state.Load(stPath)
+	if err != nil {
+		return fmt.Errorf("load state: %w", err)
+	}
+
 	// Determine target list.
 	var targets []string
 	switch {
@@ -59,14 +66,14 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			targets = append(targets, name)
 		}
 	default:
-		targets, err = affected.Detect(repoRoot, cfg)
+		targets, err = affected.Detect(repoRoot, cfg, s)
 		if err != nil {
 			return fmt.Errorf("detect affected: %w", err)
 		}
 	}
 
 	if len(targets) == 0 {
-		o.Info("no affected targets — nothing to deploy")
+		o.Info("no affected or failed targets — nothing to deploy")
 		return nil
 	}
 
@@ -79,13 +86,6 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 	sha, err := gitSHA(repoRoot)
 	if err != nil {
 		return fmt.Errorf("get git sha: %w", err)
-	}
-
-	// Load current state for updates.
-	stPath := stateFilePath(repoRoot)
-	s, err := state.Load(stPath)
-	if err != nil {
-		return fmt.Errorf("load state: %w", err)
 	}
 
 	ctx := context.Background()
@@ -114,6 +114,17 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			o.Section(name)
 		}
 
+		// saveState persists target state; non-fatal on error.
+		saveState := func(ts state.TargetState) {
+			s.Targets[name] = ts
+			if err := state.Save(stPath, s); err != nil && !jsonMode {
+				o.Warn("could not save state: " + err.Error())
+			}
+		}
+		failedState := func(reason string) {
+			saveState(state.TargetState{SHA: sha, Status: "failed", FailReason: reason, DeployedAt: time.Now().UTC()})
+		}
+
 		// Bundle — generate minimal Docker build context via kb-devkit.
 		if t.Bundle != "" {
 			if !jsonMode {
@@ -130,6 +141,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				if !jsonMode {
 					o.Err("bundle failed: " + err.Error())
 				}
+				failedState("bundle")
 				results = append(results, res)
 				allOK = false
 				continue
@@ -148,6 +160,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			if !jsonMode {
 				o.Err("build failed: " + err.Error())
 			}
+			failedState("build")
 			results = append(results, res)
 			allOK = false
 			continue
@@ -163,6 +176,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			if !jsonMode {
 				o.Err("push failed: " + err.Error())
 			}
+			failedState("push")
 			results = append(results, res)
 			allOK = false
 			continue
@@ -178,6 +192,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			if !jsonMode {
 				o.Err(err.Error())
 			}
+			failedState("ssh")
 			results = append(results, res)
 			allOK = false
 			continue
@@ -188,6 +203,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			if !jsonMode {
 				o.Err("ssh connect failed: " + err.Error())
 			}
+			failedState("ssh")
 			results = append(results, res)
 			allOK = false
 			continue
@@ -225,6 +241,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				}
 			}
 			client.Close()
+			failedState("ssh")
 			results = append(results, res)
 			allOK = false
 			continue
@@ -244,6 +261,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 				}
 			}
 			client.Close()
+			failedState("ssh")
 			results = append(results, res)
 			allOK = false
 			continue
@@ -254,13 +272,8 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 			o.OK("deployed " + name + " @ " + sha)
 		}
 
-		// Update state.
-		s.Targets[name] = state.TargetState{SHA: sha, DeployedAt: time.Now().UTC()}
-		if err := state.Save(stPath, s); err != nil {
-			if !jsonMode {
-				o.Warn("could not save state: " + err.Error())
-			}
-		}
+		// Update state on success.
+		saveState(state.TargetState{SHA: sha, Status: "success", DeployedAt: time.Now().UTC()})
 		results = append(results, res)
 	}
 
