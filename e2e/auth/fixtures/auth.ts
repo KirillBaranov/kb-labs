@@ -88,14 +88,18 @@ export async function inviteUser(
  * Navigate to activation URL, fill password, submit.
  * Waits for redirect to /.
  *
- * Uses waitUntil:'domcontentloaded' instead of the default 'load' because:
+ * Uses waitUntil:'commit' instead of the default 'load' because:
  * - On success, activate-page calls window.location.replace('/') (full reload).
- * - During that reload, RequireAuth may briefly redirect to /login (SPA pushState,
- *   no load event) while the auth provider re-checks /api/auth/me.
- * - The 'load' event fires when the URL is already '/login', so
- *   waitForURL('/', { waitUntil: 'load' }) never resolves.
- * - 'domcontentloaded' fires after HTML parsing, before React scripts execute
- *   and before any SPA redirects — so it reliably catches the initial '/' load.
+ * - The Vite app uses <script type="module"> (deferred). Module scripts execute
+ *   BEFORE DOMContentLoaded, so React runs and RequireAuth redirects to /login
+ *   (SPA pushState) before either 'domcontentloaded' or 'load' fires.
+ * - Both browser events fire when URL is already '/login', so waitForURL('/')
+ *   with 'load' or 'domcontentloaded' never resolves.
+ * - 'commit' fires as soon as navigation response headers arrive, before the
+ *   HTML body is delivered and before any scripts execute — guaranteed at URL='/'.
+ * - The session cookies (kb_access, kb_refresh, kb_csrf) are set by the
+ *   activation endpoint response BEFORE window.location.replace('/') is called,
+ *   so callers can safely read cookieMap() after activateUser() returns.
  */
 export async function activateUser(
   page: Page,
@@ -107,7 +111,7 @@ export async function activateUser(
   await page.fill('input[id="activate-password"]', password)
   await page.fill('input[id="activate-confirm"]', password)
   await page.click('button[type="submit"]')
-  await page.waitForURL('/', { waitUntil: 'domcontentloaded', timeout: 15_000 })
+  await page.waitForURL('/', { waitUntil: 'commit', timeout: 15_000 })
 }
 
 // ── Cookie helpers ────────────────────────────────────────────────────────────
