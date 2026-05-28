@@ -156,9 +156,10 @@ export async function inviteUser(
   // The gateway builds activationUrl using request.host (e.g. "kb-cloud.kblabs.ru") which
   // is not resolvable in E2E CI environments. Extract the token and rewrite to STUDIO_URL
   // so activateUser() navigates to the locally-accessible Studio instance.
-  // Gateway generates /activate/:token (path param format matching the SPA route).
+  // Gateway generates /activate?token=TOKEN (query-param format per ADR-0020).
+  // Fall back to path-param extraction (/activate/:token) for forward compat.
   const parsed = new URL(body.activationUrl)
-  const token = parsed.pathname.split('/').pop() || parsed.searchParams.get('token') || ''
+  const token = parsed.searchParams.get('token') || parsed.pathname.split('/').filter(Boolean).at(-1) || ''
   return `${STUDIO_URL}/activate/${token}`
 }
 
