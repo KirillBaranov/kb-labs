@@ -17,10 +17,15 @@ async function resolvePageChunk(
 ): Promise<Record<string, unknown>> {
   // Strip locale prefix: /en/pricing → pricing, /ru/product/kb-dev → product/kb-dev
   const stripped = pathname.replace(/^\/(en|ru)(\/|$)/, '').replace(/\/$/, '');
-  const segments = stripped.split('/').filter(Boolean);
+
+  // Next.js special file routes are not real path segments — strip them so that
+  // e.g. /ru/opengraph-image resolves the same chunk as /ru/ (home),
+  // and /ru/compare/opengraph-image resolves the same chunk as /ru/compare.
+  const VIRTUAL_SEGMENTS = new Set(['opengraph-image', 'twitter-image', 'icon', 'sitemap', 'robots']);
+  const segments = stripped.split('/').filter((s) => Boolean(s) && !VIRTUAL_SEGMENTS.has(s));
 
   if (segments.length === 0) {
-    // Root path: load home chunk
+    // Root path (or root opengraph-image): load home chunk
     segments.push('home');
   }
 
