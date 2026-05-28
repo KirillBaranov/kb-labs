@@ -27,11 +27,11 @@ export function generateStaticParams() {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: 'page' });
+  const t = await getTranslations({ locale, namespace: 'kbDev' });
   return buildPageMetadata({
     locale,
-    title: t('kbdevMetaTitle'),
-    description: t('kbdevMetaDesc'),
+    title: t('meta.title'),
+    description: t('meta.description'),
     path: '/product/kb-dev',
     imageSegment: 'product/kb-dev',
   });
@@ -68,9 +68,9 @@ export default async function KbDevPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const t = await getTranslations({ locale, namespace: 'page' });
-  const kbdevCommands = t.raw('kbdevCommands') as CommandItem[];
-  const kbdevFeatures = t.raw('kbdevFeatures') as FeatureItem[];
+  const t = await getTranslations({ locale, namespace: 'kbDev' });
+  const kbdevCommands = t.raw('commands') as CommandItem[];
+  const kbdevFeatures = t.raw('features') as FeatureItem[];
 
   return (
     <>
@@ -86,16 +86,16 @@ export default async function KbDevPage({ params }: Props) {
                 {/* i18n-ignore: brand + tech label */}
                 <Eyebrow className="mb-4">Service Manager · Go</Eyebrow>
                 <h1 className="mb-5 text-4xl font-bold leading-tight tracking-tight text-kb-text sm:text-5xl">
-                  {t('kbdevHeroTitle')}{' '}
-                  <GradientText>{t('kbdevHeroTitleHighlight')}</GradientText>
+                  {t('heroTitle')}{' '}
+                  <GradientText>{t('heroTitleHighlight')}</GradientText>
                 </h1>
                 <p className="mb-8 text-lg leading-relaxed text-muted/70">
-                  {t('kbdevHeroDescription')}
+                  {t('heroDescription')}
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <Button asChild size="lg">
                     <a href="https://docs.kblabs.ru/services/kb-dev" target="_blank" rel="noopener noreferrer">
-                      {t('kbdevHeroDocsBtn')}
+                      {t('heroDocsBtn')}
                       <ExternalLink className="ml-2 size-4" />
                     </a>
                   </Button>
@@ -128,15 +128,15 @@ export default async function KbDevPage({ params }: Props) {
           <Container>
             <div className="grid gap-12 lg:grid-cols-2 lg:items-center">
               <AnimateOnScroll>
-                <Eyebrow className="mb-3">{t('kbdevConfigEyebrow')}</Eyebrow>
+                <Eyebrow className="mb-3">{t('configEyebrow')}</Eyebrow>
                 <h2 className="mb-4 text-3xl font-bold tracking-tight text-kb-text">
-                  {t('kbdevConfigTitle')}
+                  {t('configTitle')}
                 </h2>
                 <p className="mb-4 text-base leading-relaxed text-muted/70">
-                  {t('kbdevConfigLead1')}
+                  {t('configLead1')}
                 </p>
                 <p className="text-base leading-relaxed text-muted/70">
-                  {t('kbdevConfigLead2')}
+                  {t('configLead2')}
                 </p>
               </AnimateOnScroll>
 
@@ -156,9 +156,9 @@ export default async function KbDevPage({ params }: Props) {
           <Container>
             <AnimateOnScroll>
               <div className="mx-auto mb-12 max-w-xl text-center">
-                <Eyebrow className="mb-3">{t('kbdevCommandsEyebrow')}</Eyebrow>
+                <Eyebrow className="mb-3">{t('commandsEyebrow')}</Eyebrow>
                 <h2 className="text-3xl font-bold tracking-tight text-kb-text">
-                  {t('kbdevCommandsTitle')}
+                  {t('commandsTitle')}
                 </h2>
               </div>
             </AnimateOnScroll>
@@ -178,7 +178,7 @@ export default async function KbDevPage({ params }: Props) {
                 ))}
               </div>
               <p className="mt-3 text-center font-mono text-[0.65rem] text-muted/45 dark:text-muted/30">
-                {t('kbdevCommandsFootnote')}
+                {t('commandsFootnote')}
               </p>
             </AnimateOnScroll>
           </Container>
@@ -189,9 +189,9 @@ export default async function KbDevPage({ params }: Props) {
           <Container>
             <AnimateOnScroll>
               <div className="mx-auto mb-12 max-w-xl text-center">
-                <Eyebrow className="mb-3">{t('kbdevFeaturesEyebrow')}</Eyebrow>
+                <Eyebrow className="mb-3">{t('featuresEyebrow')}</Eyebrow>
                 <h2 className="text-3xl font-bold tracking-tight text-kb-text">
-                  {t('kbdevFeaturesTitle')}
+                  {t('featuresTitle')}
                 </h2>
               </div>
             </AnimateOnScroll>
@@ -217,9 +217,9 @@ export default async function KbDevPage({ params }: Props) {
                 <BorderBeam />
                 <div aria-hidden className="pointer-events-none absolute left-1/2 top-1/2 h-[360px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent/[0.06] blur-[90px]" />
                 <div className="relative z-10">
-                  <Eyebrow className="mb-4">{t('kbdevCtaEyebrow')}</Eyebrow>
+                  <Eyebrow className="mb-4">{t('ctaEyebrow')}</Eyebrow>
                   <h2 className="mb-4 text-[clamp(1.8rem,3.5vw,2.8rem)] font-bold leading-tight tracking-tight text-kb-text">
-                    {t('kbdevCtaTitle')}
+                    {t('ctaTitle')}
                   </h2>
                   <div className="mx-auto mb-8 flex max-w-md items-center justify-between gap-3 rounded-xl border border-line bg-surface/60 px-4 py-3">
                     {/* i18n-ignore: terminal command */}
@@ -228,7 +228,7 @@ export default async function KbDevPage({ params }: Props) {
                   </div>
                   <div className="flex flex-wrap justify-center gap-3">
                     <Button variant="primary" size="lg" href="https://docs.kblabs.ru/services/kb-dev" target="_blank" rel="noopener noreferrer">
-                      {t('kbdevCtaDocsBtn')}
+                      {t('ctaDocsBtn')}
                     </Button>
                     <Button variant="secondary" size="lg" href="https://github.com/KirillBaranov/kb-labs/releases/latest" target="_blank" rel="noopener noreferrer">
                       {/* i18n-ignore: brand name */}

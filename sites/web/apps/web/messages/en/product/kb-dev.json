@@ -1,0 +1,64 @@
+{
+  "kbDev": {
+    "meta": {
+      "title": "kb-dev — KB Labs",
+      "description": "One binary that starts services in the right order, waits until they're actually up, and shuts everything down cleanly on exit."
+    },
+    "features": [
+      {
+        "title": "Knows when a service actually died",
+        "detail": "Tracks real PIDs because it spawned the processes. No port scanning, no stale state."
+      },
+      {
+        "title": "Doesn't call it alive until it responds",
+        "detail": "HTTP, TCP, and command health probes with latency. Reports alive only after the check passes."
+      },
+      {
+        "title": "Starts in the right order",
+        "detail": "Reads service dependencies from devservices.yaml and starts in topological order automatically."
+      }
+    ],
+    "heroTitle": "Stop juggling",
+    "featuresEyebrow": "How it works",
+    "heroTitleHighlight": "terminal tabs",
+    "heroDocsBtn": "Documentation",
+    "ctaDocsBtn": "Documentation",
+    "commandsTitle": "Everything is scriptable.",
+    "commandsEyebrow": "Commands",
+    "configTitle": "One file. Any project.",
+    "commands": [
+      {
+        "cmd": "kb-dev start",
+        "desc": "Start all services in dependency order. Health-probes before reporting alive."
+      },
+      {
+        "cmd": "kb-dev stop",
+        "desc": "Gracefully stop all running services."
+      },
+      {
+        "cmd": "kb-dev status",
+        "desc": "Show running state, PID, port, and uptime per service."
+      },
+      {
+        "cmd": "kb-dev restart workflow",
+        "desc": "Restart a specific service by name."
+      },
+      {
+        "cmd": "kb-dev logs gateway --follow",
+        "desc": "Stream live logs for a service. Ctrl-C to stop."
+      },
+      {
+        "cmd": "kb-dev doctor",
+        "desc": "Run environment diagnostics: ports, deps, config, health."
+      }
+    ],
+    "heroDescription": "One binary that starts services in the right order, waits until they're actually up, and shuts everything down cleanly on exit.",
+    "ctaEyebrow": "Install",
+    "ctaTitle": "One binary. No dependencies.",
+    "configLead1": "Drop devservices.yaml in the project root — kb-dev finds it automatically by walking up from the current directory.",
+    "configLead2": "Works with any stack: Docker, pnpm, npm, make, shell. KB Labs uses .kb/devservices.yaml — same format.",
+    "commandsFootnote": "All commands support --json for scripts and CI",
+    "featuresTitle": "The details that matter.",
+    "configEyebrow": "Configuration"
+  }
+}

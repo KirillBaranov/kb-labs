@@ -8,7 +8,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { FastifyInstance } from 'fastify';
-import type { ICache, ILogger } from '@kb-labs/core-platform';
+import type { ICache, ILogger, IServiceTransport } from '@kb-labs/core-platform';
 import { createServer } from '../server.js';
 
 // ── Minimal stubs ──────────────────────────────────────────────────────────────
@@ -38,6 +38,12 @@ const minimalConfig = {
   staticTokens: {},
 };
 
+const stubTransport: IServiceTransport = {
+  connectionInfo: () => undefined,
+  call: async () => ({ ok: true, statusCode: 200, payload: null }),
+  stream: async () => { throw new Error('not used'); },
+} as unknown as IServiceTransport;
+
 const jwtConfig = { secret: 'test-secret-at-least-32-chars-long!' };
 
 // ── Test setup ─────────────────────────────────────────────────────────────────
@@ -47,7 +53,7 @@ let app: FastifyInstance;
 beforeAll(async () => {
   const logger = makeLogger();
   const cache = makeCache();
-  app = await createServer(minimalConfig as any, cache, logger, jwtConfig);
+  app = await createServer(minimalConfig as any, cache, logger, jwtConfig, undefined, stubTransport);
   await app.ready();
 });
 

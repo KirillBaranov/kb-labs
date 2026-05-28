@@ -1,0 +1,134 @@
+{
+  "solutionReleaseAutomation": {
+    "meta": {
+      "title": "Release Automation — KB Labs",
+      "description": "One plugin we ship 150+ packages through — every time, one command."
+    },
+    "checks": {
+      "title": "Not just a list of commands.",
+      "eyebrow": "Custom checks",
+      "lead": "Each check is an object with control over where and how it runs. Checks can be overridden at the flow level — platform and SDK have their own sets."
+    },
+    "pipeline": {
+      "title": "Eight steps. Strict order.",
+      "stages": [
+        {
+          "stage": "1",
+          "label": "Lint",
+          "detail": "ESLint across all affected packages. Fast — only what changed."
+        },
+        {
+          "stage": "2",
+          "label": "Type-check",
+          "detail": "tsc project references in dependency order. Catches cross-package type errors."
+        },
+        {
+          "stage": "3",
+          "label": "Test",
+          "detail": "Vitest with coverage. Skips packages with no changed files."
+        },
+        {
+          "stage": "4",
+          "label": "AI Review",
+          "detail": "LLM reviews the diff for logic errors, security issues, and style violations."
+        },
+        {
+          "stage": "5",
+          "label": "QA Gate",
+          "detail": "Package-level quality checks. Fails if degradation is detected."
+        },
+        {
+          "stage": "6",
+          "label": "Impact",
+          "detail": "Dependency graph analysis — which packages and tests are actually affected."
+        },
+        {
+          "stage": "7",
+          "label": "Build",
+          "detail": "Topological build with DTS. Only changed packages + dependents rebuild."
+        },
+        {
+          "stage": "8",
+          "label": "Release",
+          "detail": "Publish to npm + GitHub Release with changelog. Gated by all prior stages."
+        }
+      ],
+      "eyebrow": "Pipeline",
+      "subtitle": "Each step can run standalone. Each fails explicitly — with a clear message."
+    },
+    "config": {
+      "title": "Everything in one file. No extra config.",
+      "eyebrow": "Configuration",
+      "lead": "Config lives in {configFile} alongside other KB Labs settings. No separate {releaseConfig}.",
+      "items": [
+        "release.workflow — path to the release workflow YAML",
+        "release.targets — which packages to include in the pipeline",
+        "release.gates — required stages that must pass before publish",
+        "release.aiReview — model and prompt config for AI review step",
+        "release.npm — registry URL, access level, and publish token"
+      ]
+    },
+    "howItLooks": {
+      "title": "One run. Here's what happens.",
+      "eyebrow": "What it looks like"
+    },
+    "cta": {
+      "title": "Ready to upgrade your CI/CD?",
+      "installBtn": "Install KB Labs",
+      "docsBtn": "Release docs",
+      "eyebrow": "Get started"
+    },
+    "designDecisions": {
+      "title": "Three decisions that matter.",
+      "eyebrow": "Why it works this way",
+      "items": [
+        {
+          "title": "Workflows as code, not config",
+          "detail": "Release pipelines live in YAML under version control — reviewed, diffable, and revertable like any other change. No GUI state to export, no vendor format to migrate from."
+        },
+        {
+          "title": "Every stage is a plugin",
+          "detail": "Lint, review, QA, deploy — each step is a typed plugin with declared capabilities. Swap any stage without touching the rest of the pipeline."
+        },
+        {
+          "title": "Fail fast, trace everything",
+          "detail": "Stages run in order with explicit dependencies. The first failure stops the pipeline. Every run is fully traced: inputs, outputs, timing, and plugin calls."
+        }
+      ]
+    },
+    "hero": {
+      "installBtn": "Install KB Labs",
+      "titleSuffix": "Every time.",
+      "docsBtn": "Documentation",
+      "titleConnector": "through it.",
+      "titlePrefix": "We ship",
+      "eyebrow": "Release Automation · Plugin",
+      "description": "One plugin covers the full cycle: checks, build, changelog, npm publish, git tag. No scripts, no Notion runbook, no \"I think I forgot to push the tag\".",
+      "titleHighlight": "150+ packages"
+    },
+    "flows": {
+      "title": "Independent releases for different parts of the monorepo.",
+      "configNote": "A flow fully replaces the global {code} config — it doesn't merge. Packages are selected by glob patterns.",
+      "strategyLabel": "strategy",
+      "runs": [
+        {
+          "cmd": "pnpm kb workflow run release",
+          "packages": "@kb-labs/core-platform, @kb-labs/sdk",
+          "strategy": "affected",
+          "note": "Runs lint → type-check → test → AI review → build → publish. Only changed packages."
+        },
+        {
+          "cmd": "pnpm kb workflow run release --all",
+          "packages": "All 35+ packages",
+          "strategy": "full",
+          "note": "Force full pipeline regardless of git state. Used for major releases."
+        }
+      ],
+      "eyebrow": "--flow",
+      "lead2": "Platform and SDK release independently — one command each. 150+ packages, but never everything at once.",
+      "packagesLabel": "packages",
+      "lead1": "A flow is a named release profile. It fully replaces three things: which packages to build, the versioning strategy, and the set of checks. Everything else (registry, changelog, git) comes from the global config."
+    },
+    "changelogNote": "Four built-in templates: {templates}. If the LLM is unavailable — falls back to a plain commit list."
+  }
+}

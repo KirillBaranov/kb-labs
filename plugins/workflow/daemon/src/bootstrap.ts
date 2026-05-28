@@ -5,7 +5,7 @@
 
 import { platform, createServiceBootstrap } from '@kb-labs/core-runtime';
 import { WorkflowEngine, WorkflowService } from '@kb-labs/workflow-engine';
-import { createCorrelatedLogger } from '@kb-labs/shared-http';
+import { createCorrelatedLogger, getListenOptions } from '@kb-labs/shared-http';
 import { createWorkflowWorker } from './worker.js';
 import { JobBroker } from './job-broker.js';
 import { CronScheduler } from './cron-scheduler.js';
@@ -185,7 +185,7 @@ export async function bootstrap(cwd: string = process.cwd()): Promise<void> {
   // Start HTTP server
   const port = parseInt(process.env.WORKFLOW_PORT || '7778', 10);
   // Defaults to 0.0.0.0 for Docker/dev compat. Set WORKFLOW_HOST=127.0.0.1 to restrict to loopback.
-  await server.listen({ port, host: process.env.WORKFLOW_HOST ?? '0.0.0.0' });
+  await server.listen(getListenOptions(port, process.env.WORKFLOW_HOST ?? '0.0.0.0'));
   bootstrapLogger.info('HTTP API listening', { port });
 
   // Store server instance for cleanup

@@ -1,0 +1,51 @@
+{
+  "name": "@kb-labs/adapters-service-transport-http",
+  "description": "HTTP/unix-socket service transport implementing IServiceTransport",
+  "version": "2.94.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "clean": "rimraf dist",
+    "dev": "tsup --watch",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint . --fix",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "undici": "^7"
+  },
+  "devDependencies": {
+    "@kb-labs/core-platform": "workspace:*",
+    "@kb-labs/devkit": "workspace:*",
+    "@kb-labs/sdk": "workspace:*",
+    "@types/node": "^24.3.3",
+    "eslint": "^9",
+    "fastify": "^5.8.5",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.0",
+    "typescript": "^5.6.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "peerDependencies": {
+    "@kb-labs/sdk": "workspace:^"
+  },
+  "sideEffects": false
+}

@@ -107,6 +107,7 @@ export type {
 
 // Platform
 export type {
+  PluginServices,
   PlatformServices,
   Logger,
   LLMAdapter,

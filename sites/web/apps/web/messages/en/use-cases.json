@@ -1,0 +1,86 @@
+{
+  "useCases": {
+    "meta": {
+      "title": "Use Cases — KB Labs",
+      "description": "Practical engineering use cases for on-prem, plugin-based automation — what teams actually build with KB Labs."
+    },
+    "ownerLabel": "Owner:",
+    "items": [
+      {
+        "title": "Release Orchestration",
+        "hook": "Your releases live in five Slack threads, three scripts, and a prayer.",
+        "situation": "Every release is a manual coordination exercise — CI jobs, chat messages, local scripts, people who might be on leave.",
+        "how": "tests → checks → AI review → QA gate → final approve. One declarative workflow. Plugins enforce each step.",
+        "result": "Release cycle: days → minutes. Every step traced. No one skips the gate.",
+        "owner": "Head of Engineering / Tech Lead"
+      },
+      {
+        "title": "QA Regressions and Trends",
+        "hook": "You find out about the regression after the customer does.",
+        "situation": "Quality signals are scattered — lint here, tests there, trends nowhere. Issues surface post-release when remediation costs the most.",
+        "how": "A QA plugin runs recurring checks on every change, tracks package-level trends, and surfaces degradation signals before they ship.",
+        "result": "Catch regressions at commit time, not in production. Remediation cost drops significantly.",
+        "owner": "QA Lead / Engineering Manager"
+      },
+      {
+        "title": "Commit and Change Policy",
+        "hook": "Your commit history is a graveyard of 'fix', 'wip', and 'asdf'.",
+        "situation": "Commit discipline lives in a Confluence page nobody reads. Enforcement depends on who reviews and whether they care that day.",
+        "how": "A commit plugin enforces policy at the workflow level — message format, scope, type — declared once, applied everywhere.",
+        "result": "Consistent change history across the team. Fewer manual fixups before release.",
+        "owner": "Tech Lead / Platform Team"
+      },
+      {
+        "title": "AI Review Gate",
+        "hook": "Code review is your slowest and most inconsistent step.",
+        "situation": "Review throughput is a bottleneck. Quality bar varies by reviewer, by day, by team. Some PRs get ten comments, others slip through.",
+        "how": "AI review runs as a required pipeline stage with declarative policy — not a suggestion, a gate. Configurable per repo.",
+        "result": "Faster cycle times. A consistent quality baseline that doesn't depend on who's available.",
+        "owner": "CTO / Engineering Manager"
+      },
+      {
+        "title": "Monorepo Dependency Ops",
+        "hook": "Your monorepo changes are a game of 'hope nothing breaks'.",
+        "situation": "Dependency updates, package sequencing, and governance live in ad-hoc scripts and tribal knowledge. Every big change is a gamble.",
+        "how": "Plugins handle dependency operations, build sequencing, and package governance — declaratively, with change tracking.",
+        "result": "Predictable monorepo changes. CI glue code replaced by observable, repeatable workflows.",
+        "owner": "Platform Engineer / Monorepo Owner"
+      },
+      {
+        "title": "Internal Agent Workflows",
+        "hook": "Your AI agents are ungoverned scripts running on someone's laptop.",
+        "situation": "Agent scenarios are bolted onto separate stacks with no unified policy, no audit trail, and no way to enforce security boundaries.",
+        "how": "Agents run as plugins inside the same policy-first runtime as your standard workflows — same governance, same observability.",
+        "result": "One controlled system for agent automation. No separate stack to maintain or secure.",
+        "owner": "CTO / AI Platform Team"
+      },
+      {
+        "title": "Inbox Automation",
+        "hook": "Your email inbox is a graveyard of unread alerts and manual tasks.",
+        "situation": "Notifications, reports, and action items pile up in email. There's no automation layer — someone has to read, triage, and act manually every time.",
+        "how": "A workflow monitors the inbox, classifies incoming messages, routes them to the right handler — ClickUp task, script, or notification — and tracks every action taken.",
+        "result": "Zero-touch triage for routine emails. Actionable items surface immediately in the right system. Nothing gets lost.",
+        "owner": "Engineering Lead / Operations"
+      },
+      {
+        "title": "ClickUp Task Automation",
+        "hook": "Your task tracker is a passive record, not an active system.",
+        "situation": "ClickUp has the status, but nothing acts on it. Tasks sit unchanged, updates happen manually, and the gap between what's in code and what's in the tracker keeps growing.",
+        "how": "Workflows read and write ClickUp tasks via the KB Labs plugin — triggered by code events, status changes, or schedules. No manual sync required.",
+        "result": "ClickUp reflects reality automatically. Tasks update when code merges. Blockers and overdue items surface without anyone checking.",
+        "owner": "Engineering Lead / Project Manager"
+      }
+    ],
+    "heroEyebrow": "Use Cases",
+    "ctaTitle": "Ready to automate your dev loop?",
+    "heroDescription": "Concrete things teams automate with KB Labs today — no abstract promises.",
+    "ctaInstallBtn": "Install KB Labs",
+    "heroTitleHighlight": "Real workflows.",
+    "situationLabel": "The situation",
+    "resultLabel": "The outcome",
+    "heroTitle": "Real scenarios.",
+    "ctaDescription": "On-prem, open source, no vendor lock-in.",
+    "ctaContactBtn": "Get in touch",
+    "howLabel": "How it works"
+  }
+}

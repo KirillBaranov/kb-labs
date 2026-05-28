@@ -22,8 +22,9 @@ type Component struct {
 	Default       bool   `json:"default"`
 	LocalPath     string `json:"localPath,omitempty"`     // absolute path for dev mode
 	Port          int    `json:"port,omitempty"`           // service port (services only)
-	GatewayPrefix  string  `json:"gatewayPrefix,omitempty"`  // gateway proxy prefix (services only)
-	GatewayRewrite *string `json:"gatewayRewrite,omitempty"` // rewrite prefix (nil=same as prefix, ""=strip)
+	GatewayPrefix    string  `json:"gatewayPrefix,omitempty"`    // gateway proxy prefix (services only)
+	GatewayRewrite   *string `json:"gatewayRewrite,omitempty"`   // rewrite prefix (nil=same as prefix, ""=strip)
+	GatewayWebSocket bool    `json:"gatewayWebSocket,omitempty"` // enable WebSocket proxying for this upstream
 	Plugin         string  `json:"plugin,omitempty"`         // companion CLI plugin pkg (services only)
 }
 

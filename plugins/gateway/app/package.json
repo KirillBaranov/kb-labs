@@ -33,6 +33,7 @@
     "@kb-labs/adapters-openai": "workspace:*",
     "@kb-labs/adapters-pino": "workspace:*",
     "@kb-labs/adapters-redis": "workspace:*",
+    "@kb-labs/adapters-service-transport-http": "workspace:*",
     "@kb-labs/adapters-sqlite": "workspace:*",
     "@kb-labs/core-config": "workspace:*",
     "@kb-labs/core-contracts": "workspace:*",

@@ -18,7 +18,7 @@
  * **Reading context (in hooks like usePlatform):**
  * ```typescript
  * import { platformContext } from '@kb-labs/plugin-contracts';
- * const platform = platformContext.getStore(); // PlatformServices | undefined
+ * const platform = platformContext.getStore(); // PluginServices | undefined
  * ```
  *
  * ## Why AsyncLocalStorage
@@ -31,7 +31,7 @@
  */
 
 import { AsyncLocalStorage } from 'node:async_hooks';
-import type { PlatformServices } from './platform.js';
+import type { PluginServices } from './platform.js'; // narrower than PlatformServices — no platform-only fields
 
 /**
  * Process-global key for the AsyncLocalStorage instance.
@@ -45,13 +45,13 @@ const PLATFORM_CONTEXT_KEY = Symbol.for('kb.platformContext');
  * Get or create the singleton AsyncLocalStorage instance.
  * Stored on process global to survive bundler duplication.
  */
-function getOrCreatePlatformContext(): AsyncLocalStorage<PlatformServices> {
+function getOrCreatePlatformContext(): AsyncLocalStorage<PluginServices> {
   const proc = process as NodeJS.Process & Record<symbol, unknown>;
   const existing = proc[PLATFORM_CONTEXT_KEY];
   if (existing instanceof AsyncLocalStorage) {
     return existing;
   }
-  const ctx = new AsyncLocalStorage<PlatformServices>();
+  const ctx = new AsyncLocalStorage<PluginServices>();
   proc[PLATFORM_CONTEXT_KEY] = ctx;
   return ctx;
 }
@@ -66,4 +66,4 @@ function getOrCreatePlatformContext(): AsyncLocalStorage<PlatformServices> {
  * Uses process-level Symbol.for() storage to ensure singleton identity
  * across bundled copies of this module.
  */
-export const platformContext: AsyncLocalStorage<PlatformServices> = getOrCreatePlatformContext();
+export const platformContext: AsyncLocalStorage<PluginServices> = getOrCreatePlatformContext();

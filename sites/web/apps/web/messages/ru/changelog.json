@@ -1,0 +1,131 @@
+{
+  "changelog": {
+    "meta": {
+      "title": "Changelog",
+      "description": "Новые функции, улучшения и исправления в KB Labs."
+    },
+    "typeNew": "Новое",
+    "releases": [
+      {
+        "version": "v1.4.0",
+        "date": "Май 2026",
+        "title": "Scaffold плагинов + обновление Studio",
+        "changes": [
+          {
+            "type": "new",
+            "text": "Scaffold-плагин — генерация новых плагинов из шаблона одной командой через kb-create"
+          },
+          {
+            "type": "new",
+            "text": "Поддержка kb.config.jsonc — конфиги платформы теперь могут содержать комментарии"
+          },
+          {
+            "type": "new",
+            "text": "Редизайн workflow-страницы Studio — упрощённая навигация и более чистый UI управления задачами"
+          },
+          {
+            "type": "improved",
+            "text": "Platform SDK предоставляет platform client, runtimeContext ALS и хук useEnv() для авторов плагинов"
+          },
+          {
+            "type": "improved",
+            "text": "Redis-адаптер теперь подключается лениво — запуск больше не падает, если Redis недоступен при старте"
+          },
+          {
+            "type": "improved",
+            "text": "Инструкции по установке обновлены: добавлены предварительные требования и автоматическая настройка PATH"
+          }
+        ]
+      },
+      {
+        "version": "v1.3.0",
+        "date": "Апрель 2026",
+        "title": "Agent SDK + workspace agent",
+        "changes": [
+          {
+            "type": "new",
+            "text": "Изолированное выполнение на Docker — плагины могут запускаться в контейнерах с автоматическим провижнингом workspace"
+          },
+          {
+            "type": "new",
+            "text": "Execution plane полностью инкапсулирован — workflow, REST API и CLI-демоны теперь тонкие хосты"
+          },
+          {
+            "type": "improved",
+            "text": "Docker-образ Gateway включает адаптеры и использует более лёгкую базу Node.js для быстрого холодного старта"
+          },
+          {
+            "type": "improved",
+            "text": "Роуты Marketplace теперь action-oriented — меньше проблем с URL encoding при навигации по плагинам"
+          },
+          {
+            "type": "fixed",
+            "text": "Нефатальное восстановление Gateway при недоступном кэше — исправлен Redis URL option"
+          }
+        ]
+      },
+      {
+        "version": "v1.2.0",
+        "date": "Март 2026",
+        "title": "Стабилизация workflow engine",
+        "changes": [
+          {
+            "type": "new",
+            "text": "Режим Plan/Execute — агенты составляют план, пользователь подтверждает, выполнение автоматически использует утверждённый план"
+          },
+          {
+            "type": "new",
+            "text": "Память сессий — история разговора и факты сохраняются между сессиями агента через turns.json"
+          },
+          {
+            "type": "new",
+            "text": "Context filter middleware — скользящее окно и усечение вывода инструментов для больших контекстов агентов"
+          },
+          {
+            "type": "improved",
+            "text": "BudgetMiddleware и ProgressMiddleware рефакторированы — всё состояние внутри, внешний провайдер не нужен"
+          },
+          {
+            "type": "improved",
+            "text": "Порядок pipeline Agent SDK стабилизирован: Observability → Budget → ContextFilter → FactSheet → Progress"
+          }
+        ]
+      },
+      {
+        "version": "v1.1.0",
+        "date": "Февраль 2026",
+        "title": "Gateway адаптеры + policy layer",
+        "changes": [
+          {
+            "type": "new",
+            "text": "Единый монорепозиторий — все пакеты платформы, плагины, адаптеры и инструменты в одном репозитории"
+          },
+          {
+            "type": "new",
+            "text": "kb-create — одна команда для создания полного workspace платформы со стартовыми workflow"
+          },
+          {
+            "type": "new",
+            "text": "Duck typing для плагинов — любой пакет с kb.manifest.ts является плагином, базовый класс не нужен"
+          },
+          {
+            "type": "improved",
+            "text": "Внутренние пакеты разрешаются через workspace:* — никакого DevLink, никакого переключения режимов"
+          },
+          {
+            "type": "improved",
+            "text": "Go-бинарник kb-devkit управляет порядком сборки, проверкой здоровья и запуском задач во всём монорепозитории"
+          }
+        ]
+      }
+    ],
+    "hero": {
+      "title": "Changelog",
+      "titleHighlight": "что вышло.",
+      "eyebrow": "Релизы",
+      "subtitle": "Каждый релиз, каждое изменение."
+    },
+    "typeFixed": "Исправлено",
+    "typeImproved": "Улучшено"
+  }
+}

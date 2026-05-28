@@ -1,4 +1,4 @@
-import { logDiagnosticEvent } from '@kb-labs/core-platform';
+import { logDiagnosticEvent, type IServiceTransport } from '@kb-labs/core-platform';
 import { createInMemoryDocumentDatabase, createInMemoryKVStore } from '@kb-labs/core-platform/inmemory';
 import { platform, createServiceBootstrap, getPlatformRoot, getProjectRoot } from '@kb-labs/core-runtime';
 import { createCorrelatedLogger } from '@kb-labs/shared-http';
@@ -261,10 +261,24 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
     logger.warn('Resource broker unavailable — pressure control disabled');
   }
 
-  // 9. Create server with injected registry and optional user auth deps
-  const server = await createServer(config, cache, platform.logger, jwtConfig, registry, userAuth);
+  // 9. Get service transport from platform adapter.
+  //    Configured via platform.adapters.serviceTransport in kb.config.json.
+  //    kb-create installs @kb-labs/adapters-service-transport-http by default
+  //    and writes adapterOptions.serviceTransport.services with TCP URLs.
+  const serviceTransport = platform.getAdapter<IServiceTransport>('serviceTransport');
+  if (!serviceTransport) {
+    throw new Error(
+      'Gateway requires the serviceTransport adapter. ' +
+      'Configure it in kb.config.json:\n' +
+      '  "adapters": { "serviceTransport": "@kb-labs/adapters-service-transport-http" },\n' +
+      '  "adapterOptions": { "serviceTransport": { "services": { "rest": { "url": "http://127.0.0.1:5050" }, ... } } }',
+    );
+  }
 
-  // 9. Listen
+  // 10. Create server with injected registry, transport and optional user auth deps
+  const server = await createServer(config, cache, platform.logger, jwtConfig, registry, serviceTransport, userAuth);
+
+  // 11. Listen
   const address = await server.listen({ port: config.port, host: '0.0.0.0' });
   logger.info('Gateway listening', { address });
 

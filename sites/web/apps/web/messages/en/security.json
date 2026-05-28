@@ -1,0 +1,203 @@
+{
+  "security": {
+    "meta": {
+      "title": "Security — KB Labs",
+      "description": "On-prem by default, open source, plugin sandboxing, JWT Gateway auth. No data leaves without your consent."
+    },
+    "authTitle": "Tokens live on your machine.",
+    "ctaGithubBtn": "View code on GitHub",
+    "dataFlow": [
+      {
+        "dataType": "Source code",
+        "destination": "Your machine only",
+        "condition": "Never transmitted",
+        "status": "local"
+      },
+      {
+        "dataType": "Workflow state",
+        "destination": "Your machine only",
+        "condition": "Never transmitted",
+        "status": "local"
+      },
+      {
+        "dataType": "LLM prompts",
+        "destination": "Your chosen provider",
+        "condition": "Only when you trigger AI features",
+        "status": "conditional"
+      },
+      {
+        "dataType": "Git diffs (demo)",
+        "destination": "Gateway proxy",
+        "condition": "Only in demo mode, opt-in",
+        "status": "conditional"
+      },
+      {
+        "dataType": "Crash reports",
+        "destination": "Never collected",
+        "condition": "No error tracking",
+        "status": "local"
+      },
+      {
+        "dataType": "Usage analytics",
+        "destination": "Never collected",
+        "condition": "No telemetry by default",
+        "status": "local"
+      },
+      {
+        "dataType": "API keys",
+        "destination": "Local config only (0600)",
+        "condition": "Never logged or transmitted",
+        "status": "local"
+      }
+    ],
+    "heroEyebrow": "SECURITY",
+    "dataFlowTitle": "What leaves your network.",
+    "disclosureSteps": [
+      "Email security@kblabs.dev with full details",
+      "We respond within 72 hours and confirm scope",
+      "Fix ships in the next patch release with credit"
+    ],
+    "stats": [
+      {
+        "value": "100%",
+        "label": "Open source",
+        "description": "All code on GitHub. No black boxes."
+      },
+      {
+        "value": "0",
+        "label": "Cloud dependencies",
+        "description": "By default. Everything runs locally."
+      },
+      {
+        "value": "0",
+        "label": "Data on our servers",
+        "description": "We don't store your code or state."
+      },
+      {
+        "value": "3",
+        "label": "Plugin isolation modes",
+        "description": "In-process, subprocess/container, and worker-pool."
+      }
+    ],
+    "authFacts": [
+      {
+        "label": "Token scope",
+        "value": "Device-scoped JWT"
+      },
+      {
+        "label": "Token storage",
+        "value": "Local file, 0600 permissions"
+      },
+      {
+        "label": "Token sharing",
+        "value": "Never shared across users"
+      },
+      {
+        "label": "Auth method",
+        "value": "JWT Bearer tokens"
+      },
+      {
+        "label": "Key rotation",
+        "value": "CLI command: kb gateway rotate"
+      },
+      {
+        "label": "Revocation",
+        "value": "Immediate, no TTL dependency"
+      }
+    ],
+    "tableHeaderDest": "Destination",
+    "tableHeaderCond": "Condition",
+    "ctaBody": "If you have special security requirements or want to run an audit — reach out directly.",
+    "tableHeaderType": "Data type",
+    "disclosureTitle": "Found a vulnerability?",
+    "disclosureEyebrow": "Responsible disclosure",
+    "disclosureBtn": "Email security",
+    "disclosureBody": "If you found a vulnerability — contact us before public disclosure. We respond within 48 hours and publicly thank researchers after the fix ships.",
+    "dataFlowSubtitle": "Full data movement map — no \"approximately\" or \"sometimes\".",
+    "heroTitle": "Your code and data",
+    "pillarsEyebrow": "Core principles",
+    "tableHeaderStatus": "Status",
+    "pillarsTitle": "Secure by default, not optional.",
+    "sandboxLayers": [
+      {
+        "num": "1",
+        "title": "Manifest declaration",
+        "description": "Plugins declare required capabilities upfront. Runtime refuses undeclared access."
+      },
+      {
+        "num": "2",
+        "title": "In-process isolation",
+        "description": "Default mode. Plugin runs in the same process with permission enforcement via middleware."
+      },
+      {
+        "num": "3",
+        "title": "Subprocess isolation",
+        "description": "Plugin spawns in a child process. IPC-only communication, no shared memory."
+      },
+      {
+        "num": "4",
+        "title": "Container isolation",
+        "description": "Plugin runs in an OCI container. Full filesystem and network isolation."
+      }
+    ],
+    "heroTitleHighlight": "stay on your machine.",
+    "complianceTitle": "Honest about certifications.",
+    "complianceItems": [
+      {
+        "name": "Open Source",
+        "status": "Available",
+        "description": "MIT-licensed. Full source code available on GitHub for audit and contribution.",
+        "statusClass": "available"
+      },
+      {
+        "name": "DPA",
+        "status": "Available",
+        "description": "Data processing agreement available on request for organizations that require it.",
+        "statusClass": "available"
+      },
+      {
+        "name": "RBAC & SSO",
+        "status": "In progress",
+        "description": "Role-based access control and SSO (SAML/OIDC) planned for Enterprise tier.",
+        "statusClass": "in-progress"
+      }
+    ],
+    "complianceSubtitle": "Early stage — no lies about status.",
+    "ctaEyebrow": "Questions?",
+    "sandboxTitle": "Four layers of sandbox isolation.",
+    "flowStatus": {
+      "local": {
+        "label": "On your machine"
+      },
+      "conditional": {
+        "label": "Sent with consent"
+      },
+      "infra": {
+        "label": "External infra"
+      }
+    },
+    "sandboxEyebrow": "Plugin isolation",
+    "authSubtitle": "Gateway uses no centralized auth service — keys are generated and stored locally.",
+    "authEyebrow": "JWT authentication",
+    "sandboxSubtitle": "A plugin cannot access resources it didn't declare in its manifest — that's a contract, not a recommendation.",
+    "heroDescription": "KB Labs runs on-prem by default, open source end-to-end, and never sends data without your explicit action. Everything below is verifiable in source.",
+    "pillars": [
+      {
+        "title": "On-prem by default",
+        "description": "KB Labs runs entirely on your infrastructure. No cloud dependency, no data leaving your network. You control where your code, workflow state, and logs are stored."
+      },
+      {
+        "title": "Consent-first data sharing",
+        "description": "Nothing is sent externally without explicit user consent. The CLI installer asks before every network call. Demo mode offers three choices: gateway proxy, local only, or bring your own API key."
+      },
+      {
+        "title": "Open source & auditable",
+        "description": "The entire platform is open source. Every line of code is auditable. No black boxes, no hidden telemetry, no trust-us-it's-safe. Verify yourself."
+      }
+    ],
+    "ctaTitle": "Let's talk security.",
+    "ctaContactBtn": "Contact us",
+    "dataFlowEyebrow": "Data flows",
+    "complianceEyebrow": "Standards compliance"
+  }
+}

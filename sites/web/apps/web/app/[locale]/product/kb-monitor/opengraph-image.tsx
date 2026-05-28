@@ -11,10 +11,10 @@ export default async function OpengraphImage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: 'page' });
+  const t = await getTranslations({ locale, namespace: 'kbMonitor' });
   return renderOgImage({
-    title: t('monMetaTitle'),
-    description: t('monMetaDesc'),
+    title: t('meta.title'),
+    description: t('meta.description'),
     badge: 'Product',
   });
 }

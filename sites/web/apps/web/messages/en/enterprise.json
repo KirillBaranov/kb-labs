@@ -1,0 +1,86 @@
+{
+  "enterprise": {
+    "meta": {
+      "title": "Enterprise — KB Labs",
+      "description": "KB Labs for larger teams: governance, security, and commercial support built on the same open-source engine."
+    },
+    "whyEyebrow": "Why KB Labs",
+    "featuresEyebrow": "Status",
+    "why": [
+      {
+        "title": "Driven by real adopters, not checklists",
+        "description": "Whatever ships in this layer is shaped by what early users actually need in production — not a feature checklist written in a vacuum."
+      },
+      {
+        "title": "Built on the same OSS engine",
+        "description": "Nothing in this layer breaks or hides the open core. The engine you install today is the same engine larger organizations will run."
+      },
+      {
+        "title": "Stronger governance and support",
+        "description": "Stricter policy controls, audit boundaries, commercial support, SLA — the things larger organizations ask for once they're past the install."
+      },
+      {
+        "title": "Honest about what's not here yet",
+        "description": "What ships today: the OSS engine. What's roadmap: the rest of this page. Nothing is sold before it ships."
+      }
+    ],
+    "featuresRoadmap": [
+      {
+        "title": "Advanced security and governance",
+        "description": "Enterprise security layers added based on validated user priorities."
+      },
+      {
+        "title": "SLA and commercial support",
+        "description": "Support channels and SLA model planned for the post-validation phase."
+      },
+      {
+        "title": "Ecosystem monetization",
+        "description": "Commercial plugin subscriptions and marketplace flows as part of the next stage."
+      },
+      {
+        "title": "Enterprise rollout track",
+        "description": "Target window for broader enterprise direction: Q3-Q4 2026 and beyond."
+      }
+    ],
+    "featuresLabelToday": "Today",
+    "whyHeading": "What we're building for larger teams.",
+    "featuresToday": [
+      {
+        "title": "OSS on-prem",
+        "description": "Deploy in your own environment and run key workflows through plugins right now."
+      },
+      {
+        "title": "Policy-first + observability",
+        "description": "Plugin capabilities are declared up front and every run is fully traceable."
+      }
+    ],
+    "featuresHeading": "What's available today and what's next.",
+    "cta": {
+      "title": "Interested in the enterprise layer?",
+      "salesBtn": "Start a conversation",
+      "description": "Tell us what you need. We shape this based on what real teams ask for — not a checklist written in a vacuum."
+    },
+    "hero": {
+      "ctaPrimary": "Start a conversation",
+      "titleLine1": "For teams adopting KB Labs",
+      "eyebrow": "Enterprise",
+      "subtitle": "Everything below is either live today or on a public roadmap — nothing is sold before it ships.",
+      "titleLine2": "at scale.",
+      "ctaSecondary": "Install the OSS engine"
+    },
+    "stats": [
+      {
+        "label": "on-prem by default"
+      },
+      {
+        "label": "open source core"
+      },
+      {
+        "label": "enterprise horizon"
+      },
+      {
+        "label": "vendor lock-in"
+      }
+    ]
+  }
+}

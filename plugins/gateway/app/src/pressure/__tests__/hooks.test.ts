@@ -75,7 +75,7 @@ describe('createPressureOnRequest', () => {
       broker: b,
       logger: log,
       config: baseConfig({
-        upstreams: { rest: { url: 'http://x', prefix: '/api/v1/rest' } },
+        upstreams: { rest: { serviceId: 'rest', prefix: '/api/v1/rest' } },
         pressure: { enabled: true, perService: { rest: { requestsPerSecond: 5, safetyMargin: 1 } }, perRoute: [] },
       }),
     });
@@ -90,7 +90,7 @@ describe('createPressureOnRequest', () => {
     const b = broker();
     b.registerLimit('gateway:service:rest', { requestsPerSecond: 1, safetyMargin: 1 });
     const cfg = baseConfig({
-      upstreams: { rest: { url: 'http://x', prefix: '/api/v1/rest' } },
+      upstreams: { rest: { serviceId: 'rest', prefix: '/api/v1/rest' } },
       pressure: { enabled: true, perService: { rest: { requestsPerSecond: 1, safetyMargin: 1 } }, perRoute: [] },
     });
     const hook = createPressureOnRequest({ broker: b, logger: log, config: cfg });
@@ -119,7 +119,7 @@ describe('createPressureOnRequest', () => {
       broker: b,
       logger: log,
       config: baseConfig({
-        upstreams: { rest: { url: 'http://x', prefix: '/api/v1/rest' } },
+        upstreams: { rest: { serviceId: 'rest', prefix: '/api/v1/rest' } },
         pressure: { enabled: true, perService: { rest: { requestsPerSecond: 5 } }, perRoute: [] },
       }),
     });
@@ -228,7 +228,7 @@ describe('createPressureOnResponse', () => {
     const b = broker();
     b.registerLimit('gateway:service:rest', { maxConcurrentRequests: 1, safetyMargin: 1 });
     const cfg = baseConfig({
-      upstreams: { rest: { url: 'http://x', prefix: '/api/v1/rest' } },
+      upstreams: { rest: { serviceId: 'rest', prefix: '/api/v1/rest' } },
       pressure: { enabled: true, perService: { rest: { maxConcurrentRequests: 1, safetyMargin: 1 } }, perRoute: [] },
     });
     const onReq = createPressureOnRequest({ broker: b, logger: log, config: cfg });
@@ -249,7 +249,7 @@ describe('createPressureOnResponse', () => {
     const b = broker();
     b.registerLimit('gateway:service:rest', { maxConcurrentRequests: 1, safetyMargin: 1 });
     const cfg = baseConfig({
-      upstreams: { rest: { url: 'http://x', prefix: '/api/v1/rest' } },
+      upstreams: { rest: { serviceId: 'rest', prefix: '/api/v1/rest' } },
       pressure: { enabled: true, perService: { rest: { maxConcurrentRequests: 1, safetyMargin: 1 } }, perRoute: [] },
     });
     const onReq = createPressureOnRequest({ broker: b, logger: log, config: cfg });
