@@ -134,7 +134,12 @@ export async function createServer(
       rewritePrefix: upstream.rewritePrefix ?? upstream.prefix,
       disableCache: true,
       websocket: upstream.websocket ?? false,
-      undici: conn.socketPath ? { socketPath: conn.socketPath } : {},
+      undici: {
+        // Restore 1-hour body timeout for SSE streams and large transfers.
+        // undici defaults: headersTimeout=30s, bodyTimeout=300s — too short for streaming.
+        bodyTimeout: 3_600_000,
+        ...(conn.socketPath ? { socketPath: conn.socketPath } : {}),
+      },
     });
     const connDesc = conn.socketPath ? `${conn.baseUrl} (unix:${conn.socketPath})` : conn.baseUrl;
     gatewayLogger.info(`Upstream registered: ${name} → ${connDesc} (${upstream.prefix}${upstream.websocket ? ', ws' : ''})`);

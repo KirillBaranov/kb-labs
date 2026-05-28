@@ -36,62 +36,42 @@ export class HttpServiceTransport implements IServiceTransport {
   }
 
   async call(serviceId: string, req: ServiceTransportRequest): Promise<ServiceTransportResponse> {
-    const pool = this.pools.get(serviceId);
-    if (!pool) throw new Error(`Unknown service: ${serviceId}`);
-
-    const svc = this.config.services[serviceId]!;
-    const method = req.metadata?.['http-method'] ?? (req.payload !== undefined ? 'POST' : 'GET');
-
-    const { statusCode, headers, body } = await pool.request({
-      method,
-      path: req.path,
-      headers: {
-        ...(req.payload !== undefined ? { 'content-type': 'application/json' } : {}),
-        ...req.metadata,
-      },
-      body: req.payload !== undefined ? JSON.stringify(req.payload) : undefined,
-      headersTimeout: req.timeoutMs ?? svc.timeoutMs ?? 30_000,
-      signal: req.signal,
-    });
-
+    const { statusCode, headers, body } = await this._request(serviceId, req);
     const payload = await body.json().catch(async () => {
       const text = await body.text().catch(() => undefined);
       return text ?? undefined;
     });
-
-    return {
-      ok: statusCode < 400,
-      statusCode,
-      payload,
-      metadata: headers as Record<string, string>,
-    };
+    return { ok: statusCode < 400, statusCode, payload, metadata: headers as Record<string, string> };
   }
 
   async stream(serviceId: string, req: ServiceTransportRequest): Promise<ServiceTransportStream> {
-    const pool = this.pools.get(serviceId);
-    if (!pool) throw new Error(`Unknown service: ${serviceId}`);
-
-    const svc = this.config.services[serviceId]!;
-    const method = req.metadata?.['http-method'] ?? (req.payload !== undefined ? 'POST' : 'GET');
-
-    const { statusCode, headers, body } = await pool.request({
-      method,
-      path: req.path,
-      headers: {
-        ...(req.payload !== undefined ? { 'content-type': 'application/json' } : {}),
-        ...req.metadata,
-      },
-      body: req.payload !== undefined ? JSON.stringify(req.payload) : undefined,
-      headersTimeout: req.timeoutMs ?? svc.timeoutMs ?? 30_000,
-      signal: req.signal,
-    });
-
+    const { statusCode, headers, body } = await this._request(serviceId, req);
     return {
       ok: statusCode < 400,
       statusCode,
       body: body as unknown as AsyncIterable<Uint8Array>,
       metadata: headers as Record<string, string>,
     };
+  }
+
+  private async _request(serviceId: string, req: ServiceTransportRequest) {
+    const pool = this.pools.get(serviceId);
+    if (!pool) throw new Error(`Unknown service: ${serviceId}`);
+
+    const svc = this.config.services[serviceId]!;
+    const method = req.metadata?.['http-method'] ?? (req.payload !== undefined ? 'POST' : 'GET');
+
+    return pool.request({
+      method,
+      path: req.path,
+      headers: {
+        ...(req.payload !== undefined ? { 'content-type': 'application/json' } : {}),
+        ...req.metadata,
+      },
+      body: req.payload !== undefined ? JSON.stringify(req.payload) : undefined,
+      headersTimeout: req.timeoutMs ?? svc.timeoutMs ?? 30_000,
+      signal: req.signal,
+    });
   }
 
   async health(): Promise<ServiceTransportHealth> {
