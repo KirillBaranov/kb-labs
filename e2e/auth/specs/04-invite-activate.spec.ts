@@ -78,14 +78,13 @@ test('AUTH-14: expired invite → "invalid or expired" message', async ({
   request,
   browser,
 }) => {
-  // This test requires the gateway to be started with a very short invite TTL.
-  // AUTH_INVITE_TTL_MS=1000 (1 second) must be set in the gateway environment.
-  test.skip(!process.env.AUTH_INVITE_TTL_MS, 'Skipped: set AUTH_INVITE_TTL_MS=1000 to enable')
-
+  // Create a short-lived invite (1 s TTL) directly via the per-invite ttlMs field.
+  // The global AUTH_INVITE_TTL_MS is now set to 7 days in CI so that other tests
+  // (AUTH-13, AUTH-20, etc.) are not affected by a globally short TTL.
   await loginAsAdmin(page)
   const adminCookieHeader = await getAdminCookieHeader(context)
   const email = uniqueEmail('expired14')
-  const activationUrl = await inviteUser(request, email, adminCookieHeader)
+  const activationUrl = await inviteUser(request, email, adminCookieHeader, { ttlMs: 1_000 })
 
   // Wait for invite to expire.
   await page.waitForTimeout(2_000)

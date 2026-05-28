@@ -127,9 +127,9 @@ test('AUTH-22: new password < 8 chars → client-side validation error', async (
     await activateUser(memberPage, activationUrl, 'ValidPass123!')
     await fillChangePasswordForm(memberPage, 'ValidPass123!', 'short', 'short')
 
-    await expect(memberPage.locator('[role="alert"], :text("8")')).toBeVisible({
-      timeout: 5_000,
-    })
+    // Use getByRole to avoid strict-mode violation: ':text("8")' in a comma-separated
+    // locator would also match email addresses that contain "8" in their timestamp part.
+    await expect(memberPage.getByRole('alert')).toContainText('8', { timeout: 5_000 })
   } finally {
     await memberCtx.close()
   }

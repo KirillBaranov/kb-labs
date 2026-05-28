@@ -48,8 +48,10 @@ jobs:
       # Short TTLs for session lifecycle tests (AUTH-05, AUTH-06, AUTH-07b)
       AUTH_ACCESS_TTL_SEC:  "5"
       AUTH_REFRESH_TTL_SEC: "15"
-      # Short invite TTL for AUTH-14
-      AUTH_INVITE_TTL_MS: "1000"
+      # Default invite TTL: 7 days. AUTH-14 creates its own short-lived invite
+      # via the per-invite ttlMs field in POST /auth/invites. Setting this to
+      # 1000 would expire invites before AUTH-20 can activate them (>1s setup).
+      AUTH_INVITE_TTL_MS: "604800000"
 
     steps:
       - name: Checkout

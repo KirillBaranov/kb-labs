@@ -510,24 +510,29 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
   }
 
   // ── POST /auth/invites ──────────────────────────────────────────────────────
-  app.post<{ Body: { email?: string; groupId?: string } }>('/auth/invites', {
+  app.post<{ Body: { email?: string; groupId?: string; ttlMs?: number } }>('/auth/invites', {
     schema: { tags: ['Auth'], summary: 'Create an invite for a new user (admin only)' },
   }, async (request, reply) => {
     if (!(await requirePermission(request, reply, PERMISSIONS.INVITES_WRITE))) {return;}
     if (!checkCsrf(request, reply)) {return;}
 
     const ctx = request.userAuthContext!;
-    const { email, groupId } = request.body ?? {};
+    const { email, groupId, ttlMs: bodyTtlMs } = request.body ?? {};
     if (!email || !groupId) {
       return reply.code(400).send({ error: 'Bad Request', message: 'email and groupId are required' });
     }
+
+    // Allow callers to specify a custom TTL (e.g., short-lived invites for testing
+    // AUTH-14). If not provided or invalid, fall back to the server default.
+    const effectiveTtlMs =
+      typeof bodyTtlMs === 'number' && bodyTtlMs > 0 ? bodyTtlMs : inviteTtlMs;
 
     const result = await invites.createInvite({
       email,
       tenantId: ctx.tenantId,
       groupId: groupId as 'tenant-admin' | 'tenant-member',
       createdBy: ctx.userId,
-      ttlMs: inviteTtlMs,
+      ttlMs: effectiveTtlMs,
     });
 
     const host = typeof request.headers.host === 'string' ? request.headers.host : 'localhost';

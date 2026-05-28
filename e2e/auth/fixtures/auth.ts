@@ -47,16 +47,25 @@ export async function getAdminCookieHeader(context: BrowserContext): Promise<str
 /**
  * POST /api/auth/invites as admin.
  * Returns the activationUrl from the response.
+ *
+ * @param options.ttlMs - Optional invite TTL override in milliseconds.
+ *   Use to create short-lived invites for expiry tests (e.g. AUTH-14).
+ *   Defaults to the server's global invite TTL (7 days in CI).
  */
 export async function inviteUser(
   request: APIRequestContext,
   email: string,
   adminCookieHeader: string,
+  options?: { ttlMs?: number },
 ): Promise<string> {
   const csrfToken = await getCsrfFromCookie(request, adminCookieHeader)
+  const data: Record<string, unknown> = { email, groupId: 'tenant-member' }
+  if (options?.ttlMs !== undefined) {
+    data['ttlMs'] = options.ttlMs
+  }
   const res = await request.post(`${GATEWAY}/api/auth/invites`, {
     // groupId is required by the gateway (POST /api/auth/invites validates both email + groupId).
-    data: { email, groupId: 'tenant-member' },
+    data,
     headers: {
       Cookie: adminCookieHeader,
       'X-CSRF-Token': csrfToken ?? '',
