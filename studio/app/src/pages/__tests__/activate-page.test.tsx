@@ -7,13 +7,13 @@
  *   - Renders password + confirm fields
  *   - meta referrer="no-referrer" present in document
  *   - On submit: calls POST /api/auth/activate with token + password
- *   - Success: history.replaceState called to strip token from URL, navigate /
+ *   - Success: window.location.replace('/') called (full page reload strips token + re-mounts auth)
  *   - Invalid/expired token → "invalid or expired" message
  *   - Password mismatch → client-side validation error (no server call)
  *   - Policy violation from server → shows error reason
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
@@ -75,9 +75,22 @@ function mockActivateFetch(result: 'ok' | 'expired' | 'weak_password') {
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
+// Track calls to window.location.replace across tests.
+let locationReplaceSpy: ReturnType<typeof vi.fn>;
+
 describe('ActivatePage', () => {
   beforeEach(() => {
-    vi.spyOn(window.history, 'replaceState').mockImplementation(() => {});
+    // jsdom does not allow direct spy on window.location.replace (non-configurable),
+    // so we redefine window.location with a mock replace function for test isolation.
+    locationReplaceSpy = vi.fn();
+    Object.defineProperty(window, 'location', {
+      configurable: true,
+      value: { replace: locationReplaceSpy },
+    });
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
   it('renders password and confirm password fields', () => {
@@ -135,7 +148,11 @@ describe('ActivatePage', () => {
     expect(body.password).toBe('NewSecret123!');
   });
 
-  it('calls history.replaceState after successful activation', async () => {
+  it('calls window.location.replace("/") after successful activation', async () => {
+    // After a successful activate POST, the page must do a full reload to "/".
+    // A full reload (not SPA navigation) is required so the auth provider
+    // re-mounts and re-checks /api/auth/me with the newly-issued session cookies.
+    // It also strips the activation token from the URL and browser history.
     vi.stubGlobal('fetch', mockActivateFetch('ok'));
     renderActivate('tok-123');
 
@@ -146,12 +163,12 @@ describe('ActivatePage', () => {
       fireEvent.submit(screen.getByRole('form', { name: /activate form/i }));
     });
 
-    await waitFor(() =>
-      expect(window.history.replaceState).toHaveBeenCalled(),
-    );
+    await waitFor(() => expect(locationReplaceSpy).toHaveBeenCalledWith('/'));
   });
 
-  it('navigates to / after successful activation', async () => {
+  it('navigates to / after successful activation (window.location.replace)', async () => {
+    // jsdom cannot actually navigate on window.location.replace('/'), so we verify
+    // the call itself — confirming the component hands off to the browser correctly.
     vi.stubGlobal('fetch', mockActivateFetch('ok'));
     renderActivate('tok-123');
 
@@ -162,7 +179,9 @@ describe('ActivatePage', () => {
       fireEvent.submit(screen.getByRole('form', { name: /activate form/i }));
     });
 
-    await waitFor(() => expect(screen.getByTestId('home-page')).toBeDefined());
+    // The "navigation to /" is the window.location.replace('/') call — jsdom
+    // does not perform real browser navigation, so we assert the call was made.
+    await waitFor(() => expect(locationReplaceSpy).toHaveBeenCalledWith('/'));
   });
 
   it('shows "invalid or expired" message when server returns invalid_invite', async () => {

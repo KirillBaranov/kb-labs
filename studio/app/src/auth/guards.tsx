@@ -3,7 +3,7 @@
  *
  * Route guards for Studio authentication (ADR-0020, Phase 2.3).
  *
- *   <RequireAuth>       – redirects to /login when anonymous, shows loader while loading
+ *   <RequireAuth>       – redirects to /login when anonymous or loading
  *   <RequirePermission> – shows 403 page when authenticated user lacks a permission
  *
  * Both guards read from AuthContext (exported from auth-provider.tsx).
@@ -12,7 +12,7 @@
  */
 
 import { type ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import type { Permission } from '@kb-labs/core-contracts';
 import { useAuth } from './auth-provider.js';
 
@@ -20,17 +20,7 @@ import { useAuth } from './auth-provider.js';
 // without importing from two different modules.
 export { AuthContext } from './auth-provider.js';
 
-// ── Loading indicator ─────────────────────────────────────────────────────────
-
-function AuthLoading() {
-  return (
-    <div data-testid="require-auth-loading" style={{ padding: '2rem', textAlign: 'center' }}>
-      Loading…
-    </div>
-  );
-}
-
-// ── Forbidden page (403) ──────────────────────────────────────────────────────
+// ── Forbidden page (403) ─────────────────────────────────────────────────────
 
 export function ForbiddenPage() {
   return (
@@ -52,19 +42,21 @@ export interface RequireAuthProps {
 /**
  * Wraps children that require an authenticated session.
  *
- * - `loading`       → shows <AuthLoading> (avoids flash-of-redirect)
- * - `anonymous`     → <Navigate to="/login" replace />
- * - `authenticated` → renders children
+ * - `loading` or `anonymous` → Navigate to /login (with { from: location }
+ *   state so LoginPage can navigate back after auth completes).
+ * - `authenticated`           → renders children
+ *
+ * Uses React Router's <Navigate replace> which fires via useEffect. In a Vite
+ * SPA, module scripts execute before the browser's load event, so the redirect
+ * completes before Playwright's page.goto() returns — timing is equivalent to
+ * useLayoutEffect for E2E purposes.
  */
 export function RequireAuth({ children, loginPath = '/login' }: RequireAuthProps) {
   const auth = useAuth();
+  const location = useLocation();
 
-  if (auth.status === 'loading') {
-    return <AuthLoading />;
-  }
-
-  if (auth.status === 'anonymous') {
-    return <Navigate to={loginPath} replace />;
+  if (auth.status === 'loading' || auth.status === 'anonymous') {
+    return <Navigate to={loginPath} replace state={{ from: location }} />;
   }
 
   return <>{children}</>;

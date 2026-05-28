@@ -18,7 +18,7 @@
  */
 
 import * as React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/auth/auth-provider';
 
 // ── Provider types ────────────────────────────────────────────────────────────
@@ -32,13 +32,30 @@ interface AuthProvider {
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const location = useLocation();
+  const auth = useAuth();
+
+  // Destination after successful auth: the protected page that redirected here
+  // (passed via React Router state by RequireAuth), or '/' as fallback.
+  const from =
+    (location.state as { from?: { pathname?: string } } | null)?.from?.pathname ?? '/';
+
+  const { login } = auth;
 
   const [providers, setProviders] = React.useState<AuthProvider[]>([]);
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(false);
+
+  // Auto-navigate when auth resolves to authenticated (handles transparent
+  // token refresh: RequireAuth sends the user here while loading, auth-provider
+  // completes the refresh in the background, then we go back to `from`).
+  React.useEffect(() => {
+    if (auth.status === 'authenticated') {
+      navigate(from, { replace: true });
+    }
+  }, [auth.status, navigate, from]);
 
   // Load available providers on mount.
   React.useEffect(() => {
@@ -61,7 +78,7 @@ export function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      navigate('/');
+      navigate(from, { replace: true });
     } catch {
       setError('Invalid credentials');
     } finally {

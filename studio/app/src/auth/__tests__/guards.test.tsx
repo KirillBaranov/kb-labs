@@ -4,17 +4,17 @@
  * Tests for RequireAuth and RequirePermission guards (ADR-0020, Phase 2.3).
  *
  * Coverage:
- *   - RequireAuth: loading state → shows loading indicator
+ *   - RequireAuth: loading state → redirects to /login (SyncRedirect via useLayoutEffect)
  *   - RequireAuth: anonymous → redirects to /login
  *   - RequireAuth: authenticated → renders children
  *   - RequirePermission: has permission → renders children
  *   - RequirePermission: no permission → shows 403 page (not children)
- *   - RequirePermission: loading → shows loading indicator (inherited from RequireAuth)
+ *   - RequirePermission: loading → redirects to /login (inherited from RequireAuth)
  *   - useCan: returns true when permission present, false when absent
  */
 
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { AuthContext, RequireAuth, RequirePermission } from '../guards.js';
@@ -56,7 +56,7 @@ function renderWithAuth(ui: React.ReactElement, auth: AuthState, initialPath = '
 // ── RequireAuth ───────────────────────────────────────────────────────────────
 
 describe('RequireAuth', () => {
-  it('shows loading indicator while status is loading', () => {
+  it('redirects to /login while status is loading', async () => {
     const auth = makeAuth({ status: 'loading', user: undefined });
     renderWithAuth(
       <RequireAuth>
@@ -65,10 +65,10 @@ describe('RequireAuth', () => {
       auth,
     );
     expect(screen.queryByTestId('child')).toBeNull();
-    expect(screen.getByTestId('require-auth-loading')).toBeDefined();
+    await waitFor(() => expect(screen.getByTestId('login-page')).toBeDefined());
   });
 
-  it('redirects to /login when anonymous', () => {
+  it('redirects to /login when anonymous', async () => {
     const auth = makeAuth({ status: 'anonymous', user: undefined });
     renderWithAuth(
       <RequireAuth>
@@ -77,8 +77,7 @@ describe('RequireAuth', () => {
       auth,
     );
     expect(screen.queryByTestId('child')).toBeNull();
-    // Navigate to /login renders the login route
-    expect(screen.getByTestId('login-page')).toBeDefined();
+    await waitFor(() => expect(screen.getByTestId('login-page')).toBeDefined());
   });
 
   it('renders children when authenticated', () => {
@@ -119,7 +118,7 @@ describe('RequirePermission', () => {
     expect(screen.getByTestId('forbidden-page')).toBeDefined();
   });
 
-  it('shows loading while auth is loading (before permissions are known)', () => {
+  it('redirects to /login while auth is loading (before permissions are known)', async () => {
     const auth = makeAuth({ status: 'loading', user: undefined, permissions: new Set() });
     renderWithAuth(
       <RequirePermission permission="users:write">
@@ -128,11 +127,10 @@ describe('RequirePermission', () => {
       auth,
     );
     expect(screen.queryByTestId('child')).toBeNull();
-    // Inherits RequireAuth loading behaviour
-    expect(screen.getByTestId('require-auth-loading')).toBeDefined();
+    await waitFor(() => expect(screen.getByTestId('login-page')).toBeDefined());
   });
 
-  it('redirects to /login when anonymous (RequireAuth wraps RequirePermission)', () => {
+  it('redirects to /login when anonymous (RequireAuth wraps RequirePermission)', async () => {
     const auth = makeAuth({ status: 'anonymous', user: undefined, permissions: new Set() });
     renderWithAuth(
       <RequirePermission permission="users:write">
@@ -141,6 +139,6 @@ describe('RequirePermission', () => {
       auth,
     );
     expect(screen.queryByTestId('child')).toBeNull();
-    expect(screen.getByTestId('login-page')).toBeDefined();
+    await waitFor(() => expect(screen.getByTestId('login-page')).toBeDefined());
   });
 });
