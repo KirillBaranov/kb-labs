@@ -57,3 +57,85 @@ func TestSaveCreatesDirs(t *testing.T) {
 		t.Fatalf("Save with missing parent dirs: %v", err)
 	}
 }
+
+func TestTargetStateStatusRoundtrip(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.json")
+	s := &State{
+		Targets: map[string]TargetState{
+			"web": {SHA: "abc", Status: "failed", FailReason: "push", DeployedAt: time.Now().UTC().Truncate(time.Second)},
+		},
+	}
+	if err := Save(path, s); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	got, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	ts := got.Targets["web"]
+	if ts.Status != "failed" {
+		t.Errorf("Status = %q, want failed", ts.Status)
+	}
+	if ts.FailReason != "push" {
+		t.Errorf("FailReason = %q, want push", ts.FailReason)
+	}
+}
+
+func TestTargetStateBackwardCompatEmptyStatus(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state.json")
+	// Simulate an old state record without the Status field.
+	s := &State{
+		Targets: map[string]TargetState{
+			"web": {SHA: "abc", DeployedAt: time.Now().UTC()},
+		},
+	}
+	if err := Save(path, s); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	got, err := Load(path)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	ts := got.Targets["web"]
+	if ts.Status != "" {
+		t.Errorf("Status = %q, want empty (legacy record)", ts.Status)
+	}
+	// Empty status must NOT be treated as failure.
+	if got.IsLastDeployFailed("web") {
+		t.Fatal("IsLastDeployFailed = true for empty status, want false (legacy = success)")
+	}
+}
+
+func TestIsLastDeployFailedReturnsTrueOnFailed(t *testing.T) {
+	s := &State{Targets: map[string]TargetState{
+		"web": {SHA: "abc", Status: "failed"},
+	}}
+	if !s.IsLastDeployFailed("web") {
+		t.Fatal("IsLastDeployFailed = false for status=failed, want true")
+	}
+}
+
+func TestIsLastDeployFailedReturnsFalseOnSuccess(t *testing.T) {
+	s := &State{Targets: map[string]TargetState{
+		"web": {SHA: "abc", Status: "success"},
+	}}
+	if s.IsLastDeployFailed("web") {
+		t.Fatal("IsLastDeployFailed = true for status=success, want false")
+	}
+}
+
+func TestIsLastDeployFailedReturnsFalseWhenMissing(t *testing.T) {
+	s := &State{Targets: map[string]TargetState{}}
+	if s.IsLastDeployFailed("web") {
+		t.Fatal("IsLastDeployFailed = true for missing target, want false")
+	}
+}
+
+func TestIsLastDeployFailedReturnsFalseOnEmptyStatus(t *testing.T) {
+	s := &State{Targets: map[string]TargetState{
+		"web": {SHA: "abc", Status: ""},
+	}}
+	if s.IsLastDeployFailed("web") {
+		t.Fatal("IsLastDeployFailed = true for empty status, want false")
+	}
+}

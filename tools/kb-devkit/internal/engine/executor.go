@@ -18,15 +18,17 @@ import (
 type Executor struct {
 	objects    cache.ObjectStore
 	manifests  *cache.ManifestStore
+	states     *cache.StateStore
 	wsRoot     string
 	liveOutput bool // stream stdout/stderr while running
 }
 
 // NewExecutor creates an Executor backed by the given cache stores.
-func NewExecutor(objects cache.ObjectStore, manifests *cache.ManifestStore, wsRoot string, liveOutput bool) *Executor {
+func NewExecutor(objects cache.ObjectStore, manifests *cache.ManifestStore, states *cache.StateStore, wsRoot string, liveOutput bool) *Executor {
 	return &Executor{
 		objects:    objects,
 		manifests:  manifests,
+		states:     states,
 		wsRoot:     wsRoot,
 		liveOutput: liveOutput,
 	}
@@ -111,6 +113,14 @@ func (e *Executor) Run(pkg workspace.Package, def TaskDef, noCache bool) TaskRes
 		}
 
 		_ = e.manifests.Put(pkg.Name, def.Name, m)
+	}
+
+	// 5. Persist execution state — always, regardless of cache:false.
+	// Cache hits (early return above) do not update state; only real executions do.
+	if result.OK {
+		_ = e.states.SetClean(pkg.Name, def.Name, inputHash)
+	} else {
+		_ = e.states.SetDirty(pkg.Name, def.Name, "last_run_failed")
 	}
 
 	return result
