@@ -168,13 +168,176 @@ jobs:
       - name: i18n check
         run: node sites/web/apps/web/scripts/i18n-check.mjs
 
-  # ── 5. kb-create e2e — only if launcher sources changed ───────────────────────────
-  # Gated: runs only when tools/kb-create/ is modified in this PR.
-  # Full Verdaccio-based pre-publish validation via reusable-launcher-e2e.yml.
+  # ── 5. kb-create e2e — only if launcher sources changed ────────────────────
+  #
+  # Runs the Go e2e suite for kb-create against a local Verdaccio instance
+  # populated from this PR's built packages — the correct pre-publish cycle.
+  #
+  # Setup order:
+  #   build → pack .tgz → start Verdaccio (Docker, port 4873) →
+  #   publish → run Go e2e tests with KB_REGISTRY_URL=http://localhost:4873
+  #
+  # KB_REGISTRY_URL is read by kb-create's pm.Detect() and passed to pnpm as
+  # --registry, so all pnpm install calls in the tests point to Verdaccio.
+  # NPM_CONFIG_REGISTRY is intentionally NOT set: pm.Detect() only falls back
+  # to KB_REGISTRY_URL when NPM_CONFIG_REGISTRY is absent.
   launcher-e2e:
+    name: kb-create e2e
+    runs-on: ubuntu-latest
     needs: [build-tools, build]
-    uses: ./.github/workflows/reusable-launcher-e2e.yml
-    with:
-      gate: true
-    permissions:
-      contents: read
+    timeout-minutes: 30
+
+    env:
+      COMPOSE_FILE: e2e/docker-compose.yml:e2e/docker-compose.ci.yml:e2e/docker-compose.ci-launcher.yml
+      COMPOSE_PROJECT_NAME: kb-e2e-launcher
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+        with: { run_install: false }
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: go-tools
+          path: tools-bin/
+
+      - name: Install Go tools
+        run: |
+          chmod +x tools-bin/*
+          cp tools-bin/kb-devkit tools/kb-devkit/kb-devkit
+          cp tools-bin/kb-dev    tools/kb-dev/kb-dev
+
+      - name: Should run e2e?
+        id: gate
+        run: |
+          set -euo pipefail
+          changed=$(.devkit/affected.sh || true)
+          if echo "$changed" | grep -qE '^tools/kb-create/'; then
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/download-artifact@v4
+        if: steps.gate.outputs.run == 'true'
+        with:
+          name: dist
+
+      - name: Extract dist artifacts
+        if: steps.gate.outputs.run == 'true'
+        run: tar xf dist-artifacts.tar
+
+      - name: Install dependencies
+        if: steps.gate.outputs.run == 'true'
+        run: pnpm install --frozen-lockfile
+
+      - name: Restore packed .tgz cache
+        if: steps.gate.outputs.run == 'true'
+        id: tgz-cache
+        uses: actions/cache@v4
+        with:
+          path: e2e/packages/
+          key: e2e-tgz-v2-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json') }}
+
+      - name: Pack @kb-labs/* packages
+        if: steps.gate.outputs.run == 'true' && steps.tgz-cache.outputs.cache-hit != 'true'
+        run: bash e2e/scripts/pack-all.sh
+
+      - name: Set up Docker Buildx
+        if: steps.gate.outputs.run == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers (publisher)
+        if: steps.gate.outputs.run == 'true'
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache-publisher
+          key: buildx-publisher-${{ hashFiles('e2e/publisher/**', 'e2e/packages/**') }}
+          restore-keys: buildx-publisher-
+
+      - name: Build publisher image
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          docker buildx build \
+            --cache-from type=local,src=/tmp/.buildx-cache-publisher \
+            --cache-to   type=local,dest=/tmp/.buildx-cache-publisher,mode=max \
+            --load \
+            -t kb-e2e-ci-publisher:latest \
+            -f e2e/publisher/Dockerfile \
+            e2e/
+
+      - name: Restore Verdaccio storage cache
+        if: steps.gate.outputs.run == 'true'
+        id: verdaccio-cache
+        uses: actions/cache@v4
+        with:
+          path: e2e/.verdaccio-storage
+          key: verdaccio-storage-${{ runner.os }}-${{ hashFiles('e2e/packages/**/*.tgz') }}
+
+      - name: Prepare Verdaccio storage permissions
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          mkdir -p e2e/.verdaccio-storage
+          sudo chown -R 10001:65533 e2e/.verdaccio-storage
+
+      - name: Start Verdaccio
+        if: steps.gate.outputs.run == 'true'
+        run: docker compose up -d verdaccio
+
+      - name: Wait for Verdaccio to be healthy
+        if: steps.gate.outputs.run == 'true'
+        run: |
+          for i in $(seq 1 30); do
+            if docker compose ps verdaccio | grep -q "healthy"; then
+              echo "Verdaccio healthy after $((i * 2))s"; break
+            fi
+            sleep 2
+          done
+
+      - name: Publish packages to Verdaccio
+        if: steps.gate.outputs.run == 'true' && steps.verdaccio-cache.outputs.cache-hit != 'true'
+        run: docker compose run --rm publisher
+
+      - name: Confirm Verdaccio warm cache
+        if: steps.gate.outputs.run == 'true' && steps.verdaccio-cache.outputs.cache-hit == 'true'
+        run: |
+          tgz_count=$(ls e2e/packages/*.tgz 2>/dev/null | wc -l | tr -d ' ')
+          pkg_dirs=$(find e2e/.verdaccio-storage/@kb-labs -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
+          echo "Tarballs: $tgz_count  Verdaccio dirs: $pkg_dirs"
+          if [ "$pkg_dirs" -lt "$((tgz_count / 2))" ]; then
+            echo "::warning::Storage incomplete, re-publishing"
+            docker compose run --rm publisher
+          fi
+
+      - name: Run kb-create e2e via devkit
+        if: steps.gate.outputs.run == 'true'
+        run: ./tools/kb-devkit/kb-devkit run e2e --packages kb-create --no-cache
+        env:
+          KB_REGISTRY_URL: http://localhost:4873
+
+      - name: Stop Verdaccio
+        if: always() && steps.gate.outputs.run == 'true'
+        run: docker compose down --volumes --remove-orphans || true
+
+      - name: Restore Verdaccio storage ownership for cache save
+        if: always() && steps.gate.outputs.run == 'true'
+        run: |
+          if [ -d e2e/.verdaccio-storage ]; then
+            sudo chown -R "$(id -u):$(id -g)" e2e/.verdaccio-storage
+          fi
+
+      - name: Skipped
+        if: steps.gate.outputs.run != 'true'
+        run: echo "kb-create e2e skipped (no kb-create changes in this PR)"
