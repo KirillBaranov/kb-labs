@@ -87,6 +87,15 @@ export async function inviteUser(
 /**
  * Navigate to activation URL, fill password, submit.
  * Waits for redirect to /.
+ *
+ * Uses waitUntil:'domcontentloaded' instead of the default 'load' because:
+ * - On success, activate-page calls window.location.replace('/') (full reload).
+ * - During that reload, RequireAuth may briefly redirect to /login (SPA pushState,
+ *   no load event) while the auth provider re-checks /api/auth/me.
+ * - The 'load' event fires when the URL is already '/login', so
+ *   waitForURL('/', { waitUntil: 'load' }) never resolves.
+ * - 'domcontentloaded' fires after HTML parsing, before React scripts execute
+ *   and before any SPA redirects — so it reliably catches the initial '/' load.
  */
 export async function activateUser(
   page: Page,
@@ -98,7 +107,7 @@ export async function activateUser(
   await page.fill('input[id="activate-password"]', password)
   await page.fill('input[id="activate-confirm"]', password)
   await page.click('button[type="submit"]')
-  await page.waitForURL('/', { timeout: 15_000 })
+  await page.waitForURL('/', { waitUntil: 'domcontentloaded', timeout: 15_000 })
 }
 
 // ── Cookie helpers ────────────────────────────────────────────────────────────
