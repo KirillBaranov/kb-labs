@@ -65,7 +65,13 @@ export async function inviteUser(
   })
   if (!res.ok()) throw new Error(`invite failed: ${res.status()} ${await res.text()}`)
   const body = await res.json() as { activationUrl: string }
-  return body.activationUrl
+
+  // The gateway builds activationUrl from request.host (e.g. "kb-cloud.kblabs.ru") which
+  // is not resolvable in E2E CI environments. Extract the token and rewrite to STUDIO_URL
+  // so activateUser() navigates to the locally-accessible Studio instance.
+  const parsed = new URL(body.activationUrl)
+  const token = parsed.searchParams.get('token') ?? parsed.pathname.split('/').pop() ?? ''
+  return `${STUDIO_URL}/activate?token=${token}`
 }
 
 /**
@@ -146,7 +152,9 @@ export async function apiPost(
     headers: {
       Cookie: cookieHeader,
       ...(csrf ? { 'X-CSRF-Token': csrf } : {}),
-      'Content-Type': 'application/json',
+      // Only set Content-Type when there is a body — sending it with an empty body
+      // causes Fastify's JSON body-parser to reject the request with 400.
+      ...(data !== undefined ? { 'Content-Type': 'application/json' } : {}),
     },
   })
   const body = await res.json().catch(() => null)

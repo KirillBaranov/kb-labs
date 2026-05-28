@@ -28,8 +28,8 @@ test('AUTH-12: admin creates invite → gets activation URL in response', async 
   const email = uniqueEmail('invite12')
   const activationUrl = await inviteUser(request, email, adminCookieHeader)
 
-  // URL must include /activate/ and a token.
-  expect(activationUrl).toMatch(/\/activate\/[A-Za-z0-9_-]+/)
+  // URL must include /activate path and a non-empty token (path or query-string style).
+  expect(activationUrl).toMatch(/\/activate[\/?].*[A-Za-z0-9_-]{10,}/)
 })
 
 // ── 13. Anonymous user opens invite → sets password → auto-logged in ──────────

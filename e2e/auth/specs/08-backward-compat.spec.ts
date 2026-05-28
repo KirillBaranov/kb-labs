@@ -11,6 +11,7 @@ import {
   uniqueEmail,
   apiPost,
   GATEWAY,
+  STUDIO_URL,
   ADMIN_EMAIL,
   ADMIN_PASSWORD,
 } from '../fixtures/auth.js'
@@ -145,7 +146,10 @@ test('AUTH-33: /auth/register anonymous → 401, member → 403, admin → 200; 
     },
   })
   expect(inviteRes.ok(), `invite failed: ${inviteRes.status()}`).toBe(true)
-  const { activationUrl } = await inviteRes.json() as { activationUrl: string }
+  const { activationUrl: rawActivationUrl } = await inviteRes.json() as { activationUrl: string }
+  // Rewrite gateway-issued URL (uses tenant domain, not resolvable in CI) to STUDIO_URL.
+  const activationToken = new URL(rawActivationUrl).searchParams.get('token') ?? ''
+  const activationUrl = `${STUDIO_URL}/activate?token=${activationToken}`
 
   const memberCtx = await browser.newContext()
   const memberPage = await memberCtx.newPage()
