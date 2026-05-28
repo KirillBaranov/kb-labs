@@ -47,6 +47,8 @@ Examples:
 			return fmt.Errorf("no tasks defined in devkit.yaml\n\n  Add a tasks: section or run `kb-devkit init` to generate a starter config")
 		}
 
+		cacheRoot := filepath.Join(ws.Root, ".kb", "devkit")
+
 		// Resolve package filter.
 		var pkgs []workspace.Package
 		switch {
@@ -55,9 +57,11 @@ Examples:
 			if err != nil {
 				return fmt.Errorf("affected: %w", err)
 			}
+			dirty := engine.DirtyPackages(ws, args, cacheRoot)
+			pkgs = engine.UnionPackages(ws, pkgs, dirty)
 			if len(pkgs) == 0 {
 				o := newOutput()
-				o.OK("No affected packages — nothing to run")
+				o.OK("No affected or dirty packages — nothing to run")
 				return nil
 			}
 		case len(runPackages) > 0:
@@ -66,8 +70,6 @@ Examples:
 				return fmt.Errorf("no packages matched: %s", strings.Join(runPackages, ", "))
 			}
 		}
-
-		cacheRoot := filepath.Join(ws.Root, ".kb", "devkit")
 
 		opts := engine.RunOptions{
 			Tasks:       args,
