@@ -276,7 +276,11 @@ func generateFull(opts Options) string {
       "logRingBuffer": "@kb-labs/adapters-log-ringbuffer",
 
       // Analytics — JSONL file, no native dependencies.
-      "analytics": "@kb-labs/adapters-analytics-file"
+      "analytics": "@kb-labs/adapters-analytics-file",
+
+      // Service-to-service transport — gateway uses this to proxy to internal services.
+      // Supports TCP (default) and unix domain sockets (kb-dev socket mode).
+      "serviceTransport": "@kb-labs/adapters-service-transport-http"
     },
 
     // Plugin execution mode: "worker-pool" (isolated workers, stable) or
@@ -310,23 +314,33 @@ func generateFull(opts Options) string {
 	b.WriteString("    \"storage\": { \"baseDir\": \".kb/storage\" },\n")
 	b.WriteString("    \"logger\": { \"level\": \"info\" },\n")
 	b.WriteString("    \"logRingBuffer\": { \"maxSize\": 100 },\n")
-	b.WriteString("    \"analytics\": { \"filename\": \".kb/analytics/events.jsonl\" }\n")
+	b.WriteString("    \"analytics\": { \"filename\": \".kb/analytics/events.jsonl\" },\n")
+	b.WriteString("    // Service-to-service transport. urls = TCP loopback (ADR-0020).\n")
+	b.WriteString("    // To use unix sockets, add \"socketPath\" per service (kb-dev injects KB_SOCKET_PATH).\n")
+	b.WriteString("    \"serviceTransport\": {\n")
+	b.WriteString("      \"services\": {\n")
+	b.WriteString("        \"rest\":        { \"url\": \"http://127.0.0.1:5050\" },\n")
+	b.WriteString("        \"workflow\":    { \"url\": \"http://127.0.0.1:7778\" },\n")
+	b.WriteString("        \"marketplace\": { \"url\": \"http://127.0.0.1:5070\" }\n")
+	b.WriteString("      }\n")
+	b.WriteString("    }\n")
 	b.WriteString("  },\n\n")
 
 	// ── gateway section ───────────────────────────────────────────────────
 	b.WriteString(`  // ─── Gateway ──────────────────────────────────────────────────────────
-  // API gateway upstream routing. Gateway (:4000) proxies these services.
+  // API gateway upstream routing. upstreams reference serviceIds from
+  // adapterOptions.serviceTransport.services above.
   // /ready checks that the "rest" upstream is up — keep this section present.
   "gateway": {
     "upstreams": {
       // REST API — main platform BFF.
-      "rest": { "url": "http://localhost:5050", "prefix": "/api/v1", "websocket": true },
+      "rest":        { "serviceId": "rest",        "prefix": "/api/v1",             "websocket": true },
       // Workflow daemon — execution engine.
-      "workflow": { "url": "http://localhost:7778", "prefix": "/api/exec", "rewritePrefix": "" },
+      "workflow":    { "serviceId": "workflow",    "prefix": "/api/exec",           "rewritePrefix": "" },
       // Marketplace service — entity management.
-      "marketplace": { "url": "http://localhost:5070", "prefix": "/api/v1/marketplace" },
+      "marketplace": { "serviceId": "marketplace", "prefix": "/api/v1/marketplace"                   },
       // Plugin widget bundles — static files served by REST API.
-      "widgets": { "url": "http://localhost:5050", "prefix": "/plugins" }
+      "widgets":     { "serviceId": "rest",        "prefix": "/plugins"                              }
     }
   },
 

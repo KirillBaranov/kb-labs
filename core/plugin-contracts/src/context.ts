@@ -8,7 +8,7 @@
 import type { HostContext, HostType } from './host-context.js';
 import type { TraceContext } from './trace.js';
 import type { UIFacade } from './ui.js';
-import type { PlatformServices } from './platform.js';
+import type { PluginServices } from './platform.js';
 import type { RuntimeAPI } from './runtime.js';
 import type { PluginAPI } from './api.js';
 
@@ -118,7 +118,7 @@ export interface PluginContextV3<TConfig = unknown> {
    * Access to LLM, embeddings, vector store, cache, storage, analytics.
    * In sandbox mode, these are RPC proxies to the parent process.
    */
-  readonly platform: PlatformServices;
+  readonly platform: PluginServices;
 
   /**
    * Runtime API (sandboxed)

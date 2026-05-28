@@ -1,7 +1,8 @@
 import { z } from 'zod';
 
 export const UpstreamConfigSchema = z.object({
-  url: z.string().url(),
+  /** Key into the transport services map — identifies which service to proxy to */
+  serviceId: z.string().min(1),
   prefix: z.string().startsWith('/'),
   /** Strip prefix before forwarding. Default: keep prefix as-is. Use "" to strip. */
   rewritePrefix: z.string().optional(),

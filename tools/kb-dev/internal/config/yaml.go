@@ -29,6 +29,7 @@ type yamlService struct {
 	HealthCheck string            `yaml:"health_check"`
 	Port        int               `yaml:"port"`
 	URL         string            `yaml:"url"`
+	Socket      string            `yaml:"socket"`
 	Env         map[string]string `yaml:"env"`
 	DependsOn   []string          `yaml:"depends_on"`
 	Optional    bool              `yaml:"optional"`
@@ -128,6 +129,7 @@ func mapYAML(yf *yamlFile) (*Config, error) {
 			HealthCheck: ys.HealthCheck,
 			Port:        ys.Port,
 			URL:         ys.URL,
+			Socket:      ys.Socket,
 			Env:         ys.Env,
 			DependsOn:   ys.DependsOn,
 			Optional:    ys.Optional,

@@ -283,7 +283,7 @@ export type {
   ResourceAvailability,
   TenantQuotas,
 } from './core/resources.js';
-export type { IPlatformAdapters } from './platform-adapters.js';
+export type { IPlatformAdapters, IPluginAdapters } from './platform-adapters.js';
 
 // ═══════════════════════════════════════════════════════════════════════════
 // DISPOSABLE (graceful shutdown lifecycle)
@@ -309,3 +309,13 @@ export type {
   INotifier,
   NotifierDeliveryEvent,
 } from './adapters/notifier.js';
+
+// Service transport (platform-only — not in ADAPTER_REGISTRY, never reaches plugin context)
+export type {
+  IServiceTransport,
+  ServiceConnectionInfo,
+  ServiceTransportRequest,
+  ServiceTransportResponse,
+  ServiceTransportStream,
+  ServiceTransportHealth,
+} from './adapters/service-transport.js';
