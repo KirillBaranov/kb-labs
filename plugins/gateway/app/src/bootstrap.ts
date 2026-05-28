@@ -104,12 +104,17 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
     logger.warn('Resource broker unavailable — pressure control disabled');
   }
 
-  // 9. Get service transport from platform (loaded via adapterOptions.serviceTransport in kb.config.json)
+  // 9. Get service transport from platform adapter.
+  //    Configured via platform.adapters.serviceTransport in kb.config.json.
+  //    kb-create installs @kb-labs/adapters-service-transport-http by default
+  //    and writes adapterOptions.serviceTransport.services with TCP URLs.
   const serviceTransport = platform.getAdapter<IServiceTransport>('serviceTransport');
   if (!serviceTransport) {
     throw new Error(
       'Gateway requires the serviceTransport adapter. ' +
-      'Configure it in kb.config.json: adapters.serviceTransport = "@kb-labs/adapters-service-transport-http"',
+      'Configure it in kb.config.json:\n' +
+      '  "adapters": { "serviceTransport": "@kb-labs/adapters-service-transport-http" },\n' +
+      '  "adapterOptions": { "serviceTransport": { "services": { "rest": { "url": "http://127.0.0.1:5050" }, ... } } }',
     );
   }
 

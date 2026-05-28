@@ -44,6 +44,7 @@ describe('GatewayConfigSchema', () => {
       }),
     ).toThrow();
   });
+
 });
 
 describe('HostRegistrationSchema', () => {
