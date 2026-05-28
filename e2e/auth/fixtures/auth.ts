@@ -186,6 +186,17 @@ export async function activateUser(
   await page.fill('input[id="activate-password"]', password)
   await page.fill('input[id="activate-confirm"]', password)
   await page.click('button[type="submit"]')
+
+  // Fast-fail diagnostic: if the form submission returned an error (server-side
+  // rejection like "invalid or expired"), the alert appears within ~2s and is
+  // far more informative than a 15s waitForDashboard timeout.
+  const alertLocator = page.locator('[role="alert"]')
+  const errorVisible = await alertLocator.isVisible({ timeout: 3_000 }).catch(() => false)
+  if (errorVisible) {
+    const text = await alertLocator.textContent().catch(() => '(unreadable)')
+    throw new Error(`activateUser: server rejected activation — "${text}"`)
+  }
+
   await waitForDashboard(page, 15_000)
 }
 

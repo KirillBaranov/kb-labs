@@ -148,40 +148,42 @@ describe('findByToken', () => {
       email: 'alice@example.com', tenantId: t1, groupId: 'tenant-member', createdBy: 'a', ttlMs: HOUR,
     });
     const found = await invites.findByToken(activationToken);
-    expect(found?.inviteId).toBe(inviteId);
-    expect(found?.email).toBe('alice@example.com');
-    expect(found?.tenantId).toBe(t1);
-    expect(found?.groupId).toBe('tenant-member');
-    expect(found?.status).toBe('active');
+    expect(found.kind).toBe('ok');
+    if (found.kind !== 'ok') { return; }
+    expect(found.invite.inviteId).toBe(inviteId);
+    expect(found.invite.email).toBe('alice@example.com');
+    expect(found.invite.tenantId).toBe(t1);
+    expect(found.invite.groupId).toBe('tenant-member');
+    expect(found.invite.status).toBe('active');
   });
 
-  it('returns null for an unknown token', async () => {
+  it('returns not_found for an unknown token', async () => {
     const fake = 'A'.repeat(43);
-    expect(await invites.findByToken(fake)).toBeNull();
+    expect((await invites.findByToken(fake)).kind).toBe('not_found');
   });
 
-  it('returns null after consume (one-shot)', async () => {
+  it('returns invalid after consume (one-shot)', async () => {
     const { activationToken, inviteId } = await invites.createInvite({
       email: 'a@b.c', tenantId: t1, groupId: 'tenant-member', createdBy: 'a', ttlMs: HOUR,
     });
     await invites.consume(inviteId);
-    expect(await invites.findByToken(activationToken)).toBeNull();
+    expect((await invites.findByToken(activationToken)).kind).toBe('invalid');
   });
 
-  it('returns null after revoke', async () => {
+  it('returns invalid after revoke', async () => {
     const { activationToken, inviteId } = await invites.createInvite({
       email: 'a@b.c', tenantId: t1, groupId: 'tenant-member', createdBy: 'a', ttlMs: HOUR,
     });
     await invites.revoke(inviteId);
-    expect(await invites.findByToken(activationToken)).toBeNull();
+    expect((await invites.findByToken(activationToken)).kind).toBe('invalid');
   });
 
-  it('returns null for an expired invite even if TTL sweep has not run (CD-9)', async () => {
+  it('returns invalid for an expired invite even if TTL sweep has not run (CD-9)', async () => {
     const { activationToken } = await invites.createInvite({
       email: 'a@b.c', tenantId: t1, groupId: 'tenant-member', createdBy: 'a', ttlMs: 1,
     });
     await new Promise<void>(r => { setTimeout(r, 10); });
-    expect(await invites.findByToken(activationToken)).toBeNull();
+    expect((await invites.findByToken(activationToken)).kind).toBe('invalid');
   });
 });
 

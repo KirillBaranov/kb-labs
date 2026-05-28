@@ -50,7 +50,8 @@ export type AuthErrorCode =
   | 'user_disabled'
   | 'invalid_current_password'
   | 'weak_password'
-  | 'invalid_invite';
+  | 'invalid_invite'
+  | 'unknown_invite';
 
 export class AuthError extends Error {
   public override readonly name = 'AuthError';
@@ -265,8 +266,10 @@ export const createUserAuthService = (opts: UserAuthServiceOptions) => {
 
   // ── activate ──────────────────────────────────────────────────────
   const activate = async (input: ActivateInput): Promise<SessionResult> => {
-    const invite = await opts.invites.findByToken(input.activationToken);
-    if (!invite) {throw new AuthError('invalid_invite');}
+    const tokenResult = await opts.invites.findByToken(input.activationToken);
+    if (tokenResult.kind === 'not_found') {throw new AuthError('unknown_invite');}
+    if (tokenResult.kind === 'invalid') {throw new AuthError('invalid_invite');}
+    const invite = tokenResult.invite;
 
     const policyResult = await opts.passwordPolicy.validate(input.password);
     const polErr = mapPolicyResultToError(policyResult);

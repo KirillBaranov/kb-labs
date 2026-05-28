@@ -178,8 +178,17 @@ export class InvitesStore {
    * Look up an invite by the plaintext activation token. Returns `null`
    * for missing, expired, used, or revoked invites — callers do not
    * need to filter further.
+   *
+   * Returns a discriminated result so callers can distinguish:
+   *   - { kind: 'not_found' }  — token hash not in DB (garbage/unknown token)
+   *   - { kind: 'invalid' }    — token exists but expired, used, or revoked
+   *   - { kind: 'ok', invite } — valid, active invite ready for activation
    */
-  async findByToken(plainToken: string): Promise<InviteRecord | null> {
+  async findByToken(plainToken: string): Promise<
+    | { kind: 'not_found' }
+    | { kind: 'invalid' }
+    | { kind: 'ok'; invite: InviteRecord }
+  > {
     await this.ensureSchema();
     const tokenHash = hashToken(plainToken);
     const [doc] = await this.docs.find<InviteDoc>(
@@ -187,11 +196,12 @@ export class InvitesStore {
       { tokenHash: { $eq: tokenHash } },
       { limit: 1 },
     );
-    if (!doc) {return null;}
-    if (doc.status !== 'active') {return null;}
-    // CD-9 explicit expiry check — TTL sweep is best-effort.
-    if (doc.expiresAt <= this.now()) {return null;}
-    return docToInvite(doc);
+    if (!doc) {return { kind: 'not_found' };}
+    if (doc.status !== 'active' || doc.expiresAt <= this.now()) {
+      // CD-9 explicit expiry check — TTL sweep is best-effort.
+      return { kind: 'invalid' };
+    }
+    return { kind: 'ok', invite: docToInvite(doc) };
   }
 
   async consume(inviteId: string): Promise<void> {

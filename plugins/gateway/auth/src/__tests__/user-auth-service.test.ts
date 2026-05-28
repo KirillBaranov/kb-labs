@@ -329,14 +329,14 @@ describe('activate', () => {
     const m = await memberships.listByUser(u!.userId);
     expect(m[0]?.groupId).toBe('tenant-member');
     // Token cannot be reused.
-    const second = invites.findByToken(activationToken);
-    expect(await second).toBeNull();
+    const second = await invites.findByToken(activationToken);
+    expect(second.kind).toBe('invalid');
   });
 
-  it('invalid token → invalid_invite, no side-effects', async () => {
+  it('unknown token → unknown_invite, no side-effects', async () => {
     await expect(svc.activate({
       activationToken: 'definitely-not-real', password: 'fresh-pw-1234', deviceCtx: {},
-    })).rejects.toMatchObject({ code: 'invalid_invite' });
+    })).rejects.toMatchObject({ code: 'unknown_invite' });
   });
 
   it('expired invite → invalid_invite', async () => {
@@ -360,7 +360,7 @@ describe('activate', () => {
     })).rejects.toMatchObject({ code: 'weak_password' });
 
     // Invite still active so the user can retry with a proper password.
-    expect(await invites.findByToken(activationToken)).not.toBeNull();
+    expect((await invites.findByToken(activationToken)).kind).toBe('ok');
   });
 });
 

@@ -378,9 +378,12 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
     } catch (err) {
       if (err instanceof AuthError) {
         const code = (err as AuthError).code;
+        if (code === 'unknown_invite') {
+          // 401 Unauthorized: the token was not recognised at all (garbage / never issued).
+          return reply.code(401).send({ error: 'Unauthorized', message: 'Invalid invite token' });
+        }
         if (code === 'invalid_invite') {
-          // 422 Unprocessable Entity: the invite token was syntactically valid
-          // but semantically rejected (expired or already consumed).
+          // 422 Unprocessable Entity: the token was found but is expired or already consumed.
           // The client (activate-page) maps error:'invalid_invite' to the
           // user-friendly "This invite link is invalid or expired" message.
           return reply.code(422).send({ error: 'invalid_invite', message: 'Invalid or expired invite' });
@@ -537,7 +540,7 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
 
     const host = typeof request.headers.host === 'string' ? request.headers.host : 'localhost';
     const protocol = cookieOpts.cookieSecure ? 'https' : 'http';
-    const activationUrl = `${protocol}://${host}/activate/${result.activationToken}`;
+    const activationUrl = `${protocol}://${host}/activate?token=${result.activationToken}`;
 
     return reply.code(201).send({ inviteId: result.inviteId, activationUrl });
   });
