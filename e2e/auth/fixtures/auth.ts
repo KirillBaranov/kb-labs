@@ -66,12 +66,13 @@ export async function inviteUser(
   if (!res.ok()) throw new Error(`invite failed: ${res.status()} ${await res.text()}`)
   const body = await res.json() as { activationUrl: string }
 
-  // The gateway builds activationUrl from request.host (e.g. "kb-cloud.kblabs.ru") which
+  // The gateway builds activationUrl using request.host (e.g. "kb-cloud.kblabs.ru") which
   // is not resolvable in E2E CI environments. Extract the token and rewrite to STUDIO_URL
   // so activateUser() navigates to the locally-accessible Studio instance.
+  // Gateway generates /activate/:token (path param format matching the SPA route).
   const parsed = new URL(body.activationUrl)
-  const token = parsed.searchParams.get('token') ?? parsed.pathname.split('/').pop() ?? ''
-  return `${STUDIO_URL}/activate?token=${token}`
+  const token = parsed.pathname.split('/').pop() || parsed.searchParams.get('token') || ''
+  return `${STUDIO_URL}/activate/${token}`
 }
 
 /**

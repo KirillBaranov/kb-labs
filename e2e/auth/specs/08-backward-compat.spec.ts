@@ -148,8 +148,10 @@ test('AUTH-33: /auth/register anonymous → 401, member → 403, admin → 200; 
   expect(inviteRes.ok(), `invite failed: ${inviteRes.status()}`).toBe(true)
   const { activationUrl: rawActivationUrl } = await inviteRes.json() as { activationUrl: string }
   // Rewrite gateway-issued URL (uses tenant domain, not resolvable in CI) to STUDIO_URL.
-  const activationToken = new URL(rawActivationUrl).searchParams.get('token') ?? ''
-  const activationUrl = `${STUDIO_URL}/activate?token=${activationToken}`
+  // Gateway generates /activate/:token (path param format matching the SPA route).
+  const parsed33b = new URL(rawActivationUrl)
+  const activationToken = parsed33b.pathname.split('/').pop() || parsed33b.searchParams.get('token') || ''
+  const activationUrl = `${STUDIO_URL}/activate/${activationToken}`
 
   const memberCtx = await browser.newContext()
   const memberPage = await memberCtx.newPage()

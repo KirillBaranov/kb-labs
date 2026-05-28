@@ -202,9 +202,11 @@ test('AUTH-09: revoke session → revoked browser gets 401 on next refresh', asy
     })
     const sessions2Body = await sessions2Res.json() as { sessions: Array<{ familyId: string; isCurrent: boolean }> }
     const sessions2 = sessions2Body.sessions ?? []
-    const otherSession = sessions2.find((s) => !s.isCurrent) ?? sessions2[0]!
+    // Find ctx2's own current session — that's the one we want to revoke
+    // from the admin context (ctx1) to test that ctx2 gets 401 on refresh.
+    const otherSession = sessions2.find((s) => s.isCurrent) ?? sessions2[0]!
 
-    // Admin revokes the second device's session.
+    // Admin (ctx1) revokes the second device's (ctx2's current) session.
     const revokeRes = await apiPost(
       request,
       `/api/auth/sessions/${otherSession.familyId}/revoke`,

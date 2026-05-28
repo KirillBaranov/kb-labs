@@ -527,7 +527,7 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
 
     const host = typeof request.headers.host === 'string' ? request.headers.host : 'localhost';
     const protocol = cookieOpts.cookieSecure ? 'https' : 'http';
-    const activationUrl = `${protocol}://${host}/activate?token=${result.activationToken}`;
+    const activationUrl = `${protocol}://${host}/activate/${result.activationToken}`;
 
     return reply.code(201).send({ inviteId: result.inviteId, activationUrl });
   });

@@ -142,8 +142,28 @@ export function AuthProvider({ children, _fetch, _getCookie }: AuthProviderProps
 
     (async () => {
       try {
-        const res = await fetchFn('/api/auth/me', { credentials: 'include' });
+        let res = await fetchFn('/api/auth/me', { credentials: 'include' });
         if (cancelled) return;
+
+        // If the access token has expired (401), attempt a transparent refresh
+        // before giving up. This handles the case where the SPA is loaded fresh
+        // after the access TTL elapsed (e.g. returning to a tab after 15 min).
+        if (res.status === 401) {
+          const refreshRes = await fetchFn('/api/auth/refresh', {
+            method: 'POST',
+            credentials: 'include',
+          });
+          if (cancelled) return;
+
+          if (!refreshRes.ok) {
+            goAnonymous();
+            return;
+          }
+
+          // Retry /api/auth/me with the newly-issued access cookie.
+          res = await fetchFn('/api/auth/me', { credentials: 'include' });
+          if (cancelled) return;
+        }
 
         if (!res.ok) {
           goAnonymous();
