@@ -59,7 +59,7 @@ function makeTransport(callResult?: ServiceTransportResponse): IServiceTransport
   } as unknown as IServiceTransport;
 }
 
-let mockTransport: IServiceTransport = makeTransport();
+const mockTransport: IServiceTransport = makeTransport();
 
 // ── App builder ───────────────────────────────────────────────────────────
 
