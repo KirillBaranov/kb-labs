@@ -156,11 +156,13 @@ func TestSpawnEnv_MergesServiceEnv(t *testing.T) {
 	}
 	m := New(cfg, "/workspace", "/workspace")
 
-	svcEnv := map[string]string{
-		"NODE_ENV": "production",
-		"PORT":     "3000",
+	svc := config.Service{
+		Env: map[string]string{
+			"NODE_ENV": "production",
+			"PORT":     "3000",
+		},
 	}
-	result := m.spawnEnv(svcEnv)
+	result := m.spawnEnv(svc)
 
 	if result["NODE_ENV"] != "production" {
 		t.Errorf("NODE_ENV = %q, want production", result["NODE_ENV"])
@@ -180,10 +182,10 @@ func TestSpawnEnv_DoesNotOverrideExistingKBProjectRoot(t *testing.T) {
 	}
 	m := New(cfg, "/workspace", "/workspace")
 
-	svcEnv := map[string]string{
-		"KB_PROJECT_ROOT": "/custom/root",
+	svc := config.Service{
+		Env: map[string]string{"KB_PROJECT_ROOT": "/custom/root"},
 	}
-	result := m.spawnEnv(svcEnv)
+	result := m.spawnEnv(svc)
 
 	if result["KB_PROJECT_ROOT"] != "/custom/root" {
 		t.Errorf("KB_PROJECT_ROOT = %q, want /custom/root (should not override)", result["KB_PROJECT_ROOT"])
@@ -197,13 +199,48 @@ func TestSpawnEnv_EmptyServiceEnv(t *testing.T) {
 	}
 	m := New(cfg, "/workspace", "/workspace")
 
-	result := m.spawnEnv(map[string]string{})
+	result := m.spawnEnv(config.Service{})
 
 	if result["KB_PROJECT_ROOT"] != "/workspace" {
 		t.Errorf("KB_PROJECT_ROOT = %q, want /workspace", result["KB_PROJECT_ROOT"])
 	}
 	if len(result) != 1 {
 		t.Errorf("len = %d, want 1 (only KB_PROJECT_ROOT)", len(result))
+	}
+}
+
+func TestSpawnEnv_InjectsKBSocketPath(t *testing.T) {
+	cfg := &config.Config{
+		Services: map[string]config.Service{},
+		Settings: config.Settings{},
+	}
+	m := New(cfg, "/workspace", "/workspace")
+
+	svc := config.Service{
+		Socket: "/tmp/kb-a3f5c901/rest-api.sock",
+	}
+	result := m.spawnEnv(svc)
+
+	if result["KB_SOCKET_PATH"] != "/tmp/kb-a3f5c901/rest-api.sock" {
+		t.Errorf("KB_SOCKET_PATH = %q, want /tmp/kb-a3f5c901/rest-api.sock", result["KB_SOCKET_PATH"])
+	}
+}
+
+func TestSpawnEnv_DoesNotOverrideExistingKBSocketPath(t *testing.T) {
+	cfg := &config.Config{
+		Services: map[string]config.Service{},
+		Settings: config.Settings{},
+	}
+	m := New(cfg, "/workspace", "/workspace")
+
+	svc := config.Service{
+		Socket: "/tmp/kb-a3f5c901/rest-api.sock",
+		Env:    map[string]string{"KB_SOCKET_PATH": "/custom/socket.sock"},
+	}
+	result := m.spawnEnv(svc)
+
+	if result["KB_SOCKET_PATH"] != "/custom/socket.sock" {
+		t.Errorf("KB_SOCKET_PATH = %q, want /custom/socket.sock (should not override)", result["KB_SOCKET_PATH"])
 	}
 }
 

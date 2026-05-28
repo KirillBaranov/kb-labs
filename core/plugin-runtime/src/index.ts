@@ -98,6 +98,7 @@ export type {
   UIFacade,
   Spinner,
   TraceContext,
+  PluginServices,
   PlatformServices,
   RuntimeAPI,
   PluginAPI,

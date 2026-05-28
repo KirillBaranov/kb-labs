@@ -4,7 +4,7 @@
  */
 
 import { platform, createServiceBootstrap, loadEnvFromRoot, getPlatformRoot } from '@kb-labs/core-runtime';
-import { createCorrelatedLogger } from '@kb-labs/shared-http';
+import { createCorrelatedLogger, getListenOptions } from '@kb-labs/shared-http';
 import { findRepoRoot } from '@kb-labs/core-sys';
 import { readKbConfig } from '@kb-labs/core-config';
 import { createServer } from '@kb-labs/marketplace-api';
@@ -60,7 +60,7 @@ export async function bootstrap(cwd: string): Promise<void> {
   // Create and start Fastify server
   const server = await createServer({ service, port, logger: platform.logger });
 
-  await server.listen({ port, host });
+  await server.listen(getListenOptions(port, host));
   log.info(`Marketplace service listening on http://${host}:${port}`);
   log.info(`OpenAPI docs: http://localhost:${port}/docs`);
 

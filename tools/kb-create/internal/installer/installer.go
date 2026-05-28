@@ -208,8 +208,9 @@ func (ins *Installer) Install(sel *Selection, m *manifest.Manifest) (*Result, er
 		for _, svc := range m.Services {
 			if svc.GatewayPrefix != "" {
 				infoMap[svc.ID] = scan.ServiceGatewayInfo{
-					Prefix:  svc.GatewayPrefix,
-					Rewrite: svc.GatewayRewrite,
+					Prefix:    svc.GatewayPrefix,
+					Rewrite:   svc.GatewayRewrite,
+					WebSocket: svc.GatewayWebSocket,
 				}
 			}
 		}
@@ -348,8 +349,9 @@ func (ins *Installer) refreshDerivedConfigs(platformDir string, m *manifest.Mani
 	for _, svc := range m.Services {
 		if svc.GatewayPrefix != "" {
 			infoMap[svc.ID] = scan.ServiceGatewayInfo{
-				Prefix:  svc.GatewayPrefix,
-				Rewrite: svc.GatewayRewrite,
+				Prefix:    svc.GatewayPrefix,
+				Rewrite:   svc.GatewayRewrite,
+				WebSocket: svc.GatewayWebSocket,
 			}
 		}
 	}

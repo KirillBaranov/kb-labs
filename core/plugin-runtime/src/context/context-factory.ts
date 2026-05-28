@@ -8,6 +8,7 @@ import type {
   PluginContextV3,
   PluginContextDescriptor,
   PlatformServices,
+  PluginServices,
   UIFacade,
   CleanupFn,
 } from '@kb-labs/plugin-contracts';
@@ -179,7 +180,7 @@ export function createPluginContextV3<TConfig = unknown>(
   // 5.4. If eventEmitter provided, also wrap UI to stream ui.info/warn/error/write calls
   const finalUI = eventEmitter ? createStreamingUI(ui, eventEmitter) : ui;
 
-  const enrichedPlatform: PlatformServices = {
+  const enrichedPlatform: PluginServices = {
     ...governedPlatform,
     logger: finalLogger,
   };

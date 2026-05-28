@@ -801,6 +801,13 @@ export interface ServiceRuntime {
 
   /** Protocol: "http" (default) or "ws" */
   protocol?: 'http' | 'ws';
+
+  /**
+   * Unix domain socket path declared by this service.
+   * When set, kb-dev injects it as KB_SOCKET_PATH env var and uses it for health probes.
+   * Convention: /tmp/kb-<projectHash>/<serviceName>.sock
+   */
+  socket?: string;
 }
 
 /** Describes an environment variable the service uses. */

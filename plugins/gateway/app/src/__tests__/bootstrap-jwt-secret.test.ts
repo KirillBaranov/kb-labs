@@ -17,7 +17,13 @@ vi.mock('@kb-labs/core-runtime', () => ({
   platform: {
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), trace: vi.fn(), fatal: vi.fn(), child: () => ({ info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn(), trace: vi.fn(), fatal: vi.fn(), child: vi.fn() }) },
     cache: { get: vi.fn(), set: vi.fn(), delete: vi.fn(), clear: vi.fn() },
-    getAdapter: vi.fn().mockReturnValue(null),
+    getAdapter: vi.fn().mockImplementation((name: string) => {
+      if (name === 'serviceTransport') {
+        return { connectionInfo: vi.fn(), call: vi.fn(), stream: vi.fn() };
+      }
+      return null;
+    }),
+    hasResourceBroker: false,
     shutdown: vi.fn().mockResolvedValue(undefined),
   },
   createServiceBootstrap: vi.fn().mockResolvedValue(undefined),

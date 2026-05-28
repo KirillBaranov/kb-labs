@@ -7,7 +7,7 @@ import {
   createServiceReadyResponse,
   registerOpenAPI,
 } from '@kb-labs/shared-http';
-import { logDiagnosticEvent, type ICache, type ILogger } from '@kb-labs/core-platform';
+import { logDiagnosticEvent, type ICache, type ILogger, type IServiceTransport } from '@kb-labs/core-platform';
 import type { GatewayConfig } from '@kb-labs/gateway-contracts';
 import { HostRegistrationSchema } from '@kb-labs/gateway-contracts';
 import { AuthService, type JwtConfig } from '@kb-labs/gateway-auth';
@@ -39,7 +39,8 @@ export async function createServer(
   cache: ICache,
   logger: ILogger,
   jwtConfig: JwtConfig,
-  registry?: HostRegistry,
+  registry: HostRegistry | undefined,
+  serviceTransport: IServiceTransport,
 ) {
   const gatewayLogger = createCorrelatedLogger(logger, {
     serviceId: 'gateway',
@@ -118,24 +119,30 @@ export async function createServer(
   // Registered FIRST, before any hooks. Auth is handled by upstreams themselves.
   // @fastify/http-proxy with websocket:true intercepts upgrades at the HTTP
   // server level — no Fastify hooks must touch these requests.
-  // Gateway is a dumb proxy — real per-route timeout enforcement lives in REST API.
-  // 1 hour hard ceiling; anything longer should be a background job.
-  const PROXY_TIMEOUT_MS = 3_600_000;
-
+  // Connection details (baseUrl, socketPath) come from IServiceTransport.
   for (const [name, upstream] of Object.entries(config.upstreams)) {
+    const conn = serviceTransport.connectionInfo(upstream.serviceId);
+    if (!conn) {
+      throw new Error(
+        `Gateway startup error: no transport config for upstream "${name}" (serviceId: "${upstream.serviceId}"). ` +
+        `Configure @kb-labs/adapters-service-transport-http as adapterOptions.serviceTransport.services in kb.config.json.`,
+      );
+    }
     await app.register(fastifyHttpProxy, {
-      upstream: upstream.url,
+      upstream: conn.baseUrl,
       prefix: upstream.prefix,
       rewritePrefix: upstream.rewritePrefix ?? upstream.prefix,
       disableCache: true,
       websocket: upstream.websocket ?? false,
-      http: {
-        requestOptions: {
-          timeout: PROXY_TIMEOUT_MS,
-        },
+      undici: {
+        // Restore 1-hour body timeout for SSE streams and large transfers.
+        // undici defaults: headersTimeout=30s, bodyTimeout=300s — too short for streaming.
+        bodyTimeout: 3_600_000,
+        ...(conn.socketPath ? { socketPath: conn.socketPath } : {}),
       },
     });
-    gatewayLogger.info(`Upstream registered: ${name} → ${upstream.url} (${upstream.prefix}${upstream.websocket ? ', ws' : ''})`);
+    const connDesc = conn.socketPath ? `${conn.baseUrl} (unix:${conn.socketPath})` : conn.baseUrl;
+    gatewayLogger.info(`Upstream registered: ${name} → ${connDesc} (${upstream.prefix}${upstream.websocket ? ', ws' : ''})`);
   }
 
   // ── Gateway's own routes (with auth) ───────────────────────────────
@@ -191,7 +198,8 @@ export async function createServer(
         await observability.observeOperation(`gateway.upstream.${name}.health`, async () => {
           const probeStart = Date.now();
           try {
-            const res = await fetch(`${upstream.url}/health`, {
+            const res = await serviceTransport.call(upstream.serviceId, {
+              path: '/health',
               signal: AbortSignal.timeout(2000),
             });
             const latencyMs = Date.now() - probeStart;
@@ -208,8 +216,8 @@ export async function createServer(
                 route: `${upstream.prefix}/health`,
                 evidence: {
                   upstreamId: name,
-                  upstreamUrl: upstream.url,
-                  statusCode: res.status,
+                  serviceId: upstream.serviceId,
+                  statusCode: res.statusCode,
                   latencyMs,
                 },
               });
@@ -229,7 +237,7 @@ export async function createServer(
               route: `${upstream.prefix}/health`,
               evidence: {
                 upstreamId: name,
-                upstreamUrl: upstream.url,
+                serviceId: upstream.serviceId,
                 latencyMs,
               },
             });
@@ -389,7 +397,7 @@ export async function createServer(
     registerPlatformRoutes(scope as unknown as Parameters<typeof registerPlatformRoutes>[0], logger);
 
     // Aggregated docs — /openapi-merged.json + /docs-all
-    registerAggregatedDocsRoutes(scope as unknown as Parameters<typeof registerAggregatedDocsRoutes>[0], config, cache);
+    registerAggregatedDocsRoutes(scope as unknown as Parameters<typeof registerAggregatedDocsRoutes>[0], config, serviceTransport, cache);
 
 
     registerInternalRoutes(scope as unknown as Parameters<typeof registerInternalRoutes>[0], process.env.GATEWAY_INTERNAL_SECRET, hostRegistry, cache);

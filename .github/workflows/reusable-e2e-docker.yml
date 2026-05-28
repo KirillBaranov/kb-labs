@@ -1,0 +1,361 @@
+name: Reusable — Docker E2E suite
+
+# Shared Docker-based E2E setup used by e2e-platform, e2e-marketplace,
+# and e2e-rest-api. Extracts the common phases:
+#
+#   Build toolchain → Install deps → Build packages → Pack .tgz →
+#   Docker images → Verdaccio → Publish → Start platform → Run suite →
+#   Artifacts + timings → Cleanup
+#
+# Each caller passes the suite-specific inputs below and gets a full
+# isolated run with its own COMPOSE_PROJECT_NAME.
+
+on:
+  workflow_call:
+    inputs:
+      suite:
+        description: 'E2E suite name, e.g. "marketplace" or "rest-api"'
+        type: string
+        required: true
+      e2e-package:
+        description: 'Workspace package to run, e.g. "@kb-labs/e2e-marketplace"'
+        type: string
+        required: true
+      health-url:
+        description: 'URL polled (curl -sf) to determine platform readiness'
+        type: string
+        required: true
+      health-steps:
+        description: 'Max 5-second polling iterations before failing (60 = 5 min)'
+        type: number
+        default: 60
+      playwright-dir:
+        description: 'Directory under which to run playwright install (empty = skip)'
+        type: string
+        default: ''
+      compose-project:
+        description: 'COMPOSE_PROJECT_NAME — must be unique per concurrent run'
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  COMPOSE_FILE: e2e/docker-compose.yml:e2e/docker-compose.ci.yml
+  COMPOSE_PROJECT_NAME: ${{ inputs.compose-project }}
+
+jobs:
+  e2e:
+    name: E2E / ${{ inputs.suite }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Build toolchain ──────────────────────────────────────────────────
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/kb-create/go.mod
+          cache-dependency-path: |
+            tools/kb-create/go.sum
+            tools/kb-dev/go.sum
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      # ── Compile Go tools for linux/amd64 ────────────────────────────────
+      # The committed binaries in tools/ are macOS builds.
+
+      - name: Build Go tools (kb-devkit, kb-dev)
+        run: |
+          (cd tools/kb-devkit && CGO_ENABLED=0 go build -o kb-devkit . && chmod +x kb-devkit)
+          (cd tools/kb-dev    && CGO_ENABLED=0 go build -o kb-dev    . && chmod +x kb-dev)
+
+      # ── Install + build monorepo ─────────────────────────────────────────
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ── Phase 1 of ADR-0017: persist kb-devkit CAS across runs ──────────
+
+      - name: Restore kb-devkit build cache
+        uses: actions/cache@v4
+        with:
+          path: .kb/devkit/
+          key: devkit-build-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml', 'devkit.yaml', 'tsconfig*.json') }}-${{ github.sha }}
+          restore-keys: |
+            devkit-build-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml', 'devkit.yaml', 'tsconfig*.json') }}-
+            devkit-build-${{ runner.os }}-
+
+      - name: Build all packages (topological order)
+        run: pnpm build
+
+      # ── Install Playwright browsers (optional) ───────────────────────────
+
+      - name: Install Playwright browsers
+        if: inputs.playwright-dir != ''
+        run: cd ${{ inputs.playwright-dir }} && pnpm exec playwright install chromium --with-deps
+
+      # ── Phase 2 of ADR-0017: cache packed .tgz between runs ─────────────
+
+      - name: Restore packed .tgz cache
+        id: tgz-cache
+        uses: actions/cache@v4
+        with:
+          path: e2e/packages/
+          key: e2e-tgz-v2-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json') }}
+          # No restore-keys: content-hash key must only hit when the cached
+          # tgzs were built from the same dist. restore-keys would restore
+          # stale tgzs and re-save them under the new key — permanently
+          # mapping wrong content to the new dist hash (cache poisoning).
+
+      - name: Pack @kb-labs/* packages
+        if: steps.tgz-cache.outputs.cache-hit != 'true'
+        run: bash e2e/scripts/pack-all.sh
+
+      - name: Verify packed .tgz cache contents
+        if: steps.tgz-cache.outputs.cache-hit == 'true'
+        run: |
+          count=$(ls e2e/packages/*.tgz 2>/dev/null | wc -l)
+          echo "Restored $count packed tarballs from cache"
+          if [ "$count" -lt 100 ]; then
+            echo "::warning::Cached tgz set looks incomplete (<100 files), repacking"
+            bash e2e/scripts/pack-all.sh
+          fi
+
+      - name: List packed packages
+        run: ls -lh e2e/packages/*.tgz | wc -l && echo "tarballs packed"
+
+      # ── Docker layer caching ─────────────────────────────────────────────
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers (platform)
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache-platform
+          key: buildx-platform-${{ hashFiles('e2e/platform/Dockerfile', 'e2e/platform/entrypoint.sh', 'e2e/platform/registry-manifest.json', 'tools/kb-create/**', 'tools/kb-dev/**') }}
+          restore-keys: buildx-platform-
+
+      - name: Cache Docker layers (publisher)
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache-publisher
+          key: buildx-publisher-${{ hashFiles('e2e/publisher/**', 'e2e/packages/**') }}
+          restore-keys: buildx-publisher-
+
+      - name: Build platform image
+        run: |
+          docker buildx build \
+            --cache-from type=local,src=/tmp/.buildx-cache-platform \
+            --cache-to   type=local,dest=/tmp/.buildx-cache-platform,mode=max \
+            --load \
+            -t kb-e2e-ci-platform:latest \
+            -f e2e/platform/Dockerfile .
+
+      - name: Build publisher image
+        run: |
+          docker buildx build \
+            --cache-from type=local,src=/tmp/.buildx-cache-publisher \
+            --cache-to   type=local,dest=/tmp/.buildx-cache-publisher,mode=max \
+            --load \
+            -t kb-e2e-ci-publisher:latest \
+            -f e2e/publisher/Dockerfile \
+            e2e/
+
+      # ── Phase 2.5 of ADR-0017: persist Verdaccio storage between runs ────
+
+      - name: Restore Verdaccio storage cache
+        id: verdaccio-cache
+        uses: actions/cache@v4
+        with:
+          path: e2e/.verdaccio-storage
+          key: verdaccio-storage-${{ runner.os }}-${{ hashFiles('e2e/packages/**/*.tgz') }}
+          # No restore-keys: Verdaccio storage must only be reused when it
+          # was populated from the exact same tgzs. A stale storage + skipped
+          # publish = platform installs wrong package versions.
+
+      - name: Prepare Verdaccio storage permissions
+        run: |
+          mkdir -p e2e/.verdaccio-storage
+          sudo chown -R 10001:65533 e2e/.verdaccio-storage
+
+      - name: Start Verdaccio registry
+        run: docker compose up -d verdaccio
+
+      - name: Wait for Verdaccio to be healthy
+        run: |
+          echo "Waiting for Verdaccio..."
+          for i in $(seq 1 30); do
+            if docker compose ps verdaccio | grep -q "healthy"; then
+              echo "Verdaccio is healthy after $((i * 2))s"
+              break
+            fi
+            sleep 2
+          done
+
+      - name: Publish packages to Verdaccio
+        if: steps.verdaccio-cache.outputs.cache-hit != 'true'
+        run: docker compose run --rm publisher
+
+      - name: Confirm Verdaccio has expected package count (warm cache)
+        if: steps.verdaccio-cache.outputs.cache-hit == 'true'
+        run: |
+          tgz_count=$(ls e2e/packages/*.tgz 2>/dev/null | wc -l | tr -d ' ')
+          pkg_dirs=$(find e2e/.verdaccio-storage/@kb-labs -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
+          echo "Tarballs packed: $tgz_count   Verdaccio pkg dirs: $pkg_dirs"
+          if [ "$pkg_dirs" -lt "$((tgz_count / 2))" ]; then
+            echo "::warning::Cached Verdaccio storage looks incomplete ($pkg_dirs < $tgz_count/2), running publish anyway"
+            docker compose run --rm publisher
+          fi
+
+      - name: Start platform
+        run: docker compose up -d --no-build platform
+
+      - name: Wait for platform to be healthy
+        run: |
+          echo "Waiting for platform (up to ${{ inputs.health-steps }} × 5s)..."
+          for i in $(seq 1 ${{ inputs.health-steps }}); do
+            if curl -sf ${{ inputs.health-url }} > /dev/null 2>&1; then
+              echo "Platform ready after $((i * 5))s"
+              break
+            fi
+            if [ "$i" -eq "${{ inputs.health-steps }}" ]; then
+              echo "Platform failed to start — dumping logs"
+              docker compose logs platform | tail -100
+              exit 1
+            fi
+            sleep 5
+          done
+
+      # ── Run E2E suite ────────────────────────────────────────────────────
+
+      - name: Run e2e tests (${{ inputs.suite }})
+        run: |
+          chmod +x tools/kb-devkit/kb-devkit tools/kb-dev/kb-dev || true
+          ./tools/kb-devkit/kb-devkit run e2e --packages "${{ inputs.e2e-package }}"
+        env:
+          GATEWAY_URL:     http://localhost:4000
+          REST_URL:        http://localhost:5050
+          MARKETPLACE_URL: http://localhost:5070
+          REGISTRY_URL:    http://localhost:5071
+          WORKFLOW_URL:    http://localhost:7778
+          STATE_URL:       http://localhost:7777
+          CI: "true"
+          KB_DEV_BIN: ${{ github.workspace }}/tools/scripts/kb-dev-docker.sh
+
+      # ── Artifacts + summary ──────────────────────────────────────────────
+
+      - name: Dump platform container logs
+        if: always()
+        run: |
+          mkdir -p /tmp/e2e-logs
+          docker compose logs --no-color platform  > /tmp/e2e-logs/platform-bootstrap.log 2>&1 || true
+          docker compose logs --no-color verdaccio > /tmp/e2e-logs/verdaccio.log           2>&1 || true
+          docker compose ps > /tmp/e2e-logs/ps.txt 2>&1 || true
+          docker compose exec -T platform sh -c 'find / -name "*.log" -size +0c 2>/dev/null | grep -v proc' \
+            > /tmp/e2e-logs/log-files-list.txt 2>&1 || true
+          docker compose cp platform:/workspace/kb-e2e/.kb          /tmp/e2e-logs/kb-dir          2>&1 || true
+          docker compose cp platform:/root/kb-platform/.kb           /tmp/e2e-logs/platform-kb-dir 2>&1 || true
+          docker compose exec -T platform sh -c 'kb-dev status 2>&1' > /tmp/e2e-logs/kb-dev-status.txt 2>&1 || true
+
+      - name: Upload platform logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: platform-logs-${{ github.run_id }}-${{ inputs.suite }}
+          path: /tmp/e2e-logs/
+          retention-days: 14
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.run_id }}-${{ inputs.suite }}
+          path: e2e/${{ inputs.suite }}/report/
+          retention-days: 14
+
+      - name: Show checklist summary
+        if: always()
+        run: |
+          checklist="e2e/${{ inputs.suite }}/report/CHECKLIST.md"
+          if [ -f "$checklist" ]; then
+            echo "### E2E: ${{ inputs.suite }}" >> $GITHUB_STEP_SUMMARY
+            cat "$checklist" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down --volumes --remove-orphans
+
+      - name: Restore Verdaccio storage ownership for cache save
+        if: always()
+        run: |
+          if [ -d e2e/.verdaccio-storage ]; then
+            sudo chown -R "$(id -u):$(id -g)" e2e/.verdaccio-storage
+          fi
+
+      # ── Per-step timings (Phase 0 of ADR-0017) ───────────────────────────
+
+      - name: Emit timings
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RUN_ID: ${{ github.run_id }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -eu
+          mkdir -p /tmp/e2e-timings
+          OUT_JSON=/tmp/e2e-timings/timings.json
+          gh api "/repos/${REPO}/actions/runs/${RUN_ID}/jobs" \
+            --jq '{
+              run_id: '"$RUN_ID"',
+              repo: "'"$REPO"'",
+              jobs: [.jobs[] | {
+                name: .name,
+                conclusion: .conclusion,
+                started_at: .started_at,
+                completed_at: .completed_at,
+                steps: [.steps[] | select(.completed_at != null) | {
+                  name: .name,
+                  number: .number,
+                  conclusion: .conclusion,
+                  started_at: .started_at,
+                  completed_at: .completed_at,
+                  duration_s: (((.completed_at | fromdateiso8601) - (.started_at | fromdateiso8601)))
+                }]
+              }]
+            }' > "$OUT_JSON"
+          {
+            echo "## E2E timings — ${{ inputs.suite }}"
+            echo ""
+            echo "Run: \`${RUN_ID}\` · ${REPO}"
+            echo ""
+            echo "| # | step | duration | conclusion |"
+            echo "|---|---|---:|---|"
+            jq -r '.jobs[0].steps[] | "| \(.number) | \(.name) | \(.duration_s | floor)s | \(.conclusion) |"' "$OUT_JSON"
+            echo ""
+            TOTAL=$(jq -r '[.jobs[0].steps[].duration_s] | add | floor' "$OUT_JSON")
+            echo "**Total measured:** ${TOTAL}s"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload timings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-timings-${{ github.run_id }}-${{ inputs.suite }}
+          path: /tmp/e2e-timings/
+          retention-days: 90

@@ -45,6 +45,10 @@ type Service struct {
 	Highlight   bool              `json:"highlight,omitempty"`
 	Note        string            `json:"note,omitempty"`
 	Target      string            `json:"target,omitempty"`
+	// Socket is the unix domain socket path declared by this service.
+	// When set, kb-dev injects it as KB_SOCKET_PATH and uses unix probe for health checks.
+	// Convention: /tmp/kb-<projectHash>/<serviceName>.sock
+	Socket string `json:"socket,omitempty"`
 	// API holds optional developer-facing metadata about the service's HTTP API.
 	// Informational only — not used for routing or health checks.
 	API *ServiceAPI `json:"api,omitempty"`

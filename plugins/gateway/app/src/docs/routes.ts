@@ -8,16 +8,19 @@
 
 import type { FastifyInstance } from 'fastify';
 import { mergeOpenAPISpecs } from '@kb-labs/core-registry';
-import type { ICache } from '@kb-labs/core-platform';
+import type { ICache, IServiceTransport } from '@kb-labs/core-platform';
 import type { GatewayConfig } from '@kb-labs/gateway-contracts';
 
 const MERGED_CACHE_KEY = '__gateway_merged_openapi';
 const MERGED_CACHE_TTL = 30_000; // 30 second cache
 
-export function registerAggregatedDocsRoutes(app: FastifyInstance, config: GatewayConfig, cache?: ICache): void {
-  const upstreamSpecUrls = Object.values(config.upstreams).map(
-    (u) => `${u.url}/openapi.json`,
-  );
+export function registerAggregatedDocsRoutes(
+  app: FastifyInstance,
+  config: GatewayConfig,
+  serviceTransport: IServiceTransport,
+  cache?: ICache,
+): void {
+  const upstreamServiceIds = Object.values(config.upstreams).map((u) => u.serviceId);
 
   // Merged OpenAPI spec from all upstreams
   app.get('/openapi-merged.json', async (_req, reply) => {
@@ -31,10 +34,13 @@ export function registerAggregatedDocsRoutes(app: FastifyInstance, config: Gatew
       } catch { /* cache miss */ }
     }
 
-    // Fetch all upstream specs in parallel
+    // Fetch all upstream specs in parallel via transport
     const results = await Promise.allSettled(
-      upstreamSpecUrls.map((url) =>
-        fetch(url, { signal: AbortSignal.timeout(3000) }).then((r) => r.json()),
+      upstreamServiceIds.map((serviceId) =>
+        serviceTransport.call(serviceId, {
+          path: '/openapi.json',
+          signal: AbortSignal.timeout(3000),
+        }).then((r) => r.payload),
       ),
     );
 

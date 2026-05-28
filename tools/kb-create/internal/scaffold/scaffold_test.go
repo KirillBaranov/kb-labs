@@ -322,23 +322,28 @@ func TestGenerateFull_GatewayUpstreams(t *testing.T) {
 	content := generateFull(Options{PlatformDir: "/x"})
 
 	assertContains(t, content, `"gateway"`, "gateway section")
+	assertContains(t, content, `"serviceTransport"`, "serviceTransport in adapterOptions")
+	assertContains(t, content, `"services"`, "transport services map")
 	assertContains(t, content, `"upstreams"`, "upstreams block")
+	assertContains(t, content, `"serviceId"`, "serviceId in upstream")
 	assertContains(t, content, `"rest"`, "rest upstream")
-	assertContains(t, content, `http://localhost:5050`, "REST URL")
+	assertContains(t, content, `http://127.0.0.1:5050`, "REST URL in transport")
 	assertContains(t, content, `"workflow"`, "workflow upstream")
+	assertContains(t, content, `http://127.0.0.1:7778`, "workflow URL in transport")
 	assertContains(t, content, `"marketplace"`, "marketplace upstream")
+	assertContains(t, content, `http://127.0.0.1:5070`, "marketplace URL in transport")
 	assertContains(t, content, `"widgets"`, "widgets upstream")
 
 	// stripGeneratedJsonc must not corrupt URLs (//[^\n]* must not eat into http://)
 	stripped := stripGeneratedJsonc(content)
-	if !strings.Contains(stripped, "http://localhost:5050") {
-		t.Error("stripGeneratedJsonc corrupted http://localhost:5050 URL in gateway section")
+	if !strings.Contains(stripped, "http://127.0.0.1:5050") {
+		t.Error("stripGeneratedJsonc corrupted http://127.0.0.1:5050 URL in gateway section")
 	}
-	if !strings.Contains(stripped, "http://localhost:7778") {
-		t.Error("stripGeneratedJsonc corrupted http://localhost:7778 URL in gateway section")
+	if !strings.Contains(stripped, "http://127.0.0.1:7778") {
+		t.Error("stripGeneratedJsonc corrupted http://127.0.0.1:7778 URL in gateway section")
 	}
-	if !strings.Contains(stripped, "http://localhost:5070") {
-		t.Error("stripGeneratedJsonc corrupted http://localhost:5070 URL in gateway section")
+	if !strings.Contains(stripped, "http://127.0.0.1:5070") {
+		t.Error("stripGeneratedJsonc corrupted http://127.0.0.1:5070 URL in gateway section")
 	}
 }
 
