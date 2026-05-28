@@ -331,8 +331,17 @@ const toLogRecord = (doc: LogDoc): LogRecord => ({
   source: doc.source,
 });
 
-export function createAdapter(config: LogPersistenceConfig): DocumentLogPersistence {
-  return new DocumentLogPersistence(config);
+export function createAdapter(
+  config: LogPersistenceConfig,
+  deps?: Record<string, unknown>,
+): DocumentLogPersistence {
+  // deps.documentDatabase is injected by the adapter-loader when the manifest
+  // declares requires.adapters = [{ id: "documentDatabase" }]. Merge it in so
+  // callers don't need to duplicate the reference in adapterOptions config.
+  const resolved: LogPersistenceConfig = deps?.['documentDatabase']
+    ? { ...config, documentDatabase: deps['documentDatabase'] as IDocumentDatabase }
+    : config;
+  return new DocumentLogPersistence(resolved);
 }
 
 export default createAdapter;
