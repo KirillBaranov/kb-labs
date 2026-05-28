@@ -253,26 +253,6 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
       return reply.code(400).send({ error: 'Bad Request', message: 'password is required' });
     }
 
-    // Rate limiting (per-IP and per-email) — silently skipped when no rateLimiter configured.
-    if (rateLimiter) {
-      const perIpMax = authRateLimitCfg.loginPerIpPerMinute;
-      const perEmailMax = authRateLimitCfg.loginPerEmailPerMinute;
-      const emailNorm = email.toLowerCase().trim();
-
-      const [ipResult, emailResult] = await Promise.all([
-        rateLimiter.check(`rl:login:ip:${request.ip}`, { max: perIpMax, windowMs: 60_000 }),
-        rateLimiter.check(`rl:login:email:${emailNorm}`, { max: perEmailMax, windowMs: 60_000 }),
-      ]);
-
-      if (!ipResult.allowed || !emailResult.allowed) {
-        const retryAfter = !ipResult.allowed
-          ? ipResult.retryAfterSec
-          : (!emailResult.allowed ? emailResult.retryAfterSec : 60);
-        reply.header('Retry-After', String(retryAfter));
-        return reply.code(429).send({ error: 'Too Many Requests', message: 'Rate limit exceeded', retryAfterSec: retryAfter });
-      }
-    }
-
     // Derive tenantId — Host header is authoritative (set by nginx in production).
     // bodyTenantId is accepted only as a fallback when the Host doesn't resolve to
     // a valid tenant (e.g. direct gateway access: localhost:4000, CI without nginx).
@@ -300,6 +280,27 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
     } catch (err) {
       // CD-8: always return identical shape regardless of failure reason.
       if (err instanceof AuthError) {
+        // Rate-limit only on failed authentication attempts. Counting only
+        // failures prevents false positives for legitimate users while still
+        // protecting against brute-force attacks.
+        if (rateLimiter) {
+          const perIpMax = authRateLimitCfg.loginPerIpPerMinute;
+          const perEmailMax = authRateLimitCfg.loginPerEmailPerMinute;
+          const emailNorm = email.toLowerCase().trim();
+
+          const [ipResult, emailResult] = await Promise.all([
+            rateLimiter.check(`rl:login:ip:${request.ip}`, { max: perIpMax, windowMs: 60_000 }),
+            rateLimiter.check(`rl:login:email:${emailNorm}`, { max: perEmailMax, windowMs: 60_000 }),
+          ]);
+
+          if (!ipResult.allowed || !emailResult.allowed) {
+            const retryAfter = !ipResult.allowed
+              ? ipResult.retryAfterSec
+              : (!emailResult.allowed ? emailResult.retryAfterSec : 60);
+            reply.header('Retry-After', String(retryAfter));
+            return reply.code(429).send({ error: 'Too Many Requests', message: 'Rate limit exceeded', retryAfterSec: retryAfter });
+          }
+        }
         return reply.code(401).send({ error: 'invalid_credentials' });
       }
       throw err;
@@ -378,7 +379,11 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
       if (err instanceof AuthError) {
         const code = (err as AuthError).code;
         if (code === 'invalid_invite') {
-          return reply.code(401).send({ error: 'Unauthorized', message: 'Invalid or expired invite' });
+          // 422 Unprocessable Entity: the invite token was syntactically valid
+          // but semantically rejected (expired or already consumed).
+          // The client (activate-page) maps error:'invalid_invite' to the
+          // user-friendly "This invite link is invalid or expired" message.
+          return reply.code(422).send({ error: 'invalid_invite', message: 'Invalid or expired invite' });
         }
         return reply.code(400).send({ error: 'Bad Request', message: err.message });
       }

@@ -16,10 +16,9 @@
  */
 
 import * as React from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 
 export function ActivatePage() {
-  const navigate = useNavigate();
   const { token } = useParams<{ token: string }>();
 
   const [password, setPassword] = React.useState('');
@@ -70,10 +69,13 @@ export function ActivatePage() {
         return;
       }
 
-      // Strip the activation token from the URL so it does not linger in
-      // browser history (user may share or screenshot the history).
-      window.history.replaceState({}, '', '/');
-      navigate('/');
+      // Navigate to / with a full page reload. This serves two purposes:
+      // 1. Strips the activation token from the URL and browser history.
+      // 2. Re-mounts the auth provider so it re-checks /api/auth/me with
+      //    the newly-issued session cookies (SPA navigation would keep the
+      //    auth provider in 'anonymous' state, causing RequireAuth to
+      //    redirect back to /login).
+      window.location.replace('/');
     } catch {
       setError('Activation failed. Please try again.');
     } finally {

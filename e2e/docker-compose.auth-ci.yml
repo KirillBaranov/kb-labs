@@ -37,6 +37,14 @@ services:
       AUTH_ACCESS_TTL_SEC: "${AUTH_ACCESS_TTL_SEC:-900}"
       AUTH_REFRESH_TTL_SEC: "${AUTH_REFRESH_TTL_SEC:-2592000}"
       AUTH_INVITE_TTL_MS: "${AUTH_INVITE_TTL_MS:-604800000}"
+      # Restore production rate-limit defaults for the auth E2E suite. The base
+      # docker-compose.yml raises these to 500/200 to avoid false 429s from
+      # loginAsAdmin() calls in other E2E suites. The auth suite needs realistic
+      # limits so AUTH-27 (per-IP) and AUTH-28 (per-email) can actually trigger
+      # 429. This is safe because the rate limiter now only counts FAILED login
+      # attempts — successful admin logins never increment the counter.
+      AUTH_LOGIN_RATE_LIMIT_PER_IP: "10"
+      AUTH_LOGIN_RATE_LIMIT_PER_EMAIL: "5"
 
   studio:
     image: nginx:1.27-alpine
