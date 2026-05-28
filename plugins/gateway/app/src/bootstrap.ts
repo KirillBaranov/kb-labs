@@ -1,5 +1,5 @@
 import { logDiagnosticEvent } from '@kb-labs/core-platform';
-import { createInMemoryDocumentDatabase } from '@kb-labs/core-platform/inmemory';
+import { createInMemoryDocumentDatabase, createInMemoryKVStore } from '@kb-labs/core-platform/inmemory';
 import { platform, createServiceBootstrap, getPlatformRoot, getProjectRoot } from '@kb-labs/core-runtime';
 import { createCorrelatedLogger } from '@kb-labs/shared-http';
 import type { IHostStore } from '@kb-labs/gateway-contracts';
@@ -165,11 +165,14 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
       ? parseInt(process.env.AUTH_INVITE_TTL_MS, 10)
       : (config.auth?.inviteTtlMs ?? 7 * 24 * 60 * 60 * 1000);
 
-    // Rate limiter — uses kvStore if available; silently absent otherwise.
-    const kv = platform.getAdapter<IKVStore>('kvStore');
-    const rateLimiter = kv ? createRateLimiter(kv) : undefined;
-    if (!kv) {
-      logger.warn('kvStore adapter not configured — auth rate limiting disabled');
+    // Rate limiter — uses kvStore if available; falls back to in-memory.
+    // In-memory is sufficient for single-process deployments (E2E, dev) and
+    // ensures rate limiting is always active. Production deployments with a
+    // persistent kvStore get cross-restart counters automatically.
+    const kv = platform.getAdapter<IKVStore>('kvStore') ?? createInMemoryKVStore();
+    const rateLimiter = createRateLimiter(kv);
+    if (!platform.getAdapter<IKVStore>('kvStore')) {
+      logger.warn('kvStore adapter not configured — auth rate limiting using in-memory KV (counters reset on restart)');
     }
 
     // AUTH_LOGIN_RATE_LIMIT_PER_IP / AUTH_LOGIN_RATE_LIMIT_PER_EMAIL env vars override

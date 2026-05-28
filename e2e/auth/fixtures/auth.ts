@@ -55,7 +55,8 @@ export async function inviteUser(
 ): Promise<string> {
   const csrfToken = await getCsrfFromCookie(request, adminCookieHeader)
   const res = await request.post(`${GATEWAY}/api/auth/invites`, {
-    data: { email },
+    // groupId is required by the gateway (POST /api/auth/invites validates both email + groupId).
+    data: { email, groupId: 'tenant-member' },
     headers: {
       Cookie: adminCookieHeader,
       'X-CSRF-Token': csrfToken ?? '',

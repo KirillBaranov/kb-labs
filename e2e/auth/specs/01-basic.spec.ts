@@ -35,7 +35,10 @@ test('AUTH-02: bootstrap login → authenticated, correct cookie attributes', as
   expect(access!.httpOnly).toBe(true)
   expect(access!.secure).toBe(true)
   expect(access!.sameSite).toBe('Strict')
-  expect(access!.domain).toBeFalsy() // no explicit Domain= (origin-scoped)
+  // No explicit Domain= attribute — Playwright fills domain with the request hostname
+  // (e.g. "localhost"), but the leading-dot form (".kblabs.ru") would only appear when
+  // the server explicitly sends Domain= for a wildcard-subdomain cookie.
+  expect(access!.domain).not.toMatch(/^\./) // no wildcard-subdomain Domain= attribute
 
   // kb_refresh must be HttpOnly, Secure, Strict.
   const refresh = byName['kb_refresh']

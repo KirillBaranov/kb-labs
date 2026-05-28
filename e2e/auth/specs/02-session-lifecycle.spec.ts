@@ -28,7 +28,6 @@ const SHORT_TTL = process.env.AUTH_ACCESS_TTL_SEC
 test('AUTH-05: access token expiry → transparent refresh → continues working', async ({
   page,
   context,
-  request,
 }) => {
   test.skip(!process.env.AUTH_ACCESS_TTL_SEC, 'Skipped: set AUTH_ACCESS_TTL_SEC=5 to enable')
 
@@ -41,14 +40,14 @@ test('AUTH-05: access token expiry → transparent refresh → continues working
   // Wait for access token to expire.
   await page.waitForTimeout((SHORT_TTL + 1) * 1_000)
 
-  // A new request must silently refresh and succeed.
-  const cookieHeader = Object.entries(await cookieMap(context))
-    .map(([k, v]) => `${k}=${v}`)
-    .join('; ')
-  const { status } = await apiGet(request, '/api/auth/me', cookieHeader)
-  expect(status).toBe(200)
+  // Navigate in the browser — the Studio http-client interceptor handles 401 → refresh → retry.
+  // A direct request.get() would bypass the interceptor and always return 401 on expired tokens.
+  await page.goto('/')
 
-  // kb_access should have been refreshed (new cookie set).
+  // Should NOT be redirected to /login (transparent refresh succeeded).
+  await expect(page).not.toHaveURL(/\/login/, { timeout: 15_000 })
+
+  // kb_access should have been refreshed (new cookie set by the refresh response).
   const cookiesAfter = await cookieMap(context)
   expect(cookiesAfter['kb_access']).toBeTruthy()
 })
@@ -197,10 +196,12 @@ test('AUTH-09: revoke session → revoked browser gets 401 on next refresh', asy
     const cookieHeader2 = Object.entries(cookies2).map(([k, v]) => `${k}=${v}`).join('; ')
 
     // Get the second session's familyId.
+    // GET /api/auth/sessions returns { sessions: [...] } — unwrap the array.
     const sessions2Res = await ctx2.request.get(`${GATEWAY}/api/auth/sessions`, {
       headers: { Cookie: cookieHeader2 },
     })
-    const sessions2 = await sessions2Res.json() as Array<{ familyId: string; isCurrent: boolean }>
+    const sessions2Body = await sessions2Res.json() as { sessions: Array<{ familyId: string; isCurrent: boolean }> }
+    const sessions2 = sessions2Body.sessions ?? []
     const otherSession = sessions2.find((s) => !s.isCurrent) ?? sessions2[0]!
 
     // Admin revokes the second device's session.

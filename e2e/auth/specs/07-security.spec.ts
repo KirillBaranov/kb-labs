@@ -126,7 +126,9 @@ test('AUTH-29: cookie attributes — HttpOnly/Secure/SameSite=Strict/no-Domain',
     expect(c!.httpOnly).toBe(httpOnly)
     expect(c!.secure).toBe(true)
     expect(c!.sameSite).toBe('Strict')
-    expect(c!.domain).toBeFalsy()
+    // Playwright fills domain with the request hostname when no Domain= is set.
+    // A leading dot (e.g. ".kblabs.ru") would only appear for wildcard-subdomain cookies.
+    expect(c!.domain).not.toMatch(/^\./) // no wildcard-subdomain Domain= attribute
   }
 
   assertCookie('kb_access',  true)   // HttpOnly — not readable by JS

@@ -58,9 +58,12 @@ test('AUTH-11: cookie isolation — cookies are origin-scoped, no Domain= attrib
   // None of the auth cookies should have an explicit Domain attribute.
   // With no Domain= the cookie is scoped to the exact origin (subdomain) only.
   for (const cookie of cookies.filter((c) => ['kb_access', 'kb_refresh', 'kb_csrf'].includes(c.name))) {
+    // Playwright fills domain with the request hostname (e.g. "localhost") when the
+    // server does not send an explicit Domain= attribute. A leading dot would only
+    // appear if the server sent Domain= for a wildcard-subdomain cookie — verify none.
     expect(
       cookie.domain,
-      `Cookie ${cookie.name} has Domain=${cookie.domain} — must be origin-scoped (no Domain=)`,
-    ).toBeFalsy()
+      `Cookie ${cookie.name} has wildcard Domain=${cookie.domain} — must be origin-scoped (no Domain=)`,
+    ).not.toMatch(/^\./)
   }
 })

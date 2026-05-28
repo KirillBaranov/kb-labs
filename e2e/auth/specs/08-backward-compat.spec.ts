@@ -135,7 +135,8 @@ test('AUTH-33: /auth/register anonymous → 401, member → 403, admin → 200; 
   const memberEmail = uniqueEmail('member33')
   const adminCookies33b = await cookieMap(context)
   const inviteRes = await request.post(`${GATEWAY}/api/auth/invites`, {
-    data: { email: memberEmail },
+    // groupId is required — the gateway validates both email + groupId.
+    data: { email: memberEmail, groupId: 'tenant-member' },
     headers: {
       Cookie: Object.entries(adminCookies33b).map(([k, v]) => `${k}=${v}`).join('; '),
       // CSRF required on mutating cookie-auth endpoints.
