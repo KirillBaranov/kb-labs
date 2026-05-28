@@ -11,8 +11,6 @@ import { test, expect } from '@playwright/test'
 import {
   loginAsAdmin,
   cookieMap,
-  apiGet,
-  GATEWAY,
   TENANT_ID,
 } from '../fixtures/auth.js'
 
@@ -31,8 +29,14 @@ test('AUTH-10: cross-tenant guard — access token for tenant A rejected on tena
   // Call /api/auth/me with a spoofed Host header for a different tenant.
   // The gateway's tenant-resolver reads tenantId from the JWT and compares
   // it to the Host header; mismatch → 401.
+  //
+  // IMPORTANT: bypass nginx (:4001) and hit the gateway directly (:4000) so
+  // the custom Host header reaches the gateway unchanged. nginx always
+  // overrides Host to "kb-cloud.kblabs.ru" (for SameSite cookie alignment),
+  // which would defeat this test.
+  const GATEWAY_DIRECT = 'http://localhost:4000'
   const fakeTenant = `other-tenant-${Date.now()}`
-  const res = await request.get(`${GATEWAY}/api/auth/me`, {
+  const res = await request.get(`${GATEWAY_DIRECT}/api/auth/me`, {
     headers: {
       Cookie: cookieHeader,
       Host: `${fakeTenant}.kblabs.ru`,
