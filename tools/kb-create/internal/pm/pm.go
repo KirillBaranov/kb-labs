@@ -3,6 +3,7 @@
 package pm
 
 import (
+	"os"
 	"os/exec"
 )
 
@@ -42,10 +43,16 @@ type DetectOptions struct {
 }
 
 // Detect returns pnpm if available, otherwise npm.
+// Registry priority: DetectOptions.Registry > KB_REGISTRY_URL env var > default (npm.org).
+// KB_REGISTRY_URL allows CI to redirect installs to a local Verdaccio instance
+// without requiring callers to pass --registry explicitly.
 func Detect(opts ...DetectOptions) PackageManager {
 	var registry string
 	if len(opts) > 0 {
 		registry = opts[0].Registry
+	}
+	if registry == "" {
+		registry = os.Getenv("KB_REGISTRY_URL")
 	}
 	if _, err := exec.LookPath("pnpm"); err == nil {
 		return &PnpmManager{Registry: registry}
