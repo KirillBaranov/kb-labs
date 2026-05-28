@@ -86,20 +86,17 @@ export async function inviteUser(
 
 /**
  * Navigate to activation URL, fill password, submit.
- * Waits for redirect to /.
+ * Waits for the browser to navigate to / after successful activation.
  *
- * Uses waitUntil:'commit' instead of the default 'load' because:
- * - On success, activate-page calls window.location.replace('/') (full reload).
- * - The Vite app uses <script type="module"> (deferred). Module scripts execute
- *   BEFORE DOMContentLoaded, so React runs and RequireAuth redirects to /login
- *   (SPA pushState) before either 'domcontentloaded' or 'load' fires.
- * - Both browser events fire when URL is already '/login', so waitForURL('/')
- *   with 'load' or 'domcontentloaded' never resolves.
- * - 'commit' fires as soon as navigation response headers arrive, before the
- *   HTML body is delivered and before any scripts execute — guaranteed at URL='/'.
- * - The session cookies (kb_access, kb_refresh, kb_csrf) are set by the
- *   activation endpoint response BEFORE window.location.replace('/') is called,
- *   so callers can safely read cookieMap() after activateUser() returns.
+ * On success, activate-page calls window.location.replace('/') — a full HTTP
+ * reload. RequireAuth renders null while AuthProvider resolves (rather than
+ * redirecting to /login), so the URL stays at '/' throughout. The 'commit'
+ * event fires when response headers for '/' arrive (before any scripts run),
+ * at which point the URL is definitively '/'.
+ *
+ * Session cookies (kb_access, kb_refresh, kb_csrf) are set by the activation
+ * endpoint response before window.location.replace('/') is called, so callers
+ * can safely read cookieMap() immediately after activateUser() returns.
  */
 export async function activateUser(
   page: Page,

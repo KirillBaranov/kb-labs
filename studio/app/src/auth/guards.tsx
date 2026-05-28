@@ -42,20 +42,31 @@ export interface RequireAuthProps {
 /**
  * Wraps children that require an authenticated session.
  *
- * - `loading` or `anonymous` → Navigate to /login (with { from: location }
- *   state so LoginPage can navigate back after auth completes).
- * - `authenticated`           → renders children
+ * - `loading`       → renders null (wait silently while AuthProvider resolves)
+ * - `anonymous`     → Navigate to /login (with { from: location } state so
+ *                     LoginPage can navigate back after auth completes)
+ * - `authenticated` → renders children
  *
- * Uses React Router's <Navigate replace> which fires via useEffect. In a Vite
- * SPA, module scripts execute before the browser's load event, so the redirect
- * completes before Playwright's page.goto() returns — timing is equivalent to
- * useLayoutEffect for E2E purposes.
+ * Rendering null during loading (instead of redirecting) is intentional:
+ * - After window.location.replace('/'), the browser performs an HTTP navigation
+ *   to '/' and fires the 'commit' event. If RequireAuth immediately redirected
+ *   to /login via SPA pushState, Playwright's waitForURL('/') would miss the
+ *   'commit' at '/' (URL changes before the event is processed) and then never
+ *   see a 'commit' for the final SPA navigation back to '/'.
+ * - Auth resolution is fast (single /api/auth/me round-trip), so the null flash
+ *   is imperceptible.
+ * - AUTH-01 (cold visit) still works: auth resolves to 'anonymous' → Navigate
+ *   fires → retrying assertions catch the subsequent SPA redirect to /login.
  */
 export function RequireAuth({ children, loginPath = '/login' }: RequireAuthProps) {
   const auth = useAuth();
   const location = useLocation();
 
-  if (auth.status === 'loading' || auth.status === 'anonymous') {
+  if (auth.status === 'loading') {
+    return null;
+  }
+
+  if (auth.status === 'anonymous') {
     return <Navigate to={loginPath} replace state={{ from: location }} />;
   }
 
