@@ -4,12 +4,12 @@
  * Tests for RequireAuth and RequirePermission guards (ADR-0020, Phase 2.3).
  *
  * Coverage:
- *   - RequireAuth: loading state → renders null (no redirect, no children)
+ *   - RequireAuth: loading state → redirects to /login (same as anonymous)
  *   - RequireAuth: anonymous → redirects to /login
  *   - RequireAuth: authenticated → renders children
  *   - RequirePermission: has permission → renders children
  *   - RequirePermission: no permission → shows 403 page (not children)
- *   - RequirePermission: loading → renders null (inherited from RequireAuth)
+ *   - RequirePermission: loading → redirects to /login (inherited from RequireAuth)
  *   - useCan: returns true when permission present, false when absent
  */
 
@@ -56,7 +56,7 @@ function renderWithAuth(ui: React.ReactElement, auth: AuthState, initialPath = '
 // ── RequireAuth ───────────────────────────────────────────────────────────────
 
 describe('RequireAuth', () => {
-  it('renders nothing (null) while status is loading — no redirect, no children', () => {
+  it('redirects to /login while status is loading — creates sync point for transparent refresh', async () => {
     const auth = makeAuth({ status: 'loading', user: undefined });
     renderWithAuth(
       <RequireAuth>
@@ -64,9 +64,11 @@ describe('RequireAuth', () => {
       </RequireAuth>,
       auth,
     );
-    // Neither protected content nor login page should be visible while loading.
+    // RequireAuth redirects to /login during loading (required for AUTH-05:
+    // the SPA bounce /login → / only completes after AuthProvider resolves,
+    // giving Playwright's retrying assertions a natural synchronisation point).
     expect(screen.queryByTestId('child')).toBeNull();
-    expect(screen.queryByTestId('login-page')).toBeNull();
+    await waitFor(() => expect(screen.getByTestId('login-page')).toBeDefined());
   });
 
   it('redirects to /login when anonymous', async () => {
@@ -119,7 +121,7 @@ describe('RequirePermission', () => {
     expect(screen.getByTestId('forbidden-page')).toBeDefined();
   });
 
-  it('renders nothing while auth is loading (RequireAuth returns null before permissions are known)', () => {
+  it('redirects to /login while auth is loading (RequireAuth handles loading before permissions are known)', async () => {
     const auth = makeAuth({ status: 'loading', user: undefined, permissions: new Set() });
     renderWithAuth(
       <RequirePermission permission="users:write">
@@ -127,10 +129,11 @@ describe('RequirePermission', () => {
       </RequirePermission>,
       auth,
     );
-    // RequireAuth renders null during loading — no redirect, no content.
+    // RequireAuth redirects to /login during loading — same as anonymous.
+    // Protected content and forbidden page must not be shown.
     expect(screen.queryByTestId('child')).toBeNull();
-    expect(screen.queryByTestId('login-page')).toBeNull();
     expect(screen.queryByTestId('forbidden-page')).toBeNull();
+    await waitFor(() => expect(screen.getByTestId('login-page')).toBeDefined());
   });
 
   it('redirects to /login when anonymous (RequireAuth wraps RequirePermission)', async () => {

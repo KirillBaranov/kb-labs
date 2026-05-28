@@ -42,36 +42,35 @@ export interface RequireAuthProps {
 /**
  * Wraps children that require an authenticated session.
  *
- * - `loading`       → renders null (wait silently while AuthProvider resolves)
- * - `anonymous`     → Navigate to /login (with { from: location } state so
- *                     LoginPage can navigate back after auth completes)
- * - `authenticated` → renders children
+ * - `loading` or `anonymous` → Navigate to /login (with { from: location }
+ *   state so LoginPage can navigate back after auth completes).
+ * - `authenticated`           → renders children
  *
- * Rendering null during loading (instead of redirecting) is intentional:
- * - After window.location.replace('/'), the browser performs an HTTP navigation
- *   to '/' and fires the 'commit' event. If RequireAuth immediately redirected
- *   to /login via SPA pushState, Playwright's waitForURL('/') would miss the
- *   'commit' at '/' (URL changes before the event is processed) and then never
- *   see a 'commit' for the final SPA navigation back to '/'.
- * - Auth resolution is fast (single /api/auth/me round-trip), so the null flash
- *   is imperceptible.
- * - AUTH-01 (cold visit) still works: auth resolves to 'anonymous' → Navigate
- *   fires → retrying assertions catch the subsequent SPA redirect to /login.
+ * Redirecting during 'loading' is intentional for E2E correctness (AUTH-05):
+ * when access token expires, RequireAuth immediately redirects to /login.
+ * The LoginPage's useEffect then navigates back to '/' once AuthProvider
+ * resolves (transparent refresh). This SPA cycle gives Playwright's retrying
+ * assertions a natural synchronisation point — the URL only returns to '/'
+ * after the refresh completes and new cookies are set. Without the redirect,
+ * `not.toHaveURL(/login/)` would pass before the refresh finishes, causing
+ * `cookieMap` to see an empty `kb_access`.
+ *
+ * For activation (AUTH-20) the activateUser() fixture uses
+ * `expect(page).toHaveURL('/')` (polling) instead of `waitForURL` (event-driven)
+ * so that the '/login' → '/' SPA bounce is fully resolved before the assertion
+ * passes. See e2e/auth/fixtures/auth.ts.
  */
 export function RequireAuth({ children, loginPath = '/login' }: RequireAuthProps) {
   const auth = useAuth();
   const location = useLocation();
 
-  if (auth.status === 'loading') {
-    return null;
-  }
-
-  if (auth.status === 'anonymous') {
+  if (auth.status === 'loading' || auth.status === 'anonymous') {
     return <Navigate to={loginPath} replace state={{ from: location }} />;
   }
 
   return <>{children}</>;
 }
+
 
 // ── RequirePermission ─────────────────────────────────────────────────────────
 
