@@ -379,8 +379,10 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
       if (err instanceof AuthError) {
         const code = (err as AuthError).code;
         if (code === 'unknown_invite') {
-          // 401 Unauthorized: the token was not recognised at all (garbage / never issued).
-          return reply.code(401).send({ error: 'Unauthorized', message: 'Invalid invite token' });
+          // 401 Unauthorized: token not found (garbage, never issued, or swept by TTL).
+          // Use error:'invalid_invite' so the activate-page shows the user-friendly
+          // "This invite link is invalid or expired" message (same as 422 path).
+          return reply.code(401).send({ error: 'invalid_invite', message: 'Invalid or expired invite' });
         }
         if (code === 'invalid_invite') {
           // 422 Unprocessable Entity: the token was found but is expired or already consumed.
