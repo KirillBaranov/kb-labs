@@ -349,20 +349,114 @@ export interface WorkflowTemplateDecl {
   tags?: string[];
 }
 
+// ── Webhook Auth Config ────────────────────────────────────────────────────────
+
+/**
+ * Static secret validation: compare request header value against stored secret.
+ * Uses constant-time comparison to prevent timing attacks.
+ */
+export interface WebhookAuthSecret {
+  type: 'secret';
+  /** Header name carrying the secret (e.g. 'X-Webhook-Secret') */
+  header: string;
+}
+
+/**
+ * HMAC-SHA256 payload signature validation.
+ * Gateway computes HMAC over the raw request body and compares to the header.
+ */
+export interface WebhookAuthHmac {
+  type: 'hmac';
+  /** Header name carrying the signature (e.g. 'X-Hub-Signature-256') */
+  header: string;
+  /** Optional prefix to strip before comparing (e.g. 'sha256=') */
+  prefix?: string;
+}
+
+/**
+ * Custom validation delegated to a plugin handler via backend.execute.
+ * Handler receives { headers, rawBody (base64), secret } and returns { valid: boolean }.
+ * Plugin code never runs in-process — always isolated through backend.execute.
+ */
+export interface WebhookAuthCustom {
+  type: 'custom';
+  /** Handler path: './dist/webhooks/stripe-validate.js#default' */
+  validator: string;
+}
+
+/** Discriminated union of all supported webhook auth strategies. */
+export type WebhookAuthConfig = WebhookAuthSecret | WebhookAuthHmac | WebhookAuthCustom;
+
+/**
+ * Challenge/handshake protocol config (e.g. Slack URL verification).
+ * When an incoming request matches `bodyPath === value`, the gateway responds
+ * automatically with `{ [replyPath]: body[replyPath] }` — plugin handler is NOT called.
+ */
+export interface WebhookChallengeConfig {
+  /** Dot-path to the discriminator field in the request body (e.g. 'type') */
+  bodyPath: string;
+  /** Expected value that identifies a challenge request (e.g. 'url_verification') */
+  value: string;
+  /** Dot-path to the field to echo back in the response (e.g. 'challenge') */
+  replyPath: string;
+}
+
 /**
  * Webhook handler declaration
  */
 export interface WebhookHandlerDecl {
-  /** Event pattern (e.g., 'github:push', 'slack:message') */
+  /** Event name / hook identifier (e.g. 'alert', 'push', 'update') */
   event: string;
   /** Human-readable description */
   describe?: string;
-  /** Handler file path relative to plugin root (e.g., './dist/webhooks/github.js') */
+  /** Handler file path relative to plugin root (e.g., './dist/webhooks/github.js#default') */
   handler: string;
+  /**
+   * Auth configuration — REQUIRED.
+   * Omitting auth causes the gateway to refuse startup with a descriptive error.
+   */
+  auth: WebhookAuthConfig;
   /** Input schema (webhook payload) */
   input?: SchemaRef;
   /** Handler-specific permissions */
   permissions?: PermissionSpec;
+  /**
+   * Multi-instance mode.
+   * When true, the route becomes /webhooks/{pluginId}/{event}/:instanceId.
+   * Each instanceId has its own independently provisioned secret.
+   */
+  multi?: boolean;
+  /**
+   * Async dispatch mode.
+   * When true, the gateway responds 202 immediately and dispatches the handler
+   * in the background via backend.execute (fire-and-forget, errors logged).
+   */
+  async?: boolean;
+  /**
+   * Challenge/handshake protocol (e.g. Slack URL verification).
+   * The gateway handles matching requests automatically without invoking the handler.
+   */
+  challenge?: WebhookChallengeConfig;
+  /**
+   * Dot-path into the request body for idempotency deduplication.
+   * Duplicate deliveries within 7 days return 200 without calling the handler.
+   */
+  idempotencyKey?: string;
+  /**
+   * Handler path called by the platform after kb webhook provision generates a secret.
+   * Called via backend.execute with { instanceId, secret, url }.
+   */
+  onProvision?: string;
+  /**
+   * Maximum request body size in bytes for this hook.
+   * Defaults to 512 * 1024 (512 KB) if not specified.
+   */
+  maxBodyBytes?: number;
+  /**
+   * Per-hook rate limit enforced via IResourceBroker.tryAcquire.
+   * Defaults to 60 requests per minute if not specified.
+   */
+  rateLimit?: { requestsPerMinute: number };
 }
 
 /**

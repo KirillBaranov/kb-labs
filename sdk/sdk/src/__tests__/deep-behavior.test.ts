@@ -63,6 +63,8 @@ describe('SDK Deep Behavior', () => {
       hostContext: {
         host: 'webhook',
         event: 'github:pull_request',
+        namespaceId: 'ns-test',
+        webhookId: 'wh-test-001',
       },
     });
 

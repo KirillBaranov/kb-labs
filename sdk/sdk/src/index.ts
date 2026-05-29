@@ -228,6 +228,7 @@ export {
   PUT,
   PATCH,
   DELETE,
+  webhook,
   type PluginId,
   type SemVer,
   type HandlerRef,

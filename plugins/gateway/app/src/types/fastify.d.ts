@@ -7,6 +7,8 @@ import 'fastify';
 
 declare module 'fastify' {
   interface FastifyRequest {
+    /** Raw request body captured by preParsing hook (used for HMAC verification). */
+    rawBody?: Buffer;
     kbLogger?: {
       trace(message: string, meta?: Record<string, unknown>): void;
       debug(message: string, meta?: Record<string, unknown>): void;

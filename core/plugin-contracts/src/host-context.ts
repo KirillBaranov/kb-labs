@@ -65,12 +65,18 @@ export interface WorkflowHostContext {
  */
 export interface WebhookHostContext {
   readonly host: 'webhook';
-  /** Event name */
+  /** Event name (matches WebhookHandlerDecl.event) */
   readonly event: string;
-  /** Event source */
+  /** Caller IP address */
   readonly source?: string;
-  /** Event payload */
+  /** Webhook request payload (parsed JSON body) */
   readonly payload?: unknown;
+  /** Tenant namespace ID (from x-kb-namespace header) */
+  readonly namespaceId: string;
+  /** Unique delivery ID (UUID v4, generated per request) */
+  readonly webhookId: string;
+  /** Instance ID — present when the hook is declared with multi: true */
+  readonly instanceId?: string;
 }
 
 /**
