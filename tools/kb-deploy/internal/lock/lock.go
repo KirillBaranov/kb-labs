@@ -22,11 +22,15 @@ const Filename = "deploy.lock.json"
 
 // Lock is the persisted state of the last successful apply.
 type Lock struct {
-	Schema      string                     `json:"schema"`
-	GeneratedAt string                     `json:"generatedAt"`
-	GeneratedBy string                     `json:"generatedBy"`
-	Platform    PlatformLock               `json:"platform"`
-	Services    map[string]ServiceLock     `json:"services"`
+	Schema      string                 `json:"schema"`
+	GeneratedAt string                 `json:"generatedAt"`
+	GeneratedBy string                 `json:"generatedBy"`
+	Platform    PlatformLock           `json:"platform"`
+	Services    map[string]ServiceLock `json:"services"`
+	// Hosts records per-host state independent of any single service. Runtime
+	// config is delivered per-host (all daemons share one file), so its hash
+	// lives here, not duplicated across services (D19).
+	Hosts map[string]HostLock `json:"hosts,omitempty"`
 }
 
 // PlatformLock records the platform version active at apply time.
@@ -34,14 +38,21 @@ type PlatformLock struct {
 	Version string `json:"version,omitempty"`
 }
 
+// HostLock records per-host state recorded at apply time.
+type HostLock struct {
+	// ConfigHash is sha256 over the rendered config file plus the resolved
+	// host env (values included, so secret rotation changes the hash and
+	// forces a restart). One-way — safe to commit; raw values never stored.
+	ConfigHash string `json:"configHash,omitempty"`
+}
+
 // ServiceLock records the resolved state of a single service across hosts.
 type ServiceLock struct {
-	Resolved   string                       `json:"resolved"`            // e.g. "@kb-labs/gateway@1.2.3"
-	Integrity  string                       `json:"integrity,omitempty"` // sha256-... over canonical inputs
-	Adapters   map[string]ResolvedDep       `json:"adapters,omitempty"`
-	Plugins    map[string]ResolvedDep       `json:"plugins,omitempty"`
-	ConfigHash string                       `json:"configHash,omitempty"` // sha256 of rendered config (D19)
-	AppliedTo  map[string]HostApplication   `json:"appliedTo,omitempty"`
+	Resolved  string                     `json:"resolved"`            // e.g. "@kb-labs/gateway@1.2.3"
+	Integrity string                     `json:"integrity,omitempty"` // sha256-... over canonical inputs
+	Adapters  map[string]ResolvedDep     `json:"adapters,omitempty"`
+	Plugins   map[string]ResolvedDep     `json:"plugins,omitempty"`
+	AppliedTo map[string]HostApplication `json:"appliedTo,omitempty"`
 }
 
 // ResolvedDep pins one adapter or plugin.

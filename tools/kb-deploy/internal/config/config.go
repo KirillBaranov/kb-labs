@@ -36,6 +36,11 @@ type Config struct {
 type PlatformConfig struct {
 	Version  string `yaml:"version,omitempty"`
 	Registry string `yaml:"registry,omitempty"` // default: https://registry.npmjs.org
+	// Config is a path (relative to deploy.yaml) to the pre-rendered runtime
+	// config file delivered verbatim to each host's <platformPath>/.kb/. All
+	// daemons on a host share this one file (config-loader is per-install).
+	// It may contain ${secrets.X} / ${env.X} refs resolved against host .env.
+	Config string `yaml:"config,omitempty"`
 }
 
 // BootstrapConfig controls how `kb-create` binary is delivered to hosts (D14).
@@ -91,6 +96,11 @@ type Host struct {
 	SSH          SSHConfig `yaml:"ssh"`
 	PlatformPath string    `yaml:"platformPath,omitempty"` // default: ~/kb-platform
 	Supervisor   string    `yaml:"supervisor,omitempty"`   // "" | "systemd"
+	// Env are per-host runtime variables (secrets, endpoints) written to the
+	// host's <platformPath>/.env and consumed via ${VAR} interpolation by the
+	// config loader. Values may contain ${secrets.X} / ${env.X} refs resolved
+	// on the control machine before delivery.
+	Env map[string]string `yaml:"env,omitempty"`
 }
 
 // RolloutConfig controls cross-service rollout behaviour.
@@ -104,17 +114,17 @@ type RolloutConfig struct {
 // managed independently from application targets.
 type InfraService struct {
 	// Type is the service kind. Currently only "docker-image" is supported.
-	Type     string            `yaml:"type"`
-	Image    string            `yaml:"image"`
-	SSH      SSHConfig         `yaml:"ssh"`
-	Volumes  []string          `yaml:"volumes"`
-	Ports    []string          `yaml:"ports"`
-	Env      map[string]string `yaml:"env"`
-	Restart  string            `yaml:"restart"`
+	Type    string            `yaml:"type"`
+	Image   string            `yaml:"image"`
+	SSH     SSHConfig         `yaml:"ssh"`
+	Volumes []string          `yaml:"volumes"`
+	Ports   []string          `yaml:"ports"`
+	Env     map[string]string `yaml:"env"`
+	Restart string            `yaml:"restart"`
 	// Strategy controls whether `kb-deploy run` touches this service.
 	// "manual" (default) — only explicit `infra up/down` commands.
 	// "diff"   — `infra up` is called during `run` if the image tag changed.
-	Strategy string            `yaml:"strategy"`
+	Strategy string `yaml:"strategy"`
 }
 
 // Target describes a single deployable application service.
@@ -123,7 +133,7 @@ type Target struct {
 	Image      string       `yaml:"image"`
 	Dockerfile string       `yaml:"dockerfile"`
 	Context    string       `yaml:"context"`
-	Bundle     string       `yaml:"bundle"`      // package name for kb-devkit bundle (optional)
+	Bundle     string       `yaml:"bundle"` // package name for kb-devkit bundle (optional)
 	SSH        SSHConfig    `yaml:"ssh"`
 	Remote     RemoteConfig `yaml:"remote"`
 }

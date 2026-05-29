@@ -94,8 +94,10 @@ func (r *Resolver) Expand(input string) (string, error) {
 }
 
 // ExpandMap returns a new map with every value expanded. Keys are unchanged.
-// Values typed as SecretValue in the returned map when the source ref was
-// ${secrets.X}; otherwise plain string.
+// Values are plain strings (resolved secrets included): callers must not log
+// the result. Redaction via SecretValue is not engaged on this path, so the
+// no-log discipline is the safeguard — resolved values flow only to the host
+// .env over stdin, never to argv or a logger.
 func (r *Resolver) ExpandMap(in map[string]string) (map[string]string, error) {
 	if len(in) == 0 {
 		return nil, nil

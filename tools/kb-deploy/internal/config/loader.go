@@ -65,7 +65,13 @@ func Load(path, repoRoot string) (*Config, error) {
 		}
 	}
 
+	// ${secrets.X} / ${env.X} belong to the apply-time secret resolver, not the
+	// loader. Preserve them verbatim so they survive to the resolver; only plain
+	// ${VAR} refs are expanded here (legacy targets, host endpoints).
 	expanded := os.Expand(string(data), func(key string) string {
+		if strings.HasPrefix(key, "secrets.") || strings.HasPrefix(key, "env.") {
+			return "${" + key + "}"
+		}
 		return env[key]
 	})
 
