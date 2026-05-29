@@ -93,22 +93,34 @@ jobs:
             if (audit.ok && errors.length === 0) {
               auditSection = '### ✅ Doc conventions\nAll checks pass.';
             } else {
-              const errLines = errors.map(i =>
-                `- **\`${i.target}\`** — ${i.message}`
-              ).join('\n');
-              const warnLines = warnings.slice(0, 10).map(i =>
-                `- \`${i.target}\` — ${i.message}`
-              ).join('\n');
-              const moreWarns = warnings.length > 10 ? `\n_...and ${warnings.length - 10} more warnings_` : '';
+              const toRows = (items) => items
+                .map(i => `| \`${i.target}\` | ${i.message} |`)
+                .join('\n');
+
+              const errTable = errors.length > 0 ? [
+                '**Errors — must fix before merge:**',
+                '| File | Issue |',
+                '|------|-------|',
+                toRows(errors),
+              ].join('\n') : '';
+
+              const warnItems = warnings.slice(0, 10);
+              const moreWarns = warnings.length > 10 ? `_...and ${warnings.length - 10} more warnings_` : '';
+              const warnTable = warnings.length > 0 ? [
+                '**Warnings:**',
+                '| File | Issue |',
+                '|------|-------|',
+                toRows(warnItems),
+                moreWarns,
+              ].filter(Boolean).join('\n') : '';
 
               auditSection = [
                 `### ❌ Doc conventions — ${errors.length} error(s), ${warnings.length} warning(s)`,
                 '',
-                errors.length > 0 ? `**Errors (must fix):**\n${errLines}` : '',
-                warnings.length > 0 ? `\n**Warnings:**\n${warnLines}${moreWarns}` : '',
-                '',
+                errTable,
+                warnTable,
                 `_Run locally: \`node sites/web/apps/docs/scripts/docs-audit.mjs\`_`,
-              ].filter(Boolean).join('\n');
+              ].filter(Boolean).join('\n\n');
             }
 
             // ── Build staleness section ──────────────────────────────────────
