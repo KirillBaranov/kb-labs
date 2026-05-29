@@ -68,44 +68,37 @@ function WorkflowGraphic() {
   );
 }
 
-function EventBusGraphic() {
+function LLMGraphic() {
   return (
     <div className="w-full select-none flex items-center justify-center gap-2 overflow-visible">
-      {/* Publisher */}
-      <div className="flex-shrink-0 rounded-xl border border-line bg-surface px-3 py-3 shadow-sm">
-        <div className="mb-1 font-mono text-[0.58rem] text-muted/50">service-a</div>
-        <div className="font-mono text-[0.65rem] text-kb-text">
-          emit(<span className="text-accent/80">"user.created"</span>)
+      {/* Plugin */}
+      <div className="flex-shrink-0 rounded-xl border border-accent/20 bg-surface px-3 py-3 shadow-sm">
+        <div className="mb-1.5 font-mono text-[0.58rem] text-muted/50">my-plugin</div>
+        <div className="font-mono text-[0.65rem] text-kb-text leading-relaxed">
+          platform.llm<br />
+          <span className="text-accent/80">.complete(prompt)</span>
         </div>
       </div>
 
       <div className="h-px w-4 flex-shrink-0 bg-line-strong" />
 
-      {/* EventBus */}
+      {/* Adapter */}
       <div className="flex-shrink-0 rounded-xl border border-line-strong bg-surface dark:bg-bg px-3 py-3 shadow-sm text-center">
-        <div className="font-mono text-[0.63rem] font-semibold text-muted">EventBus</div>
+        <div className="font-mono text-[0.63rem] font-semibold text-muted">adapter</div>
         <div className="mt-1.5 flex flex-col gap-1">
-          <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 font-mono text-[0.55rem] text-emerald-600/80">Redis</span>
-          <span className="rounded bg-line/40 px-1.5 py-0.5 font-mono text-[0.55rem] text-muted/50 dark:text-muted/35 line-through ring-1 ring-inset ring-line">Kafka</span>
+          <span className="rounded bg-emerald-500/10 px-1.5 py-0.5 font-mono text-[0.55rem] text-emerald-600/80">openai</span>
+          <span className="rounded bg-line/40 px-1.5 py-0.5 font-mono text-[0.55rem] text-muted/50 line-through ring-1 ring-inset ring-line">claude</span>
+          <span className="rounded bg-line/40 px-1.5 py-0.5 font-mono text-[0.55rem] text-muted/50 line-through ring-1 ring-inset ring-line">mistral</span>
         </div>
       </div>
 
-      {/* Fork lines */}
-      <div className="flex-shrink-0 flex flex-col gap-3">
-        <div className="h-px w-4 bg-line-strong" />
-        <div className="h-px w-4 bg-line-strong" />
-      </div>
+      <div className="h-px w-4 flex-shrink-0 bg-line-strong" />
 
-      {/* Subscribers */}
-      <div className="flex flex-col gap-2">
-        <div className="rounded-xl border border-line bg-surface px-3 py-2 shadow-sm">
-          <div className="font-mono text-[0.63rem] text-muted/70">service-b</div>
-          <div className="mt-0.5 font-mono text-[0.58rem] text-muted/55 dark:text-muted/40">on("user.created")</div>
-        </div>
-        <div className="rounded-xl border border-line bg-surface px-3 py-2 shadow-sm">
-          <div className="font-mono text-[0.63rem] text-muted/70">service-c</div>
-          <div className="mt-0.5 font-mono text-[0.58rem] text-muted/55 dark:text-muted/40">on("user.created")</div>
-        </div>
+      {/* Response */}
+      <div className="flex-shrink-0 rounded-xl border border-line bg-surface px-3 py-3 shadow-sm">
+        <div className="mb-1.5 font-mono text-[0.58rem] text-muted/50">response</div>
+        <div className="font-mono text-[0.65rem] text-emerald-500/80">✓ LLMResponse</div>
+        <div className="mt-1 font-mono text-[0.58rem] text-muted/50">same interface</div>
       </div>
     </div>
   );
@@ -142,7 +135,7 @@ function PlatformGraphic() {
 const GRAPHICS = [
   <AgentGraphic />,
   <WorkflowGraphic />,
-  <EventBusGraphic />,
+  <LLMGraphic />,
   <PlatformGraphic />,
 ];
 
