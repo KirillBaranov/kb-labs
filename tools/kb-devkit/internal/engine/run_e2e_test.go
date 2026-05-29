@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/kb-labs/devkit/internal/cache"
 	"github.com/kb-labs/devkit/internal/config"
 	"github.com/kb-labs/devkit/internal/workspace"
 )
@@ -168,6 +169,159 @@ func TestRunE2EStopsAfterFailure(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(root, "packages", "app", "should-not-run")); !os.IsNotExist(err) {
 		t.Fatalf("verify task should not have run, stat err = %v", err)
+	}
+}
+
+func TestRunMarksFailedPackagesAsDirty(t *testing.T) {
+	root := t.TempDir()
+	writeWorkspaceRoot(t, root, []string{"packages/*"})
+	writePkg(t, filepath.Join(root, "packages", "app"), `{"name":"@kb/app"}`)
+
+	cfg := testConfig([]config.NamedCategory{
+		{Name: "libs", Category: config.CategoryConfig{Match: []string{"packages/*"}, Preset: "node-lib"}},
+	})
+	cfg.Tasks = map[string]config.TaskConfig{
+		"build": {{Command: `sh -c "exit 1"`}},
+	}
+
+	ws := mustWorkspace(t, root, cfg)
+	cacheRoot := filepath.Join(root, ".kb", "devkit-cache")
+
+	result, err := Run(ws, cfg, RunOptions{
+		Tasks:     []string{"build"},
+		WSRoot:    root,
+		CacheRoot: cacheRoot,
+	})
+	if err != nil {
+		t.Fatalf("Run error: %v", err)
+	}
+	if result.OK {
+		t.Fatal("expected RunResult.OK = false")
+	}
+
+	if !cache.NewStateStore(cacheRoot).IsDirty("@kb/app", "build") {
+		t.Fatal("@kb/app:build should be DIRTY after failure")
+	}
+}
+
+func TestRunMarksSuccessPackagesAsClean(t *testing.T) {
+	root := t.TempDir()
+	writeWorkspaceRoot(t, root, []string{"packages/*"})
+	writePkg(t, filepath.Join(root, "packages", "app"), `{"name":"@kb/app"}`)
+
+	cfg := testConfig([]config.NamedCategory{
+		{Name: "libs", Category: config.CategoryConfig{Match: []string{"packages/*"}, Preset: "node-lib"}},
+	})
+	cfg.Tasks = map[string]config.TaskConfig{
+		"build": {{Command: `sh -c "exit 0"`}},
+	}
+
+	ws := mustWorkspace(t, root, cfg)
+	cacheRoot := filepath.Join(root, ".kb", "devkit-cache")
+
+	result, err := Run(ws, cfg, RunOptions{
+		Tasks:     []string{"build"},
+		WSRoot:    root,
+		CacheRoot: cacheRoot,
+	})
+	if err != nil {
+		t.Fatalf("Run error: %v", err)
+	}
+	if !result.OK {
+		t.Fatal("expected RunResult.OK = true")
+	}
+
+	if cache.NewStateStore(cacheRoot).IsDirty("@kb/app", "build") {
+		t.Fatal("@kb/app:build should be CLEAN after success")
+	}
+}
+
+func TestRunMarksNotExecutedPackagesAsDirty(t *testing.T) {
+	root := t.TempDir()
+	writeWorkspaceRoot(t, root, []string{"packages/*"})
+	writePkg(t, filepath.Join(root, "packages", "core"), `{"name":"@kb/core"}`)
+	writePkg(t, filepath.Join(root, "packages", "app"), `{"name":"@kb/app","dependencies":{"@kb/core":"workspace:*"}}`)
+
+	cfg := testConfig([]config.NamedCategory{
+		{Name: "libs", Category: config.CategoryConfig{Match: []string{"packages/*"}, Preset: "node-lib"}},
+	})
+	cacheRoot := filepath.Join(root, ".kb", "devkit-cache")
+
+	// Phase 1: both packages build successfully → both CLEAN.
+	cfg.Tasks = map[string]config.TaskConfig{
+		"build": {{Command: `sh -c "exit 0"`, Deps: []string{"^build"}}},
+	}
+	ws := mustWorkspace(t, root, cfg)
+	r1, err := Run(ws, cfg, RunOptions{Tasks: []string{"build"}, WSRoot: root, CacheRoot: cacheRoot, Concurrency: 1})
+	if err != nil || !r1.OK {
+		t.Fatalf("phase 1 Run should succeed: err=%v ok=%v", err, r1.OK)
+	}
+	ss := cache.NewStateStore(cacheRoot)
+	if ss.IsDirty("@kb/core", "build") || ss.IsDirty("@kb/app", "build") {
+		t.Fatal("both packages should be CLEAN after phase 1")
+	}
+
+	// Phase 2: core fails → app (in a later layer) never runs.
+	// app was CLEAN; scheduler hard stop must mark it DIRTY.
+	cfg.Tasks["build"] = config.TaskConfig{{Command: `sh -c "exit 1"`, Deps: []string{"^build"}}}
+	r2, err := Run(ws, cfg, RunOptions{
+		Tasks: []string{"build"}, WSRoot: root, CacheRoot: cacheRoot, Concurrency: 1, NoCache: true,
+	})
+	if err != nil {
+		t.Fatalf("Run error: %v", err)
+	}
+	if r2.OK {
+		t.Fatal("expected RunResult.OK = false (core fails)")
+	}
+
+	// core: actually failed → DIRTY
+	if !ss.IsDirty("@kb/core", "build") {
+		t.Fatal("@kb/core:build should be DIRTY (actually failed)")
+	}
+	// app: was CLEAN, skipped by scheduler hard stop → must be DIRTY
+	if !ss.IsDirty("@kb/app", "build") {
+		t.Fatal("@kb/app:build should be DIRTY (was CLEAN but skipped due to hard stop)")
+	}
+}
+
+func TestDirtyPackagesCoversRetryAfterFailure(t *testing.T) {
+	root := t.TempDir()
+	writeWorkspaceRoot(t, root, []string{"packages/*"})
+	writePkg(t, filepath.Join(root, "packages", "app"), `{"name":"@kb/app"}`)
+
+	cfg := testConfig([]config.NamedCategory{
+		{Name: "libs", Category: config.CategoryConfig{Match: []string{"packages/*"}, Preset: "node-lib"}},
+	})
+	cfg.Tasks = map[string]config.TaskConfig{
+		"build": {{Command: `sh -c "exit 1"`}},
+	}
+
+	ws := mustWorkspace(t, root, cfg)
+	cacheRoot := filepath.Join(root, ".kb", "devkit-cache")
+
+	// First run — fails
+	Run(ws, cfg, RunOptions{ //nolint:errcheck
+		Tasks: []string{"build"}, WSRoot: root, CacheRoot: cacheRoot,
+	})
+
+	// DirtyPackages must return @kb/app even though no files changed
+	dirty := DirtyPackages(ws, []string{"build"}, cacheRoot)
+	if len(dirty) != 1 || dirty[0].Name != "@kb/app" {
+		t.Fatalf("DirtyPackages after failure = %v, want [@kb/app]", dirty)
+	}
+
+	// Fix: run succeeds. NoCache:true avoids hitting the cached failure manifest
+	// (same inputHash since inputs are empty in this test), ensuring a real execution
+	// that writes CLEAN state.
+	cfg.Tasks["build"] = config.TaskConfig{{Command: `sh -c "exit 0"`}}
+	Run(ws, cfg, RunOptions{ //nolint:errcheck
+		Tasks: []string{"build"}, WSRoot: root, CacheRoot: cacheRoot, NoCache: true,
+	})
+
+	// Now DirtyPackages must be empty
+	dirty2 := DirtyPackages(ws, []string{"build"}, cacheRoot)
+	if len(dirty2) != 0 {
+		t.Fatalf("DirtyPackages after fix = %v, want []", dirty2)
 	}
 }
 

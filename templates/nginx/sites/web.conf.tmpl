@@ -1,0 +1,28 @@
+# KB Labs marketing / landing site.
+# Render with: envsubst < web.conf.tmpl > web.conf
+
+server {
+    server_name ${KB_DOMAIN} www.${KB_DOMAIN};
+
+    location / {
+        proxy_pass http://localhost:${KB_WEB_PORT};
+        include /etc/nginx/snippets/kb-labs/proxy-common.conf;
+    }
+
+    include /etc/nginx/snippets/kb-labs/error-pages.conf;
+
+    listen 443 ssl;
+    ssl_certificate     ${KB_CERT_PATH}/fullchain.pem;
+    ssl_certificate_key ${KB_CERT_PATH}/privkey.pem;
+    include             /etc/letsencrypt/options-ssl-nginx.conf;
+    ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
+}
+
+server {
+    if ($host = www.${KB_DOMAIN}) { return 301 https://$host$request_uri; }
+    if ($host = ${KB_DOMAIN})     { return 301 https://$host$request_uri; }
+
+    listen 80;
+    server_name ${KB_DOMAIN} www.${KB_DOMAIN};
+    return 404;
+}

@@ -1,0 +1,51 @@
+{
+  "marketplace": {
+    "catalog": {
+      "comingSoon": "Скоро",
+      "categoriesLabel": "Категории",
+      "noResults": "Ничего не найдено",
+      "resetFilters": "Сбросить фильтры",
+      "searchAriaLabel": "Поиск по каталогу",
+      "searchPlaceholder": "Поиск расширений...",
+      "authorLabel": "Автор",
+      "comingSoonDesc": "Больше расширений скоро появятся.",
+      "resultCount": "{count} расширений",
+      "noResultsQuery": "Нет результатов для"
+    },
+    "meta": {
+      "title": "Маркетплейс",
+      "description": "Экосистема плагинов, адаптеров и виджетов KB Labs: рабочие плагины сегодня и коммерческая модель в roadmap."
+    },
+    "detail": {
+      "comingSoon": "Скоро",
+      "versionLabel": "Версия",
+      "installLabel": "Установка",
+      "typeLabel": "Тип",
+      "envLabel": "Переменные окружения",
+      "requirementsTitle": "Требования",
+      "tagsLabel": "Теги",
+      "aboutTitle": "О расширении",
+      "updatedLabel": "Обновлён",
+      "networkLabel": "Сетевой доступ",
+      "commandsTitle": "Команды",
+      "authorLabel": "Автор",
+      "downloadsLabel": "Загрузки в неделю",
+      "permissionsLabel": "Разрешения",
+      "backLink": "Маркетплейс"
+    },
+    "cta": {
+      "title": "Создайте расширение для KB Labs.",
+      "installBtn": "Установить KB Labs",
+      "pluginGuide": "Руководство по плагинам",
+      "eyebrow": "Создайте для KB Labs",
+      "description": "Plugin SDK даёт вам все инструменты для создания и публикации своего расширения в каталог."
+    },
+    "hero": {
+      "title": "Экосистема расширений для KB Labs",
+      "extensionsCount": "({count} расширений)",
+      "eyebrow": "Маркетплейс плагинов",
+      "description": "Просматривайте плагины, адаптеры и виджеты для KB Labs. Устанавливайте любой одной командой.",
+      "subtitle": "Сейчас: плагины, проверенные в dogfooding. Далее: универсальные решения для ранних пользователей и marketplace-монетизация."
+    }
+  }
+}

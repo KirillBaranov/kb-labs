@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { resolveToken, extractBearerToken } from '../auth/tokens.js';
+import { signAccessToken } from '@kb-labs/gateway-auth';
 import type { ICache } from '@kb-labs/core-platform';
 import type { JwtConfig } from '@kb-labs/gateway-auth';
 
@@ -44,13 +45,21 @@ describe('extractBearerToken', () => {
 const stubJwtConfig: JwtConfig = { secret: 'test-secret' };
 
 describe('resolveToken', () => {
-  it('resolves machine token from cache', async () => {
-    const token = 'machine-token-uuid';
-    const cache = makeCache({
-      [`host:token:${token}`]: { hostId: 'host-1', namespaceId: 'ns-1' },
-    });
+  it('resolves a valid machine JWT and returns the embedded permissions', async () => {
+    const { token } = await signAccessToken(
+      {
+        hostId: 'host-1',
+        namespaceId: 'ns-1',
+        tier: 'free',
+        type: 'machine',
+        permissions: ['host:connect'],
+      },
+      stubJwtConfig,
+    );
 
+    const cache = makeCache();
     const ctx = await resolveToken(token, cache, stubJwtConfig);
+
     expect(ctx).not.toBeNull();
     expect(ctx!.type).toBe('machine');
     expect(ctx!.userId).toBe('host-1');
@@ -58,26 +67,54 @@ describe('resolveToken', () => {
     expect(ctx!.permissions).toContain('host:connect');
   });
 
-  it('returns null for unknown token (no CLI fallback)', async () => {
-    const cache = makeCache(); // no entries
-    const ctx = await resolveToken('some-unknown-token', cache, stubJwtConfig);
+  it('resolves host-registry opaque token from cache (issued by /hosts/register)', async () => {
+    const token = 'host-registry-uuid';
+    const cache = makeCache({
+      [`host:token:${token}`]: { hostId: 'host-1', namespaceId: 'ns-1' },
+    });
+
+    const ctx = await resolveToken(token, cache, stubJwtConfig);
+
+    expect(ctx).not.toBeNull();
+    expect(ctx!.type).toBe('machine');
+    expect(ctx!.userId).toBe('host-1');
+    expect(ctx!.namespaceId).toBe('ns-1');
+    expect(ctx!.permissions).toContain('host:connect');
+  });
+
+  it('returns null for an invalid / unknown token', async () => {
+    const cache = makeCache();
+    const ctx = await resolveToken('not-a-valid-token', cache, stubJwtConfig);
     expect(ctx).toBeNull();
   });
 
-  it('machine token resolves correctly, unknown token returns null', async () => {
-    const token = 'machine-uuid';
-    const cache = makeCache({ [`host:token:${token}`]: { hostId: 'h-1', namespaceId: 'ns-a' } });
-    const ctx = await resolveToken(token, cache, stubJwtConfig);
-    expect(ctx!.type).toBe('machine');
+  it('returns null for a JWT signed with a different secret', async () => {
+    const { token } = await signAccessToken(
+      { hostId: 'h', namespaceId: 'ns', tier: 'free', type: 'machine', permissions: [] },
+      { secret: 'other-secret' },
+    );
 
-    const unknown = await resolveToken('other-token', cache, stubJwtConfig);
-    expect(unknown).toBeNull();
+    const cache = makeCache();
+    const ctx = await resolveToken(token, cache, stubJwtConfig);
+    expect(ctx).toBeNull();
   });
 
-  it('checks correct cache key for machine token', async () => {
-    const token = 'test-token';
+  it('embeds custom permissions in JWT path', async () => {
+    const { token } = await signAccessToken(
+      {
+        hostId: 'h',
+        namespaceId: 'ns',
+        tier: 'free',
+        type: 'machine',
+        permissions: ['machine:register', 'host:connect'],
+      },
+      stubJwtConfig,
+    );
+
     const cache = makeCache();
-    await resolveToken(token, cache, stubJwtConfig);
-    expect(cache.get).toHaveBeenCalledWith(`host:token:${token}`);
+    const ctx = await resolveToken(token, cache, stubJwtConfig);
+    expect(ctx).not.toBeNull();
+    expect(ctx!.permissions).toContain('machine:register');
+    expect(ctx!.permissions).toContain('host:connect');
   });
 });

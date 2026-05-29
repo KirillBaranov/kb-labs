@@ -1,0 +1,131 @@
+{
+  "changelog": {
+    "meta": {
+      "title": "Changelog",
+      "description": "New features, improvements, and fixes in KB Labs."
+    },
+    "typeNew": "New",
+    "releases": [
+      {
+        "version": "v1.4.0",
+        "date": "May 2026",
+        "title": "Plugin scaffolding + Studio refresh",
+        "changes": [
+          {
+            "type": "new",
+            "text": "Scaffold plugin — generate new plugins from a template with a single command via kb-create"
+          },
+          {
+            "type": "new",
+            "text": "kb.config.jsonc support — platform config files can now include comments"
+          },
+          {
+            "type": "new",
+            "text": "Studio workflow page redesign — simplified navigation and cleaner task management UI"
+          },
+          {
+            "type": "improved",
+            "text": "Platform SDK exposes platform client, runtimeContext ALS, and useEnv() hook for plugin authors"
+          },
+          {
+            "type": "improved",
+            "text": "Redis adapter now connects lazily — startup no longer fails if Redis is unavailable at boot"
+          },
+          {
+            "type": "improved",
+            "text": "Install instructions updated with prerequisites and automatic PATH setup"
+          }
+        ]
+      },
+      {
+        "version": "v1.3.0",
+        "date": "Apr 2026",
+        "title": "Agent SDK + workspace agent",
+        "changes": [
+          {
+            "type": "new",
+            "text": "Docker-based isolated execution — plugins can run in containers with automatic workspace provisioning"
+          },
+          {
+            "type": "new",
+            "text": "Execution plane fully encapsulated — workflow, REST API, and CLI daemons are now thin hosts"
+          },
+          {
+            "type": "improved",
+            "text": "Gateway Docker image includes adapters and uses a slimmer Node.js base for faster cold starts"
+          },
+          {
+            "type": "improved",
+            "text": "Marketplace routes are now action-oriented — fewer URL encoding issues in plugin navigation"
+          },
+          {
+            "type": "fixed",
+            "text": "Gateway non-fatal restore when cache is unavailable — Redis URL option corrected"
+          }
+        ]
+      },
+      {
+        "version": "v1.2.0",
+        "date": "Mar 2026",
+        "title": "Workflow engine stabilization",
+        "changes": [
+          {
+            "type": "new",
+            "text": "Plan/Execute agent mode — agents draft a plan, user approves, execution injects the approved plan automatically"
+          },
+          {
+            "type": "new",
+            "text": "Session memory — conversation history and memory facts persist across agent sessions via turns.json"
+          },
+          {
+            "type": "new",
+            "text": "Context filter middleware — sliding window and tool output truncation for large agent contexts"
+          },
+          {
+            "type": "improved",
+            "text": "BudgetMiddleware and ProgressMiddleware refactored — all internal state, no external state provider needed"
+          },
+          {
+            "type": "improved",
+            "text": "Agent SDK pipeline ordering stabilized: Observability → Budget → ContextFilter → FactSheet → Progress"
+          }
+        ]
+      },
+      {
+        "version": "v1.1.0",
+        "date": "Feb 2026",
+        "title": "Gateway adapters + policy layer",
+        "changes": [
+          {
+            "type": "new",
+            "text": "Single monorepo — all platform packages, plugins, adapters, and tools live in one repository"
+          },
+          {
+            "type": "new",
+            "text": "kb-create — one command to scaffold a full platform workspace with starter workflows"
+          },
+          {
+            "type": "new",
+            "text": "Plugin duck typing — any package with a kb.manifest.ts is a plugin, no base class required"
+          },
+          {
+            "type": "improved",
+            "text": "Internal packages resolve via workspace:* — no DevLink, no mode switching, no symlink fragility"
+          },
+          {
+            "type": "improved",
+            "text": "kb-devkit Go binary handles build ordering, health checks, and monorepo-wide task running"
+          }
+        ]
+      }
+    ],
+    "hero": {
+      "title": "Changelog",
+      "titleHighlight": "what shipped.",
+      "eyebrow": "Releases",
+      "subtitle": "Every release, every change."
+    },
+    "typeFixed": "Fixed",
+    "typeImproved": "Improved"
+  }
+}

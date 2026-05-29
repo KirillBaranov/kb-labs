@@ -10,6 +10,7 @@
 
 import type {
   PlatformServices,
+  PluginServices,
   PermissionSpec,
   VectorRecord,
   VectorFilter,
@@ -251,7 +252,9 @@ const wrapNotifier: AdapterMiddlewareFn<INotifier> = (adapter, ctx) => {
 /**
  * Single source of truth for all platform adapters.
  *
- * Adding a new field to PlatformServices causes a compile error here
+ * Adding a new field to PluginServices causes a compile error here.
+ * Platform-only fields (e.g. serviceTransport) live in PlatformServices only
+ * and must NOT be in this registry — they are excluded from plugin context.
  * until a corresponding entry is added. Each entry declares (in pipeline order):
  *   - analyticsFactory:      optional tracking wrap (before router)
  *   - routerFactory:         optional platform-level routing (LLMRouter, etc.)
@@ -408,7 +411,7 @@ export const ADAPTER_REGISTRY = {
     ipc: { strategy: 'absent' },
   },
  
-} satisfies { [K in keyof Required<PlatformServices>]: AdapterDescriptor<any> };
+} satisfies { [K in keyof Required<PluginServices>]: AdapterDescriptor<any> };
 
 export type AdapterRegistryKey = keyof typeof ADAPTER_REGISTRY;
 

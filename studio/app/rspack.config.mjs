@@ -38,6 +38,12 @@ export default defineConfig({
   },
   resolve: {
     extensions: ['.tsx', '.ts', '.jsx', '.js'],
+    // Allow TypeScript ESM-style imports with .js extension to resolve .tsx/.ts files.
+    // e.g. `import './auth-provider.js'` resolves to `auth-provider.tsx`.
+    extensionAlias: {
+      '.js': ['.tsx', '.ts', '.js'],
+      '.jsx': ['.tsx', '.jsx'],
+    },
     alias: {
       '@': path.resolve(__dirname, 'src'),
       '@kb-labs/studio-ui-core': path.resolve(__dirname, '../ui-core/src'),

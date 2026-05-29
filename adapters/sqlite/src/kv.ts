@@ -7,6 +7,10 @@
  */
 
 import { createSqliteKVStore, SqliteKVStore, type SqliteKVConfig } from './kv-store.js';
+// The adapter loader requires a manifest export from every adapter entry point.
+// The KV subpath shares the same manifest as the document-database entry because
+// both are backed by the same SQLite file and WAL connection.
+export { manifest } from './manifest.js';
 
 export { SqliteKVStore, createSqliteKVStore, type SqliteKVConfig };
 

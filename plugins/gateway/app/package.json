@@ -19,6 +19,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@fastify/cookie": "^11.0.1",
     "@fastify/cors": "^10.0.1",
     "@fastify/http-proxy": "^11.4.4",
     "@fastify/swagger": ">=9.5.1",
@@ -32,6 +33,7 @@
     "@kb-labs/adapters-openai": "workspace:*",
     "@kb-labs/adapters-pino": "workspace:*",
     "@kb-labs/adapters-redis": "workspace:*",
+    "@kb-labs/adapters-service-transport-http": "workspace:*",
     "@kb-labs/adapters-sqlite": "workspace:*",
     "@kb-labs/core-config": "workspace:*",
     "@kb-labs/core-contracts": "workspace:*",
@@ -51,8 +53,11 @@
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
+    "@kb-labs/sdk": "workspace:*",
     "@kb-labs/shared-testing-e2e": "workspace:*",
+    "@types/bcryptjs": "^2.4.6",
     "@types/ws": "^8.5.14",
+    "bcryptjs": "^2.4.3",
     "eslint": "^9",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",

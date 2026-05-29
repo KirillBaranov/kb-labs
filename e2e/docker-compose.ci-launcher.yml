@@ -1,0 +1,17 @@
+# CI launcher override — expose Verdaccio port to the host runner.
+#
+# Used by the launcher-e2e job in ci-pr.yml, which runs kb-create Go tests
+# directly on the CI runner (not inside Docker). The tests call pnpm on the
+# host, so Verdaccio must be reachable at http://localhost:4873.
+#
+# The base docker-compose.yml exposes Verdaccio only inside the Docker network
+# (for the platform container at http://verdaccio:4873). This override adds
+# the host port binding so the runner can reach it too.
+#
+# Load order: docker-compose.yml:docker-compose.ci.yml:docker-compose.ci-launcher.yml
+# The ci.yml swaps in the bind-mount storage; this file adds the port.
+
+services:
+  verdaccio:
+    ports:
+      - "4873:4873"

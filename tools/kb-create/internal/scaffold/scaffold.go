@@ -31,12 +31,20 @@ const DefaultGatewayURL = "https://api.kblabs.ru"
 
 // Options controls which sections are included in the generated config.
 type Options struct {
-	PlatformDir        string
-	Services           []string      // selected service IDs (e.g. "rest", "workflow")
-	Plugins            []string      // selected plugin IDs  (e.g. "mind", "agents")
-	DemoMode           bool          // generate demo workflow template
-	GatewayCredentials *GatewayCreds // non-nil → write adapterOptions.llm (demo only)
+	PlatformDir         string
+	Services            []string        // selected service IDs (e.g. "rest", "workflow")
+	Plugins             []string        // selected plugin IDs  (e.g. "mind", "agents")
+	DemoMode            bool            // generate demo workflow template
+	GatewayCredentials  *GatewayCreds   // non-nil → write adapterOptions.llm (demo only)
 	PreservedLLMOptions json.RawMessage // non-nil → write adapterOptions.llm verbatim (update preserve)
+	// DocumentDatabase is the npm package that implements IDocumentDatabase
+	// (e.g. "@kb-labs/adapters-sqlite"). When non-empty it is written into the
+	// adapters section of the generated platform config so the gateway can
+	// initialise features that require durable document storage (e.g. user auth).
+	DocumentDatabase string
+	// KVStore is the npm package that implements IKVStore
+	// (e.g. "@kb-labs/adapters-sqlite/kv"). Written alongside DocumentDatabase.
+	KVStore string
 }
 
 // WritePlatformConfig writes the full platform config to platformDir/.kb/kb.config.jsonc.
@@ -143,6 +151,12 @@ func ReadPlatformOptions(platformDir string, projectDir ...string) Options {
 		AdapterOptions struct {
 			LLM json.RawMessage `json:"llm"`
 		} `json:"adapterOptions"`
+		Platform struct {
+			Adapters struct {
+				DocumentDatabase string `json:"documentDatabase"`
+				KVStore          string `json:"kvStore"`
+			} `json:"adapters"`
+		} `json:"platform"`
 	}
 	if err := json.Unmarshal([]byte(cleaned), &cfg); err != nil {
 		return opts
@@ -158,6 +172,10 @@ func ReadPlatformOptions(platformDir string, projectDir ...string) Options {
 			opts.Plugins = append(opts.Plugins, name)
 		}
 	}
+	// Preserve documentDatabase and kvStore so kb-create update does not
+	// remove adapters that were set from the manifest's adapterConfig.
+	opts.DocumentDatabase = cfg.Platform.Adapters.DocumentDatabase
+	opts.KVStore = cfg.Platform.Adapters.KVStore
 	// Preserve existing LLM adapter options (e.g. gateway URL + credentials)
 	// so that kb-create update does not reset --llm configuration.
 	llmRaw := string(cfg.AdapterOptions.LLM)
@@ -276,8 +294,23 @@ func generateFull(opts Options) string {
       "logRingBuffer": "@kb-labs/adapters-log-ringbuffer",
 
       // Analytics — JSONL file, no native dependencies.
-      "analytics": "@kb-labs/adapters-analytics-file"
-    },
+      "analytics": "@kb-labs/adapters-analytics-file"`)
+	if opts.DocumentDatabase != "" {
+		b.WriteString(",\n\n      // Persistent document store — required for user auth (ADR-0020)\n")
+		b.WriteString("      // and other features that need durable storage.\n")
+		fmt.Fprintf(&b, "      \"documentDatabase\": %s", quote(opts.DocumentDatabase))
+	}
+	if opts.KVStore != "" {
+		b.WriteString(",\n\n      // Key-value store — used for sessions, rate limiting, etc.\n")
+		fmt.Fprintf(&b, "      \"kvStore\": %s", quote(opts.KVStore))
+	}
+	b.WriteString(`,
+
+      // Service-to-service transport — gateway uses this to proxy to internal services.
+      // Supports TCP (default) and unix domain sockets (kb-dev socket mode).
+      "serviceTransport": "@kb-labs/adapters-service-transport-http"
+`)
+	b.WriteString(`    },
 
     // Plugin execution mode: "worker-pool" (isolated workers, stable) or
     // "in-process" (fast, shared memory — lower isolation).
@@ -310,23 +343,42 @@ func generateFull(opts Options) string {
 	b.WriteString("    \"storage\": { \"baseDir\": \".kb/storage\" },\n")
 	b.WriteString("    \"logger\": { \"level\": \"info\" },\n")
 	b.WriteString("    \"logRingBuffer\": { \"maxSize\": 100 },\n")
-	b.WriteString("    \"analytics\": { \"filename\": \".kb/analytics/events.jsonl\" }\n")
+	// Analytics is always followed by serviceTransport, so always use trailing comma.
+	b.WriteString("    \"analytics\": { \"filename\": \".kb/analytics/events.jsonl\" },\n")
+	if opts.DocumentDatabase != "" {
+		b.WriteString("    // Persistent document store options — filename is relative to the platform dir.\n")
+		b.WriteString("    // Both documentDatabase and kvStore share the same file (single WAL connection).\n")
+		b.WriteString("    \"documentDatabase\": { \"filename\": \".kb/data/platform.db\" },\n")
+		if opts.KVStore != "" {
+			b.WriteString("    \"kvStore\": { \"filename\": \".kb/data/platform.db\" },\n")
+		}
+	}
+	b.WriteString("    // Service-to-service transport. urls = TCP loopback (ADR-0020).\n")
+	b.WriteString("    // To use unix sockets, add \"socketPath\" per service (kb-dev injects KB_SOCKET_PATH).\n")
+	b.WriteString("    \"serviceTransport\": {\n")
+	b.WriteString("      \"services\": {\n")
+	b.WriteString("        \"rest\":        { \"url\": \"http://127.0.0.1:5050\" },\n")
+	b.WriteString("        \"workflow\":    { \"url\": \"http://127.0.0.1:7778\" },\n")
+	b.WriteString("        \"marketplace\": { \"url\": \"http://127.0.0.1:5070\" }\n")
+	b.WriteString("      }\n")
+	b.WriteString("    }\n")
 	b.WriteString("  },\n\n")
 
 	// ── gateway section ───────────────────────────────────────────────────
 	b.WriteString(`  // ─── Gateway ──────────────────────────────────────────────────────────
-  // API gateway upstream routing. Gateway (:4000) proxies these services.
+  // API gateway upstream routing. upstreams reference serviceIds from
+  // adapterOptions.serviceTransport.services above.
   // /ready checks that the "rest" upstream is up — keep this section present.
   "gateway": {
     "upstreams": {
       // REST API — main platform BFF.
-      "rest": { "url": "http://localhost:5050", "prefix": "/api/v1", "websocket": true },
+      "rest":        { "serviceId": "rest",        "prefix": "/api/v1",             "websocket": true },
       // Workflow daemon — execution engine.
-      "workflow": { "url": "http://localhost:7778", "prefix": "/api/exec", "rewritePrefix": "" },
+      "workflow":    { "serviceId": "workflow",    "prefix": "/api/exec",           "rewritePrefix": "" },
       // Marketplace service — entity management.
-      "marketplace": { "url": "http://localhost:5070", "prefix": "/api/v1/marketplace" },
+      "marketplace": { "serviceId": "marketplace", "prefix": "/api/v1/marketplace"                   },
       // Plugin widget bundles — static files served by REST API.
-      "widgets": { "url": "http://localhost:5050", "prefix": "/plugins" }
+      "widgets":     { "serviceId": "rest",        "prefix": "/plugins"                              }
     }
   },
 

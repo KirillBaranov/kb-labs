@@ -13,10 +13,19 @@ type State struct {
 	Targets map[string]TargetState `json:"targets"`
 }
 
-// TargetState records the last successful deploy of a single target.
+// TargetState records the last deploy attempt for a single target.
 type TargetState struct {
 	SHA        string    `json:"sha"`
+	Status     string    `json:"status,omitempty"`      // "success" | "failed" | "" (legacy = success)
+	FailReason string    `json:"fail_reason,omitempty"` // "bundle" | "build" | "push" | "ssh"
 	DeployedAt time.Time `json:"deployed_at"`
+}
+
+// IsLastDeployFailed reports whether the last deploy attempt for target failed.
+// Returns false for missing targets and legacy records with empty Status.
+func (s *State) IsLastDeployFailed(target string) bool {
+	ts, ok := s.Targets[target]
+	return ok && ts.Status == "failed"
 }
 
 // Load reads state from path. Returns an empty State if the file doesn't exist.

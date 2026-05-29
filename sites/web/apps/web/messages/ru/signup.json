@@ -1,0 +1,65 @@
+{
+  "signup": {
+    "meta": {
+      "title": "SaaS Waitlist",
+      "description": "Запишитесь в SaaS waitlist KB Labs и помогите сформировать облачную версию платформы на раннем этапе."
+    },
+    "eyebrow": "SaaS waitlist",
+    "perks": [
+      {
+        "label": "Ранний доступ к SaaS",
+        "description": "Приглашения в закрытые облачные релизы по мере готовности."
+      },
+      {
+        "label": "Приоритет по интеграциям",
+        "description": "Ваши сценарии и инфраструктурные требования учитываются при планировании."
+      },
+      {
+        "label": "Прямой контакт с командой",
+        "description": "Разберёмся в вашей задаче и поможем выбрать между on-prem сегодня и SaaS позже."
+      }
+    ],
+    "description": "Сейчас основной фокус — on-prem OSS. Эта форма собирает интерес к SaaS и помогает нам приоритизировать roadmap.",
+    "form": {
+      "title": "Записаться в очередь",
+      "submitting": "Отправка…",
+      "notePrefix": "Отправляя форму, вы соглашаетесь с нашей",
+      "description": "Оставьте рабочий email и коротко опишите свой сценарий.",
+      "noteSuffix": ".",
+      "emailAriaLabel": "Рабочий email",
+      "success": "Вы в списке. Напишем, когда откроем следующую SaaS-волну.",
+      "privacyLink": "Политикой конфиденциальности",
+      "submit": "Записаться",
+      "fields": {
+        "deploymentPreference": {
+          "label": "Предпочтительный деплой",
+          "options": {
+            "onPremNow": "On-prem сейчас",
+            "undecided": "Пока не определились",
+            "saasLater": "SaaS позже"
+          }
+        },
+        "useCase": {
+          "label": "Основной сценарий",
+          "options": {
+            "qa": "QA regressions and trends",
+            "agentWorkflows": "Internal agent workflows",
+            "release": "Release orchestration",
+            "other": "Другое",
+            "commitPolicy": "Commit and change policy",
+            "monorepo": "Monorepo dependency operations"
+          }
+        },
+        "useCaseOther": {
+          "label": "Опишите свой сценарий",
+          "placeholder": "Расскажите что автоматизируете и какой стек используете..."
+        }
+      },
+      "emailPlaceholder": "work@email.com"
+    },
+    "hero": {
+      "titlePrefix": "Вступите в",
+      "titleHighlight": "список ожидания SaaS."
+    }
+  }
+}

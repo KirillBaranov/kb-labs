@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -60,11 +61,12 @@ func New(cfg *config.Config, rootDir, projectDir string) *Manager {
 }
 
 // spawnEnv returns the env map to pass to a spawned service, merging the
-// service's own Env with KB Labs conventional variables (KB_PROJECT_ROOT) so
-// that services using @kb-labs/core-runtime's loadPlatformConfig / resolveRoots
-// can locate the user's .kb/kb.config.json regardless of their own cwd.
-func (m *Manager) spawnEnv(svcEnv map[string]string) map[string]string {
-	merged := make(map[string]string, len(svcEnv)+1)
+// service's own Env with KB Labs conventional variables (KB_PROJECT_ROOT,
+// KB_SOCKET_PATH) so that services can locate the user's .kb/kb.config.json
+// and bind to the correct unix socket when configured.
+func (m *Manager) spawnEnv(svcCfg config.Service) map[string]string {
+	svcEnv := svcCfg.Env
+	merged := make(map[string]string, len(svcEnv)+2)
 	for k, v := range svcEnv {
 		merged[k] = v
 	}
@@ -72,6 +74,11 @@ func (m *Manager) spawnEnv(svcEnv map[string]string) map[string]string {
 	// may have a good reason to pin it to a different value.
 	if _, ok := merged["KB_PROJECT_ROOT"]; !ok {
 		merged["KB_PROJECT_ROOT"] = m.projectDir
+	}
+	if svcCfg.Socket != "" {
+		if _, ok := merged["KB_SOCKET_PATH"]; !ok {
+			merged["KB_SOCKET_PATH"] = svcCfg.Socket
+		}
 	}
 	return merged
 }
@@ -96,7 +103,7 @@ func (m *Manager) Reconcile() error {
 
 		// Check health to determine if alive or degraded.
 		if svc.Config.HealthCheck != "" {
-			probe := health.ClassifyProbe(svc.Config.HealthCheck, 3*time.Second)
+			probe := health.ClassifyServiceProbe(svc.Config.HealthCheck, svc.Config.Socket, 3*time.Second)
 			result := probe.Execute(context.Background())
 			if result.OK {
 				_ = svc.SetState(service.StateStarting, "")
@@ -283,7 +290,7 @@ func (m *Manager) startDocker(ctx context.Context, svc *service.Service) Action 
 	// Run docker command via spawn.
 	spawnResult, err := process.Spawn(process.SpawnOpts{
 		Command:  svc.Config.Command,
-		Env:      m.spawnEnv(svc.Config.Env),
+		Env:      m.spawnEnv(svc.Config),
 		Dir:      m.rootDir,
 		LogFile:  logger.LogPath(logsDir, svc.ID),
 		EnvCache: m.envCache,
@@ -335,7 +342,7 @@ func (m *Manager) startNode(ctx context.Context, svc *service.Service) Action {
 
 	result, err := process.Spawn(process.SpawnOpts{
 		Command:  svc.Config.Command,
-		Env:      m.spawnEnv(svc.Config.Env),
+		Env:      m.spawnEnv(svc.Config),
 		Dir:      m.rootDir,
 		LogFile:  logger.LogPath(logsDir, svc.ID),
 		EnvCache: m.envCache,
@@ -376,7 +383,7 @@ func (m *Manager) startNode(ctx context.Context, svc *service.Service) Action {
 }
 
 func (m *Manager) waitHealth(ctx context.Context, svc *service.Service) health.Result {
-	probe := health.ClassifyProbe(svc.Config.HealthCheck, 3*time.Second)
+	probe := health.ClassifyServiceProbe(svc.Config.HealthCheck, svc.Config.Socket, 3*time.Second)
 	checker := health.NewChecker(
 		probe,
 		time.Duration(m.cfg.Settings.HealthCheckInterval)*time.Millisecond,
@@ -437,6 +444,10 @@ func (m *Manager) stopInternal(_ context.Context, targets []string, cascade bool
 		}
 
 		_ = process.RemovePID(pidDir, id)
+		// Remove unix socket file on stop (best-effort — ignore errors).
+		if svc.Config.Socket != "" {
+			_ = os.Remove(svc.Config.Socket)
+		}
 		_ = svc.SetState(service.StateDead, "")
 		svc.PID = 0
 		svc.PGID = 0

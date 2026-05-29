@@ -23,7 +23,7 @@ describe('resolveResourceId', () => {
 
   it('resolves to a per-service resource via upstream prefix match', () => {
     const c = cfg({
-      upstreams: { rest: { url: 'http://localhost:5050', prefix: '/api/v1/rest' } },
+      upstreams: { rest: { serviceId: 'rest', prefix: '/api/v1/rest' } },
       pressure: {
         enabled: true,
         perService: { rest: { requestsPerSecond: 10 } },
@@ -39,7 +39,7 @@ describe('resolveResourceId', () => {
 
   it('returns null when upstream matches but perService is empty for it', () => {
     const c = cfg({
-      upstreams: { workflow: { url: 'http://localhost:7778', prefix: '/api/v1/workflow' } },
+      upstreams: { workflow: { serviceId: 'rest', prefix: '/api/v1/workflow' } },
       pressure: { enabled: true, perService: {}, perRoute: [] },
     });
     expect(resolveResourceId('GET', '/api/v1/workflow/x', c)).toBeNull();
@@ -47,7 +47,7 @@ describe('resolveResourceId', () => {
 
   it('matches a per-route override over a per-service one', () => {
     const c = cfg({
-      upstreams: { rest: { url: 'http://localhost:5050', prefix: '/api/v1/rest' } },
+      upstreams: { rest: { serviceId: 'rest', prefix: '/api/v1/rest' } },
       pressure: {
         enabled: true,
         perService: { rest: { requestsPerSecond: 100 } },
@@ -65,7 +65,7 @@ describe('resolveResourceId', () => {
 
   it('filters per-route override by HTTP method when methods are set', () => {
     const c = cfg({
-      upstreams: { rest: { url: 'http://localhost:5050', prefix: '/api/v1/rest' } },
+      upstreams: { rest: { serviceId: 'rest', prefix: '/api/v1/rest' } },
       pressure: {
         enabled: true,
         perService: { rest: { requestsPerSecond: 100 } },
@@ -115,7 +115,7 @@ describe('resolveResourceId', () => {
 
   it('ignores query string when matching prefix', () => {
     const c = cfg({
-      upstreams: { rest: { url: 'http://localhost:5050', prefix: '/api/v1/rest' } },
+      upstreams: { rest: { serviceId: 'rest', prefix: '/api/v1/rest' } },
       pressure: { enabled: true, perService: { rest: { requestsPerSecond: 5 } }, perRoute: [] },
     });
     expect(

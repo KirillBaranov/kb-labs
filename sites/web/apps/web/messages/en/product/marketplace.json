@@ -1,0 +1,51 @@
+{
+  "marketplace": {
+    "catalog": {
+      "comingSoon": "Catalog coming soon",
+      "categoriesLabel": "Categories",
+      "noResults": "No plugins match your filters.",
+      "resetFilters": "Reset filters",
+      "searchAriaLabel": "Search plugins",
+      "searchPlaceholder": "Search plugins…",
+      "authorLabel": "Author",
+      "comingSoonDesc": "Plugins are being indexed. Check back shortly.",
+      "resultCount": "{count} results",
+      "noResultsQuery": "No results for \"{query}\"."
+    },
+    "meta": {
+      "title": "Marketplace",
+      "description": "KB Labs extension ecosystem: working plugins today and marketplace monetization on roadmap."
+    },
+    "detail": {
+      "comingSoon": "Coming soon",
+      "versionLabel": "Version",
+      "installLabel": "Install",
+      "typeLabel": "Type",
+      "envLabel": "Environment variables",
+      "requirementsTitle": "Requirements",
+      "tagsLabel": "Tags",
+      "aboutTitle": "About",
+      "updatedLabel": "Last updated",
+      "networkLabel": "Allowed hosts",
+      "commandsTitle": "CLI commands",
+      "authorLabel": "Author",
+      "downloadsLabel": "Weekly downloads",
+      "permissionsLabel": "Permissions",
+      "backLink": "Back to marketplace"
+    },
+    "cta": {
+      "title": "Ship your own plugin.",
+      "installBtn": "Install KB Labs",
+      "pluginGuide": "Plugin authoring guide",
+      "eyebrow": "Build for KB Labs",
+      "description": "The SDK is open. Write a plugin, publish it to the marketplace, and let the whole community benefit."
+    },
+    "hero": {
+      "title": "Extension ecosystem for KB Labs",
+      "extensionsCount": "({count} extensions)",
+      "eyebrow": "Plugin Marketplace",
+      "description": "Browse plugins, adapters, and widgets built for KB Labs. Install any of them with one command.",
+      "subtitle": "Now: dogfooding-proven plugins. Next: generalized packs for early users and marketplace-based distribution."
+    }
+  }
+}

@@ -8,6 +8,7 @@ import { createServer } from './server';
 import { findRepoRoot } from '@kb-labs/core-sys';
 import { createRegistry, type IEntityRegistry } from '@kb-labs/core-registry';
 import { platform, createServiceBootstrap, loadEnvFromRoot, getPlatformRoot } from '@kb-labs/core-runtime';
+import { getListenOptions } from '@kb-labs/shared-http';
 import { SystemMetricsCollector } from './daemon/metrics';
 import { metricsCollector as requestMetricsCollector, restDomainOperationMetrics } from './middleware/metrics.js';
 import * as path from 'node:path';
@@ -203,10 +204,7 @@ export async function bootstrap(cwd: string = process.cwd()): Promise<void> {
   // Defaults to 0.0.0.0 for compatibility with Docker port-forwarding and dev setups.
   // Set REST_API_HOST=127.0.0.1 to restrict to loopback in environments where
   // all public traffic is routed through the gateway.
-  const address = await server.listen({
-    port: config.port,
-    host: process.env.REST_API_HOST ?? '0.0.0.0',
-  });
+  const address = await server.listen(getListenOptions(config.port, process.env.REST_API_HOST ?? '0.0.0.0'));
 
   bootstrapLogger.info('REST API server listening', { address });
 

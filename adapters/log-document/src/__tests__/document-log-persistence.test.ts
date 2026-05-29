@@ -133,3 +133,35 @@ describe('DocumentLogPersistence (sqlite-backed)', () => {
     expect(stats.newestTimestamp).toBe(now + 1000);
   });
 });
+
+// ── Regression: createAdapter must wire deps.documentDatabase (bug fix) ──────
+
+describe('createAdapter factory', () => {
+  it('accepts documentDatabase via deps second argument (adapter-loader pattern)', async () => {
+    // The adapter-loader always calls createAdapter(config, deps) — deps carries
+    // adapter dependencies declared in the manifest requires.adapters array.
+    // Before the fix, createAdapter ignored deps and config.documentDatabase was
+    // undefined, causing `this.docs.ensureCollection` to throw on construction.
+    const { createAdapter } = await import('../index.js');
+    const db = createSqliteDocumentDatabase({ filename: ':memory:', ttlSweepIntervalMs: 0 });
+
+    // Simulate what adapter-loader does: deps contains the resolved adapter
+    const adapter = createAdapter({ collection: 'logs' } as any, {
+      documentDatabase: db,
+    });
+
+    // If construction succeeded without throwing, the fix works
+    expect(adapter).toBeDefined();
+    await adapter.close();
+  });
+
+  it('falls back to config.documentDatabase when deps is absent', async () => {
+    const { createAdapter } = await import('../index.js');
+    const db = createSqliteDocumentDatabase({ filename: ':memory:', ttlSweepIntervalMs: 0 });
+
+    // Direct usage (no loader) — documentDatabase in config as before
+    const adapter = createAdapter({ collection: 'logs', documentDatabase: db });
+    expect(adapter).toBeDefined();
+    await adapter.close();
+  });
+});

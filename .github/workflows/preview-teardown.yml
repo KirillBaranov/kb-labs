@@ -1,0 +1,92 @@
+name: preview-teardown
+
+# Drop the preview stack for a PR when it's closed (merged or not).
+# Idempotent — succeeds even if no preview was ever deployed for this PR.
+
+on:
+  pull_request:
+    types: [closed]
+
+concurrency:
+  # Teardown wins over any in-flight deploy for the same PR. Without this,
+  # `preview.yml` (which has cancel-in-progress: true) and this workflow
+  # could race: teardown would queue behind the deploy, then docker compose
+  # down would fire after up just finished. Same group + both `true` makes
+  # the latest event for the PR cancel the previous one consistently.
+  group: preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  teardown:
+    runs-on: ubuntu-latest
+    env:
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    steps:
+      - name: Write SSH key
+        env:
+          DEPLOY_KEY_PEM: ${{ secrets.PREVIEW_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$DEPLOY_KEY_PEM" > ~/.ssh/preview.key
+          chmod 0600 ~/.ssh/preview.key
+          ssh-keyscan -H "${{ secrets.PREVIEW_SSH_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Tear down compose stack
+        env:
+          HOST: ${{ secrets.PREVIEW_SSH_HOST }}
+          USER: ${{ secrets.PREVIEW_SSH_USER }}
+        run: |
+          set -euo pipefail
+          # We use an unquoted heredoc so ${PR_NUMBER} is expanded by the
+          # *outer* runner shell (i.e. the value from the env above). The
+          # remote shell only sees integers, no escape gymnastics needed.
+          ssh -i ~/.ssh/preview.key "$USER@$HOST" "bash -s" <<REMOTE
+          set -euo pipefail
+          PR_DIR="/home/${USER}/kb-previews/pr-${PR_NUMBER}"
+          if [ -d "\$PR_DIR" ]; then
+              # Use absolute paths throughout — avoids the cd .. trick (which
+              # could land somewhere unexpected if PR_DIR was unset).
+              (cd "\$PR_DIR" && docker compose down -v --remove-orphans 2>/dev/null) || true
+              rm -rf "\$PR_DIR"
+              echo "compose stack down for PR #${PR_NUMBER}"
+          else
+              echo "no preview stack for PR #${PR_NUMBER}, skipping compose down"
+          fi
+          REMOTE
+
+      - name: Remove nginx sites
+        env:
+          HOST: ${{ secrets.PREVIEW_SSH_HOST }}
+          USER: ${{ secrets.PREVIEW_SSH_USER }}
+        run: |
+          set -euo pipefail
+          # kb-preview-remove is idempotent — handles "nothing to remove" cleanly.
+          ssh -i ~/.ssh/preview.key "$USER@$HOST" \
+              "sudo /usr/local/sbin/kb-preview-remove '$PR_NUMBER'"
+
+      - name: Update PR comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = process.env.PR_NUMBER;
+            // Stable HTML marker — survives deploy ↔ teardown text changes,
+            // so we always find and update the same comment instead of
+            // posting a new one each time.
+            const MARKER = '<!-- kb-preview-comment -->';
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner, repo: context.repo.repo,
+              issue_number: Number(pr),
+            });
+            const mine = comments.find(c => c.user.type === 'Bot' && c.body.includes(MARKER));
+            if (mine) {
+              const body = [
+                MARKER,
+                '## 🧹 Preview environment torn down',
+                '',
+                `PR #${pr} was closed — the preview stack and nginx routes have been removed.`,
+              ].join('\n');
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                comment_id: mine.id, body,
+              });
+            }

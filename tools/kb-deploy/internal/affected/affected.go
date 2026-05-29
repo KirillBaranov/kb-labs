@@ -1,4 +1,5 @@
-// Package affected detects which deploy targets are affected by recent git changes.
+// Package affected detects which deploy targets are affected by recent git changes
+// or have a failed/pending deploy state.
 package affected
 
 import (
@@ -9,12 +10,16 @@ import (
 
 	"github.com/bmatcuk/doublestar/v4"
 	"github.com/kb-labs/kb-deploy/internal/config"
+	"github.com/kb-labs/kb-deploy/internal/state"
 )
 
-// Detect returns the names of targets whose watch patterns match files changed
-// in the last git commit (HEAD~1). If there is no parent commit, all targets
-// are returned as a safe fallback.
-func Detect(repoRoot string, cfg *config.Config) ([]string, error) {
+// Detect returns the names of targets to deploy. A target is included when:
+//   - Its last deploy failed or it has never been deployed (SHA == ""), OR
+//   - Files matching its watch patterns changed since the base ref.
+//
+// If git diff fails (no parent commit, fresh repo), all targets are returned
+// as a safe fallback.
+func Detect(repoRoot string, cfg *config.Config, s *state.State) ([]string, error) {
 	changed, err := changedFiles(repoRoot)
 	if err != nil {
 		// No parent commit or other git error — deploy everything.
@@ -24,14 +29,26 @@ func Detect(repoRoot string, cfg *config.Config) ([]string, error) {
 		}
 		return all, nil
 	}
+	return detectFromChanges(changed, cfg, s), nil
+}
 
+// detectFromChanges applies state-aware affected logic given a pre-computed
+// list of changed file paths. Extracted for unit testing without git.
+func detectFromChanges(changed []string, cfg *config.Config, s *state.State) []string {
 	var matched []string
 	for name, t := range cfg.Targets {
+		ts := s.Targets[name]
+		// Include if: never deployed or last deploy failed — regardless of file changes.
+		if ts.SHA == "" || s.IsLastDeployFailed(name) {
+			matched = append(matched, name)
+			continue
+		}
+		// Include if files changed since last successful deploy.
 		if matches(t.Watch, changed) {
 			matched = append(matched, name)
 		}
 	}
-	return matched, nil
+	return matched
 }
 
 // changedFiles returns the list of files changed since a base ref.

@@ -2,6 +2,10 @@ import type { Metadata } from 'next';
 import localFont from 'next/font/local';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
+// Shared keys serialised into __NEXT_DATA__ for client components (nav, footer, ui, notFound).
+// request.ts already limits getMessages() to _shared + page chunk — we further restrict
+// what the client receives to only the keys needed by layout-level components.
+const CLIENT_SHARED_KEYS = ['nav', 'footer', 'ui', 'notFound'] as const;
 import { Analytics } from '@/components/Analytics';
 import { ThemeApplicator } from '@/components/ThemeApplicator';
 import { DeferredCookieBanner } from '@/components/DeferredCookieBanner';
@@ -81,7 +85,11 @@ const organizationSchema = {
 export default async function LocaleLayout({ children, params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const messages = await getMessages();
+  const allMessages = await getMessages();
+  // Only pass shared keys to the client — page-specific translations are RSC-only.
+  const clientMessages = Object.fromEntries(
+    CLIENT_SHARED_KEYS.filter((k) => allMessages[k] !== undefined).map((k) => [k, allMessages[k]]),
+  );
 
   return (
     <html lang={locale} suppressHydrationWarning>
@@ -90,7 +98,7 @@ export default async function LocaleLayout({ children, params }: Props) {
       </head>
       <body className={`${headingFont.variable} ${bodyFont.variable}`}>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }} />
-        <NextIntlClientProvider messages={messages}>
+        <NextIntlClientProvider messages={clientMessages}>
           <ThemeApplicator />
           {children}
           <Analytics locale={locale} />

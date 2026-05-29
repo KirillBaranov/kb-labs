@@ -170,6 +170,48 @@ func TestDetectWithRegistryOption(t *testing.T) {
 	}
 }
 
+// TestDetectKBRegistryURLEnvVar verifies that Detect falls back to the
+// KB_REGISTRY_URL environment variable when no registry option is provided.
+// This allows CI to redirect installs to a local Verdaccio instance.
+func TestDetectKBRegistryURLEnvVar(t *testing.T) {
+	const want = "http://localhost:4873"
+	t.Setenv("KB_REGISTRY_URL", want)
+
+	mgr := Detect() // no option — must pick up env var
+	if got := mgr.RegistryURL(); got != want {
+		t.Errorf("Detect().RegistryURL() = %q, want %q (from KB_REGISTRY_URL)", got, want)
+	}
+}
+
+// TestDetectKBRegistryURLIgnoredWhenNPMConfigRegistrySet verifies that
+// KB_REGISTRY_URL is NOT used when NPM_CONFIG_REGISTRY is already set in the
+// environment. Inside Docker containers, pnpm is already pointed at the correct
+// registry via NPM_CONFIG_REGISTRY; KB_REGISTRY_URL must not override that.
+func TestDetectKBRegistryURLIgnoredWhenNPMConfigRegistrySet(t *testing.T) {
+	const dockerRegistry = "http://verdaccio:4873"
+	const hostRegistry = "http://localhost:5071"
+	t.Setenv("NPM_CONFIG_REGISTRY", dockerRegistry)
+	t.Setenv("KB_REGISTRY_URL", hostRegistry)
+
+	mgr := Detect()
+	// KB_REGISTRY_URL must be ignored — pnpm will use NPM_CONFIG_REGISTRY natively.
+	if got := mgr.RegistryURL(); got != "" {
+		t.Errorf("Detect().RegistryURL() = %q, want empty (NPM_CONFIG_REGISTRY takes precedence)", got)
+	}
+}
+
+// TestDetectRegistryOptionOverridesEnvVar verifies that an explicit registry option
+// takes precedence over the KB_REGISTRY_URL environment variable.
+func TestDetectRegistryOptionOverridesEnvVar(t *testing.T) {
+	t.Setenv("KB_REGISTRY_URL", "http://localhost:4873")
+	const explicit = "http://custom.registry:5555"
+
+	mgr := Detect(DetectOptions{Registry: explicit})
+	if got := mgr.RegistryURL(); got != explicit {
+		t.Errorf("Detect(explicit).RegistryURL() = %q, want %q (explicit must win)", got, explicit)
+	}
+}
+
 // TestEnsureNpmrcHonorsCustomRegistry verifies that a custom registry from
 // the manager config is written verbatim into the local .npmrc.
 func TestEnsureNpmrcHonorsCustomRegistry(t *testing.T) {

@@ -1,0 +1,75 @@
+{
+  "plugins": {
+    "meta": {
+      "title": "Plugin System — KB Labs",
+      "description": "Install one package — get CLI commands, REST routes, and a Studio page automatically. Open SDK for your own plugins."
+    },
+    "ctaDocsBtn": "Documentation",
+    "sdkLead2": "ctx.ui.success() works the same from CLI or a Workflow step.",
+    "ctaDescription": "Install KB Labs, run scaffold, add your logic. CLI, REST API, and Studio are ready automatically.",
+    "permEyebrow": "Permissions",
+    "lifecycleTitle": "Plugin lifecycle",
+    "permTitle": "See permissions before install",
+    "surfaceLead2": "No router config, no command registration, no Studio config. Install the package — everything works.",
+    "surfaceEyebrow": "How it works",
+    "sdkLead1": "A plugin talks to abstractions — ctx.ui, useLLM(). Which provider is behind them, how requests are routed, where logs go — that's the platform's job.",
+    "heroTitleRest": "a platform unit",
+    "ctaInstallBtn": "Install",
+    "stats": [
+      {
+        "value": "35+",
+        "label": "marketplace entities"
+      },
+      {
+        "value": "19",
+        "label": "plugins available"
+      },
+      {
+        "value": "21",
+        "label": "adapters available"
+      },
+      {
+        "value": "1 day",
+        "label": "typical plugin build"
+      }
+    ],
+    "lifecycleEyebrow": "How it works",
+    "sdkEyebrow": "SDK",
+    "lifecycleLead1": "After install the platform records the package in .kb/marketplace.lock with a SHA-256 checksum. On every start, discovery verifies integrity and loads the manifest.",
+    "lifecycleLead2": "The manifest extracts entity kinds — seven types: CLI commands, REST routes, Studio pages, workflow handlers, webhook handlers, WebSocket channels, cron schedules. One plugin can register any combination.",
+    "surfaceLead3": "Plugins are isolated: each gets only the platform resources it declared. Full OS isolation available in container/remote execution mode.",
+    "lifecycleLead3": "On command invocation the engine picks an execution backend. In-process is the default — minimal overhead. Subprocess and worker-pool add process isolation. Remote gives full OS isolation on a separate machine.",
+    "surfaceLead1": "A plugin declares CLI commands, REST routes, and a Studio page in one file — manifest.ts. On install, the engine registers everything automatically.",
+    "permLead1": "Every plugin declares in its manifest what it needs: read git, call LLM, write to fs. You see this before running install.",
+    "permLead2": "This isn't a hard guarantee — with in-process execution the platform enforces declared permissions, but full OS isolation requires container or remote mode.",
+    "heroInstallBtn": "Install KB Labs",
+    "sdkTitle": "Just the business logic",
+    "permLead3": "Like mobile app permissions: you know what the plugin wants and make an informed decision.",
+    "ctaTitle": "First plugin in 5 minutes.",
+    "heroTitleHighlight": "A plugin is",
+    "heroDescription": "Install one package — the engine registers CLI commands, REST routes, and a Studio page. No manual config. Permissions declared in the manifest — visible before install.",
+    "ecoSteps": [
+      {
+        "step": "1",
+        "title": "Scaffold",
+        "desc": "Run kb-create plugin my-plugin. Manifest, handlers, and tsconfig in place."
+      },
+      {
+        "step": "2",
+        "title": "Implement",
+        "desc": "Write typed handlers. Import from @kb-labs/sdk only — no internal deps."
+      },
+      {
+        "step": "3",
+        "title": "Register",
+        "desc": "Install locally or publish to the marketplace. kb plugins list shows it immediately."
+      }
+    ],
+    "surfaceTitle": "One manifest — three surfaces",
+    "heroDocsBtn": "Documentation",
+    "ecoEyebrow": "Ecosystem",
+    "ecoTitle": "Build and publish your own plugin",
+    "sdkDocsBtn": "SDK documentation",
+    "ctaEyebrow": "Try it now"
+  }
+}
