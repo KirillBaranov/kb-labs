@@ -745,6 +745,18 @@ custom_checks:
     run: node sites/web/scripts/seo-check.mjs
     on: [check]
 
+  # Docs structural audit for @kb-labs/docs-site.
+  # Rules sourced from sites/web/apps/docs/CONVENTIONS.md.
+  # Blocks CI on: slug without MDX file, missing title frontmatter, non-kebab-case names,
+  #               directory without index.mdx, depth > 2.
+  # Warns on:     orphaned MDX files, missing _meta.json, pages without owners.
+  # Self-filters: skips all packages except @kb-labs/docs-site.
+  # Standalone:   node sites/web/apps/docs/scripts/docs-audit.mjs
+  - name: docs-audit
+    run: node sites/web/apps/docs/scripts/docs-audit.mjs
+    on: [check]
+    language: typescript
+
 # ──────────────────────────────────────────────────────────────────────────────
 # COVERAGE THRESHOLDS
 # Enforced by: node scripts/merge-coverage.mjs --check

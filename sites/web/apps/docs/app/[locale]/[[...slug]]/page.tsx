@@ -37,6 +37,7 @@ export default async function DocPage({ params }: Props) {
       toc={toc}
       slug={slug}
       isFallback={doc.isFallback}
+      isIndex={doc.isIndex}
       pageTitle={doc.frontmatter.title}
       pageDescription={doc.frontmatter.description}
       pageUpdatedAt={doc.frontmatter.updatedAt}
