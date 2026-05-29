@@ -225,6 +225,38 @@ function main() {
     }
   }
 
+  // ── 8. i18n parity (only when content/ru/ exists) ─────────────────────────
+  const locales = readdirSync(join(cwd, 'content'))
+    .filter(l => l !== 'en' && existsSync(join(cwd, 'content', l)));
+
+  for (const locale of locales) {
+    const localeDir = join(cwd, 'content', locale);
+    const { files: localeFiles } = walkContent(localeDir);
+    const localeSet = new Set(localeFiles.map(f => f.rel));
+
+    // Pages in en/ missing from locale
+    for (const file of files) {
+      if (!localeSet.has(file.rel)) {
+        items.push({
+          target: `content/${locale}/${file.rel}`,
+          severity: 'warning',
+          message: `Missing ${locale}/ translation for content/en/${file.rel}`,
+        });
+      }
+    }
+
+    // Pages in locale/ missing from en/ (orphaned translation)
+    for (const localeFile of localeFiles) {
+      if (!fileSet.has(localeFile.rel)) {
+        items.push({
+          target: `content/${locale}/${localeFile.rel}`,
+          severity: 'error',
+          message: `Translation content/${locale}/${localeFile.rel} has no matching en/ source — source was deleted or renamed`,
+        });
+      }
+    }
+  }
+
   finish(items);
 }
 
