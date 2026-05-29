@@ -1,11 +1,14 @@
 ---
 title: "kb-deploy"
-description: "Deploy Docker services to VPS over SSH — affected detection, image build and push, infrastructure management, and structured JSON output for agents."
-updatedAt: "2026-04-10"
+description: "Deploy Docker services to VPS over SSH, plus declarative fleet rollout of the KB Labs platform with config delivery, canary waves, and auto-rollback."
+updatedAt: "2026-05-30"
 order: 10
 ---
 
-`kb-deploy` is a standalone Go binary that builds Docker images, pushes them to a registry, and deploys over SSH using docker compose. It detects which services are affected by the latest git commit and deploys only those — skipping unchanged targets.
+`kb-deploy` is a standalone Go binary with two delivery models:
+
+- **Imperative `run`** — builds Docker images, pushes them to a registry, and deploys over SSH using docker compose. It detects which services are affected by the latest git commit and deploys only those. This is the section most of this page covers.
+- **Declarative `apply`** — rolls out the KB Labs platform itself (gateway, rest-api, workflow, state) across a fleet of hosts from a single `deploy.yaml`, delivering each host's runtime config and resolving secrets along the way. See [Declarative apply](#declarative-apply-adr-0014).
 
 It also manages stateful infrastructure (databases, caches, queues) as a separate concern from application deployments — infra is never touched by `kb-deploy run`.
 
@@ -252,6 +255,98 @@ All commands support `--json`. Stdout contains exactly one JSON object. Exit cod
 ```
 
 `kb-deploy run` exits 0 even when there is nothing to deploy (no affected targets). It exits 1 only when a target fails — CI will catch it.
+
+## Declarative apply (ADR-0014)
+
+`run` is imperative: build this image, push it, restart that container. `apply` is declarative: you describe the desired fleet state in `deploy.yaml`, and `kb-deploy` computes and executes the plan to reach it.
+
+The division of labor:
+
+- **`kb-deploy apply`** is the fleet orchestrator. It opens SSH to each host, collects current state, computes a rollout plan, delivers config, and drives the waves.
+- **`kb-create install-service`** is the per-host installer (one host = one installer). `apply` calls it on each target to install code and swap the active release atomically.
+- **`kb-dev`** owns service lifecycle and health on the host.
+
+<Callout type="note">
+The mechanics below are covered by unit and e2e tests. End-to-end rollout on a live VM is being validated — treat `apply` as the declarative model and command surface, not yet as a copy-paste production tutorial.
+</Callout>
+
+### deploy.yaml (declarative block)
+
+```yaml
+schema: kb.deploy/1
+
+platform:
+  version: 2.94.0
+  registry: https://registry.npmjs.org
+  config: kb.config.jsonc        # pre-rendered runtime config, delivered verbatim
+
+rollout:
+  autoRollback: true
+  parallel: 1                    # hosts per wave
+  lockMode: artifact             # "artifact" (default) | "autoCommit"
+
+hosts:
+  vm-1:
+    ssh:
+      host: 203.0.113.10
+      user: deploy
+      key_path_env: KBD_SSH_KEY  # env var holding a path to the private key
+    platformPath: ~/kb-platform
+    env:                         # per-host secrets/endpoints → host .env
+      MONGODB_URI: ${secrets.MONGODB_URI}
+      REDIS_URL:   ${secrets.REDIS_URL}
+      OPENAI_API_KEY: ${secrets.OPENAI_API_KEY}
+
+services:
+  gateway:
+    service: "@kb-labs/gateway"
+    version: 2.94.0
+    targets:
+      hosts: [vm-1]
+      strategy: all              # "all" | "canary"
+      healthGate: 30s
+  # rest-api, workflow, state … same shape
+```
+
+The split is deliberate: `deploy.yaml` is **WHERE/HOW** (which hosts, which config file, what waves). The rendered `kb.config.jsonc` is **WHAT** (adapterOptions: mongo/redis/qdrant URIs, keys). `deploy.yaml` never carries adapterOptions — that keeps deploy and config authoring separate.
+
+### Config delivery
+
+All daemons on a host share one installer-owned `<platformPath>/.kb/kb.config.jsonc` (the config loader is per-install). `apply` delivers it plus a resolved per-host `.env`:
+
+- **Pre-rendered, verbatim.** `kb-deploy` does not synthesize the config from `deploy.yaml` — you ship a file rendered by `kb-create` or by hand. `${VAR}` references in it resolve against the host `.env`.
+- **Atomic write.** Per file: back up the current one to `.prev`, stream the new content to a temp file under `umask 077`, verify it is non-empty, then `mv` into place on the same filesystem. A dropped connection mid-write can never replace a working config with a truncated one.
+- **Secret-safe.** Resolved secret values travel over **stdin**, never argv — they don't leak into `ps` or shell history. They are never written to the lock or to disk on the control machine.
+- **Config hash.** `apply` records `sha256(jsonc + resolved env)` per host in the lock. Unchanged hash → no restart. Changed hash with the same release → a config-only restart (so rotating a secret is picked up even when no code changed).
+
+### Preflight
+
+Everything that can fail without touching a host fails first, on the control machine, **before any SSH is dialed**:
+
+- the config file exists and parses as JSONC;
+- every `${secrets.X}` / `${env.X}` resolves (a missing or empty value is an error, not a silent blank credential);
+- no service targets a host that isn't defined.
+
+A broken config or missing secret aborts with zero partial mutation.
+
+### Rollout and rollback
+
+Services roll out in waves gated by `healthGate`. With `autoRollback: true`, a wave that fails health triggers a rollback: the affected host's config is restored from `.prev` **before** the previous release is restarted, so the old release never comes up against new config. Delivery itself runs as a pre-pass across all hosts — if it fails on any host, `apply` aborts before any install and restores already-written hosts.
+
+### Commands
+
+```bash
+kb-deploy plan                 # compute the rollout plan, touch nothing
+kb-deploy apply --dry-run      # preflight + plan, no host mutation
+kb-deploy apply                # execute (prompts unless --yes)
+kb-deploy apply --yes          # execute without the confirmation prompt
+```
+
+Exit codes: `0` no changes / dry-run, `1` changes applied, `2` error (validation, SSH, build), `3` rollback fired and succeeded.
+
+<Callout type="note">
+Today `apply` targets single-instance deployments (one replica per service). A config-only change restarts each daemon through the health gate, which is a brief downtime window on one instance. Multi-replica rolling restart is the k8s path — the `ConfigDeliverer` seam maps the same rendered config → ConfigMap and `.env` → Secret without changing the planner.
+</Callout>
 
 ## KB Labs integration
 

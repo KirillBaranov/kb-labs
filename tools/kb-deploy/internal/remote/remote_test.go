@@ -26,6 +26,10 @@ func (f *fakeRunner) Run(cmd string) (string, error) {
 	return "", nil
 }
 
+func (f *fakeRunner) RunWithInput(cmd, _ string) (string, error) {
+	return f.Run(cmd)
+}
+
 func TestShellQuote(t *testing.T) {
 	if got := shellQuote("simple"); got != "'simple'" {
 		t.Errorf("got %q", got)
