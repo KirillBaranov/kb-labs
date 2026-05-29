@@ -48,18 +48,18 @@ test('AUTH-20: change password → other device signed out, current session live
   // Activate member on device 1.
   const memberCtx1 = await browser.newContext()
   const memberPage1 = await memberCtx1.newPage()
-  await activateUser(memberPage1, activationUrl, 'OldPass123!')
+  await activateUser(memberPage1, activationUrl, 'Tr0ub4dor&3-e2e!')
   const memberCookies1 = await cookieMap(memberCtx1)
 
   // Open same account on device 2.
   const memberCtx2 = await browser.newContext()
   const memberPage2 = await memberCtx2.newPage()
-  await loginAs(memberPage2, memberEmail, 'OldPass123!')
+  await loginAs(memberPage2, memberEmail, 'Tr0ub4dor&3-e2e!')
   const memberCookies2before = await cookieMap(memberCtx2)
 
   try {
     // Change password from device 1.
-    await fillChangePasswordForm(memberPage1, 'OldPass123!', 'NewPass456!', 'NewPass456!')
+    await fillChangePasswordForm(memberPage1, 'Tr0ub4dor&3-e2e!', 'Xk9#mPq2@Lz5-e2e!', 'Xk9#mPq2@Lz5-e2e!')
     await expect(memberPage1.locator('[role="status"], :text("changed")')).toBeVisible({
       timeout: 10_000,
     })

@@ -116,16 +116,10 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
     });
     providers.register(emailPwd);
 
-    // AUTH_HIBP_ENABLED env var overrides config (explicit false disables HIBP).
-    // Default: true (production-safe). CI sets AUTH_HIBP_ENABLED=false so
-    // tests don't depend on the external HIBP API.
-    const hibpEnabledFromEnv = process.env.AUTH_HIBP_ENABLED === 'false' ? false
-      : process.env.AUTH_HIBP_ENABLED === 'true' ? true
-      : undefined;
     const passwordPolicy = createPasswordPolicy({
       minLength: config.auth?.passwordPolicy?.minLength ?? 8,
       maxLength: config.auth?.passwordPolicy?.maxLength ?? 256,
-      hibpEnabled: hibpEnabledFromEnv ?? config.auth?.passwordPolicy?.hibpEnabled ?? true,
+      hibpEnabled: config.auth?.passwordPolicy?.hibpEnabled ?? true,
     });
 
     const pdp = createStubPDP({ memberships });

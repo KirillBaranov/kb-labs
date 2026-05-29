@@ -45,9 +45,6 @@ services:
       # attempts — successful admin logins never increment the counter.
       AUTH_LOGIN_RATE_LIMIT_PER_IP: "10"
       AUTH_LOGIN_RATE_LIMIT_PER_EMAIL: "5"
-      # HIBP is disabled in CI: tests should not depend on external services.
-      # AUTH-23/24 test HIBP behaviour and are skipped unless HIBP_ENABLED=1.
-      AUTH_HIBP_ENABLED: "false"
 
   studio:
     image: nginx:1.27-alpine
