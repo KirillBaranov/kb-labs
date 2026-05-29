@@ -34,7 +34,7 @@ export interface ProvisionResult {
 
 /** Minimal execution backend — only `execute` is needed. */
 export interface ProvisionBackend {
-  execute(input: { handlerRef: string; pluginRoot: string; input: unknown }): Promise<unknown>;
+  execute(input: { handlerRef: string; pluginRoot: string; input: unknown; namespaceId?: string }): Promise<unknown>;
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -89,6 +89,7 @@ export async function provisionWebhook(
       await backend.execute({
         handlerRef: decl.onProvision,
         pluginRoot: manifestEntry.pluginRoot,
+        namespaceId,
         input: { instanceId, secret: newSecret, url },
       });
       onProvisionCalled = true;
