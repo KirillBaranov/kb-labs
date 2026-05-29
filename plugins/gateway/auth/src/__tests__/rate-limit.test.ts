@@ -78,3 +78,42 @@ describe('createRateLimiter', () => {
     }
   });
 });
+
+describe('peek (non-incrementing gate)', () => {
+  it('does NOT increment the counter', async () => {
+    const rl = createRateLimiter(kv);
+    const cfg = { max: 3, windowMs: 60_000 };
+    // Many peeks must not consume budget.
+    for (let i = 0; i < 10; i++) {
+      const p = await rl.peek('k', cfg);
+      expect(p.allowed).toBe(true);
+    }
+    // All three real attempts are still available after the peeks.
+    expect((await rl.check('k', cfg)).allowed).toBe(true);
+    expect((await rl.check('k', cfg)).allowed).toBe(true);
+    expect((await rl.check('k', cfg)).allowed).toBe(true);
+    expect((await rl.check('k', cfg)).allowed).toBe(false);
+  });
+
+  it('reports blocked once the window is exhausted, before the next check', async () => {
+    const rl = createRateLimiter(kv);
+    const cfg = { max: 2, windowMs: 60_000 };
+    // Peek allowed while under the limit.
+    expect((await rl.peek('k', cfg)).allowed).toBe(true);
+    await rl.check('k', cfg); // count = 1
+    expect((await rl.peek('k', cfg)).allowed).toBe(true);
+    await rl.check('k', cfg); // count = 2 (== max)
+    // Counter has reached max → the next check would be denied, so peek
+    // reports blocked WITHOUT touching the counter.
+    const blocked = await rl.peek('k', cfg);
+    expect(blocked.allowed).toBe(false);
+    if (!blocked.allowed) {expect(blocked.retryAfterSec).toBeGreaterThan(0);}
+  });
+
+  it('allows on a fresh key with no prior hits', async () => {
+    const rl = createRateLimiter(kv);
+    const p = await rl.peek('never-touched', { max: 5, windowMs: 60_000 });
+    expect(p.allowed).toBe(true);
+    if (p.allowed) {expect(p.remaining).toBe(5);}
+  });
+});

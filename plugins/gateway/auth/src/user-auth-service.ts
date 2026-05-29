@@ -275,9 +275,22 @@ export const createUserAuthService = (opts: UserAuthServiceOptions) => {
     const polErr = mapPolicyResultToError(policyResult);
     if (polErr) {throw polErr;}
 
-    // Create the user, credential, and membership. We never touch
-    // pre-existing records — the invites store enforces no-duplicate-
-    // active so a stray re-use would have been rejected at issuance.
+    // Consume the invite ATOMICALLY before creating any account records.
+    // findByToken → create is a TOCTOU window: two parallel activations of
+    // the same valid token both pass findByToken, and without an atomic gate
+    // both would call users.create() — one succeeds, the other throws on the
+    // unique (tenantId, email) index, leaving an orphaned credential/session.
+    // consume() flips status active→used in a single compare-and-set; only the
+    // winner gets `true`, the loser gets `false` and bails out cleanly. Done
+    // AFTER the password-policy check so a weak password never burns the invite.
+    const consumed = await opts.invites.consume(invite.inviteId);
+    if (!consumed) {
+      // Lost the race (or invite was used/revoked between findByToken and now).
+      throw new AuthError('invalid_invite');
+    }
+
+    // Create the user, credential, and membership. The invite is already
+    // consumed, so this path runs exactly once per token.
     const userId = randomUUID();
     await opts.users.create({
       userId,
@@ -296,7 +309,8 @@ export const createUserAuthService = (opts: UserAuthServiceOptions) => {
       tenantId: invite.tenantId,
       groupId: invite.groupId,
     });
-    await opts.invites.consume(invite.inviteId);
+    // Note: the invite was already consumed atomically above, before account
+    // creation — do not consume again here.
 
     const sess = await opts.sessions.createSession({
       userId,

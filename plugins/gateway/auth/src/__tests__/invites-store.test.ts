@@ -204,3 +204,35 @@ describe('consume / revoke idempotency', () => {
     await expect(invites.consume(inviteId)).resolves.not.toThrow();
   });
 });
+
+describe('consume atomicity (TOCTOU guard)', () => {
+  it('returns true for the first consume, false for a repeat', async () => {
+    const { inviteId } = await invites.createInvite({
+      email: 'a@b.c', tenantId: t1, groupId: 'tenant-member', createdBy: 'a', ttlMs: HOUR,
+    });
+    expect(await invites.consume(inviteId)).toBe(true);
+    expect(await invites.consume(inviteId)).toBe(false);
+  });
+
+  it('returns false for an unknown id', async () => {
+    expect(await invites.consume('does-not-exist')).toBe(false);
+  });
+
+  it('returns false for an already-revoked invite', async () => {
+    const { inviteId } = await invites.createInvite({
+      email: 'a@b.c', tenantId: t1, groupId: 'tenant-member', createdBy: 'a', ttlMs: HOUR,
+    });
+    await invites.revoke(inviteId);
+    expect(await invites.consume(inviteId)).toBe(false);
+  });
+
+  it('exactly one of N parallel consumes wins (compare-and-set)', async () => {
+    const { inviteId } = await invites.createInvite({
+      email: 'a@b.c', tenantId: t1, groupId: 'tenant-member', createdBy: 'a', ttlMs: HOUR,
+    });
+    const results = await Promise.all(
+      Array.from({ length: 8 }, () => invites.consume(inviteId)),
+    );
+    expect(results.filter(Boolean)).toHaveLength(1);
+  });
+});

@@ -261,6 +261,28 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
     const hostTenant = tenantResolver.resolve(host);
     const tenantId = hostTenant ?? bodyTenantId ?? '';
 
+    // Rate-limit GATE (peek, non-incrementing) BEFORE invoking the provider,
+    // which runs a bcrypt compare (~300ms CPU at cost 12). Once the per-IP or
+    // per-email failure window is exhausted we reject here, so a flood of
+    // requests past the limit costs ~0 CPU instead of one bcrypt each. The
+    // counter is only INCREMENTED on an actual auth failure (catch block
+    // below) — successful logins never count, so legitimate users are never
+    // throttled.
+    if (rateLimiter) {
+      const emailNorm = email.toLowerCase().trim();
+      const [ipPeek, emailPeek] = await Promise.all([
+        rateLimiter.peek(`rl:login:ip:${request.ip}`, { max: authRateLimitCfg.loginPerIpPerMinute, windowMs: 60_000 }),
+        rateLimiter.peek(`rl:login:email:${emailNorm}`, { max: authRateLimitCfg.loginPerEmailPerMinute, windowMs: 60_000 }),
+      ]);
+      if (!ipPeek.allowed || !emailPeek.allowed) {
+        const retryAfter = !ipPeek.allowed
+          ? ipPeek.retryAfterSec
+          : (!emailPeek.allowed ? emailPeek.retryAfterSec : 60);
+        reply.header('Retry-After', String(retryAfter));
+        return reply.code(429).send({ error: 'Too Many Requests', message: 'Rate limit exceeded', retryAfterSec: retryAfter });
+      }
+    }
+
     try {
       const result = await userAuthService.login(
         { providerId: providerId ?? 'email-password', input: { email, password } },
@@ -554,6 +576,15 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
     if (!(await requirePermission(request, reply, PERMISSIONS.INVITES_WRITE))) {return;}
     if (!checkCsrf(request, reply)) {return;}
 
+    const ctx = request.userAuthContext!;
+    // Tenant-ownership guard: only revoke invites belonging to the admin's
+    // tenant. Without this an admin of tenant A could revoke tenant B's invite
+    // by guessing the id. 404 to avoid cross-tenant existence leakage.
+    const invite = await invites.findById(request.params.id);
+    if (!invite || invite.tenantId !== ctx.tenantId) {
+      return reply.code(404).send({ error: 'Not found', message: 'Invite not found' });
+    }
+
     await invites.revoke(request.params.id);
     return reply.send({ ok: true });
   });
@@ -596,9 +627,14 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
     if (!(await requirePermission(request, reply, PERMISSIONS.USERS_WRITE))) {return;}
     if (!checkCsrf(request, reply)) {return;}
 
+    const ctx = request.userAuthContext!;
     const { id } = request.params;
     const target = await users.getById(id);
-    if (!target) {
+    // Tenant-ownership guard: an admin may only act on users in their own
+    // tenant. requirePermission only proves "you are an admin of ctx.tenantId",
+    // not that the target belongs there. Return 404 (not 403) so we don't leak
+    // the existence of users in other tenants.
+    if (!target || target.tenantId !== ctx.tenantId) {
       return reply.code(404).send({ error: 'Not found', message: 'User not found' });
     }
 
@@ -615,9 +651,11 @@ export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRoute
     if (!(await requirePermission(request, reply, PERMISSIONS.USERS_WRITE))) {return;}
     if (!checkCsrf(request, reply)) {return;}
 
+    const ctx = request.userAuthContext!;
     const { id } = request.params;
     const target = await users.getById(id);
-    if (!target) {
+    // Tenant-ownership guard (see /disable). 404 to avoid cross-tenant leakage.
+    if (!target || target.tenantId !== ctx.tenantId) {
       return reply.code(404).send({ error: 'Not found', message: 'User not found' });
     }
 

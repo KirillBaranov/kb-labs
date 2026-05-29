@@ -16,6 +16,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import { SignJWT } from 'jose';
 import {
   signUserAccessToken,
   signUserRefreshToken,
@@ -70,6 +71,28 @@ describe('signUserAccessToken / verifyUserAccessToken', () => {
     // helper used incorrectly: verifyUserAccessToken must reject it.
     const refreshToken = await signUserRefreshToken({ ...claims, ttlSec: 900 }, config);
     expect(await verifyUserAccessToken(refreshToken, config)).toBeNull();
+  });
+
+  it('rejects a token signed with a non-HS256 algorithm (alg pinning)', async () => {
+    // Forge a structurally-valid user-access token, signed with the SAME
+    // secret but using HS384 instead of HS256. HMAC accepts the secret for
+    // any HS* algorithm, so without an explicit `algorithms: ['HS256']` pin
+    // in jwtVerify, jose would happily accept this. The pin must reject it —
+    // this is the regression guard for algorithm-substitution.
+    const now = Math.floor(Date.now() / 1000);
+    const forged = await new SignJWT({
+      tenantId: 't1',
+      fam: 'fam-1',
+      type: 'user',
+      jti: 'forged-jti',
+    })
+      .setProtectedHeader({ alg: 'HS384' })
+      .setSubject('u1')
+      .setIssuedAt(now)
+      .setExpirationTime(now + 900)
+      .sign(new TextEncoder().encode(config.secret));
+
+    expect(await verifyUserAccessToken(forged, config)).toBeNull();
   });
 });
 

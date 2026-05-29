@@ -362,6 +362,32 @@ describe('activate', () => {
     // Invite still active so the user can retry with a proper password.
     expect((await invites.findByToken(activationToken)).kind).toBe('ok');
   });
+
+  it('two parallel activations of the same token → exactly one account, one winner (TOCTOU)', async () => {
+    const { activationToken } = await invites.createInvite({
+      email: 'race@x.com', tenantId: tenant,
+      groupId: 'tenant-member', createdBy: 'admin', ttlMs: HOUR,
+    });
+
+    // Fire both with the identical valid token + password concurrently.
+    // The atomic consume() gate must let exactly one through to account
+    // creation; the loser must reject cleanly (invalid_invite) WITHOUT
+    // creating a second user or crashing on the unique-email index.
+    const settled = await Promise.allSettled([
+      svc.activate({ activationToken, password: 'fresh-pw-1234', deviceCtx: {} }),
+      svc.activate({ activationToken, password: 'fresh-pw-1234', deviceCtx: {} }),
+    ]);
+
+    const fulfilled = settled.filter((s) => s.status === 'fulfilled');
+    const rejected = settled.filter((s) => s.status === 'rejected');
+    expect(fulfilled).toHaveLength(1);
+    expect(rejected).toHaveLength(1);
+    expect((rejected[0] as PromiseRejectedResult).reason).toMatchObject({ code: 'invalid_invite' });
+
+    // Exactly one user account exists for that email in the tenant.
+    const all = await users.listByTenant(tenant);
+    expect(all.filter((u) => u.email === 'race@x.com')).toHaveLength(1);
+  });
 });
 
 // ─── AuthError shape ───────────────────────────────────────────────────

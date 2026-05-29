@@ -72,7 +72,7 @@ export async function verifyAccessToken(
 ): Promise<JwtPayload | null> {
   try {
     const key = getSecretKey(config.secret);
-    const { payload } = await jwtVerify(token, key);
+    const { payload } = await jwtVerify(token, key, { algorithms: ['HS256'] });
     return payload as unknown as JwtPayload;
   } catch {
     return null;
@@ -85,7 +85,7 @@ export async function verifyRefreshToken(
 ): Promise<{ hostId: string } | null> {
   try {
     const key = getSecretKey(config.secret);
-    const { payload } = await jwtVerify(token, key);
+    const { payload } = await jwtVerify(token, key, { algorithms: ['HS256'] });
     if ((payload as JWTPayload & { type?: string }).type !== 'refresh') {
       return null;
     }
@@ -237,7 +237,7 @@ export async function verifyUserAccessToken(
 ): Promise<UserAccessPayload | null> {
   try {
     const key = getSecretKey(config.secret);
-    const { payload } = await jwtVerify(token, key);
+    const { payload } = await jwtVerify(token, key, { algorithms: ['HS256'] });
     return normaliseAccess(payload as RawUserClaims);
   } catch {
     return null;
@@ -250,7 +250,7 @@ export async function verifyUserRefreshToken(
 ): Promise<UserRefreshPayload | null> {
   try {
     const key = getSecretKey(config.secret);
-    const { payload } = await jwtVerify(token, key);
+    const { payload } = await jwtVerify(token, key, { algorithms: ['HS256'] });
     return normaliseRefresh(payload as RawUserClaims);
   } catch {
     return null;

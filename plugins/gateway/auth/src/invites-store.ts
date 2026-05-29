@@ -204,13 +204,24 @@ export class InvitesStore {
     return { kind: 'ok', invite: docToInvite(doc) };
   }
 
-  async consume(inviteId: string): Promise<void> {
+  /**
+   * Atomically mark an active invite as used.
+   *
+   * Returns `true` if THIS call flipped the invite from `active` → `used`,
+   * `false` if it was already used/revoked (or unknown). The filter pins
+   * `status: 'active'`, so a concurrent double-activation of the same token
+   * results in exactly one caller seeing `true` — the activation flow relies
+   * on this to close the TOCTOU window between `findByToken` and account
+   * creation (a second parallel request must NOT create a duplicate account).
+   */
+  async consume(inviteId: string): Promise<boolean> {
     await this.ensureSchema();
-    await this.docs.updateMany<InviteDoc>(
+    const modified = await this.docs.updateMany<InviteDoc>(
       COLLECTION,
       { $and: [{ inviteId: { $eq: inviteId } }, { status: { $eq: 'active' as InviteStatus } }] },
       { $set: { status: 'used' } },
     );
+    return modified > 0;
   }
 
   async revoke(inviteId: string): Promise<void> {

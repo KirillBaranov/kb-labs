@@ -27,7 +27,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import Fastify, { type FastifyInstance } from 'fastify';
 import fastifyCookie from '@fastify/cookie';
-import { createInMemoryDocumentDatabase } from '@kb-labs/sdk/testing';
+import { createInMemoryDocumentDatabase, createInMemoryKVStore } from '@kb-labs/sdk/testing';
 import type { ICache } from '@kb-labs/core-platform';
 import {
   UsersStore,
@@ -42,6 +42,7 @@ import {
   createEmailPasswordProvider,
   createPasswordPolicy,
   createStubPDP,
+  createRateLimiter,
   AuthService,
   type JwtConfig,
 } from '@kb-labs/gateway-auth';
@@ -80,7 +81,12 @@ interface TestCtx {
   invites: InvitesStore;
 }
 
-async function buildApp(): Promise<TestCtx> {
+interface BuildAppOpts {
+  /** When set, wires a fixed-window rate limiter into the login route. */
+  rateLimit?: { loginPerIpPerMinute: number; loginPerEmailPerMinute: number };
+}
+
+async function buildApp(opts: BuildAppOpts = {}): Promise<TestCtx> {
   const docs = createInMemoryDocumentDatabase();
 
   const users = new UsersStore(docs);
@@ -122,6 +128,8 @@ async function buildApp(): Promise<TestCtx> {
 
   const tenantResolver = createTenantResolver({ pattern: '{tenant}.kblabs.ru' });
 
+  const rateLimiter = opts.rateLimit ? createRateLimiter(createInMemoryKVStore()) : undefined;
+
   const userRouteDeps = {
     userAuthService,
     users,
@@ -135,6 +143,7 @@ async function buildApp(): Promise<TestCtx> {
     refreshTtlSec: HOUR / 1000,
     inviteTtlMs: HOUR,
     jwtConfig: JWT,
+    ...(rateLimiter ? { rateLimiter, authRateLimit: opts.rateLimit } : {}),
   };
 
   // Machine auth service — used only to satisfy registerAuthRoutes constructor.
@@ -989,5 +998,153 @@ describe('POST /auth/invites/:id/revoke (admin only)', () => {
     });
 
     expect(r.statusCode).toBe(200);
+  });
+});
+
+// ── Cross-tenant isolation on admin endpoints (IDOR guard) ──────────────────────
+//
+// requirePermission proves "you are an admin of YOUR tenant" — it does NOT prove
+// the target resource belongs to that tenant. Without an explicit ownership check
+// an admin of tenant A could disable/enable any user, or revoke any invite, in
+// tenant B just by guessing the id. These tests assert the guard: cross-tenant
+// targets return 404 AND the target is left untouched.
+describe('admin endpoints — cross-tenant isolation', () => {
+  const OTHER_TENANT = 'other-cloud';
+  let ctx: TestCtx;
+
+  beforeEach(async () => {
+    ctx = await buildApp();
+    await seedAdmin(ctx); // admin-1 in kb-cloud
+  });
+
+  async function adminAuth() {
+    return loginAndGetCookies(ctx.app, { email: 'admin@test.com', password: 'Password123!' });
+  }
+
+  it('disable: admin of tenant A cannot disable a user in tenant B → 404, target untouched', async () => {
+    await ctx.users.create({
+      userId: 'foreign-user',
+      tenantId: OTHER_TENANT,
+      email: 'foreigner@other.com',
+      status: 'active',
+    });
+
+    const { cookieHeader, csrfToken } = await adminAuth();
+    const r = await ctx.app.inject({
+      method: 'POST',
+      url: '/auth/users/foreign-user/disable',
+      headers: { host: HOST, cookie: cookieHeader, 'x-csrf-token': csrfToken },
+    });
+
+    expect(r.statusCode).toBe(404);
+    // Critical: the cross-tenant user must remain active.
+    const after = await ctx.users.getById('foreign-user');
+    expect(after?.status).toBe('active');
+  });
+
+  it('enable: admin of tenant A cannot enable a user in tenant B → 404, target untouched', async () => {
+    await ctx.users.create({
+      userId: 'foreign-disabled',
+      tenantId: OTHER_TENANT,
+      email: 'sleeper@other.com',
+      status: 'disabled',
+    });
+
+    const { cookieHeader, csrfToken } = await adminAuth();
+    const r = await ctx.app.inject({
+      method: 'POST',
+      url: '/auth/users/foreign-disabled/enable',
+      headers: { host: HOST, cookie: cookieHeader, 'x-csrf-token': csrfToken },
+    });
+
+    expect(r.statusCode).toBe(404);
+    const after = await ctx.users.getById('foreign-disabled');
+    expect(after?.status).toBe('disabled');
+  });
+
+  it('invite revoke: admin of tenant A cannot revoke an invite in tenant B → 404, invite stays active', async () => {
+    const { inviteId, activationToken } = await ctx.invites.createInvite({
+      email: 'invitee@other.com',
+      tenantId: OTHER_TENANT,
+      groupId: 'tenant-member',
+      createdBy: 'someone-else',
+      ttlMs: HOUR,
+    });
+
+    const { cookieHeader, csrfToken } = await adminAuth();
+    const r = await ctx.app.inject({
+      method: 'POST',
+      url: `/auth/invites/${inviteId}/revoke`,
+      headers: { host: HOST, cookie: cookieHeader, 'x-csrf-token': csrfToken },
+    });
+
+    expect(r.statusCode).toBe(404);
+    // Critical: the cross-tenant invite must remain usable.
+    expect((await ctx.invites.findByToken(activationToken)).kind).toBe('ok');
+  });
+
+  it('disable: returns 404 for a non-existent user id (no existence leak)', async () => {
+    const { cookieHeader, csrfToken } = await adminAuth();
+    const r = await ctx.app.inject({
+      method: 'POST',
+      url: '/auth/users/ghost/disable',
+      headers: { host: HOST, cookie: cookieHeader, 'x-csrf-token': csrfToken },
+    });
+    expect(r.statusCode).toBe(404);
+  });
+});
+
+// ── Login rate-limit gate runs BEFORE bcrypt (CPU-exhaustion DoS guard) ──────────
+//
+// The handler peeks the failure counter before invoking the provider (bcrypt).
+// Once the per-email window is exhausted, further attempts are rejected with 429
+// without running bcrypt. Only FAILED attempts increment the counter, so a
+// successful login never throttles a legitimate user.
+describe('POST /auth/login — rate limiting', () => {
+  let ctx: TestCtx;
+
+  beforeEach(async () => {
+    ctx = await buildApp({
+      rateLimit: { loginPerIpPerMinute: 100, loginPerEmailPerMinute: 3 },
+    });
+    await seedAdmin(ctx);
+  });
+
+  it('returns 429 once the per-email failure window is exhausted', async () => {
+    const attempt = (pw: string) =>
+      ctx.app.inject({
+        method: 'POST',
+        url: '/auth/login',
+        headers: { host: HOST },
+        payload: { email: 'admin@test.com', password: pw },
+      });
+
+    // 3 failed attempts are allowed (each 401), the 4th is throttled.
+    expect((await attempt('wrong-1!')).statusCode).toBe(401);
+    expect((await attempt('wrong-2!')).statusCode).toBe(401);
+    expect((await attempt('wrong-3!')).statusCode).toBe(401);
+
+    const throttled = await attempt('wrong-4!');
+    expect(throttled.statusCode).toBe(429);
+    expect(throttled.headers['retry-after']).toBeTruthy();
+  });
+
+  it('does not throttle a successful login (only failures count)', async () => {
+    // Two failures, then a correct login: must still succeed (counter only
+    // tracks failures and the success path never increments it).
+    await ctx.app.inject({
+      method: 'POST', url: '/auth/login', headers: { host: HOST },
+      payload: { email: 'admin@test.com', password: 'wrong-1!' },
+    });
+    await ctx.app.inject({
+      method: 'POST', url: '/auth/login', headers: { host: HOST },
+      payload: { email: 'admin@test.com', password: 'wrong-2!' },
+    });
+
+    const ok = await ctx.app.inject({
+      method: 'POST', url: '/auth/login', headers: { host: HOST },
+      payload: { email: 'admin@test.com', password: 'Password123!' },
+    });
+    expect(ok.statusCode).toBe(200);
   });
 });
