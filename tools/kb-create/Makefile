@@ -22,9 +22,9 @@ test:
 e2e:
 	go test -race -count=1 -timeout 20m ./e2e/...
 
-## cover: run tests and open coverage report in browser
+## cover: run tests and open coverage report in browser (skips network-bound e2e — use `make e2e` separately)
 cover:
-	go test -race -count=1 -coverprofile=coverage.out ./...
+	go test -race -count=1 -short -coverprofile=coverage.out ./...
 	go tool cover -html=coverage.out -o coverage.html
 	@echo "Coverage report: coverage.html"
 
