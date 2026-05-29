@@ -40,6 +40,9 @@ jobs:
       - name: Run docs-audit
         id: audit
         working-directory: sites/web/apps/docs
+        env:
+          KB_DEVKIT_MODE: "true"
+          KB_DEVKIT_PACKAGE_NAME: "@kb-labs/docs-site"
         run: |
           node scripts/docs-audit.mjs > /tmp/audit.json 2>/dev/null || true
           echo "json=$(cat /tmp/audit.json | tr -d '\n')" >> $GITHUB_OUTPUT
