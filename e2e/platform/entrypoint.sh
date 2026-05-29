@@ -33,6 +33,19 @@ mkdir -p /workspace && cd /workspace
 kb-create kb-e2e --yes --dev-manifest /e2e-registry-manifest.json
 cd kb-e2e
 
+# Bootstrap admin for E2E — gateway creates this user on first start.
+# Tests obtain machine-client credentials by logging in as admin and calling
+# POST /auth/register (no static tokens needed).
+#
+# Use ${VAR:-default} so docker-compose overrides take precedence.
+# docker-compose.auth-ci.yml injects auth-specific credentials; without this
+# guard the assignments below would overwrite those injected values and the
+# auth E2E tests would always get 401 (wrong bootstrap email / tenant).
+GATEWAY_BOOTSTRAP_ADMIN_EMAIL="${GATEWAY_BOOTSTRAP_ADMIN_EMAIL:-admin@e2e.test}"
+GATEWAY_BOOTSTRAP_ADMIN_PASSWORD="${GATEWAY_BOOTSTRAP_ADMIN_PASSWORD:-E2eBootstrapPass1!}"
+GATEWAY_BOOTSTRAP_TENANT_ID="${GATEWAY_BOOTSTRAP_TENANT_ID:-kblabs-cloud}"
+export GATEWAY_BOOTSTRAP_ADMIN_EMAIL GATEWAY_BOOTSTRAP_ADMIN_PASSWORD GATEWAY_BOOTSTRAP_TENANT_ID
+
 # Scaffold test workflows used by E2E suite
 mkdir -p .kb/workflows
 

@@ -59,6 +59,58 @@ export const PressureConfigSchema = z.object({
   perTenant: PressureTenantConfigSchema.optional(),
 });
 
+// ── Auth config (ADR-0020) ─────────────────────────────────────────────────
+
+const AuthPasswordPolicySchema = z.object({
+  minLength: z.number().int().min(1).default(8),
+  maxLength: z.number().int().min(1).default(256),
+  /** When true, new passwords are checked against the HaveIBeenPwned API. */
+  hibpEnabled: z.boolean().default(true),
+});
+
+const AuthRateLimitSchema = z.object({
+  /** Max failed login attempts per IP per minute before 429. */
+  loginPerIpPerMinute: z.number().int().positive().default(10),
+  /** Max failed login attempts for a single email per minute (across all IPs). */
+  loginPerEmailPerMinute: z.number().int().positive().default(5),
+  /** Max activation attempts per IP per hour. */
+  activatePerIpPerHour: z.number().int().positive().default(20),
+});
+
+const AuthBootstrapSchema = z.object({
+  /** Tenant ID for the bootstrap admin account (used in subdomain routing). */
+  tenantId: z.string().min(1),
+  /** Admin email — also readable from env GATEWAY_BOOTSTRAP_ADMIN_EMAIL. */
+  adminEmail: z.string().email().optional(),
+}).optional();
+
+export const AuthConfigSchema = z.object({
+  /** Whether to set Secure flag on session cookies. Set false in dev only. */
+  cookieSecure: z.boolean().default(true),
+  /** Access token TTL in seconds. Default 15 min. */
+  sessionAccessTtlSec: z.number().int().positive().default(900),
+  /** Refresh token TTL in seconds. Default 30 days. */
+  sessionRefreshTtlSec: z.number().int().positive().default(30 * 24 * 3600),
+  /** Grace window for refresh token reuse detection (CD-5). */
+  refreshGraceWindowSec: z.number().int().nonnegative().default(5),
+  /** bcrypt cost factor for password hashing. */
+  bcryptCost: z.number().int().min(4).max(31).default(12),
+  passwordPolicy: AuthPasswordPolicySchema.default({}),
+  rateLimit: AuthRateLimitSchema.default({}),
+  /** Invite link TTL in milliseconds. Default 7 days. */
+  inviteTtlMs: z.number().int().positive().default(7 * 24 * 60 * 60 * 1000),
+  /** Bootstrap admin account seeding. Credentials come from env vars. */
+  bootstrap: AuthBootstrapSchema,
+});
+
+export const TenantsConfigSchema = z.object({
+  /**
+   * Subdomain pattern used to resolve tenant from the Host header.
+   * Use `{tenant}` as placeholder. E.g. `"{tenant}.kblabs.ru"`.
+   */
+  pattern: z.string().default('{tenant}.kblabs.ru'),
+});
+
 export const GatewayConfigSchema = z.object({
   port: z.number().default(4000),
   upstreams: z.record(z.string(), UpstreamConfigSchema).default({}),
@@ -66,6 +118,10 @@ export const GatewayConfigSchema = z.object({
   staticTokens: z.record(z.string(), StaticTokenEntrySchema).default({}),
   /** HTTP pressure control (rate limiting via ResourceBroker). */
   pressure: PressureConfigSchema.optional(),
+  /** User auth configuration (ADR-0020). */
+  auth: AuthConfigSchema.optional(),
+  /** Tenant routing configuration. */
+  tenants: TenantsConfigSchema.optional(),
 });
 
 export type RateLimitConfig = z.infer<typeof RateLimitConfigSchema>;
@@ -73,4 +129,6 @@ export type PressureRouteOverride = z.infer<typeof PressureRouteOverrideSchema>;
 export type PressureTenantConfig = z.infer<typeof PressureTenantConfigSchema>;
 export type PressureConfig = z.infer<typeof PressureConfigSchema>;
 export type UpstreamConfig = z.infer<typeof UpstreamConfigSchema>;
+export type AuthConfig = z.infer<typeof AuthConfigSchema>;
+export type TenantsConfig = z.infer<typeof TenantsConfigSchema>;
 export type GatewayConfig = z.infer<typeof GatewayConfigSchema>;

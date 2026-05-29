@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import fastifyCookie from '@fastify/cookie';
 import fastifyCors from '@fastify/cors';
 import fastifyHttpProxy from '@fastify/http-proxy';
 import { platform, getAdapterStatus } from '@kb-labs/core-runtime';
@@ -10,9 +11,21 @@ import {
 import { logDiagnosticEvent, type ICache, type ILogger, type IServiceTransport } from '@kb-labs/core-platform';
 import type { GatewayConfig } from '@kb-labs/gateway-contracts';
 import { HostRegistrationSchema } from '@kb-labs/gateway-contracts';
-import { AuthService, type JwtConfig } from '@kb-labs/gateway-auth';
+import {
+  AuthService,
+  type JwtConfig,
+  type UsersStore,
+  type SessionsStore,
+  type InvitesStore,
+  type ProviderRegistry,
+  type IPolicyDecisionPoint,
+  type TenantResolver,
+  type RateLimiter,
+} from '@kb-labs/gateway-auth';
 import { createAuthMiddleware } from './auth/middleware.js';
-import { registerAuthRoutes } from './auth/routes.js';
+import { registerAuthRoutes, type MachineAuthRoutesUserExt } from './auth/routes.js';
+import { createUserAuthMiddleware } from './auth/user-auth-middleware.js';
+import { registerUserAuthRoutes, createUserRefreshFn, type UserAuthServiceForRoutes } from './auth/user-routes.js';
 import { registerExecuteRoutes } from './execute/routes.js';
 import { registerLLMGatewayRoutes } from './llm/routes.js';
 import { registerTelemetryRoutes } from './telemetry/routes.js';
@@ -29,6 +42,26 @@ import {
   createPressureOnResponse,
 } from './pressure/index.js';
 
+/**
+ * User-auth dependencies injected from bootstrap. All fields optional so
+ * the server can start without a documentDatabase adapter (degraded mode).
+ */
+export interface UserAuthServerDeps {
+  userAuthService: UserAuthServiceForRoutes;
+  users: UsersStore;
+  sessions: SessionsStore;
+  invites: InvitesStore;
+  providers: ProviderRegistry;
+  pdp: IPolicyDecisionPoint;
+  tenantResolver: TenantResolver;
+  cookieSecure: boolean;
+  accessTtlSec: number;
+  refreshTtlSec: number;
+  inviteTtlMs: number;
+  rateLimiter?: RateLimiter;
+  authRateLimit?: { loginPerIpPerMinute: number; loginPerEmailPerMinute: number };
+}
+
 /** Strip bearer tokens from query params before logging (prevents JWT leakage in access logs). */
 function redactQueryToken(url: string): string {
   return url.replace(/([?&]access_token=)[^&]*/gi, '$1[REDACTED]');
@@ -41,6 +74,7 @@ export async function createServer(
   jwtConfig: JwtConfig,
   registry: HostRegistry | undefined,
   serviceTransport: IServiceTransport,
+  userAuth?: UserAuthServerDeps,
 ) {
   const gatewayLogger = createCorrelatedLogger(logger, {
     serviceId: 'gateway',
@@ -51,7 +85,12 @@ export async function createServer(
   });
   const app = Fastify({
     logger: false,
+    // CD-10: gateway sits behind nginx; parse X-Forwarded-For for real client IPs.
+    trustProxy: true,
   });
+
+  // Cookie parsing — required by user-auth middleware and cookie-based sessions.
+  await app.register(fastifyCookie);
 
   const isProduction = process.env.NODE_ENV === 'production';
 
@@ -149,6 +188,21 @@ export async function createServer(
   // Encapsulated scope: auth hook only applies to gateway-owned routes,
   // not to proxy upstreams registered above.
   await app.register(async function gatewayRoutes(scope) {
+    // User-auth middleware runs FIRST (before machine Bearer check).
+    // Validates kb_access cookie, cross-tenant guard, CD-1 status check.
+    // No-op when no cookie is present — machine auth takes over.
+    if (userAuth) {
+      scope.addHook(
+        'onRequest',
+        createUserAuthMiddleware({
+          users: userAuth.users,
+          tenantResolver: userAuth.tenantResolver,
+          jwtConfig,
+        }),
+      );
+    }
+
+    // Machine Bearer middleware — skips if userAuthContext already set by above.
     scope.addHook('onRequest', createAuthMiddleware(cache, jwtConfig));
 
     // Per-tenant pressure (ADR-0056). Runs after auth so AuthContext is set.
@@ -159,9 +213,42 @@ export async function createServer(
       );
     }
 
-    // Auth service + public routes (/auth/register, /auth/token, /auth/refresh)
+    // Machine auth routes (/auth/register, /auth/token, /auth/refresh).
+    // When userAuth is available, wire user cookie refresh into /auth/refresh.
     const authService = new AuthService(cache, jwtConfig);
-    registerAuthRoutes(scope as unknown as Parameters<typeof registerAuthRoutes>[0], authService);
+    const userExt: MachineAuthRoutesUserExt | undefined = userAuth
+      ? {
+          userRefreshFn: createUserRefreshFn({
+            userAuthService: userAuth.userAuthService,
+            cookieOpts: { cookieSecure: userAuth.cookieSecure },
+          }),
+          pdp: userAuth.pdp,
+        }
+      : undefined;
+    registerAuthRoutes(scope as unknown as Parameters<typeof registerAuthRoutes>[0], authService, userExt);
+
+    // User-auth routes — all new endpoints + /auth/me.
+    if (userAuth) {
+      registerUserAuthRoutes(
+        scope as unknown as Parameters<typeof registerUserAuthRoutes>[0],
+        {
+          userAuthService: userAuth.userAuthService,
+          users: userAuth.users,
+          sessions: userAuth.sessions,
+          invites: userAuth.invites,
+          providers: userAuth.providers,
+          pdp: userAuth.pdp,
+          tenantResolver: userAuth.tenantResolver,
+          cookieOpts: { cookieSecure: userAuth.cookieSecure },
+          accessTtlSec: userAuth.accessTtlSec,
+          refreshTtlSec: userAuth.refreshTtlSec,
+          inviteTtlMs: userAuth.inviteTtlMs,
+          jwtConfig,
+          rateLimiter: userAuth.rateLimiter,
+          authRateLimit: userAuth.authRateLimit,
+        },
+      );
+    }
 
     // Health (public) — comprehensive adapter + upstream health
     const HEALTH_CACHE_KEY = '__gateway_health';
