@@ -42,7 +42,9 @@ import type {
   SessionResult,
   RateLimiter,
   TenantResolver,
+  OAuthStateStore,
 } from '@kb-labs/gateway-auth';
+import { registerOAuthRoutes } from './oauth-routes.js';
 import { AuthError, verifyCsrfToken } from '@kb-labs/gateway-auth';
 import { PERMISSIONS } from '@kb-labs/core-contracts';
 import type { UserAuthContext } from './user-auth-middleware.js';
@@ -109,6 +111,10 @@ export interface UserAuthRouteDeps {
     loginPerIpPerMinute: number;
     loginPerEmailPerMinute: number;
   };
+  /** OAuth state store. When present, the redirect/OAuth routes are registered. */
+  oauthState?: OAuthStateStore;
+  /** Per-IP callback rate-limit for the OAuth callback (defaults applied when set). */
+  oauthCallbackPerIpPerMinute?: number;
 }
 
 // ── Cookie helpers ────────────────────────────────────────────────────────────
@@ -203,9 +209,24 @@ export function createUserRefreshFn(
 // ── Route registrar ───────────────────────────────────────────────────────────
 
 export function registerUserAuthRoutes(app: FastifyInstance, deps: UserAuthRouteDeps): void {
-  const { userAuthService, users, sessions, invites, providers, pdp, tenantResolver, cookieOpts, inviteTtlMs, rateLimiter, authRateLimit } = deps;
+  const { userAuthService, users, sessions, invites, providers, pdp, tenantResolver, cookieOpts, inviteTtlMs, rateLimiter, authRateLimit, oauthState, oauthCallbackPerIpPerMinute } = deps;
   // Apply config defaults so the rest of the handler can use them without null-checks.
   const authRateLimitCfg = { loginPerIpPerMinute: 10, loginPerEmailPerMinute: 5, ...authRateLimit };
+
+  // Redirect/OAuth routes are only registered when an OAuth state store is wired
+  // (DD-5). Without a (shared) KV-backed store there is nowhere to hold the
+  // per-attempt `state` binding, so the flow is simply unavailable.
+  if (oauthState) {
+    registerOAuthRoutes(app, {
+      userAuthService,
+      providers,
+      tenantResolver,
+      oauthState,
+      cookieOpts,
+      rateLimiter,
+      oauthCallbackPerIpPerMinute,
+    });
+  }
 
   // ── GET /auth/me ────────────────────────────────────────────────────────────
   // Handles both user cookie auth and machine Bearer auth. User takes precedence.

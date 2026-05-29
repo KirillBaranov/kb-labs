@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
+  AuthConfigSchema,
   GatewayConfigSchema,
   HostRegistrationSchema,
   HostDescriptorSchema,
@@ -45,6 +46,46 @@ describe('GatewayConfigSchema', () => {
     ).toThrow();
   });
 
+});
+
+describe('AuthConfigSchema.providers (ADR-0020 DD-4)', () => {
+  it('omitting providers leaves it undefined', () => {
+    const cfg = AuthConfigSchema.parse({ bootstrap: { tenantId: 't1' } });
+    expect(cfg.providers).toBeUndefined();
+  });
+
+  it('parses a providers map keyed by instance id, each requiring a type', () => {
+    const cfg = AuthConfigSchema.parse({
+      bootstrap: { tenantId: 't1' },
+      providers: {
+        'email-password': { type: 'email-password' },
+        corp: { type: 'oidc' },
+      },
+    });
+    expect(cfg.providers?.['email-password']?.type).toBe('email-password');
+    expect(cfg.providers?.['corp']?.type).toBe('oidc');
+  });
+
+  it('passthrough keeps provider-specific keys for the provider schema to validate', () => {
+    const cfg = AuthConfigSchema.parse({
+      bootstrap: { tenantId: 't1' },
+      providers: {
+        corp: { type: 'oidc', issuer: 'https://idp.example', clientId: 'abc' },
+      },
+    });
+    const corp = cfg.providers?.['corp'] as Record<string, unknown>;
+    expect(corp['issuer']).toBe('https://idp.example');
+    expect(corp['clientId']).toBe('abc');
+  });
+
+  it('rejects a provider entry without a type', () => {
+    expect(() =>
+      AuthConfigSchema.parse({
+        bootstrap: { tenantId: 't1' },
+        providers: { broken: { issuer: 'https://x' } },
+      }),
+    ).toThrow();
+  });
 });
 
 describe('HostRegistrationSchema', () => {
