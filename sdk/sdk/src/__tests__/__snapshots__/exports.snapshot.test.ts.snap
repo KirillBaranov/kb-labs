@@ -194,6 +194,7 @@ exports[`SDK Exports Snapshot > should match snapshot of all exported names 1`] 
   "validationError",
   "vectorStorePreset",
   "warningResult",
+  "webhook",
 ]
 `;
 
@@ -285,5 +286,6 @@ exports[`SDK Exports Snapshot > should match snapshot of exported functions 1`] 
   "useVectorStore",
   "validationError",
   "warningResult",
+  "webhook",
 ]
 `;

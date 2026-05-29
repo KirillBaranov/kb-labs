@@ -23,6 +23,8 @@ describe('defineWebhook', () => {
       event: 'github:push',
       source: 'github',
       payload: { ref: 'refs/heads/main' },
+      namespaceId: 'ns-test',
+      webhookId: 'wh-test-001',
     };
 
     mockContext = {
@@ -139,6 +141,8 @@ describe('isWebhookHost', () => {
       event: 'github:push',
       source: 'github',
       payload: {},
+      namespaceId: 'ns-test',
+      webhookId: 'wh-test-002',
     };
 
     expect(isWebhookHost(webhookContext)).toBe(true);
