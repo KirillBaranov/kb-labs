@@ -67,7 +67,7 @@
             { "slug": "sdk/plugin-api/routes",         "type": "hybrid", "owners": ["sdk/sdk/src/manifest/**"] },
             { "slug": "sdk/plugin-api/hooks",          "type": "hybrid", "owners": ["sdk/sdk/src/hooks/**"] },
             { "slug": "sdk/plugin-api/handler-context","type": "hybrid", "owners": ["sdk/sdk/src/platform/**"] },
-            { "slug": "sdk/plugin-api/studio",         "type": "hybrid", "owners": ["studio/hooks/**", "studio/ui-kit/**"] },
+            { "slug": "sdk/plugin-api/studio",         "type": "hybrid", "owners": ["studio/hooks/**", "studio/ui-kit/**"], "status": "missing" },
             { "slug": "sdk/plugin-api/testing",        "type": "hybrid", "owners": ["shared/testing/**", "shared/testing-e2e/**"] },
             { "slug": "sdk/plugin-api/llm-tiers",      "type": "manual", "owners": ["core/llm-router/**"] },
             { "slug": "sdk/plugin-api/migration",      "type": "manual", "owners": ["sdk/sdk/**"] }
@@ -117,11 +117,13 @@
       "pages": [
         { "slug": "plugins/index",             "type": "manual", "owners": ["core/plugin-contracts/**"] },
         { "slug": "plugins/manifest-reference","type": "hybrid", "owners": ["core/plugin-contracts/**"] },
-        { "slug": "plugins/permissions",       "type": "hybrid", "owners": ["core/policy/**", "shared/perm-presets/**"] },
-        { "slug": "plugins/cli-commands",      "type": "hybrid", "owners": ["cli/commands/**", "sdk/**"] },
-        { "slug": "plugins/rest-routes",       "type": "hybrid", "owners": ["shared/http/**", "plugins/rest-api/**"] },
-        { "slug": "plugins/studio-pages",      "type": "manual", "owners": ["studio/**"] },
-        { "slug": "plugins/publishing",        "type": "manual", "owners": ["plugins/marketplace-registry/**"] }
+        { "slug": "plugins/permissions",      "type": "hybrid", "owners": ["core/policy/**", "shared/perm-presets/**"] },
+        { "slug": "plugins/cli-commands",     "type": "hybrid", "owners": ["cli/commands/**", "sdk/**"] },
+        { "slug": "plugins/cli-formatting",   "type": "hybrid", "owners": ["shared/cli-ui/**", "sdk/**"] },
+        { "slug": "plugins/sdk-hooks",        "type": "hybrid", "owners": ["sdk/sdk/src/hooks/**"] },
+        { "slug": "plugins/rest-routes",      "type": "hybrid", "owners": ["shared/http/**", "plugins/rest-api/**"] },
+        { "slug": "plugins/studio-pages",     "type": "manual", "owners": ["studio/**"] },
+        { "slug": "plugins/publishing",       "type": "manual", "owners": ["plugins/marketplace-registry/**"] }
       ]
     },
 
@@ -144,6 +146,7 @@
           "source": "core/platform/src",
           "stalenessRisk": "high",
           "pages": [
+            { "slug": "adapters/interfaces/index",        "type": "manual", "owners": ["core/platform/**"] },
             { "slug": "adapters/interfaces/analytics",    "interface": "IAnalytics",         "owners": ["core/platform/**"] },
             { "slug": "adapters/interfaces/cache",        "interface": "ICache",             "owners": ["core/platform/**"] },
             { "slug": "adapters/interfaces/database",     "interface": "IDocumentDatabase",  "owners": ["core/platform/**"] },
@@ -187,7 +190,7 @@
         { "slug": "gateway/index",          "type": "manual", "owners": ["plugins/gateway/**"] },
         { "slug": "gateway/authentication", "type": "hybrid", "owners": ["plugins/gateway/auth/**"] },
         { "slug": "gateway/routing",        "type": "hybrid", "owners": ["plugins/gateway/core/**"] },
-        { "slug": "gateway/webhooks",       "type": "manual", "owners": ["plugins/gateway/**"] },
+        { "slug": "gateway/webhooks",       "type": "manual", "owners": ["plugins/gateway/**"], "status": "missing" },
         { "slug": "gateway/self-hosted",    "type": "manual", "owners": ["tools/kb-deploy/**"] },
         { "slug": "gateway/architecture",   "type": "manual", "owners": ["plugins/gateway/**"] }
       ]
@@ -204,6 +207,8 @@
         { "slug": "services/cli",             "type": "hybrid", "owners": ["cli/**"] },
         { "slug": "services/kb-dev",          "type": "manual", "owners": ["tools/kb-dev/**"] },
         { "slug": "services/kb-devkit",       "type": "manual", "owners": ["infra/devkit/**", "tools/kb-devkit/**"] },
+        { "slug": "services/kb-deploy",       "type": "manual", "owners": ["tools/kb-deploy/**"] },
+        { "slug": "services/kb-monitor",      "type": "manual", "owners": ["tools/kb-monitor/**"] },
         { "slug": "services/marketplace",     "type": "manual", "owners": ["plugins/marketplace/**"] },
         { "slug": "services/rest-api",        "type": "hybrid", "owners": ["plugins/rest-api/**"] },
         { "slug": "services/studio",          "type": "manual", "owners": ["studio/app/**"] },
@@ -250,15 +255,18 @@
       "stalenessRisk": "low",
       "note": "Marketing content. Plugins mentioned here as examples only — not as documentation targets.",
       "pages": [
-        { "slug": "use-cases/index",                        "type": "manual", "owners": [] },
-        { "slug": "use-cases/scenario-ai-code-review",      "type": "manual", "owners": ["plugins/review/**"] },
-        { "slug": "use-cases/scenario-release-notes",       "type": "manual", "owners": ["plugins/release/**"] },
-        { "slug": "use-cases/scenario-team-linter",         "type": "manual", "owners": ["plugins/quality/**"] },
-        { "slug": "use-cases/showcase-agents",              "type": "manual", "owners": ["plugins/agents/**"] },
-        { "slug": "use-cases/showcase-gateway",             "type": "manual", "owners": ["plugins/gateway/**"] },
-        { "slug": "use-cases/showcase-workflows",           "type": "manual", "owners": ["plugins/workflow/**"] },
-        { "slug": "use-cases/showcase-mind",                "type": "manual", "owners": ["plugins/mind/**"] },
-        { "slug": "use-cases/showcase-studio",              "type": "manual", "owners": ["studio/**"] }
+        { "slug": "use-cases/index",                   "type": "manual", "owners": [] },
+        { "slug": "use-cases/scenario-ai-code-review", "type": "manual", "owners": ["plugins/review/**"] },
+        { "slug": "use-cases/scenario-release-notes",  "type": "manual", "owners": ["plugins/release/**"] },
+        { "slug": "use-cases/scenario-team-linter",    "type": "manual", "owners": ["plugins/quality/**"] },
+        { "slug": "use-cases/showcase-ai-review",      "type": "manual", "owners": ["plugins/review/**"] },
+        { "slug": "use-cases/showcase-commit-plugin",  "type": "manual", "owners": ["plugins/commit/**"] },
+        { "slug": "use-cases/showcase-devlink",        "type": "manual", "owners": ["plugins/devlink/**"] },
+        { "slug": "use-cases/showcase-mind",           "type": "manual", "owners": ["plugins/mind/**"] },
+        { "slug": "use-cases/showcase-agents",         "type": "manual", "owners": ["plugins/agents/**"],   "status": "missing" },
+        { "slug": "use-cases/showcase-gateway",        "type": "manual", "owners": ["plugins/gateway/**"],  "status": "missing" },
+        { "slug": "use-cases/showcase-workflows",      "type": "manual", "owners": ["plugins/workflow/**"], "status": "missing" },
+        { "slug": "use-cases/showcase-studio",         "type": "manual", "owners": ["studio/**"],           "status": "missing" }
       ]
     }
   ],

@@ -129,6 +129,13 @@ function main() {
     knownFiles.add(`${slug}/index.mdx`);
     if (slug.endsWith('/index')) knownFiles.add(`${slug}.mdx`);
   }
+  // Section and subsection index.mdx files are implicit roots — always known
+  for (const section of sitemap.sections ?? []) {
+    knownFiles.add(`${section.id}/index.mdx`);
+    for (const sub of section.subsections ?? []) {
+      knownFiles.add(`${sub.id}/index.mdx`);
+    }
+  }
 
   for (const file of files) {
     if (!knownFiles.has(file.rel)) {
