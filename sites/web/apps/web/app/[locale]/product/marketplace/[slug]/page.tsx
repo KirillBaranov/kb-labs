@@ -129,7 +129,7 @@ export default async function PluginPage({ params }: Props) {
 
               {/* Install command */}
               <div>
-                <p className="mb-2 text-[0.6rem] font-bold uppercase tracking-[0.1em] text-muted/55 dark:text-muted/40">
+                <p className="mb-2 text-[0.6rem] font-bold uppercase tracking-[0.1em] text-muted/55 dark:text-muted/50">
                   {t('marketplace.detail.installLabel')}
                 </p>
                 <div className="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-3">
@@ -170,7 +170,7 @@ export default async function PluginPage({ params }: Props) {
                     {item.commands.map((cmd) => (
                       <div key={cmd} className="flex items-center gap-4 px-4 py-3">
                         <code className="font-mono text-sm text-kb-text">kb {cmd}</code>
-                        <span className="ml-auto font-mono text-xs text-muted/50 dark:text-muted/35">--help</span>
+                        <span className="ml-auto font-mono text-xs text-muted/50 dark:text-muted/50">--help</span>
                       </div>
                     ))}
                   </div>
@@ -187,7 +187,7 @@ export default async function PluginPage({ params }: Props) {
                     <div className="grid gap-4 border-t border-line p-4 sm:grid-cols-3">
                       {item.permissions && item.permissions.length > 0 && (
                         <div className="flex flex-col gap-1.5">
-                          <p className="text-[0.6rem] font-bold uppercase tracking-[0.1em] text-muted/55 dark:text-muted/40">{t('marketplace.detail.permissionsLabel')}</p>
+                          <p className="text-[0.6rem] font-bold uppercase tracking-[0.1em] text-muted/55 dark:text-muted/50">{t('marketplace.detail.permissionsLabel')}</p>
                           {item.permissions.map((p) => (
                             <code key={p} className="font-mono text-xs text-muted/70">{p}</code>
                           ))}
@@ -195,7 +195,7 @@ export default async function PluginPage({ params }: Props) {
                       )}
                       {item.allowedHosts && item.allowedHosts.length > 0 && (
                         <div className="flex flex-col gap-1.5">
-                          <p className="text-[0.6rem] font-bold uppercase tracking-[0.1em] text-muted/55 dark:text-muted/40">{t('marketplace.detail.networkLabel')}</p>
+                          <p className="text-[0.6rem] font-bold uppercase tracking-[0.1em] text-muted/55 dark:text-muted/50">{t('marketplace.detail.networkLabel')}</p>
                           {item.allowedHosts.map((h) => (
                             <code key={h} className="font-mono text-xs text-muted/70">{h}</code>
                           ))}
@@ -203,7 +203,7 @@ export default async function PluginPage({ params }: Props) {
                       )}
                       {item.envVars && item.envVars.length > 0 && (
                         <div className="flex flex-col gap-1.5">
-                          <p className="text-[0.6rem] font-bold uppercase tracking-[0.1em] text-muted/55 dark:text-muted/40">{t('marketplace.detail.envLabel')}</p>
+                          <p className="text-[0.6rem] font-bold uppercase tracking-[0.1em] text-muted/55 dark:text-muted/50">{t('marketplace.detail.envLabel')}</p>
                           {item.envVars.map((v) => (
                             <code key={v} className="font-mono text-xs text-muted/70">{v}</code>
                           ))}
@@ -230,7 +230,7 @@ export default async function PluginPage({ params }: Props) {
               {/* Tags */}
               {item.tags.length > 0 && (
                 <div className="mt-5 flex flex-col gap-2">
-                  <p className="text-[0.6rem] font-bold uppercase tracking-[0.1em] text-muted/55 dark:text-muted/40">
+                  <p className="text-[0.6rem] font-bold uppercase tracking-[0.1em] text-muted/55 dark:text-muted/50">
                     {t('marketplace.detail.tagsLabel')}
                   </p>
                   <div className="flex flex-wrap gap-1.5">
