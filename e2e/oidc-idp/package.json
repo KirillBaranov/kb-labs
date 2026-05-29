@@ -1,0 +1,45 @@
+{
+  "name": "@kb-labs/e2e-oidc-idp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Spec-compliant OIDC identity provider used as the upstream IdP in auth E2E. Real authorization-code flow, RS256-signed ID tokens, discovery + JWKS — no shortcuts, so the gateway exercises exactly what it would against Google/Okta/Keycloak in prod.",
+  "main": "./dist/idp-server.js",
+  "types": "./dist/idp-server.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/idp-server.d.ts",
+      "import": "./dist/idp-server.js"
+    }
+  },
+  "bin": {
+    "kb-e2e-oidc-idp": "./dist/bin.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup src/idp-server.ts src/bin.ts --format esm --dts --clean",
+    "clean": "rimraf dist",
+    "start": "node ./dist/bin.js",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "jose": "^5.9.6"
+  },
+  "devDependencies": {
+    "@kb-labs/devkit": "workspace:*",
+    "@types/node": "^24.3.3",
+    "tsup": "^8.5.0",
+    "typescript": "^5",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "sideEffects": false
+}

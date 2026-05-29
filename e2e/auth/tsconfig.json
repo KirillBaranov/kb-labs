@@ -9,5 +9,11 @@
     "outDir": "dist",
     "rootDir": "."
   },
-  "include": ["fixtures/**/*.ts", "specs/**/*.ts", "playwright.config.ts"]
+  "include": [
+    "fixtures/**/*.ts",
+    "specs/**/*.ts",
+    "specs-oauth/**/*.ts",
+    "playwright.config.ts",
+    "playwright.oauth.config.ts"
+  ]
 }

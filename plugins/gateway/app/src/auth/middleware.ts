@@ -38,6 +38,11 @@ export function createAuthMiddleware(cache: ICache, jwtConfig: JwtConfig) {
     const rawPath = new URL(request.url, 'http://localhost').pathname;
     const routePath = rawPath.replace(/\/+/g, '/').replace(/\/+$/, '') || '/';
     if (PUBLIC_ROUTES.has(routePath)) {return;}
+    // Redirect/OAuth endpoints (ADR-0020, Step 4) are public — they carry no
+    // Bearer token (the IdP→callback hop is a top-level browser navigation) and
+    // enforce their own state/cookie binding. Prefix match covers /start and
+    // /callback for every provider id.
+    if (routePath.startsWith('/auth/oauth/')) {return;}
 
     // Bearer header takes precedence; fall back to ?access_token= for SSE
     // connections where browsers cannot set custom headers.
