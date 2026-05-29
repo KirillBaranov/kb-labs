@@ -13,42 +13,18 @@ name: E2E Platform Tests
 # - PRs (ignoring docs/sites/editor-state changes)
 
 on:
+  workflow_call:
   workflow_run:
-    workflows: ["Release Binaries"]
+    workflows: [CI, Release Binaries]
     types: [completed]
-  push:
     branches: [main]
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
-      - 'sites/**'
-      - '.claude/**'
-      - '.vscode/**'
-      - '.idea/**'
-      - '.editorconfig'
-      - 'LICENSE'
-      - '.github/ISSUE_TEMPLATE/**'
-      - '.github/PULL_REQUEST_TEMPLATE.md'
-  pull_request:
-    types: [opened, synchronize, reopened]
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
-      - 'sites/**'
-      - '.claude/**'
-      - '.vscode/**'
-      - '.idea/**'
-      - '.editorconfig'
-      - 'LICENSE'
-      - '.github/ISSUE_TEMPLATE/**'
-      - '.github/PULL_REQUEST_TEMPLATE.md'
   workflow_dispatch:
   schedule:
     - cron: '0 9 * * 1'
 
-# Only the latest run for a given PR/ref keeps going — older runs are cancelled.
+# Only the latest run for a given ref keeps going — older runs are cancelled.
 concurrency:
-  group: e2e-platform-${{ github.event.pull_request.number || github.ref }}
+  group: e2e-platform-${{ github.event.workflow_run.id || github.ref }}
   cancel-in-progress: true
 
 jobs:

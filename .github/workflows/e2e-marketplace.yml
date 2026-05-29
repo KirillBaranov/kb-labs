@@ -5,25 +5,25 @@ name: E2E Marketplace Tests
 # build → Verdaccio → platform → test pipeline.
 #
 # Triggers:
-# - Any PR that touches marketplace plugin or the e2e suite itself
+# - After every CI run on main (post-merge validation)
 # - Manual dispatch
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    paths:
-      - 'plugins/marketplace/**'
-      - 'e2e/marketplace/**'
-      - '.github/workflows/e2e-marketplace.yml'
+  workflow_call:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
-  group: e2e-marketplace-${{ github.event.pull_request.number || github.ref }}
+  group: e2e-marketplace-${{ github.event.workflow_run.id || github.ref }}
   cancel-in-progress: true
 
 jobs:
   e2e:
     name: E2E Marketplace
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     uses: ./.github/workflows/reusable-e2e-docker.yml
     with:
       suite: marketplace

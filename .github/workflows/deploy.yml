@@ -26,6 +26,10 @@ on:
         description: 'Target to deploy (leave empty for affected)'
         required: false
         default: ''
+      rollback-sha:
+        description: 'Git SHA to deploy instead of HEAD (leave empty for HEAD)'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -43,6 +47,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # full history for multi-commit push diff
+
+      - name: Pin to rollback SHA
+        if: inputs.rollback-sha != ''
+        run: git checkout ${{ inputs.rollback-sha }}
 
       - name: Restore deploy state
         uses: actions/cache/restore@v4
@@ -99,11 +107,16 @@ jobs:
         run: |
           echo "$SSH_KEY" > /tmp/deploy_key && chmod 600 /tmp/deploy_key
           SSH="ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST}"
-          WEB=$($SSH "docker inspect kb-labs-web  --format '{{.Config.Image}}' 2>/dev/null || true")
-          DOCS=$($SSH "docker inspect kb-labs-docs --format '{{.Config.Image}}' 2>/dev/null || true")
-          echo "web=${WEB}"   >> "$GITHUB_OUTPUT"
-          echo "docs=${DOCS}" >> "$GITHUB_OUTPUT"
-          echo "Pre-deploy: web=${WEB} docs=${DOCS}"
+          WEB=$($SSH         "docker inspect kb-labs-web                  --format '{{.Config.Image}}' 2>/dev/null || true")
+          DOCS=$($SSH        "docker inspect kb-labs-docs                 --format '{{.Config.Image}}' 2>/dev/null || true")
+          GATEWAY=$($SSH     "docker inspect kb-labs-gateway              --format '{{.Config.Image}}' 2>/dev/null || true")
+          MARKETPLACE=$($SSH "docker inspect kb-labs-marketplace-registry --format '{{.Config.Image}}' 2>/dev/null || true")
+          echo "web=${WEB}"               >> "$GITHUB_OUTPUT"
+          echo "docs=${DOCS}"             >> "$GITHUB_OUTPUT"
+          echo "gateway=${GATEWAY}"       >> "$GITHUB_OUTPUT"
+          echo "marketplace=${MARKETPLACE}" >> "$GITHUB_OUTPUT"
+          echo "Pre-deploy: web=${WEB} docs=${DOCS} gateway=${GATEWAY} marketplace=${MARKETPLACE}"
+          rm -f /tmp/deploy_key
 
       - name: Login to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
@@ -156,8 +169,10 @@ jobs:
           }
 
           FAILED=0
-          check "web"  "http://localhost:3000/" || FAILED=1
-          check "docs" "http://localhost:3001/" || FAILED=1
+          check "web"         "http://localhost:3000/"        || FAILED=1
+          check "docs"        "http://localhost:3001/"        || FAILED=1
+          check "gateway"     "http://localhost:4000/health"  || FAILED=1
+          check "marketplace" "http://localhost:5070/health"  || FAILED=1
           rm -f /tmp/deploy_key
           exit $FAILED
 
@@ -179,8 +194,10 @@ jobs:
           SSH_HOST: ${{ secrets.SSH_HOST }}
           SSH_USER: ${{ secrets.SSH_USER }}
           SSH_KEY: ${{ secrets.SSH_KEY }}
-          WEB_IMAGE:  ${{ steps.pre_deploy.outputs.web }}
-          DOCS_IMAGE: ${{ steps.pre_deploy.outputs.docs }}
+          WEB_IMAGE:         ${{ steps.pre_deploy.outputs.web }}
+          DOCS_IMAGE:        ${{ steps.pre_deploy.outputs.docs }}
+          GATEWAY_IMAGE:     ${{ steps.pre_deploy.outputs.gateway }}
+          MARKETPLACE_IMAGE: ${{ steps.pre_deploy.outputs.marketplace }}
         run: |
           echo "$SSH_KEY" > /tmp/deploy_key && chmod 600 /tmp/deploy_key
           SSH="ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST}"
@@ -202,11 +219,13 @@ jobs:
                    '${image}'"
           }
 
-          rollback "kb-labs-web"  "$WEB_IMAGE"  3000
-          rollback "kb-labs-docs" "$DOCS_IMAGE" 3001
+          rollback "kb-labs-web"                  "$WEB_IMAGE"         3000
+          rollback "kb-labs-docs"                 "$DOCS_IMAGE"        3001
+          rollback "kb-labs-gateway"              "$GATEWAY_IMAGE"     4000
+          rollback "kb-labs-marketplace-registry" "$MARKETPLACE_IMAGE" 5070
 
           rm -f /tmp/deploy_key
-          echo "::error::Smoke test failed — rolled back web to ${WEB_IMAGE}, docs to ${DOCS_IMAGE}"
+          echo "::error::Smoke test failed — rolled back all services to pre-deploy images"
           exit 1
 
       - name: Save deploy state
