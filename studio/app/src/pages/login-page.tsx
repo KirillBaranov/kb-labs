@@ -67,9 +67,15 @@ export function LoginPage() {
     fetch('/api/auth/providers', { credentials: 'include' })
       .then((res) => (res.ok ? res.json() : Promise.resolve([])))
       .then((data: unknown) => {
-        if (Array.isArray(data)) {
-          setProviders(data as AuthProvider[]);
-        }
+        // The gateway returns `{ providers: [...] }` (see gateway user-routes
+        // GET /auth/providers). Accept that canonical shape, and also tolerate
+        // a bare array for forward/backward compatibility.
+        const list = Array.isArray(data)
+          ? data
+          : Array.isArray((data as { providers?: unknown })?.providers)
+            ? (data as { providers: unknown[] }).providers
+            : [];
+        setProviders(list as AuthProvider[]);
       })
       .catch(() => {
         // Providers endpoint is best-effort; default to showing password form.

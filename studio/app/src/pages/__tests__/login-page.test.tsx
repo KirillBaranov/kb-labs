@@ -38,15 +38,18 @@ function mockFetchProviders(loginResult: 'ok' | 'fail') {
   return mockFetchWithProviders(PROVIDERS_RESPONSE);
 }
 
-// Generic provider-list stub: serves the given providers array from
-// GET /api/auth/providers, 404 for anything else.
+// Generic provider-list stub: serves the given providers from
+// GET /api/auth/providers, 404 for anything else. Mirrors the REAL gateway
+// contract, which wraps the list as `{ providers: [...] }` (gateway
+// user-routes GET /auth/providers) — not a bare array. Keeping the mock
+// faithful to that shape is what catches the parse mismatch the OAuth E2E hit.
 function mockFetchWithProviders(providers: Array<{ id: string; kind: string }>) {
   return vi.fn((url: string) => {
     if (url.includes('/api/auth/providers')) {
       return Promise.resolve({
         ok: true,
         status: 200,
-        json: () => Promise.resolve(providers),
+        json: () => Promise.resolve({ providers }),
       });
     }
     return Promise.resolve({
