@@ -15,7 +15,7 @@
  * caller always gets a structured result to act on.
  */
 
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac, timingSafeEqual, randomBytes } from 'node:crypto';
 import type { WebhookAuthConfig } from '@kb-labs/plugin-contracts';
 import type { WebhookSecretEntry, WebhookSecretStore } from './secret-store.js';
 
@@ -44,12 +44,20 @@ function getHeader(headers: Record<string, string | string[] | undefined>, name:
   return Array.isArray(value) ? value[0] : value;
 }
 
-/** Constant-time string comparison via Buffer.from to avoid timing attacks. */
+/**
+ * Constant-time string comparison.
+ *
+ * Uses HMAC over a random session key so both inputs are hashed to the same
+ * fixed length (32 bytes) before comparison — eliminates length-based
+ * timing side-channels that would otherwise occur when short-circuiting on
+ * `a.length !== b.length`.
+ */
+const _SESSION_KEY = randomBytes(32);
+
 function safeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) {
-    return false;
-  }
-  return timingSafeEqual(Buffer.from(a), Buffer.from(b));
+  const ha = createHmac('sha256', _SESSION_KEY).update(a).digest();
+  const hb = createHmac('sha256', _SESSION_KEY).update(b).digest();
+  return timingSafeEqual(ha, hb);
 }
 
 function isPreviousValid(entry: WebhookSecretEntry): boolean {
@@ -150,13 +158,16 @@ export async function verifyWebhookAuth(
         return { valid: false, reason: 'custom validator requires backend and pluginRoot' };
       }
       try {
+        // Send HMAC of the body (not the raw secret) so the validator can
+        // verify without ever receiving the plaintext secret.
+        const bodyHmac = createHmac('sha256', entry.current).update(req.rawBody).digest('hex');
         const result = await backend.execute({
           handlerRef: authConfig.validator,
           pluginRoot,
           input: {
             headers: req.headers,
             rawBody: req.rawBody.toString('base64'),
-            secret: entry.current,
+            bodyHmac,
           },
         }) as { valid: boolean };
         return result.valid ? { valid: true } : { valid: false, reason: 'custom validator rejected' };

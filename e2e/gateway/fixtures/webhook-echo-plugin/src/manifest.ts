@@ -31,6 +31,8 @@ export const manifest: ManifestV3 = {
         event: 'echo',
         handler: './handlers/echo.js#default',
         auth: { type: 'secret', header: 'X-Echo-Secret' },
+        // delivery_id is used by WH-06 idempotency E2E test
+        idempotencyKey: 'delivery_id',
       },
       {
         event: 'echo-hmac',
