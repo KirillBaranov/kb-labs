@@ -1,0 +1,23 @@
+{
+  "name": "@kb-labs/e2e-webhook-echo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Webhook echo fixture plugin for gateway E2E tests. Install via: pnpm kb marketplace install ./e2e/gateway/fixtures/webhook-echo-plugin",
+  "type": "module",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./manifest": "./dist/manifest.js"
+  },
+  "scripts": {
+    "build": "tsc --outDir dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@kb-labs/plugin-contracts": "workspace:*",
+    "@kb-labs/sdk": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
