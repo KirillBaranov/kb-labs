@@ -500,8 +500,11 @@ export async function createServer(
 
     registerInternalRoutes(scope as unknown as Parameters<typeof registerInternalRoutes>[0], process.env.GATEWAY_INTERNAL_SECRET, hostRegistry, cache);
 
-    // Webhook admin routes — provision / list / revoke (auth required, inside scope)
-    if (webhookManifests?.length && platform.hasResourceBroker) {
+    // Webhook admin routes — provision / list / revoke (auth required, inside scope).
+    // Registered unconditionally when the resource broker is available so that the
+    // admin API (GET /api/v1/webhooks, POST /api/v1/webhooks/provision, DELETE) works
+    // even in environments where no webhook-enabled plugins are currently installed.
+    if (platform.hasResourceBroker) {
       const webhookBaseUrl = process.env.GATEWAY_PUBLIC_URL ?? `http://localhost:${config.port}`;
       // Thin adapter: globalDispatcher.call() requires namespaceId — threaded via optional field
       const provisionBackend = {
@@ -522,7 +525,7 @@ export async function createServer(
           cache,
           logger,
           backend: provisionBackend,
-          manifests: webhookManifests,
+          manifests: webhookManifests ?? [],
           baseUrl: webhookBaseUrl,
           broker: platform.resourceBroker,
         },
