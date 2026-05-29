@@ -42,6 +42,9 @@ import {
   createPressurePreHandler,
   createPressureOnResponse,
 } from './pressure/index.js';
+import { globalDispatcher } from './hosts/dispatcher.js';
+import { registerWebhookAdminRoutes } from './webhook/admin-routes.js';
+import { registerWebhookRoutes, type WebhookManifestEntry } from './webhook/router.js';
 
 /**
  * User-auth dependencies injected from bootstrap. All fields optional so
@@ -80,6 +83,7 @@ export async function createServer(
   registry: HostRegistry | undefined,
   serviceTransport: IServiceTransport,
   userAuth?: UserAuthServerDeps,
+  webhookManifests?: WebhookManifestEntry[],
 ) {
   const gatewayLogger = createCorrelatedLogger(logger, {
     serviceId: 'gateway',
@@ -495,7 +499,56 @@ export async function createServer(
 
 
     registerInternalRoutes(scope as unknown as Parameters<typeof registerInternalRoutes>[0], process.env.GATEWAY_INTERNAL_SECRET, hostRegistry, cache);
+
+    // Webhook admin routes — provision / list / revoke (auth required, inside scope).
+    // Registered unconditionally when the resource broker is available so that the
+    // admin API (GET /api/v1/webhooks, POST /api/v1/webhooks/provision, DELETE) works
+    // even in environments where no webhook-enabled plugins are currently installed.
+    if (platform.hasResourceBroker) {
+      const webhookBaseUrl = process.env.GATEWAY_PUBLIC_URL ?? `http://localhost:${config.port}`;
+      // Thin adapter: globalDispatcher.call() requires namespaceId — threaded via optional field
+      const provisionBackend = {
+        async execute({ handlerRef, pluginRoot, input, namespaceId }: {
+          handlerRef: string; pluginRoot: string; input: unknown; namespaceId?: string;
+        }): Promise<unknown> {
+          if (!namespaceId) { return; }
+          const hostId = globalDispatcher.firstHostWithCapability(namespaceId, 'execution');
+          if (!hostId) { return; }
+          return globalDispatcher.call(namespaceId, hostId, 'execution', 'execute', [
+            { handlerRef, pluginRoot, input },
+          ]);
+        },
+      };
+      registerWebhookAdminRoutes(
+        scope as unknown as Parameters<typeof registerWebhookAdminRoutes>[0],
+        {
+          cache,
+          logger,
+          backend: provisionBackend,
+          manifests: webhookManifests ?? [],
+          baseUrl: webhookBaseUrl,
+          broker: platform.resourceBroker,
+        },
+      );
+    }
   });
+
+  // ── Webhook delivery routes (outside gatewayRoutes — no auth middleware) ──────
+  // Registered in a separate Fastify scope so both user-auth and machine-token
+  // middleware (which live only inside gatewayRoutes) are bypassed automatically.
+  // Delivery auth is handled by the webhook router itself (secret / hmac / custom).
+  if (webhookManifests?.length && platform.hasResourceBroker) {
+    const webhookBaseUrl = process.env.GATEWAY_PUBLIC_URL ?? `http://localhost:${config.port}`;
+    await app.register(async (webhookScope) => {
+      await registerWebhookRoutes(webhookScope, {
+        cache,
+        broker: platform.resourceBroker,
+        logger,
+        manifests: webhookManifests,
+        baseUrl: webhookBaseUrl,
+      });
+    });
+  }
 
   // ── Gateway WebSocket endpoints ────────────────────────────────────
   // Must be after ready() so http-proxy's upgrade listener is registered.

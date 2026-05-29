@@ -191,6 +191,37 @@ describe('provisionWebhook', () => {
     expect(entry!.current).toBe(result.secret);
   });
 
+  it('encodes scoped plugin IDs (@scope/name) in the generated webhook URL', async () => {
+    const scopedId = '@kb-labs/my-plugin';
+    const scopedManifests: WebhookManifestEntry[] = [{
+      pluginId: scopedId,
+      pluginRoot: PLUGIN_ROOT,
+      manifest: {
+        schema: 'kb.plugin/3',
+        id: scopedId,
+        version: '1.0.0',
+        webhooks: {
+          handlers: [{ event: EVENT, handler: './h.js#default', auth: { type: 'secret', header: 'X-Sec' } }],
+        },
+      },
+    }];
+    const backend = { execute: vi.fn() };
+
+    const result = await provisionWebhook(
+      { namespaceId: NS, pluginId: scopedId, event: EVENT, baseUrl: BASE_URL },
+      store,
+      backend as never,
+      scopedManifests,
+      noopLogger,
+    );
+
+    // '@' and '/' must be percent-encoded so the URL is a valid single-segment param
+    expect(result.url).toBe(`${BASE_URL}/webhooks/${encodeURIComponent(scopedId)}/${EVENT}`);
+    expect(result.url).toContain('%40'); // @ → %40
+    expect(result.url).toContain('%2F'); // / → %2F
+    expect(result.url).not.toContain('@');
+  });
+
   it('throws if pluginId+event combination not found in manifests', async () => {
     const manifests = makeManifestEntries(makeManifest());
     const backend = { execute: vi.fn() };

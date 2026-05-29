@@ -216,27 +216,22 @@ async function handleWebhook({
       const fieldValue = getByDotPath(request.body, decl.challenge.bodyPath);
       if (fieldValue === decl.challenge.value) {
         const replyValue = getByDotPath(request.body, decl.challenge.replyPath);
-        return reply.code(200).send({ [decl.challenge.replyPath]: replyValue });
+        // Use the last path segment as the JSON key so dot-paths like
+        // 'data.token' reply with { token: value } not { 'data.token': value }.
+        const replyKey = decl.challenge.replyPath.split('.').pop()!;
+        return reply.code(200).send({ [replyKey]: replyValue });
       }
     }
 
-    // Step 4: Idempotency dedup (intentionally before auth — matches the delivery model
-    // where external services retry the same delivery ID on transient failures).
-    // Trade-off: an unauthenticated caller can mark a key as seen before the real delivery.
-    // Acceptable because idempotency keys are provider-controlled (e.g. GitHub X-GitHub-Delivery).
-    if (decl.idempotencyKey && request.body) {
-      const deliveryKey = getByDotPath(request.body, decl.idempotencyKey);
-      if (typeof deliveryKey === 'string') {
-        const isDuplicate = await idempotencyStore.checkAndMark(pluginId, decl.event, deliveryKey);
-        if (isDuplicate) {
-          return reply.code(200).send({ status: 'duplicate' });
-        }
-      }
-    }
-
-    // Step 5: Auth
+    // Step 4: Auth
+    // rawBody is set by the preParsing hook for hmac/custom auth types.
+    // Fallback: re-serialize from parsed body for secret auth (no raw body needed).
+    // Use empty Buffer for null/undefined body to avoid JSON.stringify artifacts
+    // that would break HMAC verification (e.g. stringify(null) = "null").
     const rawBody: Buffer = request.rawBody
-      ?? Buffer.from(typeof request.body === 'string' ? request.body : JSON.stringify(request.body ?? ''));
+      ?? (request.body == null
+        ? Buffer.alloc(0)
+        : Buffer.from(typeof request.body === 'string' ? request.body : JSON.stringify(request.body)));
 
     const authReq: WebhookAuthRequest = {
       headers: request.headers as Record<string, string | string[] | undefined>,
@@ -254,6 +249,20 @@ async function handleWebhook({
     const authResult = await verifyWebhookAuth(decl.auth, authReq, secretStore, authBackend, pluginRoot);
     if (!authResult.valid) {
       return reply.code(401).send({ error: 'Unauthorized', reason: authResult.reason });
+    }
+
+    // Step 5: Idempotency dedup — after auth to prevent unauthenticated callers
+    // from poisoning keys and blocking legitimate deliveries (DoS vector).
+    // External services that retry deliveries carry the same signature, so they
+    // pass auth before hitting the dedup check.
+    if (decl.idempotencyKey && request.body) {
+      const deliveryKey = getByDotPath(request.body, decl.idempotencyKey);
+      if (typeof deliveryKey === 'string') {
+        const isDuplicate = await idempotencyStore.checkAndMark(namespaceId, pluginId, decl.event, deliveryKey);
+        if (isDuplicate) {
+          return reply.code(200).send({ status: 'duplicate' });
+        }
+      }
     }
 
     // Step 6: Build host context
