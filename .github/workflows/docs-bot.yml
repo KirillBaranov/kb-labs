@@ -13,8 +13,51 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  docs-bot:
-    name: Docs audit & staleness
+  # ── Structural audit — fails CI on violations ──────────────────────────────
+  # Errors (missing files, bad naming, depth violations) block merge via
+  # branch protection "Require status checks to pass".
+  # Warnings are printed to the log but do not fail the job.
+  docs-audit:
+    name: Doc conventions
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run docs-audit
+        working-directory: sites/web/apps/docs
+        env:
+          KB_DEVKIT_MODE: "true"
+          KB_DEVKIT_PACKAGE_NAME: "@kb-labs/docs-site"
+        run: |
+          node scripts/docs-audit.mjs > /tmp/audit.json
+          node -e "
+            const r = JSON.parse(require('fs').readFileSync('/tmp/audit.json'));
+            const errors = r.items.filter(i => i.severity === 'error');
+            const warnings = r.items.filter(i => i.severity === 'warning');
+            if (warnings.length) {
+              console.log('Warnings (' + warnings.length + '):');
+              warnings.forEach(i => console.log('  ⚠ ' + i.target + ' — ' + i.message));
+            }
+            if (errors.length) {
+              console.error('');
+              console.error('Errors (' + errors.length + '):');
+              errors.forEach(i => console.error('  ✗ ' + i.target + ' — ' + i.message));
+              console.error('');
+              console.error('Run locally: node sites/web/apps/docs/scripts/docs-audit.mjs');
+              process.exit(1);
+            }
+            console.log('All doc conventions pass.');
+          "
+
+  # ── Staleness check — posts reminder threads, never blocks merge ───────────
+  # Inline threads on changed files tell the author which doc pages to verify.
+  # Threads are resolved manually after updating or confirming no change needed.
+  docs-staleness:
+    name: Doc staleness
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -25,229 +68,125 @@ jobs:
         with:
           node-version: '20'
 
-      # ── 1. Changed files ───────────────────────────────────────────────────
       - name: Get changed files
         id: changed
         run: |
           BASE=${{ github.event.pull_request.base.sha }}
           HEAD=${{ github.event.pull_request.head.sha }}
-          FILES=$(git diff --name-only "$BASE"..."$HEAD" | tr '\n' '\n')
+          FILES=$(git diff --name-only "$BASE"..."$HEAD")
           echo "files<<EOF" >> $GITHUB_OUTPUT
           echo "$FILES" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      # ── 2. Structural audit ────────────────────────────────────────────────
-      - name: Run docs-audit
-        id: audit
-        working-directory: sites/web/apps/docs
-        env:
-          KB_DEVKIT_MODE: "true"
-          KB_DEVKIT_PACKAGE_NAME: "@kb-labs/docs-site"
-        run: |
-          node scripts/docs-audit.mjs > /tmp/audit.json 2>/dev/null || true
-          echo "json=$(cat /tmp/audit.json | tr -d '\n')" >> $GITHUB_OUTPUT
-
-      # ── 3. Staleness check ─────────────────────────────────────────────────
       - name: Run docs-staleness
         id: staleness
         working-directory: sites/web/apps/docs
         env:
           CHANGED_FILES: ${{ steps.changed.outputs.files }}
         run: |
-          node scripts/docs-staleness.mjs > /tmp/staleness.json 2>/dev/null || true
+          node scripts/docs-staleness.mjs > /tmp/staleness.json
           echo "json=$(cat /tmp/staleness.json | tr -d '\n')" >> $GITHUB_OUTPUT
 
-      # ── 4. Post PR review ──────────────────────────────────────────────────
-      - name: Post review
+      - name: Post staleness comment
         uses: actions/github-script@v7
         env:
-          AUDIT_JSON: ${{ steps.audit.outputs.json }}
           STALENESS_JSON: ${{ steps.staleness.outputs.json }}
         with:
           script: |
-            const audit     = JSON.parse(process.env.AUDIT_JSON     || '{"ok":true,"items":[]}');
             const staleness = JSON.parse(process.env.STALENESS_JSON || '{"affected":[]}');
+            const { affected } = staleness;
 
-            const pr     = context.payload.pull_request.number;
-            const owner  = context.repo.owner;
-            const repo   = context.repo.repo;
+            const pr    = context.payload.pull_request.number;
+            const owner = context.repo.owner;
+            const repo  = context.repo.repo;
             const BOT_MARKER = '<!-- docs-bot-v1 -->';
 
-            // ── Dismiss stale REQUEST_CHANGES reviews from this bot ──────────
-            const reviews = await github.rest.pulls.listReviews({ owner, repo, pull_number: pr });
-            for (const review of reviews.data) {
-              if (review.user.type === 'Bot' && review.body?.includes(BOT_MARKER) && review.state === 'CHANGES_REQUESTED') {
-                await github.rest.pulls.dismissReview({
-                  owner, repo, pull_number: pr,
-                  review_id: review.id,
-                  message: 'Superseded by updated docs-bot run',
-                }).catch(() => {});
-              }
-            }
-
-            // ── Build audit section ──────────────────────────────────────────
-            const errors   = audit.items.filter(i => i.severity === 'error');
-            const warnings = audit.items.filter(i => i.severity === 'warning');
-
-            let auditSection = '';
-            if (audit.ok && errors.length === 0) {
-              auditSection = '### ✅ Doc conventions\nAll checks pass.';
-            } else {
-              const toRows = (items) => items
-                .map(i => `| \`${i.target}\` | ${i.message} |`)
-                .join('\n');
-
-              const errTable = errors.length > 0 ? [
-                '**Errors — must fix before merge:**',
-                '| File | Issue |',
-                '|------|-------|',
-                toRows(errors),
-              ].join('\n') : '';
-
-              const warnItems = warnings.slice(0, 10);
-              const moreWarns = warnings.length > 10 ? `_...and ${warnings.length - 10} more warnings_` : '';
-              const warnTable = warnings.length > 0 ? [
-                '**Warnings:**',
-                '| File | Issue |',
-                '|------|-------|',
-                toRows(warnItems),
-                moreWarns,
-              ].filter(Boolean).join('\n') : '';
-
-              auditSection = [
-                `### ❌ Doc conventions — ${errors.length} error(s), ${warnings.length} warning(s)`,
-                '',
-                errTable,
-                warnTable,
-                `_Run locally: \`node sites/web/apps/docs/scripts/docs-audit.mjs\`_`,
-              ].filter(Boolean).join('\n\n');
-            }
-
-            // ── Build staleness section ──────────────────────────────────────
-            const { affected } = staleness;
-            let stalenessSection = '';
-
+            // ── Build comment body ───────────────────────────────────────────
+            let body;
             if (affected.length === 0) {
-              stalenessSection = '### ✅ Doc pages\nNo doc pages affected by this change.';
+              body = [
+                BOT_MARKER,
+                '## 📚 Docs Bot',
+                '',
+                '✅ No doc pages affected by this change.',
+              ].join('\n');
             } else {
               const riskIcon = { high: '🔴', medium: '🟡', low: '🟢' };
-              const lines = affected.map(a => {
+              const rows = affected.map(a => {
                 const icon  = riskIcon[a.stalenessRisk] ?? '🟡';
                 const files = a.matchedFiles.slice(0, 3).map(f => `\`${f}\``).join(', ');
                 const more  = a.matchedFiles.length > 3 ? ` +${a.matchedFiles.length - 3}` : '';
-                return `| ${icon} \`${a.slug}\` | [docs${a.docPath}](https://docs.kblabs.ru${a.docPath}) | ${files}${more} |`;
+                return `| ${icon} | \`${a.slug}\` | [open](https://docs.kblabs.ru${a.docPath}) | ${files}${more} |`;
               }).join('\n');
 
-              stalenessSection = [
-                `### ⚠️ Doc pages to verify (${affected.length})`,
+              body = [
+                BOT_MARKER,
+                '## 📚 Docs Bot',
                 '',
-                'These doc pages own the changed files. Please verify they are still accurate.',
+                `**${affected.length} doc page(s) may need updating.** Verify each one and resolve the inline thread.`,
                 '',
-                '| Risk | Doc page | Changed files |',
-                '|------|----------|---------------|',
-                lines,
+                '| Risk | Doc page | Link | Changed files |',
+                '|------|----------|------|---------------|',
+                rows,
                 '',
-                '_Resolve each thread after updating or confirming no change needed._',
+                `_[CONVENTIONS.md](https://github.com/${owner}/${repo}/blob/main/sites/web/apps/docs/CONVENTIONS.md)_`,
               ].join('\n');
             }
 
-            // ── Compose full review body ─────────────────────────────────────
-            const body = [
-              BOT_MARKER,
-              '## 📚 Docs Bot',
-              '',
-              auditSection,
-              '',
-              '---',
-              '',
-              stalenessSection,
-              '',
-              '---',
-              `_[CONVENTIONS.md](https://github.com/${owner}/${repo}/blob/main/sites/web/apps/docs/CONVENTIONS.md) · [sitemap.config.json](https://github.com/${owner}/${repo}/blob/main/sites/web/apps/docs/sitemap.config.json)_`,
-            ].join('\n');
-
-            // ── Post or update summary comment ───────────────────────────────
+            // ── Post or update comment ───────────────────────────────────────
             const comments = await github.rest.issues.listComments({ owner, repo, issue_number: pr });
             const existing = comments.data.find(c => c.body?.includes(BOT_MARKER));
-
             if (existing) {
               await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
             } else {
               await github.rest.issues.createComment({ owner, repo, issue_number: pr, body });
             }
 
-            // ── Post REQUEST_CHANGES review if audit has errors ───────────────
-            if (errors.length > 0) {
-              await github.rest.pulls.createReview({
-                owner,
-                repo,
-                pull_number: pr,
-                event: 'REQUEST_CHANGES',
+            // ── Post inline threads (cap 5, highest risk first) ───────────────
+            if (affected.length === 0) return;
+
+            const MAX_INLINE = 5;
+            const prFiles = await github.rest.pulls.listFiles({ owner, repo, pull_number: pr });
+            const prFileSet = new Set(prFiles.data.map(f => f.filename));
+            const threads = [];
+
+            for (const page of affected.slice(0, MAX_INLINE)) {
+              const targetFile = page.matchedFiles.find(f => prFileSet.has(f));
+              if (!targetFile) continue;
+
+              const prFile = prFiles.data.find(f => f.filename === targetFile);
+              if (!prFile?.patch) continue;
+
+              const patchLines = prFile.patch.split('\n');
+              const position = Math.max(1, patchLines.reduce((last, line, idx) =>
+                line.startsWith('+') ? idx : last, 1));
+
+              threads.push({
+                path: targetFile,
+                position,
                 body: [
-                  BOT_MARKER,
-                  `Doc conventions check failed with ${errors.length} error(s). See the comment above for details.`,
+                  `📚 **Check doc page:** [\`${page.slug}\`](https://docs.kblabs.ru${page.docPath})`,
                   '',
-                  `Run \`node sites/web/apps/docs/scripts/docs-audit.mjs\` locally to reproduce.`,
+                  `This file matches owner \`${page.matchedOwner}\`. Please verify the doc is still accurate, then resolve this thread.`,
+                  '',
+                  `_Risk: **${page.stalenessRisk}** · [Edit](https://github.com/${owner}/${repo}/edit/main/sites/web/apps/docs/content/en/${page.slug}.mdx)_`,
+                  BOT_MARKER,
                 ].join('\n'),
               });
             }
 
-            // ── Post inline threads for staleness on changed files ────────────
-            // Cap at 5 highest-risk pages to avoid flooding the PR.
-            // The full list is always visible in the summary comment above.
-            const MAX_INLINE_THREADS = 5;
-            const inlineAffected = affected.slice(0, MAX_INLINE_THREADS);
+            if (threads.length === 0) return;
 
-            if (inlineAffected.length > 0) {
-              // Get the list of files in this PR for inline comments
-              const prFiles = await github.rest.pulls.listFiles({ owner, repo, pull_number: pr });
-              const prFileSet = new Set(prFiles.data.map(f => f.filename));
+            const hiddenCount = affected.length - threads.length;
+            const hiddenNote = hiddenCount > 0 ? ` (+${hiddenCount} more in comment above)` : '';
 
-              // Group affected pages by their first matchedFile that exists in PR
-              const threads = [];
-              for (const page of inlineAffected) {
-                const targetFile = page.matchedFiles.find(f => prFileSet.has(f));
-                if (!targetFile) continue;
+            await github.rest.pulls.createReview({
+              owner, repo, pull_number: pr,
+              event: 'COMMENT',
+              body: `${BOT_MARKER}\n📚 **${threads.length} doc page(s) to verify** — see inline threads.${hiddenNote}`,
+              comments: threads,
+            }).catch(err => {
+              console.warn('Inline threads failed, comment already posted:', err.message);
+            });
 
-                const prFile = prFiles.data.find(f => f.filename === targetFile);
-                if (!prFile?.patch) continue; // binary or renamed without content
-
-                // Post on the last changed line of this file
-                const patchLines = prFile.patch.split('\n');
-                const lastAddedLine = patchLines.reduce((last, line, idx) => {
-                  return line.startsWith('+') ? idx : last;
-                }, 1);
-
-                threads.push({
-                  path: targetFile,
-                  position: Math.max(1, lastAddedLine),
-                  body: [
-                    `📚 **Doc page may need updating:** [\`${page.slug}\`](https://docs.kblabs.ru${page.docPath})`,
-                    '',
-                    `This file matches owner pattern \`${page.matchedOwner}\` for the above doc page.`,
-                    `Please verify the documentation is still accurate, then resolve this thread.`,
-                    '',
-                    `_Staleness risk: **${page.stalenessRisk}** · [View doc](https://docs.kblabs.ru${page.docPath}) · [Edit](https://github.com/${owner}/${repo}/edit/main/sites/web/apps/docs/content/en/${page.slug}.mdx)_`,
-                    BOT_MARKER,
-                  ].join('\n'),
-                });
-              }
-
-              if (threads.length > 0) {
-                const hiddenCount = affected.length - inlineAffected.length;
-                const hiddenNote = hiddenCount > 0 ? ` (${hiddenCount} more in the summary comment above)` : '';
-                await github.rest.pulls.createReview({
-                  owner,
-                  repo,
-                  pull_number: pr,
-                  event: 'COMMENT',
-                  body: `${BOT_MARKER}\n📚 **${threads.length} doc page(s) may need updating** — see inline comments below.${hiddenNote}`,
-                  comments: threads,
-                }).catch(err => {
-                  // Fallback: if inline comments fail (e.g. position mismatch), post without them
-                  console.warn('Inline comments failed, posting summary only:', err.message);
-                });
-              }
-            }
-
-            console.log(`Docs bot done. Audit: ${errors.length} errors, ${warnings.length} warnings. Staleness: ${affected.length} affected pages.`);
+            console.log(`Staleness: ${affected.length} affected pages, ${threads.length} inline threads posted.`);
