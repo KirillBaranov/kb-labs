@@ -198,6 +198,37 @@ describe('webhook admin routes', () => {
       expect(res.statusCode).toBe(401);
       await appNoAuth.close();
     });
+
+    it('rate limit token is released after successful provision', async () => {
+      const releaseMock = vi.fn().mockResolvedValue(undefined);
+      const broker: IResourceBroker = {
+        registerLimit: vi.fn(),
+        tryAcquire: vi.fn().mockResolvedValue({ allowed: true, release: releaseMock }),
+      } as unknown as IResourceBroker;
+
+      const isolatedApp = Fastify({ logger: false });
+      isolatedApp.addHook('preHandler', async (request) => {
+        (request as { authContext?: unknown }).authContext = makeAuthContext();
+      });
+      registerWebhookAdminRoutes(isolatedApp, {
+        cache: new InMemoryCache(),
+        logger: noopLogger,
+        backend: { execute: vi.fn().mockResolvedValue({ ok: true }) } as never,
+        manifests,
+        baseUrl: BASE_URL,
+        broker,
+      });
+      await isolatedApp.ready();
+
+      const res = await isolatedApp.inject({
+        method: 'POST',
+        url: '/api/v1/webhooks/provision',
+        payload: { pluginId: PLUGIN_ID, event: EVENT },
+      });
+      expect(res.statusCode).toBe(200);
+      expect(releaseMock).toHaveBeenCalledOnce();
+      await isolatedApp.close();
+    });
   });
 
   // ── GET /api/v1/webhooks ───────────────────────────────────────────────────

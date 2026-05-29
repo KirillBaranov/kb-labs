@@ -12,6 +12,10 @@
  *
  * namespaceId is taken from request.authContext — callers operate on their
  * own namespace only. No cross-namespace access.
+ *
+ * Rate limiting: each route acquires a token at the start and releases in
+ * finally after all work completes — ensures the slot is held for the full
+ * duration of the operation, not just the guard check.
  */
 
 import type { FastifyInstance } from 'fastify';
@@ -32,8 +36,6 @@ export interface RegisterWebhookAdminRoutesOptions {
   /** Rate limiter — admin routes are always rate-limited. */
   broker: IResourceBroker;
 }
-
-// ── Public API ────────────────────────────────────────────────────────────────
 
 // ── Rate limit resources ──────────────────────────────────────────────────────
 
@@ -64,50 +66,49 @@ export function registerWebhookAdminRoutes(
       return reply.code(401).send({ error: 'Unauthorized' });
     }
 
-    // Rate limit provisioning requests
-    {
-      const acquired = await broker.tryAcquire(RL_PROVISION);
-      try {
-        if (!acquired.allowed) {
-          const retryAfterSec = acquired.waitTimeMs ? Math.max(1, Math.ceil(acquired.waitTimeMs / 1000)) : 1;
-          return reply.code(429).header('Retry-After', String(retryAfterSec)).send({ error: 'Too Many Requests' });
-        }
-      } finally {
-        await acquired.release();
-      }
-    }
-
-    const body = request.body as Record<string, unknown> | undefined;
-    const pluginId = typeof body?.pluginId === 'string' ? body.pluginId : undefined;
-    const event = typeof body?.event === 'string' ? body.event : undefined;
-    const instanceId = typeof body?.instanceId === 'string' ? body.instanceId : undefined;
-
-    if (!pluginId) {
-      return reply.code(400).send({ error: 'Bad Request', message: 'pluginId is required' });
-    }
-    if (!event) {
-      return reply.code(400).send({ error: 'Bad Request', message: 'event is required' });
-    }
-
+    // Acquire rate-limit token for the FULL duration of the handler so the
+    // slot is not released until all work (provisionWebhook) completes.
+    const acquired = await broker.tryAcquire(RL_PROVISION);
     try {
-      const result = await provisionWebhook(
-        { namespaceId: auth.namespaceId, pluginId, event, instanceId, baseUrl },
-        secretStore,
-        backend,
-        manifests,
-        logger,
-      );
-
-      return reply.code(200).send({
-        url: result.url,
-        secret: result.secret,
-        rotated: result.rotated,
-      });
-    } catch (err) {
-      if (err instanceof Error && err.message.includes('not found')) {
-        return reply.code(404).send({ error: 'Not Found', message: err.message });
+      if (!acquired.allowed) {
+        const retryAfterSec = acquired.waitTimeMs ? Math.max(1, Math.ceil(acquired.waitTimeMs / 1000)) : 1;
+        return reply.code(429).header('Retry-After', String(retryAfterSec)).send({ error: 'Too Many Requests' });
       }
-      throw err;
+
+      const body = request.body as Record<string, unknown> | undefined;
+      const pluginId = typeof body?.pluginId === 'string' ? body.pluginId : undefined;
+      const event = typeof body?.event === 'string' ? body.event : undefined;
+      const instanceId = typeof body?.instanceId === 'string' ? body.instanceId : undefined;
+
+      if (!pluginId) {
+        return reply.code(400).send({ error: 'Bad Request', message: 'pluginId is required' });
+      }
+      if (!event) {
+        return reply.code(400).send({ error: 'Bad Request', message: 'event is required' });
+      }
+
+      try {
+        const result = await provisionWebhook(
+          { namespaceId: auth.namespaceId, pluginId, event, instanceId, baseUrl },
+          secretStore,
+          backend,
+          manifests,
+          logger,
+        );
+
+        return reply.code(200).send({
+          url: result.url,
+          secret: result.secret,
+          rotated: result.rotated,
+        });
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('not found')) {
+          return reply.code(404).send({ error: 'Not Found', message: err.message });
+        }
+        throw err;
+      }
+    } finally {
+      await acquired.release();
     }
   });
 
@@ -119,45 +120,42 @@ export function registerWebhookAdminRoutes(
       return reply.code(401).send({ error: 'Unauthorized' });
     }
 
-    // Rate limit list requests
-    {
-      const acquired = await broker.tryAcquire(RL_LIST);
-      try {
-        if (!acquired.allowed) {
-          const retryAfterSec = acquired.waitTimeMs ? Math.max(1, Math.ceil(acquired.waitTimeMs / 1000)) : 1;
-          return reply.code(429).header('Retry-After', String(retryAfterSec)).send({ error: 'Too Many Requests' });
+    const acquired = await broker.tryAcquire(RL_LIST);
+    try {
+      if (!acquired.allowed) {
+        const retryAfterSec = acquired.waitTimeMs ? Math.max(1, Math.ceil(acquired.waitTimeMs / 1000)) : 1;
+        return reply.code(429).header('Retry-After', String(retryAfterSec)).send({ error: 'Too Many Requests' });
+      }
+
+      const query = request.query as Record<string, string | undefined>;
+      const filterPluginId = query.pluginId;
+
+      const webhooks: Array<{ pluginId: string; event: string; multi: boolean; provisioned: boolean }> = [];
+
+      for (const entry of manifests) {
+        if (filterPluginId && entry.pluginId !== filterPluginId) { continue; }
+        if (!entry.manifest.webhooks?.handlers) { continue; }
+
+        for (const decl of entry.manifest.webhooks.handlers) {
+          // For multi webhooks the provisioned check is per-instanceId; we show false
+          // at the list level since there is no shared base entry.
+          const secretEntry = decl.multi
+            ? null
+            : await secretStore.get(auth.namespaceId, entry.pluginId, decl.event);
+
+          webhooks.push({
+            pluginId: entry.pluginId,
+            event: decl.event,
+            multi: decl.multi === true,
+            provisioned: secretEntry !== null,
+          });
         }
-      } finally {
-        await acquired.release();
       }
+
+      return reply.code(200).send({ webhooks });
+    } finally {
+      await acquired.release();
     }
-
-    const query = request.query as Record<string, string | undefined>;
-    const filterPluginId = query.pluginId;
-
-    const webhooks: Array<{ pluginId: string; event: string; multi: boolean; provisioned: boolean }> = [];
-
-    for (const entry of manifests) {
-      if (filterPluginId && entry.pluginId !== filterPluginId) { continue; }
-      if (!entry.manifest.webhooks?.handlers) { continue; }
-
-      for (const decl of entry.manifest.webhooks.handlers) {
-        // For multi webhooks the provisioned check is per-instanceId; we show false
-        // at the list level since there is no shared base entry.
-        const secretEntry = decl.multi
-          ? null
-          : await secretStore.get(auth.namespaceId, entry.pluginId, decl.event);
-
-        webhooks.push({
-          pluginId: entry.pluginId,
-          event: decl.event,
-          multi: decl.multi === true,
-          provisioned: secretEntry !== null,
-        });
-      }
-    }
-
-    return reply.code(200).send({ webhooks });
   });
 
   // ── DELETE /api/v1/webhooks/:pluginId/:event ──────────────────────────────────
@@ -170,22 +168,19 @@ export function registerWebhookAdminRoutes(
         return reply.code(401).send({ error: 'Unauthorized' });
       }
 
-      // Rate limit revoke requests
-      {
-        const acquired = await broker.tryAcquire(RL_REVOKE);
-        try {
-          if (!acquired.allowed) {
-            const retryAfterSec = acquired.waitTimeMs ? Math.max(1, Math.ceil(acquired.waitTimeMs / 1000)) : 1;
-            return reply.code(429).header('Retry-After', String(retryAfterSec)).send({ error: 'Too Many Requests' });
-          }
-        } finally {
-          await acquired.release();
+      const acquired = await broker.tryAcquire(RL_REVOKE);
+      try {
+        if (!acquired.allowed) {
+          const retryAfterSec = acquired.waitTimeMs ? Math.max(1, Math.ceil(acquired.waitTimeMs / 1000)) : 1;
+          return reply.code(429).header('Retry-After', String(retryAfterSec)).send({ error: 'Too Many Requests' });
         }
-      }
 
-      const { pluginId, event } = request.params;
-      await secretStore.delete(auth.namespaceId, pluginId, event);
-      return reply.code(204).send();
+        const { pluginId, event } = request.params;
+        await secretStore.delete(auth.namespaceId, pluginId, event);
+        return reply.code(204).send();
+      } finally {
+        await acquired.release();
+      }
     },
   );
 
@@ -199,22 +194,19 @@ export function registerWebhookAdminRoutes(
         return reply.code(401).send({ error: 'Unauthorized' });
       }
 
-      // Rate limit revoke requests
-      {
-        const acquired = await broker.tryAcquire(RL_REVOKE);
-        try {
-          if (!acquired.allowed) {
-            const retryAfterSec = acquired.waitTimeMs ? Math.max(1, Math.ceil(acquired.waitTimeMs / 1000)) : 1;
-            return reply.code(429).header('Retry-After', String(retryAfterSec)).send({ error: 'Too Many Requests' });
-          }
-        } finally {
-          await acquired.release();
+      const acquired = await broker.tryAcquire(RL_REVOKE);
+      try {
+        if (!acquired.allowed) {
+          const retryAfterSec = acquired.waitTimeMs ? Math.max(1, Math.ceil(acquired.waitTimeMs / 1000)) : 1;
+          return reply.code(429).header('Retry-After', String(retryAfterSec)).send({ error: 'Too Many Requests' });
         }
-      }
 
-      const { pluginId, event, instanceId } = request.params;
-      await secretStore.delete(auth.namespaceId, pluginId, event, instanceId);
-      return reply.code(204).send();
+        const { pluginId, event, instanceId } = request.params;
+        await secretStore.delete(auth.namespaceId, pluginId, event, instanceId);
+        return reply.code(204).send();
+      } finally {
+        await acquired.release();
+      }
     },
   );
 }

@@ -34,7 +34,7 @@ export interface ProvisionResult {
 
 /** Minimal execution backend — only `execute` is needed. */
 export interface ProvisionBackend {
-  execute(input: { handlerRef: string; pluginRoot: string; input: unknown }): Promise<unknown>;
+  execute(input: { handlerRef: string; pluginRoot: string; input: unknown; namespaceId?: string }): Promise<unknown>;
 }
 
 // ── Public API ────────────────────────────────────────────────────────────────
@@ -77,10 +77,11 @@ export async function provisionWebhook(
     await secretStore.set(namespaceId, pluginId, event, { current: newSecret }, instanceId);
   }
 
-  // Build webhook URL
+  // Build webhook URL — encode pluginId so scoped names (@org/pkg → %40org%2Fpkg)
+  // produce a valid single-segment path param that Fastify routes correctly.
   const url = instanceId
-    ? `${baseUrl}/webhooks/${pluginId}/${event}/${instanceId}`
-    : `${baseUrl}/webhooks/${pluginId}/${event}`;
+    ? `${baseUrl}/webhooks/${encodeURIComponent(pluginId)}/${event}/${instanceId}`
+    : `${baseUrl}/webhooks/${encodeURIComponent(pluginId)}/${event}`;
 
   // Call onProvision handler if declared
   let onProvisionCalled = false;
@@ -89,6 +90,7 @@ export async function provisionWebhook(
       await backend.execute({
         handlerRef: decl.onProvision,
         pluginRoot: manifestEntry.pluginRoot,
+        namespaceId,
         input: { instanceId, secret: newSecret, url },
       });
       onProvisionCalled = true;

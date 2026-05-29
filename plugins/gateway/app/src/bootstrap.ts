@@ -21,10 +21,12 @@ import {
   OAuthStateStore,
 } from '@kb-labs/gateway-auth';
 import type { IKVStore } from '@kb-labs/core-platform/adapters';
+import { createRegistry } from '@kb-labs/core-registry';
 import { loadGatewayConfig } from './config.js';
 import { createServer, type UserAuthServerDeps } from './server.js';
 import { HostRegistry } from './hosts/registry.js';
 import { registerPressureLimits } from './pressure/index.js';
+import type { WebhookManifestEntry } from './webhook/router.js';
 
 export async function bootstrap(repoRoot: string = process.cwd()): Promise<void> {
   // 1. Initialize platform (loads .env + adapters from kb.config.json)
@@ -261,6 +263,36 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
     logger.info('Restored hosts from store', { count: restoredCount });
   }
 
+  // 5b. Discover plugin manifests for webhook route registration.
+  //     Uses snapshot().manifests — PluginBrief from listPlugins() lacks manifest/pluginRoot.
+  //     Graceful: failure disables webhook routes but does not block gateway startup.
+  let webhookManifests: WebhookManifestEntry[] = [];
+  try {
+    const projectRoot = getProjectRoot() ?? repoRoot;
+    const platformRoot = getPlatformRoot();
+    const pluginRegistry = await createRegistry({
+      root: projectRoot,
+      platformRoot: platformRoot !== projectRoot ? platformRoot : undefined,
+      cache: { ttlMs: 600_000, adapter: cache },
+    });
+    const snapshot = pluginRegistry.snapshot();
+    webhookManifests = snapshot.manifests
+      .filter((entry) => (entry.manifest.webhooks?.handlers?.length ?? 0) > 0)
+      .map((entry) => ({
+        pluginId: entry.pluginId,
+        manifest: entry.manifest,
+        pluginRoot: entry.pluginRoot,
+      }));
+    if (webhookManifests.length > 0) {
+      logger.info('Webhook manifests discovered', { count: webhookManifests.length });
+    }
+  } catch (err) {
+    logger.warn('Webhook manifest discovery failed — webhook routes disabled', {
+      error: err instanceof Error ? err.message : String(err),
+    });
+    webhookManifests = [];
+  }
+
   // 6. Build JWT config — secret required; no fallback in production.
   const DEV_JWT_SECRET = 'dev-insecure-secret-change-me';
   const jwtSecret = process.env.GATEWAY_JWT_SECRET;
@@ -299,7 +331,7 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
   }
 
   // 10. Create server with injected registry, transport and optional user auth deps
-  const server = await createServer(config, cache, platform.logger, jwtConfig, registry, serviceTransport, userAuth);
+  const server = await createServer(config, cache, platform.logger, jwtConfig, registry, serviceTransport, userAuth, webhookManifests);
 
   // 11. Listen
   const address = await server.listen({ port: config.port, host: '0.0.0.0' });

@@ -7,6 +7,7 @@ import {
   logsGroup,
   authGroup,
   platformGroup,
+  webhookGroup,
 } from "../commands/system/groups";
 import { createCompletionCommand, autoUpdateCompletion } from "../commands/system/completion";
 import { registerManifests, disposeAllPlugins, preflightManifests } from "../registry/register";
@@ -60,6 +61,7 @@ export async function registerBuiltinCommands(
   registry.registerGroup(logsGroup);
   registry.registerGroup(authGroup);
   registry.registerGroup(platformGroup);
+  registry.registerGroup(webhookGroup);
 
   // Standalone system commands
   registry.register(createCompletionCommand(registry));
