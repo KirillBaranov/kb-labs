@@ -251,13 +251,13 @@ export default async function AboutPage({ params }: Props) {
                       {/* i18n-ignore */}
                       k-baranov.ru
                     </a>
-                    <span className="text-muted/20">·</span>
+                    <span className="text-muted/40">·</span>
                     <a href="https://github.com/KirillBaranov" target="_blank" rel="noopener noreferrer"
                       className="text-sm text-muted/50 transition-colors hover:text-kb-text">
                       {/* i18n-ignore */}
                       GitHub
                     </a>
-                    <span className="text-muted/20">·</span>
+                    <span className="text-muted/40">·</span>
                     <a href="https://twitter.com/kblabs_dev" target="_blank" rel="noopener noreferrer"
                       className="text-sm text-muted/50 transition-colors hover:text-kb-text">
                       {/* i18n-ignore */}
