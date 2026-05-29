@@ -171,9 +171,7 @@ jobs:
   # ── 5. kb-create e2e — only if launcher sources changed ────────────────────
   #
   # Runs the Go e2e suite for kb-create against a local Verdaccio instance
-  # populated from this PR's built packages. This means the tests exercise
-  # kb-create install against the exact packages in this branch, not the
-  # previous npm.org release — the correct pre-publish validation cycle.
+  # populated from this PR's built packages — the correct pre-publish cycle.
   #
   # Setup order:
   #   build → pack .tgz → start Verdaccio (Docker, port 4873) →
@@ -181,6 +179,8 @@ jobs:
   #
   # KB_REGISTRY_URL is read by kb-create's pm.Detect() and passed to pnpm as
   # --registry, so all pnpm install calls in the tests point to Verdaccio.
+  # NPM_CONFIG_REGISTRY is intentionally NOT set: pm.Detect() only falls back
+  # to KB_REGISTRY_URL when NPM_CONFIG_REGISTRY is absent.
   launcher-e2e:
     name: kb-create e2e
     runs-on: ubuntu-latest
