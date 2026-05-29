@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"os/exec"
 	"strings"
 	"time"
@@ -21,13 +22,16 @@ const (
 	ProbeCommand
 	// ProbeTCP checks if a TCP port is reachable.
 	ProbeTCP
+	// ProbeUnix performs an HTTP GET over a unix domain socket.
+	ProbeUnix
 )
 
 // Probe defines a single health check.
 type Probe struct {
-	Type    ProbeType
-	Target  string        // URL for HTTP, "host:port" for TCP, shell command for Command
-	Timeout time.Duration // per-attempt timeout
+	Type       ProbeType
+	Target     string        // URL for HTTP, "host:port" for TCP, path for Unix, command for Command
+	SocketPath string        // unix domain socket path — only used when Type == ProbeUnix
+	Timeout    time.Duration // per-attempt timeout
 }
 
 // Result of a single probe execution.
@@ -55,6 +59,30 @@ func ClassifyProbe(healthCheck string, timeout time.Duration) Probe {
 	return Probe{Type: ProbeCommand, Target: healthCheck, Timeout: timeout}
 }
 
+// ClassifyServiceProbe selects the appropriate probe for a service.
+// When socketPath is set, a unix domain socket probe is used and healthCheck
+// is treated as an HTTP path (e.g. "/health"). When socketPath is empty,
+// falls back to ClassifyProbe using the healthCheck string as-is.
+func ClassifyServiceProbe(healthCheck, socketPath string, timeout time.Duration) Probe {
+	if timeout == 0 {
+		timeout = 3 * time.Second
+	}
+	if socketPath != "" {
+		path := healthCheck
+		// Extract path component if caller passed a full URL (backwards-compat).
+		if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
+			if u, err := url.Parse(path); err == nil {
+				path = u.Path
+			}
+		}
+		if path == "" {
+			path = "/health"
+		}
+		return Probe{Type: ProbeUnix, Target: path, SocketPath: socketPath, Timeout: timeout}
+	}
+	return ClassifyProbe(healthCheck, timeout)
+}
+
 // Execute runs the probe once and returns the result.
 func (p Probe) Execute(ctx context.Context) Result {
 	start := time.Now()
@@ -66,6 +94,8 @@ func (p Probe) Execute(ctx context.Context) Result {
 		return p.execTCP(ctx, start)
 	case ProbeCommand:
 		return p.execCommand(ctx, start)
+	case ProbeUnix:
+		return p.execUnix(ctx, start)
 	default:
 		return Result{OK: false, Error: fmt.Errorf("unknown probe type: %d", p.Type)}
 	}
@@ -123,4 +153,35 @@ func (p Probe) execCommand(ctx context.Context, start time.Time) Result {
 		return Result{OK: false, Latency: latency, Error: err}
 	}
 	return Result{OK: true, Latency: latency}
+}
+
+func (p Probe) execUnix(ctx context.Context, start time.Time) Result {
+	ctx, cancel := context.WithTimeout(ctx, p.Timeout)
+	defer cancel()
+
+	socketPath := p.SocketPath
+	dialFn := func(ctx context.Context, _, _ string) (net.Conn, error) {
+		return (&net.Dialer{Timeout: p.Timeout}).DialContext(ctx, "unix", socketPath)
+	}
+	client := &http.Client{
+		Transport: &http.Transport{DialContext: dialFn},
+	}
+
+	reqURL := "http://localhost" + p.Target
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	if err != nil {
+		return Result{OK: false, Latency: time.Since(start), Error: err}
+	}
+
+	resp, err := client.Do(req)
+	latency := time.Since(start)
+	if err != nil {
+		return Result{OK: false, Latency: latency, Error: err}
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode >= 200 && resp.StatusCode < 400 {
+		return Result{OK: true, Latency: latency}
+	}
+	return Result{OK: false, Latency: latency, Error: fmt.Errorf("HTTP %d", resp.StatusCode)}
 }

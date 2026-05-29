@@ -34,7 +34,8 @@
       "description": "REST API (port 5050)",
       "default": true,
       "port": 5050,
-      "gatewayPrefix": "/api/v1"
+      "gatewayPrefix": "/api/v1",
+      "gatewayWebSocket": true
     },
     {
       "id": "workflow",
@@ -73,7 +74,8 @@
     { "name": "@kb-labs/adapters-fs" },
     { "name": "@kb-labs/adapters-pino" },
     { "name": "@kb-labs/adapters-log-ringbuffer" },
-    { "name": "@kb-labs/adapters-analytics-file" }
+    { "name": "@kb-labs/adapters-analytics-file" },
+    { "name": "@kb-labs/adapters-service-transport-http" }
   ],
   "plugins": [
     {

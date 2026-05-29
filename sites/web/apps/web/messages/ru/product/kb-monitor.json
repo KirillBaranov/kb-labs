@@ -1,0 +1,68 @@
+{
+  "kbMonitor": {
+    "meta": {
+      "title": "kb-monitor — KB Labs",
+      "description": "Agent-native наблюдение за сервисами. Health, uptime, SHA образов, логи, exec — всё через --json."
+    },
+    "featuresTitle": "Детали, которые важны.",
+    "commandsFootnote": "Все команды поддерживают --json для скриптов и агентных workflow",
+    "heroTitleHighlight": "агент",
+    "features": [
+      {
+        "title": "Health по всем целям одной командой",
+        "detail": "health запускает HTTP или TCP-проверки по каждой цели из deploy.yaml. Pass или fail, с задержкой ответа."
+      },
+      {
+        "title": "Состояние, uptime и SHA образа",
+        "detail": "status показывает три вещи, которые всегда нужны во время инцидента — что сейчас, сколько уже так и какой образ крутится."
+      },
+      {
+        "title": "Удалённые логи без SSH",
+        "detail": "logs стримит docker logs с хоста. --lines для tail, --follow для live. Никаких заходов на хост ради одного файла логов."
+      }
+    ],
+    "configTitle": "Тот же файл, что у kb-deploy.",
+    "configLead2": "Деплой и наблюдение по дизайну идут в паре. Если kb-deploy знает про цель, kb-monitor знает про неё тоже.",
+    "ctaTitle": "Настроил один раз. Забыл про мониторинг.",
+    "ctaEyebrow": "Установить",
+    "heroTitle": "Настроил один раз. Дальше смотрит",
+    "commandsEyebrow": "Команды",
+    "heroDescription": "kb-monitor наблюдает за сервисами, которые раскатал kb-deploy. У всех команд есть --json со стабильной схемой — агент сам гоняет health, читает логи и реагирует.",
+    "configEyebrow": "Конфигурация",
+    "commands": [
+      {
+        "cmd": "kb-monitor health",
+        "desc": "Запустить health-проверки по всем целям. Pass или fail для каждой, с задержкой ответа."
+      },
+      {
+        "cmd": "kb-monitor health kb-labs-web",
+        "desc": "Проверить одну цель. Удобно для пост-деплойной верификации в CI или агентном workflow."
+      },
+      {
+        "cmd": "kb-monitor status",
+        "desc": "Состояние, uptime и SHA образа для каждой цели. Три вещи, которые нужны во время инцидента."
+      },
+      {
+        "cmd": "kb-monitor status --json",
+        "desc": "Структурированный вывод для агентов и дашбордов. Стабильная схема, все поля задокументированы."
+      },
+      {
+        "cmd": "kb-monitor logs kb-labs-web --lines 100",
+        "desc": "Последние 100 строк логов для цели. Без SSH, без docker ps."
+      },
+      {
+        "cmd": "kb-monitor logs kb-labs-web --follow",
+        "desc": "Live-логи с хоста прямо в терминал. Ctrl-C и всё, ничего не надо чистить."
+      },
+      {
+        "cmd": "kb-monitor exec kb-labs-web -- df -h",
+        "desc": "Выполнить команду внутри работающего контейнера. Всё после -- уходит как есть."
+      }
+    ],
+    "heroDocsBtn": "Документация",
+    "configLead1": "kb-monitor читает .kb/deploy.yaml — тот же, из которого раскатываются сервисы. Никаких вторых источников правды и параллельных инвентарей.",
+    "ctaDocsBtn": "Документация",
+    "commandsTitle": "Всё поддаётся автоматизации.",
+    "featuresEyebrow": "Как это работает"
+  }
+}

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Temporarily Unavailable</title>
+  <style>
+    :root { color-scheme: dark; }
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+      background: #0b0d10;
+      color: #e6e8ec;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      -webkit-font-smoothing: antialiased;
+    }
+    .card { max-width: 520px; text-align: center; }
+    h1 {
+      font-size: 28px;
+      font-weight: 600;
+      margin: 0 0 14px;
+      letter-spacing: -0.01em;
+    }
+    p {
+      font-size: 15px;
+      line-height: 1.55;
+      color: #a8adb5;
+      margin: 0 0 8px;
+    }
+    .meta {
+      margin-top: 32px;
+      font-size: 11px;
+      color: #5a5f66;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      letter-spacing: 0.04em;
+    }
+    .ref { color: #7a8088; user-select: all; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Temporarily unavailable</h1>
+    <p>The service is taking a short break.</p>
+    <p>Please try again in a minute.</p>
+    <div class="meta">
+      ref <span class="ref" id="rid">—</span>
+    </div>
+  </main>
+  <script>
+    // Request id is set via X-Request-Id response header by nginx.
+    fetch(location.href, { method: 'HEAD' })
+      .then(r => {
+        const id = r.headers.get('x-request-id');
+        if (id) document.getElementById('rid').textContent = id;
+      })
+      .catch(() => {});
+  </script>
+</body>
+</html>

@@ -6,7 +6,7 @@
  *   2. applyPluginGovernance()  — per-plugin: adapter middlewares → governance (per context)
  */
 
-import type { PlatformServices, PermissionSpec } from '@kb-labs/plugin-contracts';
+import type { PlatformServices, PluginServices, PermissionSpec } from '@kb-labs/plugin-contracts';
 import type { IResourceBroker } from '@kb-labs/core-resource-broker';
 import { ADAPTER_REGISTRY } from './adapter-registry.js';
 import type { AdapterLifecycle, AdapterMiddlewareFn } from './middleware.js';
@@ -132,15 +132,15 @@ export function applyPluginGovernance(
   pluginId: string,
   adapterMiddlewares: LoadedMiddleware[] = [],
   lifecycle: AdapterLifecycle = NOOP_LIFECYCLE,
-): PlatformServices {
+): PluginServices {
   const ctx = { permissions, pluginId, lifecycle };
-  // Read each adapter through property access so prototype getters on PlatformContainer
-  // are evaluated — object spread only copies own enumerable properties, missing getters.
+  // Only keys in ADAPTER_REGISTRY are included — platform-only fields (not in the registry)
+  // are automatically excluded, enforcing the PlatformServices → PluginServices boundary.
   const result = Object.fromEntries(
-    (Object.keys(ADAPTER_REGISTRY) as Array<keyof PlatformServices>).map(key => [key, platform[key]])
-  ) as unknown as PlatformServices;
+    (Object.keys(ADAPTER_REGISTRY) as Array<keyof PluginServices>).map(key => [key, platform[key as keyof PlatformServices]])
+  ) as unknown as PluginServices;
 
-  for (const key of Object.keys(ADAPTER_REGISTRY) as Array<keyof PlatformServices>) {
+  for (const key of Object.keys(ADAPTER_REGISTRY) as Array<keyof PluginServices>) {
     const def = ADAPTER_REGISTRY[key as keyof typeof ADAPTER_REGISTRY];
     let adapter = result[key] as unknown;
     if (adapter === undefined) {continue;}

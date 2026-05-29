@@ -11,9 +11,9 @@ export default async function OpengraphImage({
   params: Promise<{ locale: string }>;
 }) {
   const { locale } = await params;
-  const t = await getTranslations({ locale, namespace: 'page' });
+  const t = await getTranslations({ locale, namespace: 'contact' });
   return renderOgImage({
-    title: t('contactMetaTitle'),
-    description: t('contactMetaDesc'),
+    title: t('meta.title'),
+    description: t('meta.description'),
   });
 }

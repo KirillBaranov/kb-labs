@@ -13,8 +13,8 @@ export default async function OpengraphImage({
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: 'solutionPlatformApi' });
   return renderOgImage({
-    title: t('meta.title'),
-    description: t('meta.description'),
+    title: t('page.meta.title'),
+    description: t('page.meta.description'),
     badge: 'Solutions',
   });
 }

@@ -1,0 +1,64 @@
+{
+  "solutionObservability": {
+    "page": {
+      "monitorTitle": "kb-monitor — health, logs, exec into container.",
+      "meta": {
+        "title": "Observability — KB Labs",
+        "description": "Every plugin, workflow and service emits events through a single IAnalytics. DuckDB, SQLite or flat file — data stays local."
+      },
+      "queryLead1": "DuckDB adapter implements full IAnalytics: time-series via date_trunc, group by any payload field using dot notation, filters on type/source/actor/from/to.",
+      "monitorCommands": [
+        {
+          "cmd": "kb-monitor health",
+          "note": "Probe every declared target. Pass/fail with latency."
+        },
+        {
+          "cmd": "kb-monitor status",
+          "note": "Running state, uptime, image SHA per target."
+        },
+        {
+          "cmd": "kb-monitor logs <target> --follow",
+          "note": "Stream live logs from any target. No SSH needed."
+        },
+        {
+          "cmd": "kb-monitor status --json",
+          "note": "Machine-readable output for agents and dashboards."
+        }
+      ],
+      "installBtn": "Install KB Labs",
+      "ctaEyebrow": "Self-hosted",
+      "eventsTitle": "One line in manifest. Analytics in every plugin.",
+      "ctaTitle": "Your data. No SaaS in the way.",
+      "backendsTitle": "SQLite, DuckDB, or flat file.",
+      "monitorLead": "For deployed services — a dedicated Go binary. Health checks, streaming logs, exec into containers. Works with any service deployed via kb-deploy.",
+      "ctaNote": "Analytics adapters ship with the platform. kb-monitor is a standalone Go binary.",
+      "eventsEyebrow": "Event tracking",
+      "backendsLead": "Pick the backend in kb.config.json — one line. Data stays local, no external service.",
+      "backendsTable": [
+        {
+          "label": "Pino (structured logs)",
+          "value": "Default. JSON lines, compatible with any log aggregator."
+        },
+        {
+          "label": "OpenTelemetry",
+          "value": "Export traces and metrics to Jaeger, Tempo, or OTLP endpoint."
+        },
+        {
+          "label": "Custom adapter",
+          "value": "Implement ILogger/IMetrics and bind via kb.config.json."
+        }
+      ],
+      "queryLead2": "REST API exposes the same data via /api/v1/observability/metrics/history for dashboards.",
+      "queryTitle": "getStats. getDailyStats. breakdownBy on payload.",
+      "docsBtn": "Documentation",
+      "heroTitleHighlight": "Your backend.",
+      "backendsEyebrow": "Backends",
+      "heroTitle": "All events.",
+      "monitorEyebrow": "Services",
+      "heroDescription": "Every plugin, workflow, and service emits events through a single IAnalytics interface. DuckDB, SQLite, or flat file — data stays local, no third-party SaaS in the path.",
+      "eventsLead1": "Set analytics: true in permissions and useAnalytics() from the SDK — or ctx.platform.analytics — is available anywhere in the plugin. Event schema kb.v1: type, ts, source, runId, actor, ctx, payload.",
+      "eventsLead2": "The platform enriches context automatically — product, version, runId. Plugins only supply the meaningful fields.",
+      "queryEyebrow": "Queries"
+    }
+  }
+}

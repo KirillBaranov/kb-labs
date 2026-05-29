@@ -1,0 +1,89 @@
+{
+  "solutionMonorepoOps": {
+    "meta": {
+      "title": "Операции с монорепо — KB Labs",
+      "description": "Кросс-репо управление зависимостями, разрешение порядка сборки и проверки здоровья для монорепо, переросших ad-hoc скрипты."
+    },
+    "page": {
+      "healthEyebrow": "Health",
+      "buildLead": "Граф зависимостей + топологический порядок + content-addressable кэш по SHA256. Одинаковый контент — 0ms, независимо от числа пакетов.",
+      "impactEyebrow": "Impact",
+      "installBtn": "Установить KB Labs",
+      "buildEyebrow": "Сборка",
+      "ctaEyebrow": "Установить",
+      "heroEyebrow": "Monorepo Ops · kb-devkit",
+      "ctaTitle": "Граф. Кэш. Impact. Всё в одном.",
+      "ctaNote": "kb-devkit идёт с платформой. Impact — отдельный плагин.",
+      "impactTitle": "Что сломается. Что тестировать.",
+      "healthCommands": [
+        {
+          "cmd": "kb-devkit check",
+          "note": "Валидация всех пакетов по правилам devkit.yaml: именование, tsconfig, eslint, deps."
+        },
+        {
+          "cmd": "kb-devkit stats",
+          "note": "Оценка здоровья воркспейса (A–F), количество проблем по категориям."
+        },
+        {
+          "cmd": "kb-devkit fix",
+          "note": "Авто-исправление безопасных нарушений. --dry-run для предпросмотра."
+        },
+        {
+          "cmd": "kb-devkit gate",
+          "note": "Проверка только staged-файлов. Код выхода 1 при нарушениях. Для pre-commit хуков."
+        },
+        {
+          "cmd": "pnpm kb plugins list",
+          "note": "Список всех установленных плагинов с версией и статусом."
+        }
+      ],
+      "buildTitle": "Меняешь один пакет — пересобирается только цепочка.",
+      "docsBtn": "Документация",
+      "heroTitleHighlight": "Один граф.",
+      "tabAffected": "--affected",
+      "buildCommands": [
+        {
+          "cmd": "kb-devkit run build",
+          "note": "Сборка всех пакетов в топологическом порядке. SHA-кэш — пропускает неизменённые."
+        },
+        {
+          "cmd": "kb-devkit run build --affected",
+          "note": "Сборка только изменённых пакетов и их зависимостей."
+        },
+        {
+          "cmd": "kb-devkit run build --packages @kb-labs/workflow-entry",
+          "note": "Точечная сборка конкретного пакета."
+        },
+        {
+          "cmd": "kb-devkit run build lint test",
+          "note": "Цепочка задач в одном запуске, каждая в правильном порядке."
+        }
+      ],
+      "healthLead2": "Нужна своя логика? {code} в devkit.yaml — shell-команда, которая получает JSON с контекстом пакета и возвращает {result}. Лицензионные заголовки, barrel exports, naming conventions — всё что угодно.",
+      "impactCommands": [
+        {
+          "cmd": "kb-devkit run build --affected",
+          "note": "Поиск affected-сета через git diff + BFS по графу зависимостей."
+        },
+        {
+          "cmd": "pnpm kb impact analyze",
+          "note": "Показать какие пакеты и тесты затронуты текущими изменениями."
+        },
+        {
+          "cmd": "pnpm kb impact report",
+          "note": "Экспорт структурированного impact-отчёта с путями зависимостей."
+        },
+        {
+          "cmd": "pnpm kb plugins clear-cache",
+          "note": "Принудительная инвалидация CLI-кэша после сборки."
+        }
+      ],
+      "heroTitle": "150+ пакетов.",
+      "heroDescription": "kb-devkit оркестрирует монорепо: топологическая сборка, content-addressable кэш, --affected по git diff, health score по presets. Мы собираем KB Labs им каждый день.",
+      "healthLead1": "Статический аудит каждого пакета по presets: ESLint-конфиг, TSConfig, README, engines, exports. Health score 0–100 с грейдом A–F — по категориям сразу видно где деградация.",
+      "impactLead": "Impact плагин строит обратный граф и показывает каскад: direct → dependent → transitive пакеты. Тесты — только те, что реально задеты. Build-план сразу с командой для devkit.",
+      "healthTitle": "Health score. Checks. Auto-fix.",
+      "tabCached": "full (все в кэше)"
+    }
+  }
+}

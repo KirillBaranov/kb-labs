@@ -88,7 +88,8 @@ func Run(ws *workspace.Workspace, cfg *config.DevkitConfig, opts RunOptions) (Ru
 		return RunResult{}, fmt.Errorf("cache init: %w", err)
 	}
 	manifests := cache.NewManifestStore(cacheRoot)
-	executor := NewExecutor(objects, manifests, opts.WSRoot, opts.LiveOutput)
+	states := cache.NewStateStore(cacheRoot)
+	executor := NewExecutor(objects, manifests, states, opts.WSRoot, opts.LiveOutput)
 
 	// Build DAG of (pkg, task) nodes — only for packages with a matching variant.
 	nodes, err := buildDAG(pkgs, opts.Tasks, cfg, ws)
@@ -173,6 +174,22 @@ func Run(ws *workspace.Workspace, cfg *config.DevkitConfig, opts RunOptions) (Ru
 		if !r.OK && !r.Cached {
 			ok = false
 			break
+		}
+	}
+
+	// Mark nodes that were scheduled but never executed as DIRTY.
+	// This happens when the scheduler hard-stops after a failure: packages in
+	// later layers never run, but their prior CLEAN state would cause --affected
+	// to skip them on the next run. Marking them DIRTY ensures they are retried.
+	if failed {
+		executed := make(map[nodeKey]bool, len(allResults))
+		for _, r := range allResults {
+			executed[nodeKey{r.Package, r.Task}] = true
+		}
+		for k := range nodes {
+			if !executed[k] {
+				_ = states.SetDirty(k.pkg, k.task, "not_executed")
+			}
 		}
 	}
 
@@ -398,6 +415,51 @@ func runLayer(
 
 	wg.Wait()
 	return results
+}
+
+// ─── Dirty packages ───────────────────────────────────────────────────────────
+
+// DirtyPackages returns packages that have at least one requested task in DIRTY
+// state (including packages with no state file — unknown = dirty).
+//
+// This complements AffectedPackages: git-diff catches source changes, while
+// DirtyPackages catches packages whose last run failed or never ran at all.
+func DirtyPackages(ws *workspace.Workspace, tasks []string, cacheRoot string) []workspace.Package {
+	if len(tasks) == 0 {
+		return nil
+	}
+	states := cache.NewStateStore(cacheRoot)
+
+	var result []workspace.Package
+	for _, p := range ws.Packages {
+		for _, task := range tasks {
+			if states.IsDirty(p.Name, task) {
+				result = append(result, p)
+				break
+			}
+		}
+	}
+	return result
+}
+
+// UnionPackages merges two package lists into one, preserving workspace order
+// and deduplicating by package name. Only packages present in ws.Packages are
+// included — packages not in the workspace are silently dropped.
+func UnionPackages(ws *workspace.Workspace, a, b []workspace.Package) []workspace.Package {
+	inEither := make(map[string]bool, len(a)+len(b))
+	for _, p := range a {
+		inEither[p.Name] = true
+	}
+	for _, p := range b {
+		inEither[p.Name] = true
+	}
+	var result []workspace.Package
+	for _, p := range ws.Packages {
+		if inEither[p.Name] {
+			result = append(result, p)
+		}
+	}
+	return result
 }
 
 // ─── Affected packages ────────────────────────────────────────────────────────

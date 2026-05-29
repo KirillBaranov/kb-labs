@@ -21,18 +21,18 @@ describe('GatewayConfigSchema', () => {
     const result = GatewayConfigSchema.parse({
       port: 4001,
       upstreams: {
-        ui: { url: 'http://localhost:5050', prefix: '/api/ui' },
+        ui: { serviceId: 'rest-api', prefix: '/api/ui' },
       },
     });
     expect(result.port).toBe(4001);
-    expect(result.upstreams['ui']!.url).toBe('http://localhost:5050');
+    expect(result.upstreams['ui']!.serviceId).toBe('rest-api');
     expect(result.upstreams['ui']!.prefix).toBe('/api/ui');
   });
 
-  it('rejects upstream with invalid URL', () => {
+  it('rejects upstream without serviceId', () => {
     expect(() =>
       GatewayConfigSchema.parse({
-        upstreams: { bad: { url: 'not-a-url', prefix: '/api/bad' } },
+        upstreams: { bad: { serviceId: '', prefix: '/api/bad' } },
       }),
     ).toThrow();
   });
@@ -40,10 +40,11 @@ describe('GatewayConfigSchema', () => {
   it('rejects upstream prefix without leading slash', () => {
     expect(() =>
       GatewayConfigSchema.parse({
-        upstreams: { bad: { url: 'http://localhost:9000', prefix: 'api/no-slash' } },
+        upstreams: { bad: { serviceId: 'svc', prefix: 'api/no-slash' } },
       }),
     ).toThrow();
   });
+
 });
 
 describe('HostRegistrationSchema', () => {

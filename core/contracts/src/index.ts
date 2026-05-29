@@ -46,3 +46,8 @@ export {
   type CanonicalServiceLogField,
   type ServiceLogCorrelationContext,
 } from "./observability.js";
+
+// Identity & authentication (ADR-0020)
+export * from "./permissions.js";
+export * from "./identity-provider.js";
+export * from "./policy.js";

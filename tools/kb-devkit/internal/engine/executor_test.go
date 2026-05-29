@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/kb-labs/devkit/internal/cache"
+	"github.com/kb-labs/devkit/internal/workspace"
 )
 
 func TestExpandOutputFilesAndSplitCommand(t *testing.T) {
@@ -39,7 +40,8 @@ func TestExecutorStoresAndRestoresOutputsThroughCache(t *testing.T) {
 		t.Fatalf("NewLocalStore error: %v", err)
 	}
 	manifests := cache.NewManifestStore(cacheRoot)
-	exec := NewExecutor(store, manifests, root, false)
+	states := cache.NewStateStore(cacheRoot)
+	exec := NewExecutor(store, manifests, states, root, false)
 
 	pkgDir := filepath.Join(root, "pkg")
 	writeFile(t, filepath.Join(pkgDir, "input.txt"), "hello")
@@ -75,6 +77,85 @@ func TestResolveBinPrefersWorkspaceNodeModulesBin(t *testing.T) {
 	got := resolveBin("eslint", root)
 	if got != filepath.Join(root, "node_modules", ".bin", "eslint") {
 		t.Fatalf("resolveBin = %q", got)
+	}
+}
+
+func TestExecutorWritesCleanStateOnSuccess(t *testing.T) {
+	root := t.TempDir()
+	cacheRoot := filepath.Join(root, ".kb", "devkit")
+	store, err := cache.NewLocalStore(cacheRoot)
+	if err != nil {
+		t.Fatalf("NewLocalStore error: %v", err)
+	}
+	states := cache.NewStateStore(cacheRoot)
+	exec := NewExecutor(store, cache.NewManifestStore(cacheRoot), states, root, false)
+
+	pkgDir := filepath.Join(root, "pkg")
+	if err := os.MkdirAll(pkgDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	pkg := workspace.Package{Name: "@kb/app", Dir: pkgDir}
+	def := TaskDef{Name: "build", Command: `sh -c "exit 0"`, Cache: true}
+
+	r := exec.Run(pkg, def, false)
+	if !r.OK {
+		t.Fatalf("expected OK, stderr: %s", r.Stderr)
+	}
+	if states.IsDirty(pkg.Name, def.Name) {
+		t.Fatal("IsDirty = true after success, want false (CLEAN)")
+	}
+}
+
+func TestExecutorWritesDirtyStateOnFailure(t *testing.T) {
+	root := t.TempDir()
+	cacheRoot := filepath.Join(root, ".kb", "devkit")
+	store, err := cache.NewLocalStore(cacheRoot)
+	if err != nil {
+		t.Fatalf("NewLocalStore error: %v", err)
+	}
+	states := cache.NewStateStore(cacheRoot)
+	exec := NewExecutor(store, cache.NewManifestStore(cacheRoot), states, root, false)
+
+	pkgDir := filepath.Join(root, "pkg")
+	if err := os.MkdirAll(pkgDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	pkg := workspace.Package{Name: "@kb/app", Dir: pkgDir}
+	def := TaskDef{Name: "build", Command: `sh -c "exit 1"`, Cache: true}
+
+	r := exec.Run(pkg, def, false)
+	if r.OK {
+		t.Fatal("expected failure")
+	}
+	if !states.IsDirty(pkg.Name, def.Name) {
+		t.Fatal("IsDirty = false after failure, want true (DIRTY)")
+	}
+}
+
+func TestExecutorWritesStateForNoCacheTasks(t *testing.T) {
+	root := t.TempDir()
+	cacheRoot := filepath.Join(root, ".kb", "devkit")
+	store, err := cache.NewLocalStore(cacheRoot)
+	if err != nil {
+		t.Fatalf("NewLocalStore error: %v", err)
+	}
+	states := cache.NewStateStore(cacheRoot)
+	exec := NewExecutor(store, cache.NewManifestStore(cacheRoot), states, root, false)
+
+	pkgDir := filepath.Join(root, "pkg")
+	if err := os.MkdirAll(pkgDir, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+	pkg := workspace.Package{Name: "@kb/deploy", Dir: pkgDir}
+	// cache:false simulates deploy-like tasks — state must still be written
+	def := TaskDef{Name: "deploy", Command: `sh -c "exit 0"`, Cache: false}
+
+	r := exec.Run(pkg, def, false)
+	if !r.OK {
+		t.Fatalf("expected OK, stderr: %s", r.Stderr)
+	}
+	if states.IsDirty(pkg.Name, def.Name) {
+		t.Fatal("IsDirty = true after cache:false success, want false (CLEAN)")
 	}
 }
 

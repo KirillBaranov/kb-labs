@@ -3,18 +3,19 @@
  * Spins up a real Fastify instance with mocked AuthService.
  *
  * Covers:
- *   POST /auth/register  — happy path, bad body (400)
+ *   POST /auth/register  — requires MACHINE_REGISTER permission (admin-only)
  *   POST /auth/token     — happy path, bad creds (401), bad body (400)
  *   POST /auth/refresh   — happy path, expired token (401), bad body (400)
  */
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest';
 import Fastify, { type FastifyInstance } from 'fastify';
 import type { ICache } from '@kb-labs/core-platform';
-import type { JwtConfig } from '@kb-labs/gateway-auth';
+import { signAccessToken, type JwtConfig } from '@kb-labs/gateway-auth';
+import { PERMISSIONS } from '@kb-labs/core-contracts';
 import { createAuthMiddleware } from '../auth/middleware.js';
 import { registerAuthRoutes } from '../auth/routes.js';
 
-// ── Minimal stub cache ────────────────────────────────────────────────────────
+// ── Minimal stub cache (no pre-seeded static tokens) ─────────────────────────
 
 function makeCache(): ICache {
   const store = new Map<string, unknown>();
@@ -24,6 +25,26 @@ function makeCache(): ICache {
     async delete(k: string) { store.delete(k); },
     async clear() { store.clear(); },
   } as unknown as ICache;
+}
+
+// ── JWT-based admin token ─────────────────────────────────────────────────────
+
+const testJwtConfig: JwtConfig = { secret: 'test-secret' };
+
+/** Signs a machine JWT with the given permissions using the test JWT secret. */
+async function makeMachineJwt(permissions: string[]): Promise<string> {
+  const { token } = await signAccessToken(
+    { hostId: 'test-admin-host', namespaceId: 'test-ns', tier: 'free', type: 'machine', permissions },
+    testJwtConfig,
+  );
+  return token;
+}
+
+let adminToken: string;
+
+/** Returns the Authorization header for the JWT-based admin machine token. */
+function adminAuthHeader(): Record<string, string> {
+  return { Authorization: `Bearer ${adminToken}` };
 }
 
 // ── Mocked AuthService ────────────────────────────────────────────────────────
@@ -37,12 +58,13 @@ function makeAuthService() {
   };
 }
 
-const testJwtConfig: JwtConfig = { secret: 'test-secret' };
-
 let app: FastifyInstance;
 let authService: ReturnType<typeof makeAuthService>;
 
 beforeAll(async () => {
+  // Mint a real JWT with MACHINE_REGISTER permission — no static token needed.
+  adminToken = await makeMachineJwt([PERMISSIONS.MACHINE_REGISTER]);
+
   authService = makeAuthService();
   app = Fastify({ logger: false });
 
@@ -60,9 +82,12 @@ afterAll(async () => {
 });
 
 // ── POST /auth/register ───────────────────────────────────────────────────────
+// This endpoint now requires MACHINE_REGISTER permission (admin-only, ADR-0020).
+// Anonymous callers get 401 from the auth middleware; authenticated callers
+// without the permission get 403 from the handler.
 
 describe('POST /auth/register', () => {
-  it('returns 201 with clientId, clientSecret, hostId, namespaceId on success', async () => {
+  it('returns 200 with clientId, clientSecret, hostId, namespaceId on success (admin Bearer)', async () => {
     authService.register.mockResolvedValue({
       clientId: 'client-abc',
       clientSecret: 'secret-xyz',
@@ -73,10 +98,11 @@ describe('POST /auth/register', () => {
     const res = await app.inject({
       method: 'POST',
       url: '/auth/register',
+      headers: adminAuthHeader(),
       payload: { name: 'My Agent' },
     });
 
-    expect(res.statusCode).toBe(201);
+    expect(res.statusCode).toBe(200);
     const body = res.json() as { clientId: string; clientSecret: string; hostId: string; namespaceId: string };
     expect(body.clientId).toBe('client-abc');
     expect(body.clientSecret).toBe('secret-xyz');
@@ -95,6 +121,7 @@ describe('POST /auth/register', () => {
     await app.inject({
       method: 'POST',
       url: '/auth/register',
+      headers: adminAuthHeader(),
       payload: { name: 'Agent', namespaceId: 'victim-tenant' },
     });
 
@@ -104,10 +131,11 @@ describe('POST /auth/register', () => {
     );
   });
 
-  it('returns 400 when name is missing', async () => {
+  it('returns 400 when name is missing (authenticated admin)', async () => {
     const res = await app.inject({
       method: 'POST',
       url: '/auth/register',
+      headers: adminAuthHeader(),
       payload: {},
     });
     expect(res.statusCode).toBe(400);
@@ -115,10 +143,11 @@ describe('POST /auth/register', () => {
     expect(body.error).toBe('Bad Request');
   });
 
-  it('returns 400 when body is empty', async () => {
+  it('returns 400 when body is empty (authenticated admin)', async () => {
     const res = await app.inject({
       method: 'POST',
       url: '/auth/register',
+      headers: adminAuthHeader(),
       payload: {},
     });
     expect(res.statusCode).toBe(400);
@@ -135,12 +164,23 @@ describe('POST /auth/register', () => {
     await app.inject({
       method: 'POST',
       url: '/auth/register',
+      headers: adminAuthHeader(),
       payload: { name: 'Cap Agent', capabilities: ['read', 'write'] },
     });
 
     expect(authService.register).toHaveBeenCalledWith(
       expect.objectContaining({ capabilities: ['read', 'write'] }),
     );
+  });
+
+  it('returns 401 for anonymous (no Authorization header)', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/auth/register',
+      payload: { name: 'x' },
+      // No Authorization header — middleware blocks with 401
+    });
+    expect(res.statusCode).toBe(401);
   });
 });
 
@@ -270,21 +310,22 @@ describe('POST /auth/refresh', () => {
 });
 
 // ── Auth middleware: public routes skip auth check ────────────────────────────
+// /auth/token and /auth/refresh are public (no Bearer needed to exchange credentials).
 
 describe('Auth middleware — public routes', () => {
-  it('/auth/register is accessible without Authorization header', async () => {
-    authService.register.mockResolvedValue({
-      clientId: 'c', clientSecret: 's', hostId: 'h', namespaceId: 'ns_gen',
-    });
+  it('/auth/token is accessible without Authorization header', async () => {
+    authService.issueTokens.mockResolvedValue(null);
 
     const res = await app.inject({
       method: 'POST',
-      url: '/auth/register',
-      payload: { name: 'x' },
-      // No Authorization header
+      url: '/auth/token',
+      payload: { clientId: 'x', clientSecret: 'y' },
+      // No Authorization header — should not be blocked by middleware
     });
 
-    // Should reach the route handler, not be blocked by middleware
-    expect(res.statusCode).not.toBe(401);
+    // 401 from the handler (bad credentials) — not from middleware
+    expect(res.statusCode).toBe(401);
+    const body = res.json() as { error: string };
+    expect(body.error).toBe('Unauthorized');
   });
 });

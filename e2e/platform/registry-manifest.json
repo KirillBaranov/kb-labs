@@ -64,8 +64,13 @@
     { "name": "@kb-labs/adapters-fs" },
     { "name": "@kb-labs/adapters-pino" },
     { "name": "@kb-labs/adapters-log-ringbuffer" },
-    { "name": "@kb-labs/adapters-analytics-file" }
+    { "name": "@kb-labs/adapters-analytics-file" },
+    { "name": "@kb-labs/adapters-sqlite" }
   ],
+  "adapterConfig": {
+    "documentDatabase": "@kb-labs/adapters-sqlite",
+    "kvStore": "@kb-labs/adapters-sqlite/kv"
+  },
   "plugins": [
     {
       "id": "marketplace",

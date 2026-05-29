@@ -1,24 +1,16 @@
 name: E2E Platform Tests
 
-# Full platform scenario tests: build from source → publish to Verdaccio →
-# kb-create installs (full user flow simulation) → start all services →
-# run per-domain Playwright API tests via `kb-devkit run e2e`.
+# Full platform scenario tests — matrix of 8 suites, each shard runs the
+# complete Docker-based setup via the shared reusable-e2e-docker workflow:
 #
-# Tests run on the CI runner (not inside Docker) against platform services
-# exposed on host ports. Each domain is a separate workspace package:
-#   @kb-labs/e2e-services, e2e-platform, e2e-gateway, e2e-marketplace,
-#   e2e-workflows, e2e-studio, e2e-plugins
-#
-# Run a single domain:
-#   kb-devkit run e2e --packages @kb-labs/e2e-workflows
-# Run affected only:
-#   kb-devkit run e2e --affected
+#   Build → Pack → Verdaccio → kb-create install → start services → run suite
 #
 # Triggers:
 # - Every push to main (pre-release validation)
 # - After every binary release
 # - Weekly Monday 9am UTC
 # - Manual dispatch
+# - PRs (ignoring docs/sites/editor-state changes)
 
 on:
   workflow_run:
@@ -26,24 +18,17 @@ on:
     types: [completed]
   push:
     branches: [main]
-    # Skip on changes that cannot affect platform/plugin behaviour.
-    # Run anyway by triggering manually (workflow_dispatch) if in doubt.
     paths-ignore:
       - '**/*.md'
       - 'docs/**'
-      - 'sites/**'           # marketing site; deployed by deploy.yml separately
-      - '.claude/**'         # editor agent state
+      - 'sites/**'
+      - '.claude/**'
       - '.vscode/**'
       - '.idea/**'
       - '.editorconfig'
       - 'LICENSE'
       - '.github/ISSUE_TEMPLATE/**'
       - '.github/PULL_REQUEST_TEMPLATE.md'
-  # PR gate (ADR-0019): full E2E matrix runs on every push to a PR so
-  # that nothing reaches main without E2E green. cancel-in-progress in
-  # the concurrency block below collapses rapid agent pushes to a single
-  # final run per PR. paths-ignore is identical to the push variant —
-  # PRs that only touch docs/sites/editor-state don't need E2E either.
   pull_request:
     types: [opened, synchronize, reopened]
     paths-ignore:
@@ -61,42 +46,18 @@ on:
   schedule:
     - cron: '0 9 * * 1'
 
-# Concurrency: only the latest run for a given target keeps going. Old
-# runs get cancelled with a visible "cancelled" state in the Actions UI —
-# they are not silently dropped.
-#
-# - For PRs the target is the PR number, so successive pushes inside the
-#   same PR cancel earlier runs (agent-heavy flow).
-# - For main pushes the target is the ref, so rapid commits to main also
-#   collapse to the latest run.
+# Only the latest run for a given PR/ref keeps going — older runs are cancelled.
 concurrency:
   group: e2e-platform-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-
 jobs:
+  # ── Matrix shards ──────────────────────────────────────────────────────────
+  # Each shard runs the FULL setup but filters e2e to a single suite package.
+  # Shards run concurrently; fail-fast: false shows the full picture on failure.
   e2e:
-    # Phase 3 of ADR-0017: matrix sharding by suite.
-    # Each shard runs the FULL setup (build/pack/publish/platform-up) but
-    # filters `kb-devkit run e2e` to a single @kb-labs/e2e-<suite> package.
-    # Wall-clock = max(shard time); failure of one suite no longer hides
-    # the result of the others. All caches (Phase 1/2/2.5) are hit by
-    # every shard in parallel — GitHub Actions cache handles concurrent
-    # reads fine.
-    #
-    # The aggregator job below collapses 8 matrix outcomes into a single
-    # required status check `Platform E2E`, so branch protection rules
-    # do not need to change.
-    name: Platform E2E / ${{ matrix.suite }}
-    runs-on: ubuntu-latest
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
-    timeout-minutes: 30
-
     strategy:
-      # One failing shard must not cancel the others — we want to see the
-      # full picture of which suites are red.
       fail-fast: false
       matrix:
         suite:
@@ -108,410 +69,28 @@ jobs:
           - studio
           - marketplace
           - marketplace-registry
+    uses: ./.github/workflows/reusable-e2e-docker.yml
+    with:
+      suite: ${{ matrix.suite }}
+      e2e-package: "@kb-labs/e2e-${{ matrix.suite }}"
+      health-url: http://localhost:4000/ready
+      health-steps: 60
+      playwright-dir: e2e/plugins
+      compose-project: kb-e2e-ci-${{ matrix.suite }}
+    permissions:
+      contents: read
 
-    # Apply the CI-only override globally so every `docker compose` call
-    # below picks up the bind-mounted Verdaccio storage automatically.
-    # The override only swaps the verdaccio volume — platform/publisher
-    # services are untouched. Local dev keeps the named-volume default
-    # from docker-compose.yml because it does not set COMPOSE_FILE.
-    env:
-      COMPOSE_FILE: e2e/docker-compose.yml:e2e/docker-compose.ci.yml
-      COMPOSE_PROJECT_NAME: kb-e2e-ci-${{ matrix.suite }}
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      # ── Build toolchain ──────────────────────────────────────────────────
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: tools/kb-create/go.mod
-          cache-dependency-path: |
-            tools/kb-create/go.sum
-            tools/kb-dev/go.sum
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-
-      # ── Compile Go tools for linux/amd64 ────────────────────────────────
-      # The committed binaries in tools/ are macOS builds.
-
-      - name: Build Go tools for linux (kb-devkit, kb-dev)
-        run: |
-          # The macOS Mach-O binary is committed in tools/*/kb-* for local
-          # dev; on CI we always rebuild for Linux and ensure +x is set.
-          # actions/cache restore on .kb/devkit/ has been observed to
-          # interact with these binaries (root cause TBD) — explicit chmod
-          # is a small, safe guard.
-          (cd tools/kb-devkit && CGO_ENABLED=0 go build -o kb-devkit . && chmod +x kb-devkit)
-          (cd tools/kb-dev    && CGO_ENABLED=0 go build -o kb-dev    . && chmod +x kb-dev)
-          ls -la tools/kb-devkit/kb-devkit tools/kb-dev/kb-dev
-          file tools/kb-devkit/kb-devkit tools/kb-dev/kb-dev
-
-      # ── Install + build monorepo ─────────────────────────────────────────
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      # ── Phase 1 of ADR-0017: persist kb-devkit CAS across runs ───────────
-      # kb-devkit stores build outputs in a content-addressable store at
-      # .kb/devkit/objects/. Restoring it lets `pnpm build` skip rebuilding
-      # packages whose inputs are unchanged. Key includes lockfile, devkit
-      # config, and tsconfigs — anything that legitimately invalidates the
-      # whole graph. The exact SHA is appended for a unique cache per run;
-      # restore-keys fall back to the latest cache with the same
-      # lock/devkit/tsconfig hash.
-      #
-      # Safe to re-enable now: e2e task has `cache: false` (commit 6e9a0c3d)
-      # so test correctness can't be masked by stale cached results, and
-      # WS-L04 has a real single-entry-backfill fix (commit e6505ad0) so
-      # the cache no longer surfaces a pre-existing test flake.
-      - name: Restore kb-devkit build cache
-        uses: actions/cache@v4
-        with:
-          path: .kb/devkit/
-          key: devkit-build-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml', 'devkit.yaml', 'tsconfig*.json') }}-${{ github.sha }}
-          restore-keys: |
-            devkit-build-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml', 'devkit.yaml', 'tsconfig*.json') }}-
-            devkit-build-${{ runner.os }}-
-
-      - name: Build all packages (topological order)
-        run: pnpm build
-
-      # ── Install Playwright browsers ──────────────────────────────────────
-
-      - name: Install Playwright browsers
-        run: cd e2e/plugins && pnpm exec playwright install chromium --with-deps
-
-      # ── Pack packages for Verdaccio ──────────────────────────────────────
-
-      # ── Phase 2 of ADR-0017: cache packed .tgz between runs ──────────────
-      # pack-all.sh deterministically packs `dist/` outputs into .tgz
-      # files. When dist/ contents haven't changed (Phase 1 cache hit) and
-      # package.json versions are identical, the produced .tgz are
-      # byte-identical too — caching them skips ~75s of `pnpm pack` loops.
-      # The Verdaccio publish step still re-uploads (volume is fresh per
-      # run); deferring publish-skip to Phase 2.5 once Verdaccio storage
-      # is also cached.
-      - name: Restore packed .tgz cache
-        id: tgz-cache
-        uses: actions/cache@v4
-        with:
-          path: e2e/packages/
-          key: e2e-tgz-v2-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json') }}
-          # No restore-keys: content-hash key must only hit when the cached
-          # tgzs were built from the same dist. restore-keys would restore
-          # stale tgzs and re-save them under the new key — permanently
-          # mapping wrong content to the new dist hash (cache poisoning).
-
-      - name: Pack @kb-labs/* packages
-        if: steps.tgz-cache.outputs.cache-hit != 'true'
-        run: bash e2e/scripts/pack-all.sh
-
-      - name: Verify packed .tgz cache contents
-        if: steps.tgz-cache.outputs.cache-hit == 'true'
-        run: |
-          count=$(ls e2e/packages/*.tgz 2>/dev/null | wc -l)
-          echo "Restored $count packed tarballs from cache"
-          if [ "$count" -lt 100 ]; then
-            echo "::warning::Cached tgz set looks incomplete (<100 files), repacking"
-            bash e2e/scripts/pack-all.sh
-          fi
-
-      - name: List packed packages
-        run: ls -lh e2e/packages/*.tgz | wc -l && echo "tarballs packed"
-
-      # ── Docker layer caching ─────────────────────────────────────────────
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Cache Docker layers (platform)
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache-platform
-          key: buildx-platform-${{ hashFiles('e2e/platform/Dockerfile', 'e2e/platform/entrypoint.sh', 'e2e/platform/registry-manifest.json', 'tools/kb-create/**', 'tools/kb-dev/**') }}
-          restore-keys: buildx-platform-
-
-      - name: Cache Docker layers (publisher)
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache-publisher
-          key: buildx-publisher-${{ hashFiles('e2e/publisher/**', 'e2e/packages/**') }}
-          restore-keys: buildx-publisher-
-
-      # ── Build Docker images ──────────────────────────────────────────────
-
-      - name: Build platform image
-        run: |
-          docker buildx build \
-            --cache-from type=local,src=/tmp/.buildx-cache-platform \
-            --cache-to   type=local,dest=/tmp/.buildx-cache-platform,mode=max \
-            --load \
-            -t kb-e2e-ci-platform:latest \
-            -f e2e/platform/Dockerfile .
-
-      - name: Build publisher image
-        run: |
-          docker buildx build \
-            --cache-from type=local,src=/tmp/.buildx-cache-publisher \
-            --cache-to   type=local,dest=/tmp/.buildx-cache-publisher,mode=max \
-            --load \
-            -t kb-e2e-ci-publisher:latest \
-            -f e2e/publisher/Dockerfile \
-            e2e/
-
-      # ── Start infrastructure ─────────────────────────────────────────────
-
-      # ── Phase 2.5 of ADR-0017: persist Verdaccio storage between runs ────
-      # docker-compose.ci.yml bind-mounts ./e2e/.verdaccio-storage into the
-      # verdaccio container at /verdaccio/storage. Caching that host path
-      # lets pnpm publish hit the warm-set 409 fast-path for every package,
-      # cutting Publish from ~70s (parallel x4) to ~10s on warm cache.
-      #
-      # Cache key includes the .tgz hash — so a changed package set
-      # invalidates and triggers a full re-publish.
-      - name: Restore Verdaccio storage cache
-        id: verdaccio-cache
-        uses: actions/cache@v4
-        with:
-          path: e2e/.verdaccio-storage
-          key: verdaccio-storage-${{ runner.os }}-${{ hashFiles('e2e/packages/**/*.tgz') }}
-          # No restore-keys: Verdaccio storage must only be reused when it
-          # was populated from the exact same tgzs. A stale storage + skipped
-          # publish = platform installs wrong package versions.
-
-      - name: Prepare Verdaccio storage permissions
-        run: |
-          mkdir -p e2e/.verdaccio-storage
-          # Container runs as 10001:65533 (verdaccio:nogroup); host runner
-          # is a different uid. Make the bind mount writable by the
-          # container user without requiring root in subsequent steps.
-          sudo chown -R 10001:65533 e2e/.verdaccio-storage
-
-      - name: Start Verdaccio registry
-        run: docker compose up -d verdaccio
-
-      - name: Wait for Verdaccio to be healthy
-        run: |
-          echo "Waiting for Verdaccio..."
-          for i in $(seq 1 30); do
-            if docker compose ps verdaccio | grep -q "healthy"; then
-              echo "Verdaccio is healthy after $((i * 2))s"
-              break
-            fi
-            sleep 2
-          done
-
-      # When the Verdaccio storage cache hit, every package is already
-      # published (cache key includes the .tgz hash). pnpm publish would
-      # still spend ~65s walking 163 packages just to confirm 409 for
-      # each. Skip the step entirely when the cache is warm.
-      - name: Publish packages to Verdaccio
-        if: steps.verdaccio-cache.outputs.cache-hit != 'true'
-        run: docker compose run --rm publisher
-
-      - name: Confirm Verdaccio has expected package count (warm cache)
-        if: steps.verdaccio-cache.outputs.cache-hit == 'true'
-        run: |
-          # Sanity check: number of cached package dirs should match the
-          # number of @kb-labs/* tarballs we packed. If not, the cache is
-          # stale and we fall through to a full re-publish.
-          tgz_count=$(ls e2e/packages/*.tgz 2>/dev/null | wc -l | tr -d ' ')
-          pkg_dirs=$(find e2e/.verdaccio-storage/@kb-labs -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
-          echo "Tarballs packed: $tgz_count   Verdaccio pkg dirs: $pkg_dirs"
-          if [ "$pkg_dirs" -lt "$((tgz_count / 2))" ]; then
-            echo "::warning::Cached Verdaccio storage looks incomplete ($pkg_dirs < $tgz_count/2), running publish anyway"
-            docker compose run --rm publisher
-          fi
-
-      - name: Start platform
-        run: docker compose up -d --no-build platform
-
-      - name: Wait for platform to be healthy
-        run: |
-          echo "Waiting for platform (up to 5 min)..."
-          for i in $(seq 1 60); do
-            if curl -sf http://localhost:4000/ready > /dev/null 2>&1; then
-              echo "Platform ready after $((i * 5))s"
-              break
-            fi
-            if [ $i -eq 60 ]; then
-              echo "Platform failed to start — dumping logs"
-              docker compose logs platform | tail -100
-              exit 1
-            fi
-            sleep 5
-          done
-
-      # ── Run E2E suite (single, this shard's) ─────────────────────────────
-      # The shard runs only its matrix-assigned suite. The kb-devkit task
-      # filter --packages keys on workspace package name @kb-labs/e2e-<x>.
-
-      - name: Run e2e tests
-        run: |
-          # Diagnostic + defensive chmod — see "Build Go tools" comment.
-          ls -la tools/kb-devkit/kb-devkit
-          file tools/kb-devkit/kb-devkit
-          chmod +x tools/kb-devkit/kb-devkit tools/kb-dev/kb-dev || true
-          ./tools/kb-devkit/kb-devkit run e2e --packages "@kb-labs/e2e-${{ matrix.suite }}"
-        env:
-          GATEWAY_URL:     http://localhost:4000
-          REST_URL:        http://localhost:5050
-          MARKETPLACE_URL: http://localhost:5070
-          REGISTRY_URL:    http://localhost:5071
-          WORKFLOW_URL:    http://localhost:7778
-          STATE_URL:       http://localhost:7777
-          CI: "true"
-          # The e2e-runner stays environment-agnostic — it just calls
-          # `$KB_DEV_BIN`. On CI the binary is a small wrapper that proxies
-          # into the platform container; locally `kb-dev` runs directly.
-          KB_DEV_BIN: ${{ github.workspace }}/tools/scripts/kb-dev-docker.sh
-
-      # ── Artifacts + summary ──────────────────────────────────────────────
-
-      - name: Dump platform container logs
-        if: always()
-        run: |
-          mkdir -p /tmp/e2e-logs
-          docker compose logs --no-color platform > /tmp/e2e-logs/platform-bootstrap.log 2>&1 || true
-          docker compose logs --no-color verdaccio > /tmp/e2e-logs/verdaccio.log 2>&1 || true
-          docker compose ps > /tmp/e2e-logs/ps.txt 2>&1 || true
-          # Find and copy all .log files + .kb directory from the platform container.
-          docker compose exec -T platform sh -c 'find / -name "*.log" -size +0c 2>/dev/null | grep -v proc' > /tmp/e2e-logs/log-files-list.txt 2>&1 || true
-          echo "--- log files found in container:"
-          cat /tmp/e2e-logs/log-files-list.txt || true
-          docker compose cp platform:/workspace/kb-e2e/.kb /tmp/e2e-logs/kb-dir 2>&1 || true
-          docker compose cp platform:/root/kb-platform/.kb /tmp/e2e-logs/platform-kb-dir 2>&1 || true
-          docker compose exec -T platform sh -c 'kb-dev status 2>&1' > /tmp/e2e-logs/kb-dev-status.txt 2>&1 || true
-          echo "--- kb-dev-status:"
-          cat /tmp/e2e-logs/kb-dev-status.txt || true
-          echo "--- kb-dir tree (max 3 levels):"
-          find /tmp/e2e-logs/kb-dir -maxdepth 3 -type f 2>&1 | head -40 || true
-
-      - name: Upload platform logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: platform-logs-${{ github.run_id }}-${{ matrix.suite }}
-          path: /tmp/e2e-logs/
-          retention-days: 14
-
-      - name: Upload Playwright reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report-${{ github.run_id }}-${{ matrix.suite }}
-          path: e2e/${{ matrix.suite }}/report/
-          retention-days: 14
-
-      - name: Show checklist summary
-        if: always()
-        run: |
-          checklist="e2e/${{ matrix.suite }}/report/CHECKLIST.md"
-          if [ -f "$checklist" ]; then
-            echo "### E2E: ${{ matrix.suite }}" >> $GITHUB_STEP_SUMMARY
-            cat "$checklist" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-          fi
-
-      - name: Cleanup
-        if: always()
-        run: docker compose down --volumes --remove-orphans
-
-      # actions/cache@v4 saves the cache as a Post step running under the
-      # GitHub runner user, not the verdaccio container uid. Chown the
-      # bind-mounted storage back so tar can read every file.
-      - name: Restore Verdaccio storage ownership for cache save
-        if: always()
-        run: |
-          if [ -d e2e/.verdaccio-storage ]; then
-            sudo chown -R "$(id -u):$(id -g)" e2e/.verdaccio-storage
-          fi
-
-      # ── Per-step timings (Phase 0 of ADR-0017) ───────────────────────────
-      # Fetches this run's step list from the GitHub Actions API, computes
-      # durations, writes a Markdown table to the step summary, and emits
-      # timings.json as an artifact so later phases can be benchmarked
-      # against a stable baseline.
-
-      - name: Emit timings
-        if: always()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RUN_ID: ${{ github.run_id }}
-          REPO: ${{ github.repository }}
-        run: |
-          set -eu
-          mkdir -p /tmp/e2e-timings
-          OUT_JSON=/tmp/e2e-timings/timings.json
-
-          # Pull jobs+steps for this run. The Emit timings step itself will
-          # appear in-progress (completedAt=null) — that is expected and the
-          # downstream filter drops it.
-          gh api "/repos/${REPO}/actions/runs/${RUN_ID}/jobs" \
-            --jq '{
-              run_id: '"$RUN_ID"',
-              repo: "'"$REPO"'",
-              jobs: [.jobs[] | {
-                name: .name,
-                conclusion: .conclusion,
-                started_at: .started_at,
-                completed_at: .completed_at,
-                steps: [.steps[] | select(.completed_at != null) | {
-                  name: .name,
-                  number: .number,
-                  conclusion: .conclusion,
-                  started_at: .started_at,
-                  completed_at: .completed_at,
-                  duration_s: (((.completed_at | fromdateiso8601) - (.started_at | fromdateiso8601)))
-                }]
-              }]
-            }' > "$OUT_JSON"
-
-          # Markdown summary
-          {
-            echo "## E2E timings"
-            echo ""
-            echo "Run: \`${RUN_ID}\` · ${REPO}"
-            echo ""
-            echo "| # | step | duration | conclusion |"
-            echo "|---|---|---:|---|"
-            jq -r '.jobs[0].steps[] | "| \(.number) | \(.name) | \(.duration_s | floor)s | \(.conclusion) |"' "$OUT_JSON"
-            echo ""
-            TOTAL=$(jq -r '[.jobs[0].steps[].duration_s] | add | floor' "$OUT_JSON")
-            echo "**Total measured:** ${TOTAL}s"
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload timings
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-timings-${{ github.run_id }}-${{ matrix.suite }}
-          path: /tmp/e2e-timings/
-          retention-days: 90
-
-  # ─────────────────────────────────────────────────────────────────────────
-  # Aggregator — single required status check.
-  #
-  # Branch protection points at `Platform E2E` (this job's name). It collapses
-  # the 8 matrix shards into one pass/fail signal. Individual per-shard
-  # checks (Platform E2E / <suite>) stay visible for at-a-glance triage and
-  # for re-running only the failing shard via the GitHub UI.
-  # ─────────────────────────────────────────────────────────────────────────
+  # ── Aggregator — single required status check ──────────────────────────────
+  # Branch protection points at "Platform E2E". Collapses the 8 matrix shards
+  # into one pass/fail. Individual shard checks stay visible for triage and
+  # targeted re-runs via the GitHub UI.
   aggregate:
     name: Platform E2E
     needs: e2e
     if: always()
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Check matrix outcome
         run: |
