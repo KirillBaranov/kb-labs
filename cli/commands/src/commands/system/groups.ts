@@ -15,6 +15,7 @@ import { docsGenerateCliReference } from './docs-generate-cli-reference';
 import { logsDiagnose, logsContext, logsSummarize, logsQuery, logsSearch, logsGet, logsStats } from './logs';
 import { authLogin, authLogout, authStatus, authCreateServiceAccount } from './auth';
 import { platformSyncCommand } from './platform/sync';
+import { webhookProvision, webhookList, webhookRevoke } from './webhook';
 
 /**
  * Info Commands Group
@@ -73,4 +74,15 @@ export const authGroup = defineSystemCommandGroup('auth', 'Gateway authenticatio
  */
 export const platformGroup = defineSystemCommandGroup('platform', 'Platform lifecycle commands', [
   platformSyncCommand,
+]);
+
+/**
+ * Webhook Commands Group
+ *
+ * Manage webhook secrets for plugin event endpoints.
+ */
+export const webhookGroup = defineSystemCommandGroup('webhook', 'Webhook management commands', [
+  webhookProvision,
+  webhookList,
+  webhookRevoke,
 ]);
