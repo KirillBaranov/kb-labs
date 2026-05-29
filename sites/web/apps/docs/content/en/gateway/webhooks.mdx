@@ -1,0 +1,381 @@
+---
+title: "Webhooks"
+description: "Receive events from external services — GitHub, Stripe, Slack, and anything else that speaks HTTP POST."
+updatedAt: "2026-05-29"
+order: 6
+---
+
+Webhooks let external services push events into KB Labs without a polling loop and without going through the full JWT auth flow. Each plugin declares its webhook endpoints in its manifest; the gateway auto-registers the routes at startup, validates signatures, and dispatches to your plugin handler.
+
+This page covers everything from declaring a webhook in your manifest to provisioning secrets and testing delivery end-to-end.
+
+## How it works
+
+```
+External service
+  │ POST /webhooks/@your-org/my-plugin/alert
+  │ X-Webhook-Secret: <provisioned-secret>
+  ▼
+Gateway (delivery scope — separate from JWT-auth scope)
+  │ 1. Route lookup → 404 if unknown plugin/event
+  │ 2. x-kb-namespace header → 400 if missing
+  │ 3. Rate limit check (IResourceBroker)
+  │ 4. Challenge? → 200 immediately (Slack handshake, no handler)
+  │ 5. Idempotency dedup → 200 early if duplicate delivery-id
+  │ 6. Auth (secret / hmac / custom) → 401 on failure
+  │ 7. Dispatch to plugin handler via execution backend
+  ▼
+Plugin handler (runs in execution backend, never in-process)
+  │ Receives WebhookHostContext { namespaceId, webhookId, event, payload, ... }
+  ▼
+Response: 200 sync / 202 async
+```
+
+Delivery routes live in a **separate Fastify scope** from the JWT-protected gateway routes. They don't pass through the cookie or Bearer token middlewares — they have their own auth layer based on the webhook secret. JWT auth is irrelevant for inbound webhooks; webhook secrets are namespace-scoped and provisioned per-plugin-event.
+
+## Declaring a webhook in your manifest
+
+Use the `webhook()` builder inside `createManifest()`:
+
+```typescript
+import { createManifest, webhook } from '@kb-labs/sdk';
+
+export const manifest = createManifest('@your-org/my-plugin', '1.0.0', {
+  display: { name: 'My Plugin' },
+  webhooks: {
+    handlers: [
+      webhook('alert', './webhooks/alert.js#default', {
+        auth: { type: 'secret', header: 'X-My-Plugin-Secret' },
+      }),
+    ],
+  },
+});
+```
+
+The `auth` field is **required**. A declaration without auth causes the gateway to refuse to start.
+
+### `WebhookHandlerDecl` fields
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `event` | `string` | ✓ | Event name. Becomes the URL segment: `/webhooks/:pluginId/:event`. |
+| `handler` | `string` | ✓ | Handler reference, e.g. `./webhooks/alert.js#default`. |
+| `auth` | `WebhookAuthConfig` | ✓ | Auth strategy (see below). |
+| `multi` | `boolean` | — | `true` → per-instance secrets. URL becomes `/webhooks/:pluginId/:event/:instanceId`. |
+| `async` | `boolean` | — | `true` → 202 immediately, background dispatch. |
+| `challenge` | `ChallengeConfig` | — | Slack-style URL verification. |
+| `idempotencyKey` | `string` | — | Dot-path into the body for dedup (e.g. `delivery.id`). |
+| `onProvision` | `string` | — | Handler ref called after `kb webhook provision`. |
+| `maxBodyBytes` | `number` | — | Max request body size in bytes. Default: 1 MB. |
+| `rateLimit` | `{ requestsPerMinute?: number }` | — | Per-endpoint rate limit. Default: 60 req/min. |
+
+## Auth types
+
+### `secret` — raw header comparison
+
+The simplest auth: the secret is passed as a header value, compared with `timingSafeEqual`.
+
+```typescript
+auth: { type: 'secret', header: 'X-My-Plugin-Secret' }
+```
+
+Caller sets the header:
+
+```bash
+curl -X POST https://my-gateway.example.com/webhooks/@org/plugin/event \
+  -H "x-kb-namespace: my-namespace" \
+  -H "X-My-Plugin-Secret: <provisioned-secret>" \
+  -H "Content-Type: application/json" \
+  -d '{"key":"value"}'
+```
+
+### `hmac` — HMAC-SHA256 body signature
+
+The caller computes `HMAC-SHA256(rawBody, secret)` and sends it in a header. The gateway recomputes the HMAC and compares with `timingSafeEqual`. Compatible with GitHub, Stripe, and most modern webhooks.
+
+```typescript
+auth: {
+  type: 'hmac',
+  header: 'X-Hub-Signature-256',   // GitHub-style
+  algorithm: 'sha256',
+  prefix: 'sha256=',               // strip this prefix before comparing
+}
+```
+
+The **raw body** (before JSON parsing) is used for the HMAC. This is important: if you stringify the parsed body, whitespace differences will invalidate the signature.
+
+### `custom` — validator handler
+
+For providers with proprietary auth schemes, delegate validation to a plugin handler:
+
+```typescript
+auth: { type: 'custom', validator: './webhooks/validate.js#default' }
+```
+
+The validator receives `{ headers, rawBody: string (base64), secret: string }` and must return `{ valid: boolean }`. Any thrown error is treated as `{ valid: false }`.
+
+Custom validators run through the execution backend — they're not in-process. If no execution host is connected for the namespace, auth fails with 503.
+
+## Secret rotation
+
+Every provisioned webhook has a `current` secret and optionally a `previous` secret with a 24-hour expiry.
+
+```
+State after first provision:  { current: "secret-A" }
+State after rotation:         { current: "secret-B", previous: "secret-A", previousExpiresAt: now+24h }
+State after 24h:              { current: "secret-B" }
+```
+
+Both `current` and `previous` (while valid) are accepted. This gives you a 24-hour overlap window to update your external service without downtime.
+
+Use `kb webhook provision` again on an already-provisioned endpoint to rotate:
+
+```bash
+kb webhook provision --plugin @org/plugin --event alert
+# ⟳ Secret rotated (old secret valid for 24h grace period)
+# URL:    https://my-gateway.example.com/webhooks/@org/plugin/alert
+# Secret: <new-secret>
+```
+
+## Provisioning
+
+Before an external service can deliver events, you must provision a secret. This creates (or rotates) the secret and optionally calls your `onProvision` handler so you can register the URL with the external service:
+
+```bash
+# First provision
+kb webhook provision --plugin @org/plugin --event alert
+
+# With instance ID (for multi: true)
+kb webhook provision --plugin @org/plugin --event deploy --instance production
+
+# JSON output (for scripting)
+kb webhook provision --plugin @org/plugin --event alert --json
+```
+
+The secret is shown **once** — save it immediately. It cannot be recovered.
+
+### Admin API
+
+Provisioning is also available via the gateway's admin API (requires a valid Bearer token):
+
+```bash
+# Provision
+curl -X POST https://my-gateway.example.com/api/v1/webhooks/provision \
+  -H "Authorization: Bearer <token>" \
+  -H "Content-Type: application/json" \
+  -d '{"pluginId": "@org/plugin", "event": "alert"}'
+# → { "url": "...", "secret": "...", "rotated": false }
+
+# List
+curl https://my-gateway.example.com/api/v1/webhooks \
+  -H "Authorization: Bearer <token>"
+
+# Revoke
+curl -X DELETE https://my-gateway.example.com/api/v1/webhooks/%40org%2Fplugin/alert \
+  -H "Authorization: Bearer <token>"
+```
+
+Note: scoped package names (`@org/plugin`) must be URL-encoded.
+
+## Multi-instance webhooks
+
+When a plugin manages multiple isolated instances (e.g. per-customer GitHub apps), declare `multi: true`. Each instance gets its own secret, isolated from all others.
+
+```typescript
+webhook('push', './webhooks/push.js#default', {
+  auth: { type: 'hmac', header: 'X-Hub-Signature-256', algorithm: 'sha256', prefix: 'sha256=' },
+  multi: true,
+})
+```
+
+Delivery URL: `POST /webhooks/@org/plugin/push/<instanceId>`
+
+Provision per instance:
+
+```bash
+kb webhook provision --plugin @org/plugin --event push --instance customer-a
+kb webhook provision --plugin @org/plugin --event push --instance customer-b
+```
+
+Instance A's secret is rejected by instance B's route.
+
+## Async delivery
+
+For handlers that do slow work (external API calls, DB writes), declare `async: true`. The gateway immediately returns 202 and dispatches to the handler in the background. External services won't time out waiting for a response.
+
+```typescript
+webhook('deploy', './webhooks/deploy.js#default', {
+  auth: { type: 'secret', header: 'X-Deploy-Secret' },
+  async: true,
+})
+```
+
+The 202 response body:
+
+```json
+{ "status": "accepted", "webhookId": "<uuid>" }
+```
+
+If the async dispatch fails, the error is logged but the gateway has already responded 202 — there's no retry mechanism built in. Implement retries in your handler or at the external service level.
+
+## Challenge (Slack URL verification)
+
+Some providers (Slack, Discord) send a challenge request to verify your endpoint before enabling webhooks. The gateway answers it automatically without invoking your handler:
+
+```typescript
+webhook('event', './webhooks/slack.js#default', {
+  auth: { type: 'secret', header: 'X-Slack-Signature' },
+  challenge: {
+    bodyPath: 'type',             // dot-path to check in body
+    value: 'url_verification',    // trigger value
+    replyPath: 'challenge',       // dot-path of value to echo back
+  },
+})
+```
+
+When the gateway sees `body.type === 'url_verification'`, it immediately returns:
+
+```json
+{ "challenge": "<value from body.challenge>" }
+```
+
+The challenge response happens **before** auth — by design. Slack sends the challenge before you can provision a real secret. The tradeoff is documented: challenge responses don't require a provisioned secret.
+
+## Idempotency
+
+Use `idempotencyKey` to prevent duplicate processing when external services retry failed deliveries:
+
+```typescript
+webhook('payment', './webhooks/payment.js#default', {
+  auth: { type: 'hmac', header: 'Stripe-Signature', algorithm: 'sha256', prefix: 't=' },
+  idempotencyKey: 'id',   // body.id is the delivery ID
+})
+```
+
+If the gateway sees the same delivery ID twice (within 7 days), the second request returns 200 immediately without calling your handler:
+
+```json
+{ "status": "duplicate" }
+```
+
+The idempotency check runs **before** auth. This is intentional: delivery IDs are provider-controlled, and external services retry the exact same request including the original signature. Pre-auth dedup is safe here.
+
+## Handler context
+
+Your webhook handler receives a `PluginContextV3` with `hostContext` typed as `WebhookHostContext`:
+
+```typescript
+import type { PluginContextV3 } from '@kb-labs/plugin-contracts';
+
+export default async function alertHandler(ctx: PluginContextV3, input: unknown) {
+  const hook = ctx.hostContext as WebhookHostContext;
+
+  // hook.host        === 'webhook'
+  // hook.event       === 'alert'
+  // hook.namespaceId — from x-kb-namespace header
+  // hook.webhookId   — unique UUID for this delivery
+  // hook.source      — caller IP
+  // hook.payload     — parsed request body (same as input)
+  // hook.instanceId  — present when multi: true
+
+  return { ok: true, data: { processed: hook.webhookId } };
+}
+```
+
+Use `ctx.platform.cache` to share state across async deliveries or write idempotency markers beyond the built-in 7-day window.
+
+## `onProvision` hook
+
+Declare `onProvision` to be notified when a secret is provisioned or rotated. This is useful for automatically registering the webhook URL with the external service:
+
+```typescript
+webhook('alert', './webhooks/alert.js#default', {
+  auth: { type: 'secret', header: 'X-Alert-Secret' },
+  onProvision: './webhooks/on-provision.js#default',
+})
+```
+
+The `onProvision` handler receives:
+
+```typescript
+{ instanceId?: string; secret: string; url: string }
+```
+
+Handler failures are **logged but not fatal** — the secret is always persisted regardless. This means provisioning always succeeds; the external service registration may need manual follow-up.
+
+## Rate limiting
+
+Each webhook endpoint is rate-limited via the gateway's `IResourceBroker`. Default: 60 requests per minute per endpoint. Override:
+
+```typescript
+webhook('high-volume', './webhooks/hv.js#default', {
+  auth: { type: 'hmac', header: 'X-HV-Sig', algorithm: 'sha256', prefix: 'sha256=' },
+  rateLimit: { requestsPerMinute: 300 },
+})
+```
+
+When the limit is exceeded, the gateway returns 429 with `Retry-After`.
+
+Admin routes (provision, list, revoke) have their own conservative limits: 10 req/min for provision and revoke, 60 req/min for list.
+
+## Managing webhooks
+
+### CLI reference
+
+```bash
+# Provision or rotate a secret
+kb webhook provision --plugin <id> --event <name> [--instance <id>] [--json]
+
+# List declared webhooks and provisioned status
+kb webhook list [--plugin <id>] [--json]
+
+# Revoke a secret
+kb webhook revoke --plugin <id> --event <name> [--instance <id>] [--json]
+```
+
+### `kb webhook list` output
+
+```
+PLUGIN            EVENT    MULTI  PROVISIONED
+────────────────  ───────  ─────  ───────────
+@org/my-plugin    alert    no     yes
+@org/my-plugin    deploy   yes    no
+```
+
+## Configuration
+
+Webhook routes are enabled automatically when:
+1. The platform's `IResourceBroker` is available (`platform.hasResourceBroker`)
+2. At least one installed plugin declares webhook handlers
+
+No explicit gateway config is needed. To set the public URL used when building webhook URLs:
+
+```bash
+GATEWAY_PUBLIC_URL=https://my-gateway.example.com kb-dev start gateway
+```
+
+If unset, defaults to `http://localhost:<port>`.
+
+## Delivery URL format
+
+| Declaration | URL |
+|---|---|
+| `multi: false` (default) | `POST /webhooks/{pluginId}/{event}` |
+| `multi: true` | `POST /webhooks/{pluginId}/{event}/{instanceId}` |
+
+Scoped package IDs (`@org/plugin`) must be URL-encoded: `%40org%2Fplugin`. Most HTTP clients do this automatically when you set the URL as a string.
+
+## Security notes
+
+- **Always use HMAC for high-value events.** Raw secret comparison is fine for simple use cases, but HMAC binds the signature to the body, preventing replay attacks with a stolen header.
+- **Store secrets in your secret manager, not in plaintext config.** The CLI prints the secret once — save it to Vault, AWS Secrets Manager, or equivalent.
+- **Rotate regularly.** `kb webhook provision` on an existing endpoint rotates with a 24h grace window — no downtime required.
+- **The gateway logs all auth failures.** A spike in 401s on a delivery endpoint is a signal to rotate the secret.
+- **Multi-process / HA deployments need Redis for KV.** Webhook secrets and idempotency keys live in the platform cache. In-memory cache is per-process — use a shared Redis adapter in HA setups.
+
+## What to read next
+
+- [Authentication](/gateway/authentication) — how the JWT auth layer works (separate from webhook auth).
+- [Routing](/gateway/routing) — how the gateway routes other requests.
+- [Plugins → Manifest Reference](/reference/manifest-v3) — full `ManifestV3` schema.
+- [Plugins → CLI Commands](/plugins/cli-commands) — other command types you can declare.
