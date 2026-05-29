@@ -171,7 +171,7 @@ importers:
         version: link:../../infra/devkit
       '@kb-labs/gateway-auth':
         specifier: workspace:*
-        version: link:../../plugins/gateway/auth
+        version: link:../../services/gateway/auth
       '@kb-labs/sdk':
         specifier: workspace:*
         version: link:../../sdk/sdk
@@ -1449,7 +1449,7 @@ importers:
         version: link:../../infra/devkit
       '@kb-labs/gateway-core':
         specifier: workspace:*
-        version: link:../../plugins/gateway/core
+        version: link:../../services/gateway/core
       '@types/node':
         specifier: ^24.3.3
         version: 24.12.2
@@ -1649,7 +1649,7 @@ importers:
     optionalDependencies:
       '@kb-labs/gateway-core':
         specifier: workspace:*
-        version: link:../../plugins/gateway/core
+        version: link:../../services/gateway/core
     devDependencies:
       '@kb-labs/devkit':
         specifier: workspace:*
@@ -1876,13 +1876,13 @@ importers:
         version: link:../shared
       '@kb-labs/gateway-app':
         specifier: workspace:*
-        version: link:../../plugins/gateway/app
+        version: link:../../services/gateway/app
       '@kb-labs/gateway-core':
         specifier: workspace:*
-        version: link:../../plugins/gateway/core
+        version: link:../../services/gateway/core
       '@kb-labs/rest-api-app':
         specifier: workspace:*
-        version: link:../../plugins/rest-api/app
+        version: link:../../services/rest-api/app
       '@kb-labs/shared-testing-e2e':
         specifier: workspace:*
         version: link:../../shared/testing-e2e
@@ -1926,6 +1926,24 @@ importers:
         specifier: ^1.51.1
         version: 1.59.1
 
+  e2e/mcp:
+    devDependencies:
+      '@kb-labs/e2e-shared':
+        specifier: workspace:*
+        version: link:../shared
+      '@kb-labs/gateway-app':
+        specifier: workspace:*
+        version: link:../../services/gateway/app
+      '@kb-labs/mcp-app':
+        specifier: workspace:*
+        version: link:../../services/mcp/app
+      '@playwright/test':
+        specifier: ^1.52.0
+        version: 1.59.1
+      typescript:
+        specifier: ^5.4.0
+        version: 5.9.3
+
   e2e/platform:
     devDependencies:
       '@kb-labs/e2e-shared':
@@ -1933,10 +1951,10 @@ importers:
         version: link:../shared
       '@kb-labs/rest-api-app':
         specifier: workspace:*
-        version: link:../../plugins/rest-api/app
+        version: link:../../services/rest-api/app
       '@kb-labs/rest-api-core':
         specifier: workspace:*
-        version: link:../../plugins/rest-api/core
+        version: link:../../services/rest-api/core
       '@playwright/test':
         specifier: ^1.52.0
         version: 1.59.1
@@ -1954,10 +1972,10 @@ importers:
         version: link:../shared
       '@kb-labs/gateway-app':
         specifier: workspace:*
-        version: link:../../plugins/gateway/app
+        version: link:../../services/gateway/app
       '@kb-labs/rest-api-app':
         specifier: workspace:*
-        version: link:../../plugins/rest-api/app
+        version: link:../../services/rest-api/app
       '@kb-labs/review-entry':
         specifier: workspace:*
         version: link:../../plugins/review/entry
@@ -1978,10 +1996,10 @@ importers:
         version: link:../shared
       '@kb-labs/rest-api-app':
         specifier: workspace:*
-        version: link:../../plugins/rest-api/app
+        version: link:../../services/rest-api/app
       '@kb-labs/rest-api-core':
         specifier: workspace:*
-        version: link:../../plugins/rest-api/core
+        version: link:../../services/rest-api/core
       '@kb-labs/shared-testing-e2e':
         specifier: workspace:*
         version: link:../../shared/testing-e2e
@@ -2002,13 +2020,13 @@ importers:
         version: link:../shared
       '@kb-labs/gateway-app':
         specifier: workspace:*
-        version: link:../../plugins/gateway/app
+        version: link:../../services/gateway/app
       '@kb-labs/marketplace-app':
         specifier: workspace:*
         version: link:../../plugins/marketplace/daemon
       '@kb-labs/rest-api-app':
         specifier: workspace:*
-        version: link:../../plugins/rest-api/app
+        version: link:../../services/rest-api/app
       '@kb-labs/workflow-daemon':
         specifier: workspace:*
         version: link:../../plugins/workflow/daemon
@@ -2035,10 +2053,10 @@ importers:
         version: link:../shared
       '@kb-labs/gateway-app':
         specifier: workspace:*
-        version: link:../../plugins/gateway/app
+        version: link:../../services/gateway/app
       '@kb-labs/rest-api-app':
         specifier: workspace:*
-        version: link:../../plugins/rest-api/app
+        version: link:../../services/rest-api/app
       '@kb-labs/workflow-studio':
         specifier: workspace:*
         version: link:../../plugins/workflow/studio
@@ -2068,7 +2086,7 @@ importers:
         version: link:../../plugins/release/manager-cli
       '@kb-labs/rest-api-app':
         specifier: workspace:*
-        version: link:../../plugins/rest-api/app
+        version: link:../../services/rest-api/app
       '@kb-labs/shared-testing-e2e':
         specifier: workspace:*
         version: link:../../shared/testing-e2e
@@ -2925,227 +2943,6 @@ importers:
         specifier: ^3.2.4
         version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
 
-  plugins/gateway/app:
-    dependencies:
-      '@fastify/cors':
-        specifier: ^10.0.1
-        version: 10.1.0
-      '@fastify/http-proxy':
-        specifier: ^11.4.4
-        version: 11.4.4
-      '@fastify/swagger':
-        specifier: '>=9.5.1'
-        version: 9.7.0
-      '@fastify/swagger-ui':
-        specifier: ^5.2.0
-        version: 5.2.5
-      '@fastify/websocket':
-        specifier: ^11.0.1
-        version: 11.2.0
-      '@kb-labs/adapters-analytics-file':
-        specifier: workspace:*
-        version: link:../../../adapters/analytics-file
-      '@kb-labs/adapters-eventbus-cache':
-        specifier: workspace:*
-        version: link:../../../adapters/eventbus-cache
-      '@kb-labs/adapters-fs':
-        specifier: workspace:*
-        version: link:../../../adapters/fs
-      '@kb-labs/adapters-log-ringbuffer':
-        specifier: workspace:*
-        version: link:../../../adapters/log-ringbuffer
-      '@kb-labs/adapters-log-sqlite':
-        specifier: workspace:*
-        version: link:../../../adapters/log-sqlite
-      '@kb-labs/adapters-openai':
-        specifier: workspace:*
-        version: link:../../../adapters/openai
-      '@kb-labs/adapters-pino':
-        specifier: workspace:*
-        version: link:../../../adapters/pino
-      '@kb-labs/adapters-redis':
-        specifier: workspace:*
-        version: link:../../../adapters/redis
-      '@kb-labs/adapters-sqlite':
-        specifier: workspace:*
-        version: link:../../../adapters/sqlite
-      '@kb-labs/core-config':
-        specifier: workspace:*
-        version: link:../../../core/config
-      '@kb-labs/core-contracts':
-        specifier: workspace:*
-        version: link:../../../core/contracts
-      '@kb-labs/core-platform':
-        specifier: workspace:*
-        version: link:../../../core/platform
-      '@kb-labs/core-registry':
-        specifier: workspace:*
-        version: link:../../../core/registry
-      '@kb-labs/core-resource-broker':
-        specifier: workspace:*
-        version: link:../../../core/resource-broker
-      '@kb-labs/core-runtime':
-        specifier: workspace:*
-        version: link:../../../core/runtime
-      '@kb-labs/core-sys':
-        specifier: workspace:*
-        version: link:../../../core/sys
-      '@kb-labs/gateway-auth':
-        specifier: workspace:*
-        version: link:../auth
-      '@kb-labs/gateway-contracts':
-        specifier: workspace:*
-        version: link:../contracts
-      '@kb-labs/gateway-core':
-        specifier: workspace:*
-        version: link:../core
-      '@kb-labs/plugin-contracts':
-        specifier: workspace:*
-        version: link:../../../core/plugin-contracts
-      '@kb-labs/shared-http':
-        specifier: workspace:*
-        version: link:../../../shared/http
-      fastify:
-        specifier: ^5.8.5
-        version: 5.8.5
-      fastify-type-provider-zod:
-        specifier: ^6.0.0
-        version: 6.1.0(@fastify/swagger@9.7.0)(fastify@5.8.5)(openapi-types@12.1.3)(zod@4.3.6)
-      ws:
-        specifier: '>=8.20.1'
-        version: 8.20.1
-    devDependencies:
-      '@kb-labs/devkit':
-        specifier: workspace:*
-        version: link:../../../infra/devkit
-      '@kb-labs/shared-testing-e2e':
-        specifier: workspace:*
-        version: link:../../../shared/testing-e2e
-      '@types/ws':
-        specifier: ^8.5.14
-        version: 8.18.1
-      eslint:
-        specifier: ^9
-        version: 9.39.4(jiti@2.6.1)
-      rimraf:
-        specifier: ^6.0.1
-        version: 6.1.3
-      tsup:
-        specifier: ^8.5.0
-        version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
-      tsx:
-        specifier: ^4.20.5
-        version: 4.21.0
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.4)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
-
-  plugins/gateway/auth:
-    dependencies:
-      '@kb-labs/core-platform':
-        specifier: workspace:*
-        version: link:../../../core/platform
-      '@kb-labs/gateway-contracts':
-        specifier: workspace:*
-        version: link:../contracts
-      jose:
-        specifier: ^5.9.6
-        version: 5.10.0
-    devDependencies:
-      '@kb-labs/devkit':
-        specifier: workspace:*
-        version: link:../../../infra/devkit
-      '@types/node':
-        specifier: ^24.3.3
-        version: 24.12.2
-      tsup:
-        specifier: ^8.5.0
-        version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
-      typescript:
-        specifier: ^5
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
-
-  plugins/gateway/contracts:
-    dependencies:
-      zod:
-        specifier: ^3.25.76
-        version: 3.25.76
-    devDependencies:
-      '@kb-labs/devkit':
-        specifier: workspace:*
-        version: link:../../../infra/devkit
-      tsup:
-        specifier: ^8.5.0
-        version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
-      typescript:
-        specifier: ^5
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.4)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
-
-  plugins/gateway/core:
-    dependencies:
-      '@kb-labs/core-contracts':
-        specifier: workspace:*
-        version: link:../../../core/contracts
-      '@kb-labs/core-platform':
-        specifier: workspace:^
-        version: link:../../../core/platform
-      '@kb-labs/gateway-contracts':
-        specifier: workspace:*
-        version: link:../contracts
-    devDependencies:
-      '@kb-labs/devkit':
-        specifier: workspace:*
-        version: link:../../../infra/devkit
-      '@types/node':
-        specifier: ^24.3.3
-        version: 24.12.2
-      tsup:
-        specifier: ^8.5.0
-        version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
-      typescript:
-        specifier: ^5
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
-
-  plugins/gateway/runtime-server:
-    dependencies:
-      '@kb-labs/host-agent-contracts':
-        specifier: workspace:*
-        version: link:../../host-agent/contracts
-      '@kb-labs/host-agent-core':
-        specifier: workspace:*
-        version: link:../../host-agent/core
-      '@kb-labs/plugin-contracts':
-        specifier: workspace:*
-        version: link:../../../core/plugin-contracts
-      '@kb-labs/plugin-runtime':
-        specifier: workspace:*
-        version: link:../../../core/plugin-runtime
-    devDependencies:
-      '@kb-labs/devkit':
-        specifier: workspace:*
-        version: link:../../../infra/devkit
-      '@types/node':
-        specifier: ^24.3.3
-        version: 24.12.2
-      tsup:
-        specifier: ^8.5.0
-        version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
-      typescript:
-        specifier: ^5
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
-
   plugins/github/contracts:
     dependencies:
       zod:
@@ -3296,7 +3093,7 @@ importers:
     dependencies:
       '@kb-labs/gateway-contracts':
         specifier: workspace:*
-        version: link:../../gateway/contracts
+        version: link:../../../services/gateway/contracts
       '@kb-labs/host-agent-contracts':
         specifier: workspace:*
         version: link:../contracts
@@ -3654,10 +3451,10 @@ importers:
         version: link:../../../core/platform
       '@kb-labs/gateway-auth':
         specifier: workspace:*
-        version: link:../../gateway/auth
+        version: link:../../../services/gateway/auth
       '@kb-labs/gateway-contracts':
         specifier: workspace:*
-        version: link:../../gateway/contracts
+        version: link:../../../services/gateway/contracts
       '@kb-labs/marketplace-registry-contracts':
         specifier: workspace:*
         version: link:../contracts
@@ -3700,7 +3497,7 @@ importers:
         version: link:../../../core/sys
       '@kb-labs/gateway-auth':
         specifier: workspace:*
-        version: link:../../gateway/auth
+        version: link:../../../services/gateway/auth
       '@kb-labs/marketplace-registry-api':
         specifier: workspace:*
         version: link:../api
@@ -4930,201 +4727,6 @@ importers:
         specifier: ^3.2.4
         version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
 
-  plugins/rest-api/app:
-    dependencies:
-      '@fastify/cors':
-        specifier: ^10.0.1
-        version: 10.1.0
-      '@fastify/rate-limit':
-        specifier: ^10.1.1
-        version: 10.3.0
-      '@fastify/swagger':
-        specifier: '>=9.5.1'
-        version: 9.7.0
-      '@fastify/swagger-ui':
-        specifier: ^5.2.0
-        version: 5.2.5
-      '@fastify/websocket':
-        specifier: ^11.0.1
-        version: 11.2.0
-      '@kb-labs/core-config':
-        specifier: workspace:*
-        version: link:../../../core/config
-      '@kb-labs/core-contracts':
-        specifier: workspace:*
-        version: link:../../../core/contracts
-      '@kb-labs/core-platform':
-        specifier: workspace:*
-        version: link:../../../core/platform
-      '@kb-labs/core-registry':
-        specifier: workspace:*
-        version: link:../../../core/registry
-      '@kb-labs/core-runtime':
-        specifier: workspace:*
-        version: link:../../../core/runtime
-      '@kb-labs/core-sys':
-        specifier: workspace:*
-        version: link:../../../core/sys
-      '@kb-labs/core-tenant':
-        specifier: workspace:*
-        version: link:../../../core/tenant
-      '@kb-labs/core-workspace':
-        specifier: workspace:*
-        version: link:../../../core/workspace
-      '@kb-labs/gateway-contracts':
-        specifier: workspace:*
-        version: link:../../gateway/contracts
-      '@kb-labs/plugin-contracts':
-        specifier: workspace:*
-        version: link:../../../core/plugin-contracts
-      '@kb-labs/plugin-execution':
-        specifier: workspace:*
-        version: link:../../../core/plugin-execution
-      '@kb-labs/plugin-execution-factory':
-        specifier: workspace:*
-        version: link:../../../core/plugin-execution-factory
-      '@kb-labs/plugin-runtime':
-        specifier: workspace:*
-        version: link:../../../core/plugin-runtime
-      '@kb-labs/rest-api-contracts':
-        specifier: workspace:*
-        version: link:../contracts
-      '@kb-labs/rest-api-core':
-        specifier: workspace:*
-        version: link:../core
-      '@kb-labs/shared-http':
-        specifier: workspace:*
-        version: link:../../../shared/http
-      '@kb-labs/workflow-constants':
-        specifier: workspace:*
-        version: link:../../workflow/constants
-      '@kb-labs/workflow-contracts':
-        specifier: workspace:*
-        version: link:../../workflow/contracts
-      '@kb-labs/workflow-engine':
-        specifier: workspace:*
-        version: link:../../workflow/engine
-      fastify:
-        specifier: ^5.8.5
-        version: 5.8.5
-      fastify-plugin:
-        specifier: ^5.0.1
-        version: 5.1.0
-      fastify-type-provider-zod:
-        specifier: ^6.0.0
-        version: 6.1.0(@fastify/swagger@9.7.0)(fastify@5.8.5)(openapi-types@12.1.3)(zod@3.25.76)
-      pino:
-        specifier: ^9.0.0
-        version: 9.14.0
-      pino-pretty:
-        specifier: ^10.2.3
-        version: 10.3.1
-      prom-client:
-        specifier: ^15.1.3
-        version: 15.1.3
-      ulid:
-        specifier: ^2.3.0
-        version: 2.4.0
-      ws:
-        specifier: '>=8.20.1'
-        version: 8.20.1
-      yaml:
-        specifier: ^2.8.0
-        version: 2.8.3
-      zod:
-        specifier: ^3.25.76
-        version: 3.25.76
-    devDependencies:
-      '@kb-labs/devkit':
-        specifier: workspace:*
-        version: link:../../../infra/devkit
-      '@types/node':
-        specifier: ^24.3.3
-        version: 24.12.2
-      '@types/ws':
-        specifier: ^8.5.13
-        version: 8.18.1
-      rimraf:
-        specifier: ^6.0.1
-        version: 6.1.3
-      tsup:
-        specifier: ^8.5.0
-        version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
-      tsx:
-        specifier: ^4.20.5
-        version: 4.21.0
-      typescript:
-        specifier: ^5.6.3
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
-
-  plugins/rest-api/contracts:
-    dependencies:
-      '@kb-labs/plugin-contracts':
-        specifier: workspace:*
-        version: link:../../../core/plugin-contracts
-      zod:
-        specifier: ^3.25.76
-        version: 3.25.76
-    devDependencies:
-      '@kb-labs/devkit':
-        specifier: workspace:*
-        version: link:../../../infra/devkit
-      '@types/node':
-        specifier: ^24.3.3
-        version: 24.12.2
-      rimraf:
-        specifier: ^6.0.1
-        version: 6.1.3
-      tsup:
-        specifier: ^8.5.0
-        version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
-      typescript:
-        specifier: ^5.6.3
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
-
-  plugins/rest-api/core:
-    dependencies:
-      '@kb-labs/core-bundle':
-        specifier: workspace:*
-        version: link:../../../core/bundle
-      '@kb-labs/core-config':
-        specifier: workspace:*
-        version: link:../../../core/config
-      '@kb-labs/plugin-contracts':
-        specifier: workspace:*
-        version: link:../../../core/plugin-contracts
-      '@kb-labs/rest-api-contracts':
-        specifier: workspace:*
-        version: link:../contracts
-      zod:
-        specifier: ^3.25.76
-        version: 3.25.76
-    devDependencies:
-      '@kb-labs/devkit':
-        specifier: workspace:*
-        version: link:../../../infra/devkit
-      '@types/node':
-        specifier: ^24.3.3
-        version: 24.12.2
-      rimraf:
-        specifier: ^6.0.1
-        version: 6.1.3
-      tsup:
-        specifier: ^8.5.0
-        version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
-      typescript:
-        specifier: ^5.6.3
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
-
   plugins/review/contracts:
     devDependencies:
       '@kb-labs/devkit':
@@ -5567,10 +5169,10 @@ importers:
         version: link:../../../core/sys
       '@kb-labs/gateway-auth':
         specifier: workspace:*
-        version: link:../../gateway/auth
+        version: link:../../../services/gateway/auth
       '@kb-labs/gateway-core':
         specifier: workspace:*
-        version: link:../../gateway/core
+        version: link:../../../services/gateway/core
       '@kb-labs/plugin-contracts':
         specifier: workspace:*
         version: link:../../../core/plugin-contracts
@@ -6034,6 +5636,486 @@ importers:
       vitest:
         specifier: ^3.2.4
         version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
+
+  services/gateway/app:
+    dependencies:
+      '@fastify/cors':
+        specifier: ^10.0.1
+        version: 10.1.0
+      '@fastify/http-proxy':
+        specifier: ^11.4.4
+        version: 11.4.4
+      '@fastify/swagger':
+        specifier: '>=9.5.1'
+        version: 9.7.0
+      '@fastify/swagger-ui':
+        specifier: ^5.2.0
+        version: 5.2.5
+      '@fastify/websocket':
+        specifier: ^11.0.1
+        version: 11.2.0
+      '@kb-labs/adapters-analytics-file':
+        specifier: workspace:*
+        version: link:../../../adapters/analytics-file
+      '@kb-labs/adapters-eventbus-cache':
+        specifier: workspace:*
+        version: link:../../../adapters/eventbus-cache
+      '@kb-labs/adapters-fs':
+        specifier: workspace:*
+        version: link:../../../adapters/fs
+      '@kb-labs/adapters-log-ringbuffer':
+        specifier: workspace:*
+        version: link:../../../adapters/log-ringbuffer
+      '@kb-labs/adapters-log-sqlite':
+        specifier: workspace:*
+        version: link:../../../adapters/log-sqlite
+      '@kb-labs/adapters-openai':
+        specifier: workspace:*
+        version: link:../../../adapters/openai
+      '@kb-labs/adapters-pino':
+        specifier: workspace:*
+        version: link:../../../adapters/pino
+      '@kb-labs/adapters-redis':
+        specifier: workspace:*
+        version: link:../../../adapters/redis
+      '@kb-labs/adapters-sqlite':
+        specifier: workspace:*
+        version: link:../../../adapters/sqlite
+      '@kb-labs/core-config':
+        specifier: workspace:*
+        version: link:../../../core/config
+      '@kb-labs/core-contracts':
+        specifier: workspace:*
+        version: link:../../../core/contracts
+      '@kb-labs/core-platform':
+        specifier: workspace:*
+        version: link:../../../core/platform
+      '@kb-labs/core-registry':
+        specifier: workspace:*
+        version: link:../../../core/registry
+      '@kb-labs/core-resource-broker':
+        specifier: workspace:*
+        version: link:../../../core/resource-broker
+      '@kb-labs/core-runtime':
+        specifier: workspace:*
+        version: link:../../../core/runtime
+      '@kb-labs/core-sys':
+        specifier: workspace:*
+        version: link:../../../core/sys
+      '@kb-labs/gateway-auth':
+        specifier: workspace:*
+        version: link:../auth
+      '@kb-labs/gateway-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@kb-labs/gateway-core':
+        specifier: workspace:*
+        version: link:../core
+      '@kb-labs/plugin-contracts':
+        specifier: workspace:*
+        version: link:../../../core/plugin-contracts
+      '@kb-labs/shared-http':
+        specifier: workspace:*
+        version: link:../../../shared/http
+      fastify:
+        specifier: ^5.8.5
+        version: 5.8.5
+      fastify-type-provider-zod:
+        specifier: ^6.0.0
+        version: 6.1.0(@fastify/swagger@9.7.0)(fastify@5.8.5)(openapi-types@12.1.3)(zod@4.3.6)
+      ws:
+        specifier: '>=8.20.1'
+        version: 8.20.1
+    devDependencies:
+      '@kb-labs/devkit':
+        specifier: workspace:*
+        version: link:../../../infra/devkit
+      '@kb-labs/shared-testing-e2e':
+        specifier: workspace:*
+        version: link:../../../shared/testing-e2e
+      '@types/ws':
+        specifier: ^8.5.14
+        version: 8.18.1
+      eslint:
+        specifier: ^9
+        version: 9.39.4(jiti@2.6.1)
+      rimraf:
+        specifier: ^6.0.1
+        version: 6.1.3
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
+      tsx:
+        specifier: ^4.20.5
+        version: 4.21.0
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.4)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
+
+  services/gateway/auth:
+    dependencies:
+      '@kb-labs/core-platform':
+        specifier: workspace:*
+        version: link:../../../core/platform
+      '@kb-labs/gateway-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      jose:
+        specifier: ^5.9.6
+        version: 5.10.0
+    devDependencies:
+      '@kb-labs/devkit':
+        specifier: workspace:*
+        version: link:../../../infra/devkit
+      '@types/node':
+        specifier: ^24.3.3
+        version: 24.12.4
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.4)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
+
+  services/gateway/contracts:
+    dependencies:
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+    devDependencies:
+      '@kb-labs/devkit':
+        specifier: workspace:*
+        version: link:../../../infra/devkit
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.4)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
+
+  services/gateway/core:
+    dependencies:
+      '@kb-labs/core-contracts':
+        specifier: workspace:*
+        version: link:../../../core/contracts
+      '@kb-labs/core-platform':
+        specifier: workspace:^
+        version: link:../../../core/platform
+      '@kb-labs/gateway-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+    devDependencies:
+      '@kb-labs/devkit':
+        specifier: workspace:*
+        version: link:../../../infra/devkit
+      '@types/node':
+        specifier: ^24.3.3
+        version: 24.12.4
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.4)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
+
+  services/gateway/runtime-server:
+    dependencies:
+      '@kb-labs/host-agent-contracts':
+        specifier: workspace:*
+        version: link:../../../plugins/host-agent/contracts
+      '@kb-labs/host-agent-core':
+        specifier: workspace:*
+        version: link:../../../plugins/host-agent/core
+      '@kb-labs/plugin-contracts':
+        specifier: workspace:*
+        version: link:../../../core/plugin-contracts
+      '@kb-labs/plugin-runtime':
+        specifier: workspace:*
+        version: link:../../../core/plugin-runtime
+    devDependencies:
+      '@kb-labs/devkit':
+        specifier: workspace:*
+        version: link:../../../infra/devkit
+      '@types/node':
+        specifier: ^24.3.3
+        version: 24.12.4
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.4)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
+
+  services/mcp/app:
+    dependencies:
+      '@kb-labs/cli-commands':
+        specifier: workspace:*
+        version: link:../../../cli/commands
+      '@kb-labs/cli-runtime':
+        specifier: workspace:*
+        version: link:../../../cli/runtime
+      '@kb-labs/core-platform':
+        specifier: workspace:*
+        version: link:../../../core/platform
+      '@kb-labs/core-policy':
+        specifier: workspace:*
+        version: link:../../../core/policy
+      '@kb-labs/core-registry':
+        specifier: workspace:*
+        version: link:../../../core/registry
+      '@kb-labs/core-runtime':
+        specifier: workspace:*
+        version: link:../../../core/runtime
+      '@kb-labs/core-sys':
+        specifier: workspace:*
+        version: link:../../../core/sys
+      '@kb-labs/gateway-auth':
+        specifier: workspace:*
+        version: link:../../gateway/auth
+      '@kb-labs/gateway-contracts':
+        specifier: workspace:*
+        version: link:../../gateway/contracts
+      '@kb-labs/plugin-contracts':
+        specifier: workspace:*
+        version: link:../../../core/plugin-contracts
+      '@kb-labs/shared-http':
+        specifier: workspace:*
+        version: link:../../../shared/http
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.29.0
+        version: 1.29.0(zod@4.3.6)
+      fastify:
+        specifier: ^5.8.5
+        version: 5.8.5
+    devDependencies:
+      '@kb-labs/devkit':
+        specifier: workspace:*
+        version: link:../../../infra/devkit
+      '@kb-labs/shared-testing-e2e':
+        specifier: workspace:*
+        version: link:../../../shared/testing-e2e
+      eslint:
+        specifier: ^9
+        version: 9.39.4(jiti@2.6.1)
+      rimraf:
+        specifier: ^6.0.1
+        version: 6.1.3
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
+      tsx:
+        specifier: ^4.20.5
+        version: 4.21.0
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.4)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
+
+  services/rest-api/app:
+    dependencies:
+      '@fastify/cors':
+        specifier: ^10.0.1
+        version: 10.1.0
+      '@fastify/rate-limit':
+        specifier: ^10.1.1
+        version: 10.3.0
+      '@fastify/swagger':
+        specifier: '>=9.5.1'
+        version: 9.7.0
+      '@fastify/swagger-ui':
+        specifier: ^5.2.0
+        version: 5.2.5
+      '@fastify/websocket':
+        specifier: ^11.0.1
+        version: 11.2.0
+      '@kb-labs/core-config':
+        specifier: workspace:*
+        version: link:../../../core/config
+      '@kb-labs/core-contracts':
+        specifier: workspace:*
+        version: link:../../../core/contracts
+      '@kb-labs/core-platform':
+        specifier: workspace:*
+        version: link:../../../core/platform
+      '@kb-labs/core-registry':
+        specifier: workspace:*
+        version: link:../../../core/registry
+      '@kb-labs/core-runtime':
+        specifier: workspace:*
+        version: link:../../../core/runtime
+      '@kb-labs/core-sys':
+        specifier: workspace:*
+        version: link:../../../core/sys
+      '@kb-labs/core-tenant':
+        specifier: workspace:*
+        version: link:../../../core/tenant
+      '@kb-labs/core-workspace':
+        specifier: workspace:*
+        version: link:../../../core/workspace
+      '@kb-labs/gateway-contracts':
+        specifier: workspace:*
+        version: link:../../gateway/contracts
+      '@kb-labs/plugin-contracts':
+        specifier: workspace:*
+        version: link:../../../core/plugin-contracts
+      '@kb-labs/plugin-execution':
+        specifier: workspace:*
+        version: link:../../../core/plugin-execution
+      '@kb-labs/plugin-execution-factory':
+        specifier: workspace:*
+        version: link:../../../core/plugin-execution-factory
+      '@kb-labs/plugin-runtime':
+        specifier: workspace:*
+        version: link:../../../core/plugin-runtime
+      '@kb-labs/rest-api-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@kb-labs/rest-api-core':
+        specifier: workspace:*
+        version: link:../core
+      '@kb-labs/shared-http':
+        specifier: workspace:*
+        version: link:../../../shared/http
+      '@kb-labs/workflow-constants':
+        specifier: workspace:*
+        version: link:../../../plugins/workflow/constants
+      '@kb-labs/workflow-contracts':
+        specifier: workspace:*
+        version: link:../../../plugins/workflow/contracts
+      '@kb-labs/workflow-engine':
+        specifier: workspace:*
+        version: link:../../../plugins/workflow/engine
+      fastify:
+        specifier: ^5.8.5
+        version: 5.8.5
+      fastify-plugin:
+        specifier: ^5.0.1
+        version: 5.1.0
+      fastify-type-provider-zod:
+        specifier: ^6.0.0
+        version: 6.1.0(@fastify/swagger@9.7.0)(fastify@5.8.5)(openapi-types@12.1.3)(zod@3.25.76)
+      pino:
+        specifier: ^9.0.0
+        version: 9.14.0
+      pino-pretty:
+        specifier: ^10.2.3
+        version: 10.3.1
+      prom-client:
+        specifier: ^15.1.3
+        version: 15.1.3
+      ulid:
+        specifier: ^2.3.0
+        version: 2.4.0
+      ws:
+        specifier: '>=8.20.1'
+        version: 8.20.1
+      yaml:
+        specifier: ^2.8.0
+        version: 2.8.3
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+    devDependencies:
+      '@kb-labs/devkit':
+        specifier: workspace:*
+        version: link:../../../infra/devkit
+      '@types/node':
+        specifier: ^24.3.3
+        version: 24.12.4
+      '@types/ws':
+        specifier: ^8.5.13
+        version: 8.18.1
+      rimraf:
+        specifier: ^6.0.1
+        version: 6.1.3
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
+      tsx:
+        specifier: ^4.20.5
+        version: 4.21.0
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.4)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
+
+  services/rest-api/contracts:
+    dependencies:
+      '@kb-labs/plugin-contracts':
+        specifier: workspace:*
+        version: link:../../../core/plugin-contracts
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+    devDependencies:
+      '@kb-labs/devkit':
+        specifier: workspace:*
+        version: link:../../../infra/devkit
+      '@types/node':
+        specifier: ^24.3.3
+        version: 24.12.4
+      rimraf:
+        specifier: ^6.0.1
+        version: 6.1.3
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.4)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
+
+  services/rest-api/core:
+    dependencies:
+      '@kb-labs/core-bundle':
+        specifier: workspace:*
+        version: link:../../../core/bundle
+      '@kb-labs/core-config':
+        specifier: workspace:*
+        version: link:../../../core/config
+      '@kb-labs/plugin-contracts':
+        specifier: workspace:*
+        version: link:../../../core/plugin-contracts
+      '@kb-labs/rest-api-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      zod:
+        specifier: ^3.25.76
+        version: 3.25.76
+    devDependencies:
+      '@kb-labs/devkit':
+        specifier: workspace:*
+        version: link:../../../infra/devkit
+      '@types/node':
+        specifier: ^24.3.3
+        version: 24.12.4
+      rimraf:
+        specifier: ^6.0.1
+        version: 6.1.3
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.4)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
 
   shared/cli-ui:
     dependencies:
@@ -6625,7 +6707,7 @@ importers:
         version: link:../../plugins/release/manager-contracts
       '@kb-labs/rest-api-contracts':
         specifier: workspace:*
-        version: link:../../plugins/rest-api/contracts
+        version: link:../../services/rest-api/contracts
       '@kb-labs/studio-data-client':
         specifier: workspace:*
         version: link:../data-client
@@ -6791,7 +6873,7 @@ importers:
         version: link:../../plugins/release/manager-contracts
       '@kb-labs/rest-api-contracts':
         specifier: workspace:*
-        version: link:../../plugins/rest-api/contracts
+        version: link:../../services/rest-api/contracts
       '@tanstack/react-query':
         specifier: ^5.0.0
         version: 5.97.0(react@19.2.5)
@@ -17283,6 +17365,28 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@modelcontextprotocol/sdk@1.29.0(zod@4.3.6)':
+    dependencies:
+      '@hono/node-server': 1.19.13(hono@4.12.14)
+      ajv: 8.18.0
+      ajv-formats: 3.0.1(ajv@8.18.0)
+      content-type: 1.0.5
+      cors: 2.8.6
+      cross-spawn: 7.0.6
+      eventsource: 3.0.7
+      eventsource-parser: 3.0.6
+      express: 5.2.1
+      express-rate-limit: 8.3.2(express@5.2.1)
+      hono: 4.12.14
+      jose: 6.2.2
+      json-schema-typed: 8.0.2
+      pkce-challenge: 5.0.1
+      raw-body: 3.0.2
+      zod: 4.3.6
+      zod-to-json-schema: 3.25.2(zod@4.3.6)
+    transitivePeerDependencies:
+      - supports-color
+
   '@module-federation/bridge-react-webpack-plugin@2.3.3':
     dependencies:
       '@module-federation/sdk': 2.3.3
@@ -25970,6 +26074,10 @@ snapshots:
   zod-to-json-schema@3.25.2(zod@3.25.76):
     dependencies:
       zod: 3.25.76
+
+  zod-to-json-schema@3.25.2(zod@4.3.6):
+    dependencies:
+      zod: 4.3.6
 
   zod@3.25.76: {}
 

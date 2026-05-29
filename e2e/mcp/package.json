@@ -1,0 +1,16 @@
+{
+  "name": "@kb-labs/e2e-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@kb-labs/e2e-shared": "workspace:*",
+    "@kb-labs/mcp-app": "workspace:*",
+    "@kb-labs/gateway-app": "workspace:*",
+    "@playwright/test": "^1.52.0",
+    "typescript": "^5.4.0"
+  }
+}
