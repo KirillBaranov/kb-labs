@@ -87,15 +87,17 @@ func runApply(cmd *cobra.Command, args []string) error {
 		return h, nil
 	}
 	res := orchestrator.Execute(orchestrator.ExecuteOptions{
-		Plan:     flow.Plan,
-		Config:   flow.Cfg,
-		Resolver: resolver,
-		Stdout:   cmd.OutOrStdout(),
-		Stderr:   cmd.ErrOrStderr(),
+		Plan:           flow.Plan,
+		Config:         flow.Cfg,
+		Resolver:       resolver,
+		Stdout:         cmd.OutOrStdout(),
+		Stderr:         cmd.ErrOrStderr(),
+		Configs:        toHostConfigs(flow.Configs),
+		PrevConfigHash: prevConfigHashes(flow.Lock),
 	})
 
 	if res.Err == nil {
-		if err := writeLock(flow.Cfg, flow.CfgPath, flow.Plan); err != nil {
+		if err := writeLock(flow.Cfg, flow.CfgPath, flow.Plan, flow.Configs); err != nil {
 			return fmt.Errorf("write lock: %w", err)
 		}
 		fmt.Fprintln(cmd.OutOrStdout(), "apply successful; lock updated")
@@ -123,11 +125,42 @@ func printDrift(cmd *cobra.Command, drift []DriftItem) {
 		"Options: 'kb-deploy apply' to reconcile to lock, or 'kb-deploy adopt' to update lock from target state.")
 }
 
+// toHostConfigs adapts the prepared per-host configs into the orchestrator's
+// delivery type (decouples cmd's deliveredConfig from the orchestrator).
+func toHostConfigs(in map[string]deliveredConfig) map[string]orchestrator.HostConfig {
+	if len(in) == 0 {
+		return nil
+	}
+	out := make(map[string]orchestrator.HostConfig, len(in))
+	for host, dc := range in {
+		out[host] = orchestrator.HostConfig{JSONC: dc.JSONC, Env: dc.Env, Hash: dc.Hash}
+	}
+	return out
+}
+
+// prevConfigHashes pulls the per-host config hashes recorded in the lock.
+func prevConfigHashes(l *lock.Lock) map[string]string {
+	if l == nil || len(l.Hosts) == 0 {
+		return nil
+	}
+	out := make(map[string]string, len(l.Hosts))
+	for host, hl := range l.Hosts {
+		out[host] = hl.ConfigHash
+	}
+	return out
+}
+
 // writeLock persists the outcome of a successful apply.
-func writeLock(cfg *config.Config, cfgPath string, plan *orchestrator.Plan) error {
+func writeLock(cfg *config.Config, cfgPath string, plan *orchestrator.Plan, configs map[string]deliveredConfig) error {
 	l := lock.New("kb-deploy")
 	if cfg.Platform != nil {
 		l.Platform.Version = cfg.Platform.Version
+	}
+	if len(configs) > 0 {
+		l.Hosts = make(map[string]lock.HostLock, len(configs))
+		for host, dc := range configs {
+			l.Hosts[host] = lock.HostLock{ConfigHash: dc.Hash}
+		}
 	}
 	for name, svc := range cfg.Services {
 		sl := lock.ServiceLock{

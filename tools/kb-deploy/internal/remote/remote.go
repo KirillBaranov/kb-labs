@@ -17,6 +17,9 @@ type Runner interface {
 	// Run executes cmd, returning combined stdout+stderr. err is non-nil
 	// when the remote process exits non-zero.
 	Run(cmd string) (string, error)
+	// RunWithInput executes cmd with input fed to its stdin. Used to stream
+	// config/secret payloads without exposing them in argv (ps/history).
+	RunWithInput(cmd, input string) (string, error)
 }
 
 // Host ties a Runner to the platform layout on that target.
@@ -205,11 +208,14 @@ func joinPlugins(m map[string]string) string {
 // `kb-create install-service` to reconstruct the result.
 //
 // The command prints either:
-//   release <id> already installed (no-op)
+//
+//	release <id> already installed (no-op)
+//
 // or:
-//   installed release <id> at <path>
-//     evicted: <id>
-//     evicted: <id>
+//
+//	installed release <id> at <path>
+//	  evicted: <id>
+//	  evicted: <id>
 func parseInstallOutput(out string) *InstallResult {
 	r := &InstallResult{}
 	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {

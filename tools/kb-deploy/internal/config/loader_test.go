@@ -152,6 +152,61 @@ func TestLoadEnvOverridesDotEnv(t *testing.T) {
 	}
 }
 
+func TestLoad_DeclarativeConfigFields(t *testing.T) {
+	tmp := t.TempDir()
+
+	yaml := `
+schema: kb.deploy/1
+platform:
+  version: 2.94.0
+  config: config/kb.config.jsonc
+services:
+  gateway:
+    service: "@kb-labs/gateway-app"
+    version: 2.94.0
+    targets:
+      hosts: [prod-1]
+hosts:
+  prod-1:
+    ssh:
+      host: 1.2.3.4
+      user: kb
+    env:
+      MONGODB_URI: ${secrets.MONGODB_URI}
+      REDIS_URL: redis://localhost:6379
+`
+	cfgPath := filepath.Join(tmp, ".kb", "deploy.yaml")
+	if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cfgPath, []byte(yaml), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err := Load(cfgPath, tmp)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+
+	if cfg.Platform == nil {
+		t.Fatal("platform block missing")
+	}
+	if cfg.Platform.Config != "config/kb.config.jsonc" {
+		t.Errorf("platform.config = %q, want config/kb.config.jsonc", cfg.Platform.Config)
+	}
+
+	host, ok := cfg.Hosts["prod-1"]
+	if !ok {
+		t.Fatal("host prod-1 missing")
+	}
+	if got := host.Env["MONGODB_URI"]; got != "${secrets.MONGODB_URI}" {
+		t.Errorf("host.env.MONGODB_URI = %q, want unexpanded ${secrets.MONGODB_URI}", got)
+	}
+	if got := host.Env["REDIS_URL"]; got != "redis://localhost:6379" {
+		t.Errorf("host.env.REDIS_URL = %q", got)
+	}
+}
+
 func TestLoadDotEnv(t *testing.T) {
 	cases := []struct {
 		content string
