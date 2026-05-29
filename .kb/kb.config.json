@@ -623,6 +623,12 @@
         "prefix": "/api/v1/registry",
         "rewritePrefix": "/api/v1",
         "description": "Marketplace Registry \u2014 publish, share, install kb:handle/name packages"
+      },
+      "mcp": {
+        "url": "http://localhost:7779",
+        "prefix": "/api/v1/mcp",
+        "websocket": false,
+        "description": "MCP Daemon \u2014 plugin commands as tools for external agents"
       }
     },
     "staticTokens": {
