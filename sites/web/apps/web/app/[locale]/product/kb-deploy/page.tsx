@@ -193,7 +193,7 @@ export default async function KbDeployPage({ params }: Props) {
                   </div>
                 ))}
               </div>
-              <p className="mt-3 text-center font-mono text-[0.65rem] text-muted/45 dark:text-muted/30">
+              <p className="mt-3 text-center font-mono text-[0.65rem] text-muted/45 dark:text-muted/50">
                 {t('commandsFootnote')}
               </p>
             </AnimateOnScroll>

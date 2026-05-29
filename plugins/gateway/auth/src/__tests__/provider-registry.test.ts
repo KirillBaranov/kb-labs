@@ -13,11 +13,21 @@ import { describe, expect, it } from 'vitest';
 import type { IIdentityProvider } from '@kb-labs/core-contracts';
 import { ProviderRegistry } from '../provider-registry.js';
 
-const makeProvider = (id: string, kind: 'password' | 'redirect' = 'password'): IIdentityProvider => ({
-  id,
-  kind,
-  authenticate: async () => ({ ok: true, email: 'x@y.z' }),
-});
+const makeProvider = (id: string, kind: 'password' | 'redirect' = 'password'): IIdentityProvider => {
+  if (kind === 'redirect') {
+    return {
+      id,
+      kind,
+      authenticate: async () => ({ ok: true, email: 'x@y.z' }),
+      startAuthorization: async () => ({ redirectUrl: 'https://idp/authorize' }),
+    };
+  }
+  return {
+    id,
+    kind,
+    authenticate: async () => ({ ok: true, email: 'x@y.z' }),
+  };
+};
 
 describe('register / get / has', () => {
   it('registers and retrieves a provider', () => {

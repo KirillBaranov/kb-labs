@@ -1,0 +1,112 @@
+# Docker Compose override for the OAuth/OIDC auth E2E.
+#
+# Layered ON TOP of the base + ci + auth-ci files:
+#
+#   docker compose \
+#     -f e2e/docker-compose.yml \
+#     -f e2e/docker-compose.ci.yml \
+#     -f e2e/docker-compose.auth-ci.yml \
+#     -f e2e/docker-compose.oauth-ci.yml \
+#     up -d
+#
+# What it adds on top of auth-ci:
+#   - idp-stub      : a real, spec-compliant OIDC IdP (HTTPS, RS256, PKCE) — the
+#                     upstream the gateway's built-in `oidc` provider talks to,
+#                     exactly as it would to Google/Okta/Keycloak in prod.
+#   - studio-https  : an HTTPS studio origin named kb-cloud.kblabs.ru (:4443).
+#                     The OAuth redirect_uri the gateway builds is
+#                     https://kb-cloud.kblabs.ru/api/auth/oauth/corp/callback —
+#                     that URL is followed by the *browser*, so the browser must
+#                     reach the studio under that exact host over real TLS. The
+#                     plain-http :4001 origin (auth-ci) can't carry an OAuth
+#                     round-trip, hence a dedicated TLS origin here.
+#   - platform env  : OIDC_E2E_ENABLED (entrypoint writes the provider overlay),
+#                     OIDC_CORP_CLIENT_SECRET (clientSecretEnv target), and
+#                     NODE_EXTRA_CA_CERTS so the gateway trusts the test CA when
+#                     it does server-side discovery / token / JWKS to idp-stub.
+#
+# The browser resolves both hostnames to 127.0.0.1 via Chromium
+# host-resolver-rules and trusts the self-signed cert via ignoreHTTPSErrors —
+# see e2e/auth/playwright.oauth.config.ts.
+
+services:
+  platform:
+    environment:
+      # Turn on the oidc provider overlay (see e2e/platform/entrypoint.sh).
+      OIDC_E2E_ENABLED: "true"
+      OIDC_CORP_ISSUER: "https://idp-stub:9443"
+      OIDC_CORP_CLIENT_ID: "kb-gateway"
+      # clientSecretEnv target — kept out of the config file (secret hygiene).
+      OIDC_CORP_CLIENT_SECRET: "corp-client-secret"
+      # Trust the test CA so server-to-server discovery/token/JWKS to the
+      # https idp-stub validates (NEVER disable TLS verification).
+      NODE_EXTRA_CA_CERTS: "/certs/ca.crt"
+    volumes:
+      - ../e2e/oidc-idp/certs:/certs:ro
+    depends_on:
+      idp-stub:
+        condition: service_healthy
+
+  # ── Upstream OIDC IdP ──────────────────────────────────────────────────────
+  idp-stub:
+    image: kb-e2e-oidc-idp:latest
+    build:
+      context: ./oidc-idp
+      dockerfile: Dockerfile
+    environment:
+      IDP_ISSUER: "https://idp-stub:9443"
+      IDP_CLIENT_ID: "kb-gateway"
+      IDP_CLIENT_SECRET: "corp-client-secret"
+      IDP_PORT: "9443"
+      IDP_HOST: "0.0.0.0"
+      IDP_TLS_KEY: "/certs/server.key"
+      IDP_TLS_CERT: "/certs/server.crt"
+      # Browser-facing authorize endpoint (the browser reaches idp-stub:9443
+      # too, via host-resolver-rules). issuer and authorize share a host here,
+      # but the split is supported should the network topology need it.
+      IDP_AUTHORIZATION_ENDPOINT: "https://idp-stub:9443/authorize"
+      # Only let the IdP redirect back to our gateway callback host.
+      IDP_ALLOWED_REDIRECT_PREFIXES: "https://kb-cloud.kblabs.ru/"
+    volumes:
+      - ../e2e/oidc-idp/certs:/certs:ro
+    ports:
+      - "9443:9443"
+    healthcheck:
+      # node:alpine has neither curl nor a TLS-capable wget; use node itself.
+      test:
+        - "CMD"
+        - "node"
+        - "-e"
+        - "require('https').get({host:'127.0.0.1',port:9443,path:'/jwks',rejectUnauthorized:false},r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+
+  # ── HTTPS studio origin (kb-cloud.kblabs.ru) ────────────────────────────────
+  studio-https:
+    image: nginx:1.27-alpine
+    depends_on:
+      platform:
+        condition: service_healthy
+    ports:
+      # The browser reaches the studio via Chromium host-resolver-rules
+      # (kb-cloud.kblabs.ru:443 → 127.0.0.1:4443). Playwright's `request`
+      # fixture is Node-side and does NOT honour those rules — it resolves
+      # kb-cloud.kblabs.ru via the OS, so the workflow adds a /etc/hosts entry
+      # pointing at 127.0.0.1, and we publish the TLS origin on host :443 too so
+      # the canonical https://kb-cloud.kblabs.ru (implicit :443) reaches nginx.
+      - "4443:4443"
+      - "443:4443"
+    volumes:
+      - ../e2e/auth/oauth-nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ../e2e/oidc-idp/certs:/certs:ro
+      - studio-dist:/usr/share/nginx/html:ro
+    healthcheck:
+      # busybox nc — just confirm the TLS port is accepting connections; the
+      # Playwright run waits for real readiness itself.
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 4443 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s

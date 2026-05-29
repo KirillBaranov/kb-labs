@@ -76,8 +76,14 @@ export { createTenantResolver, RESERVED_SUBDOMAINS } from './tenant-resolver.js'
 export type { TenantResolver, TenantResolverOptions } from './tenant-resolver.js';
 export { createEmailPasswordProvider } from './providers/email-password.js';
 export type { EmailPasswordProviderOptions } from './providers/email-password.js';
+export { createOidcProvider } from './providers/oidc.js';
+export type { OidcProviderConfig } from './providers/oidc.js';
 export { ProviderRegistry } from './provider-registry.js';
 export type { ProviderInfo } from './provider-registry.js';
+export { loadIdentityProviders, BUILTIN_FACTORIES } from './provider-loader.js';
+export type { ProvidersConfig, ProviderConfigEntry } from './provider-loader.js';
+export { OAuthStateStore } from './oauth-state-store.js';
+export type { OAuthStateRecord, OAuthStateStoreOptions } from './oauth-state-store.js';
 export { createStubPDP } from './stub-pdp.js';
 export type { StubPDPOptions } from './stub-pdp.js';
 // Re-export PDP types from core-contracts so consumers can import everything

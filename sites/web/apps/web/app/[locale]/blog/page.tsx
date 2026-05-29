@@ -151,7 +151,7 @@ export default async function BlogPage({ params, searchParams }: Props) {
                   >
                     {/* Meta */}
                     <div className="mb-3 flex items-center gap-2">
-                      <span className="font-mono text-[0.68rem] text-muted/55 dark:text-muted/40">
+                      <span className="font-mono text-[0.68rem] text-muted/55 dark:text-muted/50">
                         {formatDate(post.frontmatter.date, locale)}
                       </span>
                       {post.frontmatter.tag && (
@@ -160,7 +160,7 @@ export default async function BlogPage({ params, searchParams }: Props) {
                         </span>
                       )}
                       {post.frontmatter.readTime && (
-                        <span className="ml-auto font-mono text-[0.68rem] text-muted/50 dark:text-muted/35">
+                        <span className="ml-auto font-mono text-[0.68rem] text-muted/50 dark:text-muted/50">
                           {post.frontmatter.readTime}
                         </span>
                       )}

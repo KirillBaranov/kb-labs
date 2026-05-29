@@ -11,8 +11,6 @@ import {
   uniqueEmail,
   apiPost,
   GATEWAY,
-  ADMIN_EMAIL,
-  ADMIN_PASSWORD,
 } from '../fixtures/auth.js'
 
 // ── 25. CSRF missing on mutating endpoint → 403 ───────────────────────────────
@@ -139,33 +137,32 @@ test('AUTH-29: cookie attributes — HttpOnly/Secure/SameSite=Strict/no-Domain',
 // ── 30. Bearer auth (machine client) — no CSRF required ──────────────────────
 
 test('AUTH-30: Bearer auth (machine client) succeeds without CSRF header', async ({
+  page,
+  context,
   request,
 }) => {
-  // Obtain a machine token via /auth/register + /auth/token (existing flow).
-  const regRes = await request.post(`${GATEWAY}/auth/register`, {
-    data: { name: 'e2e-machine-30', namespaceId: 'e2e', capabilities: [] },
+  // Machine clients are provisioned by an admin via /auth/register, then
+  // exchange their credentials for an access token at /auth/token.
+  await loginAsAdmin(page)
+  const adminCookieHeader = await getAdminCookieHeader(context)
+  const reg = await apiPost(request, '/api/auth/register', adminCookieHeader, {
+    name: 'e2e-machine-30',
+    capabilities: [],
   })
-  test.skip(regRes.status() === 404, '/auth/register not available in this build')
+  expect(reg.status).toBe(200)
+  const { clientId, clientSecret } = reg.body as { clientId: string; clientSecret: string }
 
-  if (regRes.status() === 401) {
-    // /auth/register now requires MACHINE_REGISTER permission — skip for this test.
-    test.skip(true, '/auth/register requires admin Bearer token in this build')
-  }
-  expect(regRes.ok()).toBe(true)
-
-  const { clientId, clientSecret } = await regRes.json()
   const tokenRes = await request.post(`${GATEWAY}/auth/token`, {
     data: { clientId, clientSecret },
   })
   expect(tokenRes.ok()).toBe(true)
-  const { accessToken } = await tokenRes.json()
+  const { accessToken } = (await tokenRes.json()) as { accessToken: string }
 
   // Call a protected endpoint with Bearer — NO X-CSRF-Token header.
+  // Bearer requests are exempt from CSRF, so we must not see 403.
   const meRes = await request.get(`${GATEWAY}/api/auth/me`, {
     headers: { Authorization: `Bearer ${accessToken}` },
   })
-  // Machine token may not map to a user-me endpoint; accept 200 or 404.
-  // What we must NOT see is 403 (CSRF required).
   expect(meRes.status()).not.toBe(403)
 })
 
