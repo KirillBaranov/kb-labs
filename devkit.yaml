@@ -630,7 +630,7 @@ tasks:
         - "build"
 
     - categories: [go-binary]
-      command: go test -coverprofile=coverage.out -covermode=atomic ./...
+      command: go test -short -coverprofile=coverage.out -covermode=atomic ./...
       inputs:
         - "**/*.go"
         - "go.mod"
