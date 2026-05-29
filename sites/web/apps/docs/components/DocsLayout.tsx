@@ -16,6 +16,7 @@ type DocsLayoutProps = {
   toc: TocItem[];
   slug: string[];
   isFallback: boolean;
+  isIndex?: boolean;
   pageTitle?: string;
   pageDescription?: string;
   pageUpdatedAt?: string;
@@ -84,13 +85,14 @@ function formatDate(raw: string, locale: string): string {
   return d.toLocaleDateString(locale === 'ru' ? 'ru-RU' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
-export async function DocsLayout({ children, locale, toc, slug, isFallback, pageTitle, pageDescription, pageUpdatedAt }: DocsLayoutProps) {
+export async function DocsLayout({ children, locale, toc, slug, isFallback, isIndex, pageTitle, pageDescription, pageUpdatedAt }: DocsLayoutProps) {
   const t = await getTranslations('page');
   const nav = buildNavFromContent(locale);
   const crumb = findBreadcrumb(nav, locale, slug, pageTitle);
 
   const editLocale = isFallback ? 'en' : locale;
-  const editUrl = `https://github.com/KirillBaranov/kb-labs/blob/main/sites/web/apps/docs/content/${editLocale}/${slug.join('/')}.mdx`;
+  const editFilePath = isIndex ? `${slug.join('/')}/index` : slug.join('/');
+  const editUrl = `https://github.com/KirillBaranov/kb-labs/blob/main/sites/web/apps/docs/content/${editLocale}/${editFilePath}.mdx`;
 
   const sidebarSlot = <DocsSidebar nav={nav} />;
   const tocSlot = <DocsToc items={toc} />;

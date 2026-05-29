@@ -3,332 +3,38 @@ name: E2E Auth Tests
 # 33 mandatory acceptance scenarios for Studio auth (ADR-0020, Phase 4).
 # Runs against a local Docker platform (gateway :4000) + Studio served by nginx (:4001).
 #
-# Both STUDIO_URL and GATEWAY_URL point to :4001 (nginx handles /api/ proxy to gateway)
-# so SameSite=Strict cookies work correctly in the browser context.
-#
-# Phase 3 (infra) will replace the nginx container with the real wildcard nginx config.
-#
 # Triggers:
-# - Any PR that touches gateway auth, Studio auth pages, or E2E suite itself
-# - Manual dispatch (useful for staging runs)
+# - After every CI run on main (post-merge validation)
+# - Manual dispatch
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    paths:
-      - 'plugins/gateway/**'
-      - 'studio/app/src/auth/**'
-      - 'studio/app/src/pages/**'
-      - 'e2e/auth/**'
-      - '.github/workflows/e2e-auth.yml'
+  workflow_call:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
-  group: e2e-auth-${{ github.event.pull_request.number || github.ref }}
+  group: e2e-auth-${{ github.event.workflow_run.id || github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
-  e2e-auth:
-    name: E2E Auth (33 scenarios)
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-
-    env:
-      COMPOSE_FILE: e2e/docker-compose.yml:e2e/docker-compose.ci.yml:e2e/docker-compose.auth-ci.yml
-      COMPOSE_PROJECT_NAME: kb-e2e-auth
-      # Studio and gateway are served through the nginx proxy on :4001
-      STUDIO_URL:       http://localhost:4001
-      GATEWAY_URL:      http://localhost:4001
-      ADMIN_EMAIL:      admin@kb-cloud.test
-      ADMIN_PASSWORD:   AdminPass123!
-      TENANT_ID:        kb-cloud
-      # Short TTLs for session lifecycle tests (AUTH-05, AUTH-06, AUTH-07b)
-      AUTH_ACCESS_TTL_SEC:  "5"
-      AUTH_REFRESH_TTL_SEC: "15"
-      # Default invite TTL: 7 days. AUTH-14 creates its own short-lived invite
-      # via the per-invite ttlMs field in POST /auth/invites. Setting this to
-      # 1000 would expire invites before AUTH-20 can activate them (>1s setup).
-      AUTH_INVITE_TTL_MS: "604800000"
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      # ── Build toolchain ────────────────────────────────────────────────────
-
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version-file: tools/kb-create/go.mod
-          cache-dependency-path: |
-            tools/kb-create/go.sum
-            tools/kb-dev/go.sum
-
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-
-      - name: Build Go tools (kb-devkit, kb-dev)
-        run: |
-          (cd tools/kb-devkit && CGO_ENABLED=0 go build -o kb-devkit . && chmod +x kb-devkit)
-          (cd tools/kb-dev    && CGO_ENABLED=0 go build -o kb-dev    . && chmod +x kb-dev)
-
-      # ── Install + build monorepo ────────────────────────────────────────────
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Restore kb-devkit build cache
-        uses: actions/cache@v4
-        with:
-          path: .kb/devkit/
-          key: devkit-build-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml', 'devkit.yaml', 'tsconfig*.json') }}-${{ github.sha }}
-          restore-keys: |
-            devkit-build-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml', 'devkit.yaml', 'tsconfig*.json') }}-
-            devkit-build-${{ runner.os }}-
-
-      - name: Build all packages
-        run: pnpm build
-
-      # ── Build Studio SPA ────────────────────────────────────────────────────
-
-      - name: Build Studio
-        run: pnpm --filter @kb-labs/studio-app build
-
-      # ── Install Playwright ──────────────────────────────────────────────────
-
-      - name: Install Playwright browsers
-        run: cd e2e/auth && pnpm exec playwright install chromium --with-deps
-
-      # ── Pack + publish to Verdaccio (same as e2e-rest-api.yml) ─────────────
-
-      - name: Restore packed .tgz cache
-        id: tgz-cache
-        uses: actions/cache@v4
-        with:
-          path: e2e/packages/
-          key: e2e-tgz-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json') }}
-          restore-keys: |
-            e2e-tgz-${{ runner.os }}-
-
-      - name: Pack @kb-labs/* packages
-        if: steps.tgz-cache.outputs.cache-hit != 'true'
-        run: bash e2e/scripts/pack-all.sh
-
-      - name: Verify packed .tgz cache
-        if: steps.tgz-cache.outputs.cache-hit == 'true'
-        run: |
-          count=$(ls e2e/packages/*.tgz 2>/dev/null | wc -l)
-          echo "Restored $count tarballs from cache"
-          if [ "$count" -lt 100 ]; then
-            echo "::warning::Cache looks incomplete, repacking"
-            bash e2e/scripts/pack-all.sh
-          fi
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Cache Docker layers (platform)
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache-platform
-          key: buildx-platform-${{ hashFiles('e2e/platform/Dockerfile', 'e2e/platform/entrypoint.sh', 'tools/kb-create/**', 'tools/kb-dev/**') }}
-          restore-keys: buildx-platform-
-
-      - name: Cache Docker layers (publisher)
-        uses: actions/cache@v4
-        with:
-          path: /tmp/.buildx-cache-publisher
-          key: buildx-publisher-${{ hashFiles('e2e/publisher/**', 'e2e/packages/**') }}
-          restore-keys: buildx-publisher-
-
-      - name: Build platform image
-        run: |
-          docker buildx build \
-            --cache-from type=local,src=/tmp/.buildx-cache-platform \
-            --cache-to   type=local,dest=/tmp/.buildx-cache-platform,mode=max \
-            --load \
-            -t kb-e2e-ci-platform:latest \
-            -f e2e/platform/Dockerfile .
-
-      - name: Build publisher image
-        run: |
-          docker buildx build \
-            --cache-from type=local,src=/tmp/.buildx-cache-publisher \
-            --cache-to   type=local,dest=/tmp/.buildx-cache-publisher,mode=max \
-            --load \
-            -t kb-e2e-ci-publisher:latest \
-            -f e2e/publisher/Dockerfile \
-            e2e/
-
-      # ── Start Verdaccio + publish packages ─────────────────────────────────
-
-      - name: Restore Verdaccio storage cache
-        id: verdaccio-cache
-        uses: actions/cache@v4
-        with:
-          path: e2e/.verdaccio-storage
-          key: verdaccio-storage-${{ runner.os }}-${{ hashFiles('e2e/packages/**/*.tgz') }}
-          # No restore-keys: Verdaccio storage must only be reused when it
-          # was built from the exact same source tarballs.
-          # A partial-match restore would leave old package versions in
-          # Verdaccio — the publisher skips 409-conflicting packages —
-          # so the platform ends up running stale code.
-
-      - name: Prepare Verdaccio storage permissions
-        run: |
-          mkdir -p e2e/.verdaccio-storage
-          sudo chown -R 10001:65533 e2e/.verdaccio-storage
-
-      - name: Start Verdaccio
-        run: docker compose up -d verdaccio
-
-      - name: Wait for Verdaccio
-        run: |
-          for i in $(seq 1 30); do
-            if docker compose ps verdaccio | grep -q "healthy"; then
-              echo "Verdaccio healthy after $((i * 2))s"; break
-            fi
-            sleep 2
-          done
-
-      - name: Publish packages to Verdaccio
-        if: steps.verdaccio-cache.outputs.cache-hit != 'true'
-        run: docker compose run --rm publisher
-
-      - name: Confirm Verdaccio warm cache
-        if: steps.verdaccio-cache.outputs.cache-hit == 'true'
-        run: |
-          tgz_count=$(ls e2e/packages/*.tgz 2>/dev/null | wc -l | tr -d ' ')
-          pkg_dirs=$(find e2e/.verdaccio-storage/@kb-labs -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
-          echo "Tarballs: $tgz_count  Verdaccio dirs: $pkg_dirs"
-          if [ "$pkg_dirs" -lt "$((tgz_count / 2))" ]; then
-            echo "::warning::Storage incomplete, re-publishing"
-            docker compose run --rm publisher
-          fi
-
-      # ── Start platform (gateway :4000) + Studio nginx (:4001) ──────────────
-
-      - name: Prepare Studio dist volume
-        run: |
-          # Create a named Docker volume and populate it with the Studio build output.
-          docker volume create kb-e2e-auth_studio-dist
-          docker run --rm \
-            -v "$(pwd)/studio/app/dist:/src:ro" \
-            -v "kb-e2e-auth_studio-dist:/dest" \
-            busybox sh -c "cp -r /src/. /dest/"
-
-      - name: Start platform
-        run: docker compose up -d --no-build platform
-
-      - name: Wait for gateway to be healthy
-        run: |
-          echo "Waiting for gateway (up to 3 min)..."
-          for i in $(seq 1 36); do
-            if curl -sf http://localhost:4000/health > /dev/null 2>&1; then
-              echo "Gateway ready after $((i * 5))s"; break
-            fi
-            if [ $i -eq 36 ]; then
-              echo "Gateway failed to start — dumping logs"
-              docker compose logs platform | tail -100
-              exit 1
-            fi
-            sleep 5
-          done
-
-      # ── Configure bootstrap admin via gateway env ───────────────────────────
-      # documentDatabase (SQLite) is configured via adapterConfig in
-      # registry-manifest.json — kb-create writes it into kb.config.jsonc at
-      # bootstrap time so the gateway starts with userAuth already initialised.
-      # No overlay or runtime restart needed.
-
-      - name: Start Studio nginx proxy
-        run: docker compose up -d studio
-
-      - name: Wait for Studio nginx to be healthy
-        run: |
-          for i in $(seq 1 20); do
-            if docker compose ps studio | grep -q "healthy"; then
-              echo "Studio nginx healthy after $((i * 3))s"; break
-            fi
-            if [ $i -eq 20 ]; then
-              echo "Studio nginx failed to start — dumping logs"
-              docker compose logs studio | tail -50
-              exit 1
-            fi
-            sleep 3
-          done
-
-      # ── Configure bootstrap admin via gateway env ───────────────────────────
-      # Gateway reads AUTH_BOOTSTRAP_ADMIN_EMAIL / AUTH_BOOTSTRAP_ADMIN_PASSWORD
-      # on startup and creates the admin user if it doesn't exist.
-      # These match the ADMIN_EMAIL / ADMIN_PASSWORD env vars above.
-
-      # ── Run auth E2E suite ──────────────────────────────────────────────────
-
-      - name: Run auth E2E tests
-        run: cd e2e/auth && pnpm e2e
-        env:
-          STUDIO_URL:              ${{ env.STUDIO_URL }}
-          GATEWAY_URL:             ${{ env.GATEWAY_URL }}
-          ADMIN_EMAIL:             ${{ env.ADMIN_EMAIL }}
-          ADMIN_PASSWORD:          ${{ env.ADMIN_PASSWORD }}
-          TENANT_ID:               ${{ env.TENANT_ID }}
-          AUTH_ACCESS_TTL_SEC:     ${{ env.AUTH_ACCESS_TTL_SEC }}
-          AUTH_REFRESH_TTL_SEC:    ${{ env.AUTH_REFRESH_TTL_SEC }}
-          AUTH_INVITE_TTL_MS:      ${{ env.AUTH_INVITE_TTL_MS }}
-          CI:                      "true"
-
-      # ── Artifacts + summary ─────────────────────────────────────────────────
-
-      - name: Dump platform and nginx logs
-        if: always()
-        run: |
-          mkdir -p /tmp/e2e-auth-logs
-          docker compose logs --no-color platform > /tmp/e2e-auth-logs/platform.log  2>&1 || true
-          docker compose logs --no-color studio   > /tmp/e2e-auth-logs/studio.log    2>&1 || true
-          docker compose logs --no-color verdaccio > /tmp/e2e-auth-logs/verdaccio.log 2>&1 || true
-          docker compose ps > /tmp/e2e-auth-logs/ps.txt 2>&1 || true
-
-      - name: Upload platform logs
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: e2e-auth-platform-logs-${{ github.run_id }}
-          path: /tmp/e2e-auth-logs/
-          retention-days: 14
-
-      - name: Upload Playwright report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report-auth-${{ github.run_id }}
-          path: e2e/auth/report/
-          retention-days: 14
-
-      - name: Show test summary
-        if: always()
-        run: |
-          echo "### E2E Auth — 33 scenarios" >> $GITHUB_STEP_SUMMARY
-          if [ -f e2e/auth/report/index.html ]; then
-            echo "Playwright report uploaded as artifact \`playwright-report-auth-${{ github.run_id }}\`" >> $GITHUB_STEP_SUMMARY
-          fi
-
-      - name: Cleanup
-        if: always()
-        run: docker compose down --volumes --remove-orphans
-
-      - name: Restore Verdaccio storage ownership for cache save
-        if: always()
-        run: |
-          if [ -d e2e/.verdaccio-storage ]; then
-            sudo chown -R "$(id -u):$(id -g)" e2e/.verdaccio-storage
-          fi
+  e2e:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    uses: ./.github/workflows/reusable-e2e-playwright.yml
+    with:
+      suite: auth
+      compose-files: e2e/docker-compose.yml:e2e/docker-compose.ci.yml:e2e/docker-compose.auth-ci.yml
+      compose-project: kb-e2e-auth
+      run-command: cd e2e/auth && pnpm e2e
+      report-dir: e2e/auth/report
+      artifact-prefix: auth
+      studio: true
+      studio-https: false
+      idp: false
+    permissions:
+      contents: read

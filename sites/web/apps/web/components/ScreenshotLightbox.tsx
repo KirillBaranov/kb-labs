@@ -1,10 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import NextImage from 'next/image';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { SmartImage } from '@/components/SmartImage';
 
 interface ScreenshotLightboxProps {
   src: string;
@@ -78,7 +78,7 @@ export function ScreenshotLightbox({ src, alt, url, className, loading = 'lazy' 
             <div className="w-[46px]" />
           </div>
         )}
-        {/* Use regular img in lightbox — it's a full-res overlay, no optimization needed */}
+        {/* Full-res in lightbox — regular img, no optimization needed */}
         <img
           src={src}
           alt={alt}
@@ -92,23 +92,21 @@ export function ScreenshotLightbox({ src, alt, url, className, loading = 'lazy' 
 
   return (
     <>
-      {/* Thumbnail — next/image for automatic WebP/AVIF + proper srcset */}
+      {/* Thumbnail — SmartImage: WebP/AVIF + blur placeholder + fade-in */}
       <button
         type="button"
         onClick={() => setOpen(true)}
         className="group relative block w-full cursor-zoom-in text-left"
         aria-label={t('openScreenshot', { alt })}
       >
-        <NextImage
+        <SmartImage
           src={src}
           alt={alt}
           width={1440}
           height={900}
-          className={`w-full h-auto transition-opacity duration-200 group-hover:opacity-90 ${className ?? ''}`}
+          className={`w-full h-auto group-hover:opacity-90 ${className ?? ''}`}
           loading={loading}
           priority={loading === 'eager'}
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 1140px"
-          quality={85}
         />
       </button>
 
