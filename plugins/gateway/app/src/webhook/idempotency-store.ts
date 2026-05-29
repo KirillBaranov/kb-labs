@@ -6,7 +6,7 @@
  * Uses `cache.setIfNotExists` for atomic check-and-mark — safe under
  * concurrent deliveries of the same event (e.g. retry storms from GitHub).
  *
- * Key format: `webhook:idempotency:{pluginId}:{event}:{deliveryKey}`
+ * Key format: `webhook:idempotency:{namespaceId}:{pluginId}:{event}:{deliveryKey}`
  * TTL: 7 days — covers typical webhook retry windows.
  */
 
@@ -19,11 +19,12 @@ export class WebhookIdempotencyStore {
 
   /**
    * Check if this delivery has already been processed, and mark it atomically.
+   * Keys are scoped by namespaceId to prevent cross-tenant pollution.
    *
    * @returns `true` if duplicate (already processed), `false` if first time
    */
-  async checkAndMark(pluginId: string, event: string, key: string): Promise<boolean> {
-    const cacheKey = `webhook:idempotency:${pluginId}:${event}:${key}`;
+  async checkAndMark(namespaceId: string, pluginId: string, event: string, key: string): Promise<boolean> {
+    const cacheKey = `webhook:idempotency:${namespaceId}:${pluginId}:${event}:${key}`;
     const isNew = await this.cache.setIfNotExists(cacheKey, 1, IDEMPOTENCY_TTL_MS);
     return !isNew; // true = duplicate
   }
