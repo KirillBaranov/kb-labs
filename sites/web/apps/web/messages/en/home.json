@@ -117,8 +117,8 @@
           "description": "Workflows in YAML. The engine tracks execution, writes logs, and retries on failure."
         },
         {
-          "title": "Switched the broker — rewrite every subscriber",
-          "description": "Services publish events through the gateway. Redis, Kafka, RabbitMQ — swap the adapter in config, subscribers never notice."
+          "title": "Switched from OpenAI to Claude — rewrote every LLM call",
+          "description": "Plugins call platform.llm.complete(). OpenAI, Claude, Mistral — swap the adapter in config, not a single line in your plugins changes."
         },
         {
           "title": "Every tool is its own island",

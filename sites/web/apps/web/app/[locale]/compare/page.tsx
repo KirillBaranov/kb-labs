@@ -110,7 +110,7 @@ export default async function ComparePage({ params }: Props) {
 
                   {/* Left */}
                   <div className="flex flex-col gap-2">
-                    <span className="text-5xl font-bold leading-none text-muted/15">{alt.num}</span>
+                    <span className="text-5xl font-bold leading-none text-muted/50">{alt.num}</span>
                     <span className="mt-2 text-sm font-semibold uppercase tracking-widest text-muted/50">
                       vs
                     </span>

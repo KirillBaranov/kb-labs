@@ -101,6 +101,18 @@ export const AuthConfigSchema = z.object({
   inviteTtlMs: z.number().int().positive().default(7 * 24 * 60 * 60 * 1000),
   /** Bootstrap admin account seeding. Credentials come from env vars. */
   bootstrap: AuthBootstrapSchema,
+  /**
+   * Identity providers to load, keyed by instance id (ADR-0020 DD-4).
+   *
+   * Each entry carries a discriminating `type` (built-in `email-password`
+   * / `oidc`, or a package name for third-party providers). Everything
+   * else passes through so each provider validates its own slice with its
+   * own zod schema. Omitting `providers` registers the built-in
+   * `email-password` provider as the default (DD-3).
+   */
+  providers: z
+    .record(z.string(), z.object({ type: z.string().min(1) }).passthrough())
+    .optional(),
 });
 
 export const TenantsConfigSchema = z.object({

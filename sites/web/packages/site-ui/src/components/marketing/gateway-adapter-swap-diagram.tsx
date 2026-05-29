@@ -180,7 +180,7 @@ export function GatewayAdapterSwapDiagram({ className }: GatewayAdapterSwapDiagr
               </span>
 
               {/* Swap indicator */}
-              <span className="ml-auto font-mono text-[0.65rem] text-muted/40 dark:text-muted/20">⇄</span>
+              <span className="ml-auto font-mono text-[0.65rem] text-muted/40 dark:text-muted/50">⇄</span>
             </div>
           );
         })}

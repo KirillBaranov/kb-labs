@@ -24,8 +24,10 @@ import type { FastifyReply } from 'fastify';
 export const COOKIE_ACCESS = 'kb_access';
 export const COOKIE_REFRESH = 'kb_refresh';
 export const COOKIE_CSRF = 'kb_csrf';
+export const COOKIE_OAUTH_STATE = 'kb_oauth_state';
 
 export const REFRESH_COOKIE_PATH = '/api/auth/refresh';
+export const OAUTH_COOKIE_PATH = '/api/auth/oauth';
 
 export interface CookieOptions {
   /** False in dev (http://localhost), true in prod (https) — set Secure flag. */
@@ -75,6 +77,39 @@ export const setSessionCookies = (
     sameSite: 'strict' as const,
     maxAge: input.refreshTtlSec,
     path: '/',
+  });
+};
+
+/**
+ * The OAuth state cookie binds the browser that *started* a flow to the
+ * one that *finishes* it (defence against state-fixation / login CSRF).
+ *
+ * It MUST be `SameSite=Lax`, NOT Strict: the IdP→callback hop is a
+ * cross-site top-level navigation, and a Strict cookie would not be sent
+ * on it, breaking the binding. Lax still blocks cross-site sub-resource
+ * sends, which is all we need here. Scoped to the OAuth path so it never
+ * rides along with normal API calls.
+ */
+export const setOAuthStateCookie = (
+  reply: FastifyReply,
+  state: string,
+  opts: CookieOptions,
+  ttlSec: number,
+): void => {
+  reply.setCookie(COOKIE_OAUTH_STATE, state, {
+    httpOnly: true,
+    secure: opts.cookieSecure,
+    sameSite: 'lax' as const,
+    maxAge: ttlSec,
+    path: OAUTH_COOKIE_PATH,
+  });
+};
+
+export const clearOAuthStateCookie = (reply: FastifyReply, opts: CookieOptions): void => {
+  reply.clearCookie(COOKIE_OAUTH_STATE, {
+    secure: opts.cookieSecure,
+    sameSite: 'lax' as const,
+    path: OAUTH_COOKIE_PATH,
   });
 };
 

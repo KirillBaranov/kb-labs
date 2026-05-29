@@ -137,6 +137,17 @@
     "@kb-labs/studio-ui-core": ">=2.0.0",
     "@kb-labs/studio-ui-kit": ">=2.0.0"
   },
+  "peerDependenciesMeta": {
+    "@kb-labs/shared-testing": {
+      "optional": true
+    },
+    "@kb-labs/shared-testing-e2e": {
+      "optional": true
+    },
+    "@kb-labs/shared-testing-platform": {
+      "optional": true
+    }
+  },
   "publishConfig": {
     "access": "public"
   },

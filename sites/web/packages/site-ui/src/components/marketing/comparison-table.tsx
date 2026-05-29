@@ -36,19 +36,19 @@ function Cell({ value, highlight }: { value: string | boolean; highlight: boolea
   if (value === false) {
     return (
       <span className={base}>
-        <Minus className="size-3.5 text-muted/25" aria-label="No" />
+        <Minus className="size-3.5 text-muted/50" aria-label="No" />
       </span>
     );
   }
   if (value === '~') {
     return (
       <span className={base}>
-        <Slash className="size-3.5 text-muted/50 dark:text-muted/35" aria-label="Partial" />
+        <Slash className="size-3.5 text-muted/50" aria-label="Partial" />
       </span>
     );
   }
   if (value === '—') {
-    return <span className="text-sm text-muted/25">—</span>;
+    return <span className="text-sm text-muted/50">—</span>;
   }
   return (
     <span className={cn('text-sm', highlight ? 'font-semibold text-kb-text' : 'text-muted/70')}>

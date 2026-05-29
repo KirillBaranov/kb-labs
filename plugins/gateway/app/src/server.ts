@@ -21,6 +21,7 @@ import {
   type IPolicyDecisionPoint,
   type TenantResolver,
   type RateLimiter,
+  type OAuthStateStore,
 } from '@kb-labs/gateway-auth';
 import { createAuthMiddleware } from './auth/middleware.js';
 import { registerAuthRoutes, type MachineAuthRoutesUserExt } from './auth/routes.js';
@@ -60,6 +61,10 @@ export interface UserAuthServerDeps {
   inviteTtlMs: number;
   rateLimiter?: RateLimiter;
   authRateLimit?: { loginPerIpPerMinute: number; loginPerEmailPerMinute: number };
+  /** OAuth state store (KV-backed). When present, redirect/OAuth routes are registered. */
+  oauthState?: OAuthStateStore;
+  /** Per-IP callback rate-limit for the OAuth callback. */
+  oauthCallbackPerIpPerMinute?: number;
 }
 
 /** Strip bearer tokens from query params before logging (prevents JWT leakage in access logs). */
@@ -246,6 +251,8 @@ export async function createServer(
           jwtConfig,
           rateLimiter: userAuth.rateLimiter,
           authRateLimit: userAuth.authRateLimit,
+          oauthState: userAuth.oauthState,
+          oauthCallbackPerIpPerMinute: userAuth.oauthCallbackPerIpPerMinute,
         },
       );
     }

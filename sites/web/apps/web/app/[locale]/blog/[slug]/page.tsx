@@ -191,7 +191,7 @@ export default async function BlogPostPage({
                     href={`/${locale}/blog/${safeSlug(prevPost.slug)}`}
                     className="group flex flex-col gap-1 rounded-xl p-4 transition-colors hover:bg-surface/50"
                   >
-                    <span className="inline-flex items-center gap-1 text-xs text-muted/55 dark:text-muted/40">
+                    <span className="inline-flex items-center gap-1 text-xs text-muted/55 dark:text-muted/50">
                       <ChevronLeft size={13} />
                       {t('blog.prevPost')}
                     </span>
@@ -206,7 +206,7 @@ export default async function BlogPostPage({
                     href={`/${locale}/blog/${safeSlug(nextPost.slug)}`}
                     className="group flex flex-col items-end gap-1 rounded-xl p-4 transition-colors hover:bg-surface/50"
                   >
-                    <span className="inline-flex items-center gap-1 text-xs text-muted/55 dark:text-muted/40">
+                    <span className="inline-flex items-center gap-1 text-xs text-muted/55 dark:text-muted/50">
                       {t('blog.nextPost')}
                       <ChevronRight size={13} />
                     </span>
@@ -224,7 +224,7 @@ export default async function BlogPostPage({
         {related.length > 0 && (
           <section className="border-t border-line bg-surface/30 py-14">
             <Container>
-              <p className="mb-6 text-[0.65rem] font-bold uppercase tracking-wider text-muted/50 dark:text-muted/35">
+              <p className="mb-6 text-[0.65rem] font-bold uppercase tracking-wider text-muted/50 dark:text-muted/50">
                 {t('blog.relatedPosts')}
               </p>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -235,11 +235,11 @@ export default async function BlogPostPage({
                     className="group flex flex-col gap-2 rounded-2xl border border-line bg-surface p-5 no-underline transition-colors hover:border-accent/30"
                   >
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-[0.68rem] text-muted/55 dark:text-muted/40">
+                      <span className="font-mono text-[0.68rem] text-muted/55 dark:text-muted/50">
                         {formatDate(p.frontmatter.date, locale)}
                       </span>
                       {p.frontmatter.readTime && (
-                        <span className="ml-auto font-mono text-[0.68rem] text-muted/50 dark:text-muted/35">
+                        <span className="ml-auto font-mono text-[0.68rem] text-muted/50 dark:text-muted/50">
                           {p.frontmatter.readTime}
                         </span>
                       )}
