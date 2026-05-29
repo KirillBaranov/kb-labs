@@ -29,10 +29,20 @@ export function loadJwtConfig(): JwtConfig {
   return { secret: secret ?? DEV_JWT_SECRET };
 }
 
-/** Extract a Bearer token from an Authorization header, or null. */
+/**
+ * Extract a Bearer token from an Authorization header, or null.
+ *
+ * Parsing avoids overlapping quantifiers (e.g. `\s+(.+)`) on the
+ * attacker-controlled header: an anchored single-`\s` scheme check is linear,
+ * then the remainder is sliced and trimmed. This sidesteps the polynomial
+ * ReDoS that `/^Bearer\s+(.+)$/` exhibits on `"Bearer" + " ".repeat(n)`.
+ */
 export function extractBearer(header: string | undefined): string | null {
-  const match = header?.match(/^Bearer\s+(.+)$/i);
-  return match?.[1] ?? null;
+  if (header === undefined || !/^bearer\s/i.test(header)) {
+    return null;
+  }
+  const token = header.slice('bearer'.length).trim();
+  return token.length > 0 ? token : null;
 }
 
 /**

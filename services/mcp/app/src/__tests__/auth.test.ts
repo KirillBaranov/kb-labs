@@ -20,6 +20,24 @@ describe('extractBearer', () => {
   it('is case-insensitive on the scheme', () => {
     expect(extractBearer('bearer tok123')).toBe('tok123');
   });
+  it('tolerates extra whitespace after the scheme', () => {
+    expect(extractBearer('Bearer   tok123')).toBe('tok123');
+  });
+  it('returns null for the scheme with no token', () => {
+    expect(extractBearer('Bearer ')).toBeNull();
+  });
+  it('returns null when no whitespace follows the scheme', () => {
+    expect(extractBearer('Bearertok123')).toBeNull();
+  });
+  it('runs in linear time on a hostile all-whitespace header (no ReDoS)', () => {
+    // The previous /^Bearer\s+(.+)$/ regex backtracks polynomially on a
+    // header that is the scheme followed by many spaces and no real token.
+    // Linear parsing must return promptly regardless of length.
+    const hostile = `Bearer ${' '.repeat(100_000)}`;
+    const start = Date.now();
+    expect(extractBearer(hostile)).toBeNull();
+    expect(Date.now() - start).toBeLessThan(100);
+  });
 });
 
 describe('loadJwtConfig', () => {
