@@ -11,6 +11,8 @@
  *   - Failed login → shows "Invalid credentials" error message
  *   - Shows provider-based form (email-password kind)
  *   - No role selector (old fake auth removed)
+ *   - Redirect (OAuth/OIDC) providers render a "Continue with {id}" link
+ *     pointing at the gateway start endpoint (ADR-0020, Step 6)
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -33,12 +35,18 @@ async function importLoginPage() {
 const PROVIDERS_RESPONSE = [{ id: 'email-password', kind: 'password' }];
 
 function mockFetchProviders(loginResult: 'ok' | 'fail') {
+  return mockFetchWithProviders(PROVIDERS_RESPONSE);
+}
+
+// Generic provider-list stub: serves the given providers array from
+// GET /api/auth/providers, 404 for anything else.
+function mockFetchWithProviders(providers: Array<{ id: string; kind: string }>) {
   return vi.fn((url: string) => {
     if (url.includes('/api/auth/providers')) {
       return Promise.resolve({
         ok: true,
         status: 200,
-        json: () => Promise.resolve(PROVIDERS_RESPONSE),
+        json: () => Promise.resolve(providers),
       });
     }
     return Promise.resolve({
@@ -175,5 +183,71 @@ describe('LoginPage', () => {
     });
 
     await waitFor(() => expect(screen.getByTestId('home-page')).toBeDefined());
+  });
+
+  // ── Redirect (OAuth/OIDC) providers ──────────────────────────────────────────
+
+  it('renders a "Continue with {id}" link for a redirect provider', async () => {
+    vi.stubGlobal(
+      'fetch',
+      mockFetchWithProviders([
+        { id: 'email-password', kind: 'password' },
+        { id: 'corp', kind: 'redirect' },
+      ]),
+    );
+    const LoginPage = await importLoginPage();
+    renderLoginPage(LoginPage, makeAnonymousAuth(vi.fn()));
+
+    const link = await screen.findByRole('link', { name: /continue with corp/i });
+    // The link points the browser at the gateway start endpoint, which issues
+    // a 302 to the upstream IdP. A plain anchor is enough — no JS navigation.
+    expect(link.getAttribute('href')).toBe('/api/auth/oauth/corp/start');
+  });
+
+  it('shows redirect buttons alongside the password form when both exist', async () => {
+    vi.stubGlobal(
+      'fetch',
+      mockFetchWithProviders([
+        { id: 'email-password', kind: 'password' },
+        { id: 'corp', kind: 'redirect' },
+      ]),
+    );
+    const LoginPage = await importLoginPage();
+    renderLoginPage(LoginPage, makeAnonymousAuth(vi.fn()));
+
+    await screen.findByRole('link', { name: /continue with corp/i });
+    // Password form is still present.
+    expect(screen.getByLabelText(/email/i)).toBeDefined();
+    expect(screen.getByLabelText(/password/i)).toBeDefined();
+  });
+
+  it('hides the password form when only redirect providers are configured', async () => {
+    vi.stubGlobal(
+      'fetch',
+      mockFetchWithProviders([{ id: 'corp', kind: 'redirect' }]),
+    );
+    const LoginPage = await importLoginPage();
+    renderLoginPage(LoginPage, makeAnonymousAuth(vi.fn()));
+
+    await screen.findByRole('link', { name: /continue with corp/i });
+    // No password form when there's no password provider.
+    expect(screen.queryByLabelText(/password/i)).toBeNull();
+  });
+
+  it('renders one link per redirect provider', async () => {
+    vi.stubGlobal(
+      'fetch',
+      mockFetchWithProviders([
+        { id: 'corp', kind: 'redirect' },
+        { id: 'google', kind: 'redirect' },
+      ]),
+    );
+    const LoginPage = await importLoginPage();
+    renderLoginPage(LoginPage, makeAnonymousAuth(vi.fn()));
+
+    const corp = await screen.findByRole('link', { name: /continue with corp/i });
+    const google = await screen.findByRole('link', { name: /continue with google/i });
+    expect(corp.getAttribute('href')).toBe('/api/auth/oauth/corp/start');
+    expect(google.getAttribute('href')).toBe('/api/auth/oauth/google/start');
   });
 });

@@ -11,14 +11,14 @@ import {
   MembershipsStore,
   SessionsStore,
   InvitesStore,
-  ProviderRegistry,
-  createEmailPasswordProvider,
+  loadIdentityProviders,
   createPasswordPolicy,
   createUserAuthService,
   createStubPDP,
   createTenantResolver,
   createRateLimiter,
   ensureBootstrapAdmin,
+  OAuthStateStore,
 } from '@kb-labs/gateway-auth';
 import type { IKVStore } from '@kb-labs/core-platform/adapters';
 import { loadGatewayConfig } from './config.js';
@@ -106,15 +106,18 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
       graceWindowMs,
     });
     const invites = new InvitesStore(docs);
-    const providers = new ProviderRegistry();
 
-    const emailPwd = createEmailPasswordProvider({
+    // Identity providers are loaded from config (ADR-0020, DD-3). An
+    // empty/absent `auth.providers` registers the built-in email-password
+    // door; configured providers (built-in `oidc` or third-party packages)
+    // load through the same factory path. Fail-fast on any load error.
+    const providers = await loadIdentityProviders(config.auth?.providers, {
       users,
       credentials,
       tenantId: bootstrapTenantId,
       bcryptCost,
+      logger,
     });
-    providers.register(emailPwd);
 
     const passwordPolicy = createPasswordPolicy({
       minLength: config.auth?.passwordPolicy?.minLength ?? 8,
@@ -185,6 +188,22 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
       ? parseInt(process.env.AUTH_LOGIN_RATE_LIMIT_PER_EMAIL, 10)
       : (config.auth?.rateLimit?.loginPerEmailPerMinute ?? 5);
 
+    // OAuth state store (ADR-0020, DD-5). Shares the same KV as the rate
+    // limiter via a namespaced key prefix. The redirect/OAuth routes register
+    // only when this is present.
+    const oauthState = new OAuthStateStore(kv);
+
+    // Step 4b shared-KV requirement: in a multi-process / HA deployment the
+    // callback may land on a different worker than the one that minted the
+    // state, so an in-memory KV silently breaks OAuth. Warn when a redirect
+    // provider is configured against a non-shared KV.
+    const hasRedirectProvider = providers.list().some((p) => p.kind === 'redirect');
+    if (hasRedirectProvider && !platform.getAdapter<IKVStore>('kvStore')) {
+      logger.warn(
+        'OAuth requires a shared kvStore (Redis) in multi-process/HA; in-memory state is per-process and callbacks may land on a different worker',
+      );
+    }
+
     userAuth = {
       userAuthService,
       users,
@@ -199,6 +218,7 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
       inviteTtlMs,
       rateLimiter,
       authRateLimit: { loginPerIpPerMinute, loginPerEmailPerMinute },
+      oauthState,
     };
 
     logger.info('User auth infrastructure initialised', {

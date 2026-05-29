@@ -23,14 +23,22 @@
  */
 
 import bcrypt from 'bcryptjs';
-import type { IIdentityProvider, IdentityResult } from '@kb-labs/core-contracts';
-import type { UsersStore} from '../users-store.js';
+import type {
+  IIdentityProvider,
+  IdentityResult,
+  IdentityUserPort,
+  IdentityCredentialPort,
+} from '@kb-labs/core-contracts';
 import { canonicalizeEmail } from '../users-store.js';
-import type { CredentialsStore } from '../credentials-store.js';
 
 export interface EmailPasswordProviderOptions {
-  users: UsersStore;
-  credentials: CredentialsStore;
+  /**
+   * Narrow read port over users (DD-2). The gateway's `UsersStore`
+   * satisfies this structurally; the provider only ever reads.
+   */
+  users: IdentityUserPort;
+  /** Narrow read port over credentials (DD-2). */
+  credentials: IdentityCredentialPort;
   /** The tenant this provider instance authenticates against. */
   tenantId: string;
   /** bcrypt cost used for the dummy compare timing. Should match the

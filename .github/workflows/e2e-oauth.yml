@@ -1,0 +1,358 @@
+name: E2E OAuth/OIDC Tests
+
+# OAuth/OIDC redirect-login acceptance (ADR-0020 Step 6 + identity-provider v2).
+#
+# Exercises the *real* authorization-code round-trip against a spec-compliant
+# upstream IdP (idp-stub): studio login → gateway /start (302) → IdP login form
+# → IdP 302 to callback with code+state → gateway verifies the RS256 ID token,
+# sets session cookies, 302 to '/'. Plus the security guards on /callback.
+#
+# Unlike the plain-http auth suite (:4001), OAuth needs a real TLS origin: the
+# gateway builds the redirect_uri from the request Host + https scheme
+# (https://kb-cloud.kblabs.ru/api/auth/oauth/corp/callback), and that URL is
+# followed by the *browser* — so the browser must reach the studio under that
+# exact host over TLS with Secure cookies actually working. The dedicated
+# studio-https container (:4443) provides it; both hostnames resolve to
+# 127.0.0.1 in Chromium via host-resolver-rules (playwright.oauth.config.ts).
+#
+# Triggers:
+# - Any PR that touches gateway auth, the OIDC IdP, Studio auth pages, or the
+#   OAuth E2E suite itself
+# - Manual dispatch
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - 'plugins/gateway/**'
+      - 'core/contracts/src/identity-provider.ts'
+      - 'studio/app/src/pages/**'
+      - 'e2e/oidc-idp/**'
+      - 'e2e/auth/**'
+      - 'e2e/docker-compose.oauth-ci.yml'
+      - '.github/workflows/e2e-oauth.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: e2e-oauth-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-oauth:
+    name: E2E OAuth/OIDC (redirect login)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      # Layer the OAuth override on top of the base + ci + auth-ci stack. The
+      # auth-ci layer declares the shared `studio-dist` volume and the bootstrap
+      # admin env; the oauth layer adds idp-stub + studio-https + oidc provider.
+      COMPOSE_FILE: e2e/docker-compose.yml:e2e/docker-compose.ci.yml:e2e/docker-compose.auth-ci.yml:e2e/docker-compose.oauth-ci.yml
+      COMPOSE_PROJECT_NAME: kb-e2e-oauth
+      # The browser reaches the studio at the public TLS host (mapped to
+      # 127.0.0.1:4443 via Chromium host-resolver-rules in the oauth config).
+      OAUTH_STUDIO_URL: https://kb-cloud.kblabs.ru
+      ADMIN_EMAIL:      admin@kb-cloud.test
+      ADMIN_PASSWORD:   AdminPass123!
+      TENANT_ID:        kb-cloud
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Build toolchain ────────────────────────────────────────────────────
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: tools/kb-create/go.mod
+          cache-dependency-path: |
+            tools/kb-create/go.sum
+            tools/kb-dev/go.sum
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Build Go tools (kb-devkit, kb-dev)
+        run: |
+          (cd tools/kb-devkit && CGO_ENABLED=0 go build -o kb-devkit . && chmod +x kb-devkit)
+          (cd tools/kb-dev    && CGO_ENABLED=0 go build -o kb-dev    . && chmod +x kb-dev)
+
+      # ── Install + build monorepo ────────────────────────────────────────────
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Restore kb-devkit build cache
+        uses: actions/cache@v4
+        with:
+          path: .kb/devkit/
+          key: devkit-build-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml', 'devkit.yaml', 'tsconfig*.json') }}-${{ github.sha }}
+          restore-keys: |
+            devkit-build-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml', 'devkit.yaml', 'tsconfig*.json') }}-
+            devkit-build-${{ runner.os }}-
+
+      - name: Build all packages
+        run: pnpm build
+
+      # ── Build Studio SPA ────────────────────────────────────────────────────
+
+      - name: Build Studio
+        run: pnpm --filter @kb-labs/studio-app build
+
+      # ── Install Playwright ──────────────────────────────────────────────────
+
+      - name: Install Playwright browsers
+        run: cd e2e/auth && pnpm exec playwright install chromium --with-deps
+
+      # ── Pack + publish to Verdaccio (same as e2e-auth.yml) ─────────────────
+
+      - name: Restore packed .tgz cache
+        id: tgz-cache
+        uses: actions/cache@v4
+        with:
+          path: e2e/packages/
+          key: e2e-tgz-${{ runner.os }}-${{ hashFiles('**/dist/**/*.js', '**/dist/**/*.d.ts', '**/package.json') }}
+          restore-keys: |
+            e2e-tgz-${{ runner.os }}-
+
+      - name: Pack @kb-labs/* packages
+        if: steps.tgz-cache.outputs.cache-hit != 'true'
+        run: bash e2e/scripts/pack-all.sh
+
+      - name: Verify packed .tgz cache
+        if: steps.tgz-cache.outputs.cache-hit == 'true'
+        run: |
+          count=$(ls e2e/packages/*.tgz 2>/dev/null | wc -l)
+          echo "Restored $count tarballs from cache"
+          if [ "$count" -lt 100 ]; then
+            echo "::warning::Cache looks incomplete, repacking"
+            bash e2e/scripts/pack-all.sh
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Cache Docker layers (platform)
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache-platform
+          key: buildx-platform-${{ hashFiles('e2e/platform/Dockerfile', 'e2e/platform/entrypoint.sh', 'tools/kb-create/**', 'tools/kb-dev/**') }}
+          restore-keys: buildx-platform-
+
+      - name: Cache Docker layers (publisher)
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache-publisher
+          key: buildx-publisher-${{ hashFiles('e2e/publisher/**', 'e2e/packages/**') }}
+          restore-keys: buildx-publisher-
+
+      - name: Build platform image
+        run: |
+          docker buildx build \
+            --cache-from type=local,src=/tmp/.buildx-cache-platform \
+            --cache-to   type=local,dest=/tmp/.buildx-cache-platform,mode=max \
+            --load \
+            -t kb-e2e-ci-platform:latest \
+            -f e2e/platform/Dockerfile .
+
+      - name: Build publisher image
+        run: |
+          docker buildx build \
+            --cache-from type=local,src=/tmp/.buildx-cache-publisher \
+            --cache-to   type=local,dest=/tmp/.buildx-cache-publisher,mode=max \
+            --load \
+            -t kb-e2e-ci-publisher:latest \
+            -f e2e/publisher/Dockerfile \
+            e2e/
+
+      # ── Build the upstream OIDC IdP image ──────────────────────────────────
+
+      - name: Cache Docker layers (idp-stub)
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache-idp
+          key: buildx-idp-${{ hashFiles('e2e/oidc-idp/Dockerfile', 'e2e/oidc-idp/src/**', 'e2e/oidc-idp/package.json') }}
+          restore-keys: buildx-idp-
+
+      - name: Build idp-stub image
+        run: |
+          docker buildx build \
+            --cache-from type=local,src=/tmp/.buildx-cache-idp \
+            --cache-to   type=local,dest=/tmp/.buildx-cache-idp,mode=max \
+            --load \
+            -t kb-e2e-oidc-idp:latest \
+            -f e2e/oidc-idp/Dockerfile \
+            e2e/oidc-idp
+
+      # ── Start Verdaccio + publish packages ─────────────────────────────────
+
+      - name: Restore Verdaccio storage cache
+        id: verdaccio-cache
+        uses: actions/cache@v4
+        with:
+          path: e2e/.verdaccio-storage
+          key: verdaccio-storage-${{ runner.os }}-${{ hashFiles('e2e/packages/**/*.tgz') }}
+
+      - name: Prepare Verdaccio storage permissions
+        run: |
+          mkdir -p e2e/.verdaccio-storage
+          sudo chown -R 10001:65533 e2e/.verdaccio-storage
+
+      - name: Start Verdaccio
+        run: docker compose up -d verdaccio
+
+      - name: Wait for Verdaccio
+        run: |
+          for i in $(seq 1 30); do
+            if docker compose ps verdaccio | grep -q "healthy"; then
+              echo "Verdaccio healthy after $((i * 2))s"; break
+            fi
+            sleep 2
+          done
+
+      - name: Publish packages to Verdaccio
+        if: steps.verdaccio-cache.outputs.cache-hit != 'true'
+        run: docker compose run --rm publisher
+
+      - name: Confirm Verdaccio warm cache
+        if: steps.verdaccio-cache.outputs.cache-hit == 'true'
+        run: |
+          tgz_count=$(ls e2e/packages/*.tgz 2>/dev/null | wc -l | tr -d ' ')
+          pkg_dirs=$(find e2e/.verdaccio-storage/@kb-labs -mindepth 1 -maxdepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
+          echo "Tarballs: $tgz_count  Verdaccio dirs: $pkg_dirs"
+          if [ "$pkg_dirs" -lt "$((tgz_count / 2))" ]; then
+            echo "::warning::Storage incomplete, re-publishing"
+            docker compose run --rm publisher
+          fi
+
+      # ── Populate the Studio dist volume ────────────────────────────────────
+
+      - name: Prepare Studio dist volume
+        run: |
+          docker volume create kb-e2e-oauth_studio-dist
+          docker run --rm \
+            -v "$(pwd)/studio/app/dist:/src:ro" \
+            -v "kb-e2e-oauth_studio-dist:/dest" \
+            busybox sh -c "cp -r /src/. /dest/"
+
+      # ── Start idp-stub → platform → studio-https ───────────────────────────
+
+      - name: Start upstream OIDC IdP
+        run: docker compose up -d --no-build idp-stub
+
+      - name: Wait for idp-stub to be healthy
+        run: |
+          for i in $(seq 1 24); do
+            if docker compose ps idp-stub | grep -q "healthy"; then
+              echo "idp-stub healthy after $((i * 5))s"; break
+            fi
+            if [ $i -eq 24 ]; then
+              echo "idp-stub failed to start — dumping logs"
+              docker compose logs idp-stub | tail -100
+              exit 1
+            fi
+            sleep 5
+          done
+
+      - name: Start platform
+        run: docker compose up -d --no-build platform
+
+      - name: Wait for gateway to be healthy
+        run: |
+          echo "Waiting for gateway (up to 3 min)..."
+          for i in $(seq 1 36); do
+            if curl -sf http://localhost:4000/health > /dev/null 2>&1; then
+              echo "Gateway ready after $((i * 5))s"; break
+            fi
+            if [ $i -eq 36 ]; then
+              echo "Gateway failed to start — dumping logs"
+              docker compose logs platform | tail -100
+              exit 1
+            fi
+            sleep 5
+          done
+
+      - name: Start studio-https proxy
+        run: docker compose up -d studio-https
+
+      - name: Wait for studio-https to be healthy
+        run: |
+          for i in $(seq 1 20); do
+            if docker compose ps studio-https | grep -q "healthy"; then
+              echo "studio-https healthy after $((i * 3))s"; break
+            fi
+            if [ $i -eq 20 ]; then
+              echo "studio-https failed to start — dumping logs"
+              docker compose logs studio-https | tail -50
+              exit 1
+            fi
+            sleep 3
+          done
+
+      # ── Run OAuth E2E suite ─────────────────────────────────────────────────
+
+      - name: Run OAuth E2E tests
+        run: cd e2e/auth && pnpm e2e:oauth
+        env:
+          OAUTH_STUDIO_URL: ${{ env.OAUTH_STUDIO_URL }}
+          ADMIN_EMAIL:      ${{ env.ADMIN_EMAIL }}
+          ADMIN_PASSWORD:   ${{ env.ADMIN_PASSWORD }}
+          TENANT_ID:        ${{ env.TENANT_ID }}
+          CI:               "true"
+
+      # ── Artifacts + summary ─────────────────────────────────────────────────
+
+      - name: Dump container logs
+        if: always()
+        run: |
+          mkdir -p /tmp/e2e-oauth-logs
+          docker compose logs --no-color platform     > /tmp/e2e-oauth-logs/platform.log     2>&1 || true
+          docker compose logs --no-color idp-stub      > /tmp/e2e-oauth-logs/idp-stub.log      2>&1 || true
+          docker compose logs --no-color studio-https  > /tmp/e2e-oauth-logs/studio-https.log  2>&1 || true
+          docker compose logs --no-color verdaccio     > /tmp/e2e-oauth-logs/verdaccio.log     2>&1 || true
+          docker compose ps > /tmp/e2e-oauth-logs/ps.txt 2>&1 || true
+
+      - name: Upload container logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-oauth-logs-${{ github.run_id }}
+          path: /tmp/e2e-oauth-logs/
+          retention-days: 14
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-oauth-${{ github.run_id }}
+          path: e2e/auth/report-oauth/
+          retention-days: 14
+
+      - name: Show test summary
+        if: always()
+        run: |
+          echo "### E2E OAuth/OIDC — redirect login" >> $GITHUB_STEP_SUMMARY
+          if [ -f e2e/auth/report-oauth/index.html ]; then
+            echo "Playwright report uploaded as artifact \`playwright-report-oauth-${{ github.run_id }}\`" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: docker compose down --volumes --remove-orphans
+
+      - name: Restore Verdaccio storage ownership for cache save
+        if: always()
+        run: |
+          if [ -d e2e/.verdaccio-storage ]; then
+            sudo chown -R "$(id -u):$(id -g)" e2e/.verdaccio-storage
+          fi

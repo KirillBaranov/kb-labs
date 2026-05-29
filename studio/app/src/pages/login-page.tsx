@@ -8,6 +8,11 @@
  * Behaviour:
  *   - On mount: GET /api/auth/providers to discover available providers.
  *   - For providers with kind='password': renders an email + password form.
+ *   - For providers with kind='redirect' (OAuth/OIDC): renders a
+ *     "Continue with {id}" link pointing at /api/auth/oauth/{id}/start.
+ *     The link is a plain anchor — the gateway start endpoint replies with a
+ *     302 to the upstream IdP, so a full-page navigation is exactly right
+ *     (no JS, no fetch — the browser must follow cross-site redirects).
  *   - Submit: calls auth.login(email, password) from the AuthContext.
  *   - Success: navigates to /.
  *   - Failure: shows "Invalid credentials" (single message — never reveals
@@ -90,6 +95,9 @@ export function LoginPage() {
   // haven't loaded yet (default to password form so the page isn't blank).
   const showPasswordForm =
     providers.length === 0 || providers.some((p) => p.kind === 'password');
+
+  // Redirect (OAuth/OIDC) providers render as "Continue with {id}" links.
+  const redirectProviders = providers.filter((p) => p.kind === 'redirect');
 
   return (
     <div
@@ -213,6 +221,50 @@ export function LoginPage() {
             </button>
           </form>
         )}
+
+        {/* Divider between password form and redirect providers */}
+        {showPasswordForm && redirectProviders.length > 0 && (
+          <div
+            aria-hidden="true"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.75rem',
+              margin: '1.25rem 0',
+              color: 'var(--text-secondary, #999)',
+              fontSize: '0.8rem',
+            }}
+          >
+            <span style={{ flex: 1, height: '1px', background: 'var(--border-primary, #e5e5e5)' }} />
+            or
+            <span style={{ flex: 1, height: '1px', background: 'var(--border-primary, #e5e5e5)' }} />
+          </div>
+        )}
+
+        {/* Redirect (OAuth/OIDC) providers */}
+        {redirectProviders.map((p) => (
+          <a
+            key={p.id}
+            href={`/api/auth/oauth/${p.id}/start`}
+            style={{
+              display: 'block',
+              width: '100%',
+              padding: '0.7rem',
+              marginBottom: '0.625rem',
+              borderRadius: '6px',
+              background: 'var(--bg-secondary, #f0f0f0)',
+              color: 'var(--text-primary, #333)',
+              fontWeight: 600,
+              fontSize: '0.95rem',
+              textAlign: 'center',
+              textDecoration: 'none',
+              border: '1px solid var(--border-primary, #d9d9d9)',
+              boxSizing: 'border-box',
+            }}
+          >
+            Continue with {p.id}
+          </a>
+        ))}
       </div>
     </div>
   );
