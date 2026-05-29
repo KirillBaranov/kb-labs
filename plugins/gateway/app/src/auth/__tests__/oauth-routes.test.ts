@@ -397,4 +397,20 @@ describe('OAuth per-IP rate-limit (Step 4b)', () => {
     }
     expect(got429).toBe(true);
   });
+
+  it('blocks start floods from one IP with 429', async () => {
+    const ctx = await buildApp({ oauthCallbackPerIpPerMinute: 3 });
+    // /start also mints state in KV + calls the provider — it must be gated
+    // per-IP too (Step 4b), independently of the callback bucket.
+    let got429 = false;
+    for (let i = 0; i < 6; i++) {
+      const r = await ctx.app.inject({
+        method: 'GET',
+        url: '/auth/oauth/corp/start',
+        headers: { host: HOST, 'x-forwarded-for': '8.8.8.8' },
+      });
+      if (r.statusCode === 429) { got429 = true; break; }
+    }
+    expect(got429).toBe(true);
+  });
 });

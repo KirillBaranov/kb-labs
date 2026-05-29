@@ -23,8 +23,8 @@
  *     match the tenant the state was minted for.
  *   - **Mix-up guard**: the provider is taken from the KV state, not the
  *     URL — and the URL :id must match it.
- *   - **Per-IP rate-limit**: callbacks are throttled before any KV / provider
- *     work to blunt floods.
+ *   - **Per-IP rate-limit**: both /start and /callback are throttled (via a
+ *     preHandler barrier) before any KV / provider work to blunt floods.
  *   - Secrets (code / id_token / session) are never logged.
  */
 
@@ -93,7 +93,31 @@ function refreshTtl(result: SessionResult): number {
 
 export function registerOAuthRoutes(app: FastifyInstance, deps: OAuthRouteDeps): void {
   const { userAuthService, providers, tenantResolver, oauthState, cookieOpts, rateLimiter } = deps;
-  const callbackPerIpPerMinute = deps.oauthCallbackPerIpPerMinute ?? 60;
+  const perIpPerMinute = deps.oauthCallbackPerIpPerMinute ?? 60;
+
+  /**
+   * Per-IP rate-limit barrier (Step 4b). Runs as a `preHandler` BEFORE any
+   * KV / provider work on both `/start` and `/callback`, so a flood from one
+   * source costs ~0 beyond the counter bump. `bucket` keeps the two routes on
+   * independent counters. A no-op when no limiter is wired (tests / dev).
+   */
+  function rateLimitGate(bucket: string) {
+    return async (request: FastifyRequest, reply: FastifyReply): Promise<void> => {
+      if (!rateLimiter) {
+        return;
+      }
+      const r = await rateLimiter.check(`rl:oauth:${bucket}:ip:${request.ip}`, {
+        max: perIpPerMinute,
+        windowMs: 60_000,
+      });
+      if (!r.allowed) {
+        reply.header('Retry-After', String(r.retryAfterSec));
+        await reply
+          .code(429)
+          .send({ error: 'Too Many Requests', message: 'Rate limit exceeded', retryAfterSec: r.retryAfterSec });
+      }
+    };
+  }
 
   /** Clear the state cookie and bounce to the login page with an error flag. */
   function failCallback(reply: FastifyReply): FastifyReply {
@@ -104,7 +128,10 @@ export function registerOAuthRoutes(app: FastifyInstance, deps: OAuthRouteDeps):
   // ── GET /auth/oauth/:id/start ─────────────────────────────────────────────────
   app.get<{ Params: { id: string }; Querystring: { returnTo?: string } }>(
     '/auth/oauth/:id/start',
-    { schema: { tags: ['Auth'], summary: 'Begin a redirect/OAuth login flow' } },
+    {
+      schema: { tags: ['Auth'], summary: 'Begin a redirect/OAuth login flow' },
+      preHandler: rateLimitGate('start'),
+    },
     async (request, reply) => {
       const { id } = request.params;
       const provider = providers.get(id);
@@ -138,21 +165,11 @@ export function registerOAuthRoutes(app: FastifyInstance, deps: OAuthRouteDeps):
   // ── GET /auth/oauth/:id/callback ───────────────────────────────────────────────
   app.get<{ Params: { id: string }; Querystring: { state?: string; code?: string; error?: string } }>(
     '/auth/oauth/:id/callback',
-    { schema: { tags: ['Auth'], summary: 'Complete a redirect/OAuth login flow' } },
+    {
+      schema: { tags: ['Auth'], summary: 'Complete a redirect/OAuth login flow' },
+      preHandler: rateLimitGate('cb'),
+    },
     async (request, reply) => {
-      // Per-IP rate-limit GATE first — before any KV / provider work, so a flood
-      // of callbacks from one source costs ~0 beyond the counter bump.
-      if (rateLimiter) {
-        const r = await rateLimiter.check(`rl:oauth:cb:ip:${request.ip}`, {
-          max: callbackPerIpPerMinute,
-          windowMs: 60_000,
-        });
-        if (!r.allowed) {
-          reply.header('Retry-After', String(r.retryAfterSec));
-          return reply.code(429).send({ error: 'Too Many Requests', message: 'Rate limit exceeded', retryAfterSec: r.retryAfterSec });
-        }
-      }
-
       const { id } = request.params;
       const { state, code, error } = request.query ?? {};
 
