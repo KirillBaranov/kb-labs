@@ -22,10 +22,10 @@
       "label": "Getting Started",
       "stalenessRisk": "low",
       "pages": [
-        { "slug": "index",       "type": "manual", "owners": [] },
+        { "slug": "index",       "type": "manual", "owners": ["sites/web/apps/docs/**"] },
         { "slug": "quick-start", "type": "hybrid", "owners": ["cli/**", "plugins/marketplace/**"] },
         { "slug": "installation","type": "hybrid", "owners": ["tools/kb-create/**", "cli/**"] },
-        { "slug": "privacy",     "type": "manual", "owners": [] }
+        { "slug": "privacy",     "type": "manual", "static": true }
       ]
     },
 
@@ -164,6 +164,19 @@
     },
 
     {
+      "id": "configuration",
+      "tier": 5,
+      "label": "Configuration",
+      "stalenessRisk": "medium",
+      "pages": [
+        { "slug": "configuration/kb-config",             "type": "hybrid", "owners": ["core/config/**"] },
+        { "slug": "configuration/dev-config",            "type": "hybrid", "owners": ["infra/devkit/**", "tools/kb-devkit/**"] },
+        { "slug": "configuration/profiles",              "type": "manual", "owners": ["core/config/**"] },
+        { "slug": "configuration/environment-variables", "type": "manual", "owners": ["core/config/**"] }
+      ]
+    },
+
+    {
       "id": "workflows",
       "tier": 6,
       "label": "Workflows",
@@ -203,7 +216,7 @@
       "stalenessRisk": "medium",
       "note": "Platform tools and daemons. Not individual plugins.",
       "pages": [
-        { "slug": "services/index",           "type": "manual", "owners": [] },
+        { "slug": "services/index",           "type": "manual", "owners": ["tools/**"] },
         { "slug": "services/cli",             "type": "hybrid", "owners": ["cli/**"] },
         { "slug": "services/kb-dev",          "type": "manual", "owners": ["tools/kb-dev/**"] },
         { "slug": "services/kb-devkit",       "type": "manual", "owners": ["infra/devkit/**", "tools/kb-devkit/**"] },
@@ -223,12 +236,12 @@
       "label": "Operations",
       "stalenessRisk": "low",
       "pages": [
-        { "slug": "operations/index",             "type": "manual", "owners": [] },
+        { "slug": "operations/index",             "type": "manual", "owners": ["tools/kb-deploy/**"] },
         { "slug": "operations/deployment",        "type": "manual", "owners": ["tools/kb-deploy/**"] },
         { "slug": "operations/observability",     "type": "manual", "owners": ["adapters/analytics-duckdb/**", "adapters/analytics-sqlite/**", "adapters/pino/**"] },
         { "slug": "operations/security",          "type": "manual", "owners": ["plugins/gateway/auth/**", "core/policy/**"] },
-        { "slug": "operations/incident-response", "type": "manual", "owners": [] },
-        { "slug": "operations/runbooks",          "type": "manual", "owners": [] }
+        { "slug": "operations/incident-response", "type": "manual", "static": true },
+        { "slug": "operations/runbooks",          "type": "manual", "static": true }
       ]
     },
 
@@ -255,7 +268,7 @@
       "stalenessRisk": "low",
       "note": "Marketing content. Plugins mentioned here as examples only — not as documentation targets.",
       "pages": [
-        { "slug": "use-cases/index",                   "type": "manual", "owners": [] },
+        { "slug": "use-cases/index",                   "type": "manual", "static": true },
         { "slug": "use-cases/scenario-ai-code-review", "type": "manual", "owners": ["plugins/review/**"] },
         { "slug": "use-cases/scenario-release-notes",  "type": "manual", "owners": ["plugins/release/**"] },
         { "slug": "use-cases/scenario-team-linter",    "type": "manual", "owners": ["plugins/quality/**"] },

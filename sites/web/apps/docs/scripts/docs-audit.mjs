@@ -220,14 +220,15 @@ function main() {
     }
   }
 
-  // ── 7. Owners: every non-auto page has at least one owner ─────────────────
+  // ── 7. Owners: every non-auto, non-static page has at least one owner ──────
   for (const [slug, page] of slugMap) {
     if (page.type === 'auto') continue;
+    if (page.static) continue;
     if (!page.owners || page.owners.length === 0) {
       items.push({
         target: `sitemap.config.json#${slug}`,
         severity: 'warning',
-        message: `Slug "${slug}" has no owners — PR-bot cannot determine when to flag it`,
+        message: `Slug "${slug}" has no owners — PR-bot cannot flag it. Add owners or set "static": true if it has no code dependency.`,
       });
     }
   }
