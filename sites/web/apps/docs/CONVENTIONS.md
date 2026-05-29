@@ -1,0 +1,249 @@
+# KB Labs Docs — Conventions
+
+Single source of truth for URL structure, file naming, component naming, and content rules.
+All tooling (CI, PR-bot, lint scripts) derives its rules from this document and `sitemap.config.json`.
+
+---
+
+## URL Structure
+
+```
+/[locale]/[section]/[page]
+ └─ max 2 levels below locale
+ └─ always kebab-case
+ └─ no trailing slash
+ └─ no .html, no .mdx extension in URL
+
+Examples:
+  ✅ /en/concepts/execution-model
+  ✅ /en/sdk/commands
+  ✅ /en/quick-start
+  ❌ /en/concepts/adapter-system/details   (3 levels — not allowed)
+  ❌ /en/SDK/Commands                      (not kebab-case)
+  ❌ /en/concepts/execution_model          (underscore — not allowed)
+```
+
+Section index page lives at the section URL, not `/[section]/index`:
+```
+  ✅ /en/concepts           (shows concepts/index.mdx)
+  ❌ /en/concepts/index     (never exposed as URL)
+```
+
+---
+
+## File Naming
+
+```
+content/
+└── en/
+    ├── [page].mdx                   ← top-level page
+    ├── [section]/
+    │   ├── index.mdx                ← section root (URL: /[section])
+    │   ├── [page].mdx               ← section page (URL: /[section]/[page])
+    │   └── _meta.json               ← sidebar order + section title
+    └── ...
+```
+
+Rules:
+- All filenames: **kebab-case**, lowercase, no spaces, no underscores
+- Section root: always `index.mdx` (never `overview.mdx`, never `[section-name].mdx`)
+- Every directory that appears in the sidebar **must** have `index.mdx`
+- Every directory **must** have `_meta.json` with at least `{ "title": "...", "order": N }`
+- Max directory depth: **2 levels** inside `content/en/`
+
+```
+  ✅ content/en/concepts/index.mdx
+  ✅ content/en/concepts/execution-model.mdx
+  ✅ content/en/sdk/plugin-api/index.mdx        (sdk has one allowed subsection level)
+  ❌ content/en/concepts/Overview.mdx            (not kebab-case)
+  ❌ content/en/concepts/execution_model.mdx     (underscore)
+  ❌ content/en/concepts/overview.mdx            (use index.mdx instead)
+```
+
+---
+
+## Frontmatter Schema
+
+Every `.mdx` file must have a frontmatter block. Only these fields are allowed:
+
+```yaml
+---
+title: string          # required — shown in sidebar and <title>
+description: string    # optional — shown in meta and section cards
+updatedAt: YYYY-MM-DD  # optional — shown as "Last updated"
+order: number          # optional — overrides _meta.json ordering for this page
+hidden: boolean        # optional — hides from sidebar (still accessible via URL)
+---
+```
+
+Rules:
+- `title` is **required** on every page
+- No other frontmatter fields — add to this list if new fields are needed
+- `updatedAt` format: `YYYY-MM-DD` only
+
+---
+
+## Section Registry
+
+Canonical list of sections. Slugs are locked — rename only with a redirect in place.
+
+| Tier | Slug            | Title           | Type     | Notes |
+|------|-----------------|-----------------|----------|-------|
+| 0    | (root)          | —               | manual   | quick-start, installation, privacy |
+| 1    | concepts        | Concepts        | manual   | Architecture and system design |
+| 2    | sdk             | SDK             | hybrid   | Plugin SDK + Platform Client (merged) |
+| 3    | guides          | Guides          | manual   | Step-by-step tutorials |
+| 4    | plugins         | Plugin System   | hybrid   | System docs, not individual plugins |
+| 5    | adapters        | Adapters        | hybrid   | Interfaces auto-generated |
+| 6    | workflows       | Workflows       | hybrid   | |
+| 7    | gateway         | Gateway         | manual   | |
+| 8    | services        | Services        | manual   | Platform tools and daemons |
+| 9    | operations      | Operations      | manual   | |
+| 10   | reference       | Reference       | auto     | CLI, REST API, SDK API — never edit by hand |
+| 11   | use-cases       | Use Cases       | manual   | Marketing content |
+
+Adding a new section requires:
+1. Entry in this table
+2. Entry in `sitemap.config.json`
+3. `content/en/[section]/index.mdx` with frontmatter
+4. `content/en/[section]/_meta.json`
+
+Removing a section requires a redirect for all pages in that section.
+
+---
+
+## SDK Section (merged)
+
+`product-sdk` is merged into `sdk`. Two subsections by audience:
+
+```
+sdk/
+├── index.mdx                  → /sdk (overview, links to both audiences)
+├── _meta.json
+├── plugin-api/                → /sdk/plugin-api/...  (plugin authors)
+│   ├── index.mdx
+│   ├── commands.mdx
+│   ├── routes.mdx
+│   ├── hooks.mdx
+│   ├── handler-context.mdx
+│   ├── testing.mdx
+│   └── _meta.json
+└── platform-client/           → /sdk/platform-client/...  (product builders)
+    ├── index.mdx
+    ├── quickstart.mdx
+    ├── commands.mdx
+    ├── workflows.mdx
+    ├── authentication.mdx
+    ├── streaming.mdx
+    ├── errors.mdx
+    └── _meta.json
+```
+
+---
+
+## Content Types
+
+Defined in `sitemap.config.json`. Each page has one of:
+
+| Type   | Rule |
+|--------|------|
+| `auto` | Generated by CI — never commit manual edits to these files |
+| `hybrid` | Structure manual; code examples must match actual SDK/API |
+| `manual` | Fully hand-written |
+
+Auto-generated pages live in `reference/` and `adapters/interfaces/`. They are overwritten on every CI run.
+
+---
+
+## Component Naming
+
+All React components live in `components/`.
+
+| Pattern | When |
+|---------|------|
+| `Docs[Name].tsx` | Layout or structural components specific to the docs site |
+| `[Name].tsx` | Generic/reusable components |
+
+Rules:
+- One component per file
+- Co-locate CSS: `[Name].tsx` + `[Name].module.css`
+- Named exports only — no `export default`
+- Filename matches export name exactly: `DocsLayout.tsx` exports `DocsLayout`
+
+```
+  ✅ components/DocsLayout.tsx       → export function DocsLayout
+  ✅ components/DocsSidebar.tsx      → export function DocsSidebar
+  ✅ components/CodeBlock.tsx        → export function CodeBlock
+  ❌ components/docs-layout.tsx      (not PascalCase)
+  ❌ components/DocsLayout/index.tsx (use flat files, not dirs)
+```
+
+---
+
+## Navigation (_meta.json)
+
+Every section directory must have `_meta.json`:
+
+```json
+{
+  "title": "Concepts",
+  "order": 10
+}
+```
+
+- `title`: display name in sidebar (may differ from directory slug)
+- `order`: numeric, determines sidebar position; gaps of 10 allow insertion
+- No other fields
+
+Page ordering: use frontmatter `order` field if different from alphabetical default.
+
+---
+
+## Edit-on-GitHub URL
+
+Computed automatically from resolved file path:
+- `[section]/[page].mdx` → `content/en/[section]/[page].mdx`
+- `[section]/index.mdx` → `content/en/[section]/index.mdx`
+
+Never hard-code GitHub URLs in components.
+
+---
+
+## Validation (CI)
+
+The `doc-audit` task (runs via kb-devkit) checks:
+
+1. **Coverage** — every slug in `sitemap.config.json` has a corresponding file
+2. **Orphans** — every file in `content/en/` has an entry in `sitemap.config.json`
+3. **Frontmatter** — every `.mdx` has required `title` field
+4. **Naming** — all filenames are kebab-case, no uppercase, no underscore
+5. **Index** — every directory in `content/en/` has `index.mdx` and `_meta.json`
+6. **Depth** — no file is more than 2 directories deep inside `content/en/`
+7. **Auto pages** — files marked `type: "auto"` in sitemap are not committed manually
+
+Run locally: `pnpm kb docs audit` (once implemented)
+
+---
+
+## Staleness Tracking (PR-bot)
+
+When a PR changes files matching an `owners` glob in `sitemap.config.json`,
+a review thread is posted on the PR for each affected doc page.
+
+The thread must be resolved before merging. Resolution options:
+- Updated the doc page
+- Verified no update needed (leave a comment why)
+
+---
+
+## What Does NOT Live in Docs
+
+Individual plugins and adapters document themselves (README + marketplace manifest).
+The docs site covers the **platform system** — how to build with it, not what each entity does.
+
+```
+  ✅ docs: "How to write a plugin"
+  ✅ docs: "ICache interface reference"
+  ❌ docs: "What the ClickUp plugin does"  → lives in plugins/clickup/README.md
+  ❌ docs: "How the OpenAI adapter works"  → lives in adapters/openai/README.md
+```

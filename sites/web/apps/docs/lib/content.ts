@@ -57,13 +57,13 @@ async function loadPage(filePath: string) {
 export async function getDocPage(locale: string, slugParts: string[]) {
   const localePath = resolveFilePath(locale, slugParts);
   if (localePath) {
-    return { ...(await loadPage(localePath)), isFallback: false };
+    return { ...(await loadPage(localePath)), isFallback: false, isIndex: localePath.endsWith('/index.mdx') };
   }
 
   if (locale !== 'en') {
     const fallbackPath = resolveFilePath('en', slugParts);
     if (fallbackPath) {
-      return { ...(await loadPage(fallbackPath)), isFallback: true };
+      return { ...(await loadPage(fallbackPath)), isFallback: true, isIndex: fallbackPath.endsWith('/index.mdx') };
     }
   }
 
