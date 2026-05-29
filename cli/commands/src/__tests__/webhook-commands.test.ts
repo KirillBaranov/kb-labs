@@ -141,7 +141,7 @@ describe('kb webhook provision', () => {
       instance: 'prod',
     });
 
-    const call = mockFetch.mock.calls[0];
+    const call = mockFetch.mock.calls[0]!;
     const body = JSON.parse(call[1].body as string);
     expect(body.instanceId).toBe('prod');
   });
@@ -248,7 +248,7 @@ describe('kb webhook list', () => {
     const captured: Captured = { errors: [], output: [], json: [] };
     await webhookList.run(makeCtx(captured), [], { plugin: '@kb-labs/rollout' });
 
-    const url = mockFetch.mock.calls[0][0] as string;
+    const url = mockFetch.mock.calls[0]![0] as string;
     expect(url).toContain('pluginId=');
     expect(decodeURIComponent(url)).toContain('@kb-labs/rollout');
   });
@@ -287,7 +287,7 @@ describe('kb webhook list', () => {
 
     await webhookList.run(makeCtx({ errors: [], output: [], json: [] }), [], {});
 
-    const opts = mockFetch.mock.calls[0][1] as RequestInit;
+    const opts = mockFetch.mock.calls[0]![1] as RequestInit;
     expect((opts.headers as Record<string, string>).Authorization).toBe('Bearer tok_test');
   });
 });
@@ -305,7 +305,7 @@ describe('kb webhook revoke', () => {
     });
 
     expect(exitCode).toBe(0);
-    expect(mockFetch.mock.calls[0][1].method).toBe('DELETE');
+    expect(mockFetch.mock.calls[0]![1].method).toBe('DELETE');
     expect(captured.output.join('')).toContain('@kb-labs/rollout/alert');
   });
 
@@ -319,7 +319,7 @@ describe('kb webhook revoke', () => {
       instance: 'prod',
     });
 
-    const url = mockFetch.mock.calls[0][0] as string;
+    const url = mockFetch.mock.calls[0]![0] as string;
     expect(decodeURIComponent(url)).toContain('@kb-labs/rollout');
     expect(decodeURIComponent(url)).toContain('prod');
     expect(captured.output.join('')).toContain('prod');

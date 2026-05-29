@@ -42,6 +42,7 @@ import {
   createPressurePreHandler,
   createPressureOnResponse,
 } from './pressure/index.js';
+import { globalDispatcher } from './hosts/dispatcher.js';
 import { registerWebhookAdminRoutes } from './webhook/admin-routes.js';
 import { registerWebhookRoutes, type WebhookManifestEntry } from './webhook/router.js';
 
