@@ -37,6 +37,18 @@ async function registerWithNamespace(
   namespaceId: string,
   name: string,
 ) {
+  // Login as bootstrap admin to get session cookies for /auth/register.
+  const loginRes = await request.post(`${GATEWAY}/auth/login`, {
+    data: {
+      email: process.env['GATEWAY_BOOTSTRAP_ADMIN_EMAIL'] ?? 'admin@e2e.test',
+      password: process.env['GATEWAY_BOOTSTRAP_ADMIN_PASSWORD'] ?? 'E2eBootstrapPass1!',
+      tenantId: process.env['GATEWAY_BOOTSTRAP_TENANT_ID'] ?? 'kblabs-cloud',
+    },
+  });
+  if (!loginRes.ok()) {
+    throw new Error(`admin login failed: ${loginRes.status()} ${await loginRes.text()}`);
+  }
+
   const res = await request.post(`${GATEWAY}/auth/register`, {
     data: { name, namespaceId, capabilities: [] },
   });

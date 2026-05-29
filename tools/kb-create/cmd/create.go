@@ -169,6 +169,12 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		Plugins:     sel.Plugins,
 		DemoMode:    sel.DemoMode,
 	}
+	// Wire adapter bindings from manifest adapterConfig (e.g. documentDatabase
+	// for environments where user auth is a core feature, not an optional overlay).
+	if ac := m.AdapterConfig; ac != nil {
+		scaffoldOpts.DocumentDatabase = ac.DocumentDatabase
+		scaffoldOpts.KVStore = ac.KVStore
+	}
 	// LLM requires explicit user consent. Sources (in priority order):
 	//   1. --llm flag (silent install)
 	//   2. Wizard LLM toggle (sel.LLMEnabled set by wizard)

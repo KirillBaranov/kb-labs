@@ -1,6 +1,8 @@
 import * as React from 'react';
 import { createBrowserRouter, Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { useAuth } from './providers/auth-provider';
+// Use real auth provider (ADR-0020); old providers/auth-provider kept for migration.
+import { useAuth } from './auth/auth-provider';
+import { RequireAuth } from './auth/guards';
 import { useRegistryV2 } from './providers/registry-v2-provider';
 import { CommandPaletteProvider } from './providers/command-palette-provider';
 import { useNotifications } from '@kb-labs/studio-data-client';
@@ -8,6 +10,11 @@ import { useDataSources } from './providers/data-sources-provider';
 import { HealthBanner } from './components/health-banner';
 import { NotFoundPage } from './pages/not-found-page';
 import { LoginPage } from './pages/login-page';
+import { ActivatePage } from './pages/activate-page';
+import { SessionsPage } from './pages/sessions-page';
+import { ChangePasswordPage } from './pages/change-password-page';
+import { AdminUsersPage } from './pages/admin-users-page';
+import { AdminInvitesPage } from './pages/admin-invites-page';
 import { PluginPageV2 } from './routes/plugin-page-v2';
 import { PageTransition } from './components/page-transition';
 import { createStudioLogger } from './utils/logger';
@@ -25,7 +32,7 @@ import { pluginsRoutes, pluginsNavigation } from './modules/plugins/routes';
 import { analyticsRoutes, analyticsNavigation } from './modules/analytics/routes';
 import { observabilityRoutes, observabilityNavigation } from './modules/observability/routes';
 import { settingsRoutes, settingsNavigation } from './modules/settings/routes';
-import { authRoutes } from './modules/auth/routes';
+// authRoutes removed — the old fake role-select login was replaced by the real LoginPage above.
 
 type PluginNavRoute = {
   key: string;
@@ -84,11 +91,11 @@ function LayoutContent() {
     clearNotification,
   } = useNotifications(sources.observability);
 
-  const handleLogout = React.useCallback(() => {
+  const handleLogout = React.useCallback(async () => {
     logger.info('User logout initiated');
-    localStorage.removeItem('studio-user-role');
+    await auth.logout();
     navigate('/login');
-  }, [logger, navigate]);
+  }, [auth, logger, navigate]);
 
   const hasData = registry.plugins.length > 0;
 
@@ -161,8 +168,8 @@ function LayoutContent() {
       <KBPageLayout
         headerProps={{
           LinkComponent: Link as React.ComponentType<{ to: string; children: React.ReactNode; className?: string }>,
-          onLogout: handleLogout,
-          userName: auth.role,
+          onLogout: () => { void handleLogout(); },
+          userName: auth.status === 'authenticated' ? auth.user.email : '',
           // Notifications
           notifications,
           unreadNotificationsCount: unreadCount,
@@ -202,7 +209,7 @@ function LayoutContent() {
             }
             rightItems={
               <>
-                <StatusBarPresets.User email={auth.role} onClick={() => navigate('/settings')} />
+                <StatusBarPresets.User email={auth.status === 'authenticated' ? auth.user.email : ''} onClick={() => navigate('/settings')} />
                 <StatusBarPresets.Version version="0.1.0" />
                 <StatusBarPresets.Help onClick={() => window.open('https://github.com/kb-labs', '_blank')} />
               </>
@@ -230,14 +237,20 @@ function Layout() {
 }
 
 export const router = createBrowserRouter([
+  // Public routes (no auth required)
   {
     path: '/login',
     element: <LoginPage />,
     errorElement: <ErrorBoundary />,
   },
-  ...authRoutes,
   {
-    element: <Layout />,
+    path: '/activate/:token',
+    element: <ActivatePage />,
+    errorElement: <ErrorBoundary />,
+  },
+  // Protected routes (RequireAuth gate before Layout renders)
+  {
+    element: <RequireAuth><Layout /></RequireAuth>,
     errorElement: <ErrorBoundary />,
     children: [
       ...dashboardRoutes,
@@ -245,6 +258,28 @@ export const router = createBrowserRouter([
       ...analyticsRoutes,
       ...observabilityRoutes,
       ...settingsRoutes,
+      // Account pages
+      {
+        path: '/account/sessions',
+        element: <SessionsPage />,
+        errorElement: <ErrorBoundary />,
+      },
+      {
+        path: '/account/password',
+        element: <ChangePasswordPage />,
+        errorElement: <ErrorBoundary />,
+      },
+      // Admin pages (permission checks are inside the components)
+      {
+        path: '/admin/users',
+        element: <AdminUsersPage />,
+        errorElement: <ErrorBoundary />,
+      },
+      {
+        path: '/admin/invites',
+        element: <AdminInvitesPage />,
+        errorElement: <ErrorBoundary />,
+      },
       {
         // V2 plugin pages (Module Federation remotes) — inside layout
         path: '/p/*',

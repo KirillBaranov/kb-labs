@@ -19,7 +19,8 @@
  */
 
 import Database from 'better-sqlite3';
-import { isAbsolute, join } from 'node:path';
+import { mkdirSync } from 'node:fs';
+import { dirname, isAbsolute, join } from 'node:path';
 
 interface Entry {
   handle: Database.Database;
@@ -63,6 +64,11 @@ export function acquireHandle(opts: AcquireOpts): SharedHandle {
   if (existing) {
     existing.refcount++;
     return wrap(key, existing);
+  }
+
+  // Ensure parent directory exists — better-sqlite3 does not create it.
+  if (!opts.readonly) {
+    mkdirSync(dirname(key), { recursive: true });
   }
 
   const handle = new Database(key, { readonly: opts.readonly ?? false });

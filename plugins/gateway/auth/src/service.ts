@@ -80,6 +80,7 @@ export class AuthService {
           namespaceId: record.namespaceId,
           tier: record.tier,
           type: 'machine',
+          permissions: record.permissions ?? ['host:connect'],
         },
         this.jwtConfig,
       ),
@@ -102,15 +103,21 @@ export class AuthService {
     const stored = await consumeRefreshToken(this.cache, refreshToken);
     if (!stored) {return null;}
 
-    // Reload client record to get current tier/namespace
-    // We need to scan by hostId — store clientId → hostId mapping for lookup
-    // For now: resolve via a secondary key written at registration
+    // Reload client record to get current permissions + tier.
+    // getClientByHostId does a two-key lookup: hostIndex → clientId → record.
     const hostId = stored.hostId;
+    const record = await getClientByHostId(this.cache, hostId);
 
     // Issue new pair
     const [{ token: accessToken, expiresIn }, newRefreshToken] = await Promise.all([
       signAccessToken(
-        { hostId, namespaceId: stored.namespaceId, tier: 'free', type: 'machine' },
+        {
+          hostId,
+          namespaceId: stored.namespaceId,
+          tier: record?.tier ?? 'free',
+          type: 'machine',
+          permissions: record?.permissions ?? ['host:connect'],
+        },
         this.jwtConfig,
       ),
       signRefreshToken(hostId, this.jwtConfig),
@@ -140,7 +147,7 @@ export class AuthService {
       userId: payload.sub,
       namespaceId: payload.namespaceId,
       tier: payload.tier,
-      permissions: ['host:connect'],
+      permissions: payload.permissions ?? ['host:connect'],
     };
   }
 }

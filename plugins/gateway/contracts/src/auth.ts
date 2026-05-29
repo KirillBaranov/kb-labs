@@ -62,6 +62,8 @@ export const JwtPayloadSchema = z.object({
   namespaceId: z.string(),
   tier: z.enum(['free', 'pro', 'enterprise']),
   type: TokenTypeSchema,
+  /** Permissions embedded in the token at issuance time. */
+  permissions: z.array(z.string()).optional(),
   iat: z.number(),
   exp: z.number(),
 });

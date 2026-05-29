@@ -46,16 +46,32 @@ type Binary struct {
 	LocalPath   string `json:"localPath,omitempty"`    // absolute path to local binary for dev mode
 }
 
+// AdapterConfig holds optional adapter bindings that kb-create writes into the
+// generated platform config (kb.config.jsonc). Use this to configure adapters
+// that are required for the platform to function correctly in a given environment
+// (e.g. documentDatabase for user auth in E2E).
+type AdapterConfig struct {
+	// DocumentDatabase wires the persistent document store (e.g. "@kb-labs/adapters-sqlite").
+	// Required for user auth (ADR-0020) and other features that need durable storage.
+	DocumentDatabase string `json:"documentDatabase,omitempty"`
+	// KVStore wires the key-value store (e.g. "@kb-labs/adapters-sqlite/kv").
+	// Used for sessions, rate limiting, and other short-lived key-value data.
+	KVStore string `json:"kvStore,omitempty"`
+}
+
 // Manifest describes all installable parts of the KB Labs platform.
 type Manifest struct {
-	Version     string            `json:"version"`
-	RegistryURL string            `json:"registryUrl"`
-	Env         map[string]string `json:"env,omitempty"` // extra env vars passed to the package manager
-	Core        []Package         `json:"core"`
-	Adapters    []Package         `json:"adapters,omitempty"`
-	Services    []Component       `json:"services"`
-	Plugins     []Component       `json:"plugins"`
-	Binaries    []Binary          `json:"binaries,omitempty"`
+	Version      string            `json:"version"`
+	RegistryURL  string            `json:"registryUrl"`
+	Env          map[string]string `json:"env,omitempty"` // extra env vars passed to the package manager
+	Core         []Package         `json:"core"`
+	Adapters     []Package         `json:"adapters,omitempty"`
+	Services     []Component       `json:"services"`
+	Plugins      []Component       `json:"plugins"`
+	Binaries     []Binary          `json:"binaries,omitempty"`
+	// AdapterConfig specifies adapter bindings to include in the generated
+	// platform config. Optional — omit to use platform defaults.
+	AdapterConfig *AdapterConfig `json:"adapterConfig,omitempty"`
 }
 
 // CorePackageNames returns plain package name strings from Core.

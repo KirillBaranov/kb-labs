@@ -19,17 +19,21 @@
     "dev": "tsup --watch",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "test": "vitest run -c ../../vitest.config.ts",
-    "test:watch": "vitest -c ../../vitest.config.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@kb-labs/core-contracts": "workspace:*",
     "@kb-labs/core-platform": "workspace:*",
     "@kb-labs/gateway-contracts": "workspace:*",
+    "bcryptjs": "^2.4.3",
     "jose": "^5.9.6"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
+    "@kb-labs/sdk": "workspace:*",
+    "@types/bcryptjs": "^2.4.6",
     "@types/node": "^24.3.3",
     "tsup": "^8.5.0",
     "typescript": "^5",

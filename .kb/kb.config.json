@@ -17,9 +17,18 @@
       "cache": "@kb-labs/adapters-redis",
       "eventBus": "@kb-labs/adapters-eventbus-cache",
       "workspace": "@kb-labs/adapters-workspace-worktree",
-      "environment": "@kb-labs/adapters-environment-docker"
+      "environment": "@kb-labs/adapters-environment-docker",
+      "serviceTransport": "@kb-labs/adapters-service-transport-http"
     },
     "adapterOptions": {
+      "serviceTransport": {
+        "services": {
+          "rest":        { "url": "http://127.0.0.1:5050" },
+          "workflow":    { "url": "http://127.0.0.1:7778" },
+          "marketplace": { "url": "http://127.0.0.1:5070" },
+          "marketplace-registry": { "url": "http://127.0.0.1:5071" }
+        }
+      },
       "voyage-ai-embeddings": {
         "model": "voyage-code-3",
         "apiKey": "${VOYAGE_API_KEY}"
