@@ -1,0 +1,190 @@
+# KB Labs platform — declarative deploy to the single VM via `kb-deploy apply`.
+#
+# This is the dogfood of ADR-0014 (TD-13): build the monorepo, publish every
+# @kb-labs/* package to a private Verdaccio running ON the target VM, then run
+# `kb-deploy apply` which installs + swaps + restarts the four core daemons over
+# SSH and gates each on its health probe.
+#
+# Decoupled from public npm release: packages are served from the VM's own
+# Verdaccio (@kb-labs/* local-only, everything else proxies npmjs), so a deploy
+# never depends on what is published to registry.npmjs.org.
+#
+# Manual trigger only. dry_run defaults to true — flip to false to actually
+# mutate the host.
+name: Deploy Platform (apply)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Platform package version to deploy (must exist in the build).
+        default: "2.94.0"
+        type: string
+      dry_run:
+        description: Compute the plan but do not mutate the host.
+        default: true
+        type: boolean
+
+concurrency:
+  group: deploy-platform
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # GitHub environment gate — add required reviewers in repo settings to make
+    # a real (dry_run=false) apply require approval.
+    environment: production
+    env:
+      MANIFEST: .kb/deploy/deploy.yaml
+      PLATFORM_PATH: /home/deploy/kb-platform
+      REGISTRY: http://127.0.0.1:4873
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Toolchain ──────────────────────────────────────────────────────────
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache-dependency-path: |
+            tools/kb-deploy/go.sum
+            tools/kb-create/go.sum
+            tools/kb-dev/go.sum
+            tools/kb-devkit/go.sum
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      # ── Build monorepo (topological) ─────────────────────────────────────────
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build kb-devkit
+        run: make build
+        working-directory: tools/kb-devkit
+
+      - name: Build all packages
+        run: ./tools/kb-devkit/kb-devkit run build
+
+      # ── Build Go binaries ────────────────────────────────────────────────────
+      # Runner is linux/amd64 == target arch, so a native build is also the host
+      # binary. kb-deploy runs on the runner; kb-create + kb-dev run on the VM.
+      - name: Build kb-deploy / kb-create / kb-dev
+        run: |
+          make -C tools/kb-deploy build
+          make -C tools/kb-create build
+          make -C tools/kb-dev    build
+
+      # ── Pack every publishable @kb-labs/* package ────────────────────────────
+      - name: Pack packages
+        run: bash e2e/scripts/pack-all.sh
+
+      # ── SSH key for rsync/ssh helper steps (apply reads SSH_KEY env directly) ─
+      - name: Write SSH key
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy.key
+          chmod 600 ~/.ssh/deploy.key
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      # ── Bootstrap the host: kb-create + kb-dev binaries, Verdaccio ───────────
+      # Idempotent: re-running just overwrites binaries and leaves Verdaccio up.
+      - name: Bootstrap host
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          SSHOPTS="-i $HOME/.ssh/deploy.key -o StrictHostKeyChecking=accept-new"
+          scp $SSHOPTS tools/kb-create/kb-create tools/kb-dev/kb-dev "$SSH_USER@$SSH_HOST:/tmp/"
+          ssh $SSHOPTS "$SSH_USER@$SSH_HOST" 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          sudo install -m 0755 /tmp/kb-create /usr/local/bin/kb-create
+          sudo install -m 0755 /tmp/kb-dev    /usr/local/bin/kb-dev
+          rm -f /tmp/kb-create /tmp/kb-dev
+          command -v node >/dev/null || { echo "::error::node missing on host"; exit 1; }
+          if ! curl -sf -m 5 http://127.0.0.1:4873/-/ping >/dev/null; then
+            echo "Starting Verdaccio…"
+            docker rm -f kb-verdaccio 2>/dev/null || true
+            docker run -d --name kb-verdaccio --restart unless-stopped \
+              -p 127.0.0.1:4873:4873 verdaccio/verdaccio:latest
+            for i in $(seq 1 30); do
+              curl -sf -m 5 http://127.0.0.1:4873/-/ping >/dev/null && break || sleep 2
+            done
+          fi
+          echo "kb-create: $(kb-create --version 2>&1 | head -1)"
+          echo "kb-dev:    $(kb-dev --version 2>&1 | head -1)"
+          REMOTE
+
+      # ── Publish all tarballs to the VM's Verdaccio (@kb-labs/* local-only) ───
+      - name: Publish packages to Verdaccio
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          SSHOPTS="-i $HOME/.ssh/deploy.key -o StrictHostKeyChecking=accept-new"
+          rsync -az --delete -e "ssh $SSHOPTS" e2e/packages/ "$SSH_USER@$SSH_HOST:~/kb-packages/"
+          ssh $SSHOPTS "$SSH_USER@$SSH_HOST" 'bash -s' <<'REMOTE'
+          set -uo pipefail
+          published=0; skipped=0; failed=0
+          for f in ~/kb-packages/*.tgz; do
+            out=$(npm publish "$f" --registry http://127.0.0.1:4873 2>&1) && { published=$((published+1)); continue; }
+            # Already published (409 / EPUBLISHCONFLICT) is a benign idempotent skip.
+            if echo "$out" | grep -qiE 'already|conflict|409|cannot publish over'; then
+              skipped=$((skipped+1))
+            else
+              failed=$((failed+1)); echo "FAILED $f: $out"
+            fi
+          done
+          echo "publish: $published published, $skipped skipped, $failed failed"
+          test "$failed" -eq 0
+          REMOTE
+
+      # ── Apply ────────────────────────────────────────────────────────────────
+      - name: kb-deploy apply
+        env:
+          # SSH coordinates (deploy.yaml interpolates ${SSH_HOST}/${SSH_USER} and
+          # reads the PEM from SSH_KEY via key_env).
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          # ${secrets.X} in deploy.yaml resolve against these env vars (env backend).
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_PROXY_URL: ${{ secrets.OPENAI_PROXY_URL }}
+          GATEWAY_JWT_SECRET: ${{ secrets.GATEWAY_JWT_SECRET }}
+          GATEWAY_INTERNAL_SECRET: ${{ secrets.GATEWAY_INTERNAL_SECRET }}
+        run: |
+          FLAGS="--config $MANIFEST --yes"
+          if [ "${{ inputs.dry_run }}" = "true" ]; then FLAGS="$FLAGS --dry-run"; fi
+          ./tools/kb-deploy/kb-deploy apply $FLAGS
+
+      # ── Smoke test the daemons (skipped on dry-run) ──────────────────────────
+      - name: Smoke /health
+        if: ${{ inputs.dry_run == false }}
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          SSHOPTS="-i $HOME/.ssh/deploy.key -o StrictHostKeyChecking=accept-new"
+          ssh $SSHOPTS "$SSH_USER@$SSH_HOST" 'bash -s' <<'REMOTE'
+          set -uo pipefail
+          check() { curl -sf -m 10 "$2" >/dev/null && echo "$1: OK" || { echo "::error::$1 health failed ($2)"; return 1; }; }
+          rc=0
+          check state    http://127.0.0.1:7777/health || rc=1
+          check rest     http://127.0.0.1:5050/api/v1/health || rc=1
+          check workflow http://127.0.0.1:7778/health || rc=1
+          check gateway  http://127.0.0.1:4000/health || rc=1
+          exit $rc
+          REMOTE
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy.key
