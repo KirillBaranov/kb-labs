@@ -282,6 +282,17 @@ jobs:
             sleep 5
           done
 
+      - name: Debug — providers + overlay + gateway config (diagnostic)
+        run: |
+          echo "=== GET /auth/providers ==="
+          curl -s http://localhost:4000/auth/providers || true; echo
+          echo "=== overlay file in container ==="
+          docker compose exec -T platform sh -c 'cat /workspace/kb-e2e/.kb/overlays/oauth.jsonc' || true
+          echo "=== gateway cwd / project markers ==="
+          docker compose exec -T platform sh -c 'ls -la /workspace/kb-e2e/.kb /workspace/kb-e2e/.kb/overlays 2>/dev/null' || true
+          echo "=== gateway log files ==="
+          docker compose exec -T platform sh -c 'find / -path "*/.kb/logs/*gateway*" 2>/dev/null | head; for f in $(find / -path "*logs*gateway*" 2>/dev/null | head -3); do echo "--- $f ---"; tail -120 "$f"; done' || true
+
       - name: Start studio-https proxy
         run: docker compose up -d studio-https
 

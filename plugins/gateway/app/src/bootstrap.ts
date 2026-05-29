@@ -49,6 +49,9 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
   logger.info('Gateway config loaded', {
     port: config.port,
     upstreams: Object.keys(config.upstreams),
+    projectRoot: getProjectRoot() ?? repoRoot,
+    platformRoot: getPlatformRoot(),
+    configProviderIds: config.auth?.providers ? Object.keys(config.auth.providers) : [],
   });
 
   // 3. Create persistent host store backed by the platform document database.
