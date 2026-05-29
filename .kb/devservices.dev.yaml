@@ -2,7 +2,7 @@ name: KB Labs Development Environment
 
 groups:
   infra:     [qdrant, redis, state-daemon]
-  backend:   [workflow, rest, marketplace, marketplace-registry, gateway]
+  backend:   [workflow, rest, marketplace, marketplace-registry, gateway, mcp-daemon]
   ui:        [studio]
   ui-web:    [kb-web, kb-docs]
   local:     [host-agent]
@@ -81,7 +81,7 @@ services:
     description: Main platform REST API
     group: backend
     type: node
-    command: node ./plugins/rest-api/app/dist/index.js
+    command: node ./services/rest-api/app/dist/index.js
     health_check: http://localhost:5050/api/v1/health
     port: 5050
     url: http://localhost:5050
@@ -132,7 +132,7 @@ services:
     description: Central router — single entry point for all platform clients
     group: backend
     type: node
-    command: node ./plugins/gateway/app/dist/index.js
+    command: node ./services/gateway/app/dist/index.js
     health_check: http://localhost:4000/health
     port: 4000
     url: http://localhost:4000
@@ -143,6 +143,20 @@ services:
         - POST /hosts/register
         - WS /hosts/connect
         - GET /hosts
+
+  mcp-daemon:
+    name: MCP Daemon
+    description: MCP server — plugin commands as tools for external agents
+    group: backend
+    type: node
+    command: node ./services/mcp/app/dist/bin.cjs
+    health_check: http://localhost:7779/health
+    port: 7779
+    url: http://localhost:7779
+    depends_on: [gateway]
+    env:
+      KB_MCP_DAEMON_PORT: "7779"
+      KB_MCP_DAEMON_HOST: localhost
 
   studio:
     name: Studio Web App
@@ -193,7 +207,7 @@ services:
     description: Plugin execution host — connects to Gateway
     group: execution
     type: node
-    command: node ./plugins/gateway/runtime-server/dist/cli.js
+    command: node ./services/gateway/runtime-server/dist/cli.js
     depends_on: [gateway]
     env:
       GATEWAY_WS_URL: ws://localhost:4000

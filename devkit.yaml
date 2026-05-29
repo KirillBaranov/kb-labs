@@ -25,6 +25,7 @@ workspace:
         - "e2e/studio"
         - "e2e/plugins"
         - "e2e/rest-api"
+        - "e2e/mcp"
       language: typescript
       preset: e2e-suite
 
@@ -53,7 +54,9 @@ workspace:
         - "plugins/*/daemon"
         - "plugins/*/server"
         - "plugins/*/app"
-        - "plugins/rest-api/core"
+        - "services/*/app"
+        - "services/*/daemon"
+        - "services/rest-api/core"
       language: typescript
       preset: node-app
 
@@ -73,6 +76,7 @@ workspace:
         - "cli/*"
         - "shared/*"
         - "plugins/*/*"
+        - "services/*/*"
         - "infra/devkit"
         - "studio/*"
         - "templates/*"

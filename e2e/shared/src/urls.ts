@@ -4,3 +4,4 @@ export const MARKETPLACE = process.env.MARKETPLACE_URL ?? 'http://localhost:5070
 export const REGISTRY    = process.env.REGISTRY_URL    ?? 'http://localhost:5071'
 export const WORKFLOW    = process.env.WORKFLOW_URL    ?? 'http://localhost:7778'
 export const STATE       = process.env.STATE_URL       ?? 'http://localhost:7777'
+export const MCP         = process.env.MCP_URL         ?? 'http://localhost:7779'
