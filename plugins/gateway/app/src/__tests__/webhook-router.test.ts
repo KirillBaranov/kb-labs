@@ -318,6 +318,20 @@ describe('registerWebhookRoutes — rate limiting', () => {
     );
   });
 
+  it('rate limit token is released after successful dispatch', async () => {
+    const releaseMock = vi.fn().mockResolvedValue(undefined);
+    mockBroker.tryAcquire.mockResolvedValue({ allowed: true, release: releaseMock });
+
+    await app.inject({
+      method: 'POST',
+      url: WEBHOOK_URL,
+      headers: { 'x-kb-namespace': NS, 'X-Webhook-Secret': SECRET, 'Content-Type': 'application/json' },
+      payload: makeBody({ event: 'test' }),
+    });
+
+    expect(releaseMock).toHaveBeenCalledOnce();
+  });
+
   it('rate limit exceeded → 429', async () => {
     mockBroker.tryAcquire.mockResolvedValue({
       allowed: false,
@@ -668,5 +682,98 @@ describe('registerWebhookRoutes — HMAC auth', () => {
       payload: tamperedBody,
     });
     expect(res.statusCode).toBe(401);
+  });
+});
+
+// ── Custom auth ───────────────────────────────────────────────────────────────
+
+describe('registerWebhookRoutes — custom auth', () => {
+  let app: FastifyInstance;
+  let cache: InMemoryCache;
+  let mockBroker: ReturnType<typeof makeMockBroker>;
+
+  const CUSTOM_SECRET = 'custom-signing-secret';
+
+  const manifest = makeManifest([
+    {
+      event: EVENT,
+      handler: './dist/webhooks/alert.js#default',
+      auth: {
+        type: 'custom',
+        validator: './dist/webhooks/stripe-validate.js#default',
+      },
+    },
+  ]);
+
+  beforeAll(async () => {
+    cache = new InMemoryCache();
+    mockBroker = makeMockBroker();
+    const store = new WebhookSecretStore(cache);
+    await store.set(NS, PLUGIN_ID, EVENT, { current: CUSTOM_SECRET });
+    app = await buildApp([{ pluginId: PLUGIN_ID, manifest, pluginRoot: PLUGIN_ROOT }], cache, mockBroker);
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockDispatcher.firstHostWithCapability.mockReturnValue('host-001');
+    mockBroker.tryAcquire.mockResolvedValue({
+      allowed: true,
+      release: vi.fn().mockResolvedValue(undefined),
+    });
+  });
+
+  it('validator returns { valid: true } → 200 and handler executed', async () => {
+    // First dispatcher.call: custom auth validator → { valid: true }
+    // Second dispatcher.call: actual handler → result
+    mockDispatcher.call
+      .mockResolvedValueOnce({ valid: true })
+      .mockResolvedValueOnce({ output: 'processed' });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: WEBHOOK_URL,
+      headers: { 'x-kb-namespace': NS, 'Content-Type': 'application/json' },
+      payload: makeBody({ type: 'payment_intent.succeeded', amount: 1000 }),
+    });
+
+    expect(res.statusCode).toBe(200);
+    // Validator call + handler call
+    expect(mockDispatcher.call).toHaveBeenCalledTimes(2);
+    // First call must reference the validator handlerRef
+    const [, , , , validatorArgs] = mockDispatcher.call.mock.calls[0] as [unknown, unknown, unknown, unknown, [{ handlerRef: string }]];
+    expect(validatorArgs[0]?.handlerRef).toBe('./dist/webhooks/stripe-validate.js#default');
+  });
+
+  it('validator returns { valid: false } → 401, handler NOT called', async () => {
+    mockDispatcher.call.mockResolvedValueOnce({ valid: false });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: WEBHOOK_URL,
+      headers: { 'x-kb-namespace': NS, 'Content-Type': 'application/json' },
+      payload: makeBody({ type: 'checkout.session.expired' }),
+    });
+
+    expect(res.statusCode).toBe(401);
+    // Only the validator call, not the handler
+    expect(mockDispatcher.call).toHaveBeenCalledTimes(1);
+  });
+
+  it('validator throws → 401, handler NOT called', async () => {
+    mockDispatcher.call.mockRejectedValueOnce(new Error('validator timeout'));
+
+    const res = await app.inject({
+      method: 'POST',
+      url: WEBHOOK_URL,
+      headers: { 'x-kb-namespace': NS, 'Content-Type': 'application/json' },
+      payload: makeBody({ type: 'test' }),
+    });
+
+    expect(res.statusCode).toBe(401);
+    expect(mockDispatcher.call).toHaveBeenCalledTimes(1);
   });
 });

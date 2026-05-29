@@ -210,4 +210,20 @@ describe('verifyWebhookAuth — custom', () => {
     expect(result).toEqual({ valid: false, reason: 'not provisioned' });
     expect(backend.execute).not.toHaveBeenCalled();
   });
+
+  it('validator receives bodyHmac (not plaintext secret) to prevent secret exposure', async () => {
+    const backend = { execute: vi.fn().mockResolvedValue({ valid: true }) } as any;
+    await verifyWebhookAuth(authConfig, {
+      ...baseReq, rawBody, headers: {},
+    }, store, backend, '/plugins/payment');
+
+    expect(backend.execute).toHaveBeenCalledOnce();
+    const callInput = backend.execute.mock.calls[0][0].input as Record<string, unknown>;
+    // Must NOT expose plaintext secret
+    expect(callInput).not.toHaveProperty('secret');
+    // Must pass bodyHmac so the validator can verify without knowing the secret
+    expect(callInput).toHaveProperty('bodyHmac');
+    expect(typeof callInput.bodyHmac).toBe('string');
+    expect(callInput.bodyHmac).toHaveLength(64); // hex-encoded SHA-256
+  });
 });
