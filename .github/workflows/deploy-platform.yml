@@ -105,6 +105,34 @@ jobs:
           chmod 600 ~/.ssh/deploy.key
           ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
+      # ── Reclaim disk (+ optional reset) BEFORE any host write ────────────────
+      # Repeated debug deploys fill the small VM disk (per-release pnpm stores,
+      # caches, dangling docker layers, old releases) until even `scp` of a binary
+      # fails with ENOSPC. Free space here, before Bootstrap touches the host.
+      - name: Reclaim disk
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          SSHOPTS="-i $HOME/.ssh/deploy.key -o StrictHostKeyChecking=accept-new"
+          ssh $SSHOPTS "$SSH_USER@$SSH_HOST" "RESET='${{ inputs.reset_platform }}' bash -s" <<'REMOTE'
+          set -uo pipefail
+          P="$HOME/kb-platform"
+          echo "Disk before:"; df -h "$HOME" | tail -1
+          if [ "${RESET:-}" = "true" ]; then
+            command -v kb-dev >/dev/null && kb-dev --config "$P/.kb/devservices.yaml" stop 2>/dev/null || true
+            echo "reset_platform: removing installed releases / services / registry…"
+            rm -rf "$P/releases" "$P/services" "$P/releases.json" "$P/.kb/devservices.yaml"
+          fi
+          # Always reclaim caches + dangling docker so scp and per-release installs fit.
+          pnpm store prune 2>/dev/null || true
+          rm -rf "$HOME/.cache/pnpm" "$HOME/.npm/_cacache" 2>/dev/null || true
+          npm cache clean --force 2>/dev/null || true
+          docker image prune -af 2>/dev/null || true
+          docker builder prune -af 2>/dev/null || true
+          echo "Disk after:"; df -h "$HOME" | tail -1
+          REMOTE
+
       # ── Bootstrap the host: kb-create + kb-dev binaries, Verdaccio ───────────
       # Idempotent: re-running just overwrites binaries and leaves Verdaccio up.
       - name: Bootstrap host
@@ -211,36 +239,6 @@ jobs:
           test "$failed" -eq 0
           REMOTE
 
-      # ── Optional: wipe stale installed state (spec-derived release ids) ──────
-      - name: Reset platform state
-        if: ${{ inputs.reset_platform == true }}
-        env:
-          SSH_HOST: ${{ secrets.SSH_HOST }}
-          SSH_USER: ${{ secrets.SSH_USER }}
-        run: |
-          SSHOPTS="-i $HOME/.ssh/deploy.key -o StrictHostKeyChecking=accept-new"
-          ssh $SSHOPTS "$SSH_USER@$SSH_HOST" 'bash -s' <<'REMOTE'
-          set -uo pipefail
-          P="$HOME/kb-platform"
-          echo "Disk before reset:"; df -h "$HOME" | tail -1
-          echo "Stopping any running daemons (best-effort)…"
-          kb-dev --config "$P/.kb/devservices.yaml" stop 2>/dev/null || true
-          echo "Removing installed releases / services / registry…"
-          rm -rf "$P/releases" "$P/services" "$P/releases.json" "$P/.kb/devservices.yaml"
-          # Keep .kb/kb.config.jsonc + .env — apply re-delivers them, and dropping
-          # the config hash here is harmless (apply rewrites it).
-          # Reclaim disk from previous deploy churn: each per-release `pnpm install`
-          # populates the store, and repeated debug runs accumulate stores, caches
-          # and dangling docker layers until the small VM disk fills (ENOSPC).
-          echo "Reclaiming disk…"
-          pnpm store prune 2>/dev/null || true
-          rm -rf "$HOME/.cache/pnpm" "$HOME/.npm/_cacache" 2>/dev/null || true
-          npm cache clean --force 2>/dev/null || true
-          docker image prune -af 2>/dev/null || true
-          docker builder prune -af 2>/dev/null || true
-          echo "Platform state reset. Remaining .kb:"; ls -la "$P/.kb" 2>/dev/null || true
-          echo "Disk after reset:"; df -h "$HOME" | tail -1
-          REMOTE
 
       # ── Apply ────────────────────────────────────────────────────────────────
       - name: kb-deploy apply
