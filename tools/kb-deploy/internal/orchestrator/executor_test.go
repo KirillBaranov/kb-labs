@@ -17,6 +17,7 @@ type fakeRunner struct {
 	failOn      string // if set, commands containing this substring fail
 	installOut  string
 	releasesOut string
+	manifestID  string // id returned for `cat .../manifest.json`; defaults to "gateway"
 }
 
 func (f *fakeRunner) Run(cmd string) (string, error) {
@@ -35,6 +36,12 @@ func (f *fakeRunner) Run(cmd string) (string, error) {
 		return out, nil
 	case strings.Contains(cmd, "kb-create releases"):
 		return f.releasesOut, nil
+	case strings.Contains(cmd, "manifest.json"):
+		id := f.manifestID
+		if id == "" {
+			id = "gateway"
+		}
+		return `{"id":"` + id + `"}`, nil
 	}
 	return "", nil
 }
@@ -125,6 +132,41 @@ func TestExecute_SuccessfulInstall(t *testing.T) {
 		if !strings.Contains(commands, want) {
 			t.Errorf("missing command %q in: %s", want, commands)
 		}
+	}
+}
+
+// When the manifest id differs from the package short name (e.g.
+// @kb-labs/core-state-daemon → "state-daemon"), restart/health-check must target
+// the manifest id, since that is the devservices.yaml key kb-dev resolves.
+func TestExecute_RestartsByManifestIDNotShortName(t *testing.T) {
+	h1 := &fakeRunner{manifestID: "state-daemon"}
+	cfg := &config.Config{
+		Schema: config.CurrentSchema,
+		Services: map[string]config.Service{
+			"state": {
+				Service: "@kb-labs/core-state-daemon",
+				Version: "2.94.0",
+				Targets: config.ServiceTargets{Hosts: []string{"h1"}, HealthGate: "5s"},
+			},
+		},
+		Hosts:   map[string]config.Host{"h1": {SSH: config.SSHConfig{Host: "1.1.1.1", User: "kb"}}},
+		Rollout: &config.RolloutConfig{AutoRollback: true, Parallel: 1},
+	}
+	plan := &Plan{Waves: [][]Action{{{
+		Kind: ActionInstall, Host: "h1", Service: "state",
+		ServicePkg: "@kb-labs/core-state-daemon", Version: "2.94.0", ToID: "fake-release",
+	}}}}
+
+	res := Execute(ExecuteOptions{Plan: plan, Config: cfg, Resolver: resolverFor(map[string]*fakeRunner{"h1": h1})})
+	if res.Err != nil {
+		t.Fatalf("unexpected error: %v", res.Err)
+	}
+	commands := strings.Join(h1.log, "\n")
+	if !strings.Contains(commands, "restart 'state-daemon'") || !strings.Contains(commands, "ready 'state-daemon'") {
+		t.Errorf("expected restart/ready by manifest id 'state-daemon', got: %s", commands)
+	}
+	if strings.Contains(commands, "restart 'core-state-daemon'") {
+		t.Errorf("restart used the package short name instead of the manifest id: %s", commands)
 	}
 }
 
