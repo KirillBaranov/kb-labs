@@ -26,7 +26,8 @@
     "build": "tsup --config tsup.config.ts",
     "clean": "rimraf dist",
     "type-check": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "test:cli": "vitest run --config vitest.cli.config.ts --passWithNoTests"
   },
   "dependencies": {
     "@kb-labs/github-contracts": "workspace:*",
