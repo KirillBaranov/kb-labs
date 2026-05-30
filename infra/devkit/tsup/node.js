@@ -1,7 +1,8 @@
 import { defineConfig } from 'tsup'
 import { readTsupExternalSync } from './external-sync.mjs'
-import { readFileSync, existsSync } from 'node:fs'
+import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 /**
  * Derive tsup entry points from package.json.
@@ -37,6 +38,53 @@ function resolveEntryFromExports() {
     return srcFiles.size > 0 ? Array.from(srcFiles) : ['src/index.ts']
   } catch {
     return ['src/index.ts']
+  }
+}
+
+/**
+ * Resolve the absolute path of the built manifest module (e.g. dist/manifest.js)
+ * from `pkg.kb.manifest`, or null when the package ships no service/plugin
+ * manifest. Used to materialize a sibling dist/manifest.json after build.
+ */
+function resolveManifestDistPath() {
+  try {
+    const pkg = JSON.parse(readFileSync(join(process.cwd(), 'package.json'), 'utf8'))
+    if (typeof pkg.kb?.manifest === 'string') {
+      return join(process.cwd(), pkg.kb.manifest.replace(/^\.\//, ''))
+    }
+  } catch {
+    // No package.json / no manifest — nothing to emit.
+  }
+  return null
+}
+
+/**
+ * tsup `onSuccess`: emit dist/manifest.json next to the built dist/manifest.js.
+ *
+ * The kb-labs runtime loads manifests by importing the JS module, but Go-based
+ * installers (kb-create) read the manifest as JSON — `kb-create swap` looks for
+ * `dist/manifest.json` and silently skips service registration when it is
+ * absent. Materializing the JSON from the just-built module keeps a single
+ * source of truth (src/manifest.ts) while satisfying both consumers.
+ */
+async function emitManifestJson() {
+  const manifestDist = resolveManifestDistPath()
+  if (!manifestDist || !existsSync(manifestDist)) return
+  try {
+    // Cache-bust so watch-mode rebuilds re-read the fresh module.
+    const url = pathToFileURL(manifestDist).href + `?t=${Date.now()}`
+    const mod = await import(url)
+    const manifest = mod.default ?? mod.manifest
+    if (!manifest || typeof manifest !== 'object') return
+    // Scope to SERVICE manifests — the only ones kb-create reads as JSON.
+    // Plugin/adapter manifests are loaded as JS by the runtime and don't need
+    // a sibling .json (and may carry side-effectful imports we shouldn't run).
+    if (typeof manifest.schema !== 'string' || !manifest.schema.startsWith('kb.service/')) return
+    const jsonPath = manifestDist.replace(/\.js$/, '.json')
+    writeFileSync(jsonPath, JSON.stringify(manifest, null, 2) + '\n')
+  } catch {
+    // Never fail the build over manifest emission — absence just means the
+    // service won't auto-register, which is the pre-existing behaviour.
   }
 }
 
@@ -86,6 +134,9 @@ export default defineConfig({
   splitting: false,
   skipNodeModulesBundle: true,
   shims: false,
+  // Emit dist/manifest.json from the built manifest module so Go installers
+  // (kb-create) can register the service. No-op for packages without a manifest.
+  onSuccess: emitManifestJson,
   ignoreWatch: [
     '**/node_modules/**',
     '**/dist/**',

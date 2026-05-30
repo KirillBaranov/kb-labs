@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"fmt"
 	"io"
+	"sort"
 	"sync"
 	"time"
 
@@ -14,6 +15,14 @@ import (
 // an SSH dialer; tests pass a fake.
 type HostResolver func(hostName string) (*remote.Host, error)
 
+// HostConfig is the rendered runtime config to deliver to one host before any
+// install/swap. Prepared on the control machine (see cmd.prepareConfigs).
+type HostConfig struct {
+	JSONC string // config file contents, delivered verbatim
+	Env   string // resolved .env body, may be empty
+	Hash  string // digest over JSONC + resolved env (config-change detection)
+}
+
 // ExecuteOptions configures an Execute run.
 type ExecuteOptions struct {
 	Plan     *Plan
@@ -21,6 +30,13 @@ type ExecuteOptions struct {
 	Resolver HostResolver
 	Stdout   io.Writer
 	Stderr   io.Writer
+	// Configs is the per-host runtime config to deliver before the waves run.
+	// Nil/empty means no config delivery (services still install/swap).
+	Configs map[string]HostConfig
+	// PrevConfigHash is the per-host config hash from the lock. A host whose
+	// current hash differs gets a forced restart even when its release is
+	// unchanged (config-only change).
+	PrevConfigHash map[string]string
 }
 
 // Result records what happened per action.
@@ -61,11 +77,20 @@ func Execute(opts ExecuteOptions) *Result {
 	}
 
 	res := &Result{}
+
+	// Deliver per-host config before any host is mutated. A failure here aborts
+	// before install/swap and restores config on hosts already written to.
+	forceRestart, err := deliverConfigs(opts)
+	if err != nil {
+		res.Err = err
+		return res
+	}
+
 	for waveIdx, wave := range opts.Plan.Waves {
 		fmt.Fprintf(opts.Stdout, "\n=== Wave %d/%d (%d actions) ===\n",
 			waveIdx+1, len(opts.Plan.Waves), len(wave))
 
-		waveResults := runWave(wave, parallel, opts)
+		waveResults := runWave(wave, parallel, opts, forceRestart)
 		res.Actions = append(res.Actions, waveResults...)
 
 		failed := false
@@ -85,16 +110,65 @@ func Execute(opts ExecuteOptions) *Result {
 			return res
 		}
 		fmt.Fprintf(opts.Stderr, "wave %d failed; attempting auto-rollback of completed hosts\n", waveIdx+1)
-		rolled := rollbackWave(waveResults, opts)
+		rolled := rollbackWave(waveResults, opts, forceRestart)
 		res.RolledBack = rolled
 		return res
 	}
 	return res
 }
 
+// deliverConfigs writes each host's rendered config before the waves run. It
+// returns the set of hosts whose config changed (forced restart). On any
+// failure it restores config on hosts already written to, then returns the
+// error so Execute aborts before touching releases.
+func deliverConfigs(opts ExecuteOptions) (map[string]bool, error) {
+	if len(opts.Configs) == 0 {
+		return nil, nil
+	}
+	forceRestart := map[string]bool{}
+	var delivered []string
+
+	names := make([]string, 0, len(opts.Configs))
+	for n := range opts.Configs {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+
+	for _, name := range names {
+		host, err := opts.Resolver(name)
+		if err != nil {
+			restoreConfigs(opts, delivered)
+			return nil, fmt.Errorf("resolve host %s for config delivery: %w", name, err)
+		}
+		hc := opts.Configs[name]
+		if err := host.DeliverConfig(hc.JSONC, hc.Env); err != nil {
+			restoreConfigs(opts, delivered)
+			return nil, fmt.Errorf("deliver config to %s: %w", name, err)
+		}
+		delivered = append(delivered, name)
+		if opts.PrevConfigHash[name] != hc.Hash {
+			forceRestart[name] = true
+		}
+	}
+	return forceRestart, nil
+}
+
+// restoreConfigs rolls back delivered config on the given hosts (best-effort).
+func restoreConfigs(opts ExecuteOptions, hosts []string) {
+	for _, name := range hosts {
+		host, err := opts.Resolver(name)
+		if err != nil {
+			continue
+		}
+		if err := host.RestoreConfig(); err != nil {
+			fmt.Fprintf(opts.Stderr, "warning: restore config on %s failed: %v\n", name, err)
+		}
+	}
+}
+
 // runWave executes one wave with bounded parallelism. Returns per-action results
 // in the same order as the input wave.
-func runWave(actions []Action, parallel int, opts ExecuteOptions) []ActionResult {
+func runWave(actions []Action, parallel int, opts ExecuteOptions, forceRestart map[string]bool) []ActionResult {
 	results := make([]ActionResult, len(actions))
 
 	sem := make(chan struct{}, parallel)
@@ -105,17 +179,19 @@ func runWave(actions []Action, parallel int, opts ExecuteOptions) []ActionResult
 		go func(i int, a Action) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			results[i] = runAction(a, opts)
+			results[i] = runAction(a, opts, forceRestart)
 		}(i, act)
 	}
 	wg.Wait()
 	return results
 }
 
-// runAction performs the install/swap/restart/skip on a single host.
-func runAction(a Action, opts ExecuteOptions) ActionResult {
+// runAction performs the install/swap/restart/skip on a single host. A skip is
+// a no-op unless the host's config changed (forceRestart), in which case the
+// service is restarted through the health gate without reinstalling.
+func runAction(a Action, opts ExecuteOptions, forceRestart map[string]bool) ActionResult {
 	res := ActionResult{Action: a}
-	if a.Kind == ActionSkip {
+	if a.Kind == ActionSkip && !forceRestart[a.Host] {
 		res.Completed = true
 		res.ReleaseID = a.ToID
 		return res
@@ -159,12 +235,23 @@ func runAction(a Action, opts ExecuteOptions) ActionResult {
 	case ActionRestart:
 		// Nothing to do here — restart happens below.
 		res.ReleaseID = a.FromID
+
+	case ActionSkip:
+		// Reached only when forceRestart is set (config-only change): the
+		// release stays put, restart happens below to pick up the new config.
+		res.ReleaseID = a.ToID
 	}
 
-	// Restart + wait healthy.
+	// Restart + wait healthy. kb-dev keys services by their manifest id (the
+	// devservices.yaml key kb-create registers), which is not necessarily the
+	// package short name — read it from the swapped release's manifest.
 	healthGate := parseHealthGate(svc.Targets.HealthGate)
-	serviceShort := serviceShortName(svc.Service)
-	if err := host.RestartAndWaitHealthy(serviceShort, healthGate); err != nil {
+	serviceID, err := host.ServiceID(svc.Service, serviceShortName(svc.Service))
+	if err != nil {
+		res.Err = err
+		return res
+	}
+	if err := host.RestartAndWaitHealthy(serviceID, healthGate); err != nil {
 		res.Err = err
 		return res
 	}
@@ -172,16 +259,21 @@ func runAction(a Action, opts ExecuteOptions) ActionResult {
 	return res
 }
 
-// rollbackWave rolls back every wave action that swapped successfully.
-// We only call remote.Rollback (swap back to previous) — install artefacts
-// stay on disk in releases/ so forward retries stay idempotent.
-func rollbackWave(waveResults []ActionResult, opts ExecuteOptions) []ActionResult {
+// rollbackWave reverts a failed wave. For a host that swapped successfully it
+// swaps back to the previous release; for a host whose only change was a
+// config-only force-restart that failed, it restarts to recover the previous
+// healthy state. Install artefacts stay on disk in releases/ so forward
+// retries stay idempotent.
+func rollbackWave(waveResults []ActionResult, opts ExecuteOptions, forceRestart map[string]bool) []ActionResult {
+	// Restore config first, once per host, on every host this wave delivered
+	// config to and is about to revert — otherwise the previous (or unchanged)
+	// release would come up on the newly delivered config.
+	restoreRollbackConfigs(waveResults, opts, forceRestart)
+
 	var rolled []ActionResult
 	for _, r := range waveResults {
-		if !r.Completed {
-			continue
-		}
-		if r.Action.Kind != ActionInstall && r.Action.Kind != ActionSwap {
+		revertRelease, recoverConfig := rollbackKind(r, forceRestart)
+		if !revertRelease && !recoverConfig {
 			continue
 		}
 		host, err := opts.Resolver(r.Action.Host)
@@ -190,19 +282,79 @@ func rollbackWave(waveResults []ActionResult, opts ExecuteOptions) []ActionResul
 			continue
 		}
 		svc := opts.Config.Services[r.Action.Service]
-		rollErr := host.Rollback(svc.Service)
-		ar := ActionResult{Action: r.Action, Err: rollErr, Completed: rollErr == nil}
-		if rollErr == nil {
-			// Restart again to come up on the previous release.
-			serviceShort := serviceShortName(svc.Service)
-			if err := host.RestartAndWaitHealthy(serviceShort, parseHealthGate(svc.Targets.HealthGate)); err != nil {
-				ar.Err = err
-				ar.Completed = false
+
+		ar := ActionResult{Action: r.Action}
+		if revertRelease {
+			if rollErr := host.Rollback(svc.Service); rollErr != nil {
+				ar.Err = rollErr
+				rolled = append(rolled, ar)
+				continue
 			}
+		}
+		// Restart to come up on the previous release (revertRelease) or on the
+		// restored config (recoverConfig). kb-dev keys services by manifest id,
+		// read from the (now current) release's manifest.
+		serviceID, idErr := host.ServiceID(svc.Service, serviceShortName(svc.Service))
+		if idErr != nil {
+			ar.Err = idErr
+			rolled = append(rolled, ar)
+			continue
+		}
+		if err := host.RestartAndWaitHealthy(serviceID, parseHealthGate(svc.Targets.HealthGate)); err != nil {
+			ar.Err = err
+		} else {
+			ar.Completed = true
 		}
 		rolled = append(rolled, ar)
 	}
 	return rolled
+}
+
+// rollbackKind classifies a failed wave's action: revertRelease is true when a
+// successfully-swapped release must be swapped back; recoverConfig is true when
+// the release was unchanged but a config-only force-restart failed and the host
+// must be restarted on the restored config.
+func rollbackKind(r ActionResult, forceRestart map[string]bool) (revertRelease, recoverConfig bool) {
+	switch r.Action.Kind {
+	case ActionInstall, ActionSwap:
+		return r.Completed, false
+	case ActionSkip, ActionRestart:
+		// Release stays put; recover only if a forced config restart failed.
+		if forceRestart[r.Action.Host] && r.Err != nil {
+			return false, true
+		}
+	}
+	return false, false
+}
+
+// restoreRollbackConfigs restores the previous config on each host this wave is
+// about to revert and that had config delivered this run. Runs once per host,
+// before any release swap-back or restart in rollbackWave. It is not gated on
+// the config-changed flag: a reverted release must always come up on the config
+// that matched it, even when the new and old hashes coincided.
+func restoreRollbackConfigs(waveResults []ActionResult, opts ExecuteOptions, forceRestart map[string]bool) {
+	seen := map[string]bool{}
+	for _, r := range waveResults {
+		revertRelease, recoverConfig := rollbackKind(r, forceRestart)
+		if !revertRelease && !recoverConfig {
+			continue
+		}
+		h := r.Action.Host
+		if seen[h] {
+			continue
+		}
+		if _, delivered := opts.Configs[h]; !delivered {
+			continue
+		}
+		seen[h] = true
+		host, err := opts.Resolver(h)
+		if err != nil {
+			continue
+		}
+		if err := host.RestoreConfig(); err != nil {
+			fmt.Fprintf(opts.Stderr, "warning: restore config on %s during rollback failed: %v\n", h, err)
+		}
+	}
 }
 
 // platformRegistry returns the registry to use, or "" if none configured.

@@ -1,0 +1,97 @@
+# KB Labs platform — declarative fleet deploy (ADR-0014, kb-deploy apply).
+#
+# This is the WHERE/HOW document: which hosts, which package versions, which
+# rendered config, rollout waves. The WHAT (adapter wiring, runtime options)
+# lives in kb.config.jsonc, delivered verbatim to each host.
+#
+# Single-instance dogfood: all four core daemons on one VM, packages resolved
+# from a private Verdaccio running on the VM itself (127.0.0.1:4873).
+schema: kb.deploy/1
+
+platform:
+  version: "2.94.0"
+  # Verdaccio on the target host. install-service runs ON the host over SSH,
+  # so 127.0.0.1 is the host's own registry — packages must be published there
+  # before apply.
+  registry: "http://127.0.0.1:4873"
+  # Pre-rendered runtime config delivered verbatim to <platformPath>/.kb/.
+  # Path is relative to this deploy.yaml.
+  config: "kb.config.jsonc"
+
+# ${secrets.X} references are resolved on the control machine from the
+# environment (CI secrets / local .env), then streamed to the host .env.
+secretBackend:
+  type: env
+
+rollout:
+  autoRollback: true
+  parallel: 1
+  lockMode: artifact
+
+hosts:
+  vm-1:
+    ssh:
+      host: "${SSH_HOST}"
+      user: "${SSH_USER}"
+      # SSH_KEY holds the private key PEM (same secret the legacy deploy uses).
+      key_env: SSH_KEY
+    # Absolute path — shellQuote wraps paths in single quotes, so a leading ~
+    # would not expand on the remote.
+    platformPath: "/home/deploy/kb-platform"
+    # Per-host runtime env written to <platformPath>/.env and consumed by the
+    # config loader's ${VAR} interpolation at daemon start.
+    env:
+      NODE_ENV: "production"
+      KB_LOG_LEVEL: "info"
+      OPENAI_API_KEY: "${secrets.OPENAI_API_KEY}"
+      OPENAI_PROXY_URL: "${secrets.OPENAI_PROXY_URL}"
+      GATEWAY_JWT_SECRET: "${secrets.GATEWAY_JWT_SECRET}"
+      GATEWAY_INTERNAL_SECRET: "${secrets.GATEWAY_INTERNAL_SECRET}"
+
+# All four daemons share ONE kb.config.jsonc, which references a fixed adapter
+# set. install-service installs per-release, so every release must carry that
+# same adapter set — hence the shared anchor below.
+_adapters: &adapters
+  llm: "@kb-labs/adapters-openai@2.94.0"
+  storage: "@kb-labs/adapters-fs@2.94.0"
+  logger: "@kb-labs/adapters-pino@2.94.0"
+  logRingBuffer: "@kb-labs/adapters-log-ringbuffer@2.94.0"
+  analytics: "@kb-labs/adapters-analytics-file@2.94.0"
+  serviceTransport: "@kb-labs/adapters-service-transport-http@2.94.0"
+
+services:
+  state:
+    service: "@kb-labs/core-state-daemon"
+    version: "2.94.0"
+    adapters: *adapters
+    targets:
+      hosts: [vm-1]
+      strategy: all
+      healthGate: "60s"
+
+  rest:
+    service: "@kb-labs/rest-api-app"
+    version: "2.94.0"
+    adapters: *adapters
+    targets:
+      hosts: [vm-1]
+      strategy: all
+      healthGate: "60s"
+
+  workflow:
+    service: "@kb-labs/workflow-daemon"
+    version: "2.94.0"
+    adapters: *adapters
+    targets:
+      hosts: [vm-1]
+      strategy: all
+      healthGate: "60s"
+
+  gateway:
+    service: "@kb-labs/gateway-app"
+    version: "2.94.0"
+    adapters: *adapters
+    targets:
+      hosts: [vm-1]
+      strategy: all
+      healthGate: "60s"

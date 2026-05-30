@@ -29,10 +29,12 @@ func TestSaveLoad_Roundtrip(t *testing.T) {
 		Adapters: map[string]ResolvedDep{
 			"llm": {Resolved: "@kb-labs/adapters-openai@0.4.1"},
 		},
-		ConfigHash: "sha256-def",
 		AppliedTo: map[string]HostApplication{
 			"prod-1": {ReleaseID: "gateway-1.2.3-aaa", AppliedAt: time.Now().UTC().Truncate(time.Second)},
 		},
+	}
+	l.Hosts = map[string]HostLock{
+		"prod-1": {ConfigHash: "sha256-def"},
 	}
 	if err := l.Save(deploy); err != nil {
 		t.Fatalf("Save: %v", err)
@@ -57,6 +59,9 @@ func TestSaveLoad_Roundtrip(t *testing.T) {
 	}
 	if svc.AppliedTo["prod-1"].ReleaseID != "gateway-1.2.3-aaa" {
 		t.Errorf("applied-to lost: %v", svc.AppliedTo)
+	}
+	if got.Hosts["prod-1"].ConfigHash != "sha256-def" {
+		t.Errorf("per-host configHash lost: %v", got.Hosts)
 	}
 }
 

@@ -26,6 +26,45 @@ func (f *fakeRunner) Run(cmd string) (string, error) {
 	return "", nil
 }
 
+func (f *fakeRunner) RunWithInput(cmd, _ string) (string, error) {
+	return f.Run(cmd)
+}
+
+func TestServiceID_ReadsManifestID(t *testing.T) {
+	fr := &fakeRunner{responses: map[string]string{
+		"manifest.json": `{"schema":"kb.service/1","id":"state-daemon","runtime":{"entry":"dist/bin.cjs"}}`,
+	}}
+	h := &Host{Name: "p1", Runner: fr, PlatformPath: "/opt/kb"}
+
+	id, err := h.ServiceID("@kb-labs/core-state-daemon", "core-state-daemon")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if id != "state-daemon" {
+		t.Errorf("id = %q, want state-daemon (manifest id, not short name)", id)
+	}
+	want := "/opt/kb/services/core-state-daemon/current/node_modules/@kb-labs/core-state-daemon/dist/manifest.json"
+	if len(fr.log) == 0 || !strings.Contains(fr.log[0], want) {
+		t.Errorf("manifest path = %v, want it to contain %q", fr.log, want)
+	}
+}
+
+func TestServiceID_EmptyIDIsError(t *testing.T) {
+	fr := &fakeRunner{responses: map[string]string{"manifest.json": `{"id":""}`}}
+	h := &Host{Name: "p1", Runner: fr, PlatformPath: "/opt/kb"}
+	if _, err := h.ServiceID("@kb-labs/gateway-app", "gateway-app"); err == nil {
+		t.Fatal("expected error for empty manifest id")
+	}
+}
+
+func TestServiceID_BadJSONIsError(t *testing.T) {
+	fr := &fakeRunner{responses: map[string]string{"manifest.json": "not json"}}
+	h := &Host{Name: "p1", Runner: fr, PlatformPath: "/opt/kb"}
+	if _, err := h.ServiceID("@kb-labs/gateway-app", "gateway-app"); err == nil {
+		t.Fatal("expected error for malformed manifest json")
+	}
+}
+
 func TestShellQuote(t *testing.T) {
 	if got := shellQuote("simple"); got != "'simple'" {
 		t.Errorf("got %q", got)

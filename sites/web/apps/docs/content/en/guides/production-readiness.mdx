@@ -1,7 +1,7 @@
 ---
 title: "Production Readiness"
 description: "Checklist for moving a KB Labs deployment from dev to production."
-updatedAt: "2026-04-07"
+updatedAt: "2026-05-30"
 order: 6
 ---
 
@@ -87,8 +87,8 @@ See [Operations → Observability](/operations/observability) and [Operations �
 
 - [ ] **Deploy via CI, not manually.** Automate the build → test → publish → deploy pipeline. Manual deploys are the #1 source of production incidents.
 - [ ] **Version every plugin.** Pin plugin versions in the marketplace lock; don't `pnpm kb marketplace update` without a changelog review.
-- [ ] **Rollout gradually.** For multi-instance deployments, roll out to one instance, observe, then the rest.
-- [ ] **Rollback plan.** Know how to roll back. `git revert` + redeploy is the usual path; make sure it actually works.
+- [ ] **Rollout gradually.** For multi-instance deployments, roll out to one instance, observe, then the rest. If you deploy the platform itself across hosts, [`kb-deploy apply`](/services/kb-deploy#declarative-apply-adr-0014) does this declaratively — canary waves gated by health checks, with config delivery and auto-rollback.
+- [ ] **Rollback plan.** Know how to roll back. `git revert` + redeploy is the usual path; make sure it actually works. With `kb-deploy apply`, a failed health gate rolls the release back automatically and restores the prior config.
 - [ ] **Workflow daemon restart impact.** The workflow daemon is stateful. Restarting it interrupts in-flight runs. Schedule restarts during low-traffic windows and know the `'interrupted'` recovery path.
 
 See [Operations → Runbooks → Rolling updates](/operations/runbooks#rolling-updates).

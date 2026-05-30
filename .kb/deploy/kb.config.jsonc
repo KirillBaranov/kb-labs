@@ -1,0 +1,79 @@
+{
+  // ─── KB Labs Platform Configuration (deployed) ────────────────────────────
+  //
+  // Delivered verbatim by `kb-deploy apply` to <platformPath>/.kb/kb.config.jsonc
+  // and shared by every daemon on the host. This is the WHAT of the deployment:
+  // adapter wiring + runtime options. The WHERE/HOW lives in deploy.yaml.
+  //
+  // platform.dir is intentionally OMITTED: each daemon is launched from its own
+  // release dir (services/<short>/current), so Node resolves adapters from that
+  // release's node_modules and the loader discovers platformRoot via moduleUrl.
+  // Hard-coding platform.dir would override that and risk pointing at the wrong
+  // tree.
+  //
+  // ${VAR} references are resolved at daemon start from <platformPath>/.env,
+  // which kb-deploy renders from the per-host env block in deploy.yaml.
+
+  "platform": {
+    // Adapter bindings — minimal, pure-JS set (no native build deps on the host).
+    "adapters": {
+      // LLM via OpenAI-compatible endpoint (proxy URL set in adapterOptions).
+      "llm": "@kb-labs/adapters-openai",
+      // File storage backend.
+      "storage": "@kb-labs/adapters-fs",
+      // Structured logger.
+      "logger": "@kb-labs/adapters-pino",
+      // In-memory log ring buffer for recent log access.
+      "logRingBuffer": "@kb-labs/adapters-log-ringbuffer",
+      // Analytics — JSONL file, no native dependencies.
+      "analytics": "@kb-labs/adapters-analytics-file",
+      // Service-to-service transport — gateway proxies to internal daemons.
+      "serviceTransport": "@kb-labs/adapters-service-transport-http"
+    },
+
+    // Plugin execution mode: worker-pool = isolated workers (stable).
+    "execution": {
+      "mode": "worker-pool"
+    }
+  },
+
+  // ─── Adapter Options ──────────────────────────────────────────────────────
+  "adapterOptions": {
+    // OpenAI adapter — apiKey + baseURL resolved from host .env at runtime.
+    // baseURL points at the proxy; both fall back to OPENAI_* env in the adapter.
+    "llm": {
+      "apiKey": "${OPENAI_API_KEY}",
+      "baseURL": "${OPENAI_PROXY_URL}"
+    },
+    "storage": { "baseDir": ".kb/storage" },
+    "logger": { "level": "${KB_LOG_LEVEL}" },
+    "logRingBuffer": { "maxSize": 100 },
+    "analytics": { "filename": ".kb/analytics/events.jsonl" },
+    // Service transport — logical service IDs → TCP loopback URLs. These IDs are
+    // referenced by gateway.upstreams below. They are independent of the
+    // devservices short names (gateway-app/rest-api-app/...) used by kb-dev.
+    "serviceTransport": {
+      "services": {
+        "rest":     { "url": "http://127.0.0.1:5050" },
+        "workflow": { "url": "http://127.0.0.1:7778" }
+      }
+    }
+  },
+
+  // ─── Gateway ──────────────────────────────────────────────────────────────
+  // Upstream routing. serviceId values reference adapterOptions.serviceTransport
+  // above. /ready checks that the "rest" upstream is reachable.
+  "gateway": {
+    "upstreams": {
+      "rest":     { "serviceId": "rest",     "prefix": "/api/v1",   "websocket": true },
+      "workflow": { "serviceId": "workflow", "prefix": "/api/exec", "rewritePrefix": "" },
+      "widgets":  { "serviceId": "rest",     "prefix": "/plugins" }
+    }
+  },
+
+  // ─── Services ───────────────────────────────────────────────────────────────
+  "services": {
+    "rest":     { "enabled": true },
+    "workflow": { "enabled": true }
+  }
+}
