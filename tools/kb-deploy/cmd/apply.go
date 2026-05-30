@@ -2,10 +2,12 @@ package cmd
 
 import (
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
+
+	"github.com/kb-labs/clikit/diag"
+	"github.com/kb-labs/clikit/result"
 
 	"github.com/kb-labs/kb-deploy/internal/config"
 	"github.com/kb-labs/kb-deploy/internal/lock"
@@ -47,33 +49,48 @@ func init() {
 }
 
 func runApply(cmd *cobra.Command, args []string) error {
+	mode := outputMode()
+	human := mode == result.ModeHuman
+
 	flow, err := loadFlow()
 	if err != nil {
-		return err
+		return diag.Wrap(err, codeConfigLoad, "failed to load deploy configuration",
+			diag.WithReason(err.Error()))
 	}
 	defer flow.CloseAll()
 
 	// Warn for autoCommit + unprotected repo (D22).
-	if flow.Cfg.Rollout != nil && flow.Cfg.Rollout.LockMode == "autoCommit" {
+	if human && flow.Cfg.Rollout != nil && flow.Cfg.Rollout.LockMode == "autoCommit" {
 		fmt.Fprintln(cmd.ErrOrStderr(),
 			"warning: rollout.lockMode=autoCommit requires branch protection on the deploy repo. "+
 				"See docs/guides/delivery.md#lock-modes")
 	}
 
-	// Print plan and drift.
-	fmt.Fprintln(cmd.OutOrStdout(), flow.Plan.String())
-	printDrift(cmd, flow.Drift)
 	sum := flow.Plan.Summary()
-	fmt.Fprintf(cmd.OutOrStdout(),
-		"summary: install=%d swap=%d restart=%d skip=%d\n",
-		sum.Install, sum.Swap, sum.Restart, sum.Skip)
+	// Human mode streams the plan inline; machine modes carry it in the final
+	// envelope so stdout stays a single parseable object.
+	if human {
+		fmt.Fprintln(cmd.OutOrStdout(), flow.Plan.String())
+		printDrift(cmd, flow.Drift)
+		fmt.Fprintf(cmd.OutOrStdout(),
+			"summary: install=%d swap=%d restart=%d skip=%d\n",
+			sum.Install, sum.Swap, sum.Restart, sum.Skip)
+	}
+	planData := map[string]any{
+		"summary": map[string]any{
+			"install": sum.Install, "swap": sum.Swap,
+			"restart": sum.Restart, "skip": sum.Skip,
+		},
+		"hasChanges": flow.Plan.HasChanges(),
+		"dryRun":     applyDryRun,
+	}
 
 	if !flow.Plan.HasChanges() {
-		fmt.Fprintln(cmd.OutOrStdout(), "no changes to apply")
+		emit(cmd, result.Success("no changes to apply", planData), mode)
 		return nil
 	}
 	if applyDryRun {
-		fmt.Fprintln(cmd.OutOrStdout(), "dry-run complete; nothing executed")
+		emit(cmd, result.Success("dry-run complete; nothing executed", planData), mode)
 		return nil
 	}
 
@@ -82,7 +99,8 @@ func runApply(cmd *cobra.Command, args []string) error {
 	resolver := func(name string) (*remote.Host, error) {
 		h, ok := hosts[name]
 		if !ok {
-			return nil, fmt.Errorf("no SSH connection for host %q", name)
+			return nil, diag.New(codeHostUndefined,
+				fmt.Sprintf("no SSH connection for host %q", name))
 		}
 		return h, nil
 	}
@@ -96,28 +114,28 @@ func runApply(cmd *cobra.Command, args []string) error {
 		PrevConfigHash: prevConfigHashes(flow.Lock),
 	})
 
-	if res.Err == nil {
-		if err := writeLock(flow.Cfg, flow.CfgPath, flow.Plan, flow.Configs); err != nil {
-			return fmt.Errorf("write lock: %w", err)
-		}
-		fmt.Fprintln(cmd.OutOrStdout(), "apply successful; lock updated")
-		return nil
+	if res.Err != nil {
+		// res.Err is a structured *diag.Diag (ERR_WAVE_FAILED) carrying every
+		// per-action failure in meta; let the top-level handler render it.
+		return res.Err
 	}
-	fmt.Fprintf(cmd.ErrOrStderr(), "apply failed: %v\n", res.Err)
-	// Surface the underlying per-action failures (install / swap / health gate),
-	// otherwise only the opaque "wave N failed" reaches the operator.
-	for _, a := range res.Actions {
-		if a.Err != nil {
-			fmt.Fprintf(cmd.ErrOrStderr(), "  ✗ %s %s @ %s: %v\n",
-				a.Action.Kind, a.Action.Service, a.Action.Host, a.Err)
-		}
+	if err := writeLock(flow.Cfg, flow.CfgPath, flow.Plan, flow.Configs); err != nil {
+		return diag.Wrap(err, codeWriteLock, "apply succeeded but writing the lock failed",
+			diag.WithReason(err.Error()))
 	}
-	if len(res.RolledBack) > 0 {
-		fmt.Fprintf(cmd.ErrOrStderr(), "rolled back %d host(s)\n", len(res.RolledBack))
-		os.Exit(3) //nolint:gocritic // explicit exit-code contract
-	}
-	os.Exit(2)
+	emit(cmd, result.Success("apply successful; lock updated", planData), mode)
 	return nil
+}
+
+// emit renders a successful CommandOutput. In human mode the inline progress was
+// already printed, so only the final human line is written; machine modes write
+// the JSON/agent envelope.
+func emit(cmd *cobra.Command, out result.CommandOutput, mode result.Mode) {
+	if mode == result.ModeHuman {
+		fmt.Fprintln(cmd.OutOrStdout(), out.Human)
+		return
+	}
+	result.Render(cmd.OutOrStdout(), out, mode)
 }
 
 func printDrift(cmd *cobra.Command, drift []DriftItem) {

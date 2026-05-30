@@ -79,8 +79,8 @@ func emitPlanJSON(cmd *cobra.Command, flow *applyFlow) error {
 			"skip":    flow.Plan.Summary().Skip,
 			"drift":   len(flow.Drift),
 		},
-		"waves":  flow.Plan.Waves,
-		"drift":  flow.Drift,
+		"waves": flow.Plan.Waves,
+		"drift": flow.Drift,
 	}
 	enc := json.NewEncoder(cmd.OutOrStdout())
 	enc.SetIndent("", "  ")

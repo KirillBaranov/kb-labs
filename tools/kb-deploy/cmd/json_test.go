@@ -18,7 +18,7 @@ func binaryPath(t *testing.T) string {
 		bin += ".exe"
 	}
 	// Build from the module root (one level up from cmd/).
-	moduleRoot := filepath.Join("..", )
+	moduleRoot := filepath.Join("..")
 	out, err := exec.Command("go", "build", "-o", bin, moduleRoot).CombinedOutput()
 	if err != nil {
 		t.Fatalf("build binary: %v\n%s", err, out)
@@ -116,8 +116,8 @@ func TestJSONStatus(t *testing.T) {
 	}
 
 	var resp struct {
-		OK      bool            `json:"ok"`
-		Targets map[string]any  `json:"targets"`
+		OK      bool           `json:"ok"`
+		Targets map[string]any `json:"targets"`
 	}
 	if err := json.Unmarshal(out, &resp); err != nil {
 		t.Fatalf("unmarshal: %v\noutput: %s", err, out)

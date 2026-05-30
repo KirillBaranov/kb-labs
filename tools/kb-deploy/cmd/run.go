@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/kb-labs/clikit/ui"
+
 	"github.com/kb-labs/kb-deploy/internal/affected"
 	"github.com/kb-labs/kb-deploy/internal/config"
 	"github.com/kb-labs/kb-deploy/internal/docker"
@@ -288,7 +290,7 @@ func runDeploy(cmd *cobra.Command, args []string) error {
 
 // validateEnv checks that all required env vars are set for the given targets.
 // Reports all missing vars at once so the user can fix them in one go.
-func validateEnv(targets []string, all map[string]config.Target, o output, silent bool) error {
+func validateEnv(targets []string, all map[string]config.Target, o ui.Output, silent bool) error {
 	var missing []string
 	for _, name := range targets {
 		t := all[name]
