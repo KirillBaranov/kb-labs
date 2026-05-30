@@ -99,7 +99,8 @@ jobs:
             const pr    = context.payload.pull_request.number;
             const owner = context.repo.owner;
             const repo  = context.repo.repo;
-            const BOT_MARKER = '<!-- docs-bot-v1 -->';
+            const BOT_MARKER    = '<!-- docs-bot-v1 -->';
+            const REVIEW_MARKER = '<!-- docs-bot-review-v1 -->';
 
             // ── Build comment body ───────────────────────────────────────────
             let body;
@@ -133,18 +134,35 @@ jobs:
               ].join('\n');
             }
 
-            // ── Post or update comment ───────────────────────────────────────
-            const comments = await github.rest.issues.listComments({ owner, repo, issue_number: pr });
-            const existing = comments.data.find(c => c.body?.includes(BOT_MARKER));
+            // ── Fetch all issue comments once ────────────────────────────────
+            const allComments = await github.rest.issues.listComments({ owner, repo, issue_number: pr, per_page: 100 });
+
+            // ── Post or update main comment ──────────────────────────────────
+            const existing = allComments.data.find(c => c.body?.includes(BOT_MARKER) && !c.body?.includes(REVIEW_MARKER));
+            let summaryId;
             if (existing) {
               await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+              summaryId = existing.id;
             } else {
-              await github.rest.issues.createComment({ owner, repo, issue_number: pr, body });
+              const created = await github.rest.issues.createComment({ owner, repo, issue_number: pr, body });
+              summaryId = created.data.id;
             }
 
-            // ── Post inline threads (cap 5, highest risk first) ───────────────
             if (affected.length === 0) return;
 
+            // ── Clean up old bot inline threads + review bodies ──────────────
+            const existingThreads = await github.rest.pulls.listReviewComments({ owner, repo, pull_number: pr, per_page: 100 });
+
+            await Promise.all([
+              ...existingThreads.data
+                .filter(c => c.body?.includes(BOT_MARKER))
+                .map(c => github.rest.pulls.deleteReviewComment({ owner, repo, comment_id: c.id }).catch(() => {})),
+              ...allComments.data
+                .filter(c => c.id !== summaryId && c.body?.includes(REVIEW_MARKER))
+                .map(c => github.rest.issues.deleteComment({ owner, repo, comment_id: c.id }).catch(() => {})),
+            ]);
+
+            // ── Post inline threads (cap 5, highest risk first) ──────────────
             const MAX_INLINE = 5;
             const prFiles = await github.rest.pulls.listFiles({ owner, repo, pull_number: pr });
             const prFileSet = new Set(prFiles.data.map(f => f.filename));
@@ -183,7 +201,7 @@ jobs:
             await github.rest.pulls.createReview({
               owner, repo, pull_number: pr,
               event: 'COMMENT',
-              body: `${BOT_MARKER}\n📚 **${threads.length} doc page(s) to verify** — see inline threads.${hiddenNote}`,
+              body: `${REVIEW_MARKER}\n📚 **${threads.length} doc page(s) to verify** — see inline threads.${hiddenNote}`,
               comments: threads,
             }).catch(err => {
               console.warn('Inline threads failed, comment already posted:', err.message);
