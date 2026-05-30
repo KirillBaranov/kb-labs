@@ -179,12 +179,18 @@ func deliverConfigs(opts ExecuteOptions) (map[string]bool, error) {
 		host, err := opts.Resolver(name)
 		if err != nil {
 			restoreConfigs(opts, delivered)
-			return nil, fmt.Errorf("resolve host %s for config delivery: %w", name, err)
+			return nil, diag.Wrap(err, "ERR_CONFIG_DELIVERY",
+				fmt.Sprintf("could not resolve host %q for config delivery", name),
+				diag.WithReason(err.Error()),
+				diag.WithMeta(map[string]any{"host": name}))
 		}
 		hc := opts.Configs[name]
 		if err := host.DeliverConfig(hc.JSONC, hc.Env); err != nil {
 			restoreConfigs(opts, delivered)
-			return nil, fmt.Errorf("deliver config to %s: %w", name, err)
+			return nil, diag.Wrap(err, "ERR_CONFIG_DELIVERY",
+				fmt.Sprintf("config delivery to host %q failed", name),
+				diag.WithReason(err.Error()),
+				diag.WithMeta(map[string]any{"host": name}))
 		}
 		delivered = append(delivered, name)
 		if opts.PrevConfigHash[name] != hc.Hash {
