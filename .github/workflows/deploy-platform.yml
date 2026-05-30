@@ -222,13 +222,24 @@ jobs:
           ssh $SSHOPTS "$SSH_USER@$SSH_HOST" 'bash -s' <<'REMOTE'
           set -uo pipefail
           P="$HOME/kb-platform"
+          echo "Disk before reset:"; df -h "$HOME" | tail -1
           echo "Stopping any running daemons (best-effort)…"
           kb-dev --config "$P/.kb/devservices.yaml" stop 2>/dev/null || true
           echo "Removing installed releases / services / registry…"
           rm -rf "$P/releases" "$P/services" "$P/releases.json" "$P/.kb/devservices.yaml"
           # Keep .kb/kb.config.jsonc + .env — apply re-delivers them, and dropping
           # the config hash here is harmless (apply rewrites it).
+          # Reclaim disk from previous deploy churn: each per-release `pnpm install`
+          # populates the store, and repeated debug runs accumulate stores, caches
+          # and dangling docker layers until the small VM disk fills (ENOSPC).
+          echo "Reclaiming disk…"
+          pnpm store prune 2>/dev/null || true
+          rm -rf "$HOME/.cache/pnpm" "$HOME/.npm/_cacache" 2>/dev/null || true
+          npm cache clean --force 2>/dev/null || true
+          docker image prune -af 2>/dev/null || true
+          docker builder prune -af 2>/dev/null || true
           echo "Platform state reset. Remaining .kb:"; ls -la "$P/.kb" 2>/dev/null || true
+          echo "Disk after reset:"; df -h "$HOME" | tail -1
           REMOTE
 
       # ── Apply ────────────────────────────────────────────────────────────────
