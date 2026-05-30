@@ -65,6 +65,15 @@ describe('filterTools', () => {
     expect(filterTools(snap, allow).map((t) => t.name)).toEqual(['pluginA__run_task', 'pluginB__run_task']);
   });
 
+  it('sanitizes scoped npm package names in tool names', () => {
+    // Real pluginIds look like "@kb-labs/policy". The @ and / must be stripped
+    // so tool names match /^[a-z0-9-]+__[a-z0-9_]+$/ (MCP name constraint).
+    const snap = { manifests: [entry('@kb-labs/policy', [cmd('policy detect', 'read')])] };
+    const [tool] = filterTools(snap, allow);
+    expect(tool!.name).toBe('kb-labs-policy__policy_detect');
+    expect(tool!.name).toMatch(/^[a-z0-9-]+__[a-z0-9_]+$/);
+  });
+
   it('ignores manifests without cli commands', () => {
     const manifest: ManifestV3 = { schema: 'kb.plugin/3', id: 'nocli', version: '1.0.0' };
     const e: RegistrySnapshotManifestEntry = { pluginId: 'nocli', manifest, pluginRoot: '/p', source: { kind: 'local', path: '/p' } };

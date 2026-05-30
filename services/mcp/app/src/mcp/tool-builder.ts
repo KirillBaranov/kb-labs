@@ -54,9 +54,25 @@ export async function createToolRegistry(opts: {
   });
 }
 
-/** MCP tool names must match `^[a-z0-9_-]+$` segments; collapse whitespace to underscores. */
+/**
+ * Make a plugin ID safe for use in MCP tool names.
+ * Strips the leading `@` from scoped npm packages and replaces `/` with `-`.
+ * Example: "@kb-labs/policy" → "kb-labs-policy", "my-plugin" → "my-plugin".
+ * Case is preserved because plugin IDs like "pluginA" are valid non-scoped names.
+ */
+function sanitizePluginId(pluginId: string): string {
+  return pluginId
+    .replace(/^@/, '')              // strip leading @
+    .replace(/\//g, '-')            // replace / with -
+    .replace(/[^a-zA-Z0-9-]/g, '-'); // replace any other unsafe chars
+}
+
+/**
+ * Build a collision-safe MCP tool name: `{pluginId}__{command_path}`.
+ * The plugin segment is sanitized so npm scope chars (@, /) are removed.
+ */
 function toolName(pluginId: string, commandPath: string): string {
-  return `${pluginId}__${commandPath.trim().replace(/\s+/g, '_')}`;
+  return `${sanitizePluginId(pluginId)}__${commandPath.trim().replace(/\s+/g, '_')}`;
 }
 
 /**
