@@ -6,6 +6,7 @@ packages:
   - shared/*
   - plugins/*/*
   - '!plugins/fixtures/*'
+  - services/*/*
   - adapters/*
   - infra/devkit
   - studio/*

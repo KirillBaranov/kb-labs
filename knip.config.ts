@@ -83,16 +83,19 @@ const config: KnipConfig = {
     },
 
     // ── Daemon apps — index.ts or bootstrap.ts is the process entry ──
-    'plugins/gateway/app': {
+    'services/gateway/app': {
       entry: ['src/index.ts'],
     },
-    'plugins/gateway/runtime-server': {
+    'services/gateway/runtime-server': {
       entry: ['src/index.ts', 'src/cli.ts'],
     },
-    'plugins/rest-api/app': {
+    'services/rest-api/app': {
       // bootstrap.ts is the real entry; routes/*, middleware/*, events/* are
       // registered via fastify plugin pattern (server.register), not static imports
       entry: ['src/index.ts', 'src/bootstrap.ts', 'src/server.ts'],
+    },
+    'services/mcp/app': {
+      entry: ['src/index.ts', 'src/manifest.ts'],
     },
     'plugins/marketplace/daemon/marketplace': {
       entry: ['src/index.ts', 'src/bootstrap.ts'],

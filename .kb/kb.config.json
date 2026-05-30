@@ -1,17 +1,11 @@
 {
   "platform": {
     "adapters": {
-      "llm": [
-        "@kb-labs/adapters-openai",
-        "@kb-labs/adapters-vibeproxy"
-      ],
-      "embeddings": "@kb-labs/adapters-openai/embeddings",
       "storage": "@kb-labs/adapters-fs",
       "documentDatabase": "@kb-labs/adapters-sqlite",
       "kvStore": "@kb-labs/adapters-sqlite/kv",
       "logger": "@kb-labs/adapters-pino",
       "logRingBuffer": "@kb-labs/adapters-log-ringbuffer",
-      "logPersistence": "@kb-labs/adapters-log-document",
       "analytics": "@kb-labs/adapters-analytics-sqlite",
       "vectorStore": "@kb-labs/adapters-qdrant",
       "cache": "@kb-labs/adapters-redis",
@@ -23,10 +17,11 @@
     "adapterOptions": {
       "serviceTransport": {
         "services": {
-          "rest":        { "url": "http://127.0.0.1:5050" },
-          "workflow":    { "url": "http://127.0.0.1:7778" },
-          "marketplace": { "url": "http://127.0.0.1:5070" },
-          "marketplace-registry": { "url": "http://127.0.0.1:5071" }
+          "rest":                 { "url": "http://127.0.0.1:5050" },
+          "workflow":             { "url": "http://127.0.0.1:7778" },
+          "marketplace":          { "url": "http://127.0.0.1:5070" },
+          "marketplace-registry": { "url": "http://127.0.0.1:5071" },
+          "mcp-daemon":           { "url": "http://127.0.0.1:7779" }
         }
       },
       "voyage-ai-embeddings": {
@@ -159,7 +154,7 @@
       }
     },
     "execution": {
-      "mode": "worker-pool"
+      "mode": "in-process"
     }
   },
   "profiles": [
@@ -597,32 +592,50 @@
     "port": 4000,
     "upstreams": {
       "rest": {
+        "serviceId": "rest",
         "url": "http://localhost:5050",
         "prefix": "/api/v1",
         "websocket": true,
         "description": "REST API \u2014 main platform BFF"
       },
       "workflow": {
+        "serviceId": "workflow",
         "url": "http://localhost:7778",
         "prefix": "/api/exec",
         "rewritePrefix": "",
         "description": "Workflow Daemon \u2014 direct access"
       },
       "marketplace": {
+        "serviceId": "marketplace",
         "url": "http://localhost:5070",
         "prefix": "/api/v1/marketplace",
         "description": "Marketplace Service \u2014 unified entity management"
       },
       "widgets": {
+        "serviceId": "rest",
         "url": "http://localhost:5050",
         "prefix": "/plugins",
         "description": "Plugin widget bundles \u2014 served by REST API"
       },
       "marketplace-registry": {
+        "serviceId": "marketplace-registry",
         "url": "http://localhost:5071",
         "prefix": "/api/v1/registry",
         "rewritePrefix": "/api/v1",
         "description": "Marketplace Registry \u2014 publish, share, install kb:handle/name packages"
+      },
+      "mcp": {
+        "serviceId": "mcp-daemon",
+        "url": "http://localhost:7779",
+        "prefix": "/api/v1/mcp",
+        "websocket": false,
+        "description": "MCP Daemon \u2014 plugin commands as tools for external agents"
+      }
+    },
+    "auth": {
+      "bootstrap": {
+        "tenantId": "kblabs-cloud",
+        "adminEmail": "admin@e2e.test"
       }
     },
     "staticTokens": {

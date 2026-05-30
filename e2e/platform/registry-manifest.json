@@ -58,6 +58,13 @@
       "description": "Web UI (port 3000)",
       "default": true,
       "port": 3000
+    },
+    {
+      "id": "mcp",
+      "pkg": "@kb-labs/mcp-app",
+      "description": "MCP Daemon (port 7779)",
+      "default": true,
+      "port": 7779
     }
   ],
   "adapters": [
