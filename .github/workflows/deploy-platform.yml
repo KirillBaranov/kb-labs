@@ -134,6 +134,17 @@ jobs:
           rsync -az --delete -e "ssh $SSHOPTS" e2e/packages/ "$SSH_USER@$SSH_HOST:~/kb-packages/"
           ssh $SSHOPTS "$SSH_USER@$SSH_HOST" 'bash -s' <<'REMOTE'
           set -uo pipefail
+          # Verdaccio's default policy is publish:$authenticated, so acquire a token.
+          # The adduser REST endpoint is idempotent with a fixed password: it creates
+          # the user on first run and logs in (returns a token) on later runs. The
+          # registry is loopback-only on the VM, so a local CI password is acceptable.
+          TOKEN=$(curl -s -XPUT \
+            -H 'Content-Type: application/json' \
+            -d '{"name":"kb-ci","password":"kb-ci-local"}' \
+            http://127.0.0.1:4873/-/user/org.couchdb.user:kb-ci \
+            | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+          if [ -z "$TOKEN" ]; then echo "::error::failed to obtain Verdaccio token"; exit 1; fi
+          npm config set //127.0.0.1:4873/:_authToken "$TOKEN"
           published=0; skipped=0; failed=0
           for f in ~/kb-packages/*.tgz; do
             out=$(npm publish "$f" --registry http://127.0.0.1:4873 2>&1) && { published=$((published+1)); continue; }
