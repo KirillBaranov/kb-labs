@@ -6,6 +6,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/kb-labs/clikit/diag"
+
 	"github.com/kb-labs/kb-deploy/internal/config"
 	"github.com/kb-labs/kb-deploy/internal/remote"
 )
@@ -170,6 +172,52 @@ func TestExecute_RestartsByManifestIDNotShortName(t *testing.T) {
 	}
 }
 
+// The wave runs in phases: all install+swap, then one devservices reconcile,
+// then restarts. Verify reconcile lands after the last swap and before the
+// first restart so kb-dev only ever loads a fully-registered, reconciled config.
+func TestExecute_ReconcilesAfterSwapBeforeRestart(t *testing.T) {
+	h1 := &fakeRunner{}
+	cfg := &config.Config{
+		Schema: config.CurrentSchema,
+		Services: map[string]config.Service{
+			"gateway": {Service: "@kb-labs/gateway", Version: "1", Targets: config.ServiceTargets{Hosts: []string{"h1"}, HealthGate: "5s"}},
+			"rest":    {Service: "@kb-labs/rest-api", Version: "1", Targets: config.ServiceTargets{Hosts: []string{"h1"}, HealthGate: "5s"}},
+		},
+		Hosts:   map[string]config.Host{"h1": {SSH: config.SSHConfig{Host: "1.1.1.1", User: "kb"}}},
+		Rollout: &config.RolloutConfig{AutoRollback: true, Parallel: 1},
+	}
+	plan := &Plan{Waves: [][]Action{{
+		{Kind: ActionInstall, Host: "h1", Service: "gateway", ServicePkg: "@kb-labs/gateway", Version: "1", ToID: "g1"},
+		{Kind: ActionInstall, Host: "h1", Service: "rest", ServicePkg: "@kb-labs/rest-api", Version: "1", ToID: "r1"},
+	}}}
+
+	res := Execute(ExecuteOptions{Plan: plan, Config: cfg, Resolver: resolverFor(map[string]*fakeRunner{"h1": h1})})
+	if res.Err != nil {
+		t.Fatalf("unexpected error: %v", res.Err)
+	}
+
+	lastSwap := h1.lastIndexOf("kb-create swap")
+	reconcile := h1.firstIndexOf("reconcile-devservices")
+	firstRestart := h1.firstIndexOf("restart '")
+	if reconcile < 0 {
+		t.Fatal("reconcile-devservices was never invoked")
+	}
+	if !(lastSwap < reconcile && reconcile < firstRestart) {
+		t.Errorf("phase order wrong: lastSwap=%d reconcile=%d firstRestart=%d\n%v",
+			lastSwap, reconcile, firstRestart, h1.log)
+	}
+	// Reconcile must run exactly once for the host, not per service.
+	count := 0
+	for _, l := range h1.log {
+		if strings.Contains(l, "reconcile-devservices") {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Errorf("reconcile ran %d times, want 1 (once per host)", count)
+	}
+}
+
 func TestExecute_HealthGateFailureTriggersAutoRollback(t *testing.T) {
 	h1 := &fakeRunner{failOn: "ready '"}
 	cfg := singleServiceCfg()
@@ -195,6 +243,40 @@ func TestExecute_HealthGateFailureTriggersAutoRollback(t *testing.T) {
 	}
 	if len(res.RolledBack) != 0 {
 		t.Errorf("expected no rollback for incomplete action, got %+v", res.RolledBack)
+	}
+}
+
+// A failed wave must produce a structured *diag.Diag (ERR_WAVE_FAILED) whose
+// meta carries every per-action failure — not an opaque "wave N failed" string.
+func TestExecute_WaveFailureIsStructuredDiag(t *testing.T) {
+	h1 := &fakeRunner{failOn: "ready '"}
+	cfg := singleServiceCfg()
+	plan := &Plan{Waves: [][]Action{{{
+		Kind: ActionInstall, Host: "h1", Service: "gateway",
+		ServicePkg: "@kb-labs/gateway", Version: "1.2.3",
+	}}}}
+
+	res := Execute(ExecuteOptions{
+		Plan: plan, Config: cfg,
+		Resolver: resolverFor(map[string]*fakeRunner{"h1": h1}),
+	})
+
+	var d *diag.Diag
+	if !errors.As(res.Err, &d) {
+		t.Fatalf("res.Err is not a *diag.Diag: %T", res.Err)
+	}
+	if d.Code != "ERR_WAVE_FAILED" {
+		t.Errorf("code = %q, want ERR_WAVE_FAILED", d.Code)
+	}
+	if d.Reason == "" {
+		t.Error("expected a reason summarizing the failures")
+	}
+	failures, ok := d.Meta["failures"].([]map[string]any)
+	if !ok || len(failures) != 1 {
+		t.Fatalf("meta.failures = %v, want one failure", d.Meta["failures"])
+	}
+	if failures[0]["service"] != "gateway" || failures[0]["host"] != "h1" {
+		t.Errorf("failure = %v", failures[0])
 	}
 }
 
@@ -368,6 +450,19 @@ func TestExecute_ConfigDeliveryFailureAbortsBeforeInstall(t *testing.T) {
 	})
 	if res.Err == nil {
 		t.Fatal("expected error when config delivery fails")
+	}
+	// The abort must carry a structured diagnostic (ERR_CONFIG_DELIVERY with the
+	// failing host in meta), not degrade to a bare ERR_UNKNOWN. The exit-code
+	// mapping for the code lives in the cmd package (registered there).
+	var d *diag.Diag
+	if !errors.As(res.Err, &d) {
+		t.Fatalf("config-delivery abort is not a *diag.Diag: %T", res.Err)
+	}
+	if d.Code != "ERR_CONFIG_DELIVERY" {
+		t.Errorf("code = %q, want ERR_CONFIG_DELIVERY", d.Code)
+	}
+	if d.Meta["host"] == nil {
+		t.Errorf("expected meta.host on the delivery diagnostic, got %v", d.Meta)
 	}
 	if h1.has("install-service") || h2.has("install-service") {
 		t.Errorf("no host may install when delivery aborts: h1=%v h2=%v", h1.log, h2.log)

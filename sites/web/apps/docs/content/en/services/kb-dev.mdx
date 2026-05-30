@@ -1,7 +1,7 @@
 ---
 title: "kb-dev"
 description: "Local service manager — process tracking, health probes, dependency ordering, and auto-restart for any project."
-updatedAt: "2026-04-08"
+updatedAt: "2026-05-31"
 order: 8
 ---
 
@@ -250,6 +250,8 @@ State icons: `●` alive, `◉` starting, `✕` failed, `○` dead.
 | Flag | Description |
 |---|---|
 | `--json` | Structured JSON output |
+| `--agent` | Compact agent JSON (same shape as `--json`, drops `meta`) |
+| `--output <mode>` | Output format: `human` \| `json` \| `agent` |
 | `--force` | Kill port conflicts before starting |
 | `--cascade` | Stop/restart dependent services |
 | `--no-cascade` | Skip dependent cascade |
@@ -257,7 +259,7 @@ State icons: `●` alive, `◉` starting, `✕` failed, `○` dead.
 
 ## Agent protocol
 
-`kb-dev` is designed to be driven by AI agents and CI scripts. All commands support `--json`, and every response includes an `ok` field:
+`kb-dev` is designed to be driven by AI agents and CI scripts. All commands support `--json` (and `--agent` for the compact variant), and every response includes an `ok` field. Failures share the launcher diagnostic envelope — `{ ok: false, status: "error", error: { code, message, reason, hint } }` — so an agent can branch on a stable `error.code`:
 
 ### ensure — idempotent desired state
 

@@ -2,11 +2,53 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
+
+	"github.com/kb-labs/clikit/diag"
+	"github.com/kb-labs/clikit/result"
+	"github.com/kb-labs/clikit/ui"
 )
+
+// Global output-mode flags.
+var (
+	jsonMode   bool
+	agentMode  bool
+	outputFlag string
+)
+
+// outputMode resolves the active render mode from the output flags.
+func outputMode() result.Mode { return result.ResolveMode(jsonMode, agentMode, outputFlag) }
+
+// emit renders a successful/warning CommandOutput. Human mode prints the
+// message and any warnings (with reason+hint) visibly; machine modes write the
+// JSON/agent envelope (warnings included).
+func emit(cmd *cobra.Command, out result.CommandOutput, mode result.Mode) {
+	if mode != result.ModeHuman {
+		result.Render(cmd.OutOrStdout(), out, mode)
+		return
+	}
+	o := ui.New(cmd.OutOrStdout())
+	if out.Human != "" {
+		if out.Ok {
+			o.OK(out.Human)
+		} else {
+			o.Info(out.Human)
+		}
+	}
+	for _, w := range out.Warnings {
+		o.Warn(w.Message)
+		if w.Reason != "" {
+			o.Detail("why:  " + w.Reason)
+		}
+		if w.Hint != "" {
+			o.Detail("hint: " + w.Hint)
+		}
+	}
+}
 
 // SetVersionInfo is called from main.go with values injected at build time via -ldflags.
 // It must be called before Execute().
@@ -29,17 +71,32 @@ Examples:
   kb-create status               show installation status
   kb-create logs                 show install log
   kb-create doctor               verify local environment`,
-	RunE: runCreate,
-	Args: cobra.MaximumNArgs(1),
+	RunE:          runCreate,
+	Args:          cobra.MaximumNArgs(1),
+	SilenceUsage:  true,
+	SilenceErrors: true,
 }
 
-// Execute is the main entry point called from main.go.
+// Execute is the main entry point called from main.go. Command errors are
+// rendered as structured diagnostics (message+reason+hint for humans;
+// {ok:false,error:{…}} for machines) and the process exits with the
+// diagnostic's exit code. Bare errors are wrapped as ERR_UNKNOWN.
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		os.Exit(1)
+	_, err := rootCmd.ExecuteC()
+	if err == nil {
+		return
 	}
+	var d *diag.Diag
+	if !errors.As(err, &d) {
+		d = diag.Wrap(err, "ERR_UNKNOWN", err.Error())
+	}
+	code := result.RenderDiag(os.Stdout, os.Stderr, d, outputMode())
+	os.Exit(code)
 }
 
 func init() {
 	rootCmd.PersistentFlags().String("platform", "", "platform installation directory (overrides wizard default)")
+	rootCmd.PersistentFlags().BoolVar(&jsonMode, "json", false, "output as structured JSON")
+	rootCmd.PersistentFlags().BoolVar(&agentMode, "agent", false, "output as compact agent JSON")
+	rootCmd.PersistentFlags().StringVar(&outputFlag, "output", "", "output format: human|json|agent")
 }

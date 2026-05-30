@@ -1,7 +1,7 @@
 ---
 title: "kb-devkit"
 description: "Workspace orchestrator for large monorepos — content-addressable task caching, category-aware task variants, affected-package detection, quality checks, and Docker build context pruning via devkit.yaml."
-updatedAt: "2026-04-12"
+updatedAt: "2026-05-31"
 order: 9
 ---
 
@@ -505,6 +505,8 @@ The cache is local by default. Remote cache backends (S3, GCS) are on the roadma
 | Flag | Description |
 |---|---|
 | `--json` | Structured JSON output (all commands) |
+| `--agent` | Compact agent JSON (same shape as `--json`, drops `meta`) |
+| `--output <mode>` | Output format: `human` \| `json` \| `agent` |
 | `--config <path>` | Explicit path to `devkit.yaml` |
 | `--depth N` | Override glob recursion depth |
 

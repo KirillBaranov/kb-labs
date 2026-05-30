@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"gopkg.in/yaml.v3"
 )
@@ -75,6 +76,37 @@ func (f *File) Upsert(id string, svc Service) {
 // Remove drops the entry for id, if any.
 func (f *File) Remove(id string) {
 	delete(f.Services, id)
+}
+
+// PruneUnknownDeps removes every dependsOn entry that does not name a service
+// present in the file, returning each dropped "service→dep" pair (sorted).
+//
+// kb-create writes each service's full manifest dependencies on swap, one
+// service at a time, so the file can transiently reference services that are
+// external (e.g. qdrant, not managed by kb-dev) or not yet registered. kb-dev
+// validates the registry strictly and rejects unknown dependencies. Running
+// this once, after every service of a deployment is registered, yields a
+// self-consistent registry: real inter-service deps are kept (their targets are
+// present) while external/undeployed ones are dropped.
+func (f *File) PruneUnknownDeps() []string {
+	var dropped []string
+	for id, svc := range f.Services {
+		if len(svc.DependsOn) == 0 {
+			continue
+		}
+		kept := make([]string, 0, len(svc.DependsOn))
+		for _, dep := range svc.DependsOn {
+			if _, ok := f.Services[dep]; ok {
+				kept = append(kept, dep)
+				continue
+			}
+			dropped = append(dropped, fmt.Sprintf("%s→%s", id, dep))
+		}
+		svc.DependsOn = kept
+		f.Services[id] = svc
+	}
+	sort.Strings(dropped)
+	return dropped
 }
 
 // Save writes the file atomically (write temp → rename), creating the .kb/
