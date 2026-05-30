@@ -10,10 +10,10 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --chown=kb:nodejs .kb/deploy/gateway-app/node_modules ./node_modules
 COPY --chown=kb:nodejs .kb/deploy/gateway-app/dist ./dist
 # Prod config: adapters + gateway upstreams
-COPY --chown=kb:nodejs plugins/gateway/app/.kb/kb.config.prod.json .kb/kb.config.json
+COPY --chown=kb:nodejs services/gateway/app/.kb/kb.config.prod.json .kb/kb.config.json
 
 # Marketplace lock with node_modules-relative adapter paths
-COPY --chown=kb:nodejs plugins/gateway/app/.kb/marketplace.prod.lock .kb/marketplace.lock
+COPY --chown=kb:nodejs services/gateway/app/.kb/marketplace.prod.lock .kb/marketplace.lock
 
 RUN mkdir -p .kb/database .kb/storage .kb/analytics && chown -R kb:nodejs .kb
 
