@@ -235,6 +235,33 @@ jobs:
           exit $rc
           REMOTE
 
+      # ── Diagnose daemons when something failed ───────────────────────────────
+      # Read-only: dumps kb-dev status, per-service logs and listening ports so a
+      # failed apply / health gate is diagnosable without a manual SSH session.
+      - name: Diagnose daemons
+        if: failure()
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          SSHOPTS="-i $HOME/.ssh/deploy.key -o StrictHostKeyChecking=accept-new"
+          ssh $SSHOPTS "$SSH_USER@$SSH_HOST" 'bash -s' <<'REMOTE'
+          set -uo pipefail
+          CFG="$HOME/kb-platform/.kb/devservices.yaml"
+          echo "===== kb-dev status ====="
+          kb-dev --config "$CFG" status 2>&1 || true
+          for s in core-state-daemon rest-api-app workflow-daemon gateway-app; do
+            echo "===== logs: $s (last 120) ====="
+            kb-dev --config "$CFG" logs "$s" -n 120 2>&1 || true
+          done
+          echo "===== listening ports ====="
+          (ss -ltnp 2>/dev/null || netstat -ltnp 2>/dev/null) | grep -E ':(7777|5050|7778|4000)\b' || echo "(no platform ports listening)"
+          echo "===== releases / current symlinks ====="
+          ls -la "$HOME/kb-platform/services/"*/current 2>&1 || true
+          echo "===== delivered config (placeholders, not resolved) ====="
+          sed -E 's/(secret|key|token|password)/\1/I' "$HOME/kb-platform/.kb/kb.config.jsonc" 2>&1 | head -80 || true
+          REMOTE
+
       - name: Cleanup SSH key
         if: always()
         run: rm -f ~/.ssh/deploy.key
