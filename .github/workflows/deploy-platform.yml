@@ -179,10 +179,11 @@ jobs:
             "http://127.0.0.1:4873/-/user/org.couchdb.user:kb-ci")
           code=$(printf '%s' "$resp" | tail -n1)
           body=$(printf '%s' "$resp" | sed '$d')
-          TOKEN=$(printf '%s' "$body" | grep -o '"token":"[^"]*"' | head -1 | cut -d'"' -f4)
+          # Verdaccio pretty-prints JSON ("token": "..."), so tolerate whitespace.
+          TOKEN=$(printf '%s' "$body" | tr -d '\n' | sed -n 's/.*"token"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
           if [ -z "$TOKEN" ]; then
             # Redact any secret-shaped fields before surfacing the response for diagnosis.
-            safe=$(printf '%s' "$body" | sed -E 's/("(token|password)":")[^"]*/\1<redacted>/g' | head -c 500)
+            safe=$(printf '%s' "$body" | sed -E 's/("(token|password)"[[:space:]]*:[[:space:]]*")[^"]*/\1<redacted>/g' | head -c 500)
             echo "::error::adduser returned no token (HTTP $code): $safe"
             exit 1
           fi
