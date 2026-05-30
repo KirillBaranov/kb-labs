@@ -166,29 +166,24 @@ jobs:
           rsync -az --delete -e "ssh $SSHOPTS" e2e/packages/ "$SSH_USER@$SSH_HOST:~/kb-packages/"
           ssh $SSHOPTS "$SSH_USER@$SSH_HOST" 'bash -s' <<'REMOTE'
           set -uo pipefail
-          # Verdaccio's default policy is publish:$authenticated, so acquire a token.
-          # The adduser REST endpoint is idempotent with a fixed password: it creates
-          # the user on first run and logs in (returns a token) on later runs. The
-          # registry is loopback-only on the VM, so a local CI password is acceptable.
-          # Send a full npm-style user document — a minimal {name,password} body is
-          # not always honoured by the htpasswd handler.
+          # Verdaccio's default policy is publish:$authenticated. Ensure a local user
+          # exists in htpasswd, then authenticate publishes with HTTP Basic — this is
+          # idempotent across runs (the adduser PUT returns 409 once the user is
+          # persisted in the named volume, whereas Basic auth keeps working). The
+          # registry is loopback-only on the VM, so a local CI credential is acceptable.
           NOW=$(date -u +%Y-%m-%dT%H:%M:%S.000Z)
-          resp=$(curl -s -w '\n%{http_code}' -XPUT \
+          code=$(curl -s -o /dev/null -w '%{http_code}' -XPUT \
             -H 'Content-Type: application/json' \
             -d "{\"_id\":\"org.couchdb.user:kb-ci\",\"name\":\"kb-ci\",\"password\":\"kb-ci-local\",\"type\":\"user\",\"roles\":[],\"date\":\"$NOW\"}" \
             "http://127.0.0.1:4873/-/user/org.couchdb.user:kb-ci")
-          code=$(printf '%s' "$resp" | tail -n1)
-          body=$(printf '%s' "$resp" | sed '$d')
-          # Verdaccio pretty-prints JSON ("token": "..."), so tolerate whitespace.
-          TOKEN=$(printf '%s' "$body" | tr -d '\n' | sed -n 's/.*"token"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
-          if [ -z "$TOKEN" ]; then
-            # Redact any secret-shaped fields before surfacing the response for diagnosis.
-            safe=$(printf '%s' "$body" | sed -E 's/("(token|password)"[[:space:]]*:[[:space:]]*")[^"]*/\1<redacted>/g' | head -c 500)
-            echo "::error::adduser returned no token (HTTP $code): $safe"
-            exit 1
-          fi
-          echo "Verdaccio auth OK (HTTP $code)"
-          npm config set //127.0.0.1:4873/:_authToken "$TOKEN"
+          # 201 created (first run) or 409 already-registered (later runs) are both fine.
+          case "$code" in
+            200|201|409) echo "Verdaccio user ready (HTTP $code)";;
+            *) echo "::error::Verdaccio adduser failed (HTTP $code)"; exit 1;;
+          esac
+          AUTH=$(printf '%s' 'kb-ci:kb-ci-local' | base64 | tr -d '\n')
+          npm config set //127.0.0.1:4873/:_auth "$AUTH"
+          npm config set //127.0.0.1:4873/:always-auth true
           published=0; skipped=0; failed=0
           for f in ~/kb-packages/*.tgz; do
             out=$(npm publish "$f" --registry http://127.0.0.1:4873 2>&1) && { published=$((published+1)); continue; }
