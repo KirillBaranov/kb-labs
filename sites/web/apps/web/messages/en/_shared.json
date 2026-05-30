@@ -236,7 +236,8 @@
   "notFound": {
     "description": "The page you're looking for doesn't exist or has been moved.",
     "contact": "Contact us",
-    "goHome": "Go home"
+    "goHome": "Go home",
+    "title": "Page not found"
   },
   "meta": {
     "siteDescription": "Self-hosted AI control plane for developers. Workflows, agents, and plugins — on your own infrastructure."
