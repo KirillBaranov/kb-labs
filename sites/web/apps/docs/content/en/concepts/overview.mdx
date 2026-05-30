@@ -1,7 +1,7 @@
 ---
 title: "Architecture Overview"
 description: "How KB Labs services fit together."
-updatedAt: "2026-04-07"
+updatedAt: "2026-05-31"
 order: 1
 ---
 
@@ -20,11 +20,11 @@ KB Labs is not a monolith. It's a set of cooperating services — a CLI, a REST 
                               │   Gateway (:4000)  │
                               └─────────┬──────────┘
                                         │ routes by path
-               ┌────────────────────────┼───────────────────────┐
-               ▼                        ▼                        ▼
-        REST API (:5050)      Workflow daemon (:7778)   Marketplace (:5070)
-               │                        │
-               └──────────┬─────────────┘
+          ┌──────────────┬──────────────┼──────────────┬──────────────┐
+          ▼              ▼              ▼              ▼              ▼
+   REST API (:5050)  Workflow (:7778) Marketplace (:5070) MCP (:7779)  …
+          │              │                                  │
+          └──────────────┼──────────────────────────────────┘
                            ▼
                    Plugin Runtime
                  (sandbox + APIs)
@@ -71,6 +71,10 @@ The web UI. Serves a Next.js application that communicates with the gateway. Stu
 ### State daemon (port 7777)
 
 A lightweight in-process state broker used by the REST API, workflow daemon, and gateway for coordination: distributed locks, rate-limit counters, short-lived ephemeral state. Not a general-purpose database — it holds only transient data.
+
+### MCP daemon (port 7779)
+
+Exposes the same plugin commands the CLI runs as [Model Context Protocol](https://modelcontextprotocol.io) tools, so external agents can drive the platform. The tool catalog is auto-generated from plugin manifests — no hardcoding — and filtered per identity by the policy decision point: an authenticated caller sees only the tools it may use, an anonymous one sees an empty catalog. Tool calls route through the same execution pipeline as the CLI.
 
 ## The extension model
 
