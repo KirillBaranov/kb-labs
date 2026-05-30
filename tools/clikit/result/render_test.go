@@ -94,15 +94,15 @@ func TestRenderDiag_HumanShowsReasonAndHint(t *testing.T) {
 
 func TestResolveMode(t *testing.T) {
 	cases := []struct {
-		j, a   bool
-		out    string
-		want   Mode
+		j, a bool
+		out  string
+		want Mode
 	}{
 		{false, false, "", ModeHuman},
 		{true, false, "", ModeJSON},
 		{false, true, "", ModeAgent},
-		{true, false, "agent", ModeAgent},  // --output wins
-		{true, true, "human", ModeHuman},   // --output wins
+		{true, false, "agent", ModeAgent}, // --output wins
+		{true, true, "human", ModeHuman},  // --output wins
 		{false, false, "json", ModeJSON},
 	}
 	for _, c := range cases {
