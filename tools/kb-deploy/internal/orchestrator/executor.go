@@ -242,10 +242,16 @@ func runAction(a Action, opts ExecuteOptions, forceRestart map[string]bool) Acti
 		res.ReleaseID = a.ToID
 	}
 
-	// Restart + wait healthy.
+	// Restart + wait healthy. kb-dev keys services by their manifest id (the
+	// devservices.yaml key kb-create registers), which is not necessarily the
+	// package short name — read it from the swapped release's manifest.
 	healthGate := parseHealthGate(svc.Targets.HealthGate)
-	serviceShort := serviceShortName(svc.Service)
-	if err := host.RestartAndWaitHealthy(serviceShort, healthGate); err != nil {
+	serviceID, err := host.ServiceID(svc.Service, serviceShortName(svc.Service))
+	if err != nil {
+		res.Err = err
+		return res
+	}
+	if err := host.RestartAndWaitHealthy(serviceID, healthGate); err != nil {
 		res.Err = err
 		return res
 	}
@@ -276,7 +282,6 @@ func rollbackWave(waveResults []ActionResult, opts ExecuteOptions, forceRestart 
 			continue
 		}
 		svc := opts.Config.Services[r.Action.Service]
-		serviceShort := serviceShortName(svc.Service)
 
 		ar := ActionResult{Action: r.Action}
 		if revertRelease {
@@ -287,8 +292,15 @@ func rollbackWave(waveResults []ActionResult, opts ExecuteOptions, forceRestart 
 			}
 		}
 		// Restart to come up on the previous release (revertRelease) or on the
-		// restored config (recoverConfig).
-		if err := host.RestartAndWaitHealthy(serviceShort, parseHealthGate(svc.Targets.HealthGate)); err != nil {
+		// restored config (recoverConfig). kb-dev keys services by manifest id,
+		// read from the (now current) release's manifest.
+		serviceID, idErr := host.ServiceID(svc.Service, serviceShortName(svc.Service))
+		if idErr != nil {
+			ar.Err = idErr
+			rolled = append(rolled, ar)
+			continue
+		}
+		if err := host.RestartAndWaitHealthy(serviceID, parseHealthGate(svc.Targets.HealthGate)); err != nil {
 			ar.Err = err
 		} else {
 			ar.Completed = true
