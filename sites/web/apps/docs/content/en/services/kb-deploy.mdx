@@ -1,7 +1,7 @@
 ---
 title: "kb-deploy"
 description: "Deploy Docker services to VPS over SSH, plus declarative fleet rollout of the KB Labs platform with config delivery, canary waves, and auto-rollback."
-updatedAt: "2026-05-30"
+updatedAt: "2026-05-31"
 order: 10
 ---
 
@@ -218,7 +218,7 @@ kb-deploy list --json
 
 ## JSON contracts
 
-All commands support `--json`. Stdout contains exactly one JSON object. Exit code 0 means the command ran (not that all services are healthy). Exit 1 means a tool-level error (config not found, missing env var).
+All commands support `--json`, `--agent` (the compact variant — drops `meta`), and `--output human|json|agent`. Stdout contains exactly one JSON object. Exit code 0 means the command ran (not that all services are healthy). Exit 1 means a tool-level error (config not found, missing env var).
 
 ```json
 // kb-deploy run --json
@@ -238,8 +238,14 @@ All commands support `--json`. Stdout contains exactly one JSON object. Exit cod
   { "name": "redis",  "image": "redis:7-alpine",       "running": false, "state": "stopped" }
 ]}
 
-// error
-{ "ok": false, "hint": "deploy config not found" }
+// error — structured diagnostic envelope (shared by all kb-* launcher tools)
+// `error.code` is a stable ERR_-prefixed identifier; `reason` (why) and
+// `hint` (what to do / where to look) are present when the tool supplies them.
+{ "ok": false, "status": "error", "error": {
+  "code": "ERR_CONFIG_LOAD",
+  "message": "deploy config not found: searched up from cwd looking for .kb/deploy.yaml",
+  "hint": "run kb-deploy from the project root, or pass --config <path>"
+}}
 ```
 
 ## CI usage
