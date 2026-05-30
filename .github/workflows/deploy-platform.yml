@@ -111,15 +111,47 @@ jobs:
           sudo install -m 0755 /tmp/kb-dev    /usr/local/bin/kb-dev
           rm -f /tmp/kb-create /tmp/kb-dev
           command -v node >/dev/null || { echo "::error::node missing on host"; exit 1; }
-          if ! curl -sf -m 5 http://127.0.0.1:4873/-/ping >/dev/null; then
-            echo "Starting Verdaccio…"
-            docker rm -f kb-verdaccio 2>/dev/null || true
-            docker run -d --name kb-verdaccio --restart unless-stopped \
-              -p 127.0.0.1:4873:4873 verdaccio/verdaccio:latest
-            for i in $(seq 1 30); do
-              curl -sf -m 5 http://127.0.0.1:4873/-/ping >/dev/null && break || sleep 2
-            done
-          fi
+          # Verdaccio config: htpasswd lives under the writable storage volume
+          # (the image's default /verdaccio/conf is not writable by uid 10001, which
+          # makes adduser fail with HTTP 500). @kb-labs/* is local-only; everything
+          # else proxies npmjs.
+          mkdir -p ~/kb-verdaccio
+          cat > ~/kb-verdaccio/config.yaml <<'VCFG'
+          storage: /verdaccio/storage/data
+          auth:
+            htpasswd:
+              file: /verdaccio/storage/htpasswd
+          uplinks:
+            npmjs:
+              url: https://registry.npmjs.org/
+          packages:
+            '@kb-labs/*':
+              access: $all
+              publish: $authenticated
+              unpublish: $authenticated
+            '@*/*':
+              access: $all
+              publish: $authenticated
+              proxy: npmjs
+            '**':
+              access: $all
+              publish: $authenticated
+              proxy: npmjs
+          log: { type: stdout, format: pretty, level: warn }
+          VCFG
+          # Always (re)create so the mounted config is applied; storage persists in a
+          # named volume so already-published tarballs survive a recreation.
+          docker rm -f kb-verdaccio 2>/dev/null || true
+          docker run -d --name kb-verdaccio --restart unless-stopped \
+            -p 127.0.0.1:4873:4873 \
+            -v kb-verdaccio-storage:/verdaccio/storage \
+            -v ~/kb-verdaccio/config.yaml:/verdaccio/conf/config.yaml:ro \
+            verdaccio/verdaccio:latest
+          ok=0
+          for i in $(seq 1 30); do
+            curl -sf -m 5 http://127.0.0.1:4873/-/ping >/dev/null && { ok=1; break; } || sleep 2
+          done
+          [ "$ok" = 1 ] || { echo "::error::Verdaccio did not come up"; docker logs --tail 50 kb-verdaccio || true; exit 1; }
           echo "kb-create: $(kb-create --version 2>&1 | head -1)"
           echo "kb-dev:    $(kb-dev --version 2>&1 | head -1)"
           REMOTE
