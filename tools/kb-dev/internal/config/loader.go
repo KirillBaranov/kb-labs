@@ -65,27 +65,14 @@ func Discover(dir string) (DiscoverResult, error) {
 }
 
 // LoadFile reads and parses a config from an explicit path.
-// Supported formats: .yaml and .yml. Non-fatal validation warnings (e.g. pruned
-// unknown dependsOn) are surfaced to stderr so they are visible but never
-// pollute machine-readable stdout.
+// Supported formats: .yaml and .yml.
 func LoadFile(path string) (*Config, error) {
-	var (
-		cfg *Config
-		err error
-	)
 	switch filepath.Ext(path) {
 	case ".yaml", ".yml":
-		cfg, err = loadYAML(path)
+		return loadYAML(path)
 	default:
 		return nil, fmt.Errorf("unsupported config format: %q (want .yaml or .yml)", filepath.Base(path))
 	}
-	if err != nil {
-		return nil, err
-	}
-	for _, w := range cfg.Warnings {
-		fmt.Fprintf(os.Stderr, "[WARN] %s\n", w)
-	}
-	return cfg, nil
 }
 
 // RootDir returns the project root implied by a config path.
