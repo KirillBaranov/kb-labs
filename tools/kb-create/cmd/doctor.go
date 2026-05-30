@@ -22,7 +22,7 @@ import (
 type doctorCheck struct {
 	Name    string
 	OK      bool
-	Soft    bool   // if true, failure is advisory (WARN, doesn't affect exit code)
+	Soft    bool // if true, failure is advisory (WARN, doesn't affect exit code)
 	Details string
 	Fix     func() error // nil = not auto-fixable
 	FixHint string       // shown when Fix is nil but there's a manual action
@@ -131,11 +131,11 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 	total := len(checks)
 
 	tc.Track("doctor_fixed", map[string]string{
-		"fixed_count":     fmt.Sprintf("%d", fixed),
-		"fixable_count":   fmt.Sprintf("%d", fixable),
-		"still_failing":   fmt.Sprintf("%d", remaining),
-		"fixed_checks":    strings.Join(fixedNames, ","),
-		"failed_checks":   strings.Join(failedNames, ","),
+		"fixed_count":   fmt.Sprintf("%d", fixed),
+		"fixable_count": fmt.Sprintf("%d", fixable),
+		"still_failing": fmt.Sprintf("%d", remaining),
+		"fixed_checks":  strings.Join(fixedNames, ","),
+		"failed_checks": strings.Join(failedNames, ","),
 	})
 
 	fmt.Println()

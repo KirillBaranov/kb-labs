@@ -5,6 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/kb-labs/clikit/result"
+
 	"github.com/kb-labs/create/internal/releases"
 )
 
@@ -35,9 +37,17 @@ func runRollback(cmd *cobra.Command, args []string) error {
 	}
 	servicePkg := args[0]
 
-	if err := releases.Rollback(platformDir, servicePkg); err != nil {
+	warn, err := releases.Rollback(platformDir, servicePkg)
+	if err != nil {
 		return err
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "rolled back %s to previous release\n", servicePkg)
+	out := result.Success(
+		fmt.Sprintf("rolled back %s to previous release", servicePkg),
+		map[string]any{"service": servicePkg},
+	)
+	if warn != nil {
+		out = out.WithWarnings(warn)
+	}
+	emit(cmd, out, outputMode())
 	return nil
 }

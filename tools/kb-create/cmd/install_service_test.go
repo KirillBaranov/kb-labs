@@ -61,10 +61,10 @@ func TestParseAdapters_Empty(t *testing.T) {
 func TestParseAdapters_Errors(t *testing.T) {
 	cases := []string{
 		"no-equals-sign",
-		"=spec",                               // empty role
-		"role=",                               // empty spec
-		"a=x,a=y",                             // duplicate role
-		"=",                                   // both empty
+		"=spec",   // empty role
+		"role=",   // empty spec
+		"a=x,a=y", // duplicate role
+		"=",       // both empty
 	}
 	for _, c := range cases {
 		if _, err := parseAdapters(c); err == nil {
