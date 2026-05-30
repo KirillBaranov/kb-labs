@@ -13,9 +13,21 @@ import { createBufferedUI } from './mcp/ui.js';
 import { McpDaemonServer } from './server.js';
 
 export async function bootstrap(repoRoot: string = process.cwd()): Promise<void> {
-  // 1. Initialize platform (loads .env + adapters from kb.config.json via
-  //    discoverAdapters() + marketplace.lock — no pnpm bare-specifier resolution).
-  await createServiceBootstrap({ appId: 'mcp-daemon', repoRoot });
+  // 1. Initialize platform.
+  //    uiProvider is wired here — it flows into initPlatform → createExecutionBackend
+  //    so the backend uses it from the start. The execution mode and all other
+  //    backend settings come from platform.execution in kb.config.json as usual.
+  //    callTool() activates the per-call AsyncLocalStorage context; the backend
+  //    calls uiProvider() → gets the call-local buffer → captures plugin output.
+  //    Concurrent calls are fully isolated (each has its own AsyncLocalStorage slot).
+  await createServiceBootstrap({
+    appId: 'mcp-daemon',
+    repoRoot,
+    uiProvider: (_hostType: string) => {
+      const lines = callOutput.getStore();
+      return lines ? createBufferedUI((s) => lines.push(s)).ui : noopUI;
+    },
+  });
 
   // 2. Correlated bootstrap logger — same pattern as gateway and rest-api.
   const logger = createCorrelatedLogger(platform.logger, {
@@ -27,42 +39,22 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
     operation: 'mcp-daemon.bootstrap',
   });
 
-  // 3. Override the execution backend.
-  //    createServiceBootstrap calls initPlatform with uiProvider=undefined → noopUI,
-  //    so plugin output is silently discarded. We replace the backend here with one
-  //    backed by AsyncLocalStorage: callTool() activates the per-call context and the
-  //    uiProvider writes captured output into it. Concurrent calls are isolated.
-  const execMode = (process.env.KB_MCP_EXECUTION_MODE ?? 'subprocess') as
-    | 'subprocess'
-    | 'worker-pool';
-
-  const { createExecutionBackend } = await import('@kb-labs/plugin-execution-factory');
-  const backend = createExecutionBackend({
-    platform,
-    mode: execMode,
-    uiProvider: (_hostType: string) => {
-      const lines = callOutput.getStore();
-      return lines ? createBufferedUI((s) => lines.push(s)).ui : noopUI;
-    },
-  });
-  platform.initExecutionBackend(backend);
-
-  logger.info('MCP daemon execution backend initialised', { mode: execMode });
+  logger.info('MCP daemon platform initialised');
 
   const projectRoot = getProjectRoot() ?? repoRoot;
   const platformRoot = getPlatformRoot();
 
-  // 4. Resolve the authorization policy.
+  // 3. Resolve the authorization policy.
   const { policy } = await resolvePolicy({});
 
-  // 5. Resolve bind target: Unix socket overrides TCP when provided.
+  // 4. Resolve bind target: Unix socket overrides TCP when provided.
   const socketPath = process.env.KB_MCP_SOCKET_PATH;
   const port = process.env.KB_MCP_DAEMON_PORT
     ? parseInt(process.env.KB_MCP_DAEMON_PORT, 10)
     : 7779;
   const host = process.env.KB_MCP_DAEMON_HOST ?? 'localhost';
 
-  // 6. Create + start the daemon. The registry initializes inside start().
+  // 5. Create + start the daemon. The registry initializes inside start().
   const server = new McpDaemonServer({
     port,
     host,
@@ -77,7 +69,6 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
     platformRoot,
     jwtConfig: loadJwtConfig(),
     policy,
-    execMode,
   });
 
   await server.start();

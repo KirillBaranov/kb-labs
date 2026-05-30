@@ -61,8 +61,6 @@ export interface McpDaemonServerOptions {
   jwtConfig: JwtConfig;
   /** Authorization policy. Permit-all default until the platform supplies a real one. */
   policy: Policy;
-  /** Execution backend mode — passed to /health for observability. */
-  execMode?: string;
 }
 
 export class McpDaemonServer {
@@ -119,7 +117,8 @@ export class McpDaemonServer {
   }
 
   private registerRoutes(): void {
-    const { cache, logger, jwtConfig, execMode = 'subprocess' } = this.opts;
+    const { cache, logger, jwtConfig } = this.opts;
+    const execMode = process.env.KB_MCP_EXECUTION_MODE ?? 'subprocess';
 
     // ── Observability hooks (onRequest/onResponse timing for all routes) ──
     this.collector.register(this.app);

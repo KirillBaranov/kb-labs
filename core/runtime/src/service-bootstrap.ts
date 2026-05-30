@@ -149,6 +149,19 @@ export interface ServiceBootstrapOptions {
    * @default true
    */
   loadEnv?: boolean;
+  /**
+   * UI provider for the execution backend. When provided, it is passed to
+   * `initPlatform` so plugin output is captured per the caller's strategy
+   * (e.g. AsyncLocalStorage-backed buffering in the MCP daemon).
+   *
+   * Services that don't execute plugins directly (gateway, rest-api) omit this;
+   * the execution backend then uses noopUI, which is correct for those services.
+   *
+   * Typed as `any` to avoid a hard dependency on `@kb-labs/plugin-contracts`
+   * from `core-runtime` — mirrors the same `any` used in `initPlatform`.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  uiProvider?: (hostType: string) => any;
 }
 
 /**
@@ -165,7 +178,7 @@ export interface ServiceBootstrapOptions {
 export async function createServiceBootstrap(
   options: ServiceBootstrapOptions,
 ): Promise<typeof platform> {
-  const { appId, repoRoot, storeRawConfig = true, loadEnv = true } = options;
+  const { appId, repoRoot, storeRawConfig = true, loadEnv = true, uiProvider } = options;
 
   _ensureHooksRegistered(appId);
   // Register SIGTERM/SIGINT → platform.shutdown() once per process lifetime.
@@ -207,7 +220,7 @@ export async function createServiceBootstrap(
     await initPlatform(
       platformConfig,
       projectRoot,
-      undefined,
+      uiProvider,
       platformRoot !== projectRoot ? platformRoot : undefined,
     );
     _initialized = true;
