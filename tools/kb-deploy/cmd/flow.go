@@ -1,11 +1,16 @@
 package cmd
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/kb-labs/kb-deploy/internal/config"
+	"github.com/kb-labs/kb-deploy/internal/jsonc"
 	"github.com/kb-labs/kb-deploy/internal/lock"
 	"github.com/kb-labs/kb-deploy/internal/orchestrator"
 	"github.com/kb-labs/kb-deploy/internal/releaseid"
@@ -18,23 +23,33 @@ import (
 // It loads + validates the config, resolves secrets, opens SSH connections,
 // collects host states, computes the plan, and detects drift against the lock.
 type applyFlow struct {
-	CfgPath   string
-	Cfg       *config.Config
-	Hosts     map[string]*remote.Host
-	CloseAll  func()
-	States    map[string]orchestrator.HostState
-	Plan      *orchestrator.Plan
-	Lock      *lock.Lock // may be nil (no lock yet)
-	Drift     []DriftItem
+	CfgPath  string
+	Cfg      *config.Config
+	Hosts    map[string]*remote.Host
+	CloseAll func()
+	States   map[string]orchestrator.HostState
+	Plan     *orchestrator.Plan
+	Lock     *lock.Lock // may be nil (no lock yet)
+	Drift    []DriftItem
+	Configs  map[string]deliveredConfig // per-host rendered config; nil when none declared
+}
+
+// deliveredConfig is the per-host config payload prepared on the control
+// machine before any host is touched. JSONC/Env are streamed to the host over
+// stdin; Hash is committed to the lock to detect config-only changes.
+type deliveredConfig struct {
+	JSONC string // rendered config file, verbatim
+	Env   string // resolved .env body ("KEY=VALUE\n"...), may be empty
+	Hash  string // sha256(jsonc + resolved env); includes values so rotation is seen
 }
 
 // DriftItem describes a mismatch between lock (desired-as-previously-applied)
 // and observed state on target (D6).
 type DriftItem struct {
-	Host      string
-	Service   string   // logical service name from deploy.yaml
-	LockSays  string   // release id recorded in lock
-	Target    string   // release id observed on target
+	Host     string
+	Service  string // logical service name from deploy.yaml
+	LockSays string // release id recorded in lock
+	Target   string // release id observed on target
 }
 
 // loadFlow runs the shared preamble. Caller must defer CloseAll().
@@ -58,6 +73,13 @@ func loadFlow() (*applyFlow, error) {
 		Env:     secrets.BackendFromRoot(repoRoot),
 	}
 	if err := validateSecrets(cfg, resolver); err != nil {
+		return nil, err
+	}
+
+	// Prepare + preflight per-host config before any host is dialed or mutated
+	// (fail-fast: a broken config or unresolved secret aborts before SSH).
+	configs, err := prepareConfigs(cfg, resolver, filepath.Dir(cfgPath))
+	if err != nil {
 		return nil, err
 	}
 
@@ -96,7 +118,131 @@ func loadFlow() (*applyFlow, error) {
 		Plan:     plan,
 		Lock:     l,
 		Drift:    drift,
+		Configs:  configs,
 	}, nil
+}
+
+// prepareConfigs reads the rendered platform config, validates it, resolves
+// each host's env, and returns the per-host payload to deliver. Everything
+// here runs on the control machine before any host is touched, so a broken
+// config or unresolved/empty secret fails fast without partial mutation.
+//
+// Returns (nil, nil) when no platform.config is declared — config delivery is
+// opt-in; apply still installs/swaps services.
+func prepareConfigs(cfg *config.Config, r *secrets.Resolver, deployDir string) (map[string]deliveredConfig, error) {
+	if cfg.Platform == nil || cfg.Platform.Config == "" {
+		return nil, nil
+	}
+
+	cfgPath := filepath.Join(deployDir, cfg.Platform.Config)
+	jsoncBytes, err := os.ReadFile(cfgPath) //nolint:gosec // path from trusted deploy.yaml
+	if err != nil {
+		return nil, fmt.Errorf("read platform.config %q: %w", cfg.Platform.Config, err)
+	}
+	if err := jsonc.Valid(jsoncBytes); err != nil {
+		return nil, fmt.Errorf("platform.config %q: %w", cfg.Platform.Config, err)
+	}
+	jsoncStr := string(jsoncBytes)
+
+	out := map[string]deliveredConfig{}
+	for _, name := range referencedHosts(cfg) {
+		host, ok := cfg.Hosts[name]
+		if !ok {
+			return nil, fmt.Errorf("host %q referenced by services but not defined in hosts:", name)
+		}
+
+		// Reject any reference that resolves to an empty value — almost always
+		// a misconfigured secret backend, and silently shipping it would start
+		// daemons with blank credentials.
+		for k, v := range host.Env {
+			if err := checkNonEmptyRefs(r, v); err != nil {
+				return nil, fmt.Errorf("hosts.%s.env.%s: %w", name, k, err)
+			}
+		}
+
+		resolved, err := r.ExpandMap(host.Env)
+		if err != nil {
+			return nil, fmt.Errorf("hosts.%s.env: %w", name, err)
+		}
+
+		envBody := renderDotEnv(resolved)
+		out[name] = deliveredConfig{
+			JSONC: jsoncStr,
+			Env:   envBody,
+			Hash:  configHash(jsoncStr, envBody),
+		}
+	}
+	return out, nil
+}
+
+// referencedHosts returns the sorted set of host names referenced by services.
+func referencedHosts(cfg *config.Config) []string {
+	seen := map[string]struct{}{}
+	for _, svc := range cfg.Services {
+		for _, h := range svc.Targets.Hosts {
+			seen[h] = struct{}{}
+		}
+	}
+	names := make([]string, 0, len(seen))
+	for n := range seen {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// checkNonEmptyRefs errors if any ${secrets.X}/${env.X} in val is present in
+// its backend but resolves to an empty string. Missing refs are left to
+// ExpandMap, which reports them as unresolved.
+func checkNonEmptyRefs(r *secrets.Resolver, val string) error {
+	secs, envs := secrets.References(val)
+	for _, n := range secs {
+		if r.Secrets != nil {
+			if v, ok := r.Secrets.Lookup(n); ok && v == "" {
+				return fmt.Errorf("${secrets.%s} resolved to empty", n)
+			}
+		}
+	}
+	for _, n := range envs {
+		if r.Env != nil {
+			if v, ok := r.Env.Lookup(n); ok && v == "" {
+				return fmt.Errorf("${env.%s} resolved to empty", n)
+			}
+		}
+	}
+	return nil
+}
+
+// renderDotEnv builds a deterministic KEY=VALUE .env body with sorted keys.
+func renderDotEnv(env map[string]string) string {
+	if len(env) == 0 {
+		return ""
+	}
+	keys := make([]string, 0, len(env))
+	for k := range env {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	var b strings.Builder
+	for _, k := range keys {
+		b.WriteString(k)
+		b.WriteByte('=')
+		b.WriteString(env[k])
+		b.WriteByte('\n')
+	}
+	return b.String()
+}
+
+// configHash is a one-way digest over the rendered config plus resolved env.
+// Resolved values are included so rotating a secret (same keys, new value)
+// changes the hash and forces a restart. The digest is safe to commit to the
+// lock; raw values are never persisted.
+func configHash(jsoncStr, envBody string) string {
+	h := sha256.New()
+	h.Write([]byte(jsoncStr))
+	h.Write([]byte{0})
+	h.Write([]byte(envBody))
+	return hex.EncodeToString(h.Sum(nil))
 }
 
 // detectDrift compares lock.appliedTo[host].releaseId with states[host].Current[service]

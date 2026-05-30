@@ -29,8 +29,11 @@ import (
 type scriptedRunner struct {
 	name string
 
-	mu       sync.Mutex
-	log      []string
+	mu  sync.Mutex
+	log []string
+	// inputs records the stdin payload of each RunWithInput call, keyed by the
+	// command string, so config-delivery tests can assert verbatim content.
+	inputs map[string]string
 	// fail marks substrings whose commands should fail.
 	fail map[string]bool
 	// state tracks the current release id per service on this "host".
@@ -40,9 +43,20 @@ type scriptedRunner struct {
 func newRunner(name string) *scriptedRunner {
 	return &scriptedRunner{
 		name:    name,
+		inputs:  map[string]string{},
 		fail:    map[string]bool{},
 		current: map[string]string{},
 	}
+}
+
+// RunWithInput records the stdin payload then delegates to Run so the scripted
+// switch (failures, releases JSON, etc.) still applies. Mirrors how the unit
+// fakes delegate; lets config-delivery tests assert what was streamed.
+func (r *scriptedRunner) RunWithInput(cmd, input string) (string, error) {
+	r.mu.Lock()
+	r.inputs[cmd] = input
+	r.mu.Unlock()
+	return r.Run(cmd)
 }
 
 func (r *scriptedRunner) Run(cmd string) (string, error) {
@@ -84,11 +98,31 @@ func (r *scriptedRunner) Run(cmd string) (string, error) {
 		data, _ := json.Marshal(payload)
 		return string(data), nil
 
+	case strings.Contains(cmd, "manifest.json"):
+		// ServiceID reads the manifest id; return the services/<short>/ segment
+		// so the restart target matches the installed unit in this fake.
+		return `{"id":"` + shortFromManifestPath(cmd) + `"}`, nil
+
 	case strings.Contains(cmd, "restart '"),
 		strings.Contains(cmd, "ready '"):
 		return "", nil
 	}
 	return "", nil
+}
+
+// shortFromManifestPath extracts <short> from a ".../services/<short>/current/..."
+// manifest cat command.
+func shortFromManifestPath(cmd string) string {
+	const marker = "/services/"
+	i := strings.Index(cmd, marker)
+	if i < 0 {
+		return "svc"
+	}
+	rest := cmd[i+len(marker):]
+	if j := strings.Index(rest, "/"); j >= 0 {
+		return rest[:j]
+	}
+	return "svc"
 }
 
 // fakeReleaseIDFromInstallCmd extracts "<pkg>@<ver>" from the `--adapters`
@@ -316,6 +350,202 @@ func TestE2E_ReleaseIDAgreesAcrossModules(t *testing.T) {
 	}
 }
 
+// TestE2E_ConfigDeliveredBeforeInstall asserts the rendered config is atomically
+// swapped into place (mv into <platformPath>/.kb/kb.config.jsonc) before the
+// first install-service on every host, and that the JSONC body is streamed
+// verbatim over stdin (never argv).
+func TestE2E_ConfigDeliveredBeforeInstall(t *testing.T) {
+	cfg := threeHostCanaryConfig()
+	runners := map[string]*scriptedRunner{
+		"h1": newRunner("h1"), "h2": newRunner("h2"), "h3": newRunner("h3"),
+	}
+	const jsonc = "{\n  \"adapters\": { \"doc-db\": \"mongodb\" }\n}\n"
+	configs := map[string]orchestrator.HostConfig{}
+	for name := range runners {
+		configs[name] = orchestrator.HostConfig{JSONC: jsonc, Env: "MONGODB_URI=mongodb://prod/db\n", Hash: "hash-v1"}
+	}
+
+	_, res := runApply(t, cfg, runners, &applyOverrides{configs: configs})
+	if res.Err != nil {
+		t.Fatalf("unexpected error: %v", res.Err)
+	}
+
+	const swap = "mv -f '/opt/kb/.kb/kb.config.jsonc.tmp' '/opt/kb/.kb/kb.config.jsonc'"
+	for name, r := range runners {
+		deliverIdx := firstIdx(r.log, swap)
+		installIdx := firstIdx(r.log, "install-service")
+		if deliverIdx < 0 {
+			t.Errorf("host %s: config never swapped into place; log:\n%s", name, strings.Join(r.log, "\n"))
+			continue
+		}
+		if installIdx < 0 || deliverIdx >= installIdx {
+			t.Errorf("host %s: config swap (idx %d) must precede install-service (idx %d)", name, deliverIdx, installIdx)
+		}
+		// Body must travel over stdin verbatim, not on the command line.
+		var sawBody bool
+		for cmd, in := range r.inputs {
+			if in == jsonc {
+				sawBody = true
+			}
+			if strings.Contains(cmd, jsonc) {
+				t.Errorf("host %s: config body leaked into argv: %q", name, cmd)
+			}
+		}
+		if !sawBody {
+			t.Errorf("host %s: config body never streamed over stdin", name)
+		}
+	}
+}
+
+// TestE2E_ConfigIdempotentWhenHashUnchanged asserts that when the lock's config
+// hash matches the prepared hash and the release is unchanged (skip), the host
+// is neither reinstalled nor force-restarted.
+func TestE2E_ConfigIdempotentWhenHashUnchanged(t *testing.T) {
+	cfg := threeHostCanaryConfig()
+	runners := map[string]*scriptedRunner{
+		"h1": newRunner("h1"), "h2": newRunner("h2"), "h3": newRunner("h3"),
+	}
+	// Seed every host as already running the planned release → plan = skip.
+	relID := releaseid.ComputeID("@kb-labs/gateway", "1.2.3",
+		map[string]string{"llm": "@kb-labs/adapters-openai@0.4.1"}, nil)
+	states := map[string]orchestrator.HostState{}
+	configs := map[string]orchestrator.HostConfig{}
+	prev := map[string]string{}
+	for name := range runners {
+		states[name] = orchestrator.HostState{Host: name, Current: map[string]string{"@kb-labs/gateway": relID}}
+		configs[name] = orchestrator.HostConfig{JSONC: "{}\n", Hash: "hash-v1"}
+		prev[name] = "hash-v1" // unchanged
+	}
+
+	plan, res := runApply(t, cfg, runners, &applyOverrides{states: states, configs: configs, prevHash: prev})
+	if res.Err != nil {
+		t.Fatalf("unexpected error: %v", res.Err)
+	}
+	if plan.Summary().Skip == 0 {
+		t.Fatalf("expected skip actions, plan: %s", plan.String())
+	}
+	for name, r := range runners {
+		got := strings.Join(r.log, "\n")
+		if strings.Contains(got, "install-service") {
+			t.Errorf("host %s: reinstalled despite unchanged hash; log:\n%s", name, got)
+		}
+		if strings.Contains(got, "restart '") {
+			t.Errorf("host %s: force-restarted despite unchanged hash; log:\n%s", name, got)
+		}
+	}
+}
+
+// TestE2E_ConfigOnlyChangeForcesRestart asserts that a config-only change (same
+// release, new hash) restarts the service through the health gate without
+// reinstalling or swapping the release.
+func TestE2E_ConfigOnlyChangeForcesRestart(t *testing.T) {
+	cfg := threeHostCanaryConfig()
+	runners := map[string]*scriptedRunner{
+		"h1": newRunner("h1"), "h2": newRunner("h2"), "h3": newRunner("h3"),
+	}
+	relID := releaseid.ComputeID("@kb-labs/gateway", "1.2.3",
+		map[string]string{"llm": "@kb-labs/adapters-openai@0.4.1"}, nil)
+	states := map[string]orchestrator.HostState{}
+	configs := map[string]orchestrator.HostConfig{}
+	prev := map[string]string{}
+	for name := range runners {
+		states[name] = orchestrator.HostState{Host: name, Current: map[string]string{"@kb-labs/gateway": relID}}
+		configs[name] = orchestrator.HostConfig{JSONC: "{}\n", Hash: "hash-v2"}
+		prev[name] = "hash-v1" // changed → force restart
+	}
+
+	_, res := runApply(t, cfg, runners, &applyOverrides{states: states, configs: configs, prevHash: prev})
+	if res.Err != nil {
+		t.Fatalf("unexpected error: %v", res.Err)
+	}
+	for name, r := range runners {
+		got := strings.Join(r.log, "\n")
+		if strings.Contains(got, "install-service") || strings.Contains(got, "kb-create swap") {
+			t.Errorf("host %s: release touched on config-only change; log:\n%s", name, got)
+		}
+		if !strings.Contains(got, "restart '") || !strings.Contains(got, "ready '") {
+			t.Errorf("host %s: config-only change must restart through health gate; log:\n%s", name, got)
+		}
+	}
+}
+
+// TestE2E_ConfigDeliveryAbortsBeforeInstall asserts that if config delivery
+// fails on any host, the run aborts before any install/swap on every host and
+// restores the already-delivered hosts to their previous config.
+func TestE2E_ConfigDeliveryAbortsBeforeInstall(t *testing.T) {
+	cfg := threeHostCanaryConfig()
+	runners := map[string]*scriptedRunner{
+		"h1": newRunner("h1"), "h2": newRunner("h2"), "h3": newRunner("h3"),
+	}
+	// h2's config write fails mid-stream (delivery is sorted h1<h2<h3).
+	runners["h2"].fail["cat > '/opt/kb/.kb/kb.config.jsonc.tmp'"] = true
+
+	configs := map[string]orchestrator.HostConfig{}
+	for name := range runners {
+		configs[name] = orchestrator.HostConfig{JSONC: "{}\n", Hash: "hash-v1"}
+	}
+
+	_, res := runApply(t, cfg, runners, &applyOverrides{configs: configs})
+	if res.Err == nil {
+		t.Fatal("expected delivery failure to abort the apply")
+	}
+	for name, r := range runners {
+		if strings.Contains(strings.Join(r.log, "\n"), "install-service") {
+			t.Errorf("host %s: install ran despite aborted config delivery", name)
+		}
+	}
+	// h1 was delivered before h2 failed → it must be restored to .prev.
+	const restore = "mv -f '/opt/kb/.kb/kb.config.jsonc.prev' '/opt/kb/.kb/kb.config.jsonc'"
+	if !strings.Contains(strings.Join(runners["h1"].log, "\n"), restore) {
+		t.Errorf("h1 was delivered first; it must be restored on abort; log:\n%s", strings.Join(runners["h1"].log, "\n"))
+	}
+}
+
+// TestE2E_ConfigRollbackBeforeReleaseRollback asserts that on a wave failure
+// the config is restored to .prev BEFORE the release is rolled back and the
+// previous release is restarted — otherwise the old release would come up on
+// the new config.
+func TestE2E_ConfigRollbackBeforeReleaseRollback(t *testing.T) {
+	cfg := fourHostCanaryConfig() // autoRollback=true, parallel=2, waves [50,100]
+	runners := map[string]*scriptedRunner{
+		"h1": newRunner("h1"), "h2": newRunner("h2"),
+		"h3": newRunner("h3"), "h4": newRunner("h4"),
+	}
+	// h4 fails the health gate in wave 2; h3 completes in that wave.
+	runners["h4"].fail["ready '"] = true
+
+	configs := map[string]orchestrator.HostConfig{}
+	for name := range runners {
+		configs[name] = orchestrator.HostConfig{JSONC: "{}\n", Hash: "hash-v2"}
+	}
+	// prevHash empty → changed → forceRestart set for every host.
+
+	_, res := runApply(t, cfg, runners, &applyOverrides{configs: configs})
+	if res.Err == nil {
+		t.Fatal("expected wave failure")
+	}
+	h3 := runners["h3"].log
+	const restore = "mv -f '/opt/kb/.kb/kb.config.jsonc.prev' '/opt/kb/.kb/kb.config.jsonc'"
+	restoreIdx := firstIdx(h3, restore)
+	rollbackIdx := firstIdx(h3, "kb-create rollback")
+	if restoreIdx < 0 {
+		t.Fatalf("h3: config not restored during rollback; log:\n%s", strings.Join(h3, "\n"))
+	}
+	if rollbackIdx < 0 || restoreIdx >= rollbackIdx {
+		t.Errorf("h3: config restore (idx %d) must precede release rollback (idx %d)", restoreIdx, rollbackIdx)
+	}
+}
+
+// firstIdx returns the index of the first log entry containing sub, or -1.
+func firstIdx(log []string, sub string) int {
+	for i, c := range log {
+		if strings.Contains(c, sub) {
+			return i
+		}
+	}
+	return -1
+}
+
 // ---------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------
@@ -324,7 +554,7 @@ func TestE2E_ReleaseIDAgreesAcrossModules(t *testing.T) {
 // 50% of 3 = ceil(1.5) = 2, so wave1 = [h1, h2] and wave2 = [h3].
 func threeHostCanaryConfig() *config.Config {
 	return &config.Config{
-		Schema: config.CurrentSchema,
+		Schema:   config.CurrentSchema,
 		Platform: &config.PlatformConfig{Version: "1.0.0"},
 		Services: map[string]config.Service{
 			"gateway": {
@@ -380,16 +610,33 @@ func fourHostCanaryConfig() *config.Config {
 	}
 }
 
+// applyOverrides carries optional config-delivery inputs and pre-seeded host
+// state into the harness. A nil *applyOverrides means "all hosts Missing, no
+// config delivery" — the original behaviour.
+type applyOverrides struct {
+	// states overrides the default "all Missing" host states so config-only
+	// scenarios can model already-installed hosts (→ ActionSkip).
+	states map[string]orchestrator.HostState
+	// configs is the per-host rendered config to deliver before the waves.
+	configs map[string]orchestrator.HostConfig
+	// prevHash is the per-host config hash from the lock (idempotency input).
+	prevHash map[string]string
+}
+
 // runApply is the shared harness: compute a plan from the given config and
 // runners, then execute it. Returns the computed plan and orchestrator result.
 func runApply(t *testing.T, cfg *config.Config,
-	runners map[string]*scriptedRunner, _ *testing.T) (*orchestrator.Plan, *orchestrator.Result) {
+	runners map[string]*scriptedRunner, ov *applyOverrides) (*orchestrator.Plan, *orchestrator.Result) {
 	t.Helper()
 
-	// All hosts start Missing → plan produces ActionInstall everywhere.
+	// All hosts start Missing → plan produces ActionInstall everywhere, unless
+	// the override supplies explicit states.
 	states := map[string]orchestrator.HostState{}
 	for name := range runners {
 		states[name] = orchestrator.HostState{Host: name, Missing: true}
+	}
+	if ov != nil && ov.states != nil {
+		states = ov.states
 	}
 
 	plan, err := orchestrator.ComputePlan(cfg, states, func(svc config.Service) string {
@@ -407,13 +654,18 @@ func runApply(t *testing.T, cfg *config.Config,
 		return &remote.Host{Name: name, Runner: r, PlatformPath: "/opt/kb"}, nil
 	}
 
-	var stdout, stderr bytes.Buffer
-	res := orchestrator.Execute(orchestrator.ExecuteOptions{
+	opts := orchestrator.ExecuteOptions{
 		Plan:     plan,
 		Config:   cfg,
 		Resolver: resolver,
-		Stdout:   &stdout,
-		Stderr:   &stderr,
-	})
+	}
+	if ov != nil {
+		opts.Configs = ov.configs
+		opts.PrevConfigHash = ov.prevHash
+	}
+	var stdout, stderr bytes.Buffer
+	opts.Stdout = &stdout
+	opts.Stderr = &stderr
+	res := orchestrator.Execute(opts)
 	return plan, res
 }

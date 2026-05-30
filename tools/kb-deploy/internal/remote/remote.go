@@ -17,6 +17,9 @@ type Runner interface {
 	// Run executes cmd, returning combined stdout+stderr. err is non-nil
 	// when the remote process exits non-zero.
 	Run(cmd string) (string, error)
+	// RunWithInput executes cmd with input fed to its stdin. Used to stream
+	// config/secret payloads without exposing them in argv (ps/history).
+	RunWithInput(cmd, input string) (string, error)
 }
 
 // Host ties a Runner to the platform layout on that target.
@@ -77,6 +80,34 @@ func (h *Host) buildInstallCmd(opts InstallOpts) string {
 		b.WriteString(shellQuote(joinPlugins(opts.Plugins)))
 	}
 	return b.String()
+}
+
+// ServiceID reads the service id from the swapped release's manifest.json at
+// services/<short>/current/node_modules/<pkg>/dist/manifest.json.
+//
+// This id — not the package short name — is the key kb-create writes into
+// devservices.yaml (both `kb-create swap` and the canonical `scan` installer
+// register services by manifest.id), so it is what kb-dev must be given to
+// restart and health-check the service. e.g. "@kb-labs/core-state-daemon"
+// installs under services/core-state-daemon/ but its manifest id is
+// "state-daemon".
+func (h *Host) ServiceID(servicePkg, serviceShort string) (string, error) {
+	manifestPath := h.PlatformPath + "/services/" + serviceShort +
+		"/current/node_modules/" + servicePkg + "/dist/manifest.json"
+	out, err := h.Runner.Run("cat " + shellQuote(manifestPath))
+	if err != nil {
+		return "", fmt.Errorf("read service manifest on %s: %w (output: %s)", h.Name, err, out)
+	}
+	var m struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal([]byte(out), &m); err != nil {
+		return "", fmt.Errorf("parse service manifest on %s (%s): %w", h.Name, manifestPath, err)
+	}
+	if m.ID == "" {
+		return "", fmt.Errorf("service manifest on %s (%s) has empty id", h.Name, manifestPath)
+	}
+	return m.ID, nil
 }
 
 // Swap atomically points current at the given release.
@@ -205,11 +236,14 @@ func joinPlugins(m map[string]string) string {
 // `kb-create install-service` to reconstruct the result.
 //
 // The command prints either:
-//   release <id> already installed (no-op)
+//
+//	release <id> already installed (no-op)
+//
 // or:
-//   installed release <id> at <path>
-//     evicted: <id>
-//     evicted: <id>
+//
+//	installed release <id> at <path>
+//	  evicted: <id>
+//	  evicted: <id>
 func parseInstallOutput(out string) *InstallResult {
 	r := &InstallResult{}
 	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
