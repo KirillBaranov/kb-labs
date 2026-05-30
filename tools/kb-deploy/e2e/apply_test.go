@@ -98,11 +98,31 @@ func (r *scriptedRunner) Run(cmd string) (string, error) {
 		data, _ := json.Marshal(payload)
 		return string(data), nil
 
+	case strings.Contains(cmd, "manifest.json"):
+		// ServiceID reads the manifest id; return the services/<short>/ segment
+		// so the restart target matches the installed unit in this fake.
+		return `{"id":"` + shortFromManifestPath(cmd) + `"}`, nil
+
 	case strings.Contains(cmd, "restart '"),
 		strings.Contains(cmd, "ready '"):
 		return "", nil
 	}
 	return "", nil
+}
+
+// shortFromManifestPath extracts <short> from a ".../services/<short>/current/..."
+// manifest cat command.
+func shortFromManifestPath(cmd string) string {
+	const marker = "/services/"
+	i := strings.Index(cmd, marker)
+	if i < 0 {
+		return "svc"
+	}
+	rest := cmd[i+len(marker):]
+	if j := strings.Index(rest, "/"); j >= 0 {
+		return rest[:j]
+	}
+	return "svc"
 }
 
 // fakeReleaseIDFromInstallCmd extracts "<pkg>@<ver>" from the `--adapters`
