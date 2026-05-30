@@ -8,6 +8,26 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+func TestPruneUnknownDeps(t *testing.T) {
+	f := &File{Services: map[string]Service{
+		"gateway":  {Command: "node g", DependsOn: []string{"rest", "workflow"}},
+		"rest":     {Command: "node r", DependsOn: []string{"qdrant"}}, // external → dropped
+		"workflow": {Command: "node w"},
+	}}
+	dropped := f.PruneUnknownDeps()
+
+	// rest→qdrant is the only unknown; gateway's deps are all present.
+	if len(dropped) != 1 || dropped[0] != "rest→qdrant" {
+		t.Errorf("dropped = %v, want [rest→qdrant]", dropped)
+	}
+	if got := f.Services["rest"].DependsOn; len(got) != 0 {
+		t.Errorf("rest deps = %v, want empty (qdrant pruned)", got)
+	}
+	if got := f.Services["gateway"].DependsOn; len(got) != 2 {
+		t.Errorf("gateway deps = %v, want [rest workflow] kept", got)
+	}
+}
+
 func TestLoad_AbsentReturnsEmpty(t *testing.T) {
 	f, err := Load(t.TempDir())
 	if err != nil {
