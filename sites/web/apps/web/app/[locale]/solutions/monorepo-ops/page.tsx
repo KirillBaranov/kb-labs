@@ -164,7 +164,7 @@ export default async function MonorepoOpsPage({ params }: Props) {
                   {t('page.heroDescription')}
                 </p>
                 <div className="flex flex-wrap justify-center gap-3">
-                  <Button variant="primary" size="lg" href="https://docs.kblabs.ru/tools/kb-devkit" target="_blank" rel="noopener noreferrer">
+                  <Button variant="primary" size="lg" href="https://docs.kblabs.ru/services/kb-devkit" target="_blank" rel="noopener noreferrer">
                     {t('page.docsBtn')}
                   </Button>
                   <Button variant="secondary" size="lg" href={`/${locale}/install`}>
@@ -320,7 +320,7 @@ export default async function MonorepoOpsPage({ params }: Props) {
                     <CopyButton code="kb marketplace install @kb-labs/impact-entry" className="shrink-0" />
                   </div>
                   <div className="flex flex-wrap justify-center gap-3">
-                    <Button variant="primary" size="lg" href="https://docs.kblabs.ru/tools/kb-devkit" target="_blank" rel="noopener noreferrer">
+                    <Button variant="primary" size="lg" href="https://docs.kblabs.ru/services/kb-devkit" target="_blank" rel="noopener noreferrer">
                       {t('page.docsBtn')}
                     </Button>
                     <Button variant="secondary" size="lg" href={`/${locale}/install`}>
