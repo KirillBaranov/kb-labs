@@ -5,6 +5,8 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/kb-labs/clikit/result"
+
 	"github.com/kb-labs/create/internal/releases"
 )
 
@@ -35,9 +37,18 @@ func runSwap(cmd *cobra.Command, args []string) error {
 	}
 	servicePkg, releaseID := args[0], args[1]
 
-	if err := releases.Swap(platformDir, servicePkg, releaseID); err != nil {
+	warn, err := releases.Swap(platformDir, servicePkg, releaseID)
+	if err != nil {
 		return err
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "swapped %s → %s\n", servicePkg, releaseID)
+	out := result.Success(
+		fmt.Sprintf("swapped %s → %s", servicePkg, releaseID),
+		map[string]any{"service": servicePkg, "release": releaseID},
+	)
+	if warn != nil {
+		// A swapped-but-unregistered service is surfaced as a warning, never silent.
+		out = out.WithWarnings(warn)
+	}
+	emit(cmd, out, outputMode())
 	return nil
 }

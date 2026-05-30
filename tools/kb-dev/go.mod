@@ -4,10 +4,15 @@ go 1.25.0
 
 require (
 	github.com/charmbracelet/lipgloss v1.1.0
+	github.com/kb-labs/clikit v0.0.0
 	github.com/spf13/cobra v1.10.2
 	golang.org/x/sys v0.30.0
 	gopkg.in/yaml.v3 v3.0.1
 )
+
+// clikit is a workspace-local module (shared launcher diagnostics). Builds rely
+// on this replace, not on go.work (which stays non-authoritative).
+replace github.com/kb-labs/clikit => ../clikit
 
 require (
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect

@@ -34,7 +34,7 @@ func readSymlink(t *testing.T, path string) string {
 
 func TestSwap_FirstTime(t *testing.T) {
 	dir := setupPlatform(t, "gateway-1.0.0-aaa")
-	if err := Swap(dir, "@kb-labs/gateway", "gateway-1.0.0-aaa"); err != nil {
+	if _, err := Swap(dir, "@kb-labs/gateway", "gateway-1.0.0-aaa"); err != nil {
 		t.Fatalf("Swap: %v", err)
 	}
 
@@ -63,10 +63,10 @@ func TestSwap_FirstTime(t *testing.T) {
 func TestSwap_SecondTimeUpdatesPrevious(t *testing.T) {
 	dir := setupPlatform(t, "gateway-1.0.0-aaa", "gateway-1.1.0-bbb")
 
-	if err := Swap(dir, "@kb-labs/gateway", "gateway-1.0.0-aaa"); err != nil {
+	if _, err := Swap(dir, "@kb-labs/gateway", "gateway-1.0.0-aaa"); err != nil {
 		t.Fatalf("first Swap: %v", err)
 	}
-	if err := Swap(dir, "@kb-labs/gateway", "gateway-1.1.0-bbb"); err != nil {
+	if _, err := Swap(dir, "@kb-labs/gateway", "gateway-1.1.0-bbb"); err != nil {
 		t.Fatalf("second Swap: %v", err)
 	}
 
@@ -88,14 +88,14 @@ func TestSwap_SecondTimeUpdatesPrevious(t *testing.T) {
 
 func TestSwap_MissingReleaseErrors(t *testing.T) {
 	dir := setupPlatform(t) // no releases
-	if err := Swap(dir, "@kb-labs/gateway", "gateway-missing"); err == nil {
+	if _, err := Swap(dir, "@kb-labs/gateway", "gateway-missing"); err == nil {
 		t.Error("expected error when release directory does not exist")
 	}
 }
 
 func TestSwap_EmptyReleaseIDErrors(t *testing.T) {
 	dir := setupPlatform(t)
-	if err := Swap(dir, "@kb-labs/gateway", ""); err == nil {
+	if _, err := Swap(dir, "@kb-labs/gateway", ""); err == nil {
 		t.Error("expected error for empty releaseID")
 	}
 }
@@ -103,13 +103,13 @@ func TestSwap_EmptyReleaseIDErrors(t *testing.T) {
 func TestRollback_RestoresPrevious(t *testing.T) {
 	dir := setupPlatform(t, "a", "b")
 
-	if err := Swap(dir, "@kb-labs/gateway", "a"); err != nil {
+	if _, err := Swap(dir, "@kb-labs/gateway", "a"); err != nil {
 		t.Fatalf("swap a: %v", err)
 	}
-	if err := Swap(dir, "@kb-labs/gateway", "b"); err != nil {
+	if _, err := Swap(dir, "@kb-labs/gateway", "b"); err != nil {
 		t.Fatalf("swap b: %v", err)
 	}
-	if err := Rollback(dir, "@kb-labs/gateway"); err != nil {
+	if _, err := Rollback(dir, "@kb-labs/gateway"); err != nil {
 		t.Fatalf("Rollback: %v", err)
 	}
 
@@ -127,10 +127,10 @@ func TestRollback_RestoresPrevious(t *testing.T) {
 
 func TestRollback_NoPreviousErrors(t *testing.T) {
 	dir := setupPlatform(t, "a")
-	if err := Swap(dir, "@kb-labs/gateway", "a"); err != nil {
+	if _, err := Swap(dir, "@kb-labs/gateway", "a"); err != nil {
 		t.Fatalf("swap: %v", err)
 	}
-	if err := Rollback(dir, "@kb-labs/gateway"); err == nil {
+	if _, err := Rollback(dir, "@kb-labs/gateway"); err == nil {
 		t.Error("expected rollback to fail when previous is absent")
 	}
 }
@@ -146,7 +146,7 @@ func TestCurrentReleaseID(t *testing.T) {
 		t.Errorf("expected empty id before swap, got %q", id)
 	}
 
-	if err := Swap(dir, "@kb-labs/gateway", "gateway-1.0.0-abc"); err != nil {
+	if _, err := Swap(dir, "@kb-labs/gateway", "gateway-1.0.0-abc"); err != nil {
 		t.Fatalf("Swap: %v", err)
 	}
 
@@ -206,7 +206,7 @@ func TestSwap_WritesDevservicesEntry(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := Swap(dir, "@kb-labs/gateway-test", releaseID); err != nil {
+	if _, err := Swap(dir, "@kb-labs/gateway-test", releaseID); err != nil {
 		t.Fatalf("Swap: %v", err)
 	}
 
@@ -241,13 +241,23 @@ func TestSwap_WritesDevservicesEntry(t *testing.T) {
 	}
 }
 
-// TestSwap_NoManifestIsNotFatal verifies that services without manifest.json
-// (proxies, minimal stubs) still swap cleanly — devservices.yaml is simply
-// not updated.
+// TestSwap_NoManifestIsNotFatal verifies that a service without manifest.json
+// still swaps cleanly (no devservices.yaml) BUT returns a non-fatal warning —
+// the "swapped but not registered" condition must be visible, never silent.
 func TestSwap_NoManifestIsNotFatal(t *testing.T) {
 	dir := setupPlatform(t, "svc-1.0-aaa")
-	if err := Swap(dir, "@scope/svc", "svc-1.0-aaa"); err != nil {
+	warn, err := Swap(dir, "@scope/svc", "svc-1.0-aaa")
+	if err != nil {
 		t.Fatalf("Swap: %v", err)
+	}
+	if warn == nil {
+		t.Fatal("expected a non-fatal warning when manifest.json is absent, got nil (silent skip)")
+	}
+	if warn.Code != "ERR_MANIFEST_MISSING" {
+		t.Errorf("warning code = %q, want ERR_MANIFEST_MISSING", warn.Code)
+	}
+	if warn.Hint == "" {
+		t.Error("warning should carry an actionable hint")
 	}
 	if _, err := os.Stat(filepath.Join(dir, ".kb", "devservices.yaml")); err == nil {
 		t.Error("devservices.yaml should not be created when manifest.json is absent")

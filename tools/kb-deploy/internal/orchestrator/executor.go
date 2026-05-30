@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/kb-labs/clikit/diag"
 
 	"github.com/kb-labs/kb-deploy/internal/config"
 	"github.com/kb-labs/kb-deploy/internal/remote"
@@ -104,17 +107,55 @@ func Execute(opts ExecuteOptions) *Result {
 			continue
 		}
 
-		// Wave failed. Handle rollback if enabled.
-		res.Err = fmt.Errorf("wave %d failed", waveIdx+1)
+		// Wave failed. Build a structured diagnostic carrying every per-action
+		// failure (kind/service/host/error) so the cause is never reduced to an
+		// opaque "wave N failed".
+		res.Err = waveDiag(waveIdx+1, waveResults)
 		if !autoRollback {
 			return res
 		}
 		fmt.Fprintf(opts.Stderr, "wave %d failed; attempting auto-rollback of completed hosts\n", waveIdx+1)
 		rolled := rollbackWave(waveResults, opts, forceRestart)
 		res.RolledBack = rolled
+		// Rollback fired → distinct exit code (3) recorded in the diagnostic.
+		if d, ok := res.Err.(*diag.Diag); ok {
+			d.Meta["rolledBack"] = len(rolled)
+			d.Meta["exitCode"] = diag.ExitForbidden
+		}
 		return res
 	}
 	return res
+}
+
+// waveDiag turns a failed wave's per-action results into a structured Diag:
+// Message says which wave failed, Reason summarizes each failure, and Meta
+// carries the machine-readable failure list. exitCode defaults to ExitConfig
+// (2); the rollback path overrides it to ExitForbidden (3).
+func waveDiag(wave int, results []ActionResult) *diag.Diag {
+	var failures []map[string]any
+	var reasons []string
+	for _, r := range results {
+		if r.Err == nil {
+			continue
+		}
+		failures = append(failures, map[string]any{
+			"kind":    string(r.Action.Kind),
+			"service": r.Action.Service,
+			"host":    r.Action.Host,
+			"error":   r.Err.Error(),
+		})
+		reasons = append(reasons, fmt.Sprintf("%s %s@%s: %v",
+			r.Action.Kind, r.Action.Service, r.Action.Host, r.Err))
+	}
+	return diag.New("ERR_WAVE_FAILED",
+		fmt.Sprintf("deploy wave %d failed", wave),
+		diag.WithReason(strings.Join(reasons, "; ")),
+		diag.WithMeta(map[string]any{
+			"wave":     wave,
+			"failures": failures,
+			"exitCode": diag.ExitConfig,
+		}),
+	)
 }
 
 // deliverConfigs writes each host's rendered config before the waves run. It
@@ -138,12 +179,18 @@ func deliverConfigs(opts ExecuteOptions) (map[string]bool, error) {
 		host, err := opts.Resolver(name)
 		if err != nil {
 			restoreConfigs(opts, delivered)
-			return nil, fmt.Errorf("resolve host %s for config delivery: %w", name, err)
+			return nil, diag.Wrap(err, "ERR_CONFIG_DELIVERY",
+				fmt.Sprintf("could not resolve host %q for config delivery", name),
+				diag.WithReason(err.Error()),
+				diag.WithMeta(map[string]any{"host": name}))
 		}
 		hc := opts.Configs[name]
 		if err := host.DeliverConfig(hc.JSONC, hc.Env); err != nil {
 			restoreConfigs(opts, delivered)
-			return nil, fmt.Errorf("deliver config to %s: %w", name, err)
+			return nil, diag.Wrap(err, "ERR_CONFIG_DELIVERY",
+				fmt.Sprintf("config delivery to host %q failed", name),
+				diag.WithReason(err.Error()),
+				diag.WithMeta(map[string]any{"host": name}))
 		}
 		delivered = append(delivered, name)
 		if opts.PrevConfigHash[name] != hc.Hash {
@@ -166,41 +213,127 @@ func restoreConfigs(opts ExecuteOptions, hosts []string) {
 	}
 }
 
-// runWave executes one wave with bounded parallelism. Returns per-action results
-// in the same order as the input wave.
+// runWave executes one wave in three phases so the on-host devservices.yaml is
+// complete and self-consistent before any service is (re)started:
+//
+//  1. prepare — install + swap every action (no restart), bounded-parallel.
+//  2. reconcile — once per host, prune devservices dependsOn entries that name
+//     services absent from the registry (external infra, or not in this deploy),
+//     so kb-dev's strict validation can load it.
+//  3. restart — restart each service through its health gate, bounded-parallel.
+//
+// Restarting per service immediately after its own install (the old behaviour)
+// failed when services cross-depend: a dependent could be restarted before its
+// dependency was registered, and kb-dev rejected the whole config. Phasing
+// removes that ordering hazard. A prepare/reconcile failure short-circuits the
+// remaining phases so the caller's rollback runs against a known state.
 func runWave(actions []Action, parallel int, opts ExecuteOptions, forceRestart map[string]bool) []ActionResult {
 	results := make([]ActionResult, len(actions))
+	needsRestart := make([]bool, len(actions))
 
-	sem := make(chan struct{}, parallel)
-	var wg sync.WaitGroup
-	for i, act := range actions {
-		wg.Add(1)
-		sem <- struct{}{}
-		go func(i int, a Action) {
-			defer wg.Done()
-			defer func() { <-sem }()
-			results[i] = runAction(a, opts, forceRestart)
-		}(i, act)
+	// Phase 1 — install + swap.
+	runConcurrent(len(actions), parallel, func(i int) {
+		results[i], needsRestart[i] = prepareAction(actions[i], opts, forceRestart)
+	})
+	if anyActionErr(results) {
+		return results
 	}
-	wg.Wait()
+
+	// Phase 2 — reconcile devservices once per host that changed.
+	for _, host := range uniqueRestartHosts(actions, needsRestart) {
+		h, err := opts.Resolver(host)
+		if err != nil {
+			setHostErr(results, actions, host, fmt.Errorf("resolve host %s: %w", host, err))
+			return results
+		}
+		out, err := h.ReconcileDevservices()
+		if out != "" {
+			fmt.Fprint(opts.Stdout, out)
+		}
+		if err != nil {
+			setHostErr(results, actions, host, err)
+			return results
+		}
+	}
+
+	// Phase 3 — restart + health gate.
+	runConcurrent(len(actions), parallel, func(i int) {
+		if !needsRestart[i] || results[i].Err != nil {
+			return
+		}
+		results[i] = restartAction(actions[i], results[i], opts)
+	})
 	return results
 }
 
-// runAction performs the install/swap/restart/skip on a single host. A skip is
-// a no-op unless the host's config changed (forceRestart), in which case the
-// service is restarted through the health gate without reinstalling.
-func runAction(a Action, opts ExecuteOptions, forceRestart map[string]bool) ActionResult {
+// runConcurrent runs fn(0..n-1) with at most `parallel` in flight.
+func runConcurrent(n, parallel int, fn func(i int)) {
+	if parallel < 1 {
+		parallel = 1
+	}
+	sem := make(chan struct{}, parallel)
+	var wg sync.WaitGroup
+	for i := 0; i < n; i++ {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func(i int) {
+			defer wg.Done()
+			defer func() { <-sem }()
+			fn(i)
+		}(i)
+	}
+	wg.Wait()
+}
+
+func anyActionErr(results []ActionResult) bool {
+	for _, r := range results {
+		if r.Err != nil {
+			return true
+		}
+	}
+	return false
+}
+
+// uniqueRestartHosts returns the distinct hosts that have at least one action
+// needing a restart (i.e. something changed and reconcile is worthwhile).
+func uniqueRestartHosts(actions []Action, needsRestart []bool) []string {
+	seen := map[string]bool{}
+	var hosts []string
+	for i, a := range actions {
+		if needsRestart[i] && !seen[a.Host] {
+			seen[a.Host] = true
+			hosts = append(hosts, a.Host)
+		}
+	}
+	sort.Strings(hosts)
+	return hosts
+}
+
+// setHostErr records err on every not-yet-failed action belonging to host, so a
+// host-level (e.g. reconcile) failure is attributed and rolled back.
+func setHostErr(results []ActionResult, actions []Action, host string, err error) {
+	for i := range results {
+		if actions[i].Host == host && results[i].Err == nil {
+			results[i].Err = err
+		}
+	}
+}
+
+// prepareAction performs install + swap (no restart). needsRestart reports
+// whether phase 3 must restart this action; a plain skip (no config change) is
+// completed here with nothing to do.
+func prepareAction(a Action, opts ExecuteOptions, forceRestart map[string]bool) (ActionResult, bool) {
 	res := ActionResult{Action: a}
 	if a.Kind == ActionSkip && !forceRestart[a.Host] {
 		res.Completed = true
 		res.ReleaseID = a.ToID
-		return res
+		return res, false
 	}
 
 	host, err := opts.Resolver(a.Host)
 	if err != nil {
 		res.Err = fmt.Errorf("resolve host %s: %w", a.Host, err)
-		return res
+		return res, false
 	}
 
 	svc := opts.Config.Services[a.Service]
@@ -217,34 +350,41 @@ func runAction(a Action, opts ExecuteOptions, forceRestart map[string]bool) Acti
 		})
 		if err != nil {
 			res.Err = err
-			return res
+			return res, false
 		}
 		if err := host.Swap(svc.Service, installRes.ReleaseID); err != nil {
 			res.Err = err
-			return res
+			return res, false
 		}
 		res.ReleaseID = installRes.ReleaseID
 
 	case ActionSwap:
 		if err := host.Swap(svc.Service, a.ToID); err != nil {
 			res.Err = err
-			return res
+			return res, false
 		}
 		res.ReleaseID = a.ToID
 
 	case ActionRestart:
-		// Nothing to do here — restart happens below.
 		res.ReleaseID = a.FromID
 
 	case ActionSkip:
-		// Reached only when forceRestart is set (config-only change): the
-		// release stays put, restart happens below to pick up the new config.
+		// Reached only when forceRestart is set (config-only change).
 		res.ReleaseID = a.ToID
 	}
+	return res, true
+}
 
-	// Restart + wait healthy. kb-dev keys services by their manifest id (the
-	// devservices.yaml key kb-create registers), which is not necessarily the
-	// package short name — read it from the swapped release's manifest.
+// restartAction restarts the service through the health gate, completing res.
+// kb-dev keys services by their manifest id (the devservices.yaml key kb-create
+// registers), not the package short name — read it from the swapped release.
+func restartAction(a Action, res ActionResult, opts ExecuteOptions) ActionResult {
+	host, err := opts.Resolver(a.Host)
+	if err != nil {
+		res.Err = fmt.Errorf("resolve host %s: %w", a.Host, err)
+		return res
+	}
+	svc := opts.Config.Services[a.Service]
 	healthGate := parseHealthGate(svc.Targets.HealthGate)
 	serviceID, err := host.ServiceID(svc.Service, serviceShortName(svc.Service))
 	if err != nil {

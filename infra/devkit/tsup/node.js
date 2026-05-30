@@ -2,7 +2,6 @@ import { defineConfig } from 'tsup'
 import { readTsupExternalSync } from './external-sync.mjs'
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
 
 /**
  * Derive tsup entry points from package.json.
@@ -42,9 +41,8 @@ function resolveEntryFromExports() {
 }
 
 /**
- * Resolve the absolute path of the built manifest module (e.g. dist/manifest.js)
- * from `pkg.kb.manifest`, or null when the package ships no service/plugin
- * manifest. Used to materialize a sibling dist/manifest.json after build.
+ * Resolve the built manifest JS path from `pkg.kb.manifest`.
+ * e.g. pkg.kb.manifest = "./dist/manifest.js" → "<cwd>/dist/manifest.js"
  */
 function resolveManifestDistPath() {
   try {
@@ -52,39 +50,48 @@ function resolveManifestDistPath() {
     if (typeof pkg.kb?.manifest === 'string') {
       return join(process.cwd(), pkg.kb.manifest.replace(/^\.\//, ''))
     }
-  } catch {
-    // No package.json / no manifest — nothing to emit.
-  }
+  } catch { /* nothing to emit */ }
   return null
 }
 
 /**
- * tsup `onSuccess`: emit dist/manifest.json next to the built dist/manifest.js.
+ * tsup `onSuccess`: emit dist/manifest.json by reading the compiled
+ * dist/manifest.js as TEXT and evaluating the exported object.
  *
- * The kb-labs runtime loads manifests by importing the JS module, but Go-based
- * installers (kb-create) read the manifest as JSON — `kb-create swap` looks for
- * `dist/manifest.json` and silently skips service registration when it is
- * absent. Materializing the JSON from the just-built module keeps a single
- * source of truth (src/manifest.ts) while satisfying both consumers.
+ * Why not dynamic `import()`?
+ * In multi-entry tsup builds `onSuccess` fires while Node's module cache may
+ * still hold a stale (empty) version of dist/manifest.js from an earlier
+ * watch-mode iteration, or the file descriptors may not be fully flushed.
+ * Using `import()` with a cache-bust URL is unreliable in those cases —
+ * it returned an empty module in CI, producing a 0-byte manifest.json that
+ * kb-create rejected with "unexpected end of JSON input".
+ *
+ * Reading the COMPILED JS as text is safe: tsup has already written the file
+ * before invoking `onSuccess`, and we're parsing plain JavaScript (no type
+ * annotations) with a small Function() eval — controlled, no user input.
  */
-async function emitManifestJson() {
-  const manifestDist = resolveManifestDistPath()
-  if (!manifestDist || !existsSync(manifestDist)) return
+function emitManifestJson() {
+  const distPath = resolveManifestDistPath()
+  if (!distPath || !existsSync(distPath)) return
   try {
-    // Cache-bust so watch-mode rebuilds re-read the fresh module.
-    const url = pathToFileURL(manifestDist).href + `?t=${Date.now()}`
-    const mod = await import(url)
-    const manifest = mod.default ?? mod.manifest
-    if (!manifest || typeof manifest !== 'object') return
-    // Scope to SERVICE manifests — the only ones kb-create reads as JSON.
-    // Plugin/adapter manifests are loaded as JS by the runtime and don't need
-    // a sibling .json (and may carry side-effectful imports we shouldn't run).
-    if (typeof manifest.schema !== 'string' || !manifest.schema.startsWith('kb.service/')) return
-    const jsonPath = manifestDist.replace(/\.js$/, '.json')
-    writeFileSync(jsonPath, JSON.stringify(manifest, null, 2) + '\n')
+    const js = readFileSync(distPath, 'utf8')
+    // tsup ESM output pattern (from inspecting actual built files):
+    //   var manifest = { schema: "kb.service/1", id: "...", ... };
+    //   var manifest_default = manifest;
+    //   export { manifest_default as default, manifest };
+    // Capture everything between `var manifest =` and the next `var manifest_default`.
+    const match = js.match(/var\s+manifest\s*=\s*(\{[\s\S]*?\n\});\s*\nvar\s+manifest_default/)
+    if (!match) return
+    // eslint-disable-next-line no-new-func
+    const obj = new Function(`"use strict"; return (${match[1]})`)()
+    if (!obj || typeof obj !== 'object') return
+    // Scope to SERVICE manifests only — plugin/adapter manifests are loaded as
+    // JS by the runtime and don't need a sibling .json.
+    if (typeof obj.schema !== 'string' || !obj.schema.startsWith('kb.service/')) return
+    const jsonPath = distPath.replace(/\.js$/, '.json')
+    writeFileSync(jsonPath, JSON.stringify(obj, null, 2) + '\n')
   } catch {
-    // Never fail the build over manifest emission — absence just means the
-    // service won't auto-register, which is the pre-existing behaviour.
+    // Never fail the build over manifest emission.
   }
 }
 

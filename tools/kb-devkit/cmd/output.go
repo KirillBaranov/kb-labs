@@ -21,23 +21,23 @@ type output struct {
 	bullet  lipgloss.Style
 
 	// Issue severity styles.
-	healthy lipgloss.Style
-	warning lipgloss.Style
+	healthy  lipgloss.Style
+	warning  lipgloss.Style
 	errStyle lipgloss.Style
-	info    lipgloss.Style
+	info     lipgloss.Style
 }
 
 func newOutput() output {
 	enabled := colorEnabled()
 	return output{
-		infoTag:  lipgloss.NewStyle().Bold(true).Foreground(color(enabled, "14")).Render("[INFO]"),
-		okTag:    lipgloss.NewStyle().Bold(true).Foreground(color(enabled, "10")).Render("[ OK ]"),
-		warnTag:  lipgloss.NewStyle().Bold(true).Foreground(color(enabled, "11")).Render("[WARN]"),
-		errTag:   lipgloss.NewStyle().Bold(true).Foreground(color(enabled, "9")).Render("[ERR ]"),
-		label:    lipgloss.NewStyle().Bold(true).Foreground(color(enabled, "8")),
-		value:    lipgloss.NewStyle().Foreground(color(enabled, "14")),
-		dim:      lipgloss.NewStyle().Foreground(color(enabled, "8")),
-		bullet:   lipgloss.NewStyle().Foreground(color(enabled, "10")),
+		infoTag: lipgloss.NewStyle().Bold(true).Foreground(color(enabled, "14")).Render("[INFO]"),
+		okTag:   lipgloss.NewStyle().Bold(true).Foreground(color(enabled, "10")).Render("[ OK ]"),
+		warnTag: lipgloss.NewStyle().Bold(true).Foreground(color(enabled, "11")).Render("[WARN]"),
+		errTag:  lipgloss.NewStyle().Bold(true).Foreground(color(enabled, "9")).Render("[ERR ]"),
+		label:   lipgloss.NewStyle().Bold(true).Foreground(color(enabled, "8")),
+		value:   lipgloss.NewStyle().Foreground(color(enabled, "14")),
+		dim:     lipgloss.NewStyle().Foreground(color(enabled, "8")),
+		bullet:  lipgloss.NewStyle().Foreground(color(enabled, "10")),
 
 		healthy:  lipgloss.NewStyle().Foreground(color(enabled, "10")),
 		warning:  lipgloss.NewStyle().Foreground(color(enabled, "11")),

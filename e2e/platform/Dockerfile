@@ -19,6 +19,11 @@ ENV CGO_ENABLED=0
 
 WORKDIR /src
 
+# clikit is a workspace-local Go module shared by the tool binaries via a
+# `replace github.com/kb-labs/clikit => ../clikit` directive. The isolated
+# Docker build context must include it or `go build` fails with
+# "replacement directory ../clikit does not exist".
+COPY tools/clikit    /src/clikit
 COPY tools/kb-create /src/kb-create
 COPY tools/kb-dev    /src/kb-dev
 
