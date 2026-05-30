@@ -154,7 +154,7 @@
       }
     },
     "execution": {
-      "mode": "worker-pool"
+      "mode": "in-process"
     }
   },
   "profiles": [
