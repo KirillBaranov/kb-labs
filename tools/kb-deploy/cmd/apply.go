@@ -104,6 +104,14 @@ func runApply(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	fmt.Fprintf(cmd.ErrOrStderr(), "apply failed: %v\n", res.Err)
+	// Surface the underlying per-action failures (install / swap / health gate),
+	// otherwise only the opaque "wave N failed" reaches the operator.
+	for _, a := range res.Actions {
+		if a.Err != nil {
+			fmt.Fprintf(cmd.ErrOrStderr(), "  ✗ %s %s @ %s: %v\n",
+				a.Action.Kind, a.Action.Service, a.Action.Host, a.Err)
+		}
+	}
 	if len(res.RolledBack) > 0 {
 		fmt.Fprintf(cmd.ErrOrStderr(), "rolled back %d host(s)\n", len(res.RolledBack))
 		os.Exit(3) //nolint:gocritic // explicit exit-code contract
