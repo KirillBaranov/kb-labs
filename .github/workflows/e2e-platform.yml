@@ -56,13 +56,27 @@ jobs:
     permissions:
       contents: read
 
+  # ── MCP daemon suite — separate job (own health-url + no browser install) ──
+  e2e-mcp:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    uses: ./.github/workflows/reusable-e2e-docker.yml
+    with:
+      suite: mcp
+      e2e-package: "@kb-labs/e2e-mcp"
+      health-url: http://localhost:7779/health
+      health-steps: 90
+      playwright-dir: ''
+      compose-project: kb-e2e-ci-mcp
+    permissions:
+      contents: read
+
   # ── Aggregator — single required status check ──────────────────────────────
-  # Branch protection points at "Platform E2E". Collapses the 8 matrix shards
+  # Branch protection points at "Platform E2E". Collapses the 8+1 shards
   # into one pass/fail. Individual shard checks stay visible for triage and
   # targeted re-runs via the GitHub UI.
   aggregate:
     name: Platform E2E
-    needs: e2e
+    needs: [e2e, e2e-mcp]
     if: always()
     runs-on: ubuntu-latest
     permissions:
@@ -71,9 +85,10 @@ jobs:
       - name: Check matrix outcome
         run: |
           echo "matrix-result=${{ needs.e2e.result }}"
-          if [ "${{ needs.e2e.result }}" = "success" ]; then
-            echo "All 8 E2E shards passed."
+          echo "mcp-result=${{ needs.e2e-mcp.result }}"
+          if [ "${{ needs.e2e.result }}" = "success" ] && [ "${{ needs.e2e-mcp.result }}" = "success" ]; then
+            echo "All 9 E2E shards passed."
             exit 0
           fi
-          echo "::error::At least one E2E shard did not succeed (matrix result: ${{ needs.e2e.result }})."
+          echo "::error::At least one E2E shard did not succeed (matrix: ${{ needs.e2e.result }}, mcp: ${{ needs.e2e-mcp.result }})."
           exit 1

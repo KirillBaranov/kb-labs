@@ -114,17 +114,20 @@ export class McpDaemonServer {
       });
     });
 
-    // CORS preflight for browser-based MCP clients.
-    this.app.options('/api/v1/mcp', async (_req, reply) => {
+    // CORS headers for all MCP responses (including preflight OPTIONS).
+    // fastify.all() covers every method including OPTIONS, so no separate
+    // fastify.options() is needed — that would cause a duplicate-route error.
+    this.app.all('/api/v1/mcp', async (request, reply) => {
       reply
         .header('Access-Control-Allow-Origin', '*')
         .header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-        .header('Access-Control-Allow-Headers', 'Authorization, Content-Type, Mcp-Session-Id')
-        .code(204)
-        .send();
-    });
+        .header('Access-Control-Allow-Headers', 'Authorization, Content-Type, Mcp-Session-Id');
 
-    this.app.all('/api/v1/mcp', async (request, reply) => {
+      // Short-circuit preflight immediately — no auth or MCP processing needed.
+      if (request.method === 'OPTIONS') {
+        return reply.code(204).send();
+      }
+
       // 1. Authenticate. Invalid/absent token → anonymous (no throw, no 401).
       const authHeader = request.headers.authorization;
       const authCtx = await resolveAuthContext(authHeader, cache, this.opts.jwtConfig).catch(
