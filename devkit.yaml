@@ -88,6 +88,7 @@ workspace:
 
     go-binary:
       match:
+        - "tools/clikit"
         - "tools/kb-dev"
         - "tools/kb-devkit"
         - "tools/kb-create"
