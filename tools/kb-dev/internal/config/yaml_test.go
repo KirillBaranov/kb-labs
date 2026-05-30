@@ -216,7 +216,7 @@ services:
 	}
 }
 
-func TestLoadYAMLDetectsDanglingDep(t *testing.T) {
+func TestLoadYAMLPrunesDanglingDep(t *testing.T) {
 	content := `
 name: test
 services:
@@ -225,9 +225,15 @@ services:
     depends_on: [nonexistent]
 `
 	path := writeYAML(t, content)
-	_, err := LoadFile(path)
-	if err == nil {
-		t.Fatal("expected dangling dep error, got nil")
+	cfg, err := LoadFile(path)
+	if err != nil {
+		t.Fatalf("dangling dep must not be fatal: %v", err)
+	}
+	if len(cfg.Services["a"].DependsOn) != 0 {
+		t.Errorf("unknown dep must be pruned, got %v", cfg.Services["a"].DependsOn)
+	}
+	if len(cfg.Warnings) != 1 {
+		t.Errorf("expected one pruned-dep warning, got %v", cfg.Warnings)
 	}
 }
 
