@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/kb-labs/clikit/diag"
+
 	"github.com/kb-labs/create/internal/devservices"
 )
 
@@ -24,25 +26,28 @@ func ServiceShort(servicePkg string) string {
 //
 // The service short name is derived via shortName(servicePkg) so callers pass
 // the npm package name (e.g. "@kb-labs/gateway"), not the short form.
-func Swap(platformDir, servicePkg, releaseID string) error {
+// Swap returns an optional non-fatal warning (e.g. the release shipped no
+// service manifest, so it could not auto-register with kb-dev) alongside a
+// fatal error. Callers should surface the warning — it must never be silent.
+func Swap(platformDir, servicePkg, releaseID string) (*diag.Diag, error) {
 	if releaseID == "" {
-		return errors.New("Swap: releaseID is required")
+		return nil, errors.New("Swap: releaseID is required")
 	}
 	releasesDir := filepath.Join(platformDir, "releases")
 	servicesDir := filepath.Join(platformDir, "services")
 	if err := EnsureSameFilesystem(releasesDir, servicesDir); err != nil {
-		return err
+		return nil, err
 	}
 
 	// Verify target release directory exists.
 	releaseDir := filepath.Join(releasesDir, releaseID)
 	if _, err := os.Stat(releaseDir); err != nil {
-		return fmt.Errorf("release %q not found: %w", releaseID, err)
+		return nil, fmt.Errorf("release %q not found: %w", releaseID, err)
 	}
 
 	svcDir := filepath.Join(servicesDir, ServiceShort(servicePkg))
 	if err := os.MkdirAll(svcDir, 0o750); err != nil {
-		return fmt.Errorf("create service dir: %w", err)
+		return nil, fmt.Errorf("create service dir: %w", err)
 	}
 
 	currentPath := filepath.Join(svcDir, "current")
@@ -59,11 +64,11 @@ func Swap(platformDir, servicePkg, releaseID string) error {
 	// Create current.new, then rename over current — atomic on POSIX.
 	_ = os.Remove(newCurrentPath) // ignore ENOENT
 	if err := os.Symlink(relTarget, newCurrentPath); err != nil {
-		return fmt.Errorf("create current.new symlink: %w", err)
+		return nil, fmt.Errorf("create current.new symlink: %w", err)
 	}
 	if err := os.Rename(newCurrentPath, currentPath); err != nil {
 		_ = os.Remove(newCurrentPath)
-		return fmt.Errorf("rename current: %w", err)
+		return nil, fmt.Errorf("rename current: %w", err)
 	}
 
 	// Update previous to point at oldCurrentTarget (if any).
@@ -72,14 +77,14 @@ func Swap(platformDir, servicePkg, releaseID string) error {
 		if err := os.Symlink(oldCurrentTarget, previousPath); err != nil {
 			// Non-fatal: current is already updated atomically; previous is a convenience.
 			// Log via returned error so callers can warn; symlink state is still consistent.
-			return fmt.Errorf("update previous symlink: %w", err)
+			return nil, fmt.Errorf("update previous symlink: %w", err)
 		}
 	}
 
 	// Update releases.json index.
 	store, err := Load(platformDir)
 	if err != nil {
-		return fmt.Errorf("reload store: %w", err)
+		return nil, fmt.Errorf("reload store: %w", err)
 	}
 	oldID := idFromSymlinkTarget(oldCurrentTarget)
 	if oldID != "" {
@@ -87,66 +92,68 @@ func Swap(platformDir, servicePkg, releaseID string) error {
 	}
 	store.Current[servicePkg] = releaseID
 	if err := store.Save(); err != nil {
-		return err
+		return nil, err
 	}
 
-	// Update devservices.yaml so `kb-dev` (on the same host or a restart
-	// supervisor) can start, restart and health-check this service via the
-	// stable `current` symlink. Missing or malformed service manifest is
-	// non-fatal here — the release itself is already swapped and the user
-	// can fix devservices.yaml manually. Warnings go to stderr via the
-	// caller when they choose to surface swap() errors.
-	if err := updateDevservices(platformDir, servicePkg, releaseID); err != nil {
-		return fmt.Errorf("update devservices.yaml: %w", err)
-	}
-	return nil
+	// Update devservices.yaml so `kb-dev` can start/restart/health-check this
+	// service via the stable `current` symlink. A missing manifest yields a
+	// non-fatal warning (returned, not swallowed) — the release is swapped, but
+	// the operator must know it won't auto-register.
+	return updateDevservices(platformDir, servicePkg, releaseID)
 }
 
 // updateDevservices reads the service manifest from the swapped release and
-// upserts the matching entry in <platformDir>/.kb/devservices.yaml.
-func updateDevservices(platformDir, servicePkg, releaseID string) error {
+// upserts the matching entry in <platformDir>/.kb/devservices.yaml. Returns a
+// non-fatal warning Diag (not nil) when the release ships no manifest, so the
+// "service won't auto-register" condition is visible rather than silent.
+func updateDevservices(platformDir, servicePkg, releaseID string) (*diag.Diag, error) {
 	manifestPath := filepath.Join(platformDir, "releases", releaseID,
 		"node_modules", servicePkg, "dist", "manifest.json")
 	if _, err := os.Stat(manifestPath); errors.Is(err, os.ErrNotExist) {
-		// Services without a shipped manifest.json cannot auto-register.
-		// This is not an error — some services (proxies, stubs) may legitimately
-		// omit the file. Skip silently.
-		return nil
+		return diag.New("ERR_MANIFEST_MISSING",
+			fmt.Sprintf("service %s was swapped but not registered with kb-dev", servicePkg),
+			diag.WithReason("the release ships no dist/manifest.json, so kb-create cannot build its devservices.yaml entry"),
+			diag.WithHint("add dist/manifest.json to the service package (the tsup node preset emits it for kb.service manifests), or add the entry to .kb/devservices.yaml manually"),
+			diag.WithMeta(map[string]any{"manifestPath": manifestPath, "fatal": false}),
+		), nil
 	} else if err != nil {
-		return fmt.Errorf("stat manifest: %w", err)
+		return nil, fmt.Errorf("stat manifest: %w", err)
 	}
 
 	manifest, err := devservices.LoadManifest(manifestPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	serviceShort := ServiceShort(servicePkg)
 	id, entry := devservices.EntryForSwap(platformDir, servicePkg, serviceShort, manifest)
 
 	file, err := devservices.Load(platformDir)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if file.Name == "" {
 		file.Name = "KB Labs Platform"
 	}
 	file.Upsert(id, entry)
-	return file.Save(platformDir)
+	if err := file.Save(platformDir); err != nil {
+		return nil, err
+	}
+	return nil, nil
 }
 
 // Rollback swaps current back to previous. Returns an actionable error if
 // previous is absent (first install, or GC'd beyond the retention window).
-func Rollback(platformDir, servicePkg string) error {
+func Rollback(platformDir, servicePkg string) (*diag.Diag, error) {
 	svcDir := filepath.Join(platformDir, "services", ServiceShort(servicePkg))
 	previousPath := filepath.Join(svcDir, "previous")
 	target, err := os.Readlink(previousPath)
 	if err != nil {
-		return fmt.Errorf("no previous release for %s (has a successful install happened twice?): %w",
+		return nil, fmt.Errorf("no previous release for %s (has a successful install happened twice?): %w",
 			servicePkg, err)
 	}
 	prevID := idFromSymlinkTarget(target)
 	if prevID == "" {
-		return fmt.Errorf("previous symlink for %s is malformed: %q", servicePkg, target)
+		return nil, fmt.Errorf("previous symlink for %s is malformed: %q", servicePkg, target)
 	}
 	return Swap(platformDir, servicePkg, prevID)
 }
