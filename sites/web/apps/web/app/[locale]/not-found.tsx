@@ -34,39 +34,9 @@ export default function NotFound() {
         {/* Background 404 */}
         <span className={s.bg404} aria-hidden>404</span>
 
-        {/* Card */}
-        <div className={s.card}>
-
-          {/* Status bar */}
-          <div className={s.statusBar}>
-            <span className={s.statusLabel}># kb-internal</span>
-            <span className={s.statusTime}>just now</span>
-          </div>
-
-          {/* Log */}
-          <div className={s.log}>
-            {LOG.map((entry, i) => (
-              <div key={i} className={s.logRow}>
-                <span className={`${s.who} ${WHO_STYLE[entry.who] ?? ''}`}>
-                  {entry.who}
-                </span>
-                <span className={s.msg}>{entry.text}</span>
-              </div>
-            ))}
-          </div>
-
-          {/* Footer meta */}
-          <div className={s.meta}>
-            <span>status: <b>404</b></span>
-            <span>·</span>
-            <span>everything else is fine</span>
-            <span>·</span>
-            <span>probably</span>
-          </div>
-        </div>
-
-        {/* Headline + actions */}
-        <div className={s.bottom}>
+        {/* Headline + actions — primary */}
+        <div className={s.top}>
+          <h1 className={s.title}>404</h1>
           <p className={s.headline}>{t('notFound.description')}</p>
           <div className={s.actions}>
             <Link href={`/${locale}`} className={s.btnPrimary}>
@@ -85,6 +55,31 @@ export default function NotFound() {
               <MessageSquare size={15} />
               {t('notFound.contact')}
             </Link>
+          </div>
+        </div>
+
+        {/* Easter egg — secondary, for the curious */}
+        <div className={s.card} aria-hidden>
+          <div className={s.statusBar}>
+            <span className={s.statusLabel}># kb-internal</span>
+            <span className={s.statusTime}>just now</span>
+          </div>
+          <div className={s.log}>
+            {LOG.map((entry, i) => (
+              <div key={i} className={s.logRow}>
+                <span className={`${s.who} ${WHO_STYLE[entry.who] ?? ''}`}>
+                  {entry.who}
+                </span>
+                <span className={s.msg}>{entry.text}</span>
+              </div>
+            ))}
+          </div>
+          <div className={s.meta}>
+            <span>status: <b>404</b></span>
+            <span>·</span>
+            <span>everything else is fine</span>
+            <span>·</span>
+            <span>probably</span>
           </div>
         </div>
 
