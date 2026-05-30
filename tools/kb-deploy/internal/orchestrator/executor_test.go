@@ -6,6 +6,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/kb-labs/clikit/diag"
+
 	"github.com/kb-labs/kb-deploy/internal/config"
 	"github.com/kb-labs/kb-deploy/internal/remote"
 )
@@ -195,6 +197,40 @@ func TestExecute_HealthGateFailureTriggersAutoRollback(t *testing.T) {
 	}
 	if len(res.RolledBack) != 0 {
 		t.Errorf("expected no rollback for incomplete action, got %+v", res.RolledBack)
+	}
+}
+
+// A failed wave must produce a structured *diag.Diag (ERR_WAVE_FAILED) whose
+// meta carries every per-action failure — not an opaque "wave N failed" string.
+func TestExecute_WaveFailureIsStructuredDiag(t *testing.T) {
+	h1 := &fakeRunner{failOn: "ready '"}
+	cfg := singleServiceCfg()
+	plan := &Plan{Waves: [][]Action{{{
+		Kind: ActionInstall, Host: "h1", Service: "gateway",
+		ServicePkg: "@kb-labs/gateway", Version: "1.2.3",
+	}}}}
+
+	res := Execute(ExecuteOptions{
+		Plan: plan, Config: cfg,
+		Resolver: resolverFor(map[string]*fakeRunner{"h1": h1}),
+	})
+
+	var d *diag.Diag
+	if !errors.As(res.Err, &d) {
+		t.Fatalf("res.Err is not a *diag.Diag: %T", res.Err)
+	}
+	if d.Code != "ERR_WAVE_FAILED" {
+		t.Errorf("code = %q, want ERR_WAVE_FAILED", d.Code)
+	}
+	if d.Reason == "" {
+		t.Error("expected a reason summarizing the failures")
+	}
+	failures, ok := d.Meta["failures"].([]map[string]any)
+	if !ok || len(failures) != 1 {
+		t.Fatalf("meta.failures = %v, want one failure", d.Meta["failures"])
+	}
+	if failures[0]["service"] != "gateway" || failures[0]["host"] != "h1" {
+		t.Errorf("failure = %v", failures[0])
 	}
 }
 

@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 	"sync"
 	"time"
+
+	"github.com/kb-labs/clikit/diag"
 
 	"github.com/kb-labs/kb-deploy/internal/config"
 	"github.com/kb-labs/kb-deploy/internal/remote"
@@ -104,17 +107,55 @@ func Execute(opts ExecuteOptions) *Result {
 			continue
 		}
 
-		// Wave failed. Handle rollback if enabled.
-		res.Err = fmt.Errorf("wave %d failed", waveIdx+1)
+		// Wave failed. Build a structured diagnostic carrying every per-action
+		// failure (kind/service/host/error) so the cause is never reduced to an
+		// opaque "wave N failed".
+		res.Err = waveDiag(waveIdx+1, waveResults)
 		if !autoRollback {
 			return res
 		}
 		fmt.Fprintf(opts.Stderr, "wave %d failed; attempting auto-rollback of completed hosts\n", waveIdx+1)
 		rolled := rollbackWave(waveResults, opts, forceRestart)
 		res.RolledBack = rolled
+		// Rollback fired → distinct exit code (3) recorded in the diagnostic.
+		if d, ok := res.Err.(*diag.Diag); ok {
+			d.Meta["rolledBack"] = len(rolled)
+			d.Meta["exitCode"] = diag.ExitForbidden
+		}
 		return res
 	}
 	return res
+}
+
+// waveDiag turns a failed wave's per-action results into a structured Diag:
+// Message says which wave failed, Reason summarizes each failure, and Meta
+// carries the machine-readable failure list. exitCode defaults to ExitConfig
+// (2); the rollback path overrides it to ExitForbidden (3).
+func waveDiag(wave int, results []ActionResult) *diag.Diag {
+	var failures []map[string]any
+	var reasons []string
+	for _, r := range results {
+		if r.Err == nil {
+			continue
+		}
+		failures = append(failures, map[string]any{
+			"kind":    string(r.Action.Kind),
+			"service": r.Action.Service,
+			"host":    r.Action.Host,
+			"error":   r.Err.Error(),
+		})
+		reasons = append(reasons, fmt.Sprintf("%s %s@%s: %v",
+			r.Action.Kind, r.Action.Service, r.Action.Host, r.Err))
+	}
+	return diag.New("ERR_WAVE_FAILED",
+		fmt.Sprintf("deploy wave %d failed", wave),
+		diag.WithReason(strings.Join(reasons, "; ")),
+		diag.WithMeta(map[string]any{
+			"wave":     wave,
+			"failures": failures,
+			"exitCode": diag.ExitConfig,
+		}),
+	)
 }
 
 // deliverConfigs writes each host's rendered config before the waves run. It
