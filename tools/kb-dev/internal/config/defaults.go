@@ -29,11 +29,20 @@ func (c *Config) applyDefaults() {
 }
 
 // validate checks referential integrity and detects structural problems.
+//
+// An unknown dependsOn target is fatal by design — a service that can't resolve
+// a declared dependency must not start silently. The error names the offending
+// pair and the likely causes so it is actionable.
 func (c *Config) validate() error {
 	for id, svc := range c.Services {
 		for _, dep := range svc.DependsOn {
 			if _, ok := c.Services[dep]; !ok {
-				return fmt.Errorf("service %q depends on unknown service %q", id, dep)
+				return fmt.Errorf(
+					"service %q depends on unknown service %q: %q is not defined in devservices.yaml "+
+						"(it may be external infrastructure that should not be declared as a dependsOn, "+
+						"or a service that was not installed/registered — check the deploy order so "+
+						"dependencies are registered before their dependents)",
+					id, dep, dep)
 			}
 		}
 	}
