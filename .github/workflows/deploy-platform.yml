@@ -58,6 +58,7 @@ jobs:
         with:
           go-version: "1.25"
           cache-dependency-path: |
+            tools/clikit/go.sum
             tools/kb-deploy/go.sum
             tools/kb-create/go.sum
             tools/kb-dev/go.sum
