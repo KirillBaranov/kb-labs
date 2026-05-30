@@ -226,7 +226,7 @@ export default async function PlatformApiPage({ params }: Props) {
                   {t('page.heroDescription')}
                 </p>
                 <div className="flex flex-wrap justify-center gap-3">
-                  <Button variant="primary" size="lg" href="https://docs.kblabs.ru/platform-api" target="_blank" rel="noopener noreferrer">
+                  <Button variant="primary" size="lg" href="https://docs.kblabs.ru/reference/sdk-api" target="_blank" rel="noopener noreferrer">
                     {t('page.docsBtn')}
                   </Button>
                   <Button variant="secondary" size="lg" href={`/${locale}/install`}>
@@ -428,7 +428,7 @@ export default async function PlatformApiPage({ params }: Props) {
                     <CopyButton code="npm install @kb-labs/sdk" className="shrink-0" />
                   </div>
                   <div className="flex flex-wrap justify-center gap-3">
-                    <Button variant="primary" size="lg" href="https://docs.kblabs.ru/platform-api" target="_blank" rel="noopener noreferrer">
+                    <Button variant="primary" size="lg" href="https://docs.kblabs.ru/reference/sdk-api" target="_blank" rel="noopener noreferrer">
                       {t('page.docsBtn')}
                     </Button>
                     <Button variant="secondary" size="lg" href={`/${locale}/install`}>

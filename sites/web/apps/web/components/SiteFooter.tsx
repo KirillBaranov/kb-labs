@@ -18,7 +18,7 @@ export function SiteFooter() {
         { label: t('footer.sections.platform.workflowEngine'), href: lp('/product/workflows') },
         { label: t('footer.sections.platform.pluginSystem'), href: lp('/product/plugins') },
         { label: t('footer.sections.platform.stateBroker'), href: lp('/product/state-broker') },
-        { label: t('footer.sections.platform.productOverview'), href: lp('/product') },
+        { label: t('footer.sections.platform.productOverview'), href: lp('/') },
       ],
     },
     {

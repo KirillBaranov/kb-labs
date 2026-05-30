@@ -187,7 +187,7 @@ export default async function ObservabilityPage({ params }: Props) {
                   {t('page.heroDescription')}
                 </p>
                 <div className="flex flex-wrap justify-center gap-3">
-                  <Button variant="primary" size="lg" href="https://docs.kblabs.ru/observability" target="_blank" rel="noopener noreferrer">
+                  <Button variant="primary" size="lg" href="https://docs.kblabs.ru/operations/observability" target="_blank" rel="noopener noreferrer">
                     {t('page.docsBtn')}
                   </Button>
                   <Button variant="secondary" size="lg" href={`/${locale}/install`}>
@@ -367,7 +367,7 @@ export default async function ObservabilityPage({ params }: Props) {
                     {t('page.ctaNote')}
                   </p>
                   <div className="flex flex-wrap justify-center gap-3">
-                    <Button variant="primary" size="lg" href="https://docs.kblabs.ru/observability" target="_blank" rel="noopener noreferrer">
+                    <Button variant="primary" size="lg" href="https://docs.kblabs.ru/operations/observability" target="_blank" rel="noopener noreferrer">
                       {t('page.docsBtn')}
                     </Button>
                     <Button variant="secondary" size="lg" href={`/${locale}/install`}>

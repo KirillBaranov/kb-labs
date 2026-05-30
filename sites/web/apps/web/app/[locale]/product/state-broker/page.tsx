@@ -97,7 +97,7 @@ export default async function StateBrokerPage({ params }: Props) {
                   <a href={`/${locale}/install`}>{t('heroInstallBtn')}</a>
                 </Button>
                 <Button asChild variant="outline" size="lg">
-                  <a href="https://docs.kblabs.ru/state-broker" target="_blank" rel="noopener noreferrer">
+                  <a href="https://docs.kblabs.ru/concepts/adapter-system" target="_blank" rel="noopener noreferrer">
                     {t('heroDocsBtn')}
                     <ExternalLink className="ml-2 size-4" />
                   </a>
@@ -150,7 +150,7 @@ export default async function StateBrokerPage({ params }: Props) {
                   {t('apiLead')}
                 </p>
                 <Button asChild variant="outline" size="sm">
-                  <a href="https://docs.kblabs.ru/state-broker" target="_blank" rel="noopener noreferrer">
+                  <a href="https://docs.kblabs.ru/concepts/adapter-system" target="_blank" rel="noopener noreferrer">
                     {t('apiDocsBtn')}
                     <ExternalLink className="ml-2 size-3.5" />
                   </a>
@@ -188,7 +188,7 @@ export default async function StateBrokerPage({ params }: Props) {
                     <Button variant="primary" size="lg" href={`/${locale}/install`}>
                       {t('ctaInstallBtn')}
                     </Button>
-                    <Button variant="secondary" size="lg" href="https://docs.kblabs.ru/state-broker" target="_blank" rel="noopener noreferrer">
+                    <Button variant="secondary" size="lg" href="https://docs.kblabs.ru/concepts/adapter-system" target="_blank" rel="noopener noreferrer">
                       {t('ctaDocsBtn')}
                     </Button>
                   </div>
