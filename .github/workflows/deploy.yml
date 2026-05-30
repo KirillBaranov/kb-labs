@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - 'sites/web/**'
-      - 'plugins/gateway/**'
+      - 'services/gateway/**'
       - 'plugins/marketplace-registry/**'
       - 'adapters/openai/**'
       - 'adapters/redis/**'
