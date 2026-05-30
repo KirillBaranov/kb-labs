@@ -20,6 +20,7 @@ import type { IArtifacts } from './adapters/artifacts.js';
 import type { ISnapshotManager } from './snapshot/snapshot-provider.js';
 import type { INotifier } from './adapters/notifier.js';
 import type { IServiceTransport } from './adapters/service-transport.js';
+import type { IPolicyDecisionPoint } from '@kb-labs/core-contracts';
 
 /**
  * Plugin-visible adapter surface.
@@ -78,6 +79,14 @@ export interface IPluginAdapters {
 
   /** Notifier adapter (optional — only when adapters.notifier is configured). */
   readonly notifier?: INotifier;
+
+  /**
+   * Policy Decision Point — RBAC + ReBAC authorization (ClickUp 869def338).
+   * Optional: built from `documentDatabase` by the registry `buildFactory`
+   * at assembly; absent when no document database is available. Plugins
+   * reach it via governed `platform.policy` (requires `permissions.platform.policy`).
+   */
+  readonly policy?: IPolicyDecisionPoint;
 }
 
 /**

@@ -86,6 +86,18 @@ export { OAuthStateStore } from './oauth-state-store.js';
 export type { OAuthStateRecord, OAuthStateStoreOptions } from './oauth-state-store.js';
 export { createStubPDP } from './stub-pdp.js';
 export type { StubPDPOptions } from './stub-pdp.js';
+// Real RBAC + ReBAC seed stores (ClickUp 869def338). Write/seed path;
+// the engine read path lives in @kb-labs/core-policy-runtime.
+export { PolicyMembershipsStore } from './policy-memberships-store.js';
+export { GroupsStore } from './groups-store.js';
+export { GroupPermissionsStore } from './group-permissions-store.js';
+export { RelationsStore } from './relations-store.js';
+export {
+  ensurePolicyBootstrap,
+  TENANT_ADMIN_GROUP,
+  TENANT_MEMBER_GROUP,
+} from './bootstrap-policy.js';
+export type { EnsurePolicyBootstrapOptions, BootstrapPolicyLogger } from './bootstrap-policy.js';
 // Re-export PDP types from core-contracts so consumers can import everything
 // from @kb-labs/gateway-auth without also depending on @kb-labs/core-contracts.
 export type { IPolicyDecisionPoint, PolicyDecision, Identity, Resource, PolicyContext } from '@kb-labs/core-contracts';

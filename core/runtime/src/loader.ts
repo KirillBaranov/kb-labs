@@ -29,8 +29,10 @@ import {
   resetAdapterStatus,
 } from './adapter-status.js';
 import { ADAPTER_DEFAULTS, type AdapterSlot } from '@kb-labs/core-platform';
+import type { IDocumentDatabase } from '@kb-labs/core-platform/adapters';
 import { inmemoryFactories } from '@kb-labs/core-platform/inmemory';
 import { noopFactories } from '@kb-labs/core-platform/noop';
+import { createDocumentBackedPolicy } from '@kb-labs/core-policy-runtime';
 import { WorkflowEngine } from './core/workflow-engine.js';
 
 import { AnalyticsLLM } from '@kb-labs/core-platform';
@@ -265,6 +267,27 @@ function fillAdapterFallbacksAndRecord(
       `Adapter "${slot}" using NoOp fallback — calls will throw AdapterUnavailableError`,
       { slot, reason: 'not-configured' },
     );
+  }
+
+  // Derived default: the Policy Decision Point (RBAC + ReBAC) is not loaded
+  // from a config package — it is composed from `documentDatabase`. Build it
+  // here as a platform default with safe engine defaults (machine → deny, no
+  // relation grants); a host may later supply richer config. Parent-only in
+  // practice: in a worker `create-proxy-platform` already installs a
+  // PolicyProxy, so the guard below skips and decisions stay centralized.
+  //
+  // NOTE: `relationGrants` is intentionally empty here, so the ReBAC branch is
+  // DORMANT in the wired runtime — only RBAC (group → permission) grants access.
+  // The ReBAC engine is built and unit-tested, but no host injects relation
+  // grants yet; that arrives with plugin onboarding (ClickUp 869def338, out of
+  // scope this iteration). Until then a seeded relation is stored but grants
+  // nothing — by design, not a silent gap.
+  if (!container.getAdapter('policy')) {
+    const docs = container.getAdapter<IDocumentDatabase>('documentDatabase');
+    if (docs) {
+      container.setAdapter('policy', createDocumentBackedPolicy(docs) as never);
+      container.logger.info('Adapter "policy" derived from documentDatabase (RBAC + ReBAC)');
+    }
   }
 
   // Boot summary — one line, scannable in logs.

@@ -29,12 +29,20 @@ import type { Permission } from './permissions.js';
  */
 export interface Identity {
   /** Internal stable user id (`users.userId`) for `type: 'user'`, or
-   *  machine-client id for `type: 'machine'`. */
+   *  machine-client id for `type: 'machine'`. For `type: 'agent'` it is
+   *  the delegating user's id (the agent acts on their behalf). */
   userId: string;
   /** Tenant the identity belongs to. Cross-tenant access is denied at
    *  the middleware layer before `check` is called. */
   tenantId: string;
-  type: 'user' | 'machine';
+  /**
+   * `'agent'` is reserved for constrained-delegation tokens. The token
+   * issuance + constraint intersection is a separate epic; until it
+   * lands the PDP **fail-closes** on `type: 'agent'` (denies with
+   * `reason: 'agent_delegation_not_implemented'`) so an agent identity
+   * can never be silently treated as a full user.
+   */
+  type: 'user' | 'machine' | 'agent';
 }
 
 /**
@@ -50,6 +58,71 @@ export interface Resource {
   type: string;
   id?: string;
   tenantId?: string;
+}
+
+/**
+ * A concrete resource reference returned by `listResources`. Unlike
+ * `Resource` (where `id` is optional, for tenant-wide checks), a
+ * `ResourceRef` always identifies a specific instance — it is something
+ * the caller can render or navigate to.
+ *
+ * Carries `type` (not just bare ids) so a UI can group/route results,
+ * and optional `tenantId` for cross-tenant aggregation surfaces. Making
+ * this a named type now avoids a breaking `string[] → ResourceRef[]`
+ * change once Studio builds permission-aware list views.
+ */
+export interface ResourceRef {
+  type: string;
+  id: string;
+  tenantId?: string;
+}
+
+/**
+ * A ReBAC relationship tuple: "`subjectUserId` is `relation` of
+ * (`resourceType`, `resourceId`)" within `tenantId`.
+ *
+ * `tenantId` is ALWAYS the subject's (`identity.tenantId`) — never the
+ * resource's optional `tenantId`. Cross-tenant access is denied at the
+ * middleware before `check`, so relations are resolved strictly within
+ * the caller's tenant.
+ *
+ * `relation` is an open string so plugins can define their own
+ * relations (`owner`, `member`, `editor`, ...) without coupling to this
+ * contract.
+ */
+export interface Relation {
+  tenantId: string;
+  subjectUserId: string;
+  relation: string;
+  resourceType: string;
+  resourceId: string;
+}
+
+/**
+ * The decision-time materialized view of a caller (ADR-0020 principle
+ * #5: "Subject ≠ identity"). Built by the policy layer on every request
+ * (resolved fresh — changing a user's group takes effect immediately).
+ *
+ * - `groupIds` — resolved group membership INCLUDING inherited groups.
+ * - `relations` — ReBAC relations the subject holds.
+ *
+ * Attributes (for future ABAC) are intentionally absent — no dead
+ * surface until a concrete attribute requirement exists.
+ */
+export interface Subject {
+  identity: Identity;
+  groupIds: string[];
+  relations: Relation[];
+}
+
+/**
+ * Pagination options for `listResources`. Defined now so adding paging
+ * later is not a breaking signature change. `cursor` is opaque and
+ * implementation-defined.
+ */
+export interface ListResourcesOptions {
+  limit?: number;
+  cursor?: string;
 }
 
 /**
@@ -99,6 +172,25 @@ export interface IPolicyDecisionPoint {
    * enum.
    */
   enumeratePermissions(identity: Identity): Promise<string[]>;
+
+  /**
+   * Return the specific resources of `resourceType` on which `identity`
+   * may perform `action`. Powers permission-aware list views in Studio
+   * (e.g. "the workflows you can open").
+   *
+   * Scope: this enumerates **ReBAC-scoped** access (resources reached
+   * via a relation). Blanket RBAC access ("any member may view all
+   * workflows") is NOT expanded here — that is signalled by
+   * `enumeratePermissions` returning the action, and the UI combines
+   * the two. Enumerating every resource for a blanket grant is the
+   * owning service's concern, not the PDP's.
+   */
+  listResources(
+    identity: Identity,
+    action: string,
+    resourceType: string,
+    opts?: ListResourcesOptions,
+  ): Promise<ResourceRef[]>;
 }
 
 /**

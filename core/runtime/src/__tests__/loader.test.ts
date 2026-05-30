@@ -88,6 +88,31 @@ describe('Platform Loader', () => {
       expect(platform.config).toBeDefined();
     });
 
+    it('derives a working policy adapter (RBAC + ReBAC) from documentDatabase', async () => {
+      await initPlatform({ adapters: {} });
+
+      // Policy is a derived platform default — composed from documentDatabase,
+      // not loaded from a config package.
+      expect(platform.hasAdapter('policy')).toBe(true);
+
+      const pdp = platform.getAdapter<import('@kb-labs/core-contracts').IPolicyDecisionPoint>('policy');
+      expect(pdp).toBeDefined();
+
+      // Closed-world default: a user with no seeded groups is denied.
+      const decision = await pdp!.check(
+        { userId: 'nobody', tenantId: 't1', type: 'user' },
+        'users:read',
+      );
+      expect(decision).toEqual({ allow: false, reason: 'no_membership' });
+
+      // Agent identities fail closed until constrained delegation lands.
+      const agentDecision = await pdp!.check(
+        { userId: 'a', tenantId: 't1', type: 'agent' },
+        'users:read',
+      );
+      expect(agentDecision).toMatchObject({ allow: false });
+    });
+
     it('should use NoOp fallbacks when adapters not configured', async () => {
       await initPlatform({ adapters: {} });
 

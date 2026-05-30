@@ -22,6 +22,7 @@ import type {
   IPolicyDecisionPoint,
   PolicyDecision,
   Resource,
+  ResourceRef,
   PolicyContext,
 } from '@kb-labs/core-contracts';
 import { PERMISSIONS } from '@kb-labs/core-contracts';
@@ -39,6 +40,12 @@ export interface StubPDPOptions {
   memberships: MembershipsStore;
 }
 
+/**
+ * @deprecated Superseded by the real RBAC + ReBAC engine
+ * (`@kb-labs/core-policy-runtime`), now wired as the platform `policy`
+ * adapter and consumed by the gateway bootstrap. Retained only for the
+ * existing stub-pdp unit tests; remove once no importers remain.
+ */
 export const createStubPDP = (opts: StubPDPOptions): IPolicyDecisionPoint => {
   const permissionsForUser = async (identity: Identity): Promise<ReadonlyArray<string>> => {
     const list = await opts.memberships.listByUser(identity.userId);
@@ -80,6 +87,13 @@ export const createStubPDP = (opts: StubPDPOptions): IPolicyDecisionPoint => {
       }
       const perms = await permissionsForUser(identity);
       return [...perms];
+    },
+
+    // The stub has no ReBAC relations, so there are no resource-scoped
+    // grants to enumerate. The real engine (ClickUp 869def338) replaces
+    // this with relation-backed resolution.
+    async listResources(): Promise<ResourceRef[]> {
+      return [];
     },
   };
 };

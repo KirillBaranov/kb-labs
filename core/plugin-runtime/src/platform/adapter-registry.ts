@@ -22,6 +22,7 @@ import type {
 } from '@kb-labs/plugin-contracts';
 import { PermissionError } from '@kb-labs/plugin-contracts';
 import type { INotifier, ILLM, IEmbeddings, IVectorStore, IAnalytics, ILogger, PIIRedactionConfig } from '@kb-labs/core-platform';
+import type { IPolicyDecisionPoint } from '@kb-labs/core-contracts';
 import {
   AnalyticsLLM,
   AnalyticsEmbeddings,
@@ -47,6 +48,7 @@ import {
   KVStoreProxy,
   ConfigProxy,
   EventBusProxy,
+  PolicyProxy,
 } from '@kb-labs/core-ipc';
 import type { AdapterDescriptor, AdapterMiddlewareFn } from './middleware.js';
 import { wrapDocumentDatabase, wrapKVStore } from './database-governance.js';
@@ -247,6 +249,16 @@ const wrapNotifier: AdapterMiddlewareFn<INotifier> = (adapter, ctx) => {
   } satisfies INotifier;
 };
 
+const wrapPolicy: AdapterMiddlewareFn<IPolicyDecisionPoint> = (adapter, ctx) => {
+  // Axis A (Plugin→Platform): may this plugin consult the PDP at all?
+  // The PDP itself decides Axis B (User→Action) on each call.
+  if (!ctx.permissions.platform?.policy) {
+    return createDeniedService<IPolicyDecisionPoint>('policy');
+  }
+  // Read-only decision surface — no per-call narrowing needed.
+  return adapter;
+};
+
 // ─── Registry ────────────────────────────────────────────────────────────────
 
 /**
@@ -410,7 +422,17 @@ export const ADAPTER_REGISTRY = {
     governance: { strategy: 'pass-through' },
     ipc: { strategy: 'absent' },
   },
- 
+
+  // PDP — RBAC + ReBAC authorization (ClickUp 869def338). The instance is a
+  // derived platform default: the runtime loader builds it from
+  // `documentDatabase` (see core/runtime fallbacks) and provides it like any
+  // other adapter. The registry only declares how it is treated: governed for
+  // plugins (Axis A) and proxied to the parent's single instance over IPC.
+  policy: {
+    governance: { strategy: 'wrap', fn: wrapPolicy },
+    ipc: { strategy: 'proxy', create: (t) => new PolicyProxy(t) },
+  },
+
 } satisfies { [K in keyof Required<PluginServices>]: AdapterDescriptor<any> };
 
 export type AdapterRegistryKey = keyof typeof ADAPTER_REGISTRY;
@@ -424,6 +446,7 @@ export {
   wrapCache,
   wrapStorage,
   wrapNotifier,
+  wrapPolicy,
   createDeniedService,
 };
 

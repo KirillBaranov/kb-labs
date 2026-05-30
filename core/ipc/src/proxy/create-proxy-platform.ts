@@ -21,6 +21,7 @@ import { KVStoreProxy } from './kv-store-proxy.js';
 import { ConfigProxy } from './config-proxy.js';
 import { EventBusProxy } from './event-bus-proxy.js';
 import { LoggerProxy } from './logger-proxy.js';
+import { PolicyProxy } from './policy-proxy.js';
 
 export interface CreateProxyPlatformOptions {
   /**
@@ -65,6 +66,9 @@ export function createProxyPlatform(
   // EventBus: bidirectional proxy — subscribe/publish across process boundary
   const eventBus = new EventBusProxy(transport);
 
+  // Policy: forward authorization decisions to the parent's single PDP instance.
+  const policy = new PolicyProxy(transport);
+
   // Analytics: noop (low priority for proxying)
   const analytics = {
     track: async () => {},
@@ -103,5 +107,6 @@ export function createProxyPlatform(
     documentDatabase,
     kvStore,
     logs,
+    policy,
   } satisfies IPlatformAdapters;
 }

@@ -14,12 +14,17 @@ import {
   loadIdentityProviders,
   createPasswordPolicy,
   createUserAuthService,
-  createStubPDP,
   createTenantResolver,
   createRateLimiter,
   ensureBootstrapAdmin,
+  ensurePolicyBootstrap,
+  GroupsStore,
+  GroupPermissionsStore,
+  PolicyMembershipsStore,
   OAuthStateStore,
 } from '@kb-labs/gateway-auth';
+import type { IPolicyDecisionPoint } from '@kb-labs/core-contracts';
+import { createDocumentBackedPolicy } from '@kb-labs/core-policy-runtime';
 import type { IKVStore } from '@kb-labs/core-platform/adapters';
 import { createRegistry } from '@kb-labs/core-registry';
 import { loadGatewayConfig } from './config.js';
@@ -112,6 +117,14 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
     });
     const invites = new InvitesStore(docs);
 
+    // RBAC seed stores (ClickUp 869def338). WRITE/seed path only — the real
+    // PDP read path lives in @kb-labs/core-policy-runtime and is exposed as the
+    // platform `policy` adapter, derived by the runtime loader from THIS SAME
+    // documentDatabase. Seeds and decisions therefore read one store.
+    const policyGroups = new GroupsStore(docs);
+    const policyGroupPermissions = new GroupPermissionsStore(docs);
+    const policyMemberships = new PolicyMembershipsStore(docs);
+
     // Identity providers are loaded from config (ADR-0020, DD-3). An
     // empty/absent `auth.providers` registers the built-in email-password
     // door; configured providers (built-in `oidc` or third-party packages)
@@ -130,7 +143,14 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
       hibpEnabled: config.auth?.passwordPolicy?.hibpEnabled ?? true,
     });
 
-    const pdp = createStubPDP({ memberships });
+    // Consume the platform's single PDP instance (RBAC + ReBAC), derived by
+    // the runtime loader from documentDatabase. When the platform was
+    // initialized without the loader (e.g. minimal/test bootstrap), fall back
+    // to deriving from the gateway's own `docs` — the SAME instance, so seeds
+    // and decisions never diverge. Routes bind to the unchanged
+    // `IPolicyDecisionPoint` contract: a transparent swap from the former stub.
+    const pdp =
+      platform.getAdapter<IPolicyDecisionPoint>('policy') ?? createDocumentBackedPolicy(docs);
 
     const tenantResolver = createTenantResolver({ pattern: tenantPattern });
 
@@ -164,6 +184,23 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
       logger,
     }).catch((err) => {
       logger.warn('Bootstrap admin seed failed (non-fatal)', {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    });
+
+    // Seed RBAC defaults for the real PDP (idempotent): tenant-admin → every
+    // canonical permission, tenant-member → none, bootstrap admin → tenant-admin.
+    // Preserves the stub's behaviour as DATA the engine reads.
+    await ensurePolicyBootstrap({
+      groups: policyGroups,
+      groupPermissions: policyGroupPermissions,
+      policyMemberships,
+      users,
+      tenantId: bootstrapTenantId,
+      adminEmail,
+      logger,
+    }).catch((err) => {
+      logger.warn('Policy bootstrap seed failed (non-fatal)', {
         error: err instanceof Error ? err.message : String(err),
       });
     });

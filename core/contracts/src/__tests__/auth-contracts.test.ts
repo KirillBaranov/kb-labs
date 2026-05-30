@@ -27,6 +27,10 @@ import {
   type PolicyDecision,
   type Identity,
   type Resource,
+  type ResourceRef,
+  type Relation,
+  type Subject,
+  type ListResourcesOptions,
   type PolicyContext,
   type Permission,
 } from '../index.js';
@@ -155,9 +159,18 @@ describe('narrow identity ports (DD-2)', () => {
 });
 
 describe('IPolicyDecisionPoint contract', () => {
-  it('exposes check and enumeratePermissions', () => {
+  it('exposes check, enumeratePermissions, and listResources', () => {
     expectTypeOf<IPolicyDecisionPoint>().toHaveProperty('check');
     expectTypeOf<IPolicyDecisionPoint>().toHaveProperty('enumeratePermissions');
+    expectTypeOf<IPolicyDecisionPoint>().toHaveProperty('listResources');
+  });
+
+  it('listResources returns ResourceRef[] (not bare ids) for UI enumeration', () => {
+    expectTypeOf<IPolicyDecisionPoint['listResources']>()
+      .returns.resolves.toEqualTypeOf<ResourceRef[]>();
+    expectTypeOf<IPolicyDecisionPoint['listResources']>()
+      .parameter(3)
+      .toEqualTypeOf<ListResourcesOptions | undefined>();
   });
 
   it('PolicyDecision is a discriminated union on `allow`', () => {
@@ -172,12 +185,14 @@ describe('IPolicyDecisionPoint contract', () => {
 });
 
 describe('Identity shape', () => {
-  it('carries userId, tenantId, and type (user|machine)', () => {
+  it('carries userId, tenantId, and type (user|machine|agent)', () => {
     const user: Identity = { userId: 'u1', tenantId: 't1', type: 'user' };
     const machine: Identity = { userId: 'm1', tenantId: 't1', type: 'machine' };
-    expectTypeOf(user.type).toEqualTypeOf<'user' | 'machine'>();
+    const agent: Identity = { userId: 'a1', tenantId: 't1', type: 'agent' };
+    expectTypeOf(user.type).toEqualTypeOf<'user' | 'machine' | 'agent'>();
     expect(user.userId).toBe('u1');
     expect(machine.type).toBe('machine');
+    expect(agent.type).toBe('agent');
   });
 
   it('does NOT include role, scopes, or permissions (CD-7, ADR principle 3)', () => {
@@ -201,6 +216,39 @@ describe('Resource and PolicyContext shapes', () => {
   it('PolicyContext is an open record', () => {
     const ctx: PolicyContext = { ip: '1.2.3.4', ua: 'test' };
     expect(ctx.ip).toBe('1.2.3.4');
+  });
+});
+
+describe('ReBAC vocabulary (ResourceRef, Relation, Subject)', () => {
+  it('ResourceRef carries type, id, optional tenantId', () => {
+    const ref: ResourceRef = { type: 'workflow', id: 'wf-42' };
+    const scoped: ResourceRef = { type: 'workflow', id: 'wf-42', tenantId: 't1' };
+    expect(ref.type).toBe('workflow');
+    expect(scoped.tenantId).toBe('t1');
+  });
+
+  it('Relation is the (tenant, subject, relation, resource) tuple', () => {
+    const rel: Relation = {
+      tenantId: 't1',
+      subjectUserId: 'u1',
+      relation: 'owner',
+      resourceType: 'workflow',
+      resourceId: 'wf-42',
+    };
+    expect(rel.relation).toBe('owner');
+    // `relation` is an open string (plugin-defined relations allowed).
+    expectTypeOf(rel.relation).toEqualTypeOf<string>();
+  });
+
+  it('Subject is the decision-time materialized view: identity + resolved groups + relations', () => {
+    const subject: Subject = {
+      identity: { userId: 'u1', tenantId: 't1', type: 'user' },
+      groupIds: ['tenant-admin'],
+      relations: [],
+    };
+    expectTypeOf(subject.groupIds).toEqualTypeOf<string[]>();
+    expectTypeOf(subject.relations).toEqualTypeOf<Relation[]>();
+    expect(subject.identity.userId).toBe('u1');
   });
 });
 

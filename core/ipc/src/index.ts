@@ -73,6 +73,7 @@ export {
   KVStoreProxy,
   ConfigProxy,
   EventBusProxy,
+  PolicyProxy,
   createProxyPlatform,
   type CreateProxyPlatformOptions,
 } from './proxy/index';
