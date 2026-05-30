@@ -2,17 +2,24 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
+	"github.com/kb-labs/clikit/diag"
+	"github.com/kb-labs/clikit/result"
 	"github.com/kb-labs/dev/internal/config"
-	"github.com/kb-labs/dev/internal/manager"
 	"github.com/spf13/cobra"
 )
+
+// outputMode resolves the active render mode from the output flags.
+func outputMode() result.Mode { return result.ResolveMode(jsonMode, agentMode, outputFlag) }
 
 // Global flags accessible to all subcommands.
 var (
 	jsonMode   bool
+	agentMode  bool
+	outputFlag string
 	forceFlag  bool
 	configPath string
 )
@@ -55,46 +62,49 @@ Examples:
 	SilenceErrors: true,
 }
 
-// Execute is the main entry point called from main.go.
+// Execute is the main entry point called from main.go. Any error bubbling up to
+// the root is rendered as a structured diagnostic (message+reason+hint for
+// humans; {ok:false,error:{…}} for machines) and the process exits with the
+// diagnostic's exit code. Bare errors are wrapped as ERR_UNKNOWN.
 //
-// In --json mode, any error that bubbles up to the root command is
-// emitted as a manager.Result envelope on stdout, so consumers always
-// get parseable JSON. Without this, a failed `kb-dev status --json`
-// would silently exit 1 with zero output — breaking any agent or UI
-// that expects a well-formed response.
-//
-// Commands that already emit their own JSON envelope (e.g. status,
-// doctor) must NOT return their errSilent sentinel in --json mode;
-// they should return nil after printing their own envelope.
+// Commands that already emitted their own envelope return the errSilent
+// sentinel (empty message); Execute then exits without re-rendering.
 func Execute() {
-	err := rootCmd.Execute()
+	_, err := rootCmd.ExecuteC()
 	if err == nil {
 		return
 	}
-	if jsonMode {
-		// errSilent means the command already printed its own envelope.
-		// Any other error means nothing was printed, so we emit one here.
-		if err.Error() != "" {
-			_ = JSONOut(manager.Result{
-				OK:   false,
-				Hint: err.Error(),
-			})
-		}
-	} else {
-		out := newOutput()
-		out.Err(err.Error())
+	if err.Error() == "" {
+		// errSilent: the command already printed its own output.
+		os.Exit(1)
 	}
-	os.Exit(1)
+	var d *diag.Diag
+	if !errors.As(err, &d) {
+		d = diag.Wrap(err, "ERR_UNKNOWN", err.Error())
+	}
+	code := result.RenderDiag(os.Stdout, os.Stderr, d, outputMode())
+	os.Exit(code)
 }
 
 func init() {
 	rootCmd.PersistentFlags().BoolVar(&jsonMode, "json", false, "output as structured JSON")
+	rootCmd.PersistentFlags().BoolVar(&agentMode, "agent", false, "output as compact agent JSON")
+	rootCmd.PersistentFlags().StringVar(&outputFlag, "output", "", "output format: human|json|agent")
 	rootCmd.PersistentFlags().BoolVar(&forceFlag, "force", false, "kill port conflicts before starting")
 	rootCmd.PersistentFlags().StringVar(&configPath, "config", "", "path to devservices.yaml (default: .kb/devservices.yaml)")
 
 	// Cascade flags — mutually exclusive.
 	rootCmd.PersistentFlags().Bool("cascade", false, "cascade to dependent services")
 	rootCmd.PersistentFlags().Bool("no-cascade", false, "skip dependent cascade")
+
+	// Bridge: commands that branch on jsonMode also fire for --agent and
+	// --output=json|agent until individually converted to emit CommandOutput.
+	rootCmd.PersistentPreRun = func(_ *cobra.Command, _ []string) {
+		switch outputMode() {
+		case result.ModeJSON, result.ModeAgent:
+			jsonMode = true
+		}
+	}
 }
 
 // FindConfig resolves the config file and project directory.
