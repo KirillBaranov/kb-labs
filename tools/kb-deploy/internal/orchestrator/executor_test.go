@@ -405,6 +405,19 @@ func TestExecute_ConfigDeliveryFailureAbortsBeforeInstall(t *testing.T) {
 	if res.Err == nil {
 		t.Fatal("expected error when config delivery fails")
 	}
+	// The abort must carry a structured diagnostic (ERR_CONFIG_DELIVERY with the
+	// failing host in meta), not degrade to a bare ERR_UNKNOWN. The exit-code
+	// mapping for the code lives in the cmd package (registered there).
+	var d *diag.Diag
+	if !errors.As(res.Err, &d) {
+		t.Fatalf("config-delivery abort is not a *diag.Diag: %T", res.Err)
+	}
+	if d.Code != "ERR_CONFIG_DELIVERY" {
+		t.Errorf("code = %q, want ERR_CONFIG_DELIVERY", d.Code)
+	}
+	if d.Meta["host"] == nil {
+		t.Errorf("expected meta.host on the delivery diagnostic, got %v", d.Meta)
+	}
 	if h1.has("install-service") || h2.has("install-service") {
 		t.Errorf("no host may install when delivery aborts: h1=%v h2=%v", h1.log, h2.log)
 	}
