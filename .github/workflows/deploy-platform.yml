@@ -138,12 +138,23 @@ jobs:
           # The adduser REST endpoint is idempotent with a fixed password: it creates
           # the user on first run and logs in (returns a token) on later runs. The
           # registry is loopback-only on the VM, so a local CI password is acceptable.
-          TOKEN=$(curl -s -XPUT \
+          # Send a full npm-style user document — a minimal {name,password} body is
+          # not always honoured by the htpasswd handler.
+          NOW=$(date -u +%Y-%m-%dT%H:%M:%S.000Z)
+          resp=$(curl -s -w '\n%{http_code}' -XPUT \
             -H 'Content-Type: application/json' \
-            -d '{"name":"kb-ci","password":"kb-ci-local"}' \
-            http://127.0.0.1:4873/-/user/org.couchdb.user:kb-ci \
-            | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
-          if [ -z "$TOKEN" ]; then echo "::error::failed to obtain Verdaccio token"; exit 1; fi
+            -d "{\"_id\":\"org.couchdb.user:kb-ci\",\"name\":\"kb-ci\",\"password\":\"kb-ci-local\",\"type\":\"user\",\"roles\":[],\"date\":\"$NOW\"}" \
+            "http://127.0.0.1:4873/-/user/org.couchdb.user:kb-ci")
+          code=$(printf '%s' "$resp" | tail -n1)
+          body=$(printf '%s' "$resp" | sed '$d')
+          TOKEN=$(printf '%s' "$body" | grep -o '"token":"[^"]*"' | head -1 | cut -d'"' -f4)
+          if [ -z "$TOKEN" ]; then
+            # Redact any secret-shaped fields before surfacing the response for diagnosis.
+            safe=$(printf '%s' "$body" | sed -E 's/("(token|password)":")[^"]*/\1<redacted>/g' | head -c 500)
+            echo "::error::adduser returned no token (HTTP $code): $safe"
+            exit 1
+          fi
+          echo "Verdaccio auth OK (HTTP $code)"
           npm config set //127.0.0.1:4873/:_authToken "$TOKEN"
           published=0; skipped=0; failed=0
           for f in ~/kb-packages/*.tgz; do
