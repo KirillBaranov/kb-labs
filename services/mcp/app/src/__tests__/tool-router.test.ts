@@ -77,4 +77,41 @@ describe('callTool', () => {
     await callTool(tool, {}, 'tenant-xyz', resolvePlatform);
     expect(resolvePlatform).toHaveBeenCalledWith('tenant-xyz');
   });
+
+  it('captures direct console.log output from plugins that bypass UIFacade', async () => {
+    executeCommandV3.mockImplementation(async () => {
+      console.log('direct log from plugin');
+      return 0;
+    });
+    const result = await callTool(tool, {}, 'tenant1', resolvePlatform);
+    expect(result.output).toContain('direct log from plugin');
+  });
+
+  it('merges UIFacade and console.log output in the result', async () => {
+    executeCommandV3.mockImplementation(async (opts: { ui: { info: (m: string) => void } }) => {
+      opts.ui.info('facade line');
+      console.log('stdout line');
+      return 0;
+    });
+    const result = await callTool(tool, {}, 'tenant1', resolvePlatform);
+    expect(result.output).toContain('facade line');
+    expect(result.output).toContain('stdout line');
+  });
+
+  it('strips ANSI escape sequences from console output', async () => {
+    executeCommandV3.mockImplementation(async () => {
+      console.log('\x1B[32m✓\x1B[0m done');
+      return 0;
+    });
+    const result = await callTool(tool, {}, 'tenant1', resolvePlatform);
+    expect(result.output).toContain('✓ done');
+    expect(result.output).not.toContain('\x1B');
+  });
+
+  it('restores console even when the command throws', async () => {
+    const originalLog = console.log;
+    executeCommandV3.mockRejectedValue(new Error('boom'));
+    await expect(callTool(tool, {}, 'tenant1', resolvePlatform)).rejects.toThrow('boom');
+    expect(console.log).toBe(originalLog);
+  });
 });
