@@ -17,11 +17,12 @@
     { "name": "@kb-labs/adapters-analytics-file",   "localPath": "/Users/kirillbaranov/Desktop/kb-labs-workspace/adapters/analytics-file" }
   ],
   "services": [
-    { "id": "rest",        "pkg": "@kb-labs/rest-api-app",    "description": "REST API (port 5050)",        "default": true, "localPath": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/rest-api/app" },
+    { "id": "rest",        "pkg": "@kb-labs/rest-api-app",    "description": "REST API (port 5050)",        "default": true, "localPath": "/Users/kirillbaranov/Desktop/kb-labs-workspace/services/rest-api/app" },
     { "id": "workflow",    "pkg": "@kb-labs/workflow-daemon",  "description": "Workflow engine (port 7778)", "default": true, "localPath": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/workflow/daemon" },
-    { "id": "gateway",     "pkg": "@kb-labs/gateway-app",     "description": "Central router (port 4000)",  "default": true, "localPath": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/gateway/app" },
+    { "id": "gateway",     "pkg": "@kb-labs/gateway-app",     "description": "Central router (port 4000)",  "default": true, "localPath": "/Users/kirillbaranov/Desktop/kb-labs-workspace/services/gateway/app" },
     { "id": "marketplace", "pkg": "@kb-labs/marketplace-app", "description": "Marketplace (port 5070)",     "default": true, "localPath": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace/daemon" },
-    { "id": "studio",      "pkg": "@kb-labs/studio-app",      "description": "Web UI (port 3000)",          "default": true, "localPath": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/app" }
+    { "id": "studio",      "pkg": "@kb-labs/studio-app",      "description": "Web UI (port 3000)",          "default": true, "localPath": "/Users/kirillbaranov/Desktop/kb-labs-workspace/studio/app" },
+    { "id": "mcp",         "pkg": "@kb-labs/mcp-app",         "description": "MCP Daemon (port 7779)",      "default": true, "localPath": "/Users/kirillbaranov/Desktop/kb-labs-workspace/services/mcp/app" }
   ],
   "plugins": [
     { "id": "marketplace", "pkg": "@kb-labs/marketplace-entry", "description": "Install, list, enable plugins", "default": true, "localPath": "/Users/kirillbaranov/Desktop/kb-labs-workspace/plugins/marketplace/entry" },

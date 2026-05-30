@@ -140,6 +140,10 @@ echo "==> [3/3] Starting services..."
 # state-daemon binds to KB_STATE_DAEMON_HOST — override to 0.0.0.0 so it's
 # reachable from the tests container via Docker bridge network.
 export KB_STATE_DAEMON_HOST=0.0.0.0
+# mcp-daemon defaults to localhost and is hit directly on :7779 by the e2e
+# specs (not proxied through the gateway), so it must bind 0.0.0.0 to be
+# reachable from the host runner.
+export KB_MCP_DAEMON_HOST=0.0.0.0
 kb-dev start state-daemon &
 sleep 3
 kb-dev start backend &

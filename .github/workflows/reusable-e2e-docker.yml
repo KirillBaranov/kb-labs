@@ -253,6 +253,7 @@ jobs:
           REGISTRY_URL:    http://localhost:5071
           WORKFLOW_URL:    http://localhost:7778
           STATE_URL:       http://localhost:7777
+          MCP_URL:         http://localhost:7779
           CI: "true"
           KB_DEV_BIN: ${{ github.workspace }}/tools/scripts/kb-dev-docker.sh
 
