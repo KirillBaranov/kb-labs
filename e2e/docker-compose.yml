@@ -65,6 +65,7 @@ services:
       - "5071:5071"   # marketplace-registry
       - "7777:7777"   # state-daemon
       - "7778:7778"   # workflow
+      - "7779:7779"   # mcp-daemon
     environment:
       NPM_CONFIG_REGISTRY: http://verdaccio:4873
       KB_TENANT_DEFAULT_TIER: enterprise
