@@ -110,6 +110,23 @@ func (h *Host) ServiceID(servicePkg, serviceShort string) (string, error) {
 	return m.ID, nil
 }
 
+// ReconcileDevservices prunes devservices.yaml dependsOn entries that name
+// services absent from the registry (external infra like qdrant, or services not
+// part of this deployment) so kb-dev's strict validation can load it. Run once
+// after every service of a host is installed/swapped and before restarts. The
+// returned output lists any pruned dependencies for visibility.
+func (h *Host) ReconcileDevservices() (string, error) {
+	cmd := "kb-create reconcile-devservices"
+	if h.PlatformPath != "" {
+		cmd += " --platform " + shellQuote(h.PlatformPath)
+	}
+	out, err := h.Runner.Run(cmd)
+	if err != nil {
+		return out, fmt.Errorf("reconcile devservices on %s: %w (output: %s)", h.Name, err, out)
+	}
+	return out, nil
+}
+
 // Swap atomically points current at the given release.
 func (h *Host) Swap(servicePkg, releaseID string) error {
 	cmd := fmt.Sprintf("kb-create swap %s %s",

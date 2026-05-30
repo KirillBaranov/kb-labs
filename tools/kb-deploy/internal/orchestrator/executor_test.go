@@ -172,6 +172,52 @@ func TestExecute_RestartsByManifestIDNotShortName(t *testing.T) {
 	}
 }
 
+// The wave runs in phases: all install+swap, then one devservices reconcile,
+// then restarts. Verify reconcile lands after the last swap and before the
+// first restart so kb-dev only ever loads a fully-registered, reconciled config.
+func TestExecute_ReconcilesAfterSwapBeforeRestart(t *testing.T) {
+	h1 := &fakeRunner{}
+	cfg := &config.Config{
+		Schema: config.CurrentSchema,
+		Services: map[string]config.Service{
+			"gateway": {Service: "@kb-labs/gateway", Version: "1", Targets: config.ServiceTargets{Hosts: []string{"h1"}, HealthGate: "5s"}},
+			"rest":    {Service: "@kb-labs/rest-api", Version: "1", Targets: config.ServiceTargets{Hosts: []string{"h1"}, HealthGate: "5s"}},
+		},
+		Hosts:   map[string]config.Host{"h1": {SSH: config.SSHConfig{Host: "1.1.1.1", User: "kb"}}},
+		Rollout: &config.RolloutConfig{AutoRollback: true, Parallel: 1},
+	}
+	plan := &Plan{Waves: [][]Action{{
+		{Kind: ActionInstall, Host: "h1", Service: "gateway", ServicePkg: "@kb-labs/gateway", Version: "1", ToID: "g1"},
+		{Kind: ActionInstall, Host: "h1", Service: "rest", ServicePkg: "@kb-labs/rest-api", Version: "1", ToID: "r1"},
+	}}}
+
+	res := Execute(ExecuteOptions{Plan: plan, Config: cfg, Resolver: resolverFor(map[string]*fakeRunner{"h1": h1})})
+	if res.Err != nil {
+		t.Fatalf("unexpected error: %v", res.Err)
+	}
+
+	lastSwap := h1.lastIndexOf("kb-create swap")
+	reconcile := h1.firstIndexOf("reconcile-devservices")
+	firstRestart := h1.firstIndexOf("restart '")
+	if reconcile < 0 {
+		t.Fatal("reconcile-devservices was never invoked")
+	}
+	if !(lastSwap < reconcile && reconcile < firstRestart) {
+		t.Errorf("phase order wrong: lastSwap=%d reconcile=%d firstRestart=%d\n%v",
+			lastSwap, reconcile, firstRestart, h1.log)
+	}
+	// Reconcile must run exactly once for the host, not per service.
+	count := 0
+	for _, l := range h1.log {
+		if strings.Contains(l, "reconcile-devservices") {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Errorf("reconcile ran %d times, want 1 (once per host)", count)
+	}
+}
+
 func TestExecute_HealthGateFailureTriggersAutoRollback(t *testing.T) {
 	h1 := &fakeRunner{failOn: "ready '"}
 	cfg := singleServiceCfg()
