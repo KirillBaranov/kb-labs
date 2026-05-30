@@ -25,6 +25,11 @@ type Config struct {
 	Groups   map[string][]string `json:"groups"`
 	Services map[string]Service  `json:"services"`
 	Settings Settings            `json:"settings"`
+	// Warnings holds non-fatal issues found while validating the config — e.g.
+	// a dependsOn entry referencing a service that is not managed by kb-dev
+	// (external infra, or not yet installed during an incremental deploy). The
+	// loader surfaces these; they are not errors.
+	Warnings []string `json:"warnings,omitempty"`
 }
 
 // Service defines a single managed service.

@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -95,7 +96,9 @@ services:
 	}
 }
 
-func TestLoadDetectsDanglingDep(t *testing.T) {
+// A dangling dependsOn is non-fatal: it is pruned and recorded as a warning so
+// kb-dev tolerates external infra deps and incremental deploys.
+func TestLoadPrunesDanglingDep(t *testing.T) {
 	config := `
 name: test
 services:
@@ -104,9 +107,18 @@ services:
     depends_on: [nonexistent]
 `
 	path := writeTestConfig(t, config)
-	_, err := LoadFile(path)
-	if err == nil {
-		t.Fatal("expected dangling dep error, got nil")
+	cfg, err := LoadFile(path)
+	if err != nil {
+		t.Fatalf("dangling dep must not be fatal: %v", err)
+	}
+	if got := cfg.Services["a"].DependsOn; len(got) != 0 {
+		t.Errorf("unknown dep must be pruned, got %v", got)
+	}
+	if len(cfg.Warnings) != 1 {
+		t.Fatalf("expected one warning, got %v", cfg.Warnings)
+	}
+	if !strings.Contains(cfg.Warnings[0], "nonexistent") {
+		t.Errorf("warning should name the dropped dep: %q", cfg.Warnings[0])
 	}
 }
 

@@ -1,6 +1,9 @@
 package config
 
-import "fmt"
+import (
+	"fmt"
+	"sort"
+)
 
 // applyDefaults fills in zero-value fields with sensible defaults.
 func (c *Config) applyDefaults() {
@@ -29,14 +32,31 @@ func (c *Config) applyDefaults() {
 }
 
 // validate checks referential integrity and detects structural problems.
+//
+// An unknown dependsOn target is NOT fatal: it is pruned from the service's
+// dependencies and recorded as a warning. This keeps kb-dev robust to external
+// dependencies (e.g. a daemon depending on qdrant, which kb-dev does not manage)
+// and to incremental deploys where a service is registered before the services
+// it depends on. Cycle detection and ordering then operate on the known deps.
 func (c *Config) validate() error {
 	for id, svc := range c.Services {
-		for _, dep := range svc.DependsOn {
-			if _, ok := c.Services[dep]; !ok {
-				return fmt.Errorf("service %q depends on unknown service %q", id, dep)
-			}
+		if len(svc.DependsOn) == 0 {
+			continue
 		}
+		kept := make([]string, 0, len(svc.DependsOn))
+		for _, dep := range svc.DependsOn {
+			if _, ok := c.Services[dep]; ok {
+				kept = append(kept, dep)
+				continue
+			}
+			c.Warnings = append(c.Warnings, fmt.Sprintf(
+				"service %q depends on unknown service %q — ignoring (not managed by kb-dev: external infra, or not yet installed)",
+				id, dep))
+		}
+		svc.DependsOn = kept
+		c.Services[id] = svc
 	}
+	sort.Strings(c.Warnings)
 
 	if err := c.detectCycles(); err != nil {
 		return err
