@@ -1,12 +1,12 @@
 /**
  * Tool router — executes a resolved McpTool by routing through the same V3
  * command pipeline the CLI uses (executeCommandV3). Plugin output is captured
- * via two complementary mechanisms and returned as text for the MCP tool result:
+ * via the platform's uiProvider mechanism:
  *
- *   1. UIFacade (primary): plugins that call ui.info/success/warn/error/write.
- *   2. stdout intercept (fallback): plugins that bypass the facade and call
- *      console.log / process.stdout.write directly (e.g. ANSI spinner lines).
- *      Both are merged in the order they arrive, giving callers the full picture.
+ *   bootstrap.ts wires an AsyncLocalStorage-backed uiProvider to the execution
+ *   backend. callTool() activates the per-call context via callOutput.run();
+ *   the backend calls uiProvider() → createBufferedUI(push) where push appends
+ *   to the call-local buffer. Concurrent calls are fully isolated.
  *
  * Multi-tenancy seam: callTool never touches a global platform directly. It
  * resolves the PlatformContainer through `resolvePlatform(tenantId)`. Today that
@@ -16,9 +16,10 @@
 
 import path from 'node:path';
 import { executeCommandV3 } from '@kb-labs/cli-runtime';
+import { noopUI } from '@kb-labs/plugin-contracts';
 import type { PlatformContainer } from '@kb-labs/core-runtime';
 import type { PlatformServices } from '@kb-labs/plugin-contracts';
-import { createBufferedUI } from './ui.js';
+import { callOutput } from './output-capture.js';
 import type { McpTool } from './tool-builder.js';
 
 export interface ToolCallResult {
@@ -62,52 +63,13 @@ function createPlatformServices(container: PlatformContainer): PlatformServices 
 }
 
 /**
- * Intercept process.stdout and console.* for the duration of fn(), appending
- * all raw output to push(). Restores originals in a finally block so a thrown
- * error can never leave stdout permanently redirected.
- *
- * Strips ANSI escape sequences so MCP clients receive clean plain text.
- */
-function withStdoutCapture(push: (s: string) => void, fn: () => Promise<number>): Promise<number> {
-  // eslint-disable-next-line no-control-regex
-  const stripAnsi = (s: string): string => s.replace(/\x1B\[[0-9;?]*[a-zA-Z]/g, '').replace(/\x1B[()][AB012]/g, '');
-
-  const origWrite = process.stdout.write.bind(process.stdout);
-  const origLog   = console.log;
-  const origInfo  = console.info;
-  const origWarn  = console.warn;
-  const origError = console.error;
-
-  const capture = (chunk: unknown): void => {
-    const text = typeof chunk === 'string' ? chunk : String(chunk ?? '');
-    const clean = stripAnsi(text).trim();
-    if (clean) push(clean);
-  };
-
-  // Override stdout.write (covers process.stdout.write calls).
-  process.stdout.write = (chunk: unknown, ...rest: unknown[]): boolean => {
-    capture(chunk);
-    return (origWrite as (...a: unknown[]) => boolean)(chunk, ...rest);
-  };
-
-  // Override console.* (covers direct console.log calls from plugins).
-  console.log   = (...a) => { capture(a.join(' ')); origLog(...a);   };
-  console.info  = (...a) => { capture(a.join(' ')); origInfo(...a);  };
-  console.warn  = (...a) => { capture(a.join(' ')); origWarn(...a);  };
-  console.error = (...a) => { capture(a.join(' ')); origError(...a); };
-
-  return fn().finally(() => {
-    process.stdout.write = origWrite;
-    console.log   = origLog;
-    console.info  = origInfo;
-    console.warn  = origWarn;
-    console.error = origError;
-  });
-}
-
-/**
  * Execute an MCP tool. tenantId is propagated end-to-end (no loss); the platform
  * container is resolved through the seam so isolation is the platform's concern.
+ *
+ * Output capture: activates the AsyncLocalStorage context so the execution
+ * backend's uiProvider can write into the call-local `lines` buffer. The `ui`
+ * param passed to executeCommandV3 is unused by V3 (the backend uses uiProvider),
+ * but noopUI is passed explicitly to make the intent clear.
  */
 export async function callTool(
   tool: McpTool,
@@ -115,13 +77,11 @@ export async function callTool(
   tenantId: string,
   resolvePlatform: PlatformResolver,
 ): Promise<ToolCallResult> {
-  const { ui, getOutput } = createBufferedUI();
-  const stdoutLines: string[] = [];
+  const lines: string[] = [];
   const container = resolvePlatform(tenantId);
 
-  const exitCode = await withStdoutCapture(
-    (line) => stdoutLines.push(line),
-    () => executeCommandV3({
+  const exitCode = await callOutput.run(lines, () =>
+    executeCommandV3({
       pluginId: tool.pluginId,
       pluginVersion: tool.version,
       pluginRoot: tool.pluginRoot,
@@ -129,7 +89,9 @@ export async function callTool(
       argv: [],
       flags: args,
       tenantId,
-      ui,
+      // ui is ignored by executeCommandV3 V3 (backend uses uiProvider).
+      // noopUI is passed explicitly to document this intent.
+      ui: noopUI,
       platform: createPlatformServices(container),
       platformContainer: container,
       socketPath: container.getSocketPath(),
@@ -138,10 +100,5 @@ export async function callTool(
     }),
   );
 
-  // Merge: UIFacade output first (structured), then any direct stdout lines
-  // that weren't already captured through the facade.
-  const facadeOutput = getOutput();
-  const combined = [facadeOutput, ...stdoutLines].filter(Boolean).join('\n');
-
-  return { success: exitCode === 0, output: combined, exitCode };
+  return { success: exitCode === 0, output: lines.join('\n'), exitCode };
 }

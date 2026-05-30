@@ -5,6 +5,7 @@ import type { PlatformContainer } from '@kb-labs/core-runtime';
 import type { ManifestV3, CliCommandDecl } from '@kb-labs/plugin-contracts';
 import type { Permits } from '../mcp/authz.js';
 import type { McpTool } from '../mcp/tool-builder.js';
+import { callOutput } from '../mcp/output-capture.js';
 
 // Mock the command runtime boundary so executeToolCall exercises the real
 // gate + tool-router without spawning a plugin process.
@@ -152,6 +153,16 @@ describe('resolveVisibleTools', () => {
     const tools = await resolveVisibleTools({ permits: allow, authHeader: 'Bearer t', registry, cache });
     expect(tools.map((t) => t.name)).toEqual(['mind__mind_search']);
   });
+
+  it('emits analytics event for tools list', async () => {
+    const registry = makeRegistry([cmd('mind search', 'read')]);
+    const track = vi.fn().mockResolvedValue(undefined);
+    const analytics = { track } as unknown as Parameters<typeof resolveVisibleTools>[0]['analytics'];
+    await resolveVisibleTools({ permits: allow, authHeader: 'Bearer t', registry, cache, analytics, tenantId: 'tenant1' });
+    expect(track).toHaveBeenCalledWith('mcp.tools.list', expect.objectContaining({
+      tenantId: 'tenant1', cached: false,
+    }));
+  });
 });
 
 // ── executeToolCall ─────────────────────────────────────────────────────────
@@ -204,8 +215,9 @@ describe('executeToolCall', () => {
   });
 
   it('executes an allowed tool and maps a success exit code', async () => {
-    executeCommandV3.mockImplementation(async (opts: { ui: { info: (m: string) => void } }) => {
-      opts.ui.info('ran');
+    // Simulate what the execution backend's uiProvider does: write into callOutput store.
+    executeCommandV3.mockImplementation(async () => {
+      callOutput.getStore()?.push('[info] ran');
       return 0;
     });
     const result = await executeToolCall({
@@ -221,6 +233,43 @@ describe('executeToolCall', () => {
     expect(executeCommandV3).toHaveBeenCalledWith(
       expect.objectContaining({ pluginId: 'mind', flags: { q: 'x' }, tenantId: 't1' }),
     );
+  });
+
+  it('emits analytics events for tool calls', async () => {
+    executeCommandV3.mockResolvedValue(0);
+    const track = vi.fn().mockResolvedValue(undefined);
+    const analytics = { track } as unknown as Parameters<typeof executeToolCall>[0]['analytics'];
+    await executeToolCall({
+      name: tool.name,
+      args: {},
+      visibleTools: [tool],
+      permits: allow,
+      tenantId: 't1',
+      resolvePlatform,
+      analytics,
+    });
+    expect(track).toHaveBeenCalledWith('mcp.tool.call.started', expect.objectContaining({
+      toolName: tool.name, tenantId: 't1',
+    }));
+    expect(track).toHaveBeenCalledWith('mcp.tool.call.completed', expect.objectContaining({
+      toolName: tool.name, success: true,
+    }));
+  });
+
+  it('records op in collector for tool calls', async () => {
+    executeCommandV3.mockResolvedValue(0);
+    const recordOp = vi.fn();
+    const collector = { recordOp } as unknown as Parameters<typeof executeToolCall>[0]['collector'];
+    await executeToolCall({
+      name: tool.name,
+      args: {},
+      visibleTools: [tool],
+      permits: allow,
+      tenantId: 't1',
+      resolvePlatform,
+      collector,
+    });
+    expect(recordOp).toHaveBeenCalledWith('mcp.tool.call', expect.any(Number), true);
   });
 
   it('maps a non-zero exit code to isError', async () => {

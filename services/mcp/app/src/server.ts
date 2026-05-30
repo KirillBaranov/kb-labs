@@ -2,8 +2,13 @@
  * MCP Daemon HTTP server.
  *
  * Exposes a single JSON-RPC endpoint (`/api/v1/mcp`) speaking the Model Context
- * Protocol over Streamable HTTP. Tools are derived live from plugin manifests
- * (zero hardcoding) and gated by the PDP-backed authorization predicate.
+ * Protocol over Streamable HTTP, plus the standard platform observability endpoints:
+ *
+ *   GET /health                 → McpObservabilityCollector.buildHealth()
+ *   GET /ready                  → 200/503 based on registry readiness
+ *   GET /metrics                → Prometheus text format
+ *   GET /observability/describe → service identity + capabilities
+ *   GET /observability/health   → full snapshot with checks and top operations
  *
  * Design notes:
  *  - The entity registry is initialized ONCE at start() and reused for every
@@ -18,6 +23,7 @@
  *    changes here.
  */
 
+import { randomUUID } from 'node:crypto';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { Server as McpServer } from '@modelcontextprotocol/sdk/server/index.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
@@ -30,11 +36,13 @@ import type { ICache, ILogger } from '@kb-labs/core-platform';
 import type { JwtConfig } from '@kb-labs/gateway-auth';
 import type { PlatformContainer } from '@kb-labs/core-runtime';
 import type { IEntityRegistry } from '@kb-labs/core-registry';
+import { createCorrelatedLogger, resolveObservabilityInstanceId } from '@kb-labs/shared-http';
 import { resolveAuthContext } from './mcp/auth.js';
 import { toIdentity, actionForOperation, type Permits } from './mcp/authz.js';
 import { createToolRegistry } from './mcp/tool-builder.js';
 import { type PlatformResolver } from './mcp/tool-router.js';
 import { resolveVisibleTools, executeToolCall } from './mcp/request-handler.js';
+import { McpObservabilityCollector } from './observability/collector.js';
 
 export interface McpDaemonServerOptions {
   port: number;
@@ -53,17 +61,21 @@ export interface McpDaemonServerOptions {
   jwtConfig: JwtConfig;
   /** Authorization policy. Permit-all default until the platform supplies a real one. */
   policy: Policy;
+  /** Execution backend mode — passed to /health for observability. */
+  execMode?: string;
 }
 
 export class McpDaemonServer {
   private readonly app: FastifyInstance;
   private readonly opts: McpDaemonServerOptions;
   private readonly resolvePlatform: PlatformResolver;
+  private readonly collector: McpObservabilityCollector;
   private registry?: IEntityRegistry;
 
   constructor(opts: McpDaemonServerOptions) {
     this.opts = opts;
     this.resolvePlatform = opts.resolvePlatform ?? (() => opts.platform);
+    this.collector = new McpObservabilityCollector();
     this.app = Fastify({ logger: false });
   }
 
@@ -71,6 +83,14 @@ export class McpDaemonServer {
   private permitsFor(identity: Identity): Permits {
     return (operationType, resource) =>
       can(this.opts.policy, identity, actionForOperation(operationType), resource);
+  }
+
+  private get toolCount(): number {
+    return (
+      this.registry
+        ?.snapshot()
+        .manifests.flatMap((m) => m.manifest.cli?.commands ?? []).length ?? 0
+    );
   }
 
   async start(): Promise<string> {
@@ -99,20 +119,58 @@ export class McpDaemonServer {
   }
 
   private registerRoutes(): void {
-    const { cache, logger } = this.opts;
+    const { cache, logger, jwtConfig, execMode = 'subprocess' } = this.opts;
 
-    this.app.get('/health', async () => ({
-      status: 'healthy',
-      service: 'mcp-daemon',
-      timestamp: new Date().toISOString(),
-    }));
+    // ── Observability hooks (onRequest/onResponse timing for all routes) ──
+    this.collector.register(this.app);
 
-    this.app.get('/ready', async (_req, reply) => {
-      return reply.code(this.registry ? 200 : 503).send({
-        ready: !!this.registry,
-        service: 'mcp-daemon',
+    // ── Per-request correlated logger ──────────────────────────────────────
+    // Attaches requestId + traceId to every incoming request, matching the
+    // gateway and rest-api pattern.
+    this.app.addHook('onRequest', async (request, reply) => {
+      const requestId =
+        (request.headers['x-request-id'] as string | undefined) ?? randomUUID();
+      const traceId =
+        (request.headers['x-trace-id'] as string | undefined) ?? randomUUID();
+      reply.header('X-Request-Id', requestId).header('X-Trace-Id', traceId);
+      request.kbLogger = createCorrelatedLogger(logger, {
+        serviceId: 'mcp-daemon',
+        instanceId: resolveObservabilityInstanceId(),
+        logsSource: 'mcp-daemon',
+        layer: 'mcp',
+        requestId,
+        traceId,
+        operation: 'mcp.request',
+        method: request.method,
+        url: request.url,
       });
     });
+
+    // ── Standard platform observability endpoints ──────────────────────────
+
+    this.app.get('/health', async () =>
+      this.collector.buildHealth(!!this.registry, this.toolCount, execMode),
+    );
+
+    this.app.get('/ready', async (_req, reply) => {
+      const ready = !!this.registry;
+      return reply.code(ready ? 200 : 503).send({ ready, service: 'mcp-daemon' });
+    });
+
+    this.app.get('/observability/describe', async () =>
+      this.collector.buildDescribe(!!this.registry, this.toolCount),
+    );
+
+    this.app.get('/observability/health', async () =>
+      this.collector.buildHealth(!!this.registry, this.toolCount, execMode),
+    );
+
+    this.app.get('/metrics', async (_req, reply) => {
+      reply.header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+      return this.collector.renderPrometheusMetrics(this.toolCount);
+    });
+
+    // ── MCP JSON-RPC endpoint ──────────────────────────────────────────────
 
     // CORS headers for all MCP responses (including preflight OPTIONS).
     // fastify.all() covers every method including OPTIONS, so no separate
@@ -128,9 +186,11 @@ export class McpDaemonServer {
         return reply.code(204).send();
       }
 
+      const reqLogger = request.kbLogger ?? logger;
+
       // 1. Authenticate. Invalid/absent token → anonymous (no throw, no 401).
       const authHeader = request.headers.authorization;
-      const authCtx = await resolveAuthContext(authHeader, cache, this.opts.jwtConfig).catch(
+      const authCtx = await resolveAuthContext(authHeader, cache, jwtConfig).catch(
         () => null,
       );
       const tenantId = authCtx?.namespaceId ?? 'anonymous';
@@ -146,6 +206,9 @@ export class McpDaemonServer {
         authHeader,
         registry: this.registry!,
         cache,
+        analytics: this.opts.platform.analytics,
+        collector: this.collector,
+        tenantId,
       });
 
       // 3. Build a stateless per-request MCP server.
@@ -170,6 +233,8 @@ export class McpDaemonServer {
           permits,
           tenantId,
           resolvePlatform: this.resolvePlatform,
+          analytics: this.opts.platform.analytics,
+          collector: this.collector,
         }),
       );
 
@@ -180,7 +245,7 @@ export class McpDaemonServer {
         await mcp.connect(transport);
         await transport.handleRequest(request.raw, reply.raw, request.body);
       } catch (error) {
-        logger.error('MCP request handling failed', error as Error);
+        reqLogger.error('MCP request handling failed', error as Error);
         if (!reply.raw.headersSent) {
           reply.code(500).send({ error: 'internal_error' });
         }

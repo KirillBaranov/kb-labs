@@ -20,10 +20,22 @@ function stringifyError(error: Error | string): string {
   return typeof error === 'string' ? error : error.message;
 }
 
-export function createBufferedUI(): BufferedUI {
+/**
+ * Create a buffered UI facade.
+ *
+ * @param pushFn - Optional external push function. When provided (e.g. from the
+ *   AsyncLocalStorage-backed uiProvider in bootstrap), output is appended there
+ *   and `getOutput()` returns an empty string. When omitted, output is stored in
+ *   an internal array and available via `getOutput()`.
+ */
+export function createBufferedUI(pushFn?: (text: string) => void): BufferedUI {
   const lines: string[] = [];
   const push = (text: string): void => {
-    lines.push(text);
+    if (pushFn) {
+      pushFn(text);
+    } else {
+      lines.push(text);
+    }
   };
 
   const ui: UIFacade = {

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { PlatformContainer } from '@kb-labs/core-runtime';
 import type { McpTool } from '../mcp/tool-builder.js';
+import { callOutput } from '../mcp/output-capture.js';
 
 const executeCommandV3 = vi.fn();
 vi.mock('@kb-labs/cli-runtime', () => ({
@@ -48,13 +49,47 @@ describe('callTool', () => {
     expect(result.exitCode).toBe(1);
   });
 
-  it('captures UI output produced by the command', async () => {
-    executeCommandV3.mockImplementation(async (opts: { ui: { info: (m: string) => void } }) => {
-      opts.ui.info('hello from handler');
+  it('captures output written to the callOutput store (uiProvider path)', async () => {
+    // Simulate what the execution backend's uiProvider does: it reads
+    // callOutput.getStore() and pushes lines into it when the plugin calls ui.*.
+    executeCommandV3.mockImplementation(async () => {
+      callOutput.getStore()?.push('[info] hello from uiProvider');
       return 0;
     });
     const result = await callTool(tool, {}, 'tenant1', resolvePlatform);
-    expect(result.output).toContain('hello from handler');
+    expect(result.output).toContain('hello from uiProvider');
+  });
+
+  it('activates the per-call AsyncLocalStorage context', async () => {
+    let storeInsideCall: string[] | undefined;
+    executeCommandV3.mockImplementation(async () => {
+      storeInsideCall = callOutput.getStore();
+      return 0;
+    });
+    await callTool(tool, {}, 'tenant1', resolvePlatform);
+    expect(Array.isArray(storeInsideCall)).toBe(true);
+  });
+
+  it('isolated stores per concurrent call — outputs never mix', async () => {
+    // Simulate two calls with different output.
+    executeCommandV3
+      .mockImplementationOnce(async () => {
+        callOutput.getStore()?.push('output-A');
+        return 0;
+      })
+      .mockImplementationOnce(async () => {
+        callOutput.getStore()?.push('output-B');
+        return 0;
+      });
+
+    const [a, b] = await Promise.all([
+      callTool(tool, {}, 'tenantA', resolvePlatform),
+      callTool(tool, {}, 'tenantB', resolvePlatform),
+    ]);
+    expect(a.output).toContain('output-A');
+    expect(a.output).not.toContain('output-B');
+    expect(b.output).toContain('output-B');
+    expect(b.output).not.toContain('output-A');
   });
 
   it('passes plugin identity, flags and tenantId through to executeCommandV3', async () => {
@@ -78,40 +113,11 @@ describe('callTool', () => {
     expect(resolvePlatform).toHaveBeenCalledWith('tenant-xyz');
   });
 
-  it('captures direct console.log output from plugins that bypass UIFacade', async () => {
-    executeCommandV3.mockImplementation(async () => {
-      console.log('direct log from plugin');
-      return 0;
-    });
-    const result = await callTool(tool, {}, 'tenant1', resolvePlatform);
-    expect(result.output).toContain('direct log from plugin');
-  });
-
-  it('merges UIFacade and console.log output in the result', async () => {
-    executeCommandV3.mockImplementation(async (opts: { ui: { info: (m: string) => void } }) => {
-      opts.ui.info('facade line');
-      console.log('stdout line');
-      return 0;
-    });
-    const result = await callTool(tool, {}, 'tenant1', resolvePlatform);
-    expect(result.output).toContain('facade line');
-    expect(result.output).toContain('stdout line');
-  });
-
-  it('strips ANSI escape sequences from console output', async () => {
-    executeCommandV3.mockImplementation(async () => {
-      console.log('\x1B[32m✓\x1B[0m done');
-      return 0;
-    });
-    const result = await callTool(tool, {}, 'tenant1', resolvePlatform);
-    expect(result.output).toContain('✓ done');
-    expect(result.output).not.toContain('\x1B');
-  });
-
-  it('restores console even when the command throws', async () => {
+  it('does not pollute global console (no withStdoutCapture)', async () => {
     const originalLog = console.log;
-    executeCommandV3.mockRejectedValue(new Error('boom'));
-    await expect(callTool(tool, {}, 'tenant1', resolvePlatform)).rejects.toThrow('boom');
+    executeCommandV3.mockResolvedValue(0);
+    await callTool(tool, {}, 'tenant1', resolvePlatform);
+    // console.log must be untouched — no global patching.
     expect(console.log).toBe(originalLog);
   });
 });

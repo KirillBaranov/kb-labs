@@ -154,9 +154,18 @@ services:
     port: 7779
     url: http://localhost:7779
     depends_on: [gateway]
+    api:
+      endpoints:
+        - GET /health
+        - GET /ready
+        - GET /metrics
+        - GET /observability/describe
+        - GET /observability/health
+        - POST /api/v1/mcp
     env:
       KB_MCP_DAEMON_PORT: "7779"
       KB_MCP_DAEMON_HOST: localhost
+      KB_MCP_EXECUTION_MODE: subprocess
 
   studio:
     name: Studio Web App
