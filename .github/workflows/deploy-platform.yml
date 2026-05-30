@@ -24,6 +24,14 @@ on:
         description: Compute the plan but do not mutate the host.
         default: true
         type: boolean
+      reset_platform:
+        description: >-
+          Wipe installed releases/services/devservices before apply. Release ids
+          are spec-derived, so install-service NoOps on an existing release dir
+          even when the package content changed — use this once to clear state
+          left by an earlier broken build, then deploy normally.
+        default: false
+        type: boolean
 
 concurrency:
   group: deploy-platform
@@ -139,12 +147,16 @@ jobs:
               proxy: npmjs
           log: { type: stdout, format: pretty, level: warn }
           VCFG
-          # Always (re)create so the mounted config is applied; storage persists in a
-          # named volume so already-published tarballs survive a recreation.
+          # Always recreate with EPHEMERAL storage (no named volume): every run
+          # starts with an empty registry so the freshly-built @kb-labs/* tarballs
+          # are what gets served. A persistent volume would keep the previous
+          # 2.94.0 tarball, npm publish would 409 ("already published") and skip,
+          # and install-service would resolve the stale build (missing the just
+          # added dist/manifest.json) — the exact bug this avoids. Re-proxying npmjs
+          # deps each run is a cheap price for guaranteed freshness.
           docker rm -f kb-verdaccio 2>/dev/null || true
           docker run -d --name kb-verdaccio --restart unless-stopped \
             -p 127.0.0.1:4873:4873 \
-            -v kb-verdaccio-storage:/verdaccio/storage \
             -v ~/kb-verdaccio/config.yaml:/verdaccio/conf/config.yaml:ro \
             verdaccio/verdaccio:latest
           ok=0
@@ -196,6 +208,26 @@ jobs:
           done
           echo "publish: $published published, $skipped skipped, $failed failed"
           test "$failed" -eq 0
+          REMOTE
+
+      # ── Optional: wipe stale installed state (spec-derived release ids) ──────
+      - name: Reset platform state
+        if: ${{ inputs.reset_platform == true }}
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          SSHOPTS="-i $HOME/.ssh/deploy.key -o StrictHostKeyChecking=accept-new"
+          ssh $SSHOPTS "$SSH_USER@$SSH_HOST" 'bash -s' <<'REMOTE'
+          set -uo pipefail
+          P="$HOME/kb-platform"
+          echo "Stopping any running daemons (best-effort)…"
+          kb-dev --config "$P/.kb/devservices.yaml" stop 2>/dev/null || true
+          echo "Removing installed releases / services / registry…"
+          rm -rf "$P/releases" "$P/services" "$P/releases.json" "$P/.kb/devservices.yaml"
+          # Keep .kb/kb.config.jsonc + .env — apply re-delivers them, and dropping
+          # the config hash here is harmless (apply rewrites it).
+          echo "Platform state reset. Remaining .kb:"; ls -la "$P/.kb" 2>/dev/null || true
           REMOTE
 
       # ── Apply ────────────────────────────────────────────────────────────────
