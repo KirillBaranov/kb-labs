@@ -28,7 +28,7 @@ export function SiteFooter() {
         { label: t('footer.sections.solutions.codeIntelligence'), href: lp('/solutions/code-intelligence') },
         { label: t('footer.sections.solutions.codeQuality'), href: lp('/solutions/code-quality') },
         { label: t('footer.sections.solutions.monorepoOps'), href: lp('/solutions/monorepo-ops') },
-        { label: t('footer.sections.solutions.aiGateway'), href: lp('/solutions/gateway') },
+        { label: t('footer.sections.solutions.aiGateway'), href: lp('/product/gateway') },
         { label: t('footer.sections.solutions.platformApi'), href: lp('/solutions/platform-api') },
         { label: t('footer.sections.solutions.observability'), href: lp('/solutions/observability') },
       ],
@@ -41,15 +41,15 @@ export function SiteFooter() {
         { label: t('footer.sections.developers.cli'), href: 'https://docs.kblabs.ru/reference/cli' },
         { label: t('footer.sections.developers.restApi'), href: 'https://docs.kblabs.ru/reference/rest-api' },
         { label: t('footer.sections.build.studio'), href: 'https://docs.kblabs.ru/services/studio' },
-        { label: t('footer.sections.developers.kbDev'), href: lp('/kb-dev') },
+        { label: t('footer.sections.developers.kbDev'), href: lp('/product/kb-dev') },
       ],
     },
     {
       title: t('footer.sections.marketplace.title'),
       links: [
-        { label: t('footer.sections.marketplace.browse'), href: lp('/marketplace') },
-        { label: t('footer.sections.marketplace.official'), href: lp('/marketplace#official') },
-        { label: t('footer.sections.marketplace.community'), href: lp('/marketplace#community') },
+        { label: t('footer.sections.marketplace.browse'), href: lp('/product/marketplace') },
+        { label: t('footer.sections.marketplace.official'), href: lp('/product/marketplace#official') },
+        { label: t('footer.sections.marketplace.community'), href: lp('/product/marketplace#community') },
       ],
     },
     {
