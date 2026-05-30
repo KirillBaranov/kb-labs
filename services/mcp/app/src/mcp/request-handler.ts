@@ -9,11 +9,12 @@
 
 import { createHash } from 'node:crypto';
 import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
-import type { ICache } from '@kb-labs/core-platform';
+import type { ICache, IAnalytics } from '@kb-labs/core-platform';
 import type { IEntityRegistry } from '@kb-labs/core-registry';
 import { filterTools, type McpTool } from './tool-builder.js';
 import { callTool, type PlatformResolver } from './tool-router.js';
 import type { Permits } from './authz.js';
+import type { McpObservabilityCollector } from '../observability/collector.js';
 
 /** How long a per-identity tool listing stays cached. */
 export const TOOLS_CACHE_TTL_MS = 60_000;
@@ -42,6 +43,12 @@ export interface ResolveVisibleToolsArgs {
   authHeader: string | null | undefined;
   registry: IEntityRegistry;
   cache: ICache;
+  /** Platform analytics — emits mcp.tools.list event. Optional for tests. */
+  analytics?: IAnalytics | null;
+  /** Observability collector — records mcp.tools.list operation. Optional for tests. */
+  collector?: McpObservabilityCollector;
+  /** Tenant ID for analytics context. */
+  tenantId?: string;
 }
 
 /**
@@ -51,17 +58,38 @@ export interface ResolveVisibleToolsArgs {
  * always get an empty list and never touch the registry.
  */
 export async function resolveVisibleTools(args: ResolveVisibleToolsArgs): Promise<McpTool[]> {
-  const { permits, authHeader, registry, cache } = args;
+  const { permits, authHeader, registry, cache, analytics, collector, tenantId = 'anonymous' } =
+    args;
+  const t0 = Date.now();
+
   // Anonymous identities share one bucket regardless of any (invalid) header.
   const cacheKey = toolsCacheKey(permits ? authHeader : null);
 
   const cached = await cache.get<McpTool[]>(cacheKey).catch(() => null);
   if (cached) {
+    const durationMs = Date.now() - t0;
+    collector?.recordOp('mcp.tools.list', durationMs, true);
+    analytics?.track('mcp.tools.list', {
+      tenantId,
+      toolCount: cached.length,
+      cached: true,
+      durationMs,
+    }).catch(() => {});
     return cached;
   }
 
   const tools = permits ? filterTools(registry.snapshot(), permits) : [];
   await cache.set(cacheKey, tools, TOOLS_CACHE_TTL_MS).catch(() => {});
+
+  const durationMs = Date.now() - t0;
+  collector?.recordOp('mcp.tools.list', durationMs, true);
+  analytics?.track('mcp.tools.list', {
+    tenantId,
+    toolCount: tools.length,
+    cached: false,
+    durationMs,
+  }).catch(() => {});
+
   return tools;
 }
 
@@ -73,6 +101,10 @@ export interface ExecuteToolCallArgs {
   permits: Permits | null;
   tenantId: string;
   resolvePlatform: PlatformResolver;
+  /** Platform analytics — emits mcp.tool.call events. Optional for tests. */
+  analytics?: IAnalytics | null;
+  /** Observability collector — records mcp.tool.call operation. Optional for tests. */
+  collector?: McpObservabilityCollector;
 }
 
 /**
@@ -83,7 +115,8 @@ export interface ExecuteToolCallArgs {
  * Only then is the command run via executeCommandV3.
  */
 export async function executeToolCall(args: ExecuteToolCallArgs): Promise<CallToolResult> {
-  const { name, visibleTools, permits, tenantId, resolvePlatform } = args;
+  const { name, visibleTools, permits, tenantId, resolvePlatform, analytics, collector } = args;
+  const t0 = Date.now();
 
   const tool = visibleTools.find((t) => t.name === name);
   if (!tool) {
@@ -97,6 +130,25 @@ export async function executeToolCall(args: ExecuteToolCallArgs): Promise<CallTo
     return textResult(`Not authorized: ${name}`, true);
   }
 
+  analytics?.track('mcp.tool.call.started', {
+    toolName: name,
+    tenantId,
+    pluginId: tool.pluginId,
+  }).catch(() => {});
+
   const result = await callTool(tool, args.args, tenantId, resolvePlatform);
+
+  const durationMs = Date.now() - t0;
+  collector?.recordOp('mcp.tool.call', durationMs, result.success);
+  analytics?.track('mcp.tool.call.completed', {
+    toolName: name,
+    tenantId,
+    pluginId: tool.pluginId,
+    success: result.success,
+    exitCode: result.exitCode,
+    outputLength: result.output.length,
+    durationMs,
+  }).catch(() => {});
+
   return textResult(result.output, !result.success);
 }
