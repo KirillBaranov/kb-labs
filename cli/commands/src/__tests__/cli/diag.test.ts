@@ -159,7 +159,6 @@ describe('diag — base (no --command)', () => {
 
   it('surfaces DiagnosticCollector error events from marketplace lock', async () => {
     mockCollectorInstance.getEvents.mockReturnValue([
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       {
         severity: 'error' as const,
         code: 'INTEGRITY_MISMATCH' as never,

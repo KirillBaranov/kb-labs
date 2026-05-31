@@ -184,7 +184,7 @@ async function tryLoadManifestForTrace(
 
 /** True if a discovery result belongs to the top-level command segment. */
 function matchesTopSegment(result: DiscoveryResult, topSegment: string): boolean {
-  if (result.manifests.some(m => m.group === topSegment)) return true;
+  if (result.manifests.some(m => m.group === topSegment)) { return true; }
   const last = result.packageName.split('/').pop() ?? '';
   return last.replace(/-entry$|-cli$/, '') === topSegment;
 }
@@ -781,8 +781,8 @@ export const diag = defineSystemCommand<DiagFlags, DiagResult | CommandTraceResu
     }
 
     const nextSteps: string[] = [];
-    if (hasErrors) nextSteps.push(`kb marketplace doctor  ${safeColors.muted('Diagnose plugin issues')}`);
-    if (hasWarnings) nextSteps.push(`kb marketplace list  ${safeColors.muted('List all plugins')}`);
+    if (hasErrors) { nextSteps.push(`kb marketplace doctor  ${safeColors.muted('Diagnose plugin issues')}`); }
+    if (hasWarnings) { nextSteps.push(`kb marketplace list  ${safeColors.muted('List all plugins')}`); }
     nextSteps.push(`kb diag --command <name>  ${safeColors.muted('Trace a specific command')}`);
 
     const sections = [
