@@ -14,6 +14,7 @@ import { GatewayConfigSchema } from '@kb-labs/gateway-contracts';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const prodConfigPath = resolve(__dirname, '../../.kb/kb.config.prod.json');
 const prodLockPath = resolve(__dirname, '../../.kb/marketplace.prod.lock');
+const pkgPath = resolve(__dirname, '../../package.json');
 
 interface ProdConfig {
   platform?: {
@@ -29,8 +30,14 @@ interface ProdLock {
   installed?: Record<string, { enabled?: boolean }>;
 }
 
+interface PkgJson {
+  dependencies?: Record<string, string>;
+  devDependencies?: Record<string, string>;
+}
+
 const prod = JSON.parse(readFileSync(prodConfigPath, 'utf-8')) as ProdConfig;
 const lock = JSON.parse(readFileSync(prodLockPath, 'utf-8')) as ProdLock;
+const pkg = JSON.parse(readFileSync(pkgPath, 'utf-8')) as PkgJson;
 
 describe('gateway prod config', () => {
   it('gateway section validates against GatewayConfigSchema', () => {
@@ -39,6 +46,21 @@ describe('gateway prod config', () => {
 
   it('declares the serviceTransport adapter the gateway requires', () => {
     expect(prod.platform?.adapters?.serviceTransport).toBeTruthy();
+  });
+
+  it('declares @kb-labs/sdk as a production dependency (adapter peer dep)', () => {
+    // Every platform adapter peer-depends on @kb-labs/sdk (workspace:^). The
+    // prod image is built with `pnpm deploy --prod`, which bundles production
+    // dependencies only — NOT devDependencies and NOT peers. So gateway-app
+    // must carry @kb-labs/sdk as a real dependency, or the bundle ships without
+    // it and EVERY adapter fails to load ("Cannot find package '@kb-labs/sdk'")
+    // → platform falls back to NoOp → the required serviceTransport adapter is
+    // missing → the gateway crash-loops. Keep it in dependencies, not dev.
+    expect(
+      pkg.dependencies?.['@kb-labs/sdk'],
+      '@kb-labs/sdk must be a production dependency so pnpm deploy --prod bundles it',
+    ).toBeTruthy();
+    expect(pkg.devDependencies?.['@kb-labs/sdk']).toBeFalsy();
   });
 
   it('the serviceTransport adapter is installed+enabled in the prod lock', () => {
