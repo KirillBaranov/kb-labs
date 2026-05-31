@@ -23,88 +23,39 @@ let registryInstance: IEntityRegistry | null = null;
 let metricsCollector: SystemMetricsCollector | null = null;
 
 /**
- * Find monorepo root (prefer pnpm-workspace.yaml with kb-* patterns)
- * Looks for the topmost directory with pnpm-workspace.yaml that includes kb-* patterns
+ * Find the monorepo root: the NEAREST ancestor of `startDir` that owns a
+ * `pnpm-workspace.yaml`.
+ *
+ * "Nearest" is deliberate. In a normal checkout there is exactly one
+ * `pnpm-workspace.yaml` (at the repo root), so nearest == that root. In a git
+ * **worktree** nested under the main checkout (e.g.
+ * `<main>/.claude/worktrees/<id>/`) BOTH the worktree and the main checkout
+ * have a `pnpm-workspace.yaml`; the process is running in the worktree, so the
+ * worktree is the correct root. The previous implementation preferred the
+ * *topmost* match (and gated on a stale `kb-*` literal that no longer appears
+ * in the workspace globs), which always resolved a nested worktree back to the
+ * main checkout — so plugin discovery loaded the main branch's plugins instead
+ * of the worktree's. That silently served stale plugin manifests/routes.
  */
-async function findMonorepoRoot(startDir: string): Promise<string> {
+export async function findMonorepoRoot(startDir: string): Promise<string> {
   let dir = path.resolve(startDir);
-  let monorepoRoot: string | null = null;
-  
-  // First, try to find workspace with kb-* patterns (the actual monorepo root)
   while (true) {
-    try {
-      const workspacePath = path.join(dir, 'pnpm-workspace.yaml');
-      await fs.access(workspacePath);
-      const content = await fs.readFile(workspacePath, 'utf-8');
-      if (content.includes('kb-*')) {
-        // Found the monorepo root with kb-* patterns
-        monorepoRoot = dir;
-        break;
-      }
-    } catch {
-      // Continue
+    const hasWorkspace = await fs
+      .access(path.join(dir, 'pnpm-workspace.yaml'))
+      .then(() => true)
+      .catch(() => false);
+    if (hasWorkspace) {
+      return dir;
     }
-    
+
     const parent = path.dirname(dir);
     if (parent === dir) {
       break;
     }
     dir = parent;
   }
-  
-  if (monorepoRoot) {
-    return monorepoRoot;
-  }
-  
-  // Fallback: try to find the topmost directory with both .git and pnpm-workspace.yaml
-  dir = path.resolve(startDir);
-  let foundRoot: string | null = null;
-  while (true) {
-    try {
-      const hasGit = await fs.access(path.join(dir, '.git')).then(() => true).catch(() => false);
-      const hasWorkspace = await fs.access(path.join(dir, 'pnpm-workspace.yaml')).then(() => true).catch(() => false);
-      
-      if (hasGit && hasWorkspace) {
-        foundRoot = dir;
-      }
-    } catch {
-      // Continue
-    }
-    
-    const parent = path.dirname(dir);
-    if (parent === dir) {
-      break;
-    }
-    dir = parent;
-  }
-  
-  if (foundRoot) {
-    return foundRoot;
-  }
-  
-  // Final fallback: try to find any pnpm-workspace.yaml
-  dir = path.resolve(startDir);
-  let topmostWorkspace: string | null = null;
-  while (true) {
-    try {
-      await fs.access(path.join(dir, 'pnpm-workspace.yaml'));
-      topmostWorkspace = dir;
-    } catch {
-      // Continue
-    }
-    
-    const parent = path.dirname(dir);
-    if (parent === dir) {
-      break;
-    }
-    dir = parent;
-  }
-  
-  if (topmostWorkspace) {
-    return topmostWorkspace;
-  }
-  
-  // Final fallback to standard findRepoRoot
+
+  // No pnpm-workspace.yaml anywhere up the tree — fall back to git repo root.
   return findRepoRoot(startDir);
 }
 
