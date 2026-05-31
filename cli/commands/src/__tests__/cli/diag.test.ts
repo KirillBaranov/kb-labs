@@ -634,9 +634,9 @@ describe('diag --command (review-fix scenarios)', () => {
     vi.clearAllMocks();
     mockCollectorInstance.getEvents.mockReturnValue([]);
     // Reset mocks that earlier tests may have overridden back to their defaults
-    const { preflightManifests } = await import('../../registry/register.js') as { preflightManifests: ReturnType<typeof vi.fn> };
+    const { preflightManifests } = await import('../../registry/register.js') as unknown as { preflightManifests: ReturnType<typeof vi.fn> };
     preflightManifests.mockReturnValue({ valid: [], skipped: [] });
-    const discoverMod = await import('../../registry/discover.js') as { discoverManifests: ReturnType<typeof vi.fn>; resetInProcCache: ReturnType<typeof vi.fn>; loadConfig: ReturnType<typeof vi.fn> };
+    const discoverMod = await import('../../registry/discover.js') as unknown as { discoverManifests: ReturnType<typeof vi.fn>; resetInProcCache: ReturnType<typeof vi.fn>; loadConfig: ReturnType<typeof vi.fn> };
     discoverMod.discoverManifests.mockResolvedValue([]);
     discoverMod.loadConfig.mockResolvedValue({});
   });
@@ -776,7 +776,7 @@ describe('diag --command (review-fix scenarios)', () => {
     const diag = await getDiag();
     await diag.run(makeCtx({ json: jsonSpy }), [], { json: true, command: 'nopathplug run' });
 
-    const result = jsonSpy.mock.calls[0]?.[0] as { stages: Array<{ code: string; status: string }> };
+    const result = jsonSpy.mock.calls[0]?.[0] as { stages: Array<{ code: string; status: string; stage: string }> };
     const fsStage = result.stages.find(s => s.stage === 'filesystem');
     expect(fsStage?.code).toBe('FS_NO_PATH');
     expect(fsStage?.status).toBe('info');
