@@ -628,9 +628,163 @@ describe('diag --command', () => {
   });
 });
 
-// ── Tests: bootstrap not-found hint ──────────────────────────────────────────
-// These tests live in a separate file for bootstrap.ts — testing here only the
-// exported contract that the diagCommand string is composable from user input.
+// ── Tests: review-fix coverage ───────────────────────────────────────────────
+
+describe('diag --command (review-fix scenarios)', () => {
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    mockCollectorInstance.getEvents.mockReturnValue([]);
+    // Reset mocks that earlier tests may have overridden back to their defaults
+    const { preflightManifests } = await import('../../registry/register.js') as { preflightManifests: ReturnType<typeof vi.fn> };
+    preflightManifests.mockReturnValue({ valid: [], skipped: [] });
+    const discoverMod = await import('../../registry/discover.js') as { discoverManifests: ReturnType<typeof vi.fn>; resetInProcCache: ReturnType<typeof vi.fn>; loadConfig: ReturnType<typeof vi.fn> };
+    discoverMod.discoverManifests.mockResolvedValue([]);
+    discoverMod.loadConfig.mockResolvedValue({});
+  });
+
+  it('reports NOT_IN_MARKETPLACE (info) when registry OK but plugin not in lock', async () => {
+    // Registry confirms command is available — lock absence is fine for dev
+    const reg = await getRegistryMock();
+    reg.resolve.mockReturnValue({
+      type: 'command',
+      command: {
+        manifest: { segments: ['myplug', 'run'] },
+        available: true,
+        shadowed: false,
+        source: 'workspace',
+        packageName: '@kb-labs/myplug-entry',
+      },
+      rest: [],
+    });
+
+    const lockMock = await getLockMock();
+    lockMock.mockResolvedValue({ installed: {} }); // no entry for myplug
+
+    const jsonSpy = vi.fn();
+    const diag = await getDiag();
+    const code = await diag.run(makeCtx({ json: jsonSpy }), [], { json: true, command: 'myplug run' });
+
+    // Command works — ok: true despite no lock entry
+    expect(code).toBe(0);
+    const result = jsonSpy.mock.calls[0]?.[0] as { ok: boolean; stages: Array<{ code: string; status: string }> };
+    expect(result.ok).toBe(true);
+    const lockStage = result.stages.find(s => s.code === 'NOT_IN_MARKETPLACE');
+    expect(lockStage).toBeDefined();
+    expect(lockStage?.status).toBe('info');
+  });
+
+  it('reports NO_LOCK as warning when registry not OK and no lock file', async () => {
+    const reg = await getRegistryMock();
+    reg.resolve.mockReturnValue({ type: 'not-found', input: ['missingplug', 'cmd'], suggestions: [] });
+
+    const lockMock = await getLockMock();
+    lockMock.mockResolvedValue(null); // no marketplace.lock at all
+
+    const jsonSpy = vi.fn();
+    const diag = await getDiag();
+    const code = await diag.run(makeCtx({ json: jsonSpy }), [], { json: true, command: 'missingplug cmd' });
+
+    expect(code).toBe(1);
+    const result = jsonSpy.mock.calls[0]?.[0] as { ok: boolean; stages: Array<{ code: string; status: string }> };
+    expect(result.ok).toBe(false);
+    const lockStage = result.stages.find(s => s.code === 'NO_LOCK');
+    expect(lockStage).toBeDefined();
+    expect(lockStage?.status).toBe('warning');
+  });
+
+  it('shows "and N more" when plugin has more than 5 commands', async () => {
+    const reg = await getRegistryMock();
+    reg.resolve.mockReturnValue({ type: 'not-found', input: ['bigplug', 'typo'], suggestions: [] });
+
+    const discoverMod = await getDiscoverMock() as { discoverManifests: ReturnType<typeof vi.fn>; resetInProcCache: ReturnType<typeof vi.fn>; loadConfig: ReturnType<typeof vi.fn> };
+    const manyCommands = Array.from({ length: 8 }, (_, i) => ({
+      _synthetic: false,
+      group: 'bigplug',
+      segments: ['bigplug', `cmd${i}`],
+      id: `cmd${i}`,
+      describe: `Command ${i}`,
+      manifestVersion: '1.0' as const,
+      loader: vi.fn(),
+    }));
+    // reset to clear any previous mockResolvedValue, then set fresh
+    discoverMod.discoverManifests.mockReset();
+    discoverMod.discoverManifests.mockResolvedValue([{
+      packageName: '@kb-labs/bigplug-entry',
+      manifestPath: '/test/dist/manifest.js',
+      pkgRoot: '/test',
+      source: 'workspace' as const,
+      scope: 'platform' as const,
+      manifests: manyCommands,
+    }]);
+    discoverMod.resetInProcCache.mockReturnValue(undefined);
+    discoverMod.loadConfig.mockResolvedValue({});
+
+    const lockMock = await getLockMock();
+    lockMock.mockResolvedValue({ installed: { '@kb-labs/bigplug-entry': { enabled: true, resolvedPath: '/test' } } });
+
+    const jsonSpy = vi.fn();
+    const diag = await getDiag();
+    await diag.run(makeCtx({ json: jsonSpy }), [], { json: true, command: 'bigplug typo' });
+
+    const result = jsonSpy.mock.calls[0]?.[0] as { stages: Array<{ code: string; remediation?: string }> };
+    const stage = result.stages.find(s => s.code === 'COMMAND_PATH_MISSING');
+    expect(stage).toBeDefined();
+    expect(stage?.remediation).toMatch(/and 3 more/);
+    expect(stage?.remediation).toMatch(/\(8\)/); // total count shown
+  });
+
+  it('reports GROUP_EXISTS_LEAF_MISSING when registry finds group but not the leaf', async () => {
+    const reg = await getRegistryMock();
+    reg.resolve.mockReturnValue({
+      type: 'group',
+      segments: ['workflow'],
+      describe: 'Workflow commands',
+      childKeys: ['run', 'list', 'abort'],
+    });
+
+    const lockMock = await getLockMock();
+    lockMock.mockResolvedValue({ installed: {} });
+
+    const jsonSpy = vi.fn();
+    const diag = await getDiag();
+    await diag.run(makeCtx({ json: jsonSpy }), [], { json: true, command: 'workflow nonexistentleaf' });
+
+    const result = jsonSpy.mock.calls[0]?.[0] as { stages: Array<{ code: string; details?: Record<string, unknown> }> };
+    const stage = result.stages.find(s => s.code === 'GROUP_EXISTS_LEAF_MISSING');
+    expect(stage).toBeDefined();
+    expect(stage?.details?.availableChildren).toEqual(['run', 'list', 'abort']);
+  });
+
+  it('reports FS_NO_PATH info when lock entry has no resolvedPath', async () => {
+    const reg = await getRegistryMock();
+    reg.resolve.mockReturnValue({ type: 'not-found', input: ['nopathplug', 'run'], suggestions: [] });
+
+    const discover = await getDiscoverMock();
+    discover.discoverManifests.mockResolvedValue([{
+      packageName: '@kb-labs/nopathplug-entry',
+      manifestPath: '/test/dist/manifest.js',
+      pkgRoot: '/test',
+      source: 'workspace',
+      scope: 'platform',
+      manifests: [{ _synthetic: false, group: 'nopathplug', segments: ['nopathplug', 'run'], id: 'run', describe: 'Run', manifestVersion: '1.0' as const, loader: vi.fn() }],
+    }]);
+
+    const lockMock = await getLockMock();
+    // Entry exists but resolvedPath is empty string
+    lockMock.mockResolvedValue({ installed: { '@kb-labs/nopathplug-entry': { enabled: true, resolvedPath: '' } } });
+
+    const jsonSpy = vi.fn();
+    const diag = await getDiag();
+    await diag.run(makeCtx({ json: jsonSpy }), [], { json: true, command: 'nopathplug run' });
+
+    const result = jsonSpy.mock.calls[0]?.[0] as { stages: Array<{ code: string; status: string }> };
+    const fsStage = result.stages.find(s => s.stage === 'filesystem');
+    expect(fsStage?.code).toBe('FS_NO_PATH');
+    expect(fsStage?.status).toBe('info');
+  });
+});
+
+// ── Tests: flag metadata ──────────────────────────────────────────────────────
 
 describe('diag --command flag metadata', () => {
   it('is declared with type string', async () => {
