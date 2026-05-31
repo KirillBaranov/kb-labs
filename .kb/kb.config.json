@@ -8,6 +8,8 @@
       "logRingBuffer": "@kb-labs/adapters-log-ringbuffer",
       "analytics": "@kb-labs/adapters-analytics-sqlite",
       "vectorStore": "@kb-labs/adapters-qdrant",
+      "embeddings": "@kb-labs/adapters-voyage-ai/embeddings",
+      "llm": "@kb-labs/adapters-openai",
       "cache": "@kb-labs/adapters-redis",
       "eventBus": "@kb-labs/adapters-eventbus-cache",
       "workspace": "@kb-labs/adapters-workspace-worktree",

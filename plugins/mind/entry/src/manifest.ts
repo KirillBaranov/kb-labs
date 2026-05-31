@@ -37,6 +37,7 @@ const pluginPermissions = combinePermissions()
     embeddings: true,
     vectorStore: { collections: ['mind:'] },
     cache: ['mind:'],
+    storage: true,
     analytics: true,
   })
   .withQuotas({
@@ -73,7 +74,7 @@ export const manifest = {
         operationType: 'mutate' as const,
         describe: 'Build or refresh a Mind index from source files.',
         handler: './cli/commands/index.js#default',
-        flags: defineCommandFlags(indexFlags),
+        flags: defineCommandFlags(indexFlags.schema),
         examples: ['kb mind index', 'kb mind index --index code --scope src/'],
       },
       {
@@ -82,7 +83,7 @@ export const manifest = {
         operationType: 'read' as const,
         describe: 'Semantic + keyword search over a Mind index.',
         handler: './cli/commands/search.js#default',
-        flags: defineCommandFlags(searchFlags),
+        flags: defineCommandFlags(searchFlags.schema),
         examples: [
           'kb mind search --text "how does login work"',
           'kb mind search --text "ClassName" --index code --agent',
@@ -94,7 +95,7 @@ export const manifest = {
         operationType: 'read' as const,
         describe: 'Ask a question and get an agent answer (agent-response-v1).',
         handler: './cli/commands/query.js#default',
-        flags: defineCommandFlags(queryFlags),
+        flags: defineCommandFlags(queryFlags.schema),
         examples: [
           'kb mind query --text "how does auth work" --index code',
           'kb mind query --text "billing flow" --mode thinking',
@@ -106,7 +107,7 @@ export const manifest = {
         operationType: 'mutate' as const,
         describe: 'Rebuild an index from source files.',
         handler: './cli/commands/reindex.js#default',
-        flags: defineCommandFlags(reindexFlags),
+        flags: defineCommandFlags(reindexFlags.schema),
         examples: ['kb mind reindex --index code --full'],
       },
       {
@@ -115,7 +116,7 @@ export const manifest = {
         operationType: 'mutate' as const,
         describe: 'Add documents to an index (incremental).',
         handler: './cli/commands/sync-add.js#default',
-        flags: defineCommandFlags(syncPathsFlags),
+        flags: defineCommandFlags(syncPathsFlags.schema),
         examples: ['kb mind sync add src/new.ts --index code'],
       },
       {
@@ -124,7 +125,7 @@ export const manifest = {
         operationType: 'mutate' as const,
         describe: 'Re-index updated documents (incremental).',
         handler: './cli/commands/sync-update.js#default',
-        flags: defineCommandFlags(syncPathsFlags),
+        flags: defineCommandFlags(syncPathsFlags.schema),
         examples: ['kb mind sync update src/auth.ts --index code'],
       },
       {
@@ -133,7 +134,7 @@ export const manifest = {
         operationType: 'mutate' as const,
         describe: 'Remove documents from an index (incremental).',
         handler: './cli/commands/sync-delete.js#default',
-        flags: defineCommandFlags(syncPathsFlags),
+        flags: defineCommandFlags(syncPathsFlags.schema),
         examples: ['kb mind sync delete src/old.ts --index code'],
       },
       {
@@ -142,7 +143,7 @@ export const manifest = {
         operationType: 'read' as const,
         describe: 'List documents synced into an index.',
         handler: './cli/commands/sync-list.js#default',
-        flags: defineCommandFlags(syncListFlags),
+        flags: defineCommandFlags(syncListFlags.schema),
         examples: ['kb mind sync list --index code'],
       },
       {
@@ -153,7 +154,7 @@ export const manifest = {
         operationType: 'read' as const,
         describe: 'Show sync health for an index.',
         handler: './cli/commands/sync-status.js#default',
-        flags: defineCommandFlags(syncListFlags),
+        flags: defineCommandFlags(syncListFlags.schema),
         examples: ['kb mind sync health --index code'],
       },
       {
@@ -162,7 +163,7 @@ export const manifest = {
         operationType: 'read' as const,
         describe: 'Show Mind index status.',
         handler: './cli/commands/status.js#default',
-        flags: defineCommandFlags(statusFlags),
+        flags: defineCommandFlags(statusFlags.schema),
         examples: ['kb mind status', 'kb mind status --index code'],
       },
     ],
