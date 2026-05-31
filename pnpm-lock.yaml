@@ -3904,33 +3904,11 @@ importers:
         specifier: ^3.2.4
         version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.4)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
 
-  plugins/mind/adapters:
-    dependencies:
-      '@kb-labs/mind-core':
-        specifier: workspace:*
-        version: link:../core
-    devDependencies:
-      '@kb-labs/devkit':
-        specifier: workspace:*
-        version: link:../../../infra/devkit
-      '@types/node':
-        specifier: ^24.3.3
-        version: 24.12.2
-      rimraf:
-        specifier: ^6.0.1
-        version: 6.1.3
-      tsup:
-        specifier: ^8.5.0
-        version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
-      typescript:
-        specifier: ^5.6.3
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/browser@4.1.7)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
-
   plugins/mind/contracts:
     dependencies:
+      '@kb-labs/sdk':
+        specifier: workspace:*
+        version: link:../../../sdk/sdk
       zod:
         specifier: ^3.25.76
         version: 3.25.76
@@ -3947,9 +3925,6 @@ importers:
       rimraf:
         specifier: ^6.0.1
         version: 6.1.3
-      semver:
-        specifier: ^7.6.3
-        version: 7.7.4
       tsup:
         specifier: ^8.5.0
         version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
@@ -3962,9 +3937,9 @@ importers:
 
   plugins/mind/core:
     dependencies:
-      '@kb-labs/mind-types':
+      '@kb-labs/mind-contracts':
         specifier: workspace:*
-        version: link:../types
+        version: link:../contracts
       '@kb-labs/sdk':
         specifier: workspace:*
         version: link:../../../sdk/sdk
@@ -3984,106 +3959,6 @@ importers:
       typescript:
         specifier: ^5.6.3
         version: 5.9.3
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/browser@4.1.7)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
-
-  plugins/mind/embeddings:
-    devDependencies:
-      '@kb-labs/devkit':
-        specifier: workspace:*
-        version: link:../../../infra/devkit
-      '@types/node':
-        specifier: ^24.3.3
-        version: 24.12.2
-      rimraf:
-        specifier: ^6.0.1
-        version: 6.1.3
-      tsup:
-        specifier: ^8.5.0
-        version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
-      typescript:
-        specifier: ^5.6.3
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/browser@4.1.7)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
-
-  plugins/mind/engine:
-    dependencies:
-      '@kb-labs/mind-core':
-        specifier: workspace:*
-        version: link:../core
-      '@kb-labs/mind-embeddings':
-        specifier: workspace:*
-        version: link:../embeddings
-      '@kb-labs/mind-types':
-        specifier: workspace:*
-        version: link:../types
-      '@kb-labs/mind-vector-store':
-        specifier: workspace:*
-        version: link:../vector-store
-      '@kb-labs/sdk':
-        specifier: workspace:*
-        version: link:../../../sdk/sdk
-      fast-glob:
-        specifier: ^3.3.2
-        version: 3.3.3
-      fs-extra:
-        specifier: ^11.0.0
-        version: 11.3.4
-      picomatch:
-        specifier: ^4.0.2
-        version: 4.0.4
-      tree-sitter:
-        specifier: ^0.21.1
-        version: 0.21.1
-      tree-sitter-c:
-        specifier: latest
-        version: 0.24.1(tree-sitter@0.21.1)
-      tree-sitter-c-sharp:
-        specifier: latest
-        version: 0.23.5(tree-sitter@0.21.1)
-      tree-sitter-go:
-        specifier: ^0.21.1
-        version: 0.21.2(tree-sitter@0.21.1)
-      tree-sitter-java:
-        specifier: latest
-        version: 0.23.5(tree-sitter@0.21.1)
-      tree-sitter-javascript:
-        specifier: ^0.21.4
-        version: 0.21.4(tree-sitter@0.21.1)
-      tree-sitter-python:
-        specifier: ^0.21.0
-        version: 0.21.0(tree-sitter@0.21.1)
-      tree-sitter-rust:
-        specifier: ^0.21.0
-        version: 0.21.0(tree-sitter@0.21.1)
-      tree-sitter-typescript:
-        specifier: ^0.21.2
-        version: 0.21.2(tree-sitter@0.21.1)
-      typescript:
-        specifier: ^5.6.3
-        version: 5.9.3
-    devDependencies:
-      '@kb-labs/devkit':
-        specifier: workspace:*
-        version: link:../../../infra/devkit
-      '@types/fs-extra':
-        specifier: ^11.0.0
-        version: 11.0.4
-      '@types/node':
-        specifier: ^24.3.3
-        version: 24.12.2
-      '@types/picomatch':
-        specifier: ^4
-        version: 4.0.3
-      rimraf:
-        specifier: ^6.0.1
-        version: 6.1.3
-      tsup:
-        specifier: ^8.5.0
-        version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
       vitest:
         specifier: ^3.2.4
         version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/browser@4.1.7)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
@@ -4096,95 +3971,6 @@ importers:
       '@kb-labs/mind-core':
         specifier: workspace:*
         version: link:../core
-      '@kb-labs/mind-engine':
-        specifier: workspace:*
-        version: link:../engine
-      '@kb-labs/mind-indexer':
-        specifier: workspace:*
-        version: link:../indexer
-      '@kb-labs/mind-orchestrator':
-        specifier: workspace:*
-        version: link:../orchestrator
-      '@kb-labs/mind-types':
-        specifier: workspace:*
-        version: link:../types
-      '@kb-labs/plugin-contracts':
-        specifier: workspace:*
-        version: link:../../../core/plugin-contracts
-      '@kb-labs/sdk':
-        specifier: workspace:*
-        version: link:../../../sdk/sdk
-      react:
-        specifier: ^19.0.0
-        version: 19.2.5
-      zod:
-        specifier: ^3.25.76
-        version: 3.25.76
-    devDependencies:
-      '@kb-labs/devkit':
-        specifier: workspace:*
-        version: link:../../../infra/devkit
-      '@types/node':
-        specifier: ^24.3.3
-        version: 24.12.2
-      '@types/react':
-        specifier: ^19.0.0
-        version: 19.2.14
-      rimraf:
-        specifier: ^6.0.1
-        version: 6.1.3
-      tsup:
-        specifier: ^8.5.0
-        version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
-      typescript:
-        specifier: ^5.6.3
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/browser@4.1.7)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
-
-  plugins/mind/indexer:
-    dependencies:
-      '@kb-labs/mind-adapters':
-        specifier: workspace:*
-        version: link:../adapters
-      '@kb-labs/mind-core':
-        specifier: workspace:*
-        version: link:../core
-      '@kb-labs/mind-types':
-        specifier: workspace:*
-        version: link:../types
-      '@kb-labs/sdk':
-        specifier: workspace:*
-        version: link:../../../sdk/sdk
-      typescript:
-        specifier: ^5.6.3
-        version: 5.9.3
-    devDependencies:
-      '@kb-labs/devkit':
-        specifier: workspace:*
-        version: link:../../../infra/devkit
-      '@types/node':
-        specifier: ^24.3.3
-        version: 24.12.2
-      rimraf:
-        specifier: ^6.0.1
-        version: 6.1.3
-      tsup:
-        specifier: ^8.5.0
-        version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/browser@4.1.7)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
-
-  plugins/mind/orchestrator:
-    dependencies:
-      '@kb-labs/mind-engine':
-        specifier: workspace:*
-        version: link:../engine
-      '@kb-labs/mind-types':
-        specifier: workspace:*
-        version: link:../types
       '@kb-labs/sdk':
         specifier: workspace:*
         version: link:../../../sdk/sdk
@@ -4192,58 +3978,6 @@ importers:
       '@kb-labs/devkit':
         specifier: workspace:*
         version: link:../../../infra/devkit
-      '@types/node':
-        specifier: ^24.3.3
-        version: 24.12.2
-      rimraf:
-        specifier: ^6.0.1
-        version: 6.1.3
-      tsup:
-        specifier: ^8.5.0
-        version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
-      typescript:
-        specifier: ^5.6.3
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/browser@4.1.7)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
-
-  plugins/mind/types:
-    devDependencies:
-      '@kb-labs/devkit':
-        specifier: workspace:*
-        version: link:../../../infra/devkit
-      '@types/node':
-        specifier: ^24.3.3
-        version: 24.12.2
-      rimraf:
-        specifier: ^6.0.1
-        version: 6.1.3
-      tsup:
-        specifier: ^8.5.0
-        version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
-      typescript:
-        specifier: ^5.6.3
-        version: 5.9.3
-      vitest:
-        specifier: ^3.2.4
-        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/browser@4.1.7)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
-
-  plugins/mind/vector-store:
-    dependencies:
-      '@kb-labs/mind-core':
-        specifier: workspace:*
-        version: link:../core
-      fs-extra:
-        specifier: ^11.0.0
-        version: 11.3.4
-    devDependencies:
-      '@kb-labs/devkit':
-        specifier: workspace:*
-        version: link:../../../infra/devkit
-      '@types/fs-extra':
-        specifier: ^11.0.0
-        version: 11.0.4
       '@types/node':
         specifier: ^24.3.3
         version: 24.12.2
@@ -13679,10 +13413,6 @@ packages:
   node-addon-api@7.1.1:
     resolution: {integrity: sha512-5m3bsyrjFWE1xf7nz7YXdN4udnVtXK6/Yfgn5qnahL6bCkf2yKt4k3nuTKAtT4r3IG8JNR2ncsIMdZuAzJjHQQ==}
 
-  node-addon-api@8.7.0:
-    resolution: {integrity: sha512-9MdFxmkKaOYVTV+XVRG8ArDwwQ77XIgIPyKASB1k3JPq3M8fGQQQE3YpMOrKm6g//Ktx8ivZr8xo1Qmtqub+GA==}
-    engines: {node: ^18 || ^20 || >= 21}
-
   node-cron@4.2.1:
     resolution: {integrity: sha512-lgimEHPE/QDgFlywTd8yTR61ptugX3Qer29efeyWw2rv259HtGBNn1vZVmp8lB9uo9wC0t/AT4iGqXxia+CJFg==}
     engines: {node: '>=6.0.0'}
@@ -13704,10 +13434,6 @@ packages:
     peerDependenciesMeta:
       encoding:
         optional: true
-
-  node-gyp-build@4.8.4:
-    resolution: {integrity: sha512-LA4ZjwlnUblHVgq0oBF3Jl/6h/Nvs5fzBLwdEF4nuxnFdsfajde4WfxtJr3CaiH+F6ewcIB/q4jQ4UzPyid+CQ==}
-    hasBin: true
 
   node-releases@2.0.37:
     resolution: {integrity: sha512-1h5gKZCF+pO/o3Iqt5Jp7wc9rH3eJJ0+nh/CIoiRwjRxde/hAHyLPXYN4V3CqKAbiZPSeJFSWHmJsbkicta0Eg==}
@@ -15447,78 +15173,6 @@ packages:
   tree-kill@1.2.2:
     resolution: {integrity: sha512-L0Orpi8qGpRG//Nd+H90vFB+3iHnue1zSSGmNOOCh1GLJ7rUKVwV2HvijphGQS2UmhUZewS9VgvxYIdgr+fG1A==}
     hasBin: true
-
-  tree-sitter-c-sharp@0.23.5:
-    resolution: {integrity: sha512-xJGOeXPMmld0nES5+080N/06yY6LQi+KWGWV4LfZaZe6srJPtUtfhIbRSN7EZN6IaauzW28v6W4QHFwmeUW6HQ==}
-    peerDependencies:
-      tree-sitter: ^0.25.0
-    peerDependenciesMeta:
-      tree-sitter:
-        optional: true
-
-  tree-sitter-c@0.24.1:
-    resolution: {integrity: sha512-lkYwWN3SRecpvaeqmFKkuPNR3ZbtnvHU+4XAEEkJdrp3JfSp2pBrhXOtvfsENUneye76g889Y0ddF2DM0gEDpA==}
-    peerDependencies:
-      tree-sitter: ^0.22.4
-    peerDependenciesMeta:
-      tree-sitter:
-        optional: true
-
-  tree-sitter-go@0.21.2:
-    resolution: {integrity: sha512-aMFwjsB948nWhURiIxExK8QX29JYKs96P/IfXVvluVMRJZpL04SREHsdOZHYqJr1whkb7zr3/gWHqqvlkczmvw==}
-    peerDependencies:
-      tree-sitter: ^0.21.0
-      tree_sitter: '*'
-    peerDependenciesMeta:
-      tree_sitter:
-        optional: true
-
-  tree-sitter-java@0.23.5:
-    resolution: {integrity: sha512-Yju7oQ0Xx7GcUT01mUglPP+bYfvqjNCGdxqigTnew9nLGoII42PNVP3bHrYeMxswiCRM0yubWmN5qk+zsg0zMA==}
-    peerDependencies:
-      tree-sitter: ^0.21.1
-    peerDependenciesMeta:
-      tree-sitter:
-        optional: true
-
-  tree-sitter-javascript@0.21.4:
-    resolution: {integrity: sha512-Lrk8yahebwrwc1sWJE9xPcz1OnnqiEV7Dh5fbN6EN3wNAdu9r06HpTqLqDwUUbnG4EB46Sfk+FJFAOldfoKLOw==}
-    peerDependencies:
-      tree-sitter: ^0.21.1
-      tree_sitter: '*'
-    peerDependenciesMeta:
-      tree_sitter:
-        optional: true
-
-  tree-sitter-python@0.21.0:
-    resolution: {integrity: sha512-IUKx7JcTVbByUx1iHGFS/QsIjx7pqwTMHL9bl/NGyhyyydbfNrpruo2C7W6V4KZrbkkCOlX8QVrCoGOFW5qecg==}
-    peerDependencies:
-      tree-sitter: ^0.21.0
-      tree_sitter: '*'
-    peerDependenciesMeta:
-      tree_sitter:
-        optional: true
-
-  tree-sitter-rust@0.21.0:
-    resolution: {integrity: sha512-unVr73YLn3VC4Qa/GF0Nk+Wom6UtI526p5kz9Rn2iZSqwIFedyCZ3e0fKCEmUJLIPGrTb/cIEdu3ZUNGzfZx7A==}
-    peerDependencies:
-      tree-sitter: ^0.21.1
-      tree_sitter: '*'
-    peerDependenciesMeta:
-      tree_sitter:
-        optional: true
-
-  tree-sitter-typescript@0.21.2:
-    resolution: {integrity: sha512-/RyNK41ZpkA8PuPZimR6pGLvNR1p0ibRUJwwQn4qAjyyLEIQD/BNlwS3NSxWtGsAWZe9gZ44VK1mWx2+eQVldg==}
-    peerDependencies:
-      tree-sitter: ^0.21.0
-      tree_sitter: '*'
-    peerDependenciesMeta:
-      tree_sitter:
-        optional: true
-
-  tree-sitter@0.21.1:
-    resolution: {integrity: sha512-7dxoA6kYvtgWw80265MyqJlkRl4yawIjO7S5MigytjELkX43fV2WsAXzsNfO7sBpPPCF5Gp0+XzHk0DwLCq3xQ==}
 
   trim-lines@3.0.1:
     resolution: {integrity: sha512-kRj8B+YHZCc9kQYdWfJB2/oUl9rA99qbowYYBtr4ui4mZyAQ2JpvVBd/6U2YloATfqBhBTSMhTpgBHtU0Mf3Rg==}
@@ -23369,8 +23023,6 @@ snapshots:
 
   node-addon-api@7.1.1: {}
 
-  node-addon-api@8.7.0: {}
-
   node-cron@4.2.1: {}
 
   node-domexception@1.0.0: {}
@@ -23385,8 +23037,6 @@ snapshots:
   node-fetch@2.7.0:
     dependencies:
       whatwg-url: 5.0.0
-
-  node-gyp-build@4.8.4: {}
 
   node-releases@2.0.37: {}
 
@@ -25483,62 +25133,6 @@ snapshots:
       tslib: 2.8.1
 
   tree-kill@1.2.2: {}
-
-  tree-sitter-c-sharp@0.23.5(tree-sitter@0.21.1):
-    dependencies:
-      node-addon-api: 8.7.0
-      node-gyp-build: 4.8.4
-    optionalDependencies:
-      tree-sitter: 0.21.1
-
-  tree-sitter-c@0.24.1(tree-sitter@0.21.1):
-    dependencies:
-      node-addon-api: 8.7.0
-      node-gyp-build: 4.8.4
-    optionalDependencies:
-      tree-sitter: 0.21.1
-
-  tree-sitter-go@0.21.2(tree-sitter@0.21.1):
-    dependencies:
-      node-addon-api: 8.7.0
-      node-gyp-build: 4.8.4
-      tree-sitter: 0.21.1
-
-  tree-sitter-java@0.23.5(tree-sitter@0.21.1):
-    dependencies:
-      node-addon-api: 8.7.0
-      node-gyp-build: 4.8.4
-    optionalDependencies:
-      tree-sitter: 0.21.1
-
-  tree-sitter-javascript@0.21.4(tree-sitter@0.21.1):
-    dependencies:
-      node-addon-api: 8.7.0
-      node-gyp-build: 4.8.4
-      tree-sitter: 0.21.1
-
-  tree-sitter-python@0.21.0(tree-sitter@0.21.1):
-    dependencies:
-      node-addon-api: 7.1.1
-      node-gyp-build: 4.8.4
-      tree-sitter: 0.21.1
-
-  tree-sitter-rust@0.21.0(tree-sitter@0.21.1):
-    dependencies:
-      node-addon-api: 7.1.1
-      node-gyp-build: 4.8.4
-      tree-sitter: 0.21.1
-
-  tree-sitter-typescript@0.21.2(tree-sitter@0.21.1):
-    dependencies:
-      node-addon-api: 8.7.0
-      node-gyp-build: 4.8.4
-      tree-sitter: 0.21.1
-
-  tree-sitter@0.21.1:
-    dependencies:
-      node-addon-api: 8.7.0
-      node-gyp-build: 4.8.4
 
   trim-lines@3.0.1: {}
 

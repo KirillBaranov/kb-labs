@@ -1,13 +1,10 @@
 /**
- * @module @kb-labs/mind-cli
- * Entry point aggregating all public surfaces of the Mind plugin.
+ * KB Labs Mind — plugin entry.
+ *
+ * Thin wiring layer: manifest, CLI commands and REST handlers. Both CLI and
+ * REST call the same core facade `createMind(ctx.platform, config).verb()`.
+ *
+ * @module @kb-labs/mind-entry
  */
 
-export { manifest } from './manifest.v3';
-
-export * from './runtime/index';
-export * from './features/rag/index';
-export * from './shared/index';
-export * from './application/index';
-export * from './infra/index';
-export * from './cli/index';
+export { manifest } from './manifest';

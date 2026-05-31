@@ -1,12 +1,12 @@
 import { defineConfig } from 'vitest/config';
-import cfg from '@kb-labs/devkit/vitest/node';
+import baseConfig from '@kb-labs/devkit/vitest/node';
 
 export default defineConfig({
-  ...cfg,
+  ...baseConfig,
   test: {
-    ...cfg.test,
-    coverage: {
-      ...cfg.test?.coverage,
-    },
+    ...baseConfig.test,
+    globals: true,
+    include: ['tests/**/*.test.ts', 'src/**/*.spec.ts'],
+    environment: 'node',
   },
 });

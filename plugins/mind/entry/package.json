@@ -1,21 +1,20 @@
 {
   "name": "@kb-labs/mind-entry",
-  "description": "CLI commands for KB Labs Mind",
-  "version": "2.94.0",
+  "description": "Manifest, CLI commands and REST handlers for KB Labs Mind (RAG) plugin.",
+  "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.js"
+      "import": "./dist/index.js"
     },
-    "./dist/*": "./dist/*",
     "./plugin-manifest": {
       "types": "./dist/manifest.d.ts",
       "import": "./dist/manifest.js"
-    }
+    },
+    "./dist/*": "./dist/*"
   },
   "files": [
     "dist",
@@ -26,29 +25,22 @@
     "build": "tsup --config tsup.config.ts",
     "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
-    "lint": "eslint src --ext .ts,.tsx,.js,.jsx",
+    "lint": "eslint src --ext .ts",
     "lint:fix": "eslint . --fix",
-    "pretype-check": "pnpm --filter @kb-labs/shared-cli-ui build",
+    "pretype-check": "pnpm --filter @kb-labs/mind-entry build",
     "test": "vitest run --passWithNoTests",
+    "test:cli": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@kb-labs/mind-contracts": "workspace:*",
     "@kb-labs/mind-core": "workspace:*",
-    "@kb-labs/mind-engine": "workspace:*",
-    "@kb-labs/mind-indexer": "workspace:*",
-    "@kb-labs/mind-orchestrator": "workspace:*",
-    "@kb-labs/mind-types": "workspace:*",
-    "@kb-labs/plugin-contracts": "workspace:*",
-    "@kb-labs/sdk": "workspace:*",
-    "react": "^19.0.0",
-    "zod": "^3.25.76"
+    "@kb-labs/sdk": "workspace:*"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
     "@types/node": "^24.3.3",
-    "@types/react": "^19.0.0",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
     "typescript": "^5.6.3",
@@ -59,8 +51,7 @@
     "pnpm": ">=9.0.0"
   },
   "kb": {
-    "manifest": "./dist/manifest.v3.js"
+    "manifest": "./dist/manifest.js"
   },
-  "packageManager": "pnpm@9.11.0",
   "sideEffects": false
 }

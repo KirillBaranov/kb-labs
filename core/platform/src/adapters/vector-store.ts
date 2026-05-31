@@ -41,7 +41,17 @@ export interface VectorFilter {
 
 /**
  * Vector store adapter interface.
- * Implementations: @kb-labs/mind-qdrant (production), MemoryVectorStore (noop)
+ * Implementations: @kb-labs/adapters-qdrant (production), MemoryVectorStore (noop)
+ *
+ * ## Namespaces
+ *
+ * Every method accepts an optional trailing `namespace` for isolating
+ * independent corpora/tenants within one store (e.g. one namespace per index,
+ * or per client). Records, searches, counts and deletes are scoped to their
+ * namespace and never leak across namespaces. Omitting `namespace` targets a
+ * single default namespace — so existing callers are unaffected (backward
+ * compatible). Isolation is orthogonal to {@link VectorFilter}: the namespace
+ * does not consume the filter slot.
  */
 export interface IVectorStore {
   /**
@@ -49,43 +59,50 @@ export interface IVectorStore {
    * @param query - Query embedding vector
    * @param limit - Maximum number of results
    * @param filter - Optional metadata filter
+   * @param namespace - Optional namespace to scope the search (default namespace if omitted)
    */
   search(
     query: number[],
     limit: number,
     filter?: VectorFilter,
+    namespace?: string,
   ): Promise<VectorSearchResult[]>;
 
   /**
    * Upsert vectors into the store.
    * @param vectors - Array of vector records to upsert
+   * @param namespace - Optional namespace to upsert into (default namespace if omitted)
    */
-  upsert(vectors: VectorRecord[]): Promise<void>;
+  upsert(vectors: VectorRecord[], namespace?: string): Promise<void>;
 
   /**
    * Delete vectors by IDs.
    * @param ids - Array of vector IDs to delete
+   * @param namespace - Optional namespace to delete from (default namespace if omitted)
    */
-  delete(ids: string[]): Promise<void>;
+  delete(ids: string[], namespace?: string): Promise<void>;
 
   /**
    * Get total count of vectors in the store.
+   * @param namespace - Optional namespace to count within (default namespace if omitted)
    */
-  count(): Promise<number>;
+  count(namespace?: string): Promise<number>;
 
   /**
    * Get vectors by IDs (optional method for bulk retrieval).
    * Allows any plugin to retrieve multiple vectors efficiently.
    * @param ids - Array of vector IDs to retrieve
+   * @param namespace - Optional namespace to retrieve from (default namespace if omitted)
    * @returns Array of vector records
    */
-  get?(ids: string[]): Promise<VectorRecord[]>;
+  get?(ids: string[], namespace?: string): Promise<VectorRecord[]>;
 
   /**
    * Query vectors by metadata filter (optional method for advanced filtering).
    * Allows any plugin to retrieve vectors based on custom metadata criteria.
    * @param filter - Metadata filter to apply
+   * @param namespace - Optional namespace to query within (default namespace if omitted)
    * @returns Array of matching vector records
    */
-  query?(filter: VectorFilter): Promise<VectorRecord[]>;
+  query?(filter: VectorFilter, namespace?: string): Promise<VectorRecord[]>;
 }

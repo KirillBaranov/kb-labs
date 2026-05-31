@@ -1,0 +1,78 @@
+/**
+ * Retrieval pipeline: BM25 (over manifest corpus) + vector (platform store),
+ * fused with intent-adaptive RRF, mapped back to chunks.
+ */
+
+import type { MindServices } from '../services';
+import type { Chunk } from '../types';
+import { loadManifest } from '../index-store';
+import { bm25Search, type Ranked } from './bm25';
+import { vectorSearch } from './vector';
+import { rrfFuse, intentWeights, type QueryIntent } from './fuse';
+
+export interface RetrieveInput {
+  text: string;
+  indexId: string;
+  limit: number;
+  intent?: QueryIntent;
+  rrfK: number;
+}
+
+export interface RankedChunk {
+  chunk: Chunk;
+  /** Fused RRF score (best first). */
+  score: number;
+}
+
+export interface RetrieveOutput {
+  /** Fused, ranked chunks (best first), truncated to `limit`. */
+  ranked: RankedChunk[];
+  /** Raw cosine confidence proxy from the vector list (top-3 avg). */
+  confidence: number;
+}
+
+export async function retrieve(input: RetrieveInput, services: MindServices): Promise<RetrieveOutput> {
+  const manifest = await loadManifest(services.storage, input.indexId);
+  const byId = new Map(manifest.chunks.map((c) => [c.id, c]));
+
+  // Over-fetch each list so fusion has signal beyond the final cut.
+  const candidateLimit = Math.max(input.limit * 3, 30);
+
+  const bm25 = bm25Search(manifest.chunks, input.text, candidateLimit);
+  const vector = await vectorSearch(
+    input.text,
+    services.vectorStore,
+    (t) => services.embeddings.embed(t),
+    input.indexId,
+    candidateLimit,
+  );
+
+  const weights = intentWeights(input.intent);
+  const fused = rrfFuse(
+    [
+      { ranked: vector, weight: weights.vector },
+      { ranked: bm25, weight: weights.bm25 },
+    ],
+    input.rrfK,
+  );
+
+  const ranked: RankedChunk[] = fused
+    .map((r) => {
+      const chunk = byId.get(r.id);
+      return chunk ? { chunk, score: r.score } : undefined;
+    })
+    .filter((r): r is RankedChunk => r !== undefined)
+    .slice(0, input.limit);
+
+  return { ranked, confidence: confidenceFrom(vector) };
+}
+
+/** Phase 2 confidence proxy: average cosine of the top-3 vector hits. */
+function confidenceFrom(vector: Ranked[]): number {
+  if (vector.length === 0) {
+    return 0;
+  }
+  const top = vector.slice(0, 3);
+  const avg = top.reduce((a, r) => a + r.score, 0) / top.length;
+  return Math.max(0, Math.min(1, avg));
+}

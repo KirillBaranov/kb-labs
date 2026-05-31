@@ -1,0 +1,15 @@
+{
+  "_note": "Frozen baseline for the mind benchmark regression gate. Computed on the deterministic test embedder so it is stable. Update deliberately via the measurement run when the corpus or pipeline intentionally changes.",
+  "metrics": {
+    "hit@1": 1,
+    "hit@5": 1,
+    "recall@5": 1,
+    "precision@5": 0.375,
+    "mrr": 1,
+    "ndcg@5": 1,
+    "abstainRate": 1
+  },
+  "tolerance": {
+    "default": 0.02
+  }
+}

@@ -352,15 +352,16 @@
       "enabled": true
     },
     "@kb-labs/mind": {
-      "version": "2.14.0",
-      "integrity": "sha256-T+5P+wbYwbMwXplvjIrnVNLIAQa3PMjY39sQ6Hedy10=",
+      "version": "0.1.0",
+      "integrity": "sha256-iEuytrBmUU6wTKpxNU7Gr+bG+JKxuWwZ4nqOPRbbD0A=",
       "resolvedPath": "./plugins/mind/entry",
       "installedAt": "2026-04-12T15:19:02.773Z",
       "source": "local",
       "primaryKind": "plugin",
       "provides": [
         "plugin",
-        "cli-command"
+        "cli-command",
+        "rest-route"
       ],
       "enabled": true
     },

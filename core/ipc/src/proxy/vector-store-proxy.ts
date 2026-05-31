@@ -74,9 +74,10 @@ export class VectorStoreProxy extends RemoteAdapter<IVectorStore> implements IVe
   async search(
     query: number[],
     limit: number,
-    filter?: VectorFilter
+    filter?: VectorFilter,
+    namespace?: string
   ): Promise<VectorSearchResult[]> {
-    return (await this.callRemote('search', [query, limit, filter])) as VectorSearchResult[];
+    return (await this.callRemote('search', [query, limit, filter, namespace])) as VectorSearchResult[];
   }
 
   /**
@@ -85,10 +86,10 @@ export class VectorStoreProxy extends RemoteAdapter<IVectorStore> implements IVe
    *
    * @param vectors - Vector records to upsert
    */
-  async upsert(vectors: VectorRecord[]): Promise<void> {
+  async upsert(vectors: VectorRecord[], namespace?: string): Promise<void> {
     // Smart serialization: inline for small, temp file for large
     const transfer = await BulkTransferHelper.serialize(vectors, this.bulkTransferOptions);
-    await this.callRemote('upsert', [transfer], VectorStoreProxy.BULK_OPERATION_TIMEOUT);
+    await this.callRemote('upsert', [transfer, namespace], VectorStoreProxy.BULK_OPERATION_TIMEOUT);
   }
 
   /**
@@ -97,8 +98,8 @@ export class VectorStoreProxy extends RemoteAdapter<IVectorStore> implements IVe
    *
    * @param ids - Vector IDs to delete
    */
-  async delete(ids: string[]): Promise<void> {
-    await this.callRemote('delete', [ids], VectorStoreProxy.BULK_OPERATION_TIMEOUT);
+  async delete(ids: string[], namespace?: string): Promise<void> {
+    await this.callRemote('delete', [ids, namespace], VectorStoreProxy.BULK_OPERATION_TIMEOUT);
   }
 
   /**
@@ -117,8 +118,8 @@ export class VectorStoreProxy extends RemoteAdapter<IVectorStore> implements IVe
    *
    * @returns Promise resolving to vector count
    */
-  async count(): Promise<number> {
-    return (await this.callRemote('count', [])) as number;
+  async count(namespace?: string): Promise<number> {
+    return (await this.callRemote('count', [namespace])) as number;
   }
 
   /**
@@ -129,9 +130,9 @@ export class VectorStoreProxy extends RemoteAdapter<IVectorStore> implements IVe
    * @param ids - Vector IDs to retrieve
    * @returns Promise resolving to vector records
    */
-  async get(ids: string[]): Promise<VectorRecord[]> {
+  async get(ids: string[], namespace?: string): Promise<VectorRecord[]> {
     // Small IDs array - pass directly (no BulkTransfer for argument)
-    const resultTransfer = await this.callRemote('get', [ids], VectorStoreProxy.BULK_OPERATION_TIMEOUT);
+    const resultTransfer = await this.callRemote('get', [ids, namespace], VectorStoreProxy.BULK_OPERATION_TIMEOUT);
 
     // Large result - deserialize if it's BulkTransfer
     if (BulkTransferHelper.isBulkTransfer(resultTransfer)) {
@@ -148,9 +149,9 @@ export class VectorStoreProxy extends RemoteAdapter<IVectorStore> implements IVe
    * @param filter - Metadata filter to apply
    * @returns Promise resolving to matching vector records
    */
-  async query(filter: VectorFilter): Promise<VectorRecord[]> {
+  async query(filter: VectorFilter, namespace?: string): Promise<VectorRecord[]> {
     // Small filter - pass directly (no BulkTransfer for argument)
-    const resultTransfer = await this.callRemote('query', [filter], VectorStoreProxy.BULK_OPERATION_TIMEOUT);
+    const resultTransfer = await this.callRemote('query', [filter, namespace], VectorStoreProxy.BULK_OPERATION_TIMEOUT);
 
     // Large result - deserialize if it's BulkTransfer
     if (BulkTransferHelper.isBulkTransfer(resultTransfer)) {
