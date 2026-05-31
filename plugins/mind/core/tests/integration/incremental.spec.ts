@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { ingest } from '../../src/index';
-import { makeTestWorkspace, DeterministicEmbedder, type TestServices } from '../../src/testing';
+import { makeTestWorkspace, type DeterministicEmbedder, type TestServices } from '../../src/testing';
 
 describe('ingest — incremental (hash-delta) indexing', () => {
   let services: TestServices;
