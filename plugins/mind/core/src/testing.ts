@@ -31,8 +31,11 @@ const EMBED_DIM = 64;
 /** Deterministic bag-of-words embedder: shared tokens → higher cosine similarity. */
 export class DeterministicEmbedder implements IEmbeddings {
   readonly dimensions = EMBED_DIM;
+  /** Number of texts embedded — lets tests assert delta re-indexing skips work. */
+  embedCount = 0;
 
   async embed(text: string): Promise<number[]> {
+    this.embedCount += 1;
     const vec = new Array<number>(EMBED_DIM).fill(0);
     for (const token of text.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean)) {
       let h = 0;

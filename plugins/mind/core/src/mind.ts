@@ -94,6 +94,7 @@ export function createMind(
           indexId,
           cwd,
           scope: req.scope,
+          full: req.full,
           chunk: { maxTokens: config.chunk.maxTokens, overlapTokens: config.chunk.overlapTokens },
           ast: config.chunk.ast,
           now: isoNow(),

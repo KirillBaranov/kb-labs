@@ -12,8 +12,34 @@ import type { Chunk } from '../types';
 import { chunkId, kindFromPath } from '../types';
 import { slidingWindowChunks, type ChunkOptions } from './chunk';
 
-const BOUNDARY =
-  /^(export\s+)?(default\s+)?(declare\s+)?(public\s+|private\s+|protected\s+)?(static\s+)?(abstract\s+)?(async\s+)?(function|class|interface|type|enum|const|let|var|namespace|module|def|func|fn|impl|struct|trait|public|private)\b/;
+// Declaration keywords and leading modifiers. We detect boundaries by scanning
+// the line's leading words (linear) rather than a multi-optional-group regex —
+// the latter is a polynomial-ReDoS shape on attacker-controlled file content.
+const DECL_KEYWORDS = new Set([
+  'function', 'class', 'interface', 'type', 'enum', 'const', 'let', 'var',
+  'namespace', 'module', 'def', 'func', 'fn', 'impl', 'struct', 'trait',
+  'public', 'private',
+]);
+const MODIFIERS = new Set([
+  'export', 'default', 'declare', 'public', 'private', 'protected',
+  'static', 'abstract', 'async',
+]);
+
+/** A top-level (unindented) line whose leading modifiers lead to a declaration. */
+function isBoundaryLine(line: string): boolean {
+  if (line.length === 0 || line.charCodeAt(0) === 32 || line.charCodeAt(0) === 9) {
+    return false; // indented → not top-level
+  }
+  for (const word of line.split(/\s+/)) {
+    if (DECL_KEYWORDS.has(word)) {
+      return true;
+    }
+    if (!MODIFIERS.has(word)) {
+      return false; // first non-modifier, non-keyword word → not a declaration
+    }
+  }
+  return false;
+}
 
 function approxTokens(text: string): number {
   const t = text.trim();
@@ -27,7 +53,7 @@ export function structuralChunks(path: string, content: string, opts: ChunkOptio
   // Find top-level boundary line indices (indentation 0, declaration-like).
   const boundaries: number[] = [];
   lines.forEach((line, i) => {
-    if (line.length > 0 && !/^\s/.test(line) && BOUNDARY.test(line)) {
+    if (isBoundaryLine(line)) {
       boundaries.push(i);
     }
   });

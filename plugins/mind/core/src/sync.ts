@@ -8,6 +8,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { MindServices } from './services';
 import type { Chunk, IndexManifest } from './types';
+import { hashContent } from './types';
 import { type ChunkOptions } from './ingest/chunk';
 import { chunkFile } from './ingest/structural';
 import { embedChunks } from './ingest/embed';
@@ -66,7 +67,7 @@ async function addPaths(
       continue;
     }
     newChunks.push(...chunks);
-    manifest.files[path] = { chunks: chunks.length, indexedAt: opts.now };
+    manifest.files[path] = { chunks: chunks.length, indexedAt: opts.now, hash: hashContent(content) };
   }
 
   if (newChunks.length > 0) {
