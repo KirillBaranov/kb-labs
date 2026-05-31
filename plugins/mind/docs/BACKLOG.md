@@ -64,9 +64,9 @@ Current: deterministic test embedder, 4 corpora, **14 golden queries** (12 + 2 a
 | Per-group breakdown | catch "fixed code, broke docs" | P1 | ✅ `report.byGroup` |
 | Latency p50/p95 | gate cost-affecting features | P2 | ✅ in `Metrics` |
 | Config-toggleable stages (rerank/dedup) for A/B | so features can be flipped ON/OFF | P0 | ✅ `retrieval.rerank`/`dedup` |
-| **Real embedder profile (OpenAI/local) via `makeServices`** | toy embedder shows `neutral` for semantic features (rerank A/B = neutral today) — can't judge HyDE/rerank/dedup quality | **P0** | 🟡 seam ready (`BenchOptions.makeServices`), profile not wired |
+| **Real embedder profile (OpenAI/local)** | toy embedder shows `neutral` for semantic features — can't judge HyDE/rerank/dedup quality | **P0** | ✅ **live `e2e/mind` domain** — golden set vs live REST on OpenAI+Qdrant; A/B via scenario overlays (rerank ON vs OFF); gated `MIND_BENCH_REAL=1` |
 | Larger graded golden set (50+ queries, real repo slice) | 14 queries → coarse deltas | P1 | 🟡 grew 8→14 |
 | Groundedness metric (LLM-judge answer vs sources) | gate answer-quality features (field-check, compression) | P1 | ❌ |
 | Tokens/query tracking | gate decompose/thinking cost | P2 | ❌ |
 
-> **Rule of thumb for porting:** pick a P1 row → add the feature behind a config flag → run bench A/B (ON vs OFF) on the real-embedder profile → keep only if the gated metric improves without regressing others → update `baseline.json` deliberately.
+> **Rule of thumb for porting:** pick a P1 row → add the feature behind a config flag → run bench A/B (ON vs OFF). For **semantic** features (rerank/dedup/HyDE/chunking) the toy embedder is `neutral`, so gate them on the **real-embedder profile** — the `e2e/mind` domain (`MIND_BENCH_REAL=1`, scenario overlay disables the feature + restarts `rest`, spec asserts ON ≥ OFF). For non-semantic features keep using the in-process deterministic harness. Keep the port only if the gated metric improves (or holds) without regressing others; update `baseline.json` deliberately.
