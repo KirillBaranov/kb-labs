@@ -44,28 +44,44 @@ export interface IngestResult {
   unchanged: number;
 }
 
-export async function ingest(input: IngestInput, services: MindServices): Promise<IngestResult> {
-  const { storage, embeddings, vectorStore } = services;
-  const prev = await loadManifest(storage, input.indexId);
-  const prevFiles: Record<string, FileEntry> = input.full ? {} : prev.files;
-
-  const paths = await discover(input.cwd, input.scope);
-
-  // Read + hash every discovered file, classifying against the previous index.
+/** Read + content-hash every discovered file. Unreadable files are skipped. */
+async function readAndHash(
+  cwd: string,
+  paths: string[],
+): Promise<{ contentByPath: Map<string, string>; hashByPath: Map<string, string> }> {
   const contentByPath = new Map<string, string>();
   const hashByPath = new Map<string, string>();
   for (const path of paths) {
     let content: string;
     try {
       // Source comes from the real filesystem; storage is only for the manifest.
-      content = await readFile(join(input.cwd, path), 'utf8');
+      content = await readFile(join(cwd, path), 'utf8');
     } catch {
       continue;
     }
     contentByPath.set(path, content);
     hashByPath.set(path, hashContent(content));
   }
+  return { contentByPath, hashByPath };
+}
 
+interface Delta {
+  /** New + changed files — need re-chunk + re-embed. */
+  toIndex: string[];
+  /** Files whose content hash matched the previous index. */
+  unchanged: string[];
+  /** Files in the previous index that are gone from disk. */
+  removedPaths: string[];
+  added: number;
+  updated: number;
+}
+
+/** Classify discovered files against the previous index by content hash. */
+function classify(
+  contentByPath: Map<string, string>,
+  hashByPath: Map<string, string>,
+  prevFiles: Record<string, FileEntry>,
+): Delta {
   const toIndex: string[] = [];
   const unchanged: string[] = [];
   let added = 0;
@@ -84,6 +100,17 @@ export async function ingest(input: IngestInput, services: MindServices): Promis
     }
   }
   const removedPaths = Object.keys(prevFiles).filter((p) => !contentByPath.has(p));
+  return { toIndex, unchanged, removedPaths, added, updated };
+}
+
+export async function ingest(input: IngestInput, services: MindServices): Promise<IngestResult> {
+  const { storage, embeddings, vectorStore } = services;
+  const prev = await loadManifest(storage, input.indexId);
+  const prevFiles: Record<string, FileEntry> = input.full ? {} : prev.files;
+
+  const paths = await discover(input.cwd, input.scope);
+  const { contentByPath, hashByPath } = await readAndHash(input.cwd, paths);
+  const { toIndex, unchanged, removedPaths, added, updated } = classify(contentByPath, hashByPath, prevFiles);
 
   // Vectors to drop: on full, everything previously indexed; otherwise only the
   // chunks of changed + removed files.
