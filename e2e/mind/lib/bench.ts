@@ -24,8 +24,14 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 /** Dedicated index so the bench never collides with a developer's real corpus. */
 export const BENCH_INDEX = 'e2e-bench'
 
-/** A small, stable, known repo slice — the bench corpus. */
-export const BENCH_SCOPE = 'plugins/mind/contracts/src'
+/**
+ * The bench corpus — the engine's own `core/src`. Richer than the contracts
+ * wire layer: real logic with distinct responsibilities per file, so a query
+ * can describe a CONCEPT in words that don't appear verbatim in the target
+ * file. That divergence is what exercises semantic retrieval (and HyDE);
+ * keyword-only queries over terse schemas can't.
+ */
+export const BENCH_SCOPE = 'plugins/mind/core/src'
 
 /** Real-embedder bench only runs when explicitly opted in (needs API key + Qdrant). */
 export const BENCH_ENABLED = process.env.MIND_BENCH_REAL === '1'
@@ -42,12 +48,21 @@ export interface GoldenQuery {
 }
 
 export const GOLDEN: GoldenQuery[] = [
-  { id: 'G-01', query: 'frozen agent response JSON schema version contract', relevant: ['schema/agent.schema.ts'] },
-  { id: 'G-02', query: 'REST route constants and base path for mind plugin', relevant: ['routes.ts'] },
-  { id: 'G-03', query: 'resolve mind config defaults mode budgets confidence floor', relevant: ['config.ts', 'schema/config.schema.ts'] },
-  { id: 'G-04', query: 'CLI flag definitions for the search command', relevant: ['flags.ts'] },
-  { id: 'G-05', query: 'pipeline stage timing trace events for observability', relevant: ['trace.ts'] },
-  { id: 'G-06', query: 'search request and response wire schema shape', relevant: ['schema/search.schema.ts'] },
+  // --- exact / keyword-ish (both lists should retrieve these well) ---
+  { id: 'EX-01', query: 'BM25 keyword scoring over the corpus', relevant: ['retrieval/bm25.ts'] },
+  { id: 'EX-02', query: 'the createMind facade object CLI and REST both call', relevant: ['mind.ts'] },
+  // --- concept-heavy: query wording diverges from the file's code vocabulary ---
+  { id: 'C-01', query: 'how does it blend keyword matches and vector similarity into one ranked list', relevant: ['retrieval/fuse.ts'] },
+  { id: 'C-02', query: 'stop the assistant from making up answers that the sources do not support', relevant: ['answer/verify.ts'] },
+  { id: 'C-03', query: 'cut a source file into smaller overlapping passages for indexing', relevant: ['ingest/chunk.ts', 'ingest/structural.ts'] },
+  { id: 'C-04', query: 'draft an imaginary ideal answer first and search with that instead of the question', relevant: ['retrieval/hyde.ts'] },
+  { id: 'C-05', query: 'remove results that repeat the same content', relevant: ['retrieval/dedup.ts'] },
+  { id: 'C-06', query: 'walk the project tree for files to ingest while ignoring dependencies and build output', relevant: ['ingest/discover.ts'] },
+  { id: 'C-07', query: 'split a hard multi-part question into smaller focused sub-questions', relevant: ['answer/decompose.ts'] },
+  { id: 'C-08', query: 'learn from what users searched before to adapt over time', relevant: ['feedback/history.ts'] },
+  { id: 'C-09', query: 'compose the final written reply out of the retrieved snippets', relevant: ['answer/synthesize.ts', 'answer/answer.ts'] },
+  { id: 'C-10', query: 'only re-process files that actually changed since the last run', relevant: ['ingest/ingest.ts'] },
+  { id: 'C-11', query: 'push results higher when the exact search words appear in the code', relevant: ['retrieval/rerank.ts'] },
 ]
 
 // ── IR metrics (file-level; collapse multiple chunks of the same file) ──────
@@ -180,8 +195,12 @@ export function readMetrics(scenario: string): BenchMetrics | null {
   return rows.length > 0 ? rows[rows.length - 1]! : null
 }
 
-/** Quality gate thresholds — conservative so the gate guards regressions, not noise. */
+/**
+ * Quality gate thresholds — conservative so the gate guards regressions, not
+ * noise. Lower than a keyword-only set would score: the concept queries
+ * deliberately diverge from the code's wording, which is harder retrieval.
+ */
 export const GATE = {
-  'hit@5': 0.8,
-  mrr: 0.4,
+  'hit@5': 0.6,
+  mrr: 0.35,
 } as const
