@@ -1,4 +1,4 @@
-import { defineCommand, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
 import { type SyncListFlags } from '@kb-labs/mind-contracts';
 import { buildMind } from '../../platform';
 
@@ -8,6 +8,7 @@ export default defineCommand<unknown, CLIInput<SyncListFlags>, { exitCode: numbe
 
   handler: {
     async execute(ctx: PluginContextV3, input: CLIInput<SyncListFlags>): Promise<{ exitCode: number }> {
+      try {
       const mind = await buildMind(ctx.cwd);
       const res = await mind.syncList(input.flags.index);
       if (input.flags.json) {
@@ -27,6 +28,10 @@ export default defineCommand<unknown, CLIInput<SyncListFlags>, { exitCode: numbe
         ],
       });
       return { exitCode: 0 };
+      } catch (err) {
+        handleError(ctx, err, input.flags.json);
+        return { exitCode: 1 };
+      }
     },
   },
 });
