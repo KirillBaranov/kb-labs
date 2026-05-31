@@ -38,6 +38,6 @@ describe('Tracer', () => {
   it('omits outputCount for non-array stage output', async () => {
     const tracer = new Tracer('req-3', 'instant', () => 0);
     await tracer.run('scalar', 0, services, async () => 42);
-    expect(tracer.build(0).stages[0].outputCount).toBeUndefined();
+    expect(tracer.build(0).stages[0]?.outputCount).toBeUndefined();
   });
 });
