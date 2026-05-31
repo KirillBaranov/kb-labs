@@ -13,10 +13,11 @@ import { GatewayConfigSchema } from '@kb-labs/gateway-contracts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const prodConfigPath = resolve(__dirname, '../../.kb/kb.config.prod.json');
+const prodLockPath = resolve(__dirname, '../../.kb/marketplace.prod.lock');
 
 interface ProdConfig {
   platform?: {
-    adapters?: Record<string, unknown>;
+    adapters?: Record<string, string>;
     adapterOptions?: {
       serviceTransport?: { services?: Record<string, { url?: string }> };
     };
@@ -24,7 +25,12 @@ interface ProdConfig {
   gateway?: unknown;
 }
 
+interface ProdLock {
+  installed?: Record<string, { enabled?: boolean }>;
+}
+
 const prod = JSON.parse(readFileSync(prodConfigPath, 'utf-8')) as ProdConfig;
+const lock = JSON.parse(readFileSync(prodLockPath, 'utf-8')) as ProdLock;
 
 describe('gateway prod config', () => {
   it('gateway section validates against GatewayConfigSchema', () => {
@@ -33,6 +39,19 @@ describe('gateway prod config', () => {
 
   it('declares the serviceTransport adapter the gateway requires', () => {
     expect(prod.platform?.adapters?.serviceTransport).toBeTruthy();
+  });
+
+  it('the serviceTransport adapter is installed+enabled in the prod lock', () => {
+    // serviceTransport is HARD-required: the gateway throws at boot if the
+    // adapter is missing (no fallback, unlike analytics/logs which degrade to
+    // InMemory/NoOp). The platform only instantiates adapters present and
+    // enabled in the marketplace lock — so a config that names it while the
+    // lock omits it crash-loops in prod. Assert the two stay in lockstep.
+    const pkg = prod.platform?.adapters?.serviceTransport;
+    expect(pkg, 'config.platform.adapters.serviceTransport must be set').toBeTruthy();
+    const entry = lock.installed?.[pkg!];
+    expect(entry, `serviceTransport adapter "${pkg}" is missing from marketplace.prod.lock`).toBeTruthy();
+    expect(entry?.enabled, `serviceTransport adapter "${pkg}" is in the lock but not enabled`).toBe(true);
   });
 
   it('every upstream serviceId resolves to a serviceTransport service', () => {
