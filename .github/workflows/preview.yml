@@ -95,7 +95,7 @@ jobs:
               AFFECTED+=("kb-labs-docs")
           fi
           # gateway — platform-level paths trigger a rebuild
-          if matches '^plugins/gateway/' \
+          if matches '^services/gateway/' \
              || matches '^adapters/(openai|redis|sqlite|pino|fs|log-sqlite|log-ringbuffer|eventbus-cache)/' \
              || matches '^core/' \
              || matches '^shared/'; then

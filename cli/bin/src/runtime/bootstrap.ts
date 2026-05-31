@@ -206,18 +206,20 @@ export async function executeCli(
   switch (routeResult.type) {
     case 'not-found': {
       const input = routeResult.input.join(' ') || '(none)';
+      const diagCmd = `kb diag --command "${input}"`;
+      const diagHint = `\nTip: run  ${diagCmd}  to diagnose`;
       if (routeResult.suggestions.length > 0) {
         const sugs = routeResult.suggestions.map((s) => `  kb ${s}`).join('\n');
         if (global.json) {
-          presenter.json({ ok: false, error: { code: 'CMD_NOT_FOUND', message: `Unknown command: ${input}`, suggestions: routeResult.suggestions } });
+          presenter.json({ ok: false, error: { code: 'CMD_NOT_FOUND', message: `Unknown command: ${input}`, suggestions: routeResult.suggestions, diagCommand: diagCmd } });
         } else {
-          presenter.error(`Unknown command: ${input}\nDid you mean:\n${sugs}`);
+          presenter.error(`Unknown command: ${input}\nDid you mean:\n${sugs}${diagHint}`);
         }
       } else {
         if (global.json) {
-          presenter.json({ ok: false, error: { code: 'CMD_NOT_FOUND', message: `Unknown command: ${input}` } });
+          presenter.json({ ok: false, error: { code: 'CMD_NOT_FOUND', message: `Unknown command: ${input}`, diagCommand: diagCmd } });
         } else {
-          presenter.error(`Unknown command: ${input}`);
+          presenter.error(`Unknown command: ${input}${diagHint}`);
         }
       }
       return 1;

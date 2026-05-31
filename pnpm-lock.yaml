@@ -5562,6 +5562,9 @@ importers:
       '@kb-labs/plugin-contracts':
         specifier: workspace:*
         version: link:../../../core/plugin-contracts
+      '@kb-labs/sdk':
+        specifier: workspace:*
+        version: link:../../../sdk/sdk
       '@kb-labs/shared-http':
         specifier: workspace:*
         version: link:../../../shared/http
@@ -5578,9 +5581,6 @@ importers:
       '@kb-labs/devkit':
         specifier: workspace:*
         version: link:../../../infra/devkit
-      '@kb-labs/sdk':
-        specifier: workspace:*
-        version: link:../../../sdk/sdk
       '@kb-labs/shared-testing-e2e':
         specifier: workspace:*
         version: link:../../../shared/testing-e2e

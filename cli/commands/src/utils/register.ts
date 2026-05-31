@@ -10,6 +10,7 @@ import {
   webhookGroup,
 } from "../commands/system/groups";
 import { createCompletionCommand, autoUpdateCompletion } from "../commands/system/completion";
+import { diag } from "../commands/system/diag";
 import { registerManifests, disposeAllPlugins, preflightManifests } from "../registry/register";
 import { registerShutdownHook } from "./shutdown";
 import { getContextCwd } from "@kb-labs/shared-cli-ui";
@@ -65,6 +66,7 @@ export async function registerBuiltinCommands(
 
   // Standalone system commands
   registry.register(createCompletionCommand(registry));
+  registry.register(diag);
 
   try {
     const cwd = getContextCwd({ cwd: input.cwd });

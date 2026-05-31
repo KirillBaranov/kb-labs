@@ -516,7 +516,7 @@ async function readPackageJson(pkgPath: string): Promise<Record<string, unknown>
 /**
  * Load kb.config.json with plugins allowlist/blocklist
  */
-async function loadConfig(cwd: string): Promise<{ allow?: string[]; block?: string[]; linked?: string[] }> {
+export async function loadConfig(cwd: string): Promise<{ allow?: string[]; block?: string[]; linked?: string[] }> {
   const configPath = path.join(cwd, '.kb', 'kb.config.json');
   try {
     const content = await fs.readFile(configPath, 'utf8');
