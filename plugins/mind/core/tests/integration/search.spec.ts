@@ -1,28 +1,22 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { resolveMindConfig } from '@kb-labs/mind-contracts';
 import { createMind, type Mind } from '../../src/index';
-import { makeTestServices, type TestServices } from '../../src/testing';
+import { makeTestWorkspace, type TestServices } from '../../src/testing';
 
 describe('mind facade — index + search (vertical slice)', () => {
   let services: TestServices;
   let mind: Mind;
 
   beforeEach(() => {
-    services = makeTestServices();
-    // Seed a small code corpus + a docs corpus.
-    services.storage.seed(
-      'src/auth.ts',
-      'export function login(user: string, password: string) {\n  return authenticate(user, password);\n}',
-    );
-    services.storage.seed(
-      'src/cart.ts',
-      'export function addToCart(item: Item) {\n  cart.push(item);\n}',
-    );
-    services.storage.seed(
-      'docs/billing.md',
-      '# Billing\nInvoices are generated monthly and emailed to the customer.',
-    );
-    mind = createMind(services, resolveMindConfig({}), { now: () => 1000 });
+    // Source files live on a real temp dir so discovery (globby + fs) is exercised.
+    const ws = makeTestWorkspace({
+      'src/auth.ts':
+        'export function login(user: string, password: string) {\n  return authenticate(user, password);\n}',
+      'src/cart.ts': 'export function addToCart(item: Item) {\n  cart.push(item);\n}',
+      'docs/billing.md': '# Billing\nInvoices are generated monthly and emailed to the customer.',
+    });
+    services = ws.services;
+    mind = createMind(services, resolveMindConfig({}), { cwd: ws.cwd, now: () => 1000 });
   });
 
   it('indexes files into an index and reports counts', async () => {

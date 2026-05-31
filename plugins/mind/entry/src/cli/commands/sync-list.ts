@@ -8,7 +8,7 @@ export default defineCommand<unknown, CLIInput<SyncListFlags>, { exitCode: numbe
 
   handler: {
     async execute(ctx: PluginContextV3, input: CLIInput<SyncListFlags>): Promise<{ exitCode: number }> {
-      const mind = await buildMind();
+      const mind = await buildMind(ctx.cwd);
       const res = await mind.syncList(input.flags.index);
       if (input.flags.json) {
         ctx.ui?.json?.(res);

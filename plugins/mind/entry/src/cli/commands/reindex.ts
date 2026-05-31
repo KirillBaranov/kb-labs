@@ -8,7 +8,7 @@ export default defineCommand<unknown, CLIInput<ReindexFlags>, { exitCode: number
 
   handler: {
     async execute(ctx: PluginContextV3, input: CLIInput<ReindexFlags>): Promise<{ exitCode: number }> {
-      const mind = await buildMind();
+      const mind = await buildMind(ctx.cwd);
       const res = await mind.reindex({ indexId: input.flags.index, full: input.flags.full });
       if (input.flags.json) {
         ctx.ui?.json?.(res);

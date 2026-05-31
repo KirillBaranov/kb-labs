@@ -391,17 +391,22 @@ function initializeResourceBroker(
       executor: async (operation: string, args: unknown[]) => {
         switch (operation) {
           case 'search':
-            return realVectorStore.search(args[0] as number[], args[1] as number, args[2] as VectorFilter | undefined);
+            return realVectorStore.search(
+              args[0] as number[],
+              args[1] as number,
+              args[2] as VectorFilter | undefined,
+              args[3] as string | undefined,
+            );
           case 'upsert':
-            return realVectorStore.upsert(args[0] as VectorRecord[]);
+            return realVectorStore.upsert(args[0] as VectorRecord[], args[1] as string | undefined);
           case 'delete':
-            return realVectorStore.delete(args[0] as string[]);
+            return realVectorStore.delete(args[0] as string[], args[1] as string | undefined);
           case 'count':
-            return realVectorStore.count();
+            return realVectorStore.count(args[0] as string | undefined);
           case 'get':
-            return realVectorStore.get?.(args[0] as string[]);
+            return realVectorStore.get?.(args[0] as string[], args[1] as string | undefined);
           case 'query':
-            return realVectorStore.query?.(args[0] as VectorFilter);
+            return realVectorStore.query?.(args[0] as VectorFilter, args[1] as string | undefined);
           default:
             throw new Error(`Unknown VectorStore operation: ${operation}`);
         }

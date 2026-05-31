@@ -12,7 +12,18 @@ export async function vectorSearch(
   indexId: string,
   limit: number,
 ): Promise<Ranked[]> {
-  const vector = await embed(queryText);
-  const hits = await vectorStore.search(vector, limit, undefined, indexId);
-  return hits.map((h) => ({ id: h.id, score: h.score }));
+  let vector: number[];
+  try {
+    vector = await embed(queryText);
+  } catch (err) {
+    throw new Error(`mind: query embedding failed — ${err instanceof Error ? err.message : String(err)}`);
+  }
+  try {
+    const hits = await vectorStore.search(vector, limit, undefined, indexId);
+    return hits.map((h) => ({ id: h.id, score: h.score }));
+  } catch (err) {
+    throw new Error(
+      `mind: vector search failed (indexId="${indexId}", dims=${vector.length}) — ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
 }

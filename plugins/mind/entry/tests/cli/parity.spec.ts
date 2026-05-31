@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { setupTestPlatform, mockCLIInput } from '@kb-labs/sdk/testing';
-import { TestVectorStore, TestStorage, DeterministicEmbedder } from '@kb-labs/mind-core/testing';
+import { makeTestWorkspace } from '@kb-labs/mind-core/testing';
 import type { PluginContextV3 } from '@kb-labs/sdk';
 import indexCmd from '../../src/cli/commands/index.js';
 import searchCmd from '../../src/cli/commands/search.js';
@@ -19,17 +19,17 @@ describe('CLI ↔ REST parity (search)', () => {
   let ctx: PluginContextV3;
 
   beforeEach(() => {
-    const storage = new TestStorage();
-    storage.seed(
-      'src/auth.ts',
-      'export function login(user, password) { return authenticate(user, password); }',
-    );
-    storage.seed('src/cart.ts', 'export function addToCart(item) { cart.push(item); }');
+    // Source on a real temp dir (engine discovers via fs+globby); vector store +
+    // manifest storage installed into the platform singleton for the hooks.
+    const ws = makeTestWorkspace({
+      'src/auth.ts': 'export function login(user, password) { return authenticate(user, password); }',
+      'src/cart.ts': 'export function addToCart(item) { cart.push(item); }',
+    });
 
     const result = setupTestPlatform({
-      vectorStore: new TestVectorStore(),
-      storage,
-      embeddings: new DeterministicEmbedder(),
+      vectorStore: ws.services.vectorStore,
+      storage: ws.services.storage,
+      embeddings: ws.services.embeddings,
     });
     cleanup = result.cleanup;
 
@@ -43,7 +43,7 @@ describe('CLI ↔ REST parity (search)', () => {
         error: () => {},
         info: () => {},
       },
-      cwd: process.cwd(),
+      cwd: ws.cwd,
     } as unknown as PluginContextV3;
   });
 

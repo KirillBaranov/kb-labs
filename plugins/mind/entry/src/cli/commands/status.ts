@@ -10,7 +10,7 @@ export default defineCommand<unknown, CLIInput<StatusFlags>, { exitCode: number 
     async execute(ctx: PluginContextV3, input: CLIInput<StatusFlags>): Promise<{ exitCode: number }> {
       const { flags } = input;
       try {
-        const mind = await buildMind();
+        const mind = await buildMind(ctx.cwd);
         const res = await mind.status(flags.index);
 
         if (flags.json) {

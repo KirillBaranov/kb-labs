@@ -59,7 +59,10 @@ export async function loadConfig() {
   return resolveMindConfig(raw ?? {});
 }
 
-/** Convenience: build the Mind facade (services + config) in one call. */
-export async function buildMind(): Promise<Mind> {
-  return createMind(buildServices(), await loadConfig());
+/**
+ * Convenience: build the Mind facade (services + config) in one call.
+ * `cwd` is the workspace root source paths resolve against (from `ctx.cwd`).
+ */
+export async function buildMind(cwd?: string): Promise<Mind> {
+  return createMind(buildServices(), await loadConfig(), { cwd: cwd ?? process.cwd() });
 }

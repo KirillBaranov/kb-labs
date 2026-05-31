@@ -11,7 +11,7 @@
 
 import { resolveMindConfig, type MindConfigInput } from '@kb-labs/mind-contracts';
 import { createMind } from '../src/index';
-import { makeTestServices, type TestServices } from '../src/testing';
+import { makeTestWorkspace, type TestServices } from '../src/testing';
 import { CORPORA, GOLDEN, type GoldenQuery } from './fixtures';
 import { hitAtK, recallAtK, precisionAtK, mrr, ndcgAtK, mean, percentile } from './metrics';
 
@@ -62,12 +62,11 @@ export interface BenchmarkReport {
 }
 
 async function buildCorpusMind(corpus: keyof typeof CORPORA, opts: BenchOptions) {
-  const services = (opts.makeServices ?? makeTestServices)();
-  for (const [path, content] of Object.entries(CORPORA[corpus]!)) {
-    services.storage.seed(path, content);
-  }
+  // Source files on a real temp dir → exercises real discovery (globby + fs).
+  const ws = makeTestWorkspace(CORPORA[corpus]!);
+  const services = opts.makeServices ? opts.makeServices() : ws.services;
   // Fixed engine clock keeps results deterministic; latency is measured separately.
-  const mind = createMind(services, resolveMindConfig(opts.config ?? {}), { now: () => 1000 });
+  const mind = createMind(services, resolveMindConfig(opts.config ?? {}), { cwd: ws.cwd, now: () => 1000 });
   await mind.index({ indexId: corpus, scope: '' });
   return mind;
 }

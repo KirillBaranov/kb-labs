@@ -34,7 +34,8 @@
   },
   "dependencies": {
     "@kb-labs/mind-contracts": "workspace:*",
-    "@kb-labs/sdk": "workspace:*"
+    "@kb-labs/sdk": "workspace:*",
+    "globby": "^11.0.0"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",

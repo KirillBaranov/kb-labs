@@ -4,6 +4,8 @@
  * and the persisted manifest (BM25 corpus + bookkeeping).
  */
 
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import type { MindServices } from './services';
 import type { Chunk, IndexManifest } from './types';
 import { type ChunkOptions } from './ingest/chunk';
@@ -13,6 +15,8 @@ import { loadManifest, saveManifest } from './index-store';
 
 export interface SyncOptions {
   indexId: string;
+  /** Workspace root that source paths are resolved against. */
+  cwd: string;
   chunk: ChunkOptions;
   ast: boolean;
   now: string;
@@ -51,11 +55,13 @@ async function addPaths(
 ): Promise<number> {
   const newChunks: Chunk[] = [];
   for (const path of paths) {
-    const buf = await services.storage.read(path);
-    if (!buf) {
+    let content: string;
+    try {
+      content = await readFile(join(opts.cwd, path), 'utf8');
+    } catch {
       continue;
     }
-    const chunks = chunkFile(path, buf.toString('utf8'), opts.chunk, opts.ast);
+    const chunks = chunkFile(path, content, opts.chunk, opts.ast);
     if (chunks.length === 0) {
       continue;
     }

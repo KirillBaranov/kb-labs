@@ -1,21 +1,37 @@
 /**
- * File discovery over the platform `IStorage` adapter.
+ * Source-file discovery via `globby` over the workspace filesystem.
  *
- * `scope` is treated as a path prefix (default: everything). Only text-like
- * source/doc/config files are indexed; binary and dependency dirs are skipped.
+ * Reads the real repo relative to `cwd` — NOT the platform `storage` adapter,
+ * which is a blob store that recurses into node_modules and chokes on pnpm
+ * symlink chains. Ignores are applied as glob excludes and symlinks are not
+ * followed, so dependency dirs are never traversed.
+ *
+ * Returns paths relative to `cwd`.
  */
 
-import type { IStorage } from '../services';
+import globby from 'globby';
 
-const INDEXABLE = /\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|java|rb|md|mdx|txt|json|ya?ml|toml)$/i;
-const SKIP = /(^|\/)(node_modules|dist|build|\.git|coverage|\.kb)(\/|$)/;
+const EXTENSIONS = 'ts,tsx,js,jsx,mjs,cjs,py,go,rs,java,rb,md,mdx,txt,json,yaml,yml,toml';
 
-export function isIndexable(path: string): boolean {
-  return INDEXABLE.test(path) && !SKIP.test(path);
-}
+const IGNORE = [
+  '**/node_modules/**',
+  '**/dist/**',
+  '**/build/**',
+  '**/coverage/**',
+  '**/.git/**',
+  '**/.kb/**',
+];
 
-export async function discover(storage: IStorage, scope?: string): Promise<string[]> {
-  const prefix = scope && scope !== '.' ? scope : '';
-  const paths = await storage.list(prefix);
-  return paths.filter(isIndexable);
+export async function discover(cwd: string, scope?: string): Promise<string[]> {
+  const base = scope && scope !== '.' ? scope.replace(/\/+$/, '') : '';
+  const pattern = base ? `${base}/**/*.{${EXTENSIONS}}` : `**/*.{${EXTENSIONS}}`;
+
+  return globby(pattern, {
+    cwd,
+    ignore: IGNORE,
+    dot: false,
+    followSymbolicLinks: false,
+    gitignore: false,
+    onlyFiles: true,
+  });
 }

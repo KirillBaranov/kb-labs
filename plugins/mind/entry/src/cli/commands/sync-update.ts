@@ -13,7 +13,7 @@ export default defineCommand<unknown, CLIInput<SyncPathsFlags>, { exitCode: numb
         ctx.ui?.error?.('Provide one or more paths: kb mind sync update <paths…>');
         return { exitCode: 1 };
       }
-      const mind = await buildMind();
+      const mind = await buildMind(ctx.cwd);
       const res = await mind.syncUpdate(paths, input.flags.index);
       if (input.flags.json) {
         ctx.ui?.json?.(res);

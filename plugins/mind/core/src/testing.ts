@@ -10,6 +10,9 @@
  * Imports only types from `@kb-labs/sdk`; the implementations are local.
  */
 
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, dirname } from 'node:path';
 import type {
   MindServices,
   IVectorStore,
@@ -197,4 +200,30 @@ export function makeTestServices(overrides: Partial<MindServices> = {}): TestSer
     logger: noopLogger,
     ...overrides,
   } as TestServices;
+}
+
+export interface TestWorkspace {
+  /** Workspace root (a real temp dir) — pass as `createMind(..., { cwd })`. */
+  cwd: string;
+  /** In-memory services (vector store + manifest storage). */
+  services: TestServices;
+}
+
+/**
+ * Materialize source files on disk (a temp dir) so the engine exercises its
+ * REAL discovery (globby + fs + ignores) instead of in-memory seeding — this is
+ * what catches discovery bugs (e.g. node_modules recursion). The vector store
+ * and manifest stay in-memory via `makeTestServices`.
+ */
+export function makeTestWorkspace(
+  files: Record<string, string>,
+  overrides: Partial<MindServices> = {},
+): TestWorkspace {
+  const cwd = mkdtempSync(join(tmpdir(), 'mind-test-'));
+  for (const [rel, content] of Object.entries(files)) {
+    const abs = join(cwd, rel);
+    mkdirSync(dirname(abs), { recursive: true });
+    writeFileSync(abs, content, 'utf8');
+  }
+  return { cwd, services: makeTestServices(overrides) };
 }

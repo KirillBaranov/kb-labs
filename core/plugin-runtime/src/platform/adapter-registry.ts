@@ -142,25 +142,31 @@ const wrapVectorStore: AdapterMiddlewareFn<VectorStoreAdapter> = (adapter, ctx) 
     );
   };
 
+  // `ns` is the caller-supplied per-call namespace (e.g. mind's indexId) and is
+  // forwarded transparently to the adapter — orthogonal to the plugin-level
+  // governance namespacing (id-prefix + _kbNamespace metadata) applied here.
   return {
-    search: async (query: number[], limit: number, filter?: VectorFilter) => {
-      const results = await adapter.search(query, limit, filter);
+    search: async (query: number[], limit: number, filter?: VectorFilter, ns?: string) => {
+      const results = await adapter.search(query, limit, filter, ns);
       return filterByNamespace(results);
     },
-    upsert: async (vectors: VectorRecord[]) => {
+    upsert: async (vectors: VectorRecord[], ns?: string) => {
       const prefixed = vectors.map((v) => ({
         ...v,
         id: prefixId(v.id),
         metadata: namespace ? { ...v.metadata, _kbNamespace: namespace } : v.metadata,
       }));
-      return adapter.upsert(prefixed);
+      return adapter.upsert(prefixed, ns);
     },
-    delete: async (ids: string[]) => adapter.delete(ids.map(prefixId)),
-    count: () => adapter.count(),
+    delete: async (ids: string[], ns?: string) => adapter.delete(ids.map(prefixId), ns),
+    count: (ns?: string) => adapter.count(ns),
+    ...(adapter.get
+      ? { get: async (ids: string[], ns?: string) => adapter.get!(ids.map(prefixId), ns) }
+      : {}),
     ...(adapter.query
       ? {
-          query: async (filter: VectorFilter) => {
-            const results = await adapter.query!(filter);
+          query: async (filter: VectorFilter, ns?: string) => {
+            const results = await adapter.query!(filter, ns);
             return filterByNamespace(results);
           },
         }

@@ -10,7 +10,7 @@ export default defineCommand<unknown, CLIInput<QueryFlags>, { exitCode: number }
     async execute(ctx: PluginContextV3, input: CLIInput<QueryFlags>): Promise<{ exitCode: number }> {
       const { flags } = input;
       const req = QueryRequestSchema.parse({ text: flags.text, indexId: flags.index, mode: flags.mode });
-      const mind = await buildMind();
+      const mind = await buildMind(ctx.cwd);
       const res = await mind.ask(req);
 
       // Emit the frozen agent JSON as the single stdout line.

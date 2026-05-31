@@ -54,6 +54,8 @@ export interface Mind {
 }
 
 export interface CreateMindOptions {
+  /** Workspace root that source paths are resolved against (default: process.cwd()). */
+  cwd?: string;
   /** Injectable clock for deterministic tests. */
   now?: () => number;
   /** Injectable ISO timestamp source for manifest bookkeeping. */
@@ -67,6 +69,7 @@ export function createMind(
 ): Mind {
   const now = options.now ?? (() => Date.now());
   const isoNow = options.isoNow ?? (() => new Date(now()).toISOString());
+  const cwd = options.cwd ?? process.cwd();
 
   function resolveIndexId(indexId?: string): string {
     return indexId && indexId.trim() !== '' ? indexId : config.defaultIndex;
@@ -75,6 +78,7 @@ export function createMind(
   function syncOpts(indexId: string): SyncOptions {
     return {
       indexId,
+      cwd,
       chunk: { maxTokens: config.chunk.maxTokens, overlapTokens: config.chunk.overlapTokens },
       ast: config.chunk.ast,
       now: isoNow(),
@@ -88,6 +92,7 @@ export function createMind(
       const result = await ingest(
         {
           indexId,
+          cwd,
           scope: req.scope,
           chunk: { maxTokens: config.chunk.maxTokens, overlapTokens: config.chunk.overlapTokens },
           ast: config.chunk.ast,

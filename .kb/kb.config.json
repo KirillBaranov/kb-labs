@@ -8,7 +8,7 @@
       "logRingBuffer": "@kb-labs/adapters-log-ringbuffer",
       "analytics": "@kb-labs/adapters-analytics-sqlite",
       "vectorStore": "@kb-labs/adapters-qdrant",
-      "embeddings": "@kb-labs/adapters-voyage-ai/embeddings",
+      "embeddings": "@kb-labs/adapters-openai/embeddings",
       "llm": "@kb-labs/adapters-openai",
       "cache": "@kb-labs/adapters-redis",
       "eventBus": "@kb-labs/adapters-eventbus-cache",
@@ -97,7 +97,7 @@
       },
       "vectorStore": {
         "url": "http://localhost:6333",
-        "dimension": 1024
+        "dimension": 1536
       },
       "cache": {
         "url": "redis://localhost:6379"

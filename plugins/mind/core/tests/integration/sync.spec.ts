@@ -1,21 +1,32 @@
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { resolveMindConfig } from '@kb-labs/mind-contracts';
 import { createMind, type Mind } from '../../src/index';
-import { makeTestServices, type TestServices } from '../../src/testing';
+import { makeTestWorkspace, type TestServices } from '../../src/testing';
 
 describe('mind — incremental sync', () => {
   let services: TestServices;
   let mind: Mind;
+  let cwd: string;
+
+  /** Write/overwrite a source file in the workspace temp dir. */
+  function write(rel: string, content: string): void {
+    const abs = join(cwd, rel);
+    mkdirSync(dirname(abs), { recursive: true });
+    writeFileSync(abs, content, 'utf8');
+  }
 
   beforeEach(async () => {
-    services = makeTestServices();
-    services.storage.seed('src/auth.ts', 'export function login() { return authenticate(); }');
-    mind = createMind(services, resolveMindConfig({}), { now: () => 1000 });
+    const ws = makeTestWorkspace({ 'src/auth.ts': 'export function login() { return authenticate(); }' });
+    services = ws.services;
+    cwd = ws.cwd;
+    mind = createMind(services, resolveMindConfig({}), { cwd, now: () => 1000 });
     await mind.index({ indexId: 'code', scope: 'src/' });
   });
 
   it('sync add brings a new document into the index', async () => {
-    services.storage.seed('src/cart.ts', 'export function addToCart(item) { cart.push(item); }');
+    write('src/cart.ts', 'export function addToCart(item) { cart.push(item); }');
     const res = await mind.syncAdd(['src/cart.ts'], 'code');
     expect(res.added).toBe(1);
 
@@ -36,7 +47,7 @@ describe('mind — incremental sync', () => {
   });
 
   it('sync update replaces a document’s chunks (no duplication)', async () => {
-    services.storage.seed('src/auth.ts', 'export function login() { return verifyCredentials(); }');
+    write('src/auth.ts', 'export function login() { return verifyCredentials(); }');
     await mind.syncUpdate(['src/auth.ts'], 'code');
 
     const status = await mind.syncStatus('code');
@@ -48,7 +59,7 @@ describe('mind — incremental sync', () => {
   });
 
   it('sync list reflects synced documents', async () => {
-    services.storage.seed('src/cart.ts', 'export function addToCart() {}');
+    write('src/cart.ts', 'export function addToCart() {}');
     await mind.syncAdd(['src/cart.ts'], 'code');
     const list = await mind.syncList('code');
     expect(list.documents.map((d) => d.path).sort()).toEqual(['src/auth.ts', 'src/cart.ts']);

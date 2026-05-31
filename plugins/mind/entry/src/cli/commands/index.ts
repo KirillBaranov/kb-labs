@@ -10,7 +10,7 @@ export default defineCommand<unknown, CLIInput<IndexFlags>, { exitCode: number }
     async execute(ctx: PluginContextV3, input: CLIInput<IndexFlags>): Promise<{ exitCode: number }> {
       const { flags } = input;
       try {
-        const mind = await buildMind();
+        const mind = await buildMind(ctx.cwd);
         const res = await mind.index({ indexId: flags.index, scope: flags.scope, full: flags.full });
 
         if (flags.json) {
