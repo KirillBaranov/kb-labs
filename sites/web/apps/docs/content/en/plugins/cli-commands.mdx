@@ -1,7 +1,7 @@
 ---
 title: "CLI Commands"
 description: "Declaring CLI commands in your plugin: manifest, flags, handlers, results."
-updatedAt: "2026-04-07"
+updatedAt: "2026-05-31"
 order: 3
 ---
 
@@ -419,6 +419,14 @@ The CLI commands don't get picked up until the plugin's manifest is loaded. Afte
 
 ...the command is available at `pnpm kb <your-command-id>`. Skipping step 3 is the most common reason new commands don't show up — the CLI caches the registry aggressively.
 
+If you're not sure why a command isn't visible, run the trace tool:
+
+```bash
+kb diag --command "your-group your-command"
+```
+
+It walks the full discovery pipeline (registry → manifest → marketplace lock → filesystem) and tells you exactly which stage failed and what to fix.
+
 ## Debugging handler loads
 
 If your command fails to load with an error like `INVALID_HANDLER` or `Handler at ... does not export an execute function`, check:
@@ -429,7 +437,7 @@ If your command fails to load with an error like `INVALID_HANDLER` or `Handler a
 - **The export name** (after `#`) matches what's in the file. Missing `#default` and the file using `export default ...` is a common mismatch.
 - **`execute` is on the right object.** If you wrapped with `defineCommand({ handler: { execute: ... } })`, the runtime expects `module.default.execute`, not `module.default`. This is what `defineCommand` gives you automatically.
 
-Turning on `LOG_LEVEL=debug` shows the resolved handler paths at plugin load time.
+Turning on `LOG_LEVEL=debug` shows the resolved handler paths at plugin load time. For a structured diagnosis across all pipeline stages, use `kb diag --command <your-command>` — it pinpoints whether the issue is the manifest schema, a missing `dist/`, a disabled marketplace entry, or a missing dependency.
 
 ## What to read next
 
