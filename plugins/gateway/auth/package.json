@@ -26,6 +26,7 @@
   "dependencies": {
     "@kb-labs/core-contracts": "workspace:*",
     "@kb-labs/core-platform": "workspace:*",
+    "@kb-labs/core-policy-runtime": "workspace:*",
     "@kb-labs/gateway-contracts": "workspace:*",
     "bcryptjs": "^2.4.3",
     "jose": "^5.9.6",

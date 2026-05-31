@@ -34,6 +34,7 @@
     "@kb-labs/core-discovery": "workspace:*",
     "@kb-labs/core-ipc": "workspace:*",
     "@kb-labs/core-platform": "workspace:*",
+    "@kb-labs/core-policy-runtime": "workspace:*",
     "@kb-labs/core-resource-broker": "workspace:*",
     "@kb-labs/core-workspace": "workspace:*",
     "@kb-labs/llm-router": "workspace:*",

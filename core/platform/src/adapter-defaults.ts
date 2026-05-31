@@ -74,4 +74,10 @@ export const ADAPTER_DEFAULTS = {
   notifier:         { defaultFallback: 'noop' },
   logs:             { defaultFallback: 'noop' },
   snapshotManager:  { defaultFallback: 'noop' },
+  // PDP is never loaded from a configured adapter package — it is built
+  // from `documentDatabase` by the registry `buildFactory` at assembly.
+  // No honest standalone fallback exists (a default-allow/deny stub would
+  // lie); like `snapshotManager`, it has no NoOp factory, so the loader
+  // leaves the slot undefined until `buildFactory` constructs the real one.
+  policy:           { defaultFallback: 'noop' },
 } as const satisfies Record<AdapterSlot, AdapterDefault>;

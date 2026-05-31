@@ -101,6 +101,15 @@ export interface PermissionSpec {
         severity?: Array<'info' | 'warn' | 'critical'>;
       };
     };
+    /**
+     * Policy Decision Point access (ClickUp 869def338). Read-only
+     * authorization checks: `platform.policy.check(...)`,
+     * `enumeratePermissions(...)`, `listResources(...)`. Absent → the
+     * governed `platform.policy` throws on access. This gates the
+     * Plugin→Platform axis (can this plugin consult the PDP), distinct
+     * from the User→Action decisions the PDP itself makes.
+     */
+    policy?: boolean;
     /** Workflow engine access */
     workflows?: boolean | {
       /** Can start workflows */

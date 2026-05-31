@@ -1,13 +1,8 @@
 {
-  "name": "@kb-labs/core-ipc",
-  "description": "IPC transport layer for KB Labs platform (Unix sockets, process IPC)",
+  "name": "@kb-labs/core-policy-runtime",
+  "description": "Runtime authorization engine (RBAC + ReBAC) behind the platform Policy Decision Point.",
   "version": "2.94.0",
   "type": "module",
-  "author": {
-    "name": "Kirill Baranov",
-    "url": "https://github.com/kirill-baranov"
-  },
-  "license": "MIT",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -15,8 +10,7 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.js"
-    },
-    "./dist/*": "./dist/*"
+    }
   },
   "files": [
     "dist",
@@ -24,11 +18,11 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "tsup",
+    "build": "pnpm clean && tsup --config tsup.config.ts",
     "clean": "rimraf dist",
-    "dev": "tsup --watch",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix",
+    "dev": "tsup --config tsup.config.ts --watch",
+    "lint": "eslint . --ignore-pattern 'dist/**'",
+    "lint:fix": "eslint . --fix --ignore-pattern 'dist/**'",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "type-check": "tsc --noEmit"
@@ -40,23 +34,17 @@
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
     "@types/node": "^24.3.3",
-    "eslint": "^9",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
     "typescript": "^5.6.3",
     "vitest": "^3.2.4"
   },
   "engines": {
-    "node": ">=18.18.0",
+    "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
   },
   "publishConfig": {
     "access": "public"
-  },
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/kirill-baranov/kb-labs-core.git",
-    "directory": "packages/core-ipc"
   },
   "sideEffects": false
 }

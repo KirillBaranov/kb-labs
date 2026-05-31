@@ -1322,6 +1322,9 @@ importers:
 
   core/ipc:
     dependencies:
+      '@kb-labs/core-contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@kb-labs/core-platform':
         specifier: workspace:*
         version: link:../platform
@@ -1375,6 +1378,9 @@ importers:
 
   core/platform:
     dependencies:
+      '@kb-labs/core-contracts':
+        specifier: workspace:*
+        version: link:../contracts
       ulid:
         specifier: ^2.3.0
         version: 2.4.0
@@ -1595,6 +1601,34 @@ importers:
         specifier: ^3.2.4
         version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/browser@4.1.7)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
 
+  core/policy-runtime:
+    dependencies:
+      '@kb-labs/core-contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@kb-labs/core-platform':
+        specifier: workspace:*
+        version: link:../platform
+    devDependencies:
+      '@kb-labs/devkit':
+        specifier: workspace:*
+        version: link:../../infra/devkit
+      '@types/node':
+        specifier: ^24.3.3
+        version: 24.12.4
+      rimraf:
+        specifier: ^6.0.1
+        version: 6.1.3
+      tsup:
+        specifier: ^8.5.0
+        version: 8.5.1(@swc/core@1.15.33(@swc/helpers@0.5.15))(jiti@2.6.1)(postcss@8.5.14)(tsx@4.21.0)(typescript@5.9.3)(yaml@2.8.3)
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.2.4
+        version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.4)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
+
   core/registry:
     dependencies:
       '@kb-labs/core-discovery':
@@ -1677,6 +1711,9 @@ importers:
       '@kb-labs/core-platform':
         specifier: workspace:*
         version: link:../platform
+      '@kb-labs/core-policy-runtime':
+        specifier: workspace:*
+        version: link:../policy-runtime
       '@kb-labs/core-resource-broker':
         specifier: workspace:*
         version: link:../resource-broker
@@ -3064,6 +3101,9 @@ importers:
       '@kb-labs/core-platform':
         specifier: workspace:*
         version: link:../../../core/platform
+      '@kb-labs/core-policy-runtime':
+        specifier: workspace:*
+        version: link:../../../core/policy-runtime
       '@kb-labs/core-registry':
         specifier: workspace:*
         version: link:../../../core/registry
@@ -3143,6 +3183,9 @@ importers:
       '@kb-labs/core-platform':
         specifier: workspace:*
         version: link:../../../core/platform
+      '@kb-labs/core-policy-runtime':
+        specifier: workspace:*
+        version: link:../../../core/policy-runtime
       '@kb-labs/gateway-contracts':
         specifier: workspace:*
         version: link:../contracts
@@ -6609,16 +6652,16 @@ importers:
         version: 19.2.3(@types/react@19.2.14)
       '@typescript-eslint/parser':
         specifier: ^8
-        version: 8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
+        version: 8.58.1(eslint@9.39.4(jiti@1.21.7))(typescript@5.9.3)
       autoprefixer:
         specifier: ^10.4.21
         version: 10.4.27(postcss@8.5.14)
       eslint:
         specifier: ^9.12.0
-        version: 9.39.4(jiti@2.6.1)
+        version: 9.39.4(jiti@1.21.7)
       eslint-plugin-react-hooks:
         specifier: ^5.2.0
-        version: 5.2.0(eslint@9.39.4(jiti@2.6.1))
+        version: 5.2.0(eslint@9.39.4(jiti@1.21.7))
       png-to-ico:
         specifier: ^3.0.1
         version: 3.0.1
@@ -16915,6 +16958,11 @@ snapshots:
   '@esbuild/win32-x64@0.27.7':
     optional: true
 
+  '@eslint-community/eslint-utils@4.9.1(eslint@9.39.4(jiti@1.21.7))':
+    dependencies:
+      eslint: 9.39.4(jiti@1.21.7)
+      eslint-visitor-keys: 3.4.3
+
   '@eslint-community/eslint-utils@4.9.1(eslint@9.39.4(jiti@2.6.1))':
     dependencies:
       eslint: 9.39.4(jiti@2.6.1)
@@ -19430,6 +19478,18 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@typescript-eslint/parser@8.58.1(eslint@9.39.4(jiti@1.21.7))(typescript@5.9.3)':
+    dependencies:
+      '@typescript-eslint/scope-manager': 8.58.1
+      '@typescript-eslint/types': 8.58.1
+      '@typescript-eslint/typescript-estree': 8.58.1(typescript@5.9.3)
+      '@typescript-eslint/visitor-keys': 8.58.1
+      debug: 4.4.3
+      eslint: 9.39.4(jiti@1.21.7)
+      typescript: 5.9.3
+    transitivePeerDependencies:
+      - supports-color
+
   '@typescript-eslint/parser@8.58.1(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)':
     dependencies:
       '@typescript-eslint/scope-manager': 8.58.1
@@ -19689,7 +19749,7 @@ snapshots:
       sirv: 3.0.2
       tinyglobby: 0.2.16
       tinyrainbow: 2.0.0
-      vitest: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.4)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
+      vitest: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.2)(@vitest/browser@4.1.7)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
 
   '@vitest/utils@3.2.4':
     dependencies:
@@ -21019,6 +21079,10 @@ snapshots:
       safe-regex-test: 1.1.0
       string.prototype.includes: 2.0.1
 
+  eslint-plugin-react-hooks@5.2.0(eslint@9.39.4(jiti@1.21.7)):
+    dependencies:
+      eslint: 9.39.4(jiti@1.21.7)
+
   eslint-plugin-react-hooks@5.2.0(eslint@9.39.4(jiti@2.6.1)):
     dependencies:
       eslint: 9.39.4(jiti@2.6.1)
@@ -21102,6 +21166,47 @@ snapshots:
   eslint-visitor-keys@4.2.1: {}
 
   eslint-visitor-keys@5.0.1: {}
+
+  eslint@9.39.4(jiti@1.21.7):
+    dependencies:
+      '@eslint-community/eslint-utils': 4.9.1(eslint@9.39.4(jiti@1.21.7))
+      '@eslint-community/regexpp': 4.12.2
+      '@eslint/config-array': 0.21.2
+      '@eslint/config-helpers': 0.4.2
+      '@eslint/core': 0.17.0
+      '@eslint/eslintrc': 3.3.5
+      '@eslint/js': 9.39.4
+      '@eslint/plugin-kit': 0.4.1
+      '@humanfs/node': 0.16.7
+      '@humanwhocodes/module-importer': 1.0.1
+      '@humanwhocodes/retry': 0.4.3
+      '@types/estree': 1.0.8
+      ajv: 6.14.0
+      chalk: 4.1.2
+      cross-spawn: 7.0.6
+      debug: 4.4.3
+      escape-string-regexp: 4.0.0
+      eslint-scope: 8.4.0
+      eslint-visitor-keys: 4.2.1
+      espree: 10.4.0
+      esquery: 1.7.0
+      esutils: 2.0.3
+      fast-deep-equal: 3.1.3
+      file-entry-cache: 8.0.0
+      find-up: 5.0.0
+      glob-parent: 6.0.2
+      ignore: 5.3.2
+      imurmurhash: 0.1.4
+      is-glob: 4.0.3
+      json-stable-stringify-without-jsonify: 1.0.1
+      lodash.merge: 4.6.2
+      minimatch: 3.1.5
+      natural-compare: 1.4.0
+      optionator: 0.9.4
+    optionalDependencies:
+      jiti: 1.21.7
+    transitivePeerDependencies:
+      - supports-color
 
   eslint@9.39.4(jiti@2.6.1):
     dependencies:

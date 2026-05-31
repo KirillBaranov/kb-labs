@@ -70,7 +70,7 @@ describe('applyPluginGovernance — platform boundary', () => {
       'cache', 'config', 'storage', 'eventBus', 'invoke',
       'documentDatabase', 'kvStore', 'logs',
       // optional
-      'artifacts', 'snapshotManager', 'notifier',
+      'artifacts', 'snapshotManager', 'notifier', 'policy',
     ]);
 
     for (const key of Object.keys(governed)) {

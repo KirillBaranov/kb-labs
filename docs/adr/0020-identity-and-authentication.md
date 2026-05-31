@@ -54,6 +54,11 @@ covers identity and authentication only.
    Membership, PDP — internal to the gateway. Anything else is a fork, not
    an adapter.
 
+   > **Superseded in part by [ADR-0024](0024-pdp-as-platform-adapter.md):** the
+   > PDP is now a first-class platform adapter (`platform.policy`), reusable by
+   > workflow/REST/plugins. UserStore, TokenIssuer, and Membership remain
+   > gateway-internal as stated here.
+
 3. **Tokens carry identity, not permissions.** Access JWT payload:
    `{ sub, tenantId, type: 'user' | 'machine', iat, exp, jti, fam }`.
    No `role`, `scopes`, or `capabilities` ever land in a token.

@@ -75,6 +75,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@kb-labs/core-contracts": "workspace:*",
     "ulid": "^2.3.0"
   },
   "devDependencies": {

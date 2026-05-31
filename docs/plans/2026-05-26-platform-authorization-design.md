@@ -266,67 +266,71 @@ PDP идёт по двум путям:
 
 Если оба false → deny.
 
-### Кейс E — Agent tokens (constrained delegation)
+### Кейс E — Agent tokens (constrained delegation) — МОДЕЛЬ ЗАФИКСИРОВАНА
 
-Самый сложный кейс. **Принципиальное расхождение с эпиком.**
+Юзер выдаёт агенту токен = **сужение своих прав**. Юзер сам "натыкивает" доступные действия для агента. Пример: юзер может `mind:*`, `quality:*` и всё остальное; агенту натыкал только `mind:*` → агент дёргает `quality:run` → deny.
 
-Эпик: "Token не несёт прав". Это правильно для **user-токенов**.
-
-**Для agent-токенов это неприменимо.** Юзер выдаёт агенту constrained-токен ("делай только X и Y, только на ресурсе Z, 24 часа"). Constraints — **в токене**, потому что:
-- Они зафиксированы при issuance, не меняются в течение TTL.
-- Это паттерн AWS STS session policies, OAuth scopes, GitHub fine-grained PATs.
-
-**Структура agent-токена:**
-```json
-{
-  "sub": "agent:claude-deploy-bot",
-  "tenantId": "acme",
-  "type": "agent",
-  "delegated_by": "user:alice",
-  "iat": ..., "exp": ...,
-  "constraints": {
-    "actions": ["workflow:run", "storage:read"],
-    "resources": [{"type": "workflow", "id": "deploy-prod"}]
-  }
-}
+**Главное свойство — токен только сужает, никогда не выдаёт:**
 ```
+effective(agent) = constraints(token) ∩ perms(user, в момент запроса)
+```
+Floor-гарантия: даже при кривой настройке агент не может больше, чем сам юзер. Пересечение с **текущими** правами юзера, не снепшот — сняли у юзера право, у агента отвалилось.
 
-**PDP логика для агента:**
+**Противоречия с принципом "token не несёт прав" НЕТ** (исправлено vs первая версия дока).
+Constraints **не лежат в токене**. В токене — только identity + ссылка:
+```json
+{ "sub": "agent:deploy-bot", "type": "agent", "delegated_by": "user:alice",
+  "tenantId": "acme", "jti": "tok_abc", "iat": ..., "exp": ... }
+```
+Список «что натыкал юзер» хранится **на сервере** по ключу `jti` (GitHub fine-grained PAT модель). Принцип 2 держится единообразно для user/machine/agent — токен везде ссылка на identity, права резолвятся сервером.
+
+**Преимущества server-side constraints:**
+- Принцип "token identity-only" единообразен.
+- Редактируемость: перенастроить агента без перевыпуска токена (меняется строка в БД).
+- Revocation: пометил row revoked → мгновенно.
+- Live intersection автоматом (userPerms резолвятся каждый раз).
+
+**PDP логика для агента — двухстадийная:**
 ```
 subject.type === 'agent':
-  effective = token.constraints.actions ∩ resolveCurrentUserPerms(token.delegated_by)
-  return effective.includes(action) && resource matches token.constraints.resources
+  1. record = lookup(jti); if record.revoked → deny
+  2. constraints = record.actions                 // что натыкал юзер
+  3. if action ∉ constraints → deny                // дешёвый гейт токена
+  4. return userCheck(delegated_by, action, resource)  // обычная проверка как юзера
 ```
+Allow только если оба гейта прошли.
 
-**Важно:** реальный allow = `(agent capabilities) ∩ (CURRENT user permissions)`. Не frozen-snapshot. Если у юзера сняли права — агент тоже теряет. Промышленный консенсус.
+**Гранулярность constraints (зафиксировано): action-level + plugin wildcard.**
+- Хранятся действия: `["mind:search", "mind:index"]`.
+- Plugin-level — wildcard: `["mind:*"]` = все mind-действия. Покрывает "только mind".
+- **Resource-level сужение в токене — отложено.** Агент и так ограничен ресурсами юзера через ReBAC (наследует relations). Доп. сужение по ресурсу — редкий advanced-кейс.
 
-**Subject type расширяется:**
+**Subject type:**
 ```ts
 type Subject =
   | { type: 'user', userId, tenantId, memberships, relations }
-  | { type: 'agent', userId: <delegated_by>, tenantId, memberships, relations, constraints }
+  | { type: 'agent', userId: <delegated_by>, tenantId, memberships, relations, tokenConstraints }
+  | { type: 'machine', clientId, tenantId, memberships }
   | { type: 'anonymous' };
 ```
+Агент = юзер с гейтом токена сверху. ReBAC relations наследует от юзера (действует as alice). Audit: `acted_by: agent:deploy-bot, on_behalf_of: alice`.
 
-Агент = юзер с обрезанным набором capabilities. Audit log: `acted_by: agent:X, on_behalf_of: alice`. ReBAC relations агент **наследует от юзера** (он действует as alice).
+**"Натыкать" требует enumerate своих прав:**
+`GET /auth/my-actions` → список доступных юзеру действий, сгруппированных по плагину. Юзер тыкает подмножество → `constraints` токена. UI показывает только то, что юзер сам может (нельзя натыкать чего у тебя нет). Для RBAC enumerate тривиален.
 
-**Tool discovery для агента:**
-`GET /agent/capabilities` возвращает функцию от `(token, current_user_perms)`:
+**Tool discovery агента:**
+`GET /agent/capabilities` (с agent-токеном) → материализованное пересечение `constraints ∩ current_user_perms`:
 ```json
-{
-  "tools": [
-    {"name": "workflow.run", "resources": ["workflow:deploy-prod"]},
-    {"name": "storage.read", "resources": ["storage:logs/*"]}
-  ]
-}
+{ "tools": [{"name": "mind.search"}, {"name": "mind.index"}] }
 ```
+Это тот самый endpoint "ядро решает, что отдать агенту в виде списка тулов".
 
-**Revocation:** token id в БД с blacklist. Gateway при каждом запросе проверяет. **Обязательно.**
+**Revocation:** `jti` в БД, флаг revoked. Gateway проверяет на каждом запросе (шаг 1 выше). Обязательно.
 
-**Где это делать (открытый вопрос):**
-- Studio auth plan говорит "constrained delegation for machine tokens — следующий эпик".
-- Это **противоречит** тому, что весь продукт KB Labs про агентов.
-- Решить: agent-tokens в этом эпике, в Studio auth plan, или отдельным эпиком — **до старта кода**.
+**Открытый вопрос (остаётся): где делать.**
+- Studio auth plan говорит "constrained delegation — следующий эпик".
+- Но весь продукт KB Labs про агентов + MCP в проде → откладывать нельзя.
+- Решить: agent-tokens в этом эпике / в Studio auth plan / отдельным эпиком — **до старта кода**. Модель готова, вопрос только про размещение работы.
 
 ### Кейс F — Анонимные запросы
 
@@ -361,6 +365,55 @@ Sink — отдельный эпик. Сейчас просто event. Allow л�
 - TTL кеша в parent — короткий (секунды), eventBus инвалидация — primary mechanism.
 
 ---
+
+## Три слоя: декларация → привязка → резолюция (ядро дизайна)
+
+Главный сформулированный принцип: **плагин поставляет словарь, платформа делает привязку.** Гранулярность наслаивается сверху, не трогая плагин.
+
+| Слой | Кто владеет | Что делает | Пример |
+|---|---|---|---|
+| **1. Декларация** | Плагин (манифест) | Объявляет *словарь*: действия + типы отношений. НЕ привязки. | `workflow:view`, `workflow:delete`; relation types `owner`, `member` |
+| **2. Привязка (binding)** | Платформа + админ | Решает, *кто* получает действие — через роль (RBAC) или отношение (ReBAC) | "группа `viewers` → `workflow:view`"; "owner → `workflow:delete`" |
+| **3. Резолюция** | PDP (runtime) | На каждый запрос проходит группы + отношения → allow/deny | `check(alice, workflow:view, wf-42)` |
+
+**Почему сильно:** плагин-код тупой и стабильный. Один и тот же `check(identity, 'workflow:view', resource)` работает, когда админ настроил «вся группа видит всё» (RBAC), «видишь только где ты member» (ReBAC), или enterprise добавил «только в своём регионе». **Плагин не переписывается** — меняется только конфиг привязки на платформе.
+
+### Плагин знает минимум об инфре (зафиксировано)
+
+Плагин в рантайме делает ровно три вещи, все через контракт платформы:
+
+```ts
+// 1. Декларация словаря — в манифесте (не код)
+//    actions + relation types
+
+// 2. Проверка — одна строка, плагин не знает RBAC это или ReBAC
+await ctx.platform.policy.check(identity, 'workflow:view', { type: 'workflow', id });
+
+// 3. Сигнал о жизненном цикле ресурса — нейтральная платформенная утилита
+await ctx.platform.resources.track({ type: 'workflow', id, createdBy: identity.userId });
+```
+
+**Решение проблемы фактов отношений (открытый вопрос №2 закрыт):**
+- Факт "alice создала workflow-42" рождается при создании, знает только плагин → плагин обязан сигнализировать.
+- Минимум знания: плагин зовёт нейтральную `platform.resources.track()`, **НЕ** `policy.grant(creator, 'owner', ...)`. Плагин не знает, что owner что-то даёт.
+- Семантику `createdBy → owner` даёт **манифест** (декларация).
+- Привязку `owner → workflow:delete` даёт **админ** (binding).
+- Резолюцию делает **PDP**.
+- Плагин в рантайме трогает только `policy.check` + `resources.track`. Про группы/роли/граф — ноль.
+
+**Явный шаринг** ("alice расшарила workflow бобу как viewer") — единственное место, где плагин чуть политически осознан. Идёт через платформенную утилиту (`platform.resources.share` или аналог), не через прямой доступ к графу. Принцип не нарушается.
+
+### Дефолтных привязок НЕТ (zero-trust, зафиксировано)
+
+Плагин **не поставляет** default role mappings, даже seed. Админ выдаёт с нуля ("кому реально нужны права — с нуля, без доступов куда не надо").
+
+**Следствие:** из коробки плагин не работает, пока админ не настроит. Принимается осознанно.
+
+**Bootstrap:** один платформенный super-admin из env (как `bootstrap-admin` в Studio auth plan) с `policy:admin`/wildcard. Единственный seed. Дальше он раздаёт всё. НЕ per-plugin defaults.
+
+**Фрикция настройки** гасится в админке: "плагин объявил действия X, Y — ни одно не привязано" + кнопка "выдать всё группе admin". Zero-default, но настройка в два клика.
+
+> **Отменяет** ранее предложенный `default_role_mappings` в манифесте плагина (см. Кейс C ниже — оставлен для истории, но привязки оттуда убраны).
 
 ## Permission catalog: как живёт
 
@@ -443,11 +496,53 @@ core/policy/                   # UNCHANGED — workspace-policy остаётся
 
 ## Открытые вопросы (до старта кода)
 
-1. **Agent tokens — где?** Этот эпик / Studio auth plan / отдельный эпик. Критичный вопрос для продукта.
-2. **Granted ReBAC relations — кто их выдаёт?** Когда юзер создаёт ресурс — кто пишет `(creator, owner, resource:X)`? Платформенный хук на creation events или CRUD-обязанность плагина?
-3. **`platform.entitlements`** — out of scope, но нужно явно отрисовать smежную систему в ADR, чтобы плагин-авторы понимали, где граница.
+1. **Agent tokens — где делать?** Модель ЗАФИКСИРОВАНА (Кейс E: server-side constraints по `jti`, action-level + plugin wildcard, live intersection). Открыто только **размещение работы**: этот эпик / Studio auth plan / отдельный эпик. MCP в проде давит — откладывать нельзя.
+2. ~~**Granted ReBAC relations — кто их выдаёт?**~~ **ЗАКРЫТО:** плагин зовёт нейтральную `platform.resources.track()` при CRUD, манифест декларирует `createdBy → owner`, платформа пишет факт в граф. Плагин не знает про политику.
+3. **`platform.entitlements`** — out of scope, но нужно явно отрисовать смежную систему в ADR, чтобы плагин-авторы понимали, где граница.
 4. **Конкретный shape `IMembershipReader` и `IRelationReader`** — что они принимают, что возвращают, кеш-семантика, ошибки.
 5. **Migration story:** что делать с существующими `AuthContext.permissions: ['host:connect']`? Удалять поле или legacy-mapping?
+6. **`platform.resources` контракт** — точный shape `track()` / `untrack()` / `share()`. Новая платформенная утилита, нейтральный фасад над relation-графом. Склоняемся к синхронному вызову (без eventual-consistency гонок на «создал и сразу удалил»).
+7. **Bootstrap super-admin** — env-переменные, идемпотентность, wildcard vs `policy:admin`. Единственный seed (дефолтных привязок плагинов нет).
+
+---
+
+## UX-прогон: найденные дыры (19) + линия разреза
+
+Прогнали сквозные сценарии по актёрам (админ / dev / юзер / CLI / агент / система). Дыры разделены на **контракт-замораживающие** (решить в этом эпике) и **deferrable** (backlog за стабильным контрактом).
+
+### Контракт-замораживающие (решить сейчас — ~7)
+
+| # | Дыра | Почему в ядро |
+|---|---|---|
+| 3 | Чёрная дыра дебага деналей (6 причин → один "denied") | `policy.explain(identity, action, resource)` → reason/trace. Движок обязан рождать с первого дня, болтом не прикрутить. В контракт PDP. Нужен в API/CLI/админке/ответе агенту. |
+| 14/13 | Agent token: expiry посреди задачи, runtime-деградация | Шейпит токен-схему, Subject `agent`, refresh-модель, структурный deny (`{denied, reason}`). **Горящее — MCP в проде.** |
+| 15/16 | Orphan resource при сбое `track()`; гонка create→delete | Транзакционность `resources.track` (тот же commit, что создание ресурса). Семантика контракта. |
+| 8 | RBAC enumerate ≠ ReBAC per-resource (фантомные кнопки) | `useCan(action, resource)` + `listResources` фильтрует списки. Форма SDK-контракта. |
+| 17 | Share/re-share privilege escalation | Правило в контракт `resources.share`: нельзя выдать больше своего, ре-шеринг off by default. |
+| 4 | Каскад прав на дизейбл юзера | `status: disabled` → PDP резолвит пустой набор (не флаг, который PDP игнорит). Семантическое правило. |
+| 18 | Rename/deprecation permission ломает привязки | Поле в манифест-схеме (`deprecated` / `aliases`). Лучше заложить сразу. |
+
+### Deferrable (backlog, не блокирует — ~12)
+
+| # | Дыра | Куда |
+|---|---|---|
+| 1 | Мёртвая система на старте (zero-trust, 200 привязок) | **Suggested bundles** (поле в манифесте можно сейчас, UI применения потом). Не дефолты (auto-apply), а пресеты, которые админ осознанно применяет. |
+| 2 | Нет surface непривязанных действий | Unbound-очередь в админке + нотификация. Derivable из данных. |
+| 5 | Local bypass слепит разработчика (deny-пути не тестятся) | `kb-dev --simulate-policy --as-role member`. Dev-тулинг. |
+| 6 | Рассинхрон манифест↔код (опечатка → тихий deny) | Build-check / кодген констант из манифеста. |
+| 7 | Hide vs disable в UI | Per-action режим в `useCan`. UI-полиш. |
+| 9 | Denied — тупик (нет request-access) | Request-access поток (пинг админу с контекстом). Продукт. |
+| 10 | Немой 403 в CLI | Actionable error + exit code (EX_NOPERM). Полиш. |
+| 11 | Multi-tenant неоднозначность | Tenant-switcher (`kb auth use-tenant`). Модель уже поддерживает (tenantId в токене). |
+| 19 | Super-admin single point (утечка/lockout) | Recovery/break-glass, несколько super-admin. Ops. |
+
+> **Линия разреза = главный вывод прогона.** Эпик не решает 19 проблем. Он принимает ~7 контрактных решений так, чтобы остальные 12 делались позже без переписывания. «Огромность» расфасована по таскам.
+
+### Три системных вывода
+
+1. **Zero-trust без bundles нежизнеспособен** (#1) — смягчить до "suggested bundles, admin applies", иначе онбординг = часы ручной работы.
+2. **`policy.explain` — ядро, не опция** (#3, #8, #10, #13) — закрытый мир + RBAC+ReBAC+token-constraints даёт нечитаемые денали. В контракт с первого дня.
+3. **Agent token lifecycle в проде — самая горящая незакрытая зона** (#14, #13) — expiry-посреди-задачи и runtime-деградация не имеют ответа. Решать раньше красивого RBAC.
 
 ---
 
@@ -479,13 +574,15 @@ core/policy/                   # UNCHANGED — workspace-policy остаётся
 
 1. **Identity vs Policy раздельны.** Identity — кто. Policy — что можно.
 2. **User-token identity-only.** Permissions резолвятся из БД на каждый запрос.
-3. **Agent-token несёт constraints.** Не противоречит (1) — это другой subject type, constrained delegation pattern.
+3. **Все токены identity-only, единообразно** (user/machine/agent). Agent-token несёт `jti` + `delegated_by`, constraints хранятся server-side по `jti`. `effective(agent) = constraints ∩ perms(user сейчас)` — токен только сужает, никогда не выдаёт. Live intersection (не снепшот). Никакого исключения из принципа 2.
 4. **Subject ≠ Identity.** Subject = `{ user, memberships, relations }`, собирается per-request с кешом.
 5. **PDP — единственный шов.** Контракт `check(identity, action, resource?, context?)` + `listResources` для enumerate.
 6. **Модель: RBAC + ReBAC.** RBAC для tenant-wide ролей, ReBAC для per-resource relations. Combine OR, default deny.
 7. **PDP — чистая функция** (Cedar-style). Caller собирает Subject и Resource через `IMembershipReader`/`IRelationReader`. PDP не делает синхронных I/O в attribute resolvers. ABAC отложен.
 8. **Permission strings — double catalog.** Platform enum + plugin manifest extension. Plugin может звать только свои + платформенные permissions.
-9. **Plugin владеет своим permission-пространством.** Декларирует permissions + default role mappings. Defaults применяются один раз при первом появлении.
+9. **Три слоя: декларация → привязка → резолюция.** Плагин декларирует словарь (действия + типы отношений), НЕ привязки. Админ/платформа делает привязку (роль или отношение). PDP резолвит. Гранулярность наслаивается сверху, плагин не переписывается.
+9b. **Плагин знает минимум об инфре.** В рантайме плагин трогает только `platform.policy.check` + `platform.resources.track`. Про группы/роли/граф — ноль. Факты отношений плагин сообщает нейтральной утилитой `resources.track()`, не policy-вызовом.
+9c. **Zero-trust binding.** Дефолтных привязок плагины не поставляют. Админ выдаёт с нуля. Единственный seed — платформенный bootstrap super-admin из env.
 10. **Closed world.** Default deny. Anonymous — первоклассный subject.
 11. **Cache + eventBus invalidation.** PDP кеширует в parent, инвалидация через события membership/relation изменений. Worker'ы не кешируют (RPC через IPC proxy).
 12. **Audit-ready.** PDP эмитит `policy.decision` events. Sink — отдельный эпик.
