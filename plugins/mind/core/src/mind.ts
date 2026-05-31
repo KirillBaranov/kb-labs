@@ -124,7 +124,7 @@ export function createMind(
       // Over-fetch, then refine: retrieve -> rerank -> dedup -> verify.
       const retrieved = await timed('retrieve', () =>
         retrieve(
-          { text: req.text, indexId, limit: limit * 3, intent: req.intent, rrfK: config.retrieval.rrfK },
+          { text: req.text, indexId, limit: limit * 3, intent: req.intent, rrfK: config.retrieval.rrfK, hyde: config.retrieval.hyde },
           services,
         ),
       );
@@ -168,7 +168,7 @@ export function createMind(
       let retrievalConfidence = 0;
       for (const q of queries) {
         const r = await retrieve(
-          { text: q, indexId, limit: budget.maxChunks, intent: undefined, rrfK: config.retrieval.rrfK },
+          { text: q, indexId, limit: budget.maxChunks, intent: undefined, rrfK: config.retrieval.rrfK, hyde: config.retrieval.hyde },
           services,
         );
         retrievalConfidence = Math.max(retrievalConfidence, r.confidence);

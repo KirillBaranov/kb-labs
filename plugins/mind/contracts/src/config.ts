@@ -58,6 +58,13 @@ export const RetrievalConfigSchema = z.object({
   rerank: z.boolean().default(true),
   /** Enable semantic dedup of retrieved chunks. */
   dedup: z.boolean().default(true),
+  /**
+   * HyDE (Hypothetical Document Embeddings): embed an LLM-generated hypothetical
+   * answer instead of the raw query for the vector search (BM25 still uses the
+   * raw query). Trades one LLM call per query for better concept-query recall.
+   * Off by default — enable only where the bench A/B shows a lift.
+   */
+  hyde: z.boolean().default(false),
 });
 
 export const ConfidenceConfigSchema = z.object({

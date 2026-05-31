@@ -1,0 +1,12 @@
+// Mind A/B overlay — enable HyDE (hypothetical document embeddings).
+//
+// Merged into the project kb.config.json by `kb-dev ensure --scenario` and read
+// by the mind plugin (configSection "mind") after the rest restart. Removed
+// when the runner restores `--scenario default`.
+{
+  "mind": {
+    "retrieval": {
+      "hyde": true
+    }
+  }
+}

@@ -9,6 +9,7 @@ import { loadManifest } from '../index-store';
 import { bm25Search, type Ranked } from './bm25';
 import { vectorSearch } from './vector';
 import { rrfFuse, intentWeights, type QueryIntent } from './fuse';
+import { hypotheticalDocument } from './hyde';
 
 export interface RetrieveInput {
   text: string;
@@ -16,6 +17,8 @@ export interface RetrieveInput {
   limit: number;
   intent?: QueryIntent;
   rrfK: number;
+  /** HyDE: embed an LLM-generated hypothetical doc for the vector search. */
+  hyde?: boolean;
 }
 
 export interface RankedChunk {
@@ -38,9 +41,13 @@ export async function retrieve(input: RetrieveInput, services: MindServices): Pr
   // Over-fetch each list so fusion has signal beyond the final cut.
   const candidateLimit = Math.max(input.limit * 3, 30);
 
+  // BM25 always runs on the raw query (exact terms). HyDE only changes the text
+  // fed to the vector search — a hypothetical answer sits closer to the chunks.
+  const vectorText = input.hyde ? await hypotheticalDocument(input.text, services.llm) : input.text;
+
   const bm25 = bm25Search(manifest.chunks, input.text, candidateLimit);
   const vector = await vectorSearch(
-    input.text,
+    vectorText,
     services.vectorStore,
     (t) => services.embeddings.embed(t),
     input.indexId,

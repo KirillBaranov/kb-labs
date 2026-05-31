@@ -15,7 +15,7 @@ Bench-gated: every row marked **Y** must ship with a before/after benchmark delt
 | AST chunking | tree-sitter | 🟡 structure-aware-lite (brace) | P2 | Y | tree-sitter behind `chunkFile`; measure chunk-boundary quality |
 | Freshness / staleness | fresh/soft/hard + penalties | ❌ | P1 | Y | confidence penalty for stale chunks |
 | Conflict detection | cross-source contradiction penalty | ❌ | P3 | Y | hard to bench — needs conflict fixtures |
-| HyDE (hypothetical embeddings) | optional | ❌ | P3 | Y | only if bench shows lift on concept queries |
+| HyDE (hypothetical embeddings) | optional | 🟡 ported, default OFF | P3 | Y | `retrieval.hyde` flag + `e2e/mind` `hyde-on` A/B. Live verdict on current golden set: **neutral** (Δmrr 0.000, Δhit@5 0.000) — the 6 direct queries already retrieve well, so HyDE's concept-query benefit isn't exercised. Stays OFF until a concept-heavy golden set shows lift. |
 
 ## Answer quality
 
