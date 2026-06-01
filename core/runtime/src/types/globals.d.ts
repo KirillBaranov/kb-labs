@@ -14,6 +14,14 @@ declare global {
   var __KB_RAW_CONFIG__: Record<string, unknown> | undefined;
 
   /**
+   * Effective config: `__KB_RAW_CONFIG__` with `.kb/overlays/` applied. Product
+   * config (getConfig/useConfig) reads this so scenario overlays reach plugin
+   * sections. Falls back to the raw config when no overlays are present.
+   */
+  // eslint-disable-next-line no-var
+  var __KB_EFFECTIVE_CONFIG__: Record<string, unknown> | undefined;
+
+  /**
    * Config section key for useConfig() auto-detection in subprocess mode.
    * Set by sandbox bootstrap before handler execution.
    */

@@ -104,6 +104,8 @@ export interface PlatformInitResult {
   platformConfig: PlatformConfig;
   /** Full raw project config (for `useConfig()` access). */
   rawConfig?: Record<string, unknown>;
+  /** Raw config with `.kb/overlays/` applied — what `useConfig()` should read. */
+  effectiveConfig?: Record<string, unknown>;
   /** Where the KB Labs platform code lives (node_modules/@kb-labs/*). */
   platformRoot: string;
   /** Where the user's `.kb/kb.config.json` lives. */
@@ -140,7 +142,7 @@ export async function initializePlatform(
   }
 
   if (loadResult) {
-    const { platformConfig, rawConfig, platformRoot, projectRoot, sources } =
+    const { platformConfig, rawConfig, effectiveConfig, platformRoot, projectRoot, sources } =
       loadResult;
     try {
       // Relative adapter paths (e.g. ".kb/database/kb.sqlite") must resolve
@@ -169,6 +171,7 @@ export async function initializePlatform(
         platform: platformInstance,
         platformConfig,
         rawConfig,
+        effectiveConfig,
         platformRoot,
         projectRoot,
       };
@@ -195,6 +198,7 @@ export async function initializePlatform(
         platform: platformInstance,
         platformConfig: fallbackConfig,
         rawConfig,
+        effectiveConfig,
         platformRoot,
         projectRoot,
       };
