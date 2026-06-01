@@ -33,6 +33,8 @@ export { rerank } from './retrieval/rerank';
 export { dedupRanked } from './retrieval/dedup';
 export { verifySources, computeConfidence } from './answer/verify';
 export type { VerificationResult, ConfidenceResult } from './answer/verify';
+export { checkFields, extractSymbols } from './answer/field-check';
+export type { FieldCheckResult } from './answer/field-check';
 export { decompose } from './answer/decompose';
 export { synthesizeAnswer, buildAgentResponse, toSources } from './answer/answer';
 export { recordQuery, recentQueries } from './feedback/history';

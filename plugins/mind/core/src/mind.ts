@@ -33,6 +33,7 @@ import { retrieve } from './retrieval/retrieve';
 import { rerank } from './retrieval/rerank';
 import { dedupRanked } from './retrieval/dedup';
 import { verifySources, computeConfidence } from './answer/verify';
+import { applyFieldCheck } from './answer/field-check';
 import { decompose } from './answer/decompose';
 import { synthesizeAnswer, buildAgentResponse } from './answer/answer';
 import { recordQuery } from './feedback/history';
@@ -203,13 +204,15 @@ export function createMind(
       ranked = ranked.slice(0, budget.maxChunks);
 
       const verification = await verifySources(ranked, services.storage);
-      const { confidence, warnings } = computeConfidence(
-        retrievalConfidence,
-        verification.rate,
-        config.confidence.floor,
-      );
+      const base = computeConfidence(retrievalConfidence, verification.rate, config.confidence.floor);
 
       const answer = await synthesizeAnswer(req.text, ranked, services.llm, budget.useLLM);
+
+      // Field-check (anti-hallucination): symbols the answer names must exist in
+      // the retrieved sources. Ungrounded terms penalise confidence and warn.
+      const { confidence, warnings } = budget.useLLM
+        ? applyFieldCheck(answer, ranked, base.confidence, base.warnings, config.confidence.floor)
+        : base;
 
       const timingMs = now() - t0;
       services.logger?.info('mind: ask', {
