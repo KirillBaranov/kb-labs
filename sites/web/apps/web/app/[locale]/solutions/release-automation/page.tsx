@@ -162,7 +162,7 @@ export default async function ReleaseAutomationPage({ params }: Props) {
                   {t('hero.description')}
                 </p>
                 <div className="flex flex-wrap justify-center gap-3">
-                  <Button variant="primary" size="lg" href="https://docs.kblabs.ru/plugins/release" target="_blank" rel="noopener noreferrer">
+                  <Button variant="primary" size="lg" href="https://docs.kblabs.ru/use-cases/scenario-release-notes" target="_blank" rel="noopener noreferrer">
                     {t('hero.docsBtn')}
                     <ExternalLink className="ml-2 size-4" />
                   </Button>
@@ -412,7 +412,7 @@ export default async function ReleaseAutomationPage({ params }: Props) {
                     <CopyButton code="kb marketplace install @kb-labs/release-entry" className="shrink-0" />
                   </div>
                   <div className="flex flex-wrap justify-center gap-3">
-                    <Button variant="primary" size="lg" href="https://docs.kblabs.ru/plugins/release" target="_blank" rel="noopener noreferrer">
+                    <Button variant="primary" size="lg" href="https://docs.kblabs.ru/use-cases/scenario-release-notes" target="_blank" rel="noopener noreferrer">
                       {t('cta.docsBtn')}
                     </Button>
                     <Button variant="secondary" size="lg" href={`/${locale}/install`}>

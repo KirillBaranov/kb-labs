@@ -8,35 +8,50 @@
  *  3. Every static route in apps/web/app/sitemap.ts has a corresponding page.tsx
  *
  * Exit code 0 = all good, 1 = issues found.
+ *
+ * Devkit integration: when KB_DEVKIT_MODE is set, outputs { issues: Issue[] } JSON to stdout
+ * instead of printing to console. Self-filters: skips all packages except kb-labs-web.
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+const DEVKIT_MODE = Boolean(process.env.KB_DEVKIT_MODE);
+const CHECK_NAME = 'seo-lint';
+
+// Self-filter: only kb-labs-web (sites/web) has SEO pages to check.
+if (DEVKIT_MODE && (process.env.KB_DEVKIT_PACKAGE_NAME ?? '') !== 'kb-labs-web') {
+  process.stdout.write(JSON.stringify({ issues: [] }));
+  process.exit(0);
+}
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, '..');
 
 let errors = 0;
 let warnings = 0;
+const issues = [];
 
 function error(msg) {
-  console.error(`  ✗ ${msg}`);
+  if (!DEVKIT_MODE) { console.error(`  ✗ ${msg}`); }
+  issues.push({ check: CHECK_NAME, severity: 'error', message: msg });
   errors++;
 }
 
 function warn(msg) {
-  console.warn(`  ⚠ ${msg}`);
+  if (!DEVKIT_MODE) { console.warn(`  ⚠ ${msg}`); }
+  issues.push({ check: CHECK_NAME, severity: 'warning', message: msg });
   warnings++;
 }
 
 function ok(msg) {
-  console.log(`  ✓ ${msg}`);
+  if (!DEVKIT_MODE) { console.log(`  ✓ ${msg}`); }
 }
 
 // ─── 1. All page.tsx have metadata ───────────────────────────────────────────
 
-console.log('\n[1] Checking page.tsx files for generateMetadata / export const metadata...');
+if (!DEVKIT_MODE) { console.log('\n[1] Checking page.tsx files for generateMetadata / export const metadata...'); }
 
 const SKIP_PAGES = [
   // Root stubs and redirect/catch-all pages — no metadata needed
@@ -50,9 +65,9 @@ function checkPagesInDir(appDir, appName) {
   const pageFiles = [];
 
   function walk(dir) {
-    if (!fs.existsSync(dir)) return;
+    if (!fs.existsSync(dir)) { return; }
     for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-      if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === '.next') continue;
+      if (entry.name.startsWith('.') || entry.name === 'node_modules' || entry.name === '.next') { continue; }
       const full = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         walk(full);
@@ -66,7 +81,7 @@ function checkPagesInDir(appDir, appName) {
 
   for (const file of pageFiles) {
     const rel = path.relative(appDir, file);
-    if (SKIP_PAGES.some((s) => rel.endsWith(s))) continue;
+    if (SKIP_PAGES.some((s) => rel.endsWith(s))) { continue; }
 
     const content = fs.readFileSync(file, 'utf8');
     const hasMetadata =
@@ -86,7 +101,7 @@ checkPagesInDir(path.join(ROOT, 'apps/docs'), 'docs');
 
 // ─── 2. Blog translation parity ───────────────────────────────────────────────
 
-console.log('\n[2] Checking blog translation parity (en ↔ ru)...');
+if (!DEVKIT_MODE) { console.log('\n[2] Checking blog translation parity (en ↔ ru)...'); }
 
 const blogEn = path.join(ROOT, 'content/blog/en');
 const blogRu = path.join(ROOT, 'content/blog/ru');
@@ -112,7 +127,7 @@ if (fs.existsSync(blogEn)) {
 
 // ─── 3. Sitemap routes vs actual pages ───────────────────────────────────────
 
-console.log('\n[3] Checking sitemap routes have matching page.tsx in apps/web...');
+if (!DEVKIT_MODE) { console.log('\n[3] Checking sitemap routes have matching page.tsx in apps/web...'); }
 
 const sitemapFile = path.join(ROOT, 'apps/web/app/sitemap.ts');
 if (fs.existsSync(sitemapFile)) {
@@ -146,12 +161,17 @@ if (fs.existsSync(sitemapFile)) {
 
 // ─── Summary ─────────────────────────────────────────────────────────────────
 
+if (DEVKIT_MODE) {
+  process.stdout.write(JSON.stringify({ issues }));
+  process.exit(0);
+}
+
 console.log('\n─────────────────────────────────────────────');
 if (errors === 0 && warnings === 0) {
   console.log('✅ All SEO checks passed.\n');
   process.exit(0);
 } else {
-  if (errors > 0) console.error(`❌ ${errors} error(s), ${warnings} warning(s).\n`);
-  else console.warn(`⚠  0 errors, ${warnings} warning(s).\n`);
+  if (errors > 0) { console.error(`❌ ${errors} error(s), ${warnings} warning(s).\n`); }
+  else { console.warn(`⚠  0 errors, ${warnings} warning(s).\n`); }
   process.exit(errors > 0 ? 1 : 0);
 }

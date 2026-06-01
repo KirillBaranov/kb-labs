@@ -78,7 +78,7 @@ export default async function CodeQualityPage({ params }: Props) {
                   {t('page.heroDescription')}
                 </p>
                 <div className="flex flex-wrap justify-center gap-3">
-                  <Button variant="primary" size="lg" href="https://docs.kblabs.ru/plugins/quality" target="_blank" rel="noopener noreferrer">
+                  <Button variant="primary" size="lg" href="https://docs.kblabs.ru/use-cases/scenario-ai-code-review" target="_blank" rel="noopener noreferrer">
                     {t('page.docsBtn')}
                   </Button>
                   <Button variant="secondary" size="lg" href={`/${locale}/install`}>
@@ -178,7 +178,7 @@ export default async function CodeQualityPage({ params }: Props) {
                     <CodeBlock code={INSTALL_ALL} language="bash" bare />
                   </div>
                   <div className="flex flex-wrap justify-center gap-3">
-                    <Button variant="primary" size="lg" href="https://docs.kblabs.ru/plugins/quality" target="_blank" rel="noopener noreferrer">
+                    <Button variant="primary" size="lg" href="https://docs.kblabs.ru/use-cases/scenario-ai-code-review" target="_blank" rel="noopener noreferrer">
                       {t('page.docsBtn')}
                     </Button>
                     <Button variant="secondary" size="lg" href={`/${locale}/install`}>
