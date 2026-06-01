@@ -47,7 +47,11 @@ export default defineCommand<unknown, CLIInput<IndexFlags>, { exitCode: number }
           return { exitCode: 0 };
         }
         const summary = `Indexed ${res.filesIndexed} file(s), ${res.chunks} chunk(s) into "${res.indexId}" (${res.durationMs}ms)`;
-        loader ? loader.succeed(summary) : ctx.ui?.success?.(summary);
+        if (loader) {
+          loader.succeed(summary);
+        } else {
+          ctx.ui?.success?.(summary);
+        }
         return { exitCode: 0 };
       } catch (err) {
         handleError(ctx, err, flags.json);
