@@ -18,6 +18,15 @@ import { chunkFile } from './structural';
 import { embedChunks } from './embed';
 import { loadManifest, saveManifest } from '../index-store';
 
+/** Staged progress events emitted during ingest (for CLI/REST progress UIs). */
+export type IngestProgress =
+  | { stage: 'discover'; files: number }
+  | { stage: 'delta'; toIndex: number; unchanged: number; removed: number }
+  | { stage: 'chunk'; chunks: number }
+  | { stage: 'embed'; done: number; total: number }
+  | { stage: 'upsert'; count: number }
+  | { stage: 'save' };
+
 export interface IngestInput {
   indexId: string;
   /** Workspace root that source paths are resolved against. */
@@ -30,6 +39,8 @@ export interface IngestInput {
   full?: boolean;
   /** ISO timestamp for manifest bookkeeping (injectable for determinism). */
   now: string;
+  /** Optional staged-progress sink (best-effort; never affects results). */
+  onProgress?: (event: IngestProgress) => void;
 }
 
 export interface IngestResult {
@@ -108,9 +119,13 @@ export async function ingest(input: IngestInput, services: MindServices): Promis
   const prev = await loadManifest(storage, input.indexId);
   const prevFiles: Record<string, FileEntry> = input.full ? {} : prev.files;
 
+  const emit = input.onProgress ?? (() => {});
+
   const paths = await discover(input.cwd, input.scope);
+  emit({ stage: 'discover', files: paths.length });
   const { contentByPath, hashByPath } = await readAndHash(input.cwd, paths);
   const { toIndex, unchanged, removedPaths, added, updated } = classify(contentByPath, hashByPath, prevFiles);
+  emit({ stage: 'delta', toIndex: toIndex.length, unchanged: unchanged.length, removed: removedPaths.length });
 
   // Vectors to drop: on full, everything previously indexed; otherwise only the
   // chunks of changed + removed files.
@@ -138,11 +153,16 @@ export async function ingest(input: IngestInput, services: MindServices): Promis
     newChunks.push(...chunks);
     files[path] = { chunks: chunks.length, indexedAt: input.now, hash: hashByPath.get(path)! };
   }
+  emit({ stage: 'chunk', chunks: newChunks.length });
 
-  const records = await embedChunks(newChunks, embeddings);
+  const records = await embedChunks(newChunks, embeddings, (done, total) =>
+    emit({ stage: 'embed', done, total }),
+  );
   if (records.length > 0) {
+    emit({ stage: 'upsert', count: records.length });
     await vectorStore.upsert(records, input.indexId);
   }
+  emit({ stage: 'save' });
 
   const manifest: IndexManifest = {
     indexId: input.indexId,

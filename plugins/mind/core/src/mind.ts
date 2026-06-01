@@ -27,7 +27,7 @@ import type {
 import type { Trace, StageTrace } from '@kb-labs/mind-contracts';
 import type { MindServices } from './services';
 import type { RankedChunk } from './retrieval/retrieve';
-import { ingest } from './ingest/ingest';
+import { ingest, type IngestProgress } from './ingest/ingest';
 import { syncAdd, syncUpdate, syncDelete, type SyncOptions } from './sync';
 import { retrieve } from './retrieval/retrieve';
 import { rerank } from './retrieval/rerank';
@@ -40,7 +40,7 @@ import { toSearchResults } from './answer/synthesize';
 import { loadManifest } from './index-store';
 
 export interface Mind {
-  index(req: IndexRequest): Promise<IndexResponse>;
+  index(req: IndexRequest, onProgress?: (event: IngestProgress) => void): Promise<IndexResponse>;
   search(req: SearchRequest): Promise<SearchResponse>;
   ask(req: QueryRequest): Promise<AgentResponse>;
   reindex(req: ReindexRequest): Promise<IndexResponse>;
@@ -86,7 +86,7 @@ export function createMind(
   }
 
   return {
-    async index(req): Promise<IndexResponse> {
+    async index(req, onProgress): Promise<IndexResponse> {
       const indexId = resolveIndexId(req.indexId);
       const start = now();
       const result = await ingest(
@@ -98,6 +98,7 @@ export function createMind(
           chunk: { maxTokens: config.chunk.maxTokens, overlapTokens: config.chunk.overlapTokens },
           ast: config.chunk.ast,
           now: isoNow(),
+          onProgress,
         },
         services,
       );

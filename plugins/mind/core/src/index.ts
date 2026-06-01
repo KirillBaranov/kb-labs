@@ -23,6 +23,7 @@ export { chunkId, kindFromPath } from './types';
 export { slidingWindowChunks } from './ingest/chunk';
 export { structuralChunks, chunkFile } from './ingest/structural';
 export { ingest } from './ingest/ingest';
+export type { IngestProgress, IngestInput, IngestResult } from './ingest/ingest';
 export { retrieve } from './retrieval/retrieve';
 export type { RankedChunk, RetrieveInput, RetrieveOutput } from './retrieval/retrieve';
 export { bm25Search, tokenize } from './retrieval/bm25';
