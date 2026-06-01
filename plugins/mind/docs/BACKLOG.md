@@ -10,7 +10,7 @@ Bench-gated: every row marked **Y** must ship with a before/after benchmark delt
 | Feature | Legacy | v2 status | Priority | Bench-gated | Notes |
 |---|---|---|---|---|---|
 | Hybrid BM25 + vector + RRF (intent-adaptive) | full | ✅ | — | — | parity |
-| Reranking | BM25/vector-norm + context expansion | 🟡 heuristic (coverage + verbatim) | P1 | Y | add LLM-rerank + context expansion behind A/B |
+| Reranking | BM25/vector-norm + context expansion | 🟡 heuristic (coverage + verbatim) | P1 | Y | add LLM-rerank + context expansion behind A/B. **Path/filename-match boost TRIED → rejected**: live bench regressed (mrr 0.515→0.500, hit@5 0.615→0.538) — generic query tokens hit generic path parts and pulled wrong files up. Reverted. |
 | Semantic dedup | embedding-cosine | 🟡 token-Jaccard | P2 | Y | swap to embedding-cosine, measure dup-rate vs recall |
 | AST chunking | tree-sitter | 🟡 structure-aware-lite (brace) | P2 | Y | tree-sitter behind `chunkFile`; measure chunk-boundary quality |
 | Freshness / staleness | fresh/soft/hard + penalties | ❌ | P1 | Y | confidence penalty for stale chunks |
@@ -23,7 +23,7 @@ Bench-gated: every row marked **Y** must ship with a before/after benchmark delt
 |---|---|---|---|---|---|
 | Anti-hallucination source-verify (0.7 file + 0.3 snippet) | full | ✅ | — | — | parity |
 | Confidence floor + warnings | full | ✅ | — | — | parity |
-| Field-checker (answer-mentioned symbols exist in chunks) | full | ❌ | P1 | Y | strong anti-hallucination signal; bench groundedness |
+| Field-checker (answer-mentioned symbols exist in chunks) | full | ✅ restored | P1 | Y | `answer/field-check.ts` — extracts code symbols from the answer, grounds each against chunk text+path, folds the grounded fraction into the confidence stack + emits `UNGROUNDED_TERMS` warning. Applied in LLM modes. |
 | Token-budget compression (truncate/summarize/smart) | full | 🟡 snippet truncation only | P2 | Y | measure answer quality vs token cost |
 | Query decomposition | LLM + parallel | ✅ (single pass) | — | — | parity-ish |
 | Complexity auto-detection (auto-mode decides to decompose) | full | ❌ | P2 | Y | bench latency vs quality tradeoff |
