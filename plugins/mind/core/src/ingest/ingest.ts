@@ -55,10 +55,11 @@ export interface IngestResult {
   unchanged: number;
 }
 
-/** Read + content-hash every discovered file. Unreadable files are skipped. */
+/** Read + content-hash every discovered file. Unreadable files are skipped (warned). */
 async function readAndHash(
   cwd: string,
   paths: string[],
+  logger?: MindServices['logger'],
 ): Promise<{ contentByPath: Map<string, string>; hashByPath: Map<string, string> }> {
   const contentByPath = new Map<string, string>();
   const hashByPath = new Map<string, string>();
@@ -67,7 +68,8 @@ async function readAndHash(
     try {
       // Source comes from the real filesystem; storage is only for the manifest.
       content = await readFile(join(cwd, path), 'utf8');
-    } catch {
+    } catch (err) {
+      logger?.warn('mind: skipped unreadable file', { path, reason: err instanceof Error ? err.message : String(err) });
       continue;
     }
     contentByPath.set(path, content);
@@ -123,7 +125,7 @@ export async function ingest(input: IngestInput, services: MindServices): Promis
 
   const paths = await discover(input.cwd, input.scope);
   emit({ stage: 'discover', files: paths.length });
-  const { contentByPath, hashByPath } = await readAndHash(input.cwd, paths);
+  const { contentByPath, hashByPath } = await readAndHash(input.cwd, paths, services.logger);
   const { toIndex, unchanged, removedPaths, added, updated } = classify(contentByPath, hashByPath, prevFiles);
   emit({ stage: 'delta', toIndex: toIndex.length, unchanged: unchanged.length, removed: removedPaths.length });
 

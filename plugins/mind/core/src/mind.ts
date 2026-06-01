@@ -102,12 +102,18 @@ export function createMind(
         },
         services,
       );
-      return {
+      const durationMs = now() - start;
+      services.logger?.info('mind: index', {
         indexId,
         filesIndexed: result.filesIndexed,
         chunks: result.chunks,
-        durationMs: now() - start,
-      };
+        added: result.added,
+        updated: result.updated,
+        removed: result.removed,
+        unchanged: result.unchanged,
+        durationMs,
+      });
+      return { indexId, filesIndexed: result.filesIndexed, chunks: result.chunks, durationMs };
     },
 
     async search(req): Promise<SearchResponse> {
@@ -147,6 +153,13 @@ export function createMind(
         stages,
       };
 
+      services.logger?.info('mind: search', {
+        indexId,
+        mode: trace.mode,
+        results: ranked.length,
+        confidence: Math.round(confidence * 1000) / 1000,
+        totalMs: trace.totalMs,
+      });
       return { results: toSearchResults(ranked), confidence, indexId, trace };
     },
 
@@ -198,13 +211,22 @@ export function createMind(
 
       const answer = await synthesizeAnswer(req.text, ranked, services.llm, budget.useLLM);
 
+      const timingMs = now() - t0;
+      services.logger?.info('mind: ask', {
+        indexId,
+        mode,
+        subqueries: queries.length,
+        chunks: ranked.length,
+        confidence: Math.round(confidence * 1000) / 1000,
+        timingMs,
+      });
       return buildAgentResponse({
         answer,
         ranked,
         confidence,
         mode,
         requestId: `mind:${t0}`,
-        timingMs: now() - t0,
+        timingMs,
         cached: false,
         floor: config.confidence.floor,
         warnings,
