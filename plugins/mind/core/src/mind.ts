@@ -25,6 +25,7 @@ import type {
   ReindexRequest,
 } from '@kb-labs/mind-contracts';
 import type { Trace, StageTrace } from '@kb-labs/mind-contracts';
+import { effectiveIndexConfig } from '@kb-labs/mind-contracts';
 import type { MindServices } from './services';
 import type { RankedChunk } from './retrieval/retrieve';
 import { ingest, type IngestProgress } from './ingest/ingest';
@@ -77,11 +78,12 @@ export function createMind(
   }
 
   function syncOpts(indexId: string): SyncOptions {
+    const eff = effectiveIndexConfig(config, indexId);
     return {
       indexId,
       cwd,
-      chunk: { maxTokens: config.chunk.maxTokens, overlapTokens: config.chunk.overlapTokens },
-      ast: config.chunk.ast,
+      chunk: { maxTokens: eff.chunk.maxTokens, overlapTokens: eff.chunk.overlapTokens },
+      ast: eff.chunk.ast,
       now: isoNow(),
     };
   }
@@ -89,15 +91,17 @@ export function createMind(
   return {
     async index(req, onProgress): Promise<IndexResponse> {
       const indexId = resolveIndexId(req.indexId);
+      const eff = effectiveIndexConfig(config, indexId);
       const start = now();
       const result = await ingest(
         {
           indexId,
           cwd,
-          scope: req.scope,
+          // CLI flag wins; otherwise fall back to the index's configured scope.
+          scope: req.scope ?? eff.scope,
           full: req.full,
-          chunk: { maxTokens: config.chunk.maxTokens, overlapTokens: config.chunk.overlapTokens },
-          ast: config.chunk.ast,
+          chunk: { maxTokens: eff.chunk.maxTokens, overlapTokens: eff.chunk.overlapTokens },
+          ast: eff.chunk.ast,
           now: isoNow(),
           onProgress,
         },
@@ -119,7 +123,8 @@ export function createMind(
 
     async search(req): Promise<SearchResponse> {
       const indexId = resolveIndexId(req.indexId);
-      const limit = req.limit ?? config.retrieval.limit;
+      const retrieval = effectiveIndexConfig(config, indexId).retrieval;
+      const limit = req.limit ?? retrieval.limit;
       const stages: StageTrace[] = [];
       const timed = async <T>(stage: string, fn: () => Promise<T> | T): Promise<T> => {
         const t0 = now();
@@ -132,14 +137,14 @@ export function createMind(
       // Over-fetch, then refine: retrieve -> rerank -> dedup -> verify.
       const retrieved = await timed('retrieve', () =>
         retrieve(
-          { text: req.text, indexId, limit: limit * 3, intent: req.intent, rrfK: config.retrieval.rrfK, hyde: config.retrieval.hyde },
+          { text: req.text, indexId, limit: limit * 3, intent: req.intent, rrfK: retrieval.rrfK, hyde: retrieval.hyde },
           services,
         ),
       );
-      let ranked = config.retrieval.rerank
+      let ranked = retrieval.rerank
         ? await timed('rerank', () => rerank(retrieved.ranked, req.text))
         : retrieved.ranked;
-      if (config.retrieval.dedup) {
+      if (retrieval.dedup) {
         ranked = await timed('dedup', () => dedupRanked(ranked));
       }
       ranked = ranked.slice(0, limit);
@@ -166,6 +171,7 @@ export function createMind(
 
     async ask(req): Promise<AgentResponse> {
       const indexId = resolveIndexId(req.indexId);
+      const retrieval = effectiveIndexConfig(config, indexId).retrieval;
       const mode: AgentQueryMode = req.mode ?? 'auto';
       const budget = config.modes[mode];
       const t0 = now();
@@ -183,7 +189,7 @@ export function createMind(
       let retrievalConfidence = 0;
       for (const q of queries) {
         const r = await retrieve(
-          { text: q, indexId, limit: budget.maxChunks, intent: undefined, rrfK: config.retrieval.rrfK, hyde: config.retrieval.hyde },
+          { text: q, indexId, limit: budget.maxChunks, intent: undefined, rrfK: retrieval.rrfK, hyde: retrieval.hyde },
           services,
         );
         retrievalConfidence = Math.max(retrievalConfidence, r.confidence);
@@ -195,10 +201,10 @@ export function createMind(
         }
       }
 
-      let ranked = config.retrieval.rerank
+      let ranked = retrieval.rerank
         ? rerank([...merged.values()], req.text)
         : [...merged.values()].sort((a, b) => b.score - a.score);
-      if (config.retrieval.dedup) {
+      if (retrieval.dedup) {
         ranked = dedupRanked(ranked);
       }
       ranked = ranked.slice(0, budget.maxChunks);
