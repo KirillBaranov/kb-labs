@@ -7,6 +7,8 @@ import { defineFlags } from '@kb-labs/sdk';
 
 const JSON_DESC = 'Output JSON';
 const INDEX_DESC = 'Index/corpus id';
+const FORMAT_DESC = 'Output format';
+const SNIPPET_DESC = 'How much source text per result';
 
 export const indexFlags = defineFlags({
   index: { type: 'string', description: INDEX_DESC, examples: ['code', 'docs'] },
@@ -18,17 +20,21 @@ export const indexFlags = defineFlags({
 export const searchFlags = defineFlags({
   text: { type: 'string', description: 'Query text', required: true },
   index: { type: 'string', description: `${INDEX_DESC} to search` },
-  mode: { type: 'string', description: 'Query mode', examples: ['instant', 'auto', 'thinking'] },
   intent: { type: 'string', description: 'Query intent hint', examples: ['lookup', 'concept', 'architecture'] },
   limit: { type: 'number', description: 'Max results' },
-  agent: { type: 'boolean', description: 'Emit machine-readable agent JSON (agent-response-v1)', default: false },
-  json: { type: 'boolean', description: JSON_DESC, default: false },
+  snippet: { type: 'string', description: SNIPPET_DESC, examples: ['none', 'line', 'full'] },
+  format: { type: 'string', description: FORMAT_DESC, examples: ['text', 'json'] },
+  json: { type: 'boolean', description: `${JSON_DESC} (alias for --format json)`, default: false },
 });
 
-export const queryFlags = defineFlags({
+export const askFlags = defineFlags({
   text: { type: 'string', description: 'Question to answer', required: true },
   index: { type: 'string', description: `${INDEX_DESC} to query` },
-  mode: { type: 'string', description: 'Query mode', examples: ['instant', 'auto', 'thinking'] },
+  mode: { type: 'string', description: 'Answer depth', examples: ['instant', 'auto', 'thinking'] },
+  snippet: { type: 'string', description: SNIPPET_DESC, examples: ['none', 'line', 'full'] },
+  format: { type: 'string', description: FORMAT_DESC, examples: ['text', 'json'] },
+  agent: { type: 'boolean', description: 'Emit machine-readable agent JSON (alias for --format json)', default: false },
+  json: { type: 'boolean', description: JSON_DESC, default: false },
 });
 
 export const syncPathsFlags = defineFlags({
@@ -54,7 +60,7 @@ export const statusFlags = defineFlags({
 
 export type IndexFlags = typeof indexFlags.infer;
 export type SearchFlags = typeof searchFlags.infer;
-export type QueryFlags = typeof queryFlags.infer;
+export type AskFlags = typeof askFlags.infer;
 export type SyncPathsFlags = typeof syncPathsFlags.infer;
 export type SyncListFlags = typeof syncListFlags.infer;
 export type ReindexFlags = typeof reindexFlags.infer;

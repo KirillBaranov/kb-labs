@@ -6,11 +6,49 @@
  * text + per-file bookkeeping. One manifest per index id.
  */
 
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import type { IStorage } from './services';
-import type { IndexManifest } from './types';
+import { hashContent, type IndexManifest } from './types';
 
 function manifestPath(indexId: string): string {
   return `mind/${indexId}/manifest.json`;
+}
+
+/**
+ * Whether `file`'s on-disk content has drifted from what the manifest indexed
+ * (the agent should re-read the live file). Files not in the index are treated
+ * as not-stale (unknown, not misleading); unreadable/removed files are stale.
+ * Bounded cost — call only for the results actually returned, not the corpus.
+ */
+export async function isStale(manifest: IndexManifest, file: string, cwd: string): Promise<boolean> {
+  const entry = manifest.files[file];
+  if (!entry) {
+    return false;
+  }
+  try {
+    const content = await readFile(join(cwd, file), 'utf8');
+    return hashContent(content) !== entry.hash;
+  } catch {
+    return true; // gone from disk or unreadable
+  }
+}
+
+/** Stale flag for many files at once (deduped) → `Map<file, stale>`. */
+export async function staleMap(manifest: IndexManifest, files: string[], cwd: string): Promise<Map<string, boolean>> {
+  const out = new Map<string, boolean>();
+  await Promise.all(
+    [...new Set(files)].map(async (f) => {
+      out.set(f, await isStale(manifest, f, cwd));
+    }),
+  );
+  return out;
+}
+
+/** Count of indexed files whose on-disk content changed — whole-index freshness (status). */
+export async function staleCount(manifest: IndexManifest, cwd: string): Promise<number> {
+  const flags = await staleMap(manifest, Object.keys(manifest.files), cwd);
+  return [...flags.values()].filter(Boolean).length;
 }
 
 export async function loadManifest(storage: IStorage, indexId: string): Promise<IndexManifest> {

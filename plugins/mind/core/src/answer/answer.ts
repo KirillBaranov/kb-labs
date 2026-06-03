@@ -8,15 +8,15 @@
 
 import {
   AgentResponseSchema,
-  AGENT_RESPONSE_SCHEMA_VERSION,
   type AgentResponse,
   type AgentSource,
-  type AgentSourcesSummary,
   type AgentWarning,
   type AgentQueryMode,
+  type SnippetMode,
 } from '@kb-labs/mind-contracts';
 import type { ILLM } from '../services';
 import type { RankedChunk } from '../retrieval/retrieve';
+import { snippetFrom } from './synthesize';
 
 const MAX_SNIPPET_CHARS = 600;
 
@@ -61,30 +61,20 @@ export async function synthesizeAnswer(
   }
 }
 
-export function toSources(ranked: RankedChunk[]): AgentSource[] {
-  return ranked.map(({ chunk, score }) => ({
-    file: chunk.path,
-    lines: [chunk.startLine, chunk.endLine] as [number, number],
-    snippet: truncate(chunk.text),
-    kind: chunk.kind,
-    relevance: score,
-  }));
+export interface ToSourcesOptions {
+  snippet: SnippetMode;
+  staleByFile: Map<string, boolean>;
 }
 
-function summarize(sources: AgentSource[]): AgentSourcesSummary {
-  let code = 0;
-  let docs = 0;
-  const external: Record<string, number> = {};
-  for (const s of sources) {
-    if (s.kind === 'code' || s.kind === 'config') {
-      code++;
-    } else if (s.kind === 'doc' || s.kind === 'adr') {
-      docs++;
-    } else {
-      external[s.kind] = (external[s.kind] ?? 0) + 1;
-    }
-  }
-  return { code, docs, external };
+export function toSources(ranked: RankedChunk[], opts: ToSourcesOptions): AgentSource[] {
+  return ranked.map(({ chunk, matchedBy }) => ({
+    file: chunk.path,
+    lines: [chunk.startLine, chunk.endLine] as [number, number],
+    kind: chunk.kind,
+    matchedBy,
+    stale: opts.staleByFile.get(chunk.path) ?? false,
+    snippet: snippetFrom(chunk.text, opts.snippet),
+  }));
 }
 
 export interface BuildAgentResponseInput {
@@ -94,35 +84,32 @@ export interface BuildAgentResponseInput {
   mode: AgentQueryMode;
   requestId: string;
   timingMs: number;
-  cached: boolean;
+  indexId: string;
   floor: number;
+  snippet: SnippetMode;
+  staleByFile: Map<string, boolean>;
   warnings?: AgentWarning[];
 }
 
-/** Assemble + validate the frozen agent-response-v1 object. */
+/** Assemble + validate the lean agent response. */
 export function buildAgentResponse(input: BuildAgentResponseInput): AgentResponse {
-  const sources = toSources(input.ranked);
-  const complete = input.confidence >= input.floor && sources.length > 0;
+  const sources = toSources(input.ranked, { snippet: input.snippet, staleByFile: input.staleByFile });
+  const abstained = input.confidence < input.floor || sources.length === 0;
 
   const response: AgentResponse = {
     answer: input.answer,
-    sources,
     confidence: input.confidence,
-    complete,
-    sourcesSummary: summarize(sources),
+    abstained,
+    sources,
     warnings: input.warnings && input.warnings.length > 0 ? input.warnings : undefined,
     meta: {
-      schemaVersion: AGENT_RESPONSE_SCHEMA_VERSION,
       requestId: input.requestId,
       mode: input.mode,
       timingMs: input.timingMs,
-      cached: input.cached,
-      confidence: input.confidence,
-      complete,
-      sources: sources.length,
+      indexId: input.indexId,
     },
   };
 
-  // Fail loudly if we ever drift from the frozen contract.
+  // Fail loudly if we ever drift from the contract.
   return AgentResponseSchema.parse(response);
 }

@@ -4,37 +4,29 @@ import { buildMind } from '../../platform';
 
 export default defineCommand<unknown, CLIInput<SearchFlags>, { exitCode: number }>({
   id: 'mind:search',
-  description: 'Semantic + keyword search over a Mind index',
+  description: 'Locate sources — fast retrieval over a Mind index (no LLM)',
 
   handler: {
     async execute(ctx: PluginContextV3, input: CLIInput<SearchFlags>): Promise<{ exitCode: number }> {
       const { flags } = input;
+      const json = flags.format === 'json' || flags.json;
       try {
-        // Validate/normalize CLI flags into the wire request (also narrows enums).
+        // Validate/normalize CLI flags into the wire request (narrows enums).
         const req = SearchRequestSchema.parse({
           text: flags.text,
           indexId: flags.index,
-          mode: flags.mode,
           intent: flags.intent,
           limit: flags.limit,
+          snippet: flags.snippet,
         });
 
         const mind = await buildMind(ctx.cwd);
-
-        // `--agent` emits the frozen agent-response-v1 contract (consumed by
-        // CLAUDE.md / task-rag skill). Only the JSON goes to stdout.
-        if (flags.agent) {
-          const agentRes = await mind.ask({ text: req.text, indexId: req.indexId, mode: req.mode });
-          ctx.ui?.json?.(agentRes);
-          return { exitCode: 0 };
-        }
-
         const res = await mind.search(req);
-        if (flags.json) {
+
+        if (json) {
           ctx.ui?.json?.(res);
           return { exitCode: 0 };
         }
-
         if (res.results.length === 0) {
           ctx.ui?.warn?.(`No results in index "${res.indexId}"`);
           return { exitCode: 0 };
@@ -44,15 +36,17 @@ export default defineCommand<unknown, CLIInput<SearchFlags>, { exitCode: number 
           sections: [
             {
               header: `Index "${res.indexId}"`,
-              items: res.results.map(
-                (r) => `${r.file}${r.lines ? `:${r.lines[0]}-${r.lines[1]}` : ''}  (${r.score.toFixed(4)})`,
-              ),
+              items: res.results.map((r) => {
+                const loc = `${r.file}:${r.lines[0]}-${r.lines[1]}`;
+                const tags = `[${r.matchedBy}${r.stale ? ', stale' : ''}]`;
+                return r.snippet ? `${loc} ${tags}\n    ${r.snippet}` : `${loc} ${tags}`;
+              }),
             },
           ],
         });
         return { exitCode: 0 };
       } catch (err) {
-        handleError(ctx, err, flags.json || flags.agent);
+        handleError(ctx, err, json);
         return { exitCode: 1 };
       }
     },

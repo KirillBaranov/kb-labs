@@ -1,69 +1,49 @@
 import { describe, it, expect } from 'vitest';
-import {
-  AgentResponseSchema,
-  AGENT_RESPONSE_SCHEMA_VERSION,
-  MindConfigSchema,
-  resolveMindConfig,
-  SearchRequestSchema,
-} from '../src/index';
+import { AgentResponseSchema, MindConfigSchema, resolveMindConfig, SearchRequestSchema } from '../src/index';
 
 /**
- * A representative `agent-response-v1` object, matching the legacy
- * `@kb-labs/mind` shape (plugins/mind/orchestrator/src/types.ts). This guards
- * the frozen contract: the schema must accept exactly this shape.
- *
- * Phase 4 replaces/augments this with a byte-exact capture from the live
- * legacy plugin before the answer emitter is wired.
+ * A representative agent response (lean shape) — snapshot guard against drift.
+ * Pointers (file+lines), provenance (matchedBy), freshness (stale), trust
+ * (confidence/abstained), telemetry in meta. No legacy fields.
  */
-const LEGACY_AGENT_RESPONSE = {
+const AGENT_RESPONSE = {
   answer: 'The auth flow lives in src/auth.ts.',
-  sources: [
-    { file: 'src/auth.ts', lines: [10, 42], snippet: 'export function login()', kind: 'code', relevance: 0.92 },
-    { file: 'docs/auth.md', kind: 'doc' },
-  ],
   confidence: 0.81,
-  complete: true,
-  sourcesSummary: { code: 1, docs: 1, external: {} },
+  abstained: false,
+  sources: [
+    { file: 'src/auth.ts', lines: [10, 42], kind: 'code', matchedBy: 'both', stale: false, snippet: 'export function login()' },
+    { file: 'docs/auth.md', lines: [1, 20], kind: 'doc', matchedBy: 'semantic', stale: true },
+  ],
   warnings: [],
-  suggestions: [{ type: 'related', label: 'See logout()', ref: 'src/auth.ts' }],
-  meta: {
-    schemaVersion: AGENT_RESPONSE_SCHEMA_VERSION,
-    requestId: 'req-123',
-    mode: 'auto',
-    timingMs: 2341,
-    cached: false,
-    confidence: 0.81,
-    complete: true,
-    sources: 2,
-  },
+  meta: { requestId: 'req-123', mode: 'auto', timingMs: 2341, indexId: 'code' },
 };
 
-describe('agent-response-v1 frozen contract', () => {
-  it('accepts the legacy agent-response shape', () => {
-    const parsed = AgentResponseSchema.parse(LEGACY_AGENT_RESPONSE);
-    expect(parsed.meta.schemaVersion).toBe('agent-response-v1');
+describe('agent response contract (lean)', () => {
+  it('accepts the lean agent-response shape', () => {
+    const parsed = AgentResponseSchema.parse(AGENT_RESPONSE);
+    expect(parsed.abstained).toBe(false);
     expect(parsed.sources).toHaveLength(2);
+    expect(parsed.sources[0]?.matchedBy).toBe('both');
+    expect(parsed.sources[1]?.stale).toBe(true);
   });
 
   it('round-trips without mutating the payload', () => {
-    const parsed = AgentResponseSchema.parse(LEGACY_AGENT_RESPONSE);
-    expect(parsed).toEqual(LEGACY_AGENT_RESPONSE);
+    expect(AgentResponseSchema.parse(AGENT_RESPONSE)).toEqual(AGENT_RESPONSE);
   });
 
   it('preserves unknown meta keys (open shape)', () => {
     const parsed = AgentResponseSchema.parse({
-      ...LEGACY_AGENT_RESPONSE,
-      meta: { ...LEGACY_AGENT_RESPONSE.meta, indexVersion: 'v7', custom: 'x' },
+      ...AGENT_RESPONSE,
+      meta: { ...AGENT_RESPONSE.meta, custom: 'x' },
     });
-    expect(parsed.meta.indexVersion).toBe('v7');
     expect((parsed.meta as Record<string, unknown>).custom).toBe('x');
   });
 
-  it('rejects an invalid source kind', () => {
+  it('requires matchedBy + stale on every source (no legacy shape)', () => {
     expect(() =>
       AgentResponseSchema.parse({
-        ...LEGACY_AGENT_RESPONSE,
-        sources: [{ file: 'x', kind: 'nonsense' }],
+        ...AGENT_RESPONSE,
+        sources: [{ file: 'x', lines: [1, 1], kind: 'code' }], // missing matchedBy/stale
       }),
     ).toThrow();
   });

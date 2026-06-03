@@ -24,7 +24,6 @@ import type {
   SyncStatusResponse,
   ReindexRequest,
 } from '@kb-labs/mind-contracts';
-import type { Trace, StageTrace } from '@kb-labs/mind-contracts';
 import { effectiveIndexConfig } from '@kb-labs/mind-contracts';
 import type { MindServices } from './services';
 import type { RankedChunk } from './retrieval/retrieve';
@@ -39,7 +38,7 @@ import { decompose } from './answer/decompose';
 import { synthesizeAnswer, buildAgentResponse } from './answer/answer';
 import { recordQuery } from './feedback/history';
 import { toSearchResults } from './answer/synthesize';
-import { loadManifest } from './index-store';
+import { loadManifest, staleMap, staleCount } from './index-store';
 
 export interface Mind {
   index(req: IndexRequest, onProgress?: (event: IngestProgress) => void): Promise<IndexResponse>;
@@ -125,48 +124,40 @@ export function createMind(
       const indexId = resolveIndexId(req.indexId);
       const retrieval = effectiveIndexConfig(config, indexId).retrieval;
       const limit = req.limit ?? retrieval.limit;
-      const stages: StageTrace[] = [];
-      const timed = async <T>(stage: string, fn: () => Promise<T> | T): Promise<T> => {
-        const t0 = now();
-        const out = await fn();
-        stages.push({ stage, durationMs: now() - t0, outputCount: Array.isArray(out) ? out.length : undefined });
-        return out;
-      };
-
+      const snippet = req.snippet ?? 'line';
       const t0 = now();
-      // Over-fetch, then refine: retrieve -> rerank -> dedup -> verify.
-      const retrieved = await timed('retrieve', () =>
-        retrieve(
-          { text: req.text, indexId, limit: limit * 3, intent: req.intent, rrfK: retrieval.rrfK, hyde: retrieval.hyde },
-          services,
-        ),
+
+      // Over-fetch, then refine: retrieve -> rerank -> dedup.
+      const retrieved = await retrieve(
+        { text: req.text, indexId, limit: limit * 3, intent: req.intent, rrfK: retrieval.rrfK, hyde: retrieval.hyde },
+        services,
       );
-      let ranked = retrieval.rerank
-        ? await timed('rerank', () => rerank(retrieved.ranked, req.text))
-        : retrieved.ranked;
+      let ranked = retrieval.rerank ? rerank(retrieved.ranked, req.text) : retrieved.ranked;
       if (retrieval.dedup) {
-        ranked = await timed('dedup', () => dedupRanked(ranked));
+        ranked = dedupRanked(ranked);
       }
       ranked = ranked.slice(0, limit);
 
-      const verification = await timed('verify', () => verifySources(ranked, services.storage));
-      const { confidence } = computeConfidence(retrieved.confidence, verification.rate, config.confidence.floor);
-
-      const trace: Trace = {
-        requestId: `mind:${t0}`,
-        mode: req.mode ?? 'auto',
-        totalMs: now() - t0,
-        stages,
-      };
+      // Per-result freshness for the returned files only (bounded cost).
+      const manifest = await loadManifest(services.storage, indexId);
+      const stales = await staleMap(manifest, ranked.map((r) => r.chunk.path), cwd);
+      const results = toSearchResults(ranked, { snippet, staleByFile: stales });
+      const staleCount = [...stales.values()].filter(Boolean).length;
+      const timingMs = now() - t0;
 
       services.logger?.info('mind: search', {
         indexId,
-        mode: trace.mode,
-        results: ranked.length,
-        confidence: Math.round(confidence * 1000) / 1000,
-        totalMs: trace.totalMs,
+        results: results.length,
+        semanticWinRate: retrieved.semanticWinRate,
+        staleCount,
+        timingMs,
       });
-      return { results: toSearchResults(ranked), confidence, indexId, trace };
+      return {
+        results,
+        confidence: retrieved.confidence,
+        indexId,
+        meta: { requestId: `mind:${t0}`, timingMs, semanticWinRate: retrieved.semanticWinRate, staleCount },
+      };
     },
 
     async ask(req): Promise<AgentResponse> {
@@ -220,6 +211,9 @@ export function createMind(
         ? applyFieldCheck(answer, ranked, base.confidence, base.warnings, config.confidence.floor)
         : base;
 
+      const manifest = await loadManifest(services.storage, indexId);
+      const staleByFile = await staleMap(manifest, ranked.map((r) => r.chunk.path), cwd);
+
       const timingMs = now() - t0;
       services.logger?.info('mind: ask', {
         indexId,
@@ -236,8 +230,10 @@ export function createMind(
         mode,
         requestId: `mind:${t0}`,
         timingMs,
-        cached: false,
+        indexId,
         floor: config.confidence.floor,
+        snippet: req.snippet ?? 'line',
+        staleByFile,
         warnings,
       });
     },
@@ -294,11 +290,15 @@ export function createMind(
       const indexes: IndexSummary[] = [];
       for (const id of ids) {
         const manifest = await loadManifest(services.storage, id);
+        const declared = config.indexes[id];
         indexes.push({
           indexId: id,
+          label: declared?.label,
+          coverage: declared?.scope,
           documents: Object.keys(manifest.files).length,
           chunks: manifest.chunks.length,
           lastIndexedAt: manifest.updatedAt,
+          staleCount: await staleCount(manifest, cwd),
         });
       }
       return { indexes, healthy: true };

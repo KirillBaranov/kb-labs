@@ -6,9 +6,14 @@ import { z } from 'zod';
 
 export const IndexSummarySchema = z.object({
   indexId: z.string(),
+  /** Human label + what the index covers (scope) — lets an agent pick the right corpus. */
+  label: z.string().optional(),
+  coverage: z.string().optional(),
   documents: z.number(),
   chunks: z.number(),
   lastIndexedAt: z.string().nullable(),
+  /** How many indexed files have drifted on disk since indexing. */
+  staleCount: z.number(),
 });
 export type IndexSummary = z.infer<typeof IndexSummarySchema>;
 
