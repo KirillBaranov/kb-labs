@@ -10,12 +10,15 @@
  * Standalone:  node scripts/checks/check-ports.mjs   (human-readable, exit 1 on error)
  *
  * Rules (all severity: error):
- *   UNKNOWN_RANGE        port from devservices is outside every range and not an exception
- *   DUPLICATE_PORT       two distinct services declare the same port
- *   PROD_NO_COMPOSE_PORT prod service (compose:true) has no matching ports: in docker-compose
- *   PROD_NO_SMOKE_TEST   prod service has no smoke test in deploy.yml
- *   PROD_PORT_MISMATCH   smoke-test port in deploy.yml differs from the registry port
- *   STALE_PORTS_DOC      docs/ports.md differs from freshly generated content
+ *   UNKNOWN_RANGE              port from devservices is outside every range and not an exception
+ *   DUPLICATE_PORT             two distinct services declare the same port
+ *   DEVSERVICES_PORT_DISAGREE  same service name has different ports across the two devservices files
+ *   PROD_NO_COMPOSE_PORT       prod service (compose:true) has no matching ports: in docker-compose
+ *   PROD_CONTAINER_MISMATCH    registry container name != docker-compose container_name
+ *   PROD_NO_SMOKE_TEST         prod service has no smoke test in deploy.yml
+ *   PROD_PORT_MISMATCH         a deploy smoke-test port matches no prod service in the registry
+ *   PROD_SMOKE_PATH_MISMATCH   smoke test hits the right port but the wrong path
+ *   STALE_PORTS_DOC            docs/ports.md differs from freshly generated content
  *
  * Reference: docs/adr/0024-port-allocation-policy.md
  */
@@ -28,7 +31,9 @@ import {
   loadRegistry,
   loadDevservices,
   loadComposePorts,
+  loadComposeContainers,
   loadDeploySmokeTests,
+  findDevservicesPortConflicts,
   classifyPort,
   renderDoc,
 } from '../lib/ports.mjs';
@@ -99,13 +104,25 @@ function validate() {
     }
   }
 
+  // Rule: DEVSERVICES_PORT_DISAGREE — prod-runtime vs dev-runtime port drift
+  for (const c of findDevservicesPortConflicts()) {
+    issues.push({
+      check: CHECK_NAME,
+      severity: 'error',
+      message: `Service "${c.name}" has different ports across devservices files: ${c.prodPort} (prod-runtime) vs ${c.devPort} (dev-runtime)`,
+      file: rel(PATHS.devProd),
+      fix: `Make the port for "${c.name}" agree in ${rel(PATHS.devProd)} and ${rel(PATHS.devDev)}`,
+    });
+  }
+
   // Prod contract — cross-validate against docker-compose + deploy smoke tests
   const composePorts = loadComposePorts();
+  const composeContainers = loadComposeContainers();
   const smokeTests = loadDeploySmokeTests();
 
   for (const p of registry.prod) {
-    // Rule: PROD_NO_COMPOSE_PORT
     if (p.compose) {
+      // Rule: PROD_NO_COMPOSE_PORT
       const hostPorts = composePorts.get(p.compose_service) ?? [];
       if (!hostPorts.includes(Number(p.port))) {
         issues.push({
@@ -116,19 +133,37 @@ function validate() {
           fix: `Add  ports: ["${p.port}:${p.port}"]  to "${p.compose_service}" in ${rel(PATHS.compose)}`,
         });
       }
+
+      // Rule: PROD_CONTAINER_MISMATCH — registry container must equal compose container_name
+      const composeContainer = composeContainers.get(p.compose_service);
+      if (p.container && composeContainer && composeContainer !== p.container) {
+        issues.push({
+          check: CHECK_NAME,
+          severity: 'error',
+          message: `Prod service "${p.service}" registry container "${p.container}" != docker-compose container_name "${composeContainer}"`,
+          file: rel(PATHS.registry),
+          fix: `Set container to "${composeContainer}" in ${rel(PATHS.registry)}, or fix container_name in ${rel(PATHS.compose)} — and ensure deploy.yml rollback uses the same name`,
+        });
+      }
     }
 
-    // Rule: PROD_NO_SMOKE_TEST + PROD_PORT_MISMATCH
-    const smoke = smokeTests.find((s) => s.path === p.smoke_path && Number(s.port) === Number(p.port));
-    const smokeSameName = smokeTests.find((s) => s.port === Number(p.port));
-    if (!smoke && !smokeSameName) {
-      // Is there a smoke test that *should* point here but uses the wrong port?
+    // Rule: PROD_NO_SMOKE_TEST / PROD_SMOKE_PATH_MISMATCH
+    const smokeAtPort = smokeTests.find((s) => Number(s.port) === Number(p.port));
+    if (!smokeAtPort) {
       issues.push({
         check: CHECK_NAME,
         severity: 'error',
         message: `Prod service "${p.service}" (port ${p.port}) has no smoke test in deploy.yml`,
         file: rel(PATHS.deploy),
         fix: `Add  check "${p.service}" "http://localhost:${p.port}${p.smoke_path}"  to the smoke-test step`,
+      });
+    } else if (smokeAtPort.path !== p.smoke_path) {
+      issues.push({
+        check: CHECK_NAME,
+        severity: 'error',
+        message: `Smoke test for port ${p.port} hits "${smokeAtPort.path}" but registry smoke_path is "${p.smoke_path}"`,
+        file: rel(PATHS.deploy),
+        fix: `Change the smoke test path to "${p.smoke_path}" (or update smoke_path in ${rel(PATHS.registry)})`,
       });
     }
   }

@@ -33,9 +33,9 @@ Ports declared in `.kb/devservices.yaml` / `.kb/devservices.dev.yaml`.
 
 | Port | Service | Range | Scope | Group | Description |
 |------|---------|-------|-------|-------|-------------|
-| 3000 | Studio Web App | `frontend` | prod | ui | Web UI for KB Labs platform |
+| 3000 | Studio Web App | `frontend` | dev | ui | Web UI for KB Labs platform |
 | 3001 | KB Labs Docs | `frontend` | prod | ui-web | Documentation site |
-| 3010 | KB Labs Web | `frontend` | dev | ui-web | Product website |
+| 3010 | KB Labs Web | `frontend` | prod | ui-web | Product website |
 | 4000 | Gateway | `gateway` | prod | backend | Central router — single entry point for all platform clients |
 | 5050 | REST API | `services` | dev | backend | Main platform REST API |
 | 5070 | Marketplace Service | `services` | dev | backend | Unified entity marketplace — install, manage, discover |
@@ -66,5 +66,5 @@ Services deployed to production (validated against docker-compose + deploy smoke
 | 3000 | kb-web | `kb-labs-web` | `/` |
 | 3001 | kb-docs | `kb-labs-docs` | `/` |
 | 4000 | kb-gateway | `kb-gateway` | `/health` |
-| 5071 | kb-marketplace-registry | `kb-labs-marketplace-registry` | `/health` |
+| 5071 | kb-marketplace-registry | `kb-marketplace-registry` | `/health` |
 

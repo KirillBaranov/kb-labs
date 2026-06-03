@@ -96,6 +96,48 @@ export function loadComposePorts() {
 }
 
 /**
+ * Parse `container_name:` from docker-compose.backend.yml.
+ * Returns a map: composeServiceName -> container_name (falls back to service name).
+ */
+export function loadComposeContainers() {
+  const map = new Map();
+  if (!existsSync(PATHS.compose)) return map;
+  const doc = parseYaml(readFileSync(PATHS.compose, 'utf8'));
+  const services = doc?.services ?? {};
+  for (const [name, svc] of Object.entries(services)) {
+    map.set(name, svc?.container_name ?? name);
+  }
+  return map;
+}
+
+/**
+ * Detect services declared in BOTH devservices files with disagreeing ports.
+ * The prod-runtime (.kb/devservices.yaml) and dev-runtime (.kb/devservices.dev.yaml)
+ * must agree on the port for any shared service name.
+ * Returns: [{ name, prodPort, devPort }]
+ */
+export function findDevservicesPortConflicts() {
+  const read = (file) => {
+    if (!existsSync(file)) return {};
+    const doc = parseYaml(readFileSync(file, 'utf8'));
+    const out = {};
+    for (const [name, svc] of Object.entries(doc?.services ?? {})) {
+      if (svc?.port != null) out[name] = Number(svc.port);
+    }
+    return out;
+  };
+  const prod = read(PATHS.devProd);
+  const dev = read(PATHS.devDev);
+  const conflicts = [];
+  for (const name of Object.keys(prod)) {
+    if (name in dev && prod[name] !== dev[name]) {
+      conflicts.push({ name, prodPort: prod[name], devPort: dev[name] });
+    }
+  }
+  return conflicts;
+}
+
+/**
  * Extract smoke-test targets from deploy.yml.
  * Matches lines like:  check "marketplace" "http://localhost:5071/health"
  * Returns: [{ name, port, path }]
@@ -125,9 +167,14 @@ export function classifyPort(port, registry) {
   return { range: null, exception: null };
 }
 
-/** Compute a service's scope label: 'prod' if it appears in registry.prod by port. */
-export function scopeForPort(port, registry) {
-  return registry.prod.some((p) => Number(p.port) === Number(port)) ? 'prod' : 'dev';
+/**
+ * Compute a service's scope label by identity: 'prod' if the devservices name is
+ * linked from a registry.prod entry via `runtime_service`. Keyed by name, not
+ * port — so a dev-only service (e.g. studio:3000) is never mislabeled prod just
+ * because its port coincides with a prod service's port (kb-web:3000).
+ */
+export function scopeForService(name, registry) {
+  return registry.prod.some((p) => p.runtime_service === name) ? 'prod' : 'dev';
 }
 
 /** Collapse multi-line YAML folded text (criteria) to a single line. */
@@ -185,7 +232,7 @@ export function renderDoc(registry, services) {
   for (const svc of services) {
     const { range, exception } = classifyPort(svc.port, registry);
     const rangeLabel = range ?? (exception ? 'exception' : '⚠ unknown');
-    const scope = scopeForPort(svc.port, registry);
+    const scope = scopeForService(svc.name, registry);
     lines.push(
       `| ${svc.port} | ${svc.displayName} | \`${rangeLabel}\` | ${scope} | ${svc.group} | ${oneLine(svc.description)} |`,
     );

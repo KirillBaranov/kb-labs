@@ -91,25 +91,34 @@ exceptions:
 # ──────────────────────────────────────────────────────────────────────────────
 # Production deployment contract
 # Cross-validated by check-ports.mjs against:
-#   - infra/docker-compose.backend.yml  (each must have a matching `ports:` map)
-#   - .github/workflows/deploy.yml      (each must have a matching smoke test)
+#   - infra/docker-compose.backend.yml  (compose:true → matching `ports:` + container_name)
+#   - .github/workflows/deploy.yml      (each must have a smoke test at the same port + path)
+#
+# `runtime_service` links a prod entry to its `.kb/devservices*.yaml` name so scope
+# attribution and cross-checks key off identity, not a coincidental shared port.
+# (kb-web runs on 3010 in dev to avoid colliding with studio on 3000 — the prod
+# port 3000 is intentionally different and must not be matched by number.)
+# `container` must equal the running container name (see .kb/deploy.yaml container_name).
 # ──────────────────────────────────────────────────────────────────────────────
 
 prod:
   - service: kb-web
+    runtime_service: kb-web
     port: 3000
     container: kb-labs-web
     smoke_path: /
-    # Built and pushed as a Docker image; not in docker-compose.backend.yml
+    # Built and pushed as a Docker image; deployed via docker-compose.yml, not backend
     compose: false
 
   - service: kb-docs
+    runtime_service: kb-docs
     port: 3001
     container: kb-labs-docs
     smoke_path: /
     compose: false
 
   - service: kb-gateway
+    runtime_service: gateway
     port: 4000
     container: kb-gateway
     compose_service: kb-gateway
@@ -117,8 +126,9 @@ prod:
     compose: true
 
   - service: kb-marketplace-registry
+    runtime_service: marketplace-registry
     port: 5071
-    container: kb-labs-marketplace-registry
+    container: kb-marketplace-registry
     compose_service: kb-marketplace-registry
     smoke_path: /health
     compose: true

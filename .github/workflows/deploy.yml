@@ -109,8 +109,8 @@ jobs:
           SSH="ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST}"
           WEB=$($SSH         "docker inspect kb-labs-web                  --format '{{.Config.Image}}' 2>/dev/null || true")
           DOCS=$($SSH        "docker inspect kb-labs-docs                 --format '{{.Config.Image}}' 2>/dev/null || true")
-          GATEWAY=$($SSH     "docker inspect kb-labs-gateway              --format '{{.Config.Image}}' 2>/dev/null || true")
-          MARKETPLACE=$($SSH "docker inspect kb-labs-marketplace-registry --format '{{.Config.Image}}' 2>/dev/null || true")
+          GATEWAY=$($SSH     "docker inspect kb-gateway                   --format '{{.Config.Image}}' 2>/dev/null || true")
+          MARKETPLACE=$($SSH "docker inspect kb-marketplace-registry      --format '{{.Config.Image}}' 2>/dev/null || true")
           echo "web=${WEB}"               >> "$GITHUB_OUTPUT"
           echo "docs=${DOCS}"             >> "$GITHUB_OUTPUT"
           echo "gateway=${GATEWAY}"       >> "$GITHUB_OUTPUT"
@@ -219,10 +219,10 @@ jobs:
                    '${image}'"
           }
 
-          rollback "kb-labs-web"                  "$WEB_IMAGE"         3000
-          rollback "kb-labs-docs"                 "$DOCS_IMAGE"        3001
-          rollback "kb-labs-gateway"              "$GATEWAY_IMAGE"     4000
-          rollback "kb-labs-marketplace-registry" "$MARKETPLACE_IMAGE" 5071
+          rollback "kb-labs-web"             "$WEB_IMAGE"         3000
+          rollback "kb-labs-docs"            "$DOCS_IMAGE"        3001
+          rollback "kb-gateway"              "$GATEWAY_IMAGE"     4000
+          rollback "kb-marketplace-registry" "$MARKETPLACE_IMAGE" 5071
 
           rm -f /tmp/deploy_key
           echo "::error::Smoke test failed — rolled back all services to pre-deploy images"

@@ -70,13 +70,21 @@ Vendor-fixed ports that cannot move (e.g. Qdrant 6333, Redis 6379) are recorded 
 |------|---------|
 | `UNKNOWN_RANGE` | A runtime port outside every range and not an exception |
 | `DUPLICATE_PORT` | Two services claiming the same port |
+| `DEVSERVICES_PORT_DISAGREE` | Same service name with different ports across the two devservices files |
 | `PROD_NO_COMPOSE_PORT` | A prod service with no matching `ports:` map in docker-compose |
+| `PROD_CONTAINER_MISMATCH` | Registry `container` ≠ docker-compose `container_name` (rollback would target a nonexistent container) |
 | `PROD_NO_SMOKE_TEST` | A prod service with no smoke test in deploy.yml |
 | `PROD_PORT_MISMATCH` | A smoke-test port that matches no prod service in the registry |
+| `PROD_SMOKE_PATH_MISMATCH` | A smoke test on the right port but the wrong path |
 | `STALE_PORTS_DOC` | `docs/ports.md` drifted from the registry (run `pnpm ports:generate`) |
 
 `PROD_PORT_MISMATCH` + `PROD_NO_COMPOSE_PORT` are exactly the two faults behind the original
-incident — they are now structurally impossible to merge.
+smoke-test incident; `PROD_CONTAINER_MISMATCH` covers the sibling rollback-name fault (a failed
+deploy that silently never rolls back because the rollback targets a container name that does not
+exist). All three are now structurally impossible to merge.
+
+Prod entries link to their dev-runtime counterpart via `runtime_service`, so scope attribution
+and cross-checks key off identity, never a coincidentally shared port number.
 
 ## Consequences
 
