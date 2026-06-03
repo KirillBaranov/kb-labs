@@ -18,11 +18,20 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { APIRequestContext } from '@playwright/test'
 import { MIND } from '@kb-labs/e2e-shared/urls.js'
+import { readCorpus, type CorpusFile } from './corpus.js'
+import { grepSearch } from './grep.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+/** Repo root — lib/ lives at e2e/mind/lib. */
+export const REPO_ROOT = path.resolve(__dirname, '..', '..', '..')
+
 /** Dedicated index so the bench never collides with a developer's real corpus. */
 export const BENCH_INDEX = 'e2e-bench'
+
+/** Degraded (comment-stripped) corpus for the thesis test — written + indexed by the head-to-head spec. */
+export const DEGRADED_INDEX = 'e2e-bench-degraded'
+export const DEGRADED_SCOPE = 'e2e/mind/.degraded/core'
 
 /**
  * The bench corpus — the engine's own `core/src`. Richer than the contracts
@@ -123,14 +132,33 @@ async function unwrap(res: { json(): Promise<unknown> }): Promise<any> {
   return body.data ?? body
 }
 
-/** (Re)build the bench index from the corpus slice via the live engine. */
-export async function ensureBenchIndex(request: APIRequestContext): Promise<void> {
+/** (Re)build a bench index from a corpus scope via the live engine. */
+export async function ensureBenchIndex(
+  request: APIRequestContext,
+  opts: { indexId?: string; scope?: string } = {},
+): Promise<void> {
+  const indexId = opts.indexId ?? BENCH_INDEX
+  const scope = opts.scope ?? BENCH_SCOPE
   const res = await request.post(`${MIND}/index`, {
-    data: { indexId: BENCH_INDEX, scope: BENCH_SCOPE, full: true },
+    data: { indexId, scope, full: true },
   })
   if (!res.ok()) {
-    throw new Error(`index failed: ${res.status()} ${await res.text()}`)
+    throw new Error(`index failed (${indexId}): ${res.status()} ${await res.text()}`)
   }
+}
+
+/** Single live `/search` against a given index → unwrapped response. */
+async function mindSearch(
+  request: APIRequestContext,
+  indexId: string,
+  query: string,
+  limit: number,
+): Promise<any> {
+  const res = await request.post(`${MIND}/search`, { data: { text: query, indexId, limit } })
+  if (!res.ok()) {
+    throw new Error(`search failed (${indexId}): ${res.status()} ${await res.text()}`)
+  }
+  return unwrap(res)
 }
 
 /** Run the golden set against live `/search` and compute metrics. */
@@ -168,6 +196,67 @@ export async function runBench(
     semanticWinRate: mean(perQuery.map((p) => p.semanticWinRate)),
     perQuery,
   }
+}
+
+// ── grep-vs-mind head-to-head (thesis proof) ───────────────────────────────
+// For each golden query: does the relevant file land in the top-5 of Mind's
+// hybrid `/search` vs a literal grep baseline over the SAME corpus on disk?
+// `delta = mindHit − grepHit`. Run on a clean corpus (expected ≈0 — code is
+// well-named) and a comment-stripped/degraded one (expected > 0 — grep loses
+// the doc vocabulary, Mind's vector survives). That spread is the proof.
+
+export interface HeadToHead {
+  scenario: string
+  queries: number
+  /** Share of golden queries whose relevant file is in Mind's top-5. */
+  mindHit5: number
+  /** Same, for the literal grep baseline. */
+  grepHit5: number
+  /** mindHit5 − grepHit5 — Mind's edge over grep on this corpus. */
+  delta: number
+  /** Mean semantic-only win rate across the set (grep-would-miss proof). */
+  semanticWinRate: number
+  perQuery: { id: string; mindHit: number; grepHit: number; mindTop?: string; grepTop?: string }[]
+}
+
+/** Compare Mind `/search` (live, on `indexId`) against a local grep baseline over `corpus`. */
+export async function runHeadToHead(
+  request: APIRequestContext,
+  indexId: string,
+  corpus: CorpusFile[],
+  scenario: string,
+): Promise<HeadToHead> {
+  const per: HeadToHead['perQuery'] = []
+  let swrSum = 0
+  for (const q of GOLDEN) {
+    const data = await mindSearch(request, indexId, q.query, 5)
+    const mindFiles = [...new Set((data.results ?? []).map((r: { file: string }) => r.file))]
+    swrSum += data.meta?.semanticWinRate ?? 0
+    const grepFiles = grepSearch(corpus, q.query, 5)
+    per.push({
+      id: q.id,
+      mindHit: hitAtK(mindFiles, q.relevant, 5),
+      grepHit: hitAtK(grepFiles, q.relevant, 5),
+      mindTop: mindFiles[0],
+      grepTop: grepFiles[0],
+    })
+  }
+  const mindHit5 = mean(per.map((p) => p.mindHit))
+  const grepHit5 = mean(per.map((p) => p.grepHit))
+  return {
+    scenario,
+    queries: GOLDEN.length,
+    mindHit5,
+    grepHit5,
+    delta: mindHit5 - grepHit5,
+    semanticWinRate: swrSum / GOLDEN.length,
+    perQuery: per,
+  }
+}
+
+/** Read the corpus the engine indexed, for the local grep baseline (paths repo-relative). */
+export function loadCorpus(scope: string): CorpusFile[] {
+  return readCorpus(path.join(REPO_ROOT, scope), REPO_ROOT)
 }
 
 // ── A/B ledger ────────────────────────────────────────────────────────────
