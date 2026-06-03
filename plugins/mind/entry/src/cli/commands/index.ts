@@ -31,7 +31,9 @@ export default defineCommand<unknown, CLIInput<IndexFlags>, IndexResponse>({
     async execute(ctx: PluginContextV3, input: CLIInput<IndexFlags>): Promise<IndexCmdResult> {
       const { flags } = input;
       try {
-        const mind = await buildMind(ctx.cwd);
+        // `--root` lets one kb-labs install index an arbitrary project root
+        // (paths + freshness resolve against it); defaults to the invocation cwd.
+        const mind = await buildMind(flags.root ?? ctx.cwd);
 
         // Built-in SDK loader: an animated spinner whose text we drive per stage
         // (writes to stdout directly, so it renders even though the CLI presenter

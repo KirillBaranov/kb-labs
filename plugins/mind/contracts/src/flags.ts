@@ -13,6 +13,7 @@ const SNIPPET_DESC = 'How much source text per result';
 export const indexFlags = defineFlags({
   index: { type: 'string', description: INDEX_DESC, examples: ['code', 'docs'] },
   scope: { type: 'string', description: 'Glob/path scope to index', examples: ['src/**', 'docs/**'] },
+  root: { type: 'string', description: 'Project root to index (default: cwd)', examples: ['/path/to/repo'] },
   full: { type: 'boolean', description: 'Full rebuild instead of incremental delta', default: false },
   json: { type: 'boolean', description: JSON_DESC, default: false },
 });
