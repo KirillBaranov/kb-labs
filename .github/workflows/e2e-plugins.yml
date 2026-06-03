@@ -1,0 +1,108 @@
+name: E2E Plugins (affected)
+
+# Per-plugin E2E matrix, gated by kb-devkit's affected engine.
+#
+#   discover → (affected plugin suites) → matrix → reusable-e2e-docker per suite → aggregate
+#
+# The suite list is the `plugin-e2e-suite` devkit category (e2e/{mind,workflows,
+# marketplace,plugins}). `discover` asks kb-devkit which packages are affected by
+# the PR diff (transitive over the workspace graph) and maps them to suites via
+# scripts/ci/affected-plugin-e2e.mjs. Only affected suites spin up a Docker stack;
+# a PR that touches no plugin runs zero shards.
+#
+# Mirrors e2e-platform.yml (static infra matrix); this one is dynamic + affected.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: e2e-plugins-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Diff base for kb-devkit --affected: PR base branch (origin/<base>...HEAD).
+  KB_DEVKIT_BASE_REF: >-
+    ${{ format('origin/{0}...HEAD', github.event.pull_request.base.ref) }}
+
+jobs:
+  # ── Discover affected plugin suites ────────────────────────────────────────
+  discover:
+    name: Discover affected suites
+    runs-on: ubuntu-latest
+    outputs:
+      include: ${{ steps.set.outputs.include }}
+      has-suites: ${{ steps.set.outputs.has-suites }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so --affected can diff against the base
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+          cache-dependency-path: tools/kb-devkit/go.sum
+      - uses: pnpm/action-setup@v4
+        with: { run_install: false }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Build kb-devkit
+        run: make build
+        working-directory: tools/kb-devkit
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Compute affected plugin-e2e matrix
+        id: set
+        run: |
+          # kb-devkit owns transitivity; the script maps affected packages → suites.
+          ./tools/kb-devkit/kb-devkit run build --affected --json > /tmp/affected.json || true
+          OUT=$(node scripts/ci/affected-plugin-e2e.mjs < /tmp/affected.json)
+          echo "computed matrix: $OUT"
+          echo "include=$(echo "$OUT" | jq -c '.include')" >> "$GITHUB_OUTPUT"
+          echo "has-suites=$(echo "$OUT" | jq -r '(.suites | length) > 0')" >> "$GITHUB_OUTPUT"
+
+  # ── Affected shards — one Docker stack per affected plugin suite ───────────
+  e2e:
+    needs: discover
+    if: ${{ needs.discover.outputs.has-suites == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.discover.outputs.include) }}
+    uses: ./.github/workflows/reusable-e2e-docker.yml
+    with:
+      suite: ${{ matrix.suite }}
+      e2e-package: "@kb-labs/e2e-${{ matrix.suite }}"
+      health-url: http://localhost:4000/ready
+      health-steps: 60
+      playwright-dir: e2e/${{ matrix.suite }}
+      compose-project: kb-e2e-plugins-${{ matrix.suite }}
+    permissions:
+      contents: read
+
+  # ── Aggregator — single required status check ──────────────────────────────
+  aggregate:
+    name: Plugin E2E
+    needs: [discover, e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check outcome
+        run: |
+          if [ "${{ needs.discover.outputs.has-suites }}" != "true" ]; then
+            echo "No affected plugin suites — nothing to run."
+            exit 0
+          fi
+          if [ "${{ needs.e2e.result }}" = "success" ]; then
+            echo "All affected plugin E2E shards passed."
+            exit 0
+          fi
+          echo "::error::A plugin E2E shard did not succeed (${{ needs.e2e.result }})."
+          exit 1
