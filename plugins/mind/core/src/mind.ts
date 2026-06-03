@@ -133,7 +133,7 @@ export function createMind(
 
       // Over-fetch, then refine: retrieve -> rerank -> dedup.
       const retrieved = await retrieve(
-        { text: req.text, indexId, limit: limit * 3, intent: req.intent, rrfK: retrieval.rrfK, hyde: retrieval.hyde },
+        { text: req.text, indexId, limit: limit * 3, intent: req.intent, rrfK: retrieval.rrfK, hyde: retrieval.hyde, expand: retrieval.expand },
         services,
       );
       let ranked = retrieval.rerank ? rerank(retrieved.ranked, req.text) : retrieved.ranked;
@@ -184,7 +184,7 @@ export function createMind(
       let retrievalConfidence = 0;
       for (const q of queries) {
         const r = await retrieve(
-          { text: q, indexId, limit: budget.maxChunks, intent: undefined, rrfK: retrieval.rrfK, hyde: retrieval.hyde },
+          { text: q, indexId, limit: budget.maxChunks, intent: undefined, rrfK: retrieval.rrfK, hyde: retrieval.hyde, expand: retrieval.expand },
           services,
         );
         retrievalConfidence = Math.max(retrievalConfidence, r.confidence);
@@ -252,7 +252,7 @@ export function createMind(
 
       // Over-fetch with an architecture lens, then refine: retrieve -> rerank -> dedup.
       const retrieved = await retrieve(
-        { text: req.task, indexId, limit: limit * 3, intent: 'architecture', rrfK: retrieval.rrfK, hyde: retrieval.hyde },
+        { text: req.task, indexId, limit: limit * 3, intent: 'architecture', rrfK: retrieval.rrfK, hyde: retrieval.hyde, expand: retrieval.expand },
         services,
       );
       let ranked = retrieval.rerank ? rerank(retrieved.ranked, req.task) : retrieved.ranked;

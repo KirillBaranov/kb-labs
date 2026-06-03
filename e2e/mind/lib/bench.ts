@@ -63,6 +63,21 @@ export const GOLDEN: GoldenQuery[] = [
   { id: 'C-09', query: 'compose the final written reply out of the retrieved snippets', relevant: ['answer/synthesize.ts', 'answer/answer.ts'] },
   { id: 'C-10', query: 'only re-process files that actually changed since the last run', relevant: ['ingest/ingest.ts'] },
   { id: 'C-11', query: 'push results higher when the exact search words appear in the code', relevant: ['retrieval/rerank.ts'] },
+  { id: 'C-12', query: 'find the nearest passages by vector similarity in the embedding database', relevant: ['retrieval/vector.ts'] },
+  { id: 'C-13', query: 'turn text passages into embedding vectors in batches that respect the token limit', relevant: ['ingest/embed.ts'] },
+  { id: 'C-14', query: 'broaden the search terms with related identifiers to fight vocabulary mismatch', relevant: ['retrieval/expand.ts'] },
+  { id: 'C-15', query: 'flag when the reply mentions names that do not appear in any cited source', relevant: ['answer/field-check.ts'] },
+  { id: 'C-16', query: 'add update or remove a single document from an index without rebuilding everything', relevant: ['sync.ts'] },
+  { id: 'C-17', query: 'detect which previously indexed files have drifted on disk since indexing', relevant: ['index-store.ts'] },
+  { id: 'C-18', query: 'assemble the machine-readable answer object with citations confidence and abstention', relevant: ['answer/answer.ts'] },
+  { id: 'C-19', query: 'produce a where-to-start map of relevant files for an unfamiliar task', relevant: ['answer/explore.ts'] },
+  { id: 'C-20', query: 'the unit of indexing with its line range and a content hash for change detection', relevant: ['types.ts'] },
+  { id: 'C-21', query: 'how confident are we in an answer and when should the assistant decline', relevant: ['answer/verify.ts', 'answer/field-check.ts'] },
+  // --- exact / API-shaped lookups (lexical should nail these) ---
+  { id: 'EX-03', query: 'reciprocal rank fusion rrfFuse weighted lists', relevant: ['retrieval/fuse.ts'] },
+  { id: 'EX-04', query: 'tokenize function for BM25', relevant: ['retrieval/bm25.ts'] },
+  { id: 'EX-05', query: 'hypotheticalDocument HyDE prompt', relevant: ['retrieval/hyde.ts'] },
+  { id: 'EX-06', query: 'expandQuery related identifiers synonyms', relevant: ['retrieval/expand.ts'] },
 ]
 
 // ── IR metrics (file-level; collapse multiple chunks of the same file) ──────
@@ -90,7 +105,13 @@ export interface BenchMetrics {
   'hit@1': number
   'hit@5': number
   mrr: number
-  perQuery: { id: string; hit1: number; rr: number; top: string | undefined }[]
+  /**
+   * Mean share of returned results found semantic-only (grep would have missed
+   * them) across the golden set — the proof-of-value-vs-grep KPI, read from
+   * each `/search` response's `meta.semanticWinRate`.
+   */
+  semanticWinRate: number
+  perQuery: { id: string; hit1: number; rr: number; top: string | undefined; semanticWinRate: number }[]
 }
 
 // ── live REST helpers ───────────────────────────────────────────────────────
@@ -152,6 +173,7 @@ export async function runBench(
       hit1: hitAtK(files, q.relevant, 1),
       rr: reciprocalRank(files, q.relevant),
       top: files[0],
+      semanticWinRate: data.meta?.semanticWinRate ?? 0,
     })
   }
 
@@ -161,6 +183,7 @@ export async function runBench(
     'hit@1': mean(perQuery.map((p) => p.hit1)),
     'hit@5': mean(perQuery.map((p) => (p.rr > 0 ? 1 : 0))),
     mrr: mean(perQuery.map((p) => p.rr)),
+    semanticWinRate: mean(perQuery.map((p) => p.semanticWinRate)),
     perQuery,
   }
 }

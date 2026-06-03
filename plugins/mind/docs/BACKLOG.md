@@ -15,7 +15,8 @@ Bench-gated: every row marked **Y** must ship with a before/after benchmark delt
 | AST chunking | tree-sitter | 🟡 structure-aware-lite (brace) | P2 | Y | tree-sitter behind `chunkFile`; measure chunk-boundary quality |
 | Freshness / staleness | fresh/soft/hard + penalties | ❌ | P1 | Y | confidence penalty for stale chunks |
 | Conflict detection | cross-source contradiction penalty | ❌ | P3 | Y | hard to bench — needs conflict fixtures |
-| HyDE (hypothetical embeddings) | optional | 🟡 ported, default OFF | P3 | Y | `retrieval.hyde` flag + `e2e/mind` `hyde-on` A/B. Live verdict on current golden set: **neutral** (Δmrr 0.000, Δhit@5 0.000) — the 6 direct queries already retrieve well, so HyDE's concept-query benefit isn't exercised. Stays OFF until a concept-heavy golden set shows lift. |
+| HyDE (hypothetical embeddings) | optional | 🟡 ported, default OFF | P3 | Y | `retrieval.hyde` flag + `e2e/mind` `hyde-on` A/B. Earlier verdict on the 6-query golden set: **neutral** (Δmrr 0.000, Δhit@5 0.000) — too few concept queries to exercise HyDE. Golden set since extended to **27 queries (concept-heavy)** (Stage 3); re-run pending for an honest verdict. Stays OFF until a lift is shown. |
+| Query expansion (lexical-side) | n/a | 🔵 new, default OFF | P2 | Y | `retrieval.expand` flag + `core/src/retrieval/expand.ts` + `e2e/mind` `expand-on` A/B. Appends LLM-suggested related identifiers/synonyms to the BM25 query (orthogonal to HyDE on the vector side) — targets vocabulary mismatch, the core messy-repo failure. Verdict pending the live A/B on the extended golden set; ships on-by-default only on a lift without regression. |
 
 ## Answer quality
 

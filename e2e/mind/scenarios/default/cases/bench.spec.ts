@@ -28,7 +28,7 @@ test.describe('mind real-embedder bench — default (rerank ON)', () => {
     recordMetrics(m)
 
     // Surface the numbers in the test log for the operator.
-    console.log(`[mind-bench/default] hit@1=${m['hit@1'].toFixed(3)} hit@5=${m['hit@5'].toFixed(3)} mrr=${m.mrr.toFixed(3)}`)
+    console.log(`[mind-bench/default] hit@1=${m['hit@1'].toFixed(3)} hit@5=${m['hit@5'].toFixed(3)} mrr=${m.mrr.toFixed(3)} semWinRate=${m.semanticWinRate.toFixed(3)}`)
     for (const q of m.perQuery) {
       console.log(`  ${q.id} rr=${q.rr.toFixed(2)} top=${q.top ?? '∅'}`)
     }

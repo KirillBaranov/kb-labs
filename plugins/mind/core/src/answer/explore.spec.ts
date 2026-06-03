@@ -22,15 +22,16 @@ describe('toExploreEntries', () => {
   });
 
   it('derives `why` from the matched line, not from rules', () => {
-    const [entry] = toExploreEntries([rc('src/a.ts', '\n   export function login() {}\n')], new Map());
-    expect(entry.why).toContain('login');
+    const entries = toExploreEntries([rc('src/a.ts', '\n   export function login() {}\n')], new Map());
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.why).toContain('login');
   });
 
   it('carries matchedBy and stale through', () => {
     const stale = new Map([['src/a.ts', true]]);
-    const [entry] = toExploreEntries([rc('src/a.ts', 'code', 'semantic')], stale);
-    expect(entry.matchedBy).toBe('semantic');
-    expect(entry.stale).toBe(true);
+    const entries = toExploreEntries([rc('src/a.ts', 'code', 'semantic')], stale);
+    expect(entries[0]?.matchedBy).toBe('semantic');
+    expect(entries[0]?.stale).toBe(true);
   });
 });
 

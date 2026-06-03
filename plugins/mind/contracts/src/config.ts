@@ -65,6 +65,14 @@ export const RetrievalConfigSchema = z.object({
    * Off by default — enable only where the bench A/B shows a lift.
    */
   hyde: z.boolean().default(false),
+  /**
+   * Query expansion: ask the LLM for related identifiers/synonyms and append
+   * them to the BM25 (lexical) query, so vocabulary mismatch between the query
+   * wording and the code/doc terms still surfaces lexical hits. Orthogonal to
+   * HyDE (which bridges the vector side). Trades one LLM call per query.
+   * Off by default — enable only where the bench A/B shows a lift.
+   */
+  expand: z.boolean().default(false),
 });
 
 export const ConfidenceConfigSchema = z.object({

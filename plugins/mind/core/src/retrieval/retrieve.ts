@@ -10,6 +10,7 @@ import { bm25Search, type Ranked } from './bm25';
 import { vectorSearch } from './vector';
 import { rrfFuse, intentWeights, type QueryIntent, type MatchedBy } from './fuse';
 import { hypotheticalDocument } from './hyde';
+import { expandQuery } from './expand';
 
 export interface RetrieveInput {
   text: string;
@@ -19,6 +20,8 @@ export interface RetrieveInput {
   rrfK: number;
   /** HyDE: embed an LLM-generated hypothetical doc for the vector search. */
   hyde?: boolean;
+  /** Query expansion: append LLM-suggested related terms to the BM25 query. */
+  expand?: boolean;
 }
 
 export interface RankedChunk {
@@ -45,11 +48,13 @@ export async function retrieve(input: RetrieveInput, services: MindServices): Pr
   // Over-fetch each list so fusion has signal beyond the final cut.
   const candidateLimit = Math.max(input.limit * 3, 30);
 
-  // BM25 always runs on the raw query (exact terms). HyDE only changes the text
-  // fed to the vector search — a hypothetical answer sits closer to the chunks.
+  // Two orthogonal, optional query bridges (each one LLM call):
+  //  - HyDE rewrites the VECTOR text (a hypothetical answer sits near the chunks);
+  //  - expansion augments the BM25 (LEXICAL) text with related identifiers/synonyms.
   const vectorText = input.hyde ? await hypotheticalDocument(input.text, services.llm) : input.text;
+  const lexicalText = input.expand ? await expandQuery(input.text, services.llm) : input.text;
 
-  const bm25 = bm25Search(manifest.chunks, input.text, candidateLimit);
+  const bm25 = bm25Search(manifest.chunks, lexicalText, candidateLimit);
   const vector = await vectorSearch(
     vectorText,
     services.vectorStore,
