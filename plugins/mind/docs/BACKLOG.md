@@ -18,6 +18,36 @@ Bench-gated: every row marked **Y** must ship with a before/after benchmark delt
 | HyDE (hypothetical embeddings) | optional | 🟡 ported, default OFF | P3 | Y | `retrieval.hyde` flag + `e2e/mind` `hyde-on` A/B. Concept golden extended to **27 queries** (Stage 3). Verdict **PENDING a standard-runner pass**: the earlier "identical metrics" reading (2026-06-03) was an artifact of a non-standard manual harness — daemons started by hand that `kb-dev ensure --scenario` could not restart with the overlay, so all scenarios ran the unchanged config. The overlay mechanism itself is fine in the standard `kb-labs-e2e-runner` flow (`rerank-off` A/B proves it). Re-run via `MIND_BENCH_REAL=1 kb-devkit run e2e --packages @kb-labs/e2e-mind` (runner owns kb-dev lifecycle). Baseline `semanticWinRate=0.000` on the clean corpus stands (BM25 already nails it; semantic levers should show value on a degraded/messy corpus). Stays OFF until a standard run shows a lift. |
 | Query expansion (lexical-side) | n/a | 🔵 new, default OFF | P2 | Y | `retrieval.expand` flag + `core/src/retrieval/expand.ts` + `e2e/mind` `expand-on` A/B. Same as HyDE: verdict PENDING a standard-runner pass + ideally a degraded corpus. Stays OFF until a lift is shown. |
 
+### Validation finding — grep-vs-mind head-to-head (2026-06-03)
+
+`e2e/mind` `headtohead` scenario (`M-BENCH-05`), 27-query golden over the
+`plugins/mind/core/src` corpus, hit@5 of Mind `/search` vs a literal grep
+baseline on the same files; then a comment-stripped ("undocumented") copy:
+
+| corpus | mind hit@5 | grep hit@5 | delta (mind−grep) | semWin |
+|---|---|---|---|---|
+| clean | 0.741 | 0.778 | **−0.037** | 0.000 |
+| degraded (no comments) | 0.519 | 0.667 | **−0.148** | 0.000 |
+
+**The thesis ("Mind beats grep on undocumented code") is NOT supported on this
+corpus — the opposite held.** Two honest takeaways:
+
+1. On a small, clean, well-named corpus, **literal grep is a strong baseline
+   Mind doesn't beat** (grep already finds the file via identifiers + comments;
+   `semWin=0.000` — zero semantic-only wins).
+2. **Comment-stripping hurts Mind *more* than grep** (mind 0.741→0.519 vs grep
+   0.778→0.667). Mind's vector side leans heavily on natural-language comments —
+   they embed close to the NL query. So "strip the docs" removes *Mind's own*
+   signal; it is the wrong degradation axis for the thesis.
+
+**Implication / next:** Mind's measured edge needs a corpus where grep actually
+drowns — i.e. **scale + naming noise** (large repo, inconsistent/misleading
+identifiers, query words absent from *both* code and comments), not merely
+"clean code minus comments". The honest demonstration is the stretch goal:
+index one large, messy external OSS repo and re-run the head-to-head. Until then
+we have NO evidence Mind out-retrieves grep — a result worth knowing before
+shipping retrieval claims.
+
 ## Answer quality
 
 | Feature | Legacy | v2 status | Priority | Bench-gated | Notes |
