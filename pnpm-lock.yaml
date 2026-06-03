@@ -294,9 +294,6 @@ importers:
       '@kb-labs/adapters-sqlite':
         specifier: workspace:*
         version: link:../sqlite
-      '@kb-labs/core-platform':
-        specifier: workspace:*
-        version: link:../../core/platform
       '@kb-labs/devkit':
         specifier: workspace:*
         version: link:../../infra/devkit
@@ -5865,6 +5862,9 @@ importers:
       tsx:
         specifier: ^4.20.5
         version: 4.21.0
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
       vitest:
         specifier: ^3.2.4
         version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.4)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
@@ -6050,6 +6050,9 @@ importers:
       tsx:
         specifier: ^4.20.5
         version: 4.21.0
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
       vitest:
         specifier: ^3.2.4
         version: 3.2.4(@types/debug@4.1.13)(@types/node@24.12.4)(@vitest/ui@3.2.4)(jiti@2.6.1)(jsdom@27.4.0)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.3)
