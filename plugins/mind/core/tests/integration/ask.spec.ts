@@ -26,10 +26,12 @@ describe('mind.ask — agent answers (frozen agent-response-v1)', () => {
     const res = await mind.ask({ text: 'login authenticate user', indexId: 'code', mode: 'instant' });
 
     expect(() => AgentResponseSchema.parse(res)).not.toThrow();
-    expect(res.meta.schemaVersion).toBe('agent-response-v1');
     expect(res.meta.mode).toBe('instant');
+    expect(res.meta.indexId).toBe('code');
+    expect(typeof res.abstained).toBe('boolean');
     expect(res.sources.length).toBeGreaterThan(0);
     expect(res.sources[0]?.file).toBe('src/auth.ts');
+    expect(res.sources[0]?.matchedBy).toBeDefined();
     expect(res.answer.length).toBeGreaterThan(0);
   });
 
@@ -40,7 +42,7 @@ describe('mind.ask — agent answers (frozen agent-response-v1)', () => {
 
     expect(res.answer).toContain('login()');
     expect(res.meta.mode).toBe('auto');
-    expect(typeof res.complete).toBe('boolean');
+    expect(typeof res.abstained).toBe('boolean');
     expect(res.sources.length).toBeGreaterThan(0);
   });
 
@@ -50,7 +52,7 @@ describe('mind.ask — agent answers (frozen agent-response-v1)', () => {
 
     expect(() => AgentResponseSchema.parse(res)).not.toThrow();
     expect(res.sources).toEqual([]);
-    expect(res.complete).toBe(false);
+    expect(res.abstained).toBe(true);
   });
 
   it('records the query in feedback history', async () => {

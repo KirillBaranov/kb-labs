@@ -19,6 +19,8 @@ import type {
   QueryRequest,
   AgentResponse,
   AgentQueryMode,
+  ExploreRequest,
+  ExploreResponse,
   SyncResponse,
   SyncListResponse,
   SyncStatusResponse,
@@ -36,6 +38,7 @@ import { verifySources, computeConfidence } from './answer/verify';
 import { applyFieldCheck } from './answer/field-check';
 import { decompose } from './answer/decompose';
 import { synthesizeAnswer, buildAgentResponse } from './answer/answer';
+import { toExploreEntries, spreadOf, orientationSummary } from './answer/explore';
 import { recordQuery } from './feedback/history';
 import { toSearchResults } from './answer/synthesize';
 import { loadManifest, staleMap, staleCount } from './index-store';
@@ -44,6 +47,7 @@ export interface Mind {
   index(req: IndexRequest, onProgress?: (event: IngestProgress) => void): Promise<IndexResponse>;
   search(req: SearchRequest): Promise<SearchResponse>;
   ask(req: QueryRequest): Promise<AgentResponse>;
+  explore(req: ExploreRequest): Promise<ExploreResponse>;
   reindex(req: ReindexRequest): Promise<IndexResponse>;
   syncAdd(paths: string[], indexId?: string): Promise<SyncResponse>;
   syncUpdate(paths: string[], indexId?: string): Promise<SyncResponse>;
@@ -236,6 +240,48 @@ export function createMind(
         staleByFile,
         warnings,
       });
+    },
+
+    async explore(req): Promise<ExploreResponse> {
+      const indexId = resolveIndexId(req.indexId);
+      const retrieval = effectiveIndexConfig(config, indexId).retrieval;
+      // A map is a wider view than a search; the model decides what to open.
+      const budget = config.modes.auto;
+      const limit = req.limit ?? retrieval.limit;
+      const t0 = now();
+
+      // Over-fetch with an architecture lens, then refine: retrieve -> rerank -> dedup.
+      const retrieved = await retrieve(
+        { text: req.task, indexId, limit: limit * 3, intent: 'architecture', rrfK: retrieval.rrfK, hyde: retrieval.hyde },
+        services,
+      );
+      let ranked = retrieval.rerank ? rerank(retrieved.ranked, req.task) : retrieved.ranked;
+      if (retrieval.dedup) {
+        ranked = dedupRanked(ranked);
+      }
+      ranked = ranked.slice(0, limit);
+
+      const manifest = await loadManifest(services.storage, indexId);
+      const stales = await staleMap(manifest, ranked.map((r) => r.chunk.path), cwd);
+      const files = toExploreEntries(ranked, stales);
+      const spread = spreadOf(files.map((f) => f.file));
+      const summary = await orientationSummary(req.task, files, services.llm, budget.useLLM);
+      const timingMs = now() - t0;
+
+      services.logger?.info('mind: explore', {
+        indexId,
+        filesTouched: files.length,
+        spread,
+        timingMs,
+      });
+      return {
+        task: req.task,
+        indexId,
+        confidence: retrieved.confidence,
+        summary,
+        files,
+        meta: { requestId: `mind:${t0}`, timingMs, filesTouched: files.length, spread },
+      };
     },
 
     async reindex(req): Promise<IndexResponse> {

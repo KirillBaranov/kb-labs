@@ -52,22 +52,26 @@ describe('CLI ↔ REST parity (search)', () => {
   it('CLI search --json equals REST search response', async () => {
     await indexCmd.execute(ctx, mockCLIInput({ flags: { index: 'code', scope: 'src/' } }));
 
-    await searchCmd.execute(
+    const cliRes = await searchCmd.execute(
       ctx,
       mockCLIInput({ flags: { text: 'login authenticate user', index: 'code', json: true } }),
     );
-    const cliResult = jsonCalls[jsonCalls.length - 1];
+    const cliResult = cliRes.result;
 
     const restResult = await searchHandler.execute(
       ctx,
       { body: { text: 'login authenticate user', indexId: 'code' } } as never,
     );
 
-    // `trace` is observability (timings/requestId) and inherently varies between
-    // two calls; parity is about the result payload (results/confidence/indexId).
+    // Parity is about the retrieval payload (results/confidence/indexId), not the
+    // environmental overlays: `meta` is observability (timings/requestId) and
+    // `stale` is per-result on-disk freshness, which depends on the resolved cwd
+    // (CLI gets ctx.cwd; the REST handler uses process.cwd() by design) — so both
+    // are normalized out before comparing.
     const strip = (r: unknown) => {
-      const { trace: _trace, ...rest } = r as Record<string, unknown>;
-      return rest;
+      const { meta: _meta, results, ...rest } = r as Record<string, unknown>;
+      const norm = (results as Array<Record<string, unknown>>).map(({ stale: _stale, ...res }) => res);
+      return { ...rest, results: norm };
     };
     expect(strip(cliResult)).toEqual(strip(restResult));
     expect((restResult as { results: Array<{ file: string }> }).results[0]?.file).toBe('src/auth.ts');

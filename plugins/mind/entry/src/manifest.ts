@@ -18,6 +18,7 @@ import {
   indexFlags,
   searchFlags,
   askFlags,
+  exploreFlags,
   statusFlags,
   syncPathsFlags,
   syncListFlags,
@@ -99,6 +100,18 @@ export const manifest = {
         examples: [
           'kb mind ask --text "how does auth work" --index code',
           'kb mind ask --text "billing flow" --mode thinking --agent',
+        ],
+      },
+      {
+        path: 'mind explore',
+        category: 'Query',
+        operationType: 'read' as const,
+        describe: 'Task-orientation map — where to start and how involved a task looks.',
+        handler: './cli/commands/explore.js#default',
+        flags: defineCommandFlags(exploreFlags.schema),
+        examples: [
+          'kb mind explore --task "add rate limiting to the gateway" --index code',
+          'kb mind explore --task "where is auth handled" --format json',
         ],
       },
       {
@@ -193,6 +206,14 @@ export const manifest = {
         handler: './rest/handlers/query.js#default',
         input: { zod: '@kb-labs/mind-contracts#QueryRequestSchema' },
         output: { zod: '@kb-labs/mind-contracts#AgentResponseSchema' },
+        timeoutMs: 120000,
+      },
+      {
+        method: 'POST',
+        path: MIND_ROUTES.EXPLORE,
+        handler: './rest/handlers/explore.js#default',
+        input: { zod: '@kb-labs/mind-contracts#ExploreRequestSchema' },
+        output: { zod: '@kb-labs/mind-contracts#ExploreResponseSchema' },
         timeoutMs: 120000,
       },
       {

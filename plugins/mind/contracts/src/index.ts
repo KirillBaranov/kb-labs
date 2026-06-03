@@ -18,5 +18,6 @@ export * from './schema/agent.schema';
 export * from './schema/search.schema';
 export * from './schema/index.schema';
 export * from './schema/query.schema';
+export * from './schema/explore.schema';
 export * from './schema/sync.schema';
 export * from './schema/status.schema';

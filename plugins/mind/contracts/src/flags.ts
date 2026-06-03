@@ -37,6 +37,14 @@ export const askFlags = defineFlags({
   json: { type: 'boolean', description: JSON_DESC, default: false },
 });
 
+export const exploreFlags = defineFlags({
+  task: { type: 'string', description: 'The task to orient around', required: true },
+  index: { type: 'string', description: `${INDEX_DESC} to explore` },
+  limit: { type: 'number', description: 'Max files in the map' },
+  format: { type: 'string', description: FORMAT_DESC, examples: ['text', 'json'] },
+  json: { type: 'boolean', description: `${JSON_DESC} (alias for --format json)`, default: false },
+});
+
 export const syncPathsFlags = defineFlags({
   index: { type: 'string', description: INDEX_DESC },
   json: { type: 'boolean', description: JSON_DESC, default: false },
@@ -61,6 +69,7 @@ export const statusFlags = defineFlags({
 export type IndexFlags = typeof indexFlags.infer;
 export type SearchFlags = typeof searchFlags.infer;
 export type AskFlags = typeof askFlags.infer;
+export type ExploreFlags = typeof exploreFlags.infer;
 export type SyncPathsFlags = typeof syncPathsFlags.infer;
 export type SyncListFlags = typeof syncListFlags.infer;
 export type ReindexFlags = typeof reindexFlags.infer;

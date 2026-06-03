@@ -26,8 +26,12 @@ export default defineCommand<unknown, CLIInput<SearchFlags>, SearchResponse>({
         const res = await mind.search(req);
 
         if (json) {
-          ctx.ui?.json?.(res);
-        } else if (res.results.length === 0) {
+          // Single compact line so the agent contract `… --format json | grep "^{"`
+          // works (ctx.ui.json pretty-prints, which breaks line-based extraction).
+          console.log(JSON.stringify(res));
+          return { exitCode: 0, result: res };
+        }
+        if (res.results.length === 0) {
           ctx.ui?.warn?.(`No results in index "${res.indexId}"`);
         } else {
           ctx.ui?.success?.(`${res.results.length} result(s) — confidence ${res.confidence.toFixed(2)}`, {
