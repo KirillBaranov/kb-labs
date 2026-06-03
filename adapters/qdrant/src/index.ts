@@ -84,6 +84,35 @@ function stringToUUID(str: string): string {
 }
 
 /**
+ * Qdrant point IDs must be UUID/uint, so `stringToUUID` hashes the caller's id
+ * one-way. To honour the round-trip contract (search returns the SAME id space
+ * the caller upserted), we stash the original id in the payload under this
+ * reserved key and restore it on read — otherwise consumers that correlate
+ * results by id (e.g. fusing vector hits back to their source records) silently
+ * drop every vector result.
+ */
+const ORIGINAL_ID_KEY = "__kb_id";
+
+type QdrantPoint = { id: string | number; payload?: Record<string, unknown> | null };
+
+/** The caller's original id (from payload), falling back to the raw point id. */
+function readOriginalId(point: QdrantPoint): string {
+  const orig = point.payload?.[ORIGINAL_ID_KEY];
+  return typeof orig === "string" ? orig : String(point.id);
+}
+
+/** Returned metadata without the reserved id key. */
+function stripReservedId(
+  payload?: Record<string, unknown> | null,
+): Record<string, unknown> | undefined {
+  if (!payload) {
+    return undefined;
+  }
+  const { [ORIGINAL_ID_KEY]: _omit, ...rest } = payload;
+  return rest;
+}
+
+/**
  * Default retry options used for all Qdrant client calls.
  *
  * Strategy: up to 4 attempts, full-jitter exponential back-off starting at
@@ -243,9 +272,9 @@ export class QdrantVectorStore implements IVectorStore {
     );
 
     return response.map((point) => ({
-      id: String(point.id),
+      id: readOriginalId(point),
       score: point.score,
-      metadata: point.payload as Record<string, unknown> | undefined,
+      metadata: stripReservedId(point.payload),
     }));
   }
 
@@ -269,7 +298,9 @@ export class QdrantVectorStore implements IVectorStore {
     const points = vectors.map((record) => ({
       id: stringToUUID(record.id),
       vector: record.vector,
-      payload: record.metadata ?? {},
+      // Preserve the caller's id so reads can round-trip it (Qdrant point ids
+      // are the one-way UUID hash and can't be reversed).
+      payload: { ...(record.metadata ?? {}), [ORIGINAL_ID_KEY]: record.id },
     }));
 
     // Batch upsert with adaptive parallel processing (Qdrant supports up to 100 points per request)
@@ -415,9 +446,9 @@ export class QdrantVectorStore implements IVectorStore {
     );
 
     return response.map((point) => ({
-      id: String(point.id),
+      id: readOriginalId(point),
       vector: point.vector as number[],
-      metadata: point.payload as Record<string, unknown> | undefined,
+      metadata: stripReservedId(point.payload),
     }));
   }
 
@@ -443,9 +474,9 @@ export class QdrantVectorStore implements IVectorStore {
     );
 
     return response.points.map((point) => ({
-      id: String(point.id),
+      id: readOriginalId(point),
       vector: point.vector as number[],
-      metadata: point.payload as Record<string, unknown> | undefined,
+      metadata: stripReservedId(point.payload),
     }));
   }
 

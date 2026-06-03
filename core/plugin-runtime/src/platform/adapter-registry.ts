@@ -135,6 +135,12 @@ const wrapVectorStore: AdapterMiddlewareFn<VectorStoreAdapter> = (adapter, ctx) 
     return `${namespace}${id}`;
   };
 
+  // Inverse of `prefixId`: results must round-trip the id the caller upserted,
+  // otherwise consumers that correlate results by id (e.g. fusing vector hits
+  // back to their source records) silently drop every result.
+  const stripId = <T extends { id: string }>(r: T): T =>
+    namespace && r.id.startsWith(namespace) ? { ...r, id: r.id.slice(namespace.length) } : r;
+
   const filterByNamespace = <T extends { metadata?: Record<string, unknown> }>(results: T[]): T[] => {
     if (!namespace) {return results;}
     return results.filter(
@@ -148,7 +154,7 @@ const wrapVectorStore: AdapterMiddlewareFn<VectorStoreAdapter> = (adapter, ctx) 
   return {
     search: async (query: number[], limit: number, filter?: VectorFilter, ns?: string) => {
       const results = await adapter.search(query, limit, filter, ns);
-      return filterByNamespace(results);
+      return filterByNamespace(results).map(stripId);
     },
     upsert: async (vectors: VectorRecord[], ns?: string) => {
       const prefixed = vectors.map((v) => ({
@@ -161,13 +167,13 @@ const wrapVectorStore: AdapterMiddlewareFn<VectorStoreAdapter> = (adapter, ctx) 
     delete: async (ids: string[], ns?: string) => adapter.delete(ids.map(prefixId), ns),
     count: (ns?: string) => adapter.count(ns),
     ...(adapter.get
-      ? { get: async (ids: string[], ns?: string) => adapter.get!(ids.map(prefixId), ns) }
+      ? { get: async (ids: string[], ns?: string) => (await adapter.get!(ids.map(prefixId), ns)).map(stripId) }
       : {}),
     ...(adapter.query
       ? {
           query: async (filter: VectorFilter, ns?: string) => {
             const results = await adapter.query!(filter, ns);
-            return filterByNamespace(results);
+            return filterByNamespace(results).map(stripId);
           },
         }
       : {}),
