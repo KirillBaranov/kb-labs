@@ -675,10 +675,15 @@ tasks:
       cache: false
 
   e2e:
-    - categories: [e2e-suite]
+    # Both the infrastructure matrix (e2e-suite) and the per-plugin matrix
+    # (plugin-e2e-suite) run the same `pnpm run e2e`. `--affected` then scopes
+    # to whichever suites' workspace deps changed.
+    - categories: [e2e-suite, plugin-e2e-suite]
       command: pnpm run e2e
       inputs:
         - "specs/**"
+        - "scenarios/**"
+        - "lib/**"
         - "playwright.config.ts"
         - "tsconfig.json"
       outputs: []
