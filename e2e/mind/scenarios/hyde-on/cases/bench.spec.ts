@@ -4,7 +4,6 @@ import {
   ensureBenchIndex,
   readMetrics,
   recordMetrics,
-  resolveMindBase,
   runBench,
 } from '../../../lib/bench.js'
 
@@ -21,10 +20,9 @@ test.describe('mind real-embedder bench — A/B (HyDE ON vs OFF)', () => {
   test.skip(!BENCH_ENABLED, 'set MIND_BENCH_REAL=1 and run with kb-dev up (needs OpenAI + Qdrant)')
 
   test('M-BENCH-03: enabling HyDE does not regress quality (ON ≥ OFF)', async ({ request }) => {
-    const base = await resolveMindBase(request)
-    await ensureBenchIndex(request, base)
+    await ensureBenchIndex(request)
 
-    const on = await runBench(request, base, 'hyde-on')
+    const on = await runBench(request, 'hyde-on')
     recordMetrics(on)
 
     const off = readMetrics('default')

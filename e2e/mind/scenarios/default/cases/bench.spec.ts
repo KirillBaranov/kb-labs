@@ -5,7 +5,6 @@ import {
   ensureBenchIndex,
   recordMetrics,
   resetLedger,
-  resolveMindBase,
   runBench,
 } from '../../../lib/bench.js'
 
@@ -21,10 +20,9 @@ test.describe('mind real-embedder bench — default (rerank ON)', () => {
 
   test('M-BENCH-01: golden set meets the retrieval quality gate', async ({ request }) => {
     resetLedger() // default runs first → start a fresh A/B ledger
-    const base = await resolveMindBase(request)
-    await ensureBenchIndex(request, base)
+    await ensureBenchIndex(request)
 
-    const m = await runBench(request, base, 'default')
+    const m = await runBench(request, 'default')
     recordMetrics(m)
 
     // Surface the numbers in the test log for the operator.

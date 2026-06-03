@@ -17,7 +17,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { APIRequestContext } from '@playwright/test'
-import { REST } from '@kb-labs/e2e-shared/urls.js'
+import { MIND } from '@kb-labs/e2e-shared/urls.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -115,25 +115,8 @@ export interface BenchMetrics {
 }
 
 // ── live REST helpers ───────────────────────────────────────────────────────
-
-/** Mind's own routes live under the plugin basePath; probe `/health` to find it. */
-export async function resolveMindBase(request: APIRequestContext): Promise<string> {
-  const candidates = [`${REST}/v1/plugins/mind`, `${REST}/api/v1/plugins/mind`]
-  for (const base of candidates) {
-    try {
-      const res = await request.get(`${base}/health`)
-      if (res.ok()) {
-        return base
-      }
-    } catch {
-      // try next
-    }
-  }
-  throw new Error(
-    `mind REST surface not reachable at ${candidates.join(' or ')}. ` +
-      `Is the platform up (kb-dev start) with the mind plugin loaded?`,
-  )
-}
+// Mind is served by the REST API under the `MIND` base (e2e-shared/urls.js) —
+// no probing, same convention as WORKFLOW/GATEWAY in the other domains.
 
 async function unwrap(res: { json(): Promise<unknown> }): Promise<any> {
   const body = (await res.json()) as { data?: unknown }
@@ -141,8 +124,8 @@ async function unwrap(res: { json(): Promise<unknown> }): Promise<any> {
 }
 
 /** (Re)build the bench index from the corpus slice via the live engine. */
-export async function ensureBenchIndex(request: APIRequestContext, base: string): Promise<void> {
-  const res = await request.post(`${base}/index`, {
+export async function ensureBenchIndex(request: APIRequestContext): Promise<void> {
+  const res = await request.post(`${MIND}/index`, {
     data: { indexId: BENCH_INDEX, scope: BENCH_SCOPE, full: true },
   })
   if (!res.ok()) {
@@ -153,12 +136,11 @@ export async function ensureBenchIndex(request: APIRequestContext, base: string)
 /** Run the golden set against live `/search` and compute metrics. */
 export async function runBench(
   request: APIRequestContext,
-  base: string,
   scenario: string,
 ): Promise<BenchMetrics> {
   const perQuery: BenchMetrics['perQuery'] = []
   for (const q of GOLDEN) {
-    const res = await request.post(`${base}/search`, {
+    const res = await request.post(`${MIND}/search`, {
       data: { text: q.query, indexId: BENCH_INDEX, limit: 5 },
     })
     if (!res.ok()) {

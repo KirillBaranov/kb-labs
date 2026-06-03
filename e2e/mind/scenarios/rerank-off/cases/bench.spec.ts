@@ -4,7 +4,6 @@ import {
   ensureBenchIndex,
   readMetrics,
   recordMetrics,
-  resolveMindBase,
   runBench,
 } from '../../../lib/bench.js'
 
@@ -20,10 +19,9 @@ test.describe('mind real-embedder bench — A/B (rerank OFF vs ON)', () => {
   test.skip(!BENCH_ENABLED, 'set MIND_BENCH_REAL=1 and run with kb-dev up (needs OpenAI + Qdrant)')
 
   test('M-BENCH-02: enabling rerank does not regress quality (ON ≥ OFF)', async ({ request }) => {
-    const base = await resolveMindBase(request)
-    await ensureBenchIndex(request, base)
+    await ensureBenchIndex(request)
 
-    const off = await runBench(request, base, 'rerank-off')
+    const off = await runBench(request, 'rerank-off')
     recordMetrics(off)
 
     const on = readMetrics('default')
