@@ -1,13 +1,13 @@
 import { defineCommand, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
-import { type SyncPathsFlags } from '@kb-labs/mind-contracts';
+import { type SyncPathsFlags, type SyncResponse } from '@kb-labs/mind-contracts';
 import { buildMind } from '../../platform';
 
-export default defineCommand<unknown, CLIInput<SyncPathsFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<SyncPathsFlags>, SyncResponse>({
   id: 'mind:sync-update',
   description: 'Re-index updated documents (incremental)',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<SyncPathsFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<SyncPathsFlags>): Promise<{ exitCode: number; result?: SyncResponse }> {
       try {
       const paths = input.argv ?? [];
       if (paths.length === 0) {
@@ -18,10 +18,10 @@ export default defineCommand<unknown, CLIInput<SyncPathsFlags>, { exitCode: numb
       const res = await mind.syncUpdate(paths, input.flags.index);
       if (input.flags.json) {
         ctx.ui?.json?.(res);
-        return { exitCode: 0 };
+        return { exitCode: 0, result: res };
       }
       ctx.ui?.success?.(`Sync update → "${res.indexId}": ${res.updated} updated`);
-      return { exitCode: 0 };
+      return { exitCode: 0, result: res };
       } catch (err) {
         handleError(ctx, err, input.flags.json);
         return { exitCode: 1 };

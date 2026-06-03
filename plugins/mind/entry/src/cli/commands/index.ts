@@ -1,7 +1,9 @@
 import { defineCommand, handleError, useLoader, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
-import { type IndexFlags } from '@kb-labs/mind-contracts';
+import { type IndexFlags, type IndexResponse } from '@kb-labs/mind-contracts';
 import { type IngestProgress } from '@kb-labs/mind-core';
 import { buildMind } from '../../platform';
+
+type IndexCmdResult = { exitCode: number; result?: IndexResponse };
 
 /** Map an ingest stage to a one-line loader label. */
 function stageText(e: IngestProgress): string {
@@ -21,12 +23,12 @@ function stageText(e: IngestProgress): string {
   }
 }
 
-export default defineCommand<unknown, CLIInput<IndexFlags>, { exitCode: number }>({
+export default defineCommand<unknown, CLIInput<IndexFlags>, IndexResponse>({
   id: 'mind:index',
   description: 'Build or refresh a Mind index from source files',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<IndexFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<IndexFlags>): Promise<IndexCmdResult> {
       const { flags } = input;
       try {
         const mind = await buildMind(ctx.cwd);
@@ -44,7 +46,7 @@ export default defineCommand<unknown, CLIInput<IndexFlags>, { exitCode: number }
 
         if (flags.json) {
           ctx.ui?.json?.(res);
-          return { exitCode: 0 };
+          return { exitCode: 0, result: res };
         }
         const summary = `Indexed ${res.filesIndexed} file(s), ${res.chunks} chunk(s) into "${res.indexId}" (${res.durationMs}ms)`;
         if (loader) {
@@ -52,7 +54,7 @@ export default defineCommand<unknown, CLIInput<IndexFlags>, { exitCode: number }
         } else {
           ctx.ui?.success?.(summary);
         }
-        return { exitCode: 0 };
+        return { exitCode: 0, result: res };
       } catch (err) {
         handleError(ctx, err, flags.json);
         return { exitCode: 1 };

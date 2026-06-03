@@ -1,13 +1,15 @@
 import { defineCommand, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
-import { QueryRequestSchema, type AskFlags } from '@kb-labs/mind-contracts';
+import { QueryRequestSchema, type AskFlags, type AgentResponse } from '@kb-labs/mind-contracts';
 import { buildMind } from '../../platform';
 
-export default defineCommand<unknown, CLIInput<AskFlags>, { exitCode: number }>({
+type AskResult = { exitCode: number; result?: AgentResponse };
+
+export default defineCommand<unknown, CLIInput<AskFlags>, AgentResponse>({
   id: 'mind:ask',
   description: 'Ask a question and get a grounded answer with citations',
 
   handler: {
-    async execute(ctx: PluginContextV3, input: CLIInput<AskFlags>): Promise<{ exitCode: number }> {
+    async execute(ctx: PluginContextV3, input: CLIInput<AskFlags>): Promise<AskResult> {
       const { flags } = input;
       // `--agent` == `--format json`: the machine-readable agent contract.
       const json = flags.agent || flags.format === 'json' || flags.json;
@@ -25,7 +27,7 @@ export default defineCommand<unknown, CLIInput<AskFlags>, { exitCode: number }>(
           // Single compact line so the agent contract `… --agent | grep "^{"` works
           // (ctx.ui.json pretty-prints, which breaks line-based extraction).
           console.log(JSON.stringify(res));
-          return { exitCode: 0 };
+          return { exitCode: 0, result: res };
         }
 
         const head = res.abstained
@@ -42,7 +44,7 @@ export default defineCommand<unknown, CLIInput<AskFlags>, { exitCode: number }>(
             },
           ],
         });
-        return { exitCode: 0 };
+        return { exitCode: 0, result: res };
       } catch (err) {
         handleError(ctx, err, json);
         return { exitCode: 1 };
