@@ -9,7 +9,8 @@ Bench-gated: every row marked **Y** must ship with a before/after benchmark delt
 
 | Feature | Legacy | v2 status | Priority | Bench-gated | Notes |
 |---|---|---|---|---|---|
-| Hybrid BM25 + vector + RRF (intent-adaptive) | full | ✅ | — | — | parity |
+| Hybrid BM25 + vector + RRF (intent-adaptive) | full | ✅ | — | — | parity. **Was silently BM25-only until 2026-06-03** — a vector-store id round-trip bug (qdrant UUID hash + governance `mind:` prefix never stripped on read) dropped every vector hit. Fixed in `2d3405cb` (adapter + plugin-runtime wrapper, both with regression tests). Vector side now contributes (`matchedBy` both/semantic, `semWin>0`). |
+| **Adaptive file discovery** | n/a | ✅ new | — | — | `core/src/ingest/discover.ts` indexes any text source (binary/asset/lockfile denylist + NUL sniff) instead of a hardcoded extension allowlist — a Vue+C# repo now indexes its `.cs`/`.vue`. `83d62890`. |
 | Reranking | BM25/vector-norm + context expansion | 🟡 heuristic (coverage + verbatim) | P1 | Y | add LLM-rerank + context expansion behind A/B. **Path/filename-match boost TRIED → rejected**: live bench regressed (mrr 0.515→0.500, hit@5 0.615→0.538) — generic query tokens hit generic path parts and pulled wrong files up. Reverted. |
 | Semantic dedup | embedding-cosine | 🟡 token-Jaccard | P2 | Y | swap to embedding-cosine, measure dup-rate vs recall |
 | AST chunking | tree-sitter | 🟡 structure-aware-lite (brace) | P2 | Y | tree-sitter behind `chunkFile`; measure chunk-boundary quality |
@@ -40,13 +41,35 @@ corpus — the opposite held.** Two honest takeaways:
    they embed close to the NL query. So "strip the docs" removes *Mind's own*
    signal; it is the wrong degradation axis for the thesis.
 
-**Implication / next:** Mind's measured edge needs a corpus where grep actually
-drowns — i.e. **scale + naming noise** (large repo, inconsistent/misleading
-identifiers, query words absent from *both* code and comments), not merely
-"clean code minus comments". The honest demonstration is the stretch goal:
-index one large, messy external OSS repo and re-run the head-to-head. Until then
-we have NO evidence Mind out-retrieves grep — a result worth knowing before
-shipping retrieval claims.
+> **⚠️ CORRECTION (2026-06-03, later same day): the numbers above were measured
+> on BROKEN retrieval.** A vector-store id round-trip bug (commit `2d3405cb`)
+> silently dropped every vector hit, so Mind was running
+> **BM25-only** in all of the above — `semWin=0.000` was the symptom, not a
+> property of the corpus. After the fix the picture inverts (see next finding).
+> HyDE/expand "no effect" verdicts were likewise measured on BM25-only retrieval
+> and must be re-run.
+
+### Validation finding — grep-vs-mind on a real proprietary repo (2026-06-03, post-fix)
+
+Head-to-head on **a private ~140-file C# domain module** (NDA — indexed in place
+via `mind index --root`, nothing copied into this repo), 14 hand-built queries:
+6 keyword-style (query reuses the file's naming) + 8 semantic (concept described
+without the identifier word). hit@5, Mind `/search` vs a literal grep baseline.
+
+| retrieval | mind hit@5 | grep hit@5 | delta (mind−grep) | semWin |
+|---|---|---|---|---|
+| **broken (BM25-only)** | 0.429 | 0.571 | −0.143 | 0.000 |
+| **fixed (hybrid)** | **0.714** | 0.571 | **+0.143** | 0.281 |
+
+Split (fixed): keyword mind 6/6 vs grep 5/6; **semantic mind 4/8 vs grep 3/8**,
+including queries grep scored 0 on (semantic-only wins). With working hybrid
+retrieval Mind **out-retrieves grep (+0.143)** on a real, less-documented
+enterprise corpus, and `semWin=0.281` is concrete proof-of-value vs grep — the
+thesis holds once the vector side actually contributes.
+
+**Implication / next:** re-run the in-repo `headtohead` + HyDE/expand A/B on
+fixed retrieval (the clean-corpus result may also move). The retrieval
+correctness fix is the highest-impact change in this whole effort.
 
 ## Answer quality
 
