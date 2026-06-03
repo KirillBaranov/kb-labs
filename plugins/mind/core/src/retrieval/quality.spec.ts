@@ -7,6 +7,7 @@ import type { Chunk } from '../types';
 const rc = (id: string, text: string, score: number): RankedChunk => ({
   chunk: { id, path: `${id}.ts`, startLine: 1, endLine: 1, text, kind: 'code' } as Chunk,
   score,
+  matchedBy: 'both',
 });
 
 describe('rerank', () => {

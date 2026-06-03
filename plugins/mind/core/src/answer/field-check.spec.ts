@@ -5,6 +5,7 @@ import type { RankedChunk } from '../retrieval/retrieve';
 const chunk = (path: string, text: string): RankedChunk => ({
   chunk: { id: path, path, startLine: 1, endLine: 1, text, kind: 'code' },
   score: 1,
+  matchedBy: 'both',
 });
 
 describe('field-check (anti-hallucination)', () => {

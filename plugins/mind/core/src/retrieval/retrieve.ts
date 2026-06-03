@@ -8,7 +8,7 @@ import type { Chunk } from '../types';
 import { loadManifest } from '../index-store';
 import { bm25Search, type Ranked } from './bm25';
 import { vectorSearch } from './vector';
-import { rrfFuse, intentWeights, type QueryIntent } from './fuse';
+import { rrfFuse, intentWeights, type QueryIntent, type MatchedBy } from './fuse';
 import { hypotheticalDocument } from './hyde';
 
 export interface RetrieveInput {
@@ -25,6 +25,8 @@ export interface RankedChunk {
   chunk: Chunk;
   /** Fused RRF score (best first). */
   score: number;
+  /** Which signal surfaced this chunk (lexical/semantic/both) — provenance. */
+  matchedBy: MatchedBy;
 }
 
 export interface RetrieveOutput {
@@ -32,6 +34,8 @@ export interface RetrieveOutput {
   ranked: RankedChunk[];
   /** Raw cosine confidence proxy from the vector list (top-3 avg). */
   confidence: number;
+  /** Share of returned results found semantic-only (grep would miss them). */
+  semanticWinRate: number;
 }
 
 export async function retrieve(input: RetrieveInput, services: MindServices): Promise<RetrieveOutput> {
@@ -57,8 +61,8 @@ export async function retrieve(input: RetrieveInput, services: MindServices): Pr
   const weights = intentWeights(input.intent);
   const fused = rrfFuse(
     [
-      { ranked: vector, weight: weights.vector },
-      { ranked: bm25, weight: weights.bm25 },
+      { ranked: vector, weight: weights.vector, label: 'semantic' },
+      { ranked: bm25, weight: weights.bm25, label: 'lexical' },
     ],
     input.rrfK,
   );
@@ -66,12 +70,16 @@ export async function retrieve(input: RetrieveInput, services: MindServices): Pr
   const ranked: RankedChunk[] = fused
     .map((r) => {
       const chunk = byId.get(r.id);
-      return chunk ? { chunk, score: r.score } : undefined;
+      return chunk ? { chunk, score: r.score, matchedBy: r.matchedBy } : undefined;
     })
     .filter((r): r is RankedChunk => r !== undefined)
     .slice(0, input.limit);
 
-  return { ranked, confidence: confidenceFrom(vector) };
+  // Proof-of-value vs grep: how many returned hits are semantic-only (grep-miss).
+  const semanticWinRate =
+    ranked.length === 0 ? 0 : ranked.filter((r) => r.matchedBy === 'semantic').length / ranked.length;
+
+  return { ranked, confidence: confidenceFrom(vector), semanticWinRate };
 }
 
 /** Phase 2 confidence proxy: average cosine of the top-3 vector hits. */
