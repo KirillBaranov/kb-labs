@@ -1,0 +1,212 @@
+#!/usr/bin/env node
+/**
+ * check-ports — validates port allocation across the monorepo (ADR-0024).
+ *
+ * Devkit external check (TypedCheckOutput v2). Self-filters to the root
+ * package so it runs exactly once.
+ *   Input:  JSON on stdin or KB_DEVKIT_PACKAGE_NAME env
+ *   Output: { issues: [{ check, severity, message, file, fix? }] }
+ *
+ * Standalone:  node scripts/checks/check-ports.mjs   (human-readable, exit 1 on error)
+ *
+ * Rules (all severity: error):
+ *   UNKNOWN_RANGE        port from devservices is outside every range and not an exception
+ *   DUPLICATE_PORT       two distinct services declare the same port
+ *   PROD_NO_COMPOSE_PORT prod service (compose:true) has no matching ports: in docker-compose
+ *   PROD_NO_SMOKE_TEST   prod service has no smoke test in deploy.yml
+ *   PROD_PORT_MISMATCH   smoke-test port in deploy.yml differs from the registry port
+ *   STALE_PORTS_DOC      docs/ports.md differs from freshly generated content
+ *
+ * Reference: docs/adr/0024-port-allocation-policy.md
+ */
+
+import { readFileSync, existsSync } from 'node:fs';
+import { relative } from 'node:path';
+import {
+  ROOT,
+  PATHS,
+  loadRegistry,
+  loadDevservices,
+  loadComposePorts,
+  loadDeploySmokeTests,
+  classifyPort,
+  renderDoc,
+} from '../lib/ports.mjs';
+
+const CHECK_NAME = 'check-ports';
+const DEVKIT_MODE = Boolean(process.env.KB_DEVKIT_MODE);
+// Root-level check: validates workspace-wide config (port-registry, devservices,
+// docker-compose, deploy.yml). devkit runs custom checks per-package, so we
+// self-filter to a single stable workspace member and run exactly once there.
+// @kb-labs/devkit (infra/devkit) is the infra/tooling package — the natural home.
+const ANCHOR_PACKAGE = '@kb-labs/devkit';
+
+// ─── stdin (devkit passes package JSON) ────────────────────────────────────────
+
+function readStdin() {
+  const chunks = [];
+  process.stdin.resume();
+  process.stdin.setEncoding('utf-8');
+  return new Promise((resolve) => {
+    process.stdin.on('data', (c) => chunks.push(c));
+    process.stdin.on('end', () => resolve(chunks.join('')));
+    // Standalone runs have no stdin — don't hang
+    setTimeout(() => resolve(''), 50);
+  });
+}
+
+function rel(p) {
+  return relative(ROOT, p);
+}
+
+// ─── Validation ────────────────────────────────────────────────────────────────
+
+function validate() {
+  const issues = [];
+  const registry = loadRegistry();
+  const services = loadDevservices();
+
+  // Rule: UNKNOWN_RANGE — every runtime port must classify or be an exception
+  for (const svc of services) {
+    const { range, exception } = classifyPort(svc.port, registry);
+    if (!range && !exception) {
+      issues.push({
+        check: CHECK_NAME,
+        severity: 'error',
+        message: `Service "${svc.name}" port ${svc.port} is outside all defined ranges`,
+        file: rel(PATHS.devDev),
+        fix: `Move it into a range, or add an entry to "exceptions" in ${rel(PATHS.registry)} with a reason`,
+      });
+    }
+  }
+
+  // Rule: DUPLICATE_PORT — two distinct service names sharing a port
+  const byPort = new Map();
+  for (const svc of services) {
+    if (!byPort.has(svc.port)) byPort.set(svc.port, []);
+    byPort.get(svc.port).push(svc.name);
+  }
+  for (const [port, names] of byPort) {
+    const uniq = [...new Set(names)];
+    if (uniq.length > 1) {
+      issues.push({
+        check: CHECK_NAME,
+        severity: 'error',
+        message: `Port ${port} is claimed by multiple services: ${uniq.join(', ')}`,
+        file: rel(PATHS.devDev),
+        fix: `Assign each service a unique port within its range`,
+      });
+    }
+  }
+
+  // Prod contract — cross-validate against docker-compose + deploy smoke tests
+  const composePorts = loadComposePorts();
+  const smokeTests = loadDeploySmokeTests();
+
+  for (const p of registry.prod) {
+    // Rule: PROD_NO_COMPOSE_PORT
+    if (p.compose) {
+      const hostPorts = composePorts.get(p.compose_service) ?? [];
+      if (!hostPorts.includes(Number(p.port))) {
+        issues.push({
+          check: CHECK_NAME,
+          severity: 'error',
+          message: `Prod service "${p.service}" expects port ${p.port} but compose service "${p.compose_service}" does not map it`,
+          file: rel(PATHS.compose),
+          fix: `Add  ports: ["${p.port}:${p.port}"]  to "${p.compose_service}" in ${rel(PATHS.compose)}`,
+        });
+      }
+    }
+
+    // Rule: PROD_NO_SMOKE_TEST + PROD_PORT_MISMATCH
+    const smoke = smokeTests.find((s) => s.path === p.smoke_path && Number(s.port) === Number(p.port));
+    const smokeSameName = smokeTests.find((s) => s.port === Number(p.port));
+    if (!smoke && !smokeSameName) {
+      // Is there a smoke test that *should* point here but uses the wrong port?
+      issues.push({
+        check: CHECK_NAME,
+        severity: 'error',
+        message: `Prod service "${p.service}" (port ${p.port}) has no smoke test in deploy.yml`,
+        file: rel(PATHS.deploy),
+        fix: `Add  check "${p.service}" "http://localhost:${p.port}${p.smoke_path}"  to the smoke-test step`,
+      });
+    }
+  }
+
+  // Rule: PROD_PORT_MISMATCH — a smoke test whose port matches no prod entry
+  // (catches "deploy still points at the old port")
+  const prodPorts = new Set(registry.prod.map((p) => Number(p.port)));
+  for (const s of smokeTests) {
+    if (!prodPorts.has(Number(s.port))) {
+      issues.push({
+        check: CHECK_NAME,
+        severity: 'error',
+        message: `Smoke test "${s.name}" targets port ${s.port}, which matches no prod service in the registry`,
+        file: rel(PATHS.deploy),
+        fix: `Update the smoke test port to match infra/port-registry.yaml, or add the service to the prod list`,
+      });
+    }
+  }
+
+  // Rule: STALE_PORTS_DOC — committed doc must match generated content
+  const expected = renderDoc(registry, services) + '\n';
+  const actual = existsSync(PATHS.doc) ? readFileSync(PATHS.doc, 'utf8') : '';
+  if (actual !== expected) {
+    issues.push({
+      check: CHECK_NAME,
+      severity: 'error',
+      message: `docs/ports.md is out of date with the registry`,
+      file: rel(PATHS.doc),
+      fix: `Run  pnpm ports:generate  and commit the updated docs/ports.md`,
+    });
+  }
+
+  return issues;
+}
+
+// ─── Output ──────────────────────────────────────────────────────────────────
+
+function printHuman(issues) {
+  if (issues.length === 0) {
+    process.stdout.write('check-ports: OK — no issues\n');
+    return;
+  }
+  for (const i of issues) {
+    process.stdout.write(`\n✗ [${i.severity}] ${i.message}\n`);
+    process.stdout.write(`  file: ${i.file}\n`);
+    if (i.fix) process.stdout.write(`  fix:  ${i.fix}\n`);
+  }
+  const errors = issues.filter((i) => i.severity === 'error').length;
+  process.stdout.write(`\nFound ${errors} error(s).\n`);
+}
+
+async function main() {
+  // Devkit self-filter: run only for the root package, emit JSON, exit 0.
+  if (DEVKIT_MODE) {
+    const raw = await readStdin();
+    let pkgName = process.env.KB_DEVKIT_PACKAGE_NAME ?? '';
+    try {
+      const input = JSON.parse(raw);
+      pkgName = input?.package?.name ?? pkgName;
+    } catch { /* no JSON on stdin */ }
+
+    if (pkgName !== ANCHOR_PACKAGE) {
+      process.stdout.write(JSON.stringify({ issues: [] }) + '\n');
+      process.exit(0);
+    }
+
+    const issues = validate();
+    process.stdout.write(JSON.stringify({ issues }) + '\n');
+    process.exit(0); // devkit aggregates severity; never hard-fail the runner
+  }
+
+  // Standalone
+  const issues = validate();
+  printHuman(issues);
+  process.exit(issues.some((i) => i.severity === 'error') ? 1 : 0);
+}
+
+main().catch((e) => {
+  process.stderr.write(String(e?.stack ?? e) + '\n');
+  process.exit(1);
+});

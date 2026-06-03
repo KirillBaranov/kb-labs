@@ -24,6 +24,8 @@ services:
   kb-marketplace-registry:
     image: ghcr.io/kirillbaranov/kb-marketplace-registry:${IMAGE_TAG:-latest}
     container_name: kb-marketplace-registry
+    ports:
+      - "5071:5071"
     environment:
       - NODE_ENV=production
       - KB_REGISTRY_URL=${KB_REGISTRY_URL:-https://api.kblabs.ru/api/v1/registry}

@@ -172,7 +172,7 @@ jobs:
           check "web"         "http://localhost:3000/"        || FAILED=1
           check "docs"        "http://localhost:3001/"        || FAILED=1
           check "gateway"     "http://localhost:4000/health"  || FAILED=1
-          check "marketplace" "http://localhost:5070/health"  || FAILED=1
+          check "marketplace" "http://localhost:5071/health"  || FAILED=1
           rm -f /tmp/deploy_key
           exit $FAILED
 
@@ -222,7 +222,7 @@ jobs:
           rollback "kb-labs-web"                  "$WEB_IMAGE"         3000
           rollback "kb-labs-docs"                 "$DOCS_IMAGE"        3001
           rollback "kb-labs-gateway"              "$GATEWAY_IMAGE"     4000
-          rollback "kb-labs-marketplace-registry" "$MARKETPLACE_IMAGE" 5070
+          rollback "kb-labs-marketplace-registry" "$MARKETPLACE_IMAGE" 5071
 
           rm -f /tmp/deploy_key
           echo "::error::Smoke test failed — rolled back all services to pre-deploy images"
