@@ -56,6 +56,8 @@
     "coverage": "./tools/kb-devkit/kb-devkit run test:coverage && node scripts/merge-coverage.mjs",
     "coverage:check": "node scripts/merge-coverage.mjs --check",
     "coverage:json": "./tools/kb-devkit/kb-devkit run test:coverage && node scripts/merge-coverage.mjs --json",
+    "ports:generate": "node scripts/generate-ports-doc.mjs",
+    "ports:check": "node scripts/checks/check-ports.mjs",
     "test": "./tools/kb-devkit/kb-devkit run test",
     "test:catalog": "node scripts/test-catalog.mjs",
     "test:catalog:check": "node scripts/test-catalog.mjs --check",
