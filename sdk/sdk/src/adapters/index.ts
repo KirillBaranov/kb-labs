@@ -205,14 +205,6 @@ export type {
   SnapshotProviderCapabilities,
 } from '@kb-labs/core-platform/adapters';
 
-// Contract test suites (for adapter authors verifying their implementation)
-export {
-  runDocumentDatabaseContract,
-  type DocumentDatabaseContractFactory,
-  runKVStoreContract,
-  type KVContractFactory,
-} from '@kb-labs/core-platform/adapters/contract';
-
 // In-memory implementations (useful for tests and zero-config bootstrap)
 export { InMemoryCache } from '@kb-labs/core-platform/inmemory';
 /** @deprecated Use `InMemoryCache` instead. Kept for backwards compatibility. */
