@@ -22,6 +22,7 @@ import {
   dropFlags,
   statusFlags,
   syncPathsFlags,
+  syncDeleteFlags,
   syncListFlags,
   reindexFlags,
 } from '@kb-labs/mind-contracts';
@@ -157,7 +158,7 @@ export const manifest = {
         operationType: 'mutate' as const,
         describe: 'Remove documents from an index (incremental).',
         handler: './cli/commands/sync-delete.js#default',
-        flags: defineCommandFlags(syncPathsFlags.schema),
+        flags: defineCommandFlags(syncDeleteFlags.schema),
         examples: ['kb mind sync delete src/old.ts --index code'],
       },
       {

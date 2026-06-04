@@ -51,6 +51,12 @@ export const syncPathsFlags = defineFlags({
   json: { type: 'boolean', description: JSON_DESC, default: false },
 });
 
+export const syncDeleteFlags = defineFlags({
+  index: { type: 'string', description: INDEX_DESC },
+  yes: { type: 'boolean', description: 'Confirm this irreversible deletion', default: false },
+  json: { type: 'boolean', description: JSON_DESC, default: false },
+});
+
 export const syncListFlags = defineFlags({
   index: { type: 'string', description: INDEX_DESC },
   json: { type: 'boolean', description: JSON_DESC, default: false },
@@ -78,6 +84,7 @@ export type SearchFlags = typeof searchFlags.infer;
 export type AskFlags = typeof askFlags.infer;
 export type ExploreFlags = typeof exploreFlags.infer;
 export type SyncPathsFlags = typeof syncPathsFlags.infer;
+export type SyncDeleteFlags = typeof syncDeleteFlags.infer;
 export type SyncListFlags = typeof syncListFlags.infer;
 export type ReindexFlags = typeof reindexFlags.infer;
 export type StatusFlags = typeof statusFlags.infer;

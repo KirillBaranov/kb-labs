@@ -17,7 +17,7 @@ export default defineCommand<unknown, CLIInput<DropFlags>, DropResponse>({
         if (!flags.yes && !json) {
           ctx.ui?.warn?.(
             `This permanently removes index "${flags.index}" (all vectors + manifest). ` +
-              `Re-run with --yes to confirm.`,
+              `This action cannot be undone. Re-run with --yes to confirm.`,
           );
           return { exitCode: 1 };
         }
