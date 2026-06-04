@@ -24,9 +24,7 @@ export default defineCommand<unknown, CLIInput<AskFlags>, AgentResponse>({
         const res = await mind.ask(req);
 
         if (json) {
-          // Single compact line so the agent contract `… --agent | grep "^{"` works
-          // (ctx.ui.json pretty-prints, which breaks line-based extraction).
-          console.log(JSON.stringify(res));
+          ctx.ui?.json?.(res);
           return { exitCode: 0, result: res };
         }
 

@@ -38,9 +38,15 @@ declaration drives both layers.
      `blastRadius`, `recovery`, `confirmWith`, `message`) so the agent pauses and
      asks instead of silently destroying.
 
-2. **Severity rubric** (consistent across plugins so agents calibrate):
-   `low` (rebuildable from source) · `medium` (recoverable externally) ·
-   `high` (slow/manual recovery) · `critical` (irreversible, no recovery).
+2. **Severity rubric** — worst-case blast radius weighed against recovery cost
+   (consistent across plugins so agents calibrate):
+   `low` (narrow scope AND trivially auto-rebuilt from source) ·
+   `medium` (a bounded set lost; rebuildable with effort/recompute) ·
+   `high` (a WHOLE collection destroyed — entire index/corpus — OR slow/manual
+   recovery; large and easy to mis-target even if rebuildable) ·
+   `critical` (irreversible, no recovery).
+   So `mind drop` is `high` (the whole index goes, even though `index --full`
+   rebuilds it) while `mind sync delete` is `medium` (named docs, re-addable).
 
 3. **Physical layer — later.** The token/permission layer reads the **same**
    declared `severity`/`destructive` to filter discovery and block invocation by

@@ -65,7 +65,7 @@ describe('confirmDestructive', () => {
   });
 
   it('falls back to ui.error when ui.warn is absent', () => {
-    const c = { ui: { json: vi.fn(), error: vi.fn() } };
+    const c = { ui: { error: vi.fn() } };
     confirmDestructive(c, { confirmed: false, isJson: false, action: ACTION });
     expect(c.ui.error).toHaveBeenCalledTimes(1);
   });

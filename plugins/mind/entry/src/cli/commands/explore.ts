@@ -23,9 +23,7 @@ export default defineCommand<unknown, CLIInput<ExploreFlags>, ExploreResponse>({
         const res = await mind.explore(req);
 
         if (json) {
-          // Single compact line so the agent contract `… --format json | grep "^{"`
-          // works (ctx.ui.json pretty-prints, which breaks line-based extraction).
-          console.log(JSON.stringify(res));
+          ctx.ui?.json?.(res);
           return { exitCode: 0, result: res };
         }
         if (res.files.length === 0) {

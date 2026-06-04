@@ -214,9 +214,13 @@ export interface UIFacade {
   table(data: Record<string, unknown>[], columns?: TableColumn[]): void;
 
   /**
-   * Print raw JSON (for --json mode)
+   * Print raw JSON (for --json mode).
+   *
+   * Defaults to a single compact line — the machine-readable contract agents
+   * rely on (`… --json | grep "^{"` yields one parseable object). Pass
+   * `{ pretty: true }` for human-readable multi-line indentation.
    */
-  json(data: unknown): void;
+  json(data: unknown, options?: { pretty?: boolean }): void;
 
   /**
    * Print a newline

@@ -335,6 +335,7 @@ export { validationError, handleError, rethrowForRest } from '@kb-labs/shared-cl
 export {
   confirmDestructive,
   renderDestructiveMessage,
+  buildConfirmationSignal,
   type DestructiveAction,
   type DestructiveSeverity,
   type ConfirmationRequired,

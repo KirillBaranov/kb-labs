@@ -19,10 +19,13 @@
 export type DestructiveSeverity = 'low' | 'medium' | 'high' | 'critical';
 
 /**
- * Severity rubric (keep consistent across plugins so agents can calibrate):
- *  - low      trivially rebuilt from source (idempotent), e.g. reindex
- *  - medium   data loss, but recoverable from an external source
- *  - high     data loss, recovery is slow / manual
+ * Severity rubric — worst-case blast radius weighed against recovery cost
+ * (keep consistent across plugins so agents can calibrate):
+ *  - low      narrow scope AND trivially auto-rebuilt from source (idempotent)
+ *  - medium   a bounded set is lost; rebuildable, but with effort/recompute
+ *  - high     a WHOLE collection is destroyed (entire index/corpus), OR recovery
+ *             is slow / manual — even if rebuildable, the loss is large and
+ *             easy to mis-target
  *  - critical irreversible, NO recovery (prod data, tenant wipe)
  */
 export interface DestructiveAction {
@@ -69,6 +72,29 @@ interface ConfirmContext {
   };
 }
 
+/**
+ * Build the machine-readable signal an agent receives when confirmation is
+ * missing in json mode. Exported so a non-CLI surface (REST 409, MCP) can reuse
+ * the exact shape instead of re-deriving it.
+ */
+export function buildConfirmationSignal(a: DestructiveAction): ConfirmationRequired {
+  return {
+    ok: false,
+    confirmationRequired: true,
+    destructive: true,
+    irreversible: !a.reversible,
+    severity: a.severity,
+    action: a.action,
+    resource: a.resource,
+    effect: a.effect,
+    reversible: a.reversible,
+    ...(a.blastRadius && { blastRadius: a.blastRadius }),
+    ...(a.recovery && { recovery: a.recovery }),
+    confirmWith: a.confirmFlag ?? '--yes',
+    message: renderDestructiveMessage(a),
+  };
+}
+
 /** Render the one-line warning — leads with the scary part (irreversibility + severity). */
 export function renderDestructiveMessage(a: DestructiveAction): string {
   const flag = a.confirmFlag ?? '--yes';
@@ -101,26 +127,12 @@ export function confirmDestructive(
     return null;
   }
   const a = opts.action;
-  const message = renderDestructiveMessage(a);
   if (opts.isJson) {
-    const signal: ConfirmationRequired = {
-      ok: false,
-      confirmationRequired: true,
-      destructive: true,
-      irreversible: !a.reversible,
-      severity: a.severity,
-      action: a.action,
-      resource: a.resource,
-      effect: a.effect,
-      reversible: a.reversible,
-      ...(a.blastRadius && { blastRadius: a.blastRadius }),
-      ...(a.recovery && { recovery: a.recovery }),
-      confirmWith: a.confirmFlag ?? '--yes',
-      message,
-    };
-    ctx.ui?.json?.(signal);
+    // Machine-readable signal — `ctx.ui.json` emits one parseable line by
+    // default (the agent extracts it with `grep "^{"`).
+    ctx.ui?.json?.(buildConfirmationSignal(a));
   } else {
-    (ctx.ui?.warn ?? ctx.ui?.error)?.(message);
+    (ctx.ui?.warn ?? ctx.ui?.error)?.(renderDestructiveMessage(a));
   }
   return { exitCode: 1 };
 }

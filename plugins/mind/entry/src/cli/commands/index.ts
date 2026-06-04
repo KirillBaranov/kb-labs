@@ -47,9 +47,7 @@ export default defineCommand<unknown, CLIInput<IndexFlags>, IndexResponse>({
         );
 
         if (flags.json) {
-          // Single compact line so the agent contract `… --json | grep "^{"`
-          // works (matches search/ask/explore; ctx.ui.json pretty-prints).
-          console.log(JSON.stringify(res));
+          ctx.ui?.json?.(res);
           return { exitCode: 0, result: res };
         }
         const summary = `Indexed ${res.filesIndexed} file(s), ${res.chunks} chunk(s) into "${res.indexId}" (${res.durationMs}ms)`;

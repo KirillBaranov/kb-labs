@@ -26,9 +26,7 @@ export default defineCommand<unknown, CLIInput<SearchFlags>, SearchResponse>({
         const res = await mind.search(req);
 
         if (json) {
-          // Single compact line so the agent contract `… --format json | grep "^{"`
-          // works (ctx.ui.json pretty-prints, which breaks line-based extraction).
-          console.log(JSON.stringify(res));
+          ctx.ui?.json?.(res);
           return { exitCode: 0, result: res };
         }
         if (res.results.length === 0) {

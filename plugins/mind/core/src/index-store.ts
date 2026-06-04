@@ -51,6 +51,15 @@ export async function staleCount(manifest: IndexManifest, cwd: string): Promise<
   return [...flags.values()].filter(Boolean).length;
 }
 
+/**
+ * Whether an index has a persisted manifest. Distinguishes "absent" (typo'd /
+ * already-dropped id) from "empty", so a destructive `drop` does not report
+ * success for a no-op on the wrong index.
+ */
+export async function manifestExists(storage: IStorage, indexId: string): Promise<boolean> {
+  return Boolean(await storage.read(manifestPath(indexId)));
+}
+
 export async function loadManifest(storage: IStorage, indexId: string): Promise<IndexManifest> {
   const buf = await storage.read(manifestPath(indexId));
   if (!buf) {

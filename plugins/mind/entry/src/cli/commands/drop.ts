@@ -36,7 +36,7 @@ export default defineCommand<unknown, CLIInput<DropFlags>, DropResponse>({
         const res = await mind.drop(req);
 
         if (json) {
-          console.log(JSON.stringify(res));
+          ctx.ui?.json?.(res);
           return { exitCode: 0, result: res };
         }
         ctx.ui?.success?.(

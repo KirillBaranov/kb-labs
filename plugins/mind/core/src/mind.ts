@@ -43,7 +43,7 @@ import { synthesizeAnswer, buildAgentResponse } from './answer/answer';
 import { toExploreEntries, spreadOf, orientationSummary } from './answer/explore';
 import { recordQuery } from './feedback/history';
 import { toSearchResults } from './answer/synthesize';
-import { loadManifest, staleMap, staleCount, deleteManifest } from './index-store';
+import { loadManifest, staleMap, staleCount, deleteManifest, manifestExists } from './index-store';
 
 export interface Mind {
   index(req: IndexRequest, onProgress?: (event: IngestProgress) => void): Promise<IndexResponse>;
@@ -294,6 +294,9 @@ export function createMind(
 
     async drop(req): Promise<DropResponse> {
       const indexId = resolveIndexId(req.indexId);
+      if (!(await manifestExists(services.storage, indexId))) {
+        throw new Error(`No such index "${indexId}" — nothing to drop (run \`kb mind status\` to list indexes).`);
+      }
       const manifest = await loadManifest(services.storage, indexId);
       const ids = manifest.chunks.map((c) => c.id);
       const droppedFiles = Object.keys(manifest.files).length;

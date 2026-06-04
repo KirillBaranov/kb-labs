@@ -53,7 +53,7 @@ export const syncPathsFlags = defineFlags({
 
 export const syncDeleteFlags = defineFlags({
   index: { type: 'string', description: INDEX_DESC },
-  yes: { type: 'boolean', description: 'Confirm this irreversible deletion', default: false },
+  yes: { type: 'boolean', description: 'Confirm deletion (recoverable via `kb mind sync add`)', default: false },
   json: { type: 'boolean', description: JSON_DESC, default: false },
 });
 
