@@ -96,32 +96,32 @@ export function assemblePlatform(
     if (adapter === undefined) { continue; }
 
     const adapterKey = String(key);
+    type F1 = (r: unknown, a: unknown) => unknown;
 
-    // Applies one factory stage: runs it if condition is true, records to trace when diagLogger is set.
-    const applyStage = (stage: string, condition: boolean, apply: () => unknown): void => {
-      if (condition) { adapter = apply(); }
-      if (diagLogger) { trace.push({ adapter: adapterKey, stage, applied: condition }); }
+    // Resolve each factory under narrowing, or undefined when the stage does not apply.
+    const rbf = ('resourceBrokerFactory' in def && def.resourceBrokerFactory)
+      ? (def.resourceBrokerFactory as F1) : undefined;
+    const af = ('analyticsFactory' in def && def.analyticsFactory && analytics)
+      ? (def.analyticsFactory as F1) : undefined;
+    const rf = ('routerFactory' in def && def.routerFactory && config[key] !== undefined)
+      ? (def.routerFactory as F1) : undefined;
+    const paf = ('postAssemblyFactory' in def && def.postAssemblyFactory && config[key] !== undefined)
+      ? (def.postAssemblyFactory as F1) : undefined;
+
+    // Applies one factory stage and records to trace when diagLogger is set.
+    const applyStage = (stage: string, fn: F1 | undefined, arg: unknown): void => {
+      if (fn !== undefined) { adapter = fn(adapter, arg); }
+      if (diagLogger) { trace.push({ adapter: adapterKey, stage, applied: fn !== undefined }); }
     };
 
     // Stage 1: resource broker (innermost — executor captures raw adapter at registration time)
-    applyStage('resourceBrokerFactory',
-      'resourceBrokerFactory' in def && !!def.resourceBrokerFactory,
-      () => (def.resourceBrokerFactory as (r: unknown, b: unknown) => unknown)(adapter, broker));
-
+    applyStage('resourceBrokerFactory', rbf, broker);
     // Stage 2: analytics (wraps queue so tracking fires for every complete() call)
-    applyStage('analyticsFactory',
-      'analyticsFactory' in def && !!def.analyticsFactory && !!analytics,
-      () => (def.analyticsFactory as (r: unknown, a: unknown) => unknown)(adapter, analytics));
-
+    applyStage('analyticsFactory', af, analytics);
     // Stage 3: router (e.g. LLMRouter injects tier/provider metadata seen by analytics)
-    applyStage('routerFactory',
-      'routerFactory' in def && !!def.routerFactory && config[key] !== undefined,
-      () => (def.routerFactory as (r: unknown, c: unknown) => unknown)(adapter, config[key]));
-
+    applyStage('routerFactory', rf, config[key]);
     // Stage 4: outermost wrap (e.g. PII redaction)
-    applyStage('postAssemblyFactory',
-      'postAssemblyFactory' in def && !!def.postAssemblyFactory && config[key] !== undefined,
-      () => (def.postAssemblyFactory as (r: unknown, c: unknown) => unknown)(adapter, config[key]));
+    applyStage('postAssemblyFactory', paf, config[key]);
 
     (result as unknown as Record<string, unknown>)[key] = adapter;
   }
