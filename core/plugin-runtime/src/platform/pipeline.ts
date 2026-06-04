@@ -99,13 +99,13 @@ export function assemblePlatform(
     type F1 = (r: unknown, a: unknown) => unknown;
 
     // Resolve each factory under narrowing, or undefined when the stage does not apply.
-    const rbf = ('resourceBrokerFactory' in def && def.resourceBrokerFactory)
+    const rbf = 'resourceBrokerFactory' in def
       ? (def.resourceBrokerFactory as F1) : undefined;
-    const af = ('analyticsFactory' in def && def.analyticsFactory && analytics)
+    const af = ('analyticsFactory' in def && !!analytics)
       ? (def.analyticsFactory as F1) : undefined;
-    const rf = ('routerFactory' in def && def.routerFactory && config[key] !== undefined)
+    const rf = ('routerFactory' in def && config[key] !== undefined)
       ? (def.routerFactory as F1) : undefined;
-    const paf = ('postAssemblyFactory' in def && def.postAssemblyFactory && config[key] !== undefined)
+    const paf = ('postAssemblyFactory' in def && config[key] !== undefined)
       ? (def.postAssemblyFactory as F1) : undefined;
 
     // Applies one factory stage and records to trace when diagLogger is set.
