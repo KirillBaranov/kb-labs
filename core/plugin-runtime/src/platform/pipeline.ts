@@ -13,6 +13,13 @@ import type { AdapterLifecycle, AdapterMiddlewareFn } from './middleware.js';
 import type { AdapterMiddlewareDecl } from './pipeline-slots.js';
 import { SLOT_ORDER } from './pipeline-slots.js';
 
+// ─── Diagnostic logger interface ─────────────────────────────────────────────
+
+/** Minimal logger shape required for diagnostic emission. Structurally compatible with ILogger. */
+interface DiagLogger {
+  debug(msg: string, meta?: Record<string, unknown>): void;
+}
+
 // ─── Platform config ─────────────────────────────────────────────────────────
 
 /**
@@ -74,13 +81,13 @@ export function assemblePlatform(
   raw: PlatformServices,
   config: PlatformConfig,
   broker: IResourceBroker,
+  diagLogger?: DiagLogger,
 ): PlatformServices {
   const result = Object.fromEntries(
     (Object.keys(ADAPTER_REGISTRY) as Array<keyof PlatformServices>).map(key => [key, raw[key]])
   ) as unknown as PlatformServices;
   const analytics = raw.analytics;
 
-  const kbDebug = process.env.KB_DEBUG === 'true';
   const trace: Array<{ adapter: string; stage: string; applied: boolean }> = [];
 
   for (const key of Object.keys(ADAPTER_REGISTRY) as Array<keyof PlatformServices>) {
@@ -101,10 +108,10 @@ export function assemblePlatform(
     const paf = ('postAssemblyFactory' in def && config[key] !== undefined)
       ? (def.postAssemblyFactory as F1) : undefined;
 
-    // Applies one factory stage and records to trace when KB_DEBUG is set.
+    // Applies one factory stage and records to trace when diagLogger is set.
     const applyStage = (stage: string, fn: F1 | undefined, arg: unknown): void => {
       if (fn !== undefined) { adapter = fn(adapter, arg); }
-      if (kbDebug) { trace.push({ adapter: adapterKey, stage, applied: fn !== undefined }); }
+      if (diagLogger) { trace.push({ adapter: adapterKey, stage, applied: fn !== undefined }); }
     };
 
     // Stage 1: resource broker (innermost — executor captures raw adapter at registration time)
@@ -119,8 +126,13 @@ export function assemblePlatform(
     (result as unknown as Record<string, unknown>)[key] = adapter;
   }
 
-  if (kbDebug) {
-    process.stdout.write(JSON.stringify({ event: 'kb.diag.pipeline', v: 1, data: trace, ts: Date.now() }) + '\n');
+  if (process.env.KB_DEBUG === 'true' && diagLogger !== undefined) {
+    diagLogger.debug('kb.diag.pipeline', {
+      event: 'kb.diag.pipeline',
+      v: 1,
+      data: trace,
+      ts: Date.now(),
+    });
   }
 
   return result;
@@ -147,6 +159,7 @@ export function applyPluginGovernance(
   pluginId: string,
   adapterMiddlewares: LoadedMiddleware[] = [],
   lifecycle: AdapterLifecycle = NOOP_LIFECYCLE,
+  diagLogger?: DiagLogger,
 ): PluginServices {
   const ctx = { permissions, pluginId, lifecycle };
   // Only keys in ADAPTER_REGISTRY are included — platform-only fields (not in the registry)
@@ -183,12 +196,12 @@ export function applyPluginGovernance(
 
     (result as unknown as Record<string, unknown>)[key] = adapter;
 
-    if (process.env.KB_DEBUG === 'true') {
-      process.stdout.write(JSON.stringify({
+    if (process.env.KB_DEBUG === 'true' && diagLogger !== undefined) {
+      diagLogger.debug('kb.diag.governance', {
         event: 'kb.diag.governance',
         v: 1,
         data: {
-          adapter: String(key),
+          adapter: key,
           pluginId,
           middlewaresApplied: adapterMws.map(mw => ({
             name: mw.decl.id,
@@ -198,7 +211,7 @@ export function applyPluginGovernance(
           governanceStrategy: def.governance.strategy,
         },
         ts: Date.now(),
-      }) + '\n');
+      });
     }
   }
 
