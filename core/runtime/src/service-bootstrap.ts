@@ -242,7 +242,7 @@ export async function createServiceBootstrap(
     });
 
     if (process.env.KB_DEBUG === 'true') {
-      platform.logger.debug('kb.diag.config', {
+      process.stdout.write(JSON.stringify({
         event: 'kb.diag.config',
         v: 1,
         data: {
@@ -253,7 +253,7 @@ export async function createServiceBootstrap(
           ignoredProjectFields: sources.ignoredProjectFields ?? [],
         },
         ts: Date.now(),
-      });
+      }) + '\n');
     }
   } catch (error) {
     process.stderr.write(
