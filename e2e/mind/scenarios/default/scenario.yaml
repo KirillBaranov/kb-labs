@@ -1,0 +1,7 @@
+# Baseline scenario for the mind e2e domain.
+# Applies no overlays — the unmodified project config is in effect (rerank ON,
+# default retrieval). The runner ensures this scenario before any other; it is
+# reset on completion. This run is the real-embedder quality GATE.
+name: mind-default
+overlays: []
+restarts: []

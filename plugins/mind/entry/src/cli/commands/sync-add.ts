@@ -1,81 +1,31 @@
-import { defineCommand, type PluginContextV3 } from '@kb-labs/sdk';
-import { promises as fsp } from 'node:fs';
-import { join } from 'node:path';
+import { defineCommand, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { type SyncPathsFlags, type SyncResponse } from '@kb-labs/mind-contracts';
+import { buildMind } from '../../platform';
 
-interface SyncAddFlags {
-  path: string;
-  id?: string;
-  json?: boolean;
-  'dry-run'?: boolean;
-}
-
-interface SyncEntry {
-  id: string;
-  path: string;
-  addedAt: string;
-}
-
-async function readRegistry(registryPath: string): Promise<SyncEntry[]> {
-  try {
-    const raw = await fsp.readFile(registryPath, 'utf-8');
-    return JSON.parse(raw) as SyncEntry[];
-  } catch {
-    return [];
-  }
-}
-
-async function writeRegistry(registryPath: string, entries: SyncEntry[]): Promise<void> {
-  await fsp.mkdir(join(registryPath, '..'), { recursive: true });
-  await fsp.writeFile(registryPath, JSON.stringify(entries, null, 2));
-}
-
-export default defineCommand({
-  id: 'mind:sync:add',
-  description: 'Add a document path to the Mind sync registry',
+export default defineCommand<unknown, CLIInput<SyncPathsFlags>, SyncResponse>({
+  id: 'mind:sync-add',
+  description: 'Add documents to an index (incremental)',
 
   handler: {
-    async intent(_ctx: PluginContextV3, input: { argv: string[]; flags: SyncAddFlags }) {
-      const { path, id } = input.flags;
-      return {
-        summary: `Add path "${path ?? '(unknown)'}" to Mind sync registry`,
-        operations: [{ type: 'create' as const, resource: 'sync-entry', details: { path, id } }],
-      };
-    },
-
-    async execute(ctx: PluginContextV3, input: { argv: string[]; flags: SyncAddFlags }) {
-      const { path: sourcePath, json } = input.flags;
-
-      if (!sourcePath) {
-        ctx.ui.error('--path is required');
-        return { exitCode: 1 };
-      }
-
-      const registryPath = join(ctx.cwd, '.kb/mind/sync/sources.json');
-      const entries = await readRegistry(registryPath);
-      const id = input.flags.id ?? `src-${Date.now()}`;
-
-      if (entries.some(e => e.path === sourcePath)) {
-        ctx.ui.error(`Path "${sourcePath}" is already registered`);
-        return { exitCode: 1 };
-      }
-
-      const entry: SyncEntry = { id, path: sourcePath, addedAt: new Date().toISOString() };
-      entries.push(entry);
-
+    async execute(ctx: PluginContextV3, input: CLIInput<SyncPathsFlags>): Promise<{ exitCode: number; result?: SyncResponse }> {
       try {
-        await writeRegistry(registryPath, entries);
-      } catch (err) {
-        ctx.ui.error(`Failed to write registry: ${err instanceof Error ? err.message : String(err)}`);
+      const paths = input.argv ?? [];
+      if (paths.length === 0) {
+        ctx.ui?.error?.('Provide one or more paths: kb mind sync add <paths…>');
         return { exitCode: 1 };
       }
-
-      if (json) {
-        ctx.ui.json?.({ id, path: sourcePath });
-      } else {
-        ctx.ui.success(`Added "${sourcePath}" to sync registry`, { hint: `Run \`kb mind sync list\` to see all sources.` });
+      const mind = await buildMind(ctx.cwd);
+      const res = await mind.syncAdd(paths, input.flags.index);
+      if (input.flags.json) {
+        ctx.ui?.json?.(res);
+        return { exitCode: 0, result: res };
       }
-
-      return { exitCode: 0, result: entry };
+      ctx.ui?.success?.(`Sync add → "${res.indexId}": +${res.added} added, ${res.updated} updated`);
+      return { exitCode: 0, result: res };
+      } catch (err) {
+        handleError(ctx, err, input.flags.json);
+        return { exitCode: 1 };
+      }
     },
   },
 });

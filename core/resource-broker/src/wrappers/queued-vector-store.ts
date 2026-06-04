@@ -70,12 +70,13 @@ export class QueuedVectorStore implements IVectorStore {
   async search(
     query: number[],
     limit: number,
-    filter?: VectorFilter
+    filter?: VectorFilter,
+    namespace?: string
   ): Promise<VectorSearchResult[]> {
     const response = await this.broker.enqueue<VectorSearchResult[]>({
       resource: 'vectorStore',
       operation: 'search',
-      args: [query, limit, filter],
+      args: [query, limit, filter, namespace],
       priority: this._priority,
       // No token estimation for vector operations
     });
@@ -93,11 +94,11 @@ export class QueuedVectorStore implements IVectorStore {
    * @param vectors - Array of vector records to upsert
    * @throws Error if request fails after all retries
    */
-  async upsert(vectors: VectorRecord[]): Promise<void> {
+  async upsert(vectors: VectorRecord[], namespace?: string): Promise<void> {
     const response = await this.broker.enqueue<void>({
       resource: 'vectorStore',
       operation: 'upsert',
-      args: [vectors],
+      args: [vectors, namespace],
       priority: this._priority,
     });
 
@@ -112,11 +113,11 @@ export class QueuedVectorStore implements IVectorStore {
    * @param ids - Array of vector IDs to delete
    * @throws Error if request fails after all retries
    */
-  async delete(ids: string[]): Promise<void> {
+  async delete(ids: string[], namespace?: string): Promise<void> {
     const response = await this.broker.enqueue<void>({
       resource: 'vectorStore',
       operation: 'delete',
-      args: [ids],
+      args: [ids, namespace],
       priority: this._priority,
     });
 
@@ -131,11 +132,11 @@ export class QueuedVectorStore implements IVectorStore {
    * @returns Vector count
    * @throws Error if request fails after all retries
    */
-  async count(): Promise<number> {
+  async count(namespace?: string): Promise<number> {
     const response = await this.broker.enqueue<number>({
       resource: 'vectorStore',
       operation: 'count',
-      args: [],
+      args: [namespace],
       priority: this._priority,
     });
 
@@ -153,7 +154,7 @@ export class QueuedVectorStore implements IVectorStore {
    * @returns Array of vector records
    * @throws Error if request fails or method not supported
    */
-  async get(ids: string[]): Promise<VectorRecord[]> {
+  async get(ids: string[], namespace?: string): Promise<VectorRecord[]> {
     if (!this.realVectorStore.get) {
       throw new Error('VectorStore.get() not supported by underlying implementation');
     }
@@ -161,7 +162,7 @@ export class QueuedVectorStore implements IVectorStore {
     const response = await this.broker.enqueue<VectorRecord[]>({
       resource: 'vectorStore',
       operation: 'get',
-      args: [ids],
+      args: [ids, namespace],
       priority: this._priority,
     });
 
@@ -179,7 +180,7 @@ export class QueuedVectorStore implements IVectorStore {
    * @returns Array of matching vector records
    * @throws Error if request fails or method not supported
    */
-  async query(filter: VectorFilter): Promise<VectorRecord[]> {
+  async query(filter: VectorFilter, namespace?: string): Promise<VectorRecord[]> {
     if (!this.realVectorStore.query) {
       throw new Error('VectorStore.query() not supported by underlying implementation');
     }
@@ -187,7 +188,7 @@ export class QueuedVectorStore implements IVectorStore {
     const response = await this.broker.enqueue<VectorRecord[]>({
       resource: 'vectorStore',
       operation: 'query',
-      args: [filter],
+      args: [filter, namespace],
       priority: this._priority,
     });
 

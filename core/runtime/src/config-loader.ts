@@ -108,6 +108,12 @@ export interface LoadPlatformConfigResult {
    * CLI to expose the full user-facing config via `useConfig()`.
    */
   rawConfig?: Record<string, unknown>
+  /**
+   * Effective full config: `rawConfig` with `.kb/overlays/` applied. This is
+   * what product config (`useConfig()` → getConfig) should read so scenario
+   * overlays reach plugin config sections, not just the platform slice.
+   */
+  effectiveConfig?: Record<string, unknown>
   /** Resolved platform root (where `node_modules/@kb-labs/*` lives). */
   platformRoot: string
   /** Resolved project root (where `.kb/kb.config.json` lives). */
@@ -380,6 +386,20 @@ export async function loadPlatformConfig(
     appliedOverlays.push(overlay.path)
   }
 
+  // Effective FULL config = the raw project config with the same overlays
+  // applied. `merged`/`platformConfig` above is the platform slice; product
+  // sections (e.g. `mind`) are read via getConfig() from this full config, so
+  // overlays must reach it too — otherwise scenario overlays only affect
+  // platform fields and plugin config silently ignores them.
+  let effectiveConfig = rawProjectConfig
+  if (rawProjectConfig && overlayResult.overlays.length > 0) {
+    let acc = rawProjectConfig as Record<string, unknown>
+    for (const overlay of overlayResult.overlays) {
+      acc = mergeOverlay(acc as never, overlay.data as never) as Record<string, unknown>
+    }
+    effectiveConfig = acc
+  }
+
   // Validate the post-overlay structure. Catches gross breakage (overlay sets
   // `adapters: "string"`) early, before the platform tries to use the config.
   // The schema is intentionally permissive on sub-properties — it only guards
@@ -404,6 +424,7 @@ export async function loadPlatformConfig(
   return {
     platformConfig: effective,
     rawConfig: rawProjectConfig,
+    effectiveConfig,
     platformRoot: roots.platformRoot,
     projectRoot: roots.projectRoot,
     sameLocation: roots.sameLocation,

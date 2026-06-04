@@ -23,7 +23,7 @@ export class AnalyticsVectorStore implements IVectorStore {
     private analytics: IAnalytics
   ) {}
 
-  async search(query: number[], limit: number, filter?: VectorFilter): Promise<VectorSearchResult[]> {
+  async search(query: number[], limit: number, filter?: VectorFilter, namespace?: string): Promise<VectorSearchResult[]> {
     const startTime = Date.now();
     const requestId = generateRequestId();
 
@@ -36,7 +36,7 @@ export class AnalyticsVectorStore implements IVectorStore {
     });
 
     try {
-      const results = await this.realVectorStore.search(query, limit, filter);
+      const results = await this.realVectorStore.search(query, limit, filter, namespace);
       const durationMs = Date.now() - startTime;
 
       // Calculate average score
@@ -66,7 +66,7 @@ export class AnalyticsVectorStore implements IVectorStore {
     }
   }
 
-  async upsert(vectors: VectorRecord[]): Promise<void> {
+  async upsert(vectors: VectorRecord[], namespace?: string): Promise<void> {
     const startTime = Date.now();
     const requestId = generateRequestId();
 
@@ -77,7 +77,7 @@ export class AnalyticsVectorStore implements IVectorStore {
     });
 
     try {
-      await this.realVectorStore.upsert(vectors);
+      await this.realVectorStore.upsert(vectors, namespace);
       const durationMs = Date.now() - startTime;
 
       // Track completion
@@ -97,7 +97,7 @@ export class AnalyticsVectorStore implements IVectorStore {
     }
   }
 
-  async delete(ids: string[]): Promise<void> {
+  async delete(ids: string[], namespace?: string): Promise<void> {
     const startTime = Date.now();
     const requestId = generateRequestId();
 
@@ -108,7 +108,7 @@ export class AnalyticsVectorStore implements IVectorStore {
     });
 
     try {
-      await this.realVectorStore.delete(ids);
+      await this.realVectorStore.delete(ids, namespace);
       const durationMs = Date.now() - startTime;
 
       // Track completion
@@ -127,12 +127,12 @@ export class AnalyticsVectorStore implements IVectorStore {
     }
   }
 
-  async count(): Promise<number> {
+  async count(namespace?: string): Promise<number> {
     const startTime = Date.now();
     const requestId = generateRequestId();
 
     try {
-      const count = await this.realVectorStore.count();
+      const count = await this.realVectorStore.count(namespace);
       const durationMs = Date.now() - startTime;
 
       // Track count operation
@@ -153,7 +153,7 @@ export class AnalyticsVectorStore implements IVectorStore {
     }
   }
 
-  async get(ids: string[]): Promise<VectorRecord[]> {
+  async get(ids: string[], namespace?: string): Promise<VectorRecord[]> {
     if (!this.realVectorStore.get) {
       throw new Error('get() not implemented by underlying vector store');
     }
@@ -162,7 +162,7 @@ export class AnalyticsVectorStore implements IVectorStore {
     const requestId = generateRequestId();
 
     try {
-      const results = await this.realVectorStore.get(ids);
+      const results = await this.realVectorStore.get(ids, namespace);
       const durationMs = Date.now() - startTime;
 
       await this.analytics.track('vectorstore.get.completed', {
@@ -183,7 +183,7 @@ export class AnalyticsVectorStore implements IVectorStore {
     }
   }
 
-  async query(filter: VectorFilter): Promise<VectorRecord[]> {
+  async query(filter: VectorFilter, namespace?: string): Promise<VectorRecord[]> {
     if (!this.realVectorStore.query) {
       throw new Error('query() not implemented by underlying vector store');
     }
@@ -192,7 +192,7 @@ export class AnalyticsVectorStore implements IVectorStore {
     const requestId = generateRequestId();
 
     try {
-      const results = await this.realVectorStore.query(filter);
+      const results = await this.realVectorStore.query(filter, namespace);
       const durationMs = Date.now() - startTime;
 
       await this.analytics.track('vectorstore.query.completed', {

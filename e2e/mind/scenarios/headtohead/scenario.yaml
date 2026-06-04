@@ -1,0 +1,10 @@
+# Thesis-proof scenario: grep-vs-mind head-to-head, clean vs degraded corpus.
+#
+# No overlay — default config. The spec indexes the clean corpus, runs the
+# head-to-head (Mind /search vs a literal grep baseline), then writes a
+# comment-stripped (degraded) copy, indexes that, and re-runs. The spread
+# `delta_degraded − delta_clean` is the proof that Mind earns its keep where
+# documentation is poor (the 99% non-greenfield case).
+name: mind-headtohead
+overlays: []
+restarts: []

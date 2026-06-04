@@ -114,7 +114,7 @@ See [ADR-0001](core/plugin-runtime/docs/adr/ADR-0001-adapter-pipeline.md) and [p
 
 ```bash
 # Run 1-3 targeted queries covering what exists, where it's called, and what types are involved
-pnpm kb mind search --text "how does X work" --agent 2>/dev/null | grep "^{"
+pnpm kb mind ask --text "how does X work" --agent 2>/dev/null | grep "^{"
 ```
 
 Parse the JSON: read files from `sources`, trust code over `kind: "adr"`. If `confidence < 0.4`, run a follow-up with exact identifiers (`ClassName`, `functionName`, `file.ts`). See `.claude/skills/task-rag.md` for the full workflow.
@@ -152,8 +152,8 @@ Every bug fix **must** be accompanied by a test that fails before the fix and pa
 ## Common Tasks
 
 ```bash
-# Search code semantically
-pnpm kb mind search --text "your question" --agent
+# Search code semantically (sources-first); use `mind ask --agent` for a grounded answer
+pnpm kb mind search --text "your question"
 
 # Run specific plugin tests
 pnpm --filter @kb-labs/mind-engine test

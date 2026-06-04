@@ -253,19 +253,40 @@ describe('wrapVectorStore', () => {
     expect(call[0].id).not.toMatch(/^nsns/);
   });
 
-  it('filters search results by namespace metadata', async () => {
+  it('filters search results by namespace metadata and strips the id prefix', async () => {
     const adapter = {
       ...base,
       search: vi.fn(async () => [
-        { id: 'ns:1', score: 0.9, metadata: { _kbNamespace: 'ns' } },
-        { id: 'other:1', score: 0.8, metadata: { _kbNamespace: 'other' } },
-        { id: 'ns:2', score: 0.7, metadata: {} }, // no namespace tag → passes through
+        { id: 'nsdoc-1', score: 0.9, metadata: { _kbNamespace: 'ns' } },
+        { id: 'otherdoc-1', score: 0.8, metadata: { _kbNamespace: 'other' } },
+        { id: 'nsdoc-2', score: 0.7, metadata: {} }, // no namespace tag → passes through
       ]),
     };
     const wrapped = wrapVectorStore(adapter, makeCtx({ vectorStore: { collections: ['ns'] } }));
     const results = await wrapped.search([0.1], 10);
-    // 'other:1' is filtered (wrong namespace); ns:2 passes (no _kbNamespace tag = no namespace restriction)
-    expect(results.map((r: any) => r.id)).toEqual(['ns:1', 'ns:2']);
+    // 'otherdoc-1' is filtered (wrong namespace); the surviving ids have the
+    // 'ns' prefix STRIPPED so they round-trip to what the caller upserted.
+    expect(results.map((r: any) => r.id)).toEqual(['doc-1', 'doc-2']);
+  });
+
+  it('round-trips upserted ids through search (prefix added then stripped)', async () => {
+    // The regression: vector ids must survive a write→read cycle unchanged, or
+    // consumers fusing hits back to their records (mind's retrieve) drop them all.
+    const store: Array<{ id: string; score: number; metadata: Record<string, unknown> }> = [];
+    const adapter = {
+      ...base,
+      upsert: vi.fn(async (vectors: Array<{ id: string; metadata?: Record<string, unknown> }>) => {
+        for (const v of vectors) {
+          store.push({ id: v.id, score: 0.9, metadata: v.metadata ?? {} });
+        }
+      }),
+      search: vi.fn(async () => store),
+    };
+    const wrapped = wrapVectorStore(adapter, makeCtx({ vectorStore: { collections: ['mind:'] } }));
+    const originalId = 'src/Feature/Service.cs#10-42';
+    await wrapped.upsert([{ id: originalId, vector: [0.1], metadata: {} }]);
+    const results = await wrapped.search([0.1], 5);
+    expect(results[0]?.id).toBe(originalId);
   });
 
   it('does not filter when permission is true (no namespace)', async () => {

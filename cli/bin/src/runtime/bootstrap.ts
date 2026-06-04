@@ -38,6 +38,7 @@ import type { PlatformContainer, PlatformConfig } from "@kb-labs/core-runtime";
 declare global {
   var __KB_PLATFORM_CONFIG__: PlatformConfig | undefined;
   var __KB_RAW_CONFIG__: Record<string, unknown> | undefined;
+  var __KB_EFFECTIVE_CONFIG__: Record<string, unknown> | undefined;
 }
 
 type ILogger = PlatformContainer["logger"];
@@ -78,6 +79,7 @@ export async function executeCli(
     platform,
     platformConfig,
     rawConfig,
+    effectiveConfig,
     platformRoot,
     projectRoot,
   } = await initializePlatform(cwd, options.moduleUrl);
@@ -87,6 +89,7 @@ export async function executeCli(
 
   globalThis.__KB_PLATFORM_CONFIG__ = platformConfig;
   globalThis.__KB_RAW_CONFIG__ = rawConfig;
+  globalThis.__KB_EFFECTIVE_CONFIG__ = effectiveConfig ?? rawConfig;
 
   if (rawConfig) {
     process.env.KB_RAW_CONFIG_JSON = JSON.stringify(rawConfig);

@@ -1784,6 +1784,81 @@
       },
       "cachedAt": "2026-05-17T09:12:30.310Z",
       "integrity": "sha256-5XWpMuYul+g/fNMDIGpT1aNwKcwtUfTu+D4RIcQL9yg="
+    },
+    "@kb-labs/mind-v2-entry": {
+      "manifestType": "plugin",
+      "manifest": {
+        "schema": "kb.plugin/3",
+        "id": "@kb-labs/mind-v2",
+        "version": "0.1.0",
+        "configSection": "mindV2",
+        "display": {
+          "name": "Mind v2 (RAG)",
+          "description": "Retrieval-augmented knowledge engine — index and query your codebase and docs",
+          "tags": [
+            "rag",
+            "search",
+            "embeddings",
+            "ai",
+            "mind"
+          ]
+        },
+        "platform": {
+          "requires": [
+            "cache",
+            "storage"
+          ],
+          "optional": [
+            "llm",
+            "embeddings",
+            "vectorStore",
+            "analytics"
+          ]
+        },
+        "permissions": {
+          "fs": {
+            "read": [
+              ".kb/**",
+              ".kb/mind-v2/**"
+            ],
+            "write": [
+              ".kb/**",
+              ".kb/mind-v2/**"
+            ]
+          },
+          "env": {
+            "read": [
+              "HOME",
+              "USER",
+              "PATH",
+              "TMPDIR",
+              "NODE_ENV",
+              "KB_*"
+            ]
+          },
+          "platform": {
+            "llm": true,
+            "embeddings": true,
+            "vectorStore": {
+              "collections": [
+                "mindv2:"
+              ]
+            },
+            "analytics": true,
+            "cache": {
+              "namespaces": [
+                "mindv2:"
+              ]
+            }
+          },
+          "quotas": {
+            "timeoutMs": 600000,
+            "memoryMb": 512
+          }
+        }
+      },
+      "cachedAt": "2026-05-31T07:19:34.388Z",
+      "integrity": "sha256-DBOQVBkBedQe+2ltFX6Q0W+NZ1ttvfBCaUsxlZ4w85A="
     }
   }
 }

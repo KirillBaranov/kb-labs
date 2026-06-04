@@ -1,0 +1,19 @@
+{
+  "name": "@kb-labs/e2e-mind",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "e2e": "kb-labs-e2e-runner"
+  },
+  "devDependencies": {
+    "@kb-labs/e2e-shared": "workspace:*",
+    "@kb-labs/shared-testing-e2e": "workspace:*",
+    "@kb-labs/mind-contracts": "workspace:*",
+    "@kb-labs/mind-core": "workspace:*",
+    "@kb-labs/mind-entry": "workspace:*",
+    "@kb-labs/rest-api-app": "workspace:*",
+    "@playwright/test": "^1.52.0",
+    "typescript": "^5.4.0"
+  }
+}

@@ -1,0 +1,11 @@
+# A/B scenario: HyDE ON.
+#
+# Overlay enables HyDE (embed an LLM-generated hypothetical doc for the vector
+# search) and restarts the REST daemon. The bench runs the same golden set; the
+# spec compares HyDE ON vs the default (HyDE OFF) run and reports the delta —
+# the real-embedder verdict that decides whether the port is kept.
+name: mind-hyde-on
+overlays:
+  - overlay.jsonc
+restarts:
+  - rest

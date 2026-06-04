@@ -11,19 +11,31 @@ workspace:
     - e2e/shared           # shared fixtures package — no runnable tasks, just TS sources
     - e2e/tests            # legacy monolithic e2e bundle — superseded by per-domain packages
   categories:
-    # E2E test suites — one package per domain, each runs `playwright test`
-    # Depends on workspace:* packages for --affected tracking:
-    #   change workflow-engine → e2e-workflows is affected → only its tests run
+    # Plugin E2E suites — the per-plugin test matrix. Each domain's SUBJECT is a
+    # specific plugin (it depends on that plugin's workspace:* packages), so
+    # `kb-devkit run e2e --affected` runs ONLY the suites whose plugin changed:
+    #   edit plugins/mind/** → e2e-mind affected → only its suite runs.
+    # Must come BEFORE `e2e-suite` (first-match wins): this is the plugin matrix,
+    # `e2e-suite` below is the infrastructure matrix. Both use the same preset.
+    plugin-e2e-suite:
+      match:
+        - "e2e/mind"          # plugins/mind
+        - "e2e/workflows"     # plugins/workflow (+ release)
+        - "e2e/marketplace"   # plugins/marketplace
+        - "e2e/plugins"       # plugins/{commit,review,scaffold}
+      language: typescript
+      preset: e2e-suite
+
+    # Infrastructure E2E suites — one package per domain, each runs `playwright
+    # test`. Subject is the platform/gateway/services layer, not a single plugin.
+    # Same preset + the same workspace:* --affected tracking.
     e2e-suite:
       match:
         - "e2e/services"
         - "e2e/platform"
         - "e2e/gateway"
-        - "e2e/marketplace"
         - "e2e/marketplace-registry"
-        - "e2e/workflows"
         - "e2e/studio"
-        - "e2e/plugins"
         - "e2e/rest-api"
         - "e2e/mcp"
       language: typescript
@@ -663,10 +675,15 @@ tasks:
       cache: false
 
   e2e:
-    - categories: [e2e-suite]
+    # Both the infrastructure matrix (e2e-suite) and the per-plugin matrix
+    # (plugin-e2e-suite) run the same `pnpm run e2e`. `--affected` then scopes
+    # to whichever suites' workspace deps changed.
+    - categories: [e2e-suite, plugin-e2e-suite]
       command: pnpm run e2e
       inputs:
         - "specs/**"
+        - "scenarios/**"
+        - "lib/**"
         - "playwright.config.ts"
         - "tsconfig.json"
       outputs: []

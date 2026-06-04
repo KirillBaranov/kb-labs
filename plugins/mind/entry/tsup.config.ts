@@ -6,19 +6,19 @@ export default defineConfig({
   tsconfig: 'tsconfig.build.json',
   entry: [
     'src/index.ts',
-    'src/manifest.v3.ts',
-    'src/cli/commands/**/*.ts',  // Auto-include all commands
+    'src/manifest.ts',
+    'src/cli/commands/**/*.ts',
+    'src/rest/handlers/**/*.ts',
   ],
-  dts: true,
-  // React support for studio widgets
-  esbuildOptions(options) {
-    options.jsx = 'automatic';
-    return options;
-  },
-  // Keep react external (not bundled)
-  // Note: @kb-labs/* already external via nodePreset
   external: [
-    'react',
-    'react-dom',
+    '@kb-labs/sdk',
+    '@kb-labs/mind-core',
+    '@kb-labs/mind-contracts',
   ],
+  dts: {
+    resolve: false,
+    skipLibCheck: true,
+  },
+  clean: true,
+  sourcemap: true,
 });

@@ -44,8 +44,9 @@ export class ConfigAdapter implements IConfig {
    * ```
    */
   async getConfig(productId: string, profileId?: string): Promise<unknown> {
-    // Access rawConfig from globalThis (set by bootstrap.ts)
-    const rawConfig = globalThis.__KB_RAW_CONFIG__;
+    // Prefer the effective config (raw + `.kb/overlays/`) so scenario overlays
+    // reach plugin config sections; fall back to raw when no overlays applied.
+    const rawConfig = globalThis.__KB_EFFECTIVE_CONFIG__ ?? globalThis.__KB_RAW_CONFIG__;
 
     if (!rawConfig) {
       return undefined;

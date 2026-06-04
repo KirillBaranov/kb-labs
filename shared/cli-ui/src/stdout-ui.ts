@@ -134,7 +134,7 @@ export function createBaseStdoutUI(
       for (const line of lines) { console.log(`  ${line}`); }
     },
 
-    json: (data) => console.log(JSON.stringify(data, null, 2)),
+    json: (data, options) => console.log(options?.pretty ? JSON.stringify(data, null, 2) : JSON.stringify(data)),
     newline: () => console.log(),
     divider: () => console.log(safeColors.muted('─'.repeat(process.stdout.columns || 80))),
 

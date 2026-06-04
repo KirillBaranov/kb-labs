@@ -1,25 +1,14 @@
 {
   "name": "@kb-labs/mind-contracts",
-  "description": "Public contracts for the KB Labs Mind plugin. Declares artifacts, commands, workflows, and API guarantees for consumers.",
-  "version": "2.94.0",
+  "description": "Public contracts for KB Labs Mind (RAG) plugin: wire schemas, flags, config, routes.",
+  "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.js"
-    },
-    "./contract": {
-      "types": "./dist/contract.d.ts",
-      "import": "./dist/contract.js",
-      "require": "./dist/contract.js"
-    },
-    "./schema": {
-      "types": "./dist/schema.d.ts",
-      "import": "./dist/schema.js",
-      "require": "./dist/schema.js"
+      "import": "./dist/index.js"
     },
     "./dist/*": "./dist/*"
   },
@@ -40,6 +29,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@kb-labs/sdk": "workspace:*",
     "zod": "^3.25.76"
   },
   "devDependencies": {
@@ -47,7 +37,6 @@
     "@types/node": "^24.3.3",
     "eslint": "^9",
     "rimraf": "^6.0.1",
-    "semver": "^7.6.3",
     "tsup": "^8.5.0",
     "typescript": "^5.6.3",
     "vitest": "^3.2.4"

@@ -1,15 +1,18 @@
 {
   "name": "@kb-labs/mind-core",
-  "description": "Core contracts, errors, and utilities for KB Labs Mind",
-  "version": "2.94.0",
+  "description": "Core RAG engine for KB Labs Mind: ingest, retrieval, answer. Dry business logic over platform adapters.",
+  "version": "0.1.0",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.js"
+      "import": "./dist/index.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js"
     },
     "./dist/*": "./dist/*"
   },
@@ -22,15 +25,17 @@
     "build": "tsup --config tsup.config.ts",
     "clean": "rimraf dist",
     "dev": "tsup --config tsup.config.ts --watch",
-    "lint": "eslint src --ext .ts,.tsx,.js,.jsx",
+    "lint": "eslint src --ext .ts",
     "lint:fix": "eslint . --fix",
+    "pretype-check": "pnpm --filter @kb-labs/mind-core build",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@kb-labs/mind-types": "workspace:*",
-    "@kb-labs/sdk": "workspace:*"
+    "@kb-labs/mind-contracts": "workspace:*",
+    "@kb-labs/sdk": "workspace:*",
+    "globby": "^11.0.0"
   },
   "devDependencies": {
     "@kb-labs/devkit": "workspace:*",
@@ -44,6 +49,5 @@
     "node": ">=20.0.0",
     "pnpm": ">=9.0.0"
   },
-  "packageManager": "pnpm@9.11.0",
   "sideEffects": false
 }

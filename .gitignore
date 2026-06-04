@@ -72,6 +72,7 @@ _private/
 .kb/logs/
 .kb/tmp/
 .kb/mind/
+/mind/
 .kb/devkit/
 .kb/verdaccio/
 .kb/bundle/
