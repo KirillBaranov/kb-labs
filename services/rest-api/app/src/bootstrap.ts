@@ -8,6 +8,7 @@ import { createServer } from './server';
 import { findRepoRoot } from '@kb-labs/core-sys';
 import { createRegistry, type IEntityRegistry } from '@kb-labs/core-registry';
 import { platform, createServiceBootstrap, loadEnvFromRoot, getPlatformRoot } from '@kb-labs/core-runtime';
+import { makeAssemblyHook } from '@kb-labs/plugin-runtime';
 import { getListenOptions } from '@kb-labs/shared-http';
 import { SystemMetricsCollector } from './daemon/metrics';
 import { metricsCollector as requestMetricsCollector, restDomainOperationMetrics } from './middleware/metrics.js';
@@ -74,7 +75,7 @@ export async function bootstrap(cwd: string = process.cwd()): Promise<void> {
   const { config, diagnostics } = await loadRestApiConfig(cwd);
 
   // Initialize platform (adapters from kb.config.json; .env already loaded above)
-  await createServiceBootstrap({ appId: 'rest-api', repoRoot });
+  await createServiceBootstrap({ appId: 'rest-api', repoRoot, assemblyHook: makeAssemblyHook() });
 
   // Now we can use platform.logger (configured from kb.config.json)
   const startupRequestId = `rest-startup-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;

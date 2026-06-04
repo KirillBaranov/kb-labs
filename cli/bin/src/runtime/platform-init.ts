@@ -19,8 +19,7 @@ import {
   type PlatformLifecycleHooks,
   type PlatformLifecyclePhase,
 } from '@kb-labs/core-runtime';
-import { assemblePlatform } from '@kb-labs/plugin-runtime';
-import type { PlatformServices } from '@kb-labs/plugin-contracts';
+import { makeAssemblyHook } from '@kb-labs/plugin-runtime';
 import { noopUI } from '@kb-labs/plugin-contracts';
 import type { UIFacade } from '@kb-labs/plugin-contracts';
 import { createCLIUIFacade } from './ui-facade';
@@ -84,19 +83,6 @@ function createCLIUIProvider(): (hostType: string) => UIFacade {
   };
 }
 
-function makeAssemblyHook() {
-  return (
-    raw: PlatformContainer,
-    broker: unknown,
-    cfg: Partial<Record<string, unknown>>,
-  ): Partial<Record<string, unknown>> =>
-    assemblePlatform(
-      raw as unknown as PlatformServices,
-      cfg as never,
-      broker as never,
-      process.env.KB_DEBUG === 'true' ? platform.logger : undefined,
-    ) as unknown as Partial<Record<string, unknown>>;
-}
 
 export interface PlatformInitResult {
   /** The initialized platform singleton. */
@@ -155,7 +141,7 @@ export async function initializePlatform(
         projectRoot,
         uiProvider,
         platformRoot !== projectRoot ? platformRoot : undefined,
-        makeAssemblyHook(),
+        makeAssemblyHook(() => process.env.KB_DEBUG === 'true' ? platform.logger : undefined),
       );
 
       platformInstance.logger.info('Platform adapters initialized', {
@@ -200,7 +186,7 @@ export async function initializePlatform(
         projectRoot,
         uiProvider,
         undefined,
-        makeAssemblyHook(),
+        makeAssemblyHook(() => process.env.KB_DEBUG === 'true' ? platform.logger : undefined),
       );
       platformInstance.logger.warn(
         'Platform adapters failed, using NoOp adapters',
@@ -223,7 +209,7 @@ export async function initializePlatform(
 
   // Full fallback: config could not be loaded at all.
   const fallbackConfig: PlatformConfig = { adapters: {} };
-  const platformInstance = await initPlatform(fallbackConfig, cwd, uiProvider, undefined, makeAssemblyHook());
+  const platformInstance = await initPlatform(fallbackConfig, cwd, uiProvider, undefined, makeAssemblyHook(() => process.env.KB_DEBUG === 'true' ? platform.logger : undefined));
   platformInstance.logger.warn(
     'Platform initialization failed, using NoOp adapters',
     { layer: 'cli', service: LOG_SERVICE },

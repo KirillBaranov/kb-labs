@@ -25,6 +25,10 @@ import {
   loadEnvFromRoot,
 } from '../service-bootstrap.js';
 
+// Minimal no-op hook for tests — passes through without wrapping adapters.
+// Tests don't configure real adapters, so assembly would be a no-op anyway.
+const mockHook = (_raw: object, _broker: unknown, cfg: Partial<Record<string, unknown>>) => cfg;
+
 describe('createServiceBootstrap', () => {
   let tmpDir: string;
 
@@ -41,28 +45,28 @@ describe('createServiceBootstrap', () => {
   // ─── Basic initialization ──────────────────────────────────────────────────
 
   it('initializes platform with NoOp adapters when no kb.config.json exists', async () => {
-    const result = await createServiceBootstrap({ appId: 'test-svc', repoRoot: tmpDir });
+    const result = await createServiceBootstrap({ appId: 'test-svc', repoRoot: tmpDir, assemblyHook: mockHook });
 
     expect(result).toBe(platform);
     expect(platform.isInitialized).toBe(true);
   });
 
   it('returns platform singleton', async () => {
-    const result = await createServiceBootstrap({ appId: 'test-svc', repoRoot: tmpDir });
+    const result = await createServiceBootstrap({ appId: 'test-svc', repoRoot: tmpDir, assemblyHook: mockHook });
     expect(result).toBe(platform);
   });
 
   it('registers lifecycle hooks under appId without throwing', async () => {
     await expect(
-      createServiceBootstrap({ appId: 'my-unique-service', repoRoot: tmpDir }),
+      createServiceBootstrap({ appId: 'my-unique-service', repoRoot: tmpDir, assemblyHook: mockHook }),
     ).resolves.not.toThrow();
   });
 
   // ─── Idempotency ───────────────────────────────────────────────────────────
 
   it('is idempotent — second call returns immediately without re-initializing', async () => {
-    const first = await createServiceBootstrap({ appId: 'test-svc', repoRoot: tmpDir });
-    const second = await createServiceBootstrap({ appId: 'test-svc', repoRoot: tmpDir });
+    const first = await createServiceBootstrap({ appId: 'test-svc', repoRoot: tmpDir, assemblyHook: mockHook });
+    const second = await createServiceBootstrap({ appId: 'test-svc', repoRoot: tmpDir, assemblyHook: mockHook });
 
     expect(first).toBe(second);
     expect(first).toBe(platform);
@@ -71,8 +75,8 @@ describe('createServiceBootstrap', () => {
   it('does not re-register lifecycle hooks on second call', async () => {
     const spy = vi.spyOn(platform, 'registerLifecycleHooks');
 
-    await createServiceBootstrap({ appId: 'hook-test', repoRoot: tmpDir });
-    await createServiceBootstrap({ appId: 'hook-test', repoRoot: tmpDir });
+    await createServiceBootstrap({ appId: 'hook-test', repoRoot: tmpDir, assemblyHook: mockHook });
+    await createServiceBootstrap({ appId: 'hook-test', repoRoot: tmpDir, assemblyHook: mockHook });
 
     // hooks registered exactly once for this appId
     expect(spy.mock.calls.filter(c => c[0] === 'hook-test')).toHaveLength(1);
@@ -85,7 +89,7 @@ describe('createServiceBootstrap', () => {
     await fs.writeFile(path.join(tmpDir, '.env'), 'TEST_VAR_BOOTSTRAP=hello\n');
     delete process.env['TEST_VAR_BOOTSTRAP'];
 
-    await createServiceBootstrap({ appId: 'env-test', repoRoot: tmpDir });
+    await createServiceBootstrap({ appId: 'env-test', repoRoot: tmpDir, assemblyHook: mockHook });
 
     expect(process.env['TEST_VAR_BOOTSTRAP']).toBe('hello');
     delete process.env['TEST_VAR_BOOTSTRAP'];
@@ -95,7 +99,7 @@ describe('createServiceBootstrap', () => {
     await fs.writeFile(path.join(tmpDir, '.env'), 'TEST_VAR_SKIP=should-not-load\n');
     delete process.env['TEST_VAR_SKIP'];
 
-    await createServiceBootstrap({ appId: 'skip-env-test', repoRoot: tmpDir, loadEnv: false });
+    await createServiceBootstrap({ appId: 'skip-env-test', repoRoot: tmpDir, loadEnv: false, assemblyHook: mockHook });
 
     expect(process.env['TEST_VAR_SKIP']).toBeUndefined();
     delete process.env['TEST_VAR_SKIP'];
@@ -105,7 +109,7 @@ describe('createServiceBootstrap', () => {
     process.env['TEST_EXISTING_VAR'] = 'original';
     await fs.writeFile(path.join(tmpDir, '.env'), 'TEST_EXISTING_VAR=overwritten\n');
 
-    await createServiceBootstrap({ appId: 'no-overwrite-test', repoRoot: tmpDir });
+    await createServiceBootstrap({ appId: 'no-overwrite-test', repoRoot: tmpDir, assemblyHook: mockHook });
 
     expect(process.env['TEST_EXISTING_VAR']).toBe('original');
     delete process.env['TEST_EXISTING_VAR'];
@@ -118,7 +122,7 @@ describe('createServiceBootstrap', () => {
       resetServiceBootstrap();
       delete process.env[key];
       await fs.writeFile(path.join(tmpDir, '.env'), content);
-      await createServiceBootstrap({ appId: 'parse-test', repoRoot: tmpDir });
+      await createServiceBootstrap({ appId: 'parse-test', repoRoot: tmpDir, assemblyHook: mockHook });
       const val = process.env[key];
       delete process.env[key];
       return val;
@@ -158,7 +162,7 @@ describe('createServiceBootstrap', () => {
     it('handles missing .env file gracefully', async () => {
       // no .env file in tmpDir
       await expect(
-        createServiceBootstrap({ appId: 'no-env-file', repoRoot: tmpDir }),
+        createServiceBootstrap({ appId: 'no-env-file', repoRoot: tmpDir, assemblyHook: mockHook }),
       ).resolves.not.toThrow();
     });
   });
@@ -167,22 +171,35 @@ describe('createServiceBootstrap', () => {
 
   it('does not throw when storeRawConfig: false and no config file', async () => {
     await expect(
-      createServiceBootstrap({ appId: 'no-raw-cfg', repoRoot: tmpDir, storeRawConfig: false }),
+      createServiceBootstrap({ appId: 'no-raw-cfg', repoRoot: tmpDir, storeRawConfig: false, assemblyHook: mockHook }),
     ).resolves.not.toThrow();
   });
 
   // ─── resetServiceBootstrap ─────────────────────────────────────────────────
 
   it('resetServiceBootstrap allows re-initialization', async () => {
-    await createServiceBootstrap({ appId: 'reset-test', repoRoot: tmpDir });
+    await createServiceBootstrap({ appId: 'reset-test', repoRoot: tmpDir, assemblyHook: mockHook });
     expect(platform.isInitialized).toBe(true);
 
     resetServiceBootstrap();
     expect(platform.isInitialized).toBe(false);
 
     // can initialize again
-    await createServiceBootstrap({ appId: 'reset-test-2', repoRoot: tmpDir });
+    await createServiceBootstrap({ appId: 'reset-test-2', repoRoot: tmpDir, assemblyHook: mockHook });
     expect(platform.isInitialized).toBe(true);
+  });
+
+  // ─── assembly enforcement ──────────────────────────────────────────────────
+
+  it('platform.isAssembled is true when assemblyHook is provided', async () => {
+    let hookCalled = false;
+    const trackingHook = (raw: object, broker: unknown, cfg: Partial<Record<string, unknown>>) => {
+      hookCalled = true;
+      return cfg;
+    };
+    await createServiceBootstrap({ appId: 'assembly-test', repoRoot: tmpDir, assemblyHook: trackingHook });
+    expect(hookCalled).toBe(true);
+    expect(platform.isAssembled).toBe(true);
   });
 });
 
@@ -207,14 +224,14 @@ describe('getPlatformRoot / getProjectRoot', () => {
   });
 
   it('both return a string (path) after createServiceBootstrap completes', async () => {
-    await createServiceBootstrap({ appId: 'roots-test', repoRoot: tmpDir });
+    await createServiceBootstrap({ appId: 'roots-test', repoRoot: tmpDir, assemblyHook: mockHook });
 
     expect(typeof getPlatformRoot()).toBe('string');
     expect(typeof getProjectRoot()).toBe('string');
   });
 
   it('both revert to undefined after resetServiceBootstrap', async () => {
-    await createServiceBootstrap({ appId: 'roots-reset', repoRoot: tmpDir });
+    await createServiceBootstrap({ appId: 'roots-reset', repoRoot: tmpDir, assemblyHook: mockHook });
     resetServiceBootstrap();
 
     expect(getPlatformRoot()).toBeUndefined();

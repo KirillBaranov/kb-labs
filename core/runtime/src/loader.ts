@@ -1199,6 +1199,15 @@ export async function initPlatform(
       platform.logger.debug('initPlatform assembly via hook complete', {
         assembledKeys: Object.keys(assembled).filter((k) => assembled[k] !== undefined),
       });
+      platform.markAssembled();
+    }
+
+    if (!platform.isAssembled && platform.isConfigured('llm')) {
+      throw new Error(
+        '[platform] Real LLM adapter is configured but assembly was not applied. ' +
+        'Pass assemblyHook: makeAssemblyHook() in createServiceBootstrap options. ' +
+        'Without assembly: no rate limiting, no analytics, no LLM router, no PII redaction.',
+      );
     }
 
     // ══════════════════════════════════════════════════════════════════════

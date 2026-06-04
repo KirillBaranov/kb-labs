@@ -792,6 +792,17 @@ custom_checks:
     run: node scripts/checks/check-ports.mjs
     on: [check]
 
+  # Assembly hook enforcement.
+  # Blocks CI if any service bootstrap.ts calls createServiceBootstrap without
+  # importing from @kb-labs/plugin-runtime (i.e. without makeAssemblyHook).
+  # TypeScript enforces this at compile time (assemblyHook is a required field).
+  # This check provides a human-readable CI gate with clear error messages.
+  # Self-filters: runs once, anchored to @kb-labs/devkit.
+  # Standalone:   node scripts/checks/check-assembly-hook.mjs
+  - name: check-assembly-hook
+    run: node scripts/checks/check-assembly-hook.mjs
+    on: [check]
+
 # ──────────────────────────────────────────────────────────────────────────────
 # COVERAGE THRESHOLDS
 # Enforced by: node scripts/merge-coverage.mjs --check
