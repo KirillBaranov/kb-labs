@@ -27,10 +27,14 @@ export default defineCommand<unknown, CLIInput<StatusFlags>, StatusResponse>({
           sections: [
             {
               header: `${res.indexes.length} index(es)`,
-              items: res.indexes.map(
-                (i: IndexSummary) => `${i.indexId}: ${i.documents} doc(s), ${i.chunks} chunk(s)` +
-                  (i.lastIndexedAt ? `, updated ${i.lastIndexedAt}` : ''),
-              ),
+              items: res.indexes.map((i: IndexSummary) => {
+                const head = `${i.indexId}${i.label ? ` — ${i.label}` : ''}`;
+                const counts = `${i.documents} doc(s), ${i.chunks} chunk(s)`;
+                const scope = i.coverage ? `\n    scope: ${i.coverage}` : '';
+                const stale = i.staleCount ? `, ${i.staleCount} stale` : '';
+                const updated = i.lastIndexedAt ? `, updated ${i.lastIndexedAt}` : ' (not built)';
+                return `${head}: ${counts}${stale}${updated}${scope}`;
+              }),
             },
           ],
         });
