@@ -84,6 +84,35 @@ function stringToUUID(str: string): string {
 }
 
 /**
+ * Qdrant point IDs must be UUID/uint, so `stringToUUID` hashes the caller's id
+ * one-way. To honour the round-trip contract (search returns the SAME id space
+ * the caller upserted), we stash the original id in the payload under this
+ * reserved key and restore it on read — otherwise consumers that correlate
+ * results by id (e.g. fusing vector hits back to their source records) silently
+ * drop every vector result.
+ */
+const ORIGINAL_ID_KEY = "__kb_id";
+
+type QdrantPoint = { id: string | number; payload?: Record<string, unknown> | null };
+
+/** The caller's original id (from payload), falling back to the raw point id. */
+function readOriginalId(point: QdrantPoint): string {
+  const orig = point.payload?.[ORIGINAL_ID_KEY];
+  return typeof orig === "string" ? orig : String(point.id);
+}
+
+/** Returned metadata without the reserved id key. */
+function stripReservedId(
+  payload?: Record<string, unknown> | null,
+): Record<string, unknown> | undefined {
+  if (!payload) {
+    return undefined;
+  }
+  const { [ORIGINAL_ID_KEY]: _omit, ...rest } = payload;
+  return rest;
+}
+
+/**
  * Default retry options used for all Qdrant client calls.
  *
  * Strategy: up to 4 attempts, full-jitter exponential back-off starting at
@@ -110,7 +139,8 @@ export class QdrantVectorStore implements IVectorStore {
   private client: QdrantClient;
   private collectionName: string;
   private dimension: number;
-  private initialized = false;
+  /** Collections already ensured to exist, by resolved collection name. */
+  private initializedCollections = new Set<string>();
   private url: string;
   private retryOptions: RetryOptions;
 
@@ -138,14 +168,26 @@ export class QdrantVectorStore implements IVectorStore {
   // ---------------------------------------------------------------------------
 
   /**
-   * Ensure collection exists with correct configuration.
+   * Resolve the physical Qdrant collection for a namespace.
+   *
+   * Namespaces map to separate collections (physical isolation): the default
+   * namespace uses the base collection, a named namespace appends `__<ns>`.
+   * This keeps corpora/tenants fully isolated and droppable independently.
+   */
+  private collectionFor(namespace?: string): string {
+    return namespace ? `${this.collectionName}__${namespace}` : this.collectionName;
+  }
+
+  /**
+   * Ensure a collection exists with correct configuration.
    *
    * `getCollections` and `createCollection` are both wrapped with retry so
    * that a fresh Qdrant instance that is still starting up (ECONNREFUSED) is
-   * handled gracefully.
+   * handled gracefully. Initialization is tracked per resolved collection so
+   * each namespace is created lazily on first use.
    */
-  private async ensureCollection(): Promise<void> {
-    if (this.initialized) {
+  private async ensureCollection(collection: string): Promise<void> {
+    if (this.initializedCollections.has(collection)) {
       return;
     }
 
@@ -155,14 +197,12 @@ export class QdrantVectorStore implements IVectorStore {
         this.retryOptions,
       );
 
-      const exists = collections.collections.some(
-        (c) => c.name === this.collectionName,
-      );
+      const exists = collections.collections.some((c) => c.name === collection);
 
       if (!exists) {
         await withRetry(
           () =>
-            this.client.createCollection(this.collectionName, {
+            this.client.createCollection(collection, {
               vectors: {
                 size: this.dimension,
                 distance: "Cosine",
@@ -172,10 +212,10 @@ export class QdrantVectorStore implements IVectorStore {
         );
       }
 
-      this.initialized = true;
+      this.initializedCollections.add(collection);
     } catch (error) {
       throw new Error(
-        `Failed to initialize Qdrant collection: ${error instanceof Error ? error.message : String(error)}`,
+        `Failed to initialize Qdrant collection '${collection}': ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }
@@ -195,8 +235,10 @@ export class QdrantVectorStore implements IVectorStore {
     query: number[],
     limit: number,
     filter?: VectorFilter,
+    namespace?: string,
   ): Promise<VectorSearchResult[]> {
-    await this.ensureCollection();
+    const collection = this.collectionFor(namespace);
+    await this.ensureCollection(collection);
 
     // Build Qdrant filter if provided
     const qdrantFilter = filter
@@ -225,14 +267,14 @@ export class QdrantVectorStore implements IVectorStore {
     } as const;
 
     const response = await withRetry(
-      () => this.client.search(this.collectionName, searchParams),
+      () => this.client.search(collection, searchParams),
       this.retryOptions,
     );
 
     return response.map((point) => ({
-      id: String(point.id),
+      id: readOriginalId(point),
       score: point.score,
-      metadata: point.payload as Record<string, unknown> | undefined,
+      metadata: stripReservedId(point.payload),
     }));
   }
 
@@ -245,8 +287,9 @@ export class QdrantVectorStore implements IVectorStore {
    * it is halved (the retry wrapper already handles brief transient
    * errors before they reach the concurrency bookkeeping).
    */
-  async upsert(vectors: VectorRecord[]): Promise<void> {
-    await this.ensureCollection();
+  async upsert(vectors: VectorRecord[], namespace?: string): Promise<void> {
+    const collection = this.collectionFor(namespace);
+    await this.ensureCollection(collection);
 
     if (vectors.length === 0) {
       return;
@@ -255,7 +298,9 @@ export class QdrantVectorStore implements IVectorStore {
     const points = vectors.map((record) => ({
       id: stringToUUID(record.id),
       vector: record.vector,
-      payload: record.metadata ?? {},
+      // Preserve the caller's id so reads can round-trip it (Qdrant point ids
+      // are the one-way UUID hash and can't be reversed).
+      payload: { ...(record.metadata ?? {}), [ORIGINAL_ID_KEY]: record.id },
     }));
 
     // Batch upsert with adaptive parallel processing (Qdrant supports up to 100 points per request)
@@ -291,7 +336,7 @@ export class QdrantVectorStore implements IVectorStore {
           // Transient failures are transparently retried before bubbling up.
           await withRetry(
             () =>
-              this.client.upsert(this.collectionName, {
+              this.client.upsert(collection, {
                 wait: false,
                 points: batch,
               }),
@@ -335,8 +380,9 @@ export class QdrantVectorStore implements IVectorStore {
    * The underlying `this.client.delete()` call is wrapped with
    * {@link withRetry}.
    */
-  async delete(ids: string[]): Promise<void> {
-    await this.ensureCollection();
+  async delete(ids: string[], namespace?: string): Promise<void> {
+    const collection = this.collectionFor(namespace);
+    await this.ensureCollection(collection);
 
     if (ids.length === 0) {
       return;
@@ -346,7 +392,7 @@ export class QdrantVectorStore implements IVectorStore {
 
     await withRetry(
       () =>
-        this.client.delete(this.collectionName, {
+        this.client.delete(collection, {
           wait: false, // ⚡ Don't wait for indexing - let Qdrant process asynchronously
           points: uuids,
         }),
@@ -360,11 +406,12 @@ export class QdrantVectorStore implements IVectorStore {
    * The underlying `this.client.getCollection()` call is wrapped with
    * {@link withRetry}.
    */
-  async count(): Promise<number> {
-    await this.ensureCollection();
+  async count(namespace?: string): Promise<number> {
+    const collection = this.collectionFor(namespace);
+    await this.ensureCollection(collection);
 
     const info = await withRetry(
-      () => this.client.getCollection(this.collectionName),
+      () => this.client.getCollection(collection),
       this.retryOptions,
     );
     return info.points_count ?? 0;
@@ -380,8 +427,9 @@ export class QdrantVectorStore implements IVectorStore {
    * The underlying `this.client.retrieve()` call is wrapped with
    * {@link withRetry}.
    */
-  async get(ids: string[]): Promise<VectorRecord[]> {
-    await this.ensureCollection();
+  async get(ids: string[], namespace?: string): Promise<VectorRecord[]> {
+    const collection = this.collectionFor(namespace);
+    await this.ensureCollection(collection);
 
     if (ids.length === 0) {
       return [];
@@ -389,7 +437,7 @@ export class QdrantVectorStore implements IVectorStore {
 
     const response = await withRetry(
       () =>
-        this.client.retrieve(this.collectionName, {
+        this.client.retrieve(collection, {
           ids: ids.map((id) => stringToUUID(id)),
           with_vector: true,
           with_payload: true,
@@ -398,9 +446,9 @@ export class QdrantVectorStore implements IVectorStore {
     );
 
     return response.map((point) => ({
-      id: String(point.id),
+      id: readOriginalId(point),
       vector: point.vector as number[],
-      metadata: point.payload as Record<string, unknown> | undefined,
+      metadata: stripReservedId(point.payload),
     }));
   }
 
@@ -410,12 +458,13 @@ export class QdrantVectorStore implements IVectorStore {
    * The underlying `this.client.scroll()` call is wrapped with
    * {@link withRetry}.
    */
-  async query(filter: VectorFilter): Promise<VectorRecord[]> {
-    await this.ensureCollection();
+  async query(filter: VectorFilter, namespace?: string): Promise<VectorRecord[]> {
+    const collection = this.collectionFor(namespace);
+    await this.ensureCollection(collection);
 
     const response = await withRetry(
       () =>
-        this.client.scroll(this.collectionName, {
+        this.client.scroll(collection, {
           filter: this.convertFilter(filter),
           with_vector: true,
           with_payload: true,
@@ -425,9 +474,9 @@ export class QdrantVectorStore implements IVectorStore {
     );
 
     return response.points.map((point) => ({
-      id: String(point.id),
+      id: readOriginalId(point),
       vector: point.vector as number[],
-      metadata: point.payload as Record<string, unknown> | undefined,
+      metadata: stripReservedId(point.payload),
     }));
   }
 

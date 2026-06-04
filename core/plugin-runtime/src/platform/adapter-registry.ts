@@ -135,6 +135,21 @@ const wrapVectorStore: AdapterMiddlewareFn<VectorStoreAdapter> = (adapter, ctx) 
     return `${namespace}${id}`;
   };
 
+  // Inverse of `prefixId`: results must round-trip the id the caller upserted,
+  // otherwise consumers that correlate results by id (e.g. fusing vector hits
+  // back to their source records) silently drop every result.
+  //
+  // CAVEAT (asymmetry): `prefixId` is idempotent — it does NOT prefix an id that
+  // already `startsWith(namespace)` — while `stripId` strips unconditionally. So
+  // a caller id whose *natural* value begins with the namespace token would be
+  // corrupted on read (`<namespace>foo` → upserted unprefixed → read → `foo`).
+  // This is safe for current usage: namespaces are collection tokens ending in
+  // `:` (e.g. `mind:`) and real ids (chunk ids = `path#a-b`) never start with
+  // them. A bulletproof fix needs a structured/delimited id rather than a bare
+  // string prefix — tracked as a platform design item, not changed here.
+  const stripId = <T extends { id: string }>(r: T): T =>
+    namespace && r.id.startsWith(namespace) ? { ...r, id: r.id.slice(namespace.length) } : r;
+
   const filterByNamespace = <T extends { metadata?: Record<string, unknown> }>(results: T[]): T[] => {
     if (!namespace) {return results;}
     return results.filter(
@@ -142,26 +157,32 @@ const wrapVectorStore: AdapterMiddlewareFn<VectorStoreAdapter> = (adapter, ctx) 
     );
   };
 
+  // `ns` is the caller-supplied per-call namespace (e.g. mind's indexId) and is
+  // forwarded transparently to the adapter — orthogonal to the plugin-level
+  // governance namespacing (id-prefix + _kbNamespace metadata) applied here.
   return {
-    search: async (query: number[], limit: number, filter?: VectorFilter) => {
-      const results = await adapter.search(query, limit, filter);
-      return filterByNamespace(results);
+    search: async (query: number[], limit: number, filter?: VectorFilter, ns?: string) => {
+      const results = await adapter.search(query, limit, filter, ns);
+      return filterByNamespace(results).map(stripId);
     },
-    upsert: async (vectors: VectorRecord[]) => {
+    upsert: async (vectors: VectorRecord[], ns?: string) => {
       const prefixed = vectors.map((v) => ({
         ...v,
         id: prefixId(v.id),
         metadata: namespace ? { ...v.metadata, _kbNamespace: namespace } : v.metadata,
       }));
-      return adapter.upsert(prefixed);
+      return adapter.upsert(prefixed, ns);
     },
-    delete: async (ids: string[]) => adapter.delete(ids.map(prefixId)),
-    count: () => adapter.count(),
+    delete: async (ids: string[], ns?: string) => adapter.delete(ids.map(prefixId), ns),
+    count: (ns?: string) => adapter.count(ns),
+    ...(adapter.get
+      ? { get: async (ids: string[], ns?: string) => (await adapter.get!(ids.map(prefixId), ns)).map(stripId) }
+      : {}),
     ...(adapter.query
       ? {
-          query: async (filter: VectorFilter) => {
-            const results = await adapter.query!(filter);
-            return filterByNamespace(results);
+          query: async (filter: VectorFilter, ns?: string) => {
+            const results = await adapter.query!(filter, ns);
+            return filterByNamespace(results).map(stripId);
           },
         }
       : {}),

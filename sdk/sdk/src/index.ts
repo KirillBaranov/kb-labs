@@ -331,6 +331,16 @@ export type {
 // CLI error helpers — structured output for both JSON and human modes
 export { validationError, handleError, rethrowForRest } from '@kb-labs/shared-cli-ui';
 
+// Destructive-action protocol — soft confirmation gate + machine-readable signal
+export {
+  confirmDestructive,
+  renderDestructiveMessage,
+  buildConfirmationSignal,
+  type DestructiveAction,
+  type DestructiveSeverity,
+  type ConfirmationRequired,
+} from '@kb-labs/shared-cli-ui';
+
 // UIKit data contracts (REST response shapes)
 export type {
   TableData,

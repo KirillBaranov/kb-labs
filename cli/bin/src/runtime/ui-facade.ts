@@ -170,8 +170,8 @@ export function createCLIUIFacade(presenter?: PresenterDelegate): UIFacade {
       }
     },
 
-    json: (data: unknown) => {
-      console.log(JSON.stringify(data, null, 2));
+    json: (data: unknown, options?: { pretty?: boolean }) => {
+      console.log(options?.pretty ? JSON.stringify(data, null, 2) : JSON.stringify(data));
     },
 
     newline: () => {

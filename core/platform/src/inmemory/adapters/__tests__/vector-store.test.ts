@@ -90,4 +90,68 @@ describe('InMemoryVectorStore', () => {
       expect((await store.search([1, 0], 10, { field: 'kind', operator: 'nin', value: ['a', 'c'] })).map((x) => x.id).sort()).toEqual(['2']);
     });
   });
+
+  describe('namespace isolation', () => {
+    it('search is scoped to its namespace and never leaks across namespaces', async () => {
+      await store.upsert([{ id: 'x', vector: [1, 0], metadata: {} }], 'code');
+      await store.upsert([{ id: 'y', vector: [1, 0], metadata: {} }], 'docs');
+
+      const inCode = await store.search([1, 0], 10, undefined, 'code');
+      const inDocs = await store.search([1, 0], 10, undefined, 'docs');
+
+      expect(inCode.map((r) => r.id)).toEqual(['x']);
+      expect(inDocs.map((r) => r.id)).toEqual(['y']);
+    });
+
+    it('count is per-namespace', async () => {
+      await store.upsert([{ id: 'x', vector: [1, 0], metadata: {} }], 'code');
+      await store.upsert(
+        [
+          { id: 'y', vector: [1, 0], metadata: {} },
+          { id: 'z', vector: [0, 1], metadata: {} },
+        ],
+        'docs',
+      );
+
+      expect(await store.count('code')).toBe(1);
+      expect(await store.count('docs')).toBe(2);
+      expect(await store.count()).toBe(0); // default namespace untouched
+    });
+
+    it('delete only affects the target namespace', async () => {
+      await store.upsert([{ id: 'shared', vector: [1, 0], metadata: {} }], 'code');
+      await store.upsert([{ id: 'shared', vector: [1, 0], metadata: {} }], 'docs');
+
+      await store.delete(['shared'], 'code');
+
+      expect(await store.count('code')).toBe(0);
+      expect(await store.count('docs')).toBe(1);
+    });
+
+    it('same id in different namespaces are independent records', async () => {
+      await store.upsert([{ id: 'dup', vector: [1, 0], metadata: { ns: 'code' } }], 'code');
+      await store.upsert([{ id: 'dup', vector: [1, 0], metadata: { ns: 'docs' } }], 'docs');
+
+      const [codeHit] = await store.search([1, 0], 1, undefined, 'code');
+      const [docsHit] = await store.search([1, 0], 1, undefined, 'docs');
+
+      expect(codeHit?.metadata?.ns).toBe('code');
+      expect(docsHit?.metadata?.ns).toBe('docs');
+    });
+
+    it('omitting namespace targets the default partition (backward compatible)', async () => {
+      await store.upsert([{ id: 'legacy', vector: [1, 0], metadata: {} }]);
+      await store.upsert([{ id: 'scoped', vector: [1, 0], metadata: {} }], 'code');
+
+      // Legacy callers (no namespace) see only the default partition.
+      expect((await store.search([1, 0], 10)).map((r) => r.id)).toEqual(['legacy']);
+      expect(await store.count()).toBe(1);
+    });
+
+    it('get is namespace-scoped', async () => {
+      await store.upsert([{ id: 'a', vector: [1, 0], metadata: {} }], 'code');
+      expect(await store.get(['a'], 'code')).toHaveLength(1);
+      expect(await store.get(['a'], 'docs')).toHaveLength(0);
+    });
+  });
 });

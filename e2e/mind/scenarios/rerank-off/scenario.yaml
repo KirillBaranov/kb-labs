@@ -1,0 +1,12 @@
+# A/B scenario: reranking OFF.
+#
+# Overlay disables the rerank stage, then restarts the REST API daemon (which
+# serves the mind plugin routes) so the new config takes effect. The bench runs
+# the same golden set; its spec compares rerank-ON (default) vs rerank-OFF and
+# asserts that enabling rerank does not regress quality — the A/B gate every
+# semantic feature port must pass on the real embedder.
+name: mind-rerank-off
+overlays:
+  - overlay.jsonc
+restarts:
+  - rest

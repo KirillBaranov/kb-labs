@@ -5,3 +5,7 @@ export const REGISTRY    = process.env.REGISTRY_URL    ?? 'http://localhost:5071
 export const WORKFLOW    = process.env.WORKFLOW_URL    ?? 'http://localhost:7778'
 export const STATE       = process.env.STATE_URL       ?? 'http://localhost:7777'
 export const MCP         = process.env.MCP_URL         ?? 'http://localhost:7779'
+
+// Mind has no daemon of its own — it is served by the REST API under the
+// plugin route prefix. Dedicated base so specs don't hand-build the path.
+export const MIND        = process.env.MIND_URL        ?? `${REST}/api/v1/plugins/mind`

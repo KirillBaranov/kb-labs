@@ -198,6 +198,7 @@ export async function createServiceBootstrap(
     const {
       platformConfig,
       rawConfig,
+      effectiveConfig,
       platformRoot,
       projectRoot,
       sources,
@@ -208,6 +209,7 @@ export async function createServiceBootstrap(
 
     if (storeRawConfig && rawConfig) {
       (globalThis as Record<string, unknown>).__KB_RAW_CONFIG__ = rawConfig;
+      (globalThis as Record<string, unknown>).__KB_EFFECTIVE_CONFIG__ = effectiveConfig ?? rawConfig;
     }
 
     _platformRoot = platformRoot;

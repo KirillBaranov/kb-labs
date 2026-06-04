@@ -109,6 +109,31 @@ describe('loadPlatformConfig: overlays', () => {
     expect(result.sources.overlays).toEqual([aPath, bPath])
   })
 
+  it('effectiveConfig applies overlays to product sections; rawConfig stays raw', async () => {
+    // Product config (the section getConfig/useConfig reads) must see overlays,
+    // not just the platform slice — otherwise scenario overlays silently skip
+    // plugin config. rawConfig stays the untouched on-disk config.
+    const platformRoot = path.join(tmpDir, 'o-eff-platform')
+    const projectRoot = path.join(tmpDir, 'o-eff-project')
+    makePlatformDir(platformRoot)
+    makeProjectDir(projectRoot, {
+      platform: { adapters: { llm: 'openai' } },
+      mind: { retrieval: { rerank: true } },
+    })
+    writeOverlay(projectRoot, 'hyde__overlay.jsonc', '{ "mind": { "retrieval": { "hyde": true } } }')
+
+    const result = await loadPlatformConfig({
+      startDir: projectRoot,
+      env: { KB_PLATFORM_ROOT: platformRoot, KB_PROJECT_ROOT: projectRoot },
+      loadEnvFile: false,
+    })
+
+    // effectiveConfig = raw + overlays merged into the product section.
+    expect((result.effectiveConfig as any)?.mind?.retrieval).toEqual({ rerank: true, hyde: true })
+    // rawConfig is untouched — no overlay applied.
+    expect((result.rawConfig as any)?.mind?.retrieval).toEqual({ rerank: true })
+  })
+
   it('overlay arrays replace by default', async () => {
     const platformRoot = path.join(tmpDir, 'o4-platform')
     const projectRoot = path.join(tmpDir, 'o4-project')

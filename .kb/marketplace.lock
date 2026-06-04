@@ -55,7 +55,7 @@
     },
     "@kb-labs/adapters-sqlite": {
       "version": "2.94.0",
-      "integrity": "sha256-rO+v2U7Y1GC8UAtDdfikbubann0KYltc8+yq1Egu/Jc=",
+      "integrity": "sha256-7W2yuHh10hcfTnZxxYcdHxdyBjWfhBwnCrz/azPDD/I=",
       "resolvedPath": "./adapters/sqlite",
       "installedAt": "2026-05-16T11:52:32.753Z",
       "source": "marketplace",
@@ -352,15 +352,16 @@
       "enabled": true
     },
     "@kb-labs/mind": {
-      "version": "2.14.0",
-      "integrity": "sha256-T+5P+wbYwbMwXplvjIrnVNLIAQa3PMjY39sQ6Hedy10=",
+      "version": "0.1.0",
+      "integrity": "sha256-iEuytrBmUU6wTKpxNU7Gr+bG+JKxuWwZ4nqOPRbbD0A=",
       "resolvedPath": "./plugins/mind/entry",
       "installedAt": "2026-04-12T15:19:02.773Z",
       "source": "local",
       "primaryKind": "plugin",
       "provides": [
         "plugin",
-        "cli-command"
+        "cli-command",
+        "rest-route"
       ],
       "enabled": true
     },
@@ -554,6 +555,19 @@
         "rest-route",
         "studio-widget",
         "studio-menu"
+      ],
+      "enabled": true,
+      "trust": "untrusted"
+    },
+    "@kb-labs/adapters-service-transport-http": {
+      "version": "2.94.0",
+      "integrity": "sha256-FfRCmSUhkP870Cbf3iI5rcM9JMk7ssxGdpSjRtJ1ukY=",
+      "resolvedPath": "./adapters/service-transport-http",
+      "installedAt": "2026-04-11T10:50:13.110Z",
+      "source": "local",
+      "primaryKind": "adapter",
+      "provides": [
+        "adapter"
       ],
       "enabled": true,
       "trust": "untrusted"

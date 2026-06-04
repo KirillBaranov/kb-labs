@@ -3,5 +3,13 @@ import nodePreset from '@kb-labs/devkit/tsup/node';
 
 export default defineConfig({
   ...nodePreset,
-  tsconfig: "tsconfig.build.json", // Use build-specific tsconfig without paths
+  tsconfig: 'tsconfig.build.json',
+  entry: ['src/index.ts', 'src/testing.ts'],
+  dts: {
+    resolve: true,
+    skipLibCheck: true,
+  },
+  clean: true,
+  sourcemap: true,
+  external: ['@kb-labs/sdk', '@kb-labs/mind-contracts'],
 });

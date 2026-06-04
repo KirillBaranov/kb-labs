@@ -1,0 +1,12 @@
+# A/B scenario: query expansion ON.
+#
+# Overlay enables expansion (append LLM-suggested related identifiers/synonyms
+# to the BM25 query) and restarts the REST daemon. The bench runs the same
+# golden set; the spec compares expansion ON vs the default (OFF) run and
+# reports the delta — the real-embedder verdict that decides whether the lever
+# is kept on by default.
+name: mind-expand-on
+overlays:
+  - overlay.jsonc
+restarts:
+  - rest

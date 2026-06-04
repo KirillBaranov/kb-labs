@@ -1,105 +1,56 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createCapturedUI, createMockContext, mockCLIInput } from '@kb-labs/sdk/testing';
+import { describe, it, expect } from 'vitest';
+import { mockCLIInput } from '@kb-labs/sdk/testing';
+import type { PluginContextV3 } from '@kb-labs/sdk';
+import syncDeleteCmd from '../../cli/commands/sync-delete.js';
 
-vi.mock('node:fs', () => ({
-  promises: {
-    readFile: vi.fn(),
-    writeFile: vi.fn().mockResolvedValue(undefined),
-    mkdir: vi.fn().mockResolvedValue(undefined),
-  },
-}));
+function captureCtx() {
+  const calls = { json: [] as unknown[], warn: [] as string[], error: [] as string[] };
+  const ctx = {
+    host: 'cli',
+    cwd: process.cwd(),
+    ui: {
+      json: (d: unknown) => calls.json.push(d),
+      warn: (m: string) => calls.warn.push(m),
+      error: (m: string) => calls.error.push(m),
+      success: () => {},
+      info: () => {},
+    },
+  } as unknown as PluginContextV3;
+  return { ctx, calls };
+}
 
-import { promises as fsp } from 'node:fs';
-import syncDeleteCommand from '../../cli/commands/sync-delete.js';
-
-const existingEntries = [{ id: 'src-1', path: './docs', addedAt: '2026-01-01T00:00:00Z' }];
-
-beforeEach(() => {
-  vi.resetAllMocks();
-  vi.mocked(fsp.readFile).mockResolvedValue(JSON.stringify(existingEntries) as never);
-  vi.mocked(fsp.writeFile).mockResolvedValue(undefined);
-  vi.mocked(fsp.mkdir).mockResolvedValue(undefined);
-});
-
-describe('mind:sync:delete', () => {
-  it('SD-01: deletes entry with --force — exitCode 0, success message', async () => {
-    const { ui, captured } = createCapturedUI();
-    const ctx = createMockContext({ ui, cwd: '/project' });
-
-    const result = await syncDeleteCommand.execute(
-      ctx as never,
-      mockCLIInput({ argv: ['src-1'], flags: { force: true } }),
-    );
-
-    expect(result.exitCode).toBe(0);
-    expect(captured.success.length).toBeGreaterThan(0);
-    expect(vi.mocked(fsp.writeFile)).toHaveBeenCalledOnce();
+describe('mind sync delete — destructive confirmation gate', () => {
+  it('errors when no paths are given (before any confirmation)', async () => {
+    const { ctx, calls } = captureCtx();
+    const res = await syncDeleteCmd.execute(ctx, mockCLIInput({ argv: [], flags: { index: 'code', yes: false } }));
+    expect(res.exitCode).toBe(1);
+    expect(calls.error).toHaveLength(1);
   });
 
-  it('SD-02: --json outputs { ok, deleted, id }', async () => {
-    const { ui, captured } = createCapturedUI();
-    const ctx = createMockContext({ ui, cwd: '/project' });
-
-    const result = await syncDeleteCommand.execute(
-      ctx as never,
-      mockCLIInput({ argv: ['src-1'], flags: { force: true, json: true } }),
+  it('blocks deletion without --yes and surfaces the irreversible warning', async () => {
+    const { ctx, calls } = captureCtx();
+    const res = await syncDeleteCmd.execute(
+      ctx,
+      mockCLIInput({ argv: ['src/a.ts', 'src/b.ts'], flags: { index: 'code', yes: false, json: false } }),
     );
-
-    expect(result.exitCode).toBe(0);
-    expect(captured.json[0]).toMatchObject({ ok: true, deleted: true, id: 'src-1' });
+    expect(res.exitCode).toBe(1);
+    expect(res.result).toBeUndefined();
+    expect(calls.warn).toHaveLength(1);
+    expect(calls.warn[0]).toContain('--yes');
   });
 
-  it('SD-03: missing id argv — exitCode 1', async () => {
-    const { ui, captured } = createCapturedUI();
-    const ctx = createMockContext({ ui, cwd: '/project' });
-
-    const result = await syncDeleteCommand.execute(
-      ctx as never,
-      mockCLIInput({ argv: [], flags: { force: true } }),
+  it('emits the confirmationRequired signal in --json mode', async () => {
+    const { ctx, calls } = captureCtx();
+    await syncDeleteCmd.execute(
+      ctx,
+      mockCLIInput({ argv: ['src/a.ts'], flags: { index: 'code', yes: false, json: true } }),
     );
-
-    expect(result.exitCode).toBe(1);
-    expect(captured.errors.length).toBeGreaterThan(0);
-  });
-
-  it('SD-04: missing --force — exitCode 1, warn shown', async () => {
-    const { ui, captured } = createCapturedUI();
-    const ctx = createMockContext({ ui, cwd: '/project' });
-
-    const result = await syncDeleteCommand.execute(
-      ctx as never,
-      mockCLIInput({ argv: ['src-1'], flags: {} }),
-    );
-
-    expect(result.exitCode).toBe(1);
-    expect(captured.warnings.length).toBeGreaterThan(0);
-  });
-
-  it('SD-05: unknown id — exitCode 1', async () => {
-    const { ui, captured } = createCapturedUI();
-    const ctx = createMockContext({ ui, cwd: '/project' });
-
-    const result = await syncDeleteCommand.execute(
-      ctx as never,
-      mockCLIInput({ argv: ['unknown-id'], flags: { force: true } }),
-    );
-
-    expect(result.exitCode).toBe(1);
-    expect(captured.errors.length).toBeGreaterThan(0);
-  });
-
-  it('SD-06: --dry-run shows intent, writeFile is NOT called', async () => {
-    const { ui, captured } = createCapturedUI();
-    const ctx = createMockContext({ ui, cwd: '/project' });
-
-    const result = await syncDeleteCommand.execute(
-      ctx as never,
-      mockCLIInput({ argv: ['src-1'], flags: { 'dry-run': true } }),
-    );
-
-    expect(result.exitCode).toBe(0);
-    expect(vi.mocked(fsp.writeFile)).not.toHaveBeenCalled();
-    expect(captured.infos[0]?.message).toContain('Dry-run');
-    expect(captured.infos[0]?.message).toContain('src-1');
+    expect(calls.json).toHaveLength(1);
+    expect(calls.json[0]).toMatchObject({
+      confirmationRequired: true,
+      destructive: true,
+      action: 'mind sync delete',
+      severity: 'medium',
+    });
   });
 });

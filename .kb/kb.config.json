@@ -8,6 +8,8 @@
       "logRingBuffer": "@kb-labs/adapters-log-ringbuffer",
       "analytics": "@kb-labs/adapters-analytics-sqlite",
       "vectorStore": "@kb-labs/adapters-qdrant",
+      "embeddings": "@kb-labs/adapters-openai/embeddings",
+      "llm": "@kb-labs/adapters-openai",
       "cache": "@kb-labs/adapters-redis",
       "eventBus": "@kb-labs/adapters-eventbus-cache",
       "workspace": "@kb-labs/adapters-workspace-worktree",
@@ -17,11 +19,21 @@
     "adapterOptions": {
       "serviceTransport": {
         "services": {
-          "rest":                 { "url": "http://127.0.0.1:5050" },
-          "workflow":             { "url": "http://127.0.0.1:7778" },
-          "marketplace":          { "url": "http://127.0.0.1:5070" },
-          "marketplace-registry": { "url": "http://127.0.0.1:5071" },
-          "mcp-daemon":           { "url": "http://127.0.0.1:7779" }
+          "rest": {
+            "url": "http://127.0.0.1:5050"
+          },
+          "workflow": {
+            "url": "http://127.0.0.1:7778"
+          },
+          "marketplace": {
+            "url": "http://127.0.0.1:5070"
+          },
+          "marketplace-registry": {
+            "url": "http://127.0.0.1:5071"
+          },
+          "mcp-daemon": {
+            "url": "http://127.0.0.1:7779"
+          }
         }
       },
       "voyage-ai-embeddings": {
@@ -95,7 +107,7 @@
       },
       "vectorStore": {
         "url": "http://localhost:6333",
-        "dimension": 1024
+        "dimension": 1536
       },
       "cache": {
         "url": "redis://localhost:6379"
@@ -163,114 +175,38 @@
       "label": "Default Profile",
       "products": {
         "mind": {
-          "sources": [
-            {
-              "id": "codebase",
-              "kind": "code",
-              "language": "typescript",
-              "paths": [
-                "core/*/src/**/*.ts",
-                "sdk/*/src/**/*.ts",
-                "cli/*/src/**/*.ts",
-                "shared/*/src/**/*.ts",
-                "plugins/*/*/src/**/*.ts",
-                "adapters/*/src/**/*.ts",
-                "studio/*/src/**/*.ts"
-              ],
-              "exclude": [
-                "**/node_modules/**",
-                "**/dist/**",
-                "**/.git/**",
-                "**/*.test.ts",
-                "**/*.spec.ts"
-              ]
+          "defaultIndex": "code",
+          "indexes": {
+            "code": {
+              "label": "Workspace code (all source minus marketing site & scaffolds)",
+              "scope": {
+                "include": ["."],
+                "exclude": ["sites/**", "templates/**"]
+              },
+              "retrieval": {
+                "rerank": true,
+                "dedup": true
+              }
             },
-            {
-              "id": "docs",
-              "kind": "docs",
-              "paths": [
-                "docs/**/*.md",
-                "*/docs/**/*.md",
-                "*/*/docs/**/*.md",
-                "README.md",
-                "CONTRIBUTING.md",
-                "CLAUDE.md"
-              ]
-            }
-          ],
-          "scopes": [
-            {
-              "id": "default",
-              "label": "Full Codebase",
-              "sources": [
-                "codebase",
-                "docs"
-              ],
-              "defaultEngine": "mind-prod"
-            }
-          ],
-          "engines": [
-            {
-              "id": "mind-prod",
-              "type": "mind",
-              "options": {
-                "embedding": {
-                  "type": "voyage",
-                  "provider": {
-                    "voyage": {
-                      "model": "voyage-code-3",
-                      "dimension": 1024,
-                      "batchSize": 100
-                    }
-                  }
-                },
-                "vectorStore": {
-                  "type": "local",
-                  "local": {
-                    "indexDir": ".kb/mind/index"
-                  }
-                },
-                "chunk": {
-                  "codeLines": 150,
-                  "docLines": 100,
-                  "overlap": 25
-                },
-                "search": {
-                  "hybrid": true,
-                  "vectorWeight": 0.7,
-                  "keywordWeight": 0.3,
-                  "rrfK": 60,
-                  "optimization": {
-                    "deduplication": true,
-                    "deduplicationThreshold": 0.9,
-                    "diversification": true,
-                    "diversityThreshold": 0.3,
-                    "maxChunksPerFile": 3
-                  }
-                }
+            "docs": {
+              "label": "Docs & ADRs",
+              "scope": "**/docs",
+              "chunk": {
+                "maxTokens": 300
+              },
+              "retrieval": {
+                "hyde": true
               }
             }
-          ],
-          "defaults": {
-            "maxChunks": 20,
-            "fallbackScopeId": "default",
-            "fallbackEngineId": "mind-prod"
           },
-          "sync": {
-            "registry": {
-              "type": "filesystem",
-              "path": ".kb/mind/sync/registry.json"
-            },
-            "softDelete": {
-              "enabled": true,
-              "ttlDays": 30
-            },
-            "partialUpdates": {
-              "enabled": true
-            },
-            "batch": {
-              "maxSize": 100
-            }
+          "retrieval": {
+            "limit": 10,
+            "rerank": true,
+            "dedup": true,
+            "hyde": false
+          },
+          "confidence": {
+            "floor": 0.3
           }
         },
         "release": {
@@ -297,7 +233,7 @@
               "checks": [
                 {
                   "id": "dist-exports",
-                  "name": "dist/index.js \u2014 no directory imports",
+                  "name": "dist/index.js — no directory imports",
                   "command": "bash",
                   "args": [
                     "scripts/gates/check-dist-exports.sh"
@@ -330,7 +266,7 @@
               "checks": [
                 {
                   "id": "dist-exports",
-                  "name": "dist/index.js \u2014 no directory imports",
+                  "name": "dist/index.js — no directory imports",
                   "command": "bash",
                   "args": [
                     "scripts/gates/check-dist-exports.sh"
@@ -347,7 +283,7 @@
             "groups": [
               {
                 "title": "Core & SDK",
-                "emoji": "\ud83c\udfd7\ufe0f",
+                "emoji": "🏗️",
                 "scopes": [
                   "core",
                   "sdk",
@@ -361,7 +297,7 @@
               },
               {
                 "title": "Gateway & API",
-                "emoji": "\ud83c\udf10",
+                "emoji": "🌐",
                 "scopes": [
                   "gateway",
                   "rest-api"
@@ -369,7 +305,7 @@
               },
               {
                 "title": "Adapters",
-                "emoji": "\ud83d\udd0c",
+                "emoji": "🔌",
                 "scopes": [
                   "adapters",
                   "adapters-openai",
@@ -384,7 +320,7 @@
               },
               {
                 "title": "Plugins",
-                "emoji": "\ud83e\udde9",
+                "emoji": "🧩",
                 "scopes": [
                   "workflow",
                   "marketplace",
@@ -405,7 +341,7 @@
               },
               {
                 "title": "Studio",
-                "emoji": "\ud83c\udfa8",
+                "emoji": "🎨",
                 "scopes": [
                   "studio"
                 ]
@@ -415,7 +351,7 @@
           "checks": [
             {
               "id": "dist-exports",
-              "name": "dist/index.js \u2014 no directory imports",
+              "name": "dist/index.js — no directory imports",
               "command": "bash",
               "args": [
                 "scripts/gates/check-dist-exports.sh"
@@ -596,40 +532,40 @@
         "url": "http://localhost:5050",
         "prefix": "/api/v1",
         "websocket": true,
-        "description": "REST API \u2014 main platform BFF"
+        "description": "REST API — main platform BFF"
       },
       "workflow": {
         "serviceId": "workflow",
         "url": "http://localhost:7778",
         "prefix": "/api/exec",
         "rewritePrefix": "",
-        "description": "Workflow Daemon \u2014 direct access"
+        "description": "Workflow Daemon — direct access"
       },
       "marketplace": {
         "serviceId": "marketplace",
         "url": "http://localhost:5070",
         "prefix": "/api/v1/marketplace",
-        "description": "Marketplace Service \u2014 unified entity management"
+        "description": "Marketplace Service — unified entity management"
       },
       "widgets": {
         "serviceId": "rest",
         "url": "http://localhost:5050",
         "prefix": "/plugins",
-        "description": "Plugin widget bundles \u2014 served by REST API"
+        "description": "Plugin widget bundles — served by REST API"
       },
       "marketplace-registry": {
         "serviceId": "marketplace-registry",
         "url": "http://localhost:5071",
         "prefix": "/api/v1/registry",
         "rewritePrefix": "/api/v1",
-        "description": "Marketplace Registry \u2014 publish, share, install kb:handle/name packages"
+        "description": "Marketplace Registry — publish, share, install kb:handle/name packages"
       },
       "mcp": {
         "serviceId": "mcp-daemon",
         "url": "http://localhost:7779",
         "prefix": "/api/v1/mcp",
         "websocket": false,
-        "description": "MCP Daemon \u2014 plugin commands as tools for external agents"
+        "description": "MCP Daemon — plugin commands as tools for external agents"
       }
     },
     "auth": {

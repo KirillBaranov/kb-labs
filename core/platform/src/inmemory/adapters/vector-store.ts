@@ -64,17 +64,31 @@ function matchesFilter(record: VectorRecord, filter: VectorFilter): boolean {
  * In-memory vector store.
  * Suitable for testing and development.
  */
+const DEFAULT_NAMESPACE = '';
+
 export class InMemoryVectorStore implements IVectorStore {
-  private vectors = new Map<string, VectorRecord>();
+  /** Records partitioned by namespace; default namespace is the empty string. */
+  private namespaces = new Map<string, Map<string, VectorRecord>>();
+
+  private partition(namespace?: string): Map<string, VectorRecord> {
+    const key = namespace ?? DEFAULT_NAMESPACE;
+    let partition = this.namespaces.get(key);
+    if (!partition) {
+      partition = new Map<string, VectorRecord>();
+      this.namespaces.set(key, partition);
+    }
+    return partition;
+  }
 
   async search(
     query: number[],
     limit: number,
-    filter?: VectorFilter
+    filter?: VectorFilter,
+    namespace?: string
   ): Promise<VectorSearchResult[]> {
     const results: VectorSearchResult[] = [];
 
-    for (const record of this.vectors.values()) {
+    for (const record of this.partition(namespace).values()) {
       if (filter && !matchesFilter(record, filter)) {
         continue;
       }
@@ -92,19 +106,38 @@ export class InMemoryVectorStore implements IVectorStore {
       .slice(0, limit);
   }
 
-  async upsert(vectors: VectorRecord[]): Promise<void> {
+  async upsert(vectors: VectorRecord[], namespace?: string): Promise<void> {
+    const partition = this.partition(namespace);
     for (const vector of vectors) {
-      this.vectors.set(vector.id, vector);
+      partition.set(vector.id, vector);
     }
   }
 
-  async delete(ids: string[]): Promise<void> {
+  async delete(ids: string[], namespace?: string): Promise<void> {
+    const partition = this.partition(namespace);
     for (const id of ids) {
-      this.vectors.delete(id);
+      partition.delete(id);
     }
   }
 
-  async count(): Promise<number> {
-    return this.vectors.size;
+  async count(namespace?: string): Promise<number> {
+    return this.partition(namespace).size;
+  }
+
+  async get(ids: string[], namespace?: string): Promise<VectorRecord[]> {
+    const partition = this.partition(namespace);
+    return ids
+      .map((id) => partition.get(id))
+      .filter((r): r is VectorRecord => r !== undefined);
+  }
+
+  async query(filter: VectorFilter, namespace?: string): Promise<VectorRecord[]> {
+    const out: VectorRecord[] = [];
+    for (const record of this.partition(namespace).values()) {
+      if (matchesFilter(record, filter)) {
+        out.push(record);
+      }
+    }
+    return out;
   }
 }
