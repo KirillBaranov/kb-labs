@@ -68,3 +68,8 @@ export async function saveManifest(storage: IStorage, manifest: IndexManifest): 
   const buf = Buffer.from(JSON.stringify(manifest), 'utf8');
   await storage.write(manifestPath(manifest.indexId), buf);
 }
+
+/** Remove an index's manifest (used when dropping the whole index). */
+export async function deleteManifest(storage: IStorage, indexId: string): Promise<void> {
+  await storage.delete(manifestPath(indexId));
+}

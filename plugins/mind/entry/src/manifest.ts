@@ -19,6 +19,7 @@ import {
   searchFlags,
   askFlags,
   exploreFlags,
+  dropFlags,
   statusFlags,
   syncPathsFlags,
   syncListFlags,
@@ -124,6 +125,15 @@ export const manifest = {
         examples: ['kb mind reindex --index code --full'],
       },
       {
+        path: 'mind drop',
+        category: 'Index',
+        operationType: 'mutate' as const,
+        describe: 'Drop an entire index (all vectors + manifest).',
+        handler: './cli/commands/drop.js#default',
+        flags: defineCommandFlags(dropFlags.schema),
+        examples: ['kb mind drop --index kbrt --yes'],
+      },
+      {
         path: 'mind sync add',
         category: 'Sync',
         operationType: 'mutate' as const,
@@ -215,6 +225,13 @@ export const manifest = {
         input: { zod: '@kb-labs/mind-contracts#ExploreRequestSchema' },
         output: { zod: '@kb-labs/mind-contracts#ExploreResponseSchema' },
         timeoutMs: 120000,
+      },
+      {
+        method: 'DELETE',
+        path: MIND_ROUTES.DROP,
+        handler: './rest/handlers/drop.js#default',
+        input: { zod: '@kb-labs/mind-contracts#DropRequestSchema' },
+        output: { zod: '@kb-labs/mind-contracts#DropResponseSchema' },
       },
       {
         method: 'GET',

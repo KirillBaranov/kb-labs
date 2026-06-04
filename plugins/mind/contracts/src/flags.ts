@@ -67,6 +67,12 @@ export const statusFlags = defineFlags({
   json: { type: 'boolean', description: JSON_DESC, default: false },
 });
 
+export const dropFlags = defineFlags({
+  index: { type: 'string', description: 'Index to drop (vectors + manifest)', required: true },
+  yes: { type: 'boolean', description: 'Skip the confirmation prompt', default: false },
+  json: { type: 'boolean', description: JSON_DESC, default: false },
+});
+
 export type IndexFlags = typeof indexFlags.infer;
 export type SearchFlags = typeof searchFlags.infer;
 export type AskFlags = typeof askFlags.infer;
@@ -75,3 +81,4 @@ export type SyncPathsFlags = typeof syncPathsFlags.infer;
 export type SyncListFlags = typeof syncListFlags.infer;
 export type ReindexFlags = typeof reindexFlags.infer;
 export type StatusFlags = typeof statusFlags.infer;
+export type DropFlags = typeof dropFlags.infer;

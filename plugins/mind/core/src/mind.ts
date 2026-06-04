@@ -25,6 +25,8 @@ import type {
   SyncListResponse,
   SyncStatusResponse,
   ReindexRequest,
+  DropRequest,
+  DropResponse,
 } from '@kb-labs/mind-contracts';
 import { effectiveIndexConfig, resolveScope } from '@kb-labs/mind-contracts';
 import type { MindServices } from './services';
@@ -41,7 +43,7 @@ import { synthesizeAnswer, buildAgentResponse } from './answer/answer';
 import { toExploreEntries, spreadOf, orientationSummary } from './answer/explore';
 import { recordQuery } from './feedback/history';
 import { toSearchResults } from './answer/synthesize';
-import { loadManifest, staleMap, staleCount } from './index-store';
+import { loadManifest, staleMap, staleCount, deleteManifest } from './index-store';
 
 export interface Mind {
   index(req: IndexRequest, onProgress?: (event: IngestProgress) => void): Promise<IndexResponse>;
@@ -49,6 +51,7 @@ export interface Mind {
   ask(req: QueryRequest): Promise<AgentResponse>;
   explore(req: ExploreRequest): Promise<ExploreResponse>;
   reindex(req: ReindexRequest): Promise<IndexResponse>;
+  drop(req: DropRequest): Promise<DropResponse>;
   syncAdd(paths: string[], indexId?: string): Promise<SyncResponse>;
   syncUpdate(paths: string[], indexId?: string): Promise<SyncResponse>;
   syncDelete(paths: string[], indexId?: string): Promise<SyncResponse>;
@@ -287,6 +290,21 @@ export function createMind(
 
     async reindex(req): Promise<IndexResponse> {
       return this.index({ indexId: req.indexId, full: true });
+    },
+
+    async drop(req): Promise<DropResponse> {
+      const indexId = resolveIndexId(req.indexId);
+      const manifest = await loadManifest(services.storage, indexId);
+      const ids = manifest.chunks.map((c) => c.id);
+      const droppedFiles = Object.keys(manifest.files).length;
+      // Remove vectors in batches (large indexes have tens of thousands of ids).
+      const BATCH = 500;
+      for (let i = 0; i < ids.length; i += BATCH) {
+        await services.vectorStore.delete(ids.slice(i, i + BATCH), indexId);
+      }
+      await deleteManifest(services.storage, indexId);
+      services.logger?.info('mind: drop', { indexId, droppedChunks: ids.length, droppedFiles });
+      return { indexId, droppedChunks: ids.length, droppedFiles };
     },
 
     async syncAdd(paths, indexId): Promise<SyncResponse> {
