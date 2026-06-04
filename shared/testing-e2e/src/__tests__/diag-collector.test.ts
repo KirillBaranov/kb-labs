@@ -48,9 +48,10 @@ describe('DiagCollector', () => {
       collector.parseLine(makeLine({ event: 'kb.diag.pipeline', v: 1, data: trace1, ts: 1 }));
       collector.parseLine(makeLine({ event: 'kb.diag.pipeline', v: 1, data: trace2, ts: 2 }));
 
-      expect(collector.buildSnapshot().pipeline).toHaveLength(3);
-      expect(collector.buildSnapshot().pipeline[0].adapter).toBe('llm');
-      expect(collector.buildSnapshot().pipeline[2].adapter).toBe('cache');
+      const pipeline = collector.buildSnapshot().pipeline;
+      expect(pipeline).toHaveLength(3);
+      expect(pipeline[0]!.adapter).toBe('llm');
+      expect(pipeline[2]!.adapter).toBe('cache');
     });
 
     it('accumulates governance traces', () => {
@@ -61,8 +62,9 @@ describe('DiagCollector', () => {
         governanceStrategy: 'wrap',
       };
       collector.parseLine(makeLine({ event: 'kb.diag.governance', v: 1, data: govTrace, ts: 1 }));
-      expect(collector.buildSnapshot().governance).toHaveLength(1);
-      expect(collector.buildSnapshot().governance[0].pluginId).toBe('my-plugin');
+      const governance = collector.buildSnapshot().governance;
+      expect(governance).toHaveLength(1);
+      expect(governance[0]!.pluginId).toBe('my-plugin');
     });
 
     it('stores last config diag (overwrites on repeat)', () => {
@@ -97,7 +99,7 @@ describe('DiagCollector', () => {
       const snap = collector.buildSnapshot();
       expect(snap.discovery.loaded).toHaveLength(1);
       expect(snap.discovery.skipped).toHaveLength(1);
-      expect(snap.discovery.skipped![0].code).toBe('MANIFEST_NOT_FOUND');
+      expect(snap.discovery.skipped![0]!.code).toBe('MANIFEST_NOT_FOUND');
     });
   });
 
