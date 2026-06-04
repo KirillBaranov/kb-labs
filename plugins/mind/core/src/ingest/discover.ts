@@ -92,8 +92,17 @@ function isBinary(abs: string): boolean {
   }
 }
 
+/** Strip trailing slashes without a backtracking regex (avoids polynomial ReDoS). */
+function trimTrailingSlashes(s: string): string {
+  let end = s.length;
+  while (end > 0 && s.charCodeAt(end - 1) === 47 /* '/' */) {
+    end--;
+  }
+  return s.slice(0, end);
+}
+
 export async function discover(cwd: string, scope?: string): Promise<string[]> {
-  const base = scope && scope !== '.' ? scope.replace(/\/+$/, '') : '';
+  const base = scope && scope !== '.' ? trimTrailingSlashes(scope) : '';
   const pattern = base ? `${base}/**/*` : '**/*';
 
   const candidates = await globby(pattern, {
