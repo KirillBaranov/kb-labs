@@ -1202,7 +1202,7 @@ export async function initPlatform(
       platform.markAssembled();
     }
 
-    if (!platform.isAssembled && platform.isConfigured('llm')) {
+    if (!platform.isAssembled && platform.isReal('llm')) {
       throw new Error(
         '[platform] Real LLM adapter is configured but assembly was not applied. ' +
         'Pass assemblyHook: makeAssemblyHook() in createServiceBootstrap options. ' +

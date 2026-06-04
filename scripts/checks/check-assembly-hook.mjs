@@ -62,14 +62,15 @@ function findBootstrapFiles() {
   return results;
 }
 
-function findNestedBootstraps(dir) {
+function findNestedBootstraps(dir, depth = 2) {
   const results = [];
-  if (!existsSync(dir)) return results;
+  if (depth === 0 || !existsSync(dir)) return results;
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     if (!entry.isDirectory() || entry.name === 'node_modules' || entry.name === 'dist') continue;
     const sub = join(dir, entry.name);
     const candidate = join(sub, 'src', 'bootstrap.ts');
     if (existsSync(candidate)) results.push(candidate);
+    results.push(...findNestedBootstraps(sub, depth - 1));
   }
   return results;
 }
