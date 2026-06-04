@@ -13,6 +13,13 @@ import type { AdapterLifecycle, AdapterMiddlewareFn } from './middleware.js';
 import type { AdapterMiddlewareDecl } from './pipeline-slots.js';
 import { SLOT_ORDER } from './pipeline-slots.js';
 
+// ─── Diagnostic logger interface ─────────────────────────────────────────────
+
+/** Minimal logger shape required for diagnostic emission. Structurally compatible with ILogger. */
+interface DiagLogger {
+  debug(msg: string, meta?: Record<string, unknown>): void;
+}
+
 // ─── Platform config ─────────────────────────────────────────────────────────
 
 /**
@@ -74,38 +81,58 @@ export function assemblePlatform(
   raw: PlatformServices,
   config: PlatformConfig,
   broker: IResourceBroker,
+  diagLogger?: DiagLogger,
 ): PlatformServices {
   const result = Object.fromEntries(
     (Object.keys(ADAPTER_REGISTRY) as Array<keyof PlatformServices>).map(key => [key, raw[key]])
   ) as unknown as PlatformServices;
   const analytics = raw.analytics;
 
+  const trace: Array<{ adapter: string; stage: string; applied: boolean }> = [];
+
   for (const key of Object.keys(ADAPTER_REGISTRY) as Array<keyof PlatformServices>) {
     const def = ADAPTER_REGISTRY[key as keyof typeof ADAPTER_REGISTRY];
     let adapter = result[key] as unknown;
     if (adapter === undefined) { continue; }
 
+    const adapterKey = String(key);
+    type F1 = (r: unknown, a: unknown) => unknown;
+
+    // Resolve each factory under narrowing, or undefined when the stage does not apply.
+    const rbf = 'resourceBrokerFactory' in def
+      ? (def.resourceBrokerFactory as F1) : undefined;
+    const af = ('analyticsFactory' in def && !!analytics)
+      ? (def.analyticsFactory as F1) : undefined;
+    const rf = ('routerFactory' in def && config[key] !== undefined)
+      ? (def.routerFactory as F1) : undefined;
+    const paf = ('postAssemblyFactory' in def && config[key] !== undefined)
+      ? (def.postAssemblyFactory as F1) : undefined;
+
+    // Applies one factory stage and records to trace when diagLogger is set.
+    const applyStage = (stage: string, fn: F1 | undefined, arg: unknown): void => {
+      if (fn !== undefined) { adapter = fn(adapter, arg); }
+      if (diagLogger) { trace.push({ adapter: adapterKey, stage, applied: fn !== undefined }); }
+    };
+
     // Stage 1: resource broker (innermost — executor captures raw adapter at registration time)
-    if ('resourceBrokerFactory' in def && def.resourceBrokerFactory) {
-      adapter = (def.resourceBrokerFactory as (r: unknown, b: unknown) => unknown)(adapter, broker);
-    }
-
+    applyStage('resourceBrokerFactory', rbf, broker);
     // Stage 2: analytics (wraps queue so tracking fires for every complete() call)
-    if ('analyticsFactory' in def && def.analyticsFactory && analytics) {
-      adapter = (def.analyticsFactory as (r: unknown, a: unknown) => unknown)(adapter, analytics);
-    }
-
+    applyStage('analyticsFactory', af, analytics);
     // Stage 3: router (e.g. LLMRouter injects tier/provider metadata seen by analytics)
-    if ('routerFactory' in def && def.routerFactory && config[key] !== undefined) {
-      adapter = (def.routerFactory as (r: unknown, c: unknown) => unknown)(adapter, config[key]);
-    }
-
+    applyStage('routerFactory', rf, config[key]);
     // Stage 4: outermost wrap (e.g. PII redaction)
-    if ('postAssemblyFactory' in def && def.postAssemblyFactory && config[key] !== undefined) {
-      adapter = (def.postAssemblyFactory as (r: unknown, c: unknown) => unknown)(adapter, config[key]);
-    }
+    applyStage('postAssemblyFactory', paf, config[key]);
 
     (result as unknown as Record<string, unknown>)[key] = adapter;
+  }
+
+  if (process.env.KB_DEBUG === 'true' && diagLogger !== undefined) {
+    diagLogger.debug('kb.diag.pipeline', {
+      event: 'kb.diag.pipeline',
+      v: 1,
+      data: trace,
+      ts: Date.now(),
+    });
   }
 
   return result;
@@ -132,6 +159,7 @@ export function applyPluginGovernance(
   pluginId: string,
   adapterMiddlewares: LoadedMiddleware[] = [],
   lifecycle: AdapterLifecycle = NOOP_LIFECYCLE,
+  diagLogger?: DiagLogger,
 ): PluginServices {
   const ctx = { permissions, pluginId, lifecycle };
   // Only keys in ADAPTER_REGISTRY are included — platform-only fields (not in the registry)
@@ -167,6 +195,24 @@ export function applyPluginGovernance(
     // 'pass-through' → adapter unchanged
 
     (result as unknown as Record<string, unknown>)[key] = adapter;
+
+    if (process.env.KB_DEBUG === 'true' && diagLogger !== undefined) {
+      diagLogger.debug('kb.diag.governance', {
+        event: 'kb.diag.governance',
+        v: 1,
+        data: {
+          adapter: key,
+          pluginId,
+          middlewaresApplied: adapterMws.map(mw => ({
+            name: mw.decl.id,
+            slot: mw.decl.slot ?? 'post-resource-broker',
+            priority: mw.decl.priority ?? 0,
+          })),
+          governanceStrategy: def.governance.strategy,
+        },
+        ts: Date.now(),
+      });
+    }
   }
 
   return result;

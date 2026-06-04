@@ -68,6 +68,7 @@ services:
       - "7779:7779"   # mcp-daemon
     environment:
       NPM_CONFIG_REGISTRY: http://verdaccio:4873
+      KB_DEBUG: "true"
       KB_TENANT_DEFAULT_TIER: enterprise
       KB_REGISTRY_URL: http://localhost:5071
       # Bootstrap admin for E2E: enables user-auth login in E2E suites that call
