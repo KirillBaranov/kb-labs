@@ -20,7 +20,7 @@ import type {
   IKVStore,
   SetOpts,
   SignalOpts,
-} from '@kb-labs/core-platform/adapters';
+} from '@kb-labs/sdk';
 import { acquireHandle, type SharedHandle } from './shared-handle.js';
 
 const TABLE = '_kb_kv';

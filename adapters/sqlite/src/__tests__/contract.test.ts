@@ -14,7 +14,7 @@
 import {
   runDocumentDatabaseContract,
   runKVStoreContract,
-} from '@kb-labs/core-platform/adapters/contract';
+} from '@kb-labs/sdk/testing';
 
 import {
   createSqliteDocumentDatabase,

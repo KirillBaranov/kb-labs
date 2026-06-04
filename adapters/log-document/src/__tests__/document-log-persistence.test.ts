@@ -9,7 +9,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createSqliteDocumentDatabase } from '@kb-labs/adapters-sqlite';
 import { DocumentLogPersistence } from '../index.js';
-import type { LogRecord } from '@kb-labs/core-platform/adapters';
+import type { LogRecord } from '@kb-labs/sdk/adapters';
 
 const record = (over: Partial<LogRecord>): LogRecord => ({
   id: over.id ?? `log-${Math.random().toString(36).slice(2)}`,
