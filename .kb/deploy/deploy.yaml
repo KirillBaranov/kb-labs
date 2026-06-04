@@ -48,9 +48,8 @@ hosts:
       GATEWAY_JWT_SECRET: "${secrets.GATEWAY_JWT_SECRET}"
       GATEWAY_INTERNAL_SECRET: "${secrets.GATEWAY_INTERNAL_SECRET}"
 
-# All four daemons share ONE kb.config.jsonc, which references a fixed adapter
-# set. install-service installs per-release, so every release must carry that
-# same adapter set — hence the shared anchor below.
+# All daemons share ONE kb.config.jsonc and the same adapter set.
+# install-service installs per-release, so every release carries this set.
 _adapters: &adapters
   llm: "@kb-labs/adapters-openai@2.94.0"
   storage: "@kb-labs/adapters-fs@2.94.0"
@@ -58,17 +57,11 @@ _adapters: &adapters
   logRingBuffer: "@kb-labs/adapters-log-ringbuffer@2.94.0"
   analytics: "@kb-labs/adapters-analytics-file@2.94.0"
   serviceTransport: "@kb-labs/adapters-service-transport-http@2.94.0"
+  # Redis replaces core-state-daemon — StateAPI uses CacheAdapter directly.
+  # Requires kb-redis exposed on host at 127.0.0.1:6379 (see docker-compose.backend.yml).
+  cache: "@kb-labs/adapters-redis@2.94.0"
 
 services:
-  state:
-    service: "@kb-labs/core-state-daemon"
-    version: "2.94.0"
-    adapters: *adapters
-    targets:
-      hosts: [vm-1]
-      strategy: all
-      healthGate: "60s"
-
   rest:
     service: "@kb-labs/rest-api-app"
     version: "2.94.0"
@@ -95,3 +88,17 @@ services:
       hosts: [vm-1]
       strategy: all
       healthGate: "60s"
+
+  studio:
+    service: "@kb-labs/studio-app"
+    version: "2.94.0"
+    adapters: *adapters
+    targets:
+      hosts: [vm-1]
+      strategy: all
+      healthGate: "30s"
+    env:
+      PORT: "3002"
+      HOST: "127.0.0.1"
+      KB_API_BASE_URL: "https://api.kblabs.ru/api/v1"
+      KB_EVENTS_BASE_URL: "https://api.kblabs.ru"

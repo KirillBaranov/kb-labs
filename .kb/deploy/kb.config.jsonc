@@ -28,7 +28,11 @@
       // Analytics — JSONL file, no native dependencies.
       "analytics": "@kb-labs/adapters-analytics-file",
       // Service-to-service transport — gateway proxies to internal daemons.
-      "serviceTransport": "@kb-labs/adapters-service-transport-http"
+      "serviceTransport": "@kb-labs/adapters-service-transport-http",
+      // Shared state for plugins — Redis replaces core-state-daemon.
+      // StateAPI (ctx.state) uses CacheAdapter directly, so this one adapter
+      // covers both the cache slot and plugin state storage.
+      "cache": "@kb-labs/adapters-redis"
     },
 
     // Plugin execution mode: worker-pool = isolated workers (stable).
@@ -47,6 +51,8 @@
     },
     "storage": { "baseDir": ".kb/storage" },
     "logger": { "level": "${KB_LOG_LEVEL}" },
+    // Redis on localhost — kb-redis Docker container exposed on 127.0.0.1:6379.
+    "cache": { "url": "redis://127.0.0.1:6379" },
     "logRingBuffer": { "maxSize": 100 },
     "analytics": { "filename": ".kb/analytics/events.jsonl" },
     // Service transport — logical service IDs → TCP loopback URLs. These IDs are
