@@ -1,6 +1,7 @@
 import { defineCommand, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
 import { DropRequestSchema, type DropFlags, type DropResponse } from '@kb-labs/mind-contracts';
 import { buildMind } from '../../platform';
+import { requireConfirmation } from '../confirm';
 
 type DropResult = { exitCode: number; result?: DropResponse };
 
@@ -13,13 +14,17 @@ export default defineCommand<unknown, CLIInput<DropFlags>, DropResponse>({
       const { flags } = input;
       const json = flags.json;
       try {
-        // Destructive: require explicit confirmation in interactive use.
-        if (!flags.yes && !json) {
-          ctx.ui?.warn?.(
-            `This permanently removes index "${flags.index}" (all vectors + manifest). ` +
-              `This action cannot be undone. Re-run with --yes to confirm.`,
-          );
-          return { exitCode: 1 };
+        // Destructive + irreversible: blocks in EVERY mode until --yes (agents
+        // get a machine-readable requiresConfirmation signal, not a silent drop).
+        const blocked = requireConfirmation(ctx, {
+          yes: flags.yes,
+          json,
+          action: 'mind drop',
+          target: flags.index,
+          what: `index "${flags.index}" (all its vectors + manifest)`,
+        });
+        if (blocked) {
+          return blocked;
         }
         const req = DropRequestSchema.parse({ indexId: flags.index });
         const mind = await buildMind(ctx.cwd);

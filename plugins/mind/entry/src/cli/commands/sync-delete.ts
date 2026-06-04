@@ -1,6 +1,7 @@
 import { defineCommand, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
 import { type SyncDeleteFlags, type SyncResponse } from '@kb-labs/mind-contracts';
 import { buildMind } from '../../platform';
+import { requireConfirmation } from '../confirm';
 
 export default defineCommand<unknown, CLIInput<SyncDeleteFlags>, SyncResponse>({
   id: 'mind:sync-delete',
@@ -14,14 +15,17 @@ export default defineCommand<unknown, CLIInput<SyncDeleteFlags>, SyncResponse>({
         ctx.ui?.error?.('Provide one or more paths: kb mind sync delete <paths…>');
         return { exitCode: 1 };
       }
-      // Destructive: require explicit confirmation — this cannot be undone.
-      if (!input.flags.yes && !input.flags.json) {
-        ctx.ui?.warn?.(
-          `This permanently removes ${paths.length} document(s) from index ` +
-            `"${input.flags.index ?? 'default'}". This action cannot be undone. ` +
-            `Re-run with --yes to confirm.`,
-        );
-        return { exitCode: 1 };
+      // Destructive + irreversible: blocks in EVERY mode until --yes (agents get
+      // a machine-readable requiresConfirmation signal, not a silent delete).
+      const blocked = requireConfirmation(ctx, {
+        yes: input.flags.yes,
+        json: input.flags.json,
+        action: 'mind sync delete',
+        target: input.flags.index ?? 'default',
+        what: `${paths.length} document(s) from index "${input.flags.index ?? 'default'}"`,
+      });
+      if (blocked) {
+        return blocked;
       }
       const mind = await buildMind(ctx.cwd);
       const res = await mind.syncDelete(paths, input.flags.index);
