@@ -32,6 +32,7 @@
     "lint:fix": "eslint . --fix",
     "pretype-check": "pnpm --filter @kb-labs/quality-entry build",
     "test": "vitest run --passWithNoTests",
+    "test:cli": "vitest run --config vitest.cli.config.ts --passWithNoTests",
     "test:watch": "vitest",
     "type-check": "tsc --noEmit"
   },

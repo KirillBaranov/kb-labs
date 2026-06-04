@@ -40,7 +40,7 @@ import type {
   IndexSpec,
   BulkOp,
   BulkResult,
-} from '@kb-labs/core-platform/adapters';
+} from '@kb-labs/sdk';
 
 interface CollectionMeta {
   /** Path inside the doc whose value (plus ttlMs) becomes `expires_at`. */

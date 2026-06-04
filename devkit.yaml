@@ -779,6 +779,19 @@ custom_checks:
     on: [check]
     language: typescript
 
+  # Port allocation policy (ADR-0024).
+  # Blocks CI on: port outside all ranges (UNKNOWN_RANGE), two services sharing a
+  #   port (DUPLICATE_PORT), prod service missing its docker-compose ports: map
+  #   (PROD_NO_COMPOSE_PORT) or smoke test (PROD_NO_SMOKE_TEST), smoke-test port not
+  #   matching the registry (PROD_PORT_MISMATCH), or a stale docs/ports.md (STALE_PORTS_DOC).
+  # Source of truth: infra/port-registry.yaml + .kb/devservices*.yaml.
+  # Fix a stale glossary with: pnpm ports:generate
+  # Self-filters: runs once, anchored to @kb-labs/devkit.
+  # Standalone:   node scripts/checks/check-ports.mjs
+  - name: check-ports
+    run: node scripts/checks/check-ports.mjs
+    on: [check]
+
 # ──────────────────────────────────────────────────────────────────────────────
 # COVERAGE THRESHOLDS
 # Enforced by: node scripts/merge-coverage.mjs --check

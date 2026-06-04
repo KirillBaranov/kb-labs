@@ -27,7 +27,6 @@
   },
   "devDependencies": {
     "@kb-labs/adapters-sqlite": "workspace:*",
-    "@kb-labs/core-platform": "workspace:*",
     "@kb-labs/devkit": "workspace:*",
     "@kb-labs/sdk": "workspace:*",
     "@types/node": "^24.3.3",
@@ -45,7 +44,6 @@
     "manifest": "./dist/manifest.js"
   },
   "peerDependencies": {
-    "@kb-labs/core-platform": "workspace:^",
     "@kb-labs/sdk": "workspace:^"
   },
   "sideEffects": false
