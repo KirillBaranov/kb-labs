@@ -94,6 +94,7 @@ function makeAssemblyHook() {
       raw as unknown as PlatformServices,
       cfg as never,
       broker as never,
+      process.env.KB_DEBUG === 'true' ? platform.logger : undefined,
     ) as unknown as Partial<Record<string, unknown>>;
 }
 
@@ -164,6 +165,21 @@ export async function initializePlatform(
         adapters: Object.keys(platformConfig.adapters ?? {}),
         hasAdapterOptions: !!platformConfig.adapterOptions,
       });
+
+      if (process.env.KB_DEBUG === 'true') {
+        platformInstance.logger.debug('kb.diag.config', {
+          event: 'kb.diag.config',
+          v: 1,
+          data: {
+            platformConfigPath: sources.platformDefaults,
+            projectConfigPath: sources.projectConfig,
+            overlayPaths: sources.overlays ?? [],
+            fieldSources: sources.fields ?? {},
+            ignoredProjectFields: sources.ignoredProjectFields ?? [],
+          },
+          ts: Date.now(),
+        });
+      }
 
       return {
         platform: platformInstance,
