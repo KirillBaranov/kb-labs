@@ -45,6 +45,9 @@ const DENY_EXT = new Set([
   'exe', 'dll', 'so', 'dylib', 'bin', 'wasm', 'class', 'node', 'pdb',
   'xlsx', 'xls', 'docx', 'doc', 'pptx', 'ppt', 'parquet', 'db', 'sqlite',
   'map', 'min.js', 'min.css', 'snap',
+  // Bulk data / logs / dumps — text, but no semantic value and they bloat the
+  // index + embedding cost (the old extension allowlist excluded these by omission).
+  'csv', 'tsv', 'ndjson', 'jsonl', 'log', 'sql', 'dump', 'out',
 ]);
 
 /** Generated/lock files that are text but carry no semantic signal. */

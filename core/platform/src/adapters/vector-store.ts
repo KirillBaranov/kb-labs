@@ -53,6 +53,18 @@ export interface VectorFilter {
  * compatible). Isolation is orthogonal to {@link VectorFilter}: the namespace
  * does not consume the filter slot.
  */
+/**
+ * Vector store contract.
+ *
+ * **Id round-trip is mandatory.** `search`/`get`/`query` MUST return each
+ * record under the SAME `id` the caller passed to `upsert` — never a backend
+ * surrogate (e.g. a UUID hash). Consumers correlate results back to their source
+ * records by id (e.g. fusing vector hits with a chunk map); a store that returns
+ * a different id silently drops every result at that join. If the backend can't
+ * store arbitrary string ids (Qdrant requires UUID/uint), the adapter must
+ * persist the original id (e.g. in payload) and restore it on read. See
+ * `adapters/qdrant` for the reference implementation.
+ */
 export interface IVectorStore {
   /**
    * Search for similar vectors.
@@ -60,6 +72,7 @@ export interface IVectorStore {
    * @param limit - Maximum number of results
    * @param filter - Optional metadata filter
    * @param namespace - Optional namespace to scope the search (default namespace if omitted)
+   * @returns results whose `id` equals the id originally upserted (see contract above)
    */
   search(
     query: number[],

@@ -138,6 +138,15 @@ const wrapVectorStore: AdapterMiddlewareFn<VectorStoreAdapter> = (adapter, ctx) 
   // Inverse of `prefixId`: results must round-trip the id the caller upserted,
   // otherwise consumers that correlate results by id (e.g. fusing vector hits
   // back to their source records) silently drop every result.
+  //
+  // CAVEAT (asymmetry): `prefixId` is idempotent — it does NOT prefix an id that
+  // already `startsWith(namespace)` — while `stripId` strips unconditionally. So
+  // a caller id whose *natural* value begins with the namespace token would be
+  // corrupted on read (`<namespace>foo` → upserted unprefixed → read → `foo`).
+  // This is safe for current usage: namespaces are collection tokens ending in
+  // `:` (e.g. `mind:`) and real ids (chunk ids = `path#a-b`) never start with
+  // them. A bulletproof fix needs a structured/delimited id rather than a bare
+  // string prefix — tracked as a platform design item, not changed here.
   const stripId = <T extends { id: string }>(r: T): T =>
     namespace && r.id.startsWith(namespace) ? { ...r, id: r.id.slice(namespace.length) } : r;
 
