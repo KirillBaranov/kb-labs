@@ -75,6 +75,19 @@ await vectorStore.upsert([
 ]);
 ```
 
+<Callout type="warning">
+**Id round-trip is mandatory.** `search`, `get`, and `query` **must return each record under the same `id` you
+passed to `upsert`** — never a backend-internal surrogate. Callers correlate
+results back to their source records by `id` (e.g. RAG fuses vector hits with a
+chunk map); an adapter that returns a different id silently drops every result
+at that join.
+
+If your backend can't store arbitrary string ids (Qdrant, for example, requires
+UUID/uint point ids), hash the id for storage **and persist the original** (e.g.
+in the record payload), then restore it on every read. The built-in
+`@kb-labs/adapters-qdrant` is the reference implementation.
+</Callout>
+
 ### `delete(ids)`
 
 Removes records by ID. Missing IDs are not an error. Accepts an array so callers can delete in bulk.
