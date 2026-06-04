@@ -178,8 +178,11 @@
           "defaultIndex": "code",
           "indexes": {
             "code": {
-              "label": "Core platform code",
-              "scope": "core",
+              "label": "Workspace code (all source minus marketing site & scaffolds)",
+              "scope": {
+                "include": ["."],
+                "exclude": ["sites/**", "templates/**"]
+              },
               "retrieval": {
                 "rerank": true,
                 "dedup": true
