@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { setupTestPlatform, mockCLIInput } from '@kb-labs/sdk/testing';
 import { makeTestWorkspace } from '@kb-labs/mind-core/testing';
 import type { PluginContextV3 } from '@kb-labs/sdk';
-import indexCmd from '../../src/cli/commands/index.js';
-import searchCmd from '../../src/cli/commands/search.js';
-import searchHandler from '../../src/rest/handlers/search.js';
+import indexCmd from '../../cli/commands/index.js';
+import searchCmd from '../../cli/commands/search.js';
+import searchHandler from '../../rest/handlers/search.js';
 
 /**
  * Proves the parity invariant: the CLI command and the REST handler call the
