@@ -22,6 +22,7 @@ export * from './utils/context';
 export * from './utils/path';
 export * from './utils/retry';
 export * from './utils/errors';
+export * from './destructive';
 
 // Modern UI Kit (new) - selective exports to avoid conflicts
 export {

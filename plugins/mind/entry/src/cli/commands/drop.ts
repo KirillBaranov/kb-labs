@@ -1,7 +1,6 @@
-import { defineCommand, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, handleError, confirmDestructive, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
 import { DropRequestSchema, type DropFlags, type DropResponse } from '@kb-labs/mind-contracts';
 import { buildMind } from '../../platform';
-import { requireConfirmation } from '../confirm';
 
 type DropResult = { exitCode: number; result?: DropResponse };
 
@@ -14,14 +13,20 @@ export default defineCommand<unknown, CLIInput<DropFlags>, DropResponse>({
       const { flags } = input;
       const json = flags.json;
       try {
-        // Destructive + irreversible: blocks in EVERY mode until --yes (agents
-        // get a machine-readable requiresConfirmation signal, not a silent drop).
-        const blocked = requireConfirmation(ctx, {
-          yes: flags.yes,
-          json,
-          action: 'mind drop',
-          target: flags.index,
-          what: `index "${flags.index}" (all its vectors + manifest)`,
+        // Destructive: blocks in EVERY mode until --yes (agents get a structured
+        // confirmationRequired signal with severity/recovery, not a silent drop).
+        const blocked = confirmDestructive(ctx, {
+          confirmed: flags.yes,
+          isJson: json,
+          action: {
+            action: 'mind drop',
+            resource: `index "${flags.index}"`,
+            effect: 'deletes all vectors and the manifest',
+            severity: 'high',
+            reversible: true,
+            recovery: 'rebuild with `kb mind index --index <id> --full`',
+            blastRadius: { scope: 'whole index' },
+          },
         });
         if (blocked) {
           return blocked;

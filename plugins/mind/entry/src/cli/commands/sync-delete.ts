@@ -1,7 +1,6 @@
-import { defineCommand, handleError, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
+import { defineCommand, handleError, confirmDestructive, type CLIInput, type PluginContextV3 } from '@kb-labs/sdk';
 import { type SyncDeleteFlags, type SyncResponse } from '@kb-labs/mind-contracts';
 import { buildMind } from '../../platform';
-import { requireConfirmation } from '../confirm';
 
 export default defineCommand<unknown, CLIInput<SyncDeleteFlags>, SyncResponse>({
   id: 'mind:sync-delete',
@@ -15,14 +14,20 @@ export default defineCommand<unknown, CLIInput<SyncDeleteFlags>, SyncResponse>({
         ctx.ui?.error?.('Provide one or more paths: kb mind sync delete <paths…>');
         return { exitCode: 1 };
       }
-      // Destructive + irreversible: blocks in EVERY mode until --yes (agents get
-      // a machine-readable requiresConfirmation signal, not a silent delete).
-      const blocked = requireConfirmation(ctx, {
-        yes: input.flags.yes,
-        json: input.flags.json,
-        action: 'mind sync delete',
-        target: input.flags.index ?? 'default',
-        what: `${paths.length} document(s) from index "${input.flags.index ?? 'default'}"`,
+      // Destructive: blocks in EVERY mode until --yes (agents get a structured
+      // confirmationRequired signal with severity/recovery, not a silent delete).
+      const blocked = confirmDestructive(ctx, {
+        confirmed: input.flags.yes,
+        isJson: input.flags.json,
+        action: {
+          action: 'mind sync delete',
+          resource: `index "${input.flags.index ?? 'default'}"`,
+          effect: 'removes the specified document(s)',
+          severity: 'medium',
+          reversible: true,
+          recovery: 're-add with `kb mind sync add <paths>`',
+          blastRadius: { count: paths.length, unit: 'document(s)' },
+        },
       });
       if (blocked) {
         return blocked;
