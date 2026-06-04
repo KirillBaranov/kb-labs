@@ -68,6 +68,7 @@ export class PinoLoggerAdapter implements ILogger {
     const resolvedLevel =
       (process.env.KB_LOG_LEVEL as PinoLoggerConfig["level"]) ??
       (process.env.LOG_LEVEL as PinoLoggerConfig["level"]) ??
+      (process.env.KB_DEBUG === 'true' ? 'debug' : undefined) ??
       config.level ??
       "info";
 
