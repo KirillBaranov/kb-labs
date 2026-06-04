@@ -270,10 +270,10 @@ jobs:
           set -uo pipefail
           check() { curl -sf -m 10 "$2" >/dev/null && echo "$1: OK" || { echo "::error::$1 health failed ($2)"; return 1; }; }
           rc=0
-          check state    http://127.0.0.1:7777/health || rc=1
           check rest     http://127.0.0.1:5050/api/v1/health || rc=1
           check workflow http://127.0.0.1:7778/health || rc=1
           check gateway  http://127.0.0.1:4000/health || rc=1
+          check studio   http://127.0.0.1:3002/health || rc=1
           exit $rc
           REMOTE
 
@@ -292,7 +292,7 @@ jobs:
           CFG="$HOME/kb-platform/.kb/devservices.yaml"
           echo "===== kb-dev status ====="
           kb-dev --config "$CFG" status 2>&1 || true
-          for s in core-state-daemon rest-api-app workflow-daemon gateway-app; do
+          for s in rest-api-app workflow-daemon gateway-app studio-app; do
             echo "===== logs: $s (last 120) ====="
             kb-dev --config "$CFG" logs "$s" -n 120 2>&1 || true
           done
