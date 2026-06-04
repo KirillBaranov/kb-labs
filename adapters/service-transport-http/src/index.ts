@@ -22,4 +22,4 @@ export type {
   ServiceTransportResponse,
   ServiceTransportStream,
   ServiceTransportHealth,
-} from '@kb-labs/core-platform';
+} from '@kb-labs/sdk';

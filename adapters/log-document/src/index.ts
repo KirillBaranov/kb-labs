@@ -33,7 +33,7 @@ import type {
   IDocumentDatabase,
   DocumentFilter,
   BaseDocument,
-} from '@kb-labs/core-platform/adapters';
+} from '@kb-labs/sdk/adapters';
 
 export { manifest } from './manifest.js';
 

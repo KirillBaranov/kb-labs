@@ -33,7 +33,6 @@
     "better-sqlite3": "^11.8.0"
   },
   "devDependencies": {
-    "@kb-labs/core-platform": "workspace:*",
     "@kb-labs/devkit": "workspace:*",
     "@kb-labs/sdk": "workspace:*",
     "@types/better-sqlite3": "^7.6.0",
@@ -52,7 +51,6 @@
     "manifest": "./dist/manifest.js"
   },
   "peerDependencies": {
-    "@kb-labs/core-platform": "workspace:^",
     "@kb-labs/sdk": "workspace:^"
   },
   "sideEffects": false

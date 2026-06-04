@@ -162,6 +162,29 @@ export type {
   NotificationFilter,
   INotifierChannel,
   NotifierDeliveryEvent,
+  // Document database / KV adapter contracts (for adapter authors)
+  IDocumentDatabase,
+  IDocumentTransaction,
+  BaseDocument,
+  DocumentFilter,
+  DocumentUpdate,
+  FilterOperators,
+  FindOptions,
+  ProjectOpts,
+  SignalOpts,
+  EnsureCollectionOpts,
+  IndexSpec,
+  BulkOp,
+  BulkResult,
+  IKVStore,
+  SetOpts,
+  // Service transport adapter contract (for adapter authors)
+  IServiceTransport,
+  ServiceConnectionInfo,
+  ServiceTransportRequest,
+  ServiceTransportResponse,
+  ServiceTransportStream,
+  ServiceTransportHealth,
 } from '@kb-labs/core-platform';
 
 // Re-export sys utilities

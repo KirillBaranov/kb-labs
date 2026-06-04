@@ -86,3 +86,11 @@ export {
   createMockContext,
   type MockContextOptions,
 } from '@kb-labs/shared-testing-e2e/cli';
+
+// Adapter contract suites (for verifying IDocumentDatabase / IKVStore implementations)
+export {
+  runDocumentDatabaseContract,
+  type DocumentDatabaseContractFactory,
+  runKVStoreContract,
+  type KVContractFactory,
+} from '@kb-labs/core-platform/adapters/contract';
