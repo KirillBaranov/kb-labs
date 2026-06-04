@@ -101,13 +101,28 @@ function trimTrailingSlashes(s: string): string {
   return s.slice(0, end);
 }
 
-export async function discover(cwd: string, scope?: string): Promise<string[]> {
-  const base = scope && scope !== '.' ? trimTrailingSlashes(scope) : '';
-  const pattern = base ? `${base}/**/*` : '**/*';
+/** Scope the engine discovers against — config-driven include/exclude globs. */
+export interface DiscoverScope {
+  /** Repo-relative roots/globs to index. Empty/undefined ⇒ whole repo. */
+  include?: string[];
+  /** Globs subtracted from the include set (added to the ignore list). */
+  exclude?: string[];
+}
 
-  const candidates = await globby(pattern, {
+export async function discover(cwd: string, scope?: DiscoverScope): Promise<string[]> {
+  const include = scope?.include && scope.include.length > 0 ? scope.include : ['.'];
+  const exclude = scope?.exclude ?? [];
+
+  // Each include root → a recursive glob ('.' ⇒ whole repo). exclude globs
+  // join the ignore list, so they're subtracted from whatever include matched.
+  const patterns = include.map((p) => {
+    const base = p && p !== '.' ? trimTrailingSlashes(p) : '';
+    return base ? `${base}/**/*` : '**/*';
+  });
+
+  const candidates = await globby(patterns, {
     cwd,
-    ignore: IGNORE,
+    ignore: [...IGNORE, ...exclude],
     dot: false,
     followSymbolicLinks: false,
     gitignore: false,

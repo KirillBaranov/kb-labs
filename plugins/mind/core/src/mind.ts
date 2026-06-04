@@ -26,7 +26,7 @@ import type {
   SyncStatusResponse,
   ReindexRequest,
 } from '@kb-labs/mind-contracts';
-import { effectiveIndexConfig } from '@kb-labs/mind-contracts';
+import { effectiveIndexConfig, resolveScope } from '@kb-labs/mind-contracts';
 import type { MindServices } from './services';
 import type { RankedChunk } from './retrieval/retrieve';
 import { ingest, type IngestProgress } from './ingest/ingest';
@@ -100,8 +100,9 @@ export function createMind(
         {
           indexId,
           cwd,
-          // CLI flag wins; otherwise fall back to the index's configured scope.
-          scope: req.scope ?? eff.scope,
+          // CLI `--scope` overrides the include set (keeping configured excludes);
+          // otherwise use the index's configured include/exclude scope.
+          scope: req.scope ? { include: [req.scope], exclude: eff.scope.exclude } : eff.scope,
           full: req.full,
           chunk: { maxTokens: eff.chunk.maxTokens, overlapTokens: eff.chunk.overlapTokens },
           ast: eff.chunk.ast,
@@ -332,15 +333,22 @@ export function createMind(
     },
 
     async status(indexId): Promise<StatusResponse> {
-      const ids = indexId ? [indexId] : await listIndexIds(services);
+      // Show every CONFIGURED index (even if not yet built) plus any built ones,
+      // so an agent can see which corpora/scopes the project offers.
+      const ids = indexId
+        ? [indexId]
+        : [...new Set([...Object.keys(config.indexes), ...(await listIndexIds(services))])];
       const indexes: IndexSummary[] = [];
       for (const id of ids) {
         const manifest = await loadManifest(services.storage, id);
         const declared = config.indexes[id];
+        const sc = resolveScope(declared?.scope);
+        const coverage =
+          sc.include.join(', ') + (sc.exclude.length ? ` · excl ${sc.exclude.join(', ')}` : '');
         indexes.push({
           indexId: id,
           label: declared?.label,
-          coverage: declared?.scope,
+          coverage,
           documents: Object.keys(manifest.files).length,
           chunks: manifest.chunks.length,
           lastIndexedAt: manifest.updatedAt,

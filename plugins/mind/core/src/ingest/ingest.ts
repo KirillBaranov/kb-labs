@@ -12,7 +12,7 @@ import { join } from 'node:path';
 import type { MindServices } from '../services';
 import type { Chunk, FileEntry, IndexManifest } from '../types';
 import { hashContent } from '../types';
-import { discover } from './discover';
+import { discover, type DiscoverScope } from './discover';
 import { type ChunkOptions } from './chunk';
 import { chunkFile } from './structural';
 import { embedChunks } from './embed';
@@ -31,7 +31,8 @@ export interface IngestInput {
   indexId: string;
   /** Workspace root that source paths are resolved against. */
   cwd: string;
-  scope?: string;
+  /** Config-driven include/exclude globs for discovery. */
+  scope?: DiscoverScope;
   chunk: ChunkOptions;
   /** Use structure-aware chunking for code. */
   ast: boolean;

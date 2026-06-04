@@ -81,13 +81,50 @@ export const ConfidenceConfigSchema = z.object({
 });
 
 /**
- * Per-index declaration. Lets the user define named corpora in config and tune
- * each independently — `kb mind index --index docs` then needs no `--scope`,
- * and search/ask honour that index's chunk/retrieval overrides.
+ * Index scope. Either a single path/glob (shorthand) or an explicit
+ * include/exclude set. Paths are repo-relative; a bare dir means "everything
+ * under it". `exclude` globs are subtracted from `include` at discovery time.
+ *
+ *   "core"                                   just core/
+ *   { include: ["core","plugins","sdk"] }    those roots
+ *   { include: ["."], exclude: ["sites/**"] } whole repo minus noise
  */
+export const IndexScopeSchema = z.union([
+  z.string(),
+  z
+    .object({
+      include: z.array(z.string()).optional(),
+      exclude: z.array(z.string()).optional(),
+    })
+    .strict(),
+]);
+export type IndexScope = z.infer<typeof IndexScopeSchema>;
+
+/** Normalized scope the engine consumes. */
+export interface ResolvedScope {
+  /** Repo-relative roots/globs to index (default: whole repo). */
+  include: string[];
+  /** Globs subtracted from the include set. */
+  exclude: string[];
+}
+
+/** Normalize the config/shorthand scope into `{ include, exclude }`. */
+export function resolveScope(scope: IndexScope | undefined): ResolvedScope {
+  if (scope === undefined) {
+    return { include: ['.'], exclude: [] };
+  }
+  if (typeof scope === 'string') {
+    return { include: [scope], exclude: [] };
+  }
+  return {
+    include: scope.include && scope.include.length > 0 ? scope.include : ['.'],
+    exclude: scope.exclude ?? [],
+  };
+}
+
 export const IndexConfigSchema = z.object({
-  /** Glob/path scope indexed into this index (used when the command omits `--scope`). */
-  scope: z.string().optional(),
+  /** Path/glob or include/exclude set indexed into this index (CLI `--scope` overrides). */
+  scope: IndexScopeSchema.optional(),
   /** Human label (optional, for status/UX). */
   label: z.string().optional(),
   /** Per-index chunk overrides; unset fields fall back to the global `chunk`. */
@@ -116,7 +153,8 @@ export type ModeBudget = z.infer<typeof ModeBudgetSchema>;
 
 /** Chunk + retrieval settings effective for a given index, overrides applied. */
 export interface EffectiveIndexConfig {
-  scope?: string;
+  /** Normalized include/exclude the engine discovers against. */
+  scope: ResolvedScope;
   chunk: ChunkConfig;
   retrieval: RetrievalConfig;
 }
@@ -128,7 +166,7 @@ export interface EffectiveIndexConfig {
 export function effectiveIndexConfig(config: MindConfig, indexId: string): EffectiveIndexConfig {
   const idx = config.indexes[indexId];
   return {
-    scope: idx?.scope,
+    scope: resolveScope(idx?.scope),
     chunk: { ...config.chunk, ...idx?.chunk },
     retrieval: { ...config.retrieval, ...idx?.retrieval },
   };

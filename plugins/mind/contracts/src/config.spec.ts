@@ -1,11 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { resolveMindConfig, effectiveIndexConfig } from './config';
+import { resolveMindConfig, effectiveIndexConfig, resolveScope } from './config';
 
 describe('mind config — per-index overrides', () => {
   it('unknown index falls back to global settings', () => {
     const cfg = resolveMindConfig({ retrieval: { rerank: false } });
     const eff = effectiveIndexConfig(cfg, 'whatever');
-    expect(eff.scope).toBeUndefined();
+    expect(eff.scope).toEqual({ include: ['.'], exclude: [] }); // default: whole repo
     expect(eff.retrieval.rerank).toBe(false); // global
     expect(eff.chunk.maxTokens).toBe(400); // default
   });
@@ -23,7 +23,7 @@ describe('mind config — per-index overrides', () => {
       },
     });
     const eff = effectiveIndexConfig(cfg, 'docs');
-    expect(eff.scope).toBe('docs/**/*.md');
+    expect(eff.scope).toEqual({ include: ['docs/**/*.md'], exclude: [] }); // string → include[]
     expect(eff.chunk.maxTokens).toBe(120); // overridden
     expect(eff.chunk.overlapTokens).toBe(50); // global default preserved
     expect(eff.retrieval.hyde).toBe(true); // overridden
@@ -34,5 +34,26 @@ describe('mind config — per-index overrides', () => {
     expect(resolveMindConfig({}).indexes).toEqual({});
     const cfg = resolveMindConfig({ indexes: { code: { scope: 'core' } } });
     expect(cfg.indexes.code?.scope).toBe('core');
+  });
+
+  it('resolves include/exclude scope (config-driven)', () => {
+    expect(resolveScope(undefined)).toEqual({ include: ['.'], exclude: [] });
+    expect(resolveScope('core')).toEqual({ include: ['core'], exclude: [] });
+    expect(resolveScope({ include: ['core', 'plugins'], exclude: ['sites/**'] })).toEqual({
+      include: ['core', 'plugins'],
+      exclude: ['sites/**'],
+    });
+    // empty include falls back to whole repo
+    expect(resolveScope({ exclude: ['templates/**'] })).toEqual({ include: ['.'], exclude: ['templates/**'] });
+  });
+
+  it('accepts the include/exclude object form for an index', () => {
+    const cfg = resolveMindConfig({
+      indexes: { code: { scope: { include: ['core', 'plugins'], exclude: ['sites/**', 'templates/**'] } } },
+    });
+    expect(effectiveIndexConfig(cfg, 'code').scope).toEqual({
+      include: ['core', 'plugins'],
+      exclude: ['sites/**', 'templates/**'],
+    });
   });
 });
