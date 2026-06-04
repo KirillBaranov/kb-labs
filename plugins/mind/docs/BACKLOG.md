@@ -16,8 +16,8 @@ Bench-gated: every row marked **Y** must ship with a before/after benchmark delt
 | AST chunking | tree-sitter | 🟡 structure-aware-lite (brace) | P2 | Y | tree-sitter behind `chunkFile`; measure chunk-boundary quality |
 | Freshness / staleness | fresh/soft/hard + penalties | ❌ | P1 | Y | confidence penalty for stale chunks |
 | Conflict detection | cross-source contradiction penalty | ❌ | P3 | Y | hard to bench — needs conflict fixtures |
-| HyDE (hypothetical embeddings) | optional | 🟡 ported, default OFF | P3 | Y | `retrieval.hyde` flag + `e2e/mind` `hyde-on` A/B. Concept golden extended to **27 queries** (Stage 3). Verdict **PENDING a standard-runner pass**: the earlier "identical metrics" reading (2026-06-03) was an artifact of a non-standard manual harness — daemons started by hand that `kb-dev ensure --scenario` could not restart with the overlay, so all scenarios ran the unchanged config. The overlay mechanism itself is fine in the standard `kb-labs-e2e-runner` flow (`rerank-off` A/B proves it). Re-run via `MIND_BENCH_REAL=1 kb-devkit run e2e --packages @kb-labs/e2e-mind` (runner owns kb-dev lifecycle). Baseline `semanticWinRate=0.000` on the clean corpus stands (BM25 already nails it; semantic levers should show value on a degraded/messy corpus). Stays OFF until a standard run shows a lift. |
-| Query expansion (lexical-side) | n/a | 🔵 new, default OFF | P2 | Y | `retrieval.expand` flag + `core/src/retrieval/expand.ts` + `e2e/mind` `expand-on` A/B. Same as HyDE: verdict PENDING a standard-runner pass + ideally a degraded corpus. Stays OFF until a lift is shown. |
+| HyDE (hypothetical embeddings) | optional | 🟡 ported, default OFF | P3 | Y | `retrieval.hyde` flag + `e2e/mind` `hyde-on` A/B. Verdict **STILL INCONCLUSIVE** even after the retrieval fix: on fixed hybrid retrieval, hyde-on ≡ default (Δ=0.000) because scenario overlays don't reach the profiles-v2 mind config (see "in-repo bench on fixed retrieval" below — `profiles[0].products.mind.retrieval.hyde` stays `false` with the overlay applied). Flag never flips ≠ no effect. Stays OFF; real verdict needs the overlay→profiles path fix (or a direct config toggle). |
+| Query expansion (lexical-side) | n/a | 🔵 new, default OFF | P2 | Y | `retrieval.expand` flag + `core/src/retrieval/expand.ts` + `e2e/mind` `expand-on` A/B. Same as HyDE: A/B inconclusive — overlay doesn't reach `profiles[0].products.mind.retrieval`, so expand-on ≡ default (Δ=0.000). Stays OFF until the overlay path is fixed and a lift is shown. |
 
 ### Validation finding — grep-vs-mind head-to-head (2026-06-03)
 
@@ -67,9 +67,36 @@ retrieval Mind **out-retrieves grep (+0.143)** on a real, less-documented
 enterprise corpus, and `semWin=0.281` is concrete proof-of-value vs grep — the
 thesis holds once the vector side actually contributes.
 
-**Implication / next:** re-run the in-repo `headtohead` + HyDE/expand A/B on
-fixed retrieval (the clean-corpus result may also move). The retrieval
-correctness fix is the highest-impact change in this whole effort.
+### Validation finding — in-repo bench on fixed retrieval (2026-06-04)
+
+Re-ran the whole `e2e/mind` suite on the fixed retrieval (kb-labs corpus, 27 golden):
+
+| metric | broken (BM25-only) | fixed (hybrid) |
+|---|---|---|
+| default gate hit@5 | 0.741 | **0.926** |
+| default gate mrr | 0.636 | **0.728** |
+| headtohead clean (mind−grep) | −0.037 | **+0.148** (mind 0.926 vs grep 0.778) |
+| headtohead degraded (mind−grep) | −0.148 | **+0.074** (mind 0.741 vs grep 0.667) |
+
+So the retrieval fix flips the in-repo verdict too: **Mind beats grep on the
+clean corpus (+0.148) and the degraded one (+0.074)**. The earlier "thesis not
+supported / grep wins" was entirely the BM25-only bug.
+
+**HyDE / expand / rerank A/B — still INCONCLUSIVE, but for a *different*,
+confirmed reason: scenario overlays don't reach Mind's effective config.** All
+three A/B scenarios returned byte-identical metrics (hit@5 0.926, mrr 0.728)
+because the overlays write **top-level** `{"mind":{"retrieval":{…}}}` while the
+authoritative config lives under **`profiles[0].products.mind.retrieval`**
+(profiles-v2) — verified directly: with the `hyde-on` overlay applied,
+`profiles[0].products.mind.retrieval.hyde` is still `false`. (This supersedes an
+earlier note that claimed the overlay path was fine — it is not.) ON ≡ OFF ≡
+default, so Δ=0.000 is "flag never flipped", NOT "feature has no effect".
+
+**Next:** fix the scenario-overlay → profiles-v2 path (overlay must target the
+active profile's `products.mind`), or toggle `hyde`/`expand` directly in
+`profiles[0].products.mind.retrieval` for a one-off A/B. Only then are the
+HyDE/expand verdicts real. The retrieval correctness fix remains the
+highest-impact change in this whole effort.
 
 ## Answer quality
 
