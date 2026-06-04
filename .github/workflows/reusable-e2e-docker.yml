@@ -272,6 +272,8 @@ jobs:
           docker compose cp platform:/workspace/kb-e2e/.kb          /tmp/e2e-logs/kb-dir          2>&1 || true
           docker compose cp platform:/root/kb-platform/.kb           /tmp/e2e-logs/platform-kb-dir 2>&1 || true
           docker compose exec -T platform sh -c 'kb-dev status 2>&1' > /tmp/e2e-logs/kb-dev-status.txt 2>&1 || true
+          docker compose exec -T platform sh -c 'cat /tmp/kb-e2e-diag.json 2>/dev/null' \
+            > /tmp/e2e-logs/kb-e2e-diag.json 2>&1 || true
 
       - name: Upload platform logs
         if: always()
