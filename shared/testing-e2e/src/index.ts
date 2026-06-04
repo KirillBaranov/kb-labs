@@ -30,6 +30,21 @@
  */
 
 export { KbDevController } from './kb-dev-controller.js';
+
+export { DiagCollector } from './diag-collector.js';
+export { registerDiagSnapshotHook } from './diag-snapshot-hook.js';
+export type {
+  DiagSnapshot,
+  KbLogEvent,
+  AdapterStageTrace,
+  PluginGovernanceTrace,
+  GovernanceMiddlewareInfo,
+  ConfigLayersDiag,
+  PluginDiscoveryDiag,
+  DiscoveredPluginInfo,
+  SkippedPluginInfo,
+  ServiceDiag,
+} from './diag-types.js';
 export type {
   ServiceId,
   ServiceState,

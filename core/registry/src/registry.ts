@@ -103,6 +103,21 @@ export class EntityRegistry implements IEntityRegistry {
     this.plugins = result.plugins;
     this.manifests = result.manifests;
     this.diagnosticEvents = result.diagnostics;
+
+    if (process.env.KB_DEBUG === 'true') {
+      const diagLine = JSON.stringify({
+        event: 'kb.diag.discovery',
+        v: 1,
+        data: {
+          loaded: result.plugins.map(p => ({ id: p.id, version: p.version, source: p.source.kind })),
+          skipped: result.diagnostics
+            .filter(d => d.severity === 'error' || d.severity === 'warning')
+            .map(d => ({ code: d.code, message: d.message, pluginId: d.context?.pluginId })),
+        },
+        ts: Date.now(),
+      });
+      process.stdout.write(diagLine + '\n');
+    }
     // Track total attempted (loaded + failed) for accurate diagnostic reports
     const failedCount = result.diagnostics.filter(
       e => e.severity === 'error' && e.context?.pluginId,

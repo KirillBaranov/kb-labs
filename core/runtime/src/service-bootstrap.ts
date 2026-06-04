@@ -242,6 +242,21 @@ export async function createServiceBootstrap(
       projectRoot,
       sources,
     });
+
+    if (process.env.KB_DEBUG === 'true') {
+      platform.logger.debug('kb.diag.config', {
+        event: 'kb.diag.config',
+        v: 1,
+        data: {
+          platformConfigPath: sources.platformDefaults,
+          projectConfigPath: sources.projectConfig,
+          overlayPaths: sources.overlays ?? [],
+          fieldSources: sources.fields ?? {},
+          ignoredProjectFields: sources.ignoredProjectFields ?? [],
+        },
+        ts: Date.now(),
+      });
+    }
   } catch (error) {
     process.stderr.write(
       `[${appId}:platform] Initialization failed, using NoOp adapters: ${error instanceof Error ? error.message : String(error)}\n`,
