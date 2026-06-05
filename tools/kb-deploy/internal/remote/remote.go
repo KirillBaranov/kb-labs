@@ -112,15 +112,14 @@ func (h *Host) buildInstallCmd(opts InstallOpts) string {
 func (h *Host) ServiceID(servicePkg, serviceShort string) (string, error) {
 	manifestPath := h.PlatformPath + "/services/" + serviceShort +
 		"/current/node_modules/" + servicePkg + "/dist/manifest.json"
-	// Transient-corruption retry. Under the deploy's I/O load (four fresh pnpm
-	// installs into a freshly-pruned shared store), a just-installed
+	// Transient-corruption retry. Under the deploy's I/O load, a just-installed
 	// manifest.json is occasionally observed truncated or null-padded
 	// ("unexpected end of JSON input" / "invalid character '\x00'") even though
-	// the settled file is valid — i.e. the hardlinked store object's content is
+	// the settled file is valid — the hardlinked pnpm-store object's content is
 	// not yet durable when read. Not reproducible in isolation; verified
 	// load-bearing in the full deploy (removing this retry made apply fail). A
-	// few re-reads let the file settle. The pnpm-store write durability is the
-	// real root cause (follow-up) — this is the defensive mitigation.
+	// few re-reads let the file settle. Keeping the store warm (no pre-deploy
+	// prune) is the root mitigation; this is defence in depth.
 	var lastErr error
 	for attempt := 0; attempt < 3; attempt++ {
 		out, err := h.Runner.Run("cat " + shellQuote(manifestPath))
