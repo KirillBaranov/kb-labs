@@ -1,6 +1,7 @@
 import { logDiagnosticEvent, type IServiceTransport } from '@kb-labs/core-platform';
 import { createInMemoryDocumentDatabase, createInMemoryKVStore } from '@kb-labs/core-platform/inmemory';
 import { platform, createServiceBootstrap, getPlatformRoot, getProjectRoot } from '@kb-labs/core-runtime';
+import { makeAssemblyHook } from '@kb-labs/plugin-runtime';
 import { createCorrelatedLogger } from '@kb-labs/shared-http';
 import type { IHostStore } from '@kb-labs/gateway-contracts';
 import type { IDocumentDatabase } from '@kb-labs/core-platform/adapters';
@@ -30,7 +31,7 @@ import type { WebhookManifestEntry } from './webhook/router.js';
 
 export async function bootstrap(repoRoot: string = process.cwd()): Promise<void> {
   // 1. Initialize platform (loads .env + adapters from kb.config.json)
-  await createServiceBootstrap({ appId: 'gateway', repoRoot });
+  await createServiceBootstrap({ appId: 'gateway', repoRoot, assemblyHook: makeAssemblyHook() });
 
   const logger = createCorrelatedLogger(platform.logger, {
     serviceId: 'gateway',

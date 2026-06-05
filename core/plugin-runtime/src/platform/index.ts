@@ -4,6 +4,7 @@
 
 export { createGovernedPlatformServices, applyPluginGovernance } from './governed.js';
 export { assemblePlatform, applyPluginGovernance as applyGovernance } from './pipeline.js';
+export { makeAssemblyHook } from './assembly-hook.js';
 export type { PlatformConfig, LoadedMiddleware } from './pipeline.js';
 export { ADAPTER_REGISTRY } from './adapter-registry.js';
 export type { AdapterRegistryKey } from './adapter-registry.js';
