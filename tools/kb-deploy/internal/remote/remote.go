@@ -124,20 +124,31 @@ func (h *Host) buildInstallCmd(opts InstallOpts) string {
 func (h *Host) ServiceID(servicePkg, serviceShort string) (string, error) {
 	manifestPath := h.PlatformPath + "/services/" + serviceShort +
 		"/current/node_modules/" + servicePkg + "/dist/manifest.json"
-	out, err := h.Runner.Run("cat " + shellQuote(manifestPath))
-	if err != nil {
-		return "", fmt.Errorf("read service manifest on %s: %w (output: %s)", h.Name, err, out)
+	// Retry on a transient empty/partial read: the manifest is a hardlink into
+	// the pnpm store written during install; on a busy host the first cat can
+	// occasionally observe it before the write is flushed, yielding
+	// "unexpected end of JSON input". A second read sees the settled file.
+	var lastErr error
+	for attempt := 0; attempt < 3; attempt++ {
+		out, err := h.Runner.Run("cat " + shellQuote(manifestPath))
+		if err != nil {
+			lastErr = fmt.Errorf("read service manifest on %s: %w (output: %s)", h.Name, err, out)
+			continue
+		}
+		var m struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal([]byte(out), &m); err != nil {
+			lastErr = fmt.Errorf("parse service manifest on %s (%s): %w", h.Name, manifestPath, err)
+			continue
+		}
+		if m.ID == "" {
+			lastErr = fmt.Errorf("service manifest on %s (%s) has empty id", h.Name, manifestPath)
+			continue
+		}
+		return m.ID, nil
 	}
-	var m struct {
-		ID string `json:"id"`
-	}
-	if err := json.Unmarshal([]byte(out), &m); err != nil {
-		return "", fmt.Errorf("parse service manifest on %s (%s): %w", h.Name, manifestPath, err)
-	}
-	if m.ID == "" {
-		return "", fmt.Errorf("service manifest on %s (%s) has empty id", h.Name, manifestPath)
-	}
-	return m.ID, nil
+	return "", lastErr
 }
 
 // ReconcileDevservices prunes devservices.yaml dependsOn entries that name
