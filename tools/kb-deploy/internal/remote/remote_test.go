@@ -183,39 +183,6 @@ func TestInstallService_NoReleaseID(t *testing.T) {
 	}
 }
 
-// seqRunner returns a different output per call (for retry tests).
-type seqRunner struct {
-	outs []string
-	i    int
-}
-
-func (s *seqRunner) Run(string) (string, error) {
-	o := s.outs[s.i]
-	if s.i < len(s.outs)-1 {
-		s.i++
-	}
-	return o, nil
-}
-func (s *seqRunner) RunWithInput(cmd, _ string) (string, error) { return s.Run(cmd) }
-
-// TestInstallService_RetrySelfHeals covers the lost-output flake: the first run
-// exits 0 with no JSON (result line lost over SSH), the idempotent retry no-ops
-// and returns a clean result.
-func TestInstallService_RetrySelfHeals(t *testing.T) {
-	fr := &seqRunner{outs: []string{
-		"", // first attempt: empty (lost output)
-		`{"releaseId":"gateway-1.2.3-aaa","noop":true,"evicted":[]}` + "\n",
-	}}
-	h := &Host{Name: "p1", Runner: fr}
-	res, err := h.InstallService(InstallOpts{ServicePkg: "@kb-labs/gateway", Version: "1.2.3"})
-	if err != nil {
-		t.Fatalf("retry should have healed: %v", err)
-	}
-	if res.ReleaseID != "gateway-1.2.3-aaa" || !res.NoOp {
-		t.Errorf("got %+v", res)
-	}
-}
-
 func TestInstallService_CommandFailure(t *testing.T) {
 	fr := &fakeRunner{err: errors.New("exit status 1")}
 	h := &Host{Name: "p1", Runner: fr}
@@ -278,29 +245,6 @@ func TestSwap_WithEnvOverrides(t *testing.T) {
 		" --env 'HOST=127.0.0.1' --env 'PORT=3002'"
 	if fr.log[0] != want {
 		t.Errorf("got %q\nwant %q", fr.log[0], want)
-	}
-}
-
-func TestEnsureRunning(t *testing.T) {
-	fr := &fakeRunner{}
-	h := &Host{Name: "p1", Runner: fr, PlatformPath: "/opt/kb"}
-	if err := h.EnsureRunning([]string{"gateway", "studio"}); err != nil {
-		t.Fatalf("unexpected: %v", err)
-	}
-	want := "kb-dev --config '/opt/kb/.kb/devservices.yaml' ensure 'gateway' 'studio'"
-	if fr.log[0] != want {
-		t.Errorf("got %q\nwant %q", fr.log[0], want)
-	}
-}
-
-func TestEnsureRunning_EmptyIsNoop(t *testing.T) {
-	fr := &fakeRunner{}
-	h := &Host{Name: "p1", Runner: fr}
-	if err := h.EnsureRunning(nil); err != nil {
-		t.Fatalf("unexpected: %v", err)
-	}
-	if len(fr.log) != 0 {
-		t.Errorf("expected no command, got %v", fr.log)
 	}
 }
 

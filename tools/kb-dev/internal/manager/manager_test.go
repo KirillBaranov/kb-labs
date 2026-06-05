@@ -33,6 +33,32 @@ func testServices() map[string]config.Service {
 	}
 }
 
+// TestWithDependents guards the cascade-restart fix: Restart must stop AND start
+// the same expanded set (targets + transitive dependents). Before the fix it
+// stopped the dependents but started only the targets, leaving dependents down.
+// state-daemon's transitive dependents are workflow, rest, gateway, studio.
+func TestWithDependents(t *testing.T) {
+	cfg := &config.Config{Services: testServices()}
+	m := New(cfg, "/workspace", "/workspace")
+
+	got := m.withDependents([]string{"state-daemon"})
+	want := map[string]bool{
+		"state-daemon": true, "workflow": true, "rest": true, "gateway": true, "studio": true,
+	}
+	if len(got) != len(want) {
+		t.Fatalf("withDependents = %v, want keys %v", got, want)
+	}
+	for _, id := range got {
+		if !want[id] {
+			t.Errorf("unexpected service in restart set: %q", id)
+		}
+	}
+	// A leaf (studio) expands to just itself.
+	if leaf := m.withDependents([]string{"studio"}); len(leaf) != 1 || leaf[0] != "studio" {
+		t.Errorf("leaf withDependents = %v, want [studio]", leaf)
+	}
+}
+
 func TestTopoLayers(t *testing.T) {
 	layers, err := TopoLayers(testServices())
 	if err != nil {

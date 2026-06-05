@@ -54,31 +54,19 @@ type InstallResult struct {
 // InstallService runs kb-create install-service on the host and parses its
 // machine-readable JSON result. The release-id is read from a structured object
 // — never scraped from human-readable text — so wording drift cannot produce an
-// empty id that then breaks Swap.
-//
-// Retry: install-service is idempotent (it no-ops when the release dir already
-// exists). If a run exits 0 but yields no JSON result — a rare case where the
-// result line was lost over the SSH stream while the install itself succeeded —
-// one retry re-runs the same command, which no-ops on the now-present dir and
-// returns a clean JSON result. This self-heals the lost-output flake without
-// risking a partial install.
+// empty id that then breaks Swap. install-service buffers all pnpm noise, so its
+// stdout carries only the JSON object even when the SSH transport merges streams.
 func (h *Host) InstallService(opts InstallOpts) (*InstallResult, error) {
 	cmd := h.buildInstallCmd(opts)
-	var lastOut string
-	for attempt := 0; attempt < 2; attempt++ {
-		out, err := h.Runner.Run(cmd)
-		if err != nil {
-			return nil, fmt.Errorf("install-service on %s: %w (output: %s)", h.Name, err, out)
-		}
-		res, perr := parseInstallJSON(out)
-		if perr == nil {
-			return res, nil
-		}
-		lastOut = out // exit 0 but no JSON — retry once (idempotent no-op)
+	out, err := h.Runner.Run(cmd)
+	if err != nil {
+		return nil, fmt.Errorf("install-service on %s: %w (output: %s)", h.Name, err, out)
 	}
-	return nil, fmt.Errorf(
-		"install-service on %s: %w (output: %s)", h.Name,
-		fmt.Errorf("ERR_INSTALL_NO_RELEASE_ID: no JSON result after retry"), lastOut)
+	res, err := parseInstallJSON(out)
+	if err != nil {
+		return nil, fmt.Errorf("install-service on %s: %w (output: %s)", h.Name, err, out)
+	}
+	return res, nil
 }
 
 func (h *Host) buildInstallCmd(opts InstallOpts) string {
@@ -124,31 +112,23 @@ func (h *Host) buildInstallCmd(opts InstallOpts) string {
 func (h *Host) ServiceID(servicePkg, serviceShort string) (string, error) {
 	manifestPath := h.PlatformPath + "/services/" + serviceShort +
 		"/current/node_modules/" + servicePkg + "/dist/manifest.json"
-	// Retry on a transient empty/partial read: the manifest is a hardlink into
-	// the pnpm store written during install; on a busy host the first cat can
-	// occasionally observe it before the write is flushed, yielding
-	// "unexpected end of JSON input". A second read sees the settled file.
-	var lastErr error
-	for attempt := 0; attempt < 3; attempt++ {
-		out, err := h.Runner.Run("cat " + shellQuote(manifestPath))
-		if err != nil {
-			lastErr = fmt.Errorf("read service manifest on %s: %w (output: %s)", h.Name, err, out)
-			continue
-		}
-		var m struct {
-			ID string `json:"id"`
-		}
-		if err := json.Unmarshal([]byte(out), &m); err != nil {
-			lastErr = fmt.Errorf("parse service manifest on %s (%s): %w", h.Name, manifestPath, err)
-			continue
-		}
-		if m.ID == "" {
-			lastErr = fmt.Errorf("service manifest on %s (%s) has empty id", h.Name, manifestPath)
-			continue
-		}
-		return m.ID, nil
+	out, err := h.Runner.Run("cat " + shellQuote(manifestPath))
+	if err != nil {
+		return "", fmt.Errorf("read service manifest on %s: %w (output: %s)", h.Name, err, out)
 	}
-	return "", lastErr
+	var m struct {
+		ID string `json:"id"`
+	}
+	if err := json.Unmarshal([]byte(out), &m); err != nil {
+		// A truncated/empty manifest here means the published package shipped a
+		// bad dist/manifest.json (a build-time emission bug) — fail clearly rather
+		// than mask it; the read itself is reliable over the apply SSH connection.
+		return "", fmt.Errorf("parse service manifest on %s (%s): %w", h.Name, manifestPath, err)
+	}
+	if m.ID == "" {
+		return "", fmt.Errorf("service manifest on %s (%s) has empty id", h.Name, manifestPath)
+	}
+	return m.ID, nil
 }
 
 // ReconcileDevservices prunes devservices.yaml dependsOn entries that name
@@ -230,25 +210,6 @@ func sortedKeys(m map[string]string) []string {
 	}
 	sort.Strings(keys)
 	return keys
-}
-
-// EnsureRunning brings the given services to the running state via
-// `kb-dev ensure` (alive → skip, dead → start). Used as a post-restart settle
-// pass: kb-dev's per-service restart cascade-stops dependents without restarting
-// them, so a dependency restarted after its dependents leaves them down — this
-// re-starts exactly those without churning services that are already up.
-func (h *Host) EnsureRunning(serviceIDs []string) error {
-	if len(serviceIDs) == 0 {
-		return nil
-	}
-	cmd := "kb-dev " + h.devservicesFlag() + "ensure"
-	for _, id := range serviceIDs {
-		cmd += " " + shellQuote(id)
-	}
-	if out, err := h.Runner.Run(cmd); err != nil {
-		return fmt.Errorf("ensure services running on %s: %w (output: %s)", h.Name, err, out)
-	}
-	return nil
 }
 
 // Rollback swaps current back to previous on the target.
