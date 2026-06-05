@@ -232,6 +232,25 @@ func sortedKeys(m map[string]string) []string {
 	return keys
 }
 
+// EnsureRunning brings the given services to the running state via
+// `kb-dev ensure` (alive → skip, dead → start). Used as a post-restart settle
+// pass: kb-dev's per-service restart cascade-stops dependents without restarting
+// them, so a dependency restarted after its dependents leaves them down — this
+// re-starts exactly those without churning services that are already up.
+func (h *Host) EnsureRunning(serviceIDs []string) error {
+	if len(serviceIDs) == 0 {
+		return nil
+	}
+	cmd := "kb-dev " + h.devservicesFlag() + "ensure"
+	for _, id := range serviceIDs {
+		cmd += " " + shellQuote(id)
+	}
+	if out, err := h.Runner.Run(cmd); err != nil {
+		return fmt.Errorf("ensure services running on %s: %w (output: %s)", h.Name, err, out)
+	}
+	return nil
+}
+
 // Rollback swaps current back to previous on the target.
 func (h *Host) Rollback(servicePkg string) error {
 	cmd := fmt.Sprintf("kb-create rollback %s", shellQuote(servicePkg))
