@@ -268,8 +268,50 @@ export class WorkflowEngine {
         this.logger.info('Job re-queued for retry', { runId, jobId })
       }, backoffMs)
     } else {
-      // Move to Dead Letter Queue
-      await this.moveToDLQ(runId, jobId, error)
+      // Terminal failure: no retries left.
+      // 1. Dead-letter the job for observability (cache record, no status change).
+      // 2. Cancel downstream jobs that depend on this one so they don't hang in
+      //    'queued' forever (B-030).
+      // 3. Let checkRunCompletion finalize the run as 'failed' — 'dlq' is reserved
+      //    for infrastructure failures and must not leak as a user-step outcome (B-029).
+      await this.deadLetterJob(runId, jobId, error)
+      await this.cancelDownstreamJobs(runId, job.jobName, `upstream job "${job.jobName}" failed`)
+      await this.checkRunCompletion(runId)
+    }
+  }
+
+  /**
+   * Recursively cancel jobs blocked on a failed/cancelled upstream job, so the
+   * DAG does not leave dependents stuck in 'queued'. Cancellation cascades:
+   * a cancelled job also cancels its own dependents.
+   */
+  private async cancelDownstreamJobs(
+    runId: string,
+    failedJobName: string,
+    reason: string,
+  ): Promise<void> {
+    const released = await this.stateStore.releaseBlockedJobs(runId, failedJobName)
+    for (const downstreamJob of released) {
+      const now = new Date().toISOString()
+      await this.stateStore.updateJob(runId, downstreamJob.id, (draft) => {
+        draft.status = 'cancelled'
+        draft.blocked = false
+        draft.finishedAt = now
+        draft.error = { message: reason, timestamp: now }
+      })
+      await this.events.publish({
+        type: EVENT_NAMES.job.cancelled,
+        runId,
+        jobId: downstreamJob.id,
+        payload: { jobName: downstreamJob.jobName, reason },
+      })
+      this.logger.info('Cancelled dependent job after upstream failure', {
+        runId,
+        jobId: downstreamJob.id,
+        unlockedBy: failedJobName,
+      })
+      // Cascade: this job's own dependents must also be cancelled.
+      await this.cancelDownstreamJobs(runId, downstreamJob.jobName, reason)
     }
   }
 
@@ -780,26 +822,15 @@ export class WorkflowEngine {
   /**
    * Move permanently failed job to Dead Letter Queue.
    */
-  private async moveToDLQ(runId: string, jobId: string, error: Error): Promise<void> {
-    this.logger.warn('Job moved to DLQ after max retries', { runId, jobId })
+  /**
+   * Record a dead-letter entry for a job that exhausted its retries. This is an
+   * observability artifact only — it does NOT change the run status. The run
+   * outcome is decided by checkRunCompletion (→ 'failed'). 'dlq' as a run status
+   * is reserved for infrastructure failures and is no longer set here (B-029).
+   */
+  private async deadLetterJob(runId: string, jobId: string, error: Error): Promise<void> {
+    this.logger.warn('Job dead-lettered after max retries', { runId, jobId })
 
-    // Update run status to 'dlq'
-    await this.stateStore.updateRun(runId, (draft) => {
-      draft.status = 'dlq'
-      draft.result = {
-        status: 'dlq',
-        summary: `Job ${jobId} failed after max retries`,
-        error: {
-          message: error.message,
-          details: {
-            stack: error.stack,
-          },
-        },
-      }
-      draft.finishedAt = new Date().toISOString()
-    })
-
-    // Store in cache with DLQ prefix
     const dlqKey = `workflow:dlq:${runId}:${jobId}`
     const run = await this.stateStore.getRun(runId)
     const job = run?.jobs.find((j) => j.id === jobId)
@@ -819,12 +850,6 @@ export class WorkflowEngine {
       }),
       7 * 24 * 60 * 60 * 1000 // TTL 7 days
     )
-
-    // Publish event
-    const updatedRun = await this.stateStore.getRun(runId)
-    if (updatedRun) {
-      await this.publishRunEvent(EVENT_NAMES.run.failed, updatedRun)
-    }
   }
 
   async updateRun(
