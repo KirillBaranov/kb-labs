@@ -175,6 +175,146 @@ Wave 1 (3 actions)
 └─────────────────────────────────────────────────────────┘
 ```
 
+## Installing plugins and services
+
+Plugins and optional adapters are declared in `.kb/deploy/deploy.yaml` and installed
+alongside the platform services during `kb-deploy apply`. You don't SSH in to install
+plugins — everything is declarative and version-pinned.
+
+### Adding a plugin
+
+Add the plugin package to the `plugins` map of whichever service loads it.
+Most user-facing plugins (commit, review, mind, agents) are loaded by the REST API service:
+
+```yaml
+services:
+  rest:
+    service: "@kb-labs/rest-api-app"
+    version: "2.94.0"
+    adapters: *adapters
+    plugins:
+      "@kb-labs/commit-entry":  "2.94.0"
+      "@kb-labs/review-entry":  "2.94.0"
+      "@kb-labs/mind-entry":    "2.94.0"
+      "@kb-labs/agents-entry":  "2.94.0"
+    targets:
+      hosts: [vm-1]
+      strategy: all
+      healthGate: "60s"
+```
+
+Plugins that hook into the workflow engine are loaded by `workflow-daemon`:
+
+```yaml
+services:
+  workflow:
+    service: "@kb-labs/workflow-daemon"
+    version: "2.94.0"
+    adapters: *adapters
+    plugins:
+      "@kb-labs/workflow-entry": "2.94.0"
+    targets:
+      hosts: [vm-1]
+      strategy: all
+      healthGate: "60s"
+```
+
+### Adapters required by plugins
+
+Some plugins need adapters beyond the base set. Add them to the `adapters` map of the
+service that loads the plugin — not globally.
+
+| Plugin | Extra adapters needed |
+|---|---|
+| `mind-entry` (RAG, vector search) | `vectorStore: @kb-labs/adapters-qdrant@{ver}` + `embeddings: @kb-labs/adapters-openai/embeddings@{ver}` |
+| `agents-entry` | none (uses `llm` from base adapters) |
+| `commit-entry` | none |
+| `review-entry` | none |
+| `inbox-entry` | `notifier: @kb-labs/adapters-telegram@{ver}` (optional) |
+
+Example — enabling the mind plugin with Qdrant:
+
+```yaml
+# Override the shared adapter anchor for rest-api only
+services:
+  rest:
+    service: "@kb-labs/rest-api-app"
+    version: "2.94.0"
+    adapters:
+      llm:             "@kb-labs/adapters-openai@2.94.0"
+      storage:         "@kb-labs/adapters-fs@2.94.0"
+      logger:          "@kb-labs/adapters-pino@2.94.0"
+      logRingBuffer:   "@kb-labs/adapters-log-ringbuffer@2.94.0"
+      analytics:       "@kb-labs/adapters-analytics-file@2.94.0"
+      serviceTransport: "@kb-labs/adapters-service-transport-http@2.94.0"
+      cache:           "@kb-labs/adapters-redis@2.94.0"
+      # mind-specific:
+      vectorStore:     "@kb-labs/adapters-qdrant@2.94.0"
+      embeddings:      "@kb-labs/adapters-openai/embeddings@2.94.0"
+    plugins:
+      "@kb-labs/mind-entry": "2.94.0"
+```
+
+Qdrant also needs to be running. Add it to your `infrastructure` block:
+
+```yaml
+infrastructure:
+  qdrant:
+    type: docker-image
+    image: qdrant/qdrant:latest
+    ssh:
+      host: "${SSH_HOST}"
+      user: "${SSH_USER}"
+      key_env: SSH_KEY
+    volumes:
+      - qdrant_data:/qdrant/storage
+    ports:
+      - "127.0.0.1:6333:6333"
+    restart: unless-stopped
+    strategy: manual
+```
+
+### Per-plugin configuration via env
+
+Plugin-specific config (API keys, endpoints, feature flags) goes in the service `env` block
+or in `kb.config.jsonc` under `adapterOptions`:
+
+```yaml
+# deploy.yaml — env block (resolves ${secrets.X} from CI secrets)
+services:
+  rest:
+    env:
+      TELEGRAM_BOT_TOKEN: "${secrets.TELEGRAM_BOT_TOKEN}"
+```
+
+```jsonc
+// kb.config.jsonc — adapter options
+"adapterOptions": {
+  "notifier": {
+    "token": "${TELEGRAM_BOT_TOKEN}"
+  }
+}
+```
+
+### Third-party and custom plugins
+
+Any plugin published to npm (or your private registry) can be installed the same way — it
+doesn't have to be an official `@kb-labs/*` package:
+
+```yaml
+plugins:
+  "@your-org/kb-my-plugin": "1.2.0"
+```
+
+`kb-create install-service` resolves the plugin from whichever registry is configured in
+the platform `registry` field and bundles it into the service release directory.
+
+### Applying plugin changes
+
+After editing `deploy.yaml`, re-run **Deploy Platform (apply)** (or **Deploy from Registry**).
+The planner detects the plugin set changed and issues a `swap` action for the affected service —
+a zero-downtime reload with the new plugins installed.
+
 ## Installing from npm or a private mirror
 
 The guide above uses the **dogfood workflow** (`Deploy Platform (apply)`) which builds the
