@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { DiagCollector } from './diag-collector.js';
 import type {
   EnsureOptions,
   KbDevControllerOptions,
@@ -55,6 +56,8 @@ export class KbDevController {
   private readonly startedByUs = new Set<ServiceId>();
   /** Cached last status snapshot (invalidated on any mutating call). */
   private lastStatus?: StatusSnapshot;
+  /** Collects KB_DEBUG diagnostic events from service stdout. Undefined when KB_DEBUG is not set. */
+  private readonly diagCollector: DiagCollector | undefined;
 
   constructor(opts: KbDevControllerOptions = {}) {
     this.projectRoot = opts.projectRoot ?? resolveWorkspaceRoot();
@@ -71,6 +74,13 @@ export class KbDevController {
       KB_PROJECT_ROOT: this.projectRoot,
     };
     this.logSink = opts.logSink;
+    // env is fully resolved at this point — reads KB_DEBUG from process.env or opts.env
+    this.diagCollector = this.env.KB_DEBUG === 'true' ? new DiagCollector() : undefined;
+  }
+
+  /** Returns the DiagCollector instance, or undefined when KB_DEBUG is not set. */
+  getDiagCollector(): DiagCollector | undefined {
+    return this.diagCollector;
   }
 
   // ── Public API ────────────────────────────────────────────────────────────
@@ -102,6 +112,7 @@ export class KbDevController {
     // when spawn completes, but health may still be warming up).
     const snapshot = await this.waitUntilAlive(ids, timeoutMs);
     this.lastStatus = snapshot;
+    this.diagCollector?.ingestStatusSnapshot(snapshot);
     return snapshot;
   }
 
@@ -129,6 +140,7 @@ export class KbDevController {
   async status(): Promise<StatusSnapshot> {
     const result = await this.runJson<StatusSnapshot>(['status', '--json'], 10_000);
     this.lastStatus = result;
+    this.diagCollector?.ingestStatusSnapshot(result);
     return result;
   }
 
@@ -287,6 +299,9 @@ export class KbDevController {
           if (line) {
             this.ring.push(`[${stream}] ${line}`);
             this.logSink?.(`[kb-dev ${args[0]}] [${stream}] ${line}`);
+            if (stream === 'stdout') {
+              this.diagCollector?.parseLine(line);
+            }
           }
         }
       };
