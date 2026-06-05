@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -92,11 +93,19 @@ func runInstallService(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("--output must be 'text' or 'json', got %q", installServiceOutput)
 	}
 
-	// In JSON mode, pnpm's progress would otherwise pollute stdout and break the
-	// single-object contract — route it to stderr so stdout carries only the JSON.
+	// In JSON mode, capture ALL install noise (pnpm progress + warnings, which
+	// arrive via the progress channel, plus any adapter stderr) into a buffer.
+	// Callers consume the result over SSH where stdout and stderr are merged into
+	// one stream — leaking pnpm's "npm warn …" lines there interleaves with and
+	// corrupts the single JSON line. Buffering keeps the real stdout clean so the
+	// JSON is the only thing on the wire. On failure the buffer is flushed to
+	// stderr for diagnosis.
 	progressOut := cmd.OutOrStdout()
+	errOut := cmd.ErrOrStderr()
+	var jsonNoise bytes.Buffer
 	if jsonOut {
-		progressOut = cmd.ErrOrStderr()
+		progressOut = &jsonNoise
+		errOut = &jsonNoise
 	}
 
 	opts := installservice.Options{
@@ -109,11 +118,14 @@ func runInstallService(cmd *cobra.Command, args []string) error {
 		ReleaseID:    installServiceID,
 		KeepReleases: installServiceKeep,
 		Stdout:       progressOut,
-		Stderr:       cmd.ErrOrStderr(),
+		Stderr:       errOut,
 	}
 
 	res, err := installservice.Install(context.Background(), opts)
 	if err != nil {
+		if jsonOut && jsonNoise.Len() > 0 {
+			fmt.Fprint(cmd.ErrOrStderr(), jsonNoise.String())
+		}
 		return err
 	}
 
