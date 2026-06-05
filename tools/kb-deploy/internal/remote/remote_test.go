@@ -281,6 +281,29 @@ func TestSwap_WithEnvOverrides(t *testing.T) {
 	}
 }
 
+func TestEnsureRunning(t *testing.T) {
+	fr := &fakeRunner{}
+	h := &Host{Name: "p1", Runner: fr, PlatformPath: "/opt/kb"}
+	if err := h.EnsureRunning([]string{"gateway", "studio"}); err != nil {
+		t.Fatalf("unexpected: %v", err)
+	}
+	want := "kb-dev --config '/opt/kb/.kb/devservices.yaml' ensure 'gateway' 'studio'"
+	if fr.log[0] != want {
+		t.Errorf("got %q\nwant %q", fr.log[0], want)
+	}
+}
+
+func TestEnsureRunning_EmptyIsNoop(t *testing.T) {
+	fr := &fakeRunner{}
+	h := &Host{Name: "p1", Runner: fr}
+	if err := h.EnsureRunning(nil); err != nil {
+		t.Fatalf("unexpected: %v", err)
+	}
+	if len(fr.log) != 0 {
+		t.Errorf("expected no command, got %v", fr.log)
+	}
+}
+
 func TestRollback(t *testing.T) {
 	fr := &fakeRunner{}
 	h := &Host{Name: "p1", Runner: fr}

@@ -61,6 +61,7 @@ type ActionResult struct {
 	Action    Action
 	Completed bool
 	ReleaseID string // what ended up current after the action; empty on failure
+	ServiceID string // kb-dev manifest id of the (re)started service, if resolved
 	Err       error
 }
 
@@ -268,7 +269,49 @@ func runWave(actions []Action, parallel int, opts ExecuteOptions, forceRestart m
 		}
 		results[i] = restartAction(actions[i], results[i], opts)
 	})
+	if anyActionErr(results) {
+		return results
+	}
+
+	// Phase 4 — settle: ensure every restarted service is running.
+	//
+	// kb-dev's per-service `restart` cascade-STOPS a service's dependents but does
+	// not bring them back. So restarting a low-level dependency (rest) after its
+	// dependents (gateway, studio) leaves those dependents stopped even though each
+	// passed its own health gate at restart time. A single idempotent `kb-dev
+	// ensure <all restarted ids>` per host re-starts anything that got
+	// cascade-stopped (alive → skip, dead → start) so the wave's end state matches
+	// the per-service health gates.
+	for _, host := range uniqueRestartHosts(actions, needsRestart) {
+		h, err := opts.Resolver(host)
+		if err != nil {
+			setHostErr(results, actions, host, fmt.Errorf("resolve host %s: %w", host, err))
+			return results
+		}
+		ids := restartedServiceIDs(results, host)
+		if len(ids) == 0 {
+			continue
+		}
+		if err := h.EnsureRunning(ids); err != nil {
+			setHostErr(results, actions, host, err)
+			return results
+		}
+	}
 	return results
+}
+
+// restartedServiceIDs collects the kb-dev manifest ids of successfully-restarted
+// services on a host, for the settle pass.
+func restartedServiceIDs(results []ActionResult, host string) []string {
+	var ids []string
+	seen := map[string]bool{}
+	for _, r := range results {
+		if r.Action.Host == host && r.ServiceID != "" && !seen[r.ServiceID] {
+			seen[r.ServiceID] = true
+			ids = append(ids, r.ServiceID)
+		}
+	}
+	return ids
 }
 
 // runConcurrent runs fn(0..n-1) with at most `parallel` in flight.
@@ -407,6 +450,7 @@ func restartAction(a Action, res ActionResult, opts ExecuteOptions) ActionResult
 		res.Err = err
 		return res
 	}
+	res.ServiceID = serviceID
 	if err := host.RestartAndWaitHealthy(serviceID, healthGate); err != nil {
 		res.Err = err
 		return res
