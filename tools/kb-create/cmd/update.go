@@ -58,6 +58,8 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 	}
 	defer func() { _ = log.Close() }()
 
+	registry = resolveUpdateRegistry(registry, platformDir)
+
 	packageManager := pm.Detect(pm.DetectOptions{Registry: registry})
 
 	ins := &installer.Installer{
@@ -306,4 +308,22 @@ func resolvePlatformDir(cmd *cobra.Command) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("platform directory not specified — use --platform or run from the platform directory")
+}
+
+// resolveUpdateRegistry returns the npm registry to use for an update.
+// If flagRegistry is explicitly provided (non-empty), it takes priority.
+// Otherwise falls back to the registry saved in the platform config so that
+// updates fetch from the same source as the original install.
+// This prevents silently switching from a local Verdaccio to npmjs.org,
+// which can cause version mismatches when local packages shadow npm ones (B-014).
+func resolveUpdateRegistry(flagRegistry, platformDir string) string {
+	if flagRegistry != "" {
+		return flagRegistry
+	}
+	if cfg, err := config.Read(platformDir); err == nil {
+		if saved := cfg.Source.Registry; saved != "" {
+			return saved
+		}
+	}
+	return ""
 }
