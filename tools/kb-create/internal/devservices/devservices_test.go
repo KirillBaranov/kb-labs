@@ -126,7 +126,7 @@ func TestEntryForSwap_BuildsCommandAndHealth(t *testing.T) {
 	manifest.Runtime.Port = 4000
 	manifest.Runtime.HealthCheck = "/health"
 
-	id, svc := EntryForSwap("/opt/kb-platform", "@kb-labs/gateway-test", "gateway-test", manifest)
+	id, svc := EntryForSwap("/opt/kb-platform", "@kb-labs/gateway-test", "gateway-test", manifest, nil)
 	if id != "gateway-test" {
 		t.Errorf("id = %q", id)
 	}
@@ -156,12 +156,46 @@ func TestEntryForSwap_EnvDefaultsOnly(t *testing.T) {
 		},
 	}
 	m.Runtime.Entry = "e.js"
-	_, svc := EntryForSwap("/p", "@x/y", "y", m)
+	_, svc := EntryForSwap("/p", "@x/y", "y", m, nil)
 	if svc.Env["PORT"] != "4000" || svc.Env["LOG"] != "info" {
 		t.Errorf("defaults lost: %v", svc.Env)
 	}
 	if _, ok := svc.Env["REQUIRED"]; ok {
 		t.Errorf("REQUIRED without default leaked into devservices env: %v", svc.Env)
+	}
+}
+
+// TestEntryForSwap_EnvOverridesRetargetPort is the Studio regression: a deploy
+// env override of PORT must win over the manifest default AND retarget the
+// health-check + url so kb-dev probes the right port (manifest 3000 → 3002).
+func TestEntryForSwap_EnvOverridesRetargetPort(t *testing.T) {
+	m := &ServiceManifest{
+		Schema: "kb.service/1",
+		ID:     "studio",
+		Env:    map[string]ServiceEnvVar{"PORT": {Default: "3000"}},
+	}
+	m.Runtime.Entry = "server.js"
+	m.Runtime.Port = 3000
+	m.Runtime.HealthCheck = "/"
+
+	_, svc := EntryForSwap("/p", "@kb-labs/studio-app", "studio-app", m, map[string]string{
+		"PORT":            "3002",
+		"KB_API_BASE_URL": "https://x/api/v1",
+	})
+	if svc.Env["PORT"] != "3002" {
+		t.Errorf("PORT override lost: %v", svc.Env)
+	}
+	if svc.Env["KB_API_BASE_URL"] != "https://x/api/v1" {
+		t.Errorf("extra override lost: %v", svc.Env)
+	}
+	if svc.Port != 3002 {
+		t.Errorf("port not retargeted: %d", svc.Port)
+	}
+	if svc.HealthCheck != "http://localhost:3002/" {
+		t.Errorf("health not retargeted: %q", svc.HealthCheck)
+	}
+	if svc.URL != "http://localhost:3002" {
+		t.Errorf("url not retargeted: %q", svc.URL)
 	}
 }
 
