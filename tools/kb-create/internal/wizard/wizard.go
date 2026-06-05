@@ -200,6 +200,10 @@ type wizardModel struct {
 	showAPIKeyInput  bool
 	telemetryEnabled bool
 	llmEnabled       bool
+
+	// LLM provider selection (replaces gateway auto-registration).
+	llmProvider  string         // "openai" | "anthropic" | "" (skip)
+	llmKeyInput  textinput.Model
 }
 
 func newModel(m *manifest.Manifest, opts WizardOptions) wizardModel {
@@ -784,6 +788,10 @@ func (m wizardModel) toSelection() *installer.Selection {
 		Consent:          m.consent,
 		TelemetryEnabled: m.telemetryEnabled,
 		LLMEnabled:       m.llmEnabled || m.consent == types.ConsentDemo,
+		LLMProvider:      m.llmProvider,
+	}
+	if m.llmProvider != "" {
+		sel.LLMKey = m.llmKeyInput.Value()
 	}
 	if m.consent == types.ConsentOwnKey {
 		sel.APIKey = m.apiKeyInput.Value()
