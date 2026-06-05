@@ -49,6 +49,14 @@ type Options struct {
 	// KVStore is the npm package that implements IKVStore
 	// (e.g. "@kb-labs/adapters-sqlite/kv"). Written alongside DocumentDatabase.
 	KVStore string
+	// GatewayAuthEnabled controls the generated gateway.auth.enabled value.
+	// nil → omit (production default: auth on). Solo local installs set it to
+	// false so Studio opens without login (B-023).
+	GatewayAuthEnabled *bool
+	// GatewayHost controls the generated gateway.host value. "" → omit
+	// (production default: 0.0.0.0). Solo local installs set "127.0.0.1" so a
+	// no-auth Studio is never reachable off the machine.
+	GatewayHost string
 }
 
 // WritePlatformConfig writes the full platform config to platformDir/.kb/kb.config.jsonc.
@@ -159,6 +167,12 @@ func ReadPlatformOptions(platformDir string, projectDir ...string) Options {
 				KVStore          string `json:"kvStore"`
 			} `json:"adapters"`
 		} `json:"platform"`
+		Gateway struct {
+			Host string `json:"host"`
+			Auth *struct {
+				Enabled *bool `json:"enabled"`
+			} `json:"auth"`
+		} `json:"gateway"`
 	}
 	if err := json.Unmarshal([]byte(cleaned), &cfg); err != nil {
 		return opts
@@ -178,6 +192,12 @@ func ReadPlatformOptions(platformDir string, projectDir ...string) Options {
 	// remove adapters that were set from the manifest's adapterConfig.
 	opts.DocumentDatabase = cfg.Platform.Adapters.DocumentDatabase
 	opts.KVStore = cfg.Platform.Adapters.KVStore
+	// Preserve gateway host + auth.enabled so kb-create update does not flip a
+	// solo no-auth install back to auth-on, nor a cloud install to no-auth (B-023).
+	opts.GatewayHost = cfg.Gateway.Host
+	if cfg.Gateway.Auth != nil && cfg.Gateway.Auth.Enabled != nil {
+		opts.GatewayAuthEnabled = cfg.Gateway.Auth.Enabled
+	}
 	// Preserve existing LLM adapter options (e.g. gateway URL + credentials)
 	// so that kb-create update does not reset --llm configuration.
 	llmRaw := string(cfg.AdapterOptions.LLM)
@@ -372,7 +392,21 @@ func generateFull(opts Options) string {
   // adapterOptions.serviceTransport.services above.
   // /ready checks that the "rest" upstream is up — keep this section present.
   "gateway": {
-    "upstreams": {
+`)
+	if opts.GatewayHost != "" {
+		b.WriteString("    // Bind host. 127.0.0.1 = local only (solo). 0.0.0.0 = network (deploy).\n")
+		fmt.Fprintf(&b, "    \"host\": %s,\n", quote(opts.GatewayHost))
+	}
+	if opts.GatewayAuthEnabled != nil {
+		if *opts.GatewayAuthEnabled {
+			b.WriteString("    \"auth\": { \"enabled\": true },\n")
+		} else {
+			b.WriteString("    // Auth disabled for local solo use — Studio opens without login.\n")
+			b.WriteString("    // Guardrail: the gateway refuses to start with auth off on a non-loopback host.\n")
+			b.WriteString("    \"auth\": { \"enabled\": false },\n")
+		}
+	}
+	b.WriteString(`    "upstreams": {
       // REST API — main platform BFF.
       "rest":        { "serviceId": "rest",        "prefix": "/api/v1",             "websocket": true },
       // Workflow daemon — execution engine.

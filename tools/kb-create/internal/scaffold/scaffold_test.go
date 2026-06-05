@@ -84,6 +84,64 @@ func TestWritePlatformConfig_NoDocumentDatabase(t *testing.T) {
 	}
 }
 
+func TestWritePlatformConfig_SoloAuthOff(t *testing.T) {
+	platformDir := t.TempDir()
+	authOff := false
+
+	err := WritePlatformConfig(platformDir, Options{
+		PlatformDir:        platformDir,
+		GatewayAuthEnabled: &authOff,
+		GatewayHost:        "127.0.0.1",
+	})
+	if err != nil {
+		t.Fatalf("WritePlatformConfig() error = %v", err)
+	}
+
+	content := readKbConfig(t, platformDir)
+	assertContains(t, content, `"host": "127.0.0.1"`, "gateway host loopback")
+	assertContains(t, content, `"auth": { "enabled": false }`, "gateway auth disabled")
+}
+
+func TestReadPlatformOptions_PreservesGatewayAuth(t *testing.T) {
+	platformDir := t.TempDir()
+	authOff := false
+
+	// Write a solo (auth-off) config, then read it back via the update path.
+	if err := WritePlatformConfig(platformDir, Options{
+		PlatformDir:        platformDir,
+		GatewayAuthEnabled: &authOff,
+		GatewayHost:        "127.0.0.1",
+	}); err != nil {
+		t.Fatalf("WritePlatformConfig() error = %v", err)
+	}
+
+	got := ReadPlatformOptions(platformDir)
+	if got.GatewayHost != "127.0.0.1" {
+		t.Errorf("GatewayHost not preserved: got %q", got.GatewayHost)
+	}
+	if got.GatewayAuthEnabled == nil || *got.GatewayAuthEnabled != false {
+		t.Errorf("GatewayAuthEnabled not preserved as false: got %v", got.GatewayAuthEnabled)
+	}
+}
+
+func TestWritePlatformConfig_GatewayDefaults(t *testing.T) {
+	platformDir := t.TempDir()
+
+	// No gateway options → production defaults: no host, no auth.enabled line.
+	err := WritePlatformConfig(platformDir, Options{PlatformDir: platformDir})
+	if err != nil {
+		t.Fatalf("WritePlatformConfig() error = %v", err)
+	}
+
+	content := readKbConfig(t, platformDir)
+	if strings.Contains(content, `"auth": { "enabled"`) {
+		t.Error("auth.enabled must not be written when GatewayAuthEnabled is nil (production default)")
+	}
+	if strings.Contains(content, `"host": "127.0.0.1"`) {
+		t.Error("loopback host must not be written when GatewayHost is empty")
+	}
+}
+
 func TestWritePlatformConfig_AlwaysOverwrites(t *testing.T) {
 	platformDir := t.TempDir()
 	opts := Options{PlatformDir: platformDir, Services: []string{"rest"}}
