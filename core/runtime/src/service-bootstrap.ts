@@ -162,6 +162,21 @@ export interface ServiceBootstrapOptions {
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   uiProvider?: (hostType: string) => any;
+  /**
+   * Applies the platform adapter assembly pipeline
+   * (resource-broker → analytics → LLM router → PII redaction).
+   *
+   * Required for all services. Use makeAssemblyHook() from @kb-labs/plugin-runtime.
+   * createServiceBootstrap always assembles the platform — this is part of the contract.
+   *
+   * Sandbox/IPC-proxy workers that bypass createServiceBootstrap entirely
+   * (calling initPlatform directly in child processes) do not need this.
+   */
+  assemblyHook: (
+    raw: object,
+    broker: unknown,
+    adapterConfig: Partial<Record<string, unknown>>,
+  ) => Partial<Record<string, unknown>>;
 }
 
 /**
@@ -178,7 +193,7 @@ export interface ServiceBootstrapOptions {
 export async function createServiceBootstrap(
   options: ServiceBootstrapOptions,
 ): Promise<typeof platform> {
-  const { appId, repoRoot, storeRawConfig = true, loadEnv = true, uiProvider } = options;
+  const { appId, repoRoot, storeRawConfig = true, loadEnv = true, uiProvider, assemblyHook } = options;
 
   _ensureHooksRegistered(appId);
   // Register SIGTERM/SIGINT → platform.shutdown() once per process lifetime.
@@ -224,6 +239,7 @@ export async function createServiceBootstrap(
       projectRoot,
       uiProvider,
       platformRoot !== projectRoot ? platformRoot : undefined,
+      assemblyHook,
     );
     _initialized = true;
 

@@ -21,6 +21,7 @@
     "@kb-labs/core-config": "workspace:*",
     "@kb-labs/core-platform": "workspace:*",
     "@kb-labs/core-runtime": "workspace:*",
+    "@kb-labs/plugin-runtime": "workspace:*",
     "@kb-labs/core-sys": "workspace:*",
     "@kb-labs/marketplace-api": "workspace:*",
     "@kb-labs/marketplace-core": "workspace:*",

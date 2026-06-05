@@ -4,6 +4,7 @@
  */
 
 import { platform, createServiceBootstrap } from '@kb-labs/core-runtime';
+import { makeAssemblyHook } from '@kb-labs/plugin-runtime';
 import { WorkflowEngine, WorkflowService } from '@kb-labs/workflow-engine';
 import { createCorrelatedLogger, getListenOptions } from '@kb-labs/shared-http';
 import { createWorkflowWorker } from './worker.js';
@@ -36,7 +37,7 @@ export async function bootstrap(cwd: string = process.cwd()): Promise<void> {
   const projectRoot = process.env['KB_PROJECT_ROOT'] ?? repoRoot;
 
   // Initialize platform (loads .env + adapters from kb.config.json)
-  await createServiceBootstrap({ appId: 'workflow-daemon', repoRoot });
+  await createServiceBootstrap({ appId: 'workflow-daemon', repoRoot, assemblyHook: makeAssemblyHook() });
 
   if (!platform.isConfigured('workspace')) {
     // Not fatal — workflows with explicit isolation: relaxed will still work.
