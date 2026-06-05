@@ -334,8 +334,22 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
   const server = await createServer(config, cache, platform.logger, jwtConfig, registry, serviceTransport, userAuth, webhookManifests);
 
   // 11. Listen
-  const address = await server.listen({ port: config.port, host: '0.0.0.0' });
-  logger.info('Gateway listening', { address });
+  const bindHost = config.host ?? '0.0.0.0';
+
+  // Safety guardrail (B-023): a platform with auth disabled must never be
+  // reachable off the local machine. If auth is off, the bind host MUST be a
+  // loopback address — otherwise refuse to start with a clear, actionable error.
+  if (config.auth?.enabled === false && !isLoopbackHost(bindHost)) {
+    throw new Error(
+      `Refusing to start: auth is disabled but the gateway binds to "${bindHost}" ` +
+      `(not loopback). A no-auth platform reachable on the network grants full ` +
+      `access to anyone. Either set gateway.auth.enabled = true, or bind to ` +
+      `127.0.0.1 (gateway.host) for solo/local use.`,
+    );
+  }
+
+  const address = await server.listen({ port: config.port, host: bindHost });
+  logger.info('Gateway listening', { address, authEnabled: config.auth?.enabled !== false });
 
   // 10. Graceful shutdown
   const shutdown = async (signal: string) => {
@@ -348,4 +362,19 @@ export async function bootstrap(repoRoot: string = process.cwd()): Promise<void>
 
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));
+}
+
+/**
+ * True when the bind host is a loopback address (only reachable from the local
+ * machine). Used by the auth-disabled startup guardrail (B-023).
+ */
+export function isLoopbackHost(host: string): boolean {
+  const h = host.trim().toLowerCase();
+  return (
+    h === '127.0.0.1' ||
+    h === 'localhost' ||
+    h === '::1' ||
+    h === '[::1]' ||
+    h.startsWith('127.')
+  );
 }

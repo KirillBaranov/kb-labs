@@ -2,7 +2,21 @@ import type { FastifyRequest, FastifyReply } from 'fastify';
 import type { ICache } from '@kb-labs/core-platform';
 import type { AuthContext } from '@kb-labs/gateway-contracts';
 import type { JwtConfig } from '@kb-labs/gateway-auth';
+import { PERMISSIONS } from '@kb-labs/core-contracts';
 import { resolveToken, extractBearerToken } from './tokens.js';
+
+/**
+ * Deterministic identity used when auth is disabled (solo/local mode). All
+ * requests run as this single local admin so namespaced data and audit logs
+ * stay coherent, and enabling auth later does not invalidate existing data.
+ */
+export const LOCAL_ADMIN_CONTEXT: AuthContext = {
+  type: 'machine',
+  userId: 'local-admin',
+  namespaceId: 'local',
+  tier: 'enterprise',
+  permissions: Object.values(PERMISSIONS),
+};
 
 // Routes that don't require auth (handle their own auth internally)
 const PUBLIC_ROUTES = new Set([
@@ -30,11 +44,24 @@ declare module 'fastify' {
   }
 }
 
-export function createAuthMiddleware(cache: ICache, jwtConfig: JwtConfig) {
+export function createAuthMiddleware(
+  cache: ICache,
+  jwtConfig: JwtConfig,
+  options: { authEnabled?: boolean } = {},
+) {
+  const authEnabled = options.authEnabled !== false; // default: enabled
   return async function authMiddleware(
     request: FastifyRequest,
     reply: FastifyReply,
   ): Promise<void> {
+    // Auth disabled (solo/local mode): every request runs as the local admin.
+    // The startup guardrail (bootstrap) guarantees this only happens on a
+    // loopback bind, so it never exposes an open platform on the network.
+    if (!authEnabled) {
+      request.authContext = LOCAL_ADMIN_CONTEXT;
+      return;
+    }
+
     const rawPath = new URL(request.url, 'http://localhost').pathname;
     const routePath = rawPath.replace(/\/+/g, '/').replace(/\/+$/, '') || '/';
     if (PUBLIC_ROUTES.has(routePath)) {return;}
