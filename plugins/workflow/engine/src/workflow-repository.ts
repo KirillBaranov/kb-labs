@@ -315,7 +315,9 @@ export class WorkflowRepository {
 
       // Check if it's already in StoredWorkflow format
       if (parsed.id && parsed.spec && parsed.createdAt) {
-        return parsed as unknown as StoredWorkflow;
+        // Force id to the filename so list()/get() stay consistent even if the
+        // file was renamed after creation (B-016).
+        return { ...(parsed as unknown as StoredWorkflow), id };
       }
 
       // Otherwise, it's a simple workflow YAML - convert to StoredWorkflow
@@ -332,7 +334,10 @@ export class WorkflowRepository {
       };
 
       const stored: StoredWorkflow = {
-        id: (parsed.id as string) || id,
+        // The filename is the canonical id for file-based workflows. Using the
+        // inner `id:` here made list() report an id that get()/getWorkflowPath()
+        // (which resolve by filename) could not find → POST /runs 404 (B-016).
+        id,
         spec,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
