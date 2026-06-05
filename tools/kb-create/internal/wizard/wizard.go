@@ -152,6 +152,7 @@ const (
 	stagePreset
 	stageCustom
 	stageConsent
+	stageLLM     // pick LLM provider + enter API key
 	stageConfirm
 )
 
@@ -202,8 +203,10 @@ type wizardModel struct {
 	llmEnabled       bool
 
 	// LLM provider selection (replaces gateway auto-registration).
-	llmProvider  string         // "openai" | "anthropic" | "" (skip)
-	llmKeyInput  textinput.Model
+	llmProvider       string         // "openai" | "anthropic" | "" (skip)
+	llmKeyInput       textinput.Model
+	llmProviderCursor int            // cursor in provider list
+	llmShowKeyInput   bool
 }
 
 func newModel(m *manifest.Manifest, opts WizardOptions) wizardModel {
@@ -233,6 +236,11 @@ func newModel(m *manifest.Manifest, opts WizardOptions) wizardModel {
 	aki.Width = 50
 	aki.EchoMode = textinput.EchoPassword
 
+	lki := textinput.New()
+	lki.Placeholder = "sk-... (your API key)"
+	lki.Width = 50
+	lki.EchoMode = textinput.EchoPassword
+
 	// Pre-fill services/plugins using their default flag (for Custom mode initial state).
 	services := make([]checkItem, len(m.Services))
 	for i, s := range m.Services {
@@ -260,6 +268,7 @@ func newModel(m *manifest.Manifest, opts WizardOptions) wizardModel {
 		selectedPreset:   -1,
 		telemetryEnabled: true,
 		llmEnabled:       false,
+		llmKeyInput:      lki,
 	}
 }
 
@@ -283,6 +292,10 @@ func (m wizardModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.showAPIKeyInput {
 			m.apiKeyInput, cmd = m.apiKeyInput.Update(msg)
 		}
+	case stageLLM:
+		if m.llmShowKeyInput {
+			m.llmKeyInput, cmd = m.llmKeyInput.Update(msg)
+		}
 	}
 	return m, cmd
 }
@@ -297,6 +310,8 @@ func (m wizardModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleCustomKey(msg)
 	case stageConsent:
 		return m.handleConsentKey(msg)
+	case stageLLM:
+		return m.handleLLMKey(msg)
 	case stageConfirm:
 		return m.handleConfirmKey(msg)
 	}
@@ -365,8 +380,13 @@ func (m wizardModel) handlePresetKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		svcs, plugs := resolvePreset(preset, m.manifest)
 		m.applySelection(svcs, plugs)
 
-		m.stage = stageConsent
-		m.consentCursor = 0
+		if m.demoMode {
+			m.stage = stageConsent
+			m.consentCursor = 0
+		} else {
+			m.stage = stageLLM
+			m.llmProviderCursor = 0
+		}
 	}
 	return m, nil
 }
@@ -388,8 +408,13 @@ func (m wizardModel) handleCustomKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case " ":
 		m.toggleCursor()
 	case "enter":
-		m.stage = stageConsent
-		m.consentCursor = 0
+		if m.demoMode {
+			m.stage = stageConsent
+			m.consentCursor = 0
+		} else {
+			m.stage = stageLLM
+			m.llmProviderCursor = 0
+		}
 	}
 	return m, nil
 }
@@ -476,6 +501,71 @@ func (m wizardModel) handleConsentKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// llmProviderOptions lists provider choices shown in stageLLM.
+var llmProviderOptions = []struct {
+	id   string
+	name string
+	desc string
+}{
+	{"openai", "OpenAI", "OPENAI_API_KEY — GPT-4o, GPT-4-turbo, etc."},
+	{"anthropic", "Anthropic", "ANTHROPIC_API_KEY — Claude 3.5 Sonnet, etc."},
+	{"", "Skip", "Configure LLM later via .kb/kb.config.json"},
+}
+
+func (m wizardModel) handleLLMKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Key input sub-step: user is typing their API key.
+	if m.llmShowKeyInput {
+		switch msg.String() {
+		case "ctrl+c", "esc":
+			// Back to provider list without saving.
+			m.llmShowKeyInput = false
+			m.llmKeyInput.Blur()
+			m.llmKeyInput.SetValue("")
+			return m, nil
+		case "enter":
+			key := strings.TrimSpace(m.llmKeyInput.Value())
+			if key == "" {
+				return m, nil // keep waiting for a value
+			}
+			m.llmProvider = llmProviderOptions[m.llmProviderCursor].id
+			m.stage = stageConfirm
+			return m, nil
+		}
+		var cmd tea.Cmd
+		m.llmKeyInput, cmd = m.llmKeyInput.Update(msg)
+		return m, cmd
+	}
+
+	// Provider list navigation.
+	switch msg.String() {
+	case "ctrl+c", "esc":
+		m.cancelled = true
+		return m, tea.Quit
+	case "up", "k":
+		if m.llmProviderCursor > 0 {
+			m.llmProviderCursor--
+		}
+	case "down", "j":
+		if m.llmProviderCursor < len(llmProviderOptions)-1 {
+			m.llmProviderCursor++
+		}
+	case "enter":
+		chosen := llmProviderOptions[m.llmProviderCursor]
+		if chosen.id == "" {
+			// Skip — no provider, go straight to confirm.
+			m.llmProvider = ""
+			m.stage = stageConfirm
+			return m, nil
+		}
+		// Show key input for the chosen provider.
+		m.llmShowKeyInput = true
+		m.llmKeyInput.SetValue("")
+		m.llmKeyInput.Focus()
+		return m, textinput.Blink
+	}
+	return m, nil
+}
+
 func (m wizardModel) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "ctrl+c", "esc", "n", "N":
@@ -499,6 +589,8 @@ func (m wizardModel) View() string {
 		return m.viewCustom()
 	case stageConsent:
 		return m.viewConsent()
+	case stageLLM:
+		return m.viewLLM()
 	case stageConfirm:
 		return m.viewConfirm()
 	}
@@ -658,6 +750,41 @@ func (m wizardModel) viewConsent() string {
 	return b.String()
 }
 
+func (m wizardModel) viewLLM() string {
+	var b strings.Builder
+	b.WriteString(titleStyle.Render("  KB Labs") + "  LLM provider\n\n")
+
+	if m.llmShowKeyInput {
+		provider := llmProviderOptions[m.llmProviderCursor]
+		b.WriteString("  " + sectionStyle.Render(provider.name+" API key") + "\n")
+		b.WriteString(dimStyle.Render("  "+provider.desc) + "\n\n")
+		b.WriteString("  " + m.llmKeyInput.View() + "\n\n")
+		b.WriteString(helpStyle.Render("  enter confirm · esc back"))
+		return b.String()
+	}
+
+	b.WriteString("  " + sectionStyle.Render("Choose your LLM provider") + "\n")
+	b.WriteString(dimStyle.Render("  Your API key is written to .env (gitignored).") + "\n\n")
+
+	for i, opt := range llmProviderOptions {
+		cursor := "  "
+		if i == m.llmProviderCursor {
+			cursor = focusStyle.Render(" ▶")
+		}
+		radio := "○"
+		nameStyle := normalStyle
+		if i == m.llmProviderCursor {
+			radio = focusStyle.Render("●")
+			nameStyle = focusStyle
+		}
+		fmt.Fprintf(&b, "%s %s  %s\n", cursor, radio, nameStyle.Render(opt.name))
+		fmt.Fprintf(&b, "      %s\n\n", dimStyle.Render(opt.desc))
+	}
+
+	b.WriteString(helpStyle.Render("  ↑↓ move · enter select · esc quit"))
+	return b.String()
+}
+
 func (m wizardModel) viewConfirm() string {
 	var b strings.Builder
 	b.WriteString(titleStyle.Render("  KB Labs") + "  ready to install\n\n")
@@ -685,9 +812,18 @@ func (m wizardModel) viewConfirm() string {
 		fmt.Fprintf(&b, "\n  Components: %s\n", dimStyle.Render(strings.Join(selected, ", ")))
 	}
 
-	llmLabel := "off"
-	if m.llmEnabled || (m.demoMode && m.consent == types.ConsentDemo) {
-		llmLabel = "on · KB Labs Gateway (50 free requests)"
+	llmLabel := "off (configure later in .kb/kb.config.json)"
+	if m.llmProvider != "" {
+		providerName := m.llmProvider
+		for _, opt := range llmProviderOptions {
+			if opt.id == m.llmProvider {
+				providerName = opt.name
+				break
+			}
+		}
+		llmLabel = "on · " + providerName + " (key written to .env)"
+	} else if m.llmEnabled || (m.demoMode && m.consent == types.ConsentDemo) {
+		llmLabel = "on · KB Labs Gateway"
 	}
 	fmt.Fprintf(&b, "\n  LLM:        %s\n", focusStyle.Render(llmLabel))
 
