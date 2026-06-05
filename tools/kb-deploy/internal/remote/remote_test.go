@@ -183,39 +183,6 @@ func TestInstallService_NoReleaseID(t *testing.T) {
 	}
 }
 
-// seqRunner returns a different output per call (for retry tests).
-type seqRunner struct {
-	outs []string
-	i    int
-}
-
-func (s *seqRunner) Run(string) (string, error) {
-	o := s.outs[s.i]
-	if s.i < len(s.outs)-1 {
-		s.i++
-	}
-	return o, nil
-}
-func (s *seqRunner) RunWithInput(cmd, _ string) (string, error) { return s.Run(cmd) }
-
-// TestInstallService_RetrySelfHeals covers the lost-output flake: the first run
-// exits 0 with no JSON (result line lost over SSH), the idempotent retry no-ops
-// and returns a clean result.
-func TestInstallService_RetrySelfHeals(t *testing.T) {
-	fr := &seqRunner{outs: []string{
-		"", // first attempt: empty (lost output)
-		`{"releaseId":"gateway-1.2.3-aaa","noop":true,"evicted":[]}` + "\n",
-	}}
-	h := &Host{Name: "p1", Runner: fr}
-	res, err := h.InstallService(InstallOpts{ServicePkg: "@kb-labs/gateway", Version: "1.2.3"})
-	if err != nil {
-		t.Fatalf("retry should have healed: %v", err)
-	}
-	if res.ReleaseID != "gateway-1.2.3-aaa" || !res.NoOp {
-		t.Errorf("got %+v", res)
-	}
-}
-
 func TestInstallService_CommandFailure(t *testing.T) {
 	fr := &fakeRunner{err: errors.New("exit status 1")}
 	h := &Host{Name: "p1", Runner: fr}

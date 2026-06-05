@@ -403,19 +403,28 @@ func (m *Manager) Stop(ctx context.Context, targets []string, cascade bool) *Res
 	})
 }
 
+// withDependents returns targets plus their (transitive) dependents, de-duped.
+// Used by cascade stop/restart so a service is never left running against a
+// dependency that is being restarted.
+func (m *Manager) withDependents(targets []string) []string {
+	out := make([]string, len(targets))
+	copy(out, targets)
+	for _, t := range targets {
+		for _, d := range m.cfg.Dependents(t) {
+			if !contains(out, d) {
+				out = append(out, d)
+			}
+		}
+	}
+	return out
+}
+
 func (m *Manager) stopInternal(_ context.Context, targets []string, cascade bool) *Result {
 	toStop := make([]string, len(targets))
 	copy(toStop, targets)
 
 	if cascade {
-		for _, t := range targets {
-			deps := m.cfg.Dependents(t)
-			for _, d := range deps {
-				if !contains(toStop, d) {
-					toStop = append(toStop, d)
-				}
-			}
-		}
+		toStop = m.withDependents(targets)
 	}
 
 	var actions []Action
@@ -474,9 +483,19 @@ func isPortOccupied(port int) bool {
 // Restart stops then starts services, with optional cascade.
 func (m *Manager) Restart(ctx context.Context, targets []string, cascade, force bool) *Result {
 	return m.withLock(func() *Result {
-		stopResult := m.stopInternal(ctx, targets, cascade)
+		// Expand to dependents UP FRONT so the same set is both stopped and
+		// started. A cascade restart stops a service's dependents (so they don't
+		// run against a mid-restart dependency); they must then be started again.
+		// Restarting only `targets` while stopping `targets + dependents` was the
+		// bug — dependents were cascade-stopped and never brought back.
+		restartSet := targets
+		if cascade {
+			restartSet = m.withDependents(targets)
+		}
+		// Set is already expanded, so stop without re-cascading.
+		stopResult := m.stopInternal(ctx, restartSet, false)
 		time.Sleep(500 * time.Millisecond)
-		startResult := m.startInternal(ctx, targets, force)
+		startResult := m.startInternal(ctx, restartSet, force)
 
 		allActions := make([]Action, 0, len(stopResult.Actions)+len(startResult.Actions))
 		allActions = append(allActions, stopResult.Actions...)
