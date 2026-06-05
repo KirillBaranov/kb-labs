@@ -1,0 +1,148 @@
+# Deploy KB Labs from a published registry (npm or private mirror).
+#
+# Use this workflow when @kb-labs/* packages are already published —
+# either to the public npm registry or to your own Nexus/Artifactory instance.
+# No monorepo build, no Verdaccio, no pack step — just kb-deploy apply.
+#
+# Compare with deploy-platform.yml (the internal dogfood workflow that builds
+# from source and publishes to a private Verdaccio on the target host).
+name: Deploy from Registry
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Platform version to deploy (must exist in the registry).
+        required: true
+        type: string
+      registry:
+        description: npm registry URL. Leave empty to use public npm.
+        default: ""
+        type: string
+      dry_run:
+        description: Plan only — do not mutate the host.
+        default: true
+        type: boolean
+      reset_platform:
+        description: Wipe existing releases before apply (use after broken deploys).
+        default: false
+        type: boolean
+
+concurrency:
+  group: deploy-platform
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      MANIFEST: .kb/deploy/deploy.yaml
+      PLATFORM_PATH: /home/deploy/kb-platform
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Build kb-deploy and kb-create Go binaries ─────────────────────────
+      # These are the only binaries needed — no monorepo build required.
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache-dependency-path: |
+            tools/kb-deploy/go.sum
+            tools/kb-create/go.sum
+            tools/kb-dev/go.sum
+
+      - name: Build kb-deploy / kb-create / kb-dev
+        run: |
+          make -C tools/kb-deploy build
+          make -C tools/kb-create build
+          make -C tools/kb-dev    build
+
+      # ── SSH setup ────────────────────────────────────────────────────────────
+      - name: Write SSH key
+        env:
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy.key
+          chmod 600 ~/.ssh/deploy.key
+          ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
+
+      # ── Bootstrap: kb-create + kb-dev binaries only (no Verdaccio) ─────────
+      - name: Bootstrap host
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          RESET:    ${{ inputs.reset_platform }}
+        run: |
+          SSHOPTS="-i $HOME/.ssh/deploy.key -o StrictHostKeyChecking=accept-new"
+          scp $SSHOPTS tools/kb-create/kb-create tools/kb-dev/kb-dev \
+            "$SSH_USER@$SSH_HOST:/tmp/"
+          ssh $SSHOPTS "$SSH_USER@$SSH_HOST" "RESET='$RESET' bash -s" << 'REMOTE'
+          set -euo pipefail
+          sudo install -m 0755 /tmp/kb-create /usr/local/bin/kb-create
+          sudo install -m 0755 /tmp/kb-dev    /usr/local/bin/kb-dev
+          rm -f /tmp/kb-create /tmp/kb-dev
+          command -v node >/dev/null || { echo "::error::node missing on host"; exit 1; }
+          if [ "${RESET:-}" = "true" ]; then
+            P="$HOME/kb-platform"
+            kb-dev --config "$P/.kb/devservices.yaml" stop 2>/dev/null || true
+            rm -rf "$P/releases" "$P/services" "$P/releases.json" "$P/.kb/devservices.yaml"
+          fi
+          echo "kb-create: $(kb-create --version 2>&1 | head -1)"
+          echo "kb-dev:    $(kb-dev --version 2>&1 | head -1)"
+          REMOTE
+
+      # ── Patch deploy.yaml registry if a custom mirror is provided ───────────
+      - name: Patch registry in deploy.yaml
+        env:
+          REGISTRY: ${{ inputs.registry }}
+          VERSION:  ${{ inputs.version }}
+        run: |
+          if [ -n "$REGISTRY" ]; then
+            sed -i "s|registry:.*|registry: \"$REGISTRY\"|" "$MANIFEST"
+          fi
+          sed -i "s|version:.*|version: \"$VERSION\"|" "$MANIFEST"
+          echo "registry: $(grep 'registry:' $MANIFEST | head -1)"
+          echo "version:  $(grep 'version:'  $MANIFEST | head -1)"
+
+      # ── Apply ────────────────────────────────────────────────────────────────
+      - name: kb-deploy apply
+        env:
+          SSH_HOST:               ${{ secrets.SSH_HOST }}
+          SSH_USER:               ${{ secrets.SSH_USER }}
+          SSH_KEY:                ${{ secrets.SSH_KEY }}
+          OPENAI_API_KEY:         ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_PROXY_URL:       ${{ secrets.OPENAI_PROXY_URL }}
+          GATEWAY_JWT_SECRET:     ${{ secrets.GATEWAY_JWT_SECRET }}
+          GATEWAY_INTERNAL_SECRET: ${{ secrets.GATEWAY_INTERNAL_SECRET }}
+        run: |
+          FLAGS="--config $MANIFEST --yes"
+          [ "${{ inputs.dry_run }}" = "true" ] && FLAGS="$FLAGS --dry-run"
+          ./tools/kb-deploy/kb-deploy apply $FLAGS
+
+      # ── Smoke test ───────────────────────────────────────────────────────────
+      - name: Smoke /health
+        if: ${{ inputs.dry_run == false }}
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          SSHOPTS="-i $HOME/.ssh/deploy.key -o StrictHostKeyChecking=accept-new"
+          ssh $SSHOPTS "$SSH_USER@$SSH_HOST" 'bash -s' << 'REMOTE'
+          set -uo pipefail
+          check() { curl -sf -m 10 "$2" >/dev/null && echo "$1: OK" || { echo "::error::$1 failed ($2)"; return 1; }; }
+          rc=0
+          check rest     http://127.0.0.1:5050/api/v1/health || rc=1
+          check workflow http://127.0.0.1:7778/health         || rc=1
+          check gateway  http://127.0.0.1:4000/health         || rc=1
+          check studio   http://127.0.0.1:3002/health         || rc=1
+          exit $rc
+          REMOTE
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy.key
