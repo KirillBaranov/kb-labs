@@ -1,13 +1,23 @@
 ---
 title: "Deployment"
 description: "Running KB Labs in dev, single-host production, and distributed deployments."
-updatedAt: "2026-04-07"
+updatedAt: "2026-06-05"
 order: 1
 ---
 
 KB Labs is a handful of Node processes plus some stateful infrastructure (Qdrant, Redis, optionally Postgres). Deployment boils down to running each process somewhere, wiring them together through the gateway, and pointing them at a shared `kb.config.json`.
 
 This page walks through the deployment modes in order of complexity: local dev, single-host production, and distributed production. For the gateway-specific deployment details (TLS, reverse proxies, scaling), see [Gateway → Self-Hosted](/gateway/self-hosted).
+
+## Deployment modes at a glance
+
+| Mode | Best for | Guide |
+|---|---|---|
+| **Local dev** | Plugin development, testing | This page → Mode 1 |
+| **Single-host cloud** | Teams, internal tools, self-hosted SaaS | [Self-Hosted Cloud →](/operations/self-hosted-cloud) |
+| **Distributed** | Horizontal scaling, Kubernetes | This page → Mode 3 |
+
+> **Deploying to a VPS?** The recommended path is the CI-driven deployment covered in [Self-Hosted Cloud](/operations/self-hosted-cloud). It uses `kb-deploy apply` and GitHub Actions — no manual SSH for routine updates.
 
 ## Architecture recap
 
@@ -79,62 +89,14 @@ Dev mode reads `.env` automatically, so put your `OPENAI_API_KEY`, `QDRANT_URL`,
 
 One server running all services. Fine for small deployments — a team of a few developers, an internal tool, a proof of concept. Scales to a few dozen concurrent users before you need to split services across hosts.
 
-### Setup
+**The recommended path for single-host production is the CI-driven deployment described in [Self-Hosted Cloud →](/operations/self-hosted-cloud).** It uses `kb-deploy apply` to install and manage services via GitHub Actions — no manual build steps, no hand-written systemd units.
 
-1. **Install Node 20+** and `pnpm`.
-2. **Clone the KB Labs workspace** (or the subset you need — gateway, REST, workflow, marketplace).
-3. **Build**: `pnpm install && pnpm build` in each service package.
-4. **Install infrastructure**:
-   - Qdrant (Docker or standalone binary) on port 6333.
-   - Redis on port 6379.
-5. **Write `kb.config.json`** at the deployment root. Declare your adapters and their options. See [Configuration → kb.config.json](/configuration/kb-config).
-6. **Set environment variables**:
-   - `GATEWAY_JWT_SECRET` — **required** for production.
-   - `GATEWAY_INTERNAL_SECRET` — required if container-mode execution is enabled.
-   - `NODE_ENV=production`.
-   - `OPENAI_API_KEY` or whatever your LLM adapter needs.
+In short:
+1. Add SSH and API secrets to your GitHub environment.
+2. Run the **Deploy Platform (apply)** workflow — it builds the monorepo, publishes packages to a private Verdaccio on your VPS, and starts all services through `kb-dev`.
+3. Run **provision-tenant** for each tenant subdomain — nginx config + Let's Encrypt SSL, fully automated.
 
-### Running
-
-The simplest approach: launch each service as a background process under `systemd`, `pm2`, or your init system of choice. Sample `systemd` unit for the REST API:
-
-```ini
-# /etc/systemd/system/kb-rest.service
-[Unit]
-Description=KB Labs REST API
-After=network.target kb-qdrant.service kb-redis.service
-
-[Service]
-Type=simple
-User=kb-labs
-WorkingDirectory=/opt/kb-labs
-ExecStart=/usr/bin/node ./plugins/rest-api/app/dist/index.js
-Environment=NODE_ENV=production
-Environment=PORT=5050
-Environment=KB_PROJECT_ROOT=/opt/kb-labs
-EnvironmentFile=/etc/kb-labs/secrets.env
-Restart=on-failure
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Repeat for `workflow`, `marketplace`, `gateway`, and `state-daemon`. Enable and start them in dependency order:
-
-```bash
-sudo systemctl enable --now kb-qdrant kb-redis kb-state-daemon
-sudo systemctl enable --now kb-workflow kb-rest kb-marketplace
-sudo systemctl enable --now kb-gateway
-```
-
-### Reverse proxy
-
-Put Caddy, nginx, or Traefik in front of the gateway to terminate TLS and handle rate limiting. See [Gateway → Self-Hosted](/gateway/self-hosted) for full examples.
-
-### Persistence
-
-Single-host deployments can use SQLite for everything — `db`, `documentDb`, `analytics`, logs. Put the SQLite files on a persistent volume (not a tmpfs or container-local FS) and back them up regularly.
+See [Self-Hosted Cloud](/operations/self-hosted-cloud) for the full step-by-step guide.
 
 ## Mode 3 — Distributed production
 
