@@ -317,12 +317,17 @@ type installResultJSON struct {
 func parseInstallJSON(out string) (*InstallResult, error) {
 	var found *installResultJSON
 	for _, line := range strings.Split(out, "\n") {
-		line = strings.TrimSpace(line)
-		if !strings.HasPrefix(line, "{") || !strings.HasSuffix(line, "}") {
+		// Be tolerant of a stray prefix glued onto the JSON line when stdout and
+		// stderr are merged over SSH: extract the outermost {...} span and try
+		// that. install-service buffers its noise so this should already be a
+		// clean line, but the extraction is cheap insurance.
+		open := strings.IndexByte(line, '{')
+		close := strings.LastIndexByte(line, '}')
+		if open < 0 || close <= open {
 			continue
 		}
 		var r installResultJSON
-		if err := json.Unmarshal([]byte(line), &r); err != nil {
+		if err := json.Unmarshal([]byte(line[open:close+1]), &r); err != nil {
 			continue // not our object (e.g. a pnpm json-reporter line)
 		}
 		if r.ReleaseID != "" {
