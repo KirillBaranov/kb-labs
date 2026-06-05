@@ -130,10 +130,13 @@ jobs:
             rm -rf "$P/releases" "$P/services" "$P/releases.json" "$P/.kb/devservices.yaml"
           fi
 
-          # Prune the shared pnpm store of objects no live release references — the
-          # biggest reclaim now that releases hardlink into it. Falls back silently
-          # if the store dir does not exist yet (first deploy).
-          [ -d "$STORE" ] && pnpm store prune --store-dir "$STORE" 2>/dev/null || true
+          # Do NOT prune the shared pnpm store ($STORE): keeping it warm across
+          # deploys lets pnpm hardlink already-durable store objects instead of
+          # cold-writing them, which avoids the transient manifest.json corruption
+          # (null bytes / truncation) seen when reading a just-written object. The
+          # store is small (deduped ~hundreds of MB), so warm-keeping costs little.
+          # Prune only the default per-user store + npm caches.
+          : "$STORE" # referenced for clarity; intentionally not pruned
           pnpm store prune 2>/dev/null || true
           rm -rf "$HOME/.cache/pnpm" "$HOME/.npm/_cacache" 2>/dev/null || true
           npm cache clean --force 2>/dev/null || true

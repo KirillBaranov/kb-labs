@@ -112,23 +112,35 @@ func (h *Host) buildInstallCmd(opts InstallOpts) string {
 func (h *Host) ServiceID(servicePkg, serviceShort string) (string, error) {
 	manifestPath := h.PlatformPath + "/services/" + serviceShort +
 		"/current/node_modules/" + servicePkg + "/dist/manifest.json"
-	out, err := h.Runner.Run("cat " + shellQuote(manifestPath))
-	if err != nil {
-		return "", fmt.Errorf("read service manifest on %s: %w (output: %s)", h.Name, err, out)
+	// Transient-corruption retry. Under the deploy's I/O load, a just-installed
+	// manifest.json is occasionally observed truncated or null-padded
+	// ("unexpected end of JSON input" / "invalid character '\x00'") even though
+	// the settled file is valid — the hardlinked pnpm-store object's content is
+	// not yet durable when read. Not reproducible in isolation; verified
+	// load-bearing in the full deploy (removing this retry made apply fail). A
+	// few re-reads let the file settle. Keeping the store warm (no pre-deploy
+	// prune) is the root mitigation; this is defence in depth.
+	var lastErr error
+	for attempt := 0; attempt < 3; attempt++ {
+		out, err := h.Runner.Run("cat " + shellQuote(manifestPath))
+		if err != nil {
+			lastErr = fmt.Errorf("read service manifest on %s: %w (output: %s)", h.Name, err, out)
+			continue
+		}
+		var m struct {
+			ID string `json:"id"`
+		}
+		if err := json.Unmarshal([]byte(out), &m); err != nil {
+			lastErr = fmt.Errorf("parse service manifest on %s (%s): %w", h.Name, manifestPath, err)
+			continue
+		}
+		if m.ID == "" {
+			lastErr = fmt.Errorf("service manifest on %s (%s) has empty id", h.Name, manifestPath)
+			continue
+		}
+		return m.ID, nil
 	}
-	var m struct {
-		ID string `json:"id"`
-	}
-	if err := json.Unmarshal([]byte(out), &m); err != nil {
-		// A truncated/empty manifest here means the published package shipped a
-		// bad dist/manifest.json (a build-time emission bug) — fail clearly rather
-		// than mask it; the read itself is reliable over the apply SSH connection.
-		return "", fmt.Errorf("parse service manifest on %s (%s): %w", h.Name, manifestPath, err)
-	}
-	if m.ID == "" {
-		return "", fmt.Errorf("service manifest on %s (%s) has empty id", h.Name, manifestPath)
-	}
-	return m.ID, nil
+	return "", lastErr
 }
 
 // ReconcileDevservices prunes devservices.yaml dependsOn entries that name
@@ -210,25 +222,6 @@ func sortedKeys(m map[string]string) []string {
 	}
 	sort.Strings(keys)
 	return keys
-}
-
-// EnsureRunning brings the given services to the running state via
-// `kb-dev ensure` (alive → skip, dead → start). Used as a post-restart settle
-// pass: kb-dev's per-service restart cascade-stops dependents without restarting
-// them, so a dependency restarted after its dependents leaves them down — this
-// re-starts exactly those without churning services that are already up.
-func (h *Host) EnsureRunning(serviceIDs []string) error {
-	if len(serviceIDs) == 0 {
-		return nil
-	}
-	cmd := "kb-dev " + h.devservicesFlag() + "ensure"
-	for _, id := range serviceIDs {
-		cmd += " " + shellQuote(id)
-	}
-	if out, err := h.Runner.Run(cmd); err != nil {
-		return fmt.Errorf("ensure services running on %s: %w (output: %s)", h.Name, err, out)
-	}
-	return nil
 }
 
 // Rollback swaps current back to previous on the target.
