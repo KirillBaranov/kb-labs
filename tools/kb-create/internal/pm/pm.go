@@ -40,6 +40,7 @@ type PackageManager interface {
 // DetectOptions configures the package manager returned by Detect.
 type DetectOptions struct {
 	Registry string // optional: custom registry URL
+	StoreDir string // optional: shared pnpm store dir (ignored by npm)
 }
 
 // Detect returns pnpm if available, otherwise npm.
@@ -52,15 +53,16 @@ type DetectOptions struct {
 // registry configured). This prevents KB_REGISTRY_URL from inadvertently
 // overriding a Docker-internal registry address with a host-side one.
 func Detect(opts ...DetectOptions) PackageManager {
-	var registry string
+	var registry, storeDir string
 	if len(opts) > 0 {
 		registry = opts[0].Registry
+		storeDir = opts[0].StoreDir
 	}
 	if registry == "" && os.Getenv("NPM_CONFIG_REGISTRY") == "" {
 		registry = os.Getenv("KB_REGISTRY_URL")
 	}
 	if _, err := exec.LookPath("pnpm"); err == nil {
-		return &PnpmManager{Registry: registry}
+		return &PnpmManager{Registry: registry, StoreDir: storeDir}
 	}
 	return &NpmManager{Registry: registry}
 }

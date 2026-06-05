@@ -72,11 +72,11 @@ func (r *scriptedRunner) Run(cmd string) (string, error) {
 
 	switch {
 	case strings.Contains(cmd, "kb-create install-service"):
-		// Synthesise a plausible install output. The release id is already
-		// encoded in the --keep-releases etc. args, but we just fabricate one
-		// based on the service pkg + version we see.
+		// Emit the machine-readable JSON the real install-service produces under
+		// --output json (with some plausible progress noise on the same combined
+		// stream, which the parser must ignore).
 		rel := fakeReleaseIDFromInstallCmd(cmd)
-		return fmt.Sprintf("installed release %s at /opt/kb-platform/releases/%s\n", rel, rel), nil
+		return fmt.Sprintf("Progress: resolved 1, reused 1\n{\"releaseId\":%q,\"noop\":false,\"evicted\":[]}\n", rel), nil
 
 	case strings.Contains(cmd, "kb-create swap"):
 		pkg, rel := parseSwapArgs(cmd)
@@ -125,9 +125,13 @@ func shortFromManifestPath(cmd string) string {
 	return "svc"
 }
 
-// fakeReleaseIDFromInstallCmd extracts "<pkg>@<ver>" from the `--adapters`
-// flag-less part of the install command and shortens it into a release id.
+// fakeReleaseIDFromInstallCmd returns the release id the real install-service
+// would report: the explicit --release-id when the caller pins one (the deploy
+// path always does), else a fabricated id derived from the pkg@ver spec.
 func fakeReleaseIDFromInstallCmd(cmd string) string {
+	if id := quotedArgAfter(cmd, "--release-id "); id != "" {
+		return id
+	}
 	// Very loose parser — finds the first single-quoted spec after "install-service".
 	idx := strings.Index(cmd, "install-service ")
 	if idx < 0 {
@@ -155,6 +159,24 @@ func fakeReleaseIDFromInstallCmd(cmd string) string {
 		name = name[slash+1:]
 	}
 	return fmt.Sprintf("%s-%s-abcdef12", name, ver)
+}
+
+// quotedArgAfter returns the single-quoted value immediately following marker in
+// cmd, or "" if marker is absent. e.g. quotedArgAfter("x --release-id 'r1'", "--release-id ") == "r1".
+func quotedArgAfter(cmd, marker string) string {
+	idx := strings.Index(cmd, marker)
+	if idx < 0 {
+		return ""
+	}
+	rest := cmd[idx+len(marker):]
+	if len(rest) == 0 || rest[0] != '\'' {
+		return ""
+	}
+	end := strings.Index(rest[1:], "'")
+	if end < 0 {
+		return ""
+	}
+	return rest[1 : 1+end]
 }
 
 func parseSwapArgs(cmd string) (pkg, rel string) {
@@ -328,7 +350,7 @@ func TestE2E_ReleaseIDAgreesAcrossModules(t *testing.T) {
 	// (see id_test.go in that module). If the digest algorithm drifts between
 	// the two modules, this test output will change — the kb-create test will
 	// stay green but this one will fail (or vice versa), flagging drift.
-	id := releaseid.ComputeID("@kb-labs/gateway", "1.2.3",
+	id := releaseid.ComputeID("@kb-labs/gateway", "1.2.3", "",
 		map[string]string{
 			"llm":   "@kb-labs/adapters-openai@0.4.1",
 			"cache": "@kb-labs/adapters-redis@0.2.0",
@@ -339,7 +361,7 @@ func TestE2E_ReleaseIDAgreesAcrossModules(t *testing.T) {
 	}
 	// Canonical form: "@kb-labs/gateway@1.2.3|cache=...,llm=...|" — swapping
 	// adapter order must NOT change the id.
-	id2 := releaseid.ComputeID("@kb-labs/gateway", "1.2.3",
+	id2 := releaseid.ComputeID("@kb-labs/gateway", "1.2.3", "",
 		map[string]string{
 			"cache": "@kb-labs/adapters-redis@0.2.0",
 			"llm":   "@kb-labs/adapters-openai@0.4.1",
@@ -406,7 +428,7 @@ func TestE2E_ConfigIdempotentWhenHashUnchanged(t *testing.T) {
 		"h1": newRunner("h1"), "h2": newRunner("h2"), "h3": newRunner("h3"),
 	}
 	// Seed every host as already running the planned release → plan = skip.
-	relID := releaseid.ComputeID("@kb-labs/gateway", "1.2.3",
+	relID := releaseid.ComputeID("@kb-labs/gateway", "1.2.3", "",
 		map[string]string{"llm": "@kb-labs/adapters-openai@0.4.1"}, nil)
 	states := map[string]orchestrator.HostState{}
 	configs := map[string]orchestrator.HostConfig{}
@@ -443,7 +465,7 @@ func TestE2E_ConfigOnlyChangeForcesRestart(t *testing.T) {
 	runners := map[string]*scriptedRunner{
 		"h1": newRunner("h1"), "h2": newRunner("h2"), "h3": newRunner("h3"),
 	}
-	relID := releaseid.ComputeID("@kb-labs/gateway", "1.2.3",
+	relID := releaseid.ComputeID("@kb-labs/gateway", "1.2.3", "",
 		map[string]string{"llm": "@kb-labs/adapters-openai@0.4.1"}, nil)
 	states := map[string]orchestrator.HostState{}
 	configs := map[string]orchestrator.HostConfig{}
@@ -640,7 +662,9 @@ func runApply(t *testing.T, cfg *config.Config,
 	}
 
 	plan, err := orchestrator.ComputePlan(cfg, states, func(svc config.Service) string {
-		return releaseid.ComputeID(svc.Service, svc.Version, svc.Adapters, svc.Plugins)
+		// e2e harness exercises the spec-only id path (integrity "" ); the
+		// registry-integrity fetch is unit-tested in flow/remote/releaseid.
+		return releaseid.ComputeID(svc.Service, svc.Version, "", svc.Adapters, svc.Plugins)
 	})
 	if err != nil {
 		t.Fatalf("ComputePlan: %v", err)

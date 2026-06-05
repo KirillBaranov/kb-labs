@@ -87,6 +87,7 @@ func TestBuildInstallCmd_AllOptions(t *testing.T) {
 	must := []string{
 		"kb-create install-service",
 		"'@kb-labs/gateway@1.2.3'",
+		"--output json",
 		"--platform '/opt/kb-platform'",
 		"--registry 'https://npm.internal'",
 		"--keep-releases 5",
@@ -101,8 +102,12 @@ func TestBuildInstallCmd_AllOptions(t *testing.T) {
 }
 
 func TestInstallService_SuccessPath(t *testing.T) {
+	// Realistic combined stdout+stderr: pnpm progress (stderr) interleaved with
+	// the single JSON object (stdout). Parser must pick the JSON, not a prose line.
 	fr := &fakeRunner{responses: map[string]string{
-		"install-service": "installed release gateway-1.2.3-aaa at /opt/kb-platform/releases/gateway-1.2.3-aaa\n  evicted: gateway-0.9.0-old\n",
+		"install-service": "Progress: resolved 120, downloaded 40\n" +
+			"dependencies added\n" +
+			`{"releaseId":"gateway-1.2.3-aaa","noop":false,"evicted":["gateway-0.9.0-old"]}` + "\n",
 	}}
 	h := &Host{Name: "p1", Runner: fr}
 	res, err := h.InstallService(InstallOpts{ServicePkg: "@kb-labs/gateway", Version: "1.2.3"})
@@ -122,7 +127,7 @@ func TestInstallService_SuccessPath(t *testing.T) {
 
 func TestInstallService_NoOp(t *testing.T) {
 	fr := &fakeRunner{responses: map[string]string{
-		"install-service": "release gateway-1.2.3-aaa already installed (no-op)\n",
+		"install-service": `{"releaseId":"gateway-1.2.3-aaa","noop":true,"evicted":[]}` + "\n",
 	}}
 	h := &Host{Runner: fr}
 	res, err := h.InstallService(InstallOpts{ServicePkg: "@kb-labs/gateway", Version: "1.2.3"})
@@ -137,12 +142,62 @@ func TestInstallService_NoOp(t *testing.T) {
 	}
 }
 
+// TestInstallService_NoReleaseID guards the bug where empty stdout (or output
+// with no JSON result) silently yielded an empty release-id that then broke Swap.
+// It must now be a hard error.
+func TestInstallService_NoReleaseID(t *testing.T) {
+	for name, out := range map[string]string{
+		"empty":           "",
+		"only progress":   "Progress: resolved 10\ndone\n",
+		"json without id": `{"noop":false,"evicted":[]}` + "\n",
+		"json empty id":   `{"releaseId":"","noop":false,"evicted":[]}` + "\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			fr := &fakeRunner{responses: map[string]string{"install-service": out}}
+			h := &Host{Name: "p1", Runner: fr}
+			_, err := h.InstallService(InstallOpts{ServicePkg: "@kb-labs/gateway", Version: "1.2.3"})
+			if err == nil {
+				t.Fatal("expected ERR_INSTALL_NO_RELEASE_ID")
+			}
+			if !strings.Contains(err.Error(), "ERR_INSTALL_NO_RELEASE_ID") {
+				t.Errorf("error = %v, want ERR_INSTALL_NO_RELEASE_ID", err)
+			}
+		})
+	}
+}
+
 func TestInstallService_CommandFailure(t *testing.T) {
 	fr := &fakeRunner{err: errors.New("exit status 1")}
 	h := &Host{Name: "p1", Runner: fr}
 	_, err := h.InstallService(InstallOpts{ServicePkg: "x", Version: "1"})
 	if err == nil {
 		t.Error("expected error")
+	}
+}
+
+func TestPackageIntegrity_Success(t *testing.T) {
+	fr := &fakeRunner{responses: map[string]string{
+		"npm view": "sha512-AbCdEf==\n",
+	}}
+	h := &Host{Name: "p1", Runner: fr, PlatformPath: "/opt/kb"}
+	got, err := h.PackageIntegrity("@kb-labs/gateway-app", "2.94.0", "http://127.0.0.1:4873")
+	if err != nil {
+		t.Fatalf("unexpected: %v", err)
+	}
+	if got != "sha512-AbCdEf==" {
+		t.Errorf("integrity = %q", got)
+	}
+	if len(fr.log) == 0 || !strings.Contains(fr.log[0], "--registry 'http://127.0.0.1:4873'") {
+		t.Errorf("registry not passed: %v", fr.log)
+	}
+}
+
+func TestPackageIntegrity_EmptyIsError(t *testing.T) {
+	fr := &fakeRunner{responses: map[string]string{"npm view": "\n"}}
+	h := &Host{Name: "p1", Runner: fr}
+	_, err := h.PackageIntegrity("@kb-labs/gateway-app", "2.94.0", "http://127.0.0.1:4873")
+	if err == nil || !strings.Contains(err.Error(), "ERR_REGISTRY_INTEGRITY") {
+		t.Fatalf("want ERR_REGISTRY_INTEGRITY, got %v", err)
 	}
 }
 
