@@ -42,7 +42,7 @@ the full local plugin authoring loop without publishing.
 
 | # | Action | Expected | Actual | Status |
 |---|--------|----------|--------|--------|
-| 7 | `cd <project> && kb marketplace clear-cache` | Cache cleared | | ⬜ |
+| 7 | `cd <project> && kb marketplace plugins refresh` | Cache cleared | | ⬜ |
 | 8 | `kb --help` | `demo` group appears in command list | | ⬜ |
 | 9 | `kb demo hello --who=World` | Prints `Hello, World from demo` | | ⬜ |
 
@@ -52,7 +52,7 @@ the full local plugin authoring loop without publishing.
 |---|--------|----------|--------|--------|
 | 10 | Edit a command handler in `src/`, change response text | | | ⬜ |
 | 11 | `pnpm build` from plugin dir | Rebuilds fast (incremental) | | ⬜ |
-| 12 | `kb marketplace clear-cache && kb demo hello --who=World` | Shows updated response — no stale cache | | ⬜ |
+| 12 | `kb marketplace plugins refresh && kb demo hello --who=World` | Shows updated response — no stale cache | | ⬜ |
 
 ---
 

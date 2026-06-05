@@ -46,7 +46,7 @@ Something is broken. Developer uses built-in diagnostics to find and fix the iss
 
 | # | Action | Expected | Actual | Status |
 |---|--------|----------|--------|--------|
-| 10 | Plugin not showing after build | `kb marketplace clear-cache` fixes it | | ⬜ |
+| 10 | Plugin not showing after build | `kb marketplace plugins refresh` fixes it | | ⬜ |
 | 11 | Clear cache message is user-friendly | Not just silent exit | | ⬜ |
 
 ### Phase 5 — Full reset
