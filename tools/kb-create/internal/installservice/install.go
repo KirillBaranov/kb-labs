@@ -67,9 +67,13 @@ const defaultKeepReleases = 2
 // start a download when the releases filesystem has less than this available,
 // failing fast with a clear error instead of half-writing a release into a full
 // disk (which previously cascaded into pnpm failures, a crashed MongoDB, and an
-// unwritable devservices.yaml). A cold first install of one service is ~600MB;
-// 2 GiB leaves headroom for the download plus the brief install peak.
-const minFreeBytes = 2 << 30 // 2 GiB
+// unwritable devservices.yaml).
+//
+// Sized as a catastrophe floor, not a comfort margin: with the shared pnpm store,
+// only the FIRST install of a wave populates the store (~600MB–1GB); the rest
+// hardlink and add ~100MB each. A fixed 1 GiB floor keeps a safe gap above the
+// 0-byte cascade without blocking those cheap follow-on installs on a tight disk.
+const minFreeBytes = 1 << 30 // 1 GiB
 
 // pnpmStoreSubdir is the shared pnpm store location under the platform root. It
 // lives on the same filesystem as releases/ so pnpm hardlinks store objects into
