@@ -187,6 +187,52 @@ describe('WorkflowHostService', () => {
     expect(callArg.inputs).toEqual({ baseBranch: 'main' });
   });
 
+  it('B-017: rejects a run missing a required input with no default', async () => {
+    const runFromSpec = vi.fn(async () => ({ id: 'run-1', status: 'queued' }));
+    const get = vi.fn(async () => ({
+      id: 'wf-1',
+      input: {
+        name: 'Test Workflow',
+        version: '1.0.0',
+        on: { manual: true },
+        inputs: {
+          owner: { type: 'string', required: true },
+          baseBranch: { type: 'string', default: 'main' },
+        },
+        jobs: { main: { runsOn: 'local', steps: [] } },
+      },
+    }));
+    const service = createService({ engine: { runFromSpec }, workflowService: { get } });
+
+    // Missing required `owner` → must reject before creating the run.
+    await expect(
+      service.runWorkflow('wf-1', { inputs: { baseBranch: 'dev' } }),
+    ).rejects.toThrow(/required input.*owner|owner.*required/i);
+
+    expect(runFromSpec).not.toHaveBeenCalled();
+  });
+
+  it('B-017: accepts a required input when provided', async () => {
+    const runFromSpec = vi.fn(async () => ({ id: 'run-1', status: 'queued' }));
+    const get = vi.fn(async () => ({
+      id: 'wf-1',
+      input: {
+        name: 'Test Workflow',
+        version: '1.0.0',
+        on: { manual: true },
+        inputs: { owner: { type: 'string', required: true } },
+        jobs: { main: { runsOn: 'local', steps: [] } },
+      },
+    }));
+    const service = createService({ engine: { runFromSpec }, workflowService: { get } });
+
+    await service.runWorkflow('wf-1', { inputs: { owner: 'kb' } });
+
+    expect(runFromSpec).toHaveBeenCalledOnce();
+    const callArg = (runFromSpec as any).mock.calls[0]?.[1];
+    expect(callArg.inputs).toEqual({ owner: 'kb' });
+  });
+
   it('passes run target/isolation overrides to engine', async () => {
     const runFromSpec = vi.fn(async () => ({ id: 'run-1', status: 'queued' }));
     const get = vi.fn(async () => ({

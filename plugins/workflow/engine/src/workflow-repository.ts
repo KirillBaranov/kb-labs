@@ -321,7 +321,7 @@ export class WorkflowRepository {
       }
 
       // Otherwise, it's a simple workflow YAML - convert to StoredWorkflow
-      const spec: WorkflowSpec = {
+      const candidateSpec = {
         name: parsed.name as string,
         version: (parsed.version as string) || '1.0.0',
         description: parsed.description as string | undefined,
@@ -332,6 +332,21 @@ export class WorkflowRepository {
         env: parsed.env as Record<string, string> | undefined,
         secrets: parsed.secrets as string[] | undefined,
       };
+
+      // Validate against the schema so a structurally-invalid file (e.g. no
+      // jobs, missing name) is NOT presented as a valid, runnable workflow.
+      // Surfacing it as 'active' silently masked broken definitions (B-015).
+      const validation = WorkflowSpecSchema.safeParse(candidateSpec);
+      if (!validation.success) {
+        this.platform.logger?.warn(
+          `WorkflowRepository: skipping invalid workflow "${id}" — ${validation.error.issues
+            .map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`)
+            .join('; ')}`,
+          { id, path },
+        );
+        return null;
+      }
+      const spec: WorkflowSpec = validation.data;
 
       const stored: StoredWorkflow = {
         // The filename is the canonical id for file-based workflows. Using the

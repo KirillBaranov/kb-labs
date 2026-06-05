@@ -130,6 +130,10 @@ export function registerWorkflowsAPI(options: RegisterWorkflowsAPIOptions): void
       if (message === 'Workflow not found') {
         return fail(reply, 404, message);
       }
+      // Invalid request payload (e.g. missing required inputs) is a client error.
+      if (message.startsWith('Missing required input')) {
+        return fail(reply, 400, message);
+      }
       logger.error('[workflows-api] Error running workflow', error instanceof Error ? error : undefined);
       return fail(reply, 500, message);
     }

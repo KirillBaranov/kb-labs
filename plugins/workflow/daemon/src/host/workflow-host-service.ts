@@ -265,12 +265,28 @@ export class WorkflowHostService {
 
     // Resolve inputs: merge spec defaults with user-supplied values.
     // Accept `inputs` (plural, preferred) or legacy `input` (singular).
-    const specInputDefs = (specInput['inputs'] ?? {}) as Record<string, { default?: unknown }>;
+    const specInputDefs = (specInput['inputs'] ?? {}) as Record<
+      string,
+      { default?: unknown; required?: boolean }
+    >;
     const userInputs: Record<string, unknown> =
       request.inputs ??
       (request.input && typeof request.input === 'object'
         ? (request.input as Record<string, unknown>)
         : {});
+
+    // Validate required inputs BEFORE creating the run, so a missing value is
+    // reported up front instead of failing deep inside a job (B-017).
+    const missingRequired: string[] = [];
+    for (const [key, def] of Object.entries(specInputDefs)) {
+      if (def.required && !(key in userInputs) && def.default === undefined) {
+        missingRequired.push(key);
+      }
+    }
+    if (missingRequired.length > 0) {
+      throw new Error(`Missing required input(s): ${missingRequired.join(', ')}`);
+    }
+
     const resolvedInputs: Record<string, unknown> = {};
     for (const [key, def] of Object.entries(specInputDefs)) {
       resolvedInputs[key] = key in userInputs ? userInputs[key] : def.default;

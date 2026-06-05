@@ -85,3 +85,47 @@ describe('WorkflowRepository — id consistency (B-016)', () => {
     expect(fetched).toBeNull();
   });
 });
+
+describe('WorkflowRepository — invalid spec rejection (B-015)', () => {
+  let workspaceRoot: string;
+  let repo: WorkflowRepository;
+
+  beforeEach(async () => {
+    workspaceRoot = await mkdtemp(join(tmpdir(), 'kb-wf-repo-'));
+    await mkdir(join(workspaceRoot, '.kb', 'workflows'), { recursive: true });
+    repo = new WorkflowRepository({ platform: makePlatform(), workspaceRoot });
+  });
+
+  afterEach(async () => {
+    await rm(workspaceRoot, { recursive: true, force: true });
+  });
+
+  it('an incomplete workflow YAML (no jobs) is not listed as active', async () => {
+    // Mirrors QA bad.yaml: only id + name, no jobs. Must NOT appear as a valid
+    // active workflow — that is a silent acceptance of a broken file (B-015).
+    await writeFile(
+      join(workspaceRoot, '.kb', 'workflows', 'bad.yaml'),
+      'id: bad-workflow\nname: bad-workflow\n',
+      'utf-8',
+    );
+    await writeFile(
+      join(workspaceRoot, '.kb', 'workflows', 'good.yaml'),
+      SIMPLE_WORKFLOW,
+      'utf-8',
+    );
+
+    const list = await repo.list();
+    const ids = list.map((w) => w.id);
+    expect(ids).toContain('good');
+    expect(ids).not.toContain('bad');
+  });
+
+  it('get() on an invalid workflow file returns null', async () => {
+    await writeFile(
+      join(workspaceRoot, '.kb', 'workflows', 'bad.yaml'),
+      'id: bad-workflow\nname: bad-workflow\n',
+      'utf-8',
+    );
+    expect(await repo.get('bad')).toBeNull();
+  });
+});
