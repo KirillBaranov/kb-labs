@@ -70,10 +70,10 @@ func TestBuildPackageJSON_IncludesAllDeps(t *testing.T) {
 		t.Error("package.json should be private")
 	}
 	want := map[string]string{
-		"@kb-labs/gateway":          "1.0.0",
-		"@kb-labs/adapters-openai":  "0.4.1",
-		"@kb-labs/adapters-redis":   "0.2.0",
-		"@kb-labs/marketplace":      "1.0.0",
+		"@kb-labs/gateway":         "1.0.0",
+		"@kb-labs/adapters-openai": "0.4.1",
+		"@kb-labs/adapters-redis":  "0.2.0",
+		"@kb-labs/marketplace":     "1.0.0",
 	}
 	for k, v := range want {
 		if got := parsed.Dependencies[k]; got != v {
@@ -91,7 +91,7 @@ func TestValidate(t *testing.T) {
 		{"missing service", Options{Version: "1", PlatformDir: "/p"}, true},
 		{"missing version", Options{ServicePkg: "s", PlatformDir: "/p"}, true},
 		{"missing platform", Options{ServicePkg: "s", Version: "1"}, true},
-		{"ok, keep defaults to 3",
+		{"ok, keep defaults to 2",
 			Options{ServicePkg: "s", Version: "1", PlatformDir: "/p"}, false},
 	}
 	for _, c := range cases {
@@ -99,8 +99,8 @@ func TestValidate(t *testing.T) {
 		if (err != nil) != c.wantErr {
 			t.Errorf("%s: err = %v, wantErr = %v", c.name, err, c.wantErr)
 		}
-		if !c.wantErr && c.opts.KeepReleases != 3 {
-			t.Errorf("%s: KeepReleases default = %d, want 3", c.name, c.opts.KeepReleases)
+		if !c.wantErr && c.opts.KeepReleases != defaultKeepReleases {
+			t.Errorf("%s: KeepReleases default = %d, want %d", c.name, c.opts.KeepReleases, defaultKeepReleases)
 		}
 	}
 }

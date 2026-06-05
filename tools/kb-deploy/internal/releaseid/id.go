@@ -1,11 +1,14 @@
-// Package releaseid reproduces the deterministic release-id function from
-// kb-create (ADR-0014 §D3). Kept in sync by duplication because kb-deploy and
-// kb-create are separate Go modules.
+// Package releaseid computes the deterministic release-id used to name a
+// service's release directory (ADR-0014 §D3).
 //
-// If this implementation and kb-create/internal/releases.ComputeID ever drift,
-// apply will compute wrong desired ids and every Plan will look like "install"
-// on already-correct hosts. Integration test in kb-deploy e2e/ asserts the
-// digest matches the peer implementation.
+// Identity model: a release is identified by its service spec (package, version,
+// adapters, plugins) AND the resolved package content (registry integrity). The
+// content digest is what makes a same-version content patch produce a NEW id, so
+// the planner sees an install instead of a skip. When integrity is empty the id
+// reduces to the spec-only form that kb-create/internal/releases.ComputeID
+// produces — kb-deploy stays the authoritative computer and passes the resulting
+// id to install-service via --release-id, so the two never have to agree on the
+// content-aware variant.
 package releaseid
 
 import (
@@ -16,10 +19,12 @@ import (
 	"strings"
 )
 
-// ComputeID returns "<service-short>-<version>-<hash8>".
-func ComputeID(servicePkg, version string, adapters, plugins map[string]string) string {
+// ComputeID returns "<service-short>-<version>-<hash8>". integrity is the
+// registry-reported content digest of the service package (e.g. an npm
+// "sha512-..." string); pass "" for the spec-only (kb-create-compatible) id.
+func ComputeID(servicePkg, version, integrity string, adapters, plugins map[string]string) string {
 	short := shortName(servicePkg)
-	hash := hashInputs(servicePkg, version, adapters, plugins)[:8]
+	hash := hashInputs(servicePkg, version, integrity, adapters, plugins)[:8]
 	return fmt.Sprintf("%s-%s-%s", short, version, hash)
 }
 
@@ -32,7 +37,7 @@ func shortName(pkg string) string {
 	return pkg
 }
 
-func hashInputs(servicePkg, version string, adapters, plugins map[string]string) string {
+func hashInputs(servicePkg, version, integrity string, adapters, plugins map[string]string) string {
 	var sb strings.Builder
 	sb.WriteString(servicePkg)
 	sb.WriteString("@")
@@ -41,6 +46,13 @@ func hashInputs(servicePkg, version string, adapters, plugins map[string]string)
 	sb.WriteString(joinSorted(adapters))
 	sb.WriteString("|")
 	sb.WriteString(joinSorted(plugins))
+	// Empty integrity keeps the canonical spec-only digest (kb-create parity).
+	// A non-empty integrity is appended so a content change at the same version
+	// changes the id.
+	if integrity != "" {
+		sb.WriteString("|")
+		sb.WriteString(integrity)
+	}
 
 	sum := sha256.Sum256([]byte(sb.String()))
 	return hex.EncodeToString(sum[:])

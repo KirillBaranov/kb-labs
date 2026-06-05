@@ -346,10 +346,21 @@ func prepareAction(a Action, opts ExecuteOptions, forceRestart map[string]bool) 
 			Adapters:   svc.Adapters,
 			Plugins:    svc.Plugins,
 			Registry:   platformRegistry(opts.Config),
-			// KeepReleases left at 0 so install-service uses its default (3).
+			// Pin the dir name to the planner's content-aware desired id so the
+			// installed release matches the plan exactly (no spec-only recompute).
+			ReleaseID: a.ToID,
+			// KeepReleases left at 0 so install-service uses its default.
 		})
 		if err != nil {
 			res.Err = err
+			return res, false
+		}
+		if installRes.ReleaseID == "" {
+			// Defence in depth: InstallService already errors on an empty id, but
+			// never let an empty release-id reach Swap (which fails obscurely with
+			// "releaseID is required").
+			res.Err = fmt.Errorf("install %s@%s on %s: empty release id",
+				svc.Service, svc.Version, a.Host)
 			return res, false
 		}
 		if err := host.Swap(svc.Service, installRes.ReleaseID); err != nil {

@@ -14,6 +14,12 @@ import (
 // PnpmManager implements PackageManager using pnpm.
 type PnpmManager struct {
 	Registry string // optional: custom registry URL (e.g. http://localhost:4873)
+	// StoreDir optionally points pnpm at a shared content-addressable store. When
+	// every release dir shares one store on the same filesystem, identical package
+	// versions are hardlinked into each release's node_modules instead of copied —
+	// so N releases of a service cost one copy of the shared deps plus small
+	// per-release deltas, not N×600MB. Empty = pnpm's default per-drive store.
+	StoreDir string
 }
 
 func (p *PnpmManager) Name() string        { return "pnpm" }
@@ -129,5 +135,11 @@ func (p *PnpmManager) ensureNpmrc(dir string) error {
 	// shamefully-hoist ensures all transitive KB Labs packages are reachable
 	// from node_modules root, so plugins can resolve their deps at runtime.
 	content := "registry=" + registry + "\nshamefully-hoist=true\n"
+	// A shared store + hardlink import method dedupes packages across release
+	// dirs. package-import-method=hardlink is pnpm's default, but we set it
+	// explicitly so a global config can't silently downgrade us to copy.
+	if p.StoreDir != "" {
+		content += "store-dir=" + p.StoreDir + "\npackage-import-method=hardlink\n"
+	}
 	return os.WriteFile(filepath.Join(dir, ".npmrc"), []byte(content), 0o600)
 }
