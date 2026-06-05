@@ -1,0 +1,432 @@
+---
+title: "Self-Hosted Cloud"
+description: "Deploy KB Labs to your own VPS — full platform in the cloud with automated SSL, tenant routing, and CI-driven updates."
+updatedAt: "2026-06-05"
+order: 2
+---
+
+This guide walks through deploying the full KB Labs platform — gateway, REST API, workflow engine, Studio, and supporting infrastructure — to a single VPS. Everything is driven by GitHub Actions; after the initial one-time setup you update the platform and provision new tenants with a single workflow dispatch.
+
+## What you get
+
+- All platform services running on a private VPS under your own domain
+- Per-tenant subdomains (`{tenant}.yourdomain.com`) with automatic SSL
+- CI-driven deploys via `kb-deploy apply` — no manual SSH for routine updates
+- Packages distributed through a private Verdaccio registry on the host
+- UFW firewall: only ports 22, 80, 443 exposed externally
+
+## Prerequisites
+
+| | |
+|---|---|
+| **VPS** | Ubuntu 22.04+, 2 GB RAM minimum, 20 GB disk |
+| **Domain** | A record `@` + wildcard `*` pointing at the VPS IP |
+| **Tools** | Node.js 20+, Docker, nginx, certbot — installed manually once |
+| **GitHub** | Two repos: `kb-labs` (monorepo) and `kb-labs-infra` (nginx/firewall) |
+
+## Step 1 — Prepare the VPS
+
+SSH in as root and create a deploy user with passwordless sudo (or full sudo for now):
+
+```bash
+adduser deploy
+usermod -aG sudo deploy
+# Copy your SSH public key to /home/deploy/.ssh/authorized_keys
+```
+
+Install dependencies:
+
+```bash
+apt update && apt install -y nginx certbot docker.io ufw
+systemctl enable --now nginx docker
+```
+
+Add `deploy` to the docker group:
+
+```bash
+usermod -aG docker deploy
+```
+
+## Step 2 — DNS
+
+In your DNS panel add:
+
+```
+A    @        →  <VPS IP>
+A    *        →  <VPS IP>   ← wildcard for tenant subdomains
+A    api      →  <VPS IP>
+A    docs     →  <VPS IP>
+```
+
+Wait for propagation (`dig +short api.yourdomain.com` returns the IP) before continuing.
+
+## Step 3 — GitHub secrets
+
+In the **monorepo** (`kb-labs`) → Settings → Secrets → Environments → `production`:
+
+| Secret | Value |
+|---|---|
+| `SSH_HOST` | VPS IP address |
+| `SSH_USER` | `deploy` |
+| `SSH_KEY` | Private key PEM (ed25519 recommended) |
+| `OPENAI_API_KEY` | Your OpenAI key |
+| `OPENAI_PROXY_URL` | OpenAI-compatible proxy URL (if using one) |
+| `GATEWAY_JWT_SECRET` | `openssl rand -hex 64` |
+| `GATEWAY_INTERNAL_SECRET` | `openssl rand -hex 32` |
+| `GATEWAY_BOOTSTRAP_ADMIN_EMAIL` | Admin email for first login |
+| `GATEWAY_BOOTSTRAP_ADMIN_PASSWORD` | Admin password |
+
+In the **infra repo** (`kb-labs-infra`) → same environment `production`:
+
+| Secret | Value |
+|---|---|
+| `SSH_HOST` | Same VPS IP |
+| `SSH_USER` | `deploy` |
+| `DEPLOY_SSH_KEY` | Same private key PEM |
+
+## Step 4 — Deploy the platform
+
+Go to **monorepo** → Actions → **Deploy Platform (apply)** → Run workflow:
+
+| Input | Value |
+|---|---|
+| `version` | Current platform version (e.g. `2.94.0`) |
+| `dry_run` | `true` first — review the plan |
+| `reset_platform` | `false` |
+
+The dry run prints a plan like:
+
+```
+Wave 1 (4 actions)
+  install   gateway @ vm-1  (∅ → gateway-app-2.94.0-...)
+  install   rest @ vm-1     (∅ → rest-api-app-2.94.0-...)
+  install   studio @ vm-1   (∅ → studio-app-2.94.0-...)
+  install   workflow @ vm-1 (∅ → workflow-daemon-2.94.0-...)
+
+summary: install=4 swap=0 restart=0 skip=0
+```
+
+If the plan looks right, re-run with `dry_run=false`.
+
+The workflow:
+1. Builds the full monorepo (topological order)
+2. Publishes all `@kb-labs/*` packages to a private Verdaccio running on the VPS
+3. Installs each service via `kb-create install-service --registry http://127.0.0.1:4873`
+4. Starts all services through `kb-dev`
+5. Runs health checks on all endpoints
+
+## Step 5 — Provision a tenant
+
+Go to **infra repo** → Actions → **provision-tenant** → Run workflow:
+
+| Input | Value |
+|---|---|
+| `tenant_id` | e.g. `my-company` |
+
+This workflow:
+1. Creates an nginx config for `my-company.yourdomain.com`
+2. Issues a Let's Encrypt SSL certificate via HTTP-01 challenge (no DNS API needed — wildcard DNS covers the domain)
+3. Reloads nginx
+
+After it completes, `https://my-company.yourdomain.com` is live with a valid SSL cert that auto-renews every 90 days.
+
+## Step 6 — First login
+
+Open `https://my-company.yourdomain.com` and sign in with the email and password from `GATEWAY_BOOTSTRAP_ADMIN_EMAIL` / `GATEWAY_BOOTSTRAP_ADMIN_PASSWORD`.
+
+The bootstrap admin is created once on first gateway startup for the tenant specified in those env vars. It is idempotent — restarting the gateway does not create a duplicate.
+
+## Updating the platform
+
+Re-run **Deploy Platform (apply)** with `dry_run=false`. The planner detects drift — services with new package versions get a `swap` action:
+
+```
+Wave 1 (3 actions)
+  swap   rest @ vm-1      (rest-api-app-2.94.0-abc → rest-api-app-2.95.0-def)
+  swap   gateway @ vm-1   (gateway-app-2.94.0-abc → gateway-app-2.95.0-def)
+  skip   workflow @ vm-1  (workflow-daemon-2.95.0-def already current)
+```
+
+`autoRollback: true` in `deploy.yaml` means if a health gate fails, the planner rolls back automatically.
+
+## What runs where
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                  VPS (5.x.x.x)                          │
+│                                                         │
+│  nginx (443/80) ──→ kblabs-cloud.yourdomain.com         │
+│       │                    /api/v1/*  →  gateway :4000  │
+│       │                    /auth/*    →  gateway :4000  │
+│       │                    /*         →  studio  :3002  │
+│       │                                                 │
+│  Docker:                                                │
+│    kb-redis          127.0.0.1:6379                     │
+│    kb-marketplace    internal only                      │
+│    kb-minio          internal only                      │
+│                                                         │
+│  kb-platform (npm, managed by kb-dev):                  │
+│    gateway-app       127.0.0.1:4000                     │
+│    rest-api-app      127.0.0.1:5050                     │
+│    workflow-daemon   127.0.0.1:7778                     │
+│    studio-app        127.0.0.1:3002                     │
+│                                                         │
+│  UFW: only 22, 80, 443 open externally                  │
+└─────────────────────────────────────────────────────────┘
+```
+
+## Installing plugins and services
+
+Plugins and optional adapters are declared in `.kb/deploy/deploy.yaml` and installed
+alongside the platform services during `kb-deploy apply`. You don't SSH in to install
+plugins — everything is declarative and version-pinned.
+
+### Adding a plugin
+
+Add the plugin package to the `plugins` map of whichever service loads it.
+Most user-facing plugins (commit, review, mind, agents) are loaded by the REST API service:
+
+```yaml
+services:
+  rest:
+    service: "@kb-labs/rest-api-app"
+    version: "2.94.0"
+    adapters: *adapters
+    plugins:
+      "@kb-labs/commit-entry":  "2.94.0"
+      "@kb-labs/review-entry":  "2.94.0"
+      "@kb-labs/mind-entry":    "2.94.0"
+      "@kb-labs/agents-entry":  "2.94.0"
+    targets:
+      hosts: [vm-1]
+      strategy: all
+      healthGate: "60s"
+```
+
+Plugins that hook into the workflow engine are loaded by `workflow-daemon`:
+
+```yaml
+services:
+  workflow:
+    service: "@kb-labs/workflow-daemon"
+    version: "2.94.0"
+    adapters: *adapters
+    plugins:
+      "@kb-labs/workflow-entry": "2.94.0"
+    targets:
+      hosts: [vm-1]
+      strategy: all
+      healthGate: "60s"
+```
+
+### Adapters required by plugins
+
+Some plugins need adapters beyond the base set. Add them to the `adapters` map of the
+service that loads the plugin — not globally.
+
+| Plugin | Extra adapters needed |
+|---|---|
+| `mind-entry` (RAG, vector search) | `vectorStore: @kb-labs/adapters-qdrant@{ver}` + `embeddings: @kb-labs/adapters-openai/embeddings@{ver}` |
+| `agents-entry` | none (uses `llm` from base adapters) |
+| `commit-entry` | none |
+| `review-entry` | none |
+| `inbox-entry` | `notifier: @kb-labs/adapters-telegram@{ver}` (optional) |
+
+Example — enabling the mind plugin with Qdrant:
+
+```yaml
+# Override the shared adapter anchor for rest-api only
+services:
+  rest:
+    service: "@kb-labs/rest-api-app"
+    version: "2.94.0"
+    adapters:
+      llm:             "@kb-labs/adapters-openai@2.94.0"
+      storage:         "@kb-labs/adapters-fs@2.94.0"
+      logger:          "@kb-labs/adapters-pino@2.94.0"
+      logRingBuffer:   "@kb-labs/adapters-log-ringbuffer@2.94.0"
+      analytics:       "@kb-labs/adapters-analytics-file@2.94.0"
+      serviceTransport: "@kb-labs/adapters-service-transport-http@2.94.0"
+      cache:           "@kb-labs/adapters-redis@2.94.0"
+      # mind-specific:
+      vectorStore:     "@kb-labs/adapters-qdrant@2.94.0"
+      embeddings:      "@kb-labs/adapters-openai/embeddings@2.94.0"
+    plugins:
+      "@kb-labs/mind-entry": "2.94.0"
+```
+
+Qdrant also needs to be running. Add it to your `infrastructure` block:
+
+```yaml
+infrastructure:
+  qdrant:
+    type: docker-image
+    image: qdrant/qdrant:latest
+    ssh:
+      host: "${SSH_HOST}"
+      user: "${SSH_USER}"
+      key_env: SSH_KEY
+    volumes:
+      - qdrant_data:/qdrant/storage
+    ports:
+      - "127.0.0.1:6333:6333"
+    restart: unless-stopped
+    strategy: manual
+```
+
+### Per-plugin configuration via env
+
+Plugin-specific config (API keys, endpoints, feature flags) goes in the service `env` block
+or in `kb.config.jsonc` under `adapterOptions`:
+
+```yaml
+# deploy.yaml — env block (resolves ${secrets.X} from CI secrets)
+services:
+  rest:
+    env:
+      TELEGRAM_BOT_TOKEN: "${secrets.TELEGRAM_BOT_TOKEN}"
+```
+
+```jsonc
+// kb.config.jsonc — adapter options
+"adapterOptions": {
+  "notifier": {
+    "token": "${TELEGRAM_BOT_TOKEN}"
+  }
+}
+```
+
+### Third-party and custom plugins
+
+Any plugin published to npm (or your private registry) can be installed the same way — it
+doesn't have to be an official `@kb-labs/*` package:
+
+```yaml
+plugins:
+  "@your-org/kb-my-plugin": "1.2.0"
+```
+
+`kb-create install-service` resolves the plugin from whichever registry is configured in
+the platform `registry` field and bundles it into the service release directory.
+
+### Applying plugin changes
+
+After editing `deploy.yaml`, re-run **Deploy Platform (apply)** (or **Deploy from Registry**).
+The planner detects the plugin set changed and issues a `swap` action for the affected service —
+a zero-downtime reload with the new plugins installed.
+
+## Installing from npm or a private mirror
+
+The guide above uses the **dogfood workflow** (`Deploy Platform (apply)`) which builds the
+monorepo in CI and publishes packages to a temporary Verdaccio on the host. This is the
+right path for development builds and pre-release versions.
+
+Once `@kb-labs/*` packages are published to the public npm registry (or your organisation's
+private mirror), use the lighter **Deploy from Registry** workflow instead.
+
+### What changes
+
+| | Dogfood (build from source) | Registry (npm / Nexus) |
+|---|---|---|
+| Build monorepo in CI | ✅ ~10 min | ❌ not needed |
+| Publish to Verdaccio on host | ✅ | ❌ not needed |
+| Verdaccio running on VPS | ✅ required | ❌ not required |
+| Install source | Private Verdaccio | npm or your mirror |
+| Deploy time | ~15 min | ~3 min |
+
+### Using public npm
+
+Set `registry` in `.kb/deploy/deploy.yaml`:
+
+```yaml
+platform:
+  version: "2.94.0"
+  registry: "https://registry.npmjs.org"
+```
+
+Then run **Deploy from Registry** workflow:
+
+| Input | Value |
+|---|---|
+| `version` | e.g. `2.94.0` |
+| `registry` | leave empty (defaults to public npm) |
+| `dry_run` | `true` first |
+
+### Using a Nexus or Artifactory mirror
+
+If your organisation proxies npm through Nexus, Artifactory, or a similar tool:
+
+```yaml
+platform:
+  version: "2.94.0"
+  registry: "https://nexus.company.com/repository/npm-proxy/"
+```
+
+Pass the mirror URL in the workflow input:
+
+| Input | Value |
+|---|---|
+| `registry` | `https://nexus.company.com/repository/npm-proxy/` |
+
+If the registry requires authentication, add `NPM_TOKEN` to your GitHub secrets and
+configure the VPS `.npmrc`:
+
+```bash
+# On the VPS (one-time setup)
+echo "//nexus.company.com/repository/npm-proxy/:_authToken=<token>" \
+  >> /home/deploy/.npmrc
+```
+
+`kb-create install-service` inherits the user's `.npmrc` automatically, so no extra
+configuration is needed in `deploy.yaml`.
+
+### Why two workflows
+
+- **`deploy-platform.yml`** — used by the KB Labs team for internal deploys and CI.
+  Builds from HEAD, so you always get the exact state of the monorepo.
+- **`deploy-from-registry.yml`** — for end users and teams deploying released versions.
+  Faster, simpler, no build environment required.
+
+Both use the same `kb-deploy apply` engine and the same `deploy.yaml` — the only
+difference is where packages come from.
+
+- **One tenant per bootstrap admin** — the bootstrap mechanism creates an admin user in a single tenant at startup. For additional tenants, use the invite flow inside Studio or add a bootstrap step to the provisioning script.
+- **Single host** — all services share one VPS. See [Deployment → Distributed](/operations/deployment#mode-3--distributed-production) for multi-host options.
+- **State daemon replaced by Redis** — the `core-state-daemon` is not deployed; plugin `ctx.state` uses the Redis cache adapter directly. Distributed session state works across service restarts.
+- **Qdrant not included** — vector search (mind plugin) requires a separate Qdrant instance. Add it to `docker-compose.backend.yml` or point `adapters.vectorStore` at an external endpoint.
+
+## Troubleshooting
+
+**Deploy fails on swap with exit code 1, empty output**
+
+The `kb-deploy` planner passes an empty release ID to `kb-create swap` in some edge cases. Fix manually:
+
+```bash
+ssh deploy@<VPS>
+ls ~/kb-platform/releases/          # find the release ID
+~/kb-create-linux swap '@kb-labs/rest-api-app' '<release-id>' --platform ~/kb-platform
+```
+
+**Gateway starts but upstreams show `down`**
+
+The gateway config (`kb.config.jsonc`) uses `127.0.0.1` URLs. If rest-api or workflow are not listening, check:
+
+```bash
+ssh deploy@<VPS>
+~/kb-dev-linux --config ~/kb-platform/.kb/devservices.yaml status
+~/kb-dev-linux --config ~/kb-platform/.kb/devservices.yaml logs rest -n 50
+```
+
+**certbot fails during tenant provisioning**
+
+DNS propagation may not be complete. Wait a few minutes and re-run the `provision-tenant` workflow.
+
+**Studio shows blank page**
+
+The studio node process may have stale env. Restart it:
+
+```bash
+ssh deploy@<VPS>
+set -a && source ~/kb-platform/.env && set +a
+~/kb-dev-linux --config ~/kb-platform/.kb/devservices.yaml restart studio
+```

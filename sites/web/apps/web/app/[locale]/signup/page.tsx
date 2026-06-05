@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import { getTranslations, setRequestLocale } from 'next-intl/server';
+import { NextIntlClientProvider } from 'next-intl';
+import { getMessages, getTranslations, setRequestLocale } from 'next-intl/server';
 import { routing } from '@/i18n/routing';
 import { SiteHeader } from '@/components/SiteHeader';
 import { SiteFooter } from '@/components/SiteFooter';
@@ -36,7 +37,10 @@ export default async function SignupPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
 
-  const t = await getTranslations({ locale });
+  const [t, messages] = await Promise.all([
+    getTranslations({ locale }),
+    getMessages(),
+  ]);
 
 
   return (
@@ -68,6 +72,7 @@ export default async function SignupPage({ params }: Props) {
           <Container>
             <AnimateOnScroll>
               <div className="mx-auto max-w-4xl">
+                <NextIntlClientProvider messages={{ signup: messages.signup as Record<string, unknown> }}>
                 <SignupFormCard
                   locale={locale}
                   perks={[
@@ -82,6 +87,7 @@ export default async function SignupPage({ params }: Props) {
                   formNoteSuffix={t('signup.form.noteSuffix')}
                   successMessage={t('signup.form.success')}
                 />
+                </NextIntlClientProvider>
               </div>
             </AnimateOnScroll>
           </Container>
