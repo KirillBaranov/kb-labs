@@ -106,9 +106,11 @@ jobs:
           ssh-keyscan -H "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null || true
 
       # ── Reclaim disk (+ optional reset) BEFORE any host write ────────────────
-      # Repeated debug deploys fill the small VM disk (per-release pnpm stores,
-      # caches, dangling docker layers, old releases) until even `scp` of a binary
-      # fails with ENOSPC. Free space here, before Bootstrap touches the host.
+      # Repeated deploys fill the small VM disk (per-release node_modules, caches,
+      # dangling docker layers + volumes, old releases) until even `scp` of a
+      # binary fails with ENOSPC and MongoDB crashes. Free space here, before
+      # Bootstrap touches the host, then HARD-FAIL if still below the floor so the
+      # run aborts cleanly instead of hanging mid-install.
       - name: Reclaim disk
         env:
           SSH_HOST: ${{ secrets.SSH_HOST }}
@@ -118,19 +120,36 @@ jobs:
           ssh $SSHOPTS "$SSH_USER@$SSH_HOST" "RESET='${{ inputs.reset_platform }}' bash -s" <<'REMOTE'
           set -uo pipefail
           P="$HOME/kb-platform"
+          STORE="$P/.kb/pnpm-store"
+          MIN_FREE_KB=$((3 * 1024 * 1024))   # 3 GiB floor (matches kb-create's guard headroom)
           echo "Disk before:"; df -h "$HOME" | tail -1
+
           if [ "${RESET:-}" = "true" ]; then
             command -v kb-dev >/dev/null && kb-dev --config "$P/.kb/devservices.yaml" stop 2>/dev/null || true
             echo "reset_platform: removing installed releases / services / registry…"
             rm -rf "$P/releases" "$P/services" "$P/releases.json" "$P/.kb/devservices.yaml"
           fi
-          # Always reclaim caches + dangling docker so scp and per-release installs fit.
+
+          # Prune the shared pnpm store of objects no live release references — the
+          # biggest reclaim now that releases hardlink into it. Falls back silently
+          # if the store dir does not exist yet (first deploy).
+          [ -d "$STORE" ] && pnpm store prune --store-dir "$STORE" 2>/dev/null || true
           pnpm store prune 2>/dev/null || true
           rm -rf "$HOME/.cache/pnpm" "$HOME/.npm/_cacache" 2>/dev/null || true
           npm cache clean --force 2>/dev/null || true
+          # Dangling docker volumes (old gateway/redis/analytics stacks) were the
+          # single largest reclaim in practice (~2.4 GiB). Only volumes not attached
+          # to any container are removed, so live infra is untouched.
           docker image prune -af 2>/dev/null || true
           docker builder prune -af 2>/dev/null || true
+          docker volume prune -f 2>/dev/null || true
+
           echo "Disk after:"; df -h "$HOME" | tail -1
+          FREE_KB=$(df -P "$HOME" | tail -1 | awk '{print $4}')
+          if [ "$FREE_KB" -lt "$MIN_FREE_KB" ]; then
+            echo "::error::Only $((FREE_KB/1024)) MiB free after reclaim; need >= $((MIN_FREE_KB/1024)) MiB. Free space or run with reset_platform=true."
+            exit 1
+          fi
           REMOTE
 
       # ── Bootstrap the host: kb-create + kb-dev binaries, Verdaccio ───────────

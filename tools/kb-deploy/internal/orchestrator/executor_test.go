@@ -33,7 +33,7 @@ func (f *fakeRunner) Run(cmd string) (string, error) {
 	case strings.Contains(cmd, "install-service"):
 		out := f.installOut
 		if out == "" {
-			out = "installed release fake-release at /opt/kb-platform/releases/fake-release\n"
+			out = `{"releaseId":"fake-release","noop":false,"evicted":[]}` + "\n"
 		}
 		return out, nil
 	case strings.Contains(cmd, "kb-create releases"):

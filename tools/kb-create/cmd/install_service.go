@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -16,7 +17,17 @@ var (
 	installServiceRegistry string
 	installServiceID       string
 	installServiceKeep     int
+	installServiceOutput   string
 )
+
+// installResultJSON is the machine-readable result emitted under --output json.
+// kb-deploy unmarshals exactly this shape, so it is a stable contract — do not
+// scrape the human-readable text instead.
+type installResultJSON struct {
+	ReleaseID string   `json:"releaseId"`
+	NoOp      bool     `json:"noop"`
+	Evicted   []string `json:"evicted"`
+}
 
 var installServiceCmd = &cobra.Command{
 	Use:   "install-service <service-pkg>@<version>",
@@ -48,8 +59,10 @@ func init() {
 		"npm registry (defaults to https://registry.npmjs.org)")
 	installServiceCmd.Flags().StringVar(&installServiceID, "release-id", "",
 		"pin release id explicitly (default: derived deterministically)")
-	installServiceCmd.Flags().IntVar(&installServiceKeep, "keep-releases", 3,
-		"retain at most N releases per service (current/previous always kept)")
+	installServiceCmd.Flags().IntVar(&installServiceKeep, "keep-releases", 0,
+		"retain at most N releases per service (current/previous always kept; 0 = default)")
+	installServiceCmd.Flags().StringVar(&installServiceOutput, "output", "text",
+		"output format: text (human) or json (machine-readable {releaseId,noop,evicted})")
 
 	rootCmd.AddCommand(installServiceCmd)
 }
@@ -74,6 +87,18 @@ func runInstallService(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("--plugins: %w", err)
 	}
 
+	jsonOut := installServiceOutput == "json"
+	if installServiceOutput != "text" && !jsonOut {
+		return fmt.Errorf("--output must be 'text' or 'json', got %q", installServiceOutput)
+	}
+
+	// In JSON mode, pnpm's progress would otherwise pollute stdout and break the
+	// single-object contract — route it to stderr so stdout carries only the JSON.
+	progressOut := cmd.OutOrStdout()
+	if jsonOut {
+		progressOut = cmd.ErrOrStderr()
+	}
+
 	opts := installservice.Options{
 		ServicePkg:   pkg,
 		Version:      version,
@@ -83,13 +108,26 @@ func runInstallService(cmd *cobra.Command, args []string) error {
 		Registry:     installServiceRegistry,
 		ReleaseID:    installServiceID,
 		KeepReleases: installServiceKeep,
-		Stdout:       cmd.OutOrStdout(),
+		Stdout:       progressOut,
 		Stderr:       cmd.ErrOrStderr(),
 	}
 
 	res, err := installservice.Install(context.Background(), opts)
 	if err != nil {
 		return err
+	}
+
+	if jsonOut {
+		evicted := res.Evicted
+		if evicted == nil {
+			evicted = []string{}
+		}
+		enc := json.NewEncoder(cmd.OutOrStdout())
+		return enc.Encode(installResultJSON{
+			ReleaseID: res.ReleaseID,
+			NoOp:      res.NoOp,
+			Evicted:   evicted,
+		})
 	}
 
 	if res.NoOp {

@@ -34,6 +34,50 @@ type applyFlow struct {
 	Configs  map[string]deliveredConfig // per-host rendered config; nil when none declared
 }
 
+// fetchIntegrities resolves the registry content digest for every distinct
+// service package@version in the config, querying it on a target host (the
+// platform registry is often a host-local Verdaccio). The result keys are
+// "<pkg>@<version>". Any failure aborts apply with ERR_REGISTRY_INTEGRITY.
+func fetchIntegrities(cfg *config.Config, hosts map[string]*remote.Host) (map[string]string, error) {
+	registry := ""
+	if cfg.Platform != nil {
+		registry = cfg.Platform.Registry
+	}
+	out := make(map[string]string)
+	names := make([]string, 0, len(cfg.Services))
+	for n := range cfg.Services {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		svc := cfg.Services[name]
+		key := svc.Service + "@" + svc.Version
+		if _, done := out[key]; done {
+			continue
+		}
+		host, err := firstConnectedHost(svc.Targets.Hosts, hosts)
+		if err != nil {
+			return nil, fmt.Errorf("services.%s: %w", name, err)
+		}
+		integ, err := host.PackageIntegrity(svc.Service, svc.Version, registry)
+		if err != nil {
+			return nil, err
+		}
+		out[key] = integ
+	}
+	return out, nil
+}
+
+// firstConnectedHost returns the first target host that has an open connection.
+func firstConnectedHost(targets []string, hosts map[string]*remote.Host) (*remote.Host, error) {
+	for _, name := range targets {
+		if h, ok := hosts[name]; ok {
+			return h, nil
+		}
+	}
+	return nil, fmt.Errorf("no connected target host among %v", targets)
+}
+
 // deliveredConfig is the per-host config payload prepared on the control
 // machine before any host is touched. JSONC/Env are streamed to the host over
 // stdin; Hash is committed to the lock to detect config-only changes.
@@ -99,8 +143,18 @@ func loadFlow() (*applyFlow, error) {
 		return nil, err
 	}
 
+	// Content-aware ids: fetch each service package's registry integrity so a
+	// same-version content patch yields a new id (install, not skip). Fail-fast
+	// here — the registry is required for apply anyway.
+	integrities, err := fetchIntegrities(cfg, hosts)
+	if err != nil {
+		closeAll()
+		return nil, err
+	}
+
 	plan, err := orchestrator.ComputePlan(cfg, states, func(svc config.Service) string {
-		return releaseid.ComputeID(svc.Service, svc.Version, svc.Adapters, svc.Plugins)
+		key := svc.Service + "@" + svc.Version
+		return releaseid.ComputeID(svc.Service, svc.Version, integrities[key], svc.Adapters, svc.Plugins)
 	})
 	if err != nil {
 		closeAll()
