@@ -262,7 +262,8 @@ func runWave(actions []Action, parallel int, opts ExecuteOptions, forceRestart m
 		}
 	}
 
-	// Phase 3 — restart + health gate.
+	// Phase 3 — restart + health gate. kb-dev's restart cascade now correctly
+	// re-starts dependents it stops, so no post-restart settle pass is needed.
 	runConcurrent(len(actions), parallel, func(i int) {
 		if !needsRestart[i] || results[i].Err != nil {
 			return
