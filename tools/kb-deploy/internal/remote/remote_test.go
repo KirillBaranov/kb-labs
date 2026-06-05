@@ -125,6 +125,23 @@ func TestInstallService_SuccessPath(t *testing.T) {
 	}
 }
 
+// TestInstallService_GluedPrefix reproduces the SSH stream-merge failure where a
+// trailing stderr fragment with no newline is glued onto the JSON line, e.g.
+// `npm warn deprecated …{"releaseId":…}`. The parser must still recover the id.
+func TestInstallService_GluedPrefix(t *testing.T) {
+	fr := &fakeRunner{responses: map[string]string{
+		"install-service": `npm warn deprecated node-domexception@1.0.0{"releaseId":"gateway-1.2.3-aaa","noop":false,"evicted":[]}` + "\n",
+	}}
+	h := &Host{Name: "p1", Runner: fr}
+	res, err := h.InstallService(InstallOpts{ServicePkg: "@kb-labs/gateway", Version: "1.2.3"})
+	if err != nil {
+		t.Fatalf("unexpected: %v", err)
+	}
+	if res.ReleaseID != "gateway-1.2.3-aaa" {
+		t.Errorf("ReleaseID = %q", res.ReleaseID)
+	}
+}
+
 func TestInstallService_NoOp(t *testing.T) {
 	fr := &fakeRunner{responses: map[string]string{
 		"install-service": `{"releaseId":"gateway-1.2.3-aaa","noop":true,"evicted":[]}` + "\n",
