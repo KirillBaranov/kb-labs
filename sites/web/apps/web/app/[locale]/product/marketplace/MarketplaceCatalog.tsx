@@ -1,4 +1,5 @@
 'use client';
+// i18n-client-provided: marketplace — caller must wrap with <NextIntlClientProvider messages={{ marketplace }}>
 
 import { useState, useMemo, type ElementType, type ChangeEvent } from 'react';
 import { useTranslations } from 'next-intl';
