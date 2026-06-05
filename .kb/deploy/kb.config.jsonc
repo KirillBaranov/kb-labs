@@ -32,7 +32,10 @@
       // Shared state for plugins — Redis replaces core-state-daemon.
       // StateAPI (ctx.state) uses CacheAdapter directly, so this one adapter
       // covers both the cache slot and plugin state storage.
-      "cache": "@kb-labs/adapters-redis"
+      "cache": "@kb-labs/adapters-redis",
+      // Persistent document store — gateway users/tenants/sessions/hosts.
+      // MongoDB must run as a single-node replica set (transactions require it).
+      "documentDatabase": "@kb-labs/adapters-mongodb"
     },
 
     // Plugin execution mode: worker-pool = isolated workers (stable).
@@ -53,6 +56,9 @@
     "logger": { "level": "${KB_LOG_LEVEL}" },
     // Redis on localhost — kb-redis Docker container exposed on 127.0.0.1:6379.
     "cache": { "url": "redis://127.0.0.1:6379" },
+    // MongoDB on localhost — single-node replica set. The adapter accepts a
+    // single `url` with the database in the path and derives uri + database.
+    "documentDatabase": { "url": "mongodb://127.0.0.1:27017/kblabs" },
     "logRingBuffer": { "maxSize": 100 },
     "analytics": { "filename": ".kb/analytics/events.jsonl" },
     // Service transport — logical service IDs → TCP loopback URLs. These IDs are

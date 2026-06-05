@@ -60,6 +60,10 @@ _adapters: &adapters
   # Redis replaces core-state-daemon — StateAPI uses CacheAdapter directly.
   # Requires kb-redis exposed on host at 127.0.0.1:6379 (see docker-compose.backend.yml).
   cache: "@kb-labs/adapters-redis@2.94.0"
+  # Persistent document store for gateway users/tenants/sessions/hosts.
+  # Requires MongoDB as a single-node replica set at 127.0.0.1:27017
+  # (transactions need a replica set — see operations/self-hosted-cloud docs).
+  documentDatabase: "@kb-labs/adapters-mongodb@2.94.0"
 
 services:
   rest:

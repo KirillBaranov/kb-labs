@@ -80,12 +80,69 @@ interface MetaDoc {
 }
 
 export interface MongoDBConfig {
-  uri: string;
-  database: string;
+  /** Connection URI without a database path, e.g. `mongodb://127.0.0.1:27017`. */
+  uri?: string;
+  /** Database name. Used together with `uri`. */
+  database?: string;
+  /**
+   * Single connection string with the database in the path, e.g.
+   * `mongodb://127.0.0.1:27017/kblabs`. Provided as an alternative to the
+   * `uri` + `database` pair so the adapter matches the platform's `url`
+   * convention (the same one the Redis adapter uses). When `url` is set,
+   * `uri` and `database` are derived from it.
+   */
+  url?: string;
   options?: {
     maxPoolSize?: number;
     serverSelectionTimeoutMS?: number;
   };
+}
+
+/**
+ * Normalise the two accepted config shapes into a concrete `{ uri, database }`
+ * pair. Throws a clear, actionable error when neither shape provides a
+ * connection target — far better than the opaque `Cannot read properties of
+ * undefined (reading 'startsWith')` the Mongo driver throws on `new
+ * MongoClient(undefined)`.
+ */
+export function resolveConnection(config: MongoDBConfig): { uri: string; database: string } {
+  // Explicit uri + database wins.
+  if (config.uri) {
+    return {
+      uri: config.uri,
+      database: config.database ?? databaseFromUrl(config.url ?? config.uri) ?? 'kblabs',
+    };
+  }
+
+  // Otherwise derive from a single `url` connection string.
+  if (config.url) {
+    const database = config.database ?? databaseFromUrl(config.url);
+    if (!database) {
+      throw new Error(
+        `[adapters-mongodb] config.url "${config.url}" has no database path. ` +
+          `Use "mongodb://host:port/<database>" or set "database" explicitly.`,
+      );
+    }
+    return { uri: stripDatabaseFromUrl(config.url), database };
+  }
+
+  throw new Error(
+    '[adapters-mongodb] missing connection config: provide either ' +
+      '{ uri, database } or { url: "mongodb://host:port/database" }.',
+  );
+}
+
+/** Extract the database name from the path segment of a Mongo connection URL. */
+function databaseFromUrl(url: string): string | undefined {
+  // mongodb://host:port/<db>?opts  →  <db>
+  const match = url.match(/^mongodb(?:\+srv)?:\/\/[^/]+\/([^/?]+)/);
+  return match?.[1];
+}
+
+/** Drop the `/database` path segment so the URI can be passed to MongoClient. */
+function stripDatabaseFromUrl(url: string): string {
+  // Keep scheme + authority + any query string, drop the path.
+  return url.replace(/^(mongodb(?:\+srv)?:\/\/[^/]+)\/[^?]*(\?.*)?$/, '$1$2');
 }
 
 const now = (): number => Date.now();
@@ -251,11 +308,12 @@ export class MongoDBAdapter implements IDocumentDatabase {
   private closed = false;
 
   constructor(private config: MongoDBConfig) {
-    this.client = new MongoClient(config.uri, {
+    const { uri, database } = resolveConnection(config);
+    this.client = new MongoClient(uri, {
       maxPoolSize: config.options?.maxPoolSize ?? 10,
       serverSelectionTimeoutMS: config.options?.serverSelectionTimeoutMS ?? 30_000,
     });
-    this.db = this.client.db(config.database);
+    this.db = this.client.db(database);
   }
 
   // ──────────────────────────────────────────────────────────────────────────

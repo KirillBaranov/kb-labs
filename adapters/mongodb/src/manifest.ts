@@ -30,11 +30,17 @@ export const manifest: AdapterManifest = {
   configSchema: {
     uri: {
       type: "string",
-      description: "MongoDB connection URI (e.g., mongodb://localhost:27017)",
+      description:
+        "MongoDB connection URI without a database path (e.g., mongodb://localhost:27017). Pair with `database`.",
     },
     database: {
       type: "string",
-      description: "Database name",
+      description: "Database name. Used together with `uri`.",
+    },
+    url: {
+      type: "string",
+      description:
+        "Single connection string with the database in the path (e.g., mongodb://localhost:27017/kblabs). Alternative to uri + database.",
     },
     poolSize: {
       type: "number",
