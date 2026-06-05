@@ -13,7 +13,7 @@ import {
 import type { ILogger } from '@kb-labs/core-platform';
 import { registerRoutes } from './routes/index.js';
 import type { MarketplaceService } from '@kb-labs/marketplace-core';
-import { ScopeResolutionError, AdapterScopeError } from '@kb-labs/marketplace-core';
+import { ScopeResolutionError, AdapterScopeError, InvalidEntityError } from '@kb-labs/marketplace-core';
 import { PackageInstallError } from '@kb-labs/marketplace-npm';
 import { ScopeRequestError } from './scope-parser.js';
 import { randomUUID } from 'node:crypto';
@@ -79,6 +79,13 @@ export async function createServer(opts: CreateServerOptions): Promise<FastifyIn
       err instanceof AdapterScopeError
     ) {
       return reply.code(400).send({
+        error: err.name,
+        code: err.code,
+        message: err.message,
+      });
+    }
+    if (err instanceof InvalidEntityError) {
+      return reply.code(422).send({
         error: err.name,
         code: err.code,
         message: err.message,

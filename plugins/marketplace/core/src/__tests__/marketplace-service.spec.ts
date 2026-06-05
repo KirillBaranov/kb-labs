@@ -45,6 +45,26 @@ async function createPluginDir(
   return { dir, integrity: computeIntegrity(pkgJson) };
 }
 
+/**
+ * Create a package directory that is NOT a KB Labs entity — just a plain
+ * npm package with package.json and no kb.plugin.json / manifest.
+ * Mirrors what happens when `install mind` fetches the unrelated npm `mind`
+ * library instead of @kb-labs/mind-entry (B-021).
+ */
+async function createNonKbPackageDir(
+  tmpDir: string,
+  name: string,
+  id: string,
+  version = '0.0.2',
+): Promise<{ dir: string; integrity: string }> {
+  const dir = path.join(tmpDir, 'packages', name);
+  await fs.mkdir(dir, { recursive: true });
+  const pkgJson = JSON.stringify({ name: id, version });
+  await fs.writeFile(path.join(dir, 'package.json'), pkgJson);
+  // Intentionally NO kb.plugin.json / manifest.
+  return { dir, integrity: computeIntegrity(pkgJson) };
+}
+
 function createMockSource(pluginDirs: Map<string, { dir: string; version: string; integrity: string }>): PackageSource {
   return {
     async resolve(spec: string): Promise<ResolvedPackage> {
@@ -155,6 +175,27 @@ describe('MarketplaceService', () => {
       expect(result.installed).toHaveLength(1);
       expect(result.warnings).toHaveLength(1);
       expect(result.warnings[0]).toContain('hook-boom');
+    });
+
+    it('B-021: rejects a package with no detectable KB Labs entity kind', async () => {
+      // Installing a plain npm package (no kb manifest) must FAIL LOUDLY,
+      // not silently record it as a 'plugin'. This is what happened with
+      // `install mind` fetching the unrelated npm `mind` library.
+      const { dir, integrity } = await createNonKbPackageDir(tmpDir, 'mind', 'mind');
+      const source = createMockSource(
+        new Map([['mind', { dir, version: '0.0.2', integrity }]]),
+      );
+
+      const service = new MarketplaceService({ platformRoot: tmpDir, source });
+
+      const { InvalidEntityError } = await import('../marketplace-service.js');
+      await expect(
+        service.install({ scope: 'platform' }, ['mind']),
+      ).rejects.toBeInstanceOf(InvalidEntityError);
+
+      // Lock must NOT contain the bogus entry.
+      const lock = await readMarketplaceLock(tmpDir, new DiagnosticCollector());
+      expect(lock?.installed['mind']).toBeUndefined();
     });
   });
 

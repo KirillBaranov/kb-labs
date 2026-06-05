@@ -129,8 +129,19 @@ export class MarketplaceService implements MarketplaceServiceAPI {
       const resolved = await source.resolve(spec);
       const result = await source.install(resolved, scopeRoot, opts);
 
-      // Detect primary kind via strategies
+      // Detect primary kind via strategies. A null result means the installed
+      // package is not a KB Labs entity (no plugin/adapter/... manifest) —
+      // fail loudly and roll back the npm install instead of recording a bogus
+      // lock entry (B-021).
       const primaryKind = await this.detectKind(result.packageRoot);
+      if (primaryKind === null) {
+        await source.remove(result.id, scopeRoot).catch(() => undefined);
+        throw new InvalidEntityError(
+          `Package "${result.id}" (resolved from "${spec}") is not a valid KB Labs entity — ` +
+          `no plugin/adapter/workflow manifest found. Nothing was installed. ` +
+          `Did you mean a scoped package such as "@kb-labs/${spec}-entry"?`,
+        );
+      }
       this.assertScopeAllowsKind(ctx.scope, primaryKind);
 
       const strategy = this.strategies.get(primaryKind);
@@ -232,6 +243,12 @@ export class MarketplaceService implements MarketplaceServiceAPI {
     const version: string = pkgJson.version ?? '0.0.0';
 
     const primaryKind = await this.detectKind(absPath);
+    if (primaryKind === null) {
+      throw new InvalidEntityError(
+        `Cannot link "${id}" (${absPath}) — not a valid KB Labs entity ` +
+        `(no plugin/adapter/workflow manifest found).`,
+      );
+    }
     this.assertScopeAllowsKind(ctx.scope, primaryKind);
 
     const strategy = this.strategies.get(primaryKind);
@@ -416,14 +433,10 @@ export class MarketplaceService implements MarketplaceServiceAPI {
       return;
     }
 
-    let detected = false;
-    for (const strategy of this.strategies.values()) {
-      const kind = await strategy.detectKind(pkgDir);
-      if (kind) { detected = true; break; }
-    }
-    if (!detected) { return; }
-
     const primaryKind = await this.detectKind(pkgDir);
+    // Not a KB Labs entity — skip silently during scan (unlike install/link,
+    // scanning node_modules legitimately encounters many non-entity packages).
+    if (primaryKind === null) { return; }
 
     // Adapters can only live in platform scope.
     if (scope === 'project' && primaryKind === 'adapter') {
@@ -524,12 +537,19 @@ export class MarketplaceService implements MarketplaceServiceAPI {
   // Private
   // -------------------------------------------------------------------------
 
-  private async detectKind(packageRoot: string): Promise<EntityKind> {
+  /**
+   * Detect the primary entity kind of a package via registered strategies.
+   * Returns null when no strategy recognizes the package — i.e. it is not a
+   * valid KB Labs entity (no plugin/adapter/... manifest). Callers MUST treat
+   * null as a hard failure rather than defaulting to 'plugin' (B-021): a plain
+   * npm package with no kb manifest must never be recorded as a plugin.
+   */
+  private async detectKind(packageRoot: string): Promise<EntityKind | null> {
     for (const strategy of this.strategies.values()) {
       const kind = await strategy.detectKind(packageRoot);
       if (kind) { return kind; }
     }
-    return 'plugin';
+    return null;
   }
 
   /**
@@ -592,6 +612,19 @@ export class AdapterScopeError extends Error {
   constructor(message: string) {
     super(message);
     this.name = 'AdapterScopeError';
+  }
+}
+
+/**
+ * Thrown when a package was resolved/installed but is not a recognizable KB Labs
+ * entity (no plugin/adapter/workflow manifest). Maps to HTTP 422. Prevents
+ * recording bogus lock entries for unrelated npm packages (B-021).
+ */
+export class InvalidEntityError extends Error {
+  readonly code = 'MARKETPLACE_NOT_AN_ENTITY';
+  constructor(message: string) {
+    super(message);
+    this.name = 'InvalidEntityError';
   }
 }
 
