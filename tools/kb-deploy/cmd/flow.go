@@ -32,6 +32,9 @@ type applyFlow struct {
 	Lock     *lock.Lock // may be nil (no lock yet)
 	Drift    []DriftItem
 	Configs  map[string]deliveredConfig // per-host rendered config; nil when none declared
+	// ServiceEnv is the resolved deploy.yaml per-service env (secrets expanded),
+	// keyed by service logical name. Delivered to `kb-create swap --env`.
+	ServiceEnv map[string]map[string]string
 }
 
 // fetchIntegrities resolves the registry content digest for every distinct
@@ -120,6 +123,12 @@ func loadFlow() (*applyFlow, error) {
 		return nil, err
 	}
 
+	// Resolve per-service env (secrets expanded) for delivery to kb-create swap.
+	serviceEnv, err := resolveServiceEnv(cfg, resolver)
+	if err != nil {
+		return nil, err
+	}
+
 	// Prepare + preflight per-host config before any host is dialed or mutated
 	// (fail-fast: a broken config or unresolved secret aborts before SSH).
 	configs, err := prepareConfigs(cfg, resolver, filepath.Dir(cfgPath))
@@ -164,16 +173,41 @@ func loadFlow() (*applyFlow, error) {
 	drift := detectDrift(cfg, l, states)
 
 	return &applyFlow{
-		CfgPath:  cfgPath,
-		Cfg:      cfg,
-		Hosts:    hosts,
-		CloseAll: closeAll,
-		States:   states,
-		Plan:     plan,
-		Lock:     l,
-		Drift:    drift,
-		Configs:  configs,
+		CfgPath:    cfgPath,
+		Cfg:        cfg,
+		Hosts:      hosts,
+		CloseAll:   closeAll,
+		States:     states,
+		Plan:       plan,
+		Lock:       l,
+		Drift:      drift,
+		Configs:    configs,
+		ServiceEnv: serviceEnv,
 	}, nil
+}
+
+// resolveServiceEnv expands the deploy.yaml per-service env (${secrets.X} /
+// ${env.X}) into concrete KEY=VALUE maps keyed by service logical name. These
+// are delivered to `kb-create swap --env` so the devservices entry kb-dev
+// launches reflects deploy-time config. validateSecrets has already confirmed
+// every reference resolves, so an error here is unexpected.
+func resolveServiceEnv(cfg *config.Config, r *secrets.Resolver) (map[string]map[string]string, error) {
+	out := map[string]map[string]string{}
+	for name, svc := range cfg.Services {
+		if len(svc.Env) == 0 {
+			continue
+		}
+		resolved := make(map[string]string, len(svc.Env))
+		for k, v := range svc.Env {
+			ev, err := r.Expand(v)
+			if err != nil {
+				return nil, fmt.Errorf("services.%s.env.%s: %w", name, k, err)
+			}
+			resolved[k] = ev
+		}
+		out[name] = resolved
+	}
+	return out, nil
 }
 
 // prepareConfigs reads the rendered platform config, validates it, resolves

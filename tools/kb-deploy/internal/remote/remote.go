@@ -7,6 +7,7 @@ package remote
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 )
@@ -54,17 +55,30 @@ type InstallResult struct {
 // machine-readable JSON result. The release-id is read from a structured object
 // — never scraped from human-readable text — so wording drift cannot produce an
 // empty id that then breaks Swap.
+//
+// Retry: install-service is idempotent (it no-ops when the release dir already
+// exists). If a run exits 0 but yields no JSON result — a rare case where the
+// result line was lost over the SSH stream while the install itself succeeded —
+// one retry re-runs the same command, which no-ops on the now-present dir and
+// returns a clean JSON result. This self-heals the lost-output flake without
+// risking a partial install.
 func (h *Host) InstallService(opts InstallOpts) (*InstallResult, error) {
 	cmd := h.buildInstallCmd(opts)
-	out, err := h.Runner.Run(cmd)
-	if err != nil {
-		return nil, fmt.Errorf("install-service on %s: %w (output: %s)", h.Name, err, out)
+	var lastOut string
+	for attempt := 0; attempt < 2; attempt++ {
+		out, err := h.Runner.Run(cmd)
+		if err != nil {
+			return nil, fmt.Errorf("install-service on %s: %w (output: %s)", h.Name, err, out)
+		}
+		res, perr := parseInstallJSON(out)
+		if perr == nil {
+			return res, nil
+		}
+		lastOut = out // exit 0 but no JSON — retry once (idempotent no-op)
 	}
-	res, err := parseInstallJSON(out)
-	if err != nil {
-		return nil, fmt.Errorf("install-service on %s: %w (output: %s)", h.Name, err, out)
-	}
-	return res, nil
+	return nil, fmt.Errorf(
+		"install-service on %s: %w (output: %s)", h.Name,
+		fmt.Errorf("ERR_INSTALL_NO_RELEASE_ID: no JSON result after retry"), lastOut)
 }
 
 func (h *Host) buildInstallCmd(opts InstallOpts) string {
@@ -174,18 +188,37 @@ func (h *Host) PackageIntegrity(servicePkg, version, registry string) (string, e
 	return integrity, nil
 }
 
-// Swap atomically points current at the given release.
-func (h *Host) Swap(servicePkg, releaseID string) error {
+// Swap atomically points current at the given release. env carries the
+// deploy.yaml per-service env overrides (already resolved) so kb-create writes
+// them into the devservices entry — without this, a service whose deploy config
+// moves it off its manifest defaults (e.g. Studio's port) is launched wrong.
+func (h *Host) Swap(servicePkg, releaseID string, env map[string]string) error {
 	cmd := fmt.Sprintf("kb-create swap %s %s",
 		shellQuote(servicePkg), shellQuote(releaseID))
 	if h.PlatformPath != "" {
 		cmd += " --platform " + shellQuote(h.PlatformPath)
+	}
+	for _, k := range sortedKeys(env) {
+		cmd += " --env " + shellQuote(k+"="+env[k])
 	}
 	out, err := h.Runner.Run(cmd)
 	if err != nil {
 		return fmt.Errorf("swap on %s: %w (output: %s)", h.Name, err, out)
 	}
 	return nil
+}
+
+// sortedKeys returns map keys in deterministic order (stable swap commands).
+func sortedKeys(m map[string]string) []string {
+	if len(m) == 0 {
+		return nil
+	}
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 // Rollback swaps current back to previous on the target.

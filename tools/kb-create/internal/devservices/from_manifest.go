@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 )
 
 // ServiceManifest mirrors the subset of core/plugin-contracts' ServiceManifest
@@ -22,8 +23,8 @@ type ServiceManifest struct {
 		HealthCheck string `json:"healthCheck"`
 		Protocol    string `json:"protocol,omitempty"`
 	} `json:"runtime"`
-	DependsOn []string                    `json:"dependsOn,omitempty"`
-	Env       map[string]ServiceEnvVar    `json:"env,omitempty"`
+	DependsOn []string                 `json:"dependsOn,omitempty"`
+	Env       map[string]ServiceEnvVar `json:"env,omitempty"`
 	// Fields kb-dev does not care about (description, display, requires) are
 	// ignored — their absence from this struct is intentional.
 }
@@ -67,7 +68,12 @@ func LoadManifest(path string) (*ServiceManifest, error) {
 // servicePkg:      npm package name, e.g. "@kb-labs/gateway"
 // serviceShort:    directory name under services/, e.g. "gateway"
 // manifest:        parsed manifest.json of the just-installed release
-func EntryForSwap(platformDir, servicePkg, serviceShort string, manifest *ServiceManifest) (string, Service) {
+// envOverrides:    deploy-time per-service env (from deploy.yaml); wins over the
+//
+//	manifest env defaults. A PORT override also retargets the
+//	entry's port + health-check URL so kb-dev probes the right
+//	port (e.g. Studio's manifest default 3000 → deploy 3002).
+func EntryForSwap(platformDir, servicePkg, serviceShort string, manifest *ServiceManifest, envOverrides map[string]string) (string, Service) {
 	// Path relative to services/<short>/current.
 	currentRoot := filepath.Join(platformDir, "services", serviceShort, "current")
 	nodeModules := filepath.Join(currentRoot, "node_modules", servicePkg)
@@ -79,13 +85,24 @@ func EntryForSwap(platformDir, servicePkg, serviceShort string, manifest *Servic
 			env[k] = v.Default
 		}
 	}
+	for k, v := range envOverrides {
+		env[k] = v // deploy-time overrides win over manifest defaults
+	}
+
+	// Effective port: an overridden PORT retargets the probe; else manifest port.
+	port := manifest.Runtime.Port
+	if p, ok := envOverrides["PORT"]; ok {
+		if n, err := strconv.Atoi(p); err == nil && n > 0 {
+			port = n
+		}
+	}
 
 	url := ""
 	healthCheck := manifest.Runtime.HealthCheck
-	if manifest.Runtime.Port > 0 && healthCheck != "" && healthCheck[0] == '/' {
+	if port > 0 && healthCheck != "" && healthCheck[0] == '/' {
 		// Expand relative path into a localhost URL so kb-dev's HTTP probe works.
-		healthCheck = fmt.Sprintf("http://localhost:%d%s", manifest.Runtime.Port, healthCheck)
-		url = fmt.Sprintf("http://localhost:%d", manifest.Runtime.Port)
+		healthCheck = fmt.Sprintf("http://localhost:%d%s", port, healthCheck)
+		url = fmt.Sprintf("http://localhost:%d", port)
 	}
 
 	return manifest.ID, Service{
@@ -93,7 +110,7 @@ func EntryForSwap(platformDir, servicePkg, serviceShort string, manifest *Servic
 		Type:        "node",
 		Command:     "node " + entryPath,
 		HealthCheck: healthCheck,
-		Port:        manifest.Runtime.Port,
+		Port:        port,
 		URL:         url,
 		Env:         env,
 		DependsOn:   manifest.DependsOn,
