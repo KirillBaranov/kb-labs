@@ -80,6 +80,16 @@ Forms the basis for automated e2e tests and pre-release regression checks.
 | [S-021](scenarios/S-021-studio-workflow-runs.md) | Studio — View workflow runs | solo-developer | P1 | manual |
 | [S-022](scenarios/S-022-studio-trigger-workflow.md) | Studio — Trigger workflow from UI | solo-developer | P1 | manual |
 
+### Execution & Runtime
+| ID | Title | Persona | Priority | Automation |
+|---|---|---|---|---|
+| [S-027](scenarios/S-027-workflow-live-progress.md) | Workflow — Live progress while running | solo-developer | P0 | e2e-todo |
+| [S-028](scenarios/S-028-workflow-real-work.md) | Workflow — Does real work (shell/http/file) | solo-developer | P0 | e2e-todo |
+| [S-029](scenarios/S-029-workflow-failure-visibility.md) | Workflow — Failure is visible and actionable | solo-developer | P0 | e2e-todo |
+| [S-030](scenarios/S-030-long-running-command.md) | Plugin command — Long-running, cancellable | solo-developer | P1 | manual |
+| [S-031](scenarios/S-031-session-expired.md) | Session expired — clear prompt to re-login | solo-developer | P1 | manual |
+| [S-032](scenarios/S-032-workflow-webhook.md) | Workflow — Sends webhook on completion | solo-developer | P1 | manual |
+
 ### Team (requires VPS / team setup)
 | ID | Title | Persona | Priority | Automation |
 |---|---|---|---|---|
