@@ -165,6 +165,13 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		Plugins:     sel.Plugins,
 		DemoMode:    sel.DemoMode,
 	}
+	// Solo/local bootstrap: disable gateway auth and bind to loopback so Studio
+	// opens without login and is never reachable off the machine (B-023). The
+	// deployed cloud platform is provisioned via a different path (install-service)
+	// and keeps auth on. kb-create update preserves whatever the config already has.
+	authOff := false
+	scaffoldOpts.GatewayAuthEnabled = &authOff
+	scaffoldOpts.GatewayHost = "127.0.0.1"
 	// Wire adapter bindings from manifest adapterConfig (e.g. documentDatabase
 	// for environments where user auth is a core feature, not an optional overlay).
 	if ac := m.AdapterConfig; ac != nil {
