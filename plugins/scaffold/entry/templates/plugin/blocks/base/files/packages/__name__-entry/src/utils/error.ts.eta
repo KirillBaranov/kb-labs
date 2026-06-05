@@ -53,12 +53,11 @@ export function handleError(ctx: PluginContextV3, err: unknown, isJson?: boolean
 export function validationError(
   ctx: PluginContextV3,
   message: string,
-  hint?: string,
   isJson?: boolean,
 ): void {
   if (isJson) {
-    ctx.ui?.json?.({ ok: false, error: { code: 'INVALID_ARGS', message, ...(hint && { hint }) } });
+    ctx.ui?.json?.({ ok: false, error: { code: 'INVALID_ARGS', message } });
   } else {
-    ctx.ui?.error?.(message, { ...(hint && { hint }) });
+    ctx.ui?.error?.(message);
   }
 }
