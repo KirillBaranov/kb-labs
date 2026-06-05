@@ -37,6 +37,10 @@ type Options struct {
 	DemoMode            bool            // generate demo workflow template
 	GatewayCredentials  *GatewayCreds   // non-nil → write adapterOptions.llm (demo only)
 	PreservedLLMOptions json.RawMessage // non-nil → write adapterOptions.llm verbatim (update preserve)
+	// LLMProvider is the user's chosen LLM provider ("openai", "anthropic", or "").
+	// When non-empty, LLMKey is written to .env as the provider-specific env var.
+	LLMProvider string
+	LLMKey      string // #nosec G117 -- written to .env with 0600 permissions
 	// DocumentDatabase is the npm package that implements IDocumentDatabase
 	// (e.g. "@kb-labs/adapters-sqlite"). When non-empty it is written into the
 	// adapters section of the generated platform config so the gateway can
@@ -88,11 +92,9 @@ func WriteProjectConfig(projectDir string, opts Options) error {
 		}
 	}
 
-	// Gateway secrets stay in projectDir (gitignored) — never in platformDir.
-	if gc := opts.GatewayCredentials; gc != nil {
-		if err := writeEnvFile(projectDir, gc); err != nil {
-			return fmt.Errorf("scaffold .env: %w", err)
-		}
+	// API keys / gateway secrets stay in projectDir (gitignored) — never in platformDir.
+	if err := writeEnvFile(projectDir, opts.GatewayCredentials, opts.LLMProvider, opts.LLMKey); err != nil {
+		return fmt.Errorf("scaffold .env: %w", err)
 	}
 
 	if err := ensureGitignore(projectDir); err != nil {
@@ -602,9 +604,14 @@ jobs:
 	return nil
 }
 
-// writeEnvFile writes gateway credentials to .env in the project root.
+// writeEnvFile writes LLM credentials to .env in the project root.
 // This file is gitignored by ensureGitignore, keeping secrets out of version control.
-func writeEnvFile(projectDir string, gc *GatewayCreds) error {
+func writeEnvFile(projectDir string, gc *GatewayCreds, llmProvider, llmKey string) error {
+	// Nothing to write if no credentials provided.
+	if gc == nil && llmKey == "" {
+		return nil
+	}
+
 	path := filepath.Join(projectDir, ".env")
 
 	// Append to existing .env if present.
@@ -615,9 +622,22 @@ func writeEnvFile(projectDir string, gc *GatewayCreds) error {
 	defer f.Close()
 
 	var buf strings.Builder
-	buf.WriteString("\n# KB Labs Gateway credentials (auto-configured by kb-create)\n")
-	buf.WriteString("KB_GATEWAY_CLIENT_ID=" + gc.ClientID + "\n")
-	buf.WriteString("KB_GATEWAY_CLIENT_SECRET=" + gc.ClientSecret + "\n")
+	if gc != nil {
+		buf.WriteString("\n# KB Labs Gateway credentials (auto-configured by kb-create)\n")
+		buf.WriteString("KB_GATEWAY_CLIENT_ID=" + gc.ClientID + "\n")
+		buf.WriteString("KB_GATEWAY_CLIENT_SECRET=" + gc.ClientSecret + "\n")
+	}
+	if llmKey != "" {
+		var envVar string
+		switch llmProvider {
+		case "anthropic":
+			envVar = "ANTHROPIC_API_KEY"
+		default: // openai and anything else
+			envVar = "OPENAI_API_KEY"
+		}
+		buf.WriteString("\n# LLM API key (configured by kb-create)\n")
+		buf.WriteString(envVar + "=" + llmKey + "\n")
+	}
 	_, err = f.WriteString(buf.String())
 	return err
 }

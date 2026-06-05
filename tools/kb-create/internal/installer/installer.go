@@ -40,7 +40,9 @@ type Selection struct {
 	Consent          types.ConsentChoice
 	APIKey           string `json:"-"` // only when Consent == types.ConsentOwnKey // #nosec G117 -- not serialized
 	TelemetryEnabled bool
-	LLMEnabled       bool // user explicitly opted in to LLM via wizard or --llm flag
+	LLMEnabled       bool   // user explicitly opted in to LLM via wizard or --llm flag
+	LLMProvider      string // "openai" | "anthropic" | "" (skip)
+	LLMKey           string `json:"-"` // API key for the chosen provider // #nosec G117
 }
 
 // Result is returned after a successful Install.

@@ -229,3 +229,45 @@ func TestExpandHomeAbsolute(t *testing.T) {
 		t.Errorf("expandHome(%q) = %q, want %q", path, got, path)
 	}
 }
+
+// ── LLM provider wizard step (B-001 replacement) ─────────────────────────────
+
+// TestToSelectionLLMProviderOpenAI verifies that when the user picks openai
+// and enters a key, toSelection() propagates LLMProvider and LLMKey.
+// Before the fix these fields did not exist; after the fix they are set.
+func TestToSelectionLLMProviderOpenAI(t *testing.T) {
+	m := wizardModel{
+		platformInput: makeInput("/platform"),
+		cwdInput:      makeInput("/project"),
+		llmProvider:   "openai",
+		llmKeyInput:   makeInput("sk-test-key-123"),
+	}
+
+	sel := m.toSelection()
+
+	if sel.LLMProvider != "openai" {
+		t.Errorf("LLMProvider = %q, want openai", sel.LLMProvider)
+	}
+	if sel.LLMKey != "sk-test-key-123" {
+		t.Errorf("LLMKey = %q, want sk-test-key-123", sel.LLMKey)
+	}
+}
+
+// TestToSelectionLLMProviderSkip verifies that skipping LLM sets empty
+// LLMProvider and LLMKey — no credentials written to .env.
+func TestToSelectionLLMProviderSkip(t *testing.T) {
+	m := wizardModel{
+		platformInput: makeInput("/platform"),
+		cwdInput:      makeInput("/project"),
+		llmProvider:   "",
+	}
+
+	sel := m.toSelection()
+
+	if sel.LLMProvider != "" {
+		t.Errorf("LLMProvider = %q, want empty (skipped)", sel.LLMProvider)
+	}
+	if sel.LLMKey != "" {
+		t.Errorf("LLMKey = %q, want empty (skipped)", sel.LLMKey)
+	}
+}
