@@ -112,6 +112,7 @@ func runApply(cmd *cobra.Command, args []string) error {
 		Stderr:         cmd.ErrOrStderr(),
 		Configs:        toHostConfigs(flow.Configs),
 		PrevConfigHash: prevConfigHashes(flow.Lock),
+		ServiceEnv:     flow.ServiceEnv,
 	})
 
 	if res.Err != nil {

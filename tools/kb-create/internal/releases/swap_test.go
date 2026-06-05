@@ -34,7 +34,7 @@ func readSymlink(t *testing.T, path string) string {
 
 func TestSwap_FirstTime(t *testing.T) {
 	dir := setupPlatform(t, "gateway-1.0.0-aaa")
-	if _, err := Swap(dir, "@kb-labs/gateway", "gateway-1.0.0-aaa"); err != nil {
+	if _, err := Swap(dir, "@kb-labs/gateway", "gateway-1.0.0-aaa", nil); err != nil {
 		t.Fatalf("Swap: %v", err)
 	}
 
@@ -63,10 +63,10 @@ func TestSwap_FirstTime(t *testing.T) {
 func TestSwap_SecondTimeUpdatesPrevious(t *testing.T) {
 	dir := setupPlatform(t, "gateway-1.0.0-aaa", "gateway-1.1.0-bbb")
 
-	if _, err := Swap(dir, "@kb-labs/gateway", "gateway-1.0.0-aaa"); err != nil {
+	if _, err := Swap(dir, "@kb-labs/gateway", "gateway-1.0.0-aaa", nil); err != nil {
 		t.Fatalf("first Swap: %v", err)
 	}
-	if _, err := Swap(dir, "@kb-labs/gateway", "gateway-1.1.0-bbb"); err != nil {
+	if _, err := Swap(dir, "@kb-labs/gateway", "gateway-1.1.0-bbb", nil); err != nil {
 		t.Fatalf("second Swap: %v", err)
 	}
 
@@ -88,14 +88,14 @@ func TestSwap_SecondTimeUpdatesPrevious(t *testing.T) {
 
 func TestSwap_MissingReleaseErrors(t *testing.T) {
 	dir := setupPlatform(t) // no releases
-	if _, err := Swap(dir, "@kb-labs/gateway", "gateway-missing"); err == nil {
+	if _, err := Swap(dir, "@kb-labs/gateway", "gateway-missing", nil); err == nil {
 		t.Error("expected error when release directory does not exist")
 	}
 }
 
 func TestSwap_EmptyReleaseIDErrors(t *testing.T) {
 	dir := setupPlatform(t)
-	if _, err := Swap(dir, "@kb-labs/gateway", ""); err == nil {
+	if _, err := Swap(dir, "@kb-labs/gateway", "", nil); err == nil {
 		t.Error("expected error for empty releaseID")
 	}
 }
@@ -103,10 +103,10 @@ func TestSwap_EmptyReleaseIDErrors(t *testing.T) {
 func TestRollback_RestoresPrevious(t *testing.T) {
 	dir := setupPlatform(t, "a", "b")
 
-	if _, err := Swap(dir, "@kb-labs/gateway", "a"); err != nil {
+	if _, err := Swap(dir, "@kb-labs/gateway", "a", nil); err != nil {
 		t.Fatalf("swap a: %v", err)
 	}
-	if _, err := Swap(dir, "@kb-labs/gateway", "b"); err != nil {
+	if _, err := Swap(dir, "@kb-labs/gateway", "b", nil); err != nil {
 		t.Fatalf("swap b: %v", err)
 	}
 	if _, err := Rollback(dir, "@kb-labs/gateway"); err != nil {
@@ -127,7 +127,7 @@ func TestRollback_RestoresPrevious(t *testing.T) {
 
 func TestRollback_NoPreviousErrors(t *testing.T) {
 	dir := setupPlatform(t, "a")
-	if _, err := Swap(dir, "@kb-labs/gateway", "a"); err != nil {
+	if _, err := Swap(dir, "@kb-labs/gateway", "a", nil); err != nil {
 		t.Fatalf("swap: %v", err)
 	}
 	if _, err := Rollback(dir, "@kb-labs/gateway"); err == nil {
@@ -146,7 +146,7 @@ func TestCurrentReleaseID(t *testing.T) {
 		t.Errorf("expected empty id before swap, got %q", id)
 	}
 
-	if _, err := Swap(dir, "@kb-labs/gateway", "gateway-1.0.0-abc"); err != nil {
+	if _, err := Swap(dir, "@kb-labs/gateway", "gateway-1.0.0-abc", nil); err != nil {
 		t.Fatalf("Swap: %v", err)
 	}
 
@@ -206,7 +206,7 @@ func TestSwap_WritesDevservicesEntry(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := Swap(dir, "@kb-labs/gateway-test", releaseID); err != nil {
+	if _, err := Swap(dir, "@kb-labs/gateway-test", releaseID, nil); err != nil {
 		t.Fatalf("Swap: %v", err)
 	}
 
@@ -246,7 +246,7 @@ func TestSwap_WritesDevservicesEntry(t *testing.T) {
 // the "swapped but not registered" condition must be visible, never silent.
 func TestSwap_NoManifestIsNotFatal(t *testing.T) {
 	dir := setupPlatform(t, "svc-1.0-aaa")
-	warn, err := Swap(dir, "@scope/svc", "svc-1.0-aaa")
+	warn, err := Swap(dir, "@scope/svc", "svc-1.0-aaa", nil)
 	if err != nil {
 		t.Fatalf("Swap: %v", err)
 	}

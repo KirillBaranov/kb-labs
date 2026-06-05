@@ -40,6 +40,11 @@ type ExecuteOptions struct {
 	// current hash differs gets a forced restart even when its release is
 	// unchanged (config-only change).
 	PrevConfigHash map[string]string
+	// ServiceEnv carries the resolved deploy.yaml per-service env overrides,
+	// keyed by service logical name. Passed to `kb-create swap --env` so the
+	// devservices entry kb-dev launches reflects deploy-time config (e.g. a
+	// Studio PORT override). Nil/absent → manifest defaults only.
+	ServiceEnv map[string]map[string]string
 }
 
 // Result records what happened per action.
@@ -363,14 +368,14 @@ func prepareAction(a Action, opts ExecuteOptions, forceRestart map[string]bool) 
 				svc.Service, svc.Version, a.Host)
 			return res, false
 		}
-		if err := host.Swap(svc.Service, installRes.ReleaseID); err != nil {
+		if err := host.Swap(svc.Service, installRes.ReleaseID, opts.ServiceEnv[a.Service]); err != nil {
 			res.Err = err
 			return res, false
 		}
 		res.ReleaseID = installRes.ReleaseID
 
 	case ActionSwap:
-		if err := host.Swap(svc.Service, a.ToID); err != nil {
+		if err := host.Swap(svc.Service, a.ToID, opts.ServiceEnv[a.Service]); err != nil {
 			res.Err = err
 			return res, false
 		}
