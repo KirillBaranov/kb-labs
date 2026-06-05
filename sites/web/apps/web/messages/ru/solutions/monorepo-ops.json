@@ -74,7 +74,7 @@
           "note": "Экспорт структурированного impact-отчёта с путями зависимостей."
         },
         {
-          "cmd": "pnpm kb plugins clear-cache",
+          "cmd": "pnpm kb marketplace plugins refresh",
           "note": "Принудительная инвалидация CLI-кэша после сборки."
         }
       ],
