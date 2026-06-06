@@ -153,6 +153,7 @@ const (
 	stageCustom
 	stageConsent
 	stageLLM     // pick LLM provider + enter API key
+	stageStudio  // Studio access: local (no login) vs secured
 	stageConfirm
 )
 
@@ -207,6 +208,11 @@ type wizardModel struct {
 	llmKeyInput       textinput.Model
 	llmProviderCursor int            // cursor in provider list
 	llmShowKeyInput   bool
+
+	// Studio access mode (B-023). false = secured (auth on, 0.0.0.0, default),
+	// true = local single-user (auth off, 127.0.0.1, Studio without login).
+	localMode       bool
+	studioCursor    int // 0 = Secured, 1 = Local
 }
 
 func newModel(m *manifest.Manifest, opts WizardOptions) wizardModel {
@@ -312,6 +318,8 @@ func (m wizardModel) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m.handleConsentKey(msg)
 	case stageLLM:
 		return m.handleLLMKey(msg)
+	case stageStudio:
+		return m.handleStudioKey(msg)
 	case stageConfirm:
 		return m.handleConfirmKey(msg)
 	}
@@ -528,7 +536,7 @@ func (m wizardModel) handleLLMKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				return m, nil // keep waiting for a value
 			}
 			m.llmProvider = llmProviderOptions[m.llmProviderCursor].id
-			m.stage = stageConfirm
+			m.stage = stageStudio
 			return m, nil
 		}
 		var cmd tea.Cmd
@@ -552,9 +560,9 @@ func (m wizardModel) handleLLMKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		chosen := llmProviderOptions[m.llmProviderCursor]
 		if chosen.id == "" {
-			// Skip — no provider, go straight to confirm.
+			// Skip — no provider, continue to Studio access.
 			m.llmProvider = ""
-			m.stage = stageConfirm
+			m.stage = stageStudio
 			return m, nil
 		}
 		// Show key input for the chosen provider.
@@ -562,6 +570,36 @@ func (m wizardModel) handleLLMKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.llmKeyInput.SetValue("")
 		m.llmKeyInput.Focus()
 		return m, textinput.Blink
+	}
+	return m, nil
+}
+
+// studioOptions: 0 = Secured (default), 1 = Local single-user.
+var studioOptions = []struct {
+	name string
+	desc string
+}{
+	{"Secured (recommended)", "Login required. Gateway binds 0.0.0.0 — safe for shared/remote use."},
+	{"Local (no login)", "Single-user. Gateway binds 127.0.0.1, auth off — Studio opens instantly."},
+}
+
+func (m wizardModel) handleStudioKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c", "esc":
+		m.cancelled = true
+		return m, tea.Quit
+	case "up", "k":
+		if m.studioCursor > 0 {
+			m.studioCursor--
+		}
+	case "down", "j":
+		if m.studioCursor < len(studioOptions)-1 {
+			m.studioCursor++
+		}
+	case "enter":
+		m.localMode = m.studioCursor == 1
+		m.stage = stageConfirm
+		return m, nil
 	}
 	return m, nil
 }
@@ -591,6 +629,8 @@ func (m wizardModel) View() string {
 		return m.viewConsent()
 	case stageLLM:
 		return m.viewLLM()
+	case stageStudio:
+		return m.viewStudio()
 	case stageConfirm:
 		return m.viewConfirm()
 	}
@@ -785,6 +825,31 @@ func (m wizardModel) viewLLM() string {
 	return b.String()
 }
 
+func (m wizardModel) viewStudio() string {
+	var b strings.Builder
+	b.WriteString(titleStyle.Render("  KB Labs") + "  Studio access\n\n")
+	b.WriteString("  " + sectionStyle.Render("How do you want to access Studio?") + "\n")
+	b.WriteString(dimStyle.Render("  Local mode disables auth — only do this on your own machine.") + "\n\n")
+
+	for i, opt := range studioOptions {
+		cursor := "  "
+		if i == m.studioCursor {
+			cursor = focusStyle.Render(" ▶")
+		}
+		radio := "○"
+		nameStyle := normalStyle
+		if i == m.studioCursor {
+			radio = focusStyle.Render("●")
+			nameStyle = focusStyle
+		}
+		fmt.Fprintf(&b, "%s %s  %s\n", cursor, radio, nameStyle.Render(opt.name))
+		fmt.Fprintf(&b, "      %s\n\n", dimStyle.Render(opt.desc))
+	}
+
+	b.WriteString(helpStyle.Render("  ↑↓ move · enter select · esc quit"))
+	return b.String()
+}
+
 func (m wizardModel) viewConfirm() string {
 	var b strings.Builder
 	b.WriteString(titleStyle.Render("  KB Labs") + "  ready to install\n\n")
@@ -925,6 +990,7 @@ func (m wizardModel) toSelection() *installer.Selection {
 		TelemetryEnabled: m.telemetryEnabled,
 		LLMEnabled:       m.llmEnabled || m.consent == types.ConsentDemo,
 		LLMProvider:      m.llmProvider,
+		LocalMode:        m.localMode,
 	}
 	if m.llmProvider != "" {
 		sel.LLMKey = m.llmKeyInput.Value()

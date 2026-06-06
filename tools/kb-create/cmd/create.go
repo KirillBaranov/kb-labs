@@ -27,6 +27,7 @@ import (
 
 var (
 	flagYes         bool
+	flagLocal       bool
 	flagDemo        bool
 	flagPlatform    string
 	flagSkipClaude  bool
@@ -37,6 +38,7 @@ var (
 
 func init() {
 	rootCmd.Flags().BoolVarP(&flagYes, "yes", "y", false, "skip wizard and install with defaults (no LLM configured)")
+	rootCmd.Flags().BoolVar(&flagLocal, "local", false, "local single-user mode: gateway binds 127.0.0.1 and Studio opens without login (auth disabled)")
 	rootCmd.Flags().BoolVar(&flagDemo, "demo", false, "install demo plugins and run pipeline on your code")
 	rootCmd.Flags().StringVar(&flagPlatform, "platform", "", "platform installation directory")
 	rootCmd.Flags().BoolVar(&flagSkipClaude, "skip-claude", false, "do not install Claude Code skills or CLAUDE.md")
@@ -165,13 +167,16 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		Plugins:     sel.Plugins,
 		DemoMode:    sel.DemoMode,
 	}
-	// Solo/local bootstrap: disable gateway auth and bind to loopback so Studio
-	// opens without login and is never reachable off the machine (B-023). The
-	// deployed cloud platform is provisioned via a different path (install-service)
-	// and keeps auth on. kb-create update preserves whatever the config already has.
-	authOff := false
-	scaffoldOpts.GatewayAuthEnabled = &authOff
-	scaffoldOpts.GatewayHost = "127.0.0.1"
+	// Local single-user mode is an EXPLICIT opt-in (--local flag or the wizard
+	// "Studio access" choice) — never an implicit default of --yes. In local mode
+	// the gateway binds 127.0.0.1 and auth is disabled so Studio opens without
+	// login and is unreachable off the machine (B-023). Unattended/server installs
+	// (plain --yes, e2e, cloud) keep auth on and bind 0.0.0.0 — the safe default.
+	if flagLocal || sel.LocalMode {
+		authOff := false
+		scaffoldOpts.GatewayAuthEnabled = &authOff
+		scaffoldOpts.GatewayHost = "127.0.0.1"
+	}
 	// Wire adapter bindings from manifest adapterConfig (e.g. documentDatabase
 	// for environments where user auth is a core feature, not an optional overlay).
 	if ac := m.AdapterConfig; ac != nil {
