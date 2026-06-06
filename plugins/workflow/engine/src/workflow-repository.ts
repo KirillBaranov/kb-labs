@@ -315,11 +315,13 @@ export class WorkflowRepository {
 
       // Check if it's already in StoredWorkflow format
       if (parsed.id && parsed.spec && parsed.createdAt) {
-        return parsed as unknown as StoredWorkflow;
+        // Force id to the filename so list()/get() stay consistent even if the
+        // file was renamed after creation (B-016).
+        return { ...(parsed as unknown as StoredWorkflow), id };
       }
 
       // Otherwise, it's a simple workflow YAML - convert to StoredWorkflow
-      const spec: WorkflowSpec = {
+      const candidateSpec = {
         name: parsed.name as string,
         version: (parsed.version as string) || '1.0.0',
         description: parsed.description as string | undefined,
@@ -331,8 +333,26 @@ export class WorkflowRepository {
         secrets: parsed.secrets as string[] | undefined,
       };
 
+      // Validate against the schema so a structurally-invalid file (e.g. no
+      // jobs, missing name) is NOT presented as a valid, runnable workflow.
+      // Surfacing it as 'active' silently masked broken definitions (B-015).
+      const validation = WorkflowSpecSchema.safeParse(candidateSpec);
+      if (!validation.success) {
+        this.platform.logger?.warn(
+          `WorkflowRepository: skipping invalid workflow "${id}" — ${validation.error.issues
+            .map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`)
+            .join('; ')}`,
+          { id, path },
+        );
+        return null;
+      }
+      const spec: WorkflowSpec = validation.data;
+
       const stored: StoredWorkflow = {
-        id: (parsed.id as string) || id,
+        // The filename is the canonical id for file-based workflows. Using the
+        // inner `id:` here made list() report an id that get()/getWorkflowPath()
+        // (which resolve by filename) could not find → POST /runs 404 (B-016).
+        id,
         spec,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),

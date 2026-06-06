@@ -85,6 +85,13 @@ const AuthBootstrapSchema = z.object({
 }).optional();
 
 export const AuthConfigSchema = z.object({
+  /**
+   * Whether authentication is enforced. Default true (cloud/team).
+   * When false (solo/local mode) the gateway runs every request as a local
+   * admin and Studio opens without login. The startup guardrail refuses to
+   * start with auth disabled on a non-loopback bind (B-023).
+   */
+  enabled: z.boolean().default(true),
   /** Whether to set Secure flag on session cookies. Set false in dev only. */
   cookieSecure: z.boolean().default(true),
   /** Access token TTL in seconds. Default 15 min. */
@@ -125,6 +132,12 @@ export const TenantsConfigSchema = z.object({
 
 export const GatewayConfigSchema = z.object({
   port: z.number().default(4000),
+  /**
+   * Bind host. Defaults to '0.0.0.0' (deployed platform) when omitted — the
+   * fallback is applied in code. Solo/local installs set '127.0.0.1' so a
+   * no-auth Studio is never reachable off the machine.
+   */
+  host: z.string().optional(),
   upstreams: z.record(z.string(), UpstreamConfigSchema).default({}),
   /** Static tokens seeded into ICache at bootstrap — for dev/service tokens before full auth */
   staticTokens: z.record(z.string(), StaticTokenEntrySchema).default({}),

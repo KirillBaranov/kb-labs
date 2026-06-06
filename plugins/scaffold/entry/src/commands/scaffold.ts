@@ -89,7 +89,7 @@ function parsePositional(argv: string[] | undefined): {
   entity?: string;
   name?: string;
 } {
-  if (!argv || argv.length === 0) return {};
+  if (!argv || argv.length === 0) { return {}; }
   const positional = argv.filter((a) => !a.startsWith('-'));
   return { entity: positional[0], name: positional[1] };
 }
@@ -290,7 +290,7 @@ async function linkWithMarketplace(entryPkgDir: string, projectRoot: string): Pr
     const pkgJsonPath = resolve(entryPkgDir, 'package.json');
     const pkgRaw = await readFile(pkgJsonPath, 'utf8');
     const pkg = JSON.parse(pkgRaw) as { name?: string; version?: string; kb?: { manifest?: string } };
-    if (!pkg.name) return 'failed';
+    if (!pkg.name) { return 'failed'; }
 
     const hash = createHash('sha256').update(pkgRaw).digest('base64');
     const provides: string[] = ['plugin', 'cli-command'];

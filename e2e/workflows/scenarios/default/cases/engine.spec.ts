@@ -116,8 +116,14 @@ test('WF-06: e2e-fail workflow ends with failed status', async ({ request }) => 
   const res = await request.get(`${WORKFLOW}/api/v1/runs/${runId}`)
   const body = await res.json()
   const run = body.data?.run ?? body.data ?? body
-  // Failed run must have a non-null error or reason field
-  const hasError = run?.error != null || run?.failureReason != null || run?.status === 'dlq'
+  // Failed run must surface why it failed. A user-step failure now ends as
+  // `failed` (not `dlq`) with the error under run.result.error (B-029); the dlq
+  // path remains for infrastructure failures.
+  const hasError =
+    run?.result?.error != null ||
+    run?.error != null ||
+    run?.failureReason != null ||
+    run?.status === 'dlq'
   expect(hasError).toBe(true)
 })
 

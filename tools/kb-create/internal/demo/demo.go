@@ -49,7 +49,7 @@ func RunFirstDemo(projectDir string, llmEnabled bool) error {
 		fmt.Println()
 		if !llmEnabled {
 			fmt.Println("  💡 Enable AI review for deeper analysis (security, logic, style):")
-			fmt.Println("     kb-create . --llm   — 50 free requests, no API key needed")
+			fmt.Println("     re-run kb-create and pick a provider, or set OPENAI_API_KEY in .env")
 			fmt.Println()
 		}
 		return nil

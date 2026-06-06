@@ -37,6 +37,10 @@ type Options struct {
 	DemoMode            bool            // generate demo workflow template
 	GatewayCredentials  *GatewayCreds   // non-nil → write adapterOptions.llm (demo only)
 	PreservedLLMOptions json.RawMessage // non-nil → write adapterOptions.llm verbatim (update preserve)
+	// LLMProvider is the user's chosen LLM provider ("openai", "anthropic", or "").
+	// When non-empty, LLMKey is written to .env as the provider-specific env var.
+	LLMProvider string
+	LLMKey      string // #nosec G117 -- written to .env with 0600 permissions
 	// DocumentDatabase is the npm package that implements IDocumentDatabase
 	// (e.g. "@kb-labs/adapters-sqlite"). When non-empty it is written into the
 	// adapters section of the generated platform config so the gateway can
@@ -45,6 +49,14 @@ type Options struct {
 	// KVStore is the npm package that implements IKVStore
 	// (e.g. "@kb-labs/adapters-sqlite/kv"). Written alongside DocumentDatabase.
 	KVStore string
+	// GatewayAuthEnabled controls the generated gateway.auth.enabled value.
+	// nil → omit (production default: auth on). Solo local installs set it to
+	// false so Studio opens without login (B-023).
+	GatewayAuthEnabled *bool
+	// GatewayHost controls the generated gateway.host value. "" → omit
+	// (production default: 0.0.0.0). Solo local installs set "127.0.0.1" so a
+	// no-auth Studio is never reachable off the machine.
+	GatewayHost string
 }
 
 // WritePlatformConfig writes the full platform config to platformDir/.kb/kb.config.jsonc.
@@ -88,11 +100,9 @@ func WriteProjectConfig(projectDir string, opts Options) error {
 		}
 	}
 
-	// Gateway secrets stay in projectDir (gitignored) — never in platformDir.
-	if gc := opts.GatewayCredentials; gc != nil {
-		if err := writeEnvFile(projectDir, gc); err != nil {
-			return fmt.Errorf("scaffold .env: %w", err)
-		}
+	// API keys / gateway secrets stay in projectDir (gitignored) — never in platformDir.
+	if err := writeEnvFile(projectDir, opts.GatewayCredentials, opts.LLMProvider, opts.LLMKey); err != nil {
+		return fmt.Errorf("scaffold .env: %w", err)
 	}
 
 	if err := ensureGitignore(projectDir); err != nil {
@@ -157,6 +167,12 @@ func ReadPlatformOptions(platformDir string, projectDir ...string) Options {
 				KVStore          string `json:"kvStore"`
 			} `json:"adapters"`
 		} `json:"platform"`
+		Gateway struct {
+			Host string `json:"host"`
+			Auth *struct {
+				Enabled *bool `json:"enabled"`
+			} `json:"auth"`
+		} `json:"gateway"`
 	}
 	if err := json.Unmarshal([]byte(cleaned), &cfg); err != nil {
 		return opts
@@ -176,6 +192,12 @@ func ReadPlatformOptions(platformDir string, projectDir ...string) Options {
 	// remove adapters that were set from the manifest's adapterConfig.
 	opts.DocumentDatabase = cfg.Platform.Adapters.DocumentDatabase
 	opts.KVStore = cfg.Platform.Adapters.KVStore
+	// Preserve gateway host + auth.enabled so kb-create update does not flip a
+	// solo no-auth install back to auth-on, nor a cloud install to no-auth (B-023).
+	opts.GatewayHost = cfg.Gateway.Host
+	if cfg.Gateway.Auth != nil && cfg.Gateway.Auth.Enabled != nil {
+		opts.GatewayAuthEnabled = cfg.Gateway.Auth.Enabled
+	}
 	// Preserve existing LLM adapter options (e.g. gateway URL + credentials)
 	// so that kb-create update does not reset --llm configuration.
 	llmRaw := string(cfg.AdapterOptions.LLM)
@@ -370,7 +392,21 @@ func generateFull(opts Options) string {
   // adapterOptions.serviceTransport.services above.
   // /ready checks that the "rest" upstream is up — keep this section present.
   "gateway": {
-    "upstreams": {
+`)
+	if opts.GatewayHost != "" {
+		b.WriteString("    // Bind host. 127.0.0.1 = local only (solo). 0.0.0.0 = network (deploy).\n")
+		fmt.Fprintf(&b, "    \"host\": %s,\n", quote(opts.GatewayHost))
+	}
+	if opts.GatewayAuthEnabled != nil {
+		if *opts.GatewayAuthEnabled {
+			b.WriteString("    \"auth\": { \"enabled\": true },\n")
+		} else {
+			b.WriteString("    // Auth disabled for local solo use — Studio opens without login.\n")
+			b.WriteString("    // Guardrail: the gateway refuses to start with auth off on a non-loopback host.\n")
+			b.WriteString("    \"auth\": { \"enabled\": false },\n")
+		}
+	}
+	b.WriteString(`    "upstreams": {
       // REST API — main platform BFF.
       "rest":        { "serviceId": "rest",        "prefix": "/api/v1",             "websocket": true },
       // Workflow daemon — execution engine.
@@ -602,9 +638,14 @@ jobs:
 	return nil
 }
 
-// writeEnvFile writes gateway credentials to .env in the project root.
+// writeEnvFile writes LLM credentials to .env in the project root.
 // This file is gitignored by ensureGitignore, keeping secrets out of version control.
-func writeEnvFile(projectDir string, gc *GatewayCreds) error {
+func writeEnvFile(projectDir string, gc *GatewayCreds, llmProvider, llmKey string) error {
+	// Nothing to write if no credentials provided.
+	if gc == nil && llmKey == "" {
+		return nil
+	}
+
 	path := filepath.Join(projectDir, ".env")
 
 	// Append to existing .env if present.
@@ -615,9 +656,22 @@ func writeEnvFile(projectDir string, gc *GatewayCreds) error {
 	defer f.Close()
 
 	var buf strings.Builder
-	buf.WriteString("\n# KB Labs Gateway credentials (auto-configured by kb-create)\n")
-	buf.WriteString("KB_GATEWAY_CLIENT_ID=" + gc.ClientID + "\n")
-	buf.WriteString("KB_GATEWAY_CLIENT_SECRET=" + gc.ClientSecret + "\n")
+	if gc != nil {
+		buf.WriteString("\n# KB Labs Gateway credentials (auto-configured by kb-create)\n")
+		buf.WriteString("KB_GATEWAY_CLIENT_ID=" + gc.ClientID + "\n")
+		buf.WriteString("KB_GATEWAY_CLIENT_SECRET=" + gc.ClientSecret + "\n")
+	}
+	if llmKey != "" {
+		var envVar string
+		switch llmProvider {
+		case "anthropic":
+			envVar = "ANTHROPIC_API_KEY"
+		default: // openai and anything else
+			envVar = "OPENAI_API_KEY"
+		}
+		buf.WriteString("\n# LLM API key (configured by kb-create)\n")
+		buf.WriteString(envVar + "=" + llmKey + "\n")
+	}
 	_, err = f.WriteString(buf.String())
 	return err
 }
