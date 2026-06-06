@@ -773,6 +773,75 @@ func TestNoLLMByDefault(t *testing.T) {
 	}
 }
 
+// ── Studio access mode: default secured vs --local (B-023) ────────────────────
+
+// readPlatformConfig returns the generated platform config (kb.config.json or
+// kb.config.jsonc, whichever exists).
+func readPlatformConfig(t *testing.T, platformDir string) string {
+	t.Helper()
+	for _, name := range []string{"kb.config.json", "kb.config.jsonc"} {
+		p := filepath.Join(platformDir, ".kb", name)
+		if data, err := os.ReadFile(p); err == nil { // #nosec G304 -- under t.TempDir()
+			return string(data)
+		}
+	}
+	t.Fatalf("no kb.config.json[c] found under %s/.kb", platformDir)
+	return ""
+}
+
+// TestDefaultKeepsAuthOn verifies that a plain `--yes` install does NOT disable
+// gateway auth or bind to loopback. This is the safe default that keeps the e2e
+// harness, CI and cloud provisioning working — local mode must be opt-in.
+func TestDefaultKeepsAuthOn(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping network test in -short mode")
+	}
+	bin := binary(t)
+	platformDir := t.TempDir()
+	projectDir := t.TempDir()
+	mustGit(t, projectDir, "init")
+	mustGit(t, projectDir, "commit", "--allow-empty", "-m", "init")
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(platformDir, "node_modules")) })
+
+	out, code := run(t, bin, projectDir, "--yes", "--platform", platformDir)
+	if code != 0 {
+		t.Fatalf("install --yes exited %d:\n%s", code, out)
+	}
+	cfg := readPlatformConfig(t, platformDir)
+	if strings.Contains(cfg, `"enabled": false`) {
+		t.Errorf("plain --yes must not disable gateway auth:\n%s", cfg)
+	}
+	if strings.Contains(cfg, `"host": "127.0.0.1"`) {
+		t.Errorf("plain --yes must not bind the gateway to loopback:\n%s", cfg)
+	}
+}
+
+// TestLocalModeWritesAuthOff verifies that `--local` opts the install into
+// single-user mode: gateway auth disabled and a loopback bind.
+func TestLocalModeWritesAuthOff(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping network test in -short mode")
+	}
+	bin := binary(t)
+	platformDir := t.TempDir()
+	projectDir := t.TempDir()
+	mustGit(t, projectDir, "init")
+	mustGit(t, projectDir, "commit", "--allow-empty", "-m", "init")
+	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(platformDir, "node_modules")) })
+
+	out, code := run(t, bin, projectDir, "--yes", "--local", "--platform", platformDir)
+	if code != 0 {
+		t.Fatalf("install --yes --local exited %d:\n%s", code, out)
+	}
+	cfg := readPlatformConfig(t, platformDir)
+	if !strings.Contains(cfg, `"enabled": false`) {
+		t.Errorf("--local must disable gateway auth:\n%s", cfg)
+	}
+	if !strings.Contains(cfg, `"host": "127.0.0.1"`) {
+		t.Errorf("--local must bind the gateway to loopback:\n%s", cfg)
+	}
+}
+
 // ── no @kb-labs/* peer dep warnings in install output ────────────────────────
 
 func TestNoPeerDepWarnings(t *testing.T) {
