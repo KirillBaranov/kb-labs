@@ -712,52 +712,27 @@ func write(t *testing.T, path, content string) {
 	}
 }
 
-// ── --llm flag enables LLM mode ───────────────────────────────────────────────
+// ── --llm flag was removed (B-001) ────────────────────────────────────────────
+// LLM is no longer enabled via a flag + gateway auto-registration (that path
+// returned 401 — registration is invite-only). The provider is chosen in the
+// wizard (OpenAI/Anthropic) and the key is written to .env. In --yes mode no
+// provider is configured. This test pins the flag's removal so it is not
+// re-introduced by accident.
 
-func TestLLMFlagEnablesLLM(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping network test in -short mode")
-	}
-
+func TestLLMFlagRemoved(t *testing.T) {
 	bin := binary(t)
-	platformDir := t.TempDir()
 	projectDir := t.TempDir()
 
-	mustGit(t, projectDir, "init")
-	mustGit(t, projectDir, "commit", "--allow-empty", "-m", "init")
-
-	t.Cleanup(func() { _ = os.RemoveAll(filepath.Join(platformDir, "node_modules")) })
-
-	out, code := run(t, bin, projectDir, "--yes", "--llm",
-		"--platform", platformDir,
-	)
-	if code != 0 {
-		t.Fatalf("install --yes --llm exited %d:\n%s", code, out)
+	out, code := run(t, bin, projectDir, "--yes", "--llm", "--platform", t.TempDir())
+	if code == 0 {
+		t.Fatalf("expected --llm to be rejected (flag removed in B-001), but install succeeded:\n%s", out)
 	}
-
-	// Output must mention LLM being on.
-	if !strings.Contains(out, "LLM") {
-		t.Errorf("install output missing 'LLM':\n%s", out)
-	}
-	if !strings.Contains(strings.ToLower(out), "on") {
-		t.Errorf("install output does not indicate LLM is 'on':\n%s", out)
-	}
-
-	// Gateway credentials are written to projectDir/.env (not kb.config.json).
-	// If the KB Labs Gateway is reachable from CI, the .env must have KB_GATEWAY_* vars.
-	// If the gateway is unreachable, the installer logs and continues non-fatally.
-	envPath := filepath.Join(projectDir, ".env")
-	if envData, err := os.ReadFile(envPath); err == nil { // #nosec G304 -- path under t.TempDir()
-		envStr := string(envData)
-		if !strings.Contains(envStr, "KB_GATEWAY") && !strings.Contains(envStr, "clientId") {
-			t.Logf("note: .env exists but has no gateway credentials (registration may have failed non-fatally)")
-		}
-	} else {
-		t.Logf("note: .env not created (gateway registration skipped or failed non-fatally)")
+	if !strings.Contains(out, "llm") && !strings.Contains(strings.ToLower(out), "unknown flag") {
+		t.Errorf("expected an unknown-flag error for --llm, got:\n%s", out)
 	}
 }
 
-// ── --yes (no --llm) keeps LLM off ───────────────────────────────────────────
+// ── --yes keeps LLM off (no provider configured) ─────────────────────────────
 
 func TestNoLLMByDefault(t *testing.T) {
 	if testing.Short() {
@@ -997,9 +972,11 @@ func TestDemoHintShownAfterZeroFindings(t *testing.T) {
 		t.Fatalf("install exited %d:\n%s", code, out)
 	}
 
-	// After a heuristic review with 0 findings, the installer must surface the
-	// LLM nudge (either the "50 free requests" or "--llm" hint).
-	if !strings.Contains(out, "50 free requests") && !strings.Contains(out, "--llm") {
+	// After a heuristic review with 0 findings, the installer must nudge the
+	// user toward enabling an LLM provider (re-run wizard or set an API key).
+	if !strings.Contains(strings.ToLower(out), "provider") &&
+		!strings.Contains(out, "OPENAI_API_KEY") &&
+		!strings.Contains(out, "kb-create") {
 		t.Errorf("LLM nudge not shown after zero heuristic findings:\n%s", out)
 	}
 }

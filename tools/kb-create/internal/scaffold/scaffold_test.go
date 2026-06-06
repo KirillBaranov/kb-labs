@@ -84,6 +84,64 @@ func TestWritePlatformConfig_NoDocumentDatabase(t *testing.T) {
 	}
 }
 
+func TestWritePlatformConfig_SoloAuthOff(t *testing.T) {
+	platformDir := t.TempDir()
+	authOff := false
+
+	err := WritePlatformConfig(platformDir, Options{
+		PlatformDir:        platformDir,
+		GatewayAuthEnabled: &authOff,
+		GatewayHost:        "127.0.0.1",
+	})
+	if err != nil {
+		t.Fatalf("WritePlatformConfig() error = %v", err)
+	}
+
+	content := readKbConfig(t, platformDir)
+	assertContains(t, content, `"host": "127.0.0.1"`, "gateway host loopback")
+	assertContains(t, content, `"auth": { "enabled": false }`, "gateway auth disabled")
+}
+
+func TestReadPlatformOptions_PreservesGatewayAuth(t *testing.T) {
+	platformDir := t.TempDir()
+	authOff := false
+
+	// Write a solo (auth-off) config, then read it back via the update path.
+	if err := WritePlatformConfig(platformDir, Options{
+		PlatformDir:        platformDir,
+		GatewayAuthEnabled: &authOff,
+		GatewayHost:        "127.0.0.1",
+	}); err != nil {
+		t.Fatalf("WritePlatformConfig() error = %v", err)
+	}
+
+	got := ReadPlatformOptions(platformDir)
+	if got.GatewayHost != "127.0.0.1" {
+		t.Errorf("GatewayHost not preserved: got %q", got.GatewayHost)
+	}
+	if got.GatewayAuthEnabled == nil || *got.GatewayAuthEnabled != false {
+		t.Errorf("GatewayAuthEnabled not preserved as false: got %v", got.GatewayAuthEnabled)
+	}
+}
+
+func TestWritePlatformConfig_GatewayDefaults(t *testing.T) {
+	platformDir := t.TempDir()
+
+	// No gateway options → production defaults: no host, no auth.enabled line.
+	err := WritePlatformConfig(platformDir, Options{PlatformDir: platformDir})
+	if err != nil {
+		t.Fatalf("WritePlatformConfig() error = %v", err)
+	}
+
+	content := readKbConfig(t, platformDir)
+	if strings.Contains(content, `"auth": { "enabled"`) {
+		t.Error("auth.enabled must not be written when GatewayAuthEnabled is nil (production default)")
+	}
+	if strings.Contains(content, `"host": "127.0.0.1"`) {
+		t.Error("loopback host must not be written when GatewayHost is empty")
+	}
+}
+
 func TestWritePlatformConfig_AlwaysOverwrites(t *testing.T) {
 	platformDir := t.TempDir()
 	opts := Options{PlatformDir: platformDir, Services: []string{"rest"}}
@@ -449,5 +507,88 @@ func assertPluginEnabled(t *testing.T, content, pluginID string, wantEnabled boo
 	}
 	if !strings.Contains(snippet, wantStr) {
 		t.Errorf("plugin %q: expected %s", pluginID, wantStr)
+	}
+}
+
+// ── LLM provider .env (B-001 replacement) ─────────────────────────────────
+
+// TestWriteProjectConfig_LLMProviderOpenAI verifies that when LLMProvider=openai
+// and LLMKey is set, the project .env gets OPENAI_API_KEY (not gateway creds).
+// Before the fix LLMProvider/LLMKey fields did not exist and the gateway
+// auto-registration path was taken, always failing with 401.
+func TestWriteProjectConfig_LLMProviderOpenAI(t *testing.T) {
+	platformDir := t.TempDir()
+	projectDir := t.TempDir()
+
+	opts := Options{
+		PlatformDir: platformDir,
+		LLMProvider: "openai",
+		LLMKey:      "sk-test-openai-key",
+	}
+	if err := WriteProjectConfig(projectDir, opts); err != nil {
+		t.Fatalf("WriteProjectConfig: %v", err)
+	}
+
+	env, err := os.ReadFile(filepath.Join(projectDir, ".env"))
+	if err != nil {
+		t.Fatalf("read .env: %v", err)
+	}
+	content := string(env)
+	if !strings.Contains(content, "OPENAI_API_KEY=sk-test-openai-key") {
+		t.Errorf(".env should contain OPENAI_API_KEY, got:\n%s", content)
+	}
+	if strings.Contains(content, "KB_GATEWAY_CLIENT_ID") {
+		t.Errorf(".env should NOT contain gateway credentials for openai provider, got:\n%s", content)
+	}
+}
+
+// TestWriteProjectConfig_LLMProviderAnthropic verifies Anthropic key ends up
+// as ANTHROPIC_API_KEY in .env.
+func TestWriteProjectConfig_LLMProviderAnthropic(t *testing.T) {
+	platformDir := t.TempDir()
+	projectDir := t.TempDir()
+
+	opts := Options{
+		PlatformDir: platformDir,
+		LLMProvider: "anthropic",
+		LLMKey:      "sk-ant-test-key",
+	}
+	if err := WriteProjectConfig(projectDir, opts); err != nil {
+		t.Fatalf("WriteProjectConfig: %v", err)
+	}
+
+	env, err := os.ReadFile(filepath.Join(projectDir, ".env"))
+	if err != nil {
+		t.Fatalf("read .env: %v", err)
+	}
+	content := string(env)
+	if !strings.Contains(content, "ANTHROPIC_API_KEY=sk-ant-test-key") {
+		t.Errorf(".env should contain ANTHROPIC_API_KEY, got:\n%s", content)
+	}
+}
+
+// TestWriteProjectConfig_LLMProviderSkip verifies that with no LLMProvider
+// no .env is written — no credentials, no gateway, nothing.
+func TestWriteProjectConfig_LLMProviderSkip(t *testing.T) {
+	platformDir := t.TempDir()
+	projectDir := t.TempDir()
+
+	opts := Options{
+		PlatformDir: platformDir,
+		LLMProvider: "",
+		LLMKey:      "",
+	}
+	if err := WriteProjectConfig(projectDir, opts); err != nil {
+		t.Fatalf("WriteProjectConfig: %v", err)
+	}
+
+	envPath := filepath.Join(projectDir, ".env")
+	data, err := os.ReadFile(envPath)
+	if err != nil && !os.IsNotExist(err) {
+		t.Fatalf("unexpected error reading .env: %v", err)
+	}
+	content := string(data)
+	if strings.Contains(content, "_API_KEY") || strings.Contains(content, "KB_GATEWAY") {
+		t.Errorf(".env should be empty or absent when LLM skipped, got:\n%s", content)
 	}
 }

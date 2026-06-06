@@ -25,7 +25,7 @@ export default defineCommand({
     async execute(ctx: PluginContextV3, input: CLIInput<HelloFlags>) {
       // 1. Validate — synchronous, before try/catch
       if (input.flags.who !== undefined && input.flags.who.trim() === '') {
-        validationError(ctx, '--who cannot be empty', undefined, input.flags.json);
+        validationError(ctx, '--who cannot be empty', input.flags.json);
         return { exitCode: 1, result: null };
       }
 
