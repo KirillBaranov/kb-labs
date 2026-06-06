@@ -89,11 +89,11 @@ func TestHashInputsIsDeterministicAndSkipsIgnoredDirs(t *testing.T) {
 	mustWriteFile(t, filepath.Join(root, "node_modules", "leftpad", "index.js"), "ignored\n")
 	mustWriteFile(t, filepath.Join(root, ".git", "HEAD"), "ignored\n")
 
-	hash1, err := HashInputs(root, []string{"src/**/*.ts", "src/*.ts"})
+	hash1, err := HashInputs(root, nil, []string{"src/**/*.ts", "src/*.ts"})
 	if err != nil {
 		t.Fatalf("HashInputs error: %v", err)
 	}
-	hash2, err := HashInputs(root, []string{"src/*.ts", "src/**/*.ts"})
+	hash2, err := HashInputs(root, nil, []string{"src/*.ts", "src/**/*.ts"})
 	if err != nil {
 		t.Fatalf("HashInputs error: %v", err)
 	}
@@ -102,12 +102,69 @@ func TestHashInputsIsDeterministicAndSkipsIgnoredDirs(t *testing.T) {
 	}
 
 	mustWriteFile(t, filepath.Join(root, "node_modules", "leftpad", "index.js"), "changed but ignored\n")
-	hash3, err := HashInputs(root, []string{"src/**/*.ts", "src/*.ts"})
+	hash3, err := HashInputs(root, nil, []string{"src/**/*.ts", "src/*.ts"})
 	if err != nil {
 		t.Fatalf("HashInputs error: %v", err)
 	}
 	if hash1 != hash3 {
 		t.Fatalf("ignored dir changed hash: %q vs %q", hash1, hash3)
+	}
+}
+
+func TestHashInputsDepPatternInvalidatesOnDepChange(t *testing.T) {
+	pkgDir := t.TempDir()
+	dep1Dir := t.TempDir()
+	dep2Dir := t.TempDir()
+
+	mustWriteFile(t, filepath.Join(pkgDir, "src", "index.ts"), "export {}\n")
+	mustWriteFile(t, filepath.Join(dep1Dir, "dist", "index.js"), "v1\n")
+	mustWriteFile(t, filepath.Join(dep2Dir, "dist", "index.js"), "v1\n")
+
+	depDirs := []string{dep1Dir, dep2Dir}
+
+	hash1, err := HashInputs(pkgDir, depDirs, []string{"src/**", "^dist/**"})
+	if err != nil {
+		t.Fatalf("HashInputs error: %v", err)
+	}
+
+	// Change a dep output — hash must change.
+	mustWriteFile(t, filepath.Join(dep1Dir, "dist", "index.js"), "v2\n")
+
+	hash2, err := HashInputs(pkgDir, depDirs, []string{"src/**", "^dist/**"})
+	if err != nil {
+		t.Fatalf("HashInputs error: %v", err)
+	}
+	if hash1 == hash2 {
+		t.Fatal("hash unchanged after dep output change, want different")
+	}
+
+	// Changing local src — hash must also change.
+	mustWriteFile(t, filepath.Join(pkgDir, "src", "index.ts"), "export { x }\n")
+
+	hash3, err := HashInputs(pkgDir, depDirs, []string{"src/**", "^dist/**"})
+	if err != nil {
+		t.Fatalf("HashInputs error: %v", err)
+	}
+	if hash2 == hash3 {
+		t.Fatal("hash unchanged after local src change, want different")
+	}
+}
+
+func TestHashInputsDepPatternWithNilDepDirsIsNoop(t *testing.T) {
+	root := t.TempDir()
+	mustWriteFile(t, filepath.Join(root, "src", "a.ts"), "export const a = 1\n")
+
+	// "^dist/**" with nil depDirs should match nothing — hash equals local-only hash.
+	hashWithDep, err := HashInputs(root, nil, []string{"src/**", "^dist/**"})
+	if err != nil {
+		t.Fatalf("HashInputs error: %v", err)
+	}
+	hashLocalOnly, err := HashInputs(root, nil, []string{"src/**"})
+	if err != nil {
+		t.Fatalf("HashInputs error: %v", err)
+	}
+	if hashWithDep != hashLocalOnly {
+		t.Fatal("nil depDirs: ^dist/** should contribute nothing, hashes must match")
 	}
 }
 

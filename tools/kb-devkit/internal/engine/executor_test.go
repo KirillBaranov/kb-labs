@@ -97,7 +97,7 @@ func TestExecutorWritesCleanStateOnSuccess(t *testing.T) {
 	pkg := workspace.Package{Name: "@kb/app", Dir: pkgDir}
 	def := TaskDef{Name: "build", Command: `sh -c "exit 0"`, Cache: true}
 
-	r := exec.Run(pkg, def, false)
+	r := exec.Run(pkg, def, false, nil)
 	if !r.OK {
 		t.Fatalf("expected OK, stderr: %s", r.Stderr)
 	}
@@ -123,7 +123,7 @@ func TestExecutorWritesDirtyStateOnFailure(t *testing.T) {
 	pkg := workspace.Package{Name: "@kb/app", Dir: pkgDir}
 	def := TaskDef{Name: "build", Command: `sh -c "exit 1"`, Cache: true}
 
-	r := exec.Run(pkg, def, false)
+	r := exec.Run(pkg, def, false, nil)
 	if r.OK {
 		t.Fatal("expected failure")
 	}
@@ -150,7 +150,7 @@ func TestExecutorWritesStateForNoCacheTasks(t *testing.T) {
 	// cache:false simulates deploy-like tasks — state must still be written
 	def := TaskDef{Name: "deploy", Command: `sh -c "exit 0"`, Cache: false}
 
-	r := exec.Run(pkg, def, false)
+	r := exec.Run(pkg, def, false, nil)
 	if !r.OK {
 		t.Fatalf("expected OK, stderr: %s", r.Stderr)
 	}

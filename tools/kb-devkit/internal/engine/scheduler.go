@@ -97,6 +97,26 @@ func Run(ws *workspace.Workspace, cfg *config.DevkitConfig, opts RunOptions) (Ru
 		return RunResult{}, err
 	}
 
+	// Precompute direct workspace dep directories for each package in the run.
+	// Used by HashInputs to resolve "^"-prefixed input patterns (e.g. "^dist/**").
+	// We index the full workspace (not just pkgs) so that deps outside the current
+	// filtered set are also resolved correctly.
+	allPkgByName := make(map[string]workspace.Package, len(ws.Packages))
+	for _, p := range ws.Packages {
+		allPkgByName[p.Name] = p
+	}
+	pkgDepDirs := make(map[string][]string, len(pkgs))
+	for _, p := range pkgs {
+		depNames := readWorkspaceDeps(p.Dir, allPkgByName)
+		dirs := make([]string, 0, len(depNames))
+		for _, name := range depNames {
+			if dep, ok := allPkgByName[name]; ok {
+				dirs = append(dirs, dep.Dir)
+			}
+		}
+		pkgDepDirs[p.Name] = dirs
+	}
+
 	// Concurrency priority: --concurrency flag > devkit.yaml run.concurrency > NumCPU-1.
 	// Live output forces 1 to avoid interleaved lines.
 	concurrency := opts.Concurrency
@@ -142,7 +162,7 @@ func Run(ws *workspace.Workspace, cfg *config.DevkitConfig, opts RunOptions) (Ru
 		layer := queue
 		queue = nil
 
-		layerResults := runLayer(layer, nodes, executor, cfg, opts.NoCache, concurrency)
+		layerResults := runLayer(layer, nodes, executor, cfg, opts.NoCache, concurrency, pkgDepDirs)
 		allResults = append(allResults, layerResults...)
 
 		for _, r := range layerResults {
@@ -389,6 +409,7 @@ func runLayer(
 	cfg *config.DevkitConfig,
 	noCache bool,
 	concurrency int,
+	pkgDepDirs map[string][]string,
 ) []TaskResult {
 	results := make([]TaskResult, len(layer))
 	var wg sync.WaitGroup
@@ -409,7 +430,7 @@ func runLayer(
 				results[i] = TaskResult{Package: k.pkg, Task: k.task, OK: false, Error: "no variant matched"}
 				return
 			}
-			results[i] = executor.Run(n.pkg, *def, noCache)
+			results[i] = executor.Run(n.pkg, *def, noCache, pkgDepDirs[n.pkg.Name])
 		}()
 	}
 
