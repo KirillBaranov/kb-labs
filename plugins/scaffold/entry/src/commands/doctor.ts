@@ -36,8 +36,8 @@ export default defineCommand({
 
       const { errorCount, warnCount } = scan.findings.reduce(
         (acc, f) => {
-          if (f.severity === 'error') acc.errorCount++;
-          else if (f.severity === 'warn') acc.warnCount++;
+          if (f.severity === 'error') { acc.errorCount++; }
+          else if (f.severity === 'warn') { acc.warnCount++; }
           return acc;
         },
         { errorCount: 0, warnCount: 0 },
