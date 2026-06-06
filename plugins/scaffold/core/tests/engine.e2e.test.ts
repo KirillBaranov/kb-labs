@@ -119,9 +119,11 @@ describe('engine e2e: plugin/base block', () => {
     const manifest = result.files.find(
       (f) => f.path === 'packages/demo-entry/src/manifest.ts',
     )!;
-    // Both commands present.
-    expect(manifest.contents).toContain('"id": "hello"');
-    expect(manifest.contents).toContain('"id": "ping"');
+    // Both commands present. Commands use `path:` (space-separated tokens) per
+    // CliCommandDecl — discover.ts derives segments from path. The old `id:`+
+    // `group:` shape produced empty segments → MANIFEST_VALIDATION_FAILED (B-013).
+    expect(manifest.contents).toContain('"path": "demo hello"');
+    expect(manifest.contents).toContain('"path": "demo ping"');
     // REST section present.
     expect(manifest.contents).toContain('"basePath": "/demo"');
     expect(manifest.contents).toContain('rest/hello.js');
