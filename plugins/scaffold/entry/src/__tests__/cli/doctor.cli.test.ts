@@ -19,8 +19,6 @@ describe('scaffold:doctor', () => {
   it('SD-01: successful scan with no findings — exitCode 0, prints package count', async () => {
     mockedScanRoot.mockResolvedValue({
       findings: [],
-      errorCount: 0,
-      warnCount: 0,
       packagesScanned: 3,
     });
 
@@ -35,12 +33,10 @@ describe('scaffold:doctor', () => {
 
   it('SD-02: --json outputs structured JSON with findings and packagesScanned', async () => {
     const findings = [
-      { severity: 'warn' as const, message: 'missing field', package: 'my-pkg', file: 'package.json' },
+      { severity: 'warn' as const, message: 'missing field', package: 'my-pkg' },
     ];
     mockedScanRoot.mockResolvedValue({
       findings,
-      errorCount: 0,
-      warnCount: 1,
       packagesScanned: 2,
     });
 
@@ -58,10 +54,8 @@ describe('scaffold:doctor', () => {
   it('SD-03: findings with severity=error — exitCode 1, error message shown', async () => {
     mockedScanRoot.mockResolvedValue({
       findings: [
-        { severity: 'error' as const, message: 'missing manifest', package: 'bad-pkg', file: 'package.json' },
+        { severity: 'error' as const, message: 'missing manifest', package: 'bad-pkg' },
       ],
-      errorCount: 1,
-      warnCount: 0,
       packagesScanned: 1,
     });
 
@@ -76,8 +70,6 @@ describe('scaffold:doctor', () => {
   it('SD-04: --path is forwarded to scanRoot', async () => {
     mockedScanRoot.mockResolvedValue({
       findings: [],
-      errorCount: 0,
-      warnCount: 0,
       packagesScanned: 0,
     });
 

@@ -316,7 +316,7 @@ describe('WorkflowEngine', () => {
         jobs: {
           main: {
             runsOn: 'local',
-            retries: { max: 0 },
+            retries: { max: 0, backoff: 'exp', initialIntervalMs: 100 },
             steps: [{ name: 'Boom', uses: 'builtin:shell', with: { run: 'exit 1' } }],
           },
         },
@@ -343,7 +343,7 @@ describe('WorkflowEngine', () => {
         jobs: {
           'job-a': {
             runsOn: 'local',
-            retries: { max: 0 },
+            retries: { max: 0, backoff: 'exp', initialIntervalMs: 100 },
             steps: [{ name: 'Boom', uses: 'builtin:shell', with: { run: 'exit 1' } }],
           },
           'job-b': {
