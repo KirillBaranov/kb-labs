@@ -330,6 +330,9 @@ describe('WorkflowEngine', () => {
       // dlq must be reserved for infrastructure failures, not a user step exit 1.
       expect(updated?.status).toBe('failed');
       expect(updated?.status).not.toBe('dlq');
+      // The failing job's error must surface at the run level so consumers can
+      // show why the run failed (REST /runs/:id, Studio, e2e).
+      expect(updated?.result?.error?.message).toBeTruthy();
     });
 
     it('B-030: downstream job of a failed upstream is cancelled, not left queued', async () => {

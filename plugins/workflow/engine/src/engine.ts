@@ -509,9 +509,23 @@ export class WorkflowEngine {
         payload: { status: 'success', name: run.name },
       })
     } else if (anyFailed) {
+      // Surface the failing job's error at the run level so consumers (REST
+      // /runs/:id, Studio, e2e) can show *why* the run failed without digging
+      // into per-job records.
+      const failedJob = run.jobs.find((j) => j.status === 'failed')
       await this.stateStore.updateRun(runId, (draft) => {
         draft.status = 'failed'
         draft.finishedAt = new Date().toISOString()
+        if (failedJob?.error) {
+          draft.result = {
+            status: 'failed',
+            summary: `Job ${failedJob.jobName} failed`,
+            error: {
+              message: failedJob.error.message,
+              details: failedJob.error.stack ? { stack: failedJob.error.stack } : undefined,
+            },
+          }
+        }
         return draft
       })
       this.logger.info('Workflow run failed', { runId })
