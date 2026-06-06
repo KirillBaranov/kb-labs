@@ -115,10 +115,10 @@ func printDataConsent(analyticsEnabled, llmEnabled bool) {
 	offStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8")) // dim
 
 	llmStatus := offStyle.Render("off")
-	llmHint := styleMuted.Render("(run kb-create . --llm to enable)")
+	llmHint := styleMuted.Render("(re-run and pick a provider, or add OPENAI_API_KEY to .env)")
 	if llmEnabled {
 		llmStatus = onStyle.Render("on")
-		llmHint = styleMuted.Render("KB Labs Gateway · 50 free requests")
+		llmHint = styleMuted.Render("API key in .env")
 	}
 
 	analyticsStatus := offStyle.Render("off")
@@ -159,10 +159,10 @@ func printLLMRecommendation() {
 	line("  " + dim.Render("AI commit messages") + "    " + cmd.Render("kb commit commit"))
 	line("  " + dim.Render("AI code review") + "        " + cmd.Render("kb review run"))
 	line("")
-	line(dim.Render("50 free requests via KB Labs Gateway."))
-	line(dim.Render("Your code diffs are proxied to the LLM vendor — not stored."))
+	line(dim.Render("These use an LLM. Configure your own provider key:"))
 	line("")
-	line("Run:  " + cmd.Render("kb-create . --llm"))
+	line("Re-run:  " + cmd.Render("kb-create .") + dim.Render("  and pick OpenAI / Anthropic"))
+	line("Or set:  " + cmd.Render("OPENAI_API_KEY") + dim.Render(" / ") + cmd.Render("ANTHROPIC_API_KEY") + dim.Render(" in .env"))
 	line(dim.Render("Docs: https://docs.kblabs.ru/adapters/built-in#llm-illm"))
 	fmt.Printf("  %s%s\n", botLeft, rule)
 	fmt.Println()

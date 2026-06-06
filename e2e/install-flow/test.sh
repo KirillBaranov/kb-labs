@@ -41,7 +41,7 @@ fi
 # ── Step 2: Bootstrap project ──────────────────────────────────────────
 echo "── Step 2: Bootstrap project"
 mkdir -p /tmp/work && cd /tmp/work
-if kb-create my-project --yes --llm --platform "$LLM_PLATFORM_DIR" > /tmp/bootstrap.log 2>&1; then
+if kb-create my-project --yes --platform "$LLM_PLATFORM_DIR" > /tmp/bootstrap.log 2>&1; then
   INSTALL_OUT=$(cat /tmp/bootstrap.log)
   pass "kb-create my-project"
 else
@@ -50,42 +50,38 @@ else
   tail -20 /tmp/bootstrap.log
 fi
 
-# ── Step 1b: --yes without --llm keeps LLM off ──────────────────────────────
-echo "── Step 1b: --yes without --llm = LLM off"
+# ── Step 1b: --yes installs with no LLM provider configured (B-001) ──────────
+# The --llm flag + gateway auto-registration were removed; LLM is configured by
+# choosing a provider in the wizard (skipped by --yes) or by setting an API key.
+echo "── Step 1b: --yes = no LLM provider, no gateway creds"
 mkdir -p /tmp/work-nollm && cd /tmp/work-nollm
-# Each scenario uses its own isolated platform dir — prevents test categories from clobbering each other.
 kb-create nollm-project --yes --platform "$NOLLM_PLATFORM_DIR" > /tmp/bootstrap-nollm.log 2>&1 || true
 NOLLM_ENV=""
 if [ -f /tmp/work-nollm/nollm-project/.env ]; then
   NOLLM_ENV=$(cat /tmp/work-nollm/nollm-project/.env)
 fi
 if echo "$NOLLM_ENV" | grep -q "KB_GATEWAY_CLIENT_ID"; then
-  fail "--yes without --llm" "gateway credentials written to .env — LLM should be off"
+  fail "--yes no gateway creds" "gateway credentials written to .env — auto-registration was removed (B-001)"
 else
-  pass "--yes without --llm: no gateway credentials in .env"
+  pass "--yes: no gateway credentials in .env"
 fi
 cd /tmp/work
 
-# ── Step 1c: --llm writes gateway credentials to .env ────────────────────────
-echo "── Step 1c: --llm writes credentials to .env"
-ENV_FILE="/tmp/work/my-project/.env"
-if [ -f "$ENV_FILE" ]; then
-  if grep -q "KB_GATEWAY_CLIENT_ID" "$ENV_FILE" && grep -q "KB_GATEWAY_CLIENT_SECRET" "$ENV_FILE"; then
-    pass ".env has KB_GATEWAY_CLIENT_ID + KB_GATEWAY_CLIENT_SECRET"
-  else
-    fail ".env credentials" "KB_GATEWAY_CLIENT_ID or KB_GATEWAY_CLIENT_SECRET missing from .env"
-  fi
+# ── Step 1c: --llm flag was removed (B-001) ──────────────────────────────────
+echo "── Step 1c: --llm flag is rejected"
+if kb-create llm-flag-test --yes --llm --platform "$NOLLM_PLATFORM_DIR" > /tmp/llm-flag.log 2>&1; then
+  fail "--llm removed" "--llm was accepted — the flag should have been removed (B-001)"
 else
-  fail ".env credentials" ".env file not created after --llm bootstrap"
+  pass "--llm flag rejected (removed in B-001)"
 fi
 
-# ── Step 1d: .env is gitignored ───────────────────────────────────────────────
+# ── Step 1d: .gitignore still lists .env (for when a provider key is added) ───
 echo "── Step 1d: .env is gitignored"
 GITIGNORE_FILE="/tmp/work/my-project/.gitignore"
 if [ -f "$GITIGNORE_FILE" ] && grep -qE "^\.env$|^\.env[[:space:]]" "$GITIGNORE_FILE"; then
   pass ".env is gitignored"
 else
-  fail ".gitignore" ".env is not in .gitignore — credentials would be committed"
+  fail ".gitignore" ".env is not in .gitignore — a provider key would be committed"
 fi
 
 # ── Step 1e: No @kb-labs peer dep warnings ────────────────────────────────────
