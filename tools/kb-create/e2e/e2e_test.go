@@ -154,10 +154,13 @@ func TestInstallYes(t *testing.T) {
 		}
 	}
 
-	// kb.config.json must exist.
-	cfg := filepath.Join(platformDir, ".kb", "kb.config.json")
-	if _, err := os.Stat(cfg); err != nil {
-		t.Errorf("kb.config.json not found: %v", err)
+	// The runtime config (kb.config.jsonc) and kb-create install state
+	// (install.json) must both exist — and they are distinct files.
+	if _, err := os.Stat(filepath.Join(platformDir, ".kb", "kb.config.jsonc")); err != nil {
+		t.Errorf("kb.config.jsonc (runtime config) not found: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(platformDir, ".kb", "install.json")); err != nil {
+		t.Errorf("install.json (install state) not found: %v", err)
 	}
 
 	// marketplace.lock must be valid JSON.
@@ -762,31 +765,30 @@ func TestNoLLMByDefault(t *testing.T) {
 		}
 	}
 
-	// kb.config.json must NOT contain gatewayClientId when LLM not opted in.
-	cfgPath := filepath.Join(platformDir, ".kb", "kb.config.json")
+	// The runtime config must NOT contain gatewayClientId when LLM not opted in.
+	cfgPath := filepath.Join(platformDir, ".kb", "kb.config.jsonc")
 	cfgData, err := os.ReadFile(cfgPath) // #nosec G304
 	if err != nil {
-		t.Fatalf("kb.config.json not found: %v", err)
+		t.Fatalf("kb.config.jsonc not found: %v", err)
 	}
 	if strings.Contains(string(cfgData), "gatewayClientId") {
-		t.Errorf("kb.config.json contains 'gatewayClientId' but --llm was not passed:\n%s", string(cfgData))
+		t.Errorf("kb.config.jsonc contains 'gatewayClientId' but --llm was not passed:\n%s", string(cfgData))
 	}
 }
 
 // ── Studio access mode: default secured vs --local (B-023) ────────────────────
 
-// readPlatformConfig returns the generated platform config (kb.config.json or
-// kb.config.jsonc, whichever exists).
+// readPlatformConfig returns the generated platform runtime config. The runtime
+// config is the single kb.config.jsonc (adapters, gateway, services); kb-create
+// install state lives separately in install.json and is NOT the platform config.
 func readPlatformConfig(t *testing.T, platformDir string) string {
 	t.Helper()
-	for _, name := range []string{"kb.config.json", "kb.config.jsonc"} {
-		p := filepath.Join(platformDir, ".kb", name)
-		if data, err := os.ReadFile(p); err == nil { // #nosec G304 -- under t.TempDir()
-			return string(data)
-		}
+	p := filepath.Join(platformDir, ".kb", "kb.config.jsonc")
+	data, err := os.ReadFile(p) // #nosec G304 -- under t.TempDir()
+	if err != nil {
+		t.Fatalf("no kb.config.jsonc found under %s/.kb: %v", platformDir, err)
 	}
-	t.Fatalf("no kb.config.json[c] found under %s/.kb", platformDir)
-	return ""
+	return string(data)
 }
 
 // TestDefaultKeepsAuthOn verifies that a plain `--yes` install does NOT disable

@@ -161,6 +161,9 @@ func runUpdate(cmd *cobra.Command, args []string) error {
 		}
 		platformOpts = scaffold.ReadPlatformOptions(platformDir, projectDir)
 	}
+	// Render the freshly re-derived gateway plan so upstreams reflect any
+	// added/removed service packages from this update.
+	platformOpts.Gateway = result.Gateway
 	if cfgErr := scaffold.WritePlatformConfig(platformDir, platformOpts); cfgErr != nil {
 		log.Printf("platform config refresh: %v (continuing)", cfgErr)
 	}
@@ -281,7 +284,7 @@ func confirmDestructive(prompt string) bool {
 // resolvePlatformDir returns the platform dir, trying in order:
 //  1. --platform flag on this command
 //  2. --platform persistent flag on the root command
-//  3. .kb/kb.config.json in the current working directory
+//  3. .kb/install.json in the current working directory
 //  4. user state file (last successful install)
 //
 // (4) makes `kb-create status` (and friends) work right after install

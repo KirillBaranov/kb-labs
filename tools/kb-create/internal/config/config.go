@@ -1,6 +1,12 @@
-// Package config manages the platform configuration file written to
-// <platformDir>/.kb/kb.config.json. The schema is versioned to support
-// forward-compatible migrations.
+// Package config manages kb-create's install state, written to
+// <platformDir>/.kb/install.json. This is kb-create's own bookkeeping
+// (manifest snapshot, selected components, telemetry, provenance) — NOT the
+// platform runtime config. The runtime config (adapters, gateway, services)
+// lives in kb.config.jsonc, owned by internal/scaffold. Keeping install state
+// out of the kb.config.* namespace avoids colliding with the platform config
+// the loader recognises. The schema is versioned for forward-compatible
+// migrations; older installs wrote state to kb.config.json and are migrated on
+// first read (see Read).
 package config
 
 import (
@@ -17,7 +23,12 @@ import (
 const (
 	configVersion = 1
 	configDir     = ".kb"
-	configFile    = "kb.config.json"
+	// installStateFile is kb-create's own state file. It deliberately lives
+	// outside the kb.config.* namespace owned by the platform runtime config.
+	installStateFile = "install.json"
+	// legacyStateFile is the pre-migration name; Read/Write migrate it away so
+	// the kb.config.* namespace belongs solely to the platform runtime config.
+	legacyStateFile = "kb.config.json"
 )
 
 // TelemetryConfig holds anonymous telemetry preferences. Stored inside
@@ -53,8 +64,8 @@ func (s InstallSource) EffectiveRegistry() string {
 	return "https://registry.npmjs.org/"
 }
 
-// PlatformConfig is the persistent state written to <platform>/.kb/kb.config.json.
-// Version field enables future migrations.
+// PlatformConfig is kb-create's install state, written to
+// <platform>/.kb/install.json. Version field enables future migrations.
 type PlatformConfig struct {
 	InstalledAt      time.Time         `json:"installedAt"`
 	Platform         string            `json:"platform"`
@@ -111,12 +122,15 @@ func (c *PlatformConfig) InstalledPackageNames() []string {
 	return pkgs
 }
 
-// ConfigPath returns the path to the config file for the given platform directory.
+// ConfigPath returns the path to kb-create's install-state file for the given
+// platform directory (<platformDir>/.kb/install.json).
 func ConfigPath(platformDir string) string {
-	return filepath.Join(platformDir, configDir, configFile)
+	return filepath.Join(platformDir, configDir, installStateFile)
 }
 
-// Write persists config to <platformDir>/.kb/kb.config.json.
+// Write persists install state to <platformDir>/.kb/install.json and removes any
+// legacy kb.config.json install-state left by an older kb-create, so the
+// kb.config.* namespace stays reserved for the platform runtime config.
 func Write(platformDir string, cfg *PlatformConfig) error {
 	dir := filepath.Join(platformDir, configDir)
 	if err := os.MkdirAll(dir, 0o750); err != nil {
@@ -128,33 +142,87 @@ func Write(platformDir string, cfg *PlatformConfig) error {
 		return fmt.Errorf("marshal config: %w", err)
 	}
 
-	path := filepath.Join(dir, configFile)
+	path := filepath.Join(dir, installStateFile)
 	if err := os.WriteFile(path, data, 0o600); err != nil {
 		return fmt.Errorf("write config: %w", err)
 	}
+	removeLegacyInstallState(dir)
 	return nil
 }
 
-// Read loads and parses the config from <platformDir>/.kb/kb.config.json.
+// Read loads kb-create's install state from <platformDir>/.kb/install.json.
+// For installs created before the rename it transparently migrates the legacy
+// <platformDir>/.kb/kb.config.json (only when that file is genuinely install
+// state, never a hand-written runtime config).
 func Read(platformDir string) (*PlatformConfig, error) {
 	path := ConfigPath(platformDir)
-	// #nosec G304 -- path is deterministic (<platformDir>/.kb/kb.config.json).
+	// #nosec G304 -- path is deterministic (<platformDir>/.kb/install.json).
 	data, err := os.ReadFile(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return nil, fmt.Errorf("no config found at %s — is the platform installed?", path)
-		}
+	if err == nil {
+		return parseConfig(data)
+	}
+	if !os.IsNotExist(err) {
 		return nil, fmt.Errorf("read config: %w", err)
 	}
 
+	// install.json is absent — try migrating legacy kb.config.json install state.
+	legacy := filepath.Join(platformDir, configDir, legacyStateFile)
+	// #nosec G304 -- path is deterministic (<platformDir>/.kb/kb.config.json).
+	legacyData, lerr := os.ReadFile(legacy)
+	if lerr != nil {
+		if os.IsNotExist(lerr) {
+			return nil, fmt.Errorf("no config found at %s — is the platform installed?", path)
+		}
+		return nil, fmt.Errorf("read config: %w", lerr)
+	}
+	cfg, perr := parseConfig(legacyData)
+	if perr != nil || !looksLikeInstallState(cfg) {
+		// Not kb-create install state (e.g. a hand-written runtime config that
+		// happens to be named kb.config.json). Leave it untouched.
+		return nil, fmt.Errorf("no config found at %s — is the platform installed?", path)
+	}
+	// Persist under the new name and drop the legacy file (Write handles both).
+	if werr := Write(platformDir, cfg); werr != nil {
+		return nil, fmt.Errorf("migrate legacy config: %w", werr)
+	}
+	return cfg, nil
+}
+
+// parseConfig unmarshals install-state JSON into a PlatformConfig.
+func parseConfig(data []byte) (*PlatformConfig, error) {
 	var cfg PlatformConfig
 	if err := json.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
-
-	// Future: handle cfg.Version < configVersion migrations here.
-
 	return &cfg, nil
+}
+
+// looksLikeInstallState reports whether a parsed config carries kb-create
+// install-state markers. Used to avoid migrating/removing a file that is not
+// actually install state (e.g. a user's runtime config named kb.config.json).
+func looksLikeInstallState(cfg *PlatformConfig) bool {
+	return cfg.Version > 0 ||
+		cfg.Source.InstalledBy != "" ||
+		len(cfg.SelectedServices) > 0 ||
+		len(cfg.SelectedPlugins) > 0 ||
+		len(cfg.Manifest.Core) > 0 ||
+		len(cfg.Manifest.Services) > 0 ||
+		len(cfg.Manifest.Plugins) > 0
+}
+
+// removeLegacyInstallState deletes <kbDir>/kb.config.json when it parses as
+// kb-create install state. A non-install-state file (runtime config) is left
+// intact so we never clobber a user-owned kb.config.json.
+func removeLegacyInstallState(kbDir string) {
+	legacy := filepath.Join(kbDir, legacyStateFile)
+	// #nosec G304 -- path is deterministic (<kbDir>/kb.config.json).
+	data, err := os.ReadFile(legacy)
+	if err != nil {
+		return
+	}
+	if cfg, perr := parseConfig(data); perr == nil && looksLikeInstallState(cfg) {
+		_ = os.Remove(legacy)
+	}
 }
 
 // NewConfig creates a fresh PlatformConfig ready to be written.
