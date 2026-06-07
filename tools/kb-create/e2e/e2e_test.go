@@ -810,7 +810,9 @@ func TestDefaultKeepsAuthOn(t *testing.T) {
 		t.Fatalf("install --yes exited %d:\n%s", code, out)
 	}
 	cfg := readPlatformConfig(t, platformDir)
-	if strings.Contains(cfg, `"enabled": false`) {
+	// Match the gateway auth toggle specifically — the config also contains
+	// "enabled": false for disabled plugins, which a bare substring would catch.
+	if strings.Contains(cfg, `"auth": { "enabled": false }`) {
 		t.Errorf("plain --yes must not disable gateway auth:\n%s", cfg)
 	}
 	if strings.Contains(cfg, `"host": "127.0.0.1"`) {
@@ -836,7 +838,9 @@ func TestLocalModeWritesAuthOff(t *testing.T) {
 		t.Fatalf("install --yes --local exited %d:\n%s", code, out)
 	}
 	cfg := readPlatformConfig(t, platformDir)
-	if !strings.Contains(cfg, `"enabled": false`) {
+	// Match the gateway auth toggle specifically (not any disabled plugin's
+	// "enabled": false).
+	if !strings.Contains(cfg, `"auth": { "enabled": false }`) {
 		t.Errorf("--local must disable gateway auth:\n%s", cfg)
 	}
 	if !strings.Contains(cfg, `"host": "127.0.0.1"`) {
