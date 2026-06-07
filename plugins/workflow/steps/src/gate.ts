@@ -86,11 +86,12 @@ export class GateHandler {
   static readonly uses = 'builtin:gate';
 
   /**
-   * @param validRestartTargets Step identifiers (step.id and/or step.spec.id) the
-   *   worker is able to reset within the gate's own job. When provided and a
-   *   `restartFrom` target is not among them, the gate FAILS instead of
-   *   attempting an unsupported cross-job restart — which the worker would
-   *   silently degrade into "complete the gate and proceed" (a false green).
+   * @param validRestartTargets Identifiers the worker can reset on restart —
+   *   step ids/spec.ids within the gate's own job AND other job names (for
+   *   cross-job restart). When provided and `restartFrom` matches none of them,
+   *   the gate FAILS instead of attempting a restart the worker cannot apply —
+   *   which would otherwise silently degrade into "complete the gate and
+   *   proceed" (a false green).
    */
   handle(
     input: GateInput,
@@ -127,16 +128,16 @@ export class GateHandler {
     // restart action
     const restartAction = action as { restartFrom: string; context?: Record<string, unknown> };
 
-    // Guard: the worker can only reset steps within the gate's own job. If the
-    // restart target is not one of them (e.g. a different job), the gate cannot
-    // recover — fail honestly rather than let the worker silently complete the
+    // Guard: restartFrom must name something the worker can reset — a step in
+    // this job or another job by name. If it matches neither, the gate cannot
+    // recover; fail honestly rather than let the worker silently complete the
     // gate and proceed (which would ship unverified work as a false green).
     if (validRestartTargets && !validRestartTargets.includes(restartAction.restartFrom)) {
       return {
         action: 'fail',
         error: new Error(
-          `Gate restartFrom "${restartAction.restartFrom}" does not match any step in this job — ` +
-            `cross-job restart is not supported. Failing instead of silently passing.`,
+          `Gate restartFrom "${restartAction.restartFrom}" matches no step in this job ` +
+            `or any job in the run — cannot restart. Failing instead of silently passing.`,
         ),
         outputs: { decisionValue, action: 'fail', iteration: currentIteration },
       };

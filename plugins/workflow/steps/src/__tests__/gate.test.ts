@@ -24,17 +24,18 @@ const restartInput: GateInput = {
 }
 
 describe('GateHandler restart-target guard', () => {
-  it('FAILS when restartFrom targets a step not resettable in this job (cross-job)', () => {
-    // Valid targets are within the gate's own job — agent-execute is NOT among them.
+  it('FAILS when restartFrom matches neither a step nor a job the worker can reset', () => {
+    // The worker passes same-job step ids + run job names. A target in neither
+    // (e.g. a typo) cannot be restarted — fail instead of silently passing.
     const decision = new GateHandler().handle(restartInput, ctxFalse, 0, ['build', 'test', 'gate'])
     expect(decision.action).toBe('fail')
     if (decision.action === 'fail') {
       expect(decision.error.message).toContain('agent-execute')
-      expect(decision.error.message).toContain('cross-job')
     }
   })
 
-  it('RESTARTS when restartFrom targets a step in this job', () => {
+  it('RESTARTS when restartFrom matches a valid target (step in this job OR a job by name)', () => {
+    // Cross-job restart: agent-execute is another job the worker can reset.
     const decision = new GateHandler().handle(restartInput, ctxFalse, 0, ['agent-execute', 'build'])
     expect(decision.action).toBe('restart')
   })
