@@ -85,13 +85,17 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Self-validating: the regression test runs in the exact workflow it
+      # protects, so the aggregation logic can never silently drift from its spec.
+      - name: Validate aggregation logic
+        run: node --test scripts/ci/aggregate-e2e-result.test.mjs
+
+      # `skipped` means the upstream gate kept E2E from running (CI was not
+      # green) — that is NOT an E2E failure and must not turn this check red.
+      # Only a shard that actually ran and failed/was cancelled blocks. See the
+      # script header for the full rationale.
       - name: Check matrix outcome
-        run: |
-          echo "matrix-result=${{ needs.e2e.result }}"
-          echo "mcp-result=${{ needs.e2e-mcp.result }}"
-          if [ "${{ needs.e2e.result }}" = "success" ] && [ "${{ needs.e2e-mcp.result }}" = "success" ]; then
-            echo "All 9 E2E shards passed."
-            exit 0
-          fi
-          echo "::error::At least one E2E shard did not succeed (matrix: ${{ needs.e2e.result }}, mcp: ${{ needs.e2e-mcp.result }})."
-          exit 1
+        run: node scripts/ci/aggregate-e2e-result.mjs "${{ needs.e2e.result }}" "${{ needs.e2e-mcp.result }}"
