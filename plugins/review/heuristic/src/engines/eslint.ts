@@ -60,10 +60,8 @@ export const eslintEngine: LinterEngine = {
     '.eslintrc',
   ],
 
-  buildCommand(files: string[], _cwd: string): string {
-    // Quote each file path to handle spaces
-    const quotedFiles = files.map(f => `"${f}"`).join(' ');
-    return `npx eslint --format json ${quotedFiles}`;
+  buildCommand(files: string[], _cwd: string): string[] {
+    return ['npx', 'eslint', '--format', 'json', ...files];
   },
 
   parseOutput(json: string, _cwd: string): ReviewFinding[] {

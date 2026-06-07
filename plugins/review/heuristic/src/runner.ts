@@ -3,7 +3,7 @@
  * Linter runner - executes linters via CLI and collects findings.
  */
 
-import { execSync } from 'child_process';
+import { spawnSync } from 'child_process';
 import { existsSync } from 'fs';
 import { dirname, join, extname, relative } from 'path';
 import type { ReviewFinding } from '@kb-labs/review-contracts';
@@ -124,29 +124,21 @@ export class LinterRunner {
           return relative(projectRoot, f) || f;
         });
 
-        const command = engine.buildCommand(relativeFiles, projectRoot);
-        let output: string;
+        const [cmd, ...args] = engine.buildCommand(relativeFiles, projectRoot);
+        const proc = spawnSync(cmd!, args, {
+          cwd: projectRoot,
+          encoding: 'utf-8',
+          maxBuffer: this.maxBuffer,
+          timeout: this.timeout,
+        });
 
-        try {
-          output = execSync(command, {
-            cwd: projectRoot,
-            encoding: 'utf-8',
-            stdio: ['pipe', 'pipe', 'pipe'],
-            maxBuffer: this.maxBuffer,
-            timeout: this.timeout,
-          });
-        } catch (execError: unknown) {
-          // Most linters exit with non-zero when they find issues
-          // Try to parse stdout anyway
-          const err = execError as { stdout?: string; stderr?: string; message?: string };
-          if (err.stdout) {
-            output = err.stdout;
-          } else {
-            // Real error, not just lint findings
-            errors.push(`${projectRoot}: ${err.message ?? 'Unknown error'}`);
-            continue;
-          }
+        if (proc.error) {
+          errors.push(`${projectRoot}: ${proc.error.message}`);
+          continue;
         }
+
+        // Most linters exit non-zero when they find issues but still write JSON to stdout
+        const output = proc.stdout ?? '';
 
         // Parse output
         if (output && output.trim()) {
