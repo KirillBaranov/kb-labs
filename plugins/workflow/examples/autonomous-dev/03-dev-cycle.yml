@@ -77,10 +77,13 @@ jobs:
         run: |
           kb clickup task get ${{ inputs.task_id }} --json > /tmp/cu-task.json
           TITLE=$(jq -r '.name' /tmp/cu-task.json)
-          DESC=$(jq -r '.description // ""' /tmp/cu-task.json)
           URL=$(jq -r '.url' /tmp/cu-task.json)
-          echo "::kb-output::$(jq -c --arg t "$TITLE" --arg d "$DESC" --arg u "$URL" \
-            '{title:$t, description:$d, url:$u}' /tmp/cu-task.json)"
+          # Keep kb-output SMALL: a long ClickUp description (e.g. an
+          # acceptance-as-test) overflows the single-line ::kb-output:: marker and
+          # breaks its JSON parsing — which would silently leave title/url empty
+          # and crash the gh issue/PR creation downstream. Steps that need the
+          # full description read /tmp/cu-task.json directly.
+          echo "::kb-output::$(jq -c --arg t "$TITLE" --arg u "$URL" '{title:$t, url:$u}' /tmp/cu-task.json)"
         artifacts:
           clickup-task:
             type: link
@@ -117,8 +120,17 @@ jobs:
         phase: setup
         run: |
           BRANCH="ai/task-${{ inputs.task_id }}"
+          # Free the branch from any stale worktree (a cancelled run may still
+          # hold it; git forbids checking out a branch in two worktrees, which
+          # would leave us in detached HEAD and strand the commit).
+          git worktree prune 2>/dev/null || true
+          HERE=$(git rev-parse --show-toplevel 2>/dev/null)
+          for w in $(git worktree list --porcelain | awk -v b="branch refs/heads/$BRANCH" '/^worktree /{w=$2} $0==b{print w}'); do
+            [ "$w" != "$HERE" ] && git worktree remove --force "$w" 2>/dev/null || true
+          done
           # Idempotent: -B (re-)creates the branch; tolerate a re-run of the task.
           git checkout -B "$BRANCH"
+          echo "on branch: $(git rev-parse --abbrev-ref HEAD)"
           git commit --allow-empty -m "chore: start task ${{ inputs.task_id }}" 2>/dev/null || true
           git push -u origin "$BRANCH" 2>/dev/null || git push -u --force-with-lease origin "$BRANCH" 2>/dev/null || true
 
@@ -294,6 +306,12 @@ jobs:
           mkdir -p "$HOME/.local/bin"
           ln -sf "$PWD/tools/kb-devkit/kb-devkit" "$HOME/.local/bin/kb-devkit"
           command -v kb-devkit >/dev/null 2>&1 && echo "kb-devkit ready: $(command -v kb-devkit)" || echo "kb-devkit linked into ~/.local/bin"
+          # The worktree materializes source without built dist. `test:cli --affected`
+          # runs dependent packages' tests, which import the test-helper packages by
+          # their built entrypoints (e.g. @kb-labs/shared-testing-e2e/cli → dist/cli.js).
+          # Those are test-only devDeps, so the --affected runtime build doesn't cover
+          # them — build them here so the affected tests can resolve their imports.
+          pnpm --filter '@kb-labs/shared-testing-e2e' --filter '@kb-labs/shared-testing' --filter '@kb-labs/shared-testing-platform' build 2>&1 | tail -3 || true
 
       # Quality via kb-devkit, scoped to the change with `--affected` so it only
       # checks the package(s) the agent touched (plus their dependents) — not the
@@ -317,7 +335,11 @@ jobs:
         id: build
         phase: quality
         continueOnError: true
+        timeoutMs: 420000
         run: |
+          # Timeout guards against a hung build (e.g. studio module-federation
+          # packages pulled in by --affected) — a hang now fails the step honestly
+          # instead of stalling the whole run forever.
           kb-devkit run build --affected 2>&1
           echo "::kb-output::$([ $? -eq 0 ] && echo '{"build_passed":true}' || echo '{"build_passed":false}')"
 
