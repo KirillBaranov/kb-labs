@@ -152,8 +152,8 @@ const (
 	stagePreset
 	stageCustom
 	stageConsent
-	stageLLM     // pick LLM provider + enter API key
-	stageStudio  // Studio access: local (no login) vs secured
+	stageLLM    // pick LLM provider + enter API key
+	stageStudio // Studio access: local (no login) vs secured
 	stageConfirm
 )
 
@@ -204,15 +204,15 @@ type wizardModel struct {
 	llmEnabled       bool
 
 	// LLM provider selection (replaces gateway auto-registration).
-	llmProvider       string         // "openai" | "anthropic" | "" (skip)
+	llmProvider       string // "openai" | "anthropic" | "" (skip)
 	llmKeyInput       textinput.Model
-	llmProviderCursor int            // cursor in provider list
+	llmProviderCursor int // cursor in provider list
 	llmShowKeyInput   bool
 
 	// Studio access mode (B-023). false = secured (auth on, 0.0.0.0, default),
 	// true = local single-user (auth off, 127.0.0.1, Studio without login).
-	localMode       bool
-	studioCursor    int // 0 = Secured, 1 = Local
+	localMode    bool
+	studioCursor int // 0 = Secured, 1 = Local
 }
 
 func newModel(m *manifest.Manifest, opts WizardOptions) wizardModel {
@@ -517,7 +517,7 @@ var llmProviderOptions = []struct {
 }{
 	{"openai", "OpenAI", "OPENAI_API_KEY — GPT-4o, GPT-4-turbo, etc."},
 	{"anthropic", "Anthropic", "ANTHROPIC_API_KEY — Claude 3.5 Sonnet, etc."},
-	{"", "Skip", "Configure LLM later via .kb/kb.config.json"},
+	{"", "Skip", "Configure LLM later via .kb/kb.config.jsonc"},
 }
 
 func (m wizardModel) handleLLMKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -764,8 +764,7 @@ func (m wizardModel) viewConsent() string {
 	fmt.Fprintf(&b, "%s %s  %s\n", llmCursorMark, llmCheck,
 		normalStyle.Render("Enable AI features (commit messages, code review)"),
 	)
-	fmt.Fprintf(&b, "      %s\n\n", dimStyle.Render("50 free requests via KB Labs Gateway · diffs proxied to LLM vendor, not stored"),
-	)
+	fmt.Fprintf(&b, "      %s\n\n", dimStyle.Render("50 free requests via KB Labs Gateway · diffs proxied to LLM vendor, not stored"))
 
 	// Analytics toggle.
 	b.WriteString("  " + sectionStyle.Render("Analytics") + "\n")
@@ -877,7 +876,7 @@ func (m wizardModel) viewConfirm() string {
 		fmt.Fprintf(&b, "\n  Components: %s\n", dimStyle.Render(strings.Join(selected, ", ")))
 	}
 
-	llmLabel := "off (configure later in .kb/kb.config.json)"
+	llmLabel := "off (configure later in .kb/kb.config.jsonc)"
 	if m.llmProvider != "" {
 		providerName := m.llmProvider
 		for _, opt := range llmProviderOptions {
