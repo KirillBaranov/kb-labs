@@ -1,15 +1,61 @@
 import { gzipSync } from 'node:zlib'
 
-/** Builds a minimal valid tar.gz containing a single package.json file. */
-export function createTestTarball(pkgJson: Record<string, unknown>): Buffer {
-  const content = Buffer.from(JSON.stringify(pkgJson, null, 2))
-  const fileName = 'package/package.json'
-  const header = buildTarHeader(fileName, content.length)
-  const paddedContent = padTo512(content)
-  const eoa = Buffer.alloc(1024) // two 512-byte zero blocks = end-of-archive
+export interface TarballOptions {
+  /**
+   * Also include a `kb.plugin.json` so the package is a recognizable KB Labs
+   * entity. Required for marketplace install, which rejects non-entity packages
+   * with HTTP 422 (B-021). Pass `true` to derive a minimal ManifestV3 from
+   * pkgJson, or an explicit manifest object to control its contents.
+   */
+  manifest?: true | Record<string, unknown>
+}
 
-  const tar = Buffer.concat([header, paddedContent, eoa])
-  return gzipSync(tar)
+/**
+ * Builds a minimal valid tar.gz for a package. By default it contains only a
+ * package.json (enough for registry publish/fetch tests). Pass `opts.manifest`
+ * to also emit a `kb.plugin.json` so marketplace install accepts it as an entity.
+ */
+export function createTestTarball(
+  pkgJson: Record<string, unknown>,
+  opts: TarballOptions = {},
+): Buffer {
+  const files: Array<{ name: string; content: Buffer }> = [
+    { name: 'package/package.json', content: Buffer.from(JSON.stringify(pkgJson, null, 2)) },
+  ]
+
+  if (opts.manifest) {
+    const manifest = opts.manifest === true ? defaultManifest(pkgJson) : opts.manifest
+    files.push({
+      name: 'package/kb.plugin.json',
+      content: Buffer.from(JSON.stringify(manifest, null, 2)),
+    })
+  }
+
+  const blocks: Buffer[] = []
+  for (const file of files) {
+    blocks.push(buildTarHeader(file.name, file.content.length))
+    blocks.push(padTo512(file.content))
+  }
+  blocks.push(Buffer.alloc(1024)) // two 512-byte zero blocks = end-of-archive
+
+  return gzipSync(Buffer.concat(blocks))
+}
+
+/** Minimal valid ManifestV3 derived from the package metadata. */
+function defaultManifest(pkgJson: Record<string, unknown>): Record<string, unknown> {
+  const name = typeof pkgJson.name === 'string' ? pkgJson.name : 'test'
+  const version = typeof pkgJson.version === 'string' ? pkgJson.version : '1.0.0'
+  // Manifest id must be @scope/name; scope unscoped package names under @e2e.
+  const id = name.startsWith('@') ? name : `@e2e/${name}`
+  return {
+    schema: 'kb.plugin/3',
+    id,
+    version,
+    display: {
+      name,
+      description: typeof pkgJson.description === 'string' ? pkgJson.description : 'E2E test entity',
+    },
+  }
 }
 
 function buildTarHeader(name: string, size: number): Buffer {
