@@ -85,7 +85,19 @@ export type GateDecision =
 export class GateHandler {
   static readonly uses = 'builtin:gate';
 
-  handle(input: GateInput, exprCtx: ExpressionContext, currentIteration: number): GateDecision {
+  /**
+   * @param validRestartTargets Step identifiers (step.id and/or step.spec.id) the
+   *   worker is able to reset within the gate's own job. When provided and a
+   *   `restartFrom` target is not among them, the gate FAILS instead of
+   *   attempting an unsupported cross-job restart — which the worker would
+   *   silently degrade into "complete the gate and proceed" (a false green).
+   */
+  handle(
+    input: GateInput,
+    exprCtx: ExpressionContext,
+    currentIteration: number,
+    validRestartTargets?: string[],
+  ): GateDecision {
     const maxIterations = input.maxIterations ?? 3;
     const decisionValue = resolveValue(input.decision, exprCtx);
     const decisionKey = String(decisionValue);
@@ -114,6 +126,22 @@ export class GateHandler {
 
     // restart action
     const restartAction = action as { restartFrom: string; context?: Record<string, unknown> };
+
+    // Guard: the worker can only reset steps within the gate's own job. If the
+    // restart target is not one of them (e.g. a different job), the gate cannot
+    // recover — fail honestly rather than let the worker silently complete the
+    // gate and proceed (which would ship unverified work as a false green).
+    if (validRestartTargets && !validRestartTargets.includes(restartAction.restartFrom)) {
+      return {
+        action: 'fail',
+        error: new Error(
+          `Gate restartFrom "${restartAction.restartFrom}" does not match any step in this job — ` +
+            `cross-job restart is not supported. Failing instead of silently passing.`,
+        ),
+        outputs: { decisionValue, action: 'fail', iteration: currentIteration },
+      };
+    }
+
     const nextIteration = currentIteration + 1;
 
     if (nextIteration >= maxIterations) {

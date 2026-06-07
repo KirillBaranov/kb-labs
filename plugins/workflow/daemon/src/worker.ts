@@ -443,7 +443,14 @@ export async function createWorkflowWorker(
             // (reset to 0) — extra iterations are safer than silent skips.
             const currentIteration = (step.metadata?.['iterations'] as number) ?? 0;
 
-            const decision = new GateHandler().handle(gateInput, exprCtx, currentIteration);
+            // Steps the worker can actually reset on restart — only within this
+            // job. Passing them lets the gate fail honestly on an unsupported
+            // cross-job restartFrom instead of silently completing (false green).
+            const validRestartTargets = job.steps.flatMap((s) =>
+              [s.id, s.spec.id].filter((v): v is string => typeof v === 'string'),
+            );
+
+            const decision = new GateHandler().handle(gateInput, exprCtx, currentIteration, validRestartTargets);
             stepLogger.info('[gate] Evaluating gate decision', {
               runId: run.id,
               stepId: step.id,

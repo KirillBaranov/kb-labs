@@ -6,7 +6,44 @@
  * from an earlier step.
  */
 import { describe, it, expect, expectTypeOf } from 'vitest'
-import type { GateInput, GateOutput, GateRouteAction } from '../gate'
+import type { ExpressionContext } from '@kb-labs/workflow-contracts'
+import { GateHandler, type GateInput, type GateOutput, type GateRouteAction } from '../gate'
+
+// Minimal context where steps.q.outputs.ok resolves to false → routes to the
+// restart action below.
+const ctxFalse = {
+  env: {},
+  trigger: { type: 'manual' },
+  steps: { q: { outputs: { ok: false } } },
+} as unknown as ExpressionContext
+
+const restartInput: GateInput = {
+  decision: 'steps.q.outputs.ok',
+  routes: { false: { restartFrom: 'agent-execute' } },
+  maxIterations: 2,
+}
+
+describe('GateHandler restart-target guard', () => {
+  it('FAILS when restartFrom targets a step not resettable in this job (cross-job)', () => {
+    // Valid targets are within the gate's own job — agent-execute is NOT among them.
+    const decision = new GateHandler().handle(restartInput, ctxFalse, 0, ['build', 'test', 'gate'])
+    expect(decision.action).toBe('fail')
+    if (decision.action === 'fail') {
+      expect(decision.error.message).toContain('agent-execute')
+      expect(decision.error.message).toContain('cross-job')
+    }
+  })
+
+  it('RESTARTS when restartFrom targets a step in this job', () => {
+    const decision = new GateHandler().handle(restartInput, ctxFalse, 0, ['agent-execute', 'build'])
+    expect(decision.action).toBe('restart')
+  })
+
+  it('skips the guard when no targets are supplied (backward compatible)', () => {
+    const decision = new GateHandler().handle(restartInput, ctxFalse, 0)
+    expect(decision.action).toBe('restart')
+  })
+})
 
 describe('GateInput type shape', () => {
   it('accepts a minimal GateInput with required fields only', () => {
