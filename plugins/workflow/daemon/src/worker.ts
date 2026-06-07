@@ -443,7 +443,18 @@ export async function createWorkflowWorker(
             // (reset to 0) — extra iterations are safer than silent skips.
             const currentIteration = (step.metadata?.['iterations'] as number) ?? 0;
 
-            const decision = new GateHandler().handle(gateInput, exprCtx, currentIteration);
+            // Valid restart targets: steps within this job (same-job restart)
+            // OR another job by name (cross-job restart — e.g. quality gate
+            // routing back to `agent-execute`). Passing them lets the gate fail
+            // honestly on a target that matches neither, instead of silently
+            // completing (false green).
+            const sameJobStepIds = job.steps.flatMap((s) =>
+              [s.id, s.spec.id].filter((v): v is string => typeof v === 'string'),
+            );
+            const jobNames = (freshRun?.jobs ?? run.jobs).map((j) => j.jobName);
+            const validRestartTargets = [...sameJobStepIds, ...jobNames];
+
+            const decision = new GateHandler().handle(gateInput, exprCtx, currentIteration, validRestartTargets);
             stepLogger.info('[gate] Evaluating gate decision', {
               runId: run.id,
               stepId: step.id,
@@ -940,15 +951,18 @@ async function applyGateRestart(
     stepsToReset,
   });
 
-  await engine.markStepCompleted(run.id, job.id, step.id, outputs);
-
-  // Persist iteration counter in step.metadata (survives step reset, avoids polluting run.metadata).
   const stateStore = engine.getStateStore();
+  const scheduler = engine.getScheduler();
+
+  // Persist iteration counter on the gate step. The step reset below clears
+  // status/timing/outputs but NOT metadata, so the counter survives.
   await stateStore.updateStep(run.id, job.id, step.id, (draft) => {
     draft.metadata = { ...(draft.metadata ?? {}), iterations: nextIteration };
   });
 
-  // Merge rework context into run trigger.payload (if provided)
+  // Merge rework feedback into trigger.payload so the restarted job's steps can
+  // read it via ${{ trigger.payload.* }} — this survives the reset (whereas
+  // steps.*.outputs do not, once the producing steps are reset to queued).
   if (context) {
     await engine.updateRun(run.id, (draft) => {
       const payload = (draft.trigger.payload ?? {}) as Record<string, unknown>;
@@ -958,15 +972,79 @@ async function applyGateRestart(
     });
   }
 
-  const scheduler = engine.getScheduler();
-  let foundTarget = false;
+  // Is restartFrom a step in THIS job (same-job) or another job by name (cross-job)?
+  const sameJobTarget = job.steps.some((s) => s.spec.id === restartFrom || s.id === restartFrom);
 
+  if (!sameJobTarget) {
+    // ── Cross-job restart (e.g. quality gate → agent-execute) ────────────────
+    // Reset the target job and every job transitively downstream of it
+    // (including this gate's own job), then re-enqueue the target. When it
+    // completes, the engine releases its blocked dependents in DAG order:
+    // agent re-runs (with feedback) → quality re-runs → gate re-evaluates.
+    const fresh = (await engine.getRun(run.id)) ?? run;
+    const resetNames = new Set<string>([restartFrom]);
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const j of fresh.jobs) {
+        if (resetNames.has(j.jobName)) {
+          continue;
+        }
+        if ((j.needs ?? []).some((n) => resetNames.has(n))) {
+          resetNames.add(j.jobName);
+          changed = true;
+        }
+      }
+    }
+
+    for (const rj of fresh.jobs) {
+      if (!resetNames.has(rj.jobName)) {
+        continue;
+      }
+      // A reset job re-blocks only on needs that are themselves being reset;
+      // dependencies outside the reset set already completed and stay satisfied.
+      const pending = (rj.needs ?? []).filter((n) => resetNames.has(n));
+      for (const s of rj.steps) {
+        await stateStore.updateStep(run.id, rj.id, s.id, (draft) => {
+          draft.status = 'queued';
+          draft.startedAt = undefined;
+          draft.finishedAt = undefined;
+          draft.error = undefined;
+          draft.outputs = undefined;
+        });
+      }
+      await stateStore.updateJob(run.id, rj.id, (draft) => {
+        draft.status = 'queued';
+        draft.startedAt = undefined;
+        draft.finishedAt = undefined;
+        draft.pendingDependencies = [...pending];
+        draft.blocked = pending.length > 0;
+      });
+    }
+
+    const refreshed = await engine.getRun(run.id);
+    const targetJob = refreshed?.jobs.find((j) => j.jobName === restartFrom);
+    if (targetJob && !targetJob.blocked) {
+      await scheduler.enqueueJob(run.id, targetJob, targetJob.priority ?? 'normal');
+    }
+    stepLogger.warn('[gate] Cross-job restart re-enqueued target', {
+      runId: run.id,
+      restartFrom,
+      iteration: nextIteration,
+      resetJobs: [...resetNames],
+    });
+    return;
+  }
+
+  // ── Same-job restart ───────────────────────────────────────────────────────
+  await engine.markStepCompleted(run.id, job.id, step.id, outputs);
+
+  let foundTarget = false;
   for (const s of job.steps) {
     if (s.spec.id === restartFrom || s.id === restartFrom) {
       foundTarget = true;
     }
     if (foundTarget) {
-      stepLogger.debug('[gate] Reset step to queued', { stepId: s.id, stepName: s.name });
       await stateStore.updateStep(run.id, job.id, s.id, (draft) => {
         draft.status = 'queued';
         draft.startedAt = undefined;
@@ -984,7 +1062,7 @@ async function applyGateRestart(
   });
 
   const updatedRun = await engine.getRun(run.id);
-  const updatedJob = updatedRun?.jobs.find(j => j.id === job.id);
+  const updatedJob = updatedRun?.jobs.find((j) => j.id === job.id);
   if (updatedJob) {
     await scheduler.enqueueJob(run.id, updatedJob, updatedJob.priority ?? 'normal');
     stepLogger.info('[gate] Job re-enqueued for restart', {

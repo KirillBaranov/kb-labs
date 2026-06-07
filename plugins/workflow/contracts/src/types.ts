@@ -59,6 +59,17 @@ export interface WorkflowValidationResult {
   warnings: string[]
 }
 
+/**
+ * Per-file lint result. Extends WorkflowValidationResult with file attribution
+ * so the `kb workflow lint` report can point at the offending file.
+ */
+export interface FileLintResult extends WorkflowValidationResult {
+  /** Absolute path to the linted file. */
+  file: string
+  /** Path relative to the scan root (used in the human-readable report). */
+  relativePath: string
+}
+
 export interface WorkflowInvocationSpec {
   type: 'workflow'
   workflowId: string

@@ -1,0 +1,5 @@
+# Missing the required `jobs` map — must fail validation.
+name: fixture-invalid
+version: 1.0.0
+on:
+  manual: true
