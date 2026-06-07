@@ -2,7 +2,9 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -177,20 +179,51 @@ func printTaskResult(o output, r engine.TaskResult, done, total int) {
 
 	// Print error output inline.
 	if !r.OK && !r.Cached {
-		out := r.Stderr
-		if out == "" {
-			out = r.Stdout
+		lines, hidden := failureTail(r.Stdout, r.Stderr, failLineLimit())
+		if hidden > 0 {
+			fmt.Printf("           %s\n", o.dim.Render(
+				fmt.Sprintf("… %d earlier lines hidden (KB_DEVKIT_FAIL_LINES=0 for all)", hidden)))
 		}
-		lines := strings.SplitN(strings.TrimSpace(out), "\n", 12)
-		limit := 10
-		if len(lines) < limit {
-			limit = len(lines)
-		}
-		for _, line := range lines[:limit] {
+		for _, line := range lines {
 			fmt.Printf("           %s\n", o.dim.Render(line))
 		}
-		if len(lines) > 10 {
-			fmt.Printf("           %s\n", o.dim.Render("... (truncated)"))
+	}
+}
+
+// failLineLimit returns how many trailing lines of a failed task's output to
+// print. Defaults to 50; KB_DEVKIT_FAIL_LINES overrides it (0 = unlimited).
+func failLineLimit() int {
+	limit := 50
+	if v := os.Getenv("KB_DEVKIT_FAIL_LINES"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			limit = n
 		}
 	}
+	return limit
+}
+
+// failureTail combines a failed task's stdout and stderr (stdout first, since
+// test runners like vitest and `go test` print assertion detail there and
+// summarise the failure at the END) and returns the trailing `limit` lines plus
+// the count of lines hidden above them. A limit <= 0 means "return everything".
+// Showing the tail — not the first lines of stderr, which are usually setup
+// noise — is what makes a failed CI task diagnosable.
+func failureTail(stdout, stderr string, limit int) (lines []string, hidden int) {
+	combined := strings.TrimRight(stdout, "\n")
+	if s := strings.TrimRight(stderr, "\n"); s != "" {
+		if combined != "" {
+			combined += "\n"
+		}
+		combined += s
+	}
+	combined = strings.TrimSpace(combined)
+	if combined == "" {
+		return nil, 0
+	}
+	all := strings.Split(combined, "\n")
+	start := 0
+	if limit > 0 && len(all) > limit {
+		start = len(all) - limit
+	}
+	return all[start:], start
 }

@@ -43,6 +43,7 @@ type Selection struct {
 	LLMEnabled       bool   // user explicitly opted in to LLM via wizard or --llm flag
 	LLMProvider      string // "openai" | "anthropic" | "" (skip)
 	LLMKey           string `json:"-"` // API key for the chosen provider // #nosec G117
+	LocalMode        bool   // user chose local single-user mode (gateway auth off, loopback bind)
 }
 
 // Result is returned after a successful Install.
