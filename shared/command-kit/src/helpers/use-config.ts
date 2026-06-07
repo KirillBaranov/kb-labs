@@ -87,13 +87,73 @@ export async function useConfig<T = any>(productId?: string, profileId?: string)
     return undefined;
   }
 
-  const { usePlatform } = await import('./use-platform.js');
-  const platform = usePlatform();
+  // ── EXPLICIT OVERRIDE (2026-06-07) ──────────────────────────────────────────
+  // Config is read DIRECTLY from the global the service already loaded
+  // (`service-bootstrap` sets `__KB_RAW_CONFIG__` / `__KB_EFFECTIVE_CONFIG__`),
+  // NOT through the `platform.config` adapter.
+  //
+  // Rationale: in-process the adapter was pure indirection over this same global,
+  // and on the isolated/worker path it crashed — config is attached post-assembly
+  // only on the parent path, so `platform.config` was undefined in worker handlers
+  // (the "F2" bug). The global IS populated even in those workers, so reading it
+  // directly is correct AND removes the adapter from the hot path.
+  //
+  // The `platform.config` proxy is kept ONLY as a fallback for a genuinely remote
+  // worker that has no shared memory (future client/server execution).
+  // ────────────────────────────────────────────────────────────────────────────
+  const g = globalThis as typeof globalThis & {
+    __KB_EFFECTIVE_CONFIG__?: Record<string, unknown>;
+    __KB_RAW_CONFIG__?: Record<string, unknown>;
+  };
+  const rawConfig = g.__KB_EFFECTIVE_CONFIG__ ?? g.__KB_RAW_CONFIG__;
 
-  if (!platform) {
-    return undefined;
+  if (rawConfig) {
+    return selectProductSection<T>(rawConfig, effectiveProductId, profileId);
   }
 
-  // Returns ONLY the product-specific config, not the entire kb.config.json
-  return await platform.config.getConfig(effectiveProductId, profileId) as T | undefined;
+  // Fallback: no global in this process (genuinely remote/isolated worker without
+  // shared memory) → use the platform.config IPC proxy if present.
+  const { usePlatform } = await import('./use-platform.js');
+  const platform = usePlatform();
+  if (platform?.config) {
+    return (await platform.config.getConfig(effectiveProductId, profileId)) as T | undefined;
+  }
+
+  return undefined;
+}
+
+/**
+ * Select a product's config section from the raw kb.config.json object.
+ *
+ * Mirrors core-runtime `ConfigAdapter.getConfig`: Profiles v2 first
+ * (`profiles[].products[productId]`), then the legacy flat structure
+ * (top-level key, with the `mind` → `knowledge` alias). Returns ONLY the
+ * product-specific section, never the whole config.
+ */
+function selectProductSection<T = any>(
+  rawConfig: Record<string, unknown>,
+  productId: string,
+  profileId?: string,
+): T | undefined {
+  const effectiveProfileId = profileId ?? process.env.KB_PROFILE ?? 'default';
+
+  // Profiles v2 structure
+  const profilesField = (rawConfig as { profiles?: unknown }).profiles;
+  if (Array.isArray(profilesField)) {
+    type RawProfile = { id?: string; products?: Record<string, unknown> };
+    const profiles = profilesField as RawProfile[];
+    const profile = profiles.find((p) => p.id === effectiveProfileId) ?? profiles[0];
+    if (profile?.products?.[productId] !== undefined) {
+      return profile.products[productId] as T;
+    }
+  }
+
+  // Legacy flat structure (mind → knowledge alias)
+  const legacyKeyMap: Record<string, string> = { mind: 'knowledge' };
+  const legacyKey = legacyKeyMap[productId] ?? productId;
+  if (rawConfig[legacyKey] !== undefined) {
+    return rawConfig[legacyKey] as T;
+  }
+
+  return undefined;
 }
