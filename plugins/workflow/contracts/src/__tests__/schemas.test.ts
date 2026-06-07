@@ -78,6 +78,29 @@ describe('StepSpecSchema', () => {
     })
   })
 
+  describe('uses: command: syntax', () => {
+    // CLI command paths contain spaces (e.g. manifest path 'review run'); the
+    // runtime resolver matches the post-prefix remainder verbatim against the
+    // manifest path, so the schema must accept spaces in the command form.
+    it('accepts a command reference with a space in the path', () => {
+      const result = StepSpecSchema.safeParse({
+        name: 'AI Code Review',
+        uses: 'command:review run',
+      })
+      expect(result.success).toBe(true)
+      expect(result.data?.uses).toBe('command:review run')
+    })
+
+    it('accepts a command reference with a deeper space-separated path', () => {
+      const result = StepSpecSchema.safeParse({
+        name: 'Trace stats',
+        uses: 'command:agent trace stats',
+      })
+      expect(result.success).toBe(true)
+      expect(result.data?.uses).toBe('command:agent trace stats')
+    })
+  })
+
   describe('builtins', () => {
     it('accepts builtin:approval', () => {
       const result = StepSpecSchema.safeParse({ name: 'Approve', uses: 'builtin:approval' })
