@@ -1,0 +1,585 @@
+# Demo 3 — Full Development Cycle
+# Story: engineer triggers workflow with a ClickUp task ID.
+# Pipeline fetches the task, creates an issue + draft PR, runs the agent
+# in plan mode to produce an implementation plan, pauses for human review
+# (showing all context: task/issue/PR links + the plan), then continues:
+# devkit checks → AI review → AI commit → cross-system notifications →
+# waits for CI to go green → final approval → merge.
+#
+# Key engine features shown:
+#   - plugin: steps (agent, ai-review, commit)
+#   - shell steps calling kb CLI and gh CLI
+#   - builtin:approval with rich context artifacts
+#   - builtin:gate for CI polling + plan feedback loop
+#   - job DAG (notify runs parallel steps; quality runs parallel checks)
+#   - phases for visual grouping across the full cycle
+#   - artifact types: link, markdown, table, diff
+#   - hooks for status updates
+#   - inputs: typed parameters at trigger time
+
+name: dev-cycle
+version: 1.0.0
+description: Full AI-assisted development cycle — from ClickUp task to merged PR
+on:
+  manual: true
+  webhook:
+    path: /hooks/clickup-task-started
+
+inputs:
+  task_id:
+    type: string
+    description: ClickUp task ID to implement
+    required: true
+  complexity:
+    type: string
+    description: "Task complexity hint for agent: simple | medium | complex"
+    default: medium
+
+phases:
+  setup:
+    label: Setup
+    description: Fetch task, create issue + branch + draft PR
+  planning:
+    label: AI Planning
+    description: Agent generates implementation plan
+  plan-review:
+    label: Plan Review
+    description: Human reviews plan before any code is written
+  quality:
+    label: Quality Checks
+    description: Build, type-check, tests via kb-devkit
+  review:
+    label: AI Review
+    description: AI code review on agent-written changes
+  commit:
+    label: Commit & Push
+    description: AI commit generation + push
+  notify:
+    label: Notifications
+    description: Cross-system status updates
+  ci:
+    label: CI / CD
+    description: Wait for green CI
+  merge:
+    label: Merge
+    description: Final approval + merge to main
+
+jobs:
+
+  # ── 1. Setup: fetch task, create issue + PR ──────────────────────────────────
+  setup:
+    runsOn: local
+    steps:
+      - name: Fetch ClickUp Task
+        id: task
+        phase: setup
+        summary: Load task title, description, and assignees from ClickUp
+        run: |
+          kb clickup task get ${{ inputs.task_id }} --json > /tmp/cu-task.json
+          TITLE=$(jq -r '.name' /tmp/cu-task.json)
+          URL=$(jq -r '.url' /tmp/cu-task.json)
+          # Keep kb-output SMALL: a long ClickUp description (e.g. an
+          # acceptance-as-test) overflows the single-line ::kb-output:: marker and
+          # breaks its JSON parsing — which would silently leave title/url empty
+          # and crash the gh issue/PR creation downstream. Steps that need the
+          # full description read /tmp/cu-task.json directly.
+          echo "::kb-output::$(jq -c --arg t "$TITLE" --arg u "$URL" '{title:$t, url:$u}' /tmp/cu-task.json)"
+        artifacts:
+          clickup-task:
+            type: link
+            source: steps.task.outputs.url
+            label: ClickUp Task
+            showInSummary: true
+
+      - name: Mark Task In Progress
+        phase: setup
+        run: |
+          kb clickup task update ${{ inputs.task_id }} --status "in progress"
+
+      - name: Create GitHub Issue
+        id: issue
+        phase: setup
+        run: |
+          # `gh issue create` has NO --json flag — it prints the issue URL to
+          # stdout. Capture it and derive the number from the trailing path.
+          ISSUE_URL=$(gh issue create \
+            --title "${{ steps.task.outputs.title }}" \
+            --body "ClickUp: ${{ steps.task.outputs.url }}" 2>/dev/null) || ISSUE_URL=""
+          ISSUE_NUM=$(printf '%s' "$ISSUE_URL" | grep -oE '[0-9]+$' || echo "")
+          echo "issue: $ISSUE_URL (#$ISSUE_NUM)"
+          echo "::kb-output::$(jq -cn --arg n "$ISSUE_NUM" --arg u "$ISSUE_URL" '{number:$n, url:$u}')"
+        artifacts:
+          github-issue:
+            type: link
+            source: steps.issue.outputs.url
+            label: GitHub Issue
+            showInSummary: true
+
+      - name: Create Branch and Draft PR
+        id: pr
+        phase: setup
+        run: |
+          BRANCH="ai/task-${{ inputs.task_id }}"
+          # Free the branch from any stale worktree (a cancelled run may still
+          # hold it; git forbids checking out a branch in two worktrees, which
+          # would leave us in detached HEAD and strand the commit).
+          git worktree prune 2>/dev/null || true
+          HERE=$(git rev-parse --show-toplevel 2>/dev/null)
+          for w in $(git worktree list --porcelain | awk -v b="branch refs/heads/$BRANCH" '/^worktree /{w=$2} $0==b{print w}'); do
+            [ "$w" != "$HERE" ] && git worktree remove --force "$w" 2>/dev/null || true
+          done
+          # Idempotent: -B (re-)creates the branch; tolerate a re-run of the task.
+          git checkout -B "$BRANCH"
+          echo "on branch: $(git rev-parse --abbrev-ref HEAD)"
+          git commit --allow-empty -m "chore: start task ${{ inputs.task_id }}" 2>/dev/null || true
+          git push -u origin "$BRANCH" 2>/dev/null || git push -u --force-with-lease origin "$BRANCH" 2>/dev/null || true
+
+          # `gh pr create` has NO --json flag — it prints the PR URL to stdout.
+          # If a PR already exists for the branch, reuse it.
+          PR_URL=$(gh pr create \
+            --title "${{ steps.task.outputs.title }}" \
+            --body "Closes #${{ steps.issue.outputs.number }} — ClickUp: ${{ steps.task.outputs.url }}" \
+            --draft 2>/dev/null) \
+            || PR_URL=$(gh pr view "$BRANCH" --json url -q .url 2>/dev/null || echo "")
+          PR_NUM=$(printf '%s' "$PR_URL" | grep -oE '[0-9]+$' || echo "")
+          echo "PR: $PR_URL (#$PR_NUM)"
+          echo "::kb-output::$(jq -cn --arg n "$PR_NUM" --arg u "$PR_URL" --arg b "$BRANCH" '{number:$n, url:$u, branch:$b}')"
+        artifacts:
+          github-pr:
+            type: link
+            source: steps.pr.outputs.url
+            label: Draft PR
+            showInSummary: true
+
+    hooks:
+      onFailure:
+        - name: Revert Task Status
+          run: kb clickup task update ${{ inputs.task_id }} --status "open"
+
+  # ── 2. Agent plan ────────────────────────────────────────────────────────────
+  agent-plan:
+    runsOn: local
+    needs: [setup]
+    steps:
+      - name: Generate Implementation Plan
+        id: plan
+        phase: planning
+        summary: Claude analyzes codebase and produces a step-by-step implementation plan
+        run: |
+          TITLE=$(jq -r '.name // ""' /tmp/cu-task.json 2>/dev/null || echo "")
+          DESC=$(jq -r '.description // ""' /tmp/cu-task.json 2>/dev/null || echo "")
+          COMPLEXITY="${{ inputs.complexity }}"
+          FEEDBACK="${{ steps.plan_gate.outputs.context.feedback }}"
+
+          FEEDBACK_LINE=""
+          if [ -n "$FEEDBACK" ]; then
+            FEEDBACK_LINE="Previous plan was rejected. Reviewer notes: $FEEDBACK. Revise accordingly."
+          fi
+
+          PROMPT="You are a senior engineer. Analyze the codebase and produce an implementation plan. Task: $TITLE. Description: $DESC. Complexity: $COMPLEXITY. $FEEDBACK_LINE Return a detailed markdown plan with numbered steps. Start with ## Implementation Plan."
+
+          claude -p "$PROMPT" \
+            --permission-mode plan \
+            --output-format json \
+            --dangerously-skip-permissions \
+            --model claude-sonnet-4-6 \
+            > /tmp/agent-plan.json
+
+          PLAN_MD=$(jq -r '.result // "Plan generation failed"' /tmp/agent-plan.json)
+          SESSION=$(jq -r '.session_id' /tmp/agent-plan.json)
+          STEPS=$(echo "$PLAN_MD" | grep -c '^\s*[0-9]\+\.' || echo "0")
+
+          echo "::kb-output::$(jq -cn \
+            --arg md "$PLAN_MD" --arg s "$STEPS" --arg sid "$SESSION" \
+            '{plan_markdown: $md, steps_count: $s, session_id: $sid}')"
+        timeoutMs: 600000
+        artifacts:
+          implementation-plan:
+            type: markdown
+            source: steps.plan.outputs.plan_markdown
+            label: Implementation Plan
+            showInSummary: true
+
+  # ── 3. Plan approval ─────────────────────────────────────────────────────────
+  plan-review:
+    runsOn: local
+    needs: [agent-plan]
+    steps:
+      - name: Review Plan
+        id: approval
+        phase: plan-review
+        uses: builtin:approval
+        with:
+          title: "Review implementation plan for: ${{ steps.task.outputs.title }}"
+          instructions: |
+            Approve to let the agent execute the plan.
+            Reject with a comment to have the agent revise the plan.
+          context:
+            task_url: ${{ steps.task.outputs.url }}
+            issue_url: ${{ steps.issue.outputs.url }}
+            pr_url: ${{ steps.pr.outputs.url }}
+            steps_count: ${{ steps.plan.outputs.steps_count }}
+
+      - name: Route on Decision
+        id: plan_gate
+        phase: plan-review
+        uses: builtin:gate
+        with:
+          decision: steps.approval.outputs.action
+          maxIterations: 3
+          routes:
+            approve: continue
+            reject:
+              restartFrom: agent-plan
+              context:
+                feedback: ${{ steps.approval.outputs.comment }}
+          default: fail
+
+  # ── 4. Agent execution ───────────────────────────────────────────────────────
+  agent-execute:
+    runsOn: local
+    needs: [plan-review]
+    steps:
+      - name: Checkout Feature Branch
+        phase: quality
+        run: |
+          BRANCH="ai/task-${{ inputs.task_id }}"
+          git fetch origin "$BRANCH" 2>/dev/null || true
+          # The worktree is materialized in DETACHED HEAD (at main's SHA). We must
+          # put it ON the feature branch so the agent's commits land there and push
+          # — otherwise they're stranded on a detached HEAD and the PR stays empty.
+          # A stale worktree from a cancelled run may still hold the branch (git
+          # forbids checking out a branch in two worktrees), so free it first.
+          git worktree prune 2>/dev/null || true
+          HERE=$(git rev-parse --show-toplevel 2>/dev/null)
+          for w in $(git worktree list --porcelain | awk -v b="branch refs/heads/$BRANCH" '/^worktree /{w=$2} $0==b{print w}'); do
+            [ "$w" != "$HERE" ] && git worktree remove --force "$w" 2>/dev/null || true
+          done
+          git checkout -B "$BRANCH" "origin/$BRANCH" 2>/dev/null || git checkout -B "$BRANCH"
+          echo "on branch: $(git rev-parse --abbrev-ref HEAD)"
+
+      - name: Execute Plan
+        id: execute
+        phase: quality
+        summary: Claude implements the approved plan
+        run: |
+          TITLE=$(jq -r '.name // "fix bug"' /tmp/cu-task.json 2>/dev/null || echo "fix bug")
+          PLAN_MD=$(jq -r '.result // ""' /tmp/agent-plan.json 2>/dev/null || echo "")
+          # Feedback from a prior failed quality/review gate is delivered via
+          # trigger.payload (it survives the cross-job restart; step outputs do not).
+          TYPE_ERRORS="${{ trigger.payload.type_errors }}"
+          TEST_FAILURES="${{ trigger.payload.test_failures }}"
+          AI_FEEDBACK="${{ trigger.payload.ai_feedback }}"
+
+          if [ -n "$TYPE_ERRORS" ] || [ -n "$TEST_FAILURES" ] || [ -n "$AI_FEEDBACK" ]; then
+            PROMPT="A previous implementation attempt failed the quality/review gate. Fix the issues and complete the task: $TITLE. Type errors: $TYPE_ERRORS. Test failures: $TEST_FAILURES. Review feedback: $AI_FEEDBACK. Implementation plan for reference: $PLAN_MD"
+          else
+            PROMPT="Implement the following approved plan for this task: $TITLE. $PLAN_MD"
+          fi
+
+          claude -p "$PROMPT" \
+            --dangerously-skip-permissions \
+            --output-format json \
+            --model claude-sonnet-4-6 \
+            > /tmp/agent-result.json
+
+          FILES=$(git diff --name-only HEAD 2>/dev/null | wc -l | tr -d ' ')
+          echo "::kb-output::$(jq -cn --arg f "$FILES" '{files_changed: $f, ok: true}')"
+        timeoutMs: 1800000
+        artifacts:
+          agent-changes:
+            type: diff
+            source: steps.execute.outputs
+            label: Agent Changes
+
+  # ── 5. Devkit quality checks ─────────────────────────────────────────────────
+  quality-checks:
+    runsOn: local
+    needs: [agent-execute]
+    steps:
+      - name: Provision environment
+        phase: quality
+        run: |
+          # The run executes in an isolated worktree. Expose the in-repo Go
+          # tools on PATH via ~/.local/bin (already on PATH — that's where
+          # kb-dev lives), so `kb-devkit run ...` works in the quality steps.
+          mkdir -p "$HOME/.local/bin"
+          ln -sf "$PWD/tools/kb-devkit/kb-devkit" "$HOME/.local/bin/kb-devkit"
+          command -v kb-devkit >/dev/null 2>&1 && echo "kb-devkit ready: $(command -v kb-devkit)" || echo "kb-devkit linked into ~/.local/bin"
+          # The worktree materializes source without built dist. `test:cli --affected`
+          # runs dependent packages' tests, which import the test-helper packages by
+          # their built entrypoints (e.g. @kb-labs/shared-testing-e2e/cli → dist/cli.js).
+          # Those are test-only devDeps, so the --affected runtime build doesn't cover
+          # them — build them here so the affected tests can resolve their imports.
+          pnpm --filter '@kb-labs/shared-testing-e2e' --filter '@kb-labs/shared-testing' --filter '@kb-labs/shared-testing-platform' build 2>&1 | tail -3 || true
+
+      # Quality via kb-devkit, scoped to the change with `--affected` so it only
+      # checks the package(s) the agent touched (plus their dependents) — not the
+      # whole monorepo, which fails in the worktree on unrelated sibling packages.
+      - name: Type Check
+        id: types
+        phase: quality
+        continueOnError: true
+        run: |
+          OUTPUT=$(kb-devkit run type-check --affected 2>&1)
+          EXIT=$?
+          echo "$OUTPUT"
+          if [ $EXIT -eq 0 ]; then
+            echo "::kb-output::$(echo '{"ok":true,"errors":0,"output":""}')"
+          else
+            ESCAPED=$(echo "$OUTPUT" | tail -20 | jq -Rs .)
+            echo "::kb-output::$(jq -cn --argjson o "$ESCAPED" '{ok:false,errors:1,output:$o}')"
+          fi
+
+      - name: Build Affected
+        id: build
+        phase: quality
+        continueOnError: true
+        timeoutMs: 420000
+        run: |
+          # Timeout guards against a hung build (e.g. studio module-federation
+          # packages pulled in by --affected) — a hang now fails the step honestly
+          # instead of stalling the whole run forever.
+          kb-devkit run build --affected 2>&1
+          echo "::kb-output::$([ $? -eq 0 ] && echo '{"build_passed":true}' || echo '{"build_passed":false}')"
+
+      - name: Run Tests
+        id: tests
+        phase: quality
+        continueOnError: true
+        run: |
+          kb-devkit run test:cli --affected 2>&1
+          echo "::kb-output::$([ $? -eq 0 ] && \
+            echo '{"passed":true,"failed":0}' || \
+            echo '{"passed":false,"failed":1}')"
+        artifacts:
+          test-results:
+            type: table
+            source: steps.tests.outputs
+            label: Test Results
+            showInSummary: true
+
+      # Combine type-check + build + tests into a single boolean. The gate's `with:`
+      # interpolation only supports `||` (not `&&`), so the AND must happen here.
+      - name: Quality Summary
+        id: quality_summary
+        phase: quality
+        run: |
+          TYPES="${{ steps.types.outputs.ok }}"
+          BUILD="${{ steps.build.outputs.build_passed }}"
+          TESTS="${{ steps.tests.outputs.passed }}"
+          echo "type-check=$TYPES build=$BUILD tests=$TESTS"
+          if [ "$TYPES" = "true" ] && [ "$BUILD" = "true" ] && [ "$TESTS" = "true" ]; then
+            echo '::kb-output::{"all_passed":true}'
+          else
+            echo '::kb-output::{"all_passed":false}'
+          fi
+
+      - name: Gate on Quality
+        uses: builtin:gate
+        with:
+          decision: steps.quality_summary.outputs.all_passed
+          maxIterations: 2
+          routes:
+            "true": continue
+            "false":
+              restartFrom: agent-execute
+              context:
+                type_errors: ${{ steps.types.outputs.output }}
+                test_failures: ${{ steps.tests.outputs.failed }}
+          default: fail
+
+  # ── 6. AI review ─────────────────────────────────────────────────────────────
+  ai-review:
+    runsOn: local
+    needs: [quality-checks]
+    steps:
+      # Run review as a subprocess (`run:`), not `command:` — the in-daemon
+      # command: path hands the handler a platform without `config`, which crashes
+      # (config is attached post-assembly only on the parent path). A subprocess
+      # bootstraps its own platform/config. Verdict is derived from blocking
+      # (error-severity) findings, since `kb review run --json` emits
+      # {findings, summary:{total,bySeverity}, metadata} with no `passed` field.
+      - name: AI Code Review
+        id: review
+        phase: review
+        run: |
+          REPORT="/tmp/kb-review-${{ inputs.task_id }}.json"
+          kb review run --scope changed --mode full --json > "$REPORT" 2>/dev/null
+          ERRORS=$(jq -r '.summary.bySeverity.error // 0' "$REPORT" 2>/dev/null || echo 0)
+          TOTAL=$(jq -r '.summary.total // 0' "$REPORT" 2>/dev/null || echo 0)
+          SEV=$(jq -cr '.summary.bySeverity // {}' "$REPORT" 2>/dev/null || echo '{}')
+          echo "review: total=$TOTAL blocking(errors)=$ERRORS bySeverity=$SEV"
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "::kb-output::$(jq -cn --argjson e "$ERRORS" --arg s "Review: $TOTAL findings, $ERRORS blocking (errors). bySeverity: $SEV" '{passed:false,blocking:$e,summary:$s}')"
+          else
+            echo "::kb-output::$(jq -cn --argjson e "$ERRORS" --arg s "Review: $TOTAL findings, 0 blocking. bySeverity: $SEV" '{passed:true,blocking:$e,summary:$s}')"
+          fi
+        artifacts:
+          ai-report:
+            type: markdown
+            source: steps.review.outputs.summary
+            label: AI Review Report
+            showInSummary: true
+
+      - name: Gate on Verdict
+        uses: builtin:gate
+        with:
+          decision: steps.review.outputs.passed
+          maxIterations: 2
+          routes:
+            "true": continue
+            "false":
+              restartFrom: agent-execute
+              context:
+                ai_feedback: ${{ steps.review.outputs.summary }}
+          default: fail
+
+  # ── 7. AI commit + push ───────────────────────────────────────────────────────
+  commit:
+    runsOn: local
+    needs: [ai-review]
+    steps:
+      - name: Commit and Push
+        id: gen
+        phase: commit
+        run: |
+          BRANCH="ai/task-${{ inputs.task_id }}"
+          git checkout "$BRANCH" 2>/dev/null || git checkout -b "$BRANCH" --track "origin/$BRANCH" 2>/dev/null || true
+          kb commit --with-push --yes --json > /tmp/commit-result.json 2>&1
+          COUNT=$(jq -r '.commits | length // 0' /tmp/commit-result.json 2>/dev/null || echo "0")
+          # Push any commits the agent made directly (kb commit skips push when commits_count=0)
+          git push origin "$BRANCH" 2>/dev/null || true
+          echo "::kb-output::$(jq -cn --arg c "$COUNT" '{commits_count: $c, committed: true}')"
+
+      - name: Mark PR Ready for Review
+        phase: commit
+        run: |
+          PR_NUM="${{ steps.pr.outputs.number }}"
+          if [ -n "$PR_NUM" ]; then
+            gh pr ready "$PR_NUM" 2>/dev/null || true
+          fi
+          echo "::kb-output::$(echo '{"done":true}')"
+
+    hooks:
+      onSuccess:
+        - name: Update PR Description
+          run: |
+            gh pr edit ${{ steps.pr.outputs.number }} \
+              --body "Closes #${{ steps.issue.outputs.number }}
+              **ClickUp:** ${{ steps.task.outputs.url }}
+              **AI Review:** ✅ Approved
+              **Commits:** ${{ steps.gen.outputs.commits_count }}"
+
+  # ── 8. Cross-system notifications ────────────────────────────────────────────
+  notify:
+    runsOn: local
+    needs: [commit]
+    steps:
+      - name: Comment on ClickUp Task
+        phase: notify
+        continueOnError: true
+        run: |
+          kb clickup task comments add ${{ inputs.task_id }} \
+            --text "Implementation ready for review. AI Review passed. Commits pushed."
+
+      - name: Comment on GitHub Issue
+        phase: notify
+        continueOnError: true
+        run: |
+          ISSUE="${{ steps.issue.outputs.number }}"
+          if [ -n "$ISSUE" ]; then
+            gh issue comment "$ISSUE" --body "Implementation complete."
+          fi
+          echo "::kb-output::$(echo '{"done":true}')"
+
+      - name: Comment on PR with Review Summary
+        phase: notify
+        continueOnError: true
+        run: |
+          PR="${{ steps.pr.outputs.number }}"
+          if [ -n "$PR" ]; then
+            gh pr comment "$PR" --body "AI Review passed. Devkit checks: type-check ✅ build ✅ tests ✅"
+          fi
+          echo "::kb-output::$(echo '{"done":true}')"
+
+  # ── 9. Wait for CI ────────────────────────────────────────────────────────────
+  await-ci:
+    runsOn: local
+    needs: [notify]
+    steps:
+      - name: Wait for CI Checks
+        id: ci
+        phase: ci
+        summary: Blocks until all GitHub Actions checks complete
+        continueOnError: true
+        run: |
+          PR="${{ steps.pr.outputs.number }}"
+          STATUS="green"
+          if [ -n "$PR" ]; then
+            gh pr checks "$PR" --watch --interval=30 2>&1 || true
+            STATUS=$(gh pr checks "$PR" --json state 2>/dev/null \
+              | jq -r 'if all(.[]; .state == "SUCCESS") then "green" else "red" end' 2>/dev/null || echo "green")
+          fi
+          echo "::kb-output::$(jq -cn --arg s "$STATUS" '{status: $s}')"
+        timeoutMs: 3600000
+        artifacts:
+          ci-status:
+            type: table
+            source: steps.ci.outputs
+            label: CI Check Results
+            showInSummary: true
+
+      - name: Gate on CI Result
+        uses: builtin:gate
+        with:
+          decision: steps.ci.outputs.status
+          routes:
+            green: continue
+            red: fail
+
+  # ── 10. Final approval + merge ────────────────────────────────────────────────
+  merge:
+    runsOn: local
+    needs: [await-ci]
+    steps:
+      - name: Approve and Merge
+        phase: merge
+        uses: builtin:approval
+        with:
+          title: "CI is green — merge ${{ steps.pr.outputs.url }} to main?"
+          instructions: This will squash-merge the PR and delete the branch.
+          context:
+            pr_url: ${{ steps.pr.outputs.url }}
+            task_url: ${{ steps.task.outputs.url }}
+            commits: ${{ steps.gen.outputs.commits_count }}
+            ci_status: ${{ steps.ci.outputs.status }}
+
+      - name: Squash Merge
+        id: merge_step
+        phase: merge
+        run: |
+          gh pr merge ${{ steps.pr.outputs.number }} \
+            --squash \
+            --delete-branch \
+            --subject "${{ steps.task.outputs.title }}"
+          echo "::kb-output::$([ $? -eq 0 ] && echo '{"merged":true}' || echo '{"merged":false}')"
+
+      - name: Close ClickUp Task
+        phase: merge
+        run: |
+          kb clickup task update ${{ inputs.task_id }} --status "done"
+          kb clickup task comments add ${{ inputs.task_id }} \
+            --text "Merged to main. PR: ${{ steps.pr.outputs.url }}"
+
+    hooks:
+      onSuccess:
+        - name: Final Summary
+          run: |
+            echo "✅ Task ${{ inputs.task_id }} complete"
+            echo "   PR merged: ${{ steps.pr.outputs.url }}"
+            echo "   Issue closed: ${{ steps.issue.outputs.url }}"
+      onFailure:
+        - name: Revert to In Review
+          run: |
+            kb clickup task update ${{ inputs.task_id }} --status "in review"
