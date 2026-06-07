@@ -25,7 +25,12 @@ async function publishToRegistry(
   pkgName: string,
   visibility: 'public' | 'private' = 'public',
 ) {
-  const tarball = createTestTarball({ name: pkgName, version: TEST_VERSION, description: 'MI e2e test' })
+  // Install via marketplace requires a real KB entity — include a kb.plugin.json
+  // manifest, otherwise the install is rejected with 422 (non-entity, B-021).
+  const tarball = createTestTarball(
+    { name: pkgName, version: TEST_VERSION, description: 'MI e2e test' },
+    { manifest: true },
+  )
   const meta = JSON.stringify({
     meta: { name: pkgName, version: TEST_VERSION, description: 'MI e2e test', keywords: ['e2e'] },
     visibility,
