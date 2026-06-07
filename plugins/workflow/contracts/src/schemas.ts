@@ -95,6 +95,10 @@ export const StepSpecSchema = z
         z.literal('builtin:shell'),
         z.literal('builtin:approval'),
         z.literal('builtin:gate'),
+        // CLI command form — the resolver matches the part after `command:`
+        // verbatim against a manifest command path (e.g. `review run`,
+        // `agent trace stats`), which contains spaces. Allow them here.
+        z.string().regex(/^command:[a-zA-Z0-9@/_:+#. -]+$/),
         z.string().regex(/^(plugin:|workflow:)?[a-zA-Z0-9@/_:+#.-]+$/),
       ])
       .optional(),
